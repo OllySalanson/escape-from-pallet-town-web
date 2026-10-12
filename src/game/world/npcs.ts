@@ -154,6 +154,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
       'GATE LANE - to the hay meadows and the tide',
       'South for the closes, the rickyard and the brook. Keep the brook on your left and you come out on the saltings.',
       'FERRY HARD is at the foot of it, and the boat comes when it comes.',
+      'The WEIR GATE at the bottom of the meadows is kept locked. The key was last seen at the millpond.',
     ],
   },
   {

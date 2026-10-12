@@ -1,3 +1,4 @@
+import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { playerMap, playerMaps } from './playerMaps';
@@ -18,7 +19,14 @@ export type ExtractionRequirement =
    * Behind rubble a Pickaxe digs out, for this raid only - a map maker's exit
    * (`MapFileOpens`). Until it is dug the rubble is a wall (`WorldScene.isBlocked`).
    */
-  | { readonly kind: 'dug' };
+  | { readonly kind: 'dug' }
+  /**
+   * Behind a gate only its own key opens, for this raid only: the Tarkov key
+   * exit. A Lockpick will not turn it - most locks open with one, an exit with
+   * a key of its own does not - and like rubble it is a wall until it is
+   * opened (`WorldScene.isBlocked`), so it can never be stood on and waited at.
+   */
+  | { readonly kind: 'key'; readonly keyId: SupplyItemId };
 
 export interface ExtractionPoint {
   readonly mapId: WorldMapId;
@@ -36,8 +44,8 @@ export function isExtractionAvailable(
   point: ExtractionPoint,
   elapsedMs: number,
   activatedPoiIds: ReadonlySet<string>,
-  /** The labels of the exits dug out this raid. */
-  dugExitLabels: ReadonlySet<string> = new Set(),
+  /** The labels of the barred exits opened this raid: dug out, or unlocked. */
+  openedExitLabels: ReadonlySet<string> = new Set(),
 ): boolean {
   const requirement =
     point.requirement ??
@@ -52,13 +60,39 @@ export function isExtractionAvailable(
     case 'poi-activated':
       return activatedPoiIds.has(requirement.poiId);
     case 'dug':
-      return dugExitLabels.has(point.label);
+    case 'key':
+      return openedExitLabels.has(point.label);
   }
 }
 
 /** Whether this exit is one a Pickaxe digs out. */
 export function isDugExit(point: ExtractionPoint): boolean {
   return point.requirement?.kind === 'dug';
+}
+
+/**
+ * The item that opens a barred exit - the Pickaxe for rubble, its own key for a
+ * locked gate - or undefined for an exit anybody can use without bringing
+ * anything. A barred exit is a wall until a raid carrying that item opens it,
+ * so nothing that promises a way out (a contract's required exit, the reach of
+ * a drop-in, the hunter's lane) may count one.
+ */
+export function itemThatOpens(point: ExtractionPoint): SupplyItemId | undefined {
+  const requirement = point.requirement;
+  if (requirement?.kind === 'dug') {
+    return 'pickaxe';
+  }
+  return requirement?.kind === 'key' ? requirement.keyId : undefined;
+}
+
+/** Whether this exit needs something carried to open it: rubble or a locked gate. */
+export function isBarredExit(point: ExtractionPoint): boolean {
+  return itemThatOpens(point) !== undefined;
+}
+
+/** A key's name as a caption writes it: `WEIR KEY`. */
+function keyCaptionName(keyId: SupplyItemId): string {
+  return ITEMS[keyId].displayName.toUpperCase();
 }
 
 export function extractionRequirementText(point: ExtractionPoint, elapsedMs: number): string {
@@ -75,6 +109,9 @@ export function extractionRequirementText(point: ExtractionPoint, elapsedMs: num
   }
   if (requirement.kind === 'dug') {
     return 'NEEDS A PICKAXE';
+  }
+  if (requirement.kind === 'key') {
+    return `NEEDS THE ${keyCaptionName(requirement.keyId)}`;
   }
   const seconds = Math.max(0, Math.ceil((requirement.unlockAtMs - elapsedMs) / 1_000));
   return seconds === 0 ? 'OPEN' : `OPENS IN ${seconds}s`;
@@ -107,6 +144,12 @@ export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elaps
   // Rubble is a wall until it is dug, so it says what it is before what it is for.
   if (!isOpen && point.requirement?.kind === 'dug') {
     return `${point.label}\nUNDER RUBBLE\nNEEDS A PICKAXE`;
+  }
+  // A locked gate is a wall too, and says whose key turns it - on two lines,
+  // not three: seated in a fence beside a yard, a third line was the one that
+  // left it nowhere to sit, and in the game it went undrawn.
+  if (!isOpen && point.requirement?.kind === 'key') {
+    return `${point.label}\nLOCKED: ${keyCaptionName(point.requirement.keyId)}`;
   }
   return `${point.label}\nEXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, elapsedMs)}`;
 }
@@ -574,6 +617,95 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
       poiId: 'viridian-ranger-lockbox',
       poiLabel: "RANGER'S LOCKBOX",
     },
+  },
+  /* --- Barred exits ---------------------------------------------------------
+     Ways out that a raid has to bring something to open, each a wall until it
+     does (`WorldScene.tryOpenBarredExitAt`) and open for that raid only. Every
+     one stands in a pocket off the ground it is reached from, so as a wall it
+     shuts no lane, and none of them is any landing's way home: nothing that
+     promises a way out counts one (`isBarredExit`).
+
+     A locked gate - one a map - opens only to its own key, found on the same
+     map in a place of its own (`../worldMap.ts`): the Tarkov key exit, and the
+     reason a key is worth carrying in at the risk of losing it. Rubble is the
+     map maker's Pickaxe exit on the shipped maps: a way out under a cliff that
+     anybody with a Pickaxe can dig. Viridian City has no rubble, because it has
+     no pocket under its rock that is not under a tree.
+     ---------------------------------------------------------------------- */
+  {
+    // The sluice gate at the foot of the water meadows, in the fence where the
+    // meadows drain to the tide: forty-four steps from any other way home.
+    mapId: 'pallet-town',
+    position: { x: 32, y: 57 },
+    label: 'WEIR GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'key', keyId: 'weir-key' },
+  },
+  {
+    // A fall of rock in the cliff nook off the north field, a short walk from
+    // the town and twenty-five steps from the next way out.
+    mapId: 'pallet-town',
+    position: { x: 23, y: 8 },
+    label: 'ROCKFALL',
+    unlockAtMs: 0,
+    requirement: { kind: 'dug' },
+  },
+  {
+    // The gate at the east end of the paddocks, out onto the drove beyond.
+    mapId: 'route-1',
+    position: { x: 61, y: 24 },
+    label: 'PADDOCK GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'key', keyId: 'paddock-key' },
+  },
+  {
+    // The cutting the charcoal carts used before the kiln road, fallen in.
+    mapId: 'route-1',
+    position: { x: 53, y: 54 },
+    label: 'FALLEN CUT',
+    unlockAtMs: 0,
+    requirement: { kind: 'dug' },
+  },
+  {
+    // The forester's own gate out of the west of the wood at Brook Foot.
+    mapId: 'viridian-forest',
+    position: { x: 5, y: 38 },
+    label: "FORESTER'S GATE",
+    unlockAtMs: 0,
+    requirement: { kind: 'key', keyId: 'forester-key' },
+  },
+  {
+    // A slip of scree at the foot of Stone Row's rock.
+    mapId: 'viridian-forest',
+    position: { x: 29, y: 47 },
+    label: 'SCREE GAP',
+    unlockAtMs: 0,
+    requirement: { kind: 'dug' },
+  },
+  {
+    // The garden gate at the end of Garden Row: forty-six steps from any other
+    // way out of the town, and twenty-one from its front gate.
+    mapId: 'viridian-city',
+    position: { x: 42, y: 53 },
+    label: 'GARDEN GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'key', keyId: 'garden-key' },
+  },
+  {
+    // The water stairs at the back of the market isle, down to a boat.
+    mapId: 'floodplain-relay',
+    position: { x: 26, y: 33 },
+    label: 'MARKET STAIRS',
+    unlockAtMs: 0,
+    requirement: { kind: 'key', keyId: 'market-key' },
+  },
+  {
+    // The old working at the back of the quarry, behind its keeper's door.
+    mapId: 'floodplain-relay',
+    position: { x: 75, y: 10 },
+    label: 'QUARRY FALL',
+    unlockAtMs: 0,
+    requirement: { kind: 'dug' },
   },
 ];
 

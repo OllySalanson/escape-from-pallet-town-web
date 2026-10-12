@@ -6,7 +6,7 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import { districtAt } from './districts';
-import { EXTRACTION_POINTS } from './extractionPoints';
+import { EXTRACTION_POINTS, isBarredExit } from './extractionPoints';
 import { gateKeys, gatesForMap, gateStatesToVerify } from './gates';
 import {
   doorIndex,
@@ -388,7 +388,9 @@ export function describeMapStructure(partName: string): void {
           const within = (position: GridPosition): boolean =>
             (distances[position.y]?.[position.x] ?? -1) >= 0;
           const usable = EXTRACTION_POINTS.filter((point) => {
-            if (point.mapId !== mapId || !within(point.position)) {
+            // Rubble and a locked gate open only to a raid that brought the
+            // Pickaxe or the key, so neither is anybody's way out.
+            if (point.mapId !== mapId || !within(point.position) || isBarredExit(point)) {
               return false;
             }
             const requirement = point.requirement;

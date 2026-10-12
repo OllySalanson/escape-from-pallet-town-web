@@ -185,6 +185,10 @@ function refusalMessage(item: ItemDefinition, name: string): string {
       return `${item.displayName} digs in the field, not in a fight.`;
     case 'rod':
       return `${item.displayName} fishes in the field, not in a fight.`;
+    case 'lockpick':
+      return `${item.displayName} picks locks in the field, not in a fight.`;
+    case 'key':
+      return `${item.displayName} opens a gate in the field, not in a fight.`;
     case 'held':
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and

@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
-import { getWorldMap } from '../worldMap';
-import { WORLD_POIS, cacheRefusalLine, tryActivatePoi } from './pois';
+import { BUILT_IN_MAP_IDS, getWorldMap } from '../worldMap';
+import { WORLD_POIS, cacheRefusalLine, lockedCrateLines, tryActivatePoi, type WorldPoi } from './pois';
 
 const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
 
@@ -258,5 +258,68 @@ describe('what a cache pays', () => {
     }
     const lists = [...byMap.values()].map((kinds) => [...kinds].sort().join(','));
     expect(new Set(lists).size).toBe(lists.length);
+  });
+});
+
+/**
+ * A locked crate: a cache with a lock on it, which a Lockpick opens and is
+ * spent opening. Most locks in the game are these.
+ */
+describe('a locked crate', () => {
+  const locked = WORLD_POIS.filter((poi) => poi.locked);
+  const unitsIn = (poi: WorldPoi) => poi.reward.reduce((total, { quantity }) => total + quantity, 0);
+  const picks = (count: number) => {
+    let held = count;
+    return { count: () => held, spend: () => (held -= 1), held: () => held };
+  };
+
+  it('stands on every shipped map, once, and opens no exit', () => {
+    expect(locked.map((poi) => poi.mapId).sort()).toEqual([...BUILT_IN_MAP_IDS].sort());
+    for (const poi of locked) {
+      expect(poi.effect, poi.label).toBeUndefined();
+    }
+  });
+
+  it('pays more than any open cache on its own map, for the pick and the square it cost', () => {
+    for (const poi of locked) {
+      const open = WORLD_POIS.filter((other) => other.mapId === poi.mapId && !other.locked);
+      for (const other of open) {
+        expect(unitsIn(poi), `${poi.label} against ${other.label}`).toBeGreaterThanOrEqual(unitsIn(other));
+      }
+    }
+  });
+
+  it('refuses a raid with no Lockpick and pays nothing', () => {
+    const [crate] = locked;
+    const activated = new Set<string>();
+    const taken: string[] = [];
+    const result = tryActivatePoi(crate, true, activated, (itemId) => taken.push(itemId) > 0, () => true);
+    expect(result).toBe('locked');
+    expect(taken).toEqual([]);
+    expect(activated.has(crate.id)).toBe(false);
+  });
+
+  it('spends one pick to pay the whole cache, once a raid', () => {
+    const [crate] = locked;
+    const activated = new Set<string>();
+    const pack = picks(2);
+    expect(tryActivatePoi(crate, true, activated, () => true, () => true, pack)).toBe('activated');
+    expect(pack.held()).toBe(1);
+    expect(tryActivatePoi(crate, true, activated, () => true, () => true, pack)).toBe('unavailable');
+    expect(pack.held()).toBe(1);
+  });
+
+  it('keeps the pick when the cache will not fit, so the lock is still there to come back to', () => {
+    const [crate] = locked;
+    const activated = new Set<string>();
+    const pack = picks(1);
+    expect(tryActivatePoi(crate, true, activated, () => true, () => false, pack)).toBe('bag-full');
+    expect(pack.held()).toBe(1);
+    expect(activated.has(crate.id)).toBe(false);
+  });
+
+  it('says it is locked in FireRed\'s words, and what would open it', () => {
+    expect(lockedCrateLines(locked[0])[0]).toBe(`${locked[0].label}: the crate is locked…`);
+    expect(lockedCrateLines(locked[0])[1]).toContain('Lockpick');
   });
 });

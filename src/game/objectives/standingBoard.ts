@@ -6,7 +6,7 @@ import { getSpeciesById } from '../pokemon/species';
 import { STARTER_SPECIES } from '../stash/Stash';
 import { createSeededRng, type SeededRng } from '../run/rng';
 import { availableInsertionIds, frontDoorFor, insertionsOn, requireInsertion } from '../run/runGeneration';
-import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
+import { extractionPointsOn, isBarredExit, type ExtractionPoint } from '../world/extractionPoints';
 import { trainersOn } from '../world/mapTrainers';
 import {
   gateBossIds,
@@ -297,7 +297,9 @@ function measureGround(
   const taken = takenTiles(map, defeatedBosses);
   const free = (tile: GridPosition): boolean => !taken.has(tileKey(tile));
   const reached = (grid: readonly Int32Array[], tile: GridPosition): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
-  const mapExits = extractionPointsOn(mapId);
+  // A barred exit opens only to a raid that brought its Pickaxe or its key, so
+  // a contract may never send a player to one.
+  const mapExits = extractionPointsOn(mapId).filter((exit) => !isBarredExit(exit));
 
   // A district is what one more boss would add to the walk from the front door.
   // Asked boss by boss, so a door behind another door is not offered before the
@@ -441,6 +443,14 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   pickaxe: 0,
   'old-rod': 0,
   'good-rod': 0,
+  // A Lockpick is a tool Bill barters and the maps lay, and a key is found on
+  // the map it opens and nowhere else: neither is ever pay.
+  lockpick: 0,
+  'weir-key': 0,
+  'paddock-key': 0,
+  'forester-key': 0,
+  'garden-key': 0,
+  'market-key': 0,
   'hm06-rock-smash': 0,
   // Berries grow only on the trees a map maker plants, and the board never pays
   // one: a berry is picked, not awarded. Priced like the medicine it is.

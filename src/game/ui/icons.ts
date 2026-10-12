@@ -55,6 +55,14 @@ export const ITEM_ICONS = {
   'old-rod': 'old-rod',
   'good-rod': 'good-rod',
   'hm06-rock-smash': 'hm06-rock-smash',
+  // A hooked pick and five brass keys, each key's bow in a colour of its own
+  // so five of them in one vault are five things (`scripts/draw-lock-icons.mjs`).
+  lockpick: 'lockpick',
+  'weir-key': 'weir-key',
+  'paddock-key': 'paddock-key',
+  'forester-key': 'forester-key',
+  'garden-key': 'garden-key',
+  'market-key': 'market-key',
   // Four sizes of one silhouette: which pack you are wearing has to be legible
   // at a glance on the loadout, because it is the decision that screen is for.
   satchel: 'satchel',
@@ -80,6 +88,10 @@ export const WORLD_ICONS = {
   extractionLocked: 'extraction-locked',
   /** A map maker's exit buried until a Pickaxe digs it out (`MapFileOpens`). */
   rubble: 'rubble',
+  /** An exit behind a gate only its own key opens (`ExtractionRequirement` `key`). */
+  lockedGate: 'locked-gate',
+  /** A cache with a lock on it, which a Lockpick opens (`WorldPoi.locked`). */
+  lockedCrate: 'locked-crate',
 } as const satisfies Record<string, string>;
 
 /** Every icon file that has to exist, in one list so a test can check them. */

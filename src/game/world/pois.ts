@@ -18,9 +18,23 @@ export interface WorldPoi {
   readonly effect?: 'unlock-extraction';
   /** What that exit is called, so the landmark can name it when it opens. */
   readonly unlockedExtractionLabel?: string;
+  /**
+   * A crate with a lock on it: it pays only to a raid that spends a Lockpick on
+   * it, and it is locked again - and full again - on the next raid, like every
+   * cache. A locked crate pays more than the open caches round it, because the
+   * pick it costs was carried in a square that could have held something else.
+   */
+  readonly locked?: true;
 }
 
-export type PoiActivationResult = 'activated' | 'unavailable' | 'bag-full';
+export type PoiActivationResult = 'activated' | 'unavailable' | 'bag-full' | 'locked';
+
+/** The Lockpicks a raid is carrying, as `tryActivatePoi` asks about them. */
+export interface PoiLockpicks {
+  readonly count: () => number;
+  /** Spends one, which happens only once the crate's whole cache is in the pack. */
+  readonly spend: () => void;
+}
 
 /**
  * Fixed landmarks belong to authored map content, not the seeded loot pool.
@@ -32,9 +46,13 @@ export function tryActivatePoi(
   activatedPoiIds: Set<string>,
   collectRunItem: (itemId: ItemId, quantity: number) => boolean,
   hasRoomForAll: (reward: WorldPoi['reward']) => boolean,
+  lockpicks: PoiLockpicks = { count: () => 0, spend: () => undefined },
 ): PoiActivationResult {
   if (!poi || !isRunActive || activatedPoiIds.has(poi.id)) {
     return 'unavailable';
+  }
+  if (poi.locked && lockpicks.count() === 0) {
+    return 'locked';
   }
 
   // Whole or not at all. Taken a piece at a time, two Poke Balls that fit and a
@@ -44,6 +62,11 @@ export function tryActivatePoi(
     return 'bag-full';
   }
   poi.reward.forEach((item) => collectRunItem(item.itemId, item.quantity));
+  // The pick goes after the cache is in, so a crate refused for room never
+  // costs one: the lock is still on it and so is the pick in the pack.
+  if (poi.locked) {
+    lockpicks.spend();
+  }
 
   activatedPoiIds.add(poi.id);
   return 'activated';
@@ -696,6 +719,80 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     description: 'The herb grower\'s shed in the corner behind the last house on Garden Row: two Antidotes she steeps from her own beds.',
     reward: [{ itemId: 'antidote', quantity: 2 }],
   },
+  /* --- Locked crates ------------------------------------------------------
+     One a map: a cache with a lock on it, which pays only to a raid that
+     spends a Lockpick on it and so pays more than the open caches round it.
+     Each still pays what its place is.
+     ---------------------------------------------------------------------- */
+  {
+    id: 'pallet-kiln-strongbox',
+    mapId: 'pallet-town',
+    position: { x: 57, y: 33 },
+    label: 'KILN STRONGBOX',
+    description:
+      "The lime burner's strongbox, padlocked in a cleft of the kiln floor: the good medicine, a Great Ball and a crate of the kilns' own iron.",
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'parts-crate', quantity: 1 },
+    ],
+    locked: true,
+  },
+  {
+    id: 'route-1-packers-chest',
+    mapId: 'route-1',
+    position: { x: 44, y: 24 },
+    label: "PACKER'S CHEST",
+    description:
+      "The packer's chest at the bottom of the orchard, locked against the pickers: a Super Potion, a Great Ball and the linen the fruit is wrapped in.",
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 1 },
+    ],
+    locked: true,
+  },
+  {
+    id: 'forest-surveyors-chest',
+    mapId: 'viridian-forest',
+    position: { x: 45, y: 36 },
+    label: "SURVEYOR'S CHEST",
+    description:
+      "The surveyor's chest, left locked where the blowdown stopped him: two Super Potions and the cable his chain was measured on.",
+    reward: [
+      { itemId: 'super-potion', quantity: 2 },
+      { itemId: 'cable-coil', quantity: 1 },
+    ],
+    locked: true,
+  },
+  {
+    id: 'viridian-seed-chest',
+    mapId: 'viridian-city',
+    position: { x: 40, y: 64 },
+    label: 'SEED CHEST',
+    description:
+      'The terrace keepers\' seed chest, locked against the birds and everybody else: a Great Ball, a Super Potion and oil for the lamps they work by.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'lamp-oil', quantity: 1 },
+    ],
+    locked: true,
+  },
+  {
+    id: 'floodplain-beck-strongbox',
+    mapId: 'floodplain-relay',
+    position: { x: 57, y: 27 },
+    label: 'BECK STRONGBOX',
+    description:
+      "The relay crew's strongbox, locked and sunk in the beck bank: a Super Potion, two Great Balls and a spare valve for the sets.",
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'radio-valve', quantity: 1 },
+    ],
+    locked: true,
+  },
 ];
 
 /** A map's landmarks: authored above for a shipped map, from its file for a file map. */
@@ -711,6 +808,17 @@ export function poisForMap(mapId: WorldMapId): readonly WorldPoi[] {
  * hands the player the decision. Nothing is taken and nothing is worked, so
  * the answer is to put something down and step back on to it.
  */
+/**
+ * What a locked crate says to a raid with no Lockpick: FireRed's own words for
+ * a lock (`CinnabarIsland_Text_DoorIsLocked`), then what would open it.
+ */
+export function lockedCrateLines(poi: WorldPoi): readonly string[] {
+  return [
+    `${poi.label}: the crate is locked…`,
+    'A Lockpick in the pack would open it. Bill trades them, and they turn up in the field.',
+  ];
+}
+
 export function cacheRefusalLine(poi: WorldPoi): string {
   const squares = poi.reward.reduce(
     (total, { itemId, quantity }) => total + cellsFor(itemId, quantity),

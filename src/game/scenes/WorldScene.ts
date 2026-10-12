@@ -244,7 +244,7 @@ import {
   tryCollectLoot,
   type WorldLoot,
 } from '../world/loot';
-import { cacheRefusalLine, tryActivatePoi } from '../world/pois';
+import { cacheRefusalLine, lockedCrateLines, tryActivatePoi } from '../world/pois';
 import {
   isLandmarkWorked,
   withWorkedExitsOpen,
@@ -254,7 +254,9 @@ import {
   extractionPointsOn,
   extractionCaption,
   extractionRequirementText,
+  isBarredExit,
   isDugExit,
+  itemThatOpens,
   isExtractionAvailable,
   type ExtractionPoint,
 } from '../world/extractionPoints';
@@ -612,8 +614,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private unclaimedBossGear: RaidCarriage['unclaimedBossGear'] = [];
   private readonly collectedLootIds = new Set<string>();
-  /** The current map's exits a Pickaxe digs out, read once per map (`buriedExitAt`). */
-  private buriedExits: { readonly mapId: string; readonly points: readonly ExtractionPoint[] } | undefined;
+  /**
+   * The current map's barred exits - rubble a Pickaxe digs out, gates only
+   * their own key opens - read once per map (`barredExitAt`).
+   */
+  private barredExits: { readonly mapId: string; readonly points: readonly ExtractionPoint[] } | undefined;
   /**
    * Rare finds this raid has laid eyes on, by loot id. The prize chip keeps
    * asking about these for the rest of the raid - see `prizeChipView`.
@@ -2089,7 +2094,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
               ? WORLD_ICONS.landmarkWorked
               : poi.effect === 'unlock-extraction'
                 ? WORLD_ICONS.radioMast
-                : WORLD_ICONS.supplyCache,
+                : poi.locked
+                  ? WORLD_ICONS.lockedCrate
+                  : WORLD_ICONS.supplyCache,
           ),
         ),
       );
@@ -2101,7 +2108,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ? workedLandmarkCaption(poi, worked)
           : `${poi.label}\n${poi.effect === 'unlock-extraction'
             ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
-            : `CACHE: ${formatPoiReward(poi)}`}`,
+            : // A locked crate keeps what is in it to itself: the lock is the
+              // line, and the whole cache on a third one was a caption too wide
+              // to find a seat beside the crate.
+              poi.locked
+              ? 'LOCKED: NEEDS A LOCKPICK'
+              : `CACHE: ${formatPoiReward(poi)}`}`,
         tone: worked ? LABEL_TONES.worked : LABEL_TONES.station,
         depth: atRow(CAPTION_BAND, poi.position.y),
         speech: { voice: 'name', tiles: [poi.position] },
@@ -2577,13 +2589,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.boulderMayRest(destination)) {
       return false;
     }
-    const goals = this.extractionPointsForCurrentMap()
-      .filter((point) => !isDugExit(point) || this.isExtractionOpen(point))
-      .map((point) => point.position);
+    const goals = this.reachableExitPositions();
     const blockedWith = (standing: GridPosition) => (tile: GridPosition) =>
       this.collisionData[tile.y][tile.x] ||
       (tile.x === standing.x && tile.y === standing.y) ||
-      this.buriedExitAt(tile) !== undefined ||
+      this.barredExitAt(tile) !== undefined ||
       this.currentMap.entities.some(
         (entity) => entity.id !== boulder.id && this.entityHolds(entity, tile),
       );
@@ -2648,18 +2658,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
   }
 
-  /** A map maker's exit still under its rubble on this tile: a wall until it is dug. */
-  private buriedExitAt(tile: GridPosition): ExtractionPoint | undefined {
-    // Asked of every tile the hunter's search touches, so the map's buried
-    // exits are read once per map rather than once per tile - and a shipped
-    // map, which has none, answers before anything else is looked at.
-    if (this.buriedExits?.mapId !== this.currentMap.id) {
-      this.buriedExits = {
+  /**
+   * An exit still barred on this tile - under its rubble, or behind a gate its
+   * key has not opened: a wall until it is opened.
+   */
+  private barredExitAt(tile: GridPosition): ExtractionPoint | undefined {
+    // Asked of every tile the hunter's search touches, so the map's barred
+    // exits are read once per map rather than once per tile - and a map with
+    // none answers before anything else is looked at.
+    if (this.barredExits?.mapId !== this.currentMap.id) {
+      this.barredExits = {
         mapId: this.currentMap.id,
-        points: extractionPointsOn(this.currentMap.id).filter(isDugExit),
+        points: extractionPointsOn(this.currentMap.id).filter(isBarredExit),
       };
     }
-    return this.buriedExits.points.find(
+    return this.barredExits.points.find(
       (point) =>
         point.position.x === tile.x &&
         point.position.y === tile.y &&
@@ -2668,30 +2681,54 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * Rubble faced and dug: with a Pickaxe in the pack the exit under it is open
-   * for the rest of this raid - not for good, so the Pickaxe is worth its
-   * squares every raid it is carried on. Null where there is no rubble.
+   * A barred exit faced with the interact key: rubble dug out with a Pickaxe,
+   * or a locked gate opened with its own key. Either way the exit is open for
+   * the rest of this raid - not for good, so the tool is worth its squares
+   * every raid it is carried on, and neither is used up. Null where there is
+   * no barred exit.
    */
-  private tryDigAt(tile: GridPosition): readonly string[] | null {
-    const point = this.buriedExitAt(tile);
-    if (!point || !this.runSession) {
+  private tryOpenBarredExitAt(tile: GridPosition): readonly string[] | null {
+    const point = this.barredExitAt(tile);
+    const opener = point ? itemThatOpens(point) : undefined;
+    if (!point || !opener || !this.runSession) {
       return null;
     }
-    if (this.bag.count('pickaxe') === 0) {
+    const keyName = ITEMS[opener].displayName;
+    if (this.bag.count(opener) === 0) {
       audioManager.play('denied');
-      return [
-        'Rubble, packed hard. There is a way out somewhere behind it.',
-        'A Pickaxe in the pack would dig it out. Bill trades them.',
-      ];
+      return isDugExit(point)
+        ? [
+            'Rubble, packed hard. There is a way out somewhere behind it.',
+            'A Pickaxe in the pack would dig it out. Bill trades them.',
+          ]
+        : // FireRed's own words for a locked door, then for the key it wants
+          // (`CinnabarIsland_Text_DoorIsLocked`, `Text_ItNeedsCardKey`).
+          [`${point.label}: the gate is locked…`, `No! It needs the ${keyName}!`];
     }
-    this.runSession.exitsDug = [...(this.runSession.exitsDug ?? []), point.label];
+    this.runSession.exitsOpened = [...(this.runSession.exitsOpened ?? []), point.label];
     audioManager.play('landmarkWorked');
-    this.cameras.main.shake(120, 0.004);
+    if (isDugExit(point)) {
+      this.cameras.main.shake(120, 0.004);
+    }
     this.refreshExtractionMarkers();
     return [
-      'You swung the Pickaxe into the rubble and dug it out.',
+      isDugExit(point)
+        ? 'You swung the Pickaxe into the rubble and dug it out.'
+        : // FireRed's `Text_CardKeyOpenedDoor`, with this gate's key in it.
+          `Bingo! The ${keyName} opened the gate!`,
       `${point.label} is open: a way out, for this raid.`,
     ];
+  }
+
+  /**
+   * Where this raid's exits are that a player can walk into now: every exit
+   * but a barred one nobody has opened, which is a wall. The hunter and a
+   * pushed boulder are both told these, never a gate the player cannot open.
+   */
+  private reachableExitPositions(): GridPosition[] {
+    return this.extractionPointsForCurrentMap()
+      .filter((point) => !isBarredExit(point) || this.isExtractionOpen(point))
+      .map((point) => point.position);
   }
 
   /**
@@ -3561,9 +3598,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.dialogBox.showMessages([...opened]);
       return;
     }
-    const dug = this.tryDigAt(targetTile);
-    if (dug !== null) {
-      this.dialogBox.showMessages([...dug]);
+    const unbarred = this.tryOpenBarredExitAt(targetTile);
+    if (unbarred !== null) {
+      this.dialogBox.showMessages([...unbarred]);
       return;
     }
 
@@ -4064,7 +4101,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      this.buriedExitAt(tile) !== undefined ||
+      this.barredExitAt(tile) !== undefined ||
       this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
@@ -4745,9 +4782,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.packReseated = true;
         return true;
       },
+      { count: () => this.bag.count('lockpick'), spend: () => this.bag.remove('lockpick', 1) },
     );
     if (result === 'unavailable') {
       return null;
+    }
+    if (result === 'locked') {
+      audioManager.play('denied');
+      return lockedCrateLines(poi!);
     }
     if (result === 'bag-full') {
       audioManager.play('denied');
@@ -4787,6 +4829,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ];
     }
     return [
+      ...(poi!.locked ? ['The Lockpick turned the lock, and snapped in it.'] : []),
       `${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.${this.reseatNote()}`,
     ];
   }
@@ -4919,7 +4962,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       point,
       this.runSession?.manager.snapshot().elapsedMs ?? 0,
       this.activatedPoiIds,
-      new Set(this.runSession?.exitsDug ?? []),
+      new Set(this.runSession?.exitsOpened ?? []),
     );
   }
 
@@ -5350,7 +5393,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       HUNTER_SPAWN_DISTANCE,
       // This raid's own exits, so the hunter never arrives in the one lane
       // between the player and every way out (the breakaway reads them too).
-      this.extractionPointsForCurrentMap().map((point) => point.position),
+      this.reachableExitPositions(),
     );
   }
 
@@ -5458,7 +5501,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         // And this raid's own exits, so the retreat is never through the one neck
         // between the player and every way out of the raid. Read off the plan
         // rather than the markers, which are not built until createEntities().
-        this.extractionPointsForCurrentMap().map((point) => point.position),
+        this.reachableExitPositions(),
       ),
     );
   }
@@ -5510,7 +5553,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private isBlockedForHunter(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      this.buriedExitAt(tile) !== undefined ||
+      this.barredExitAt(tile) !== undefined ||
       this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
@@ -5604,9 +5647,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
  */
 function extractionIconKey(point: ExtractionPoint, isOpen: boolean): string {
   // A buried exit is drawn as the rubble it is under, which is also a wall:
-  // a locked pad would read as somewhere to stand and wait.
+  // a locked pad would read as somewhere to stand and wait. A keyed exit is the
+  // padlocked gate it is, for the same reason.
   if (!isOpen && isDugExit(point)) {
     return iconTextureKey(WORLD_ICONS.rubble);
+  }
+  if (!isOpen && point.requirement?.kind === 'key') {
+    return iconTextureKey(WORLD_ICONS.lockedGate);
   }
   return iconTextureKey(isOpen ? WORLD_ICONS.extractionOpen : WORLD_ICONS.extractionLocked);
 }

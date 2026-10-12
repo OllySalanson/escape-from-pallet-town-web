@@ -204,6 +204,8 @@ describe('objective field guide', () => {
       'CHURCH FARM',
       'THE DECOY',
       'THE WRECK',
+      // And the locked crate, which a Lockpick opens.
+      'BECK STRONGBOX',
     ]);
     expect(before.hints.join(' ')).toContain(caches[0].label);
     expect(before.hints.join(' ')).not.toContain(caches[1].label);

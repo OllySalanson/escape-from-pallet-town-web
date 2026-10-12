@@ -454,6 +454,20 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'regular',
     once: false,
   },
+  // The pick a locked crate wants. Repeating for the Pickaxe's reason, and it
+  // is spent in the lock besides, so a deal struck once would open one crate.
+  // A key is never on this table: a key exit's key is found on its own map.
+  {
+    id: 'barter-lockpick',
+    name: 'Lockpick',
+    detail:
+      'It opens one locked crate in the field, and snaps in the lock doing it. Most locks give to one; a gate with a key of its own will not.',
+    icon: 'lockpick',
+    gives: { itemId: 'lockpick', quantity: 1 },
+    takes: [{ itemId: 'cable-coil', quantity: 1 }],
+    standing: 'regular',
+    once: false,
+  },
   // FireRed's two lower rods, which is how anything that lives in the water is
   // met (`../world/fishing.ts`). Repeating for the Pickaxe's reason: a rod is
   // carried in the pack and lost with it. The Old Rod is a Fishing Guru's gift

@@ -4,7 +4,7 @@ import { RUN_INSERTIONS } from '../run/runGeneration';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { getWorldMap } from '../worldMap';
-import { EXTRACTION_POINTS } from './extractionPoints';
+import { EXTRACTION_POINTS, isBarredExit } from './extractionPoints';
 import { gatesForMap } from './gates';
 import { WORLD_INTERIORS } from './interiors';
 import { WORLD_POIS } from './pois';
@@ -158,8 +158,10 @@ describe('Pallet Town', () => {
         .filter((insertion) => insertion.mapId === MAP)
         .map((insertion) => {
           const reachable = EXTRACTION_POINTS.filter((point) => point.mapId === MAP)
-            // An exit a landmark has to open is not a way home until it is open.
-            .filter((point) => point.requirement?.kind !== 'poi-activated')
+            // An exit a landmark has to open is not a way home until it is open,
+            // and a barred one is not a way home for a raid without its key or
+            // Pickaxe.
+            .filter((point) => point.requirement?.kind !== 'poi-activated' && !isBarredExit(point))
             .map((point) => steps(MAP, insertion.position, point.position, walk))
             .filter((count) => count > 0);
           return [insertion.label, Math.min(...reachable)];

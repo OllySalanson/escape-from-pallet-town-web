@@ -221,8 +221,10 @@ game.
   `water-stone`, `leaf-stone` and `moon-stone`, `money`, the Pokedollars,
   the seven berries `oran-berry`, `sitrus-berry`, `pecha-berry`, `cheri-berry`,
   `rawst-berry`, `chesto-berry` and `aspear-berry`, the `pickaxe` and the
-  `rubble` a buried exit is drawn as, and the two fishing rods `old-rod` and
-  `good-rod`.
+  `rubble` a buried exit is drawn as, the two fishing rods `old-rod` and
+  `good-rod`, the `lockpick`, the five keys `weir-key`, `paddock-key`,
+  `forester-key`, `garden-key` and `market-key`, and the `locked-gate` and
+  `locked-crate` a keyed exit and a locked cache are drawn as.
   The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same
@@ -268,6 +270,15 @@ game.
   line hanging from the tip, told apart the way FireRed tells its rods apart -
   plain cane (`#d9b46a`, `#9c7438`) with a steel reel, and blue (`#7fb4e0`,
   `#3f6f9d`) with a red one (`#c8443c`, `#ff8a70`).
+  The `lockpick`, the five keys, the `locked-gate` and the `locked-crate` are
+  `scripts/draw-lock-icons.mjs`, on the set's own palette: a hooked steel pick
+  on a bound violet grip; **one brass key drawn five times** (`#f1d27a`,
+  `#c79a3a`, `#8a6420`) with its bow in a colour of its own - blue, tan, green,
+  pink and red - so five keys in one vault are five things; and a plank gate
+  between posts and an iron-bound crate, each carrying the same brass padlock
+  (`#f1c84a`, `#b8862a`, steel shackle `#97a3b2`) so a lock reads as a lock
+  wherever it is drawn. Original to this repository; `--preview=` writes the
+  set side by side at eight times its size.
   The four packs - `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame` - are
   `scripts/draw-pack-icons.mjs`: **one silhouette drawn four times**, each a
   little taller and a little more built than the last, in oilcloth
