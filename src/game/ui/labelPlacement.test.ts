@@ -295,6 +295,18 @@ describe('where a map caption is allowed to sit', () => {
       expect(seatingOrder(asked)).toEqual([1, 3, 0, 2]);
     });
 
+    it('seats the name the player is nearest first, and keeps warnings ahead of every name', () => {
+      const asked = [
+        request({ nearness: 7 }),
+        request(),
+        request({ nearness: 1 }),
+        request({ warns: true, nearness: 9 }),
+        request({ nearness: 1 }),
+      ];
+
+      expect(seatingOrder(asked)).toEqual([3, 2, 4, 0, 1]);
+    });
+
     it('buys a warning no ground a name could not have: it is still never drawn over a person', () => {
       const everyone: Rect = { x: 0, y: 0, width: 320, height: 240 };
 

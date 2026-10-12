@@ -9,7 +9,7 @@ import {
   type CaptionSide,
   type Rect,
 } from './labelPlacement';
-import { captionSpeaks, type CaptionAudience, type CaptionSpeech } from './captionReveal';
+import { captionSpeaks, stepsToNearest, type CaptionAudience, type CaptionSpeech } from './captionReveal';
 
 /**
  * A caption pinned to something on the map.
@@ -81,6 +81,8 @@ export class WorldLabel {
   private held: number | undefined;
   /** Whether it speaks this frame, decided by `describe()` and read by `request()`. */
   private speaking = true;
+  /** Steps from the player to what it names, decided by `describe()`: the nearer name is seated first. */
+  private nearness: number | undefined;
 
   public constructor(scene: Phaser.Scene, spec: WorldLabelSpec) {
     const { subject, text, tone, depth, placement = 'above', speech, grouping = {} } = spec;
@@ -135,6 +137,7 @@ export class WorldLabel {
    */
   public describe(audience: CaptionAudience): void {
     this.speaking = captionSpeaks(this.speech, audience);
+    this.nearness = stepsToNearest(audience.player, this.speech.tiles);
   }
 
   /** What this caption asks of `placeCaptions`: what it names, its size, and whether it speaks. */
@@ -147,6 +150,7 @@ export class WorldLabel {
       held: this.held,
       warns: this.speech.voice === 'warning',
       speaks: this.speaking,
+      ...(this.nearness === undefined || !Number.isFinite(this.nearness) ? {} : { nearness: this.nearness }),
       ...this.grouping,
     };
   }
