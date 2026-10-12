@@ -30,6 +30,7 @@ import {
 } from '../world/characterPresentation';
 import { TILE_SIZE, type TileLayer } from '../worldMap';
 import { DialogBox } from '../ui/DialogBox';
+import { iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
@@ -647,6 +648,13 @@ export class BaseScene extends Phaser.Scene {
    * it is. Bill's oddities are drawn by `drawOddities`.
    */
   private drawSprites(): void {
+    // A finished errand's thing, as its own icon on the giver's furniture.
+    for (const icon of this.place.room?.icons ?? []) {
+      this.add
+        .image(icon.x, icon.y, iconTextureKey(itemIconName(icon.itemId)))
+        .setOrigin(0, 0)
+        .setDepth(atRow(MARKER_BAND, Math.floor(icon.y / TILE_SIZE)));
+    }
     const sprites: readonly RoomSprite[] = this.place.room?.sprites ?? [];
     if (sprites.length === 0) {
       return;

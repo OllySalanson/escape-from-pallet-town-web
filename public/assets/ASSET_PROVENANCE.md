@@ -246,17 +246,26 @@ game.
   of it read as a tin or a jar, which is what every other icon in the Other
   pocket already is. It was `scrip.png`, with a plain seal where the sign is,
   until the money became the Pokedollar on 2026-09-23.
-  The nine machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
-  `tm28-dig`, `tm40-aerial-ace`, `hm01-cut`, `hm03-surf`, `hm04-strength` and
-  `hm06-rock-smash` - are `scripts/draw-machine-icons.mjs`: **one disc shape
-  drawn nine times**, lit from the top left, in the type colour of the move each
-  teaches (Grass, Ice, Steel, Ground, Flying, Normal, Water, Normal and
-  Fighting), because that is how these games have always told one disc from
+  The ten machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
+  `tm28-dig`, `tm39-rock-tomb`, `tm40-aerial-ace`, `hm01-cut`, `hm03-surf`,
+  `hm04-strength` and `hm06-rock-smash` - are `scripts/draw-machine-icons.mjs`:
+  **one disc shape drawn ten times**, lit from the top left, in the type colour
+  of the move each teaches (Grass, Ice, Steel, Ground, Rock, Flying, Normal,
+  Water, Normal and Fighting; Rock is a khaki, `#756a2a`, `#b3a03c`, `#e2d68e`,
+  kept clear of Dig's brown), because that is how these games have always told one disc from
   another; Strength is Normal like Cut, so it is a warmer grey (`#8c6f5a`,
   `#c9a488`, `#efd6bf`) and the two never draw as one picture. An HM's centre
   is a slot rather than the TM's pinhole, so the four machines that are never
-  used up do not read as the same object as the five that are; the eight that
-  shipped before HM04 are byte-identical.
+  used up do not read as the same object as the six that are; the eight that
+  shipped before HM04, and the nine before TM39, are byte-identical.
+  The four errand things - `oaks-parcel`, `medicine-bag`, `brocks-crate` and
+  `old-amber` - are `scripts/draw-errand-icons.mjs`, character art on the set's
+  own outline in palettes of their own: brown paper and white string with a
+  red-stamped label, a white doctor's bag with a red cross, steel-banded planks
+  with a grey stone on their face, and a lump of amber (`#f6c45a`, `#e8962e`,
+  `#b5641b`) with something dark (`#4a2a14`) inside. Original to this
+  repository; the names are FireRed's where FireRed has the thing (OAK'S
+  PARCEL, OLD AMBER), the drawings are not.
   The seven berries are `scripts/draw-berry-icons.mjs`: each redrawn by hand at
   16x16 after FireRed's own 24x24 berry icon, because about twenty pixels of
   fruit will not go into sixteen without resampling, and coloured with that

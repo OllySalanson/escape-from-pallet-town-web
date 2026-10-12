@@ -13,6 +13,7 @@ import type { TileSource } from '../world/tileset/catalogue';
 import type { BasePieceName } from './generated/basePieces';
 import type { BaseKeeper, BaseScreen } from './doors';
 import { cabinetOddities, type Oddity } from '../hub/traderCabinet';
+import { ERRANDS, errandRecord, errandThing } from '../hub/errands';
 import { TILE_SIZE } from '../worldMap';
 import {
   CABINET_UNITS,
@@ -417,6 +418,72 @@ export interface RoomStair {
   readonly to: RoomId;
 }
 
+/**
+ * An item's own 16px icon set on a room's furniture, in room pixels: a
+ * finished errand's thing, standing where its giver keeps it
+ * (`ERRAND_DISPLAY`). Drawn by the scene above the tiles, as a `RoomSprite` is.
+ */
+export interface RoomIcon {
+  readonly itemId: string;
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Where each errand's thing stands once it is handed over (`../hub/errands.ts`):
+ * the parcel on Oak's table, Joy's bag on the Center's lounge table, Brock's
+ * crate on his bench and Bill's amber on his desk. A favour done is a thing in
+ * the room rather than a line in a list, for the reason Brock's rungs are.
+ * `x`/`y` are room pixels, `tiles` the furniture its caption speaks from.
+ */
+export const ERRAND_DISPLAY: Readonly<
+  Record<string, { readonly room: RoomId; readonly x: number; readonly y: number; readonly tiles: readonly GridPosition[]; readonly note: string }>
+> = {
+  'oaks-parcel': {
+    room: 'oaks-lab',
+    x: 9 * 16,
+    y: 4 * 16 + 4,
+    tiles: [{ x: 8, y: 4 }, { x: 9, y: 4 }, { x: 10, y: 4 }],
+    note: 'Opened. The custom Poké Ball came in it',
+  },
+  'medicine-bag': {
+    room: 'pokemon-centre',
+    x: 11 * 16 + 8,
+    y: 6 * 16 + 6,
+    tiles: [{ x: 11, y: 6 }, { x: 12, y: 6 }],
+    note: 'Back where Joy can reach it',
+  },
+  'brocks-crate': {
+    room: 'brocks-workshop',
+    x: 7 * 16 + 8,
+    y: 6 * 16 + 6,
+    tiles: [{ x: 7, y: 6 }, { x: 8, y: 6 }],
+    note: 'His tools, home from the quarry',
+  },
+  'old-amber': {
+    room: 'bills-cottage',
+    x: 7 * 16 + 4,
+    y: 4 * 16 + 2,
+    tiles: [{ x: 6, y: 4 }, { x: 7, y: 4 }],
+    note: 'Something very old is inside it',
+  },
+};
+
+/** The finished errands' things on show in this room, and what each says when faced. */
+function errandsOnShow(room: BaseRoom, game: RestoredGame): { icons: RoomIcon[]; things: RoomThing[] } {
+  const icons: RoomIcon[] = [];
+  const things: RoomThing[] = [];
+  for (const errand of ERRANDS) {
+    const display = ERRAND_DISPLAY[errand.id];
+    if (display?.room !== room.id || errandRecord(game.raidProgress.errands, errand.id)?.status !== 'completed') {
+      continue;
+    }
+    icons.push({ itemId: errand.itemId, x: display.x, y: display.y });
+    things.push({ name: errandThing(errand).toUpperCase(), note: display.note, tiles: display.tiles });
+  }
+  return { icons, things };
+}
+
 /** What Bill's cabinet holds this visit, and where each thing in it stands. */
 export interface BuiltCabinet {
   readonly oddities: readonly Oddity[];
@@ -431,6 +498,8 @@ export interface BuiltRoom {
   readonly collision: readonly boolean[][];
   readonly things: readonly RoomThing[];
   readonly sprites: readonly RoomSprite[];
+  /** Finished errands' things, on show (`ERRAND_DISPLAY`). */
+  readonly icons: readonly RoomIcon[];
   /** Only in Bill's cottage. */
   readonly cabinet?: BuiltCabinet;
   /** Where the wall map hangs, in the one room it hangs in. */
@@ -1145,13 +1214,15 @@ const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame, now:
 export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Date()): BuiltRoom {
   const drawn = DRAWERS[room.id](room, game, now);
   const layers = buildMapLayers(drawn.sketch, drawn.catalogue);
+  const shown = errandsOnShow(room, game);
   return {
     room,
     sources: drawn.catalogue.sources,
     layers,
     collision: layers.collision,
-    things: drawn.things,
+    things: [...drawn.things, ...shown.things],
     sprites: drawn.sprites,
+    icons: shown.icons,
     ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
     wallMap: drawn.wallMap ?? null,
     posters: drawn.posters ?? [],

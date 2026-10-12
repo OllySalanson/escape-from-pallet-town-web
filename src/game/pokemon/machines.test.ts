@@ -170,7 +170,7 @@ describe('machines', () => {
     }
   });
 
-  it('is five TMs used up by the reading and four HMs that never are', () => {
+  it('is six TMs used up by the reading and four HMs that never are', () => {
     const reusable = MACHINE_DEFINITIONS.filter((machine) => machine.reusable);
 
     // Four, and three of them are doors: `world/fieldMoves.ts` opens a gate
@@ -212,6 +212,7 @@ describe('machines', () => {
       'Dig',
       'Ice Beam',
       'Rock Smash',
+      'Rock Tomb',
       'Strength',
       'Surf',
     ]);

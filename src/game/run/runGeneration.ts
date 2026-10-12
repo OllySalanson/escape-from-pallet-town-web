@@ -519,6 +519,10 @@ export function generateRunPlan(
   // The legends this save has caught (`caughtLegends`), none of which stands
   // again. Nothing is rolled for them, so a seed plays the same raid either way.
   caughtLegends: readonly string[] = [],
+  // The things the people at base are waiting on (`hub/errands.ts`), as the
+  // loot rows `errandLoot` makes of them: each laid in its own place on its own
+  // map, on a stream of its own, so an errand in hand moves no other roll.
+  errands: readonly WorldLoot[] = [],
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = requireInsertion(insertionId);
@@ -596,7 +600,14 @@ export function generateRunPlan(
     generateTrainers(content.trainers, content.maps, reservedTiles, rng, isReachable),
     carriedContract?.id,
   );
-  const loot = generateLoot(content.maps, reservedTiles, rng, isReachable);
+  const loot = layErrands(
+    generateLoot(content.maps, reservedTiles, rng, isReachable),
+    errands,
+    content.maps,
+    reservedTiles,
+    createSeededRng((seed ^ ERRAND_STREAM) >>> 0),
+    isReachable,
+  );
 
   return {
     seed: seed >>> 0,
@@ -636,6 +647,7 @@ export function generateRunPlan(
 }
 
 const DISTRICT_ENCOUNTER_STREAM = 0x9e3779b9;
+const ERRAND_STREAM = 0x85ebca6b;
 
 function varyEncounterTable(
   table: WildEncounterTable,
@@ -890,6 +902,45 @@ function generateLoot(
     generatedByMap[map.id] = generated;
   }
   return generatedByMap;
+}
+
+/**
+ * Lays the errand things (`hub/errands.ts`) after everything else, on tiles
+ * nothing this raid has taken, each in its own district - the place the giver
+ * named - on a stream of its own, so a save with an errand in hand rolls every
+ * other piece of the raid exactly as one without.
+ *
+ * An errand whose place this raid cannot walk to, behind a door not yet open,
+ * is simply not laid, as a prize is not: the field guide says so rather than
+ * pointing at ground nobody can reach.
+ */
+function layErrands(
+  loot: Record<WorldMapId, readonly WorldLoot[]>,
+  errands: readonly WorldLoot[],
+  maps: Readonly<Record<WorldMapId, WorldMapDefinition>>,
+  reservedTiles: Map<WorldMapId, Set<string>>,
+  rng: ReturnType<typeof createSeededRng>,
+  isReachable: Reachability,
+): Record<WorldMapId, readonly WorldLoot[]> {
+  for (const errand of errands) {
+    const map = Object.values(maps).find((candidate) =>
+      districtsForMap(candidate.id).some((district) => district.id === errand.district),
+    );
+    const areas = map
+      ? districtsForMap(map.id).find((district) => district.id === errand.district)?.areas
+      : undefined;
+    if (!map || !areas) {
+      continue;
+    }
+    const seats = validTiles(map, reservedTiles.get(map.id), isReachable).filter((tile) => inAreas(tile, areas));
+    if (seats.length === 0) {
+      continue;
+    }
+    const position = seatOn(seats[rng.int(0, seats.length - 1)]);
+    reserve(reservedTiles, map.id, position);
+    loot[map.id] = [...(loot[map.id] ?? []), { ...errand, position }];
+  }
+  return loot;
 }
 
 /**

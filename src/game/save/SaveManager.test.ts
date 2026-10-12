@@ -2438,3 +2438,64 @@ describe('a save written while the money was called scrip', () => {
     expect(new SaveManager(storage).load()!.stash.itemCount('money')).toBe(480);
   });
 });
+
+describe('errands (hub/errands.ts)', () => {
+  /** A save with Brock's crate asked for, and whatever the vault is handed. */
+  function askedSave(storage: MemoryStorage, vault: Readonly<Record<string, number>> = {}): SaveManager {
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    for (const [itemId, quantity] of Object.entries(vault)) stash.addItem(itemId, quantity);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
+    expect(saves.askErrand('brocks-crate')).toBe(true);
+    return saves;
+  }
+
+  it('reads an older save as asked nothing, and asks once', () => {
+    const storage = new MemoryStorage();
+    expect(freshSave(storage).load()!.raidProgress.errands).toBeUndefined();
+    const saves = askedSave(storage);
+    expect(saves.askErrand('brocks-crate')).toBe(true);
+    expect(saves.askErrand('nobody')).toBe(false);
+    expect(saves.load()!.raidProgress.errands).toEqual([
+      { id: 'brocks-crate', status: 'started', found: 0, lossesHeard: 0 },
+    ]);
+  });
+
+  it('remembers a find the moment it is made, and that the giver has heard of its loss', () => {
+    const saves = askedSave(new MemoryStorage());
+    // Only somebody's errand, and only one in hand, is a find worth writing.
+    expect(saves.recordErrandFound('potion')).toBe(false);
+    expect(saves.recordErrandFound('old-amber')).toBe(false);
+    expect(saves.recordErrandFound('brocks-crate')).toBe(true);
+    expect(saves.load()!.raidProgress.errands?.[0]).toMatchObject({ found: 1, lossesHeard: 0 });
+    expect(saves.hearErrandLoss('brocks-crate')).toBe(true);
+    expect(saves.load()!.raidProgress.errands?.[0]).toMatchObject({ found: 1, lossesHeard: 1 });
+  });
+
+  it('takes the thing and pays, once, in one write', () => {
+    const storage = new MemoryStorage();
+    // Not home yet: nothing to hand over.
+    expect(askedSave(storage).completeErrand('brocks-crate')).toBeUndefined();
+
+    const saves = askedSave(new MemoryStorage(), { 'brocks-crate': 1 });
+    expect(saves.completeErrand('brocks-crate')?.id).toBe('brocks-crate');
+    const game = saves.load()!;
+    expect(game.stash.itemCount('brocks-crate')).toBe(0);
+    expect(game.stash.itemCount('tm39-rock-tomb')).toBe(1);
+    expect(game.raidProgress.errands?.[0].status).toBe('completed');
+    expect(saves.completeErrand('brocks-crate')).toBeUndefined();
+    expect(saves.load()!.stash.itemCount('tm39-rock-tomb')).toBe(1);
+  });
+
+  it('pays Bill’s in a Pokémon, into the vault', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addItem('old-amber', 1);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
+    saves.askErrand('old-amber');
+    expect(saves.completeErrand('old-amber')?.id).toBe('old-amber');
+    const eevee = saves.load()!.stash.listPokemon().find((stored) => stored.pokemon.base.id === 'eevee');
+    expect(eevee?.pokemon.level).toBe(5);
+  });
+});

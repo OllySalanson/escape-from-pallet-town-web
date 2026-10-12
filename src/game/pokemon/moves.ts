@@ -619,6 +619,23 @@ export const AERIAL_ACE = new MoveBase({
 });
 
 /**
+ * TM39, and Brock's own: FireRed's gym leader hands it over with his badge
+ * ("TM39 contains ROCK TOMB. It hurls boulders at the foe and lowers its
+ * SPEED."), and here he hands it over for his crate (`hub/errands.ts`).
+ * FireRed's own numbers; the Speed drop always lands on a hit.
+ */
+export const ROCK_TOMB = new MoveBase({
+  name: 'Rock Tomb',
+  description: "Boulders hurled at the target. Lowers the target's Speed.",
+  type: PokemonType.Rock,
+  power: 50,
+  accuracy: 80,
+  pp: 10,
+  category: MoveCategory.Physical,
+  secondaries: [{ chance: 100, boosts: [{ stat: 'speed', stages: -1 }] }],
+});
+
+/**
  * HM01, and the first of the two machines that are a **route** as well as a
  * move. A Pokemon that knows Cut can take down the growth a map authored as a
  * door (`world/fieldMoves.ts`), and fifty power on a ninety-five accuracy is

@@ -436,6 +436,7 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   'tm13-ice-beam': 0,
   'tm23-iron-tail': 0,
   'tm28-dig': 0,
+  'tm39-rock-tomb': 0,
   'tm40-aerial-ace': 0,
   'hm01-cut': 0,
   'hm03-surf': 0,

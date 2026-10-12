@@ -59,13 +59,15 @@ const PINHOLE = ['llllhhbbss', 'lllbhhbsss'];
 const SLOT = ['lllhhhhbss', 'lllhhhhbss'];
 
 const MACHINES = {
-  // Grass, Ice, Steel, Ground, Flying, Normal, Water and Fighting, in the type
+  // Grass, Ice, Steel, Ground, Rock, Flying, Normal, Water and Fighting, in the type
   // colours the series uses, pulled towards this set's own contrast so each
   // reads at 16px against both the cream menus and the map.
   'tm09-bullet-seed': { hue: ['2f7a32', '57b348', '9ee07a'], hole: PINHOLE },
   'tm13-ice-beam': { hue: ['3f8aa8', '74c8dc', 'bdefff'], hole: PINHOLE },
   'tm23-iron-tail': { hue: ['5e6a7a', '97a3b2', 'd3dbe4'], hole: PINHOLE },
   'tm28-dig': { hue: ['8a6430', 'c9974a', 'e9c98a'], hole: PINHOLE },
+  // Rock is the series' khaki, kept clear of Dig's brown beside it.
+  'tm39-rock-tomb': { hue: ['756a2a', 'b3a03c', 'e2d68e'], hole: PINHOLE },
   'tm40-aerial-ace': { hue: ['5a63a8', '8e97d8', 'c7cdf5'], hole: PINHOLE },
   'hm01-cut': { hue: ['8a8674', 'c4bfa5', 'ece8d2'], hole: SLOT },
   'hm03-surf': { hue: ['2d5f9e', '4f9adb', '9cd3f5'], hole: SLOT },

@@ -27,6 +27,18 @@ import {
 } from '../hub/trader';
 import { cabinetEntryFor, clampCabinet, type CabinetEntry } from '../hub/traderCabinet';
 import {
+  clampErrandRecords,
+  errandForItem,
+  errandRecord,
+  getErrand,
+  withErrandAsked,
+  withErrandCompleted,
+  withErrandFound,
+  withErrandLossesHeard,
+  type Errand,
+  type ErrandRecord,
+} from '../hub/errands';
+import {
   contractUnlockedInsertionIds,
   FIRST_CONTRACT_ID,
   getContract,
@@ -243,6 +255,14 @@ export interface RaidProgress {
    * on older saves, which have been given nothing yet.
    */
   readonly pokedexRewards?: readonly number[];
+  /**
+   * The errands the four people at base have asked (`../hub/errands`): one
+   * record each, started or done, with how often its thing has been picked up
+   * and how many of those losses the giver has been told of. Everything else -
+   * who has something to say, which thing lies on a raid - is derived. Absent
+   * on older saves, which have been asked nothing yet.
+   */
+  readonly errands?: readonly ErrandRecord[];
   /**
    * How many standing contracts have been banked. It is the only thing the save
    * keeps about the standing board: which contracts are on offer, how much
@@ -854,6 +874,89 @@ export class SaveManager {
     }
     const raidProgress: RaidProgress = { ...game.raidProgress, pokedexRewards: [...claimed, milestone.kinds] };
     return this.save({ ...game, raidProgress }) ? { milestone, owned } : undefined;
+  }
+
+  /**
+   * Records an errand as asked (`../hub/errands`), as its giver asks it. Asked
+   * at the moment the words are shown, as first words are, so leaving the
+   * screen unread does not leave the errand unasked.
+   */
+  public askErrand(id: string): boolean {
+    const game = this.load();
+    if (!game || !getErrand(id)) {
+      return false;
+    }
+    if (errandRecord(game.raidProgress.errands, id)) {
+      return true;
+    }
+    return this.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, errands: withErrandAsked(game.raidProgress.errands, id) },
+    });
+  }
+
+  /**
+   * Records an errand's thing as picked up in the raid in progress. Written at
+   * the moment it happens, as a beaten boss is, and touching nothing but
+   * `raidProgress`: the vault in storage is the pre-raid vault until the raid
+   * settles. It is what lets the giver know, at base, that the thing was found
+   * and did not come home - whichever way the raid ended, a closed tab
+   * included.
+   */
+  public recordErrandFound(itemId: string): boolean {
+    const errand = errandForItem(itemId);
+    const game = this.load();
+    if (!errand || !game || errandRecord(game.raidProgress.errands, errand.id)?.status !== 'started') {
+      return false;
+    }
+    return this.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, errands: withErrandFound(game.raidProgress.errands, errand.id) },
+    });
+  }
+
+  /** Records that the giver has said their piece about an errand's lost thing. */
+  public hearErrandLoss(id: string): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    return this.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, errands: withErrandLossesHeard(game.raidProgress.errands, id) },
+    });
+  }
+
+  /**
+   * Hands an errand's thing over and takes its reward, in one write: the thing
+   * leaves the vault, the reward arrives in it and the errand is recorded as
+   * done, so it is paid once however the screen is left. Returns the errand, or
+   * nothing when the thing is not in the vault, the errand is not in hand, or
+   * nothing could be saved.
+   */
+  public completeErrand(id: string): Errand | undefined {
+    const errand = getErrand(id);
+    const game = this.load();
+    if (
+      !errand ||
+      !game ||
+      errandRecord(game.raidProgress.errands, id)?.status !== 'started' ||
+      game.stash.itemCount(errand.itemId) < 1
+    ) {
+      return undefined;
+    }
+    game.stash.removeItem(errand.itemId, 1);
+    for (const { itemId, quantity } of errand.reward.items) {
+      game.stash.addItem(itemId, quantity);
+    }
+    for (const pokemon of rewardPokemon({ summary: errand.reward.summary, items: [], pokemon: errand.reward.pokemon })) {
+      game.stash.addPokemon(pokemon);
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      errands: withErrandCompleted(game.raidProgress.errands, id),
+    };
+    return this.save({ ...game, raidProgress }) ? errand : undefined;
   }
 
   /** The first contract's banking path, named for the one raid that uses it. */
@@ -1585,6 +1688,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ? { keysLearned: uniqueStrings(value.keysLearned).filter(isLearnableKey) }
       : {}),
     ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
+    ...(Array.isArray(value.errands) ? { errands: clampErrandRecords(value.errands) } : {}),
     ...(Array.isArray(value.pokedexRewards)
       ? {
           pokedexRewards: tidyDexIds(value.pokedexRewards).filter((kinds) => pokedexMilestone(kinds) !== undefined),

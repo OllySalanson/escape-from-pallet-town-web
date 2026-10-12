@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TRADER_BARTERS, TRADER_STOCK } from '../hub/trader';
+import { ERRANDS } from '../hub/errands';
 import { workshopMaterialKinds } from '../hub/workshop';
 import { BULBASAUR, CHARMANDER, PIKACHU, Pokemon, SQUIRTLE } from '../pokemon';
 import { MACHINES } from '../pokemon/machines';
@@ -172,8 +173,12 @@ describe('where machines come from', () => {
       map.loot.filter((piece) => isMachine(piece.itemId)).map((piece) => ({ map: map.id, piece })),
     );
 
+    // Every TM but Brock's, which he hands over for his crate as FireRed's
+    // Brock hands it over for his badge (`hub/errands.ts`) - once, and never laid.
+    const given = ERRANDS.flatMap((errand) => errand.reward.items.map(({ itemId }) => itemId as string));
+    expect(given.filter((id) => isMachine(id))).toEqual(['tm39-rock-tomb']);
     expect(found.map(({ piece }) => piece.itemId).sort()).toEqual(
-      MACHINE_ITEM_IDS.filter((id) => !machineForItemId(id)!.reusable).sort(),
+      MACHINE_ITEM_IDS.filter((id) => !machineForItemId(id)!.reusable && !given.includes(id)).sort(),
     );
     for (const { map, piece } of found) {
       // On its own roll rather than in the pool, like the evolution stone: at

@@ -235,6 +235,7 @@ import {
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/workshop';
 import { anyoneFitToRaid } from '../hub/recovery';
+import { errandForItem } from '../hub/errands';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
@@ -4777,6 +4778,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.removeWorldLabel(this.prizeLabels.get(loot!.id));
     this.prizeLabels.delete(loot!.id);
     const item = ITEMS[loot!.itemId];
+    // Somebody at base is waiting on this one (`hub/errands.ts`). That it was
+    // picked up is written now, as a beaten boss is, so the giver knows to ask
+    // after it whichever way the raid ends.
+    const errand = errandForItem(item.id);
+    if (errand) {
+      new SaveManager().recordErrandFound(item.id);
+      return `Found ${item.displayName}! Walk out with it and ${errand.name} gets it back.${this.reseatNote()}`;
+    }
     // Money is found as a sum, the way these games pay it out: "Found ₽40!".
     const found = isCurrency(item.id)
       ? formatMoney(loot!.quantity)

@@ -142,6 +142,15 @@ export type ItemEffect =
    * thing to lose doing it.
    */
   | { readonly type: 'key' }
+  /**
+   * Somebody's errand (`../hub/errands.ts`): a thing one of the four people at
+   * base asked you to bring home to them. It does nothing in a raid but take
+   * its squares, which is the whole of the favour - room in the pack that
+   * loot does not get - and it is found, never packed, so a wipe takes it with
+   * the pack unless the secure container kept room for it. Which errand it
+   * belongs to is the errand's to say, by this item's id.
+   */
+  | { readonly type: 'errand' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -472,6 +481,14 @@ export const ITEMS = {
     description: 'Teaches Dig: a turn underground, then the hit.',
     effect: { type: 'machine' },
   },
+  'tm39-rock-tomb': {
+    id: 'tm39-rock-tomb',
+    displayName: 'TM39 Rock Tomb',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Rock Tomb: boulders hurled at the foe, and its Speed drops. Brock’s own.',
+    effect: { type: 'machine' },
+  },
   'tm40-aerial-ace': {
     id: 'tm40-aerial-ace',
     displayName: 'TM40 Aerial Ace',
@@ -595,6 +612,43 @@ export const ITEMS = {
     description: 'Fishes open water for what lives in it: Poliwag and Goldeen in fresh water, Horsea and Krabby in the sea. Never used up.',
     effect: { type: 'rod' },
   },
+  // The errands (`../hub/errands.ts`): one thing each of the four people at
+  // base asks to have brought home. Each lies in one place on one map, takes
+  // its squares in the pack like any find, and is lost with the pack.
+  // FireRed's own where FireRed has one: OAK'S PARCEL is the errand that
+  // starts every Kanto journey, and OLD AMBER the oddest thing in its museum.
+  'oaks-parcel': {
+    id: 'oaks-parcel',
+    displayName: "Oak's Parcel",
+    category: ItemCategory.Misc,
+    footprint: { width: 2, height: 1 },
+    description: "A parcel for Professor Oak, from Viridian City's Poké Mart. He has been waiting on it.",
+    effect: { type: 'errand' },
+  },
+  'medicine-bag': {
+    id: 'medicine-bag',
+    displayName: 'Medicine bag',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 2 },
+    description: "The Pokémon Center's spare medicine bag, lent to the steading on Route 1. Nurse Joy wants it back.",
+    effect: { type: 'errand' },
+  },
+  'brocks-crate': {
+    id: 'brocks-crate',
+    displayName: "Brock's crate",
+    category: ItemCategory.Misc,
+    footprint: { width: 2, height: 2 },
+    description: "Brock's own tools, in a crate stencilled PEWTER. He left it at Pallet Town's quarry.",
+    effect: { type: 'errand' },
+  },
+  'old-amber': {
+    id: 'old-amber',
+    displayName: 'Old Amber',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A piece of amber with something very old inside. Bill wants it for his cabinet.',
+    effect: { type: 'errand' },
+  },
   // The gear. Four pieces, four different kinds of answer, and every
   // description is the whole rule: a player who carries one into one fight can
   // say what it did without opening a menu again.
@@ -711,7 +765,16 @@ export type PackItemId = {
  * handed out on a loop by a contract, the standing board or Brock would
  * stop being the thing the loop is about.
  */
-export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId>;
+/**
+ * Somebody's errand, by id. Excluded from `SupplyItemId` for the reason a pack
+ * is: an errand's thing is one particular object that one person asked for,
+ * and nothing that repeats - a price, a payout, a barter - may name one.
+ */
+export type ErrandItemId = {
+  [K in ItemId]: (typeof ITEMS)[K]['effect']['type'] extends 'errand' ? K : never;
+}[ItemId];
+
+export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId>;
 
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = Object.values(ITEMS);
 
@@ -755,7 +818,7 @@ export function isPack(itemId: string): boolean {
 
 /**
  * Everything that is found in a raid rather than packed for one: the materials,
- * the money, and a spare pack.
+ * the money, a spare pack, and an errand somebody at base is waiting on.
  *
  * They share one rule, not three. None may be carried *into* a raid - a
  * material and a note do nothing there, and you are already wearing a pack, so
@@ -770,10 +833,14 @@ export function isPack(itemId: string): boolean {
  * The pack you are *wearing* is not in this list and is not in the bag at all:
  * it is the bag. See `./packs`.
  */
-export const FOUND_ONLY_IDS: readonly ItemId[] = ITEM_DEFINITIONS.filter(
-  (item) =>
-    item.effect.type === 'material' || item.effect.type === 'currency' || item.effect.type === 'pack',
+export const FOUND_ONLY_IDS: readonly ItemId[] = ITEM_DEFINITIONS.filter((item) =>
+  isFoundOnly(item.id),
 ).map((item) => item.id as ItemId);
+
+/** One of the errand things (`../hub/errands.ts`), by id. */
+export function isErrandItem(itemId: string): itemId is ErrandItemId {
+  return getItemById(itemId)?.effect.type === 'errand';
+}
 
 export function isMaterial(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'material';
@@ -849,10 +916,10 @@ export function isCurrency(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'currency';
 }
 
-/** Found in a raid, never packed for one: a material, money, or a spare pack. */
+/** Found in a raid, never packed for one: a material, money, a spare pack, or somebody's errand. */
 export function isFoundOnly(itemId: string): boolean {
   const type = getItemById(itemId)?.effect.type;
-  return type === 'material' || type === 'currency' || type === 'pack';
+  return type === 'material' || type === 'currency' || type === 'pack' || type === 'errand';
 }
 
 /** Every piece of gear, in catalogue order: what a give menu offers. */
@@ -943,6 +1010,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} opens a locked crate. Face the crate and press the interact key.` };
     case 'key':
       return { used: false, message: `${item.displayName} opens its own locked gate. Face the gate and press the interact key.` };
+    case 'errand':
+      return { used: false, message: `${item.displayName} is somebody's errand. Carry it home to them.` };
     case 'machine':
       // A machine is never spent here. Teaching can need a move chosen to be
       // forgotten, which is a screen rather than a return value, so `./teaching`

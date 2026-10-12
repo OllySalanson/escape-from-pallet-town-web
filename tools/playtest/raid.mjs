@@ -9,7 +9,7 @@
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
-//        [--progress=path.json] [--save-out=path.json] [--shot-dialogs]
+//        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--errands=id,..]
 //
 // --shot-dialogs (with --shot) photographs every line of dialogue a step raised
 // before the driver presses past it - a pickup's "Found ₽40!", say, which is
@@ -288,7 +288,7 @@ try {
           dialogShots += 1;
           // A line types itself out, so the picture waits for the whole of it:
           // a fixed pause photographed "West road log" of "West road logged.".
-          for (let typing = 0; typing < 50 && !(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox.isCurrentMessageComplete`)); typing += 1) {
+          for (let typing = 0; typing < 200 && !(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox.isCurrentMessageComplete`)); typing += 1) {
             await wait(stepped ? 100 : 30);
           }
           await page.screenshot(option('shot').replace(/\.png$/, `-dialog-${dialogShots}.png`));
@@ -485,6 +485,16 @@ try {
   // from the pack it has to come home in.
   const grab = (option('grab') ?? '').split(',').filter(Boolean);
   for (const piece of plan.loot.filter((l) => grab.includes(l.itemId))) {
+    if (option('shot') && !ended) {
+      // A step or two short of it, so the picture is the thing still on the ground.
+      const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+        return [[0,2],[0,-2],[2,0],[-2,0],[0,1],[0,-1],[1,0],[-1,0]].map(([dx, dy]) => ({ x: ${piece.position.x} + dx, y: ${piece.position.y} + dy })).find((t) => !w.isBlocked(t)) ?? null; })()`);
+      if (beside) {
+        await walkTo(beside, `the tile beside ${piece.itemId}`);
+        await wait(400);
+        await page.screenshot(option('shot').replace(/\.png$/, `-${piece.itemId}-ground.png`));
+      }
+    }
     await walkTo(piece.position, `${piece.quantity}x ${piece.itemId}`);
   }
   if (grab.length > 0 && option('shot') && !ended) {

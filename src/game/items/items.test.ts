@@ -10,6 +10,7 @@ import {
   EVOLUTION_STONE_IDS,
   KEY_ITEM_IDS,
   MATERIAL_IDS,
+  isErrandItem,
   getItemById,
   isMaterial,
   useFieldItem,
@@ -63,10 +64,12 @@ describe('materials', () => {
     // nine machines, both of which are spent on a Pokemon rather than at
     // Brock's, the money, which is spent at Bill's counter and nowhere else,
     // the Pickaxe, the two rods and the keys, which are carried and never spent
-    // at all, and the Lockpick, which a locked crate spends.
+    // at all, the Lockpick, which a locked crate spends, and the errands'
+    // things, which are carried home and handed over (`hub/errands.ts`).
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
       [
         ...MATERIAL_IDS,
+        ...ITEM_DEFINITIONS.filter((item) => isErrandItem(item.id)).map((item) => item.id),
         ...MACHINE_ITEM_IDS,
         ...EVOLUTION_STONE_IDS,
         ...KEY_ITEM_IDS,
