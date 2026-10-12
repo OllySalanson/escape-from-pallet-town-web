@@ -19,6 +19,7 @@ import { encounterTableAt, stepRolls } from '../world/localEncounters';
 import { stepDistances } from '../world/mapStructure';
 import { trainersOn } from '../world/mapTrainers';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
+import { districtTableFor, forTheHour } from '../world/nightRaids';
 import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
@@ -215,6 +216,8 @@ export interface DropInBriefing {
   readonly doors: readonly DoorLine[];
   readonly exits: readonly ExitLine[];
   readonly wildlife: readonly WildlifeLine[];
+  /** Whether that wildlife is the night's, which the pane says in its heading. */
+  readonly night: boolean;
   /** What this map is worth going to: its rare finds, and where they lie. */
   readonly prizes: readonly PrizeLine[];
   readonly contract: RaidContract | undefined;
@@ -238,19 +241,30 @@ export interface DropInContext {
   readonly insertionIds: readonly RunInsertionId[];
   readonly partyLevels: readonly number[];
   readonly contract: RaidContract | undefined;
+  /**
+   * Whether a raid leaving now would be a night raid (`world/nightRaids.ts`):
+   * the wildlife pane names what is out at this hour, because that is what
+   * the raid about to be chosen will meet.
+   */
+  readonly night: boolean;
 }
 
 /** Every table a raid on this map can roll on, with the place it belongs to. */
-function wildlifeOf(mapId: WorldMapId, fallback: WildEncounterTable | undefined): readonly {
+function wildlifeOf(
+  mapId: WorldMapId,
+  dayFallback: WildEncounterTable | undefined,
+  night: boolean,
+): readonly {
   readonly district: MapDistrict | undefined;
   readonly table: WildEncounterTable;
 }[] {
   const districts = districtsForMap(mapId);
+  const fallback = dayFallback && forTheHour(dayFallback, night);
   if (districts.length === 0) {
     return fallback ? [{ district: undefined, table: fallback }] : [];
   }
   return districts
-    .map((district) => ({ district, table: district.encounters ?? fallback }))
+    .map((district) => ({ district, table: districtTableFor(district, night) ?? fallback }))
     .filter((entry): entry is { district: MapDistrict; table: WildEncounterTable } => entry.table !== undefined);
 }
 
@@ -299,7 +313,7 @@ export function buildDropInBriefing(
     0,
   );
 
-  const tables = wildlifeOf(mapId, context.map.encounters);
+  const tables = wildlifeOf(mapId, context.map.encounters, context.night);
   const levels = tables.flatMap(({ table }) => table.entries.flatMap((entry) => [entry.minLevel, entry.maxLevel]));
   const wild = {
     min: levels.length === 0 ? 0 : Math.min(...levels),
@@ -416,6 +430,7 @@ export function buildDropInBriefing(
       ...(openedByWork.includes(point.label) ? { worked: true } : {}),
     })),
     prizes,
+    night: context.night,
     wildlife: tables.map(({ district, table }) => ({
       place: district?.name ?? worldMapName(mapId).toUpperCase(),
       known: district === undefined || reached(district),

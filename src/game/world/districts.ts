@@ -43,6 +43,13 @@ export interface MapDistrict {
    */
   readonly encounters?: WildEncounterTable;
   /**
+   * What the same grass holds at night, where the night's own rule
+   * (`nightRaids.ts`, `atNight`) would take the place past its difficulty.
+   * Slot for slot the day table with species changed and nothing else, so a
+   * raid spends the same randomness either way; unsaid, the rule decides.
+   */
+  readonly nightEncounters?: WildEncounterTable;
+  /**
    * The weather every fight in this place is fought in. It carries no duration
    * because it is not an event: it is the reason the place looks the way it
    * does, and it is still doing it when you come back.
@@ -355,6 +362,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     mapId: 'pallet-town',
     name: 'THE ALLOTMENTS',
     encounters: wildlife.PALLET_ALLOTMENT_WILDLIFE,
+    nightEncounters: wildlife.PALLET_ALLOTMENT_NIGHT_WILDLIFE,
     // Down to the leat's south lip: both fords and the bridge deck.
     areas: [{ x: 0, y: 19, width: 24, height: 11 }],
   },

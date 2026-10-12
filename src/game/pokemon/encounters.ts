@@ -102,6 +102,24 @@ export const PALLET_ALLOTMENT_WILDLIFE = wildlife(0.08, [
   { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 5, weight: 1 },
 ]);
 
+/**
+ * The rows after dark. The night's own rule gives a Caterpie's slot to an
+ * Oddish (Crystal's Ilex Forest and Routes 24 and 25), which here would make
+ * the rare roll the common one: the rows went from 70% to 34% for a level-5
+ * Squirtle over the real engine, under the half every starting place is held
+ * to. So the caterpillars give way to Venonat instead - Crystal's other answer
+ * for a Caterpie by night, in the National Park and on Route 24 - and the
+ * Oddish keep the share they have by day. Measured back at 68% for that
+ * Squirtle (`world/encounterMeasure.ts`), against 70% by day.
+ */
+export const PALLET_ALLOTMENT_NIGHT_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'venonat', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'diglett', minLevel: 4, maxLevel: 5, weight: 3 },
+  { speciesId: 'oddish', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'bellsprout', minLevel: 3, maxLevel: 4, weight: 1 },
+  { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 5, weight: 1 },
+]);
+
 /** The flooded lane: standing water, and what a flood brings with it. */
 export const PALLET_FLOOD_WILDLIFE = wildlife(0.08, [
   { speciesId: 'psyduck', minLevel: 4, maxLevel: 5, weight: 3 },

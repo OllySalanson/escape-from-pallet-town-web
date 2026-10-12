@@ -426,6 +426,17 @@ describe('the raid clock chip', () => {
     expect(raidClockAlertTier(RAID_CLOCK_CAUTION_MS)).toBe('normal');
   });
 
+  it('says a night raid is one on the clock, and nowhere else', () => {
+    expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS, false, true)).toEqual({
+      label: 'NIGHT RAID 5:00',
+      tone: 'calm',
+      pulses: false,
+    });
+    expect(raidClockView(RAID_CLOCK_URGENT_MS, false, ENRAGE_GRACE_MS, false, true).tone).toBe('urgent');
+    // The grace period is the number that decides the raid, whatever the hour.
+    expect(raidClockView(0, true, 12_000, false, true).label).toBe('ENRAGED 0:12');
+  });
+
   it('counts the grace period down once the raid clock is spent', () => {
     // Enrage used to replace the clock with a fixed sentence, so the fifteen
     // seconds that still decide the raid were the one number not on screen.

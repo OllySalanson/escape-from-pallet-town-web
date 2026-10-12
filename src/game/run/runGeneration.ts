@@ -26,6 +26,7 @@ import {
 import { FIRST_CONTRACT_ID, type RaidContract } from '../objectives/contracts';
 import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/hunterThreat';
 import { FIRST_HUNTER_RIVAL, type HunterRivalId } from '../world/hunters';
+import { forTheHour } from '../world/nightRaids';
 import { createSeededRng } from './rng';
 
 export { FIRST_CONTRACT } from '../objectives/contracts';
@@ -409,6 +410,12 @@ export interface RunPlan {
    * and on its map's otherwise (`encounterTableAt`).
    */
   readonly districtEncounters: Readonly<Record<string, WildEncounterTable>>;
+  /**
+   * Whether the raid deployed at night by the player's own clock
+   * (`world/nightRaids.ts`). Both tables above are already the night's, so
+   * nothing that rolls on them asks; it is here for what the raid says.
+   */
+  readonly night: boolean;
   readonly loot: Readonly<Record<WorldMapId, readonly WorldLoot[]>>;
   readonly trainers: readonly RunTrainerEncounter[];
   readonly extractionPoints: readonly ExtractionPoint[];
@@ -498,6 +505,10 @@ export function generateRunPlan(
   // half of the door state: everything below reads the collision this raid is
   // actually played on, and a cut wood is as open as a beaten boss's gate.
   openedGates: readonly string[] = [],
+  // Whether the raid is played at night, by the player's own clock
+  // (`isNightRaid`). Only which species each slot holds changes - every table
+  // keeps its slots - so a seed spends the same randomness either way.
+  night = false,
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = requireInsertion(insertionId);
@@ -515,14 +526,14 @@ export function generateRunPlan(
       .filter((map): map is WorldMapDefinition & { encounters: WildEncounterTable } =>
         map.encounters !== undefined,
       )
-      .map((map) => [map.id, varyEncounterTable(map.encounters, rng)]),
+      .map((map) => [map.id, forTheHour(varyEncounterTable(map.encounters, rng), night)]),
   ) as Partial<Record<WorldMapId, WildEncounterTable>>;
 
   // Districts are varied on a stream of their own, so giving a place its own
   // wildlife does not move a single loot, trainer or hunter roll of any seed.
   const districtRng = createSeededRng((seed ^ DISTRICT_ENCOUNTER_STREAM) >>> 0);
   const districtEncounters = Object.fromEntries(
-    Object.entries(districtEncounterTables(insertion.mapId)).map(([id, table]) => [
+    Object.entries(districtEncounterTables(insertion.mapId, night)).map(([id, table]) => [
       id,
       varyEncounterTable(table, districtRng),
     ]),
@@ -581,6 +592,7 @@ export function generateRunPlan(
     openedGates: [...openedGates],
     encounters,
     districtEncounters,
+    night,
     loot,
     trainers,
     extractionPoints,

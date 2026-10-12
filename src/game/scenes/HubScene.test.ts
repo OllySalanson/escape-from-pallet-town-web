@@ -684,6 +684,37 @@ describe('hub deployment route', () => {
     expect(activeRunManager.snapshot().mapId).toBe('floodplain-relay');
   });
 
+  /**
+   * Night is read off the player's own clock as the raid leaves
+   * (`world/nightRaids.ts`), the same reading the drop-in screen's wildlife was
+   * shown in, so what the screen named is what the raid meets.
+   */
+  it.each([
+    { hour: 23, night: true, heading: 'Wildlife by night' },
+    { hour: 12, night: false, heading: 'Wildlife<' },
+  ])('sends a raid out at $hour:00 as a night raid: $night', ({ hour, night, heading }) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 12, hour, 0));
+    try {
+      const { hub, start } = createHub();
+      hub.flow.togglePokemon('charmander-1');
+      hub.setView('deploy');
+      hub.flow.advance();
+      expect(hub.flow.step).toBe('dropin');
+      hub.render();
+      expect((hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML).toContain(
+        heading,
+      );
+
+      readyToDeploy(hub);
+      deploy(hub, start);
+      const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+      expect(runSession.plan?.night).toBe(night);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('reopens the legacy insertions only once the first contract has been banked', () => {
     const { hub, start } = createHub({
       ...DEFAULT_RAID_PROGRESS,
