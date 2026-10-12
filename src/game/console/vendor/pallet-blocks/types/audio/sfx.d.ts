@@ -16,7 +16,8 @@ export declare class Sfx {
     constructor(muted?: boolean);
     /** Creates (or resumes) the audio context. Call from a user gesture. */
     unlock(): void;
-    play(name: SoundName): void;
+    /** Plays a sound now, or `delaySeconds` from now. */
+    play(name: SoundName, delaySeconds?: number): void;
     close(): void;
     private tone;
     private noise;

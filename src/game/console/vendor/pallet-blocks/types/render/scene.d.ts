@@ -1,5 +1,6 @@
 import { type Game } from '../core/game';
 import { type PieceKind } from '../core/pieces';
+import type { Banner } from '../app/callouts';
 import type { ScoreEntry } from '../app/highScores';
 import { type Screen } from '../app/screens';
 import type { PixelFont } from './pixelFont';
@@ -11,6 +12,10 @@ export declare const CALLOUT_MS = 1800;
 export interface Callout {
     readonly lines: readonly string[];
     readonly points: number;
+    readonly atMs: number;
+}
+/** A banner, and when it went up. */
+export interface ShownBanner extends Banner {
     readonly atMs: number;
 }
 export interface DropTrail {
@@ -40,6 +45,7 @@ export interface SceneState {
     /** Row of `table` to pick out, or -1. */
     readonly highlight: number;
     readonly callout: Callout | null;
+    readonly banner: ShownBanner | null;
     readonly trail: DropTrail | null;
     readonly flash: LockFlash | null;
 }
@@ -55,6 +61,8 @@ export declare class SceneRenderer {
     private stats;
     private callout;
     private well;
+    /** A big moment across the middle of the well: lettering only, so the stack shows through around it. */
+    private banner;
     private curtainRows;
     /** A cleared row wipes out from the middle, flashing as it goes. */
     private clearingCell;

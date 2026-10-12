@@ -75,6 +75,9 @@ export declare class PalletBlocksApp {
     private reported;
     private lastName;
     private callout;
+    private banner;
+    /** Banners waiting for the one up now to finish. */
+    private bannerQueue;
     private trail;
     private flash;
     /** Set by a hard drop, for the lock that follows it in the same batch of events. */
@@ -91,6 +94,11 @@ export declare class PalletBlocksApp {
     private stepGame;
     private render;
     private handleEvents;
+    /** Puts a banner up, or queues it behind the one already up. */
+    private showBanner;
+    private updateBanner;
+    /** A level banner brings the jingle with it (and the renderer flashes the LEVEL row). */
+    private raiseBanner;
     private onLock;
     private startGame;
     private finishGame;
