@@ -2315,8 +2315,10 @@ export class BattleScene extends Phaser.Scene {
     const balls = carriedBalls(this.bag);
     // A legend's one throw always opens the list, so the chance of each ball is
     // read before the only throw there will be is spent.
+    // While it can still fight there is no list to read: no ball is going near
+    // it, and a chance printed beside one would be a promise the throw breaks.
     const oneThrow = this.legendThrow === 'offered' && balls.length > 0;
-    if (!oneThrow && (this.trainer || balls.length <= 1)) {
+    if (!oneThrow && (this.trainer || balls.length <= 1 || this.legendThrow === 'fighting')) {
       this.throwBall(0);
       return;
     }

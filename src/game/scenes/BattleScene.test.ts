@@ -2505,6 +2505,18 @@ describe('a legend', () => {
     expect((scene.state as unknown as { player: { currentHp: number } }).player.currentHp).toBe(playerHp);
   });
 
+  it('refuses before the ball list with two kinds carried, so no chance is offered that the throw would break', () => {
+    const bag = new Bag({ 'poke-ball': 3, 'great-ball': 1 });
+    const { scene, dialog, press } = meet(bag);
+
+    press('BALL x');
+
+    expect(scene.mode).not.toBe('balls');
+    expect(dialog.shownMessages).toEqual(['ARTICUNO is too strong to catch while it can still fight!']);
+    expect(bag.count('poke-ball')).toBe(3);
+    expect(bag.count('great-ball')).toBe(1);
+  });
+
   it('beaten, gives one throw from the ball list, and a miss lets it go for good', () => {
     const bag = new Bag({ 'poke-ball': 3 });
     const { scene, dialog, press, readOn, beat, renderedTexts, returned } = meet(bag);
