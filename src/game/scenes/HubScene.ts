@@ -1224,6 +1224,17 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
+    // A deal asked again is a YES/NO box, and ESC on one is NO, as B is in
+    // FireRed: it puts the question down and stays at the counter.
+    if (event.key === 'Escape' && (this.swapArmed || this.workshopArmed !== undefined || this.traderArmed !== undefined)) {
+      event.preventDefault();
+      audioManager.play('cancel');
+      this.swapArmed = false;
+      this.workshopArmed = undefined;
+      this.traderArmed = undefined;
+      this.render();
+      return;
+    }
     // Every room has a way out now, Oak's Lab included, and `goBack` knows
     // where each one leads: a step of preparation back to the lab, and the lab
     // itself back out into the yard.

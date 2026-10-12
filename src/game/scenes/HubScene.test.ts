@@ -1756,7 +1756,11 @@ describe('HubScene - Bill', () => {
   }
 
   /** A save standing high enough with him to be sold and bartered anything. */
-  function createTraderHub(money = 1_000): { hub: HubInternals; storage: MemoryStorage } {
+  function createTraderHub(money = 1_000): {
+    hub: HubInternals;
+    storage: MemoryStorage;
+    start: ReturnType<typeof vi.fn>;
+  } {
     const storage = new MemoryStorage();
     const stash = createStartingStash(CHARMANDER);
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
@@ -1785,8 +1789,8 @@ describe('HubScene - Bill', () => {
         giftsReceived: [],
       },
     });
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
-    return { hub, storage };
+    const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    return { hub, storage, start };
   }
 
   it('is the quay, a walk away from Brock, so the pair reads as two places', () => {
@@ -1972,6 +1976,37 @@ describe('HubScene - Bill', () => {
 
     expect(armed.traderArmed).toBeUndefined();
     expect(markupOf(hub)).not.toContain('data-barter-confirm');
+  });
+
+  /**
+   * ESC on a question is NO, as B is on FireRed's YES/NO box: it puts the deal
+   * down and leaves the player at the counter, rather than walking them out of
+   * the cottage with the question still unanswered.
+   */
+  it('takes ESC on an armed deal as keeping the goods, and stays at the counter', () => {
+    const { hub, start } = createTraderHub();
+    const armed = hub as unknown as { traderArmed: string | undefined };
+    hub.setView('trader');
+    armed.traderArmed = 'barter-quick-claw';
+    hub.render();
+    // Bill has an errand to ask of a first visit; it is read before ESC is.
+    (hub as unknown as { doneListening(): void }).doneListening();
+
+    vi.stubGlobal('document', { activeElement: null });
+    try {
+      (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({
+        key: 'Escape',
+        preventDefault: () => undefined,
+      } as KeyboardEvent);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(armed.traderArmed).toBeUndefined();
+    expect(start).not.toHaveBeenCalled();
+    const boat = markupOf(hub);
+    expect(boat).not.toContain('data-barter-confirm');
+    expect(boat).toContain('data-barter="barter-quick-claw"');
   });
 
   it('says a struck deal is paid in its price column, once, beside the TRADED tag', () => {
