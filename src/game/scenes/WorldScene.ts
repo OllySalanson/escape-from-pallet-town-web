@@ -2817,7 +2817,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const float = this.drawFloat(tile);
     this.fishing = {
       rod,
-      water: fishingWaterAt(this.currentMap.id, this.currentTile),
+      water: fishingWaterAt(this.currentMap.id, tile),
       plan,
       float,
       floatY: float.y,

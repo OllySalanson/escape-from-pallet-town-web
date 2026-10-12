@@ -75,9 +75,10 @@ export function fishingTable(water: FishingWater, rod: RodItemId): WildEncounter
 }
 
 /**
- * The water a player standing on `tile` fishes: the sea where the place says
+ * The water at `tile`, the one a line is cast into: the sea where the place says
  * it stands on the sea, and fresh water everywhere else - which is every map
- * a player draws, and every place on the shipped maps but the tidal ones.
+ * a player draws, and every place on the shipped maps but the tidal ones. Asked
+ * of the water rather than the bank, because a bank can be the next place over.
  */
 export function fishingWaterAt(mapId: WorldMapId, tile: GridPosition): FishingWater {
   return districtAt(mapId, tile)?.water ?? 'fresh';
