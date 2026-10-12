@@ -1,5 +1,5 @@
 import type { WorldMapId } from '../worldMap';
-import { playerMap } from './playerMaps';
+import { fileMap } from './playerMaps';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers';
 
 /**
@@ -11,6 +11,6 @@ import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers
 export function trainersOn(mapId: WorldMapId): readonly RunTrainerEncounter[] {
   return [
     ...createRunTrainerEncounters().filter((encounter) => encounter.mapId === mapId),
-    ...(playerMap(mapId)?.trainers() ?? []),
+    ...(fileMap(mapId)?.trainers() ?? []),
   ];
 }

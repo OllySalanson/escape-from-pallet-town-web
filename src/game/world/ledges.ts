@@ -1,6 +1,6 @@
 import { DIRECTION_DELTAS, type Direction, type GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
-import { playerMap } from './playerMaps';
+import { fileMap } from './playerMaps';
 
 /**
  * A ledge you may drop off and never climb.
@@ -154,7 +154,7 @@ export const WORLD_LEDGES: readonly MapLedge[] = [
 export function ledgesForMap(mapId: WorldMapId): readonly MapLedge[] {
   return [
     ...WORLD_LEDGES.filter((ledge) => ledge.mapId === mapId),
-    ...(playerMap(mapId)?.ledges ?? []),
+    ...(fileMap(mapId)?.ledges ?? []),
   ];
 }
 

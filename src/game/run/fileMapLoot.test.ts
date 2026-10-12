@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { playerMap } from '../world/playerMaps';
+import { isMapInProgress } from '../worldMap';
 import {
   frontDoorFor,
   generateRunPlan,
+  requireInsertion,
   RUN_INSERTIONS,
   type RunInsertionId,
 } from './runGeneration';
@@ -13,7 +15,12 @@ const SEEDS = Array.from({ length: 12 }, (_, index) => index * 7_919 + 1);
 /** One number for every piece of loot a shipped landing lays across these seeds. */
 function shippedLootFingerprint(): string {
   let hash = 0x811c9dc5;
-  for (const insertionId of Object.keys(RUN_INSERTIONS) as RunInsertionId[]) {
+  // A map still being drawn is laid only for a raid on itself, so it is left
+  // out: what is asked is that the finished maps lay what they always laid.
+  const landings = (Object.keys(RUN_INSERTIONS) as RunInsertionId[]).filter(
+    (insertionId) => !isMapInProgress(requireInsertion(insertionId).mapId),
+  );
+  for (const insertionId of landings) {
     for (const seed of SEEDS) {
       const plan = generateRunPlan(seed, undefined, insertionId);
       const text = Object.entries(plan.loot)

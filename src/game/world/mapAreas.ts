@@ -5,6 +5,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import type { Rect } from './interiors';
+import type { WorldMapId } from '../worldMap';
 import { applyGates } from './gates';
 import {
   buildingDoorAt,
@@ -452,10 +453,16 @@ function joinedTileset(catalogues: readonly TilesetCatalogue[]): TilesetCatalogu
  * `readMapFile` accepted it: an end in an area the file does not have is a bug
  * in the caller.
  */
-export function composeMapFile(file: MapFile, opened: readonly string[] = []): ComposedMap {
+export function composeMapFile(
+  file: MapFile,
+  opened: readonly string[] = [],
+  // The map's id, when it is not a player's `player-` one: its doors' gate ids carry it.
+  mapId?: WorldMapId,
+): ComposedMap {
   // A field-move door stands outdoors, which is laid out at the origin, so its
   // tiles are the grid's own.
-  const outdoors = applyGates(sketchMapFile(file), fileDoorGates(file), opened);
+  const doors = mapId === undefined ? fileDoorGates(file) : fileDoorGates(file, mapId);
+  const outdoors = applyGates(sketchMapFile(file), doors, opened);
   const outdoorLayers = buildMapLayers(outdoors, PLAYER_MAP_TILESET);
   const areas = file.areas ?? [];
   if (areas.length === 0 && (file.links ?? []).length === 0) {

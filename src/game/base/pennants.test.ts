@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MapRaidRecord } from '../save/SaveManager';
-import { WORLD_MAP_NAMES, TILE_SIZE } from '../worldMap';
+import { isMapInProgress, WORLD_MAP_NAMES, TILE_SIZE } from '../worldMap';
 import { baseGame } from './baseGames.testkit';
 import { PENNANTS, earnedPennants, pennantLines, pennantsNote, pennantsPoster } from './pennants';
 import { PENNANT_WALL } from './rooms';
@@ -11,7 +11,12 @@ const alpha = (picture: { width: number; data: Uint8ClampedArray }, x: number, y
 
 describe('the pennants along the bedroom wall', () => {
   it('has one pennant for every map the game ships, one to a tile of the wall it hangs on', () => {
-    expect(PENNANTS.map((pennant) => pennant.mapId).sort()).toEqual(Object.keys(WORLD_MAP_NAMES).sort());
+    // A map still being drawn is never offered to a save, so it has no pennant yet.
+    expect(PENNANTS.map((pennant) => pennant.mapId).sort()).toEqual(
+      Object.keys(WORLD_MAP_NAMES)
+        .filter((mapId) => !isMapInProgress(mapId))
+        .sort(),
+    );
     expect(PENNANT_WALL.width).toBe(PENNANTS.length);
     for (const pennant of PENNANTS) {
       expect(pennant.mark).toHaveLength(5);

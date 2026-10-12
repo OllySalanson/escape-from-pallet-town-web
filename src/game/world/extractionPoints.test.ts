@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KEY_ITEM_IDS } from '../items';
-import { BUILT_IN_MAP_IDS, WORLD_MAPS, type BuiltInMapId } from '../worldMap';
+import { BUILT_IN_MAP_IDS, isMapInProgress, WORLD_MAPS, type BuiltInMapId } from '../worldMap';
 import { districtAt } from './districts';
 import {
   EXTRACTION_POINTS,
@@ -118,7 +118,8 @@ describe('a barred exit', () => {
   });
 
   it('stands on every shipped map: a key exit on each, and rubble wherever the rock allows', () => {
-    for (const mapId of BUILT_IN_MAP_IDS) {
+    // A map still being drawn gets its key exit and key with its districts (`MAPS_IN_PROGRESS`).
+    for (const mapId of BUILT_IN_MAP_IDS.filter((id) => !isMapInProgress(id))) {
       const barred = EXTRACTION_POINTS.filter((point) => point.mapId === mapId && isBarredExit(point));
       expect(barred.filter((point) => point.requirement?.kind === 'key'), mapId).toHaveLength(1);
       expect(barred.filter(isDugExit).length, mapId).toBeLessThanOrEqual(1);

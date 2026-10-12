@@ -219,9 +219,9 @@ describe('whether a map works', () => {
 describe('a map from a file is a map like any other', () => {
   const sample = playerMaps().find((map) => map.file.id === 'sample-lane')!;
 
-  it('is in the list of maps after the shipped five', () => {
+  it('is in the list of maps after the shipped ones', () => {
     expect(sample.id).toBe('player-sample-lane');
-    expect(worldMapIds().slice(0, 5)).toEqual(Object.keys(WORLD_MAPS));
+    expect(worldMapIds().slice(0, Object.keys(WORLD_MAPS).length)).toEqual(Object.keys(WORLD_MAPS));
     expect(worldMapIds()).toContain(sample.id);
     expect(isWorldMapId(sample.id)).toBe(true);
     expect(isWorldMapId('player-nowhere')).toBe(false);

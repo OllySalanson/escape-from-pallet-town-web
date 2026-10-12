@@ -23,7 +23,8 @@ import { INSIDE_MARGIN, insideLinks, insidesForMap } from './world/buildingInsid
 import { composeAreas, searchedLinks, type ComposedMap, type PlacedArea } from './world/mapAreas';
 import type { PlayerMapId } from './world/mapFile';
 import { entitiesForMap, type WorldEntity } from './world/npcs';
-import { playerMap, playerMaps } from './world/playerMaps';
+import { builtInFileMap, playerMap, playerMaps } from './world/playerMaps';
+import { PLAYER_MAP_TILESET } from './world/tileset/playerMapTileset';
 import { poisForMap, type WorldPoi } from './world/pois';
 import { buildMapLayers, type MapLayers } from './world/tiles';
 import type { TilesetCatalogue } from './world/tileset/catalogue';
@@ -136,7 +137,8 @@ export type BuiltInMapId =
   | 'route-1'
   | 'viridian-forest'
   | 'floodplain-relay'
-  | 'viridian-city';
+  | 'viridian-city'
+  | 'greystone-vale';
 
 /**
  * Any raid map: one the game shipped with, or one loaded from a map file
@@ -154,7 +156,53 @@ export const WORLD_MAP_NAMES: Readonly<Record<BuiltInMapId, string>> = {
   'viridian-forest': 'Viridian Forest',
   'floodplain-relay': 'Floodplain Relay',
   'viridian-city': 'Viridian City',
+  'greystone-vale': 'Greystone Vale',
 };
+
+/**
+ * Shipped maps still being drawn, district by district (`tools/mapcraft`).
+ *
+ * One is in the game so it can be walked - the explorer run (PLAYTEST on the
+ * title) reaches every landing there is - but no save is offered it until it is
+ * finished: nothing unlocks its front door, no board deals a contract on it,
+ * and the base's wall map and pennants leave it out. The structure and safety
+ * rules hold it as they hold every map. What a finished map pays and guards
+ * waits until it leaves this list, and each test that asks it names this list
+ * where it does: its boss and the doors before and behind them, its key exit
+ * and key, its locked crate, its loot pool (money, materials, packs, prizes),
+ * a landmark-opened exit, wildlife varied from place to place, and a place in
+ * the drop-in frame's size (`largestMapSize`). And a raid on any other map
+ * rolls exactly as it did before it was added: like a player's map, it is only
+ * in a raid's content when the raid is on it (`runGeneration.ts`), which
+ * `fileMapLoot.test.ts`'s fingerprint holds.
+ */
+export const MAPS_IN_PROGRESS: ReadonlySet<BuiltInMapId> = new Set<BuiltInMapId>(['greystone-vale']);
+
+export function isMapInProgress(id: string): boolean {
+  return (MAPS_IN_PROGRESS as ReadonlySet<string>).has(id);
+}
+
+/** A shipped map drawn as a file: everything about it is its file's, built when first asked for. */
+function contentFromFile(id: BuiltInMapId): MapContent {
+  const file = () => {
+    const built = builtInFileMap(id);
+    if (!built) {
+      throw new Error(`no map file for '${id}'`);
+    }
+    return built;
+  };
+  return {
+    sketch: () => file().sketch(),
+    compose: (opened) => file().compose(opened),
+    tileset: PLAYER_MAP_TILESET,
+    get encounters() {
+      return file().encounters;
+    },
+    get loot() {
+      return file().loot;
+    },
+  };
+}
 
 interface MapContent {
   /** A fresh sketch per build: a gate state is drawn onto it, so it is never shared. */
@@ -663,6 +711,9 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       { id: 'viridian-gold-shield', position: { x: 50, y: 23 }, itemId: 'gold-shield', quantity: 1, chance: 0.06, district: 'viridian-gym' },
     ],
   },
+  // Drawn as a file by the game's own tools, a district at a time
+  // (`tools/mapcraft/worlds/greystoneVale`), and still in progress.
+  'greystone-vale': contentFromFile('greystone-vale'),
 };
 
 /** The shipped maps, in the order they are authored above. */
@@ -677,9 +728,23 @@ export function isBuiltInMapId(id: string): id is BuiltInMapId {
  * and the one anything that has no save to ask (tests, the structure rules)
  * reads. A file map is not in here: ask `worldMapIds()` and `getWorldMap()`.
  */
-export const WORLD_MAPS: Readonly<Record<BuiltInMapId, WorldMapDefinition>> = Object.fromEntries(
-  BUILT_IN_MAP_IDS.map((id) => [id, createMap(id, MAP_CONTENT[id])]),
-) as Record<BuiltInMapId, WorldMapDefinition>;
+export const WORLD_MAPS: Readonly<Record<BuiltInMapId, WorldMapDefinition>> = (() => {
+  const maps = {} as Record<BuiltInMapId, WorldMapDefinition>;
+  for (const id of BUILT_IN_MAP_IDS) {
+    if (!MAPS_IN_PROGRESS.has(id)) {
+      maps[id] = createMap(id, MAP_CONTENT[id]);
+      continue;
+    }
+    // A map still being drawn is built when something first asks for it, so the
+    // many modules that only want the finished maps do not pay for it.
+    let built: WorldMapDefinition | undefined;
+    Object.defineProperty(maps, id, {
+      enumerable: true,
+      get: () => (built ??= createMap(id, MAP_CONTENT[id])),
+    });
+  }
+  return maps;
+})();
 
 /** Every map a raid can be on: the shipped five, then every file map. */
 export function worldMapIds(): readonly WorldMapId[] {

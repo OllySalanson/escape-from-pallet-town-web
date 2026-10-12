@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { BULBASAUR, Pokemon } from '../pokemon';
 import { MINIMUM_SUPPLIES } from '../stash';
-import { WORLD_MAPS } from '../worldMap';
+import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import {
   ITEM_DEFINITIONS,
   ItemCategory,
@@ -98,7 +98,8 @@ describe('materials', () => {
   });
 
   it('are field loot on every map, and not the same ones on each', () => {
-    const kindsByMap = Object.values(WORLD_MAPS).map((map) => ({
+    // A map still being drawn has no loot pool of its own yet (`MAPS_IN_PROGRESS`).
+    const kindsByMap = Object.values(WORLD_MAPS).filter((map) => !isMapInProgress(map.id)).map((map) => ({
       id: map.id,
       kinds: new Set(map.loot.map((item) => item.itemId).filter((itemId) => isMaterial(itemId))),
     }));

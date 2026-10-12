@@ -15,7 +15,7 @@ import {
   STARTING_PACK_ID,
 } from './packs';
 import { MINIMUM_SUPPLIES } from '../stash/Stash';
-import { WORLD_MAPS } from '../worldMap';
+import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { TRADER_STOCK, TRADER_BARTERS } from '../hub/trader';
 import { RAID_CONTRACTS } from '../objectives/contracts';
@@ -99,7 +99,8 @@ describe('the packs', () => {
  * obtainable only by *going and finding it*, or losing one costs nothing.
  */
 describe('where a pack comes from', () => {
-  const lootPacks = Object.values(WORLD_MAPS).map((map) => ({
+  // A map still being drawn has no loot pool of its own yet (`MAPS_IN_PROGRESS`).
+  const lootPacks = Object.values(WORLD_MAPS).filter((map) => !isMapInProgress(map.id)).map((map) => ({
     id: map.id,
     packs: map.loot.filter((item) => isPack(item.itemId)),
   }));

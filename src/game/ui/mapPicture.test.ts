@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD_MAPS } from '../worldMap';
+import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import { largestMapSize, pictureSize } from '../hub/dropIn';
 import { mapPictureFrame, planOwnFrame, planSharedRow, shareTracks, PICTURE_RING } from './mapPicture';
 
@@ -28,7 +28,9 @@ describe('one place in a frame sized for the biggest', () => {
     // The smallest stage is 320x240 and at it the frame has about 126 pixels
     // of height, which is the one place a map is still condensed.
     const largest = largestMapSize();
-    for (const [id, map] of Object.entries(WORLD_MAPS)) {
+    // A map still being drawn is left out of the frame's size (`largestMapSize`)
+    // until it opens to saves, so the explorer run may see it condensed.
+    for (const [id, map] of Object.entries(WORLD_MAPS).filter(([mapId]) => !isMapInProgress(mapId))) {
       expect([id, planOwnFrame(pictureSize(map), largest, { width: 180, height: 180 }).fit.step]).toEqual([id, 1]);
     }
     expect(planOwnFrame(FLOODPLAIN, largest, { width: 131, height: 126 }).fit).toEqual({ step: 2, zoom: 1 });

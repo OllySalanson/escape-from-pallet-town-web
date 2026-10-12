@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSIC_TILE, getWorldMap, isTallGrassInMap, WORLD_MAPS } from './worldMap';
-import { EXTRACTION_POINTS, isBarredExit, isDugExit } from './world/extractionPoints';
+import { CLASSIC_TILE, getWorldMap, isMapInProgress, isTallGrassInMap, WORLD_MAPS } from './worldMap';
+import { EXTRACTION_POINTS, extractionPointsOn, isBarredExit, isDugExit } from './world/extractionPoints';
+import { builtInFileMap } from './world/playerMaps';
 import { MapSketch } from './world/mapGrid';
 import { buildMapLayers } from './world/tiles';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
 import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
 import { KANTO_TILESET } from './world/tileset/kantoTileset';
+import { PLAYER_MAP_TILESET } from './world/tileset/playerMapTileset';
 import { createRunTrainerEncounters } from './world/trainers';
 
 /** A small map drawn as character art, the way a real map is authored. */
@@ -16,13 +18,14 @@ function sketch(rows: readonly string[]): MapSketch {
 }
 
 describe('worldMap', () => {
-  it('registers five self-contained raid maps', () => {
+  it('registers the shipped raid maps, the one still being drawn last', () => {
     expect(Object.keys(WORLD_MAPS)).toEqual([
       'pallet-town',
       'route-1',
       'viridian-forest',
       'floodplain-relay',
       'viridian-city',
+      'greystone-vale',
     ]);
     // Pallet Town is the valley one: the town it shipped as is its north-west
     // quarter and the parish round it is the rest.
@@ -74,10 +77,16 @@ describe('worldMap', () => {
    * chosen buildings standing on it - and none is left on the classic sheet.
    * Viridian City is the one drawn on Kanto's own art (`kantoTileset.ts`): the
    * same FireRed ground, with FireRed's route conifer and Viridian's buildings.
+   * A map drawn as a file (Greystone Vale, `tools/mapcraft`) is built the way a
+   * player's map is, on the map maker's catalogue: Kanto's with more to plant.
    */
   it('draws every map from the town catalogue or from Kanto', () => {
     for (const map of Object.values(WORLD_MAPS)) {
-      const expected = map.id === 'viridian-city' ? KANTO_TILESET : FLOOD_TOWN_TILESET;
+      const expected = builtInFileMap(map.id)
+        ? PLAYER_MAP_TILESET
+        : map.id === 'viridian-city'
+          ? KANTO_TILESET
+          : FLOOD_TOWN_TILESET;
       // A map with rooms beside it draws them from their own sheets too, so its
       // catalogue is the outdoors' with those sheets added (`mapAreas.ts`).
       const fromItsCatalogue =
@@ -176,8 +185,9 @@ describe('worldMap', () => {
   // Three is the floor, not the count: a region behind a boss-held gate brings
   // its own way out, so a gated map has more exits than rules.
   it('gives every map at least three exits, on three different rules', () => {
-    for (const map of Object.values(WORLD_MAPS)) {
-      const exits = EXTRACTION_POINTS.filter((point) => point.mapId === map.id);
+    // A map still being drawn gets its landmark-opened exit with its districts (`MAPS_IN_PROGRESS`).
+    for (const map of Object.values(WORLD_MAPS).filter((candidate) => !isMapInProgress(candidate.id))) {
+      const exits = extractionPointsOn(map.id);
       expect({ map: map.id, enoughExits: exits.length >= 3 }).toMatchObject({ enoughExits: true });
       // Three rules anybody can use; a barred exit - rubble or a locked gate -
       // is a fourth way out only for a raid that brought what opens it.

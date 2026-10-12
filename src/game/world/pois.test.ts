@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
-import { BUILT_IN_MAP_IDS, getWorldMap } from '../worldMap';
+import { BUILT_IN_MAP_IDS, getWorldMap, isMapInProgress } from '../worldMap';
 import { WORLD_POIS, cacheRefusalLine, lockedCrateLines, tryActivatePoi, type WorldPoi } from './pois';
 
 const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
@@ -274,7 +274,10 @@ describe('a locked crate', () => {
   };
 
   it('stands on every shipped map, once, and opens no exit', () => {
-    expect(locked.map((poi) => poi.mapId).sort()).toEqual([...BUILT_IN_MAP_IDS].sort());
+    // A map still being drawn gets its locked crate with its caches (`MAPS_IN_PROGRESS`).
+    expect(locked.map((poi) => poi.mapId).sort()).toEqual(
+      BUILT_IN_MAP_IDS.filter((mapId) => !isMapInProgress(mapId)).sort(),
+    );
     for (const poi of locked) {
       expect(poi.effect, poi.label).toBeUndefined();
     }

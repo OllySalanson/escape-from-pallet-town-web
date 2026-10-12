@@ -510,7 +510,8 @@ describe('run generation', () => {
         for (let seed = 1; seed <= 100; seed += 1) {
           const plan = generateRunPlan(seed, undefined, insertionId, undefined, undefined, EVERY_BOSS);
           for (const dropIn of Object.values(RUN_INSERTIONS)) {
-            if (plan.loot[dropIn.mapId].some((loot) => tileKey(loot.position) === tileKey(dropIn.position))) {
+            // A map still being drawn is laid only for a raid on itself (`MAPS_IN_PROGRESS`).
+            if ((plan.loot[dropIn.mapId] ?? []).some((loot) => tileKey(loot.position) === tileKey(dropIn.position))) {
               spokenOver.push(`${insertionId} seed ${seed}: loot on ${dropIn.id}`);
             }
           }

@@ -1,10 +1,13 @@
 import {
+  buildFileMap,
   buildPlayerMap,
   readMapFile,
   RESERVED_MAP_FILE_IDS,
+  type FileMap,
   type PlayerMap,
   type PlayerMapId,
 } from './mapFile';
+import type { BuiltInMapId, WorldMapId } from '../worldMap';
 
 /**
  * Every map that came from a file rather than from the game's own source.
@@ -172,4 +175,59 @@ export function registerPlayerMap(
 export function unregisterPlayerMap(id: PlayerMapId): void {
   maps().delete(id);
   published.delete(id);
+}
+
+/**
+ * The shipped maps the game's own tools drew as map files (`tools/mapcraft`),
+ * built under their shipped ids. A shipped map like this is authored by its
+ * file the way a player's is - its exits, landings, districts, ledges, people
+ * and landmarks are the file's - so every lookup that answers for a player's
+ * map answers for it too, through `fileMap`.
+ */
+const BUILT_IN_FILES: Readonly<Record<string, unknown>> = import.meta.glob('./maps/*.json', {
+  eager: true,
+  import: 'default',
+});
+
+/** Which shipped map each built-in file is, by the file's own id. */
+const BUILT_IN_FILE_IDS: Readonly<Record<string, BuiltInMapId>> = {
+  'greystone-vale': 'greystone-vale',
+};
+
+let builtInRegistry: Map<WorldMapId, FileMap> | undefined;
+
+function builtInFileMapRegistry(): Map<WorldMapId, FileMap> {
+  if (!builtInRegistry) {
+    builtInRegistry = new Map();
+    for (const [path, value] of Object.entries(BUILT_IN_FILES)) {
+      const reading = readMapFile(value);
+      if (!reading.ok) {
+        throw new Error(`${path} is not a map the game can load: ${reading.problems.join(' ')}`);
+      }
+      const id = BUILT_IN_FILE_IDS[reading.file.id];
+      if (!id) {
+        throw new Error(`${path} is not one of the shipped maps (${reading.file.id})`);
+      }
+      builtInRegistry.set(id, buildFileMap(reading.file, id));
+    }
+  }
+  return builtInRegistry;
+}
+
+/** A shipped map that is drawn as a file, built under its shipped id; undefined for every other map. */
+export function builtInFileMap(id: WorldMapId): FileMap | undefined {
+  return builtInFileMapRegistry().get(id);
+}
+
+/** Every shipped map drawn as a file. */
+export function builtInFileMaps(): readonly FileMap[] {
+  return [...builtInFileMapRegistry().values()];
+}
+
+/**
+ * Whatever a map file says about this map: a player's map, or a shipped map
+ * drawn as a file. The lookups that read a map's file content ask this.
+ */
+export function fileMap(id: WorldMapId): FileMap | undefined {
+  return playerMap(id) ?? builtInFileMap(id);
 }

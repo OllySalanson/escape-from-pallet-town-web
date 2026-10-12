@@ -3,7 +3,7 @@ import type { WorldMapId } from '../worldMap';
 import { FIELD_MOVES, type FieldMoveId } from './fieldMoves';
 import type { MapSketch, PlantedProp } from './mapGrid';
 import { MATERIAL_CHARS, type Material } from './tileset/materials';
-import { playerMap } from './playerMaps';
+import { fileMap } from './playerMaps';
 
 /**
  * How a gate looks in one of its two states, in the same two words a map is
@@ -551,7 +551,7 @@ export function openedDoors(record: OpenedDoorRecord): readonly string[] {
 export function gatesForMap(mapId: WorldMapId): readonly MapGate[] {
   return [
     ...WORLD_GATES.filter((gate) => gate.mapId === mapId),
-    ...(playerMap(mapId)?.gates ?? []),
+    ...(fileMap(mapId)?.gates ?? []),
   ];
 }
 

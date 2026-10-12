@@ -13,7 +13,7 @@ import { cellsFor, gridCells } from '../items';
 import { secureGrid } from '../objectives/contracts';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
-import { WORLD_MAPS } from '../worldMap';
+import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
   barterShortfall,
@@ -107,7 +107,8 @@ describe('money, the Pokedollar', () => {
   });
 
   it('is field loot on every map, so a raid is the only way to earn it', () => {
-    for (const map of Object.values(WORLD_MAPS)) {
+    // A map still being drawn has no loot pool of its own yet (`MAPS_IN_PROGRESS`).
+    for (const map of Object.values(WORLD_MAPS).filter((candidate) => !isMapInProgress(candidate.id))) {
       const bundles = map.loot.filter((item) => item.itemId === CURRENCY_ITEM_ID);
       expect(bundles.length, `${map.id} holds no money`).toBeGreaterThan(0);
       // Part of the ordinary pool rather than a rare roll of its own: money

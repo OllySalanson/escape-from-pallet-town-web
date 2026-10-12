@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { EVOLUTION_STONE_IDS, isEvolutionStone } from '../items';
 import { TRADER_STOCK } from '../hub/trader';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
-import { WORLD_MAPS } from '../worldMap';
+import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import { districtAt, districtsForMap } from './districts';
 import { getVisibleLoot, isPrize, lootRefusalLine, prizesLeftBehind, tryCollectLoot, type WorldLoot } from './loot';
 
@@ -56,7 +56,8 @@ describe('a rare find', () => {
   });
 
   it('names the place it belongs to, on every map', () => {
-    for (const map of Object.values(WORLD_MAPS)) {
+    // A map still being drawn gets its prizes with its districts (`MAPS_IN_PROGRESS`).
+    for (const map of Object.values(WORLD_MAPS).filter((candidate) => !isMapInProgress(candidate.id))) {
       const prizes = map.loot.filter(isPrize);
       // Every map holds some: a map with no reason to be chosen is a map
       // nobody chooses.

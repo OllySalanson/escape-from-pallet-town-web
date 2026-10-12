@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getBaseMap } from '../base/baseMap';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
-import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { getWorldMap, isMapInProgress, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { gatesForMap, gateStatesToVerify } from './gates';
@@ -99,7 +99,9 @@ describe('tree crowns', () => {
       if (getWorldMap(id).tileset.materials.tree.lattice) {
         const tips = canopy.tiles.flatMap((row, y) => row.filter((tile, x) => tile >= 0 && !crowned[y][x])).length;
         expect(crowns, id).toBe(0);
-        expect(tips, id).toBeGreaterThan(100);
+        // A map still being drawn is wood round the districts drawn so far, so
+        // its tips grow with it; that it has some is what keeps the rule honest.
+        expect(tips, id).toBeGreaterThan(isMapInProgress(id) ? 0 : 100);
       } else {
         expect(crowns, id).toBeGreaterThan(100);
       }
