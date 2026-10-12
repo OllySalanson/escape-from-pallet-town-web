@@ -99,7 +99,16 @@ vi.mock('../maker/mapCanvas', () => ({
 }));
 
 import { makeInside } from '../maker/areas';
-import { blankMap, buildingSize, groundAt, placeSpot, thingExists, type ThingRef } from '../maker/draft';
+import {
+  blankMap,
+  buildingSize,
+  groundAt,
+  paintWith,
+  placeSpot,
+  rectangle,
+  thingExists,
+  type ThingRef,
+} from '../maker/draft';
 import { MAKER_STORAGE_KEY } from '../maker/drafts';
 import type { EditHistory } from '../maker/history';
 import { groundBrush } from '../maker/palette';
@@ -839,7 +848,7 @@ describe('planting nature along a drag', () => {
     drag(scene, [[5, 5]]);
     drag(scene, [[5, 5]]);
     expect(scene.file.buildings).toHaveLength(1);
-    expect(scene.overlay.root.innerHTML).toContain('Another building is standing there.');
+    expect(scene.overlay.root.innerHTML).toContain('The tree is in the way.');
   });
 
   it('is dropped whole by Escape', () => {
@@ -873,7 +882,13 @@ describe('planting nature along a drag', () => {
   );
 
   it.each(['house', 'cave-mouth', 'museum', 'sign'])('plants a %s once, however far it is dragged', (building) => {
-    storeDraft(blankMap());
+    // A cave mouth is cut into the foot of a rock face.
+    const rock = { id: 'rock', label: 'Rock', help: '', letterFor: () => 'C', swatch: 'C' };
+    storeDraft(
+      building === 'cave-mouth'
+        ? paintWith(blankMap(), rectangle({ x: 3, y: 6 }, { x: 5, y: 8 }), rock)
+        : blankMap(),
+    );
     const { scene } = openMaker();
     plantWith(scene, building);
     drag(

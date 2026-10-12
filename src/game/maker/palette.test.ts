@@ -43,14 +43,20 @@ describe('the things a maker can plant', () => {
     (_label, choice) => {
       const ground = choice.on === 'water' ? 'W' : '.';
       const base = workingMap();
-      const water = paintWith(base, rectangle({ x: 10, y: 8 }, { x: 24, y: 20 }), {
-        id: 'w',
-        label: 'w',
+      const brush = (letter: string) => ({
+        id: letter,
+        label: letter,
         help: '',
-        letterFor: () => ground,
-        swatch: ground,
+        letterFor: () => letter,
+        swatch: letter,
       });
-      const outcome = placeBuilding(water, choice.kind, { x: 12, y: 10 });
+      const water = paintWith(base, rectangle({ x: 10, y: 8 }, { x: 24, y: 20 }), brush(ground));
+      // A cave mouth is cut into the foot of a rock face.
+      const site =
+        choice.kind === 'cave-mouth'
+          ? paintWith(water, rectangle({ x: 10, y: 8 }, { x: 14, y: 10 }), brush('C'))
+          : water;
+      const outcome = placeBuilding(site, choice.kind, { x: 12, y: 10 });
       expect(outcome.placed).toBe(true);
       if (!outcome.placed) {
         return;

@@ -88,12 +88,16 @@ describe("a building's inside, as the maker makes it", () => {
 
   it('makes the inside a Pokemon Center and a Mart open into, each its own room', () => {
     let file: MapFile = SAMPLE;
+    // On open ground: the maker will not stand a building on an item spot.
     for (const [kind, x, y] of [
-      ['pokemon-center', 22, 12],
+      ['pokemon-center', 9, 2],
       ['poke-mart', 4, 16],
     ] as const) {
       const placed = placeBuilding(file, kind, { x, y });
-      file = placed.placed ? placed.file : file;
+      if (!placed.placed) {
+        throw new Error(`${kind}: ${placed.reason}`);
+      }
+      file = placed.file;
     }
     for (const index of [1, 2, 3]) {
       const made = makeInside(file, index);
@@ -111,9 +115,9 @@ describe("a building's inside, as the maker makes it", () => {
   it('gives the shed, the blue-roof cottage and the timber house an inside of their own', () => {
     let file: MapFile = SAMPLE;
     for (const [kind, x, y] of [
-      ['shed', 4, 15],
-      ['blue-cottage', 22, 12],
-      ['timber-house', 4, 2],
+      ['shed', 4, 2],
+      ['blue-cottage', 9, 3],
+      ['timber-house', 6, 15],
     ] as const) {
       const placed = placeBuilding(file, kind, { x, y });
       if (!placed.placed) {
@@ -136,7 +140,7 @@ describe("a building's inside, as the maker makes it", () => {
 
   it('names a second house House 2, and gives it an id of its own', () => {
     const { file } = withHouse();
-    const placed = placeBuilding(file, 'house', { x: 22, y: 12 });
+    const placed = placeBuilding(file, 'house', { x: 6, y: 15 });
     if (!placed.placed) {
       throw new Error(placed.reason);
     }

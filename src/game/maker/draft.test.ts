@@ -153,7 +153,8 @@ describe('placing things', () => {
     expect(file.exits[0]).toMatchObject({ name: 'Exit 1', opens: { when: 'always' } });
     expect(placeSpot(file, 'item', { x: 4, y: 4 })).toEqual({
       placed: false,
-      reason: 'Something is already on that tile.',
+      reason: 'Drop-in 1 is already there.',
+      blocked: [{ x: 4, y: 4 }],
     });
   });
 
@@ -227,7 +228,7 @@ describe('the map itself', () => {
     const grown = resizeMap(file, 30, 22);
     expect(grown.ground[21]).toBe('T'.repeat(30));
     expect(grown.ground[10].endsWith('TTTTTTTT')).toBe(true);
-    file = placed(placeSpot(file, 'item', { x: 22, y: 5 }));
+    file = placed(placeSpot(file, 'item', { x: 21, y: 5 }));
     file = resizeMap(file, 20, 16);
     expect(file.itemSpots).toEqual([]);
     expect(file.buildings).toEqual([]);
@@ -252,7 +253,7 @@ describe('the map itself', () => {
     file = placed(placeSpot(file, 'person', { x: 6, y: 6 }));
     file = placed(placeSpot(file, 'sign', { x: 21, y: 4 }));
     file = placed(placeSpot(file, 'landmark', { x: 4, y: 17 }));
-    file = placed(placeSpot(file, 'trainer', { x: 22, y: 8 }));
+    file = placed(placeSpot(file, 'trainer', { x: 21, y: 8 }));
     file = placed(addDistrict(file, { x: 2, y: 2 }, { x: 22, y: 6 }));
     file = placed(addDistrict(file, { x: 21, y: 15 }, { x: 22, y: 17 }));
     const shrunk = resizeMap(file, 20, 16);
