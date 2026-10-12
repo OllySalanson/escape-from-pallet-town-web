@@ -35,8 +35,12 @@ import {
   vignetteBands,
 } from '../ui/titleScenery';
 import { setActiveSaveSlot } from '../dev/playtestMode';
+import { loadPlayerName } from '../console/playerName';
+import { nameService, type NameService } from '../names/nameService';
+import type { MenuOverlay } from '../ui/MenuOverlay';
+import { openNameScreen } from '../ui/PlayerNameOverlay';
 import { dismissKeyboardNotice, needsKeyboardNotice } from '../input/keyboardSeen';
-import { isReviewReturn } from '../maker/review';
+import { forgetStatsRequest, isReviewReturn, isStatsRequest, takeSignInDestination } from '../maker/review';
 import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
@@ -107,6 +111,8 @@ interface Logo {
 
 export class TitleScene extends Phaser.Scene {
   private hasStarted = false;
+  /** YOUR NAME?, while it is being asked over the title (`names/`). */
+  private naming: MenuOverlay | null = null;
   /** The key hint under the menu; it pulses until something is chosen. */
   private prompt: Phaser.GameObjects.Text[] = [];
   private built: Phaser.GameObjects.GameObject[] = [];
@@ -153,6 +159,7 @@ export class TitleScene extends Phaser.Scene {
 
   public create(): void {
     this.hasStarted = false;
+    this.naming = null;
     this.redrawPending = false;
     this.built = [];
     this.menuBuilt = [];
@@ -166,7 +173,18 @@ export class TitleScene extends Phaser.Scene {
     // review list is where they were going, so they go straight there.
     if (isReviewReturn()) {
       this.hasStarted = true;
-      this.scene.start('mapmaker', { review: true });
+      if (takeSignInDestination() === 'stats') {
+        this.scene.start('stats', { signIn: true });
+      } else {
+        this.scene.start('mapmaker', { review: true });
+      }
+      return;
+    }
+    // The owner's play stats, opened by address (`?stats`), once.
+    if (isStatsRequest()) {
+      forgetStatsRequest();
+      this.hasStarted = true;
+      this.scene.start('stats');
       return;
     }
     // Asked once per visit, not per frame: the summary reads the whole save.
@@ -214,6 +232,8 @@ export class TitleScene extends Phaser.Scene {
       if (isKeyboardNotice(this.menu) && !this.hasStarted) this.leaveKeyboardNotice();
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.naming?.destroy();
+      this.naming = null;
       this.scale.off?.(Phaser.Scale.Events.RESIZE, relayout);
       keyboard?.removeAllListeners();
       audioManager.stopTheme();
@@ -895,6 +915,38 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private startGame(mode: 'continue' | 'new' | 'resume-playtest' | 'fresh-playtest'): void {
+    if (this.hasStarted || this.naming) {
+      return;
+    }
+    // A name is one each in Pallet Town, and is chosen as a game starts
+    // (`names/`): at NEW GAME always, and at CONTINUE by anybody who has none
+    // yet. Where there is nothing to check names against - a test that did not
+    // ask for one - nobody is asked here, and THE BOLTHOLE asks instead.
+    const service = nameService();
+    if (service && (mode === 'new' || (mode === 'continue' && loadPlayerName() === null))) {
+      this.askName(mode, service);
+      return;
+    }
+    this.beginGame(mode);
+  }
+
+  /** YOUR NAME? over the title (`ui/PlayerNameOverlay.ts`), then the game - or back to the menu. */
+  private askName(mode: 'continue' | 'new', service: NameService): void {
+    audioManager.play('confirm');
+    this.naming = openNameScreen(this, { where: mode === 'new' ? 'new-game' : 'continue', service }, (end) => {
+      this.naming = null;
+      // The screen kept every key to itself, so a key the title saw go down
+      // before it opened never came back up here.
+      this.input.keyboard?.resetKeys();
+      if (end === 'away') {
+        audioManager.play('cancel');
+        return;
+      }
+      this.beginGame(mode);
+    });
+  }
+
+  private beginGame(mode: 'continue' | 'new' | 'resume-playtest' | 'fresh-playtest'): void {
     if (this.hasStarted) {
       return;
     }

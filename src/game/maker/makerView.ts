@@ -975,7 +975,7 @@ function settingsPane(file: MapFile): string {
     )
     .join('');
   return pixelWindow(
-    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-map-name value="${escapeAttribute(file.name)}" maxlength="${MAP_FILE_LIMITS.maxNameLength}" spellcheck="false" autocomplete="off" /></label><label class="maker-field"><span>Drawn by</span><input class="px-window px-field" data-map-maker value="${escapeAttribute(file.maker)}" maxlength="${MAP_FILE_LIMITS.maxMakerLength}" spellcheck="false" autocomplete="off" placeholder="your maker name" /></label><label class="maker-field"><span>Wild Pokémon</span><select class="px-window px-field" data-map-wildlife>${habitats}</select></label><div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-map-width type="number" min="${MAP_FILE_LIMITS.minWidth}" max="${MAP_FILE_LIMITS.maxWidth}" value="${file.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-map-height type="number" min="${MAP_FILE_LIMITS.minHeight}" max="${MAP_FILE_LIMITS.maxHeight}" value="${file.height}" /></label></div></div>`,
+    `<div class="maker-form"><div class="maker-field"><span>Name</span><div class="maker-name-row"><input class="px-window px-field" data-map-name value="${escapeAttribute(file.name)}" maxlength="${MAP_FILE_LIMITS.maxNameLength}" spellcheck="false" autocomplete="off" aria-label="Name" /><button type="button" class="px-window px-button" data-map-reroll data-help="Draw another name for the map, in Pallet Town's own words. Type over it to make it yours.">Reroll</button></div></div><label class="maker-field"><span>Drawn by</span><input class="px-window px-field" data-map-maker value="${escapeAttribute(file.maker)}" maxlength="${MAP_FILE_LIMITS.maxMakerLength}" spellcheck="false" autocomplete="off" placeholder="your maker name" /></label><label class="maker-field"><span>Wild Pokémon</span><select class="px-window px-field" data-map-wildlife>${habitats}</select></label><div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-map-width type="number" min="${MAP_FILE_LIMITS.minWidth}" max="${MAP_FILE_LIMITS.maxWidth}" value="${file.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-map-height type="number" min="${MAP_FILE_LIMITS.minHeight}" max="${MAP_FILE_LIMITS.maxHeight}" value="${file.height}" /></label></div></div>`,
     { className: 'maker-settings', heading: 'The map' },
   );
 }
@@ -1192,7 +1192,7 @@ function reviewPane(
     )
     .join('');
   return `${decision}${pixelWindow(
-    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">Nothing has been sent in.</p>'}</div></div>${footer(`${button('data-review-refresh', 'Check again')}${button('data-review-sign-out', 'Sign out')}`)}`,
+    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">Nothing has been sent in.</p>'}</div></div>${footer(`${button('data-review-refresh', 'Check again')}${button('data-open-stats', 'Play stats', false, 'How many people play the game: players each day, raids and how they ended.')}${button('data-review-sign-out', 'Sign out')}`)}`,
     {
       className: 'maker-drafts',
       heading: 'Review maps',

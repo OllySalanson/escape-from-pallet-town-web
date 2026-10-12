@@ -239,8 +239,9 @@ describe('the map itself', () => {
   // Playtest 46: a new 40x30 map typed down to 24x18 kept its trees on the
   // north and west and stood open grass on the east and south edges.
   it('keeps the ring of trees on every side when a map is cut down', () => {
-    const shrunk = resizeMap(blankMap(40, 30), 24, 18);
-    expect(shrunk).toEqual(blankMap(24, 18));
+    const blank = blankMap(40, 30);
+    const shrunk = resizeMap(blank, 24, 18);
+    expect(shrunk).toEqual(blankMap(24, 18, blank.name));
     const lane = { ...blankMap(40, 30), ground: blankMap(40, 30).ground.map((row) => `${row.slice(0, 39)}.`) };
     expect(resizeMap(lane, 24, 30).ground[10]).toBe(`TT${'.'.repeat(22)}`);
   });

@@ -128,8 +128,28 @@ describe('leaving a Pokémon with him', () => {
     expect(dayCareRefusal(hurt.stash, hurt.partner)).toBe(
       'If you leave me that Pokémon, what will you battle with?',
     );
-    expect(dayCareRefusal(hurt.stash, hurt.pidgey)).toBeUndefined();
+    // The fainted ones are sent to the Pokémon Center rather than taken.
+    expect(dayCareRefusal(hurt.stash, hurt.pidgey)).toMatch(/has fainted!/);
     expect(partner).toBeTruthy();
+  });
+
+  it('will not take a fainted one, and sends it to the Pokémon Center', () => {
+    const { stash, pidgey, rattata } = vault();
+    const fainted = stash.listPokemon().find((stored) => stored.id === pidgey)!.pokemon;
+    fainted.takeDamage(fainted.maxHp);
+    expect(dayCareRefusal(stash, pidgey)).toBe(
+      'Your Pidgey has fainted! I can raise it, but I can’t revive it. Take it to the Pokémon Center first.',
+    );
+
+    // Once Nurse Joy has it on its feet he takes it, as hurt as it is.
+    expect(stash.recoverPokemon(pidgey)).toBe(true);
+    fainted.takeDamage(fainted.maxHp - 1);
+    expect(dayCareRefusal(stash, pidgey)).toBeUndefined();
+    // A Pokémon with a status or holding gear is still his to raise.
+    const rattataPokemon = stash.listPokemon().find((stored) => stored.id === rattata)!.pokemon;
+    rattataPokemon.primaryStatus = 'poison';
+    rattataPokemon.heldItemId = 'quick-claw';
+    expect(dayCareRefusal(stash, rattata)).toBeUndefined();
   });
 
   it('keeps its id and its place as the partner while it is away', () => {

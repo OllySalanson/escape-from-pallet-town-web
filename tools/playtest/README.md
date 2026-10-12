@@ -139,6 +139,15 @@ project), OLLY and AMY each seeing the other by name, AMY watching OLLY walk to
 a tile, OLLY leaving the yard for Oak's Lab and AMY finding him there -
 `docs/screens/shared-harbour/`. The tab being played is brought to the front,
 because the one behind is slowed to a frame a second.
+`names.mjs <url> <dir>` plays names one each over the local stand-in with ASH
+taken: NEW GAME asks YOUR NAME?, *ash* is said to be taken and refused, MISTY
+is free and kept, CONTINUE does not ask again, CONTINUE with no name asks and
+LATER goes in without one, and a new map in MAKE A MAP is named in the world's
+words and REROLL draws another - `docs/screens/player-names/`.
+`knocking.mjs <url> <dir>` knocks: AMY is told OLLY is not home while he is
+out, knocks again once he is, OLLY is asked with the cursor on NOT NOW and lets
+her in, each sees the other in his house, she cannot pick his furniture up, and
+down off the mat takes her to her own step - `docs/screens/knocking/`.
 `decorate.mjs <url> <dir> [--port=N]` decorates it: H, a pot plant carried with
 the keys, a doll out of the box onto the table, a refusal on the door mat, a
 mat and a doll put down and turned with the pointer, then reads the doll and

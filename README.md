@@ -137,8 +137,8 @@ than the secure container you start with, so every raid you ride it is a raid yo
 
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
 than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
-with the name on their front door over their head - give yours at the Bolthole and they see you
-back. Four buildings, four people you'll recognise, and each one is a thing you can do:
+with the name on their front door over their head, and they see yours. Press **K** in your house or on its step to knock on somebody else's door; if they're in
+and say yes, you're let in to have a nose round. Four buildings, four people you'll recognise, and each one is a thing you can do:
 
 - **Professor Oak's Lab** is where raids start: the contract board, your loadout, and a wall map
   that lights up wherever you've walked.
@@ -151,8 +151,9 @@ back. Four buildings, four people you'll recognise, and each one is a thing you 
   shelves.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
-The first time you open the door it asks, as FireRed does, **YOUR NAME?**, and nobody moves an
-inch inside until you answer - after that it's your name on the door and on every board.
+When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else
+in Pallet Town can have yours. After that it's your name on the door, over your head in the
+harbour and on every board.
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:
 a badge case with a slot for every keeper in Kanto, lit as you beat them; a pennant on your
 bedroom wall for every place you've come home from; a telly whose Kanto Tonight tells you which
@@ -247,6 +248,7 @@ sightseeing.
 | <kbd>P</kbd> | Open the party | |
 | <kbd>O</kbd> | Open the field guide | |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
+| <kbd>K</kbd> | | In your house or on its step: knock on somebody else's door |
 | <kbd>Esc</kbd> | Close a screen | Back out of a screen |
 
 Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or
@@ -302,3 +304,9 @@ Where to read more:
 This is a free fan project, made for fun. It is **not affiliated with, endorsed by or sponsored by
 Nintendo, Game Freak, Creatures Inc. or The Pokémon Company**. Pokémon and every name, character and
 design belonging to it are trademarks of their respective owners.
+
+**What gets counted.** So we know whether anyone actually plays, the published game counts a few
+moments: opening the game, picking a starter, starting a raid and how it ended, minutes played, maps
+sent in, Pallet Blocks games and walks into the harbour. Your browser gets a random id, and that's
+the only thing about you that leaves it: no cookies, no account, no name, the game keeps no IP address, and all
+it stores is daily totals and which days each id turned up. Turn on Do Not Track or Global Privacy Control and nothing is sent at all.

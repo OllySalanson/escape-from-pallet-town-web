@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { countPlay, mapDetail } from '../analytics/playCounter';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import { audioManager } from '../audio/AudioManager';
 import type { SoundEffectName } from '../audio/soundEffects';
@@ -92,6 +93,7 @@ import { activeRunManager } from '../run';
 import { buildContractBoard } from '../hub/contractBoard';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import {
+  activeSaveSlot,
   isPlaytestRun,
   PLAYTEST_PLACE_LABEL,
   PLAYTEST_RAID_DURATION_MS,
@@ -1069,6 +1071,9 @@ export class HubScene extends Phaser.Scene {
     // nobody came back from is still a raid you went on, and the difference
     // between the two numbers is what the drop-in screen reads back.
     this.saveManager.recordDeployment(requireInsertion(deployment.insertionId).mapId);
+    if (activeSaveSlot() !== 'try-it') {
+      countPlay({ kind: 'raid-start', detail: mapDetail(requireInsertion(deployment.insertionId).mapId) });
+    }
     const items = deployment.items;
     // And recorded as under way until it ends, so a raid left by closing the
     // tab costs its pack rather than nothing (`run/raidInFlight.ts`).

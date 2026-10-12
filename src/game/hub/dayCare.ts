@@ -42,7 +42,8 @@ import type { DayCareStay, Stash } from '../stash/Stash';
  *   health, because a Pokémon in a box has no HP to keep. Here healing is Nurse
  *   Joy's and costs raid time (`recovery.ts`), and a free bed would price her
  *   at nothing - so it comes back as hurt as it was left, the way a level is
- *   never a revive.
+ *   never a revive. That is also why he **will not take a fainted one**, which
+ *   FireRed does: there it comes back revived, here it would be raised fainted.
  * - **It is free.** FireRed charges ₽100 and ₽100 a level gained. Money here
  *   is loot and Bill is where it goes, and a fee is a second sink the trader's
  *   faucet was not measured against, so that is left for another change.
@@ -136,6 +137,19 @@ export function grownToday(report: DayCareReport): Pokemon {
   return copy;
 }
 
+/**
+ * His refusal of a fainted Pokémon, which is this game's own rule. FireRed
+ * takes one (it asks only that somebody else in the party can still battle)
+ * and its `BoxMonToMon` hands it back at full HP with its status cleared, so
+ * there it is a revive. Here he heals nothing - healing is Nurse Joy's and
+ * costs raid time - so a fainted Pokémon would sit in his pen fainted, growing
+ * levels and learning moves it could not have fought for, and come home still
+ * needing her. He sends it to her first instead.
+ */
+function fainted(name: string): string {
+  return `Your ${name} has fainted! I can raise it, but I can’t revive it. Take it to the Pokémon Center first.`;
+}
+
 /** Why a Pokémon cannot be left, in his words, or undefined when it can. */
 export function dayCareRefusal(stash: Stash, pokemonId: string): string | undefined {
   const stored = stash.listPokemon();
@@ -147,6 +161,10 @@ export function dayCareRefusal(stash: Stash, pokemonId: string): string | undefi
   }
   if (stored.length === 1) {
     return 'Oh? You only have one Pokémon.';
+  }
+  const chosen = stored.find((entry) => entry.id === pokemonId)!.pokemon;
+  if (chosen.isFainted) {
+    return fainted(chosen.name);
   }
   if (!stored.some((entry) => entry.id !== pokemonId && !entry.pokemon.isFainted)) {
     return 'If you leave me that Pokémon, what will you battle with?';

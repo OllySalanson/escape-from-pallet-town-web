@@ -80,8 +80,19 @@ try {
 
   // OLLY: a new game, with a name already given, so he is seen.
   await olly.waitFor(sceneIs('title'));
-  await olly.evaluate(`localStorage.setItem('escape-from-pallet-town.console.name', 'OLLY')`);
+  await olly.evaluate(`localStorage.setItem('escape-from-pallet-town.player.name', 'OLLY')`);
   await press(olly, 'Space');
+  // NEW GAME asks the name first (`src/game/names/`): OLLY is free.
+  await olly.waitFor(`!!document.querySelector('[data-name-field]')`, { what: 'YOUR NAME? at NEW GAME' });
+  await sleep(450);
+  await olly.evaluate(`document.querySelector('[data-name-field]').focus()`);
+  for (const character of 'OLLY') {
+    const description = { code: `Key${character}`, key: character, text: character, windowsVirtualKeyCode: character.charCodeAt(0) };
+    await olly.send('Input.dispatchKeyEvent', { type: 'keyDown', ...description });
+    await olly.send('Input.dispatchKeyEvent', { type: 'keyUp', ...description });
+    await sleep(40);
+  }
+  await press(olly, 'Enter');
   await olly.waitFor(sceneIs('starter'));
   await olly.waitFor(
     `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`,

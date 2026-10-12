@@ -402,7 +402,8 @@ describe('Escape', () => {
   });
 
   it('drops a brush stroke without painting it', () => {
-    storeDraft(blankMap());
+    const blank = blankMap();
+    storeDraft(blank);
     const { scene } = openMaker();
     scene.brushId = 'tall-grass';
     scene.pointerDown(at(5, 5), page.canvas);
@@ -412,7 +413,7 @@ describe('Escape', () => {
     scene.pointerMove(at(12, 5), page.canvas);
     scene.pointerUp(at(12, 5), page.canvas);
 
-    expect(scene.file).toEqual(blankMap());
+    expect(scene.file).toEqual(blank);
     expect(scene.history.canUndo).toBe(false);
   });
 
@@ -871,14 +872,15 @@ describe('planting nature along a drag', () => {
   });
 
   it('is dropped whole by Escape', () => {
-    storeDraft(blankMap());
+    const blank = blankMap();
+    storeDraft(blank);
     const { scene } = openMaker();
     plantWith(scene, 'stump');
     scene.pointerDown(at(4, 4), page.canvas);
     scene.pointerMove(at(12, 4), page.canvas);
     scene.handleKey(key('Escape'));
     scene.pointerUp(at(12, 4), page.canvas);
-    expect(scene.file).toEqual(blankMap());
+    expect(scene.file).toEqual(blank);
     expect(scene.history.canUndo).toBe(false);
   });
 

@@ -11,7 +11,10 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  * and the house console's `submit_console_score` and `console_leaderboard`
  * (`console/remoteScores.ts`), the last of which a browser may also call
  * signed out, and the shared harbour's `name_my_house` and `harbour_names`
- * (`harbour/`), the last of which is read signed out too;
+ * (`harbour/`), the last of which is read signed out too, and its knocking
+ * (`harbour/houseService.ts`), and the play counter's `record_play`, which is
+ * only ever called signed out (`analytics/playCounter.ts`, by plain `fetch`,
+ * never through this client);
  * the table rows are here for the reviewer, whom row-level security lets read
  * and decide.
  */
@@ -128,10 +131,49 @@ export type GameDatabase = {
         Args: { player_name: string };
         Returns: string;
       };
+      name_is_free: {
+        Args: { player_name: string };
+        Returns: string;
+      };
       harbour_names: {
         Args: { player_uids: string[] };
         Returns: HarbourNameRow[];
       };
+      at_my_house: {
+        Args: { at_home: boolean; snapshot: unknown };
+        Returns: string;
+      };
+      harbour_houses: {
+        Args: Record<PropertyKey, never>;
+        Returns: { readonly player_uid: string; readonly name: string; readonly at_home: boolean | null }[];
+      };
+      knock_on: {
+        Args: { owner: string };
+        Returns: { readonly knock_id: string | null; readonly outcome: string }[];
+      };
+      knocks_at_my_door: {
+        Args: Record<PropertyKey, never>;
+        Returns: { readonly knock_id: string; readonly knocker_name: string; readonly knocked_at: string }[];
+      };
+      answer_knock: {
+        Args: { knock_id: string; let_in: boolean };
+        Returns: string;
+      };
+      my_knock: {
+        Args: { knock_id: string };
+        Returns: string;
+      };
+      visit_house: {
+        Args: { owner: string };
+        Returns: { readonly name: string; readonly snapshot: unknown }[];
+      };
+      /** Counting play (`analytics/playCounter.ts`), sent by plain `fetch` rather than this client. */
+      record_play: {
+        Args: { visitor_id: string; build: string; events: unknown };
+        Returns: number;
+      };
+      /** The owner's play counts (`analytics/playStats.ts`), refused to anyone but an admin. */
+      play_stats: { Args: Record<PropertyKey, never>; Returns: unknown };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

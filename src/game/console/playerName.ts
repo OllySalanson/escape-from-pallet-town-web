@@ -62,8 +62,12 @@ export function playerNameProblemLine(problem: 'empty' | 'unkind'): string {
     : 'Not that name. Everybody who plays sees the boards - pick another.';
 }
 
-/** Where this device keeps the name: its own key, never inside a save. */
-export const PLAYER_NAME_STORAGE_KEY = 'escape-from-pallet-town.console.name';
+/**
+ * Where this device keeps the name: its own key, never inside a save. Names
+ * started again when they became one each (`names/`, the owner's call for the
+ * alpha), so this is a new key and a name kept under the old one is not read.
+ */
+export const PLAYER_NAME_STORAGE_KEY = 'escape-from-pallet-town.player.name';
 
 type NameStore = Pick<Storage, 'getItem' | 'setItem'>;
 

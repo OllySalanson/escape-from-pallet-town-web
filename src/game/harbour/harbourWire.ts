@@ -3,11 +3,14 @@ import { supabase } from '../maker/supabaseClient';
 import type { HarbourHeard, HarbourWire } from './harbourLink';
 import {
   HARBOUR_MOVE_EVENT,
+  HARBOUR_NUDGE_EVENT,
   HARBOUR_TOPIC,
   encodeHarbourMove,
+  encodeHarbourNudge,
   encodeHarbourPresence,
   isPlayerId,
   readHarbourMove,
+  readHarbourNudge,
   readHarbourPresence,
   type HarbourMove,
   type HarbourPlace,
@@ -82,6 +85,12 @@ export function liveHarbourWire(): HarbourWire {
           heard.move(move);
         }
       });
+      joining.on('broadcast', { event: HARBOUR_NUDGE_EVENT }, ({ payload }) => {
+        const nudge = readHarbourNudge(payload);
+        if (nudge) {
+          heard.nudge(nudge);
+        }
+      });
       joining.on('presence', { event: 'sync' }, () => {
         heard.present(membersOf(joining.presenceState()));
       });
@@ -109,6 +118,9 @@ export function liveHarbourWire(): HarbourWire {
     },
     send(move) {
       void channel?.send({ type: 'broadcast', event: HARBOUR_MOVE_EVENT, payload: encodeHarbourMove(move) });
+    },
+    nudge(nudge) {
+      void channel?.send({ type: 'broadcast', event: HARBOUR_NUDGE_EVENT, payload: encodeHarbourNudge(nudge) });
     },
     async names(ids) {
       const db = await supabase();
@@ -180,6 +192,11 @@ export function localHarbourWire(nameOf: () => string | null): HarbourWire {
       if (move) {
         heard?.move(move);
       }
+    } else if (data.kind === 'nudge') {
+      const nudge = readHarbourNudge(data.payload);
+      if (nudge) {
+        heard?.nudge(nudge);
+      }
     } else if (data.kind === 'here' && isPlayerId(data.id)) {
       const known = seen.has(data.id);
       seen.set(data.id, {
@@ -213,6 +230,9 @@ export function localHarbourWire(nameOf: () => string | null): HarbourWire {
     },
     send(move: HarbourMove) {
       wire.postMessage({ kind: 'move', payload: encodeHarbourMove(move) });
+    },
+    nudge(nudge) {
+      wire.postMessage({ kind: 'nudge', payload: encodeHarbourNudge(nudge) });
     },
     names(ids) {
       return Promise.resolve(

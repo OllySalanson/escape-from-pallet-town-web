@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
+import { countPlay, raidEnding } from '../analytics/playCounter';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
 import { formatRaidClock } from '../run/raidClock';
@@ -107,6 +108,9 @@ export class ExtractionScene extends Phaser.Scene {
     const attempt = currentTry();
     if (attempt && this.report.outcome === 'ESCAPED') {
       recordWalkedOut(attempt);
+    }
+    if (!attempt) {
+      countPlay({ kind: 'raid-end', detail: raidEnding(this.report) });
     }
     this.cameras.main.fadeIn?.(200, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'extraction-menu', (event) => this.handleKey(event));

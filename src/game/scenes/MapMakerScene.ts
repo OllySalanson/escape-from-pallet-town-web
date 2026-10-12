@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { countPlay } from '../analytics/playCounter';
 import {
   blankMap,
   describeDropIn,
@@ -33,6 +34,7 @@ import {
   type SpotKind,
   type ThingRef,
 } from '../maker/draft';
+import { generateMapName } from '../maker/mapNames';
 import {
   loadMakerStore,
   mapFileText,
@@ -1044,6 +1046,7 @@ export class MapMakerScene extends Phaser.Scene {
     on('[data-send-confirm]', () => void this.confirmSend());
     on('[data-refresh-sent]', () => this.openPanel('sent'));
     on('[data-review-refresh]', () => this.openPanel('review'));
+    on('[data-open-stats]', () => this.scene.start('stats'));
     on('[data-review-sign-in]', () => {
       void signInToReview().then((result) => {
         if (!result.ok) {
@@ -1194,6 +1197,12 @@ export class MapMakerScene extends Phaser.Scene {
       }
     };
     field('[data-map-name]', (value) => renameMap(this.file, plainText(value)));
+    // Another of the world's names (`maker/mapNames.ts`), one undo step like any rename.
+    root.querySelector<HTMLButtonElement>('[data-map-reroll]')?.addEventListener('click', () => {
+      this.commitTyping();
+      this.pushEdit(renameMap(this.file, generateMapName()));
+      this.render();
+    });
     field('[data-map-maker]', (value) => setMaker(this.file, plainText(value)));
     field('[data-map-wildlife]', (value) => ({ ...this.file, wildlife: value as MapFileHabitat }));
     // The try level is the maker's to choose and no part of the map, so it is
@@ -3055,6 +3064,7 @@ export class MapMakerScene extends Phaser.Scene {
         : {}),
     });
     if (result.ok) {
+      countPlay({ kind: 'map-sent' });
       const store = loadMakerStore();
       this.store = {
         ...store,

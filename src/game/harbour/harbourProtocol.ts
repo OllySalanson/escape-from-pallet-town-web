@@ -117,6 +117,32 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
   return { from: u, place: p, path, facing: f as Direction };
 }
 
+/** The broadcast event a nudge travels on. */
+export const HARBOUR_NUDGE_EVENT = 'nudge';
+
+/**
+ * A nudge: one browser telling another "look now" - that it has knocked at its
+ * door, so the owner asks the database at once rather than at its next look.
+ * It is a hint and nothing more: a nudge that is not true costs one question.
+ */
+export interface HarbourNudge {
+  readonly from: string;
+  readonly to: string;
+}
+
+export function encodeHarbourNudge(nudge: HarbourNudge): Record<string, unknown> {
+  return { u: nudge.from, t: nudge.to };
+}
+
+/** A nudge heard from another browser, or null if it is anything else. */
+export function readHarbourNudge(payload: unknown): HarbourNudge | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  const { u, t } = payload as Record<string, unknown>;
+  return isPlayerId(u) && isPlayerId(t) ? { from: u, to: t } : null;
+}
+
 /** What a player says about themselves on joining: only where they are. */
 export function encodeHarbourPresence(place: HarbourPlace): Record<string, unknown> {
   return { p: place };

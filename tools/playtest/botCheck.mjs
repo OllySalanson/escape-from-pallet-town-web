@@ -184,7 +184,7 @@ try {
   if (!real) {
     await signOut();
     asked.length = 0;
-    await page.evaluate(`localStorage.setItem('escape-from-pallet-town.console.waiting', JSON.stringify([{ game: 'pallet-blocks', name: 'ASH', score: { score: 1200, lines: 10, level: 2, durationMs: 120000 }, at: 1 }])); localStorage.setItem('escape-from-pallet-town.console.name', 'ASH'); window.__check = 'fail'; true`);
+    await page.evaluate(`localStorage.setItem('escape-from-pallet-town.console.waiting', JSON.stringify([{ game: 'pallet-blocks', name: 'ASH', score: { score: 1200, lines: 10, level: 2, durationMs: 120000 }, at: 1 }])); localStorage.setItem('escape-from-pallet-town.player.name', 'ASH'); window.__check = 'fail'; true`);
     await page.evaluate(`${GAME}.scene.start('console', { pausedBase: false }); true`);
     await page.waitFor(`/still waiting/.test(document.querySelector('.console-menu .px-status-line')?.textContent ?? '')`, { what: 'the waiting line', timeoutMs: 20_000 });
     await shot('5-console-score-waiting');
