@@ -256,7 +256,7 @@ function pathEndAdvice(
     found:
       dead.length === 0
         ? 'every road ends at something'
-        : `${dead.length} road end${dead.length === 1 ? '' : 's'} stop in the open: ${dead
+        : `${dead.length} road end${dead.length === 1 ? ' stops' : 's stop'} in the open: ${dead
             .slice(0, 4)
             .map(([x, y]) => `${x},${y}`)
             .join('; ')}`,

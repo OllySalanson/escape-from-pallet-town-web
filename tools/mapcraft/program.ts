@@ -148,6 +148,12 @@ export class MapProgram {
     return this;
   }
 
+  /** Frees tiles a `lock` held, so they can be drawn on again. */
+  public unlock(tiles: readonly Point[]): this {
+    for (const [x, y] of tiles) if (this.inside(x, y)) this.locked[y][x] = false;
+    return this;
+  }
+
   public isLocked(x: number, y: number): boolean {
     return this.inside(x, y) && this.locked[y][x];
   }

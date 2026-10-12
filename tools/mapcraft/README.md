@@ -152,7 +152,57 @@ before the score. What the research measured about judges:
   by proportions (more road, less lawn), not layout: they call scrambled real
   routes real. Useful as a checklist, never as a target.
 
+## A huge map
+
+A huge map is planned coarse and drawn a district at a time, so it can grow
+without anything already drawn moving:
+
+1. **The world plan** (`worldPlan.ts`): districts on a grid of equal squares,
+   each with **one idea** written down, and the **crossings** where a road, a
+   trail, a river or open country passes from one district into the next, fixed
+   before either side is drawn. Cells may be negative: a plan grows on any side,
+   and the map is laid out from its west and north edges again. Sizes, offsets
+   and widths are even, so the tree lattice is never cut along a seam.
+   `checkPlan` says what is wrong with a plan before anything is drawn.
+2. **Each district** starts from `startDistrict(plan, id)`: all wood, its edge
+   sealed two tiles deep and locked, cut open only at its openings, so whatever
+   its program draws can only leave where the plan says. `districtFile` gives it
+   a way out at every opening, so it can be played on its own in TRY IT.
+3. **The stitcher** (`stitch.ts`) puts the districts drawn so far into one map
+   file. A district not drawn yet is wood - the map is playable while it is
+   incomplete, and the road simply runs into the forest - and every seam is
+   reported as joined, broken or waiting. A district left open at its edge where
+   no crossing is planned is a problem, as is anything over a map file's limits
+   (256x256 tiles, 8 drop-ins, 12 ways out, 40 item spots, 16 places, 32 links).
+
+```sh
+npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/examples/quarryRoad.ts out/quarry-road
+```
+
+writes the stitched map, the plan as one picture (`.plan.png`, drawn districts
+in green), the whole map, each district with its moves washed in colour, and
+each cave floor, and prints the seams, the hard checks on the whole map and each
+district's own report. `examples/quarryRoad.ts` is the worked example: two
+districts drawn apart and a two-floor cave under the quarry.
+
+## Caves
+
+`caves.ts` draws floors the way the map research's best caves were drawn
+(level with FireRed's Mt. Moon 1F in blind judging): rooms of different sizes
+in an irregular rim, a spanning tree of winding passages plus extra ones for
+loops, sand drifted into a few rooms, rows of boulders as low walls in the big
+rooms. A floor can be **sealed** - split into halves joined only through other
+floors - which is what makes a stack of floors a maze rather than a staircase.
+
+`caveMaze` stacks floors, joins them with several ladders a pair (a hole above,
+a ladder up below, on alternate halves of a sealed floor), cuts each mouth's way
+out into its floor's south wall, keeps furniture clear of every way through, and
+hides an item in every third dead-end room. `caveMouthSpots` finds the foot of a
+rock face outdoors, where the game requires a cave mouth to be cut.
+
 ## Before and after
 
 `docs/screens/mapcraft/`: the same district drawn by round 2's best method and
-drawn with these tools, each with its moves washed in colour.
+drawn with these tools, each with its moves washed in colour; and the example
+world's plan, its stitched map, the same map with one district still to draw,
+and its lower cave floor.
