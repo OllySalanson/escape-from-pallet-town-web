@@ -22,7 +22,10 @@ def main(paths):
         from faster_whisper import WhisperModel
     except ImportError:
         print("faster-whisper is not installed: pip install faster-whisper", file=sys.stderr)
-        return 1
+        # Its own code: the one failure that is this PC's rather than a clip's,
+        # so the collector stops trying for this run instead of giving up on
+        # the clip (collector.ts, TranscriberUnavailable).
+        return 3
     model = WhisperModel(os.environ.get("FEEDBACK_WHISPER_MODEL", "small.en"), device="cpu", compute_type="int8")
     paragraphs = []
     for path in paths:

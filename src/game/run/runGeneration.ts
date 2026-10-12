@@ -281,7 +281,7 @@ export function runInsertions(): readonly RunInsertion[] {
 
 /** The landing with this id, if the game has one. */
 export function runInsertion(id: string): RunInsertion | undefined {
-  if (id in RUN_INSERTIONS) {
+  if (Object.hasOwn(RUN_INSERTIONS, id)) {
     return RUN_INSERTIONS[id as BuiltInInsertionId];
   }
   const slash = id.indexOf('/');

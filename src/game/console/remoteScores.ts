@@ -9,7 +9,11 @@ import type { BoardEntry, ConsoleScore, PalletTownBoards } from './leaderboard';
  *
  * The browser is the same anonymous player it is for those two - no account,
  * just a private id - and all it may do here is post a finished game's score
- * (`submit_console_score`) and read a game's board (`console_leaderboard`); the
+ * (`submit_console_score`) and read a game's board (`console_leaderboard`). It
+ * signs in only to post: a board is read as whoever the browser already is,
+ * or as nobody, so sitting down at the console makes no player of a visitor
+ * and a project that asks for a bot check still shows its boards (red team
+ * F10). The
  * database checks every score and name again and holds a player to its limits
  * (`supabase/migrations/*_console_leaderboards.sql`). A failure of any kind
  * throws, and `Leaderboards` falls back on this device's own board.
@@ -19,12 +23,12 @@ import type { BoardEntry, ConsoleScore, PalletTownBoards } from './leaderboard';
  */
 export const palletTownBoards: PalletTownBoards = {
   async load(game: string): Promise<readonly BoardEntry[]> {
-    const db = await signedIn();
+    const db = await supabase();
     const { data, error } = await db.rpc('console_leaderboard', { game });
     if (error) {
       throw new Error(error.message);
     }
-    return (data ?? []).map((row) => ({ name: row.player_name, score: row.score, mine: row.mine }));
+    return (data ?? []).map((row) => ({ name: row.player_name, score: row.score, mine: row.mine === true }));
   },
   async post(game: string, name: string, score: ConsoleScore): Promise<void> {
     const db = await signedIn();

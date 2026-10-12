@@ -715,7 +715,7 @@ export class BaseScene extends Phaser.Scene {
    */
   private oddityFrame(itemId: string): { readonly key: string; readonly frame: string } {
     const key = 'bill-oddities';
-    const frame = itemId in ODDITY_ART ? itemId : 'curio';
+    const frame = Object.hasOwn(ODDITY_ART, itemId) ? itemId : 'curio';
     if (this.textures.exists(key)) {
       return { key, frame };
     }

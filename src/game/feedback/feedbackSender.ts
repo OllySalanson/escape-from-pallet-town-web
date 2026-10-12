@@ -10,7 +10,10 @@ import type { Delivery, FeedbackSender } from './courier';
  * - and what the database lets that id do is the whole of the security
  * (`supabase/migrations/*_player_feedback.sql`): upload files into its own
  * folder of a private bucket and call `submit_feedback`, and nothing else; it
- * can never read a message back, its own included.
+ * can never read a message back, its own included. Every file is asked for
+ * by name first (`reserve_feedback_uploads`): the bucket takes a file only
+ * under a name the database handed out, counted under a lock, so a burst of
+ * uploads at once cannot get past the day's limit (red team F7).
  *
  * A failure that clears up by itself - offline, the day's limit, a bot check
  * this browser has not passed - is `later`, and the message stays in the pack
@@ -40,6 +43,12 @@ export const sendToTheLab: FeedbackSender = async (note) => {
     files.push({ path, body: clip, type });
     return path;
   });
+  if (files.length > 0) {
+    const { error } = await db.rpc('reserve_feedback_uploads', { tag: note.tag, names: files.map((file) => file.path) });
+    if (error) {
+      return callDelivery(error);
+    }
+  }
   for (const file of files) {
     const { error } = await db.storage.from('feedback').upload(file.path, file.body, { contentType: file.type, upsert: false });
     if (error && !alreadyThere(error)) {

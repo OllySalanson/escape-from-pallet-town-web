@@ -494,18 +494,21 @@ export type MapFileBuildingKind = MapFileOutdoorBuildingKind | MapFileFurnitureK
 
 /** The landmark a planted thing is, wherever it stands. */
 export function plantedProp(kind: MapFileBuildingKind): PropDefinition {
-  if (kind in MAP_FILE_BUILDINGS) {
+  if (Object.hasOwn(MAP_FILE_BUILDINGS, kind)) {
     return PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[kind as MapFileOutdoorBuildingKind]];
   }
   return INSIDE_PROPS[MAP_FILE_FURNITURE[kind as MapFileFurnitureKind]];
 }
 
+// Asked with `Object.hasOwn`, never `in`: a kind is a file's own text, and `in`
+// also answers yes for `constructor`, `toString` and every other name a plain
+// object inherits - which then indexes nothing and throws (red team F1).
 export function isOutdoorBuilding(kind: string): kind is MapFileOutdoorBuildingKind {
-  return kind in MAP_FILE_BUILDINGS;
+  return Object.hasOwn(MAP_FILE_BUILDINGS, kind);
 }
 
 export function isFurniture(kind: string): kind is MapFileFurnitureKind {
-  return kind in MAP_FILE_FURNITURE;
+  return Object.hasOwn(MAP_FILE_FURNITURE, kind);
 }
 
 /**
@@ -1612,7 +1615,7 @@ export function readMapFile(
     problems,
   );
 
-  if (typeof value.wildlife !== 'string' || !(value.wildlife in MAP_FILE_HABITATS)) {
+  if (typeof value.wildlife !== 'string' || !Object.hasOwn(MAP_FILE_HABITATS, value.wildlife)) {
     problems.push(`'wildlife' must be one of: ${Object.keys(MAP_FILE_HABITATS).join(', ')}.`);
   }
 

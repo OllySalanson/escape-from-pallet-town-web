@@ -5,7 +5,8 @@
 // Signs in as a fresh anonymous visitor - exactly what every player's browser
 // is - and tries every door that must stay shut: reading the review tables and
 // the feedback inbox, listing or downloading anyone's files, uploading into
-// someone else's folder or a type the bucket does not take, claiming another
+// someone else's folder, under a name it was not given or a type the bucket
+// does not take, asking the collector's questions, claiming another
 // player's file in a message, blocking a maker, writing a console score or
 // posting one the game would refuse, calling the API with no session at all.
 // Each must be refused. With --send it also sends one real
@@ -91,6 +92,22 @@ const foreign = await call(`/storage/v1/object/feedback/${someone}/FB-AAAA/pictu
 check(foreign.status >= 400, `cannot upload into someone else's folder (${foreign.status})`);
 const html = await call(`/storage/v1/object/feedback/${me}/FB-AAAA/page.html`, { method: 'POST', token, body: '<b>', type: 'text/html' });
 check(html.status >= 400, `cannot upload a type the bucket does not take (${html.status})`);
+// A file goes in only under a name the database handed out (the red team's F7).
+const unasked = await call(`/storage/v1/object/feedback/${me}/FB-AAAA/picture.png`, { method: 'POST', token, body: 'x', type: 'image/png' });
+check(unasked.status >= 400, `cannot upload a file it was not given the name for (${unasked.status})`);
+const otherSlot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 'POST', token, body: { tag: 'FB-AAAA', names: [`${someone}/FB-AAAA/picture.png`] } });
+check(otherSlot.status >= 400, `cannot be given a name in someone else's folder (${otherSlot.status})`);
+const oddSlot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 'POST', token, body: { tag: 'FB-AAAA', names: [`${me}/FB-AAAA/page.html`] } });
+check(oddSlot.status >= 400, `cannot be given a name the game never uses (${oddSlot.status})`);
+const noSlot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 'POST', body: { tag: 'FB-AAAA', names: [`${me}/FB-AAAA/picture.png`] } });
+check(noSlot.status >= 400, `cannot be given a name without a session (${noSlot.status})`);
+// The collector's two questions are the service key's alone.
+for (const [name, body] of [['unclaimed_feedback_uploads', { older_than_hours: 24 }], ['idle_anonymous_visitors', { idle_days: 30 }]]) {
+  const asked = await call(`/rest/v1/rpc/${name}`, { method: 'POST', token, body });
+  check(asked.status >= 400, `cannot ask ${name} (${asked.status})`);
+  const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });
+  check(askedSignedOut.status >= 400, `cannot ask ${name} signed out (${askedSignedOut.status})`);
+}
 const claim = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', token, body: message('FB-AAAA', { picture_path: `${someone}/FB-AAAA/picture.png` }) });
 check(claim.status >= 400, `cannot claim a file it did not upload (${claim.status})`);
 const empty = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', token, body: message('FB-AAAB', { message: '' }) });
@@ -108,12 +125,15 @@ const forged = await call('/rest/v1/console_scores', { method: 'POST', token, bo
 check(forged.status >= 400, `cannot write a score into the table (${forged.status})`);
 const board = await call('/rest/v1/rpc/console_leaderboard', { method: 'POST', token, body: { game: 'pallet-blocks' } });
 check(board.status === 200 && Array.isArray(board.json), `can read a board (${board.status})`);
+// A board is read signed out too, so looking signs nobody up (the red team's
+// F10) - and that is all a signed-out visitor can call.
 const strangers = await call('/rest/v1/rpc/console_leaderboard', { method: 'POST', body: { game: 'pallet-blocks' } });
-check(strangers.status >= 400, `cannot read a board without a session (${strangers.status})`);
+check(strangers.status === 200 && Array.isArray(strangers.json) && strangers.json.every((row) => row.mine === false), `can read a board signed out, owning none of it (${strangers.status})`);
 for (const [what, body] of [
   ['a game with no board', score({ game: 'not-a-game' })],
   ['a name with markup in it', score({ player_name: '<B>' })],
   ['a rude name', score({ player_name: 'SH1T' })],
+  ['a rude name spelled with a space', score({ player_name: 'FU CK' })],
   ['an impossible score', score({ score: 99999999, duration_ms: 2000 })],
 ]) {
   const posted = await call('/rest/v1/rpc/submit_console_score', { method: 'POST', token, body });
@@ -126,6 +146,8 @@ if (send) {
   // A one-pixel PNG, and the two calls the game makes.
   const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==', 'base64');
   const tag = 'FB-PRBF';
+  const slot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 'POST', token, body: { tag, names: [`${me}/${tag}/picture.png`] } });
+  check(slot.status < 300, `is given the name of its own picture (${slot.status})`);
   const upload = await call(`/storage/v1/object/feedback/${me}/${tag}/picture.png`, { method: 'POST', token, body: pixel, type: 'image/png' });
   check(upload.status === 200, `can upload a picture into its own folder (${upload.status})`);
   const sent = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', token, body: message(tag, { message: 'anonymous probe: delete me', picture_path: `${me}/${tag}/picture.png` }) });

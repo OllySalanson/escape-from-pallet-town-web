@@ -183,7 +183,16 @@ function processGroupCpuSeconds(groupId) {
   return ticks / 100;
 }
 
-async function openPage(port, url, window, { save, init } = {}) {
+/**
+ * The game's Supabase project, which a driven page cannot reach unless it asks
+ * (`openPage`'s `project: true`): a playtest that sat down at the console or
+ * opened the map maker's send panel signed a new anonymous player up in
+ * production every run (red team F10). A driver that means to reach it - a
+ * stand-in, or `feedbackShots.mjs --live` - unblocks it itself.
+ */
+export const PROJECT_URLS = ['*supabase.co*'];
+
+async function openPage(port, url, window, { save, init, project = false } = {}) {
   const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
@@ -224,6 +233,10 @@ async function openPage(port, url, window, { save, init } = {}) {
   };
 
   await send('Page.enable');
+  if (!project) {
+    await send('Network.enable');
+    await send('Network.setBlockedURLs', { urls: PROJECT_URLS });
+  }
   await send('Emulation.setDeviceMetricsOverride', { ...window, deviceScaleFactor: 1, mobile: false });
   if (save !== undefined) {
     // Seeded before any script of the page runs, so the title screen finds it.

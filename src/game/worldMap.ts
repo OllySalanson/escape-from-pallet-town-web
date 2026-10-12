@@ -614,7 +614,7 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
 export const BUILT_IN_MAP_IDS = Object.keys(MAP_CONTENT) as BuiltInMapId[];
 
 export function isBuiltInMapId(id: string): id is BuiltInMapId {
-  return id in MAP_CONTENT;
+  return Object.hasOwn(MAP_CONTENT, id);
 }
 
 /**

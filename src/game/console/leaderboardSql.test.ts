@@ -42,6 +42,14 @@ describe("the database's copy of the console's rules", () => {
     expect(sqlStrings(stems).sort()).toEqual([...STEMS].sort());
   });
 
+  it('reads a name with its spaces and punctuation taken out as well, as the game does (red team F9)', () => {
+    // Every run of words joined, squeezed again: `FU CK` is the word it spells.
+    expect(filter).toMatch(/from words f join words l on l\.i >= f\.i/);
+    expect(filter).toMatch(/string_agg\(x\.word, '' order by x\.i\) from words x where x\.i between f\.i and l\.i/);
+    expect(filter).toMatch(/where r\.word = any \(array\[/);
+    expect(filter).toMatch(/starts_with\(r\.word, s\.stem\)/);
+  });
+
   it('reads the same lookalikes back as letters', () => {
     const [from, to] = sqlStrings(/translate\(lower\(player_name\), ('[^']*'), ('[^']*')\)/.exec(filter)?.slice(1).join(' ') ?? '');
     expect(from).toBeDefined();

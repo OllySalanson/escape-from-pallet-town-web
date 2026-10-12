@@ -15,7 +15,8 @@
  * With --transcribe, each clip is turned into text on this PC by
  * `transcribe.py` (faster-whisper, free and local) where it is installed; a
  * folder with clips and no `transcript.txt` is listened to again on every run
- * until it has one.
+ * until it has one - unless the speech model could not read its clips, which
+ * is written down beside them (`transcribe-failed.txt`) and not tried again.
  *
  * It prints one line when something new came in and nothing when nothing did,
  * so a scheduled check can run it every few minutes and speak only when there
@@ -32,7 +33,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SUBMISSIONS_URL } from '../../src/game/maker/submitConfig';
-import { collectFeedback } from './collector';
+import { collectFeedback, TranscriberUnavailable } from './collector';
 
 const argv = process.argv.slice(2).filter((argument) => argument !== '--');
 const option = (name: string): string | undefined =>
@@ -76,8 +77,26 @@ const result = await collectFeedback({
   out,
   ...(argv.includes('--transcribe')
     ? {
-        transcribe: (clips: readonly string[]) =>
-          execFileSync('python3', [transcriber, ...clips], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }),
+        transcribe: (clips: readonly string[]) => {
+          try {
+            // A clip that makes the decoder hang is that clip's failure, not
+            // every scheduled run's (red team F6): two minutes a clip, then killed.
+            return execFileSync('python3', [transcriber, ...clips], {
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'pipe'],
+              timeout: 120_000 * clips.length,
+              killSignal: 'SIGKILL',
+            });
+          } catch (error) {
+            const failed = error as { status?: number | null; stderr?: string; message: string };
+            const reason = failed.stderr?.trim() || failed.message;
+            // transcribe.py exits 3 when faster-whisper is not installed: the
+            // one failure that is this PC's, not the clip's.
+            throw failed.status === 3 || (failed as { code?: string }).code === 'ENOENT'
+              ? new TranscriberUnavailable(reason)
+              : new Error(reason);
+          }
+        },
       }
     : {}),
   say: quiet ? undefined : (line) => console.error(line),

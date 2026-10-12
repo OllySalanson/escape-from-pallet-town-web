@@ -7,8 +7,10 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  *
  * Its types are the database as `supabase/migrations/` declares it. A maker's
  * browser can only call `submit_map` and `my_submissions`, and a player's
- * `submit_feedback` (`feedback/feedbackSender.ts`) and the house console's
- * `submit_console_score` and `console_leaderboard` (`console/remoteScores.ts`);
+ * `reserve_feedback_uploads` and `submit_feedback` (`feedback/feedbackSender.ts`)
+ * and the house console's `submit_console_score` and `console_leaderboard`
+ * (`console/remoteScores.ts`), the last of which a browser may also call
+ * signed out;
  * the table rows are here for the reviewer, whom row-level security lets read
  * and decide.
  */
@@ -50,7 +52,7 @@ export type ConsoleBoardRow = {
   readonly lines: number;
   readonly level: number;
   readonly posted_at: string;
-  readonly mine: boolean;
+  readonly mine: boolean | null;
 };
 
 export type GameDatabase = {
@@ -82,6 +84,10 @@ export type GameDatabase = {
       };
       my_submissions: { Args: Record<PropertyKey, never>; Returns: SentRow[] };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      reserve_feedback_uploads: {
+        Args: { tag: string; names: string[] };
+        Returns: undefined;
+      };
       submit_feedback: {
         Args: {
           tag: string;
@@ -144,7 +150,10 @@ export function playerClientOptions() {
  * ollysalanson.github.io - so the session is kept for this tab only
  * (`sessionStorage`, which also holds the sign-in's PKCE verifier across the
  * GitHub round trip in the same tab) and never in the `localStorage` any page
- * on that origin can read. Closing the tab signs the reviewer out. It is a
+ * on that origin can read. Closing the tab forgets the session, but only SIGN
+ * OUT ends it on the server (`signOutOfReview`): a tab the browser restores
+ * brings its session storage back, and a same-origin page opened in the same
+ * tab can read it (red team F11). It is a
  * client of its own, so signing in to review no longer replaces the browser's
  * anonymous maker session either.
  */
