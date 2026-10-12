@@ -47,6 +47,7 @@ import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { FIRST_WORDS } from '../hub/firstWords';
+import { ALL_SPECIES } from '../pokemon/species';
 import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
@@ -878,6 +879,8 @@ describe('hub deployment route', () => {
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'],
         workshopUpgrades: [],
+        // Writing the save registered the starter in the vault (`hub/pokedex.ts`).
+        pokedexOwned: [1],
       });
   });
 
@@ -2236,5 +2239,115 @@ describe('first words: Oak and Joy speak once per save', () => {
     screenOf(hub);
     expect((hub as unknown as { writeGame(): boolean }).writeGame()).toBe(true);
     expect(heardIn(storage)).toEqual(['lab', 'center']);
+  });
+});
+
+describe('the Pokédex: Professor Oak rewards each milestone in his lab, once', () => {
+  /** A save whose vault holds one Pokemon of each of the first `kinds` species. */
+  function storageWithKinds(kinds: number, raidProgress: RaidProgress = DEFAULT_RAID_PROGRESS): MemoryStorage {
+    const storage = new MemoryStorage();
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
+    for (const species of ALL_SPECIES.slice(0, kinds)) {
+      stash.addPokemon(new Pokemon(species, 5));
+    }
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+      raidProgress,
+    });
+    return storage;
+  }
+
+  const heardTheLab: RaidProgress = { ...DEFAULT_RAID_PROGRESS, firstWordsHeard: ['lab'] };
+
+  function screenOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  function speechOn(markup: string): string | undefined {
+    return /<div class="px-window px-speech"[\s\S]*?(?=<p class="px-help)/.exec(markup)?.[0];
+  }
+
+  function readOn(hub: HubInternals): void {
+    (hub as unknown as { doneListening(): void }).doneListening();
+  }
+
+  const saved = (storage: MemoryStorage) => new SaveManager(storage).load()!;
+
+  it('hands over the reward for ten kinds when the lab opens, in his own words, into the vault', () => {
+    const storage = storageWithKinds(10, heardTheLab);
+    const ballsBefore = saved(storage).stash.itemCount('great-ball');
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+
+    const speech = speechOn(screenOf(hub));
+    expect(speech).toContain('Professor Oak');
+    expect(speech).toContain('kinds of Pokémon caught!');
+    expect(speech).toContain('It looks as if you’re getting on the right track!');
+    expect(speech).toContain('Here, take 5 Great Balls.');
+    expect(speech).toContain('When you have 25 kinds of Pokémon, come back and see me.');
+    // In the vault the moment he says so, and in the screen's own copy too, so
+    // the next thing this screen writes cannot take it back.
+    expect(saved(storage).stash.itemCount('great-ball')).toBe(ballsBefore + 5);
+    expect(hub.stash.itemCount('great-ball')).toBe(ballsBefore + 5);
+    expect(saved(storage).raidProgress.pokedexRewards).toEqual([10]);
+    expect((hub as unknown as { writeGame(): boolean }).writeGame()).toBe(true);
+    expect(saved(storage).stash.itemCount('great-ball')).toBe(ballsBefore + 5);
+  });
+
+  it('never gives the same milestone twice, read or not', () => {
+    const storage = storageWithKinds(10, heardTheLab);
+    expect(speechOn(screenOf(createHub(DEFAULT_RAID_PROGRESS, storage).hub))).toBeDefined();
+    const balls = saved(storage).stash.itemCount('great-ball');
+
+    // Walked straight out unread and back in.
+    expect(speechOn(screenOf(createHub(DEFAULT_RAID_PROGRESS, storage).hub))).toBeUndefined();
+    expect(saved(storage).stash.itemCount('great-ball')).toBe(balls);
+  });
+
+  it('says nothing short of a milestone, and nothing on any other screen', () => {
+    const short = storageWithKinds(8, heardTheLab);
+    expect(speechOn(screenOf(createHub(DEFAULT_RAID_PROGRESS, short).hub))).toBeUndefined();
+    expect(saved(short).raidProgress.pokedexRewards).toBeUndefined();
+
+    const due = storageWithKinds(10, { ...heardTheLab, firstWordsHeard: ['lab', 'center'] });
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, due);
+    hub.setView('stash');
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+    expect(saved(due).raidProgress.pokedexRewards).toBeUndefined();
+  });
+
+  it('lets Oak finish his first words before he hands anything over', () => {
+    const storage = storageWithKinds(10);
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.lab.lines[0]);
+    expect(saved(storage).raidProgress.pokedexRewards).toBeUndefined();
+
+    readOn(hub);
+    expect(speechOn(screenOf(hub))).toContain('Here, take 5 Great Balls.');
+    expect(saved(storage).raidProgress.pokedexRewards).toEqual([10]);
+  });
+
+  it('gives two milestones crossed at once one after the other, as each is read', () => {
+    const storage = storageWithKinds(26, heardTheLab);
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    const first = speechOn(screenOf(hub));
+    expect(first).toContain('right track');
+    expect(first).toContain('And that’s not all!');
+
+    readOn(hub);
+    const second = speechOn(screenOf(hub));
+    expect(second).not.toContain('Good to see you');
+    expect(second).toContain('When you have 50 kinds of Pokémon, come back and see me.');
+    expect(second).toContain('Your Pokédex could use a bit more volume still!');
+    expect(second).toContain('5 Super Potions and 5 Great Balls');
+    expect(saved(storage).raidProgress.pokedexRewards).toEqual([10, 25]);
+
+    readOn(hub);
+    expect(speechOn(screenOf(hub))).toBeUndefined();
   });
 });

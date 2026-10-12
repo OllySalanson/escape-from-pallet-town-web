@@ -69,6 +69,13 @@ import type { GrowthRate } from '../pokemon/generated/speciesCatalogue';
 import { mergeSurvey, type SurveyRecord } from '../world/survey';
 import { activeSaveSlot, PLAYTEST_SAVE_KEY, TRY_IT_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 import { isFirstWordsId, type FirstWordsId } from '../hub/firstWords';
+import {
+  dueMilestone,
+  pokedexMilestone,
+  pokedexOwned,
+  tidyDexIds,
+  type PokedexMilestone,
+} from '../hub/pokedex';
 import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
 import { readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
 
@@ -207,6 +214,21 @@ export interface RaidProgress {
    * newcomer the raid (playtest 43).
    */
   readonly keysLearned?: readonly string[];
+  /**
+   * Every kind of Pokémon this save has owned, by dex number (`../hub/pokedex`).
+   * It is written, never asked to be kept up: every save adds whatever kinds
+   * the vault holds (`serializeGame`), so a kind is registered by being banked,
+   * however it arrived, and stays registered after the Pokémon is paid to Brock
+   * or lost. Absent on every save written before the Pokédex, which reads as
+   * the kinds in its vault - registered by the first write after it loads.
+   */
+  readonly pokedexOwned?: readonly number[];
+  /**
+   * The Pokédex milestones Professor Oak has rewarded, by the number of kinds
+   * each is for. Recorded the moment he hands one over, once per save. Absent
+   * on older saves, which have been given nothing yet.
+   */
+  readonly pokedexRewards?: readonly number[];
   /**
    * How many standing contracts have been banked. It is the only thing the save
    * keeps about the standing board: which contracts are on offer, how much
@@ -795,6 +817,31 @@ export class SaveManager {
     return this.save({ ...game, raidProgress }) ? fresh : [];
   }
 
+  /**
+   * Hands over the lowest Pokédex milestone this save has reached and not been
+   * rewarded for, if there is one (`../hub/pokedex`): its reward goes into the
+   * vault and the milestone is recorded in the same write, so it is paid once
+   * per save. Returns the milestone and how many kinds were counted, or nothing
+   * when no reward is due or nothing could be saved.
+   */
+  public claimPokedexReward(): { readonly milestone: PokedexMilestone; readonly owned: number } | undefined {
+    const game = this.load();
+    if (!game) {
+      return undefined;
+    }
+    const owned = pokedexOwned(game.raidProgress.pokedexOwned, game.stash).length;
+    const claimed = game.raidProgress.pokedexRewards ?? [];
+    const milestone = dueMilestone(owned, claimed);
+    if (!milestone) {
+      return undefined;
+    }
+    for (const { itemId, quantity } of milestone.reward) {
+      game.stash.addItem(itemId, quantity);
+    }
+    const raidProgress: RaidProgress = { ...game.raidProgress, pokedexRewards: [...claimed, milestone.kinds] };
+    return this.save({ ...game, raidProgress }) ? { milestone, owned } : undefined;
+  }
+
   /** The first contract's banking path, named for the one raid that uses it. */
   public bankFirstContractRun(
     result: RunResult,
@@ -1340,7 +1387,7 @@ export function serializeGame(state: SaveGameState): SaveData {
     items: [...(state.items ?? [])],
     bag: state.bag?.toJSON() ?? {},
     stash: serializeStash(state.stash ?? new Stash()),
-    raidProgress: state.raidProgress ?? DEFAULT_RAID_PROGRESS,
+    raidProgress: withVaultRegistered(state.raidProgress ?? DEFAULT_RAID_PROGRESS, state.stash),
     starterSpeciesId: state.starterSpeciesId ?? inferStarterSpeciesId(state.stash),
     pendingRecoveryMs: clampPendingRecoveryMs(state.pendingRecoveryMs),
     wardTreatmentsUsed: clampWardTreatmentsUsed(state.wardTreatmentsUsed),
@@ -1348,6 +1395,16 @@ export function serializeGame(state: SaveGameState): SaveData {
     traderBerthPaid: state.traderBerthPaid === true,
     ...(state.raidInFlight ? { raidInFlight: state.raidInFlight } : {}),
   };
+}
+
+/**
+ * The progress with every kind the vault holds registered in the Pokédex
+ * (`../hub/pokedex`). Every write goes through here, which is what makes being
+ * banked the whole of registering a kind: no banking path has to remember to.
+ */
+function withVaultRegistered(progress: RaidProgress, stash: Stash | undefined): RaidProgress {
+  const owned = pokedexOwned(progress.pokedexOwned, stash);
+  return owned.length === 0 ? progress : { ...progress, pokedexOwned: owned };
 }
 
 export function deserializeGame(value: unknown): RestoredGame | null {
@@ -1523,6 +1580,12 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       : {}),
     ...(Array.isArray(value.keysLearned)
       ? { keysLearned: uniqueStrings(value.keysLearned).filter(isLearnableKey) }
+      : {}),
+    ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
+    ...(Array.isArray(value.pokedexRewards)
+      ? {
+          pokedexRewards: tidyDexIds(value.pokedexRewards).filter((kinds) => pokedexMilestone(kinds) !== undefined),
+        }
       : {}),
     // A save written before the standing board has banked none of it.
     standingContractsBanked:

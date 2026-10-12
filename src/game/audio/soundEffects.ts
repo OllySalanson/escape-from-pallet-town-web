@@ -541,6 +541,13 @@ export const SOUND_EFFECTS = {
     moment: 'The result screen confirms a banked contract',
     tones: [sq(659, 0.08, 0.06), sq(784, 0.08, 0.06, 0.09), sq(1047, 0.08, 0.06, 0.18), sq(1319, 0.24, 0.065, 0.27), tri(330, 0.3, 0.05, 0.27)],
   },
+  pokedexReward: {
+    channel: 'fanfare',
+    moment: 'Professor Oak hands over a Pokédex milestone reward',
+    // FireRed's obtained-an-item jingle is a quick climb to a held top note;
+    // this is that shape, a third above the contract's.
+    tones: [sq(784, 0.07, 0.06), sq(988, 0.07, 0.06, 0.08), sq(1175, 0.07, 0.06, 0.16), sq(1568, 0.3, 0.065, 0.24), tri(392, 0.32, 0.05, 0.24)],
+  },
   clockExpired: {
     channel: 'fanfare',
     moment: 'The raid clock hits zero',
