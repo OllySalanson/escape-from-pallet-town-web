@@ -575,13 +575,27 @@ export function placePicture(
  * against so a screen does not move when the picture in it changes.
  */
 export function largestMapSize(): { readonly width: number; readonly height: number } {
-  return Object.values(WORLD_MAPS).reduce(
-    (biggest, map) => ({
-      width: Math.max(biggest.width, map.width),
-      height: Math.max(biggest.height, map.height),
+  return Object.values(WORLD_MAPS).map(pictureSize).reduce(
+    (biggest, size) => ({
+      width: Math.max(biggest.width, size.width),
+      height: Math.max(biggest.height, size.height),
     }),
     { width: 0, height: 0 },
   );
+}
+
+/**
+ * How big a map's picture is, in tiles: its outdoors, which is all a picture
+ * of a map made of several places shows (`mapPicture`) - the rooms laid out
+ * beside it in the grid it is played on are not on any map anybody draws.
+ */
+export function pictureSize(
+  map: Pick<WorldMapDefinition, 'width' | 'height' | 'areas'>,
+): { readonly width: number; readonly height: number } {
+  const outdoors = map.areas?.[0]?.rect;
+  return outdoors
+    ? { width: outdoors.width, height: outdoors.height }
+    : { width: map.width, height: map.height };
 }
 
 /** What a picture of a map is drawn from: the map in this save's gate state, and the save. */

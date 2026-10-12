@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD_MAPS } from '../worldMap';
-import { largestMapSize } from '../hub/dropIn';
+import { largestMapSize, pictureSize } from '../hub/dropIn';
 import { mapPictureFrame, planOwnFrame, planSharedRow, shareTracks, PICTURE_RING } from './mapPicture';
 
 const FLOODPLAIN = { width: 128, height: 128 };
@@ -29,7 +29,7 @@ describe('one place in a frame sized for the biggest', () => {
     // of height, which is the one place a map is still condensed.
     const largest = largestMapSize();
     for (const [id, map] of Object.entries(WORLD_MAPS)) {
-      expect([id, planOwnFrame(map, largest, { width: 180, height: 180 }).fit.step]).toEqual([id, 1]);
+      expect([id, planOwnFrame(pictureSize(map), largest, { width: 180, height: 180 }).fit.step]).toEqual([id, 1]);
     }
     expect(planOwnFrame(FLOODPLAIN, largest, { width: 131, height: 126 }).fit).toEqual({ step: 2, zoom: 1 });
   });

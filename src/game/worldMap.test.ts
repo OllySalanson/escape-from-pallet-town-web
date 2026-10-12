@@ -42,7 +42,9 @@ describe('worldMap', () => {
     // That is on purpose - it is played a district at a time, and the town
     // that used to be the whole of it is now its top-left quarter, tile for
     // tile.
-    expect(getWorldMap('floodplain-relay').width).toBe(128);
+    // Its outdoors, that is: the rooms of the buildings you can walk into are
+    // laid out beside it in the grid it is played on (`buildingInsides.ts`).
+    expect(getWorldMap('floodplain-relay').areas?.[0].rect).toMatchObject({ width: 128, height: 128 });
     expect(getWorldMap('floodplain-relay').height).toBe(128);
     // Viridian City is a FireRed town and its three roads: FireRed's own
     // Viridian is 48x40, and the roads round it are what the rest is.
@@ -76,7 +78,11 @@ describe('worldMap', () => {
   it('draws every map from the town catalogue or from Kanto', () => {
     for (const map of Object.values(WORLD_MAPS)) {
       const expected = map.id === 'viridian-city' ? KANTO_TILESET : FLOOD_TOWN_TILESET;
-      expect({ map: map.id, fromItsCatalogue: map.tileset === expected })
+      // A map with rooms beside it draws them from their own sheets too, so its
+      // catalogue is the outdoors' with those sheets added (`mapAreas.ts`).
+      const fromItsCatalogue =
+        map.tileset.props === expected.props && map.tileset.materials === expected.materials;
+      expect({ map: map.id, fromItsCatalogue })
         .toMatchObject({ fromItsCatalogue: true });
     }
     // Every tile a map draws has to land inside one of its catalogue's sheets:
@@ -101,11 +107,12 @@ describe('worldMap', () => {
 
   /**
    * A raid map is an arena entered at its own insertion, so no map may promise
-   * a route into another one. Nothing authored uses a warp.
+   * a route into another one. The only warps are the doors of the buildings you
+   * can walk into, which go through to a room of the same map.
    */
   it('gives no map a warp into another', () => {
     for (const map of Object.values(WORLD_MAPS)) {
-      expect(map.warps).toEqual([]);
+      expect(map.warps.filter((warp) => warp.destinationMapId !== map.id || warp.activation !== 'push')).toEqual([]);
     }
   });
 

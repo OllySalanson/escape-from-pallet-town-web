@@ -64,7 +64,8 @@ const walks = new Map<string, readonly Int32Array[]>();
 const walkFromFrontDoor = (mapId: WorldMapId, defeatedBosses: readonly string[]): readonly Int32Array[] => {
   const key = `${mapId}|${defeatedBosses.join('+')}`;
   if (!walks.has(key)) {
-    walks.set(key, stepDistances(getWorldMap(mapId, defeatedBosses).collision, frontDoorFor(mapId)!.position));
+    const map = getWorldMap(mapId, defeatedBosses);
+    walks.set(key, stepDistances(map.collision, frontDoorFor(mapId)!.position, undefined, map.links));
   }
   return walks.get(key)!;
 };
@@ -195,6 +196,31 @@ describe('every standing contract', () => {
         expect(reaches(today, marker.position), contract.id).toBe(contract.sealedBehind === undefined);
       }
     }
+  });
+
+  it('names a stop inside a building by the room it is in, never as a point of the compass', () => {
+    // A room is laid out beside the outdoors in the grid it is played on, so
+    // read as a compass point every room would be in "the east of the map".
+    let indoors = 0;
+    for (const { contract } of everyBoard()) {
+      const map = getWorldMap(contract.mapId);
+      for (const marker of contract.markers) {
+        const room = (map.areas ?? []).slice(1).find(({ rect }) =>
+          marker.position.x >= rect.x &&
+          marker.position.y >= rect.y &&
+          marker.position.x < rect.x + rect.width &&
+          marker.position.y < rect.y + rect.height,
+        );
+        if (!room) {
+          continue;
+        }
+        indoors += 1;
+        expect(marker.label, contract.id).toContain(room.name.toUpperCase());
+        expect(contract.deploymentBriefing, contract.id).toContain(room.name);
+      }
+    }
+    // The boards drawn here put at least one stop indoors, so this is asked.
+    expect(indoors).toBeGreaterThan(0);
   });
 
   it('names an exit that exists on its map and can be walked to once its stops can', () => {

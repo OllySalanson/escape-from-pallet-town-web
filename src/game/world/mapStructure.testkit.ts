@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GridPosition } from '../movement/gridMovement';
+import { linkKey, type GridBounds, type GridPosition } from '../movement/gridMovement';
 import {
   getWorldMap,
   type WorldMapDefinition,
@@ -161,6 +161,14 @@ function mapStatesOf(part: MapStructurePart): readonly MapState[] {
     }));
 }
 
+/**
+ * A map's grid as every search reads it: with the ways through between its
+ * places, so a room behind a door is ground like any other (`buildingInsides.ts`).
+ */
+function boundsOf(map: WorldMapDefinition): GridBounds {
+  return { width: map.width, height: map.height, ...(map.links ? { links: map.links } : {}) };
+}
+
 const named = <T extends { readonly name: string }>(states: readonly T[]): [string, T][] =>
   states.map((state) => [state.name, state]);
 
@@ -267,6 +275,7 @@ function stepsWithin(
   from: GridPosition,
   to: GridPosition,
   limit: number,
+  bounds: GridBounds,
 ): number {
   const seen = new Set([`${from.x},${from.y}`]);
   let ring = [from];
@@ -276,12 +285,17 @@ function stepsWithin(
     }
     const next: GridPosition[] = [];
     for (const { x, y } of ring) {
-      for (const tile of [
+      // North, south, west, east: the order a link is numbered in, so a
+      // doorway in that direction is gone through to wherever it leads.
+      for (const [direction, step] of [
         { x, y: y - 1 },
         { x, y: y + 1 },
         { x: x - 1, y },
         { x: x + 1, y },
-      ]) {
+      ].entries()) {
+        const through = bounds.links?.get(linkKey(y * bounds.width + x, direction));
+        const tile =
+          through === undefined ? step : { x: through % bounds.width, y: Math.floor(through / bounds.width) };
         const key = `${tile.x},${tile.y}`;
         if (!seen.has(key) && !isBlocked(tile)) {
           seen.add(key);
@@ -367,7 +381,7 @@ export function describeMapStructure(partName: string): void {
           (tile) => !blocked.has(`${tile.x},${tile.y}`),
         );
         expect(start).toBeDefined();
-        expect(unreachableTiles(map.collision, start!, blocked)).toEqual([]);
+        expect(unreachableTiles(map.collision, start!, blocked, map.links)).toEqual([]);
       },
     );
 
@@ -384,7 +398,7 @@ export function describeMapStructure(partName: string): void {
         const { map, mapId } = state;
         const blocked = entityTiles(state);
         for (const insertion of insertionsOn(mapId)) {
-          const distances = stepDistances(map.collision, insertion.position, blocked);
+          const distances = stepDistances(map.collision, insertion.position, blocked, map.links);
           const within = (position: GridPosition): boolean =>
             (distances[position.y]?.[position.x] ?? -1) >= 0;
           const usable = EXTRACTION_POINTS.filter((point) => {
@@ -412,7 +426,7 @@ export function describeMapStructure(partName: string): void {
       expect(insertions.length).toBeGreaterThan(0);
       const blocked = entityTiles(state);
       for (const insertion of insertions) {
-        const distances = stepDistances(map.collision, insertion.position, blocked);
+        const distances = stepDistances(map.collision, insertion.position, blocked, map.links);
         for (const landmark of landmarksOn(map)) {
           const steps = distances[landmark.position.y][landmark.position.x];
           expect(`${insertion.id} -> ${landmark.what}: ${steps < 0 ? 'unreachable' : `${steps} steps`}`)
@@ -470,8 +484,8 @@ export function describeMapStructure(partName: string): void {
         ),
       );
       for (const insertion of insertionsOn(mapId)) {
-        const open = stepDistances(map.collision, insertion.position);
-        const shut = stepDistances(map.collision, insertion.position, exits);
+        const open = stepDistances(map.collision, insertion.position, undefined, map.links);
+        const shut = stepDistances(map.collision, insertion.position, exits, map.links);
         const cutOff = walkableTiles(map.collision).filter(
           (tile) =>
             !exits.has(`${tile.x},${tile.y}`) && open[tile.y][tile.x] >= 0 && shut[tile.y][tile.x] < 0,
@@ -502,7 +516,7 @@ export function describeMapStructure(partName: string): void {
         ),
       );
       const places = placesOn(state);
-      expect(walksLengthenedBy(map.collision, exits, places)).toEqual([]);
+      expect(walksLengthenedBy(map.collision, exits, places, undefined, map.links)).toEqual([]);
 
       const isSightBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
       for (const trainer of trainersIn(state)) {
@@ -512,7 +526,7 @@ export function describeMapStructure(partName: string): void {
         }
         const detour = new Set([trainer.position, ...watched].map((tile) => `${tile.x},${tile.y}`));
         expect(
-          walksLengthenedBy(map.collision, exits, places, detour).map(
+          walksLengthenedBy(map.collision, exits, places, detour, map.links).map(
             (walk) => `round ${trainer.trainer.id}: ${walk}`,
           ),
         ).toEqual([]);
@@ -575,7 +589,7 @@ export function describeMapStructure(partName: string): void {
       expect(taken.map((key) => `${key} is ${sacred.get(key)}`)).toEqual([]);
 
       expect(
-        walksLengthenedBy(map.collision, exits, placesOn(state), roamed).map(
+        walksLengthenedBy(map.collision, exits, placesOn(state), roamed, map.links).map(
           (walk) => `with everyone off their mark: ${walk}`,
         ),
       ).toEqual([]);
@@ -609,7 +623,7 @@ export function describeMapStructure(partName: string): void {
      */
     it.each(named(MAP_STATES))('%s never lets a figure stand where it would wall the player in', (_name, state) => {
       const { map } = state;
-      const bounds = { width: map.width, height: map.height };
+      const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
       const beside = (tile: GridPosition): GridPosition[] =>
         [
@@ -662,7 +676,7 @@ export function describeMapStructure(partName: string): void {
      */
     it.each(named(MAP_STATES))('%s never lets a flee leave the hunter across the last way out', (_name, state) => {
       const { map, mapId } = state;
-      const bounds = { width: map.width, height: map.height };
+      const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
       const exits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
         (point) => point.position,
@@ -706,7 +720,7 @@ export function describeMapStructure(partName: string): void {
     });
 
     it.each(named(MAP_STATES))('%s always gives the hunter somewhere fair to arrive', (_name, { map }) => {
-      const bounds = { width: map.width, height: map.height };
+      const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
       for (const tile of walkableTiles(map.collision)) {
         const spawn = findHunterSpawnTile(tile, bounds, isBlocked);
@@ -723,7 +737,7 @@ export function describeMapStructure(partName: string): void {
      * out of wherever the player is standing.
      */
     it.each(named(MAP_STATES))('%s lets a flee put real ground between hunter and player', (_name, { map, name: mapId }) => {
-      const bounds = { width: map.width, height: map.height };
+      const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
       const tiles = walkableTiles(map.collision);
       let worst = HUNTER_BREAKAWAY_DISTANCE;
@@ -742,7 +756,7 @@ export function describeMapStructure(partName: string): void {
         // what keeps this from being a second whole-map search per tile: a
         // separation past that is a flee that overshot, and fails as surely as
         // one that fell short.
-        const separation = stepsWithin(isBlocked, player, breakaway, HUNTER_BREAKAWAY_DISTANCE);
+        const separation = stepsWithin(isBlocked, player, breakaway, HUNTER_BREAKAWAY_DISTANCE, bounds);
         expect(`${mapId} ${player.x},${player.y}: separation ${separation}`)
           .toBe(`${mapId} ${player.x},${player.y}: separation ${Math.max(separation, HUNTER_MINIMUM_SPAWN_DISTANCE)}`);
         worst = Math.min(worst, separation);
@@ -829,7 +843,7 @@ export function describeMapStructure(partName: string): void {
      * reaches contact rather than stopping at the nearest tile it can stand on.
      */
     it.each(named(MAP_STATES))('%s lets the hunter path to the player from anywhere it can arrive', (_name, { map, name: mapId }) => {
-      const bounds = { width: map.width, height: map.height };
+      const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
       const tiles = walkableTiles(map.collision);
       // Every tile as the player, against the spawn the hunter would really get.

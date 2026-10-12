@@ -1,5 +1,6 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import { insideLayout } from './buildingInsides';
 import { playerMap } from './playerMaps';
 import * as wildlife from '../pokemon/encounters';
 import type { WildEncounterTable } from '../pokemon/encounters';
@@ -1076,8 +1077,22 @@ const holds = (area: DistrictArea, tile: GridPosition): boolean =>
 export function districtsForMap(mapId: WorldMapId): readonly MapDistrict[] {
   return [
     ...MAP_DISTRICTS.filter((district) => district.mapId === mapId),
+    ...insideDistricts(mapId),
     ...(playerMap(mapId)?.districts ?? []),
   ];
+}
+
+/**
+ * Each room of a shipped map is a place of its own, named on the plate as you
+ * walk in (`buildingInsides.ts`), the way each area of a player's map is.
+ */
+function insideDistricts(mapId: WorldMapId): readonly MapDistrict[] {
+  return (insideLayout(mapId) ?? []).slice(1).map((placed) => ({
+    id: `${mapId}/inside-${String(placed.id)}`,
+    mapId,
+    name: placed.name.toUpperCase(),
+    areas: [placed.rect],
+  }));
 }
 
 /** The district a tile is in, or undefined on a map that names none. */

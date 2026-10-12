@@ -47,7 +47,9 @@ import { MATERIAL_CHARS, type Material } from './tileset/materials';
  * the other. Nothing that walks the grid needs to know an area is there.
  *
  * A file with no areas is laid out as exactly the grid it always was - the
- * same size, the same layers - which `mapFile.test.ts` holds.
+ * same size, the same layers - which `mapFile.test.ts` holds. A shipped map
+ * whose buildings have insides is laid out the same way (`composeAreas`,
+ * `buildingInsides.ts`).
  */
 
 /** One place of a composed map: the outdoors, or one of the file's areas. */
@@ -59,6 +61,33 @@ export interface PlacedArea {
   readonly kind: 'outdoors' | MapFileAreaKind;
   /** Where it lies in the composed grid. */
   readonly rect: Rect;
+  /**
+   * Whether whoever is in it is out of sight of a hunter outside it. A place
+   * hides you only when it has two doors out of it onto the outdoors, so no
+   * hunter waiting on the doorstep it last saw you on can shut you in
+   * (`buildingInsides.ts`); anywhere else the hunter follows you in.
+   */
+  readonly hides?: boolean;
+}
+
+/**
+ * Whether a hunter cannot see the player: the player is in a place that hides
+ * them and the hunter is not in it with them - a room you are both standing in
+ * is not a hiding place.
+ */
+export function hiddenInArea(
+  areas: readonly PlacedArea[] | undefined,
+  player: GridPosition,
+  hunter: GridPosition | undefined,
+): boolean {
+  if (!areas) {
+    return false;
+  }
+  const place = placedAreaAt(areas, player);
+  if (!place?.hides) {
+    return false;
+  }
+  return !hunter || placedAreaAt(areas, hunter) !== place;
 }
 
 /** One way through, as the scene plays it: where you stand, the way you press, and where you come out. */
@@ -309,27 +338,44 @@ export function layOutMapFile(file: MapFile): {
   readonly height: number;
   readonly areas: readonly PlacedArea[];
 } {
+  return layOutAreas({ name: file.name, width: file.width, height: file.height }, file.areas ?? []);
+}
+
+/**
+ * Where each area lies beside an outdoors of a given size: columns of areas
+ * east of it, each column as tall as the outdoors (and never shorter than a
+ * big room), so the grid stays close to square. `margin` is dark left round
+ * the far side of the areas, so a room's floor never lies on the grid's own
+ * edge - which a shipped map is held to (`mapStructure.testkit.ts`).
+ */
+export function layOutAreas(
+  outdoors: { readonly name: string; readonly width: number; readonly height: number },
+  areas: readonly Pick<MapFileArea, 'id' | 'name' | 'kind' | 'width' | 'height'>[],
+  margin = 0,
+): {
+  readonly width: number;
+  readonly height: number;
+  readonly areas: readonly PlacedArea[];
+} {
   const placed: PlacedArea[] = [
     {
       id: undefined,
-      name: file.name,
+      name: outdoors.name,
       kind: 'outdoors',
-      rect: { x: 0, y: 0, width: file.width, height: file.height },
+      rect: { x: 0, y: 0, width: outdoors.width, height: outdoors.height },
     },
   ];
-  // Columns of areas east of the outdoors, each column as tall as the outdoors
-  // (and never shorter than a big room), so the grid stays close to square.
-  const columnLimit = Math.max(file.height, 32);
-  let columnX = file.width + GAP;
+  const columnLimit = Math.max(outdoors.height, 32);
+  let columnX = outdoors.width + GAP;
   let columnWidth = 0;
-  let y = 0;
-  let width = file.width;
-  let height = file.height;
-  for (const area of file.areas ?? []) {
-    if (y > 0 && y + area.height > columnLimit) {
+  let y = margin;
+  let width = outdoors.width;
+  let height = outdoors.height;
+  for (const area of areas) {
+    if (y > margin && y + area.height + margin > columnLimit) {
       columnX += columnWidth + GAP;
       columnWidth = 0;
-      y = 0;
+      y = margin;
     }
     placed.push({
       id: area.id,
@@ -338,8 +384,8 @@ export function layOutMapFile(file: MapFile): {
       rect: { x: columnX, y, width: area.width, height: area.height },
     });
     columnWidth = Math.max(columnWidth, area.width);
-    width = Math.max(width, columnX + area.width);
-    height = Math.max(height, y + area.height);
+    width = Math.max(width, columnX + area.width + margin);
+    height = Math.max(height, y + area.height + margin);
     y += area.height + GAP;
   }
   return { width, height, areas: placed };
@@ -389,7 +435,7 @@ function paste(
   }
 }
 
-/** Every sheet the catalogues draw from, each once. */
+/** Every sheet the catalogues draw from, each once, under the outdoors' own catalogue. */
 function joinedTileset(catalogues: readonly TilesetCatalogue[]): TilesetCatalogue {
   const sources = new Map<string, TileSource>();
   for (const catalogue of catalogues) {
@@ -397,7 +443,7 @@ function joinedTileset(catalogues: readonly TilesetCatalogue[]): TilesetCatalogu
       sources.set(source.textureKey, source);
     }
   }
-  return { ...PLAYER_MAP_TILESET, sources: [...sources.values()] };
+  return { ...catalogues[0], sources: [...sources.values()] };
 }
 
 /**
@@ -425,8 +471,46 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
       tileset: PLAYER_MAP_TILESET,
     };
   }
+  return composeAreas({
+    name: file.name,
+    sketch: outdoors,
+    layers: outdoorLayers,
+    tileset: PLAYER_MAP_TILESET,
+    areas,
+    links: file.links ?? [],
+    landingsOf: (end) => landingsOf(file, end),
+  });
+}
 
-  const layout = layOutMapFile(file);
+/** An outdoors already drawn, and the places beside it and the ways between. */
+export interface AreasToCompose {
+  /** What the outdoors is called on the plate that rises as you walk back out. */
+  readonly name: string;
+  readonly sketch: MapSketch<string>;
+  /** The outdoors' own layers, in whatever gate state the map is being built for. */
+  readonly layers: MapLayers;
+  readonly tileset: TilesetCatalogue;
+  readonly areas: readonly MapFileArea[];
+  readonly links: readonly MapFileLink[];
+  /** Every tile an end is gone through from (`landingsOf`). */
+  readonly landingsOf: (end: MapFileLinkEnd) => readonly GridPosition[];
+  /** Dark left round the far side of the areas (`layOutAreas`). */
+  readonly margin?: number;
+}
+
+/**
+ * An outdoors and the areas beside it as one grid: a player's map, and a
+ * shipped map whose buildings have insides (`buildingInsides.ts`) - the same
+ * grid, the same doors and the same rule for going through them, because a
+ * second way in would be a second set of rules for the hunter to follow.
+ */
+export function composeAreas(input: AreasToCompose): ComposedMap {
+  const { areas, links } = input;
+  const layout = layOutAreas(
+    { name: input.name, width: input.sketch.width, height: input.sketch.height },
+    areas,
+    input.margin ?? 0,
+  );
   const { width, height } = layout;
   const layers: MapLayers = {
     ground: blank(width, height),
@@ -442,10 +526,10 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
     crowned: Array.from({ length: height }, () => Array<boolean>(width).fill(false)),
   };
   const terrain = Array.from({ length: height }, () => Array<Material>(width).fill(VOID));
-  paste(layers, terrain, outdoorLayers, outdoors, layout.areas[0].rect);
-  const catalogues: TilesetCatalogue[] = [PLAYER_MAP_TILESET];
+  paste(layers, terrain, input.layers, input.sketch, layout.areas[0].rect);
+  const catalogues: TilesetCatalogue[] = [input.tileset];
   areas.forEach((area, index) => {
-    const sketch = sketchArea(area, file.links);
+    const sketch = sketchArea(area, links);
     const catalogue = areaTileset(area);
     catalogues.push(catalogue);
     paste(layers, terrain, buildMapLayers(sketch, catalogue), sketch, layout.areas[index + 1].rect);
@@ -461,7 +545,7 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
   };
   const toGrid = (end: MapFileLinkEnd): GridPosition => toGridIn(end.area, end);
   const doorways: ComposedDoorway[] = [];
-  for (const link of file.links ?? []) {
+  for (const link of links) {
     const [a, b] = link.ends;
     for (const [from, to] of [
       [a, b],
@@ -470,8 +554,8 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
       const delta = DIRECTION_DELTAS[from.toward];
       const own = toGrid(from);
       const art = artOf(from, own, { x: own.x + delta.x, y: own.y + delta.y });
-      const near = landingsOf(file, from).map((tile) => toGridIn(from.area, tile));
-      const far = landingsOf(file, to).map((tile) => toGridIn(to.area, tile));
+      const near = input.landingsOf(from).map((tile) => toGridIn(from.area, tile));
+      const far = input.landingsOf(to).map((tile) => toGridIn(to.area, tile));
       near.forEach((landing, index) => {
         const doorway = { x: landing.x + delta.x, y: landing.y + delta.y };
         // What a doorway is pressed into is solid, whatever was drawn there: an
@@ -498,12 +582,23 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
       });
     }
   }
+  // A place with two doors onto the outdoors cannot be shut by one figure
+  // on one doorstep, so it is the one kind of place that hides you.
+  const doorsOut = (placed: PlacedArea): number =>
+    doorways.filter(
+      (doorway) =>
+        doorway.primary &&
+        placedAreaAt([placed], doorway.from) !== undefined &&
+        placedAreaAt([layout.areas[0]], doorway.to) !== undefined,
+    ).length;
   return {
     width,
     height,
     layers,
     terrain,
-    areas: layout.areas,
+    areas: layout.areas.map((placed) =>
+      placed.id !== undefined && doorsOut(placed) >= 2 ? { ...placed, hides: true } : placed,
+    ),
     doorways,
     tileset: joinedTileset(catalogues),
   };

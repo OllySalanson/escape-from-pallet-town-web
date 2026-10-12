@@ -141,7 +141,7 @@ import {
 } from '../run/raidSettlement';
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
-import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
+import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { placeCaptions, placeDialog, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
 import { arrivalPlace } from '../base/partner';
@@ -164,7 +164,7 @@ import {
   AREA_DARK_DEPTH,
   atRow,
 } from '../world/depths';
-import { placedAreaAt, type PlacedArea } from '../world/mapAreas';
+import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -1602,6 +1602,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** Whether the hunter can see the player from where it is standing. */
   private playerIsHidden(): boolean {
+    // Inside a building with two doors out of it, the way the Delve's lid
+    // hides you (`buildingInsides.ts`).
+    if (
+      hiddenInArea(
+        this.currentMap.areas,
+        this.currentTile,
+        this.isHunterOnCurrentMap() ? this.hunterState.position : undefined,
+      )
+    ) {
+      return true;
+    }
     if (this.currentInterior === null) {
       return false;
     }
@@ -2257,6 +2268,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       left: '←',
       right: '→',
     };
+    const doorways: { readonly spec: WorldLabelSpec; readonly key: string }[] = [];
     for (const warp of this.currentMap.warps) {
       if (
         warp.destinationMapId !== this.currentMap.id ||
@@ -2279,23 +2291,48 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const top = Math.min(warp.source.y, doorway.y, art.y);
       const right = Math.max(warp.source.x, doorway.x, art.x + art.width - 1);
       const bottom = Math.max(warp.source.y, doorway.y, art.y + art.height - 1);
-      this.worldLabels.push(
-        new WorldLabel(this, {
+      // Named for the place it comes out in, as the plate that rises there
+      // will name it: the room, or the district outside its door.
+      const text = `${districtAt(this.currentMap.id, warp.destination)?.name ?? leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`;
+      doorways.push({
+        key: `doors:${placedAreaAt(areas, warp.source)?.id ?? ''}:${text}`,
+        spec: {
           subject: {
             x: left * TILE_SIZE,
             y: top * TILE_SIZE,
             width: (right - left + 1) * TILE_SIZE,
             height: (bottom - top + 1) * TILE_SIZE,
           },
-          text: `${leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`,
+          text,
           tone: LABEL_TONES.route,
           depth: atRow(CAPTION_BAND, warp.source.y),
           // On the near side of the doorway, so it never covers the door or
           // the stairs it names: under the tile in front of a door, over a mat.
           placement: warp.toward === 'down' ? 'above' : 'below',
           speech: { voice: 'name', tiles: [warp.source] },
-        }),
-      );
+        },
+      });
+    }
+    // Two doors into the same room side by side are one sentence, said once
+    // when both are on screen, as one keeper's two gates are: a building you
+    // can walk into has two doors (`buildingInsides.ts`), and captioned one
+    // each the street read THE PRESS HOUSE twice.
+    for (const { spec, key } of doorways) {
+      const together = doorways.filter((other) => other.key === key);
+      if (together.length < 2) {
+        this.worldLabels.push(new WorldLabel(this, spec));
+        continue;
+      }
+      this.worldLabels.push(new WorldLabel(this, { ...spec, grouping: { group: key } }));
+      if (together[0].spec === spec) {
+        this.worldLabels.push(
+          new WorldLabel(this, {
+            ...spec,
+            speech: { voice: 'name', tiles: together.flatMap((door) => door.spec.speech.tiles) },
+            grouping: { speaksFor: key },
+          }),
+        );
+      }
     }
   }
 

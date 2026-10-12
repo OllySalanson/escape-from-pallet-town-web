@@ -280,8 +280,10 @@ export function unreachableTiles(
   collision: CollisionGrid,
   from: GridPosition,
   extraBlocked?: ReadonlySet<string>,
+  /** The grid's doorways (`GridBounds.links`). */
+  links?: GridLinks,
 ): GridPosition[] {
-  const distances = stepDistances(collision, from, extraBlocked);
+  const distances = stepDistances(collision, from, extraBlocked, links);
   return walkableTiles(collision).filter(
     (tile) => !extraBlocked?.has(`${tile.x},${tile.y}`) && distances[tile.y][tile.x] < 0,
   );
@@ -308,6 +310,8 @@ export function walksLengthenedBy(
   shut: ReadonlySet<string>,
   places: readonly NamedGround[],
   alsoBlocked: ReadonlySet<string> = new Set(),
+  /** The grid's doorways (`GridBounds.links`). */
+  links?: GridLinks,
 ): string[] {
   const without = new Set([...shut, ...alsoBlocked]);
   const nearest = (
@@ -326,8 +330,8 @@ export function walksLengthenedBy(
   }));
   const lengthened: string[] = [];
   grounds.forEach((from, index) => {
-    const open = from.tiles.map((tile) => stepDistances(collision, tile, alsoBlocked));
-    const closed = from.tiles.map((tile) => stepDistances(collision, tile, without));
+    const open = from.tiles.map((tile) => stepDistances(collision, tile, alsoBlocked, links));
+    const closed = from.tiles.map((tile) => stepDistances(collision, tile, without, links));
     for (const to of grounds.slice(index + 1)) {
       const steps = nearest(open, to.tiles);
       const stepsRound = nearest(closed, to.tiles);
