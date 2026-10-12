@@ -256,10 +256,7 @@ describe('the checks and a painted ledge', () => {
       dropIns: [{ ...file.dropIns[0], y: 15 }],
       exits: [{ ...file.exits[0], y: 3 }],
     };
-    expect(check(file, 'way-out')?.problems).toEqual([
-      'Drop-in Drop-in 1 cannot walk to any exit.',
-      'The ledge at 13,10 drops where no exit can be walked to.',
-    ]);
+    expect(check(file, 'way-out')?.problems).toEqual(['Drop-in Drop-in 1 cannot walk to any exit.']);
   });
 
   it('refuse a ledge that drops where no exit can be walked to', () => {
@@ -267,6 +264,14 @@ describe('the checks and a painted ledge', () => {
     expect(check(file, 'way-out')?.problems).toEqual([
       'The ledge at 13,10 drops where no exit can be walked to.',
     ]);
+  });
+
+  it('ask nothing of a ledge nobody can reach the top of', () => {
+    let file = ledgeWall({ x: 26, y: 3 });
+    // A second wood under the first drop-in's ground, so the ledge's brow is
+    // walled off from it: nobody can ever hop it.
+    file = paint(file, rectangle({ x: 1, y: 9 }, { x: 28, y: 9 }), 'T');
+    expect(check(file, 'way-out')?.problems).toEqual([]);
   });
 
   it('refuse a ledge that drops a player in front of a trainer', () => {

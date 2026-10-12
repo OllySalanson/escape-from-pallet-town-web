@@ -493,7 +493,12 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // A hop is one way, so wherever it puts the player down has to have a way
   // out of its own: a ledge into a pocket with no exit is a raid that can only
   // end on the clock. Every ledge in FireRed drops onto a road that goes on.
-  const hopLandings = new Map(hops.map((hop) => [at(hop.to), hop]));
+  // Only a hop somebody can stand at the brow of is asked about: a ledge on
+  // ground no drop-in reaches is never hopped, and a door is opened to reach it.
+  const hopped = hops.filter((hop) =>
+    fromDropIn.some(({ opened }) => (opened[hop.from.y]?.[hop.from.x] ?? -1) >= 0),
+  );
+  const hopLandings = new Map(hopped.map((hop) => [at(hop.to), hop]));
   const strandedHops = [...hopLandings.values()]
     .filter((hop) => !shut.has(at(hop.to)))
     .filter((hop) => soonestOut(stepDistances(collision, hop.to, shut, walks)) === Infinity)
