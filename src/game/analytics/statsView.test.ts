@@ -10,6 +10,7 @@ function days(players: readonly number[]) {
     newPlayers: Math.min(1, count),
     sessions: count * 2,
     seconds: count * 600,
+    newNames: Math.floor(count / 2),
   }));
 }
 
@@ -20,6 +21,9 @@ const STATS: PlayStats = {
   playersAllTime: 41,
   returningWeek: 4,
   returningAllTime: 12,
+  namedToday: 2,
+  namedWeek: 5,
+  namedAllTime: 10,
   days: days([0, 1, 4, 2, 0, 0, 8]),
   month: {
     'raid-start': 20,
@@ -63,6 +67,16 @@ describe('the STATS screen', () => {
     }
   });
 
+  it('puts named players beside the visitors they came from', () => {
+    const screen = statsScreen({ step: 'loaded', stats: STATS });
+    expect(screen).toContain('Named players');
+    expect(screen).toContain('10 · 5 this week · 2 today');
+    expect(screen).toContain('10 of 41 (24%)');
+    expect(screen).toContain('New names each day');
+    expect(screen).toMatch(/stats-bar is-today" style="--bar:40" title="7 Oct: 4 new names"/);
+    expect(statsScreen({ step: 'loaded', stats: { ...STATS, playersAllTime: 0 } })).toContain('no visitors yet');
+  });
+
   it('says how raids ended in plain words', () => {
     const screen = statsScreen({ step: 'loaded', stats: STATS });
     for (const [name, value] of [
@@ -83,7 +97,7 @@ describe('the STATS screen', () => {
 
   it('draws a bar for every day, busiest full height, today in gold', () => {
     const screen = statsScreen({ step: 'loaded', stats: STATS });
-    expect(screen.match(/class="stats-bar[" ]/g)).toHaveLength(STATS.days.length);
+    expect(screen.match(/class="stats-bar[" ]/g)).toHaveLength(STATS.days.length * 2);
     expect(screen).toContain(`style="--bar:${CHART_HEIGHT}"`);
     expect(screen).toMatch(/stats-bar is-today" style="--bar:40" title="7 Oct: 8 players"/);
   });
@@ -117,6 +131,7 @@ describe('the words', () => {
   it('gives any day with a player at least a pixel', () => {
     expect(barHeights(days([0, 1, 1000]))).toEqual([0, 1, CHART_HEIGHT]);
     expect(barHeights(days([0, 0]))).toEqual([0, 0]);
+    expect(barHeights(days([0, 2, 4]), 'newNames')).toEqual([0, CHART_HEIGHT / 2, CHART_HEIGHT]);
   });
 });
 

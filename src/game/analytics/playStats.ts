@@ -15,6 +15,8 @@ export interface PlayDay {
   readonly newPlayers: number;
   readonly sessions: number;
   readonly seconds: number;
+  /** Names first chosen that day at NEW GAME. */
+  readonly newNames: number;
 }
 
 export interface PlayStats {
@@ -24,6 +26,10 @@ export interface PlayStats {
   readonly playersAllTime: number;
   readonly returningWeek: number;
   readonly returningAllTime: number;
+  /** Named players: everyone who has chosen a name at NEW GAME, read from the names themselves. */
+  readonly namedToday: number;
+  readonly namedWeek: number;
+  readonly namedAllTime: number;
   /** The last thirty days, oldest first, today last. */
   readonly days: readonly PlayDay[];
   /** The last thirty days' totals, by `metric` or `metric:detail` (`raid-end:wiped`). */
@@ -72,6 +78,7 @@ export function readPlayStats(raw: unknown): PlayStats | undefined {
       newPlayers: count(day.newPlayers),
       sessions: count(day.sessions),
       seconds: count(day.seconds),
+      newNames: count(day.newNames),
     });
   }
   return {
@@ -81,6 +88,9 @@ export function readPlayStats(raw: unknown): PlayStats | undefined {
     playersAllTime: count(answer.playersAllTime),
     returningWeek: count(answer.returningWeek),
     returningAllTime: count(answer.returningAllTime),
+    namedToday: count(answer.namedToday),
+    namedWeek: count(answer.namedWeek),
+    namedAllTime: count(answer.namedAllTime),
     days,
     month: counts(answer.month),
     allTime: counts(answer.allTime),

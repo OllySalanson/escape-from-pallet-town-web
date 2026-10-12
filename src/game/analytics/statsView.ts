@@ -7,7 +7,8 @@ import type { PlayDay, PlayStats } from './playStats';
  * browser; `StatsScene` wires it.
  *
  * Plain words and whole numbers, the answer first: players today, this week
- * and ever, then a month of daily players as a bar chart, then what they did -
+ * and ever, and how many of them took a name, then a month of daily players
+ * and of names chosen as bar charts, then what they did -
  * raids and how they ended, starters, Pallet Blocks, maps sent in.
  */
 
@@ -49,10 +50,18 @@ export function dayWords(day: string): string {
   return `${date} ${MONTHS[(month ?? 1) - 1] ?? ''}`;
 }
 
-/** Each day's bar height in game pixels: the busiest day is the full height, any day with a player at least one. */
-export function barHeights(days: readonly PlayDay[]): number[] {
-  const most = Math.max(1, ...days.map((day) => day.players));
-  return days.map((day) => (day.players === 0 ? 0 : Math.max(1, Math.round((day.players / most) * CHART_HEIGHT))));
+/** What a chart counts each day: daily players, or names chosen. */
+export type ChartSeries = 'players' | 'newNames';
+
+const SERIES_WORDS: Readonly<Record<ChartSeries, { readonly one: string; readonly title: string }>> = {
+  players: { one: 'player', title: 'Daily players' },
+  newNames: { one: 'new name', title: 'Names chosen' },
+};
+
+/** Each day's bar height in game pixels: the busiest day is the full height, any day with a count at least one. */
+export function barHeights(days: readonly PlayDay[], series: ChartSeries = 'players'): number[] {
+  const most = Math.max(1, ...days.map((day) => day[series]));
+  return days.map((day) => (day[series] === 0 ? 0 : Math.max(1, Math.round((day[series] / most) * CHART_HEIGHT))));
 }
 
 const button = (attribute: string, label: string, help: string, primary = false): string =>
@@ -63,19 +72,20 @@ function line(name: string, value: string, help: string): string {
   return `<button class="px-row stats-line" aria-disabled="true" data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-name px-wrap">${name}</span></span><strong class="stats-value">${value}</strong></button>`;
 }
 
-function chart(days: readonly PlayDay[]): string {
-  const heights = barHeights(days);
-  const most = Math.max(0, ...days.map((day) => day.players));
+function chart(days: readonly PlayDay[], series: ChartSeries): string {
+  const words = SERIES_WORDS[series];
+  const heights = barHeights(days, series);
+  const most = Math.max(0, ...days.map((day) => day[series]));
   const bars = days
     .map(
       (day, index) =>
-        `<span class="stats-bar${index === days.length - 1 ? ' is-today' : ''}" style="--bar:${heights[index]}" title="${escapeAttribute(`${dayWords(day.day)}: ${plural(day.players, 'player')}`)}"></span>`,
+        `<span class="stats-bar${index === days.length - 1 ? ' is-today' : ''}" style="--bar:${heights[index]}" title="${escapeAttribute(`${dayWords(day.day)}: ${plural(day[series], words.one)}`)}"></span>`,
     )
     .join('');
-  const total = days.reduce((sum, day) => sum + day.players, 0);
+  const total = days.reduce((sum, day) => sum + day[series], 0);
   const first = days[0];
   const last = days[days.length - 1];
-  const summary = `Daily players over the last ${days.length} days: busiest day ${plural(most, 'player')}, ${plural(total, 'player-day')} in all.`;
+  const summary = `${words.title} over the last ${days.length} days: busiest day ${plural(most, words.one)}, ${number(total)} in all.`;
   return `<button class="px-row stats-chart-row" aria-disabled="true" data-help="${escapeAttribute(
     'One bar a day, today on the right. Hover a bar for its day.',
   )}"><span class="stats-chart" role="img" aria-label="${escapeAttribute(summary)}"><span class="stats-chart-top">${number(most)}</span><span class="stats-bars" style="--days:${days.length}">${bars}</span><span class="stats-chart-foot"><span>${first ? dayWords(first.day) : ''}</span><span>${last ? 'Today' : ''}</span></span></span></button>`;
@@ -100,11 +110,27 @@ function loadedBody(stats: PlayStats): string {
         `${number(stats.returningWeek)} this week · ${number(stats.returningAllTime)} ever`,
         'Players who opened the game on more than one day.',
       ),
+      line(
+        'Named players',
+        `${number(stats.namedAllTime)} · ${number(stats.namedWeek)} this week · ${number(stats.namedToday)} today`,
+        'Players who chose a name at NEW GAME, read from the names themselves.',
+      ),
+      line(
+        'Took a name',
+        stats.playersAllTime > 0
+          ? `${number(stats.namedAllTime)} of ${number(stats.playersAllTime)} (${Math.round((stats.namedAllTime / stats.playersAllTime) * 100)}%)`
+          : 'no visitors yet',
+        'Named players against every browser that has opened the game: how many visitors became players.',
+      ),
     ].join('')}</div>`,
     { heading: 'Players', note: `today is ${dayWords(stats.today)}` },
   );
-  const daily = pixelWindow(`<div class="px-list">${chart(stats.days)}</div>`, {
+  const daily = pixelWindow(`<div class="px-list">${chart(stats.days, 'players')}</div>`, {
     heading: 'Players each day',
+    note: 'last 30 days',
+  });
+  const named = pixelWindow(`<div class="px-list">${chart(stats.days, 'newNames')}</div>`, {
+    heading: 'New names each day',
     note: 'last 30 days',
   });
   const started = month('raid-start');
@@ -152,7 +178,7 @@ function loadedBody(stats: PlayStats): string {
     'Sign out',
     'Signs this GitHub account out of the game, everywhere.',
   )}</div>`;
-  return `<main class="px-body stats-layout"><div class="stats-sheet px-scroll">${players}${daily}${raids}${more}${pixelWindow(
+  return `<main class="px-body stats-layout"><div class="stats-sheet px-scroll">${players}${daily}${named}${raids}${more}${pixelWindow(
     `<div class="px-list"><p class="px-note px-wrap stats-message">Counted without cookies or accounts: a random id per browser and nothing else about anyone. Browsers that ask not to be tracked are not counted, and nor is anything played on a test copy of the game.</p>${actions}</div>`,
     { heading: 'About these numbers' },
   )}</div></main>`;
