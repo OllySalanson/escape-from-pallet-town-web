@@ -84,9 +84,15 @@ export function pokemonDossier(view: DossierView): string {
         })
         .join('')
     : '<p class="px-empty">No moves known.</p>';
-  const moveList = `<div class="px-dossier-moves"><small class="px-label">Moves · ${moveSlotNote(pokemon.moves.length)}</small><div class="px-list">${moves}</div></div>`;
-  // The deeds are reached from the row with Tab (`detailStepIndex`): the arrow
-  // keys walk the list, and every row they cross swaps this pane.
+  // The pane is reached from the row with Tab (`detailStepIndex`): the arrow
+  // keys walk the list, and every row they cross swaps this pane. Tab lands on
+  // the first deed that can be done, else on the first control in the pane -
+  // a move, which is all a deedless pane holds (GEAR with nothing to give) - so
+  // `· Tab` is written over whichever of the two it reaches.
   const chips = view.deeds.chips(shows);
-  return `<div class="px-detail px-scroll px-dossier" data-shown-by="${escapeAttribute(view.id)}"${view.first ? '' : ' hidden'}><div class="px-dossier-body">${figure}${vitals}${growth}${moveList}<div class="px-dossier-deeds"><small class="px-label">${view.deeds.label}${chips ? ' · Tab' : ''}</small><div class="care-options">${chips}</div></div></div></div>`;
+  const deedToDo = /<button\b(?![^>]*aria-disabled="true")/.test(chips);
+  const tabToMoves = !deedToDo && pokemon.moves.length > 0;
+  const tabToDeeds = !tabToMoves && /<button\b/.test(chips);
+  const moveList = `<div class="px-dossier-moves"><small class="px-label">Moves · ${moveSlotNote(pokemon.moves.length)}${tabToMoves ? ' · Tab' : ''}</small><div class="px-list">${moves}</div></div>`;
+  return `<div class="px-detail px-scroll px-dossier" data-shown-by="${escapeAttribute(view.id)}"${view.first ? '' : ' hidden'}><div class="px-dossier-body">${figure}${vitals}${growth}${moveList}<div class="px-dossier-deeds"><small class="px-label">${view.deeds.label}${tabToDeeds ? ' · Tab' : ''}</small><div class="care-options">${chips}</div></div></div></div>`;
 }
