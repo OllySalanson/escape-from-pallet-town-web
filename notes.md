@@ -16,6 +16,13 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** TM13 now reads "a beam of cold that may freeze. Grass, Ground, Flying and Dragon foes all fear it."; TM09 "two to five seeds in one turn. Mostly Grass Pokémon can read it." The stale code comments on Ice Beam, Aerial Ace ("the one move that cannot miss" - Swift and Feint Attack cannot either) and the Bullet Seed loot row were corrected too.
 - **How a player meets it:** pick up a TM in a raid, open the pack or read it, and the description no longer tells you something untrue about who can use it or what else exists.
 
+## 3. A cache said "secured" for loot a wipe takes (playtest 6, B9)
+
+- **Found:** working a cache said e.g. "TOWN PUMP: 2× Potion + 1× Antidote secured. Detour reward is LOST ON WIPE - extract to bank it." "Secured" is the secure container's word, and a cache never fills it - the payout goes into the pack, which a wipe takes - so the line contradicted itself. A landmark that opens an exit said "... secured. Extract to bank it." the same way.
+- **Reproduced:** through the real `WorldScene.tryActivatePoiAt` on Pallet Town's TOWN PUMP and the locked KILN STRONGBOX (`src/game/scenes/locksAndKeys.test.ts`, "what a cache says it did"): both lines said "secured".
+- **Fixed:** the line is `cachePayoutLine` in `world/pois.ts`, beside the cache's refusal line: "TOWN PUMP: 2 Potions and 1 Antidote went into the PACK. Lost if you wipe - extract to bank them." Amounts are written by `itemAmountFor`, as every other sentence about items is (no "2× Potion"). A landmark that opens an exit says "... went into the PACK - extract to bank it." under its "EXIT is open." line. `pois.test.ts` holds that no shipped landmark's payout line says "secured".
+- **How a player meets it:** walk onto any cache in a raid; the message now says the goods are in your pack and at risk until you extract, rather than calling them secured.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
@@ -24,4 +31,4 @@ Playtest 45: findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2)
 
 - B6: the MORE strip counts every button (`SCROLL_ENTRIES = 'button, .px-empty'` in `MenuOverlay.ts`) - check whether stepper rows still double.
 - B9: Lass Ada says "Going up to Viridian?" inside Viridian City (`world/trainers.ts`).
-- B9 (checked this iteration, still open): a landmark cache says "... secured. Detour reward is LOST ON WIPE" (`WorldScene.ts` ~5028-5033) - "secured" is the secure container's word. Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).
+- B9: the cache "secured" line is fixed (entry 3). Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).

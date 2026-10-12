@@ -1,4 +1,4 @@
-import { ITEMS, cellsFor, type ItemId } from '../items';
+import { ITEMS, cellsFor, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { fileMap } from './playerMaps';
@@ -817,6 +817,22 @@ export function lockedCrateLines(poi: WorldPoi): readonly string[] {
     `${poi.label}: the crate is locked…`,
     'A Lockpick in the pack would open it. Bill trades them, and they turn up in the field.',
   ];
+}
+
+/**
+ * What a cache paid, said where it went. A cache pays into the pack, which a
+ * wipe takes, so the line says that and never "secured" - that is the secure
+ * container's word, and a cache can never fill it (playtest 6, B9).
+ */
+export function cachePayoutLine(poi: WorldPoi, opensAnExit: boolean): string {
+  const amounts = poi.reward.map(({ itemId, quantity }) => itemAmountFor(itemId, quantity));
+  const named =
+    amounts.length <= 1 ? amounts.join('') : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
+  const one = poi.reward.length === 1 && poi.reward[0].quantity === 1;
+  const bank = `extract to bank ${one ? 'it' : 'them'}.`;
+  return opensAnExit
+    ? `${named} went into the PACK - ${bank}`
+    : `${poi.label}: ${named} went into the PACK. Lost if you wipe - ${bank}`;
 }
 
 export function cacheRefusalLine(poi: WorldPoi): string {

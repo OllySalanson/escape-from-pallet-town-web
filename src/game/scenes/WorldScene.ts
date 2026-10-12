@@ -266,7 +266,7 @@ import {
   tryCollectLoot,
   type WorldLoot,
 } from '../world/loot';
-import { cacheRefusalLine, lockedCrateLines, tryActivatePoi } from '../world/pois';
+import { cachePayoutLine, cacheRefusalLine, lockedCrateLines, tryActivatePoi } from '../world/pois';
 import {
   isLandmarkWorked,
   withWorkedExitsOpen,
@@ -5608,21 +5608,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // A cache pays out; a landmark is worked. They are different deeds on the
     // map and the field guide, so they are different sounds.
     audioManager.play(poi!.effect === 'unlock-extraction' ? 'landmarkWorked' : 'cacheOpen');
-    const reward = poi!.reward
-      .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName}`)
-      .join(' + ');
     if (poi!.effect === 'unlock-extraction') {
       const exit = poi!.unlockedExtractionLabel ?? 'A NEW EXIT';
       this.refreshExtractionMarkers();
       return [
         `${poi!.label}: ${exit} is open.`,
         this.rangerForecast(),
-        ...(reward ? [`${reward} secured. Extract to bank it.${this.reseatNote()}`] : []),
+        ...(poi!.reward.length > 0 ? [`${cachePayoutLine(poi!, true)}${this.reseatNote()}`] : []),
       ];
     }
     return [
       ...(poi!.locked ? ['The Lockpick turned the lock, and snapped in it.'] : []),
-      `${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.${this.reseatNote()}`,
+      `${cachePayoutLine(poi!, false)}${this.reseatNote()}`,
     ];
   }
 

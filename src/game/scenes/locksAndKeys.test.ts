@@ -16,7 +16,7 @@ vi.mock('../audio/AudioManager', () => ({
   ),
 }));
 
-import { Bag, type ItemId } from '../items';
+import { Bag, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunPhase } from '../run/RunManager';
 import { getWorldMap, type BuiltInMapId } from '../worldMap';
@@ -198,5 +198,30 @@ describe('a locked crate', () => {
     raid.scene.tryActivatePoiAt(open.position);
     expect(raid.bag.count('lockpick')).toBe(1);
     expect(raid.bag.count('antidote')).toBe(1);
+  });
+});
+
+describe('what a cache says it did', () => {
+  // Playtest 6, B9: "TOWN PUMP: 1× Antidote secured. Detour reward is LOST ON
+  // WIPE" - "secured" is the secure container's word, and a cache pays into
+  // the pack, which a wipe takes. The line says where it went and what that
+  // risks, and never calls it secured.
+  it('says the payout went into the pack, at risk, in plain amounts', () => {
+    const open = crateNamed('TOWN PUMP');
+    const raid = inARaid('pallet-town');
+    const lines = raid.scene.tryActivatePoiAt(open.position) ?? [];
+    expect(lines.join(' ')).not.toMatch(/secured/i);
+    expect(lines).toEqual(['TOWN PUMP: 2 Potions and 1 Antidote went into the PACK. Lost if you wipe - extract to bank them.']);
+  });
+
+  it('names every piece of a cache that pays more than one thing', () => {
+    const crate = crateNamed('KILN STRONGBOX');
+    const raid = inARaid('pallet-town', ['lockpick']);
+    const lines = raid.scene.tryActivatePoiAt(crate.position) ?? [];
+    expect(lines.join(' ')).not.toMatch(/secured/i);
+    expect(lines[1]).toMatch(/^KILN STRONGBOX: .+ went into the PACK\. Lost if you wipe - extract to bank them\.$/);
+    for (const { itemId, quantity } of crate.reward) {
+      expect(lines[1]).toContain(itemAmountFor(itemId, quantity));
+    }
   });
 });
