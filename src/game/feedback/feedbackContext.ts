@@ -59,6 +59,7 @@ export const SCREEN_NAMES: Readonly<Record<string, string>> = {
   party: 'Raid party',
   bag: 'Raid pack',
   objectives: 'Field guide',
+  console: 'House console',
   extraction: 'Raid result',
   mapmaker: 'Map maker',
   'test-lab': 'Test lab',

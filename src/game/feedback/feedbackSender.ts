@@ -88,9 +88,10 @@ export function callDelivery(error: { message?: string; code?: string }): Delive
  * project that asks for a bot check before signing in cannot be answered from
  * here: a browser with no session yet waits until it has one, which the panel
  * gets it by drawing the check (`needsBotCheck`, `signInWithCheck`) - or the
- * map maker's SEND does.
+ * map maker's SEND does. The house console's leaderboards sign in the same way
+ * (`console/remoteScores.ts`), so a browser is one anonymous player for all three.
  */
-async function signedInAs(): Promise<string | null> {
+export async function signedInAs(): Promise<string | null> {
   const db = await supabase();
   const { data } = await db.auth.getSession();
   if (data.session) {

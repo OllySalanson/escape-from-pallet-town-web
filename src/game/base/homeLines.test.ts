@@ -6,7 +6,6 @@ import {
   bedLines,
   calendarDay,
   calendarLines,
-  consoleLine,
   nextRival,
   partnerRug,
   pcLines,
@@ -90,13 +89,6 @@ describe("what the things in THE BOLTHOLE say", () => {
     expect(lines.join(' ')).toContain('VIRIDIAN FOREST');
     expect(lines.at(-1)).toContain('NURSE JOY');
     expect(bedLines(baseGame()).join(' ')).toContain('drop-in');
-  });
-
-  it('lets the player win at the console on the fourth go, and only then', () => {
-    expect(consoleLine(0)).toContain('lose');
-    expect(consoleLine(2)).toContain('lose');
-    expect(consoleLine(3)).toContain('finally beat');
-    expect(consoleLine(4)).not.toContain('finally');
   });
 
   it("colours the upstairs rug after the player's partner", () => {

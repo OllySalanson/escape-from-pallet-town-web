@@ -129,20 +129,6 @@ export function bedLines(game: RestoredGame): readonly string[] {
 }
 
 /**
- * The console under the telly. The fourth game of a visit to the base is the
- * one you finally win, which nobody is told about.
- */
-export function consoleLine(gamesPlayed: number): string {
-  if (gamesPlayed < 3) {
-    return 'You play a quick game. You lose to a BUG CATCHER, again.';
-  }
-  if (gamesPlayed === 3) {
-    return 'You play a quick game... and you finally beat that BUG CATCHER! You put the controller down while you are ahead.';
-  }
-  return 'You play a quick game. You win. It does not feel the same as the first time.';
-}
-
-/**
  * The upstairs rug is the colour of the player's partner: red for a Charmander
  * save, blue for a Squirtle, and FireRed's own green for a Bulbasaur - or for a
  * save that has none.

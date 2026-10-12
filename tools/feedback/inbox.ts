@@ -154,7 +154,7 @@ export function kindOf(row: Pick<FeedbackRow, 'message' | 'voice_ms'>): string {
  */
 export const KNOWN_SCREENS = new Set([
   'Loading', 'Title screen', 'Choosing a starter', 'The Harbour', 'Base screen', 'Raid', 'Battle',
-  'Raid party', 'Raid pack', 'Field guide', 'Raid result', 'Map maker', 'Test lab', 'Unknown',
+  'Raid party', 'Raid pack', 'Field guide', 'House console', 'Raid result', 'Map maker', 'Test lab', 'Unknown',
 ]);
 
 export function screenOf(row: Pick<FeedbackRow, 'context'>): string {

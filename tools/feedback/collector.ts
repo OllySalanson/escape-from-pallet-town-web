@@ -160,7 +160,7 @@ export async function collectFeedback(options: CollectOptions): Promise<CollectR
 
   // 3. What nothing will ever claim: uploads no message names, and anonymous
   //    visitors long gone who have nothing in the lab. A visitor with any
-  //    message or map is kept, because removing them would take those with
+  //    message, map or console score is kept, because removing them would take those with
   //    them while the tables still cascade (the review's L2).
   const rows = ((await (await api('/rest/v1/feedback?select=sender_uid,picture_path,voice_paths')).json()) as unknown[]).map(normaliseRow);
   const named = new Set(rows.flatMap((row) => [...(row.picture_path ? [row.picture_path] : []), ...row.voice_paths]));
@@ -190,7 +190,12 @@ export async function collectFeedback(options: CollectOptions): Promise<CollectR
   const makers = ((await (await api('/rest/v1/map_submissions?select=maker_uid')).json()) as { maker_uid: unknown }[]).map((row) =>
     String(row.maker_uid),
   );
-  const holding = new Set([...rows.map((row) => row.sender_uid), ...makers]);
+  // A player with a score on a console leaderboard holds something too: their
+  // name on the board would go with them.
+  const players = ((await (await api('/rest/v1/console_scores?select=player_uid')).json()) as { player_uid: unknown }[]).map((row) =>
+    String(row.player_uid),
+  );
+  const holding = new Set([...rows.map((row) => row.sender_uid), ...makers, ...players]);
   const idleBefore = now.getTime() - KEEP_IDLE_VISITOR_DAYS * 86_400_000;
   const users = ((await (await api('/auth/v1/admin/users?page=1&per_page=1000')).json()) as {
     users?: { id: string; is_anonymous?: boolean; created_at?: string; last_sign_in_at?: string | null }[];

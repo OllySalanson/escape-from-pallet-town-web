@@ -11,8 +11,12 @@
  * Bass Pond is fine; a handful of stems also catch what is built on them.
  */
 
-/** Words refused wherever they stand as a word of their own. */
-const WHOLE_WORDS = new Set([
+/**
+ * Words refused wherever they stand as a word of their own. Exported, with the
+ * stems and the lookalikes, because the database repeats this filter for the
+ * console's leaderboard names (`console/leaderboardSql.test.ts`).
+ */
+export const WHOLE_WORDS = new Set([
   'arse',
   'arsehole',
   'ass',
@@ -46,10 +50,10 @@ const WHOLE_WORDS = new Set([
 ]);
 
 /** Stems refused at the start of any word, and so in everything made from them. */
-const STEMS = ['fuck', 'shit', 'cunt', 'bitch', 'wank', 'nigg', 'fagg', 'motherf'];
+export const STEMS = ['fuck', 'shit', 'cunt', 'bitch', 'wank', 'nigg', 'fagg', 'motherf'];
 
 /** The spellings people use to get a word past a filter, read back as letters. */
-const LOOKALIKES: Readonly<Record<string, string>> = {
+export const LOOKALIKES: Readonly<Record<string, string>> = {
   '0': 'o',
   '1': 'i',
   '3': 'e',

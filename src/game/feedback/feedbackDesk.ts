@@ -4,6 +4,7 @@ import { activeSaveSlot } from '../dev/playtestMode';
 import { SaveManager } from '../save/SaveManager';
 import type { FeedbackSceneData } from '../scenes/FeedbackScene';
 import { isTypingTarget } from '../ui/overlayKeyboard';
+import { CONSOLE_GAME_CLASS } from '../console/consoleGames';
 import { actionLog, buttonWords, errorLine, recordAction } from './actionLog';
 import { createCourier, type FeedbackCourier } from './courier';
 import {
@@ -127,8 +128,9 @@ export function installFeedbackDesk(game: Phaser.Game, courier: FeedbackCourier 
     if (event.key.toLowerCase() !== 'f' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) {
       return;
     }
-    // F in a text field is a letter, and with the panel up it is the panel's to read.
-    if (isTypingTarget(event.target) || game.scene.isActive('feedback')) {
+    // F in a text field is a letter, with the panel up it is the panel's to
+    // read, and in a console game it is the game's.
+    if (isTypingTarget(event.target) || inConsoleGame(event.target) || game.scene.isActive('feedback')) {
       return;
     }
     event.preventDefault();
@@ -260,4 +262,9 @@ function logWhatHappens(game: Phaser.Game): () => void {
     window.removeEventListener('error', onError);
     window.removeEventListener('unhandledrejection', onRejection);
   };
+}
+
+/** Whether a key was pressed inside a game playing on the house console. */
+function inConsoleGame(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(`.${CONSOLE_GAME_CLASS}`) !== null;
 }
