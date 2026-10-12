@@ -123,6 +123,9 @@ import { DecorateMode, type DecorateHost } from '../base/decorateMode';
 import { loadPlayerName } from '../console/playerName';
 import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
 import { openHouseNameScreen } from '../ui/HouseNameOverlay';
+import { harbour, type HarbourWhere } from '../harbour/harbour';
+import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
+import { HarbourFigures } from '../base/harbourFigures';
 import type { MenuOverlay } from '../ui/MenuOverlay';
 import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furnitureArt';
 
@@ -352,6 +355,8 @@ export class BaseScene extends Phaser.Scene {
    * nobody walks about the house until it has a name.
    */
   private namePrompt: MenuOverlay | null = null;
+  /** Everybody else in the shared harbour, drawn where they walk (`harbour/`). */
+  private harbourFigures: HarbourFigures | null = null;
 
   /**
    * The four doors and the four rooms behind them, reachable from outside the
@@ -422,6 +427,7 @@ export class BaseScene extends Phaser.Scene {
     this.furnitureImages = [];
     this.decor = null;
     this.namePrompt = null;
+    this.harbourFigures = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
     if (room) {
@@ -486,6 +492,8 @@ export class BaseScene extends Phaser.Scene {
     this.drawWallMap();
     this.createFigures();
     this.createPlayer();
+    this.harbourFigures = new HarbourFigures(this);
+    harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, houseName());
     this.createPartner(data);
     this.createCaptions();
     this.createDialogBox();
@@ -508,6 +516,11 @@ export class BaseScene extends Phaser.Scene {
       // The name screen is a page element, which outlives the scene too.
       this.namePrompt?.destroy();
       this.namePrompt = null;
+      // Through a door the harbour hears where the player is again in a moment;
+      // to a menu or a raid, it says they are not standing anywhere.
+      harbour()?.away();
+      this.harbourFigures?.destroy();
+      this.harbourFigures = null;
     });
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
@@ -519,9 +532,14 @@ export class BaseScene extends Phaser.Scene {
     }
   }
 
-  public update(_time: number, deltaMs: number): void {
+  public update(time: number, deltaMs: number): void {
     if (!this.ready) {
       return;
+    }
+    const shared = harbour();
+    if (shared) {
+      shared.tick(time, deltaMs);
+      this.harbourFigures?.update(shared.figuresHere());
     }
     this.updateWalking(deltaMs);
     this.partner?.update(deltaMs);
@@ -1586,6 +1604,7 @@ export class BaseScene extends Phaser.Scene {
     this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
     this.player.play(getWalkAnimationKey(this.facing), true);
     this.partner?.follow(this.currentTile, targetTile);
+    harbour()?.stepped(targetTile, this.facing);
   }
 
   private advanceStep(deltaMs: number): void {
@@ -2005,8 +2024,35 @@ export class BaseScene extends Phaser.Scene {
         return;
       }
       nameThisSitting = name;
+      // Named, the player can be seen in the harbour from now on.
+      harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, name);
       this.say(welcomeHomeLines(name), []);
     });
+  }
+
+  /** Where the shared harbour has the player: the yard, a keeper's room, or their own house. */
+  private harbourWhere(): HarbourWhere {
+    const room = this.place.room?.room;
+    if (!room) {
+      return 'yard';
+    }
+    if (room.id === 'bolthole') {
+      return 'home';
+    }
+    if (room.id === 'bolthole-upstairs') {
+      return 'home-upstairs';
+    }
+    return (SHARED_HARBOUR_ROOMS as readonly string[]).includes(room.id)
+      ? room.id
+      : 'yard';
+  }
+
+  /** The other players drawn here and the tiles they stand on, for a playtest to read. */
+  public get harbourFiguresShown(): readonly { readonly name: string; readonly tile: GridPosition }[] {
+    if (!this.harbourFigures) {
+      return [];
+    }
+    return (harbour()?.figuresHere() ?? []).map((figure) => ({ name: figure.name, tile: { ...figure.tile } }));
   }
 
   private leaveRoom(room: BaseRoom): void {

@@ -38,7 +38,7 @@ import { standingFixtures } from './fixtures';
  * that name would have the player dropping into Pallet Town from Pallet Town.
  */
 
-export const BASE_MAP_WIDTH = 43;
+export const BASE_MAP_WIDTH = 51;
 export const BASE_MAP_HEIGHT = 21;
 
 /** What the screens call this place, on the way out of every one of them. */
@@ -86,7 +86,18 @@ export const HOME_SIGN: BaseSign = {
   lines: ['THE BOLTHOLE', 'Home. Nobody hunts you here.'],
 };
 
-export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN];
+/**
+ * The sign on THE GREEN, the lawn past the Day-Care that the harbour grew by
+ * when it became the one everybody who plays walks (`harbour/`): somewhere to
+ * stand about that is nobody's door.
+ */
+export const GREEN_SIGN: BaseSign = {
+  x: 43,
+  y: 12,
+  lines: ['THE GREEN', 'Everybody in Pallet Town comes home to this harbour. Stand about - somebody always turns up.'],
+};
+
+export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN, GREEN_SIGN];
 
 /** FireRed's red flowers in the front garden, either side of the path. */
 const GARDEN_FLOWERS: readonly (readonly [number, number])[] = [28, 29, 30, 31].flatMap(
@@ -137,27 +148,27 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   });
 
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TtT......TTtTTTtTTTtTTTtTTTtTTTTTTTtTTTtTTT',
-    'TTT...........TTTTTTTTTTT.......TTTTTTTTTTT',
-    'TTT...........T....T....T.......T..FFFFFFFT',
-    'TtT...........T....T....T.......T..F.....FT',
-    'TTT...........T....T....T.......T..F.....FT',
-    'TTT...,,,,,,,,,,,,,,,,,,,..........F.....FT',
-    'TtT...,,,,,,,,,,,,,,,,,,,..........F.....FT',
-    'TTT...,,,,,,,,,,,,,,,,,,,..........FFFFFFFT',
-    'TTT...,,,,,,,,,,,,,,,,,,,................TT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtT......TTtTTTtTTTtTTTtTTTtTTTTTTTtTTTtTTTtTTTtTTT',
+    'TTT...........TTTTTTTTTTT.......TTTTTTTTTTTTTTTTTTT',
+    'TTT...........T....T....T.......T..FFFFFFFT.......T',
+    'TtT...........T....T....T.......T..F.....FT.......T',
+    'TTT...........T....T....T.......T..F.....FT.......T',
+    'TTT...,,,,,,,,,,,,,,,,,,,..........F.....F........T',
+    'TtT...,,,,,,,,,,,,,,,,,,,..........F.....F........T',
+    'TTT...,,,,,,,,,,,,,,,,,,,..........FFFFFFF........T',
+    'TTT...,,,,,,,,,,,,,,,,,,,.........................T',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
   // The four buildings, each with its own doorway cut into it by the base's
@@ -182,6 +193,15 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   // FireRed's red flowers either side of it.
   map.plant(HOME_SIGN.x, HOME_SIGN.y, 'homeSign');
   for (const [x, y] of GARDEN_FLOWERS) {
+    map.plant(x, y, 'gardenFlowers');
+  }
+
+  // THE GREEN, past the Day-Care: a fountain to meet at, a bench, flowers and
+  // its sign.
+  map.plant(45, 9, 'stoneFountain');
+  map.plant(45, 13, 'bench');
+  map.plant(GREEN_SIGN.x, GREEN_SIGN.y, 'homeSign');
+  for (const [x, y] of [[43, 8], [49, 8], [43, 9], [49, 9]] as const) {
     map.plant(x, y, 'gardenFlowers');
   }
 
