@@ -67,10 +67,17 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** her lines are now "Up the terraces or down them, this road is mine!" / "Nobody walks it without a battle!", and after the fight "Fine, go on. The Center is right in the middle of town." - true whichever way the player is walking. Her party and watch are unchanged.
 - **How a player meets it:** walk the South Terraces road below Viridian City in either direction into Lass Ada's watch; she no longer asks if you are going to the town you are in.
 
+## 10. Oak's Lab and Brock counted kinds as "items" (playtest 6, B9)
+
+- **Found:** the title bar of Oak's Lab and Brock's Workshop read e.g. "1 POKÉMON · 3 ITEMS" while the stash held three Potions, three Poké Balls and a pack - seven things - and the Pokémon Center's own Supplies pane said "3 KINDS" for the same stash. The number counts kinds; the word said items.
+- **Reproduced:** `HubScene.test.ts`, "counts the stash in the title bar the way the Pokémon Center counts it": on a fresh save (more units than kinds) the lab's and the workshop's title aside read `1 Pokémon · 3 items`.
+- **Fixed:** the aside now says `1 Pokémon · 3 kinds of item` (`HubScene.render`), the Center's word for the same number. Photographed at the smallest window (960x720, `menuShots.mjs`, clean): `24 POKÉMON · 13 KINDS OF ITEM` sits whole beside BROCK'S WORKSHOP.
+- **How a player meets it:** open Oak's Lab or Brock's Workshop; the count in the top right now says how many kinds of thing you hold, matching the Pokémon Center.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
 
 ## Still open from playtest 6 (candidates for later iterations)
 
-- B9: the cache "secured" line is fixed (entry 3). Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).
+- B9: the cache "secured" line is fixed (entry 3). The "N ITEMS" count is fixed (entry 10); "7 ENTRIES" was already fixed (the final check counts rows). Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).

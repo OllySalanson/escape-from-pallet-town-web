@@ -8,7 +8,7 @@ vi.mock('phaser', () => ({
   },
 }));
 
-import { Bag } from '../items';
+import { Bag, ITEM_DEFINITIONS } from '../items';
 import {
   BULBASAUR,
   CHARMANDER,
@@ -1149,6 +1149,23 @@ describe('what the base screen leads with', () => {
     expect(home).not.toContain('swap-panel');
     expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('Contract board'));
     expect(home).toContain('Contract board');
+  });
+
+  it('counts the stash in the title bar the way the Pokémon Center counts it: kinds, not items', () => {
+    const hub = createFreshHub();
+    const kinds = ITEM_DEFINITIONS.filter((item) => hub.stash.itemCount(item.id) > 0).length;
+    const units = ITEM_DEFINITIONS.reduce((sum, item) => sum + hub.stash.itemCount(item.id), 0);
+    // The case that misled: a stack of several is one kind, not one item.
+    expect(units).toBeGreaterThan(kinds);
+    const aside = (markup: string) => /class="px-title-aside">([^<]*)</.exec(markup)?.[1];
+
+    // Oak's Lab, and Brock's Workshop, which shares the line.
+    expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
+    hub.setView('workshop');
+    expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
+    // The Pokémon Center's own pane says the same number in the same word.
+    hub.setView('stash');
+    expect(markupOf(hub)).toContain(`${kinds} kinds`);
   });
 
   it('keeps the swap offer, in the stash beside the Pokémon it would trade away', () => {

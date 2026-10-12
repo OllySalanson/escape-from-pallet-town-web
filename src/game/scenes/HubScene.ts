@@ -1461,7 +1461,10 @@ export class HubScene extends Phaser.Scene {
                   ? wallMapNote(this.savedGame)
                   : this.view === 'daycare'
                     ? `${this.stashPokemon.length} Pokémon at base`
-                    : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'item' : 'items'}`,
+                    // Kinds, as the Pokémon Center's own pane counts them:
+                    // "7 items" over three Potions and three Poké Balls read
+                    // as a miscount (playtest 6).
+                    : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'kind' : 'kinds'} of item`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
