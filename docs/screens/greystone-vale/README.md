@@ -19,14 +19,27 @@ Redraw them, and write the map the game ships, with
 
 ## Millbrook
 
-The mill village and the vale's front door: every road starts at Mill Square.
-You land under the fountain among the market stalls. The Westward Road runs in
-from the west past two cottages and the allotments, the drove road comes down
-from the moor past the north field, the east road fords the brook by the mill
-on its way to The Crossing, and the lane runs south along the brook to the
-marsh. South of the square the ground falls away in two short terraces to a
-quiet meadow - two hops down, and the lane is the way back up. The mill stands
-on its race under the mill pond; the brook pools at the foot of the village.
+The mill village and the vale's front door: every road starts at Mill Square,
+and the village is drawn the way a FireRed town is.
+
+- **The square:** you land under the fountain, with planters on either side and
+  the market stall below.
+- **The Pokémon Center** faces the square's east street.
+- **Streets:** a loop runs north-west past the cottages, the allotments and the
+  tool shed, and another north-east past the miller's house to the mill, a
+  thatched house on the bank of its pond. The south street leaves the square
+  and ends at the purple house one way and the Mart's forecourt the other.
+- **The foot of the village:** the brook's pool, with reeds round it, and the
+  lane south to the marsh runs past it.
+- **The frame:** a deep conifer wood closes every side, open only where the
+  plan's four roads leave.
+
+It is drawn in FireRed's pieces only: Kanto's buildings, the town pieces cut
+from pret, and the FireRed sheet's fountain, stall, planters and signs.
+
+![Millbrook as first drawn](millbrook-first-draw.png)
+
+That is the first draw, which did not pass (below).
 
 ## The vale
 
@@ -66,30 +79,46 @@ idea, which its program is written to:
 
 ## Judged blind
 
-Two 48x40 views of Millbrook were judged blind beside five FireRed towns
-redrawn in the same tiles (Viridian, Pewter, Cerulean, Fuchsia and a Celadon
-window), by two judges, each scoring every picture 1-10 and naming its biggest
-fault:
+Each round, two 48x40 views of Millbrook were judged blind beside FireRed
+towns redrawn in the same tiles: Viridian, Pewter, Cerulean, Fuchsia and a
+Celadon window. Every round used two fresh judges, and each judge scored every
+picture 1-10 and named its biggest fault.
 
-| | Judge 1 | Judge 2 |
-|---|---|---|
-| FireRed towns | 3-7, mean 5.4 | 5-7, mean 6.4 |
-| Millbrook | 4 and 3 | 4 and 4 |
-| Millbrook taken for real | 8% | 5% |
+From round 2 on, two deliberately broken real towns rode in every batch as
+controls: Cerulean with four blocks swapped, and Pewter with every block
+shuffled. A judge only counts if it rates both below every real town.
 
-**Millbrook does not pass yet**: it scores at or below the bottom of the band
-the real towns sit in. Both judges named the same faults, which are the brief
-for its redraw before the vale opens:
+Millbrook passes when, for each judge, both its views score at least that
+judge's lowest real town and their mean is within a point of the real towns'
+mean.
 
-- props from another art set: the square's fountain and stalls and the mill are
-  the CC0 sheet's, and read as a slab pasted onto FireRed ground;
-- paths that stop in grass, and a road that seems to stop at the brook (the
-  ford does not read as a crossing);
-- the terrace ledges stacked in open grass, with path stubs ending at nothing;
-- an east side that trails off into open grass.
+| Round | FireRed towns (mean) | Broken controls | Millbrook | Millbrook taken for real |
+|---|---|---|---|---|
+| 1, first draw | 5.4, 6.4 | none in the batch | 4 and 3, 4 and 4 (3.75) | 5-8% |
+| 2, redrawn in FireRed pieces | 6.0, 6.0 | 1-3 | 5 and 5, 5 and 4 (4.75) | 8-10% |
+| 3, after the faults of round 2 | 5.2, 5.6 | 1-2 | 7 and 5, 6 and 5 (5.75) | 20-25% |
 
-This batch had no deliberately broken real town in it, so neither judge was
-checked against one.
+**It passes on round 3**: both views sit inside the band the real towns score
+(2-8), the mean is above theirs, and the judges took it for real as often as
+Fuchsia and Celadon.
+
+What each round fixed was what both judges named:
+
+- **Round 1:**
+  - props from another art set (the CC0 fountain, stalls and mill);
+  - paths that stopped at the brook;
+  - terrace ledges floating in grass;
+  - an open east side.
+- **Round 2:**
+  - a ruled street grid;
+  - copy-pasted fenced gardens;
+  - a ruled ledge line;
+  - stamped grass beds in an empty meadow.
+
+Round 3's remaining faults, for the next pass:
+- a mix of building styles;
+- the forest-heavy foot of the village;
+- the pool's shape.
 
 ## How it ships
 
