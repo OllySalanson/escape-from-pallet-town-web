@@ -24,6 +24,10 @@ import type { TileRect } from './tiles';
 export type Side = 'north' | 'south' | 'east' | 'west';
 export type CrossingKind = 'road' | 'trail' | 'river' | 'open';
 
+/** What a district is, at a glance: the colour it has in the plan's picture. */
+export type Terrain =
+  'town' | 'forest' | 'mountain' | 'river' | 'coast' | 'marsh' | 'farmland' | 'moor';
+
 export interface PlannedDistrict {
   /** Lower-case letters, digits and dashes, unique in the plan. */
   readonly id: string;
@@ -33,6 +37,7 @@ export interface PlannedDistrict {
   readonly cell: readonly [number, number];
   /** The district's one idea, in words: the brief its program is written to. */
   readonly idea: string;
+  readonly terrain?: Terrain;
   readonly wildlife?: MapFileHabitat;
 }
 
@@ -44,6 +49,8 @@ export interface Crossing {
   readonly kind: CrossingKind;
   /** Defaults: a road or trail 2, a river 4, open country 8. */
   readonly width?: number;
+  /** A way nobody signs: a deer path through a wood, found rather than followed. */
+  readonly hidden?: boolean;
 }
 
 /** A way out of the whole map, on the plan's outer edge. */
@@ -56,6 +63,24 @@ export interface WorldExit {
   readonly width?: number;
 }
 
+/** Something a district's program has to put on the map, roughly where the plan says. */
+export interface PlannedLandmark {
+  readonly district: string;
+  readonly name: string;
+  /** Roughly where, in the district's own tiles. */
+  readonly at: readonly [number, number];
+  /** A landing is where a raid can be dropped in; a secret is somewhere a raid has to find. */
+  readonly kind: 'landmark' | 'landing' | 'secret';
+}
+
+/** A cave under the map: several floors, and mouths in one or more districts. */
+export interface PlannedCave {
+  readonly id: string;
+  readonly name: string;
+  readonly floors: number;
+  readonly mouths: readonly { readonly district: string; readonly at: readonly [number, number] }[];
+}
+
 export interface WorldPlan {
   readonly id: string;
   readonly name: string;
@@ -66,6 +91,8 @@ export interface WorldPlan {
   readonly districts: readonly PlannedDistrict[];
   readonly crossings: readonly Crossing[];
   readonly exits: readonly WorldExit[];
+  readonly landmarks?: readonly PlannedLandmark[];
+  readonly caves?: readonly PlannedCave[];
 }
 
 /** One gap in a district's sealed edge, in the district's own tiles. */
@@ -77,6 +104,7 @@ export interface Opening {
   readonly kind: CrossingKind;
   /** The district on the other side, or the exit's name for a way out of the map. */
   readonly leadsTo: { readonly district: string } | { readonly exit: string };
+  readonly hidden?: boolean;
 }
 
 /** How deep a district's sealed border is: one lattice cell, so its trees are whole. */
@@ -165,6 +193,7 @@ export function openingsOf(plan: WorldPlan, id: string): Opening[] {
       width: crossingWidth(crossing),
       kind: crossing.kind,
       leadsTo: { district: other.id },
+      hidden: crossing.hidden,
     });
   }
   for (const exit of plan.exits) {
@@ -279,6 +308,28 @@ export function checkPlan(plan: WorldPlan): string[] {
       );
     gap(what, exit.at, exit.width ?? DEFAULT_WIDTH[exit.kind ?? 'road']);
   }
+  const inside = (what: string, district: string, at: readonly [number, number]) => {
+    if (!plan.districts.some((candidate) => candidate.id === district)) {
+      problems.push(`${what} is in a district the plan does not have.`);
+    } else if (at.some((value) => value < SEAM_DEPTH || value >= size - SEAM_DEPTH)) {
+      problems.push(`${what} is off its district or on its sealed edge.`);
+    }
+  };
+  for (const landmark of plan.landmarks ?? [])
+    inside(`The landmark '${landmark.name}'`, landmark.district, landmark.at);
+  for (const cave of plan.caves ?? []) {
+    for (const mouth of cave.mouths) inside(`A mouth of ${cave.name}`, mouth.district, mouth.at);
+  }
+  const landings = (plan.landmarks ?? []).filter((landmark) => landmark.kind === 'landing').length;
+  if (landings > MAP_FILE_LIMITS.maxDropIns)
+    problems.push(
+      `A map file holds ${MAP_FILE_LIMITS.maxDropIns} drop-ins at most; the plan has ${landings} landings.`,
+    );
+  const floors = (plan.caves ?? []).reduce((total, cave) => total + cave.floors, 0);
+  if (floors > MAP_FILE_LIMITS.maxAreas)
+    problems.push(
+      `A map file holds ${MAP_FILE_LIMITS.maxAreas} insides and cave floors at most; the plan's caves have ${floors}.`,
+    );
   if (plan.exits.length > MAP_FILE_LIMITS.maxExits)
     problems.push(`A map file holds ${MAP_FILE_LIMITS.maxExits} ways out at most.`);
   return problems;
@@ -316,4 +367,26 @@ function lockRect(size: number, opening: Opening): [number, number, number, numb
   if (opening.side === 'south') return [opening.at, size - SEAM_DEPTH, opening.width, SEAM_DEPTH];
   if (opening.side === 'west') return [0, opening.at, SEAM_DEPTH, opening.width];
   return [size - SEAM_DEPTH, opening.at, SEAM_DEPTH, opening.width];
+}
+
+/**
+ * Districts nobody can walk to from `from` by the plan's crossings (a river is
+ * not a way across). A district reached only through a cave is still listed:
+ * the plan says so on purpose or by mistake, and the author should know which.
+ */
+export function unreachableDistricts(plan: WorldPlan, from: string): string[] {
+  const reached = new Set([from]);
+  const queue = [from];
+  while (queue.length > 0) {
+    const here = queue.shift()!;
+    for (const crossing of plan.crossings) {
+      if (crossing.kind === 'river' || !crossing.between.includes(here)) continue;
+      const there = crossing.between[crossing.between[0] === here ? 1 : 0];
+      if (!reached.has(there)) {
+        reached.add(there);
+        queue.push(there);
+      }
+    }
+  }
+  return plan.districts.map((district) => district.id).filter((id) => !reached.has(id));
 }
