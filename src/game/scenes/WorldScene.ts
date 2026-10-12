@@ -97,6 +97,7 @@ import {
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { createGiftPokemon, giftGivenBy, giftNicknamePrompt, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
+import { flashScreen } from '../ui/screenFlash';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
 import { caughtLegends, legendStandingAs } from '../world/legends';
@@ -1919,7 +1920,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // A place reached rather than a thing picked up, so it sounds like a
     // landmark and not like loot.
     audioManager.play('landmarkWorked');
-    this.cameras.main.flash(120, 94, 234, 212, false);
+    flashScreen(this.cameras.main, 120, [94, 234, 212]);
     return dropInReachedLine(insertion.label);
   }
 
@@ -3701,14 +3702,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
         this.timerThreat = 'enraged';
-        this.cameras.main.flash(160, 239, 68, 68, false);
+        flashScreen(this.cameras.main, 160, [239, 68, 68]);
         audioManager.play('clockEnraged');
       }
     } else {
       const tier = raidClockAlertTier(snapshot.remainingMs);
       if (tier !== this.timerThreat) {
         this.timerThreat = tier;
-        this.cameras.main.flash(120, 251, 191, 36, false);
+        flashScreen(this.cameras.main, 120, [251, 191, 36]);
         audioManager.play('clockUrgent');
       }
     }
@@ -5517,7 +5518,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     const marker = this.lootSprites.get(loot!.id);
-    this.cameras.main.flash(100, 250, 204, 21, false);
+    flashScreen(this.cameras.main, 100, [250, 204, 21]);
     audioManager.play('lootPickup');
     marker?.destroy();
     this.lootSprites.delete(loot!.id);
@@ -5604,7 +5605,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.poiSprites.delete(poi!.id);
     this.removeWorldLabel(this.poiLabels.get(poi!.id));
     this.poiLabels.delete(poi!.id);
-    this.cameras.main.flash(140, 56, 189, 248, false);
+    flashScreen(this.cameras.main, 140, [56, 189, 248]);
     // A cache pays out; a landmark is worked. They are different deeds on the
     // map and the field guide, so they are different sounds.
     audioManager.play(poi!.effect === 'unlock-extraction' ? 'landmarkWorked' : 'cacheOpen');
@@ -5698,7 +5699,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     drawn?.image.destroy();
     this.removeWorldLabel(drawn?.label);
     this.contractMarkers.delete(marker.id);
-    this.cameras.main.flash(120, 96, 165, 250, false);
+    flashScreen(this.cameras.main, 120, [96, 165, 250]);
     audioManager.play('contractStop');
     this.refreshRunTimerHud();
     this.saveGame();
@@ -5847,7 +5848,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.runSession.manager.resolveEscape();
     this.destroyRunTimerHud();
-    this.cameras.main.flash(240, 134, 239, 172, false);
+    flashScreen(this.cameras.main, 240, [134, 239, 172]);
     this.cameras.main.shake(120, 0.004);
     audioManager.play('extract');
     const snapshot = this.runSession.manager.snapshot();
@@ -6040,7 +6041,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
     const snapshot = this.runSession.manager.snapshot();
     this.destroyRunTimerHud();
-    this.cameras.main.flash(220, 239, 68, 68, false);
+    flashScreen(this.cameras.main, 220, [239, 68, 68]);
     this.cameras.main.shake(180, 0.009);
     audioManager.play('clockExpired');
     const carriedOut = this.bag.toJSON();
@@ -6396,7 +6397,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     // The same flash-and-warning language the raid timer uses for a threat change,
     // rather than a dialogue box that would freeze the player exactly as pursuit resumes.
-    this.cameras.main.flash(120, 251, 191, 36, false);
+    flashScreen(this.cameras.main, 120, [251, 191, 36]);
     audioManager.play('hunterResume');
   }
 

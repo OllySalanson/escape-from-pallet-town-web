@@ -225,3 +225,21 @@ describe('what a cache says it did', () => {
     }
   });
 });
+
+describe('the flash a cache opens with', () => {
+  // Playtest 6: every pickup and every cache flashed the whole screen to solid
+  // colour for a frame, because Phaser's flash starts fully opaque. It is a
+  // glint now: whatever the camera's flash starts from is held to the peak.
+  it('starts no stronger than a glint, so the map stays readable under it', async () => {
+    const { FLASH_PEAK_ALPHA } = await import('../ui/screenFlash');
+    const raid = inARaid('pallet-town');
+    const startedAt: number[] = [];
+    const flashEffect = { alpha: 1 };
+    (raid.scene as unknown as { cameras: unknown }).cameras = {
+      main: { shake: vi.fn(), flashEffect, flash: () => startedAt.push(flashEffect.alpha) },
+    };
+    raid.scene.tryActivatePoiAt(crateNamed('TOWN PUMP').position);
+    expect(startedAt).toHaveLength(1);
+    expect(startedAt[0]).toBeLessThanOrEqual(FLASH_PEAK_ALPHA);
+  });
+});

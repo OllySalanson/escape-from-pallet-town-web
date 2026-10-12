@@ -43,6 +43,7 @@ import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle
 import type { WeatherId } from '../pokemon/battle/weather';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
+import { flashScreen } from '../ui/screenFlash';
 import { doubleBattleBackdrop } from './battleBackdrop';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -3631,7 +3632,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (event.type === 'caught') {
       const caught = this.spriteFor(slotRef('enemy', 0));
-      this.cameras.main.flash(180, 255, 255, 255, false);
+      flashScreen(this.cameras.main, 180, [255, 255, 255]);
       if (caught) {
         this.tweens.add({
           targets: caught,
@@ -3854,7 +3855,7 @@ export class BattleScene extends Phaser.Scene {
       // secure container cannot protect it either.
       this.runSession.packItemId,
     );
-    this.cameras.main.flash(220, 239, 68, 68, false);
+    flashScreen(this.cameras.main, 220, [239, 68, 68]);
     this.cameras.main.shake(180, 0.009);
     audioManager.play('wipe');
     this.pendingHubTransition = true;

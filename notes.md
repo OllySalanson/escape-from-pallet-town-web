@@ -38,9 +38,17 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** take Brock's crate, drop it to make room for a better find, and walk out: the result screen tells you it was left behind, and Brock asks after it without accusing you of wiping.
 - **Also:** `menuShots.mjs`'s ROW CUT on the drop-in brief at 960x720 was the tool's fault, not the screen's: the "cut" row was a wrapped note whose blank top padding alone (2 game pixels) sat above the MORE strip, and its text starts exactly at the fold. The audit now measures from inside a row's top padding; the run is clean at 960x720.
 
+## 6. Every pickup strobed the whole screen solid yellow (playtest 6, presentation)
+
+- **Found:** picking up loot, working a cache, reaching a drop-in, the clock's alarm, a beaten boss and a hit or faint in battle all called Phaser's camera `flash`, which starts at **full opacity** and fades out. A stepped capture of a pickup was one flat yellow picture with no map in it; at 60fps it is a 100 ms full-screen strobe on something done dozens of times a raid. FireRed never blanks the screen for a pickup, and it is what photosensitivity guidance asks a game not to do. Eleven calls in `WorldScene` and `BattleScene` worked this way.
+- **Reproduced:** through the real `WorldScene.tryActivatePoiAt` on Pallet's TOWN PUMP with a camera that records the alpha the flash starts from (`locksAndKeys.test.ts`, "the flash a cache opens with"): it started at 1. And with Phaser's own `Flash` effect (`screenFlash.test.ts`, loaded with `vi.importActual` so the fade is Phaser's arithmetic, not an imitation). Both failed before the fix.
+- **Fixed:** `flashScreen(camera, ms, [r, g, b])` in `ui/screenFlash.ts` sets the camera's flash effect to start at `FLASH_PEAK_ALPHA` (0.35) - Phaser restores that alpha when a flash ends, so every later flash starts there too - and every scene flash goes through it. `screenFlash.test.ts` fails any scene that calls `cameras.main.flash(` directly. Colours and durations are unchanged.
+- **How a player meets it:** pick something up in a raid: the screen glints yellow over the map instead of going solid yellow, and the same for every other flash in the world and in battle.
+- **Not done:** no browser capture this time; the check is the real scene path plus Phaser's own effect class.
+
 ## Checked and already fixed (skipped)
 
-Playtest 45: findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
+Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
 
 ## Still open from playtest 6 (candidates for later iterations)
 
