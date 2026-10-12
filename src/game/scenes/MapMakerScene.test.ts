@@ -950,3 +950,31 @@ describe('typing what a map cannot hold', () => {
     expect(clean.setSelectionRange).not.toHaveBeenCalled();
   });
 });
+
+describe('deleting a draft', () => {
+  it('keeps saying "Delete for good" once pressed, however often the screen is drawn again', () => {
+    localStorage.setItem(
+      MAKER_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        current: 'draft-1',
+        drafts: [
+          { key: 'draft-1', file: blankMap(), updatedAt: 1 },
+          { key: 'draft-2', file: { ...blankMap(), name: 'Keep Me' }, updatedAt: 2 },
+        ],
+      }),
+    );
+    const { scene } = openMaker();
+    const internals = scene as unknown as {
+      openPanel(panel: string): void;
+      deleteDraft(button: { textContent: string }, key: string): void;
+    };
+    internals.openPanel('drafts');
+    internals.deleteDraft({ textContent: 'Delete' }, 'draft-2');
+    // A tool key draws the screen again while the Delete is waiting on its
+    // second press. The button must still say what that press does: drawn as
+    // a plain Delete, one press of it took the draft for good.
+    scene.handleKey(key('r'));
+    expect(scene.overlay.root.innerHTML).toMatch(/data-delete-draft="draft-2"[^>]*>Delete for good</);
+  });
+});

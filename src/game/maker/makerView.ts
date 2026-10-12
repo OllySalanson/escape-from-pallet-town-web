@@ -184,6 +184,8 @@ export interface MakerViewState {
   readonly drafts: readonly StoredDraft[];
   /** How many drafts in this browser this editor cannot open: kept, and said so. */
   readonly unreadableDrafts?: number;
+  /** The draft whose Delete has been pressed once: the next press deletes it. */
+  readonly pendingDelete?: string;
   readonly draftKey: string;
   /** What the right-hand column shows under the checks. */
   readonly panel: MakerPanel;
@@ -913,14 +915,23 @@ function settingsPane(file: MapFile): string {
   );
 }
 
-function draftsPane(drafts: readonly StoredDraft[], current: string, unreadable = 0): string {
+function draftsPane(
+  drafts: readonly StoredDraft[],
+  current: string,
+  unreadable = 0,
+  pendingDelete?: string,
+): string {
   const rows = drafts
     .map(
       (draft) =>
         `<div class="maker-draft"><button class="px-row${draft.key === current ? ' is-selected' : ''}" data-open-draft="${escapeAttribute(draft.key)}" data-help="Opens this draft."><span class="px-row-main"><span class="px-name">${escapeHtml(draft.file.name || 'Untitled map')}</span><small class="px-note">${draft.file.width}x${draft.file.height}</small></span></button>${
           draft.key === current
             ? ''
-            : `<button class="px-window px-button" data-delete-draft="${escapeAttribute(draft.key)}" data-help="Deletes this draft from this browser. It cannot be undone.">Delete</button>`
+            : `<button class="px-window px-button" data-delete-draft="${escapeAttribute(draft.key)}" data-help="Deletes this draft from this browser. It cannot be undone.">${
+                // Pressed once, it says what the next press does, however
+                // often the screen is drawn again in between.
+                draft.key === pendingDelete ? 'Delete for good' : 'Delete'
+              }</button>`
         }</div>`,
     )
     .join('');
@@ -1140,7 +1151,7 @@ export function makerScreen(state: MakerViewState): string {
   const panels: Readonly<Record<MakerPanel, () => string>> = {
     map: () =>
       `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(state.file, inside) : settingsPane(state.file)}`,
-    drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts),
+    drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts, state.pendingDelete),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),
     review: () => reviewPane(state.review, state.reviewing, state.checks, state.file),
