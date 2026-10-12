@@ -7,6 +7,13 @@ export type SpinKind = 'none' | 'mini' | 'full';
 export declare const LINES_PER_LEVEL = 10;
 /** The level whose gravity is the fastest the game gets. */
 export declare const MAX_GRAVITY_LEVEL = 20;
+/**
+ * Gravity this fast is "20G": a row every twentieth of a 60 Hz frame, so a
+ * piece is on the stack the moment it appears. The curve reaches it at level 19.
+ */
+export declare const TWENTY_G_MS_PER_ROW: number;
+/** What a back-to-back clear's points are multiplied by. */
+export declare const BACK_TO_BACK_MULTIPLIER = 1.5;
 export declare const SOFT_DROP_POINTS_PER_CELL = 1;
 export declare const HARD_DROP_POINTS_PER_CELL = 2;
 export declare const COMBO_POINTS = 50;
