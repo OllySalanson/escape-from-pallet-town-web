@@ -59,7 +59,7 @@ export interface TitleMenu {
 
 const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
 
-/** "5 POKEMON · 2 CONTRACTS": enough to know a save is yours. */
+/** "5 POKéMON · 2 CONTRACTS": enough to know a save is yours, spelt as FireRed spells it in capitals. */
 export function saveDetail(summary: SaveSummary): string {
   if (summary.kind === 'none') {
     return 'NO SAVED GAME';
@@ -67,7 +67,7 @@ export function saveDetail(summary: SaveSummary): string {
   if (summary.kind === 'unreadable') {
     return 'SAVE UNREADABLE';
   }
-  return `${summary.pokemon} POKEMON · ${plural(summary.contracts, 'CONTRACT', 'CONTRACTS')}`;
+  return `${summary.pokemon} POKéMON · ${plural(summary.contracts, 'CONTRACT', 'CONTRACTS')}`;
 }
 
 export function titleMenu(summary: SaveSummary): TitleMenu {

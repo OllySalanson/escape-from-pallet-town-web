@@ -410,6 +410,9 @@ export class MenuOverlay {
   private markScrollCues(): void {
     const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
     this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
+      if (unit > 0 && settledScrollTop(pane, unit) !== pane.scrollTop) {
+        pane.scrollTop = settledScrollTop(pane, unit);
+      }
       const scrolled = unit > 0 && pane.scrollTop > 0.5;
       const more = unit > 0 && hasMoreBelow(pane, unit);
       const box = pane.getBoundingClientRect();
@@ -680,6 +683,28 @@ export function hasMoreBelow(
   unit = 1,
 ): boolean {
   return pane.scrollHeight - pane.clientHeight - pane.scrollTop > Math.max(1, unit);
+}
+
+/**
+ * Where a scrolling pane belongs once the browser has moved it: where it is,
+ * unless it holds nothing out of sight even from the top - an overflow of
+ * under a game pixel is a line of text's rounding, as `hasMoreBelow` says -
+ * in which case at the top. Such a pane can still be scrolled by its rounding,
+ * and the cursor's `scroll-padding-bottom` does it: in a 1280x800 window the
+ * Pokemon Center's list scrolled one pixel as it opened, which cut the strip
+ * over its rows, and the cover over a cut row hid all of that strip but its
+ * rules - Sort, Find and the box with no words on them.
+ */
+export function settledScrollTop(
+  pane: {
+    readonly scrollHeight: number;
+    readonly clientHeight: number;
+    readonly scrollTop: number;
+  },
+  unit = 1,
+): number {
+  const fromTheTop = { scrollHeight: pane.scrollHeight, clientHeight: pane.clientHeight, scrollTop: 0 };
+  return hasMoreBelow(fromTheTop, unit) ? pane.scrollTop : 0;
 }
 
 /** Everything on a pixel-ui screen that takes its width from the words inside it. */

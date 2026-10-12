@@ -61,11 +61,12 @@ const POCKETS = [
 ] as const;
 
 /**
- * What a row's Enter does nothing about. Three kinds of thing in the pocket do
+ * What a row's Enter does nothing about. These kinds of thing in the pocket do
  * nothing to a Pokemon and say where they are spent instead - the money used to
- * offer a live USE ITEM that could only ever refuse itself.
+ * offer a live USE ITEM that could only ever refuse itself, and a rod, a
+ * Pickaxe and a spare pack opened a list of Pokemon to use them on.
  */
-const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency']);
+const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency', 'rod', 'pickaxe', 'pack']);
 
 /**
  * What pressing a row does, in the words of the help bar.
@@ -84,6 +85,12 @@ const useLabel = (item: ItemDefinition): string => {
       return 'Carry it home: Brock is the only one who takes it.';
     case 'currency':
       return 'Carry it home: Bill is the only one who takes it.';
+    case 'rod':
+      return 'Face open water and press the interact key to cast it.';
+    case 'pickaxe':
+      return 'Face the rubble over a buried exit and press the interact key.';
+    case 'pack':
+      return 'Carry it home: which pack is worn is chosen at base.';
     case 'machine':
       return `Read ${item.displayName} to a Pokémon. A move learned is learned for good.`;
     default:
@@ -585,7 +592,16 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     const result = useFieldItem(item, target);
-    audioManager.play(result.used ? 'heal' : 'denied');
+    if (result.used && item.effect.type === 'evolution-stone') {
+      // An evolution sounds as it does in a fight (`BattleScene.finishEvolution`):
+      // the fanfare, then the species it became. Its cry is fetched now, and
+      // waits for the fanfare to finish however soon it arrives.
+      audioManager.play('evolved');
+      const species = target.base.dexId;
+      void audioManager.loadCries([species]).then(() => audioManager.play('cry', { species }));
+    } else {
+      audioManager.play(result.used ? 'heal' : 'denied');
+    }
     if (result.used) {
       this.spend(item);
     }

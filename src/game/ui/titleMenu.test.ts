@@ -34,13 +34,13 @@ describe('the title menu', () => {
     const menu = titleMenu(GAME);
 
     expect(menu.initial).toBe('continue');
-    expect(menu.choices[0]).toMatchObject({ enabled: true, detail: '5 POKEMON · 2 CONTRACTS' });
+    expect(menu.choices[0]).toMatchObject({ enabled: true, detail: '5 POKéMON · 2 CONTRACTS' });
     // The other choice says what it costs before it is chosen.
     expect(menu.choices[1].detail).toBe('ERASES THE SAVE');
   });
 
   it('counts one of a thing in the singular', () => {
-    expect(saveDetail({ kind: 'game', pokemon: 1, contracts: 1, raids: 0 })).toBe('1 POKEMON · 1 CONTRACT');
+    expect(saveDetail({ kind: 'game', pokemon: 1, contracts: 1, raids: 0 })).toBe('1 POKéMON · 1 CONTRACT');
   });
 
   it('names a save it cannot read rather than calling it empty', () => {

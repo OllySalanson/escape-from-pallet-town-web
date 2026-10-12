@@ -12,10 +12,12 @@
 // The hunter is brought in early and stood beside the player rather than
 // waited and walked for, because what is being judged is the art and the
 // words, not the pursuit.
+import { mkdirSync } from 'node:fs';
 import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
 import { GAME, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const [base, outDir] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+mkdirSync(outDir, { recursive: true });
 const url = new URL(base);
 url.searchParams.set('testmode', 'pixels');
 const browser = await launchBrowser({ window: PIXEL_WINDOW });

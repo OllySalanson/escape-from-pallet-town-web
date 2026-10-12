@@ -89,6 +89,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     kind: 'npc',
     position: { x: 9, y: 10 },
     facing: 'left',
+    design: 'gym-guide',
     // Pacing the square, a step west and back, looking down the two roads they
     // keep naming. Both tiles are on the square's wide row, which is why the
     // structural suite is what decides whether a beat may be authored at all.
@@ -104,6 +105,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     kind: 'npc',
     position: { x: 22, y: 11 },
     facing: 'down',
+    design: 'little-girl',
     // Stepping down to the water and back up to the path. A different interval
     // from the guide's, so the two of them are never seen moving together.
     idle: { roam: [{ x: 22, y: 12 }], glances: ['left', 'right'], beatMs: 3100 },

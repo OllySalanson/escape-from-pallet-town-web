@@ -21,6 +21,14 @@
 export const BOARD_SIZE = 10;
 
 /**
+ * How long Pallet Town has to answer before the console stops waiting and
+ * answers from this device. A connection that never fails never answers
+ * either, and without a limit the menu said it was asking for as long as the
+ * player sat there.
+ */
+export const BOARD_ANSWER_MS = 8_000;
+
+/**
  * What a score has to be to be posted, the database's own limits
  * (`submit_console_score`): a whole number in eight digits, a game that lasted
  * at least a second, and no more points than fifty thousand a second of play
@@ -171,7 +179,7 @@ export class Leaderboards {
 
   public async load(game: string, me: string | null): Promise<Board> {
     try {
-      const entries = await this.remote.load(game);
+      const entries = await answeredWithin(this.remote.load(game), BOARD_ANSWER_MS);
       return { where: 'pallet-town', entries: entries.slice(0, BOARD_SIZE) };
     } catch {
       return { where: 'device', entries: this.device.entries(game, me) };
@@ -185,11 +193,24 @@ export class Leaderboards {
     }
     this.device.record(game, name, score.score, this.now());
     try {
-      await this.remote.post(game, name, score);
+      await answeredWithin(this.remote.post(game, name, score), BOARD_ANSWER_MS);
       return 'pallet-town';
     } catch {
       return 'device';
     }
+  }
+}
+
+/** What was asked, or a throw once `ms` has passed with no answer. */
+async function answeredWithin<T>(asked: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const silence = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Pallet Town did not answer')), ms);
+  });
+  try {
+    return await Promise.race([asked, silence]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

@@ -14,7 +14,7 @@
 // nothing could be turned on its side.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -87,6 +87,19 @@ try {
     await sleep(200);
   };
 
+  /** Takes every one of a supply back out, by the same stepper's minus. */
+  const unpack = async (itemId) => {
+    for (let guard = 0; guard < 99; guard += 1) {
+      const removed = await page.evaluate(
+        `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="-1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+      );
+      if (!removed) {
+        return;
+      }
+      await sleep(150);
+    }
+  };
+
   // --- A save with supplies in the vault, opened on the loadout -------------
   await until(sceneIs('title'), 'the title screen');
   await press('Space');
@@ -100,14 +113,24 @@ try {
   await page.evaluate(
     `(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
       save.stash.items = { ...save.stash.items, potion: 6, 'super-potion': 4, 'poke-ball': 6 };
+      // Oak's first words lie over the loadout and make it inert, so a block
+      // could not take the focus (\`hub/firstWords.ts\`): this save has heard them.
+      save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'dropin', 'check', 'center'];
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`,
   );
   await page.send('Page.navigate', { url: url.href });
   await until(sceneIs('title'), 'the title screen again');
   await press('Space');
   await until(sceneIs('base'), 'the base');
+  // The lobby is a town now, and preparation is done inside Oak's Lab.
+  await walkIntoBase(page, 'oaks-lab', { press, until });
   await click('Start a raid');
   await click('Bulbasaur');
+  // The stash's medicine is packed for you (`DeploymentFlow.packMedicine`), so
+  // the pack is emptied first and filled with exactly the case below.
+  for (const itemId of ['super-potion', 'potion', 'poke-ball']) {
+    await unpack(itemId);
+  }
   for (const itemId of ['super-potion', 'super-potion', 'potion', 'potion', 'poke-ball']) {
     await packOne(itemId);
   }

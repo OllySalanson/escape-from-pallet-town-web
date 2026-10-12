@@ -504,6 +504,22 @@ describe('what the party earned', () => {
     // Said once, at the top of the screen: the panel below lists the rows.
   });
 
+  it('marks a shiny on its experience row as the party row marks it', () => {
+    const { manager, starter } = raidThatWon(20);
+    starter.shiny = true;
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.progress[0]).toMatchObject({ name: 'Bulbasaur', shiny: true });
+  });
+
   it('says how close the next level is when the raid did not deliver one', () => {
     const { manager, starter } = raidThatWon(20);
     manager.resolveEscape();

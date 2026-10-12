@@ -112,8 +112,9 @@ export function abandonedRaidLines(raid: AbandonedRaid): readonly string[] {
 
 /**
  * The longest line the base's dialogue box shows whole. It holds two lines of
- * about thirty-eight letters and does not page a long one, so a list of
- * everything a pack held is shared out over as many boxes as it takes.
+ * about thirty-eight letters, so a list of everything a pack held is shared
+ * out over boxes that each begin with their own words, rather than left to
+ * the box to break mid-list.
  */
 export const ABANDONED_LINE_LETTERS = 64;
 

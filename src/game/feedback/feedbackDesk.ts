@@ -125,12 +125,7 @@ export function installFeedbackDesk(game: Phaser.Game, courier: FeedbackCourier 
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key.toLowerCase() !== 'f' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) {
-      return;
-    }
-    // F in a text field is a letter, with the panel up it is the panel's to
-    // read, and in a console game it is the game's.
-    if (isTypingTarget(event.target) || inConsoleGame(event.target) || game.scene.isActive('feedback')) {
+    if (!isFeedbackKey(event, game.scene)) {
       return;
     }
     event.preventDefault();
@@ -264,7 +259,30 @@ function logWhatHappens(game: Phaser.Game): () => void {
   };
 }
 
+/**
+ * Whether a key pressed on the page is the FEEDBACK key. F in a text field is a
+ * letter, with the panel up it is the panel's to read, in a console game it is
+ * the game's, and in the map maker it is FILL - a tool key its own screen names
+ * ("Keys pick a tool: B R F I V X"), which the panel used to take. The tab
+ * still opens the panel from both.
+ */
+export function isFeedbackKey(
+  event: Pick<KeyboardEvent, 'key' | 'repeat' | 'ctrlKey' | 'metaKey' | 'altKey' | 'target'>,
+  scenes: { isActive(key: string): boolean },
+): boolean {
+  if (event.key.toLowerCase() !== 'f' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) {
+    return false;
+  }
+  return !(
+    isTypingTarget(event.target) ||
+    inConsoleGame(event.target) ||
+    scenes.isActive('feedback') ||
+    scenes.isActive('mapmaker')
+  );
+}
+
 /** Whether a key was pressed inside a game playing on the house console. */
 function inConsoleGame(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest(`.${CONSOLE_GAME_CLASS}`) !== null;
+  const element = target as { closest?: (selector: string) => unknown } | null;
+  return typeof element?.closest === 'function' && element.closest(`.${CONSOLE_GAME_CLASS}`) !== null;
 }

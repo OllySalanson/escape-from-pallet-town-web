@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { nextTileFromDirection } from '../movement/gridMovement';
-import { getWorldEntityAt } from './npcs';
+import { WORLD_ENTITIES, getWorldEntityAt } from './npcs';
 
 describe('world interaction targets', () => {
   it('finds the market square guide directly in front of the player', () => {
@@ -28,5 +28,15 @@ describe('world interaction targets', () => {
     // The town sign's own tile, asked of a map it does not stand on.
     expect(getWorldEntityAt('pallet-town', { x: 9, y: 8 })?.id).toBe('town-sign');
     expect(getWorldEntityAt('viridian-forest', { x: 9, y: 8 })).toBeUndefined();
+  });
+
+  it('dresses every townsperson in a design of their own, never in the player\u2019s art', () => {
+    // A figure with no design is drawn from the shared sheet, which is the
+    // player's own character with a pale tint over it: Pallet Town's guide
+    // and pond watcher stood in the square looking like the player's double.
+    const undressed = WORLD_ENTITIES.filter(
+      (entity) => entity.kind === 'npc' && entity.pokemon === undefined && entity.design === undefined,
+    ).map((entity) => entity.id);
+    expect(undressed).toEqual([]);
   });
 });

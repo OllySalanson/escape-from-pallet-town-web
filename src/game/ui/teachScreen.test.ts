@@ -99,6 +99,25 @@ describe('the teaching screen', () => {
     expect(full).toContain('Nothing is forgotten until you confirm');
   });
 
+  it("names the bar's own button on the chosen card's help line", () => {
+    const helpOf = (markup: string, index: number): string =>
+      markup.match(new RegExp(`data-pupil="${index}"[^>]*data-help="([^"]*)"`))?.[1] ?? '';
+    expect(helpOf(teachBody(view(0)), 0)).toContain('Press TEACH AERIAL ACE at the bottom to read the disc');
+    // A full moveset's button picks a move first; there is no TEACH to press.
+    const full = helpOf(teachBody(view(1)), 1);
+    expect(full).toContain('Press PICK A MOVE TO FORGET at the bottom to choose the move AERIAL ACE replaces');
+    expect(full).not.toContain('Press TEACH');
+  });
+
+  it("never promises an unchosen full moveset a TEACH button it will not get", () => {
+    const helpOf = (markup: string, index: number): string =>
+      markup.match(new RegExp(`data-pupil="${index}"[^>]*data-help="([^"]*)"`))?.[1] ?? '';
+    expect(helpOf(teachBody(view(null)), 0)).toContain('Nothing happens until you press TEACH AERIAL ACE.');
+    const full = helpOf(teachBody(view(null)), 1);
+    expect(full).toContain('Nothing is forgotten until you pick the move it replaces.');
+    expect(full).not.toContain('press TEACH');
+  });
+
   it('says so when nobody can learn it', () => {
     const markup = teachBody(view(null, AERIAL_ACE, [new Pokemon(SQUIRTLE, 5), new Pokemon(PIKACHU, 5)]));
     expect(markup).toContain('Nobody in the party can learn AERIAL ACE');

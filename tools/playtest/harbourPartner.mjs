@@ -263,10 +263,14 @@ try {
   if (!spoken.line?.includes(spoken.partner.species.toUpperCase())) fail(`spoken to, it said "${spoken.line}"`);
   if (!spoken.partner.bubble) fail('spoken to, it showed no bubble');
   await page.screenshot(`${out}/talk.png`);
-  for (let press = 0; press < 4; press += 1) {
+  // Read until the box is down, never a fixed count: the line is chosen at
+  // random, a short one is typed out before the first press and closed by it,
+  // and the next press faces the partner again and opens a fresh one.
+  for (let press = 0; press < 8 && (await state()).line !== null; press += 1) {
     await tap('Space');
     await frames(12);
   }
+  if ((await state()).line !== null) fail('the partner\'s line never went away');
   await frames(60);
   await endClip();
 

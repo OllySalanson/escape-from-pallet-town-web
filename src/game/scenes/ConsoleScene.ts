@@ -142,6 +142,14 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
   }
 
   private onKey(event: KeyboardEvent): void {
+    // Escape puts the name form down before it leaves the console, wherever
+    // the cursor is: Tab from the field lands on the form's own buttons, and
+    // Escape there closed the whole menu with the name half typed.
+    if (this.naming && event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelNaming();
+      return;
+    }
     if (isOverlayDismissKey(event)) {
       event.preventDefault();
       this.close();

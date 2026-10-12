@@ -3032,18 +3032,22 @@ button {
 }
 /* Three stats a row, the number hard right against its name: one a line is the
    shape this wants and is four rows too tall for a pane that must not starve
-   the list above it. */
+   the list above it. A column is as wide as its widest stat, so the widest
+   name is as near its number as the pair's own gap lets it be: that gap is
+   two of this face's word spaces, and the gap between pairs twice that - at
+   two pixels and four the row read `Attack 7 Defense7 Sp. Atk 8`, a name
+   nearer the next stat's number than its own. */
 :where(.pixel-ui) .summary-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 calc(var(--u) * 4);
+  gap: 0 calc(var(--u) * 8);
   margin: 0;
 }
 :where(.pixel-ui) .summary-stats > div {
   min-width: 0;
   display: flex;
   justify-content: space-between;
-  gap: calc(var(--u) * 2);
+  gap: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .summary-stats dt {
   color: var(--ink-soft);

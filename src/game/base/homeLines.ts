@@ -3,6 +3,7 @@ import { STARTER_SPECIES } from '../stash/Stash';
 import { PokemonType } from '../pokemon/PokemonType';
 import { formatMoney } from '../items';
 import { moneyHeld } from '../hub/trader';
+import { KANTO_POKEDEX_SIZE, dueMilestone, nextMilestone, pokedexOwned } from '../hub/pokedex';
 import { hunterRival, rivalForRaid, type HunterRivalId } from '../world/hunters';
 import { worldMapName, type WorldMapId } from '../worldMap';
 
@@ -54,7 +55,10 @@ function record(game: RestoredGame): {
   const entries = Object.entries(game.raidProgress.raidRecord ?? {});
   const raids = raidsDeployed(game.raidProgress);
   const home = entries.reduce((total, [, each]) => total + each.extracted, 0);
-  const lost = entries.reduce((total, [, each]) => total + each.wiped, 0);
+  // Every raid that did not come home was lost, an abandoned one too: closing
+  // the tab mid-raid costs the pack (`run/raidInFlight.ts`) but is never
+  // written to the record as a wipe, so counting `wiped` alone left it out.
+  const lost = raids - home;
   const best = entries
     .filter(([, each]) => each.deployed > 0)
     .sort((a, b) => b[1].deployed - a[1].deployed || a[0].localeCompare(b[0]))[0];
@@ -75,17 +79,37 @@ function keepingLine(game: RestoredGame): string {
   return held.length === 0 ? 'Bill is keeping nothing for you yet.' : `Bill is keeping ${held.join(' and ')} for you.`;
 }
 
+/**
+ * The Pokédex as the PC counts it: the kinds Oak counts (`hub/pokedex.ts`), and
+ * what he has for it. Nothing else in the game says the count, so without this
+ * a player never heard there was a Pokédex until the tenth kind.
+ */
+function pokedexLine(game: RestoredGame): string {
+  const owned = pokedexOwned(game.raidProgress.pokedexOwned, game.stash).length;
+  if (owned >= KANTO_POKEDEX_SIZE) {
+    return `Pokédex: all ${KANTO_POKEDEX_SIZE} kinds owned. It is complete!`;
+  }
+  const counted = `Pokédex: ${owned} kind${owned === 1 ? '' : 's'} owned.`;
+  if (dueMilestone(owned, game.raidProgress.pokedexRewards)) {
+    return `${counted} Oak has a reward waiting in his lab.`;
+  }
+  const next = nextMilestone(owned);
+  return next ? `${counted} Oak has a reward for you at ${next.kinds}.` : counted;
+}
+
 export function pcLines(game: RestoredGame): readonly string[] {
   const log = record(game);
   const keeping = keepingLine(game);
+  const pokedex = pokedexLine(game);
   if (log.raids === 0) {
-    return ['RAID LOG. No raids yet. Oak is up the row, with the contract board.', keeping];
+    return ['RAID LOG. No raids yet. Oak is up the row, with the contract board.', pokedex, keeping];
   }
   return [
     `RAID LOG. ${log.raids} raid${log.raids === 1 ? '' : 's'}: ${log.home} came home, ${log.lost} lost.`,
     ...(log.favourite
       ? [`Raided most: ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}, ${times(log.favourite.raids)}.`]
       : []),
+    pokedex,
     keeping,
   ];
 }

@@ -9,8 +9,8 @@
 //
 // `--beaten` fills the badge case and `--raids` the pennants, the raid log and
 // the calendar, by writing the save before the house is walked into. Reads the
-// badge case, the telly, the pennants, sleeps in the bed and plays the console
-// until the fourth game is won. Photographs the yard, both floors and the
+// badge case, the telly, the pennants, sleeps in the bed, opens the console's
+// GAMES menu and backs out of it into the house. Photographs the yard, both floors and the
 // sign's line on the way. It fails loudly - a thrown error, not a picture -
 // when any promise is broken.
 import { mkdirSync } from 'node:fs';
@@ -196,7 +196,7 @@ try {
   console.log(`upstairs: arrived on the stair mat ${upstairs.tile.x},${upstairs.tile.y} facing down`);
 
   const heard = {};
-  for (const name of ['PENNANTS', 'YOUR BED', 'YOUR PC', 'THE CONSOLE', 'THE CONSOLE', 'THE CONSOLE', 'THE CONSOLE', 'THE CALENDAR']) {
+  for (const name of ['PENNANTS', 'YOUR BED', 'YOUR PC', 'THE CONSOLE', 'THE CALENDAR']) {
     const tiles = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === ${JSON.stringify(name)}).tiles`);
     const stands = [];
     for (const tile of tiles) {
@@ -211,13 +211,32 @@ try {
     await walkTo(open);
     const here = (await page.evaluate(state())).tile;
     const stand = open.find((each) => each.x === here.x && each.y === here.y);
+    if (name === 'THE CONSOLE') {
+      // The console says nothing: it opens the GAMES menu over the paused
+      // house (`scenes/ConsoleScene.ts`), and Escape puts the player back
+      // where they stood.
+      await press(stand.key);
+      await press('Space');
+      await page.waitFor(
+        `${GAME}.scene.isActive('console') && /PALLET BLOCKS/.test(document.querySelector('#screens')?.innerText ?? '')`,
+        { what: 'the GAMES menu listing PALLET BLOCKS' },
+      );
+      await page.screenshot(`${out}/console.png`);
+      await press('Escape');
+      const after = await settle('back in the house from the console', "s.room === 'bolthole-upstairs'");
+      if (after.tile.x !== here.x || after.tile.y !== here.y) {
+        throw new Error(`leaving the console put the player on ${JSON.stringify(after.tile)}, not ${JSON.stringify(here)}`);
+      }
+      heard[name] = ['GAMES'];
+      console.log('THE CONSOLE: opened the GAMES menu and came back to the house');
+      continue;
+    }
     const lines = await read(stand.key, name === 'YOUR BED' ? { shot: `${out}/bed.png` } : {});
     heard[name] = [...(heard[name] ?? []), lines.join(' / ')];
     console.log(`${name}: ${lines.join(' / ')}`);
   }
   if (!heard['PENNANTS'][0].startsWith('PENNANTS')) throw new Error(`the pennants say "${heard['PENNANTS'][0]}"`);
   if (!heard['YOUR BED'][0].includes('NURSE JOY')) throw new Error('the bed did not send the player to Joy for healing');
-  if (!heard['THE CONSOLE'][3].includes('finally beat')) throw new Error(`the fourth game says "${heard['THE CONSOLE'][3]}"`);
   await page.screenshot(`${out}/upstairs-read.png`);
 
   // Off the mat and back on is the way down.

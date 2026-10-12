@@ -769,6 +769,16 @@ export class BaseScene extends Phaser.Scene {
         }
       });
     }
+    // Phaser hears the pointer only over the canvas, so leaving the game's
+    // frame is no pointer-out on anything: the label the pointer put up stayed,
+    // and every other caption in the room stayed hidden behind it.
+    if (placed.length > 0) {
+      this.input.on(Phaser.Input.Events.GAME_OUT, () => {
+        if (this.inspecting?.by === 'pointer') {
+          this.inspect(null);
+        }
+      });
+    }
   }
 
   /**

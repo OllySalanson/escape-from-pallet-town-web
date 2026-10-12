@@ -128,14 +128,26 @@ function pupilCard(view: TeachView, pokemon: Pokemon, index: number): string {
       () => `<li class="is-free"><small>Free slot</small></li>`,
     ),
   ].join('');
+  // Named as the bar's own button reads, which for a full moveset is not TEACH.
   const help = choosable
     ? chosen
-      ? `${name} is chosen. Press TEACH at the bottom to read the disc, or choose someone else.`
-      : `Choose ${name} to learn ${move}. ${pupilOutcome(view.machine, pokemon)} Nothing happens until you press TEACH.`
+      ? `${name} is chosen. Press ${confirmLabel(view.machine, pokemon).toUpperCase()} at the bottom ${
+          verdict === 'replaces' ? `to choose the move ${move} replaces` : 'to read the disc'
+        }, or choose someone else.`
+      : `Choose ${name} to learn ${move}. ${pupilOutcome(view.machine, pokemon)} ${
+          verdict === 'replaces'
+            ? 'Nothing is forgotten until you pick the move it replaces.'
+            : `Nothing happens until you press ${confirmLabel(view.machine, pokemon).toUpperCase()}.`
+        }`
     : `${name}: ${pupilOutcome(view.machine, pokemon)}`;
   const tag = chosen ? pixelTag('Chosen', 'good', true) : VERDICT_TAG[verdict];
   const classes = ['px-row', 'teach-pupil', `is-${verdict}`, ...(chosen ? ['is-selected'] : [])].join(' ');
   return `<button class="${classes}" data-pupil="${index}"${choosable ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(help)}">${pixelPortrait(pokemon.base.dexId, pokemon.name, pokemon.shiny)}<span class="teach-pupil-words"><span class="px-row-line"><strong class="px-name">${name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}${tag}</span><small class="teach-pupil-condition">${conditionLine(pokemon)}</small><ol class="teach-moves" aria-label="${escapeAttribute(`${name}'s moves`)}">${moves}</ol><span class="px-wrap teach-outcome">${pupilOutcome(view.machine, pokemon)}</span></span></button>`;
+}
+
+/** What the bar's button says once `pokemon` is chosen: a full moveset picks a move first. */
+function confirmLabel(machine: TeachView['machine'], pokemon: Pokemon): string {
+  return pupilVerdict(machine, pokemon) === 'replaces' ? 'Pick a move to forget' : `Teach ${machine.move.name.toUpperCase()}`;
 }
 
 /** The foot of the screen: what pressing TEACH will do, or what to do first. */
@@ -162,7 +174,6 @@ function teachBar(view: TeachView): string {
   const line = replaces
     ? `${name} knows four moves: next, pick the one ${move} replaces. Nothing is forgotten until you confirm.`
     : `${name} learns ${move} in a free slot and forgets nothing.`;
-  const confirmLabel = replaces ? 'Pick a move to forget' : `Teach ${move}`;
   const confirmHelp = replaces
     ? `See ${name}'s four moves and choose the one ${move} replaces.`
     : `${name} learns ${move}. ${discFate(view.machine)}`;
@@ -170,7 +181,7 @@ function teachBar(view: TeachView): string {
     title: `Teach ${move} to ${name}?`,
     className: 'teach-bar is-armed',
     lines: [`<p class="px-wrap">${line} ${view.machine.reusable ? 'The HM is not used up.' : 'The TM is used up.'}</p>`],
-    actions: `<button class="px-window px-button" data-teach-cancel data-help="${escapeAttribute(`Do not teach ${name}. Choose someone else, or go back to the pack.`)}">Cancel</button><button class="px-window px-button is-primary" data-teach data-help="${escapeAttribute(confirmHelp)}">${confirmLabel}</button>`,
+    actions: `<button class="px-window px-button" data-teach-cancel data-help="${escapeAttribute(`Do not teach ${name}. Choose someone else, or go back to the pack.`)}">Cancel</button><button class="px-window px-button is-primary" data-teach data-help="${escapeAttribute(confirmHelp)}">${confirmLabel(view.machine, pupil)}</button>`,
   });
 }
 

@@ -1224,6 +1224,17 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
+    // A deal asked again is a YES/NO box, and ESC on one is NO, as B is in
+    // FireRed: it puts the question down and stays at the counter.
+    if (event.key === 'Escape' && (this.swapArmed || this.workshopArmed !== undefined || this.traderArmed !== undefined)) {
+      event.preventDefault();
+      audioManager.play('cancel');
+      this.swapArmed = false;
+      this.workshopArmed = undefined;
+      this.traderArmed = undefined;
+      this.render();
+      return;
+    }
     // Every room has a way out now, Oak's Lab included, and `goBack` knows
     // where each one leads: a step of preparation back to the lab, and the lab
     // itself back out into the yard.
@@ -3092,7 +3103,9 @@ export class HubScene extends Phaser.Scene {
     )}${pixelCommitBar({
       title: `Deploy to ${insertion.label}`,
       lines: [
-        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · raid clock ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
+        // A night raid is named here as its clock chip will name it, so the
+        // last screen before the raid says what the drop-in pane's wildlife did.
+        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · ${isNightRaid(new Date()) ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
         `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
@@ -3220,10 +3233,12 @@ export class HubScene extends Phaser.Scene {
             confirmHelp: `Spends ${escapeAttribute(formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
           });
         }
-        const price = shopPriceColumn(
-          taken
-            ? [{ ask: 'Traded' }]
-            : barter.takes.map(({ itemId, quantity }) =>
+        // A struck deal's price column says it is paid, as a built rung's does:
+        // "Traded" there stood beside the TRADED tag and said one word twice.
+        const price = taken
+          ? shopPaidColumn('Paid')
+          : shopPriceColumn(
+              barter.takes.map(({ itemId, quantity }) =>
                 pricePart(
                   formatTraderStacks([{ itemId, quantity: quantity * count }]),
                   this.stash.itemCount(itemId),
@@ -3232,7 +3247,7 @@ export class HubScene extends Phaser.Scene {
                   itemIcon(itemId, this.itemName(itemId)),
                 ),
               ),
-        );
+            );
         const tag = taken
           ? pixelTag('Traded', 'secure', true)
           : offer.refusal === undefined

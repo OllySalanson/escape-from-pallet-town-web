@@ -246,6 +246,20 @@ describe('fishing in a raid', () => {
     expect(sea).toContain(world.scene.pendingWildBattle!.speciesId);
   });
 
+  it('fishes the water the line goes into, not the place the player stands in', () => {
+    // THE SALTINGS' grass runs along a pool of THE WATER MEADOWS: the sea's
+    // table there hooked a Krabby out of a freshwater meadow pool.
+    const world = standingAtTheWater({ mapId: 'pallet-town', pack: ['good-rod'], draws: [0, 0.1, 0, 0, 0.99] });
+    const stand = { x: 24, y: 64 };
+    const water = { x: 24, y: 63 };
+    expect(fishingWaterAt('pallet-town', stand)).toBe('sea');
+    expect(fishingWaterAt('pallet-town', water)).toBe('fresh');
+    Object.assign(world.scene as object, { currentTile: stand, facing: 'up' });
+    world.scene.tryFishAt(water);
+    playOut(world);
+    expect(world.scene.pendingWildBattle).toEqual({ speciesId: 'poliwag', level: 15 });
+  });
+
   it('only ever hooks a Magikarp on the Old Rod', () => {
     const world = standingAtTheWater({ pack: ['old-rod'], draws: [0, 0.1, 0, 0.99, 0.99] });
     world.scene.tryFishAt(world.water);

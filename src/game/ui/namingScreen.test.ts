@@ -29,4 +29,13 @@ describe("FireRed's naming screen", () => {
     expect(html).toContain('data-naming-field');
     expect(words(html)).toContain('ENTER OK · ESC no nickname');
   });
+
+  it('draws a shiny just caught in its shiny colours', () => {
+    const shiny = new Pokemon(getSpeciesById('pidgey')!, 3);
+    shiny.shiny = true;
+    const shinyHtml = namingScreenMarkup({ pokemon: shiny });
+    expect(shinyHtml).toContain(`assets/pokemon/shiny/front/${shiny.base.dexId}.png`);
+    expect(shinyHtml).toContain('aria-label="Shiny PIDGEY"');
+    expect(html).not.toContain('assets/pokemon/shiny/');
+  });
 });

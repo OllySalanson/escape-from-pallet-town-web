@@ -71,7 +71,8 @@ try {
     until,
     wait,
     paused: stepped,
-    insertion: option('insertion') ?? 'viridian-forest',
+    // The one giver stands on the Floodplain (`gifts.ts`).
+    insertion: option('insertion') ?? (flag('gift') ? 'floodplain-relay' : 'viridian-forest'),
     starter: option('starter') ?? 'Charmander',
     level: option('level') ?? '12',
     stash: ['potion:30', 'poke-ball:10'],
@@ -126,7 +127,12 @@ try {
               `JSON.stringify(${GAME}.scene.getScene('battle').commandTexts.map((t) => t.text))`,
             );
             await choose(String(commands).includes('RUN') ? 'RUN' : 'FIGHT');
-          } else if (mode === 'moves') await choose('\u25b6');
+          } else if (mode === 'moves') {
+            // The cursor is a text of its own beside the rows
+            // (`seatRowsBesideCursor`), so the move it rests on is taken with
+            // the key rather than looked for by its glyph.
+            await press('Space');
+          }
           else await press('Space');
           await wait(250);
         }
@@ -219,7 +225,7 @@ try {
 
   await choose('BALL x');
   await wait(300);
-  console.log('refusal:', await page.evaluate(`${GAME}.scene.getScene('battle').dialog.visibleText`));
+  console.log('refusal:', await page.evaluate(`${GAME}.scene.getScene('battle').dialog.textObject.text`));
 
   // One press finishes the line, the next advances past it.
   for (let guard = 0; guard < 8; guard += 1) {

@@ -30,7 +30,7 @@ export function namingScreenMarkup(view: NamingView): string {
   const field = `<input class="px-window px-field naming-field" data-naming-field name="nickname" value="" maxlength="${NICKNAME_LENGTH}" autocomplete="off" spellcheck="false" aria-label="${escapeAttribute(title)}" placeholder="${escapeAttribute(species)}" data-help="${escapeAttribute(
     `Type a nickname of up to ${NICKNAME_LENGTH} letters. Left blank, it goes by ${species}.`,
   )}" />`;
-  const entry = `<form class="naming-body" data-naming-form>${pixelPortrait(view.pokemon.base.dexId, species)}<div class="naming-entry">${field}<small data-naming-count aria-live="polite">${namingCountLine('')}</small></div></form>`;
+  const entry = `<form class="naming-body" data-naming-form>${pixelPortrait(view.pokemon.base.dexId, species, view.pokemon.shiny)}<div class="naming-entry">${field}<small data-naming-count aria-live="polite">${namingCountLine('')}</small></div></form>`;
   const bar = pixelCommitBar({
     title: `Left blank, it goes by ${species}`,
     className: 'naming-actions',

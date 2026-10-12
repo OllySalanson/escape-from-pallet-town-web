@@ -71,8 +71,14 @@ function onKeyDown(event: KeyboardEvent): void {
   // beneath it can neither act on it nor preventDefault it.
   event.stopPropagation();
   // A field being typed into is its own owner: the overlay reads no key of a
-  // keystroke meant for the text.
+  // keystroke meant for the text. Save a held Enter, which is no text: the
+  // propagation stopped above means no listener on the field ever sees it, and
+  // its repeats would submit the field's form - the naming screen opens on the
+  // Enter that answered YES, and a held one gave the Pokemon no name.
   if (isTypingTarget(event.target)) {
+    if (event.repeat === true && event.key === 'Enter') {
+      event.preventDefault();
+    }
     return;
   }
   if (isHeldCommitKey(event)) {
@@ -137,8 +143,8 @@ export function claimOverlayKeyboard(
 
 /**
  * A repeat of the key that works a focused control. Not a typing target's:
- * a held Space in a text field is a row of spaces, and the field is asked
- * first, so a held Enter in one never reaches a button either.
+ * a held Space in a text field is a row of spaces, and a held Enter in one is
+ * stopped by `onKeyDown` itself before the field's form can be submitted.
  */
 export function isHeldCommitKey(event: KeyboardEvent): boolean {
   return event.repeat === true && (event.key === 'Enter' || event.key === ' ');

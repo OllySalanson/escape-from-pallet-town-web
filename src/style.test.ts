@@ -258,4 +258,23 @@ describe('the pixel-ui stylesheet', () => {
       /\.px-wrap\s*\{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*break-word;[^}]*\}/,
     );
   });
+
+  it('keeps each stat nearer its own number than the next stat', () => {
+    // A column is as wide as its widest stat, so the pair's own gap is all
+    // that stands between `Defense` and its number, and the gap between pairs
+    // is all that stands between that number and `Sp. Atk`. At two pixels
+    // and four the dossier read `Defense7 Sp. Atk 8`.
+    const units = (selector: string, property: string): number => {
+      const body = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`).exec(pixelUiRules)?.[1] ?? '';
+      const value = new RegExp(`(?:^|[\\s;])${property}:\\s*([^;]+);`).exec(body)?.[1] ?? '';
+      const lengths = [...value.matchAll(/calc\(var\(--u\) \* (\d+)\)/g)].map((match) => Number(match[1]));
+      return lengths.at(-1) ?? 0;
+    };
+    const withinPair = units(':where(.pixel-ui) .summary-stats > div', 'gap');
+    const betweenPairs = units(':where(.pixel-ui) .summary-stats', 'gap');
+    // A word space in Orange Kid at the one type size is two game pixels and a
+    // bit, which is exactly what read as no space at all after `Defense`.
+    expect(withinPair).toBeGreaterThanOrEqual(4);
+    expect(betweenPairs).toBeGreaterThanOrEqual(withinPair * 2);
+  });
 });

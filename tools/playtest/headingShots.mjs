@@ -57,7 +57,9 @@ try {
   await click('Confirm Bulbasaur');
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
-  await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'] }); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
+  // First words heard: their box sits over the foot of the screen and would
+  // take the Escape that leaves each room.
+  await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'], firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'] }); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
   await press('Space');
@@ -74,6 +76,7 @@ try {
   await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
   await press('Escape');
+  await walkIntoBase(page, 'oaks-lab');
   await click('Start a raid');
   await shoot('loadout');
   await click('Bulbasaur');

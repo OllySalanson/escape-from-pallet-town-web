@@ -102,6 +102,20 @@ export function isGiftSpoken(
   return banked.includes(gift.id) || carriedThisRaid.includes(gift.id);
 }
 
+/**
+ * What the giver's hand-over asks once it is read: FireRed asks a gift's
+ * nickname exactly as it asks a catch's (`BattleScene`'s nickname question),
+ * and the cursor starts on NO, because the key that read the last line is the
+ * key that answers.
+ */
+export function giftNicknamePrompt(speciesName: string): {
+  readonly lines: readonly string[];
+  readonly options: readonly string[];
+  readonly selected: number;
+} {
+  return { lines: ['Give a nickname to', `${speciesName.toUpperCase()}?`], options: ['YES', 'NO'], selected: 1 };
+}
+
 /** A new Pokemon for the gift; every hand-over is a fresh one at its authored level. */
 export function createGiftPokemon(gift: PokemonGift): Pokemon {
   const species = getSpeciesById(gift.speciesId);

@@ -494,7 +494,7 @@ export class ExtractionScene extends Phaser.Scene {
     const rows = progress
       .map((entry) => {
         const levelled = entry.toLevel > entry.fromLevel;
-        return `<div class="px-row${levelled ? ' is-selected' : ''}"><span class="px-row-main"><strong class="px-name">${escapeHtml(entry.name)}</strong><small>${
+        return `<div class="px-row${levelled ? ' is-selected' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(entry.name)}</strong>${entry.shiny ? pixelShinyStar() : ''}</span><small>${
           levelled
             ? `Level ${entry.fromLevel} to ${entry.toLevel}`
             : `Level ${entry.toLevel} · ${entry.experienceToNextLevel} to go`

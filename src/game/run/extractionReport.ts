@@ -90,6 +90,8 @@ export interface ReportProgress {
   readonly experienceGained: number;
   /** Experience still owed for the next level, once this raid is banked. */
   readonly experienceToNextLevel: number;
+  /** Set only for a shiny, which its row marks as the party's row does. */
+  readonly shiny?: true;
 }
 
 /**
@@ -699,6 +701,7 @@ function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[
         0,
         experienceForLevel(member.level + 1, member.base.growthRate) - member.experience,
       ),
+      ...(member.shiny ? { shiny: true as const } : {}),
     }))
     .sort((a, b) => b.toLevel - b.fromLevel - (a.toLevel - a.fromLevel)
       || b.experienceGained - a.experienceGained);

@@ -1406,6 +1406,16 @@ describe('BattleScene about-to-use switch prompt', () => {
     expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(squirtle);
   });
 
+  it('takes B as NO, as FireRed does on a YES/NO box', () => {
+    const { scene, renderedTexts, dialog, squirtle } = fightWithABench();
+
+    readUpToTheQuestion(scene, renderedTexts, dialog);
+    (scene as unknown as { goBack(): void }).goBack();
+
+    expect(dialog.shownMessages).toContain('RAIDER MAYA sent out PIDGEY!');
+    expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(squirtle);
+  });
+
   it('switches for free: the bench lands before the trainer does, and nothing moves in return', () => {
     const { scene, renderedTexts, dialog, benched } = fightWithABench();
 
@@ -2317,6 +2327,38 @@ describe('an evolution B can stop, as FireRed lets you', () => {
     // raised maximum's gain.
     expect(driven.state.player.pokemon.base.id).toBe('charmeleon');
     expect(driven.state.player.currentHp).toBe(charmander.currentHp);
+  });
+
+  it("cries as FireRed's evolution scene does: the old species, then the new one, or the old one again on B", () => {
+    const play = vi.spyOn(audioManager, 'play');
+    const cries = (): [unknown, number | undefined][] =>
+      play.mock.calls
+        .filter(([name]) => name === 'cry')
+        .map(([name, options]) => [name, options?.species]);
+    const { driven, renderedTexts, dialog, charmander, second, evolutionTimers } = evolvingBattle();
+    driven.onMessagesComplete();
+    scratch(renderedTexts);
+    play.mockClear();
+    readUntil(driven, dialog, 'evolving');
+    expect(cries().at(-1)).toEqual(['cry', CHARMANDER.dexId]);
+
+    play.mockClear();
+    driven.goBack();
+    expect(cries()).toEqual([['cry', CHARMANDER.dexId]]);
+    readUntil(driven, dialog, 'main');
+
+    charmander.experience =
+      experienceForLevel(17, CHARMANDER.growthRate) -
+      experienceAwardForDefeat(second, { trainer: true });
+    scratch(renderedTexts);
+    play.mockClear();
+    readUntil(driven, dialog, 'evolving');
+    expect(cries().at(-1)).toEqual(['cry', CHARMANDER.dexId]);
+
+    play.mockClear();
+    evolutionTimers.at(-1)!();
+    expect(dialog.visibleText).toBe('Congratulations! Your CHARMANDER evolved into CHARMELEON!');
+    expect(cries()).toEqual([['cry', getSpeciesById('charmeleon')!.dexId]]);
   });
 
   it('is never asked of a Pokemon that did not level', () => {

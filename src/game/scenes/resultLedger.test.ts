@@ -22,6 +22,7 @@ import {
   SCROLL_ROWS,
   scrollCoverHeight,
   scrollTopCoverHeight,
+  settledScrollTop,
 } from '../ui/MenuOverlay';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { ExtractionScene } from './ExtractionScene';
@@ -56,6 +57,31 @@ describe('the result screen ledger', () => {
     expect(html.indexOf('Field experience')).toBeLessThan(html.indexOf('Contract complete'));
   });
 
+  it('stars a shiny in the field experience rows, as every list naming a Pokemon does', () => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const report = {
+      outcome: 'ESCAPED',
+      ledger: { pokemon: [], items: [] },
+      ledgerHeading: 'Banked',
+      ledgerEmptyText: 'Nothing.',
+      progress: [
+        { name: 'Charmander', fromLevel: 5, toLevel: 6, experienceGained: 40, experienceToNextLevel: 20, shiny: true },
+        { name: 'Pidgey', fromLevel: 4, toLevel: 4, experienceGained: 10, experienceToNextLevel: 30 },
+      ],
+      gear: [],
+      gearSummary: null,
+      pack: null,
+      packSummary: null,
+    } as unknown as ExtractionReport;
+    Object.assign(scene as object, { report });
+
+    const html = (scene as unknown as { ledgerPanel(): string }).ledgerPanel();
+    const rows = html.split('<div class="px-row').slice(1);
+
+    expect(rows.find((row) => row.includes('Charmander'))).toContain('px-shiny');
+    expect(rows.find((row) => row.includes('Pidgey'))).not.toContain('px-shiny');
+  });
+
   it('knows a pane has more below the fold, and that a rounding error is not more', () => {
     expect(hasMoreBelow({ scrollHeight: 180, clientHeight: 110, scrollTop: 0 })).toBe(true);
     expect(hasMoreBelow({ scrollHeight: 180, clientHeight: 110, scrollTop: 70 })).toBe(false);
@@ -65,6 +91,18 @@ describe('the result screen ledger', () => {
     // is still not a row.
     expect(hasMoreBelow({ scrollHeight: 112, clientHeight: 110, scrollTop: 0 }, 4)).toBe(false);
     expect(hasMoreBelow({ scrollHeight: 126, clientHeight: 110, scrollTop: 0 }, 4)).toBe(true);
+  });
+
+  it('puts a pane that only overflows by its rounding back at the top', () => {
+    // The Pokemon Center's list at 2x: 92 pixels of pane, a line of text one
+    // pixel past its last row, and the cursor's scroll padding scrolling it by
+    // that pixel - which cut the strip over the rows and hid its words.
+    expect(settledScrollTop({ scrollHeight: 93, clientHeight: 92, scrollTop: 1 }, 2)).toBe(0);
+    expect(settledScrollTop({ scrollHeight: 94, clientHeight: 92, scrollTop: 2 }, 4)).toBe(0);
+    // A pane with a row out of sight stays wherever it was scrolled to.
+    expect(settledScrollTop({ scrollHeight: 180, clientHeight: 92, scrollTop: 1 }, 2)).toBe(1);
+    expect(settledScrollTop({ scrollHeight: 180, clientHeight: 92, scrollTop: 88 }, 2)).toBe(88);
+    expect(settledScrollTop({ scrollHeight: 92, clientHeight: 92, scrollTop: 0 }, 2)).toBe(0);
   });
 
   it('covers a row the pane would cut through, whole, and leaves a clean cut alone', () => {

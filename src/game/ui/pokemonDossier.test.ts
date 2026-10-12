@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
 import { pokemonDossier } from './pokemonDossier';
+import { detailStepIndex } from './spatialFocus';
 
 const dossierOf = (pokemon: Pokemon) =>
   pokemonDossier({
@@ -60,5 +61,57 @@ describe('the pane about a Pokemon with a nickname', () => {
     pidgey.giveNickname('Sparky');
     const vitals = vitalsText(dossierOf(pidgey));
     expect(vitals).toContain('Sparky Lv 9 · Pidgey');
+  });
+});
+
+describe('the Tab mark', () => {
+  /**
+   * Where Tab from the pane's own row lands (`detailStepIndex`), read off the
+   * pane's markup as `MenuOverlay` reads it off the page: every button in it, in
+   * document order, enabled unless `aria-disabled`. Answers with the label of
+   * the block the control is in.
+   */
+  const tabLandsUnder = (html: string): string | undefined => {
+    const blocks = [...html.matchAll(/<small class="px-label">([^<]*)<\/small>(.*?)(?=<small class="px-label">|$)/g)];
+    const controls = blocks.flatMap(([, label, body]) =>
+      [...body.matchAll(/<button\b([^>]*)>/g)].map(([, attributes]) => ({
+        label: label.replace(/ · Tab$/, ''),
+        actionable: !attributes.includes('aria-disabled="true"'),
+      })),
+    );
+    const refs = [{ shows: 'member-0', actionable: true }, ...controls.map(({ actionable }) => ({ inPane: 'member-0', actionable }))];
+    const target = detailStepIndex(refs, 0);
+    return target === undefined || target === 0 ? undefined : controls[target - 1].label;
+  };
+  const markedLabels = (html: string) =>
+    [...html.matchAll(/<small class="px-label">([^<]*)<\/small>/g)].map(([, label]) => label).filter((label) => label.endsWith(' · Tab'));
+  const paneWith = (chips: string) =>
+    pokemonDossier({
+      pokemon: new Pokemon(getSpeciesById('charmander')!, 5),
+      id: 'member-0',
+      first: true,
+      holding: 'Holding nothing',
+      deeds: { label: 'Gear', chips: () => chips },
+    });
+
+  it('is on the deeds when there is one to do', () => {
+    const html = paneWith('<button class="px-window px-chip" data-gear-give="leftovers">Give Leftovers</button>');
+    expect(tabLandsUnder(html)).toBe('Gear');
+    expect(markedLabels(html)).toEqual(['Gear · Tab']);
+  });
+
+  it('is on the moves when the deeds are only a note, because that is where Tab goes', () => {
+    // The raid's party screen with no gear about: GEAR said Tab, and Tab
+    // landed on SCRATCH.
+    const html = paneWith('<span class="px-note">Nothing held, and no gear in the pack.</span>');
+    expect(tabLandsUnder(html)).toMatch(/^Moves/);
+    expect(markedLabels(html)).toEqual(['Moves · 2 of 4 known · Tab']);
+  });
+
+  it('is on the moves when every deed is one that would do nothing', () => {
+    const html = paneWith('<button class="px-window px-chip" aria-disabled="true">Potion</button>');
+    expect(tabLandsUnder(html)).toMatch(/^Moves/);
+    expect(markedLabels(html)).toHaveLength(1);
+    expect(markedLabels(html)[0]).toMatch(/^Moves/);
   });
 });

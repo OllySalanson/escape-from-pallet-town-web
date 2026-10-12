@@ -142,14 +142,17 @@ try {
   report('...and the kept picture is the picture drawn whole', (await pictureDrift()) === 0);
   await shot('3-grown-three-ways');
 
-  // Undo all the way back.
+  // Undo all the way back. Held against where the ground stands now, not where
+  // it stood before the box: that box was let go past the window's edge, and a
+  // stroke held there scrolls the window on by however long it was held.
+  const anchorGrown = await tile(14, 14);
   for (let step = 0; step < 3; step += 1) {
     await key('z', 'KeyZ', 90, 2);
   }
   file = await live();
   report('undo takes every growth back off', file.width === 40 && file.height === 30, `${file.width}x${file.height}`);
   const anchorUndone = await tile(10, 10);
-  report('...with the window held on the same ground', Math.abs(anchorUndone.x - anchorBefore.x) < 1 && Math.abs(anchorUndone.y - anchorBefore.y) < 1, `${anchorBefore.x},${anchorBefore.y} -> ${anchorUndone.x},${anchorUndone.y}`);
+  report('...with the window held on the same ground', Math.abs(anchorUndone.x - anchorGrown.x) < 1 && Math.abs(anchorUndone.y - anchorGrown.y) < 1, `${anchorGrown.x},${anchorGrown.y} -> ${anchorUndone.x},${anchorUndone.y}`);
   report('...and the kept picture is the picture drawn whole', (await pictureDrift()) === 0);
   const errors = await evaluate('window.__errors');
   report('nothing threw', errors.length === 0, errors.join('; '));
