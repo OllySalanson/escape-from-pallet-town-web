@@ -32,7 +32,7 @@ export type PoiActivationResult = 'activated' | 'unavailable' | 'bag-full' | 'lo
 /** The Lockpicks a raid is carrying, as `tryActivatePoi` asks about them. */
 export interface PoiLockpicks {
   readonly count: () => number;
-  /** Spends one, which happens only once the crate's whole cache is in the pack. */
+  /** Spends one, which happens only once the crate's whole cache is known to fit. */
   readonly spend: () => void;
 }
 
@@ -45,7 +45,8 @@ export function tryActivatePoi(
   isRunActive: boolean,
   activatedPoiIds: Set<string>,
   collectRunItem: (itemId: ItemId, quantity: number) => boolean,
-  hasRoomForAll: (reward: WorldPoi['reward']) => boolean,
+  /** `freeing` is what opening it uses up - the Lockpick - whose squares are room too. */
+  hasRoomForAll: (reward: WorldPoi['reward'], freeing: readonly { readonly itemId: ItemId; readonly quantity: number }[]) => boolean,
   lockpicks: PoiLockpicks = { count: () => 0, spend: () => undefined },
 ): PoiActivationResult {
   if (!poi || !isRunActive || activatedPoiIds.has(poi.id)) {
@@ -58,15 +59,18 @@ export function tryActivatePoi(
   // Whole or not at all. Taken a piece at a time, two Poke Balls that fit and a
   // Potion that does not left the balls in the pack with the landmark still
   // unworked - so walking over it again paid the balls out a second time.
-  if (!hasRoomForAll(poi.reward)) {
+  // The pick snaps in the lock, so its square is room for the cache: asked
+  // without it, a crate one square short was refused and the player told to
+  // put something down for good to make room the pick was about to make.
+  if (!hasRoomForAll(poi.reward, poi.locked ? [{ itemId: 'lockpick', quantity: 1 }] : [])) {
     return 'bag-full';
   }
-  poi.reward.forEach((item) => collectRunItem(item.itemId, item.quantity));
-  // The pick goes after the cache is in, so a crate refused for room never
-  // costs one: the lock is still on it and so is the pick in the pack.
+  // Spent only once the room is known, so a crate refused for room never costs
+  // one - and before the cache goes in, so the cache has the pick's square.
   if (poi.locked) {
     lockpicks.spend();
   }
+  poi.reward.forEach((item) => collectRunItem(item.itemId, item.quantity));
 
   activatedPoiIds.add(poi.id);
   return 'activated';

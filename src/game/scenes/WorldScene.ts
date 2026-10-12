@@ -5552,11 +5552,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Whole or not at all, and the pack will re-seat itself to take the
       // whole of it: a cache refused for the way the pack happens to be packed
       // would be a seal the player could not open from where they stand.
-      (reward) => {
-        if (this.bag.fitsAll(reward)) {
+      (reward, freeing) => {
+        if (this.bag.fitsAll(reward, freeing)) {
           return true;
         }
-        if (!this.bag.tidyWouldFitAll(reward)) {
+        if (!this.bag.tidyWouldFitAll(reward, freeing)) {
           return false;
         }
         this.bag.tidy();

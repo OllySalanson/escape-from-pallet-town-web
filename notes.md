@@ -119,6 +119,13 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** the padding is gone (`src/style.css`); the strip's own gap already spaces its lines. In the real game all six chips now sit at top 86 at 1280x800, and at 960x720 the wrapped RENAME starts at the same x as PREV (24).
 - **How a player meets it:** walk into the Pokémon Center; the box controls over the list now stand on one line.
 
+## 17. A locked crate was refused for want of the square its own Lockpick was about to free (newest feature: locks and keys)
+
+- **Found:** reading how a locked crate is opened (`tryActivatePoi` in `world/pois.ts`): the room check asked whether the whole cache fits beside everything in the pack *including the Lockpick*, and only then snapped the pick. A pack one square short with a pick in it was told "No room for ... Drop something from the PACK and work it again" - so the player threw away something for good to make room the pick was about to make.
+- **Reproduced:** `locksAndKeys.test.ts`, "counts the square of the pick that snaps in the lock as room for the cache": the real `WorldScene` on Pallet Town, a Satchel holding Potions and a pick with exactly the KILN STRONGBOX's seven squares free once the pick is gone; it answered "No room for 1× SUPER POTION and 1× GREAT BALL and 1× PARTS CRATE - the cache needs 7 squares." In the real game (a scratch copy of `tools/playtest/locks.mjs` that fills the pack with Potions until the cache is one square short) the crate now opens and pays all of it.
+- **Fixed:** `Bag.fitsAll` and `Bag.tidyWouldFitAll` take what the taking uses up (`freeing`), and `tryActivatePoi` asks with the Lockpick gone and spends it before the cache goes in - still only once the room is known, so a crate refused for room never costs a pick.
+- **How a player meets it:** with a nearly full pack and a Lockpick, face a locked crate and press the interact key; if the cache fits in the pick's square too, the crate opens.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

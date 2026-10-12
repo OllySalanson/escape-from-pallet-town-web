@@ -16,7 +16,7 @@ vi.mock('../audio/AudioManager', () => ({
   ),
 }));
 
-import { Bag, itemAmountFor, type ItemId } from '../items';
+import { Bag, cellsFor, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunPhase } from '../run/RunManager';
 import { getWorldMap, type BuiltInMapId } from '../worldMap';
@@ -190,6 +190,24 @@ describe('a locked crate', () => {
     expect(lines?.[0]).toContain('No room for');
     expect(raid.bag.count('lockpick')).toBe(1);
     expect(raid.bag.count('super-potion')).toBe(0);
+  });
+
+  it('counts the square of the pick that snaps in the lock as room for the cache', () => {
+    // A Satchel with exactly the cache's squares free once the pick is gone,
+    // and one short while it is still in the pack. The pick snaps opening the
+    // crate, so its square is the cache's: refused, the player would be told
+    // to put something down for good to make room the pick was about to make.
+    const squares = crate.reward.reduce((total, { itemId, quantity }) => total + cellsFor(itemId, quantity), 0);
+    const raid = inARaid('pallet-town', [], new Bag({ potion: 12 - squares }, { width: 4, height: 3 }));
+    raid.bag.add('lockpick', 1);
+    expect(raid.bag.fitsAll(crate.reward)).toBe(false);
+    const lines = raid.scene.tryActivatePoiAt(crate.position);
+    expect(lines?.[0]).toBe('The Lockpick turned the lock, and snapped in it.');
+    expect(raid.bag.count('lockpick')).toBe(0);
+    expect(raid.bag.count('potion')).toBe(12 - squares);
+    for (const { itemId, quantity } of crate.reward) {
+      expect(raid.bag.count(itemId)).toBe(quantity);
+    }
   });
 
   it('is an ordinary cache to every crate without a lock', () => {
