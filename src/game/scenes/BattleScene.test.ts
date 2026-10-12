@@ -2319,6 +2319,38 @@ describe('an evolution B can stop, as FireRed lets you', () => {
     expect(driven.state.player.currentHp).toBe(charmander.currentHp);
   });
 
+  it("cries as FireRed's evolution scene does: the old species, then the new one, or the old one again on B", () => {
+    const play = vi.spyOn(audioManager, 'play');
+    const cries = (): [unknown, number | undefined][] =>
+      play.mock.calls
+        .filter(([name]) => name === 'cry')
+        .map(([name, options]) => [name, options?.species]);
+    const { driven, renderedTexts, dialog, charmander, second, evolutionTimers } = evolvingBattle();
+    driven.onMessagesComplete();
+    scratch(renderedTexts);
+    play.mockClear();
+    readUntil(driven, dialog, 'evolving');
+    expect(cries().at(-1)).toEqual(['cry', CHARMANDER.dexId]);
+
+    play.mockClear();
+    driven.goBack();
+    expect(cries()).toEqual([['cry', CHARMANDER.dexId]]);
+    readUntil(driven, dialog, 'main');
+
+    charmander.experience =
+      experienceForLevel(17, CHARMANDER.growthRate) -
+      experienceAwardForDefeat(second, { trainer: true });
+    scratch(renderedTexts);
+    play.mockClear();
+    readUntil(driven, dialog, 'evolving');
+    expect(cries().at(-1)).toEqual(['cry', CHARMANDER.dexId]);
+
+    play.mockClear();
+    evolutionTimers.at(-1)!();
+    expect(dialog.visibleText).toBe('Congratulations! Your CHARMANDER evolved into CHARMELEON!');
+    expect(cries()).toEqual([['cry', getSpeciesById('charmeleon')!.dexId]]);
+  });
+
   it('is never asked of a Pokemon that did not level', () => {
     const { driven, renderedTexts, dialog, charmander } = evolvingBattle();
     // Past its evolution level already - stopped there once - but this

@@ -3288,6 +3288,11 @@ export class BattleScene extends Phaser.Scene {
     this.evolutionRuns += 1;
     const run = this.evolutionRuns;
     this.mode = 'evolving';
+    // FireRed's evolution scene cries three times (`evolution_scene.c`): the
+    // species it is at "is evolving!", the one it becomes when it is done, and
+    // the first again if B stops it. The second is fetched now, while it plays.
+    void audioManager.loadCries(pokemon.levelEvolutionDue ? [pokemon.levelEvolutionDue.dexId] : []);
+    audioManager.play('cry', { species: pokemon.base.dexId });
     this.dialog.showMessage(line);
     this.dialog.holdWithNote(STOP_EVOLVING_HINT);
     this.evolving = { pokemon, run };
@@ -3335,8 +3340,11 @@ export class BattleScene extends Phaser.Scene {
     if (!pokemon) {
       return;
     }
-    audioManager.play('cancel');
-    this.pendingCombatMessages.unshift({ message: stoppedEvolvingLine(pokemon.name) });
+    // The cry is FireRed's answer to B here, and would cut a blip anyway.
+    this.pendingCombatMessages.unshift({
+      message: stoppedEvolvingLine(pokemon.name),
+      cries: [{ name: 'cry', species: pokemon.base.dexId }],
+    });
     this.showNextCombatMessage();
   }
 
@@ -3367,6 +3375,7 @@ export class BattleScene extends Phaser.Scene {
       {
         message: evolvedLine(pokemon.nickname ?? result.evolution.from.name, result.evolution.to.name),
         sound: 'evolved',
+        cries: [{ name: 'cry', species: result.evolution.to.dexId }],
       },
       ...result.learnedMoves.map((move) => ({
         message: `${name} learned ${move.name.toUpperCase()}!`,
