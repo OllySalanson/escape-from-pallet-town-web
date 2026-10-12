@@ -481,18 +481,6 @@ const SPOTTED_INK = 0x171717;
 const SPOTTED_CREAM = 0xfdf6e3;
 const SPOTTED_MARK = 0xdc2626;
 /**
- * Compass letters rather than arrow glyphs: the caption font is 7px, and an
- * arrow at that size renders as a tick with no head. The raid HUD already gives
- * the hunter and the objective a bearing, so this is the language the player is
- * reading directions in anyway.
- */
-const WATCH_BEARING: Readonly<Record<Direction, string>> = {
-  up: 'N',
-  down: 'S',
-  left: 'W',
-  right: 'E',
-};
-/**
  * The dialogue frame keeps the authored size it was written for and is centred
  * on the bottom of whatever screen it is on. Stretching it to a wide window
  * turns four lines of narration into a billboard across half the map.
@@ -2264,7 +2252,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         // The third line is the price the shading cannot show: this fight has no
         // exit, and the player has to know that before the step into the lane,
         // not from inside the battle.
-        text: trainerWatchCaption(encounter.trainer.name, WATCH_BEARING[encounter.facing]),
+        text: trainerWatchCaption(encounter.trainer.name, encounter.facing),
         tone: LABEL_TONES.watch,
         depth: atRow(CAPTION_BAND, encounter.position.y),
         placement,

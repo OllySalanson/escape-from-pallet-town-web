@@ -1,3 +1,5 @@
+import type { Direction } from '../movement/gridMovement';
+
 /**
  * What the player is told before an authored trainer fight starts.
  *
@@ -55,9 +57,22 @@ export function trainerDeclinedMessage(trainerName: string): string {
 }
 
 /**
- * The caption over a watching trainer: who they are, where they are looking,
- * and what walking into it commits the player to.
+ * The way a watching trainer faces, as a whole word. It was a lone letter
+ * (`WATCHING W`), which reads as a word cut off rather than as a heading; the
+ * whole word costs no width, because `FACING NORTH` is still narrower in the
+ * game's face than the `CANNOT BE FLED` under it.
  */
-export function trainerWatchCaption(trainerName: string, bearing: string): string {
-  return `${trainerName}\nWATCHING ${bearing}\n${TRAINER_WATCH_WARNING}`;
+const FACING_WORD: Readonly<Record<Direction, string>> = {
+  up: 'NORTH',
+  down: 'SOUTH',
+  left: 'WEST',
+  right: 'EAST',
+};
+
+/**
+ * The caption over a watching trainer: who they are, which way they face, and
+ * what walking into it commits the player to.
+ */
+export function trainerWatchCaption(trainerName: string, facing: Direction): string {
+  return `${trainerName}\nFACING ${FACING_WORD[facing]}\n${TRAINER_WATCH_WARNING}`;
 }

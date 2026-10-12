@@ -42,8 +42,8 @@ describe('the question put before a trainer fight', () => {
 
 describe('the caption over watched ground', () => {
   it('carries who, where they are looking, and what stepping in commits to', () => {
-    expect(trainerWatchCaption('RAIDER MAYA', 'NORTH')).toBe(
-      `RAIDER MAYA\nWATCHING NORTH\n${TRAINER_WATCH_WARNING}`,
+    expect(trainerWatchCaption('RAIDER MAYA', 'up')).toBe(
+      `RAIDER MAYA\nFACING NORTH\n${TRAINER_WATCH_WARNING}`,
     );
   });
 
@@ -51,9 +51,9 @@ describe('the caption over watched ground', () => {
     // Written as a literal here once, the caption said where the price was but
     // never what it cost, and the two surfaces could drift apart word by word.
     expect(worldSceneSource).toContain(
-      'trainerWatchCaption(encounter.trainer.name, WATCH_BEARING[encounter.facing])',
+      'trainerWatchCaption(encounter.trainer.name, encounter.facing)',
     );
-    expect(worldSceneSource).not.toContain('WATCHING ${WATCH_BEARING');
+    expect(worldSceneSource).not.toContain('FACING ${');
   });
 });
 
@@ -72,7 +72,7 @@ describe('every road into an authored trainer fight', () => {
       if ((encounter.sightRange ?? 0) > 0) {
         // A watch adds a second road in - one the player walks rather than
         // presses a key for - so its ground is captioned with the same fact.
-        expect(trainerWatchCaption(encounter.trainer.name, 'NORTH')).toContain(
+        expect(trainerWatchCaption(encounter.trainer.name, encounter.facing)).toContain(
           TRAINER_WATCH_WARNING,
         );
       }

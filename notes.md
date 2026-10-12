@@ -46,6 +46,13 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** pick something up in a raid: the screen glints yellow over the map instead of going solid yellow, and the same for every other flash in the world and in battle.
 - **Not done:** no browser capture this time; the check is the real scene path plus Phaser's own effect class.
 
+## 7. A trainer's watch caption said "WATCHING W" (newest features: locks and keys, playtested)
+
+- **Found:** playing the lock drivers (`locks.mjs`, `decorate.mjs`, `bicycle.mjs`, all of which still pass), the rockfall shot had MILLER VANCE's watch captioned "MILLER VANCE / WATCHING W / CANNOT BE FLED". A lone letter after a verb reads as a word cut off, not as a heading - every one of the sixteen watched trainers had one (`WATCH_BEARING` in `WorldScene.ts`).
+- **Reproduced:** through the real `WorldScene.createTrainerWatch` on each trainer's own map (`src/game/scenes/trainerWatchCaption.test.ts`, with `WorldLabel` recording what it is asked to say): all fourteen trainers whose watch has ground on a fresh save got `WATCHING N/S/E/W`.
+- **Fixed:** `trainerWatchCaption(name, facing)` in `world/trainerEngagement.ts` takes the trainer's facing and says the whole word: "RAIDER MAYA / FACING NORTH / CANNOT BE FLED". Measured in the game's own face at caption size, `FACING NORTH` is 74 px against `CANNOT BE FLED`'s 84, so no caption window grew; the test holds the bearing line shorter than the warning. `whyHidden.mjs` in the real game seated Maya's caption at 90x48 with the new words.
+- **How a player meets it:** walk near any trainer with shaded ground in front of them; the caption says which way they face in plain words.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
