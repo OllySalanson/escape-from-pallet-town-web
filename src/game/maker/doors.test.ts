@@ -216,6 +216,72 @@ describe('a painted ledge', () => {
   });
 });
 
+/**
+ * A 30x20 map cut in two by a wood along row 10, with a ledge in it from x13
+ * to x17: the drop-in above, and an exit wherever a test puts it.
+ */
+function ledgeWall(exit: { x: number; y: number }): MapFile {
+  let file: MapFile = { ...blankMap(30, 20, 'Ledge wall'), maker: 'Tester' };
+  file = paint(file, rectangle({ x: 0, y: 10 }, { x: 29, y: 10 }), 'T');
+  file = {
+    ...file,
+    ground: file.ground.map((row, y) => (y === 10 ? `${row.slice(0, 13)}<===>${row.slice(18)}` : row)),
+  };
+  for (const [kind, at] of [
+    ['drop-in', { x: 3, y: 3 }],
+    ['exit', exit],
+  ] as const) {
+    const outcome = placeSpot(file, kind, at);
+    if (!outcome.placed) {
+      throw new Error(outcome.reason);
+    }
+    file = outcome.file;
+  }
+  return file;
+}
+
+describe('the checks and a painted ledge', () => {
+  it('walk it as a player can: one way down, to an exit below it', () => {
+    const file = ledgeWall({ x: 26, y: 16 });
+    expect(buildPlayerMap(file).ledges.flatMap((ledge) => ledge.brow)).toHaveLength(5);
+    expect(check(file, 'way-out')?.problems).toEqual([]);
+    expect(check(file, 'reachable')?.problems).toEqual([]);
+  });
+
+  it('never walk it back up', () => {
+    let file = ledgeWall({ x: 26, y: 16 });
+    // The front door below the ledge, and the only way out above it.
+    file = {
+      ...file,
+      dropIns: [{ ...file.dropIns[0], y: 15 }],
+      exits: [{ ...file.exits[0], y: 3 }],
+    };
+    expect(check(file, 'way-out')?.problems).toEqual([
+      'Drop-in Drop-in 1 cannot walk to any exit.',
+      'The ledge at 13,10 drops where no exit can be walked to.',
+    ]);
+  });
+
+  it('refuse a ledge that drops where no exit can be walked to', () => {
+    const file = ledgeWall({ x: 26, y: 3 });
+    expect(check(file, 'way-out')?.problems).toEqual([
+      'The ledge at 13,10 drops where no exit can be walked to.',
+    ]);
+  });
+
+  it('refuse a ledge that drops a player in front of a trainer', () => {
+    const file: MapFile = {
+      ...ledgeWall({ x: 26, y: 16 }),
+      trainers: [
+        { x: 15, y: 14, name: 'Bug Kid', team: 'scout', look: 'bug-catcher', facing: 'up', sight: 3, lines: ['Got you!'] },
+      ],
+    };
+    expect(check(file, 'watch')?.problems).toEqual([
+      'Trainer Bug Kid can see where a ledge lands. Turn them, or watch less far.',
+    ]);
+  });
+});
+
 describe('a district in the rain', () => {
   it('rains on every fight fought in it, and says nothing about rain where it is dry', () => {
     const file = splitMap({ x: 25, y: 10 });

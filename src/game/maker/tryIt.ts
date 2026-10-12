@@ -1,5 +1,16 @@
 import { activeSaveSlot } from '../dev/playtestMode';
-import { buildPlayerMap, type MapFile, type PlayerMap } from '../world/mapFile';
+import { createPlaytestGame, createPlaytestStash } from '../dev/playtestSave';
+import { Pokemon } from '../pokemon';
+import { BULBASAUR, CHARMANDER, SQUIRTLE } from '../pokemon/species';
+import type { SaveGameState } from '../save/SaveManager';
+import { hunterSpeciesAt } from '../world/hunter';
+import {
+  buildPlayerMap,
+  MAP_FILE_HABITATS,
+  trainerTemplate,
+  type MapFile,
+  type PlayerMap,
+} from '../world/mapFile';
 import { loadMakerStore, saveMakerStore, walkedVersion } from './drafts';
 
 /**
@@ -88,4 +99,78 @@ export function homeAfterRaid():
   return currentTry()
     ? { key: 'mapmaker', data: { tried: true } }
     : { key: 'base', data: { arrival: 'raid' } };
+}
+
+/**
+ * The level a try is played at. A try used to field the explorer run's
+ * level-99 Charizard and two level-50s, so a maker's own trainer and the wild
+ * Pokemon in their tall grass fell to one hit and a try could not say whether
+ * a map was fair to the players who will raid it (playtest 46). The maker
+ * picks the level now, and it starts on the one that suits the map: the
+ * highest level anything on it fights at - its wild Pokemon, a cave's, a
+ * district's, its trainers' teams and the Pokemon standing on it - so a try
+ * meets the map's hardest fight on even terms.
+ */
+export const TRY_LEVEL_MIN = 5;
+export const TRY_LEVEL_MAX = 100;
+
+/** The levels offered, beside the one that suits the map. */
+const TRY_LEVEL_STEPS = [5, 10, 15, 20, 25, 30, 40, 50, 70, 100] as const;
+
+const clampLevel = (level: number): number =>
+  Math.max(TRY_LEVEL_MIN, Math.min(TRY_LEVEL_MAX, Math.round(level)));
+
+/** The highest level a raid on the map can meet a Pokemon at, at least `TRY_LEVEL_MIN`. */
+export function suitedTryLevel(file: MapFile): number {
+  const tables = [
+    MAP_FILE_HABITATS[file.wildlife],
+    ...(file.districts ?? []).flatMap((district) =>
+      district.wildlife ? [MAP_FILE_HABITATS[district.wildlife]] : [],
+    ),
+    ...((file.areas ?? []).some((area) => area.kind === 'cave') ? [MAP_FILE_HABITATS.cave] : []),
+  ];
+  const levels = [
+    ...tables.flatMap((table) => table.entries.map((entry) => entry.maxLevel)),
+    ...(file.trainers ?? []).flatMap((trainer) =>
+      trainerTemplate(trainer.team).trainer.party.map((pokemon) => pokemon.level),
+    ),
+    ...(file.pokemon ?? []).flatMap((standing) => (standing.level === undefined ? [] : [standing.level])),
+  ];
+  return clampLevel(Math.max(TRY_LEVEL_MIN, ...levels));
+}
+
+/**
+ * Every level the maker can choose, in order: the one that suits the map among
+ * them, and the one already chosen, if that is neither.
+ */
+export function tryLevelChoices(file: MapFile, chosen?: number): readonly number[] {
+  return [
+    ...new Set([...TRY_LEVEL_STEPS, suitedTryLevel(file), ...(chosen === undefined ? [] : [clampLevel(chosen)])]),
+  ].sort((a, b) => a - b);
+}
+
+/**
+ * The team a try deploys: the three Kanto starters at the chosen level, each
+ * evolved as far as that level reaches and knowing what its own learnset
+ * teaches by then - the partner a player picked, at the level they would meet
+ * the map at, with the other two beside it so no starter's type decides a try.
+ */
+export function tryTeam(level: number): readonly Pokemon[] {
+  const at = clampLevel(level);
+  return [CHARMANDER, SQUIRTLE, BULBASAUR].map((first) => new Pokemon(hunterSpeciesAt(first, at), at));
+}
+
+/**
+ * The save a try is played from: the explorer run's, whose doors are open and
+ * vault is full, with the try team as its Pokemon - the first of them the
+ * partner, as the explorer run's Charizard is, so it walks at the maker's heel.
+ */
+export function createTryGame(level: number): SaveGameState {
+  const stash = createPlaytestStash();
+  for (const stored of stash.listPokemon()) {
+    stash.removePokemon(stored.id);
+  }
+  const ids = tryTeam(level).map((pokemon) => stash.addPokemon(pokemon));
+  stash.adoptPartner(ids[0] ?? null);
+  return { ...createPlaytestGame(), stash };
 }

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { fontSizeOf, greyness, inkMask, inkThreshold, letterGap, pixelAdvance, snapOffset, stackedParts } from './pixelText';
+import {
+  fontSizeOf,
+  greyness,
+  inkMask,
+  inkPieces,
+  inkThreshold,
+  isMarked,
+  letterGap,
+  pixelAdvance,
+  snapOffset,
+  stackedParts,
+} from './pixelText';
 
 describe('pixel text', () => {
   it('reads the size out of a canvas font shorthand', () => {
@@ -142,6 +153,40 @@ describe('pixel text', () => {
     it('counts the pieces stacked in a column, which is how a fused dot is noticed', () => {
       expect(stackedParts(Uint8Array.from([0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0]), 3, 4)).toBe(2);
       expect(stackedParts(Uint8Array.from([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]), 3, 4)).toBe(1);
+    });
+
+    it('counts the separate pieces of a glyph, which is how a diaeresis run into a bar is noticed', () => {
+      // `ö` with its two dots apart: two dots and the letter.
+      const apart = [
+        [1, 0, 1],
+        [0, 0, 0],
+        [1, 1, 1],
+      ];
+      // The same with the dots run together: `ō`.
+      const fused = [
+        [1, 1, 1],
+        [0, 0, 0],
+        [1, 1, 1],
+      ];
+      // Touching at a corner is one piece, as it is to the eye.
+      const diagonal = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ];
+      const pieces = (rows: number[][]): number => inkPieces(Uint8Array.from(rows.flat()), 3, 3);
+      expect(pieces(apart)).toBe(3);
+      expect(pieces(fused)).toBe(2);
+      expect(pieces(diagonal)).toBe(1);
+    });
+
+    it('knows a letter that carries a mark over or under it', () => {
+      for (const char of ['é', 'Ä', 'ç', 'ő', 'Ž', 'ș']) {
+        expect(isMarked(char), char).toBe(true);
+      }
+      for (const char of ['e', 'A', 'i', 'ø', 'ß', '!', 'Ł']) {
+        expect(isMarked(char), char).toBe(false);
+      }
     });
 
     it('leaves a speck too faint to be anything as paper', () => {

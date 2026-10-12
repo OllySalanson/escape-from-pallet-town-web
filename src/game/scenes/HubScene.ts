@@ -3652,3 +3652,10 @@ export class HubScene extends Phaser.Scene {
   }
 }
 
+
+/** Names in a sentence: `Tackle`, `Tackle and Growl`, `Tackle, Growl and Ember`. */
+function formatNames(names: readonly string[]): string {
+  return names.length <= 1
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}

@@ -11,7 +11,15 @@
  * one file, which is the whole of adding a map to the game. A map that fails
  * is sent back to its maker with the reasons, rather than published broken.
  * It writes what it published to <out.json> for `mark`, which runs only after
- * the change has been tested and merged, and records each as `published`.
+ * the change has been tested and merged, and records each as `published`
+ * under the file it went in as (`map_file_id`).
+ *
+ * A fix the maker sent in to a map already in the game arrives carrying that
+ * map's file id, and **replaces** it: the same file, the same id, and every
+ * drop-in the published map had keeping its id however the fix renamed or
+ * moved it (`keepPublishedIds`), so the survey, raid record and landings a
+ * player holds on the map are still theirs (the owner's call on playtest 35,
+ * option a). A fix is never published as a second copy beside the first.
  *
  * It runs in the `publish-player-maps` workflow with the project's service-role
  * key, which never leaves GitHub's secrets: it is the one credential that may
@@ -19,7 +27,12 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { checkMapFile } from '../../src/game/world/mapFileChecks';
-import { freeMapFileId, readMapFile, type MapFile } from '../../src/game/world/mapFile';
+import {
+  freeMapFileId,
+  keepPublishedIds,
+  readMapFile,
+  type MapFile,
+} from '../../src/game/world/mapFile';
 import { SUBMISSIONS_URL } from '../../src/game/maker/submitConfig';
 
 const PLAYER_MAPS = 'src/maps/player';
@@ -30,12 +43,16 @@ interface Approved {
   readonly receipt_code: string;
   readonly maker_name: string;
   readonly map: unknown;
+  /** The published map this one replaces, for a fix to a map already in the game. */
+  readonly map_file_id: string | null;
 }
 
 interface Published {
   readonly submission: string;
   readonly receipt: string;
   readonly file: string;
+  /** The id it went in as, recorded so a later fix knows what it replaces. */
+  readonly id: string;
 }
 
 const [mode, out] = process.argv.slice(2).filter((argument) => argument !== '--');
@@ -72,11 +89,29 @@ async function rest(path: string, init: RequestInit = {}): Promise<Response> {
   return response;
 }
 
-async function setStatus(id: string, status: string, note?: string): Promise<void> {
+async function setStatus(
+  id: string,
+  status: string,
+  more: { readonly note?: string; readonly fileId?: string } = {},
+): Promise<void> {
   await rest(`map_submissions?id=eq.${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ status, ...(note === undefined ? {} : { owner_note: note }) }),
+    body: JSON.stringify({
+      status,
+      ...(more.note === undefined ? {} : { owner_note: more.note }),
+      ...(more.fileId === undefined ? {} : { map_file_id: more.fileId }),
+    }),
   });
+}
+
+/** The map a fix replaces, as it is in the game now, if it is still there. */
+function publishedFile(id: string): MapFile | undefined {
+  const path = `${PLAYER_MAPS}/${id}.json`;
+  if (!existsSync(path)) {
+    return undefined;
+  }
+  const reading = readMapFile(JSON.parse(readFileSync(path, 'utf8')) as unknown);
+  return reading.ok ? reading.file : undefined;
 }
 
 /**
@@ -98,7 +133,7 @@ function freeId(id: string): string {
 async function collect(): Promise<void> {
   const rows = (await (
     await rest(
-      'map_submissions?status=eq.approved&select=id,receipt_code,maker_name,map&order=updated_at',
+      'map_submissions?status=eq.approved&select=id,receipt_code,maker_name,map,map_file_id&order=updated_at',
     )
   ).json()) as Approved[];
   const published: Published[] = [];
@@ -112,20 +147,20 @@ async function collect(): Promise<void> {
         .flatMap((check) => check.problems)
         .slice(0, 5)
         .join(' ');
-      await setStatus(
-        row.id,
-        'sent_back',
-        `It did not pass the game's checks when it was published: ${reasons}`,
-      );
+      await setStatus(row.id, 'sent_back', {
+        note: `It did not pass the game's checks when it was published: ${reasons}`,
+      });
       console.log(`${row.receipt_code}: sent back - ${reasons}`);
       continue;
     }
-    const id = freeId(reading.file.id);
-    const file: MapFile = { ...reading.file, id };
+    const replaces = row.map_file_id;
+    const before = replaces === null ? undefined : publishedFile(replaces);
+    const id = replaces ?? freeId(reading.file.id);
+    const file: MapFile = before ? keepPublishedIds(before, reading.file) : { ...reading.file, id };
     const path = `${PLAYER_MAPS}/${id}.json`;
     writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`);
-    published.push({ submission: row.id, receipt: row.receipt_code, file: path });
-    console.log(`${row.receipt_code}: ${path}`);
+    published.push({ submission: row.id, receipt: row.receipt_code, file: path, id });
+    console.log(`${row.receipt_code}: ${path}${replaces === null ? '' : ' (an update)'}`);
   }
   writeFileSync(out, `${JSON.stringify(published, null, 2)}\n`);
 }
@@ -134,7 +169,7 @@ async function mark(): Promise<void> {
   const published = JSON.parse(readFileSync(out, 'utf8')) as Published[];
   for (const entry of published) {
     if (existsSync(entry.file)) {
-      await setStatus(entry.submission, 'published');
+      await setStatus(entry.submission, 'published', { fileId: entry.id });
       console.log(`${entry.receipt}: published`);
     }
   }

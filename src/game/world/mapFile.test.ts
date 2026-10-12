@@ -22,6 +22,7 @@ import { districtEncounterTables } from './localEncounters';
 import {
   buildPlayerMap,
   freeMapFileId,
+  keepPublishedIds,
   MAP_FILE_TRAINER_TEAMS,
   plainText,
   readMapFile,
@@ -488,5 +489,96 @@ describe('publishing', () => {
       problemsOf(edited({ people: [{ x: 12, y: 7, name: 'Tam', look: 'old-man', facing: 'down', lines: ['Fish & chips'] }] })),
     ).toEqual(['Names and words in a map may not use < > & or ".']);
     expect(plainText('Fish & "chips" <here>')).toBe('Fish  chips here');
+  });
+
+  it('takes accented letters and common punctuation, and refuses emoji, other scripts and what draws nothing', () => {
+    expect(problemsOf(edited({ name: 'Café Élan', maker: 'Zoë' }))).toEqual([]);
+    expect(
+      problemsOf(edited({ people: [{ x: 12, y: 7, name: 'Søren', look: 'old-man', facing: 'down', lines: ['“Ça va?” – ¡sí!'] }] })),
+    ).toEqual([]);
+    const refused = [
+      'Names and words in a map use letters (accents too), digits and common punctuation - no emoji or other scripts yet.',
+    ];
+    expect(problemsOf(edited({ name: 'Bug 🐛 Lane' }))).toEqual(refused);
+    expect(problemsOf(edited({ name: 'שלום' }))).toEqual(refused);
+    expect(problemsOf(edited({ name: 'Odd \u202Etext' }))).toEqual(refused);
+    expect(problemsOf(edited({ maker: '\u200B' }))).toEqual(refused);
+    expect(
+      problemsOf(edited({ signs: [{ x: 12, y: 7, lines: ['One\rTwo'] }] })),
+    ).toEqual(refused);
+    expect(plainText('Bug 🐛 Café\nLane')).toBe('Bug  Café\nLane');
+  });
+});
+
+describe('a drop-in keeps its id', () => {
+  const reading = (value: unknown): MapFile => {
+    const read = readMapFile(value);
+    if (!read.ok) {
+      throw new Error(read.problems.join(' '));
+    }
+    return read.file;
+  };
+  const renamed = (file: MapFile, index: number, change: Partial<MapFile['dropIns'][number]>): MapFile => ({
+    ...file,
+    dropIns: file.dropIns.map((dropIn, at) => (at === index ? { ...dropIn, ...change } : dropIn)),
+  });
+  const insertionIds = (file: MapFile): readonly string[] =>
+    buildPlayerMap(file).insertions.map((insertion) => insertion.id);
+
+  it('as the slug of its name, accents and all', () => {
+    const file = reading(renamed(SAMPLE, 1, { name: 'Étang Côté' }));
+    expect(insertionIds(file)).toEqual(['player-sample-lane/south-road', 'player-sample-lane/etang-cote']);
+  });
+
+  it('as the id it was published under, whatever it is called now', () => {
+    const file = reading(renamed(SAMPLE, 1, { name: 'Brook Path', id: 'pond-side' }));
+    expect(insertionIds(file)).toEqual(['player-sample-lane/south-road', 'player-sample-lane/pond-side']);
+  });
+
+  it('never as one another drop-in already is', () => {
+    expect(problemsOf(renamed(SAMPLE, 1, { id: 'south-road' }))).toEqual([
+      'Two drop-ins would be the same landing: give one another name.',
+    ]);
+    expect(problemsOf(renamed(SAMPLE, 1, { id: 'Not An Id' }))).toEqual([
+      "The id kept for 'Pond Side' is not one the game can use.",
+    ]);
+  });
+
+  describe('when a fix replaces the published map', () => {
+    const published = reading({ ...SAMPLE, id: 'sample-lane-2' });
+
+    it('goes in under the published map id, and a drop-in renamed keeps its landing', () => {
+      const fix = reading(renamed(SAMPLE, 1, { name: 'Brook Path' }));
+      const replaced = keepPublishedIds(published, fix);
+      expect(replaced.id).toBe('sample-lane-2');
+      expect(replaced.dropIns.map((dropIn) => [dropIn.name, dropIn.id])).toEqual([
+        ['South Road', undefined],
+        ['Brook Path', 'pond-side'],
+      ]);
+      expect(insertionIds(reading(replaced))).toEqual(insertionIds(published));
+    });
+
+    it('keeps the landing of one renamed and moved, and of one moved to the end of the list', () => {
+      const fix = reading({
+        ...SAMPLE,
+        dropIns: [
+          { ...SAMPLE.dropIns[1], x: 4, name: 'Brook Path' },
+          { ...SAMPLE.dropIns[0], name: 'Sand Road' },
+        ],
+      });
+      const replaced = reading(keepPublishedIds(published, fix));
+      expect(new Set(insertionIds(replaced))).toEqual(new Set(insertionIds(published)));
+      expect(replaced.dropIns.map((dropIn) => dropIn.id)).toEqual(['pond-side', 'south-road']);
+    });
+
+    it('gives a drop-in the fix added its own id, and keeps an id it kept before', () => {
+      const once = reading(keepPublishedIds(published, reading(renamed(SAMPLE, 1, { name: 'Brook Path' }))));
+      const fix = reading({
+        ...once,
+        dropIns: [...once.dropIns.map((dropIn) => ({ ...dropIn, id: undefined })), { x: 10, y: 20, name: 'Mill Gate' }],
+      });
+      const twice = reading(keepPublishedIds(once, fix));
+      expect(insertionIds(twice)).toEqual([...insertionIds(published), 'player-sample-lane-2/mill-gate']);
+    });
   });
 });

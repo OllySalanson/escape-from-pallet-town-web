@@ -3,7 +3,7 @@ import sampleLane from '../../maps/sample/sample-lane.json';
 import type { MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { makerScreen, walkedCheck, type MakerViewState } from './makerView';
-import { decide, isReviewReturn, queueOrder, reviewReturnUrl, type QueuedMap } from './review';
+import { decide, isReviewReturn, queued as queuedRow, queueOrder, reviewReturnUrl, type QueuedMap } from './review';
 import { summariseMapFile, summaryLine, summaryLines } from '../world/mapFileSummary';
 import { escapeHtml } from './makerView';
 
@@ -19,6 +19,7 @@ const queued = (changes: Partial<QueuedMap>): QueuedMap => ({
   note: null,
   revision: 1,
   sentAt: '2026-10-03T00:00:00Z',
+  replaces: undefined,
   file: SAMPLE,
   ...changes,
 });
@@ -97,6 +98,37 @@ describe('the review list', () => {
       expect(markup).toContain(`data-decide="${decision}"`);
     }
     expect(markup).toContain('Block this maker');
+  });
+
+  it('tells the reviewer a fix to a map in the game is an update, in its row and when it is open', () => {
+    const update = queued({ id: 'u', replaces: 'mill-brook', revision: 2 });
+    const markup = screen({ step: 'loaded', maps: [update, queued({})] }, update);
+    expect(markup).toContain('Maker · Waiting to be played · try 2 · UPDATE');
+    expect(markup).toContain(
+      'An update to a map already in the game (mill-brook). Approving it replaces that map under the same id; drop-ins players have reached stay theirs.',
+    );
+    expect(screen({ step: 'loaded', maps: [queued({})] }, queued({}))).not.toContain('UPDATE');
+  });
+
+  it('reads a fix as an update only until it is published itself', () => {
+    const row = {
+      id: 'u',
+      receipt_code: 'ABCDEFGHJK',
+      maker_uid: 'm',
+      maker_name: 'Maker',
+      map_name: 'Sample Lane',
+      map: SAMPLE,
+      format: 1,
+      owner_note: null,
+      revision: 2,
+      revision_of: 'p',
+      map_file_id: 'sample-lane',
+      created_at: '2026-10-03T00:00:00Z',
+      updated_at: '2026-10-03T00:00:00Z',
+    } as const;
+    expect(queuedRow({ ...row, status: 'waiting' }).replaces).toBe('sample-lane');
+    expect(queuedRow({ ...row, status: 'published' }).replaces).toBeUndefined();
+    expect(queuedRow({ ...row, status: 'waiting', map_file_id: null }).replaces).toBeUndefined();
   });
 
   it('sums every map up in its row, and the map open in full, as advice beside the decision', () => {

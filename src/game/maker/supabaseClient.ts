@@ -27,6 +27,8 @@ export type SubmissionRow = {
   readonly owner_note: string | null;
   readonly revision: number;
   readonly revision_of: string | null;
+  /** The file it is in the game as; on a fix to a map in the game, the file it replaces. */
+  readonly map_file_id: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 };

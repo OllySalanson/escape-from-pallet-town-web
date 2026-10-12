@@ -197,6 +197,53 @@ export function stackedParts(mask: Uint8Array, width: number, height: number): n
   return most;
 }
 
+/**
+ * How many separate pieces of ink a glyph is: two for an `i`, three for an `ä`
+ * whose two dots are still apart, two once they have run into one bar. Pieces
+ * touching at a corner are one, as they are to the eye.
+ */
+export function inkPieces(mask: Uint8Array, width: number, height: number): number {
+  const seen = new Uint8Array(mask.length);
+  let pieces = 0;
+  const stack: number[] = [];
+  for (let start = 0; start < mask.length; start += 1) {
+    if (!mask[start] || seen[start]) {
+      continue;
+    }
+    pieces += 1;
+    seen[start] = 1;
+    stack.push(start);
+    while (stack.length > 0) {
+      const at = stack.pop() as number;
+      const x = at % width;
+      const y = (at - x) / width;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const next = ny * width + nx;
+          if (nx >= 0 && ny >= 0 && nx < width && ny < height && mask[next] && !seen[next]) {
+            seen[next] = 1;
+            stack.push(next);
+          }
+        }
+      }
+    }
+  }
+  return pieces;
+}
+
+/**
+ * Whether a glyph carries a mark over or under its letter - an accent, a
+ * diaeresis, a cedilla - as the accented letters a player's map may use do
+ * (`world/mapText.ts`). Its marks are the smallest things in the face, set
+ * a pixel or less from the letter and from each other, so the setting that
+ * keeps them apart is searched for as a dot's is.
+ */
+export function isMarked(char: string): boolean {
+  return /[\u0300-\u036f]/.test(char.normalize('NFD'));
+}
+
 /** The size a canvas `font` shorthand asks for, or null when it names none in px. */
 export function fontSizeOf(font: string): number | null {
   const match = /(\d+(?:\.\d+)?)px/.exec(font);
@@ -293,7 +340,13 @@ function rasterise(
   dx: number,
   dy: number,
   threshold: number,
-): { bitmap: GlyphBitmap | null; ink: { left: number; width: number } | null; grey: number; parts: number } {
+): {
+  bitmap: GlyphBitmap | null;
+  ink: { left: number; width: number } | null;
+  grey: number;
+  parts: number;
+  pieces: number;
+} {
   const measured = measureGlyph(context.font, char);
   const reach = BITMAP_MARGIN + (pass === 'stroke' ? Math.ceil(context.lineWidth) : 0);
   const left = Math.ceil(Math.max(0, measured.actualBoundingBoxLeft)) + reach;
@@ -308,7 +361,7 @@ function rasterise(
   canvas.height = height;
   const glyph = canvas.getContext('2d', { willReadFrequently: true });
   if (!glyph) {
-    return { bitmap: null, ink: null, grey: 0, parts: 0 };
+    return { bitmap: null, ink: null, grey: 0, parts: 0, pieces: 0 };
   }
   glyph.font = context.font;
   glyph.textBaseline = 'alphabetic';
@@ -337,7 +390,7 @@ function rasterise(
     coverage[at] = pixels[at * 4 + 3];
     grey += greyness(coverage[at]);
   }
-  const mask = inkMask(coverage, width, height, threshold, DOTTED.includes(char));
+  const mask = inkMask(coverage, width, height, threshold, DOTTED.includes(char) || isMarked(char));
   let firstInkColumn = width;
   let lastInkColumn = -1;
   for (let at = 0; at < mask.length; at += 1) {
@@ -348,7 +401,7 @@ function rasterise(
     }
   }
   if (lastInkColumn < 0) {
-    return { bitmap: null, ink: null, grey, parts: 0 };
+    return { bitmap: null, ink: null, grey, parts: 0, pieces: 0 };
   }
   glyph.putImageData(image, 0, 0);
   // Coloured afterwards, inside the mask, so a colour can never change a shape.
@@ -360,7 +413,52 @@ function rasterise(
     ink: { left: firstInkColumn - left, width: lastInkColumn - firstInkColumn + 1 },
     grey,
     parts: stackedParts(mask, width, height),
+    pieces: inkPieces(mask, width, height),
   };
+}
+
+const truePiecesCache = new Map<string, number>();
+
+/**
+ * How many pieces a glyph truly is: drawn four times the size, where nothing
+ * runs into anything, and cut at half coverage. What a marked glyph's setting
+ * is held to - neither a diaeresis run into a bar nor a letter's own stroke
+ * broken in two.
+ */
+function truePieces(font: string, char: string): number {
+  const key = `${font}|${char}`;
+  const cached = truePiecesCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const big = font.replace(/(\d+(?:\.\d+)?)px/, (_whole, size: string) => `${Number(size) * 4}px`);
+  const measured = measureGlyph(big, char);
+  const margin = 4;
+  const left = Math.ceil(Math.max(0, measured.actualBoundingBoxLeft)) + margin;
+  const ascent = Math.ceil(Math.max(0, measured.actualBoundingBoxAscent)) + margin;
+  const width = left + Math.ceil(Math.max(0, measured.actualBoundingBoxRight)) + margin;
+  const height = ascent + Math.ceil(Math.max(0, measured.actualBoundingBoxDescent)) + margin;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const glyph = canvas.getContext('2d', { willReadFrequently: true });
+  if (!glyph) {
+    return 1;
+  }
+  glyph.font = big;
+  glyph.textBaseline = 'alphabetic';
+  glyph.fillStyle = MASK_INK;
+  glyph.fillText(char, left, ascent);
+  const pixels = glyph.getImageData(0, 0, width, height).data;
+  const mask = new Uint8Array(width * height);
+  for (let at = 0; at < mask.length; at += 1) {
+    mask[at] = pixels[at * 4 + 3] >= 128 ? 1 : 0;
+  }
+  const pieces = inkPieces(mask, width, height);
+  if (isFontReady(font)) {
+    truePiecesCache.set(key, pieces);
+  }
+  return pieces;
 }
 
 /** Glyphs made of a stroke and a detached dot. */
@@ -413,21 +511,38 @@ function metricsFor(context: CanvasRenderingContext2D, char: string, threshold: 
   // shows a half-pixel of drift against the baseline its neighbours share.
   const shared = baselineNudge(context, threshold);
   const dotted = DOTTED.includes(char);
+  // An accented letter is searched for a setting too, across rather than up
+  // and down - its body sits on the line beside its neighbours', and a whole
+  // letter a pixel off the baseline shows where a lone dot's stem does not: at
+  // 12px the two dots of a diaeresis are a pixel apart, and on the shared
+  // setting `ö` ran them into one bar and read `ō`.
+  const marked = !dotted && isMarked(char);
   const nudges = dotted ? [shared, shared - 0.5, shared + 0.5, shared - 0.25, shared + 0.25] : [shared];
-  const { dx, dy, ink } = nudges
-    .flatMap((vertical) =>
-      SNAP_CANDIDATES.map((nudge) => {
-        const candidate = snapped + nudge;
-        return { dx: candidate, dy: vertical, ...rasterise(context, char, 'fill', candidate, vertical, threshold) };
-      }),
-    )
-    .reduce((best, next) =>
-      // Pieces only count for a glyph that is meant to have them: on a `v` or an
-      // `N` the setting with the most pieces is the one with a broken diagonal.
-      (dotted && next.parts > best.parts) || ((!dotted || next.parts === best.parts) && next.grey < best.grey)
-        ? next
-        : best,
-    );
+  const settings = nudges.flatMap((vertical) =>
+    SNAP_CANDIDATES.map((nudge) => {
+      const candidate = snapped + nudge;
+      return { dx: candidate, dy: vertical, ...rasterise(context, char, 'fill', candidate, vertical, threshold) };
+    }),
+  );
+  const chosen = settings.reduce((best, next) =>
+    // Pieces only count for a glyph that is meant to have them: on a `v` or an
+    // `N` the setting with the most pieces is the one with a broken diagonal.
+    (dotted && next.parts > best.parts) || ((!dotted || next.parts === best.parts) && next.grey < best.grey)
+      ? next
+      : best,
+  );
+  // A marked letter leaves that setting only where it ran a mark into the
+  // letter or into another mark - fewer pieces than the letter truly has - and
+  // then for the setting nearest the true count, so a mark kept apart never
+  // costs a letter a stroke that was whole.
+  const target = marked ? truePieces(context.font, char) : 0;
+  const { dx, dy, ink } =
+    marked && chosen.pieces < target
+      ? settings.reduce((best, next) => {
+          const off = Math.abs(next.pieces - target) - Math.abs(best.pieces - target);
+          return off < 0 || (off === 0 && next.grey < best.grey) ? next : best;
+        }, chosen)
+      : chosen;
   const metrics = {
     dx,
     dy,

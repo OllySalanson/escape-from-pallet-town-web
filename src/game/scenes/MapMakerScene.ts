@@ -79,11 +79,18 @@ import { drawPlantSwatch, drawSwatch, loadMakerSheets, type DoorwayMark } from '
 import { MapPainter } from '../maker/mapPainter';
 import { overviewOf, type Overview } from '../maker/overview';
 
-import { createPlaytestGame, createPlaytestStash } from '../dev/playtestSave';
 import { PLAYTEST_RAID_DURATION_MS, setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
 import { Bag } from '../items';
 import { packGridFor } from '../items/packs';
-import { beginTry, endTry, TRY_IT_MAP_ID, type TryRules } from '../maker/tryIt';
+import {
+  beginTry,
+  createTryGame,
+  endTry,
+  suitedTryLevel,
+  TRY_IT_MAP_ID,
+  tryLevelChoices,
+  type TryRules,
+} from '../maker/tryIt';
 import { PokemonParty } from '../pokemon';
 import { activeRunManager } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
@@ -139,7 +146,8 @@ import {
 import { isFigureSpecies } from '../world/pokemonFigures';
 import { isBerry } from '../world/berries';
 import { MenuOverlay } from '../ui/MenuOverlay';
-import { takeDownPixelStatus } from '../ui/pixelUi';
+import { putUpPixelStatus, takeDownPixelStatus } from '../ui/pixelUi';
+import { refusedTextNote, typedMapText } from '../world/mapText';
 import {
   MAP_FILE_LIMITS,
   plainText,
@@ -241,6 +249,8 @@ const sessionViews = new Map<
   string,
   { readonly zoom: MakerZoom; readonly left: number; readonly top: number }
 >();
+/** The level each draft is tried at, once its maker has chosen one (`maker/tryIt.ts`). */
+const sessionTryLevels = new Map<string, number>();
 
 /**
  * Each map a stroke grew, with the map it grew from and how far its ground
@@ -256,6 +266,7 @@ let overviewWanted = true;
 export function forgetMakerSession(): void {
   sessionHistories.clear();
   sessionViews.clear();
+  sessionTryLevels.clear();
 }
 
 export class MapMakerScene extends Phaser.Scene {
@@ -774,8 +785,24 @@ export class MapMakerScene extends Phaser.Scene {
       sent: this.sent,
       review: this.review,
       reviewing: this.reviewing,
+      tryLevel: this.tryLevel(),
+      tryLevels: tryLevelChoices(this.file, this.tryLevel()),
+      suitedTryLevel: suitedTryLevel(this.file),
       ...(status ? { status } : {}),
     });
+  }
+
+  private chooseTryLevel(level: number): void {
+    if (!Number.isFinite(level)) {
+      return;
+    }
+    sessionTryLevels.set(this.draftKey, level);
+    this.render(`WALK IT and RAID IT field the three starters at Lv ${level}.`);
+  }
+
+  /** The level a try is played at: the maker's choice, else the one that suits the map. */
+  private tryLevel(): number {
+    return sessionTryLevels.get(this.draftKey) ?? suitedTryLevel(this.file);
   }
 
   /** The text field the maker is in, by the selector that finds it again, and where the caret is. */
@@ -950,6 +977,7 @@ export class MapMakerScene extends Phaser.Scene {
         this.store = withoutDraft(this.store, this.draftKey);
         sessionHistories.delete(this.draftKey);
         sessionViews.delete(this.draftKey);
+        sessionTryLevels.delete(this.draftKey);
       }
       this.startNewDraft(maker);
       this.selected = undefined;
@@ -1100,6 +1128,7 @@ export class MapMakerScene extends Phaser.Scene {
         (element instanceof HTMLInputElement && element.type === 'text');
       if (typed) {
         element.addEventListener('input', () => {
+          this.refuseUnwrittenText(element);
           this.typing = { field: element, apply };
           this.scheduleAutosave();
         });
@@ -1115,6 +1144,10 @@ export class MapMakerScene extends Phaser.Scene {
     field('[data-map-name]', (value) => renameMap(this.file, plainText(value)));
     field('[data-map-maker]', (value) => setMaker(this.file, plainText(value)));
     field('[data-map-wildlife]', (value) => ({ ...this.file, wildlife: value as MapFileHabitat }));
+    // The try level is the maker's to choose and no part of the map, so it is
+    // kept beside the draft for the page's life rather than in the file.
+    const tryLevelField = root.querySelector<HTMLSelectElement>('[data-try-level]');
+    tryLevelField?.addEventListener('change', () => this.chooseTryLevel(Number(tryLevelField.value)));
     field('[data-map-width]', (value) =>
       resizeMap(this.file, sizeFromField(value, this.file.width), this.file.height),
     );
@@ -2580,7 +2613,11 @@ export class MapMakerScene extends Phaser.Scene {
 
   private async confirmSend(): Promise<void> {
     const sending = this.sending;
-    if (sending.step !== 'ready' || sending.previous?.status === 'waiting') {
+    if (
+      sending.step !== 'ready' ||
+      sending.previous?.status === 'waiting' ||
+      sending.previous?.status === 'approved'
+    ) {
       return;
     }
     if (sending.needsCheck) {
@@ -2593,7 +2630,11 @@ export class MapMakerScene extends Phaser.Scene {
     this.render();
     const result = await sendMap(file, {
       ...(this.captchaToken ? { captchaToken: this.captchaToken } : {}),
-      ...(sending.previous?.status === 'sent_back' ? { resubmits: sending.previous.receipt } : {}),
+      // A map sent back goes in as its next try, and a fix to a map in the game
+      // as its update, which replaces it there once approved.
+      ...(sending.previous?.status === 'sent_back' || sending.previous?.status === 'published'
+        ? { resubmits: sending.previous.receipt }
+        : {}),
     });
     // A bot check's token is good for one sign-in, used or refused.
     this.captchaToken = undefined;
@@ -2709,6 +2750,29 @@ export class MapMakerScene extends Phaser.Scene {
     this.render(result.ok ? `${reviewing.makerName} can send no more maps.` : result.reason);
   }
 
+  /**
+   * Takes what a map cannot hold out of a field the moment it is typed or
+   * pasted - an emoji, another script, markup - leaving the caret where it was,
+   * and says what went and why rather than letting it vanish on its own.
+   */
+  private refuseUnwrittenText(element: HTMLInputElement | HTMLTextAreaElement): void {
+    const typed = typedMapText(element.value, { lines: element instanceof HTMLTextAreaElement });
+    if (typed.refused.length === 0) {
+      return;
+    }
+    const caret = element.selectionStart ?? element.value.length;
+    const kept = typedMapText(element.value.slice(0, caret), {
+      lines: element instanceof HTMLTextAreaElement,
+    }).text.length;
+    element.value = typed.text;
+    element.setSelectionRange(kept, kept);
+    putUpPixelStatus(this.overlay.root, refusedTextNote(typed.refused));
+    if (this.statusTimer) {
+      clearTimeout(this.statusTimer);
+    }
+    this.statusTimer = setTimeout(() => takeDownPixelStatus(this.overlay.root), STATUS_MS);
+  }
+
   /** Whether the maker has walked out of this version of the map in TRY IT. */
   private walkedOut(): boolean {
     const draft = this.store.drafts.find((candidate) => candidate.key === this.draftKey);
@@ -2736,11 +2800,14 @@ export class MapMakerScene extends Phaser.Scene {
     setTryItRules(rules === 'walk');
     const saves = new SaveManager();
     saves.clear();
-    saves.save(createPlaytestGame());
-    // The explorer run's partner and two of its bench, read back out of the
-    // try's own save so the raid settles against the stash it came from:
-    // enough to see the map, never so few that a wild roll ends the try.
-    const stash = saves.load()?.stash ?? createPlaytestStash();
+    const level = this.tryLevel();
+    saves.save(createTryGame(level));
+    // The try team at the level the maker chose, read back out of the try's
+    // own save so the raid settles against the stash it came from.
+    const stash = saves.load()?.stash ?? createTryGame(level).stash;
+    if (!stash) {
+      return;
+    }
     const team = stash.listPokemon().slice(0, 3);
     const party = team.map((stored) => stored.pokemon);
     const items = [

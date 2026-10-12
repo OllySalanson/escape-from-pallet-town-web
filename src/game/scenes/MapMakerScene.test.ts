@@ -106,6 +106,10 @@ import { groundBrush } from '../maker/palette';
 import { readMapFile, type MapFile, type MapFileBuildingKind } from '../world/mapFile';
 import sampleLaneJson from '../../maps/sample/sample-lane.json';
 import { forgetMakerSession, MapMakerScene, restingTop } from './MapMakerScene';
+import { setActiveSaveSlot } from '../dev/playtestMode';
+import { endTry } from '../maker/tryIt';
+import { activeRunManager } from '../run';
+import { RunPhase } from '../run/RunManager';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -122,6 +126,8 @@ class MemoryStorage {
 
 interface MakerInternals {
   create(data?: { readonly tried?: boolean }): void;
+  chooseTryLevel(level: number): void;
+  refuseUnwrittenText(element: unknown): void;
   handleKey(event: KeyboardEvent): void;
   pointerDown(event: PointerEvent, canvas: unknown): void;
   pointerMove(event: PointerEvent, canvas: unknown): void;
@@ -875,5 +881,72 @@ describe('planting nature along a drag', () => {
       Array.from({ length: 16 }, (_, step) => [4 + step, 8] as const),
     );
     expect(scene.file.buildings).toEqual([{ x: 4, y: 8, kind: building }]);
+  });
+});
+
+describe('the level a try is played at', () => {
+  // A try starts the game's one run; an earlier test's try left it running.
+  beforeEach(() => {
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+  });
+
+  /** The party the try deployed. */
+  const triedTeam = (): readonly [string, number][] => {
+    setActiveSaveSlot('normal');
+    endTry();
+    return (activeRunManager.snapshot().loadout?.party ?? []).map((pokemon) => [
+      pokemon.base.name,
+      pokemon.level,
+    ]);
+  };
+
+  it('starts on the one that suits the map, and fields the three starters at it', () => {
+    storeDraft(sampleLane);
+    const { scene } = openMaker();
+    expect(scene.overlay.root.innerHTML).toContain('<option value="6" selected>Lv 6 · suits it</option>');
+    scene.overlay.clicks.get('[data-try]')!();
+    expect(triedTeam()).toEqual([
+      ['Charmander', 6],
+      ['Squirtle', 6],
+      ['Bulbasaur', 6],
+    ]);
+  });
+
+  it('is the maker\'s to choose, kept for the draft across a try', () => {
+    storeDraft(sampleLane);
+    const { scene } = openMaker();
+    scene.chooseTryLevel(36);
+    scene.overlay.clicks.get('[data-try]')!();
+    expect(triedTeam()).toEqual([
+      ['Charizard', 36],
+      ['Blastoise', 36],
+      ['Venusaur', 36],
+    ]);
+    reopen(scene, { tried: true });
+    expect(scene.overlay.root.innerHTML).toContain('<option value="36" selected>Lv 36</option>');
+  });
+});
+
+describe('typing what a map cannot hold', () => {
+  it('takes it out as it is typed and leaves the caret where it was', () => {
+    storeDraft(sampleLane);
+    const { scene } = openMaker();
+    const field = Object.assign(new Element(), {
+      value: 'Bug 🐛 Café|Lane',
+      selectionStart: 'Bug 🐛 Café'.length,
+      setSelectionRange(start: number, end: number) {
+        this.caret = [start, end];
+      },
+      caret: [0, 0] as [number, number],
+    });
+    scene.refuseUnwrittenText(field);
+    expect(field.value).toBe('Bug  Café|Lane');
+    expect(field.caret).toEqual(['Bug  Café'.length, 'Bug  Café'.length]);
+    const clean = Object.assign(new Element(), { value: 'Café Élan', selectionStart: 3, setSelectionRange: vi.fn() });
+    scene.refuseUnwrittenText(clean);
+    expect(clean.value).toBe('Café Élan');
+    expect(clean.setSelectionRange).not.toHaveBeenCalled();
   });
 });

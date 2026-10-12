@@ -125,6 +125,25 @@ export function takeDownPixelStatus(root: Pick<ParentNode, 'querySelector'>): vo
   line?.remove();
 }
 
+/**
+ * Puts a status line up over the help text without drawing the screen again,
+ * for a screen with a field the player is typing in: a render would take the
+ * field away from under the caret. The text is set as text, never markup.
+ */
+export function putUpPixelStatus(root: Pick<ParentNode, 'querySelector'>, text: string): void {
+  takeDownPixelStatus(root);
+  const help = root.querySelector('.px-help');
+  if (!help) {
+    return;
+  }
+  const line = help.ownerDocument.createElement('span');
+  line.className = PIXEL_STATUS_SELECTOR.slice(1);
+  line.setAttribute('role', 'status');
+  line.textContent = text;
+  help.append(line);
+  help.classList.add('has-status');
+}
+
 export function pixelScreen(options: PixelScreenOptions): string {
   const back = options.back
     ? `<button class="px-back" ${options.back.attribute}>${options.back.label}</button>`

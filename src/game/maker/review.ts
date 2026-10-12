@@ -23,6 +23,11 @@ export interface QueuedMap {
   readonly note: string | null;
   readonly revision: number;
   readonly sentAt: string;
+  /**
+   * The map in the game this one replaces, by file id: set on a fix its maker
+   * sent to a map already published, and only until it is published itself.
+   */
+  readonly replaces: string | undefined;
   /** The map as sent, if it still reads as one. */
   readonly file: MapFile | undefined;
 }
@@ -112,7 +117,8 @@ export async function reviewAccess(): Promise<'signed-out' | 'not-reviewer' | 'r
   }
 }
 
-function queued(row: SubmissionRow): QueuedMap {
+/** A row of the inbox as the review list reads it. */
+export function queued(row: SubmissionRow): QueuedMap {
   const reading = readMapFile(row.map, { draft: true });
   return {
     id: row.id,
@@ -124,6 +130,7 @@ function queued(row: SubmissionRow): QueuedMap {
     note: row.owner_note,
     revision: row.revision,
     sentAt: row.created_at,
+    replaces: row.status !== 'published' && row.map_file_id ? row.map_file_id : undefined,
     file: reading.ok ? reading.file : undefined,
   };
 }
