@@ -138,7 +138,8 @@ than the secure container you start with, so every raid you ride it is a raid yo
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
 than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
 with the name on their front door over their head - give yours at the Bolthole and they see you
-back. Four buildings, four people you'll recognise, and each one is a thing you can do:
+back. Press **K** in your house or on its step to knock on somebody else's door; if they're in
+and say yes, you're let in to have a nose round. Four buildings, four people you'll recognise, and each one is a thing you can do:
 
 - **Professor Oak's Lab** is where raids start: the contract board, your loadout, and a wall map
   that lights up wherever you've walked.
@@ -247,6 +248,7 @@ sightseeing.
 | <kbd>P</kbd> | Open the party | |
 | <kbd>O</kbd> | Open the field guide | |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
+| <kbd>K</kbd> | | In your house or on its step: knock on somebody else's door |
 | <kbd>Esc</kbd> | Close a screen | Back out of a screen |
 
 Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or

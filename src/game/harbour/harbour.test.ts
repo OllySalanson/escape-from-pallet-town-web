@@ -14,6 +14,7 @@ class QuietWire implements HarbourWire {
   }
   public standIn(): void {}
   public send(): void {}
+  public nudge(): void {}
   public names(): Promise<ReadonlyMap<string, string>> {
     return Promise.resolve(new Map());
   }
@@ -34,6 +35,10 @@ describe('where the shared harbour has the player', () => {
     expect(placeFor('home-upstairs', ME)).toBe(`house:${ME}:up`);
     // Nobody can be in the house of a player nobody can see.
     expect(placeFor('home', null)).toBeNull();
+    // A visitor stands in the owner's house, which is where the owner sees them.
+    const AMY = '22222222-2222-4222-8222-222222222222';
+    expect(placeFor({ visiting: AMY, upstairs: false }, ME)).toBe(`house:${AMY}`);
+    expect(placeFor({ visiting: AMY, upstairs: true }, null)).toBe(`house:${AMY}:up`);
   });
 
   it('watches until a name is given, then is seen as the player the name was written for', async () => {

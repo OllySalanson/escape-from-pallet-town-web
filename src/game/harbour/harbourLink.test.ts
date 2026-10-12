@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AWAY_GRACE_MS, GREET_EVERY_MS, HarbourLink, LEAVE_AFTER_MS, type HarbourHeard, type HarbourWire } from './harbourLink';
-import { HARBOUR_SEND_EVERY_MS, type HarbourMove, type HarbourPlace } from './harbourProtocol';
+import { HARBOUR_SEND_EVERY_MS, type HarbourMove, type HarbourNudge, type HarbourPlace } from './harbourProtocol';
 
 const ME = '11111111-1111-4111-8111-111111111111';
 const AMY = '22222222-2222-4222-8222-222222222222';
@@ -10,6 +10,7 @@ const NOBODY = '33333333-3333-4333-8333-333333333333';
 class FakeWire implements HarbourWire {
   public joinedAs: (string | null)[] = [];
   public sent: HarbourMove[] = [];
+  public nudged: HarbourNudge[] = [];
   public stood: (HarbourPlace | null)[] = [];
   public left = 0;
   public known = new Map<string, string>([[AMY, 'AMY']]);
@@ -25,6 +26,12 @@ class FakeWire implements HarbourWire {
   }
   public send(move: HarbourMove): void {
     this.sent.push(move);
+  }
+  public nudge(nudge: HarbourNudge): void {
+    this.nudged.push(nudge);
+  }
+  public hearNudge(nudge: HarbourNudge): void {
+    this.heard?.nudge(nudge);
   }
   public names(ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
     return Promise.resolve(new Map(ids.flatMap((id) => (this.known.has(id) ? [[id, this.known.get(id)!] as const] : []))));
@@ -138,6 +145,20 @@ describe("this browser's place in the shared harbour", () => {
     link.enter(ME, 'oaks-lab', { x: 7, y: 9 }, 'up');
     link.tick(1_000 + AWAY_GRACE_MS * 2, 16);
     expect(wire.stood).toEqual(['oaks-lab']);
+  });
+
+  it('nudges another browser only as a player who can be heard, and hears only nudges meant for it', async () => {
+    const watching = await joined(null);
+    watching.link.nudge(AMY);
+    expect(watching.wire.nudged).toEqual([]);
+    const { link, wire } = await joined();
+    const heard: string[] = [];
+    link.whenNudged((from) => heard.push(from));
+    link.nudge(AMY);
+    expect(wire.nudged).toEqual([{ from: ME, to: AMY }]);
+    wire.hearNudge({ from: AMY, to: NOBODY });
+    wire.hearNudge({ from: AMY, to: ME });
+    expect(heard).toEqual([AMY]);
   });
 
   it('joins again as the player when the name was written while the first join was on its way', async () => {

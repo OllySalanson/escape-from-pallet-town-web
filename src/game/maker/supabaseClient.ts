@@ -11,7 +11,8 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  * and the house console's `submit_console_score` and `console_leaderboard`
  * (`console/remoteScores.ts`), the last of which a browser may also call
  * signed out, and the shared harbour's `name_my_house` and `harbour_names`
- * (`harbour/`), the last of which is read signed out too;
+ * (`harbour/`), the last of which is read signed out too, and its knocking
+ * (`harbour/houseService.ts`);
  * the table rows are here for the reviewer, whom row-level security lets read
  * and decide.
  */
@@ -131,6 +132,34 @@ export type GameDatabase = {
       harbour_names: {
         Args: { player_uids: string[] };
         Returns: HarbourNameRow[];
+      };
+      at_my_house: {
+        Args: { at_home: boolean; snapshot: unknown };
+        Returns: string;
+      };
+      harbour_houses: {
+        Args: Record<PropertyKey, never>;
+        Returns: { readonly player_uid: string; readonly name: string; readonly at_home: boolean | null }[];
+      };
+      knock_on: {
+        Args: { owner: string };
+        Returns: { readonly knock_id: string | null; readonly outcome: string }[];
+      };
+      knocks_at_my_door: {
+        Args: Record<PropertyKey, never>;
+        Returns: { readonly knock_id: string; readonly knocker_name: string; readonly knocked_at: string }[];
+      };
+      answer_knock: {
+        Args: { knock_id: string; let_in: boolean };
+        Returns: string;
+      };
+      my_knock: {
+        Args: { knock_id: string };
+        Returns: string;
+      };
+      visit_house: {
+        Args: { owner: string };
+        Returns: { readonly name: string; readonly snapshot: unknown }[];
       };
     };
     Enums: Record<string, never>;
