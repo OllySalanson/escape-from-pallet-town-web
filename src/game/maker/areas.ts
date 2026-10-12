@@ -817,7 +817,7 @@ export function insideOf(file: MapFile, building: MapFileBuilding): MapFileArea 
 
 /** Whether a building has a door that can lead inside. */
 export function hasDoor(building: MapFileBuilding): boolean {
-  return building.kind in MAP_FILE_BUILDING_DOORS;
+  return Object.hasOwn(MAP_FILE_BUILDING_DOORS, building.kind);
 }
 
 /** An area id not yet in the file, from a name. */

@@ -131,6 +131,36 @@ describe('the review list', () => {
     expect(queuedRow({ ...row, status: 'waiting', map_file_id: null }).replaces).toBeUndefined();
   });
 
+  it('lists a row the game cannot read as unreadable, never blanking the rows beside it (red team F1)', () => {
+    const row = {
+      id: 'u',
+      receipt_code: 'ABCDEFGHJK',
+      maker_uid: 'm',
+      maker_name: 'Maker',
+      map_name: 'Sample Lane',
+      format: 1,
+      owner_note: null,
+      revision: 1,
+      revision_of: null,
+      map_file_id: null,
+      created_at: '2026-10-03T00:00:00Z',
+      updated_at: '2026-10-03T00:00:00Z',
+      status: 'waiting',
+    } as const;
+    const throwing = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new TypeError('a map that throws');
+        },
+      },
+    );
+    const prototypeName = { ...SAMPLE, buildings: [{ kind: 'toString', x: 0, y: 0 }] };
+    expect(queuedRow({ ...row, map: throwing }).file).toBeUndefined();
+    expect(queuedRow({ ...row, map: prototypeName }).file).toBeUndefined();
+    expect(queuedRow({ ...row, map: SAMPLE }).file).toBeDefined();
+  });
+
   it('sums every map up in its row, and the map open in full, as advice beside the decision', () => {
     const summary = summariseMapFile(SAMPLE)!;
     const list = screen({ step: 'loaded', maps: [queued({})] });

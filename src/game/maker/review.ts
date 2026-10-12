@@ -119,7 +119,6 @@ export async function reviewAccess(): Promise<'signed-out' | 'not-reviewer' | 'r
 
 /** A row of the inbox as the review list reads it. */
 export function queued(row: SubmissionRow): QueuedMap {
-  const reading = readMapFile(row.map, { draft: true });
   return {
     id: row.id,
     receiptCode: row.receipt_code,
@@ -131,8 +130,23 @@ export function queued(row: SubmissionRow): QueuedMap {
     revision: row.revision,
     sentAt: row.created_at,
     replaces: row.status !== 'published' && row.map_file_id ? row.map_file_id : undefined,
-    file: reading.ok ? reading.file : undefined,
+    file: readableFile(row.map),
   };
+}
+
+/**
+ * The map a row holds, or nothing if the game cannot read it. A row is a
+ * stranger's text, so whatever it does to the reader is this row's problem
+ * and never the whole list's: one that throws is listed as unreadable rather
+ * than blanking every map behind it (red team F1).
+ */
+function readableFile(map: unknown): MapFile | undefined {
+  try {
+    const reading = readMapFile(map, { draft: true });
+    return reading.ok ? reading.file : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The order the queue is read in: what is waiting first, oldest first, then everything decided, newest first. */
