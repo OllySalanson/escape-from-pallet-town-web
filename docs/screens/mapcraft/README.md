@@ -26,3 +26,16 @@ The scores are the blind judges' from round 3 of the map research (12 October
 2026). Since then the toolkit's *every open tile can be walked to* check found a
 two-tile pocket the scored map had sealed behind a rock, and the example has one
 rock fewer.
+
+## A world, stitched
+
+`tools/mapcraft/examples/quarryRoad.ts`, two 32x32 districts drawn apart and a
+two-floor cave under the quarry (`npx vite-node tools/mapcraft/world.mts --
+tools/mapcraft/examples/quarryRoad.ts out/quarry-road`):
+
+| Picture | What it shows |
+|---|---|
+| `world-plan.png` | the plan: each district's one idea, the road crossing (orange) and the two ways out (red) |
+| `world-stitched.png` | both districts stitched; the seam joins in five steps |
+| `world-one-district.png` | the same plan with only the orchard drawn: it still plays, and the road runs into the wood |
+| `world-cave-b1f.png` | the cave's lower floor: rooms and passages, sand, two ladders up, a crater |

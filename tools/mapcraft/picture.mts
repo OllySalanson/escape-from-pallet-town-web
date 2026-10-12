@@ -4,7 +4,8 @@
  * coordinates and a fix can use them), and the same with the design moves
  * washed in colour - blue the border, orange the road, pink the plain lawn,
  * green the tall grass, purple what stands in the open, red outline ledges,
- * white outline fences - so what a mapper sees is on the page.
+ * white outline fences - so what a mapper sees is on the page. And for a huge
+ * map, the world plan as one picture and the whole map shrunk to a glance.
  */
 import { TILE_SIZE } from '../tileset/tileSheet.mjs';
 import { blit, box, canvas, label } from '../tileset/draw.mjs';
@@ -16,8 +17,10 @@ import {
   type MapFile,
 } from '../../src/game/world/mapFile';
 import { registerPlayerMap } from '../../src/game/world/playerMaps';
+import { composeMapFile } from '../../src/game/world/mapAreas';
 import { readTiles, WALL_KINDS, type TileRect } from './tiles';
 import type { DesignMoves } from './measures';
+import { districtRect, openingsOf, planBounds, type Opening, type WorldPlan } from './worldPlan';
 
 /** The map (or the part of it in `crop`) exactly as the game draws it. */
 export function mapPicture(file: MapFile, crop?: TileRect): MapImage {
@@ -151,4 +154,111 @@ export function movesPicture(
     [235, 235, 210],
   );
   return panel;
+}
+
+const CELL = 192;
+const KIND_COLOUR: Readonly<Record<string, [number, number, number]>> = {
+  road: [235, 170, 70],
+  trail: [150, 220, 120],
+  river: [70, 130, 230],
+  open: [235, 235, 200],
+};
+
+/**
+ * The world plan as one picture: a box a district, green where it is drawn and
+ * grey where it is not, its name and its one idea written in it; a bar on each
+ * shared edge where a crossing is (orange road, green trail, blue river, pale
+ * open country) and a red bar on the outer edge for each way out.
+ */
+export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Set()): MapImage {
+  const bounds = planBounds(plan);
+  const image = canvas(bounds.columns * CELL + 16, bounds.rows * CELL + 40, [16, 18, 24]);
+  label(image, plan.name, 8, 8, 2, [255, 214, 92]);
+  const origin = (id: string) => {
+    const rect = districtRect(plan, id);
+    return {
+      x: 8 + (rect.x / plan.districtSize) * CELL,
+      y: 32 + (rect.y / plan.districtSize) * CELL,
+    };
+  };
+  for (const district of plan.districts) {
+    const { x, y } = origin(district.id);
+    box(
+      image,
+      x + 2,
+      y + 2,
+      CELL - 4,
+      CELL - 4,
+      built.has(district.id) ? [52, 92, 60] : [58, 60, 66],
+    );
+    label(image, district.name, x + 8, y + 10, 2, [255, 255, 255]);
+    wrap(district.idea, 44).forEach((line, index) =>
+      label(image, line, x + 8, y + 34 + index * 9, 1, [220, 225, 210]),
+    );
+  }
+  const bar = (id: string, opening: Opening, colour: [number, number, number]) => {
+    const { x, y } = origin(id);
+    const along = Math.round((opening.at / plan.districtSize) * CELL);
+    const span = Math.max(6, Math.round((opening.width / plan.districtSize) * CELL));
+    if (opening.side === 'north') box(image, x + along, y, span, 6, colour);
+    if (opening.side === 'south') box(image, x + along, y + CELL - 6, span, 6, colour);
+    if (opening.side === 'west') box(image, x, y + along, 6, span, colour);
+    if (opening.side === 'east') box(image, x + CELL - 6, y + along, 6, span, colour);
+  };
+  for (const district of plan.districts) {
+    for (const opening of openingsOf(plan, district.id)) {
+      bar(
+        district.id,
+        opening,
+        'exit' in opening.leadsTo ? [230, 60, 60] : KIND_COLOUR[opening.kind],
+      );
+    }
+  }
+  return image;
+}
+
+function wrap(text: string, width: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/)) {
+    if (line && line.length + 1 + word.length > width) {
+      lines.push(line);
+      line = word;
+    } else line = line ? `${line} ${word}` : word;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** A picture made smaller by averaging `factor` x `factor` blocks: a whole huge map at a glance. */
+export function shrunk(image: MapImage, factor: number): MapImage {
+  const width = Math.floor(image.width / factor);
+  const height = Math.floor(image.height / factor);
+  const out = canvas(width, height, [0, 0, 0]);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const sum = [0, 0, 0];
+      for (let j = 0; j < factor; j += 1) {
+        for (let i = 0; i < factor; i += 1) {
+          const at = ((y * factor + j) * image.width + x * factor + i) * 4;
+          for (let k = 0; k < 3; k += 1) sum[k] += image.data[at + k];
+        }
+      }
+      const at = (y * width + x) * 4;
+      for (let k = 0; k < 3; k += 1) out.data[at + k] = Math.round(sum[k] / (factor * factor));
+      out.data[at + 3] = 255;
+    }
+  }
+  return out;
+}
+
+/** One inside or cave floor of a map file, as the game draws it. */
+export function areaPicture(file: MapFile, areaId: string): MapImage {
+  const placed = composeMapFile(file).areas.find((area) => area.id === areaId);
+  if (!placed) throw new Error(`the map has no place called '${areaId}'`);
+  const reading = readMapFile(file);
+  if (!reading.ok) throw new Error(reading.problems.join(' '));
+  registerPlayerMap(buildPlayerMap(reading.file));
+  const { x, y, width, height } = placed.rect;
+  return drawWorldMap(playerMapId(file), [x, y, width, height]);
 }
