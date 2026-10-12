@@ -103,6 +103,20 @@ export interface StashContents {
    * starter - or null once it is gone. See `Stash.partner()`.
    */
   readonly partnerId?: string | null;
+  /** The one Pokemon left with the Day-Care Man, or null. See `Stash.dayCare()`. */
+  readonly dayCare?: DayCareStay | null;
+}
+
+/**
+ * The Pokemon the Day-Care Man is raising (`hub/dayCare.ts`): as it was left
+ * with him, under the stash id it will come back with, and how many raids had
+ * ended when it was left. What it has grown by since is worked out from that
+ * count rather than stored, as FireRed keeps a step count beside the Pokemon.
+ */
+export interface DayCareStay {
+  readonly id: string;
+  readonly pokemon: Pokemon;
+  readonly leftAfterRaids: number;
 }
 
 /**
@@ -229,9 +243,15 @@ export class Stash {
   /** Every stored Pokemon is in exactly one of these, and there is always one. */
   private readonly boxes: { name: string; pokemonIds: string[] }[] = [];
   private partnerStashId: string | null = null;
+  private dayCareStay: DayCareStay | null = null;
 
   public constructor(contents: Partial<StashContents> = {}) {
     this.storedPokemon = [...(contents.pokemon ?? [])];
+    // A stay whose id is also in the vault is a hand-edited save: the vault's
+    // copy wins and the stay is dropped, so no id is ever two Pokemon.
+    const stay = contents.dayCare ?? null;
+    this.dayCareStay =
+      stay !== null && !this.storedPokemon.some((stored) => stored.id === stay.id) ? stay : null;
     this.adoptPartner(contents.partnerId ?? null);
     // The vault has no size. A grid is what a raid is carried in; what a
     // player has banked is a warehouse, and capping it would make banking a
@@ -247,6 +267,56 @@ export class Stash {
    */
   public listPokemon(): readonly StashedPokemon[] {
     return [...this.storedPokemon];
+  }
+
+  /**
+   * The Pokemon left with the Day-Care Man, or null. It is not in the vault
+   * while it is there - not in `listPokemon()`, not in a box - which is what
+   * keeps it out of every raid, every payment and every wipe without any of
+   * them having to be told about it.
+   */
+  public dayCare(): DayCareStay | null {
+    return this.dayCareStay;
+  }
+
+  /**
+   * Hands one Pokemon over to the Day-Care Man. Refused while he is raising one
+   * already and for anything not in the vault; whether the player *should* is
+   * `hub/dayCare.ts`'s question. The Pokemon keeps its stash id, and its mark if
+   * it is the partner: it is away, not gone.
+   */
+  public leaveAtDayCare(pokemonId: string, raidsCompleted: number): boolean {
+    const index = this.storedPokemon.findIndex((stored) => stored.id === pokemonId);
+    if (this.dayCareStay !== null || index < 0) {
+      return false;
+    }
+    const [stored] = this.storedPokemon.splice(index, 1);
+    for (const box of this.boxes) {
+      box.pokemonIds = box.pokemonIds.filter((boxed) => boxed !== pokemonId);
+    }
+    this.dayCareStay = {
+      id: stored.id,
+      pokemon: stored.pokemon,
+      leftAfterRaids: Math.max(0, Math.floor(raidsCompleted)),
+    };
+    return true;
+  }
+
+  /**
+   * Takes the Day-Care's Pokemon back into the vault, as it now is, under the
+   * id it went in with. Growing it is the caller's (`hub/dayCare.takeBack`).
+   *
+   * @returns Its stash id, or null when nobody was there.
+   */
+  public takeBackFromDayCare(): string | null {
+    const stay = this.dayCareStay;
+    if (stay === null) {
+      return null;
+    }
+    this.dayCareStay = null;
+    this.storedPokemon.push({ id: stay.id, pokemon: stay.pokemon });
+    this.placeInFirstBoxWithRoom(stay.id);
+    return stay.id;
   }
 
   /**
@@ -275,7 +345,9 @@ export class Stash {
   /** Marks one stored Pokemon as the partner, or none. An id the vault does not hold marks none. */
   public adoptPartner(id: string | null): void {
     this.partnerStashId =
-      id !== null && this.storedPokemon.some((stored) => stored.id === id) ? id : null;
+      id !== null && (this.storedPokemon.some((stored) => stored.id === id) || this.dayCareStay?.id === id)
+        ? id
+        : null;
   }
 
   public listBoxes(): readonly StashBox[] {
@@ -358,7 +430,7 @@ export class Stash {
   }
 
   public addPokemon(pokemon: Pokemon, id = this.nextPokemonId(pokemon)): string {
-    if (this.storedPokemon.some((stored) => stored.id === id)) {
+    if (this.storedPokemon.some((stored) => stored.id === id) || this.dayCareStay?.id === id) {
       throw new Error(`A Pokemon with stash ID "${id}" already exists.`);
     }
 
@@ -525,6 +597,9 @@ export class Stash {
    * @returns Whether a starter was granted.
    */
   public ensurePlayable(starter = BULBASAUR): boolean {
+    // A Pokemon at the Day-Care does not count: it cannot be deployed until it
+    // is fetched, and every path back into play has to leave a raid possible
+    // without asking anybody to walk across the harbour first.
     if (this.storedPokemon.length > 0) {
       return false;
     }
@@ -629,7 +704,8 @@ export class Stash {
    * player may re-specialise into another starter.
    */
   public canSwapStarter(): boolean {
-    return this.storedPokemon.length === 1;
+    // A Pokemon at the Day-Care is still the player's, so they are not down to one.
+    return this.storedPokemon.length === 1 && this.dayCareStay === null;
   }
 
   /**
@@ -781,7 +857,11 @@ export class Stash {
   private nextPokemonId(pokemon: Pokemon): string {
     const prefix = pokemon.base.id;
     let number = 1;
-    while (this.storedPokemon.some((stored) => stored.id === `${prefix}-${number}`)) {
+    // The Day-Care's Pokemon is coming back under its id, so nothing new may take it.
+    while (
+      this.storedPokemon.some((stored) => stored.id === `${prefix}-${number}`) ||
+      this.dayCareStay?.id === `${prefix}-${number}`
+    ) {
       number += 1;
     }
     return `${prefix}-${number}`;

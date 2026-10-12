@@ -180,6 +180,18 @@ import { focusDirectionForKey } from '../ui/spatialFocus';
 import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWords, type FirstWordsId } from '../hub/firstWords';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
+import {
+  DAY_CARE_MAN,
+  checkOnLines,
+  dayCareRefusal,
+  dayCareReport,
+  grownToday,
+  leftLines,
+  raidsCompleted,
+  takeBack,
+  takenBackLines,
+} from '../hub/dayCare';
+import { DAY_CARE_KEEPER } from '../base/dayCarePen';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -210,7 +222,7 @@ export interface HubSceneData {
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap';
+type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare';
 
 /**
  * Game pixels the drop-in screen's right-hand side takes beyond its column's
@@ -324,7 +336,12 @@ export class HubScene extends Phaser.Scene {
    * changes.
    */
   private speaking:
-    | { readonly screen: FirstWordsId; readonly words: FirstWords; readonly reward?: boolean }
+    | {
+        /** The screen whose first words these are, or `day-care` for what he says as he takes or gives back. */
+        readonly screen: FirstWordsId | 'day-care';
+        readonly words: FirstWords;
+        readonly reward?: boolean;
+      }
     | undefined;
   /** Whether the words just read were a Pokédex reward, so a second one carries on rather than greets again. */
   private afterReward = false;
@@ -1322,6 +1339,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'workshop') return this.payingFor ? `Build ${this.payingFor.name}` : 'Brock’s Workshop';
     if (this.view === 'trader') return 'Bill’s Cottage';
     if (this.view === 'wallmap') return this.wallMapInspect ? worldMapName(this.wallMapInspect) : 'The wall map';
+    if (this.view === 'daycare') return 'Day-Care';
     if (this.flow.step === 'loadout') return 'Build your loadout';
     if (this.flow.step === 'dropin') return 'Choose your drop-in';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
@@ -1337,6 +1355,8 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'workshop') return 'Workshop';
     if (this.view === 'trader') return 'Cottage';
     if (this.view === 'wallmap') return this.wallMapInspect ? 'Wall map' : 'Lab';
+    // He stands in the yard, so out of his screen is out into it.
+    if (this.view === 'daycare') return 'Yard';
     if (this.flow.step === 'confirm') return 'Drop-in';
     if (this.flow.step === 'dropin') return 'Loadout';
     if (this.flow.step === 'secure') {
@@ -1388,7 +1408,9 @@ export class HubScene extends Phaser.Scene {
                 ? formatMoney(moneyHeld(this.stash))
                 : this.view === 'wallmap'
                   ? wallMapNote(this.savedGame)
-                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'item' : 'items'}`,
+                  : this.view === 'daycare'
+                    ? `${this.stashPokemon.length} Pokémon at base`
+                    : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'item' : 'items'}`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -1522,6 +1544,8 @@ export class HubScene extends Phaser.Scene {
     );
     on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
+    on('[data-day-care-leave]', (button) => this.leaveAtDayCare(button.dataset.dayCareLeave!));
+    on('[data-day-care-take]', () => this.takeBackFromDayCare());
     if (this.speaking) {
       this.overlay.focus('[data-speech-done]');
       return;
@@ -1536,6 +1560,11 @@ export class HubScene extends Phaser.Scene {
    * once per save and never again, read or not (`hub/firstWords.ts`).
    */
   private listenForFirstWords(): void {
+    // The Day-Care Man's words answer something just done, and stay up until
+    // they are read.
+    if (this.speaking?.screen === 'day-care') {
+      return;
+    }
     const here = firstWordsFor(this.view, this.flow.step);
     if (here === this.speaking?.screen) {
       return;
@@ -1596,10 +1625,16 @@ export class HubScene extends Phaser.Scene {
     }
     // Already recorded as heard, so the re-render does not start them again.
     this.afterReward = this.speaking.reward === true;
+    const fromTheDayCare = this.speaking.screen === 'day-care';
     this.speaking = undefined;
     audioManager.play('select');
     this.render();
     this.afterReward = false;
+    // A Pokemon taken back may have reached a move with no room for it, and
+    // this is the player's first moment to be asked.
+    if (fromTheDayCare) {
+      this.offerPendingMoves();
+    }
   }
 
   /** The words being said, as the box laid over the foot of the screen. */
@@ -1654,6 +1689,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'workshop') return this.payingFor ? this.paymentView(this.payingFor) : this.workshopView();
     if (this.view === 'trader') return this.traderView();
     if (this.view === 'wallmap') return this.wallMapView();
+    if (this.view === 'daycare') return this.dayCareView();
     if (this.flow.step === 'loadout') return this.loadoutView();
     if (this.flow.step === 'dropin') return this.dropInView();
     return this.flow.step === 'secure' ? this.secureView() : this.confirmView();
@@ -3552,6 +3588,167 @@ export class HubScene extends Phaser.Scene {
   private swapArrival(spare: StashedPokemon, chosen: PokemonBase): string {
     const incoming = starterInConditionOf(spare.pokemon, chosen);
     return `${conditionLine(incoming)} · ${incoming.moves.map((move) => move.base.name).join(', ')}`;
+  }
+
+  /** Raids that have ended on this save: what the Day-Care's growth is counted in. */
+  private get raidsEnded(): number {
+    return raidsCompleted(this.savedGame.raidProgress, this.savedGame.raidInFlight);
+  }
+
+  /**
+   * THE DAY-CARE (`hub/dayCare.ts`): the man at his pen, and either the
+   * Pokémon he is raising - how it has grown, and the press that takes it back
+   * - or the Pokémon at base to choose one from, each saying whether he would
+   * take it and, when not, why.
+   */
+  private dayCareView(): string {
+    const stay = this.stash.dayCare();
+    const report = stay ? dayCareReport(stay, this.raidsEnded) : undefined;
+    const said = report
+      ? checkOnLines(report)
+      : ['I run the DAY-CARE service. Would you like me to raise one of your Pokémon?'];
+    const lead = pixelWindow(
+      `<div class="px-lead">${pixelFigure(DAY_CARE_KEEPER.design, DAY_CARE_MAN)}<div>${said
+        .map((line) => `<p class="px-wrap">${line}</p>`)
+        .join('')}</div></div>`,
+      {
+        className: 'trader-standing',
+        heading: DAY_CARE_MAN,
+        note: 'Half a level a raid',
+      },
+    );
+    if (report) {
+      // As it would come back today, grown by every raid it has been away for.
+      const pokemon = grownToday(report);
+      const grown = report.levelNow - report.levelLeft;
+      const raids = `${report.raids} ${report.raids === 1 ? 'raid' : 'raids'}`;
+      const take = (attributes: string): string =>
+        this.chip(`data-day-care-take ${attributes}`, `${pokemon.name} goes back into storage at base.`, 'Take it back');
+      const raising = pixelWindow(
+        pokemonDossier({
+          pokemon,
+          id: report.stay.id,
+          first: true,
+          holding: getHeldItem(pokemon.heldItemId) ? `Holding ${getHeldItem(pokemon.heldItemId)!.displayName}` : 'Holding nothing',
+          deeds: { label: 'Day-Care', chips: take },
+        }),
+        { className: 'stash-roster', heading: 'Raising', note: `Left at Lv ${report.levelLeft} · ${raids} ago` },
+      );
+      const bar = pixelCommitBar({
+        title: grown > 0 ? `Grown ${grown} ${grown === 1 ? 'level' : 'levels'}` : 'Not grown yet',
+        lines: [
+          `<small class="px-wrap">Safe here from any wipe. Half a level for every raid you go on, learning its moves as it grows; it comes back as hurt as it was left.</small>`,
+        ],
+        actions: `<button class="px-window px-button is-primary" data-day-care-take data-cursor-start data-help="${escapeAttribute(`${pokemon.name} goes back into storage at base.`)}">Take ${pokemon.name} back</button>`,
+      });
+      return `<main class="px-body daycare-layout">${lead}${raising}${bar}</main>`;
+    }
+    const shown = this.findablePokemon;
+    const rows = shown
+      .map((stored, index) => {
+        const refusal = dayCareRefusal(this.stash, stored.id);
+        const name = escapeAttribute(stored.pokemon.name);
+        const wiring =
+          refusal === undefined
+            ? `data-day-care-leave="${stored.id}" data-help="Leave ${name} with him. It grows half a level with every raid you go on."`
+            : `data-refused="${escapeAttribute(refusal)}" aria-disabled="true" data-help="${escapeAttribute(refusal)}"`;
+        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, refusal === undefined ? pixelTag('Leave') : '')}</button>`;
+      })
+      .join('');
+    const details = shown
+      .map((stored, index) =>
+        this.pokemonDetail(stored, index === 0, {
+          label: 'Day-Care',
+          chips: (shows) => {
+            const refusal = dayCareRefusal(this.stash, stored.id);
+            return this.chip(
+              refusal === undefined ? `data-day-care-leave="${stored.id}" ${shows}` : `data-refused="${escapeAttribute(refusal)}" ${shows}`,
+              refusal ?? `Leave ${stored.pokemon.name} with him.`,
+              'Leave it with him',
+              refusal !== undefined,
+            );
+          },
+        }),
+      )
+      .join('');
+    return `<main class="px-body daycare-layout">${lead}${pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
+      { className: 'stash-roster', heading: 'Which Pokémon should I raise?', note: `${this.stashPokemon.length} at base` },
+    )}</main>`;
+  }
+
+  /** Hands one Pokémon to the Day-Care Man, if he will take it. */
+  private leaveAtDayCare(pokemonId: string): void {
+    if (this.movedOnElsewhere()) {
+      return;
+    }
+    const refusal = dayCareRefusal(this.stash, pokemonId);
+    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name;
+    if (refusal !== undefined || name === undefined) {
+      this.refuse(refusal ?? 'That Pokémon isn’t at base.');
+      return;
+    }
+    this.stash.leaveAtDayCare(pokemonId, this.raidsEnded);
+    if (!this.writeGame()) {
+      this.reloadAfterFailedWrite('He could not take it: the game could not be saved.');
+      return;
+    }
+    this.readTheGameAgain();
+    this.sayForTheDayCare(leftLines(name));
+  }
+
+  /** Takes the Day-Care's Pokémon back into the vault, grown by every raid it was away. */
+  private takeBackFromDayCare(): void {
+    if (this.movedOnElsewhere()) {
+      return;
+    }
+    const levelBefore = this.stash.dayCare()?.pokemon.level;
+    const taken = takeBack(this.stash, this.raidsEnded);
+    if (!taken || levelBefore === undefined) {
+      this.refuse('He is not raising anything for you.');
+      return;
+    }
+    if (!this.writeGame()) {
+      this.reloadAfterFailedWrite('It could not be taken back: the game could not be saved.');
+      return;
+    }
+    this.readTheGameAgain();
+    const learned = taken.grown.learnedMoves.map((move) => move.name);
+    this.sayForTheDayCare([
+      ...takenBackLines(taken.pokemon.name),
+      ...(taken.pokemon.level > levelBefore ? [`${taken.pokemon.name} is Lv ${taken.pokemon.level} now.`] : []),
+      ...(learned.length ? [`It learned ${formatNames(learned)}.`] : []),
+    ]);
+  }
+
+  /** His words over his screen, until they are read. */
+  private sayForTheDayCare(lines: readonly string[]): void {
+    audioManager.play('confirm');
+    this.speaking = {
+      screen: 'day-care',
+      words: { speaker: DAY_CARE_KEEPER.design, name: DAY_CARE_MAN, lines },
+    };
+    this.render();
+  }
+
+  /**
+   * Reads the game back out of storage onto this screen, staying on it. A
+   * Pokémon going to or coming back from the Day-Care changes who is at base,
+   * and the loadout this screen keeps was built against who was there before.
+   */
+  private readTheGameAgain(): void {
+    const reloaded = this.saveManager.load();
+    if (reloaded) {
+      const view = this.view;
+      this.applyLoadedGame(reloaded);
+      this.view = view;
+    }
+  }
+
+  /** A write that did not land leaves this screen's copy ahead of storage, so it is read again. */
+  private reloadAfterFailedWrite(message: string): void {
+    this.readTheGameAgain();
+    this.refuse(message);
   }
 
   private itemName(itemId: string): string {
