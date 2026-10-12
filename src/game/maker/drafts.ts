@@ -1,5 +1,6 @@
 import { readMapFile, type MapFile } from '../world/mapFile';
 import { blankMap, keepOnMap, setMaker } from './draft';
+import { isGeneratedMapName } from './mapNames';
 
 /**
  * The maps a player is drawing, kept in this browser.
@@ -171,10 +172,14 @@ export function lastMakerName(store: MakerStore): string {
 /**
  * Whether a map is still exactly the blank NEW made it: nothing drawn, placed
  * or renamed. Pressing NEW on one puts nothing away, so it is replaced rather
- * than left in the drafts list beside the new one.
+ * than left in the drafts list beside the new one. A name the generator gave
+ * it - the first one or a reroll (`mapNames.ts`) - is not a rename.
  */
 export function isUntouchedBlank(file: MapFile): boolean {
-  return mapFileText(file) === mapFileText(setMaker(blankMap(), file.maker));
+  return (
+    isGeneratedMapName(file.name) &&
+    mapFileText(file) === mapFileText(setMaker(blankMap(undefined, undefined, file.name), file.maker))
+  );
 }
 
 /** A key no draft in the store has yet. */

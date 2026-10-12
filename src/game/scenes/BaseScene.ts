@@ -123,7 +123,8 @@ import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement'
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
 import { loadPlayerName } from '../console/playerName';
 import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
-import { openHouseNameScreen } from '../ui/HouseNameOverlay';
+import { openNameScreen } from '../ui/PlayerNameOverlay';
+import { nameService } from '../names/nameService';
 import { harbour, harbourHouses, type HarbourWhere } from '../harbour/harbour';
 import type { KnockAtTheDoor } from '../harbour/houseService';
 import { houseSnapshot, readHouseSnapshot } from '../home/houseSnapshot';
@@ -2110,16 +2111,17 @@ export class BaseScene extends Phaser.Scene {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     this.showHint('');
-    this.namePrompt = openHouseNameScreen(this, (name) => {
+    this.namePrompt = openNameScreen(this, { where: 'house', service: nameService() }, (end) => {
       this.namePrompt = null;
       // The screen kept every key to itself, so a key the house saw go down
       // before it opened never came back up here.
       this.input.keyboard?.resetKeys();
       this.spentPresses.spendHeld(this.directionKeys());
-      if (name === null) {
+      if (typeof end !== 'object') {
         this.leaveRoom(room);
         return;
       }
+      const { name } = end;
       nameThisSitting = name;
       // Named, the player can be seen in the harbour from now on.
       harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, name);

@@ -1,6 +1,8 @@
 # YOUR NAME? at THE BOLTHOLE's door
 
-The first time anybody walks into THE BOLTHOLE, the house asks who lives there,
+Names are chosen at NEW GAME now, one each (`docs/screens/player-names/`), so
+this is the fallback: anybody who walks into THE BOLTHOLE without one is asked
+here. The first time anybody walks into THE BOLTHOLE without a name, the house asks who lives there,
 in FireRed's own words (`gText_YourName`), before they can walk about inside.
 It is the house console's name and rule (`src/game/console/playerName.ts`):
 capitals, numbers and `. ! ? ' -`, up to ten, through the word filter, kept on

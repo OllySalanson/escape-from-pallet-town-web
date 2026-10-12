@@ -143,7 +143,7 @@ try {
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
     // A name already given, so the house lets the player in without asking
     // (\`src/game/home/houseName.ts\`; \`bolthole.mjs\` plays the asking).
-    localStorage.setItem('escape-from-pallet-town.console.name', 'DECORATOR'); })()`);
+    localStorage.setItem('escape-from-pallet-town.player.name', 'DECORATOR'); })()`);
   const enterHouse = async () => {
     await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
     await page.waitFor(sceneIs('title'));

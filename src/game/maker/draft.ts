@@ -22,6 +22,7 @@ import {
 } from '../world/mapFile';
 import { joinLedges, LEDGE_LETTERS, type GroundBrush } from './palette';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
+import { generateMapName } from './mapNames';
 
 /**
  * Everything the map maker does to a map, as pure functions of a map file.
@@ -111,9 +112,10 @@ export function clampSize(width: number, height: number): { width: number; heigh
 /**
  * A new map: grass in a ring of whole trees, and nothing on it. It does not
  * pass the checks - it has no way in and no way out - and the checks panel is
- * what tells the maker what to do first.
+ * what tells the maker what to do first. Its name is one of the world's
+ * (`mapNames.ts`), for the maker to keep, reroll or type over.
  */
-export function blankMap(width = 40, height = 30, name = 'My map'): MapFile {
+export function blankMap(width = 40, height = 30, name = generateMapName()): MapFile {
   const size = clampSize(width, height);
   const ground = Array.from({ length: size.height }, (_, y) =>
     Array.from({ length: size.width }, (_, x) =>

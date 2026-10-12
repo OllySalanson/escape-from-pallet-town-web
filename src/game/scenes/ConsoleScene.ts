@@ -12,6 +12,8 @@ import {
   typedPlayerName,
 } from '../console/playerName';
 import { palletTownBoards } from '../console/remoteScores';
+import { nameClaimLine } from '../names/nameScreen';
+import { nameService } from '../names/nameService';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -260,11 +262,39 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
       this.render();
       return;
     }
+    // A name is one each in Pallet Town (`names/`): a new one is the
+    // player's only once the harbour has said nobody else has it.
+    const service = nameService();
+    if (service && check.name !== this.playerName) {
+      this.status = 'Asking Pallet Town...';
+      this.naming = { ...this.naming, value: check.name };
+      this.render();
+      void service.claim(check.name).then(
+        (claim) => {
+          if (claim === 'claimed') {
+            this.keepName(check.name);
+            return;
+          }
+          this.status = nameClaimLine(claim, 'house');
+          this.render();
+        },
+        () => {
+          this.status = nameClaimLine('offline', 'house');
+          this.render();
+        },
+      );
+      return;
+    }
+    this.keepName(check.name);
+  }
+
+  /** The name is the player's: kept on the device, and the game it was typed for played. */
+  private keepName(name: string): void {
     const then = this.naming?.then;
-    this.playerName = check.name;
-    savePlayerName(check.name);
+    this.playerName = name;
+    savePlayerName(name);
     this.naming = null;
-    this.status = `Your scores go on the boards as ${check.name}.`;
+    this.status = `Your scores go on the boards as ${name}.`;
     if (then) {
       this.play(then);
       return;

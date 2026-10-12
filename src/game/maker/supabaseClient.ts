@@ -129,6 +129,10 @@ export type GameDatabase = {
         Args: { player_name: string };
         Returns: string;
       };
+      name_is_free: {
+        Args: { player_name: string };
+        Returns: string;
+      };
       harbour_names: {
         Args: { player_uids: string[] };
         Returns: HarbourNameRow[];

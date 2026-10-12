@@ -40,6 +40,16 @@ describe("the database's side of the shared harbour", () => {
     expect(naming).toContain('private.console_name_is_clean(name_my_house.player_name)');
   });
 
+  it('gives each name to one player only, whatever its case, and says so rather than failing', () => {
+    expect(everything).toContain('create unique index player_houses_name_unique on public.player_houses (upper(name));');
+    expect(naming).toContain('upper(h.name) = upper(name_my_house.player_name) and h.player_uid <> caller');
+    expect(naming).toContain("return 'taken';");
+    expect(naming).toContain('exception when unique_violation then');
+    const free = definition('private.name_is_free');
+    expect(free).toContain("then 'taken'");
+    expect(free).toContain('private.console_name_is_clean(name_is_free.player_name)');
+  });
+
   it('writes only as the caller, under a lock, and at the console pace', () => {
     expect(naming).toContain('caller uuid := (select auth.uid())');
     expect(naming).toContain("pg_advisory_xact_lock(hashtextextended('name_my_house', 0))");
