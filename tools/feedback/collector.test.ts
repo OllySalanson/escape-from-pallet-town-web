@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectFeedback, sniff } from './collector';
+import { collectFeedback, MESSAGE_PAGE, ROW_PAGE, sniff, TRANSCRIBE_FAILED, TranscriberUnavailable } from './collector';
 import type { FeedbackRow } from './inbox';
 
 /** The first bytes of the files the game sends, and of one it never does. */
@@ -25,7 +25,9 @@ interface Visitor {
 /**
  * The lab as the service key sees it: rows, files, visitors and maps, and only
  * the calls the collector makes, answered the way PostgREST, the storage API
- * and the auth admin API answer them.
+ * and the auth admin API answer them - a read stopped at 1000 rows whatever it
+ * asked for, as the Data API stops it - and the two questions the project
+ * answers itself, answered by the rules its functions keep.
  */
 function standInLab(
   rows: FeedbackRow[],
@@ -50,14 +52,37 @@ function standInLab(
       const body = init.body ? JSON.parse(String(init.body)) : undefined;
       if (url.pathname === '/rest/v1/feedback' && method === 'GET') {
         const filter = url.searchParams.get('received_at');
-        const found = lab.rows.filter((row) =>
-          filter === null
-            ? true
-            : filter === 'is.null'
-              ? row.received_at === null
-              : row.received_at !== null && row.received_at < filter.replace('lt.', ''),
+        const after = url.searchParams.get('id')?.replace('gt.', '');
+        const found = lab.rows
+          .filter((row) =>
+            filter === null
+              ? true
+              : filter === 'is.null'
+                ? row.received_at === null
+                : row.received_at !== null && row.received_at < filter.replace('lt.', ''),
+          )
+          .filter((row) => after === undefined || row.id > after)
+          .sort((a, b) => a.id.localeCompare(b.id));
+        return Response.json(found.slice(0, Math.min(1000, Number(url.searchParams.get('limit') ?? 1000))));
+      }
+      if (url.pathname === '/rest/v1/rpc/unclaimed_feedback_uploads' && method === 'POST') {
+        const named = new Set(lab.rows.flatMap((row) => [...(row.picture_path ? [row.picture_path] : []), ...row.voice_paths]));
+        const cutoff = now.getTime() - body.older_than_hours * 3_600_000;
+        return Response.json(
+          Object.entries(lab.files)
+            .filter(([path, stored]) => !named.has(path) && Date.parse(stored.created_at) < cutoff)
+            .map(([name]) => ({ name })),
         );
-        return Response.json(found);
+      }
+      if (url.pathname === '/rest/v1/rpc/idle_anonymous_visitors' && method === 'POST') {
+        const holding = new Set([...lab.rows.map((row) => row.sender_uid), ...makers, ...players]);
+        const cutoff = now.getTime() - body.idle_days * 86_400_000;
+        return Response.json(
+          lab.visitors
+            .filter((visitor) => visitor.is_anonymous && !holding.has(visitor.id))
+            .filter((visitor) => Date.parse(visitor.last_sign_in_at ?? visitor.created_at) < cutoff)
+            .map(({ id }) => ({ id })),
+        );
       }
       if (url.pathname === '/rest/v1/feedback' && method === 'PATCH') {
         const id = url.searchParams.get('id')!.replace('eq.', '');
@@ -86,6 +111,7 @@ function standInLab(
         return Response.json([...entries.values()]);
       }
       if (url.pathname === '/storage/v1/object/feedback' && method === 'DELETE') {
+        expect((body.prefixes as string[]).length).toBeLessThanOrEqual(1000);
         for (const path of body.prefixes as string[]) {
           delete lab.files[path];
         }
@@ -176,7 +202,7 @@ describe('collecting feedback onto the PC', () => {
     const lab = standInLab([message({ received_at: '2026-10-09T00:00:00.000Z' })], { 'u1/FB-AAAA/picture.png': file(PNG) });
     const result = await collectFeedback({ url: 'https://lab.test', key: 'service', out, fetch: lab.fetch, now });
     expect(result.news).toBeNull();
-    expect(lab.calls.filter((call) => !call.startsWith('GET') && !call.startsWith('POST /storage/v1/object/list/'))).toEqual([]);
+    expect(lab.calls.filter((call) => !call.startsWith('GET') && !call.startsWith('POST /rest/v1/rpc/'))).toEqual([]);
   });
 
   it('clears a message out of the project ninety days after it was received', async () => {
@@ -229,7 +255,7 @@ describe('collecting feedback onto the PC', () => {
     out = mkdtempSync(join(tmpdir(), 'feedback-'));
     const lab = standInLab([message({})], { 'u1/FB-AAAA/picture.png': file(PNG), 'u1/FB-AAAA/voice-1.webm': file(WEBM) });
     const options = { url: 'https://lab.test', key: 'service', out, fetch: lab.fetch, now };
-    await collectFeedback({ ...options, transcribe: () => { throw new Error('faster-whisper is not installed'); } });
+    await collectFeedback({ ...options, transcribe: () => { throw new TranscriberUnavailable('faster-whisper is not installed'); } });
     const folder = folderOf(out);
     expect(existsSync(join(folder, 'transcript.txt'))).toBe(false);
     let heard = 0;
@@ -259,11 +285,58 @@ describe('collecting feedback onto the PC', () => {
     expect(readFileSync(join(out, 'index.html'), 'utf8')).toContain('FB-AAAA');
   });
 
-  it('leaves a message unreceived when its folder could not be finished, so the next run picks it up', async () => {
+  it('leaves a message unreceived when its folder could not be finished, and still collects and lists the rest', async () => {
     out = mkdtempSync(join(tmpdir(), 'feedback-'));
-    const lab = standInLab([message({})], { 'u1/FB-AAAA/picture.png': file(PNG) });
-    await expect(collectFeedback({ url: 'https://lab.test', key: 'service', out, fetch: lab.fetch })).rejects.toThrow('404');
-    expect(lab.rows[0].received_at).toBeNull();
+    const lab = standInLab(
+      [message({}), message({ id: 'id-2', tag: 'FB-BBBB', picture_path: null, voice_paths: [] })],
+      { 'u1/FB-AAAA/picture.png': file(PNG) },
+    );
+    const result = await collectFeedback({ url: 'https://lab.test', key: 'service', out, fetch: lab.fetch, now });
+    expect(result.deferred).toEqual(['FB-AAAA']);
+    expect(lab.rows.map((row) => [row.tag, row.received_at])).toEqual([
+      ['FB-AAAA', null],
+      ['FB-BBBB', now.toISOString()],
+    ]);
+    expect(readFileSync(join(out, 'index.html'), 'utf8')).toContain('FB-BBBB');
+  });
+
+  it('reads every message and clears every old one past the Data API\'s 1000 rows (red team F5)', async () => {
+    out = mkdtempSync(join(tmpdir(), 'feedback-'));
+    const id = (n: number) => `id-${String(n).padStart(5, '0')}`;
+    const newOnes = Array.from({ length: MESSAGE_PAGE * 2 + 3 }, (_, n) =>
+      message({ id: id(n), tag: `FB-N${String(n).padStart(3, '0')}`, picture_path: null, voice_paths: [], save: null }),
+    );
+    const oldOnes = Array.from({ length: 1000 + ROW_PAGE + 1 }, (_, n) =>
+      message({ id: id(10_000 + n), tag: `FB-O${n}`, picture_path: null, voice_paths: [], received_at: '2026-01-01T00:00:00.000Z' }),
+    );
+    const lab = standInLab([...newOnes, ...oldOnes], {});
+    const result = await collectFeedback({ url: 'https://lab.test', key: 'service', out, fetch: lab.fetch, now });
+    expect(result.collected).toHaveLength(newOnes.length);
+    expect(result.cleared).toHaveLength(oldOnes.length);
+    expect(lab.rows.every((row) => row.received_at === now.toISOString())).toBe(true);
+  });
+
+  it('notes a clip the speech model cannot read, does not try it again, and listens to the rest (red team F6)', async () => {
+    out = mkdtempSync(join(tmpdir(), 'feedback-'));
+    const tags = ['FB-AAAA', 'FB-BBBB', 'FB-CCCC'];
+    const lab = standInLab(
+      tags.map((tag, n) => message({ id: `id-${n}`, tag, picture_path: null, voice_paths: [`u1/${tag}/voice-1.webm`] })),
+      Object.fromEntries(tags.map((tag) => [`u1/${tag}/voice-1.webm`, file(WEBM)])),
+    );
+    const options = { url: 'https://lab.test', key: 'service', out, fetch: lab.fetch, now };
+    const tried: string[] = [];
+    const transcribe = (clips: readonly string[]) => {
+      tried.push(clips[0]);
+      if (clips[0].includes('FB-AAAA')) {
+        throw new Error('Invalid data found when processing input');
+      }
+      return 'words';
+    };
+    const result = await collectFeedback({ ...options, transcribe });
+    expect(result.transcribed).toEqual(['2026-10-10 0900 FB-BBBB', '2026-10-10 0900 FB-CCCC']);
+    expect(readFileSync(join(folderOf(out), TRANSCRIBE_FAILED), 'utf8')).toContain('Invalid data');
+    await collectFeedback({ ...options, transcribe });
+    expect(tried).toHaveLength(3);
   });
 
   it('refuses to run on a key that is not the service key', async () => {
