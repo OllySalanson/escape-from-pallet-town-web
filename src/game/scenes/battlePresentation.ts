@@ -46,6 +46,11 @@ export interface CombatPresentationStep {
   readonly actorSlot: number;
   readonly targetSlot: number;
   readonly hpDelta: number;
+  /**
+   * A second bar the same line moves, signed as `hpDelta` is. Only Leech
+   * Seed's drain has one: what the seeded Pokemon loses, the seeder gains.
+   */
+  readonly alsoHp?: { readonly side: 'player' | 'enemy'; readonly slot: number; readonly hpDelta: number };
 }
 
 export const formatMoveCommand = (move: {
@@ -264,6 +269,18 @@ export const CAPTION_LINE_WIDTH = BATTLE_PANEL.width - PANEL_INSET_X * 2;
  * `fits` is asked of the rendered width, which only the scene can measure. If
  * nothing fits, the narrowest is used.
  */
+/**
+ * A caption and the shorter ways of saying it, for a line that may be several
+ * sentences long - a status move's description: the whole of it, then one
+ * sentence fewer at a time. `fitCaption` takes the first that fits the panel,
+ * so a long description loses its last sentences rather than running off the
+ * battle screen.
+ */
+export const captionBySentence = (text: string): readonly string[] => {
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((sentence) => sentence.trim()) ?? [text];
+  return sentences.map((_, kept) => sentences.slice(0, sentences.length - kept).join(' ')).filter(Boolean);
+};
+
 export const fitCaption = (
   /** The line, or the line followed by shorter ways of saying the same thing. */
   texts: string | readonly string[],
@@ -441,7 +458,9 @@ export const describeMoveGuidance = (
     return {
       summary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
       compactSummary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
-      matchup: move.base.description || 'No direct damage.',
+      // The line above already says the type and that it is a status move, so
+      // a generated description's opening sentence saying the same is dropped.
+      matchup: move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
       tone: 'neutral',
       effectiveness: 1,
     };
@@ -687,6 +706,24 @@ export const combatPresentationSteps = (
         target: event.target,
         targetSlot: event.targetSlot ?? 0,
         hpDelta: event.damage,
+      };
+    }
+    // The seed's drain is one line that moves two bars, as FireRed's does: the
+    // seeded Pokemon's down, and the one standing in the seeder's place up -
+    // or down, against Liquid Ooze.
+    if (event.type === 'seed-sapped') {
+      return {
+        event,
+        actor: null,
+        actorSlot: 0,
+        target: event.user,
+        targetSlot: event.slot ?? 0,
+        hpDelta: event.damage,
+        alsoHp: {
+          side: event.to.user,
+          slot: event.to.slot ?? 0,
+          hpDelta: event.to.oozed ? event.to.amount : -event.to.amount,
+        },
       };
     }
     if (
@@ -942,6 +979,15 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
           : `${combatantName(event, foe)} snapped out of confusion!`;
     case 'confusion-self-hit':
       return `${combatantName(event, foe)} hurt itself in confusion!`;
+    // Leech Seed, in FireRed's own words (pret/pokefirered `battle_message.c`).
+    case 'seeded':
+      return `${combatantName(event, foe)} was seeded!`;
+    case 'seed-evaded':
+      return `${combatantName(event, foe)} evaded the attack!`;
+    case 'seed-sapped':
+      return event.to.oozed
+        ? 'It sucked up the LIQUID OOZE!'
+        : `${combatantName(event, foe)}'s health is sapped by LEECH SEED!`;
     case 'stat-stage-changed':
       return `${combatantName(event, foe)}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
     case 'ball-thrown':

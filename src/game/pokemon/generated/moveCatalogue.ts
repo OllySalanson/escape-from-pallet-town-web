@@ -12,7 +12,7 @@ import { WeatherId } from '../battle/weather';
  * Every level-up move of Kanto's original 151 that this engine can play, keyed
  * by the identifier PokeAPI and both snapshots use.
  *
- * 187 of the 273 the 151 learn are here. What the other 86 need is
+ * 188 of the 273 the 151 learn are here. What the other 85 need is
  * `node tools/moves/coverage.mjs`, which counts with the same function this
  * was generated with, and `docs/pokemon/roster.md` lists them by species.
  *
@@ -952,6 +952,16 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
     category: MoveCategory.Physical,
     drain: 0.5,
     flags: [MoveFlag.Contact],
+  }),
+  'leech-seed': new MoveBase({
+    name: 'Leech Seed',
+    description: 'A Grass status move. Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
+    type: PokemonType.Grass,
+    power: 0,
+    accuracy: 90,
+    pp: 10,
+    category: MoveCategory.Status,
+    effects: { seed: true },
   }),
   'leer': new MoveBase({
     name: 'Leer',

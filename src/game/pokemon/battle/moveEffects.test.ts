@@ -244,7 +244,9 @@ describe('accuracy and evasion', () => {
       player: { ...fresh.player, statStages: { ...fresh.player.statStages, accuracy: -6 } },
     };
 
-    expect(types(resolveTurn(blinded, 0, never).events)).not.toContain('missed');
+    // The Pidgey's own Tackle may miss at the top of the roll; Agility may not.
+    const missed = resolveTurn(blinded, 0, never).events.filter((event) => event.type === 'missed');
+    expect(missed.filter((event) => event.user === 'player')).toEqual([]);
   });
 });
 

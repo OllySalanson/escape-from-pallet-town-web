@@ -472,7 +472,7 @@ describe('a Pokemon that falls in the middle of a turn', () => {
         { slot: 0, moveIndex: 0, target: slotRef('enemy', 0) },
         { slot: 1, moveIndex: 0, target: slotRef('enemy', 1) },
       ],
-      maximumRandom,
+      steady,
     );
 
     // Both of the player's are faster than both of the enemy's and both
@@ -490,7 +490,7 @@ describe('a Pokemon that falls in the middle of a turn', () => {
         { slot: 0, moveIndex: 0, target: slotRef('enemy', 0) },
         { slot: 1, moveIndex: 0, target: slotRef('enemy', 0) },
       ],
-      maximumRandom,
+      steady,
     );
 
     expect(of(result.events, 'no-target')).toEqual([]);
@@ -512,7 +512,7 @@ describe('a Pokemon that falls in the middle of a turn', () => {
         { slot: 0, moveIndex: 0, target: slotRef('enemy', 0) },
         { slot: 1, moveIndex: 0, target: slotRef('enemy', 0) },
       ],
-      maximumRandom,
+      steady,
     );
 
     // The battle is over before the second swing, so the turn simply stops -
@@ -536,7 +536,7 @@ describe('a trainer with more Pokemon than slots', () => {
     const result = resolveTurn(
       state,
       [{ slot: 0, moveIndex: 0, target: slotRef('enemy', 0) }],
-      maximumRandom,
+      steady,
     );
 
     expect(of(result.events, 'enemy-sent-out').map((event) => event.slot ?? 0)).toEqual([0]);
@@ -589,7 +589,7 @@ describe('a trainer with more Pokemon than slots', () => {
     const result = resolveTurn(
       half,
       [{ slot: 0, moveIndex: 0, target: slotRef('enemy', 0) }],
-      maximumRandom,
+      steady,
     );
 
     expect(result.state.outcome).toBe('victory');

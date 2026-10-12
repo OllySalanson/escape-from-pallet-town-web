@@ -6,10 +6,11 @@ import {
   type BattleState,
   type SlotRef,
 } from '../pokemon/battle/battleEngine';
-import { SPREAD_DAMAGE_MULTIPLIER } from '../pokemon/battle/damage';
+import { SPREAD_DAMAGE_MULTIPLIER, calculateDamage } from '../pokemon/battle/damage';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { weatherDamageMultiplier } from '../pokemon/battle/weather';
-import { MoveCategory, MoveTarget } from '../pokemon/MoveBase';
+import { MoveCategory, MoveTarget, type MoveBase } from '../pokemon/MoveBase';
+import { PokemonType } from '../pokemon/PokemonType';
 
 /**
  * The move a player who is paying attention would pick, which is the one thing
@@ -104,5 +105,63 @@ export function bestPlayFor(
       }
     }
   });
-  return { moveIndex: best, target: bestTarget };
+  const seed = seedingPlay(
+    state,
+    combatant,
+    foes,
+    bestScore > 0 ? combatant.moves[best].base : null,
+  );
+  return seed ?? { moveIndex: best, target: bestTarget };
 }
+
+/**
+ * Leech Seed, when it is worth a turn. A seed costs the swing the turn it is
+ * planted in, and every turn after it takes an eighth of the foe's maximum HP
+ * on top of the swing - so it is worth planting when it brings the foe down
+ * in no more turns than hitting alone would, counting the turn it was planted
+ * in (a tie goes to the seed, which hands HP back as well). That is a foe
+ * that will stand for a while: one a couple of hits from falling is just hit,
+ * and a Grass type, or a foe already seeded, is never seeded at all.
+ */
+const seedingPlay = (
+  state: BattleState,
+  combatant: NonNullable<ReturnType<typeof unitAt>>,
+  foes: readonly SlotRef[],
+  swing: MoveBase | null,
+): { readonly moveIndex: number; readonly target: SlotRef } | null => {
+  const seeding = combatant.moves.findIndex((move) => move.pp > 0 && move.base.effects.seed);
+  if (seeding < 0) {
+    return null;
+  }
+  const weather = state.weather?.id ?? null;
+  const worthIt = (foe: SlotRef): boolean => {
+    const defender = unitAt(state, foe);
+    if (
+      defender === null ||
+      defender.seededBy !== null ||
+      defender.pokemon.base.primaryType === PokemonType.Grass ||
+      defender.pokemon.base.secondaryType === PokemonType.Grass
+    ) {
+      return false;
+    }
+    if (swing === null) {
+      return true;
+    }
+    // A middling roll and no critical hit: what one swing is expected to do.
+    const hit = calculateDamage(
+      combatant.pokemon,
+      defender.pokemon,
+      swing,
+      () => 0.5,
+      combatant.statStages,
+      defender.statStages,
+      weather,
+    ).damage;
+    const drain = Math.max(1, Math.floor(defender.pokemon.maxHp / 8));
+    const hitting = Math.ceil(defender.currentHp / Math.max(1, hit));
+    const seeding = 1 + Math.ceil(defender.currentHp / (Math.max(1, hit) + drain));
+    return seeding <= hitting;
+  };
+  const open = foes.find(worthIt);
+  return open ? { moveIndex: seeding, target: open } : null;
+};

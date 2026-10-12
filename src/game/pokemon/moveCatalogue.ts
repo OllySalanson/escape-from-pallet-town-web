@@ -9,6 +9,8 @@ import * as AUTHORED from './moves';
  */
 const RENAMED: Readonly<Record<string, string>> = { 'super-sonic': 'supersonic' };
 
+const GENERATED: ReadonlySet<MoveBase> = new Set(Object.values(GENERATED_MOVES));
+
 const identifierOf = (move: MoveBase): string => {
   const slug = move.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return RENAMED[slug] ?? slug;
@@ -22,8 +24,13 @@ const identifierOf = (move: MoveBase): string => {
 export const AUTHORED_MOVES: Readonly<Record<string, MoveBase>> = Object.freeze(
   Object.fromEntries(
     Object.values(AUTHORED)
-      // Struggle is the engine's, not a move anybody can be handed or taught.
-      .filter((value): value is MoveBase => value instanceof MoveBase && value !== AUTHORED.STRUGGLE)
+      // Struggle is the engine's, not a move anybody can be handed or taught,
+      // and a move `moves.ts` only names (Tackle, Vine Whip) is the import's
+      // own row rather than anything written there.
+      .filter(
+        (value): value is MoveBase =>
+          value instanceof MoveBase && value !== AUTHORED.STRUGGLE && !GENERATED.has(value),
+      )
       .map((move) => [identifierOf(move), move]),
   ),
 );
@@ -31,13 +38,11 @@ export const AUTHORED_MOVES: Readonly<Record<string, MoveBase>> = Object.freeze(
 /**
  * Every move the game can hand to a Pokemon, by identifier.
  *
- * Two halves. `generated/moveCatalogue.ts` is the import: the 187 level-up
+ * Two halves. `generated/moveCatalogue.ts` is the import: the 188 level-up
  * moves of the 151 that `MoveBase` can express, each on generation III's own
  * numbers. `moves.ts` is what this game wrote by hand - the machines' six, and
- * the early moves whose wording, power or effect was authored and measured -
- * and it wins wherever the two hold the same move, which is what keeps Tackle
- * at the 40 power every early fight in the game was balanced against rather
- * than FireRed's 35.
+ * the early moves whose wording or effect was authored - and it wins wherever
+ * the two hold the same move.
  *
  * `speciesImport.test.ts` prints that disagreement as a list, so an authored
  * move that drifts from canon is a row someone chose rather than a number

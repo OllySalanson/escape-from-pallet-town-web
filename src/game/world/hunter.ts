@@ -141,32 +141,34 @@ const species = (id: string): PokemonBase => {
  *   at 39 against a Charizard, so every evolved party beat even the enraged
  *   hunter 99-100% and the enrage stopped being one by mid-game.
  * - **Every rung sits below you.** Measured at each offset, all five rivals
- *   together (the table before this change, every rival leading Rattata and
- *   nothing evolving, in brackets):
+ *   together, re-measured once every species took FireRed's own learnset and
+ *   Lt. Surge, Koga and Sabrina took the leads `hunters.ts` gives them (the
+ *   table before that, in brackets):
  *
  * | rung            | offset | early parties: wins (mean / worst), HP left | late parties: wins, HP left        |
  * | --------------- | ------ | ------------------------------------------- | ---------------------------------- |
- * | 1: 0-120s       | -4     | 100% / 93%, 83% (100% / 99%, 80%)           | 100% / 100%, 82% (100% / 100%, 83%) |
- * | 2: 120-180s     | -3     | 100% / 86%, 80% (100% / 99%, 74%)           | 100% / 99%, 79% (100% / 99%, 80%)   |
- * | 3: 180-240s     | -2     | 98% / 73%, 74% (99% / 97%, 67%)             | 95% / 73%, 69% (99% / 94%, 76%)     |
- * | 4: 240s-end     | -1     | 96% / 69%, 65% (96% / 87%, 59%)             | 90% / 32%, 62% (95% / 78%, 70%)     |
- * | at your level   | 0      | 88% / 55%, 58% (83% / 45%, 49%)             | 87% / 19%, 55% (94% / 75%, 67%)     |
- * | enraged         | +3     | 48% / 6%, 46% (33% / 4%, 36%)               | 72% / 5%, 45% (84% / 37%, 54%)      |
+ * | 1: 0-120s       | -4     | 100% / 96%, 80% (100% / 93%, 83%)           | 100% / 95%, 82% (100% / 100%, 82%) |
+ * | 2: 120-180s     | -3     | 99% / 93%, 76% (100% / 86%, 80%)            | 100% / 98%, 79% (100% / 99%, 79%)  |
+ * | 3: 180-240s     | -2     | 98% / 81%, 69% (98% / 73%, 74%)             | 93% / 61%, 68% (95% / 73%, 69%)    |
+ * | 4: 240s-end     | -1     | 95% / 63%, 62% (96% / 69%, 65%)             | 91% / 52%, 64% (90% / 32%, 62%)    |
+ * | at your level   | 0      | 85% / 36%, 57% (88% / 55%, 58%)             | 89% / 52%, 57% (87% / 19%, 55%)    |
+ * | enraged         | +3     | 48% / 0%, 49% (48% / 6%, 46%)               | 76% / 15%, 48% (72% / 5%, 45%)     |
  *
- * Early on the ladder kept its character: the means held, the health a win
- * keeps went up, and the worst cells are the signature leads being one
- * Pokemon rather than another (a Lv 13 Bulbasaur against Sabrina's Drowzee
- * on rung 4 is 69%). Late, it got its teeth back, which is what evolving was
- * for: a team of four evolved at 20-25 beats the enrage 51-96% depending on
- * who is hunting, where it was 99%, and Lt. Surge's Raichu from 24 is the
- * sharpest of the five. The enrage is easier for an early party than it was,
+ * The means held. The worst early cells moved to a FireRed Squirtle at 8-10,
+ * which fights with Tackle and a 20-power Bubble until Water Gun at 13 - a
+ * lone one wins rung 4 against Blue's Eevee 77% - and the worst late cell is
+ * Lt. Surge's Electrode, from 30, against a team of four before it evolves.
+ * When the team first evolved with its level the late ladder got its teeth
+ * back, which is what evolving was for: a team of four evolved at 20-25 beat
+ * the enrage 51-96% depending on who was hunting, where it had been 99%. The
+ * enrage is easier for an early party than it was,
  * because only Blue's Eevee leads with a same-type Tackle as every Rattata did
  * - and it is the one thing a beaten hunter comes back for (`hunterAtEnrage`).
  *
  * The clock still closes the gap, so staying late still costs, but no
  * ordinary rung is a wall, and `hunter.test.ts` holds every rival's rung 4 to
  * a floor against every lone starter. The three Potions a fresh save deploys
- * with lift rung 4's worst early cell to 75% and its mean to 98%. Level 2 is
+ * with lift rung 4's worst early cell to 85% and its mean to 98%. Level 2 is
  * the floor, which is what a Lv 5 starter meets on rung 1.
  *
  * **The harder hunter is not built.** It is the `temperament` on a rival in
@@ -183,8 +185,8 @@ export const HUNTER_TIERS = [
 
 /**
  * Who follows the rival's own lead, in order: a team of N is the signature
- * and the first N - 1 of these, skipping the signature's own line (Lt.
- * Surge's Pikachu is already leading). The first three are
+ * and the first N - 1 of these, skipping the signature's own line should
+ * one of them ever lead (none does today). The first three are
  * Normal for the reason above; the rest arrive only against a party of four or
  * more, which already has the types to meet them. All first stages, because
  * `hunterSpeciesAt` evolves each to the level it is fielded at.

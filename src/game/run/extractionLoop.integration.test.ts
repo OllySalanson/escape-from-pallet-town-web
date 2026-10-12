@@ -211,9 +211,9 @@ describe('extraction loop integration', () => {
     manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, {});
     const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
 
-    // Enough to cross two boundaries, which is where the level-7 typed move is.
-    const result = starter.pokemon.gainExperience(experienceForLevel(7, STARTER_CURVE) - starter.pokemon.experience);
-    expect(result.levelsGained).toEqual([6, 7]);
+    // Enough to reach 10, which is where FireRed teaches a Bulbasaur Vine Whip.
+    const result = starter.pokemon.gainExperience(experienceForLevel(10, STARTER_CURVE) - starter.pokemon.experience);
+    expect(result.levelsGained).toEqual([6, 7, 8, 9, 10]);
     const raidLevel = starter.pokemon.level;
     const raidStats = { ...starter.pokemon.stats };
     const raidHp = starter.pokemon.currentHp;
@@ -228,7 +228,7 @@ describe('extraction loop integration', () => {
 
     const banked = saves.load()!.stash.listPokemon()[0].pokemon;
     expect(banked.level).toBe(raidLevel);
-    expect(banked.experience).toBe(experienceForLevel(7, STARTER_CURVE));
+    expect(banked.experience).toBe(experienceForLevel(10, STARTER_CURVE));
     expect(banked.stats).toEqual(raidStats);
     expect(banked.currentHp).toBe(raidHp);
     expect(banked.moves.map((move) => move.base.name)).toContain('Vine Whip');

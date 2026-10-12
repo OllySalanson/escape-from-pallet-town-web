@@ -59,7 +59,8 @@ function seedSave(storage: MemoryStorage): { charmander: string; bulbasaur: stri
   const stash = createStartingStash();
   const charmander = new Pokemon(CHARMANDER, 20);
   charmander.pendingMoves.push(FLAMETHROWER);
-  const bulbasaur = new Pokemon(BULBASAUR, 20);
+  // At 19, a level short of the Razor Leaf FireRed teaches it at 20.
+  const bulbasaur = new Pokemon(BULBASAUR, 19);
   bulbasaur.pendingMoves.push(RAZOR_LEAF);
   stash.addPokemon(charmander, ids.charmander);
   stash.addPokemon(bulbasaur, ids.bulbasaur);

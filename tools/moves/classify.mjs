@@ -49,9 +49,12 @@ const LOCK_IN = new Set(['thrash', 'petal-dance', 'outrage', 'rollout', 'ice-bal
  */
 export const WEATHER = new Set(['rain-dance', 'sunny-day', 'sandstorm', 'hail']);
 
-/** Volatile conditions with a lifetime of their own. Flinch is the one modelled. */
+/**
+ * Volatile conditions with a lifetime of their own. Flinch and Leech Seed are
+ * the two modelled - Leech Seed as `MoveEffects.seed`, read below.
+ */
 const VOLATILE = new Set([
-  'trap', 'leech-seed', 'nightmare', 'perish-song', 'yawn', 'ingrain', 'disable',
+  'trap', 'nightmare', 'perish-song', 'yawn', 'ingrain', 'disable',
   'protect', 'no-type-immunity', 'unknown',
 ]);
 
@@ -80,6 +83,7 @@ export const classify = (move) => {
   }
   if (move.meta === 'force-switch') return { ok: false, why: 'forced switch' };
   if (VOLATILE.has(move.ailment)) return { ok: false, why: 'volatile status' };
+  if (move.ailment === 'leech-seed') return { ok: true, why: 'leech seed' };
 
   // Everything below is a field on `MoveBase` and a branch in `applyMove`.
   const needs = [];

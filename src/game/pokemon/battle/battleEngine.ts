@@ -169,6 +169,16 @@ export interface BattleCombatant {
    * used to be resolved entirely inside one call.
    */
   readonly pendingMove: PendingMove | null;
+  /**
+   * Who planted a Leech Seed on this Pokemon, by the *place* they stood in, or
+   * null when it is not seeded. FireRed keeps the seeder's battler position
+   * (`STATUS3_LEECHSEED_BATTLER`), not the seeder, so whoever stands in that
+   * slot at the end of a turn is the one the HP goes to - including a Pokemon
+   * sent in after the seeder fell or was switched. The seed itself belongs to
+   * this combatant and goes when it leaves the field, as every snapshot here
+   * does.
+   */
+  readonly seededBy: SlotRef | null;
 }
 
 export interface PendingMove {
@@ -356,6 +366,33 @@ export type BattleEvent =
       readonly slot?: number; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
   | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly damage: number }
+  // Leech Seed, in FireRed's three lines. `seed-evaded` is "X evaded the
+  // attack!", which FireRed says both for a seed that missed and for one aimed
+  // at a Pokemon already seeded (`Cmd_setseeded`'s B_MSG_LEECH_SEED_MISS); a
+  // Grass type is "It doesn't affect X..." through the ordinary effectiveness
+  // line. `seed-sapped` is the end-of-turn drain: `user` is the seeded Pokemon
+  // and `damage` what it lost, and `to` is whoever stood in the seeder's place
+  // and what they gained - or, when the seeded Pokemon has Liquid Ooze, what
+  // they lost instead (`oozed`).
+  | { readonly type: 'seeded'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
+  | { readonly type: 'seed-evaded'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
+  | {
+      readonly type: 'seed-sapped';
+      readonly user: 'player' | 'enemy';
+      readonly slot?: number;
+      readonly name: string;
+      readonly damage: number;
+      readonly to: {
+        readonly user: 'player' | 'enemy';
+        readonly slot?: number;
+        readonly name: string;
+        /** HP the seeder gained, or lost when `oozed`. */
+        readonly amount: number;
+        readonly oozed: boolean;
+      };
+    }
   | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly stat: StageStat; readonly stages: number }
   // What a move does beyond its damage, each announced where it happens, so the
@@ -541,6 +578,7 @@ const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
   abilityAnnounced: false,
   flinching: false,
   pendingMove: null,
+  seededBy: null,
 });
 
 /**
@@ -1719,7 +1757,14 @@ const applyMove = (
         events.push({ type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name });
       }
       sayAccuracy();
-      events.push({ type: 'missed', user, ...inSlot(ref) });
+      // A Leech Seed that misses says the target evaded it, as FireRed does:
+      // `BattleScript_EffectLeechSeed` sends a miss on to `setseeded` rather
+      // than to the ordinary miss line.
+      events.push(
+        move.base.effects.seed
+          ? { type: 'seed-evaded', user: targetRef.side, ...inSlot(targetRef), name: defenderName }
+          : { type: 'missed', user, ...inSlot(ref) },
+      );
       struck.push({
         ref: targetRef,
         damage: 0,
@@ -2258,6 +2303,11 @@ const applyMoveEffects = (
       }
     }
   }
+  if (effects.seed) {
+    const seeded = applySeed(nextState, side, ref);
+    nextState = seeded.state;
+    events.push(...seeded.events);
+  }
   if (effects.weather) {
     // The one effect that lands on nobody: `side` is not consulted. It replaces
     // whatever was over the field, its own weather included - a second Rain
@@ -2272,6 +2322,89 @@ const applyMoveEffects = (
     events.push({ type: 'weather-set', weather: effects.weather, byMove: true });
   }
 
+  return { state: nextState, events };
+};
+
+/**
+ * A Leech Seed landing: FireRed's `Cmd_setseeded`. One already seeded "evaded
+ * the attack", a Grass type is not affected, and anything else carries the
+ * seed from now until it leaves the field, feeding whoever stands where `from`
+ * stood.
+ */
+const applySeed = (
+  state: BattleState,
+  ref: SlotRef,
+  from: SlotRef,
+): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
+  const receiver = unitAt(state, ref);
+  if (!isEngaged(receiver)) {
+    return { state, events: [] };
+  }
+  const name = receiver.pokemon.name;
+  if (receiver.seededBy !== null) {
+    return { state, events: [{ type: 'seed-evaded', user: ref.side, ...inSlot(ref), name }] };
+  }
+  if (getCombatantTypes(receiver).includes(PokemonType.Grass)) {
+    return { state, events: effectivenessEvents(0, ref, name) };
+  }
+  return {
+    state: withUnit(state, ref, { ...receiver, seededBy: from }),
+    events: [{ type: 'seeded', user: ref.side, ...inSlot(ref), name }],
+  };
+};
+
+/**
+ * One seeded Pokemon's end of turn: FireRed's `ENDTURN_LEECH_SEED` and
+ * `BattleScript_LeechSeedTurnDrain`. Nothing happens unless both the seeded
+ * Pokemon and whoever stands in the seeder's place are on their feet. The
+ * seeded one loses an eighth of its maximum HP, at least one, and the other
+ * gains exactly what it lost (`gHpDealt`), up to its own maximum - or, against
+ * Liquid Ooze, loses it instead. The seeded Pokemon is asked to faint first.
+ */
+const applySeedDrain = (state: BattleState, ref: SlotRef): TurnResult => {
+  const seeded = unitAt(state, ref);
+  const from = seeded?.seededBy ?? null;
+  const seeder = from ? unitAt(state, from) : null;
+  if (!from || !isEngaged(seeded) || !isEngaged(seeder)) {
+    return { state, events: [] };
+  }
+  const owed = Math.max(1, Math.floor(seeded.pokemon.maxHp / 8));
+  const left = hpAfterDamage(ref.side, seeded.currentHp, owed);
+  const damage = seeded.currentHp - left;
+  let nextState = withUnit(state, ref, { ...seeded, currentHp: left });
+  const oozed = drainBackfires(abilityCarrier(seeded));
+  const fed = unitAt(nextState, from)!;
+  const fedHp = oozed
+    ? hpAfterDamage(from.side, fed.currentHp, damage)
+    : Math.min(fed.pokemon.maxHp, fed.currentHp + damage);
+  nextState = withUnit(nextState, from, { ...fed, currentHp: fedHp });
+  const events: BattleEvent[] = [
+    {
+      type: 'seed-sapped',
+      user: ref.side,
+      ...inSlot(ref),
+      name: seeded.pokemon.name,
+      damage,
+      to: {
+        user: from.side,
+        ...inSlot(from),
+        name: fed.pokemon.name,
+        amount: Math.abs(fedHp - fed.currentHp),
+        oozed,
+      },
+    },
+  ];
+  for (const [who, fallen] of [[ref, left === 0], [from, fedHp === 0]] as const) {
+    if (!fallen) {
+      continue;
+    }
+    const resolved = resolveFaint(nextState);
+    nextState = resolved.state;
+    events.push(
+      { type: 'fainted', user: who.side, ...inSlot(who), name: unitAt(nextState, who)?.pokemon.name ?? '' },
+      ...resolved.events,
+    );
+  }
   return { state: nextState, events };
 };
 
@@ -2424,6 +2557,15 @@ const applyEndOfTurn = (
         item: gearLabel(fed.pokemon.heldItemId),
         amount: healed,
       });
+    }
+
+    // Leech Seed, after the gear and before the status: FireRed's
+    // `ENDTURN_LEECH_SEED` sits between `ENDTURN_ITEMS1` and `ENDTURN_POISON`.
+    const sapped = applySeedDrain(nextState, ref);
+    nextState = sapped.state;
+    events.push(...sapped.events);
+    if (nextState.outcome !== 'active' || !isEngaged(unitAt(nextState, ref))) {
+      continue;
     }
 
     const hurt = unitAt(nextState, ref)!;

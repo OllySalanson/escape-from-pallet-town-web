@@ -422,8 +422,9 @@ describe('hunterTeamFor', () => {
       expect(new Set(families).size).toBe(lineup.length);
       expect(lineup.slice(1).every((escort) => HUNTER_ROSTER.includes(escort))).toBe(true);
     }
-    // Lt. Surge's own Pikachu leads, so it is not fielded again as an escort.
+    // An escort is fielded once, and a lead never again behind itself.
     expect(hunterLineupFor('lt-surge').filter((species) => species.id === 'pikachu')).toHaveLength(1);
+    expect(hunterLineupFor('lt-surge').filter((species) => species.id === 'voltorb')).toHaveLength(1);
   });
 
   it('builds the fight with the rival of this raid, led by their signature', () => {
@@ -536,7 +537,7 @@ describe('hunterSpeciesAt', () => {
       new Pokemon(getSpeciesById('raticate')!, 30),
     ], 'lt-surge');
     expect(team.map((member) => `${member.species.id} ${member.level}`)).toEqual([
-      'raichu 35',
+      'electrode 35',
       'raticate 29',
       'wigglytuff 29',
     ]);

@@ -4,7 +4,8 @@
 //   node tools/species/generate.mjs --check    # fail if they are out of date
 //
 // The snapshots go in - `frlg-species.json` beside this, checked against the
-// three-source `frlg-base-stats.json` beside it, `../moves/frlg-level-up-moves.json`,
+// three-source `frlg-base-stats.json` beside it and ordered by FireRed's own
+// `frlg-learnsets.json`, `../moves/frlg-level-up-moves.json`,
 // `../moves/frlg-machines.json` and the two under `../abilities/` - and four
 // files come out:
 //
@@ -34,6 +35,11 @@ const VERIFIED = new Map(read('tools/species/frlg-base-stats.json').species.map(
 // `verifyExperience.mjs` - the snapshot's `baseExperience` is PokeAPI's modern
 // value, which generation V re-tabulated.
 const EXPERIENCE = new Map(read('tools/species/frlg-experience.json').species.map((row) => [row.name, row]));
+// FireRed's own learnsets, read out of its level-up table by
+// `verifyLearnsets.mjs`: the snapshot's moves and levels, which that script
+// checks are the same, in the order the cartridge teaches them rather than
+// PokeAPI's alphabetical one - which is the order a Pokemon knows its moves in.
+const LEARNSETS = new Map(read('tools/species/frlg-learnsets.json').species.map((row) => [row.name, row.learnset]));
 
 // The stats and types are the one part of a species checked against three
 // sources rather than one, and the check lives in \`verifyStats.mjs\`. A
@@ -98,6 +104,11 @@ const STAGES = ['', 'one stage', 'two stages', 'three stages'];
 
 /** A move's effects, split the way `MoveBase` splits them. */
 const effectsOf = (move) => {
+  // Leech Seed is a condition of its own rather than a status, and only ever
+  // a status move's guaranteed effect - FireRed's `EFFECT_LEECH_SEED`.
+  if (move.ailment === 'leech-seed') {
+    return { guaranteed: { boosts: [], status: null, weather: null, seed: true }, secondaries: [] };
+  }
   const status = move.ailment === 'none' ? null : STATUSES[move.ailment];
   if (move.ailment !== 'none' && !status) throw new Error(`unknown ailment ${move.ailment}`);
   const boosts = move.stat_changes.map((change) => ({ stat: statName(change.stat), stages: change.change }));
@@ -162,7 +173,10 @@ const describe = (move, effects) => {
     freeze: 'frozen', confusion: 'confused',
   };
   if (effects.guaranteed) {
-    const { boosts, status, weather } = effects.guaranteed;
+    const { boosts, status, weather, seed } = effects.guaranteed;
+    if (seed) {
+      sentences.push('Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.');
+    }
     if (boosts.length > 0) sentences.push(boostLine(boosts, move.target === 'user', null));
     if (status) sentences.push(`Leaves ${them} ${statusWord[move.ailment]}.`);
     if (weather) {
@@ -236,6 +250,7 @@ const renderMove = (move) => {
     if (effects.guaranteed.boosts.length > 0) parts.push(`boosts: ${boostList(effects.guaranteed.boosts)}`);
     if (effects.guaranteed.status) parts.push(`status: ${effects.guaranteed.status}`);
     if (effects.guaranteed.weather) parts.push(`weather: ${effects.guaranteed.weather}`);
+    if (effects.guaranteed.seed) parts.push('seed: true');
     if (parts.length > 0) lines.push(`  effects: { ${parts.join(', ')} },`);
   }
   if (effects.secondaries.length > 0) {
@@ -296,7 +311,7 @@ const renderSpecies = (species) => {
   });
   const abilities = ABILITIES.get(species.name);
   if (!abilities) throw new Error(`no abilities for ${species.name}`);
-  const learnset = species.learnset
+  const learnset = LEARNSETS.get(species.name)
     .map((entry) => `{ level: ${entry.level}, move: ${quote(entry.move)} }`)
     .join(', ');
   return [

@@ -62,7 +62,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 141,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'leech-seed' }, { level: 1, move: 'tackle' }, { level: 4, move: 'growl' }, { level: 7, move: 'leech-seed' }, { level: 10, move: 'vine-whip' }, { level: 15, move: 'poison-powder' }, { level: 15, move: 'sleep-powder' }, { level: 22, move: 'razor-leaf' }, { level: 29, move: 'sweet-scent' }, { level: 38, move: 'growth' }, { level: 47, move: 'synthesis' }, { level: 56, move: 'solar-beam' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'growl' }, { level: 1, move: 'leech-seed' }, { level: 4, move: 'growl' }, { level: 7, move: 'leech-seed' }, { level: 10, move: 'vine-whip' }, { level: 15, move: 'poison-powder' }, { level: 15, move: 'sleep-powder' }, { level: 22, move: 'razor-leaf' }, { level: 29, move: 'sweet-scent' }, { level: 38, move: 'growth' }, { level: 47, move: 'synthesis' }, { level: 56, move: 'solar-beam' }],
   },
   {
     dexId: 3,
@@ -74,7 +74,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 208,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'leech-seed' }, { level: 1, move: 'tackle' }, { level: 1, move: 'vine-whip' }, { level: 4, move: 'growl' }, { level: 7, move: 'leech-seed' }, { level: 10, move: 'vine-whip' }, { level: 15, move: 'poison-powder' }, { level: 15, move: 'sleep-powder' }, { level: 22, move: 'razor-leaf' }, { level: 29, move: 'sweet-scent' }, { level: 41, move: 'growth' }, { level: 53, move: 'synthesis' }, { level: 65, move: 'solar-beam' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'growl' }, { level: 1, move: 'leech-seed' }, { level: 1, move: 'vine-whip' }, { level: 4, move: 'growl' }, { level: 7, move: 'leech-seed' }, { level: 10, move: 'vine-whip' }, { level: 15, move: 'poison-powder' }, { level: 15, move: 'sleep-powder' }, { level: 22, move: 'razor-leaf' }, { level: 29, move: 'sweet-scent' }, { level: 41, move: 'growth' }, { level: 53, move: 'synthesis' }, { level: 65, move: 'solar-beam' }],
   },
   {
     dexId: 4,
@@ -86,7 +86,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 65,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'scratch' }, { level: 7, move: 'ember' }, { level: 13, move: 'metal-claw' }, { level: 19, move: 'smokescreen' }, { level: 25, move: 'scary-face' }, { level: 31, move: 'flamethrower' }, { level: 37, move: 'slash' }, { level: 43, move: 'dragon-rage' }, { level: 49, move: 'fire-spin' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'growl' }, { level: 7, move: 'ember' }, { level: 13, move: 'metal-claw' }, { level: 19, move: 'smokescreen' }, { level: 25, move: 'scary-face' }, { level: 31, move: 'flamethrower' }, { level: 37, move: 'slash' }, { level: 43, move: 'dragon-rage' }, { level: 49, move: 'fire-spin' }],
   },
   {
     dexId: 5,
@@ -98,7 +98,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 142,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'ember' }, { level: 1, move: 'growl' }, { level: 1, move: 'scratch' }, { level: 7, move: 'ember' }, { level: 13, move: 'metal-claw' }, { level: 20, move: 'smokescreen' }, { level: 27, move: 'scary-face' }, { level: 34, move: 'flamethrower' }, { level: 41, move: 'slash' }, { level: 48, move: 'dragon-rage' }, { level: 55, move: 'fire-spin' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'growl' }, { level: 1, move: 'ember' }, { level: 7, move: 'ember' }, { level: 13, move: 'metal-claw' }, { level: 20, move: 'smokescreen' }, { level: 27, move: 'scary-face' }, { level: 34, move: 'flamethrower' }, { level: 41, move: 'slash' }, { level: 48, move: 'dragon-rage' }, { level: 55, move: 'fire-spin' }],
   },
   {
     dexId: 6,
@@ -110,7 +110,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 209,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'ember' }, { level: 1, move: 'growl' }, { level: 1, move: 'heat-wave' }, { level: 1, move: 'metal-claw' }, { level: 1, move: 'scratch' }, { level: 7, move: 'ember' }, { level: 13, move: 'metal-claw' }, { level: 20, move: 'smokescreen' }, { level: 27, move: 'scary-face' }, { level: 34, move: 'flamethrower' }, { level: 36, move: 'wing-attack' }, { level: 44, move: 'slash' }, { level: 54, move: 'dragon-rage' }, { level: 64, move: 'fire-spin' }],
+    learnset: [{ level: 1, move: 'heat-wave' }, { level: 1, move: 'scratch' }, { level: 1, move: 'growl' }, { level: 1, move: 'ember' }, { level: 1, move: 'metal-claw' }, { level: 7, move: 'ember' }, { level: 13, move: 'metal-claw' }, { level: 20, move: 'smokescreen' }, { level: 27, move: 'scary-face' }, { level: 34, move: 'flamethrower' }, { level: 36, move: 'wing-attack' }, { level: 44, move: 'slash' }, { level: 54, move: 'dragon-rage' }, { level: 64, move: 'fire-spin' }],
   },
   {
     dexId: 7,
@@ -134,7 +134,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 143,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'bubble' }, { level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 4, move: 'tail-whip' }, { level: 7, move: 'bubble' }, { level: 10, move: 'withdraw' }, { level: 13, move: 'water-gun' }, { level: 19, move: 'bite' }, { level: 25, move: 'rapid-spin' }, { level: 31, move: 'protect' }, { level: 37, move: 'rain-dance' }, { level: 45, move: 'skull-bash' }, { level: 53, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'bubble' }, { level: 4, move: 'tail-whip' }, { level: 7, move: 'bubble' }, { level: 10, move: 'withdraw' }, { level: 13, move: 'water-gun' }, { level: 19, move: 'bite' }, { level: 25, move: 'rapid-spin' }, { level: 31, move: 'protect' }, { level: 37, move: 'rain-dance' }, { level: 45, move: 'skull-bash' }, { level: 53, move: 'hydro-pump' }],
   },
   {
     dexId: 9,
@@ -146,7 +146,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 210,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'bubble' }, { level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'withdraw' }, { level: 4, move: 'tail-whip' }, { level: 7, move: 'bubble' }, { level: 10, move: 'withdraw' }, { level: 13, move: 'water-gun' }, { level: 19, move: 'bite' }, { level: 25, move: 'rapid-spin' }, { level: 31, move: 'protect' }, { level: 42, move: 'rain-dance' }, { level: 55, move: 'skull-bash' }, { level: 68, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'bubble' }, { level: 1, move: 'withdraw' }, { level: 4, move: 'tail-whip' }, { level: 7, move: 'bubble' }, { level: 10, move: 'withdraw' }, { level: 13, move: 'water-gun' }, { level: 19, move: 'bite' }, { level: 25, move: 'rapid-spin' }, { level: 31, move: 'protect' }, { level: 42, move: 'rain-dance' }, { level: 55, move: 'skull-bash' }, { level: 68, move: 'hydro-pump' }],
   },
   {
     dexId: 10,
@@ -158,7 +158,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 255,
     expYield: 53,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'string-shot' }, { level: 1, move: 'tackle' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'string-shot' }],
   },
   {
     dexId: 11,
@@ -242,7 +242,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 120,
     expYield: 113,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'gust' }, { level: 1, move: 'sand-attack' }, { level: 1, move: 'tackle' }, { level: 5, move: 'sand-attack' }, { level: 9, move: 'gust' }, { level: 13, move: 'quick-attack' }, { level: 20, move: 'whirlwind' }, { level: 27, move: 'wing-attack' }, { level: 34, move: 'feather-dance' }, { level: 43, move: 'agility' }, { level: 52, move: 'mirror-move' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'sand-attack' }, { level: 1, move: 'gust' }, { level: 5, move: 'sand-attack' }, { level: 9, move: 'gust' }, { level: 13, move: 'quick-attack' }, { level: 20, move: 'whirlwind' }, { level: 27, move: 'wing-attack' }, { level: 34, move: 'feather-dance' }, { level: 43, move: 'agility' }, { level: 52, move: 'mirror-move' }],
   },
   {
     dexId: 18,
@@ -254,7 +254,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 172,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'gust' }, { level: 1, move: 'quick-attack' }, { level: 1, move: 'sand-attack' }, { level: 1, move: 'tackle' }, { level: 5, move: 'sand-attack' }, { level: 9, move: 'gust' }, { level: 13, move: 'quick-attack' }, { level: 20, move: 'whirlwind' }, { level: 27, move: 'wing-attack' }, { level: 34, move: 'feather-dance' }, { level: 48, move: 'agility' }, { level: 62, move: 'mirror-move' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'sand-attack' }, { level: 1, move: 'gust' }, { level: 1, move: 'quick-attack' }, { level: 5, move: 'sand-attack' }, { level: 9, move: 'gust' }, { level: 13, move: 'quick-attack' }, { level: 20, move: 'whirlwind' }, { level: 27, move: 'wing-attack' }, { level: 34, move: 'feather-dance' }, { level: 48, move: 'agility' }, { level: 62, move: 'mirror-move' }],
   },
   {
     dexId: 19,
@@ -278,7 +278,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 127,
     expYield: 116,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'quick-attack' }, { level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 7, move: 'quick-attack' }, { level: 13, move: 'hyper-fang' }, { level: 20, move: 'scary-face' }, { level: 30, move: 'pursuit' }, { level: 40, move: 'super-fang' }, { level: 50, move: 'endeavor' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'quick-attack' }, { level: 7, move: 'quick-attack' }, { level: 13, move: 'hyper-fang' }, { level: 20, move: 'scary-face' }, { level: 30, move: 'pursuit' }, { level: 40, move: 'super-fang' }, { level: 50, move: 'endeavor' }],
   },
   {
     dexId: 21,
@@ -290,7 +290,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 255,
     expYield: 58,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'peck' }, { level: 7, move: 'leer' }, { level: 13, move: 'fury-attack' }, { level: 19, move: 'pursuit' }, { level: 25, move: 'aerial-ace' }, { level: 31, move: 'mirror-move' }, { level: 37, move: 'drill-peck' }, { level: 43, move: 'agility' }],
+    learnset: [{ level: 1, move: 'peck' }, { level: 1, move: 'growl' }, { level: 7, move: 'leer' }, { level: 13, move: 'fury-attack' }, { level: 19, move: 'pursuit' }, { level: 25, move: 'aerial-ace' }, { level: 31, move: 'mirror-move' }, { level: 37, move: 'drill-peck' }, { level: 43, move: 'agility' }],
   },
   {
     dexId: 22,
@@ -302,7 +302,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 90,
     expYield: 162,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'fury-attack' }, { level: 1, move: 'growl' }, { level: 1, move: 'leer' }, { level: 1, move: 'peck' }, { level: 7, move: 'leer' }, { level: 13, move: 'fury-attack' }, { level: 26, move: 'pursuit' }, { level: 32, move: 'mirror-move' }, { level: 40, move: 'drill-peck' }, { level: 47, move: 'agility' }],
+    learnset: [{ level: 1, move: 'peck' }, { level: 1, move: 'growl' }, { level: 1, move: 'leer' }, { level: 1, move: 'fury-attack' }, { level: 7, move: 'leer' }, { level: 13, move: 'fury-attack' }, { level: 26, move: 'pursuit' }, { level: 32, move: 'mirror-move' }, { level: 40, move: 'drill-peck' }, { level: 47, move: 'agility' }],
   },
   {
     dexId: 23,
@@ -314,7 +314,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 255,
     expYield: 62,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'wrap' }, { level: 8, move: 'poison-sting' }, { level: 13, move: 'bite' }, { level: 20, move: 'glare' }, { level: 25, move: 'screech' }, { level: 32, move: 'acid' }, { level: 37, move: 'spit-up' }, { level: 37, move: 'stockpile' }, { level: 37, move: 'swallow' }, { level: 44, move: 'haze' }],
+    learnset: [{ level: 1, move: 'wrap' }, { level: 1, move: 'leer' }, { level: 8, move: 'poison-sting' }, { level: 13, move: 'bite' }, { level: 20, move: 'glare' }, { level: 25, move: 'screech' }, { level: 32, move: 'acid' }, { level: 37, move: 'stockpile' }, { level: 37, move: 'swallow' }, { level: 37, move: 'spit-up' }, { level: 44, move: 'haze' }],
   },
   {
     dexId: 24,
@@ -326,7 +326,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 90,
     expYield: 147,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'bite' }, { level: 1, move: 'leer' }, { level: 1, move: 'poison-sting' }, { level: 1, move: 'wrap' }, { level: 8, move: 'poison-sting' }, { level: 13, move: 'bite' }, { level: 20, move: 'glare' }, { level: 28, move: 'screech' }, { level: 38, move: 'acid' }, { level: 46, move: 'spit-up' }, { level: 46, move: 'stockpile' }, { level: 46, move: 'swallow' }, { level: 56, move: 'haze' }],
+    learnset: [{ level: 1, move: 'wrap' }, { level: 1, move: 'leer' }, { level: 1, move: 'poison-sting' }, { level: 1, move: 'bite' }, { level: 8, move: 'poison-sting' }, { level: 13, move: 'bite' }, { level: 20, move: 'glare' }, { level: 28, move: 'screech' }, { level: 38, move: 'acid' }, { level: 46, move: 'stockpile' }, { level: 46, move: 'swallow' }, { level: 46, move: 'spit-up' }, { level: 56, move: 'haze' }],
   },
   {
     dexId: 25,
@@ -338,7 +338,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 190,
     expYield: 82,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'thunder-shock' }, { level: 6, move: 'tail-whip' }, { level: 8, move: 'thunder-wave' }, { level: 11, move: 'quick-attack' }, { level: 15, move: 'double-team' }, { level: 20, move: 'slam' }, { level: 26, move: 'thunderbolt' }, { level: 33, move: 'agility' }, { level: 41, move: 'thunder' }, { level: 50, move: 'light-screen' }],
+    learnset: [{ level: 1, move: 'thunder-shock' }, { level: 1, move: 'growl' }, { level: 6, move: 'tail-whip' }, { level: 8, move: 'thunder-wave' }, { level: 11, move: 'quick-attack' }, { level: 15, move: 'double-team' }, { level: 20, move: 'slam' }, { level: 26, move: 'thunderbolt' }, { level: 33, move: 'agility' }, { level: 41, move: 'thunder' }, { level: 50, move: 'light-screen' }],
   },
   {
     dexId: 26,
@@ -350,7 +350,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 122,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'quick-attack' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'thunder-shock' }, { level: 1, move: 'thunderbolt' }],
+    learnset: [{ level: 1, move: 'thunder-shock' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'quick-attack' }, { level: 1, move: 'thunderbolt' }],
   },
   {
     dexId: 27,
@@ -374,7 +374,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 90,
     expYield: 163,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'defense-curl' }, { level: 1, move: 'sand-attack' }, { level: 1, move: 'scratch' }, { level: 6, move: 'defense-curl' }, { level: 11, move: 'sand-attack' }, { level: 17, move: 'poison-sting' }, { level: 24, move: 'slash' }, { level: 33, move: 'swift' }, { level: 42, move: 'fury-swipes' }, { level: 52, move: 'sand-tomb' }, { level: 62, move: 'sandstorm' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'defense-curl' }, { level: 1, move: 'sand-attack' }, { level: 6, move: 'defense-curl' }, { level: 11, move: 'sand-attack' }, { level: 17, move: 'poison-sting' }, { level: 24, move: 'slash' }, { level: 33, move: 'swift' }, { level: 42, move: 'fury-swipes' }, { level: 52, move: 'sand-tomb' }, { level: 62, move: 'sandstorm' }],
   },
   {
     dexId: 29,
@@ -410,7 +410,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 194,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'double-kick' }, { level: 1, move: 'poison-sting' }, { level: 1, move: 'scratch' }, { level: 1, move: 'tail-whip' }, { level: 22, move: 'body-slam' }, { level: 43, move: 'superpower' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'double-kick' }, { level: 1, move: 'poison-sting' }, { level: 22, move: 'body-slam' }, { level: 43, move: 'superpower' }],
   },
   {
     dexId: 32,
@@ -446,7 +446,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 195,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'double-kick' }, { level: 1, move: 'focus-energy' }, { level: 1, move: 'peck' }, { level: 1, move: 'poison-sting' }, { level: 22, move: 'thrash' }, { level: 43, move: 'megahorn' }],
+    learnset: [{ level: 1, move: 'peck' }, { level: 1, move: 'focus-energy' }, { level: 1, move: 'double-kick' }, { level: 1, move: 'poison-sting' }, { level: 22, move: 'thrash' }, { level: 43, move: 'megahorn' }],
   },
   {
     dexId: 35,
@@ -458,7 +458,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 150,
     expYield: 68,
     growthRate: 'fast',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'pound' }, { level: 5, move: 'encore' }, { level: 9, move: 'sing' }, { level: 13, move: 'double-slap' }, { level: 17, move: 'follow-me' }, { level: 21, move: 'minimize' }, { level: 25, move: 'defense-curl' }, { level: 29, move: 'metronome' }, { level: 33, move: 'cosmic-power' }, { level: 37, move: 'moonlight' }, { level: 41, move: 'light-screen' }, { level: 45, move: 'meteor-mash' }],
+    learnset: [{ level: 1, move: 'pound' }, { level: 1, move: 'growl' }, { level: 5, move: 'encore' }, { level: 9, move: 'sing' }, { level: 13, move: 'double-slap' }, { level: 17, move: 'follow-me' }, { level: 21, move: 'minimize' }, { level: 25, move: 'defense-curl' }, { level: 29, move: 'metronome' }, { level: 33, move: 'cosmic-power' }, { level: 37, move: 'moonlight' }, { level: 41, move: 'light-screen' }, { level: 45, move: 'meteor-mash' }],
   },
   {
     dexId: 36,
@@ -470,7 +470,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 25,
     expYield: 129,
     growthRate: 'fast',
-    learnset: [{ level: 1, move: 'double-slap' }, { level: 1, move: 'metronome' }, { level: 1, move: 'minimize' }, { level: 1, move: 'sing' }],
+    learnset: [{ level: 1, move: 'sing' }, { level: 1, move: 'double-slap' }, { level: 1, move: 'minimize' }, { level: 1, move: 'metronome' }],
   },
   {
     dexId: 37,
@@ -494,7 +494,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 178,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'confuse-ray' }, { level: 1, move: 'ember' }, { level: 1, move: 'quick-attack' }, { level: 1, move: 'safeguard' }, { level: 45, move: 'fire-spin' }],
+    learnset: [{ level: 1, move: 'ember' }, { level: 1, move: 'quick-attack' }, { level: 1, move: 'confuse-ray' }, { level: 1, move: 'safeguard' }, { level: 45, move: 'fire-spin' }],
   },
   {
     dexId: 39,
@@ -518,7 +518,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 50,
     expYield: 109,
     growthRate: 'fast',
-    learnset: [{ level: 1, move: 'defense-curl' }, { level: 1, move: 'disable' }, { level: 1, move: 'double-slap' }, { level: 1, move: 'sing' }],
+    learnset: [{ level: 1, move: 'sing' }, { level: 1, move: 'disable' }, { level: 1, move: 'defense-curl' }, { level: 1, move: 'double-slap' }],
   },
   {
     dexId: 41,
@@ -542,7 +542,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 90,
     expYield: 171,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'astonish' }, { level: 1, move: 'leech-life' }, { level: 1, move: 'screech' }, { level: 1, move: 'supersonic' }, { level: 6, move: 'astonish' }, { level: 11, move: 'supersonic' }, { level: 16, move: 'bite' }, { level: 21, move: 'wing-attack' }, { level: 28, move: 'confuse-ray' }, { level: 35, move: 'air-cutter' }, { level: 42, move: 'mean-look' }, { level: 49, move: 'poison-fang' }, { level: 56, move: 'haze' }],
+    learnset: [{ level: 1, move: 'screech' }, { level: 1, move: 'leech-life' }, { level: 1, move: 'astonish' }, { level: 1, move: 'supersonic' }, { level: 6, move: 'astonish' }, { level: 11, move: 'supersonic' }, { level: 16, move: 'bite' }, { level: 21, move: 'wing-attack' }, { level: 28, move: 'confuse-ray' }, { level: 35, move: 'air-cutter' }, { level: 42, move: 'mean-look' }, { level: 49, move: 'poison-fang' }, { level: 56, move: 'haze' }],
   },
   {
     dexId: 43,
@@ -566,7 +566,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 120,
     expYield: 132,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'absorb' }, { level: 1, move: 'poison-powder' }, { level: 1, move: 'sweet-scent' }, { level: 7, move: 'sweet-scent' }, { level: 14, move: 'poison-powder' }, { level: 16, move: 'stun-spore' }, { level: 18, move: 'sleep-powder' }, { level: 24, move: 'acid' }, { level: 35, move: 'moonlight' }, { level: 44, move: 'petal-dance' }],
+    learnset: [{ level: 1, move: 'absorb' }, { level: 1, move: 'sweet-scent' }, { level: 1, move: 'poison-powder' }, { level: 7, move: 'sweet-scent' }, { level: 14, move: 'poison-powder' }, { level: 16, move: 'stun-spore' }, { level: 18, move: 'sleep-powder' }, { level: 24, move: 'acid' }, { level: 35, move: 'moonlight' }, { level: 44, move: 'petal-dance' }],
   },
   {
     dexId: 45,
@@ -578,7 +578,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 184,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'absorb' }, { level: 1, move: 'aromatherapy' }, { level: 1, move: 'mega-drain' }, { level: 1, move: 'stun-spore' }, { level: 44, move: 'petal-dance' }],
+    learnset: [{ level: 1, move: 'absorb' }, { level: 1, move: 'aromatherapy' }, { level: 1, move: 'stun-spore' }, { level: 1, move: 'mega-drain' }, { level: 44, move: 'petal-dance' }],
   },
   {
     dexId: 46,
@@ -602,7 +602,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 128,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'poison-powder' }, { level: 1, move: 'scratch' }, { level: 1, move: 'stun-spore' }, { level: 7, move: 'stun-spore' }, { level: 13, move: 'poison-powder' }, { level: 19, move: 'leech-life' }, { level: 27, move: 'spore' }, { level: 35, move: 'slash' }, { level: 43, move: 'growth' }, { level: 51, move: 'giga-drain' }, { level: 59, move: 'aromatherapy' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'stun-spore' }, { level: 1, move: 'poison-powder' }, { level: 7, move: 'stun-spore' }, { level: 13, move: 'poison-powder' }, { level: 19, move: 'leech-life' }, { level: 27, move: 'spore' }, { level: 35, move: 'slash' }, { level: 43, move: 'growth' }, { level: 51, move: 'giga-drain' }, { level: 59, move: 'aromatherapy' }],
   },
   {
     dexId: 48,
@@ -614,7 +614,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 190,
     expYield: 75,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'disable' }, { level: 1, move: 'foresight' }, { level: 1, move: 'tackle' }, { level: 9, move: 'supersonic' }, { level: 17, move: 'confusion' }, { level: 20, move: 'poison-powder' }, { level: 25, move: 'leech-life' }, { level: 28, move: 'stun-spore' }, { level: 33, move: 'psybeam' }, { level: 36, move: 'sleep-powder' }, { level: 41, move: 'psychic' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'disable' }, { level: 1, move: 'foresight' }, { level: 9, move: 'supersonic' }, { level: 17, move: 'confusion' }, { level: 20, move: 'poison-powder' }, { level: 25, move: 'leech-life' }, { level: 28, move: 'stun-spore' }, { level: 33, move: 'psybeam' }, { level: 36, move: 'sleep-powder' }, { level: 41, move: 'psychic' }],
   },
   {
     dexId: 49,
@@ -626,7 +626,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 138,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'disable' }, { level: 1, move: 'foresight' }, { level: 1, move: 'silver-wind' }, { level: 1, move: 'supersonic' }, { level: 1, move: 'tackle' }, { level: 9, move: 'supersonic' }, { level: 17, move: 'confusion' }, { level: 20, move: 'poison-powder' }, { level: 25, move: 'leech-life' }, { level: 28, move: 'stun-spore' }, { level: 31, move: 'gust' }, { level: 36, move: 'psybeam' }, { level: 42, move: 'sleep-powder' }, { level: 52, move: 'psychic' }],
+    learnset: [{ level: 1, move: 'silver-wind' }, { level: 1, move: 'tackle' }, { level: 1, move: 'disable' }, { level: 1, move: 'foresight' }, { level: 1, move: 'supersonic' }, { level: 9, move: 'supersonic' }, { level: 17, move: 'confusion' }, { level: 20, move: 'poison-powder' }, { level: 25, move: 'leech-life' }, { level: 28, move: 'stun-spore' }, { level: 31, move: 'gust' }, { level: 36, move: 'psybeam' }, { level: 42, move: 'sleep-powder' }, { level: 52, move: 'psychic' }],
   },
   {
     dexId: 50,
@@ -650,7 +650,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 50,
     expYield: 153,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'sand-attack' }, { level: 1, move: 'scratch' }, { level: 1, move: 'tri-attack' }, { level: 5, move: 'growl' }, { level: 9, move: 'magnitude' }, { level: 17, move: 'dig' }, { level: 21, move: 'fury-swipes' }, { level: 25, move: 'mud-slap' }, { level: 26, move: 'sand-tomb' }, { level: 38, move: 'slash' }, { level: 51, move: 'earthquake' }, { level: 64, move: 'fissure' }],
+    learnset: [{ level: 1, move: 'tri-attack' }, { level: 1, move: 'scratch' }, { level: 1, move: 'sand-attack' }, { level: 1, move: 'growl' }, { level: 5, move: 'growl' }, { level: 9, move: 'magnitude' }, { level: 17, move: 'dig' }, { level: 21, move: 'fury-swipes' }, { level: 25, move: 'mud-slap' }, { level: 26, move: 'sand-tomb' }, { level: 38, move: 'slash' }, { level: 51, move: 'earthquake' }, { level: 64, move: 'fissure' }],
   },
   {
     dexId: 52,
@@ -662,7 +662,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 255,
     expYield: 69,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'scratch' }, { level: 10, move: 'bite' }, { level: 18, move: 'pay-day' }, { level: 25, move: 'feint-attack' }, { level: 31, move: 'screech' }, { level: 36, move: 'fury-swipes' }, { level: 40, move: 'slash' }, { level: 43, move: 'fake-out' }, { level: 45, move: 'swagger' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'growl' }, { level: 10, move: 'bite' }, { level: 18, move: 'pay-day' }, { level: 25, move: 'feint-attack' }, { level: 31, move: 'screech' }, { level: 36, move: 'fury-swipes' }, { level: 40, move: 'slash' }, { level: 43, move: 'fake-out' }, { level: 45, move: 'swagger' }],
   },
   {
     dexId: 53,
@@ -674,7 +674,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 90,
     expYield: 148,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'bite' }, { level: 1, move: 'growl' }, { level: 1, move: 'scratch' }, { level: 10, move: 'bite' }, { level: 18, move: 'pay-day' }, { level: 25, move: 'feint-attack' }, { level: 34, move: 'screech' }, { level: 42, move: 'fury-swipes' }, { level: 49, move: 'slash' }, { level: 55, move: 'fake-out' }, { level: 61, move: 'swagger' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'growl' }, { level: 1, move: 'bite' }, { level: 10, move: 'bite' }, { level: 18, move: 'pay-day' }, { level: 25, move: 'feint-attack' }, { level: 34, move: 'screech' }, { level: 42, move: 'fury-swipes' }, { level: 49, move: 'slash' }, { level: 55, move: 'fake-out' }, { level: 61, move: 'swagger' }],
   },
   {
     dexId: 54,
@@ -686,7 +686,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 190,
     expYield: 80,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'water-sport' }, { level: 5, move: 'tail-whip' }, { level: 10, move: 'disable' }, { level: 16, move: 'confusion' }, { level: 23, move: 'screech' }, { level: 31, move: 'psych-up' }, { level: 40, move: 'fury-swipes' }, { level: 50, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'water-sport' }, { level: 1, move: 'scratch' }, { level: 5, move: 'tail-whip' }, { level: 10, move: 'disable' }, { level: 16, move: 'confusion' }, { level: 23, move: 'screech' }, { level: 31, move: 'psych-up' }, { level: 40, move: 'fury-swipes' }, { level: 50, move: 'hydro-pump' }],
   },
   {
     dexId: 55,
@@ -698,7 +698,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 174,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'disable' }, { level: 1, move: 'scratch' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'water-sport' }, { level: 5, move: 'tail-whip' }, { level: 10, move: 'disable' }, { level: 16, move: 'confusion' }, { level: 23, move: 'screech' }, { level: 31, move: 'psych-up' }, { level: 44, move: 'fury-swipes' }, { level: 58, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'water-sport' }, { level: 1, move: 'scratch' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'disable' }, { level: 5, move: 'tail-whip' }, { level: 10, move: 'disable' }, { level: 16, move: 'confusion' }, { level: 23, move: 'screech' }, { level: 31, move: 'psych-up' }, { level: 44, move: 'fury-swipes' }, { level: 58, move: 'hydro-pump' }],
   },
   {
     dexId: 56,
@@ -710,7 +710,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 190,
     expYield: 74,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'scratch' }, { level: 6, move: 'low-kick' }, { level: 11, move: 'karate-chop' }, { level: 16, move: 'fury-swipes' }, { level: 21, move: 'focus-energy' }, { level: 26, move: 'seismic-toss' }, { level: 31, move: 'cross-chop' }, { level: 36, move: 'swagger' }, { level: 41, move: 'screech' }, { level: 46, move: 'thrash' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'leer' }, { level: 6, move: 'low-kick' }, { level: 11, move: 'karate-chop' }, { level: 16, move: 'fury-swipes' }, { level: 21, move: 'focus-energy' }, { level: 26, move: 'seismic-toss' }, { level: 31, move: 'cross-chop' }, { level: 36, move: 'swagger' }, { level: 41, move: 'screech' }, { level: 46, move: 'thrash' }],
   },
   {
     dexId: 57,
@@ -722,7 +722,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 149,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'low-kick' }, { level: 1, move: 'rage' }, { level: 1, move: 'scratch' }, { level: 6, move: 'low-kick' }, { level: 11, move: 'karate-chop' }, { level: 16, move: 'fury-swipes' }, { level: 21, move: 'focus-energy' }, { level: 26, move: 'seismic-toss' }, { level: 28, move: 'rage' }, { level: 35, move: 'cross-chop' }, { level: 44, move: 'swagger' }, { level: 53, move: 'screech' }, { level: 62, move: 'thrash' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'leer' }, { level: 1, move: 'low-kick' }, { level: 1, move: 'rage' }, { level: 6, move: 'low-kick' }, { level: 11, move: 'karate-chop' }, { level: 16, move: 'fury-swipes' }, { level: 21, move: 'focus-energy' }, { level: 26, move: 'seismic-toss' }, { level: 28, move: 'rage' }, { level: 35, move: 'cross-chop' }, { level: 44, move: 'swagger' }, { level: 53, move: 'screech' }, { level: 62, move: 'thrash' }],
   },
   {
     dexId: 58,
@@ -746,7 +746,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 213,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'bite' }, { level: 1, move: 'ember' }, { level: 1, move: 'odor-sleuth' }, { level: 1, move: 'roar' }, { level: 49, move: 'extreme-speed' }],
+    learnset: [{ level: 1, move: 'bite' }, { level: 1, move: 'roar' }, { level: 1, move: 'ember' }, { level: 1, move: 'odor-sleuth' }, { level: 49, move: 'extreme-speed' }],
   },
   {
     dexId: 60,
@@ -782,7 +782,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 185,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'double-slap' }, { level: 1, move: 'hypnosis' }, { level: 1, move: 'submission' }, { level: 1, move: 'water-gun' }, { level: 35, move: 'submission' }, { level: 51, move: 'mind-reader' }],
+    learnset: [{ level: 1, move: 'water-gun' }, { level: 1, move: 'hypnosis' }, { level: 1, move: 'double-slap' }, { level: 1, move: 'submission' }, { level: 35, move: 'submission' }, { level: 51, move: 'mind-reader' }],
   },
   {
     dexId: 63,
@@ -806,7 +806,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 100,
     expYield: 145,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'confusion' }, { level: 1, move: 'kinesis' }, { level: 1, move: 'teleport' }, { level: 16, move: 'confusion' }, { level: 18, move: 'disable' }, { level: 21, move: 'psybeam' }, { level: 23, move: 'reflect' }, { level: 25, move: 'recover' }, { level: 30, move: 'future-sight' }, { level: 33, move: 'role-play' }, { level: 36, move: 'psychic' }, { level: 43, move: 'trick' }],
+    learnset: [{ level: 1, move: 'teleport' }, { level: 1, move: 'kinesis' }, { level: 1, move: 'confusion' }, { level: 16, move: 'confusion' }, { level: 18, move: 'disable' }, { level: 21, move: 'psybeam' }, { level: 23, move: 'reflect' }, { level: 25, move: 'recover' }, { level: 30, move: 'future-sight' }, { level: 33, move: 'role-play' }, { level: 36, move: 'psychic' }, { level: 43, move: 'trick' }],
   },
   {
     dexId: 65,
@@ -818,7 +818,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 50,
     expYield: 186,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'confusion' }, { level: 1, move: 'kinesis' }, { level: 1, move: 'teleport' }, { level: 16, move: 'confusion' }, { level: 18, move: 'disable' }, { level: 21, move: 'psybeam' }, { level: 23, move: 'reflect' }, { level: 25, move: 'recover' }, { level: 30, move: 'future-sight' }, { level: 33, move: 'calm-mind' }, { level: 36, move: 'psychic' }, { level: 43, move: 'trick' }],
+    learnset: [{ level: 1, move: 'teleport' }, { level: 1, move: 'kinesis' }, { level: 1, move: 'confusion' }, { level: 16, move: 'confusion' }, { level: 18, move: 'disable' }, { level: 21, move: 'psybeam' }, { level: 23, move: 'reflect' }, { level: 25, move: 'recover' }, { level: 30, move: 'future-sight' }, { level: 33, move: 'calm-mind' }, { level: 36, move: 'psychic' }, { level: 43, move: 'trick' }],
   },
   {
     dexId: 66,
@@ -830,7 +830,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 180,
     expYield: 88,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'low-kick' }, { level: 7, move: 'focus-energy' }, { level: 13, move: 'karate-chop' }, { level: 19, move: 'seismic-toss' }, { level: 22, move: 'foresight' }, { level: 25, move: 'revenge' }, { level: 31, move: 'vital-throw' }, { level: 37, move: 'submission' }, { level: 40, move: 'cross-chop' }, { level: 43, move: 'scary-face' }, { level: 49, move: 'dynamic-punch' }],
+    learnset: [{ level: 1, move: 'low-kick' }, { level: 1, move: 'leer' }, { level: 7, move: 'focus-energy' }, { level: 13, move: 'karate-chop' }, { level: 19, move: 'seismic-toss' }, { level: 22, move: 'foresight' }, { level: 25, move: 'revenge' }, { level: 31, move: 'vital-throw' }, { level: 37, move: 'submission' }, { level: 40, move: 'cross-chop' }, { level: 43, move: 'scary-face' }, { level: 49, move: 'dynamic-punch' }],
   },
   {
     dexId: 67,
@@ -842,7 +842,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 90,
     expYield: 146,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'focus-energy' }, { level: 1, move: 'leer' }, { level: 1, move: 'low-kick' }, { level: 7, move: 'focus-energy' }, { level: 13, move: 'karate-chop' }, { level: 19, move: 'seismic-toss' }, { level: 22, move: 'foresight' }, { level: 25, move: 'revenge' }, { level: 33, move: 'vital-throw' }, { level: 41, move: 'submission' }, { level: 46, move: 'cross-chop' }, { level: 51, move: 'scary-face' }, { level: 59, move: 'dynamic-punch' }],
+    learnset: [{ level: 1, move: 'low-kick' }, { level: 1, move: 'leer' }, { level: 1, move: 'focus-energy' }, { level: 7, move: 'focus-energy' }, { level: 13, move: 'karate-chop' }, { level: 19, move: 'seismic-toss' }, { level: 22, move: 'foresight' }, { level: 25, move: 'revenge' }, { level: 33, move: 'vital-throw' }, { level: 41, move: 'submission' }, { level: 46, move: 'cross-chop' }, { level: 51, move: 'scary-face' }, { level: 59, move: 'dynamic-punch' }],
   },
   {
     dexId: 68,
@@ -854,7 +854,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 193,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'focus-energy' }, { level: 1, move: 'leer' }, { level: 1, move: 'low-kick' }, { level: 7, move: 'focus-energy' }, { level: 13, move: 'karate-chop' }, { level: 19, move: 'seismic-toss' }, { level: 22, move: 'foresight' }, { level: 25, move: 'revenge' }, { level: 33, move: 'vital-throw' }, { level: 41, move: 'submission' }, { level: 46, move: 'cross-chop' }, { level: 51, move: 'scary-face' }, { level: 59, move: 'dynamic-punch' }],
+    learnset: [{ level: 1, move: 'low-kick' }, { level: 1, move: 'leer' }, { level: 1, move: 'focus-energy' }, { level: 7, move: 'focus-energy' }, { level: 13, move: 'karate-chop' }, { level: 19, move: 'seismic-toss' }, { level: 22, move: 'foresight' }, { level: 25, move: 'revenge' }, { level: 33, move: 'vital-throw' }, { level: 41, move: 'submission' }, { level: 46, move: 'cross-chop' }, { level: 51, move: 'scary-face' }, { level: 59, move: 'dynamic-punch' }],
   },
   {
     dexId: 69,
@@ -878,7 +878,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 120,
     expYield: 151,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'growth' }, { level: 1, move: 'vine-whip' }, { level: 1, move: 'wrap' }, { level: 6, move: 'growth' }, { level: 11, move: 'wrap' }, { level: 15, move: 'sleep-powder' }, { level: 17, move: 'poison-powder' }, { level: 19, move: 'stun-spore' }, { level: 24, move: 'acid' }, { level: 33, move: 'sweet-scent' }, { level: 42, move: 'razor-leaf' }, { level: 54, move: 'slam' }],
+    learnset: [{ level: 1, move: 'vine-whip' }, { level: 1, move: 'growth' }, { level: 1, move: 'wrap' }, { level: 6, move: 'growth' }, { level: 11, move: 'wrap' }, { level: 15, move: 'sleep-powder' }, { level: 17, move: 'poison-powder' }, { level: 19, move: 'stun-spore' }, { level: 24, move: 'acid' }, { level: 33, move: 'sweet-scent' }, { level: 42, move: 'razor-leaf' }, { level: 54, move: 'slam' }],
   },
   {
     dexId: 71,
@@ -890,7 +890,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 191,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'razor-leaf' }, { level: 1, move: 'sleep-powder' }, { level: 1, move: 'spit-up' }, { level: 1, move: 'stockpile' }, { level: 1, move: 'swallow' }, { level: 1, move: 'sweet-scent' }, { level: 1, move: 'vine-whip' }],
+    learnset: [{ level: 1, move: 'stockpile' }, { level: 1, move: 'spit-up' }, { level: 1, move: 'swallow' }, { level: 1, move: 'vine-whip' }, { level: 1, move: 'sleep-powder' }, { level: 1, move: 'sweet-scent' }, { level: 1, move: 'razor-leaf' }],
   },
   {
     dexId: 72,
@@ -914,7 +914,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 205,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'constrict' }, { level: 1, move: 'poison-sting' }, { level: 1, move: 'supersonic' }, { level: 6, move: 'supersonic' }, { level: 12, move: 'constrict' }, { level: 19, move: 'acid' }, { level: 25, move: 'bubble-beam' }, { level: 30, move: 'wrap' }, { level: 38, move: 'barrier' }, { level: 47, move: 'screech' }, { level: 55, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'poison-sting' }, { level: 1, move: 'supersonic' }, { level: 1, move: 'constrict' }, { level: 6, move: 'supersonic' }, { level: 12, move: 'constrict' }, { level: 19, move: 'acid' }, { level: 25, move: 'bubble-beam' }, { level: 30, move: 'wrap' }, { level: 38, move: 'barrier' }, { level: 47, move: 'screech' }, { level: 55, move: 'hydro-pump' }],
   },
   {
     dexId: 74,
@@ -926,7 +926,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 255,
     expYield: 86,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'defense-curl' }, { level: 1, move: 'tackle' }, { level: 6, move: 'mud-sport' }, { level: 11, move: 'rock-throw' }, { level: 16, move: 'magnitude' }, { level: 21, move: 'self-destruct' }, { level: 26, move: 'rollout' }, { level: 31, move: 'rock-blast' }, { level: 36, move: 'earthquake' }, { level: 41, move: 'explosion' }, { level: 46, move: 'double-edge' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'defense-curl' }, { level: 6, move: 'mud-sport' }, { level: 11, move: 'rock-throw' }, { level: 16, move: 'magnitude' }, { level: 21, move: 'self-destruct' }, { level: 26, move: 'rollout' }, { level: 31, move: 'rock-blast' }, { level: 36, move: 'earthquake' }, { level: 41, move: 'explosion' }, { level: 46, move: 'double-edge' }],
   },
   {
     dexId: 75,
@@ -938,7 +938,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 120,
     expYield: 134,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'defense-curl' }, { level: 1, move: 'mud-sport' }, { level: 1, move: 'rock-throw' }, { level: 1, move: 'tackle' }, { level: 6, move: 'mud-sport' }, { level: 11, move: 'rock-throw' }, { level: 16, move: 'magnitude' }, { level: 21, move: 'self-destruct' }, { level: 29, move: 'rollout' }, { level: 37, move: 'rock-blast' }, { level: 45, move: 'earthquake' }, { level: 53, move: 'explosion' }, { level: 62, move: 'double-edge' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'defense-curl' }, { level: 1, move: 'mud-sport' }, { level: 1, move: 'rock-throw' }, { level: 6, move: 'mud-sport' }, { level: 11, move: 'rock-throw' }, { level: 16, move: 'magnitude' }, { level: 21, move: 'self-destruct' }, { level: 29, move: 'rollout' }, { level: 37, move: 'rock-blast' }, { level: 45, move: 'earthquake' }, { level: 53, move: 'explosion' }, { level: 62, move: 'double-edge' }],
   },
   {
     dexId: 76,
@@ -950,7 +950,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 177,
     growthRate: 'medium-slow',
-    learnset: [{ level: 1, move: 'defense-curl' }, { level: 1, move: 'mud-sport' }, { level: 1, move: 'rock-throw' }, { level: 1, move: 'tackle' }, { level: 6, move: 'mud-sport' }, { level: 11, move: 'rock-throw' }, { level: 16, move: 'magnitude' }, { level: 21, move: 'self-destruct' }, { level: 29, move: 'rollout' }, { level: 37, move: 'rock-blast' }, { level: 45, move: 'earthquake' }, { level: 53, move: 'explosion' }, { level: 62, move: 'double-edge' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'defense-curl' }, { level: 1, move: 'mud-sport' }, { level: 1, move: 'rock-throw' }, { level: 6, move: 'mud-sport' }, { level: 11, move: 'rock-throw' }, { level: 16, move: 'magnitude' }, { level: 21, move: 'self-destruct' }, { level: 29, move: 'rollout' }, { level: 37, move: 'rock-blast' }, { level: 45, move: 'earthquake' }, { level: 53, move: 'explosion' }, { level: 62, move: 'double-edge' }],
   },
   {
     dexId: 77,
@@ -974,7 +974,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 192,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'ember' }, { level: 1, move: 'growl' }, { level: 1, move: 'quick-attack' }, { level: 1, move: 'tail-whip' }, { level: 5, move: 'growl' }, { level: 9, move: 'tail-whip' }, { level: 14, move: 'ember' }, { level: 19, move: 'stomp' }, { level: 25, move: 'fire-spin' }, { level: 31, move: 'take-down' }, { level: 38, move: 'agility' }, { level: 40, move: 'fury-attack' }, { level: 50, move: 'bounce' }, { level: 63, move: 'fire-blast' }],
+    learnset: [{ level: 1, move: 'quick-attack' }, { level: 1, move: 'growl' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'ember' }, { level: 5, move: 'growl' }, { level: 9, move: 'tail-whip' }, { level: 14, move: 'ember' }, { level: 19, move: 'stomp' }, { level: 25, move: 'fire-spin' }, { level: 31, move: 'take-down' }, { level: 38, move: 'agility' }, { level: 40, move: 'fury-attack' }, { level: 50, move: 'bounce' }, { level: 63, move: 'fire-blast' }],
   },
   {
     dexId: 79,
@@ -986,7 +986,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 190,
     expYield: 99,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'curse' }, { level: 1, move: 'tackle' }, { level: 1, move: 'yawn' }, { level: 6, move: 'growl' }, { level: 13, move: 'water-gun' }, { level: 17, move: 'confusion' }, { level: 24, move: 'disable' }, { level: 29, move: 'headbutt' }, { level: 36, move: 'amnesia' }, { level: 40, move: 'psychic' }, { level: 47, move: 'psych-up' }],
+    learnset: [{ level: 1, move: 'curse' }, { level: 1, move: 'yawn' }, { level: 1, move: 'tackle' }, { level: 6, move: 'growl' }, { level: 13, move: 'water-gun' }, { level: 17, move: 'confusion' }, { level: 24, move: 'disable' }, { level: 29, move: 'headbutt' }, { level: 36, move: 'amnesia' }, { level: 40, move: 'psychic' }, { level: 47, move: 'psych-up' }],
   },
   {
     dexId: 80,
@@ -998,7 +998,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 164,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'curse' }, { level: 1, move: 'growl' }, { level: 1, move: 'tackle' }, { level: 1, move: 'yawn' }, { level: 6, move: 'growl' }, { level: 13, move: 'water-gun' }, { level: 17, move: 'confusion' }, { level: 24, move: 'disable' }, { level: 29, move: 'headbutt' }, { level: 36, move: 'amnesia' }, { level: 37, move: 'withdraw' }, { level: 44, move: 'psychic' }, { level: 55, move: 'psych-up' }],
+    learnset: [{ level: 1, move: 'curse' }, { level: 1, move: 'yawn' }, { level: 1, move: 'tackle' }, { level: 1, move: 'growl' }, { level: 6, move: 'growl' }, { level: 13, move: 'water-gun' }, { level: 17, move: 'confusion' }, { level: 24, move: 'disable' }, { level: 29, move: 'headbutt' }, { level: 36, move: 'amnesia' }, { level: 37, move: 'withdraw' }, { level: 44, move: 'psychic' }, { level: 55, move: 'psych-up' }],
   },
   {
     dexId: 81,
@@ -1022,7 +1022,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 161,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'metal-sound' }, { level: 1, move: 'supersonic' }, { level: 1, move: 'tackle' }, { level: 1, move: 'thunder-shock' }, { level: 6, move: 'thunder-shock' }, { level: 11, move: 'supersonic' }, { level: 16, move: 'sonic-boom' }, { level: 21, move: 'thunder-wave' }, { level: 26, move: 'spark' }, { level: 35, move: 'lock-on' }, { level: 44, move: 'tri-attack' }, { level: 53, move: 'screech' }, { level: 62, move: 'zap-cannon' }],
+    learnset: [{ level: 1, move: 'metal-sound' }, { level: 1, move: 'tackle' }, { level: 1, move: 'thunder-shock' }, { level: 1, move: 'supersonic' }, { level: 6, move: 'thunder-shock' }, { level: 11, move: 'supersonic' }, { level: 16, move: 'sonic-boom' }, { level: 21, move: 'thunder-wave' }, { level: 26, move: 'spark' }, { level: 35, move: 'lock-on' }, { level: 44, move: 'tri-attack' }, { level: 53, move: 'screech' }, { level: 62, move: 'zap-cannon' }],
   },
   {
     dexId: 83,
@@ -1046,7 +1046,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 190,
     expYield: 96,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'peck' }, { level: 9, move: 'pursuit' }, { level: 13, move: 'fury-attack' }, { level: 21, move: 'tri-attack' }, { level: 25, move: 'rage' }, { level: 33, move: 'uproar' }, { level: 37, move: 'drill-peck' }, { level: 45, move: 'agility' }],
+    learnset: [{ level: 1, move: 'peck' }, { level: 1, move: 'growl' }, { level: 9, move: 'pursuit' }, { level: 13, move: 'fury-attack' }, { level: 21, move: 'tri-attack' }, { level: 25, move: 'rage' }, { level: 33, move: 'uproar' }, { level: 37, move: 'drill-peck' }, { level: 45, move: 'agility' }],
   },
   {
     dexId: 85,
@@ -1058,7 +1058,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 158,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'fury-attack' }, { level: 1, move: 'growl' }, { level: 1, move: 'peck' }, { level: 1, move: 'pursuit' }, { level: 9, move: 'pursuit' }, { level: 13, move: 'fury-attack' }, { level: 21, move: 'tri-attack' }, { level: 25, move: 'rage' }, { level: 38, move: 'uproar' }, { level: 47, move: 'drill-peck' }, { level: 60, move: 'agility' }],
+    learnset: [{ level: 1, move: 'peck' }, { level: 1, move: 'growl' }, { level: 1, move: 'pursuit' }, { level: 1, move: 'fury-attack' }, { level: 9, move: 'pursuit' }, { level: 13, move: 'fury-attack' }, { level: 21, move: 'tri-attack' }, { level: 25, move: 'rage' }, { level: 38, move: 'uproar' }, { level: 47, move: 'drill-peck' }, { level: 60, move: 'agility' }],
   },
   {
     dexId: 86,
@@ -1082,7 +1082,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 176,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'aurora-beam' }, { level: 1, move: 'growl' }, { level: 1, move: 'headbutt' }, { level: 1, move: 'icy-wind' }, { level: 1, move: 'signal-beam' }, { level: 9, move: 'growl' }, { level: 17, move: 'icy-wind' }, { level: 21, move: 'aurora-beam' }, { level: 29, move: 'rest' }, { level: 34, move: 'sheer-cold' }, { level: 42, move: 'take-down' }, { level: 51, move: 'ice-beam' }, { level: 64, move: 'safeguard' }],
+    learnset: [{ level: 1, move: 'signal-beam' }, { level: 1, move: 'headbutt' }, { level: 1, move: 'growl' }, { level: 1, move: 'icy-wind' }, { level: 1, move: 'aurora-beam' }, { level: 9, move: 'growl' }, { level: 17, move: 'icy-wind' }, { level: 21, move: 'aurora-beam' }, { level: 29, move: 'rest' }, { level: 34, move: 'sheer-cold' }, { level: 42, move: 'take-down' }, { level: 51, move: 'ice-beam' }, { level: 64, move: 'safeguard' }],
   },
   {
     dexId: 88,
@@ -1106,7 +1106,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 157,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'harden' }, { level: 1, move: 'poison-gas' }, { level: 1, move: 'pound' }, { level: 4, move: 'harden' }, { level: 8, move: 'disable' }, { level: 13, move: 'sludge' }, { level: 19, move: 'minimize' }, { level: 26, move: 'screech' }, { level: 34, move: 'acid-armor' }, { level: 47, move: 'sludge-bomb' }, { level: 61, move: 'memento' }],
+    learnset: [{ level: 1, move: 'poison-gas' }, { level: 1, move: 'pound' }, { level: 1, move: 'harden' }, { level: 4, move: 'harden' }, { level: 8, move: 'disable' }, { level: 13, move: 'sludge' }, { level: 19, move: 'minimize' }, { level: 26, move: 'screech' }, { level: 34, move: 'acid-armor' }, { level: 47, move: 'sludge-bomb' }, { level: 61, move: 'memento' }],
   },
   {
     dexId: 90,
@@ -1130,7 +1130,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 203,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'aurora-beam' }, { level: 1, move: 'protect' }, { level: 1, move: 'supersonic' }, { level: 1, move: 'withdraw' }, { level: 36, move: 'spikes' }, { level: 43, move: 'spike-cannon' }],
+    learnset: [{ level: 1, move: 'withdraw' }, { level: 1, move: 'supersonic' }, { level: 1, move: 'aurora-beam' }, { level: 1, move: 'protect' }, { level: 36, move: 'spikes' }, { level: 43, move: 'spike-cannon' }],
   },
   {
     dexId: 92,
@@ -1178,7 +1178,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 108,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'screech' }, { level: 1, move: 'tackle' }, { level: 8, move: 'bind' }, { level: 12, move: 'rock-throw' }, { level: 19, move: 'harden' }, { level: 23, move: 'rage' }, { level: 30, move: 'dragon-breath' }, { level: 34, move: 'sandstorm' }, { level: 41, move: 'slam' }, { level: 45, move: 'iron-tail' }, { level: 52, move: 'sand-tomb' }, { level: 56, move: 'double-edge' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'screech' }, { level: 8, move: 'bind' }, { level: 12, move: 'rock-throw' }, { level: 19, move: 'harden' }, { level: 23, move: 'rage' }, { level: 30, move: 'dragon-breath' }, { level: 34, move: 'sandstorm' }, { level: 41, move: 'slam' }, { level: 45, move: 'iron-tail' }, { level: 52, move: 'sand-tomb' }, { level: 56, move: 'double-edge' }],
   },
   {
     dexId: 96,
@@ -1190,7 +1190,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 190,
     expYield: 102,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'hypnosis' }, { level: 1, move: 'pound' }, { level: 7, move: 'disable' }, { level: 11, move: 'confusion' }, { level: 17, move: 'headbutt' }, { level: 21, move: 'poison-gas' }, { level: 27, move: 'meditate' }, { level: 31, move: 'psychic' }, { level: 37, move: 'psych-up' }, { level: 41, move: 'swagger' }, { level: 47, move: 'future-sight' }],
+    learnset: [{ level: 1, move: 'pound' }, { level: 1, move: 'hypnosis' }, { level: 7, move: 'disable' }, { level: 11, move: 'confusion' }, { level: 17, move: 'headbutt' }, { level: 21, move: 'poison-gas' }, { level: 27, move: 'meditate' }, { level: 31, move: 'psychic' }, { level: 37, move: 'psych-up' }, { level: 41, move: 'swagger' }, { level: 47, move: 'future-sight' }],
   },
   {
     dexId: 97,
@@ -1202,7 +1202,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 165,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'confusion' }, { level: 1, move: 'disable' }, { level: 1, move: 'hypnosis' }, { level: 1, move: 'nightmare' }, { level: 1, move: 'pound' }, { level: 7, move: 'disable' }, { level: 11, move: 'confusion' }, { level: 17, move: 'headbutt' }, { level: 21, move: 'poison-gas' }, { level: 29, move: 'meditate' }, { level: 35, move: 'psychic' }, { level: 43, move: 'psych-up' }, { level: 49, move: 'swagger' }, { level: 57, move: 'future-sight' }],
+    learnset: [{ level: 1, move: 'nightmare' }, { level: 1, move: 'pound' }, { level: 1, move: 'hypnosis' }, { level: 1, move: 'disable' }, { level: 1, move: 'confusion' }, { level: 7, move: 'disable' }, { level: 11, move: 'confusion' }, { level: 17, move: 'headbutt' }, { level: 21, move: 'poison-gas' }, { level: 29, move: 'meditate' }, { level: 35, move: 'psychic' }, { level: 43, move: 'psych-up' }, { level: 49, move: 'swagger' }, { level: 57, move: 'future-sight' }],
   },
   {
     dexId: 98,
@@ -1226,7 +1226,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 206,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'bubble' }, { level: 1, move: 'harden' }, { level: 1, move: 'leer' }, { level: 1, move: 'metal-claw' }, { level: 1, move: 'vice-grip' }, { level: 5, move: 'leer' }, { level: 12, move: 'vice-grip' }, { level: 16, move: 'harden' }, { level: 23, move: 'mud-shot' }, { level: 27, move: 'stomp' }, { level: 38, move: 'guillotine' }, { level: 42, move: 'protect' }, { level: 57, move: 'crabhammer' }, { level: 65, move: 'flail' }],
+    learnset: [{ level: 1, move: 'metal-claw' }, { level: 1, move: 'bubble' }, { level: 1, move: 'leer' }, { level: 1, move: 'vice-grip' }, { level: 1, move: 'harden' }, { level: 5, move: 'leer' }, { level: 12, move: 'vice-grip' }, { level: 16, move: 'harden' }, { level: 23, move: 'mud-shot' }, { level: 27, move: 'stomp' }, { level: 38, move: 'guillotine' }, { level: 42, move: 'protect' }, { level: 57, move: 'crabhammer' }, { level: 65, move: 'flail' }],
   },
   {
     dexId: 100,
@@ -1250,7 +1250,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 150,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'charge' }, { level: 1, move: 'screech' }, { level: 1, move: 'sonic-boom' }, { level: 1, move: 'tackle' }, { level: 8, move: 'screech' }, { level: 15, move: 'sonic-boom' }, { level: 21, move: 'spark' }, { level: 27, move: 'self-destruct' }, { level: 34, move: 'rollout' }, { level: 41, move: 'light-screen' }, { level: 48, move: 'swift' }, { level: 54, move: 'explosion' }, { level: 59, move: 'mirror-coat' }],
+    learnset: [{ level: 1, move: 'charge' }, { level: 1, move: 'tackle' }, { level: 1, move: 'screech' }, { level: 1, move: 'sonic-boom' }, { level: 8, move: 'screech' }, { level: 15, move: 'sonic-boom' }, { level: 21, move: 'spark' }, { level: 27, move: 'self-destruct' }, { level: 34, move: 'rollout' }, { level: 41, move: 'light-screen' }, { level: 48, move: 'swift' }, { level: 54, move: 'explosion' }, { level: 59, move: 'mirror-coat' }],
   },
   {
     dexId: 102,
@@ -1262,7 +1262,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 90,
     expYield: 98,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'barrage' }, { level: 1, move: 'hypnosis' }, { level: 1, move: 'uproar' }, { level: 7, move: 'reflect' }, { level: 13, move: 'leech-seed' }, { level: 19, move: 'confusion' }, { level: 25, move: 'stun-spore' }, { level: 31, move: 'poison-powder' }, { level: 37, move: 'sleep-powder' }, { level: 43, move: 'solar-beam' }],
+    learnset: [{ level: 1, move: 'barrage' }, { level: 1, move: 'uproar' }, { level: 1, move: 'hypnosis' }, { level: 7, move: 'reflect' }, { level: 13, move: 'leech-seed' }, { level: 19, move: 'confusion' }, { level: 25, move: 'stun-spore' }, { level: 31, move: 'poison-powder' }, { level: 37, move: 'sleep-powder' }, { level: 43, move: 'solar-beam' }],
   },
   {
     dexId: 103,
@@ -1274,7 +1274,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 212,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'barrage' }, { level: 1, move: 'confusion' }, { level: 1, move: 'hypnosis' }, { level: 19, move: 'stomp' }, { level: 31, move: 'egg-bomb' }],
+    learnset: [{ level: 1, move: 'barrage' }, { level: 1, move: 'hypnosis' }, { level: 1, move: 'confusion' }, { level: 19, move: 'stomp' }, { level: 31, move: 'egg-bomb' }],
   },
   {
     dexId: 104,
@@ -1298,7 +1298,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 124,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'bone-club' }, { level: 1, move: 'growl' }, { level: 1, move: 'headbutt' }, { level: 1, move: 'tail-whip' }, { level: 5, move: 'tail-whip' }, { level: 9, move: 'bone-club' }, { level: 13, move: 'headbutt' }, { level: 17, move: 'leer' }, { level: 21, move: 'focus-energy' }, { level: 25, move: 'bonemerang' }, { level: 32, move: 'rage' }, { level: 39, move: 'false-swipe' }, { level: 46, move: 'thrash' }, { level: 53, move: 'bone-rush' }, { level: 61, move: 'double-edge' }],
+    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'bone-club' }, { level: 1, move: 'headbutt' }, { level: 5, move: 'tail-whip' }, { level: 9, move: 'bone-club' }, { level: 13, move: 'headbutt' }, { level: 17, move: 'leer' }, { level: 21, move: 'focus-energy' }, { level: 25, move: 'bonemerang' }, { level: 32, move: 'rage' }, { level: 39, move: 'false-swipe' }, { level: 46, move: 'thrash' }, { level: 53, move: 'bone-rush' }, { level: 61, move: 'double-edge' }],
   },
   {
     dexId: 106,
@@ -1310,7 +1310,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 139,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'double-kick' }, { level: 1, move: 'revenge' }, { level: 6, move: 'meditate' }, { level: 11, move: 'rolling-kick' }, { level: 16, move: 'jump-kick' }, { level: 20, move: 'brick-break' }, { level: 21, move: 'focus-energy' }, { level: 26, move: 'high-jump-kick' }, { level: 31, move: 'mind-reader' }, { level: 36, move: 'foresight' }, { level: 41, move: 'endure' }, { level: 46, move: 'mega-kick' }, { level: 51, move: 'reversal' }],
+    learnset: [{ level: 1, move: 'revenge' }, { level: 1, move: 'double-kick' }, { level: 6, move: 'meditate' }, { level: 11, move: 'rolling-kick' }, { level: 16, move: 'jump-kick' }, { level: 20, move: 'brick-break' }, { level: 21, move: 'focus-energy' }, { level: 26, move: 'high-jump-kick' }, { level: 31, move: 'mind-reader' }, { level: 36, move: 'foresight' }, { level: 41, move: 'endure' }, { level: 46, move: 'mega-kick' }, { level: 51, move: 'reversal' }],
   },
   {
     dexId: 107,
@@ -1322,7 +1322,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 140,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'comet-punch' }, { level: 1, move: 'revenge' }, { level: 7, move: 'agility' }, { level: 13, move: 'pursuit' }, { level: 20, move: 'mach-punch' }, { level: 26, move: 'fire-punch' }, { level: 26, move: 'ice-punch' }, { level: 26, move: 'thunder-punch' }, { level: 32, move: 'sky-uppercut' }, { level: 38, move: 'mega-punch' }, { level: 44, move: 'detect' }, { level: 50, move: 'counter' }],
+    learnset: [{ level: 1, move: 'revenge' }, { level: 1, move: 'comet-punch' }, { level: 7, move: 'agility' }, { level: 13, move: 'pursuit' }, { level: 20, move: 'mach-punch' }, { level: 26, move: 'thunder-punch' }, { level: 26, move: 'ice-punch' }, { level: 26, move: 'fire-punch' }, { level: 32, move: 'sky-uppercut' }, { level: 38, move: 'mega-punch' }, { level: 44, move: 'detect' }, { level: 50, move: 'counter' }],
   },
   {
     dexId: 108,
@@ -1358,7 +1358,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 173,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'poison-gas' }, { level: 1, move: 'self-destruct' }, { level: 1, move: 'smog' }, { level: 1, move: 'tackle' }, { level: 9, move: 'smog' }, { level: 17, move: 'self-destruct' }, { level: 21, move: 'sludge' }, { level: 25, move: 'smokescreen' }, { level: 33, move: 'haze' }, { level: 44, move: 'explosion' }, { level: 51, move: 'destiny-bond' }, { level: 58, move: 'memento' }],
+    learnset: [{ level: 1, move: 'poison-gas' }, { level: 1, move: 'tackle' }, { level: 1, move: 'smog' }, { level: 1, move: 'self-destruct' }, { level: 9, move: 'smog' }, { level: 17, move: 'self-destruct' }, { level: 21, move: 'sludge' }, { level: 25, move: 'smokescreen' }, { level: 33, move: 'haze' }, { level: 44, move: 'explosion' }, { level: 51, move: 'destiny-bond' }, { level: 58, move: 'memento' }],
   },
   {
     dexId: 111,
@@ -1382,7 +1382,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 204,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'fury-attack' }, { level: 1, move: 'horn-attack' }, { level: 1, move: 'stomp' }, { level: 1, move: 'tail-whip' }, { level: 10, move: 'stomp' }, { level: 15, move: 'fury-attack' }, { level: 24, move: 'scary-face' }, { level: 29, move: 'rock-blast' }, { level: 38, move: 'horn-drill' }, { level: 46, move: 'take-down' }, { level: 58, move: 'earthquake' }, { level: 66, move: 'megahorn' }],
+    learnset: [{ level: 1, move: 'horn-attack' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'stomp' }, { level: 1, move: 'fury-attack' }, { level: 10, move: 'stomp' }, { level: 15, move: 'fury-attack' }, { level: 24, move: 'scary-face' }, { level: 29, move: 'rock-blast' }, { level: 38, move: 'horn-drill' }, { level: 46, move: 'take-down' }, { level: 58, move: 'earthquake' }, { level: 66, move: 'megahorn' }],
   },
   {
     dexId: 113,
@@ -1394,7 +1394,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 30,
     expYield: 255,
     growthRate: 'fast',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'pound' }, { level: 5, move: 'tail-whip' }, { level: 9, move: 'refresh' }, { level: 13, move: 'soft-boiled' }, { level: 17, move: 'double-slap' }, { level: 23, move: 'minimize' }, { level: 29, move: 'sing' }, { level: 35, move: 'egg-bomb' }, { level: 41, move: 'defense-curl' }, { level: 49, move: 'light-screen' }, { level: 57, move: 'double-edge' }],
+    learnset: [{ level: 1, move: 'pound' }, { level: 1, move: 'growl' }, { level: 5, move: 'tail-whip' }, { level: 9, move: 'refresh' }, { level: 13, move: 'soft-boiled' }, { level: 17, move: 'double-slap' }, { level: 23, move: 'minimize' }, { level: 29, move: 'sing' }, { level: 35, move: 'egg-bomb' }, { level: 41, move: 'defense-curl' }, { level: 49, move: 'light-screen' }, { level: 57, move: 'double-edge' }],
   },
   {
     dexId: 114,
@@ -1406,7 +1406,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 166,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'constrict' }, { level: 1, move: 'ingrain' }, { level: 4, move: 'sleep-powder' }, { level: 10, move: 'absorb' }, { level: 13, move: 'growth' }, { level: 19, move: 'poison-powder' }, { level: 22, move: 'vine-whip' }, { level: 28, move: 'bind' }, { level: 31, move: 'mega-drain' }, { level: 37, move: 'stun-spore' }, { level: 40, move: 'slam' }, { level: 46, move: 'tickle' }],
+    learnset: [{ level: 1, move: 'ingrain' }, { level: 1, move: 'constrict' }, { level: 4, move: 'sleep-powder' }, { level: 10, move: 'absorb' }, { level: 13, move: 'growth' }, { level: 19, move: 'poison-powder' }, { level: 22, move: 'vine-whip' }, { level: 28, move: 'bind' }, { level: 31, move: 'mega-drain' }, { level: 37, move: 'stun-spore' }, { level: 40, move: 'slam' }, { level: 46, move: 'tickle' }],
   },
   {
     dexId: 115,
@@ -1442,7 +1442,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 75,
     expYield: 155,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'bubble' }, { level: 1, move: 'leer' }, { level: 1, move: 'smokescreen' }, { level: 1, move: 'water-gun' }, { level: 8, move: 'smokescreen' }, { level: 15, move: 'leer' }, { level: 22, move: 'water-gun' }, { level: 29, move: 'twister' }, { level: 40, move: 'agility' }, { level: 51, move: 'hydro-pump' }, { level: 62, move: 'dragon-dance' }],
+    learnset: [{ level: 1, move: 'bubble' }, { level: 1, move: 'smokescreen' }, { level: 1, move: 'leer' }, { level: 1, move: 'water-gun' }, { level: 8, move: 'smokescreen' }, { level: 15, move: 'leer' }, { level: 22, move: 'water-gun' }, { level: 29, move: 'twister' }, { level: 40, move: 'agility' }, { level: 51, move: 'hydro-pump' }, { level: 62, move: 'dragon-dance' }],
   },
   {
     dexId: 118,
@@ -1466,7 +1466,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 170,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'peck' }, { level: 1, move: 'supersonic' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'water-sport' }, { level: 10, move: 'supersonic' }, { level: 15, move: 'horn-attack' }, { level: 24, move: 'flail' }, { level: 29, move: 'fury-attack' }, { level: 41, move: 'waterfall' }, { level: 49, move: 'horn-drill' }, { level: 61, move: 'agility' }, { level: 69, move: 'megahorn' }],
+    learnset: [{ level: 1, move: 'peck' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'water-sport' }, { level: 1, move: 'supersonic' }, { level: 10, move: 'supersonic' }, { level: 15, move: 'horn-attack' }, { level: 24, move: 'flail' }, { level: 29, move: 'fury-attack' }, { level: 41, move: 'waterfall' }, { level: 49, move: 'horn-drill' }, { level: 61, move: 'agility' }, { level: 69, move: 'megahorn' }],
   },
   {
     dexId: 120,
@@ -1478,7 +1478,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 225,
     expYield: 106,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'harden' }, { level: 1, move: 'tackle' }, { level: 6, move: 'water-gun' }, { level: 10, move: 'rapid-spin' }, { level: 15, move: 'recover' }, { level: 19, move: 'camouflage' }, { level: 24, move: 'swift' }, { level: 28, move: 'bubble-beam' }, { level: 33, move: 'minimize' }, { level: 37, move: 'light-screen' }, { level: 42, move: 'cosmic-power' }, { level: 46, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'harden' }, { level: 6, move: 'water-gun' }, { level: 10, move: 'rapid-spin' }, { level: 15, move: 'recover' }, { level: 19, move: 'camouflage' }, { level: 24, move: 'swift' }, { level: 28, move: 'bubble-beam' }, { level: 33, move: 'minimize' }, { level: 37, move: 'light-screen' }, { level: 42, move: 'cosmic-power' }, { level: 46, move: 'hydro-pump' }],
   },
   {
     dexId: 121,
@@ -1490,7 +1490,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 60,
     expYield: 207,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'rapid-spin' }, { level: 1, move: 'recover' }, { level: 1, move: 'swift' }, { level: 1, move: 'water-gun' }, { level: 33, move: 'confuse-ray' }],
+    learnset: [{ level: 1, move: 'water-gun' }, { level: 1, move: 'rapid-spin' }, { level: 1, move: 'recover' }, { level: 1, move: 'swift' }, { level: 33, move: 'confuse-ray' }],
   },
   {
     dexId: 122,
@@ -1514,7 +1514,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 187,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'quick-attack' }, { level: 6, move: 'focus-energy' }, { level: 11, move: 'pursuit' }, { level: 16, move: 'false-swipe' }, { level: 21, move: 'agility' }, { level: 26, move: 'wing-attack' }, { level: 31, move: 'slash' }, { level: 36, move: 'swords-dance' }, { level: 41, move: 'double-team' }, { level: 46, move: 'fury-cutter' }],
+    learnset: [{ level: 1, move: 'quick-attack' }, { level: 1, move: 'leer' }, { level: 6, move: 'focus-energy' }, { level: 11, move: 'pursuit' }, { level: 16, move: 'false-swipe' }, { level: 21, move: 'agility' }, { level: 26, move: 'wing-attack' }, { level: 31, move: 'slash' }, { level: 36, move: 'swords-dance' }, { level: 41, move: 'double-team' }, { level: 46, move: 'fury-cutter' }],
   },
   {
     dexId: 124,
@@ -1526,7 +1526,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 137,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'lick' }, { level: 1, move: 'lovely-kiss' }, { level: 1, move: 'pound' }, { level: 1, move: 'powder-snow' }, { level: 9, move: 'lovely-kiss' }, { level: 13, move: 'powder-snow' }, { level: 21, move: 'double-slap' }, { level: 25, move: 'ice-punch' }, { level: 35, move: 'mean-look' }, { level: 41, move: 'fake-tears' }, { level: 51, move: 'body-slam' }, { level: 57, move: 'perish-song' }, { level: 67, move: 'blizzard' }],
+    learnset: [{ level: 1, move: 'pound' }, { level: 1, move: 'lick' }, { level: 1, move: 'lovely-kiss' }, { level: 1, move: 'powder-snow' }, { level: 9, move: 'lovely-kiss' }, { level: 13, move: 'powder-snow' }, { level: 21, move: 'double-slap' }, { level: 25, move: 'ice-punch' }, { level: 35, move: 'mean-look' }, { level: 41, move: 'fake-tears' }, { level: 51, move: 'body-slam' }, { level: 57, move: 'perish-song' }, { level: 67, move: 'blizzard' }],
   },
   {
     dexId: 125,
@@ -1538,7 +1538,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 156,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'quick-attack' }, { level: 1, move: 'thunder-punch' }, { level: 9, move: 'thunder-punch' }, { level: 17, move: 'light-screen' }, { level: 25, move: 'swift' }, { level: 36, move: 'screech' }, { level: 47, move: 'thunderbolt' }, { level: 58, move: 'thunder' }],
+    learnset: [{ level: 1, move: 'quick-attack' }, { level: 1, move: 'leer' }, { level: 1, move: 'thunder-punch' }, { level: 9, move: 'thunder-punch' }, { level: 17, move: 'light-screen' }, { level: 25, move: 'swift' }, { level: 36, move: 'screech' }, { level: 47, move: 'thunderbolt' }, { level: 58, move: 'thunder' }],
   },
   {
     dexId: 126,
@@ -1550,7 +1550,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 167,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'ember' }, { level: 1, move: 'fire-punch' }, { level: 1, move: 'leer' }, { level: 1, move: 'smog' }, { level: 7, move: 'leer' }, { level: 13, move: 'smog' }, { level: 19, move: 'fire-punch' }, { level: 25, move: 'smokescreen' }, { level: 33, move: 'sunny-day' }, { level: 41, move: 'flamethrower' }, { level: 49, move: 'confuse-ray' }, { level: 57, move: 'fire-blast' }],
+    learnset: [{ level: 1, move: 'ember' }, { level: 1, move: 'leer' }, { level: 1, move: 'smog' }, { level: 1, move: 'fire-punch' }, { level: 7, move: 'leer' }, { level: 13, move: 'smog' }, { level: 19, move: 'fire-punch' }, { level: 25, move: 'smokescreen' }, { level: 33, move: 'sunny-day' }, { level: 41, move: 'flamethrower' }, { level: 49, move: 'confuse-ray' }, { level: 57, move: 'fire-blast' }],
   },
   {
     dexId: 127,
@@ -1562,7 +1562,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 200,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'focus-energy' }, { level: 1, move: 'vice-grip' }, { level: 7, move: 'bind' }, { level: 13, move: 'seismic-toss' }, { level: 19, move: 'harden' }, { level: 25, move: 'revenge' }, { level: 31, move: 'brick-break' }, { level: 37, move: 'guillotine' }, { level: 43, move: 'submission' }, { level: 49, move: 'swords-dance' }],
+    learnset: [{ level: 1, move: 'vice-grip' }, { level: 1, move: 'focus-energy' }, { level: 7, move: 'bind' }, { level: 13, move: 'seismic-toss' }, { level: 19, move: 'harden' }, { level: 25, move: 'revenge' }, { level: 31, move: 'brick-break' }, { level: 37, move: 'guillotine' }, { level: 43, move: 'submission' }, { level: 49, move: 'swords-dance' }],
   },
   {
     dexId: 128,
@@ -1610,7 +1610,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 219,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'growl' }, { level: 1, move: 'sing' }, { level: 1, move: 'water-gun' }, { level: 7, move: 'mist' }, { level: 13, move: 'body-slam' }, { level: 19, move: 'confuse-ray' }, { level: 25, move: 'perish-song' }, { level: 31, move: 'ice-beam' }, { level: 37, move: 'rain-dance' }, { level: 43, move: 'safeguard' }, { level: 49, move: 'hydro-pump' }, { level: 55, move: 'sheer-cold' }],
+    learnset: [{ level: 1, move: 'water-gun' }, { level: 1, move: 'growl' }, { level: 1, move: 'sing' }, { level: 7, move: 'mist' }, { level: 13, move: 'body-slam' }, { level: 19, move: 'confuse-ray' }, { level: 25, move: 'perish-song' }, { level: 31, move: 'ice-beam' }, { level: 37, move: 'rain-dance' }, { level: 43, move: 'safeguard' }, { level: 49, move: 'hydro-pump' }, { level: 55, move: 'sheer-cold' }],
   },
   {
     dexId: 132,
@@ -1634,7 +1634,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 92,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'helping-hand' }, { level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'growl' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'bite' }, { level: 36, move: 'baton-pass' }, { level: 42, move: 'take-down' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'helping-hand' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'growl' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'bite' }, { level: 36, move: 'baton-pass' }, { level: 42, move: 'take-down' }],
   },
   {
     dexId: 134,
@@ -1646,7 +1646,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 196,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'helping-hand' }, { level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'water-gun' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'bite' }, { level: 36, move: 'aurora-beam' }, { level: 42, move: 'haze' }, { level: 47, move: 'acid-armor' }, { level: 52, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'helping-hand' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'water-gun' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'bite' }, { level: 36, move: 'aurora-beam' }, { level: 42, move: 'haze' }, { level: 47, move: 'acid-armor' }, { level: 52, move: 'hydro-pump' }],
   },
   {
     dexId: 135,
@@ -1658,7 +1658,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 197,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'helping-hand' }, { level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'thunder-shock' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'double-kick' }, { level: 36, move: 'pin-missile' }, { level: 42, move: 'thunder-wave' }, { level: 47, move: 'agility' }, { level: 52, move: 'thunder' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'helping-hand' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'thunder-shock' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'double-kick' }, { level: 36, move: 'pin-missile' }, { level: 42, move: 'thunder-wave' }, { level: 47, move: 'agility' }, { level: 52, move: 'thunder' }],
   },
   {
     dexId: 136,
@@ -1670,7 +1670,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 198,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'helping-hand' }, { level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'ember' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'bite' }, { level: 36, move: 'fire-spin' }, { level: 42, move: 'smog' }, { level: 47, move: 'leer' }, { level: 52, move: 'flamethrower' }],
+    learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'helping-hand' }, { level: 8, move: 'sand-attack' }, { level: 16, move: 'ember' }, { level: 23, move: 'quick-attack' }, { level: 30, move: 'bite' }, { level: 36, move: 'fire-spin' }, { level: 42, move: 'smog' }, { level: 47, move: 'leer' }, { level: 52, move: 'flamethrower' }],
   },
   {
     dexId: 137,
@@ -1682,7 +1682,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 130,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'conversion' }, { level: 1, move: 'conversion-2' }, { level: 1, move: 'tackle' }, { level: 9, move: 'agility' }, { level: 12, move: 'psybeam' }, { level: 20, move: 'recover' }, { level: 24, move: 'sharpen' }, { level: 32, move: 'lock-on' }, { level: 36, move: 'tri-attack' }, { level: 44, move: 'recycle' }, { level: 48, move: 'zap-cannon' }],
+    learnset: [{ level: 1, move: 'conversion-2' }, { level: 1, move: 'tackle' }, { level: 1, move: 'conversion' }, { level: 9, move: 'agility' }, { level: 12, move: 'psybeam' }, { level: 20, move: 'recover' }, { level: 24, move: 'sharpen' }, { level: 32, move: 'lock-on' }, { level: 36, move: 'tri-attack' }, { level: 44, move: 'recycle' }, { level: 48, move: 'zap-cannon' }],
   },
   {
     dexId: 138,
@@ -1706,7 +1706,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 199,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'bite' }, { level: 1, move: 'constrict' }, { level: 1, move: 'water-gun' }, { level: 1, move: 'withdraw' }, { level: 13, move: 'bite' }, { level: 19, move: 'water-gun' }, { level: 25, move: 'mud-shot' }, { level: 31, move: 'leer' }, { level: 37, move: 'protect' }, { level: 40, move: 'spike-cannon' }, { level: 46, move: 'tickle' }, { level: 55, move: 'ancient-power' }, { level: 65, move: 'hydro-pump' }],
+    learnset: [{ level: 1, move: 'constrict' }, { level: 1, move: 'withdraw' }, { level: 1, move: 'bite' }, { level: 1, move: 'water-gun' }, { level: 13, move: 'bite' }, { level: 19, move: 'water-gun' }, { level: 25, move: 'mud-shot' }, { level: 31, move: 'leer' }, { level: 37, move: 'protect' }, { level: 40, move: 'spike-cannon' }, { level: 46, move: 'tickle' }, { level: 55, move: 'ancient-power' }, { level: 65, move: 'hydro-pump' }],
   },
   {
     dexId: 140,
@@ -1718,7 +1718,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 119,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'harden' }, { level: 1, move: 'scratch' }, { level: 13, move: 'absorb' }, { level: 19, move: 'leer' }, { level: 25, move: 'mud-shot' }, { level: 31, move: 'sand-attack' }, { level: 37, move: 'endure' }, { level: 43, move: 'metal-sound' }, { level: 49, move: 'mega-drain' }, { level: 55, move: 'ancient-power' }],
+    learnset: [{ level: 1, move: 'scratch' }, { level: 1, move: 'harden' }, { level: 13, move: 'absorb' }, { level: 19, move: 'leer' }, { level: 25, move: 'mud-shot' }, { level: 31, move: 'sand-attack' }, { level: 37, move: 'endure' }, { level: 43, move: 'metal-sound' }, { level: 49, move: 'mega-drain' }, { level: 55, move: 'ancient-power' }],
   },
   {
     dexId: 141,
@@ -1730,7 +1730,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 201,
     growthRate: 'medium',
-    learnset: [{ level: 1, move: 'absorb' }, { level: 1, move: 'fury-cutter' }, { level: 1, move: 'harden' }, { level: 1, move: 'leer' }, { level: 1, move: 'scratch' }, { level: 13, move: 'absorb' }, { level: 19, move: 'leer' }, { level: 25, move: 'mud-shot' }, { level: 31, move: 'sand-attack' }, { level: 37, move: 'endure' }, { level: 40, move: 'slash' }, { level: 46, move: 'metal-sound' }, { level: 55, move: 'mega-drain' }, { level: 65, move: 'ancient-power' }],
+    learnset: [{ level: 1, move: 'fury-cutter' }, { level: 1, move: 'scratch' }, { level: 1, move: 'harden' }, { level: 1, move: 'absorb' }, { level: 1, move: 'leer' }, { level: 13, move: 'absorb' }, { level: 19, move: 'leer' }, { level: 25, move: 'mud-shot' }, { level: 31, move: 'sand-attack' }, { level: 37, move: 'endure' }, { level: 40, move: 'slash' }, { level: 46, move: 'metal-sound' }, { level: 55, move: 'mega-drain' }, { level: 65, move: 'ancient-power' }],
   },
   {
     dexId: 142,
@@ -1790,7 +1790,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 3,
     expYield: 217,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'ember' }, { level: 1, move: 'wing-attack' }, { level: 13, move: 'fire-spin' }, { level: 25, move: 'agility' }, { level: 37, move: 'endure' }, { level: 49, move: 'flamethrower' }, { level: 61, move: 'safeguard' }, { level: 73, move: 'heat-wave' }, { level: 85, move: 'sky-attack' }],
+    learnset: [{ level: 1, move: 'wing-attack' }, { level: 1, move: 'ember' }, { level: 13, move: 'fire-spin' }, { level: 25, move: 'agility' }, { level: 37, move: 'endure' }, { level: 49, move: 'flamethrower' }, { level: 61, move: 'safeguard' }, { level: 73, move: 'heat-wave' }, { level: 85, move: 'sky-attack' }],
   },
   {
     dexId: 147,
@@ -1802,7 +1802,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 67,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'wrap' }, { level: 8, move: 'thunder-wave' }, { level: 15, move: 'twister' }, { level: 22, move: 'dragon-rage' }, { level: 29, move: 'slam' }, { level: 36, move: 'agility' }, { level: 43, move: 'safeguard' }, { level: 50, move: 'outrage' }, { level: 57, move: 'hyper-beam' }],
+    learnset: [{ level: 1, move: 'wrap' }, { level: 1, move: 'leer' }, { level: 8, move: 'thunder-wave' }, { level: 15, move: 'twister' }, { level: 22, move: 'dragon-rage' }, { level: 29, move: 'slam' }, { level: 36, move: 'agility' }, { level: 43, move: 'safeguard' }, { level: 50, move: 'outrage' }, { level: 57, move: 'hyper-beam' }],
   },
   {
     dexId: 148,
@@ -1814,7 +1814,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 144,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'thunder-wave' }, { level: 1, move: 'twister' }, { level: 1, move: 'wrap' }, { level: 8, move: 'thunder-wave' }, { level: 15, move: 'twister' }, { level: 22, move: 'dragon-rage' }, { level: 29, move: 'slam' }, { level: 38, move: 'agility' }, { level: 47, move: 'safeguard' }, { level: 56, move: 'outrage' }, { level: 65, move: 'hyper-beam' }],
+    learnset: [{ level: 1, move: 'wrap' }, { level: 1, move: 'leer' }, { level: 1, move: 'thunder-wave' }, { level: 1, move: 'twister' }, { level: 8, move: 'thunder-wave' }, { level: 15, move: 'twister' }, { level: 22, move: 'dragon-rage' }, { level: 29, move: 'slam' }, { level: 38, move: 'agility' }, { level: 47, move: 'safeguard' }, { level: 56, move: 'outrage' }, { level: 65, move: 'hyper-beam' }],
   },
   {
     dexId: 149,
@@ -1826,7 +1826,7 @@ export const GENERATED_SPECIES: readonly GeneratedSpecies[] = [
     catchRate: 45,
     expYield: 218,
     growthRate: 'slow',
-    learnset: [{ level: 1, move: 'leer' }, { level: 1, move: 'thunder-wave' }, { level: 1, move: 'twister' }, { level: 1, move: 'wrap' }, { level: 8, move: 'thunder-wave' }, { level: 15, move: 'twister' }, { level: 22, move: 'dragon-rage' }, { level: 29, move: 'slam' }, { level: 38, move: 'agility' }, { level: 47, move: 'safeguard' }, { level: 55, move: 'wing-attack' }, { level: 61, move: 'outrage' }, { level: 75, move: 'hyper-beam' }],
+    learnset: [{ level: 1, move: 'wrap' }, { level: 1, move: 'leer' }, { level: 1, move: 'thunder-wave' }, { level: 1, move: 'twister' }, { level: 8, move: 'thunder-wave' }, { level: 15, move: 'twister' }, { level: 22, move: 'dragon-rage' }, { level: 29, move: 'slam' }, { level: 38, move: 'agility' }, { level: 47, move: 'safeguard' }, { level: 55, move: 'wing-attack' }, { level: 61, move: 'outrage' }, { level: 75, move: 'hyper-beam' }],
   },
   {
     dexId: 150,

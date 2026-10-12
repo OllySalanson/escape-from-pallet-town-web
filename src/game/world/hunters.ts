@@ -37,10 +37,24 @@ import type { CastCharacterDesignId } from './characterDesigns';
  *   nobody made.
  * - **Misty's Psyduck**, the one that follows her everywhere. It throws
  *   Scratch, and learns no Water move before 50; Golduck from 33.
- * - **Lt. Surge's Pikachu**, from his own FireRed team, Raichu from 24 as his is.
- * - **Koga's Koffing**, which leads his FireRed team, Weezing from 35.
- * - **Sabrina's Drowzee**: a Psychic of Saffron, Hypno from 26, and the one
- *   Psychic line measured fair to all three starters.
+ * - **Lt. Surge's Voltorb**, from his own FireRed team, Electrode from 30. It
+ *   learns no Electric attack before Spark at 21.
+ * - **Koga's Grimer**, whose line is his FireRed Muk, Muk from 38.
+ * - **Sabrina's Venonat**, whose line is her FireRed Venomoth, Venomoth from
+ *   31.
+ *
+ * Surge led with his Pikachu, Koga with his Koffing and Sabrina with a Drowzee
+ * until every species took FireRed's own learnset (the captain, 2026-10-11),
+ * and then all three failed the floor below on the last ordinary rung: a
+ * FireRed Pikachu knows Thunder Shock from level 1 and a lone Lv 5 Squirtle
+ * beat it 9% of the time; the Koffing took a Lv 10 Squirtle to 53% and the
+ * Drowzee's Confusion at 11 a Lv 13 Bulbasaur to 56%, because a FireRed
+ * Squirtle has nothing of its own but Bubble before 13 and a Bulbasaur nothing
+ * typed before Vine Whip at 10. Each now leads with the first stage of
+ * another Pokemon from that leader's own FireRed team, and all three clear the
+ * floor against every lone starter (firstmate's decision, the same day). The
+ * Venonat refused above was refused against the old kits, when a Bulbasaur's
+ * Vine Whip was its whole answer; with Leech Seed it is one answer of two.
  *
  * Each rival's ladder is measured on its own, and `hunter.test.ts` holds every
  * one to the floor a lone starter must clear on the last ordinary rung.
@@ -132,7 +146,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     design: 'lt-surge',
     personality: 'The Lightning American. Loud, a soldier first, calls everyone kid, respects a fighter.',
     temperament: 'ordinary',
-    signature: 'pikachu',
+    signature: 'voltorb',
     arrival: 'LT. SURGE is on your trail! "Hey, kid! Nowhere to hide in a war zone!"',
     caught: ['LT. SURGE: "Hey, kid! Caught you red-handed!"', 'LT. SURGE: "You won\'t live long in combat!"'],
     getaway: 'LT. SURGE: "Tactical retreat, huh? Smart move, soldier!"',
@@ -145,7 +159,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     design: 'koga',
     personality: 'A ninja master of poison. Patient, theatrical, laughs before he strikes.',
     temperament: 'ordinary',
-    signature: 'koffing',
+    signature: 'grimer',
     arrival: 'KOGA is on your trail! "Fwahahaha! A ninja leaves no footprints."',
     caught: ['KOGA: "Fwahahaha! Did you not feel my eyes on you?"', 'KOGA: "Despair to the creeping horror of poison!"'],
     getaway: 'KOGA: "Hmph. You slip away like smoke... for now."',
@@ -158,7 +172,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     design: 'sabrina',
     personality: 'The psychic of Saffron. Calm, eerie, already knows where you are going.',
     temperament: 'ordinary',
-    signature: 'drowzee',
+    signature: 'venonat',
     arrival: 'SABRINA is on your trail! "I had a vision of your arrival."',
     caught: ['SABRINA: "I knew you would come this way."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
     getaway: 'SABRINA: "I did not foresee that. How interesting."',

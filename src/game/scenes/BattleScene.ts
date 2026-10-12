@@ -161,6 +161,7 @@ import {
   combatantSpot,
   combatantEntryX,
   statusPlateLayout,
+  captionBySentence,
   fitCaption,
   CAPTION_LINE_WIDTH,
   formatTargetRow,
@@ -1844,7 +1845,9 @@ export class BattleScene extends Phaser.Scene {
         ),
       )
       .setColor(PANEL_GUIDANCE_INK);
-    this.moveGuidanceTexts[1]?.setText(this.fitCaption(guidance.matchup)).setColor(MATCHUP_COLORS[guidance.tone]);
+    this.moveGuidanceTexts[1]
+      ?.setText(this.fitCaption(captionBySentence(guidance.matchup)))
+      .setColor(MATCHUP_COLORS[guidance.tone]);
   }
 
   private confirm(): void {
@@ -3592,6 +3595,9 @@ export class BattleScene extends Phaser.Scene {
 
     if (step.target) {
       this.animateHpDelta(slotRef(step.target, step.targetSlot), step.hpDelta);
+    }
+    if (step.alsoHp) {
+      this.animateHpDelta(slotRef(step.alsoHp.side, step.alsoHp.slot), step.alsoHp.hpDelta);
     }
   }
 
