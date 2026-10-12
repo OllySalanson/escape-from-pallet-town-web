@@ -83,6 +83,7 @@ function inARaid(mapId: BuiltInMapId, pack: readonly ItemId[] = [], bag = new Ba
     defeatedTrainerIds: new Set<string>(),
     hunterState: { spawned: false, defeated: false, position: null },
     idleFigures: [],
+    caughtLegends: [],
     packReseated: false,
     cameras: { main: { shake: vi.fn(), flash: vi.fn() } },
     refreshExtractionMarkers,
