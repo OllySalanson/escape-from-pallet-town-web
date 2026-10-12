@@ -58,12 +58,6 @@ export function openNamingScreen(
       event.preventDefault();
       settle(typed());
     };
-    field.addEventListener('keydown', (event) => {
-      // A held Enter is the key that answered YES, still down: it is not a name.
-      if (event.key === 'Enter' && event.repeat) {
-        event.preventDefault();
-      }
-    });
     // Only what a nickname may hold is kept as it is typed, so the line never
     // shows a letter that would be taken out when it is given.
     field.addEventListener('input', () => {

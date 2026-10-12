@@ -347,6 +347,23 @@ describe('an open overlay owns the keyboard', () => {
     overlay.destroy();
   });
 
+  it('keeps a held Enter in a text field from submitting its form', () => {
+    // The naming screen opens on the Enter that answered YES to a nickname,
+    // and the field takes the focus: held a moment longer, its repeats
+    // submitted the form and the Pokemon went unnamed. No listener on the
+    // field can stop them, because the key never reaches the field.
+    const overlay = openOverlay();
+    const field = { tagName: 'INPUT' };
+
+    const first = fakeWindow.press({ key: 'Enter', target: field });
+    const repeats = [1, 2, 3].map(() => fakeWindow.press({ key: 'Enter', repeat: true, target: field }));
+
+    expect(first.defaultPrevented).toBe(false);
+    expect(repeats.every((event) => event.defaultPrevented)).toBe(true);
+    expect(overlay.keys).toEqual([]);
+    overlay.destroy();
+  });
+
   it('releases once however many times a scene tears the overlay down', () => {
     const overlay = openOverlay();
     overlay.destroy();
