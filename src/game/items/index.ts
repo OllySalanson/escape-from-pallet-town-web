@@ -22,6 +22,7 @@ export {
   footprintOf,
   gridCells,
   growGridColumns,
+  lastBlockOf,
   packContents,
   roomFor,
   stackSizeOf,

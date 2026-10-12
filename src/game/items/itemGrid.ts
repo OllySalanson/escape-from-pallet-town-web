@@ -152,6 +152,15 @@ export function blocksFor(itemId: string, quantity: number): number {
   return quantity <= 0 ? 0 : Math.ceil(quantity / stackSizeOf(itemId));
 }
 
+/**
+ * How many of `quantity` have to be put down to free one block: one of most
+ * things, and for money the part-filled bundle - ₽45 is one square, and
+ * putting down ₽1 of it frees nothing.
+ */
+export function lastBlockOf(itemId: string, quantity: number): number {
+  return quantity <= 0 ? 0 : quantity - (blocksFor(itemId, quantity) - 1) * stackSizeOf(itemId);
+}
+
 /** The squares a quantity of one id takes up, ignoring whether they are free. */
 export function cellsFor(itemId: string, quantity: number): number {
   const footprint = footprintOf(itemId);

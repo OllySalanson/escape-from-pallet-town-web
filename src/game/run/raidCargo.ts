@@ -1,4 +1,4 @@
-import { ITEM_DEFINITIONS, blocksFor, fitsInGrid, stackSizeOf, type Bag, type GridCargo } from '../items';
+import { ITEM_DEFINITIONS, fitsInGrid, lastBlockOf, type Bag, type GridCargo } from '../items';
 import type { Pokemon } from '../pokemon';
 import { cargoSquaresLabel, pokemonCargo, pokemonCargoCells } from '../pokemon/pokemonCargo';
 import type { RunSnapshot } from './RunManager';
@@ -118,7 +118,7 @@ export function packRoomChoices(
     (item) => (contents[item.id] ?? 0) > (item.id === keepOne ? 1 : 0),
   ).map((item) => {
     const carried = contents[item.id];
-    const drops = carried - (blocksFor(item.id, carried) - 1) * stackSizeOf(item.id);
+    const drops = lastBlockOf(item.id, carried);
     return {
       itemId: item.id,
       displayName: item.displayName,
