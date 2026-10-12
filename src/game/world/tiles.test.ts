@@ -5,6 +5,9 @@ import { OVERWORLD_TILESET } from './tileset/overworldTileset';
 import { CLASSIC_TILESET } from './tileset/classicTileset';
 import { FRLG_TILESET } from './tileset/frlgTileset';
 import { POKEMON_GROUND_TILESET } from './tileset/pokemonGround';
+import { KANTO_TILESET } from './tileset/kantoTileset';
+import { PLAYER_MAP_TILESET, type PlayerMapPropName } from './tileset/playerMapTileset';
+import { sketchViridianCity } from './maps/viridianCity';
 
 /** A small map drawn as character art, the way a real map is authored. */
 function sketch(rows: readonly string[]) {
@@ -273,5 +276,55 @@ describe('building a map from a sketch and a catalogue', () => {
     // And the river beside it carries on as river.
     expect(ground.tiles[2][1]).toBe(water.fill);
     expect(ground.tiles[1][1]).toBe(water['edge-n']);
+  });
+});
+
+describe('a landmark planted on a wood (a map made before the maker cleared one)', () => {
+  /** A wood with a gym planted over its top edge: its roof on grass, its walls in the trees. */
+  function gymOnTheWood(): MapSketch<PlayerMapPropName> {
+    const rows = Array.from({ length: 16 }, (_, y) => (y >= 6 ? 'T'.repeat(16) : '.'.repeat(16)));
+    const map = new MapSketch<PlayerMapPropName>({ width: 16, height: 16, fill: '.' });
+    map.draw(0, 0, rows);
+    map.plant(5, 3, 'gym');
+    return map;
+  }
+  const gym = KANTO_TILESET.props.gym;
+  const layers = buildMapLayers(gymOnTheWood(), PLAYER_MAP_TILESET);
+  const lattice = PLAYER_MAP_TILESET.materials.tree.lattice!;
+
+  it('draws no tip of a tree under it over its roof', () => {
+    for (let y = 3; y < 3 + gym.height; y += 1) {
+      for (let x = 5; x < 5 + gym.width; x += 1) {
+        expect(layers.canopy.tiles[y][x], `${x},${y}`).toBe(-1);
+      }
+    }
+  });
+
+  it('draws no half of a tree round it: a tree it stands half on is a bush where it shows', () => {
+    // The gym is 6 wide from column 5, so the trees in columns 4-5 and 10-11
+    // are half under it.
+    for (let y = 6; y < 3 + gym.height; y += 1) {
+      expect(layers.overlay.tiles[y][4], `4,${y}`).toBe(lattice.stray);
+      expect(layers.overlay.tiles[y][11], `11,${y}`).toBe(lattice.stray);
+    }
+  });
+
+  it('keeps its collision: the wood under it is still as solid as it was', () => {
+    expect(layers.collision[7][4]).toBe(true);
+    expect(layers.collision[7][7]).toBe(true);
+  });
+
+  it('changes nothing on a map with no landmark on its wood', () => {
+    const viridian = sketchViridianCity();
+    const onWood = viridian.props().flatMap((planted) => {
+      const prop = KANTO_TILESET.props[planted.name];
+      return prop.cells.flatMap((cell, index) => {
+        const x = planted.x + (index % prop.width);
+        const y = planted.y + Math.floor(index / prop.width);
+        return cell.tile >= 0 && !cell.canopy && viridian.materialAt(x, y) === 'tree' ? [`${planted.name}@${x},${y}`] : [];
+      });
+    });
+    // Viridian City is the one shipped map drawn on the lattice: nothing of it stands in its wood.
+    expect(onWood).toEqual([]);
   });
 });
