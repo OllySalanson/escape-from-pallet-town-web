@@ -227,7 +227,7 @@ sightseeing.
 
 - Pokémon that learn moves as they level, and ask before forgetting one.
 - Evolution by level and by five evolution stones.
-- Nine TMs and HMs to find or barter for.
+- Ten TMs and HMs to find, barter for or earn.
 - A double battle, if you get far enough to earn it.
 - Rain in the places that are made of water, and it changes how the fight goes.
 - Trainers who watch a stretch of road. Step into it and you're paying a toll.

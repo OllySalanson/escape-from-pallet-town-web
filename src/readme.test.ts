@@ -22,7 +22,7 @@ function controlCell(key: string, column: 1 | 2): string | undefined {
 
 describe('README', () => {
   it('counts the discs the game ships', () => {
-    const claim = /^- (\w+) TMs and HMs to find or barter for\.$/m.exec(README)?.[1];
+    const claim = /^- (\w+) TMs and HMs to /m.exec(README)?.[1];
     expect(claim?.toLowerCase()).toBe(NUMBER_WORDS[MACHINE_DEFINITIONS.length]);
   });
 
