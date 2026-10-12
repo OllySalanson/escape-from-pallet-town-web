@@ -57,6 +57,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import {
   getStarterSpecies,
   Stash,
+  type DayCareStay,
   type RaidCondition,
   type RaidSettlement,
   type RunResult,
@@ -145,6 +146,19 @@ export interface SavedStash {
    * starter's line (`inferPartnerId`) - so no version bump.
    */
   readonly partnerId?: string | null;
+  /**
+   * The Pokemon left with the Day-Care Man (`hub/dayCare.ts`), under its stash
+   * id, and how many raids had ended when it was left. Absent on every save
+   * written before the Day-Care opened, which reads as nobody there - so no
+   * version bump.
+   */
+  readonly dayCare?: SavedDayCareStay | null;
+}
+
+export interface SavedDayCareStay {
+  readonly id: string;
+  readonly pokemon: SavedPokemon;
+  readonly leftAfterRaids: number;
 }
 
 export interface RaidProgress {
@@ -1665,6 +1679,19 @@ function uniqueStrings(value: unknown): string[] {
     : [];
 }
 
+/**
+ * A copy of a Pokemon made the way the save makes one, so nothing the copy is
+ * put through can reach the original: the Day-Care shows a Pokemon grown by
+ * the raids it has been away for without growing the one it is keeping.
+ */
+export function copyPokemon(pokemon: Pokemon): Pokemon {
+  const copy = deserializePokemon(serializePokemon(pokemon));
+  if (!copy) {
+    throw new Error(`${pokemon.name} could not be copied.`);
+  }
+  return copy;
+}
+
 function serializePokemon(pokemon: Pokemon): SavedPokemon {
   return {
     speciesId: pokemon.base.id,
@@ -1752,7 +1779,29 @@ function serializeStash(stash: Stash): SavedStash {
     items: stash.listItems(),
     boxes: stash.listBoxes().map(({ name, pokemonIds }) => ({ name, pokemonIds: [...pokemonIds] })),
     partnerId: stash.partnerId(),
+    dayCare: serializeDayCare(stash.dayCare()),
   };
+}
+
+function serializeDayCare(stay: DayCareStay | null): SavedDayCareStay | null {
+  return stay === null
+    ? null
+    : { id: stay.id, pokemon: serializePokemon(stay.pokemon), leftAfterRaids: stay.leftAfterRaids };
+}
+
+/** A stay read back, or null for anything that is not one: nobody is invented. */
+function deserializeDayCare(value: unknown, saveVersion: number): DayCareStay | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const stored = deserializeStashedPokemon(value, saveVersion);
+  if (!stored) {
+    return null;
+  }
+  const raids = typeof value.leftAfterRaids === 'number' && Number.isFinite(value.leftAfterRaids)
+    ? Math.max(0, Math.floor(value.leftAfterRaids))
+    : 0;
+  return { id: stored.id, pokemon: stored.pokemon, leftAfterRaids: raids };
 }
 
 function deserializeBoxes(value: unknown): StashBox[] {
@@ -1798,6 +1847,7 @@ function deserializeStash(value: unknown, saveVersion: number): Stash {
     // A save written before the partner was recorded has none here, and
     // `deserializeGame` settles it, because only it knows the starter's line.
     partnerId: typeof value.partnerId === 'string' ? value.partnerId : null,
+    dayCare: deserializeDayCare(value.dayCare, saveVersion),
   });
 }
 

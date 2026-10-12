@@ -495,7 +495,13 @@ export function scrollTopCoverHeight(
   unit: number,
 ): number {
   const line = pane.top + head;
-  const cut = rows.filter((row) => row.top < line - 0.5 && row.bottom > line + 0.5);
+  // Less than half a game pixel off a row's top is not a cut anybody can see.
+  // A list shrunk to make room for its dossier can be a screen pixel shorter
+  // than what is in it, so the cursor arriving on its first row scrolls it by
+  // that one pixel - and read as a cut, the box strip at the top of the
+  // Pokémon Center's list was hidden whole, Sort and Find and all.
+  const slack = Math.max(0.5, unit / 2);
+  const cut = rows.filter((row) => row.top < line - slack && row.bottom > line + 0.5);
   if (cut.length === 0) {
     return 0;
   }

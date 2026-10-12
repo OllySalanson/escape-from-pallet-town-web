@@ -89,6 +89,8 @@ import { pennantsPoster } from '../base/pennants';
 import type { PaintedPicture } from '../world/minimap';
 import {
   arrivalPlace,
+  directionBetween,
+  sameTile,
   partnerOf,
   partnerReaction,
   turnToPartner,
@@ -96,6 +98,16 @@ import {
   type PartnerPlaceName,
 } from '../base/partner';
 import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
+import { DAY_CARE_KEEPER, PEN_HOME, nextPenTile } from '../base/dayCarePen';
+import { dayCareStatusLine, raidsCompleted } from '../hub/dayCare';
+import {
+  POKEMON_ICON_FRAME_MS,
+  POKEMON_ICON_TEXTURE,
+  isFigureSpecies,
+  pokemonIconFrames,
+  pokemonSoleDrop,
+  type FigureSpeciesId,
+} from '../world/pokemonFigures';
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
@@ -300,6 +312,13 @@ export class BaseScene extends Phaser.Scene {
   private readonly stepEnd = new Phaser.Math.Vector2();
   /** The partner walking at the player's heel, or null when nobody is (`base/partner.ts`). */
   private partner: PartnerFigure | null = null;
+  /** The Pokemon the Day-Care Man is raising, walking about his pen, while the player is in the yard. */
+  private penPokemon: {
+    readonly sprite: Phaser.GameObjects.Sprite;
+    readonly species: FigureSpeciesId;
+    tile: GridPosition;
+    nextStepMs: number;
+  } | null = null;
   /** Counts down while a tap towards the partner is turning the player rather than walking them. */
   private turnToPartnerMs: number | null = null;
 
@@ -366,6 +385,7 @@ export class BaseScene extends Phaser.Scene {
     this.inspectLabel = null;
     this.inspectMark = null;
     this.partner = null;
+    this.penPokemon = null;
     this.turnToPartnerMs = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
@@ -404,12 +424,22 @@ export class BaseScene extends Phaser.Scene {
       };
       this.fixtures = standingFixtures(loaded.raidProgress.workshopUpgrades);
       const returning = data.from === undefined ? undefined : doorNamed(data.from);
-      this.currentTile = returning
-        ? { ...returning.returnTo }
-        : data.arrival === 'raid'
-          ? { ...BASE_LANDING }
-          : { ...BASE_SPAWN };
-      this.facing = returning ? 'down' : 'up';
+      // Backing out of the Day-Care's screen stands the player back where they
+      // spoke to him, still facing him.
+      const standing =
+        data.at !== undefined && map.collision[data.at.y]?.[data.at.x] === false ? data.at : undefined;
+      this.currentTile = standing
+        ? { ...standing }
+        : returning
+          ? { ...returning.returnTo }
+          : data.arrival === 'raid'
+            ? { ...BASE_LANDING }
+            : { ...BASE_SPAWN };
+      this.facing = standing
+        ? (directionBetween(standing, DAY_CARE_KEEPER.position) ?? 'up')
+        : returning
+          ? 'down'
+          : 'up';
     }
     this.bounds = { width: this.place.width, height: this.place.height };
     this.collision = this.place.collision.map((row) => [...row]);
@@ -450,6 +480,7 @@ export class BaseScene extends Phaser.Scene {
     }
     this.updateWalking(deltaMs);
     this.partner?.update(deltaMs);
+    this.wanderPen(deltaMs);
   }
 
   private updateWalking(deltaMs: number): void {
@@ -828,9 +859,17 @@ export class BaseScene extends Phaser.Scene {
       .setDepth(atRow(MARKER_BAND, area.y + area.height - 1));
   }
 
-  /** The keeper of the room the player is in. The yard has nobody standing in it, and nor does the house. */
+  /**
+   * The keeper of the room the player is in. The house has nobody standing in
+   * it, and the yard has only the Day-Care Man at his pen and whoever he is
+   * raising inside it.
+   */
   private createFigures(): void {
-    const keeper = this.place.room?.room.keeper;
+    if (!this.place.room) {
+      this.createDayCare();
+      return;
+    }
+    const keeper = this.place.room.room.keeper;
     if (!keeper) {
       return;
     }
@@ -846,6 +885,84 @@ export class BaseScene extends Phaser.Scene {
       .setTint(appearance.tint ?? NO_TINT)
       .setDepth(atRow(FIGURE_BAND, keeper.position.y));
     this.figures.set(keeper.id, sprite);
+  }
+
+  private createDayCare(): void {
+    const keeper = DAY_CARE_KEEPER;
+    const appearance = getWorldCharacterAppearance('npc', keeper.design);
+    const sprite = this.add
+      .sprite(
+        keeper.position.x * TILE_SIZE,
+        keeper.position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+        appearance.textureKey,
+        worldCharacterIdleFrame(appearance, keeper.facing),
+      )
+      .setOrigin(0, 0)
+      .setTint(appearance.tint ?? NO_TINT)
+      .setDepth(atRow(FIGURE_BAND, keeper.position.y));
+    this.figures.set(keeper.id, sprite);
+
+    const stay = this.savedGame.stash.dayCare();
+    const species = stay?.pokemon.base.id;
+    if (!species || !isFigureSpecies(species)) {
+      return;
+    }
+    // FireRed's own party icon, bobbing as the party menu bobs it - the one
+    // picture of a Pokemon the game has for every species.
+    const [first, second] = pokemonIconFrames(species);
+    const key = `pokemon-icon-${species}`;
+    if (!this.anims.exists(key)) {
+      this.anims.create({
+        key,
+        frames: [
+          { key: POKEMON_ICON_TEXTURE, frame: first },
+          { key: POKEMON_ICON_TEXTURE, frame: second },
+        ],
+        frameRate: 1000 / POKEMON_ICON_FRAME_MS,
+        repeat: -1,
+      });
+    }
+    const tile = { ...PEN_HOME };
+    const pokemon = this.add
+      .sprite(...this.penPoint(tile, species), POKEMON_ICON_TEXTURE, first)
+      .setOrigin(0.5, 1)
+      .setDepth(atRow(FIGURE_BAND, tile.y))
+      .play(key);
+    this.penPokemon = { sprite: pokemon, species, tile, nextStepMs: PEN_STEP_EVERY_MS };
+  }
+
+  /** Where an icon stands on a tile of the pen: centred, its feet on the tile's last row. */
+  private penPoint(tile: GridPosition, species: FigureSpeciesId): [number, number] {
+    return [tile.x * TILE_SIZE + TILE_SIZE / 2, (tile.y + 1) * TILE_SIZE + pokemonSoleDrop(species)];
+  }
+
+  /**
+   * The Pokemon in the pen potters about: a tile at a time, every few seconds,
+   * never out of the fence. It is the yard's own life, so it is off the
+   * player's clock, and it waits while a line is being read.
+   */
+  private wanderPen(deltaMs: number): void {
+    const pen = this.penPokemon;
+    if (!pen || this.dialogBox.visible) {
+      return;
+    }
+    pen.nextStepMs -= deltaMs;
+    if (pen.nextStepMs > 0) {
+      return;
+    }
+    pen.nextStepMs = PEN_STEP_EVERY_MS + Math.random() * PEN_STEP_SPREAD_MS;
+    const to = nextPenTile(pen.tile, Math.random());
+    if (to.x === pen.tile.x && to.y === pen.tile.y) {
+      return;
+    }
+    // FireRed's icons look left; one walking right is turned round.
+    if (to.x !== pen.tile.x) {
+      pen.sprite.setFlipX(to.x > pen.tile.x);
+    }
+    pen.tile = to;
+    const [x, y] = this.penPoint(to, pen.species);
+    pen.sprite.setDepth(atRow(FIGURE_BAND, to.y));
+    this.tweens.add({ targets: pen.sprite, x, y, duration: STEP_DURATION_MS * 2 });
   }
 
   private createPlayer(): void {
@@ -936,6 +1053,18 @@ export class BaseScene extends Phaser.Scene {
         }),
       );
     }
+    this.worldLabels.push(
+      new WorldLabel(this, {
+        subject: figureRect(DAY_CARE_KEEPER.position),
+        text: `${DAY_CARE_KEEPER.name}\n${dayCareStatusLine(
+          this.savedGame.stash,
+          raidsCompleted(this.savedGame.raidProgress, this.savedGame.raidInFlight),
+        )}`,
+        tone: DOOR_TONE,
+        depth: atRow(CAPTION_BAND, DAY_CARE_KEEPER.position.y),
+        speech: { voice: 'name', tiles: [DAY_CARE_KEEPER.position] },
+      }),
+    );
     for (const fixture of this.fixtures) {
       this.worldLabels.push(
         new WorldLabel(this, {
@@ -1024,6 +1153,9 @@ export class BaseScene extends Phaser.Scene {
       // Nothing else to say in the yard: the keys this save has not used yet
       // (`input/keyBindings.ts`). A newcomer arrives here first, and the first
       // control hint used to be inside Oak's Lab (playtest 43).
+      if (!partner && sameTile(facing, DAY_CARE_KEEPER.position)) {
+        return `[SPACE] ${DAY_CARE_KEEPER.name}`;
+      }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
@@ -1171,6 +1303,8 @@ export class BaseScene extends Phaser.Scene {
         ],
         keepClear: [
           ...(room?.keeper ? [figureRect(room.keeper.position)] : []),
+          ...(room ? [] : [figureRect(DAY_CARE_KEEPER.position)]),
+          ...(this.penPokemon ? [figureRect(this.penPokemon.tile)] : []),
           ...(this.partner?.place.out ? [this.partner.rect()] : []),
         ],
         canopy: this.canopyInView(bounds),
@@ -1314,7 +1448,7 @@ export class BaseScene extends Phaser.Scene {
 
   /** Whether a tile can be walked onto: the map, and whoever is standing on it. */
   public isBlocked(tile: GridPosition): boolean {
-    const keeper = this.place.room?.room.keeper?.position;
+    const keeper = this.place.room ? this.place.room.room.keeper?.position : DAY_CARE_KEEPER.position;
     return (
       (this.collision[tile.y]?.[tile.x] ?? true) ||
       (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y)
@@ -1543,6 +1677,10 @@ export class BaseScene extends Phaser.Scene {
       this.enterRoom(door);
       return;
     }
+    if (sameTile(target, DAY_CARE_KEEPER.position)) {
+      this.openHub({ savedGame: this.savedGame, view: 'daycare', at: { ...this.currentTile } });
+      return;
+    }
     const fixture = this.fixtures.find(
       (standing) => standing.at.x === target.x && standing.at.y === target.y,
     );
@@ -1697,6 +1835,10 @@ export class BaseScene extends Phaser.Scene {
     );
   }
 }
+
+/** How often the Pokemon in the Day-Care's pen thinks about taking a step, and how much that wanders. */
+const PEN_STEP_EVERY_MS = 1800;
+const PEN_STEP_SPREAD_MS = 2400;
 
 /** How long the screen takes to go dark for a sleep, and how long it stays dark. */
 const SLEEP_FADE_MS = 450;

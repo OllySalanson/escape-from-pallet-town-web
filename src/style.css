@@ -2083,6 +2083,7 @@ button {
 :where(.pixel-ui) .kit-layout > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
 :where(.pixel-ui) .loadout-side > .px-window,
+:where(.pixel-ui) .daycare-layout > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
 :where(.pixel-ui) .confirm-layout > .px-window,
 :where(.pixel-ui) .raid-bag-layout > .px-window,
@@ -2110,6 +2111,7 @@ button {
 :where(.pixel-ui) .kit-layout > .px-window,
 :where(.pixel-ui) .kit-layout > .loadout-side > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
+:where(.pixel-ui) .daycare-layout > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
 :where(.pixel-ui) .confirm-layout > .px-window,
 :where(.pixel-ui) .raid-bag-layout > .px-window,
@@ -2122,6 +2124,7 @@ button {
 .pixel-ui .objectives-panel:has(.px-detail),
 .pixel-ui .stash-layout > .px-window:has(.px-detail),
 .pixel-ui .loadout-layout > .px-window:has(.px-detail),
+.pixel-ui .daycare-layout > .px-window:has(.px-detail),
 .pixel-ui .raid-bag-layout > .px-window:has(.px-detail),
 .pixel-ui .raid-party-layout > .px-window:has(.px-detail) {
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -2135,6 +2138,7 @@ button {
    backdrop, with the raid party's TAKE below the fold (playtests 38 and 44). */
 .pixel-ui .stash-layout > .px-window:has(.px-dossier),
 .pixel-ui .loadout-layout > .px-window:has(.px-dossier),
+.pixel-ui .daycare-layout > .px-window:has(.px-dossier),
 .pixel-ui .raid-party-layout > .px-window:has(.px-dossier) {
   /* A column of boxes rather than a grid, because only a flex container
      shrinks what is in it to the window's `max-height`: grid rows sized to
@@ -2183,6 +2187,13 @@ button {
   /* Brock across the top, then the ladder taking what is left - the same two
      rows Bill's counter stands in, so the two shops read as one kind of place. */
   grid-template-rows: auto minmax(0, 1fr);
+}
+/* The Day-Care: the man across the top, then who he is raising or the list
+   to choose from taking what is left, then - while he is raising one - the bar
+   that takes it back. */
+:where(.pixel-ui) .daycare-layout {
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 /* What this vault cannot pay yet, in the ink a risk is written in. The element
    selector is load-bearing: `.pixel-ui small` is soft ink at a higher

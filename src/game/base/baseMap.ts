@@ -38,7 +38,7 @@ import { standingFixtures } from './fixtures';
  * that name would have the player dropping into Pallet Town from Pallet Town.
  */
 
-export const BASE_MAP_WIDTH = 35;
+export const BASE_MAP_WIDTH = 43;
 export const BASE_MAP_HEIGHT = 21;
 
 /** What the screens call this place, on the way out of every one of them. */
@@ -75,7 +75,7 @@ export const NOTICE_BOARD: BaseSign = {
   lines: [
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
     'OAK kits you out. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
-    'THE BOLTHOLE, at the end of the row, is yours.',
+    'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
   ],
 };
 
@@ -115,6 +115,10 @@ export interface BaseMapDefinition {
  * stand on. The first row of them stands three rows down rather than two: the
  * top of a crown is drawn in the row above its tree (`PropDefinition.brim`),
  * and a tree any higher has the edge of the map slice it flat.
+ *
+ * Past THE BOLTHOLE's garden the lawn carries on east to the DAY-CARE: `F` is
+ * its fence, a ring round the patch of grass the Pokemon left there walks
+ * about in (`dayCarePen.ts`).
  */
 function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName> {
   const map = new MapSketch<BasePropName>({
@@ -133,27 +137,27 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   });
 
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TtT......TTtTTTtTTTtTTTtTTTtTTTTTTT',
-    'TTT...........TTTTTTTTTTT.......TTT',
-    'TTT...........T....T....T.......TTT',
-    'TtT...........T....T....T.......TTT',
-    'TTT...........T....T....T.......TTT',
-    'TTT...,,,,,,,,,,,,,,,,,,,.......TTT',
-    'TtT...,,,,,,,,,,,,,,,,,,,.......TTT',
-    'TTT...,,,,,,,,,,,,,,,,,,,.......TTT',
-    'TTT...,,,,,,,,,,,,,,,,,,,.......TtT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtT......TTtTTTtTTTtTTTtTTTtTTTTTTTtTTTtTTT',
+    'TTT...........TTTTTTTTTTT.......TTTTTTTTTTT',
+    'TTT...........T....T....T.......T..FFFFFFFT',
+    'TtT...........T....T....T.......T..F.....FT',
+    'TTT...........T....T....T.......T..F.....FT',
+    'TTT...,,,,,,,,,,,,,,,,,,,..........F.....FT',
+    'TtT...,,,,,,,,,,,,,,,,,,,..........F.....FT',
+    'TTT...,,,,,,,,,,,,,,,,,,,..........FFFFFFFT',
+    'TTT...,,,,,,,,,,,,,,,,,,,................TT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
   // The four buildings, each with its own doorway cut into it by the base's

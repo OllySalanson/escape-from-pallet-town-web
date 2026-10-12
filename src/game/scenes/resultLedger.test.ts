@@ -151,6 +151,11 @@ describe('the result screen ledger', () => {
     expect(scrollTopCoverHeight(pane, 40, rows, 3)).toBe(75);
     // A row that would swallow most of the pane is cut rather than hide it.
     expect(scrollTopCoverHeight(pane, 0, [{ top: 100, bottom: 480 }], 3)).toBe(0);
+    // A pane scrolled by one screen pixel at 3x has cut nothing: the box strip
+    // over the Pokémon Center's list was hidden whole by that pixel.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 199, bottom: 231 }, ...rows.slice(1)], 3)).toBe(0);
+    // A whole game pixel off its top is a cut.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 197, bottom: 231 }, ...rows.slice(1)], 3)).toBe(33);
   });
 
   it('counts what is under the strip rather than only saying there is something', () => {

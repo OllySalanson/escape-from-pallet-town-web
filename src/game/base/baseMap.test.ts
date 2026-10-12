@@ -11,6 +11,7 @@ import {
 } from './baseMap';
 import { BASE_DOORS } from './doors';
 import { BASE_FIXTURES, standingFixtures } from './fixtures';
+import { DAY_CARE_KEEPER, PEN_HOME, nextPenTile, penTiles } from './dayCarePen';
 import { stepsFrom as walkFrom, stepsTo } from './baseWalks';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
@@ -103,10 +104,12 @@ describe('the base map', () => {
         ]);
       }
       // And every walkable tile is reachable: nothing built ever walls a corner
-      // of the yard off from the rest of it.
+      // of the yard off from the rest of it. The Day-Care's pen is the one
+      // patch of grass that is shut on purpose (below).
+      const pen = new Set(penTiles().map((tile) => `${tile.x},${tile.y}`));
       for (let y = 0; y < map.height; y += 1) {
         for (let x = 0; x < map.width; x += 1) {
-          if (map.collision[y][x]) continue;
+          if (map.collision[y][x] || pen.has(`${x},${y}`)) continue;
           expect([x, y, built.length, steps[y][x] < Infinity]).toEqual([x, y, built.length, true]);
         }
       }
@@ -191,6 +194,83 @@ describe('the base map', () => {
       for (const tile of door.tiles) {
         expect([door.id, map.collision[tile.y][tile.x]]).toEqual([door.id, false]);
       }
+    }
+  });
+});
+
+describe('the Day-Care', () => {
+  /** The yard's walk with the man standing where he stands. */
+  const aroundHim = (from: GridPosition) =>
+    walkFrom(fullyBuilt().collision, from, (tile) =>
+      tile.x === DAY_CARE_KEEPER.position.x && tile.y === DAY_CARE_KEEPER.position.y,
+    );
+
+  /** The ground beside him a player can stand on and face him from. */
+  const besideHim = (): GridPosition[] =>
+    [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ]
+      .map(([dx, dy]) => ({ x: DAY_CARE_KEEPER.position.x + dx, y: DAY_CARE_KEEPER.position.y + dy }))
+      .filter((tile) => fullyBuilt().collision[tile.y][tile.x] === false);
+
+  it('stands the man on the lawn, with ground in front of him to speak to him from', () => {
+    for (const built of [[], EVERY_RUNG]) {
+      expect(getBaseMap(built).collision[DAY_CARE_KEEPER.position.y][DAY_CARE_KEEPER.position.x]).toBe(false);
+    }
+    expect(besideHim().length).toBeGreaterThan(0);
+  });
+
+  /**
+   * Like THE BOLTHOLE he is not on the way to re-kitting - a Pokémon is left
+   * with him and fetched back, not visited every raid - so he is a stroll
+   * past the house rather than one of the seven-step doors: about three
+   * seconds from the middle of the yard, held so that it stays one.
+   */
+  it('keeps him a short stroll up the lawn past THE BOLTHOLE', () => {
+    expect(stepsTo(aroundHim(BASE_SPAWN), besideHim())).toBeLessThanOrEqual(21);
+    expect(stepsTo(aroundHim(BASE_LANDING), besideHim())).toBeLessThanOrEqual(23);
+  });
+
+  it('fences the pen in: grass inside, and no way in from the yard', () => {
+    for (const built of [[], EVERY_RUNG]) {
+      const map = getBaseMap(built);
+      const steps = walkFrom(map.collision, BASE_SPAWN);
+      for (const tile of penTiles()) {
+        expect([tile.x, tile.y, map.collision[tile.y][tile.x], steps[tile.y][tile.x]]).toEqual([
+          tile.x,
+          tile.y,
+          false,
+          Number.POSITIVE_INFINITY,
+        ]);
+      }
+      // The fence itself is solid all the way round.
+      const pen = penTiles();
+      const ring = pen.flatMap((tile) =>
+        [
+          [0, -1],
+          [0, 1],
+          [-1, 0],
+          [1, 0],
+        ]
+          .map(([dx, dy]) => ({ x: tile.x + dx, y: tile.y + dy }))
+          .filter((next) => !pen.some((inside) => inside.x === next.x && inside.y === next.y)),
+      );
+      expect(ring.every((tile) => map.collision[tile.y][tile.x])).toBe(true);
+    }
+  });
+
+  it('lets the Pokémon in it wander a tile at a time and never out of the fence', () => {
+    const inside = (tile: GridPosition) => penTiles().some((pen) => pen.x === tile.x && pen.y === tile.y);
+    expect(inside(PEN_HOME)).toBe(true);
+    let at = PEN_HOME;
+    for (let step = 0; step < 400; step += 1) {
+      const next = nextPenTile(at, (step * 0.618) % 1);
+      expect(inside(next)).toBe(true);
+      expect(Math.abs(next.x - at.x) + Math.abs(next.y - at.y)).toBeLessThanOrEqual(1);
+      at = next;
     }
   });
 });
