@@ -18,6 +18,12 @@
 /** Tall grass and the detail layer: still terrain, but over the ground. */
 export const TERRAIN_DEPTH = 1;
 
+/**
+ * A mat or a rug the player has put down in their house (`home/furniture.ts`):
+ * over the floor it lies on, under everything that stands on it.
+ */
+export const FLOOR_FURNITURE_DEPTH = 1.1;
+
 /** A trainer's watched lane, shaded under everything that stands on it. */
 export const WATCH_SHADING_DEPTH = 1.5;
 

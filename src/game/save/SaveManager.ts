@@ -91,6 +91,7 @@ import {
 } from '../hub/pokedex';
 import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
 import { readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
+import { readHomeLayout, type Placement } from '../home/arrangement';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 const SAVE_VERSION = 7;
@@ -331,6 +332,15 @@ export interface RaidProgress {
    */
   readonly packArrangement?: GridArrangement;
   readonly secureArrangement?: GridArrangement;
+  /**
+   * Where everything in THE BOLTHOLE stands (`../home/arrangement`): each piece
+   * put down, by furniture id, room, tile and which way round. It is the one
+   * thing about the house that is stored - what the save owns is derived from
+   * the vault and the Pokédex, and a piece it no longer owns, or that no longer
+   * fits, is read back as being in the box. Absent on every save that has never
+   * decorated, which reads as the house as it always stood, so no version bump.
+   */
+  readonly homeLayout?: readonly Placement[];
   /**
    * How many raids each map has seen, by map id: deployed, and how each of
    * those ended. It is a record of what the player has done rather than a
@@ -849,6 +859,24 @@ export class SaveManager {
     }
     const raidProgress: RaidProgress = { ...game.raidProgress, keysLearned: [...already, ...fresh] };
     return this.save({ ...game, raidProgress }) ? fresh : [];
+  }
+
+  /**
+   * Writes where everything in THE BOLTHOLE stands (`../home/arrangement`).
+   * The house is decorated in place, a piece at a time, so each piece put down
+   * is saved as it lands; the layout is the whole list, not a change to it.
+   * Returns the game as written, or nothing when it could not be.
+   */
+  public arrangeHome(layout: readonly Placement[]): RestoredGame | undefined {
+    const game = this.load();
+    if (!game) {
+      return undefined;
+    }
+    const next: RestoredGame = {
+      ...game,
+      raidProgress: { ...game.raidProgress, homeLayout: readHomeLayout(layout) ?? [] },
+    };
+    return this.save(next) ? next : undefined;
   }
 
   /**
@@ -1712,6 +1740,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     securePreference: readSecurePreference(value.securePreference),
     packArrangement: readArrangement(value.packArrangement),
     secureArrangement: readArrangement(value.secureArrangement),
+    ...(Array.isArray(value.homeLayout) ? { homeLayout: readHomeLayout(value.homeLayout) } : {}),
     // A save written before the record was kept has been nowhere, which is
     // what an empty record says: the drop-in screen reads that as "you have
     // not been here" rather than as a raid that went badly.

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CAPTION_BAND,
   FIGURE_BAND,
+  FLOOR_FURNITURE_DEPTH,
   MARKER_BAND,
   TERRAIN_DEPTH,
   WATCH_SHADING_DEPTH,
@@ -21,6 +22,12 @@ describe('what is drawn over what on the overworld', () => {
     // The rule the whole finding turns on: writing may never cover a figure,
     // and least of all the player or the hunter.
     expect(CAPTION_BAND).toBeLessThan(FIGURE_BAND);
+  });
+
+  it('lays a rug in the house over the floor and its three tile layers, under everything that stands', () => {
+    // The base draws its ground, overlay and detail layers at rows 0 to 2 of the terrain band.
+    expect(atRow(TERRAIN_DEPTH, 2)).toBeLessThan(FLOOR_FURNITURE_DEPTH);
+    expect(FLOOR_FURNITURE_DEPTH).toBeLessThan(WATCH_SHADING_DEPTH);
   });
 
   it('keeps a whole map of row offsets inside its own band', () => {

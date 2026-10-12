@@ -83,6 +83,30 @@ export const ITEM_ICONS = {
   'focus-band': 'focus-band',
   'life-orb': 'life-orb',
   'quick-claw': 'quick-claw',
+  // Furniture for the house, each its own Secret Base piece drawn at 16x16 -
+  // shrunk by a whole factor where it is bigger than a tile
+  // (`scripts/cut-home-furniture.mjs`), so a find reads as the thing it is.
+  'pika-cushion': 'pika-cushion',
+  'ball-cushion': 'ball-cushion',
+  'fire-cushion': 'fire-cushion',
+  'water-cushion': 'water-cushion',
+  'pokemon-chair': 'pokemon-chair',
+  'comfort-chair': 'comfort-chair',
+  'pokemon-desk': 'pokemon-desk',
+  'heavy-desk': 'heavy-desk',
+  'tropical-plant': 'tropical-plant',
+  'pretty-flowers': 'pretty-flowers',
+  'big-plant': 'big-plant',
+  'surf-mat': 'surf-mat',
+  'thunder-mat': 'thunder-mat',
+  'fire-blast-mat': 'fire-blast-mat',
+  'powder-snow-mat': 'powder-snow-mat',
+  'cute-tv': 'cute-tv',
+  'glitter-mat': 'glitter-mat',
+  'gorgeous-plant': 'gorgeous-plant',
+  'gold-shield': 'gold-shield',
+  'silver-shield': 'silver-shield',
+  'glass-ornament': 'glass-ornament',
 } as const satisfies Record<string, string>;
 
 /** Icons the raid draws on the map, plus the objective icon the menus reuse. */

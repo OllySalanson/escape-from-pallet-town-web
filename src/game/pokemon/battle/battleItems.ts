@@ -193,6 +193,8 @@ function refusalMessage(item: ItemDefinition, name: string): string {
       return `${item.displayName} opens a gate in the field, not in a fight.`;
     case 'errand':
       return `${item.displayName} is somebody's errand. It only needs carrying.`;
+    case 'furniture':
+      return `${item.displayName} is for your house, not a fight.`;
     case 'held':
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and

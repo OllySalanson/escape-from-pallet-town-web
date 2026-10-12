@@ -13,6 +13,7 @@
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=oaks-lab --beaten=overlook-warden --survey=save.json
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bolthole-upstairs --raids=route-1:3:2 --starter=squirtle
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bolthole --date=2026-12-24T22:00
+ *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bolthole --layout=home.json --dex=25,143 --found=surf-mat
  *
  * `--built=` is a list of rung ids from Brock's ladder, `all` or `none` (the
  * default). `--room=` draws the room behind that door instead of the yard, with
@@ -26,7 +27,10 @@
  * `--collision` hatches what is solid, which is what says whether something
  * built has quietly walled a corner off, and `--walks` prints the one number
  * the base is designed against: how many steps each keeper is from where the
- * player is put down (`src/game/base/baseWalks.ts`).
+ * player is put down (`src/game/base/baseWalks.ts`). In THE BOLTHOLE,
+ * `--layout=path.json` is a save's `raidProgress.homeLayout` (the furniture
+ * and where it stands), `--dex=` the Pokédex numbers whose dolls the save owns
+ * and `--found=id,..` the furniture in its vault (`src/game/home/`).
  */
 import { readFileSync } from 'node:fs';
 import { readPng, writePng, TILE_SIZE } from '../tileset/tileSheet.mjs';
@@ -49,6 +53,11 @@ import { ERRANDS } from '../../src/game/hub/errands';
 import { itemIconName } from '../../src/game/ui/icons';
 import type { TileSource } from '../../src/game/world/tileset/catalogue';
 import type { MapLayers } from '../../src/game/world/tiles';
+import { furnitureDepth } from '../../src/game/base/furnitureArt';
+import { readHomeLayout } from '../../src/game/home/arrangement';
+import { FURNITURE_PIECES } from '../../src/game/home/generated/furniturePieces';
+import { POKEMON_ICON_SHEET } from '../../src/game/pokemon/generated/pokemonIcons';
+import { pokemonIconFrames, pokemonSoleDrop } from '../../src/game/world/pokemonFigures';
 
 const args = process.argv.slice(2).filter((value) => value !== '--');
 const flags = new Set(args.filter((value) => value.startsWith('--')));
@@ -87,6 +96,12 @@ const baseSave = baseGame({
     errands: (option('errands') === 'all' ? ERRANDS.map((errand) => errand.id) : (option('errands') ?? '').split(','))
       .filter(Boolean)
       .map((id) => ({ id, status: 'completed' as const, found: 1, lossesHeard: 1 })),
+    ...(option('layout') === undefined
+      ? {}
+      : { homeLayout: readHomeLayout(JSON.parse(readFileSync(option('layout')!, 'utf8'))) ?? [] }),
+    ...(option('dex') === undefined
+      ? {}
+      : { pokedexOwned: option('dex')!.split(',').filter(Boolean).map(Number) }),
     // `--raids=mapId:deployed:extracted,..` - what THE BOLTHOLE's pennants,
     // PC and calendar read.
     raidRecord: Object.fromEntries(
@@ -110,6 +125,9 @@ const baseSave = baseGame({
   },
 });
 // `--starter=bulbasaur|charmander|squirtle`: whose colour the upstairs rug is.
+for (const itemId of (option('found') ?? '').split(',').filter(Boolean)) {
+  baseSave.stash.addItem(itemId, 1);
+}
 const starterFlag = option('starter');
 const game =
   starterFlag === undefined
@@ -237,6 +255,44 @@ if (room && drawnRoom) {
     const picture =
       poster.kind === 'badge-case' ? badgeCasePoster(game, poster.area) : pennantsPoster(game, poster.area);
     blit(image, picture, 0, 0, picture.width, picture.height, poster.area.x * TILE_SIZE, poster.area.y * TILE_SIZE);
+  }
+  // The player's furniture, in the order the scene draws it: rugs first, then
+  // everything that stands, back to front (`base/furnitureArt.ts`).
+  const placed = drawnRoom.home?.placed ?? [];
+  const furnitureSheet = readPng('public/assets/home-furniture.png');
+  const iconSheet = readPng(`public/${POKEMON_ICON_SHEET.imagePath}`);
+  for (const piece of [...placed].sort((a, b) => furnitureDepth(a, placed) - furnitureDepth(b, placed))) {
+    const art = piece.definition.facings[piece.facing];
+    if (art.kind === 'icon') {
+      const frame = pokemonIconFrames(art.species)[0];
+      const size = POKEMON_ICON_SHEET.frameSize;
+      blit(
+        image,
+        iconSheet,
+        (frame % POKEMON_ICON_SHEET.columns) * size,
+        Math.floor(frame / POKEMON_ICON_SHEET.columns) * size,
+        size,
+        size,
+        piece.x * TILE_SIZE + TILE_SIZE / 2 - size / 2,
+        (piece.y + 1) * TILE_SIZE + pokemonSoleDrop(art.species) - size,
+        undefined,
+        art.flip,
+      );
+      continue;
+    }
+    const at = FURNITURE_PIECES[art.piece];
+    blit(
+      image,
+      furnitureSheet,
+      at.column * TILE_SIZE,
+      at.row * TILE_SIZE,
+      at.width * TILE_SIZE,
+      at.height * TILE_SIZE,
+      piece.x * TILE_SIZE,
+      piece.y * TILE_SIZE,
+      undefined,
+      art.flip,
+    );
   }
   if (room.keeper) {
     const figure = readPng(`public/assets/characters/${room.keeper.design}.png`);

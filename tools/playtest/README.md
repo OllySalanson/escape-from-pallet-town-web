@@ -131,6 +131,10 @@ climbs the stairs and checks it arrived on the matching mat facing away, reads
 the bed, the PC, the console and the calendar, comes back down and leaves by the
 mat - `docs/screens/bolthole/`. The house has no keeper, so `walkIntoBase`
 never goes there; it leaves an upstairs floor by its stairs if it finds itself on one.
+`decorate.mjs <url> <dir> [--port=N]` decorates it: H, a pot plant carried with
+the keys, a doll out of the box onto the table, a refusal on the door mat, a
+mat and a doll put down and turned with the pointer, then reads the doll and
+reloads to check every piece stayed where it was put - `docs/screens/home-decorate/`.
 
 A raid ends back on the base's quay, not on a screen, so a driver that plays
 two raids walks into Oak's Lab between them - `raid.mjs` does.

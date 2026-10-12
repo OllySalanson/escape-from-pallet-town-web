@@ -56,6 +56,7 @@ const POCKETS = [
   ItemCategory.PokeBall,
   ItemCategory.Held,
   ItemCategory.Pack,
+  ItemCategory.Furniture,
   ItemCategory.Misc,
 ] as const;
 

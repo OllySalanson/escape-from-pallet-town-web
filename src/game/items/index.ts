@@ -75,6 +75,7 @@ export {
   isEvolutionStone,
   isFoundOnly,
   isErrandItem,
+  isFurniture,
   itemNameFor,
   isMaterial,
   ItemCategory,
