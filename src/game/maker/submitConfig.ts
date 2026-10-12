@@ -10,7 +10,11 @@ export const SUBMISSIONS_URL = 'https://ejdazksxwwiubudkkvaj.supabase.co';
 export const SUBMISSIONS_PUBLISHABLE_KEY = 'sb_publishable_QEg_5n-gSmRZZPU4NZU0nA_kZuWehzf';
 
 /**
- * The Cloudflare Turnstile site key the bot check is drawn with. Empty means
- * the project asks for no bot check at sign-in, and the game draws none.
+ * The Cloudflare Turnstile site key the bot check is drawn with: the widget
+ * "Pallet Town" (managed, for ollysalanson.github.io and localhost). Public by
+ * design, like the key above; its secret lives only in the project's Attack
+ * Protection settings. Every sign-in passes a token from it
+ * (`playerSignIn.ts`), so the project's captcha protection can be switched on
+ * or off without a build. Empty would mean no check is drawn at all.
  */
-export const TURNSTILE_SITE_KEY = '';
+export const TURNSTILE_SITE_KEY = '0x4AAAAAAFU2WopkVTcJJdi1';

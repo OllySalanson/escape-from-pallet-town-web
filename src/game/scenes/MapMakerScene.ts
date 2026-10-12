@@ -101,7 +101,7 @@ import { hunterThreatFor } from '../world/hunterThreat';
 import { isNightRaid } from '../world/nightRaids';
 import { playerMapId } from '../world/mapFile';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
-import { botCheckNeeded, passBotCheck } from '../maker/turnstile';
+import { botCheckNeeded } from '../maker/turnstile';
 import {
   isSignedIn,
   sendMap,
@@ -302,8 +302,6 @@ export class MapMakerScene extends Phaser.Scene {
   /** The map sent in that is open in the editor to be reviewed. */
   private reviewing: QueuedMap | undefined;
   private pendingBlock = false;
-  /** A passed bot check, spent by the next sign-in. */
-  private captchaToken: string | undefined;
   private stroke: Stroke | undefined;
   private edgeScroll: ReturnType<typeof setInterval> | undefined;
   private checks: readonly MapCheck[] = [];
@@ -719,7 +717,6 @@ export class MapMakerScene extends Phaser.Scene {
     }
     this.drawSwatches();
     this.redraw();
-    this.showBotCheck();
     // The column is rebuilt with the screen; it keeps where it was scrolled to.
     const side = this.overlay.root.querySelector<HTMLElement>('.maker-side');
     if (side && sideTop !== undefined) {
@@ -2588,29 +2585,12 @@ export class MapMakerScene extends Phaser.Scene {
       this.sending = {
         step: 'ready',
         ...(previous ? { previous } : {}),
-        needsCheck: botCheckNeeded() && !signedIn && this.captchaToken === undefined,
+        checksFirst: botCheckNeeded() && !signedIn,
       };
       if (this.scene.isActive() && this.panel === 'send') {
         this.render();
       }
     })();
-  }
-
-  /** Puts the bot check on screen when the send panel is waiting for one. */
-  private showBotCheck(): void {
-    const container = this.overlay.root.querySelector<HTMLElement>('[data-captcha]');
-    if (!container || this.sending.step !== 'ready' || !this.sending.needsCheck) {
-      return;
-    }
-    void passBotCheck(container).then((token) => {
-      if (token && this.sending.step === 'ready') {
-        this.captchaToken = token;
-        this.sending = { ...this.sending, needsCheck: false };
-        if (this.scene.isActive() && this.panel === 'send') {
-          this.render();
-        }
-      }
-    });
   }
 
   private async confirmSend(): Promise<void> {
@@ -2622,24 +2602,20 @@ export class MapMakerScene extends Phaser.Scene {
     ) {
       return;
     }
-    if (sending.needsCheck) {
-      this.render('Pass the bot check first.');
-      return;
-    }
     const file = this.file;
     const key = this.draftKey;
     this.sending = { step: 'sending' };
     this.render();
+    // SEND signs in behind the bot check first when this browser never has
+    // (`maker/playerSignIn.ts`); a check that does not pass is a reason on the
+    // panel with TRY AGAIN under it, and the map is still in the drafts.
     const result = await sendMap(file, {
-      ...(this.captchaToken ? { captchaToken: this.captchaToken } : {}),
       // A map sent back goes in as its next try, and a fix to a map in the game
       // as its update, which replaces it there once approved.
       ...(sending.previous?.status === 'sent_back' || sending.previous?.status === 'published'
         ? { resubmits: sending.previous.receipt }
         : {}),
     });
-    // A bot check's token is good for one sign-in, used or refused.
-    this.captchaToken = undefined;
     if (result.ok) {
       const store = loadMakerStore();
       this.store = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONSOLE_GAMES } from './consoleGames';
-import { boardRows, gamesMenuMarkup, type GamesMenuState } from './gamesMenu';
+import { boardRows, gamesMenuMarkup, scoreLine, waitingLine, type GamesMenuState } from './gamesMenu';
 import type { Board } from './leaderboard';
 
 const blocks = CONSOLE_GAMES.find((game) => game.id === 'pallet-blocks')!;
@@ -86,5 +86,22 @@ describe('a board in the GAMES menu', () => {
 
   it('invites the first score onto an empty board', () => {
     expect(text(boardRows(blocks, { where: 'pallet-town', entries: [] }))).toContain('No scores yet');
+  });
+});
+
+describe('a score that did not reach Pallet Town, as the player is told it', () => {
+  it('says nothing when it got there, and why it did not when it did not', () => {
+    expect(scoreLine('pallet-town', 1200)).toBeUndefined();
+    expect(scoreLine('bot-check', 1200)).toMatch(/bot check didn't pass.*1,200 is kept on this console.*next time/);
+    expect(scoreLine('device', 1200)).toMatch(/didn't answer.*1,200 is kept on this console/);
+    expect(scoreLine('not-postable', 1200)).toMatch(/won't take that score/);
+  });
+
+  it('says what became of the scores that were waiting', () => {
+    expect(waitingLine({ sent: 0, left: 0 })).toBeUndefined();
+    expect(waitingLine({ sent: 1, left: 0 })).toBe('Your waiting score is on the Pallet Town board now.');
+    expect(waitingLine({ sent: 2, left: 0 })).toMatch(/2 waiting scores/);
+    expect(waitingLine({ sent: 0, left: 1, stopped: 'bot-check' })).toMatch(/One score is still waiting: the bot check/);
+    expect(waitingLine({ sent: 0, left: 3, stopped: 'device' })).toMatch(/3 scores are still waiting for Pallet Town to answer/);
   });
 });

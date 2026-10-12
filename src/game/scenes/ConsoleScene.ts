@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { CONSOLE_GAME_CLASS, CONSOLE_GAMES, consoleGame, type ConsoleGame } from '../console/consoleGames';
 import { ConsoleSession } from '../console/consoleSession';
-import { boardRows, gamesMenuMarkup } from '../console/gamesMenu';
-import { DeviceBoard, Leaderboards, type Board } from '../console/leaderboard';
+import { boardRows, gamesMenuMarkup, scoreLine, waitingLine } from '../console/gamesMenu';
+import { DeviceBoard, Leaderboards, WaitingScores, type Board } from '../console/leaderboard';
 import {
   checkPlayerName,
   loadPlayerName,
@@ -16,6 +16,7 @@ import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
+import { putUpPixelStatus } from '../ui/pixelUi';
 
 export interface ConsoleSceneData {
   /** Only resume the house when this screen paused it. */
@@ -53,6 +54,7 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
   private naming: { value: string; then?: string } | null = null;
   private status: string | undefined;
   private session!: ConsoleSession;
+  private leaderboards!: Leaderboards;
 
   public constructor() {
     super('console');
@@ -68,8 +70,10 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
     this.playerName = loadPlayerName();
     this.naming = null;
     this.status = undefined;
+    const storage = deviceStorage();
+    this.leaderboards = new Leaderboards(palletTownBoards, new DeviceBoard(storage), Date.now, new WaitingScores(storage));
     this.session = new ConsoleSession({
-      leaderboards: new Leaderboards(palletTownBoards, new DeviceBoard(deviceStorage())),
+      leaderboards: this.leaderboards,
       hideMenu: () => {
         this.overlay?.destroy();
         this.overlay = undefined;
@@ -89,11 +93,47 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
       leave: () => this.close(),
       later: (run) => window.setTimeout(run, 0),
       record: recordAction,
+      scoreWent: (_game, score, posted) => {
+        const line = scoreLine(posted, score);
+        if (line) {
+          this.status = line;
+          showConsoleNote(line);
+        }
+      },
     });
     const session = this.session;
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => session.takeDown());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      session.takeDown();
+      takeDownConsoleNote();
+    });
     this.showMenu();
     this.readBoards();
+    void this.sendWaiting();
+  }
+
+  /**
+   * Scores kept on this console last time - a bot check that did not pass, no
+   * answer - go up now, the moment somebody sits down again.
+   */
+  private async sendWaiting(): Promise<void> {
+    const leaderboards = this.leaderboards;
+    if (leaderboards.waitingCount() === 0) {
+      return;
+    }
+    const result = await leaderboards.sendWaiting();
+    if (leaderboards !== this.leaderboards) {
+      return;
+    }
+    if (result.sent > 0) {
+      this.readBoards();
+    }
+    const line = waitingLine(result);
+    if (line) {
+      this.status = line;
+      if (this.overlay && !this.naming) {
+        putUpPixelStatus(this.overlay.root, line);
+      }
+    }
   }
 
   public create(): void {
@@ -283,4 +323,32 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
       this.scene.resume('base');
     }
   }
+}
+
+const CONSOLE_NOTE_CLASS = 'console-note';
+
+/** How long a line over a console game stays up. */
+const CONSOLE_NOTE_MS = 9_000;
+
+/**
+ * A line over a console game, which the game's own screens have no room for:
+ * the score just finished did not reach Pallet Town, and why. It stands over
+ * the game for a few seconds and is gone, and the menu says it again.
+ */
+let consoleNote: HTMLElement | undefined;
+
+function showConsoleNote(line: string): void {
+  takeDownConsoleNote();
+  const note = document.createElement('p');
+  consoleNote = note;
+  note.className = CONSOLE_NOTE_CLASS;
+  note.setAttribute('role', 'status');
+  note.textContent = line;
+  document.body.append(note);
+  window.setTimeout(() => note.remove(), CONSOLE_NOTE_MS);
+}
+
+function takeDownConsoleNote(): void {
+  consoleNote?.remove();
+  consoleNote = undefined;
 }

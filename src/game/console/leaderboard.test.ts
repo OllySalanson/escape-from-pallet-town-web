@@ -2,12 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BOARD_ANSWER_MS,
   BOARD_SIZE,
+  BoardTrouble,
   CONSOLE_SCORE_LIMITS,
   DEVICE_BOARD_STORAGE_PREFIX,
   DeviceBoard,
   formatScore,
   Leaderboards,
+  MAX_WAITING_SCORES,
+  POST_ANSWER_MS,
   postableScore,
+  WaitingScores,
   type BoardEntry,
   type ConsoleScore,
   type PalletTownBoards,
@@ -158,14 +162,20 @@ describe('the board the console shows', () => {
       expect(shown).toEqual({ where: 'device', entries: [{ name: 'ASH', score: 700, mine: true }] });
     });
 
-    it('keeps the score here and stops waiting to send it', async () => {
+    it('keeps the score here, stops waiting to send it - a bot check asked included - and sends it another time', async () => {
       vi.useFakeTimers();
       const device = new DeviceBoard(memoryStore());
+      const waiting = new WaitingScores(memoryStore());
       let posted: unknown;
-      void new Leaderboards(silent, device).post('pallet-blocks', 'ASH', game(800)).then((where) => (posted = where));
+      void new Leaderboards(silent, device, () => 5, waiting)
+        .post('pallet-blocks', 'ASH', game(800))
+        .then((where) => (posted = where));
       await vi.advanceTimersByTimeAsync(BOARD_ANSWER_MS);
+      expect(posted).toBeUndefined();
+      await vi.advanceTimersByTimeAsync(POST_ANSWER_MS - BOARD_ANSWER_MS);
       expect(posted).toBe('device');
       expect(device.entries('pallet-blocks', 'ASH')).toEqual([{ name: 'ASH', score: 800, mine: true }]);
+      expect(waiting.all()).toEqual([{ game: 'pallet-blocks', name: 'ASH', score: game(800), at: 5 }]);
     });
   });
 
@@ -203,5 +213,90 @@ describe('a score on a board', () => {
     expect(formatScore(999)).toBe('999');
     expect(formatScore(12_340)).toBe('12,340');
     expect(formatScore(99_999_999)).toBe('99,999,999');
+  });
+});
+
+describe('a score that did not reach Pallet Town', () => {
+  const refusing = (trouble: BoardTrouble): PalletTownBoards => ({
+    load: () => Promise.resolve([]),
+    post: () => Promise.reject(trouble),
+  });
+
+  it('is kept waiting, and says whether the bot check is why', async () => {
+    const waiting = new WaitingScores(memoryStore());
+    const check = new Leaderboards(refusing(new BoardTrouble('check', 'no check')), new DeviceBoard(memoryStore()), () => 1, waiting);
+    expect(await check.post('pallet-blocks', 'ASH', game(800))).toBe('bot-check');
+    const later = new Leaderboards(refusing(new BoardTrouble('later', 'limit')), new DeviceBoard(memoryStore()), () => 2, waiting);
+    expect(await later.post('pallet-blocks', 'MAY', game(500))).toBe('device');
+    expect(waiting.all().map((entry) => entry.name)).toEqual(['ASH', 'MAY']);
+    expect(check.waitingCount()).toBe(2);
+  });
+
+  it('is let go when Pallet Town refuses it for good, and is still on this device', async () => {
+    const waiting = new WaitingScores(memoryStore());
+    const device = new DeviceBoard(memoryStore());
+    const boards = new Leaderboards(refusing(new BoardTrouble('refused', 'Pick another name.')), device, () => 1, waiting);
+    expect(await boards.post('pallet-blocks', 'ASH', game(800))).toBe('not-postable');
+    expect(waiting.all()).toEqual([]);
+    expect(device.entries('pallet-blocks', 'ASH')[0]?.score).toBe(800);
+  });
+
+  it('keeps only the best waiting under each name, and never more than the cap', () => {
+    const waiting = new WaitingScores(memoryStore());
+    waiting.keep('pallet-blocks', 'ASH', game(800), 1);
+    waiting.keep('pallet-blocks', 'ASH', game(300), 2);
+    waiting.keep('pallet-blocks', 'ASH', game(900), 3);
+    expect(waiting.all()).toEqual([{ game: 'pallet-blocks', name: 'ASH', score: game(900), at: 3 }]);
+    for (let index = 0; index < MAX_WAITING_SCORES + 5; index += 1) {
+      waiting.keep('pallet-blocks', `P${index}`, game(100), index);
+    }
+    expect(waiting.all()).toHaveLength(MAX_WAITING_SCORES);
+  });
+
+  it('reads a list that is rubbish, or a score no game could finish on, as nothing waiting', () => {
+    const store = memoryStore();
+    store.setItem('escape-from-pallet-town.console.waiting', '{"not":"a list"}');
+    expect(new WaitingScores(store).all()).toEqual([]);
+    store.setItem(
+      'escape-from-pallet-town.console.waiting',
+      JSON.stringify([{ game: 'pallet-blocks', name: 'ASH', score: game(99_999_999, { durationMs: 1000 }), at: 1 }]),
+    );
+    expect(new WaitingScores(store).all()).toEqual([]);
+  });
+
+  it('goes up the next time, oldest first, and the rest wait behind the first that cannot', async () => {
+    const waiting = new WaitingScores(memoryStore());
+    waiting.keep('pallet-blocks', 'MAY', game(500), 2);
+    waiting.keep('pallet-blocks', 'ASH', game(800), 1);
+    waiting.keep('pallet-blocks', 'GARY', game(700), 3);
+    const posted: string[] = [];
+    let open = true;
+    const remote: PalletTownBoards = {
+      load: () => Promise.resolve([]),
+      post: (_game, name) => {
+        if (name === 'GARY' && open) {
+          return Promise.reject(new BoardTrouble('check', 'no check'));
+        }
+        posted.push(name);
+        return Promise.resolve();
+      },
+    };
+    const boards = new Leaderboards(remote, new DeviceBoard(memoryStore()), () => 9, waiting);
+    expect(await boards.sendWaiting()).toEqual({ sent: 2, left: 1, stopped: 'bot-check' });
+    expect(posted).toEqual(['ASH', 'MAY']);
+    open = false;
+    expect(await boards.sendWaiting()).toEqual({ sent: 1, left: 0 });
+    expect(boards.waitingCount()).toBe(0);
+  });
+
+  it('lets a score Pallet Town refuses for good go, so it never stands in front of the rest', async () => {
+    const waiting = new WaitingScores(memoryStore());
+    waiting.keep('pallet-blocks', 'BAD', game(500), 1);
+    waiting.keep('pallet-blocks', 'ASH', game(800), 2);
+    const remote: PalletTownBoards = {
+      load: () => Promise.resolve([]),
+      post: (_game, name) => (name === 'BAD' ? Promise.reject(new BoardTrouble('refused', 'Pick another name.')) : Promise.resolve()),
+    };
+    expect(await new Leaderboards(remote, new DeviceBoard(memoryStore()), () => 9, waiting).sendWaiting()).toEqual({ sent: 1, left: 0 });
   });
 });

@@ -1,3 +1,5 @@
+import type { SignInTrouble } from '../maker/playerSignIn';
+
 /**
  * Every word the feedback panel says to a player.
  *
@@ -52,12 +54,15 @@ export const SCRAP_IT = 'Scrap it';
 
 export const SENDING_LINE = 'Transmitting...';
 
-/** Shown only when the project asks for a bot check and this browser has not passed one. */
-export const BOT_CHECK_LINE = "One quick check that you're not a bot, so spam can't jam the lab's radio.";
-export const BOT_CHECK_PASSED = "Checked. You're on the air.";
-
 /** What became of a message, as the player is told it. */
-export type FeedbackOutcome = 'sent' | 'queued' | 'held' | 'refused';
+export type FeedbackOutcome = 'sent' | 'queued' | 'held' | 'refused' | 'check-failed' | 'check-missing';
+
+/** The outcomes a TRY AGAIN can do something about: the bot check, passed this time. */
+export function canTryTheCheckAgain(outcome: FeedbackOutcome): boolean {
+  return outcome === 'check-failed' || outcome === 'check-missing';
+}
+
+export const TRY_THE_CHECK_AGAIN = 'Try again';
 
 export interface OutcomeWords {
   readonly headline: string;
@@ -68,7 +73,10 @@ export interface OutcomeWords {
  * The three endings of a SEND, each shown above the message's tag. `sent` is
  * the server holding it; `queued` is this browser holding it until it can reach
  * the server (no internet, or the lab's radio not switched on yet); `held` is
- * the daily limit, kept for tomorrow.
+ * the daily limit, kept for tomorrow. The two `check-` endings are this browser
+ * not getting past the bot check (`maker/playerSignIn.ts`): it `failed`, or it
+ * would not even load. Both keep the message, and both can be tried again from
+ * where the player is standing.
  */
 export function outcomeWords(outcome: FeedbackOutcome): OutcomeWords {
   switch (outcome) {
@@ -92,6 +100,16 @@ export function outcomeWords(outcome: FeedbackOutcome): OutcomeWords {
         headline: 'Static on the line.',
         line: "The lab can't take this message as it is. It's kept in your pack, and the next one still goes.",
       };
+    case 'check-failed':
+      return {
+        headline: 'Bot check jammed.',
+        line: "The bot check didn't pass, so the lab can't hear you yet. Your message is safe in your pack. Try again, or it goes with the next one you send.",
+      };
+    case 'check-missing':
+      return {
+        headline: "Bot check won't load.",
+        line: "Something stopped the bot check loading, so the lab can't hear you yet. Your message is safe in your pack. Try again, or it goes with the next one you send.",
+      };
   }
 }
 
@@ -102,3 +120,18 @@ export const KEPT_LINE = "At the lab for 90 days, then gone. Your voice is delet
 export const TAG_NOTE = 'Your tag. Quote it if you write again.';
 
 export const BACK_TO_THE_GAME = 'Back to the game';
+
+/**
+ * What a SEND tells the player once the bot check has had its say: a message
+ * that could not go because the check did not pass, or would not load, says
+ * so - not "no signal" - so the player knows what to try again.
+ */
+export function outcomeAfterCheck(outcome: FeedbackOutcome, trouble: SignInTrouble | undefined): FeedbackOutcome {
+  if (outcome !== 'queued') {
+    return outcome;
+  }
+  if (trouble === 'failed') {
+    return 'check-failed';
+  }
+  return trouble === 'unavailable' ? 'check-missing' : outcome;
+}

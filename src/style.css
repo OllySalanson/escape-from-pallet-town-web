@@ -99,6 +99,67 @@ body {
   box-shadow: none;
 }
 
+/* The bot check (`maker/playerSignIn.ts`), over everything - every menu and a console game - because a
+   screen redraws its markup and would take the check down with it. It shows nothing while Turnstile passes a
+   player invisibly, which is nearly always; only when Turnstile has to ask does the window dim and a card come
+   up in its middle, since nothing behind it goes on until it is answered. Turnstile's own widget is a fixed
+   300x65 CSS pixels, so this card is measured in CSS pixels too. */
+.bot-check {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  pointer-events: none;
+}
+.bot-check-card {
+  width: 320px;
+  max-width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+.bot-check-card > p {
+  display: none;
+  margin: 0 0 8px;
+  font-family: 'Orange Kid', monospace;
+  font-size: 25px;
+  line-height: 1;
+  color: #202020;
+}
+.bot-check.is-asking {
+  pointer-events: auto;
+  background: rgb(15 26 38 / 0.6);
+}
+.bot-check.is-asking .bot-check-card {
+  background: #ebeac5;
+  box-shadow: 0 0 0 3px #171717;
+}
+.bot-check.is-asking .bot-check-card > p {
+  display: block;
+}
+
+/* A line over a console game (`scenes/ConsoleScene.ts`): its score did not reach Pallet Town, and why. */
+.console-note {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 15;
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
+  margin: 0;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  font-family: 'Orange Kid', monospace;
+  font-size: 25px;
+  line-height: 1;
+  color: #202020;
+  background: #ebeac5;
+  box-shadow: 0 0 0 3px #171717;
+  pointer-events: none;
+}
+
 /* A house console game (`scenes/ConsoleScene.ts`), full-window over the whole page - the canvas, every menu and
    the FEEDBACK tab. The game fills it and centres its own screen in it. */
 .console-game {
@@ -3547,9 +3608,6 @@ button {
 :where(.pixel-ui) .maker-actions {
   gap: calc(var(--u) * 2);
   flex-wrap: wrap;
-}
-:where(.pixel-ui) .maker-captcha {
-  min-height: calc(var(--u) * 33);
 }
 :where(.pixel-ui) .maker-sent {
   display: grid;

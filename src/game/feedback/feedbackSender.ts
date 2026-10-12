@@ -1,3 +1,4 @@
+import { currentPlayer, signInAsPlayer } from '../maker/playerSignIn';
 import { supabase } from '../maker/supabaseClient';
 import { botCheckNeeded } from '../maker/turnstile';
 import type { Delivery, FeedbackSender } from './courier';
@@ -93,43 +94,19 @@ export function callDelivery(error: { message?: string; code?: string }): Delive
 }
 
 /**
- * This browser's anonymous id, signing in for the first time if it has to. A
- * project that asks for a bot check before signing in cannot be answered from
- * here: a browser with no session yet waits until it has one, which the panel
- * gets it by drawing the check (`needsBotCheck`, `signInWithCheck`) - or the
- * map maker's SEND does. The house console's leaderboards sign in the same way
- * (`console/remoteScores.ts`), so a browser is one anonymous player for all three.
+ * This browser's anonymous id, if it can be had without asking the player
+ * anything. A build that draws the bot check never signs in from here: the
+ * pack is sent in the background, where nobody is looking at a check, so a
+ * message waits until its sender has signed in - which the panel's SEND does
+ * (`maker/playerSignIn.ts`), as the map maker's SEND and a console score do.
  */
 export async function signedInAs(): Promise<string | null> {
-  const db = await supabase();
-  const { data } = await db.auth.getSession();
-  if (data.session) {
-    return data.session.user.id;
+  const uid = await currentPlayer();
+  if (uid || botCheckNeeded()) {
+    return uid;
   }
-  if (botCheckNeeded()) {
-    return null;
-  }
-  const { data: signedIn, error } = await db.auth.signInAnonymously();
-  return error ? null : (signedIn.user?.id ?? null);
-}
-
-/**
- * Whether the panel has to draw the bot check before anything can be sent:
- * the project asks for one and this browser has never signed in. Answered
- * without loading anything when the project asks for none.
- */
-export async function needsBotCheck(): Promise<boolean> {
-  if (!botCheckNeeded()) {
-    return false;
-  }
-  const { data } = await (await supabase()).auth.getSession();
-  return data.session === null;
-}
-
-/** Signs this browser in with a passed check's token. A token is good for one sign-in. */
-export async function signInWithCheck(captchaToken: string): Promise<boolean> {
-  const { error } = await (await supabase()).auth.signInAnonymously({ options: { captchaToken } });
-  return !error;
+  const signedIn = await signInAsPlayer();
+  return signedIn.ok ? signedIn.uid : null;
 }
 
 /** `audio/webm;codecs=opus` is stored as `audio/webm`: the bucket allows types, not codecs. */

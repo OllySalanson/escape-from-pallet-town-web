@@ -18,6 +18,8 @@ export interface ConsoleSessionHooks {
   readonly later: (run: () => void) => void;
   /** A line for the feedback log. */
   readonly record?: (line: string) => void;
+  /** Where a finished game's score went, so the player can be told if it did not reach Pallet Town. */
+  readonly scoreWent?: (game: ConsoleGame, score: number, posted: Posted) => void;
 }
 
 /**
@@ -66,6 +68,9 @@ export class ConsoleSession {
         onGameOver: async (result) => {
           const posted: Posted = await this.hooks.leaderboards.post(game.id, playerName, result);
           this.hooks.record?.(`Finished ${game.name}: ${result.score} (${posted})`);
+          if (this.current?.game === game) {
+            this.hooks.scoreWent?.(game, result.score, posted);
+          }
         },
         loadLeaderboard: async () => (await this.readBoard(game, playerName)).entries,
         // After the game's own key handler has finished with the key that

@@ -1,6 +1,6 @@
 import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
 import type { ConsoleGame } from './consoleGames';
-import { formatScore, type Board } from './leaderboard';
+import { formatScore, type Board, type Posted, type WaitingSent } from './leaderboard';
 import { PLAYER_NAME_MAX_LENGTH } from './playerName';
 
 /**
@@ -96,4 +96,38 @@ function nameBar(state: GamesMenuState): string {
     ],
     actions: `<button class="px-window px-button" data-name data-help="Type the name your scores go under.">${named ? 'Change name' : 'Type a name'}</button>`,
   });
+}
+
+/**
+ * What a player is told when a finished game's score did not reach the Pallet
+ * Town board, over the game they have just finished and again on the menu.
+ * Undefined when it got there and there is nothing to say.
+ */
+export function scoreLine(posted: Posted, score: number): string | undefined {
+  const points = formatScore(score);
+  switch (posted) {
+    case 'pallet-town':
+      return undefined;
+    case 'bot-check':
+      return `The bot check didn't pass, so your ${points} is kept on this console. It goes up to Pallet Town next time you sit down here.`;
+    case 'device':
+      return `Pallet Town didn't answer, so your ${points} is kept on this console. It goes up next time you sit down here.`;
+    case 'not-postable':
+      return `Pallet Town won't take that score, so your ${points} is on this console's board only.`;
+  }
+}
+
+/** What the menu says after it has tried the scores waiting on this console. */
+export function waitingLine(result: WaitingSent): string | undefined {
+  if (result.left === 0) {
+    return result.sent === 0
+      ? undefined
+      : result.sent === 1
+        ? 'Your waiting score is on the Pallet Town board now.'
+        : `Your ${result.sent} waiting scores are on the Pallet Town board now.`;
+  }
+  const scores = result.left === 1 ? 'One score is' : `${result.left} scores are`;
+  return result.stopped === 'bot-check'
+    ? `${scores} still waiting: the bot check didn't pass. They go next time you sit down here.`
+    : `${scores} still waiting for Pallet Town to answer. They go next time you sit down here.`;
 }
