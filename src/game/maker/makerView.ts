@@ -186,6 +186,8 @@ export interface MakerViewState {
   readonly unreadableDrafts?: number;
   /** The draft whose Delete has been pressed once: the next press deletes it. */
   readonly pendingDelete?: string;
+  /** The inside whose Remove has been pressed once: the next press removes it. */
+  readonly pendingAreaRemoval?: string;
   readonly draftKey: string;
   /** What the right-hand column shows under the checks. */
   readonly panel: MakerPanel;
@@ -870,7 +872,7 @@ function belowButton(file: MapFile, area: MapFileArea): string {
 }
 
 /** The inside on screen: its name, its look and its size, and the way back out. */
-function insidePane(file: MapFile, area: MapFileArea): string {
+function insidePane(file: MapFile, area: MapFileArea, pendingRemoval?: string): string {
   const cave = area.kind === 'cave';
   const kinds = MAP_FILE_STYLES_OF[area.kind];
   const styles = kinds
@@ -897,7 +899,10 @@ function insidePane(file: MapFile, area: MapFileArea): string {
     ? `<p class="px-note px-wrap">The Underground Path, as FireRed lays it: ${area.width} wide and ${area.height} long, with its stairs up at either end.</p>`
     : `<div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${limits.minWidth}" max="${limits.maxWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${limits.minHeight}" max="${limits.maxHeight}" value="${area.height}" /></label></div>`;
   return pixelWindow(
-    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label>${looks}${size}${upstairsButton(file, area)}${belowButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="${escapeAttribute(removeHelp)}">Remove</button></div></div>`,
+    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label>${looks}${size}${upstairsButton(file, area)}${belowButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="${escapeAttribute(removeHelp)}">${
+      // Pressed once, it says what the next press does, as a draft's Delete does.
+      area.id === pendingRemoval ? 'Remove for good' : 'Remove'
+    }</button></div></div>`,
     { className: 'maker-settings', heading: cave ? 'This cave' : tunnel ? 'This tunnel' : 'This inside' },
   );
 }
@@ -1150,7 +1155,7 @@ export function makerScreen(state: MakerViewState): string {
     : undefined;
   const panels: Readonly<Record<MakerPanel, () => string>> = {
     map: () =>
-      `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(state.file, inside) : settingsPane(state.file)}`,
+      `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(state.file, inside, state.pendingAreaRemoval) : settingsPane(state.file)}`,
     drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts, state.pendingDelete),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),

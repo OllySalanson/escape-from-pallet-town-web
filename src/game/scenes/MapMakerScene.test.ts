@@ -978,3 +978,26 @@ describe('deleting a draft', () => {
     expect(scene.overlay.root.innerHTML).toMatch(/data-delete-draft="draft-2"[^>]*>Delete for good</);
   });
 });
+
+describe('removing an inside', () => {
+  it('keeps saying "Remove for good" once pressed, however often the screen is drawn again', () => {
+    const made = makeInside(sampleLane, 0);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    storeDraft(made.file);
+    const { scene } = openMaker();
+    const internals = scene as unknown as {
+      showArea(area: string | undefined): void;
+      pendingAreaRemoval: string | undefined;
+      place: { kind: string };
+    };
+    internals.place = { kind: 'person' };
+    internals.showArea(made.area);
+    // The first press of Remove arms it; a tool key then draws the screen
+    // again. Drawn as a plain Remove, the next press took the room for good.
+    internals.pendingAreaRemoval = made.area;
+    scene.handleKey(key('r'));
+    expect(scene.overlay.root.innerHTML).toMatch(/data-remove-area="[^"]*"[^>]*>Remove for good</);
+  });
+});
