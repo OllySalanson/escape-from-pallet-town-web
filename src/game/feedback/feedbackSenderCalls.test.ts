@@ -10,21 +10,22 @@ const calls: string[] = [];
 let reserveError: { code: string; message: string } | null = null;
 
 vi.mock('../maker/supabaseClient', () => ({
-  supabase: async () => ({
-    auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
-    rpc: async (name: string, args: Record<string, unknown>) => {
-      calls.push(`rpc ${name} ${JSON.stringify(args.names ?? args.tag)}`);
-      return { error: name === 'reserve_feedback_uploads' ? reserveError : null };
-    },
-    storage: {
-      from: () => ({
-        upload: async (path: string) => {
-          calls.push(`upload ${path}`);
-          return { error: null };
-        },
-      }),
-    },
-  }),
+  supabase: () =>
+    Promise.resolve({
+      auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: 'u1' } } } }) },
+      rpc: (name: string, args: Record<string, unknown>) => {
+        calls.push(`rpc ${name} ${JSON.stringify(args.names ?? args.tag)}`);
+        return Promise.resolve({ error: name === 'reserve_feedback_uploads' ? reserveError : null });
+      },
+      storage: {
+        from: () => ({
+          upload: (path: string) => {
+            calls.push(`upload ${path}`);
+            return Promise.resolve({ error: null });
+          },
+        }),
+      },
+    }),
 }));
 
 const { sendToTheLab } = await import('./feedbackSender');
