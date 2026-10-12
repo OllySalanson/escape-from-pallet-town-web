@@ -10,7 +10,8 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  * `reserve_feedback_uploads` and `submit_feedback` (`feedback/feedbackSender.ts`)
  * and the house console's `submit_console_score` and `console_leaderboard`
  * (`console/remoteScores.ts`), the last of which a browser may also call
- * signed out;
+ * signed out, and the shared harbour's `name_my_house` and `harbour_names`
+ * (`harbour/`), the last of which is read signed out too;
  * the table rows are here for the reviewer, whom row-level security lets read
  * and decide.
  */
@@ -53,6 +54,12 @@ export type ConsoleBoardRow = {
   readonly level: number;
   readonly posted_at: string;
   readonly mine: boolean | null;
+};
+
+/** The name on one player's door, as the shared harbour reads it (`harbour/harbourWire.ts`). */
+export type HarbourNameRow = {
+  readonly player_uid: string;
+  readonly name: string;
 };
 
 export type GameDatabase = {
@@ -116,6 +123,14 @@ export type GameDatabase = {
       console_leaderboard: {
         Args: { game: string };
         Returns: ConsoleBoardRow[];
+      };
+      name_my_house: {
+        Args: { player_name: string };
+        Returns: string;
+      };
+      harbour_names: {
+        Args: { player_uids: string[] };
+        Returns: HarbourNameRow[];
       };
     };
     Enums: Record<string, never>;

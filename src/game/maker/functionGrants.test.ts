@@ -21,6 +21,8 @@ const everything = migrations.map((migration) => migration.sql).join('\n');
 const OPEN_TO_EVERYONE: Record<string, string> = {
   'public.console_leaderboard': 'a board is read signed out, so looking signs nobody up (F10)',
   'private.console_leaderboard': 'what the public board wraps',
+  'public.harbour_names': 'the names over the figures in the shared harbour, watched signed out',
+  'private.harbour_names': 'what the public names wrap',
 };
 
 describe('the functions the migrations create', () => {

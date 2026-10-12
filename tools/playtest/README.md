@@ -133,6 +133,12 @@ climbs the stairs and checks it arrived on the matching mat facing away, reads
 the bed, the PC, the console and the calendar, comes back down and leaves by the
 mat - `docs/screens/bolthole/`. The house has no keeper, so `walkIntoBase`
 never goes there; it leaves an upstairs floor by its stairs if it finds itself on one.
+`sharedHarbour.mjs <url> <dir>` puts two players in one shared harbour: two
+tabs of one browser over the local stand-in (`?harbour=local`, never the live
+project), OLLY and AMY each seeing the other by name, AMY watching OLLY walk to
+a tile, OLLY leaving the yard for Oak's Lab and AMY finding him there -
+`docs/screens/shared-harbour/`. The tab being played is brought to the front,
+because the one behind is slowed to a frame a second.
 `decorate.mjs <url> <dir> [--port=N]` decorates it: H, a pot plant carried with
 the keys, a doll out of the box onto the table, a refusal on the door mat, a
 mat and a doll put down and turned with the pointer, then reads the doll and

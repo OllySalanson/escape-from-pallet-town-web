@@ -136,7 +136,9 @@ than the secure container you start with, so every raid you ride it is a raid yo
 ## Home sweet Harbour
 
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
-than a menu. Four buildings, four people you'll recognise, and each one is a thing you can do:
+than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
+with the name on their front door over their head - give yours at the Bolthole and they see you
+back. Four buildings, four people you'll recognise, and each one is a thing you can do:
 
 - **Professor Oak's Lab** is where raids start: the contract board, your loadout, and a wall map
   that lights up wherever you've walked.

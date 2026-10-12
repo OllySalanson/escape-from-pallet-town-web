@@ -42,7 +42,10 @@ export function houseNameProblemLine(problem: Extract<PlayerNameCheck, { ok: fal
 
 /** What the house says once it has a name. */
 export function welcomeHomeLines(name: string): readonly string[] {
-  return [`Welcome home, ${name}!`, 'The console knows your name now, and puts your scores up under it.'];
+  return [
+    `Welcome home, ${name}!`,
+    'Everybody in the harbour sees you by that name now, and the console puts your scores up under it.',
+  ];
 }
 
 export interface HouseNameView {
@@ -56,7 +59,7 @@ export function houseNameMarkup(view: HouseNameView): string {
   )}" maxlength="${PLAYER_NAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="NAME" data-help="${escapeAttribute(
     `Type your name: capitals, numbers and . ! ? ' - up to ${PLAYER_NAME_MAX_LENGTH}.`,
   )}" />`;
-  const entry = `<form class="naming-body is-single" data-house-name-form><div class="naming-entry"><p class="px-wrap">Nobody lives here yet. Type the name that goes on the door - and on every Pallet Town board, for everybody who plays to see.</p>${field}<small data-house-name-count aria-live="polite">${houseNameCountLine(
+  const entry = `<form class="naming-body is-single" data-house-name-form><div class="naming-entry"><p class="px-wrap">Nobody lives here yet. Type the name that goes on the door, over your head in the harbour and on every Pallet Town board - everybody who plays sees it.</p>${field}<small data-house-name-count aria-live="polite">${houseNameCountLine(
     view.value,
   )}</small></div></form>`;
   const bar = pixelCommitBar({
