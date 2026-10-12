@@ -20,15 +20,8 @@ import {
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 import { BUILDING_CHOICES } from './palette';
 import { keepOnMap, moveThing, removeThing, type GridPoint, type PlaceOutcome } from './draft';
-import {
-  doorwayOf,
-  landingsOf,
-  STAIRS_SIZE,
-  stairsAt,
-  stairwellAt,
-  TUNNEL_STAIRS_SIZE,
-  tunnelStairsAt,
-} from '../world/mapAreas';
+import { capital, doorwayArt, SPOT_ORDER, spotName, spotsOf } from './placement';
+import { landingsOf, STAIRS_SIZE, stairwellAt } from '../world/mapAreas';
 
 /**
  * The places of a map, as the map maker edits them.
@@ -871,6 +864,24 @@ export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome 
   if (existing) {
     return { made: true, file, area: existing.id };
   }
+  // A door opens onto its doorstep, and a map drawn before doorsteps were
+  // kept clear can have something standing on one.
+  const [blocked] = doors
+    .flatMap((end) => landingsOf(file, end))
+    .flatMap((tile) =>
+      SPOT_ORDER.flatMap((kind) => {
+        const index = spotsOf(file, kind).findIndex(
+          (spot) => spot.area === undefined && spot.x === tile.x && spot.y === tile.y,
+        );
+        return index >= 0 ? [{ kind, index }] : [];
+      }),
+    );
+  if (blocked) {
+    return {
+      made: false,
+      reason: `${capital(spotName(file, blocked.kind, blocked.index))} stands at its door: move it first.`,
+    };
+  }
   const template = templateFor(building.kind as MapFileOutdoorBuildingKind);
   const ways = template.ways?.slice(0, doors.length).length ?? 1;
   if ((file.areas ?? []).length >= MAP_FILE_LIMITS.maxAreas) {
@@ -976,7 +987,9 @@ export function moveBuilding(file: MapFile, buildingIndex: number, to: GridPoint
   if (!outcome.placed || through.length === 0) {
     return outcome;
   }
-  const ends = doorEnds(outcome.file.buildings[buildingIndex]);
+  // Where it stands in the list now: carried into a wood, it may have cleared
+  // clutter planted before it.
+  const ends = doorEnds(outcome.file.buildings[outcome.thing.index]);
   const links = (outcome.file.links ?? []).map((link, index) => {
     const moving = through.find((candidate) => candidate.index === index);
     return moving
@@ -1191,40 +1204,13 @@ export function occupiedIn(file: MapFile, area: string): (x: number, y: number) 
     ...(view.landmarks ?? []),
     ...ways.map((doorway) => doorway.at),
   ];
-  const planted = ways.flatMap(({ at }) => {
-    const ahead = doorwayOf(at);
-    switch (at.look) {
-      case 'mat':
-        return at.toward === 'left' || at.toward === 'right'
-          ? [{ x: at.toward === 'left' ? at.x - 1 : at.x, y: at.y - 1, width: 2, height: 3 }]
-          : [{ x: Math.max(0, at.x - 1), y: at.y, width: 3, height: 1 }];
-      case 'back-door':
-        return [{ x: ahead.x - 1, y: ahead.y - 1, width: 3, height: 2 }];
-      case 'stairwell':
-        return [{ ...stairwellAt(at), width: 3, height: 3 }];
-      case 'tunnel-stairs':
-        return at.toward === 'left' || at.toward === 'right'
-          ? [{ ...tunnelStairsAt(at), ...TUNNEL_STAIRS_SIZE[at.toward] }]
-          : [];
-      case 'stairs-up':
-      case 'stairs-down':
-        return [{ ...stairsAt(at), ...STAIRS_SIZE }, { x: at.x, y: at.y, width: 1, height: 2 }];
-      case 'cave-exit':
-        return [{ x: ahead.x - 1, y: ahead.y, width: 3, height: 1 }];
-      case 'ladder-up':
-        return [{ x: at.x, y: at.y - 1, width: 1, height: 2 }];
-      case 'ladder-down':
-        return [{ x: ahead.x, y: ahead.y, width: 1, height: 1 }];
-      default:
-        return [];
-    }
-  });
+  const planted = ways.flatMap(({ at }) => doorwayArt(at));
   return (x, y) =>
     view.buildings.some((piece) => {
       const prop = plantedProp(piece.kind);
       return x >= piece.x && y >= piece.y && x < piece.x + prop.width && y < piece.y + prop.height;
     }) ||
-    planted.some((rect) => x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height) ||
+    planted.some((tile) => tile.x === x && tile.y === y) ||
     standing.some((thing) => thing.x === x && thing.y === y);
 }
 

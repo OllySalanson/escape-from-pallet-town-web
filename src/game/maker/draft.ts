@@ -22,6 +22,15 @@ import {
 } from '../world/mapFile';
 import { joinLedges, LEDGE_LETTERS, type GroundBrush } from './palette';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
+import {
+  doorRefusal,
+  planPiece,
+  SPOT_LISTS,
+  SPOT_ORDER,
+  spotRefusal,
+  spotsOf,
+  type PlacementPlace,
+} from './placement';
 import { generateMapName } from './mapNames';
 
 /**
@@ -56,38 +65,6 @@ export type ThingRef =
   | { readonly kind: 'building'; readonly index: number }
   | { readonly kind: 'door'; readonly index: number }
   | { readonly kind: 'district'; readonly index: number };
-
-/** The list in a file each kind of one-tile thing is kept in. */
-const SPOT_LISTS = {
-  'drop-in': 'dropIns',
-  exit: 'exits',
-  item: 'itemSpots',
-  person: 'people',
-  pokemon: 'pokemon',
-  'berry-tree': 'berryTrees',
-  boulder: 'boulders',
-  sign: 'signs',
-  landmark: 'landmarks',
-  trainer: 'trainers',
-} as const satisfies Record<SpotKind, keyof MapFile>;
-
-/** Every one-tile thing on a map, the one drawn on top first. */
-const SPOT_ORDER: readonly SpotKind[] = [
-  'drop-in',
-  'exit',
-  'trainer',
-  'person',
-  'pokemon',
-  'berry-tree',
-  'boulder',
-  'sign',
-  'landmark',
-  'item',
-];
-
-function spotsOf(file: MapFile, kind: SpotKind): readonly MapFileSpot[] {
-  return file[SPOT_LISTS[kind]] ?? [];
-}
 
 function withSpots(file: MapFile, kind: SpotKind, spots: readonly MapFileSpot[]): MapFile {
   return { ...file, [SPOT_LISTS[kind]]: spots };
@@ -347,8 +324,19 @@ function nextName(taken: readonly { readonly name: string }[], stem: string): st
 }
 
 export type PlaceOutcome =
-  | { readonly placed: true; readonly file: MapFile; readonly thing: ThingRef }
-  | { readonly placed: false; readonly reason: string };
+  | {
+      readonly placed: true;
+      readonly file: MapFile;
+      readonly thing: ThingRef;
+      /** What putting it there cleared away, said once: "Clears 4 trees." */
+      readonly note?: string;
+    }
+  | {
+      readonly placed: false;
+      readonly reason: string;
+      /** The tiles that refused it, drawn red under the ghost. */
+      readonly blocked?: readonly GridPoint[];
+    };
 
 /** How many of each one-tile thing a map may hold, and what a maker calls it. */
 const SPOT_RULES: Readonly<Record<SpotKind, { readonly max: number; readonly plural: string }>> = {
@@ -416,15 +404,22 @@ function newSpot(file: MapFile, kind: SpotKind, spot: MapFileSpot): MapFileSpot 
 
 /**
  * Puts a one-tile thing on a tile: a drop-in, an exit, an item spot, a person,
- * a Pokemon, a sign, a landmark or a trainer. A tile holds one of them: the checks would
- * refuse two, so the editor never makes them.
+ * a Pokemon, a sign, a landmark or a trainer. It stands on ground somebody can
+ * walk on, on nothing else, and with a side to be reached from - the rules of
+ * `placement.ts`, which the checks would otherwise find later.
  */
-export function placeSpot(file: MapFile, kind: SpotKind, point: GridPoint): PlaceOutcome {
+export function placeSpot(
+  file: MapFile,
+  kind: SpotKind,
+  point: GridPoint,
+  place: PlacementPlace = {},
+): PlaceOutcome {
   if (!inside(file, point)) {
     return { placed: false, reason: 'That is off the map.' };
   }
-  if (spotAt(file, point)) {
-    return { placed: false, reason: 'Something is already on that tile.' };
+  const refusal = spotRefusal(file, kind, point, { area: place.area });
+  if (refusal) {
+    return { placed: false, ...refusal };
   }
   const list = spotsOf(file, kind);
   const rule = SPOT_RULES[kind];
@@ -487,14 +482,16 @@ function doorAt(file: MapFile, point: GridPoint): number | undefined {
 /**
  * Puts a door a field move opens on the map: a small tree Cut clears or a
  * cracked rock Rock Smash breaks, on the one tile clicked, or a stretch of deep
- * water Surf crosses, dragged out as a box. A door may not stand on a place or under another door or a building,
- * because a tile that is two things at once is neither.
+ * water Surf crosses, dragged out as a box. A door may not stand on a place or
+ * under another door or a building, because a tile that is two things at once
+ * is neither, and a tree or a rock stands on open ground (`placement.ts`).
  */
 export function placeDoor(
   file: MapFile,
   kind: MapFileDoorKind,
   from: GridPoint,
   to: GridPoint = from,
+  place: PlacementPlace = {},
 ): PlaceOutcome {
   const doors = file.doors ?? [];
   if (doors.length >= MAP_FILE_LIMITS.maxDoors) {
@@ -510,15 +507,9 @@ export function placeDoor(
   if (!footprint.every((tile) => inside(file, tile))) {
     return { placed: false, reason: 'It does not fit there: part of it is off the map.' };
   }
-  if (
-    footprint.some(
-      (tile) =>
-        spotAt(file, tile) !== undefined ||
-        doorAt(file, tile) !== undefined ||
-        file.buildings.some((building) => covers(building, tile)),
-    )
-  ) {
-    return { placed: false, reason: 'Something is already standing there.' };
+  const refusal = doorRefusal(file, kind, footprint, place);
+  if (refusal) {
+    return { placed: false, ...refusal };
   }
   const door: MapFileDoor = { kind, x, y, width, height };
   return {
@@ -570,28 +561,27 @@ export function updateThing(
 }
 
 /**
- * Plants a building with its top-left corner on a tile. It has to fit on the
- * map and may not stand on another building, because two roofs on one tile
- * draw as neither.
+ * Plants a building - or anything else the Paint list plants - with its
+ * top-left corner on a tile, by the rules of `placement.ts`: it fits on the
+ * map, stands on nothing else and on ground it can stand on, its door opens
+ * onto ground somebody can stand on, and a building clears the trees, bushes
+ * and loose clutter in its way, as one step of undo.
  */
 export function placeBuilding(
   file: MapFile,
   kind: MapFileBuildingKind,
   corner: GridPoint,
+  place: PlacementPlace = {},
 ): PlaceOutcome {
-  const { width, height } = buildingSize(kind);
-  const footprint = rectangle(corner, { x: corner.x + width - 1, y: corner.y + height - 1 });
-  if (!footprint.every((tile) => inside(file, tile))) {
-    return { placed: false, reason: 'It does not fit there: part of it is off the map.' };
+  const plan = planPiece(file, kind, corner, { area: place.area });
+  if (!plan.ok || !plan.file || plan.index === undefined) {
+    return { placed: false, reason: plan.reason ?? 'It cannot go there.', blocked: plan.blocked };
   }
-  if (footprint.some((tile) => file.buildings.some((other) => covers(other, tile)))) {
-    return { placed: false, reason: 'Another building is standing there.' };
-  }
-  const building: MapFileBuilding = { x: corner.x, y: corner.y, kind };
   return {
     placed: true,
-    file: { ...file, buildings: [...file.buildings, building] },
-    thing: { kind: 'building', index: file.buildings.length },
+    file: plan.file,
+    thing: { kind: 'building', index: plan.index },
+    ...(plan.note ? { note: plan.note } : {}),
   };
 }
 
@@ -627,27 +617,49 @@ export function thingExists(file: MapFile, thing: ThingRef): boolean {
   return Number.isInteger(thing.index) && thing.index >= 0 && thing.index < list.length;
 }
 
-/** Moves a placed thing to another tile, keeping its name and settings. */
-export function moveThing(file: MapFile, thing: ThingRef, to: GridPoint): PlaceOutcome {
+/**
+ * Moves a placed thing to another tile, keeping its name and settings, by the
+ * same rules it was put down by: a building carried into a wood clears its
+ * way as one planted there does.
+ */
+export function moveThing(
+  file: MapFile,
+  thing: ThingRef,
+  to: GridPoint,
+  place: PlacementPlace = {},
+): PlaceOutcome {
   if (thing.kind === 'building') {
     const building = file.buildings[thing.index];
     const rest = removeThing(file, thing);
-    const outcome = placeBuilding(rest, building.kind, to);
-    if (!outcome.placed) {
-      return outcome;
+    const plan = planPiece(rest, building.kind, to, { area: place.area });
+    if (!plan.ok || !plan.file) {
+      return { placed: false, reason: plan.reason ?? 'It cannot go there.', blocked: plan.blocked };
     }
-    // Back into its own place in the list, so what is drawn on top does not change.
-    const buildings = [...rest.buildings];
-    buildings.splice(thing.index, 0, { ...building, x: to.x, y: to.y });
-    return { placed: true, file: { ...rest, buildings }, thing };
+    // Back into its own place in the list, so what is drawn on top does not
+    // change - less whatever it cleared away from before it.
+    const buildings = plan.file.buildings.slice(0, -1);
+    const index = thing.index - (plan.felled ?? []).filter((felled) => felled < thing.index).length;
+    buildings.splice(index, 0, { ...building, x: to.x, y: to.y });
+    return {
+      placed: true,
+      file: { ...plan.file, buildings },
+      thing: { kind: 'building', index },
+      ...(plan.note ? { note: plan.note } : {}),
+    };
   }
   if (thing.kind === 'door') {
     const door = (file.doors ?? [])[thing.index];
     const rest = removeThing(file, thing);
-    const outcome = placeDoor(rest, door.kind, to, {
-      x: to.x + door.width - 1,
-      y: to.y + door.height - 1,
-    });
+    const outcome = placeDoor(
+      rest,
+      door.kind,
+      to,
+      {
+        x: to.x + door.width - 1,
+        y: to.y + door.height - 1,
+      },
+      place,
+    );
     if (!outcome.placed) {
       return outcome;
     }
@@ -665,9 +677,9 @@ export function moveThing(file: MapFile, thing: ThingRef, to: GridPoint): PlaceO
   if (!inside(file, to)) {
     return { placed: false, reason: 'That is off the map.' };
   }
-  const there = spotAt(file, to);
-  if (there && !(there.kind === thing.kind && there.index === thing.index)) {
-    return { placed: false, reason: 'Something is already on that tile.' };
+  const refusal = spotRefusal(file, thing.kind, to, { area: place.area, moving: thing });
+  if (refusal) {
+    return { placed: false, ...refusal };
   }
   return { placed: true, file: updateThing(file, thing, { x: to.x, y: to.y }), thing };
 }

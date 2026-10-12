@@ -77,9 +77,26 @@ import {
   type PendingPassage,
 } from '../maker/passages';
 import { landingsOf } from '../world/mapAreas';
-import { drawPlantSwatch, drawSwatch, loadMakerSheets, type DoorwayMark } from '../maker/mapCanvas';
+import {
+  drawPieceArt,
+  drawPlantSwatch,
+  drawSwatch,
+  loadMakerSheets,
+  type DoorwayMark,
+} from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
 import { overviewOf, type Overview } from '../maker/overview';
+import { paintGhost, type GhostTiles } from '../maker/ghost';
+import {
+  clearGrownWood,
+  doorRefusal,
+  footprintOf,
+  paintAround,
+  planPiece,
+  spotRefusal,
+  type PaintOutcome,
+} from '../maker/placement';
+import { audioManager } from '../audio/AudioManager';
 
 import { PLAYTEST_RAID_DURATION_MS, setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
 import { Bag } from '../items';
@@ -134,6 +151,7 @@ import {
   type MakerZoom,
   type CavePassage,
   isCavePassage,
+  type MakerCheck,
   type PlaceChoice,
   stackLayout,
 } from '../maker/makerView';
@@ -163,7 +181,7 @@ import {
   type MapFileDoorKind,
   type MapFileHabitat,
 } from '../world/mapFile';
-import { checkMapFile, type MapCheck } from '../world/mapFileChecks';
+import { checkMapFile, type MapCheck, type MapFaultPlace } from '../world/mapFileChecks';
 
 /**
  * The map maker: a player draws their own raid map, in the FireRed style, and
@@ -215,6 +233,10 @@ const NO_ROOM: Sides = { left: 0, top: 0, right: 0, bottom: 0 };
 const EDGE_SCROLL_MS = 16;
 /** The most the window moves in one of those ticks, in screen pixels: about 750 a second. */
 const EDGE_SCROLL_MAX_PX = 12;
+/** How long a tile a fault was found on flashes for, in ms: three blinks of the CSS. */
+const FLASH_MS = 1_500;
+/** The zoom a jump to a fault looks at the map from, at least: a tile drawn whole. */
+const FAULT_ZOOM: MakerZoom = 16;
 
 interface Stroke {
   readonly tool: MakerTool;
@@ -231,11 +253,21 @@ interface Stroke {
    */
   readonly planting?: MapFileBuildingKind;
   planted?: ThingRef;
+  /** Why the last tile it could not touch was left alone: a piece that would not go, or ground a brush may not paint. */
   refusal?: string;
+  /** The tiles a brush stroke left as they were, each once however often it crossed them. */
+  skipped?: Set<string>;
   /** The pointer drawing it, so a stroke cancelled from the keyboard lets it go. */
   readonly pointerId: number;
   /** Where the pointer is now, on screen, which may be past the map window's edge. */
   pointer: { readonly clientX: number; readonly clientY: number };
+}
+
+/** What the pointer shows before a click: where a thing would go, its picture, and the line it says. */
+interface Ghost {
+  readonly tiles: GhostTiles;
+  readonly art?: (context: CanvasRenderingContext2D, origin: GridPoint) => void;
+  readonly say?: string;
 }
 
 /**
@@ -356,6 +388,13 @@ export class MapMakerScene extends Phaser.Scene {
   /** Whether the last save of the drafts failed, so the maker is told once rather than at every stroke. */
   private storeFull = false;
   private pendingDelete: string | undefined;
+  /** The fault last gone to from the checks, and which of the tiles it names: pressed again, the next. */
+  private faultVisit: { readonly key: string; readonly place: number } | undefined;
+  /** For each run of faults of one kind, which of them the heading last went to. */
+  private groupVisits: Map<string, number> | undefined;
+  /** The line the pointer put up about where it is, taken down when it is no longer true. */
+  private hoverStatus: string | undefined;
+  private flashTimer: ReturnType<typeof setTimeout> | undefined;
 
   public constructor() {
     super('mapmaker');
@@ -419,12 +458,13 @@ export class MapMakerScene extends Phaser.Scene {
       window.removeEventListener('blur', this.releaseSpace);
       // Every timer the screen owns goes with it: one that fired after the
       // shutdown drew a screen nobody is on, into a page that may be gone.
-      for (const timer of [this.renderTimer, this.statusTimer, this.fullNoteTimer]) {
+      for (const timer of [this.renderTimer, this.statusTimer, this.fullNoteTimer, this.flashTimer]) {
         clearTimeout(timer);
       }
       this.renderTimer = undefined;
       this.statusTimer = undefined;
       this.fullNoteTimer = undefined;
+      this.flashTimer = undefined;
       this.stopEdgeScroll();
       this.flushAutosave();
       this.typing = undefined;
@@ -694,6 +734,8 @@ export class MapMakerScene extends Phaser.Scene {
     } finally {
       this.rendering = false;
     }
+    // The pointer's own line went with the markup it stood in.
+    this.hoverStatus = undefined;
     const fresh = this.overlay.root.querySelector<HTMLElement>('[data-stack]');
     if (kept && fresh) {
       fresh.replaceWith(kept);
@@ -964,6 +1006,17 @@ export class MapMakerScene extends Phaser.Scene {
     on('[data-overview-toggle]', () => {
       overviewWanted = !overviewWanted;
       this.render();
+    });
+    // A fault in the checks takes the maker to the tile it names; a heading
+    // over a run of one kind steps through them.
+    on('[data-goto]', (element) => {
+      const group = element.dataset.gotoGroup;
+      if (group !== undefined) {
+        this.goToGroup(group);
+        return;
+      }
+      const [check, fault] = (element.dataset.goto ?? '').split(':').map(Number);
+      this.goToFault(check, fault);
     });
     on('[data-undo]', () => this.undo());
     on('[data-redo]', () => this.redo());
@@ -1252,6 +1305,7 @@ export class MapMakerScene extends Phaser.Scene {
         this.pointerOverMap = false;
         if (!this.stroke) {
           this.previewArea(undefined);
+          this.sayWhereThePointerIs(undefined);
         }
       });
     }
@@ -1286,6 +1340,116 @@ export class MapMakerScene extends Phaser.Scene {
         }
       });
     }
+  }
+
+  // --- Going to what the checks found ----------------------------------------------
+
+  /** The checks as the screen lists them, so a fault's place in the list finds it. */
+  private checkList(): readonly MakerCheck[] {
+    return [...this.currentChecks(), walkedCheck(this.walkedOut())];
+  }
+
+  /**
+   * Takes the maker to a tile a fault names: into the place it is in, at a
+   * zoom a tile can be seen at, the view centred on it, whatever stands there
+   * chosen and the tile flashed. A fault that names several tiles goes to the
+   * first, and to the next each time it is pressed again.
+   */
+  private goToFault(checkIndex: number, faultIndex: number, of?: string): void {
+    const fault = this.checkList()[checkIndex]?.faults[faultIndex];
+    if (!fault || fault.places.length === 0) {
+      return;
+    }
+    const key = `${checkIndex}:${faultIndex}`;
+    const visit = this.faultVisit?.key === key ? (this.faultVisit.place + 1) % fault.places.length : 0;
+    this.faultVisit = { key, place: visit };
+    const tile = fault.places[visit];
+    if (tile.area !== this.area && (tile.area === undefined || areaById(this.file, tile.area))) {
+      this.showArea(tile.area);
+    }
+    if (this.zoom < FAULT_ZOOM) {
+      this.zoom = FAULT_ZOOM;
+    }
+    // Whatever stands there is chosen, as Select would choose it.
+    const doorway = doorwayAt(this.file, this.area, tile);
+    this.selected = doorway ? undefined : thingAt(this.view, tile);
+    this.doorway = doorway ? { link: doorway.link, end: doorway.end } : undefined;
+    this.panel = 'map';
+    // The column stays on the list being worked through, not on the chosen thing's panel.
+    this.shownChosen = this.selected
+      ? `${this.selected.kind}:${this.selected.index}`
+      : this.doorway
+        ? `doorway:${this.doorway.link}:${this.doorway.end}`
+        : undefined;
+    const several =
+      fault.places.length > 1
+        ? ` (place ${visit + 1} of ${fault.places.length}: press it again for the next)`
+        : of
+          ? ` (${of})`
+          : '';
+    this.render(`${fault.text}${several}`);
+    this.lookAtTile(tile);
+    this.flashTile(tile);
+  }
+
+  /** A heading over a run of faults of one kind: each press goes to the next of them. */
+  private goToGroup(spec: string): void {
+    const split = spec.indexOf(':');
+    const checkIndex = Number(spec.slice(0, split));
+    const group = spec.slice(split + 1);
+    const members = (this.checkList()[checkIndex]?.faults ?? []).flatMap((fault, index) =>
+      fault.group === group && fault.places.length > 0 ? [index] : [],
+    );
+    if (members.length === 0) {
+      return;
+    }
+    const visits = (this.groupVisits ??= new Map());
+    const next = ((visits.get(spec) ?? -1) + 1) % members.length;
+    visits.set(spec, next);
+    this.faultVisit = undefined;
+    this.goToFault(checkIndex, members[next], `${next + 1} of ${members.length}: press the heading again for the next`);
+  }
+
+  /** Scrolls the map window so a tile of the place on screen is in its middle. */
+  private lookAtTile(tile: MapFaultPlace): void {
+    const viewport = this.viewport();
+    const map = this.mapCanvas();
+    if (!viewport || !map) {
+      return;
+    }
+    const box = map.getBoundingClientRect();
+    const seen = viewport.getBoundingClientRect();
+    const tilePx = box.width / Math.max(1, this.view.width);
+    viewport.scrollLeft += box.left + (tile.x + 0.5) * tilePx - (seen.left + viewport.clientWidth / 2);
+    viewport.scrollTop += box.top + (tile.y + 0.5) * tilePx - (seen.top + viewport.clientHeight / 2);
+    this.showOverview();
+  }
+
+  /** Flashes a frame round a tile, three times, in the map's own pixels. */
+  private flashTile(tile: MapFaultPlace): void {
+    const flash = this.overlay.root.querySelector<HTMLElement>('[data-flash]');
+    if (!flash) {
+      return;
+    }
+    const room = this.roomOf(this.view);
+    const at = (tiles: number): string => `calc(var(--u) * ${tiles * this.zoom})`;
+    flash.style.left = at(tile.x + room.left);
+    flash.style.top = at(tile.y + room.top);
+    flash.style.width = at(1);
+    flash.style.height = at(1);
+    flash.hidden = false;
+    // Started again from its first blink, however recently it last ran.
+    flash.classList.remove('is-flashing');
+    void flash.offsetWidth;
+    flash.classList.add('is-flashing');
+    if (this.flashTimer) {
+      clearTimeout(this.flashTimer);
+    }
+    this.flashTimer = setTimeout(() => {
+      this.flashTimer = undefined;
+      flash.classList.remove('is-flashing');
+      flash.hidden = true;
+    }, FLASH_MS);
   }
 
   // --- Moving round the map --------------------------------------------------------
@@ -1651,6 +1815,22 @@ export class MapMakerScene extends Phaser.Scene {
     return this.area === undefined ? growthRoom(file) : NO_ROOM;
   }
 
+  /**
+   * The ground of a map grown to hold a placement: the new wood felled from
+   * under where the thing will stand (`clearGrownWood`), so a drop-in put past
+   * the edge lands in a clearing of its own rather than in the trees.
+   */
+  private grownGround(before: MapFile, growth: Growth, tiles: readonly GridPoint[]): MapFile {
+    if (growth.file === before) {
+      return before;
+    }
+    return clearGrownWood(
+      growth.file,
+      tiles.map((tile) => ({ x: tile.x + growth.shift.x, y: tile.y + growth.shift.y })),
+      { x: growth.shift.x, y: growth.shift.y, width: before.width, height: before.height },
+    );
+  }
+
   /** `growToFit` for the place on screen, which only grows outdoors. */
   private wouldGrow(file: MapFile, tiles: readonly GridPoint[]): Growth {
     return this.area === undefined ? growToFit(file, tiles) : { file, shift: { x: 0, y: 0 } };
@@ -1663,6 +1843,197 @@ export class MapMakerScene extends Phaser.Scene {
   private brush() {
     const place = this.inside?.kind;
     return groundBrush(this.brushId, place) ?? brushesFor(place)[0];
+  }
+
+  // --- What may go where (`maker/placement.ts`) -----------------------------------
+
+  /** Paints the chosen brush on some tiles of a map, leaving alone the ones the rules keep it off. */
+  private paintSkipping(file: MapFile, tiles: readonly GridPoint[]): PaintOutcome {
+    return paintAround(file, tiles, this.brush(), paintWith, { area: this.area });
+  }
+
+  /**
+   * What a stroke that left tiles alone says, sounding the soft no as it says
+   * it; nothing, and no sound, for one that left none.
+   */
+  private tellWhatWasLeft(stroke: { readonly skipped?: number; readonly refusal?: string }): string | undefined {
+    if (!stroke.skipped || !stroke.refusal) {
+      return undefined;
+    }
+    audioManager.play('placeRefused');
+    return `${stroke.refusal} ${stroke.skipped === 1 ? 'That tile was' : `${stroke.skipped} tiles were`} left as ${stroke.skipped === 1 ? 'it was' : 'they were'}.`;
+  }
+
+  /** Says what a fill left alone, if it did. */
+  private saySkipped(painted: PaintOutcome): void {
+    const line = this.tellWhatWasLeft({ skipped: painted.skipped.length, refusal: painted.reason });
+    if (line) {
+      this.render(line);
+    }
+  }
+
+  /** A placement the rules refused: why, at the foot of the screen, and the soft no. */
+  private refuse(reason: string | undefined): void {
+    if (reason) {
+      audioManager.play('placeRefused');
+    }
+    this.sayWhereThePointerIs(undefined);
+    this.render(reason);
+  }
+
+  /** The tiles a piece planted with its corner on a tile takes up, its doorsteps among them. */
+  private pieceTiles(kind: MapFileBuildingKind, corner: GridPoint): GridPoint[] {
+    const { width, height } = buildingSize(kind);
+    return [
+      ...rectangle(corner, { x: corner.x + width - 1, y: corner.y + height - 1 }),
+      ...footprintOf({ kind, x: corner.x, y: corner.y }).doorsteps,
+    ];
+  }
+
+  /**
+   * What the ghost of the thing about to be placed shows on a tile of the
+   * place on screen, and the line it says: where it would stand and what it
+   * would clear, green, or red with the reason. Undefined for a tool that
+   * places nothing there.
+   */
+  private ghostAt(tile: GridPoint): Ghost | undefined {
+    const place = { area: this.area };
+    if (this.tool === 'brush') {
+      if (!this.inMap(tile)) {
+        return undefined;
+      }
+      const painted = this.paintSkipping(this.view, [tile]);
+      return painted.skipped.length > 0
+        ? {
+            tiles: { footprint: [tile], doorsteps: [], clears: [], blocked: [tile], ok: false },
+            say: painted.reason,
+          }
+        : undefined;
+    }
+    if (this.tool !== 'place' || isCavePassage(this.place.kind)) {
+      return undefined;
+    }
+    const kind = this.place.kind;
+    if (kind === 'district' || kind === 'surf') {
+      return undefined;
+    }
+    // Past the edge, it is asked of the map grown round it, as the click would grow it.
+    const needs = kind === 'building' ? this.pieceTiles(this.place.building, tile) : [tile];
+    const growth = this.wouldGrow(this.view, needs);
+    const ground = this.grownGround(this.view, growth, needs);
+    const back = (tiles: readonly GridPoint[]): GridPoint[] =>
+      tiles.map((point) => ({ x: point.x - growth.shift.x, y: point.y - growth.shift.y }));
+    const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
+    if (kind === 'building') {
+      const building = this.place.building;
+      const plan = planPiece(ground, building, at, place);
+      return {
+        tiles: {
+          footprint: back(plan.footprint),
+          overhang: back(plan.overhang),
+          drawn: back(plan.brim),
+          doorsteps: back(plan.doorsteps),
+          clears: back(plan.clears),
+          blocked: back(plan.blocked),
+          ok: plan.ok,
+        },
+        art: (context, origin) => drawPieceArt(context, building, tile, origin, this.zoom),
+        say: plan.ok ? plan.note : plan.reason,
+      };
+    }
+    const refusal =
+      kind === 'cut-tree' || kind === 'smash-rock'
+        ? doorRefusal(ground, kind, [at], place)
+        : spotRefusal(ground, kind, at, place);
+    return {
+      tiles: {
+        footprint: [tile],
+        doorsteps: [],
+        clears: [],
+        blocked: back(refusal?.blocked ?? []),
+        ok: refusal === undefined,
+      },
+      ...(refusal ? { say: refusal.reason } : {}),
+    };
+  }
+
+  /** The ghost of a thing being carried, at the tile the pointer has it over. */
+  private carriedGhost(thing: ThingRef, start: GridPoint, tile: GridPoint): Ghost | undefined {
+    const place = { area: this.area };
+    if (thing.kind === 'district') {
+      return undefined;
+    }
+    if (thing.kind === 'building') {
+      const building = this.view.buildings[thing.index];
+      if (!building) {
+        return undefined;
+      }
+      const corner = this.carriedCorner(thing, start, tile);
+      const needs = this.pieceTiles(building.kind, corner);
+      const growth = this.wouldGrow(this.view, needs);
+      const back = (tiles: readonly GridPoint[]): GridPoint[] =>
+        tiles.map((point) => ({ x: point.x - growth.shift.x, y: point.y - growth.shift.y }));
+      const plan = planPiece(
+        removeThing(this.grownGround(this.view, growth, needs), thing),
+        building.kind,
+        { x: corner.x + growth.shift.x, y: corner.y + growth.shift.y },
+        place,
+      );
+      return {
+        tiles: {
+          footprint: back(plan.footprint),
+          overhang: back(plan.overhang),
+          drawn: back(plan.brim),
+          doorsteps: back(plan.doorsteps),
+          clears: back(plan.clears),
+          blocked: back(plan.blocked),
+          ok: plan.ok,
+        },
+        art: (context, origin) => drawPieceArt(context, building.kind, corner, origin, this.zoom),
+        say: plan.ok ? plan.note : plan.reason,
+      };
+    }
+    if (thing.kind === 'door') {
+      const door = (this.view.doors ?? [])[thing.index];
+      if (!door) {
+        return undefined;
+      }
+      const corner = this.carriedCorner(thing, start, tile);
+      const tiles = rectangle(corner, { x: corner.x + door.width - 1, y: corner.y + door.height - 1 });
+      const refusal = doorRefusal(removeThing(this.view, thing), door.kind, tiles, place);
+      return {
+        tiles: { footprint: tiles, doorsteps: [], clears: [], blocked: refusal?.blocked ?? [], ok: !refusal },
+        ...(refusal ? { say: refusal.reason } : {}),
+      };
+    }
+    if (!this.inMap(tile)) {
+      return undefined;
+    }
+    const refusal = spotRefusal(this.view, thing.kind, tile, { ...place, moving: thing });
+    return {
+      tiles: { footprint: [tile], doorsteps: [], clears: [], blocked: refusal?.blocked ?? [], ok: !refusal },
+      ...(refusal ? { say: refusal.reason } : {}),
+    };
+  }
+
+  /**
+   * Puts up, or takes down, the line about where the pointer is: why the ghost
+   * is red, or what it would clear. Only the pointer's own line is taken down.
+   */
+  private sayWhereThePointerIs(line: string | undefined): void {
+    if (line === this.hoverStatus) {
+      return;
+    }
+    if (line) {
+      if (this.statusTimer) {
+        clearTimeout(this.statusTimer);
+        this.statusTimer = undefined;
+      }
+      putUpPixelStatus(this.overlay.root, line);
+    } else if (this.hoverStatus) {
+      takeDownPixelStatus(this.overlay.root);
+    }
+    this.hoverStatus = line;
   }
 
   /**
@@ -1787,16 +2158,18 @@ export class MapMakerScene extends Phaser.Scene {
       case 'brush': {
         const growth = this.growFor(this.view, [tile]);
         const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
-        const file = paintWith(growth.file, [at], this.brush());
+        const painted = this.paintSkipping(growth.file, [at]);
         this.stroke = {
           tool: 'brush',
           start: at,
           last: at,
-          file,
+          file: painted.file,
           shift: growth.shift,
+          skipped: new Set(painted.skipped.map(({ x, y }) => `${x},${y}`)),
+          ...(painted.reason ? { refusal: painted.reason } : {}),
           ...held,
         };
-        this.redraw(file);
+        this.redraw(painted.file);
         return;
       }
       case 'rect':
@@ -1812,7 +2185,9 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       case 'fill':
         if (inMap) {
-          this.commitView(paintWith(this.view, fillRegion(this.view, tile), this.brush()), this.selected);
+          const painted = this.paintSkipping(this.view, fillRegion(this.view, tile));
+          this.commitView(painted.file, this.selected);
+          this.saySkipped(painted);
         }
         return;
       case 'pick': {
@@ -1898,27 +2273,24 @@ export class MapMakerScene extends Phaser.Scene {
           return;
         }
         const footprint =
-          this.place.kind === 'building'
-            ? rectangle(tile, {
-                x: tile.x + buildingSize(this.place.building).width - 1,
-                y: tile.y + buildingSize(this.place.building).height - 1,
-              })
-            : [tile];
+          this.place.kind === 'building' ? this.pieceTiles(this.place.building, tile) : [tile];
         const before = this.view;
         const growth = this.growFor(before, footprint);
         const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
+        const place = { area: this.area };
+        const ground = this.grownGround(before, growth, footprint);
         const outcome =
           this.place.kind === 'building'
-            ? placeBuilding(growth.file, this.place.building, at)
+            ? placeBuilding(ground, this.place.building, at, place)
             : this.place.kind === 'cut-tree' || this.place.kind === 'smash-rock'
-              ? placeDoor(growth.file, this.place.kind, at)
-              : placeSpot(growth.file, this.place.kind, at);
+              ? placeDoor(ground, this.place.kind, at, at, place)
+              : placeSpot(ground, this.place.kind, at, place);
         if (outcome.placed) {
           this.panel = 'map';
-          this.commitGrown(before, outcome.file, outcome.thing, growth.shift);
+          this.commitGrown(before, outcome.file, outcome.thing, growth.shift, outcome.note);
         } else {
           this.undoGrowth(before, growth);
-          this.render(outcome.reason);
+          this.refuse(outcome.reason);
         }
         return;
       }
@@ -1949,11 +2321,20 @@ export class MapMakerScene extends Phaser.Scene {
       const tiles = line(stroke.last, tile);
       const growth = this.growFor(stroke.file, tiles);
       const by = growth.shift;
-      stroke.file = paintWith(
+      const painted = this.paintSkipping(
         growth.file,
         tiles.map((point) => ({ x: point.x + by.x, y: point.y + by.y })),
-        this.brush(),
       );
+      stroke.file = painted.file;
+      // Grown west or north, every tile it left alone moved with the ground.
+      stroke.skipped = new Set([
+        ...[...(stroke.skipped ?? [])].map((tile) => {
+          const [x, y] = tile.split(',').map(Number);
+          return `${x + by.x},${y + by.y}`;
+        }),
+        ...painted.skipped.map(({ x, y }) => `${x},${y}`),
+      ]);
+      stroke.refusal ??= painted.reason;
       stroke.start = { x: stroke.start.x + by.x, y: stroke.start.y + by.y };
       stroke.last = { x: tile.x + by.x, y: tile.y + by.y };
       stroke.shift = { x: stroke.shift.x + by.x, y: stroke.shift.y + by.y };
@@ -1973,7 +2354,13 @@ export class MapMakerScene extends Phaser.Scene {
       this.previewArea({ from: stroke.start, to: tile });
     } else if (stroke.tool === 'select' && stroke.carrying) {
       stroke.last = tile;
-      this.previewArea(this.footprint(stroke.carrying, tile));
+      const ghost = this.carriedGhost(stroke.carrying, stroke.start, tile);
+      if (ghost) {
+        this.previewGhost(ghost);
+        this.sayWhereThePointerIs(ghost.say);
+      } else {
+        this.previewArea(this.footprint(stroke.carrying, tile));
+      }
     } else if (stroke.tool === 'select' && this.doorway) {
       // A mat is carried along the room's bottom row and nowhere else, and a
       // staircase along the back wall, its foot on the row it was on.
@@ -1997,28 +2384,32 @@ export class MapMakerScene extends Phaser.Scene {
     // with it; an inside does not grow, and is resized by its own fields.
     const before = this.view;
     if (stroke.tool === 'brush') {
-      this.commitGrown(before, stroke.file, this.selected, stroke.shift);
+      this.commitGrown(
+        before,
+        stroke.file,
+        this.selected,
+        stroke.shift,
+        this.tellWhatWasLeft({ skipped: stroke.skipped?.size, refusal: stroke.refusal }),
+      );
     } else if (stroke.tool === 'rect') {
       const tiles = rectangle(stroke.start, stroke.last);
       const growth = this.growFor(before, tiles);
       const by = growth.shift;
-      this.commitGrown(
-        before,
-        paintWith(
-          growth.file,
-          tiles.map((point) => ({ x: point.x + by.x, y: point.y + by.y })),
-          this.brush(),
-        ),
-        this.selected,
-        by,
+      const painted = this.paintSkipping(
+        growth.file,
+        tiles.map((point) => ({ x: point.x + by.x, y: point.y + by.y })),
       );
+      this.commitGrown(before, painted.file, this.selected, by, this.tellWhatWasLeft({
+        skipped: painted.skipped.length,
+        refusal: painted.reason,
+      }));
     } else if (stroke.planting) {
       // However many were planted, the stroke is one step of undo.
       if (stroke.planted) {
         this.panel = 'map';
         this.commitGrown(before, stroke.file, stroke.planted, stroke.shift);
       } else {
-        this.render(stroke.refusal);
+        this.refuse(stroke.refusal);
       }
     } else if (stroke.tool === 'place') {
       const growth = this.growFor(before, [stroke.start, stroke.last]);
@@ -2027,13 +2418,13 @@ export class MapMakerScene extends Phaser.Scene {
       const to = { x: stroke.last.x + by.x, y: stroke.last.y + by.y };
       const outcome =
         this.place.kind === 'surf'
-          ? placeDoor(growth.file, 'surf', from, to)
+          ? placeDoor(growth.file, 'surf', from, to, { area: this.area })
           : addDistrict(growth.file, from, to);
       if (outcome.placed) {
         this.commitGrown(before, outcome.file, outcome.thing, by);
       } else {
         this.undoGrowth(before, growth);
-        this.render(outcome.reason);
+        this.refuse(outcome.reason);
       }
     } else if (stroke.tool === 'select' && stroke.carrying) {
       if (stroke.last.x === stroke.start.x && stroke.last.y === stroke.start.y) {
@@ -2041,20 +2432,25 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       }
       const area = this.footprint(stroke.carrying, stroke.last);
-      const growth = this.growFor(before, [area.from, area.to]);
-      const by = growth.shift;
       const to = this.carriedCorner(stroke.carrying, stroke.start, stroke.last);
+      // A building needs room for its doorstep as well as itself.
+      const carried = stroke.carrying.kind === 'building' ? before.buildings[stroke.carrying.index] : undefined;
+      const needs = carried ? this.pieceTiles(carried.kind, to) : rectangle(area.from, area.to);
+      const growth = this.growFor(before, needs);
+      const by = growth.shift;
       // A building outdoors carries the way through its door with it.
       const at = { x: to.x + by.x, y: to.y + by.y };
+      const ground = this.grownGround(before, growth, needs);
       const outcome =
         stroke.carrying.kind === 'building' && this.area === undefined
-          ? moveBuilding(growth.file, stroke.carrying.index, at)
-          : moveThing(growth.file, stroke.carrying, at);
+          ? moveBuilding(ground, stroke.carrying.index, at)
+          : moveThing(ground, stroke.carrying, at, { area: this.area });
+      this.sayWhereThePointerIs(undefined);
       if (outcome.placed) {
-        this.commitGrown(before, outcome.file, outcome.thing, by);
+        this.commitGrown(before, outcome.file, outcome.thing, by, outcome.note);
       } else {
         this.undoGrowth(before, growth);
-        this.render(outcome.reason);
+        this.refuse(outcome.reason);
       }
     } else if (stroke.tool === 'select' && this.doorway) {
       const doorway = this.doorway;
@@ -2078,10 +2474,15 @@ export class MapMakerScene extends Phaser.Scene {
     if (!kind) {
       return { x: 0, y: 0 };
     }
-    const { width, height } = buildingSize(kind);
-    const growth = this.growFor(stroke.file, rectangle(tile, { x: tile.x + width - 1, y: tile.y + height - 1 }));
+    const tiles = this.pieceTiles(kind, tile);
+    const growth = this.growFor(stroke.file, tiles);
     const by = growth.shift;
-    const outcome = placeBuilding(growth.file, kind, { x: tile.x + by.x, y: tile.y + by.y });
+    const outcome = placeBuilding(
+      this.grownGround(stroke.file, growth, tiles),
+      kind,
+      { x: tile.x + by.x, y: tile.y + by.y },
+      { area: this.area },
+    );
     if (!outcome.placed) {
       this.undoGrowth(stroke.file, growth);
       stroke.refusal = outcome.reason;
@@ -2106,19 +2507,30 @@ export class MapMakerScene extends Phaser.Scene {
     next: MapFile,
     selected: ThingRef | undefined,
     shift: Offset,
+    /** Anything to say besides: what it cleared, or what a stroke left alone. */
+    said?: string,
   ): void {
     // `before` and `next` are the place on screen; what is kept is the map
     // with that place written back into it.
     const from = this.file;
-    const file = withFocusedArea(from, this.area, next);
     const grew = next.width !== before.width || next.height !== before.height;
+    const status = [grew ? `The map grew to ${next.width}x${next.height}.` : '', said ?? '']
+      .filter((part) => part.length > 0)
+      .join(' ');
+    if (next === before) {
+      // Nothing changed - every tile of a stroke was left alone - so nothing to undo.
+      this.selected = selected;
+      this.render(status || undefined);
+      return;
+    }
+    const file = withFocusedArea(from, this.area, next);
     if (grew) {
       grownFrom.set(file, { before: from, shift });
     }
     this.history.push(file);
     this.selected = selected;
     this.scheduleAutosave();
-    this.render(grew ? `The map grew to ${next.width}x${next.height}.` : undefined);
+    this.render(status || undefined);
   }
 
   /** Puts the window back as it was when a growth made for something refused is not kept. */
@@ -2272,31 +2684,57 @@ export class MapMakerScene extends Phaser.Scene {
     }
   }
 
-  /** What the pointer would do, before it does it. */
+  /**
+   * What the pointer would do, before it does it: a placement's ghost, green
+   * where it may go and red where it may not with the reason said at the foot
+   * of the screen, and what it would clear shown faintly; anything else, the
+   * tile it would work on.
+   */
   private hover(tile: GridPoint): void {
     if (!this.inReach(this.tool, tile)) {
       this.previewArea(undefined);
+      this.sayWhereThePointerIs(undefined);
       return;
     }
-    if (this.tool === 'place' && this.place.kind === 'building') {
-      const size = buildingSize(this.place.building);
-      const to = { x: tile.x + size.width - 1, y: tile.y + size.height - 1 };
-      // Past the edge, it fits if the map can grow round it.
-      const growth = this.wouldGrow(this.view, [tile, to]);
-      const valid = placeBuilding(growth.file, this.place.building, {
-        x: tile.x + growth.shift.x,
-        y: tile.y + growth.shift.y,
-      }).placed;
-      this.previewArea(
-        { from: tile, to: { x: tile.x + size.width - 1, y: tile.y + size.height - 1 } },
-        valid,
-      );
+    const ghost = this.passage ? undefined : this.ghostAt(tile);
+    if (ghost) {
+      this.previewGhost(ghost);
+      this.sayWhereThePointerIs(ghost.say);
       return;
     }
     this.previewArea({ from: tile, to: tile });
+    this.sayWhereThePointerIs(undefined);
+  }
+
+  /** Shows a placement's ghost, tile by tile, in place of the plain one. */
+  private previewGhost({ tiles, art }: Ghost): void {
+    const canvas = this.overlay.root.querySelector<HTMLCanvasElement>('[data-ghost-tiles]');
+    const plain = this.overlay.root.querySelector<HTMLElement>('[data-ghost]');
+    if (!canvas) {
+      return;
+    }
+    if (plain) {
+      plain.hidden = true;
+    }
+    const bounds = paintGhost(canvas, tiles, this.zoom, art);
+    if (!bounds) {
+      canvas.hidden = true;
+      return;
+    }
+    const at = (count: number): string => `calc(var(--u) * ${count * this.zoom})`;
+    const room = this.roomOf(this.onScreen);
+    canvas.style.left = at(bounds.x + room.left);
+    canvas.style.top = at(bounds.y + room.top);
+    canvas.style.width = at(bounds.width);
+    canvas.style.height = at(bounds.height);
+    canvas.hidden = false;
   }
 
   private previewArea(area: { from: GridPoint; to: GridPoint } | undefined, valid = true): void {
+    const tiles = this.overlay.root.querySelector<HTMLElement>('[data-ghost-tiles]');
+    if (tiles) {
+      tiles.hidden = true;
+    }
     const ghost = this.overlay.root.querySelector<HTMLElement>('[data-ghost]');
     if (!ghost) {
       return;

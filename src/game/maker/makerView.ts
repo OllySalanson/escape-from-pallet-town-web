@@ -1,4 +1,4 @@
-import type { MapCheck } from '../world/mapFileChecks';
+import type { MapCheck, MapFaultPlace } from '../world/mapFileChecks';
 import { POKEMON_ICON_ORDER } from '../pokemon/generated/pokemonIcons';
 import { pokemonCry, pokemonName } from '../world/pokemonFigures';
 import { BERRY_IDS, berryItemId, berryName } from '../world/berries';
@@ -150,11 +150,13 @@ export type MakerCheck = Omit<MapCheck, 'id'> & { readonly id: string };
 
 /** The last check, which is not a fact about the file but about its maker. */
 export function walkedCheck(walked: boolean): MakerCheck {
+  const problems = walked ? [] : ['WALK IT or RAID IT, and leave by an exit.'];
   return {
     id: 'walked',
     label: 'You walked out of it yourself in TRY IT',
     passed: walked,
-    problems: walked ? [] : ['WALK IT or RAID IT, and leave by an exit.'],
+    problems,
+    faults: problems.map((text) => ({ text, places: [], group: 'tries' })),
   };
 }
 
@@ -467,7 +469,7 @@ function mapPane(state: MakerViewState, view: MapFile, inside: MapFileArea | und
   // shown while the map does not fit the window (`MapMakerScene.showOverview`).
   const overview = `<div class="px-window maker-overview" data-overview hidden><canvas class="maker-overview-map" data-overview-map></canvas><div class="maker-overview-view" data-overview-view></div></div>`;
   return pixelWindow(
-    `${passageBanner(state)}${areaStrip(state.file, state.area)}<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
+    `${passageBanner(state)}${areaStrip(state.file, state.area)}<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div><canvas class="maker-ghost-tiles" data-ghost-tiles hidden></canvas><div class="maker-flash" data-flash hidden></div></div></div>${overview}</div>`,
     {
       className: 'maker-map',
       heading: escapeHtml(inside ? inside.name : file.name || 'Untitled map'),
@@ -476,7 +478,35 @@ function mapPane(state: MakerViewState, view: MapFile, inside: MapFileArea | und
   );
 }
 
-function checksPane(checks: readonly MakerCheck[]): string {
+/** How many tiles of one kind of fault are listed by name before the rest are counted. */
+const FAULT_TILES = 24;
+
+/** A tile a fault names, as a maker reads it: "8,8", or "3,4 in House". */
+export function faultTileLabel(file: MapFile, place: MapFaultPlace): string {
+  const inside = place.area === undefined ? undefined : file.areas?.find((area) => area.id === place.area);
+  return inside ? `${place.x},${place.y} in ${inside.name}` : `${place.x},${place.y}`;
+}
+
+/**
+ * What a run of faults of one kind is headed: "7 berry trees stand in the
+ * trees" when they all say the same of themselves, else "7 berry trees".
+ */
+function groupHeading(faults: readonly MakerCheck['faults'][number][]): string {
+  const [first] = faults;
+  const says = first?.says;
+  const shared = says !== undefined && faults.every((fault) => fault.says === says);
+  return `${faults.length} ${first?.group ?? ''}${shared ? ` ${says}` : ''}`;
+}
+
+/**
+ * The checks, as the maker's to-do list. Every fault that names a tile is a
+ * button that takes the maker there (`MapMakerScene.goToFault`), and a run of
+ * faults of one kind - seven berry trees stood in a wood - is one line with a
+ * count and a chip for each tile, so the list can be read at a glance and
+ * every one of them still reached. A fault about the whole map names no tile
+ * and is only said.
+ */
+function checksPane(checks: readonly MakerCheck[], file: MapFile): string {
   const passed = checks.filter((check) => check.passed).length;
   // A finished map's list is one line: every check has passed, and the room
   // is needed by whatever the column is opened to next - sending it in.
@@ -487,15 +517,45 @@ function checksPane(checks: readonly MakerCheck[]): string {
     );
   }
   const rows = checks
-    .map((check) => {
-      const problems = check.problems
-        .slice(0, 3)
-        .map((problem) => `<small class="px-wrap">${escapeHtml(problem)}</small>`)
+    .map((check, checkIndex) => {
+      const faults = check.faults.map((fault, faultIndex) => ({ fault, faultIndex }));
+      const counts = new Map<string, number>();
+      for (const { fault } of faults) {
+        counts.set(fault.group, (counts.get(fault.group) ?? 0) + 1);
+      }
+      const said = new Set<string>();
+      const lines = faults
+        .map(({ fault, faultIndex }) => {
+          const goto = `${checkIndex}:${faultIndex}`;
+          const where = fault.places[0];
+          if (!where) {
+            return `<small class="maker-fault-text px-wrap">${escapeHtml(fault.text)}</small>`;
+          }
+          const more =
+            fault.places.length > 1 ? ` It names ${fault.places.length} places: each press goes to the next.` : '';
+          if ((counts.get(fault.group) ?? 0) < 2) {
+            return `<button class="px-row maker-fault" data-goto="${goto}" data-help="${escapeAttribute(`Takes you to ${faultTileLabel(file, where)}.${more}`)}"><span class="px-wrap">${escapeHtml(fault.text)}</span></button>`;
+          }
+          // A run of one kind: said once, where its first one is, with a chip for each.
+          if (said.has(fault.group)) {
+            return '';
+          }
+          said.add(fault.group);
+          const members = faults.filter((candidate) => candidate.fault.group === fault.group);
+          const chips = members
+            .slice(0, FAULT_TILES)
+            .map(
+              (member) =>
+                `<button class="px-window px-chip maker-fault-tile" data-goto="${checkIndex}:${member.faultIndex}" data-help="${escapeAttribute(member.fault.text)}">${escapeHtml(faultTileLabel(file, member.fault.places[0] ?? where))}</button>`,
+            )
+            .join('');
+          const rest =
+            members.length > FAULT_TILES
+              ? `<small class="px-note">and ${members.length - FAULT_TILES} more: the heading goes to each in turn.</small>`
+              : '';
+          return `<div class="maker-fault-group"><button class="px-row maker-fault maker-fault-head" data-goto="${goto}" data-goto-group="${checkIndex}:${escapeAttribute(fault.group)}" data-help="${escapeAttribute(`${fault.text} Each press goes to the next of them.`)}"><span class="px-wrap">${escapeHtml(groupHeading(members.map((member) => member.fault)))}</span></button><span class="maker-fault-tiles">${chips}</span>${rest}</div>`;
+        })
         .join('');
-      const more =
-        check.problems.length > 3
-          ? `<small class="px-note">and ${check.problems.length - 3} more</small>`
-          : '';
       // A check with nothing to say about a map that does not load yet is
       // waiting on that, not failed on its own account.
       const state = check.passed
@@ -503,7 +563,7 @@ function checksPane(checks: readonly MakerCheck[]): string {
         : check.problems.length > 0
           ? 'is-failed'
           : 'is-waiting';
-      return `<li class="maker-check ${state}" data-check="${check.id}"><span class="maker-check-mark" aria-label="${check.passed ? 'passed' : state === 'is-waiting' ? 'waiting' : 'not yet'}"></span><span class="px-row-main"><span class="px-wrap">${escapeHtml(check.label)}</span>${problems}${more}</span></li>`;
+      return `<li class="maker-check ${state}" data-check="${check.id}"><span class="maker-check-mark" aria-label="${check.passed ? 'passed' : state === 'is-waiting' ? 'waiting' : 'not yet'}"></span><span class="px-row-main"><span class="px-wrap">${escapeHtml(check.label)}</span>${lines}</span></li>`;
     })
     .join('');
   return pixelWindow(`<ul class="maker-checks-list">${rows}</ul>`, {
@@ -1167,7 +1227,7 @@ export function makerScreen(state: MakerViewState): string {
   // The column scrolls as any pane does, so it says MORE when the chosen
   // thing's panel is below the checks rather than leaving its heading peeking
   // out under the bar (playtest 45).
-  const side = `<div class="maker-side px-scroll">${checksPane(state.checks)}${panels[state.panel]()}</div>`;
+  const side = `<div class="maker-side px-scroll">${checksPane(state.checks, state.file)}${panels[state.panel]()}</div>`;
   const button = (
     attribute: string,
     label: string,

@@ -294,3 +294,84 @@ describe('sending a map in', () => {
     expect(markup).toContain('Move the exit off the road.');
   });
 });
+
+describe('the checks, as a list a maker works through', () => {
+  /** The sample with seven berry trees stood in its trees and a person in its pond. */
+  const faulty: MapFile = {
+    ...SAMPLE,
+    berryTrees: [
+      [0, 2],
+      [0, 4],
+      [0, 6],
+      [0, 8],
+      [0, 10],
+      [0, 12],
+      [0, 14],
+    ].map(([x, y]) => ({ x, y, berry: 'oran' as const })),
+    people: [{ ...SAMPLE.people![0], x: 5, y: 9 }],
+  };
+  const markup = makerScreen(state(faulty, false));
+  const checks = state(faulty, false).checks;
+  const standing = checks.findIndex((check) => check.id === 'standing');
+
+  it('makes every fault that names a tile a button that goes there', () => {
+    const buttons = [...markup.matchAll(/<button[^>]*data-goto="(\d+):(\d+)"[^>]*>/g)];
+    const named = checks.flatMap((check, checkIndex) =>
+      check.faults.flatMap((fault, faultIndex) =>
+        fault.places.length > 0 ? [`${checkIndex}:${faultIndex}`] : [],
+      ),
+    );
+    for (const key of named) {
+      expect(buttons.some((button) => `${button[1]}:${button[2]}` === key), key).toBe(true);
+    }
+  });
+
+  it('reads a run of one kind as one line with a count, and a chip for each tile', () => {
+    const group = /<div class="maker-fault-group">(.*?)<\/div>/.exec(markup)?.[1] ?? '';
+    expect(group).toContain('7 berry trees stand in the trees');
+    expect(group).toContain(`data-goto-group="${standing}:berry trees"`);
+    const chips = [...group.matchAll(/<button class="px-window px-chip maker-fault-tile"[^>]*>([^<]*)<\/button>/g)];
+    expect(chips.map((chip) => chip[1])).toEqual(['0,2', '0,4', '0,6', '0,8', '0,10', '0,12', '0,14']);
+    // Each chip says the whole fault when pointed at.
+    expect(group).toContain('data-help="Oran Berry tree at 0,8 stands in the trees."');
+  });
+
+  it('says a fault of its own kind in full, as its own button', () => {
+    expect(markup).toMatch(
+      /<button class="px-row maker-fault" data-goto="\d+:\d+" data-help="Takes you to 5,9\.">.*Old Tam at 5,9 stands in deep water\./,
+    );
+  });
+
+  it('only says a fault about the whole map, with nothing to press', () => {
+    const walked = checks.length - 1;
+    expect(markup).not.toContain(`data-goto="${walked}:0"`);
+    expect(markup).toContain('<small class="maker-fault-text px-wrap">WALK IT or RAID IT, and leave by an exit.</small>');
+  });
+
+  it('names an inside as well as a tile', () => {
+    const view = makerScreen({
+      ...state(faulty, false),
+      checks: [
+        {
+          id: 'standing',
+          label: 'Everything stands on ground you can walk on',
+          passed: false,
+          problems: ['x'],
+          faults: [
+            { text: 'x', group: 'item spots', places: [{ x: 1, y: 2, area: 'hall' }] },
+            { text: 'y', group: 'item spots', places: [{ x: 3, y: 4, area: 'hall' }] },
+          ],
+        },
+      ],
+      file: {
+        ...faulty,
+        areas: [
+          { id: 'hall', name: 'Hall', kind: 'inside', style: 'house', width: 8, height: 8, ground: [], buildings: [] },
+        ],
+      },
+    });
+    expect(view).toContain('>1,2 in Hall</button>');
+    // They do not say the same of themselves, so their heading is a count.
+    expect(view).toContain('>2 item spots</span></button>');
+  });
+});

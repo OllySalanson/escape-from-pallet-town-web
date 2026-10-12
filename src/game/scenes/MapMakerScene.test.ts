@@ -16,6 +16,21 @@ const TILE_PX = 16;
 const page = {
   mapWidth: 40,
   mapHeight: 30,
+  /** The frame flashed round a tile a fault was found on. */
+  flash: {
+    hidden: true,
+    offsetWidth: 0,
+    style: {} as Record<string, string>,
+    flashing: false,
+    classList: {
+      add: (name: string) => {
+        page.flash.flashing ||= name === 'is-flashing';
+      },
+      remove: (name: string) => {
+        page.flash.flashing &&= name !== 'is-flashing';
+      },
+    },
+  },
   viewport: {
     scrollLeft: 0,
     scrollTop: 0,
@@ -71,7 +86,9 @@ vi.mock('../ui/MenuOverlay', () => ({
           ? page.viewport
           : selector === 'canvas[data-map]'
             ? page.canvas
-            : null,
+            : selector === '[data-flash]'
+              ? page.flash
+              : null,
       querySelectorAll: (selector: string) =>
         selector.startsWith('[data-') && selector !== '[data-field]'
           ? [
@@ -93,17 +110,28 @@ vi.mock('../ui/MenuOverlay', () => ({
 
 vi.mock('../maker/mapCanvas', () => ({
   drawMap: () => undefined,
+  drawPieceArt: () => undefined,
   drawSwatch: () => undefined,
   layersFor: () => ({}),
   loadMakerSheets: () => new Promise(() => undefined),
 }));
 
 import { makeInside } from '../maker/areas';
-import { blankMap, buildingSize, groundAt, placeSpot, thingExists, type ThingRef } from '../maker/draft';
+import {
+  blankMap,
+  buildingSize,
+  groundAt,
+  paintWith,
+  placeSpot,
+  rectangle,
+  thingExists,
+  type ThingRef,
+} from '../maker/draft';
 import { MAKER_STORAGE_KEY } from '../maker/drafts';
 import type { EditHistory } from '../maker/history';
 import { groundBrush } from '../maker/palette';
 import { readMapFile, type MapFile, type MapFileBuildingKind } from '../world/mapFile';
+import type { MapCheck } from '../world/mapFileChecks';
 import sampleLaneJson from '../../maps/sample/sample-lane.json';
 import { forgetMakerSession, MapMakerScene, restingTop } from './MapMakerScene';
 import { setActiveSaveSlot } from '../dev/playtestMode';
@@ -840,7 +868,7 @@ describe('planting nature along a drag', () => {
     drag(scene, [[5, 5]]);
     drag(scene, [[5, 5]]);
     expect(scene.file.buildings).toHaveLength(1);
-    expect(scene.overlay.root.innerHTML).toContain('Another building is standing there.');
+    expect(scene.overlay.root.innerHTML).toContain('The tree is in the way.');
   });
 
   it('is dropped whole by Escape', () => {
@@ -875,7 +903,13 @@ describe('planting nature along a drag', () => {
   );
 
   it.each(['house', 'cave-mouth', 'museum', 'sign'])('plants a %s once, however far it is dragged', (building) => {
-    storeDraft(blankMap());
+    // A cave mouth is cut into the foot of a rock face.
+    const rock = { id: 'rock', label: 'Rock', help: '', letterFor: () => 'C', swatch: 'C' };
+    storeDraft(
+      building === 'cave-mouth'
+        ? paintWith(blankMap(), rectangle({ x: 3, y: 6 }, { x: 5, y: 8 }), rock)
+        : blankMap(),
+    );
     const { scene } = openMaker();
     plantWith(scene, building);
     drag(
@@ -1001,5 +1035,165 @@ describe('removing an inside', () => {
     internals.pendingAreaRemoval = made.area;
     scene.handleKey(key('r'));
     expect(scene.overlay.root.innerHTML).toMatch(/data-remove-area="[^"]*"[^>]*>Remove for good</);
+  });
+});
+
+describe('going to what the checks found', () => {
+  interface Jumping {
+    goToFault(check: number, fault: number): void;
+    goToGroup(spec: string): void;
+    checkList(): readonly MapCheck[];
+  }
+
+  /** A working map with two berry trees stood in bushes in its middle. */
+  function faulty(extra: Partial<MapFile> = {}): MapFile {
+    const base = { ...blankMap(), maker: 'Tester' };
+    return {
+      ...base,
+      ground: base.ground.map((row, y) =>
+        [...row].map((letter, x) => (y === 15 && (x === 20 || x === 24) ? 'T' : letter)).join(''),
+      ),
+      dropIns: [{ x: 4, y: 4, name: 'Gate' }],
+      exits: [{ x: 35, y: 25, name: 'Out', opens: { when: 'always' } }],
+      berryTrees: [
+        { x: 20, y: 15, berry: 'oran' },
+        { x: 24, y: 15, berry: 'pecha' },
+      ],
+      ...extra,
+    };
+  }
+
+  const checkIndex = (scene: MakerInternals, id: string): number =>
+    (scene as unknown as Jumping).checkList().findIndex((check) => check.id === id);
+
+  it('centres the map on the tile, chooses what stands there, says what is wrong and flashes it', () => {
+    vi.useFakeTimers();
+    storeDraft(faulty());
+    const { scene } = openMaker();
+    page.viewport.clientWidth = VIEW.width;
+    try {
+      scene.zoom = 4;
+      (scene as unknown as Jumping).goToFault(checkIndex(scene, 'standing'), 0);
+      expect(scene.selected).toEqual({ kind: 'berry-tree', index: 0 });
+      // Looked at close enough to see a tile, with the tile in the middle of the window.
+      expect(scene.zoom).toBe(16);
+      const box = page.canvas.getBoundingClientRect();
+      expect(box.left + 20.5 * TILE_PX).toBeCloseTo(VIEW.left + VIEW.width / 2, 0);
+      expect(box.top + 15.5 * TILE_PX).toBeCloseTo(VIEW.top + VIEW.height / 2, 0);
+      expect(scene.overlay.root.innerHTML).toContain('Oran Berry tree at 20,15 stands in the trees.');
+      // Flashed where it is drawn: the tile, past the room the map may grow into.
+      expect(page.flash).toMatchObject({ hidden: false, flashing: true });
+      expect(page.flash.style.left).toBe(`calc(var(--u) * ${(20 + 24) * 16})`);
+      vi.advanceTimersByTime(1_500);
+      expect(page.flash).toMatchObject({ hidden: true, flashing: false });
+    } finally {
+      page.viewport.clientWidth = 0;
+    }
+  });
+
+  it('goes to the next tile a fault names each time it is pressed again', () => {
+    storeDraft(
+      faulty({
+        berryTrees: [],
+        ground: blankMap().ground,
+        trainers: [
+          {
+            x: 10,
+            y: 10,
+            name: 'Lass',
+            team: 'scout',
+            look: 'lass',
+            facing: 'down',
+            sight: 3,
+            lines: [],
+          },
+        ],
+        dropIns: [{ x: 10, y: 13, name: 'Gate' }],
+      }),
+    );
+    const { scene } = openMaker();
+    const watch = checkIndex(scene, 'watch');
+    (scene as unknown as Jumping).goToFault(watch, 0);
+    expect(scene.selected).toEqual({ kind: 'trainer', index: 0 });
+    expect(scene.overlay.root.innerHTML).toContain('(place 1 of 2: press it again for the next)');
+    (scene as unknown as Jumping).goToFault(watch, 0);
+    expect(scene.selected).toEqual({ kind: 'drop-in', index: 0 });
+    expect(scene.overlay.root.innerHTML).toContain('(place 2 of 2: press it again for the next)');
+    (scene as unknown as Jumping).goToFault(watch, 0);
+    expect(scene.selected).toEqual({ kind: 'trainer', index: 0 });
+  });
+
+  it('steps through a run of one kind from its heading', () => {
+    storeDraft(faulty());
+    const { scene } = openMaker();
+    const spec = `${checkIndex(scene, 'standing')}:berry trees`;
+    (scene as unknown as Jumping).goToGroup(spec);
+    expect(scene.selected).toEqual({ kind: 'berry-tree', index: 0 });
+    expect(scene.overlay.root.innerHTML).toContain('(1 of 2: press the heading again for the next)');
+    (scene as unknown as Jumping).goToGroup(spec);
+    expect(scene.selected).toEqual({ kind: 'berry-tree', index: 1 });
+    expect(scene.overlay.root.innerHTML).toContain('Pecha Berry tree at 24,15 stands in the trees.');
+    (scene as unknown as Jumping).goToGroup(spec);
+    expect(scene.selected).toEqual({ kind: 'berry-tree', index: 0 });
+  });
+});
+
+describe('what the maker will not do', () => {
+  const house = (): MapFile => {
+    const file = { ...blankMap(), maker: 'Tester' };
+    return { ...file, buildings: [{ kind: 'house', x: 12, y: 10 }] };
+  };
+
+  it('refuses a berry tree on a roof, says why, and changes nothing', () => {
+    storeDraft(house());
+    const { scene } = openMaker();
+    const before = scene.file;
+    (scene as unknown as { place: unknown }).place = { kind: 'berry-tree' };
+    scene.tool = 'place';
+    scene.pointerDown(at(14, 11), page.canvas);
+    scene.pointerUp(at(14, 11), page.canvas);
+    expect(scene.file).toBe(before);
+    expect(scene.history.canUndo).toBe(false);
+    expect(scene.overlay.root.innerHTML).toContain('The house is in the way.');
+  });
+
+  it('paints a stroke of trees round a berry tree, says what it left, and is one step', () => {
+    const start: MapFile = { ...blankMap(), berryTrees: [{ x: 10, y: 10, berry: 'oran' }] };
+    storeDraft(start);
+    const { scene } = openMaker();
+    scene.tool = 'brush';
+    scene.brushId = 'trees';
+    scene.pointerDown(at(5, 10), page.canvas);
+    for (let x = 6; x <= 15; x += 1) {
+      scene.pointerMove(at(x, 10), page.canvas);
+    }
+    scene.pointerUp(at(15, 10), page.canvas);
+    expect(scene.file.ground[10].slice(5, 16)).toBe('TTTTT.TTTTT');
+    expect(scene.overlay.root.innerHTML).toContain(
+      'Trees cannot go under the Oran Berry tree. That tile was left as it was.',
+    );
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect(scene.file.ground).toEqual(start.ground);
+  });
+
+  it('clears a wood for a gym as one step, and one undo puts the wood back', () => {
+    const base = blankMap();
+    const wood: MapFile = {
+      ...base,
+      ground: base.ground.map((row, y) =>
+        [...row].map((letter, x) => (x >= 6 && x <= 25 && y >= 6 && y <= 19 ? 'T' : letter)).join(''),
+      ),
+    };
+    storeDraft(wood);
+    const { scene } = openMaker();
+    (scene as unknown as { place: unknown }).place = { kind: 'building', building: 'gym' };
+    scene.tool = 'place';
+    scene.pointerDown(at(11, 9), page.canvas);
+    scene.pointerUp(at(11, 9), page.canvas);
+    expect(scene.file.buildings).toEqual([{ x: 11, y: 9, kind: 'gym' }]);
+    expect(scene.file.ground[11].slice(10, 18)).toBe('........');
+    expect(scene.overlay.root.innerHTML).toMatch(/Clears \d+ trees\./);
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect(scene.file).toEqual(wood);
   });
 });

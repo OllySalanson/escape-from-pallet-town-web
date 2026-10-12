@@ -344,6 +344,18 @@ enough to criticise without a browser. `--save-out=path.json` keeps the whole
 save the raid banked, which is what a taught move or anything else that has to
 survive a load is checked against: seed it back and CONTINUE from the title.
 
+`makerCollisions.mjs <url> <dir> [--attach=PORT] [--case=a,b] [--before]` puts
+one thing where another already is, in the real map maker, for every pair of
+kinds: a Gym dropped on a wood, a house on a house, on clutter, on a berry tree,
+in water or with its door on a pond, a berry tree on a roof or boxed in, a stroke
+of water across a house, and the rest (`maker/placement.ts`). Each case shoots
+the ghost before the click and the map after it, and passes or fails on what the
+map holds. The check list of a map made before the rules is clicked and pressed
+Enter on, to be taken to its tiles. `--before` only photographs, for a build of
+an older commit; `--attach` drives a browser somebody else started.
+`makerCollisionSheets.mjs <before dir> <after dir> <out dir>` puts each case's
+shots from the two builds into one picture: `docs/screens/maker-collisions/`.
+
 ## The stranger's memory test
 
 Whether a map reads as places is not something its author can judge: they know

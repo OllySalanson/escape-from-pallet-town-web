@@ -187,6 +187,16 @@ export function buildMapLayers(
   const tallGrass = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
   const crowned = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
 
+  // A landmark stands on the wood it was planted over: under its footprint the
+  // trees are gone, so no half of one shows round it and no tip of one is drawn
+  // over its roof. Collision is the sketch's as ever - the wood is solid, and so
+  // is the building on it - so this is only ever a picture.
+  const planted = standingFootprints(sketch, catalogue, width, height);
+  const wood = (Object.keys(catalogue.materials) as Material[]).find(
+    (candidate) => catalogue.materials[candidate].lattice !== undefined,
+  );
+  const isWood = (x: number, y: number): boolean => surface[y]?.[x] === wood && !planted[y]?.[x];
+
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const material = surface[y][x];
@@ -235,14 +245,24 @@ export function buildMapLayers(
         continue;
       }
 
-      overlay.tiles[y][x] = overlayTile(tiles, (ax, ay) => materialAt(ax, ay) === material, width, height, x, y);
+      if (material === wood && planted[y][x]) {
+        continue;
+      }
+      overlay.tiles[y][x] = overlayTile(
+        tiles,
+        material === wood ? isWood : (ax, ay) => materialAt(ax, ay) === material,
+        width,
+        height,
+        x,
+        y,
+      );
       if (tiles.tint !== undefined) {
         overlay.tints[y][x] = tiles.tint;
       }
     }
   }
 
-  drawTips(catalogue, surface, canopy);
+  drawTips(catalogue, surface, canopy, isWood);
   applyShoreline(sketch, catalogue, surface, ground);
   plantProps(sketch, catalogue, detail, canopy, collision, tallGrass, crowned);
   drawBrims(sketch, catalogue, brim, brimDepth);
@@ -368,7 +388,12 @@ function moundTile(
  * one is canopy that is *walked under* rather than a crown: it never shuts the
  * tile and never counts as one somebody could be hidden under.
  */
-function drawTips(catalogue: TilesetCatalogue, surface: Material[][], canopy: TileLayer): void {
+function drawTips(
+  catalogue: TilesetCatalogue,
+  surface: Material[][],
+  canopy: TileLayer,
+  isWood: (x: number, y: number) => boolean,
+): void {
   const wood = (Object.keys(catalogue.materials) as Material[]).find(
     (material) => catalogue.materials[material].lattice !== undefined,
   );
@@ -379,7 +404,7 @@ function drawTips(catalogue: TilesetCatalogue, surface: Material[][], canopy: Ti
   const height = surface.length;
   const width = surface[0]?.length ?? 0;
   const isTree = (x: number, y: number): boolean =>
-    x < 0 || y < 0 || x >= width || y >= height || surface[y][x] === wood;
+    x < 0 || y < 0 || x >= width || y >= height || isWood(x, y);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       // A tree off the map is imagined for the wood's edges, never drawn: its
@@ -516,6 +541,33 @@ function applyShoreline(
       }
     }
   }
+}
+
+/**
+ * Every tile a planted landmark stands on: a cell of it that is drawn and is
+ * not canopy, which is the cell a figure could never be seen behind.
+ */
+function standingFootprints(
+  sketch: MapSketch,
+  catalogue: TilesetCatalogue,
+  width: number,
+  height: number,
+): boolean[][] {
+  const standing = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
+  for (const planted of sketch.props()) {
+    const prop = catalogue.props[planted.name];
+    if (!prop) {
+      continue;
+    }
+    prop.cells.forEach((cell, index) => {
+      const x = planted.x + (index % prop.width);
+      const y = planted.y + Math.floor(index / prop.width);
+      if (cell.tile !== NONE && !cell.canopy && y >= 0 && y < height && x >= 0 && x < width) {
+        standing[y][x] = true;
+      }
+    });
+  }
+  return standing;
 }
 
 function plantProps(

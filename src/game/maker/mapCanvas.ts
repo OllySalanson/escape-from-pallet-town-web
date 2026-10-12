@@ -210,6 +210,66 @@ function drawTileAt(context: CanvasRenderingContext2D, tile: number, x: number, 
 }
 
 /**
+ * A planted piece drawn as it will stand - every cell it draws, its crown, and
+ * the top of a broadleaf's crown in the row above it - onto a ghost's canvas,
+ * `tileSize` canvas pixels to a tile, `origin` being the tile at the canvas's
+ * corner. Drawn from the sheets the map is drawn from, so a maker sees the
+ * thing itself where it will go before the click, as an editor shows the
+ * thing being placed rather than a box.
+ */
+export function drawPieceArt(
+  context: CanvasRenderingContext2D,
+  kind: MapFileBuildingKind,
+  corner: GridPoint,
+  origin: GridPoint,
+  tileSize: number,
+): void {
+  const prop = plantedProp(kind);
+  context.imageSmoothingEnabled = false;
+  const draw = (tile: number, x: number, y: number, flip: boolean): void => {
+    const source = MAKER_SOURCES.find(
+      (candidate) => tile >= candidate.firstIndex && tile < candidate.firstIndex + candidate.columns * candidate.rows,
+    );
+    const image = source ? sheets.get(source.imagePath) : undefined;
+    if (!source || !image?.complete || image.naturalWidth === 0) {
+      return;
+    }
+    const index = tile - source.firstIndex;
+    const left = (x - origin.x) * tileSize;
+    const top = (y - origin.y) * tileSize;
+    context.save();
+    if (flip) {
+      context.translate(left + tileSize, top);
+      context.scale(-1, 1);
+    } else {
+      context.translate(left, top);
+    }
+    context.drawImage(
+      image,
+      (index % source.columns) * TILE_SIZE,
+      Math.floor(index / source.columns) * TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE,
+      0,
+      0,
+      tileSize,
+      tileSize,
+    );
+    context.restore();
+  };
+  prop.cells.forEach((cell, index) => {
+    if (cell.tile >= 0) {
+      draw(cell.tile, corner.x + (index % prop.width), corner.y + Math.floor(index / prop.width), cell.flipX === true);
+    }
+  });
+  prop.brim?.tiles.forEach((tile, column) => {
+    if (tile >= 0) {
+      draw(tile, corner.x + column, corner.y - 1, false);
+    }
+  });
+}
+
+/**
  * The layers a map file draws, its doors shut as a fresh save first meets
  * them, or - given the inside it is a view of - that inside's, drawn from its
  * own room's art with a mat under every way out.

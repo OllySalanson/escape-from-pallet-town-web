@@ -1001,6 +1001,17 @@ button {
   }
 }
 
+/* The map maker's flash on a tile a fault was found on (`.maker-flash`): kept
+   out of the pixel-ui block for the same reason. */
+@keyframes maker-flash {
+  0% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0;
+  }
+}
+
 /* ==========================================================================
    Pixel UI: the DOM screens drawn in the game's own visual language.
 
@@ -3566,6 +3577,76 @@ button {
   background: var(--red);
   mask: none;
   -webkit-mask: none;
+}
+/* A fault that names a tile is a button that goes there: said in the check's
+   red, as before, with the one cursor beside it when it has the focus. */
+.pixel-ui .px-row.maker-fault {
+  display: block;
+  margin-left: calc(var(--u) * -8);
+  width: calc(100% + var(--u) * 8);
+  padding: 0 0 0 calc(var(--u) * 8);
+  color: var(--red);
+  text-align: left;
+  cursor: pointer;
+}
+.pixel-ui .px-row.maker-fault:hover,
+.pixel-ui .px-row.maker-fault:focus {
+  text-decoration: underline;
+  text-decoration-thickness: var(--u);
+  text-underline-offset: calc(var(--u) * 2);
+}
+/* A run of faults of one kind: the count, and a chip for each tile. */
+:where(.pixel-ui) .maker-fault-group {
+  display: grid;
+  gap: var(--u);
+  margin-bottom: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .maker-fault-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2);
+}
+.pixel-ui .px-chip.maker-fault-tile {
+  --pad-top: 0;
+  padding: 0 calc(var(--u) * 3) 0 calc(var(--u) * 7);
+  color: var(--red);
+  text-transform: none;
+}
+:where(.pixel-ui) .maker-fault-text {
+  display: block;
+  color: var(--red);
+}
+/* A placement's ghost, tile by tile (`maker/ghost.ts`), drawn a game pixel to
+   a canvas pixel, so its lines are whole pixels at any zoom. */
+:where(.pixel-ui) .maker-ghost-tiles {
+  position: absolute;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .maker-ghost-tiles[hidden] {
+  display: none;
+}
+/* The tile a fault was found on, flashed: a gold frame two pixels wide with a
+   dark pixel round it, blinking three times on whole steps, as the game's
+   cursor does. */
+:where(.pixel-ui) .maker-flash {
+  position: absolute;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 var(--u) #ffffff,
+    0 0 0 calc(var(--u) * 2) #ffd65c,
+    0 0 0 calc(var(--u) * 3) var(--ink);
+}
+:where(.pixel-ui) .maker-flash[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .maker-flash.is-flashing {
+  animation: maker-flash 0.5s steps(1, end) 3;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.pixel-ui) .maker-flash.is-flashing {
+    animation: none;
+  }
 }
 :where(.pixel-ui) .maker-form {
   display: grid;
