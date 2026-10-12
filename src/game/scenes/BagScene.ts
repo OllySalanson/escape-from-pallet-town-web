@@ -585,7 +585,16 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     const result = useFieldItem(item, target);
-    audioManager.play(result.used ? 'heal' : 'denied');
+    if (result.used && item.effect.type === 'evolution-stone') {
+      // An evolution sounds as it does in a fight (`BattleScene.finishEvolution`):
+      // the fanfare, then the species it became. Its cry is fetched now, and
+      // waits for the fanfare to finish however soon it arrives.
+      audioManager.play('evolved');
+      const species = target.base.dexId;
+      void audioManager.loadCries([species]).then(() => audioManager.play('cry', { species }));
+    } else {
+      audioManager.play(result.used ? 'heal' : 'denied');
+    }
     if (result.used) {
       this.spend(item);
     }
