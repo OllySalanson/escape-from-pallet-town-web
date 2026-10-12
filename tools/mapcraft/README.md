@@ -166,14 +166,19 @@ without anything already drawn moving:
    `checkPlan` says what is wrong with a plan before anything is drawn.
 2. **Each district** starts from `startDistrict(plan, id)`: all wood, its edge
    sealed two tiles deep and locked, cut open only at its openings, so whatever
-   its program draws can only leave where the plan says. `districtFile` gives it
-   a way out at every opening, so it can be played on its own in TRY IT.
+   its program draws can only leave where the plan says. A way off the map is
+   open at the rim on one tile only, with a bush beside it, so it is a pocket a
+   raid steps into and the map's edge is sealed everywhere else, as on every
+   shipped map. `districtFile` gives it a way out at every opening, so it can be
+   played on its own in TRY IT.
 3. **The stitcher** (`stitch.ts`) puts the districts drawn so far into one map
    file. A district not drawn yet is wood - the map is playable while it is
-   incomplete, and the road simply runs into the forest - and every seam is
-   reported as joined, broken or waiting. A district left open at its edge where
-   no crossing is planned is a problem, as is anything over a map file's limits
-   (256x256 tiles, 8 drop-ins, 12 ways out, 40 item spots, 16 places, 32 links).
+   incomplete, and the road simply runs into the forest at a way out that opens
+   90 seconds in (`WAITING_EXIT_OPENS`), so no part of an unfinished map is a
+   dead end - and every seam is reported as joined, broken or waiting. A
+   district left open at its edge where no crossing is planned is a problem, as
+   is anything over a map file's limits (256x256 tiles, 8 drop-ins, 12 ways out,
+   40 item spots, 16 places, 32 links).
 
 ```sh
 npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/examples/quarryRoad.ts out/quarry-road
@@ -182,7 +187,9 @@ npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/examples/quarryRoad.ts 
 writes the stitched map, the plan as one picture (`.plan.png`), the whole map,
 each district with its moves washed in colour, and each cave floor, and prints
 the seams, the hard checks on the whole map and each district's own report.
-With no district drawn yet it prints and draws the plan alone.
+With no district drawn yet it prints and draws the plan alone. `--write=<path>`
+also writes the stitched map file there, and only when the whole world passes
+its hard checks - which is how a map drawn this way is shipped.
 `examples/quarryRoad.ts` is the worked example: two districts drawn apart and a
 two-floor cave under the quarry.
 
@@ -191,7 +198,9 @@ honour: each district's `terrain`, `hidden` crossings (a deer path nobody signs)
 `landmarks` (a landmark, a landing, a secret, roughly where), and `caves` (how
 many floors, and the mouths in which districts). `worlds/` holds the real maps
 being drawn this way: `worlds/greystoneVale/` is the first
-(`docs/screens/greystone-vale/`).
+(`docs/screens/greystone-vale/`), shipped as
+`src/game/world/maps/greystoneVale.json` and held to its program by
+`worlds/greystoneVale/greystoneVale.test.ts`.
 
 ## Caves
 

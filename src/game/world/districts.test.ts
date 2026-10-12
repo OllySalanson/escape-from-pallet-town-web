@@ -14,7 +14,13 @@ import { gateKeys, gatesForMap } from './gates';
 import { sketchViridianForest } from './maps/viridianForest';
 import { WORLD_POIS } from './pois';
 
-const DISTRICTED_MAPS = [...new Set(MAP_DISTRICTS.map((district) => district.mapId))];
+/** Every map with named places: authored here, or drawn as a file whose districts come with it. */
+const DISTRICTED_MAPS = [
+  ...new Set([
+    ...MAP_DISTRICTS.map((district) => district.mapId),
+    ...Object.values(RUN_INSERTIONS).map((insertion) => insertion.mapId),
+  ]),
+].filter((mapId) => districtsForMap(mapId).length > 0);
 
 /** Every door open - a boss's and a field move's alike - so ground behind a gate is asked about too. */
 const openMap = (mapId: WorldMapId) => getWorldMap(mapId, gateKeys(gatesForMap(mapId)));

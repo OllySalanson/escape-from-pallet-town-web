@@ -24,7 +24,15 @@ import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { exitsOpenForGood, withWorkedExitsOpen, workedLandmarksOn } from '../world/workedLandmarks';
-import { getWorldMap, WORLD_MAPS, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
+import {
+  getWorldMap,
+  isMapInProgress,
+  WORLD_MAPS,
+  type BuiltInMapId,
+  type WorldMapDefinition,
+  type WorldMapId,
+  worldMapName,
+} from '../worldMap';
 
 /**
  * Everything the drop-in screen says about a place, worked out without Phaser.
@@ -572,10 +580,13 @@ export function placePicture(
 
 /**
  * The biggest map there is, in tiles, which is what a picture's frame is sized
- * against so a screen does not move when the picture in it changes.
+ * against so a screen does not move when the picture in it changes. A map still
+ * being drawn is left out: no save is offered it, and the explorer run that
+ * walks it sees it condensed into the frame the finished maps set.
  */
 export function largestMapSize(): { readonly width: number; readonly height: number } {
-  return Object.values(WORLD_MAPS).map(pictureSize).reduce(
+  const finished = (Object.keys(WORLD_MAPS) as BuiltInMapId[]).filter((id) => !isMapInProgress(id));
+  return finished.map((id) => pictureSize(WORLD_MAPS[id])).reduce(
     (biggest, size) => ({
       width: Math.max(biggest.width, size.width),
       height: Math.max(biggest.height, size.height),

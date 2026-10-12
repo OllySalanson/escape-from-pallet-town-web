@@ -17,6 +17,10 @@
  *
  * With no district drawn yet it prints and draws the plan alone. It exits
  * non-zero when anything is failing.
+ *
+ * `--write=<path>` also writes the stitched map file there, and only when the
+ * whole world passes: it is how a shipped map drawn this way reaches the game
+ * (`src/game/world/maps/greystoneVale.json`).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -71,4 +75,13 @@ if (report.checks[0]?.passed) {
     writePng(`${outBase}-${area.id}.png`, areaPicture(file, area.id));
 }
 console.log(`\npictures: ${outBase}.plan.png ${outBase}.png ${outBase}-<district>.png`);
+const writeTo = args.find((value) => value.startsWith('--write='))?.slice('--write='.length);
+if (writeTo) {
+  if (!report.passed) {
+    console.error(`\nnot written to ${writeTo}: the world is failing`);
+    process.exit(1);
+  }
+  writeFileSync(writeTo, `${JSON.stringify(file, null, 1)}\n`);
+  console.log(`written: ${writeTo}`);
+}
 process.exit(report.passed ? 0 : 1);

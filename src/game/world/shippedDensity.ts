@@ -2,7 +2,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { RAID_CONTRACTS } from '../objectives/contracts';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { getWorldMap, type BuiltInMapId, type WorldMapDefinition } from '../worldMap';
-import { EXTRACTION_POINTS } from './extractionPoints';
+import { extractionPointsOn } from './extractionPoints';
 import { gateKeys, gatesForMap } from './gates';
 import { nearestThingSteps } from './nearestThing';
 import { createRunTrainerEncounters } from './trainers';
@@ -20,7 +20,7 @@ export function permanentThingsOn(mapId: BuiltInMapId): {
 } {
   const map = getWorldMap(mapId, gateKeys(gatesForMap(mapId)));
   const things = [
-    ...EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => point.position),
+    ...extractionPointsOn(mapId).map((point) => point.position),
     ...Object.values(RUN_INSERTIONS)
       .filter((entry) => entry.mapId === mapId)
       .map((entry) => entry.position),

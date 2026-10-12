@@ -5,7 +5,7 @@ import { MINIMAP_PALETTE } from '../world/minimap';
 import { encodeSurvey } from '../world/survey';
 import { tilesAround } from '../world/minimap';
 import { frontDoorFor } from '../run/runGeneration';
-import { WORLD_MAPS } from '../worldMap';
+import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import type { RaidProgress } from '../save/SaveManager';
 import { restoreBase } from './baseGames.testkit';
 import { OAK_WALL_MAP } from './rooms';
@@ -37,7 +37,12 @@ const EVERY_KEEPER = [
 
 describe('the wall map in Oak’s Lab', () => {
   it('hangs every raid map, and only those', () => {
-    expect([...WALL_MAP_ORDER].sort()).toEqual(Object.keys(WORLD_MAPS).sort());
+    // A map still being drawn is reached by the explorer run alone, so it is not on the wall.
+    expect([...WALL_MAP_ORDER].sort()).toEqual(
+      Object.keys(WORLD_MAPS)
+        .filter((mapId) => !isMapInProgress(mapId))
+        .sort(),
+    );
     // Where every save starts is the first thing on the wall.
     expect(WALL_MAP_ORDER[0]).toBe('floodplain-relay');
   });

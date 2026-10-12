@@ -107,7 +107,11 @@ export function readTiles(file: MapFile, crop?: TileRect): TileMap {
     prop.cells.forEach((cell, index) => {
       const x = building.x + (index % prop.width);
       const y = building.y + Math.floor(index / prop.width);
-      if (cell.solid && kinds[y]?.[x] !== undefined) kinds[y][x] = 'building';
+      if (kinds[y]?.[x] === undefined) return;
+      // A prop is the last word on its own tiles: a cell you may stand on is
+      // ground whatever it is laid over, which is what makes a deck a bridge.
+      if (cell.solid) kinds[y][x] = 'building';
+      else if (!WALKABLE_KINDS.has(kinds[y][x])) kinds[y][x] = 'road';
     });
   }
   const { x, y, width, height } = crop ?? { x: 0, y: 0, width: file.width, height: file.height };

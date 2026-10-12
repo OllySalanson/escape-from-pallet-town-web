@@ -1,7 +1,7 @@
 import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
-import { playerMap, playerMaps } from './playerMaps';
+import { builtInFileMaps, fileMap, playerMaps } from './playerMaps';
 
 // Outer exits invite committed routes without making players wait out the opening.
 export const EXTRACTION_UNLOCK_DELAY_MS = 25_000;
@@ -711,14 +711,19 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
 
 /**
  * Every way out on one map: the authored list above for a shipped map, the
- * file's own exits for a file map (`playerMaps.ts`).
+ * file's own exits for a map drawn as a file - a player's, or a shipped map
+ * drawn by the game's own tools (`playerMaps.ts`).
  */
 export function extractionPointsOn(mapId: WorldMapId): readonly ExtractionPoint[] {
   const authored = EXTRACTION_POINTS.filter((point) => point.mapId === mapId);
-  return authored.length > 0 ? authored : (playerMap(mapId)?.exits ?? []);
+  return authored.length > 0 ? authored : (fileMap(mapId)?.exits ?? []);
 }
 
 /** Every way out on every map, shipped and file alike. */
 export function allExtractionPoints(): readonly ExtractionPoint[] {
-  return [...EXTRACTION_POINTS, ...playerMaps().flatMap((map) => map.exits)];
+  return [
+    ...EXTRACTION_POINTS,
+    ...builtInFileMaps().flatMap((map) => map.exits),
+    ...playerMaps().flatMap((map) => map.exits),
+  ];
 }

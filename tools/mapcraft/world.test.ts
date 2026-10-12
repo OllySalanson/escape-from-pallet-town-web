@@ -8,6 +8,7 @@ import { readTiles, regions, walkable, WALKABLE_KINDS } from './tiles';
 import {
   checkPlan,
   districtRect,
+  exitTile,
   openingsOf,
   openingTiles,
   startDistrict,
@@ -63,9 +64,12 @@ describe('the world plan', () => {
     const p = startDistrict(QUARRY_ROAD, 'orchard-bend');
     p.meadow(0, 0, 32, 32); // a careless stroke over everything
     const map = readTiles(p.toFile({ id: 'sealed', name: 'Sealed', dropIns: [], exits: [] }));
+    // A way off the map is open at the rim on its exit's own tile and no other.
     const openings = new Set(
       openingsOf(QUARRY_ROAD, 'orchard-bend').flatMap((opening) =>
-        openingTiles(32, opening).map(([x, y]) => `${x},${y}`),
+        ('exit' in opening.leadsTo ? [exitTile(32, opening)] : openingTiles(32, opening)).map(
+          ([x, y]) => `${x},${y}`,
+        ),
       ),
     );
     for (let i = 0; i < 32; i += 1) {

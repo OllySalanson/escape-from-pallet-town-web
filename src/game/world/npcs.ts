@@ -2,7 +2,7 @@ import type { BerryId } from './berries';
 import type { FigureSpeciesId } from './pokemonFigures';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
-import { playerMap } from './playerMaps';
+import { fileMap } from './playerMaps';
 import type { CastCharacterDesignId } from './characterDesigns';
 import { REEDBEDS_PIKACHU } from './gifts';
 import type { NpcIdle } from './npcIdle';
@@ -2237,7 +2237,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
 export function entitiesForMap(mapId: WorldMapId): readonly WorldEntity[] {
   return [
     ...WORLD_ENTITIES.filter((entity) => entity.mapId === mapId),
-    ...(playerMap(mapId)?.entities ?? []),
+    ...(fileMap(mapId)?.entities ?? []),
   ];
 }
 

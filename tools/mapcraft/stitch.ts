@@ -28,6 +28,7 @@ import {
   checkPlan,
   districtOf,
   districtRect,
+  exitTile,
   openingsOf,
   openingTiles,
   planBounds,
@@ -78,13 +79,12 @@ export function districtFile(
 }
 
 /** The tile on the very edge of an opening, near its middle, where a way out stands. */
-function exitTile(size: number, opening: Opening): [number, number] {
-  return openingTiles(size, {
-    ...opening,
-    at: opening.at + Math.floor((opening.width - 1) / 2),
-    width: 1,
-  })[0];
-}
+/**
+ * When a way out into an undrawn district opens: a while into the raid, so a
+ * map has a way out open from the first second (its own) and others that open
+ * later, as every shipped map does.
+ */
+export const WAITING_EXIT_OPENS = { when: 'after', seconds: 90 } as const;
 
 export type SeamStatus = 'joined' | 'broken' | 'waiting';
 
@@ -187,6 +187,25 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
         ends: [move(link.ends[0]), move(link.ends[1])] as const,
       })),
     );
+  }
+  // A road into a district not drawn yet is a way out until that district is
+  // drawn, so no part of an unfinished map is a dead end a raid cannot leave.
+  for (const crossing of plan.crossings) {
+    const [drawn, waiting] = crossing.between.map((id) => Boolean(built[id]));
+    if (drawn === waiting || crossing.kind === 'river') continue;
+    const from = drawn ? crossing.between[0] : crossing.between[1];
+    const to = drawn ? crossing.between[1] : crossing.between[0];
+    const opening = openingsOf(plan, from).find(
+      (candidate) =>
+        'district' in candidate.leadsTo &&
+        candidate.leadsTo.district === to &&
+        candidate.at === crossing.at,
+    );
+    if (!opening) continue;
+    const rect = districtRect(plan, from);
+    const [x, y] = exitTile(size, opening);
+    const name = `To ${districtOf(plan, to).name}`.slice(0, MAP_FILE_LIMITS.maxPlaceNameLength);
+    merged.exits.push({ x: rect.x + x, y: rect.y + y, name, opens: WAITING_EXIT_OPENS });
   }
   for (const exit of plan.exits) {
     if (!built[exit.district]) continue;

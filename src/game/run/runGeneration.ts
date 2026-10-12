@@ -3,13 +3,13 @@ import { Pokemon } from '../pokemon';
 import {
   BUILT_IN_MAP_IDS,
   getWorldMap,
-  isBuiltInMapId,
+  isMapInProgress,
   type BuiltInMapId,
   type WorldMapDefinition,
   type WorldMapId,
 } from '../worldMap';
 import { isPlayerMapId, type PlayerMapId } from '../world/mapFile';
-import { isPublishedMap, playerMap, playerMaps } from '../world/playerMaps';
+import { fileMap, isPublishedMap, playerMap, playerMaps } from '../world/playerMaps';
 import type { GridPosition } from '../movement/gridMovement';
 import { openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
@@ -241,6 +241,16 @@ export const RUN_INSERTIONS = {
     position: { x: 38, y: 73 },
     description: "The foot of Route 1's terraces, where the road comes up from Pallet Town. The way home is behind you; the way up is the long road round every ledge.",
   },
+  // Still being drawn (`MAPS_IN_PROGRESS`): only the explorer run lands here.
+  // The landing is the map file's first drop-in, where its district is, and
+  // `greystoneVale.test.ts` holds the two together.
+  'greystone-vale': {
+    id: 'greystone-vale',
+    label: 'Greystone Vale',
+    mapId: 'greystone-vale',
+    position: { x: 30, y: 96 },
+    description: 'Mill Square in Millbrook, where every road in the vale starts. The rest of the vale is still being drawn.',
+  },
 } as const satisfies Record<string, BuiltInInsertion>;
 
 interface BuiltInInsertion {
@@ -451,8 +461,8 @@ export interface RunGenerationContent {
  * reads collision - where loot may land, which exit is guaranteed - so it has
  * to be this raid's collision and not a fresh save's.
  *
- * That is every shipped map, plus the raid's own map when it is a file map -
- * and never any other file map. The rolls below are one seeded stream across
+ * That is every finished shipped map, plus the raid's own map when it is a file
+ * map or a shipped map still being drawn - and never any other. The rolls below are one seeded stream across
  * every map in here, so a raid on a shipped map plays exactly the raid it
  * always did however many maps players have added to the game.
  */
@@ -461,10 +471,10 @@ function authoredContent(
   opened: readonly string[],
   completedContracts: readonly string[],
 ): RunGenerationContent {
-  const mapIds: WorldMapId[] = [
-    ...BUILT_IN_MAP_IDS,
-    ...(isBuiltInMapId(raidMapId) ? [] : [raidMapId]),
-  ];
+  // A shipped map still being drawn is in here only when the raid is on it, as
+  // a file map is: adding one moves no roll of a raid on any other map.
+  const finished = BUILT_IN_MAP_IDS.filter((id) => !isMapInProgress(id));
+  const mapIds: WorldMapId[] = [...finished, ...(finished.includes(raidMapId as BuiltInMapId) ? [] : [raidMapId])];
   return {
     maps: Object.fromEntries(mapIds.map((id) => [id, getWorldMap(id, opened)])) as Record<
       WorldMapId,
@@ -479,7 +489,7 @@ function authoredContent(
     // The raid's own file map brings its trainers, after every shipped one.
     trainers: [
       ...createRunTrainerEncounters(),
-      ...(isBuiltInMapId(raidMapId) ? [] : (playerMap(raidMapId)?.trainers() ?? [])),
+      ...(finished.includes(raidMapId as BuiltInMapId) ? [] : (fileMap(raidMapId)?.trainers() ?? [])),
     ],
   };
 }

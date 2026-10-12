@@ -6,7 +6,7 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import { districtAt } from './districts';
-import { EXTRACTION_POINTS, isBarredExit } from './extractionPoints';
+import { extractionPointsOn, isBarredExit } from './extractionPoints';
 import { gateKeys, gatesForMap, gateStatesToVerify } from './gates';
 import {
   doorIndex,
@@ -127,6 +127,9 @@ export const MAP_STRUCTURE_PARTS: readonly MapStructurePart[] = [
   { name: 'floodplain-relay 2/3', mapId: 'floodplain-relay', part: 2, of: 3, file: 'mapStructure.floodplainRelay2.test.ts' },
   { name: 'floodplain-relay 3/3', mapId: 'floodplain-relay', part: 3, of: 3, file: 'mapStructure.floodplainRelay3.test.ts' },
   { name: 'viridian-city', mapId: 'viridian-city', part: 1, of: 1, file: 'mapStructure.viridianCity.test.ts' },
+  // Still being drawn (`MAPS_IN_PROGRESS`), and held to every structure rule
+  // all the same: an unfinished map is still a map somebody can be raided on.
+  { name: 'greystone-vale', mapId: 'greystone-vale', part: 1, of: 1, file: 'mapStructure.greystoneVale.test.ts' },
 ];
 
 /** Every gate state of a map, in the order `gateStatesToVerify` gives them. */
@@ -205,7 +208,7 @@ function insertionsOn(mapId: WorldMapId) {
 /** Every authored thing a raid on this map has to be able to walk to. */
 function landmarksOn(map: WorldMapDefinition) {
   return [
-    ...EXTRACTION_POINTS.filter((point) => point.mapId === map.id).map((point) => ({
+    ...extractionPointsOn(map.id).map((point) => ({
       what: point.label,
       position: point.position,
     })),
@@ -237,7 +240,7 @@ function placesOn(state: MapState): NamedGround[] {
     { x: tile.x, y: tile.y + 1 },
     { x: tile.x, y: tile.y - 1 },
   ];
-  const exits = new Set(EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => point.label));
+  const exits = new Set(extractionPointsOn(mapId).map((point) => point.label));
 
   const doorways = new Map<string, GridPosition[]>();
   for (const tile of walkableTiles(map.collision)) {
@@ -401,10 +404,10 @@ export function describeMapStructure(partName: string): void {
           const distances = stepDistances(map.collision, insertion.position, blocked, map.links);
           const within = (position: GridPosition): boolean =>
             (distances[position.y]?.[position.x] ?? -1) >= 0;
-          const usable = EXTRACTION_POINTS.filter((point) => {
+          const usable = extractionPointsOn(mapId).filter((point) => {
             // Rubble and a locked gate open only to a raid that brought the
             // Pickaxe or the key, so neither is anybody's way out.
-            if (point.mapId !== mapId || !within(point.position) || isBarredExit(point)) {
+            if (!within(point.position) || isBarredExit(point)) {
               return false;
             }
             const requirement = point.requirement;
@@ -453,7 +456,7 @@ export function describeMapStructure(partName: string): void {
 
     it.each(named(MAP_STATES))('%s seals every map edge except its authored exits', (_name, { map, mapId }) => {
       const gates = new Set(
-        EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+        extractionPointsOn(mapId).map(
           (point) => `${point.position.x},${point.position.y}`,
         ),
       );
@@ -479,7 +482,7 @@ export function describeMapStructure(partName: string): void {
     it.each(named(MAP_STATES))('%s never stands an exit in a passage', (_name, state) => {
       const { map, mapId } = state;
       const exits = new Set(
-        EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+        extractionPointsOn(mapId).map(
           (point) => `${point.position.x},${point.position.y}`,
         ),
       );
@@ -511,7 +514,7 @@ export function describeMapStructure(partName: string): void {
     it.each(named(MAP_STATES))('%s never stands an exit on the way between two places', (_name, state) => {
       const { map, mapId } = state;
       const exits = new Set(
-        EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+        extractionPointsOn(mapId).map(
           (point) => `${point.position.x},${point.position.y}`,
         ),
       );
@@ -566,14 +569,14 @@ export function describeMapStructure(partName: string): void {
       }
 
       const exits = new Set(
-        EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+        extractionPointsOn(mapId).map(
           (point) => `${point.position.x},${point.position.y}`,
         ),
       );
       const isSightBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
       const watched = trainersIn(state).flatMap((trainer) => trainerSightTiles(trainer, isSightBlocked));
       const sacred = new Map<string, string>();
-      for (const point of EXTRACTION_POINTS.filter((point) => point.mapId === mapId)) {
+      for (const point of extractionPointsOn(mapId)) {
         sacred.set(`${point.position.x},${point.position.y}`, point.label);
       }
       for (const insertion of insertionsOn(mapId)) {
@@ -678,7 +681,7 @@ export function describeMapStructure(partName: string): void {
       const { map, mapId } = state;
       const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
-      const exits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+      const exits = extractionPointsOn(mapId).map(
         (point) => point.position,
       );
       for (const player of walkableTiles(map.collision)) {
@@ -791,7 +794,7 @@ export function describeMapStructure(partName: string): void {
           what: insertion.id,
           position: insertion.position,
         })),
-        ...EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => ({
+        ...extractionPointsOn(mapId).map((point) => ({
           what: point.label,
           position: point.position,
         })),

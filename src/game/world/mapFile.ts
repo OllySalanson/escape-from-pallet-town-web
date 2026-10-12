@@ -14,6 +14,7 @@ import { Pokemon } from '../pokemon';
 import type { Direction } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from './characterDesigns';
 import type { MapDistrict } from './districts';
+import type { WorldMapId } from '../worldMap';
 import type { MapGate } from './gates';
 import type { FieldMoveId } from './fieldMoves';
 import type { MapLedge } from './ledges';
@@ -1820,17 +1821,35 @@ export function isPlayerMapId(id: string): id is PlayerMapId {
  * (`RUN_INSERTIONS`). Its id is the map's id and the place's own name, so it
  * can never be one of the shipped landings' ids.
  */
-export interface PlayerMapInsertion {
-  readonly id: PlayerMapId;
+export interface FileMapInsertion {
+  readonly id: string;
   readonly label: string;
-  readonly mapId: PlayerMapId;
+  readonly mapId: WorldMapId;
   readonly position: { readonly x: number; readonly y: number };
   readonly description: string;
 }
 
-/** Everything the rest of the game needs of one file map, built once. */
-export interface PlayerMap {
+export interface PlayerMapInsertion extends FileMapInsertion {
   readonly id: PlayerMapId;
+  readonly mapId: PlayerMapId;
+}
+
+/**
+ * A player's map: everything the rest of the game needs of one map file, built
+ * once under its `player-` id.
+ */
+export interface PlayerMap extends FileMap {
+  readonly id: PlayerMapId;
+  readonly insertions: readonly PlayerMapInsertion[];
+}
+
+/**
+ * Everything the rest of the game needs of one map drawn as a file, built once:
+ * a player's map (`PlayerMap`), or a shipped map the game's own tools drew as a
+ * file (`builtInFileMap` in `playerMaps.ts`), built under its shipped id.
+ */
+export interface FileMap {
+  readonly id: WorldMapId;
   readonly name: string;
   readonly maker: string;
   readonly file: MapFile;
@@ -1839,7 +1858,7 @@ export interface PlayerMap {
   readonly tileset: TilesetCatalogue<PlayerMapPropName>;
   readonly encounters: WildEncounterTable;
   readonly loot: readonly WorldLoot[];
-  readonly insertions: readonly PlayerMapInsertion[];
+  readonly insertions: readonly FileMapInsertion[];
   readonly exits: readonly ExtractionPoint[];
   /** Its townsfolk and signs, as the shipped maps' are authored (`npcs.ts`). */
   readonly entities: readonly WorldEntity[];
@@ -1899,7 +1918,7 @@ export function itemSpotContents(index: number): {
 
 /** The pool a file map's item spots are, by the rotation above. */
 function lootFor(
-  id: PlayerMapId,
+  id: WorldMapId,
   spots: readonly MapFileItemSpot[],
   at: (spot: MapFileSpot) => { x: number; y: number },
 ): WorldLoot[] {
@@ -1960,8 +1979,7 @@ function materialOf(letter: string | undefined): Material | undefined {
  * and the shut one like a wall. A gate is drawn over the sketch in the state
  * the save has earned (`applyGates`), never into the sketch itself.
  */
-export function fileDoorGates(file: MapFile): readonly MapGate[] {
-  const id = playerMapId(file);
+export function fileDoorGates(file: MapFile, id: WorldMapId = playerMapId(file)): readonly MapGate[] {
   return (file.doors ?? []).map((door, index): MapGate => {
     const look = DOOR_LOOKS[door.kind];
     const tiles = Array.from({ length: door.width * door.height }, (_tile, cell) => ({
@@ -2000,8 +2018,7 @@ const LEDGE_LETTERS = new Set(['<', '=', '>']);
  * on. Nothing else about the map changes: a ledge is solid either way, so every
  * check is still asked of the collision alone, and the hunter cannot follow.
  */
-export function fileLedges(file: MapFile): readonly MapLedge[] {
-  const id = playerMapId(file);
+export function fileLedges(file: MapFile, id: WorldMapId = playerMapId(file)): readonly MapLedge[] {
   const covered = new Set<string>();
   for (const building of file.buildings) {
     const prop = plantedProp(building.kind);
@@ -2071,13 +2088,17 @@ export function fileLedges(file: MapFile): readonly MapLedge[] {
  * something to recover from.
  */
 export function buildPlayerMap(file: MapFile): PlayerMap {
+  return buildFileMap(file, playerMapId(file)) as PlayerMap;
+}
+
+/** A map file built into game content under `id`: a player's `player-` id, or a shipped map's own. */
+export function buildFileMap(file: MapFile, id: WorldMapId): FileMap {
   const reading = readMapFile(file);
   if (!reading.ok) {
     throw new Error(
       `map file '${String(file.id)}' cannot be loaded: ${reading.problems.join(' ')}`,
     );
   }
-  const id = playerMapId(file);
   const credit = `Drawn by ${file.maker}.`;
   // Everything a file places is placed in its own area's tiles; the game plays
   // one grid with every area in it, so each is moved to where its area lies.
@@ -2094,7 +2115,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
     file,
     sketch: () => sketchMapFile(file),
     tileset: PLAYER_MAP_TILESET,
-    compose: (opened = []) => composeMapFile(file, opened),
+    compose: (opened = []) => composeMapFile(file, opened, id),
     areas,
     encounters: MAP_FILE_HABITATS[file.wildlife],
     loot: lootFor(id, file.itemSpots, at),
@@ -2207,8 +2228,8 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
           ]
         : []),
     ],
-    gates: fileDoorGates(file),
-    ledges: fileLedges(file),
+    gates: fileDoorGates(file, id),
+    ledges: fileLedges(file, id),
     trainers: () =>
       (file.trainers ?? []).map((placed, index) => {
         const template = trainerTemplate(placed.team);

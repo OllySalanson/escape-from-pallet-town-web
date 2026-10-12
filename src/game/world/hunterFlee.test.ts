@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { gatesForMap, gateStatesToVerify } from './gates';
-import { EXTRACTION_POINTS, isBarredExit } from './extractionPoints';
+import { extractionPointsOn, isBarredExit } from './extractionPoints';
 import {
   collisionBlocker,
   findHunterBreakawayTile,
@@ -100,7 +100,7 @@ function openTiles(mapId: WorldMapId): GridPosition[] {
 function destinationsOn(mapId: WorldMapId): GridPosition[] {
   const map = getWorldMap(mapId);
   return [
-    ...EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => point.position),
+    ...extractionPointsOn(mapId).map((point) => point.position),
     ...map.pois.map((poi) => poi.position),
     ...RAID_CONTRACTS.filter((contract) => contract.mapId === mapId).flatMap((contract) =>
       contract.markers.map((marker) => marker.position),
@@ -133,7 +133,7 @@ describe('what an escape buys', () => {
   it.each(GATE_STATES)('%s: the blind window covers the walk to an exit from anywhere', (_name, mapId, defeatedBosses) => {
     // A barred exit is a wall to a raid that did not bring its Pickaxe or key,
     // so the walk the window has to cover is to a way out anybody can use.
-    const exits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId && !isBarredExit(point));
+    const exits = extractionPointsOn(mapId).filter((point) => !isBarredExit(point));
     expect(exits.length).toBeGreaterThan(0);
 
     // A shut gate is a longer walk to whichever exits are left on this side of

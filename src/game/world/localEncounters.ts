@@ -5,7 +5,7 @@ import { MAP_DISTRICTS, districtAt } from './districts';
 import { interiorFloorRolls } from './interiors';
 import { districtTableFor } from './nightRaids';
 import { placedAreaAt } from './mapAreas';
-import { playerMap } from './playerMaps';
+import { fileMap } from './playerMaps';
 
 /**
  * Where wildlife is decided: the district a tile is in, and failing that the
@@ -25,7 +25,7 @@ export function districtEncounterTables(
   // order, each holding what its grass holds after dark.
   night = false,
 ): Readonly<Record<string, WildEncounterTable>> {
-  const own = raidMapId === undefined ? [] : (playerMap(raidMapId)?.districts ?? []);
+  const own = raidMapId === undefined ? [] : (fileMap(raidMapId)?.districts ?? []);
   return Object.fromEntries(
     [...MAP_DISTRICTS, ...own]
       .filter((district) => district.encounters !== undefined)

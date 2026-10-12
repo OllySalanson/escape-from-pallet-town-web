@@ -1,7 +1,7 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { insideLayout } from './buildingInsides';
-import { playerMap } from './playerMaps';
+import { fileMap } from './playerMaps';
 import * as wildlife from '../pokemon/encounters';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { WEATHER_CONDITIONS, WeatherId } from '../pokemon/battle/weather';
@@ -1078,7 +1078,7 @@ export function districtsForMap(mapId: WorldMapId): readonly MapDistrict[] {
   return [
     ...MAP_DISTRICTS.filter((district) => district.mapId === mapId),
     ...insideDistricts(mapId),
-    ...(playerMap(mapId)?.districts ?? []),
+    ...(fileMap(mapId)?.districts ?? []),
   ];
 }
 

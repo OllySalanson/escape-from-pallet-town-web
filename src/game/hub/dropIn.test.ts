@@ -16,7 +16,7 @@ import { getWorldMap } from '../worldMap';
 import { frontDoorFor, type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import { extractionPointsOn } from '../world/extractionPoints';
 import { gatesForMap } from '../world/gates';
-import { BUILT_IN_MAP_IDS } from '../worldMap';
+import { BUILT_IN_MAP_IDS, isMapInProgress } from '../worldMap';
 import { encodeSurvey } from '../world/survey';
 import { districtAt, districtsForMap } from '../world/districts';
 
@@ -94,7 +94,8 @@ describe('what the drop-in screen says about a place', () => {
   });
 
   it('grades a place before its first door, never on a keeper or what a keeper holds', () => {
-    for (const mapId of BUILT_IN_MAP_IDS) {
+    // A map still being drawn has no keeper and no door yet, so all of it is before the first.
+    for (const mapId of BUILT_IN_MAP_IDS.filter((id) => !isMapInProgress(id))) {
       const door = frontDoorFor(mapId)!;
       const grade = buildDropInBriefing(door.id, contextFor(door.id)).grade;
       const ground = entryGround(mapId);
