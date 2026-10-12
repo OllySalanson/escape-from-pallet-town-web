@@ -27,6 +27,8 @@ export interface FeedbackCourier {
    * many went. One flush at a time: a second call while one runs shares it.
    */
   flush(now: Date): Promise<number>;
+  /** Whether the pack still holds the message with this tag. */
+  holds(tag: string): Promise<boolean>;
 }
 
 /**
@@ -82,6 +84,7 @@ export function createCourier(parts: CourierParts): FeedbackCourier {
     return 'refused';
   };
   return {
+    holds: async (tag) => (await parts.outbox.waiting()).some((note) => note.tag === tag),
     flush: (now) => {
       flushing ??= flushNow(now).finally(() => {
         flushing = null;

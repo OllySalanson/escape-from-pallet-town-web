@@ -1,3 +1,5 @@
+import { BOT_CHECK_TIMEOUT_MS } from '../maker/turnstile';
+
 /**
  * The Pallet Town leaderboards the house console shows: one per game, every
  * player's best score under the name they typed.
@@ -12,6 +14,10 @@
  * board, never the game or the score itself. The menu says which board it is
  * showing, because a board that quietly became "only this console" would tell
  * a player they were top of Pallet Town when they were top of their bedroom.
+ *
+ * A score that does not get there - no answer, or a bot check that did not
+ * pass - is kept waiting on this device (`WaitingScores`) and sent the next
+ * time the console is sat at, so it reaches the shared board in the end.
  *
  * Nothing here knows Phaser, the DOM or the network: the remote half is handed
  * in, so the rules are tested as they are.
@@ -152,14 +158,125 @@ function rankBoard(entries: readonly StoredEntry[]): StoredEntry[] {
   return [...entries].sort((a, b) => b.score - a.score || a.at - b.at);
 }
 
-/** The shared board, as `console/remoteScores.ts` reaches it. Either call may throw. */
+/**
+ * The shared board, as `console/remoteScores.ts` reaches it. Either call may
+ * throw; `post` throws a `BoardTrouble` when it knows why.
+ */
 export interface PalletTownBoards {
   load(game: string): Promise<readonly BoardEntry[]>;
   post(game: string, name: string, score: ConsoleScore): Promise<void>;
 }
 
-/** Where a posted score went: onto the shared board, or only onto this device's. */
-export type Posted = 'pallet-town' | 'device' | 'not-postable';
+/**
+ * Why a score did not reach Pallet Town: this browser did not get past the bot
+ * check (`check`), it may go another time - no answer, a day's limit
+ * (`later`) - or Pallet Town will never take it (`refused`: a name or a score
+ * it turns down).
+ */
+export class BoardTrouble extends Error {
+  public readonly kind: 'check' | 'later' | 'refused';
+
+  public constructor(kind: 'check' | 'later' | 'refused', message: string) {
+    super(message);
+    this.kind = kind;
+  }
+}
+
+/**
+ * Where a posted score went: onto the shared board; or kept on this device and
+ * waiting to go up, because the bot check did not pass (`bot-check`) or
+ * Pallet Town did not answer (`device`); or nowhere, not being a score a game
+ * could finish on.
+ */
+export type Posted = 'pallet-town' | 'device' | 'bot-check' | 'not-postable';
+
+/**
+ * How long a post may take in all, a bot check asked of the player included:
+ * past it the score is kept and waits. A game shows its results the moment it
+ * ends and only refreshes its board once the post has answered, so nobody
+ * waits on this.
+ */
+export const POST_ANSWER_MS = BOT_CHECK_TIMEOUT_MS + BOARD_ANSWER_MS;
+
+interface WaitingScore {
+  readonly game: string;
+  readonly name: string;
+  readonly score: ConsoleScore;
+  readonly at: number;
+}
+
+export const WAITING_SCORES_STORAGE_KEY = 'escape-from-pallet-town.console.waiting';
+
+/** The most scores kept waiting at once: one per game and name, and never more than this. */
+export const MAX_WAITING_SCORES = 20;
+
+/**
+ * Scores that are on this device's board but have not reached Pallet Town's
+ * yet, kept until they do: the best under each name for each game, because
+ * the shared board keeps a player's best and nothing else. Never lost by a
+ * bot check that did not pass or a connection that did not answer - only by
+ * reaching the board, or by Pallet Town refusing them for good.
+ */
+export class WaitingScores {
+  private readonly store: BoardStore | undefined;
+
+  public constructor(store: BoardStore | undefined) {
+    this.store = store;
+  }
+
+  public all(): readonly WaitingScore[] {
+    try {
+      const raw: unknown = JSON.parse(this.store?.getItem(WAITING_SCORES_STORAGE_KEY) ?? '[]');
+      return Array.isArray(raw) ? raw.filter(isWaitingScore) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  public keep(game: string, name: string, score: ConsoleScore, at: number): void {
+    const previous = this.all().find((entry) => entry.game === game && entry.name === name);
+    if (previous && previous.score.score >= score.score) {
+      return;
+    }
+    const others = this.all().filter((entry) => !(entry.game === game && entry.name === name));
+    this.write([...others, { game, name, score, at }].slice(-MAX_WAITING_SCORES));
+  }
+
+  /** Takes a score off the list once it has reached the board, or never will. */
+  public forget(game: string, name: string, score: number): void {
+    this.write(this.all().filter((entry) => !(entry.game === game && entry.name === name && entry.score.score <= score)));
+  }
+
+  private write(entries: readonly WaitingScore[]): void {
+    try {
+      this.store?.setItem(WAITING_SCORES_STORAGE_KEY, JSON.stringify(entries));
+    } catch {
+      // A full or refusing storage keeps the list it had.
+    }
+  }
+}
+
+function isWaitingScore(entry: unknown): entry is WaitingScore {
+  const candidate = entry as WaitingScore;
+  return (
+    typeof entry === 'object' &&
+    entry !== null &&
+    typeof candidate.game === 'string' &&
+    typeof candidate.name === 'string' &&
+    Number.isFinite(candidate.at) &&
+    typeof candidate.score === 'object' &&
+    candidate.score !== null &&
+    postableScore(candidate.score)
+  );
+}
+
+/** What a try at the waiting scores came to. */
+export interface WaitingSent {
+  readonly sent: number;
+  readonly left: number;
+  /** Why the rest are still waiting, when some are. */
+  readonly stopped?: 'bot-check' | 'device';
+}
 
 /**
  * The one answer the console asks for: a game's board, from Pallet Town when it
@@ -169,12 +286,24 @@ export type Posted = 'pallet-town' | 'device' | 'not-postable';
 export class Leaderboards {
   private readonly remote: PalletTownBoards;
   private readonly device: DeviceBoard;
+  private readonly waiting: WaitingScores;
   private readonly now: () => number;
 
-  public constructor(remote: PalletTownBoards, device: DeviceBoard, now: () => number = Date.now) {
+  public constructor(
+    remote: PalletTownBoards,
+    device: DeviceBoard,
+    now: () => number = Date.now,
+    waiting: WaitingScores = new WaitingScores(undefined),
+  ) {
     this.remote = remote;
     this.device = device;
     this.now = now;
+    this.waiting = waiting;
+  }
+
+  /** How many scores are on this device waiting to reach Pallet Town. */
+  public waitingCount(): number {
+    return this.waiting.all().length;
   }
 
   public async load(game: string, me: string | null): Promise<Board> {
@@ -191,11 +320,44 @@ export class Leaderboards {
     if (!postableScore(score)) {
       return 'not-postable';
     }
-    this.device.record(game, name, score.score, this.now());
+    const at = this.now();
+    this.device.record(game, name, score.score, at);
+    const posted = await this.send(game, name, score);
+    if (posted !== 'pallet-town' && posted !== 'not-postable') {
+      this.waiting.keep(game, name, score, at);
+    }
+    return posted;
+  }
+
+  /**
+   * Sends the scores waiting on this device, oldest first, stopping at the
+   * first that cannot go now - what stops one stops the rest. A score Pallet
+   * Town refuses for good is let go so it never stands in front of the others.
+   */
+  public async sendWaiting(): Promise<WaitingSent> {
+    let sent = 0;
+    for (const entry of [...this.waiting.all()].sort((a, b) => a.at - b.at)) {
+      const posted = await this.send(entry.game, entry.name, entry.score);
+      if (posted === 'bot-check' || posted === 'device') {
+        return { sent, left: this.waiting.all().length, stopped: posted };
+      }
+      this.waiting.forget(entry.game, entry.name, entry.score.score);
+      if (posted === 'pallet-town') {
+        sent += 1;
+      }
+    }
+    return { sent, left: this.waiting.all().length };
+  }
+
+  /** One try at the shared board; `not-postable` here is Pallet Town refusing it for good. */
+  private async send(game: string, name: string, score: ConsoleScore): Promise<Posted> {
     try {
-      await answeredWithin(this.remote.post(game, name, score), BOARD_ANSWER_MS);
+      await answeredWithin(this.remote.post(game, name, score), POST_ANSWER_MS);
       return 'pallet-town';
-    } catch {
+    } catch (error) {
+      if (error instanceof BoardTrouble) {
+        return error.kind === 'check' ? 'bot-check' : error.kind === 'refused' ? 'not-postable' : 'device';
+      }
       return 'device';
     }
   }

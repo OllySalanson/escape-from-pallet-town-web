@@ -50,10 +50,17 @@ describe('the feedback panel', () => {
   });
 
   it('ends on the tag, whatever became of the message, because the tag is what a player quotes back', () => {
-    for (const outcome of ['sent', 'queued', 'held', 'refused'] as const) {
+    for (const outcome of ['sent', 'queued', 'held', 'refused', 'check-failed', 'check-missing'] as const) {
       expect(outcomeMarkup(outcome, 'FB-7K2Q')).toContain('<span class="feedback-tag">FB-7K2Q</span>');
     }
     expect(outcomeMarkup('sent', 'FB-7K2Q')).toContain('Message extracted.');
+  });
+
+  it('offers TRY AGAIN beside the way back only when the bot check kept the message', () => {
+    expect(outcomeMarkup('check-failed', 'FB-7K2Q')).toContain('data-retry-check');
+    expect(outcomeMarkup('check-missing', 'FB-7K2Q')).toContain('data-retry-check');
+    expect(outcomeMarkup('queued', 'FB-7K2Q')).not.toContain('data-retry-check');
+    expect(outcomeMarkup('sent', 'FB-7K2Q')).not.toContain('data-retry-check');
   });
 });
 

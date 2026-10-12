@@ -5,8 +5,6 @@ import { MAX_FEEDBACK_TEXT } from './feedbackNote';
 import { MAX_VOICE_MS, tapeIsLow, tapeTime } from './voiceTape';
 import {
   BACK_TO_THE_GAME,
-  BOT_CHECK_LINE,
-  BOT_CHECK_PASSED,
   KEEP_WRITING,
   KEPT_LINE,
   MIC_MISSING_LINE,
@@ -22,6 +20,8 @@ import {
   SCRAP_IT,
   SCRAP_QUESTION,
   TAG_NOTE,
+  TRY_THE_CHECK_AGAIN,
+  canTryTheCheckAgain,
   outcomeWords,
   type FeedbackOutcome,
 } from './feedbackWords';
@@ -74,7 +74,7 @@ export function panelMarkup(view: PanelView): string {
     { heading: 'Your message', note: `<span data-count>${countLine(0)}</span>`, className: 'feedback-message' },
   );
   const attached = pixelWindow(
-    `<div class="px-list feedback-attached-list">${pictureRow(view)}${saveRow(view)}${seeAllRow(view)}</div><div class="feedback-bot-check" data-bot-check hidden></div>${allLines(view)}`,
+    `<div class="px-list feedback-attached-list">${pictureRow(view)}${saveRow(view)}${seeAllRow(view)}</div>${allLines(view)}`,
     { heading: 'Sent with it', className: 'feedback-attached' },
   );
   const body = `<main class="px-body feedback-body">${message}${attached}<div data-commit>${commitBar('writing')}</div></main>`;
@@ -157,12 +157,6 @@ export function allLines(view: Pick<PanelView, 'seeAll' | 'details' | 'actions'>
 }
 
 /** The bot check's place in the panel: the line, and where Cloudflare draws its widget. */
-export function botCheckMarkup(passed: boolean): string {
-  return passed
-    ? `<p class="px-wrap">${BOT_CHECK_PASSED}</p>`
-    : `<p class="px-wrap">${BOT_CHECK_LINE}</p><div class="feedback-captcha" data-captcha></div>`;
-}
-
 export function commitBar(phase: 'writing' | 'scrapping'): string {
   return phase === 'scrapping'
     ? pixelCommitBar({
@@ -178,8 +172,11 @@ export function commitBar(phase: 'writing' | 'scrapping'): string {
 /** The panel once a message is away (or kept): the line, the tag, and the way back. */
 export function outcomeMarkup(outcome: FeedbackOutcome, tag: string): string {
   const words = outcomeWords(outcome);
+  const retry = canTryTheCheckAgain(outcome)
+    ? `<button class="px-window px-button" data-retry-check data-help="Take the bot check again and send what is waiting in your pack.">${TRY_THE_CHECK_AGAIN}</button>`
+    : '';
   const body = `<main class="px-body feedback-outcome-body">${pixelWindow(
-    `<p class="px-wrap">${words.line}</p><p class="feedback-tag-row"><span class="feedback-tag">${tag}</span><span class="px-wrap">${TAG_NOTE}</span></p><button class="px-window px-button is-primary" data-close data-help="Close the radio and carry on.">${BACK_TO_THE_GAME}</button>`,
+    `<p class="px-wrap">${words.line}</p><p class="feedback-tag-row"><span class="feedback-tag">${tag}</span><span class="px-wrap">${TAG_NOTE}</span></p>${retry}<button class="px-window px-button is-primary" data-close data-help="Close the radio and carry on.">${BACK_TO_THE_GAME}</button>`,
     { heading: words.headline, className: `feedback-outcome is-${outcome}` },
   )}</main>`;
   return pixelScreen({ title: PANEL_TITLE, aside: PANEL_PAUSED, body, hints: 'ENTER or ESC back to the game' });

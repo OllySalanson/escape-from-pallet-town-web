@@ -13,8 +13,8 @@ import type { MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
-import { makerScreen, walkedCheck, type MakerViewState } from './makerView';
-import { reasonFor } from './submissions';
+import { CHECK_FIRST_NOTE, makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { reasonFor, signInReason } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
 
 const SAMPLE = sampleLane as MapFile;
@@ -207,25 +207,25 @@ describe('sending a map in', () => {
     expect(makerScreen(state(SAMPLE, true))).not.toMatch(/data-send[^-][^>]*aria-disabled/);
   });
 
-  it('says who it goes to and what travels with it, and asks for the bot check only when one is needed', () => {
-    const markup = ready({ step: 'ready', needsCheck: true });
+  it('says who it goes to and what travels with it, and warns of the bot check only before a first send', () => {
+    const markup = ready({ step: 'ready', checksFirst: true });
     expect(markup).toContain('Every map sent in is played before it can join the game.');
     expect(markup).toContain('Nothing else about you is sent.');
-    expect(markup).toContain('data-captcha');
-    expect(ready({ step: 'ready', needsCheck: false })).not.toContain('data-captcha');
+    expect(markup).toContain(CHECK_FIRST_NOTE);
+    expect(ready({ step: 'ready', checksFirst: false })).not.toContain(CHECK_FIRST_NOTE);
   });
 
   it('never sends a map still waiting twice, and sends a map sent back as its next try', () => {
     const waiting = ready({
       step: 'ready',
-      needsCheck: false,
+      checksFirst: false,
       previous: { receipt: 'ABCDEFGHJK', status: 'waiting' },
     });
     expect(waiting).toContain('waiting to be played');
     expect(waiting).not.toContain('data-send-confirm');
     const back = ready({
       step: 'ready',
-      needsCheck: false,
+      checksFirst: false,
       previous: { receipt: 'ABCDEFGHJK', status: 'sent_back' },
     });
     expect(back).toContain('Send again');
@@ -234,7 +234,7 @@ describe('sending a map in', () => {
   it('sends a fix to a map in the game as its update, and holds one approved until it is in', () => {
     const update = ready({
       step: 'ready',
-      needsCheck: false,
+      checksFirst: false,
       previous: { receipt: 'ABCDEFGHJK', status: 'published' },
     });
     expect(update).toContain('This map is in the game');
@@ -242,7 +242,7 @@ describe('sending a map in', () => {
     expect(update).toContain('Send the update');
     const approved = ready({
       step: 'ready',
-      needsCheck: false,
+      checksFirst: false,
       previous: { receipt: 'ABCDEFGHJK', status: 'approved' },
     });
     expect(approved).toContain('goes into the game soon');
@@ -260,6 +260,15 @@ describe('sending a map in', () => {
       'You can send three maps a day. Try again tomorrow.',
     );
     expect(reasonFor({ message: 'TypeError: Failed to fetch' })).toMatch(/Check your connection/);
+    expect(reasonFor({ message: 'captcha protection: request disallowed' })).toMatch(/bot check did not pass/);
+  });
+
+  it('says plainly why a bot check stopped a map, and that the map is safe to send again', () => {
+    for (const trouble of ['unavailable', 'failed', 'refused', 'busy', 'offline'] as const) {
+      expect(signInReason(trouble)).toMatch(/safe in your drafts\.$/);
+    }
+    expect(signInReason('unavailable')).toMatch(/bot check would not load/);
+    expect(signInReason('failed')).toMatch(/bot check did not pass.*Try again/);
   });
 
   it("lists what became of each map sent, with the reviewer's note", () => {

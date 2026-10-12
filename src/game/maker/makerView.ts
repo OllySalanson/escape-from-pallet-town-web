@@ -91,8 +91,8 @@ export type SendState =
   | {
       readonly step: 'ready';
       readonly previous?: { readonly receipt: string; readonly status: SubmissionStatus };
-      /** Whether a bot check is on screen and has not been passed yet. */
-      readonly needsCheck: boolean;
+      /** Whether SEND starts with the bot check: this browser has never signed in. */
+      readonly checksFirst: boolean;
     }
   | { readonly step: 'sending' }
   | { readonly step: 'sent'; readonly receipt: string }
@@ -954,6 +954,9 @@ function draftsPane(
   );
 }
 
+/** Said before a first send, so a bot check that asks something is no surprise. */
+export const CHECK_FIRST_NOTE = "Sending starts with a quick check that you're not a bot. Most people never see it.";
+
 /**
  * Sending the map in. Who reads it is said plainly and once: every map sent is
  * played before it can join the game, and nothing about the maker but the name
@@ -986,7 +989,7 @@ function sendPane(file: MapFile, sending: SendState): string {
             ? `This map is in the game (receipt <strong>${previous.receipt}</strong>). Send this version as its update: once it is approved it replaces the one in the game, and every drop-in players have reached stays theirs.`
             : 'Every map sent in is played before it can join the game. An approved map goes into the game with your maker name on it.'
       }</p><p class="px-note px-wrap">Sent as <strong>${escapeHtml(file.name)}</strong> by <strong>${escapeHtml(file.maker)}</strong>. Nothing else about you is sent.</p>${
-        sending.needsCheck ? `<div class="maker-captcha" data-captcha></div>` : ''
+        sending.checksFirst ? `<p class="px-note px-wrap">${CHECK_FIRST_NOTE}</p>` : ''
       }<div class="maker-actions">${back}${button('data-send-confirm', previous?.status === 'published' ? 'Send the update' : again ? 'Send again' : 'Send it in', true)}</div>`;
       break;
     }

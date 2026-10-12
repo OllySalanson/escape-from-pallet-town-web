@@ -11,6 +11,24 @@ describe("the feedback panel's words", () => {
     expect(words.outcomeWords('held').headline).not.toMatch(/extracted/i);
   });
 
+  it('says plainly when the bot check is why a message is still in the pack, and offers TRY AGAIN only then', () => {
+    expect(words.outcomeAfterCheck('queued', 'failed')).toBe('check-failed');
+    expect(words.outcomeAfterCheck('queued', 'unavailable')).toBe('check-missing');
+    expect(words.outcomeAfterCheck('queued', 'offline')).toBe('queued');
+    expect(words.outcomeAfterCheck('queued', undefined)).toBe('queued');
+    // The day's limit and a message the lab refused say what they always said.
+    expect(words.outcomeAfterCheck('held', 'failed')).toBe('held');
+    expect(words.outcomeAfterCheck('sent', undefined)).toBe('sent');
+    for (const outcome of ['check-failed', 'check-missing'] as const) {
+      expect(words.outcomeWords(outcome).line).toMatch(/bot check/);
+      expect(words.outcomeWords(outcome).line).toMatch(/safe in your pack/);
+      expect(words.canTryTheCheckAgain(outcome)).toBe(true);
+    }
+    for (const outcome of ['sent', 'queued', 'held', 'refused'] as const) {
+      expect(words.canTryTheCheckAgain(outcome)).toBe(false);
+    }
+  });
+
   it('keeps the tab one plain word, so nobody has to guess what it is', () => {
     expect(words.FEEDBACK_TAB_LABEL.toUpperCase()).toBe('FEEDBACK');
   });

@@ -56,6 +56,17 @@ describe('the courier', () => {
     expect((await outbox.waiting()).map((note) => note.tag)).toEqual(['FB-AAAA']);
   });
 
+  it('says whether a message is still in the pack, so TRY AGAIN can tell the player it went', async () => {
+    const outbox = memoryOutbox();
+    let signedIn = false;
+    const courier = createCourier({ outbox, storage: storage(), send: () => Promise.resolve(signedIn ? 'sent' : 'later') });
+    expect(await courier.dispatch(draft('FB-AAAA'), noon)).toBe('queued');
+    expect(await courier.holds('FB-AAAA')).toBe(true);
+    signedIn = true;
+    expect(await courier.flush(noon)).toBe(1);
+    expect(await courier.holds('FB-AAAA')).toBe(false);
+  });
+
   it('keeps a message whose send threw', async () => {
     const outbox = memoryOutbox();
     const courier = createCourier({ outbox, storage: storage(), send: () => Promise.reject(new Error('offline')) });
