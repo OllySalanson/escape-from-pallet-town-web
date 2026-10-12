@@ -91,3 +91,25 @@ export function refusedWords(text: string): readonly string[] {
 export function isClean(text: string): boolean {
   return refusedWords(text).length === 0;
 }
+
+/**
+ * Whether a short name is clean read with its spaces and punctuation taken
+ * out as well: every run of its words is read joined up, so `FU CK`,
+ * `F.U.C.K` and `N1G GER` are the words they spell (red team F9). Only for a
+ * name of a few letters on a board nobody reviews - the console's - because
+ * in a sentence joining words finds words that are not there (a sign about
+ * Wan Kenobi), and a map's every line is read by a person before it is
+ * published. The database repeats it (`console/leaderboardSql.test.ts`).
+ */
+export function isCleanName(name: string): boolean {
+  const parts = words(name);
+  for (let first = 0; first < parts.length; first += 1) {
+    for (let last = first; last < parts.length; last += 1) {
+      const joined = parts.slice(first, last + 1).join('').replace(/(.)\1{2,}/g, '$1');
+      if (WHOLE_WORDS.has(joined) || STEMS.some((stem) => joined.startsWith(stem))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}

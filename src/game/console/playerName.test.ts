@@ -43,6 +43,14 @@ describe('the name a player types at the console', () => {
     expect(checkPlayerName('SH1T')).toEqual({ ok: false, problem: 'unkind' });
     expect(checkPlayerName('fuuuck')).toEqual({ ok: false, problem: 'unkind' });
     expect(checkPlayerName('B4STARD')).toEqual({ ok: false, problem: 'unkind' });
+    // Spaces and punctuation do not hide a word (red team F9) ...
+    for (const spelled of ['FU CK', 'F.U.C.K', 'CU NT', 'WAN KER', 'NIG GER', 'N1G GER', 'MY FU CK', 'A SS', 'FUU UCK']) {
+      expect(checkPlayerName(spelled), spelled).toEqual({ ok: false, problem: 'unkind' });
+    }
+    // ... and a name made of clean words stays clean.
+    for (const fine of ['GARY OAK', 'MASS EX', 'BASS POND', 'ASH KETCHUM', 'RED 2']) {
+      expect(checkPlayerName(fine), fine).toMatchObject({ ok: true });
+    }
   });
 
   it('lets a clean name through as it will be shown, Scunthorpe included', () => {

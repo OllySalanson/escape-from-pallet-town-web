@@ -94,8 +94,13 @@ export async function signInToReview(): Promise<Outcome<true>> {
     : { ok: true, value: true };
 }
 
+/**
+ * Signs the reviewer out everywhere: the refresh token is revoked on the
+ * server, not only forgotten by this tab, because a closed tab restored by the
+ * browser brings its session storage back with it (red team F11).
+ */
 export async function signOutOfReview(): Promise<void> {
-  await (await reviewSupabase()).auth.signOut();
+  await (await reviewSupabase()).auth.signOut({ scope: 'global' });
 }
 
 /**

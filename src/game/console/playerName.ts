@@ -1,4 +1,4 @@
-import { isClean } from '../world/wordFilter';
+import { isCleanName } from '../world/wordFilter';
 
 /**
  * The name a player goes by on the house console, and on every Pallet Town
@@ -52,7 +52,7 @@ export function checkPlayerName(raw: string): PlayerNameCheck {
   if (!name) {
     return { ok: false, problem: 'empty' };
   }
-  return isClean(name) ? { ok: true, name } : { ok: false, problem: 'unkind' };
+  return isCleanName(name) ? { ok: true, name } : { ok: false, problem: 'unkind' };
 }
 
 /** What the console says about a name it refused. */

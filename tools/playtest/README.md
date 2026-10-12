@@ -22,6 +22,10 @@ not a limit: nothing caps how many run at once. To check one, `ps -L -o ni,comm
 that spawns a browser goes through `launchBrowser()`; one that spawns anything
 else heavy calls `lowerOwnPriority()` first.
 
+Every page a driver opens has the game's Supabase project blocked
+(`PROJECT_URLS`, `openPage`'s `project: true` to lift it): a playtest is never a
+player, and one that sat at the console signed somebody up in production.
+
 `attachBrowser(port)` drives a browser something else started and will stop
 (this machine's own watched headless browser, say) instead of launching one;
 `fishing.mjs --port=N` takes it that way.
