@@ -3262,6 +3262,11 @@ button {
   gap: calc(var(--u) * 6);
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }
+/* The player naming themselves at THE BOLTHOLE's door has no Pokemon beside
+   the line, so the line has the window to itself. */
+:where(.pixel-ui) .naming-body.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
 :where(.pixel-ui) .naming-entry {
   min-width: 0;
   display: grid;

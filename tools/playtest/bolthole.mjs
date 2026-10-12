@@ -13,6 +13,11 @@
 // GAMES menu and backs out of it into the house. Photographs the yard, both floors and the
 // sign's line on the way. It fails loudly - a thrown error, not a picture -
 // when any promise is broken.
+//
+// The first time in, the house asks who lives there (`src/game/home/houseName.ts`):
+// the driver tries an empty name, which must be refused, then types `--name=`
+// (OLLY by default), and checks the welcome, the console knowing the name, and
+// the yard's caption on the door saying whose house it is.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs } from './deploy.mjs';
@@ -25,6 +30,7 @@ const [width, height] = (option('window') ?? '1200x768').split('x').map(Number);
 const RUNGS = ['radio-mast', 'beacon', 'secure-locker-1', 'secure-locker-2', 'recovery-bay-1', 'recovery-bay-2', 'quarantine-ward'];
 const built = builtOption === 'all' ? RUNGS : builtOption === 'none' ? [] : builtOption.split(',');
 const beaten = (option('beaten') ?? '').split(',').filter(Boolean);
+const houseName = option('name') ?? 'OLLY';
 const raidRecord = Object.fromEntries(
   (option('raids') ?? '')
     .split(',')
@@ -39,7 +45,7 @@ mkdirSync(out, { recursive: true });
 const BASE = `${GAME}.scene.getScene('base')`;
 const state = () =>
   `(() => { const b = ${BASE}; const live = b && b.sys.isActive() && b.ready && !b.leaving;
-    return { live: !!live, room: live && b.room ? b.room.id : null, tile: live ? b.currentTile : null,
+    return { live: !!live, naming: !!(live && b.namePrompt), room: live && b.room ? b.room.id : null, tile: live ? b.currentTile : null,
       facing: live ? b.facing : null, hint: live ? b.hintShown : null,
       dialog: live && b.dialogBox.visible ? b.dialogBox.textObject.text : null,
       complete: live && b.dialogBox.visible ? b.dialogBox.isCurrentMessageComplete : false }; })()`;
@@ -117,6 +123,9 @@ try {
   };
 
   await page.waitFor(sceneIs('title'));
+  // A browser driven before may already have given the house a name, and the
+  // asking is one of the things this plays.
+  await page.evaluate(`localStorage.removeItem('escape-from-pallet-town.console.name')`);
   await press('Space');
   await page.waitFor(sceneIs('starter'));
   const starter = option('starter');
@@ -152,9 +161,62 @@ try {
   console.log(`sign: ${sign}`);
   await page.screenshot(`${out}/garden.png`);
 
-  // In through the door.
+  // In through the door, where the house asks who lives there before anybody
+  // walks about in it.
   await walkTo(door.tiles, async () => (await page.evaluate(state())).room === 'bolthole');
-  const inside = await settle('inside THE BOLTHOLE', "s.room === 'bolthole'");
+  await settle('THE BOLTHOLE asking a name', "s.room === 'bolthole' && s.naming");
+  await page.waitFor(`!!document.querySelector('[data-house-name-field]')`, { what: 'the name screen' });
+  await sleep(450);
+  await page.screenshot(`${out}/your-name.png`);
+  // Escape is never a trap: it is back out of the door, onto the step.
+  await press('Escape');
+  const stepped = await settle('back outside without a name', 's.room === null');
+  if (stepped.tile.x !== door.returnTo.x || stepped.tile.y !== door.returnTo.y) {
+    throw new Error(`going back outside put the player on ${JSON.stringify(stepped.tile)}, not the step`);
+  }
+  if (await page.evaluate(`!!document.querySelector('[data-house-name-field]')`)) throw new Error('the name screen stayed up outside');
+  console.log(`back outside: on the step ${stepped.tile.x},${stepped.tile.y}`);
+  await walkTo(door.tiles, async () => (await page.evaluate(state())).room === 'bolthole');
+  const asking = await settle('THE BOLTHOLE asking a name again', "s.room === 'bolthole' && s.naming");
+  await page.waitFor(`!!document.querySelector('[data-house-name-field]')`, { what: 'the name screen again' });
+  await sleep(450);
+  // Nothing typed: refused, and still asking.
+  await press('Enter');
+  await page.waitFor(`!!document.querySelector('.px-status-line')`, { what: 'an empty name refused' });
+  // The arrow keys belong to the line while it asks: the player must not move.
+  await press('ArrowLeft');
+  const held = await page.evaluate(state());
+  if (!held.naming || held.tile.x !== asking.tile.x || held.tile.y !== asking.tile.y) {
+    throw new Error(`the player moved while the house asked their name: ${JSON.stringify(held)}`);
+  }
+  await page.evaluate(`document.querySelector('[data-house-name-field]').focus()`);
+  for (const character of houseName) {
+    const upper = character.toUpperCase();
+    const code = /[a-z]/i.test(character) ? `Key${upper}` : /[0-9]/.test(character) ? `Digit${character}` : 'Period';
+    const description = { code, key: character, text: character, windowsVirtualKeyCode: upper.charCodeAt(0) };
+    await page.send('Input.dispatchKeyEvent', { type: 'keyDown', ...description });
+    await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...description });
+    await sleep(40);
+  }
+  await page.screenshot(`${out}/your-name-typed.png`);
+  await press('Enter');
+  await settle('welcomed home', 's.dialog !== null && !s.naming');
+  const welcome = [];
+  for (let guard = 0; guard < 60; guard += 1) {
+    const now = await page.evaluate(state());
+    if (now.dialog === null) break;
+    if (now.complete) {
+      if (welcome.at(-1) !== now.dialog) welcome.push(now.dialog);
+      await press('Space');
+    } else {
+      await sleep(150);
+    }
+  }
+  if (welcome[0] !== `Welcome home, ${houseName}!`) throw new Error(`the house said "${welcome.join(' / ')}"`);
+  const kept = await page.evaluate(`localStorage.getItem('escape-from-pallet-town.console.name')`);
+  if (kept !== houseName) throw new Error(`the name kept on the device is "${kept}"`);
+  console.log(`name: ${welcome.join(' / ')}`);
+  const inside = await settle('inside THE BOLTHOLE', "s.room === 'bolthole' && !s.naming");
   if (inside.hint !== '[DOWN] OUT') throw new Error(`the house's mat says "${inside.hint}"`);
   await page.screenshot(`${out}/downstairs.png`);
   console.log(`downstairs: in on ${inside.tile.x},${inside.tile.y} (hint: ${inside.hint})`);
@@ -258,6 +320,11 @@ try {
   }
   await page.screenshot(`${out}/outside.png`);
   console.log(`out on the step ${outside.tile.x},${outside.tile.y}`);
+  // The door says whose house it is now.
+  const captions = await page.evaluate(`${BASE}.worldLabels.map((label) => label.label.text)`);
+  const doorCaption = captions.find((text) => text.startsWith('THE BOLTHOLE'));
+  if (!doorCaption?.includes(`${houseName}'s house`)) throw new Error(`the house's door says "${doorCaption}"`);
+  console.log(`door: ${doorCaption.replace('\n', ' / ')}`);
 } finally {
   await browser.close();
 }
