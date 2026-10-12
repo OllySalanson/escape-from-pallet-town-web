@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ITEM_DEFINITIONS, isMaterial } from '../items';
-import { BULBASAUR, CHARIZARD, CHARMANDER, CHARMELEON, PIDGEY, Pokemon } from '../pokemon';
+import { CHARMANDER, Pokemon } from '../pokemon';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
 import {
@@ -8,14 +8,10 @@ import {
   checkPayment,
   hasBeacon,
   hasHunterIntel,
-  LAST_FIT_REFUSAL,
   WORKSHOP_UPGRADES,
   workshopOffers,
   workshopSecureItemStacks,
   workshopSecurePokemon,
-  PARTNER_REFUSAL,
-  payablePokemonCount,
-  paymentCandidates,
   recoveryPriceShare,
   spendableSupply,
   takePayment,
@@ -25,9 +21,12 @@ import {
 
 const EVERY_UPGRADE = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 
-/** A vault with a level-9 partner, plenty of spare supplies and these catches. */
+/**
+ * A vault with nobody in it but a level-9 partner, and plenty of spare supplies:
+ * the vault a player who has just wiped holds, which is the one the ladder used
+ * to have nothing to build from.
+ */
 function vaultWith(
-  catches: readonly Pokemon[],
   items: Readonly<Record<string, number>> = {
     'poke-ball': 9,
     potion: 7,
@@ -36,22 +35,20 @@ function vaultWith(
     antidote: 4,
     'radio-valve': 4,
     'cable-coil': 4,
-    'parts-crate': 6,
+    'parts-crate': 10,
     'lamp-oil': 4,
-    'mooring-rope': 4,
-    'linen-roll': 6,
+    'mooring-rope': 6,
+    'linen-roll': 8,
   },
 ): WorkshopVault {
   const stash = new Stash({ items });
   stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
-  catches.forEach((pokemon, index) => stash.addPokemon(pokemon, `catch-${index + 1}`));
-  return { stash, starterSpeciesId: 'charmander' };
+  return { stash };
 }
 
-function fainted(pokemon: Pokemon): Pokemon {
-  pokemon.takeDamage(pokemon.maxHp);
-  return pokemon;
-}
+/** Every unit of material a rung costs, of every kind. */
+const units = (upgrade: (typeof WORKSHOP_UPGRADES)[number]): number =>
+  upgrade.cost.supplies.reduce((total, { quantity }) => total + quantity, 0);
 
 describe('the workshop ladder', () => {
   it('names every upgrade once and gates each second rung behind a first that exists', () => {
@@ -64,10 +61,9 @@ describe('the workshop ladder', () => {
     }
   });
 
-  it('is a sink: every rung costs at least one Pokemon and some supply that exists', () => {
+  it('is a sink: every rung costs some supply that exists', () => {
     const itemIds = ITEM_DEFINITIONS.map((item) => item.id);
     for (const upgrade of WORKSHOP_UPGRADES) {
-      expect(upgrade.cost.pokemon).toBeGreaterThanOrEqual(1);
       expect(upgrade.cost.supplies.length).toBeGreaterThanOrEqual(1);
       for (const { itemId, quantity } of upgrade.cost.supplies) {
         expect(itemIds).toContain(itemId);
@@ -109,9 +105,23 @@ describe('the workshop ladder', () => {
 
   it('costs the most for the second protected Pokemon and the least for information', () => {
     const byId = new Map(WORKSHOP_UPGRADES.map((upgrade) => [upgrade.id, upgrade]));
-    const prices = WORKSHOP_UPGRADES.map((upgrade) => upgrade.cost.pokemon);
-    expect(byId.get('radio-mast')!.cost.pokemon).toBe(Math.min(...prices));
-    expect(byId.get('secure-locker-2')!.cost.pokemon).toBe(Math.max(...prices));
+    const prices = WORKSHOP_UPGRADES.map(units);
+    expect(units(byId.get('radio-mast')!)).toBe(Math.min(...prices));
+    expect(units(byId.get('secure-locker-2')!)).toBe(Math.max(...prices));
+    expect(prices.filter((price) => price === Math.max(...prices))).toHaveLength(1);
+  });
+
+  /**
+   * The captain's answer to playtest 42 (option A, 2026-10-12): materials only,
+   * and more of them, so the sink is no shallower for losing its Pokemon. The
+   * ladder cost twenty units beside seventeen Pokemon, and every Pokemon became
+   * one more unit of what its rung is about.
+   */
+  it('asks for materials only, and as deep a sink as it was with Pokemon in it', () => {
+    expect(WORKSHOP_UPGRADES.reduce((total, upgrade) => total + units(upgrade), 0)).toBe(20 + 17);
+    for (const upgrade of WORKSHOP_UPGRADES) {
+      expect(Object.keys(upgrade.cost), upgrade.id).toEqual(['supplies']);
+    }
   });
 });
 
@@ -149,74 +159,16 @@ describe('what the upgrade list derives', () => {
 });
 
 describe('what may be spent', () => {
-  it('never offers the only Pokemon a player has', () => {
-    const vault = vaultWith([]);
-    expect(paymentCandidates(vault).map((candidate) => candidate.refusal)).toEqual([PARTNER_REFUSAL]);
-    expect(payablePokemonCount(vault)).toBe(0);
-    expect(workshopOffers(vault, []).some((offer) => offer.affordable)).toBe(false);
-    expect(checkPayment(vault, [], 'radio-mast', ['partner'])).toMatchObject({
-      ok: false,
-      refusal: 'pokemon-not-spendable',
-    });
-  });
+  it('builds out of a vault with no Pokemon to spare, and never touches the team', () => {
+    // Playtest 42: after a wipe the vault held one Pokemon, and eleven raids
+    // built nothing with materials to spare. Materials are the whole price now.
+    const vault = vaultWith();
+    expect(workshopOffers(vault, []).filter((offer) => offer.affordable).length).toBeGreaterThan(0);
 
-  it('never offers a lone Pokemon even when it is not the partner species', () => {
-    const stash = new Stash({ items: { 'radio-valve': 2, 'mooring-rope': 1 } });
-    stash.addPokemon(new Pokemon(PIDGEY, 4), 'only');
-    const vault: WorkshopVault = { stash, starterSpeciesId: 'charmander' };
-    expect(paymentCandidates(vault)[0].refusal).toBe(LAST_FIT_REFUSAL);
-    expect(checkPayment(vault, [], 'radio-mast', ['only'])).toMatchObject({ ok: false });
-    expect(stash.listPokemon()).toHaveLength(1);
-  });
-
-  it('refuses the partner species however many of it are banked', () => {
-    const vault = vaultWith([new Pokemon(CHARMANDER, 4), new Pokemon(PIDGEY, 4)]);
-    const refusals = paymentCandidates(vault).map((candidate) => candidate.refusal);
-    expect(refusals).toEqual([PARTNER_REFUSAL, PARTNER_REFUSAL, undefined]);
-  });
-
-  it('refuses the partner after it has evolved, at every stage of its line', () => {
-    // Playtest 32 #3: a Charmeleon on a Charmander save was offered, and paying
-    // with it released the partner for good.
-    const vault = vaultWith([new Pokemon(CHARMELEON, 16), new Pokemon(CHARIZARD, 36), new Pokemon(PIDGEY, 4)]);
-    const refusals = paymentCandidates(vault).map((candidate) => candidate.refusal);
-    expect(refusals).toEqual([PARTNER_REFUSAL, PARTNER_REFUSAL, PARTNER_REFUSAL, undefined]);
-    expect(checkPayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-3'])).toMatchObject({
-      ok: false,
-      refusal: 'pokemon-not-spendable',
-    });
-  });
-
-  it('puts a released Pokemon\'s gear back in the vault rather than letting it leave', () => {
-    // Playtest 18 #1: the vault's Leftovers was gone after paying with its holder.
-    const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5)], {
-      'parts-crate': 2,
-      leftovers: 1,
-      'quick-claw': 1,
-    });
-    vault.stash.giveHeldItem('catch-1', 'leftovers');
-    vault.stash.giveHeldItem('catch-2', 'quick-claw');
-    expect(vault.stash.itemCount('leftovers')).toBe(0);
-
-    expect(takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2'])).toMatchObject({ ok: true });
-    expect(vault.stash.itemCount('leftovers')).toBe(1);
-    expect(vault.stash.itemCount('quick-claw')).toBe(1);
-  });
-
-  it('always leaves somebody fit to raid, even when every fit Pokemon is spendable', () => {
-    const stash = new Stash({ items: { 'poke-ball': 9, potion: 9, 'parts-crate': 2 } });
-    stash.addPokemon(new Pokemon(PIDGEY, 4), 'fit-1');
-    stash.addPokemon(new Pokemon(BULBASAUR, 4), 'fit-2');
-    stash.addPokemon(fainted(new Pokemon(PIDGEY, 5)), 'down');
-    const vault: WorkshopVault = { stash, starterSpeciesId: 'charmander' };
-
-    // Three are spendable, but releasing both fit ones would leave only a faint.
-    expect(payablePokemonCount(vault)).toBe(2);
-    expect(checkPayment(vault, [], 'secure-locker-1', ['fit-1', 'fit-2'])).toMatchObject({
-      ok: false,
-      refusal: 'no-pokemon-left-fit',
-    });
-    expect(checkPayment(vault, [], 'secure-locker-1', ['fit-1', 'down'])).toMatchObject({ ok: true });
+    expect(takePayment(vault, [], 'radio-mast')).toMatchObject({ ok: true });
+    expect(vault.stash.listPokemon().map(({ id }) => id)).toEqual(['partner']);
+    expect(vault.stash.itemCount('radio-valve')).toBe(1);
+    expect(vault.stash.itemCount('mooring-rope')).toBe(5);
   });
 
   it('prices every rung in materials, never in the kit a wipe restocks', () => {
@@ -230,25 +182,21 @@ describe('what may be spent', () => {
   });
 
   it('is short of a material a kit-only vault does not hold, and never takes the kit', () => {
-    const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5)], { ...MINIMUM_SUPPLIES });
+    const vault = vaultWith({ ...MINIMUM_SUPPLIES });
     expect(spendableSupply(vault, 'parts-crate')).toBe(0);
-    expect(checkPayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2'])).toMatchObject({
+    expect(checkPayment(vault, [], 'secure-locker-1')).toMatchObject({
       ok: false,
       refusal: 'supplies-short',
     });
     const offer = workshopOffers(vault, []).find(({ upgrade }) => upgrade.id === 'secure-locker-1')!;
-    expect(offer.pokemonShort).toBe(0);
     expect(offer.affordable).toBe(false);
-    expect(offer.suppliesShort).toEqual([{ itemId: 'parts-crate', quantity: 2 }]);
+    expect(offer.suppliesShort).toEqual([{ itemId: 'parts-crate', quantity: 4 }]);
   });
 
   it('spends materials in full and leaves the kit exactly as it was', () => {
-    const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5)], {
-      ...MINIMUM_SUPPLIES,
-      'parts-crate': 2,
-    });
-    expect(spendableSupply(vault, 'parts-crate')).toBe(2);
-    takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2']);
+    const vault = vaultWith({ ...MINIMUM_SUPPLIES, 'parts-crate': 4 });
+    expect(spendableSupply(vault, 'parts-crate')).toBe(4);
+    takePayment(vault, [], 'secure-locker-1');
     expect(vault.stash.itemCount('parts-crate')).toBe(0);
     expect(vault.stash.supplyShortfall()).toEqual({});
     expect(vault.stash.itemCount('poke-ball')).toBe(MINIMUM_SUPPLIES['poke-ball']);
@@ -259,13 +207,13 @@ describe('what may be spent', () => {
 
   it('reads the kit as a capability, so a better ball or potion frees the plain one', () => {
     // Five throws and three heals are the kit, whatever tier holds them.
-    const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5)], {
+    const vault = vaultWith({
       'poke-ball': 5,
       'great-ball': 2,
       potion: 3,
       'super-potion': 1,
       antidote: 2,
-      'parts-crate': 2,
+      'parts-crate': 4,
       // A pack answers the kit's pack line, so the shortfall below is about
       // supplies alone rather than about a vault with nothing to carry in.
       'raid-pack': 1,
@@ -274,40 +222,37 @@ describe('what may be spent', () => {
     expect(spendableSupply(vault, 'potion')).toBe(1);
     // An Antidote heals nothing, so it is never part of the kit.
     expect(spendableSupply(vault, 'antidote')).toBe(2);
-    expect(checkPayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2'])).toMatchObject({ ok: true });
+    expect(checkPayment(vault, [], 'secure-locker-1')).toMatchObject({ ok: true });
 
-    takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2']);
+    takePayment(vault, [], 'secure-locker-1');
     expect(vault.stash.supplyShortfall()).toEqual({});
   });
 
-  it('takes exactly the named Pokemon and the listed supplies, and nothing on a refusal', () => {
-    const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5), new Pokemon(BULBASAUR, 6)]);
-    const before = vault.stash.toJSON();
-
-    expect(takePayment(vault, [], 'secure-locker-1', ['catch-1'])).toMatchObject({
+  it('takes exactly the listed materials, and nothing on a refusal', () => {
+    const short = vaultWith({ 'parts-crate': 3, 'mooring-rope': 9 });
+    const before = short.stash.toJSON();
+    expect(takePayment(short, ['secure-locker-1'], 'secure-locker-2')).toMatchObject({
       ok: false,
-      refusal: 'wrong-pokemon-count',
+      refusal: 'supplies-short',
     });
-    expect(takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-1'])).toMatchObject({ ok: false });
-    expect(takePayment(vault, [], 'secure-locker-1', ['catch-1', 'nobody'])).toMatchObject({ ok: false });
-    expect(vault.stash.toJSON()).toEqual(before);
+    expect(short.stash.toJSON()).toEqual(before);
 
-    expect(takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-3'])).toMatchObject({ ok: true });
-    expect(vault.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'catch-2']);
-    expect(vault.stash.itemCount('parts-crate')).toBe(4);
+    const vault = vaultWith();
+    expect(takePayment(vault, ['secure-locker-1'], 'secure-locker-2')).toMatchObject({ ok: true });
+    expect(vault.stash.itemCount('parts-crate')).toBe(6);
+    expect(vault.stash.itemCount('mooring-rope')).toBe(2);
     expect(vault.stash.itemCount('poke-ball')).toBe(9);
     expect(vault.stash.itemCount('potion')).toBe(7);
     expect(vault.stash.itemCount('antidote')).toBe(4);
   });
 
   it('builds a rung once, and a second rung only after its first', () => {
-    const vault = vaultWith(Array.from({ length: 6 }, () => new Pokemon(PIDGEY, 4)));
-    const four = ['catch-1', 'catch-2', 'catch-3', 'catch-4'];
-    expect(checkPayment(vault, [], 'secure-locker-2', four)).toMatchObject({ ok: false, refusal: 'locked' });
-    expect(checkPayment(vault, ['secure-locker-1'], 'secure-locker-2', four)).toMatchObject({ ok: true });
-    expect(checkPayment(vault, ['secure-locker-1'], 'secure-locker-1', ['catch-1', 'catch-2']))
+    const vault = vaultWith();
+    expect(checkPayment(vault, [], 'secure-locker-2')).toMatchObject({ ok: false, refusal: 'locked' });
+    expect(checkPayment(vault, ['secure-locker-1'], 'secure-locker-2')).toMatchObject({ ok: true });
+    expect(checkPayment(vault, ['secure-locker-1'], 'secure-locker-1'))
       .toMatchObject({ ok: false, refusal: 'already-built' });
-    expect(checkPayment(vault, [], 'gear-tier-9', [])).toMatchObject({ ok: false, refusal: 'unknown-upgrade' });
+    expect(checkPayment(vault, [], 'gear-tier-9')).toMatchObject({ ok: false, refusal: 'unknown-upgrade' });
 
     const states = workshopOffers(vault, ['secure-locker-1']).map(({ upgrade, state }) => [upgrade.id, state]);
     expect(states).toContainEqual(['secure-locker-1', 'built']);

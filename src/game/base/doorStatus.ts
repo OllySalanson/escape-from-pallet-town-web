@@ -70,7 +70,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
     case 'workshop': {
       const built = builtUpgrades(game.raidProgress.workshopUpgrades).length;
       const ready = workshopOffers(
-        { stash: game.stash, starterSpeciesId: game.starterSpeciesId },
+        { stash: game.stash },
         game.raidProgress.workshopUpgrades,
       ).filter((offer) => offer.affordable).length;
       const standing = `${built} of ${WORKSHOP_UPGRADES.length} built`;

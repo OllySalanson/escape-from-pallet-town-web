@@ -6,8 +6,9 @@
 //
 // It walks the cursor with the arrow keys rather than clicking, because the
 // detail pane has to follow the cursor and not the mouse, and it photographs
-// every state it stops in. It also arms a barter and checks that the first
-// press spends nothing, which is the one promise a screenshot cannot show.
+// every state it stops in. It also arms a rung and a barter and checks that the
+// first press spends nothing, which is the one promise a screenshot cannot show,
+// and builds the rung to see it take materials and no Pokemon.
 //
 // The two counters on Bill's screen each answer for themselves: this
 // fails if pointing at the shelf blanks the pane under the barter table, which
@@ -45,7 +46,7 @@ const SEED = `(() => {
   }));
   save.stash.pokemon = [seed, ...extra];
   save.stash.boxes = [{ name: 'Box 1', pokemonIds: [seed.id, ...extra.map((p) => p.id)] }];
-  save.stash.items = { potion: 4, 'super-potion': 2, 'poke-ball': 4, 'great-ball': 2, antidote: 2, 'parts-crate': 2, 'cable-coil': 1, 'radio-valve': 1, 'linen-roll': 1, money: 300 };
+  save.stash.items = { potion: 4, 'super-potion': 2, 'poke-ball': 4, 'great-ball': 2, antidote: 2, 'parts-crate': 6, 'cable-coil': 1, 'radio-valve': 1, 'linen-roll': 1, money: 300 };
   localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
 })()`;
 
@@ -176,6 +177,38 @@ try {
     if (![...seen.values()].some((reading) => reading.tag === wanted)) {
       fail(`no rung in the state ${wanted} was stood in front of`);
     }
+  }
+
+  // A rung is asked again before it is built, exactly as a barter is: the
+  // first press spends nothing, keeping them spends nothing, and only the
+  // second button builds it - out of materials, never a Pokemon.
+  const pokemonBefore = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).stash.pokemon.length`);
+  const ladderBefore = await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`);
+  // Pointed at and pressed, as a player does it: a scripted click leaves the
+  // cursor where it was, which no real press can.
+  const pressRung = async () => {
+    await page.evaluate(`document.querySelector('[data-outfit]:not([aria-disabled])').focus()`);
+    await press('Enter');
+    await sleep(340);
+  };
+  await pressRung();
+  const armedRung = await read();
+  say(armedRung);
+  await shoot('workshop-armed');
+  if ((await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`)) !== ladderBefore) fail('one press on a rung spent its materials');
+  if (!/keep/i.test(String(armedRung.on))) fail(`the armed cursor rests on "${armedRung.on}", not on keeping them`);
+  await press('Enter');
+  await sleep(340);
+  if ((await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`)) !== ladderBefore) fail('keeping the materials spent them anyway');
+  await pressRung();
+  await clickSel('[data-outfit-confirm]');
+  await sleep(400);
+  const built = await page.evaluate(`JSON.stringify(JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.workshopUpgrades)`);
+  console.log(`  built: ${built}`);
+  await shoot('workshop-built');
+  if (built === '[]') fail('confirming the rung built nothing');
+  if ((await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).stash.pokemon.length`)) !== pokemonBefore) {
+    fail('building a rung took a Pokemon');
   }
 
   console.log('Bill:');

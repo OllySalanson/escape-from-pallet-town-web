@@ -443,12 +443,12 @@ describe('the berth', () => {
 
   it('is never cheaper than a Brock locker over a few raids', () => {
     // Renting must not make the built locker pointless. The first locker asks
-    // two Pokemon and two parts crates, which is several raids of catching and
-    // scavenging - and the berth is ₽250 *every* raid, so the ladder is
-    // still the answer for a player who intends to keep raiding.
+    // four parts crates, which is several raids of scavenging - and the berth
+    // is ₽250 *every* raid, so the ladder is still the answer for a player who
+    // intends to keep raiding.
     const locker = WORKSHOP_UPGRADES.find((upgrade) => upgrade.id === 'secure-locker-1');
     expect(locker?.secureItemStack).toBe(true);
-    expect(locker?.cost.pokemon).toBeGreaterThan(0);
+    expect(locker?.cost.supplies.reduce((total, { quantity }) => total + quantity, 0)).toBeGreaterThanOrEqual(4);
   });
 });
 

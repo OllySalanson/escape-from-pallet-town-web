@@ -85,8 +85,8 @@ export interface ContractReward {
   readonly items: readonly ContractStack[];
   /**
    * Pokemon added to the vault when the contract is banked. Only the standing
-   * board pays this way: Brock's real price is Pokemon, so a reward that
-   * is meant to be spent there has to be able to be one.
+   * board pays this way, for a contract that cost a fight the player could not
+   * decline.
    */
   readonly pokemon?: readonly ContractPokemon[];
   /** Insertions this contract opens for good. */

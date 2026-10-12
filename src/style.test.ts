@@ -245,11 +245,12 @@ describe('the pixel-ui stylesheet', () => {
         return weight < 2 && [...windowClasses].some((name) => new RegExp(`\\.${name}(?![\\w-])`).test(subject));
       });
     });
-    // Two that were already dead when this was written, on screens that are not
-    // Bill's, left for their own change rather than restyled in passing: the
-    // one-Pokemon reselect message (`px-window px-empty`) and the workshop's
-    // "Materials spent" window (`run-loadout px-scroll`).
-    expect(dead).toEqual([':where(.pixel-ui) .px-scroll', ':where(.pixel-ui) .px-empty']);
+    // One that was already dead when this was written, on a screen that is not
+    // Bill's, left for its own change rather than restyled in passing: the
+    // one-Pokemon reselect message (`px-window px-empty`). The workshop's
+    // "Materials spent" window was the second, and went with Brock's payment
+    // screen when the ladder stopped taking Pokemon.
+    expect(dead).toEqual([':where(.pixel-ui) .px-empty']);
   });
 
   it('lets wrapped copy break inside a narrow window instead of widening it', () => {

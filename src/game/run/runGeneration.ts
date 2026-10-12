@@ -20,6 +20,7 @@ import { withWorkedExitsOpen } from '../world/workedLandmarks';
 import type { WorldLoot } from '../world/loot';
 import {
   createRunTrainerEncounters,
+  trainersForContract,
   withoutDefeatedBosses,
   type RunTrainerEncounter,
 } from '../world/trainers';
@@ -580,7 +581,12 @@ export function generateRunPlan(
       reserve(reservedTiles, poi.mapId, poi.position);
     }
   }
-  const trainers = generateTrainers(content.trainers, content.maps, reservedTiles, rng, isReachable);
+  // The first contract meets its tolls at a newcomer's price; nothing about
+  // that is rolled, so it moves no seed.
+  const trainers = trainersForContract(
+    generateTrainers(content.trainers, content.maps, reservedTiles, rng, isReachable),
+    carriedContract?.id,
+  );
   const loot = generateLoot(content.maps, reservedTiles, rng, isReachable);
 
   return {

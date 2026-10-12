@@ -1,4 +1,5 @@
 import type { HeldItemId } from '../items';
+import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import { Pokemon } from '../pokemon';
 import { BUTTERFREE, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
@@ -65,6 +66,14 @@ export interface RunTrainerEncounter extends TrainerWatch {
    * the gear still bought the door.
    */
   readonly carries?: HeldItemId;
+  /**
+   * The party this trainer fields instead on a raid carrying the first contract
+   * - the softer price a fresh save pays while it is still learning the game.
+   * Only a toll may carry one: a boss's party is the door, and a door that
+   * opened cheaper for a newcomer would stay open for good. See
+   * `trainersForContract`.
+   */
+  readonly firstContractParty?: readonly Pokemon[];
   readonly introLines: readonly string[];
   readonly trainer: TrainerBattle;
 }
@@ -89,6 +98,25 @@ export const withoutDefeatedBosses = (
 ): readonly RunTrainerEncounter[] =>
   trainers.filter(
     (trainer) => trainer.bossId === undefined || !defeatedBosses.includes(trainer.bossId),
+  );
+
+/**
+ * A raid's trainers as the contract it carries meets them: on the first
+ * contract, every trainer with a `firstContractParty` fields it. That contract
+ * is the only one a fresh save can carry and every raid on it is fought at the
+ * levels a new starter has, so it is "the first raid" however many tries it
+ * takes - the teaching Pidgey repeats on the same rule (`teachingEncounter.ts`).
+ * Nothing else about the trainer changes: where they stand, what they watch and
+ * what they say are the map's, and the price on the road is still on screen.
+ */
+export const trainersForContract = (
+  trainers: readonly RunTrainerEncounter[],
+  contractId: string | undefined,
+): readonly RunTrainerEncounter[] =>
+  trainers.map(({ firstContractParty, ...encounter }) =>
+    contractId === FIRST_CONTRACT_ID && firstContractParty !== undefined
+      ? { ...encounter, trainer: { ...encounter.trainer, party: firstContractParty } }
+      : encounter,
   );
 
 /**
@@ -216,6 +244,17 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 5)],
       'The checkpoint is open. Move before the hunter closes in.',
     ),
+    // The first contract meets her a little softer, which is the captain's
+    // answer (2026-10-12) to a new player wiping at her on their first raids:
+    // the same two, her Pikachu a level down. A fresh level-5 starter arriving
+    // healthy with the pack wins 88/95/87% (Charmander/Squirtle/Bulbasaur,
+    // against 84/92/86% above), at 60% health 75/80/75%, bare 25/15/12% - still
+    // a price, paid in supplies. Played as the raid plays it, after the
+    // teaching Pidgey and the reeds, the first raid's Maya went from 56/72/60%
+    // to 72/80/67% with no reed fight on the way and from 32/56/41% to
+    // 41/62/48% with one (`tools/encounters/firstRaid.mts`). Every later raid
+    // meets the party above, and by then the player is level 6 or more.
+    firstContractParty: [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 4)],
   },
   // The Floodplain's three doors, and who holds each. One fight opens two: the
   // door in front of the player, and a second somewhere they have already been,
