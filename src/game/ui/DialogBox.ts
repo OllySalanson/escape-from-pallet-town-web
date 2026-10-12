@@ -60,7 +60,11 @@ export class DialogBox extends Phaser.GameObjects.Container {
 
   private typewriter: TypewriterQueue | null = null;
   private onLineShown: ((index: number) => void) | undefined;
+  /** Which box of the queue is up, and which line handed to `showMessages` each box is part of. */
   private lineIndex = 0;
+  private lineOfBox: readonly number[] = [];
+  /** How many wrapped rows fit inside the frame, measured once. See `rowsPerBox`. */
+  private rowsFitting: number | null = null;
   private indicatorElapsedMs = 0;
   private hasTriggeredCompletion = false;
   /** Whether a finished line blinks the prompt that asks for a key. */
@@ -135,9 +139,20 @@ export class DialogBox extends Phaser.GameObjects.Container {
    * once, each later one as the box advances to it - for a line that is also a
    * sound, so the sound is heard when the line is read rather than when the
    * queue was handed over.
+   *
+   * A line too long for the box is shared out over as many boxes as it takes,
+   * whole rows at a time, and each is read before the next: drawn whole, the
+   * rows past the box's own ran out through its frame and off the screen (the
+   * telly in THE BOLTHOLE, four rows in a box that holds two). `onLineShown`
+   * still hears of a line once, when its first box is put up.
    */
   public showMessages(texts: string[], onLineShown?: (index: number) => void): void {
-    this.typewriter = new TypewriterQueue(texts, { charsPerSecond: this.charsPerSecond });
+    const boxes = this.shareIntoBoxes(texts);
+    this.typewriter = new TypewriterQueue(
+      boxes.map((box) => box.text),
+      { charsPerSecond: this.charsPerSecond },
+    );
+    this.lineOfBox = boxes.map((box) => box.line);
     this.onLineShown = onLineShown;
     this.lineIndex = 0;
     this.hasTriggeredCompletion = false;
@@ -218,7 +233,10 @@ export class DialogBox extends Phaser.GameObjects.Container {
 
     if (hasNextMessage) {
       this.lineIndex += 1;
-      this.onLineShown?.(this.lineIndex);
+      const line = this.lineOfBox[this.lineIndex] ?? this.lineIndex;
+      if (line !== this.lineOfBox[this.lineIndex - 1]) {
+        this.onLineShown?.(line);
+      }
       return true;
     }
 
@@ -233,6 +251,48 @@ export class DialogBox extends Phaser.GameObjects.Container {
 
   public get isDone(): boolean {
     return this.typewriter?.isDone ?? true;
+  }
+
+  /** Every line as the boxes it is read in, each box a run of whole wrapped rows. */
+  private shareIntoBoxes(texts: readonly string[]): { text: string; line: number }[] {
+    const rows = this.rowsPerBox();
+    return texts.flatMap((text, line) => {
+      const wrapped = this.textObject.getWrappedText(text);
+      if (wrapped.length <= rows) {
+        return [{ text, line }];
+      }
+      const boxes: { text: string; line: number }[] = [];
+      for (let first = 0; first < wrapped.length; first += rows) {
+        boxes.push({
+          text: wrapped
+            .slice(first, first + rows)
+            .map((row) => row.trimEnd())
+            .join('\n'),
+          line,
+        });
+      }
+      return boxes;
+    });
+  }
+
+  /**
+   * How many rows of text stand inside the frame, measured on the box's own
+   * text: the face is loaded before any scene that speaks is started, so the
+   * first measure is the one that holds.
+   */
+  private rowsPerBox(): number {
+    if (this.rowsFitting === null) {
+      const shown = this.textObject.text;
+      const oneRow = this.textObject.setText('M').height;
+      const nextRow = this.textObject.setText('M\nM').height - oneRow;
+      this.textObject.setText(shown);
+      const room = this.heightPx - this.paddingPx * 2;
+      this.rowsFitting =
+        nextRow > 0
+          ? Math.max(1, 1 + Math.floor((room - oneRow) / nextRow))
+          : Number.POSITIVE_INFINITY;
+    }
+    return this.rowsFitting;
   }
 
   private triggerCompletion(): void {
