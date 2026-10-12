@@ -19,8 +19,9 @@
  * from the maker, say - so it can be drawn as `player-<its id>`, with every
  * inside it has laid out beside its outdoors (`world/mapAreas.ts`).
  */
-import { readPng, writePng, TILE_SIZE } from './tileSheet.mjs';
-import { blit, box, canvas, drawTile, label, plot, upscale } from './draw.mjs';
+import { writePng, TILE_SIZE } from './tileSheet.mjs';
+import { blit, box, canvas, label, plot, upscale } from './draw.mjs';
+import { drawWorldMap, type TileCrop } from './mapPicture.mts';
 import { getWorldMap, worldMapIds, type WorldMapId } from '../../src/game/worldMap';
 import { extractionPointsOn } from '../../src/game/world/extractionPoints';
 import { insertionsOn } from '../../src/game/run/runGeneration';
@@ -45,48 +46,8 @@ if (fileFlag) {
   registerPlayerMap(buildPlayerMap(reading.file));
 }
 
-const sheets = new Map<string, ReturnType<typeof readPng>>();
-function sheetFor(path: string) {
-  const existing = sheets.get(path);
-  if (existing) return existing;
-  const loaded = readPng(`public/${path}`);
-  sheets.set(path, loaded);
-  return loaded;
-}
-
 function renderMap(id: WorldMapId) {
-  const map = getWorldMap(id);
-  // A map may draw from several sheets under one numbering, exactly as the
-  // scene does, so the tile has to be resolved back to the sheet it came from.
-  const spans = map.tileset.sources.map((source) => ({
-    sheet: sheetFor(source.imagePath),
-    from: source.firstIndex,
-    to: source.firstIndex + source.columns * source.rows,
-  }));
-  const [cx, cy, cw, ch] = crop ?? [0, 0, map.width, map.height];
-  const image = canvas(cw * TILE_SIZE, ch * TILE_SIZE, [8, 10, 14]);
-  const { ground, overlay, detail, canopy, brim } = map.layers;
-  for (const layer of [ground, overlay, detail, canopy, brim]) {
-    for (let y = cy; y < Math.min(cy + ch, map.height); y += 1) {
-      for (let x = cx; x < Math.min(cx + cw, map.width); x += 1) {
-        const tile = layer.tiles[y][x];
-        if (tile < 0) continue;
-        const span = spans.find((candidate) => tile >= candidate.from && tile < candidate.to);
-        if (!span) throw new Error(`tile ${tile} on ${id} is on none of its sheets`);
-        const tint = layer.tints[y][x];
-        drawTile(
-          image,
-          span.sheet,
-          tile - span.from,
-          x - cx,
-          y - cy,
-          tint >= 0 ? tint : undefined,
-          layer.flips[y][x],
-        );
-      }
-    }
-  }
-  return image;
+  return drawWorldMap(id, crop as TileCrop | null);
 }
 
 const MARKS: Record<string, [string, [number, number, number]]> = {
