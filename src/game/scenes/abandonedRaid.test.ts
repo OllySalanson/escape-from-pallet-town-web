@@ -23,6 +23,7 @@ import { createStartingStash } from '../stash';
 import type { DeploymentFlow } from '../hub';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { HubScene } from './HubScene';
+import { calendarLines, pcLines } from '../base/homeLines';
 
 /**
  * What abandoning a raid costs (the captain's ruling on playtest 11's B1): a
@@ -191,6 +192,22 @@ describe('a raid abandoned by closing the game', () => {
     const charmander = game.stash.listPokemon().find((stored) => stored.id === 'charmander-1');
     expect(charmander?.pokemon.currentHp).toBe(charmander!.pokemon.maxHp - 6);
     expect(game.stash.listPokemon().map((stored) => stored.id)).toContain('bulbasaur-1');
+  });
+
+  /**
+   * THE BOLTHOLE's raid log is read off the same save: a raid the player
+   * walked away from is a raid that did not come home, so the PC counts it
+   * as lost rather than leaving it out of both columns.
+   */
+  it('is counted as lost on the raid log at home', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    deployFrom(storage);
+    new SaveManager(storage).settleAbandonedRaid();
+
+    const game = new SaveManager(storage).load()!;
+    expect(pcLines(game)[0]).toBe('RAID LOG. 1 raid: 0 came home, 1 lost.');
+    expect(calendarLines(game)[1]).toBe('It has no tick for coming home.');
   });
 
   it('closing the tab and opening the game in a new one settles it at once', () => {

@@ -55,7 +55,10 @@ function record(game: RestoredGame): {
   const entries = Object.entries(game.raidProgress.raidRecord ?? {});
   const raids = raidsDeployed(game.raidProgress);
   const home = entries.reduce((total, [, each]) => total + each.extracted, 0);
-  const lost = entries.reduce((total, [, each]) => total + each.wiped, 0);
+  // Every raid that did not come home was lost, an abandoned one too: closing
+  // the tab mid-raid costs the pack (`run/raidInFlight.ts`) but is never
+  // written to the record as a wipe, so counting `wiped` alone left it out.
+  const lost = raids - home;
   const best = entries
     .filter(([, each]) => each.deployed > 0)
     .sort((a, b) => b[1].deployed - a[1].deployed || a[0].localeCompare(b[0]))[0];
