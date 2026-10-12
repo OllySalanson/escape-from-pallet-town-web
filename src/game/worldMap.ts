@@ -300,6 +300,12 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // change to a Pokemon would be a formality, and the point of it is the
       // raid you remember finding one on.
       { id: 'pallet-town-tm-dig', position: { x: 6, y: 19 }, itemId: 'tm28-dig', quantity: 1, chance: 0.25, district: 'pallet-allotments' },
+      // A Lockpick in the ordinary pool, and the Weir Key rolled on its own like
+      // the machines: the key to the gate at the foot of the water meadows,
+      // kept at the millpond the weir holds back - the other end of the water
+      // from the gate it opens (`extractionPoints.ts`).
+      { id: 'pallet-town-lockpick', position: { x: 19, y: 13 }, itemId: 'lockpick', quantity: 1 },
+      { id: 'pallet-town-weir-key', position: { x: 19, y: 14 }, itemId: 'weir-key', quantity: 1, chance: 0.2, district: 'pallet-millpond' },
       // A pack, rolled on its own like the machines above rather than drawn
       // from the pool: a pack is gear you own, choose and lose, so finding one
       // has to be the raid you remember rather than a tick on a list. It is
@@ -358,6 +364,10 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // TM40 Aerial Ace, on the road the Pidgey flock is over. It is also the
       // only machine the bug catcher's Butterfree can read.
       { id: 'route-1-tm-aerial-ace', position: { x: 18, y: 5 }, itemId: 'tm40-aerial-ace', quantity: 1, chance: 0.25, district: 'route-1-head' },
+      // The Paddock Key hangs in the steading that works the paddocks, a long
+      // walk round from the gate it opens at their east end.
+      { id: 'route-1-lockpick', position: { x: 52, y: 39 }, itemId: 'lockpick', quantity: 1 },
+      { id: 'route-1-paddock-key', position: { x: 52, y: 38 }, itemId: 'paddock-key', quantity: 1, chance: 0.2, district: 'route-1-steading' },
       // The road out: a spare of the workaday pack at the field station, and
       // the first pack bigger than the one the game starts you in out in the
       // steading's yard, which is the far east of the route.
@@ -422,6 +432,10 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // in the game - only the Bulbasaur line can read it. The forest is the
       // map worth walking for a rarity, and it is now the map with two.
       { id: 'forest-tm-bullet-seed', position: { x: 15, y: 28 }, itemId: 'tm09-bullet-seed', quantity: 1, chance: 0.25, district: 'forest-coppice' },
+      // The Forester's Key is left at the sawpit where the forester's men work;
+      // his gate is at Brook Foot, the far side of the wood's west.
+      { id: 'forest-lockpick', position: { x: 21, y: 40 }, itemId: 'lockpick', quantity: 1 },
+      { id: 'forest-forester-key', position: { x: 21, y: 43 }, itemId: 'forester-key', quantity: 1, chance: 0.2, district: 'forest-sawpit' },
       // The east and the south. A pool, not a layout - `generateLoot` re-seats
       // every piece each raid - so these are one per place rather than a trail
       // of crumbs, which is what keeps a map four times the size worth walking.
@@ -505,6 +519,10 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       { id: 'floodplain-money-quarry', position: { x: 90, y: 18 }, itemId: 'money', quantity: 20 },
       { id: 'floodplain-money-staithe', position: { x: 34, y: 102 }, itemId: 'money', quantity: 35 },
       { id: 'floodplain-tm-ice-beam', position: { x: 25, y: 18 }, itemId: 'tm13-ice-beam', quantity: 1, chance: 0.25, district: 'floodplain-reedbeds' },
+      // The Market Key is lost in Old Town, over the water from the isle whose
+      // stairs it opens.
+      { id: 'floodplain-lockpick', position: { x: 15, y: 48 }, itemId: 'lockpick', quantity: 1 },
+      { id: 'floodplain-market-key', position: { x: 16, y: 47 }, itemId: 'market-key', quantity: 1, chance: 0.2, district: 'floodplain-old-town' },
       { id: 'floodplain-tm-iron-tail', position: { x: 47, y: 23 }, itemId: 'tm23-iron-tail', quantity: 1, chance: 0.25, district: 'floodplain-mill-weir' },
       // The Leaf Stone in the withy beds, the deepest south-east of the vast
       // map and behind the Cut door into them. The Bellsprout of the fen are
@@ -562,6 +580,10 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // the fence goes; and a Raid pack in the ranger's garden in the far
       // south-west, where only a raid that went the long way round goes.
       { id: 'viridian-forecourt-ranger-pack', position: { x: 13, y: 10 }, itemId: 'ranger-pack', quantity: 1, chance: 0.2, district: 'viridian-front-gate' },
+      // The Garden Key is out in the east wood, where the gardener cuts his
+      // stakes, and his gate is on Garden Row across the town.
+      { id: 'viridian-lockpick', position: { x: 41, y: 64 }, itemId: 'lockpick', quantity: 1 },
+      { id: 'viridian-garden-key', position: { x: 66, y: 46 }, itemId: 'garden-key', quantity: 1, chance: 0.2, district: 'viridian-east-wood' },
       { id: 'viridian-ranger-raid-pack', position: { x: 10, y: 72 }, itemId: 'raid-pack', quantity: 1, chance: 0.25, district: 'viridian-ranger-hut' },
       // The Nidoran in the border fields are what reads it: a Nidorino given
       // one is a Nidoking, and the farmer says the stone turns up there.

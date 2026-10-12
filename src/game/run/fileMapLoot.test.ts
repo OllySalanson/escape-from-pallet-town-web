@@ -72,6 +72,9 @@ describe("a file map's item spots", () => {
   });
 
   it('leave every shipped map laying exactly the loot it laid before', () => {
-    expect(shippedLootFingerprint()).toBe('603253be');
+    // Re-pinned when a Lockpick and a key were added to every shipped map's
+    // pool: a change to a shipped pool moves this on purpose, a change to how a
+    // file map's spots are laid never may.
+    expect(shippedLootFingerprint()).toBe('e15292f5');
   });
 });

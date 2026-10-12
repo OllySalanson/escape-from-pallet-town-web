@@ -128,6 +128,8 @@ describe('the named districts of a map', () => {
         'LIME ROAD': 'THE KILNS',
         'FERRY HARD': 'THE HARD',
         'HEADLAND STEPS': 'THE BEACON',
+        'WEIR GATE': 'THE WATER MEADOWS',
+        ROCKFALL: 'THE NORTH FIELD',
       },
       landings: {
         'Town Square': 'MARKET SQUARE',
@@ -148,6 +150,7 @@ describe('the named districts of a map', () => {
         'THE DECOY': 'THE WATER MEADOWS',
         'THE POWDER STORE': 'THE QUARRY',
         'THE MEADOW HATCH': 'THE WATER MEADOWS',
+        'KILN STRONGBOX': 'THE KILNS',
       },
     });
     // The south is named where the south bank starts: on the far step of each
@@ -175,6 +178,8 @@ describe('the named districts of a map', () => {
         'BROOK STAIR': 'THE WATER MEADOWS',
         'SOUTH GATE': 'SOUTH GATE',
         'KILN ROAD': 'THE CHARCOAL BURN',
+        'PADDOCK GATE': 'THE PADDOCKS',
+        'FALLEN CUT': 'THE CHARCOAL BURN',
       },
       landings: {
         'Route 1': 'ROUTE HEAD',
@@ -193,6 +198,7 @@ describe('the named districts of a map', () => {
         'THE STOCK TROUGH': 'THE PADDOCKS',
         'THE FARM WELL': 'THE STEADING',
         "DROVER'S CAIRN": 'THE COMMON',
+        "PACKER'S CHEST": 'THE ORCHARD',
       },
     });
     // Every door belongs to the place it opens: both of the warden's to the
@@ -218,6 +224,7 @@ describe('the named districts of a map', () => {
         'EAST TRAIL': 'THE EAST WOOD',
         'WEST STILE': 'THE BORDER FIELDS',
         "DIGLETT'S CAVE": "DIGLETT'S HILL",
+        'GARDEN GATE': 'GARDEN ROW',
       },
       landings: {
         'Viridian City': 'CENTER SQUARE',
@@ -236,6 +243,7 @@ describe('the named districts of a map', () => {
         'BIRD HIDE': 'THE SOUTH TERRACES',
         "RANGER'S FIRST-AID BOX": "THE RANGER'S HUT",
         'POTTING SHED': 'GARDEN ROW',
+        'SEED CHEST': 'THE SOUTH TERRACES',
       },
     });
     // The keeper's two doors both open his forecourt, and the Cut tree opens
@@ -264,6 +272,8 @@ describe('the named districts of a map', () => {
         'MERE STAITH': 'THE MERE',
         'SOUTH GATE': 'THE SOUTH ROAD',
         'QUARRY ADIT': 'THE QUARRY',
+        "FORESTER'S GATE": 'BROOK FOOT',
+        'SCREE GAP': 'STONE ROW',
       },
       landings: {
         'Viridian Forest': 'NORTH LANDING',
@@ -279,6 +289,7 @@ describe('the named districts of a map', () => {
         'ADIT STORE': 'THE QUARRY',
         'THE OLD DIG': 'THE WARREN',
         'THE TARN HIDE': 'THE TARN',
+        "SURVEYOR'S CHEST": 'THE BLOWDOWN',
       },
     });
   });
@@ -407,6 +418,8 @@ describe('the named districts of a map', () => {
         'MARSH GATE': 'THE SEA WALL',
         'THE GUTWAY': 'THE MUDS',
         'THE GRIDIRON': 'THE MUDS',
+        'MARKET STAIRS': 'MARKET ISLE',
+        'QUARRY FALL': 'THE QUARRY',
       });
     });
 
@@ -452,6 +465,7 @@ describe('the named districts of a map', () => {
         'CHURCH FARM': 'THE DROWNED HUNDRED',
         'THE DECOY': 'THE SEA WALL',
         'THE WRECK': 'THE MUDS',
+        'BECK STRONGBOX': 'HOLLOW BECK',
       });
     });
 

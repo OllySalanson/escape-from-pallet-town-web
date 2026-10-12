@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { gatesForMap, gateStatesToVerify } from './gates';
-import { EXTRACTION_POINTS } from './extractionPoints';
+import { EXTRACTION_POINTS, isBarredExit } from './extractionPoints';
 import {
   collisionBlocker,
   findHunterBreakawayTile,
@@ -131,7 +131,9 @@ describe('what an escape buys', () => {
    * failure lands here rather than in a playtest.
    */
   it.each(GATE_STATES)('%s: the blind window covers the walk to an exit from anywhere', (_name, mapId, defeatedBosses) => {
-    const exits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId);
+    // A barred exit is a wall to a raid that did not bring its Pickaxe or key,
+    // so the walk the window has to cover is to a way out anybody can use.
+    const exits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId && !isBarredExit(point));
     expect(exits.length).toBeGreaterThan(0);
 
     // A shut gate is a longer walk to whichever exits are left on this side of

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CLASSIC_TILE, getWorldMap, isTallGrassInMap, WORLD_MAPS } from './worldMap';
-import { EXTRACTION_POINTS } from './world/extractionPoints';
+import { EXTRACTION_POINTS, isBarredExit, isDugExit } from './world/extractionPoints';
 import { MapSketch } from './world/mapGrid';
 import { buildMapLayers } from './world/tiles';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
@@ -172,7 +172,9 @@ describe('worldMap', () => {
     for (const map of Object.values(WORLD_MAPS)) {
       const exits = EXTRACTION_POINTS.filter((point) => point.mapId === map.id);
       expect({ map: map.id, enoughExits: exits.length >= 3 }).toMatchObject({ enoughExits: true });
-      const kinds = exits.map((exit) => exit.requirement?.kind ?? 'elapsed');
+      // Three rules anybody can use; a barred exit - rubble or a locked gate -
+      // is a fourth way out only for a raid that brought what opens it.
+      const kinds = exits.filter((exit) => !isBarredExit(exit)).map((exit) => exit.requirement?.kind ?? 'elapsed');
       expect([...new Set(kinds)].sort()).toEqual(['always', 'elapsed', 'poi-activated']);
     }
   });
@@ -206,7 +208,9 @@ describe('worldMap', () => {
       'LIME ROAD',
       'MILL STAIR',
       'QUARRY TRACK',
+      'ROCKFALL',
       'SOUTH GATE',
+      'WEIR GATE',
       'WEST CULVERT',
     ]);
     // The board names the three a player standing in the square can act on -
@@ -222,7 +226,9 @@ describe('worldMap', () => {
       .entities.filter((entity) => entity.kind === 'sign')
       .flatMap((entity) => entity.dialogLines)
       .join(' ');
-    for (const exit of exits) {
+    // Every way out but the rubble, which is a way out a Pickaxe finds: a
+    // board that named it would make it an ordinary exit with a wall in front.
+    for (const exit of exits.filter((point) => !isDugExit(point))) {
       expect(`some board names ${exit.label}: ${boards.includes(exit.label)}`)
         .toBe(`some board names ${exit.label}: true`);
     }

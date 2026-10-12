@@ -109,6 +109,10 @@ function describeEffect(
       return { effect: 'Dug with in a raid', usable: false };
     case 'rod':
       return { effect: 'Fished with in a raid', usable: false };
+    case 'lockpick':
+      return { effect: 'Picks a lock in a raid', usable: false };
+    case 'key':
+      return { effect: 'Opens a gate in a raid', usable: false };
     case 'held':
       // Unreachable while `isMedicine` is the filter above, and answered anyway:
       // gear is given, never used, so there is no treatment to describe.

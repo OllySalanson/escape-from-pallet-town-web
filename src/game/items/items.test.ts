@@ -8,6 +8,7 @@ import {
   ItemCategory,
   MACHINE_ITEM_IDS,
   EVOLUTION_STONE_IDS,
+  KEY_ITEM_IDS,
   MATERIAL_IDS,
   getItemById,
   isMaterial,
@@ -61,9 +62,20 @@ describe('materials', () => {
     // Nothing else lives in that pocket but the five evolution stones and the
     // nine machines, both of which are spent on a Pokemon rather than at
     // Brock's, the money, which is spent at Bill's counter and nowhere else,
-    // and the Pickaxe and the two rods, which are carried and never spent at all.
+    // the Pickaxe, the two rods and the keys, which are carried and never spent
+    // at all, and the Lockpick, which a locked crate spends.
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
-      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'money', 'pickaxe', 'old-rod', 'good-rod'].sort(),
+      [
+        ...MATERIAL_IDS,
+        ...MACHINE_ITEM_IDS,
+        ...EVOLUTION_STONE_IDS,
+        ...KEY_ITEM_IDS,
+        'money',
+        'pickaxe',
+        'old-rod',
+        'good-rod',
+        'lockpick',
+      ].sort(),
     );
   });
 

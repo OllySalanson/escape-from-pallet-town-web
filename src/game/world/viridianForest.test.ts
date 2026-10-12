@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { getWorldMap } from '../worldMap';
-import { EXTRACTION_POINTS } from './extractionPoints';
+import { EXTRACTION_POINTS, isBarredExit } from './extractionPoints';
 import { gatesForMap } from './gates';
 import { WORLD_POIS } from './pois';
 import { trainerSightTiles } from './trainerSight';
@@ -76,7 +76,8 @@ describe('Viridian Forest', () => {
   it('gives every landing a way out inside a few seconds of a five-minute clock', () => {
     const nearest = (from: { x: number; y: number }): number =>
       Math.min(
-        ...EXTRACTION_POINTS.filter((point) => point.mapId === MAP)
+        // A fresh save has no Pickaxe or key to open a barred exit with.
+        ...EXTRACTION_POINTS.filter((point) => point.mapId === MAP && !isBarredExit(point))
           .map((point) => steps(MAP, from, point.position, FRESH))
           .filter((walk) => walk >= 0),
       );

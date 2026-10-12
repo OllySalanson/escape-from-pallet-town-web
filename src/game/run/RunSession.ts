@@ -106,8 +106,11 @@ export interface ActiveRunSession {
    * is raid state and nothing else.
    */
   bouldersMoved?: Record<string, GridPosition>;
-  /** The exits this raid has dug out with a Pickaxe, by label (`ExtractionPoint.label`). */
-  exitsDug?: string[];
+  /**
+   * The barred exits this raid has opened - dug out with a Pickaxe or unlocked
+   * with their key - by label (`ExtractionPoint.label`).
+   */
+  exitsOpened?: string[];
   /**
    * The ground this raid has walked, as row-major tile indices at the map's own
    * width - what the drop-in screen's picture of the place is drawn from.

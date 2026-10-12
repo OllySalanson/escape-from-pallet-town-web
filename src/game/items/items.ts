@@ -127,6 +127,21 @@ export type ItemEffect =
    * stone's is. It is packed, costs its squares and is lost with the pack.
    */
   | { readonly type: 'rod' }
+  /**
+   * A Lockpick: opens one locked crate (`../world/pois.ts`, `WorldPoi.locked`)
+   * and snaps in the lock doing it, so it is spent where a Pickaxe is not. Most
+   * locks open with one; an exit with a key of its own does not.
+   */
+  | { readonly type: 'lockpick' }
+  /**
+   * A key: the one thing that opens one map's locked exit, for the raid it is
+   * carried on. Which exit is authored on the exit (`ExtractionRequirement`
+   * `key`, naming this item's id), not here, for the reason a stone names no
+   * Pokemon: one answer, read from one place. Packed, costs its square and is
+   * lost with the pack, so a key found once is a reason to come back and a
+   * thing to lose doing it.
+   */
+  | { readonly type: 'key' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -509,6 +524,58 @@ export const ITEMS = {
     description: 'Digs out an exit buried under rubble, for the raid it is carried on. Never used up.',
     effect: { type: 'pickaxe' },
   },
+  lockpick: {
+    id: 'lockpick',
+    displayName: 'Lockpick',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Opens one locked crate: face it and press the interact key. It snaps in the lock doing it.',
+    effect: { type: 'lockpick' },
+  },
+  // The keys, one a map. Each opens that map's one locked exit and nothing
+  // else - a Lockpick will not turn it - and is found on the map it opens, in
+  // a place of its own (`../worldMap.ts`). Worded as FireRed words a key: what
+  // it is the key to, and where.
+  'weir-key': {
+    id: 'weir-key',
+    displayName: 'Weir Key',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: "The key to the WEIR GATE in PALLET TOWN's water meadows. A way out for the raid it is carried on. Never used up.",
+    effect: { type: 'key' },
+  },
+  'paddock-key': {
+    id: 'paddock-key',
+    displayName: 'Paddock Key',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: "The key to the PADDOCK GATE at the east end of ROUTE 1's paddocks. A way out for the raid it is carried on. Never used up.",
+    effect: { type: 'key' },
+  },
+  'forester-key': {
+    id: 'forester-key',
+    displayName: "Forester's Key",
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: "The key to the FORESTER'S GATE at BROOK FOOT in VIRIDIAN FOREST. A way out for the raid it is carried on. Never used up.",
+    effect: { type: 'key' },
+  },
+  'garden-key': {
+    id: 'garden-key',
+    displayName: 'Garden Key',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: "The key to the GARDEN GATE on VIRIDIAN CITY's garden row. A way out for the raid it is carried on. Never used up.",
+    effect: { type: 'key' },
+  },
+  'market-key': {
+    id: 'market-key',
+    displayName: 'Market Key',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: "The key to the MARKET STAIRS on the FLOODPLAIN's market isle. A way out for the raid it is carried on. Never used up.",
+    effect: { type: 'key' },
+  },
   // FireRed's two lower rods. Each reads its own slots of the water it is cast
   // into (`../world/fishing.ts`): the Old Rod only ever hooks a Magikarp, and
   // the Good Rod the Poliwag, Goldeen, Horsea and Krabby that live nowhere else.
@@ -722,6 +789,16 @@ export const MACHINE_ITEM_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter
   (item) => item.effect.type === 'machine',
 ).map((item) => item.id as SupplyItemId);
 
+/** A key that opens one map's locked exit (`ExtractionRequirement` `key`). */
+export function isKey(itemId: string): boolean {
+  return getItemById(itemId)?.effect.type === 'key';
+}
+
+/** Every key in the catalogue, in catalogue order. */
+export const KEY_ITEM_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
+  (item) => item.effect.type === 'key',
+).map((item) => item.id as SupplyItemId);
+
 /** An evolution stone, by id. Which line it answers is `../pokemon/evolution.ts`. */
 export function isEvolutionStone(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'evolution-stone';
@@ -862,6 +939,10 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} digs out buried exits. Face the rubble and press the interact key.` };
     case 'rod':
       return { used: false, message: `${item.displayName} is cast into water. Face it and press the interact key.` };
+    case 'lockpick':
+      return { used: false, message: `${item.displayName} opens a locked crate. Face the crate and press the interact key.` };
+    case 'key':
+      return { used: false, message: `${item.displayName} opens its own locked gate. Face the gate and press the interact key.` };
     case 'machine':
       // A machine is never spent here. Teaching can need a move chosen to be
       // forgotten, which is a screen rather than a return value, so `./teaching`
