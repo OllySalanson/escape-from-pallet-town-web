@@ -93,6 +93,22 @@ describe('the map maker screen', () => {
     expect(makerScreen(state(SAMPLE, true))).toContain('READY');
   });
 
+  it('asks the level a try is played at, starting on the one that suits the map', () => {
+    const markup = makerScreen({
+      ...state(SAMPLE, false),
+      tryLevel: 6,
+      tryLevels: [5, 6, 10, 100],
+      suitedTryLevel: 6,
+    });
+    const choice = /<select[^>]*data-try-level[^>]*>(.*?)<\/select>/.exec(markup)?.[1] ?? '';
+    expect([...choice.matchAll(/<option value="(\d+)"/g)].map((match) => Number(match[1]))).toEqual([5, 6, 10, 100]);
+    expect(choice).toContain('<option value="6" selected>Lv 6 · suits it</option>');
+    // It stands before the two ways to try, which it is the level of.
+    expect(markup.indexOf('data-try-level')).toBeLessThan(markup.indexOf('data-try="walk"'));
+    const chosen = makerScreen({ ...state(SAMPLE, false), tryLevel: 100, tryLevels: [5, 6, 100], suitedTryLevel: 6 });
+    expect(chosen).toContain('<option value="100" selected>Lv 100</option>');
+  });
+
   it('scrolls its side column as a pane, so a panel below the checks says MORE', () => {
     // Playtest 45: the chosen thing's panel sat under the checks with only its
     // heading showing, and nothing said there was more of the column.
@@ -213,6 +229,24 @@ describe('sending a map in', () => {
       previous: { receipt: 'ABCDEFGHJK', status: 'sent_back' },
     });
     expect(back).toContain('Send again');
+  });
+
+  it('sends a fix to a map in the game as its update, and holds one approved until it is in', () => {
+    const update = ready({
+      step: 'ready',
+      needsCheck: false,
+      previous: { receipt: 'ABCDEFGHJK', status: 'published' },
+    });
+    expect(update).toContain('This map is in the game');
+    expect(update).toContain('every drop-in players have reached stays theirs');
+    expect(update).toContain('Send the update');
+    const approved = ready({
+      step: 'ready',
+      needsCheck: false,
+      previous: { receipt: 'ABCDEFGHJK', status: 'approved' },
+    });
+    expect(approved).toContain('goes into the game soon');
+    expect(approved).not.toContain('data-send-confirm');
   });
 
   it('hands over the receipt, and says what went wrong in words', () => {

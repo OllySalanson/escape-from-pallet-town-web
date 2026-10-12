@@ -3287,6 +3287,17 @@ button {
 :where(.pixel-ui) .maker-shell .confirm-bar {
   grid-column: 1 / -1;
 }
+/* The level a try fields its team at, beside the two ways to try: a label and
+   its choice on one line, as tall as the buttons it stands with. */
+:where(.pixel-ui) .maker-try-level {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .maker-try-level > span {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
 :where(.pixel-ui) .maker-tools,
 :where(.pixel-ui) .maker-map,
 :where(.pixel-ui) .maker-drafts {

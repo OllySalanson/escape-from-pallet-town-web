@@ -59,7 +59,7 @@ const FILE = keysOf<MapFile>()([
   'berryTrees', 'boulders',
 ]);
 const BUILDING = keysOf<MapFileBuilding>()(['x', 'y', 'area', 'kind']);
-const DROP_IN = keysOf<MapFileDropIn>()(['x', 'y', 'area', 'name', 'description']);
+const DROP_IN = keysOf<MapFileDropIn>()(['x', 'y', 'area', 'name', 'description', 'id']);
 const EXIT = keysOf<MapFileExit>()(['x', 'y', 'area', 'name', 'opens']);
 const ITEM_SPOT = keysOf<MapFileItemSpot>()(['x', 'y', 'area', 'hidden']);
 const PERSON = keysOf<MapFilePerson>()(['x', 'y', 'area', 'name', 'look', 'facing', 'lines']);

@@ -76,6 +76,14 @@ const admin = await call('/rest/v1/rpc/is_admin', { method: 'POST', token, body:
 check(admin.json === false, `is not an admin (${JSON.stringify(admin.json)})`);
 const review = await call('/rest/v1/map_submissions?id=not.is.null', { method: 'PATCH', token, body: { status: 'approved' } });
 check(review.status >= 400 || (Array.isArray(review.json) && review.json.length === 0), `cannot approve a map (${review.status} ${JSON.stringify(review.json)})`);
+// Which published map a fix replaces is publishing's to record, never a player's.
+const replaces = await call('/rest/v1/map_submissions?id=not.is.null', { method: 'PATCH', token, body: { map_file_id: 'sample-lane' } });
+check(replaces.status >= 400 || (Array.isArray(replaces.json) && replaces.json.length === 0), `cannot say which map a submission replaces (${replaces.status} ${JSON.stringify(replaces.json)})`);
+// Nor send a map as the next version of one that is not theirs: refused before
+// anything is written, so this stays read-only.
+const tiny = { format: 1, id: 'probe', name: 'Probe', maker: 'Probe', width: 20, height: 16, ground: Array.from({ length: 16 }, () => '.'.repeat(20)), buildings: [], dropIns: [], exits: [], itemSpots: [], wildlife: 'meadow' };
+const hijack = await call('/rest/v1/rpc/submit_map', { method: 'POST', token, body: { map: tiny, maker_name: 'Probe', resubmits: 'AAAAAAAAAA' } });
+check(hijack.status >= 400, `cannot send a map as the update of one it did not send (${hijack.status} ${JSON.stringify(hijack.json)})`);
 
 const list = await call('/storage/v1/object/list/feedback', { method: 'POST', token, body: { prefix: '' } });
 check(Array.isArray(list.json) ? list.json.length === 0 : list.status >= 400, `lists no feedback files (${list.status})`);

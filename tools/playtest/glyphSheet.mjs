@@ -1,6 +1,10 @@
 // Every glyph the canvas draws, as the game draws it, one character a pixel.
 //
-//   node tools/playtest/glyphSheet.mjs <dev server url> <out.txt> [--against=<earlier out.txt>]
+//   node tools/playtest/glyphSheet.mjs <dev server url> <out.txt> [--against=<earlier out.txt>] [--chars=<glyphs>]
+//
+// `--chars=accents` sheets the accented letters a player's map may use
+// (`world/mapText.ts`) instead of the usual set; any other value is the
+// glyphs themselves.
 //
 // `ui/pixelText.ts` turns Orange Kid into a bitmap font at run time, and a
 // change to how it cuts a glyph (`inkMask`, the threshold, the nudges) changes
@@ -18,7 +22,16 @@ import { launchBrowser } from './browser.mjs';
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'glyphs.txt'] = args.filter((arg) => !arg.startsWith('--'));
 const against = args.find((arg) => arg.startsWith('--against='))?.slice(10);
-const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,:;\'"-+/%()#&₽é*<>=';
+const ASCII = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,:;\'"-+/%()#&₽é*<>=';
+const chosen = args.find((arg) => arg.startsWith('--chars='))?.slice(8);
+const ACCENTS = chosen === 'accents'
+  ? (readFileSync(new URL('../../src/game/world/mapText.ts', import.meta.url), 'utf8')
+      .match(/MAP_TEXT_EXTRA =([\s\S]*?);/)?.[1]
+      .match(/'([^']*)'/g)
+      ?.map((part) => part.slice(1, -1))
+      .join('') ?? '')
+  : undefined;
+const CHARS = ACCENTS ?? chosen ?? ASCII;
 
 const browser = await launchBrowser();
 let sheet;

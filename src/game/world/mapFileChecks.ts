@@ -1,4 +1,9 @@
-import { linkTable, type GridLinks, type GridPosition } from '../movement/gridMovement';
+import {
+  DIRECTION_DELTAS,
+  linkTable,
+  type GridLinks,
+  type GridPosition,
+} from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { HUNTER_SPAWN_DISTANCE } from './hunter';
@@ -19,6 +24,7 @@ import {
   buildingDoorAt,
   doorFront,
   fileDoorGates,
+  fileLedges,
   readMapFile,
   type MapFile,
   type MapFileArea,
@@ -412,13 +418,34 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].map((spot) => at(onGrid(spot)));
   const shut = new Set([...exitTiles, ...figureTiles, ...boulders.map((spot) => at(onGrid(spot)))]);
   const pushedAside = new Set([...exitTiles, ...figureTiles]);
+  // A painted ledge is a way down that only the player has (`ledges.ts`), so
+  // every walk a player takes may hop it - one way, as the game does, and only
+  // onto ground that is free - while the hunter's room is still asked of the
+  // ground alone, because the hunter cannot follow.
+  const hops = fileLedges(file).flatMap((ledge) =>
+    ledge.brow.map((from) => ({
+      // Where the maker painted it: the ledge tile in front of the brow.
+      ledge: {
+        x: ledge.brow[0].x + DIRECTION_DELTAS[ledge.drop].x,
+        y: ledge.brow[0].y + DIRECTION_DELTAS[ledge.drop].y,
+      },
+      from: onGrid(from),
+      toward: ledge.drop,
+      to: onGrid({
+        x: from.x + DIRECTION_DELTAS[ledge.drop].x * (ledge.depth + 1),
+        y: from.y + DIRECTION_DELTAS[ledge.drop].y * (ledge.depth + 1),
+      }),
+    })),
+  );
+  const walks: GridLinks = new Map([...links, ...linkTable(hops, composed.width)]);
   // A raid has to be leavable by a player who brought no Pokemon that knows Cut
   // or Surf, so the way out is walked with every door shut; what is behind a
   // door is still somewhere a map is for, so reaching it is walked with them open.
   const fromDropIn = file.dropIns.map((dropIn) => ({
     dropIn,
-    steps: stepDistances(collision, onGrid(dropIn), shut, links),
-    opened: stepDistances(openCollision, onGrid(dropIn), pushedAside, links),
+    steps: stepDistances(collision, onGrid(dropIn), shut, walks),
+    opened: stepDistances(openCollision, onGrid(dropIn), pushedAside, walks),
+    ground: stepDistances(collision, onGrid(dropIn), shut, links),
   }));
   const stepsTo = (steps: readonly Int32Array[], placed: MapFileSpot): number => {
     const spot = onGrid(placed);
@@ -437,8 +464,9 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     return steps[spot.y]?.[spot.x] ?? -1;
   };
 
-  const wayOut = fromDropIn.flatMap(({ dropIn, steps }) => {
-    const best = Math.min(
+  /** The soonest an exit can be left by from where a walk began, in ms; Infinity for never. */
+  const soonestOut = (steps: readonly Int32Array[]): number =>
+    Math.min(
       ...file.exits.map((exit) => {
         if (exit.opens.when === 'dug') {
           return Infinity;
@@ -451,6 +479,8 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
         return Math.max(walk * STEP_DURATION_MS, opensAtMs);
       }),
     );
+  const wayOut = fromDropIn.flatMap(({ dropIn, steps }) => {
+    const best = soonestOut(steps);
     if (best === Infinity) {
       return [
         `Drop-in ${dropIn.name} cannot walk to any exit${file.exits.some((exit) => exit.opens.when === 'dug') ? ' without a Pickaxe' : ''}.`,
@@ -460,6 +490,20 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
       ? [`Drop-in ${dropIn.name} cannot reach an open exit in time.`]
       : [];
   });
+  // A hop is one way, so wherever it puts the player down has to have a way
+  // out of its own: a ledge into a pocket with no exit is a raid that can only
+  // end on the clock. Every ledge in FireRed drops onto a road that goes on.
+  // Only a hop somebody can stand at the brow of is asked about: a ledge on
+  // ground no drop-in reaches is never hopped, and a door is opened to reach it.
+  const hopped = hops.filter((hop) =>
+    fromDropIn.some(({ opened }) => (opened[hop.from.y]?.[hop.from.x] ?? -1) >= 0),
+  );
+  const hopLandings = new Map(hopped.map((hop) => [at(hop.to), hop]));
+  const strandedHops = [...hopLandings.values()]
+    .filter((hop) => !shut.has(at(hop.to)))
+    .filter((hop) => soonestOut(stepDistances(collision, hop.to, shut, walks)) === Infinity)
+    .map((hop) => `The ledge at ${at(hop.ledge)} drops where no exit can be walked to.`);
+  const wayOutProblems = [...wayOut, ...new Set(strandedHops)];
 
   const reachable = [
     ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}` })),
@@ -496,7 +540,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // the hunter can never join.
   const hunterRoom = fromDropIn
     .filter(({ dropIn }) => walkable(dropIn))
-    .filter(({ steps }) => !steps.some((row) => row.includes(HUNTER_SPAWN_DISTANCE)))
+    .filter(({ ground }) => !ground.some((row) => row.includes(HUNTER_SPAWN_DISTANCE)))
     .map(
       ({ dropIn }) =>
         `Drop-in ${dropIn.name} has no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on.`,
@@ -508,9 +552,15 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
       { position: onGrid(trainer), facing: trainer.facing, sightRange: trainer.sight },
       (tile) => isBlockedAt(collision, tile.x, tile.y),
     );
-    return seen.some((tile) => ends.has(at(tile)))
-      ? [`Trainer ${trainer.name} can see a drop-in or an exit. Turn them, or watch less far.`]
-      : [];
+    return [
+      ...(seen.some((tile) => ends.has(at(tile)))
+        ? [`Trainer ${trainer.name} can see a drop-in or an exit. Turn them, or watch less far.`]
+        : []),
+      // A hop is a step taken to get away, so it never lands in a fight.
+      ...(seen.some((tile) => hopLandings.has(at(tile)))
+        ? [`Trainer ${trainer.name} can see where a ledge lands. Turn them, or watch less far.`]
+        : []),
+    ];
   });
 
   const said = [
@@ -550,7 +600,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     check('standing', standing),
     check('apart', apart),
     ...(hasInsides ? [check('doors', doors)] : []),
-    check('way-out', wayOut),
+    check('way-out', wayOutProblems),
     check('reachable', reachable),
     ...(hasInsides ? [check('areas', areas)] : []),
     check('hunter-room', hunterRoom),

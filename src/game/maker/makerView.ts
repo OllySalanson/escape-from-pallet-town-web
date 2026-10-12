@@ -194,6 +194,11 @@ export interface MakerViewState {
   readonly review: ReviewState;
   /** The map sent in that is open in the editor to be reviewed, if one is. */
   readonly reviewing: QueuedMap | undefined;
+  /** The level WALK IT and RAID IT field their team at, and the levels on offer. */
+  readonly tryLevel?: number;
+  readonly tryLevels?: readonly number[];
+  /** The level that suits the map: the highest anything on it fights at. */
+  readonly suitedTryLevel?: number;
   readonly status?: string;
 }
 
@@ -949,18 +954,24 @@ function sendPane(file: MapFile, sending: SendState): string {
       break;
     case 'ready': {
       const previous = sending.previous;
-      if (previous?.status === 'waiting') {
-        body = `<p class="px-wrap">This map is already in, waiting to be played. Its receipt is <strong>${previous.receipt}</strong>.</p><div class="maker-actions">${back}</div>`;
+      if (previous?.status === 'waiting' || previous?.status === 'approved') {
+        body = `<p class="px-wrap">${
+          previous.status === 'waiting'
+            ? 'This map is already in, waiting to be played.'
+            : 'This map is approved and goes into the game soon; send any fix once it is in.'
+        } Its receipt is <strong>${previous.receipt}</strong>.</p><div class="maker-actions">${back}</div>`;
         break;
       }
-      const again = previous?.status === 'sent_back';
+      const again = previous?.status === 'sent_back' || previous?.status === 'published';
       body = `<p class="px-wrap">${
-        again
+        previous?.status === 'sent_back'
           ? `This map was sent back with notes (receipt <strong>${previous.receipt}</strong>). Send this version as its next try.`
-          : 'Every map sent in is played before it can join the game. An approved map goes into the game with your maker name on it.'
+          : previous?.status === 'published'
+            ? `This map is in the game (receipt <strong>${previous.receipt}</strong>). Send this version as its update: once it is approved it replaces the one in the game, and every drop-in players have reached stays theirs.`
+            : 'Every map sent in is played before it can join the game. An approved map goes into the game with your maker name on it.'
       }</p><p class="px-note px-wrap">Sent as <strong>${escapeHtml(file.name)}</strong> by <strong>${escapeHtml(file.maker)}</strong>. Nothing else about you is sent.</p>${
         sending.needsCheck ? `<div class="maker-captcha" data-captcha></div>` : ''
-      }<div class="maker-actions">${back}${button('data-send-confirm', again ? 'Send again' : 'Send it in', true)}</div>`;
+      }<div class="maker-actions">${back}${button('data-send-confirm', previous?.status === 'published' ? 'Send the update' : again ? 'Send again' : 'Send it in', true)}</div>`;
       break;
     }
     case 'sending':
@@ -1009,6 +1020,14 @@ function sentPane(sent: SentState): string {
  * in. A map is opened into the editor to be played and, if it needs it, fixed:
  * approving takes the map as it then stands.
  */
+/**
+ * What a reviewer is told about a fix to a map already in the game: approving
+ * it is not adding a map, it is changing one every player may have walked.
+ */
+export function updateNote(replaces: string): string {
+  return `An update to a map already in the game (${replaces}). Approving it replaces that map under the same id; drop-ins players have reached stay theirs.`;
+}
+
 function reviewPane(
   review: ReviewState,
   reviewing: QueuedMap | undefined,
@@ -1065,7 +1084,11 @@ function reviewPane(
     ? pixelWindow(
         `<div class="maker-form"><p class="px-wrap"><strong>${escapeHtml(reviewing.mapName)}</strong> by <strong>${escapeHtml(reviewing.makerName)}</strong>${
           reviewing.revision > 1 ? `, try ${reviewing.revision}` : ''
-        }. ${STATUS_WORDS[reviewing.status]}. Receipt ${reviewing.receiptCode}.</p><p class="px-note px-wrap">${passed} of ${total} checks pass. Play it with WALK IT or RAID IT; fix anything here before approving and the fixed map is what is approved.</p>${glance}${
+        }. ${STATUS_WORDS[reviewing.status]}. Receipt ${reviewing.receiptCode}.</p>${
+          reviewing.replaces
+            ? `<p class="px-warning px-wrap">${escapeHtml(updateNote(reviewing.replaces))}</p>`
+            : ''
+        }<p class="px-note px-wrap">${passed} of ${total} checks pass. Play it with WALK IT or RAID IT; fix anything here before approving and the fixed map is what is approved.</p>${glance}${
           review.reason ? `<p class="px-warning px-wrap">${escapeHtml(review.reason)}</p>` : ''
         }<label class="maker-field"><span>Note to the maker</span><textarea class="px-window px-field maker-lines" data-review-note rows="3" maxlength="2000" placeholder="Needed to send back or turn down">${escapeHtml(reviewing.note ?? '')}</textarea></label><div class="maker-actions">${button(
           'data-decide="sent_back"',
@@ -1086,7 +1109,7 @@ function reviewPane(
   const rows = review.maps
     .map(
       (map) =>
-        `<button class="px-row${reviewing?.id === map.id ? ' is-selected' : ''}" data-review-open="${escapeAttribute(map.id)}" data-help="Opens it in the editor to play and decide."${map.file ? '' : ' aria-disabled="true"'}><span class="px-row-main"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${escapeHtml(map.makerName)} · ${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''}</small>${reviewRowSummary(map)}</span></button>`,
+        `<button class="px-row${reviewing?.id === map.id ? ' is-selected' : ''}" data-review-open="${escapeAttribute(map.id)}" data-help="Opens it in the editor to play and decide."${map.file ? '' : ' aria-disabled="true"'}><span class="px-row-main"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${escapeHtml(map.makerName)} · ${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''}${map.replaces ? ' · UPDATE' : ''}</small>${reviewRowSummary(map)}</span></button>`,
     )
     .join('');
   return `${decision}${pixelWindow(
@@ -1155,6 +1178,7 @@ export function makerScreen(state: MakerViewState): string {
     ),
     button('data-open-file', 'Open file', 'Opens a map file you downloaded or were sent.'),
     button('data-download', 'Download', 'Saves this map as a file you can keep or share.'),
+    tryLevelChoice(state),
     button(
       'data-try="walk"',
       'Walk it',
@@ -1192,6 +1216,24 @@ export function makerScreen(state: MakerViewState): string {
       },
     )}</main>`,
   });
+}
+
+/**
+ * The level a try is played at, chosen before WALK IT or RAID IT: a try
+ * fields the three starters at it, so a maker can see how their map plays for
+ * a player at the level they would meet it at.
+ */
+function tryLevelChoice(state: MakerViewState): string {
+  const chosen = state.tryLevel ?? state.suitedTryLevel ?? 5;
+  const levels = state.tryLevels ?? [chosen];
+  const options = levels
+    .map(
+      (level) =>
+        `<option value="${level}"${level === chosen ? ' selected' : ''}>Lv ${level}${level === state.suitedTryLevel ? ' · suits it' : ''}</option>`,
+    )
+    .join('');
+  const help = `The level a try's team is at: the three starters, evolved as far as the level reaches. Lv ${state.suitedTryLevel ?? chosen} suits this map: the highest level anything on it fights at.`;
+  return `<label class="maker-try-level" data-help="${escapeAttribute(help)}"><span>Try at</span><select class="px-window px-field" data-try-level data-help="${escapeAttribute(help)}">${options}</select></label>`;
 }
 
 export function escapeHtml(value: string): string {

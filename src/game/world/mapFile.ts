@@ -46,6 +46,7 @@ import {
   type ComposedMap,
   type PlacedArea,
 } from './mapAreas';
+import { foldedSlug, isMapText, typedMapText } from './mapText';
 
 /**
  * A raid map as one file.
@@ -177,6 +178,55 @@ export function freeMapFileId(id: string, taken: ReadonlySet<string>): string {
       return candidate;
     }
   }
+}
+
+/**
+ * A fix to a published map, made ready to replace it under the same id: every
+ * drop-in that is one the published map had keeps that one's id, so a landing a
+ * player reached is still reached after the fix renamed or moved it
+ * (playtest 35's bug 4; the owner's call, option a). A drop-in is the same one
+ * when it keeps its name, else when it stands on the same tile, else - for the
+ * ones left on both sides - in the order they are listed, so a drop-in renamed
+ * and nudged in the same fix still keeps its id. One the fix added keeps the
+ * id its name gives it, which no published one can already hold: a name that
+ * matched one would have been paired with it first.
+ */
+export function keepPublishedIds(published: MapFile, update: MapFile): MapFile {
+  const left = published.dropIns.map((dropIn) => ({ dropIn, key: dropInKey(dropIn) }));
+  const kept = new Map<number, string>();
+  const take = (index: number, found: number): void => {
+    kept.set(index, left[found].key);
+    left.splice(found, 1);
+  };
+  const sameTile = (one: MapFileSpot, other: MapFileSpot): boolean =>
+    one.x === other.x && one.y === other.y && one.area === other.area;
+  update.dropIns.forEach((dropIn, index) => {
+    const found = left.findIndex((old) => old.key === dropInKey(dropIn));
+    if (found >= 0) {
+      take(index, found);
+    }
+  });
+  update.dropIns.forEach((dropIn, index) => {
+    const found = kept.has(index) ? -1 : left.findIndex((old) => sameTile(old.dropIn, dropIn));
+    if (found >= 0) {
+      take(index, found);
+    }
+  });
+  update.dropIns.forEach((_dropIn, index) => {
+    if (!kept.has(index) && left.length > 0) {
+      take(index, 0);
+    }
+  });
+  return {
+    ...update,
+    id: published.id,
+    dropIns: update.dropIns.map((dropIn, index) => {
+      const key = kept.get(index) ?? placeSlug(dropIn.name);
+      const rest = { ...dropIn };
+      delete (rest as { id?: string }).id;
+      return key === placeSlug(dropIn.name) ? rest : { ...rest, id: key };
+    }),
+  };
 }
 
 /**
@@ -785,6 +835,17 @@ export interface MapFileBuilding extends MapFileSpot {
 export interface MapFileDropIn extends MapFileSpot {
   readonly name: string;
   readonly description?: string;
+  /**
+   * The id it was published under, kept when a fix renames it, so a landing
+   * players have reached stays theirs (`keepPublishedIds`). Absent, the id is
+   * the slug of its name. Only publishing writes one; nothing in the maker does.
+   */
+  readonly id?: string;
+}
+
+/** The part of a drop-in's insertion id after the map's: its kept id, else its name's slug. */
+export function dropInKey(dropIn: Pick<MapFileDropIn, 'name' | 'id'>): string {
+  return dropIn.id ?? placeSlug(dropIn.name);
 }
 
 export interface MapFileExit extends MapFileSpot {
@@ -1140,9 +1201,13 @@ export const MAP_FILE_KEYS = [
  */
 export const UNSAFE_TEXT = /[<>&"]/;
 
-/** Text with the characters a map file may not hold taken out, as a field is typed. */
+/**
+ * Text with the characters a map file may not hold taken out, as a field is
+ * typed: `< > & "`, and everything beyond the writing a map may use
+ * (`mapText.ts`). A line break is kept, because a box of lines is split on it.
+ */
 export function plainText(value: string): string {
-  return value.replace(/[<>&"]/g, '');
+  return typedMapText(value, { lines: true }).text;
 }
 
 /** Every piece of player-written text in a map file. */
@@ -1318,9 +1383,10 @@ export function readMapFile(
     }
   }
 
-  const names = (field: 'dropIns' | 'exits', max: number): void => {
+  const names = (field: 'dropIns' | 'exits', max: number): Record<string, unknown>[] => {
     const seen = new Set<string>();
-    for (const [index, spot] of list(field, max, 1).entries()) {
+    const spots = list(field, max, 1);
+    for (const [index, spot] of spots.entries()) {
       const name = spot.name;
       if (typeof name !== 'string' || name.trim().length === 0) {
         problems.push(`${field === 'dropIns' ? 'Drop-in' : 'Exit'} ${index + 1} needs a name.`);
@@ -1336,6 +1402,11 @@ export function readMapFile(
         problems.push(`Two ${field === 'dropIns' ? 'drop-ins' : 'exits'} are called '${name}'.`);
       }
       seen.add(key);
+      if (field === 'dropIns' && spot.id !== undefined) {
+        if (typeof spot.id !== 'string' || !ID_PATTERN.test(spot.id) || spot.id.length > MAP_FILE_ID_MAX_LENGTH) {
+          problems.push(`The id kept for '${name}' is not one the game can use.`);
+        }
+      }
       if (
         spot.description !== undefined &&
         (typeof spot.description !== 'string' ||
@@ -1346,8 +1417,18 @@ export function readMapFile(
         );
       }
     }
+    return spots;
   };
-  names('dropIns', MAP_FILE_LIMITS.maxDropIns);
+  const dropInSpots = names('dropIns', MAP_FILE_LIMITS.maxDropIns);
+  // A kept id stands in for its drop-in's name, so no two may come out the same.
+  const landings = dropInSpots.flatMap((spot) =>
+    typeof spot.name === 'string' && (spot.id === undefined || typeof spot.id === 'string')
+      ? [spot.id ?? placeSlug(spot.name)]
+      : [],
+  );
+  if (new Set(landings).size !== landings.length && problems.every((problem) => !problem.startsWith('Two drop-ins'))) {
+    problems.push('Two drop-ins would be the same landing: give one another name.');
+  }
   names('exits', MAP_FILE_LIMITS.maxExits);
 
   for (const exit of Array.isArray(value.exits) ? value.exits.filter(isRecord) : []) {
@@ -1537,6 +1618,10 @@ export function readMapFile(
 
   if (problems.length === 0 && wordsOf(value).some((text) => UNSAFE_TEXT.test(text))) {
     problems.push('Names and words in a map may not use < > & or ".');
+  } else if (problems.length === 0 && !wordsOf(value).every(isMapText)) {
+    problems.push(
+      'Names and words in a map use letters (accents too), digits and common punctuation - no emoji or other scripts yet.',
+    );
   }
 
   return problems.length > 0
@@ -1716,10 +1801,7 @@ function readLinks(
 
 /** A place's name as a piece of an id: `North Gate` is `north-gate`. */
 export function placeSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return foldedSlug(name);
 }
 
 export function playerMapId(file: Pick<MapFile, 'id'>): PlayerMapId {
@@ -2021,7 +2103,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         .filter((part) => part.length > 0)
         .join(' ');
       return {
-        id: `${id}/${placeSlug(dropIn.name)}`,
+        id: `${id}/${dropInKey(dropIn)}`,
         label: index === 0 ? file.name : dropIn.name,
         mapId: id,
         position: at(dropIn),

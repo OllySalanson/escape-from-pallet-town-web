@@ -60,6 +60,7 @@ const DATABASE_REASONS = [
   'The map has no ground.',
   "The map's ground is not the size it says.",
   'Only a map sent back to you can be sent again.',
+  'Only a map sent back to you, or one of yours in the game, can be sent again.',
 ];
 
 /** What a failure says to a maker. */
@@ -99,7 +100,9 @@ async function signIn(captchaToken: string | undefined): Promise<Outcome<true>> 
 
 /**
  * Sends a map in. Resolves with its receipt code. `resubmits` is the receipt
- * of a map that was sent back, when this is the next version of it.
+ * of a map that was sent back, or of one of the maker's maps that is in the
+ * game, when this is the next version of it: a next version of a map in the
+ * game replaces it there once it is approved.
  */
 export async function sendMap(
   file: MapFile,
