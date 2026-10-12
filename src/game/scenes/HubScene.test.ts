@@ -707,6 +707,11 @@ describe('hub deployment route', () => {
       );
 
       readyToDeploy(hub);
+      hub.render();
+      // The final check names it too, as the raid's clock chip will.
+      expect((hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML).toContain(
+        night ? '· night raid clock 5:00' : '· raid clock 5:00',
+      );
       deploy(hub, start);
       const { runSession } = start.mock.calls[0][1] as WorldSceneData;
       expect(runSession.plan?.night).toBe(night);
