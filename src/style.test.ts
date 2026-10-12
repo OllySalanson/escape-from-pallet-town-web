@@ -278,3 +278,35 @@ describe('the pixel-ui stylesheet', () => {
     expect(betweenPairs).toBeGreaterThanOrEqual(withinPair * 2);
   });
 });
+
+describe('the defeat line-up', () => {
+  // The line-up in front of a lost raid's report is not a pixel-ui screen, but
+  // it is set in the same face, and the face has two limits that hold anywhere
+  // it is drawn: there is no bold cut, so a weight above 400 is the browser
+  // smearing the letters sideways, and below twelve pixels `W` reads `V`.
+  const block = stylesheet
+    .slice(stylesheet.indexOf('.defeat-stage {'), stylesheet.indexOf('@media (prefers-reduced-motion: reduce)'))
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const rule = (selector: string): string =>
+    new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`).exec(block)?.[1] ?? '';
+  const declared = (body: string, property: string): string | undefined =>
+    new RegExp(`(?:^|[\\s;])${property}:\\s*([^;]+);`).exec(body)?.[1]?.trim();
+
+  it('never asks the face for a bold it does not have', () => {
+    const weights = [...block.matchAll(/font-weight:\s*([^;]+);/g)].map((match) => match[1].trim());
+    expect(weights.filter((weight) => weight !== '400')).toEqual([]);
+    // A plate's name is a `<b>`, which the browser draws bold unless told not to.
+    expect(declared(rule('.defeat-plate b'), 'font-weight')).toBe('400');
+  });
+
+  it('writes a plate at one readable size: the level, the count and the verdict as large as the name', () => {
+    // Orange Kid's own grid is 12.5 pixels: at that size a stem is one pixel.
+    expect(declared(rule('.defeat-plate'), 'font-size')).toBe('12.5px');
+    for (const selector of ['.defeat-meta', '.defeat-tag', '.defeat-plate b']) {
+      expect({ selector, size: declared(rule(selector), 'font-size') }).toEqual({ selector, size: undefined });
+    }
+    // The level and the count are a `<small>`, which the browser draws a size
+    // down unless told to keep its parent's.
+    expect(declared(rule('.defeat-meta small'), 'font-size')).toBe('inherit');
+  });
+});
