@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { countPlay } from '../analytics/playCounter';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { SaveManager } from '../save/SaveManager';
@@ -111,6 +112,7 @@ export class StarterScene extends Phaser.Scene {
       this.renderCannotSave();
       return;
     }
+    countPlay({ kind: 'starter', detail: this.selectedStarterId });
     this.scene.start('base', { savedGame });
   }
 }

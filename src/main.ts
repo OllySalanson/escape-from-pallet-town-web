@@ -6,6 +6,7 @@ import { installTestModeControls, requestedTestMode } from './game/dev/testMode'
 import { mountGame, unmountGame } from './game/gameLifecycle';
 import { watchViewport } from './game/display/stageScaler';
 import { installFeedbackDesk } from './game/feedback/feedbackDesk';
+import { installPlayCounter } from './game/analytics/playCounter';
 import { installPixelText } from './game/ui/pixelText';
 import { watchForKeyboard } from './game/input/keyboardSeen';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
@@ -37,6 +38,15 @@ const game = mountGame(() => {
 const stopWatchingViewport = watchViewport(game);
 // The FEEDBACK tab and the F key, on every screen. See `feedback/feedbackDesk.ts`.
 const feedbackDesk = installFeedbackDesk(game);
+// Counts play for the owner's STATS page, only on the published game and never
+// for a browser that asks not to be tracked. See `game/analytics/playCounter.ts`.
+const stopCountingPlay = installPlayCounter({
+  production: import.meta.env.PROD,
+  testMode: testMode !== 'off',
+  hostname: window.location.hostname,
+  doNotTrack: navigator.doNotTrack ?? (window as unknown as { doNotTrack?: string }).doNotTrack,
+  globalPrivacyControl: (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl,
+});
 // A raid stops while the window is not in use, and waits for a click or a key.
 // Never in test mode, whose drivers step a stopped loop and open second tabs.
 // See `game/world/windowPause.ts`.
@@ -65,6 +75,7 @@ if (import.meta.hot) {
     stopWatchingForKeyboard();
     feedbackDesk.destroy();
     stopWatchingFocus();
+    stopCountingPlay();
     unmountGame();
   });
 }

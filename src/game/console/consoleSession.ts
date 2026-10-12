@@ -1,3 +1,4 @@
+import { countPlay } from '../analytics/playCounter';
 import type { ConsoleGame, ConsoleGameHandle } from './consoleGames';
 import type { Board, Leaderboards, Posted } from './leaderboard';
 
@@ -66,6 +67,7 @@ export class ConsoleSession {
       const handle = await game.mount(host, {
         playerName,
         onGameOver: async (result) => {
+          countPlay({ kind: 'blocks', detail: game.id });
           const posted: Posted = await this.hooks.leaderboards.post(game.id, playerName, result);
           this.hooks.record?.(`Finished ${game.name}: ${result.score} (${posted})`);
           if (this.current?.game === game) {

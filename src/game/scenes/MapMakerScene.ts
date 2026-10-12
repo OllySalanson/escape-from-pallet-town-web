@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { countPlay } from '../analytics/playCounter';
 import {
   blankMap,
   describeDropIn,
@@ -2624,6 +2625,7 @@ export class MapMakerScene extends Phaser.Scene {
         : {}),
     });
     if (result.ok) {
+      countPlay({ kind: 'map-sent' });
       const store = loadMakerStore();
       this.store = {
         ...store,
