@@ -6,7 +6,7 @@
 //   node tools/playtest/dayCare.mjs <url> <out dir> [--raids=2] [--port=N] [--window=1200x768]
 //
 // A new game is started and a level-4 Pidgey put in its vault beside the
-// starter. `--raids` is how many raids are written into the save as having
+// starter, and a fainted Rattata he must refuse. `--raids` is how many raids are written into the save as having
 // gone out and come home while the Pidgey was away. --port=N drives a browser
 // already running on that CDP port. Photographs the man's screen both ways,
 // the pen with the Pidgey in it, and what he says; fails loudly when a promise
@@ -107,6 +107,7 @@ try {
   // A level-4 Pidgey beside the starter, so there is somebody to leave.
   await editSave(`(save) => {
     save.stash.pokemon.push({ id: 'pidgey-1', pokemon: { speciesId: 'pidgey', level: 4, currentHp: 17, xp: 96, moves: ['Tackle'], primaryStatus: null } });
+    save.stash.pokemon.push({ id: 'rattata-1', pokemon: { speciesId: 'rattata', level: 3, currentHp: 0, xp: 27, moves: ['Tackle'], primaryStatus: null } });
     save.raidProgress.keysLearned = ['walk', 'look'];
   }`);
 
@@ -116,6 +117,14 @@ try {
   console.log(`bar: ${JSON.stringify(await page.evaluate(`(() => { const l = document.querySelector('.stash-roster .px-scroll'); const b = document.querySelector('.box-bar'); return { top: l.scrollTop, above: l.dataset.above, more: l.dataset.more, cover: getComputedStyle(l).getPropertyValue('--above-cover'), bar: b.getBoundingClientRect().top, list: l.getBoundingClientRect().top, attrs: [...l.attributes].map((a) => a.name + '=' + a.value).join(' ') }; })()`))}`);
   const heading = await text('.px-heading h2');
   if (!heading.includes('Which Pokémon should I raise?')) throw new Error(`his screen is headed ${JSON.stringify(heading)}`);
+  // A fainted one is sent to the Pokémon Center: he heals nothing, so it would be raised fainted.
+  const fainted = await page.evaluate(
+    `(() => { const b = document.querySelector('button[data-shows="rattata-1"].px-row'); return b && { leave: b.hasAttribute('data-day-care-leave'), help: b.dataset.help }; })()`,
+  );
+  if (!fainted || fainted.leave || !fainted.help.includes('Take it to the Pokémon Center first')) {
+    throw new Error(`the fainted Rattata's row is ${JSON.stringify(fainted)}`);
+  }
+  console.log(`fainted: ${fainted.help}`);
   await click('button[data-day-care-leave="pidgey-1"]', 'the Pidgey');
   const left = await text('.px-speech-line');
   if (!left[0]?.startsWith('Fine, I’ll look after your Pidgey')) throw new Error(`he says ${JSON.stringify(left)}`);
