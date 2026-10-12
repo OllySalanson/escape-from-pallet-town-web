@@ -356,9 +356,24 @@ export function startDistrict(
     const tiles = openingTiles(size, opening, SEAM_DEPTH + stub);
     p.unlock(tiles);
     for (const [x, y] of tiles) p.put(x, y, letter);
+    if ('exit' in opening.leadsTo) {
+      // A way off the map is one tile at its rim, as on every shipped map, so
+      // the exit is a pocket a raid steps into: the rest of the rim is a bush.
+      const [ex, ey] = exitTile(size, opening);
+      for (const [x, y] of openingTiles(size, opening)) if (x !== ex || y !== ey) p.put(x, y, 'o');
+    }
     p.lock(...lockRect(size, opening));
   }
   return p;
+}
+
+/** Where an opening's way out stands: its middle tile on the district's rim. */
+export function exitTile(size: number, opening: Opening): [number, number] {
+  return openingTiles(size, {
+    ...opening,
+    at: opening.at + Math.floor((opening.width - 1) / 2),
+    width: 1,
+  })[0];
 }
 
 /** The seal's part of an opening, as a rectangle to lock. */
