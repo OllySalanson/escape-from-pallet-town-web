@@ -41,6 +41,8 @@ try {
     const extra = ${JSON.stringify(species)}.map((speciesId, i) => ({ id: 'stat-' + i, pokemon: { ...seed.pokemon, speciesId, moves: ['Tackle'], level: ${level}, xp: ${level ** 3}, currentHp: 999 } }));
     save.stash.pokemon = [...extra, seed];
     save.stash.boxes = [{ name: 'Box 1', pokemonIds: [...extra.map((p) => p.id), seed.id] }];
+    // Heard already, so Nurse Joy's first words do not stand over the stats.
+    save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'dropin', 'check', 'center'];
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
   })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });

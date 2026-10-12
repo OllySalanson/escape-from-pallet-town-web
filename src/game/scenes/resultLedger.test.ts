@@ -22,6 +22,7 @@ import {
   SCROLL_ROWS,
   scrollCoverHeight,
   scrollTopCoverHeight,
+  settledScrollTop,
 } from '../ui/MenuOverlay';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { ExtractionScene } from './ExtractionScene';
@@ -65,6 +66,18 @@ describe('the result screen ledger', () => {
     // is still not a row.
     expect(hasMoreBelow({ scrollHeight: 112, clientHeight: 110, scrollTop: 0 }, 4)).toBe(false);
     expect(hasMoreBelow({ scrollHeight: 126, clientHeight: 110, scrollTop: 0 }, 4)).toBe(true);
+  });
+
+  it('puts a pane that only overflows by its rounding back at the top', () => {
+    // The Pokemon Center's list at 2x: 92 pixels of pane, a line of text one
+    // pixel past its last row, and the cursor's scroll padding scrolling it by
+    // that pixel - which cut the strip over the rows and hid its words.
+    expect(settledScrollTop({ scrollHeight: 93, clientHeight: 92, scrollTop: 1 }, 2)).toBe(0);
+    expect(settledScrollTop({ scrollHeight: 94, clientHeight: 92, scrollTop: 2 }, 4)).toBe(0);
+    // A pane with a row out of sight stays wherever it was scrolled to.
+    expect(settledScrollTop({ scrollHeight: 180, clientHeight: 92, scrollTop: 1 }, 2)).toBe(1);
+    expect(settledScrollTop({ scrollHeight: 180, clientHeight: 92, scrollTop: 88 }, 2)).toBe(88);
+    expect(settledScrollTop({ scrollHeight: 92, clientHeight: 92, scrollTop: 0 }, 2)).toBe(0);
   });
 
   it('covers a row the pane would cut through, whole, and leaves a clean cut alone', () => {
