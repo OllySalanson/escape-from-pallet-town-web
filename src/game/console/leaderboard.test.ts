@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  BOARD_ANSWER_MS,
   BOARD_SIZE,
   CONSOLE_SCORE_LIMITS,
   DEVICE_BOARD_STORAGE_PREFIX,
@@ -132,6 +133,39 @@ describe('the board the console shows', () => {
     expect(await boards.load('pallet-blocks', 'ASH')).toEqual({
       where: 'device',
       entries: [{ name: 'ASH', score: 700, mine: true }],
+    });
+  });
+
+  describe('when Pallet Town never answers at all', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // A connection that hangs rather than fails: the menu used to say it was
+    // asking for the board for as long as anybody sat there.
+    const silent: PalletTownBoards = {
+      load: () => new Promise(() => undefined),
+      post: () => new Promise(() => undefined),
+    };
+
+    it("stops waiting and shows this device's board", async () => {
+      vi.useFakeTimers();
+      const device = new DeviceBoard(memoryStore());
+      device.record('pallet-blocks', 'ASH', 700, 1);
+      let shown: unknown;
+      void new Leaderboards(silent, device).load('pallet-blocks', 'ASH').then((board) => (shown = board));
+      await vi.advanceTimersByTimeAsync(BOARD_ANSWER_MS);
+      expect(shown).toEqual({ where: 'device', entries: [{ name: 'ASH', score: 700, mine: true }] });
+    });
+
+    it('keeps the score here and stops waiting to send it', async () => {
+      vi.useFakeTimers();
+      const device = new DeviceBoard(memoryStore());
+      let posted: unknown;
+      void new Leaderboards(silent, device).post('pallet-blocks', 'ASH', game(800)).then((where) => (posted = where));
+      await vi.advanceTimersByTimeAsync(BOARD_ANSWER_MS);
+      expect(posted).toBe('device');
+      expect(device.entries('pallet-blocks', 'ASH')).toEqual([{ name: 'ASH', score: 800, mine: true }]);
     });
   });
 
