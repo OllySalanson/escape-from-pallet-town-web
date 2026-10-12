@@ -1406,6 +1406,16 @@ describe('BattleScene about-to-use switch prompt', () => {
     expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(squirtle);
   });
 
+  it('takes B as NO, as FireRed does on a YES/NO box', () => {
+    const { scene, renderedTexts, dialog, squirtle } = fightWithABench();
+
+    readUpToTheQuestion(scene, renderedTexts, dialog);
+    (scene as unknown as { goBack(): void }).goBack();
+
+    expect(dialog.shownMessages).toContain('RAIDER MAYA sent out PIDGEY!');
+    expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(squirtle);
+  });
+
   it('switches for free: the bench lands before the trainer does, and nothing moves in return', () => {
     const { scene, renderedTexts, dialog, benched } = fightWithABench();
 

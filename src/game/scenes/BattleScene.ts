@@ -2023,10 +2023,15 @@ export class BattleScene extends Phaser.Scene {
       this.stopEvolving();
       return;
     }
-    // B on a YES/NO box is NO, as it is in FireRed.
-    if (this.mode === 'nickname') {
+    // B on a YES/NO box is NO, as it is in FireRed - the nickname question and
+    // the switch offered before a trainer's next Pokemon lands alike.
+    if (this.mode === 'nickname' || this.mode === 'about-to-use') {
       audioManager.play('cancel');
-      this.answerNickname(false);
+      if (this.mode === 'nickname') {
+        this.answerNickname(false);
+      } else {
+        this.answerAboutToUse(false);
+      }
       return;
     }
     // Backing out of the list the question opened returns to the question, not
