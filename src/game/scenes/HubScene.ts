@@ -6,7 +6,6 @@ import {
   applyRecovery,
   beaconUnlockAtMs,
   checkBerth,
-  checkPayment,
   DeploymentFlow,
   FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
@@ -15,8 +14,6 @@ import {
   needsRecovery,
   WORKSHOP_UPGRADES,
   workshopOffers,
-  payablePokemonCount,
-  paymentCandidates,
   pokemonNeedingRecovery,
   teamCondition,
   quoteRecovery,
@@ -278,12 +275,12 @@ export class HubScene extends Phaser.Scene {
   private reselectStarterId: StarterSpeciesId = 'bulbasaur';
   /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
   private swapArmed = false;
-  /** The upgrade being paid for, or undefined while the ladder is showing. */
-  private workshopUpgradeId: string | undefined;
-  /** The Pokemon the player has named as payment, by stash id. */
-  private workshopPayment: string[] = [];
-  /** A payment only runs from an explicit second click, exactly as a swap does. */
-  private workshopArmed = false;
+  /**
+   * The rung on Brock's ladder asked but not yet built. Materials are spent for
+   * good, so a rung is struck from an explicit second press, as Bill's deals
+   * are (`armedDeal`).
+   */
+  private workshopArmed: string | undefined;
   /**
    * The deal on the boat asked but not yet struck: a barter id, or `BERTH_DEAL`.
    *
@@ -400,9 +397,7 @@ export class HubScene extends Phaser.Scene {
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
-    this.workshopUpgradeId = undefined;
-    this.workshopPayment = [];
-    this.workshopArmed = false;
+    this.workshopArmed = undefined;
     this.traderArmed = undefined;
     this.wallMapInspect = undefined;
     this.deploying = false;
@@ -472,8 +467,8 @@ export class HubScene extends Phaser.Scene {
 
   /**
    * Every Pokemon at base in the order the player asked for and answering their
-   * search - across all boxes, which is what the loadout and Brock's
-   * payment are drawn from. A Pokemon about to be spent or deployed is never
+   * search - across all boxes, which is what the loadout is drawn from. A
+   * Pokemon about to be deployed is never
    * hidden by the box it is kept in.
    */
   private get findablePokemon(): readonly StashedPokemon[] {
@@ -844,9 +839,7 @@ export class HubScene extends Phaser.Scene {
     }
     this.view = view;
     this.swapArmed = false;
-    this.workshopUpgradeId = undefined;
-    this.workshopPayment = [];
-    this.workshopArmed = false;
+    this.workshopArmed = undefined;
     this.traderArmed = undefined;
     this.wallMapInspect = undefined;
     if (view === 'reselect') {
@@ -902,24 +895,15 @@ export class HubScene extends Phaser.Scene {
 
   /** What a payment may touch in this save. The rules live in `../hub/workshop`. */
   private get workshopVault(): WorkshopVault {
-    return {
-      stash: this.stash,
-      starterSpeciesId: this.savedGame.starterSpeciesId,
-    };
-  }
-
-  private get payingFor(): WorkshopUpgrade | undefined {
-    return this.workshopUpgradeId === undefined
-      ? undefined
-      : getWorkshopUpgrade(this.workshopUpgradeId);
+    return { stash: this.stash };
   }
 
   /**
-   * Opens the payment for a rung. A rung that cannot be paid for is still a
-   * control - the cursor has to be able to reach it to read what it does - so
-   * choosing one is answered with what it is waiting on rather than ignored.
+   * Arms a rung. A rung that cannot be paid for is still a control - the cursor
+   * has to be able to reach it to read what it does - so choosing one is
+   * answered with what it is waiting on rather than ignored.
    */
-  private choosePayment(upgradeId: string): void {
+  private armUpgrade(upgradeId: string): void {
     const offer = this.workshopLadder.find((candidate) => candidate.upgrade.id === upgradeId);
     if (!offer || offer.state === 'built') {
       return;
@@ -928,73 +912,32 @@ export class HubScene extends Phaser.Scene {
       this.refuse(this.shortfallLine(offer));
       return;
     }
-    this.workshopUpgradeId = upgradeId;
-    this.workshopPayment = [];
-    this.workshopArmed = false;
+    this.workshopArmed = upgradeId;
+    this.armRelease();
     this.render();
   }
 
-  /**
-   * Names or un-names one Pokemon as payment. Nothing is ever chosen for the
-   * player - not even when only one combination could pay - because what this
-   * screen spends is not interchangeable, and any change disarms the
-   * confirmation so the question asked is always about the Pokemon on screen.
-   */
-  private togglePayment(pokemonId: string): void {
-    const upgrade = this.payingFor;
-    if (!upgrade) {
-      return;
-    }
-    const refusal = paymentCandidates(this.workshopVault).find(
-      ({ stored }) => stored.id === pokemonId,
-    )?.refusal;
-    if (refusal !== undefined) {
-      this.refuse(`${refusal}.`);
-      return;
-    }
-    this.workshopArmed = false;
-    if (this.workshopPayment.includes(pokemonId)) {
-      this.workshopPayment = this.workshopPayment.filter((id) => id !== pokemonId);
-      this.render();
-      return;
-    }
-    if (this.workshopPayment.length >= upgrade.cost.pokemon) {
-      this.refuse(`${upgrade.name} takes ${upgrade.cost.pokemon} Pokémon. Un-pick one first.`);
-      return;
-    }
-    this.workshopPayment = [...this.workshopPayment, pokemonId];
-    this.render();
-  }
-
-  private confirmPayment(): void {
-    const upgrade = this.payingFor;
-    if (!upgrade || !this.workshopArmed) {
-      return;
-    }
-    const paid = this.stashPokemon.filter((stored) => this.workshopPayment.includes(stored.id));
-    const released = paid.map((stored) => stored.pokemon.name);
-    const gearKept = this.gearKeptLine(paid);
-    const result = this.saveManager.buildWorkshopUpgrade(upgrade.id, this.workshopPayment);
+  private buildUpgrade(upgradeId: string): void {
+    this.workshopArmed = undefined;
+    const result = this.saveManager.buildWorkshopUpgrade(upgradeId);
     if (!result.ok) {
-      this.workshopArmed = false;
       this.refuse(result.message);
       return;
     }
     if (!result.saved) {
-      this.workshopArmed = false;
-      this.refuse(`${upgrade.name} could not be saved, so nothing was spent.`);
+      this.refuse(`${result.upgrade.name} could not be saved, so nothing was spent.`);
       return;
     }
 
     const reloaded = this.saveManager.load();
     if (reloaded) {
       // Reloading rebuilds the deployment flow against the new vault and the new
-      // secure slot, so a released Pokemon can never linger in a half-built loadout.
+      // secure slot.
       this.applyLoadedGame(reloaded);
     }
     this.setView('workshop');
     audioManager.play('confirm');
-    this.setStatus([`${upgrade.name} built. ${formatNames(released)} released.`, ...gearKept].join(' '));
+    this.setStatus(`${result.upgrade.name} built.`);
   }
 
   /**
@@ -1184,9 +1127,9 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    // Backing out of a payment returns to the ladder it was chosen from.
-    if (this.view === 'workshop' && this.workshopUpgradeId !== undefined) {
-      this.setView('workshop');
+    // Backing out of a rung that is asking puts the question down, not the screen.
+    if (this.view === 'workshop' && this.workshopArmed !== undefined) {
+      this.workshopArmed = undefined;
       this.render();
       return;
     }
@@ -1323,7 +1266,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'home') return 'Oak’s Lab';
     if (this.view === 'stash') return 'Pokémon Center';
     if (this.view === 'reselect') return 'Swap your partner';
-    if (this.view === 'workshop') return this.payingFor ? `Build ${this.payingFor.name}` : 'Brock’s Workshop';
+    if (this.view === 'workshop') return 'Brock’s Workshop';
     if (this.view === 'trader') return 'Bill’s Cottage';
     if (this.view === 'wallmap') return this.wallMapInspect ? worldMapName(this.wallMapInspect) : 'The wall map';
     if (this.flow.step === 'loadout') return 'Build your loadout';
@@ -1333,7 +1276,6 @@ export class HubScene extends Phaser.Scene {
 
   private get backLabel(): string {
     if (this.view === 'reselect') return 'Center';
-    if (this.view === 'workshop' && this.payingFor) return 'Workshop';
     // Out of a screen is back into the room it is kept in (`base/rooms.ts`),
     // so the label names the room that puts you in.
     if (this.view === 'home') return 'Lab';
@@ -1361,7 +1303,7 @@ export class HubScene extends Phaser.Scene {
       // Said once, on the screen the player arrives at. Every other view is
       // reached from it and carries its own way back, so repeating the town on
       // all five of them only spent the one line of the screen that is short of
-      // room - at the smallest stage Brock's payment screen had a back
+      // room - at the smallest stage Brock's old payment screen had a back
       // label, a place, a title and a count on 320 pixels.
       // Which of the two games this is, on every view of it, because the one
       // thing a player must never be unsure of is whether what they are about
@@ -1452,15 +1394,15 @@ export class HubScene extends Phaser.Scene {
     on('[data-swap-confirm]', (_button, event) => {
       if (!this.clickedTooSoon(event, '[data-swap-cancel]')) this.confirmSwap();
     });
-    on('[data-outfit]', (button) => this.choosePayment(button.dataset.outfit!));
+    // Materials are spent for good, so a rung asks before it takes them: the
+    // first press arms it and the second is a different button, with the cursor
+    // on the one that keeps them (`armedDeal`), exactly as Bill's barters do.
+    on('[data-outfit]', (button) => this.armUpgrade(button.dataset.outfit!));
     on('[data-built]', (button) =>
       this.setStatus(`${getWorkshopUpgrade(button.dataset.built!)?.name ?? 'That upgrade'} already stands at base.`),
     );
-    on('[data-pay-pokemon]', (button) => this.togglePayment(button.dataset.payPokemon!));
-    on('[data-pay-arm]', () => rerender(() => { this.workshopArmed = true; this.armRelease(); }));
-    on('[data-pay-cancel]', () => rerender(() => { this.workshopArmed = false; }));
-    on('[data-pay-confirm]', (_button, event) => {
-      if (!this.clickedTooSoon(event, '[data-pay-cancel]')) this.confirmPayment();
+    on('[data-outfit-confirm]', (button, event) => {
+      if (!this.clickedTooSoon(event, '[data-deal-cancel]')) this.buildUpgrade(button.dataset.outfitConfirm!);
     });
     on('[data-buy]', (button) => {
       const count = this.counterCounts.get(`buy:${button.dataset.buy}`) ?? 1;
@@ -1471,7 +1413,7 @@ export class HubScene extends Phaser.Scene {
     // first press arms the deal and the second is a different button, with the
     // cursor on the one that keeps them (`armedDeal`).
     on('[data-barter]', (button) => rerender(() => { this.traderArmed = button.dataset.barter; this.armRelease(); }));
-    on('[data-deal-cancel]', () => rerender(() => { this.traderArmed = undefined; }));
+    on('[data-deal-cancel]', () => rerender(() => { this.traderArmed = undefined; this.workshopArmed = undefined; }));
     on('[data-barter-confirm]', (button, event) => {
       if (this.clickedTooSoon(event, '[data-deal-cancel]')) return;
       const barterId = button.dataset.barterConfirm!;
@@ -1655,7 +1597,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'home') return this.homeView();
     if (this.view === 'stash') return this.stashView();
     if (this.view === 'reselect') return this.reselectView();
-    if (this.view === 'workshop') return this.payingFor ? this.paymentView(this.payingFor) : this.workshopView();
+    if (this.view === 'workshop') return this.workshopView();
     if (this.view === 'trader') return this.traderView();
     if (this.view === 'wallmap') return this.wallMapView();
     if (this.flow.step === 'loadout') return this.loadoutView();
@@ -3218,13 +3160,12 @@ export class HubScene extends Phaser.Scene {
   /**
    * A deal asked again before it is struck.
    *
-   * Found goods and a berth are both spent for good on one press, and the
-   * workshop has asked twice since it existed. This is the same promise on the
-   * boat, kept without a screen of its own: the row becomes the question and
-   * two buttons, with the cursor on the one that changes nothing - because the
-   * key that armed the deal is still under the player's finger, which is why
-   * `trainerChallengePrompt` opens on BACK AWAY and the payment bar opens on
-   * KEEP. Nothing about the shelf is armed: a Potion for Pokedollars is an ordinary
+   * Found goods, a berth and the materials a workshop rung takes are all spent
+   * for good on one press, so each is asked twice, without a screen of its
+   * own: the row becomes the question and two buttons, with the cursor on the
+   * one that changes nothing - because the key that armed the deal is still
+   * under the player's finger, which is why `trainerChallengePrompt` opens on
+   * BACK AWAY. Nothing about the shelf is armed: a Potion for Pokedollars is an ordinary
    * purchase, already rationed, and asking twice for one would be friction.
    */
   private armedDeal(deal: {
@@ -3264,26 +3205,17 @@ export class HubScene extends Phaser.Scene {
     return workshopOffers(this.workshopVault, this.builtUpgradeIds);
   }
 
-  /** "2 Pokémon + 2× Poké Ball, 1× Potion", the way every price here is said. */
-  private priceLine(upgrade: WorkshopUpgrade): string {
-    return `${upgrade.cost.pokemon} Pokémon + ${formatStacks(upgrade.cost.supplies)}`;
-  }
-
   /**
    * A rung's price against this vault: one part a line, each carrying what the
    * base actually holds towards it, and red on whatever it cannot cover.
    *
-   * Both halves are counted the way they are *spent* rather than owned - the
-   * Pokemon by `payablePokemonCount`, which never offers the last one fit to
-   * raid, and the supplies by `spendableSupply`, which is what stands above the
-   * wipe kit. A price beside a number the player cannot spend is worse than no
-   * number at all.
+   * It is counted the way it is *spent* rather than owned - by
+   * `spendableSupply`, which is what stands above the wipe kit. A price beside
+   * a number the player cannot spend is worse than no number at all.
    */
   private pricedAgainstVault(offer: WorkshopOffer): readonly ShopPricePart[] {
     const { cost } = offer.upgrade;
-    const payable = payablePokemonCount(this.workshopVault);
     return [
-      pricePart(`${cost.pokemon} Pokémon`, payable, cost.pokemon, 'you can release'),
       ...cost.supplies.map(({ itemId, quantity }) =>
         pricePart(
           formatStacks([{ itemId, quantity }]),
@@ -3299,7 +3231,6 @@ export class HubScene extends Phaser.Scene {
   /** The same price with nothing said about the vault: what a built rung cost. */
   private priceAsPaid(upgrade: WorkshopUpgrade): readonly ShopPricePart[] {
     return [
-      { ask: `${upgrade.cost.pokemon} Pokémon` },
       ...upgrade.cost.supplies.map(({ itemId, quantity }) => ({
         ask: formatStacks([{ itemId, quantity }]),
         icon: itemIcon(itemId, this.itemName(itemId)),
@@ -3312,11 +3243,7 @@ export class HubScene extends Phaser.Scene {
     if (offer.state === 'locked') {
       return `${offer.upgrade.name} is built after ${offer.requires?.name ?? 'an earlier upgrade'}.`;
     }
-    const short = [
-      ...(offer.pokemonShort > 0 ? [`${offer.pokemonShort} more Pokémon you can spare`] : []),
-      ...(offer.suppliesShort.length ? [formatStacks(offer.suppliesShort)] : []),
-    ];
-    return `${offer.upgrade.name} still needs ${short.join(' and ')}.`;
+    return `${offer.upgrade.name} still needs ${formatStacks(offer.suppliesShort)}.`;
   }
 
   /**
@@ -3338,6 +3265,18 @@ export class HubScene extends Phaser.Scene {
     const rows = ladder
       .map((offer) => {
         const { upgrade } = offer;
+        if (this.workshopArmed === upgrade.id) {
+          const spent = formatStacks(upgrade.cost.supplies);
+          return this.armedDeal({
+            id: upgrade.id,
+            icon: iconMarkup(upgrade.icon, upgrade.name),
+            name: upgrade.name,
+            question: `Spend ${spent} on it for good?`,
+            confirm: `data-outfit-confirm="${upgrade.id}"`,
+            confirmLabel: 'Build it',
+            confirmHelp: `Spends ${escapeAttribute(spent)} for good.`,
+          });
+        }
         const built = offer.state === 'built';
         const tag = built
           ? pixelTag('Built', 'secure', true)
@@ -3364,9 +3303,11 @@ export class HubScene extends Phaser.Scene {
         const help = built
           ? `${upgrade.name} already stands at base.`
           : offer.affordable
-            ? `Build ${upgrade.name}: you name the Pokémon it releases.`
+            ? `Build ${upgrade.name}: you are asked once more before anything is spent.`
             : this.shortfallLine(offer);
-        return `<button class="px-row has-icon px-tall px-priced${built ? ' is-secured' : ''}" ${wiring}${offer === first ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(help)}">${iconMarkup(upgrade.icon, upgrade.name)}<span class="px-row-main"><strong class="px-name">${upgrade.name}</strong><small class="px-wrap">${upgrade.effect}</small>${gate}</span>${price}${tag}</button>`;
+        // While a rung is asking, only its Keep may start the cursor.
+        const start = offer === first && this.workshopArmed === undefined;
+        return `<button class="px-row has-icon px-tall px-priced${built ? ' is-secured' : ''}" ${wiring}${start ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(help)}">${iconMarkup(upgrade.icon, upgrade.name)}<span class="px-row-main"><strong class="px-name">${upgrade.name}</strong><small class="px-wrap">${upgrade.effect}</small>${gate}</span>${price}${tag}</button>`;
       })
       .join('');
     const shown = first ?? ladder[0];
@@ -3407,111 +3348,9 @@ export class HubScene extends Phaser.Scene {
               blocked: `Built only after ${offer.requires?.name ?? 'an earlier upgrade'}, which is still unbuilt.`,
             }
           : offer.affordable
-            ? { note: 'You can pay for this now. Building names the Pokémon you release.' }
+            ? { note: 'You can pay for this now. You are asked once more before anything is spent.' }
             : { blocked: this.shortfallLine(offer) }),
     });
-  }
-
-  /**
-   * The payment. It names every Pokemon it would release and every supply it
-   * would take before anything is armed, and the Pokemon are picked by the
-   * player one at a time - this game's contract with its player is that a
-   * Pokemon is not a coin, so the screen never reaches into the vault for them.
-   */
-  private paymentView(upgrade: WorkshopUpgrade): string {
-    const candidates = paymentCandidates(this.workshopVault);
-    const chosen = this.stashPokemon.filter((stored) => this.workshopPayment.includes(stored.id));
-    const ordered = sortPokemon(searchPokemon(candidates.map(({ stored }) => stored), this.stashSearch), this.stashSort);
-    const rows = ordered
-      .map((stored) => candidates.find((candidate) => candidate.stored === stored)!)
-      .map(({ stored, refusal }) => {
-        const picked = this.workshopPayment.includes(stored.id);
-        const name = escapeAttribute(stored.pokemon.name);
-        // A Pokemon that is never payment can still be pointed at to be told why.
-        const wiring =
-          refusal !== undefined
-            ? `aria-disabled="true" data-help="${escapeAttribute(refusal)}."`
-            : `data-help="${picked ? `Keep ${name} after all.` : `Release ${name} for good as payment.`}"`;
-        // The window is headed "to release", so a picked row needs only the tick:
-        // a ten-letter name and its health bar leave room for nothing longer.
-        const tag = refusal !== undefined ? pixelTag('Kept') : picked ? pixelTag('', 'risk', true) : '';
-        return `<button class="px-row${picked ? ' is-selected' : ''}" data-pay-pokemon="${stored.id}" ${wiring}>${this.pokemonRowBody(stored, tag)}</button>`;
-      })
-      .join('');
-    const supplies = upgrade.cost.supplies
-      .map(
-        ({ itemId, quantity }) =>
-          `<div class="px-row has-icon">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)} ×${quantity}</strong><small>${spendableSupply(this.workshopVault, itemId)} spare of ${this.stash.itemCount(itemId)}</small></span></div>`,
-      )
-      .join('');
-    return `<main class="px-body loadout-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>`,
-      {
-        className: 'px-tone-risk',
-        heading: 'Pokémon to release',
-        note: `${chosen.length}/${upgrade.cost.pokemon} chosen`,
-      },
-    )}${pixelWindow(
-      `<div class="px-list" ${pixelColumns(COLUMN_MEASURES.supply)}>${supplies}</div><p class="px-note px-wrap carry-note">Materials are spent here and nowhere else.</p>`,
-      { className: 'run-loadout px-scroll', heading: 'Materials spent' },
-    )}${this.paymentFooter(upgrade, chosen)}</main>`;
-  }
-
-  private paymentFooter(upgrade: WorkshopUpgrade, chosen: readonly StashedPokemon[]): string {
-    const named = formatNames(chosen.map((stored) => `${stored.pokemon.name} (Level ${stored.pokemon.level})`));
-    const supplies = formatStacks(upgrade.cost.supplies);
-    const check = checkPayment(
-      this.workshopVault,
-      this.builtUpgradeIds,
-      upgrade.id,
-      this.workshopPayment,
-    );
-    if (!check.ok) {
-      const remaining = upgrade.cost.pokemon - chosen.length;
-      const prompt =
-        check.refusal === 'wrong-pokemon-count' && remaining > 0
-          ? `Choose ${remaining} more Pokémon to release.`
-          : check.message;
-      return pixelCommitBar({
-        title: `Costs ${this.priceLine(upgrade)}`,
-        lines: [
-          `<span class="px-wrap">${prompt}</span>`,
-          ...(chosen.length ? [`<small class="px-wrap">So far: ${named}.</small>`] : []),
-        ],
-        actions: `<button class="px-window px-button is-primary" disabled>Build</button>`,
-      });
-    }
-    if (!this.workshopArmed) {
-      return pixelCommitBar({
-        title: `Costs ${this.priceLine(upgrade)}`,
-        lines: [
-          `<span class="px-wrap">Release ${named} and spend ${supplies}</span>`,
-        ],
-        actions: `<button class="px-window px-button is-primary" data-pay-arm data-help="You will be asked once more before anything is released.">Build</button>`,
-      });
-    }
-    return pixelCommitBar({
-      className: 'is-arming',
-      title: 'This cannot be undone',
-      lines: [
-        `<span class="px-wrap px-warning">Release ${named} and spend ${supplies}?</span>`,
-        `<small class="px-wrap">${chosen.length === 1 ? 'It is' : 'They are'} gone for good, and ${upgrade.name} stands at base permanently.</small>`,
-        ...this.gearKeptLine(chosen).map((line) => `<small class="px-wrap" data-gear-kept>${line}</small>`),
-      ],
-      // Keep stands last, in the seat Build had - see `swapFooter`.
-      actions: `<button class="px-window px-button is-danger" data-pay-confirm data-help="Releases ${escapeAttribute(formatNames(chosen.map((stored) => stored.pokemon.name)))} for good.">Release and build</button><button class="px-window px-button" data-pay-cancel data-cursor-start data-help="Nothing changes.">Keep ${chosen.length === 1 ? 'it' : 'them'}</button>`,
-    });
-  }
-
-  /**
-   * What a released Pokemon was holding, which stays at base: Brock is paid in
-   * Pokemon, and their gear goes back on the vault's shelf (`takePayment`).
-   */
-  private gearKeptLine(chosen: readonly StashedPokemon[]): string[] {
-    const held = chosen.flatMap(({ pokemon }) =>
-      pokemon.heldItemId ? [`${pokemon.name}'s ${this.itemName(pokemon.heldItemId)}`] : [],
-    );
-    return held.length ? [`${formatNames(held)} ${held.length === 1 ? 'goes' : 'go'} back to the vault.`] : [];
   }
 
   private swapPanel(): string {
@@ -3616,10 +3455,3 @@ export class HubScene extends Phaser.Scene {
   }
 }
 
-/** "Pidgey", "Pidgey and Rattata", "Pidgey, Rattata and Caterpie". */
-function formatNames(names: readonly string[]): string {
-  if (names.length <= 1) {
-    return names[0] ?? 'Nothing';
-  }
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}

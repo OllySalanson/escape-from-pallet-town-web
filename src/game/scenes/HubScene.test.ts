@@ -1345,11 +1345,9 @@ describe('Brock', () => {
   });
 
   interface WorkshopInternals extends HubInternals {
-    choosePayment(upgradeId: string): void;
-    togglePayment(pokemonId: string): void;
-    confirmPayment(): void;
-    workshopArmed: boolean;
-    workshopPayment: string[];
+    armUpgrade(upgradeId: string): void;
+    buildUpgrade(upgradeId: string): void;
+    workshopArmed: string | undefined;
   }
 
   function markupOf(hub: HubInternals): string {
@@ -1357,7 +1355,7 @@ describe('Brock', () => {
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   }
 
-  /** A stored mid-game save: a partner, three catches, spare kit, these upgrades. */
+  /** A stored mid-game save: a partner, three catches, spare kit and materials, these upgrades. */
   function createWorkshopHub(workshopUpgrades: readonly string[] = []): {
     hub: WorkshopInternals;
     start: ReturnType<typeof vi.fn>;
@@ -1372,9 +1370,9 @@ describe('Brock', () => {
     stash.addItem('potion', 4);
     stash.addItem('great-ball', 3);
     stash.addItem('antidote', 3);
-    stash.addItem('parts-crate', 3);
+    stash.addItem('parts-crate', 5);
     stash.addItem('mooring-rope', 1);
-    stash.addItem('radio-valve', 2);
+    stash.addItem('radio-valve', 3);
     new SaveManager(storage).save({
       party: new PokemonParty(),
       mapId: 'pallet-town',
@@ -1405,16 +1403,18 @@ describe('Brock', () => {
     expect(markupOf(hub)).toContain('Secure locker I');
   });
 
-  it('lists every rung with its price, and marks what this vault cannot pay yet', () => {
+  it('lists every rung with its price in materials, and marks what this vault cannot pay yet', () => {
     const { hub } = createWorkshopHub();
 
     hub.setView('workshop');
     const ladder = markupOf(hub);
     expect(ladder).toContain('Secure locker I');
-    // The price is a column of its own on the row, one line a part.
-    expect(ladder).toContain('<span class="px-price"><small>2 Pokémon</small><small>2× Parts crate</small></span>');
-    // Three spendable catches cannot pay the four the second locker asks.
-    expect(ladder).toContain('<small class="cost-short">4 Pokémon</small>');
+    // The price is a column of its own on the row, one line a part, and it is
+    // materials and nothing else (playtest 42, option A).
+    expect(ladder).toContain('<span class="px-price"><small>4× Parts crate</small></span>');
+    expect(ladder).not.toContain('Pokémon</small>');
+    // One mooring rope cannot pay the four the second locker asks.
+    expect(ladder).toContain('<small class="cost-short">4× Mooring rope</small>');
     // A rung that cannot be built is still a control, so the cursor can reach it
     // and the pane under the list can say what it does.
     expect(ladder).toMatch(/data-outfit="secure-locker-1"(?![^>]*aria-disabled)[^>]* data-shows/);
@@ -1460,10 +1460,11 @@ describe('Brock', () => {
     // What it does, before anything is bought.
     expect(pane).toContain('A second protected Pokémon, and the room for it.');
     // The price, each part against what the vault can actually spend on it.
-    expect(pane).toContain('4 Pokémon');
-    expect(pane).toContain('3 you can release');
-    expect(pane).toContain('2× Mooring rope');
+    expect(pane).toContain('4× Parts crate');
+    expect(pane).toContain('5 spare at base');
+    expect(pane).toContain('4× Mooring rope');
     expect(pane).toContain('1 spare at base');
+    expect(pane).not.toContain('you can release');
     // And the door it is behind, by name.
     expect(pane).toContain('Built only after Secure locker I');
   });
@@ -1474,70 +1475,54 @@ describe('Brock', () => {
     hub.setView('workshop');
     const pane = markupOf(hub).slice(markupOf(hub).indexOf('data-shown-by="beacon"'));
 
-    // Three Pokemon it can release, but no lamp oil at all.
-    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 2× Lamp oil, 2× Cable coil.</span>');
+    // No lamp oil and no cable at all.
+    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 4× Lamp oil, 3× Cable coil.</span>');
   });
 
-  it('names the Pokémon and the supplies it is spending, and asks before it spends them', () => {
+  it('names the materials it is spending, and asks before it spends them', () => {
     const { hub, storage } = createWorkshopHub();
     const before = storage.getItem(SAVE_KEY);
 
     hub.setView('workshop');
-    hub.choosePayment('secure-locker-1');
-    const empty = markupOf(hub);
-    // Nothing is picked on the player's behalf, and the partner cannot be picked at all.
-    expect(empty).toContain('Choose 2 more Pokémon to release.');
-    expect(empty).toMatch(/data-pay-pokemon="charmander-1" aria-disabled="true"/);
-    // Pointing at it says why, and choosing it changes nothing.
-    hub.togglePayment('charmander-1');
-    expect(hub.workshopPayment).toEqual([]);
-    expect(empty).toContain('Your partner is never payment');
-    expect(empty).not.toContain('data-pay-arm');
-
-    hub.togglePayment('pidgey-1');
-    hub.togglePayment('bulbasaur-9');
-    const chosen = markupOf(hub);
-    expect(chosen).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Parts crate');
-    expect(chosen).toContain('data-pay-arm');
-    expect(chosen).not.toContain('data-pay-confirm');
-
-    // A confirmation that was never armed does nothing at all.
-    hub.confirmPayment();
-    expect(storage.getItem(SAVE_KEY)).toBe(before);
-
-    hub.workshopArmed = true;
+    hub.armUpgrade('secure-locker-1');
     const armed = markupOf(hub);
-    expect(armed).toContain('This cannot be undone');
-    expect(armed).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Parts crate?');
-    expect(armed).toContain('data-pay-confirm');
-    expect(armed).toContain('Keep them');
+    // The row becomes the question, as Bill's barters do, with the cursor on
+    // the answer that changes nothing and on no other row.
+    expect(hub.workshopArmed).toBe('secure-locker-1');
+    expect(armed).toContain('Spend 4× Parts crate on it for good?');
+    expect(armed).toContain('data-outfit-confirm="secure-locker-1"');
+    expect(armed).toMatch(/data-deal-cancel data-cursor-start[^>]*>Keep them</);
+    expect(armed.match(/data-cursor-start/g)).toHaveLength(1);
+    // Nothing about a Pokemon is asked or named.
+    expect(armed).not.toContain('release');
+    // Arming spends nothing.
+    expect(storage.getItem(SAVE_KEY)).toBe(before);
   });
 
-  it('disarms the question whenever the payment it was asked about changes', () => {
-    const { hub } = createWorkshopHub();
+  it('puts the question down, not the screen, when backed out of', () => {
+    const { hub, storage } = createWorkshopHub();
+    const before = storage.getItem(SAVE_KEY);
     hub.setView('workshop');
-    hub.choosePayment('radio-mast');
-    hub.togglePayment('pidgey-1');
-    hub.workshopArmed = true;
+    hub.armUpgrade('radio-mast');
 
-    hub.togglePayment('pidgey-1');
+    hub.goBack();
 
-    expect(hub.workshopArmed).toBe(false);
+    expect((hub as unknown as { view: string }).view).toBe('workshop');
+    expect(hub.workshopArmed).toBeUndefined();
+    expect(markupOf(hub)).not.toContain('data-outfit-confirm');
+    expect(storage.getItem(SAVE_KEY)).toBe(before);
   });
 
-  it('builds the locker, releases exactly what was named, and protects a wider container from then on', () => {
+  it('builds the locker out of materials, keeps every Pokémon, and protects a wider container from then on', () => {
     const { hub, storage } = createWorkshopHub();
     expect(hub.flow.secureGrid).toEqual({ width: 2, height: 2 });
 
     hub.setView('workshop');
-    hub.choosePayment('secure-locker-1');
-    hub.togglePayment('pidgey-1');
-    hub.togglePayment('pidgey-2');
-    hub.workshopArmed = true;
-    hub.confirmPayment();
+    hub.armUpgrade('secure-locker-1');
+    hub.buildUpgrade('secure-locker-1');
 
-    expect(statusOf(hub)).toBe('Secure locker I built. Pidgey and Pidgey released.');
-    expect(hub.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'bulbasaur-9']);
+    expect(statusOf(hub)).toBe('Secure locker I built.');
+    expect(hub.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'pidgey-1', 'pidgey-2', 'bulbasaur-9']);
     expect(hub.stash.itemCount('parts-crate')).toBe(1);
     expect(hub.stash.itemCount('poke-ball')).toBe(9);
     expect(hub.stash.itemCount('potion')).toBe(7);
@@ -1547,11 +1532,11 @@ describe('Brock', () => {
     expect(new SaveManager(storage).load()?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1']);
   });
 
-  it('names the gear a released Pokemon was holding, and keeps it in the vault', () => {
+  it('builds for a player down to one Pokémon, which is the player who used to get nothing', () => {
     const { hub } = createWorkshopHub();
-    hub.stash.addItem('leftovers', 1);
-    hub.stash.giveHeldItem('pidgey-1', 'leftovers');
-    // The scene's vault is the save's: write the gear to storage as the stash does.
+    for (const stored of hub.stash.listPokemon().slice(1)) {
+      hub.stash.removePokemon(stored.id);
+    }
     (hub as unknown as { saveManager: SaveManager }).saveManager.save({
       party: new PokemonParty(),
       mapId: 'pallet-town',
@@ -1563,35 +1548,25 @@ describe('Brock', () => {
     });
 
     hub.setView('workshop');
-    hub.choosePayment('secure-locker-1');
-    hub.togglePayment('pidgey-1');
-    hub.togglePayment('pidgey-2');
-    hub.workshopArmed = true;
-    expect(markupOf(hub)).toContain("Pidgey's Leftovers goes back to the vault.");
+    hub.armUpgrade('radio-mast');
+    hub.buildUpgrade('radio-mast');
 
-    hub.confirmPayment();
-    expect(statusOf(hub)).toBe(
-      "Secure locker I built. Pidgey and Pidgey released. Pidgey's Leftovers goes back to the vault.",
-    );
-    expect(hub.stash.itemCount('leftovers')).toBe(1);
+    expect(statusOf(hub)).toBe('Radio mast built.');
+    expect(hub.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1']);
   });
 
-  it('offers a player with one Pokémon nothing to spend', () => {
+  it('offers a base with no materials nothing to build', () => {
     const { hub } = createHub();
-    for (const stored of hub.stash.listPokemon().slice(1)) {
-      hub.stash.removePokemon(stored.id);
-    }
     const workshop = hub as WorkshopInternals;
 
     hub.setView('workshop');
     expect(markupOf(hub)).not.toMatch(/data-outfit="[a-z0-9-]+"(?! aria-disabled="true")/);
 
     // Choosing a rung that cannot be paid for is answered, and goes nowhere.
-    workshop.choosePayment('radio-mast');
+    workshop.armUpgrade('radio-mast');
     const refused = markupOf(hub);
-    expect(refused).toContain('Radio mast still needs');
-    expect(refused).not.toContain('data-pay-pokemon');
-    expect(refused).not.toContain('data-pay-arm');
+    expect(refused).toContain('Radio mast still needs 3× Radio valve, 1× Mooring rope.');
+    expect(refused).not.toContain('data-outfit-confirm');
   });
 
   it('deploys with a second protected Pokémon, the beacon and the mast once they are built', () => {

@@ -66,9 +66,10 @@ import { formatStacks } from './RunObjectives';
  * steps down from the top to nothing, so the safe raid is still on offer: it
  * just pays what a safe raid is worth.
  *
- * It pays in Brock materials - the radio valves, cable and the like the unbuilt rungs still cost,
- * and Pokemon, which are the ladder's real price - because Brock is the
- * only thing in the game that gives a banked reward somewhere to go.
+ * It pays in Brock materials - the radio valves, cable and the like the unbuilt
+ * rungs still cost - because Brock is the only thing in the game that gives a
+ * banked reward somewhere to go, and in a Pokemon wherever a contract cost a
+ * fight the player could not decline.
  */
 
 /** The part of `raidProgress` the board is derived from. `RaidProgress` satisfies it. */
@@ -734,11 +735,10 @@ function spreadTiles(
 // ---------------------------------------------------------------------------
 
 /**
- * Every species of the three starters' lines. Brock never takes the partner's
- * line as payment (`paymentCandidates`), and the board cannot know the partner:
- * it is a function of `raidProgress` alone, and a partner can be swapped after
- * a reward is banked. So no starter's line is ever paid, and a Pokemon the
- * board hands over is always one Brock will take.
+ * Every species of the three starters' lines. A starter is the one Pokemon a
+ * save chooses rather than meets, so the board never hands one out - whoever
+ * the save started with, because the board is a function of `raidProgress`
+ * alone and a partner can be swapped after a reward is banked.
  */
 const STARTER_LINES: ReadonlySet<string> = new Set(
   STARTER_SPECIES.flatMap((starter) => evolutionFamily(starter.id).map((species) => species.id)),
@@ -749,8 +749,8 @@ const STARTER_LINES: ReadonlySet<string> = new Set(
  * cost (a delivery is instead paid back a grade up on what it took), a share
  * larger for every tier of hunter the contract adds. A Pokemon is paid on top
  * wherever the contract cost a fight the player could not decline - a boss, or
- * a raised hunter - because Pokemon are the ladder's real price and a safe
- * contract should not hand one out.
+ * a raised hunter - and never on a safe contract, which would make the board a
+ * place to collect a team rather than catch one.
  */
 function draftReward(
   rng: SeededRng,
@@ -773,7 +773,7 @@ function draftReward(
       ? [rng.pick(entries)].map((entry) => ({ speciesId: entry.speciesId, level: entry.minLevel }))
       : [];
   return {
-    summary: `${rewardLine({ items, pokemon })}, waiting at base for Brock.`,
+    summary: `${rewardLine({ items, pokemon })}, waiting at base.`,
     items,
     ...(pokemon.length > 0 ? { pokemon } : {}),
   };

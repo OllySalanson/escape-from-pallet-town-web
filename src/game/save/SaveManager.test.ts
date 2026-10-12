@@ -1508,7 +1508,7 @@ describe('SaveManager', () => {
         'super-potion': 4,
         'great-ball': 5,
         antidote: 3,
-        'radio-valve': 2,
+        'radio-valve': 4,
         'mooring-rope': 3,
         'parts-crate': 4,
       },
@@ -1842,19 +1842,20 @@ describe('SaveManager', () => {
     expect(restored?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1', 'radio-mast']);
   });
 
-  it('builds an upgrade out of the named Pokemon and spare supplies, and keeps it across a reload', () => {
+  it('builds an upgrade out of spare materials alone, and keeps it across a reload', () => {
     const storage = new MemoryStorage();
     const saves = outfittedSave(storage);
 
-    const built = saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
+    const built = saves.buildWorkshopUpgrade('secure-locker-1');
     expect(built).toMatchObject({ ok: true, saved: true });
 
     // A second manager over the same storage is a page reload.
     const reloaded = new SaveManager(storage).load();
     expect(reloaded?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1']);
-    expect(reloaded?.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'bulbasaur-1']);
-    // Two parts crates are spent; the raid's own kit is not touched.
-    expect(reloaded?.stash.itemCount('parts-crate')).toBe(2);
+    // Brock takes no Pokemon (playtest 42, option A).
+    expect(reloaded?.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'pidgey-1', 'pidgey-2', 'bulbasaur-1']);
+    // Four parts crates are spent; the raid's own kit is not touched.
+    expect(reloaded?.stash.itemCount('parts-crate')).toBe(0);
     expect(reloaded?.stash.itemCount('poke-ball')).toBe(9);
     expect(reloaded?.stash.itemCount('potion')).toBe(7);
   });
@@ -1954,26 +1955,28 @@ describe('SaveManager', () => {
     const saves = outfittedSave(storage);
     const before = storage.getItem(SAVE_KEY);
 
-    expect(saves.buildWorkshopUpgrade('secure-locker-1', ['partner', 'pidgey-1'])).toMatchObject({
+    expect(saves.buildWorkshopUpgrade('beacon')).toMatchObject({
       ok: false,
-      refusal: 'pokemon-not-spendable',
+      refusal: 'supplies-short',
       saved: false,
     });
-    expect(saves.buildWorkshopUpgrade('secure-locker-2', ['pidgey-1'])).toMatchObject({ ok: false });
+    expect(saves.buildWorkshopUpgrade('secure-locker-2')).toMatchObject({ ok: false, refusal: 'locked' });
     expect(storage.getItem(SAVE_KEY)).toBe(before);
 
-    expect(saves.buildWorkshopUpgrade('radio-mast', ['pidgey-1'])).toMatchObject({ ok: true });
-    expect(saves.buildWorkshopUpgrade('radio-mast', ['pidgey-2'])).toMatchObject({
+    expect(saves.buildWorkshopUpgrade('radio-mast')).toMatchObject({ ok: true });
+    expect(saves.buildWorkshopUpgrade('radio-mast')).toMatchObject({
       ok: false,
       refusal: 'already-built',
     });
-    expect(saves.load()?.stash.listPokemon().map(({ id }) => id)).toContain('pidgey-2');
+    expect(saves.load()?.stash.itemCount('radio-valve')).toBe(1);
   });
 
-  it('cannot spend the only Pokemon a player has', () => {
+  it('builds for a player down to their last Pokemon, and leaves it be', () => {
+    // Playtest 42: after a wipe the vault held one Pokemon, and the base could
+    // not be built at all because Brock was paid in Pokemon.
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
-    const stash = new Stash({ items: { antidote: 9, 'poke-ball': 9, potion: 9 } });
+    const stash = new Stash({ items: { antidote: 9, 'poke-ball': 9, potion: 9, 'radio-valve': 3, 'mooring-rope': 1 } });
     stash.addPokemon(new Pokemon(PIDGEY, 12), 'only');
     saves.save({
       party: new PokemonParty([]),
@@ -1984,15 +1987,15 @@ describe('SaveManager', () => {
       starterSpeciesId: 'charmander',
     });
 
-    expect(saves.buildWorkshopUpgrade('radio-mast', ['only'])).toMatchObject({ ok: false, saved: false });
-    expect(saves.load()?.stash.listPokemon()).toHaveLength(1);
-    expect(saves.load()?.raidProgress.workshopUpgrades).toEqual([]);
+    expect(saves.buildWorkshopUpgrade('radio-mast')).toMatchObject({ ok: true, saved: true });
+    expect(saves.load()?.stash.listPokemon().map(({ id }) => id)).toEqual(['only']);
+    expect(saves.load()?.raidProgress.workshopUpgrades).toEqual(['radio-mast']);
   });
 
   it('never takes the kit a wipe would hand straight back', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
-    const stash = new Stash({ items: { 'poke-ball': 5, potion: 3, antidote: 9, 'parts-crate': 2 } });
+    const stash = new Stash({ items: { 'poke-ball': 5, potion: 3, antidote: 9, 'parts-crate': 4 } });
     stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-2');
@@ -2006,7 +2009,7 @@ describe('SaveManager', () => {
     });
 
     // Materials are the whole price, so the kit is never in reach of it.
-    expect(saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
+    expect(saves.buildWorkshopUpgrade('secure-locker-1')).toMatchObject({ ok: true });
     expect(saves.load()!.stash.supplyShortfall()).toEqual({});
     expect(saves.load()!.stash.itemCount('poke-ball')).toBe(5);
     expect(saves.load()!.stash.itemCount('potion')).toBe(3);
@@ -2037,7 +2040,7 @@ describe('SaveManager', () => {
       'survey-the-braid',
       'cordon-ledger',
     ]);
-    expect(saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
+    expect(saves.buildWorkshopUpgrade('secure-locker-1')).toMatchObject({ ok: true });
     const held = saves.load()!.stash.listItems();
 
     // The ledger's stack and the locker's stack: four protected, one at risk.
@@ -2352,23 +2355,6 @@ describe('SaveManager', () => {
       expect(restored?.stash.listBoxes()).toEqual([
         { name: 'Mine', pokemonIds: ['pidgey-1', 'charmander-1'] },
       ]);
-    });
-
-    it('pays Brock with a Pokemon kept in a later box, and forgets the box it left', () => {
-      const storage = new MemoryStorage();
-      const saves = outfittedSave(storage);
-      const loaded = saves.load()!;
-      const second = loaded.stash.addBox();
-      loaded.stash.movePokemon('pidgey-1', second);
-      loaded.stash.movePokemon('pidgey-2', second);
-      saves.save({ ...loaded, stash: loaded.stash });
-
-      const built = saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
-      expect(built).toMatchObject({ ok: true, saved: true });
-
-      const reloaded = new SaveManager(storage).load();
-      expect(reloaded?.stash.listBoxes()[1].pokemonIds).toEqual([]);
-      expect(reloaded?.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'bulbasaur-1']);
     });
 
     it('banks a raid into a new box once every box is full', () => {

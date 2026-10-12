@@ -1,7 +1,6 @@
 import type { SupplyItemId } from '../items';
 import type { ContractStack } from '../objectives/contracts';
-import { evolutionFamily } from '../pokemon';
-import { Stash, type StashedPokemon } from '../stash';
+import { Stash } from '../stash';
 
 /**
  * Brock's Workshop: permanent upgrades to the lab, paid for out of the vault.
@@ -11,18 +10,24 @@ import { Stash, type StashedPokemon } from '../stash';
  * and he builds - he does not deal. That line between him and Bill at the quay
  * is load-bearing and `./trader` states it in one sentence.
  *
- * The stash was a savings account with no withdrawals. Supplies arrived faster
- * than raids spent them and a caught Pokemon had no use past the sixth, so
- * nothing a player banked changed anything. This is the withdrawal: a ladder of
- * base capability bought with the only two things the vault holds - banked
- * Pokemon and banked supplies.
+ * The stash was a savings account with no withdrawals: supplies arrived faster
+ * than raids spent them, so nothing a player banked changed anything. This is
+ * the withdrawal, a ladder of base capability bought with **materials** -
+ * radio valves, cable, lamp oil and the like - and nothing else. Never potions,
+ * balls or antidotes: those are the raid's own stock, and a ladder priced in
+ * them competed with staying alive. A material has no use anywhere else
+ * (`../items`), is found only in the field, is lost with the pack on a wipe
+ * unless the secure slot names it, and leaves the game only here, so it is a
+ * sink-feeder and not a second economy.
  *
- * The supply half of every price is materials - radio valves, cable, lamp oil
- * and the like - and never potions, balls or antidotes. Those are the raid's
- * own stock, and a ladder priced in them competed with staying alive. A
- * material has no use anywhere else (`../items`), is found only in the field,
- * is lost with the pack on a wipe unless the secure slot names it, and leaves
- * the game only here, so it is a sink-feeder and not a second economy.
+ * And never Pokemon, though it was until 2026-10-12 (the captain's answer to
+ * playtest 42, option A). Every rung cost one to four Pokemon the player named,
+ * and a wipe takes the team: so the raid that cost a player their team also
+ * froze the base, because the Pokemon were the base's currency as well. Eleven
+ * raids built none of seven rungs with materials to spare, and a ladder that
+ * wanted seventeen Pokemon released asked the player to catch things to throw
+ * away. Every Pokemon a rung asked for became one more unit of the material it
+ * is about, so the sink is as deep as it was.
  *
  * It is a sink, not a shop. There is no currency, no vendor and no goods: it
  * never hands back an item or a Pokemon, only capability or information, and
@@ -47,8 +52,7 @@ import { Stash, type StashedPokemon } from '../stash';
  */
 
 export interface WorkshopCost {
-  /** How many banked Pokemon are released to build this. The player names them. */
-  readonly pokemon: number;
+  /** The materials the rung takes out of the vault. Never a Pokemon (see above). */
   readonly supplies: readonly ContractStack[];
 }
 
@@ -94,19 +98,19 @@ export interface WorkshopUpgrade {
  * The ladder, in the order it is listed: information first, then each pair of
  * rungs side by side, so the two-column lobby list reads as tracks.
  *
- * Prices are set against what a raid actually banks rather than felt. A raid
- * brings home one or two catches (five Poke Balls at 20-95% a throw) and nets
- * between nothing and two supplies once what it drank is taken off what it
- * found (a map holds two to five loot tiles and at least half are live). So the
- * Pokemon count is the real price and carries the ladder - seventeen in all,
- * which is roughly a dozen raids of catching past the six a party can use - and
- * the material half is kept to one to four units of whichever part the upgrade
- * is about, so it is felt without gating the rung behind a second grind. A raid
- * finds a unit or two of material (the loot pools in `../worldMap`), so the whole
- * ladder is twenty units - about as many raids as it is Pokemon.
- * Information is cheapest, the two capabilities that change the loadout
- * decision are mid-priced, and the second protected Pokemon - the strongest
- * thing on the list - costs the most.
+ * Prices are set against what a raid actually banks rather than felt. Each
+ * map's loot pool lays three to nine units of material a raid across the whole
+ * map, a named cache pays one or two of its own place's, and a standing
+ * contract pays one to three (`../worldMap`, `../world/pois`,
+ * `../objectives/standingBoard`); a raid that goes out and comes back carries
+ * home two or three. The whole ladder is thirty-seven units, the twenty it
+ * cost beside its Pokemon and one more for every Pokemon it used to ask, so the
+ * first rung is a couple of good raids away and the whole base fifteen or so,
+ * which is what the Pokemon half used to make it. Information is cheapest, the
+ * two capabilities that change the loadout decision are mid-priced, and the
+ * second protected Pokemon - the strongest thing on the list - costs the most.
+ * `workshop.test.ts` holds the order, and that the ladder is not cheaper than
+ * it was.
  */
 export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
   {
@@ -117,9 +121,8 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     detail:
       'The raid HUD names the hunter’s current team and counts down to the next, stronger one. Information only: the hunter is not slowed.',
     cost: {
-      pokemon: 1,
       supplies: [
-        { itemId: 'radio-valve', quantity: 2 },
+        { itemId: 'radio-valve', quantity: 3 },
         { itemId: 'mooring-rope', quantity: 1 },
       ],
     },
@@ -132,10 +135,9 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     effect: 'Your landing is a late extra exit.',
     detail: 'It marks where you land on every map, and opens halfway through the raid clock.',
     cost: {
-      pokemon: 3,
       supplies: [
-        { itemId: 'lamp-oil', quantity: 2 },
-        { itemId: 'cable-coil', quantity: 2 },
+        { itemId: 'lamp-oil', quantity: 4 },
+        { itemId: 'cable-coil', quantity: 3 },
       ],
     },
     beacon: true,
@@ -147,8 +149,7 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     effect: 'One more column of the secure container.',
     detail: 'More of what you carry comes home from every raid - even a lost one.',
     cost: {
-      pokemon: 2,
-      supplies: [{ itemId: 'parts-crate', quantity: 2 }],
+      supplies: [{ itemId: 'parts-crate', quantity: 4 }],
     },
     secureItemStack: true,
   },
@@ -161,10 +162,9 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
       'A Pokémon takes four squares, so the slot alone would have been a promise the container could not keep: it brings a column with it.',
     requires: 'secure-locker-1',
     cost: {
-      pokemon: 4,
       supplies: [
-        { itemId: 'parts-crate', quantity: 2 },
-        { itemId: 'mooring-rope', quantity: 2 },
+        { itemId: 'parts-crate', quantity: 4 },
+        { itemId: 'mooring-rope', quantity: 4 },
       ],
     },
     securePokemon: true,
@@ -182,7 +182,7 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     name: 'Healing machine I',
     effect: 'Treatment prices drop a quarter.',
     detail: 'Brock fits the Center with a better machine: every price Nurse Joy quotes - healing, curing and reviving - costs a quarter less raid time.',
-    cost: { pokemon: 2, supplies: [{ itemId: 'linen-roll', quantity: 2 }] },
+    cost: { supplies: [{ itemId: 'linen-roll', quantity: 4 }] },
     recoveryPriceShare: 0.75,
   },
   {
@@ -193,10 +193,9 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     detail: 'A second machine beside the first: every price Nurse Joy quotes costs half the raid time it started at.',
     requires: 'recovery-bay-1',
     cost: {
-      pokemon: 3,
       supplies: [
-        { itemId: 'linen-roll', quantity: 2 },
-        { itemId: 'cable-coil', quantity: 1 },
+        { itemId: 'linen-roll', quantity: 4 },
+        { itemId: 'cable-coil', quantity: 2 },
       ],
     },
     recoveryPriceShare: 0.5,
@@ -209,10 +208,9 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     detail:
       'Once per raid, Nurse Joy heals and cures one Pokémon free of clock - whoever it saves the most on. A revive still costs its premium.',
     cost: {
-      pokemon: 2,
       supplies: [
-        { itemId: 'linen-roll', quantity: 1 },
-        { itemId: 'lamp-oil', quantity: 1 },
+        { itemId: 'linen-roll', quantity: 2 },
+        { itemId: 'lamp-oil', quantity: 2 },
       ],
     },
     wardTreatments: 1,
@@ -298,45 +296,6 @@ export function beaconUnlockAtMs(raidDurationMs: number): number {
 /** What the vault is holding that a payment may touch, for one save. */
 export interface WorkshopVault {
   readonly stash: Stash;
-  /** The species this save is re-issued after a wipe. Never payment. */
-  readonly starterSpeciesId: string | null;
-}
-
-export interface PaymentCandidate {
-  readonly stored: StashedPokemon;
-  /** Undefined when this Pokemon may be offered as payment. */
-  readonly refusal?: string;
-}
-
-export const PARTNER_REFUSAL = 'Your partner is never payment';
-export const LAST_FIT_REFUSAL = 'Your last Pokémon fit to raid';
-
-/**
- * Every Pokemon at base, with the reason it cannot be spent when it cannot.
- *
- * Two are never payment. The partner - any Pokemon of the line this save
- * chose, because nothing else in a save identifies the one the player started
- * with and refusing a caught lookalike is a far smaller wrong than releasing
- * the original. The *line*, not the species: a partner evolves, and a
- * Charmeleon on a Charmander save is the very Pokemon the rule is for. And the
- * last Pokemon fit to raid, because every path in this game has to leave the
- * player able to attempt a run.
- */
-export function paymentCandidates(vault: WorkshopVault): readonly PaymentCandidate[] {
-  const stored = vault.stash.listPokemon();
-  const fit = stored.filter((entry) => !entry.pokemon.isFainted);
-  const partnerLine = new Set(
-    vault.starterSpeciesId === null ? [] : evolutionFamily(vault.starterSpeciesId).map((species) => species.id),
-  );
-  return stored.map((entry) => {
-    if (partnerLine.has(entry.pokemon.base.id)) {
-      return { stored: entry, refusal: PARTNER_REFUSAL };
-    }
-    if (fit.length === 1 && fit[0] === entry) {
-      return { stored: entry, refusal: LAST_FIT_REFUSAL };
-    }
-    return { stored: entry };
-  });
 }
 
 /**
@@ -369,23 +328,6 @@ function canSpareSupplies(vault: WorkshopVault, supplies: readonly ContractStack
   );
 }
 
-/**
- * The most Pokemon one payment could take from this vault and still leave
- * somebody fit to raid. It is not simply the spendable count: when every fit
- * Pokemon at base is spendable, releasing them all would leave only the fainted
- * behind, so one of them is always held back.
- */
-export function payablePokemonCount(vault: WorkshopVault): number {
-  const candidates = paymentCandidates(vault);
-  const spendable = candidates.filter((candidate) => candidate.refusal === undefined);
-  const fit = candidates.filter((candidate) => !candidate.stored.pokemon.isFainted);
-  if (fit.length === 0) {
-    return 0;
-  }
-  const fitKeptRegardless = fit.some((candidate) => candidate.refusal !== undefined);
-  return fitKeptRegardless ? spendable.length : Math.max(0, spendable.length - 1);
-}
-
 export type WorkshopOfferState ='built' | 'locked' | 'open';
 
 export interface WorkshopOffer {
@@ -393,8 +335,6 @@ export interface WorkshopOffer {
   readonly state: WorkshopOfferState;
   /** The upgrade a locked rung is waiting on. */
   readonly requires?: WorkshopUpgrade;
-  /** How many more spendable Pokemon the price needs. Zero when it is covered. */
-  readonly pokemonShort: number;
   /** Supplies still short, after the protected kit is set aside. */
   readonly suppliesShort: readonly ContractStack[];
   readonly affordable: boolean;
@@ -405,8 +345,6 @@ export function workshopOffers(
   vault: WorkshopVault,
   builtIds: readonly string[],
 ): readonly WorkshopOffer[] {
-  const payablePokemon = payablePokemonCount(vault);
-
   return WORKSHOP_UPGRADES.map((upgrade) => {
     const requires = upgrade.requires === undefined ? undefined : getWorkshopUpgrade(upgrade.requires);
     const state: WorkshopOfferState = builtIds.includes(upgrade.id)
@@ -414,7 +352,6 @@ export function workshopOffers(
       : requires !== undefined && !builtIds.includes(requires.id)
         ? 'locked'
         : 'open';
-    const pokemonShort = Math.max(0, upgrade.cost.pokemon - payablePokemon);
     const suppliesShort = upgrade.cost.supplies
       .map(({ itemId, quantity }) => ({
         itemId,
@@ -425,42 +362,26 @@ export function workshopOffers(
       upgrade,
       state,
       ...(requires === undefined ? {} : { requires }),
-      pokemonShort,
       suppliesShort,
       affordable:
         state === 'open' &&
-        pokemonShort === 0 &&
         suppliesShort.length === 0 &&
         canSpareSupplies(vault, upgrade.cost.supplies),
     };
   });
 }
 
-export type PaymentRefusal =
-  | 'unknown-upgrade'
-  | 'already-built'
-  | 'locked'
-  | 'wrong-pokemon-count'
-  | 'pokemon-not-spendable'
-  | 'no-pokemon-left-fit'
-  | 'supplies-short';
+export type PaymentRefusal = 'unknown-upgrade' | 'already-built' | 'locked' | 'supplies-short';
 
 export type PaymentCheck =
-  | { readonly ok: true; readonly upgrade: WorkshopUpgrade; readonly pokemon: readonly StashedPokemon[] }
+  | { readonly ok: true; readonly upgrade: WorkshopUpgrade }
   | { readonly ok: false; readonly refusal: PaymentRefusal; readonly message: string };
 
-/**
- * Whether exactly this payment may be taken for this upgrade.
- *
- * The named Pokemon are part of the question, not a detail of it: the player is
- * asked to release specific Pokemon, so the check is against those and no
- * substitute is ever chosen on their behalf.
- */
+/** Whether this upgrade may be paid for out of this vault now. */
 export function checkPayment(
   vault: WorkshopVault,
   builtIds: readonly string[],
   upgradeId: string,
-  pokemonIds: readonly string[],
 ): PaymentCheck {
   const upgrade = getWorkshopUpgrade(upgradeId);
   if (!upgrade) {
@@ -475,65 +396,24 @@ export function checkPayment(
       `${upgrade.name} needs ${getWorkshopUpgrade(upgrade.requires)?.name ?? upgrade.requires} first.`,
     );
   }
-
-  const named = [...new Set(pokemonIds)];
-  if (named.length !== pokemonIds.length || named.length !== upgrade.cost.pokemon) {
-    return refuse(
-      'wrong-pokemon-count',
-      `${upgrade.name} takes exactly ${upgrade.cost.pokemon} Pokémon.`,
-    );
-  }
-  const candidates = paymentCandidates(vault);
-  const pokemon: StashedPokemon[] = [];
-  for (const id of named) {
-    const candidate = candidates.find((entry) => entry.stored.id === id);
-    if (!candidate) {
-      return refuse('pokemon-not-spendable', 'One of those Pokémon is not at base.');
-    }
-    if (candidate.refusal !== undefined) {
-      return refuse(
-        'pokemon-not-spendable',
-        `${candidate.stored.pokemon.name} cannot be spent. ${candidate.refusal}.`,
-      );
-    }
-    pokemon.push(candidate.stored);
-  }
-  const leftFit = vault.stash
-    .listPokemon()
-    .some((entry) => !named.includes(entry.id) && !entry.pokemon.isFainted);
-  if (!leftFit) {
-    return refuse(
-      'no-pokemon-left-fit',
-      'That would leave nobody at base fit to raid. Keep at least one.',
-    );
-  }
   if (!canSpareSupplies(vault, upgrade.cost.supplies)) {
-    return refuse('supplies-short', `Not enough spare supplies at base for ${upgrade.name}.`);
+    return refuse('supplies-short', `Not enough spare materials at base for ${upgrade.name}.`);
   }
-  return { ok: true, upgrade, pokemon };
+  return { ok: true, upgrade };
 }
 
 /**
  * Takes the payment out of the vault. Nothing is removed unless the whole
  * payment is valid, so a refused purchase costs nothing.
- *
- * Brock is paid in Pokemon, never in what they are holding: a released
- * Pokemon's gear goes back on the vault's shelf first. Gear comes off a boss
- * once per save, so letting it leave with the Pokemon lost it for good.
  */
 export function takePayment(
   vault: WorkshopVault,
   builtIds: readonly string[],
   upgradeId: string,
-  pokemonIds: readonly string[],
 ): PaymentCheck {
-  const check = checkPayment(vault, builtIds, upgradeId, pokemonIds);
+  const check = checkPayment(vault, builtIds, upgradeId);
   if (!check.ok) {
     return check;
-  }
-  for (const { id } of check.pokemon) {
-    vault.stash.takeHeldItem(id);
-    vault.stash.removePokemon(id);
   }
   for (const { itemId, quantity } of check.upgrade.cost.supplies) {
     vault.stash.removeItem(itemId, quantity);

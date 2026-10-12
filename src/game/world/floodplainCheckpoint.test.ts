@@ -3,7 +3,8 @@ import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
 import { MINIMUM_SUPPLIES } from '../stash/Stash';
 import { weatherAt } from './districts';
-import { createRunTrainerEncounters } from './trainers';
+import { FIRST_CONTRACT_ID, RAID_CONTRACTS } from '../objectives/contracts';
+import { createRunTrainerEncounters, trainersForContract, type RunTrainerEncounter } from './trainers';
 import { trainerMeasure, type MeasuredParty } from './trainerMeasure';
 
 /**
@@ -59,15 +60,30 @@ const freshStarter = (speciesId: string, level: number, condition = 1): Measured
 const TRIALS = 400;
 
 
-const rate = (speciesId: string, level: number, potions: number, condition = 1): number =>
+const rate = (
+  speciesId: string,
+  level: number,
+  potions: number,
+  condition = 1,
+  against: RunTrainerEncounter = maya,
+): number =>
   trainerMeasure(
     freshStarter(speciesId, level, condition),
-    maya.trainer,
+    against.trainer,
     TRIALS,
     0x51ede,
     WEATHER,
     potions,
   ).winRate;
+
+const mayaAmong = (trainers: readonly RunTrainerEncounter[]): RunTrainerEncounter =>
+  trainers.find((encounter) => encounter.trainer.id === maya.trainer.id)!;
+
+/**
+ * Maya as the first contract meets her - the only contract a fresh save can
+ * carry, so every raid a newcomer plays (`trainersForContract`).
+ */
+const firstRaidMaya = mayaAmong(trainersForContract(createRunTrainerEncounters(), FIRST_CONTRACT_ID));
 
 describe('the price of the Floodplain checkpoint', () => {
   it('is paid by a fresh level-5 starter that arrives healthy and spends the pack', () => {
@@ -110,6 +126,44 @@ describe('the price of the Floodplain checkpoint', () => {
       expect(`${starter} at 6 ${rate(starter, 6, PACK) >= 0.9}`).toBe(`${starter} at 6 true`);
       expect(`${starter} at 7 ${rate(starter, 7, 1) >= 0.9}`).toBe(`${starter} at 7 true`);
       expect(`${starter} at 10 ${rate(starter, 10, 0) >= 0.9}`).toBe(`${starter} at 10 true`);
+    }
+  });
+});
+
+/**
+ * The captain's answer (2026-10-12) to new players wiping at her on their first
+ * raids: softened a bit, on the first contract only. `tools/encounters/firstRaid.mts`
+ * plays the whole of that raid - the teaching Pidgey, the reeds, then her.
+ */
+describe('the price of the Floodplain checkpoint on the first contract', () => {
+  const party = (encounter: RunTrainerEncounter): string[] =>
+    encounter.trainer.party.map((pokemon) => `${pokemon.base.id} ${pokemon.level}`);
+
+  it('is fielded on the first contract and on no other', () => {
+    expect(party(firstRaidMaya)).not.toEqual(party(maya));
+    for (const contract of RAID_CONTRACTS.filter((entry) => entry.id !== FIRST_CONTRACT_ID)) {
+      expect(party(mayaAmong(trainersForContract(createRunTrainerEncounters(), contract.id)))).toEqual(party(maya));
+    }
+    expect(party(mayaAmong(trainersForContract(createRunTrainerEncounters(), undefined)))).toEqual(party(maya));
+    // Only a toll may have one: a boss's party is a door that would stay open.
+    for (const encounter of createRunTrainerEncounters()) {
+      if (encounter.firstContractParty) {
+        expect(encounter.bossId, encounter.trainer.name).toBeUndefined();
+      }
+    }
+  });
+
+  it('is softer than every later raid, healthy or hurt, for every starter', () => {
+    for (const starter of STARTERS) {
+      expect(rate(starter, 5, PACK, 1, firstRaidMaya), starter).toBeGreaterThan(rate(starter, 5, PACK));
+      expect(rate(starter, 5, PACK, 0.6, firstRaidMaya), starter).toBeGreaterThan(rate(starter, 5, PACK, 0.6));
+    }
+  });
+
+  it('is softened a bit and no more: still a price, paid in the pack', () => {
+    for (const starter of STARTERS) {
+      expect(`${starter} paid ${rate(starter, 5, PACK, 1, firstRaidMaya) >= 0.85}`).toBe(`${starter} paid true`);
+      expect(`${starter} bare ${rate(starter, 5, 0, 1, firstRaidMaya) <= 0.3}`).toBe(`${starter} bare true`);
     }
   });
 });

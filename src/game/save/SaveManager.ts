@@ -1116,8 +1116,8 @@ export class SaveManager {
   }
 
   /**
-   * Builds one workshop upgrade, paying for it with exactly the Pokemon the
-   * player named and the supplies it lists. This is the only path that spends:
+   * Builds one workshop upgrade, paying for it with the materials it lists.
+   * This is the only path that spends:
    * it reloads the vault, so the payment is checked against what is really
    * banked rather than against whatever a screen was showing, and it records
    * the upgrade in the same write that removes the payment, so a save can never
@@ -1126,10 +1126,7 @@ export class SaveManager {
    * An upgrade already built is refused rather than charged again, which makes
    * a repeated click a no-op instead of a second payment.
    */
-  public buildWorkshopUpgrade(
-    upgradeId: string,
-    pokemonIds: readonly string[],
-  ): PaymentCheck & { readonly saved: boolean } {
+  public buildWorkshopUpgrade(upgradeId: string): PaymentCheck & { readonly saved: boolean } {
     const game = this.load();
     if (!game) {
       return {
@@ -1140,15 +1137,7 @@ export class SaveManager {
       };
     }
 
-    const payment = takePayment(
-      {
-        stash: game.stash,
-        starterSpeciesId: game.starterSpeciesId,
-      },
-      game.raidProgress.workshopUpgrades,
-      upgradeId,
-      pokemonIds,
-    );
+    const payment = takePayment({ stash: game.stash }, game.raidProgress.workshopUpgrades, upgradeId);
     if (!payment.ok) {
       return { ...payment, saved: false };
     }

@@ -135,9 +135,8 @@ than a menu. Four buildings, four people you'll recognise, and each one is a thi
   that lights up wherever you've walked.
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full, and she charges in
   time: what she spends comes off your next raid's clock.
-- **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home and the
-  Pokémon you can spare, and every one of them turns up on the map: a radio mast, a beacon, cellar
-  doors in the quay wall.
+- **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home, and
+  every one of them turns up on the map: a radio mast, a beacon, cellar doors in the quay wall.
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
   HMs and fishing rods are bartered for things you found. Everything you trade him ends up on his
   shelves.
