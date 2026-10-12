@@ -3791,3 +3791,64 @@ button {
   flex: 0 1 calc(var(--u) * 80);
   text-transform: uppercase;
 }
+/* --- Play stats (`analytics/statsView.ts`) ------------------------------ */
+/* The owner's page: a sheet of windows that scrolls as one, side by side
+   while there is room and stacked when there is not. */
+:where(.pixel-ui) .stats-layout {
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+  height: 100%;
+}
+:where(.pixel-ui) .stats-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 220), 1fr));
+  gap: calc(var(--u) * 4);
+  align-content: start;
+  align-items: start;
+}
+:where(.pixel-ui) .stats-value {
+  font-weight: 400;
+  text-align: right;
+}
+:where(.pixel-ui) .stats-message {
+  padding: calc(var(--u) * 2) calc(var(--u) * 4);
+}
+:where(.pixel-ui) .stats-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2) calc(var(--u) * 4) calc(var(--u) * 4);
+}
+/* A month of daily players: one bar a day, five game pixels wide with one
+   between, so every edge is a whole pixel; today's bar is gold. */
+:where(.pixel-ui) .stats-chart {
+  display: grid;
+  grid-template-columns: max-content;
+  justify-content: center;
+  row-gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2) 0;
+}
+:where(.pixel-ui) .stats-chart-top,
+:where(.pixel-ui) .stats-chart-foot {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .stats-chart-foot {
+  display: flex;
+  justify-content: space-between;
+}
+:where(.pixel-ui) .stats-bars {
+  display: grid;
+  grid-template-columns: repeat(var(--days), calc(var(--u) * 5));
+  column-gap: var(--u);
+  align-items: end;
+  height: calc(var(--u) * 40);
+  border-bottom: var(--u) solid var(--frame);
+}
+:where(.pixel-ui) .stats-bar {
+  display: block;
+  height: calc(var(--u) * var(--bar));
+  background: var(--teal);
+}
+:where(.pixel-ui) .stats-bar.is-today {
+  background: var(--gold);
+}

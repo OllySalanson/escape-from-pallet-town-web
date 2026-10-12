@@ -48,6 +48,56 @@ export function isReviewReturn(search: string = window.location.search): boolean
   return new URLSearchParams(search).has('review');
 }
 
+/** Where a reviewer goes once GitHub sends them back: the review list, or the play stats. */
+export type SignInDestination = 'review' | 'stats';
+
+const AFTER_SIGN_IN_KEY = 'escape-from-pallet-town.review.after';
+
+/**
+ * Remembers, for this tab only, where to go once GitHub sends the reviewer
+ * back. The address GitHub returns to stays the one the project already
+ * allows (`reviewReturnUrl`), so a new destination needs no change to the
+ * project's redirect list.
+ */
+export function rememberSignInDestination(destination: SignInDestination, storage: Pick<Storage, 'setItem'> | undefined = tabSession()): void {
+  try {
+    storage?.setItem(AFTER_SIGN_IN_KEY, destination);
+  } catch {
+    // Storage shut: the review list it is.
+  }
+}
+
+/** Where to go now that GitHub has sent the reviewer back, forgotten as it is read. */
+export function takeSignInDestination(storage: Pick<Storage, 'getItem' | 'removeItem'> | undefined = tabSession()): SignInDestination {
+  try {
+    const destination = storage?.getItem(AFTER_SIGN_IN_KEY);
+    storage?.removeItem(AFTER_SIGN_IN_KEY);
+    return destination === 'stats' ? 'stats' : 'review';
+  } catch {
+    return 'review';
+  }
+}
+
+/** Whether the page was opened to read the play stats (`?stats`). */
+export function isStatsRequest(search: string = window.location.search): boolean {
+  return new URLSearchParams(search).has('stats');
+}
+
+/** Takes `?stats` off the address, so going back to the title does not come straight back here. */
+export function forgetStatsRequest(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('stats');
+  window.history.replaceState(null, '', url.toString());
+}
+
+function tabSession(): Storage | undefined {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Finishes a GitHub sign-in the page came back from: the client trades the code
  * in the address for a session as it starts, and the address is put back as it

@@ -993,6 +993,7 @@ export class MapMakerScene extends Phaser.Scene {
     on('[data-send-confirm]', () => void this.confirmSend());
     on('[data-refresh-sent]', () => this.openPanel('sent'));
     on('[data-review-refresh]', () => this.openPanel('review'));
+    on('[data-open-stats]', () => this.scene.start('stats'));
     on('[data-review-sign-in]', () => {
       void signInToReview().then((result) => {
         if (!result.ok) {

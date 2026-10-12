@@ -11,6 +11,7 @@ import { MapMakerScene } from './scenes/MapMakerScene';
 import { ObjectivesScene } from './scenes/ObjectivesScene';
 import { PartyScene } from './scenes/PartyScene';
 import { StarterScene } from './scenes/StarterScene';
+import { StatsScene } from './scenes/StatsScene';
 import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
 import { TEST_MODE_LOOP, requestedTestMode, type TestMode } from './dev/testMode';
@@ -30,6 +31,7 @@ const BASE_SCENES = [
   ConsoleScene,
   ExtractionScene,
   MapMakerScene,
+  StatsScene,
   // Last, so the panel is above every other scene whatever it opens over.
   FeedbackScene,
 ];

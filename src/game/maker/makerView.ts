@@ -1132,7 +1132,7 @@ function reviewPane(
     )
     .join('');
   return `${decision}${pixelWindow(
-    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">Nothing has been sent in.</p>'}</div></div>${footer(`${button('data-review-refresh', 'Check again')}${button('data-review-sign-out', 'Sign out')}`)}`,
+    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">Nothing has been sent in.</p>'}</div></div>${footer(`${button('data-review-refresh', 'Check again')}${button('data-open-stats', 'Play stats', false, 'How many people play the game: players each day, raids and how they ended.')}${button('data-review-sign-out', 'Sign out')}`)}`,
     {
       className: 'maker-drafts',
       heading: 'Review maps',
