@@ -467,7 +467,12 @@ export class MenuOverlay {
       // the same answer as "there are nine more": the first leaves a player
       // guessing whether the thing they want is one row down or off the end of
       // a list they cannot see the size of.
-      const entries = [...pane.querySelectorAll<HTMLElement>(SCROLL_ENTRIES)].map((row) => row.getBoundingClientRect());
+      const entries = scrollEntries<Element>(
+        [...pane.querySelectorAll(SCROLL_ENTRIES)],
+        pane,
+        (entry, selector) => entry.closest(selector),
+        (outer, inner) => outer.contains(inner),
+      ).map((row) => row.getBoundingClientRect());
       pane.setAttribute('data-more', moreLabel(entries, box.bottom - cover));
     });
   }
@@ -597,6 +602,36 @@ function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
 
 /** What the strip counts: the entries a player is looking for, not the bands between them. */
 const SCROLL_ENTRIES = 'button, .px-empty';
+
+/**
+ * A row of a list, which is one entry however many buttons are in it - a pair
+ * first, because the row button in one is itself a `.px-row`.
+ */
+const SCROLL_ENTRY_ROWS = ['.px-pair', '.px-row'];
+
+/**
+ * The entries a pane's MORE strip counts, one per row: a supply in the loadout
+ * is a row with a count selector in it, and Bill's shelf a row beside one, so
+ * counted by button a list of seven supplies said `14 MORE` (playtest 6 B6).
+ * A control in no row of the pane is an entry of its own.
+ */
+export function scrollEntries<Entry>(
+  controls: readonly Entry[],
+  pane: Entry,
+  closest: (entry: Entry, selector: string) => Entry | null,
+  contains: (outer: Entry, inner: Entry) => boolean,
+): Entry[] {
+  return [
+    ...new Set(
+      controls.map((control) => {
+        const row = SCROLL_ENTRY_ROWS.map((selector) => closest(control, selector)).find(
+          (found) => found !== null && found !== pane && contains(pane, found),
+        );
+        return row ?? control;
+      }),
+    ),
+  ];
+}
 
 /**
  * How tall the MORE strip on a pane's foot must be so that no row is left half

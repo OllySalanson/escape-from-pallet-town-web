@@ -23,12 +23,19 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** the line is `cachePayoutLine` in `world/pois.ts`, beside the cache's refusal line: "TOWN PUMP: 2 Potions and 1 Antidote went into the PACK. Lost if you wipe - extract to bank them." Amounts are written by `itemAmountFor`, as every other sentence about items is (no "2× Potion"). A landmark that opens an exit says "... went into the PACK - extract to bank it." under its "EXIT is open." line. `pois.test.ts` holds that no shipped landmark's payout line says "secured".
 - **How a player meets it:** walk onto any cache in a raid; the message now says the goods are in your pack and at risk until you extract, rather than calling them secured.
 
+## 4. The MORE strip counted buttons, not rows (playtest 6, B6)
+
+- **Found:** a scrolling list's MORE strip counts what is below the fold, and it counted every button. A supply in the loadout or the secure container is one row with a minus and a plus in it, and a row on Bill's shelf is a row button beside a count selector, so those lists said more than was there: at the smallest stage (960x720 window) Oak's loadout read **30 MORE** over 25 hidden rows.
+- **Reproduced:** in the browser with `tools/playtest/menuShots.mjs --window=960x720`, which now compares each pane's `N MORE` against the rows actually below its fold and fails on `MORE MISCOUNTED` (it printed `30 MORE over 25 rows` for the loadout). The tool also seeds every keeper's errand as already asked: Joy asking about her medicine bag stood over the Pokémon Center, so the tool's Escape only put that down and the run timed out walking to Brock.
+- **Fixed:** `scrollEntries` in `ui/MenuOverlay.ts` counts one entry per row - a `.px-pair` first (its row button is itself a `.px-row`), else a `.px-row`, else the control on its own. `resultLedger.test.ts` holds seven supply rows with two steppers each plus one shelf pair and one button to `9 MORE`; the first draft counted the shelf pair twice and the test caught it.
+- **How a player meets it:** open Oak's Lab and start preparing a raid on a small window; the strip under the supplies now says how many rows are really down there.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
 
 ## Still open from playtest 6 (candidates for later iterations)
 
-- B6: the MORE strip counts every button (`SCROLL_ENTRIES = 'button, .px-empty'` in `MenuOverlay.ts`) - check whether stepper rows still double.
+- The drop-in screen's brief pane (`px-list.dropin-brief`) has a row cut through its waist at 960x720 (`menuShots.mjs` reports `ROW CUT`) - not looked into yet.
 - B9: Lass Ada says "Going up to Viridian?" inside Viridian City (`world/trainers.ts`).
 - B9: the cache "secured" line is fixed (entry 3). Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).

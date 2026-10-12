@@ -85,7 +85,12 @@ const AUDIT = `(() => {
     // it holds (\`data-flush\`) draws no scrollbar for its pixel.
     const crumb = !scrolls && pane.scrollHeight > pane.clientHeight && getComputedStyle(pane).overflowY !== 'hidden';
     const sideways = pane.scrollWidth > pane.clientWidth;
-    return { name: pane.className.split(' ').filter((c) => c !== 'px-scroll').join('.') || 'pane', rows: rows.length, whole, cut, scrolls, crumb, sideways };
+    // What the MORE strip says is down there, against the rows that are: a
+    // row of a list is one entry however many buttons it holds (playtest 6 B6).
+    const said = /^(\\d+) MORE$/.exec(pane.getAttribute('data-more') ?? '');
+    const below = rows.filter((row) => row.getBoundingClientRect().bottom > fold + 0.5).length;
+    const miscounted = said !== null && rows.length > 0 && Number(said[1]) !== below ? pane.getAttribute('data-more') + ' over ' + below + ' rows' : null;
+    return { name: pane.className.split(' ').filter((c) => c !== 'px-scroll').join('.') || 'pane', rows: rows.length, whole, cut, miscounted, scrolls, crumb, sideways };
   });
   // What is inside a scrolling pane is allowed to be below its fold; that is
   // what the pane is for, and it is counted above. What may never leave the
@@ -154,6 +159,7 @@ try {
       ...(audit.panes.some((p) => p.cut > 0) ? [`ROW CUT in ${audit.panes.filter((p) => p.cut > 0).map((p) => p.name).join(', ')}`] : []),
       ...(audit.panes.some((p) => p.crumb) ? [`SCROLLS A PIXEL in ${audit.panes.filter((p) => p.crumb).map((p) => p.name).join(', ')}`] : []),
       ...(audit.panes.some((p) => p.sideways) ? [`SCROLLS SIDEWAYS in ${audit.panes.filter((p) => p.sideways).map((p) => p.name).join(', ')}`] : []),
+      ...audit.panes.filter((p) => p.miscounted).map((p) => `MORE MISCOUNTED in ${p.name}: ${p.miscounted}`),
       ...(audit.pageScrolls ? ['PAGE SCROLLS'] : []),
       ...(audit.escaped.length ? [`ESCAPED ${audit.escaped.join(', ')}`] : []),
       ...(audit.offGrid.length ? [`OFF GRID ${audit.offGrid.join(', ')}`] : []),
@@ -184,7 +190,10 @@ try {
     Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       // Heard already, so no first-words box stands over a screen being
       // photographed - and Escape leaves the screen instead of putting one down.
-      firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'] });
+      firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'],
+      // Every keeper's errand already asked, for the same reason: walking in
+      // otherwise opens on the keeper asking, and Escape puts that down.
+      errands: ['oaks-parcel', 'medicine-bag', 'brocks-crate', 'old-amber'].map((id) => ({ id, status: 'started', found: 0, lossesHeard: 0 })) });
     const seed = save.stash.pokemon[0];
     const species = ['pidgey', 'rattata', 'caterpie', 'weedle', 'oddish', 'poliwag', 'spearow', 'sandshrew', 'nidoran-m', 'mankey', 'growlithe', 'abra', 'machop', 'geodude', 'magnemite', 'krabby', 'voltorb', 'cubone', 'koffing', 'rhyhorn', 'goldeen', 'staryu', 'magikarp'];
     // Full health on all but a few: a stash where everybody is hurt puts a care

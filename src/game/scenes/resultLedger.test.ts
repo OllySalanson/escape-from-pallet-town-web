@@ -22,6 +22,7 @@ import {
   moreLabel,
   SCROLL_ROWS,
   scrollCoverHeight,
+  scrollEntries,
   scrollTopCoverHeight,
   settledScrollTop,
 } from '../ui/MenuOverlay';
@@ -220,6 +221,38 @@ describe('the result screen ledger', () => {
     // one the strip is covering, so it is not yet read.
     expect(moreLabel([{ bottom: 40 }, { bottom: 80 }, { bottom: 120 }, { bottom: 160 }], 100)).toBe('2 MORE');
     expect(moreLabel([{ bottom: 40 }, { bottom: 100 }], 100)).toBe('MORE');
+  });
+
+  it('counts a row with a count selector in it once, not once a button (playtest 6 B6)', () => {
+    // The loadout's supplies: seven rows, each a `.px-row` holding a minus and
+    // a plus. Bill's shelf: a `.px-pair` of the row's own button and the pair.
+    interface Node {
+      readonly classes: readonly string[];
+      readonly parent: Node | null;
+      readonly bottom: number;
+    }
+    const node = (classes: readonly string[], parent: Node | null, bottom = 0): Node => ({ classes, parent, bottom });
+    // The DOM's own rules: a node is its own closest match and contains itself.
+    const lineage = (node: Node | null): Node[] => (node === null ? [] : [node, ...lineage(node.parent)]);
+    const closest = (node: Node, selector: string) =>
+      lineage(node).find((up) => up.classes.includes(selector.replace(/^\./, ''))) ?? null;
+    const contains = (outer: Node, inner: Node) => lineage(inner).includes(outer);
+    const pane = node(['px-list', 'px-scroll'], null);
+    const controls: Node[] = [];
+    for (let row = 0; row < 7; row += 1) {
+      const supply = node(['px-row'], pane, 100 + row * 20);
+      const stepper = node(['px-stepper'], supply);
+      controls.push(node(['px-step'], stepper, supply.bottom), node(['px-step'], stepper, supply.bottom));
+    }
+    const pair = node(['px-pair'], pane, 300);
+    controls.push(node(['px-row'], pair, 300), node(['px-step'], pair, 300), node(['px-step'], pair, 300));
+    const back = node(['px-button'], pane, 320);
+    controls.push(back);
+
+    const entries = scrollEntries(controls, pane, closest, contains);
+    expect(entries).toHaveLength(9);
+    // Everything is below a fold at 90: seven supplies, the shelf row and the button.
+    expect(moreLabel(entries, 90)).toBe('9 MORE');
   });
 });
 
