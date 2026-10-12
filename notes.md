@@ -90,6 +90,14 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** read a TM from the raid pack; a Pokémon that can never learn it now says so once, and says it is its kind, so you do not keep one back hoping it learns it later.
 - **Seen, not fixed:** at 1280x800 the teach screen shows one row of cards with about 160 px of empty list under it and "2 MORE": the second row of cards is taller than the room left, so the fold gives the whole row to the strip (the rule for not cutting a row). A taller window or one card per row fixes it; left for a later iteration.
 
+## 13. Inside a building the objective chip pointed at a wall (newest feature: walk-in buildings)
+
+- **Found:** playing `buildingInside.mjs` into the Floodplain's Press House on a fresh save, the objective chip read **"LOST KIT: W"** while the player stood on the room's south mat. The room is laid out east of the map in one grid, and the kit cannot be walked to from the Cider Yard while its gates are shut, so `wayTowards` (`world/areaRoutes.ts`) found no door whose far side reached it and fell back on a straight line across that grid: west, which in the room is a wall. The same fallback fed the hunter chip and a prize's heading.
+- **Reproduced:** `src/game/scenes/headingIndoors.test.ts` stands the real `WorldScene` on the Press House mat on the real Floodplain and asks `headingTo` for the lost field kit (checking first that it is unreachable from there): it said `W`.
+- **Fixed:** a door whose far side walks to the target still wins; when none does, the door whose far side is nearest the target in a straight line is chosen, so a heading from a room always points out of it. In the real game the chip now reads "LOST KIT: S" on the same mat (both doors are pressed south).
+- **How a player meets it:** walk into the Press House or Old Town's last houses while what you are after lies behind a door you have not opened; the chip tells you to go out through the door, not into the wall.
+- **Checked, not changed:** the teach screen's blank band under one row of cards at 1280x800 is the no-half-row fold rule (deliberate). Playtest 6's "first Enter swallowed in the raid bag" no longer has a cause in code (`BagScene` has no arming delay). Decorating THE BOLTHOLE's rules (turning a desk with a doll on it, lifting a rug from under a chair) were read through and hold.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
