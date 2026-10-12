@@ -104,6 +104,8 @@ function sealedInAPocket(
     npcSprites: new Map([['rival-hunter', stubGraphics()]]),
     npcAppearances: new Map(),
     idleFigures: [],
+    // The legends this save has caught, which do not stand - a class field too.
+    caughtLegends: [],
     mapObjects: [],
     trainerEncounters: [],
     defeatedTrainerIds: new Set<string>(),

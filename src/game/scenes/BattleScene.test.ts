@@ -125,6 +125,8 @@ interface HarnessOptions {
   readonly party?: PokemonParty;
   /** The wild Pokemon of a wild fight. Defaults to a level-10 Bulbasaur. */
   readonly wild?: Pokemon;
+  /** Whether the wild Pokemon is a legend (`world/legends.ts`). */
+  readonly legendary?: boolean;
 }
 
 const graphicsStub = () => ({
@@ -371,6 +373,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     pendingItem: undefined,
     wildEscapeAttempts: 0,
     pendingBattleExit: false,
+    legendThrow: options.legendary ? 'fighting' : null,
     defeatedTrainerIds: new Set(),
     collectedLootIds: new Set(),
     seenPrizeIds: new Set(),
@@ -2439,5 +2442,147 @@ describe('BattleScene shiny Pokemon', () => {
     land(scene, shinyBulbasaur());
 
     expect(sprite.setTexture).toHaveBeenLastCalledWith('pokemon-front-1');
+  });
+});
+
+/**
+ * A legend is a boss you can keep (`world/legends.ts`): no ball goes near it
+ * while it can fight, and once it is beaten there is time for one throw.
+ */
+describe('a legend', () => {
+  type LegendInternals = {
+    onMessagesComplete(): void;
+    returnToWorld(): void;
+    mode: string;
+    state: { outcome: string; enemy: { currentHp: number } };
+    victoryRewardsGranted: boolean;
+  };
+
+  const meet = (bag: Bag, party?: PokemonParty) => {
+    const harness = createBattleSceneHarness({
+      bag,
+      party,
+      wild: new Pokemon(getSpeciesById('articuno')!, 50),
+      legendary: true,
+    });
+    const scene = harness.scene as unknown as LegendInternals;
+    const returned = vi.fn();
+    scene.returnToWorld = returned;
+    scene.onMessagesComplete();
+    const press = (match: string, from = 0): void => {
+      const row = read(harness.renderedTexts).slice(from).filter(({ text }) => text.includes(match)).at(-1);
+      if (!row) {
+        throw new Error(`No command row matching ${match}`);
+      }
+      row.handlers.pointerdown();
+    };
+    /** Reads every line on screen until the panel asks something or the fight ends. */
+    const readOn = (): void => {
+      for (let line = 0; line < 20 && scene.mode === 'events'; line += 1) {
+        scene.onMessagesComplete();
+      }
+    };
+    /** Knocks it out, with the experience already paid. */
+    const beat = (): void => {
+      scene.state = { ...scene.state, outcome: 'victory', enemy: { ...scene.state.enemy, currentHp: 0 } };
+      scene.victoryRewardsGranted = true;
+      scene.mode = 'events';
+      readOn();
+    };
+    return { ...harness, scene, press, readOn, beat, returned };
+  };
+
+  it('cannot be caught while it can still fight, and the refusal costs no ball and no turn', () => {
+    const bag = new Bag({ 'poke-ball': 3 });
+    const { scene, dialog, press } = meet(bag);
+    const playerHp = (scene.state as unknown as { player: { currentHp: number } }).player.currentHp;
+
+    press('BALL x');
+
+    expect(dialog.shownMessages).toEqual(['ARTICUNO is too strong to catch while it can still fight!']);
+    expect(bag.count('poke-ball')).toBe(3);
+    expect(scene.state.outcome).toBe('active');
+    expect((scene.state as unknown as { player: { currentHp: number } }).player.currentHp).toBe(playerHp);
+  });
+
+  it('refuses before the ball list with two kinds carried, so no chance is offered that the throw would break', () => {
+    const bag = new Bag({ 'poke-ball': 3, 'great-ball': 1 });
+    const { scene, dialog, press } = meet(bag);
+
+    press('BALL x');
+
+    expect(scene.mode).not.toBe('balls');
+    expect(dialog.shownMessages).toEqual(['ARTICUNO is too strong to catch while it can still fight!']);
+    expect(bag.count('poke-ball')).toBe(3);
+    expect(bag.count('great-ball')).toBe(1);
+  });
+
+  it('beaten, gives one throw from the ball list, and a miss lets it go for good', () => {
+    const bag = new Bag({ 'poke-ball': 3 });
+    const { scene, dialog, press, readOn, beat, renderedTexts, returned } = meet(bag);
+
+    const before = renderedTexts.length;
+    beat();
+
+    expect(dialog.shownMessages).toContain('ARTICUNO is too weak to get away! There is time for one throw.');
+    // The list is opened even with one kind carried, so its chance is read first.
+    expect(scene.mode).toBe('balls');
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      press('POKé BALL x', before);
+    } finally {
+      roll.mockRestore();
+    }
+    readOn();
+
+    expect(bag.count('poke-ball')).toBe(2);
+    expect(dialog.shownMessages).toContain('ARTICUNO broke free!');
+    expect(dialog.shownMessages.at(-1)).toBe('Wild ARTICUNO fled!');
+    expect(scene.state.outcome).toBe('victory');
+    expect(returned).toHaveBeenCalledTimes(1);
+  });
+
+  it('beaten and hit, is caught like any wild Pokemon and joins the party', () => {
+    const bag = new Bag({ 'poke-ball': 1 });
+    const party = new PokemonParty([new Pokemon(CHARMANDER, 50)]);
+    const { scene, dialog, press, beat, readOn, renderedTexts } = meet(bag, party);
+
+    const before = renderedTexts.length;
+    beat();
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      press('POKé BALL x', before);
+    } finally {
+      roll.mockRestore();
+    }
+    readOn();
+
+    expect(scene.state.outcome).toBe('caught');
+    expect(dialog.shownMessages).toContain('Gotcha! ARTICUNO was caught!');
+    expect(party.pokemon.map((pokemon) => pokemon.base.id)).toContain('articuno');
+    expect(bag.count('poke-ball')).toBe(0);
+  });
+
+  it('beaten with no ball in the pack, gets away', () => {
+    const { dialog, beat, readOn, returned } = meet(new Bag({ potion: 1 }));
+
+    beat();
+    readOn();
+
+    expect(dialog.shownMessages.slice(-2)).toEqual(['There are no POKé BALLS in the pack!', 'Wild ARTICUNO fled!']);
+    expect(returned).toHaveBeenCalledTimes(1);
+  });
+
+  it('backing out of the one throw is letting it go, and spends nothing', () => {
+    const bag = new Bag({ 'poke-ball': 2 });
+    const { scene, dialog, beat, readOn, returned } = meet(bag);
+
+    beat();
+    (scene as unknown as { goBack(): void }).goBack();
+    readOn();
+
+    expect(bag.count('poke-ball')).toBe(2);
+    expect(dialog.shownMessages.at(-1)).toBe('Wild ARTICUNO fled!');
+    expect(returned).toHaveBeenCalledTimes(1);
   });
 });

@@ -117,6 +117,9 @@ const makeControls = (): Record<string, FakeKey> => {
 
 const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>): void => {
   Object.assign(scene as unknown as Record<string, unknown>, {
+    // A Pokemon standing in the world - a legend (`world/legends.ts`) - bobs on
+    // an animation of its own.
+    anims: { exists: vi.fn(() => true), create: vi.fn() },
     add: {
       sprite: vi.fn(() => chainable()),
       rectangle: vi.fn(() => chainable()),

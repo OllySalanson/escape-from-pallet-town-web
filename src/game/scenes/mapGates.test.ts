@@ -133,6 +133,9 @@ const chainable = (): never => {
 const attachSceneStubs = (scene: WorldScene): void => {
   const key = (): FakeKey => new FakeKey();
   Object.assign(scene as unknown as Record<string, unknown>, {
+    // A Pokemon standing in the world - a legend (`world/legends.ts`) - bobs on
+    // an animation of its own.
+    anims: { exists: vi.fn(() => true), create: vi.fn() },
     add: {
       sprite: vi.fn(() => chainable()),
       rectangle: vi.fn(() => chainable()),

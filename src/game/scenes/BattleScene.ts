@@ -51,6 +51,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import { prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
+import { legendFledLine, legendOneThrowLine, legendTooStrongLine } from '../world/legends';
 import { audioManager } from '../audio/AudioManager';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
@@ -475,6 +476,13 @@ export class BattleScene extends Phaser.Scene {
   private fallen = new Set<PokemonInstance>();
   private isTransitioning = false;
   private pendingBattleExit = false;
+  /**
+   * The one throw a beaten legend allows (`world/legends.ts`): `fighting`
+   * while it can still fight and no ball goes near it, `offered` once it is
+   * beaten and the ball list is up, `thrown` once the throw is spent. Null for
+   * every other fight.
+   */
+  private legendThrow: 'fighting' | 'offered' | 'thrown' | null = null;
   /** Failed wild escapes so far in this battle; each one improves the next roll. */
   private wildEscapeAttempts = 0;
   /** The HP each plate's bar is currently showing, which the tweens walk. */
@@ -608,6 +616,7 @@ export class BattleScene extends Phaser.Scene {
     // next battle's first completed line would refuse to hand control back.
     this.pendingResultScreen = false;
     this.pendingBattleExit = false;
+    this.legendThrow = data.wild?.legendary ? 'fighting' : null;
     this.wildEscapeAttempts = 0;
     // Phaser reuses this scene instance after it returns to the overworld.
     // A completed first battle must not leave the return guard armed for the
@@ -1650,6 +1659,12 @@ export class BattleScene extends Phaser.Scene {
   private keepThePack(): void {
     this.heldBallId = undefined;
     this.pendingMakeRoom = false;
+    // Declining to make room is declining the only throw a legend allows.
+    if (this.legendThrow === 'offered') {
+      audioManager.play('cancel');
+      this.legendGetsAway([]);
+      return;
+    }
     this.mode = 'main';
     this.selectedCommand = 0;
     this.showCommands();
@@ -2054,6 +2069,13 @@ export class BattleScene extends Phaser.Scene {
     if (this.mode !== 'moves' && this.mode !== 'items' && this.mode !== 'balls' && this.mode !== 'party') {
       return;
     }
+    // There is no fight to go back to: backing out of the one throw is letting
+    // the legend go.
+    if (this.mode === 'balls' && this.legendThrow === 'offered') {
+      audioManager.play('cancel');
+      this.legendGetsAway([]);
+      return;
+    }
     // Backing out of the target picker returns to the item list, not to the
     // main commands: the player is cancelling the recipient, not the decision
     // to spend something.
@@ -2291,7 +2313,12 @@ export class BattleScene extends Phaser.Scene {
    */
   private showBallSelection(): void {
     const balls = carriedBalls(this.bag);
-    if (this.trainer || balls.length <= 1) {
+    // A legend's one throw always opens the list, so the chance of each ball is
+    // read before the only throw there will be is spent.
+    // While it can still fight there is no list to read: no ball is going near
+    // it, and a chance printed beside one would be a promise the throw breaks.
+    const oneThrow = this.legendThrow === 'offered' && balls.length > 0;
+    if (!oneThrow && (this.trainer || balls.length <= 1 || this.legendThrow === 'fighting')) {
       this.throwBall(0);
       return;
     }
@@ -2308,6 +2335,15 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage("You can't catch a trainer's POKéMON!");
       return;
     }
+    // A legend is not caught while it can fight. Nothing is spent and no turn
+    // is taken, exactly as the trainer's refusal above.
+    if (this.legendThrow === 'fighting') {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      audioManager.play('denied');
+      this.dialog.showMessage(legendTooStrongLine(this.state.enemy.pokemon.name));
+      return;
+    }
     // No ball is the first answer, before the pack's room: asked the other way
     // round, a full pack with no ball in it invited the player to put Potions
     // down for "the ball that follows", lost them for good, and then said
@@ -2316,6 +2352,10 @@ export class BattleScene extends Phaser.Scene {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       audioManager.play('denied');
+      if (this.legendThrow === 'offered') {
+        this.legendGetsAway([NO_BALLS_MESSAGE]);
+        return;
+      }
       this.dialog.showMessage(NO_BALLS_MESSAGE);
       return;
     }
@@ -2356,6 +2396,10 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.thrownBallId = ball.id;
+    if (this.legendThrow === 'offered') {
+      this.throwAtBeatenLegend(ball);
+      return;
+    }
     const result = resolveCatchAttempt(
       this.state,
       () => Math.random(),
@@ -2377,6 +2421,74 @@ export class BattleScene extends Phaser.Scene {
     this.mode = 'events';
     this.commandContainer.setVisible(false);
     this.showCombatEvents(events);
+  }
+
+  /**
+   * The one throw at a beaten legend: FireRed's own catch, rolled against a
+   * Pokemon with no HP left - the best the formula gives that ball, and still
+   * catch rate 3. Caught, it is the catch any wild Pokemon is. Missed, it gets
+   * up and goes, and the fight is over: there is no turn after it to take.
+   */
+  private throwAtBeatenLegend(ball: ItemDefinition): void {
+    this.legendThrow = 'thrown';
+    const result = resolveCatchAttempt(
+      // The fight is won; the throw is asked of it as though it were still on.
+      { ...this.state, outcome: 'active' },
+      () => Math.random(),
+      ballModifierOf(ball),
+      ball.displayName,
+    );
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    if (result.state.outcome === 'caught') {
+      this.state = result.state;
+      this.storeCaughtPokemon();
+      this.showCombatEvents(result.events);
+      return;
+    }
+    this.showCombatEvents(result.events, [], [this.legendFleesNote()]);
+  }
+
+  /**
+   * What ends a legend's fight without a catch: whatever went wrong, then
+   * FireRed's own line for a Pokemon that left, and the way back to the world.
+   */
+  private legendGetsAway(before: readonly string[]): void {
+    this.legendThrow = 'thrown';
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    this.showCombatEvents([], before, [this.legendFleesNote()]);
+  }
+
+  private legendFleesNote(): StagedNote {
+    return {
+      message: legendFledLine(this.state.enemy.pokemon.name),
+      onShow: () => {
+        const sprite = this.standOnSpot(slotRef('enemy', 0));
+        if (sprite) {
+          this.tweens.add({ targets: sprite, y: sprite.y - FAINT_DROP, alpha: 0, duration: 500, ease: 'Quad.in' });
+        }
+      },
+    };
+  }
+
+  /**
+   * The legend is beaten: it is stood back up on its spot, too weak to get
+   * away, and the ball list is opened on the one throw there will be.
+   */
+  private offerLegendThrow(): void {
+    this.legendThrow = 'offered';
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    this.showCombatEvents(
+      [],
+      [
+        {
+          message: legendOneThrowLine(this.state.enemy.pokemon.name),
+          onShow: () => this.standOnSpot(slotRef('enemy', 0)),
+        },
+      ],
+    );
   }
 
   private storeCaughtPokemon(): void {
@@ -3036,6 +3148,18 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    // The legend's line has been read: the ball list is the one throw.
+    if (this.legendThrow === 'offered' && this.state.outcome === 'victory') {
+      this.showBallSelection();
+      return;
+    }
+    // A legend that got away ends the fight where it went.
+    if (this.legendThrow === 'thrown' && this.state.outcome === 'victory') {
+      this.mode = 'finished';
+      this.returnToWorld();
+      return;
+    }
+
     if (this.state.outcome === 'caught') {
       if (!this.nicknameAsked) {
         this.askForNickname();
@@ -3078,6 +3202,12 @@ export class BattleScene extends Phaser.Scene {
             ]
           : this.awardVictoryExperience(this.state.enemy.pokemon),
       );
+      return;
+    }
+
+    // Beaten, and the experience paid: now the one throw.
+    if (this.state.outcome === 'victory' && this.legendThrow === 'fighting') {
+      this.offerLegendThrow();
       return;
     }
 

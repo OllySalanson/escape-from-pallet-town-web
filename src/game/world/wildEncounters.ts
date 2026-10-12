@@ -11,6 +11,11 @@ export interface WildEncounter {
    * every wild Pokemon met, whatever produced it.
    */
   shiny?: boolean;
+  /**
+   * A legend (`legends.ts`): no ball while it can still fight, and one throw
+   * once it is beaten.
+   */
+  legendary?: boolean;
 }
 
 export type EncounterRng = () => number;

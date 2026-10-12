@@ -404,6 +404,12 @@ export interface RunPlan {
    * so a door opens in the raid that cut it even where nothing can be saved.
    */
   readonly openedGates: readonly string[];
+  /**
+   * The legends this save had caught when the raid deployed, by entity id
+   * (`world/legends.ts`): none of them stands this raid. Read off the plan for
+   * the reason `completedContracts` is.
+   */
+  readonly caughtLegends: readonly string[];
   readonly encounters: Readonly<Partial<Record<WorldMapId, WildEncounterTable>>>;
   /**
    * The wildlife of each named place, keyed by district id, varied per raid the
@@ -510,6 +516,9 @@ export function generateRunPlan(
   // (`isNightRaid`). Only which species each slot holds changes - every table
   // keeps its slots - so a seed spends the same randomness either way.
   night = false,
+  // The legends this save has caught (`caughtLegends`), none of which stands
+  // again. Nothing is rolled for them, so a seed plays the same raid either way.
+  caughtLegends: readonly string[] = [],
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = requireInsertion(insertionId);
@@ -596,6 +605,7 @@ export function generateRunPlan(
     defeatedBosses: [...defeatedBosses],
     completedContracts: [...completedContracts],
     openedGates: [...openedGates],
+    caughtLegends: [...caughtLegends],
     encounters,
     districtEncounters,
     night,

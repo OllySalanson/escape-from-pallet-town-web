@@ -6,6 +6,7 @@ import { playerMap } from './playerMaps';
 import type { CastCharacterDesignId } from './characterDesigns';
 import { REEDBEDS_PIKACHU } from './gifts';
 import type { NpcIdle } from './npcIdle';
+import { LEGEND_ENTITIES } from './legends';
 
 export type WorldEntityKind = 'npc' | 'sign';
 
@@ -23,8 +24,8 @@ export interface WorldEntity {
   design?: CastCharacterDesignId;
   /**
    * A Pokemon standing in the world instead of a person: drawn from its party
-   * icon (`pokemonFigures.ts`) rather than a character sheet. Only a map file
-   * places one.
+   * icon (`pokemonFigures.ts`) rather than a character sheet. A map file
+   * places one; on the shipped maps only the legends stand (`legends.ts`).
    */
   pokemon?: FigureSpeciesId;
   /**
@@ -2225,6 +2226,8 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
       'There is a Lass in the grass on the terrace below. She watches the road where it passes her, and the grass goes round.',
     ],
   },
+  // The four legends, each behind its map's deepest door (`legends.ts`).
+  ...LEGEND_ENTITIES,
 ];
 
 /** A map's townsfolk and signs: authored above for a shipped map, from its file for a file map. */

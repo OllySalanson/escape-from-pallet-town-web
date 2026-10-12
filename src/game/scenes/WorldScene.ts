@@ -87,6 +87,7 @@ import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '
 import { DialogBox } from '../ui/DialogBox';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
+import { caughtLegends, legendStandingAs } from '../world/legends';
 import {
   NOT_EVEN_A_NIBBLE,
   ON_THE_HOOK,
@@ -711,6 +712,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private completedContracts: readonly string[] = [];
   /**
+   * The legends this save has already caught, by entity id, none of which
+   * stands this raid (`world/legends.ts`). Off the plan, like the contracts.
+   */
+  private caughtLegends: readonly string[] = [];
+  /**
    * Every field-move door open as of this moment: the ones the save already
    * held when the raid deployed, plus the ones cut or swum during it. The other
    * half of `defeatedBosses`, and read through `openedDoors()` for the same
@@ -813,6 +819,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // what must not survive is this instance's own copy of the list.
     this.defeatedBosses = [];
     this.completedContracts = [];
+    this.caughtLegends = [];
     this.openedGates = [];
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
@@ -962,6 +969,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.defeatedBosses = [...new Set([...deployedWith, ...beatenThisRaid])];
     this.completedContracts =
       this.runSession?.plan?.completedContracts ?? stored?.completedContracts ?? [];
+    this.caughtLegends =
+      this.runSession?.plan?.caughtLegends ?? caughtLegends(stored?.pokedexOwned ?? []);
     for (const id of [...(stored?.unlockedInsertions ?? []), ...(stored?.reachedInsertions ?? [])]) {
       this.knownInsertionIds.add(id);
     }
@@ -3616,13 +3625,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.runSession) {
       (this.runSession.pokemonMet ??= []).push(entity.id);
     }
-    this.pendingWildBattle = { speciesId: species, level };
+    this.pendingWildBattle = {
+      speciesId: species,
+      level,
+      // A legend is a boss you can keep: no ball until it is beaten, then one.
+      ...(legendStandingAs(entity.id) ? { legendary: true } : {}),
+    };
     this.dialogBox.showMessages([...entity.dialogLines]);
   }
 
-  /** Whether a standing Pokemon has already been fought this raid. */
+  /**
+   * Whether a standing Pokemon is not there: fought already this raid, or a
+   * legend this save has caught, which never stands again.
+   */
   private wasMet(entity: WorldEntity): boolean {
-    return entity.pokemon !== undefined && (this.runSession?.pokemonMet ?? []).includes(entity.id);
+    return (
+      entity.pokemon !== undefined &&
+      ((this.runSession?.pokemonMet ?? []).includes(entity.id) || this.caughtLegends.includes(entity.id))
+    );
   }
 
   /**
