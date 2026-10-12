@@ -200,7 +200,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     position: { x: 17, y: 7 },
     label: 'THE SCARE POST',
     description:
-      'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and two spare Poke Balls wedged in the crook of it.',
+      'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and two spare Poké Balls wedged in the crook of it.',
     reward: [{ itemId: 'poke-ball', quantity: 2 }],
   },
   {
@@ -612,7 +612,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 44, y: 41 },
     label: "JOY'S NIGHT HATCH",
-    description: "The hatch in the Pokemon Center's door, for trainers who come in after the lights are off: a Potion and an Antidote on the shelf.",
+    description: "The hatch in the Pokémon Center's door, for trainers who come in after the lights are off: a Potion and an Antidote on the shelf.",
     reward: [
       { itemId: 'potion', quantity: 1 },
       { itemId: 'antidote', quantity: 1 },
@@ -623,7 +623,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 53, y: 41 },
     label: 'MART STOCKROOM',
-    description: "The Poke Mart's back room, through a door nobody locked: two Poke Balls still in their box, and an Antidote off the shelf by the till.",
+    description: "The Poké Mart's back room, through a door nobody locked: two Poké Balls still in their box, and an Antidote off the shelf by the till.",
     reward: [
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'antidote', quantity: 1 },
@@ -686,7 +686,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 67, y: 41 },
     label: "WOODCUTTER'S STORE",
-    description: "The woodcutter's store in the clearing, where the east trail leaves the wood: a can of lamp oil and a Poke Ball.",
+    description: "The woodcutter's store in the clearing, where the east trail leaves the wood: a can of lamp oil and a Poké Ball.",
     reward: [
       { itemId: 'lamp-oil', quantity: 1 },
       { itemId: 'poke-ball', quantity: 1 },
@@ -708,7 +708,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 6, y: 66 },
     label: "RANGER'S FIRST-AID BOX",
-    description: 'The box the ranger patches up hurt wild Pokemon from, nailed to a post in her meadow: two Super Potions.',
+    description: 'The box the ranger patches up hurt wild Pokémon from, nailed to a post in her meadow: two Super Potions.',
     reward: [{ itemId: 'super-potion', quantity: 2 }],
   },
   {

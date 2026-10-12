@@ -1023,7 +1023,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     sightRange: 2,
     design: 'youngster',
-    introLines: ['This road goes to the Pokemon League!', 'You have to beat me before you even see it.'],
+    introLines: ['This road goes to the Pokémon League!', 'You have to beat me before you even see it.'],
     trainer: createTrainer(
       'viridian-camper-liam',
       'CAMPER LIAM',

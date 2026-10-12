@@ -156,7 +156,7 @@ describe('deployment flow', () => {
     const { flow } = seedFlow();
 
     expect(() => flow.deploy()).toThrow(/confirmed loadout/);
-    expect(flow.advance()).toMatch(/at least one Pokemon/);
+    expect(flow.advance()).toMatch(/at least one Pokémon/);
     expect(flow.step).toBe('loadout');
 
     flow.togglePokemon('bulbasaur-1');
@@ -422,7 +422,7 @@ describe('deployment flow', () => {
     for (const id of ids.slice(0, 6)) {
       expect(flow.togglePokemon(id)).toBeUndefined();
     }
-    expect(flow.togglePokemon(ids[6])).toMatch(/up to 6 Pokemon/);
+    expect(flow.togglePokemon(ids[6])).toMatch(/up to 6 Pokémon/);
     expect(flow.party).toHaveLength(6);
 
     flow.adjustItem('potion', 3);

@@ -931,7 +931,7 @@ export class HubScene extends Phaser.Scene {
   private confirmSwap(): void {
     if (!this.sparePartner) {
       this.setView('stash');
-      this.refuse('Swapping is only offered while one Pokemon remains at base.');
+      this.refuse('Swapping is only offered while one Pokémon remains at base.');
       return;
     }
     if (!this.saveManager.reselectStarter(this.reselectStarterId)) {
