@@ -86,6 +86,9 @@ try {
     unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     defeatedBosses: beaten,
     surveyed: survey,
+    // A save this far in has heard Oak out, and his first words would take
+    // the Escape that leaves the lab (`hub/firstWords.ts`).
+    firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'],
   })}); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
