@@ -139,9 +139,9 @@ describe('the keys the house names', () => {
     const lines = [
       houseKeyHintLine(new Set()),
       KNOCK_FROM_THE_STEP_HINT,
-      decorateKeyHintLine('holding'),
-      decorateKeyHintLine('on-a-piece'),
-      decorateKeyHintLine('on-the-floor'),
+      decorateKeyHintLine('holding', true),
+      decorateKeyHintLine('on-a-piece', true),
+      decorateKeyHintLine('on-the-floor', true),
     ];
     const named = lines.flatMap(namedKeys).filter(([key, word]) => key !== 'SPACE' && word !== 'BOX');
     expect(named.length).toBeGreaterThan(0);
@@ -150,7 +150,7 @@ describe('the keys the house names', () => {
       expect(control.keyCode, `${word} is named as [${key}]`).toBe(KEY_CODES[key]);
     }
     // The box is walked with the two keys its hint names, side by side.
-    const box = /\[([A-Z])\]\[([A-Z])\] BOX/.exec(decorateKeyHintLine('holding'))!;
+    const box = /\[([A-Z])\]\[([A-Z])\] BOX/.exec(decorateKeyHintLine('holding', true))!;
     expect((controls.boxBack as BoundKey).keyCode).toBe(KEY_CODES[box[1]]);
     expect((controls.boxNext as BoundKey).keyCode).toBe(KEY_CODES[box[2]]);
   });

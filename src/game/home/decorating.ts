@@ -133,6 +133,16 @@ export function pieceUnderCursor(state: DecorState): PlacedPiece | undefined {
 }
 
 /**
+ * Whether R would turn anything now: the piece in hand, else the one under the
+ * cursor, has another way round. A table, a desk, a plant in a tub or a mat
+ * has one, so the keys line does not offer to turn it.
+ */
+export function canTurnNow(state: DecorState): boolean {
+  const definition = state.held ? placedPiece(heldPlacement(state, state.held))?.definition : pieceUnderCursor(state)?.definition;
+  return (definition?.facings.length ?? 0) > 1;
+}
+
+/**
  * What stands on a piece's top, by name: a doll on a desk, a cushion on the
  * table. Taking the desk away from under it is refused rather than leaving the
  * doll in mid-air or moving it without asking.

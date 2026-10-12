@@ -132,15 +132,17 @@ export const KNOCK_FROM_THE_STEP_HINT = keyHint(HOME_KEY_LETTERS.knock, 'KNOCK O
 /**
  * The keys while decorating, for what the player can do now: put down what is
  * in their hands, pick up what is under the cursor, or take something out of
- * the box.
+ * the box. TURN is named only for a piece that has another way round
+ * (`turns`): a table, a desk or a mat has one, and R does nothing to it.
  */
-export function decorateKeyHintLine(now: 'holding' | 'on-a-piece' | 'on-the-floor'): string {
+export function decorateKeyHintLine(now: 'holding' | 'on-a-piece' | 'on-the-floor', turns: boolean): string {
   const box = `[${HOME_KEY_LETTERS.boxBack}][${HOME_KEY_LETTERS.boxNext}] BOX`;
+  const turn = turns ? [keyHint(HOME_KEY_LETTERS.turn, 'TURN')] : [];
   const keys =
     now === 'holding'
-      ? ['[SPACE] PUT DOWN', keyHint(HOME_KEY_LETTERS.turn, 'TURN'), box, keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY')]
+      ? ['[SPACE] PUT DOWN', ...turn, box, keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY')]
       : now === 'on-a-piece'
-        ? ['[SPACE] PICK UP', keyHint(HOME_KEY_LETTERS.turn, 'TURN'), keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY'), keyHint(HOME_KEY_LETTERS.decorate, 'DONE')]
+        ? ['[SPACE] PICK UP', ...turn, keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY'), keyHint(HOME_KEY_LETTERS.decorate, 'DONE')]
         : ['[SPACE] TAKE OUT', box, keyHint(HOME_KEY_LETTERS.decorate, 'DONE')];
   return keys.join('  ');
 }

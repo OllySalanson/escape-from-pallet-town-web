@@ -134,6 +134,13 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** walk onto a cache or open a locked crate with a full pack; the refusal names the cache in plain amounts, the same way the pickup and the payout do.
 - **Left alone:** the map caption over a cache ("CACHE: 2× POKÉ BALL + 1× POTION") keeps its short tag form - it is a caption, where width is what seats it.
 
+## 19. Decorating offered "[R] TURN" on pieces that do not turn (newest feature: decorating THE BOLTHOLE)
+
+- **Found:** playing `tools/playtest/decorate.mjs`, the decorating cursor opens on the dining table and the keys line read `[SPACE] PICK UP  [R] TURN  [X] PUT AWAY  [H] DONE`. The table has one way round, so R did nothing. The same was true of every desk, the plants in tubs, the Poké Ball cushion and the mats, whether under the cursor or in hand. Only chairs, most cushions, dolls and the pot plants turn.
+- **Reproduced:** `home/decorating.test.ts`, "offers to turn only a piece that R would turn, under the cursor or in hand": it builds the keys line the way `DecorateMode.draw` does, on the table (turn outcome `nothing`) and on a pot plant (outcome `turned`), both under the cursor and carried. It failed before the fix on the table.
+- **Fixed:** `canTurnNow` in `home/decorating.ts` asks whether the piece in hand, else the one under the cursor, has more than one facing, and `decorateKeyHintLine` takes that as `turns` and only names `[R] TURN` when it is true. Confirmed in the real game: the opening line now reads `[SPACE] PICK UP  [X] PUT AWAY  [H] DONE` on the table.
+- **How a player meets it:** press H in THE BOLTHOLE. The keys line at the foot names R only over a piece that R will actually turn.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
