@@ -165,6 +165,12 @@ export const SOUND_EFFECTS = {
     moment: 'The game says no: bag full, exit locked, loadout refused, no PP',
     tones: [sq(156, 0.07, 0.055), sq(156, 0.09, 0.055, 0.1)],
   },
+  placeRefused: {
+    channel: 'ui',
+    moment: 'The map maker will not put something there: the ghost is red and the foot of the screen says why',
+    // Softer than `denied`: a maker meets it mid-stroke, many times an hour.
+    tones: [tri(196, 0.05, 0.04), tri(147, 0.07, 0.035, 0.045)],
+  },
   textAdvance: {
     channel: 'ui',
     moment: 'Overworld dialogue moves to its next line',
