@@ -13,6 +13,7 @@ import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
 import { survivingSecureItems } from './raidSettlement';
 import { formatRaidClock } from './raidClock';
+import { errandForItem } from '../hub/errands';
 
 /**
  * The one description of how a raid ended, shared by every way it can end.
@@ -372,7 +373,10 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     gearSummary: gearSummary(gear, escaped),
     pack,
     packSummary: packSummary(pack),
-    pressure: pressureLines(snapshot, escaped, input.leftBehind ?? []),
+    pressure: [
+      ...errandLines(escaped ? ledger.items : [], escaped ? [] : ledger.items, escaped ? [] : secured.items),
+      ...pressureLines(snapshot, escaped, input.leftBehind ?? []),
+    ],
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
@@ -518,6 +522,31 @@ function suppliesSpent(snapshot: RunSnapshot, carriedOut: BagContents): ReportIt
       quantity: quantity - (carriedOut[itemId] ?? 0),
     })),
   );
+}
+
+/**
+ * What became of somebody's errand (`../hub/errands`), said plainly whichever
+ * way it went: home and waiting to be handed over, or lost with the pack and
+ * a thing to own up to at base.
+ */
+function errandLines(
+  banked: readonly ReportItem[],
+  lost: readonly ReportItem[],
+  secured: readonly ReportItem[],
+): string[] {
+  const named = (items: readonly ReportItem[]) =>
+    items.flatMap((item) => {
+      const errand = errandForItem(item.itemId);
+      return errand ? [{ errand, thing: item.label.toUpperCase() }] : [];
+    });
+  return [
+    ...named([...banked, ...secured]).map(
+      ({ errand, thing }) => `${thing} is home. Walk in to ${errand.name} and it is handed over`,
+    ),
+    ...named(lost).map(
+      ({ errand, thing }) => `${thing} went down with the pack. ${errand.name} will want to hear about it`,
+    ),
+  ];
 }
 
 function pressureLines(

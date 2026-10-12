@@ -123,6 +123,8 @@ describe("what each of the base's doors says", () => {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square'],
+        // His errand done, so the line is the counter's rather than his favour.
+        errands: [{ id: 'old-amber', status: 'completed', found: 1, lossesHeard: 1 }],
       }),
     );
     expect(line).toContain('₽1000');
@@ -149,5 +151,21 @@ describe("what each of the base's doors says", () => {
     expect(
       doorStatusLine(home, baseGame({ progress: { defeatedBosses: ['overlook-warden', 'pallet-mill-keeper'] } })),
     ).toBe(`Your house · 2 of ${BADGES.length} badges`);
+  });
+
+  it('says when a keeper has a favour to ask, a thing to take, or a loss to hear about', () => {
+    const opened = { completedContracts: [FIRST_CONTRACT_ID], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'] };
+    const workshop = doorNamed('brocks-workshop');
+    expect(doorStatusLine(workshop, baseGame({ progress: opened }))).toBe('Brock has a favour to ask');
+    const asked = { ...opened, errands: [{ id: 'brocks-crate', status: 'started' as const, found: 0, lossesHeard: 0 }] };
+    // In hand and not found: the room's usual line.
+    expect(doorStatusLine(workshop, baseGame({ progress: asked }))).toMatch(/built/);
+    const lost = { ...opened, errands: [{ id: 'brocks-crate', status: 'started' as const, found: 1, lossesHeard: 0 }] };
+    expect(doorStatusLine(workshop, baseGame({ progress: lost }))).toBe('Brock wants a word');
+    const home = baseGame({ progress: lost });
+    home.stash.addItem('brocks-crate', 1);
+    expect(doorStatusLine(workshop, home)).toBe("Brock's crate to hand over");
+    // Nothing asked on a map nobody can drop into yet.
+    expect(doorStatusLine(workshop, baseGame())).toMatch(/built/);
   });
 });

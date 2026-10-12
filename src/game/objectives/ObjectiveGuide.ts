@@ -5,6 +5,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { compassBearing, compassWord } from '../world/bearing';
 import { type WorldMapId, worldMapName } from '../worldMap';
 import { poisForMap } from '../world/pois';
+import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/errands';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -63,9 +64,37 @@ export function buildObjectiveGuide(
       ...(contract
         ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
         : laterRunHints(context, currentExit?.label)),
+      ...errandHints(session, context, snapshot.foundItems),
       ...shinyHints(snapshot.caughtPokemon),
     ],
   };
+}
+
+/**
+ * Somebody's errand lying on this map this raid (`../hub/errands`): where, and
+ * which way - it is drawn with a light on it, so this says nothing the map will
+ * not - and once it is in the pack, that it is only theirs if you walk out.
+ */
+function errandHints(
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+  found: readonly { readonly itemId: string }[],
+): string[] {
+  return (session.plan?.loot[context.currentMapId] ?? []).flatMap((piece) => {
+    const errand = errandForItem(piece.itemId);
+    if (!errand) {
+      return [];
+    }
+    const thing = errandThing(errand);
+    if (found.some((stack) => stack.itemId === piece.itemId)) {
+      return [`You are carrying ${thing} for ${errand.name}. Walk out with it and it is theirs; wipe and it is lost with the pack.`];
+    }
+    const squares = errandSquares(errand);
+    const heading = context.towards?.(piece.position) ?? piece.position;
+    return [
+      `${errand.name}'s errand: ${thing} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}. It takes ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`,
+    ];
+  });
 }
 
 /**

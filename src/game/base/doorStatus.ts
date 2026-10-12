@@ -10,7 +10,8 @@ import {
   type TraderCounter,
 } from '../hub/trader';
 import { formatMoney } from '../items';
-import type { BaseDoor } from './doors';
+import type { BaseDoor, BaseScreen } from './doors';
+import { errandBeat, errandThing } from '../hub/errands';
 import { BADGES, wonBadges } from './badgeCase';
 
 /**
@@ -30,6 +31,7 @@ import { BADGES, wonBadges } from './badgeCase';
  * the same way the card that used to carry it derived it.
  */
 export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
+  const errand = door.screen === null ? undefined : errandLine(door.screen, game);
   switch (door.screen) {
     case null: {
       // The player's own house, which says from the yard how full its badge
@@ -38,6 +40,9 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       return won === 0 ? 'Your house' : `Your house · ${won} of ${BADGES.length} badges`;
     }
     case 'raid': {
+      if (errand) {
+        return errand;
+      }
       const open = buildContractBoard(game.raidProgress).rows.length;
       return open === 0
         ? 'No contracts; raid for what the maps hold'
@@ -62,12 +67,18 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       if (game.stash.canSwapStarter()) {
         return 'Your last partner can be swapped here';
       }
+      if (errand) {
+        return errand;
+      }
       if (fainted > 0) {
         return hurt > 0 ? `${fainted} fainted · ${hurt} hurt` : `${fainted} Pokémon fainted`;
       }
       return hurt === 0 ? 'Everyone is fit' : `${hurt} Pokémon hurt`;
     }
     case 'workshop': {
+      if (errand) {
+        return errand;
+      }
       const built = builtUpgrades(game.raidProgress.workshopUpgrades).length;
       const ready = workshopOffers(
         { stash: game.stash },
@@ -77,6 +88,9 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       return ready === 0 ? standing : `${standing} · ${ready} ready`;
     }
     case 'trader': {
+      if (errand) {
+        return errand;
+      }
       const counter: TraderCounter = {
         stash: game.stash,
         progress: traderProgressOf(game.raidProgress),
@@ -92,4 +106,23 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
         : `${money} · ${ready} deal${ready === 1 ? '' : 's'} ready`;
     }
   }
+}
+
+/**
+ * What a door says about its keeper's errand, when there is something to go in
+ * for (`../hub/errands`): a favour to be asked, a thing to hand over, or a loss
+ * they want to hear about. An errand merely in progress says nothing here - it
+ * is on the drop-in screen and in the field guide, and a door that nagged would
+ * hide the line the room is usually read for.
+ */
+function errandLine(giver: BaseScreen, game: RestoredGame): string | undefined {
+  const beat = errandBeat(giver, game.raidProgress, (itemId) => game.stash.itemCount(itemId));
+  if (!beat) {
+    return undefined;
+  }
+  const { errand } = beat;
+  if (beat.kind === 'thanks') {
+    return `${errandThing(errand)} to hand over`;
+  }
+  return beat.kind === 'ask' ? `${errand.name} has a favour to ask` : `${errand.name} wants a word`;
 }

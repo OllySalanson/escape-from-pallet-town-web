@@ -45,6 +45,8 @@ import { pennantsPoster } from '../../src/game/base/pennants';
 import { BASE_STARTS, walkHome, walksToKeepers } from '../../src/game/base/baseWalks';
 import { baseGame } from '../../src/game/base/baseGames.testkit';
 import { ODDITY_INK, oddityArt } from '../../src/game/base/cabinet';
+import { ERRANDS } from '../../src/game/hub/errands';
+import { itemIconName } from '../../src/game/ui/icons';
 import type { TileSource } from '../../src/game/world/tileset/catalogue';
 import type { MapLayers } from '../../src/game/world/tiles';
 
@@ -80,6 +82,11 @@ const baseSave = baseGame({
   traded,
   progress: {
     defeatedBosses: (option('beaten') ?? '').split(',').filter(Boolean),
+    // `--errands=all` or `--errands=oaks-parcel,old-amber`: errands done, whose
+    // things stand in their givers' rooms (`ERRAND_DISPLAY`).
+    errands: (option('errands') === 'all' ? ERRANDS.map((errand) => errand.id) : (option('errands') ?? '').split(','))
+      .filter(Boolean)
+      .map((id) => ({ id, status: 'completed' as const, found: 1, lossesHeard: 1 })),
     // `--raids=mapId:deployed:extracted,..` - what THE BOLTHOLE's pennants,
     // PC and calendar read.
     raidRecord: Object.fromEntries(
@@ -193,6 +200,11 @@ if (room && drawnRoom) {
       sprite.x * TILE_SIZE,
       sprite.y * TILE_SIZE,
     );
+  }
+  // Finished errands' things, each its own 16px icon on the furniture.
+  for (const icon of drawnRoom.icons) {
+    const art = readPng(new URL(`../../public/assets/icons/${itemIconName(icon.itemId)}.png`, import.meta.url));
+    blit(image, art, 0, 0, 16, 16, icon.x, icon.y);
   }
   // Bill's oddities, each painted from its pixel table as the scene paints it.
   for (const placed of drawnRoom.cabinet?.layout.placed ?? []) {

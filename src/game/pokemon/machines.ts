@@ -1,6 +1,6 @@
 import type { MoveBase } from './MoveBase';
 import { GENERATED_MACHINE_LEARNERS } from './generated/machineLearners';
-import { AERIAL_ACE, BULLET_SEED, CUT, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH, STRENGTH, SURF } from './moves';
+import { AERIAL_ACE, BULLET_SEED, CUT, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH, ROCK_TOMB, STRENGTH, SURF } from './moves';
 
 /**
  * What a machine is, and which species answer to it.
@@ -61,6 +61,9 @@ export const MACHINES: Readonly<Record<string, MachineDefinition>> = {
   'tm13-ice-beam': machine('TM13', ICE_BEAM),
   'tm23-iron-tail': machine('TM23', IRON_TAIL),
   'tm28-dig': machine('TM28', DIG),
+  // Brock's, as it is in FireRed - and like FireRed's, it is given rather than
+  // found: he pays his crate with it (`hub/errands.ts`).
+  'tm39-rock-tomb': machine('TM39', ROCK_TOMB),
   'tm40-aerial-ace': machine('TM40', AERIAL_ACE),
   // The three HMs. An HM is never used up, which is what makes it safe for one
   // to be a permanent capability rather than a consumable: the two below are

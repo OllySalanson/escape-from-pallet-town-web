@@ -7,6 +7,7 @@ import { BASE_DOORS } from './doors';
 import {
   BASE_ROOMS,
   CENTER_DISPLAY,
+  ERRAND_DISPLAY,
   COUNTER_BALLS,
   OAK_WALL_MAP,
   WORKSHOP_DISPLAY,
@@ -26,6 +27,7 @@ import type { BaseKeeper } from './doors';
 import { BASE_PIECES } from './generated/basePieces';
 import { stepsFrom, stepsTo, servingTiles, walksToKeepers, BASE_STARTS } from './baseWalks';
 import { baseGame } from './baseGames.testkit';
+import { ERRANDS } from '../hub/errands';
 import { CABINET_UNITS, CABINET_UNITS_AT_START, CABINET_UNIT_SIZE, unitTiles } from './cabinet';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
@@ -522,5 +524,21 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
     expect(october.collision[PUMPKIN_SPOT.y][PUMPKIN_SPOT.x]).toBe(true);
     const june = buildRoom(downstairs, baseGame(), new Date(2026, 5, 1, 12));
     expect(june.collision[PUMPKIN_SPOT.y][PUMPKIN_SPOT.x]).toBe(false);
+  });
+
+  it('stands every finished errand’s thing in its giver’s room, on furniture, and nowhere before', () => {
+    const errands = ERRANDS.map((errand) => ({ id: errand.id, status: 'completed' as const, found: 1, lossesHeard: 1 }));
+    for (const errand of ERRANDS) {
+      const display = ERRAND_DISPLAY[errand.id];
+      const room = BASE_ROOMS.find((each) => each.id === display.room)!;
+      expect(buildRoom(room, baseGame()).icons).toEqual([]);
+      const built = buildRoom(room, baseGame({ progress: { errands } }));
+      expect(built.icons).toEqual([{ itemId: errand.itemId, x: display.x, y: display.y }]);
+      // Set on something solid, which is what makes it a thing on a table.
+      const tile = { x: Math.floor((display.x + 8) / TILE_SIZE), y: Math.floor((display.y + 8) / TILE_SIZE) };
+      expect(built.collision[tile.y][tile.x], `${errand.id} stands on the floor`).toBe(true);
+      for (const faced of display.tiles) expect(built.collision[faced.y][faced.x]).toBe(true);
+      expect(built.things.some((thing) => thing.note === display.note)).toBe(true);
+    }
   });
 });

@@ -1395,6 +1395,33 @@ describe('Brock', () => {
     return { hub: hub as WorkshopInternals, start, storage };
   }
 
+  it('asks his favour as the workshop is walked into, once, and pays for the crate when it is home', () => {
+    const { hub, storage } = createWorkshopHub();
+    const render = (): void => (hub as unknown as { render(): void }).render();
+    hub.setView('workshop');
+    render();
+    expect(markupOf(hub)).toContain('I left a crate of my tools at THE QUARRY in Pallet Town');
+    expect(new SaveManager(storage).load()!.raidProgress.errands).toEqual([
+      { id: 'brocks-crate', status: 'started', found: 0, lossesHeard: 0 },
+    ]);
+    (hub as unknown as { doneListening(): void }).doneListening();
+    expect(markupOf(hub)).not.toContain('THE QUARRY');
+
+    // The crate came home in a raid: walking in again hands it over.
+    const saves = new SaveManager(storage);
+    const game = saves.load()!;
+    game.stash.addItem('brocks-crate', 1);
+    saves.save(game);
+    const again = createHub(DEFAULT_RAID_PROGRESS, storage).hub as WorkshopInternals;
+    again.setView('workshop');
+    (again as unknown as { render(): void }).render();
+    expect(markupOf(again)).toContain("You handed over Brock's crate.");
+    expect(markupOf(again)).toContain('You received TM39 from Brock.');
+    const after = new SaveManager(storage).load()!;
+    expect(after.stash.itemCount('brocks-crate')).toBe(0);
+    expect(after.stash.itemCount('tm39-rock-tomb')).toBe(1);
+  });
+
   it('is its own building, walked into rather than chosen off the lab screen', () => {
     const { hub } = createWorkshopHub();
 
@@ -1481,9 +1508,10 @@ describe('Brock', () => {
 
   it('names the materials it is spending, and asks before it spends them', () => {
     const { hub, storage } = createWorkshopHub();
-    const before = storage.getItem(SAVE_KEY);
-
     hub.setView('workshop');
+    // Walking in is when Brock asks his favour, which is a write of its own.
+    (hub as unknown as { render(): void }).render();
+    const before = storage.getItem(SAVE_KEY);
     hub.armUpgrade('secure-locker-1');
     const armed = markupOf(hub);
     // The row becomes the question, as Bill's barters do, with the cursor on
@@ -1501,8 +1529,9 @@ describe('Brock', () => {
 
   it('puts the question down, not the screen, when backed out of', () => {
     const { hub, storage } = createWorkshopHub();
-    const before = storage.getItem(SAVE_KEY);
     hub.setView('workshop');
+    (hub as unknown as { render(): void }).render();
+    const before = storage.getItem(SAVE_KEY);
     hub.armUpgrade('radio-mast');
 
     hub.goBack();
