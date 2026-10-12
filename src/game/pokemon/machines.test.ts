@@ -4,6 +4,7 @@ import { MACHINE_ITEM_IDS, getItemById } from '../items';
 import { MoveCategory } from './MoveBase';
 import { PokemonType } from './PokemonType';
 import { SPECIES_BY_ID } from './species';
+import { evolutionFamily } from './evolution';
 import { MACHINES, MACHINE_DEFINITIONS, canLearnFromMachine, machineMovesFor } from './machines';
 
 /**
@@ -216,5 +217,49 @@ describe('machines', () => {
       'Strength',
       'Surf',
     ]);
+  });
+});
+
+/**
+ * A disc's description is read on the teach screen and in the pack, and it
+ * may not promise what the roster contradicts. Two did once the 151 came in
+ * (playtest 6, B2): TM13 still called Ice Beam "the only Ice move there is"
+ * beside Aurora Beam, Blizzard, Ice Punch and Powder Snow, and TM09 said
+ * only the Bulbasaur line could read Bullet Seed when Oddish, Bellsprout and
+ * Exeggcute read it too.
+ */
+describe('what a disc says about itself', () => {
+  const movesInPlay = new Map<string, PokemonType>();
+  for (const species of Object.values(SPECIES_BY_ID)) {
+    for (const entry of species.learnset) {
+      movesInPlay.set(entry.move.name, entry.move.type);
+    }
+  }
+  for (const machine of MACHINE_DEFINITIONS) {
+    movesInPlay.set(machine.move.name, machine.move.type);
+  }
+
+  it.each(MACHINE_ITEM_IDS)('%s claims no move is the only one of its type unless it is', (id) => {
+    const description = getItemById(id)?.description ?? '';
+    const claim = /only (\w+) move/i.exec(description);
+    if (!claim) {
+      return;
+    }
+    const type = claim[1].toLowerCase();
+    const ofType = [...movesInPlay].filter(([, moveType]) => moveType.toLowerCase() === type).map(([name]) => name);
+    expect(ofType).toHaveLength(1);
+  });
+
+  it.each(MACHINE_ITEM_IDS)('%s names every line that can read it, if it names any', (id) => {
+    const description = getItemById(id)?.description ?? '';
+    const claim = /only the (\w+) line/i.exec(description);
+    if (!claim) {
+      return;
+    }
+    const named = claim[1].toLowerCase();
+    const move = MACHINES[id].move;
+    const readers = Object.keys(SPECIES_BY_ID).filter((species) => canLearnFromMachine(species, move));
+    const family = new Set(evolutionFamily(named).map((species) => species.id));
+    expect(readers.filter((species) => !family.has(species))).toEqual([]);
   });
 });

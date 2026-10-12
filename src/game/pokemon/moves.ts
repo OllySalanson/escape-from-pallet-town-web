@@ -567,7 +567,7 @@ export const BULLET_SEED = new MoveBase({
   hits: { min: 2, max: 5 },
 });
 
-/** TM13. The only Ice move in the game, and the only way to freeze anything. */
+/** TM13. The one Ice move that is strong and sure at once: Blizzard misses, the rest are weaker. */
 export const ICE_BEAM = new MoveBase({
   name: 'Ice Beam',
   description: 'A beam of cold. May freeze the target.',
@@ -605,7 +605,7 @@ export const DIG = new MoveBase({
   flags: [MoveFlag.Contact],
 });
 
-/** TM40. No accuracy roll at all: the one move here that cannot miss. */
+/** TM40. No accuracy roll at all, like Swift and Feint Attack. */
 export const AERIAL_ACE = new MoveBase({
   name: 'Aerial Ace',
   description: 'A sweep too fast to dodge. It never misses.',

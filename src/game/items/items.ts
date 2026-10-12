@@ -475,7 +475,7 @@ export const ITEMS = {
     displayName: 'TM09 Bullet Seed',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Bullet Seed: two to five seeds in one turn. Only the Bulbasaur line can read it.',
+    description: 'Teaches Bullet Seed: two to five seeds in one turn. Mostly Grass Pokémon can read it.',
     effect: { type: 'machine' },
   },
   'tm13-ice-beam': {
@@ -483,7 +483,7 @@ export const ITEMS = {
     displayName: 'TM13 Ice Beam',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Ice Beam: a beam of cold that may freeze. The only Ice move there is.',
+    description: 'Teaches Ice Beam: a beam of cold that may freeze. Grass, Ground, Flying and Dragon foes all fear it.',
     effect: { type: 'machine' },
   },
   'tm23-iron-tail': {

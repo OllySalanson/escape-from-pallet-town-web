@@ -513,7 +513,7 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
         district: 'forest-stone-row',
       },
       // TM09 Bullet Seed: the Grass move, in the wood, and the narrowest disc
-      // in the game - only the Bulbasaur line can read it. The forest is the
+      // in the game - Grass lines, Paras and Mew read it and nobody else. The forest is the
       // map worth walking for a rarity, and it is now the map with two.
       { id: 'forest-tm-bullet-seed', position: { x: 15, y: 28 }, itemId: 'tm09-bullet-seed', quantity: 1, chance: 0.25, district: 'forest-coppice' },
       // The Forester's Key is left at the sawpit where the forester's men work;

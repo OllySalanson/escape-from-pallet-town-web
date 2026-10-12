@@ -127,3 +127,14 @@ describe('the teaching screen', () => {
     expect(teachBody(view(1))).not.toMatch(/[→←↑↓▶✓✔]/);
   });
 });
+
+describe('what the teach screen says a disc is (playtest 6, B2)', () => {
+  it('does not call Ice Beam the only Ice move, or Bullet Seed the Bulbasaur line alone', () => {
+    const iceBeam = teachBody(view(null, disc('tm13-ice-beam')));
+    expect(iceBeam).toContain('Teaches Ice Beam');
+    expect(iceBeam).not.toMatch(/only Ice move/i);
+    const bulletSeed = teachBody(view(null, disc('tm09-bullet-seed')));
+    expect(bulletSeed).toContain('Teaches Bullet Seed');
+    expect(bulletSeed).not.toMatch(/only the Bulbasaur line/i);
+  });
+});
