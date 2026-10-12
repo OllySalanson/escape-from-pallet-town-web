@@ -17,6 +17,7 @@ import {
   type MapGate,
 } from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
+import { placedAreaAt } from '../world/mapAreas';
 import { stepDistances } from '../world/mapStructure';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { trainerSightTiles } from '../world/trainerSight';
@@ -803,11 +804,21 @@ export function rewardLine(reward: Pick<ContractReward, 'items' | 'pokemon'>): s
   ].join(' and ');
 }
 
-/** Where on the map a tile is, in the eight points and "centre". */
+/**
+ * Where on the map a tile is, in the eight points and "centre" of its
+ * outdoors - or the name of the room it is in, because a room is laid out
+ * beside the outdoors in the grid it is played on (`mapAreas.ts`), and read as
+ * a point of the compass every room would be in "the east".
+ */
 function compass(map: WorldMapDefinition, tile: GridPosition): string {
+  const place = insidePlace(map, tile);
+  if (place) {
+    return place;
+  }
+  const outdoors = map.areas?.[0]?.rect ?? map;
   const band = (value: number, size: number, low: string, high: string): string =>
     value < size / 3 ? low : value >= (2 * size) / 3 ? high : '';
-  const point = [band(tile.y, map.height, 'north', 'south'), band(tile.x, map.width, 'west', 'east')]
+  const point = [band(tile.y, outdoors.height, 'north', 'south'), band(tile.x, outdoors.width, 'west', 'east')]
     .filter(Boolean)
     .join('-');
   return point || 'centre';
@@ -820,9 +831,19 @@ function compass(map: WorldMapDefinition, tile: GridPosition): string {
  * beside its "to the south-west" read as the guide contradicting itself.
  */
 function regions(map: WorldMapDefinition, tiles: readonly GridPosition[]): string {
-  const parts = [...new Set(tiles.map((tile) => `the ${compass(map, tile)}`))];
-  const listed = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-  return `${listed} of the map`;
+  const andList = (parts: readonly string[]): string =>
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  const outside = [
+    ...new Set(tiles.filter((tile) => !insidePlace(map, tile)).map((tile) => `the ${compass(map, tile)}`)),
+  ];
+  const inside = [...new Set(tiles.map((tile) => insidePlace(map, tile)).filter((place) => place !== undefined))];
+  return andList([...(outside.length > 0 ? [`${andList(outside)} of the map`] : []), ...inside]);
+}
+
+/** The name of the room a tile is in, or undefined outdoors. */
+function insidePlace(map: WorldMapDefinition, tile: GridPosition): string | undefined {
+  const place = map.areas ? placedAreaAt(map.areas, tile) : undefined;
+  return place && place.id !== undefined ? place.name : undefined;
 }
 
 /** Walking steps from the landing to the nearest of these tiles. */

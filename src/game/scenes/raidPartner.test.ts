@@ -136,6 +136,7 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
         flash: vi.fn(),
         shake: vi.fn(),
         once: vi.fn((_event: string, callback: () => void) => callback()),
+        setBackgroundColor: vi.fn(),
         setBounds: vi.fn(),
         setRoundPixels: vi.fn(),
         setZoom: vi.fn(),

@@ -59,7 +59,13 @@ to know areas exist: the hunter's pursuit, its arrival ring, the flee's doors,
 the checks' walks and the standing board all read one collision grid whose
 `GridBounds.links` adds the link edges (`hunter.ts`, `mapStructure.ts`). The
 hunter therefore follows you through a door - an inside is a place, never a safe
-box, and a one-door house is a dead end you chose.
+box, and a one-door house is a dead end you chose. A place with **two** doors
+out onto the outdoors is the one kind that hides you (`PlacedArea.hides`): the
+hunter outside walks to the doorstep it last saw you on, as it does outside the
+Delve, so leaving by the other door is the point of going in. One door never
+hides anyone, because a hunter waiting on the only doorstep is the trap. The
+shipped maps' own walk-in buildings (`buildingInsides.ts`) are built this way
+and always have two.
 
 Going through is a same-map warp: a fade, a move, a fade, nothing rebuilt. The
 camera frames the area you are in, centred on black when it is smaller than the

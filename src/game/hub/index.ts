@@ -4,6 +4,7 @@ export {
   doorPromise,
   gradeLine,
   largestMapSize,
+  pictureSize,
   mapPicture,
   placePicture,
   shutDoorLine,

@@ -72,10 +72,9 @@ describe("a file map's item spots", () => {
   });
 
   it('leave every shipped map laying exactly the loot it laid before', () => {
-    // Re-pinned when a Lockpick and a key were added to every shipped map's
-    // pool (on top of the legends, which moved it too)
-    // - a change to a shipped pool moves this on purpose, a change to how a
-    // file map's spots are laid never may.
-    expect(shippedLootFingerprint()).toBe('fd364b33');
+    // Moved once on purpose: the Floodplain's buildings you can walk into
+    // (`buildingInsides.ts`) added their floors to the ground loot is seated
+    // on, and every map draws from one stream of rolls.
+    expect(shippedLootFingerprint()).toBe('e81cb7e7');
   });
 });

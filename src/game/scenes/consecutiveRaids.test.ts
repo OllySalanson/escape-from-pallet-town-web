@@ -148,6 +148,7 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
         // Fades resolve immediately, so a transition that waits on one is
         // observable rather than stranded in a callback nothing ever fires.
         once: vi.fn((_event: string, callback: () => void) => callback()),
+        setBackgroundColor: vi.fn(),
         setBounds: vi.fn(),
         setRoundPixels: vi.fn(),
         setZoom: vi.fn(),

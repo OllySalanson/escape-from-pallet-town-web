@@ -19,7 +19,8 @@ import { sketchPalletTown } from './world/maps/palletTown';
 import { sketchRoute1 } from './world/maps/route1';
 import { sketchViridianCity } from './world/maps/viridianCity';
 import { sketchViridianForest } from './world/maps/viridianForest';
-import { searchedLinks, type ComposedMap, type PlacedArea } from './world/mapAreas';
+import { INSIDE_MARGIN, insideLinks, insidesForMap } from './world/buildingInsides';
+import { composeAreas, searchedLinks, type ComposedMap, type PlacedArea } from './world/mapAreas';
 import type { PlayerMapId } from './world/mapFile';
 import { entitiesForMap, type WorldEntity } from './world/npcs';
 import { playerMap, playerMaps } from './world/playerMaps';
@@ -118,10 +119,11 @@ export interface WorldMapDefinition {
    */
   readonly interiors: readonly MapInterior[];
   /**
-   * The places a player's map is made of - the outdoors, then the inside of
-   * every building that has one - and where each lies on this grid
-   * (`mapAreas.ts`). Absent on a map that is one place, which is every
-   * shipped map.
+   * The places a map is made of - the outdoors, then the inside of every
+   * building that has one - and where each lies on this grid (`mapAreas.ts`;
+   * a shipped map's rooms are `buildingInsides.ts`). Absent on a map that is
+   * one place. The grid is then wider than the outdoors, so a picture of the
+   * map is sized by `pictureSize`, never by `width`.
    */
   readonly areas?: readonly PlacedArea[];
   /** The ways through between those places, as every search reads them (`GridBounds.links`). */
@@ -196,6 +198,22 @@ function createMap(
       at: (x: number, y: number) => lidAt(interior, x, y),
     })),
   );
+  const insides = insidesForMap(id);
+  if (insides.length > 0) {
+    // A shipped map whose buildings have insides is laid out with its rooms
+    // beside it, as a player's map is (`buildingInsides.ts`).
+    const composedWithRooms = composeAreas({
+      name: WORLD_MAP_NAMES[id as BuiltInMapId] ?? id,
+      sketch,
+      layers,
+      tileset,
+      areas: insides.map((inside) => inside.area),
+      links: insides.flatMap(insideLinks),
+      landingsOf: (end) => [{ x: end.x, y: end.y }],
+      margin: INSIDE_MARGIN,
+    });
+    return { ...createComposedMap(id, content, composedWithRooms, gates), interiors };
+  }
   return {
     id,
     width: sketch.width,

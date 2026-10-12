@@ -434,7 +434,9 @@ describe('the country the map grew into', () => {
   );
 
   it('is sixteen times the smallest map and four times what it was', () => {
-    expect(open.width * open.height).toBe(128 * 128);
+    // The outdoors: the rooms of its buildings are laid out beside it.
+    const outdoors = open.areas?.[0].rect ?? open;
+    expect(outdoors.width * outdoors.height).toBe(128 * 128);
   });
 
   it('gives every landing a way out well inside the clock', () => {

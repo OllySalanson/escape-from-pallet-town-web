@@ -286,6 +286,14 @@ Phaser advances a tween on the real clock** rather than on the game time a
 stepped frame hands it, so a stepped check has to step several seconds' worth of
 frames before reading an alpha - the same thing the battle screen's HP bars do.
 
+`buildingInside.mjs <url> [out dir] [--inside=press-house] [--port=N]` walks
+into a building on a shipped map by one door and out by the other
+(`src/game/world/buildingInsides.ts`): pressing up into the door goes through it
+onto the room's mat, the hunter outside walks to the doorstep instead of to the
+player, and stepping off the other mat comes out of the other building, seen
+again. It clears the save first, so it can be pointed at an attached browser
+that has run it before. `docs/screens/building-insides/` is what it photographs.
+
 `worldAnchors.mjs <url> [--window=WxH]` prints the canvas box, the stage, the
 dialogue box and every caption the world has on screen, so the one thing the two
 boxes must never change - where anything anchored to a tile sits - is diffed

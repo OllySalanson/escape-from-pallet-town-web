@@ -26,6 +26,7 @@ import {
   doorPromise,
   gradeLine,
   largestMapSize,
+  pictureSize,
   placePicture,
   shutDoorLine,
   stillToFind,
@@ -2411,7 +2412,7 @@ export class HubScene extends Phaser.Scene {
       mapPictureFrame({
         key: `dropin:${chosen}`,
         label: `${briefing.mapName}, ${walked}% walked`,
-        size: { width: context.map.width, height: context.map.height },
+        size: pictureSize(context.map),
         reference: largestMapSize(),
         mode: 'own',
         // What the right-hand side needs to stay a column of one-line rows:

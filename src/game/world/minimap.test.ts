@@ -139,8 +139,13 @@ describe('the bird\'s-eye picture of a map', () => {
       ]);
       expect(picture.rows).toHaveLength(picture.height);
     }
-    const halved = buildMinimap({ map: WORLD_MAPS['floodplain-relay'], step: 2 });
-    expect([halved.width, halved.height, halved.tilesPerPixel]).toEqual([64, 64, 2]);
+    const flood = WORLD_MAPS['floodplain-relay'];
+    const halved = buildMinimap({ map: flood, step: 2 });
+    expect([halved.width, halved.height, halved.tilesPerPixel]).toEqual([
+      Math.ceil(flood.width / 2),
+      Math.ceil(flood.height / 2),
+      2,
+    ]);
   });
 
   it('keeps a way in or out when several tiles share a pixel', () => {

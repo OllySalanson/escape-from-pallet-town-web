@@ -1,5 +1,5 @@
 import type { GridPosition } from '../movement/gridMovement';
-import { largestMapSize, mapPicture, type MapPictureContext } from '../hub/dropIn';
+import { largestMapSize, mapPicture, pictureSize, type MapPictureContext } from '../hub/dropIn';
 import { availableInsertionIds } from '../run/runGeneration';
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
@@ -134,7 +134,7 @@ export function wallMapEntry(game: RestoredGame, mapId: WorldMapId): WallMapEntr
   return {
     mapId,
     name: worldMapName(mapId),
-    size: { width: context.map.width, height: context.map.height },
+    size: pictureSize(context.map),
     known: picture.walkable === 0 ? 0 : picture.knownWalkable / picture.walkable,
     walked: surveyed.size > 0,
     ...districtsReached(context.map, surveyed, mapId),
@@ -227,8 +227,7 @@ export function posterLayout(area: Rect, signCounts: Readonly<Record<string, num
   const height = area.height * POSTER_TILE;
   const reference = wallMapReference();
   const sizes = WALL_MAP_ORDER.map((mapId) => {
-    const map = getWorldMap(mapId, []);
-    return { mapId, width: map.width, height: map.height };
+    return { mapId, ...pictureSize(getWorldMap(mapId, [])) };
   });
   const innerWidth = width - POSTER_BORDER * 2 - POSTER_GAP * (WALL_MAP_ORDER.length + 1);
   const innerHeight =
