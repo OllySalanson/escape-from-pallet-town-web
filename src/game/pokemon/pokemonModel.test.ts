@@ -26,15 +26,16 @@ describe('Unity Pokemon data port', () => {
     });
     expect(BUTTERFREE.primaryType).toBe(PokemonType.Bug);
     expect(BUTTERFREE.secondaryType).toBe(PokemonType.Flying);
-    expect(BUTTERFREE.learnset).toContainEqual({ level: 10, move: POISON_POWDER });
+    expect(BUTTERFREE.learnset).toContainEqual({ level: 13, move: POISON_POWDER });
   });
 
   it('preserves the authored move values', () => {
+    // Vine Whip is FireRed's own row since 2026-10-12, not an authored one.
     expect(VINE_WHIP).toMatchObject({
       type: PokemonType.Grass,
-      power: 45,
+      power: 35,
       accuracy: 100,
-      pp: 20,
+      pp: 10,
       category: MoveCategory.Special,
     });
     expect(WATER_GUN).toMatchObject({
@@ -59,8 +60,23 @@ describe('Unity Pokemon data port', () => {
     },
   );
 
-  it('teaches Squirtle Water Gun at level 7', () => {
-    expect(new Pokemon(SQUIRTLE, 7).moves.map((move) => move.base.name)).toContain('Water Gun');
+  /**
+   * A save is wire format: a Pikachu that learned Tackle under the hand-kept
+   * learnsets keeps it when it loads, while a new one is FireRed's own.
+   */
+  it('keeps a move the retired learnsets taught, and teaches it to nobody new', () => {
+    const pikachu = getSpeciesById('pikachu')!;
+    expect(new Pokemon(pikachu, 10).moves.map((move) => move.base.name)).not.toContain('Tackle');
+
+    const stored = new Pokemon(pikachu, 10);
+    stored.restoreMoveset(['Tackle', 'Growl', 'Thunder Wave'], []);
+    expect(stored.moves.map((move) => move.base.name)).toEqual(['Tackle', 'Growl', 'Thunder Wave']);
+  });
+
+  it("teaches Squirtle FireRed's Bubble at level 7 and Water Gun at 13", () => {
+    expect(new Pokemon(SQUIRTLE, 7).moves.map((move) => move.base.name)).toContain('Bubble');
+    expect(new Pokemon(SQUIRTLE, 12).moves.map((move) => move.base.name)).not.toContain('Water Gun');
+    expect(new Pokemon(SQUIRTLE, 13).moves.map((move) => move.base.name)).toContain('Water Gun');
   });
 });
 

@@ -927,6 +927,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     mapId: 'viridian-forest',
     name: 'BEECH FLAT',
     encounters: wildlife.FOREST_BEECH_WILDLIFE,
+    nightEncounters: wildlife.FOREST_BEECH_NIGHT_WILDLIFE,
     areas: [{ x: 31, y: 62, width: 14, height: 10 }],
   },
   {

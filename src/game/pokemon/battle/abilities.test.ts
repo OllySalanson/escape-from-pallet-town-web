@@ -159,7 +159,9 @@ describe('the abilities that change a number', () => {
   it('gives Guts its boost for a status but never while it is asleep', () => {
     const base = species({ abilityId: 'guts' });
     const damage = (status: PrimaryStatus | null): number => {
-      const player = armed(base, 20, TACKLE);
+      // Scratch rather than Tackle: `never` is the top of every roll, which
+      // misses FireRed's 95-accuracy Tackle.
+      const player = armed(base, 20, SCRATCH);
       const opponent = armed(species({ abilityId: null }), 20);
       const state = createBattleState(player, opponent);
       const withStatus: BattleState = { ...state, player: { ...state.player, primaryStatus: status } };

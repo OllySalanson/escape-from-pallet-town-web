@@ -5,6 +5,8 @@ import type { PokemonBase, PokemonStats } from './PokemonBase';
 import type { GrowthRate } from './generated/speciesCatalogue';
 import { evolutionFamily, evolutionOnLevel, evolvesInto } from './evolution';
 import { machineMovesFor } from './machines';
+import { MOVE_CATALOGUE } from './moveCatalogue';
+import { RETIRED_LEARNSETS } from './shippedSpecies';
 import type { PrimaryStatus } from './battle/status';
 import { tidyNickname } from './nickname';
 
@@ -73,21 +75,24 @@ export const computePokemonStats = (baseStats: PokemonStats, level: number): Com
 /**
  * Every move a Pokemon of this species could know, by name: what its whole
  * evolution line learns by levelling **and what that line can be taught from a
- * machine**. It is the one lookup a stored move name is resolved through - the
+ * machine**, and what the line was taught before it learnt FireRed's own
+ * learnsets (`RETIRED_LEARNSETS`). It is the one lookup a stored move name is resolved through - the
  * save loader and `restoreMoveset` both ask it - because a lookup built from
  * learnsets alone has no home for a taught move, and the loader once kept its
  * own copy of exactly that and deleted every TM and HM move on the next load
- * (playtest 21). The whole line, not this species alone, because an Ivysaur
- * that evolved out of this game's Bulbasaur still knows the Super Sonic only
- * Bulbasaur teaches; and no wider than the line, which is what stops a corrupt
- * save handing a Pidgey a Hydro Pump.
+ * (playtest 21). The whole line, not this species alone, because a Metapod
+ * that grew out of a Caterpie still knows the Tackle only Caterpie teaches; and
+ * no wider than the line, which is what stops a corrupt save handing a Pidgey a
+ * Hydro Pump.
  */
 export const knowableMoves = (species: PokemonBase): ReadonlyMap<string, MoveBase> =>
   new Map(
     [species, ...evolutionFamily(species.id)].flatMap((member) =>
-      [...member.learnset.map((entry) => entry.move), ...machineMovesFor(member.id)].map(
-        (move) => [move.name, move] as const,
-      ),
+      [
+        ...member.learnset.map((entry) => entry.move),
+        ...machineMovesFor(member.id),
+        ...(RETIRED_LEARNSETS[member.id] ?? []).flatMap((id) => MOVE_CATALOGUE[id] ?? []),
+      ].map((move) => [move.name, move] as const),
     ),
   );
 

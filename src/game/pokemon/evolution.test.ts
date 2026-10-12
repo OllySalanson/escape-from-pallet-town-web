@@ -9,7 +9,7 @@ import {
   evolutionOnLevel,
   evolvesInto,
 } from './evolution';
-import { RAZOR_LEAF, SUPER_SONIC, THUNDERBOLT, VINE_WHIP } from './moves';
+import { RAZOR_LEAF, TACKLE, THUNDERBOLT } from './moves';
 import { Stash } from '../stash';
 import {
   BULBASAUR,
@@ -268,13 +268,15 @@ describe('evolving on a level', () => {
   });
 
   it('keeps the moves it already knew, including ones only its old species teaches', () => {
-    const starter = new Pokemon(BULBASAUR, 15);
-    expect(starter.moves.map((move) => move.base)).toContain(SUPER_SONIC);
+    // FireRed's Metapod learns Harden and nothing else, so the Tackle a Caterpie
+    // carries into the cocoon is a move only its old species teaches.
+    const caterpie = new Pokemon(getSpeciesById('caterpie')!, 6);
+    expect(caterpie.moves.map((move) => move.base)).toContain(TACKLE);
 
-    starter.gainExperience(experienceTo(starter, 16));
+    caterpie.gainExperience(experienceTo(caterpie, 7));
 
-    expect(starter.moves.map((move) => move.base)).toContain(SUPER_SONIC);
-    expect(starter.moves.map((move) => move.base)).toContain(VINE_WHIP);
+    expect(caterpie.base.id).toBe('metapod');
+    expect(caterpie.moves.map((move) => move.base)).toContain(TACKLE);
   });
 
   it('is not a heal: the damage taken on the way there is still there', () => {
@@ -367,12 +369,12 @@ describe('evolving with a stone', () => {
 
     // Nothing is learned by evolving - that is the games' own rule - so Raichu
     // fights on with what the Pikachu had...
-    // A Pikachu at 20 knows the last four of its own list, Double Team included.
+    // A Pikachu at 20 knows the last four of FireRed's list, Slam included.
     expect(pikachu.moves.map((move) => move.base.name)).toEqual([
-      'Tackle',
-      'Growl',
       'Thunder Wave',
+      'Quick Attack',
       'Double Team',
+      'Slam',
     ]);
     // ...and learns nothing later either, because Raichu's learnset is level 1
     // only. That is the cost of using the stone early, and it is canon.

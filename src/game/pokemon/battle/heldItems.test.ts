@@ -147,7 +147,9 @@ describe('gear in a real fight', () => {
     // an enemy's move is picked by a roll, and a roll can pick a Growl.
     const attacker = new Pokemon(CHARMANDER, 30);
     const hit = attacker.moves.findIndex((move) => move.base.power > 0);
-    const target = new Pokemon(PIDGEY, 5);
+    // Under the Sand-Attack FireRed teaches a Pidgey at 5, so its reply cannot
+    // move the second blow's accuracy roll.
+    const target = new Pokemon(PIDGEY, 4);
     target.giveHeldItem('focus-band');
     const state = createBattleState(attacker, target);
 

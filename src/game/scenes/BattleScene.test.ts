@@ -1019,7 +1019,7 @@ describe('a lost raid resolved inside a battle', () => {
 describe('a level reached in the middle of a trainer battle', () => {
   /**
    * The reported fight, reduced to its moving parts: a Squirtle one knockout
-   * short of level 7 - where it learns Water Gun - against a trainer whose lead
+   * short of level 7 - where it learns Bubble - against a trainer whose lead
    * is on its last point of HP and who has a second Pokemon behind it. Only
    * that second Pokemon keeps the battle alive long enough for the level-up to
    * be looked at; a wild battle ends on the knockout that awards it, which is
@@ -1119,14 +1119,13 @@ describe('a level reached in the middle of a trainer battle', () => {
     const { player } = (scene as unknown as { state: BattleState }).state;
     expect(player.moves.map(({ base, pp }) => `${base.name} ${pp}`)).toEqual([
       // One Tackle spent on the knockout, and nothing else refilled behind it.
-      'Tackle 19',
+      'Tackle 34',
       'Tail Whip 30',
-      'Growl 30',
-      'Water Gun 25',
+      'Bubble 30',
     ]);
 
     readThroughNarration(scene, dialog);
-    expect(dialog.shownMessages).toContain('SQUIRTLE learned WATER GUN!');
+    expect(dialog.shownMessages).toContain('SQUIRTLE learned BUBBLE!');
     const beforeMenu = renderedTexts.length;
     read(renderedTexts).filter(({ text }) => text.includes('FIGHT')).at(-1)?.handlers.pointerdown();
 
@@ -1135,7 +1134,7 @@ describe('a level reached in the middle of a trainer battle', () => {
         .slice(beforeMenu)
         .map(({ text }) => text.trim())
         .filter((text) => /^[▶ ]*[A-Z]/.test(text) && !text.includes('·')),
-    ).toEqual(['▶ TACKLE', 'TAIL WHIP', 'GROWL', 'WATER GUN']);
+    ).toEqual(['▶ TACKLE', 'TAIL WHIP', 'BUBBLE']);
   });
 
   it('carries the HP the higher maximum granted instead of dropping it on the way out', () => {
@@ -1179,7 +1178,7 @@ describe('a level reached in the middle of a trainer battle', () => {
     const { player } = (scene as unknown as { state: BattleState }).state;
     expect(benched.level).toBe(7);
     expect(player.pokemon).toBe(benched);
-    expect(player.moves.map(({ base }) => base.name)).toContain('Water Gun');
+    expect(player.moves.map(({ base }) => base.name)).toContain('Bubble');
   });
 });
 

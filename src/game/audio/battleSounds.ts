@@ -76,6 +76,15 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
     case 'status-damage':
     case 'confusion-self-hit':
       return withLine('statusDamage');
+    // Leech Seed borrows the voices of what it resembles: being seeded is a
+    // status landing, the drain at the end of a turn is a status biting, and a
+    // seed that does not take is a miss - FireRed's own line for it is one.
+    case 'seeded':
+      return withLine('statusApplied');
+    case 'seed-sapped':
+      return withLine('statusDamage');
+    case 'seed-evaded':
+      return withLine('miss');
     case 'status-cured':
       return withLine('heal');
     case 'stat-stage-changed':

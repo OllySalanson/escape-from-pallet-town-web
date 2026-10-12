@@ -182,14 +182,14 @@ describe("a player's map summed up for review", () => {
 
   it('measures fights in a row as a series, so a second one never makes getting through likelier', () => {
     expect(chanceThrough([])).toBe(1);
-    const one = chanceThrough(['netter']);
-    const two = chanceThrough(['netter', 'netter']);
+    const one = chanceThrough(['collier']);
+    const two = chanceThrough(['collier', 'collier']);
     expect(one).toBeGreaterThan(0);
     expect(one).toBeLessThan(1);
     // Played fresh each time, two would be the first squared; carried over,
     // the second fight is met bruised, which is the point of measuring a row.
     expect(two).toBeLessThan(one);
-    expect(chanceThrough(['netter', 'netter', 'netter'])).toBeLessThan(two);
+    expect(chanceThrough(['collier', 'collier', 'collier'])).toBeLessThan(two);
   });
 
   it('is worked out once per version of a map', () => {

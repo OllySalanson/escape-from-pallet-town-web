@@ -77,10 +77,10 @@ describe('the imported roster', () => {
    * - **Everything else** is a stretch of levels where the dropped move was the
    *   only damaging thing in reach. A wild one there is a free catch rather
    *   than a fight.
-   * - **Pikachu from 33** is not the import's doing: the shipped learnset has
-   *   Tackle at 1 and three status moves after it, so the fourth pushes Tackle
-   *   off the end. Canon gives it Thunderbolt at 26 and would fix it, which is
-   *   one of the arguments for adopting the canon learnsets for the seventeen.
+   * - **Butterfree from 18 and Weepinbell from 19** are FireRed's own order:
+   *   four status moves learnt in a row push the one attack out, exactly as
+   *   the cartridge builds a wild one. **Jigglypuff below 9** knows Sing and
+   *   Defense Curl, and FireRed teaches its Pound at 9.
    */
   it('names every species that cannot hurt anything, and at which levels', () => {
     const toothless: string[] = [];
@@ -109,11 +109,13 @@ describe('the imported roster', () => {
     expect(silent).toEqual(['abra', 'gyarados', 'ditto']);
     expect(toothless.sort()).toEqual([
       'bellsprout 19-22',
+      'butterfree 18-27',
       'clefairy 37-44',
       'cubone 1-8',
       'dratini 1-14',
       'ekans 1-7',
       'gloom 18-23',
+      'jigglypuff 1-8',
       'kakuna 1-60',
       'machamp 1-12',
       'machoke 1-12',
@@ -122,7 +124,7 @@ describe('the imported roster', () => {
       'metapod 1-60',
       'mr-mime 1-4',
       'oddish 18-22',
-      'pikachu 33-60',
+      'weepinbell 19-23',
     ]);
   });
 
@@ -258,16 +260,14 @@ describe('what the game decided, against what canon says', () => {
    * The moves this game wrote by hand win over the generated ones, so the
    * places they disagree with FireRed are a decision rather than a drift.
    *
-   * Eleven of them, over six moves, and they are worth reading as a group.
-   * **Tackle** and **Vine Whip** are the two AGENTS.md already records as being
-   * on a later generation's values or on none, and every early fight in the
-   * game has been measured against them. **PP is uniformly shorter** here,
-   * which is a raid game's answer rather than an overworld one. And the three
-   * **accuracies of 100** - Sing, Supersonic and Poison Powder - are the loud
-   * ones: canon pitches all three between 55 and 75, and Bulbasaur's Super
-   * Sonic landing every time is the whole of what makes its level-5 kit
-   * different from the other two starters'. Adopting canon there is a balance
-   * change with measurements, not part of an import.
+   * Six of them, over four moves. Tackle and Vine Whip were two more, on a
+   * later generation's numbers, until the captain ruled on 2026-10-12 that
+   * they match FireRed exactly; they are the import's own rows now. **PP is
+   * shorter** here, which is a raid game's answer rather than an overworld
+   * one, and the three **accuracies of 100** - Sing, Supersonic and Poison
+   * Powder - are the loud ones: canon pitches all three between 55 and 75.
+   * Adopting canon there is a balance change with measurements, not part of
+   * an import.
    */
   it('names every authored move that does not match its own dex entry', () => {
     const differs: string[] = [];
@@ -289,11 +289,6 @@ describe('what the game decided, against what canon says', () => {
       'sing.accuracy: 100 not 55',
       'sing.pp: 20 not 15',
       'supersonic.accuracy: 100 not 55',
-      'tackle.accuracy: 100 not 95',
-      'tackle.power: 40 not 35',
-      'tackle.pp: 20 not 35',
-      'vine-whip.power: 45 not 35',
-      'vine-whip.pp: 20 not 10',
     ]);
   });
 });

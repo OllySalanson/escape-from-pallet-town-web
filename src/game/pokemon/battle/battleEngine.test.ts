@@ -47,6 +47,12 @@ import { getTypeEffectiveness } from './typeChart';
 import { WeatherId } from './weather';
 
 const maximumRandom = (): number => 1;
+/**
+ * The top of the accuracy roll a 95-accuracy move still lands on - FireRed's
+ * Tackle - with no critical hit and a high damage roll. `maximumRandom` misses
+ * every Tackle.
+ */
+const landingRandom = (): number => 0.94;
 
 const typeOrder = [
   PokemonType.Normal,
@@ -196,7 +202,7 @@ describe('damage calculation', () => {
     const bulbasaur = new Pokemon(BULBASAUR, 10);
 
     expect(calculateDamage(charmander, bulbasaur, TACKLE, maximumRandom)).toEqual({
-      damage: 7,
+      damage: 6,
       recoil: 0,
       isStab: false,
       isCritical: false,
@@ -244,7 +250,7 @@ describe('damage calculation', () => {
     const defender = new Pokemon(BULBASAUR, 10);
 
     expect(calculateDamage(new Pokemon(CHARMANDER, 5), defender, TACKLE, maximumRandom).damage).toBe(4);
-    expect(calculateDamage(new Pokemon(CHARMANDER, 20), defender, TACKLE, maximumRandom).damage).toBe(15);
+    expect(calculateDamage(new Pokemon(CHARMANDER, 20), defender, TACKLE, maximumRandom).damage).toBe(13);
   });
 
   it('uses a landed stat-lowering move when calculating subsequent damage', () => {
@@ -341,10 +347,10 @@ describe('battle turn resolution', () => {
     );
     expect(result.state.enemy.currentHp).toBe(bulbasaur.maxHp - 20);
     // Ember leaves Bulbasaur on 4 of 24, which is inside the third that turns
-    // Overgrow on, so the Vine Whip that answers is 1.5x rather than 5 HP. The
+    // Overgrow on, so the Vine Whip that answers is 1.5x what it would be. The
     // pinch ability is exactly this: the last of a Pokemon's health is its
     // most dangerous.
-    expect(result.state.player.currentHp).toBe(charmander.maxHp - 8);
+    expect(result.state.player.currentHp).toBe(charmander.maxHp - 7);
     expect(
       result.events.some((event) => event.type === 'ability' && event.effect === 'powered-up'),
     ).toBe(true);
@@ -362,7 +368,8 @@ describe('battle turn resolution', () => {
 
     expect(ember).toMatchObject({ type: 'used-move', isStab: true });
     // Scratch is Normal on a Fire attacker, so it must not claim the bonus.
-    const scratch = resolveTurn(createBattleState(charmander, new Pokemon(BULBASAUR, 10)), 0, maximumRandom)
+    const scratchIndex = charmander.moves.findIndex((move) => move.base.name === 'Scratch');
+    const scratch = resolveTurn(createBattleState(charmander, new Pokemon(BULBASAUR, 10)), scratchIndex, maximumRandom)
       .events.find((event) => event.type === 'used-move' && event.move === 'Scratch');
     expect(scratch).toMatchObject({ isStab: false });
   });
@@ -374,7 +381,9 @@ describe('battle turn resolution', () => {
   it('reports the HP a finishing hit took rather than the damage it rolled', () => {
     const bulbasaur = new Pokemon(BULBASAUR, 10);
     bulbasaur.takeDamage(bulbasaur.maxHp - 2);
-    const result = resolveTurn(createBattleState(new Pokemon(CHARMANDER, 10), bulbasaur), 0, maximumRandom);
+    const charmander = new Pokemon(CHARMANDER, 10);
+    const scratchIndex = charmander.moves.findIndex((move) => move.base.name === 'Scratch');
+    const result = resolveTurn(createBattleState(charmander, bulbasaur), scratchIndex, maximumRandom);
     const scratch = result.events.find((event) => event.type === 'used-move' && event.move === 'Scratch');
 
     expect(scratch).toMatchObject({ damage: 2 });
@@ -386,7 +395,8 @@ describe('battle turn resolution', () => {
     // "It's super effective!" for a status move that dealt nothing. (It was a
     // Bulbasaur here until Bulbasaur, being part Poison, stopped being one a
     // Poison Powder can poison.)
-    const butterfree = new Pokemon(BUTTERFREE, 12);
+    // FireRed's Butterfree learns Poison Powder at 13.
+    const butterfree = new Pokemon(BUTTERFREE, 13);
     const powderIndex = butterfree.moves.findIndex((move) => move.base === POISON_POWDER);
     const result = resolveTurn(
       createBattleState(butterfree, new Pokemon(getSpeciesById('tangela')!, 10)),
@@ -409,7 +419,8 @@ describe('battle turn resolution', () => {
   it('identifies same-species attack targets and preserves their independent HP deltas', () => {
     const player = new Pokemon(BULBASAUR, 10);
     const enemy = new Pokemon(BULBASAUR, 10);
-    const result = resolveTurn(createBattleState(player, enemy), 2, maximumRandom);
+    const vineWhip = player.moves.findIndex((move) => move.base.name === 'Vine Whip');
+    const result = resolveTurn(createBattleState(player, enemy), vineWhip, maximumRandom);
     const attacks = result.events.filter((event) => event.type === 'used-move');
 
     expect(attacks).toHaveLength(2);
@@ -430,10 +441,10 @@ describe('battle turn resolution', () => {
     const state = {
       ...initialState,
       player: { ...initialState.player, currentHp: 1 },
-      enemy: { ...initialState.enemy, moves: [initialState.enemy.moves[0]] },
+      enemy: { ...initialState.enemy, moves: [{ base: TACKLE, pp: TACKLE.pp }] },
     };
 
-    const result = resolveTurn(state, 0, maximumRandom);
+    const result = resolveTurn(state, 0, landingRandom);
 
     expect(result.state.outcome).toBe('defeat');
     expect(result.state.player.currentHp).toBe(0);
@@ -460,16 +471,18 @@ describe('battle turn resolution', () => {
 
   it('selects only legal enemy moves and decrements PP for each combatant', () => {
     const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    const scratch = state.player.moves.find((move) => move.base.name === 'Scratch')!;
+    const growlIndex = state.enemy.moves.findIndex((move) => move.base.name === 'Growl');
     const constrainedState = {
       ...state,
-      player: { ...state.player, moves: [state.player.moves[0]] },
+      player: { ...state.player, moves: [scratch] },
       enemy: {
         ...state.enemy,
-        moves: state.enemy.moves.map((move, index) => ({ ...move, pp: index === 2 ? 1 : 0 })),
+        moves: state.enemy.moves.map((move, index) => ({ ...move, pp: index === growlIndex ? 1 : 0 })),
       },
     };
 
-    expect(chooseEnemyMove(constrainedState.enemy, maximumRandom)).toBe(2);
+    expect(chooseEnemyMove(constrainedState.enemy, maximumRandom)).toBe(growlIndex);
 
     const result = resolveTurn(constrainedState, 0, maximumRandom);
     expect(result.events).toMatchObject([
@@ -477,8 +490,8 @@ describe('battle turn resolution', () => {
       { type: 'used-move', user: 'enemy', move: 'Growl' },
       { type: 'stat-stage-changed', user: 'player', stat: 'attack', stages: -1 },
     ]);
-    expect(result.state.player.moves[0]?.pp).toBe(state.player.moves[0].pp - 1);
-    expect(result.state.enemy.moves[1]?.pp).toBe(0);
+    expect(result.state.player.moves[0]?.pp).toBe(scratch.pp - 1);
+    expect(result.state.enemy.moves[growlIndex]?.pp).toBe(0);
   });
 
   it('resolves the faster combatant first for a fixed speed pair', () => {
@@ -961,7 +974,7 @@ describe('trainer battles', () => {
       enemy: { ...initial.enemy, moves: [{ base: TACKLE, pp: TACKLE.pp }] },
     };
 
-    expect(resolveEnemyTurn(state, maximumRandom).state.outcome).toBe('defeat');
+    expect(resolveEnemyTurn(state, landingRandom).state.outcome).toBe('defeat');
   });
 });
 
@@ -975,7 +988,7 @@ describe('first-starter battle fairness', () => {
 
     let state = createBattleState(player, opponent);
     for (let turn = 0; turn < 20 && state.outcome === 'active'; turn += 1) {
-      state = resolveTurn(state, tackleIndex, maximumRandom).state;
+      state = resolveTurn(state, tackleIndex, landingRandom).state;
     }
 
     expect(state.outcome).toBe('victory');
@@ -1208,7 +1221,7 @@ describe('status conditions', () => {
 });
 
 describe('a combatant refreshed after a level-up', () => {
-  /** A Squirtle on the far side of level 7, where it learns Water Gun. */
+  /** A Squirtle on the far side of level 7, where it learns Bubble. */
   const levelledSquirtle = () => {
     const squirtle = new Pokemon(SQUIRTLE, 6);
     const combatant = createBattleState(squirtle, new Pokemon(PIDGEY, 5)).player;
@@ -1229,8 +1242,7 @@ describe('a combatant refreshed after a level-up', () => {
     expect(refreshed.moves.map(({ base, pp }) => `${base.name} ${pp}`)).toEqual([
       'Tackle 3',
       'Tail Whip 30',
-      'Growl 30',
-      'Water Gun 25',
+      'Bubble 30',
     ]);
   });
 
@@ -1276,11 +1288,7 @@ describe('a combatant refreshed after a level-up', () => {
 
     const refreshed = refreshCombatantAfterLevelUp(combatant, previousMaxHp);
 
-    expect(refreshed.moves.map(({ base }) => base.name)).toEqual([
-      'Tail Whip',
-      'Growl',
-      'Water Gun',
-    ]);
+    expect(refreshed.moves.map(({ base }) => base.name)).toEqual(['Tail Whip', 'Bubble']);
   });
 });
 

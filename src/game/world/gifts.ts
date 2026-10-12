@@ -49,19 +49,23 @@ export interface PokemonGift {
  * is the one the place is about - a Pikachu wants current, and there is none
  * left here.
  *
- * It is a level 4, a level under the starter the player chose, on purpose: at
- * that level it knows Tackle and Growl and no signature move (`starterIdentity`
- * holds that nothing tells the starters apart but their kit, and a gift that
- * outclasses one breaks the opening). `gifts.test.ts` holds it under every
- * starter. Its worth is a second body, and an Electric one against the wild
- * Flying types, not a stronger first one.
+ * It is a level 2, three under the starter the player chose, on purpose: a gift
+ * that outclasses the starter breaks the opening (`starterIdentity` holds that
+ * nothing tells the starters apart but their kit). FireRed's Pikachu knows
+ * Thunder Shock from level 1, so no level keeps a typed attack out of its kit -
+ * it was a level 4 with Tackle and Growl until every species took FireRed's own
+ * learnset (the captain, 2026-10-11), and a FireRed one at 4 won 90% of the
+ * Floodplain's wild fights against a starter's 75-82%, and 82% at 3. At 2 it
+ * wins 70%, less than every starter, and `gifts.test.ts` holds that
+ * measurement rather than a list of moves. Its worth is a second body, and an
+ * Electric one against the wild Flying types, not a stronger first one.
  */
 export const REEDBEDS_PIKACHU: PokemonGift = {
   id: 'reedbeds-pikachu',
   giverId: 'reedbeds-night-operator',
   mapId: 'floodplain-relay',
   speciesId: 'pikachu',
-  level: 4,
+  level: 2,
   offer: [
     'Nan Pell. Night operator, Reedbeds relay. Forty years on this line, and the line is dead.',
     'There is something in the battery cupboard that has not slept since the flood took the mains. It just stands at the window and watches the pylons.',

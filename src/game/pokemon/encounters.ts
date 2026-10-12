@@ -503,6 +503,22 @@ export const FOREST_BEECH_WILDLIFE = wildlife(0.09, [
   { speciesId: 'clefairy', minLevel: 8, maxLevel: 10, weight: 1 },
 ]);
 
+/**
+ * The beeches after dark. The night's own rule gives the Caterpie's slot to an
+ * Oddish, as it does in the allotments, and here that left an Oddish in five
+ * rolls of eight beside a Butterfree that knows Confusion: a level-8 Squirtle
+ * won 10% over the real engine, under the forest's floor. Venonat take the
+ * caterpillars' slot instead - Crystal's other answer for a Caterpie by night,
+ * as in the allotments - and the Squirtle is back on 26%, the Oddish keeping
+ * the share they have by day.
+ */
+export const FOREST_BEECH_NIGHT_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'venonat', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'butterfree', minLevel: 9, maxLevel: 10, weight: 2 },
+  { speciesId: 'oddish', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'clefairy', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
 // -- Floodplain Relay -------------------------------------------------------
 
 /** The reeds: the first ground a new player walks, so at or under the partner. */
@@ -530,10 +546,16 @@ export const FLOODPLAIN_VAULT_WILDLIFE = wildlife(0.09, [
   // and 77% to 47% for Charmander, which took this table - on the map a fresh
   // save starts on - under the floor `districtEncounters.test.ts` holds the
   // starting maps to. Capping it at four is the composition answer rather than
-  // a quieter ability: it is the same Pikachu the hunter brings and it should
-  // be the same fight.
-  { speciesId: 'pikachu', minLevel: 4, maxLevel: 4, weight: 3 },
-  { speciesId: 'rattata', minLevel: 4, maxLevel: 5, weight: 2 },
+  // a quieter ability.
+  //
+  // Then every Pikachu took FireRed's own learnset, which teaches Thunder Shock
+  // at level 1, and a level-5 Squirtle won 43% here - under the floor again,
+  // and a Water starter's lottery on the first map. A level-3 Pikachu, met
+  // less often than the Rattata, puts the three starters on 55/73/54%
+  // (Bulbasaur/Charmander/Squirtle): still the hardest grass on the map, and
+  // still a Pikachu worth catching.
+  { speciesId: 'pikachu', minLevel: 3, maxLevel: 3, weight: 2 },
+  { speciesId: 'rattata', minLevel: 4, maxLevel: 5, weight: 3 },
   { speciesId: 'magnemite', minLevel: 4, maxLevel: 5, weight: 2 },
   { speciesId: 'spearow', minLevel: 4, maxLevel: 5, weight: 2 },
   { speciesId: 'butterfree', minLevel: 6, maxLevel: 6, weight: 1 },

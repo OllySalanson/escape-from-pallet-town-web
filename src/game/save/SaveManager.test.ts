@@ -840,6 +840,7 @@ describe('SaveManager', () => {
     const stash = new Stash();
     stash.addPokemon(new Pokemon(BULBASAUR, 15), 'bulbasaur-1');
     stash.addPokemon(new Pokemon(PIKACHU, 12), 'pikachu-1');
+    const knewBefore = stash.listPokemon()[0].pokemon.moves.map((move) => move.base.name);
     saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
 
     const settlement = {
@@ -870,8 +871,8 @@ describe('SaveManager', () => {
       ['bulbasaur-1', 'ivysaur', 16],
       ['pikachu-1', 'raichu', 12],
     ]);
-    // And the moves only the pre-evolution ever teaches came home with it.
-    expect(banked[0].pokemon.moves.map((move) => move.base.name)).toContain('Super Sonic');
+    // And every move the Bulbasaur knew came home with the Ivysaur.
+    expect(banked[0].pokemon.moves.map((move) => move.base.name)).toEqual(expect.arrayContaining(knewBefore));
   });
 
   it('evolves exactly once on a replayed settlement, and never the wrong way', () => {

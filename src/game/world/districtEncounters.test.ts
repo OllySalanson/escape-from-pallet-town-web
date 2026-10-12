@@ -143,14 +143,14 @@ describe('wildlife authored per place', () => {
   });
 
   /**
-   * Nothing but a starter's kit tells the three apart before level 7, and the
-   * signature move is what makes the choice loud. That needs a target in what
-   * a raid on the map can meet. The wild pool is seven species, and only one of
-   * them is weak to each of Grass and Water (Squirtle and Charmander), so a
-   * per-place guarantee would put both in every place; it is held per map, and
-   * gets stricter as the rest of the 151 arrive.
+   * Nothing but a starter's kit tells the three apart before its first attack
+   * of its own type, and that attack is what makes the choice loud - FireRed
+   * teaches Ember and Bubble at 7 and Vine Whip at 10, so it is asked at 10.
+   * That needs a target in what a raid on the map can meet. It is held per map
+   * rather than per place, because a per-place guarantee would put something
+   * weak to each of Grass, Fire and Water in every place.
    */
-  it.each(HOURS)('gives each level-7 signature move a target somewhere on every map, $hour', ({ night }) => {
+  it.each(HOURS)('gives each signature attack a target somewhere on every map, $hour', ({ night }) => {
     const signatures: [typeof BULBASAUR, PokemonType][] = [
       [BULBASAUR, PokemonType.Grass],
       [CHARMANDER, PokemonType.Fire],
@@ -161,7 +161,7 @@ describe('wildlife authored per place', () => {
         table.entries.map((entry) => getSpeciesById(entry.speciesId)!),
       );
       for (const [starter, type] of signatures) {
-        const learned = new Pokemon(starter, 7).moves.map((move) => move.base);
+        const learned = new Pokemon(starter, 10).moves.map((move) => move.base);
         expect(learned.some((move) => move.type === type && move.category !== MoveCategory.Status)).toBe(true);
         expect(
           wild.some(

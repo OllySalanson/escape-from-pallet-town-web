@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
-import { MoveCategory } from '../pokemon/MoveBase';
 import { RunManager } from '../run/RunManager';
 import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from '../save/SaveManager';
 import { Stash } from '../stash';
@@ -14,6 +13,8 @@ import {
   REEDBEDS_PIKACHU,
 } from './gifts';
 import { getCharacterDesign } from './characterDesigns';
+import { districtsForMap } from './districts';
+import { measureTable } from './encounterMeasure';
 import { WORLD_ENTITIES } from './npcs';
 
 class MemoryStorage {
@@ -121,10 +122,25 @@ describe('a gift does not outclass the starter choice', () => {
     }
   });
 
-  it('brings no move a starter does not have, and no typed one before level 7', () => {
-    const damaging = gift.moves.filter((move) => move.base.category !== MoveCategory.Status);
-    expect(damaging.map((move) => move.base.name)).toEqual(['Tackle']);
-    expect(gift.moves.map((move) => move.base.name).sort()).toEqual(['Growl', 'Tackle']);
+  /**
+   * Measured, not listed: a FireRed Pikachu knows Thunder Shock from level 1,
+   * so no level keeps a typed attack out of its kit, and what has to hold is
+   * that it does not win more than the starters do. Taken over every place on
+   * the map it is given on, it wins less often than every starter at the level
+   * they are chosen - 70% at level 2, where a level 3 is 82% and a level 4
+   * 90% against the starters' 75-82%.
+   */
+  it('wins less of the map it is given on than any starter', () => {
+    const places = districtsForMap(REEDBEDS_PIKACHU.mapId).filter((entry) => entry.encounters);
+    const mean = (speciesId: string, level: number): number =>
+      places.reduce(
+        (total, place) => total + measureTable(place.encounters!, speciesId, level, 60, place.weather ?? null).winRate,
+        0,
+      ) / places.length;
+    const gifted = mean(REEDBEDS_PIKACHU.speciesId, REEDBEDS_PIKACHU.level);
+    for (const species of STARTERS) {
+      expect(gifted, species.name).toBeLessThan(mean(species.id, STARTER_LEVEL));
+    }
   });
 
   it('is a fresh Pokemon on every hand-over', () => {

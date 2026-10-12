@@ -9,8 +9,8 @@ play, and what a species does instead.
 
 ## Moves
 
-The 151 learn **273** distinct moves by levelling. **187** of them are in
-`src/game/pokemon/generated/moveCatalogue.ts`; the other **86** are not, because
+The 151 learn **273** distinct moves by levelling. **188** of them are in
+`src/game/pokemon/generated/moveCatalogue.ts`; the other **85** are not, because
 nothing in `MoveBase` can say what they do.
 
 **A move that is not in the catalogue is simply not learned.** It is left out of
@@ -23,13 +23,13 @@ species can still field a damaging move at every level it can be met at.
 
 Aromatherapy, Baton Pass, Belly Drum, Block, Camouflage, Charge, Conversion, Conversion 2, Curse, Destiny Bond, Detect, Disable, Encore, Endure, Focus Energy, Follow Me, Future Sight, Grudge, Helping Hand, Imprison, Lock-On, Mean Look, Memento, Metronome, Mimic, Mind Reader, Mirror Move, Protect, Psych Up, Recycle, Refresh, Rest, Roar, Role Play, Sleep Talk, Spite, Stockpile, Substitute, Swallow, Teleport, Transform, Trick, Whirlwind.
 
-### volatile status (13)
-
-Bind, Clamp, Fire Spin, Foresight, Ingrain, Leech Seed, Nightmare, Odor Sleuth, Perish Song, Sand Tomb, Tri Attack, Wrap, Yawn.
-
 ### damage formula of its own (13)
 
 Counter, Dragon Rage, Endeavor, Flail, Low Kick, Magnitude, Mirror Coat, Night Shade, Reversal, Seismic Toss, Sonic Boom, Spit Up, Super Fang.
+
+### volatile status (12)
+
+Bind, Clamp, Fire Spin, Foresight, Ingrain, Nightmare, Odor Sleuth, Perish Song, Sand Tomb, Tri Attack, Wrap, Yawn.
 
 ### field or side effect (8)
 

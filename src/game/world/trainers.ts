@@ -19,6 +19,7 @@ const MEOWTH = getSpeciesById('meowth')!;
 const SPEAROW = getSpeciesById('spearow')!;
 const RATTATA = getSpeciesById('rattata')!;
 const DIGLETT = getSpeciesById('diglett')!;
+const SHELLDER = getSpeciesById('shellder')!;
 
 export interface RunTrainerEncounter extends TrainerWatch {
   readonly mapId: WorldMapId;
@@ -166,6 +167,35 @@ const createTrainer = (
 ): TrainerBattle => ({ id, name, party, defeatText, unitCount });
 
 /**
+ * What every toll is held to: a trainer who holds no gate stands up again every
+ * raid and is paid in supplies, so **every starter has to be able to pay it**.
+ * Measured over the real engine (`tools/trainers/tolls.mts`, held by
+ * `tolls.test.ts`): each starter alone, at the level the toll is met at, with
+ * the three Potions a raid carries, in the weather of the toll's own tile, wins
+ * at least `floor` of the time, and no starter is more than `spread` behind
+ * another. A toll is cheaper for whoever has the matchup - that is what a
+ * matchup is - but it may never be a starter lottery.
+ *
+ * The tolls on the three small maps and in Viridian City are met at level 8,
+ * once the first contract is banked; the forest's are deeper and met at 10.
+ * Raider Maya is the one toll on the first road and is met at level 5, so she
+ * is held to her own numbers in `floodplainCheckpoint.test.ts` instead.
+ *
+ * The band was set when every species took FireRed's own learnset (the
+ * captain, 2026-10-11), which left a Bulbasaur with nothing typed before Vine
+ * Whip at 10 and a Squirtle with nothing but a 20-power Bubble before Water Gun
+ * at 13, against a Charmander with Ember from 7.
+ */
+export const TOLL_BAND = {
+  floor: 0.6,
+  spread: 0.35,
+  potions: 3,
+  levelOn: (mapId: WorldMapId): number => (mapId === 'viridian-forest' ? 10 : 8),
+  /** The tolls held to numbers of their own rather than to the band. */
+  heldElsewhere: ['floodplain-checkpoint-maya'] as readonly string[],
+} as const;
+
+/**
  * These encounters are created for each WorldScene so defeated trainers and
  * battle-only Pokemon state never leak between raids.
  */
@@ -209,52 +239,48 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // Fire starter and 24% for the Grass one against 100% for the Water one -
       // which is a starter lottery on the first road of the game.
       //
-      // Pidgey 3 and Pikachu 4 is the same two species at the level the reeds
-      // around them hold, measured over the real engine at the level a player
-      // actually arrives at, in the rain this place has (`trainerMeasure.ts`,
-      // 400 trials, Potions drunk out of the pack exactly as `battleItems.ts`
-      // charges them - a turn each). At level 5 on full HP with the loadout's
-      // three Potions a starter wins 84/92/86% (Charmander/Squirtle/Bulbasaur);
-      // walking in at 60% health 65/76/68%; with an empty pack 8/10/10%. By
-      // level 6 it is 93/94/93% and by level 7 one Potion is the whole price. So the fight is decided by the condition you arrive in and
-      // the supplies you are willing to spend on it - both of them things a
-      // player chooses - and not by the 6.25% critical roll that decided it when
-      // one hit was a third of the bar.
+      // Two of the reeds' own Pidgey, at the levels the reeds hold them,
+      // measured over the real engine at the level a player actually arrives
+      // at, in the rain this place has (`trainerMeasure.ts`, 400 trials,
+      // Potions drunk out of the pack exactly as `battleItems.ts` charges them
+      // - a turn each). Both know Tackle and nothing else - FireRed's Pidgey
+      // learns Sand-Attack at 5 and both stand under it - so there is no type
+      // in this fight at all and no starter can have been tuned to. At level 5
+      // on full HP with the loadout's three Potions a starter wins 72/84/90%
+      // (Bulbasaur/Charmander/Squirtle); walking in at 60% health 40/66/69%;
+      // with an empty pack 4/16/4%. By level 6 it is 92/94/92% and by level 7
+      // one Potion is the whole price. So the fight is decided by the
+      // condition you arrive in and the supplies you are willing to spend on
+      // it - both of them things a player chooses - and not by the 6.25%
+      // critical roll that decided it when one hit was a third of the bar.
+      //
+      // She fielded a Pikachu behind the Pidgey until every species took
+      // FireRed's own learnset (the captain, 2026-10-11): a FireRed Pikachu
+      // knows Thunder Shock from level 1, and a level-5 Squirtle with the pack
+      // beat her 2% of the time against a Bulbasaur's 89% - a starter lottery
+      // on the first road of the game.
       //
       // It is fought in rain, because THE REEDBEDS is one of the three rain
-      // districts (`districts.ts`), and that is measured too: rain is inert
-      // while nobody has a typed move, and from level 7 it halves the Fire
-      // starter's Ember, so bare the road comes free for a Charmander a level
-      // after the other two. `floodplainCheckpoint.test.ts` reads the weather
-      // off her own tile rather than naming it.
+      // districts (`districts.ts`): rain is inert while nobody has a typed
+      // move, and from level 7 it halves the Fire starter's Ember.
+      // `floodplainCheckpoint.test.ts` reads the weather off her own tile
+      // rather than naming it.
       //
-      // Pidgey leads and Pikachu anchors, which is the other half of the tuning.
-      // Pikachu is the only one of the two carrying Growl, and the enemy picks
-      // uniformly at random among its moves, so leading with it drops the
-      // player's Attack early and keeps it down for the whole fight - the same
-      // party in the other order wins 38/40/33%. The Pidgey is the teaching
-      // fight's own Pidgey at its own level: the opening battle is one of them,
-      // and the checkpoint is that Pidgey with something behind it.
-      //
-      // Re-measured on 2026-10-06, once the battle rules were FireRed's: these
-      // numbers were first taken while her Pikachu still attacked in the turn
-      // her Pidgey fell, a free hit that every fresh starter paid. Without it a
-      // bare level-5 Charmander won 37% and the road was nearly free; the
-      // Pikachu a level up (4 to 5) puts every line above back where it was.
-      [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 5)],
+      // The lead is the teaching fight's own species: the opening battle is
+      // one Pidgey, and the checkpoint is that Pidgey with another behind it.
+      [new Pokemon(PIDGEY, 3), new Pokemon(PIDGEY, 4)],
       'The checkpoint is open. Move before the hunter closes in.',
     ),
     // The first contract meets her a little softer, which is the captain's
     // answer (2026-10-12) to a new player wiping at her on their first raids:
-    // the same two, her Pikachu a level down. A fresh level-5 starter arriving
-    // healthy with the pack wins 88/95/87% (Charmander/Squirtle/Bulbasaur,
-    // against 84/92/86% above), at 60% health 75/80/75%, bare 25/15/12% - still
-    // a price, paid in supplies. Played as the raid plays it, after the
-    // teaching Pidgey and the reeds, the first raid's Maya went from 56/72/60%
-    // to 72/80/67% with no reed fight on the way and from 32/56/41% to
-    // 41/62/48% with one (`tools/encounters/firstRaid.mts`). Every later raid
-    // meets the party above, and by then the player is level 6 or more.
-    firstContractParty: [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 4)],
+    // the same two, her lead a level down, at the teaching Pidgey's own level.
+    // A fresh level-5 starter arriving healthy with the pack wins 91/90/95%
+    // (Bulbasaur/Charmander/Squirtle, against 72/84/90% above), at 60% health
+    // 85/88/91%, bare 6/32/7% - still a price, paid in supplies. What the
+    // whole first raid costs, the reeds included, is
+    // `tools/encounters/firstRaid.mts`. Every later raid meets the party above,
+    // and by then the player is level 6 or more.
+    firstContractParty: [new Pokemon(PIDGEY, 2), new Pokemon(PIDGEY, 4)],
   },
   // The Floodplain's three doors, and who holds each. One fight opens two: the
   // door in front of the player, and a second somewhere they have already been,
@@ -309,7 +335,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'floodplain-sluice-keeper-dane',
       'SLUICE KEEPER DANE',
-      [new Pokemon(SQUIRTLE, 10), new Pokemon(JIGGLYPUFF, 10), new Pokemon(PIKACHU, 12)],
+      // Re-measured once every species fought with FireRed's own learnset and
+      // Tackle with FireRed's own numbers (the captain, 2026-10-11): the party
+      // was an 83% rung, a rung easier than Gatekeeper Ross before him -
+      // FireRed's Tackle is 35 and misses one time in twenty, and every one of
+      // his three throws it. His Squirtle two levels up puts it at 71%
+      // (`trainerLadder.test.ts`), with a lone Charmander 14 on 43%.
+      [new Pokemon(SQUIRTLE, 12), new Pokemon(JIGGLYPUFF, 10), new Pokemon(PIKACHU, 12)],
       'Gate is open. I am letting the sluice go too - watch the river by the Landing.',
     ),
   },
@@ -448,7 +480,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'floodplain-levels-lengthsman-quill',
       'LENGTHSMAN QUILL',
-      [new Pokemon(getSpeciesById('bellsprout')!, 7), new Pokemon(getSpeciesById('venonat')!, 8)],
+      // A toll, so held to the toll band (see `TOLL_BAND` below): Bellsprout
+      // 7 and Venonat 8 cost a level-8 starter with the pack 96/100/37%
+      // (Bulbasaur/Charmander/Squirtle) once every species fought with
+      // FireRed's own learnset - a Bellsprout's Vine Whip is twice over on a
+      // Squirtle that has nothing but Tackle and Bubble until 13. The fen's own
+      // Psyduck in its place, behind the Venonat, is 86/95/80%.
+      [new Pokemon(getSpeciesById('venonat')!, 7), new Pokemon(PSYDUCK, 8)],
       'Road is yours. Mind the drains - they are deeper than they look.',
     ),
   },
@@ -515,7 +553,15 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // it was. Without it this party was an 89% rung and a lone Charmander 14
       // won 77%, over the band; the Squirtle a level up (9 to 10) puts it at
       // 81% with the Charmander on 61% (`trainerLadder.test.ts`).
-      [new Pokemon(JIGGLYPUFF, 9), new Pokemon(SQUIRTLE, 10), new Pokemon(BUTTERFREE, 11)],
+      //
+      // Re-measured once every species fought with FireRed's own learnset (the
+      // captain, 2026-10-11): FireRed's Butterfree knows Confusion from the
+      // moment it evolves, which took a Bulbasaur 14 to nil against this mill
+      // and the door to a 53% rung - a starter lottery, and harder than Salter
+      // Cobb behind it. The mill's own rats instead: a Rattata 11 makes it a
+      // 73% rung, with the starters at 14 on 53/72/93% (Charmander/Squirtle/
+      // Bulbasaur) and the team on 74%.
+      [new Pokemon(JIGGLYPUFF, 9), new Pokemon(SQUIRTLE, 10), new Pokemon(RATTATA, 11)],
       'Towpath is yours, head and foot. Mind the stair - it is a long drop and a short way home.',
     ),
   },
@@ -532,7 +578,11 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'pallet-quarry-breaker-finn',
       'BREAKER FINN',
-      [new Pokemon(DIGLETT, 7), new Pokemon(RATTATA, 8)],
+      // Held to the toll band (`TOLL_BAND`): a Rattata of 8 knows FireRed's
+      // Quick Attack, and against Bulbasaur's and Squirtle's FireRed kits it
+      // was 27/78/27% (Bulbasaur/Charmander/Squirtle, level 8, the pack). At
+      // 6, under its Quick Attack, it is 72/97/75%.
+      [new Pokemon(DIGLETT, 7), new Pokemon(RATTATA, 6)],
       'Level is yours. Mind the pit - it is deeper than it looks.',
     ),
   },
@@ -548,7 +598,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'pallet-drover-ash',
       'DROVER ASH',
-      [new Pokemon(MEOWTH, 7), new Pokemon(JIGGLYPUFF, 8)],
+      // FireRed's Jigglypuff learns nothing that hurts before Pound at 9, so
+      // a Jigglypuff 8 is a Pokemon that can only sing - `trainers.test.ts`
+      // refuses one. At 9 it leads, because as the anchor it outlasts a
+      // Squirtle that is fighting with Tackle (14% for that Squirtle), and the
+      // Meowth behind it at 5 keeps the toll in the band (`TOLL_BAND`):
+      // 88/96/61% (Bulbasaur/Charmander/Squirtle, level 8, the pack).
+      [new Pokemon(JIGGLYPUFF, 9), new Pokemon(MEOWTH, 5)],
       'Go on down. The salter will not be so soft.',
     ),
   },
@@ -563,7 +619,12 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'pallet-netter-pike',
       'NETTER PIKE',
-      [new Pokemon(KRABBY, 8), new Pokemon(SPEAROW, 8)],
+      // Held to the toll band (`TOLL_BAND`): his Spearow's Peck is twice over
+      // on a Bulbasaur, and with FireRed's kits a level-8 starter with the
+      // pack won 16/59/22% (Bulbasaur/Charmander/Squirtle). A Shellder out of
+      // the nets instead - at 7, under the Icicle Spear FireRed teaches it at
+      // 8 - is 100/89/99%: the Krabby is the price, and it is Charmander's.
+      [new Pokemon(SHELLDER, 7), new Pokemon(KRABBY, 8)],
       'Tide is out and so am I. Deck is yours till the boat comes.',
     ),
   },
@@ -617,7 +678,12 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'route-lass-june',
       'LASS JUNE',
-      [new Pokemon(JIGGLYPUFF, 7), new Pokemon(PIDGEY, 7)],
+      // FireRed's Jigglypuff learns nothing that hurts before Pound at 9, so
+      // a Jigglypuff 7 is a Pokemon that can only sing - `trainers.test.ts`
+      // refuses one. At 9, with the Pidgey a level down, the toll is in the
+      // band (`TOLL_BAND`): 87/96/64% (Bulbasaur/Charmander/Squirtle, level 8,
+      // the pack).
+      [new Pokemon(JIGGLYPUFF, 9), new Pokemon(PIDGEY, 6)],
       'You earned your way past me. Keep moving!',
     ),
   },
@@ -666,7 +732,12 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'route-orchardist-nell',
       'ORCHARDIST NELL',
-      [new Pokemon(getSpeciesById('oddish')!, 7), new Pokemon(getSpeciesById('meowth')!, 8)],
+      // Held to the toll band (`TOLL_BAND`): an Oddish drains a Squirtle that
+      // has nothing but Tackle and a resisted Bubble, and with FireRed's kits
+      // a level-8 starter with the pack won 93/97/29% (Bulbasaur/Charmander/
+      // Squirtle). The orchard's other pest, a Caterpie off the trees, is
+      // 90/98/87%.
+      [new Pokemon(getSpeciesById('caterpie')!, 7), new Pokemon(MEOWTH, 8)],
       'Go on then. Mind the gates on your way down.',
     ),
   },
@@ -687,7 +758,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'route-drover-gil',
       'DROVER GIL',
-      [new Pokemon(getSpeciesById('spearow')!, 7), new Pokemon(getSpeciesById('rattata')!, 8)],
+      // Held to the toll band (`TOLL_BAND`): his Spearow's Peck is twice over
+      // on a Bulbasaur and his Rattata of 8 knows Quick Attack, and with
+      // FireRed's kits a level-8 starter with the pack won 2/79/2%
+      // (Bulbasaur/Charmander/Squirtle) - it was already 18/77/65% before
+      // them. Route 1's own Rattata and Pidgey at 6, under Quick Attack and
+      // over nothing typed, are 74/100/74%.
+      [new Pokemon(RATTATA, 6), new Pokemon(PIDGEY, 6)],
       'Paid in full. Watch the bank, it gives.',
     ),
   },
@@ -703,7 +780,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'route-collier-osk',
       'COLLIER OSK',
-      [new Pokemon(getSpeciesById('vulpix')!, 7), new Pokemon(getSpeciesById('diglett')!, 8)],
+      // Held to the toll band (`TOLL_BAND`): a Vulpix's Ember is twice over
+      // on a Bulbasaur, and with FireRed's kits a level-8 starter with the
+      // pack won 18/98/100% (Bulbasaur/Charmander/Squirtle). The burn keeps
+      // its Vulpix - it is why the Fire Stone is here - two levels down, and
+      // the Diglett three: 67/100/100%, the one toll that is a type matchup
+      // and the reason the band allows a spread of 35.
+      [new Pokemon(getSpeciesById('vulpix')!, 5), new Pokemon(DIGLETT, 5)],
       'Road out is east, in the rock. Draw the kiln first or it stays shut.',
     ),
   },
@@ -724,7 +807,14 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'forest-warden-ivy',
       'BUG CATCHER IVY',
-      [new Pokemon(PIDGEY, 9), new Pokemon(BUTTERFREE, 10)],
+      //
+      // Her bugs are bugs. She fielded a Pidgey 9 and a Butterfree 10, and once
+      // both fought with FireRed's own moves - Gust at 9, Confusion on
+      // evolving - a level-10 starter with the pack won 0/80/0%
+      // (Bulbasaur/Charmander/Squirtle): the two Flying types take a Bulbasaur
+      // to nil and the Confusion a Squirtle. A Paras and a Weedle off the
+      // forest floor are 96/100/94% (`TOLL_BAND`).
+      [new Pokemon(getSpeciesById('paras')!, 10), new Pokemon(getSpeciesById('weedle')!, 11)],
       'The coastal trail is clear. Do not waste your second chance.',
     ),
   },
@@ -790,7 +880,11 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'forest-drive-carter-dill',
       'CARTER DILL',
-      [new Pokemon(getSpeciesById('spearow')!, 9), new Pokemon(getSpeciesById('meowth')!, 9)],
+      // Held to the toll band (`TOLL_BAND`), at the level a raid meets the
+      // forest's tolls: his Spearow's Peck is twice over on a Bulbasaur, and
+      // with FireRed's kits a level-10 starter with the pack won 41/92/18%
+      // (Bulbasaur/Charmander/Squirtle). The Spearow at 6 is 71/96/91%.
+      [new Pokemon(SPEAROW, 6), new Pokemon(MEOWTH, 9)],
       'Road is yours today. Mind the kilns - the collier is not so friendly.',
     ),
   },
@@ -811,7 +905,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'forest-blowdown-forager-nell',
       'FORAGER NELL',
-      [new Pokemon(getSpeciesById('paras')!, 9), new Pokemon(getSpeciesById('venonat')!, 10)],
+      // Held to the toll band (`TOLL_BAND`): with FireRed's kits a level-10
+      // starter with the pack won 86/97/59% (Bulbasaur/Charmander/Squirtle);
+      // the Venonat a level down is 92/97/80%.
+      [new Pokemon(getSpeciesById('paras')!, 9), new Pokemon(getSpeciesById('venonat')!, 9)],
       'Take the logs slowly. The quarryman does not take anything slowly.',
     ),
   },
@@ -930,7 +1027,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'viridian-camper-liam',
       'CAMPER LIAM',
-      [new Pokemon(getSpeciesById('mankey')!, 6), new Pokemon(RATTATA, 7)],
+      // Held to the toll band (`TOLL_BAND`): his Rattata of 7 knows FireRed's
+      // Quick Attack, and with FireRed's kits a level-8 starter with the pack
+      // won 17/89/18% (Bulbasaur/Charmander/Squirtle). At 5 it is 82/100/91%.
+      [new Pokemon(getSpeciesById('mankey')!, 6), new Pokemon(RATTATA, 5)],
       'Okay, okay. The keeper at the top is a lot tougher than me.',
     ),
   },
@@ -949,7 +1049,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'viridian-lass-ada',
       'LASS ADA',
-      [new Pokemon(PIDGEY, 7), new Pokemon(RATTATA, 6)],
+      // Held to the toll band (`TOLL_BAND`): with FireRed's kits a level-8
+      // starter with the pack won 72/96/51% (Bulbasaur/Charmander/Squirtle);
+      // the Rattata a level down is 89/99/82%.
+      [new Pokemon(PIDGEY, 7), new Pokemon(RATTATA, 5)],
       'Fine, go on up. The Center is right in the middle of town.',
     ),
   },

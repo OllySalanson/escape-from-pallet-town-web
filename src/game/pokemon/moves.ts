@@ -2,17 +2,18 @@ import { MoveBase, MoveCategory, MoveCharge, MoveFlag, MoveTarget } from './Move
 import { PrimaryStatus } from './battle/status';
 import { PokemonType } from './PokemonType';
 import { WeatherId } from './battle/weather';
+import { GENERATED_MOVES } from './generated/moveCatalogue';
 
-export const TACKLE = new MoveBase({
-  name: 'Tackle',
-  description: 'A plain body slam. No side effect.',
-  type: PokemonType.Normal,
-  power: 40,
-  accuracy: 100,
-  pp: 20,
-  category: MoveCategory.Physical,
-  flags: [MoveFlag.Contact],
-});
+/**
+ * Tackle and Vine Whip are FireRed's own rows from the import (35/95/35 and
+ * 35/100/10), not numbers written here. They were the two shipped moves on a
+ * later generation's values - Tackle 40/100 and Vine Whip 45 - kept because
+ * every early fight had been measured against them, until the captain ruled on
+ * 2026-10-11 that they match FireRed exactly. Named here because the battle
+ * tests and the engine reach for them by name; `moveCatalogue.ts` sees the same
+ * object the generator wrote, so there is nothing to override.
+ */
+export const TACKLE = GENERATED_MOVES.tackle;
 
 /**
  * What a Pokemon does when it has no PP left in any move: FireRed's
@@ -115,16 +116,7 @@ export const WATER_GUN = new MoveBase({
   category: MoveCategory.Special,
 });
 
-export const VINE_WHIP = new MoveBase({
-  name: 'Vine Whip',
-  description: 'A lash of vines. No side effect.',
-  type: PokemonType.Grass,
-  power: 45,
-  accuracy: 100,
-  pp: 20,
-  category: MoveCategory.Special,
-  flags: [MoveFlag.Contact],
-});
+export const VINE_WHIP = GENERATED_MOVES['vine-whip'];
 
 export const POISON_POWDER = new MoveBase({
   name: 'Poison Powder',
@@ -189,12 +181,9 @@ export const THUNDER_WAVE = new MoveBase({
 // already do, Vine Whip and Ember both being Special here and physical in the
 // modern games.
 //
-// The shipped moves above are Unity's, and two of them are on modern numbers
-// rather than Gen III's: Tackle is 40/100 where Gen III is 35/95, and Vine Whip
-// is 45 power where Gen III is 35. They are left alone - Tackle is the opening
-// move of every starter and every early wild Pokemon, so changing it is an
-// early-balance change, which AGENTS.md says to measure rather than port - and
-// the PR raising this file lists both for the captain.
+// The shipped moves above are Unity's wording on Gen III's numbers. The two
+// that were on modern numbers - Tackle and Vine Whip - are the import's own
+// rows now (see `TACKLE`).
 //
 // Every one of these now carries the secondary effect it has in canon. They
 // shipped without one because the engine had nowhere to put it - Flamethrower's

@@ -100,19 +100,25 @@ describe('teaching encounter', () => {
   it('is won by all three starters at both extremes of the damage roll', () => {
     for (const starter of [BULBASAUR, CHARMANDER, SQUIRTLE]) {
       // 0 rolls a critical hit for both sides and the minimum damage spread;
-      // 0.999 rolls neither. Both ends still end in a win.
+      // 0.949 rolls neither and is the highest roll that still lands FireRed's
+      // 95-accuracy Tackle (at 0.95 and above every swing on both sides
+      // misses, and the fight never ends). Both ends still end in a win.
       expect(playOut(starter, () => 0).outcome).toBe('victory');
-      expect(playOut(starter, () => 0.999).outcome).toBe('victory');
+      expect(playOut(starter, () => 0.949).outcome).toBe('victory');
     }
   });
 
   it('cannot be lost by any starter that simply attacks', () => {
     // "This fight is yours to win": at level 3 a Charmander lost it about one
-    // time in eight, which ended the first raid it exists to teach.
+    // time in eight, which ended the first raid it exists to teach. At level 2
+    // it is lost about one time in fifty by a Bulbasaur or a Squirtle, whose
+    // FireRed Tackle misses one time in twenty, and never by a Charmander,
+    // whose Scratch does not - a level-1 Pidgey would not change that, and is
+    // no fight at all.
     const rates = [BULBASAUR, CHARMANDER, SQUIRTLE].map((starter) => winRate(starter, 0x5eed));
 
     for (const rate of rates) {
-      expect(rate).toBeGreaterThanOrEqual(0.99);
+      expect(rate).toBeGreaterThanOrEqual(0.97);
     }
   });
 

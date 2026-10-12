@@ -10,6 +10,7 @@ import {
   VINE_WHIP,
 } from '../pokemon/moves';
 import { PokemonType } from '../pokemon/PokemonType';
+import { MOVE_CATALOGUE } from '../pokemon/moveCatalogue';
 import type { PrimaryStatus, StatusName } from '../pokemon/battle/status';
 import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
 import { TypewriterQueue } from '../ui/TypewriterQueue';
@@ -23,6 +24,7 @@ import {
   packRoomPrompt,
   combatantBanner,
   enemyBannerRole,
+  captionBySentence,
   combatPresentationSteps,
   describeMoveGuidance,
   eventToMessage,
@@ -169,7 +171,7 @@ describe('battle presentation', () => {
       types: [PokemonType.Normal, PokemonType.Flying],
     });
 
-    expect(guidance.summary).toBe('NORMAL · PHYSICAL · POWER 40 · PP 18/20');
+    expect(guidance.summary).toBe('NORMAL · PHYSICAL · POWER 35 · PP 18/35');
     expect(guidance.matchup).toBe('vs PIDGEY: NORMAL DAMAGE x1');
     expect(guidance.tone).toBe('neutral');
   });
@@ -510,5 +512,22 @@ describe('a status tag moved line by line', () => {
     const afterWoke = statusAfterLine(afterConfused, woke);
     expect(shownStatusLabel(afterWoke)).toBe('CNF');
     expect(shownStatusLabel(statusAfterLine(afterWoke, snapped))).toBe('');
+  });
+});
+
+describe('a status move caption', () => {
+  it('drops the opening sentence the summary line already says, and loses sentences from the end to fit', () => {
+    const guidance = describeMoveGuidance(
+      { base: MOVE_CATALOGUE['leech-seed'], pp: 10 },
+      [PokemonType.Grass],
+      { name: 'Pidgey', types: [PokemonType.Normal, PokemonType.Flying] },
+    );
+    expect(guidance.summary).toBe('GRASS · STATUS · PP 10/10');
+    expect(guidance.matchup).toBe('Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.');
+    expect(captionBySentence(guidance.matchup)).toEqual([
+      'Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
+      'Seeds the target, sapping 1/8 of its HP each turn.',
+    ]);
+    expect(captionBySentence('vs PIDGEY: NORMAL DAMAGE x1')).toEqual(['vs PIDGEY: NORMAL DAMAGE x1']);
   });
 });

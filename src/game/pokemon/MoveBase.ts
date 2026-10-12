@@ -97,6 +97,15 @@ export interface MoveEffects {
    * belongs to neither side, so `target` does not apply to it.
    */
   readonly weather?: WeatherId;
+  /**
+   * Leech Seed: the target is seeded, and at the end of every turn loses an
+   * eighth of its maximum HP to whoever is standing where the seeder stood
+   * (FireRed's `EFFECT_LEECH_SEED` and `ENDTURN_LEECH_SEED`). A Grass type is
+   * never seeded, a seeded Pokemon cannot be seeded again, and the seed comes
+   * off when the seeded Pokemon leaves the field. Guaranteed only - nothing in
+   * generation III seeds on a roll.
+   */
+  readonly seed?: boolean;
 }
 
 /**
@@ -166,6 +175,7 @@ export interface NormalizedMoveEffects {
   readonly status?: StatusName;
   readonly flinch: boolean;
   readonly weather?: WeatherId;
+  readonly seed: boolean;
 }
 
 export type NormalizedSecondaryEffect = NormalizedMoveEffects & {
@@ -178,6 +188,7 @@ const normalizeEffects = (effects: MoveEffects | undefined): NormalizedMoveEffec
   status: effects?.status,
   flinch: effects?.flinch ?? false,
   weather: effects?.weather,
+  seed: effects?.seed ?? false,
 });
 
 export class MoveBase {
@@ -239,6 +250,7 @@ export class MoveBase {
       this.effects.status !== undefined ||
       this.effects.flinch ||
       this.effects.weather !== undefined ||
+      this.effects.seed ||
       this.secondaries.length > 0
     );
   }

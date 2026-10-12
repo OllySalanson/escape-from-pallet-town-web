@@ -37,24 +37,37 @@ describe('starter identity', () => {
   });
 
   /**
-   * Every starter carries an off-type 40-power physical move, so before the
-   * signature move lands the only thing that can differ turn to turn is the
-   * non-damaging option each one brings. Bulbasaur has carried Super Sonic
-   * since Unity; Squirtle's Tail Whip is the matching tool for the bulkiest
-   * starter, and Charmander - the fastest and frailest - has Growl.
+   * FireRed's own level-5 kits, which are the whole of the choice before a
+   * move of the starter's own type arrives: Charmander's Scratch is the one
+   * 40-power, never-missing attack of the three (Tackle is FireRed's 35 and
+   * 95%), and Squirtle trades Growl for Tail Whip. Pinned so a regenerated
+   * learnset that moves one is a diff somebody reads, and so the floors on the
+   * starting maps (`districtEncounters.test.ts`) are read against the kits they
+   * measured.
    */
-  it('gives every starter a non-damaging line of its own at level 5', () => {
-    const tools = STARTERS.map(
-      (species) =>
-        new Pokemon(species, STARTER_LEVEL).moves
-          .filter((move) => move.base.category === MoveCategory.Status)
-          .map((move) => move.base.name)
-          .sort()
-          .join('/'),
-    );
+  it("carries FireRed's own level-5 kit", () => {
+    expect(STARTERS.map((species) => moveNames(STARTER_LEVEL, species).join('/'))).toEqual([
+      'Growl/Tackle',
+      'Growl/Scratch',
+      'Tackle/Tail Whip',
+    ]);
+  });
 
-    expect(tools).toEqual(['Growl/Super Sonic', 'Growl', 'Growl/Tail Whip']);
-    expect(new Set(tools).size).toBe(STARTERS.length);
+  /**
+   * Level 7 is where the choice becomes loud: FireRed teaches each starter a
+   * move of its own type there - Leech Seed, Ember and Bubble. Bulbasaur's is
+   * a status move rather than an attack, and it is the reason Leech Seed is
+   * playable at all (`MoveEffects.seed`): without it a FireRed Bulbasaur had
+   * nothing of its own until Vine Whip at 10.
+   */
+  it('teaches every starter a move of its own type at level 7', () => {
+    const learned = STARTERS.map((species) =>
+      new Pokemon(species, SIGNATURE_LEVEL).moves
+        .map((move) => move.base)
+        .filter((move) => move.type === species.primaryType)
+        .map((move) => move.name),
+    );
+    expect(learned).toEqual([['Leech Seed'], ['Ember'], ['Bubble']]);
   });
 
   it('keeps Squirtle the bulkiest starter its setup move is meant for', () => {
@@ -68,25 +81,28 @@ describe('starter identity', () => {
   });
 
   /**
-   * Level 7 is where the choice becomes loud: each starter learns a move of its
-   * own type. That only means anything if the early roster contains something
-   * the move is good against - Water had nothing until a wild Charmander joined
+   * The first attack of its own type is what a starter's choice is measured
+   * by, at the level FireRed teaches it: Ember and Bubble at 7, Vine Whip at
+   * 10. That only means anything if the early roster contains something the
+   * attack is good against - Water had nothing until a wild Charmander joined
    * the shared table.
    */
-  it('gives each level-7 signature move a target in the shared early table', () => {
-    const signatures: [(typeof STARTERS)[number], PokemonType][] = [
-      [BULBASAUR, PokemonType.Grass],
-      [CHARMANDER, PokemonType.Fire],
-      [SQUIRTLE, PokemonType.Water],
+  it('gives each signature attack a target in the shared early table, at the level FireRed teaches it', () => {
+    const signatures: [(typeof STARTERS)[number], PokemonType, number][] = [
+      [BULBASAUR, PokemonType.Grass, 10],
+      [CHARMANDER, PokemonType.Fire, SIGNATURE_LEVEL],
+      [SQUIRTLE, PokemonType.Water, SIGNATURE_LEVEL],
     ];
     const wildSpecies = PALLET_TALL_GRASS.entries.map((entry) => getSpeciesById(entry.speciesId)!);
 
-    for (const [species, type] of signatures) {
-      const learned = new Pokemon(species, SIGNATURE_LEVEL).moves.map((move) => move.base);
-      const signature = learned.find(
-        (move) => move.type === type && move.category !== MoveCategory.Status,
-      );
-      expect(signature, `${species.name} should learn a ${type} move by level ${SIGNATURE_LEVEL}`).toBeDefined();
+    const attack = (species: (typeof STARTERS)[number], level: number, type: PokemonType) =>
+      new Pokemon(species, level).moves
+        .map((move) => move.base)
+        .find((move) => move.type === type && move.category !== MoveCategory.Status);
+
+    for (const [species, type, level] of signatures) {
+      expect(attack(species, level, type), `${species.name} should learn a ${type} attack by level ${level}`).toBeDefined();
+      expect(attack(species, level - 1, type), `${species.name} learns its ${type} attack at ${level}`).toBeUndefined();
 
       expect(
         wildSpecies.some(
