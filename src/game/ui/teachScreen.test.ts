@@ -109,6 +109,15 @@ describe('the teaching screen', () => {
     expect(full).not.toContain('Press TEACH');
   });
 
+  it("never promises an unchosen full moveset a TEACH button it will not get", () => {
+    const helpOf = (markup: string, index: number): string =>
+      markup.match(new RegExp(`data-pupil="${index}"[^>]*data-help="([^"]*)"`))?.[1] ?? '';
+    expect(helpOf(teachBody(view(null)), 0)).toContain('Nothing happens until you press TEACH AERIAL ACE.');
+    const full = helpOf(teachBody(view(null)), 1);
+    expect(full).toContain('Nothing is forgotten until you pick the move it replaces.');
+    expect(full).not.toContain('press TEACH');
+  });
+
   it('says so when nobody can learn it', () => {
     const markup = teachBody(view(null, AERIAL_ACE, [new Pokemon(SQUIRTLE, 5), new Pokemon(PIKACHU, 5)]));
     expect(markup).toContain('Nobody in the party can learn AERIAL ACE');

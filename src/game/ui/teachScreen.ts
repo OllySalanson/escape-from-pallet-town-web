@@ -134,7 +134,11 @@ function pupilCard(view: TeachView, pokemon: Pokemon, index: number): string {
       ? `${name} is chosen. Press ${confirmLabel(view.machine, pokemon).toUpperCase()} at the bottom ${
           verdict === 'replaces' ? `to choose the move ${move} replaces` : 'to read the disc'
         }, or choose someone else.`
-      : `Choose ${name} to learn ${move}. ${pupilOutcome(view.machine, pokemon)} Nothing happens until you press TEACH.`
+      : `Choose ${name} to learn ${move}. ${pupilOutcome(view.machine, pokemon)} ${
+          verdict === 'replaces'
+            ? 'Nothing is forgotten until you pick the move it replaces.'
+            : `Nothing happens until you press ${confirmLabel(view.machine, pokemon).toUpperCase()}.`
+        }`
     : `${name}: ${pupilOutcome(view.machine, pokemon)}`;
   const tag = chosen ? pixelTag('Chosen', 'good', true) : VERDICT_TAG[verdict];
   const classes = ['px-row', 'teach-pupil', `is-${verdict}`, ...(chosen ? ['is-selected'] : [])].join(' ');
