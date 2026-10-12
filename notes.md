@@ -105,6 +105,13 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** `lastBlockOf(itemId, quantity)` in `items/itemGrid.ts` is how many must go down to free a block - one of most things, the part-filled bundle of money - and both the pack's drop and the battle's make-room list use it. For money the pane now says "₽45 CARRIED · ₽250 TO 1 SQUARE", the button "DROP ₽45", its help "Put ₽45 on the ground for good. It frees 1 square.", and the status "Dropped ₽45. 6/18 squares." Every other item still drops one. In the real game the pack went from 7/18 to 6/18 squares on one press.
 - **How a player meets it:** with a full pack in a raid, press B, point at Pokédollars and DROP: the button says how much goes down, and it frees the square it promises.
 
+## 15. The contract's reward sat under the errands and read as theirs (newest feature: errands)
+
+- **Found:** playing `errands.mjs`, Oak's Lab listed BRAID SURVEY, then an ERRANDS band with OAK'S PARCEL and MEDICINE BAG, then a pane reading "Reward The Cordon Ledger and the Warden's Resupply are added to the contract board, and two Great Balls are waiting at base." The pane follows the cursor and shows the first contract's reward until a row is pointed at, but with the errands listed between that contract and the pane it read as what the errands pay. Oak's parcel actually pays five Poké Balls.
+- **Reproduced:** `HubScene.test.ts`, "names what a reward is for, so the pane under the errands is not read as theirs": a standing-board save with Oak's parcel in hand; the one shown pane said only "Reward ...", with nothing naming the contract.
+- **Fixed:** every pane on the board names its subject: "Reward for Braid survey: ..." and "Reward for Oak's Parcel: five Poké Balls, from Professor Oak. ..." (`HubScene.contractBoard`, `errandRows`). Photographed at the smallest window (960x720): the line wraps whole under the errands and says whose reward it is.
+- **How a player meets it:** open Oak's Lab with an errand in hand; the reward line under the board now says which contract or errand it belongs to.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

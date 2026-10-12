@@ -2058,10 +2058,12 @@ export class HubScene extends Phaser.Scene {
         return `<button class="px-row has-icon px-tall px-contract" ${wiring}${row.hunterPressure > 0 ? ` data-hunter-pressure="${row.hunterPressure}"` : ''}>${objectiveIcon('Contract')}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${row.name}</strong><small>${place}</small></span><span class="px-wrap">${row.description}.</span></span>${raised}</button>`;
       })
       .join('');
+    // A pane names what it is the reward for: until a row is pointed at it shows
+    // the first contract's, under the errands' rows, where it read as theirs.
     const details = board.rows
       .map(
         (row, index) =>
-          `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward</small> ${row.reward}</span></div>`,
+          `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward for</small> ${row.name}: ${row.reward}</span></div>`,
       )
       .join('');
     return pixelWindow(
@@ -2106,7 +2108,7 @@ export class HubScene extends Phaser.Scene {
     const details = inHand
       .map(
         (errand, index) =>
-          `<div class="px-detail" data-shown-by="errand-${errand.id}"${firstShown && index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>Reward</small> ${errand.reward.summary}, from ${errand.name}. Lost with the pack if you wipe.</span></div>`,
+          `<div class="px-detail" data-shown-by="errand-${errand.id}"${firstShown && index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>Reward for</small> ${errandThing(errand)}: ${errand.reward.summary}, from ${errand.name}. Lost with the pack if you wipe.</span></div>`,
       )
       .join('');
     return { rows: `<h3 class="px-subheading">Errands</h3>${rows}`, details };

@@ -1079,6 +1079,24 @@ describe('the standing board in the lobby', () => {
     }
   });
 
+  it('names what a reward is for, so the pane under the errands is not read as theirs', () => {
+    // The pane under the board shows the first contract's reward until a row is
+    // pointed at, and the errands are listed between that contract and the pane:
+    // "Reward The Cordon Ledger..." sat straight under OAK'S PARCEL.
+    const progress: RaidProgress = {
+      ...chainBanked(2),
+      errands: [{ id: 'oaks-parcel', status: 'started', found: 0, lossesHeard: 0 }],
+    };
+    const home = markupOf(createHub(progress).hub);
+    const panes = [...home.matchAll(/<div class="px-detail" data-shown-by="([^"]+)"( hidden(?:="")?)?>(.*?)<\/div>/g)];
+    const shown = panes.filter((pane) => pane[2] === undefined);
+    expect(shown).toHaveLength(1);
+    const first = standingBoard(progress).find((contract) => contract.id === shown[0][1])!;
+    expect(shown[0][3]).toContain(`<small>Reward for</small> ${first.name}:`);
+    const parcel = panes.find((pane) => pane[1] === 'errand-oaks-parcel')!;
+    expect(parcel[3]).toContain("<small>Reward for</small> Oak's Parcel:");
+  });
+
   it('says what a contract costs before it is taken: the row opens its own insertion and the hunter is on it', () => {
     const progress = chainBanked(2);
     const raised = standingBoard(progress).find((contract) => contract.hunterPressure === 1)!;
