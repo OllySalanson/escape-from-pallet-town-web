@@ -95,7 +95,7 @@ import {
   ledgesForMap,
 } from '../world/ledges';
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
-import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '../world/gifts';
+import { createGiftPokemon, giftGivenBy, giftNicknamePrompt, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
@@ -155,6 +155,7 @@ import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
+import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
 import { arrivalPlace } from '../base/partner';
 import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
@@ -660,6 +661,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private trainerPrompt: ChoicePrompt | undefined;
   /**
+   * A gift just handed over, whose nickname is asked once the hand-over has
+   * been read. The question takes `trainerPrompt`'s seat: it is the one open
+   * question the map has, and it owns the keyboard the same way.
+   */
+  private pendingGiftNickname: Pokemon | undefined;
+  /**
    * The authored beat playing over the map: a watch catching the player, the
    * hunter running them down. Driven from `update()` by elapsed time - see
    * `../cutscene/cutscene.ts` for the machine and `../world/cutscenes.ts` for
@@ -829,6 +836,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // to stop pointing at it - and it does have to, or the first frame of the
     // next raid hands the keyboard to a dead panel.
     this.trainerPrompt = undefined;
+    this.pendingGiftNickname = undefined;
     this.isWarping = false;
     this.targetTile = null;
     this.stepProgress = 0;
@@ -3820,6 +3828,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ];
     }
     this.runSession.manager.registerGiftedPokemon(gift.id, pokemon);
+    this.pendingGiftNickname = pokemon;
     this.packReseated = this.packReseated || room.reseated;
     syncPackCargo(this.bag, this.runSession.manager.snapshot());
     audioManager.play('catchSuccess');
@@ -4123,6 +4132,40 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       options: prompt.options,
       selected: prompt.selected,
       onChoose: (index) => this.resolveTrainerChallenge(encounter, index === 0),
+    });
+  }
+
+  private askGiftNickname(pokemon: Pokemon): void {
+    this.pendingGiftNickname = undefined;
+    const prompt = giftNicknamePrompt(pokemon.base.name);
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
+      padding: 10,
+      lines: prompt.lines,
+      options: prompt.options,
+      selected: prompt.selected,
+      onChoose: (index) => this.answerGiftNickname(pokemon, index === 0),
+    });
+  }
+
+  /**
+   * The naming screen is a menu over the world, so the world waits under it as
+   * it does under the pack: no clock, no hunter, while a name is typed.
+   */
+  private answerGiftNickname(pokemon: Pokemon, naming: boolean): void {
+    this.trainerPrompt?.destroy();
+    this.trainerPrompt = undefined;
+    if (!naming) {
+      audioManager.play('cancel');
+      return;
+    }
+    this.scene.pause();
+    openNamingScreen(this, { pokemon }, (typed) => {
+      pokemon.giveNickname(typed);
+      this.scene.resume();
     });
   }
 
@@ -5456,6 +5499,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.pendingWildBattle = undefined;
       audioManager.play('encounter');
       this.transitionToBattle({ wild, teachingBattle: false });
+      return;
+    }
+
+    if (this.pendingGiftNickname) {
+      this.askGiftNickname(this.pendingGiftNickname);
       return;
     }
 
