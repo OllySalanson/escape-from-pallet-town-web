@@ -70,10 +70,12 @@ export function pupilOutcome(machine: MachineDefinition, pokemon: Pokemon): stri
       return `Has a free slot: learns ${move} and forgets nothing.`;
     case 'replaces':
       return `Knows four moves: you pick which one ${move} replaces.`;
+    // The card's tag already says KNOWS IT or CANNOT LEARN, so the line says
+    // what the tag cannot: why, and that it is the kind and not this one.
     case 'knows':
-      return `Already knows ${move}.`;
+      return `${move} is already one of its moves: the disc would do nothing.`;
     case 'cannot':
-      return `Cannot learn ${move}.`;
+      return `Not compatible with ${machine.number}: no ${pokemon.base.name.toUpperCase()} can read it, at any level.`;
   }
 }
 

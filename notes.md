@@ -82,6 +82,14 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** lose a raid. Under each figure the level, the count and TAKEN or HELD are now as large and as crisp as the name, so you can read what you lost.
 - **Not done:** the line-up is still sized in `px`/`vw` rather than game pixels (the rest of that playtest note). Moving it onto `--px` would need the plate widths reworked, because at `--px` 4 the one type size is 25 px and `POKÉDOLLARS` no longer fits a 116 px plate.
 
+## 12. A teach card said "Cannot learn ICE BEAM" three times (playtest 6, presentation)
+
+- **Found:** reading a disc, a Pokémon that cannot learn it showed a red CANNOT LEARN tag, then "Cannot learn ICE BEAM." under its moves, then "CHARMANDER: Cannot learn ICE BEAM." on the help bar. The one thing a player wants to know - is it this Pokémon or its whole kind, and will levelling help - was said nowhere. A card that already knew the move did the same (KNOWS IT / "Already knows AERIAL ACE.").
+- **Reproduced:** `teachScreen.test.ts`, "says a refusal once on the card and gives the reason": the visible text of a refused card (help line left out) said "cannot learn" twice, and a knowing card said "knows" twice. In the real game `teachShots.mjs` showed the Charmander card with both.
+- **Fixed:** `pupilOutcome` (`ui/teachScreen.ts`) leaves the verdict to the tag and gives the reason, in FireRed's word: "Not compatible with TM13: no CHARMANDER can read it, at any level." and "AERIAL ACE is already one of its moves: the disc would do nothing." The pack's line after a refused read uses the same words. Photographed at 1280x800 with `teachShots.mjs` (clean run): the card reads CANNOT LEARN once with the reason under its moves.
+- **How a player meets it:** read a TM from the raid pack; a Pokémon that can never learn it now says so once, and says it is its kind, so you do not keep one back hoping it learns it later.
+- **Seen, not fixed:** at 1280x800 the teach screen shows one row of cards with about 160 px of empty list under it and "2 MORE": the second row of cards is taller than the room left, so the fold gives the whole row to the strip (the rule for not cutting a row). A taller window or one card per row fixes it; left for a later iteration.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
@@ -89,4 +97,5 @@ Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with M
 ## Still open from playtest 6 (candidates for later iterations)
 
 - B9: the cache "secured" line is fixed (entry 3). The "N ITEMS" count is fixed (entry 10); "7 ENTRIES" was already fixed (the final check counts rows). Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).
+- Also already fixed: the Pokémon detail no longer says the level twice; map maker item spots stay where the maker put them (`layItemSpots`, B5). Skipped: the 4-pixel band of live map round a raid menu is `MENU_INSET`, deliberate.
 - Checked this iteration: item descriptions now spell Pokémon with its accent (fixed). The trader's '₽40-70 a raid' is in code comments only, not on screen. The defeat line-up's sub-labels look off-centre before TAKEN is stamped because the hidden tag keeps its space. That is on purpose, so the row does not jump when TAKEN lands, and it was left alone.
