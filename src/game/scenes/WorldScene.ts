@@ -78,7 +78,7 @@ import {
   type WorldMapId,
   worldMapName,
 } from '../worldMap';
-import { type WorldEntity } from '../world/npcs';
+import { spokenLines, type WorldEntity } from '../world/npcs';
 import {
   advanceIdleFigures,
   createIdleFigures,
@@ -4140,7 +4140,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    this.dialogBox.showMessages([...entity!.dialogLines]);
+    this.dialogBox.showMessages(spokenLines(entity!.dialogLines, this.hunterRival().name));
   }
 
   /**

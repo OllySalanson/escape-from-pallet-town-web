@@ -53,6 +53,19 @@ export interface WorldEntity {
 }
 
 /**
+ * Stands in a townsperson's line for the name of whoever hunts this raid. The
+ * hunter rotates per raid (`rivalForRaid`), so a line about who is asking after
+ * the player names them through this rather than describing one of the five -
+ * and never says how they look or which pronoun fits, because that is only true
+ * of some of them. `spokenLines` fills it in.
+ */
+export const RIVAL_NAME = '{RIVAL}';
+
+/** A townsperson's lines as said on a raid hunted by `rivalName`. */
+export const spokenLines = (lines: readonly string[], rivalName: string): string[] =>
+  lines.map((line) => line.split(RIVAL_NAME).join(rivalName));
+
+/**
  * Signs and townsfolk block their own tile, so every one of them stands at the
  * end of a lane you walk into or on a one-tile stub off one. A sign placed on a
  * lane is a severed route, not a landmark.
@@ -2200,8 +2213,8 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     design: 'lass',
     idle: { roam: [{ x: 49, y: 47 }], glances: ['left', 'right'], beatMs: 3550 },
     dialogLines: [
-      'A trainer in a dark jacket was asking after you.',
-      'He said he would catch you up once you had set off. He did not look like he meant to be friends.',
+      `${RIVAL_NAME} was asking after you - something about catching you up once you had set off.`,
+      'It did not sound like a friendly visit to me.',
     ],
   },
   {

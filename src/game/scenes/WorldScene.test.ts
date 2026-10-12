@@ -283,7 +283,7 @@ describe('hunter disengagement wiring', () => {
     expect(sceneSource).toContain('hunterCatchCutscene(');
     expect(sceneSource).toContain('trainerApproachCutscene(');
     expect(sceneSource).toContain('this.interrupt(frame.speech.lines, frame.speech.about);');
-    expect(sceneSource).toContain("this.dialogBox.showMessages([...entity!.dialogLines]);");
+    expect(sceneSource).toContain("this.dialogBox.showMessages(spokenLines(entity!.dialogLines, this.hunterRival().name));");
     // And it is on the per-raid reset list, because it outlives the scene otherwise.
     const reset = sceneSource.slice(
       sceneSource.indexOf('private resetStateFromPreviousRaid('),
