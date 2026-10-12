@@ -2,8 +2,11 @@
 //
 //   node tools/supabase/anonymousProbe.mjs [--send]
 //
-// Signs in as a fresh anonymous visitor - exactly what every player's browser
-// is - and tries every door that must stay shut: reading the review tables and
+// Asks first what a visitor with no session can do, then that signing up
+// without a passed bot check is refused. Then it signs in as a fresh anonymous
+// visitor - exactly what every player's browser is, with a token from a bot
+// check passed by hand in `TURNSTILE_TOKEN` once the project asks for one -
+// and tries every door that must stay shut: reading the review tables and
 // the feedback inbox, listing or downloading anyone's files, uploading into
 // someone else's folder, under a name it was not given or a type the bucket
 // does not take, asking the collector's questions, claiming another
@@ -55,15 +58,46 @@ async function call(path, { method = 'GET', token, body, type = 'application/jso
   return { status: response.status, json };
 }
 
-const signUp = await call('/auth/v1/signup', { method: 'POST', body: {} });
-if (!signUp.json?.access_token) {
-  console.log(`cannot sign in anonymously: ${signUp.status} ${JSON.stringify(signUp.json)}`);
-  process.exit(2);
+const someone = '00000000-0000-4000-8000-000000000000';
+const message = (tag, extra = {}) => ({ tag, message: 'anonymous probe', context: {}, actions: [], save: null, picture_path: null, voice_paths: [], voice_ms: 0, written_at: new Date().toISOString(), ...extra });
+const score = (extra = {}) => ({ game: 'pallet-blocks', player_name: 'PROBE', score: 100, lines: 1, level: 1, duration_ms: 60000, ...extra });
+
+// Signed out: everything a visitor with no session may and may not do.
+const noSlot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 'POST', body: { tag: 'FB-AAAA', names: [`${someone}/FB-AAAA/picture.png`] } });
+check(noSlot.status >= 400, `cannot be given a name without a session (${noSlot.status})`);
+for (const [name, body] of [['unclaimed_feedback_uploads', { older_than_hours: 24 }], ['idle_anonymous_visitors', { idle_days: 30 }]]) {
+  const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });
+  check(askedSignedOut.status >= 400, `cannot ask ${name} signed out (${askedSignedOut.status})`);
+}
+const nobody = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', body: message('FB-AAAC') });
+check(nobody.status >= 400, `cannot send without a session (${nobody.status})`);
+// A board is read signed out too, so looking signs nobody up (the red team's
+// F10) - and that is all a signed-out visitor can call.
+const strangers = await call('/rest/v1/rpc/console_leaderboard', { method: 'POST', body: { game: 'pallet-blocks' } });
+check(strangers.status === 200 && Array.isArray(strangers.json) && strangers.json.every((row) => row.mine === false), `can read a board signed out, owning none of it (${strangers.status})`);
+const anonymousPost = await call('/rest/v1/rpc/submit_console_score', { method: 'POST', body: score() });
+check(anonymousPost.status >= 400, `cannot post a score without a session (${anonymousPost.status})`);
+
+// Signing up takes a passed bot check (the security review's H1): without
+// one, the project must refuse. With the project's captcha protection on, the
+// rest of the probe needs a token from a check passed by hand -
+// `TURNSTILE_TOKEN=...` - or it stops here, every signed-in door unasked.
+const unchecked = await call('/auth/v1/signup', { method: 'POST', body: {} });
+const asksForCheck = !unchecked.json?.access_token && /captcha/i.test(JSON.stringify(unchecked.json));
+check(asksForCheck, `cannot sign up without passing the bot check (${unchecked.status}${asksForCheck ? '' : ': captcha protection is off in Authentication > Attack Protection'})`);
+const captchaToken = process.env.TURNSTILE_TOKEN;
+const signUp = asksForCheck
+  ? captchaToken
+    ? await call('/auth/v1/signup', { method: 'POST', body: { gotrue_meta_security: { captcha_token: captchaToken } } })
+    : undefined
+  : unchecked;
+if (!signUp?.json?.access_token) {
+  console.log(signUp ? `cannot sign in anonymously: ${signUp.status} ${JSON.stringify(signUp.json)}` : 'no TURNSTILE_TOKEN: the signed-in doors were not asked');
+  console.log(failures.length ? `\n${failures.length} door(s) open` : '\nevery door asked is shut');
+  process.exit(failures.length ? 1 : signUp ? 2 : 0);
 }
 const token = signUp.json.access_token;
 const me = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub;
-const someone = '00000000-0000-4000-8000-000000000000';
-const message = (tag, extra = {}) => ({ tag, message: 'anonymous probe', context: {}, actions: [], save: null, picture_path: null, voice_paths: [], voice_ms: 0, written_at: new Date().toISOString(), ...extra });
 
 for (const table of ['feedback', 'map_submissions', 'admins', 'blocked_makers']) {
   const read = await call(`/rest/v1/${table}?select=*`, { token });
@@ -99,36 +133,25 @@ const otherSlot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 
 check(otherSlot.status >= 400, `cannot be given a name in someone else's folder (${otherSlot.status})`);
 const oddSlot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 'POST', token, body: { tag: 'FB-AAAA', names: [`${me}/FB-AAAA/page.html`] } });
 check(oddSlot.status >= 400, `cannot be given a name the game never uses (${oddSlot.status})`);
-const noSlot = await call('/rest/v1/rpc/reserve_feedback_uploads', { method: 'POST', body: { tag: 'FB-AAAA', names: [`${me}/FB-AAAA/picture.png`] } });
-check(noSlot.status >= 400, `cannot be given a name without a session (${noSlot.status})`);
 // The collector's two questions are the service key's alone.
 for (const [name, body] of [['unclaimed_feedback_uploads', { older_than_hours: 24 }], ['idle_anonymous_visitors', { idle_days: 30 }]]) {
   const asked = await call(`/rest/v1/rpc/${name}`, { method: 'POST', token, body });
   check(asked.status >= 400, `cannot ask ${name} (${asked.status})`);
-  const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });
-  check(askedSignedOut.status >= 400, `cannot ask ${name} signed out (${askedSignedOut.status})`);
 }
 const claim = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', token, body: message('FB-AAAA', { picture_path: `${someone}/FB-AAAA/picture.png` }) });
 check(claim.status >= 400, `cannot claim a file it did not upload (${claim.status})`);
 const empty = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', token, body: message('FB-AAAB', { message: '' }) });
 check(empty.status >= 400, `cannot send a message with nothing in it (${empty.status})`);
-const nobody = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', body: message('FB-AAAC') });
-check(nobody.status >= 400, `cannot send without a session (${nobody.status})`);
 
 // The house console's leaderboards: a player reads a board and posts a score
 // through the two functions, and nothing else. Every post here is one the
 // database must refuse, so the probe stays read-only against the real project.
-const score = (extra = {}) => ({ game: 'pallet-blocks', player_name: 'PROBE', score: 100, lines: 1, level: 1, duration_ms: 60000, ...extra });
 const scores = await call('/rest/v1/console_scores?select=*', { token });
 check(scores.status >= 400 || (Array.isArray(scores.json) && scores.json.length === 0), `reads no console score rows (${scores.status})`);
 const forged = await call('/rest/v1/console_scores', { method: 'POST', token, body: { game: 'pallet-blocks', player_uid: me, player_name: 'PROBE', score: 1, lines: 1, level: 1, duration_ms: 5000 } });
 check(forged.status >= 400, `cannot write a score into the table (${forged.status})`);
 const board = await call('/rest/v1/rpc/console_leaderboard', { method: 'POST', token, body: { game: 'pallet-blocks' } });
 check(board.status === 200 && Array.isArray(board.json), `can read a board (${board.status})`);
-// A board is read signed out too, so looking signs nobody up (the red team's
-// F10) - and that is all a signed-out visitor can call.
-const strangers = await call('/rest/v1/rpc/console_leaderboard', { method: 'POST', body: { game: 'pallet-blocks' } });
-check(strangers.status === 200 && Array.isArray(strangers.json) && strangers.json.every((row) => row.mine === false), `can read a board signed out, owning none of it (${strangers.status})`);
 for (const [what, body] of [
   ['a game with no board', score({ game: 'not-a-game' })],
   ['a name with markup in it', score({ player_name: '<B>' })],
@@ -139,9 +162,6 @@ for (const [what, body] of [
   const posted = await call('/rest/v1/rpc/submit_console_score', { method: 'POST', token, body });
   check(posted.status >= 400, `cannot post ${what} (${posted.status})`);
 }
-const anonymousPost = await call('/rest/v1/rpc/submit_console_score', { method: 'POST', body: score() });
-check(anonymousPost.status >= 400, `cannot post a score without a session (${anonymousPost.status})`);
-
 if (send) {
   // A one-pixel PNG, and the two calls the game makes.
   const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==', 'base64');
