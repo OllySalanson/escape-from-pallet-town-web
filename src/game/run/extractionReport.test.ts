@@ -6,6 +6,7 @@ import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS } from './raidClock';
 import { Stash } from '../stash/Stash';
 import { anyoneFitToRaid } from '../hub/recovery';
+import { ERRANDS } from '../hub/errands';
 
 /**
  * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
@@ -807,6 +808,50 @@ describe('what became of an errand', () => {
 
   it('owns up to a thing that went down with the pack', () => {
     expect(report('WIPED').pressure[0]).toBe("BROCK'S CRATE went down with the pack - Brock will want to hear");
+  });
+
+  // Found, then put down for good from the pack ("Drop one", or the room a
+  // catch needed) and the raid walked out without it. The screen said nothing,
+  // and Brock then told the player the raid had gone down with it.
+  it('owns up to a thing that was picked up and dropped, whichever way the raid ended', () => {
+    for (const outcome of ['ESCAPED', 'WIPED'] as const) {
+      const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+      manager.registerFoundItem('brocks-crate');
+      manager.resolveEscape();
+      const dropped = buildExtractionReport({
+        outcome,
+        ...(outcome === 'WIPED' ? { cause: 'timer' as const, lost: { pokemon: [], items: [] } } : { banked: { pokemon: [], items: [] } }),
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        saved: true,
+      });
+      expect(dropped.pressure[0], outcome).toBe("BROCK'S CRATE was left behind - Brock will want to hear");
+    }
+  });
+
+  it('says nothing of a thing found and carried home, beyond where to take it', () => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    manager.registerFoundItem('brocks-crate');
+    manager.resolveEscape();
+    const home = buildExtractionReport({
+      outcome: 'ESCAPED',
+      banked: { pokemon: [], items: [{ itemId: 'brocks-crate', quantity: 1 }] },
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      saved: true,
+    });
+    expect(home.pressure.filter((line) => line.includes("BROCK'S CRATE"))).toEqual([
+      "BROCK'S CRATE is home - take it to Brock",
+    ]);
+  });
+
+  // What the giver says next is the same whichever way it was lost, so it may
+  // not claim the pack went down: after a drop, the raid walked out.
+  it('has every giver ask after a lost thing in words true of a drop as well as a wipe', () => {
+    for (const errand of ERRANDS) {
+      const words = errand.lost.join(' ').toLowerCase();
+      expect(words, errand.id).not.toMatch(/pack|went down|wipe/);
+    }
   });
 });
 

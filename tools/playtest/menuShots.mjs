@@ -70,9 +70,13 @@ const AUDIT = `(() => {
     // A row the fold runs through is drawn with its top half showing and no
     // lower edge, which reads as a fault rather than as "more below" - the
     // strip is meant to take that row whole (scrollCoverHeight).
+    // Measured from where the row's ink can start - inside its top padding - so
+    // a paragraph whose blank padding alone is above the fold is not "cut":
+    // the strip covers it from its first line (\`lineBoxes\`).
     const cut = rows.filter((row) => {
       const r = row.getBoundingClientRect();
-      return r.top < fold - 0.5 && r.bottom > fold + 0.5 && r.top >= p.top - 0.5;
+      const top = r.top + (Number.parseFloat(getComputedStyle(row).paddingTop) || 0);
+      return top < fold - 0.5 && r.bottom > fold + 0.5 && r.top >= p.top - 0.5;
     }).length;
     const scrolls = pane.scrollHeight - pane.clientHeight > Math.max(1, paneUnit);
     // A browser that draws its scrollbars (Windows) draws one for any overflow

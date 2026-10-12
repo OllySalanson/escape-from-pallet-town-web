@@ -63,7 +63,11 @@ export interface Errand {
   readonly asks: readonly string[];
   /** Said when the thing is handed over, before the reward. */
   readonly thanks: readonly string[];
-  /** Said the first time the giver's screen opens after the thing was found and not brought home. */
+  /**
+   * Said the first time the giver's screen opens after the thing was found and
+   * not brought home. Never that the pack went down: the same words follow a
+   * raid that walked out after dropping the thing for room.
+   */
   readonly lost: readonly string[];
   readonly reward: ErrandReward;
 }
@@ -97,7 +101,7 @@ export const ERRANDS: readonly Errand[] = [
       'Now, these are for you. Throw one at a weakened wild Pokémon and it comes home with you.',
     ],
     lost: [
-      'You found my parcel, and it was lost with your pack? Well. You came home, and that matters more.',
+      'You found my parcel, and it never made it home? Well. You came home, and that matters more.',
       'The Mart will send another. It will be about CENTER SQUARE again.',
     ],
     // FireRed pays the parcel with the Pokédex and five Poké Balls. The
@@ -125,7 +129,7 @@ export const ERRANDS: readonly Errand[] = [
       'Please take these Leftovers. Give them to a Pokémon to hold, and it will recover a little HP at the end of every turn.',
     ],
     lost: [
-      'Oh dear. You had the bag, and it was lost with your pack?',
+      'Oh dear. You had the bag, and it never made it back?',
       'As long as you came back safe. The steading keeps a spare, so there will be another at THE STEADING.',
     ],
     // Not FireRed's - no Joy there gives anything - but it is the one piece of
@@ -155,7 +159,7 @@ export const ERRANDS: readonly Errand[] = [
       'Wait! Take this with you. TM39 contains Rock Tomb. It hurls boulders at the foe and lowers its Speed.',
     ],
     lost: [
-      'You had my crate, and the raid went down with it? ... You came back. That is what counts.',
+      'You had my crate, and it never made it home? ... You came back. That is what counts.',
       'There is another crate of mine at THE QUARRY. Have another go when you are ready.',
     ],
     // FireRed's own: Brock hands TM39 to whoever beats him.
@@ -183,7 +187,7 @@ export const ERRANDS: readonly Errand[] = [
       'And a deal is a deal. This Eevee has been with me for years. It will do better out there with you.',
     ],
     lost: [
-      'Gone? You had it, and your pack went down with it? Aw, man...',
+      'Gone? You had it, and it never made it back? Aw, man...',
       'Well, where there is one bit of amber there is another. The SAP POOL still drips.',
     ],
     // Not FireRed's, but Bill's all the same: in HeartGold and SoulSilver he

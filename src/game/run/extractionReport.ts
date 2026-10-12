@@ -376,7 +376,12 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     pack,
     packSummary: packSummary(pack),
     pressure: [
-      ...errandLines(escaped ? ledger.items : [], escaped ? [] : ledger.items, escaped ? [] : secured.items),
+      ...errandLines(
+        escaped ? ledger.items : [],
+        escaped ? [] : ledger.items,
+        escaped ? [] : secured.items,
+        snapshot.foundItems.map((item) => item.itemId),
+      ),
       ...pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ],
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
@@ -528,19 +533,29 @@ function suppliesSpent(snapshot: RunSnapshot, carriedOut: BagContents): ReportIt
 
 /**
  * What became of somebody's errand (`../hub/errands`), said plainly whichever
- * way it went: home and waiting to be handed over, or lost with the pack and
- * a thing to own up to at base.
+ * way it went: home and waiting to be handed over, lost with the pack, or
+ * picked up and then put down again - dropped from the pack for room, which a
+ * raid that walks out can do as easily as one that does not - each a thing to
+ * own up to at base, because the giver asks after anything found and not
+ * brought home.
  */
 function errandLines(
   banked: readonly ReportItem[],
   lost: readonly ReportItem[],
   secured: readonly ReportItem[],
+  found: readonly string[],
 ): string[] {
   const named = (items: readonly ReportItem[]) =>
     items.flatMap((item) => {
       const errand = errandForItem(item.itemId);
       return errand ? [{ errand, thing: item.label.toUpperCase() }] : [];
     });
+  const accounted = new Set([...banked, ...lost, ...secured].map((item) => item.itemId));
+  const leftBehind = found.flatMap((itemId) => {
+    const errand = accounted.has(itemId) ? undefined : errandForItem(itemId);
+    const label = ITEM_DEFINITIONS.find((item) => item.id === itemId)?.displayName;
+    return errand && label ? [{ errand, thing: label.toUpperCase() }] : [];
+  });
   return [
     ...named([...banked, ...secured]).map(
       ({ errand, thing }) => `${thing} is home - take it to ${errand.name}`,
@@ -548,6 +563,7 @@ function errandLines(
     ...named(lost).map(
       ({ errand, thing }) => `${thing} went down with the pack - ${errand.name} will want to hear`,
     ),
+    ...leftBehind.map(({ errand, thing }) => `${thing} was left behind - ${errand.name} will want to hear`),
   ];
 }
 

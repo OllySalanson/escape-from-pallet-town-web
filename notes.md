@@ -30,12 +30,19 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** `scrollEntries` in `ui/MenuOverlay.ts` counts one entry per row - a `.px-pair` first (its row button is itself a `.px-row`), else a `.px-row`, else the control on its own. `resultLedger.test.ts` holds seven supply rows with two steppers each plus one shelf pair and one button to `9 MORE`; the first draft counted the shelf pair twice and the test caught it.
 - **How a player meets it:** open Oak's Lab and start preparing a raid on a small window; the strip under the supplies now says how many rows are really down there.
 
+## 5. An errand's thing dropped for room was reported as a wipe (newest feature: errands)
+
+- **Found:** an errand's thing (Oak's parcel, Joy's medicine bag, Brock's crate, Bill's amber) can be picked up and then put down for good - the pack's "Drop one", or the battle's make-room list for a catch. Walk out after that and the result screen said nothing about it at all, and back at base the giver asked after it as if the raid had been lost: Brock "You had my crate, and the raid went down with it?", Bill "your pack went down with it?", Oak and Joy "lost with your pack?". The pickup is written to the save the moment it happens (`recordErrandFound`), so `errandBeat` rightly asks - only the words were wrong.
+- **Reproduced:** through `RunManager` and `buildExtractionReport` (`extractionReport.test.ts`, 'what became of an errand'): a raid that registered the crate as found and then banked nothing (escaped) or lost nothing with the pack (wiped) had no errand line, and every giver's `lost` words named the pack going down. Both tests failed before the fix.
+- **Fixed:** `errandLines` also reads `snapshot.foundItems` and says "BROCK'S CRATE was left behind - Brock will want to hear" for an errand thing found this raid that is neither banked, secured nor lost with the pack (a real wipe's ledger holds everything in the pack, so this only speaks of a drop). The four `lost` speeches now say "it never made it home/back?", which is true of a wipe and a drop alike. `tools/playtest/errands.mjs` expects Oak's new words.
+- **How a player meets it:** take Brock's crate, drop it to make room for a better find, and walk out: the result screen tells you it was left behind, and Brock asks after it without accusing you of wiping.
+- **Also:** `menuShots.mjs`'s ROW CUT on the drop-in brief at 960x720 was the tool's fault, not the screen's: the "cut" row was a wrapped note whose blank top padding alone (2 game pixels) sat above the MORE strip, and its text starts exactly at the fold. The audit now measures from inside a row's top padding; the run is clean at 960x720.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
 
 ## Still open from playtest 6 (candidates for later iterations)
 
-- The drop-in screen's brief pane (`px-list.dropin-brief`) has a row cut through its waist at 960x720 (`menuShots.mjs` reports `ROW CUT`) - not looked into yet.
 - B9: Lass Ada says "Going up to Viridian?" inside Viridian City (`world/trainers.ts`).
 - B9: the cache "secured" line is fixed (entry 3). Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).
