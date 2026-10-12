@@ -1,3 +1,4 @@
+import { recordAction } from '../feedback/actionLog';
 import { supabase } from './supabaseClient';
 import { botCheckNeeded, runBotCheck, type BotCheck } from './turnstile';
 
@@ -119,7 +120,15 @@ function liveParts(): SignInParts {
       const { data, error } = await db.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
       return { uid: data.user?.id ?? null, error };
     },
-    check: () => checkInItsOwnBox(),
+    check: async () => {
+      const check = await checkInItsOwnBox();
+      if (!check.passed) {
+        // Said in the feedback log, so a message that does get through later
+        // tells the owner how the check had been going for this player.
+        recordAction(`Bot check ${check.why}${check.code ? ` (${check.code})` : ''}`);
+      }
+      return check;
+    },
   };
 }
 
@@ -130,17 +139,22 @@ export const BOT_CHECK_ASK = "One quick check that you're not a bot, so spam can
  * Draws the check in a box of its own over everything - every menu and a
  * console game too - rather than inside a screen, because a screen redraws its
  * markup on every change and would take the check down with it. The box shows
- * nothing at all unless Turnstile has to ask, and goes once the check has ended.
+ * nothing at all unless Turnstile has to ask; then it is a card in the middle
+ * of a dimmed window, because nothing behind it goes on until it is answered.
+ * It goes once the check has ended.
  */
 async function checkInItsOwnBox(): Promise<BotCheck> {
   const box = document.createElement('div');
   box.className = 'bot-check';
-  box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'Bot check');
+  const card = document.createElement('div');
+  card.className = 'bot-check-card';
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', 'Bot check');
   const line = document.createElement('p');
   line.textContent = BOT_CHECK_ASK;
   const widget = document.createElement('div');
-  box.append(line, widget);
+  card.append(line, widget);
+  box.append(card);
   document.body.append(box);
   try {
     return await runBotCheck(widget, { onAsking: () => box.classList.add('is-asking') });

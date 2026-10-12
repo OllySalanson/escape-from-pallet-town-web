@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { signInWith, troubleOf, type SignInParts } from './playerSignIn';
-import { botCheckNeeded, checkWith, type TurnstileApi } from './turnstile';
+import { BOT_CHECK_QUIET_MS, BOT_CHECK_TIMEOUT_MS, botCheckNeeded, checkWith, type TurnstileApi } from './turnstile';
 import { TURNSTILE_SITE_KEY } from './submitConfig';
 
 /** A sign-in's parts with every call written down, in order. */
@@ -101,7 +101,11 @@ describe('the bot check', () => {
       if (ending === 'error-callback') {
         expect(handled).toBe(true);
       }
-      expect(await check).toEqual({ passed: false, why: 'failed' });
+      expect(await check).toEqual({
+        passed: false,
+        why: 'failed',
+        code: ending === 'error-callback' ? '300030' : ending === 'expired-callback' ? 'expired' : 'timeout',
+      });
     }
   });
 
@@ -110,7 +114,7 @@ describe('the bot check', () => {
     const check = checkWith(api, element, 'key');
     call('error-callback', '1');
     call('callback', 'late');
-    expect(await check).toEqual({ passed: false, why: 'failed' });
+    expect(await check).toEqual({ passed: false, why: 'failed', code: '1' });
   });
 
   it('is unavailable when Turnstile would not load, will not draw, or does not work in this browser', async () => {
@@ -128,16 +132,27 @@ describe('the bot check', () => {
     expect(await check).toEqual({ passed: false, why: 'unavailable' });
   });
 
-  it('fails a check nobody answers in time', async () => {
+  it('fails a check that stays silent, and gives a player it asks the time to answer', async () => {
     vi.useFakeTimers();
     try {
-      const { api } = turnstile();
+      const silent = turnstile();
       let ended: unknown;
-      void checkWith(api, element, 'key', { timeoutMs: 1000 }).then((result) => (ended = result));
-      await vi.advanceTimersByTimeAsync(999);
+      void checkWith(silent.api, element, 'key').then((result) => (ended = result));
+      await vi.advanceTimersByTimeAsync(BOT_CHECK_QUIET_MS - 1);
       expect(ended).toBeUndefined();
       await vi.advanceTimersByTimeAsync(1);
-      expect(ended).toEqual({ passed: false, why: 'failed' });
+      expect(ended).toEqual({ passed: false, why: 'failed', code: 'unanswered' });
+
+      const asking = turnstile();
+      let answered: unknown;
+      void checkWith(asking.api, element, 'key').then((result) => (answered = result));
+      await vi.advanceTimersByTimeAsync(BOT_CHECK_QUIET_MS - 1);
+      asking.call('before-interactive-callback');
+      await vi.advanceTimersByTimeAsync(BOT_CHECK_TIMEOUT_MS - 1);
+      expect(answered).toBeUndefined();
+      asking.call('callback', 'tok');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(answered).toEqual({ passed: true, token: 'tok' });
     } finally {
       vi.useRealTimers();
     }

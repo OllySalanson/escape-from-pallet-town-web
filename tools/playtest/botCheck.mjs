@@ -113,7 +113,8 @@ try {
   const shot = (name) => page.screenshot(join(out, `${name}.png`));
   const clickButton = (selector) =>
     page.waitFor(`(() => { const b = document.querySelector(${JSON.stringify(selector)}); if (!b) return false; b.click(); return true; })()`, { what: selector });
-  const signOut = () => page.evaluate(`Object.keys(localStorage).filter((k) => k.startsWith('sb-')).forEach((k) => localStorage.removeItem(k)) || true`);
+  // The client keeps its session in memory as well as in storage, so it is asked to forget it.
+  const signOut = () => page.evaluate(`import('/src/game/maker/supabaseClient.ts').then((m) => m.supabase()).then((db) => db.auth.signOut({ scope: 'local' })).then(() => true)`);
   const signUps = () => asked.filter((call) => call.startsWith('sign up'));
 
   // 1. FEEDBACK: the check fails, the message is kept and the panel says why.
@@ -126,7 +127,7 @@ try {
   const firstHeadline = await page.evaluate(`document.querySelector('.feedback-outcome .px-heading')?.textContent ?? document.querySelector('.feedback-outcome')?.textContent`);
   await shot('1-feedback-check-failed');
   if (real) {
-    console.log(`info Cloudflare's own check, headless: "${String(firstHeadline).trim()}"; sign-ups asked: ${JSON.stringify(signUps())}`);
+    console.log(`info Cloudflare's own check, headless: "${String(firstHeadline).trim()}"; the game's log says ${JSON.stringify(await page.evaluate(`import('/src/game/feedback/actionLog.ts').then((m) => m.actionLog.recent().map((line) => line.what).filter((line) => /bot check/i.test(line)))`))}; sign-ups asked: ${JSON.stringify(signUps())}`);
   } else {
     check(/Bot check jammed/.test(firstHeadline), `a check that fails says so (${String(firstHeadline).trim()})`);
     check(signUps().length === 0, 'nothing signs up without a passed check');
@@ -139,9 +140,9 @@ try {
     await page.evaluate(`window.__check = 'ask'; true`);
     await clickButton('[data-retry-check]');
     await page.waitFor(`!!document.querySelector('.bot-check.is-asking')`, { what: 'the check asking' });
-    const box = await page.evaluate(`(() => { const r = document.querySelector('.bot-check').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, text: document.querySelector('.bot-check p').textContent, z: getComputedStyle(document.querySelector('.bot-check')).zIndex }; })()`);
+    const box = await page.evaluate(`(() => { const r = document.querySelector('.bot-check-card').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, text: document.querySelector('.bot-check p').textContent, z: getComputedStyle(document.querySelector('.bot-check')).zIndex }; })()`);
     await shot('2-feedback-check-asking');
-    check(box.bottom <= 800 && box.left >= 0 && box.right <= 1280 && /not a bot/.test(box.text), `the check asks in view, and says what it is (${JSON.stringify(box)})`);
+    check(box.top >= 0 && box.bottom <= 800 && box.left >= 0 && box.right <= 1280 && /not a bot/.test(box.text), `the check asks in view, and says what it is (${JSON.stringify(box)})`);
     await page.evaluate(`window.__answer(); true`);
     await page.waitFor(`/Message extracted/.test(document.querySelector('.feedback-outcome')?.textContent ?? '')`, { what: 'the message sent' });
     await shot('3-feedback-sent-after-retry');
@@ -152,24 +153,31 @@ try {
     await page.waitFor(`!${GAME}.scene.isActive('feedback')`, { what: 'the panel closed' });
   }
 
-  // 3. A check that never loads says that, and not "no signal".
+  // 3. A check that never loads says that, and not "no signal": a page of its
+  // own with no stand-in Turnstile and Cloudflare's script blocked, as a
+  // blocker or a filtering network would.
   if (!real) {
     await signOut();
-    await page.evaluate(`window.__realTurnstile = window.turnstile; delete window.turnstile; true`);
-    await page.send('Network.setBlockedURLs', { urls: ['*challenges.cloudflare.com*'] });
-    await page.send('Network.enable');
-    await page.tap('KeyF', 60);
-    await page.waitFor(`!!document.querySelector('#feedback-text')`, { what: 'the feedback panel' });
-    await page.evaluate(`(() => { const box = document.querySelector('#feedback-text'); box.value = 'second bot check test'; box.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
-    await clickButton('[data-send]');
-    await page.waitFor(`!!document.querySelector('.feedback-outcome')`, { what: 'the outcome' });
-    const missing = await page.evaluate(`document.querySelector('.feedback-outcome')?.textContent ?? ''`);
-    await shot('4-feedback-check-missing');
-    check(/won't load/.test(missing) && /safe in your pack/.test(missing), 'a check that never loads says so, and that the message is kept');
-    await clickButton('[data-close]');
-    await page.waitFor(`!${GAME}.scene.isActive('feedback')`, { what: 'the panel closed' });
-    await page.send('Network.setBlockedURLs', { urls: [] });
-    await page.evaluate(`window.turnstile = window.__realTurnstile; true`);
+    const blocked = await browser.openPage('about:blank');
+    try {
+      await blocked.send('Network.enable');
+      await blocked.send('Network.setBlockedURLs', { urls: ['*supabase.co*', '*challenges.cloudflare.com*'] });
+      await blocked.send('Page.navigate', { url: `${url}?testmode=pixels` });
+      await blocked.waitFor(sceneIs('title'), { timeoutMs: 30_000 });
+      await sleep(500);
+      await blocked.tap('KeyF', 60);
+      await blocked.waitFor(`!!document.querySelector('#feedback-text')`, { what: 'the feedback panel' });
+      await blocked.evaluate(`(() => { const box = document.querySelector('#feedback-text'); box.value = 'second bot check test'; box.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+      await blocked.waitFor(`(() => { const b = document.querySelector('[data-send]'); if (!b) return false; b.click(); return true; })()`, { what: 'SEND' });
+      await blocked.waitFor(`!!document.querySelector('.feedback-outcome')`, { what: 'the outcome' });
+      const missing = await blocked.evaluate(`document.querySelector('.feedback-outcome')?.textContent ?? ''`);
+      await blocked.screenshot(join(out, '4-feedback-check-missing.png'));
+      check(/won't load/.test(missing) && /safe in your pack/.test(missing), 'a check that never loads says so, and that the message is kept');
+      const kept = await blocked.evaluate(`new Promise((resolve) => { const open = indexedDB.open('escape-from-pallet-town.feedback'); open.onsuccess = () => { const all = open.result.transaction('outbox').objectStore('outbox').getAll(); all.onsuccess = () => resolve(all.result.map((n) => n.text)); }; })`);
+      check(kept.includes('second bot check test'), `the message is in the pack (${JSON.stringify(kept)})`);
+    } finally {
+      await blocked.close();
+    }
   }
 
   // 4. The console: looking signs nobody up; a score the check stopped is kept and goes next time.

@@ -27,18 +27,32 @@ declare global {
 
 export type BotCheck =
   | { readonly passed: true; readonly token: string }
-  | { readonly passed: false; readonly why: 'unavailable' | 'failed' };
+  | {
+      readonly passed: false;
+      readonly why: 'unavailable' | 'failed';
+      /** Turnstile's own error code, when it gave one: what the feedback log keeps of a failure. */
+      readonly code?: string;
+    };
 
 export interface BotCheckOptions {
   /** Turnstile is unsure and is about to ask the player something: show the check. */
   readonly onAsking?: () => void;
-  /** How long a check may take, asking included, before it counts as failed. */
-  readonly timeoutMs?: number;
+  /** How long a check that has not asked anything may take before it counts as failed. */
+  readonly quietMs?: number;
+  /** How long it may take once it has asked the player something. */
+  readonly askingMs?: number;
 }
 
 /**
+ * An invisible pass takes a second or two; a check still silent after this
+ * is not going to answer (a headless browser waits on Turnstile forever), and
+ * the player is told rather than left watching "Transmitting...".
+ */
+export const BOT_CHECK_QUIET_MS = 30_000;
+
+/**
  * Long enough for somebody who is asked to tick a box to read the line above
- * it and tick it; an invisible pass takes a second or two.
+ * it and tick it. Nothing waits on a check longer than this.
  */
 export const BOT_CHECK_TIMEOUT_MS = 120_000;
 
@@ -114,8 +128,9 @@ export function checkWith(
       }, 0);
       resolve(result);
     };
-    const failed = (): void => end({ passed: false, why: 'failed' });
-    const timer = setTimeout(failed, options.timeoutMs ?? BOT_CHECK_TIMEOUT_MS);
+    const failed = (code?: unknown): void =>
+      end({ passed: false, why: 'failed', ...(typeof code === 'string' && code ? { code } : {}) });
+    let timer = setTimeout(() => failed('unanswered'), options.quietMs ?? BOT_CHECK_QUIET_MS);
     try {
       widget = api.render(element, {
         sitekey: siteKey,
@@ -125,14 +140,19 @@ export function checkWith(
         'refresh-expired': 'never',
         callback: (token: string) => end({ passed: true, token }),
         // Handled, so Turnstile reports the error to us rather than throwing it.
-        'error-callback': () => {
-          failed();
+        'error-callback': (code: unknown) => {
+          failed(code);
           return true;
         },
-        'expired-callback': failed,
-        'timeout-callback': failed,
+        'expired-callback': () => failed('expired'),
+        'timeout-callback': () => failed('timeout'),
         'unsupported-callback': () => end({ passed: false, why: 'unavailable' }),
-        'before-interactive-callback': () => options.onAsking?.(),
+        'before-interactive-callback': () => {
+          // A player being asked gets the time to answer.
+          clearTimeout(timer);
+          timer = setTimeout(() => failed('unanswered'), options.askingMs ?? BOT_CHECK_TIMEOUT_MS);
+          options.onAsking?.();
+        },
       });
     } catch {
       end({ passed: false, why: 'unavailable' });
