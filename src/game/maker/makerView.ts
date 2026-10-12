@@ -150,11 +150,13 @@ export type MakerCheck = Omit<MapCheck, 'id'> & { readonly id: string };
 
 /** The last check, which is not a fact about the file but about its maker. */
 export function walkedCheck(walked: boolean): MakerCheck {
+  const problems = walked ? [] : ['WALK IT or RAID IT, and leave by an exit.'];
   return {
     id: 'walked',
     label: 'You walked out of it yourself in TRY IT',
     passed: walked,
-    problems: walked ? [] : ['WALK IT or RAID IT, and leave by an exit.'],
+    problems,
+    faults: problems.map((text) => ({ text, places: [], group: 'tries' })),
   };
 }
 

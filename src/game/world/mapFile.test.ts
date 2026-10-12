@@ -161,8 +161,10 @@ describe('whether a map works', () => {
   it('fails a drop-in or an item spot standing on something solid', () => {
     const inTheTrees = edited({ dropIns: [{ ...SAMPLE.dropIns[0], x: 0, y: 23 }] });
     expect(failing(inTheTrees)).toContain('standing');
+    // Said as what it stands on, not "something solid", which sent a maker
+    // looking through the map for what it was.
     expect(checkMapFile(inTheTrees).find((check) => check.id === 'standing')?.problems).toEqual([
-      'Drop-in South Road at 0,23 is on something solid.',
+      'Drop-in South Road at 0,23 stands in the trees.',
     ]);
   });
 

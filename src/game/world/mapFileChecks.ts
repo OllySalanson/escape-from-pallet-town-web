@@ -25,6 +25,7 @@ import {
   doorFront,
   fileDoorGates,
   fileLedges,
+  plantedProp,
   readMapFile,
   type MapFile,
   type MapFileArea,
@@ -89,6 +90,35 @@ export interface MapCheck {
   readonly passed: boolean;
   /** Why it failed, naming the places at fault; empty when it passed. */
   readonly problems: readonly string[];
+  /** The same, each with the tiles it is about, for an editor to take its maker there. */
+  readonly faults: readonly MapFault[];
+}
+
+/** A tile a fault is about, in its own area's tiles, as the maker placed it. */
+export interface MapFaultPlace {
+  readonly x: number;
+  readonly y: number;
+  /** The inside it is in; absent is the outdoors. */
+  readonly area?: string;
+}
+
+/** One way a map fails a check, and where. */
+export interface MapFault {
+  /** What is wrong, in the words a maker reads: one of the check's `problems`. */
+  readonly text: string;
+  /** The tiles it is about, the one to look at first; none when it is about the whole map. */
+  readonly places: readonly MapFaultPlace[];
+  /**
+   * What kind of thing it is about, in the plural - "berry trees", "drop-ins" -
+   * so a run of the same kind can be read as one line with a count.
+   */
+  readonly group: string;
+  /**
+   * What is wrong with every one of its group, as a plural verb phrase - "stand
+   * in the trees" - so a run of one kind can be headed "7 berry trees stand in
+   * the trees". Absent where a run of the kind need not share it.
+   */
+  readonly says?: string;
 }
 
 /** What each way through is called in a problem with it. */
@@ -122,6 +152,111 @@ const LABELS: Readonly<Record<MapCheckId, string>> = {
 };
 
 const at = ({ x, y }: GridPosition): string => `${x},${y}`;
+
+/** What standing on a tile of solid ground is called, outdoors. */
+const SOLID_GROUND: Readonly<Record<string, string>> = {
+  [MATERIAL_CHARS.tree]: 'stands in the trees',
+  [MATERIAL_CHARS.hedge]: 'stands in a hedge',
+  o: 'stands on a bush',
+  u: 'stands on a bush',
+  k: 'stands on a bush',
+  [MATERIAL_CHARS.water]: 'stands in deep water',
+  [MATERIAL_CHARS.cliff]: 'stands on rock',
+  [MATERIAL_CHARS.fence]: 'stands on a fence',
+  [MATERIAL_CHARS.wall]: 'stands in a wall',
+  '<': 'stands on a ledge',
+  '=': 'stands on a ledge',
+  '>': 'stands on a ledge',
+};
+
+/** What a door shut by a field move is, stood on. */
+const ON_A_DOOR: Readonly<Record<string, string>> = {
+  'cut-tree': 'stands on a small tree',
+  'smash-rock': 'stands on a cracked rock',
+  surf: 'stands in deep water',
+};
+
+/** Words of a piece's name that are names, and are written as the games write them. */
+const PROPER_WORDS: Readonly<Record<string, string>> = {
+  pokemon: 'Pokémon',
+  poke: 'Poké',
+  pewter: 'Pewter',
+  cerulean: 'Cerulean',
+  vermilion: 'Vermilion',
+  celadon: 'Celadon',
+  fuchsia: 'Fuchsia',
+  saffron: 'Saffron',
+  cinnabar: 'Cinnabar',
+  silph: 'Silph',
+  co: 'Co.',
+  safari: 'Safari',
+  league: 'League',
+  game: 'Game',
+  corner: 'Corner',
+  center: 'Center',
+  mart: 'Mart',
+  ss: 'S.S.',
+  anne: 'Anne',
+  lapras: 'Lapras',
+};
+
+/**
+ * A planted piece by the file's own word for it, as words: "house", "Pewter
+ * gym", "Pokémon Center". A shut-door copy of a building is the building.
+ */
+function pieceWords(kind: string): string {
+  return kind
+    .replace(/-door$/, '')
+    .replace(/-\d+$/, '')
+    .split('-')
+    .map((word) => PROPER_WORDS[word] ?? word)
+    .join(' ');
+}
+
+/**
+ * What a thing standing on a solid tile is standing on, as the maker drew it -
+ * "stands in the trees", "stands on the house" - because "something solid" sent
+ * a maker hunting through the map for what it was.
+ */
+function standsOn(file: MapFile, spot: MapFileSpot): string {
+  const area = spot.area === undefined ? undefined : file.areas?.find((candidate) => candidate.id === spot.area);
+  const pieces = area ? area.buildings : file.buildings;
+  // The piece planted last is drawn on top, so it is the one stood on.
+  for (let index = pieces.length - 1; index >= 0; index -= 1) {
+    const piece = pieces[index];
+    const prop = plantedProp(piece.kind);
+    const column = spot.x - piece.x;
+    const row = spot.y - piece.y;
+    if (column < 0 || row < 0 || column >= prop.width || row >= prop.height) {
+      continue;
+    }
+    const cell = prop.cells[row * prop.width + column];
+    if (cell.tile >= 0 && !cell.canopy && cell.solid) {
+      return `stands on the ${pieceWords(piece.kind)}`;
+    }
+  }
+  if (!area) {
+    const door = (file.doors ?? []).find(
+      (candidate) =>
+        spot.x >= candidate.x &&
+        spot.y >= candidate.y &&
+        spot.x < candidate.x + candidate.width &&
+        spot.y < candidate.y + candidate.height,
+    );
+    if (door) {
+      return ON_A_DOOR[door.kind];
+    }
+  }
+  const letter = (area ? area.ground : file.ground)[spot.y]?.[spot.x] ?? '';
+  if (area) {
+    return letter === MATERIAL_CHARS.cliff
+      ? 'stands in the dark outside the room'
+      : area.kind === 'cave'
+        ? "stands in the cave's rock"
+        : "stands in the room's wall";
+  }
+  return SOLID_GROUND[letter] ?? 'is on something solid';
+}
 
 /**
  * The grid a file map is played on - its own drawing, every inside laid out
@@ -163,16 +298,24 @@ export function spotPlacer(composed: ComposedMap): (spot: MapFileSpot) => GridPo
  * rest with nothing to say about them.
  */
 export function checkMapFile(value: unknown): readonly MapCheck[] {
-  const check = (id: MapCheckId, problems: readonly string[]): MapCheck => ({
+  const check = (id: MapCheckId, faults: readonly MapFault[]): MapCheck => ({
     id,
     label: LABELS[id],
-    passed: problems.length === 0,
-    problems,
+    passed: faults.length === 0,
+    problems: faults.map((fault) => fault.text),
+    faults,
   });
   const unloadable = (problems: readonly string[]): readonly MapCheck[] =>
     (Object.keys(LABELS) as MapCheckId[])
       .filter((id) => id !== 'doors' && id !== 'areas')
-      .map((id) => (id === 'loads' ? check(id, problems) : { ...check(id, []), passed: false }));
+      .map((id) =>
+        id === 'loads'
+          ? check(
+              id,
+              problems.map((text) => ({ text, places: [], group: 'problems with the file' })),
+            )
+          : { ...check(id, []), passed: false },
+      );
   const reading = readMapFile(value);
   if (!reading.ok) {
     return unloadable(reading.problems);
@@ -214,21 +357,44 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const berryTrees = file.berryTrees ?? [];
   const boulders = file.boulders ?? [];
   const named = [
-    ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}` })),
-    ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}` })),
-    ...file.itemSpots.map((spot, index) => ({ spot, what: `Item spot ${index + 1}` })),
-    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}` })),
-    ...people.map((spot) => ({ spot, what: `${spot.name}` })),
-    ...signs.map((spot, index) => ({ spot, what: `Sign ${index + 1}` })),
-    ...trainers.map((spot) => ({ spot, what: `Trainer ${spot.name}` })),
-    ...pokemon.map((spot) => ({ spot, what: pokemonName(spot.species) })),
-    ...berryTrees.map((spot) => ({ spot, what: `${berryName(spot.berry)} tree` })),
-    ...boulders.map((spot, index) => ({ spot, what: `Boulder ${index + 1}` })),
+    ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}`, group: 'drop-ins' })),
+    ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}`, group: 'exits' })),
+    ...file.itemSpots.map((spot, index) => ({
+      spot,
+      what: `Item spot ${index + 1}`,
+      group: 'item spots',
+    })),
+    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}`, group: 'landmarks' })),
+    ...people.map((spot) => ({ spot, what: `${spot.name}`, group: 'people' })),
+    ...signs.map((spot, index) => ({ spot, what: `Sign ${index + 1}`, group: 'signs' })),
+    ...trainers.map((spot) => ({ spot, what: `Trainer ${spot.name}`, group: 'trainers' })),
+    ...pokemon.map((spot) => ({ spot, what: pokemonName(spot.species), group: 'Pokémon' })),
+    ...berryTrees.map((spot) => ({
+      spot,
+      what: `${berryName(spot.berry)} tree`,
+      group: 'berry trees',
+    })),
+    ...boulders.map((spot, index) => ({ spot, what: `Boulder ${index + 1}`, group: 'boulders' })),
   ];
+  /** A fault about the things on some tiles, the first of them the one to look at. */
+  const fault = (
+    text: string,
+    kind: string | { readonly group: string; readonly says: string },
+    ...places: readonly MapFileSpot[]
+  ): MapFault => ({
+    text,
+    ...(typeof kind === 'string' ? { group: kind } : kind),
+    places: places.map(({ x, y, area }) => (area === undefined ? { x, y } : { x, y, area })),
+  });
+  /** "stands in the trees" said of many: "stand in the trees". */
+  const plural = (phrase: string): string => phrase.replace(/^stands /, 'stand ').replace(/^is /, 'are ');
 
   const standing = named
     .filter(({ spot }) => !walkable(spot))
-    .map(({ spot, what }) => `${what} at ${tileOf(spot)} is on something solid.`);
+    .map(({ spot, what, group }) => {
+      const on = standsOn(file, spot);
+      return fault(`${what} at ${tileOf(spot)} ${on}.`, { group, says: plural(on) }, spot);
+    });
 
   // Where each way through is stood on, named by what it goes through.
   const fileLinks = file.links ?? [];
@@ -251,20 +417,30 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const landings = fileLinks.flatMap((link) =>
     link.ends.flatMap((end, index) => {
       const what = doorwayName(end, link.ends[1 - index]);
-      return landingsOf(file, end).map((tile) => ({ spot: { ...tile, area: end.area }, what }));
+      return landingsOf(file, end).map((tile) => ({
+        spot: { ...tile, area: end.area },
+        what,
+        group: 'doorways',
+      }));
     }),
   );
 
-  const holders = new Map<string, { tile: string; whats: string[] }>();
+  const holders = new Map<string, { spot: MapFileSpot; whats: string[] }>();
   for (const { spot, what } of [...named, ...landings]) {
     const key = at(onGrid(spot));
-    const holding = holders.get(key) ?? { tile: tileOf(spot), whats: [] };
+    const holding = holders.get(key) ?? { spot, whats: [] };
     holding.whats.push(what);
     holders.set(key, holding);
   }
   const apart = [...holders.values()]
     .filter(({ whats }) => whats.length > 1)
-    .map(({ tile, whats }) => `${whats.join(' and ')} share the tile ${tile}.`);
+    .map(({ spot, whats }) =>
+      fault(
+        `${whats.join(' and ')} share the tile ${tileOf(spot)}.`,
+        { group: 'tiles', says: 'hold two things at once' },
+        spot,
+      ),
+    );
 
   const doors = fileLinks.flatMap((link) =>
     link.ends.flatMap((end, index) => {
@@ -272,7 +448,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
       const what = doorwayName(end, other);
       const found: string[] = [];
       if (!walkable(end)) {
-        found.push(`${what} is on something solid.`);
+        found.push(`${what} ${standsOn(file, end)}.`);
       }
       const area = areaOf(end);
       const kind = area?.kind;
@@ -394,7 +570,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
           found.push(`${what} is let into a side wall, as a gatehouse's is: give the room the Gatehouse look.`);
         }
       }
-      return found;
+      return found.map((text) => fault(text, 'doorways', end));
     }),
   );
   // A cave mouth is a way in or it is a hole in a hill that goes nowhere.
@@ -407,7 +583,13 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
         link.ends.some((end) => end.area === undefined && end.x === front.x && end.y === front.y),
       )
     ) {
-      doors.push(`The cave mouth at ${at(building)} leads nowhere: make its cave, or take it away.`);
+      doors.push(
+        fault(
+          `The cave mouth at ${at(building)} leads nowhere: make its cave, or take it away.`,
+          'cave mouths',
+          building,
+        ),
+      );
     }
   }
 
@@ -423,19 +605,24 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // onto ground that is free - while the hunter's room is still asked of the
   // ground alone, because the hunter cannot follow.
   const hops = fileLedges(file).flatMap((ledge) =>
-    ledge.brow.map((from) => ({
-      // Where the maker painted it: the ledge tile in front of the brow.
-      ledge: {
-        x: ledge.brow[0].x + DIRECTION_DELTAS[ledge.drop].x,
-        y: ledge.brow[0].y + DIRECTION_DELTAS[ledge.drop].y,
-      },
-      from: onGrid(from),
-      toward: ledge.drop,
-      to: onGrid({
+    ledge.brow.map((from) => {
+      // Where it puts the player down, as the maker sees the map.
+      const landing = {
         x: from.x + DIRECTION_DELTAS[ledge.drop].x * (ledge.depth + 1),
         y: from.y + DIRECTION_DELTAS[ledge.drop].y * (ledge.depth + 1),
-      }),
-    })),
+      };
+      return {
+        // Where the maker painted it: the ledge tile in front of the brow.
+        ledge: {
+          x: ledge.brow[0].x + DIRECTION_DELTAS[ledge.drop].x,
+          y: ledge.brow[0].y + DIRECTION_DELTAS[ledge.drop].y,
+        },
+        landing,
+        from: onGrid(from),
+        toward: ledge.drop,
+        to: onGrid(landing),
+      };
+    }),
   );
   const walks: GridLinks = new Map([...links, ...linkTable(hops, composed.width)]);
   // A raid has to be leavable by a player who brought no Pokemon that knows Cut
@@ -483,11 +670,24 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     const best = soonestOut(steps);
     if (best === Infinity) {
       return [
-        `Drop-in ${dropIn.name} cannot walk to any exit${file.exits.some((exit) => exit.opens.when === 'dug') ? ' without a Pickaxe' : ''}.`,
+        fault(
+          `Drop-in ${dropIn.name} cannot walk to any exit${file.exits.some((exit) => exit.opens.when === 'dug') ? ' without a Pickaxe' : ''}.`,
+          {
+            group: 'drop-ins',
+            says: `cannot walk to any exit${file.exits.some((exit) => exit.opens.when === 'dug') ? ' without a Pickaxe' : ''}`,
+          },
+          dropIn,
+        ),
       ];
     }
     return best > RAID_DURATION_MS
-      ? [`Drop-in ${dropIn.name} cannot reach an open exit in time.`]
+      ? [
+          fault(
+            `Drop-in ${dropIn.name} cannot reach an open exit in time.`,
+            { group: 'drop-ins', says: 'cannot reach an open exit in time' },
+            dropIn,
+          ),
+        ]
       : [];
   });
   // A hop is one way, so wherever it puts the player down has to have a way
@@ -502,17 +702,40 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const strandedHops = [...hopLandings.values()]
     .filter((hop) => !shut.has(at(hop.to)))
     .filter((hop) => soonestOut(stepDistances(collision, hop.to, shut, walks)) === Infinity)
-    .map((hop) => `The ledge at ${at(hop.ledge)} drops where no exit can be walked to.`);
-  const wayOutProblems = [...wayOut, ...new Set(strandedHops)];
+    .map((hop) =>
+      fault(
+        `The ledge at ${at(hop.ledge)} drops where no exit can be walked to.`,
+        { group: 'ledges', says: 'drop where no exit can be walked to' },
+        hop.ledge,
+        hop.landing,
+      ),
+    );
+  // One ledge says so once, however many of its tiles land in the pocket.
+  const wayOutProblems = [
+    ...wayOut,
+    ...strandedHops.filter(
+      (hop, index) => strandedHops.findIndex((other) => other.text === hop.text) === index,
+    ),
+  ];
 
   const reachable = [
-    ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}` })),
-    ...file.itemSpots.map((spot, index) => ({ spot, what: `Item spot ${index + 1}` })),
-    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}` })),
+    ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}`, group: 'exits' })),
+    ...file.itemSpots.map((spot, index) => ({
+      spot,
+      what: `Item spot ${index + 1}`,
+      group: 'item spots',
+    })),
+    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}`, group: 'landmarks' })),
   ]
     .filter(({ spot }) => walkable(spot))
     .filter(({ spot }) => fromDropIn.every(({ opened }) => stepsTo(opened, spot) < 0))
-    .map(({ spot, what }) => `${what} at ${tileOf(spot)} cannot be walked to from any drop-in.`);
+    .map(({ spot, what, group }) =>
+      fault(
+        `${what} at ${tileOf(spot)} cannot be walked to from any drop-in.`,
+        { group, says: 'cannot be walked to from any drop-in' },
+        spot,
+      ),
+    );
 
   // An inside is walked into when any tile of it can be walked to. Drop-ins
   // that cannot leave are already a problem above, so a map with none says
@@ -532,7 +755,23 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
             }
             return false;
           });
-          return reached ? [] : [`${placed.name} cannot be walked into from any drop-in.`];
+          // Its ways in, from wherever they are: the door a maker would mend.
+          const ways = fileLinks.flatMap((link) =>
+            link.ends.flatMap((end, index) =>
+              end.area === placed.id && link.ends[1 - index].area !== placed.id
+                ? [link.ends[1 - index]]
+                : [],
+            ),
+          );
+          return reached
+            ? []
+            : [
+                fault(
+                  `${placed.name} cannot be walked into from any drop-in.`,
+                  { group: 'insides', says: 'cannot be walked into from any drop-in' },
+                  ...ways,
+                ),
+              ];
         });
 
   // The hunter arrives exactly this many steps from the player, never closer
@@ -541,52 +780,97 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const hunterRoom = fromDropIn
     .filter(({ dropIn }) => walkable(dropIn))
     .filter(({ ground }) => !ground.some((row) => row.includes(HUNTER_SPAWN_DISTANCE)))
-    .map(
-      ({ dropIn }) =>
+    .map(({ dropIn }) =>
+      fault(
         `Drop-in ${dropIn.name} has no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on.`,
+        {
+          group: 'drop-ins',
+          says: `have no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on`,
+        },
+        dropIn,
+      ),
     );
 
-  const ends = new Set([...file.dropIns, ...file.exits].map((spot) => at(onGrid(spot))));
+  const ends = new Map([...file.dropIns, ...file.exits].map((spot) => [at(onGrid(spot)), spot]));
   const watch = trainers.flatMap((trainer) => {
     const seen = trainerSightTiles(
       { position: onGrid(trainer), facing: trainer.facing, sightRange: trainer.sight },
       (tile) => isBlockedAt(collision, tile.x, tile.y),
     );
+    const seenEnds = seen.flatMap((tile) => {
+      const end = ends.get(at(tile));
+      return end ? [end] : [];
+    });
+    const seenLandings = seen.flatMap((tile) => {
+      const hop = hopLandings.get(at(tile));
+      return hop ? [hop.landing] : [];
+    });
     return [
-      ...(seen.some((tile) => ends.has(at(tile)))
-        ? [`Trainer ${trainer.name} can see a drop-in or an exit. Turn them, or watch less far.`]
+      ...(seenEnds.length > 0
+        ? [
+            fault(
+              `Trainer ${trainer.name} can see a drop-in or an exit. Turn them, or watch less far.`,
+              { group: 'trainers', says: 'can see a drop-in or an exit' },
+              trainer,
+              ...seenEnds,
+            ),
+          ]
         : []),
       // A hop is a step taken to get away, so it never lands in a fight.
-      ...(seen.some((tile) => hopLandings.has(at(tile)))
-        ? [`Trainer ${trainer.name} can see where a ledge lands. Turn them, or watch less far.`]
+      ...(seenLandings.length > 0
+        ? [
+            fault(
+              `Trainer ${trainer.name} can see where a ledge lands. Turn them, or watch less far.`,
+              { group: 'trainers', says: 'can see where a ledge lands' },
+              trainer,
+              ...seenLandings,
+            ),
+          ]
         : []),
     ];
   });
 
-  const said = [
+  const said: { what: string; text: string; at?: MapFileSpot }[] = [
     { what: "The map's name", text: file.name },
     { what: "The maker's name", text: file.maker },
     ...file.dropIns.flatMap((spot) => [
-      { what: `Drop-in ${spot.name}`, text: spot.name },
-      { what: `Drop-in ${spot.name}`, text: spot.description ?? '' },
+      { what: `Drop-in ${spot.name}`, text: spot.name, at: spot },
+      { what: `Drop-in ${spot.name}`, text: spot.description ?? '', at: spot },
     ]),
-    ...file.exits.map((spot) => ({ what: `Exit ${spot.name}`, text: spot.name })),
-    ...landmarks.map((spot) => ({ what: `Landmark ${spot.name}`, text: spot.name })),
-    ...people.map((spot) => ({ what: spot.name, text: [spot.name, ...spot.lines].join(' ') })),
-    ...signs.map((spot, index) => ({ what: `Sign ${index + 1}`, text: spot.lines.join(' ') })),
+    ...file.exits.map((spot) => ({ what: `Exit ${spot.name}`, text: spot.name, at: spot })),
+    ...landmarks.map((spot) => ({ what: `Landmark ${spot.name}`, text: spot.name, at: spot })),
+    ...people.map((spot) => ({
+      what: spot.name,
+      text: [spot.name, ...spot.lines].join(' '),
+      at: spot,
+    })),
+    ...signs.map((spot, index) => ({
+      what: `Sign ${index + 1}`,
+      text: spot.lines.join(' '),
+      at: spot,
+    })),
     ...trainers.map((spot) => ({
       what: `Trainer ${spot.name}`,
       text: [spot.name, ...spot.lines].join(' '),
+      at: spot,
     })),
     ...(file.districts ?? []).map((district) => ({
       what: `District ${district.name}`,
       text: district.name,
+      at: district,
     })),
     ...(file.areas ?? []).map((area) => ({ what: `The inside ${area.name}`, text: area.name })),
   ];
   const words = said
     .filter(({ text }) => refusedWords(text).length > 0)
-    .map(({ what }) => `${what} says something the game will not show. Reword it.`);
+    .map(({ what, at: place }) =>
+      fault(
+        `${what} says something the game will not show. Reword it.`,
+        { group: 'names and lines', says: 'say something the game will not show' },
+        ...(place ? [place] : []),
+      ),
+    )
+    .filter((found, index, all) => all.findIndex((other) => other.text === found.text) === index);
 
   // The two checks about insides are only asked of a map that has one: a
   // tick against "every door leads somewhere" on a map with no doors says
@@ -605,7 +889,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     ...(hasInsides ? [check('areas', areas)] : []),
     check('hunter-room', hunterRoom),
     check('watch', watch),
-    check('words', [...new Set(words)]),
+    check('words', words),
   ];
 }
 
