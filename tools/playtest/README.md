@@ -75,6 +75,11 @@ rod and then with one, casting until something bites, and fails if a cast is not
 charged to the raid clock or a bite does not become the fight it promised
 (`docs/screens/fishing/`).
 
+`locks.mjs <url> <dir>` meets Pallet Town's locked WEIR GATE and KILN STRONGBOX
+with nothing to open them, then with the Weir Key, a Lockpick and a Pickaxe:
+the crate picked, the ROCKFALL dug, the gate unlocked and walked out through,
+failing on any line, count or ending the lock rules do not promise.
+
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen

@@ -145,9 +145,11 @@ export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elaps
   if (!isOpen && point.requirement?.kind === 'dug') {
     return `${point.label}\nUNDER RUBBLE\nNEEDS A PICKAXE`;
   }
-  // A locked gate is a wall too, and says whose key turns it.
+  // A locked gate is a wall too, and says whose key turns it - on two lines,
+  // not three: seated in a fence beside a yard, a third line was the one that
+  // left it nowhere to sit, and in the game it went undrawn.
   if (!isOpen && point.requirement?.kind === 'key') {
-    return `${point.label}\nLOCKED\nNEEDS THE ${keyCaptionName(point.requirement.keyId)}`;
+    return `${point.label}\nLOCKED: ${keyCaptionName(point.requirement.keyId)}`;
   }
   return `${point.label}\nEXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, elapsedMs)}`;
 }

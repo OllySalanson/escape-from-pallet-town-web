@@ -79,7 +79,7 @@ describe('what the map says over an exit', () => {
 describe('a barred exit', () => {
   it('says what it is and what opens it, while it is shut', () => {
     const gate = exit('pallet-town', 'WEIR GATE');
-    expect(extractionCaption(gate, false, 0)).toBe('WEIR GATE\nLOCKED\nNEEDS THE WEIR KEY');
+    expect(extractionCaption(gate, false, 0)).toBe('WEIR GATE\nLOCKED: WEIR KEY');
     expect(extractionRequirementText(gate, 0)).toBe('NEEDS THE WEIR KEY');
     expect(extractionCaption(gate, true, 0)).toBe('WEIR GATE\nEXTRACT OPEN');
     expect(extractionCaption(exit('pallet-town', 'ROCKFALL'), false, 0)).toBe(

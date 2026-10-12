@@ -2108,8 +2108,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ? workedLandmarkCaption(poi, worked)
           : `${poi.label}\n${poi.effect === 'unlock-extraction'
             ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
-            : poi.locked
-              ? `LOCKED: NEEDS A LOCKPICK\n${formatPoiReward(poi)}`
+            : // A locked crate keeps what is in it to itself: the lock is the
+              // line, and the whole cache on a third one was a caption too wide
+              // to find a seat beside the crate.
+              poi.locked
+              ? 'LOCKED: NEEDS A LOCKPICK'
               : `CACHE: ${formatPoiReward(poi)}`}`,
         tone: worked ? LABEL_TONES.worked : LABEL_TONES.station,
         depth: atRow(CAPTION_BAND, poi.position.y),
