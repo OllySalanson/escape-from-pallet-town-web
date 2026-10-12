@@ -176,7 +176,8 @@ import {
 import { starterCards } from '../ui/starterPicker';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
 import { focusDirectionForKey } from '../ui/spatialFocus';
-import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWordsId } from '../hub/firstWords';
+import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWords, type FirstWordsId } from '../hub/firstWords';
+import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
 
 /**
@@ -315,11 +316,17 @@ export class HubScene extends Phaser.Scene {
   private boxMoving: string | undefined;
   private status = '';
   /**
-   * The first words being said over this screen, if any (`hub/firstWords.ts`).
-   * They are recorded as heard the moment they appear, so this only keeps them
-   * up until they are read or the screen changes.
+   * The words being said over this screen, if any, and which screen they are
+   * said over: first words (`hub/firstWords.ts`), or Professor Oak handing over
+   * a Pokédex reward in his lab (`hub/pokedex.ts`). Both are recorded the moment
+   * they appear, so this only keeps them up until they are read or the screen
+   * changes.
    */
-  private speaking: FirstWordsId | undefined;
+  private speaking:
+    | { readonly screen: FirstWordsId; readonly words: FirstWords; readonly reward?: boolean }
+    | undefined;
+  /** Whether the words just read were a Pokédex reward, so a second one carries on rather than greets again. */
+  private afterReward = false;
   /** The one pending removal of the status line; see `setStatus()`. */
   private statusTimer: Phaser.Time.TimerEvent | undefined;
 
@@ -1529,14 +1536,21 @@ export class HubScene extends Phaser.Scene {
    */
   private listenForFirstWords(): void {
     const here = firstWordsFor(this.view, this.flow.step);
-    if (here === this.speaking) {
+    if (here === this.speaking?.screen) {
       return;
     }
     this.speaking = undefined;
     const progress = this.savedGame.raidProgress;
     // Another tab has written since this screen read the save; the next thing
     // done here catches up with it (`movedOnElsewhere`), and says nothing new.
-    if (!here || hasHeard(progress.firstWordsHeard, here) || this.saveManager.stamp() !== this.saveStamp) {
+    if (!here || this.saveManager.stamp() !== this.saveStamp) {
+      return;
+    }
+    if (hasHeard(progress.firstWordsHeard, here)) {
+      // Oak's own first words come before anything he has to give.
+      if (here === 'lab') {
+        this.listenForPokedexReward();
+      }
       return;
     }
     this.saveManager.hearFirstWords(here);
@@ -1547,7 +1561,32 @@ export class HubScene extends Phaser.Scene {
       raidProgress: { ...progress, firstWordsHeard: [...(progress.firstWordsHeard ?? []), here] },
     };
     this.saveStamp = this.saveManager.stamp();
-    this.speaking = here;
+    this.speaking = { screen: here, words: FIRST_WORDS[here] };
+  }
+
+  /**
+   * Professor Oak looks at the Pokédex and hands over the next milestone's
+   * reward, if one is due (`hub/pokedex.ts`). The reward is written into the
+   * vault and recorded in one save, so it is given once however the lab is left;
+   * two milestones crossed at once are said one after the other, as each is read.
+   */
+  private listenForPokedexReward(): void {
+    const progress = this.savedGame.raidProgress;
+    if (!dueMilestone(pokedexOwned(progress.pokedexOwned, this.stash).length, progress.pokedexRewards)) {
+      return;
+    }
+    const continuing = this.afterReward;
+    const given = this.saveManager.claimPokedexReward();
+    const reloaded = given ? this.saveManager.load() : null;
+    if (!given || !reloaded) {
+      return;
+    }
+    // The reward is in the vault in storage, so this screen's copy is read
+    // again rather than added to by hand - a second copy of the sum is a second
+    // answer. Nothing on the lab screen is lost by it: it is the room's front.
+    this.applyLoadedGame(reloaded);
+    this.speaking = { screen: 'lab', words: milestoneWords(given.milestone, given.owned, continuing), reward: true };
+    audioManager.play('pokedexReward');
   }
 
   private doneListening(): void {
@@ -1555,9 +1594,11 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     // Already recorded as heard, so the re-render does not start them again.
+    this.afterReward = this.speaking.reward === true;
     this.speaking = undefined;
     audioManager.play('select');
     this.render();
+    this.afterReward = false;
   }
 
   /** The words being said, as the box laid over the foot of the screen. */
@@ -1565,7 +1606,7 @@ export class HubScene extends Phaser.Scene {
     if (!this.speaking) {
       return undefined;
     }
-    const words = FIRST_WORDS[this.speaking];
+    const { words } = this.speaking;
     // The person, then what they say, then the one way on: a text box with a
     // face beside it, as the room's own dialogue box would be.
     return pixelWindow(
