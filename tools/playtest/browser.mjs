@@ -7,15 +7,25 @@
 //   await page.freeze();  /* think for as long as you like */  await page.thaw();
 //   await browser.close();                            // always, in a finally
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { lowerOwnPriority } from '../lowPriority.mjs';
 
 /** 1x stage zoom: the largest logical screen with nothing spent on scaling it up. */
 export const LOGIC_WINDOW = { width: 400, height: 256 };
 /** 3x, for the screenshots that are judged by eye. Nine times the pixels per frame. */
 export const PIXEL_WINDOW = { width: 1200, height: 768 };
+
+/**
+ * Writes a captured frame, making its folder first: a driver handed a fresh
+ * output folder used to photograph the whole run and then die on the first
+ * write (tour.mjs, gridtour.mjs, makerGates.mjs and a dozen more).
+ */
+export function writeScreenshot(path, base64) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, Buffer.from(base64, 'base64'));
+}
 
 const KEYS = {
   ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39,
@@ -303,7 +313,7 @@ async function openPage(port, url, window, { save, init, project = false } = {})
     thaw: () => send('Page.setWebLifecycleState', { state: 'active' }),
     async screenshot(path) {
       const { data } = await send('Page.captureScreenshot', { format: 'png' });
-      writeFileSync(path, Buffer.from(data, 'base64'));
+      writeScreenshot(path, data);
     },
     close: async () => {
       socket.close();
