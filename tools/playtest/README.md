@@ -75,6 +75,15 @@ rod and then with one, casting until something bites, and fails if a cast is not
 charged to the raid clock or a bite does not become the fight it promised
 (`docs/screens/fishing/`).
 
+`errands.mjs <url> <dir> [--save=path.json]` plays the base half of an errand
+(`src/game/hub/errands.ts`): a keeper asking as their building is walked into,
+asking only once, Brock taking a crate a raid banked and paying, the crate on
+his bench, Oak asking after a parcel that was lost, and the lab's board and the
+drop-in screen naming what is in hand. `raid.mjs --errands=brocks-crate
+--grab=brocks-crate --save-out=path.json` is the raid half that feeds it
+(`--errands=id,..` writes those errands into the save as asked, so the raid lays
+their things) - `docs/screens/errands/`.
+
 `locks.mjs <url> <dir>` meets Pallet Town's locked WEIR GATE and KILN STRONGBOX
 with nothing to open them, then with the Weir Key, a Lockpick and a Pickaxe:
 the crate picked, the ROCKFALL dug, the gate unlocked and walked out through,

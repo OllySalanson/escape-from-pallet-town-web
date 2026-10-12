@@ -179,7 +179,7 @@ export const ERRANDS: readonly Errand[] = [
       'It is only 1 square of your pack, but it would be the best thing in my cabinet. Bring it back and you get something good for it.',
     ],
     thanks: [
-      'That is it! Look - there is something inside it! It is going right on the shelf.',
+      'That is it! Look - there is something inside it! It is going right here on my desk, where I can see it.',
       'And a deal is a deal. This Eevee has been with me for years. It will do better out there with you.',
     ],
     lost: [

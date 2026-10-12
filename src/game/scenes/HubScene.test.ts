@@ -1417,6 +1417,8 @@ describe('Brock', () => {
     (again as unknown as { render(): void }).render();
     expect(markupOf(again)).toContain("You handed over Brock's crate.");
     expect(markupOf(again)).toContain('You received TM39 from Brock.');
+    // Still at Brock's counter: the hand-over reloads the game, not the room.
+    expect((again as unknown as { view: string }).view).toBe('workshop');
     const after = new SaveManager(storage).load()!;
     expect(after.stash.itemCount('brocks-crate')).toBe(0);
     expect(after.stash.itemCount('tm39-rock-tomb')).toBe(1);

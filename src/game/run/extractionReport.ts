@@ -541,10 +541,10 @@ function errandLines(
     });
   return [
     ...named([...banked, ...secured]).map(
-      ({ errand, thing }) => `${thing} is home. Walk in to ${errand.name} and it is handed over`,
+      ({ errand, thing }) => `${thing} is home - take it to ${errand.name}`,
     ),
     ...named(lost).map(
-      ({ errand, thing }) => `${thing} went down with the pack. ${errand.name} will want to hear about it`,
+      ({ errand, thing }) => `${thing} went down with the pack - ${errand.name} will want to hear`,
     ),
   ];
 }

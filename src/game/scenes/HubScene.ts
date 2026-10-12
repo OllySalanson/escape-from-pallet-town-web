@@ -1631,8 +1631,11 @@ export class HubScene extends Phaser.Scene {
         return;
       }
       // The reward is in the vault in storage, so this screen's copy is read
-      // again rather than added to by hand, as Oak's Pokédex rewards are.
+      // again rather than added to by hand, as Oak's Pokédex rewards are - and
+      // the player is still standing at this keeper's counter, not Oak's.
+      const view = this.view;
       this.applyLoadedGame(reloaded);
+      this.view = view;
       this.speaking = {
         screen: 'errand',
         words: words([`You handed over ${errandThing(errand)}.`, ...errand.thanks, errand.reward.received]),
@@ -1778,7 +1781,8 @@ export class HubScene extends Phaser.Scene {
     // Worded in `contractBoard.ts`, so the authored chain and the standing board
     // that follows it are one list in one voice, testable without the lobby.
     const board = buildContractBoard(this.savedGame.raidProgress);
-    if (board.rows.length === 0) {
+    const errands = this.errandRows(board.rows.length === 0);
+    if (board.rows.length === 0 && errands.rows === '') {
       return pixelWindow(
         '<p class="px-empty">Raids from here are for supplies, Pokémon and whatever the maps still hold.</p>',
         { className: 'objectives-panel', heading: 'Contract board', note: 'Every contract is banked' },
@@ -1803,11 +1807,52 @@ export class HubScene extends Phaser.Scene {
           `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward</small> ${row.reward}</span></div>`,
       )
       .join('');
-    return pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}</div>${details}`, {
-      className: 'objectives-panel',
-      heading: board.heading,
-      note: board.note,
-    });
+    return pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}${errands.rows}</div>${details}${errands.details}`,
+      {
+        className: 'objectives-panel',
+        heading: board.heading,
+        note: board.note,
+      },
+    );
+  }
+
+  /**
+   * The errands in hand (`hub/errands.ts`), under the contracts on the same
+   * board: what each person is waiting on, where it lies and what it costs the
+   * pack. A row is the choice of where to drop in, as a contract's is; one whose
+   * thing is already home says who to take it to instead.
+   */
+  private errandRows(firstShown: boolean): { readonly rows: string; readonly details: string } {
+    const inHand = errandsInHand(this.savedGame.raidProgress);
+    if (inHand.length === 0) {
+      return { rows: '', details: '' };
+    }
+    const rows = inHand
+      .map((errand) => {
+        const thing = errandThing(errand);
+        const squares = errandSquares(errand);
+        const home = this.stash.itemCount(errand.itemId) > 0;
+        const insertion = this.insertionFor(errand.mapId);
+        const shows = `data-shows="errand-${errand.id}"`;
+        const wiring = home
+          ? `data-refused="${escapeAttribute(`${thing} is home. Walk in to ${errand.name} and it is handed over.`)}" ${shows} data-help="${escapeAttribute(`${thing} is in your stash. ${errand.name} takes it when you walk in.`)}"`
+          : insertion
+            ? `data-contract="${insertion[0]}" ${shows} data-help="${escapeAttribute(`Prepare a raid that drops in at ${insertion[1].label}.`)}"`
+            : 'disabled';
+        const line = home
+          ? `Home. Take it to ${errand.name}.`
+          : `In ${errandPlace(errand)}, ${worldMapName(errand.mapId)}. ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`;
+        return `<button class="px-row has-icon px-tall px-contract" ${wiring}>${itemIcon(errand.itemId, thing)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${thing}</strong><small>for ${errand.name}</small></span><span class="px-wrap">${line}</span></span></button>`;
+      })
+      .join('');
+    const details = inHand
+      .map(
+        (errand, index) =>
+          `<div class="px-detail" data-shown-by="errand-${errand.id}"${firstShown && index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>Reward</small> ${errand.reward.summary}, from ${errand.name}. Lost with the pack if you wipe.</span></div>`,
+      )
+      .join('');
+    return { rows: `<h3 class="px-subheading">Errands</h3>${rows}`, details };
   }
 
   /** The unlocked insertion a contract is taken from, if the player can reach it yet. */

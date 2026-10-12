@@ -89,7 +89,7 @@ export async function walkIntoBase(page, door, options = {}) {
   await until(sceneIs('hub'), `the ${door}`);
 }
 
-/** `--insertion=id --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],..`, out of a driver's arguments. */
+/** `--insertion=id --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const list = (name) => (option(name) ?? '').split(',').filter(Boolean);
@@ -106,6 +106,7 @@ export function deployOptions(args) {
     stash: list('stash'),
     pack: list('pack'),
     secure: list('secure'),
+    errands: list('errands'),
   };
 }
 
@@ -116,7 +117,7 @@ export function deployOptions(args) {
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
  * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   await press('Space'); await until(sceneIs('starter'));
@@ -131,7 +132,7 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
     `the picker to offer ${starter}`,
   );
   await click(`Confirm ${starter}`);
-  if (insertion || beaten.length > 0 || opened.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined || team.length > 0 || stash.length > 0) {
+  if (insertion || beaten.length > 0 || opened.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined || team.length > 0 || stash.length > 0 || errands.length > 0) {
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
     // Every other map's front door is what banking the first contract pays, and a
     // drop-in point is offered to whoever has stood on it. The tool cannot tell
@@ -144,6 +145,9 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       // on a raid deployed with nothing that could have cut it.
       p.openedGates = [...new Set([...(p.openedGates ?? []), ...${JSON.stringify(opened)}])];
       p.completedContracts = [...new Set([...p.completedContracts, ...${JSON.stringify(completed)}])];
+      // --errands=id,.. - those errands asked (\`hub/errands.ts\`), so the raid
+      // lays their things: \`--errands=brocks-crate --grab=brocks-crate\`.
+      for (const id of ${JSON.stringify(errands)}) { p.errands = [...(p.errands ?? []).filter((e) => e.id !== id), { id, status: 'started', found: 0, lossesHeard: 0 }]; }
       if (${JSON.stringify(insertion ?? null)}) { p.firstContractExtracted = true; p.reachedInsertions = [...new Set([...p.reachedInsertions, ${JSON.stringify(insertion ?? '')}])]; }
       if (${hp !== undefined}) for (const stored of save.stash.pokemon) stored.pokemon.currentHp = Math.min(stored.pokemon.currentHp, ${Number(hp)});
       // --stash=itemId[:n],.. is a player who has banked supplies. The loadout

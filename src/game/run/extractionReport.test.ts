@@ -770,6 +770,30 @@ describe('what the raid left on the ground', () => {
   });
 });
 
+/** Somebody's errand (`hub/errands.ts`), said plainly whichever way the raid went. */
+describe('what became of an errand', () => {
+  const report = (outcome: 'ESCAPED' | 'WIPED') => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    manager.resolveEscape();
+    const crate = [{ itemId: 'brocks-crate', quantity: 1 }];
+    return buildExtractionReport({
+      outcome,
+      ...(outcome === 'WIPED' ? { cause: 'timer' as const, lost: { pokemon: [], items: crate } } : { banked: { pokemon: [], items: crate } }),
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      saved: true,
+    });
+  };
+
+  it('sends a thing that came home to the person waiting on it', () => {
+    expect(report('ESCAPED').pressure[0]).toBe("BROCK'S CRATE is home - take it to Brock");
+  });
+
+  it('owns up to a thing that went down with the pack', () => {
+    expect(report('WIPED').pressure[0]).toBe("BROCK'S CRATE went down with the pack - Brock will want to hear");
+  });
+});
+
 /**
  * Playtests 24 B1, 25 G2 and 34 #5: the screen's account of what was at stake
  * left out the three things a raid carries that are not supplies - the pack,
