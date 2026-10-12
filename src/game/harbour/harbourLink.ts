@@ -1,6 +1,12 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { HarbourCrowd, type HarbourFigure } from './harbourCrowd';
-import { HARBOUR_PATH_MAX, HARBOUR_SEND_EVERY_MS, type HarbourMove, type HarbourPlace } from './harbourProtocol';
+import {
+  HARBOUR_PATH_MAX,
+  HARBOUR_SEND_EVERY_MS,
+  type HarbourMove,
+  type HarbourNudge,
+  type HarbourPlace,
+} from './harbourProtocol';
 
 /**
  * This browser's place in THE HARBOUR: what it tells the others and what it
@@ -35,6 +41,8 @@ export interface HarbourWire {
   /** Says where this player is, or (null) that they are not standing anywhere. */
   standIn(place: HarbourPlace | null): void;
   send(move: HarbourMove): void;
+  /** Tells one other player's browser to look now (`HarbourNudge`). */
+  nudge(nudge: HarbourNudge): void;
   /** The names on the doors of these players, as the database has them. */
   names(ids: readonly string[]): Promise<ReadonlyMap<string, string>>;
   leave(): Promise<void>;
@@ -42,6 +50,7 @@ export interface HarbourWire {
 
 export interface HarbourHeard {
   move(move: HarbourMove): void;
+  nudge(nudge: HarbourNudge): void;
   /** Everybody present now, and where each says they are. */
   present(members: ReadonlyMap<string, HarbourPlace>): void;
 }
@@ -78,6 +87,7 @@ export class HarbourLink {
   private greetOwed = false;
   private awaySince: number | null = null;
   private now = 0;
+  private onNudge: ((from: string) => void) | null = null;
 
   private readonly wire: HarbourWire;
 
@@ -180,6 +190,18 @@ export class HarbourLink {
       });
   }
 
+  /** What to do when another player's browser says to look now. */
+  public whenNudged(handler: ((from: string) => void) | null): void {
+    this.onNudge = handler;
+  }
+
+  /** Tells one other player's browser to look now. Said only by a player who can be heard. */
+  public nudge(to: string): void {
+    if (this.joined === 'yes' && this.joinedAs && this.joinedAs === this.me) {
+      this.wire.nudge({ from: this.joinedAs, to });
+    }
+  }
+
   /** How many other players are in the harbour, wherever they stand. */
   public get othersHere(): number {
     return [...this.members.keys()].filter((id) => id !== this.me && this.names.has(id)).length;
@@ -210,6 +232,11 @@ export class HarbourLink {
     void this.wire
       .join(as, at, {
         move: (move) => this.crowd.hear(move),
+        nudge: (nudge) => {
+          if (nudge.to === this.me) {
+            this.onNudge?.(nudge.from);
+          }
+        },
         present: (members) => this.hearPresent(members),
       })
       .then((ok) => {

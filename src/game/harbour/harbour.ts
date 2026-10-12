@@ -3,7 +3,9 @@ import { HarbourLink, type HarbourWire, type NamedFigure } from './harbourLink';
 import { housePlace, type HarbourPlace, type SHARED_HARBOUR_ROOMS } from './harbourProtocol';
 import { loadPlayerName } from '../console/playerName';
 import { requestedTestMode } from '../dev/testMode';
-import { harbourMode, liveHarbourWire, localHarbourWire } from './harbourWire';
+import { HouseDoor } from './houseDoor';
+import { liveHouseService, localHouseService, type HouseService } from './houseService';
+import { harbourMode, liveHarbourWire, localHarbourWire, type HarbourMode } from './harbourWire';
 
 /**
  * THE HARBOUR shared: the one object a scene asks about everybody else, kept
@@ -18,15 +20,22 @@ import { harbourMode, liveHarbourWire, localHarbourWire } from './harbourWire';
  * changed at the console is written the next time the harbour is walked into.
  */
 
-/** Where in the harbour a scene has the player: the yard, a keeper's room, or their own house. */
+/**
+ * Where in the harbour a scene has the player: the yard, a keeper's room, their
+ * own house, or somebody else's house they were let into (`home/knocking.ts`).
+ */
 export type HarbourWhere =
   | 'yard'
   | (typeof SHARED_HARBOUR_ROOMS)[number]
   | 'home'
-  | 'home-upstairs';
+  | 'home-upstairs'
+  | { readonly visiting: string; readonly upstairs: boolean };
 
 /** The place a scene's room is, for this player. */
 export function placeFor(where: HarbourWhere, me: string | null): HarbourPlace | null {
+  if (typeof where === 'object') {
+    return housePlace(where.visiting, where.upstairs);
+  }
   if (where === 'home' || where === 'home-upstairs') {
     return me ? housePlace(me, where === 'home-upstairs') : null;
   }
@@ -182,7 +191,7 @@ export function harbour(): HarbourSession | null {
   if (session !== undefined) {
     return session;
   }
-  const mode = typeof window === 'undefined' ? 'off' : harbourMode(requestedTestMode(), window.location.search);
+  const mode = pageHarbourMode();
   session =
     mode === 'live'
       ? new HarbourSession(liveHarbourWire(), liveIdentity())
@@ -190,6 +199,38 @@ export function harbour(): HarbourSession | null {
         ? new HarbourSession(localHarbourWire(localName), localIdentity())
         : null;
   return session;
+}
+
+function pageHarbourMode(): HarbourMode {
+  return typeof window === 'undefined' ? 'off' : harbourMode(requestedTestMode(), window.location.search);
+}
+
+/** Knocking: the service that asks the database, and the player's own front door. */
+export interface HarbourHouses {
+  readonly service: HouseService;
+  readonly door: HouseDoor;
+}
+
+let houses: HarbourHouses | null | undefined;
+
+/**
+ * This page's knocking (`harbour/houseService.ts`, `harbour/houseDoor.ts`), or
+ * null wherever there is no harbour to knock in. The local stand-in knows who
+ * this tab is from the harbour's own session.
+ */
+export function harbourHouses(): HarbourHouses | null {
+  if (houses !== undefined) {
+    return houses;
+  }
+  const mode = pageHarbourMode();
+  const service =
+    mode === 'live'
+      ? liveHouseService()
+      : mode === 'local'
+        ? localHouseService(() => harbour()?.seenAs ?? null, localName)
+        : null;
+  houses = service ? { service, door: new HouseDoor(service) } : null;
+  return houses;
 }
 
 function localName(): string | null {

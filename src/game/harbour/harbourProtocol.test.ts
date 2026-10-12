@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   HARBOUR_PATH_MAX,
   encodeHarbourMove,
+  encodeHarbourNudge,
   encodeHarbourPresence,
   housePlace,
   isHarbourPlace,
   readHarbourMove,
+  readHarbourNudge,
   readHarbourPresence,
   type HarbourMove,
 } from './harbourProtocol';
@@ -58,6 +60,13 @@ describe('what the harbour hears', () => {
   it('sends only the last steps of a long walk', () => {
     const long = { ...move, path: Array.from({ length: 20 }, (_, x) => ({ x, y: 1 })) };
     expect(readHarbourMove(encodeHarbourMove(long))?.path).toHaveLength(HARBOUR_PATH_MAX);
+  });
+
+  it('reads a nudge as two player ids and nothing else', () => {
+    const nudge = { from: AMY, to: '11111111-1111-4111-8111-111111111111' };
+    expect(readHarbourNudge(encodeHarbourNudge(nudge))).toEqual(nudge);
+    expect(readHarbourNudge({ u: AMY, t: 'OLLY' })).toBeNull();
+    expect(readHarbourNudge(null)).toBeNull();
   });
 
   it('reads a presence as the place it says, and nothing else', () => {

@@ -39,6 +39,7 @@ import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
   houseKeyHintLine,
+  KNOCK_FROM_THE_STEP_HINT,
   yardKeyHintLine,
   type LearnableKeyId,
 } from '../input/keyBindings';
@@ -118,12 +119,24 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
-import { ownedFurniture, type Placement } from '../home/arrangement';
+import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
 import { loadPlayerName } from '../console/playerName';
 import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
 import { openHouseNameScreen } from '../ui/HouseNameOverlay';
-import { harbour, type HarbourWhere } from '../harbour/harbour';
+import { harbour, harbourHouses, type HarbourWhere } from '../harbour/harbour';
+import type { KnockAtTheDoor } from '../harbour/houseService';
+import { houseSnapshot, readHouseSnapshot } from '../home/houseSnapshot';
+import {
+  LET_IN,
+  NOT_NOW,
+  knockQuestion,
+  notYoursLine,
+  visitWelcomeLines,
+  visitorThingName,
+} from '../home/knocking';
+import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
+import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { HarbourFigures } from '../base/harbourFigures';
 import type { MenuOverlay } from '../ui/MenuOverlay';
@@ -227,7 +240,20 @@ const ODDITY_TONE: WorldLabelTone = { fill: 0x2b1d0e, border: 0xd8b070, ink: '#f
 /** The frame round the oddity being looked at. */
 const ODDITY_MARK = 0xf7d36b;
 
+/**
+ * Somebody else's house, stepped into after they answered a knock with a yes
+ * (`home/knocking.ts`): whose it is, and their house as their snapshot reads
+ * through the save loader (`home/houseSnapshot.ts`).
+ */
+export interface HouseVisit {
+  readonly ownerId: string;
+  readonly ownerName: string;
+  readonly game: RestoredGame;
+}
+
 export interface BaseSceneData {
+  /** In somebody else's house, as a visitor who was let in. */
+  readonly visit?: HouseVisit;
   readonly savedGame?: RestoredGame;
   /** The door the player is coming back out of, into the yard. */
   readonly from?: string;
@@ -267,6 +293,8 @@ interface BaseControls {
   readonly boxBack: Phaser.Input.Keyboard.Key;
   readonly boxNext: Phaser.Input.Keyboard.Key;
   readonly putAway: Phaser.Input.Keyboard.Key;
+  /** K: knock on somebody else's door, from the house or its step. */
+  readonly knock: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -357,6 +385,19 @@ export class BaseScene extends Phaser.Scene {
   private namePrompt: MenuOverlay | null = null;
   /** Everybody else in the shared harbour, drawn where they walk (`harbour/`). */
   private harbourFigures: HarbourFigures | null = null;
+  /** Somebody else's house this player is looking round, let in at the door. */
+  private visit: HouseVisit | null = null;
+  /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
+  private knockScreen: MenuOverlay | null = null;
+  /** Somebody knocking at this player's own door, being asked about. */
+  private knockPrompt: { readonly prompt: ChoicePrompt; readonly knock: KnockAtTheDoor } | null = null;
+  /**
+   * Whether the front door has told the harbour this player is home, and the
+   * furniture it told it about, so a change is told again. (A save that has
+   * never decorated has no layout at all, so the two are kept apart.)
+   */
+  private doorTold = false;
+  private doorLayout: unknown = undefined;
 
   /**
    * The four doors and the four rooms behind them, reachable from outside the
@@ -428,10 +469,26 @@ export class BaseScene extends Phaser.Scene {
     this.decor = null;
     this.namePrompt = null;
     this.harbourFigures = null;
+    this.knockScreen = null;
+    this.knockPrompt = null;
+    this.doorTold = false;
+    this.doorLayout = undefined;
+    this.visit = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
+    // A visit is to somebody's house and nowhere else: their house is drawn
+    // from their snapshot, read as any save is, and everything in it is
+    // theirs by name.
+    this.visit = room && data.visit && isHomeRoom(room.id) ? data.visit : null;
     if (room) {
-      const built = buildRoom(room, loaded);
+      const visit = this.visit;
+      const drawn = buildRoom(room, visit ? visit.game : loaded);
+      const built = visit
+        ? {
+            ...drawn,
+            things: drawn.things.map((thing: RoomThing) => ({ ...thing, name: visitorThingName(thing.name, visit.ownerName) })),
+          }
+        : drawn;
       this.place = {
         width: room.width,
         height: room.height,
@@ -521,15 +578,30 @@ export class BaseScene extends Phaser.Scene {
       harbour()?.away();
       this.harbourFigures?.destroy();
       this.harbourFigures = null;
+      // Out of the house - or only up or down its stairs, which the door
+      // does not count as going out (`harbour/houseDoor.ts`).
+      if (this.doorTold) {
+        harbourHouses()?.door.out();
+      }
+      this.knockScreen?.destroy();
+      this.knockScreen = null;
+      this.knockPrompt?.prompt.destroy();
+      this.knockPrompt = null;
     });
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
     if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
     }
-    if (this.place.room?.home && houseNameNeeded(houseName())) {
+    if (this.visit) {
+      if (data.stairsFrom === undefined) {
+        this.say(visitWelcomeLines(this.visit.ownerName), []);
+      }
+    } else if (this.place.room?.home && houseNameNeeded(houseName())) {
       this.askHouseName();
     }
+    // Another player's browser saying it knocked here: look at the door now.
+    harbour()?.link.whenNudged(() => harbourHouses()?.door.knocked());
   }
 
   public update(time: number, deltaMs: number): void {
@@ -541,6 +613,7 @@ export class BaseScene extends Phaser.Scene {
       shared.tick(time, deltaMs);
       this.harbourFigures?.update(shared.figuresHere());
     }
+    this.watchFrontDoor(time);
     this.updateWalking(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
@@ -557,7 +630,12 @@ export class BaseScene extends Phaser.Scene {
     this.containWorldLabels();
     this.dialogBox.update(deltaMs);
 
-    if (this.leaving || this.resting || this.namePrompt) {
+    if (this.leaving || this.resting || this.namePrompt || this.knockScreen) {
+      return;
+    }
+
+    if (this.knockPrompt) {
+      this.handleKnockPromptInput();
       return;
     }
 
@@ -603,8 +681,13 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
-    if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home) {
+    if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home && !this.visit) {
       this.startDecorating();
+      return;
+    }
+
+    if (this.keyPresses.justPressed(this.controls.knock) && this.canKnockHere()) {
+      this.openKnock();
       return;
     }
 
@@ -1266,6 +1349,9 @@ export class BaseScene extends Phaser.Scene {
       if (!partner && sameTile(facing, DAY_CARE_KEEPER.position)) {
         return `[SPACE] ${DAY_CARE_KEEPER.name}`;
       }
+      if (!partner && this.onHomeStep() && harbourHouses()) {
+        return KNOCK_FROM_THE_STEP_HINT;
+      }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
@@ -1293,7 +1379,9 @@ export class BaseScene extends Phaser.Scene {
       return '[SPACE] LOOK CLOSER';
     }
     // The player's own house says it can be decorated, until it has been.
-    return this.place.room?.home ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
+    return this.place.room?.home && !this.visit
+      ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), harbourHouses() !== null)
+      : '';
   }
 
   private thingFaced(facing: GridPosition): RoomThing | undefined {
@@ -1512,6 +1600,7 @@ export class BaseScene extends Phaser.Scene {
       boxBack: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxBack], false),
       boxNext: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxNext], false),
       putAway: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.putAway], false),
+      knock: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.knock], false),
     };
     this.latchDirectionPresses();
     this.keyPresses.watch([
@@ -1524,6 +1613,7 @@ export class BaseScene extends Phaser.Scene {
       this.controls.boxBack,
       this.controls.boxNext,
       this.controls.putAway,
+      this.controls.knock,
     ]);
   }
 
@@ -1893,6 +1983,11 @@ export class BaseScene extends Phaser.Scene {
         this.say([cratesLine(cabinet.layout, cabinet.oddities, new Date())], [target]);
         return;
       }
+      // A visitor looks round and touches nothing that is the owner's to use.
+      if (this.visit && thing && (thing.does !== undefined || thing.opens === 'games' || thing.name.endsWith("'S PC"))) {
+        this.say([notYoursLine(this.visit.ownerName)], [target]);
+        return;
+      }
       if (thing?.does === 'sleep') {
         this.sleep(thing.lines ?? [], [target]);
         return;
@@ -1996,10 +2091,12 @@ export class BaseScene extends Phaser.Scene {
 
   /** Onto a stair mat: the same scene, started again on the floor it leads to. */
   private climb(room: BaseRoom, to: string): void {
-    this.goTo({ savedGame: this.savedGame, room: to, stairsFrom: room.id }, 'interiorEnter');
+    this.goTo(
+      { savedGame: this.savedGame, room: to, stairsFrom: room.id, ...(this.visit ? { visit: this.visit } : {}) },
+      'interiorEnter',
+    );
   }
 
-  /** Down off the mat: back out into the yard, on the step outside. */
   /**
    * Who lives here? Asked on the way into THE BOLTHOLE until it has an answer
    * (`home/houseName.ts`), over a house that stands still while it asks. A name
@@ -2036,6 +2133,9 @@ export class BaseScene extends Phaser.Scene {
     if (!room) {
       return 'yard';
     }
+    if (this.visit) {
+      return { visiting: this.visit.ownerId, upstairs: room.id === 'bolthole-upstairs' };
+    }
     if (room.id === 'bolthole') {
       return 'home';
     }
@@ -2055,6 +2155,158 @@ export class BaseScene extends Phaser.Scene {
     return (harbour()?.figuresHere() ?? []).map((figure) => ({ name: figure.name, tile: { ...figure.tile } }));
   }
 
+  // -- knocking --------------------------------------------------------------
+
+  /**
+   * The player's own front door (`harbour/houseDoor.ts`): told the player is
+   * home once they are standing in their house and can be heard in the
+   * harbour, told again whenever the furniture moves, and asked each frame
+   * whether anybody is knocking - who is asked about once nothing else is on
+   * the screen.
+   */
+  private watchFrontDoor(time: number): void {
+    const houses = harbourHouses();
+    if (!houses) {
+      return;
+    }
+    houses.door.tick(time);
+    const ownHome = this.place.room?.home && !this.visit;
+    if (!ownHome || !harbour()?.seenAs) {
+      return;
+    }
+    const layout = this.savedGame.raidProgress.homeLayout;
+    if (!this.doorTold || this.doorLayout !== layout) {
+      this.doorTold = true;
+      this.doorLayout = layout;
+      houses.door.inside(houseSnapshot(this.savedGame));
+    }
+    const knock = houses.door.atTheDoor;
+    if (
+      knock &&
+      !this.knockPrompt &&
+      !this.knockScreen &&
+      !this.namePrompt &&
+      !this.decor &&
+      !this.resting &&
+      !this.leaving &&
+      !this.targetTile &&
+      !this.dialogBox.visible
+    ) {
+      this.askToLetIn(knock);
+    }
+  }
+
+  /** Somebody at the door: let them in, or not now - which is where the cursor starts. */
+  private askToLetIn(knock: KnockAtTheDoor): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    this.knockPrompt = {
+      knock,
+      prompt: new ChoicePrompt(this, {
+        x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+        y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+        width: DIALOG_WIDTH,
+        height: DIALOG_HEIGHT,
+        padding: 10,
+        lines: [knockQuestion(knock.knockerName)],
+        options: [LET_IN, NOT_NOW],
+        selected: 1,
+        onChoose: (index) => this.answerKnock(knock, index === 0),
+      }),
+    };
+  }
+
+  private handleKnockPromptInput(): void {
+    const asking = this.knockPrompt;
+    if (!asking) {
+      return;
+    }
+    const pressed = (keys: readonly Phaser.Input.Keyboard.Key[]): boolean =>
+      keys.some((key) => this.keyPresses.justPressed(key));
+    if (pressed([this.controls.left, this.controls.up, this.controls.a, this.controls.w])) {
+      asking.prompt.moveSelection(-1);
+      audioManager.play('select');
+    } else if (pressed([this.controls.right, this.controls.down, this.controls.d, this.controls.s])) {
+      asking.prompt.moveSelection(1);
+      audioManager.play('select');
+    } else if (pressed(this.controls.interact)) {
+      asking.prompt.confirm();
+    } else if (pressed([this.controls.back])) {
+      this.answerKnock(asking.knock, false);
+    }
+  }
+
+  private answerKnock(knock: KnockAtTheDoor, letIn: boolean): void {
+    this.knockPrompt?.prompt.destroy();
+    this.knockPrompt = null;
+    // The keys of the question were spent on it, not on a step.
+    this.spentPresses.spendHeld(this.directionKeys());
+    void harbourHouses()?.door.answer(knock.knockId, letIn);
+    audioManager.play(letIn ? 'confirm' : 'cancel');
+    this.say([letIn ? `You open the door to ${knock.knockerName}.` : `You leave ${knock.knockerName} on the step.`], []);
+  }
+
+  /** Whether K knocks here: in the player's own house, or on its step outside. */
+  private canKnockHere(): boolean {
+    return (Boolean(this.place.room?.home) && !this.visit) || (!this.place.room && this.onHomeStep());
+  }
+
+  /** On THE BOLTHOLE's step in the yard: where the player comes out of their house. */
+  private onHomeStep(): boolean {
+    const home = doorNamed('bolthole');
+    return !this.place.room && home !== undefined && sameTile(this.currentTile, home.returnTo);
+  }
+
+  /**
+   * The knock screen (`ui/KnockOverlay.ts`), over a house that stands still
+   * while it is up. A yes is a walk through somebody else's front door; any
+   * other ending is back where the player stood.
+   */
+  private openKnock(): void {
+    this.learnKey('knock');
+    const houses = harbourHouses();
+    if (!houses) {
+      this.say(['The harbour is quiet. There are no other doors to knock on.'], []);
+      return;
+    }
+    if (!harbour()?.seenAs) {
+      this.say(['Nobody will answer a knock from somebody they cannot see. Give your house a name first.'], []);
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    this.knockScreen = openKnockScreen(
+      this,
+      houses.service,
+      (owner) => harbour()?.link.nudge(owner),
+      (letIn) => this.knocked(letIn),
+    );
+  }
+
+  private knocked(letIn: LetIn | null): void {
+    this.knockScreen = null;
+    this.input.keyboard?.resetKeys();
+    this.spentPresses.spendHeld(this.directionKeys());
+    if (!letIn) {
+      audioManager.play('menuClose');
+      return;
+    }
+    const game = readHouseSnapshot(letIn.snapshot);
+    if (!game) {
+      this.say([`You couldn't see into ${letIn.ownerName}'s house. Try again in a moment.`], []);
+      return;
+    }
+    this.goTo(
+      { savedGame: this.savedGame, room: 'bolthole', visit: { ownerId: letIn.ownerId, ownerName: letIn.ownerName, game } },
+      'interiorEnter',
+    );
+  }
+
+  /** Down off the mat: back out into the yard, on the step outside. */
   private leaveRoom(room: BaseRoom): void {
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
   }

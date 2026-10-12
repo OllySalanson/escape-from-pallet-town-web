@@ -34,7 +34,7 @@ import { WorldScene } from '../scenes/WorldScene';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
-import { decorateKeyHintLine, houseKeyHintLine, yardKeyHintLine } from './keyBindings';
+import { KNOCK_FROM_THE_STEP_HINT, decorateKeyHintLine, houseKeyHintLine, yardKeyHintLine } from './keyBindings';
 
 /** Phaser's own table, not the mock's: the codes a real keyboard sends. */
 const { default: KEY_CODES } = await vi.importActual<{ default: Record<string, number> }>(
@@ -116,6 +116,7 @@ const HOUSE_WORD_CONTROLS: Readonly<Record<string, string>> = {
   DONE: 'decorate',
   TURN: 'turn',
   PUT: 'putAway',
+  KNOCK: 'knock',
 };
 
 describe('the keys the house names', () => {
@@ -123,6 +124,7 @@ describe('the keys the house names', () => {
     const controls = controlsOf(new BaseScene());
     const lines = [
       houseKeyHintLine(new Set()),
+      KNOCK_FROM_THE_STEP_HINT,
       decorateKeyHintLine('holding'),
       decorateKeyHintLine('on-a-piece'),
       decorateKeyHintLine('on-the-floor'),
@@ -139,9 +141,12 @@ describe('the keys the house names', () => {
     expect((controls.boxNext as BoundKey).keyCode).toBe(KEY_CODES[box[2]]);
   });
 
-  it('stops offering to decorate once the house has been decorated', () => {
-    expect(houseKeyHintLine(new Set())).toBe('[H] DECORATE');
-    expect(houseKeyHintLine(new Set(['decorate']))).toBe('');
+  it('stops offering to decorate, or to knock, once each has been done', () => {
+    expect(houseKeyHintLine(new Set())).toBe('[H] DECORATE   [K] KNOCK');
+    expect(houseKeyHintLine(new Set(['decorate']))).toBe('[K] KNOCK');
+    expect(houseKeyHintLine(new Set(['decorate', 'knock']))).toBe('');
+    // Nowhere to knock - no harbour on this page - is nothing to offer.
+    expect(houseKeyHintLine(new Set(), false)).toBe('[H] DECORATE');
   });
 });
 
