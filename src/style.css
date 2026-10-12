@@ -2849,9 +2849,6 @@ button {
 :where(.pixel-ui[data-room='tight']) .box-bar {
   position: static;
 }
-:where(.pixel-ui) .box-manage {
-  padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
-}
 
 /* --- Bill ------------------------------------------------------- */
 /* Standing across the top, then the shelf and the barter table side by side,

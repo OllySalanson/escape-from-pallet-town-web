@@ -279,6 +279,35 @@ describe('the pixel-ui stylesheet', () => {
   });
 });
 
+describe('the box strip that leads a list of Pokemon', () => {
+  // The strip's lines are centred against each other on one row wherever they
+  // fit (`align-items: center` on `.box-bar`), so a line with a foot of its own
+  // is a taller box and its chips sit higher than its neighbours'. The naming
+  // line carried the padding it had as a row of the list (#127) into the strip,
+  // and RENAME and NEW BOX stood a game pixel above PREV, NEXT, SORT and FIND
+  // on the Pokemon Center at 1280x800 - and indented three when it wrapped.
+  const lineClasses = [
+    ...new Set(
+      gameSources.flatMap((source) =>
+        [...source.matchAll(/class="box-line([^"]*)"/g)].flatMap((match) => match[1].trim().split(/\s+/).filter(Boolean)),
+      ),
+    ),
+  ];
+
+  it('is read off the markup, so a new kind of line is asked about too', () => {
+    expect(lineClasses).toContain('box-manage');
+  });
+
+  it('pads no line of its own, so every chip in the strip stands on one line', () => {
+    const padded = ['box-line', ...lineClasses].flatMap((name) =>
+      [...pixelUiRules.matchAll(new RegExp(`([^{}]*\\.${name}(?![\\w-])[^{}]*)\\{([^}]*)\\}`, 'g'))]
+        .filter((match) => /(?:^|[\s;])padding(?:-[a-z]+)?:\s*(?!0;)/.test(match[2]))
+        .map((match) => match[1].trim()),
+    );
+    expect(padded).toEqual([]);
+  });
+});
+
 describe('the defeat line-up', () => {
   // The line-up in front of a lost raid's report is not a pixel-ui screen, but
   // it is set in the same face, and the face has two limits that hold anywhere
