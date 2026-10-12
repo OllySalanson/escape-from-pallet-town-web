@@ -153,6 +153,16 @@ describe("what each of the base's doors says", () => {
     ).toBe(`Your house · 2 of ${BADGES.length} badges`);
   });
 
+  /** Once somebody has given their name at the door, the door says whose house it is. */
+  it("puts the name given at THE BOLTHOLE's door on it, still inside one short line", () => {
+    const home = doorNamed('bolthole');
+    expect(doorStatusLine(home, baseGame(), 'OLLY')).toBe("OLLY's house");
+    const everyBadge = baseGame({ progress: { defeatedBosses: BADGES.map((badge) => badge.bossId) } });
+    const longest = doorStatusLine(home, everyBadge, 'WWWWWWWWWW');
+    expect(longest).toBe(`WWWWWWWWWW's house · ${BADGES.length} of ${BADGES.length} badges`);
+    expect(longest.length).toBeLessThanOrEqual(40);
+  });
+
   it('says when a keeper has a favour to ask, a thing to take, or a loss to hear about', () => {
     const opened = { completedContracts: [FIRST_CONTRACT_ID], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'] };
     const workshop = doorNamed('brocks-workshop');

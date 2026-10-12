@@ -140,7 +140,10 @@ try {
   await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
     save.raidProgress.pokedexOwned = [1, 7, 16, 25, 143];
     save.stash.items = { ...save.stash.items, 'surf-mat': 1 };
-    localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
+    localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
+    // A name already given, so the house lets the player in without asking
+    // (\`src/game/home/houseName.ts\`; \`bolthole.mjs\` plays the asking).
+    localStorage.setItem('escape-from-pallet-town.console.name', 'DECORATOR'); })()`);
   const enterHouse = async () => {
     await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
     await page.waitFor(sceneIs('title'));

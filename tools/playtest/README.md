@@ -126,7 +126,9 @@ does not leave it - `docs/screens/base-rooms/` is what it photographs.
 backs out into his cottage and looks along his cabinet with the keys and the
 pointer, failing if the goods paid are not on the shelf or the look moves the
 player - `docs/screens/bill-cabinet/`. `bolthole.mjs <url> <dir> [--built=..]`
-walks the player's own house: reads the garden sign, goes in, faces the telly,
+walks the player's own house: reads the garden sign, goes in, is asked its name
+(refuses an empty one, types `--name=`, OLLY by default, and checks the welcome
+and the door's caption), faces the telly,
 climbs the stairs and checks it arrived on the matching mat facing away, reads
 the bed, the PC, the console and the calendar, comes back down and leaves by the
 mat - `docs/screens/bolthole/`. The house has no keeper, so `walkIntoBase`

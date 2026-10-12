@@ -30,14 +30,16 @@ import { BADGES, wonBadges } from './badgeCase';
  * `raidHud.ts` and `contractBoard.ts`. Every number is derived from the save
  * the same way the card that used to carry it derived it.
  */
-export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
+export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: string | null = null): string {
   const errand = door.screen === null ? undefined : errandLine(door.screen, game);
   switch (door.screen) {
     case null: {
       // The player's own house, which says from the yard how full its badge
-      // case is - the one number in it worth walking over for.
+      // case is - the one number in it worth walking over for - under the name
+      // that was given at its door (`home/houseName.ts`).
+      const whose = ownerName ? `${ownerName}'s house` : 'Your house';
       const won = wonBadges(game).length;
-      return won === 0 ? 'Your house' : `Your house · ${won} of ${BADGES.length} badges`;
+      return won === 0 ? whose : `${whose} · ${won} of ${BADGES.length} badges`;
     }
     case 'raid': {
       if (errand) {

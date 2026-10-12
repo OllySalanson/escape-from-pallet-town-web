@@ -120,6 +120,10 @@ import type { HubSceneData } from './HubScene';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 import { ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
+import { loadPlayerName } from '../console/playerName';
+import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
+import { openHouseNameScreen } from '../ui/HouseNameOverlay';
+import type { MenuOverlay } from '../ui/MenuOverlay';
 import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furnitureArt';
 
 /**
@@ -343,6 +347,11 @@ export class BaseScene extends Phaser.Scene {
   private furnitureImages: Phaser.GameObjects.Image[] = [];
   /** Decorating THE BOLTHOLE, while it is being decorated (`base/decorateMode.ts`). */
   private decor: DecorateMode | null = null;
+  /**
+   * THE BOLTHOLE asking who lives there (`home/houseName.ts`), while it asks:
+   * nobody walks about the house until it has a name.
+   */
+  private namePrompt: MenuOverlay | null = null;
 
   /**
    * The four doors and the four rooms behind them, reachable from outside the
@@ -412,6 +421,7 @@ export class BaseScene extends Phaser.Scene {
     this.tilemap = null;
     this.furnitureImages = [];
     this.decor = null;
+    this.namePrompt = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
     if (room) {
@@ -495,11 +505,17 @@ export class BaseScene extends Phaser.Scene {
       // Decorating listens on the canvas itself, which outlives the scene.
       this.decor?.release();
       this.decor = null;
+      // The name screen is a page element, which outlives the scene too.
+      this.namePrompt?.destroy();
+      this.namePrompt = null;
     });
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
     if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
+    }
+    if (this.place.room?.home && houseNameNeeded(houseName())) {
+      this.askHouseName();
     }
   }
 
@@ -523,7 +539,7 @@ export class BaseScene extends Phaser.Scene {
     this.containWorldLabels();
     this.dialogBox.update(deltaMs);
 
-    if (this.leaving || this.resting) {
+    if (this.leaving || this.resting || this.namePrompt) {
       return;
     }
 
@@ -1122,7 +1138,7 @@ export class BaseScene extends Phaser.Scene {
           // of these speak at once from the middle of it, and at three lines
           // each there was no base left to look at. What each keeper does is
           // said once, on the harbour's own board by the jetty.
-          text: `${door.name}\n${doorStatusLine(door, this.savedGame)}`,
+          text: `${door.name}\n${doorStatusLine(door, this.savedGame, houseName())}`,
           tone: DOOR_TONE,
           depth: atRow(CAPTION_BAND, door.tiles[0].y),
           speech: { voice: 'name', tiles: door.tiles },
@@ -1965,6 +1981,34 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** Down off the mat: back out into the yard, on the step outside. */
+  /**
+   * Who lives here? Asked on the way into THE BOLTHOLE until it has an answer
+   * (`home/houseName.ts`), over a house that stands still while it asks. A name
+   * is welcomed home; going back outside instead is out of the door it came in.
+   */
+  private askHouseName(): void {
+    const room = this.place.room?.room;
+    if (!room || this.namePrompt) {
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    this.namePrompt = openHouseNameScreen(this, (name) => {
+      this.namePrompt = null;
+      // The screen kept every key to itself, so a key the house saw go down
+      // before it opened never came back up here.
+      this.input.keyboard?.resetKeys();
+      this.spentPresses.spendHeld(this.directionKeys());
+      if (name === null) {
+        this.leaveRoom(room);
+        return;
+      }
+      nameThisSitting = name;
+      this.say(welcomeHomeLines(name), []);
+    });
+  }
+
   private leaveRoom(room: BaseRoom): void {
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
   }
@@ -2033,6 +2077,19 @@ export class BaseScene extends Phaser.Scene {
       this.scene.start('hub', payload),
     );
   }
+}
+
+/**
+ * The name given at THE BOLTHOLE's door, for this sitting. It is kept on the
+ * device (`console/playerName.ts`), and this is only what a browser that
+ * cannot store anything still knows: without it, every stair climbed would
+ * ask the name again.
+ */
+let nameThisSitting: string | null = null;
+
+/** The name the house goes by: the device's, else this sitting's. */
+function houseName(): string | null {
+  return loadPlayerName() ?? nameThisSitting;
 }
 
 /** How often the Pokemon in the Day-Care's pen thinks about taking a step, and how much that wanders. */
