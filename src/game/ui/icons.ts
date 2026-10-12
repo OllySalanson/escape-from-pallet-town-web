@@ -56,6 +56,9 @@ export const ITEM_ICONS = {
   'old-rod': 'old-rod',
   'good-rod': 'good-rod',
   'hm06-rock-smash': 'hm06-rock-smash',
+  // FireRed's Bicycle, side on in its own icon's colours, redrawn at 16x16
+  // (`scripts/draw-bicycle-icon.mjs`).
+  bicycle: 'bicycle',
   // A hooked pick and five brass keys, each key's bow in a colour of its own
   // so five of them in one vault are five things (`scripts/draw-lock-icons.mjs`).
   lockpick: 'lockpick',

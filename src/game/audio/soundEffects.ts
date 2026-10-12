@@ -294,6 +294,13 @@ export const SOUND_EFFECTS = {
     moment: 'The final check is confirmed and the raid drops in',
     tones: [saw(131, 0.1, 0.06), saw(196, 0.1, 0.06, 0.09), sq(262, 0.1, 0.06, 0.18), sq(392, 0.22, 0.065, 0.27)],
   },
+  bikeBell: {
+    channel: 'world',
+    moment: 'Getting on the Bicycle - its bell, as FireRed rings it',
+    // FireRed's SE_BIKE_BELL is two bright strikes of a small bell; a bell is a
+    // square with a quick fall, and the second strike a little quieter.
+    tones: [sweep(sq(1568, 0.07, 0.05), 1480), sweep(sq(1568, 0.12, 0.04, 0.1), 1397)],
+  },
   rodCast: {
     channel: 'world',
     moment: 'A rod is cast into the water - a swish of line, and the float landing',

@@ -125,6 +125,10 @@ out before the map does. Lay it out however you like: pick a piece up, carry it,
 from a twelve-square Satchel to a thirty-square Hauler frame, and the one you're wearing is lost,
 with everything in it, if you don't make it home.
 
+And then there's the Bicycle: FireRed's own, rarer than anything else you'll find out there, and
+twice as fast as walking anywhere that isn't indoors. It's also six squares of your pack, wider
+than the secure container you start with, so every raid you ride it is a raid you could lose it.
+
 <p align="center">
   <img src="docs/readme/pack.png" width="800" alt="The pack opened mid-raid: three Potions laid out in a grid of eighteen squares.">
 </p>
@@ -141,7 +145,7 @@ than a menu. Four buildings, four people you'll recognise, and each one is a thi
 - **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home, and
   every one of them turns up on the map: a radio mast, a beacon, cellar doors in the quay wall.
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
-  HMs and fishing rods are bartered for things you found. Everything you trade him ends up on his
+  HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found. Everything you trade him ends up on his
   shelves.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.

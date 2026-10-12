@@ -14,6 +14,7 @@ import {
 } from '../items';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import { moveChoiceMessage } from '../ui/moveChooser';
+import { bikeAction } from '../world/bicycle';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { itemIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -105,10 +106,22 @@ const pocketTag = (item: ItemDefinition): string =>
 const ARRANGE_HELP =
   'ENTER picks this up and puts it down · arrows carry it · R turns it · ESC puts it back.';
 
+/**
+ * The Bicycle, as the world it is ridden in sees it: whether the player is on
+ * it, and the pack's USE or WALK, which answers null when it was done - and the
+ * pack closes, as FireRed's does - or the line to say why not.
+ */
+export interface BagBike {
+  readonly riding: boolean;
+  readonly toggle: () => string | null;
+}
+
 interface BagSceneData {
   readonly bag: Bag;
   readonly party: PokemonParty;
   readonly onItemUsed: () => void;
+  /** Absent where nothing can be ridden - the bag is only ever opened in a raid today. */
+  readonly bike?: BagBike;
 }
 
 /**
@@ -128,6 +141,7 @@ export class BagScene extends Phaser.Scene {
   private bag!: Bag;
   private party!: PokemonParty;
   private onItemUsed!: () => void;
+  private bike?: BagBike;
   /** The item whose recipient list is open, if one is. */
   private usingItemId?: string;
   /**
@@ -173,6 +187,7 @@ export class BagScene extends Phaser.Scene {
     this.bag = data.bag;
     this.party = data.party;
     this.onItemUsed = data.onItemUsed;
+    this.bike = data.bike;
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
     this.status = undefined;
@@ -328,8 +343,22 @@ export class BagScene extends Phaser.Scene {
   }
 
   private itemRow(item: ItemDefinition): string {
-    const help = `${item.displayName}: ${item.description} ${useLabel(item)}`;
-    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${pocketTag(item)}</span></span><span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
+    const help = `${item.displayName}: ${item.description} ${this.useLabel(item)}`;
+    const tag = item.effect.type === 'bike' && this.bike?.riding ? pixelTag('Riding', 'plain') : pocketTag(item);
+    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span></span><span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
+  }
+
+  /**
+   * What the row's Enter does. The Bicycle's is FireRed's own pair of words,
+   * because whether the player is riding is the one thing about it that changes.
+   */
+  private useLabel(item: ItemDefinition): string {
+    if (item.effect.type === 'bike') {
+      return this.bike?.riding
+        ? `${bikeAction(true)}: get off the ${item.displayName}.`
+        : `${bikeAction(false)}: ride the ${item.displayName}.`;
+    }
+    return useLabel(item);
   }
 
   /**
@@ -474,6 +503,10 @@ export class BagScene extends Phaser.Scene {
       this.render();
       return;
     }
+    if (item.effect.type === 'bike') {
+      this.rideOrWalk();
+      return;
+    }
     if (item.category === ItemCategory.Held) {
       audioManager.play('denied');
       this.status = `Gear is given on the PARTY screen, where the Pokémon that would carry it is.`;
@@ -609,6 +642,22 @@ export class BagScene extends Phaser.Scene {
     this.pupilIndex = undefined;
     this.status = message;
     this.render([`[data-item="${item.id}"]`]);
+  }
+
+  /**
+   * USE or WALK on the Bicycle: done, and the pack closes onto the world with
+   * the player on it or off it, as FireRed's does - or refused, and said here.
+   */
+  private rideOrWalk(): void {
+    const refusal = this.bike ? this.bike.toggle() : 'There is nowhere to ride it.';
+    if (refusal !== null) {
+      audioManager.play('denied');
+      this.status = refusal;
+      this.render();
+      return;
+    }
+    this.scene.stop();
+    this.scene.resume('world');
   }
 
   /** Takes one of an item out of the pack. */

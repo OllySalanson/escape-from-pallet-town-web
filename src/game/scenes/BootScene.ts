@@ -33,6 +33,13 @@ import { awaitGameFont } from '../ui/gameFont';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import { TILE_SOURCES } from '../world/tileset/sheets';
+import {
+  BIKE_ASSET_PATH,
+  BIKE_FRAME_RATE,
+  BIKE_FRAME_SIZE,
+  BIKE_SHEET_COLUMNS,
+  BIKE_TEXTURE,
+} from '../world/bicycle';
 
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
 
@@ -59,6 +66,11 @@ export class BootScene extends Phaser.Scene {
         },
       );
     }
+    // FireRed's Bicycle, ridden: the figure the player becomes on it.
+    this.load.spritesheet(BIKE_TEXTURE, publicAssetUrl(BIKE_ASSET_PATH), {
+      frameWidth: BIKE_FRAME_SIZE,
+      frameHeight: BIKE_FRAME_SIZE,
+    });
     // The partner's walking art, for each Pokemon a partner can be. Nine small
     // sheets, so all of them rather than only this save's: a partner evolves
     // in a raid and comes home a different sheet.
@@ -157,6 +169,15 @@ export class BootScene extends Phaser.Scene {
       key: getWalkAnimationKey(direction),
       frames: getWalkFrames(direction),
     }));
+    // The pedalling cycle, at twice the pace because the ride is twice as fast.
+    this.createWalkAnimations(
+      BIKE_TEXTURE,
+      (direction) => ({
+        key: getWalkAnimationKey(direction, BIKE_TEXTURE),
+        frames: getWalkFrames(direction, BIKE_SHEET_COLUMNS),
+      }),
+      BIKE_FRAME_RATE,
+    );
   }
 
   /**
@@ -178,13 +199,14 @@ export class BootScene extends Phaser.Scene {
   private createWalkAnimations(
     textureKey: string,
     cycle: (direction: Direction) => { key: string; frames: number[] },
+    frameRate = 10,
   ): void {
     for (const direction of DIRECTIONS) {
       const { key, frames } = cycle(direction);
       this.anims.create({
         key,
         frames: this.anims.generateFrameNumbers(textureKey, { frames }),
-        frameRate: 10,
+        frameRate,
         repeat: -1,
       });
     }

@@ -63,9 +63,10 @@ describe('materials', () => {
     // Nothing else lives in that pocket but the five evolution stones and the
     // nine machines, both of which are spent on a Pokemon rather than at
     // Brock's, the money, which is spent at Bill's counter and nowhere else,
-    // the Pickaxe, the two rods and the keys, which are carried and never spent
-    // at all, the Lockpick, which a locked crate spends, and the errands'
-    // things, which are carried home and handed over (`hub/errands.ts`).
+    // the Pickaxe, the two rods, the keys and the Bicycle, which are carried
+    // and never spent at all, the Lockpick, which a locked crate spends, and
+    // the errands' things, which are carried home and handed over
+    // (`hub/errands.ts`).
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
       [
         ...MATERIAL_IDS,
@@ -78,6 +79,7 @@ describe('materials', () => {
         'old-rod',
         'good-rod',
         'lockpick',
+        'bicycle',
       ].sort(),
     );
   });

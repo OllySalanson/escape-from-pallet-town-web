@@ -107,6 +107,13 @@ export interface ActiveRunSession {
    */
   bouldersMoved?: Record<string, GridPosition>;
   /**
+   * Whether the player is riding the Bicycle (`world/bicycle.ts`). The world is
+   * rebuilt after every fight, and getting back on after each one is FireRed's
+   * rule nowhere, so it rides here; it is re-asked on every rebuild, so a
+   * Bicycle dropped in a fight to make room for a catch is not ridden.
+   */
+  riding?: boolean;
+  /**
    * The barred exits this raid has opened - dug out with a Pickaxe or unlocked
    * with their key - by label (`ExtractionPoint.label`).
    */

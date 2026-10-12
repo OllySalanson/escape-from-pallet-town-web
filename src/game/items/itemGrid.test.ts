@@ -6,16 +6,44 @@ import { cellsFor, fitsInGrid, footprintOf, gridCells, packContents, roomFor } f
 import { MINIMUM_SUPPLIES } from '../stash/Stash';
 
 describe('what an item takes up', () => {
-  it('gives every catalogue item a footprint no more than two squares on a side', () => {
+  it('gives every catalogue item a footprint no more than two squares on a side, but the Bicycle', () => {
     for (const item of ITEM_DEFINITIONS) {
       expect(item.footprint.width, item.id).toBeGreaterThanOrEqual(1);
       expect(item.footprint.height, item.id).toBeGreaterThanOrEqual(1);
+      if (item.id === 'bicycle') {
+        continue;
+      }
       // The exact search only runs on the pieces first-fit turned away, and it
-      // is budgeted; a three-wide item is a change to `packContents` and to the
-      // squares a screen draws, not a row in the catalogue.
+      // is budgeted. A three-wide piece packs and draws as cargo already does,
+      // but each one is a squeeze on every pack, so it is the one exception.
       expect(item.footprint.width, item.id).toBeLessThanOrEqual(2);
       expect(item.footprint.height, item.id).toBeLessThanOrEqual(2);
     }
+  });
+
+  it('makes the Bicycle the biggest thing a pack carries: a third of a Raid pack, half a Satchel', () => {
+    expect(footprintOf('bicycle')).toEqual({ width: 3, height: 2 });
+    const biggestElse = Math.max(
+      ...ITEM_DEFINITIONS.filter((item) => item.id !== 'bicycle').map((item) => cellsFor(item.id, 1)),
+    );
+    expect(cellsFor('bicycle', 1)).toBeGreaterThan(biggestElse);
+    expect(cellsFor('bicycle', 1) / gridCells(packGridFor('raid-pack'))).toBeCloseTo(1 / 3);
+    expect(cellsFor('bicycle', 1) / gridCells(packGridFor('satchel'))).toBeCloseTo(1 / 2);
+    // It goes into every pack, standing or turned, and beside a full kit in the
+    // Raid pack - but it is the kit's room it takes.
+    for (const pack of ['satchel', 'raid-pack', 'ranger-pack', 'hauler-frame']) {
+      expect(fitsInGrid({ bicycle: 1 }, packGridFor(pack)), pack).toBe(true);
+    }
+    const raidPack = packContents({ bicycle: 1, potion: 12 }, packGridFor('raid-pack'));
+    expect(raidPack.overflow).toEqual([]);
+    expect(packContents({ bicycle: 1, potion: 13 }, packGridFor('raid-pack')).overflow).toEqual([
+      { itemId: 'potion', quantity: 1 },
+    ]);
+  });
+
+  it('keeps the Bicycle out of the secure container a save starts with, and in it once a column is built', () => {
+    expect(fitsInGrid({ bicycle: 1 }, BASE_SECURE_GRID)).toBe(false);
+    expect(fitsInGrid({ bicycle: 1 }, { width: BASE_SECURE_GRID.width + 1, height: BASE_SECURE_GRID.height })).toBe(true);
   });
 
   it('makes every material bulkier than a Potion, which is the whole squeeze', () => {

@@ -16,6 +16,18 @@ import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
 import {
+  BICYCLE_ITEM_ID,
+  BIKE_HEAD_DROP,
+  BIKE_ORIGIN_X,
+  BIKE_SHEET_COLUMNS,
+  BIKE_TEXTURE,
+  stepDurationFor,
+  stillRiding,
+  toggleBike,
+  type RidePlace,
+  type RideState,
+} from '../world/bicycle';
+import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
   getIdleFrame,
@@ -542,6 +554,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private stepDurationMs = STEP_DURATION_MS;
   /** True while the step in progress is a ledge hop, so the figure arcs over it. */
   private hopping = false;
+  /**
+   * Whether the player is on the Bicycle (`world/bicycle.ts`). Mirrored onto
+   * the run session, which is what carries it through a fight; asked again on
+   * every rebuild, every door and every change to the pack (`settleRiding`).
+   */
+  private riding = false;
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private caughtPokemonStash: Pokemon[] = [];
   private bag = new Bag({ potion: 3, antidote: 1, 'poke-ball': 5, 'great-ball': 1 });
@@ -920,6 +938,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.createEntities();
     this.liftBeatenWatches();
     this.createPlayer();
+    // Back on the Bicycle after a fight, if it is still in the pack.
+    this.setRiding(stillRiding({ ...this.rideState(), riding: this.runSession?.riding === true }));
     this.createDialogBox();
     // After the dialogue box, which the partner asks whether a line is being read.
     this.createPartner(!data.returnLocation);
@@ -2652,7 +2672,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.runSession.bouldersMoved = { ...this.runSession.bouldersMoved, [boulder.id]: destination };
     this.facing = facing;
     this.pushingAgainst = null;
-    this.player.setFrame(getIdleFrame(facing));
+    this.player.setFrame(this.playerIdleFrame(facing));
     const sprite = this.npcSprites.get(boulder.id);
     if (sprite) {
       sprite.setDepth(atRow(FIGURE_BAND, Math.max(target.y, destination.y)));
@@ -2891,6 +2911,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.player = this.add
       .sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(this.facing))
       .setOrigin(0, 0);
+    // Dressed on foot; `settleRiding` puts a rider back on straight after.
+    this.riding = false;
     // Painted after the sprite so the ring covers the player's own feet while
     // still sorting behind anything standing in front of them.
     this.playerGroundMark = this.paintPlayerMark(PLAYER_MARKER_GROUND_LAYERS);
@@ -2932,7 +2954,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);
     this.player.setDepth(depth);
     this.playerGroundMark.setPosition(x, y).setDepth(depth);
-    this.playerHeadMark.setPosition(x, y);
+    this.playerHeadMark.setPosition(x, y + (this.riding ? BIKE_HEAD_DROP : 0));
   }
 
   // -- the partner -----------------------------------------------------------
@@ -3810,7 +3832,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.scene.launch('bag', {
       bag: this.bag,
       party: this.party,
-      onItemUsed: () => this.saveGame(),
+      onItemUsed: () => {
+        // A Bicycle put down on the pack screen is not ridden away on.
+        this.settleRiding();
+        this.saveGame();
+      },
+      bike: { riding: this.riding, toggle: () => this.toggleBike() },
     });
   }
 
@@ -4164,7 +4191,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private beginStep(targetTile: GridPosition): void {
     this.targetTile = targetTile;
     this.stepProgress = 0;
-    this.stepDurationMs = this.isRunning() ? STEP_DURATION_MS / PLAYTEST_RUN_DIVISOR : STEP_DURATION_MS;
+    // A ridden tile is quicker and is still one step: the hunter, the grass
+    // and the watch all pay for it as they pay for a walked one.
+    this.stepDurationMs = stepDurationFor(this.riding, this.isRunning() ? PLAYTEST_RUN_DIVISOR : null);
     this.hopping = false;
     this.partner?.follow(this.currentTile, targetTile);
 
@@ -4174,7 +4203,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
     this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
 
-    this.player.play(getWalkAnimationKey(this.facing), true);
+    this.player.play(this.playerWalkKey(), true);
   }
 
   /**
@@ -4338,7 +4367,72 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private showIdlePose(): void {
     this.player.stop();
-    this.player.setFrame(getIdleFrame(this.facing));
+    this.player.setFrame(this.playerIdleFrame(this.facing));
+  }
+
+  // -- the Bicycle -----------------------------------------------------------
+
+  /** The player's standing frame, on foot or on the Bicycle. */
+  private playerIdleFrame(facing: Direction): number {
+    return this.riding ? getIdleFrame(facing, BIKE_SHEET_COLUMNS) : getIdleFrame(facing);
+  }
+
+  /** The player's walk - or pedal - cycle for the way they face. */
+  private playerWalkKey(): string {
+    return this.riding ? getWalkAnimationKey(this.facing, BIKE_TEXTURE) : getWalkAnimationKey(this.facing);
+  }
+
+  /** Where riding stands, as `world/bicycle.ts` asks it. */
+  private rideState(): RideState {
+    return { riding: this.riding, carried: this.bag.count(BICYCLE_ITEM_ID) > 0, place: this.ridePlace() };
+  }
+
+  private ridePlace(): RidePlace {
+    return this.currentArea()?.kind ?? 'outdoors';
+  }
+
+  /**
+   * Gets the player off the Bicycle if they may not be on it any more - through
+   * a door into a room, or with the Bicycle out of the pack - and dresses the
+   * figure either way. Asked wherever either can have changed.
+   */
+  private settleRiding(): void {
+    this.setRiding(stillRiding(this.rideState()));
+  }
+
+  private setRiding(riding: boolean): void {
+    const changed = this.riding !== riding;
+    this.riding = riding;
+    if (this.runSession) {
+      this.runSession.riding = riding;
+    }
+    if (!changed || !this.player) {
+      return;
+    }
+    this.player.setTexture(riding ? BIKE_TEXTURE : SHARED_CHARACTER_TEXTURE, this.playerIdleFrame(this.facing));
+    // The ridden frame is two tiles wide: a quarter in is the middle of the tile.
+    this.player.setOrigin(riding ? BIKE_ORIGIN_X : 0, 0);
+    this.playerHeadMark.setY(this.player.y + (riding ? BIKE_HEAD_DROP : 0));
+    if (this.targetTile) {
+      this.player.play(this.playerWalkKey(), true);
+    }
+  }
+
+  /**
+   * The pack's USE or WALK on the Bicycle. Null when it was done and the pack
+   * should close, as FireRed's does; otherwise the line to say there.
+   */
+  private toggleBike(): string | null {
+    const answer = toggleBike(this.rideState());
+    if (answer.kind === 'refused') {
+      return answer.message;
+    }
+    if (answer.kind === 'mount') {
+      audioManager.play('bikeBell');
+    }
+    this.setRiding(answer.kind === 'mount');
+    this.saveGame();
+    return null;
   }
 
   private warp(warp: MapWarp): void {
@@ -4365,6 +4459,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.currentTile.x * TILE_SIZE,
         this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
       );
+      this.settleRiding();
       this.showIdlePose();
       this.standPartnerBesidePlayer();
       this.configureCamera();
@@ -4402,6 +4497,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.currentTile.x * TILE_SIZE,
         this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
       );
+      // Through a door into a room is off the Bicycle, as a FireRed warp into a
+      // map with no cycling is; and coming back out is on foot too.
+      this.settleRiding();
       this.showIdlePose();
       this.standPartnerBesidePlayer();
       // The key that would take the player straight back through is spent:

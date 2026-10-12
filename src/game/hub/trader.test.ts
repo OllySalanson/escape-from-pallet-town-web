@@ -347,10 +347,33 @@ describe('the barter table', () => {
     const claw = TRADER_BARTERS.find((barter) => barter.id === 'barter-quick-claw')!;
     expect(reofferedWhenNoneHeld(claw)).toBe(false);
     expect(checkBarter(none, 'barter-quick-claw')?.refusal).toBe('already-taken');
-    // Every HM on the boat follows the rule, and nothing else does.
+    // Every HM on the boat follows the rule, and the Bicycle, and nothing else.
     expect(
       TRADER_BARTERS.filter(reofferedWhenNoneHeld).map((barter) => barter.gives.itemId).sort(),
-    ).toEqual(['hm01-cut', 'hm03-surf', 'hm04-strength', 'hm06-rock-smash']);
+    ).toEqual(['bicycle', 'hm01-cut', 'hm03-surf', 'hm04-strength', 'hm06-rock-smash']);
+  });
+
+  it('deals the Bicycle as his dearest deal, at his top trust, one at a time', () => {
+    const bike = TRADER_BARTERS.find((barter) => barter.gives.itemId === 'bicycle')!;
+    const price = (barter: (typeof TRADER_BARTERS)[number]) =>
+      barter.takes.reduce((total, { quantity }) => total + quantity, 0);
+    for (const other of TRADER_BARTERS.filter((barter) => barter !== bike)) {
+      expect(price(bike), other.name).toBeGreaterThan(price(other));
+    }
+    expect(bike.standing).toBe('partner');
+    expect(checkBarter(counter({ progress: progress({ ...PARTNER, defeatedBosses: [] }), stash: new Stash({ items: GOODS }) }), bike.id)?.refusal).toBe(
+      'standing-short',
+    );
+
+    const fresh = counter({ progress: PARTNER, stash: new Stash({ items: GOODS }) });
+    expect(checkBarter(fresh, bike.id)?.refusal).toBeUndefined();
+    expect(checkBarter(fresh, bike.id, 2)?.refusal).toBe('already-taken');
+    const struck = progress({ ...PARTNER, traderBarters: [bike.id] });
+    // Held in the vault, he has no other; lost with a pack, he finds another.
+    expect(checkBarter(counter({ progress: struck, stash: new Stash({ items: { ...GOODS, bicycle: 1 } }) }), bike.id)?.refusal).toBe(
+      'already-taken',
+    );
+    expect(checkBarter(counter({ progress: struck, stash: new Stash({ items: GOODS }) }), bike.id)?.refusal).toBeUndefined();
   });
 
   it('refuses a barter the standing has not opened', () => {

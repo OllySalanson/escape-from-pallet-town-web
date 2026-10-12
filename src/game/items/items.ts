@@ -128,6 +128,13 @@ export type ItemEffect =
    */
   | { readonly type: 'rod' }
   /**
+   * The Bicycle: ridden, not used up. Chosen in the raid's pack - FireRed's own
+   * USE and WALK - it doubles how fast the player covers ground anywhere but
+   * inside a building (`../world/bicycle.ts`). It is the biggest thing a pack
+   * can carry, and lost with the pack like anything else.
+   */
+  | { readonly type: 'bike' }
+  /**
    * A Lockpick: opens one locked crate (`../world/pois.ts`, `WorldPoi.locked`)
    * and snaps in the lock doing it, so it is spent where a Pickaxe is not. Most
    * locks open with one; an exit with a key of its own does not.
@@ -649,6 +656,19 @@ export const ITEMS = {
     description: 'A piece of amber with something very old inside. Bill wants it for his cabinet.',
     effect: { type: 'errand' },
   },
+  // The Bicycle: FireRed's own, which costs a million there and is a find or
+  // Bill's dearest deal here. Three squares by two - the one thing in the
+  // catalogue wider than two - so it is a third of a Raid pack, half a Satchel,
+  // and too wide for the secure container until that has grown a column: riding
+  // it is a bet on getting it home (`../world/bicycle.ts`).
+  bicycle: {
+    id: 'bicycle',
+    displayName: 'Bicycle',
+    category: ItemCategory.Misc,
+    footprint: { width: 3, height: 2 },
+    description: 'A folding bicycle: ride it from the pack and you go twice as fast as on foot, anywhere but indoors. Never used up - but lost with the pack.',
+    effect: { type: 'bike' },
+  },
   // The gear. Four pieces, four different kinds of answer, and every
   // description is the whole rule: a player who carries one into one fight can
   // say what it did without opening a menu again.
@@ -1006,6 +1026,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} digs out buried exits. Face the rubble and press the interact key.` };
     case 'rod':
       return { used: false, message: `${item.displayName} is cast into water. Face it and press the interact key.` };
+    case 'bike':
+      return { used: false, message: `${item.displayName} is ridden, not used on a Pokémon. Choose it in the raid's pack.` };
     case 'lockpick':
       return { used: false, message: `${item.displayName} opens a locked crate. Face the crate and press the interact key.` };
     case 'key':
