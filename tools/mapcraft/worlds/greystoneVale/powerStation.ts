@@ -39,20 +39,20 @@ const LAND = [
   'TTT...........................TT',
   'TTT...........................TT',
   'TTT...........................TT',
-  'TTT.TTTTTTTT.........TTTTTTTTTTT',
-  'TTT.TTTTTTTT.........TTTTTTTTTTT',
-  'TTT.TTTTTTTT.........TTTTTTTTTTT',
+  'TTT.TTTTTTTT..........TTTTTTTTTT',
+  'TTT.TTTTTTT...........TTTTTTTTTT',
+  'TTT.TTTTTT............TTTTTTTTTT',
   'TTT...........................TT',
   '..............................TT',
-  'TT..................TT........TT',
-  'TT..................TT........TT',
-  'TT..................TT........TT',
-  'TT..................TT........TT',
-  'TT..................TT........TT',
-  'TT..................TT........TT',
   'TT............................TT',
   'TT............................TT',
-  'TT..........TTTTTTT.............',
+  'TT............................TT',
+  'TT............................TT',
+  'TT............................TT',
+  'TT............................TT',
+  'TT............................TT',
+  'TT............................TT',
+  'TT...........TTTTT............TT',
   'TT.........TTTTTTTT..........TTT',
   'TTTTT.....................TTTTTT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
@@ -70,11 +70,15 @@ export function powerStation(): MapcraftResult {
 
   // -- The reservoir behind the dam, and the dam: a cliff band across the
   // valley with the station built against its foot
-  p.blob(32, 9, 19, 6, 'W');
+  p.blob(34, 10, 18, 5, 'W');
   p.block(8, 15, 52, 3, 'C'); // across the valley to the east wood
-  // A path climbs round the dam's west end, between it and the hillside,
-  // onto the reservoir's shore.
-  p.road([[6, 20], [6, 12], [14, 12]]);
+  // and stepping up where the rock stands proud of the water, so it is a
+  // hillside the dam was built into rather than a ruled line
+  p.draw(18, 13, ['    CCC', 'CCCCCCC']);
+  p.draw(36, 12, ['  CCCC', ' CCCCCC', 'CCCCCCCC']);
+  // The Pylon Road climbs round the dam's west end, between it and the
+  // hillside, and runs along the reservoir's north shore out of the vale.
+  p.road([[6, 26], [6, 10], [10, 10], [10, 2], [30, 2], [30, 0]]);
   // The station's chimney caps stand in the dam's bottom row, the cliff's face
   // behind and between them, as Route 10's stands against its cliff.
   p.building('power-plant', 27, 17);
@@ -92,7 +96,9 @@ export function powerStation(): MapcraftResult {
   // forecourt, over the tailrace and away east as the Pylon Road
   p.road([[2, 26], [43, 26]]);
   p.block(43, 25, 5, 4, 'M'); // the stone bridge over the tailrace
-  p.road([[48, 26], [56, 26], [56, 44], [62, 44]]);
+  // Over the bridge, down the tailrace's east bank past the damkeeper, and
+  // through the wood to meet the south road, so the valley's roads are a ring.
+  p.road([[48, 26], [54, 26], [54, 52], [30, 52]]);
   // The forecourt: sand worn bare in front of the doors, as Route 10's plant
   // stands on, running into the road
   p.draw(25, 24, [
@@ -102,9 +108,10 @@ export function powerStation(): MapcraftResult {
     'dddddddddddddd',
     ' dddddddddddd ',
   ]);
-  // Two boulders at its front corners, either side of the way down to the
-  // yard, so whoever lands here meets something whichever way they set off.
-  p.building('rock', 27, 28).building('rock', 34, 28);
+  // The station's stores stacked at the forecourt's west end and a boulder
+  // out on the east, so whoever lands here meets something whichever way
+  // they set off.
+  p.building('barrels', 25, 28).building('rock', 35, 28);
 
   // -- The switchyard: fenced and gone to grass, its gate off the forecourt,
   // its service gate at the back
@@ -124,12 +131,15 @@ export function powerStation(): MapcraftResult {
   p.road([[9, 28], [9, 35]]);
   p.road([[5, 35], [16, 35]]); // the lane along their doors, the garden across it
   p.yard(5, 37, 14, 6, { gates: [[9, 37], [10, 37], [11, 42], [12, 42]], inner: '.' }); // their garden
-  p.flowers([7, 39], [8, 40], [14, 39], [16, 40]);
+  p.flowers([6, 39], [7, 39], [6, 40], [8, 41], [15, 40]);
   // and out of its back gate, down to the pond, where they fished off shift
   p.road([[11, 43], [11, 48], [38, 48]]);
+  // The south road, through the wood to the Safari Zone's gate
+  p.road([[30, 48], [30, 63]]);
 
-  // -- Grass in the wet ground: below the hamlet, and on the tailrace's east
-  // bank, where the damkeeper watches the road
+  // -- Grass in the wet ground: reeds down the tailrace's west bank, below the
+  // hamlet, and on the east bank, where the damkeeper watches the road
+  p.bedRows([29, 42, 43], [30, 41, 43], [31, 41, 43], [32, 42, 43], [33, 41, 43], [34, 42, 43], [35, 41, 43], [36, 41, 43]);
   p.bedRows([44, 4, 9], [45, 4, 10], [46, 5, 9]);
   p.bedRows([30, 48, 53], [31, 47, 53], [32, 48, 52], [36, 47, 53], [37, 48, 53]);
   p.building('rock', 21, 45).building('rock', 22, 46);
@@ -147,7 +157,7 @@ export function powerStation(): MapcraftResult {
       { x: 38, y: 41 }, // in the switchyard, by the service gate
       { x: 17, y: 41, hidden: true }, // the workers' garden
       { x: 57, y: 30 }, // the bank of the tailrace
-      { x: 15, y: 3 }, // the reservoir's north shore
+      { x: 44, y: 3 }, // the reservoir's north shore
     ],
     exits: [{ x: 30, y: 42, name: 'Service Gate', opens: { when: 'key' } }],
     extra: {
@@ -157,7 +167,8 @@ export function powerStation(): MapcraftResult {
       ],
       signs: [
         { x: 23, y: 25, lines: ['GREYSTONE POWER STATION', 'Service gate locked. Card Key holders only.'] },
-        { x: 52, y: 27, lines: ['PYLON ROAD', 'East: out of the vale.'] },
+        { x: 8, y: 25, lines: ['PYLON ROAD', 'North: along the reservoir and out of the vale.'] },
+        { x: 28, y: 49, lines: ['SAFARI ZONE', 'South: the marsh reserve.'] },
       ],
       people: [
         {

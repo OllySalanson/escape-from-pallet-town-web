@@ -607,18 +607,22 @@ to: they scored 7 to 9 every round.
 
 ## The Power Station
 
-The station east of Pine Hollow, at the head of a new column of the vale. The
-Pine Trail that used to leave the vale there is the way in from the pines now.
+The station east of Pine Hollow, at the head of the vale's new east column. The
+Pine Trail that used to leave the vale there is the way in from the pines now,
+and the south road leads on to Safari Marsh.
 
 - **The dam:** a cliff band across the head of the valley with the reservoir
-  behind it. A path climbs round its west end onto the shore, where the relay
-  mast stands.
+  behind it. The Pylon Road climbs round its west end and runs along the
+  reservoir's north shore out of the vale; the relay mast stands on the far
+  shore.
 - **The station:** FireRed's own Power Plant, cut off Route 10 with its chimney
   caps standing in the dam's bottom row, as Route 10's stand against its cliff.
   It sits in a pocket of wood under the dam, with a sand forecourt where you
   land (The Dam).
-- **The road:** in from the pines, along the forecourt, over the tailrace on a
-  stone bridge, and out east as the Pylon Road.
+- **The roads, a ring:** in from the pines, along the forecourt, over the
+  tailrace on a stone bridge, down the east bank past the damkeeper, and
+  through the wood to the south road, which goes on to Safari Marsh and back up
+  past the hamlet.
 - **The switchyard:** fenced and gone to grass, its gravel showing through. It
   is where the station's Electric wildlife lives: Voltorb, Magnemite and
   Pikachu, now and then an Electabuzz. Its Service Gate at the back is locked
