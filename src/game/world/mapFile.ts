@@ -2082,6 +2082,27 @@ export function fileLedges(file: MapFile, id: WorldMapId = playerMapId(file)): r
   return ledges;
 }
 
+/** Whether any outdoor ground of a file lies outside every district the file names. */
+function hasUnnamedOutdoorGround(file: MapFile): boolean {
+  const outdoorDistricts = (file.districts ?? []).filter((district) => district.area === undefined);
+  return file.ground.some((row, y) =>
+    [...row].some((letter, x) => {
+      const material = materialOf(letter);
+      return (
+        material !== undefined &&
+        !MATERIALS[material].solid &&
+        !outdoorDistricts.some(
+          (district) =>
+            x >= district.x &&
+            x < district.x + district.width &&
+            y >= district.y &&
+            y < district.y + district.height,
+        )
+      );
+    }),
+  );
+}
+
 /**
  * Builds the game's view of a file that `readMapFile` has accepted. Throws on a
  * file it has not, because loading one is a bug in the caller rather than
@@ -2195,7 +2216,9 @@ export function buildFileMap(file: MapFile, id: WorldMapId): FileMap {
     // The maker's own districts first, because the first listed wins a tile;
     // then each area, which is a place of its own and is named on the plate
     // as you walk in; then, on a map that has areas to come back out of, the
-    // outdoors, so walking out of a house names where you are again.
+    // outdoors, so walking out of a house names where you are again - unless
+    // the maker's districts already name all of it (Greystone Vale's do), when
+    // it would be a place with no ground.
     districts: [
       ...(file.districts ?? []).map((district, index) => {
         const origin = at({ x: district.x, y: district.y, area: district.area });
@@ -2217,7 +2240,7 @@ export function buildFileMap(file: MapFile, id: WorldMapId): FileMap {
         // is the cave's own.
         ...(placed.kind === 'cave' ? { encounters: MAP_FILE_HABITATS.cave } : {}),
       })),
-      ...(areas.length > 1
+      ...(areas.length > 1 && hasUnnamedOutdoorGround(file)
         ? [
             {
               id: `${id}/outdoors`,

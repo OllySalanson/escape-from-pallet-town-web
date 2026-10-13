@@ -113,6 +113,13 @@ export interface MapStructurePart {
   /** This file is slice `part` of `of`, taking every `of`th gate state. */
   readonly part: number;
   readonly of: number;
+  /**
+   * Split by tiles instead: a map with one gate state too big for one file -
+   * Greystone Vale, nine 64-tile districts - where every part asks every
+   * state, the sweeps that search from every tile take every `of`th tile, and
+   * every other rule is asked by part 1 alone.
+   */
+  readonly tiles?: true;
   /** The file that asks these, beside this one. */
   readonly file: string;
 }
@@ -129,7 +136,16 @@ export const MAP_STRUCTURE_PARTS: readonly MapStructurePart[] = [
   { name: 'viridian-city', mapId: 'viridian-city', part: 1, of: 1, file: 'mapStructure.viridianCity.test.ts' },
   // Still being drawn (`MAPS_IN_PROGRESS`), and held to every structure rule
   // all the same: an unfinished map is still a map somebody can be raided on.
-  { name: 'greystone-vale', mapId: 'greystone-vale', part: 1, of: 1, file: 'mapStructure.greystoneVale.test.ts' },
+  // 192 tiles square in one gate state, so it is split by tiles: in one file
+  // its flee sweeps alone ran seven minutes.
+  ...([1, 2, 3, 4] as const).map((part) => ({
+    name: `greystone-vale ${part}/4`,
+    mapId: 'greystone-vale' as const,
+    part,
+    of: 4,
+    tiles: true as const,
+    file: `mapStructure.greystoneVale${part}.test.ts`,
+  })),
 ];
 
 /** Every gate state of a map, in the order `gateStatesToVerify` gives them. */
@@ -151,7 +167,7 @@ function mapStatesOf(part: MapStructurePart): readonly MapState[] {
   const names = mapStateNames(mapId);
   return gateStatesToVerify(gates)
     .map((defeatedBosses, index) => ({ defeatedBosses, index }))
-    .filter(({ index }) => index % part.of === part.part - 1)
+    .filter(({ index }) => part.tiles === true || index % part.of === part.part - 1)
     .map(({ defeatedBosses, index }) => ({
       name: names[index],
       mapId,
@@ -344,7 +360,20 @@ export function describeMapStructure(partName: string): void {
     throw new Error(`no map structure part '${partName}'`);
   }
   const MAP_STATES = mapStatesOf(part);
-  const OPEN_STATES = MAP_STATES.filter((state) => state.fullyOpen);
+  // A map split by tiles asks every rule but the sweeps in its first part only,
+  // and each part sweeps its own share of the tiles.
+  const RULE_STATES = part.tiles === true && part.part > 1 ? [] : MAP_STATES;
+  const sweptTiles = (tiles: readonly GridPosition[]): readonly GridPosition[] =>
+    part.tiles === true ? tiles.filter((_, index) => index % part.of === part.part - 1) : tiles;
+  const eachRule = (
+    title: string,
+    rule: (name: string, state: MapState) => void,
+  ): void => {
+    if (RULE_STATES.length > 0) {
+      it.each(named(RULE_STATES))(title, rule);
+    }
+  };
+  const OPEN_STATES = RULE_STATES.filter((state) => state.fullyOpen);
   // Only one slice of a map holds its every-gate-open state, and `it.each`
   // of nothing is not a test.
   const eachOpenState = (
@@ -358,7 +387,7 @@ export function describeMapStructure(partName: string): void {
 
   describe(`map structure: ${partName}`, () => {
     if (FIRERED_STANDARD_MAPS.includes(part.mapId)) {
-      it.each(named(MAP_STATES))('%s keeps every tile within five steps of a wall', (_name, { map }) => {
+      eachRule('%s keeps every tile within five steps of a wall', (_name, { map }) => {
         const distances = wallDistances(map.collision);
         const far = walkableTiles(map.collision)
           .filter((tile) => distances[tile.y][tile.x] > FIRERED_FURTHEST_FROM_WALL)
@@ -366,7 +395,7 @@ export function describeMapStructure(partName: string): void {
         expect(far).toEqual([]);
       });
 
-      it.each(named(MAP_STATES))('%s answers a held direction within a few steps, typically', (_name, { map }) => {
+      eachRule('%s answers a held direction within a few steps, typically', (_name, { map }) => {
         const runs = heldDirections(map.collision);
         const median = runs[Math.floor(runs.length / 2)];
         expect(median).toBeGreaterThanOrEqual(FIRERED_MEDIAN_HELD.min);
@@ -395,7 +424,7 @@ export function describeMapStructure(partName: string): void {
      * region a raid can start in has to hold an exit it can open from inside -
      * one on no condition, or one whose landmark is in the same region.
      */
-    it.each(named(MAP_STATES))(
+    eachRule(
       '%s gives every region a raid can start in its own way out',
       (_name, state) => {
         const { map, mapId } = state;
@@ -438,7 +467,7 @@ export function describeMapStructure(partName: string): void {
       }
     });
 
-    it.each(named(MAP_STATES))('%s answers a held direction from its insertion within a few steps', (_name, { map, mapId }) => {
+    eachRule('%s answers a held direction from its insertion within a few steps', (_name, { map, mapId }) => {
       for (const insertion of insertionsOn(mapId)) {
         const collision = map.collision;
         for (const [dx, dy] of [
@@ -454,7 +483,7 @@ export function describeMapStructure(partName: string): void {
       }
     });
 
-    it.each(named(MAP_STATES))('%s seals every map edge except its authored exits', (_name, { map, mapId }) => {
+    eachRule('%s seals every map edge except its authored exits', (_name, { map, mapId }) => {
       const gates = new Set(
         extractionPointsOn(mapId).map(
           (point) => `${point.position.x},${point.position.y}`,
@@ -479,7 +508,7 @@ export function describeMapStructure(partName: string): void {
      * road. Held here for every map, with every exit shut at once: whatever a raid
      * can walk to, it can still walk to without stepping on a way out.
      */
-    it.each(named(MAP_STATES))('%s never stands an exit in a passage', (_name, state) => {
+    eachRule('%s never stands an exit in a passage', (_name, state) => {
       const { map, mapId } = state;
       const exits = new Set(
         extractionPointsOn(mapId).map(
@@ -511,7 +540,7 @@ export function describeMapStructure(partName: string): void {
      * shut, because the way round a watch is a way somebody drew on purpose. An
      * exit is a pocket a player steps into to leave, never a through-tile.
      */
-    it.each(named(MAP_STATES))('%s never stands an exit on the way between two places', (_name, state) => {
+    eachRule('%s never stands an exit on the way between two places', (_name, state) => {
       const { map, mapId } = state;
       const exits = new Set(
         extractionPointsOn(mapId).map(
@@ -545,7 +574,7 @@ export function describeMapStructure(partName: string): void {
      * one would put a door, a stake or a price behind a person for as long as the
      * schedule felt like it.
      */
-    it.each(named(MAP_STATES))('%s never lets a townsperson wander onto a route', (_name, state) => {
+    eachRule('%s never lets a townsperson wander onto a route', (_name, state) => {
       const { map, mapId } = state;
       const beats = map.entities.filter((entity) => entity.idle !== undefined);
       const roamed = new Set(
@@ -624,7 +653,7 @@ export function describeMapStructure(partName: string): void {
      * the whole reason for the rule: the answer to a class of fault is not the one
      * fix, it is the test that fails the next map to draw it.
      */
-    it.each(named(MAP_STATES))('%s never lets a figure stand where it would wall the player in', (_name, state) => {
+    eachRule('%s never lets a figure stand where it would wall the player in', (_name, state) => {
       const { map } = state;
       const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
@@ -684,7 +713,7 @@ export function describeMapStructure(partName: string): void {
       const exits = extractionPointsOn(mapId).map(
         (point) => point.position,
       );
-      for (const player of walkableTiles(map.collision)) {
+      for (const player of sweptTiles(walkableTiles(map.collision))) {
         const contact = [
           { x: player.x + 1, y: player.y },
           { x: player.x - 1, y: player.y },
@@ -725,7 +754,7 @@ export function describeMapStructure(partName: string): void {
     it.each(named(MAP_STATES))('%s always gives the hunter somewhere fair to arrive', (_name, { map }) => {
       const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
-      for (const tile of walkableTiles(map.collision)) {
+      for (const tile of sweptTiles(walkableTiles(map.collision))) {
         const spawn = findHunterSpawnTile(tile, bounds, isBlocked);
         expect(`${tile.x},${tile.y}: ${spawn === null ? 'nowhere fair' : 'spawn found'}`)
           .toBe(`${tile.x},${tile.y}: spawn found`);
@@ -742,7 +771,7 @@ export function describeMapStructure(partName: string): void {
     it.each(named(MAP_STATES))('%s lets a flee put real ground between hunter and player', (_name, { map, name: mapId }) => {
       const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
-      const tiles = walkableTiles(map.collision);
+      const tiles = sweptTiles(walkableTiles(map.collision));
       let worst = HUNTER_BREAKAWAY_DISTANCE;
       for (const player of tiles) {
         const contact = [
@@ -785,7 +814,7 @@ export function describeMapStructure(partName: string): void {
      * the tile the raid drops you on, it reaches the door you leave by, or it
      * covers ground with no way back out of it.
      */
-    it.each(named(MAP_STATES))('%s never lets a trainer watch corner the player', (_name, state) => {
+    eachRule('%s never lets a trainer watch corner the player', (_name, state) => {
       const { map, mapId } = state;
       const isSightBlocked = (tile: GridPosition): boolean =>
         map.collision[tile.y]?.[tile.x] !== false;
@@ -848,7 +877,7 @@ export function describeMapStructure(partName: string): void {
     it.each(named(MAP_STATES))('%s lets the hunter path to the player from anywhere it can arrive', (_name, { map, name: mapId }) => {
       const bounds = boundsOf(map);
       const isBlocked = collisionBlocker(map.collision);
-      const tiles = walkableTiles(map.collision);
+      const tiles = sweptTiles(walkableTiles(map.collision));
       // Every tile as the player, against the spawn the hunter would really get.
       for (const player of tiles) {
         const spawn = findHunterSpawnTile(player, bounds, isBlocked);

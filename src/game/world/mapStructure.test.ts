@@ -9,18 +9,23 @@ import { MAP_STRUCTURE_PARTS, mapStateNames } from './mapStructure.testkit';
  * asked by one `mapStructure.*.test.ts` file per map, or per slice of a map's
  * gate states, so that vitest can run them side by side. What is held here is
  * that the split lost nothing: every gate state of every map is asked about by
- * exactly one file, and every file named really does ask.
+ * exactly one file (or, for a map split by tiles, every tile of it by exactly
+ * one), and every file named really does ask.
  */
 describe('map structure files', () => {
   it('ask about every gate state of every map, each exactly once', () => {
     for (const mapId of Object.keys(WORLD_MAPS) as WorldMapId[]) {
       const parts = MAP_STRUCTURE_PARTS.filter((part) => part.mapId === mapId);
       const states = mapStateNames(mapId);
+      // A map split by tiles is split by tiles alone: every part asks every
+      // state, each sweeping its own share of the tiles.
+      const byTiles = parts.some((part) => part.tiles === true);
+      if (byTiles) expect(parts.every((part) => part.tiles === true)).toBe(true);
       const askedBy = states.map(
         (name, index) =>
-          `${name}: ${parts.filter((part) => index % part.of === part.part - 1).length} file(s)`,
+          `${name}: ${parts.filter((part) => part.tiles === true || index % part.of === part.part - 1).length} file(s)`,
       );
-      expect(askedBy).toEqual(states.map((name) => `${name}: 1 file(s)`));
+      expect(askedBy).toEqual(states.map((name) => `${name}: ${byTiles ? parts.length : 1} file(s)`));
       // Slices of one map have to agree on how many there are, or two of them
       // could take the same states and leave others to nobody.
       expect(new Set(parts.map((part) => part.of)).size).toBe(1);

@@ -125,7 +125,9 @@ export const GREYSTONE_VALE: WorldPlan = {
     { district: 'pine-hollow', side: 'east', at: 26, name: 'Pine Trail', kind: 'trail' },
     { district: 'tanglewood', side: 'east', at: 40, name: 'Eastern Track' },
     { district: 'orchard-terraces', side: 'east', at: 30, name: 'Orchard Lane' },
-    { district: 'gull-strand', side: 'south', at: 44, name: "Fisher's Jetty" },
+    // The boat to the jetty comes in a while into the raid: the vale's one way
+  // out that is not open from the first second.
+  { district: 'gull-strand', side: 'south', at: 44, name: "Fisher's Jetty", opens: { when: 'after', seconds: 90 } },
   ],
   landmarks: [
     { district: 'millbrook', name: 'Mill Square', at: [30, 32], kind: 'landing' },

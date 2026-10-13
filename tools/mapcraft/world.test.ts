@@ -118,6 +118,24 @@ describe('stitching', () => {
     expect(file.ground.map((row) => row.slice(32, 64))).toEqual(built['orchard-bend'].ground);
   });
 
+  it('takes a cave two districts carry alike once, and one carried differently as two places', () => {
+    const built = files();
+    const quarry = built['old-quarry'];
+    const ladders = (quarry.links ?? []).filter((link) => link.ends.every((end) => end.area));
+    const carried = { ...built['orchard-bend'], areas: quarry.areas, links: ladders };
+    const alike = stitch(QUARRY_ROAD, { ...built, 'orchard-bend': carried });
+    expect(alike.problems).toEqual([]);
+    expect(alike.file.areas).toEqual(stitch(QUARRY_ROAD, built).file.areas);
+    expect(alike.file.links).toHaveLength(quarry.links?.length ?? 0);
+
+    const renamed = (quarry.areas ?? []).map((area) => ({ ...area, name: 'Another Cave' }));
+    const { problems } = stitch(QUARRY_ROAD, {
+      ...built,
+      'orchard-bend': { ...carried, areas: renamed },
+    });
+    expect(problems.join(' ')).toMatch(/Two districts have a place called 'quarry-cave'/);
+  });
+
   it('finds a district open at its edge where no crossing is planned', () => {
     const built = files();
     const orchard = built['orchard-bend'];

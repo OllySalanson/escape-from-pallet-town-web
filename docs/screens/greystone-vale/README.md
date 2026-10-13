@@ -2,14 +2,13 @@
 
 A new raid map, planned coarse and drawn one district at a time with
 `tools/mapcraft` (its source is `tools/mapcraft/worlds/greystoneVale/`). This
-is the plan, before any district was drawn:
+is the plan, each district that is drawn marked DRAWN:
 
 ![plan](plan.png)
 
-And the vale as it ships now, with Millbrook, High Moor, Reedmere, Gull Strand
-and Orchard Terraces drawn:
-every district still to draw is wood, and each road into one runs into the
-trees at a way out.
+And the vale as it ships now, with all nine of its districts drawn: Millbrook,
+High Moor, Greystone Peaks, Pine Hollow, The Crossing, Tanglewood, Reedmere,
+Gull Strand and Orchard Terraces.
 
 ![the vale as it ships](vale.png)
 
@@ -66,6 +65,65 @@ It took eight blind rounds, below. This was the first draw, an open moor sixty
 tiles wide, which the judges read as empty lawn with props dropped on it:
 
 ![High Moor as first drawn](high-moor-round1.png)
+
+## Greystone Peaks
+
+The high ground above The Crossing, drawn as a mountain pass. A pass climbs
+from High Moor, through a cutting in a band of rock, past the tarn where the
+river is born and round its head. It comes down the far side, squeezed
+between the gorge and the cliff the Greystone Caves open in.
+
+- **The two ways:** the climb and the descent are each a corridor about
+  eighteen tiles wide, framed by the summit's cliff and the wood on the
+  outside and by the gorge between them.
+- **The gorge:** the river leaves the tarn and runs south between walls of
+  rock to The Crossing.
+- **The cave cliff:** one mass with the crag over the quarry. The Greystone
+  Caves open at its foot, onto their top floor.
+- **The quarry:** an upper bench cut back into the hill, with Breaker Finn,
+  the quarry hut and a crate store, and the vale's third landing. A ledge off
+  the bench is the quick way back down.
+- **Ways on and out:** the pass carries on south to The Crossing, a path
+  nobody signs leaves the quarry east into Pine Hollow, and the Goat Track, a
+  way out in a nook at the foot of the climb, keeps the west side within the
+  hunter's blind window of an exit (`hunterFlee.test.ts`).
+
+![Greystone Peaks](greystone-peaks.png)
+
+Its first judged draw had the river running across open grass between rock
+blocks, which both judges called "an arrangement of parts on a lawn":
+
+![Greystone Peaks, round 1's two views](greystone-peaks-round1.png)
+
+## The Crossing
+
+The middle of the vale, where the river is crossed. It is drawn as a valley
+about twenty tiles wide between walls of wood, with the river and the road
+winding down it:
+
+- **The river** comes down from the peaks under a cliff, with a column of tall
+  grass between the cliff and the water, bends once, and opens below the
+  bridge into the Wide Water before it carries on south to the strand.
+- **The stone bridge** carries the road from Millbrook over the river, past
+  the bridge-keeper's cottage, on to Tanglewood. Netter Bryn stands at its east
+  end.
+- **The trail from the peaks** comes down the east bank, turned by the wood
+  where it meets it.
+- **The Wide Water:** the Angler fishes it from the west bank.
+- **The stepping stones** at the foot of the valley are the second way over:
+  a lane through the west wood comes down to them, and past the heron hide on
+  the far side a path nobody signs goes on east into Tanglewood. The nook by
+  the hide is the vale's fourth landing.
+
+The plan named a ford as a third way over. FireRed has no ford, and its shallow
+water drawn into a river read to every judge as a pale square drawn by
+mistake, so there is none.
+
+![The Crossing](the-crossing.png)
+
+Its first judged draw, a wide valley:
+
+![The Crossing, round 1's two views](the-crossing-round1.png)
 
 ## The vale
 
@@ -177,13 +235,79 @@ Four lessons, each paid for by at least one round:
 - **The road:** a straight road with things set beside it is "a checklist of
   features"; the road has to wind round what stands in its way.
 
+### Greystone Peaks
+
+Greystone Peaks was judged the same way as High Moor: two 24x40 views beside
+the same five FireRed routes and the same two broken controls, every round
+with two fresh judges.
+
+| Round | What changed | FireRed routes (mean) | Greystone Peaks |
+|---|---|---|---|
+| 1 | the river across open grass, rock in blocks | 6.2, 6.4 | 4 and 5, 4 and 5 |
+| 2 | cliffs as the frame, the river in a gorge, every rock mass on a wall | 6.4, 6.4 | **6 and 6, 6 and 5** |
+
+**It passes on round 2.** Both judges rated both broken controls below every
+real route.
+
+Round 1 was drawn with everything High Moor had taught, and still failed on
+the frame: both judges said nothing framed the views. The lesson is
+**a cliff is a wall only when it is the frame**. A mass of rock standing on
+lawn reads as a block, however big; the same rock running out of the picture
+along a corridor's side reads as a cliff, which is how FireRed's Route 24 draws
+it.
+
+What round 2 still named, for a later pass:
+- the rock masses are similar rounded rectangles;
+- the quarry's gravel bench looks pasted in;
+- the climb has nothing to find along it but tall grass.
+
+### The Crossing
+
+The Crossing was judged the same way, beside the same five FireRed routes and
+two broken controls, every round with two fresh judges. Round 4's draw was
+replaced before it was judged.
+
+| Round | What changed | FireRed routes (mean) | The Crossing |
+|---|---|---|---|
+| 1 | a wide valley, a river in jogs, a pale ford | 7.2, 6.4 | 5 and 6, 6 and 6 |
+| 2 | the first redraw | 6.8, 6.6 | 4 and 4, 4 and 4 |
+| 3 | a corridor with a straight river | 6.8, 6.8 | 4 and 3, 4 and 4 |
+| 5 | a wide valley again, big square bends, no ford | 6.8, 6.6 | 4 and 4, 3 and 3 |
+| 6 | a framed corridor, the river in short jogs | 6.8, 6.4 | 5 and 5, 5 and 4 |
+| 7 | a straight river under a cliff, as Route 24 has it | 6.6, 6.6 | 5 and 5, 5 and 5 |
+| 8 | ragged beds, a pool of two ponds, the heron hide | 6.2, 6.4 | 5 and 5, 5 and 5 |
+| 9 | one big bend, the cottage door on the road | 6.2, 7.0 | 6 and 6 (pass), 5 and 5 |
+| 10 | a pool with a natural edge, the wood turning the road | 6.4, 6.8 | 6 and 5 (pass), 5 and 6 |
+| 11 | the bend made whole | 5.8, 6.0 | **6 and 6, 7 and 6** |
+
+**It passes on round 11**: both judges, both views. Every judge rated both
+broken controls below every real route.
+
+What the rounds taught about water, which is most of what this district is:
+- **Straight is fine; stepping is not.** FireRed draws a river as a straight
+  channel and a pool as a plain shape, and the judges took both from it
+  without complaint beside a cliff or a road. What read as generated was a
+  river stepping sideways in two-tile jogs ("a staircase of rectangles"), a
+  pool built of stacked rectangles, and a pale square of shallow water.
+- **Draw the river after anything that could cut it.** In round 10 a tall
+  grass bed drawn after the river cut through its bend, and a judge saw "two
+  reaches that touch only at a corner". Nothing in the hard checks can see it.
+- **A crossing goes somewhere at both ends.** The stepping stones were marked
+  down while they led from grass to grass, and passed once a lane came down to
+  them and the heron hide stood at the far end.
+
+What round 11 still named, for a later pass: the road's long staircase
+diagonal, and the stone slabs standing in for bridges, since no bridge on the
+FireRed sheet spans a river from west to east.
+
 ## Pine Hollow, Tanglewood and the Greystone Caves
 
 The two woods in the east of the vale, the deer path between them, and the
-caves under them. They are drawn and pass, and are stitched into the vale the
-game ships once The Crossing is in: it is the only way to them from Millbrook,
-and a vale they joined before then would be a wood nobody can walk to.
-`forests.test.ts` holds each to every hard check until then. Both woods are FireRed's own forest conifer, the tree
+caves under them. They are drawn and pass, and joined the vale the game ships
+with Greystone Peaks and The Crossing: the road from Millbrook over the bridge
+runs on into Tanglewood, and the hidden trail from the peaks crosses the col
+into Pine Hollow. `forests.test.ts` also holds each to every hard check on its
+own. Both woods are FireRed's own forest conifer, the tree
 Viridian Forest is drawn in. FireRed's broadleaf stands alone, and planted
 shoulder to shoulder it reads as an orchard, so each wood has one broadleaf
 standing in a clearing.
@@ -221,8 +345,11 @@ standing in a clearing.
   - **Every third dead end hides something.**
   - **Mouths in districts drawn later:** the floors and ladders ride in
     Tanglewood's file, and Greystone Peaks and Gull Strand plant their mouths
-    with `caveMouthLink`. Until then, their ways out are passages into the
-    south wall that go nowhere yet.
+    with `caveMouthLink`. A district with a mouth carries the floors and the
+    ladders as well, so it passes its checks on its own; the stitcher takes a
+    floor or a ladder two districts carry alike once (one carried differently
+    is two places, and a problem). The peaks' mouth is in; until Gull Strand's
+    is, its way out is a passage into the south wall that goes nowhere yet.
 
 ![Pine Hollow](pine-hollow.png)
 
@@ -354,6 +481,9 @@ cliffs and the strand.
   a sand bar to make a lagoon, there is a tide pool in the rocks, and stone
   steps lead down from the cliff-top path. The sea cave's mouth is planted in
   the cliff foot once the Greystone Caves are stitched into the vale.
+- **The Smugglers' Path:** a way out in a nook of the west wood above the
+  heath. It was added when The Crossing was drawn: its stand-in ways out had
+  kept the heath's far corner within the hunter's blind window.
 - **The strand:** the landing, among rocks drawn up on the sand. A net loft
   stands on the heath above it with a fenced garden, and stepping stones cross
   the river mouth at low tide.
@@ -450,7 +580,7 @@ player's map is built by). While its districts are being drawn it is on
   `greystoneVale.test.ts` holds that against every contract banked.
 - **Every structure and safety rule holds it now** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
-  walked tile - through `mapStructure.greystoneVale.test.ts` and the rest of
+  walked tile - through `mapStructure.greystoneVale1-4.test.ts` and the rest of
   the suite.
 - **What a finished map pays and guards waits for its districts**: its boss and
   two doors, its key exit and key, its locked crate, its loot (money,
