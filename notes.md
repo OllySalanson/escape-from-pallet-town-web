@@ -266,6 +266,14 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** pick up a map's key, or bring a Pickaxe from Bill, and press O: the field notes say which way the gate or the rubble is. Open it and the line goes, since it is an ordinary way out from then on.
 - **Checked in the browser:** from the Route 1 front door the notes now end with the key and Pickaxe lines, and after the gate is opened only the Pickaxe line is left.
 
+## 36. The field guide sent a player with no Lockpick to a locked crate (newest feature: locks and keys, playtested)
+
+- **Found:** the field guide's "nearest landmark still to work" line (entries 30 and 32) counted every map's locked crate as a landmark to work. Standing near Route 1's PACKER'S CHEST or Pallet's KILN STRONGBOX with no Lockpick in the pack, the guide sent the player to it, where the only answer is "the crate is locked". A player who did carry a Lockpick was never told where the one crate it opens is.
+- **Reproduced:** in `objectives/ObjectiveGuide.test.ts` ("a locked cache"), on the real Route 1 plan standing at (45,24) beside PACKER'S CHEST: with nothing in the pack the guide named the chest as the nearest landmark, and with a Lockpick it said nothing of the lock. Both cases failed before the fix. In the real game, a scratch copy of `tools/playtest/locks.mjs` deployed to Pallet's town square, stood the player beside KILN STRONGBOX and pressed O.
+- **Fixed:** `nearestLandmarkToWork` never names a locked crate as the landmark to work. A new `lockedCacheHints` adds a line only while the pack holds a Lockpick: "You carry a Lockpick: KILN STRONGBOX, to the west, is locked and pays more than the open caches round it." It names the nearest locked crate not yet opened this raid, with its heading through `towards`, and goes once the crate is opened.
+- **How a player meets it:** press O. With no Lockpick the notes point at a landmark you can actually work; bring one from Bill and the notes say which way the locked crate is.
+- **Checked in the browser:** beside KILN STRONGBOX with an empty pack the guide names SLUICE WHEEL; with a Lockpick packed it names SLUICE WHEEL and adds the Lockpick line for KILN STRONGBOX.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

@@ -85,6 +85,7 @@ export function buildObjectiveGuide(
         ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
         : laterRunHints(session, context, currentExit?.label)),
       ...barredExitHints(session, context),
+      ...lockedCacheHints(session, context),
       ...errandHints(session, context, snapshot.foundItems),
       ...shinyHints(snapshot.caughtPokemon),
     ],
@@ -146,6 +147,23 @@ function barredExitHints(session: ActiveRunSession, context: ObjectiveGuideConte
       ? [`Your ${ITEMS[opener].displayName} can dig out ${point.label}, ${where}, as a way out for this raid.`]
       : [`You carry the ${ITEMS[opener].displayName}: it opens ${point.label}, ${where}, as a way out for this raid.`];
   });
+}
+
+/**
+ * The nearest locked cache still to open, for a pack with a Lockpick in it -
+ * the one thing that opens it. Never named as the landmark to work otherwise
+ * (`nearestLandmarkToWork`), because a pack with no pick is only refused at it.
+ */
+function lockedCacheHints(session: ActiveRunSession, context: ObjectiveGuideContext): string[] {
+  if ((context.carried?.('lockpick') ?? 0) === 0) {
+    return [];
+  }
+  const cache = nearestLandmarkToWork(session, context, (poi) => poi.locked === true, true);
+  if (!cache) {
+    return [];
+  }
+  const where = directionTo(context.currentPosition, context.towards?.(cache.position) ?? cache.position);
+  return [`You carry a Lockpick: ${cache.label}, ${where}, is locked and pays more than the open caches round it.`];
 }
 
 /**
@@ -334,6 +352,8 @@ function landmarkHint(landmark: WorldPoi, context: ObjectiveGuideContext): strin
  * The landmark on this map closest to the player that this raid can still work:
  * not worked this raid, and not finished with for good by a banked contract
  * (`../world/workedLandmarks`), which still stands but hands out nothing.
+ * A locked cache is asked for only by name (`locked`): to a pack with no
+ * Lockpick it is a crate that refuses, never the next place to go.
  * Closest on foot when the scene measured the walk, so one behind a shut gate
  * or across the river is never named over one down the lane; in a straight
  * line otherwise.
@@ -342,6 +362,7 @@ function nearestLandmarkToWork(
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
   kind: (poi: WorldPoi) => boolean = () => true,
+  locked = false,
 ): WorldPoi | undefined {
   const completed = session.plan?.completedContracts ?? [];
   const here = context.currentPosition;
@@ -351,7 +372,7 @@ function nearestLandmarkToWork(
       : Math.abs(poi.position.x - here.x) + Math.abs(poi.position.y - here.y);
   let best: { readonly poi: WorldPoi; readonly distance: number } | undefined;
   for (const poi of poisForMap(context.currentMapId)) {
-    if (!kind(poi) || context.activatedPoiIds.has(poi.id) || isLandmarkWorked(poi.id, completed)) {
+    if (!kind(poi) || (poi.locked === true) !== locked || context.activatedPoiIds.has(poi.id) || isLandmarkWorked(poi.id, completed)) {
       continue;
     }
     const distance = distanceTo(poi);

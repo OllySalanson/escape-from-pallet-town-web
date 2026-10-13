@@ -540,3 +540,35 @@ describe('a barred exit the pack can open', () => {
     expect(barredHints(opened, ['paddock-key', 'pickaxe'])).toEqual([]);
   });
 });
+
+describe('a locked cache', () => {
+  const guideBeside = (carried: readonly string[]) =>
+    buildObjectiveGuide(createUncontractedSession('route-1'), {
+      currentMapId: 'route-1',
+      currentPosition: { x: 45, y: 24 },
+      activatedPoiIds: new Set(),
+      carried: (itemId) => (carried.includes(itemId) ? 1 : 0),
+    }).hints;
+
+  it('is never the landmark to work for a pack with no Lockpick, even one step away', () => {
+    const hints = guideBeside([]);
+    expect(hints.some((hint) => hint.includes("PACKER'S CHEST"))).toBe(false);
+    expect(hints.some((hint) => hint.startsWith('The nearest landmark still to work is '))).toBe(true);
+  });
+
+  it('is named, with its heading, once the pack holds a Lockpick', () => {
+    expect(guideBeside(['lockpick']).filter((hint) => hint.includes("PACKER'S CHEST"))).toEqual([
+      "You carry a Lockpick: PACKER'S CHEST, to the west, is locked and pays more than the open caches round it.",
+    ]);
+  });
+
+  it('is forgotten once it has been opened this raid', () => {
+    const hints = buildObjectiveGuide(createUncontractedSession('route-1'), {
+      currentMapId: 'route-1',
+      currentPosition: { x: 45, y: 24 },
+      activatedPoiIds: new Set(['route-1-packers-chest']),
+      carried: (itemId) => (itemId === 'lockpick' ? 1 : 0),
+    }).hints;
+    expect(hints.some((hint) => hint.includes("PACKER'S CHEST"))).toBe(false);
+  });
+});
