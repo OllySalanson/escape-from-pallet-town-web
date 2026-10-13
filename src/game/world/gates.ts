@@ -73,6 +73,7 @@ export interface BossGate extends MapGateBase {
   /** The `bossId` of the trainer whose defeat opens this gate. */
   readonly bossId: string;
   readonly fieldMove?: undefined;
+  readonly night?: undefined;
 }
 
 /**
@@ -84,9 +85,42 @@ export interface BossGate extends MapGateBase {
 export interface FieldMoveGate extends MapGateBase {
   readonly fieldMove: FieldMoveId;
   readonly bossId?: undefined;
+  readonly night?: undefined;
 }
 
-export type MapGate = BossGate | FieldMoveGate;
+/**
+ * A door the hour opens: shut by day and open on a night raid, by the player's
+ * own clock (`world/nightRaids.ts`, `RunPlan.night`). Nobody opens it and
+ * nothing about it is saved - the raid is a night raid or it is not, decided
+ * when it deploys - so its key is the one word every night door shares,
+ * `NIGHT_KEY`, handed in with the doors a save has opened only while the raid
+ * is played after dark. Built per state as every other door is, so the hunter's
+ * search, the checks and the picture all read it as a door.
+ */
+export interface NightGate extends MapGateBase {
+  readonly night: true;
+  readonly bossId?: undefined;
+  readonly fieldMove?: undefined;
+}
+
+export type MapGate = BossGate | FieldMoveGate | NightGate;
+
+/** The key every night door shares: in the opened list exactly while the raid is a night raid. */
+export const NIGHT_KEY = 'night';
+
+/**
+ * What a night track says to a player who presses at it by daylight: why there
+ * is no way through, and when there is one.
+ */
+export const NIGHT_TRACK_LINES: readonly string[] = [
+  'Fog hangs in the trees here, and the track is lost in it.',
+  'Whatever way there is through the wood shows only after dark.',
+];
+
+/** The keys the hour turns: the night's on a night raid, none by day. */
+export function nightDoors(night: boolean | undefined): readonly string[] {
+  return night === true ? [NIGHT_KEY] : [];
+}
 
 /**
  * What has to have been done for this door to stand open, as one string: the
@@ -95,7 +129,14 @@ export type MapGate = BossGate | FieldMoveGate;
  * field gates are the same kind of fact by the time a map is built.
  */
 export function gateKey(gate: MapGate): string {
-  return gate.bossId ?? gate.id;
+  return gate.bossId ?? (gate.night === true ? NIGHT_KEY : gate.id);
+}
+
+/** The night door on this tile, if one of these gates is one there. */
+export function nightGateAt(gates: readonly MapGate[], tile: GridPosition): NightGate | undefined {
+  return gates
+    .filter((gate): gate is NightGate => gate.night === true)
+    .find((gate) => gate.tiles.some((own) => own.x === tile.x && own.y === tile.y));
 }
 
 /** The field-move door on these tiles, if one of them is a tile of one. */

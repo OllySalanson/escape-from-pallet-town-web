@@ -1231,8 +1231,12 @@ export interface MapFileDistrict {
  * (one tile), a cracked rock Rock Smash breaks (one tile) and a stretch of deep
  * water Surf crosses (a rectangle). Each is the
  * game's own field-move gate (`gates.ts`), opened for good once worked.
+ *
+ * And one the hour opens: a `night` track (a rectangle), a stand of wood by
+ * day that is a way through on a night raid (`NightGate`) - opened by nobody,
+ * saved nowhere, and shut again on the next raid played by daylight.
  */
-export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf', 'smash-rock'] as const;
+export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf', 'smash-rock', 'night'] as const;
 export type MapFileDoorKind = (typeof MAP_FILE_DOOR_KINDS)[number];
 
 export interface MapFileDoor {
@@ -1878,7 +1882,7 @@ export function readMapFile(
         if (!fits) {
           problems.push(`${what} is not on the map.`);
         }
-        if (door.kind !== 'surf' && (w !== 1 || h !== 1)) {
+        if (door.kind !== 'surf' && door.kind !== 'night' && (w !== 1 || h !== 1)) {
           problems.push(`${what} stands on one tile.`);
         }
       });
@@ -2401,14 +2405,17 @@ export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
   return sketch;
 }
 
-/** What a door is called over it, and what it looks like shut and open. */
+/** What a field-move door is called over it, and the move that opens it. */
 const DOOR_LOOKS: Readonly<
-  Record<MapFileDoorKind, { readonly label: string; readonly fieldMove: FieldMoveId }>
+  Record<Exclude<MapFileDoorKind, 'night'>, { readonly label: string; readonly fieldMove: FieldMoveId }>
 > = {
   'cut-tree': { label: 'SMALL TREE', fieldMove: 'cut' },
   surf: { label: 'DEEP WATER', fieldMove: 'surf' },
   'smash-rock': { label: 'CRACKED ROCK', fieldMove: 'rock-smash' },
 };
+
+/** What a night track is called: nothing names it on the map, but a list of doors does. */
+export const NIGHT_TRACK_LABEL = 'NIGHT TRACK';
 
 /** The material a ground letter is, reading a stamp as what it stands on. */
 function materialOf(letter: string | undefined): Material | undefined {
@@ -2431,11 +2438,26 @@ function materialOf(letter: string | undefined): Material | undefined {
  */
 export function fileDoorGates(file: MapFile, id: WorldMapId = playerMapId(file)): readonly MapGate[] {
   return (file.doors ?? []).map((door, index): MapGate => {
-    const look = DOOR_LOOKS[door.kind];
     const tiles = Array.from({ length: door.width * door.height }, (_tile, cell) => ({
       x: door.x + (cell % door.width),
       y: door.y + Math.floor(cell / door.width),
     }));
+    if (door.kind === 'night') {
+      // Wood by day, so the track is lost in it - on a lattice cell a whole
+      // tree - and by night the ground painted under it, walked.
+      const under = materialOf(file.ground[door.y]?.[door.x]);
+      const ground: Material = under && !MATERIALS[under].solid ? under : 'grass';
+      return {
+        id: `${id}/door-${index + 1}`,
+        mapId: id,
+        label: NIGHT_TRACK_LABEL,
+        tiles,
+        night: true,
+        closed: { material: 'tree' },
+        open: { material: ground },
+      };
+    }
+    const look = DOOR_LOOKS[door.kind];
     const base = { id: `${id}/door-${index + 1}`, mapId: id, label: look.label, tiles };
     if (door.kind !== 'surf') {
       const under = materialOf(file.ground[door.y]?.[door.x]);

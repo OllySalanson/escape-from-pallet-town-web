@@ -498,8 +498,8 @@ export function placeDoor(
   if (doors.length >= MAP_FILE_LIMITS.maxDoors) {
     return { placed: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxDoors} doors.` };
   }
-  // Only Surf water is dragged out; a tree and a rock each stand on one tile.
-  const end = kind === 'surf' ? to : from;
+  // Surf water and a night track are dragged out; a tree and a rock each stand on one tile.
+  const end = kind === 'surf' || kind === 'night' ? to : from;
   const x = Math.min(from.x, end.x);
   const y = Math.min(from.y, end.y);
   const width = Math.min(MAP_FILE_LIMITS.maxDoorSide, Math.abs(end.x - from.x) + 1);

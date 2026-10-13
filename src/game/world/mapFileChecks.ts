@@ -32,6 +32,7 @@ import {
   type MapFileArea,
   type MapFileBuilding,
   type MapFileDoorwayLook,
+  type MapFileDoorKind,
   type MapFileLimits,
   type MapFileLinkEnd,
   type MapFileSpot,
@@ -175,10 +176,11 @@ const SOLID_GROUND: Readonly<Record<string, string>> = {
 };
 
 /** What a door shut by a field move is, stood on. */
-const ON_A_DOOR: Readonly<Record<string, string>> = {
+const ON_A_DOOR: Readonly<Record<MapFileDoorKind, string>> = {
   'cut-tree': 'stands on a small tree',
   'smash-rock': 'stands on a cracked rock',
   surf: 'stands in deep water',
+  night: 'stands on a night track, which is wood by day',
 };
 
 /** Words of a piece's name that are names, and are written as the games write them. */

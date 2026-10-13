@@ -40,16 +40,23 @@ const PRET_COMMIT = 'c75f352304d529f6ba92d4f74b9cf8b5c3810788';
 const TILE = 16;
 const SHEET_COLUMNS = 20;
 
-const pret = process.argv[2];
+const [pret, ...options] = process.argv.slice(2);
 if (!pret) {
-  console.error('usage: node scripts/cut-frlg-areas.mjs <pokefirered checkout>');
+  console.error('usage: node scripts/cut-frlg-areas.mjs <pokefirered checkout> [--dump=<layout>:<out.png>]');
   process.exit(2);
 }
-const head = execFileSync('git', ['-C', pret, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-if (head !== PRET_COMMIT) {
-  console.error(`the checkout is at ${head}; this sheet is cut from ${PRET_COMMIT}`);
-  process.exit(1);
+// The pieces are read from two folders of the game, so a checkout at another
+// commit will do when both are exactly the pinned commit's - 037335f, which
+// the town cutter reads, has them unchanged.
+const tree = (rev, path) =>
+  execFileSync('git', ['-C', pret, 'rev-parse', `${rev}:${path}`], { encoding: 'utf8' }).trim();
+for (const path of ['data/tilesets', 'data/layouts']) {
+  if (tree('HEAD', path) !== tree(PRET_COMMIT, path)) {
+    console.error(`the checkout's ${path} is not ${PRET_COMMIT}'s, which this sheet is cut from`);
+    process.exit(1);
+  }
 }
+const dump = options.find((option) => option.startsWith('--dump='))?.slice('--dump='.length).split(':');
 
 /** The rooms pieces are cut from: a layout of the game and the two tilesets it is drawn with. */
 const ROOMS = {
@@ -384,6 +391,39 @@ function loadRoom({ layout, primary, secondary }) {
 }
 
 const rooms = new Map(Object.entries(ROOMS).map(([key, room]) => [key, loadRoom(room)]));
+
+// `--dump=` draws one of the game's layouts whole, both layers, with every
+// metatile's edge darkened, and cuts nothing: a piece's `at` is read off that
+// picture, never guessed. Any layout will do; its tilesets are read from
+// `layouts.json`.
+if (dump) {
+  const [name, out] = dump;
+  const entry = layouts.find((candidate) => candidate.name === `${name}_Layout`);
+  if (!entry || !out) {
+    console.error('--dump=<layout>:<out.png>, a layout of data/layouts/layouts.json without its _Layout');
+    process.exit(1);
+  }
+  const folder = (id) => id.replace(/^gTileset_/, '').replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  const room = loadRoom({ layout: name, primary: folder(entry.primary_tileset), secondary: folder(entry.secondary_tileset) });
+  const height = room.map.length / 2 / room.width;
+  const image = blank(room.width * TILE, height * TILE);
+  for (let my = 0; my < height; my += 1) {
+    for (let mx = 0; mx < room.width; mx += 1) {
+      drawMetatile(room, mx, my, image, mx * TILE, my * TILE, [0, 1]);
+    }
+  }
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      if (x % TILE === 0 || y % TILE === 0) {
+        const at = (y * image.width + x) * 4;
+        for (let c = 0; c < 3; c += 1) image.data[at + c] >>= 1;
+      }
+    }
+  }
+  writePng(out, image);
+  console.log(`${name}: ${room.width}x${height} metatiles`);
+  process.exit(0);
+}
 
 function blank(width, height) {
   return { width, height, data: Buffer.alloc(width * height * 4) };

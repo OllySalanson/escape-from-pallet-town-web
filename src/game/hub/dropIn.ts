@@ -410,7 +410,8 @@ export function buildDropInBriefing(
       districts: districts.length,
       surveyed: walkable === 0 ? 0 : knownWalkable / walkable,
     },
-    doors: gates.map((gate) => ({
+    // A night track is the hour, not a door anybody holds, and nobody signs it.
+    doors: gates.filter((gate) => gate.night !== true).map((gate) => ({
       label: gate.label,
       // A door you opened is lit on the picture whether or not the survey
       // reached it (`mapPicture`), so it is found for the list too.
