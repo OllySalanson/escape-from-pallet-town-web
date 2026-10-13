@@ -8,7 +8,7 @@
 //        [--window=logic|pixel|WxH] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
-//        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
+//        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--through=x:y:dir,..] [--grab=itemId,..] [--fight]
 //        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--errands=id,..]
 //
 // --shot-dialogs (with --shot) photographs every line of dialogue a step raised
@@ -478,6 +478,31 @@ try {
     const [x, y] = tile.split(':').map(Number);
     await walkTo({ x, y }, `waypoint ${x},${y}`);
   }
+  // --through=x:y:Dir,.. goes through the doorway whose landing is that tile -
+  // a cave mouth, a building's door - by pressing Dir into it, notes the place
+  // it came out in, and comes back out the way it went in (the far landing is
+  // left by pressing back into its own doorway). Walking cannot do it: a link
+  // is a press into a door, not a step onto a tile.
+  const opposite = { ArrowUp: 'ArrowDown', ArrowDown: 'ArrowUp', ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft' };
+  for (const door of (option('through') ?? '').split(',').filter(Boolean)) {
+    const [x, y, dir] = door.split(':');
+    const key = `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
+    await walkTo({ x: Number(x), y: Number(y) }, `the doorway at ${x},${y}`);
+    const place = `(() => { const w = ${GAME}.scene.getScene('world'); const a = w.currentArea(); return { area: a?.name ?? 'outdoors', tile: w.currentTile }; })()`;
+    await press(key);
+    await wait(1200);
+    await clearInterruptions();
+    const inside = await page.evaluate(place);
+    note(`through ${x},${y} ${dir}: now in ${inside.area} at ${inside.tile.x},${inside.tile.y}`);
+    if (option('shot')) {
+      await page.screenshot(option('shot').replace(/\.png$/, `-through-${x}-${y}.png`));
+    }
+    await press(opposite[key]);
+    await wait(1200);
+    await clearInterruptions();
+    const back = await page.evaluate(place);
+    note(`back out: now in ${back.area} at ${back.tile.x},${back.tile.y}`);
+  }
   // --grab=itemId picks up every piece of that item this raid laid, wherever it
   // laid it. Loot is re-seated every raid, so a driver cannot be pointed at it
   // with --via: only the run plan knows where it is. It is how anything that is
@@ -488,7 +513,7 @@ try {
     if (option('shot') && !ended) {
       // A step or two short of it, so the picture is the thing still on the ground.
       const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
-        return [[0,2],[0,-2],[2,0],[-2,0],[0,1],[0,-1],[1,0],[-1,0]].map(([dx, dy]) => ({ x: ${piece.position.x} + dx, y: ${piece.position.y} + dy })).find((t) => !w.isBlocked(t)) ?? null; })()`);
+        return [[0,2],[0,-2],[2,0],[-2,0],[0,1],[0,-1],[1,0],[-1,0]].map(([dx, dy]) => ({ x: ${piece.position.x} + dx, y: ${piece.position.y} + dy })).find((t) => t.y >= 0 && t.x >= 0 && t.y < w.collisionData.length && t.x < w.collisionData[0].length && !w.isBlocked(t)) ?? null; })()`);
       if (beside) {
         await walkTo(beside, `the tile beside ${piece.itemId}`);
         await wait(400);
@@ -579,7 +604,7 @@ try {
     }
     if (named) {
       const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
-        return [[0,-1],[0,1],[-1,0],[1,0]].map(([dx, dy]) => ({ x: ${exit.position.x} + dx, y: ${exit.position.y} + dy })).find((t) => !w.isBlocked(t)) ?? null; })()`);
+        return [[0,-1],[0,1],[-1,0],[1,0]].map(([dx, dy]) => ({ x: ${exit.position.x} + dx, y: ${exit.position.y} + dy })).find((t) => t.y >= 0 && t.x >= 0 && t.y < w.collisionData.length && t.x < w.collisionData[0].length && !w.isBlocked(t)) ?? null; })()`);
       await walkTo(beside, `the tile beside ${exit.label}`);
       if (!ended) {
         note(`waiting for ${exit.label} to open`);
@@ -633,7 +658,10 @@ try {
     // What the raid left in the record at base: the count, and the ground it
     // walked. `--progress=path.json` writes it out, which is how a screenshot
     // of the drop-in screen is taken against a survey a raid actually made.
-    const progress = await page.evaluate(`JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress`);
+    // The explorer run keeps a save of its own (`PLAYTEST_SAVE_KEY`), so a
+    // raid deployed with --explorer is read back from that one.
+    const saveKey = deployOptions(args).explorer ? 'escape-from-pallet-town.save.playtest.v1' : 'escape-from-pallet-town.save.v1';
+    const progress = await page.evaluate(`JSON.parse(localStorage.getItem('${saveKey}')).raidProgress`);
     note(`recorded: ${JSON.stringify(progress.raidRecord)}, surveyed ${Object.keys(progress.surveyed ?? {}).join(', ') || 'nothing'}`);
     // What a pack laid out by hand left behind. The raid writes it on every
     // ending, so this is the last link in "it comes back the way you left it".
@@ -644,7 +672,7 @@ try {
     // --save-out=path.json keeps the whole save the raid banked, which is what
     // a load is checked against (a taught move, a held item, the stash).
     if (option('save-out')) {
-      writeFileSync(option('save-out'), await page.evaluate(`localStorage.getItem('escape-from-pallet-town.save.v1')`));
+      writeFileSync(option('save-out'), await page.evaluate(`localStorage.getItem('${saveKey}')`));
     }
     if (option('shot')) {
       await page.screenshot(option('shot').replace(/\.png$/, '-lobby.png'));

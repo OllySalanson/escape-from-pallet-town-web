@@ -111,8 +111,10 @@ export function gullStrand(): MapcraftResult {
   // Dune grass at the back of the strand, and rocks along the tide line.
   p.bedRows([40, 34, 39], [41, 33, 40], [40, 50, 55], [41, 49, 56], [42, 50, 54]);
   // Rocks drawn up on the strand where you land, so every way you set off meets something.
-  p.building('rock', 38, 45).building('rock', 41, 42).building('rock', 43, 45);
-  p.building('rock', 4, 40).building('rock', 5, 41).building('rock', 19, 34).building('rock', 24, 38).building('rock', 58, 44);
+  // Each stands on the sand it is drawn up on: a rock's lot defaults to grass,
+  // which drew every one of them in a square of lawn on the beach.
+  p.building('rock', 38, 45, { lot: '~' }).building('rock', 41, 42, { lot: '~' }).building('rock', 43, 45, { lot: '~' });
+  p.building('rock', 4, 40, { lot: '~' }).building('rock', 5, 41, { lot: '~' }).building('rock', 19, 34, { lot: '~' }).building('rock', 24, 38, { lot: '~' }).building('rock', 58, 44, { lot: '~' });
 
   // -- The river, down from The Crossing to the sea ----------------------------
   p.river([[28, 0], [28, 10], [26, 10], [26, 26], [28, 26], [28, 48]], { width: 4 });
@@ -124,6 +126,9 @@ export function gullStrand(): MapcraftResult {
   p.road([[2, 18], [22, 18]]); // in from Reedmere...
   p.block(22, 17, 10, 4, 'M'); // ...over the river on stone...
   p.road([[32, 18], [46, 18]]); // ...and on to the road
+  // The jetty runs on to the Sunken Quarter: stone right to the edge, where
+  // the plan's opening would lay a patch of sand halfway along it.
+  p.unlock([[44, 60], [45, 60], [44, 61], [45, 61], [44, 62], [45, 62], [44, 63], [45, 63]]);
   p.block(44, 46, 2, 18, 'M'); // the jetty, out to the boats...
   p.building('ferry', 46, 52, { lot: 'W' }); // ...and the boat moored at it
   p.road([[6, 20], [6, 29]]); // the cliff-top path, down to the steps

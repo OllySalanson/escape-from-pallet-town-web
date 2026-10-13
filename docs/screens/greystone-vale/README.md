@@ -897,6 +897,50 @@ What is left for a later pass: the middle view is the weak one (4 from both).
 Its paths leave the view in pieces, and it reads as open country rather than a
 corridor. The west view, with the gate, scored 6 and 7.
 
+## Played through
+
+With all fourteen districts in, the whole vale was played in the real game as a
+player would play it: the explorer run (PLAYTEST on the title), a stepped
+headless browser, and key presses through `tools/playtest/raid.mjs`, one raid at
+a time.
+
+- **Every landing:** each of the eleven was dropped in at, and each raid left
+  by a way out.
+- **Every crossing between districts:** all 21 that are not river, hidden ones
+  included, were walked across in three raids from Mill Square, Stepping Stones
+  and the Farmhouse.
+- **Every way out:** all nineteen were left by, among them the three that open
+  late (Salvage Launch, Low Water Stair, Smugglers' Boat) and the Card Key's
+  Service Gate.
+- **Every cave mouth:** the peaks', Tanglewood's and the sea cave each lead to
+  their own floor and back out (`--through=x:y:dir`).
+- **The Safari Zone gate:** walked past on the road into the marsh.
+
+Two faults showed on screen, and both are fixed:
+
+- **Gull Strand's rocks stood in squares of lawn on the beach**, because a rock's
+  lot defaults to grass. They stand on the sand now (top before, bottom after):
+
+  ![Gull Strand's beach rocks, before and after](playtest-strand-rocks.png)
+
+- **The jetty from the strand to the Old Quay had a patch of sand halfway
+  along it**, where Gull Strand's opening laid the plan's road letter. It is
+  stone to the edge now (left before, right after):
+
+  ![The jetty, before and after](playtest-jetty.png)
+
+The sea cave, as the game draws it on the way in:
+
+![Into the sea cave](playtest-sea-cave.png)
+
+Two things the explorer run cannot show:
+
+- **The Card Key gate is open to everyone there**, because every way out is
+  open in an explorer run. The lock itself is held by the map-file tests
+  (`maker/cardKey.test.ts`).
+- **Trainers and the hunter were fought or fled** as the driver meets them,
+  which says nothing about difficulty.
+
 ## How it ships
 
 As the game's own map, beside the shipped five (`greystone-vale`, built from the
