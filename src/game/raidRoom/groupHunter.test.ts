@@ -64,6 +64,7 @@ describe('the room’s one hunter', () => {
     expect(board.hunterHeld).toBe(false);
     board.hear({ kind: 'busy', from: C, busy: true, withHunter: true });
     expect(board.hunterHeld).toBe(true);
+    expect([board.fightOf(B), board.fightOf(C), board.fightOf(A)]).toEqual(['wild', 'hunter', null]);
     board.hear({ kind: 'after', from: C, hunter });
     expect(board.hunterHeld).toBe(false);
     expect(board.latest).toMatchObject({ from: C, after: true, hunter });

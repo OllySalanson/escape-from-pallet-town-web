@@ -1394,6 +1394,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         return {
           name: friend.name,
           atLab: friend.place === 'lab',
+          fighting: rooms.hunters.fightOf(friend.id),
           heading: figure ? this.headingTo(figure.tile) : null,
           distance:
             figure && !elsewhere

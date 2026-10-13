@@ -17,6 +17,18 @@ have left, and the raid carries on. How it works and what is trusted where:
 | `5-olly-sees-amy.png` | The same moment on OLLY's screen. |
 | `6-amy-olly-left.png` | OLLY's tab closed: his figure is gone and AMY's chip says `OLLY LEFT THE RAID`. |
 
+## One hunter for the room
+
+| | |
+|---|---|
+| `h1-amy-keeps-the-hunter.png` | AMY's browser keeps the hunter (the lowest id on the map): it arrives and chases whoever is nearest. |
+| `h2-olly-sees-the-same-hunter.png` | OLLY's screen at the same moment: the same rival on the same tile, drawn from what AMY's browser says. He has no hunter of his own. |
+| `h3-olly-fights-the-hunter.png` | OLLY walked into it: the fight is his, in his own tab, against a team that mirrors his party. |
+| `h4-amy-hunter-held.png` | Meanwhile on AMY's screen the hunter holds where it caught him, however she walks. |
+| `h5-amy-after-the-escape.png` | OLLY ran: the hunter fell back and searches, on both screens, from OLLY's word on where his escape left it. |
+
+`node tools/playtest/friendHunter.mjs <url> <dir>` plays it (the driver skips the arrival's wait).
+
 All but the first are two tabs of one test-mode build talking over the local
 stand-in, never the live project:
 `node tools/playtest/friendRaid.mjs <url> <dir>`.

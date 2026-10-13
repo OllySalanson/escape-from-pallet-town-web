@@ -202,6 +202,12 @@ export class HunterBoard {
     return new Set(this.fights.keys());
   }
 
+  /** The fight a player is in, if any: the hunter's own, or any other. */
+  public fightOf(id: string): 'hunter' | 'wild' | null {
+    const withHunter = this.fights.get(id);
+    return withHunter === undefined ? null : withHunter ? 'hunter' : 'wild';
+  }
+
   /** Whether anybody is fighting the hunter itself, which holds it where it stands. */
   public get hunterHeld(): boolean {
     return [...this.fights.values()].some((withHunter) => withHunter);

@@ -356,6 +356,8 @@ export interface FriendChipFriend {
   readonly distance: number | null;
   /** Where they are when it is another place of the map than the player's. */
   readonly elsewhere: 'indoors' | 'outdoors' | null;
+  /** In a fight: the room's hunter's, or any other. Optional, so a raid with no hunter to share says nothing of it. */
+  readonly fighting?: 'hunter' | 'wild' | null;
 }
 
 export interface FriendChipInput {
@@ -392,6 +394,12 @@ export function friendChipLines(input: FriendChipInput): readonly string[] {
 function friendLine(friend: FriendChipFriend): string {
   if (friend.atLab) {
     return `${friend.name} GETTING READY`;
+  }
+  if (friend.fighting === 'hunter') {
+    return `${friend.name} FIGHTS THE HUNTER`;
+  }
+  if (friend.fighting === 'wild') {
+    return `${friend.name} IN A FIGHT`;
   }
   if (friend.heading === null) {
     return `${friend.name} ON THE MAP`;

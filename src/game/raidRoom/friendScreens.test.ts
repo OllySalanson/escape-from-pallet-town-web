@@ -23,6 +23,7 @@ describe('the friend chip', () => {
     expect(chip([{ ...ash, distance: null, elsewhere: 'indoors' }])).toEqual(['ASH INDOORS NE']);
     expect(chip([{ ...ash, heading: null, distance: null }])).toEqual(['ASH ON THE MAP']);
     expect(chip([{ ...ash, atLab: true }, { ...ash, name: 'BEA', heading: 'S', distance: 3 }])).toEqual(['ASH GETTING READY', 'BEA S 3']);
+    expect(chip([{ ...ash, fighting: 'hunter' }, { ...ash, name: 'BEA', fighting: 'wild' }])).toEqual(['ASH FIGHTS THE HUNTER', 'BEA IN A FIGHT']);
   });
 });
 
