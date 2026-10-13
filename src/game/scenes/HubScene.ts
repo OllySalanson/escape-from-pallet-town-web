@@ -3290,6 +3290,21 @@ export class HubScene extends Phaser.Scene {
       : `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'leaves' : 'leave'} ${cargoSquaresLabel(free)} for supplies.</p>`;
   }
 
+  /**
+   * The final check's word on the clock, as the raid's clock chip will put it.
+   *
+   * An explorer run's clock is eight hours and its chip never counts them, so
+   * the screen says what that means rather than printing it as `480:00`, and
+   * takes nothing off for recovery, because `raidClockMs` does not.
+   */
+  private clockNote(): string {
+    const night = isNightRaid(new Date());
+    if (isPlaytestRun()) {
+      return `${night ? 'night raid' : 'raid'} with no clock to beat: an explorer run lasts ${PLAYTEST_RAID_DURATION_MS / 3_600_000} hours`;
+    }
+    return `${night ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}`;
+  }
+
   private confirmView(): string {
     const insertion = requireInsertion(this.flow.insertionId);
     const contract = this.contractFor(this.flow.insertionId);
@@ -3352,7 +3367,7 @@ export class HubScene extends Phaser.Scene {
         this.roomNote(),
         // A night raid is named here as its clock chip will name it, so the
         // last screen before the raid says what the drop-in pane's wildlife did.
-        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · ${isNightRaid(new Date()) ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
+        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · ${this.clockNote()}</span>`,
         `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
