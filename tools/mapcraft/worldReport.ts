@@ -5,7 +5,14 @@
 import { allPassed, hardChecks, type HardCheck } from './checks';
 import { formatReport, reportOn, type MapcraftReport, type MapcraftResult } from './report';
 import { stitch, type StitchResult } from './stitch';
-import { checkPlan, planBounds, planLimits, unreachableDistricts, type WorldPlan } from './worldPlan';
+import {
+  checkPlan,
+  districtsOutOfReach,
+  planBounds,
+  planLimits,
+  unreachableDistricts,
+  type WorldPlan,
+} from './worldPlan';
 
 /** What a world program module's default export returns: the plan, and the districts drawn so far. */
 export interface WorldResult {
@@ -79,7 +86,7 @@ export function formatPlan(plan: WorldPlan, from?: string): string {
     'Ways through:',
     ...plan.crossings.map(
       (crossing) =>
-        `  ${crossing.hidden ? 'hidden ' : ''}${crossing.kind} ${crossing.between.join(' - ')} at ${crossing.at}`,
+        `  ${crossing.hidden ? 'hidden ' : ''}${crossing.opens === 'night' ? 'night-only ' : ''}${crossing.kind} ${crossing.between.join(' - ')} at ${crossing.at}`,
     ),
     ...plan.exits.map(
       (exit) => `  way out '${exit.name}': ${exit.district}, ${exit.side} edge at ${exit.at}`,
@@ -96,13 +103,43 @@ export function formatPlan(plan: WorldPlan, from?: string): string {
     );
   }
   for (const cave of plan.caves ?? []) {
+    const mouths = cave.mouths.map(
+      (mouth) =>
+        `${mouth.district}${mouth.floor === undefined ? '' : ` onto floor ${mouth.floor}`}${mouth.locked ? ', locked to the Card Key' : ''}`,
+    );
     lines.push(
       '',
-      `${cave.name}: ${cave.floors} floors, mouths in ${cave.mouths.map((mouth) => mouth.district).join(', ')}`,
+      `${cave.name}: ${cave.floors} floors${cave.style && cave.style !== 'cave' ? ` (${cave.style})` : ''}, mouths in ${mouths.join('; ')}`,
+    );
+    if (cave.idea) lines.push(`  ${cave.idea}`);
+  }
+  if ((plan.sailings ?? []).length > 0) {
+    lines.push(
+      '',
+      'Boats:',
+      ...(plan.sailings ?? []).map(
+        (sailing) =>
+          `  ${sailing.name}: ${sailing.from.district} - ${sailing.to.district} across ${sailing.via.map((cell) => cell.join(',')).join(' then ')}, sails ${sailing.runs.from}s-${sailing.runs.until}s`,
+      ),
+    );
+  }
+  const far = [
+    ...plan.districts.map((district) => ({ name: district.name, reach: district.reach })),
+    ...(plan.caves ?? []).map((cave) => ({ name: cave.name, reach: cave.reach })),
+  ].filter((place) => place.reach);
+  for (const { name, reach } of far) {
+    lines.push(
+      '',
+      `${name}, a far place:`,
+      `  way in: ${reach!.wayIn}`,
+      `  hard: ${reach!.hard}`,
+      `  only here: ${reach!.onlyHere}`,
+      ...reach!.needs.map((need) => `  needs: ${need}`),
     );
   }
   const problems = checkPlan(plan);
   const cutOff = from ? unreachableDistricts(plan, from) : [];
+  const outOfReach = from ? districtsOutOfReach(plan, from) : [];
   lines.push(
     '',
     problems.length === 0 ? 'Plan: no problems' : 'Plan: FAILING',
@@ -110,5 +147,7 @@ export function formatPlan(plan: WorldPlan, from?: string): string {
   );
   if (cutOff.length > 0)
     lines.push(`  note: no road or trail reaches ${cutOff.join(', ')} from ${from}`);
+  if (outOfReach.length > 0)
+    lines.push(`  x nothing - no road, boat or cave - reaches ${outOfReach.join(', ')} from ${from}`);
   return lines.join('\n');
 }

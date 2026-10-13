@@ -24,6 +24,7 @@ import {
   type MapFileHabitat,
   type MapFileLimits,
 } from '../../src/game/world/mapFile';
+import { RAID_DURATION_MS } from '../../src/game/run/raidClock';
 import { MapProgram } from './program';
 import type { TileRect } from './tiles';
 
@@ -45,6 +46,28 @@ export interface PlannedDistrict {
   readonly idea: string;
   readonly terrain?: Terrain;
   readonly wildlife?: MapFileHabitat;
+  /** A place the plan keeps hard to reach: how, and why, and what it is for. */
+  readonly reach?: PlannedReach;
+  /**
+   * A district out in the sea. It starts as open water rather than wood, its
+   * edge sealed by the sea, and until it is drawn the stitcher lays it as sea,
+   * so an island not drawn yet is not a square of forest off the coast.
+   */
+  readonly island?: true;
+}
+
+/**
+ * The brief for a place that is hard to get to on purpose, written before
+ * anybody draws it: how a raid gets in, what makes that hard, what is found
+ * there and nowhere else, and what the game has to learn to build it - so the
+ * worker who draws it starts from the gate rather than finding one.
+ */
+export interface PlannedReach {
+  readonly wayIn: string;
+  readonly hard: string;
+  readonly onlyHere: string;
+  /** What the game does not do yet and this place needs, one line each. */
+  readonly needs: readonly string[];
 }
 
 /** Where a way passes between two districts that share an edge. */
@@ -57,6 +80,12 @@ export interface Crossing {
   readonly width?: number;
   /** A way nobody signs: a deer path through a wood, found rather than followed. */
   readonly hidden?: boolean;
+  /**
+   * When it can be walked: always, unless the plan says otherwise. `night` is a
+   * way shut by day and open on a night raid (`RunPlan.night`): the stitcher
+   * cuts it like any crossing, and the district behind it draws the door.
+   */
+  readonly opens?: 'night';
 }
 
 /** A way out of the whole map, on the plan's outer edge. */
@@ -86,12 +115,57 @@ export interface PlannedLandmark {
   readonly kind: 'landmark' | 'landing' | 'secret';
 }
 
-/** A cave under the map: several floors, and mouths in one or more districts. */
+/**
+ * What a place under the map is drawn as: `cave` is Mt. Moon's floors
+ * (`caves.ts`), `hideout` FireRed's Rocket Hideout, `ice` its Icefall Cave and
+ * `tower` its Pokemon Tower. Only `cave` has art yet; the others are a style
+ * their drawing worker cuts from pret first.
+ */
+export type CaveStyle = 'cave' | 'hideout' | 'ice' | 'tower';
+
+/** A way into a place under the map, from a district. */
+export interface CaveMouth {
+  readonly district: string;
+  /** Roughly where, in the district's own tiles. */
+  readonly at: readonly [number, number];
+  /** Which floor it opens onto, the top floor 1; unsaid, the plan leaves it to the drawing. */
+  readonly floor?: number;
+  /** A door only FireRed's Card Key opens, which needs the plan's `cardKey`. */
+  readonly locked?: 'card-key';
+}
+
+/**
+ * A place under the map: several floors, and mouths in one or more districts.
+ * A cave with mouths in two districts joins them; a cave with an idea of its
+ * own is a place of its own, with no square of the plan.
+ */
 export interface PlannedCave {
   readonly id: string;
   readonly name: string;
   readonly floors: number;
-  readonly mouths: readonly { readonly district: string; readonly at: readonly [number, number] }[];
+  readonly mouths: readonly CaveMouth[];
+  /** Mt. Moon's floors unless the plan says otherwise. */
+  readonly style?: CaveStyle;
+  /** The one idea, for a place under the map that is a place of its own. */
+  readonly idea?: string;
+  readonly reach?: PlannedReach;
+}
+
+/**
+ * A boat between two jetties across the open sea: the only way to an island.
+ * It runs both ways inside its window (the tide), carrying whoever boards it
+ * along `via`, cell by cell of the plan's sea, so the crossing is a trip a
+ * raid takes rather than a door it walks through.
+ */
+export interface PlannedSailing {
+  readonly name: string;
+  /** The jetties it runs between, each in its district's own tiles. */
+  readonly from: { readonly district: string; readonly at: readonly [number, number] };
+  readonly to: { readonly district: string; readonly at: readonly [number, number] };
+  /** The cells of open sea it crosses, in order, from `from`'s side to `to`'s. */
+  readonly via: readonly (readonly [number, number])[];
+  /** When it runs, in seconds into a raid: inside the five-minute clock. */
+  readonly runs: { readonly from: number; readonly until: number };
 }
 
 export interface WorldPlan {
@@ -106,6 +180,7 @@ export interface WorldPlan {
   readonly exits: readonly WorldExit[];
   readonly landmarks?: readonly PlannedLandmark[];
   readonly caves?: readonly PlannedCave[];
+  readonly sailings?: readonly PlannedSailing[];
   /**
    * Cells of the plan that are open sea rather than districts, columns and
    * rows as a district's `cell`, inside the districts' bounds. The stitcher
@@ -145,6 +220,8 @@ export interface Opening {
   /** The district on the other side, or the exit's name for a way out of the map. */
   readonly leadsTo: { readonly district: string } | { readonly exit: string };
   readonly hidden?: boolean;
+  /** A crossing open only on a night raid (`Crossing.opens`). */
+  readonly opens?: 'night';
 }
 
 /** How deep a district's sealed border is: one lattice cell, so its trees are whole. */
@@ -238,6 +315,7 @@ export function openingsOf(plan: WorldPlan, id: string): Opening[] {
       kind: crossing.kind,
       leadsTo: { district: other.id },
       hidden: crossing.hidden,
+      ...(crossing.opens ? { opens: crossing.opens } : {}),
     });
   }
   for (const exit of plan.exits) {
@@ -294,7 +372,9 @@ export function checkPlan(plan: WorldPlan): string[] {
       problems.push(
         `'${district.name}' is longer than ${held.maxPlaceNameLength} letters.`,
       );
+    if (district.reach) problems.push(...reachProblems(`${district.id}'s reach`, district.reach));
   }
+  const districtCells = new Set(cells);
   if (plan.cardKey) {
     for (const id of [plan.cardKey.lock, plan.cardKey.card])
       if (!plan.districts.some((district) => district.id === id))
@@ -349,6 +429,8 @@ export function checkPlan(plan: WorldPlan): string[] {
     }
     if (!sideTowards(a, b)) problems.push(`${what} joins two districts that do not share an edge.`);
     gap(what, crossing.at, crossingWidth(crossing));
+    if (crossing.opens === 'night' && crossing.kind === 'river')
+      problems.push(`${what} is a river, and a river has no door to shut by day.`);
   }
   for (const exit of plan.exits) {
     const what = `The way out '${exit.name}'`;
@@ -367,7 +449,9 @@ export function checkPlan(plan: WorldPlan): string[] {
       district.cell[0] + step[exit.side][0],
       district.cell[1] + step[exit.side][1],
     ].join(',');
-    if (cells.has(beyond))
+    // A way out may face the open sea - a boat, or a stair down to the water -
+    // but never another district.
+    if (districtCells.has(beyond))
       problems.push(
         `${what} leads into another district: a way out has to be on the plan's outer edge.`,
       );
@@ -383,7 +467,35 @@ export function checkPlan(plan: WorldPlan): string[] {
   for (const landmark of plan.landmarks ?? [])
     inside(`The landmark '${landmark.name}'`, landmark.district, landmark.at);
   for (const cave of plan.caves ?? []) {
-    for (const mouth of cave.mouths) inside(`A mouth of ${cave.name}`, mouth.district, mouth.at);
+    for (const mouth of cave.mouths) {
+      inside(`A mouth of ${cave.name}`, mouth.district, mouth.at);
+      if (mouth.floor !== undefined && (mouth.floor < 1 || mouth.floor > cave.floors))
+        problems.push(`A mouth of ${cave.name} opens onto floor ${mouth.floor}, which it does not have.`);
+      if (mouth.locked === 'card-key' && !plan.cardKey)
+        problems.push(`A mouth of ${cave.name} is locked to the Card Key, and the plan has no card.`);
+    }
+    if (cave.reach) problems.push(...reachProblems(`${cave.name}'s reach`, cave.reach));
+  }
+  const raidSeconds = RAID_DURATION_MS / 1000;
+  for (const sailing of plan.sailings ?? []) {
+    const what = `The boat '${sailing.name}'`;
+    inside(`${what}'s jetty`, sailing.from.district, sailing.from.at);
+    inside(`${what}'s landing`, sailing.to.district, sailing.to.at);
+    const ends = [sailing.from.district, sailing.to.district].map((id) =>
+      plan.districts.find((district) => district.id === id),
+    );
+    if (ends.some((end) => !end)) continue;
+    const route = [ends[0]!.cell, ...sailing.via, ends[1]!.cell];
+    for (const sea of sailing.via)
+      if (!(plan.seas ?? []).some((cell) => cell[0] === sea[0] && cell[1] === sea[1]))
+        problems.push(`${what} sails across cell ${sea.join(',')}, which is not open sea.`);
+    for (let k = 1; k < route.length; k += 1) {
+      const [from, to] = [route[k - 1], route[k]];
+      if (Math.abs(from[0] - to[0]) + Math.abs(from[1] - to[1]) !== 1)
+        problems.push(`${what} jumps from cell ${from.join(',')} to ${to.join(',')}: a route goes a cell at a time.`);
+    }
+    if (sailing.runs.from < 0 || sailing.runs.from >= sailing.runs.until || sailing.runs.until > raidSeconds)
+      problems.push(`${what} has to run inside the raid's ${raidSeconds} seconds, and for some of them.`);
   }
   const landings = (plan.landmarks ?? []).filter((landmark) => landmark.kind === 'landing').length;
   if (landings > held.maxDropIns)
@@ -400,12 +512,23 @@ export function checkPlan(plan: WorldPlan): string[] {
   return problems;
 }
 
+/** What is missing from a hard place's brief, in words. */
+function reachProblems(what: string, reach: PlannedReach): string[] {
+  const problems: string[] = [];
+  for (const field of ['wayIn', 'hard', 'onlyHere'] as const)
+    if (reach[field].trim().length < 20) problems.push(`${what} has to say ${field}, in a sentence.`);
+  if (reach.needs.some((need) => need.trim().length === 0))
+    problems.push(`${what} lists an empty need.`);
+  return problems;
+}
+
 /**
  * A district's program, ready to draw in: all wood, its edge sealed two tiles
  * deep and locked, except at its openings, which are cut through the seal in
  * their own ground (a road's sand, a river's water) and run `stub` tiles in.
  * Whatever the program draws, it can only leave by its openings - which is
- * what lets districts drawn apart be stitched together.
+ * what lets districts drawn apart be stitched together. An island starts as
+ * open sea instead, sealed by the water, and the island is what it draws.
  */
 export function startDistrict(
   plan: WorldPlan,
@@ -413,7 +536,8 @@ export function startDistrict(
   { stub = 2 }: { stub?: number } = {},
 ): MapProgram {
   const size = plan.districtSize;
-  const p = new MapProgram(size, size, 'T');
+  const island = districtOf(plan, id).island === true;
+  const p = new MapProgram(size, size, island ? 'W' : 'T');
   p.lock(0, 0, size, SEAM_DEPTH).lock(0, size - SEAM_DEPTH, size, SEAM_DEPTH);
   p.lock(0, 0, SEAM_DEPTH, size).lock(size - SEAM_DEPTH, 0, SEAM_DEPTH, size);
   for (const opening of openingsOf(plan, id)) {
@@ -423,9 +547,11 @@ export function startDistrict(
     for (const [x, y] of tiles) p.put(x, y, letter);
     if ('exit' in opening.leadsTo) {
       // A way off the map is one tile at its rim, as on every shipped map, so
-      // the exit is a pocket a raid steps into: the rest of the rim is a bush.
+      // the exit is a pocket a raid steps into: the rest of the rim is a bush,
+      // or on an island the sea.
       const [ex, ey] = exitTile(size, opening);
-      for (const [x, y] of openingTiles(size, opening)) if (x !== ex || y !== ey) p.put(x, y, 'o');
+      for (const [x, y] of openingTiles(size, opening))
+        if (x !== ex || y !== ey) p.put(x, y, island ? 'W' : 'o');
     }
     p.lock(...lockRect(size, opening));
   }
@@ -462,6 +588,39 @@ export function unreachableDistricts(plan: WorldPlan, from: string): string[] {
     for (const crossing of plan.crossings) {
       if (crossing.kind === 'river' || !crossing.between.includes(here)) continue;
       const there = crossing.between[crossing.between[0] === here ? 1 : 0];
+      if (!reached.has(there)) {
+        reached.add(there);
+        queue.push(there);
+      }
+    }
+  }
+  return plan.districts.map((district) => district.id).filter((id) => !reached.has(id));
+}
+
+/**
+ * Districts nobody can reach from `from` by any way the plan has: its crossings
+ * (a river still not a way across, a night crossing a way all the same), its
+ * boats, and its caves, whose mouths join every district they open in. Empty
+ * when every place, however hard, has a way in.
+ */
+export function districtsOutOfReach(plan: WorldPlan, from: string): string[] {
+  const joins = new Map<string, Set<string>>();
+  const join = (a: string, b: string) => {
+    for (const [one, other] of [[a, b], [b, a]]) {
+      if (!joins.has(one)) joins.set(one, new Set());
+      joins.get(one)!.add(other);
+    }
+  };
+  for (const crossing of plan.crossings)
+    if (crossing.kind !== 'river') join(crossing.between[0], crossing.between[1]);
+  for (const sailing of plan.sailings ?? []) join(sailing.from.district, sailing.to.district);
+  for (const cave of plan.caves ?? [])
+    for (const mouth of cave.mouths)
+      for (const other of cave.mouths) if (other !== mouth) join(mouth.district, other.district);
+  const reached = new Set([from]);
+  const queue = [from];
+  while (queue.length > 0) {
+    for (const there of joins.get(queue.shift()!) ?? []) {
       if (!reached.has(there)) {
         reached.add(there);
         queue.push(there);

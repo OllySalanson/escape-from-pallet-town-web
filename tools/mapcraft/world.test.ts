@@ -9,10 +9,12 @@ import { readTiles, regions, walkable, WALKABLE_KINDS } from './tiles';
 import {
   checkPlan,
   districtRect,
+  districtsOutOfReach,
   exitTile,
   openingsOf,
   openingTiles,
   startDistrict,
+  unreachableDistricts,
   type WorldPlan,
 } from './worldPlan';
 import quarryRoad, { QUARRY_ROAD } from './examples/quarryRoad';
@@ -78,6 +80,73 @@ describe('the world plan', () => {
     const wrong = checkPlan({ ...coast, seas: [[0, 1], [2, 1]] }).join(' ');
     expect(wrong).toMatch(/Cell 0,1 is a sea or a district/);
     expect(wrong).toMatch(/The sea at cell 2,1 is outside/);
+  });
+
+  it('lets a way out face the open sea, and plans a boat across it a cell at a time', () => {
+    // An island two cells of sea south of the bend, reached only by boat.
+    const isles: WorldPlan = {
+      ...QUARRY_ROAD,
+      districts: [
+        ...QUARRY_ROAD.districts,
+        { id: 'far-isle', name: 'FAR ISLE', cell: [1, 2], idea: 'An island off the coast.', island: true },
+      ],
+      seas: [[0, 1], [1, 1], [0, 2]],
+      exits: [...QUARRY_ROAD.exits, { district: 'orchard-bend', side: 'south', at: 10, name: 'Ferry Steps' }],
+      sailings: [
+        {
+          name: 'The Ferry',
+          from: { district: 'orchard-bend', at: [10, 26] },
+          to: { district: 'far-isle', at: [10, 6] },
+          via: [[0, 1], [0, 2]],
+          runs: { from: 30, until: 200 },
+        },
+      ],
+    };
+    expect(checkPlan(isles)).toEqual([]);
+    // No road reaches the island, but the boat does.
+    expect(unreachableDistricts(isles, 'orchard-bend')).toEqual(['far-isle']);
+    expect(districtsOutOfReach(isles, 'orchard-bend')).toEqual([]);
+    expect(districtsOutOfReach({ ...isles, sailings: [] }, 'orchard-bend')).toEqual(['far-isle']);
+
+    const sailing = isles.sailings![0];
+    const wrong = (change: Partial<typeof sailing>) =>
+      checkPlan({ ...isles, sailings: [{ ...sailing, ...change }] }).join(' ');
+    expect(wrong({ via: [[1, 1]] })).toMatch(/jumps from cell 0,0 to 1,1/);
+    expect(wrong({ via: [[1, 0], [1, 1]] })).toMatch(/cell 1,0, which is not open sea/);
+    expect(wrong({ runs: { from: 200, until: 400 } })).toMatch(/inside the raid's 300 seconds/);
+
+    // An island starts as open sea, and is sea until it is drawn.
+    const island = startDistrict(isles, 'far-isle');
+    expect([island.at(0, 0), island.at(16, 16)]).toEqual(['W', 'W']);
+    const { file } = stitch(isles, files());
+    expect(file.ground.slice(64).every((row) => row.slice(32) === 'W'.repeat(32))).toBe(true);
+  });
+
+  it('refuses a night door on a river, a lock with no card, a floor a cave lacks and a brief with nothing in it', () => {
+    const problems = checkPlan({
+      ...QUARRY_ROAD,
+      districts: [
+        QUARRY_ROAD.districts[0],
+        {
+          ...QUARRY_ROAD.districts[1],
+          reach: { wayIn: 'In.', hard: 'It is hard to get to, honestly.', onlyHere: 'Something rare lives up here.', needs: [''] },
+        },
+      ],
+      crossings: [{ ...QUARRY_ROAD.crossings[0], kind: 'river', opens: 'night' }],
+      caves: [
+        {
+          id: 'vault',
+          name: 'The Vault',
+          floors: 1,
+          mouths: [{ district: 'old-quarry', at: [10, 10], floor: 2, locked: 'card-key' }],
+        },
+      ],
+    }).join(' ');
+    expect(problems).toMatch(/a river has no door to shut by day/);
+    expect(problems).toMatch(/opens onto floor 2, which it does not have/);
+    expect(problems).toMatch(/locked to the Card Key, and the plan has no card/);
+    expect(problems).toMatch(/has to say wayIn/);
+    expect(problems).toMatch(/lists an empty need/);
   });
 
   it('starts a district sealed at its edge except at its openings', () => {

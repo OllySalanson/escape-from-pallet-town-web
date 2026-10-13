@@ -2,15 +2,18 @@
 
 A new raid map, planned coarse and drawn one district at a time with
 `tools/mapcraft` (its source is `tools/mapcraft/worlds/greystoneVale/`). This
-is the plan, each district that is drawn marked DRAWN:
+is the plan, each district that is drawn marked DRAWN and each far place still
+to draw marked FAR PLACE:
 
 ![plan](plan.png)
 
-And the vale as it ships now, with the nine districts it was planned as all
-drawn - Millbrook, High Moor, Greystone Peaks, Pine Hollow, The Crossing,
-Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the five it has
-grown into, all drawn too: The Power Station, Safari Marsh, The Wreck, The
-Sunken Quarter and Smugglers' Cove.
+And the vale as it ships now, 384 tiles square: the nine districts it was
+planned as, all drawn - Millbrook, High Moor, Greystone Peaks, Pine Hollow,
+The Crossing, Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the
+five it grew into, all drawn too: The Power Station, Safari Marsh, The Wreck,
+The Sunken Quarter and Smugglers' Cove. Round them is the ring it has grown
+into since ([The far places](#the-far-places)): open sea in the south, and wood
+in the north where the far places will be drawn.
 
 ![the vale as it ships](vale.png)
 
@@ -18,7 +21,7 @@ Sunken Quarter and Smugglers' Cove.
 
 Redraw them, and write the map the game ships, with
 
-    npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/worlds/greystoneVale/index.ts out/greystone-vale --write=src/game/world/maps/greystoneVale.json
+    npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/worlds/greystoneVale/index.ts out/greystone-vale --shrink=3 --write=src/game/world/maps/greystoneVale.json
 
 ## Millbrook
 
@@ -129,9 +132,10 @@ Its first judged draw, a wide valley:
 
 ## The vale
 
-Fourteen districts of 64x64 tiles in a 256x256 map, a map file's largest. The
+Fourteen districts of 64x64 tiles, drawn, in the middle of a 384x384 map. The
 vale was planned as nine, 192 square; once they were drawn it grew a column
-east and a coast south into the room left for it. Each district has one idea,
+east and a coast south into the 256 a map file held, and then a ring all round
+for its six far places ([below](#the-far-places)). Each district has one idea,
 which its program is written to:
 
 | District | Terrain | The one idea |
@@ -153,9 +157,9 @@ which its program is written to:
 
 - **Barriers.** The river runs the length of the old middle column, so east
   and west meet only at The Crossing's two ways over. The peaks, the sea and the
-  wood close the edges. South of the orchards and the cape, two cells of the
-  plan are open sea rather than districts (`seas`), so that coast faces water
-  to the map's edge rather than a wood where no district is.
+  wood close the edges. South of the orchards and the cape, and on round the
+  coast, cells of the plan are open sea rather than districts (`seas`), so the
+  coast faces water to the map's edge rather than a wood where no district is.
 - **Main routes.** The road from the Westward Road through Millbrook, over the
   river, into Tanglewood and on into the Safari Marsh; the drove road down from
   the moor; the coast road along the strand to the orchards and out to the
@@ -165,7 +169,7 @@ which its program is written to:
   Tanglewood, and a way down through the reeds from Reedmere to the cove.
 - **The Greystone Caves**: five floors, with mouths in the peaks, in Tanglewood
   and in the sea cliffs, so a group can go underground at one end of the vale and
-  come out at another.
+  come out at another. The plan gives them a sixth, B5F, as Stormcrown's way in.
 - **Ways out** (red): the Westward Road, the Moor Gate and the Mere Path from the
   first nine, and from the new five the Pylon Road, the Ranger's Track and three
   that open a while into a raid - the salvage launch, the low-water stair and the
@@ -181,7 +185,8 @@ which its program is written to:
   crossings the new districts join at.
 - **What it may hold.** The vale is the game's own map, so its file is held to
   `BUILT_IN_MAP_FILE_LIMITS` rather than a player's: fourteen districts need
-  more than eight landings and twelve ways out.
+  more than eight landings and twelve ways out, and the ring needs 384 tiles
+  square where a player's map stops at 256 ([the size check](#growing-to-384-the-size-check)).
 
 ## Judged blind
 
@@ -941,6 +946,143 @@ Two things the explorer run cannot show:
 - **Trainers and the hunter were fought or fled** as the driver meets them,
   which says nothing about difficulty.
 
+## Growing to 384: the size check
+
+The vale grew from 256 to 384 tiles square only after a 384 map was measured
+against the 256 one (13 October 2026). Both were the same fourteen drawn
+districts, stitched once as they were and once in the middle of a 6x6 ring of
+undrawn wood and sea. Node figures are from `getWorldMap` and its parts; browser
+figures are a production build in one headless Chromium on this machine, the
+explorer run dropped at Mill Square at the 3x window, then walking a loop of
+held arrows, each size twice in a fresh browser.
+
+| | 256x256 | 384x384 |
+|---|---|---|
+| The map file | 110 KB | 193 KB (limit 1 MB) |
+| The file gzipped | 11.5 KB | 12.5 KB |
+| The game's main script | 2,916 KB, 782 KB gzipped | 2,998 KB, 783 KB gzipped |
+| The grid it is played on, caves beside it | 313x256 | 441x384 |
+| Building the map, first lookup (node) | 0.21-0.25 s | 0.42-0.43 s |
+| What the built map holds (node) | 16 MB | 34 MB |
+| A whole-map search from the front door | 6 ms | 8 ms |
+| Title to standing in the raid (browser) | 4.1-4.4 s | 4.4-4.7 s |
+| JavaScript heap in the raid | 105-106 MB | 191-192 MB |
+| Browser memory (PSS) in the raid | 833-855 MB | 923-955 MB |
+| Frame rate walking (3x window) | 57-59 fps | 56-59 fps |
+| The explorer save (every map surveyed) | 26 KB | 41 KB |
+| The vale's four structure files and `hunterFlee.test.ts`, one worker | 801 s | 830 s |
+
+**It holds.** A player downloads 1.3 KB more, a raid on the vale starts a third
+of a second later and walks just as smoothly. The test suite's sweeps take about
+as long as before, because they search from walkable tiles and the ring added
+none. What it costs is memory: about 86
+MB more JavaScript heap while a raid is on the vale. That cost grows with the
+grid's tiles, and it counts the wood and sea that nobody walks as well as the
+land. That is fine for a desktop browser, which is what this game needs.
+Two things to keep in mind:
+
+- **Keep it built lazily.** While the vale is on `MAPS_IN_PROGRESS` it is built
+  only when something asks for it. A finished map is built at boot in
+  `WORLD_MAPS`, so when the vale leaves the list it should stay lazy, or every
+  player pays the 0.4 seconds and the memory on the title screen.
+- **If it ever grows again**, or has to fit a phone, the place to save is Phaser's
+  tile layers. They are made the full size of the grid, wood and sea included.
+
+`BUILT_IN_MAP_FILE_LIMITS` now holds a built-in map to 384 square, with 32 ways
+out and 32 trainers for the far places. A player's map stays at 256, and a room
+or a cave in either is the same size (`mapFile.test.ts`).
+
+## The far places
+
+The ring round the vale is six places, each hard to get to in a way of its own.
+Each one teaches a different thing about the vale:
+
+- **Stormcrown**: the deepest way, through the caves.
+- **The Moor Chapel**: the clock on your wall.
+- **The Lost Garden**: a puzzle.
+- **The Bunker**: a key and a machine.
+- **Frostreef and Ember Isle**: the sea and the tide.
+
+None of them has a landing, because the getting there is the raid. Each has a
+way out of its own, so a raid that got there need not go all the way back, and
+so the hunter's blind window holds there (`hunterFlee.test.ts`).
+
+The rest of the ring is open sea between the islands in the south. In the
+north, beyond the moor and the pines, it is wild wood that no road goes into
+yet. The stitcher lays an undrawn district as wood and an undrawn island as sea,
+so the map plays end to end while the far places are drawn.
+
+Everything a drawing worker needs is fixed in `plan.ts` before either side is
+drawn:
+
+- every crossing, boat, cave mouth and lock;
+- each place's `reach`: how a raid gets in, why that is hard, what is only
+  there, and what the game has to learn to build it.
+
+`plan.test.ts` holds the shape: for example, the islands are reached only by
+boat, Stormcrown only from the deepest floor, and nothing at all is out of reach
+(`districtsOutOfReach`).
+
+| Place | Where | The way in | Why it is hard | Only there |
+|---|---|---|---|---|
+| Stormcrown | above the peaks | the Greystone Caves' new B5F, by a hole in B4F's far corner, to the Chimney; then a climb round three bands of crag | the bottom of a five-floor maze, with no landing near; ledges only take you down; the storm's rain in every fight | Mew at level 50 by the cairn, the vale's legendary boss |
+| The Moor Chapel | west of High Moor | a sheep track nobody signs, west out of the shepherd's clearing into the fog | only on a night raid (9 pm to 5 am on the player's clock, fixed when the raid deploys); by day the fog turns it back | ghost Pokemon (Gastly, Haunter, Cubone), the crypt, the Spell Tag |
+| The Lost Garden | east of the Power Station | the Falls Cave, a mouth hidden behind the water at the foot of the dam | Strength boulders onto floor switches open its rock barrier (Victory Road's rule), so HM04 and the order to push them in | the rarest grass Pokemon (Tangela, Exeggcute), berry trees, the Miracle Seed |
+| The Bunker | under the Power Station | the station's door into the turbine hall, then a steel door only the Card Key opens | the card is one raid in five in Pine Hollow, and it is also the Service Gate's key; B3F and B4F are lift-only, and the lift is dead until the generator on B2F is back on, across a spinner floor | the war room's strongroom (the vale's locked crate), an escape hatch |
+| Frostreef | out on the reef, south-east | The Ice Run, the salvage launch from the Wreck's pier, across two cells of sea | it sails only from 2:00 until 4:00; then Berg Cave is FireRed's sliding ice | ice Pokemon (Seel, Dewgong, Shellder, Jynx), a Lapras on the lagoon, the NeverMeltIce |
+| Ember Isle | out beyond the cove, south-west | The Smugglers' Run, their skiff off the cove's jetty, across a cell of sea | only from the hidden cove, only from 1:00 until the smugglers sail at 2:30; the crater only through the Lava Tube, rolling on every step | the smugglers' hoard (the richest ground in the vale), fire Pokemon (Ponyta, Rapidash, Magmar), Charcoal |
+
+The plan gives Stormcrown **Mew**, not Zapdos. The storm bird would fit the
+storm, but Zapdos already stands on Route 1's Overlook. A legend stands until
+its kind is owned (`world/legends.ts`), so a second Zapdos would leave the
+summit empty for anyone who had caught the first. Mew is the one Pokemon of the
+151 that no map has.
+
+### What the game has to learn
+
+The plan names what each place needs and does not have yet, in its `reach`;
+`world.mts` prints them with the plan. Shared needs:
+
+- **Sailing** (Frostreef and Ember Isle). A boat boarded at a jetty carries the
+  player tile by tile along the plan's route across the open sea and lands at
+  the far jetty. It runs only inside its window, and the clock is charged as
+  walking is. The hunter cannot follow over water. The plan holds each route a
+  cell at a time over sea cells (`sailings`).
+- **A switch** (the Lost Garden's boulder plates, the Bunker's generator). A
+  plate a boulder rests on, or a lever, that opens a barrier for the rest of the
+  raid.
+- **A floor that carries you on** (Frostreef's ice, the Bunker's spinner
+  tiles). A step continues the same way until something stops it.
+- **A gear row each** for the Spell Tag, the Miracle Seed, the NeverMeltIce and
+  Charcoal, and **a habitat each** for the summit, the garden, the haunted fell,
+  the ice and the volcano, measured as every table is.
+
+One per place:
+
+- **Stormcrown**: B5F as a maze of its own seed, so the five floors that ship
+  do not move; and a legendary on a map file.
+- **The Moor Chapel**: a night door, shut by day and open on a night raid, built
+  per state as a field-move door is; and FireRed's Pokemon Tower as a room
+  style.
+- **The Lost Garden**: Strength boulders in a cave floor.
+- **The Bunker**: an inside for the Power Plant; a door the Card Key opens; a
+  lift that offers its floors; and FireRed's Rocket Hideout as a room style.
+- **Ember Isle**: outdoor ground that rolls on every step, as a cave floor does.
+
+Order them like this:
+
+- **The sea.** Frostreef and Ember Isle share sailing, so the first one drawn
+  builds it.
+- **The Power Station.** The Lost Garden and the Bunker both edit its program
+  (the falls mouth, the turbine hall) and share the switch, so draw them one
+  after the other.
+- **The rest.** Stormcrown edits the Greystone Caves, which ride in Tanglewood's
+  file. The Moor Chapel needs nothing else drawn: High Moor's track to it is
+  cut already.
+
+The track ends at a way out that opens 90 seconds into a raid, which stands in
+for the chapel until the chapel is drawn.
+
 ## How it ships
 
 As the game's own map, beside the shipped five (`greystone-vale`, built from the
@@ -966,6 +1108,10 @@ player's map is built by). While its districts are being drawn it is on
 - **No other map's raid changes**: like a player's map, it is in a raid's
   content only when the raid is on it, so every seeded roll on the shipped five
   is what it was.
+- **Its tiles moved when it grew a ring.** A row north and a column west put
+  every tile of the fourteen drawn districts 64 east and 64 south of where it
+  was. The landings in `RUN_INSERTIONS` moved with them, and
+  `greystoneVale.test.ts` holds them to the file.
 
 ## The north half, walked
 

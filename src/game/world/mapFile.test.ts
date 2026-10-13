@@ -87,7 +87,7 @@ describe('reading a map file', () => {
     expect(readMapFile(crowded, { limits: BUILT_IN_MAP_FILE_LIMITS }).ok).toBe(true);
   });
 
-  it("only ever lets the game's own maps hold more, never be bigger or smaller", () => {
+  it("only ever lets the game's own maps hold more and be bigger, never smaller", () => {
     for (const key of Object.keys(MAP_FILE_LIMITS) as (keyof typeof MAP_FILE_LIMITS)[]) {
       if (key.startsWith('min')) {
         expect(`${key} ${BUILT_IN_MAP_FILE_LIMITS[key]}`).toBe(`${key} ${MAP_FILE_LIMITS[key]}`);
@@ -95,10 +95,13 @@ describe('reading a map file', () => {
         expect(BUILT_IN_MAP_FILE_LIMITS[key]).toBeGreaterThanOrEqual(MAP_FILE_LIMITS[key]);
       }
     }
-    expect([BUILT_IN_MAP_FILE_LIMITS.maxWidth, BUILT_IN_MAP_FILE_LIMITS.maxHeight]).toEqual([
-      MAP_FILE_LIMITS.maxWidth,
-      MAP_FILE_LIMITS.maxHeight,
-    ]);
+    // Greystone Vale is six 64-tile districts square, measured before it grew
+    // (docs/screens/greystone-vale/README.md); a player's map stays at 256.
+    expect([BUILT_IN_MAP_FILE_LIMITS.maxWidth, BUILT_IN_MAP_FILE_LIMITS.maxHeight]).toEqual([384, 384]);
+    expect([MAP_FILE_LIMITS.maxWidth, MAP_FILE_LIMITS.maxHeight]).toEqual([256, 256]);
+    // ...and every room and cave inside one is the size a player's may be.
+    for (const key of ['maxInsideWidth', 'maxInsideHeight', 'maxCaveWidth', 'maxCaveHeight'] as const)
+      expect(BUILT_IN_MAP_FILE_LIMITS[key]).toBe(MAP_FILE_LIMITS[key]);
   });
 
   it('refuses a file from a format it does not know, and says which', () => {
