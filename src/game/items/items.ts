@@ -551,7 +551,7 @@ export const ITEMS = {
     displayName: 'HM06 Rock Smash',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Rock Smash, and is never used up: a weak blow that often lowers Defense.',
+    description: 'Teaches Rock Smash, and is never used up. A Pokémon that knows it can break cracked rocks in the field.',
     effect: { type: 'machine' },
   },
   pickaxe: {

@@ -5,6 +5,7 @@ import { MoveCategory } from './MoveBase';
 import { PokemonType } from './PokemonType';
 import { SPECIES_BY_ID } from './species';
 import { evolutionFamily } from './evolution';
+import { FIELD_MOVES, FIELD_MOVE_LIST } from '../world/fieldMoves';
 import { MACHINES, MACHINE_DEFINITIONS, canLearnFromMachine, machineMovesFor } from './machines';
 
 /**
@@ -248,6 +249,16 @@ describe('what a disc says about itself', () => {
     const type = claim[1].toLowerCase();
     const ofType = [...movesInPlay].filter(([, moveType]) => moveType.toLowerCase() === type).map(([name]) => name);
     expect(ofType).toHaveLength(1);
+  });
+
+  // A disc whose move works in the field says so in the pack, or the refusal
+  // at a cracked rock ("Something that reads HM06 could.") points at a disc
+  // the pack calls a weak blow and nothing more.
+  it.each(FIELD_MOVE_LIST.map((fieldMove) => fieldMove.id))('the disc that teaches %s says what it works on', (id) => {
+    const worksOn = { cut: 'growth', surf: 'water', 'rock-smash': 'rock', strength: 'boulder' }[id];
+    const disc = Object.entries(MACHINES).find(([, machine]) => machine.move === FIELD_MOVES[id].move);
+    expect(disc).toBeDefined();
+    expect(getItemById(disc![0])?.description).toMatch(new RegExp(`${worksOn}.* in the field|in the field.*${worksOn}|over deep ${worksOn}`, 'i'));
   });
 
   it.each(MACHINE_ITEM_IDS)('%s names every line that can read it, if it names any', (id) => {

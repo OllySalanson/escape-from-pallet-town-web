@@ -327,6 +327,15 @@ One finding a fix, each with a behavioural test.
 - **Drivers mended on the way:** `shopScreens.mjs` and `wallMapShots.mjs` both stalled because Brock's and Oak's errand asks stood over the keeper's screen and took the first key. Both seed every errand as already asked now, as `menuShots.mjs` does, and both run clean.
 - **Looked at, left alone:** `abandonRaid.mjs`, `staleTab.mjs`, `packArrange.mjs` and `hunterShots.mjs` all pass as written. The wall map's "N keepers still holding doors" and the drop-in's "Doors 5 held" count keepers, consistently. Every key's description names the district its gate stands in (checked against `districtAt`).
 
+## 43. HM06 never said it breaks rocks, though a cracked rock sends you to read it (playtested: Bill's cottage, the map maker's rocks)
+
+- **Found:** a cracked rock on a player's map refuses a party with "Nothing in the party can break it. Something that reads HM06 could." But HM06's own line, in the pack, on the teach screen and on Bill's barter table, read "Teaches Rock Smash, and is never used up: a weak blow that often lowers Defense." - a fight move and nothing more. HM01, HM03 and HM04 each say what they do in the field (growth, deep water, boulders); HM06 was the one that did not.
+- **Reproduced:** a scratch copy of `tools/playtest/shopScreens.mjs` (deleted afterwards) at 1280x800 against a test-mode build, with the cursor on HM06 ROCK SMASH at Bill's table, read the row and the pane. In `pokemon/machines.test.ts` the new "the disc that teaches %s says what it works on" (every `FIELD_MOVES` entry's disc must name what it works on in the field) failed before the fix on rock-smash.
+- **Fixed:** in `items/items.ts` HM06 now reads "Teaches Rock Smash, and is never used up. A Pokémon that knows it can break cracked rocks in the field." - the same shape and length as HM01's line. Bill's own HM06 detail (the reader count) is unchanged.
+- **How a player meets it:** point at HM06 ROCK SMASH on Bill's barter table, or at the disc in the pack. It says the disc breaks cracked rocks.
+- **Checked in the browser:** the same scratch run, before trimming, showed the new line on the row and in the pane; a first draft that kept the fight half ran to four lines on the row, so it was cut to HM01's length.
+- **Looked at, left alone:** no shipped map has a Rock Smash door (`WORLD_GATES` has Cut and Surf only), so Bill's detail names no map. HM04's "boulders a map maker leaves" is still true: boulders are maker-only.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
