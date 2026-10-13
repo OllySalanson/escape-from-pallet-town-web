@@ -72,9 +72,9 @@ export function isHarbourPlace(value: unknown): value is HarbourPlace {
 }
 
 /** One message: who walked, where, along which tiles, facing which way at the end. */
-export interface HarbourMove {
+export interface HarbourMove<P extends string = HarbourPlace> {
   readonly from: string;
-  readonly place: HarbourPlace;
+  readonly place: P;
   readonly path: readonly GridPosition[];
   readonly facing: Direction;
 }

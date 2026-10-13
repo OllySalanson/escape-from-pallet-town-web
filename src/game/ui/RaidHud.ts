@@ -85,6 +85,8 @@ export interface RaidHudState {
   readonly weather: string | null;
   /** A rare find this raid has laid eyes on and not yet picked up. */
   readonly prize: PrizeChipView | null;
+  /** The other player in a raid room, while one is held (`friendChipLine`). */
+  readonly friend?: string | null;
 }
 
 export class RaidHud {
@@ -102,6 +104,7 @@ export class RaidHud {
   private readonly placeText: Phaser.GameObjects.Text;
   private readonly weatherText: Phaser.GameObjects.Text;
   private readonly prizeText: Phaser.GameObjects.Text;
+  private readonly friendText: Phaser.GameObjects.Text;
 
   private readonly scene: Phaser.Scene;
 
@@ -114,6 +117,7 @@ export class RaidHud {
     this.placeText = this.createText(CHIP_FONT_SIZE);
     this.weatherText = this.createText(CHIP_FONT_SIZE);
     this.prizeText = this.createText(CHIP_FONT_SIZE);
+    this.friendText = this.createText(CHIP_FONT_SIZE);
   }
 
   /** The chips' screen rectangles, for anything that has to avoid them. */
@@ -173,6 +177,21 @@ export class RaidHud {
     } else {
       this.weatherText.setVisible(false);
     }
+    // Who is raiding with you stays as long as the weather does, so it takes
+    // the seat under it for the same reason: the plate is the one that comes
+    // and goes. It is a fact about the raid rather than an alarm, so it is the
+    // furniture's cream, as the plate is.
+    if (state.friend) {
+      column = this.placeChip(
+        this.friendText,
+        [state.friend],
+        { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+        1,
+        () => ({ x: EDGE_MARGIN, y: column.y + column.height + CHIP_GAP }),
+      );
+    } else {
+      this.friendText.setVisible(false);
+    }
     if (state.place) {
       this.placeChip(
         this.placeText,
@@ -229,6 +248,7 @@ export class RaidHud {
     this.placeText.destroy();
     this.weatherText.destroy();
     this.prizeText.destroy();
+    this.friendText.destroy();
   }
 
   private createText(fontSize: string): Phaser.GameObjects.Text {

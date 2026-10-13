@@ -146,7 +146,7 @@ import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
 import { isNightRaid } from '../world/nightRaids';
 import type { GridPosition } from '../movement/gridMovement';
-import { getWorldMap, type WorldMapId, worldMapMaker, worldMapName } from '../worldMap';
+import { getWorldMap, type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
 import { fitMapPictures, mapPictureFrame, pictureRowAttributes } from '../ui/mapPicture';
 import { WALL_MAP_ORDER, wallMapContext, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
@@ -208,6 +208,9 @@ import {
   takenBackLines,
 } from '../hub/dayCare';
 import { DAY_CARE_KEEPER } from '../base/dayCarePen';
+import { friendRoom, raidName } from '../raidRoom/friendRoom';
+import { typedRoomCode } from '../raidRoom/roomCode';
+import { friendRoomCard, friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -238,7 +241,7 @@ export interface HubSceneData {
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare';
+type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'friend';
 
 /** Which keeper's errand a screen is asked on: the four rooms with somebody behind the counter. */
 const ERRAND_GIVERS: Partial<Record<HubView, BaseScreen>> = {
@@ -267,6 +270,9 @@ const WALL_CARD_GAP = 4;
 
 /** What `traderArmed` holds for the berth, which is the one deal with no id. */
 const BERTH_DEAL = 'berth';
+
+/** How often a held raid room is asked who is in it while the player gets ready. */
+const ROOM_TICK_MS = 250;
 
 /**
  * How long after a deal that releases something for good is armed a pointer
@@ -338,6 +344,10 @@ export class HubScene extends Phaser.Scene {
    * the key that started the raid used to start it again and throw.
    */
   private deploying = false;
+  /** Whether the raid room's database is being asked something (`raidRoom/`). */
+  private roomBusy = false;
+  /** What is typed in the room code field. */
+  private roomTyped = '';
   /**
    * How the player is looking at their Pokemon: which box, in what order, and
    * for whom. It is not saved - it is where the cursor is, not what is owned.
@@ -472,6 +482,21 @@ export class HubScene extends Phaser.Scene {
       fitMapPictures(this.overlay.root, unit, (key, step) => this.drawPicture(key, step));
     this.render();
     this.offerPendingMoves();
+    // A held room stays on its channel while the player gets ready, saying
+    // they are at the lab and hearing whether the friend is.
+    if (this.roomsOffered) {
+      friendRoom()?.atLab();
+      let last = this.time.now;
+      this.time.addEvent({
+        delay: ROOM_TICK_MS,
+        loop: true,
+        callback: () => {
+          const now = this.time.now;
+          this.tickRoom(now, now - last);
+          last = now;
+        },
+      });
+    }
   }
 
   /**
@@ -1003,6 +1028,15 @@ export class HubScene extends Phaser.Scene {
     if (insertionId !== undefined && this.unlockedInsertions.some(([id]) => id === insertionId)) {
       this.flow.chooseInsertion(insertionId);
     }
+    // A room is a map to raid together, so while one is held the drop-in is
+    // on its map: the one chosen if it is, else the first way in there.
+    const room = this.heldRoom;
+    if (room && requireInsertion(this.flow.insertionId).mapId !== room.mapId) {
+      const there = this.insertionFor(room.mapId);
+      if (there) {
+        this.flow.chooseInsertion(there[0]);
+      }
+    }
     this.setView('deploy');
     this.render();
   }
@@ -1055,6 +1089,11 @@ export class HubScene extends Phaser.Scene {
     // - a wipe there took the Pokemon and the gear this one is about to send -
     // must not deploy. The flow is rebuilt against the vault as it stands.
     if (this.movedOnElsewhere()) {
+      return;
+    }
+    const room = this.heldRoom;
+    if (room && requireInsertion(this.flow.insertionId).mapId !== room.mapId) {
+      this.refuse(`You are in room ${room.code} on ${worldMapName(room.mapId)}. Leave it at the lab to raid somewhere else.`);
       return;
     }
     let deployment: Deployment;
@@ -1194,8 +1233,8 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     // Preparation is done inside Oak's Lab, so its first step backs out to the
-    // lab rather than out of the building.
-    if (this.view === 'deploy') {
+    // lab rather than out of the building; so does the friend's room.
+    if (this.view === 'deploy' || this.view === 'friend') {
       this.leaveDeployment();
       return;
     }
@@ -1341,6 +1380,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'trader') return 'Bill’s Cottage';
     if (this.view === 'wallmap') return this.wallMapInspect ? worldMapName(this.wallMapInspect) : 'The wall map';
     if (this.view === 'daycare') return 'Day-Care';
+    if (this.view === 'friend') return 'Raid with a friend';
     if (this.flow.step === 'loadout') return 'Build your loadout';
     if (this.flow.step === 'dropin') return 'Choose your drop-in';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
@@ -1357,6 +1397,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'wallmap') return this.wallMapInspect ? 'Wall map' : 'Lab';
     // He stands in the yard, so out of his screen is out into it.
     if (this.view === 'daycare') return 'Yard';
+    if (this.view === 'friend') return 'Lab';
     if (this.flow.step === 'confirm') return 'Drop-in';
     if (this.flow.step === 'dropin') return 'Loadout';
     if (this.flow.step === 'secure') {
@@ -1544,6 +1585,10 @@ export class HubScene extends Phaser.Scene {
     );
     on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
+    on('[data-room-map]', (button) => this.makeRoom(button.dataset.roomMap!));
+    on('[data-room-leave]', () => this.leaveRoom());
+    on('[data-room-prepare]', () => this.openDeployment());
+    this.wireRoomForm(root);
     on('[data-day-care-leave]', (button) => this.leaveAtDayCare(button.dataset.dayCareLeave!));
     on('[data-day-care-take]', () => this.takeBackFromDayCare());
     if (this.speaking) {
@@ -1754,6 +1799,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'trader') return this.traderView();
     if (this.view === 'wallmap') return this.wallMapView();
     if (this.view === 'daycare') return this.dayCareView();
+    if (this.view === 'friend') return this.friendView();
     if (this.flow.step === 'loadout') return this.loadoutView();
     if (this.flow.step === 'dropin') return this.dropInView();
     return this.flow.step === 'secure' ? this.secureView() : this.confirmView();
@@ -1783,7 +1829,183 @@ export class HubScene extends Phaser.Scene {
       ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
       : '<p>Everyone is fit to deploy.</p>';
     const team = `<button class="px-window px-card has-figure" data-refused="The Pokémon Center is the building west of the lab." data-help="Your team's condition. Nurse Joy treats them, across the yard."><strong>Your team</strong>${condition}${pixelFigure('nurse-joy', 'Nurse Joy')}</button>`;
-    return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${team}</section>${this.contractBoard()}</main>`;
+    return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${team}${this.friendCard()}</section>${this.contractBoard()}</main>`;
+  }
+
+  /**
+   * Raiding with a friend (`raidRoom/`): offered only in the ordinary game,
+   * never the explorer run or a map maker's TRY IT, and only where there is a
+   * room service to ask - the live project, or a test's tab-to-tab stand-in.
+   */
+  private get roomsOffered(): boolean {
+    return friendRoom() !== null && activeSaveSlot() === 'normal' && !isPlaytestRun();
+  }
+
+  /** The room this browser holds, if raiding with a friend is offered here at all. */
+  private get heldRoom(): { readonly code: string; readonly mapId: WorldMapId; readonly hostName: string | null } | null {
+    const room = this.roomsOffered ? friendRoom()?.room : null;
+    return room ? { code: room.code, mapId: room.mapId as WorldMapId, hostName: room.hostName } : null;
+  }
+
+  /** The line preparation carries while a room is held: whose room, and that the raid is on its map. */
+  private roomNote(): string {
+    const room = this.heldRoom;
+    return room
+      ? `<small class="px-wrap room-note">${room.hostName ? `${room.hostName}’s room` : 'Your room'} ${room.code} · you each raid ${worldMapName(room.mapId)} on your own clock</small>`
+      : '';
+  }
+
+  private friendCard(): string {
+    if (!this.roomsOffered) {
+      return '';
+    }
+    const room = this.heldRoom;
+    return friendRoomCard(room ? { code: room.code, mapName: worldMapName(room.mapId) } : null);
+  }
+
+  /** The maps a room can be made on: every map this save can drop into, once each. */
+  private get roomMaps(): readonly RoomMapChoice[] {
+    const seen = new Set<string>();
+    return this.unlockedInsertions.flatMap(([, insertion]) => {
+      if (seen.has(insertion.mapId)) {
+        return [];
+      }
+      seen.add(insertion.mapId);
+      return [{ mapId: insertion.mapId, name: worldMapName(insertion.mapId) }];
+    });
+  }
+
+  private friendView(): string {
+    const room = this.heldRoom;
+    const mapName = room ? worldMapName(room.mapId) : '';
+    return friendRoomView({
+      room: room ? { code: room.code, mapName, hostName: room.hostName } : null,
+      friendLine: room ? friendStatusLine(friendRoom()?.friend() ?? null, room.code, mapName) : '',
+      maps: this.roomMaps,
+      name: raidName(),
+      busy: this.roomBusy,
+      typed: this.roomTyped,
+    });
+  }
+
+  /** Makes a room on this map and shows its code. */
+  private makeRoom(mapId: string): void {
+    const name = raidName();
+    const rooms = friendRoom();
+    if (this.roomBusy || !name || !rooms || !this.roomMaps.some((map) => map.mapId === mapId)) {
+      return;
+    }
+    this.askRoom(() => rooms.open(mapId, name), 'Your room is open.');
+  }
+
+  /** Joins the room with the code typed, if this save can drop into its map. */
+  private joinRoom(typed: string): void {
+    const name = raidName();
+    const rooms = friendRoom();
+    const code = typedRoomCode(typed);
+    this.roomTyped = code;
+    if (this.roomBusy || !name || !rooms) {
+      return;
+    }
+    if (code.length < 4) {
+      this.refuse('A room code is four letters.');
+      return;
+    }
+    this.askRoom(async () => {
+      const answer = await rooms.join(code, name);
+      if (!answer.ok) {
+        return answer;
+      }
+      // The friend's map has to be one this save can drop into: a room is a
+      // map to raid together, never a way past the door this save has not
+      // opened yet.
+      const mapId = answer.room.mapId;
+      if (!worldMapIds().includes(mapId as WorldMapId) || !this.insertionFor(mapId as WorldMapId)) {
+        rooms.leave();
+        return {
+          ok: false,
+          reason: worldMapIds().includes(mapId as WorldMapId)
+            ? `That room is on ${worldMapName(mapId as WorldMapId)}, which you cannot drop into yet.`
+            : 'That room is on a map this game does not have.',
+        } as const;
+      }
+      return answer;
+    }, 'You are in the room.');
+  }
+
+  private askRoom(ask: () => Promise<{ readonly ok: boolean; readonly reason?: string }>, done: string): void {
+    this.roomBusy = true;
+    this.render();
+    void ask().then((answer) => {
+      this.roomBusy = false;
+      if (!this.sys.isActive() || this.view !== 'friend') {
+        return;
+      }
+      if (answer.ok) {
+        this.roomTyped = '';
+        audioManager.play('confirm');
+        this.render();
+        this.setStatus(done);
+      } else {
+        this.render();
+        this.refuse(answer.reason ?? 'That did not work. Try again.');
+      }
+    });
+  }
+
+  private leaveRoom(): void {
+    friendRoom()?.leave();
+    this.render();
+    this.setStatus('You left the room.');
+  }
+
+  private wireRoomForm(root: HTMLElement): void {
+    const form = root.querySelector<HTMLFormElement>('[data-room-form]');
+    const field = form?.querySelector<HTMLInputElement>('.px-field');
+    if (!form || !field) {
+      return;
+    }
+    form.onsubmit = (event) => {
+      event.preventDefault();
+      this.joinRoom(field.value);
+    };
+    // Only the letters a code is made of, in capitals, as they are typed.
+    field.oninput = () => {
+      const tidy = typedRoomCode(field.value);
+      if (tidy !== field.value) {
+        field.value = tidy;
+      }
+      this.roomTyped = tidy;
+    };
+    // As the stash's fields: key up is what reaches a field, so the arrows
+    // step off it here and Escape backs out of the screen.
+    field.onkeyup = (event) => {
+      if (event.key === 'Escape') {
+        this.goBack();
+      } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        this.overlay.moveCursor(event.key);
+      }
+    };
+  }
+
+  /**
+   * Says who is in the room without rebuilding the screen (a rebuild between
+   * a press and its release eats the click): only the friend's line changes.
+   */
+  private tickRoom(nowMs: number, deltaMs: number): void {
+    const rooms = this.roomsOffered ? friendRoom() : null;
+    if (!rooms) {
+      return;
+    }
+    rooms.tick(nowMs, deltaMs);
+    const room = this.heldRoom;
+    const line = this.overlay?.root.querySelector<HTMLElement>('[data-room-friend]');
+    if (room && line) {
+      const said = friendStatusLine(rooms.friend(), room.code, worldMapName(room.mapId));
+      if (line.textContent !== said) {
+        line.textContent = said;
+      }
+    }
   }
 
   /**
@@ -2550,7 +2772,10 @@ export class HubScene extends Phaser.Scene {
     // The maps players made come after the game's own, under a heading of
     // their own, each front door crediting who drew it.
     const firstPlayerMap = this.unlockedInsertions.find(([, insertion]) => worldMapMaker(insertion.mapId) !== undefined)?.[0];
+    // While a room is held the raid is on its map, so only its ways in are offered.
+    const room = this.heldRoom;
     const rows = this.unlockedInsertions
+      .filter(([, insertion]) => !room || insertion.mapId === room.mapId)
       .map(([id, insertion]) => {
         const contract = this.contractFor(id);
         const isChosen = chosen === id;
@@ -2609,6 +2834,7 @@ export class HubScene extends Phaser.Scene {
       lines: [
         `<span class="px-wrap">${briefing.contract ? `${briefing.contract.name}${briefing.contract.hunterPressure ? ` · hunter +${briefing.contract.hunterPressure}` : ''}` : 'No contract on this raid'}</span>`,
         this.carryInNote(),
+        this.roomNote(),
       ].filter((line) => line !== ''),
       actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-advance data-cursor-start data-help="Read back what this raid risks before you commit to it.">Review &amp; deploy</button>`,
     })}</main>`;
@@ -3108,6 +3334,7 @@ export class HubScene extends Phaser.Scene {
     )}${pixelCommitBar({
       title: `Deploy to ${insertion.label}`,
       lines: [
+        this.roomNote(),
         // A night raid is named here as its clock chip will name it, so the
         // last screen before the raid says what the drop-in pane's wildlife did.
         `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · ${isNightRaid(new Date()) ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,

@@ -46,7 +46,7 @@ export class HarbourFigures {
   }
 
   /** Draws this frame's figures: new ones stood up, gone ones taken down, the rest moved. */
-  public update(figures: readonly NamedFigure[]): void {
+  public update(figures: readonly NamedFigure<string>[]): void {
     const here = new Set(figures.map((figure) => figure.id));
     for (const [id, drawn] of this.drawn) {
       if (!here.has(id)) {
@@ -98,7 +98,7 @@ export class HarbourFigures {
     this.drawn.clear();
   }
 
-  private standUp(figure: NamedFigure): Drawn {
+  private standUp(figure: NamedFigure<string>): Drawn {
     const sprite = this.scene.add.sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);

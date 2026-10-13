@@ -340,3 +340,60 @@ export function prizeChipView(input: PrizeChipInput | null): PrizeChipView | nul
     detail: `${input.direction} ${input.distance}`,
   };
 }
+
+// ---------------------------------------------------------------------------
+// The friend chip
+// ---------------------------------------------------------------------------
+
+/** What the raid knows of the other player in a raid room (`raidRoom/friendRoom.ts`). */
+export interface FriendChipInput {
+  /** The room's code, said while nobody else is in it so it can be read out. */
+  readonly code: string;
+  /** Somebody came or went just now. */
+  readonly news: { readonly name: string; readonly came: boolean } | null;
+  /** The other player, while they are in the room. */
+  readonly friend: {
+    readonly name: string;
+    /** Still getting ready at base. */
+    readonly atLab: boolean;
+    /** Which way to go for them - straight at them, or at the door between - once they are seen. */
+    readonly heading: string | null;
+    /** Tiles away, on the same place of the map; null in another place, or not yet seen. */
+    readonly distance: number | null;
+    /** Where they are when it is another place of the map than the player's. */
+    readonly elsewhere: 'indoors' | 'outdoors' | null;
+  } | null;
+}
+
+/**
+ * The friend chip: who else is raiding this map and which way they are.
+ *
+ * It answers the one question a vast map asks of two players - where did they
+ * go - in the hunter chip's own words (a name, a heading, how far), and says
+ * the moment they leave, whichever way they went: an exit, a loss and a closed
+ * tab all look the same from here, and all mean the raid carries on alone.
+ * While nobody else is in, it is the room's code, which is the thing to read
+ * out to a friend.
+ */
+export function friendChipLine(input: FriendChipInput): string {
+  if (input.news) {
+    return input.news.came ? `${input.news.name} IS IN THE ROOM` : `${input.news.name} LEFT THE RAID`;
+  }
+  const friend = input.friend;
+  if (!friend) {
+    return `ROOM ${input.code}`;
+  }
+  if (friend.atLab) {
+    return `${friend.name} GETTING READY`;
+  }
+  if (friend.heading === null) {
+    return `${friend.name} ON THE MAP`;
+  }
+  if (friend.elsewhere) {
+    return `${friend.name} ${friend.elsewhere.toUpperCase()} ${friend.heading}`;
+  }
+  if (friend.distance !== null && friend.distance <= 1) {
+    return `${friend.name} BESIDE YOU`;
+  }
+  return `${friend.name} ${friend.heading} ${friend.distance ?? ''}`.trimEnd();
+}

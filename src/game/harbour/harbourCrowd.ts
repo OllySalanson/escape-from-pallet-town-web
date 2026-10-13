@@ -24,9 +24,9 @@ export const CATCH_UP_AFTER_STEPS = 2;
 export const JUMP_AFTER_STEPS = 12;
 
 /** One other player, as drawn this frame. */
-export interface HarbourFigure {
+export interface HarbourFigure<P extends string = HarbourPlace> {
   readonly id: string;
-  readonly place: HarbourPlace;
+  readonly place: P;
   /** The tile it stands on, or is leaving. */
   readonly tile: GridPosition;
   /** The tile it is walking onto, if it is between two. */
@@ -36,9 +36,9 @@ export interface HarbourFigure {
   readonly facing: Direction;
 }
 
-interface Walker {
+interface Walker<P extends string> {
   id: string;
-  place: HarbourPlace;
+  place: P;
   tile: GridPosition;
   queue: GridPosition[];
   progress: number;
@@ -58,11 +58,11 @@ function directionOf(from: GridPosition, to: GridPosition): Direction | null {
   return null;
 }
 
-export class HarbourCrowd {
-  private readonly walkers = new Map<string, Walker>();
+export class HarbourCrowd<P extends string = HarbourPlace> {
+  private readonly walkers = new Map<string, Walker<P>>();
 
   /** Somebody walked: their steps are queued, or they are put where a jump puts them. */
-  public hear(move: HarbourMove): void {
+  public hear(move: HarbourMove<P>): void {
     const walker = this.walkers.get(move.from);
     const [first] = move.path;
     if (!walker || walker.place !== move.place || !first) {
@@ -110,7 +110,7 @@ export class HarbourCrowd {
   }
 
   /** Somebody said where they are without walking there: a jump if it is somewhere else. */
-  public at(id: string, place: HarbourPlace): void {
+  public at(id: string, place: P): void {
     const walker = this.walkers.get(id);
     if (walker && walker.place === place) {
       return;
@@ -162,7 +162,7 @@ export class HarbourCrowd {
   }
 
   /** The figures standing in one place, to be drawn there. */
-  public figuresIn(place: HarbourPlace): readonly HarbourFigure[] {
+  public figuresIn(place: P): readonly HarbourFigure<P>[] {
     return [...this.walkers.values()]
       .filter((walker) => walker.place === place)
       .map((walker) => ({

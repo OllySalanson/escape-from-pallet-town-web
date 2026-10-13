@@ -25,7 +25,9 @@ const OPEN_TO_EVERYONE: Record<string, string> = {
   'private.harbour_names': 'what the public names wrap',
   'public.name_is_free': 'a name is checked as it is typed at NEW GAME, before anybody is signed in',
   'private.name_is_free': 'what the public check wraps',
-  'public.record_play': 'play is counted signed out, so counting a visitor signs nobody up and asks no bot check',
+  'private.may_walk_raid_room':
+    "asked by a raid room channel's watch policy, written for both roles as the harbour's is; false for anybody signed out",
+  'public.record_play':'play is counted signed out, so counting a visitor signs nobody up and asks no bot check',
   'private.record_play': 'what the public count wraps',
 };
 

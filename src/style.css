@@ -2156,6 +2156,7 @@ button {
 :where(.pixel-ui) .loadout-layout > .px-window,
 :where(.pixel-ui) .loadout-side > .px-window,
 :where(.pixel-ui) .daycare-layout > .px-window,
+:where(.pixel-ui) .friend-layout > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
 :where(.pixel-ui) .confirm-layout > .px-window,
 :where(.pixel-ui) .raid-bag-layout > .px-window,
@@ -2184,6 +2185,7 @@ button {
 :where(.pixel-ui) .kit-layout > .loadout-side > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
 :where(.pixel-ui) .daycare-layout > .px-window,
+:where(.pixel-ui) .friend-layout > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
 :where(.pixel-ui) .confirm-layout > .px-window,
 :where(.pixel-ui) .raid-bag-layout > .px-window,
@@ -2266,6 +2268,26 @@ button {
 :where(.pixel-ui) .daycare-layout {
   height: 100%;
   grid-template-rows: auto minmax(0, 1fr) auto;
+}
+/* Raiding with a friend (`src/game/hub/friendRoomView.ts`): the maps to make
+   a room on take what room there is, and joining is one line under them. With
+   a room held it is the room and the bar that goes. */
+:where(.pixel-ui) .friend-layout {
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+:where(.pixel-ui) .friend-layout.is-held {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+/* The code is the one thing on the screen read aloud, so it is the title bar's
+   own inversion rather than a bigger size, which this face does not have. */
+:where(.pixel-ui) .friend-code {
+  background: var(--bar);
+  color: var(--bar-text);
+  letter-spacing: calc(var(--u) * 4);
+  text-align: center;
+  padding: calc(var(--u) * 2) 0;
+  margin: calc(var(--u) * 2) 0;
 }
 /* What this vault cannot pay yet, in the ink a risk is written in. The element
    selector is load-bearing: `.pixel-ui small` is soft ink at a higher

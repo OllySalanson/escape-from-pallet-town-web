@@ -31,16 +31,16 @@ import {
  */
 
 /** What the link needs from the network. */
-export interface HarbourWire {
+export interface HarbourWire<P extends string = HarbourPlace> {
   /**
    * Joins the channel, seen as `as` (a player id) or only watching (null), and
    * says through `heard` everything that arrives. Resolves false if it could
    * not join.
    */
-  join(as: string | null, place: HarbourPlace | null, heard: HarbourHeard): Promise<boolean>;
+  join(as: string | null, place: P | null, heard: HarbourHeard<P>): Promise<boolean>;
   /** Says where this player is, or (null) that they are not standing anywhere. */
-  standIn(place: HarbourPlace | null): void;
-  send(move: HarbourMove): void;
+  standIn(place: P | null): void;
+  send(move: HarbourMove<P>): void;
   /** Tells one other player's browser to look now (`HarbourNudge`). */
   nudge(nudge: HarbourNudge): void;
   /** The names on the doors of these players, as the database has them. */
@@ -48,15 +48,15 @@ export interface HarbourWire {
   leave(): Promise<void>;
 }
 
-export interface HarbourHeard {
-  move(move: HarbourMove): void;
+export interface HarbourHeard<P extends string = HarbourPlace> {
+  move(move: HarbourMove<P>): void;
   nudge(nudge: HarbourNudge): void;
   /** Everybody present now, and where each says they are. */
-  present(members: ReadonlyMap<string, HarbourPlace>): void;
+  present(members: ReadonlyMap<string, P>): void;
 }
 
 /** Another player as drawn: where, and the name on their door. */
-export interface NamedFigure extends HarbourFigure {
+export interface NamedFigure<P extends string = HarbourPlace> extends HarbourFigure<P> {
   readonly name: string;
 }
 
@@ -69,16 +69,16 @@ export const LEAVE_AFTER_MS = 60_000;
 /** The least time between two "here I am" answers to somebody arriving. */
 export const GREET_EVERY_MS = 1_500;
 
-export class HarbourLink {
-  private readonly crowd = new HarbourCrowd();
+export class HarbourLink<P extends string = HarbourPlace> {
+  private readonly crowd = new HarbourCrowd<P>();
   private readonly names = new Map<string, string>();
   private readonly asked = new Set<string>();
-  private members: ReadonlyMap<string, HarbourPlace> = new Map();
+  private members: ReadonlyMap<string, P> = new Map();
   private joined: 'no' | 'joining' | 'yes' = 'no';
   /** Who the channel was joined as, which is who the channel will take words from. */
   private joinedAs: string | null = null;
   private me: string | null = null;
-  private place: HarbourPlace | null = null;
+  private place: P | null = null;
   private tile: GridPosition = { x: 0, y: 0 };
   private facing: Direction = 'down';
   private pending: GridPosition[] = [];
@@ -88,15 +88,17 @@ export class HarbourLink {
   private awaySince: number | null = null;
   private now = 0;
   private onNudge: ((from: string) => void) | null = null;
+  /** Counts every `leave`, so a join still on its way when the link was left is let go of. */
+  private generation = 0;
 
-  private readonly wire: HarbourWire;
+  private readonly wire: HarbourWire<P>;
 
-  public constructor(wire: HarbourWire) {
+  public constructor(wire: HarbourWire<P>) {
     this.wire = wire;
   }
 
   /** The player is standing here now: a scene has opened on this place. */
-  public enter(me: string | null, place: HarbourPlace | null, tile: GridPosition, facing: Direction): void {
+  public enter(me: string | null, place: P | null, tile: GridPosition, facing: Direction): void {
     this.awaySince = null;
     this.tile = { ...tile };
     this.facing = facing;
@@ -177,7 +179,7 @@ export class HarbourLink {
   }
 
   /** Everybody else standing in one place, by the names on their doors. */
-  public figuresIn(place: HarbourPlace | null): readonly NamedFigure[] {
+  public figuresIn(place: P | null): readonly NamedFigure<P>[] {
     if (place === null) {
       return [];
     }
@@ -207,6 +209,38 @@ export class HarbourLink {
     return [...this.members.keys()].filter((id) => id !== this.me && this.names.has(id)).length;
   }
 
+  /** Everybody else on the channel the database has a name for, and where each says they are. */
+  public othersPresent(): ReadonlyMap<string, { readonly name: string; readonly place: P }> {
+    const present = new Map<string, { readonly name: string; readonly place: P }>();
+    for (const [id, place] of this.members) {
+      const name = this.names.get(id);
+      if (id !== this.me && name) {
+        present.set(id, { name, place });
+      }
+    }
+    return present;
+  }
+
+  /**
+   * Off the channel now rather than after the away grace: the place this link
+   * was for is over for this player (a raid room, once its raid has ended).
+   * Everybody else sees them go at once.
+   */
+  public leave(): void {
+    this.generation += 1;
+    const was = this.joined;
+    this.joined = 'no';
+    this.joinedAs = null;
+    this.place = null;
+    this.awaySince = null;
+    this.pending = [];
+    this.members = new Map();
+    this.crowd.clear();
+    if (was === 'yes') {
+      void this.wire.leave();
+    }
+  }
+
   private seen(): boolean {
     return this.joined === 'yes' && this.me !== null && this.place !== null;
   }
@@ -228,18 +262,34 @@ export class HarbourLink {
   private join(): void {
     const as = this.me;
     const at = as ? this.place : null;
+    const generation = this.generation;
     this.joined = 'joining';
     void this.wire
       .join(as, at, {
-        move: (move) => this.crowd.hear(move),
+        move: (move) => {
+          if (generation === this.generation) {
+            this.crowd.hear(move);
+          }
+        },
         nudge: (nudge) => {
-          if (nudge.to === this.me) {
+          if (generation === this.generation && nudge.to === this.me) {
             this.onNudge?.(nudge.from);
           }
         },
-        present: (members) => this.hearPresent(members),
+        present: (members) => {
+          if (generation === this.generation) {
+            this.hearPresent(members);
+          }
+        },
       })
       .then((ok) => {
+        if (generation !== this.generation) {
+          // Left while the join was on its way.
+          if (ok) {
+            void this.wire.leave();
+          }
+          return;
+        }
         if (!ok) {
           // Tried again the next time the player walks through a door.
           this.joined = 'no';
@@ -269,7 +319,7 @@ export class HarbourLink {
     });
   }
 
-  private hearPresent(members: ReadonlyMap<string, HarbourPlace>): void {
+  private hearPresent(members: ReadonlyMap<string, P>): void {
     const arrived = [...members.keys()].some((id) => id !== this.me && !this.members.has(id));
     for (const id of this.members.keys()) {
       if (!members.has(id)) {
