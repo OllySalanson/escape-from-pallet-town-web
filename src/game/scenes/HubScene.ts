@@ -81,6 +81,7 @@ import {
   gridCells,
   isFoundOnly,
   isFurniture,
+  itemAmountsFor,
   type ItemDefinition,
   type ItemId,
   type PackItemId,
@@ -611,8 +612,8 @@ export class HubScene extends Phaser.Scene {
     }
     const short = missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
     return short.length === 0
-      ? `<p class="px-note px-wrap carry-note">${contract!.name}: ${formatStacks(required)} packed for the drop. They are spent when you hand them over.</p>`
-      : `<p class="px-warning px-wrap carry-note">${contract!.name} needs ${formatStacks(required)} in your pack. Still short: ${formatStacks(short)}.</p>`;
+      ? `<p class="px-note px-wrap carry-note">${contract!.name}: ${itemAmountsFor(required)} packed for the drop. They are spent when you hand them over.</p>`
+      : `<p class="px-warning px-wrap carry-note">${contract!.name} needs ${itemAmountsFor(required)} in your pack. Still short: ${itemAmountsFor(short)}.</p>`;
   }
 
   /**
@@ -3494,10 +3495,10 @@ export class HubScene extends Phaser.Scene {
             id: barter.id,
             icon: iconMarkup(barter.icon, barter.name),
             name: count > 1 ? `${barter.name} ×${count}` : barter.name,
-            question: `Hand over ${formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for good?`,
+            question: `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for good?`,
             confirm: `data-barter-confirm="${barter.id}"`,
             confirmLabel: 'Hand it over',
-            confirmHelp: `Spends ${escapeAttribute(formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
+            confirmHelp: `Spends ${escapeAttribute(itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
           });
         }
         // A struck deal's price column says it is paid, as a built rung's does:
@@ -3523,7 +3524,7 @@ export class HubScene extends Phaser.Scene {
         const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
         const help =
           offer.refusal === undefined
-            ? `Hand over ${formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? `a ${barter.name}` : `${count} ${barter.name}s`}. He asks again.`
+            ? `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? `a ${barter.name}` : `${count} ${barter.name}s`}. He asks again.`
             : offer.message ?? '';
         const wiring =
           offer.refusal === undefined
@@ -3749,7 +3750,7 @@ export class HubScene extends Phaser.Scene {
     if (offer.state === 'locked') {
       return `${offer.upgrade.name} is built after ${offer.requires?.name ?? 'an earlier upgrade'}.`;
     }
-    return `${offer.upgrade.name} still needs ${formatStacks(offer.suppliesShort)}.`;
+    return `${offer.upgrade.name} still needs ${itemAmountsFor(offer.suppliesShort)}.`;
   }
 
   /**
@@ -3772,7 +3773,7 @@ export class HubScene extends Phaser.Scene {
       .map((offer) => {
         const { upgrade } = offer;
         if (this.workshopArmed === upgrade.id) {
-          const spent = formatStacks(upgrade.cost.supplies);
+          const spent = itemAmountsFor(upgrade.cost.supplies);
           return this.armedDeal({
             id: upgrade.id,
             icon: iconMarkup(upgrade.icon, upgrade.name),

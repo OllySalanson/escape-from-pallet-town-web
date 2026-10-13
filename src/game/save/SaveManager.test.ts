@@ -1697,6 +1697,8 @@ describe('SaveManager', () => {
     const struck = saves.takeTraderBarter('barter-quick-claw', 1, new Date(2026, 8, 24));
     expect(struck).toMatchObject({ ok: true });
     expect(struck.message).toContain('shelves');
+    // Said as a sentence, not as the price column's `2× Parts crate` tag.
+    expect(struck.message).toBe('Traded 2 Parts crates and 1 Cable coil for the Quick Claw. It goes on his shelves.');
     // A refused deal writes nothing.
     expect(saves.takeTraderBarter('barter-quick-claw').ok).toBe(false);
 

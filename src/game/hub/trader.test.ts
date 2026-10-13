@@ -386,7 +386,7 @@ describe('the barter table', () => {
     const empty = counter({ progress: PARTNER, stash: new Stash({ items: MINIMUM_SUPPLIES }) });
     const offer = checkBarter(empty, 'barter-quick-claw');
     expect(offer?.refusal).toBe('goods-short');
-    expect(offer?.message).toContain('Parts crate');
+    expect(offer?.message).toBe('Still short 2 Parts crates and 1 Cable coil.');
     expect(barterShortfall(empty.stash, TRADER_BARTERS[0]).length).toBeGreaterThan(0);
   });
 

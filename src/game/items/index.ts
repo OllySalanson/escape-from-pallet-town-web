@@ -62,6 +62,7 @@ export {
   currentItemId,
   formatMoney,
   itemAmountFor,
+  itemAmountsFor,
   itemCountTag,
   FOUND_ONLY_IDS,
   MACHINE_ITEM_IDS,

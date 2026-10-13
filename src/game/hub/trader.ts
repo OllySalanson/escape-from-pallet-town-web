@@ -3,6 +3,7 @@ import {
   formatMoney,
   getItemById,
   isFoundOnly,
+  itemAmountsFor,
   SECURE_COLUMNS_PER_UPGRADE,
   type GridSize,
   type ItemId,
@@ -730,7 +731,7 @@ function judgeBarter(counter: TraderCounter, barter: TraderBarter, quantity = 1)
   }
   const short = barterShortfall(counter.stash, barter, quantity);
   if (short.length > 0) {
-    return refuse('goods-short', `Still short ${formatTraderStacks(short)}.`);
+    return refuse('goods-short', `Still short ${itemAmountsFor(short)}.`);
   }
   return {};
 }

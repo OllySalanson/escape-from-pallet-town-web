@@ -1574,7 +1574,7 @@ describe('Brock', () => {
     const pane = markupOf(hub).slice(markupOf(hub).indexOf('data-shown-by="beacon"'));
 
     // No lamp oil and no cable at all.
-    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 4× Lamp oil, 3× Cable coil.</span>');
+    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 4 Lamp oils and 3 Cable coils.</span>');
   });
 
   it('names the materials it is spending, and asks before it spends them', () => {
@@ -1588,7 +1588,7 @@ describe('Brock', () => {
     // The row becomes the question, as Bill's barters do, with the cursor on
     // the answer that changes nothing and on no other row.
     expect(hub.workshopArmed).toBe('secure-locker-1');
-    expect(armed).toContain('Spend 4× Parts crate on it for good?');
+    expect(armed).toContain('Spend 4 Parts crates on it for good?');
     expect(armed).toContain('data-outfit-confirm="secure-locker-1"');
     expect(armed).toMatch(/data-deal-cancel data-cursor-start[^>]*>Keep them</);
     expect(armed.match(/data-cursor-start/g)).toHaveLength(1);
@@ -1665,7 +1665,7 @@ describe('Brock', () => {
     // Choosing a rung that cannot be paid for is answered, and goes nowhere.
     workshop.armUpgrade('radio-mast');
     const refused = markupOf(hub);
-    expect(refused).toContain('Radio mast still needs 3× Radio valve, 1× Mooring rope.');
+    expect(refused).toContain('Radio mast still needs 3 Radio valves and 1 Mooring rope.');
     expect(refused).not.toContain('data-outfit-confirm');
   });
 
@@ -2010,7 +2010,7 @@ describe('HubScene - Bill', () => {
     armed.traderArmed = 'barter-quick-claw';
     const asking = markupOf(hub);
 
-    expect(asking).toContain('Hand over 2× Parts crate, 1× Cable coil for good?');
+    expect(asking).toContain('Hand over 2 Parts crates and 1 Cable coil for good?');
     expect(asking).toMatch(/data-deal-cancel[^>]*data-cursor-start/);
     expect(asking).toContain('data-barter-confirm="barter-quick-claw"');
     // The armed row is no longer the one-press deal it replaced.

@@ -11,6 +11,8 @@ import {
   currentItemId,
   formatMoney,
   isFoundOnly,
+  itemAmountFor,
+  itemAmountsFor,
   readArrangement,
   type GridArrangement,
 } from '../items';
@@ -21,7 +23,6 @@ import {
   checkPurchase,
   clampTraderBarters,
   clampTraderCount,
-  formatTraderStacks,
   type TraderCounter,
   type TraderProgress,
 } from '../hub/trader';
@@ -1389,8 +1390,8 @@ export class SaveManager {
       ok: true,
       message:
         times === 1
-          ? `Traded ${formatTraderStacks(offer.barter.takes)} for the ${offer.barter.name}. It goes on his shelves.`
-          : `Traded ${formatTraderStacks(offer.barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * times })))} for ${times} ${offer.barter.name}s. It all goes on his shelves.`,
+          ? `Traded ${itemAmountsFor(offer.barter.takes)} for the ${offer.barter.name}. It goes on his shelves.`
+          : `Traded ${itemAmountsFor(offer.barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * times })))} for ${itemAmountFor(offer.barter.gives.itemId, offer.barter.gives.quantity * times)}. It all goes on his shelves.`,
       saved: this.save({ ...game, raidProgress }),
     };
   }

@@ -1140,6 +1140,18 @@ export function itemAmountFor(itemId: string, quantity: number): string {
 }
 
 /**
+ * Several quantities as a sentence says them: "2 Parts crates and 1 Cable
+ * coil". The `2× Parts crate` tag is for a price column or a row's count, where
+ * it stands beside other figures; in a sentence it read as a stock list.
+ */
+export function itemAmountsFor(stacks: readonly { readonly itemId: string; readonly quantity: number }[]): string {
+  const amounts = stacks.map(({ itemId, quantity }) => itemAmountFor(itemId, quantity));
+  return amounts.length <= 1
+    ? amounts.join('')
+    : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
+}
+
+/**
  * How many of an item a row holds, in the tag beside its name: "×3", and for
  * money the amount, "₽40", because a count of Pokedollars is a sum.
  */
