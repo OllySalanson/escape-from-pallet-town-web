@@ -1045,20 +1045,29 @@ summit empty for anyone who had caught the first. Mew is the one Pokemon of the
 The plan names what each place needs and does not have yet, in its `reach`;
 `world.mts` prints them with the plan. Shared needs:
 
-- **Sailing** (Frostreef and Ember Isle). A boat boarded at a jetty carries the
-  player tile by tile along the plan's route across the open sea and lands at
-  the far jetty. It runs only inside its window, and the clock is charged as
-  walking is. The hunter cannot follow over water. The plan holds each route a
-  cell at a time over sea cells (`sailings`).
+- **Sailing** (Frostreef and Ember Isle) - **built with Frostreef**. A boat
+  boarded at a jetty carries the player tile by tile along the plan's route
+  across the open sea and lands at the far jetty. It runs only inside its
+  window, and the clock is charged as walking is. The hunter cannot follow over
+  water. The plan holds each route a cell at a time over sea cells
+  (`sailings`); the stitcher turns each into a boat link in the shipped file
+  once both its jetties are drawn ([Frostreef](#frostreef) says how). Ember
+  Isle's Smugglers' Run needs nothing more than its own jetty drawn.
 - **A switch** (the Lost Garden's boulder plates, the Bunker's generator). A
   plate a boulder rests on, or a lever, that opens a barrier for the rest of the
   raid. **Built with the Lost Garden** ([below](#the-lost-garden)): an area's
   `switches` and `barriers` (`world/switches.ts`).
 - **A floor that carries you on** (Frostreef's ice, the Bunker's spinner
-  tiles). A step continues the same way until something stops it.
+  tiles) - **built with Frostreef**, as ice. A step continues the same way
+  until something stops it. `carriedOn` in `world/slidingFloor.ts` is the one
+  question the scene asks, so a spinner is another answer to it: a tile that
+  names its own way rather than keeping the one you came in on.
 - **A gear row each** for the Spell Tag, the Miracle Seed, the NeverMeltIce and
   Charcoal, and **a habitat each** for the summit, the garden, the haunted fell,
-  the ice and the volcano, measured as every table is.
+  the ice and the volcano, measured as every table is. The NeverMeltIce and the
+  ice are in: the gear is FireRed's type-boosting kind (`type-boost` in
+  `items.ts`), which the other three are rows of too, and a far place's
+  only-here find is a row of `BUILT_IN_FILE_PRIZES` (`world/filePrizes.ts`).
 
 One per place:
 

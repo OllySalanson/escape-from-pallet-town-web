@@ -3,11 +3,10 @@
 // sea, the north shore, Berg Cave's two floors of sliding ice, the frozen
 // lagoon and Lapras on it, and away on the whalers' boat.
 //
-//   node tools/playtest/frostreef.mjs <dev server url> <out dir> [--port=N] [--real]
+//   node tools/playtest/frostreef.mjs <url of a test-mode build> <out dir> [--port=N] [--real]
 //
 // Every press on the ice is planned the way the player has to plan it, by
-// sliding (`src/game/world/slidingFloor.ts`, imported from the dev server), and
-// then pressed as a key; the driver never moves the player itself. It fails
+// sliding (`src/game/world/slidingFloor.ts`'s rule), and then pressed as a key; the driver never moves the player itself. It fails
 // if the boat does not take the player across, if a floor cannot be crossed,
 // if Lapras is not there, or if the raid does not end at the whalers' boat.
 // Screenshots of each stage land in <out dir>.
@@ -99,7 +98,17 @@ try {
    */
   const plan = (goals, avoidIce) =>
     page.evaluate(`(async () => {
-      const { slideStops } = await import('/src/game/world/slidingFloor.ts');
+      // The game's own rule (world/slidingFloor.ts), restated here because a
+      // build serves no source modules: a step onto ice carries on until the
+      // next tile is blocked or the step lands on ground that does not carry.
+      const deltas = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+      const slideStops = (terrain, blocked, from, direction) => {
+        const [dx, dy] = deltas[direction];
+        let at = { x: from.x + dx, y: from.y + dy };
+        if (blocked(at)) return null;
+        while (terrain[at.y][at.x] === 'ice' && !blocked({ x: at.x + dx, y: at.y + dy })) at = { x: at.x + dx, y: at.y + dy };
+        return at;
+      };
       const w = ${WORLD}; const map = w.currentMap; const width = map.width;
       const goals = new Set(${JSON.stringify(goals)});
       const dirs = [['up', 'ArrowUp'], ['down', 'ArrowDown'], ['left', 'ArrowLeft'], ['right', 'ArrowRight']];
@@ -181,7 +190,7 @@ try {
   await shot('04-ice-jetty');
 
   // -- Under the berg ------------------------------------------------------------
-  await walk([frost(46, 23)], 'to the berg', { avoidIce: true });
+  await walk([frost(46, 27)], 'to the berg', { avoidIce: true });
   await shot('05-berg-mouth');
   await press('ArrowUp');
   await wait(600);
@@ -193,19 +202,19 @@ try {
   await press('ArrowUp');
   await wait(600);
   await settle();
-  const exit2 = await areaTile('berg-cave-b1f', 9, 17);
+  const exit2 = await areaTile('berg-cave-b1f', 9, 16);
   await walk([exit2], 'across B1F to the way out');
   await shot('08-b1f-crossed');
   await press('ArrowDown');
   await wait(600);
   await settle();
   await shot('09-the-frozen-lagoon');
-  check(JSON.stringify((await state()).tile) === JSON.stringify({ x: 331, y: 350 }), 'out of the cave onto the lagoon shore');
+  check(JSON.stringify((await state()).tile) === JSON.stringify({ x: 331, y: 354 }), 'out of the cave onto the lagoon shore');
 
   // -- Lapras, on the lagoon ---------------------------------------------------
-  const beside = [frost(31, 36), frost(33, 36), frost(32, 37)];
+  const beside = [frost(28, 37), frost(30, 37), frost(29, 36), frost(29, 38)];
   await walk(beside, 'to Lapras');
-  const lapras = await page.evaluate(`(() => { const w = ${WORLD}; const t = w.currentTile; return ['up','down','left','right'].find((d) => { const n = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] }[d]; return t.x + n[0] === ${320 + 32} && t.y + n[1] === ${320 + 36}; }); })()`);
+  const lapras = await page.evaluate(`(() => { const w = ${WORLD}; const t = w.currentTile; return ['up','down','left','right'].find((d) => { const n = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] }[d]; return t.x + n[0] === ${320 + 29} && t.y + n[1] === ${320 + 37}; }); })()`);
   check(Boolean(lapras), 'stood beside Lapras');
   await press({ up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }[lapras]);
   await wait(200);
