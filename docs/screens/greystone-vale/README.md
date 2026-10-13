@@ -6,11 +6,12 @@ is the plan, before any district was drawn:
 
 ![plan](plan.png)
 
-And the vale as it ships now, with Millbrook, High Moor and Reedmere drawn:
+And the vale as it ships now, with Millbrook, High Moor, Reedmere and Gull
+Strand drawn:
 every district still to draw is wood, and each road into one runs into the
 trees at a way out.
 
-![the vale with Millbrook, High Moor and Reedmere drawn](vale.png)
+![the vale as it ships](vale.png)
 
 ![Millbrook](millbrook.png)
 
@@ -340,6 +341,52 @@ Round 3's remaining fault, for the next pass: there is little to find beyond
 the grass.
 
 ![Reedmere as first drawn](reedmere-first-draw.png)
+
+## Gull Strand
+
+The coast in the south, where the river meets the sea, judged on the sea
+cliffs and the strand.
+
+- **The heath:** the river comes down from The Crossing across it. The road
+  comes down beside the river to the strand and branches east to the
+  orchards. The trail from Reedmere crosses the river on a stone bridge.
+- **The cliffs:** a band of rock with a cove under it. The sea comes in behind
+  a sand bar to make a lagoon, there is a tide pool in the rocks, and stone
+  steps lead down from the cliff-top path. The sea cave's mouth is planted in
+  the cliff foot once the Greystone Caves are stitched into the vale.
+- **The strand:** the landing, among rocks drawn up on the sand. A net loft
+  stands on the heath above it with a fenced garden, and stepping stones cross
+  the river mouth at low tide.
+- **Fisher's Jetty:** the way off the map, a stone jetty out over the sea with
+  FireRed's ferry moored at it.
+
+![Gull Strand](gull-strand.png)
+
+Judged blind beside FireRed's coast: two windows of Vermilion City's harbour,
+and one each of Route 19, Route 12 and Route 24. Round 1 was void: a broken
+Route 19 window is mostly water, so swapping its blocks hardly broke it, and
+both judges scored it as well as a real map. A broken Route 12 replaced it.
+
+| Round | Real mean | Gull Strand |
+|---|---|---|
+| 1 (void) | 6.2, 5.8 | 5 and 3, 3 and 5 |
+| 2 | 6.0, 5.6 | **5 and 5, 6 and 5: passes** (one judge took the cliffs for real) |
+
+What round 2 fixed was what round 1's judges named:
+
+- the west half's featureless slab of rock with no path, which became the
+  cliff band, the cove and the steps;
+- an empty lawn with features dotted about, so the wood came in down the
+  heath's east side and the grass beds grew.
+
+After round 2, three rocks were added round the landing, because holding any
+direction from a landing has to meet something within four steps
+(`mapStructure.testkit.ts`).
+
+Round 2's remaining faults, for the next pass: the lagoon's stepped bank, the
+straight line of the cliff, and the empty grass on the heath.
+
+![Gull Strand as first drawn](gull-strand-first-draw.png)
 
 ## How it ships
 

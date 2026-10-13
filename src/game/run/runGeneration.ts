@@ -258,6 +258,13 @@ export const RUN_INSERTIONS = {
     position: { x: 22, y: 37 },
     description: 'The top of the drove road on High Moor, with the Grey Stones ahead and Millbrook below.',
   },
+  'greystone-vale-the-strand': {
+    id: 'greystone-vale-the-strand',
+    label: 'The Strand',
+    mapId: 'greystone-vale',
+    position: { x: 105, y: 173 },
+    description: 'The strand on Gull Strand, where the road comes down to the sea and the jetty runs out.',
+  },
 } as const satisfies Record<string, BuiltInInsertion>;
 
 interface BuiltInInsertion {
