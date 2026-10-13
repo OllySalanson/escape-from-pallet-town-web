@@ -95,6 +95,7 @@ export function deployOptions(args) {
   const list = (name) => (option(name) ?? '').split(',').filter(Boolean);
   return {
     insertion: option('insertion'),
+    explorer: args.includes('--explorer'),
     beaten: list('beaten'),
     opened: list('opened'),
     stash: list('stash'),
@@ -117,9 +118,17 @@ export function deployOptions(args) {
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
  * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, explorer = false, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
+  // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
+  // its own save, every map's landings offered - the one way to a map still
+  // being drawn (`MAPS_IN_PROGRESS`) - and its partner a Charmander.
+  if (explorer) {
+    await press('ArrowDown'); await press('ArrowRight'); await press('Space');
+    await until(sceneIs('base'));
+    return enterRaid(page, { press, click, until, wait, insertion, starter: 'Charmander', team: [], pack: [], secure: [] });
+  }
   await press('Space'); await until(sceneIs('starter'));
   // The picker's three cards are the three starters, and which one is taken is
   // a real variable for anything measured per starter: the Floodplain
@@ -187,6 +196,11 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
     await press('Space'); await until(sceneIs('base'));
     console.log(`continuing from a save with: ${JSON.stringify(await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`))}`);
   }
+  return enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure });
+}
+
+/** From the harbour into a raid: Oak's Lab, the party, the pack, the drop-in. */
+async function enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure }) {
   // The lobby is a town now, and preparation is done inside Oak's Lab.
   await walkIntoBase(page, 'oaks-lab', { press, until, wait });
   await click('Start a raid');
