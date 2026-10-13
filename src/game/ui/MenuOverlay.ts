@@ -184,6 +184,22 @@ export class MenuOverlay {
     if (!direction) {
       return false;
     }
+    // A pane of words with no control in it is a cursor stop of its own, and
+    // Up and Down read on through it until its end before the cursor leaves.
+    const active = document.activeElement;
+    if (
+      (direction === 'up' || direction === 'down') &&
+      active instanceof HTMLElement &&
+      this.root.contains(active) &&
+      active.matches(READING_PANES)
+    ) {
+      const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 1;
+      const to = readOn(active, direction, unit);
+      if (to !== null) {
+        active.scrollTop = to;
+        return true;
+      }
+    }
     const controls = this.cursorControls();
     const current = controls.indexOf(document.activeElement as HTMLElement);
     const panes: HTMLElement[] = [];
@@ -433,6 +449,9 @@ export class MenuOverlay {
       }
       const scrolled = unit > 0 && pane.scrollTop > 0.5;
       const more = unit > 0 && hasMoreBelow(pane, unit);
+      if (pane.hasAttribute('data-reads')) {
+        markReadingPane(pane, scrolled || more);
+      }
       const box = pane.getBoundingClientRect();
       const rows =
         scrolled || more
@@ -853,8 +872,53 @@ export function settledScrollTop(
 }
 
 /** Everything on a pixel-ui screen that takes its width from the words inside it. */
+/**
+ * A pane of words that holds no control: the result screen's ledger and its
+ * gamble. It opts in with `data-reads`, and only while it has more to show
+ * than fits is it a stop for the cursor (`markReadingPane`), lit like a row.
+ */
+const READING_PANES = '.px-scroll[data-reads][tabindex]';
+
 /** What the arrow keys can rest on: a text field is one, so a keyboard can reach it. */
-const CURSOR_CONTROLS = 'button:not([disabled]), input:not([disabled])';
+const CURSOR_CONTROLS = `button:not([disabled]), input:not([disabled]), ${READING_PANES}`;
+
+/**
+ * Makes a `data-reads` pane a cursor stop while it overflows, and takes the
+ * stop away once everything in it fits. A pane with a control inside is never
+ * one: its rows are the stops, and the focus scrolls them into view.
+ */
+function markReadingPane(pane: HTMLElement, overflows: boolean): void {
+  const reads = overflows && !pane.querySelector('button:not([disabled]), input:not([disabled])');
+  if (reads) {
+    pane.tabIndex = -1;
+  } else {
+    pane.removeAttribute('tabindex');
+  }
+}
+
+/** How far one press of Up or Down reads on through a pane: one row's height. */
+export const READ_STEP_UNITS = 16;
+
+/**
+ * Where a press of Up or Down leaves a reading pane's scroll, or null where the
+ * pane has nothing further that way and the cursor should move on instead.
+ *
+ * Without it the result screen's ledger had no control in it to walk to, so
+ * the arrow keys never reached it and the end of a long contract could only be
+ * read with the mouse wheel.
+ */
+export function readOn(
+  pane: { readonly scrollTop: number; readonly scrollHeight: number; readonly clientHeight: number },
+  direction: 'up' | 'down',
+  unit = 1,
+): number | null {
+  const bottom = Math.max(0, pane.scrollHeight - pane.clientHeight);
+  const step = READ_STEP_UNITS * unit;
+  if (direction === 'down') {
+    return hasMoreBelow(pane, unit) ? Math.min(bottom, pane.scrollTop + step) : null;
+  }
+  return pane.scrollTop > 0.5 ? Math.max(0, pane.scrollTop - step) : null;
+}
 
 const TEXT_SIZED_BOXES = '.px-name, .px-tag, .px-button, .px-chip, .px-back, .px-type, .px-place, .px-rail li';
 

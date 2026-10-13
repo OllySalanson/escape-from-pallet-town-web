@@ -20,6 +20,8 @@ import {
   foldedRows,
   hasMoreBelow,
   moreLabel,
+  READ_STEP_UNITS,
+  readOn,
   rowPieces,
   SCROLL_ROWS,
   scrollCoverHeight,
@@ -313,6 +315,74 @@ describe('the result screen ledger', () => {
     expect(entries).toHaveLength(9);
     // Everything is below a fold at 90: seven supplies, the shelf row and the button.
     expect(moreLabel(entries, 90)).toBe('9 MORE');
+  });
+});
+
+/**
+ * Played to the end of a Route 1 raid at 1200x768: the BANKED pane ran past its
+ * fold and held no control, so the arrow keys never reached it and the rest of
+ * the contract could only be read with the mouse wheel.
+ */
+describe('reading the result screen with the keyboard', () => {
+  const report = {
+    outcome: 'ESCAPED',
+    ledger: { pokemon: [], items: [] },
+    ledgerHeading: 'Banked',
+    ledgerEmptyText: 'Nothing.',
+    contract: { description: 'Survey the braid', complete: true, reward: 'A long reward.' },
+    secured: { pokemon: [], items: [] },
+    risked: { pokemon: [], items: [] },
+    securedEmptyText: 'Nothing secured.',
+    gambleVerdict: 'Nothing was at risk.',
+    progress: [],
+    gear: [],
+    gearSummary: null,
+    pack: null,
+    packSummary: null,
+  } as unknown as ExtractionReport;
+
+  it('marks both panes of words as ones the arrow keys read through', () => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    Object.assign(scene as object, { report });
+    const panels = scene as unknown as { ledgerPanel(): string; gamblePanel(): string };
+
+    expect(panels.ledgerPanel()).toContain('px-scroll" data-reads');
+    expect(panels.gamblePanel()).toContain('px-scroll" data-reads');
+  });
+
+  it('hands the arrow keys to the cursor once the screen answers, and leaves on Enter as before', () => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const moveCursor = vi.fn((key: string) => key.startsWith('Arrow'));
+    const leave = vi.fn();
+    Object.assign(scene as object, { report, locked: false, sequencePlaying: false, overlay: { moveCursor }, leave });
+    const press = (key: string) => {
+      const preventDefault = vi.fn();
+      (scene as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({ key, preventDefault } as unknown as KeyboardEvent);
+      return preventDefault;
+    };
+
+    expect(press('ArrowDown')).toHaveBeenCalled();
+    expect(moveCursor).toHaveBeenCalledWith('ArrowDown');
+    expect(leave).not.toHaveBeenCalled();
+    press('Enter');
+    expect(leave).toHaveBeenCalledTimes(1);
+
+    Object.assign(scene as object, { locked: true });
+    moveCursor.mockClear();
+    press('ArrowUp');
+    expect(moveCursor).not.toHaveBeenCalled();
+  });
+
+  it('reads on a row at a time, and lets the cursor leave only at the end', () => {
+    // The live BANKED pane: 439 pixels of rows in a 428-pixel window, at 2x.
+    const unit = 2;
+    const pane = { scrollTop: 0, scrollHeight: 439 * unit, clientHeight: 400 * unit };
+    expect(readOn(pane, 'up', unit)).toBeNull();
+    expect(readOn(pane, 'down', unit)).toBe(READ_STEP_UNITS * unit);
+    expect(readOn({ ...pane, scrollTop: 32 * unit }, 'down', unit)).toBe(39 * unit);
+    expect(readOn({ ...pane, scrollTop: 39 * unit }, 'down', unit)).toBeNull();
+    expect(readOn({ ...pane, scrollTop: 39 * unit }, 'up', unit)).toBe(23 * unit);
+    expect(readOn({ ...pane, scrollTop: 10 * unit }, 'up', unit)).toBe(0);
   });
 });
 

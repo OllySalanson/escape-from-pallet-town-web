@@ -1557,6 +1557,13 @@ button {
 .pixel-ui .px-step:focus {
   background: var(--cream-lit);
 }
+/* A pane of words the arrow keys read through (`data-reads` in
+   `MenuOverlay.ts`) is lit like a row while the cursor is in it. */
+.pixel-ui .px-scroll[data-reads]:focus {
+  outline: none;
+  --fill: var(--cream-lit);
+  background: var(--cream-lit);
+}
 .pixel-ui button.px-row.is-selected:focus {
   background: #d5f2e0;
 }
