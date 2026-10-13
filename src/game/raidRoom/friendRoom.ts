@@ -2,6 +2,7 @@ import type { Direction, GridPosition } from '../movement/gridMovement';
 import { HarbourLink, type HarbourWire, type NamedFigure } from '../harbour/harbourLink';
 import { LOCAL_NAME_KEY, localIdentity, pageHarbourMode } from '../harbour/harbour';
 import { loadPlayerName } from '../console/playerName';
+import { HunterBoard, encodeHunterSignal, readHunterSignal, type HunterSignal } from './groupHunter';
 import { mapPlace, type RaidPlace } from './raidProtocol';
 import { liveRaidWire, localRaidWire } from './raidWire';
 import { liveRoomService, localRoomService, type HeldRoom, type RaidRoomService, type RoomAnswer } from './roomService';
@@ -49,6 +50,14 @@ export class FriendRoom {
   private known = new Map<string, string>();
   private lastNews: FriendNews | null = null;
   private now = 0;
+  /** What this browser has heard of the room's one hunter (`groupHunter.ts`). */
+  public readonly hunters = new HunterBoard();
+  /**
+   * The fight this player is in, said to the room when it began, so the world
+   * rebuilt after it knows to say it is over - and, after the hunter's own
+   * fight, what it left of the hunter. Kept here because the world is not.
+   */
+  public fighting: 'wild' | 'hunter' | null = null;
 
   private readonly service: RaidRoomService;
   private readonly wireFor: (code: string) => HarbourWire<RaidPlace>;
@@ -92,6 +101,8 @@ export class FriendRoom {
     this.link = null;
     this.known.clear();
     this.lastNews = null;
+    this.hunters.clear();
+    this.fighting = null;
     void this.service.leave(held.code);
   }
 
@@ -135,6 +146,19 @@ export class FriendRoom {
     return this.held?.mapId === mapId ? (this.link?.figuresIn(mapPlace(mapId)) ?? []) : [];
   }
 
+  /** Everybody else on the room's map right now, by id. */
+  public othersOn(mapId: string): readonly FriendHere[] {
+    return this.friends().filter((friend) => friend.place === mapPlace(mapId));
+  }
+
+  /** Tells everybody else about the hunter. Returns whether anybody was there to tell. */
+  public sayHunter(signal: HunterSignal): boolean {
+    if (signal.kind !== 'busy') {
+      this.hunters.said(signal.hunter, signal.from, this.now);
+    }
+    return this.link?.signal(encodeHunterSignal(signal)) ?? false;
+  }
+
   /** Who came or went in the last `FRIEND_NEWS_MS`, if anybody. */
   public news(): FriendNews | null {
     return this.lastNews && this.now - this.lastNews.at < FRIEND_NEWS_MS ? this.lastNews : null;
@@ -146,7 +170,15 @@ export class FriendRoom {
       return;
     }
     this.tile = { ...tile };
-    this.link ??= new HarbourLink<RaidPlace>(this.wireFor(held.code));
+    if (!this.link) {
+      this.link = new HarbourLink<RaidPlace>(this.wireFor(held.code));
+      this.link.whenSignalled((payload) => {
+        const signal = readHunterSignal(payload);
+        if (signal && signal.from !== this.held?.me) {
+          this.hunters.hear(signal, this.now);
+        }
+      });
+    }
     this.link.enter(held.me, place, tile, facing);
   }
 
@@ -170,6 +202,7 @@ export class FriendRoom {
     for (const [id, name] of this.known) {
       if (!present.has(id)) {
         this.known.delete(id);
+        this.hunters.forget(id);
         this.lastNews = { name, came: false, at: nowMs };
       }
     }
