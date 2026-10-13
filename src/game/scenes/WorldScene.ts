@@ -156,6 +156,7 @@ import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
+import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
 import { arrivalPlace } from '../base/partner';
@@ -2672,12 +2673,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.runSession || !areas) {
       return;
     }
-    const ARROWS: Readonly<Record<Direction, string>> = {
-      up: '↑',
-      down: '↓',
-      left: '←',
-      right: '→',
-    };
     const doorways: { readonly spec: WorldLabelSpec; readonly key: string }[] = [];
     for (const warp of this.currentMap.warps) {
       if (
@@ -2703,7 +2698,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const bottom = Math.max(warp.source.y, doorway.y, art.y + art.height - 1);
       // Named for the place it comes out in, as the plate that rises there
       // will name it: the room, or the district outside its door.
-      const text = `${districtAt(this.currentMap.id, warp.destination)?.name ?? leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`;
+      const text = `${districtAt(this.currentMap.id, warp.destination)?.name ?? leadsTo.name.toUpperCase()} ${PRESS_ARROWS[warp.toward]}`;
       doorways.push({
         key: `doors:${placedAreaAt(areas, warp.source)?.id ?? ''}:${text}`,
         spec: {
@@ -2747,9 +2742,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private warpArrow(warp: MapWarp): string {
-    if (warp.source.y === 0) return '↑';
-    if (warp.source.y === this.currentMap.height - 1) return '↓';
-    return warp.source.x === 0 ? '←' : '→';
+    if (warp.source.y === 0) return PRESS_ARROWS.up;
+    if (warp.source.y === this.currentMap.height - 1) return PRESS_ARROWS.down;
+    return warp.source.x === 0 ? PRESS_ARROWS.left : PRESS_ARROWS.right;
   }
 
   private createHunterSprite(): void {

@@ -149,6 +149,13 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** walk up to any building in the harbour. The caption over the door you are standing at is the one you get, even where the buildings are close together.
 - **Still open:** from the spawn tile with L held, the Center and the workshop still have no seat (five two-line captions do not fit one row of a 400 px view). Shorter status lines, such as the Center's 37-letter swap line, would help; that is a wording call left for later.
 
+## 21. A door's caption said "THE PRESS HOUSE T" (newest feature: walk-in buildings, playtested)
+
+- **Found:** playing `tools/playtest/buildingInside.mjs` on the Floodplain's Press House. The caption in front of the door read `THE PRESS HOUSE T`, and inside, the mat's `THE CIDER YARD ↓` looked like a dagger. The doorway captions typed `↑ ↓ ← →`, which Orange Kid has no glyph for. The canvas text cuts the browser's fallback face to the pixel grid (`ui/pixelText.ts`), and a thin arrow does not survive that: `glyphSheet.mjs --chars=↑↓←→` showed the 12px `↑` as a bar over a stem (a `T`), `↓` as a cross and `←`/`→` as a plus with a long arm. Edge warps on a player's map (`warpArrow`) used the same arrows. `docs/screens/building-insides/README.md` had already noted it as a follow-up.
+- **Reproduced:** `scenes/doorwayCaptions.test.ts` runs the real `WorldScene.createDoorwayLabels` on the Floodplain through real `WorldLabel`s on a stand-in scene that records every caption's words. It expects `THE PRESS HOUSE ▲` and `THE CIDER YARD ▼` and no thin arrow anywhere. It failed before the fix with `'THE PRESS HOUSE ↑'`.
+- **Fixed:** new `ui/pressArrows.ts` holds `PRESS_ARROWS`, the four filled triangles `▲ ▼ ◀ ▶`. The battle cursor (`▶`) and the dialogue's prompt (`▼`) already use these because a filled shape has no stroke to lose. The doorway captions and `warpArrow` both use the table now. Confirmed in the real game: the street reads `THE PRESS HOUSE ▲`, with a triangle pointing up.
+- **How a player meets it:** walk up to any building door on a raid map, or a door in a player's map. The caption names where the door goes and points the way to press with a triangle you can read.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
