@@ -2149,17 +2149,6 @@
    ]
   },
   {
-<<<<<<< HEAD
-   "x": 347,
-   "y": 337,
-   "name": "Old Whaler",
-   "look": "fisherman",
-   "facing": "down",
-   "lines": [
-    "The lagoon is the other side of the berg. The cave under it is ice the whole way.",
-    "Once you are moving on ice you go till something stops you. Look before you step.",
-    "Our boat comes into the lagoon late, for anyone who got that far."
-=======
    "area": "moor-chapel-nave",
    "x": 18,
    "y": 7,
@@ -2182,7 +2171,18 @@
    "lines": [
     "I came to pray for my dearly departed CLEFAIRY.",
     "Sniff!"
->>>>>>> 47e53143 (WIP: rebased onto the Lost Garden: one prize and type-power mechanism, the Spell Tag beside the Miracle Seed)
+   ]
+  },
+  {
+   "x": 347,
+   "y": 337,
+   "name": "Old Whaler",
+   "look": "fisherman",
+   "facing": "down",
+   "lines": [
+    "The lagoon is the other side of the berg. The cave under it is ice the whole way.",
+    "Once you are moving on ice you go till something stops you. Look before you step.",
+    "Our boat comes into the lagoon late, for anyone who got that far."
    ]
   },
   {
@@ -3643,56 +3643,6 @@
    ]
   },
   {
-<<<<<<< HEAD
-   "id": "berg-cave-1f",
-   "name": "Berg Cave",
-   "kind": "cave",
-   "style": "ice",
-   "width": 30,
-   "height": 22,
-   "ground": [
-    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-    "BBBPPPBBBBBBBBBBBBBBBBBBBBBBBB",
-    "BBBPPPPPBBBBiiiiiiiiiPPBBBBBBB",
-    "BBBPPPPPBBiiiiiiiiiiiiPPPBBBBB",
-    "BBBBPPiiiiiiiiiiiiiBBiiiPPPBBB",
-    "BBBBBiiiiiiiiiBBBiiiiBBiiiiiBB",
-    "BBBBiiiiiiiiiiBBBiiiiiiiiiiiBB",
-    "BBBBiiiiiBBBiiiiiiiiiiiiiiiiBB",
-    "BBBiiiiiiBBBiiiiiiiiiiiiiPPPBB",
-    "BBBiiiiiiiiiiiiiiiiiiiiiiPPPBB",
-    "BBBBiiiiiiiiiiiiiiiiiiiiBBBBBB",
-    "BBBBBiiiiiiiiiBBiiiiiiiiBBBBBB",
-    "BBBBBBiiiiiiiBBBBiiiiiiPBBBBBB",
-    "BBBBBBPPiiiiiiiiiiiiiPPPPBBBBB",
-    "BBBBBBBPPPPPiiiiiiiiPPPPPPBBBB",
-    "BBBBBBPPPPPPPPPPPPPPPPBBBBBBBB",
-    "BBBBBBBPPPBBBPPPPPPPPBBBBBBBBB",
-    "BBBBBBBBPPPPBBPPPPPBBBBBBBBBBB",
-    "BBBBBBBBBPPPPPPPPPBBBBBBBBBBBB",
-    "BBBBBBBBBBBPPPBBBBBBBBBBBBBBBB",
-    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-   ],
-   "buildings": [
-    {
-     "area": "berg-cave-1f",
-     "x": 6,
-     "y": 5,
-     "kind": "ice-boulder-low"
-    },
-    {
-     "area": "berg-cave-1f",
-     "x": 9,
-     "y": 12,
-     "kind": "ice-boulder"
-    },
-    {
-     "area": "berg-cave-1f",
-     "x": 8,
-     "y": 14,
-     "kind": "ice-boulder"
-=======
    "id": "moor-chapel-nave",
    "name": "Moor Chapel",
    "kind": "tower",
@@ -3841,57 +3791,10 @@
      "x": 15,
      "y": 15,
      "kind": "tower-grave"
->>>>>>> 47e53143 (WIP: rebased onto the Lost Garden: one prize and type-power mechanism, the Spell Tag beside the Miracle Seed)
     }
    ]
   },
   {
-<<<<<<< HEAD
-   "id": "berg-cave-b1f",
-   "name": "Berg Cave B1F",
-   "kind": "cave",
-   "style": "ice",
-   "width": 32,
-   "height": 18,
-   "ground": [
-    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-    "BBBBBBBBBBBBBBBBBBBBPPPPPPBBBBBB",
-    "BBBBBBiiiiiiiiiiiiiiiPPPPPBBBBBB",
-    "BBBBPPiiiiiiiiiiiiiiiiiiPPPBBBBB",
-    "BBBBPPiiiBBBBiiiiiiiiiiiiiiiBBBB",
-    "BBBBiiiiiBBBBiiiiiiiBBBiiiiiiiBB",
-    "BBBiiiiiiiiiiiiiiiiiBBBiiiiiiiBB",
-    "BBBiiiiiiiiiiiiiiiiiiiiiiiiiiPBB",
-    "BBBiiiiiiiBBBiiiiiiiiiiiiiiiiiBB",
-    "BBBiiiiiiiBBBiiiiiiiiiiBBBiiiiBB",
-    "BBBiiiiiiiiiiiiiiiiiiiiBBBiiiBBB",
-    "BBBBiiiiiiiiiiiiiiiiiiiiiiiiBBBB",
-    "BBBBPPPiiiiiiiiiiiiiiiiiiiiBBBBB",
-    "BBBBBPPPPPiiiiiiiiiiiiiiiBBBBBBB",
-    "BBBBBBPPPPPPPiiiiiiiiiBBBBBBBBBB",
-    "BBBBBBBPPPPPBBBBBBBBBBBBBBBBBBBB",
-    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-   ],
-   "buildings": [
-    {
-     "area": "berg-cave-b1f",
-     "x": 14,
-     "y": 5,
-     "kind": "ice-boulder-low"
-    },
-    {
-     "area": "berg-cave-b1f",
-     "x": 23,
-     "y": 8,
-     "kind": "ice-boulder"
-    },
-    {
-     "area": "berg-cave-b1f",
-     "x": 12,
-     "y": 13,
-     "kind": "ice-boulder-low"
-=======
    "id": "moor-chapel-crypt",
    "name": "The Crypt",
    "kind": "tower",
@@ -4190,7 +4093,106 @@
      "x": 13,
      "y": 17,
      "kind": "tower-grave"
->>>>>>> 47e53143 (WIP: rebased onto the Lost Garden: one prize and type-power mechanism, the Spell Tag beside the Miracle Seed)
+    }
+   ]
+  },
+  {
+   "id": "berg-cave-1f",
+   "name": "Berg Cave",
+   "kind": "cave",
+   "style": "ice",
+   "width": 30,
+   "height": 22,
+   "ground": [
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "BBBPPPBBBBBBBBBBBBBBBBBBBBBBBB",
+    "BBBPPPPPBBBBiiiiiiiiiPPBBBBBBB",
+    "BBBPPPPPBBiiiiiiiiiiiiPPPBBBBB",
+    "BBBBPPiiiiiiiiiiiiiBBiiiPPPBBB",
+    "BBBBBiiiiiiiiiBBBiiiiBBiiiiiBB",
+    "BBBBiiiiiiiiiiBBBiiiiiiiiiiiBB",
+    "BBBBiiiiiBBBiiiiiiiiiiiiiiiiBB",
+    "BBBiiiiiiBBBiiiiiiiiiiiiiPPPBB",
+    "BBBiiiiiiiiiiiiiiiiiiiiiiPPPBB",
+    "BBBBiiiiiiiiiiiiiiiiiiiiBBBBBB",
+    "BBBBBiiiiiiiiiBBiiiiiiiiBBBBBB",
+    "BBBBBBiiiiiiiBBBBiiiiiiPBBBBBB",
+    "BBBBBBPPiiiiiiiiiiiiiPPPPBBBBB",
+    "BBBBBBBPPPPPiiiiiiiiPPPPPPBBBB",
+    "BBBBBBPPPPPPPPPPPPPPPPBBBBBBBB",
+    "BBBBBBBPPPBBBPPPPPPPPBBBBBBBBB",
+    "BBBBBBBBPPPPBBPPPPPBBBBBBBBBBB",
+    "BBBBBBBBBPPPPPPPPPBBBBBBBBBBBB",
+    "BBBBBBBBBBBPPPBBBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+   ],
+   "buildings": [
+    {
+     "area": "berg-cave-1f",
+     "x": 6,
+     "y": 5,
+     "kind": "ice-boulder-low"
+    },
+    {
+     "area": "berg-cave-1f",
+     "x": 9,
+     "y": 12,
+     "kind": "ice-boulder"
+    },
+    {
+     "area": "berg-cave-1f",
+     "x": 8,
+     "y": 14,
+     "kind": "ice-boulder"
+    }
+   ]
+  },
+  {
+   "id": "berg-cave-b1f",
+   "name": "Berg Cave B1F",
+   "kind": "cave",
+   "style": "ice",
+   "width": 32,
+   "height": 18,
+   "ground": [
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBBBBBBBPPPPPPBBBBBB",
+    "BBBBBBiiiiiiiiiiiiiiiPPPPPBBBBBB",
+    "BBBBPPiiiiiiiiiiiiiiiiiiPPPBBBBB",
+    "BBBBPPiiiBBBBiiiiiiiiiiiiiiiBBBB",
+    "BBBBiiiiiBBBBiiiiiiiBBBiiiiiiiBB",
+    "BBBiiiiiiiiiiiiiiiiiBBBiiiiiiiBB",
+    "BBBiiiiiiiiiiiiiiiiiiiiiiiiiiPBB",
+    "BBBiiiiiiiBBBiiiiiiiiiiiiiiiiiBB",
+    "BBBiiiiiiiBBBiiiiiiiiiiBBBiiiiBB",
+    "BBBiiiiiiiiiiiiiiiiiiiiBBBiiiBBB",
+    "BBBBiiiiiiiiiiiiiiiiiiiiiiiiBBBB",
+    "BBBBPPPiiiiiiiiiiiiiiiiiiiiBBBBB",
+    "BBBBBPPPPPiiiiiiiiiiiiiiiBBBBBBB",
+    "BBBBBBPPPPPPPiiiiiiiiiBBBBBBBBBB",
+    "BBBBBBBPPPPPBBBBBBBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+   ],
+   "buildings": [
+    {
+     "area": "berg-cave-b1f",
+     "x": 14,
+     "y": 5,
+     "kind": "ice-boulder-low"
+    },
+    {
+     "area": "berg-cave-b1f",
+     "x": 23,
+     "y": 8,
+     "kind": "ice-boulder"
+    },
+    {
+     "area": "berg-cave-b1f",
+     "x": 12,
+     "y": 13,
+     "kind": "ice-boulder-low"
     }
    ]
   },
