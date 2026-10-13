@@ -225,6 +225,14 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** press O on a raid with no contract and the field notes point at the closest place worth working and which way to walk, wherever on the map you are.
 - **Checked in the browser:** deployed at the town square (7,9) the guide now reads "TOWN PUMP, to the south-west", which is the nearest (11 steps against the scare post's 12).
 
+## 31. The field guide sent a player nine steps from an exit across the whole valley to another (followed up from entry 30, playtested)
+
+- **Found:** the field guide's exit line named the first exit in the map's authored list, never the nearest. Dropped into Pallet's THE QUARRY (56,18), pressing O said "Use SOUTH GATE on this map to bank your haul" - SOUTH GATE is at (15,42), the far side of the valley - while QUARRY TRACK stands nine steps away. A contract's banking line did the same with "the known safe gate".
+- **Reproduced:** a scratch copy of `raid.mjs` that deploys, dismisses the briefing and presses O, run `--stepped --insertion=pallet-quarry --completed=floodplain-first-contract --level=15 --seed=3`.
+- **Fixed:** new `world/nearestExit.ts` (`nearestOpenExit`) walks the world's own collision through the map's doors and picks the open exit the fewest steps away, so an exit behind a shut gate or a timed one not yet open is never named. `WorldScene.openObjectives` hands it to the guide (`ObjectiveGuideContext.nearestOpenExit`), which now reads "The nearest open exit is QUARRY TRACK, to the north-east. Use it to bank your haul." A contract with no required exit says "Extract there to bank the contract and your haul." With nothing measured, the old wording stands. Tests: `nearestExit.test.ts` on the real Pallet map (quarry, town square, the strand with Cobb's HEADLAND STEPS shut, the timed FERRY HARD) and three guide cases in `ObjectiveGuide.test.ts`, two of which failed before the fix.
+- **How a player meets it:** press O anywhere on a raid and the field notes name the open way out closest on foot, and which way to walk.
+- **Checked in the browser:** from the quarry the guide names QUARRY TRACK to the north-east; from the town square, SOUTH GATE to the south.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

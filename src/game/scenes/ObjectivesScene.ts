@@ -24,6 +24,8 @@ export interface ObjectivesSceneData {
   readonly activatedPoiIds: readonly string[];
   /** How many of an item the raid's pack holds now. */
   readonly carried?: (itemId: string) => number;
+  /** The open exit the fewest steps away, measured on the world's own collision. */
+  readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition };
   /** Only resume WorldScene when this overlay paused it. */
   readonly pausedWorld: boolean;
 }
@@ -58,6 +60,7 @@ export class ObjectivesScene extends Phaser.Scene {
       ...(data.towards ? { towards: data.towards } : {}),
       activatedPoiIds: new Set(data.activatedPoiIds),
       ...(data.carried ? { carried: data.carried } : {}),
+      ...(data.nearestOpenExit ? { nearestOpenExit: data.nearestOpenExit } : {}),
     });
     this.createOverlay(guide);
   }

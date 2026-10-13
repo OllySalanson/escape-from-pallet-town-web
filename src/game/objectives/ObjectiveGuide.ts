@@ -23,6 +23,12 @@ export interface ObjectiveGuideContext {
    * put down again for good, so what was found is not what is carried.
    */
   readonly carried?: (itemId: string) => number;
+  /**
+   * The open exit the fewest walking steps from here (`../world/nearestExit`),
+   * named by the guide in place of the first in the map's list. Absent when
+   * the scene did not measure one, or none is open and in reach.
+   */
+  readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition };
 }
 
 export interface ObjectiveGuideObjective {
@@ -157,7 +163,7 @@ function contractHints(
   currentExit: string | undefined,
 ): readonly string[] {
   const outstanding = remainingMarkers(contract, contractSteps);
-  const extractionHint = bankingHint(contract, safeExit, currentExit);
+  const extractionHint = bankingHint(contract, context, safeExit, currentExit);
 
   if (outstanding.length === 0) {
     return [
@@ -233,7 +239,24 @@ function laterRunHints(
   const landmarkHint = landmark
     ? `The nearest landmark still to work is ${landmark.label}, ${directionTo(context.currentPosition, context.towards?.(landmark.position) ?? landmark.position)}. ${landmark.description}`
     : 'Search marked caches and loose supplies, then leave before the raid turns against you.';
-  return [landmarkHint, currentExit ? `Use ${currentExit} on this map to bank your haul.` : 'Return to a marked extraction gate to bank your haul.'];
+  const nearest = nearestExitHint(context);
+  return [
+    landmarkHint,
+    nearest
+      ? `The nearest open exit is ${nearest}. Use it to bank your haul.`
+      : currentExit
+        ? `Use ${currentExit} on this map to bank your haul.`
+        : 'Return to a marked extraction gate to bank your haul.',
+  ];
+}
+
+/** The nearest open exit and which way it is, as a sentence names it. */
+function nearestExitHint(context: ObjectiveGuideContext): string | undefined {
+  const exit = context.nearestOpenExit;
+  if (!exit) {
+    return undefined;
+  }
+  return `${exit.label}, ${directionTo(context.currentPosition, context.towards?.(exit.position) ?? exit.position)}`;
 }
 
 /**
@@ -257,11 +280,16 @@ function nearestLandmarkToWork(session: ActiveRunSession, context: ObjectiveGuid
 /** How this contract gets banked, which is not always "any exit will do". */
 function bankingHint(
   contract: RaidContract,
+  context: ObjectiveGuideContext,
   safeExit: string | undefined,
   currentExit: string | undefined,
 ): string {
   if (contract.requiredExitLabel) {
     return `Only ${contract.requiredExitLabel} banks this contract. Any other gate ends the raid and leaves it unpaid.`;
+  }
+  const nearest = nearestExitHint(context);
+  if (nearest) {
+    return `The nearest open exit is ${nearest}. Extract there to bank the contract and your haul.`;
   }
   if (safeExit) {
     return `Extract through the known safe gate, ${safeExit}, to bank the contract and your haul.`;

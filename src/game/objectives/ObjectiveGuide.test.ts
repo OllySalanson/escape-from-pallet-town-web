@@ -287,6 +287,58 @@ describe('objective field guide', () => {
   });
 });
 
+describe('the exit the field guide names', () => {
+  // Standing on the quarry's landing, nine steps from the QUARRY TRACK; the
+  // SOUTH GATE, first in Pallet's list, is the far side of the valley.
+  const quarryTrack = EXTRACTION_POINTS.find((point) => point.label === 'QUARRY TRACK')!;
+  const here = requireInsertion('pallet-quarry').position;
+
+  it('names the nearest open exit and which way it is, not the first in the map list', () => {
+    const guide = buildObjectiveGuide(createUncontractedSession('pallet-quarry'), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(),
+      nearestOpenExit: { label: quarryTrack.label, position: quarryTrack.position },
+    });
+
+    expect(guide.hints.join(' ')).not.toContain('SOUTH GATE');
+    expect(guide.hints).toContain('The nearest open exit is QUARRY TRACK, to the north-east. Use it to bank your haul.');
+  });
+
+  it('banks a contract at the nearest open exit too, unless the contract names its own', () => {
+    const contracted = createActiveRunSession(
+      new RunManager(),
+      {},
+      {},
+      [],
+      [],
+      objectivesForContract(FIRST_CONTRACT),
+      generateRunPlan(42, undefined, 'floodplain-relay', FIRST_CONTRACT),
+    );
+    const southGate = EXTRACTION_POINTS.find((point) => point.mapId === 'floodplain-relay' && point.label === 'SOUTH GATE')!;
+    const guide = buildObjectiveGuide(contracted, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: southGate.position,
+      activatedPoiIds: new Set(),
+      nearestOpenExit: { label: southGate.label, position: southGate.position },
+    });
+
+    expect(guide.hints).toContain(
+      'The nearest open exit is SOUTH GATE, right here. Extract there to bank the contract and your haul.',
+    );
+  });
+
+  it('falls back to the map list when no open exit was measured', () => {
+    const guide = buildObjectiveGuide(createUncontractedSession('pallet-quarry'), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints).toContain('Use SOUTH GATE on this map to bank your haul.');
+  });
+});
+
 describe('a shiny in the field guide', () => {
   it('names a shiny caught this raid in the field notes, and an ordinary catch not at all', () => {
     const session = createFirstContractSession();

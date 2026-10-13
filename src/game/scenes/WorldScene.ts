@@ -186,6 +186,7 @@ import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/grou
 import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
+import { nearestOpenExit } from '../world/nearestExit';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -4274,8 +4275,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
       activatedPoiIds: [...this.activatedPoiIds],
       carried: (itemId: string) => this.bag.count(itemId),
+      ...this.nearestOpenExitHere(),
       pausedWorld: true,
     });
+  }
+
+  /** The open exit the fewest walking steps from the player, for the field guide. */
+  private nearestOpenExitHere(): { readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition } } {
+    const exit = nearestOpenExit(
+      (this.runSession?.plan?.extractionPoints ?? []).filter((point) => point.mapId === this.currentMap.id),
+      this.currentTile,
+      this.collisionData,
+      (point) => this.isExtractionOpen(point),
+      this.currentMap.links,
+    );
+    return exit ? { nearestOpenExit: { label: exit.label, position: exit.position } } : {};
   }
 
   /**
