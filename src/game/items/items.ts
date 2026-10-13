@@ -778,6 +778,19 @@ export const ITEMS = {
       held: { type: 'type-power', moveType: PokemonType.Fire, powerPercent: 10 },
     },
   },
+  // Found only in the crypt under Greystone Vale's Moor Chapel, the one place
+  // Ghost Pokemon live: FireRed's own words for it.
+  'spell-tag': {
+    id: 'spell-tag',
+    displayName: 'Spell Tag',
+    category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
+    description: 'A sinister, eerie tag that raises the power of GHOST-type moves.',
+    effect: {
+      type: 'held',
+      held: { type: 'type-power', moveType: PokemonType.Ghost, powerPercent: 10 },
+    },
+  },
 
   /* --- Furniture -----------------------------------------------------------
      Found on a raid, carried home in the pack and put down in THE BOLTHOLE

@@ -37,6 +37,9 @@ const C = {
   // charcoal, in FireRed's own icon palette
   // (`graphics/items/icon_palettes/charcoal.pal`, pret/pokefirered at 037335f)
   c: hex('313131'), g: hex('414141'), h: hex('626262'), H: hex('8b8b8b'), b: hex('bdbdbd'),
+  // the Spell Tag's paper, ink and red ring, in FireRed's own icon palette
+  // (graphics/items/icon_palettes/spell_tag.pal in pret/pokefirered at 037335f)
+  x: hex('cdcdcd'), X: hex('9c9c9c'), y: hex('525252'), r: hex('c56262'), R: hex('f69494'),
 };
 
 const blank = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -233,6 +236,31 @@ icons['charcoal'] = outline(
     '..gcgggcc.......',
     '...ccgcc........',
     '....ccc.........',
+    '................',
+  ]),
+);
+
+// Spell Tag: FireRed's slip of paper, lying corner to corner as its own bag
+// icon does - the end printed in grey ink, a red ring round the hole it is
+// hung by, and the rest plain. Redrawn at 16x16 rather than cut, because
+// FireRed's icon is 24x24 and will not go into the set without resampling.
+icons['spell-tag'] = outline(
+  fromRows([
+    '................',
+    '................',
+    '..........xX....',
+    '.........xXyX...',
+    '........xXyXyX..',
+    '.......lxXyXyX..',
+    '......llRrXyXx..',
+    '.....llRwRXyx...',
+    '....lllrRrxx....',
+    '...llllllxx.....',
+    '..lllylllx......',
+    '..llylllx.......',
+    '...llllx........',
+    '....llx.........',
+    '................',
     '................',
   ]),
 );

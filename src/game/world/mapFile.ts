@@ -14,6 +14,7 @@ import {
   ICEFALL_WILDLIFE,
   VOLCANO_WILDLIFE,
   VOLCANO_NIGHT_WILDLIFE,
+  HAUNTED_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -109,6 +110,12 @@ export const MAP_FILE_LIMITS = {
   maxDropIns: 8,
   maxExits: 12,
   maxItemSpots: 40,
+  /**
+   * Item spots that hold one of the game's own prizes (`MAP_FILE_PRIZES`):
+   * none on a player's map, because a prize is gear, and gear is never handed
+   * out by anything a maker places.
+   */
+  maxPrizes: 0,
   /** The latest an exit may open: the raid clock is five minutes. */
   maxExitDelaySeconds: 240,
   maxPeople: 30,
@@ -187,6 +194,7 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxDropIns: 16,
   maxExits: 32,
   maxItemSpots: 96,
+  maxPrizes: 8,
   maxPeople: 64,
   maxSigns: 64,
   maxLandmarks: 32,
@@ -912,6 +920,8 @@ export const MAP_FILE_HABITATS = {
   // A volcano: FireRed's Mt. Ember, at the vale's levels. A cave dressed as a
   // volcano rolls it on every step of its floor.
   volcano: VOLCANO_WILDLIFE,
+  // Haunted ground: FireRed's Pokemon Tower, Gastly and Cubone and the rare Haunter.
+  haunted: HAUNTED_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -997,6 +1007,9 @@ export const MAP_FILE_PRIZES = {
   // The Lost Garden's: FireRed's Miracle Seed, one raid in four that gets
   // there - a prize's odds (`loot.test.ts` holds every prize under a third).
   'miracle-seed': 0.25,
+  // The Moor Chapel's: FireRed's Spell Tag, in the crypt among the graves,
+  // one raid in four that gets there.
+  'spell-tag': 0.25,
 } as const satisfies Partial<Record<ItemId, number>>;
 export type MapFilePrize = keyof typeof MAP_FILE_PRIZES;
 
@@ -1133,6 +1146,16 @@ export const MAP_FILE_LANDMARKS = {
     label: 'Herb garden',
     says: 'Somebody grows their own cures here.',
     reward: [{ itemId: 'antidote', quantity: 2 }],
+  },
+  // A grave's lamp and its shroud: the oil from the place that burns it, the
+  // cloth from the place that keeps it.
+  grave: {
+    label: 'Grave goods',
+    says: 'What the drovers buried with their dead: a lamp and a shroud.',
+    reward: [
+      { itemId: 'lamp-oil', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 1 },
+    ],
   },
 } as const satisfies Record<
   string,
@@ -1729,6 +1752,16 @@ export function readMapFile(
       }
     }
   });
+  const prizes = (Array.isArray(value.itemSpots) ? value.itemSpots : []).filter(
+    (spot) => isRecord(spot) && spot.prize !== undefined,
+  ).length;
+  if (prizes > limits.maxPrizes) {
+    problems.push(
+      limits.maxPrizes === 0
+        ? 'Item spots cannot hold a prize: the game decides what is in them.'
+        : `A map holds at most ${limits.maxPrizes} prizes.`,
+    );
+  }
 
   const linesOf = (what: string, raw: unknown): void => {
     if (

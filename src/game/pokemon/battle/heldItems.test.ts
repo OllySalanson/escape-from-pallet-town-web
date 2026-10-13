@@ -92,6 +92,13 @@ describe('what each piece of gear does', () => {
     expect(attackRecoil(holding('leftovers', 30), 7)).toBe(0);
   });
 
+  it('Spell Tag raises Ghost moves by a tenth, as FireRed’s does, and nothing else', () => {
+    expect(attackMultiplier(holding('spell-tag'), 'Ghost')).toBe(1.1);
+    expect(attackMultiplier(holding('spell-tag'), 'Normal')).toBe(1);
+    expect(attackMultiplier(holding('spell-tag'))).toBe(1);
+    expect(attackMultiplier(holding('life-orb'), 'Ghost')).toBe(1.3);
+  });
+
   it('Quick Claw is a quarter of the time, and only for its holder', () => {
     expect(rollsFirstStrike(holding('quick-claw'), () => 0.24)).toBe(true);
     expect(rollsFirstStrike(holding('quick-claw'), () => 0.25)).toBe(false);

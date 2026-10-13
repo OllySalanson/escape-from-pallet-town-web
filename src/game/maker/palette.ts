@@ -581,6 +581,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   garden: 'Overgrown garden',
   ice: 'Ice',
   volcano: 'Volcano',
+  haunted: 'Haunted',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */
