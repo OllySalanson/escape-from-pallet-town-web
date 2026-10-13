@@ -48,6 +48,8 @@ export function districtFile(
   program: MapProgram,
   details: {
     readonly dropIns: readonly MapFileDropIn[];
+    /** Ways out of the district's own, beside the stand-ins at its openings. */
+    readonly exits?: readonly MapFileExit[];
     readonly itemSpots?: readonly MapFileItemSpot[];
     readonly extra?: Partial<MapFile>;
   },
@@ -65,12 +67,12 @@ export function districtFile(
             : `To ${districtOf(plan, opening.leadsTo.district).name}`;
         return { x, y, name, opens: { when: 'always' } };
       }),
-  );
+  ).concat(details.exits ?? []);
   return program.toFile({
     id: `${plan.id}-${id}`.slice(0, 40),
     name: district.name.slice(0, MAP_FILE_LIMITS.maxNameLength),
     maker: plan.maker,
-    dropIns: details.dropIns,
+    dropIns: details.dropIns.length > 0 ? details.dropIns : [standInDropIn(plan, id)],
     exits,
     itemSpots: details.itemSpots,
     wildlife: district.wildlife ?? plan.wildlife,
@@ -78,7 +80,23 @@ export function districtFile(
   });
 }
 
-/** The tile on the very edge of an opening, near its middle, where a way out stands. */
+/**
+ * A district with no landing of its own (a wood the plan gives none) still
+ * needs one to be played alone in TRY IT: it is dropped in just inside its
+ * first opening, and the stitcher leaves that stand-in out, as it does the
+ * stand-in ways out.
+ */
+function standInDropIn(plan: WorldPlan, id: string): MapFileDropIn {
+  const opening = openingsOf(plan, id).find((candidate) => candidate.kind !== 'river');
+  if (!opening) throw new Error(`${id} has no way in to be dropped at`);
+  const [x, y] = standInDropInTile(plan.districtSize, opening);
+  return { x, y, name: 'Way in', description: 'A stand-in landing, for walking this district alone.' };
+}
+
+function standInDropInTile(size: number, opening: Opening): [number, number] {
+  return insideOpening(size, opening, SEAM_DEPTH);
+}
+
 /**
  * When a way out into an undrawn district opens: a while into the raid, so a
  * map has a way out open from the first second (its own) and others that open
@@ -147,7 +165,20 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
       ),
     );
     merged.buildings.push(...file.buildings.map(move));
-    merged.dropIns.push(...file.dropIns.map(move));
+    const standInLanding = openingsOf(plan, district.id).find(
+      (opening) => opening.kind !== 'river',
+    );
+    const standInAt = standInLanding ? standInDropInTile(size, standInLanding).join(',') : '';
+    merged.dropIns.push(
+      ...file.dropIns
+        .filter(
+          (dropIn) =>
+            dropIn.area !== undefined ||
+            `${dropIn.x},${dropIn.y}` !== standInAt ||
+            dropIn.name !== 'Way in',
+        )
+        .map(move),
+    );
     merged.exits.push(
       ...file.exits
         .filter((exit) => exit.area !== undefined || !standIns.has(`${exit.x},${exit.y}`))

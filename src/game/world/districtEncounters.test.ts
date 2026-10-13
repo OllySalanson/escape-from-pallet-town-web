@@ -189,8 +189,15 @@ describe('wildlife authored per place', () => {
    * not an average, because a district is somewhere a raid can be routed to.
    */
   describe('difficulty', () => {
-    const partnerLevel = (mapId: WorldMapId): number => (mapId === 'viridian-forest' ? 8 : 5);
-    const FLOOR: Record<string, number> = { 'viridian-forest': 0.12 };
+    // Greystone Vale is not a starting map either: it opens after them, and its
+    // woods roll the woodland table, Viridian Forest's own country. Measured as
+    // the forest is, with a level-8 partner and no cap at the starting level.
+    const LATER_MAPS: readonly string[] = ['viridian-forest', 'greystone-vale'];
+    const partnerLevel = (mapId: WorldMapId): number => (LATER_MAPS.includes(mapId) ? 8 : 5);
+    // The vale's woods by night, measured: a Squirtle wins 50% of the woodland
+    // table, which is the floor's own edge, so it is written down rather than
+    // left to a rounding.
+    const FLOOR: Record<string, number> = { 'viridian-forest': 0.12, 'greystone-vale': 0.45 };
 
     // A night table that holds what the day one does is the day's fight, so
     // it is measured once, by day.
@@ -208,7 +215,7 @@ describe('wildlife authored per place', () => {
               `${starter} at ${district.name} ${night ? 'by night' : 'by day'}: ${(measure.winRate * 100).toFixed(0)}%`,
             ).toBeGreaterThanOrEqual(FLOOR[map.id] ?? 0.5);
           }
-          if (map.id !== 'viridian-forest') {
+          if (!LATER_MAPS.includes(map.id)) {
             const { meanLevel } = measureTable(table, 'bulbasaur', 5, 1);
             expect(meanLevel, district.name).toBeLessThanOrEqual(5);
           }

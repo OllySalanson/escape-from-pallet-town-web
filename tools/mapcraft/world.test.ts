@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkMapFile } from '../../src/game/world/mapFileChecks';
 import { allPassed, hardChecks } from './checks';
-import { caveMouthSpots, chamberFloor, plantCaveMouth } from './caves';
+import { caveMaze, caveMouthSpots, chamberFloor, plantCaveMouth } from './caves';
 import { MapProgram, seeded } from './program';
 import { stitch } from './stitch';
 import { readTiles, regions, walkable, WALKABLE_KINDS } from './tiles';
@@ -145,6 +145,26 @@ describe('caves', () => {
     const pieces = regions(floor, (kind) => WALKABLE_KINDS.has(kind));
     expect(pieces).toHaveLength(1);
     expect(one.loops).toBeGreaterThan(0);
+  });
+
+  it("cuts every mouth's way in through to the floor, however far the nearest room is", () => {
+    for (let seed = 1; seed <= 40; seed += 1) {
+      const cave = caveMaze({
+        floors: [{ id: 'floor', name: 'Floor', width: 48, height: 40, rooms: 3 }],
+        ladders: [],
+        mouths: [{ at: [4, 4], floor: 'floor' }],
+        random: seeded(seed),
+      });
+      const ground = cave.areas[0].ground;
+      const floor = {
+        width: 48,
+        height: 40,
+        kinds: ground.map((row) =>
+          [...row].map((letter) => (letter === 'B' ? ('rock' as const) : ('lawn' as const))),
+        ),
+      };
+      expect(regions(floor, (kind) => WALKABLE_KINDS.has(kind)), `seed ${seed}`).toHaveLength(1);
+    }
   });
 
   it('cuts a cave mouth only at the foot of a rock face', () => {

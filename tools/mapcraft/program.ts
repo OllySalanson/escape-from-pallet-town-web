@@ -140,6 +140,20 @@ export class MapProgram {
     return this;
   }
 
+  /**
+   * Copies a sketch drawn one letter a 2x2 lattice cell, every letter doubled
+   * both ways, top-left at cell (cx, cy). A wood is drawn this way because the
+   * conifer stands on that lattice: a lane drawn on an odd tile is eaten by
+   * the trees beside it. A space keeps what is there.
+   */
+  public cells(rows: readonly string[], cx = 0, cy = 0): this {
+    rows.forEach((row, j) => {
+      const doubled = [...row].map((letter) => letter + letter).join('');
+      this.draw(cx * 2, (cy + j) * 2, [doubled, doubled]);
+    });
+    return this;
+  }
+
   /** Keeps a rectangle exactly as it is from now on: a seam shared with a neighbour. */
   public lock(x: number, y: number, width: number, height: number): this {
     for (let j = y; j < y + height; j += 1) {
