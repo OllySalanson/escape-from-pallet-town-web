@@ -48,6 +48,14 @@ have left, and the raid carries on. How it works and what is trusted where:
 
 `node tools/playtest/friendTalk.mjs <url> <dir>` plays it.
 
+## Shared discoveries and a boss's doors
+
+| | |
+|---|---|
+| `b1-amy-door-opened-by-olly.png` | OLLY beat Tollman Briggs: in AMY's raid the keeper has stepped aside and TOLL BRIDGE and ORCHARD FORD stand open, her chip says `OLLY BEAT TOLLMAN BRIGGS`, and nothing of it is in her save - the win is his. |
+
+The ground a friend walks joins this raid's survey, so the drop-in map lights up where the whole room went. `node tools/playtest/friendBoss.mjs <url> <dir>` plays both (the driver hands OLLY the win: a level-5 partner beats no keeper).
+
 All but the first are two tabs of one test-mode build talking over the local
 stand-in, never the live project:
 `node tools/playtest/friendRaid.mjs <url> <dir>`.
