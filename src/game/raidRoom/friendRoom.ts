@@ -277,7 +277,10 @@ export class FriendRoom {
         const talk = readTalk(payload);
         if (talk && talk.from !== this.held?.me && this.talk.hear(talk, this.now)) {
           const name = this.nameOf(talk.from) ?? 'A FRIEND';
-          this.tell(talk.kind === 'say' ? `${name}: ${ROOM_PHRASES[talk.phrase]}` : `${name} PINGED`);
+          // A ping says itself on the friend's own chip line (`PING NE 12`), for as long as it shows.
+          if (talk.kind === 'say') {
+            this.tell(`${name}: ${ROOM_PHRASES[talk.phrase]}`);
+          }
         }
       });
     }

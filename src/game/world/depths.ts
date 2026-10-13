@@ -57,6 +57,14 @@ export const CANOPY_BAND = 2.5;
 export const ROOF_BAND = 2.6;
 
 /**
+ * The name plate over another player in a raid room (`raidRoom/`): above the
+ * canopy and the lid, because a friend is somebody to find - their name is
+ * what says where they went when a wood or a hillside has them - and under the
+ * dark round a place, so nobody next door is named through it.
+ */
+export const RAID_NAME_PLATE_DEPTH = 2.88;
+
+/**
  * The veil that makes an interior dim. Over the ground and under every figure,
  * so the floor is dark and whoever is standing on it is not.
  */

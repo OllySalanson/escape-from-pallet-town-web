@@ -175,6 +175,7 @@ import {
   TERRAIN_DEPTH,
   WATCH_SHADING_DEPTH,
   AREA_DARK_DEPTH,
+  RAID_NAME_PLATE_DEPTH,
   atRow,
 } from '../world/depths';
 import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
@@ -1162,7 +1163,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     rooms.inRaid(this.currentMap.id, this.currentTile, this.facing);
-    this.friendFigures = new HarbourFigures(this);
+    this.friendFigures = new HarbourFigures(this, () => RAID_NAME_PLATE_DEPTH);
     // Anything the others took before this player dropped in, or while they
     // were in a fight, is already gone.
     rooms.askWhatWasTaken();

@@ -56,7 +56,7 @@ try {
   await sleep(500);
   const amyAt = (await wait(amy, 'AMY standing', () => true)).me;
   await press(amy, 'KeyG');
-  const pinged = await wait(olly, 'OLLY seeing AMY’s ping', (s) => s.pings.includes(`${amyAt.x},${amyAt.y}`) && /AMY (PINGED|PING )/.test(s.chip));
+  const pinged = await wait(olly, 'OLLY seeing AMY’s ping', (s) => s.pings.includes(`${amyAt.x},${amyAt.y}`) && /AMY PING /.test(s.chip));
   console.log(`OLLY sees AMY's ping at ${amyAt.x},${amyAt.y}: "${pinged.chip}"`);
   await sleep(300);
   await olly.screenshot(`${out}/t3-olly-sees-the-ping.png`);

@@ -40,9 +40,16 @@ interface Drawn {
 export class HarbourFigures {
   private readonly scene: Phaser.Scene;
   private readonly drawn = new Map<string, Drawn>();
+  private readonly plateDepth: (row: number) => number;
 
-  public constructor(scene: Phaser.Scene) {
+  /**
+   * @param plateDepth Where a name plate is drawn for a figure on this row:
+   * beneath the figures, as every caption in the harbour is, unless a place
+   * says otherwise - a raid's woods would hide a friend's name under a crown.
+   */
+  public constructor(scene: Phaser.Scene, plateDepth: (row: number) => number = (row) => atRow(CAPTION_BAND, row)) {
     this.scene = scene;
+    this.plateDepth = plateDepth;
   }
 
   /** Draws this frame's figures: new ones stood up, gone ones taken down, the rest moved. */
@@ -81,8 +88,8 @@ export class HarbourFigures {
       const plateHeight = plateHeightOf(drawn.name);
       const plateX = Math.round(x + TILE_SIZE / 2 - plateWidth / 2);
       const plateY = Math.round(y + CHARACTER_HEAD_PIXEL_Y - plateHeight - 1);
-      drawn.plate.setPosition(plateX, plateY).setDepth(atRow(CAPTION_BAND, row));
-      drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(atRow(CAPTION_BAND, row) + 0.0001);
+      drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
+      drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
     }
   }
 
