@@ -444,12 +444,12 @@ try {
   const opening = option('open')?.toLowerCase().replace(/[-_]/g, ' ');
   if (opening && !ended) {
     const door = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
-      const g = w.currentMap.gates.find((g) => g.fieldMove && g.label.toLowerCase().includes(${JSON.stringify(opening)})); if (!g) return null;
+      const g = w.currentMap.gates.find((g) => (g.fieldMove || g.night) && g.label.toLowerCase().includes(${JSON.stringify(opening)})); if (!g) return null;
       const beside = g.tiles.flatMap((t) => [[0,1,'ArrowUp'],[0,-1,'ArrowDown'],[1,0,'ArrowLeft'],[-1,0,'ArrowRight']]
         .map(([dx, dy, key]) => ({ x: t.x + dx, y: t.y + dy, key }))).filter((t) => !w.isBlocked(t));
-      return { id: g.id, label: g.label, move: g.fieldMove, beside, shut: w.isBlocked(g.tiles[0]) }; })()`);
+      return { id: g.id, label: g.label, move: g.fieldMove ?? 'night', beside, shut: w.isBlocked(g.tiles[0]) }; })()`);
     if (!door) {
-      throw new Error(`no field-move door called ${opening} on this map`);
+      throw new Error(`no field-move door or night track called ${opening} on this map`);
     }
     note(`${door.label} wants ${door.move.toUpperCase()}, and is ${door.shut ? 'shut' : 'already open'}`);
     for (const side of door.beside) {
@@ -557,26 +557,59 @@ try {
   // a cave mouth, a building's door - by pressing Dir into it, notes the place
   // it came out in, and comes back out the way it went in (the far landing is
   // left by pressing back into its own doorway). Walking cannot do it: a link
-  // is a press into a door, not a step onto a tile.
+  // is a press into a door, not a step onto a tile. A landing in an inside is
+  // written `area@x:y:Dir`, the area's id and its own tiles. With --deep the
+  // doors are a chain - each gone through from the place the last came out in,
+  // the stairs down from a chapel's nave, say - and the way back is the chain
+  // in reverse.
   const opposite = { ArrowUp: 'ArrowDown', ArrowDown: 'ArrowUp', ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft' };
-  for (const door of (option('through') ?? '').split(',').filter(Boolean)) {
-    const [x, y, dir] = door.split(':');
+  const place = `(() => { const w = ${GAME}.scene.getScene('world'); const a = w.currentArea(); return { area: a?.name ?? 'outdoors', tile: w.currentTile }; })()`;
+  const landing = async (spec) => {
+    const [where, rest] = spec.includes('@') ? spec.split('@') : [undefined, spec];
+    const [x, y, dir] = rest.split(':');
     const key = `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
-    await walkTo({ x: Number(x), y: Number(y) }, `the doorway at ${x},${y}`);
-    const place = `(() => { const w = ${GAME}.scene.getScene('world'); const a = w.currentArea(); return { area: a?.name ?? 'outdoors', tile: w.currentTile }; })()`;
-    await press(key);
+    if (where === undefined) return { x: Number(x), y: Number(y), key };
+    const origin = await page.evaluate(`(() => { const a = ${GAME}.scene.getScene('world').currentMap.areas?.find((p) => p.id === ${JSON.stringify(where)}); return a ? { x: a.rect.x, y: a.rect.y } : null; })()`);
+    if (!origin) throw new Error(`no area ${where} on this map`);
+    return { x: origin.x + Number(x), y: origin.y + Number(y), key };
+  };
+  const goThrough = async (door) => {
+    await walkTo({ x: door.x, y: door.y }, `the doorway at ${door.x},${door.y}`);
+    await press(door.key);
     await wait(1200);
     await clearInterruptions();
     const inside = await page.evaluate(place);
-    note(`through ${x},${y} ${dir}: now in ${inside.area} at ${inside.tile.x},${inside.tile.y}`);
+    note(`through ${door.x},${door.y}: now in ${inside.area} at ${inside.tile.x},${inside.tile.y}`);
     if (option('shot')) {
-      await page.screenshot(option('shot').replace(/\.png$/, `-through-${x}-${y}.png`));
+      await page.screenshot(option('shot').replace(/\.png$/, `-through-${door.x}-${door.y}.png`));
     }
-    await press(opposite[key]);
+    return inside;
+  };
+  const comeBack = async (door) => {
+    await press(opposite[door.key]);
     await wait(1200);
     await clearInterruptions();
     const back = await page.evaluate(place);
     note(`back out: now in ${back.area} at ${back.tile.x},${back.tile.y}`);
+  };
+  const doors = (option('through') ?? '').split(',').filter(Boolean);
+  if (flag('deep')) {
+    const chain = [];
+    for (const spec of doors) {
+      const door = await landing(spec);
+      const inside = await goThrough(door);
+      chain.push({ door, landedAt: inside.tile });
+    }
+    for (const { door, landedAt } of chain.reverse()) {
+      await walkTo(landedAt, 'the landing the chain came in at');
+      await comeBack(door);
+    }
+  } else {
+    for (const spec of doors) {
+      const door = await landing(spec);
+      await goThrough(door);
+      await comeBack(door);
+    }
   }
   // --grab=itemId picks up every piece of that item this raid laid, wherever it
   // laid it. Loot is re-seated every raid, so a driver cannot be pointed at it

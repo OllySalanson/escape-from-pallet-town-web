@@ -141,12 +141,14 @@ export const MAP_STRUCTURE_PARTS: readonly MapStructurePart[] = [
   // One gate state too big for one file, so it is split by tiles: in one file
   // its flee sweeps alone ran seven minutes, and in four the slowest part's
   // took 103 of its 120 seconds on CI before Stormcrown and the caves' sixth
-  // floor added an eighth more ground, and the Lost Garden more again.
-  ...([1, 2, 3, 4, 5, 6] as const).map((part) => ({
-    name: `greystone-vale ${part}/6`,
+  // floor added an eighth more ground, and the Lost Garden more again. The
+  // Moor Chapel's night track then asks every sweep twice - by day and by
+  // night - so it takes eight files.
+  ...([1, 2, 3, 4, 5, 6, 7, 8] as const).map((part) => ({
+    name: `greystone-vale ${part}/8`,
     mapId: 'greystone-vale' as const,
     part,
-    of: 6,
+    of: 8,
     tiles: true as const,
     file: `mapStructure.greystoneVale${part}.test.ts`,
   })),

@@ -126,11 +126,12 @@ const NAVE: MapFileArea = {
 /**
  * Where FireRed's Pokemon Tower 3F stands its graves, cell for cell: the maze
  * Game Freak drew round its stairs up on the east, which are where the crypt's
- * are.
+ * are. All but the one over the stairs: FireRed's 3F has wall beside it where
+ * every tower floor here has the ground floor's, so it would seal a tile in.
  */
 const TOWER_3F_GRAVES: readonly (readonly [number, number])[] = [
   [8, 4], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6], [12, 6], [13, 6], [14, 6], [15, 6],
-  [16, 6], [17, 6], [18, 6], [6, 7], [6, 8], [17, 8], [19, 8], [6, 9], [10, 9], [11, 9], [12, 9],
+  [16, 6], [17, 6], [18, 6], [6, 7], [6, 8], [17, 8], [6, 9], [10, 9], [11, 9], [12, 9],
   [16, 9], [6, 10], [10, 10], [11, 10], [12, 10], [16, 10], [6, 11], [16, 11], [6, 12], [16, 12],
   [19, 12], [20, 12], [6, 13], [10, 13], [11, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13],
   [18, 13], [19, 13], [4, 15], [5, 15], [6, 15], [17, 15], [18, 15], [6, 16], [9, 17], [10, 17],
@@ -185,7 +186,7 @@ export function moorChapel(): MapcraftResult {
 
   // The Lantern Cross: the tower's statue in the corner of the crags and the
   // wood at the head of the fell, where the sheep track comes out of the trees.
-  p.building('grave-statue', 46, 12);
+  p.building('grave-statue', 47, 12);
   // -- The drove track south from the cross through the wood: the way the
   // flocks came down off the fell, past the drovers' bothy at its bend, where
   // they slept the night before the fair, and on to the gap they left by
@@ -239,7 +240,7 @@ export function moorChapel(): MapcraftResult {
       ],
       signs: [
         { x: 37, y: 25, lines: ["DROVERS' BOTHY", 'The drovers slept here the night before the fair.'] },
-        { x: 47, y: 15, lines: ['LANTERN CROSS', 'Lit for the drovers coming over the fell after dark.'] },
+        { x: 46, y: 15, lines: ['LANTERN CROSS', 'Lit for the drovers coming over the fell after dark.'] },
         { x: 21, y: 32, lines: ['THE MOOR CHAPEL', 'Erected in the memory of the drovers and their POKéMON.'] },
         { x: 12, y: 42, lines: ['THE CORPSE ROAD', 'West, off the fell.'] },
       ],

@@ -98,6 +98,13 @@ the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen
 otherwise, so nothing else checks that one can be walked to.
 
+`raid.mjs --clock=night` (or `day`) puts the page in a time zone where it is
+eleven at night (or noon) now, so the raid deploys as a night raid by the
+player's own clock (`world/nightRaids.ts`) whenever it is run - a night track
+opens and the night's wildlife comes out. `--attach=PORT` drives a browser
+already running on that CDP port (one the machine's memory watchdog can see)
+instead of launching its own.
+
 `raid.mjs --through=x:y:dir` goes through the doorway whose landing is that tile
 (a cave mouth, a building's door) by pressing `dir` into it, notes the place it
 came out in, and comes back out the same way. Walking cannot do it, because a
