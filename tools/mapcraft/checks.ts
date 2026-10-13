@@ -15,7 +15,7 @@
  *   quicker than walking" - written beside the program that has to keep them.
  */
 import { checkMapFile } from '../../src/game/world/mapFileChecks';
-import type { MapFile } from '../../src/game/world/mapFile';
+import type { MapFile, MapFileLimits } from '../../src/game/world/mapFile';
 import { readTiles, walkable, walkingSteps, type TileMap, type TileRect } from './tiles';
 import type { Point } from './program';
 
@@ -66,13 +66,15 @@ export interface HardCheckOptions {
    * under a town asks this of its own rows only.
    */
   readonly trees?: TileRect;
+  /** What the file may hold: a player's map's limits unless it is the game's own (`planLimits`). */
+  readonly limits?: MapFileLimits;
 }
 
 export function hardChecks(
   file: MapFile,
-  { rules = [], trees }: HardCheckOptions = {},
+  { rules = [], trees, limits }: HardCheckOptions = {},
 ): HardCheck[] {
-  const game = checkMapFile(file).map((check) => ({
+  const game = checkMapFile(file, { limits }).map((check) => ({
     id: `game:${check.id}`,
     label: `Game: ${check.label}`,
     passed: check.passed,

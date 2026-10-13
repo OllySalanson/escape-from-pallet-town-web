@@ -1,4 +1,5 @@
 import {
+  BUILT_IN_MAP_FILE_LIMITS,
   buildFileMap,
   buildPlayerMap,
   readMapFile,
@@ -200,7 +201,7 @@ function builtInFileMapRegistry(): Map<WorldMapId, FileMap> {
   if (!builtInRegistry) {
     builtInRegistry = new Map();
     for (const [path, value] of Object.entries(BUILT_IN_FILES)) {
-      const reading = readMapFile(value);
+      const reading = readMapFile(value, { limits: BUILT_IN_MAP_FILE_LIMITS });
       if (!reading.ok) {
         throw new Error(`${path} is not a map the game can load: ${reading.problems.join(' ')}`);
       }
@@ -208,7 +209,7 @@ function builtInFileMapRegistry(): Map<WorldMapId, FileMap> {
       if (!id) {
         throw new Error(`${path} is not one of the shipped maps (${reading.file.id})`);
       }
-      builtInRegistry.set(id, buildFileMap(reading.file, id));
+      builtInRegistry.set(id, buildFileMap(reading.file, id, BUILT_IN_MAP_FILE_LIMITS));
     }
   }
   return builtInRegistry;

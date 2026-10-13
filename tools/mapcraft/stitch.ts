@@ -19,6 +19,7 @@ import {
   type MapFileDropIn,
   type MapFileExit,
   type MapFileItemSpot,
+  type MapFileLimits,
   type MapFileLink,
   type MapFileSpot,
 } from '../../src/game/world/mapFile';
@@ -27,6 +28,7 @@ import { readTiles, walkable, walkingSteps, type TileRect } from './tiles';
 import {
   checkPlan,
   districtOf,
+  planLimits,
   districtRect,
   exitTile,
   openingsOf,
@@ -267,7 +269,7 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
     ...merged,
     wildlife: plan.wildlife ?? 'meadow',
   };
-  problems.push(...limitProblems(file));
+  problems.push(...limitProblems(file, planLimits(plan)));
   const seams = seamReports(plan, built, file);
   problems.push(...seams.filter((seam) => seam.status === 'broken').map((seam) => seam.detail));
   problems.push(...leaks(plan, built));
@@ -290,29 +292,29 @@ function uniqueNames(exits: readonly MapFileExit[]): MapFileExit[] {
   });
 }
 
-function limitProblems(file: MapFile): string[] {
+function limitProblems(file: MapFile, held: MapFileLimits): string[] {
   const limits: [string, number, number][] = [
-    ['drop-ins', file.dropIns.length, MAP_FILE_LIMITS.maxDropIns],
-    ['ways out', file.exits.length, MAP_FILE_LIMITS.maxExits],
-    ['item spots', file.itemSpots.length, MAP_FILE_LIMITS.maxItemSpots],
-    ['people', file.people?.length ?? 0, MAP_FILE_LIMITS.maxPeople],
-    ['signs', file.signs?.length ?? 0, MAP_FILE_LIMITS.maxSigns],
-    ['landmarks', file.landmarks?.length ?? 0, MAP_FILE_LIMITS.maxLandmarks],
-    ['named places', file.districts?.length ?? 0, MAP_FILE_LIMITS.maxDistricts],
-    ['trainers', file.trainers?.length ?? 0, MAP_FILE_LIMITS.maxTrainers],
-    ['doors', file.doors?.length ?? 0, MAP_FILE_LIMITS.maxDoors],
-    ['Pokemon', file.pokemon?.length ?? 0, MAP_FILE_LIMITS.maxPokemon],
-    ['berry trees', file.berryTrees?.length ?? 0, MAP_FILE_LIMITS.maxBerryTrees],
-    ['boulders', file.boulders?.length ?? 0, MAP_FILE_LIMITS.maxBoulders],
-    ['insides and caves', file.areas?.length ?? 0, MAP_FILE_LIMITS.maxAreas],
-    ['ways between places', file.links?.length ?? 0, MAP_FILE_LIMITS.maxLinks],
+    ['drop-ins', file.dropIns.length, held.maxDropIns],
+    ['ways out', file.exits.length, held.maxExits],
+    ['item spots', file.itemSpots.length, held.maxItemSpots],
+    ['people', file.people?.length ?? 0, held.maxPeople],
+    ['signs', file.signs?.length ?? 0, held.maxSigns],
+    ['landmarks', file.landmarks?.length ?? 0, held.maxLandmarks],
+    ['named places', file.districts?.length ?? 0, held.maxDistricts],
+    ['trainers', file.trainers?.length ?? 0, held.maxTrainers],
+    ['doors', file.doors?.length ?? 0, held.maxDoors],
+    ['Pokemon', file.pokemon?.length ?? 0, held.maxPokemon],
+    ['berry trees', file.berryTrees?.length ?? 0, held.maxBerryTrees],
+    ['boulders', file.boulders?.length ?? 0, held.maxBoulders],
+    ['insides and caves', file.areas?.length ?? 0, held.maxAreas],
+    ['ways between places', file.links?.length ?? 0, held.maxLinks],
   ];
   const problems = limits
     .filter(([, count, limit]) => count > limit)
     .map(([what, count, limit]) => `The map has ${count} ${what}; a map file holds ${limit}.`);
   const bytes = JSON.stringify(file).length;
-  if (bytes > MAP_FILE_LIMITS.maxBytes)
-    problems.push(`The map is ${bytes} bytes; a map file is ${MAP_FILE_LIMITS.maxBytes} at most.`);
+  if (bytes > held.maxBytes)
+    problems.push(`The map is ${bytes} bytes; a map file is ${held.maxBytes} at most.`);
   return problems;
 }
 

@@ -31,6 +31,7 @@ import {
   type MapFileArea,
   type MapFileBuilding,
   type MapFileDoorwayLook,
+  type MapFileLimits,
   type MapFileLinkEnd,
   type MapFileSpot,
 } from './mapFile';
@@ -297,7 +298,11 @@ export function spotPlacer(composed: ComposedMap): (spot: MapFileSpot) => GridPo
  * cannot be asked anything else, so it answers the first check and fails the
  * rest with nothing to say about them.
  */
-export function checkMapFile(value: unknown): readonly MapCheck[] {
+export function checkMapFile(
+  value: unknown,
+  /** What the file may hold: a player's map is held to `MAP_FILE_LIMITS`, the default. */
+  { limits }: { readonly limits?: MapFileLimits } = {},
+): readonly MapCheck[] {
   const check = (id: MapCheckId, faults: readonly MapFault[]): MapCheck => ({
     id,
     label: LABELS[id],
@@ -316,7 +321,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
             )
           : { ...check(id, []), passed: false },
       );
-  const reading = readMapFile(value);
+  const reading = readMapFile(value, { limits });
   if (!reading.ok) {
     return unloadable(reading.problems);
   }

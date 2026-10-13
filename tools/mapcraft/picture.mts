@@ -11,6 +11,7 @@ import { TILE_SIZE } from '../tileset/tileSheet.mjs';
 import { blit, box, canvas, label } from '../tileset/draw.mjs';
 import { drawWorldMap, type MapImage } from '../tileset/mapPicture.mts';
 import {
+  BUILT_IN_MAP_FILE_LIMITS,
   MAP_FILE_LIMITS,
   buildPlayerMap,
   playerMapId,
@@ -34,9 +35,9 @@ import {
 
 /** The map (or the part of it in `crop`) exactly as the game draws it. */
 export function mapPicture(file: MapFile, crop?: TileRect): MapImage {
-  const reading = readMapFile(file);
+  const reading = readMapFile(file, { limits: BUILT_IN_MAP_FILE_LIMITS });
   if (!reading.ok) throw new Error(reading.problems.join(' '));
-  registerPlayerMap(buildPlayerMap(reading.file));
+  registerPlayerMap(buildPlayerMap(reading.file, BUILT_IN_MAP_FILE_LIMITS));
   const { x, y, width, height } = crop ?? { x: 0, y: 0, width: file.width, height: file.height };
   return drawWorldMap(playerMapId(file), [x, y, width, height]);
 }
@@ -426,9 +427,9 @@ export function shrunk(image: MapImage, factor: number): MapImage {
 export function areaPicture(file: MapFile, areaId: string): MapImage {
   const placed = composeMapFile(file).areas.find((area) => area.id === areaId);
   if (!placed) throw new Error(`the map has no place called '${areaId}'`);
-  const reading = readMapFile(file);
+  const reading = readMapFile(file, { limits: BUILT_IN_MAP_FILE_LIMITS });
   if (!reading.ok) throw new Error(reading.problems.join(' '));
-  registerPlayerMap(buildPlayerMap(reading.file));
+  registerPlayerMap(buildPlayerMap(reading.file, BUILT_IN_MAP_FILE_LIMITS));
   const { x, y, width, height } = placed.rect;
   return drawWorldMap(playerMapId(file), [x, y, width, height]);
 }
