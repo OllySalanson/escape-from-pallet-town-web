@@ -3153,7 +3153,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ]
         : // FireRed's own words for a locked door, then for the key it wants
           // (`CinnabarIsland_Text_DoorIsLocked`, `Text_ItNeedsCardKey`).
-          [`${point.label}: the gate is locked…`, `No! It needs the ${keyName}!`];
+          // Then where that key comes from, as the rubble and the water say
+          // Bill trades their tools: a key is never sold, it is a prize laid
+          // on its own gate's map, and a player who did not know that went
+          // looking for it at Bill's.
+          [
+            `${point.label}: the gate is locked…`,
+            `No! It needs the ${keyName}!`,
+            ...(this.currentMap.loot.some((loot) => loot.itemId === opener)
+              ? [`The ${keyName} is a rare find, somewhere on this map.`]
+              : []),
+          ];
     }
     this.runSession.exitsOpened = [...(this.runSession.exitsOpened ?? []), point.label];
     audioManager.play('landmarkWorked');

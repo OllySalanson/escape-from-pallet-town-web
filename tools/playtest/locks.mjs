@@ -146,8 +146,9 @@ try {
   await wait(200);
   const refused = await readAll();
   check(
-    refused.join(' | ') === 'WEIR GATE: the gate is locked… | No! It needs the Weir Key!',
-    `no key: FireRed's words at a locked door ("${refused.join(' | ')}")`,
+    refused.join(' | ') ===
+      'WEIR GATE: the gate is locked… | No! It needs the Weir Key! | The Weir Key is a rare find, somewhere on this map.',
+    `no key: FireRed's words at a locked door, and where its key is found ("${refused.join(' | ')}")`,
   );
 
   const strongbox = await crate('KILN STRONGBOX');

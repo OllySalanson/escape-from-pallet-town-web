@@ -20,7 +20,7 @@ import { Bag, cellsFor, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunPhase } from '../run/RunManager';
 import { getWorldMap, type BuiltInMapId } from '../worldMap';
-import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
+import { EXTRACTION_POINTS, isDugExit, itemThatOpens, type ExtractionPoint } from '../world/extractionPoints';
 import { WORLD_POIS, type WorldPoi } from '../world/pois';
 import { WorldScene } from './WorldScene';
 
@@ -102,15 +102,28 @@ describe('a locked gate', () => {
     expect(raid.scene.reachableExitPositions()).not.toContainEqual(gate.position);
   });
 
-  it("says what FireRed says at a locked door, and what it needs, and opens nothing", () => {
+  it("says what FireRed says at a locked door, what it needs, and where that is found, and opens nothing", () => {
     const raid = inARaid('pallet-town');
     expect(raid.scene.tryOpenBarredExitAt(gate.position)).toEqual([
       'WEIR GATE: the gate is locked…',
       'No! It needs the Weir Key!',
+      // Rubble and the water both say where their tool comes from (Bill); a
+      // key is never sold, so the gate says it is a find of this map's own.
+      'The Weir Key is a rare find, somewhere on this map.',
     ]);
     expect(played).toEqual(['denied']);
     expect(raid.runSession.exitsOpened).toEqual([]);
     expect(raid.scene.isBlocked(gate.position)).toBe(true);
+  });
+
+  it('on every shipped map, says its key is a find of that map', () => {
+    const keyGates = EXTRACTION_POINTS.filter((point) => itemThatOpens(point) && !isDugExit(point));
+    expect(keyGates.length).toBeGreaterThan(0);
+    for (const point of keyGates) {
+      const raid = inARaid(point.mapId as BuiltInMapId);
+      const lines = raid.scene.tryOpenBarredExitAt(point.position) ?? [];
+      expect(lines[lines.length - 1], point.label).toMatch(/ is a rare find, somewhere on this map\.$/);
+    }
   });
 
   it('will not turn for a Lockpick, a Pickaxe or another map\'s key', () => {
