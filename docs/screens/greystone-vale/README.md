@@ -9,8 +9,8 @@ is the plan, each district that is drawn marked DRAWN:
 And the vale as it ships now, with the nine districts it was planned as all
 drawn - Millbrook, High Moor, Greystone Peaks, Pine Hollow, The Crossing,
 Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and of the five it has
-grown into, The Wreck. The Power Station, Safari Marsh, The Sunken Quarter and
-Smugglers' Cove are wood until each is drawn.
+grown into, The Wreck and The Sunken Quarter. The Power Station, Safari Marsh
+and Smugglers' Cove are wood until each is drawn.
 
 ![the vale as it ships](vale.png)
 
@@ -648,6 +648,69 @@ What the judges kept naming:
   the lawn read as "a pen of evenly spaced stones".
 
 ![The Wreck as first drawn](the-wreck-first-draw.png)
+
+## The Sunken Quarter
+
+The drowned lower town of the old port, south of Gull Strand. It is drawn as a
+town first and then flooded, so the sea covers the streets and leaves the town's
+plan standing.
+
+- **The jetty and the Old Quay:** the jetty from the strand runs on across the
+  water to the quay, the one stretch of the port still dry. The quay is the
+  landing. The fishers' boat, a hidden way out, puts in from a step off the
+  jetty. Without it, the cove under Gull Strand's cliffs is past the hunter's
+  blind window (`hunterFlee.test.ts`).
+- **The upper town:** the quay, the upper street with the harbour office and
+  its houses, and the high street down to the water. The Harbourmaster stands
+  at the office.
+- **The tide:** below the upper street the sea has come in. The streets carry on
+  under it as stone just awash, and the roofs of the houses along them stand in
+  the water. The boatyard is the one dry corner of the lower town.
+- **The Drowned Mansion:** FireRed's burnt mansion on its walled terrace in the
+  middle of the water. The high street runs in at its north gate and out at its
+  south gate, past the paved forecourt. Its garden has gone to grass.
+- **Ways on and out:** the low street runs west to the shingle under the cliff,
+  where the trail from Smugglers' Cove comes round. The high street runs south,
+  past Diver Coral, to a landing at the Low Water Stair. That is the way off the
+  map, and it opens once the tide is out, 90 seconds into a raid.
+- **The frame:** a cliff runs the length of the west side and off the map at
+  each end. East is the open sea The Wreck lies in, and the sea closes the north
+  and the south. (It was judged with a second cliff down the east side; that
+  came out when the sea east of it was drawn.)
+
+![The Sunken Quarter](sunken-quarter.png)
+
+As judged in round 1, before the mansion's garden was grassed:
+
+![The Sunken Quarter, round 1](sunken-quarter-round1.png)
+
+### Judged blind
+
+It was judged in one batch with Smugglers' Cove, which lands on its own,
+beside FireRed's coast, the set Gull Strand was held to: two windows of Vermilion City's harbour, and one each of Route 19,
+Route 12 and Route 24. The two broken controls were Vermilion with every block
+shuffled and Route 12 with four blocks swapped. Every round used two fresh
+judges, and each district was judged as two 24x40 views.
+
+| Round | Real mean | The Sunken Quarter | Smugglers' Cove |
+|---|---|---|---|
+| 1 | 5.8 | **6 and 5: passes** | 7 and 6 |
+| 2 | 5.6 | **6 and 5: passes** | 6 and 6 |
+
+The table shows only the judges that counted. In each round one judge scored a
+broken control level with its lowest real map (3 and 3), so it does not count.
+It scored the Sunken Quarter 5 and 6 in round 1, and 6 and 5 in round 2.
+
+What round 1's judges named, and round 2 fixed: tall grass growing on paving
+inside the mansion's walls. The garden is grass now, with paving only on the
+street and the forecourt.
+
+What is left for a later pass:
+
+- the upper town's streets are ruled straight;
+- the house styles are mixed;
+- a building standing in open water reads to both judges as pasted, though
+  the drowned roofs are the idea.
 
 ## How it ships
 

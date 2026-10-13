@@ -15,6 +15,7 @@ import { orchardTerraces } from './orchardTerraces';
 import { pineHollow } from './pineHollow';
 import { GREYSTONE_VALE } from './plan';
 import { reedmere } from './reedmere';
+import { sunkenQuarter } from './sunkenQuarter';
 import { tanglewood } from './tanglewood';
 import { theCrossing } from './theCrossing';
 import { theWreck } from './theWreck';
@@ -33,6 +34,7 @@ export default function greystoneVale(): WorldResult {
       'gull-strand': gullStrand(),
       'orchard-terraces': orchardTerraces(),
       'the-wreck': theWreck(),
+      'sunken-quarter': sunkenQuarter(),
     },
   };
 }
