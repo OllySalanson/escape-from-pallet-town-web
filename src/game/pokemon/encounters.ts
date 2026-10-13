@@ -705,3 +705,27 @@ export const POWER_PLANT_WILDLIFE = wildlife(0.1, [
   { speciesId: 'pikachu', minLevel: 7, maxLevel: 8, weight: 4 },
   { speciesId: 'electabuzz', minLevel: 8, maxLevel: 8, weight: 1 },
 ]);
+
+/**
+ * The Safari Zone, run as a warden's reserve: FireRed's own Safari Zone species
+ * (the Nidoran, Exeggcute, Venonat, Paras and Rhyhorn of its grass, and
+ * the Chansey, Kangaskhan, Scyther, Pinsir and Tauros it is famous for), brought
+ * from its 22-33 down to a route's levels, as the Power Plant is. Nothing is
+ * fielded below the level it evolves at, and the five FireRed keeps rare are
+ * the rare rolls here: Pokemon a raid cannot meet anywhere else in the game.
+ * Doduo is left out because by night its slot would go to a Golbat
+ * (`nightRaids.ts`), fielded far below the level a Zubat becomes one at.
+ */
+export const SAFARI_ZONE_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'nidoran-f', minLevel: 7, maxLevel: 9, weight: 7 },
+  { speciesId: 'nidoran-m', minLevel: 7, maxLevel: 9, weight: 6 },
+  { speciesId: 'exeggcute', minLevel: 7, maxLevel: 8, weight: 4 },
+  { speciesId: 'venonat', minLevel: 7, maxLevel: 9, weight: 6 },
+  { speciesId: 'paras', minLevel: 7, maxLevel: 8, weight: 6 },
+  { speciesId: 'rhyhorn', minLevel: 8, maxLevel: 9, weight: 2 },
+  { speciesId: 'chansey', minLevel: 8, maxLevel: 8, weight: 1 },
+  { speciesId: 'kangaskhan', minLevel: 8, maxLevel: 8, weight: 1 },
+  { speciesId: 'scyther', minLevel: 8, maxLevel: 8, weight: 1 },
+  { speciesId: 'pinsir', minLevel: 8, maxLevel: 8, weight: 1 },
+  { speciesId: 'tauros', minLevel: 8, maxLevel: 8, weight: 1 },
+]);

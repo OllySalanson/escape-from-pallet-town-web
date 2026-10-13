@@ -8,6 +8,7 @@ import {
   PALLET_FIELD_WILDLIFE,
   PALLET_SHORE_WILDLIFE,
   POWER_PLANT_WILDLIFE,
+  SAFARI_ZONE_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -836,6 +837,8 @@ export const MAP_FILE_HABITATS = {
   cave: PALLET_DELVE_WILDLIFE,
   // A power station run down: FireRed's Power Plant, at a route's levels.
   'power-plant': POWER_PLANT_WILDLIFE,
+  // A warden's reserve behind the Safari Zone's gate: FireRed's Safari Zone, at a route's levels.
+  safari: SAFARI_ZONE_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
