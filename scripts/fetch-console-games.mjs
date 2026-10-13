@@ -44,7 +44,7 @@ export const CONSOLE_GAME_SOURCES = [
   {
     id: 'pallet-blocks',
     repo: 'https://github.com/OllySalanson/pallet-blocks.git',
-    commit: 'f3752c6a8b828e6cea296587a328d0034ee90629',
+    commit: '6e21369c851cc9a940d1cc4309ffecc6d7c6fd89',
     build: ['npm', 'run', 'build:lib'],
     module: 'dist-lib/pallet-blocks.js',
     types: 'dist-lib/types',
