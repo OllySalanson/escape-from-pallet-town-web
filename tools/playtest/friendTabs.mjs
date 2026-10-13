@@ -145,3 +145,40 @@ export async function twoInARoom(browser, url, out) {
 
   return { olly, amy, code, bring, press, click, until, readOn, forget: () => { front = null; } };
 }
+
+/**
+ * Runs from whatever fight a tab is in - RUN from a wild one, FLEE from the
+ * hunter - and reads on until the world is back. A driver walking a map with
+ * tall grass on it meets fights it did not come for.
+ */
+export async function leaveFight(tab, press) {
+  const battle = `(() => { const b = ${GAME}.scene.getScene('battle'); if (!b || !b.sys.isActive()) return null;
+    return { mode: b.mode, commands: b.commandTexts.map((t, i) => (i === b.selectedCommand ? '>' : '') + t.text) }; })()`;
+  const seen = new Set();
+  for (let guard = 0; guard < 200; guard += 1) {
+    if (await tab.evaluate(`${WORLD}.sys.isActive()`)) return;
+    const b = await tab.evaluate(battle);
+    if (b && b.mode === 'main') {
+      const selected = b.commands.find((command) => command.startsWith('>')) ?? '';
+      if (!selected.includes('RUN') && !selected.includes('FLEE')) {
+        const key = seen.has(selected) ? 'ArrowDown' : 'ArrowRight';
+        seen.add(selected);
+        await press(tab, key);
+        continue;
+      }
+    }
+    await press(tab, 'Space');
+  }
+}
+
+/**
+ * The first key of the shortest walk to a tile over the world's own collision,
+ * `here` once on it, null if nothing reaches it.
+ */
+export const stepToward = (goal) => `(() => { const w = ${WORLD}; if (!w.sys.isActive()) return 'away'; const c = w.collisionData, s = w.currentTile, g = ${JSON.stringify(goal)};
+  if (s.x === g.x && s.y === g.y) return 'here'; const W = c[0].length, H = c.length, id = (x, y) => y * W + x;
+  const prev = new Map([[id(s.x, s.y), null]]); const q = [[s.x, s.y]]; let found = null;
+  while (q.length) { const [x, y] = q.shift(); if (x === g.x && y === g.y) { found = [x, y]; break; }
+    for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || c[ny][nx]) continue; prev.set(id(nx, ny), [x, y, k]); q.push([nx, ny]); } }
+  if (!found) return null; let cur = found, key = null; for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return key; })()`;

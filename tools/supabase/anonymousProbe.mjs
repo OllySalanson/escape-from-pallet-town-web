@@ -70,7 +70,7 @@ for (const [name, body] of [['unclaimed_feedback_uploads', { older_than_hours: 2
   check(askedSignedOut.status >= 400, `cannot ask ${name} signed out (${askedSignedOut.status})`);
 }
 // Raid rooms are made, joined and left only signed in (`src/game/raidRoom/`).
-for (const [name, body] of [['open_raid_room', { map_id: 'route-1' }], ['join_raid_room', { room_code: 'BBBB' }], ['leave_raid_room', { room_code: 'BBBB' }]]) {
+for (const [name, body] of [['open_raid_room', { map_id: 'route-1' }], ['join_raid_room', { room_code: 'BBBB' }], ['leave_raid_room', { room_code: 'BBBB' }], ['raid_room_seed', { room_code: 'BBBB' }], ['take_raid_loot', { room_code: 'BBBB', loot_id: 'probe' }], ['raid_loot_taken', { room_code: 'BBBB' }]]) {
   const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });
   check(askedSignedOut.status >= 400, `cannot ${name} signed out (${askedSignedOut.status})`);
 }
@@ -104,7 +104,7 @@ if (!signUp?.json?.access_token) {
 const token = signUp.json.access_token;
 const me = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub;
 
-for (const table of ['feedback', 'map_submissions', 'admins', 'blocked_makers', 'raid_rooms', 'raid_room_members', 'raid_room_tries']) {
+for (const table of ['feedback', 'map_submissions', 'admins', 'blocked_makers', 'raid_rooms', 'raid_room_members', 'raid_room_tries', 'raid_room_loot']) {
   const read = await call(`/rest/v1/${table}?select=*`, { token });
   check(read.status >= 400 || (Array.isArray(read.json) && read.json.length === 0), `reads nothing from ${table} (${read.status})`);
 }

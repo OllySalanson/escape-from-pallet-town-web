@@ -455,6 +455,12 @@ export interface RunPlan {
    */
   readonly night: boolean;
   readonly loot: Readonly<Record<WorldMapId, readonly WorldLoot[]>>;
+  /**
+   * The pieces of this raid's loot a raid room shares (`withRoomLoot`): picked
+   * up only once the database says this player was first. Absent on a raid
+   * alone.
+   */
+  readonly roomLootIds?: readonly string[];
   readonly trainers: readonly RunTrainerEncounter[];
   readonly extractionPoints: readonly ExtractionPoint[];
   readonly hunter: HunterTuning;
@@ -736,8 +742,14 @@ export function withRoomLoot(
   for (const loot of own) {
     taken.add(tileKey(loot.position));
   }
-  const shared = roomLoot.filter((loot) => !taken.has(tileKey(loot.position)));
-  return { ...plan, loot: { ...plan.loot, [mapId]: [...shared, ...own] } };
+  // One piece to an id: a piece the raid keeps as its own is never laid twice.
+  const ownIds = new Set(own.map((loot) => loot.id));
+  const shared = roomLoot.filter((loot) => !ownIds.has(loot.id) && !taken.has(tileKey(loot.position)));
+  return {
+    ...plan,
+    loot: { ...plan.loot, [mapId]: [...shared, ...own] },
+    roomLootIds: shared.map((loot) => loot.id),
+  };
 }
 
 /** The stream a room's shared loot is laid on, apart from every stream a raid's own plan uses. */

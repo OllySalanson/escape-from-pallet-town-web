@@ -4,6 +4,7 @@ import { LOCAL_NAME_KEY, localIdentity, pageHarbourMode } from '../harbour/harbo
 import { loadPlayerName } from '../console/playerName';
 import { HunterBoard, encodeHunterSignal, readHunterSignal, type HunterSignal } from './groupHunter';
 import { mapPlace, type RaidPlace } from './raidProtocol';
+import { LootLedger, encodeTook, readTook } from './roomLoot';
 import { liveRaidWire, localRaidWire } from './raidWire';
 import { liveRoomService, localRoomService, type HeldRoom, type RaidRoomService, type RoomAnswer } from './roomService';
 
@@ -32,6 +33,8 @@ export const FRIEND_NEWS_MS = 4_000;
 export interface FriendNews {
   readonly name: string;
   readonly came: boolean;
+  /** Said instead of came-or-went: news about something the friend did (`GOT THERE FIRST`). */
+  readonly line?: string;
   /** The page time it happened at. */
   readonly at: number;
 }
@@ -58,6 +61,10 @@ export class FriendRoom {
    * fight, what it left of the hunter. Kept here because the world is not.
    */
   public fighting: 'wild' | 'hunter' | null = null;
+  /** Who holds which piece of the room's loot (`roomLoot.ts`). */
+  public readonly loot = new LootLedger();
+  /** Whether this raid has asked the database what was taken before it dropped in. */
+  private askedTaken = false;
 
   private readonly service: RaidRoomService;
   private readonly wireFor: (code: string) => HarbourWire<RaidPlace>;
@@ -103,6 +110,8 @@ export class FriendRoom {
     this.lastNews = null;
     this.hunters.clear();
     this.fighting = null;
+    this.loot.clear();
+    this.askedTaken = false;
     void this.service.leave(held.code);
   }
 
@@ -159,6 +168,56 @@ export class FriendRoom {
     return this.link?.signal(encodeHunterSignal(signal)) ?? false;
   }
 
+  /**
+   * Claims a piece of the room's loot for this player. The answer lands in the
+   * ledger; a win is said to everybody else, so they see it go at once.
+   */
+  public claimLoot(lootId: string): void {
+    const held = this.held;
+    if (!held || !this.loot.claim(lootId)) {
+      return;
+    }
+    void this.service.takeLoot(held.code, lootId).then((claim) => {
+      if (this.held?.code !== held.code) {
+        return;
+      }
+      if (claim.outcome === 'yours') {
+        this.loot.answered(lootId, held.me, held.me);
+        this.link?.signal(encodeTook({ from: held.me, lootId }));
+      } else if (claim.outcome === 'taken') {
+        this.loot.answered(lootId, claim.by ?? 'somebody', held.me);
+      } else {
+        this.loot.answered(lootId, null, held.me);
+      }
+    });
+  }
+
+  /** Once a raid: what was taken before this player dropped in. */
+  public askWhatWasTaken(): void {
+    const held = this.held;
+    if (!held || this.askedTaken) {
+      return;
+    }
+    this.askedTaken = true;
+    void this.service.lootTaken(held.code).then((taken) => {
+      if (this.held?.code === held.code) {
+        for (const [lootId, holder] of taken) {
+          this.loot.heard(lootId, holder);
+        }
+      }
+    });
+  }
+
+  /** The name a player in the room goes by, if this browser knows it. */
+  public nameOf(id: string): string | null {
+    return this.friends().find((friend) => friend.id === id)?.name ?? this.known.get(id) ?? null;
+  }
+
+  /** Puts a line of news up where came-and-went is said. */
+  public tell(line: string): void {
+    this.lastNews = { name: '', came: true, line, at: this.now };
+  }
+
   /** Who came or went in the last `FRIEND_NEWS_MS`, if anybody. */
   public news(): FriendNews | null {
     return this.lastNews && this.now - this.lastNews.at < FRIEND_NEWS_MS ? this.lastNews : null;
@@ -176,6 +235,10 @@ export class FriendRoom {
         const signal = readHunterSignal(payload);
         if (signal && signal.from !== this.held?.me) {
           this.hunters.hear(signal);
+        }
+        const took = readTook(payload);
+        if (took && took.from !== this.held?.me) {
+          this.loot.heard(took.lootId, took.from);
         }
       });
     }

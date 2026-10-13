@@ -66,3 +66,24 @@ describe("the database's side of raiding with a friend", () => {
     }
   });
 });
+
+describe("the database's side of a room's shared loot", () => {
+  it('lets the first claim on a piece hold, under a lock, for a player in the room', () => {
+    const take = definition('private.take_raid_loot');
+    expect(take).toContain('caller uuid := (select auth.uid())');
+    expect(take).toContain("pg_advisory_xact_lock(hashtextextended('raid_room_loot:' || room::text, 0))");
+    expect(take).toContain('private.my_open_raid_room(take_raid_loot.room_code)');
+    expect(take).toContain("case when holder = caller then 'yours' else 'taken' end");
+    expect(take).toContain('>= 120');
+    expect(take).toContain('>= 500');
+    expect(everything).toContain('primary key (room_id, loot_id)');
+  });
+
+  it('hands the room’s seed and what was taken only to the players in it', () => {
+    expect(definition('private.raid_room_seed')).toContain('private.my_open_raid_room(raid_room_seed.room_code)');
+    expect(definition('private.raid_loot_taken')).toContain('private.my_open_raid_room(raid_loot_taken.room_code)');
+    const mine = definition('private.my_open_raid_room');
+    expect(mine).toContain('m.player_uid = (select auth.uid())');
+    expect(mine).toContain('m.left_at is null');
+  });
+});

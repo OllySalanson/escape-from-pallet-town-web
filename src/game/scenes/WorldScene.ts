@@ -1148,6 +1148,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     rooms.inRaid(this.currentMap.id, this.currentTile, this.facing);
     this.friendFigures = new HarbourFigures(this);
+    // Anything the others took before this player dropped in, or while they
+    // were in a fight, is already gone.
+    rooms.askWhatWasTaken();
     // Back from a fight: the room is told it is over, and after the hunter's
     // own fight what it left of the hunter - fled from, and where it fell back
     // to, or beaten for everybody.
@@ -1363,6 +1366,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     rooms.moved(this.currentTile, this.facing);
     rooms.tick(this.time.now, deltaMs);
     this.friendFigures.update(rooms.figuresOn(this.currentMap.id));
+    this.settleRoomLoot();
   }
 
   /** The friend as drawn, for a playtest to read (`tools/playtest/friendRaid.mjs`). */
@@ -1385,7 +1389,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const areas = this.currentMap.areas;
     return friendChipLines({
       code: room.code,
-      news: news ? { name: news.name, came: news.came } : null,
+      news: news ? { name: news.name, came: news.came, ...(news.line ? { line: news.line } : {}) } : null,
       friends: rooms.friends().map((friend) => {
         const figure = drawn.find((each) => each.id === friend.id);
         const theirArea = figure && areas ? (placedAreaAt(areas, figure.tile) ?? areas[0]) : undefined;
@@ -5227,6 +5231,84 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const loot = this.lootForCurrentMap().find(
       (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
     );
+    // The room's ground is picked up by whoever the database says was first
+    // (`raidRoom/roomLoot.ts`): a step onto a piece nobody holds yet is the
+    // claim, and the piece is collected on the frame the answer is this
+    // player's (`settleRoomLoot`). Held by somebody else, it is already gone.
+    if (loot && this.isSharedLoot(loot) && this.isLootAvailable() && !this.collectedLootIds.has(loot.id)) {
+      const rooms = friendRoom()!;
+      const holder = rooms.loot.holder(loot.id);
+      if (holder === undefined) {
+        rooms.claimLoot(loot.id);
+        return null;
+      }
+      if (holder !== rooms.room!.me) {
+        return null;
+      }
+    }
+    return this.collectLootHere(loot);
+  }
+
+  /** Whether a piece of loot is the room's shared ground rather than this raid's own. */
+  private isSharedLoot(loot: WorldLoot): boolean {
+    const room = friendRoom()?.room;
+    return (
+      room !== null &&
+      room !== undefined &&
+      room.mapId === this.currentMap.id &&
+      (this.runSession?.plan?.roomLootIds?.includes(loot.id) ?? false)
+    );
+  }
+
+  /**
+   * Each frame of a raid with friends: a piece this player won is collected,
+   * once, wherever they have walked to since (they were first, and that is
+   * what counts); a piece somebody else holds is taken off the map; and losing
+   * a race is said on the friend chip.
+   */
+  private settleRoomLoot(): void {
+    const rooms = friendRoom();
+    const room = rooms?.room;
+    const ids = this.runSession?.plan?.roomLootIds;
+    if (!rooms || !room || !ids || room.mapId !== this.currentMap.id || !this.isLootAvailable()) {
+      return;
+    }
+    for (const loot of this.lootForCurrentMap()) {
+      if (this.collectedLootIds.has(loot.id) || !ids.includes(loot.id)) {
+        continue;
+      }
+      const holder = rooms.loot.holder(loot.id);
+      if (holder === undefined) {
+        continue;
+      }
+      if (holder === room.me) {
+        if (rooms.loot.firstTry(loot.id) && !this.dialogBox.visible && !this.pendingHubTransition) {
+          const said = this.collectLootHere(loot);
+          if (said) {
+            this.dialogBox.showMessages([said]);
+          }
+        }
+        continue;
+      }
+      this.takeLootOffTheMap(loot);
+      if (rooms.loot.lostTheRace(loot.id)) {
+        audioManager.play('denied');
+        rooms.tell(`${rooms.nameOf(holder) ?? 'A FRIEND'} GOT THERE FIRST`);
+      }
+    }
+  }
+
+  /** A piece nobody here will pick up any more: its mark, its gleam and its caption go. */
+  private takeLootOffTheMap(loot: WorldLoot): void {
+    this.collectedLootIds.add(loot.id);
+    this.lootSprites.get(loot.id)?.destroy();
+    this.lootSprites.delete(loot.id);
+    this.removeWorldLabel(this.prizeLabels.get(loot.id));
+    this.prizeLabels.delete(loot.id);
+  }
+
+  /** Collects a piece of loot into the pack and returns what to say, as `tryCollectLootAt` always has. */
+  private collectLootHere(loot: WorldLoot | undefined): string | null {
     const result = tryCollectLoot(
       loot,
       this.isLootAvailable(),
