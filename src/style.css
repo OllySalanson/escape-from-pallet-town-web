@@ -3255,6 +3255,22 @@ button {
   min-width: 0;
   white-space: nowrap;
 }
+/* Short of the room for a band, a card's four moves stand two abreast rather
+   than one a line: at 1280x800 a column of four made every card so tall that
+   a party of four showed two cards, a blank band and "2 MORE" over the other
+   two - one of them the Pokemon the disc was meant for. A move whose name and
+   type will not share half the card keeps a line to itself. */
+:where(.pixel-ui[data-room='narrow']) .teach-moves,
+:where(.pixel-ui[data-room='tight']) .teach-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 calc(var(--u) * 6);
+}
+:where(.pixel-ui[data-room='narrow']) .teach-moves > li,
+:where(.pixel-ui[data-room='tight']) .teach-moves > li {
+  flex: 1 0 40%;
+  min-width: max-content;
+}
 :where(.pixel-ui) .teach-moves > li.is-known .px-name {
   text-decoration: underline;
   text-decoration-thickness: var(--u);
@@ -3289,8 +3305,6 @@ button {
   display: none;
 }
 :where(.pixel-ui[data-room='tight']) .teach-moves {
-  display: flex;
-  flex-wrap: wrap;
   gap: var(--u) calc(var(--u) * 6);
   margin: var(--u) 0;
 }

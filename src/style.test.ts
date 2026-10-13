@@ -308,6 +308,31 @@ describe('the box strip that leads a list of Pokemon', () => {
   });
 });
 
+describe('a card on the teaching screen', () => {
+  // At 1280x800 a card listed its four moves one a line, which made each card
+  // so tall that a party of four showed two cards, a blank band and "2 MORE"
+  // over the other two - one of them the Seel the disc was meant for. Short of
+  // the room for a band the moves stand two abreast, and a move too long to
+  // share half the card keeps a line of its own rather than being clipped.
+  const bodiesFor = (room: 'narrow' | 'tight', selector: string): string[] =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) =>
+        selectors.split(',').some((one) => one.trim() === `:where(.pixel-ui[data-room='${room}']) ${selector}`),
+      )
+      .map(([, , body]) => body);
+
+  it.each(['narrow', 'tight'] as const)('stands its moves two abreast in %s room', (room) => {
+    const list = bodiesFor(room, '.teach-moves').join(';');
+    expect(list).toMatch(/display:\s*flex;/);
+    expect(list).toMatch(/flex-wrap:\s*wrap;/);
+    const move = bodiesFor(room, '.teach-moves > li').join(';');
+    const basis = Number(/flex:\s*1 0 (\d+)%;/.exec(move)?.[1]);
+    expect(basis).toBeGreaterThan(25);
+    expect(basis).toBeLessThan(50);
+    expect(move).toMatch(/min-width:\s*max-content;/);
+  });
+});
+
 describe('the defeat line-up', () => {
   // The line-up in front of a lost raid's report is not a pixel-ui screen, but
   // it is set in the same face, and the face has two limits that hold anywhere
