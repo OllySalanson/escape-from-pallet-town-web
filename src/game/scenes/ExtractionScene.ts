@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
 import { countPlay, raidEnding } from '../analytics/playCounter';
+import { friendRoom } from '../raidRoom/friendRoom';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
 import { formatRaidClock } from '../run/raidClock';
@@ -112,6 +113,11 @@ export class ExtractionScene extends Phaser.Scene {
     if (!attempt) {
       countPlay({ kind: 'raid-end', detail: raidEnding(this.report) });
     }
+    // Every raid ends here, and a raid with a friend is the room's whole
+    // purpose: the room is left, and the friend sees this player go at once
+    // and raids on alone (`raidRoom/friendRoom.ts`). A room can only be raided
+    // on its own map (`HubScene.startRun`), so any raid ending is its raid's.
+    friendRoom()?.leave();
     this.cameras.main.fadeIn?.(200, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'extraction-menu', (event) => this.handleKey(event));
     this.overlay.root.setAttribute('aria-label', 'Raid result');

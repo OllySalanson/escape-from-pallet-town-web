@@ -167,6 +167,24 @@ export type GameDatabase = {
         Args: { owner: string };
         Returns: { readonly name: string; readonly snapshot: unknown }[];
       };
+      /** Raiding with a friend (`raidRoom/roomService.ts`). */
+      open_raid_room: {
+        Args: { map_id: string };
+        Returns: string;
+      };
+      join_raid_room: {
+        Args: { room_code: string };
+        Returns: {
+          readonly outcome: string;
+          readonly map_id: string | null;
+          readonly host_uid: string | null;
+          readonly host_name: string | null;
+        }[];
+      };
+      leave_raid_room: {
+        Args: { room_code: string };
+        Returns: string;
+      };
       /** Counting play (`analytics/playCounter.ts`), sent by plain `fetch` rather than this client. */
       record_play: {
         Args: { visitor_id: string; build: string; events: unknown };

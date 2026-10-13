@@ -178,6 +178,8 @@ import {
   atRow,
 } from '../world/depths';
 import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
+import { friendRoom } from '../raidRoom/friendRoom';
+import { HarbourFigures } from '../base/harbourFigures';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -199,6 +201,7 @@ import {
   placePlateLine,
   weatherChipLine,
   prizeChipView,
+  friendChipLines,
   type PrizeChipInput,
   raidClockAlertTier,
   raidClockView,
@@ -783,6 +786,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the clock - it only ever goes where the player has been.
    */
   private partner: PartnerFigure | null = null;
+  /** The other player in a raid room, drawn where they walk (`raidRoom/`). */
+  private friendFigures: HarbourFigures | null = null;
 
   public constructor() {
     super('world');
@@ -860,6 +865,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterStillMs = 0;
     // Phaser destroyed its sprite with the scene; this only stops pointing at it.
     this.partner = null;
+    // And the friend's, for the same reason.
+    this.friendFigures = null;
     // Where the last raid ended is not where this one starts, and the plate
     // that named it must not flash up over the next insertion.
     this.districtId = null;
@@ -946,6 +953,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.createEntities();
     this.liftBeatenWatches();
     this.createPlayer();
+    this.joinFriendRoom();
     // Back on the Bicycle after a fight, if it is still in the pack.
     this.setRiding(stillRiding({ ...this.rideState(), riding: this.runSession?.riding === true }));
     this.createDialogBox();
@@ -1095,7 +1103,79 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.updateRaid(deltaMs);
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
+    this.updateFriend(deltaMs);
   }
+
+  /**
+   * The raid room this raid is in, if any: this raid's map is the room's, and
+   * the player is said to be standing on it. Asked on every rebuild - the
+   * world is started again after every fight - and the other player has stood
+   * where they last walked all through it.
+   */
+  private joinFriendRoom(): void {
+    const rooms = friendRoom();
+    if (!this.runSession || rooms?.room?.mapId !== this.currentMap.id) {
+      return;
+    }
+    rooms.inRaid(this.currentMap.id, this.currentTile, this.facing);
+    this.friendFigures = new HarbourFigures(this);
+  }
+
+  /**
+   * Tells the room where the player stands - a step, a door or a warp are all
+   * only a new tile - and draws the friend where they walk. Off the raid clock
+   * and before nothing: the friend is the world going on around the player.
+   */
+  private updateFriend(deltaMs: number): void {
+    const rooms = friendRoom();
+    if (!this.friendFigures || !rooms?.room) {
+      return;
+    }
+    rooms.moved(this.currentTile, this.facing);
+    rooms.tick(this.time.now, deltaMs);
+    this.friendFigures.update(rooms.figuresOn(this.currentMap.id));
+  }
+
+  /** The friend as drawn, for a playtest to read (`tools/playtest/friendRaid.mjs`). */
+  public get friendFiguresShown(): readonly { readonly name: string; readonly tile: GridPosition }[] {
+    if (!this.friendFigures) {
+      return [];
+    }
+    return (friendRoom()?.figuresOn(this.currentMap.id) ?? []).map((figure) => ({ name: figure.name, tile: { ...figure.tile } }));
+  }
+
+  /** The friend chip's lines, while this raid is in a room (`friendChipLines`). */
+  private friendChip(): readonly string[] | null {
+    const rooms = friendRoom();
+    const room = rooms?.room;
+    if (!rooms || !room || room.mapId !== this.currentMap.id || !this.runSession) {
+      return null;
+    }
+    const news = rooms.news();
+    const drawn = rooms.figuresOn(this.currentMap.id);
+    const areas = this.currentMap.areas;
+    return friendChipLines({
+      code: room.code,
+      news: news ? { name: news.name, came: news.came } : null,
+      friends: rooms.friends().map((friend) => {
+        const figure = drawn.find((each) => each.id === friend.id);
+        const theirArea = figure && areas ? (placedAreaAt(areas, figure.tile) ?? areas[0]) : undefined;
+        const elsewhere =
+          theirArea && theirArea !== this.currentArea() ? (theirArea === areas?.[0] ? 'outdoors' : 'indoors') : null;
+        return {
+          name: friend.name,
+          atLab: friend.place === 'lab',
+          heading: figure ? this.headingTo(figure.tile) : null,
+          distance:
+            figure && !elsewhere
+              ? Math.abs(figure.tile.x - this.currentTile.x) + Math.abs(figure.tile.y - this.currentTile.y)
+              : null,
+          elsewhere,
+        };
+      }),
+    });
+  }
+
 
   private updateRaid(deltaMs: number): void {
     const stepCarryMs = this.stepCarryMs;
@@ -3333,6 +3413,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         // What the raid could still be for. Null until something rare has
         // actually been laid eyes on, which is most raids.
         prize: prizeChipView(this.prizeInMind()),
+        friend: this.friendChip(),
         hunter: hunterChipView({
           searching: isHunterSearching(this.hunterState),
           searchRemainingMs: this.hunterState.searchRemainingMs,
