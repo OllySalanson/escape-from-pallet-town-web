@@ -117,7 +117,7 @@ export const GREYSTONE_VALE: WorldPlan = {
       cell: [2, 2],
       terrain: 'farmland',
       wildlife: 'field',
-      idea: 'Orchards and fenced pastures step down to the sea; the ledges on the farm road are the quick way home.',
+      idea: 'A farm in a wooded combe above the sea: the farmyard, the fenced orchard on the hill and the pasture are clearings cut out of the wood, and a path goes down through the trees to the cove.',
     },
     // What the vale grew into: a column east and a coast south.
     {

@@ -283,8 +283,8 @@ export const RUN_INSERTIONS = {
     id: 'greystone-vale-farmhouse',
     label: 'Farmhouse',
     mapId: 'greystone-vale',
-    position: { x: 152, y: 140 },
-    description: 'The farmyard at Orchard Terraces, between the orchards, above the terraces down to the sea.',
+    position: { x: 158, y: 145 },
+    description: 'The farmyard at Orchard Terraces, in a wooded combe above the cove.',
   },
   'greystone-vale-the-dam': {
     id: 'greystone-vale-the-dam',

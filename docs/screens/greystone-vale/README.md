@@ -144,7 +144,7 @@ which its program is written to:
 | Tanglewood | forest | A broadleaf maze of paths that loop and fork, opening onto a ruined shrine in a glade. |
 | Reedmere | marsh | Boardwalks over reed beds round a still mere: tall grass everywhere, and the dry way is the long way. |
 | Gull Strand | coast | Sea cliffs where the river meets the sea; a sea cave runs back under the cliffs into the Greystone Caves. |
-| Orchard Terraces | farmland | Orchards and pastures step down to the sea; the ledges on the farm road are the quick way home. |
+| Orchard Terraces | farmland | A farm in a wooded combe above the sea: the farmyard, the orchard and the pasture are clearings cut out of the wood. |
 | The Power Station | mountain | A hydro-electric station run down under its dam below the pines: the turbine hall in its pocket, the switchyard gone to grass, and a service gate only the Card Key opens. |
 | Safari Marsh | marsh | Behind the Safari Zone's own gate, a warden's reserve of reed beds and pools where the vale's rarest Pokemon live. |
 | The Wreck | coast | A liner aground on the reef off the east cape: the salvage camp picks it over, and the reef is the only way out to it. |
@@ -554,56 +554,68 @@ into its foot.
 
 ## Orchard Terraces
 
-The farm in the south-east. **It does not pass the blind check**, and it ships
-explorer-only as the best of eight rounds, as the night's instruction allowed
-when a district could not pass in time.
+The farm in the south-east, in its second drawing. **It does not pass the
+blind check**, but it beats the first drawing head to head, which is the bar
+it was redrawn to: both versions in one batch before the same two judges,
+with the real routes and the broken controls.
 
-- **The farmyard:** the farmhouse, the apple store, a kitchen garden with a
-  berry bush, and the landing.
-- **The shelves:** three of them step down the hillside, each edged by broken
-  runs of ledge anchored on clumps of trees.
-  - The top shelf holds the farmyard and the north orchard, where the trail
-    from Tanglewood comes in.
-  - The middle shelf holds the west orchard and the cornfield, with the lane
-    out east to The Wreck.
-  - The bottom shelf is the pasture over the shore.
-- **The ledges:** the farm road goes down by the one gap in each edge, the long
-  way round; a hop down a ledge is the quick way, never back up.
-- **Two ways out of its own:** the Cockle Path up from the west end of the
-  sands, and Pickers' Path at the top of the lane beside the north orchard.
-  They were added when The Wreck took the lane's way on east, so that no
-  corner of the farm is further from a way out than the hunter's blind window
-  covers.
+| | Judge 1 (real mean 7.8) | Judge 2 (real mean 7.0) |
+|---|---|---|
+| Second drawing (ships) | **6 and 6** | **6 and 6: passes** |
+| First drawing | 6 and 5 | 6 and 5 |
+
+The idea changed with it. The first drawing stepped three shelves down an
+open hillside edged with ledges; this one is a farm in a wooded combe, drawn
+the way The Power Station passed: the combe filled with wood and the farm's
+places cut out of it, so each is a clearing you come to.
+
+- **The farmyard:** the farmhouse and the apple store on a trodden yard, with
+  crates and a barrel put out round the landing. The lane comes in from Gull
+  Strand and leaves east for The Wreck; the trail from Tanglewood comes down
+  into the top of the yard.
+- **The orchard:** fenced on the hill above the yard, its trees standing where
+  they grew rather than in rows, and the pickers' path in through its gate to
+  the packing shed. Pickers' Path, its way out, is in the orchard's far
+  corner.
+- **The pasture:** fenced below the yard, the grass grown long, and the road
+  in through its gate to the byre.
+- **The hay meadow:** below the lane east, with its barn.
+- **The cove:** a path down through the trees to the sand, and the Cockle
+  Path out at its west end.
 
 ![Orchard Terraces](orchard-terraces.png)
 
-It was judged beside FireRed's Route 1, Route 2, Route 6, Route 24 and
-Route 10 (two broken real routes as controls), the bar the other districts
-met.
+Every path ends at something, because "a path that stops in the lawn" was the
+fault every judge named, round after round. The rounds, judged beside
+FireRed's Route 1, Route 2, Route 6, Route 24 and Route 10 with two broken
+real routes as controls:
 
 | Round | Real mean | Orchard Terraces | What was tried |
 |---|---|---|---|
-| 1 | 7.2, 6.2 | 2 and 2, 3 and 4 | open slope, orchard pens, ruled ledges |
-| 2 | 7.0, 6.8 | 5 and 3, 3 and 4 | wooded shelves, a ledge cut through each band |
-| 3 | 7.4, 7.6 | 6 and 5, 4 and 4 | denser: a sand yard, fields, wide road |
-| 4 | 7.0, 7.0 | 5 and 4, 4 and 5 | ragged bands, rocks at the ledges' ends |
-| 5 | 7.6, 7.0 | 4 and 5, 4 and 5 | the shelf edges are the ledges |
-| 6 | 6.2, 7.2 | **5 and 5, 5 and 5** (ships) | irregular orchards, paths across the shelves |
-| 7 | 7.0, 7.2 | 4 and 4, 4 and 4 | thicker wood at the sides |
-| 8 | 7.4, 7.0 | 4 and 4, 4 and 4 | fields in hedgerows of trees |
+| 1 | 6.4, 7.4 | 3 and 5, 5 and 5 | the combe: places cut out of wood |
+| 2 | 7.6, 6.0 | 5 and 6, 5 and 5 | narrower lanes, a pond, a hay meadow |
+| 3 | 6.6, 7.6 | 4 and 5, 6 and 6 | a path into the orchard, the trees not in rows |
+| 4 | 6.0, 6.6 | 5 and 6, 4 and 5 | the pasture road to a byre |
+| 5 | 7.2, 7.0 | 5 and 5, 6 and 6 | the orchard path to its packing shed, a square yard |
+| 6 | 5.2, 6.6 | 5 and 6, 5 and 5 | the hay meadow's barn |
+| 7 | 7.8, 7.0 | 6 and 6, 6 and 6 (head to head, ships) | the wood drawn in close round the yard |
 
-Every judge counted in every round. Round 6 came within 0.2 of the bar with
-one judge. After it, three shrubs were added round the landing for the
-held-direction rule.
+After round 7 the crates and the barrel went round the landing, which the
+landing rule asks for (walking straight from a landing meets something within
+four steps every way), and the landing moved a row up to stand among them.
 
-What the judges kept naming, for the next pass:
+What the judges still name: the woods read as blocks, and the farm's lawn as
+more open than a route's. A farm is open ground, and every route it is judged
+beside is a corridor.
 
-- **The orchards** read as stamped grids, however the trees are spaced.
-- **Too much lawn** with little edge.
-- **Every ledge reads as floating**, whatever stands at its ends.
+The first drawing, which shipped as the best of eight rounds and never passed
+either (5 and 5, 5 and 5 against real means of 6.2 and 7.2):
 
-Route 1 and Route 2 are the hardest references any district has been held
-to: they scored 7 to 9 every round.
+![Orchard Terraces, the first drawing](orchard-terraces-ledges.png)
+
+Its notes, for the record: the orchards read as stamped grids however the
+trees were spaced, there was too much lawn with little edge, and every ledge
+read as floating whatever stood at its ends.
 
 ![Orchard Terraces as first drawn](orchard-terraces-first-draw.png)
 
