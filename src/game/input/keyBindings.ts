@@ -54,8 +54,28 @@ export const HOME_KEY_LETTERS = {
   knock: 'K',
 } as const;
 
+/**
+ * A raid room's keys (`raidRoom/roomTalk.ts`): T opens the list of phrases, the
+ * number keys say one, and G pings the tile stood on. `WorldScene.bindControls`
+ * binds these.
+ */
+export const ROOM_KEY_LETTERS = {
+  talk: 'T',
+  ping: 'G',
+} as const;
+
+/** What a raid room's chip teaches until each has been done once. */
+export function roomKeyHintLine(learned: ReadonlySet<string>): string {
+  return [
+    learned.has('talk') ? '' : keyHint(ROOM_KEY_LETTERS.talk, 'SAY'),
+    learned.has('ping') ? '' : keyHint(ROOM_KEY_LETTERS.ping, 'PING'),
+  ]
+    .filter(Boolean)
+    .join('  ');
+}
+
 /** Every key the save can have learned, in one list (`raidProgress.keysLearned`). */
-export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'knock'] as const;
+export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'knock', 'talk', 'ping'] as const;
 export type LearnableKeyId = (typeof LEARNABLE_KEYS)[number];
 
 export function isLearnableKey(value: unknown): value is LearnableKeyId {

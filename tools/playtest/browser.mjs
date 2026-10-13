@@ -37,6 +37,10 @@ function keyDescription(code) {
   if (single) {
     return { code, key: single[1].toLowerCase(), windowsVirtualKeyCode: single[1].charCodeAt(0) };
   }
+  const digit = /^Digit([0-9])$/.exec(code);
+  if (digit) {
+    return { code, key: digit[1], windowsVirtualKeyCode: digit[1].charCodeAt(0) };
+  }
   if (!(code in KEYS)) {
     throw new Error(`unknown key ${code}`);
   }

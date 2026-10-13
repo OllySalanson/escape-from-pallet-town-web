@@ -358,6 +358,8 @@ export interface FriendChipFriend {
   readonly elsewhere: 'indoors' | 'outdoors' | null;
   /** In a fight: the room's hunter's, or any other. Optional, so a raid with no hunter to share says nothing of it. */
   readonly fighting?: 'hunter' | 'wild' | null;
+  /** Which way, and how far, to the tile they pinged, while their ping shows. */
+  readonly ping?: { readonly heading: string; readonly distance: number };
 }
 
 export interface FriendChipInput {
@@ -394,6 +396,9 @@ export function friendChipLines(input: FriendChipInput): readonly string[] {
 function friendLine(friend: FriendChipFriend): string {
   if (friend.atLab) {
     return `${friend.name} GETTING READY`;
+  }
+  if (friend.ping) {
+    return `${friend.name} PING ${friend.ping.heading} ${friend.ping.distance}`;
   }
   if (friend.fighting === 'hunter') {
     return `${friend.name} FIGHTS THE HUNTER`;
