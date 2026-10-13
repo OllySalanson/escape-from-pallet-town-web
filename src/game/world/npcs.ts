@@ -34,6 +34,11 @@ export interface WorldEntity {
    */
   wildLevel?: number;
   /**
+   * A legend (`legends.ts`): no ball while it can fight, one throw once it is
+   * beaten, and it never stands again once the Pokedex owns its kind.
+   */
+  legendary?: boolean;
+  /**
    * A berry tree instead of a person (`berries.ts`): picked once a raid for the
    * berry it carries. Only a map file plants one.
    */

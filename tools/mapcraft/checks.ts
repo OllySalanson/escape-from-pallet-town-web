@@ -121,15 +121,43 @@ function wholeTrees(
   };
 }
 
+/**
+ * Every open tile outdoors can be walked to from a drop-in - on foot, over a
+ * ledge, or through a door or a cave: ground reached only through the
+ * Greystone Caves (Stormcrown, whose one way in is the deepest floor's mouth)
+ * is ground a raid can walk to. A place behind a door is taken as one room,
+ * every way through it reaching every other: whether its own floor joins them
+ * is the game's check (`checkMapFile`), which walks inside it.
+ */
 function onePiece(file: MapFile, map: TileMap): HardCheck {
-  const reached = file.dropIns
-    .filter((dropIn) => dropIn.area === undefined)
-    .map((dropIn) => walkingSteps(map, [dropIn.x, dropIn.y], { hops: true }));
+  const reached = map.kinds.map(() => new Uint8Array(map.width));
+  const walkFrom = (x: number, y: number) => {
+    const steps = walkingSteps(map, [x, y], { hops: true });
+    for (let j = 0; j < map.height; j += 1)
+      for (let i = 0; i < map.width; i += 1) if (steps[j][i] !== -1) reached[j][i] = 1;
+  };
+  for (const dropIn of file.dropIns.filter((candidate) => candidate.area === undefined))
+    walkFrom(dropIn.x, dropIn.y);
+  const places = new Set<string>();
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const link of file.links ?? []) {
+      const [a, b] = link.ends;
+      const isIn = (end: typeof a) =>
+        end.area === undefined ? reached[end.y]?.[end.x] === 1 : places.has(end.area);
+      if (!isIn(a) && !isIn(b)) continue;
+      for (const end of [a, b]) {
+        if (isIn(end)) continue;
+        grew = true;
+        if (end.area === undefined) walkFrom(end.x, end.y);
+        else places.add(end.area);
+      }
+    }
+  }
   const cut: string[] = [];
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
-      if (walkable(map, x, y) && reached.every((steps) => steps[y][x] === -1))
-        cut.push(`${x},${y}`);
+      if (walkable(map, x, y) && reached[y][x] === 0) cut.push(`${x},${y}`);
     }
   }
   return {

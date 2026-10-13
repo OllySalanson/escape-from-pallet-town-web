@@ -9,6 +9,7 @@ import {
   PALLET_SHORE_WILDLIFE,
   POWER_PLANT_WILDLIFE,
   SAFARI_ZONE_WILDLIFE,
+  SUMMIT_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -24,6 +25,7 @@ import { WeatherId } from '../pokemon/battle/weather';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
 import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigures';
+import { isLegendaryKind } from './legends';
 import { BERRY_IDS, berryTreeLines, type BerryId } from './berries';
 import { BOULDER_LINES } from './boulders';
 import type { WorldPoi } from './pois';
@@ -111,6 +113,12 @@ export const MAP_FILE_LIMITS = {
   maxBoulders: 40,
   /** The highest level a standing Pokemon may fight at: the top of the ladder the game's own trainers sit on. */
   maxPokemonLevel: 50,
+  /**
+   * Standing Pokemon marked legendary (`legends.ts`): none on a player's map,
+   * where a legend would be a boss nobody measured. The game's own maps drawn as
+   * files may stand them (`BUILT_IN_MAP_FILE_LIMITS`).
+   */
+  maxLegends: 0,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -178,6 +186,7 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxTrainers: 32,
   maxAreas: 32,
   maxLinks: 64,
+  maxLegends: 2,
 };
 
 /** Every file map's id is its own id with this in front, so none can collide with a shipped map. */
@@ -850,6 +859,8 @@ export const MAP_FILE_HABITATS = {
   'power-plant': POWER_PLANT_WILDLIFE,
   // A warden's reserve behind the Safari Zone's gate: FireRed's Safari Zone, at a route's levels.
   safari: SAFARI_ZONE_WILDLIFE,
+  // A storm-struck summit: FireRed's climb to the Plateau, at the vale's levels.
+  summit: SUMMIT_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -1096,6 +1107,12 @@ export interface MapFilePokemon extends MapFileSpot {
    * can beat or catch. Absent, it only says its name.
    */
   readonly level?: number;
+  /**
+   * A legend (`legends.ts`): fought at `level` with no ball until it is beaten,
+   * then one throw, and gone for good once the Pokedex owns its kind. Only one of
+   * `LEGENDARY_KINDS`, and only on a map the game draws (`maxLegends`).
+   */
+  readonly legendary?: boolean;
 }
 
 /** A berry tree (`berries.ts`): picked once a raid for one berry. */
@@ -1588,7 +1605,24 @@ export function readMapFile(
         `Pokémon ${index + 1} fights at a level from 2 to ${limits.maxPokemonLevel}.`,
       );
     }
+    if (standing.legendary !== undefined) {
+      if (standing.legendary !== true) {
+        problems.push(`Pokémon ${index + 1} is legendary or says nothing about it.`);
+      } else if (typeof standing.species !== 'string' || !isLegendaryKind(standing.species) || standing.level === undefined) {
+        problems.push(`Pokémon ${index + 1} is legendary, which only a legend that fights may be.`);
+      }
+    }
   });
+  const legends = Array.isArray(value.pokemon)
+    ? value.pokemon.filter((standing) => (standing as { legendary?: unknown })?.legendary === true).length
+    : 0;
+  if (legends > limits.maxLegends) {
+    problems.push(
+      limits.maxLegends === 0
+        ? 'A legend may stand only on a map the game draws.'
+        : `The map stands ${legends} legends; a map file holds ${limits.maxLegends}.`,
+    );
+  }
   optional('berryTrees', limits.maxBerryTrees).forEach((tree, index) => {
     oneOf(`Berry tree ${index + 1}'s berry`, tree.berry, BERRY_IDS);
   });
@@ -2284,6 +2318,7 @@ export function buildFileMap(
         dialogLines: [pokemonCry(standing.species)],
         pokemon: standing.species,
         ...(standing.level !== undefined ? { wildLevel: standing.level } : {}),
+        ...(standing.legendary ? { legendary: true } : {}),
       })),
       ...(file.berryTrees ?? []).map((tree, index): WorldEntity => ({
         id: `${id}/berry-tree-${index + 1}`,

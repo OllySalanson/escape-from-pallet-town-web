@@ -523,6 +523,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   cave: 'Cave',
   'power-plant': 'Power plant',
   safari: 'Safari Zone',
+  summit: 'Mountain summit',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */

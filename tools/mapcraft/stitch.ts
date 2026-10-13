@@ -255,6 +255,7 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
         width: size,
         height: size,
         ...(district.wildlife ? { wildlife: district.wildlife } : {}),
+        ...(district.rain ? { rain: true } : {}),
       },
     );
     // A place two districts both carry (a cave whose floors ride in one

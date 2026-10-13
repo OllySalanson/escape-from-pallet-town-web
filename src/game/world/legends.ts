@@ -33,6 +33,15 @@ import type { FigureSpeciesId } from './pokemonFigures';
  * lie south of Pallet), the storm bird on Route 1's Overlook, the fire bird on
  * the crag the burnt wood's ridge runs up to (Mt. Ember), and Mewtwo in the
  * Floodplain's vault, behind the hardest keeper in the game.
+ *
+ * **A map the game draws as a file may stand a legend too** - a placed Pokemon
+ * marked `legendary` (`MapFilePokemon`), of one of `LEGENDARY_KINDS`, and only
+ * on a built-in map (`BUILT_IN_MAP_FILE_LIMITS.maxLegends`; a player's map may
+ * hold none). Greystone Vale's is Mew on Stormcrown's summit, the bottom of a
+ * six-floor cave and a climb away from any landing: the place is its keeper.
+ * It fights, is caught and stands again exactly as the four do, because
+ * everything that decides that is read off the figure (`legendary`) and the
+ * Pokedex (`legendCaught`), never off this list.
  */
 export interface Legend {
   readonly speciesId: FigureSpeciesId;
@@ -108,17 +117,48 @@ export const LEGEND_ENTITIES: readonly WorldEntity[] = LEGENDS.map((legend) => (
   dialogLines: [legend.cry],
   pokemon: legend.speciesId,
   wildLevel: legend.level,
+  legendary: true,
 }));
 
 /**
- * The legends this save has caught, by entity id: every one whose kind the
- * Pokedex owns. A raid reads this once, as it deploys (`RunPlan.caughtLegends`).
+ * The kinds that stand as legends: Kanto's four, and Mew, the one Pokemon of
+ * the 151 none of the shipped maps has, which a map the game draws as a file
+ * stands as its own legend (`MapFilePokemon.legendary`, Greystone Vale's
+ * Stormcrown). A file may mark only these legendary, so "caught" can be read
+ * off the Pokedex for every legend alike.
  */
-export function caughtLegends(pokedexOwned: readonly number[]): readonly string[] {
-  return LEGENDS.filter((legend) => {
-    const dexId = getSpeciesById(legend.speciesId)?.dexId;
+export const LEGENDARY_KINDS: readonly FigureSpeciesId[] = [
+  'articuno',
+  'zapdos',
+  'moltres',
+  'mewtwo',
+  'mew',
+];
+
+/** Whether a kind is one a legend may be. */
+export function isLegendaryKind(species: string): boolean {
+  return (LEGENDARY_KINDS as readonly string[]).includes(species);
+}
+
+/**
+ * The legends this save has caught, by kind: every legendary kind the Pokedex
+ * owns. A raid reads this once, as it deploys (`RunPlan.caughtLegends`), and a
+ * figure marked `legendary` of one of these kinds does not stand
+ * (`legendCaught`), whether a shipped map or a map file put it there.
+ */
+export function caughtLegends(pokedexOwned: readonly number[]): readonly FigureSpeciesId[] {
+  return LEGENDARY_KINDS.filter((species) => {
+    const dexId = getSpeciesById(species)?.dexId;
     return dexId !== undefined && pokedexOwned.includes(dexId);
-  }).map(legendEntityId);
+  });
+}
+
+/** Whether a figure is a legend of a kind this save has caught: it stands nowhere this raid. */
+export function legendCaught(
+  entity: Pick<WorldEntity, 'legendary' | 'pokemon'>,
+  caught: readonly string[],
+): boolean {
+  return entity.legendary === true && entity.pokemon !== undefined && caught.includes(entity.pokemon);
 }
 
 /** The refusal for a ball thrown while a legend can still fight. Nothing is spent. */

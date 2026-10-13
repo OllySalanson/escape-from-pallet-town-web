@@ -38,6 +38,31 @@ describe('hardChecks', () => {
     expect(check(island, 'one-piece')?.passed).toBe(false);
   });
 
+  it('walks through a door or a cave to ground no road reaches', () => {
+    // The same walled-in lawn, reached through a cave: in by a mouth on the
+    // road, out by a way onto the lawn - Stormcrown, reached only from below.
+    const island = strip((p) => p.rock(10, 4, 6, 3).meadow(12, 4, 2, 1));
+    const cave = {
+      id: 'cave',
+      name: 'Cave',
+      kind: 'cave' as const,
+      style: 'cave' as const,
+      width: 8,
+      height: 6,
+      ground: ['BBBBBBBB', 'BPPPPPPB', 'BPPPPPPB', 'BPPPPPPB', 'BPPPPPPB', 'BBBBBBBB'],
+      buildings: [],
+    };
+    const through = {
+      ...island,
+      areas: [cave],
+      links: [
+        { ends: [{ x: 4, y: 7, toward: 'up' as const, look: 'door' as const }, { area: 'cave', x: 2, y: 4, toward: 'down' as const, look: 'cave-exit' as const }] },
+        { ends: [{ area: 'cave', x: 5, y: 2, toward: 'up' as const, look: 'ladder-up' as const }, { x: 12, y: 4, toward: 'down' as const, look: 'door' as const }] },
+      ],
+    };
+    expect(check(through, 'one-piece')?.passed).toBe(true);
+  });
+
   it('finds a half-drawn tree, but only where it is asked to look', () => {
     const file = strip();
     const hand = {

@@ -46,6 +46,8 @@ export interface PlannedDistrict {
   readonly idea: string;
   readonly terrain?: Terrain;
   readonly wildlife?: MapFileHabitat;
+  /** Whether it rains over the whole district: every fight in it is fought in the rain. */
+  readonly rain?: boolean;
   /** A place the plan keeps hard to reach: how, and why, and what it is for. */
   readonly reach?: PlannedReach;
   /**

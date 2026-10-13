@@ -136,13 +136,15 @@ export const MAP_STRUCTURE_PARTS: readonly MapStructurePart[] = [
   { name: 'viridian-city', mapId: 'viridian-city', part: 1, of: 1, file: 'mapStructure.viridianCity.test.ts' },
   // Still being drawn (`MAPS_IN_PROGRESS`), and held to every structure rule
   // all the same: an unfinished map is still a map somebody can be raided on.
-  // 192 tiles square in one gate state, so it is split by tiles: in one file
-  // its flee sweeps alone ran seven minutes.
-  ...([1, 2, 3, 4] as const).map((part) => ({
-    name: `greystone-vale ${part}/4`,
+  // One gate state too big for one file, so it is split by tiles: in one file
+  // its flee sweeps alone ran seven minutes, and in four the slowest part's
+  // took 103 of its 120 seconds on CI before Stormcrown and the caves' sixth
+  // floor added an eighth more ground.
+  ...([1, 2, 3, 4, 5, 6] as const).map((part) => ({
+    name: `greystone-vale ${part}/6`,
     mapId: 'greystone-vale' as const,
     part,
-    of: 4,
+    of: 6,
     tiles: true as const,
     file: `mapStructure.greystoneVale${part}.test.ts`,
   })),

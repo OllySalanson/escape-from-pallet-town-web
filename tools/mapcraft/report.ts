@@ -3,7 +3,7 @@
  * pass, the design moves it makes, and the pattern-language advice - in that
  * order, because a map that does not work is not worth critiquing.
  */
-import type { MapFile } from '../../src/game/world/mapFile';
+import type { MapFile, MapFileLimits } from '../../src/game/world/mapFile';
 import { allPassed, hardChecks, type HardCheck, type WalkRule } from './checks';
 import { measureMoves, type DesignMoves } from './measures';
 import { patternAdvice, type PatternAdvice } from './patterns';
@@ -21,6 +21,12 @@ export interface MapcraftResult {
   readonly rules?: readonly WalkRule[];
   /** What the brushes noticed (`MapProgram.notes`). */
   readonly notes?: readonly string[];
+  /**
+   * What the file may hold: a player's map's unless it is part of the game's
+   * own (a district of a plan marked `builtIn` - `planLimits`), which may, for
+   * one, stand a legend.
+   */
+  readonly limits?: MapFileLimits;
 }
 
 export interface MapcraftReport {
@@ -31,8 +37,8 @@ export interface MapcraftReport {
   readonly notes: readonly string[];
 }
 
-export function reportOn(result: MapcraftResult): MapcraftReport {
-  const checks = hardChecks(result.file, { rules: result.rules, trees: result.district });
+export function reportOn(result: MapcraftResult, limits = result.limits): MapcraftReport {
+  const checks = hardChecks(result.file, { rules: result.rules, trees: result.district, limits });
   return {
     checks,
     passed: allPassed(checks),

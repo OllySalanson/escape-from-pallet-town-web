@@ -7,6 +7,7 @@ import { getWorldMap } from '../worldMap';
 import { gateKey, gateKeys, gatesForMap } from './gates';
 import {
   caughtLegends,
+  legendCaught,
   LEGENDS,
   legendEntityId,
   legendFledLine,
@@ -48,6 +49,7 @@ describe('the four legends', () => {
         pokemon: legend.speciesId,
         wildLevel: legend.level,
         dialogLines: [legend.cry],
+        legendary: true,
       });
       expect(legendStandingAs(legendEntityId(legend))).toBe(legend);
     }
@@ -99,19 +101,26 @@ describe('the four legends', () => {
 });
 
 describe('a caught legend', () => {
-  it('is any legend whose kind the Pokedex owns, and no other', () => {
+  it('is any legendary kind the Pokedex owns, and no other', () => {
     expect(caughtLegends([])).toEqual([]);
-    // Bulbasaur, Articuno and Mewtwo.
-    expect(caughtLegends([1, 144, 150])).toEqual(['legend-articuno', 'legend-mewtwo']);
+    // Bulbasaur, Articuno, Mewtwo and Mew.
+    expect(caughtLegends([1, 144, 150, 151])).toEqual(['articuno', 'mewtwo', 'mew']);
+  });
+
+  it('is read off the figure, so a legend a map file stands is caught the same way', () => {
+    expect(legendCaught({ legendary: true, pokemon: 'mew' }, ['mew'])).toBe(true);
+    expect(legendCaught({ legendary: true, pokemon: 'mew' }, ['mewtwo'])).toBe(false);
+    // A Mew that is not a legend - a maker's placed Pokemon - stands whatever the Pokedex says.
+    expect(legendCaught({ pokemon: 'mew' }, ['mew'])).toBe(false);
   });
 
   it('rides into the raid on the plan, and changes nothing the seed rolls', () => {
     const plain = generateRunPlan(7, undefined, 'floodplain-relay');
     const caught = generateRunPlan(7, undefined, 'floodplain-relay', undefined, undefined, [], {}, [], [], false, [
-      'legend-mewtwo',
+      'mewtwo',
     ]);
     expect(plain.caughtLegends).toEqual([]);
-    expect(caught.caughtLegends).toEqual(['legend-mewtwo']);
+    expect(caught.caughtLegends).toEqual(['mewtwo']);
     expect(caught.loot).toEqual(plain.loot);
     expect(caught.hunter).toEqual(plain.hunter);
   });

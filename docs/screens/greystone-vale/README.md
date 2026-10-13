@@ -13,7 +13,8 @@ The Crossing, Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the
 five it grew into, all drawn too: The Power Station, Safari Marsh, The Wreck,
 The Sunken Quarter and Smugglers' Cove. Round them is the ring it has grown
 into since ([The far places](#the-far-places)): open sea in the south, and wood
-in the north where the far places will be drawn.
+in the north where the far places will be drawn. The first far place is drawn:
+[Stormcrown](#stormcrown), the summit above the peaks.
 
 ![the vale as it ships](vale.png)
 
@@ -1025,7 +1026,7 @@ boat, Stormcrown only from the deepest floor, and nothing at all is out of reach
 
 | Place | Where | The way in | Why it is hard | Only there |
 |---|---|---|---|---|
-| Stormcrown | above the peaks | the Greystone Caves' new B5F, by a hole in B4F's far corner, to the Chimney; then a climb round three bands of crag | the bottom of a five-floor maze, with no landing near; ledges only take you down; the storm's rain in every fight | Mew at level 50 by the cairn, the vale's legendary boss |
+| [Stormcrown](#stormcrown) (drawn) | above the peaks | the Greystone Caves' new B5F, by a hole in B4F's far corner, to the Chimney; then a climb round three bands of crag | the bottom of a five-floor maze, with no landing near; ledges only take you down; the storm's rain in every fight | Mew at level 50 by the cairn, the vale's legendary boss |
 | The Moor Chapel | west of High Moor | a sheep track nobody signs, west out of the shepherd's clearing into the fog | only on a night raid (9 pm to 5 am on the player's clock, fixed when the raid deploys); by day the fog turns it back | ghost Pokemon (Gastly, Haunter, Cubone), the crypt, the Spell Tag |
 | The Lost Garden | east of the Power Station | the Falls Cave, a mouth hidden behind the water at the foot of the dam | Strength boulders onto floor switches open its rock barrier (Victory Road's rule), so HM04 and the order to push them in | the rarest grass Pokemon (Tangela, Exeggcute), berry trees, the Miracle Seed |
 | The Bunker | under the Power Station | the station's door into the turbine hall, then a steel door only the Card Key opens | the card is one raid in five in Pine Hollow, and it is also the Service Gate's key; B3F and B4F are lift-only, and the lift is dead until the generator on B2F is back on, across a spinner floor | the war room's strongroom (the vale's locked crate), an escape hatch |
@@ -1059,8 +1060,9 @@ The plan names what each place needs and does not have yet, in its `reach`;
 
 One per place:
 
-- **Stormcrown**: B5F as a maze of its own seed, so the five floors that ship
-  do not move; and a legendary on a map file.
+- **Stormcrown** (built - [Stormcrown](#stormcrown)): B5F as a maze of its
+  own seed, so the five floors that ship do not move; and a legendary on a map
+  file.
 - **The Moor Chapel**: a night door, shut by day and open on a night raid, built
   per state as a field-move door is; and FireRed's Pokemon Tower as a room
   style.
@@ -1083,6 +1085,135 @@ Order them like this:
 The track ends at a way out that opens 90 seconds into a raid, which stands in
 for the chapel until the chapel is drawn.
 
+## Stormcrown
+
+The first far place: the storm-struck summit above Greystone Peaks, which no
+road reaches. A raid gets there only from the bottom of the Greystone Caves and
+a climb (`stormcrown.ts`, `greystoneCaves.ts`).
+
+![Stormcrown](stormcrown.png)
+
+### How a player gets there
+
+1. **Into the caves.** The way in is the sea cave in Gull Strand's cliffs, onto
+   the caves' fifth floor, B4F. (From the peaks' or the wood's mouth it is
+   down through the floors above first.)
+2. **Down the hole.** In the corner of B4F furthest from the sea cave there is
+   a hole. It drops to B5F, the sixth and deepest floor.
+3. **Across B5F.** The hole lands at the far end of the floor from its only
+   other way out, so the whole floor is crossed. It is a maze of its own: wider
+   and deeper than any floor above, with fewer loops, and a find in every other
+   dead end, because nobody comes down here.
+4. **Out of the Chimney.** B5F's way out is the Chimney, a cave mouth in the
+   first crag on Stormcrown's lower shoulder.
+5. **The climb.** Three bands of crag run across the mountain out of the
+   picture on both sides, with one gap in each, on alternate ends. The path
+   switches back across the face: east along the shoulder, up the east gap,
+   west along the first shelf, up the west gap, east along the second shelf
+   past the Storm Shelter, and up the east gap onto the summit. That is about
+   180 steps from the Chimney to the cairn.
+6. **Mew.** By the cairn on the very top - FireRed's strange stone - Mew
+   stands on a nub of rock behind it, at level 50. It fights as the four
+   shipped legends do: no ball while it can fight, then one throw once it is
+   beaten. Its catch rate is FireRed's own 45, so that throw lands about one
+   time in five in a Poke Ball. A Mew caught and banked never stands again on
+   that save; one lost with the pack stands again next raid.
+7. **Out.** The Cloud Stair goes on over the top and down the far side, off
+   the map. A way down the near side, the Scree Gully, is a pocket in the
+   treeline at the foot of the first gap.
+
+### Why it is hard
+
+- **It is the bottom of the maze.** No landing is near it: the nearest is The
+  Strand, and from there it is the sea cave, the whole of B4F and the whole of
+  B5F before the climb starts.
+- **The climb only goes one way.** Three ledges, one through each crag, are
+  the quick way back down (the summit to the Chimney is under half the walk by
+  them) and never a way up.
+- **The storm.** Every fight up here is in the rain, on a summit table of its
+  own: FireRed's climb to the Indigo Plateau (Route 23's Spearow and Mankey,
+  Victory Road's Geodude, Machop and Onix) brought down to the vale's levels.
+  A level-8 Bulbasaur wins 58% of it, Charmander 91% and Squirtle 75% in the
+  clear; the rain takes Charmander to 57%, and to 43% by night.
+
+### What the game learned for it
+
+- **B5F**, a sixth Greystone Caves floor built on a seed of its own
+  (`greystoneDeep`), so the five floors that ship did not move; it joins them
+  by one hole, which is a link and leaves B4F's ground as every other district
+  carries it.
+- **A legend on a map file**: a placed Pokemon marked `legendary`, one of
+  Kanto's legends or Mew (`LEGENDARY_KINDS`), on a map the game draws only
+  (`maxLegends` is 0 for a player's map). Whether it stands is read off the
+  figure and the Pokedex (`legendCaught`), so it is caught exactly as the four
+  are.
+- **A summit habitat** (`summit`, `SUMMIT_WILDLIFE`), measured as every table
+  is, and rain carried by a plan district (`rain`).
+- **mapcraft's reachability check walks through doors and caves**, because
+  Stormcrown is the first outdoor ground no road reaches.
+
+### Judged blind
+
+Stormcrown was judged as two 24x40 views beside five FireRed routes (1, 2, 6,
+10 and 24) and two broken controls (four blocks swapped, every block
+shuffled), each picture one at a time under a code, every round with two fresh
+judges. The FireRed routes were redrawn in the game's own tiles from pret's
+block data (`pokefirered` at 037335f), as the earlier districts' were. A judge
+counts only if it rates both controls below every real route.
+
+| Round | What changed | Judges that counted | FireRed routes (mean) | Stormcrown |
+|---|---|---|---|---|
+| 1 | first draw, beside converted mountain routes | none | - | 8 and 7, 7 and 7 |
+| 2 | the five routes the other districts were judged by; the path to the shelter's door | one | 4.0 | **7 and 5: passes** |
+| 3 | the path from the Chimney, fuller heather, a jog in the switchbacks | one | 4.2 | **7 and 7: passes** |
+| 4 | a less regular summit edge, the pool's shape | one | 5.4 | **8 and 8: passes** |
+
+**It passes on every judge that counted.** The judges that did not count (each
+rated a control level with or above a converted route) also put Stormcrown at
+or above every real route. The first draw was ruled rock rectangles on a lawn
+and was redrawn before it was judged.
+
+What the judges named, and what was done:
+
+- **The path read as a ruled rectangle round a rock.** It jogs at the gaps
+  now, and starts at the Chimney instead of beside it.
+- **The path stopped short of the shelter**, and **the pool beside it read as
+  a cross, then as a box.** A spur runs to the shelter's door, and the pool
+  has an uneven edge.
+- **Heather in thin one-tile strips.** The beds sit whole beside the path.
+
+Left for a later pass:
+
+- the bottom crag is a heavy slab across the view;
+- the switchbacks still turn in right angles.
+
+### Walked in the game
+
+`tools/playtest/stormcrown.mjs` plays it on the explorer run against a
+test-mode build: dropped at The Strand, into the sea cave, across B4F, down the
+hole, across B5F, out of the Chimney, up the crags, a fight with Mew by the
+cairn and its one throw, and out over the top by the Cloud Stair. The walk is
+planned over the scene's own collision and links after every step, so a hole
+or a door is pressed into as a player presses into it, and a hunter standing
+in the one lane is walked into and fled, as a player gets past one.
+
+    node tools/playtest/stormcrown.mjs <url of a test-mode build> <out dir> [--port=<CDP port>]
+
+| | |
+|---|---|
+| ![the sea cave on the Strand](stormcrown-walk/1-sea-cave.png) | ![out of the Chimney](stormcrown-walk/2-chimney.png) |
+| ![the Storm Shelter](stormcrown-walk/3-shelter.png) | ![Mew by the cairn](stormcrown-walk/4-cairn.png) |
+| ![a wild Mew](stormcrown-walk/5-mew.png) | ![the one throw](stormcrown-walk/6-one-throw.png) |
+
+![out by the Cloud Stair](stormcrown-walk/8-out.png)
+
+The structure sweeps found one fault the mapcraft checks did not: the bottom
+crag had two ledges one above the other, and the ground between them could be
+reached only by hopping, which the game's one-connected-place rule (asked on
+collision alone) reads as an island. Each crag has one ledge now.
+
+![B5F, the deepest floor](greystone-caves-b5f.png)
+
 ## How it ships
 
 As the game's own map, beside the shipped five (`greystone-vale`, built from the
@@ -1095,7 +1226,7 @@ player's map is built by). While its districts are being drawn it is on
   `greystoneVale.test.ts` holds that against every contract banked.
 - **Every structure and safety rule holds it now** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
-  walked tile - through `mapStructure.greystoneVale1-4.test.ts` and the rest of
+  walked tile - through `mapStructure.greystoneVale1-6.test.ts` and the rest of
   the suite.
 - **What a finished map pays and guards waits for its districts**: its boss and
   two doors, its locked crate, its loot (money,
