@@ -25,6 +25,7 @@ import {
   doorFront,
   fileDoorGates,
   fileLedges,
+  isBarredFileExit,
   plantedProp,
   readMapFile,
   type MapFile,
@@ -660,7 +661,9 @@ export function checkMapFile(
   const soonestOut = (steps: readonly Int32Array[]): number =>
     Math.min(
       ...file.exits.map((exit) => {
-        if (exit.opens.when === 'dug') {
+        // A buried exit and a locked one are a way out only for a raid that
+        // brought the Pickaxe or found the card, so neither is the way out.
+        if (isBarredFileExit(exit)) {
           return Infinity;
         }
         const walk = stepsTo(steps, exit);
@@ -671,15 +674,20 @@ export function checkMapFile(
         return Math.max(walk * STEP_DURATION_MS, opensAtMs);
       }),
     );
+  const barred = [
+    ...(file.exits.some((exit) => exit.opens.when === 'dug') ? ['a Pickaxe'] : []),
+    ...(file.exits.some((exit) => exit.opens.when === 'key') ? ['the Card Key'] : []),
+  ];
+  const without = barred.length > 0 ? ` without ${barred.join(' or ')}` : '';
   const wayOut = fromDropIn.flatMap(({ dropIn, steps }) => {
     const best = soonestOut(steps);
     if (best === Infinity) {
       return [
         fault(
-          `Drop-in ${dropIn.name} cannot walk to any exit${file.exits.some((exit) => exit.opens.when === 'dug') ? ' without a Pickaxe' : ''}.`,
+          `Drop-in ${dropIn.name} cannot walk to any exit${without}.`,
           {
             group: 'drop-ins',
-            says: `cannot walk to any exit${file.exits.some((exit) => exit.opens.when === 'dug') ? ' without a Pickaxe' : ''}`,
+            says: `cannot walk to any exit${without}`,
           },
           dropIn,
         ),
@@ -741,6 +749,31 @@ export function checkMapFile(
         spot,
       ),
     );
+  // A gate locked to the Card Key and the spot the card lies on come as a
+  // pair: a lock with nowhere its card lies is a wall, and a card with no lock
+  // is a key to nothing.
+  const lockedExits = file.exits.filter((exit) => exit.opens.when === 'key');
+  const keySpots = file.itemSpots.filter((spot) => spot.key);
+  reachable.push(
+    ...(keySpots.length === 0
+      ? lockedExits.map((exit) =>
+          fault(
+            `Exit ${exit.name} at ${tileOf(exit)} is locked to the Card Key, and no item spot holds one.`,
+            { group: 'exits', says: 'is locked to a Card Key nothing holds' },
+            exit,
+          ),
+        )
+      : []),
+    ...(lockedExits.length === 0
+      ? keySpots.map((spot) =>
+          fault(
+            `Item spot ${file.itemSpots.indexOf(spot) + 1} at ${tileOf(spot)} holds a Card Key no exit is locked to.`,
+            { group: 'item spots', says: 'holds a Card Key no exit is locked to' },
+            spot,
+          ),
+        )
+      : []),
+  );
 
   // An inside is walked into when any tile of it can be walked to. Drop-ins
   // that cannot leave are already a problem above, so a map with none says

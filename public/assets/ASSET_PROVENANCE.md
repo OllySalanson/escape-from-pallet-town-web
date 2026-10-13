@@ -224,7 +224,7 @@ game.
   `rawst-berry`, `chesto-berry` and `aspear-berry`, the `pickaxe` and the
   `rubble` a buried exit is drawn as, the two fishing rods `old-rod` and
   `good-rod`, the `lockpick`, the five keys `weir-key`, `paddock-key`,
-  `forester-key`, `garden-key` and `market-key`, and the `locked-gate` and
+  `forester-key`, `garden-key` and `market-key`, the `card-key`, and the `locked-gate` and
   `locked-crate` a keyed exit and a locked cache are drawn as, and the
   `bicycle`.
   The materials are
@@ -288,11 +288,13 @@ game.
   `037335f`): the dusky red frame `#b46262` with its pale highlight `#f6acac`,
   grey rims `#b4b4b4` and hubs `#626262`. Original drawing in FireRed's
   colours, not a cut of its pixels.
-  The `lockpick`, the five keys, the `locked-gate` and the `locked-crate` are
+  The `lockpick`, the five keys, the `card-key`, the `locked-gate` and the `locked-crate` are
   `scripts/draw-lock-icons.mjs`, on the set's own palette: a hooked steel pick
   on a bound violet grip; **one brass key drawn five times** (`#f1d27a`,
   `#c79a3a`, `#8a6420`) with its bow in a colour of its own - blue, tan, green,
-  pink and red - so five keys in one vault are five things; and a plank gate
+  pink and red - so five keys in one vault are five things; the `card-key`, a
+  white plastic card with a blue stripe (`#3f5f8f`) and the padlock's brass for
+  its chip, after FireRed's own Card Key rather than cut from it; and a plank gate
   between posts and an iron-bound crate, each carrying the same brass padlock
   (`#f1c84a`, `#b8862a`, steel shackle `#97a3b2`) so a lock reads as a lock
   wherever it is drawn. Original to this repository; `--preview=` writes the
@@ -714,7 +716,7 @@ map maker as possible" (the palette board, 2026-10-10).
   tilesets of Pewter, Cerulean, Vermilion, Lavender, Celadon, Fuchsia, Saffron,
   Cinnabar and Viridian (`data/tilesets/`), those eight towns' block data and
   that of Routes 2, 5 and 7, where FireRed's gatehouses and the Underground
-  Path's hut stand
+  Path's hut stand, and of Route 10, where the Power Plant does
   (`data/layouts/<Town>/map.bin`), and their warps (`data/maps/<Town>/map.json`,
   read for where each building's doors are and nothing drawn, together with
   each warp cell's behaviour in the tilesets' `metatile_attributes.bin`, which
@@ -727,8 +729,8 @@ map maker as possible" (the palette board, 2026-10-10).
   nothing that makes them anyone's but the rights holders'. So this file sits on
   the owner's ruling and nothing else, exactly as the other FireRed sheets do,
   and **nothing from pret is committed**: no tileset, palette or map file. What
-  ships is a cut - 39 named buildings drawn from the towns' and routes' own
-  metatiles and 17 objects' first frames, trimmed and packed onto a new 20x97
+  ships is a cut - 40 named buildings drawn from the towns' and routes' own
+  metatiles and 17 objects' first frames, trimmed and packed onto a new 20x103
   grid that matches nothing in the source.
 - **How it was cut, and the edits made.** `scripts/cut-frlg-towns.mjs` is the
   whole method, and names the town and rectangle of every piece. Each town is
@@ -742,7 +744,11 @@ map maker as possible" (the palette board, 2026-10-10).
   roof stays; specks of fewer than 48 pixels touching nothing else are swept up;
   and the cells named in a piece's `drop` - the Museum's garden ledge and sign,
   the Game Corner's two bushes, a tuft or a sign beside three Cinnabar
-  buildings, the fence posts either end of a gatehouse - are left out. A
+  buildings, the fence posts either end of a gatehouse, the sand's edge by the
+  Power Plant - are left out. The Power Plant is built against a cliff whose
+  bottom row its chimney caps are drawn into, so that row is cut `behind` the
+  cliff: every pixel matching the cliff face drawn alone is lifted, and the
+  caps are kept. A
   metatile the building itself draws solid is never counted as ground (Route 2
   has enough of one gatehouse roof marked walkable to count it otherwise). The
   cells a gatehouse is walked onto from - the ridge of its roof, its porches -

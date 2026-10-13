@@ -977,7 +977,12 @@ function generateLoot(
     // At least half a map's loot is present, so exploring is reliably worth the risk.
     const count = rng.int(Math.ceil(pool.length / 2), pool.length);
     if (isPlayerMapId(map.id)) {
-      generatedByMap[map.id] = layItemSpots(map.id, pool, count, rng, isReachable);
+      // A maker's spot is the place, so a prize on one - the Card Key - lies
+      // on its own spot when its odds come up, and nowhere else.
+      generatedByMap[map.id] = [
+        ...layItemSpots(map.id, pool, count, rng, isReachable),
+        ...rare.filter((spot) => isReachable.reaches(map.id, spot.position)),
+      ];
       continue;
     }
     const items = [...rng.shuffle(pool).slice(0, count), ...rare];

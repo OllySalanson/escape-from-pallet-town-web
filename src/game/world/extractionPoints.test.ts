@@ -12,6 +12,7 @@ import {
   itemThatOpens,
 } from './extractionPoints';
 import { isPrize } from './loot';
+import { MAP_FILE_EXIT_KEY } from './mapFile';
 import { WORLD_POIS } from './pois';
 
 const exit = (mapId: string, label: string) =>
@@ -98,7 +99,10 @@ describe('a barred exit', () => {
   });
 
   it('gives every key one gate, on the map the key is found on, in a place of its own', () => {
-    for (const keyId of KEY_ITEM_IDS) {
+    // The Card Key is the one key every map file shares (`MAP_FILE_EXIT_KEY`),
+    // so it is no shipped map's own key and stands on no authored gate.
+    expect(EXTRACTION_POINTS.some((point) => itemThatOpens(point) === MAP_FILE_EXIT_KEY)).toBe(false);
+    for (const keyId of KEY_ITEM_IDS.filter((id) => id !== MAP_FILE_EXIT_KEY)) {
       const gates = EXTRACTION_POINTS.filter((point) => itemThatOpens(point) === keyId);
       expect(gates.map((point) => point.label), keyId).toHaveLength(1);
       const [gate] = gates;

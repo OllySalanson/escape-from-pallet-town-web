@@ -12,6 +12,7 @@ import {
   type MapFileDoorKind,
   type MapFileDropIn,
   type MapFileExit,
+  type MapFileItemSpot,
   type MapFileLandmark,
   type MapFileOpens,
   type MapFilePerson,
@@ -722,6 +723,20 @@ export function describeDropIn(file: MapFile, index: number, description: string
 }
 
 /** Whether an item spot is lying in the open or hidden, found only by walking onto it. */
+/** An item spot where it stands, lying hidden or not and holding the Card Key or not. */
+function itemSpot(
+  spot: MapFileItemSpot,
+  { hidden, key }: { readonly hidden: boolean; readonly key: boolean },
+): MapFileItemSpot {
+  return {
+    x: spot.x,
+    y: spot.y,
+    ...(spot.area !== undefined ? { area: spot.area } : {}),
+    ...(hidden ? { hidden: true } : {}),
+    ...(key ? { key: true } : {}),
+  };
+}
+
 export function setItemHidden(file: MapFile, index: number, hidden: boolean): MapFile {
   return {
     ...file,
@@ -729,8 +744,20 @@ export function setItemHidden(file: MapFile, index: number, hidden: boolean): Ma
       if (at !== index) {
         return spot;
       }
-      const { x, y } = spot;
-      return hidden ? { x, y, hidden: true } : { x, y };
+      return itemSpot(spot, { hidden, key: spot.key === true });
+    }),
+  };
+}
+
+/** Whether an item spot holds the Card Key, one raid in five, instead of what the game decides. */
+export function setItemHoldsKey(file: MapFile, index: number, key: boolean): MapFile {
+  return {
+    ...file,
+    itemSpots: file.itemSpots.map((spot, at) => {
+      if (at !== index) {
+        return spot;
+      }
+      return itemSpot(spot, { hidden: spot.hidden === true, key });
     }),
   };
 }

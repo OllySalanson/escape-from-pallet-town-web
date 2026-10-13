@@ -632,12 +632,20 @@ function selectedPane(
       const buried: (readonly [string, string])[] = [
         ['', 'In the open'],
         ['dug', 'Under rubble'],
+        ['key', 'Locked to the Card Key'],
       ];
-      const lies = choose('buried', 'Lies', spot.opens.when === 'dug' ? 'dug' : '', buried);
+      const lies = choose(
+        'buried',
+        'Lies',
+        spot.opens.when === 'dug' || spot.opens.when === 'key' ? spot.opens.when : '',
+        buried,
+      );
       body =
         spot.opens.when === 'dug'
           ? `${name(spot.name)}${lies}<p class="px-note px-wrap">A wall of rubble until somebody faces it with a Pickaxe in the pack, then a way out for that raid. Every drop-in still needs a way out without one.</p>`
-          : `${name(spot.name)}${lies}<label class="maker-field"><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
+          : spot.opens.when === 'key'
+            ? `${name(spot.name)}${lies}<p class="px-note px-wrap">A locked gate until somebody carries the Card Key to it, then a way out for that raid. The card lies on an item spot set to hold it, one raid in five. Every drop-in still needs a way out without it.</p>`
+            : `${name(spot.name)}${lies}<label class="maker-field"><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
       break;
     }
     case 'item': {
@@ -647,7 +655,15 @@ function selectedPane(
         ['', 'In the open'],
         ['hidden', 'Hidden: found by walking onto it'],
       ];
-      body = `${choose('hidden', 'Lies', spot.hidden ? 'hidden' : '', shows)}<p class="px-note px-wrap">Something to find. The game decides what, from what the game's own maps hold.</p>`;
+      const holds: (readonly [string, string])[] = [
+        ['', 'What the game decides'],
+        ['key', 'The Card Key, one raid in five'],
+      ];
+      body = `${choose('hidden', 'Lies', spot.hidden ? 'hidden' : '', shows)}${choose('holds', 'Holds', spot.key ? 'key' : '', holds)}<p class="px-note px-wrap">${
+        spot.key
+          ? 'The Card Key, which opens every exit locked to it, lies here one raid in five.'
+          : "Something to find. The game decides what, from what the game's own maps hold."
+      }</p>`;
       break;
     }
     case 'person': {

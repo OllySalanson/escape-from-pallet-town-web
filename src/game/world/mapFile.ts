@@ -7,6 +7,7 @@ import {
   PALLET_DELVE_WILDLIFE,
   PALLET_FIELD_WILDLIFE,
   PALLET_SHORE_WILDLIFE,
+  POWER_PLANT_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -375,6 +376,7 @@ export const MAP_FILE_BUILDINGS = {
   'silph-co': 'silphCo',
   'game-corner': 'gameCorner',
   'pokemon-tower': 'pokemonTower',
+  'power-plant': 'powerPlant',
   'pokemon-mansion': 'burntMansion',
   'research-lab': 'cinnabarLab',
   dojo: 'dojo',
@@ -832,6 +834,8 @@ export const MAP_FILE_HABITATS = {
   woodland: FOREST_EDGE_WILDLIFE,
   // Under the hill: Zubat, Diglett and Sandshrew, on every step of the floor.
   cave: PALLET_DELVE_WILDLIFE,
+  // A power station run down: FireRed's Power Plant, at a route's levels.
+  'power-plant': POWER_PLANT_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -839,12 +843,32 @@ export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
 /**
  * When an exit can be left by. Locks and keys are more values of this: `dug` is
  * an exit behind rubble that a Pickaxe carried in the pack digs out, for that
- * raid only (`WorldScene.tryDigAt`).
+ * raid only (`WorldScene.tryDigAt`), and `key` a gate locked to FireRed's Card
+ * Key, which a raid opens by carrying the card to it - the shipped maps' key
+ * exits (`extractionPoints.ts`), with the card the key every file shares. The
+ * card lies on an item spot marked `key`, one raid in five, as the shipped
+ * maps lay their keys.
  */
 export type MapFileOpens =
   | { readonly when: 'always' }
   | { readonly when: 'after'; readonly seconds: number }
-  | { readonly when: 'dug' };
+  | { readonly when: 'dug' }
+  | { readonly when: 'key' };
+
+/** The key a file's locked exits open to: FireRed's Card Key. */
+export const MAP_FILE_EXIT_KEY = 'card-key' satisfies ItemId;
+
+/** How often the Card Key is lying on its spot: the shipped maps' keys' odds. */
+export const CARD_KEY_CHANCE = 0.2;
+
+/**
+ * Whether an exit is barred - buried, or locked to the Card Key - and so a way
+ * out only for a raid that brought the Pickaxe or found the card. Nothing that
+ * promises a way out may count one (`isBarredExit` in `extractionPoints.ts`).
+ */
+export function isBarredFileExit(exit: { readonly opens: MapFileOpens }): boolean {
+  return exit.opens.when === 'dug' || exit.opens.when === 'key';
+}
 
 export interface MapFileSpot {
   readonly x: number;
@@ -853,9 +877,15 @@ export interface MapFileSpot {
   readonly area?: string;
 }
 
-/** Somewhere to find something; hidden, it is not drawn until it is stepped on. */
+/**
+ * Somewhere to find something; hidden, it is not drawn until it is stepped on.
+ * A spot marked `key` holds the map's Card Key one raid in five and nothing
+ * otherwise, and is the one spot on the map that does not take its turn in the
+ * rotation of what spots hold (`itemSpotContents`).
+ */
 export interface MapFileItemSpot extends MapFileSpot {
   readonly hidden?: boolean;
+  readonly key?: boolean;
 }
 
 export interface MapFileBuilding extends MapFileSpot {
@@ -1472,13 +1502,14 @@ export function readMapFile(
       isRecord(opens) &&
       (opens.when === 'always' ||
         opens.when === 'dug' ||
+        opens.when === 'key' ||
         (opens.when === 'after' &&
           isWholeNumber(opens.seconds) &&
           opens.seconds > 0 &&
           opens.seconds <= limits.maxExitDelaySeconds));
     if (!valid) {
       problems.push(
-        `Exit '${String(exit.name)}' must open always, after 1 to ${limits.maxExitDelaySeconds} seconds, or when dug out.`,
+        `Exit '${String(exit.name)}' must open always, after 1 to ${limits.maxExitDelaySeconds} seconds, when dug out, or to the Card Key.`,
       );
     }
   }
@@ -1486,6 +1517,9 @@ export function readMapFile(
   list('itemSpots', limits.maxItemSpots).forEach((spot, index) => {
     if (spot.hidden !== undefined && typeof spot.hidden !== 'boolean') {
       problems.push(`Item spot ${index + 1}'s hidden must be yes or no.`);
+    }
+    if (spot.key !== undefined && typeof spot.key !== 'boolean') {
+      problems.push(`Item spot ${index + 1}'s key must be yes or no.`);
     }
   });
 
@@ -1950,21 +1984,45 @@ export function itemSpotContents(index: number): {
     : repeating[(index - ITEM_SPOT_ROTATION.length) % repeating.length];
 }
 
-/** The pool a file map's item spots are, by the rotation above. */
+/**
+ * The pool a file map's item spots are, by the rotation above. A spot marked
+ * `key` holds the Card Key instead, as a prize: rolled on its own odds and
+ * seated in the district it stands in, as the shipped maps' keys are, and
+ * left out of the rotation so every other spot holds what it always held.
+ */
 function lootFor(
   id: WorldMapId,
   spots: readonly MapFileItemSpot[],
   at: (spot: MapFileSpot) => { x: number; y: number },
+  districts: readonly MapFileDistrict[],
 ): WorldLoot[] {
+  let turn = 0;
   return spots.map((spot, index) => {
-    const entry = itemSpotContents(index);
-    return {
+    const common = {
       id: `${id}/spot-${index + 1}`,
       position: at(spot),
-      itemId: entry.itemId,
-      quantity: entry.quantity,
       ...(spot.hidden ? { hidden: true } : {}),
     };
+    if (spot.key) {
+      const home = districts.findIndex(
+        (district) =>
+          district.area === spot.area &&
+          spot.x >= district.x &&
+          spot.x < district.x + district.width &&
+          spot.y >= district.y &&
+          spot.y < district.y + district.height,
+      );
+      return {
+        ...common,
+        itemId: MAP_FILE_EXIT_KEY,
+        quantity: 1,
+        chance: CARD_KEY_CHANCE,
+        ...(home >= 0 ? { district: `${id}/district-${home + 1}` } : {}),
+      };
+    }
+    const entry = itemSpotContents(turn);
+    turn += 1;
+    return { ...common, itemId: entry.itemId, quantity: entry.quantity };
   });
 }
 
@@ -2177,7 +2235,7 @@ export function buildFileMap(
     compose: (opened = []) => composeMapFile(file, opened, id),
     areas,
     encounters: MAP_FILE_HABITATS[file.wildlife],
-    loot: lootFor(id, file.itemSpots, at),
+    loot: lootFor(id, file.itemSpots, at, file.districts ?? []),
     // The front door carries the map's name, as every shipped map's does - it
     // is the row a map is chosen by - and says which of the map's places it is
     // in its description, the way the Floodplain's says "The Landing:".
@@ -2326,7 +2384,9 @@ export function buildFileMap(
             ? { kind: 'elapsed', unlockAtMs }
             : exit.opens.when === 'dug'
               ? { kind: 'dug' }
-              : { kind: 'always' },
+              : exit.opens.when === 'key'
+                ? { kind: 'key', keyId: MAP_FILE_EXIT_KEY }
+                : { kind: 'always' },
       };
     }),
   };
