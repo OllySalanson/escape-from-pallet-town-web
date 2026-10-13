@@ -1226,7 +1226,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private sayHunterIfChanged(): void {
     const rooms = friendRoom();
     const room = rooms?.room;
-    if (!rooms || !room) {
+    // Silent while somebody fights it: the fight's end is the next word on the
+    // hunter, and a word from before it arriving after it would undo it.
+    if (!rooms || !room || rooms.hunters.hunterHeld) {
       return;
     }
     const shared = this.sharedHunterNow();

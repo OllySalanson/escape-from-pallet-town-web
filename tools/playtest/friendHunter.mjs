@@ -136,19 +136,25 @@ try {
     const b = await fighter.evaluate(battle);
     if (b && b.mode === 'main') {
       const selected = b.commands.find((command) => command.startsWith('>')) ?? '';
-      if (!selected.includes('RUN') && !selected.includes('FLEE')) {
+      if (!selected.includes('FLEE')) {
         const key = seen.has(selected) ? 'ArrowDown' : 'ArrowRight';
         seen.add(selected);
         await press(fighter, key);
         continue;
       }
+      console.log(`${fighterName} chooses ${selected.slice(1)}`);
     }
     await press(fighter, 'Space');
   }
-  const back = await wait(fighter, `${fighterName} back in the raid after running`, (s) => s.live && s.hunter && !s.held);
+  await wait(fighter, `${fighterName} back in the raid after running`, (s) => s.live && s.hunter);
   await readOn(fighter);
+  // Settled, rather than whatever the first frame back shows.
+  await sleep(2_500);
+  const back = await read(fighter);
   const adopted = await wait(keeper, `${keeperName} taking the hunter where ${fighterName}'s escape left it`, (s) => s.live && !s.held && same(s.hunter, back.hunter));
-  console.log(JSON.stringify({ back, adopted }));
+  if (back.defeated || back.search <= 0 || same(back.hunter, holding.hunter)) {
+    throw new Error(`an escape leaves the hunter searching somewhere else: ${JSON.stringify({ holding, back, adopted })}`);
+  }
   console.log(`${fighterName} ran: the hunter fell back to ${JSON.stringify(back.hunter)} on ${fighterName}'s screen, and ${keeperName}'s hunter is there too (${JSON.stringify(adopted.hunter)})`);
   await keeper.screenshot(`${out}/h5-${keeperName.toLowerCase()}-after-the-escape.png`);
 } finally {
