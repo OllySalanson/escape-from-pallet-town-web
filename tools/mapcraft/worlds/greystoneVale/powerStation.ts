@@ -102,6 +102,9 @@ export function powerStation(): MapcraftResult {
     'dddddddddddddd',
     ' dddddddddddd ',
   ]);
+  // Two boulders at its front corners, either side of the way down to the
+  // yard, so whoever lands here meets something whichever way they set off.
+  p.building('rock', 27, 28).building('rock', 34, 28);
 
   // -- The switchyard: fenced and gone to grass, its gate off the forecourt,
   // its service gate at the back
@@ -134,8 +137,8 @@ export function powerStation(): MapcraftResult {
   const file = districtFile(GREYSTONE_VALE, 'power-station', p, {
     dropIns: [
       {
-        x: 31,
-        y: 27,
+        x: 30,
+        y: 28,
         name: 'The Dam',
         description: 'The forecourt of the power station, under the dam, with the switchyard gone to grass beyond it.',
       },

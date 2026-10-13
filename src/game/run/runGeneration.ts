@@ -290,7 +290,7 @@ export const RUN_INSERTIONS = {
     id: 'greystone-vale-the-dam',
     label: 'The Dam',
     mapId: 'greystone-vale',
-    position: { x: 223, y: 27 },
+    position: { x: 222, y: 28 },
     description: 'The forecourt of the power station, under the dam, with the switchyard gone to grass beyond it.',
   },
   'greystone-vale-salvage-camp': {
