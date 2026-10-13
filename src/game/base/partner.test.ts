@@ -377,6 +377,41 @@ describe('who the partner is', () => {
     }
     expect(partnerOf(manager.load()?.stash ?? new Stash())?.id).toBe('charmeleon-1');
   });
+
+  it('on every older save version the loader accepts, is the starter that save was played with', () => {
+    const charmander = { speciesId: 'charmander', level: 5, currentHp: 19, xp: 125, moves: ['Scratch', 'Growl'], primaryStatus: null };
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    const load = (save: object) => {
+      stored.clear();
+      stored.set('escape-from-pallet-town.save.v1', JSON.stringify({ mapId: 'pallet-town', position: { x: 1, y: 1 }, items: [], bag: {}, ...save }));
+      return manager.load();
+    };
+
+    // A free-roam save: the team was the party, and is moved into the vault.
+    const freeRoam = load({ version: 3, party: [charmander] });
+    expect(partnerOf(freeRoam?.stash ?? new Stash())?.species).toBe('charmander');
+
+    for (const version of [4, 5, 6]) {
+      const restored = load({
+        version,
+        party: [],
+        starterSpeciesId: 'charmander',
+        stash: {
+          pokemon: [
+            { id: 'pidgey-1', pokemon: { ...charmander, speciesId: 'pidgey', level: 30, xp: 27000 } },
+            { id: 'charmander-1', pokemon: charmander },
+          ],
+          items: {},
+        },
+      });
+      expect(partnerOf(restored?.stash ?? new Stash())?.id).toBe('charmander-1');
+    }
+  });
 });
 
 describe('what the partner says', () => {
