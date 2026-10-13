@@ -111,7 +111,10 @@ came out in, and comes back out the same way. Walking cannot do it, because a
 link is a press into a door, not a step onto a tile. With `--explorer` it reads
 back the explorer run's own save, so `--explorer --insertion=id` reaches any
 landing on a map still being drawn: that is how all of Greystone Vale was
-played (`docs/screens/greystone-vale/README.md`, "Played through").
+played (`docs/screens/greystone-vale/README.md`, "Played through"). A landing in an inside is written `area@x:y:dir` (the area's id and its own
+tiles), and `--deep` makes the doors a chain - each gone through from where the
+last came out, a chapel's door and then its stairs down - and comes back out
+by the chain in reverse.
 
 Battle HP numbers, HP bars and the sprite entrance are wall-clock tweens, so in a
 stepped check they lag the state badly (a plate read `16/16` for three turns of a

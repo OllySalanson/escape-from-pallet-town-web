@@ -1078,9 +1078,9 @@ One per place:
 - **Stormcrown** (built - [Stormcrown](#stormcrown)): B5F as a maze of its
   own seed, so the five floors that ship do not move; and a legendary on a map
   file.
-- **The Moor Chapel**: a night door, shut by day and open on a night raid, built
-  per state as a field-move door is; and FireRed's Pokemon Tower as a room
-  style.
+- **The Moor Chapel** (built - [The Moor Chapel](#the-moor-chapel)): a night
+  door, shut by day and open on a night raid, built per state as a field-move
+  door is; and FireRed's Pokemon Tower as a room style.
 - **The Lost Garden**: Strength boulders in a cave floor. Built: they stand
   in the Falls Cave.
 - **The Bunker**: an inside for the Power Plant; a door the Card Key opens; a
@@ -1100,7 +1100,7 @@ Order them like this:
   cut already.
 
 The track used to end at a way out that opened 90 seconds into a raid, standing
-in for the chapel until it was drawn. It is drawn now ([below](#the-moor-chapel)).
+in for the chapel until it was drawn. It is drawn now ([The Moor Chapel](#the-moor-chapel)).
 
 ## Stormcrown
 
