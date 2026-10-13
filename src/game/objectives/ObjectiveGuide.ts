@@ -4,7 +4,8 @@ import type { ActiveRunSession } from '../run/RunSession';
 import type { GridPosition } from '../movement/gridMovement';
 import { compassBearing, compassWord } from '../world/bearing';
 import { type WorldMapId, worldMapName } from '../worldMap';
-import { poisForMap } from '../world/pois';
+import { poisForMap, type WorldPoi } from '../world/pois';
+import { isLandmarkWorked } from '../world/workedLandmarks';
 import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/errands';
 
 export interface ObjectiveGuideContext {
@@ -68,7 +69,7 @@ export function buildObjectiveGuide(
     hints: [
       ...(contract
         ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
-        : laterRunHints(context, currentExit?.label)),
+        : laterRunHints(session, context, currentExit?.label)),
       ...errandHints(session, context, snapshot.foundItems),
       ...shinyHints(snapshot.caughtPokemon),
     ],
@@ -199,7 +200,11 @@ function directionTo(from: GridPosition, to: GridPosition): string {
   return bearing ? `to the ${compassWord(bearing)}` : 'right here';
 }
 
-function laterRunHints(context: ObjectiveGuideContext, currentExit: string | undefined): readonly string[] {
+function laterRunHints(
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+  currentExit: string | undefined,
+): readonly string[] {
   if (context.currentMapId === 'floodplain-relay') {
     const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
     // The landmark is named from its own data here too. This line used to be a
@@ -221,11 +226,32 @@ function laterRunHints(context: ObjectiveGuideContext, currentExit: string | und
   // Named and explained by the landmark itself. Every map has its own, and more
   // than one on some, so a sentence that wrote a landmark's name or what it does
   // as a literal would be right on one map and misdirecting on the other three.
-  const landmark = poisForMap(context.currentMapId).find((poi) => !context.activatedPoiIds.has(poi.id));
+  // The nearest one still to work, and which way: the vast maps hold a dozen,
+  // and the first in authored order was the Green's pump whichever end of the
+  // valley the player stood in.
+  const landmark = nearestLandmarkToWork(session, context);
   const landmarkHint = landmark
-    ? `${landmark.label} is nearby. ${landmark.description}`
+    ? `The nearest landmark still to work is ${landmark.label}, ${directionTo(context.currentPosition, context.towards?.(landmark.position) ?? landmark.position)}. ${landmark.description}`
     : 'Search marked caches and loose supplies, then leave before the raid turns against you.';
   return [landmarkHint, currentExit ? `Use ${currentExit} on this map to bank your haul.` : 'Return to a marked extraction gate to bank your haul.'];
+}
+
+/**
+ * The landmark on this map closest to the player that this raid can still work:
+ * not worked this raid, and not finished with for good by a banked contract
+ * (`../world/workedLandmarks`), which still stands but hands out nothing.
+ */
+function nearestLandmarkToWork(session: ActiveRunSession, context: ObjectiveGuideContext): WorldPoi | undefined {
+  const completed = session.plan?.completedContracts ?? [];
+  const here = context.currentPosition;
+  return poisForMap(context.currentMapId)
+    .filter((poi) => !context.activatedPoiIds.has(poi.id) && !isLandmarkWorked(poi.id, completed))
+    .reduce<WorldPoi | undefined>((nearest, poi) => {
+      const distance = Math.abs(poi.position.x - here.x) + Math.abs(poi.position.y - here.y);
+      return nearest && Math.abs(nearest.position.x - here.x) + Math.abs(nearest.position.y - here.y) <= distance
+        ? nearest
+        : poi;
+    }, undefined);
 }
 
 /** How this contract gets banked, which is not always "any exit will do". */

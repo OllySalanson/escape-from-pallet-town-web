@@ -9,6 +9,7 @@ import { buildObjectiveGuide } from './ObjectiveGuide';
 import { ERRANDS, errandLoot } from '../hub/errands';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_POIS, poisForMap } from '../world/pois';
+import { WORKED_LANDMARKS } from '../world/workedLandmarks';
 import type { WorldMapId } from '../worldMap';
 
 function createFirstContractSession() {
@@ -234,22 +235,55 @@ describe('objective field guide', () => {
       });
       const text = guide.hints.join(' ').toUpperCase();
 
-      expect(text).toContain(poisForMap(mapId)[0].label.toUpperCase());
+      expect(poisForMap(mapId).some((poi) => text.includes(poi.label.toUpperCase()))).toBe(true);
       for (const elsewhere of WORLD_POIS.filter((poi) => poi.mapId !== mapId)) {
         expect(text).not.toContain(elsewhere.label.toUpperCase());
       }
     }
   });
 
-  it('moves on to the next landmark on a map that has two', () => {
+  it('moves on to the next landmark once one is worked', () => {
     const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
       currentMapId: 'pallet-town',
-      currentPosition: { x: 7, y: 9 },
+      currentPosition: { x: 3, y: 17 },
       activatedPoiIds: new Set(['pallet-town-pump']),
     });
 
-    expect(guide.hints[0]).toContain('SLUICE WHEEL');
-    expect(guide.hints[0]).toContain('opens it as an exit');
+    expect(guide.hints[0]).not.toContain('TOWN PUMP');
+    expect(guide.hints[0]).toContain('THE SCARE POST');
+  });
+
+  it('names the landmark nearest the player and which way it is, not the first on the map', () => {
+    // Standing in THE QUARRY, the far east of the valley: the Green's pump is
+    // fifty tiles west and the adit is two tiles away.
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 53, y: 19 },
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints[0]).not.toContain('TOWN PUMP');
+    expect(guide.hints[0]).toContain('The nearest landmark still to work is THE ADIT, to the north.');
+  });
+
+  it('passes over a landmark a banked contract finished for good', () => {
+    const session = createUncontractedSession('town-square');
+    const worked = WORLD_POIS.find((poi) => poi.id === 'pallet-sluice-wheel')!;
+    const contractId = WORKED_LANDMARKS.find((work) => work.poiId === worked.id)!.contractId;
+    const plan = { ...session.plan!, completedContracts: [contractId] };
+    const guide = buildObjectiveGuide({ ...session, plan }, {
+      currentMapId: 'pallet-town',
+      currentPosition: worked.position,
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints[0]).not.toContain(worked.label);
+    const unbanked = buildObjectiveGuide(session, {
+      currentMapId: 'pallet-town',
+      currentPosition: worked.position,
+      activatedPoiIds: new Set(),
+    });
+    expect(unbanked.hints[0]).toContain(`${worked.label}, right here.`);
   });
 });
 

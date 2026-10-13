@@ -217,6 +217,14 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** drop an errand's thing to make room and the field guide tells you it is gone and that it will be back next raid, rather than promising it is in your pack.
 - **Checked, left alone:** in the same guide, standing in THE QUARRY, the first note said "TOWN PUMP is nearby" for a pump on the Green far to the west - worth a look in a later iteration.
 
+## 30. The field guide called a landmark fifty tiles away "nearby" (followed up from entry 29, playtested)
+
+- **Found:** with no contract on the raid, the field guide's first note named the first unworked landmark in the map's authored list and called it "nearby". On Pallet Town that is always the TOWN PUMP on the Green, so a player in THE QUARRY at the far east of the valley was sent back fifty tiles past the adit two steps away. It also offered a landmark a banked contract had finished for good, which hands out nothing.
+- **Reproduced:** in the real game (a `raid.mjs` copy that deploys to `--insertion=town-square --completed=floodplain-first-contract` and presses O), and in `objectives/ObjectiveGuide.test.ts`: "names the landmark nearest the player and which way it is, not the first on the map" (standing at 53,19 the guide named TOWN PUMP) and "moves on to the next landmark once one is worked" both failed before the fix.
+- **Fixed:** `ObjectiveGuide.laterRunHints` picks the nearest landmark still to work (not worked this raid, and not finished for good by a contract in `plan.completedContracts`, through `isLandmarkWorked`) and says which way it is with the same heading the errand and contract lines use: "The nearest landmark still to work is THE ADIT, to the north." A new test holds that a finished landmark is passed over. The Floodplain's own first-raid notes are unchanged.
+- **How a player meets it:** press O on a raid with no contract and the field notes point at the closest place worth working and which way to walk, wherever on the map you are.
+- **Checked in the browser:** deployed at the town square (7,9) the guide now reads "TOWN PUMP, to the south-west", which is the nearest (11 steps against the scare post's 12).
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
