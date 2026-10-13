@@ -57,6 +57,9 @@ const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Top of the partner's frame relative to its tile, so its feet land where the player's soles do. */
 const PARTNER_SPRITE_Y_OFFSET = PLAYER_SPRITE_Y_OFFSET + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
+/** The bubble's drawn size, tail and all. */
+const BUBBLE_WIDTH = 11;
+const BUBBLE_HEIGHT = 15;
 
 /** What the partner reads off the scene it walks in. */
 export interface PartnerHost {
@@ -259,6 +262,20 @@ export class PartnerFigure {
     );
     this.bubble = bubble.setDepth(CANOPY_BAND + 0.15);
     this.bubbleMs = 0;
+    // Seated now rather than on its next frame, so the captions seated this
+    // frame keep clear of where it is rather than of the world's corner.
+    this.draw();
+  }
+
+  /**
+   * Its bubble as drawn, for the captions to keep clear of: a caption seated
+   * across it hides the bubble or the writing, and a line the partner is
+   * saying is what the player is looking at. Null while it says nothing.
+   */
+  public bubbleRect(): Rect | null {
+    return this.bubble
+      ? { x: this.bubble.x, y: this.bubble.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }
+      : null;
   }
 
   /**
@@ -440,7 +457,7 @@ export class PartnerFigure {
         width: TILE_SIZE,
         height: FIGURE_HEIGHT,
       };
-      if (bubbleX < face.x + face.width && bubbleX + 11 > face.x && bubbleY < face.y + face.height && bubbleY + 15 > face.y) {
+      if (bubbleX < face.x + face.width && bubbleX + BUBBLE_WIDTH > face.x && bubbleY < face.y + face.height && bubbleY + BUBBLE_HEIGHT > face.y) {
         bubbleX = Math.round(face.x + face.width);
       }
       this.bubble.setPosition(bubbleX, bubbleY);
