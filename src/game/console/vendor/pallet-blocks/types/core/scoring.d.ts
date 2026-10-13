@@ -19,6 +19,8 @@ export declare const HARD_DROP_POINTS_PER_CELL = 2;
 export declare const COMBO_POINTS = 50;
 /** The level a game is on after clearing `lines`, having started on `startLevel`. */
 export declare function levelFor(startLevel: number, lines: number): number;
+/** The line count at which a game that has cleared `lines` goes up its next level. */
+export declare function nextLevelLines(lines: number): number;
 /**
  * How long a piece takes to fall one row, in milliseconds. This is the familiar
  * modern curve: one row a second at level 1, speeding up until it is effectively

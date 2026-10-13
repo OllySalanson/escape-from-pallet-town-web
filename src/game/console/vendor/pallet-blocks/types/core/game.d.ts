@@ -37,6 +37,10 @@ export type GameEvent = {
 } | {
     readonly type: 'hold';
     readonly kind: PieceKind;
+}
+/** Hold was pressed, but this piece has already used it. */
+ | {
+    readonly type: 'holdRefused';
 } | {
     readonly type: 'softDrop';
 } | {
@@ -121,6 +125,9 @@ export declare class Game {
     private lastKickIndex;
     private readonly heldKeys;
     private shiftDirection;
+    /** Turns and a hold pressed while lines clear (or before play starts), for when a piece can take them. */
+    private bufferedTurns;
+    private bufferedHold;
     private dasTimerMs;
     private arrTimerMs;
     private events;
@@ -128,10 +135,23 @@ export declare class Game {
     /** The next pieces to come, nearest first. */
     get preview(): readonly PieceKind[];
     get isOver(): boolean;
+    /**
+     * How far a piece resting on the stack is through its lock delay, from 0 just
+     * after it touched down or was moved to 1 as it locks. 0 while it falls.
+     */
+    get lockProgress(): number;
     /** Where the current piece would land if hard dropped. */
     ghostY(): number | null;
     drainEvents(): GameEvent[];
     press(action: GameAction): void;
+    /**
+     * Keeps a hold or turn for `applyPressedLater`, for presses made before the
+     * game can take them (during READY, say). Other actions are ignored: a hard
+     * drop kept for later would drop a piece the player has not looked at.
+     */
+    pressLater(action: GameAction): void;
+    /** Applies what `pressLater` kept to the falling piece; during a clear it waits for the next one. */
+    applyPressedLater(): void;
     release(action: GameAction): void;
     /** Lets go of everything, for when the game loses focus. */
     releaseAll(): void;
@@ -154,6 +174,8 @@ export declare class Game {
     private detectSpin;
     private lockPiece;
     private finishClear;
+    /** What was pressed early acts on the piece: a hold first, then the turns. */
+    private applyBufferedInput;
     private lockedEntirelyAbove;
     private isPerfectClearAfter;
     private deal;

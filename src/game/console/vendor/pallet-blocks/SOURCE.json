@@ -1,7 +1,7 @@
 {
   "id": "pallet-blocks",
   "repo": "https://github.com/OllySalanson/pallet-blocks.git",
-  "commit": "f3752c6a8b828e6cea296587a328d0034ee90629",
+  "commit": "6e21369c851cc9a940d1cc4309ffecc6d7c6fd89",
   "module": "dist-lib/pallet-blocks.js",
-  "sha256": "ec49952936dbbdcd57e146e7d893dd35894b9e0012e8e30cee8ad56b829fe3cd"
+  "sha256": "d24d65b01fe1b5819d045298e75a4d802ee0bc5a5c0982f7fa5a433034db178b"
 }

@@ -31,7 +31,7 @@ export interface PalletBlocksOptions {
      * returning to the title screen.
      */
     readonly loadLeaderboard?: () => Promise<readonly LeaderboardEntry[]>;
-    /** The level the LEVEL option starts on, 1 to 15. */
+    /** The level the LEVEL option starts on, 1 to 15. Default: the one this browser last picked, else 1. */
     readonly startLevel?: number;
     /** Start with sound off. The player can still toggle it with M. */
     readonly muted?: boolean;
@@ -59,13 +59,17 @@ export declare class PalletBlocksApp {
     private readonly sfx;
     private readonly localScores;
     private readonly resizeObserver;
+    /** Puts the host's element back as it was before the game was mounted. */
+    private readonly giveBack;
     private renderer;
-    private screen;
+    private current;
     /** Keys are ignored until this time, so a player still mashing drop at the end of a game does not skip what comes next. */
     private inputGuardUntil;
     private game;
     private startLevel;
     private nowMs;
+    /** Like `nowMs`, but stopped while paused: in-play effects are timed by it. */
+    private effectsMs;
     private lastFrame;
     private frame;
     private destroyed;
@@ -80,10 +84,16 @@ export declare class PalletBlocksApp {
     private bannerQueue;
     private trail;
     private flash;
+    private holdRefusedAtMs;
     /** Set by a hard drop, for the lock that follows it in the same batch of events. */
     private pendingDropDistance;
     private lastSoftDropSound;
+    private readonly held;
+    private readonly fresh;
     constructor(root: HTMLElement, options?: PalletBlocksOptions);
+    private get screen();
+    /** A new screen starts with no keys of its own: keys already down are not its. */
+    private set screen(value);
     pause(): void;
     resume(): void;
     restart(): void;
@@ -107,6 +117,9 @@ export declare class PalletBlocksApp {
     private report;
     private refreshLeaderboard;
     private toTitle;
+    private toPlaying;
+    /** Move and soft-drop keys held while the game could not take them act now. */
+    private pressHeld;
     private isLive;
     private acceptsGameInput;
     private titleItems;
@@ -115,6 +128,8 @@ export declare class PalletBlocksApp {
     private pausedKey;
     private resultsKey;
     private nameKey;
+    /** The LEVEL choice is kept in this browser, like the sound setting, for next time. */
+    private setStartLevel;
     private toggleMute;
     private readonly onKeyDown;
     private handleKeyDown;
