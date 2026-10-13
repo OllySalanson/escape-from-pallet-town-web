@@ -1,6 +1,7 @@
 import type {
   MapFile,
   MapFileArea,
+  MapFileBarrier,
   MapFileBerryTree,
   MapFileBoulder,
   MapFileBuilding,
@@ -16,6 +17,7 @@ import type {
   MapFilePerson,
   MapFilePokemon,
   MapFileSign,
+  MapFileSwitch,
   MapFileTrainer,
 } from './mapFile';
 
@@ -61,7 +63,7 @@ const FILE = keysOf<MapFile>()([
 const BUILDING = keysOf<MapFileBuilding>()(['x', 'y', 'area', 'kind']);
 const DROP_IN = keysOf<MapFileDropIn>()(['x', 'y', 'area', 'name', 'description', 'id']);
 const EXIT = keysOf<MapFileExit>()(['x', 'y', 'area', 'name', 'opens']);
-const ITEM_SPOT = keysOf<MapFileItemSpot>()(['x', 'y', 'area', 'hidden', 'key']);
+const ITEM_SPOT = keysOf<MapFileItemSpot>()(['x', 'y', 'area', 'hidden', 'key', 'prize']);
 const PERSON = keysOf<MapFilePerson>()(['x', 'y', 'area', 'name', 'look', 'facing', 'lines']);
 const SIGN = keysOf<MapFileSign>()(['x', 'y', 'area', 'lines']);
 const LANDMARK = keysOf<MapFileLandmark>()(['x', 'y', 'area', 'name', 'kind']);
@@ -69,7 +71,11 @@ const DISTRICT = keysOf<MapFileDistrict>()(['area', 'name', 'x', 'y', 'width', '
 const TRAINER = keysOf<MapFileTrainer>()(['x', 'y', 'area', 'name', 'team', 'look', 'facing', 'sight', 'lines']);
 const DOOR = keysOf<MapFileDoor>()(['kind', 'x', 'y', 'width', 'height']);
 const POKEMON = keysOf<MapFilePokemon>()(['x', 'y', 'area', 'species', 'level', 'legendary']);
-const AREA = keysOf<MapFileArea>()(['id', 'name', 'kind', 'style', 'width', 'height', 'ground', 'buildings']);
+const AREA = keysOf<MapFileArea>()([
+  'id', 'name', 'kind', 'style', 'width', 'height', 'ground', 'buildings', 'switches', 'barriers',
+]);
+const SWITCH = keysOf<MapFileSwitch>()(['x', 'y', 'kind', 'opens']);
+const BARRIER = keysOf<MapFileBarrier>()(['id', 'x', 'y', 'width', 'height']);
 const LINK = keysOf<MapFileLink>()(['ends']);
 const LINK_END = keysOf<MapFileLinkEnd>()(['x', 'y', 'area', 'toward', 'look']);
 const BERRY_TREE = keysOf<MapFileBerryTree>()(['x', 'y', 'area', 'berry']);
@@ -119,7 +125,12 @@ export function onlyMapFileFields(file: MapFile): MapFile {
     trainers: each(file.trainers, TRAINER),
     doors: each(file.doors, DOOR),
     pokemon: each(file.pokemon, POKEMON),
-    areas: file.areas?.map((area) => ({ ...pick(area, AREA), buildings: each(area.buildings, BUILDING) })),
+    areas: file.areas?.map((area) => ({
+      ...pick(area, AREA),
+      buildings: each(area.buildings, BUILDING),
+      ...(area.switches ? { switches: each(area.switches, SWITCH) } : {}),
+      ...(area.barriers ? { barriers: each(area.barriers, BARRIER) } : {}),
+    })),
     berryTrees: each(file.berryTrees, BERRY_TREE),
     boulders: each(file.boulders, BOULDER),
     links: file.links?.map((link) => ({

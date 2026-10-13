@@ -31,6 +31,7 @@ import {
   type NamedGround,
 } from './mapStructure';
 import { idleBeatTiles, stepDirection } from './npcIdle';
+import type { WorldEntity } from './npcs';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
 import { RAID_CONTRACTS } from '../objectives';
@@ -139,7 +140,7 @@ export const MAP_STRUCTURE_PARTS: readonly MapStructurePart[] = [
   // One gate state too big for one file, so it is split by tiles: in one file
   // its flee sweeps alone ran seven minutes, and in four the slowest part's
   // took 103 of its 120 seconds on CI before Stormcrown and the caves' sixth
-  // floor added an eighth more ground.
+  // floor added an eighth more ground, and the Lost Garden more again.
   ...([1, 2, 3, 4, 5, 6] as const).map((part) => ({
     name: `greystone-vale ${part}/6`,
     mapId: 'greystone-vale' as const,
@@ -209,14 +210,27 @@ function trainersIn(state: MapState) {
  */
 function entityTiles(state: MapState): Set<string> {
   const tiles = new Set(
-    state.map.entities.flatMap((entity) =>
-      idleBeatTiles(entity).map((tile) => `${tile.x},${tile.y}`),
-    ),
+    state.map.entities
+      .filter(standsForGood)
+      .flatMap((entity) => idleBeatTiles(entity).map((tile) => `${tile.x},${tile.y}`)),
   );
   for (const trainer of trainersIn(state)) {
     tiles.add(`${trainer.position.x},${trainer.position.y}`);
   }
   return tiles;
+}
+
+/**
+ * Whether a figure is a wall for the rules below. A Strength boulder is pushed
+ * aside and a rock barrier lifts once its switches are thrown (`switches.ts`),
+ * so neither is: what can be reached is asked with them out of the way, as
+ * `checkMapFile` asks it, and a floor of them is held to being solvable by its
+ * own test (`tools/mapcraft/worlds/greystoneVale/fallsCave.test.ts`). In play
+ * the scene never lets a push wall the player off from every way out
+ * (`WorldScene.tryPushBoulder`).
+ */
+function standsForGood(entity: WorldEntity): boolean {
+  return !entity.boulder && !entity.barrier;
 }
 
 function insertionsOn(mapId: WorldMapId) {
@@ -367,6 +381,11 @@ export function describeMapStructure(partName: string): void {
   const RULE_STATES = part.tiles === true && part.part > 1 ? [] : MAP_STATES;
   const sweptTiles = (tiles: readonly GridPosition[]): readonly GridPosition[] =>
     part.tiles === true ? tiles.filter((_, index) => index % part.of === part.part - 1) : tiles;
+  // A map split by tiles is the biggest the game has, and its flee sweeps are
+  // the slowest tests in the suite: a sixth of Greystone Vale's sweep ran a
+  // little past two minutes with three other workers sweeping the same map
+  // beside it. Its sweeps get room for that rather than failing on the clock.
+  const sweepTimeout = part.tiles === true ? 300_000 : undefined;
   const eachRule = (
     title: string,
     rule: (name: string, state: MapState) => void,
@@ -679,7 +698,7 @@ export function describeMapStructure(partName: string): void {
 
       // Signs and townsfolk: every tile of every beat, which is stricter than any
       // position the schedules can ever put them in.
-      for (const entity of map.entities) {
+      for (const entity of map.entities.filter(standsForGood)) {
         for (const tile of idleBeatTiles(entity)) {
           expect(`${entity.id} stands on ${tile.x},${tile.y}: ${isDoor(tile) ? 'the only way through' : 'ground you can walk round'}`)
             .toBe(`${entity.id} stands on ${tile.x},${tile.y}: ground you can walk round`);
@@ -751,7 +770,7 @@ export function describeMapStructure(partName: string): void {
             .toBe(`fled from ${player.x},${player.y} going ${heading}, hunter to ${away.x},${away.y}: a way out`);
         }
       }
-    });
+    }, sweepTimeout);
 
     it.each(named(MAP_STATES))('%s always gives the hunter somewhere fair to arrive', (_name, { map }) => {
       const bounds = boundsOf(map);
@@ -808,7 +827,7 @@ export function describeMapStructure(partName: string): void {
           .toBe(`${mapId} ${player.x},${player.y} fled to ${breakaway.x},${breakaway.y}: still has a way out`);
       }
       expect(worst).toBeGreaterThanOrEqual(HUNTER_MINIMUM_SPAWN_DISTANCE);
-    });
+    }, sweepTimeout);
 
     /**
      * A trainer's watch is a price on a route, so it has to be a price the player

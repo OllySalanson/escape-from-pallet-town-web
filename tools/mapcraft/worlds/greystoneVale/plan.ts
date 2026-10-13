@@ -233,7 +233,7 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: 'THE LOST GARDEN',
       cell: [4, 0],
       terrain: 'forest',
-      wildlife: 'woodland',
+      wildlife: 'garden',
       idea: "A valley sealed by cliffs behind the station's falls: the station master's garden gone wild, where the rarest grass Pokemon grow.",
       reach: {
         wayIn:

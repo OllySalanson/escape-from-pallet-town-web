@@ -41,7 +41,16 @@ function walkableFrom(
   // searched once per tile walked.
   const standing = new Map<WorldMapId, ReadonlySet<string>>();
   const figuresOn = (currentMapId: WorldMapId, map: ReturnType<typeof getWorldMap>): ReadonlySet<string> => {
-    const known = standing.get(currentMapId) ?? new Set(map.entities.map((entity) => tileKey(entity.position)));
+    // A Strength boulder is pushed aside and a rock barrier lifts once its
+    // switches are thrown (`world/switches.ts`), so neither shuts a way out
+    // for good - as the structure rules read them (`mapStructure.testkit.ts`).
+    const known =
+      standing.get(currentMapId) ??
+      new Set(
+        map.entities
+          .filter((entity) => !entity.boulder && !entity.barrier)
+          .map((entity) => tileKey(entity.position)),
+      );
     standing.set(currentMapId, known);
     return known;
   };

@@ -18,9 +18,14 @@
  * stands against the dam's cliff as it stands against Route 10's.
  */
 import type { MapcraftResult } from '../../report';
+import { plantCaveMouth } from '../../caves';
 import { districtFile } from '../../stitch';
 import { startDistrict } from '../../worldPlan';
+import { fallsCaveArea, fallsCaveBoulders, fallsCaveSecrets, fallsMouthLink } from './fallsCave';
 import { GREYSTONE_VALE } from './plan';
+
+/** The Falls Cave's mouth, in the cliff behind the water where it spills through the dam. */
+export const FALLS_MOUTH = [48, 17] as const;
 
 /**
  * The valley, a letter a lattice cell: T the wood, . open ground. The wood fills
@@ -148,6 +153,13 @@ export function powerStation(): MapcraftResult {
   p.bedRows([30, 48, 53], [31, 47, 53], [32, 48, 52], [36, 47, 53], [37, 48, 53]);
   p.building('rock', 21, 45).building('rock', 22, 46);
 
+  // -- Behind the falls: where the tailrace spills through the dam, a strip of
+  // reeds runs up its east bank under the cliff to a cave mouth nobody signs,
+  // and the Falls Cave goes through the hill to the Lost Garden.
+  p.block(47, 18, 3, 7, '.');
+  p.bedRows([18, 49, 49], [19, 48, 49], [20, 47, 49], [21, 47, 49], [22, 47, 49], [23, 48, 49], [24, 48, 49]);
+  plantCaveMouth(p, FALLS_MOUTH);
+
   const file = districtFile(GREYSTONE_VALE, 'power-station', p, {
     dropIns: [
       {
@@ -162,6 +174,7 @@ export function powerStation(): MapcraftResult {
       { x: 17, y: 41, hidden: true }, // the workers' garden
       { x: 57, y: 30 }, // the bank of the tailrace
       { x: 44, y: 3 }, // the reservoir's north shore
+      ...fallsCaveSecrets(),
     ],
     exits: [{ x: 30, y: 42, name: 'Service Gate', opens: { when: 'key' } }],
     extra: {
@@ -187,6 +200,12 @@ export function powerStation(): MapcraftResult {
           ],
         },
       ],
+      // The Falls Cave rides in both its districts' files, so each passes
+      // its checks alone, and the stitcher takes it once; what stands in it,
+      // the Strength boulders, rides here, where the cave is entered.
+      areas: [fallsCaveArea()],
+      links: [fallsMouthLink('station', FALLS_MOUTH)],
+      boulders: fallsCaveBoulders(),
       trainers: [
         {
           x: 52,

@@ -285,6 +285,13 @@ export const SOUND_EFFECTS = {
     moment: 'A landmark is worked or a new drop-in point is reached - the sluice wheel turns, a station answers',
     tones: [tri(196, 0.09, 0.07), tri(262, 0.09, 0.07, 0.09), sq(392, 0.16, 0.05, 0.18)],
   },
+  barrierLifts: {
+    channel: 'world',
+    moment: 'A boulder falls onto a floor switch or a lever is thrown, and a rock barrier somewhere lifts',
+    // FireRed plays SE_ICE_BREAK as Victory Road's barrier goes: a crack, and
+    // the rubble settling. Noise for the crack, a low fall under it.
+    tones: [noise(3200, 0.05, 0.06), noise(1400, 0.12, 0.05, 0.04), sweep(tri(220, 0.18, 0.05, 0.03), 110)],
+  },
   contractStop: {
     channel: 'world',
     moment: 'A contract stop is made',

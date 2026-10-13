@@ -6,8 +6,13 @@
  * player will see rather than on a diagram of it.
  */
 import { readPng, TILE_SIZE } from './tileSheet.mjs';
-import { canvas, drawTile } from './draw.mjs';
+import { blit, canvas, drawTile } from './draw.mjs';
 import { getWorldMap, type WorldMapId } from '../../src/game/worldMap';
+import { AREA_PIECES, AREA_SHEET } from '../../src/game/world/generated/areaPieces';
+import { TOWN_PIECES, TOWN_SHEET } from '../../src/game/world/generated/townPieces';
+import { BERRY_TREE_SHEET } from '../../src/game/world/generated/berryTrees';
+import { berryTreeFrames } from '../../src/game/world/berries';
+import { switchesOn } from '../../src/game/world/switches';
 
 export type MapImage = ReturnType<typeof canvas>;
 
@@ -56,5 +61,57 @@ export function drawWorldMap(id: WorldMapId, crop?: TileCrop | null): MapImage {
       }
     }
   }
+  drawStanding(id, image, [cx, cy, cw, ch]);
   return image;
+}
+
+/**
+ * What stands on a map as a figure rather than a tile, drawn as the scene
+ * stands it at the start of a raid: Strength boulders, berry trees, floor
+ * switches and rock barriers. People and Pokemon are left out - they move,
+ * and a picture is of the place.
+ */
+function drawStanding(id: WorldMapId, image: MapImage, [cx, cy, cw, ch]: TileCrop): void {
+  const map = getWorldMap(id);
+  const inside = (x: number, y: number) => x >= cx && y >= cy && x < cx + cw && y < cy + ch;
+  const piece = (
+    sheet: ReturnType<typeof readPng>,
+    column: number,
+    row: number,
+    x: number,
+    y: number,
+  ) => blit(image, sheet, column * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE, (x - cx) * TILE_SIZE, (y - cy) * TILE_SIZE);
+  const areas = sheetFor(AREA_SHEET.imagePath);
+  for (const plate of switchesOn(id)) {
+    if (plate.kind !== 'plate' || !inside(plate.position.x, plate.position.y)) continue;
+    const at = AREA_PIECES['cave.switch'];
+    piece(areas, at.column, at.row, plate.position.x, plate.position.y);
+  }
+  for (const entity of map.entities) {
+    const { x, y } = entity.position;
+    if (!inside(x, y)) continue;
+    if (entity.boulder) {
+      const at = TOWN_PIECES.strengthBoulder;
+      piece(sheetFor(TOWN_SHEET.imagePath), at.column, at.row, x, y);
+    } else if (entity.barrier) {
+      const at = AREA_PIECES['cave.barrier'];
+      piece(areas, at.column, at.row + (entity.barrier.top ? 0 : 1), x, y);
+    } else if (entity.berry) {
+      const sheet = sheetFor(BERRY_TREE_SHEET.imagePath);
+      const frame = berryTreeFrames(entity.berry).ripe[0];
+      const columns = sheet.width / BERRY_TREE_SHEET.frameWidth;
+      const width = BERRY_TREE_SHEET.frameWidth;
+      const height = BERRY_TREE_SHEET.frameHeight;
+      blit(
+        image,
+        sheet,
+        (frame % columns) * width,
+        Math.floor(frame / columns) * height,
+        width,
+        height,
+        (x - cx) * TILE_SIZE + TILE_SIZE / 2 - width / 2,
+        (y - cy + 1) * TILE_SIZE - height,
+      );
+    }
+  }
 }

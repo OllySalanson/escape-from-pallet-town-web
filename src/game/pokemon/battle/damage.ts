@@ -195,7 +195,7 @@ export const calculateDamage = (
       abilityAttack *
       abilityDefence *
       (spread ? SPREAD_DAMAGE_MULTIPLIER : 1) *
-      attackMultiplier(attacker),
+      attackMultiplier(attacker, move.type),
   );
 
   return {

@@ -127,7 +127,9 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
   if (explorer) {
     await press('ArrowDown'); await press('ArrowRight'); await press('Space');
     await until(sceneIs('base'));
-    return enterRaid(page, { press, click, until, wait, insertion, starter: 'Charizard', team: [], pack: [], secure: [] });
+    // --pack works here too: the explorer's vault holds everything, so a
+    // driver can carry a disc in (`--pack=hm04 --read=hm04` is Strength).
+    return enterRaid(page, { press, click, until, wait, insertion, starter: 'Charizard', team: [], pack, secure: [] });
   }
   await press('Space'); await until(sceneIs('starter'));
   // The picker's three cards are the three starters, and which one is taken is

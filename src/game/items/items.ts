@@ -1,4 +1,5 @@
 import { evolutionByStone, type Pokemon } from '../pokemon';
+import { PokemonType } from '../pokemon/PokemonType';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { POKEDOLLAR_SIGN } from '../ui/gameFont';
 
@@ -67,7 +68,13 @@ export type HeldItemEffect =
       readonly recoilMaxHpFraction: number;
     }
   /** Quick Claw: sometimes first, whatever the Speed says. */
-  | { readonly type: 'first-strike'; readonly chance: number };
+  | { readonly type: 'first-strike'; readonly chance: number }
+  /**
+   * FireRed's type-boosting hold items (the Miracle Seed and its kind): the
+   * holder's moves of one type hit harder by `powerPercent`, FireRed's
+   * `holdEffectParam` - ten for every one of them.
+   */
+  | { readonly type: 'type-power'; readonly moveType: PokemonType; readonly powerPercent: number };
 
 export type ItemEffect =
   | { readonly type: 'heal'; readonly amount: number }
@@ -732,6 +739,18 @@ export const ITEMS = {
     footprint: { width: 1, height: 1 },
     description: 'Sometimes the holder strikes first, whatever the Speed says.',
     effect: { type: 'held', held: { type: 'first-strike', chance: 0.25 } },
+  },
+  // The Lost Garden's, and found nowhere else: FireRed's own words for it.
+  'miracle-seed': {
+    id: 'miracle-seed',
+    displayName: 'Miracle Seed',
+    category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
+    description: 'A hold item that raises the power of GRASS-type moves.',
+    effect: {
+      type: 'held',
+      held: { type: 'type-power', moveType: PokemonType.Grass, powerPercent: 10 },
+    },
   },
 
   /* --- Furniture -----------------------------------------------------------

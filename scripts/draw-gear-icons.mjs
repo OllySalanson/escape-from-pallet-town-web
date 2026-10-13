@@ -1,4 +1,4 @@
-// Draws the four held-item (gear) icons into public/assets/icons.
+// Draws the held-item (gear) icons into public/assets/icons.
 //
 //   node scripts/draw-gear-icons.mjs
 //
@@ -29,6 +29,8 @@ const C = {
   // claw bone, with the amber sheath it sits in
   n: hex('8d8671'), N: hex('c9c1ad'), l: hex('f4efe2'),
   a: hex('a85e14'), A: hex('f0a02e'),
+  // seed green, as FireRed's Miracle Seed is a green bud with a leaf on it
+  s: hex('2f6b2a'), S: hex('4fa83d'), t: hex('9be070'),
 };
 
 const blank = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -155,6 +157,29 @@ icons['quick-claw'] = outline(
     '.aAAAAAAa.......',
     '.aAAAAAAa.......',
     '..aaaaaa........',
+  ]),
+);
+
+// The Miracle Seed: a round green bud, lit from the top left, with one leaf
+// sprouting from its crown - FireRed's own icon redrawn at the set's size.
+icons['miracle-seed'] = outline(
+  fromRows([
+    '................',
+    '..........ss....',
+    '.........sSSs...',
+    '........sSStS...',
+    '.......sSSts....',
+    '......ss.s......',
+    '.....sSSSSSs....',
+    '....sStttSSSs...',
+    '...sSttSSSSSSs..',
+    '...sStSSSSSSSs..',
+    '...sSSSSSSSSSs..',
+    '...sSSSSSSSSss..',
+    '....sSSSSSSss...',
+    '.....ssSSsss....',
+    '.......sss......',
+    '................',
   ]),
 );
 

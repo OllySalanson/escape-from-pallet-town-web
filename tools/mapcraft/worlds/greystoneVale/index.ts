@@ -10,6 +10,7 @@ import type { WorldResult } from '../../worldReport';
 import { greystonePeaks } from './greystonePeaks';
 import { gullStrand } from './gullStrand';
 import { highMoor } from './highMoor';
+import { lostGarden } from './lostGarden';
 import { millbrook } from './millbrook';
 import { orchardTerraces } from './orchardTerraces';
 import { pineHollow } from './pineHollow';
@@ -43,6 +44,7 @@ export default function greystoneVale(): WorldResult {
       'sunken-quarter': sunkenQuarter(),
       'smugglers-cove': smugglersCove(),
       stormcrown: stormcrown(),
+      'lost-garden': lostGarden(),
     },
   };
 }

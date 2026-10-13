@@ -85,6 +85,7 @@ export const ITEM_ICONS = {
   'focus-band': 'focus-band',
   'life-orb': 'life-orb',
   'quick-claw': 'quick-claw',
+  'miracle-seed': 'miracle-seed',
   // Furniture for the house, each its own Secret Base piece drawn at 16x16 -
   // shrunk by a whole factor where it is bigger than a tile
   // (`scripts/cut-home-furniture.mjs`), so a find reads as the thing it is.

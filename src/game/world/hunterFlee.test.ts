@@ -277,8 +277,10 @@ describe('what an escape buys', () => {
       .toBe(`${mapId}: ${(Math.min(share, blindShare * 0.6) * 100).toFixed(0)}% lengthened against ${(blindShare * 100).toFixed(0)}% heading-blind`);
     expect(share).toBeLessThan(0.2);
     // Four thousand six hundred tiles times four headings times a search each:
-    // the default thirty seconds is a limit on the suite, not on this.
-  }, 180_000);
+    // the default thirty seconds is a limit on the suite, not on this. Greystone
+    // Vale is eight times that ground in one test, and ran past three minutes
+    // with other workers sweeping it beside it once the Lost Garden was drawn.
+  }, 420_000);
 
   it('backs away down the corridor the player is leaving, not the one ahead of them', () => {
     // A straight east-west lane, the player walking east with the hunter beside

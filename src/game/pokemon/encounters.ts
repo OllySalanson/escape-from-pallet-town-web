@@ -753,3 +753,36 @@ export const SUMMIT_WILDLIFE = wildlife(0.1, [
   { speciesId: 'machop', minLevel: 9, maxLevel: 10, weight: 4 },
   { speciesId: 'onix', minLevel: 10, maxLevel: 10, weight: 1 },
 ]);
+
+// -- The Lost Garden -----------------------------------------------------------
+
+/**
+ * A station master's garden gone wild, behind the falls: the vale's grass
+ * Pokemon, and the rarest of them. Tangela lives nowhere else in the game and
+ * Exeggcute only in the Safari's reeds; FireRed keeps the one on Route 21 and
+ * the other in the Safari Zone, at 17-28, brought here to a route's levels as
+ * the Safari's are. And one encounter in a hundred and five is a wild
+ * Bulbasaur, which no other table has. Oddish and Bellsprout are its commons, as they are on
+ * FireRed's grassy routes, with the Paras and Venonat a garden's beds are
+ * eaten by. Nothing here keeps daylight hours (`nightRaids.ts`), so the garden
+ * is the same garden after dark.
+ *
+ * It is a Water starter's hard ground and is meant to be - Absorb and Vine
+ * Whip are 2x on Squirtle and Bubble is resisted by every grass - so Oddish
+ * and Bellsprout are held to a third of the table between them, and a
+ * level-8 Squirtle wins 49% of what it meets against 73% and 100% for the
+ * other two (`tools/encounters/report.mts`; `districtEncounters.test.ts` holds
+ * the vale's places to 45%).
+ */
+export const LOST_GARDEN_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'oddish', minLevel: 7, maxLevel: 8, weight: 16 },
+  { speciesId: 'bellsprout', minLevel: 7, maxLevel: 8, weight: 16 },
+  { speciesId: 'paras', minLevel: 7, maxLevel: 9, weight: 28 },
+  { speciesId: 'venonat', minLevel: 7, maxLevel: 9, weight: 24 },
+  { speciesId: 'exeggcute', minLevel: 7, maxLevel: 8, weight: 12 },
+  { speciesId: 'tangela', minLevel: 8, maxLevel: 9, weight: 8 },
+  // The captain's call (13 Oct): a starter met in the wild, once in a hundred
+  // of the garden's encounters - the one place in the game a Bulbasaur grows
+  // wild, and the station master's garden is where it would.
+  { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 8, weight: 1 },
+]);

@@ -13,8 +13,9 @@ The Crossing, Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the
 five it grew into, all drawn too: The Power Station, Safari Marsh, The Wreck,
 The Sunken Quarter and Smugglers' Cove. Round them is the ring it has grown
 into since ([The far places](#the-far-places)): open sea in the south, and wood
-in the north where the far places will be drawn. The first far place is drawn:
-[Stormcrown](#stormcrown), the summit above the peaks.
+in the north where the far places will be drawn. Two far places are drawn:
+[Stormcrown](#stormcrown), the summit above the peaks, and
+[The Lost Garden](#the-lost-garden), east of the Power Station.
 
 ![the vale as it ships](vale.png)
 
@@ -1051,7 +1052,8 @@ The plan names what each place needs and does not have yet, in its `reach`;
   cell at a time over sea cells (`sailings`).
 - **A switch** (the Lost Garden's boulder plates, the Bunker's generator). A
   plate a boulder rests on, or a lever, that opens a barrier for the rest of the
-  raid.
+  raid. **Built with the Lost Garden** ([below](#the-lost-garden)): an area's
+  `switches` and `barriers` (`world/switches.ts`).
 - **A floor that carries you on** (Frostreef's ice, the Bunker's spinner
   tiles). A step continues the same way until something stops it.
 - **A gear row each** for the Spell Tag, the Miracle Seed, the NeverMeltIce and
@@ -1066,7 +1068,8 @@ One per place:
 - **The Moor Chapel**: a night door, shut by day and open on a night raid, built
   per state as a field-move door is; and FireRed's Pokemon Tower as a room
   style.
-- **The Lost Garden**: Strength boulders in a cave floor.
+- **The Lost Garden**: Strength boulders in a cave floor. Built: they stand
+  in the Falls Cave.
 - **The Bunker**: an inside for the Power Plant; a door the Card Key opens; a
   lift that offers its floors; and FireRed's Rocket Hideout as a room style.
 - **Ember Isle**: outdoor ground that rolls on every step, as a cave floor does.
@@ -1213,6 +1216,129 @@ reached only by hopping, which the game's one-connected-place rule (asked on
 collision alone) reads as an island. Each crag has one ledge now.
 
 ![B5F, the deepest floor](greystone-caves-b5f.png)
+
+## The Lost Garden
+
+The second far place drawn. It is the station master's garden, gone wild in a
+valley that the cliffs closed off east of the Power Station. Nothing on the
+map points to it.
+
+![The Lost Garden](lost-garden.png)
+
+**How a player gets there.**
+
+1. At The Power Station, the tailrace spills through the dam beside the
+   station. A strip of reeds runs up its east bank, under the cliff. At the top
+   is a cave mouth that nobody signs, behind the water. That is the Falls Cave.
+2. The Falls Cave is one floor under the hill, with FireRed's Victory Road
+   rule in it. A rock barrier closes the way east until both floor switches
+   have a Strength boulder on them. So the raid needs a Pokémon that knows
+   Strength: HM04, Bill's barter.
+3. The cave is two halls joined by a neck one tile wide, and a boulder
+   stands in the neck.
+   - The west hall's boulder goes down onto the west hall's switch, round a
+     corner.
+   - The boulder in the neck has to be pushed through it into the east hall
+     before anyone can follow.
+   - The east hall's boulder goes down onto the east hall's switch, unless
+     the neck's boulder was pushed too far and stands in its road.
+   - A boulder that falls onto its switch stays there, as Victory Road's does.
+     The barrier lifts with FireRed's crack once both are down, and stays open
+     for the rest of the raid.
+4. A floor pushed wrong is not a lost raid. Walking out of the cave puts every
+   boulder that is not on a switch back where it started, as FireRed puts them
+   back when a map is loaded again. It costs clock and nothing else.
+5. The cave comes out under the garden's west cliff, on the old garden walk.
+
+![The Falls Cave: the station's mouth bottom left, the garden's bottom right](falls-cave.png)
+
+**What is only there.**
+
+- **The garden's wildlife**, the `garden` habitat (`LOST_GARDEN_WILDLIFE`).
+  Oddish and Bellsprout, Paras and Venonat eating the beds, Exeggcute, and
+  Tangela, which lives nowhere else in the game.
+  - **A wild Bulbasaur**, one encounter in 105: the captain's call. It is the
+    one place in the game a starter grows wild.
+  - It is a Water starter's hard ground, as the plan meant. Measured by
+    `tools/encounters/report.mts`, a level-8 Squirtle wins 49% of what it
+    meets, against 73% for Bulbasaur and 100% for Charmander
+    (`gardenHabitat.test.ts` holds the vale's 45%).
+- **The station master's berry trees**: seven, in two rows in his fenced
+  orchard above the garden.
+- **The Miracle Seed**, FireRed's Grass-type booster (`type-power` gear:
+  Grass moves hit 10% harder). It lies under the Old Bloom one raid in four
+  that gets there. It is a prize spot (`MapFileItemSpot.prize`), seated like the
+  Card Key and out of the item spots' rotation.
+
+**The garden**, along the walk from the cave's step:
+
+- the fenced garden, with a cracked court in front of the glasshouse and a
+  fountain to one side of it;
+- beds that are none of them alike: tall grass where the big bed was, a rose
+  bed, the kitchen garden in its rows, and a bench;
+- the orchard on the terrace above, with two short drops back down into the
+  garden;
+- the lane up the east side, and the gardener's lodge with its pond, where
+  Gardener Rowan takes a toll;
+- the Gardener's Gate in the east wall: the garden's own way out, and never a
+  way in;
+- south, through the long beds nobody has cut, the Old Bloom: one old tree in
+  flower in a glade.
+
+### Judged blind
+
+Two 24x40 views of the garden were judged blind beside FireRed routes redrawn
+in the same tiles: in round 2 Route 1, Route 2, Route 6, Route 14 and Route 24
+(round 1 had Route 12's causeways and a second window each of Route 2 and
+Route 14 in place of Routes 1 and 6). Two broken real windows rode as controls: Route 14 with every
+block shuffled, and Route 2 with eight 8x8 blocks swapped. Every round used two
+fresh judges. The bar is Millbrook's.
+
+| Round | Real mean | Controls | The Lost Garden |
+|---|---|---|---|
+| 1 | 4.7, 4.7 | 2 and 5, 2 and 5 (neither judge counts) | 4 and 3, 6 and 3 |
+| 2 | 5.8, 6.0 | 2 and 2, 3 and 2 | **6 and 5, 6 and 5: passes** |
+
+Round 1 did not count: its swapped control had four 6x6 blocks traded, too few
+to break a route, so both judges scored it above a real one. Its notes still
+found the faults that round 2 fixed:
+
+- the east of the garden was an open field with props sprinkled on it;
+- the court was ruled symmetrical, ringed by four beds stamped alike;
+- the berry trees stood loose on a lawn;
+- the ponds were stacked rectangles.
+
+The orchard is now fenced, the beds differ, the court is lopsided, and wood
+frames the lodge, the pond and the glade.
+
+What is left for a later pass: both judges called tall grass in a formal garden
+a contradiction. That is the idea of the place, a garden gone wild, so it
+stays.
+
+![The Lost Garden as judged in round 1](lost-garden-first-draw.png)
+
+### Played through
+
+Walked in the real game on the explorer run (a test-mode build, stepped, 3x
+window) with `tools/playtest/raid.mjs --steps=` from The Dam:
+1. HM04 read to the Charizard in the raid's own bag.
+2. Up the reeds to the mouth behind the falls.
+3. Every boulder onto its switch.
+4. Out under the garden's cliff.
+5. The Miracle Seed from under the Old Bloom.
+6. Out by the Gardener's Gate, with the seed banked: 1:43 of raid clock.
+
+The same route on another seed found the Old Bloom bare, as three raids in four will.
+
+![Behind the falls](lost-garden-walk/1-falls-mouth.png)
+![Into the Falls Cave](lost-garden-walk/2-into-the-cave.png)
+![The first boulder on its switch](lost-garden-walk/3-first-switch.png)
+![The barrier, shut](lost-garden-walk/4-barrier-shut.png)
+![And lifted](lost-garden-walk/5-barrier-lifted.png)
+![Out in the garden](lost-garden-walk/6-out-in-the-garden.png)
+![The glasshouse](lost-garden-walk/7-glasshouse.png)
+![The Miracle Seed, taken](lost-garden-walk/8-miracle-seed.png)
+![Out by the Gardener's Gate](lost-garden-walk/9-out-by-the-gardeners-gate.png)
 
 ## How it ships
 

@@ -107,6 +107,12 @@ export interface ActiveRunSession {
    */
   bouldersMoved?: Record<string, GridPosition>;
   /**
+   * The switches this raid has thrown, by id (`world/switches.ts`): a floor
+   * switch a boulder came to rest on, or a lever pulled. Thrown stays thrown,
+   * and the barriers they open stay open, for the rest of the raid only.
+   */
+  switchesThrown?: string[];
+  /**
    * Whether the player is riding the Bicycle (`world/bicycle.ts`). The world is
    * rebuilt after every fight, and getting back on after each one is FireRed's
    * rule nowhere, so it rides here; it is re-asked on every rebuild, so a

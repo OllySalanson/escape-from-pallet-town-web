@@ -26,8 +26,12 @@ import { measureTable } from '../../src/game/world/encounterMeasure';
 import type { WildEncounterTable } from '../../src/game/pokemon/encounters';
 
 const STARTERS = ['bulbasaur', 'charmander', 'squirtle'];
-/** The partner a map is met with: a fresh starter, and a trained one for the forest. */
-const PARTNER_LEVEL: Record<string, number> = { 'viridian-forest': 8 };
+/**
+ * The partner a map is met with: a fresh starter, and a trained one for the
+ * forest and for Greystone Vale, which open after the starting maps - the level
+ * `districtEncounters.test.ts` measures them at.
+ */
+const PARTNER_LEVEL: Record<string, number> = { 'viridian-forest': 8, 'greystone-vale': 8 };
 const partnerLevel = (mapId: string): number => PARTNER_LEVEL[mapId] ?? 5;
 
 const line = (name: string, table: WildEncounterTable, level: number): void => {
