@@ -439,14 +439,15 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'regular',
     once: true,
   },
-  // The tool for a map maker's buried exits. Repeating, unlike an HM, because a
-  // Pickaxe is carried in the pack and lost with it: a deal struck once would
-  // be a way home a single wipe took away for good.
+  // The tool for buried exits: one on each of four shipped maps, and any a map
+  // maker buries. Repeating, unlike an HM, because a Pickaxe is carried in the
+  // pack and lost with it: a deal struck once would be a way home a single wipe
+  // took away for good.
   {
     id: 'barter-pickaxe',
     name: 'Pickaxe',
     detail:
-      'It digs out an exit a map maker buried under rubble - for the raid it is carried on. Lose it and he will find you another.',
+      'Four of the maps out there have an exit fallen in under rubble, and a map maker can bury more. Lose it and he will find you another.',
     icon: 'pickaxe',
     gives: { itemId: 'pickaxe', quantity: 1 },
     takes: [

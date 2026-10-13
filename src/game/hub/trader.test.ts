@@ -13,6 +13,7 @@ import { cellsFor, gridCells } from '../items';
 import { secureGrid } from '../objectives/contracts';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
+import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
@@ -281,6 +282,23 @@ describe('the shelf', () => {
 });
 
 describe('the barter table', () => {
+  it("says the Pickaxe digs out the shipped maps' own rubble, not only a map maker's", () => {
+    // Four shipped maps bury an exit under rubble (ROCKFALL, FALLEN CUT,
+    // SCREE GAP, QUARRY FALL). A deal that called the Pickaxe a map maker's
+    // tool told a player it was no use on any map the game ships.
+    const dugMaps = new Set(
+      EXTRACTION_POINTS.filter((point) => point.requirement?.kind === 'dug').map((point) => point.mapId),
+    );
+    const words = ['None', 'One', 'Two', 'Three', 'Four', 'Five'];
+    const pickaxe = TRADER_BARTERS.find((barter) => barter.id === 'barter-pickaxe');
+    expect(dugMaps.size).toBeGreaterThan(0);
+    expect(pickaxe?.detail).toContain(`${words[dugMaps.size]} of the maps out there have an exit fallen in under rubble`);
+    expect(pickaxe?.detail).not.toContain('an exit a map maker buried');
+    // The pane prints the item's own line above the detail, so the detail adds
+    // to it rather than saying it again.
+    expect(pickaxe?.detail).not.toContain('buried under rubble');
+  });
+
   const GOODS = {
     'radio-valve': 4,
     'cable-coil': 4,
