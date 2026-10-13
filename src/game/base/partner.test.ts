@@ -22,6 +22,7 @@ import {
 import { evolutionFamily } from '../pokemon/evolution';
 import { createStartingStash, Stash } from '../stash';
 import { SaveManager } from '../save/SaveManager';
+import { applyRecovery } from '../hub/recovery';
 import { baseGame, restoreBase } from './baseGames.testkit';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from './baseMap';
 import { BASE_DOORS } from './doors';
@@ -350,6 +351,32 @@ describe('who the partner is', () => {
       }
     },
   );
+
+  it('is still the partner while fainted, and the same one once the Pokemon Center has healed it', () => {
+    const stash = createStartingStash(CHARMANDER);
+    stash.addPokemon(new Pokemon(PIDGEY, 20));
+    const id = stash.partner()!.id;
+    stash.partner()!.pokemon.takeDamage(stash.partner()!.pokemon.maxHp);
+    expect(partnerOf(stash)?.id).toBe(id);
+    expect(partnerReaction(partnerOf(stash)!.pokemon, 'yard', 0).line).toContain('too worn out');
+    expect(idleBeat(0.9, partnerOf(stash)!.pokemon)).toBeNull();
+
+    const outcome = applyRecovery(stash, 0, [id]);
+    expect(outcome.recoveredIds).toEqual([id]);
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    manager.save({ ...restoreBase(stash), stash, pendingRecoveryMs: outcome.pendingRecoveryMs });
+    const healed = partnerOf(manager.load()!.stash);
+    expect(healed?.id).toBe(id);
+    expect(healed?.pokemon.isFainted).toBe(false);
+    expect(healed?.pokemon.currentHp).toBe(healed?.pokemon.maxHp);
+    expect(partnerReaction(healed!.pokemon, 'yard', 0).line).not.toContain('worn out');
+    expect(idleBeat(0.9, healed!.pokemon)).toBe('hop-and-chirp');
+  });
 
   it('is never chosen: a stronger Pokemon of the same line does not take its place', () => {
     const stash = createStartingStash(CHARMANDER);
