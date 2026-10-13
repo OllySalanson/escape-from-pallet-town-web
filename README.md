@@ -309,4 +309,6 @@ design belonging to it are trademarks of their respective owners.
 moments: opening the game, picking a starter, starting a raid and how it ended, minutes played, maps
 sent in, Pallet Blocks games and walks into the harbour. Your browser gets a random id, and that's
 the only thing about you that leaves it: no cookies, no account, no name, the game keeps no IP address, and all
-it stores is daily totals and which days each id turned up. Turn on Do Not Track or Global Privacy Control and nothing is sent at all.
+it stores is daily totals and which days each id turned up. Nothing is sent until you press a key or click, and a
+browser a program is driving sends nothing, so bots don't count as players; anyone helping test can open the game once with
+`?tester` on the address to be counted apart. Turn on Do Not Track or Global Privacy Control and nothing is sent at all.

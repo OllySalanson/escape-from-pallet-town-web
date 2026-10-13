@@ -69,6 +69,16 @@ for (const [name, body] of [['unclaimed_feedback_uploads', { older_than_hours: 2
   const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });
   check(askedSignedOut.status >= 400, `cannot ask ${name} signed out (${askedSignedOut.status})`);
 }
+// The play counts are the owner's to read; counting is open signed out, but
+// only to a batch of moments the game sends - a refused batch writes nothing,
+// so this asks it without counting anybody (`analytics/playCounter.ts`).
+const statsSignedOut = await call('/rest/v1/rpc/play_stats', { method: 'POST', body: {} });
+check(statsSignedOut.status >= 400, `cannot read play_stats signed out (${statsSignedOut.status})`);
+const oddBatch = await call('/rest/v1/rpc/record_play', {
+  method: 'POST',
+  body: { visitor_id: '00000000-0000-4000-8000-000000000000', build: 'probe', events: [{ kind: 'probe' }], tester: true },
+});
+check(oddBatch.status >= 400, `cannot count a moment the game never sends (${oddBatch.status})`);
 // Raid rooms are made, joined and left only signed in (`src/game/raidRoom/`).
 for (const [name, body] of [['open_raid_room', { map_id: 'route-1' }], ['join_raid_room', { room_code: 'BBBB' }], ['leave_raid_room', { room_code: 'BBBB' }], ['raid_room_seed', { room_code: 'BBBB' }], ['take_raid_loot', { room_code: 'BBBB', loot_id: 'probe' }], ['raid_loot_taken', { room_code: 'BBBB' }]]) {
   const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });

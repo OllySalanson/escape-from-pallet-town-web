@@ -1,4 +1,5 @@
 import { COLUMN_MEASURES, pixelColumns, pixelScreen, pixelWindow } from '../ui/pixelUi';
+import { TESTER_LINK } from './playCounter';
 import type { PlayDay, PlayStats } from './playStats';
 
 /**
@@ -6,8 +7,9 @@ import type { PlayDay, PlayStats } from './playStats';
  * strings, like every pixel-ui screen, so what it says is tested without a
  * browser; `StatsScene` wires it.
  *
- * Plain words and whole numbers, the answer first: players today, this week
- * and ever, and how many of them took a name, then a month of daily players
+ * Plain words and whole numbers, the answer first: real players today, this
+ * week and ever, and how many of them took a name, with the testers counted
+ * apart beside them (and this browser's own switch), then a month of daily players
  * and of names chosen as bar charts, then what they did -
  * raids and how they ended, starters, Pallet Blocks, maps sent in.
  */
@@ -17,7 +19,12 @@ export type StatsState =
   | { readonly step: 'signed-out'; readonly reason?: string }
   | { readonly step: 'not-owner' }
   | { readonly step: 'failed'; readonly reason: string }
-  | { readonly step: 'loaded'; readonly stats: PlayStats };
+  | {
+      readonly step: 'loaded';
+      readonly stats: PlayStats;
+      /** Whether the browser reading the page is marked as a tester's (`playCounter.ts`). */
+      readonly testerHere: boolean;
+    };
 
 /** How tall the tallest day's bar is, in game pixels. */
 export const CHART_HEIGHT = 40;
@@ -97,14 +104,50 @@ const STARTER_NAMES: readonly (readonly [string, string])[] = [
   ['squirtle', 'Squirtle'],
 ];
 
-function loadedBody(stats: PlayStats): string {
+function testersWindow(stats: PlayStats, testerHere: boolean): string {
+  const month = (key: string): number => stats.testerMonth[key] ?? 0;
+  return pixelWindow(
+    `<div class="px-list" ${pixelColumns(COLUMN_MEASURES.brief)}>${[
+      line(
+        'Testers',
+        `${number(stats.testersToday)} today · ${number(stats.testersWeek)} this week · ${number(stats.testersAllTime)} ever`,
+        'Browsers marked as testers: yours, and anybody you sent the tester link to. Never in the players\' numbers.',
+      ),
+      line(
+        'Testers played',
+        `${playedWords(month('played-seconds'))} · ${plural(month('raid-start'), 'raid')}`,
+        'Time testers spent playing, and raids they started, in the last 30 days.',
+      ),
+      line(
+        'Machines left out',
+        number(stats.automatedAllTime),
+        'Browsers found to have been link scanners and other machines, and taken out of every count.',
+      ),
+      `<button class="px-row stats-line" data-tester-toggle data-help="${escapeAttribute(
+        testerHere
+          ? 'Counts this browser as a real player again.'
+          : 'Counts this browser as a tester from now on, apart from the players.',
+      )}"><span class="px-row-main"><span class="px-name px-wrap">This browser</span></span><strong class="stats-value">${
+        testerHere ? 'a tester · count as a player' : 'a player · mark as a tester'
+      }</strong></button>`,
+      line(
+        'Tester link',
+        'the address with ?tester',
+        `${TESTER_LINK} - open it once on another device, or send it to a friend helping test, to count that browser as a tester. ?tester=off undoes it.`,
+      ),
+    ].join('')}</div>`,
+    { heading: 'Testers', note: 'counted apart' },
+  );
+}
+
+function loadedBody(stats: PlayStats, testerHere: boolean): string {
   const month = (key: string): number => stats.month[key] ?? 0;
   const ever = (key: string): number => stats.allTime[key] ?? 0;
   const players = pixelWindow(
     `<div class="px-list" ${pixelColumns(COLUMN_MEASURES.brief)}>${[
-      line('Today', number(stats.playersToday), 'Different browsers that opened the game today.'),
-      line('This week', number(stats.playersWeek), 'Different browsers that opened the game in the last seven days.'),
-      line('All time', number(stats.playersAllTime), 'Every browser that has ever opened the game since counting began.'),
+      line('Today', number(stats.playersToday), 'Different browsers that opened the game and played today. Testers and machines are left out.'),
+      line('This week', number(stats.playersWeek), 'Different browsers that opened the game and played in the last seven days.'),
+      line('All time', number(stats.playersAllTime), 'Every browser that has ever played since counting began, testers and machines left out.'),
       line(
         'Came back',
         `${number(stats.returningWeek)} this week · ${number(stats.returningAllTime)} ever`,
@@ -113,18 +156,19 @@ function loadedBody(stats: PlayStats): string {
       line(
         'Named players',
         `${number(stats.namedAllTime)} · ${number(stats.namedWeek)} this week · ${number(stats.namedToday)} today`,
-        'Players who chose a name at NEW GAME, read from the names themselves.',
+        'Names chosen at NEW GAME, read from the names themselves. A name is never tied to a browser, so testers\' names are in here too.',
       ),
       line(
         'Took a name',
         stats.playersAllTime > 0
           ? `${number(stats.namedAllTime)} of ${number(stats.playersAllTime)} (${Math.round((stats.namedAllTime / stats.playersAllTime) * 100)}%)`
           : 'no visitors yet',
-        'Named players against every browser that has opened the game: how many visitors became players.',
+        'Names against every real player\'s browser: how many visitors went on to choose a name.',
       ),
     ].join('')}</div>`,
-    { heading: 'Players', note: `today is ${dayWords(stats.today)}` },
+    { heading: 'Players', note: `real players · today is ${dayWords(stats.today)}` },
   );
+  const testers = testersWindow(stats, testerHere);
   const daily = pixelWindow(`<div class="px-list">${chart(stats.days, 'players')}</div>`, {
     heading: 'Players each day',
     note: 'last 30 days',
@@ -178,8 +222,8 @@ function loadedBody(stats: PlayStats): string {
     'Sign out',
     'Signs this GitHub account out of the game, everywhere.',
   )}</div>`;
-  return `<main class="px-body stats-layout"><div class="stats-sheet px-scroll">${players}${daily}${named}${raids}${more}${pixelWindow(
-    `<div class="px-list"><p class="px-note px-wrap stats-message">Counted without cookies or accounts: a random id per browser and nothing else about anyone. Browsers that ask not to be tracked are not counted, and nor is anything played on a test copy of the game.</p>${actions}</div>`,
+  return `<main class="px-body stats-layout"><div class="stats-sheet px-scroll">${players}${testers}${daily}${named}${raids}${more}${pixelWindow(
+    `<div class="px-list"><p class="px-note px-wrap stats-message">Counted without cookies or accounts: a random id per browser and nothing else about anyone. Browsers that ask not to be tracked are not counted, nor is anything played on a test copy of the game, nor a browser a program drives, nor a page nobody pressed a key or clicked on. Testers are counted apart, and every number outside Testers is real players only.</p>${actions}</div>`,
     { heading: 'About these numbers' },
   )}</div></main>`;
 }
@@ -219,7 +263,7 @@ export function statsScreen(state: StatsState, status?: string): string {
       body = messageBody('', button('data-refresh', 'Try again', 'Asks for the counts again.', true), state.reason);
       break;
     case 'loaded':
-      body = loadedBody(state.stats);
+      body = loadedBody(state.stats, state.testerHere);
       aside = `${plural(state.stats.playersToday, 'player')} today`;
       break;
   }

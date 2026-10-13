@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { isTesterBrowser, markTesterBrowser, testerMarkChosen } from '../analytics/playCounter';
 import { loadPlayStats } from '../analytics/playStats';
 import { statsScreen, type StatsState } from '../analytics/statsView';
 import {
@@ -21,6 +22,10 @@ export interface StatsSceneData {
  * address. It signs in exactly as reviewing does - the same GitHub account and
  * the same admin row - and the database, not this screen, refuses anyone else
  * (`analytics/playStats.ts`).
+ *
+ * It is also where the owner marks a browser as a tester's: the first time a
+ * browser opens the counts it is marked one (it is the owner's), and the
+ * switch on the page turns it back into a player's or a tester's again.
  */
 export class StatsScene extends Phaser.Scene {
   private overlay: MenuOverlay | undefined;
@@ -62,7 +67,12 @@ export class StatsScene extends Phaser.Scene {
       next = { step: 'not-owner' };
     } else {
       const stats = await loadPlayStats();
-      next = stats.ok ? { step: 'loaded', stats: stats.value } : { step: 'failed', reason: stats.reason };
+      if (stats.ok && !testerMarkChosen(storage())) {
+        markTesterBrowser(storage(), true);
+      }
+      next = stats.ok
+        ? { step: 'loaded', stats: stats.value, testerHere: isTesterBrowser(storage()) }
+        : { step: 'failed', reason: stats.reason };
     }
     if (question === this.asking && this.overlay) {
       this.state = next;
@@ -104,6 +114,16 @@ export class StatsScene extends Phaser.Scene {
       this.close();
     } else if (target.hasAttribute('data-refresh')) {
       this.refresh();
+    } else if (target.hasAttribute('data-tester-toggle') && this.state.step === 'loaded') {
+      const tester = !this.state.testerHere;
+      if (markTesterBrowser(storage(), tester)) {
+        this.state = { ...this.state, testerHere: tester };
+        this.status = tester ? 'This browser is counted as a tester from now on.' : 'This browser is counted as a player from now on.';
+      } else {
+        this.status = 'This browser will not keep the mark: its storage is shut.';
+      }
+      this.render();
+      this.overlay?.focus('[data-tester-toggle]');
     } else if (target.hasAttribute('data-sign-in')) {
       rememberSignInDestination('stats');
       void signInToReview().then((result) => {
@@ -133,5 +153,13 @@ export class StatsScene extends Phaser.Scene {
       return;
     }
     this.scene.start('title');
+  }
+}
+
+function storage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
   }
 }
