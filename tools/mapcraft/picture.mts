@@ -12,7 +12,6 @@ import { blit, box, canvas, label } from '../tileset/draw.mjs';
 import { drawWorldMap, type MapImage } from '../tileset/mapPicture.mts';
 import {
   BUILT_IN_MAP_FILE_LIMITS,
-  MAP_FILE_LIMITS,
   buildPlayerMap,
   playerMapId,
   readMapFile,
@@ -27,6 +26,7 @@ import {
   districtRect,
   openingsOf,
   planBounds,
+  planLimits,
   type Opening,
   type PlannedLandmark,
   type Side,
@@ -188,6 +188,13 @@ const TERRAIN_COLOUR: Readonly<Record<Terrain, Rgb>> = {
 };
 /** A cell of the plan that is open sea, darker than any coast. */
 const SEA_COLOUR: Rgb = [40, 72, 108];
+/** A cell of the plan that is no district and no sea: wood the stitcher lays, with no road in. */
+const WILD_COLOUR: Rgb = [30, 52, 38];
+/** A boat's route across the sea, and a crossing open only after dark. */
+const BOAT_COLOUR: Rgb = [235, 245, 255];
+const NIGHT_COLOUR: Rgb = [190, 140, 255];
+/** A mouth only the Card Key opens. */
+const LOCK_COLOUR: Rgb = [255, 200, 60];
 const MARK_COLOUR: Readonly<Record<PlannedLandmark['kind'], Rgb>> = {
   landmark: [255, 214, 92],
   landing: [120, 240, 255],
@@ -230,10 +237,11 @@ function line(
  */
 export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Set()): MapImage {
   const bounds = planBounds(plan);
-  const growsEast = (bounds.columns + 1) * plan.districtSize <= MAP_FILE_LIMITS.maxWidth;
-  const growsSouth = (bounds.rows + 1) * plan.districtSize <= MAP_FILE_LIMITS.maxHeight;
+  const held = planLimits(plan);
+  const growsEast = (bounds.columns + 1) * plan.districtSize <= held.maxWidth;
+  const growsSouth = (bounds.rows + 1) * plan.districtSize <= held.maxHeight;
   const width = (bounds.columns + (growsEast ? 1 : 0)) * CELL + 16;
-  const height = (bounds.rows + (growsSouth ? 1 : 0)) * CELL + 40 + 52;
+  const height = (bounds.rows + (growsSouth ? 1 : 0)) * CELL + 40 + 70;
   const image = canvas(width, height, [16, 18, 24]);
   label(
     image,
@@ -288,6 +296,23 @@ export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Se
     box(image, x + 2, y + 2, CELL - 4, CELL - 4, SEA_COLOUR);
     label(image, 'OPEN SEA', x + 12, y + 12, 1, [150, 180, 210]);
   }
+  // Every other cell inside the plan is wood the stitcher lays, with no way in.
+  const taken = new Set(
+    [...plan.districts.map((district) => district.cell), ...(plan.seas ?? [])].map((cell) =>
+      cell.join(','),
+    ),
+  );
+  for (let row = bounds.row; row < bounds.row + bounds.rows; row += 1) {
+    for (let column = bounds.column; column < bounds.column + bounds.columns; column += 1) {
+      if (taken.has(`${column},${row}`)) continue;
+      const rect = cellRect(plan, [column, row]);
+      const x = 8 + rect.x * scale;
+      const y = 32 + rect.y * scale;
+      box(image, x + 2, y + 2, CELL - 4, CELL - 4, WILD_COLOUR);
+      label(image, 'WILD WOOD', x + 12, y + 12, 1, [120, 150, 124]);
+      label(image, 'NO ROAD IN YET', x + 12, y + 22, 1, [90, 116, 96]);
+    }
+  }
   // The ways through each district, from every opening to its heart.
   const heart = (id: string): [number, number] => {
     const landing = (plan.landmarks ?? []).find(
@@ -334,7 +359,7 @@ export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Se
         image,
         edgePoint(district.id, opening),
         heart(district.id),
-        KIND_COLOUR[opening.kind],
+        opening.opens === 'night' ? NIGHT_COLOUR : KIND_COLOUR[opening.kind],
         thickness,
         opening.hidden,
       );
@@ -344,15 +369,39 @@ export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Se
       }
     }
   }
-  // Caves: their mouths, and the way underground between them.
+  // Caves: their mouths, and the way underground between them. A place under
+  // the map with an idea of its own is named beside its way in.
   for (const cave of plan.caves ?? []) {
     const mouths = cave.mouths.map((mouth) => at(mouth.district, mouth.at));
     for (let k = 1; k < mouths.length; k += 1)
       line(image, mouths[k - 1], mouths[k], [10, 10, 14], 2, true);
-    mouths.forEach(([mx, my]) => {
-      box(image, mx - 5, my - 5, 11, 11, [10, 10, 14]);
+    mouths.forEach(([mx, my], index) => {
+      const locked = cave.mouths[index].locked === 'card-key';
+      box(image, mx - 5, my - 5, 11, 11, locked ? LOCK_COLOUR : [10, 10, 14]);
       box(image, mx - 3, my - 3, 7, 7, [140, 120, 100]);
     });
+    if (cave.idea) {
+      const [mx, my] = mouths[0];
+      label(image, `${cave.name}, ${cave.floors} floors under`, mx + 8, my + 8, 1, LOCK_COLOUR);
+    }
+  }
+  // Boats: the route across the sea, jetty to jetty through each cell's middle.
+  for (const sailing of plan.sailings ?? []) {
+    const middle = (cell: readonly [number, number]): [number, number] => {
+      const rect = cellRect(plan, cell);
+      return [Math.round(8 + (rect.x + rect.width / 2) * scale), Math.round(32 + (rect.y + rect.height / 2) * scale)];
+    };
+    const stops = [
+      at(sailing.from.district, sailing.from.at),
+      ...sailing.via.map(middle),
+      at(sailing.to.district, sailing.to.at),
+    ];
+    for (let k = 1; k < stops.length; k += 1) line(image, stops[k - 1], stops[k], BOAT_COLOUR, 3, true);
+    for (const [bx, by] of [stops[0], stops[stops.length - 1]]) box(image, bx - 4, by - 4, 9, 9, BOAT_COLOUR);
+    const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    const [lx, ly] = middle(sailing.via[Math.floor(sailing.via.length / 2)] ?? sailing.via[0]);
+    label(image, sailing.name, lx - 50, ly + 10, 1, BOAT_COLOUR);
+    label(image, `SAILS ${clock(sailing.runs.from)}-${clock(sailing.runs.until)}`, lx - 50, ly + 20, 1, [170, 190, 210]);
   }
   for (const landmark of plan.landmarks ?? []) {
     const [lx, ly] = at(landmark.district, landmark.at);
@@ -368,9 +417,10 @@ export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Se
       .forEach((text, index) => label(image, text, x + 8, y + 24 + index * 8, 1, [220, 225, 210]));
     if (built.has(district.id))
       label(image, 'DRAWN', x + CELL - 34, y + CELL - 12, 1, [160, 255, 160]);
+    else if (district.reach) label(image, 'FAR PLACE', x + 8, y + CELL - 12, 1, LOCK_COLOUR);
   }
   // The legend.
-  const legendY = height - 44;
+  const legendY = height - 62;
   const keys: [string, Rgb][] = [
     ['ROAD', KIND_COLOUR.road],
     ['TRAIL', KIND_COLOUR.trail],
@@ -380,6 +430,10 @@ export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Se
     ['LANDING', MARK_COLOUR.landing],
     ['SECRET', MARK_COLOUR.secret],
     ['CAVE MOUTH', [140, 120, 100]],
+    ['BOAT', BOAT_COLOUR],
+    ['OPEN ONLY AT NIGHT', NIGHT_COLOUR],
+    ['CARD KEY DOOR', LOCK_COLOUR],
+    ['WILD WOOD', WILD_COLOUR],
   ];
   keys.forEach(([name, colour], index) => {
     const lx = 8 + (index % 4) * 150;
@@ -389,9 +443,9 @@ export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Se
   });
   label(
     image,
-    'DASHED: A HIDDEN TRAIL, OR THE WAY UNDERGROUND',
+    'DASHED: A HIDDEN TRAIL, THE WAY UNDERGROUND, OR A BOAT ACROSS THE SEA',
     8,
-    legendY + 36,
+    legendY + 54,
     1,
     [150, 154, 164],
   );

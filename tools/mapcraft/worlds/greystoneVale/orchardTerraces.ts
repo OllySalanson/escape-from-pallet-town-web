@@ -31,7 +31,7 @@ export function orchardTerraces(): MapcraftResult {
   p.unlock(rim);
 
   /** A fruit tree, with thicket under its crown so nobody stands hidden under one. */
-  const tree = (x: number, y: number, kind = 'tree') => {
+  const tree = (x: number, y: number, kind: 'tree' | 'tree-2' = 'tree') => {
     p.building(kind, x, y);
     p.block(x, y, 3, 1, '#');
   };

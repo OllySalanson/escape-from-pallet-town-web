@@ -13,7 +13,9 @@
  * - North of it the road runs past the drovers' fold and the Grey Stones to
  *   the Moor Gate and its old toll house, the way off the map.
  * - A rock-walled trail leaves east for Greystone Peaks, past a spring.
- * - A gap in the west wood opens on the shepherd's clearing and its tarn.
+ * - A gap in the west wood opens on the shepherd's clearing and its tarn, and
+ *   under the tarn a sheep track nobody signs goes on west into the fog, to the
+ *   Moor Chapel - a way open only after dark.
  */
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
@@ -83,6 +85,9 @@ export function highMoor(): MapcraftResult {
   p.flowers([8, 22], [14, 21], [15, 22], [8, 27], [9, 28]);
   p.bedRows([26, 12, 16], [27, 12, 16], [28, 13, 16]);
   p.wood(6, 26, 4, 4).wood(14, 12, 4, 2);
+  // The sheep track west under the tarn, out of the clearing into the fog: the
+  // Moor Chapel's way in, which its own district shuts by day (`plan.ts`).
+  p.meadow(4, 18, 2, 2);
 
   const file = districtFile(GREYSTONE_VALE, 'high-moor', p, {
     dropIns: [{ x: 22, y: 37, name: 'Moor Top', description: 'A knoll above the drove road, with the whole moor ahead of it.' }],

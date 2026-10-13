@@ -179,9 +179,12 @@ without anything already drawn moving:
    district left open at its edge where no crossing is planned is a problem, as
    is anything over a map file's limits (256x256 tiles, 8 drop-ins, 12 ways out,
    40 item spots, 16 places, 32 links; a plan marked `builtIn` is the game's
-   own map and is held to `BUILT_IN_MAP_FILE_LIMITS` instead). A cell of the
-   plan that is no district is wood too, unless the plan names it in `seas`:
-   open sea, laid as deep water, so a coast that faces it meets the sea.
+   own map and is held to `BUILT_IN_MAP_FILE_LIMITS` instead, which also lets it
+   be 384 square). A cell of the plan that is no district is wood too, unless
+   the plan names it in `seas`: open sea, laid as deep water, so a coast that
+   faces it meets the sea, and a way out (a boat, a stair to the water) may face
+   it. A district marked `island` starts as open sea instead of wood and is laid
+   as sea until it is drawn.
 
 ```sh
 npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/examples/quarryRoad.ts out/quarry-road
@@ -197,9 +200,23 @@ its hard checks - which is how a map drawn this way is shipped.
 two-floor cave under the quarry.
 
 A plan can also say what the picture shows and the districts' programs have to
-honour: each district's `terrain`, `hidden` crossings (a deer path nobody signs),
-`landmarks` (a landmark, a landing, a secret, roughly where), and `caves` (how
-many floors, and the mouths in which districts). `worlds/` holds the real maps
+honour:
+
+- each district's `terrain`;
+- `hidden` crossings (a deer path nobody signs), and crossings that open only
+  on a night raid;
+- `landmarks` (a landmark, a landing, a secret, roughly where);
+- `caves`: how many floors, how they are drawn (Mt. Moon, or a FireRed hideout,
+  ice cave or tower), and the mouths in which districts, each onto which floor
+  and whether the Card Key locks it;
+- `sailings`: a boat between two jetties, its route a cell at a time across
+  `seas` and the window it runs in;
+- a far place's `reach`, which is the brief its drawing worker starts from: how
+  a raid gets in, why that is hard, what is only there, and what the game still
+  has to learn to build it.
+
+`districtsOutOfReach` asks whether any district has no way in at all by road,
+boat or cave. `worlds/` holds the real maps
 being drawn this way: `worlds/greystoneVale/` is the first
 (`docs/screens/greystone-vale/`), shipped as
 `src/game/world/maps/greystoneVale.json` and held to its program by

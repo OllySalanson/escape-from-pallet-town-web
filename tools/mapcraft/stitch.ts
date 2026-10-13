@@ -162,7 +162,11 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
   const width = bounds.columns * size;
   const height = bounds.rows * size;
   const ground = Array.from({ length: height }, () => Array<string>(width).fill('T'));
-  for (const sea of plan.seas ?? []) {
+  // The sea, and every island not drawn yet: open water until it is.
+  const undrawnIslands = plan.districts
+    .filter((district) => district.island === true && !built[district.id])
+    .map((district) => district.cell);
+  for (const sea of [...(plan.seas ?? []), ...undrawnIslands]) {
     const rect = cellRect(plan, sea);
     for (let y = rect.y; y < rect.y + rect.height; y += 1)
       for (let x = rect.x; x < rect.x + rect.width; x += 1) if (ground[y]) ground[y][x] = 'W';

@@ -148,23 +148,34 @@ export type MapFileLimits = { readonly [Limit in keyof typeof MAP_FILE_LIMITS]: 
 
 /**
  * What the game's own maps drawn as files may hold (Greystone Vale, read by
- * `builtInFileMap` and written by `tools/mapcraft`). A vale of sixteen
- * districts needs more landings, ways out and places than a map anybody draws
+ * `builtInFileMap` and written by `tools/mapcraft`). A vale six districts
+ * square needs more landings, ways out and places than a map anybody draws
  * in an evening, and nothing a player sends is read against these:
- * `submit_map` and the map maker keep `MAP_FILE_LIMITS`. The size of a map and
- * of everything in it is the same for both.
+ * `submit_map` and the map maker keep `MAP_FILE_LIMITS`. A room or a cave in
+ * one is the size a player's may be.
+ *
+ * And it may be bigger: 384 tiles square, six 64-tile districts, where a
+ * player's is 256. Measured before the vale grew to it (13 Oct 2026, the same
+ * fourteen districts stitched at both sizes, docs/screens/greystone-vale/):
+ * the file is 193 KB against 110 KB and 12.5 KB against 11.5 KB gzipped; the
+ * map takes 0.4 s to build against 0.2 s and holds 34 MB against 16; in the
+ * browser a raid there starts 0.3 s later, holds 192 MB of JavaScript heap
+ * against 106, and walks at the same 57-59 frames a second. What it costs is
+ * memory, and it grows with the grid's tiles, wood and sea included.
  */
 export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   ...MAP_FILE_LIMITS,
+  maxWidth: 384,
+  maxHeight: 384,
   maxBytes: 1_000_000,
   maxDropIns: 16,
-  maxExits: 24,
+  maxExits: 32,
   maxItemSpots: 96,
   maxPeople: 64,
   maxSigns: 64,
   maxLandmarks: 32,
   maxDistricts: 32,
-  maxTrainers: 24,
+  maxTrainers: 32,
   maxAreas: 32,
   maxLinks: 64,
 };
