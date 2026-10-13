@@ -48,6 +48,28 @@ describe('the GAMES menu', () => {
     expect(html).toContain('data-name-cancel');
   });
 
+  it('says what the keys do while a name is typed, not what they do on the menu', () => {
+    // On the menu N opens the name box and Escape leaves for the house; in the
+    // box N is a letter and Escape puts the box down, so the menu's line lies.
+    const html = gamesMenuMarkup(state({ naming: { value: 'AS' } }));
+    const defaultHelp = /data-help-default="([^"]*)"/.exec(html)?.[1] ?? '';
+    expect(defaultHelp).not.toContain('N your name');
+    expect(defaultHelp).not.toContain('back to the house');
+    expect(defaultHelp).toContain('ENTER keep this name');
+    expect(defaultHelp).toContain('ESC back to the games');
+    // The box itself answers for the cursor while it is in it.
+    expect(html).toMatch(/<input[^>]*data-help="[^"]*ENTER keep this name[^"]*"/);
+  });
+
+  it('promises a game from the name box only when one is waiting on the name', () => {
+    const renaming = gamesMenuMarkup(state({ naming: { value: 'AS' } }));
+    expect(renaming).not.toContain('Play under this name.');
+    expect(renaming).toMatch(/data-help="Keep this name for every board\."[^>]*>OK</);
+    const beforePlaying = gamesMenuMarkup(state({ playerName: null, naming: { value: '', then: 'pallet-blocks' } }));
+    expect(beforePlaying).toMatch(/data-help="Play PALLET BLOCKS under this name\."[^>]*>OK</);
+    expect(/data-help-default="([^"]*)"/.exec(beforePlaying)?.[1]).toContain('ENTER play under this name');
+  });
+
   it('puts a refusal where the help bar is', () => {
     expect(gamesMenuMarkup(state({ status: 'Not that name.' }))).toContain('<span class="px-status-line" role="status">Not that name.</span>');
   });
