@@ -169,7 +169,7 @@ function contractHints(
   currentExit: string | undefined,
 ): readonly string[] {
   const outstanding = remainingMarkers(contract, contractSteps);
-  const extractionHint = bankingHint(contract, context, safeExit, currentExit);
+  const extractionHint = bankingHint(contract, session, context, safeExit, currentExit);
 
   if (outstanding.length === 0) {
     return [
@@ -258,6 +258,36 @@ function laterRunHints(
   ];
 }
 
+/**
+ * The one exit that banks this contract, which way it is from here, and - while
+ * a landmark still seals it - which landmark and which way that is: the ledger
+ * in hand and a shut culvert is exactly when a player walks the wrong way.
+ */
+function requiredExitHint(
+  label: string,
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+): string {
+  const unpaid = 'Any other gate ends the raid and leaves it unpaid.';
+  const exit = session.plan?.extractionPoints.find(
+    (point) => point.mapId === context.currentMapId && point.label === label,
+  );
+  if (!exit) {
+    return `Only ${label} banks this contract. ${unpaid}`;
+  }
+  const way = (target: GridPosition): string =>
+    directionTo(context.currentPosition, context.towards?.(target) ?? target);
+  const seal = exit.requirement;
+  const sealedBy =
+    seal?.kind === 'poi-activated' && !context.activatedPoiIds.has(seal.poiId)
+      ? poisForMap(context.currentMapId).find((poi) => poi.id === seal.poiId)
+      : undefined;
+  const sealed = sealedBy
+    ? ` It stays sealed until ${sealedBy.label} is worked, ${way(sealedBy.position)}.`
+    : '';
+  return `Only ${label}, ${way(exit.position)}, banks this contract.${sealed} ${unpaid}`;
+}
+
 /** The nearest open exit and which way it is, as a sentence names it. */
 function nearestExitHint(context: ObjectiveGuideContext): string | undefined {
   const exit = context.nearestOpenExit;
@@ -306,12 +336,13 @@ function nearestLandmarkToWork(
 /** How this contract gets banked, which is not always "any exit will do". */
 function bankingHint(
   contract: RaidContract,
+  session: ActiveRunSession,
   context: ObjectiveGuideContext,
   safeExit: string | undefined,
   currentExit: string | undefined,
 ): string {
   if (contract.requiredExitLabel) {
-    return `Only ${contract.requiredExitLabel} banks this contract. Any other gate ends the raid and leaves it unpaid.`;
+    return requiredExitHint(contract.requiredExitLabel, session, context);
   }
   const nearest = nearestExitHint(context);
   if (nearest) {

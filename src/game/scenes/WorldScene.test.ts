@@ -93,7 +93,7 @@ describe('in-run objective HUD layout', () => {
     expect(sceneSource).toContain('contractNavigationCue');
     // A contract that banks through one exit says so on the map too, because
     // the temptation is a gate the player walks past with the job in hand.
-    expect(sceneSource).toContain('BANK VIA ${contract.requiredExitLabel}');
+    expect(sceneSource).toContain('BANK VIA ${label}: ${this.headingTo(exit.position)}');
   });
 
   it('names route transitions from map data and hides areas the first contract does not need', () => {

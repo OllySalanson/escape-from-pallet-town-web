@@ -3,7 +3,7 @@ import { Pokemon, BULBASAUR } from '../pokemon';
 import { RunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId, requireInsertion } from '../run/runGeneration';
-import { FIRST_CONTRACT } from './contracts';
+import { FIRST_CONTRACT, getContract } from './contracts';
 import { objectivesForContract } from './RunObjectives';
 import { buildObjectiveGuide } from './ObjectiveGuide';
 import { ERRANDS, errandLoot } from '../hub/errands';
@@ -386,6 +386,56 @@ describe('the exit the field guide names', () => {
     });
 
     expect(guide.hints).toContain('Use SOUTH GATE on this map to bank your haul.');
+  });
+});
+
+describe('a contract only one exit banks', () => {
+  // The cordon ledger, picked up in the Allotments: only the WEST CULVERT, far
+  // to the south-west, banks it, and the SLUICE WHEEL at the east end of the
+  // south bank has to be wound first. The guide named the culvert and nothing
+  // else - not which way it was, nor that it was still shut.
+  const ledger = getContract('cordon-ledger')!;
+  const inHand = () => {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+    );
+    manager.registerContractStep(ledger.markers[0].id);
+    return createActiveRunSession(
+      manager,
+      {},
+      {},
+      [],
+      [],
+      objectivesForContract(ledger),
+      generateRunPlan(42, undefined, 'town-square', ledger),
+    );
+  };
+  const here = ledger.markers[0].position;
+
+  it('says which way the exit is and which landmark still seals it', () => {
+    const guide = buildObjectiveGuide(inHand(), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints).toContain(
+      'Only WEST CULVERT, to the south-west, banks this contract. It stays sealed until SLUICE WHEEL is worked, to the south-east. Any other gate ends the raid and leaves it unpaid.',
+    );
+  });
+
+  it('drops the seal once the landmark is worked', () => {
+    const guide = buildObjectiveGuide(inHand(), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(['pallet-sluice-wheel']),
+    });
+
+    expect(guide.hints).toContain(
+      'Only WEST CULVERT, to the south-west, banks this contract. Any other gate ends the raid and leaves it unpaid.',
+    );
   });
 });
 

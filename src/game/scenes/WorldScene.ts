@@ -4309,9 +4309,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const outstanding = remainingMarkers(contract, contractSteps);
     if (outstanding.length === 0) {
-      return contract.requiredExitLabel
-        ? `BANK VIA ${contract.requiredExitLabel}`
-        : undefined;
+      return contract.requiredExitLabel ? this.requiredExitCue(contract.requiredExitLabel) : undefined;
     }
     // Straight-line distance, not a path search: the chip names the stop the
     // player is closest to so it changes as they move, and running that search
@@ -4323,6 +4321,28 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
     const remaining = outstanding.length > 1 ? ` (${outstanding.length} LEFT)` : '';
     return `${next.cue}: ${this.headingTo(next.position)}${remaining}`;
+  }
+
+  /**
+   * The chip once a contract's stops are made and only one exit banks it: which
+   * way that exit is, or - while a landmark still seals it - which way the
+   * landmark is, because walking to a shut gate with the job in hand is the
+   * one wrong turn this contract is built round.
+   */
+  private requiredExitCue(label: string): string {
+    const exit = this.extractionPointsForCurrentMap().find((point) => point.label === label);
+    if (!exit) {
+      return `BANK VIA ${label}`;
+    }
+    const seal = exit.requirement;
+    const sealedBy =
+      seal?.kind === 'poi-activated' && !this.isExtractionOpen(exit)
+        ? this.currentMap.pois.find((poi) => poi.id === seal.poiId)
+        : undefined;
+    if (sealedBy) {
+      return `${sealedBy.label}: ${this.headingTo(sealedBy.position)}, THEN ${label}`;
+    }
+    return `BANK VIA ${label}: ${this.headingTo(exit.position)}`;
   }
 
   private showFirstDeploymentBriefing(): void {
