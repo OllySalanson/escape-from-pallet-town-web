@@ -85,7 +85,7 @@ export function safariMarsh(): MapcraftResult {
     // (`hunterFlee.test.ts`): the wardens' stile by the north road covers it.
     exits: [{ x: 29, y: 4, name: "Wardens' Stile", opens: { when: 'always' } }],
     dropIns: [{ x: 30, y: 32, name: 'Rest House', description: "The rest house in the middle of the reserve, the dry ground a raid stops at." }],
-    itemSpots: [{ x: 26, y: 56, hidden: true }, { x: 50, y: 24 }, { x: 18, y: 25 }],
+    itemSpots: [{ x: 26, y: 56, hidden: true }, { x: 50, y: 24 }, { x: 8, y: 44 }],
     extra: {
       signs: [{ x: 13, y: 38, lines: ['SAFARI MARSH', "A warden's reserve. Keep to the paths; the reeds are full."] }],
       people: [
