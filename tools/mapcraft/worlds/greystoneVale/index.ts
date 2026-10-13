@@ -17,6 +17,7 @@ import { GREYSTONE_VALE } from './plan';
 import { reedmere } from './reedmere';
 import { tanglewood } from './tanglewood';
 import { theCrossing } from './theCrossing';
+import { theWreck } from './theWreck';
 
 export default function greystoneVale(): WorldResult {
   return {
@@ -31,6 +32,7 @@ export default function greystoneVale(): WorldResult {
       reedmere: reedmere(),
       'gull-strand': gullStrand(),
       'orchard-terraces': orchardTerraces(),
+      'the-wreck': theWreck(),
     },
   };
 }

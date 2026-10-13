@@ -8,8 +8,8 @@
  * top, the lane's shelf with the west orchard and the cornfield in the middle,
  * the pasture over the shore at the foot. The farm road goes down by the one
  * gap in each edge, the long way round; a hop down a ledge is the quick way
- * down - and never back up. The lane leaves east as Orchard Lane, the way off the map, and the
- * trail from Tanglewood comes down into the north orchard.
+ * down - and never back up. The lane leaves east for The Wreck, and the trail
+ * from Tanglewood comes down into the north orchard.
  *
  * An orchard is FireRed's broadleaf planted in rows on grass, with thicket
  * under each crown so nobody stands hidden under one; no two are the same
@@ -120,8 +120,17 @@ export function orchardTerraces(): MapcraftResult {
   p.block(2, 50, 60, 4, '~');
   p.block(0, 54, 64, 10, 'W');
   p.block(0, 52, 2, 2, 'W').block(62, 52, 2, 2, 'W'); // the sea, not the sand, meets the rim
+  p.block(2, 48, 2, 2, '~'); // a nook in the wood at the west end of the sands, where the cockle path goes up
 
   const file = districtFile(GREYSTONE_VALE, 'orchard-terraces', p, {
+    // Ways out of the farm's own, at the dead ends of the sands and of the
+    // lane beside the north orchard: the lane's way on east is The Wreck's
+    // now, and without these the far corners would be further from a way out
+    // than the hunter's blind window covers (`hunterFlee.test.ts`).
+    exits: [
+      { x: 2, y: 48, name: 'Cockle Path', opens: { when: 'always' } },
+      { x: 57, y: 8, name: "Pickers' Path", opens: { when: 'always' } },
+    ],
     dropIns: [{ x: 24, y: 12, name: 'Farmhouse', description: 'The yard of the farm at Orchard Terraces, at the top of the terraces.' }],
     itemSpots: [{ x: 45, y: 13, hidden: true }, { x: 11, y: 37 }, { x: 57, y: 48 }],
     extra: {
