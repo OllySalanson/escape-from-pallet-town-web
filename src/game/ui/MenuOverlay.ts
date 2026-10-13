@@ -438,7 +438,7 @@ export class MenuOverlay {
         scrolled || more
           ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((element) =>
               (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
-                ({ top, bottom }) => ({ top, bottom, element }),
+                ({ top, bottom }) => ({ top, bottom, element, heading: element.classList.contains('px-subheading') }),
               ),
             )
           : [];
@@ -696,18 +696,44 @@ export function foldedRows<Row extends { readonly top: number; readonly bottom: 
 
 export function scrollCoverHeight(
   pane: { readonly top: number; readonly bottom: number },
-  rows: readonly { readonly top: number; readonly bottom: number }[],
+  rows: readonly { readonly top: number; readonly bottom: number; readonly heading?: boolean }[],
   unit: number,
 ): number {
   const minimum = MORE_STRIP_UNITS * unit;
   const line = pane.bottom - minimum;
   const cut = rows.filter((row) => row.top < line - 0.5 && row.bottom > line + 0.5 && row.top >= pane.top);
-  const top = Math.min(line, ...cut.map((row) => row.top));
+  let top = Math.min(line, ...cut.map((row) => row.top));
+  // A heading is never the last thing above the strip: with every row of its
+  // part below the fold it heads nothing, and the drop-in screen's pane ended
+  // on ERRANDS over a strip, which reads as a list of no errands. It goes under
+  // the strip with its rows, and the strip counts them.
+  for (let heading = orphanedHeading(rows, pane.top, top); heading; heading = orphanedHeading(rows, pane.top, top)) {
+    top = heading.top;
+  }
   const cover = pane.bottom - top;
   if (cover > ((pane.bottom - pane.top) * 3) / 4) {
     return minimum;
   }
   return Math.ceil(cover / unit - 0.001) * unit;
+}
+
+/**
+ * The heading standing last above a fold with nothing of its own beside or
+ * under it still drawn, if there is one.
+ */
+function orphanedHeading<Row extends { readonly top: number; readonly bottom: number; readonly heading?: boolean }>(
+  rows: readonly Row[],
+  paneTop: number,
+  fold: number,
+): Row | undefined {
+  const above = rows.filter((row) => row.top >= paneTop && row.bottom <= fold + 0.5);
+  const heading = above
+    .filter((row) => row.heading)
+    .reduce<Row | undefined>((lowest, row) => (!lowest || row.bottom > lowest.bottom ? row : lowest), undefined);
+  if (!heading || heading.top <= paneTop + 0.5) {
+    return undefined;
+  }
+  return above.some((row) => !row.heading && row.bottom > heading.top + 0.5) ? undefined : heading;
 }
 
 /**

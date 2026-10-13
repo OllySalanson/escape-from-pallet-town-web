@@ -156,6 +156,14 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** new `ui/pressArrows.ts` holds `PRESS_ARROWS`, the four filled triangles `▲ ▼ ◀ ▶`. The battle cursor (`▶`) and the dialogue's prompt (`▼`) already use these because a filled shape has no stroke to lose. The doorway captions and `warpArrow` both use the table now. Confirmed in the real game: the street reads `THE PRESS HOUSE ▲`, with a triangle pointing up.
 - **How a player meets it:** walk up to any building door on a raid map, or a door in a player's map. The caption names where the door goes and points the way to press with a triangle you can read.
 
+## 22. The drop-in pane ended on an ERRANDS heading with nothing under it (newest feature: errands)
+
+- **Found:** playing `tools/playtest/errands.mjs` at 1200x768 with Oak's and Joy's errands in hand. On the drop-in screen for Route 1, the WHAT IS IN THERE pane's last line above its `5 MORE` strip was the `ERRANDS` band, and every errand was under the fold. It read as a list of no errands.
+- **Reproduced:** in the real game (the driver's `dropin-errand.png`), then `scenes/resultLedger.test.ts`, "never leaves a heading as the last thing above the strip": the pane measured as rows, with the heading marked. Before the fix `scrollCoverHeight` drew the strip just below the heading (42 instead of 66).
+- **Fixed:** `scrollCoverHeight` (`ui/MenuOverlay.ts`) now takes a heading flag on each row (`markScrollCues` sets it for `.px-subheading`). A heading with nothing of its own part drawn beside or under it (`orphanedHeading`) goes under the strip with its rows, and two headings in a row go together. The three-quarters rule still applies. Confirmed in the real game: the pane now ends on the contract and the strip reads `5 MORE`.
+- **How a player meets it:** on any scrolling pane with banded parts (the drop-in pane, the bag's pockets, the contract board), the last thing above `MORE` is always something with content, never a heading for content you cannot see.
+- **Checked, left alone:** `♀`/`♂` (Nidoran) at 12px lose detail through `pixelText`'s cut of the fallback face (`glyphSheet.mjs --chars=♀♂`), but at 14px, the size a single battle's plate and the dialogue use, both read. `…`, `×`, `É`, `·` and the curly quotes all come through cleanly. `errands.mjs`, `decorate.mjs`, `bolthole.mjs`, `fishing.mjs` and `bicycle.mjs` all passed with no other fault in their screenshots.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

@@ -136,6 +136,25 @@ describe('the result screen ledger', () => {
     expect(scrollCoverHeight(pane, [{ top: 20, bottom: 300 }], 3)).toBe(39);
   });
 
+  it('never leaves a heading as the last thing above the strip', () => {
+    // The drop-in screen at 1200x768, a save with errands in hand: the pane's
+    // last whole line above the MORE strip was the ERRANDS band, with every
+    // errand under the fold - a heading over nothing.
+    const pane = { top: 0, bottom: 168 };
+    const contract = { top: 40, bottom: 78 };
+    const errands = { top: 104, bottom: 126, heading: true };
+    const firstErrand = { top: 128, bottom: 176 };
+    expect(scrollCoverHeight(pane, [contract, errands, firstErrand], 3)).toBe(66);
+    // With a row of its own drawn under it, the heading stays.
+    expect(scrollCoverHeight(pane, [contract, { ...errands, top: 80, bottom: 96 }, { top: 98, bottom: 126 }], 3)).toBe(39);
+    // A row beside it in the other column is something of its part drawn too.
+    expect(scrollCoverHeight(pane, [contract, errands, { top: 100, bottom: 124 }, firstErrand], 3)).toBe(42);
+    // Two headings in a row go together.
+    expect(scrollCoverHeight(pane, [contract, { top: 80, bottom: 100, heading: true }, errands, firstErrand], 3)).toBe(
+      90,
+    );
+  });
+
   it('leaves out the line beside a covered row that the fold would cut, in either column', () => {
     // Bill's shelf at 2x, measured off the live screen: the Poke Ball's pane
     // is two columns, and covering the price's second row whole (from 496)
