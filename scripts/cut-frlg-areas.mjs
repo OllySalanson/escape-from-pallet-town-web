@@ -88,13 +88,19 @@ const ROOMS = {
     primary: 'building',
     secondary: 'underground_path',
   },
+  // Victory Road, drawn in Mt. Moon's own cave tileset: its floor switches,
+  // and the rock barrier its boulders lift (`VictoryRoad_2F/scripts.inc`
+  // sets it with `setmetatile` while the switch is up, so it is not in the
+  // layout and is cut by its metatile number instead).
+  victory: { layout: 'VictoryRoad_2F', primary: 'general', secondary: 'cave' },
 };
 
 /**
  * Every piece, in the order it is listed for the sheet.
  *
  * `at` is the metatile of the room's layout the piece starts at and `size` is
- * in metatiles. `layers` is which of each metatile's two layers are drawn:
+ * in metatiles; a piece the layout never shows (one a script sets) names its
+ * `metatiles` by number instead, a row of them per row of the piece. `layers` is which of each metatile's two layers are drawn:
  * `top` alone leaves everything else transparent; `bottom` and `both` are
  * opaque; or a row of letters per row of the piece - `b`ottom, `t`op, `2`
  * both - where one metatile holds two things and only one of them is wanted. `dark` lifts
@@ -200,6 +206,11 @@ const PIECES = [
   // leant on a rock, its foot on the floor.
   { name: 'cave.hole', room: 'moon', at: [5, 6], size: [1, 1], layers: 'both' },
   { name: 'cave.ladder', room: 'moonBelow', at: [25, 3], size: [1, 2], layers: ['2', 't'] },
+  // Victory Road's: the floor switch a Strength boulder is pushed onto, and
+  // the rock barrier it lifts - `METATILE_Cave_RockBarrier_Top` and
+  // `_Bottom`, which are stood across a way and taken away for floor.
+  { name: 'cave.switch', room: 'victory', at: [2, 19], size: [1, 1], layers: 'both' },
+  { name: 'cave.barrier', room: 'victory', metatiles: [[0x307], [0x317]], size: [1, 2], layers: 'both' },
 
   // --- a gatehouse ------------------------------------------------------------
   // Its shell, shaded under the back wall and down the west side as the
@@ -380,7 +391,11 @@ function blank(width, height) {
 
 /** Draws metatile `(mx, my)` of a room into `out` at pixel `(dx, dy)`, the layers asked for. */
 function drawMetatile(room, mx, my, out, dx, dy, layers) {
-  const block = room.map.readUInt16LE((my * room.width + mx) * 2) & 1023;
+  drawBlock(room, room.map.readUInt16LE((my * room.width + mx) * 2) & 1023, out, dx, dy, layers);
+}
+
+/** Draws metatile number `block` of a room's tilesets into `out` at pixel `(dx, dy)`. */
+function drawBlock(room, block, out, dx, dy, layers) {
   const secondary = block >= 640 ? 1 : 0;
   const index = secondary ? block - 640 : block;
   const metatiles = room.metatiles[secondary];
@@ -427,7 +442,8 @@ function cutPiece(piece) {
   for (let y = 0; y < h; y += 1) {
     for (let x = 0; x < w; x += 1) {
       const layers = Array.isArray(piece.layers) ? LAYERS[piece.layers[y][x]] : LAYERS[piece.layers];
-      drawMetatile(room, piece.at[0] + x, piece.at[1] + y, drawn, x * TILE, y * TILE, layers);
+      if (piece.metatiles) drawBlock(room, piece.metatiles[y][x], drawn, x * TILE, y * TILE, layers);
+      else drawMetatile(room, piece.at[0] + x, piece.at[1] + y, drawn, x * TILE, y * TILE, layers);
     }
   }
   if (piece.dark) {

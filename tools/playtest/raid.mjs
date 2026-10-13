@@ -471,6 +471,61 @@ try {
     }
   }
 
+  // --steps=a,b,.. plays a route through places walking cannot see, in order:
+  // `walk:x:y` (the grid's own tiles), `into:x:y:Dir` (goes through the
+  // doorway whose landing is that tile and stays on the far side),
+  // `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
+  // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
+  // under it thrown by the game), `grab:itemId` (every piece of it this raid
+  // laid) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
+  // walked: in behind the falls, the Falls Cave's boulders onto their switches,
+  // out under the garden's cliff, the Miracle Seed, and the Gardener's Gate.
+  const keyFor = (dir) => `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
+  const behindOf = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [1, 0], ArrowRight: [-1, 0] };
+  for (const step of (option('steps') ?? '').split(',').filter(Boolean)) {
+    if (ended) break;
+    const [kind, ...parts] = step.split(':');
+    if (kind === 'walk') {
+      await walkTo({ x: Number(parts[0]), y: Number(parts[1]) }, `${parts[0]},${parts[1]}`);
+    } else if (kind === 'into') {
+      await walkTo({ x: Number(parts[0]), y: Number(parts[1]) }, `the doorway at ${parts[0]},${parts[1]}`);
+      await press(keyFor(parts[2]));
+      await wait(1200);
+      await clearInterruptions();
+      note(`through ${parts[0]},${parts[1]}: now in ${await page.evaluate(`${GAME}.scene.getScene('world').currentArea()?.name ?? 'outdoors'`)} at ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').currentTile`))}`);
+    } else if (kind === 'push') {
+      const [area, x, y, dir] = parts;
+      const key = keyFor(dir);
+      const origin = await page.evaluate(`${GAME}.scene.getScene('world').currentMap.areas.find((a) => a.id === ${JSON.stringify(area)}).rect`);
+      const at = { x: origin.x + Number(x), y: origin.y + Number(y) };
+      const [bx, by] = behindOf[key];
+      await walkTo({ x: at.x + bx, y: at.y + by }, `behind the boulder at ${x},${y} of ${area}`);
+      const moved = () => page.evaluate(`JSON.stringify(${GAME}.scene.getScene('world').runSession.bouldersMoved ?? {})`);
+      const before = await moved();
+      // One push: the key held just long enough for the game to take it, and
+      // let go before it walks into the tile the boulder left.
+      await page.keyDown(key);
+      for (let poll = 0; poll < 40 && (await moved()) === before; poll += 1) await wait(stepped ? 100 : 15);
+      await page.keyUp(key);
+      await wait(400);
+      await clearInterruptions();
+      const thrown = await page.evaluate(`${GAME}.scene.getScene('world').runSession.switchesThrown ?? []`);
+      note(`pushed the boulder at ${x},${y} ${dir}: ${(await moved()) === before ? 'IT DID NOT MOVE' : 'moved'}; switches thrown ${thrown.length}`);
+    } else if (kind === 'grab') {
+      for (const piece of plan.loot.filter((l) => l.itemId === parts[0])) {
+        await walkTo(piece.position, `${piece.quantity}x ${piece.itemId}`);
+      }
+      note(`pack holds ${parts[0]}: ${await page.evaluate(`${GAME}.scene.getScene('world').bag.count(${JSON.stringify(parts[0])})`)}`);
+    } else if (kind === 'shot') {
+      if (option('shot')) {
+        await wait(300);
+        await page.screenshot(option('shot').replace(/\.png$/, `-${parts[0]}.png`));
+      }
+    } else {
+      throw new Error(`no such step as ${kind}`);
+    }
+  }
+
   // --via=x:y,x:y walks through those tiles first, in order. It is how a walk
   // that is not to anything is checked - the way along a reveal, which the
   // Signal Fire once stood in, so the raid ended halfway across.

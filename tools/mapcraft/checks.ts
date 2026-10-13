@@ -127,7 +127,9 @@ function wholeTrees(
  * Greystone Caves (Stormcrown, whose one way in is the deepest floor's mouth)
  * is ground a raid can walk to. A place behind a door is taken as one room,
  * every way through it reaching every other: whether its own floor joins them
- * is the game's check (`checkMapFile`), which walks inside it.
+ * is the game's check (`checkMapFile`), which walks inside it. A rock barrier
+ * counts as lifted, so the Lost Garden behind the Falls Cave counts as reached:
+ * whether a floor of switches can be solved is its own check (`puzzle.ts`).
  */
 function onePiece(file: MapFile, map: TileMap): HardCheck {
   const reached = map.kinds.map(() => new Uint8Array(map.width));

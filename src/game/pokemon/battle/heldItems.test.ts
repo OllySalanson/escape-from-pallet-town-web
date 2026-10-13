@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HELD_ITEM_DEFINITIONS, ITEMS, ItemCategory, heldItemEffect, isHeldItemId } from '../../items';
-import { BULBASAUR, CHARMANDER, PIDGEY } from '../species';
+import { PokemonType } from '../PokemonType';
+import { BULBASAUR, CHARMANDER, PIDGEY, SQUIRTLE } from '../species';
 import { Pokemon } from '../Pokemon';
 import {
   createBattleState,
@@ -26,11 +27,16 @@ const rolls = (...values: readonly number[]): (() => number) => {
 const holding = (itemId: string | null, maxHp = 32) => ({ heldItemId: itemId, maxHp });
 
 describe('the gear catalogue', () => {
-  it('is four pieces, each a different kind of answer and each its own sentence', () => {
-    expect(HELD_ITEM_DEFINITIONS).toHaveLength(4);
-    const kinds = HELD_ITEM_DEFINITIONS.map((item) => heldItemEffect(item.id)?.type);
-    // Four items, four mechanisms: a percentage on everything is the failure
-    // mode, and two items that do the same thing differently are one item.
+  it('is pieces each a different kind of answer and each its own sentence', () => {
+    expect(HELD_ITEM_DEFINITIONS.length).toBeGreaterThanOrEqual(5);
+    // One item a mechanism: a percentage on everything is the failure mode,
+    // and two items that do the same thing differently are one item. FireRed's
+    // type-boosting items are one mechanism a type, so each is told apart by
+    // the type it boosts.
+    const kinds = HELD_ITEM_DEFINITIONS.map((item) => {
+      const effect = heldItemEffect(item.id);
+      return effect?.type === 'type-power' ? `${effect.type}:${effect.moveType}` : effect?.type;
+    });
     expect(new Set(kinds).size).toBe(kinds.length);
     for (const item of HELD_ITEM_DEFINITIONS) {
       expect(item.category).toBe(ItemCategory.Held);
@@ -234,5 +240,34 @@ describe('gear in a real fight', () => {
     // The flag belongs to the combatant, so it starts false for whoever is out.
     expect(state.enemy.heldItemSpent).toBe(false);
     expect(state.enemy.pokemon.heldItemId).toBeNull();
+  });
+});
+
+describe('the Miracle Seed', () => {
+  it("raises a GRASS move's power by FireRed's ten per cent, and nothing else's", () => {
+    const seed = holding('miracle-seed');
+    expect(attackMultiplier(seed, PokemonType.Grass)).toBeCloseTo(1.1);
+    expect(attackMultiplier(seed, PokemonType.Fire)).toBe(1);
+    expect(attackMultiplier(seed)).toBe(1);
+    expect(attackRecoil(seed, 10)).toBe(0);
+  });
+
+  it("lands a holder's Vine Whip harder in a real fight", () => {
+    const vineWhip = (held: string | null): number => {
+      const lead = new Pokemon(BULBASAUR, 12);
+      if (held) lead.giveHeldItem(held);
+      const slot = lead.moves.findIndex((move) => move.base.name === 'Vine Whip');
+      expect(slot).toBeGreaterThanOrEqual(0);
+      const foe = new Pokemon(SQUIRTLE, 30);
+      foe.moves = [];
+      const state = createBattleState(lead, foe);
+      const { events } = resolveTurn(state, slot, () => 0.5);
+      const hit = events.find(
+        (event): event is Extract<BattleEvent, { type: 'used-move' }> =>
+          event.type === 'used-move' && event.user === 'player',
+      );
+      return hit?.damage ?? 0;
+    };
+    expect(vineWhip('miracle-seed')).toBeGreaterThan(vineWhip(null));
   });
 });

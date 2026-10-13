@@ -49,6 +49,12 @@ export interface WorldEntity {
    */
   boulder?: true;
   /**
+   * A tile of a rock barrier (`switches.ts`): a wall until every switch that
+   * opens the barrier named is thrown, drawn as the rock's top on the
+   * barrier's first row and its foot below.
+   */
+  barrier?: { readonly id: string; readonly top: boolean };
+  /**
    * The small schedule this townsperson keeps: where they drift and which way
    * they look. Signs and anyone without one stand where they were put. Every
    * tile of it is held solid by `mapStructure.testkit.ts`, so a beat can never be

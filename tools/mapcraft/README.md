@@ -237,6 +237,15 @@ out into its floor's south wall, keeps furniture clear of every way through, and
 hides an item in every third dead-end room. `caveMouthSpots` finds the foot of a
 rock face outdoors, where the game requires a cave mouth to be cut.
 
+A floor drawn by hand can hold a puzzle: Strength boulders and the floor
+switches that lift a rock barrier (`switches.ts` in the game). `puzzle.ts`
+solves one by the game's own push rules (`solveBoulderFloor`: whether it opens
+from where a raid comes in, the fewest pushes, and with `countDead` how many
+arrangements can never open it), so a puzzle is a hard check rather than a
+hope. The Lost Garden's Falls Cave (`worlds/greystoneVale/fallsCave.ts`) is
+the worked example. The hard checks' *one piece* walks through caves, so ground
+whose only way in is a cave counts as reached.
+
 ## Before and after
 
 `docs/screens/mapcraft/`: the same district drawn by round 2's best method and

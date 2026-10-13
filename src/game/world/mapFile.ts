@@ -10,6 +10,7 @@ import {
   POWER_PLANT_WILDLIFE,
   SAFARI_ZONE_WILDLIFE,
   SUMMIT_WILDLIFE,
+  LOST_GARDEN_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -28,6 +29,7 @@ import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigu
 import { isLegendaryKind } from './legends';
 import { BERRY_IDS, berryTreeLines, type BerryId } from './berries';
 import { BOULDER_LINES } from './boulders';
+import type { WorldSwitch } from './switches';
 import type { WorldPoi } from './pois';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers';
 import type { WorldLoot } from './loot';
@@ -861,6 +863,8 @@ export const MAP_FILE_HABITATS = {
   safari: SAFARI_ZONE_WILDLIFE,
   // A storm-struck summit: FireRed's climb to the Plateau, at the vale's levels.
   summit: SUMMIT_WILDLIFE,
+  // A walled garden gone wild: the grass Pokemon, and Tangela, which nowhere else has.
+  garden: LOST_GARDEN_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -911,7 +915,24 @@ export interface MapFileSpot {
 export interface MapFileItemSpot extends MapFileSpot {
   readonly hidden?: boolean;
   readonly key?: boolean;
+  /**
+   * A spot that holds one of the game's own finds instead of taking its turn
+   * in the rotation: a piece of gear only one place has, laid at its odds as a
+   * prize (`loot.ts`), seated in the place it stands in, as the Card Key is.
+   */
+  readonly prize?: MapFilePrize;
 }
+
+/**
+ * The finds a spot may hold as a prize, and how often each is lying there: the
+ * gear only one far place of the game's own maps has.
+ */
+export const MAP_FILE_PRIZES = {
+  // The Lost Garden's: FireRed's Miracle Seed, one raid in four that gets
+  // there - a prize's odds (`loot.test.ts` holds every prize under a third).
+  'miracle-seed': 0.25,
+} as const satisfies Partial<Record<ItemId, number>>;
+export type MapFilePrize = keyof typeof MAP_FILE_PRIZES;
 
 export interface MapFileBuilding extends MapFileSpot {
   readonly kind: MapFileBuildingKind;
@@ -1189,6 +1210,46 @@ export interface MapFileArea {
   readonly ground: readonly string[];
   /** Its furniture. */
   readonly buildings: readonly MapFileBuilding[];
+  /** Floor switches and levers (`switches.ts`), and the barriers they open. */
+  readonly switches?: readonly MapFileSwitch[];
+  readonly barriers?: readonly MapFileBarrier[];
+}
+
+/**
+ * How a switch is thrown: a `plate` is FireRed's Victory Road floor switch,
+ * thrown when a Strength boulder comes to rest on it, and a `lever` is
+ * whatever stands on its tile (a generator, a wall panel) faced with the
+ * interact key.
+ */
+export const MAP_FILE_SWITCH_KINDS = ['plate', 'lever'] as const;
+export type MapFileSwitchKind = (typeof MAP_FILE_SWITCH_KINDS)[number];
+
+/**
+ * A switch in an area: thrown once, for the rest of the raid, and it opens the
+ * barrier it names - which may stand in another area of the same file, so a
+ * generator on one floor can open a way on another. A barrier with several
+ * switches opens only once every one of them is thrown.
+ */
+export interface MapFileSwitch {
+  readonly x: number;
+  readonly y: number;
+  readonly kind: MapFileSwitchKind;
+  /** The id of the barrier it opens. */
+  readonly opens: string;
+}
+
+/**
+ * A barrier in an area: FireRed's rock barrier, a wall across a way until its
+ * switches are thrown, then floor for the rest of the raid. A rectangle, drawn
+ * a column at a time as the barrier's top over its foot.
+ */
+export interface MapFileBarrier {
+  /** Lower-case letters, digits and dashes, unique in the file. */
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 /**
@@ -1552,6 +1613,15 @@ export function readMapFile(
     if (spot.key !== undefined && typeof spot.key !== 'boolean') {
       problems.push(`Item spot ${index + 1}'s key must be yes or no.`);
     }
+    if (spot.prize !== undefined) {
+      if (typeof spot.prize !== 'string' || !Object.hasOwn(MAP_FILE_PRIZES, spot.prize)) {
+        problems.push(
+          `Item spot ${index + 1}'s prize must be one of: ${Object.keys(MAP_FILE_PRIZES).join(', ')}.`,
+        );
+      } else if (spot.key === true) {
+        problems.push(`Item spot ${index + 1} holds the Card Key or a prize, not both.`);
+      }
+    }
   });
 
   const linesOf = (what: string, raw: unknown): void => {
@@ -1769,6 +1839,8 @@ function readAreas(
   if (raw.length > held.maxAreas) {
     problems.push(`A map holds at most ${held.maxAreas} areas.`);
   }
+  const barrierIds = new Set<string>();
+  const switchTargets: string[] = [];
   raw.forEach((area, index) => {
     const what = `Area ${index + 1}`;
     const id = area.id;
@@ -1845,6 +1917,7 @@ function readAreas(
     if (furniture.length > held.maxFurniture) {
       problems.push(`${what} holds at most ${held.maxFurniture} pieces of furniture.`);
     }
+    readSwitches(area, what, sized ? { width, height } : undefined, barrierIds, switchTargets, problems);
     furniture.forEach((piece, at) => {
       if (typeof piece.kind !== 'string' || !isFurniture(piece.kind)) {
         problems.push(`${what}'s furniture ${at + 1} is not furniture the game has: ${String(piece.kind)}.`);
@@ -1864,7 +1937,78 @@ function readAreas(
       }
     });
   });
+  for (const target of new Set(switchTargets)) {
+    if (!barrierIds.has(target)) {
+      problems.push(`A switch opens '${target}', and the map has no barrier called that.`);
+    }
+  }
+  for (const id of barrierIds) {
+    if (!switchTargets.includes(id)) {
+      problems.push(`The barrier '${id}' has no switch to open it.`);
+    }
+  }
   return sizes;
+}
+
+/**
+ * Reads one area's switches and barriers, gathering every barrier's id and
+ * every switch's target so a switch may open a barrier in another area.
+ */
+function readSwitches(
+  area: Record<string, unknown>,
+  what: string,
+  size: { readonly width: number; readonly height: number } | undefined,
+  barrierIds: Set<string>,
+  switchTargets: string[],
+  problems: string[],
+): void {
+  const inside = (x: unknown, y: unknown, width = 1, height = 1): boolean =>
+    size !== undefined &&
+    isWholeNumber(x) &&
+    isWholeNumber(y) &&
+    x >= 0 &&
+    y >= 0 &&
+    x + width <= size.width &&
+    y + height <= size.height;
+  if (area.switches !== undefined) {
+    if (!Array.isArray(area.switches) || !area.switches.every(isRecord)) {
+      problems.push(`${what}'s switches must be a list.`);
+    } else {
+      area.switches.forEach((spot, at) => {
+        if (!(MAP_FILE_SWITCH_KINDS as readonly unknown[]).includes(spot.kind)) {
+          problems.push(`${what}'s switch ${at + 1} must be one of: ${MAP_FILE_SWITCH_KINDS.join(', ')}.`);
+        }
+        if (!inside(spot.x, spot.y)) {
+          problems.push(`${what}'s switch ${at + 1} is not inside it.`);
+        }
+        if (typeof spot.opens !== 'string') {
+          problems.push(`${what}'s switch ${at + 1} has to name the barrier it opens.`);
+        } else {
+          switchTargets.push(spot.opens);
+        }
+      });
+    }
+  }
+  if (area.barriers !== undefined) {
+    if (!Array.isArray(area.barriers) || !area.barriers.every(isRecord)) {
+      problems.push(`${what}'s barriers must be a list.`);
+    } else {
+      area.barriers.forEach((barrier, at) => {
+        const id = barrier.id;
+        if (typeof id !== 'string' || !ID_PATTERN.test(id) || id.length > MAP_FILE_ID_MAX_LENGTH) {
+          problems.push(`${what}'s barrier ${at + 1} needs an id of lower-case letters, digits and single dashes.`);
+        } else if (barrierIds.has(id)) {
+          problems.push(`Two barriers have the id '${id}'.`);
+        } else {
+          barrierIds.add(id);
+        }
+        const { width, height } = barrier;
+        if (!isWholeNumber(width) || !isWholeNumber(height) || width < 1 || height < 1 || !inside(barrier.x, barrier.y, width, height)) {
+          problems.push(`${what}'s barrier ${at + 1} is not inside it.`);
+        }
+      });
+    }
+  }
 }
 
 /** Reads a file's links, listing what is wrong with their shape. */
@@ -1984,6 +2128,8 @@ export interface FileMap {
   readonly gates: readonly MapGate[];
   /** Its ledges, every one a drop a player can hop down and nobody can climb. */
   readonly ledges: readonly MapLedge[];
+  /** Its floor switches and levers, each opening a barrier for the raid (`switches.ts`). */
+  readonly switches: readonly WorldSwitch[];
   /** Fresh Pokemon every call, as `createRunTrainerEncounters` hands out, so no fight leaks into the next raid. */
   readonly trainers: () => readonly RunTrainerEncounter[];
   /**
@@ -2051,7 +2197,7 @@ function lootFor(
       position: at(spot),
       ...(spot.hidden ? { hidden: true } : {}),
     };
-    if (spot.key) {
+    if (spot.key || spot.prize) {
       const home = districts.findIndex(
         (district) =>
           district.area === spot.area &&
@@ -2062,9 +2208,9 @@ function lootFor(
       );
       return {
         ...common,
-        itemId: MAP_FILE_EXIT_KEY,
+        itemId: spot.prize ?? MAP_FILE_EXIT_KEY,
         quantity: 1,
-        chance: CARD_KEY_CHANCE,
+        chance: spot.prize ? MAP_FILE_PRIZES[spot.prize] : CARD_KEY_CHANCE,
         ...(home >= 0 ? { district: `${id}/district-${home + 1}` } : {}),
       };
     }
@@ -2338,6 +2484,26 @@ export function buildFileMap(
         dialogLines: [...BOULDER_LINES],
         boulder: true,
       })),
+      // A barrier is a wall a tile at a time, drawn as the rock's top over
+      // its foot, until its switches are thrown (`switches.ts`).
+      ...(file.areas ?? []).flatMap((area) =>
+        (area.barriers ?? []).flatMap((barrier) =>
+          Array.from({ length: barrier.width * barrier.height }, (_tile, cell): WorldEntity => {
+            const dx = cell % barrier.width;
+            const dy = Math.floor(cell / barrier.width);
+            return {
+              id: `${id}/barrier-${barrier.id}-${dx}-${dy}`,
+              mapId: id,
+              kind: 'npc',
+              position: at({ x: barrier.x + dx, y: barrier.y + dy, area: area.id }),
+              facing: 'down',
+              // FireRed's barrier is scenery and says nothing when faced.
+              dialogLines: [],
+              barrier: { id: barrier.id, top: dy === 0 },
+            };
+          }),
+        ),
+      ),
       ...(file.signs ?? []).map((sign, index): WorldEntity => ({
         id: `${id}/sign-${index + 1}`,
         mapId: id,
@@ -2398,6 +2564,17 @@ export function buildFileMap(
     ],
     gates: fileDoorGates(file, id),
     ledges: fileLedges(file, id),
+    switches: (file.areas ?? []).flatMap((area) =>
+      (area.switches ?? []).map(
+        (spot, index): WorldSwitch => ({
+          id: `${id}/switch-${area.id}-${index + 1}`,
+          mapId: id,
+          position: at({ x: spot.x, y: spot.y, area: area.id }),
+          kind: spot.kind,
+          opens: spot.opens,
+        }),
+      ),
+    ),
     trainers: () =>
       (file.trainers ?? []).map((placed, index) => {
         const template = trainerTemplate(placed.team);

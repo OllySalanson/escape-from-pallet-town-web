@@ -70,7 +70,8 @@ import { refusedWords } from './wordFilter';
  * or the last is a raid nobody chose. A boulder is a wall for the way out -
  * nobody has to bring Strength to leave - and moves aside for what can be
  * reached, as a door opens; an exit buried under rubble is never the way out,
- * because nobody has to bring a Pickaxe either.
+ * because nobody has to bring a Pickaxe either. A rock barrier is the same:
+ * shut for the way out, open for what can be reached (`switches.ts`).
  */
 
 export type MapCheckId =
@@ -362,6 +363,21 @@ export function checkMapFile(
   const pokemon = file.pokemon ?? [];
   const berryTrees = file.berryTrees ?? [];
   const boulders = file.boulders ?? [];
+  const plates = (file.areas ?? []).flatMap((area) =>
+    (area.switches ?? []).filter((spot) => spot.kind === 'plate').map((spot) => ({ spot, area: area.id })),
+  );
+  const barrierTiles = (file.areas ?? []).flatMap((area) =>
+    (area.barriers ?? []).flatMap((barrier) =>
+      Array.from({ length: barrier.width * barrier.height }, (_tile, cell) => ({
+        id: barrier.id,
+        spot: {
+          x: barrier.x + (cell % barrier.width),
+          y: barrier.y + Math.floor(cell / barrier.width),
+          area: area.id,
+        },
+      })),
+    ),
+  );
   const named = [
     ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}`, group: 'drop-ins' })),
     ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}`, group: 'exits' })),
@@ -381,6 +397,14 @@ export function checkMapFile(
       group: 'berry trees',
     })),
     ...boulders.map((spot, index) => ({ spot, what: `Boulder ${index + 1}`, group: 'boulders' })),
+    // A floor switch is floor a boulder is pushed onto, and a barrier is a
+    // wall across a way that opens onto floor: both stand on walkable ground.
+    ...plates.map(({ spot, area }, index) => ({
+      spot: { x: spot.x, y: spot.y, area },
+      what: `Floor switch ${index + 1}`,
+      group: 'floor switches',
+    })),
+    ...barrierTiles.map(({ spot, id }) => ({ spot, what: `Barrier ${id}`, group: 'barriers' })),
   ];
   /** A fault about the things on some tiles, the first of them the one to look at. */
   const fault = (
@@ -604,7 +628,14 @@ export function checkMapFile(
   // reached across another exit is not a way out, it is that exit.
   const exitTiles = new Set(file.exits.map((exit) => at(onGrid(exit))));
   const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].map((spot) => at(onGrid(spot)));
-  const shut = new Set([...exitTiles, ...figureTiles, ...boulders.map((spot) => at(onGrid(spot)))]);
+  // A rock barrier is a wall for the way out, as a boulder is - nobody has to
+  // solve a floor of switches to leave - and stands open for what is reached.
+  const shut = new Set([
+    ...exitTiles,
+    ...figureTiles,
+    ...boulders.map((spot) => at(onGrid(spot))),
+    ...barrierTiles.map(({ spot }) => at(onGrid(spot))),
+  ]);
   const pushedAside = new Set([...exitTiles, ...figureTiles]);
   // A painted ledge is a way down that only the player has (`ledges.ts`), so
   // every walk a player takes may hop it - one way, as the game does, and only

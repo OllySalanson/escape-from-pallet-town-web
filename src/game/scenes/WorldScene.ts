@@ -64,6 +64,16 @@ import {
   type BerryId,
 } from '../world/berries';
 import { boulderDestination, canStillReach } from '../world/boulders';
+import {
+  barriersOpenedBy,
+  isBarrierOpen,
+  LEVER_LINES,
+  switchAt,
+  switchesOn,
+  type WorldSwitch,
+} from '../world/switches';
+import { AREA_SHEET_SOURCE } from '../world/tileset/areaSheet';
+import { AREA_PIECES } from '../world/generated/areaPieces';
 import { TOWN_PIECES } from '../world/generated/townPieces';
 import { TOWN_SHEET_SOURCE } from '../world/tileset/townSheet';
 import {
@@ -2159,6 +2169,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
 
   private createEntities(): void {
+    this.createSwitchPlates();
     this.createLoot();
     this.createPois();
     this.createContractMarkers();
@@ -2184,6 +2195,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
       if (entity.boulder) {
         this.createBoulder(entity.id, this.boulderAt(entity));
+        continue;
+      }
+      if (entity.barrier) {
+        if (!this.barrierIsOpen(entity.barrier.id)) {
+          this.createBarrier(entity.id, entity.position, entity.barrier.top);
+        }
         continue;
       }
       this.createFigure(entity.id, entity.position, entity.facing, 'npc', entity.design);
@@ -2809,6 +2826,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const stands = this.boulderAt(entity);
       return stands.x === tile.x && stands.y === tile.y;
     }
+    if (entity.barrier && this.barrierIsOpen(entity.barrier.id)) {
+      return false;
+    }
     const figure = this.idleFigures.find((standing) => standing.id === entity.id);
     const held: readonly GridPosition[] = figure ? idleHeldTiles(figure) : [entity.position];
     return held.some((stood) => stood.x === tile.x && stood.y === tile.y);
@@ -3035,6 +3055,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!boulder || !this.runSession || !fieldMoveUser(this.party.pokemon, 'strength')) {
       return false;
     }
+    // A boulder that has fallen onto its switch stays there, as Victory Road's
+    // does: pushed off again it could be walked to the next switch, and a
+    // floor of switches would be one boulder's work.
+    if (this.boulderIsSeated(boulder)) {
+      return false;
+    }
     const destination = boulderDestination(target, facing);
     if (!this.boulderMayRest(destination)) {
       return false;
@@ -3077,7 +3103,143 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       });
     }
     audioManager.play('bump');
+    const plate = switchAt(this.switchesHere(), destination);
+    if (plate?.kind === 'plate' && !this.switchThrown(plate)) {
+      this.time.delayedCall(STEP_DURATION_MS, () => this.throwSwitch(plate));
+    }
     return true;
+  }
+
+  /** The switches of the map the raid is on. */
+  private switchesHere(): readonly WorldSwitch[] {
+    return switchesOn(this.currentMap.id);
+  }
+
+  private switchThrown(thrown: WorldSwitch): boolean {
+    return (this.runSession?.switchesThrown ?? []).includes(thrown.id);
+  }
+
+  /** Whether a barrier stands open this raid: every switch that opens it thrown. */
+  private barrierIsOpen(barrier: string): boolean {
+    return isBarrierOpen(barrier, this.switchesHere(), this.runSession?.switchesThrown ?? []);
+  }
+
+  /** Whether a boulder stands on a floor switch it has thrown, where it stays. */
+  private boulderIsSeated(boulder: WorldEntity): boolean {
+    const plate = switchAt(this.switchesHere(), this.boulderAt(boulder));
+    return plate?.kind === 'plate' && this.switchThrown(plate);
+  }
+
+  /**
+   * Throws a switch for the rest of the raid, and lifts every barrier that was
+   * waiting on it last: the rock goes with FireRed's crack and nothing else,
+   * because Victory Road's barrier lifts without a word.
+   */
+  private throwSwitch(thrown: WorldSwitch): void {
+    if (!this.runSession || this.switchThrown(thrown)) {
+      return;
+    }
+    const before = this.runSession.switchesThrown ?? [];
+    const opened = barriersOpenedBy(thrown, this.switchesHere(), before);
+    this.runSession.switchesThrown = [...before, thrown.id];
+    if (opened.length === 0) {
+      audioManager.play('select');
+      return;
+    }
+    audioManager.play('barrierLifts');
+    this.cameras.main.shake(120, 0.003);
+    for (const entity of this.currentMap.entities) {
+      if (entity.barrier && opened.includes(entity.barrier.id)) {
+        const sprite = this.npcSprites.get(entity.id);
+        sprite?.destroy();
+        this.npcSprites.delete(entity.id);
+      }
+    }
+  }
+
+  /**
+   * Victory Road's floor switches, drawn on the floor under everything that
+   * stands: a plate is ground a boulder is pushed onto, never a figure.
+   */
+  private createSwitchPlates(): void {
+    const plates = this.switchesHere().filter((candidate) => candidate.kind === 'plate');
+    if (plates.length === 0) {
+      return;
+    }
+    const texture = this.textures.get(AREA_SHEET_SOURCE.source.textureKey);
+    if (!texture.has(SWITCH_UP_FRAME)) {
+      const piece = AREA_PIECES['cave.switch'];
+      texture.add(SWITCH_UP_FRAME, 0, piece.column * TILE_SIZE, piece.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+    for (const plate of plates) {
+      const sprite = this.add
+        .sprite(
+          plate.position.x * TILE_SIZE + TILE_SIZE / 2,
+          plate.position.y * TILE_SIZE + TILE_SIZE / 2,
+          AREA_SHEET_SOURCE.source.textureKey,
+          SWITCH_UP_FRAME,
+        )
+        .setDepth(atRow(MARKER_BAND, plate.position.y));
+      this.mapObjects.push(sprite);
+    }
+  }
+
+  /** One tile of a rock barrier: its top on the barrier's first row, its foot below. */
+  private createBarrier(id: string, position: GridPosition, top: boolean): void {
+    const texture = this.textures.get(AREA_SHEET_SOURCE.source.textureKey);
+    if (!texture.has(BARRIER_TOP_FRAME)) {
+      const piece = AREA_PIECES['cave.barrier'];
+      texture.add(BARRIER_TOP_FRAME, 0, piece.column * TILE_SIZE, piece.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      texture.add(BARRIER_FOOT_FRAME, 0, piece.column * TILE_SIZE, (piece.row + 1) * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+    const sprite = this.add
+      .sprite(
+        position.x * TILE_SIZE + TILE_SIZE / 2,
+        position.y * TILE_SIZE + TILE_SIZE / 2,
+        AREA_SHEET_SOURCE.source.textureKey,
+        top ? BARRIER_TOP_FRAME : BARRIER_FOOT_FRAME,
+      )
+      .setDepth(atRow(FIGURE_BAND, position.y));
+    this.npcSprites.set(id, sprite);
+    this.mapObjects.push(sprite);
+  }
+
+  /**
+   * Leaving a cave puts its boulders back where they started, as FireRed's
+   * are put back whenever a map is loaded again - all but those that fell onto
+   * a switch - so a floor pushed wrong is a walk out and back in, never a raid
+   * lost. Nobody is in the place left behind to see it.
+   */
+  private resetBouldersLeftIn(area: PlacedArea | null): void {
+    const moved = this.runSession?.bouldersMoved;
+    if (!area || !moved) {
+      return;
+    }
+    const inside = (tile: GridPosition) =>
+      tile.x >= area.rect.x &&
+      tile.y >= area.rect.y &&
+      tile.x < area.rect.x + area.rect.width &&
+      tile.y < area.rect.y + area.rect.height;
+    const kept: Record<string, GridPosition> = {};
+    for (const entity of this.currentMap.entities) {
+      const at = moved[entity.id];
+      if (!entity.boulder || !at) {
+        continue;
+      }
+      const hunterOnStart =
+        this.isHunterOnCurrentMap() &&
+        this.hunterState.position!.x === entity.position.x &&
+        this.hunterState.position!.y === entity.position.y;
+      if (!inside(entity.position) || this.boulderIsSeated(entity) || hunterOnStart) {
+        kept[entity.id] = at;
+        continue;
+      }
+      this.npcSprites
+        .get(entity.id)
+        ?.setPosition(entity.position.x * TILE_SIZE + TILE_SIZE / 2, entity.position.y * TILE_SIZE + TILE_SIZE / 2)
+        .setDepth(atRow(FIGURE_BAND, entity.position.y));
+    }
+    this.runSession!.bouldersMoved = kept;
   }
 
   /**
@@ -4084,6 +4246,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.dialogBox.showMessages([...unbarred]);
       return;
     }
+    const lever = switchAt(this.switchesHere(), targetTile);
+    if (lever?.kind === 'lever') {
+      if (!this.switchThrown(lever)) {
+        this.dialogBox.showMessages([...LEVER_LINES]);
+        this.throwSwitch(lever);
+      }
+      return;
+    }
 
     const entity = this.currentMap.entities.find((candidate) =>
       this.entityHolds(candidate, targetTile),
@@ -4115,6 +4285,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     if (entity?.berry) {
       this.dialogBox.showMessages([...this.pickBerry(entity, entity.berry)]);
+      return;
+    }
+    // FireRed's rock barrier is scenery: facing it says nothing.
+    if (entity?.barrier) {
       return;
     }
     if (entity?.boulder) {
@@ -4989,7 +5163,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.partner?.tuckIn();
     this.cameras.main.fadeOut(DOOR_FADE_MS, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      const left = this.currentArea();
       this.currentTile = { ...warp.destination };
+      if (this.currentArea() !== left) {
+        this.resetBouldersLeftIn(left);
+      }
       this.facing = warp.facing;
       this.targetTile = null;
       this.setPlayerPosition(
@@ -6547,6 +6725,10 @@ function extractionIconKey(point: ExtractionPoint, isOpen: boolean): string {
 
 /** The frame name the Strength boulder is cut as on the town sheet's texture. */
 const BOULDER_FRAME = 'strength-boulder';
+/** And Victory Road's floor switch and rock barrier, on the area sheet's. */
+const SWITCH_UP_FRAME = 'floor-switch';
+const BARRIER_TOP_FRAME = 'rock-barrier-top';
+const BARRIER_FOOT_FRAME = 'rock-barrier-foot';
 
 /**
  * What the result screen says about the contract, including the case the whole
