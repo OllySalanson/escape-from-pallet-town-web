@@ -11,7 +11,8 @@ import type { WorldResult } from '../../worldReport';
 import { highMoor } from './highMoor';
 import { millbrook } from './millbrook';
 import { GREYSTONE_VALE } from './plan';
+import { reedmere } from './reedmere';
 
 export default function greystoneVale(): WorldResult {
-  return { plan: GREYSTONE_VALE, districts: { millbrook: millbrook(), 'high-moor': highMoor() } };
+  return { plan: GREYSTONE_VALE, districts: { millbrook: millbrook(), 'high-moor': highMoor(), reedmere: reedmere() } };
 }

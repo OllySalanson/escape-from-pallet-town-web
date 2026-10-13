@@ -6,10 +6,11 @@ is the plan, before any district was drawn:
 
 ![plan](plan.png)
 
-And the vale with its first district, Millbrook, drawn: every district still to
-draw is wood, and each road into one runs into the trees at a way out.
+And the vale as it ships now, with Millbrook, High Moor and Reedmere drawn:
+every district still to draw is wood, and each road into one runs into the
+trees at a way out.
 
-![the vale with Millbrook drawn](vale.png)
+![the vale with Millbrook, High Moor and Reedmere drawn](vale.png)
 
 ![Millbrook](millbrook.png)
 
@@ -289,6 +290,56 @@ What is left for the next pass:
 - **Tanglewood:** its north-west lanes are plain grass.
 - **The caves:** both judges named the sand drifts as noisy blobs that do not
   belong.
+
+## Reedmere
+
+The marsh in the south-west, down the lane from Millbrook. **The dry way is
+the long way:** an earth boardwalk goes round the mere, east to the trail for
+Gull Strand and south and west to the Mere Path, while anyone in a hurry wades
+straight through the reeds and pays for it in fights. The sign at the lane
+says so: "The boardwalk goes round. The reeds go through."
+
+- **The mere:** wide and still, with a grassed north bank and a jetty out over
+  it. Netter Fen fishes from the jetty.
+- **The reeds:** tall grass is the marsh's floor. Trodden lanes part it into
+  beds, a dry hummock with a berry tree is left open in the north-west, and
+  copses of trees give the beds their edges.
+- **The Duck Hide:** at the end of a boardwalk spur in the south-west, with
+  Birder Tess keeping watch.
+- **One pond** in the north-east reeds, where the trail for the strand turns
+  off.
+
+![Reedmere](reedmere.png)
+
+Judged blind the same way as the woods, beside FireRed's watery, grassy
+routes: two windows of Route 12, and one each of Route 14, Route 24 and
+Route 6.
+
+| Round | Real mean | Reedmere |
+|---|---|---|
+| 1 | 6.2, 5.6 | 4 and 4, 5 and 5 |
+| 2 | 6.2 | 5 and 5 |
+| 3 | 6.2 | **6 and 6: passes** |
+
+The table shows only the judges that counted. In rounds 2 and 3 the discarded
+judge also scored Reedmere within the band (5 and 6, then 6 and 5), and in
+round 2 it took a view for a real map.
+
+What each round fixed was what the judges named:
+
+- **Round 1:**
+  - a shapeless sea of tall grass;
+  - water broken into stamped rectangular pieces (channels and four pools);
+  - a staircase lake shore;
+  - an empty lawn.
+- **Round 2:**
+  - fiddly slivers of grass at the beds' edges;
+  - lone tree pairs dotted about.
+
+Round 3's remaining fault, for the next pass: there is little to find beyond
+the grass.
+
+![Reedmere as first drawn](reedmere-first-draw.png)
 
 ## How it ships
 
