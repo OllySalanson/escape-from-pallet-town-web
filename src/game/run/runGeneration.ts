@@ -300,6 +300,13 @@ export const RUN_INSERTIONS = {
     position: { x: 101, y: 206 },
     description: 'The quay of the drowned port in the Sunken Quarter, where the jetty from the strand comes in.',
   },
+  'greystone-vale-cove-steps': {
+    id: 'greystone-vale-cove-steps',
+    label: 'Cove Steps',
+    mapId: 'greystone-vale',
+    position: { x: 32, y: 212 },
+    description: "The cliff top over Smugglers' Cove, where the way goes down to the beach and the smugglers' jetty.",
+  },
 } as const satisfies Record<string, BuiltInInsertion>;
 
 interface BuiltInInsertion {
