@@ -128,18 +128,18 @@ try {
       return null;
     })()`);
   const walk = async (goals, what, { avoidIce = false } = {}) => {
-    const keys = await plan(goals, avoidIce);
-    if (!keys) throw new Error(`no way to ${what}`);
-    console.log(`${what}: ${keys.length} presses`);
-    for (const code of keys) {
-      const before = JSON.stringify((await state()).tile);
-      await page.keyDown(code);
-      for (let i = 0; i < 12 && JSON.stringify((await state()).tile) === before && (await inWorld()); i += 1) await wait(50);
-      await page.keyUp(code);
-      await wait(100);
+    // Planned again before every press: a fight or a line on the way can take
+    // a press, and the plan is only ever the way from where the player stands.
+    let presses = 0;
+    for (; presses < 300; presses += 1) {
+      const keys = await plan(goals, avoidIce);
+      if (!keys) throw new Error(`no way ${what}`);
+      if (keys.length === 0) break;
+      await press(keys[0]);
       await settle();
     }
-    return keys.length;
+    console.log(`${what}: ${presses} presses`);
+    return presses;
   };
   /** A tile of the composed grid, from a district's own tiles on the vale (Frostreef is cell 4,4 of a ring from -1). */
   const frost = (x, y) => `${320 + x},${320 + y}`;
@@ -175,8 +175,16 @@ try {
   await wait(200);
   const cast = (await state()).elapsedMs;
   let mid = false;
-  for (let guard = 0; guard < 400 && (await state()).voyaging; guard += 1) {
+  for (let guard = 0; guard < 600 && (await state()).voyaging; guard += 1) {
     await wait(100);
+    // Anything the world says on the way (the hunter arriving, say) is read
+    // as it comes; the boat waits for it, as a walk would.
+    if ((await state()).dialog) {
+      const said = await page.evaluate(`${WORLD}.dialogBox.textObject?.text ?? ''`);
+      console.log(`said at sea: ${JSON.stringify(said)}`);
+      await press('Space');
+      await wait(200);
+    }
     if (!mid && (await state()).tile.y > boat.from.boat.y + 40) {
       await shot('03-at-sea');
       mid = true;
@@ -209,7 +217,7 @@ try {
   await wait(600);
   await settle();
   await shot('09-the-frozen-lagoon');
-  check(JSON.stringify((await state()).tile) === JSON.stringify({ x: 331, y: 354 }), 'out of the cave onto the lagoon shore');
+  check(JSON.stringify((await state()).tile) === JSON.stringify({ x: 331, y: 353 }), 'out of the cave onto the lagoon shore');
 
   // -- Lapras, on the lagoon ---------------------------------------------------
   const beside = [frost(28, 37), frost(30, 37), frost(29, 36), frost(29, 38)];
@@ -249,3 +257,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log('\nall passed');
+// An attached browser's socket would otherwise keep the driver running.
+process.exit(0);

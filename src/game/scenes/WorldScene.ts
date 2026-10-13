@@ -5603,7 +5603,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ]
         : [],
     );
-    return [...signs, ...crates, ...standing, ...this.watchedGround, ...doorways];
+    // A boat at its jetty is the thing its caption names too.
+    const boats = (this.boats ?? [])
+      .filter(({ sprite }) => sprite.visible)
+      .map(({ sprite }) => ({
+        x: sprite.x - sprite.width / 2,
+        y: sprite.y - sprite.height / 2,
+        width: sprite.width,
+        height: sprite.height,
+      }));
+    return [...signs, ...crates, ...standing, ...this.watchedGround, ...doorways, ...boats];
   }
 
   /**
@@ -6331,7 +6340,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** The Seagallop, FireRed's own ferry, off the town sheet: drawn as a figure because it moves. */
-  private boatSprite(at: GridPosition): Phaser.GameObjects.Image {
+  private boatSprite(at: GridPosition, moored?: Direction): Phaser.GameObjects.Image {
     const texture = this.textures.get(TOWN_SHEET_SOURCE.source.textureKey);
     if (!texture.has(BOAT_FRAME)) {
       const piece = TOWN_PIECES.seagallop;
@@ -6339,7 +6348,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       texture.add(BOAT_FRAME, 0, piece.column * TILE_SIZE, (piece.row + 1) * TILE_SIZE, piece.width * TILE_SIZE, (piece.height - 1) * TILE_SIZE);
     }
     const sprite = this.add.image(0, 0, TOWN_SHEET_SOURCE.source.textureKey, BOAT_FRAME);
-    this.placeBoat(sprite, at.x, at.y);
+    this.placeBoat(sprite, at.x, at.y, moored);
     return sprite;
   }
 
@@ -6348,10 +6357,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * boat off a jetty lies below the boards rather than over them, and its bow
    * and stern out either side.
    */
-  private placeBoat(sprite: Phaser.GameObjects.Image, x: number, y: number): void {
+  private placeBoat(sprite: Phaser.GameObjects.Image, x: number, y: number, moored?: Direction): void {
+    // Moored, the boat lies out from its jetty, its side to the boards rather
+    // than across them: off a jetty's west side it lies west of the tile it is
+    // boarded at, off its east side east, and off its head or its foot it is
+    // centred on it, deck to the boards.
+    const half = sprite.width / 2;
+    const across = moored === 'left' ? TILE_SIZE - half : moored === 'right' ? half : TILE_SIZE / 2;
+    const down = moored === 'up' ? TILE_SIZE - sprite.height / 2 + BOAT_RIDE_Y : sprite.height / 2 - BOAT_RIDE_Y;
     sprite
-      .setPosition(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + sprite.height / 2 - BOAT_RIDE_Y)
-      .setDepth(atRow(FIGURE_BAND, y + 2));
+      .setPosition(x * TILE_SIZE + across, y * TILE_SIZE + down)
+      .setDepth(atRow(FIGURE_BAND, moored === 'up' ? y : y + 2));
   }
 
   private createBoats(): void {
@@ -6361,7 +6377,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     for (const sailing of this.currentMap.sailings ?? []) {
       for (const end of [0, 1] as const) {
         const jetty = sailing.ends[end];
-        const sprite = this.boatSprite(jetty.boat);
+        const sprite = this.boatSprite(jetty.boat, jetty.toward);
         const label = new WorldLabel(this, {
           subject: tileRect(jetty.landing),
           text: sailing.name.toUpperCase(),
