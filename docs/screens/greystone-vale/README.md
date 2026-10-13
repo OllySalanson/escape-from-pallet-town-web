@@ -642,6 +642,8 @@ controls.
 | 1 | 6.4, 6.0 | 6 and 4, 5 and 5 | one judge 0.4 short |
 | 2 (void) | 5.6, 6.8 | 5 and 7, 6 and 6 | both judges rated a broken route above a real one |
 | 3 | 6.4, 6.6 | **6 and 7, 7 and 7: passes** | |
+| 4 | 6.2, 6.4 | 7 and 4, 6 and 6 | redrawn to the grown plan; one view under a judge's lowest real |
+| 5 | 5.8, 5.8 | **5 and 5, 7 and 6: passes** (ships; one judge took the hamlet for real) | |
 
 Round 1's notes were the open-field fault High Moor taught: "things set beside
 paths in open grass", "the plant floats with no framing walls". What fixed it
@@ -650,6 +652,15 @@ station's pocket under the dam, the hamlet's clearing on the road, the path to
 the pond through the trees - with the forecourt in sand and the workers' houses
 facing a lane. Round 2's swapped Route 24 was hardly broken, as Gull Strand's
 round 1 control was; round 3 shuffled both controls.
+
+The plan then grew (#320): the Pylon Road leaves north, not east, and a road
+goes south to Safari Marsh. The station was redrawn to it - the road along the
+reservoir's north shore, a ring of roads round the valley - and judged again.
+Round 4 named what the redraw and the landing rule had added: a ruled cliff
+band, tree columns standing either side of the station like pillars, and two
+boulders flanking the path like gateposts. The dam now steps up into crags
+where it meets the water, the pocket opens onto the tailrace's reeds, and the
+landing's stops are the station's stores and a boulder further off.
 
 ![The Power Station, round 1](power-station-round1.png)
 

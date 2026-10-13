@@ -123,11 +123,11 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
   await title();
   // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
   // its own save, every map's landings offered - the one way to a map still
-  // being drawn (`MAPS_IN_PROGRESS`) - and its partner a Charmander.
+  // being drawn (`MAPS_IN_PROGRESS`) - and its partner a level-99 Charizard.
   if (explorer) {
     await press('ArrowDown'); await press('ArrowRight'); await press('Space');
     await until(sceneIs('base'));
-    return enterRaid(page, { press, click, until, wait, insertion, starter: 'Charmander', team: [], pack: [], secure: [] });
+    return enterRaid(page, { press, click, until, wait, insertion, starter: 'Charizard', team: [], pack: [], secure: [] });
   }
   await press('Space'); await until(sceneIs('starter'));
   // The picker's three cards are the three starters, and which one is taken is
