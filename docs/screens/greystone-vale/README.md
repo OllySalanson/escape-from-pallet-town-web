@@ -41,6 +41,30 @@ from pret, and the FireRed sheet's fountain, stall, planters and signs.
 
 That is the first draw, which did not pass (below).
 
+## High Moor
+
+The moor above Millbrook, drawn as FireRed draws a route: a corridor twenty
+tiles wide between the west wood and the rock of the peaks. The drove road is
+three tiles wide, and the land shapes it, so it winds between the big things
+the moor holds, one side and then the other:
+
+- the old toll house at the Moor Gate, the way off the map;
+- the Grey Stones, a tor;
+- the drovers' heather;
+- Moor Top, a knoll and a landing, where a rock-walled trail forks east to
+  Greystone Peaks past a spring;
+- a tarn ringed with reeds;
+- a row of ledges at the corridor's foot, the quick way down to the village.
+
+A gap in the west wood opens on the shepherd's cottage and its tarn.
+
+![High Moor](high-moor.png)
+
+It took eight blind rounds, below. This was the first draw, an open moor sixty
+tiles wide, which the judges read as empty lawn with props dropped on it:
+
+![High Moor as first drawn](high-moor-round1.png)
+
 ## The vale
 
 Nine districts of 64x64 tiles make a 192x192 map, with room left to grow a
@@ -119,6 +143,37 @@ Round 3's remaining faults, for the next pass:
 - a mix of building styles;
 - the forest-heavy foot of the village;
 - the pool's shape.
+
+### High Moor
+
+High Moor was judged as two 24x40 views beside five FireRed routes cut to the
+same size (Routes 1, 2, 6, 10 and 24), with two of them broken on purpose as
+controls. Every judge in every round ranked both broken routes at or below
+every real one.
+
+| Round | What changed | FireRed routes (mean) | High Moor |
+|---|---|---|---|
+| 1 | an open moor | 7.4 | 4, 4, 4, 3 |
+| 2 | a framed corridor, ledges on trees | 6.4 | 3, 5, 4, 4 |
+| 3 | the stones as rock pillars | 5.8 | 3, 5, 2, 4 |
+| 4 | heather everywhere, one gap a ledge row | 6.2 | 3, 4, 3, 4 |
+| 5 | places along the road | 7.0 | 4, 4, 4, 5 |
+| 6 | the stones as one tor, a wider road | 6.2 | 5, 4, 4, 5 |
+| 7 | the land shapes the road | 6.4 | 5, 5, 5, 6 |
+| 8 | no isolated pieces | 6.2 | **6, 6, 6, 6** |
+
+**It passes on round 8**: both judges, both views, at or above each judge's
+lowest real route and within a point of the mean.
+
+Four lessons, each paid for by at least one round:
+- **The shape:** an open field of any size reads as empty lawn, and FireRed's
+  routes are framed corridors.
+- **The stones:** a ring of stones in this art reads as placeholder markers,
+  however it is arranged, because FireRed draws rock in masses.
+- **Places, not patterns:** the judges' recurring word was "an arrangement,
+  not a place".
+- **The road:** a straight road with things set beside it is "a checklist of
+  features"; the road has to wind round what stands in its way.
 
 ## How it ships
 

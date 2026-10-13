@@ -251,6 +251,13 @@ export const RUN_INSERTIONS = {
     position: { x: 30, y: 96 },
     description: 'Mill Square in Millbrook, where every road in the vale starts. The rest of the vale is still being drawn.',
   },
+  'greystone-vale-moor-top': {
+    id: 'greystone-vale-moor-top',
+    label: 'Moor Top',
+    mapId: 'greystone-vale',
+    position: { x: 22, y: 37 },
+    description: 'The top of the drove road on High Moor, with the Grey Stones ahead and Millbrook below.',
+  },
 } as const satisfies Record<string, BuiltInInsertion>;
 
 interface BuiltInInsertion {

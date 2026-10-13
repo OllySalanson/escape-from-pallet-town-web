@@ -53,19 +53,19 @@ export function districtFile(
   },
 ): MapFile {
   const district = districtOf(plan, id);
-  const exits: MapFileExit[] = openingsOf(plan, id).map((opening) => {
-    const [x, y] = exitTile(plan.districtSize, opening);
-    const name =
-      'exit' in opening.leadsTo
-        ? opening.leadsTo.exit
-        : `To ${districtOf(plan, opening.leadsTo.district).name}`;
-    return {
-      x,
-      y,
-      name: name.slice(0, MAP_FILE_LIMITS.maxPlaceNameLength),
-      opens: { when: 'always' },
-    };
-  });
+  // A river is nobody's way out: its opening is water.
+  const exits: MapFileExit[] = uniqueNames(
+    openingsOf(plan, id)
+      .filter((opening) => opening.kind !== 'river')
+      .map((opening) => {
+        const [x, y] = exitTile(plan.districtSize, opening);
+        const name =
+          'exit' in opening.leadsTo
+            ? opening.leadsTo.exit
+            : `To ${districtOf(plan, opening.leadsTo.district).name}`;
+        return { x, y, name, opens: { when: 'always' } };
+      }),
+  );
   return program.toFile({
     id: `${plan.id}-${id}`.slice(0, 40),
     name: district.name.slice(0, MAP_FILE_LIMITS.maxNameLength),
@@ -217,6 +217,7 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
     const [x, y] = exitTile(size, opening);
     merged.exits.push({ x: rect.x + x, y: rect.y + y, name: exit.name, opens: { when: 'always' } });
   }
+  merged.exits = uniqueNames(merged.exits);
   const file: MapFile = {
     format: MAP_FILE_FORMAT,
     id: plan.id,
@@ -233,6 +234,22 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
   problems.push(...seams.filter((seam) => seam.status === 'broken').map((seam) => seam.detail));
   problems.push(...leaks(plan, built));
   return { file, seams, problems };
+}
+
+/**
+ * Exits with every name its own, within a map file's name length: a second
+ * road into the same district is "To TANGLEWOOD 2", because a map file names
+ * each way out once.
+ */
+function uniqueNames(exits: readonly MapFileExit[]): MapFileExit[] {
+  const limit = MAP_FILE_LIMITS.maxPlaceNameLength;
+  const seen = new Map<string, number>();
+  return exits.map((exit) => {
+    const base = exit.name.slice(0, limit);
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    return count === 1 ? { ...exit, name: base } : { ...exit, name: `${base.slice(0, limit - 2)} ${count}` };
+  });
 }
 
 function limitProblems(file: MapFile): string[] {
