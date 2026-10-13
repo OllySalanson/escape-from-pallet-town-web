@@ -1187,6 +1187,31 @@ Left for a later pass:
 - the bottom crag is a heavy slab across the view;
 - the switchbacks still turn in right angles.
 
+### Walked in the game
+
+`tools/playtest/stormcrown.mjs` plays it on the explorer run against a
+test-mode build: dropped at The Strand, into the sea cave, across B4F, down the
+hole, across B5F, out of the Chimney, up the crags, a fight with Mew by the
+cairn and its one throw, and out over the top by the Cloud Stair. The walk is
+planned over the scene's own collision and links after every step, so a hole
+or a door is pressed into as a player presses into it, and a hunter standing
+in the one lane is walked into and fled, as a player gets past one.
+
+    node tools/playtest/stormcrown.mjs <url of a test-mode build> <out dir> [--port=<CDP port>]
+
+| | |
+|---|---|
+| ![the sea cave on the Strand](stormcrown-walk/1-sea-cave.png) | ![out of the Chimney](stormcrown-walk/2-chimney.png) |
+| ![the Storm Shelter](stormcrown-walk/3-shelter.png) | ![Mew by the cairn](stormcrown-walk/4-cairn.png) |
+| ![a wild Mew](stormcrown-walk/5-mew.png) | ![the one throw](stormcrown-walk/6-one-throw.png) |
+
+![out by the Cloud Stair](stormcrown-walk/8-out.png)
+
+The structure sweeps found one fault the mapcraft checks did not: the bottom
+crag had two ledges one above the other, and the ground between them could be
+reached only by hopping, which the game's one-connected-place rule (asked on
+collision alone) reads as an island. Each crag has one ledge now.
+
 ![B5F, the deepest floor](greystone-caves-b5f.png)
 
 ## How it ships
@@ -1201,7 +1226,7 @@ player's map is built by). While its districts are being drawn it is on
   `greystoneVale.test.ts` holds that against every contract banked.
 - **Every structure and safety rule holds it now** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
-  walked tile - through `mapStructure.greystoneVale1-4.test.ts` and the rest of
+  walked tile - through `mapStructure.greystoneVale1-6.test.ts` and the rest of
   the suite.
 - **What a finished map pays and guards waits for its districts**: its boss and
   two doors, its locked crate, its loot (money,

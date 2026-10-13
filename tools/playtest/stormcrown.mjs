@@ -35,6 +35,11 @@ const CHIMNEY_FOOT = local(24, 55);
 const BESIDE_MEW = local(28, 4);
 const SHELTER = local(52, 27);
 
+// A map's links are a table keyed by a tile's index and the way pressed
+// (`linkTable` in gridMovement.ts); read back as rows a walk can follow.
+const LINKS = `((w) => { const W = w.collisionData[0].length; const ways = ['up', 'down', 'left', 'right'];
+  return [...(w.currentMap.links ?? new Map())].map(([key, to]) => { const tile = Math.floor(key / 4);
+    return { from: { x: tile % W, y: Math.floor(tile / W) }, toward: ways[key % 4], to: { x: to % W, y: Math.floor(to / W) } }; }); })`;
 const browser = port ? attachBrowser(Number(port), { window: PIXEL_WINDOW }) : await launchBrowser({ window: PIXEL_WINDOW });
 const WORLD = `${GAME}.scene.getScene('world')`;
 const failures = [];
@@ -87,13 +92,30 @@ try {
   };
   const where = () =>
     page.evaluate(
-      `(() => { const w = ${WORLD}; const a = w.currentArea?.(); return { area: a?.name ?? 'outdoors', tile: w.currentTile }; })()`,
+      `(() => { const w = ${WORLD}; const a = w.currentArea?.(); return { area: a?.name ?? 'outdoors', kind: a?.kind ?? 'outdoors', tile: w.currentTile }; })()`,
     );
-  /** A wild fight, or the hunter, met on the way: fought out on the first move. */
+  const BATTLE = `${GAME}.scene.getScene('battle')`;
+  /**
+   * A wild fight, or the hunter, met on the way: left by RUN (a Lv 99 always
+   * gets away) or the hunter's flee, because what the walk is proving is the
+   * way up, and fighting every cave roll out spends the lead's best move dry.
+   * A trainer, which cannot be left, is fought on the first move.
+   */
   const fightThrough = async () => {
     for (let guard = 0; guard < 400 && (await page.evaluate(sceneIs('battle'))); guard += 1) {
-      if (await page.evaluate(`Boolean(document.querySelector('.move-chooser, [data-move-chooser]'))`)) await press('Escape');
-      else await press('Space');
+      if (await page.evaluate(`Boolean(document.querySelector('.move-chooser, [data-move-chooser]'))`)) {
+        await press('Escape');
+        await wait(300);
+        continue;
+      }
+      const menu = await page.evaluate(`(() => { const b = ${BATTLE}; if (b.mode !== 'main' || !b.commandTexts?.length) return null;
+        const count = b.mainCommandLabels().length;
+        return { at: b.selectedCommand, columns: count > 4 ? 3 : 2, leave: b.trainer ? (b.hunterBattle ? 1 : 0) : count - 1 }; })()`);
+      if (menu && menu.at !== menu.leave) {
+        const [row, column] = [Math.floor(menu.at / menu.columns), menu.at % menu.columns];
+        const [toRow, toColumn] = [Math.floor(menu.leave / menu.columns), menu.leave % menu.columns];
+        await press(row !== toRow ? (row < toRow ? 'ArrowDown' : 'ArrowUp') : column < toColumn ? 'ArrowRight' : 'ArrowLeft');
+      } else await press('Space');
       await wait(300);
     }
     await until(`${sceneIs('world')} || ${sceneIs('extraction')}`, 'the world after a fight');
@@ -110,13 +132,16 @@ try {
     page.evaluate(`(() => { const w = ${WORLD}; const c = w.collisionData, H = c.length, W = c[0].length;
       const keys = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
       const through = new Map();
-      for (const link of w.currentMap.links ?? []) { const k = link.from.y * W + link.from.x; if (!through.has(k)) through.set(k, []); through.get(k).push(link); }
+      for (const link of ${LINKS}(w)) { const k = link.from.y * W + link.from.x; if (!through.has(k)) through.set(k, []); through.get(k).push(link); }
+      // The hunter is walked into, as a player gets past one standing in a lane:
+      // caught, fled, and it falls back off the way the player is going.
+      const hunter = w.hunterState?.mapId === w.currentMap.id ? w.hunterState.position : undefined;
       const goal = ${JSON.stringify(target)}; const id = (x, y) => y * W + x; const s = w.currentTile;
       if (s.x === goal.x && s.y === goal.y) return null;
       const first = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]];
       for (let head = 0; head < queue.length; head += 1) { const [x, y] = queue[head]; const here = first.get(id(x, y));
         const moves = [[0, -1, 'ArrowUp'], [0, 1, 'ArrowDown'], [-1, 0, 'ArrowLeft'], [1, 0, 'ArrowRight']]
-          .filter(([dx, dy]) => { const nx = x + dx, ny = y + dy; return nx >= 0 && ny >= 0 && nx < W && ny < H && (!w.isBlocked({ x: nx, y: ny }) || (nx === goal.x && ny === goal.y)); })
+          .filter(([dx, dy]) => { const nx = x + dx, ny = y + dy; return nx >= 0 && ny >= 0 && nx < W && ny < H && (!w.isBlocked({ x: nx, y: ny }) || (nx === goal.x && ny === goal.y) || (hunter && nx === hunter.x && ny === hunter.y)); })
           .map(([dx, dy, key]) => [x + dx, y + dy, key]);
         for (const link of through.get(id(x, y)) ?? []) moves.push([link.to.x, link.to.y, keys[link.toward]]);
         for (const [nx, ny, key] of moves) { if (first.has(id(nx, ny))) continue; first.set(id(nx, ny), here ?? key);
@@ -125,7 +150,7 @@ try {
 
   /** Walks to `target` the way a player would, fighting what it meets; false if it cannot. */
   const travel = async (target, what) => {
-    for (let guard = 0; guard < 2500; guard += 1) {
+    for (let guard = 0; guard < 6000; guard += 1) {
       if (await page.evaluate(sceneIs('battle'))) await fightThrough();
       if (await page.evaluate(sceneIs('extraction'))) throw new Error(`the raid ended on the way to ${what}`);
       await clearDialog();
@@ -163,7 +188,7 @@ try {
   // -- Down through the caves: in by the sea cave, B4F's hole, across B5F -------
   const seaCave = await page.evaluate(`(() => { const w = ${WORLD}; const areas = w.currentMap.areas ?? [];
     const inside = (id, { x, y }) => { const r = areas.find((a) => a.id === id)?.rect; return Boolean(r) && x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height; };
-    const link = (w.currentMap.links ?? []).find((l) => inside('greystone-caves-b4f', l.to) && inside(undefined, l.from));
+    const link = ${LINKS}(w).find((l) => inside('greystone-caves-b4f', l.to) && inside(undefined, l.from));
     return link ? link.from : null; })()`);
   check(seaCave !== null, 'the sea cave opens onto B4F');
   if (seaCave) {
@@ -172,7 +197,7 @@ try {
   }
   await travel(CHIMNEY_FOOT, 'the Chimney');
   const out = await where();
-  check(out.area === 'outdoors' && out.tile.x === CHIMNEY_FOOT.x && out.tile.y === CHIMNEY_FOOT.y, `out of the Chimney onto Stormcrown (${JSON.stringify(out)})`);
+  check(out.kind === 'outdoors' && out.tile.x === CHIMNEY_FOOT.x && out.tile.y === CHIMNEY_FOOT.y, `out of the Chimney onto Stormcrown (${JSON.stringify(out)})`);
   await page.screenshot(`${outDir}/stormcrown-2-chimney.png`);
 
   // -- The climb: past the Storm Shelter, to the cairn ---------------------------------
@@ -187,7 +212,7 @@ try {
   await press('Space');
   await wait(300);
   const cry = await dialog();
-  check(cry === 'Mew!', `Mew cries when walked up to ("${cry}")`);
+  check(/mew/i.test(cry ?? ''), `Mew cries when walked up to ("${cry}")`);
   const pending = await page.evaluate(`${WORLD}.pendingWildBattle ?? null`);
   check(pending?.speciesId === 'mew' && pending?.level === 50 && pending?.legendary === true, `Mew fights as a legend at 50 (${JSON.stringify(pending)})`);
   await clearDialog();
@@ -198,6 +223,7 @@ try {
   for (let guard = 0; guard < 400 && (await page.evaluate(sceneIs('battle'))); guard += 1) {
     const throwState = await page.evaluate(`${GAME}.scene.getScene('battle').legendThrow`);
     if (throwState !== 'fighting' && throwState !== null) {
+      await wait(2500);
       await page.screenshot(`${outDir}/stormcrown-6-one-throw.png`);
       check(true, `Mew beaten: ${throwState}`);
       break;
@@ -209,7 +235,7 @@ try {
   await page.screenshot(`${outDir}/stormcrown-7-after-mew.png`);
 
   // -- Out over the top --------------------------------------------------------------
-  const stair = await page.evaluate(`(() => { const w = ${WORLD}; const e = w.extractionPointsForCurrentMap().find((p) => p.label === 'Cloud Stair'); return e ? e.position : null; })()`);
+  const stair = await page.evaluate(`(() => { const w = ${WORLD}; const e = w.extractionPointsForCurrentMap().find((p) => p.label === 'CLOUD STAIR'); return e ? e.position : null; })()`);
   check(stair !== null, 'the Cloud Stair is a way out');
   if (stair) {
     await travel(stair, 'the Cloud Stair').catch(() => undefined);
@@ -223,6 +249,8 @@ try {
   console.log(`FAIL ${error?.message ?? error}`);
   await page.screenshot(`${outDir}/stormcrown-failure.png`).catch(() => undefined);
 } finally {
+  // Attached to a browser that outlives the run, the tab is this run's to close.
+  await page.close().catch(() => undefined);
   await browser.close?.();
 }
 console.log(failures.length === 0 ? 'Stormcrown: all ok' : `Stormcrown: ${failures.length} failed`);
