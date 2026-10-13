@@ -58,6 +58,13 @@ export function districtFile(
   },
 ): MapFile {
   const district = districtOf(plan, id);
+  // The district holding the Card Key's card is walked alone with its way out
+  // toward the gate locked, so the card opens something there too.
+  const card = plan.cardKey?.card === id ? plan.cardKey : undefined;
+  const lockedWay =
+    card && !(details.exits ?? []).some((exit) => exit.opens.when === 'key')
+      ? wayToward(plan, id, card.lock)
+      : undefined;
   // A river is nobody's way out: its opening is water.
   const exits: MapFileExit[] = uniqueNames(
     openingsOf(plan, id)
@@ -68,16 +75,21 @@ export function districtFile(
           'exit' in opening.leadsTo
             ? opening.leadsTo.exit
             : `To ${districtOf(plan, opening.leadsTo.district).name}`;
-        return { x, y, name, opens: { when: 'always' } };
+        const locked = lockedWay?.side === opening.side && lockedWay.at === opening.at;
+        return { x, y, name, opens: locked ? { when: 'key' } : { when: 'always' } };
       }),
   ).concat(details.exits ?? []);
+  const standInCard = standInCardTile(plan, id);
   return program.toFile({
     id: `${plan.id}-${id}`.slice(0, 40),
     name: district.name.slice(0, MAP_FILE_LIMITS.maxNameLength),
     maker: plan.maker,
     dropIns: details.dropIns.length > 0 ? details.dropIns : [standInDropIn(plan, id)],
     exits,
-    itemSpots: details.itemSpots,
+    itemSpots:
+      standInCard && !(details.itemSpots ?? []).some((spot) => spot.key)
+        ? [...(details.itemSpots ?? []), { x: standInCard[0], y: standInCard[1], key: true }]
+        : details.itemSpots,
     wildlife: district.wildlife ?? plan.wildlife,
     extra: details.extra,
   });
@@ -98,6 +110,26 @@ function standInDropIn(plan: WorldPlan, id: string): MapFileDropIn {
 
 function standInDropInTile(size: number, opening: Opening): [number, number] {
   return insideOpening(size, opening, SEAM_DEPTH);
+}
+
+/** A district's way in from (or out toward) another: the opening between them, else its first. */
+function wayToward(plan: WorldPlan, id: string, other: string): Opening | undefined {
+  const ways = openingsOf(plan, id).filter((opening) => opening.kind !== 'river');
+  return (
+    ways.find((opening) => 'district' in opening.leadsTo && opening.leadsTo.district === other) ??
+    ways[0]
+  );
+}
+
+/**
+ * Where the district holding the Card Key's gate has a stand-in card when it is
+ * walked alone: a step further in than its stand-in landing, on its way in from
+ * the card's district - which is where the card comes from.
+ */
+function standInCardTile(plan: WorldPlan, id: string): [number, number] | undefined {
+  if (plan.cardKey?.lock !== id) return undefined;
+  const way = wayToward(plan, id, plan.cardKey.card);
+  return way ? insideOpening(plan.districtSize, way, SEAM_DEPTH + 1) : undefined;
 }
 
 /**
@@ -192,7 +224,12 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
         .filter((exit) => exit.area !== undefined || !standIns.has(`${exit.x},${exit.y}`))
         .map(move),
     );
-    merged.itemSpots.push(...file.itemSpots.map(move));
+    const standInCard = standInCardTile(plan, district.id)?.join(',');
+    merged.itemSpots.push(
+      ...file.itemSpots
+        .filter((spot) => !(spot.key && spot.area === undefined && `${spot.x},${spot.y}` === standInCard))
+        .map(move),
+    );
     merged.people.push(...(file.people ?? []).map(move));
     merged.signs.push(...(file.signs ?? []).map(move));
     merged.landmarks.push(...(file.landmarks ?? []).map(move));

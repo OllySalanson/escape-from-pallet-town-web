@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { MapFile } from '../../src/game/world/mapFile';
 import { checkMapFile } from '../../src/game/world/mapFileChecks';
 import { allPassed, hardChecks } from './checks';
 import { caveMaze, caveMouthSpots, chamberFloor, plantCaveMouth } from './caves';
 import { MapProgram, seeded } from './program';
-import { stitch } from './stitch';
+import { districtFile, stitch } from './stitch';
 import { readTiles, regions, walkable, WALKABLE_KINDS } from './tiles';
 import {
   checkPlan,
@@ -164,6 +165,52 @@ describe('stitching', () => {
     };
     const { problems } = stitch(QUARRY_ROAD, { ...built, 'orchard-bend': leaky });
     expect(problems.join(' ')).toMatch(/orchard-bend is open at its edge/);
+  });
+});
+
+describe('a Card Key between two districts', () => {
+  const plan: WorldPlan = { ...QUARRY_ROAD, cardKey: { lock: 'old-quarry', card: 'orchard-bend' } };
+  const open = (id: string) => {
+    const p = startDistrict(plan, id);
+    p.meadow(0, 0, 32, 32);
+    return p;
+  };
+  const quarry = () =>
+    districtFile(plan, 'old-quarry', open('old-quarry'), {
+      dropIns: [{ x: 16, y: 20, name: 'Pit' }],
+      exits: [{ x: 24, y: 24, name: 'Gate', opens: { when: 'key' } }],
+    });
+  const orchard = () =>
+    districtFile(plan, 'orchard-bend', open('orchard-bend'), {
+      dropIns: [{ x: 10, y: 10, name: 'Bend' }],
+      itemSpots: [{ x: 8, y: 22, key: true }],
+    });
+  const pairing = (file: MapFile) => checkMapFile(file).find((check) => check.id === 'reachable')!.problems;
+
+  it("walks each district alone with a stand-in for the other's half", () => {
+    // The gate's district has a stand-in card on its way in from the card's...
+    expect(quarry().itemSpots.filter((spot) => spot.key)).toHaveLength(1);
+    expect(pairing(quarry())).toEqual([]);
+    // ...and the card's district has its way toward the gate locked.
+    expect(orchard().exits.find((exit) => exit.name === 'To OLD QUARRY')?.opens).toEqual({ when: 'key' });
+    expect(pairing(orchard())).toEqual([]);
+  });
+
+  it('stitches the real lock and the real card, and neither stand-in', () => {
+    const { file, problems } = stitch(plan, { 'old-quarry': quarry(), 'orchard-bend': orchard() });
+    expect(problems).toEqual([]);
+    expect(file.itemSpots.filter((spot) => spot.key)).toEqual([{ x: 8, y: 22, key: true }]);
+    expect(file.exits.filter((exit) => exit.opens.when === 'key').map((exit) => exit.name)).toEqual(['Gate']);
+    expect(pairing(file)).toEqual([]);
+  });
+
+  it('is two districts of the plan, never one', () => {
+    expect(checkPlan({ ...QUARRY_ROAD, cardKey: { lock: 'old-quarry', card: 'old-quarry' } }).join(' ')).toMatch(
+      /lies in the district it opens/,
+    );
+    expect(checkPlan({ ...QUARRY_ROAD, cardKey: { lock: 'nowhere', card: 'old-quarry' } }).join(' ')).toMatch(
+      /names 'nowhere'/,
+    );
   });
 });
 

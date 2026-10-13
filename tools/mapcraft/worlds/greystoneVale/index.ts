@@ -14,6 +14,7 @@ import { millbrook } from './millbrook';
 import { orchardTerraces } from './orchardTerraces';
 import { pineHollow } from './pineHollow';
 import { GREYSTONE_VALE } from './plan';
+import { powerStation } from './powerStation';
 import { reedmere } from './reedmere';
 import { smugglersCove } from './smugglersCove';
 import { sunkenQuarter } from './sunkenQuarter';
@@ -34,6 +35,7 @@ export default function greystoneVale(): WorldResult {
       reedmere: reedmere(),
       'gull-strand': gullStrand(),
       'orchard-terraces': orchardTerraces(),
+      'power-station': powerStation(),
       'the-wreck': theWreck(),
       'sunken-quarter': sunkenQuarter(),
       'smugglers-cove': smugglersCove(),

@@ -7,8 +7,10 @@
  * north again - until it reaches the lip of the hollow the wood is named for and
  * drops in by a ledge: the quick way down, never the way back. It climbs out
  * east to the clearing where one broadleaf stands among the pines and leaves as
- * the Pine Trail. The way back from the hollow goes round by the broadleaf, so
- * the ledge has a job: it saves the long way round.
+ * the Pine Trail, on into The Power Station; the station's Card Key was lost in
+ * that clearing, and lies there one raid in five. The way back from the hollow
+ * goes round by the broadleaf, so the ledge has a job: it saves the long way
+ * round.
  *
  * The way south to Tanglewood is a deer path nobody signs: it leaves the
  * hollow's foot through tall grass and winds down between the trunks. Two
@@ -105,6 +107,7 @@ export function pineHollow(): MapcraftResult {
       { x: 10, y: 33 }, // the nook south of the col
       { x: 57, y: 41 }, // the nook south of the climb
       { x: 40, y: 54 }, // the fox earth, south of the hollow
+      { x: 53, y: 8, key: true }, // the station's Card Key, dropped past the oak
     ],
     // A way out nobody signs, at the back of the nook south of the col: the
     // wood is wide, and its one planned way out is at its far east end.

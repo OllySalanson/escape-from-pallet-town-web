@@ -286,6 +286,13 @@ export const RUN_INSERTIONS = {
     position: { x: 152, y: 140 },
     description: 'The farmyard at Orchard Terraces, between the orchards, above the terraces down to the sea.',
   },
+  'greystone-vale-the-dam': {
+    id: 'greystone-vale-the-dam',
+    label: 'The Dam',
+    mapId: 'greystone-vale',
+    position: { x: 223, y: 27 },
+    description: 'The forecourt of the power station, under the dam, with the switchyard gone to grass beyond it.',
+  },
   'greystone-vale-salvage-camp': {
     id: 'greystone-vale-salvage-camp',
     label: 'Salvage Camp',
