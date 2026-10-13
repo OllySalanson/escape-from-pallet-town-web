@@ -6,9 +6,10 @@
  * A district is added here as it is drawn, each in its own file beside this one.
  */
 import type { WorldResult } from '../../worldReport';
+import { highMoor } from './highMoor';
 import { millbrook } from './millbrook';
 import { GREYSTONE_VALE } from './plan';
 
 export default function greystoneVale(): WorldResult {
-  return { plan: GREYSTONE_VALE, districts: { millbrook: millbrook() } };
+  return { plan: GREYSTONE_VALE, districts: { millbrook: millbrook(), 'high-moor': highMoor() } };
 }

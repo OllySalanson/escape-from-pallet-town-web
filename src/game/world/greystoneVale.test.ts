@@ -32,11 +32,11 @@ describe('Greystone Vale, still being drawn', () => {
     expect(isMapInProgress('greystone-vale')).toBe(true);
   });
 
-  it('lands where its file says, at its first drop-in', () => {
-    expect(RUN_INSERTIONS['greystone-vale'].position).toEqual(vale.insertions[0].position);
-    expect(insertionsOn('greystone-vale').map((insertion) => insertion.id)).toEqual([
-      'greystone-vale',
-    ]);
+  it('lands where its file says: the front door at its first drop-in, and one landing a drop-in', () => {
+    expect(insertionsOn('greystone-vale')[0].id).toBe('greystone-vale');
+    expect(insertionsOn('greystone-vale').map((insertion) => insertion.position)).toEqual(
+      vale.insertions.map((insertion) => insertion.position),
+    );
   });
 
   it('reaches the game through the same lookups as any map', () => {
