@@ -16,8 +16,23 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from '../maker/submitCon
  * `fetch` (no client library, no sign-in, no bot check), in batches, and a
  * batch that cannot go is dropped without a word. A browser that asks not to
  * be tracked (Do Not Track or Global Privacy Control) sends nothing, and so
- * does every build that is not the published game - a local server, a test
- * mode build, the test suite - so nobody's playtesting is counted.
+ * does every build that is not the published game at its published address -
+ * a local server, a test mode build, the test suite, a copy anywhere else -
+ * so nobody's playtesting is counted.
+ *
+ * Nor is a machine's. The first night of counting was six "players", every one
+ * a link scanner: page loads from cloud addresses in made-up browsers, and a
+ * headless Chrome, each staying the fifteen seconds before the first batch and
+ * never touching anything. So an automated browser (`navigator.webdriver`, a
+ * headless or crawler user agent) sends nothing, and no page sends anything at
+ * all - not even that it was opened - until a person has pressed a key or
+ * clicked.
+ *
+ * And a tester is counted apart: a browser marked as the owner's, or as a
+ * friend's helping test (`?tester` once on the address, or the switch on the
+ * STATS page), says so with every batch, and the STATS page's headline numbers
+ * are real players only. The mark is one word in this browser's own storage,
+ * never a cookie.
  */
 
 export type PlayMoment =
@@ -61,6 +76,13 @@ export const FLUSH_EVERY_MS = 60 * 1000;
 export const FIRST_FLUSH_MS = 15 * 1000;
 
 const VISITOR_KEY = 'escape-from-pallet-town.play-counter.visitor';
+const TESTER_KEY = 'escape-from-pallet-town.play-counter.tester';
+
+/** Where the game is published: the one address whose play is counted. */
+export const PUBLISHED_HOST = 'ollysalanson.github.io';
+export const PUBLISHED_PATH = '/escape-from-pallet-town-web/';
+/** The link that marks a browser as a tester's, to open once on it or send to a friend helping test. */
+export const TESTER_LINK = `https://${PUBLISHED_HOST}${PUBLISHED_PATH}?tester`;
 
 /** What a raid's map is counted as. A player's map is never named: its id is a player's words. */
 export function mapDetail(mapId: string): string {
@@ -107,6 +129,9 @@ export interface CountingWorld {
   readonly production: boolean;
   readonly testMode: boolean;
   readonly hostname: string;
+  readonly pathname: string;
+  /** Whether the browser is driven by a program (`isAutomatedBrowser`). */
+  readonly automated: boolean;
   /** `navigator.doNotTrack`, which some browsers spell `window.doNotTrack`. */
   readonly doNotTrack: string | null | undefined;
   /** `navigator.globalPrivacyControl`. */
@@ -114,14 +139,33 @@ export interface CountingWorld {
 }
 
 /**
- * Whether to count at all: only the published game, and never for a browser
- * that has asked not to be tracked.
+ * What a program driving a browser gives away: WebDriver sets
+ * `navigator.webdriver` (Playwright, Puppeteer and Selenium all do), a
+ * headless Chrome names itself, and crawlers, previewers and page checkers
+ * say what they are. A scanner that hides all of it is still caught by the
+ * counter waiting for a person's key or click.
+ */
+const AUTOMATED_AGENT =
+  /headless|(?<!cu)bot(?:\b|\/)|crawl|spider|slurp|preview|lighthouse|pagespeed|phantomjs|puppeteer|playwright|selenium|webdriver|electron|python|curl|wget|java\/|go-http|node-fetch|axios/i;
+
+export function isAutomatedBrowser(browser: { readonly webdriver?: boolean; readonly userAgent?: string }): boolean {
+  if (browser.webdriver === true) {
+    return true;
+  }
+  const agent = browser.userAgent ?? '';
+  return !agent.startsWith('Mozilla/') || AUTOMATED_AGENT.test(agent);
+}
+
+/**
+ * Whether to count at all: only the published game at its published address,
+ * never a browser a program is driving, and never one that has asked not to be
+ * tracked.
  */
 export function shouldCount(world: CountingWorld): boolean {
-  if (!world.production || world.testMode) {
+  if (!world.production || world.testMode || world.automated) {
     return false;
   }
-  if (world.hostname === 'localhost' || world.hostname === '127.0.0.1' || world.hostname === '[::1]' || world.hostname === '') {
+  if (world.hostname !== PUBLISHED_HOST || !world.pathname.startsWith(PUBLISHED_PATH)) {
     return false;
   }
   if (world.doNotTrack === '1' || world.doNotTrack === 'yes' || world.globalPrivacyControl === true) {
@@ -135,6 +179,7 @@ export type SendBatch = (batch: {
   readonly visitor_id: string;
   readonly build: string;
   readonly events: readonly SentMoment[];
+  readonly tester: boolean;
 }, keepalive: boolean) => Promise<void>;
 
 /** The things a counter reads from the page, so it can be tested without one. */
@@ -143,6 +188,8 @@ export interface CounterHost {
   readonly visible: () => boolean;
   readonly online: () => boolean;
   readonly visitorId: () => string;
+  /** Whether this browser is marked as a tester's, asked as each batch goes so a mark counts at once. */
+  readonly tester: () => boolean;
   readonly build: string;
   readonly send: SendBatch;
 }
@@ -151,23 +198,31 @@ export interface CounterHost {
  * The counter: a queue of moments and a clock of time played, sent in batches.
  * Time counts only while the page is on screen and somebody has pressed a key
  * or clicked in the last five minutes, so a tab left open overnight is not a
- * night of play.
+ * night of play. Nothing goes at all until the first key or click: a page
+ * nobody touched was opened by a machine, or by nobody who played.
  */
 export class PlayCounter {
   private queue: PlayMoment[] = [];
   private playedMs = 0;
   private lastMark: number;
-  private lastInput: number;
+  private lastInput = Number.NEGATIVE_INFINITY;
 
   private readonly host: CounterHost;
 
   public constructor(host: CounterHost) {
     this.host = host;
     this.lastMark = host.now();
-    this.lastInput = this.lastMark;
+  }
+
+  /** Whether a person has pressed a key or clicked on this page yet. */
+  public heardFrom(): boolean {
+    return this.lastInput > Number.NEGATIVE_INFINITY;
   }
 
   public count(moment: PlayMoment): void {
+    if (!this.heardFrom() && this.queue.length >= PLAY_BATCH_LIMIT) {
+      return;
+    }
     this.queue.push(moment);
     if (this.queue.length >= PLAY_BATCH_LIMIT - 1) {
       this.flush(false);
@@ -197,10 +252,14 @@ export class PlayCounter {
 
   /**
    * Sends what is waiting. Offline, or if the send fails, it is dropped: a
-   * count is worth less than a game that never waits on one.
+   * count is worth less than a game that never waits on one. Until somebody
+   * has touched the page it is kept, and sent with the first batch after.
    */
   public flush(keepalive: boolean): void {
     this.settleTime();
+    if (!this.heardFrom()) {
+      return;
+    }
     const seconds = Math.floor(this.playedMs / 1000);
     this.playedMs -= seconds * 1000;
     const moments = [...this.queue, ...playedMoments(seconds)];
@@ -212,7 +271,7 @@ export class PlayCounter {
       const events = moments.slice(start, start + PLAY_BATCH_LIMIT).map(toSent);
       try {
         void this.host
-          .send({ visitor_id: this.host.visitorId(), build: this.host.build, events }, keepalive)
+          .send({ visitor_id: this.host.visitorId(), build: this.host.build, events, tester: this.host.tester() }, keepalive)
           .catch(() => undefined);
       } catch {
         // Dropped, as above.
@@ -234,6 +293,80 @@ export function storedVisitorId(storage: Pick<Storage, 'getItem' | 'setItem'> | 
   } catch {
     return make();
   }
+}
+
+type MarkStorage = Pick<Storage, 'getItem' | 'setItem'>;
+
+/** Whether this browser is marked as a tester's. */
+export function isTesterBrowser(storage: Pick<Storage, 'getItem'> | undefined): boolean {
+  try {
+    return storage?.getItem(TESTER_KEY) === 'yes';
+  } catch {
+    return false;
+  }
+}
+
+/** Whether this browser has ever been marked either way, so the owner's first look at STATS can mark it. */
+export function testerMarkChosen(storage: Pick<Storage, 'getItem'> | undefined): boolean {
+  try {
+    const kept = storage?.getItem(TESTER_KEY);
+    return kept === 'yes' || kept === 'no';
+  } catch {
+    return false;
+  }
+}
+
+/** Marks this browser as a tester's, or as a real player's. Returns whether the mark was kept. */
+export function markTesterBrowser(storage: MarkStorage | undefined, tester: boolean): boolean {
+  try {
+    if (!storage) {
+      return false;
+    }
+    storage.setItem(TESTER_KEY, tester ? 'yes' : 'no');
+    return isTesterBrowser(storage) === tester;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What `?tester` on the address asks: `?tester` marks this browser as a
+ * tester's, `?tester=off` (or `no`, `0`, `false`) unmarks it, and anything
+ * else leaves it be.
+ */
+export function testerLinkAsks(search: string): boolean | undefined {
+  const params = new URLSearchParams(search);
+  if (!params.has('tester')) {
+    return undefined;
+  }
+  return !['off', 'no', '0', 'false'].includes((params.get('tester') ?? '').toLowerCase());
+}
+
+/**
+ * Follows a `?tester` link: marks the browser and takes the word off the
+ * address, so a bookmark or a shared link of the page afterwards does not
+ * carry it. Returns what was asked, if anything.
+ */
+export function followTesterLink(target: Window = window): boolean | undefined {
+  const asks = testerLinkAsks(target.location.search);
+  if (asks === undefined) {
+    return undefined;
+  }
+  let storage: Storage | undefined;
+  try {
+    storage = target.localStorage;
+  } catch {
+    storage = undefined;
+  }
+  markTesterBrowser(storage, asks);
+  try {
+    const url = new URL(target.location.href);
+    url.searchParams.delete('tester');
+    target.history.replaceState(target.history.state, '', url.toString());
+  } catch {
+    // The address keeps the word; the mark is made either way.
+  }
+  return asks;
 }
 
 /** The batch, posted signed out to the game's own project. */
@@ -281,12 +414,18 @@ export function installPlayCounter(world: CountingWorld, target: Window = window
     visible: () => target.document.visibilityState === 'visible',
     online: () => target.navigator.onLine !== false,
     visitorId: () => (visitor ??= storedVisitorId(storage, () => target.crypto.randomUUID())),
+    tester: () => isTesterBrowser(storage),
     build: buildDetail(BUILD_VERSION),
     send: postBatch,
   });
   counter = made;
   made.count({ kind: 'visit' });
-  const touched = (): void => made.touched();
+  // Only a person's own key or click: never one a script made up.
+  const touched = (event: Event): void => {
+    if (event.isTrusted) {
+      made.touched();
+    }
+  };
   const onVisibility = (): void => {
     made.settleTime();
     if (target.document.visibilityState === 'hidden') {

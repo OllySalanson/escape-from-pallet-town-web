@@ -199,7 +199,7 @@ export type GameDatabase = {
       };
       /** Counting play (`analytics/playCounter.ts`), sent by plain `fetch` rather than this client. */
       record_play: {
-        Args: { visitor_id: string; build: string; events: unknown };
+        Args: { visitor_id: string; build: string; events: unknown; tester: boolean };
         Returns: number;
       };
       /** The owner's play counts (`analytics/playStats.ts`), refused to anyone but an admin. */

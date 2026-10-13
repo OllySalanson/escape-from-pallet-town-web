@@ -17,6 +17,8 @@ export interface PlayDay {
   readonly seconds: number;
   /** Names first chosen that day at NEW GAME. */
   readonly newNames: number;
+  /** Testers' browsers that opened the game that day, counted apart from the players. */
+  readonly testers: number;
 }
 
 export interface PlayStats {
@@ -26,6 +28,12 @@ export interface PlayStats {
   readonly playersAllTime: number;
   readonly returningWeek: number;
   readonly returningAllTime: number;
+  /** Browsers marked as testers' (`playCounter.ts`), counted apart and never in the numbers above. */
+  readonly testersToday: number;
+  readonly testersWeek: number;
+  readonly testersAllTime: number;
+  /** Browsers found to have been machines and set aside by hand. */
+  readonly automatedAllTime: number;
   /** Named players: everyone who has chosen a name at NEW GAME, read from the names themselves. */
   readonly namedToday: number;
   readonly namedWeek: number;
@@ -36,6 +44,8 @@ export interface PlayStats {
   readonly month: Readonly<Record<string, number>>;
   /** Every day's totals ever counted, the same way. */
   readonly allTime: Readonly<Record<string, number>>;
+  /** The testers' last thirty days' totals, the same way. */
+  readonly testerMonth: Readonly<Record<string, number>>;
 }
 
 const count = (value: unknown): number =>
@@ -79,6 +89,7 @@ export function readPlayStats(raw: unknown): PlayStats | undefined {
       sessions: count(day.sessions),
       seconds: count(day.seconds),
       newNames: count(day.newNames),
+      testers: count(day.testers),
     });
   }
   return {
@@ -88,12 +99,17 @@ export function readPlayStats(raw: unknown): PlayStats | undefined {
     playersAllTime: count(answer.playersAllTime),
     returningWeek: count(answer.returningWeek),
     returningAllTime: count(answer.returningAllTime),
+    testersToday: count(answer.testersToday),
+    testersWeek: count(answer.testersWeek),
+    testersAllTime: count(answer.testersAllTime),
+    automatedAllTime: count(answer.automatedAllTime),
     namedToday: count(answer.namedToday),
     namedWeek: count(answer.namedWeek),
     namedAllTime: count(answer.namedAllTime),
     days,
     month: counts(answer.month),
     allTime: counts(answer.allTime),
+    testerMonth: counts(answer.testerMonth),
   };
 }
 

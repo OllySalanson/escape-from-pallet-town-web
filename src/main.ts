@@ -6,7 +6,7 @@ import { installTestModeControls, requestedTestMode } from './game/dev/testMode'
 import { mountGame, unmountGame } from './game/gameLifecycle';
 import { watchViewport } from './game/display/stageScaler';
 import { installFeedbackDesk } from './game/feedback/feedbackDesk';
-import { installPlayCounter } from './game/analytics/playCounter';
+import { followTesterLink, installPlayCounter, isAutomatedBrowser } from './game/analytics/playCounter';
 import { installPixelText } from './game/ui/pixelText';
 import { watchForKeyboard } from './game/input/keyboardSeen';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
@@ -38,12 +38,16 @@ const game = mountGame(() => {
 const stopWatchingViewport = watchViewport(game);
 // The FEEDBACK tab and the F key, on every screen. See `feedback/feedbackDesk.ts`.
 const feedbackDesk = installFeedbackDesk(game);
-// Counts play for the owner's STATS page, only on the published game and never
-// for a browser that asks not to be tracked. See `game/analytics/playCounter.ts`.
+// Counts play for the owner's STATS page, only on the published game, never for
+// a browser a program drives or one that asks not to be tracked, and a tester's
+// (`?tester` once, or the STATS page's switch) apart. See `game/analytics/playCounter.ts`.
+followTesterLink();
 const stopCountingPlay = installPlayCounter({
   production: import.meta.env.PROD,
   testMode: testMode !== 'off',
   hostname: window.location.hostname,
+  pathname: window.location.pathname,
+  automated: isAutomatedBrowser(navigator),
   doNotTrack: navigator.doNotTrack ?? (window as unknown as { doNotTrack?: string }).doNotTrack,
   globalPrivacyControl: (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl,
 });

@@ -59,9 +59,14 @@ describe('the functions the migrations create', () => {
   });
 
   it('are opened to signed-out visitors only where that is the point', () => {
-    const toAnon = [...everything.matchAll(/grant execute on function ((?:public|private)\.\w+)\([^)]*\) to ([^;]*);/g)]
-      .filter((match) => /\banon\b|\bpublic\b/.test(match[2]))
-      .map((match) => match[1]);
+    // A function written again (a new argument, a new body) grants again, so each is named once.
+    const toAnon = [
+      ...new Set(
+        [...everything.matchAll(/grant execute on function ((?:public|private)\.\w+)\([^)]*\) to ([^;]*);/g)]
+          .filter((match) => /\banon\b|\bpublic\b/.test(match[2]))
+          .map((match) => match[1]),
+      ),
+    ];
     expect(toAnon.sort()).toEqual(Object.keys(OPEN_TO_EVERYONE).sort());
   });
 });

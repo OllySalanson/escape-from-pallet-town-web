@@ -11,6 +11,7 @@ function days(players: readonly number[]) {
     sessions: count * 2,
     seconds: count * 600,
     newNames: Math.floor(count / 2),
+    testers: count > 0 ? 1 : 0,
   }));
 }
 
@@ -21,6 +22,10 @@ const STATS: PlayStats = {
   playersAllTime: 41,
   returningWeek: 4,
   returningAllTime: 12,
+  testersToday: 2,
+  testersWeek: 3,
+  testersAllTime: 4,
+  automatedAllTime: 6,
   namedToday: 2,
   namedWeek: 5,
   namedAllTime: 10,
@@ -39,6 +44,7 @@ const STATS: PlayStats = {
     'build:def5678': 4,
   },
   allTime: { 'raid-start': 120, 'played-seconds': 7_800 },
+  testerMonth: { 'played-seconds': 5_400, 'raid-start': 9 },
 };
 
 describe('reading the counts', () => {
@@ -59,7 +65,7 @@ describe('reading the counts', () => {
 
 describe('the STATS screen', () => {
   it('leads with players today, this week and ever', () => {
-    const screen = statsScreen({ step: 'loaded', stats: STATS });
+    const screen = statsScreen({ step: 'loaded', stats: STATS, testerHere: false });
     expect(screen).toContain('Play stats');
     expect(screen).toContain('3 players today');
     for (const words of ['Today', 'This week', 'All time', 'Came back', '4 this week · 12 ever']) {
@@ -68,17 +74,31 @@ describe('the STATS screen', () => {
   });
 
   it('puts named players beside the visitors they came from', () => {
-    const screen = statsScreen({ step: 'loaded', stats: STATS });
+    const screen = statsScreen({ step: 'loaded', stats: STATS, testerHere: false });
     expect(screen).toContain('Named players');
     expect(screen).toContain('10 · 5 this week · 2 today');
     expect(screen).toContain('10 of 41 (24%)');
     expect(screen).toContain('New names each day');
     expect(screen).toMatch(/stats-bar is-today" style="--bar:40" title="7 Oct: 4 new names"/);
-    expect(statsScreen({ step: 'loaded', stats: { ...STATS, playersAllTime: 0 } })).toContain('no visitors yet');
+    expect(statsScreen({ step: 'loaded', stats: { ...STATS, playersAllTime: 0 }, testerHere: false })).toContain('no visitors yet');
+  });
+
+  it('counts testers apart, beside the players, and says what this browser is', () => {
+    const screen = statsScreen({ step: 'loaded', stats: STATS, testerHere: false });
+    expect(screen).toContain('real players · today is 12 Oct');
+    expect(screen).toContain('3 players today');
+    expect(screen).toMatch(/Testers<\/span><\/span><strong class="stats-value">2 today · 3 this week · 4 ever</);
+    expect(screen).toContain('1 hour 30 minutes · 9 raids');
+    expect(screen).toMatch(/Machines left out<\/span><\/span><strong class="stats-value">6</);
+    expect(screen).toContain('a player · mark as a tester');
+    expect(screen).toContain('https://ollysalanson.github.io/escape-from-pallet-town-web/?tester');
+    const mine = statsScreen({ step: 'loaded', stats: STATS, testerHere: true });
+    expect(mine).toContain('a tester · count as a player');
+    expect(mine).toContain('3 players today');
   });
 
   it('says how raids ended in plain words', () => {
-    const screen = statsScreen({ step: 'loaded', stats: STATS });
+    const screen = statsScreen({ step: 'loaded', stats: STATS, testerHere: false });
     for (const [name, value] of [
       ['Raids started', '20'],
       ['Got out', '11'],
@@ -96,7 +116,7 @@ describe('the STATS screen', () => {
   });
 
   it('draws a bar for every day, busiest full height, today in gold', () => {
-    const screen = statsScreen({ step: 'loaded', stats: STATS });
+    const screen = statsScreen({ step: 'loaded', stats: STATS, testerHere: false });
     expect(screen.match(/class="stats-bar[" ]/g)).toHaveLength(STATS.days.length * 2);
     expect(screen).toContain(`style="--bar:${CHART_HEIGHT}"`);
     expect(screen).toMatch(/stats-bar is-today" style="--bar:40" title="7 Oct: 8 players"/);
@@ -110,7 +130,7 @@ describe('the STATS screen', () => {
   });
 
   it('types no arrows, as no pixel-ui screen may', () => {
-    expect(statsScreen({ step: 'loaded', stats: STATS })).not.toMatch(/[←→↑↓▶✓]/);
+    expect(statsScreen({ step: 'loaded', stats: STATS, testerHere: false })).not.toMatch(/[←→↑↓▶✓]/);
   });
 });
 
