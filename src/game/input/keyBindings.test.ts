@@ -34,6 +34,7 @@ import { WorldScene } from '../scenes/WorldScene';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
+import { lootRefusalLine } from '../world/loot';
 import { KNOCK_FROM_THE_STEP_HINT, decorateKeyHintLine, houseKeyHintLine, roomKeyHintLine, yardKeyHintLine } from './keyBindings';
 
 /** Phaser's own table, not the mock's: the codes a real keyboard sends. */
@@ -78,7 +79,7 @@ function namedKeys(line: string): readonly (readonly [string, string])[] {
 const RAID_WORD_CONTROLS: Readonly<Record<string, string>> = {
   GUIDE: 'objectives',
   LOOK: 'look',
-  BAG: 'bag',
+  PACK: 'bag',
   TEAM: 'party',
 };
 
@@ -88,7 +89,7 @@ describe('the keys a HUD names', () => {
     const line = objectiveChipLines('LOST KIT: SW', false, false, new Set())[1];
     const named = namedKeys(line);
 
-    expect(named.map(([, word]) => word)).toEqual(['GUIDE', 'LOOK', 'BAG', 'TEAM']);
+    expect(named.map(([, word]) => word)).toEqual(['GUIDE', 'LOOK', 'PACK', 'TEAM']);
     for (const [key, word] of named) {
       const control = controls[RAID_WORD_CONTROLS[word]] as BoundKey;
       expect(control.keyCode, `${word} is named as [${key}]`).toBe(KEY_CODES[key]);
@@ -107,6 +108,18 @@ describe('the keys a HUD names', () => {
       ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'].map((digit) => KEY_CODES[digit]),
     );
     expect(roomKeyHintLine(new Set(['talk', 'ping']))).toBe('');
+  });
+
+  it('names B by the word a full pack tells the player to open', () => {
+    // A find refused for room sends the player to the screen B opens; the hint
+    // that teaches B has to call it the same thing, or "drop something from
+    // the PACK" points at a key the HUD calls something else.
+    const line = objectiveChipLines('LOST KIT: SW', false, false, new Set())[1];
+    const word = namedKeys(line).find(([key]) => key === 'B')?.[1];
+    const refusal = lootRefusalLine('potion', 1, 0);
+
+    expect(word).toBe('PACK');
+    expect(refusal).toContain(`from the ${word}`);
   });
 
   it('are the keys the yard binds', () => {
@@ -167,7 +180,7 @@ describe('the keys the house names', () => {
 describe('a key is named until it has been used once', () => {
   it('drops each key from the chip as it is learned, and the chip is one line once all are', () => {
     const learned = new Set<string>();
-    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] GUIDE  [L] LOOK  [B] BAG  [P] TEAM');
+    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] GUIDE  [L] LOOK  [B] PACK  [P] TEAM');
 
     learned.add('bag');
     expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] GUIDE  [L] LOOK  [P] TEAM');

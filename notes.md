@@ -172,6 +172,13 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** striking a deal with Bill, being asked to confirm one, being told what is short, or arming one of Brock's rungs now reads as plain English, in the same words as a pickup.
 - **Checked, left alone:** `harbourPartner.mjs` (needs a `?testmode=pixels` URL, which its header says) held every promise. The rest of `billCabinet.mjs`'s screenshots (the shelves, the inspect label, the pointer) showed no fault.
 
+## 24. The HUD taught "[B] BAG" for a screen called PACK (playtested: a full pack)
+
+- **Found:** with the pack full, walking onto a find said "No room for FIRE BLAST MAT - it needs 2 squares. Drop something from the PACK and come back for it." The chip right above it taught the key as `[B] BAG`, and the screen B opens is headed PACK, as is every other refusal for room (a cache, a catch, a gift). A newcomer told to open the PACK had no key on screen called that. Playtest 43 had already lost a raid to a player who never learned which key opens it.
+- **Reproduced:** `tools/playtest/packFull.mjs <url> <dir> --pixels --loot` (seventeen Potions and a Poke Ball, then a walk onto ground loot). `loot-refused-1200x768.png` shows the refusal under `[O] GUIDE [L] LOOK [B] BAG [P] TEAM`.
+- **Fixed:** `RAID_KEY_WORDS` in `input/keyBindings.ts` names B as PACK, so the chip reads `[B] PACK`. A disc's refusal on a medicine-only screen ("read to a Pokemon from the bag") now says "from the pack" too. New test in `keyBindings.test.ts`: the word the chip teaches for B is the word `lootRefusalLine` sends the player to (it failed with 'BAG' before the fix). `keyBindings.test.ts` and `consecutiveRaids.test.ts` expect the new chip line.
+- **How a player meets it:** on a new save the raid chip says `[B] PACK`. When a find will not fit and the game says to drop something from the PACK, the key for it is on screen under that name. Checked at the smallest stage (640x480 window): the chip still fits beside the clock.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

@@ -25,7 +25,9 @@ export type RaidKeyId = keyof typeof RAID_KEY_LETTERS;
 export const RAID_KEY_WORDS: readonly (readonly [RaidKeyId, string])[] = [
   ['objectives', 'GUIDE'],
   ['look', 'LOOK'],
-  ['bag', 'BAG'],
+  // PACK, never BAG: the screen B opens is headed PACK, and every refusal for
+  // room sends the player to "drop something from the PACK" (`world/loot.ts`).
+  ['bag', 'PACK'],
   ['party', 'TEAM'],
 ];
 
@@ -82,7 +84,7 @@ export function isLearnableKey(value: unknown): value is LearnableKeyId {
   return typeof value === 'string' && (LEARNABLE_KEYS as readonly string[]).includes(value);
 }
 
-/** One key as the HUDs write it: `[B] BAG`. */
+/** One key as the HUDs write it: `[B] PACK`. */
 export function keyHint(key: string, word: string): string {
   return `[${key}] ${word}`;
 }

@@ -1276,7 +1276,7 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       // answer for the two screens that only ever offer medicine - the battle's
       // ITEM command and the base treatment bench - if either is ever pointed
       // at a disc.
-      return { used: false, message: `${item.displayName} is read to a Pokémon from the bag.` };
+      return { used: false, message: `${item.displayName} is read to a Pokémon from the pack.` };
     case 'evolution-stone': {
       const species = evolutionByStone(pokemon.base.id, item.id);
       // Named as it was called before: a nickname, else the species it was.

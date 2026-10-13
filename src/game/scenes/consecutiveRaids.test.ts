@@ -362,7 +362,7 @@ describe('two raids in a row on one WorldScene instance', () => {
     const manager = new RunManager();
     startRaid(scene, manager, 'floodplain-relay', 1);
     const internals = scene as unknown as { keysLearned: ReadonlySet<string>; dialogBox: { visible: boolean } };
-    expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).toContain('[B] BAG');
+    expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).toContain('[B] PACK');
 
     internals.dialogBox.visible = false;
     controls['66'].justDown = true;
@@ -371,7 +371,7 @@ describe('two raids in a row on one WorldScene instance', () => {
 
     const launch = (scene as unknown as { scene: { launch: ReturnType<typeof vi.fn> } }).scene.launch;
     expect(launch).toHaveBeenCalledWith('bag', expect.anything());
-    expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).not.toContain('BAG');
+    expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).not.toContain('[B] PACK');
     expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).toContain('[P] TEAM');
   });
 
