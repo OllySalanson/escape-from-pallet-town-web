@@ -293,6 +293,13 @@ export const RUN_INSERTIONS = {
     position: { x: 235, y: 165 },
     description: 'The salvage camp on the beach under the east cape, with the wreck out on the reef.',
   },
+  'greystone-vale-old-quay': {
+    id: 'greystone-vale-old-quay',
+    label: 'Old Quay',
+    mapId: 'greystone-vale',
+    position: { x: 101, y: 206 },
+    description: 'The quay of the drowned port in the Sunken Quarter, where the jetty from the strand comes in.',
+  },
 } as const satisfies Record<string, BuiltInInsertion>;
 
 interface BuiltInInsertion {
