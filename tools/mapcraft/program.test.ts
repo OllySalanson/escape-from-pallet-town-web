@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { plantedProp, readMapFile } from '../../src/game/world/mapFile';
 import { buildingSize, MapProgram, seeded } from './program';
+import { readTiles, walkable } from './tiles';
 
 describe('MapProgram', () => {
   it('grows a mostly drawn tree whole and clears a stray corner', () => {
@@ -44,6 +45,19 @@ describe('MapProgram', () => {
     for (let y = 2; y < 2 + prop.height; y += 1)
       expect(rows[y].slice(2, 2 + prop.width)).toBe('.'.repeat(prop.width));
     expect(p.buildings).toEqual([{ x: 2, y: 2, kind: 'cottage-door' }]);
+  });
+
+  it("leaves a building's blank cells to the ground under them, as the game does", () => {
+    // The Power Plant's top row is four chimney caps with gaps between them,
+    // which on Route 10 are the cliff it stands against.
+    const p = new MapProgram(13, 12, '.');
+    p.block(0, 0, 13, 3, 'C');
+    p.building('power-plant', 2, 2);
+    p.block(2, 2, 9, 1, 'C');
+    const map = readTiles(p.toFile({ id: 'plant', name: 'Plant', dropIns: [{ x: 1, y: 11, name: 'In' }], exits: [] }));
+    expect(map.kinds[2][2]).toBe('rock');
+    expect(walkable(map, 2, 2)).toBe(false);
+    expect(map.kinds[3][3]).toBe('building');
   });
 
   it('refuses a letter the map file does not have, and a road that is not straight', () => {
