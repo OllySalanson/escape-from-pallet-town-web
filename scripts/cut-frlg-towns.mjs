@@ -5,6 +5,11 @@
 //   git clone --filter=blob:none --no-checkout https://github.com/pret/pokefirered.git /tmp/pokefirered
 //   git -C /tmp/pokefirered checkout 037335f -- data/tilesets data/layouts data/maps graphics/object_events/pics/misc
 //   node scripts/cut-frlg-towns.mjs /tmp/pokefirered
+//   node scripts/cut-frlg-towns.mjs /tmp/pokefirered --dump=route10:out.png
+//
+// `--dump=` writes one town (or route) of `TOWNS` whole, with a line round every
+// block, and cuts nothing: a piece's rectangle is read off that picture, never
+// guessed from the map's numbers.
 //
 // pret/pokefirered is the disassembly of the game: its tilesets and every map's
 // block data, exactly as FireRed lays them out. The Spriters Resource renders the
@@ -81,6 +86,7 @@ const TOWNS = {
   route2: ['Route2', 'viridian_city', 24, 80],
   route5: ['Route5', 'cerulean_city', 48, 40],
   route7: ['Route7', 'celadon_city', 24, 20],
+  route10: ['Route10', 'lavender_town', 24, 80],
 };
 
 /**
@@ -167,6 +173,24 @@ const PIECES = [
   // warped by Route 5 into the path's entrance; Route 6 has the same hut where
   // the path comes up.
   { name: 'pathHut', town: 'route5', at: [30, 28], size: [4, 4] },
+  // Route 10's Power Plant, built against the foot of a cliff: the tops of its
+  // four chimneys are drawn into the cliff's bottom row, so that row is cut
+  // `behind` the cliff - every pixel that is the cliff face alone is lifted and
+  // the caps are kept, where cutting from the roof down would leave four
+  // flat-topped stacks. The boxes on its sides are drawn flush against its
+  // walls and read as half of something anywhere else, so they stay on Route
+  // 10, and so does the sand's edge in the bottom-right corner.
+  {
+    name: 'powerPlant',
+    town: 'route10',
+    at: [3, 34],
+    size: [9, 8],
+    behind: {
+      cells: [0, 1, 2, 3, 4, 5, 6, 7, 8].map((q) => [q, 0]),
+      like: [[0, 34], [1, 34], [2, 34], [12, 34], [13, 34]],
+    },
+    drop: [[8, 7]],
+  },
   { name: 'burntMansion', town: 'cinnabar', at: [5, 0], size: [7, 5], drop: [[1, 4]] },
   { name: 'cinnabarLab', town: 'cinnabar', at: [5, 6], size: [7, 5], drop: [[1, 4]] },
   { name: 'cinnabarGym', town: 'cinnabar', at: [17, 0], size: [6, 5], drop: [[5, 4]] },
@@ -198,7 +222,8 @@ const OBJECTS = [
   { name: 'seagallop', file: 'seagallop', frame: 64 },
 ];
 
-const [pret] = process.argv.slice(2);
+const [pret, ...options] = process.argv.slice(2);
+const dump = options.find((option) => option.startsWith('--dump='))?.slice('--dump='.length).split(':');
 if (!pret || !existsSync(join(pret, 'data/tilesets/primary/general/tiles.png'))) {
   console.error('usage: node scripts/cut-frlg-towns.mjs <pret/pokefirered checkout> (see the top of this script)');
   process.exit(1);
@@ -381,6 +406,28 @@ function renderTown([layout, secondary, width, height]) {
 
 const towns = new Map(Object.entries(TOWNS).map(([name, town]) => [name, renderTown(town)]));
 
+if (dump) {
+  const [name, out] = dump;
+  const town = towns.get(name);
+  if (!town || !out) {
+    console.error(`--dump=<town>:<out.png>, where the town is one of: ${[...towns.keys()].join(', ')}`);
+    process.exit(1);
+  }
+  const { image } = town;
+  const gridded = { width: image.width, height: image.height, data: Buffer.from(image.data) };
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      if (x % TILE === 0 || y % TILE === 0) {
+        const at = (y * image.width + x) * 4;
+        for (let c = 0; c < 3; c += 1) gridded.data[at + c] >>= 1;
+      }
+    }
+  }
+  writePng(out, gridded);
+  console.log(`${name}: ${town.width}x${town.height} blocks, doors ${JSON.stringify(town.warps)}`);
+  process.exit(0);
+}
+
 const blank = (width, height) => ({ width, height, data: Buffer.alloc(width * height * 4) });
 
 function cellImage(town, bx, by) {
@@ -492,6 +539,10 @@ function cutPiece(piece) {
   // Cells of the rectangle that are something standing beside the piece - a
   // tree's crown over a roof, a ledge along a garden - named per piece.
   const dropped = new Set((piece.drop ?? []).map(([q, r]) => `${q},${r}`));
+  // Cells drawn over something the building stands against, and that thing
+  // drawn alone: the piece keeps only the pixels that differ from it.
+  const behind = new Set((piece.behind?.cells ?? []).map(([q, r]) => `${q},${r}`));
+  const behindArt = (piece.behind?.like ?? []).map(([x, y]) => town.cellArt(x, y));
   const scrubbed = new Set((piece.scrub ?? []).map(([q, r]) => `${q},${r}`));
   // The colours of the ground round the building: the cells of the map that
   // touch its rectangle from outside and can be walked on.
@@ -542,7 +593,13 @@ function cutPiece(piece) {
         continue;
       }
       const tile = town.cellArt(ax + q, ay + r);
-      row.push(scrubbed.has(`${q},${r}`) ? scrub(tile, groundColours) : liftGround(tile, grounds));
+      row.push(
+        behind.has(`${q},${r}`)
+          ? liftGround(tile, behindArt)
+          : scrubbed.has(`${q},${r}`)
+            ? scrub(tile, groundColours)
+            : liftGround(tile, grounds),
+      );
     }
     grid.push(row);
   }

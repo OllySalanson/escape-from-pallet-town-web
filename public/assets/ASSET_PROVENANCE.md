@@ -716,7 +716,7 @@ map maker as possible" (the palette board, 2026-10-10).
   tilesets of Pewter, Cerulean, Vermilion, Lavender, Celadon, Fuchsia, Saffron,
   Cinnabar and Viridian (`data/tilesets/`), those eight towns' block data and
   that of Routes 2, 5 and 7, where FireRed's gatehouses and the Underground
-  Path's hut stand
+  Path's hut stand, and of Route 10, where the Power Plant does
   (`data/layouts/<Town>/map.bin`), and their warps (`data/maps/<Town>/map.json`,
   read for where each building's doors are and nothing drawn, together with
   each warp cell's behaviour in the tilesets' `metatile_attributes.bin`, which
@@ -729,8 +729,8 @@ map maker as possible" (the palette board, 2026-10-10).
   nothing that makes them anyone's but the rights holders'. So this file sits on
   the owner's ruling and nothing else, exactly as the other FireRed sheets do,
   and **nothing from pret is committed**: no tileset, palette or map file. What
-  ships is a cut - 39 named buildings drawn from the towns' and routes' own
-  metatiles and 17 objects' first frames, trimmed and packed onto a new 20x97
+  ships is a cut - 40 named buildings drawn from the towns' and routes' own
+  metatiles and 17 objects' first frames, trimmed and packed onto a new 20x103
   grid that matches nothing in the source.
 - **How it was cut, and the edits made.** `scripts/cut-frlg-towns.mjs` is the
   whole method, and names the town and rectangle of every piece. Each town is
@@ -744,7 +744,11 @@ map maker as possible" (the palette board, 2026-10-10).
   roof stays; specks of fewer than 48 pixels touching nothing else are swept up;
   and the cells named in a piece's `drop` - the Museum's garden ledge and sign,
   the Game Corner's two bushes, a tuft or a sign beside three Cinnabar
-  buildings, the fence posts either end of a gatehouse - are left out. A
+  buildings, the fence posts either end of a gatehouse, the sand's edge by the
+  Power Plant - are left out. The Power Plant is built against a cliff whose
+  bottom row its chimney caps are drawn into, so that row is cut `behind` the
+  cliff: every pixel matching the cliff face drawn alone is lifted, and the
+  caps are kept. A
   metatile the building itself draws solid is never counted as ground (Route 2
   has enough of one gatehouse roof marked walkable to count it otherwise). The
   cells a gatehouse is walked onto from - the ridge of its roof, its porches -
