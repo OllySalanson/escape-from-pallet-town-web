@@ -352,6 +352,25 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
           { kind: 'big-crate', x: 11, y: 9 },
         ],
       };
+    case 'power-plant':
+      // FireRed's Power Plant is a hall of machinery gone quiet: the Rocket
+      // Warehouse's generators along the back wall, as Brock's workshop stands
+      // one, with the bank of monitors between them and the floor left to walk.
+      return {
+        name: 'Turbine Hall',
+        style: 'warehouse',
+        width: 15,
+        height: 10,
+        ground: wallAndFloor(15, 10),
+        furniture: [
+          { kind: 'generator', x: 1, y: 0 },
+          { kind: 'generator', x: 5, y: 0 },
+          { kind: 'monitors', x: 9, y: 2 },
+          { kind: 'generator', x: 11, y: 0 },
+          { kind: 'big-crate', x: 0, y: 8 },
+          { kind: 'boxes', x: 14, y: 6 },
+        ],
+      };
     case 'shed':
       // A shed is somebody's workshop: the Rocket Warehouse's own bench,
       // stool and stores, which is what Brock's workshop is furnished with.

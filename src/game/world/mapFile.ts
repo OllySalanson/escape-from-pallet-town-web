@@ -376,6 +376,7 @@ export const MAP_FILE_BUILDINGS = {
   'silph-co': 'silphCo',
   'game-corner': 'gameCorner',
   'pokemon-tower': 'pokemonTower',
+  'power-plant': 'powerPlant',
   'pokemon-mansion': 'burntMansion',
   'research-lab': 'cinnabarLab',
   dojo: 'dojo',

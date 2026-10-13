@@ -252,6 +252,7 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     ['silph-co', 'Silph Co. tower', 'Landmarks'],
     ['game-corner', 'Game Corner', 'Landmarks'],
     ['pokemon-tower', 'Pokémon Tower', 'Landmarks'],
+    ['power-plant', 'Power Plant', 'Landmarks'],
     ['pokemon-mansion', 'Pokémon Mansion', 'Landmarks'],
     ['research-lab', 'Research lab', 'Landmarks'],
     ['dojo', 'Fighting Dojo', 'Landmarks'],
