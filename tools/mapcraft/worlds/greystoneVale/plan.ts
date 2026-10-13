@@ -43,6 +43,8 @@ export const GREYSTONE_VALE: WorldPlan = {
     [2, 3],
     [3, 3],
   ],
+  // The station's service gate, and the card to it lost in the pines next door.
+  cardKey: { lock: 'power-station', card: 'pine-hollow' },
   // The village first: the first landing a map file lists is its front door.
   districts: [
     {
@@ -123,8 +125,8 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: 'THE POWER STATION',
       cell: [3, 0],
       terrain: 'mountain',
-      wildlife: 'field',
-      idea: 'A derelict hydro-electric station on the falls below the pines: a fenced compound, the turbine hall inside, and a substation gate only its card key opens.',
+      wildlife: 'power-plant',
+      idea: 'A hydro-electric station run down under its dam below the pines: the turbine hall in its pocket, the switchyard gone to grass, and a service gate only the Card Key opens.',
     },
     {
       id: 'safari-marsh',
@@ -216,8 +218,9 @@ export const GREYSTONE_VALE: WorldPlan = {
     { district: 'gull-strand', name: 'The Strand', at: [42, 40], kind: 'landing' },
     { district: 'gull-strand', name: 'River Mouth', at: [28, 54], kind: 'landmark' },
     { district: 'orchard-terraces', name: 'Farmhouse', at: [30, 20], kind: 'landing' },
-    { district: 'power-station', name: 'Turbine Hall', at: [32, 30], kind: 'landmark' },
-    { district: 'power-station', name: 'Substation', at: [48, 16], kind: 'secret' },
+    { district: 'power-station', name: 'The Dam', at: [30, 28], kind: 'landing' },
+    { district: 'power-station', name: 'Turbine Hall', at: [31, 21], kind: 'landmark' },
+    { district: 'power-station', name: 'Switchyard', at: [30, 37], kind: 'secret' },
     { district: 'safari-marsh', name: 'Rest House', at: [30, 30], kind: 'landing' },
     { district: 'the-wreck', name: 'The Wreck', at: [44, 40], kind: 'landmark' },
     { district: 'the-wreck', name: 'Salvage Camp', at: [20, 30], kind: 'landing' },

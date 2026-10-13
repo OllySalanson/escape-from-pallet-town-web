@@ -145,7 +145,7 @@ which its program is written to:
 | Reedmere | marsh | Boardwalks over reed beds round a still mere: tall grass everywhere, and the dry way is the long way. |
 | Gull Strand | coast | Sea cliffs where the river meets the sea; a sea cave runs back under the cliffs into the Greystone Caves. |
 | Orchard Terraces | farmland | Orchards and pastures step down to the sea; the ledges on the farm road are the quick way home. |
-| The Power Station | mountain | A derelict hydro-electric station on the falls below the pines: a fenced compound, the turbine hall, and a substation gate only its card key opens. |
+| The Power Station | mountain | A hydro-electric station run down under its dam below the pines: the turbine hall in its pocket, the switchyard gone to grass, and a service gate only the Card Key opens. |
 | Safari Marsh | marsh | Behind the Safari Zone's own gate, a warden's reserve of reed beds and pools where the vale's rarest Pokemon live. |
 | The Wreck | coast | A liner aground on the reef off the east cape: the salvage camp picks it over, and the reef is the only way out to it. |
 | The Sunken Quarter | coast | The drowned lower town of the old port, reached along the jetty from the strand: streets under the tide. |
@@ -171,6 +171,10 @@ which its program is written to:
   that open a while into a raid - the salvage launch, the low-water stair and the
   smugglers' boat. A district far from all of them has a hidden way out of its
   own.
+- **The Card Key.** The station's Service Gate is a way out that opens only to
+  FireRed's Card Key, and the card lies in Pine Hollow's oak clearing one raid
+  in five. The plan names the pair (`cardKey`), so each district walked alone
+  is given a stand-in for the other's half and the stitcher drops both.
 - **Crossings are fixed in the plan**, so each district can be drawn on its own
   and still meet its neighbours. The four old ways out east and south - the Pine
   Trail, the Eastern Track, Orchard Lane and Fisher's Jetty - became the
@@ -338,7 +342,10 @@ standing in a clearing.
     berry tree in it.
   - **The oak:** the one broadleaf among the pines, with Collier Bram burning
     charcoal under it.
-  - The trail leaves east as the Pine Trail.
+  - The trail leaves east as the Pine Trail, into The Power Station, and the
+    station's lost Card Key lies in the oak's clearing one raid in five. The
+    nook south of the climb has a way out of its own, the Fox Run, since the
+    Pine Trail stopped being one.
   - The deer path south is tall grass between the trunks, and nothing signs
     it.
 - **Tanglewood**, the labyrinth on the road east. Its lanes loop and fork
@@ -600,6 +607,65 @@ to: they scored 7 to 9 every round.
 
 ![Orchard Terraces as first drawn](orchard-terraces-first-draw.png)
 
+## The Power Station
+
+The station east of Pine Hollow, at the head of the vale's new east column. The
+Pine Trail that used to leave the vale there is the way in from the pines now,
+and the south road leads on to Safari Marsh.
+
+- **The dam:** a cliff band across the head of the valley with the reservoir
+  behind it. The Pylon Road climbs round its west end and runs along the
+  reservoir's north shore out of the vale; the relay mast stands on the far
+  shore.
+- **The station:** FireRed's own Power Plant, cut off Route 10 with its chimney
+  caps standing in the dam's bottom row, as Route 10's stand against its cliff.
+  It sits in a pocket of wood under the dam, with a sand forecourt where you
+  land (The Dam).
+- **The roads, a ring:** in from the pines, along the forecourt, over the
+  tailrace on a stone bridge, down the east bank past the damkeeper, and
+  through the wood to the south road, which goes on to Safari Marsh and back up
+  past the hamlet.
+- **The switchyard:** fenced and gone to grass, its gravel showing through. It
+  is where the station's Electric wildlife lives: Voltorb, Magnemite and
+  Pikachu, now and then an Electabuzz. Its Service Gate at the back is locked
+  to the Card Key.
+- **The workers' row:** two houses on a lane, their garden across it, and a
+  path out of the garden's back gate through the trees to the tailrace's
+  settling pond.
+
+![The Power Station](power-station.png)
+
+Judged blind beside FireRed's Route 10 (both halves, the south one with its
+Power Plant), Route 12, Route 24 and Route 6, with two broken real routes as
+controls.
+
+| Round | Real mean | The Power Station | |
+|---|---|---|---|
+| 1 | 6.4, 6.0 | 6 and 4, 5 and 5 | one judge 0.4 short |
+| 2 (void) | 5.6, 6.8 | 5 and 7, 6 and 6 | both judges rated a broken route above a real one |
+| 3 | 6.4, 6.6 | **6 and 7, 7 and 7: passes** | |
+| 4 | 6.2, 6.4 | 7 and 4, 6 and 6 | redrawn to the grown plan; one view under a judge's lowest real |
+| 5 | 5.8, 5.8 | **5 and 5, 7 and 6: passes** (ships; one judge took the hamlet for real) | |
+
+Round 1's notes were the open-field fault High Moor taught: "things set beside
+paths in open grass", "the plant floats with no framing walls". What fixed it
+was drawing the valley as wood and cutting the places out of it - the
+station's pocket under the dam, the hamlet's clearing on the road, the path to
+the pond through the trees - with the forecourt in sand and the workers' houses
+facing a lane. Round 2's swapped Route 24 was hardly broken, as Gull Strand's
+round 1 control was; round 3 shuffled both controls.
+
+The plan then grew (#320): the Pylon Road leaves north, not east, and a road
+goes south to Safari Marsh. The station was redrawn to it - the road along the
+reservoir's north shore, a ring of roads round the valley - and judged again.
+Round 4 named what the redraw and the landing rule had added: a ruled cliff
+band, tree columns standing either side of the station like pillars, and two
+boulders flanking the path like gateposts. The dam now steps up into crags
+where it meets the water, the pocket opens onto the tailrace's reeds, and the
+landing's stops are the station's stores and a boulder further off.
+
+![The Power Station, round 1](power-station-round1.png)
+
 ## The Wreck
 
 The east cape, where the vale meets the open sea: the first of the five new
@@ -773,11 +839,13 @@ player's map is built by). While its districts are being drawn it is on
   walked tile - through `mapStructure.greystoneVale1-4.test.ts` and the rest of
   the suite.
 - **What a finished map pays and guards waits for its districts**: its boss and
-  two doors, its key exit and key, its locked crate, its loot (money,
+  two doors, its locked crate, its loot (money,
   materials, packs and prizes), an exit a landmark opens, wildlife that differs
   from place to place, and a place in the drop-in frame's size. Each test that
   asks one of those names `MAPS_IN_PROGRESS` where it excuses the vale. It
   opens to saves with all of them once the vale is drawn.
+- **Its key exit is in**: the Power Station's Service Gate, locked to FireRed's
+  Card Key, with the card a prize in Pine Hollow.
 - **No other map's raid changes**: like a player's map, it is in a raid's
   content only when the raid is on it, so every seeded roll on the shipped five
   is what it was.

@@ -119,6 +119,15 @@ export interface WorldPlan {
    * own file is still a map anybody could draw.
    */
   readonly builtIn?: true;
+  /**
+   * A gate locked to the Card Key in one district (`opens: { when: 'key' }`)
+   * and the item spot its card lies on in another (`key: true`). A district is
+   * walked alone as well, where a lock with no card or a card with no lock is
+   * a fault, so `districtFile` gives each the other half as a stand-in - a card
+   * just inside the lock's way in from the card's side, a lock on the card's
+   * way out toward the gate - and the stitcher drops both.
+   */
+  readonly cardKey?: { readonly lock: string; readonly card: string };
 }
 
 /** What a plan's stitched file may hold. */
@@ -285,6 +294,13 @@ export function checkPlan(plan: WorldPlan): string[] {
       problems.push(
         `'${district.name}' is longer than ${held.maxPlaceNameLength} letters.`,
       );
+  }
+  if (plan.cardKey) {
+    for (const id of [plan.cardKey.lock, plan.cardKey.card])
+      if (!plan.districts.some((district) => district.id === id))
+        problems.push(`The Card Key names '${id}', which is not a district of the plan.`);
+    if (plan.cardKey.lock === plan.cardKey.card)
+      problems.push('The Card Key lies in the district it opens: name two districts, or none.');
   }
   if (plan.districts.length > held.maxDistricts)
     problems.push(
