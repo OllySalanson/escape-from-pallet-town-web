@@ -74,7 +74,18 @@ const AUDIT = `(() => {
       const r = row.getBoundingClientRect();
       return r.top < fold - 0.5 && r.bottom > fold + 0.5 && r.top >= p.top - 0.5;
     }).length;
-    return { name: pane.className.split(' ').filter((c) => c !== 'px-scroll').join('.') || 'pane', rows: rows.length, whole, cut, scrolls: pane.scrollHeight - pane.clientHeight > Math.max(1, paneUnit) };
+    const scrolls = pane.scrollHeight - pane.clientHeight > Math.max(1, paneUnit);
+    // A browser that draws its scrollbars (Windows) draws one for any overflow
+    // at all, so a pixel of a text line's box hanging out of the last row is a
+    // scrollbar beside a list that fits - and once it takes the width a list's
+    // columns were counted in, a second one takes the height and the MORE strip
+    // the rest (the final check on 2026-10-13). Neither shows with Chromium's
+    // scrollbars hidden, which is how this runs unless asked, so both are
+    // asked of the numbers rather than of the picture. A pane that clips what
+    // it holds (\`data-flush\`) draws no scrollbar for its pixel.
+    const crumb = !scrolls && pane.scrollHeight > pane.clientHeight && getComputedStyle(pane).overflowY !== 'hidden';
+    const sideways = pane.scrollWidth > pane.clientWidth;
+    return { name: pane.className.split(' ').filter((c) => c !== 'px-scroll').join('.') || 'pane', rows: rows.length, whole, cut, scrolls, crumb, sideways };
   });
   // What is inside a scrolling pane is allowed to be below its fold; that is
   // what the pane is for, and it is counted above. What may never leave the
@@ -141,6 +152,8 @@ try {
     }
     const faults = [
       ...(audit.panes.some((p) => p.cut > 0) ? [`ROW CUT in ${audit.panes.filter((p) => p.cut > 0).map((p) => p.name).join(', ')}`] : []),
+      ...(audit.panes.some((p) => p.crumb) ? [`SCROLLS A PIXEL in ${audit.panes.filter((p) => p.crumb).map((p) => p.name).join(', ')}`] : []),
+      ...(audit.panes.some((p) => p.sideways) ? [`SCROLLS SIDEWAYS in ${audit.panes.filter((p) => p.sideways).map((p) => p.name).join(', ')}`] : []),
       ...(audit.pageScrolls ? ['PAGE SCROLLS'] : []),
       ...(audit.escaped.length ? [`ESCAPED ${audit.escaped.join(', ')}`] : []),
       ...(audit.offGrid.length ? [`OFF GRID ${audit.offGrid.join(', ')}`] : []),
@@ -195,16 +208,24 @@ try {
 
   // The base is a map now, so the screens are reached by walking to their own
   // doors. `walkIntoBase` works the route out over the scene's own collision.
+  // A keeper may ask an errand on the way in, in a box Escape puts down before
+  // it leaves the screen, so leaving is pressed until the yard is back.
+  const leave = async () => {
+    for (let back = 0; back < 4 && !(await page.evaluate(sceneIs('base'))); back += 1) {
+      await press('Escape');
+      await sleep(250);
+    }
+  };
   await shoot('base');
   await walkIntoBase(page, 'pokemon-centre');
   await shoot('stash');
-  await press('Escape');
+  await leave();
   await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
-  await press('Escape');
+  await leave();
   await walkIntoBase(page, 'bills-cottage');
   await shoot('bill');
-  await press('Escape');
+  await leave();
   await walkIntoBase(page, 'oaks-lab');
   await shoot('lobby');
   await click('Start a raid');

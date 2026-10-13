@@ -410,6 +410,24 @@ export class MenuOverlay {
   private markScrollCues(): void {
     const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
     this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
+      // First, because it is what every number below is read off: a pane whose
+      // overflow is a line of text's rounding draws no scrollbar (`data-flush`).
+      const style = getComputedStyle(pane);
+      pane.toggleAttribute(
+        'data-flush',
+        unit > 0 &&
+          fitsItsBox(
+            {
+              scrollHeight: pane.scrollHeight,
+              scrollWidth: pane.scrollWidth,
+              boxHeight:
+                pane.offsetHeight - Number.parseFloat(style.borderTopWidth) - Number.parseFloat(style.borderBottomWidth),
+              boxWidth:
+                pane.offsetWidth - Number.parseFloat(style.borderLeftWidth) - Number.parseFloat(style.borderRightWidth),
+            },
+            unit,
+          ),
+      );
       if (unit > 0 && settledScrollTop(pane, unit) !== pane.scrollTop) {
         pane.scrollTop = settledScrollTop(pane, unit);
       }
@@ -683,6 +701,34 @@ export function hasMoreBelow(
   unit = 1,
 ): boolean {
   return pane.scrollHeight - pane.clientHeight - pane.scrollTop > Math.max(1, unit);
+}
+
+/**
+ * Whether everything in a pane fits the box it stands in, scrollbars or none.
+ *
+ * Orange Kid's content area is deeper than the 12-pixel line every row is set
+ * on, so the last line of a pane overflows it by a screen pixel or so with
+ * nothing drawn there - the rounding `hasMoreBelow` already reads as nothing.
+ * A browser that draws its scrollbars (Windows) draws one for it all the same,
+ * and that scrollbar took the width a list's columns or a pack's grid had been
+ * laid out in, a second one took the height, and the MORE strip covered the
+ * rest: the final check showed three entries cut through their middles over an
+ * empty screen (the owner's playtest, 2026-10-13). Measured against the box
+ * the pane stands in rather than the room inside its scrollbars, so the answer
+ * is the same whether the browser has drawn them yet or not; a pane it answers
+ * yes for is `data-flush` and clips instead of scrolling.
+ */
+export function fitsItsBox(
+  pane: {
+    readonly scrollHeight: number;
+    readonly scrollWidth: number;
+    readonly boxHeight: number;
+    readonly boxWidth: number;
+  },
+  unit = 1,
+): boolean {
+  const rounding = Math.max(1, unit);
+  return pane.scrollHeight - pane.boxHeight <= rounding && pane.scrollWidth - pane.boxWidth <= rounding;
 }
 
 /**

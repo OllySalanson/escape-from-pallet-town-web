@@ -16,6 +16,7 @@ import type { ExtractionReport } from '../run/extractionReport';
 import type { MapFile } from '../world/mapFile';
 import { CHARMANDER, Pokemon } from '../pokemon';
 import {
+  fitsItsBox,
   foldedRows,
   hasMoreBelow,
   moreLabel,
@@ -103,6 +104,24 @@ describe('the result screen ledger', () => {
     expect(settledScrollTop({ scrollHeight: 180, clientHeight: 92, scrollTop: 1 }, 2)).toBe(1);
     expect(settledScrollTop({ scrollHeight: 180, clientHeight: 92, scrollTop: 88 }, 2)).toBe(88);
     expect(settledScrollTop({ scrollHeight: 92, clientHeight: 92, scrollTop: 0 }, 2)).toBe(0);
+  });
+
+  it('draws no scrollbar for a pane that only overflows by its rounding, whatever scrollbars it has grown', () => {
+    // The final check's LOST IF YOU WIPE at 2x, in a browser that draws its
+    // scrollbars: three entries in three columns, 52 pixels of pane, and the
+    // last line of text a pixel past it. The scrollbar it grew pushed the
+    // columns 6 pixels past the pane and a second bar took 8 pixels of height -
+    // and it is the box, not the room left inside the bars, that is asked.
+    expect(fitsItsBox({ scrollHeight: 53, scrollWidth: 1484, boxHeight: 52, boxWidth: 1484 }, 2)).toBe(true);
+    expect(fitsItsBox({ scrollHeight: 55, scrollWidth: 1484, boxHeight: 54, boxWidth: 1484 }, 2)).toBe(true);
+    // The loadout's pack: its grid 206 pixels wide in a pane of 208 with a
+    // scrollbar in it, and a pixel of the WEARING row's text below.
+    expect(fitsItsBox({ scrollHeight: 237, scrollWidth: 206, boxHeight: 236, boxWidth: 208 }, 2)).toBe(true);
+    // A pane with a row out of sight keeps its scrollbar, as does one whose
+    // contents really are wider than it.
+    expect(fitsItsBox({ scrollHeight: 181, scrollWidth: 1568, boxHeight: 180, boxWidth: 1568 }, 1)).toBe(true);
+    expect(fitsItsBox({ scrollHeight: 260, scrollWidth: 200, boxHeight: 228, boxWidth: 200 }, 2)).toBe(false);
+    expect(fitsItsBox({ scrollHeight: 52, scrollWidth: 230, boxHeight: 52, boxWidth: 200 }, 2)).toBe(false);
   });
 
   it('covers a row the pane would cut through, whole, and leaves a clean cut alone', () => {

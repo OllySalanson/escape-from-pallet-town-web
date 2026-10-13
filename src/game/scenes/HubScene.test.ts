@@ -47,6 +47,7 @@ import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { FIRST_WORDS } from '../hub/firstWords';
+import { setActiveSaveSlot } from '../dev/playtestMode';
 import { ALL_SPECIES } from '../pokemon/species';
 import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
 
@@ -716,6 +717,34 @@ describe('hub deployment route', () => {
       const { runSession } = start.mock.calls[0][1] as WorldSceneData;
       expect(runSession.plan?.night).toBe(night);
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * An explorer run's clock is eight hours and its chip says PLAYTEST rather
+   * than count them, so the final check says what that means: it printed
+   * `night raid clock 480:00` (the owner's playtest, 2026-10-13).
+   */
+  it.each([
+    { hour: 23, line: 'night raid with no clock to beat: an explorer run lasts 8 hours' },
+    { hour: 12, line: '· raid with no clock to beat: an explorer run lasts 8 hours' },
+  ])('says an explorer run at $hour:00 has no clock to beat rather than counting eight hours', ({ hour, line }) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 13, hour, 0));
+    setActiveSaveSlot('playtest');
+    try {
+      const { hub } = createHub();
+      hub.flow.togglePokemon('charmander-1');
+      hub.setView('deploy');
+      readyToDeploy(hub);
+      expect(hub.flow.step).toBe('confirm');
+      hub.render();
+      const html = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+      expect(html).toContain(line);
+      expect(html).not.toContain('480:00');
+    } finally {
+      setActiveSaveSlot('normal');
       vi.useRealTimers();
     }
   });

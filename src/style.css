@@ -1337,6 +1337,13 @@ button {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* A pane whose only overflow is a line of text's rounding clips it rather than
+   drawing a scrollbar beside a list that fits (`fitsItsBox` in MenuOverlay.ts,
+   which marks it). It clips where a scrolling pane clips, so nothing drawn
+   inside it moves. */
+:where(.pixel-ui) .px-scroll[data-flush] {
+  overflow: hidden;
+}
 /* The standard properties win over the `::-webkit-scrollbar` rules wherever both
    exist, and they cannot be sized in game pixels - so they are the fallback. */
 @supports not selector(::-webkit-scrollbar) {
