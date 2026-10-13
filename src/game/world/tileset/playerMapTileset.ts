@@ -5,6 +5,7 @@ import { OVERWORLD } from './sheets';
 import { BASE_SHEET_SOURCE, solidPiece } from '../../base/baseSheet';
 import { TOWN_PROPS, TOWN_SHEET_SOURCE } from './townSheet';
 import type { TownPieceName } from '../generated/townPieces';
+import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
 
 /**
  * What a player's map is drawn with: the Kanto catalogue Viridian City is
@@ -81,15 +82,31 @@ const BASE_BUILDINGS = {
   blueCottage: solidPiece('cottage', 'cottage'),
 } as const satisfies Record<string, PropDefinition>;
 
+const cc0 = Object.fromEntries(
+  Object.entries(CC0_OBJECTS).map(([name, source]) => [name, FLOOD_TOWN_TILESET.props[source]]),
+) as Record<Cc0ObjectName, PropDefinition>;
+
+/**
+ * Ice, out of doors: Icefall Cave's sheet of it, which FireRed only ever lays
+ * underground, laid where a map freezes over - a frozen lagoon, an ice shelf -
+ * with the snowy boulders that stand on it, which are what a slide across it
+ * stops against (`slidingFloor.ts`). The ice runs into the water it froze on
+ * without a bank.
+ */
+const ICE = {
+  snowyBoulder: iceProp('ice.boulder', 'boulder'),
+  snowyBoulderLow: iceProp('ice.boulderLow', 'boulder'),
+  snowyBoulderTall: iceProp('ice.boulderTall', 'boulder'),
+  iceRocks: iceProp('ice.rock', 'rock'),
+  iceSpire: iceProp('ice.crystal', 'ice crystal'),
+} as const satisfies Record<string, PropDefinition>;
+
 export type PlayerMapPropName =
   | KantoPropName
   | Cc0ObjectName
   | keyof typeof BASE_BUILDINGS
+  | keyof typeof ICE
   | TownPieceName;
-
-const cc0 = Object.fromEntries(
-  Object.entries(CC0_OBJECTS).map(([name, source]) => [name, FLOOD_TOWN_TILESET.props[source]]),
-) as Record<Cc0ObjectName, PropDefinition>;
 
 export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
   ...KANTO_TILESET,
@@ -98,6 +115,11 @@ export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
     OVERWORLD.source,
     BASE_SHEET_SOURCE.source,
     TOWN_SHEET_SOURCE.source,
+    ICE_SHEET_SOURCE.source,
   ],
-  props: { ...cc0, ...BASE_BUILDINGS, ...TOWN_PROPS, ...KANTO_TILESET.props },
+  materials: {
+    ...KANTO_TILESET.materials,
+    ice: { joins: ['water'], roles: { fill: iceTile('ice.sheet') } },
+  },
+  props: { ...cc0, ...BASE_BUILDINGS, ...TOWN_PROPS, ...ICE, ...KANTO_TILESET.props },
 };

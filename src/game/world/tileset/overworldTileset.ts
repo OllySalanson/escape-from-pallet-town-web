@@ -442,9 +442,9 @@ export const OVERWORLD_TILESET: TilesetCatalogue<OverworldPropName> = {
     sand: { roles: { fill: FORD.fill } },
     beach: { roles: { fill: FORD.fill } },
     paving: { roles: { fill: PAVING.fill }, fillVariants: [...PAVING.variants], variantRarity: 3 },
-    // No outdoor sheet draws ice: it is a cave floor's (`insideTileset.ts`)
-    // and a map's outdoors may not hold it (`GROUND_LETTERS`), so this is
-    // only what a stray tile would fall back to.
+    // This sheet has no ice: Icefall Cave's is laid by the catalogues that
+    // draw it (`insideTileset.ts`, `playerMapTileset.ts`), and a map drawn
+    // on this one is never frozen, so this is only a stray tile's fallback.
     ice: { roles: { fill: PAVING.fill } },
     stone: {
       roles: { fill: BOARDWALK.fill },

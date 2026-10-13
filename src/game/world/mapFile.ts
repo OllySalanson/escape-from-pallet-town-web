@@ -299,11 +299,7 @@ export const MAP_FILE_STAMPS: Readonly<Record<string, PropStamp<PlayerMapPropNam
   k: { prop: 'shrub', anchor: [0, 0], ground: 'P' },
 };
 
-// Ice is a cave's floor, drawn from Icefall Cave: no outdoor sheet has it.
-const GROUND_LETTERS = new Set([
-  ...Object.values(MATERIAL_CHARS).filter((letter) => letter !== MATERIAL_CHARS.ice),
-  ...Object.keys(MAP_FILE_STAMPS),
-]);
+const GROUND_LETTERS = new Set([...Object.values(MATERIAL_CHARS), ...Object.keys(MAP_FILE_STAMPS)]);
 
 /**
  * What a file calls a building, and the Kanto landmark it plants. The file has
@@ -349,6 +345,12 @@ export const MAP_FILE_BUILDINGS = {
   'rock-stair': 'rockStair',
   'round-boulder': 'roundBoulder',
   'wet-rock': 'wetRock',
+  // What stands on ice, out of doors: Icefall Cave's own (`playerMapTileset.ts`).
+  'snowy-boulder': 'snowyBoulder',
+  'snowy-boulder-low': 'snowyBoulderLow',
+  'snowy-boulder-tall': 'snowyBoulderTall',
+  'ice-rocks': 'iceRocks',
+  'ice-spire': 'iceSpire',
   stump: 'stump',
   'big-stump': 'bigStump',
   'dead-stump': 'deadStump',
