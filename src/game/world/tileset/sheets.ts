@@ -6,6 +6,7 @@ import { KANTO_SHEET_SOURCE } from './kantoTileset';
 import { TOWN_SHEET_SOURCE } from './townSheet';
 import { AREA_SHEET_SOURCE } from './areaSheet';
 import { ICE_SHEET_SOURCE } from './iceSheet';
+import { EMBER_SHEET_SOURCE } from './emberSheet';
 
 /**
  * The images the game draws maps from, and where each one's tiles sit in the
@@ -59,4 +60,6 @@ export const TILE_SOURCES: readonly TileSource[] = [
   AREA_SHEET_SOURCE.source,
   // A cave dressed as ice: FireRed's Icefall Cave (`iceSheet.ts`).
   ICE_SHEET_SOURCE.source,
+  // A cave dressed as a volcano: FireRed's Mt. Ember (`emberSheet.ts`).
+  EMBER_SHEET_SOURCE.source,
 ];

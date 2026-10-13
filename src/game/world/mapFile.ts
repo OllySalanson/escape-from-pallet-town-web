@@ -12,6 +12,8 @@ import {
   SUMMIT_WILDLIFE,
   LOST_GARDEN_WILDLIFE,
   ICEFALL_WILDLIFE,
+  VOLCANO_WILDLIFE,
+  VOLCANO_NIGHT_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -56,7 +58,7 @@ import {
 } from './mapAreas';
 import { foldedSlug, isMapText, typedMapText } from './mapText';
 import { RAID_DURATION_MS } from '../run/raidClock';
-import { filePrizes } from './filePrizes';
+import { filePrizes, hoardOf } from './filePrizes';
 
 /**
  * A raid map as one file.
@@ -537,6 +539,12 @@ export const MAP_FILE_FURNITURE = {
   'ice-rock': 'iceRock',
   'ice-crystal': 'iceCrystal',
   'ice-crystal-low': 'iceCrystalLow',
+  // A volcano's cave's: Mt. Ember's Ruby Path's, standing on its ash floor.
+  'ember-boulder': 'emberBoulder',
+  'ember-boulder-low': 'emberBoulderLow',
+  'ember-rock': 'emberStone',
+  'ember-rocks': 'emberStones',
+  'hot-spring': 'emberSpring',
   // A gatehouse's: FireRed's own, from the one on Route 2 and the two kinds
   // into Saffron.
   'gate-window': 'gateWindow',
@@ -887,9 +895,31 @@ export const MAP_FILE_HABITATS = {
   // Ice: FireRed's Seafoam Islands and Icefall Cave, at a route's levels. A
   // cave dressed as ice rolls it on every step of its floor.
   ice: ICEFALL_WILDLIFE,
+  // A volcano: FireRed's Mt. Ember, at the vale's levels. A cave dressed as a
+  // volcano rolls it on every step of its floor.
+  volcano: VOLCANO_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
+
+/**
+ * A habitat whose night is authored rather than left to the night's own rule
+ * (`nightRaids.ts`), because the rule would take it somewhere it cannot be:
+ * slot for slot its day table, species changed and nothing else, as a shipped
+ * place's `nightEncounters` is.
+ */
+export const MAP_FILE_NIGHT_HABITATS: Readonly<Partial<Record<MapFileHabitat, WildEncounterTable>>> = {
+  volcano: VOLCANO_NIGHT_WILDLIFE,
+};
+
+/**
+ * What a cave dressed in a style rolls on every step of its floor: its own
+ * habitat where it has one, else Mt. Moon's cave.
+ */
+export const CAVE_STYLE_HABITATS: Readonly<Partial<Record<MapFileAreaStyle, MapFileHabitat>>> = {
+  ice: 'ice',
+  ember: 'volcano',
+};
 
 /**
  * When an exit can be left by. Locks and keys are more values of this: `dug` is
@@ -1186,6 +1216,12 @@ export interface MapFileDistrict {
   readonly wildlife?: MapFileHabitat;
   /** Whether it rains there: every fight in it is fought in the rain (`weather.ts`). */
   readonly rain?: boolean;
+  /**
+   * Whether every step on its ground rolls for wildlife, as a cave floor's
+   * does, and not only a step into tall grass: ground nothing grows on that is
+   * wild all the same - Ember Isle's crater (`localEncounters.ts`, `stepRolls`).
+   */
+  readonly floorRolls?: boolean;
 }
 
 /**
@@ -1805,6 +1841,9 @@ export function readMapFile(
         if (district.rain !== undefined && typeof district.rain !== 'boolean') {
           problems.push(`${what}'s rain must be yes or no.`);
         }
+        if (district.floorRolls !== undefined && typeof district.floorRolls !== 'boolean') {
+          problems.push(`${what}'s every-step wildlife must be yes or no.`);
+        }
       });
     }
   }
@@ -2284,7 +2323,9 @@ export function itemSpotContents(index: number): {
  * The pool a file map's item spots are, by the rotation above. A spot marked
  * `key` holds the Card Key instead, as a prize: rolled on its own odds and
  * seated in the district it stands in, as the shipped maps' keys are, and
- * left out of the rotation so every other spot holds what it always held.
+ * left out of the rotation so every other spot holds what it always held. A
+ * spot in a hoard holds the hoard's next piece and is seated in its place
+ * (`BUILT_IN_FILE_HOARDS`), out of the rotation too.
  */
 function lootFor(
   id: WorldMapId,
@@ -2293,12 +2334,22 @@ function lootFor(
   districts: readonly MapFileDistrict[],
 ): WorldLoot[] {
   let turn = 0;
+  const hoard = hoardOf(id, { districts, itemSpots: spots });
   return spots.map((spot, index) => {
     const common = {
       id: `${id}/spot-${index + 1}`,
       position: at(spot),
       ...(spot.hidden ? { hidden: true } : {}),
     };
+    const hoarded = spot.key || spot.prize ? undefined : hoard(spot);
+    if (hoarded) {
+      return {
+        ...common,
+        itemId: hoarded.contents.itemId,
+        quantity: hoarded.contents.quantity,
+        district: `${id}/district-${hoarded.district + 1}`,
+      };
+    }
     if (spot.key || spot.prize) {
       const home = districts.findIndex(
         (district) =>
@@ -2320,6 +2371,15 @@ function lootFor(
     turn += 1;
     return { ...common, itemId: entry.itemId, quantity: entry.quantity };
   });
+}
+
+/** A habitat's tables as a place carries them: its day table, and its night where that is authored. */
+function habitatTables(habitat: MapFileHabitat): {
+  readonly encounters: WildEncounterTable;
+  readonly nightEncounters?: WildEncounterTable;
+} {
+  const night = MAP_FILE_NIGHT_HABITATS[habitat];
+  return { encounters: MAP_FILE_HABITATS[habitat], ...(night ? { nightEncounters: night } : {}) };
 }
 
 /** The sketch a file's ground and buildings make. */
@@ -2640,8 +2700,9 @@ export function buildFileMap(
           mapId: id,
           name: district.name.toUpperCase(),
           areas: [{ ...origin, width: district.width, height: district.height }],
-          ...(district.wildlife ? { encounters: MAP_FILE_HABITATS[district.wildlife] } : {}),
+          ...(district.wildlife ? habitatTables(district.wildlife) : {}),
           ...(district.rain ? { weather: WeatherId.Rain } : {}),
+          ...(district.floorRolls ? { floorRolls: true } : {}),
         };
       }),
       ...areas.slice(1).map((placed) => ({
@@ -2652,12 +2713,9 @@ export function buildFileMap(
         // A cave's floor is wild ground on every step, and what lives there
         // is the cave's own.
         ...(placed.kind === 'cave'
-          ? {
-              encounters:
-                file.areas?.find((area) => area.id === placed.id)?.style === 'ice'
-                  ? MAP_FILE_HABITATS.ice
-                  : MAP_FILE_HABITATS.cave,
-            }
+          ? habitatTables(
+              CAVE_STYLE_HABITATS[file.areas?.find((area) => area.id === placed.id)?.style ?? 'cave'] ?? 'cave',
+            )
           : {}),
       })),
       ...(areas.length > 1 && hasUnnamedOutdoorGround(file)

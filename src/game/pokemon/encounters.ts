@@ -727,6 +727,45 @@ export const ICEFALL_WILDLIFE = wildlife(0.1, [
 ]);
 
 /**
+ * A volcano: FireRed and LeafGreen's Mt. Ember, on One Island - Ponyta, the
+ * Spearow of its slopes and the Geodude and Machop of its crags, and Magmar,
+ * which LeafGreen keeps for Mt. Ember alone - brought from their 30s and 40s
+ * down to the vale's levels, a level above the summit, because Ember Isle is
+ * the vale's worst ground. Rapidash, Fearow, Graveler and Machoke are the ones
+ * of Mt. Ember's own left out: each becomes one at 25 or more, and nothing is
+ * fielded below the level it evolves at; Magmar evolves from nothing in the
+ * 151 and stands as the rare roll, as Electabuzz does in the Power Plant.
+ *
+ * Ponyta and Magmar live nowhere else in the game. Measured over the real
+ * engine with a level-8 starter of each kind (`tools/encounters/report.mts`,
+ * `volcanoHabitat.test.ts`): Bulbasaur 59%, Charmander 62% and Squirtle 82%
+ * - Ember on a Grass starter and Geodude and Machop on a Fire one, and the
+ * Water starter's ground, as a volcano should be.
+ */
+export const VOLCANO_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'ponyta', minLevel: 9, maxLevel: 10, weight: 8 },
+  { speciesId: 'spearow', minLevel: 9, maxLevel: 10, weight: 5 },
+  { speciesId: 'geodude', minLevel: 9, maxLevel: 11, weight: 5 },
+  { speciesId: 'machop', minLevel: 10, maxLevel: 11, weight: 4 },
+  { speciesId: 'magmar', minLevel: 10, maxLevel: 10, weight: 1 },
+]);
+
+/**
+ * The volcano by night, slot for slot: Spearow give their slots to Rattata as
+ * the night's own rule has them (`nightRaids.ts`), and Ponyta keep theirs.
+ * Crystal gives a Ponyta's slot to a Poliwhirl by night, on Route 28 under Mt.
+ * Silver; on a volcano with no water in it that is nonsense, and a Poliwhirl at
+ * these levels is fifteen below the level a Poliwag becomes one.
+ */
+export const VOLCANO_NIGHT_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'ponyta', minLevel: 9, maxLevel: 10, weight: 8 },
+  { speciesId: 'rattata', minLevel: 9, maxLevel: 10, weight: 5 },
+  { speciesId: 'geodude', minLevel: 9, maxLevel: 11, weight: 5 },
+  { speciesId: 'machop', minLevel: 10, maxLevel: 11, weight: 4 },
+  { speciesId: 'magmar', minLevel: 10, maxLevel: 10, weight: 1 },
+]);
+
+/**
  * The Safari Zone, run as a warden's reserve: FireRed's own Safari Zone species
  * (the Nidoran, Exeggcute, Venonat, Paras and Rhyhorn of its grass, and
  * the Chansey, Kangaskhan, Scyther, Pinsir and Tauros it is famous for), brought

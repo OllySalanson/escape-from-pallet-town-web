@@ -106,6 +106,13 @@ describe('what each piece of gear does', () => {
     expect(attackMultiplier(ice)).toBe(1);
   });
 
+  it("Charcoal raises a FIRE move's power by FireRed's ten per cent, and nothing else's", () => {
+    const charcoal = holding('charcoal');
+    expect(attackMultiplier(charcoal, PokemonType.Fire)).toBeCloseTo(1.1);
+    expect(attackMultiplier(charcoal, PokemonType.Grass)).toBe(1);
+    expect(attackMultiplier(charcoal)).toBe(1);
+  });
+
   it('names itself in the battle log', () => {
     expect(gearLabel('focus-band')).toBe('FOCUS BAND');
     expect(gearLabel(null)).toBe('');

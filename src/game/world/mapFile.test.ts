@@ -129,7 +129,7 @@ describe('reading a map file', () => {
     expect(problemsOf(edited({ buildings: [{ x: 1, y: 1, kind: 'castle' }] }))).toContain(
       'Building 1 is not a building the game has: castle.',
     );
-    expect(problemsOf(edited({ wildlife: 'volcano' }))[0]).toMatch(
+    expect(problemsOf(edited({ wildlife: 'moon' }))[0]).toMatch(
       /^'wildlife' must be one of: meadow/,
     );
   });

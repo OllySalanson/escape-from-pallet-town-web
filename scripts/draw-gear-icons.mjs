@@ -34,6 +34,9 @@ const C = {
   // never-melt ice, in FireRed's own icon palette
   // (`graphics/items/icon_palettes/never_melt_ice.pal`, pret/pokefirered at 037335f)
   i: hex('f6ffff'), j: hex('def6ff'), k: hex('a4d5e6'), K: hex('73a4c5'), z: hex('317ba4'),
+  // charcoal, in FireRed's own icon palette
+  // (`graphics/items/icon_palettes/charcoal.pal`, pret/pokefirered at 037335f)
+  c: hex('313131'), g: hex('414141'), h: hex('626262'), H: hex('8b8b8b'), b: hex('bdbdbd'),
 };
 
 const blank = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -206,6 +209,30 @@ icons['never-melt-ice'] = outline(
     '.jkkkjkkkkjkKz..',
     '.zKkkkkkkkkkKz..',
     '..zzzzzzzzzzz...',
+    '................',
+  ]),
+);
+
+// Charcoal: a stick of burnt wood lying corner to corner, its grain in streaks
+// of grey and its broken end showing the light, as FireRed's own 24x24 icon
+// draws it - redrawn at sixteen rather than resampled.
+icons['charcoal'] = outline(
+  fromRows([
+    '................',
+    '..........bb....',
+    '.........hbHb...',
+    '........hbHhHg..',
+    '.......hHhHhhg..',
+    '......hHhHhhHg..',
+    '.....hHhHhhgHg..',
+    '....hHhHhhgHg...',
+    '...hHhhHhgHgg...',
+    '..ghHhhhgHgc....',
+    '..gHghhgHgc.....',
+    '..ggcghHgc......',
+    '..gcgggcc.......',
+    '...ccgcc........',
+    '....ccc.........',
     '................',
   ]),
 );

@@ -7,6 +7,7 @@
  * once the vale can reach it.
  */
 import type { WorldResult } from '../../worldReport';
+import { emberIsle } from './emberIsle';
 import { frostreef } from './frostreef';
 import { greystonePeaks } from './greystonePeaks';
 import { gullStrand } from './gullStrand';
@@ -47,6 +48,7 @@ export default function greystoneVale(): WorldResult {
       stormcrown: stormcrown(),
       'lost-garden': lostGarden(),
       frostreef: frostreef(),
+      'ember-isle': emberIsle(),
     },
   };
 }

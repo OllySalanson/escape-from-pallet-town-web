@@ -127,7 +127,7 @@ export function smugglersCove(): MapcraftResult {
   p.block(0, 40, 30, 2, 'M');
   p.put(0, 41, 'W');
   p.building('ferry', 2, 42, { lot: 'W' });
-  p.building('mooring-post', 12, 38, { lot: 'W' }).building('mooring-post', 22, 42, { lot: 'W' });
+  p.building('mooring-post', 12, 38, { lot: 'W' }).building('mooring-post', 26, 42, { lot: 'W' });
 
   // -- The contraband, stacked in a nook of the rocks under the jetty ----------
   p.draw(14, 42, ['MM', '~~~~~~~~', '~~~~~~~~', '~~~~~~~~', ' ~~~~~~']);
