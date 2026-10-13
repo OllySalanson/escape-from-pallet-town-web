@@ -9,8 +9,8 @@ is the plan, each district that is drawn marked DRAWN:
 And the vale as it ships now, with the nine districts it was planned as all
 drawn - Millbrook, High Moor, Greystone Peaks, Pine Hollow, The Crossing,
 Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and of the five it has
-grown into, The Wreck and The Sunken Quarter. The Power Station, Safari Marsh
-and Smugglers' Cove are wood until each is drawn.
+grown into, The Wreck, The Sunken Quarter and Smugglers' Cove. The Power
+Station and Safari Marsh are wood until each is drawn.
 
 ![the vale as it ships](vale.png)
 
@@ -711,6 +711,52 @@ What is left for a later pass:
 - the house styles are mixed;
 - a building standing in open water reads to both judges as pasted, though
   the drowned roofs are the idea.
+
+## Smugglers' Cove
+
+A cove under the cliffs south of Reedmere that nobody is meant to find.
+
+- **The way in nobody signs:** the deer path from Reedmere comes down through
+  the wood beside the brook, where the marsh drains into a reed-fringed pool.
+  The Eel Gap, a hidden way out, is a gap in the wood west of the pool, because
+  the marsh end is past the hunter's blind window from every other way out.
+- **The cliff top and the Cove Steps:** heather and rock above the drop. The
+  landing is here, and a cut runs down through the cliff to the beach.
+- **The cove:** a beach in the arms of the cliffs, with a spur of rock running
+  down onto the sand and marram grass at its back. The brook falls through a
+  cleft into the sea.
+- **The smugglers' jetty:** stone across the cove to their boat, the way off the
+  map. The boat sails when the tide turns, 150 seconds into a raid. Old Rook
+  waits on the jetty and says so.
+- **The contraband:** crates, barrels and a hidden find in a nook of the rocks
+  under the jetty, with a grunt on guard.
+- **The cleft east:** a cut through the high ground, the shore path round to
+  the Sunken Quarter.
+
+![Smugglers' Cove](smugglers-cove.png)
+
+### Judged blind
+
+Judged in the same batch as The Sunken Quarter, against the same five real
+windows and two broken controls.
+
+| Round | Real mean | Smugglers' Cove |
+|---|---|---|
+| 1 | 5.8 | **7 and 6: passes** |
+| 2 | 5.6 | **6 and 6: passes** |
+
+The table shows only the judges that counted. The judge left out of each round
+scored it 6 and 4, then 7 and 7.
+
+What round 1's judges named, and round 2 fixed: a big, empty beach with single
+rocks sprinkled on it. A spur of the cliff now runs down onto the sand, marram
+grass holds the back of the beach, and the smugglers' gear waits at the head of
+the jetty.
+
+What is left for a later pass:
+
+- the brook runs ruler-straight through the wood;
+- the beach is still wide and open.
 
 ## How it ships
 
