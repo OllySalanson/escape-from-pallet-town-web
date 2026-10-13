@@ -681,3 +681,27 @@ export const VIRIDIAN_RANGER_WILDLIFE = wildlife(0.09, [
   { speciesId: 'diglett', minLevel: 4, maxLevel: 5, weight: 2 },
   { speciesId: 'nidoran-m', minLevel: 3, maxLevel: 4, weight: 1 },
 ]);
+
+// -- The Power Plant ----------------------------------------------------------
+
+/**
+ * A power station left to run down: FireRed's own Power Plant table
+ * (`sPowerPlant_FireRed` in pret/pokefirered's `wild_encounters.json`) brought
+ * from its 22-35 to the level band of the places beside it. FireRed's slots are
+ * a third Voltorb, a third Magnemite, a quarter Pikachu, a tenth Magneton and a
+ * twentieth Electabuzz; the Magneton is left out, because a Magneton below the
+ * level Magnemite becomes one at is a thing this game never fields, and its
+ * share goes to the two that make it up. Electabuzz stays as the rare roll: it
+ * evolves from nothing in the 151, so it may stand at any level.
+ *
+ * It is a Water starter's hard ground and is meant to be - every Electric hit
+ * is 2x on Squirtle and Bubble is resisted by Magnemite's Steel - measured at
+ * 54% for a level-8 Squirtle against 87% and 95% for the other two, which is
+ * above the floor `districtEncounters.test.ts` holds the later maps to.
+ */
+export const POWER_PLANT_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'voltorb', minLevel: 7, maxLevel: 9, weight: 7 },
+  { speciesId: 'magnemite', minLevel: 7, maxLevel: 8, weight: 5 },
+  { speciesId: 'pikachu', minLevel: 7, maxLevel: 8, weight: 4 },
+  { speciesId: 'electabuzz', minLevel: 8, maxLevel: 8, weight: 1 },
+]);

@@ -614,6 +614,18 @@ export const ITEMS = {
     description: "The key to the MARKET STAIRS on the FLOODPLAIN's market isle. A way out for the raid it is carried on. Never used up.",
     effect: { type: 'key' },
   },
+  // FireRed's Card Key, which opens SILPH CO.'s doors there. Here it is the
+  // key a map file locks an exit to (`opens: { when: 'key' }`): one card, and
+  // it turns every gate locked to it, as one Card Key opens every door in
+  // Silph - so a map maker locks a gate without minting a key of their own.
+  'card-key': {
+    id: 'card-key',
+    displayName: 'Card Key',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A plastic card that opens a gate locked to a CARD KEY, on any map that has one. A way out for the raid it is carried on. Never used up.',
+    effect: { type: 'key' },
+  },
   // FireRed's two lower rods. Each reads its own slots of the water it is cast
   // into (`../world/fishing.ts`): the Old Rod only ever hooks a Magikarp, and
   // the Good Rod the Poliwag, Goldeen, Horsea and Krabby that live nowhere else.

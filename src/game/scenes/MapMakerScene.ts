@@ -12,6 +12,7 @@ import {
   placeDoor,
   placeSpot,
   setItemHidden,
+  setItemHoldsKey,
   setPokemonLevel,
   rectangle,
   removeThing,
@@ -2653,6 +2654,10 @@ export class MapMakerScene extends Phaser.Scene {
         return selected.kind === 'item'
           ? setItemHidden(this.view, selected.index, value === 'hidden')
           : this.view;
+      case 'holds':
+        return selected.kind === 'item'
+          ? setItemHoldsKey(this.view, selected.index, value === 'key')
+          : this.view;
       case 'level': {
         if (selected.kind !== 'pokemon') {
           return this.view;
@@ -2672,7 +2677,11 @@ export class MapMakerScene extends Phaser.Scene {
         return isBerry(value) ? updateThing(this.view, selected, { berry: value }) : this.view;
       case 'buried':
         return selected.kind === 'exit'
-          ? setExitOpens(this.view, selected.index, value === 'dug' ? { when: 'dug' } : { when: 'always' })
+          ? setExitOpens(
+              this.view,
+              selected.index,
+              value === 'dug' ? { when: 'dug' } : value === 'key' ? { when: 'key' } : { when: 'always' },
+            )
           : this.view;
       case 'look':
       case 'facing':

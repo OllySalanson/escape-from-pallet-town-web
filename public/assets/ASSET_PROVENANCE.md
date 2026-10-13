@@ -224,7 +224,7 @@ game.
   `rawst-berry`, `chesto-berry` and `aspear-berry`, the `pickaxe` and the
   `rubble` a buried exit is drawn as, the two fishing rods `old-rod` and
   `good-rod`, the `lockpick`, the five keys `weir-key`, `paddock-key`,
-  `forester-key`, `garden-key` and `market-key`, and the `locked-gate` and
+  `forester-key`, `garden-key` and `market-key`, the `card-key`, and the `locked-gate` and
   `locked-crate` a keyed exit and a locked cache are drawn as, and the
   `bicycle`.
   The materials are
@@ -288,11 +288,13 @@ game.
   `037335f`): the dusky red frame `#b46262` with its pale highlight `#f6acac`,
   grey rims `#b4b4b4` and hubs `#626262`. Original drawing in FireRed's
   colours, not a cut of its pixels.
-  The `lockpick`, the five keys, the `locked-gate` and the `locked-crate` are
+  The `lockpick`, the five keys, the `card-key`, the `locked-gate` and the `locked-crate` are
   `scripts/draw-lock-icons.mjs`, on the set's own palette: a hooked steel pick
   on a bound violet grip; **one brass key drawn five times** (`#f1d27a`,
   `#c79a3a`, `#8a6420`) with its bow in a colour of its own - blue, tan, green,
-  pink and red - so five keys in one vault are five things; and a plank gate
+  pink and red - so five keys in one vault are five things; the `card-key`, a
+  white plastic card with a blue stripe (`#3f5f8f`) and the padlock's brass for
+  its chip, after FireRed's own Card Key rather than cut from it; and a plank gate
   between posts and an iron-bound crate, each carrying the same brass padlock
   (`#f1c84a`, `#b8862a`, steel shackle `#97a3b2`) so a lock reads as a lock
   wherever it is drawn. Original to this repository; `--preview=` writes the

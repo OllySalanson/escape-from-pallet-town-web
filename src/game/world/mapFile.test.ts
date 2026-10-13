@@ -161,7 +161,7 @@ describe('reading a map file', () => {
         edited({ exits: [{ ...SAMPLE.exits[0], opens: { when: 'after', seconds: 900 } }] }),
       ),
     ).toContain(
-      "Exit 'North Stile' must open always, after 1 to 240 seconds, or when dug out.",
+      "Exit 'North Stile' must open always, after 1 to 240 seconds, when dug out, or to the Card Key.",
     );
   });
 
