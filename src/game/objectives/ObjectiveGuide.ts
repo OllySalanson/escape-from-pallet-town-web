@@ -7,6 +7,8 @@ import { type WorldMapId, worldMapName } from '../worldMap';
 import { poisForMap, type WorldPoi } from '../world/pois';
 import { isLandmarkWorked } from '../world/workedLandmarks';
 import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/errands';
+import { isDugExit, itemThatOpens } from '../world/extractionPoints';
+import { ITEMS } from '../items/items';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -82,6 +84,7 @@ export function buildObjectiveGuide(
       ...(contract
         ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
         : laterRunHints(session, context, currentExit?.label)),
+      ...barredExitHints(session, context),
       ...errandHints(session, context, snapshot.foundItems),
       ...shinyHints(snapshot.caughtPokemon),
     ],
@@ -116,6 +119,32 @@ function errandHints(
     return [
       `${errand.name}'s errand: ${thing} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}. It takes ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`,
     ];
+  });
+}
+
+/**
+ * A barred exit on this map that what is in the pack can open - a locked gate
+ * and its own key, or rubble and a Pickaxe - and which way it is. The nearest
+ * open exit never counts one (`isBarredExit`), so without this a player who
+ * carried a key in at the risk of losing it was never told where its gate is.
+ * Said only while it is still barred: opened, it is an ordinary way out.
+ */
+function barredExitHints(session: ActiveRunSession, context: ObjectiveGuideContext): string[] {
+  const opened = session.exitsOpened ?? [];
+  return (session.plan?.extractionPoints ?? []).flatMap((point) => {
+    const opener = itemThatOpens(point);
+    if (
+      point.mapId !== context.currentMapId ||
+      !opener ||
+      opened.includes(point.label) ||
+      (context.carried?.(opener) ?? 0) === 0
+    ) {
+      return [];
+    }
+    const where = directionTo(context.currentPosition, context.towards?.(point.position) ?? point.position);
+    return isDugExit(point)
+      ? [`Your ${ITEMS[opener].displayName} can dig out ${point.label}, ${where}, as a way out for this raid.`]
+      : [`You carry the ${ITEMS[opener].displayName}: it opens ${point.label}, ${where}, as a way out for this raid.`];
   });
 }
 

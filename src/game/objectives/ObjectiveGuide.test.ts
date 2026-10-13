@@ -507,3 +507,36 @@ describe('an errand in the field guide', () => {
     ]);
   });
 });
+
+describe('a barred exit the pack can open', () => {
+  const barredHints = (
+    session: ReturnType<typeof createUncontractedSession>,
+    carried: readonly string[],
+  ) =>
+    buildObjectiveGuide(session, {
+      currentMapId: 'route-1',
+      currentPosition: { x: 50, y: 24 },
+      activatedPoiIds: new Set(),
+      carried: (itemId) => (carried.includes(itemId) ? 1 : 0),
+    }).hints.filter((hint) => hint.includes('PADDOCK GATE') || hint.includes('FALLEN CUT'));
+
+  it('names the gate a carried key opens, and which way it is', () => {
+    expect(barredHints(createUncontractedSession('route-1'), ['paddock-key'])).toEqual([
+      'You carry the Paddock Key: it opens PADDOCK GATE, to the east, as a way out for this raid.',
+    ]);
+  });
+
+  it('names the rubble a carried Pickaxe digs out', () => {
+    expect(barredHints(createUncontractedSession('route-1'), ['pickaxe'])).toEqual([
+      'Your Pickaxe can dig out FALLEN CUT, to the south, as a way out for this raid.',
+    ]);
+  });
+
+  it('says nothing of a barred exit with nothing in the pack to open it, or once it is open', () => {
+    expect(barredHints(createUncontractedSession('route-1'), [])).toEqual([]);
+
+    const opened = createUncontractedSession('route-1');
+    opened.exitsOpened = ['PADDOCK GATE', 'FALLEN CUT'];
+    expect(barredHints(opened, ['paddock-key', 'pickaxe'])).toEqual([]);
+  });
+});
