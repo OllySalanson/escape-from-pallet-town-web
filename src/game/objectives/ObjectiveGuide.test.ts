@@ -187,6 +187,23 @@ describe('objective field guide', () => {
     expect(before.hints.join(' ')).toContain('activates the Radio Exit');
     expect(after.hints.join(' ')).toContain('Radio Exit is active');
 
+    // Once the first contract is banked the station is worked for good: it
+    // cannot be switched on again (nothing to switch) and the Radio Exit is open
+    // from the first second, so the line that sends a player to activate it
+    // was sending them to a landmark that refuses them.
+    const banked = buildObjectiveGuide(
+      { ...session, plan: { ...session.plan!, completedContracts: ['recover-lost-field-kit'] } },
+      {
+        currentMapId: 'floodplain-relay',
+        currentPosition: { x: 15, y: 3 },
+        activatedPoiIds: new Set(),
+      },
+    ).hints.join(' ');
+    expect(banked).not.toContain('activates the Radio Exit');
+    expect(banked).toContain(
+      'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.',
+    );
+
     // The cache it points at is read from the map's own landmarks: the nearest
     // still to work, and the next nearest once that is worked. It used to be a
     // sentence about the supply vault typed out by hand, which went on sending a

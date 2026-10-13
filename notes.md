@@ -274,6 +274,15 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** press O. With no Lockpick the notes point at a landmark you can actually work; bring one from Bill and the notes say which way the locked crate is.
 - **Checked in the browser:** beside KILN STRONGBOX with an empty pack the guide names SLUICE WHEEL; with a Lockpick packed it names SLUICE WHEEL and adds the Lockpick line for KILN STRONGBOX.
 
+## 37. With the Radio Exit open for good, the field guide still sent the player to switch it on (playtested: the Floodplain after the first contract)
+
+- **Found:** once the first contract (the lost field kit) is banked, RANGER STATION is worked for good: every Floodplain raid opens with the RADIO EXIT open, and the station refuses to be worked again. The field guide (O) on a raid with no contract still said "Ranger Station gives a hunter forecast and activates the Radio Exit." - and two lines below, "The nearest open exit is RADIO EXIT". So it sent a player to a landmark that does nothing, for an exit it had just called open.
+- **Reproduced:** `menuShots.mjs --raid --window=1280x800` seeds a save with the first contract banked and photographs the raid's field guide. Its third note was the stale line. In `objectives/ObjectiveGuide.test.ts`, the new part of "explains Floodplain route and Radio Exit trade-offs before and after Ranger activation" (a plan with `recover-lost-field-kit` banked) failed before the fix.
+- **Fixed:** the Floodplain branch of `laterRunHints` asks `isLandmarkWorked('floodplain-ranger-radio', ...)` on the raid's own completed contracts. When it is worked for good the note reads "The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid." The old two lines (switch it on / active this raid) still stand for a save that has not banked the kit.
+- **How a player meets it:** after the first contract, press O on any Floodplain raid. The notes say the Radio Exit is already open instead of sending you to the station.
+- **Checked in the browser:** the same `menuShots.mjs` run now shows the new line, with RADIO EXIT still named as the nearest open exit under it.
+- **Looked at, left alone:** at 1280x800 the drop-in screen's "What is in there" pane leaves a blank band about two rows tall above "3 MORE". The strip takes the WAYS OUT heading and its first row together so neither is cut, which is the `orphanedHeading` and `scrollCoverHeight` rules working as written. The Bicycle playtest (`bicycle.mjs`) passed all its checks.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

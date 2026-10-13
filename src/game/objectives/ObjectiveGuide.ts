@@ -267,6 +267,9 @@ function laterRunHints(
   const nearest = nearestExitHint(context);
   if (context.currentMapId === 'floodplain-relay') {
     const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
+    // Banking the first contract finishes the station for good: it refuses to
+    // be worked again and the Radio Exit is open from the first second.
+    const radioKept = isLandmarkWorked('floodplain-ranger-radio', session.plan?.completedContracts ?? []);
     // The landmark and the exit are the nearest ones, as on every other map:
     // the Floodplain is 128 tiles across and has ten landings, and the first
     // cache in its list and a gate named by hand were a hundred tiles off from
@@ -278,9 +281,11 @@ function laterRunHints(
       landmark
         ? landmarkHint(landmark, context)
         : 'No marked cache in reach is left to work this raid.',
-      radioActive
-        ? 'Radio Exit is active at Ranger Station.'
-        : 'Ranger Station gives a hunter forecast and activates the Radio Exit.',
+      radioKept
+        ? 'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.'
+        : radioActive
+          ? 'Radio Exit is active at Ranger Station.'
+          : 'Ranger Station gives a hunter forecast and activates the Radio Exit.',
       nearest
         ? `The nearest open exit is ${nearest}. Use it to bank your haul.`
         : 'South Gate is always open; Ferry Dock opens on its signal.',
