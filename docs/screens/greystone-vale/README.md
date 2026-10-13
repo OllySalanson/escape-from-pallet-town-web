@@ -343,7 +343,9 @@ standing in a clearing.
   - **The oak:** the one broadleaf among the pines, with Collier Bram burning
     charcoal under it.
   - The trail leaves east as the Pine Trail, into The Power Station, and the
-    station's lost Card Key lies in the oak's clearing one raid in five.
+    station's lost Card Key lies in the oak's clearing one raid in five. The
+    nook south of the climb has a way out of its own, the Fox Run, since the
+    Pine Trail stopped being one.
   - The deer path south is tall grass between the trunks, and nothing signs
     it.
 - **Tanglewood**, the labyrinth on the road east. Its lanes loop and fork

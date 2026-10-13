@@ -111,7 +111,13 @@ export function pineHollow(): MapcraftResult {
     ],
     // A way out nobody signs, at the back of the nook south of the col: the
     // wood is wide, and its one planned way out is at its far east end.
-    exits: [{ x: 6, y: 34, name: 'Charcoal Track', opens: { when: 'always' } }],
+    exits: [
+      { x: 6, y: 34, name: 'Charcoal Track', opens: { when: 'always' } },
+      // The nook south of the climb was within the hunter's blind window of the
+      // Pine Trail; with the trail the way on into The Power Station now, a fox
+      // run out through the pines at its far corner is that nook's way out.
+      { x: 59, y: 40, name: 'Fox Run', opens: { when: 'always' } },
+    ],
     extra: {
       landmarks: [{ x: 22, y: 12, name: 'Cold Spring', kind: 'spring' }],
       berryTrees: [{ x: 31, y: 34, berry: 'oran' }],
