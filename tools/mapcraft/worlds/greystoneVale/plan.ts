@@ -35,8 +35,14 @@ export const GREYSTONE_VALE: WorldPlan = {
   wildlife: 'meadow',
   // The game's own map: its stitched file is read as `builtInFileMap` reads
   // it, against `BUILT_IN_MAP_FILE_LIMITS` (more landings, ways out and places
-  // than a player's map), which a vale of sixteen districts needs.
+  // than a player's map), which a vale of fourteen districts needs.
   builtIn: true,
+  // South of the orchards and the cape is the open sea: the coast there faces
+  // water to the map's edge, not a wood where no district is.
+  seas: [
+    [2, 3],
+    [3, 3],
+  ],
   // The village first: the first landing a map file lists is its front door.
   districts: [
     {

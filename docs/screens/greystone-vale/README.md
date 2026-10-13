@@ -153,7 +153,9 @@ which its program is written to:
 
 - **Barriers.** The river runs the length of the old middle column, so east
   and west meet only at The Crossing's two ways over. The peaks, the sea and the
-  wood close the edges.
+  wood close the edges. South of the orchards and the cape, two cells of the
+  plan are open sea rather than districts (`seas`), so that coast faces water
+  to the map's edge rather than a wood where no district is.
 - **Main routes.** The road from the Westward Road through Millbrook, over the
   river, into Tanglewood and on into the Safari Marsh; the drove road down from
   the moor; the coast road along the strand to the orchards and out to the

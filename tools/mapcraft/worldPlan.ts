@@ -107,6 +107,13 @@ export interface WorldPlan {
   readonly landmarks?: readonly PlannedLandmark[];
   readonly caves?: readonly PlannedCave[];
   /**
+   * Cells of the plan that are open sea rather than districts, columns and
+   * rows as a district's `cell`, inside the districts' bounds. The stitcher
+   * lays them as deep water, so a coast that faces one meets the sea rather
+   * than the wood an empty cell would be.
+   */
+  readonly seas?: readonly (readonly [number, number])[];
+  /**
    * The game's own map, not a player's: its stitched file is held to
    * `BUILT_IN_MAP_FILE_LIMITS`, as `builtInFileMap` reads it. Each district's
    * own file is still a map anybody could draw.
@@ -180,7 +187,11 @@ export function planBounds(plan: WorldPlan): {
 
 /** Where a district lies in the stitched map, in tiles. */
 export function districtRect(plan: WorldPlan, id: string): TileRect {
-  const { cell } = districtOf(plan, id);
+  return cellRect(plan, districtOf(plan, id).cell);
+}
+
+/** Where a cell of the plan lies in the stitched map, in tiles. */
+export function cellRect(plan: WorldPlan, cell: readonly [number, number]): TileRect {
   const bounds = planBounds(plan);
   return {
     x: (cell[0] - bounds.column) * plan.districtSize,
@@ -281,6 +292,19 @@ export function checkPlan(plan: WorldPlan): string[] {
     );
   if (plan.districts.length > 0) {
     const bounds = planBounds(plan);
+    for (const sea of plan.seas ?? []) {
+      const key = sea.join(',');
+      if (cells.has(key)) problems.push(`Cell ${key} is a sea or a district, not both, and once.`);
+      cells.add(key);
+      const [column, row] = sea;
+      if (
+        column < bounds.column ||
+        row < bounds.row ||
+        column >= bounds.column + bounds.columns ||
+        row >= bounds.row + bounds.rows
+      )
+        problems.push(`The sea at cell ${key} is outside the districts' bounds.`);
+    }
     if (
       bounds.columns * size > held.maxWidth ||
       bounds.rows * size > held.maxHeight

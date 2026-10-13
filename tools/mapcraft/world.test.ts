@@ -60,6 +60,25 @@ describe('the world plan', () => {
     expect(districtRect(grown, 'west-wood')).toEqual({ x: 0, y: 0, width: 32, height: 32 });
   });
 
+  it('lays a sea cell as deep water, and refuses one on a district or outside the plan', () => {
+    const coast: WorldPlan = {
+      ...QUARRY_ROAD,
+      districts: [
+        ...QUARRY_ROAD.districts,
+        { id: 'south-wood', name: 'SOUTH WOOD', cell: [0, 1], idea: 'A wood below the bend.' },
+      ],
+      seas: [[1, 1]],
+    };
+    expect(checkPlan(coast)).toEqual([]);
+    const { file } = stitch(coast, files());
+    expect(file.ground.slice(32).every((row) => row.slice(32) === 'W'.repeat(32))).toBe(true);
+    expect(file.ground.slice(32).every((row) => row.slice(0, 32) === 'T'.repeat(32))).toBe(true);
+
+    const wrong = checkPlan({ ...coast, seas: [[0, 1], [2, 1]] }).join(' ');
+    expect(wrong).toMatch(/Cell 0,1 is a sea or a district/);
+    expect(wrong).toMatch(/The sea at cell 2,1 is outside/);
+  });
+
   it('starts a district sealed at its edge except at its openings', () => {
     const p = startDistrict(QUARRY_ROAD, 'orchard-bend');
     p.meadow(0, 0, 32, 32); // a careless stroke over everything
