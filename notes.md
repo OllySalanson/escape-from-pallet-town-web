@@ -201,6 +201,14 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** a `.px-scroll` pane may opt in with `data-reads` (`ui/MenuOverlay.ts`). While it overflows and holds no control it is a cursor stop (`markReadingPane`, lit like a row in `style.css`), and Up or Down on it reads on a row at a time (`readOn`, `READ_STEP_UNITS`) until its end, after which the cursor moves on as usual. The result screen's panes carry `data-reads`, and `handleKey` hands every arrow to `moveCursor` once the screen answers. Enter, Space and Escape still leave. New tests in `scenes/resultLedger.test.ts`: both panes are marked, the arrows reach the cursor (and not while locked), and `readOn` steps and stops at both ends.
 - **How a player meets it:** on the result screen, press Up: the ledger lights. Down reads on through it until the MORE strip is gone, and one more Down puts the cursor back on BACK TO THE HARBOUR. Left and Right cross to THE GAMBLE when it is long too. A pane that fits is never a stop, so a short result screen is exactly as it was.
 
+## 28. A legend caught on its one throw joined the party fainted (newest feature: the four legends)
+
+- **Found:** reading the legend fight (`world/legends.ts`, `BattleScene.throwAtBeatenLegend`). The one throw at a beaten legend is rolled at no HP, and `storeCaughtPokemon` copied that HP onto the catch, so "Gotcha! ARTICUNO was caught!" put a fainted Articuno in the party: it could not be sent out for the rest of the raid, and back at base Joy charged the revive price to wake it. Every other catch is a Pokémon that was still standing, and the game had just said it was "too weak to get away", not out.
+- **Reproduced:** in the real `BattleScene` harness (`scenes/BattleScene.test.ts`, "a legend": "caught after its one throw, comes away hanging on at 1 HP rather than fainted"): beat a level-50 Articuno, throw the one Poké Ball with a winning roll, read on. The Articuno in the party had 0 HP. The test failed before the fix.
+- **Fixed:** `storeCaughtPokemon` gives a catch at least 1 HP. Only a beaten legend's throw can reach it at 0, so no other catch changes.
+- **How a player meets it:** catch a legend after beating it and it joins the party on 1 HP, able to fight, and a Potion brings it up like any other Pokémon.
+- **Checked, left alone:** not driven in a browser this time - reaching a legend means beating its map's keeper first; the scene harness is the real battle scene.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
