@@ -11,7 +11,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
-import { RAID_KEY_LETTERS, type LearnableKeyId } from '../input/keyBindings';
+import { RAID_KEY_LETTERS, ROOM_KEY_LETTERS, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -175,11 +175,13 @@ import {
   TERRAIN_DEPTH,
   WATCH_SHADING_DEPTH,
   AREA_DARK_DEPTH,
+  RAID_NAME_PLATE_DEPTH,
   atRow,
 } from '../world/depths';
 import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
 import { friendRoom } from '../raidRoom/friendRoom';
 import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/groupHunter';
+import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { HarbourFigures } from '../base/harbourFigures';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
@@ -335,6 +337,9 @@ type HuntRole = 'solo' | 'keeper' | 'follower';
 
 /** How often a room's keeper says the hunter again when nothing about it has changed. */
 const HUNTER_RESAY_MS = 3_000;
+
+/** The colour of a ping's mark: the prize gleam's warm gold would read as loot, so a clear sky blue. */
+const PING_COLOUR = 0x5ec8f2;
 
 /** The rectangle of map a tile covers - what a caption naming that tile is seated around. */
 const tileRect = (tile: GridPosition): Rect => ({
@@ -508,6 +513,10 @@ interface ControlKeys {
   objectives: Phaser.Input.Keyboard.Key;
   /** The look: every name on the screen while it is held - see `captionReveal.ts`. */
   look: Phaser.Input.Keyboard.Key;
+  /** A raid room's phrase list, the six phrase keys, and the ping (`raidRoom/roomTalk.ts`). */
+  talk: Phaser.Input.Keyboard.Key;
+  phrases: readonly Phaser.Input.Keyboard.Key[];
+  ping: Phaser.Input.Keyboard.Key;
   /**
    * Held, it walks an explorer run three times faster. It does nothing at all
    * in an ordinary raid: the raid clock is spent on walking, so a run key would
@@ -806,6 +815,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private friendTiles = new Map<string, string>();
   /** Whose art the hunter's figure was drawn in, so a room's rival can redraw it. */
   private hunterDrawnAs: string | null = null;
+  /** How long the room's phrase list stays open, while it is (`roomTalk.ts`). */
+  private talkOpenMs = 0;
+  /** The pings on the map, drawn, by who sent each. */
+  private pingMarks = new Map<string, { readonly tile: string; readonly mark: Phaser.GameObjects.Graphics }>();
 
   public constructor() {
     super('world');
@@ -893,6 +906,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterSaidAt = Number.NEGATIVE_INFINITY;
     this.friendTiles = new Map();
     this.hunterDrawnAs = null;
+    this.talkOpenMs = 0;
+    // Phaser destroyed the marks with the scene; the next frame draws them again.
+    this.pingMarks = new Map();
     // Where the last raid ended is not where this one starts, and the plate
     // that named it must not flash up over the next insertion.
     this.districtId = null;
@@ -1147,7 +1163,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     rooms.inRaid(this.currentMap.id, this.currentTile, this.facing);
-    this.friendFigures = new HarbourFigures(this);
+    this.friendFigures = new HarbourFigures(this, () => RAID_NAME_PLATE_DEPTH);
     // Anything the others took before this player dropped in, or while they
     // were in a fight, is already gone.
     rooms.askWhatWasTaken();
@@ -1365,8 +1381,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     rooms.moved(this.currentTile, this.facing);
     rooms.tick(this.time.now, deltaMs);
-    this.friendFigures.update(rooms.figuresOn(this.currentMap.id));
+    // What somebody is saying rides on their name plate while it is said.
+    this.friendFigures.update(
+      rooms.figuresOn(this.currentMap.id).map((figure) => {
+        const said = rooms.talk.saying(figure.id, this.time.now);
+        return said ? { ...figure, name: `${figure.name}: ${said}` } : figure;
+      }),
+    );
     this.settleRoomLoot();
+    this.talkInTheRoom(deltaMs);
+    this.drawPings();
   }
 
   /** The friend as drawn, for a playtest to read (`tools/playtest/friendRaid.mjs`). */
@@ -1387,7 +1411,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const news = rooms.news();
     const drawn = rooms.figuresOn(this.currentMap.id);
     const areas = this.currentMap.areas;
-    return friendChipLines({
+    const pings = rooms.talk.pings(this.time.now);
+    const lines = friendChipLines({
       code: room.code,
       news: news ? { name: news.name, came: news.came, ...(news.line ? { line: news.line } : {}) } : null,
       friends: rooms.friends().map((friend) => {
@@ -1399,6 +1424,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           name: friend.name,
           atLab: friend.place === 'lab',
           fighting: rooms.hunters.fightOf(friend.id),
+          ...(pings.has(friend.id)
+            ? {
+                ping: {
+                  heading: this.headingTo(pings.get(friend.id)!),
+                  distance:
+                    Math.abs(pings.get(friend.id)!.x - this.currentTile.x) + Math.abs(pings.get(friend.id)!.y - this.currentTile.y),
+                },
+              }
+            : {}),
           heading: figure ? this.headingTo(figure.tile) : null,
           distance:
             figure && !elsewhere
@@ -1408,6 +1442,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         };
       }),
     });
+    // The phrase list while it is open, else the room's two keys until each is used.
+    const talk =
+      this.talkOpenMs > 0
+        ? ROOM_PHRASES.map((phrase, index) => `${index + 1} ${phrase}`)
+        : [roomKeyHintLine(this.keysLearned)].filter(Boolean);
+    return [...lines, ...talk];
   }
 
 
@@ -3741,6 +3781,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives]),
       look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.look]),
+      talk: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ROOM_KEY_LETTERS.talk]),
+      phrases: (['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'] as const).map((digit) =>
+        this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes[digit]),
+      ),
+      ping: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ROOM_KEY_LETTERS.ping]),
       // Never captured: an overlay above the world must keep its own shift.
       run: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT, false),
       interact: [
@@ -3756,6 +3801,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.controls.bag,
       this.controls.save,
       this.controls.objectives,
+      this.controls.talk,
+      this.controls.ping,
+      ...this.controls.phrases,
     ]);
   }
 
@@ -5247,6 +5295,59 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
     }
     return this.collectLootHere(loot);
+  }
+
+  /**
+   * The room's phrases and ping (`raidRoom/roomTalk.ts`): T opens the list,
+   * a number says a phrase from it, G marks the tile the player stands on.
+   * Nothing here pauses the world or costs the clock anything but the press.
+   */
+  private talkInTheRoom(deltaMs: number): void {
+    const rooms = friendRoom();
+    if (!rooms?.room || this.pendingHubTransition) {
+      return;
+    }
+    this.talkOpenMs = Math.max(0, this.talkOpenMs - deltaMs);
+    if (this.keyPresses.justPressed(this.controls.talk)) {
+      this.learnKey('talk');
+      this.talkOpenMs = this.talkOpenMs > 0 ? 0 : TALK_LIST_OPEN_MS;
+      audioManager.play('select');
+    }
+    if (this.talkOpenMs > 0) {
+      const phrase = this.controls.phrases.findIndex((key) => this.keyPresses.justPressed(key));
+      if (phrase >= 0) {
+        this.talkOpenMs = 0;
+        audioManager.play(rooms.say(phrase) ? 'confirm' : 'denied');
+      }
+    }
+    if (this.keyPresses.justPressed(this.controls.ping)) {
+      this.learnKey('ping');
+      audioManager.play(rooms.ping(this.currentTile) ? 'confirm' : 'denied');
+    }
+  }
+
+  /** Every ping still showing, drawn on its tile: a ring above the canopy, so it shows in a wood. */
+  private drawPings(): void {
+    const rooms = friendRoom();
+    const showing = rooms?.room ? rooms.talk.pings(this.time.now) : new Map<string, GridPosition>();
+    for (const [id, drawn] of this.pingMarks) {
+      const tile = showing.get(id);
+      if (!tile || `${tile.x},${tile.y}` !== drawn.tile) {
+        drawn.mark.destroy();
+        this.pingMarks.delete(id);
+      }
+    }
+    for (const [id, tile] of showing) {
+      if (this.pingMarks.has(id)) {
+        continue;
+      }
+      const mark = this.add.graphics().setDepth(atRow(CANOPY_BAND, tile.y));
+      mark.lineStyle(2, PING_COLOUR, 1).strokeCircle(0, 0, TILE_SIZE / 2 + 2);
+      mark.fillStyle(PING_COLOUR, 1).fillRect(-1, -TILE_SIZE, 2, TILE_SIZE / 2);
+      mark.setPosition(tile.x * TILE_SIZE + TILE_SIZE / 2, tile.y * TILE_SIZE + TILE_SIZE / 2);
+      this.tweens.add({ targets: mark, alpha: { from: 1, to: 0.3 }, duration: 500, yoyo: true, repeat: -1 });
+      this.pingMarks.set(id, { tile: `${tile.x},${tile.y}`, mark });
+    }
   }
 
   /** Whether a piece of loot is the room's shared ground rather than this raid's own. */

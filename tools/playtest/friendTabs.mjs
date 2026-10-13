@@ -114,7 +114,7 @@ export async function twoInARoom(browser, url, out) {
   await sleep(300);
   await olly.screenshot(`${out}/2-olly-room-code.png`);
   await prepareAndDropIn(olly);
-  const ollyStart = await until(olly, 'OLLY in the raid', (s) => s.chip === `ROOM ${code}`);
+  const ollyStart = await until(olly, 'OLLY in the raid', (s) => s.chip.split(' / ')[0] === `ROOM ${code}`);
   console.log(`OLLY is raiding ${ollyStart.map} at ${JSON.stringify(ollyStart.tile)}, chip "${ollyStart.chip}"`);
 
   // AMY: the second tab, on the same save, under the name the test gives her.

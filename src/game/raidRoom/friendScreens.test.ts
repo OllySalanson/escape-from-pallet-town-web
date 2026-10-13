@@ -24,6 +24,8 @@ describe('the friend chip', () => {
     expect(chip([{ ...ash, heading: null, distance: null }])).toEqual(['ASH ON THE MAP']);
     expect(chip([{ ...ash, atLab: true }, { ...ash, name: 'BEA', heading: 'S', distance: 3 }])).toEqual(['ASH GETTING READY', 'BEA S 3']);
     expect(chip([{ ...ash, fighting: 'hunter' }, { ...ash, name: 'BEA', fighting: 'wild' }])).toEqual(['ASH FIGHTS THE HUNTER', 'BEA IN A FIGHT']);
+    expect(chip([{ ...ash, ping: { heading: 'SE', distance: 9 } }])).toEqual(['ASH PING SE 9']);
+    expect(friendChipLines({ code: 'BHRK', news: { name: '', came: true, line: 'ASH: THANKS!' }, friends: [ash] })).toEqual(['ASH: THANKS!', 'ASH NE 14']);
   });
 });
 

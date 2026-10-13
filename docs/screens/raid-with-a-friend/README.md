@@ -38,6 +38,16 @@ have left, and the raid carries on. How it works and what is trusted where:
 
 `node tools/playtest/friendLoot.mjs <url> <dir>` plays it.
 
+## Quick phrases and a ping
+
+| | |
+|---|---|
+| `t1-amy-phrase-list.png` | AMY pressed T: the six phrases, by number, under the friend chip. Nothing is typed, so there is nothing to filter. |
+| `t2-olly-hears-amy.png` | She pressed 2: OLLY reads HUNTER COMING! on her name plate and on his chip. |
+| `t3-olly-sees-the-ping.png` | She walked two tiles and pressed G: a ring on the tile she pinged, and OLLY's chip pointing at it (`AMY PING W 2`). The plate stands above the trees, so a friend's name is never under a crown. |
+
+`node tools/playtest/friendTalk.mjs <url> <dir>` plays it.
+
 All but the first are two tabs of one test-mode build talking over the local
 stand-in, never the live project:
 `node tools/playtest/friendRaid.mjs <url> <dir>`.

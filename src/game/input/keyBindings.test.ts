@@ -34,7 +34,7 @@ import { WorldScene } from '../scenes/WorldScene';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
-import { KNOCK_FROM_THE_STEP_HINT, decorateKeyHintLine, houseKeyHintLine, yardKeyHintLine } from './keyBindings';
+import { KNOCK_FROM_THE_STEP_HINT, decorateKeyHintLine, houseKeyHintLine, roomKeyHintLine, yardKeyHintLine } from './keyBindings';
 
 /** Phaser's own table, not the mock's: the codes a real keyboard sends. */
 const { default: KEY_CODES } = await vi.importActual<{ default: Record<string, number> }>(
@@ -93,6 +93,20 @@ describe('the keys a HUD names', () => {
       const control = controls[RAID_WORD_CONTROLS[word]] as BoundKey;
       expect(control.keyCode, `${word} is named as [${key}]`).toBe(KEY_CODES[key]);
     }
+  });
+
+  it('are the keys a raid room binds, and the number keys say the phrases', () => {
+    const controls = controlsOf(new WorldScene());
+    const named = namedKeys(roomKeyHintLine(new Set()));
+    expect(named.map(([, word]) => word)).toEqual(['SAY', 'PING']);
+    for (const [key, word] of named) {
+      const control = controls[word === 'SAY' ? 'talk' : 'ping'] as BoundKey;
+      expect(control.keyCode, `${word} is named as [${key}]`).toBe(KEY_CODES[key]);
+    }
+    expect((controls.phrases as readonly BoundKey[]).map((key) => key.keyCode)).toEqual(
+      ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'].map((digit) => KEY_CODES[digit]),
+    );
+    expect(roomKeyHintLine(new Set(['talk', 'ping']))).toBe('');
   });
 
   it('are the keys the yard binds', () => {

@@ -45,10 +45,10 @@ try {
   await olly.close();
   forget();
   await bring(amy);
-  const gone = await until(amy, 'AMY told OLLY left', (s) => s.chip === 'OLLY LEFT THE RAID' && s.seen.length === 0);
+  const gone = await until(amy, 'AMY told OLLY left', (s) => s.chip.split(' / ')[0] === 'OLLY LEFT THE RAID' && s.seen.length === 0);
   console.log(`OLLY's tab closed; AMY's chip says "${gone.chip}"`);
   await amy.screenshot(`${out}/6-amy-olly-left.png`);
-  const after = await until(amy, 'AMY still raiding, alone in the room', (s) => s.chip === `ROOM ${code}`, 8_000);
+  const after = await until(amy, 'AMY still raiding, alone in the room', (s) => s.chip.split(' / ')[0] === `ROOM ${code}`, 8_000);
   console.log(`AMY raids on: chip "${after.chip}" on ${after.map}`);
 } finally {
   await browser.close();
