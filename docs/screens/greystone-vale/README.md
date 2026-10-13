@@ -970,9 +970,12 @@ held arrows, each size twice in a fresh browser.
 | Browser memory (PSS) in the raid | 833-855 MB | 923-955 MB |
 | Frame rate walking (3x window) | 57-59 fps | 56-59 fps |
 | The explorer save (every map surveyed) | 26 KB | 41 KB |
+| The vale's four structure files and `hunterFlee.test.ts`, one worker | 801 s | 830 s |
 
 **It holds.** A player downloads 1.3 KB more, a raid on the vale starts a third
-of a second later and walks just as smoothly. What it costs is memory: about 86
+of a second later and walks just as smoothly. The test suite's sweeps take about
+as long as before, because they search from walkable tiles and the ring added
+none. What it costs is memory: about 86
 MB more JavaScript heap while a raid is on the vale. That cost grows with the
 grid's tiles, and it counts the wood and sea that nobody walks as well as the
 land. That is fine for a desktop browser, which is what this game needs.
