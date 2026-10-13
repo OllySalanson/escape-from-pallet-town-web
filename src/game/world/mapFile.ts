@@ -54,6 +54,7 @@ import {
   type PlacedArea,
 } from './mapAreas';
 import { foldedSlug, isMapText, typedMapText } from './mapText';
+import { RAID_DURATION_MS } from '../run/raidClock';
 
 /**
  * A raid map as one file.
@@ -297,7 +298,11 @@ export const MAP_FILE_STAMPS: Readonly<Record<string, PropStamp<PlayerMapPropNam
   k: { prop: 'shrub', anchor: [0, 0], ground: 'P' },
 };
 
-const GROUND_LETTERS = new Set([...Object.values(MATERIAL_CHARS), ...Object.keys(MAP_FILE_STAMPS)]);
+// Ice is a cave's floor, drawn from Icefall Cave: no outdoor sheet has it.
+const GROUND_LETTERS = new Set([
+  ...Object.values(MATERIAL_CHARS).filter((letter) => letter !== MATERIAL_CHARS.ice),
+  ...Object.keys(MAP_FILE_STAMPS),
+]);
 
 /**
  * What a file calls a building, and the Kanto landmark it plants. The file has
@@ -521,6 +526,13 @@ export const MAP_FILE_FURNITURE = {
   rocks: 'caveRocks',
   crater: 'caveCrater',
   'dripping-water': 'caveDrip',
+  // A cave of ice's: Icefall Cave's, standing on its floor or its ice.
+  'ice-boulder': 'iceBoulder',
+  'ice-boulder-low': 'iceBoulderLow',
+  'ice-boulder-tall': 'iceBoulderTall',
+  'ice-rock': 'iceRock',
+  'ice-crystal': 'iceCrystal',
+  'ice-crystal-low': 'iceCrystalLow',
   // A gatehouse's: FireRed's own, from the one on Route 2 and the two kinds
   // into Saffron.
   'gate-window': 'gateWindow',
@@ -787,7 +799,7 @@ export const MAP_FILE_STYLES_OF: Readonly<Record<MapFileAreaKind, readonly MapFi
  */
 export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly string[]>> = {
   inside: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.cliff],
-  cave: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.sand],
+  cave: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.sand, MATERIAL_CHARS.ice],
   tunnel: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall],
 };
 
@@ -839,6 +851,9 @@ export const MAP_FILE_DOORWAY_LOOKS = [
   'cave-exit',
   'ladder-up',
   'ladder-down',
+  // A boat moored off a jetty: boarded from the jetty, pressing out to sea,
+  // and sailed to the jetty at the link's other end (`MapFileSailing`).
+  'boat',
 ] as const;
 export type MapFileDoorwayLook = (typeof MAP_FILE_DOORWAY_LOOKS)[number];
 
@@ -1266,6 +1281,35 @@ export interface MapFileLinkEnd extends MapFileSpot {
 /** A way between two places on the map, the same both ways. */
 export interface MapFileLink {
   readonly ends: readonly [MapFileLinkEnd, MapFileLinkEnd];
+  /**
+   * A boat's, and only a boat's: a link whose two ends are `boat` jetties
+   * outdoors is not gone through but sailed, along `course`, and only while
+   * the tide lets it (`world/sailing.ts`).
+   */
+  readonly sails?: MapFileSailing;
+}
+
+/**
+ * A boat between two jetties across open water. It runs both ways, carrying
+ * whoever boards it tile by tile across the water - charged to the raid clock
+ * as walking is - and nobody can follow it over the water. It sails only from
+ * `from` until `until` seconds into a raid: the tide.
+ */
+export interface MapFileSailing {
+  /** What the boat is called, on its caption and in its lines. */
+  readonly name: string;
+  readonly from: number;
+  readonly until: number;
+  /**
+   * Where it turns, in the outdoors' tiles, in order from the first end's
+   * boat to the second's; every leg between is a straight line of deep water.
+   */
+  readonly course: readonly { readonly x: number; readonly y: number }[];
+}
+
+/** Whether a link is a boat: sailed rather than gone through. */
+export function isSailing(link: MapFileLink): boolean {
+  return link.sails !== undefined || link.ends.some((end) => end.look === 'boat');
 }
 
 export interface MapFile {
@@ -1375,6 +1419,7 @@ export function wordsOf(file: Partial<MapFile>): readonly string[] {
     ...(file.districts ?? []).map((district) => district.name),
     ...(file.trainers ?? []).flatMap((trainer) => [trainer.name, ...trainer.lines]),
     ...(file.areas ?? []).map((area) => area.name),
+    ...(file.links ?? []).map((link) => link.sails?.name ?? ''),
   ].filter((text): text is string => typeof text === 'string');
 }
 
@@ -1900,7 +1945,11 @@ function readAreas(
         if (row.length !== width) {
           problems.push(`${what}'s ground row ${y} is ${row.length} letters; it is ${width} wide.`);
         }
-        const letters = MAP_FILE_AREA_LETTERS[kind ?? 'inside'];
+        // Ice is drawn only in a cave of ice: anywhere else it would be a
+        // floor that looked like stone and slid like ice.
+        const letters = MAP_FILE_AREA_LETTERS[kind ?? 'inside'].filter(
+          (letter) => letter !== MATERIAL_CHARS.ice || area.style === 'ice',
+        );
         const unknown = [...new Set([...row].filter((letter) => !letters.includes(letter)))];
         if (unknown.length > 0) {
           problems.push(
@@ -2060,8 +2109,54 @@ function readLinks(
         problems.push(`${what}'s ends must each be one of: ${MAP_FILE_DOORWAY_LOOKS.join(', ')}.`);
       }
     }
+    const boats = ends.filter((end) => end.look === 'boat').length;
+    if (boats === 0 && link.sails === undefined) {
+      return;
+    }
+    if (boats !== 2 || ends.some((end) => end.area !== undefined)) {
+      problems.push(`${what} is a boat: both its ends are jetties outdoors.`);
+    }
+    const sails = link.sails;
+    if (!isRecord(sails)) {
+      problems.push(`${what} is a boat, and says when it sails and where.`);
+      return;
+    }
+    if (typeof sails.name !== 'string' || sails.name.length === 0 || sails.name.length > limits.maxPlaceNameLength) {
+      problems.push(`${what} needs a name of at most ${limits.maxPlaceNameLength} letters.`);
+    }
+    const raidSeconds = RAID_DURATION_MS / 1_000;
+    if (
+      !isWholeNumber(sails.from) ||
+      !isWholeNumber(sails.until) ||
+      sails.from < 0 ||
+      sails.from >= sails.until ||
+      sails.until > raidSeconds
+    ) {
+      problems.push(`${what} sails for some of the raid's ${raidSeconds} seconds, from one whole second until a later one.`);
+    }
+    const course = sails.course;
+    if (
+      !Array.isArray(course) ||
+      course.length > MAX_COURSE_TURNS ||
+      !course.every(
+        (turn) =>
+          isRecord(turn) &&
+          isWholeNumber(turn.x) &&
+          isWholeNumber(turn.y) &&
+          outdoors !== undefined &&
+          turn.x >= 0 &&
+          turn.y >= 0 &&
+          turn.x < outdoors.width &&
+          turn.y < outdoors.height,
+      )
+    ) {
+      problems.push(`${what}'s course is a list of at most ${MAX_COURSE_TURNS} turns on the map.`);
+    }
   });
 }
+
+/** How many times a boat's course may turn. */
+export const MAX_COURSE_TURNS = 16;
 
 /** A place's name as a piece of an id: `North Gate` is `north-gate`. */
 export function placeSlug(name: string): string {

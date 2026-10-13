@@ -478,6 +478,12 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['rocks', 'Rocks', 'cave'],
     ['crater', 'Crater', 'cave'],
     ['dripping-water', 'Dripping water', 'cave'],
+    ['ice-boulder', 'Snowy boulder', 'ice'],
+    ['ice-boulder-low', 'Snowy boulder, low', 'ice'],
+    ['ice-boulder-tall', 'Snowy boulder, tall', 'ice'],
+    ['ice-rock', 'Ice rock', 'ice'],
+    ['ice-crystal', 'Ice crystal', 'ice'],
+    ['ice-crystal-low', 'Ice crystal, low', 'ice'],
     ['gate-runner', 'Runner', 'gatehouse'],
     ['gate-short-runner', 'Runner, short', 'gatehouse'],
     ['gate-rug', 'Rug, wide', 'gatehouse'],
@@ -510,6 +516,7 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   warehouse: 'Warehouse',
   gatehouse: 'Gatehouse',
   cave: 'Cave',
+  ice: 'Ice cave',
   underground: 'Underground Path',
 };
 

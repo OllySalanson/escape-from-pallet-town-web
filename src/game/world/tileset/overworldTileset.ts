@@ -442,6 +442,10 @@ export const OVERWORLD_TILESET: TilesetCatalogue<OverworldPropName> = {
     sand: { roles: { fill: FORD.fill } },
     beach: { roles: { fill: FORD.fill } },
     paving: { roles: { fill: PAVING.fill }, fillVariants: [...PAVING.variants], variantRarity: 3 },
+    // No outdoor sheet draws ice: it is a cave floor's (`insideTileset.ts`)
+    // and a map's outdoors may not hold it (`GROUND_LETTERS`), so this is
+    // only what a stray tile would fall back to.
+    ice: { roles: { fill: PAVING.fill } },
     stone: {
       roles: { fill: BOARDWALK.fill },
       fillVariants: [...BOARDWALK.variants],

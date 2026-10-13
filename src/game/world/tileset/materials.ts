@@ -45,7 +45,12 @@ export type Material =
   /** Post and rail. Solid - and the one wall you can see straight through. */
   | 'fence'
   /** A wall of a building. Solid. */
-  | 'wall';
+  | 'wall'
+  /**
+   * A sheet of ice, FireRed's Icefall Cave floor: walkable, and a step onto
+   * it carries on the same way until something stops it (`slidingFloor.ts`).
+   */
+  | 'ice';
 
 export interface MaterialTraits {
   readonly solid: boolean;
@@ -56,6 +61,8 @@ export interface MaterialTraits {
    * layer builder draws one of these underneath them.
    */
   readonly ground: boolean;
+  /** A step onto it carries on the same way until something stops it. */
+  readonly slides?: boolean;
 }
 
 const walkable = { solid: false, encounters: false, ground: true } as const;
@@ -78,6 +85,7 @@ export const MATERIALS: Readonly<Record<Material, MaterialTraits>> = {
   cliff: wall,
   fence: wall,
   wall,
+  ice: { solid: false, encounters: false, ground: true, slides: true },
 };
 
 export function isSolidMaterial(material: Material): boolean {
@@ -114,6 +122,7 @@ export const MATERIAL_CHARS: Readonly<Record<Material, string>> = {
   cliff: 'C',
   fence: 'F',
   wall: 'B',
+  ice: 'I',
 };
 
 const BY_CHAR = new Map<string, Material>(

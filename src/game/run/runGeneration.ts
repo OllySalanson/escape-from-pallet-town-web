@@ -8,6 +8,7 @@ import {
   type WorldMapDefinition,
   type WorldMapId,
 } from '../worldMap';
+import { playerLinks } from '../world/sailing';
 import { isPlayerMapId, type PlayerMapId } from '../world/mapFile';
 import { fileMap, isPublishedMap, playerMap, playerMaps } from '../world/playerMaps';
 import type { GridPosition } from '../movement/gridMovement';
@@ -649,7 +650,7 @@ export function generateRunPlan(
   const insertionMap = content.maps[insertion.mapId];
   // Through the doors of a player's map too (`GridBounds.links`): what is
   // inside a house is on this side of every door anyone can walk through.
-  const walkable = stepDistances(insertionMap.collision, insertion.position, undefined, insertionMap.links);
+  const walkable = stepDistances(insertionMap.collision, insertion.position, undefined, playerLinks(insertionMap));
   const isReachable: Reachability = {
     mapId: insertion.mapId,
     steps: walkable,
@@ -749,7 +750,7 @@ export function generateRoomLoot(mapId: WorldMapId, roomSeed: number): readonly 
   if (!front) {
     return [];
   }
-  const walkable = stepDistances(map.collision, front.position, undefined, map.links);
+  const walkable = stepDistances(map.collision, front.position, undefined, playerLinks(map));
   const isReachable: Reachability = {
     mapId,
     steps: walkable,

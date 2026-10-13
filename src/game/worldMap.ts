@@ -1,3 +1,4 @@
+import type { MapSailing } from './world/sailing';
 import {
   linkTable,
   type Direction,
@@ -129,6 +130,12 @@ export interface WorldMapDefinition {
   readonly areas?: readonly PlacedArea[];
   /** The ways through between those places, as every search reads them (`GridBounds.links`). */
   readonly links?: GridLinks;
+  /**
+   * Its boats (`world/sailing.ts`): ways across the water only a player takes,
+   * so never in `links`, which the hunter walks too. Whatever asks where a
+   * player can get to reads them through `playerLinks`.
+   */
+  readonly sailings?: readonly MapSailing[];
 }
 
 /** The maps the game shipped with, authored in its own source. */
@@ -323,6 +330,7 @@ function createComposedMap(
     ...(hasAreas
       ? { areas: composed.areas, links: linkTable(searchedLinks(composed.doorways), width) }
       : {}),
+    ...(composed.sailings ? { sailings: composed.sailings } : {}),
   };
 }
 

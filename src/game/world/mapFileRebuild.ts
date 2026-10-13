@@ -13,6 +13,7 @@ import type {
   MapFileLandmark,
   MapFileLink,
   MapFileLinkEnd,
+  MapFileSailing,
   MapFileOpens,
   MapFilePerson,
   MapFilePokemon,
@@ -76,7 +77,9 @@ const AREA = keysOf<MapFileArea>()([
 ]);
 const SWITCH = keysOf<MapFileSwitch>()(['x', 'y', 'kind', 'opens']);
 const BARRIER = keysOf<MapFileBarrier>()(['id', 'x', 'y', 'width', 'height']);
-const LINK = keysOf<MapFileLink>()(['ends']);
+const LINK = keysOf<MapFileLink>()(['ends', 'sails']);
+const SAILING = keysOf<MapFileSailing>()(['name', 'from', 'until', 'course']);
+const TURN = keysOf<MapFileSailing['course'][number]>()(['x', 'y']);
 const LINK_END = keysOf<MapFileLinkEnd>()(['x', 'y', 'area', 'toward', 'look']);
 const BERRY_TREE = keysOf<MapFileBerryTree>()(['x', 'y', 'area', 'berry']);
 const BOULDER = keysOf<MapFileBoulder>()(['x', 'y', 'area']);
@@ -136,6 +139,9 @@ export function onlyMapFileFields(file: MapFile): MapFile {
     links: file.links?.map((link) => ({
       ...pick(link, LINK),
       ends: [pick(link.ends[0], LINK_END), pick(link.ends[1], LINK_END)],
+      ...(link.sails
+        ? { sails: { ...pick(link.sails, SAILING), course: each(link.sails.course, TURN) } }
+        : {}),
     })),
   };
   for (const [key, value] of Object.entries(lists)) {
