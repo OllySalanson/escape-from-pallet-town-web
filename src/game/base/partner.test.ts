@@ -6,7 +6,19 @@ import {
   type Direction,
   type GridPosition,
 } from '../movement/gridMovement';
-import { BULBASAUR, CHARMANDER, CHARMELEON, PIDGEY, Pokemon, SQUIRTLE } from '../pokemon';
+import {
+  BLASTOISE,
+  BULBASAUR,
+  CHARIZARD,
+  CHARMANDER,
+  CHARMELEON,
+  IVYSAUR,
+  PIDGEY,
+  Pokemon,
+  SQUIRTLE,
+  VENUSAUR,
+  WARTORTLE,
+} from '../pokemon';
 import { evolutionFamily } from '../pokemon/evolution';
 import { createStartingStash, Stash } from '../stash';
 import { SaveManager } from '../save/SaveManager';
@@ -308,6 +320,36 @@ describe('who the partner is', () => {
     stash.partner()?.pokemon.evolveInto(CHARMELEON);
     expect(partnerOf(stash)?.species).toBe('charmeleon');
   });
+
+  it.each([
+    ['Bulbasaur', BULBASAUR, [IVYSAUR, VENUSAUR]],
+    ['Charmander', CHARMANDER, [CHARMELEON, CHARIZARD]],
+    ['Squirtle', SQUIRTLE, [WARTORTLE, BLASTOISE]],
+  ] as const)(
+    'stays the %s picked at every stage, nicknamed and shiny, through a save and a load',
+    (_name, starter, stages) => {
+      const stash = createStartingStash(starter);
+      const id = stash.partner()?.id;
+      const stored = new Map<string, string>();
+      const manager = new SaveManager({
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => void stored.set(key, value),
+        removeItem: (key: string) => void stored.delete(key),
+      });
+      for (const stage of stages) {
+        const partner = stash.partner()!.pokemon;
+        partner.evolveInto(stage);
+        partner.giveNickname('Pal');
+        partner.shiny = true;
+        manager.save({ ...restoreBase(stash), stash });
+        const loaded = partnerOf(manager.load()!.stash);
+        expect(loaded?.id).toBe(id);
+        expect(loaded?.species).toBe(stage.id);
+        expect(existsSync(join(__dirname, '../../../public', partnerAssetPath(loaded!.species)))).toBe(true);
+        expect(partnerReaction(loaded!.pokemon, 'yard', 0).line).toContain('PAL');
+      }
+    },
+  );
 
   it('is never chosen: a stronger Pokemon of the same line does not take its place', () => {
     const stash = createStartingStash(CHARMANDER);
