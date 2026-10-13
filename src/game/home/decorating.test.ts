@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { baseGame } from '../base/baseGames.testkit';
 import { homeFloorPlans } from '../base/rooms';
 import { DEFAULT_HOME_LAYOUT, ownedFurniture, type Placement } from './arrangement';
+import { decorateKeyHintLine } from '../input/keyBindings';
 import {
+  canTurnNow,
   decorate,
   decorBox,
   decorRefusalLine,
   heldRefusal,
+  pieceUnderCursor,
   startDecorating,
   type DecorAction,
   type DecorContext,
@@ -134,5 +137,32 @@ describe('decorating THE BOLTHOLE', () => {
   it('keeps the cursor in the room', () => {
     const results = play(start(), at(40, -3));
     expect(results[0].state.cursor).toEqual({ x: 14, y: 0 });
+  });
+});
+
+describe('the keys line while decorating', () => {
+  /** The line the house shows, built as `DecorateMode.draw` builds it. */
+  const keysLine = (state: DecorState) =>
+    decorateKeyHintLine(state.held ? 'holding' : pieceUnderCursor(state) ? 'on-a-piece' : 'on-the-floor', canTurnNow(state));
+
+  it('offers to turn only a piece that R would turn, under the cursor or in hand', () => {
+    // The dining table has one way round: R on it does nothing, so it is not offered.
+    const onTable = last(play(start(), at(5, 4))).state;
+    expect(pieceUnderCursor(onTable)?.id).toBe('dining-table');
+    expect(decorate(onTable, { kind: 'turn' }, context).outcome).toBe('nothing');
+    expect(keysLine(onTable)).not.toContain('TURN');
+    const tableInHand = decorate(onTable, press, context).state;
+    expect(tableInHand.held?.id).toBe('dining-table');
+    expect(decorate(tableInHand, { kind: 'turn' }, context).outcome).toBe('nothing');
+    expect(keysLine(tableInHand)).not.toContain('TURN');
+
+    // A pot plant has two, and is offered both ways.
+    const onPlant = last(play(start(), at(0, 7))).state;
+    expect(pieceUnderCursor(onPlant)?.id).toBe('pot-plant');
+    expect(decorate(onPlant, { kind: 'turn' }, context).outcome).toBe('turned');
+    expect(keysLine(onPlant)).toContain('[R] TURN');
+    const plantInHand = decorate(onPlant, press, context).state;
+    expect(decorate(plantInHand, { kind: 'turn' }, context).outcome).toBe('turned');
+    expect(keysLine(plantInHand)).toContain('[R] TURN');
   });
 });

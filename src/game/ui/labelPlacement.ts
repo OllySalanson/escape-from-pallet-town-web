@@ -92,6 +92,17 @@ export interface CaptionRequest {
    * one sentence whether or not the player has walked up to both.
    */
   readonly speaks?: boolean;
+  /**
+   * How many walking steps the player is from the nearest tile this caption is
+   * about. Among names, the nearer is seated first: a name speaks because the
+   * player has walked up to the thing, so the thing they are standing at is the
+   * one whose name matters. In the harbour five doors stand two tiles apart,
+   * and seated in the order they were made, OAK'S LAB took the row over its
+   * neighbours and BROCK'S WORKSHOP went unnamed with the player on its own
+   * doorstep. Absent is as far as can be, so captions that say nothing about
+   * it keep the order they were asked for in.
+   */
+  readonly nearness?: number;
 }
 
 export interface CaptionSurroundings {
@@ -334,14 +345,17 @@ export function explainSeats(
 
 /**
  * The order captions are seated in, as indices into the requests: warnings
- * first, then names, each in the order they were asked for. Exported so a tool
- * explaining a missing caption can name what was seated before it.
+ * first, then names nearest the player first (`CaptionRequest.nearness`), each
+ * otherwise in the order they were asked for. Exported so a tool explaining a
+ * missing caption can name what was seated before it.
  */
 export function seatingOrder(requests: readonly CaptionRequest[]): number[] {
   const asked = requests.map((_, index) => index);
+  const nearness = (index: number): number => requests[index].nearness ?? Number.POSITIVE_INFINITY;
   return [
     ...asked.filter((index) => requests[index].warns === true),
-    ...asked.filter((index) => requests[index].warns !== true),
+    // A stable sort, so equally near names keep the order they were asked for.
+    ...asked.filter((index) => requests[index].warns !== true).sort((a, b) => nearness(a) - nearness(b) || a - b),
   ];
 }
 

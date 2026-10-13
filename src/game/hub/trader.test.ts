@@ -13,7 +13,9 @@ import { cellsFor, gridCells } from '../items';
 import { secureGrid } from '../objectives/contracts';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
-import { isMapInProgress, WORLD_MAPS } from '../worldMap';
+import { EXTRACTION_POINTS } from '../world/extractionPoints';
+import { WORLD_GATES } from '../world/gates';
+import { isMapInProgress, WORLD_MAPS, WORLD_MAP_NAMES, type BuiltInMapId } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
   barterShortfall,
@@ -36,6 +38,7 @@ import {
   STANDING_PER_CONTRACT,
   POKEDOLLARS_PER_STANDING,
   TRADER_BARTERS,
+  TRADER_STANDING_IDS,
   TRADER_BERTH_PRICE,
   TRADER_STANDINGS,
   TRADER_STOCK,
@@ -281,6 +284,64 @@ describe('the shelf', () => {
 });
 
 describe('the barter table', () => {
+  it("says the Pickaxe digs out the shipped maps' own rubble, not only a map maker's", () => {
+    // Four shipped maps bury an exit under rubble (ROCKFALL, FALLEN CUT,
+    // SCREE GAP, QUARRY FALL). A deal that called the Pickaxe a map maker's
+    // tool told a player it was no use on any map the game ships.
+    const dugMaps = new Set(
+      EXTRACTION_POINTS.filter((point) => point.requirement?.kind === 'dug').map((point) => point.mapId),
+    );
+    const words = ['None', 'One', 'Two', 'Three', 'Four', 'Five'];
+    const pickaxe = TRADER_BARTERS.find((barter) => barter.id === 'barter-pickaxe');
+    expect(dugMaps.size).toBeGreaterThan(0);
+    expect(pickaxe?.detail).toContain(`${words[dugMaps.size]} of the maps out there have an exit fallen in under rubble`);
+    expect(pickaxe?.detail).not.toContain('an exit a map maker buried');
+    // The pane prints the item's own line above the detail, so the detail adds
+    // to it rather than saying it again.
+    expect(pickaxe?.detail).not.toContain('buried under rubble');
+  });
+
+  it('says every shipped map a field-move HM opens a door on', () => {
+    // Cut opens a door on four shipped maps (THORN GATE, COPPICE RIDE, OSIER
+    // RIDE, TRADE HOUSE TREE). A deal that named only Viridian Forest's told a
+    // player the disc was no use on Route 1, Viridian City or the Floodplain.
+    const discs = [
+      { barterId: 'barter-hm01', move: 'cut' },
+      { barterId: 'barter-hm03', move: 'surf' },
+    ] as const;
+    for (const { barterId, move } of discs) {
+      const maps = new Set(WORLD_GATES.filter((gate) => gate.fieldMove === move).map((gate) => gate.mapId));
+      const detail = TRADER_BARTERS.find((barter) => barter.id === barterId)?.detail ?? '';
+      expect(maps.size).toBeGreaterThan(0);
+      for (const mapId of maps) {
+        // Named as a player says it: "the Floodplain" for Floodplain Relay.
+        const name = WORLD_MAP_NAMES[mapId as BuiltInMapId].replace(' Relay', '');
+        expect(detail, `${barterId} names ${name}`).toContain(name);
+      }
+    }
+  });
+
+  it('only calls a deal the last or the dearest when it is', () => {
+    // At PARTNER the Moon Stone, the Life Orb and the Bicycle open together.
+    // Two of them each said they were "the last thing he brings up", and the
+    // Moon Stone called itself "the dearest" for five materials beside the
+    // Bicycle's eight - on one table, read one row after the other.
+    const asked = (barter: (typeof TRADER_BARTERS)[number]) =>
+      barter.takes.reduce((sum, stack) => sum + stack.quantity, 0);
+    const top = TRADER_STANDING_IDS[TRADER_STANDING_IDS.length - 1];
+    const atTop = TRADER_BARTERS.filter((barter) => barter.standing === top);
+    for (const barter of TRADER_BARTERS) {
+      if (/the last thing he brings up/i.test(barter.detail)) {
+        expect(atTop, `${barter.id} is the last thing he brings up`).toEqual([barter]);
+      }
+      if (/the dearest\b(?! of)/i.test(barter.detail)) {
+        for (const other of TRADER_BARTERS.filter((candidate) => candidate !== barter)) {
+          expect(asked(barter), `${barter.id} is dearer than ${other.id}`).toBeGreaterThan(asked(other));
+        }
+      }
+    }
+  });
+
   const GOODS = {
     'radio-valve': 4,
     'cable-coil': 4,
@@ -386,7 +447,7 @@ describe('the barter table', () => {
     const empty = counter({ progress: PARTNER, stash: new Stash({ items: MINIMUM_SUPPLIES }) });
     const offer = checkBarter(empty, 'barter-quick-claw');
     expect(offer?.refusal).toBe('goods-short');
-    expect(offer?.message).toContain('Parts crate');
+    expect(offer?.message).toBe('Still short 2 Parts crates and 1 Cable coil.');
     expect(barterShortfall(empty.stash, TRADER_BARTERS[0]).length).toBeGreaterThan(0);
   });
 

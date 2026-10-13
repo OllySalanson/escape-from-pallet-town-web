@@ -218,7 +218,7 @@ export const RUN_INSERTIONS = {
     label: 'Viridian City',
     mapId: 'viridian-city',
     position: { x: 44, y: 42 },
-    description: "The Pokemon Center's steps, in the middle of town. Paved streets, the Gym shut up behind its ledge, and three roads out: Route 1 down the terraces, Route 2 north to the Forest, the League road west.",
+    description: "The Pokémon Center's steps, in the middle of town. Paved streets, the Gym shut up behind its ledge, and three roads out: Route 1 down the terraces, Route 2 north to the Forest, the League road west.",
   },
   'viridian-city-forest-gate': {
     id: 'viridian-city-forest-gate',
@@ -232,7 +232,7 @@ export const RUN_INSERTIONS = {
     label: 'League Road',
     mapId: 'viridian-city',
     position: { x: 7, y: 26 },
-    description: "A gap in the trees on Route 22, the lane up to the Pokemon League's front gate. There is a keeper at the fence, and a pond field between here and the town.",
+    description: "A gap in the trees on Route 22, the lane up to the Pokémon League's front gate. There is a keeper at the fence, and a pond field between here and the town.",
   },
   'viridian-city-south-road': {
     id: 'viridian-city-south-road',

@@ -17,5 +17,6 @@ Taken in Canvas test mode (`?testmode=1`) with
 which walks in by one door and out by the other and prints what the hunter did.
 The Floodplain's ground declares no tints, so a Canvas frame of it is the game.
 
-The arrows in the door captions (`↑` drawn as a `T`) are Orange Kid having no
-arrow glyphs; that is the player maps' captions too, and a follow-up.
+These were taken when the door captions' arrows were typed `↑`, which Orange
+Kid has no glyph for and which came out a `T`. The captions now point with the
+filled triangles the battle cursor uses (`ui/pressArrows.ts`).

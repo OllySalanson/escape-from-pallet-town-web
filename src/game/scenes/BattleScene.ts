@@ -43,6 +43,7 @@ import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle
 import type { WeatherId } from '../pokemon/battle/weather';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
+import { flashScreen } from '../ui/screenFlash';
 import { doubleBattleBackdrop } from './battleBackdrop';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -2501,7 +2502,11 @@ export class BattleScene extends Phaser.Scene {
 
   private storeCaughtPokemon(): void {
     const caughtPokemon = this.state.enemy.pokemon;
-    caughtPokemon.currentHp = this.state.enemy.currentHp;
+    // A Pokemon in a ball is never one that fainted. Only a beaten legend's one
+    // throw is rolled at no HP (`throwAtBeatenLegend`), and it was too weak to
+    // get away, not out: it comes away hanging on, as FireRed never hands over
+    // a catch that cannot stand.
+    caughtPokemon.currentHp = Math.max(1, this.state.enemy.currentHp);
     caughtPokemon.primaryStatus = this.state.enemy.primaryStatus;
     this.runSession?.manager.registerCaughtPokemon(caughtPokemon);
     // A catch is cargo whether it walks in the party or rides in the raid's
@@ -3631,7 +3636,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (event.type === 'caught') {
       const caught = this.spriteFor(slotRef('enemy', 0));
-      this.cameras.main.flash(180, 255, 255, 255, false);
+      flashScreen(this.cameras.main, 180, [255, 255, 255]);
       if (caught) {
         this.tweens.add({
           targets: caught,
@@ -3854,7 +3859,7 @@ export class BattleScene extends Phaser.Scene {
       // secure container cannot protect it either.
       this.runSession.packItemId,
     );
-    this.cameras.main.flash(220, 239, 68, 68, false);
+    flashScreen(this.cameras.main, 220, [239, 68, 68]);
     this.cameras.main.shake(180, 0.009);
     audioManager.play('wipe');
     this.pendingHubTransition = true;

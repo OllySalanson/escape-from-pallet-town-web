@@ -39,6 +39,10 @@ vi.mock('../ui/MenuOverlay', () => ({
       window.addEventListener('keydown', this.onKeyDown);
     }
     public focus(): void {}
+    /** The real one moves the cursor on an arrow key; nothing here is one. */
+    public moveCursor(key: string): boolean {
+      return key.startsWith('Arrow');
+    }
     public destroy(): void {
       window.removeEventListener('keydown', this.onKeyDown);
     }

@@ -93,7 +93,7 @@ describe('in-run objective HUD layout', () => {
     expect(sceneSource).toContain('contractNavigationCue');
     // A contract that banks through one exit says so on the map too, because
     // the temptation is a gate the player walks past with the job in hand.
-    expect(sceneSource).toContain('BANK VIA ${contract.requiredExitLabel}');
+    expect(sceneSource).toContain('BANK VIA ${label}: ${this.headingTo(exit.position)}');
   });
 
   it('names route transitions from map data and hides areas the first contract does not need', () => {
@@ -283,7 +283,7 @@ describe('hunter disengagement wiring', () => {
     expect(sceneSource).toContain('hunterCatchCutscene(');
     expect(sceneSource).toContain('trainerApproachCutscene(');
     expect(sceneSource).toContain('this.interrupt(frame.speech.lines, frame.speech.about);');
-    expect(sceneSource).toContain("this.dialogBox.showMessages([...entity!.dialogLines]);");
+    expect(sceneSource).toContain("this.dialogBox.showMessages(spokenLines(entity!.dialogLines, this.hunterRival().name));");
     // And it is on the per-raid reset list, because it outlives the scene otherwise.
     const reset = sceneSource.slice(
       sceneSource.indexOf('private resetStateFromPreviousRaid('),

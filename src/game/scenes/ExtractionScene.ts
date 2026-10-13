@@ -289,7 +289,17 @@ export class ExtractionScene extends Phaser.Scene {
       this.pressDefeatSequence(event.repeat);
       return;
     }
-    if (this.locked || !['Enter', ' ', 'Escape'].includes(event.key)) {
+    if (this.locked) {
+      return;
+    }
+    // The arrows walk between the panes and read on through a long one - the
+    // ledger has no control in it, so before this the end of a long contract
+    // could only be reached with the mouse wheel.
+    if (this.overlay.moveCursor(event.key)) {
+      event.preventDefault();
+      return;
+    }
+    if (!['Enter', ' ', 'Escape'].includes(event.key)) {
       return;
     }
     event.preventDefault();
@@ -397,7 +407,7 @@ export class ExtractionScene extends Phaser.Scene {
       ? `<h3 class="px-subheading">Contract</h3><div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
       : '';
     return pixelWindow(
-      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.packRow()}${this.gearRows()}${this.progressRows()}${contract}</div>`,
+      `<div class="px-list px-scroll" data-reads>${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.packRow()}${this.gearRows()}${this.progressRows()}${contract}</div>`,
       {
         className: 'extraction-ledger',
         heading: escapeHtml(report.ledgerHeading),
@@ -418,7 +428,7 @@ export class ExtractionScene extends Phaser.Scene {
     if (currentTry()) {
       const escaped = report.outcome === 'ESCAPED';
       return pixelWindow(
-        `<div class="px-list px-scroll"><h3 class="px-subheading">${escaped ? 'The walk counts' : 'The walk does not count yet'}</h3><p class="px-empty px-wrap">${
+        `<div class="px-list px-scroll" data-reads><h3 class="px-subheading">${escaped ? 'The walk counts' : 'The walk does not count yet'}</h3><p class="px-empty px-wrap">${
           escaped
             ? 'You left by an exit, so the map maker ticks "You walked out of it yourself" for this version of the map.'
             : 'Leave by an exit for the walk to count.'
@@ -435,7 +445,7 @@ export class ExtractionScene extends Phaser.Scene {
         ? `<h3 class="px-subheading">Carried at risk</h3>${riskedRows || '<p class="px-empty">Nothing was carried unprotected.</p>'}`
         : '';
     return pixelWindow(
-      `<div class="px-list px-scroll"><h3 class="px-subheading">Secure slot</h3>${securedRows || `<p class="px-empty">${escapeHtml(report.securedEmptyText)}</p>`}${risked}<p class="px-wrap gamble-verdict">${escapeHtml(report.gambleVerdict)}</p></div>`,
+      `<div class="px-list px-scroll" data-reads><h3 class="px-subheading">Secure slot</h3>${securedRows || `<p class="px-empty">${escapeHtml(report.securedEmptyText)}</p>`}${risked}<p class="px-wrap gamble-verdict">${escapeHtml(report.gambleVerdict)}</p></div>`,
       { className: 'extraction-gamble', heading: 'The gamble' },
     );
   }

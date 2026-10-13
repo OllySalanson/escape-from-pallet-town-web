@@ -9,6 +9,7 @@ import { CANOPY_BAND, FLOOR_FURNITURE_DEPTH } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
 import { pieceTiles, placedPiece, type Placement } from '../home/arrangement';
 import {
+  canTurnNow,
   decorate,
   decorBox,
   decorRefusalLine,
@@ -141,7 +142,10 @@ export class DecorateMode {
     this.drawMarks();
     this.drawPanel();
     this.host.showHint(
-      decorateKeyHintLine(this.state.held ? 'holding' : pieceUnderCursor(this.state) ? 'on-a-piece' : 'on-the-floor'),
+      decorateKeyHintLine(
+        this.state.held ? 'holding' : pieceUnderCursor(this.state) ? 'on-a-piece' : 'on-the-floor',
+        canTurnNow(this.state),
+      ),
     );
   }
 

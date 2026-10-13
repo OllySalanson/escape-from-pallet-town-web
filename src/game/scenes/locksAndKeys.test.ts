@@ -16,11 +16,11 @@ vi.mock('../audio/AudioManager', () => ({
   ),
 }));
 
-import { Bag, type ItemId } from '../items';
+import { Bag, cellsFor, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunPhase } from '../run/RunManager';
 import { getWorldMap, type BuiltInMapId } from '../worldMap';
-import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
+import { EXTRACTION_POINTS, isDugExit, itemThatOpens, type ExtractionPoint } from '../world/extractionPoints';
 import { WORLD_POIS, type WorldPoi } from '../world/pois';
 import { WorldScene } from './WorldScene';
 
@@ -102,15 +102,28 @@ describe('a locked gate', () => {
     expect(raid.scene.reachableExitPositions()).not.toContainEqual(gate.position);
   });
 
-  it("says what FireRed says at a locked door, and what it needs, and opens nothing", () => {
+  it("says what FireRed says at a locked door, what it needs, and where that is found, and opens nothing", () => {
     const raid = inARaid('pallet-town');
     expect(raid.scene.tryOpenBarredExitAt(gate.position)).toEqual([
       'WEIR GATE: the gate is locked…',
       'No! It needs the Weir Key!',
+      // Rubble and the water both say where their tool comes from (Bill); a
+      // key is never sold, so the gate says it is a find of this map's own.
+      'The Weir Key is a rare find, somewhere on this map.',
     ]);
     expect(played).toEqual(['denied']);
     expect(raid.runSession.exitsOpened).toEqual([]);
     expect(raid.scene.isBlocked(gate.position)).toBe(true);
+  });
+
+  it('on every shipped map, says its key is a find of that map', () => {
+    const keyGates = EXTRACTION_POINTS.filter((point) => itemThatOpens(point) && !isDugExit(point));
+    expect(keyGates.length).toBeGreaterThan(0);
+    for (const point of keyGates) {
+      const raid = inARaid(point.mapId as BuiltInMapId);
+      const lines = raid.scene.tryOpenBarredExitAt(point.position) ?? [];
+      expect(lines[lines.length - 1], point.label).toMatch(/ is a rare find, somewhere on this map\.$/);
+    }
   });
 
   it('will not turn for a Lockpick, a Pickaxe or another map\'s key', () => {
@@ -192,11 +205,86 @@ describe('a locked crate', () => {
     expect(raid.bag.count('super-potion')).toBe(0);
   });
 
+  it('counts the square of the pick that snaps in the lock as room for the cache', () => {
+    // A Satchel with exactly the cache's squares free once the pick is gone,
+    // and one short while it is still in the pack. The pick snaps opening the
+    // crate, so its square is the cache's: refused, the player would be told
+    // to put something down for good to make room the pick was about to make.
+    const squares = crate.reward.reduce((total, { itemId, quantity }) => total + cellsFor(itemId, quantity), 0);
+    const raid = inARaid('pallet-town', [], new Bag({ potion: 12 - squares }, { width: 4, height: 3 }));
+    raid.bag.add('lockpick', 1);
+    expect(raid.bag.fitsAll(crate.reward)).toBe(false);
+    const lines = raid.scene.tryActivatePoiAt(crate.position);
+    expect(lines?.[0]).toBe('The Lockpick turned the lock, and snapped in it.');
+    expect(raid.bag.count('lockpick')).toBe(0);
+    expect(raid.bag.count('potion')).toBe(12 - squares);
+    for (const { itemId, quantity } of crate.reward) {
+      expect(raid.bag.count(itemId)).toBe(quantity);
+    }
+  });
+
   it('is an ordinary cache to every crate without a lock', () => {
     const open = crateNamed('TOWN PUMP');
     const raid = inARaid('pallet-town', ['lockpick']);
     raid.scene.tryActivatePoiAt(open.position);
     expect(raid.bag.count('lockpick')).toBe(1);
     expect(raid.bag.count('antidote')).toBe(1);
+  });
+});
+
+describe('what a cache says it did', () => {
+  // Playtest 6, B9: "TOWN PUMP: 1× Antidote secured. Detour reward is LOST ON
+  // WIPE" - "secured" is the secure container's word, and a cache pays into
+  // the pack, which a wipe takes. The line says where it went and what that
+  // risks, and never calls it secured.
+  it('says the payout went into the pack, at risk, in plain amounts', () => {
+    const open = crateNamed('TOWN PUMP');
+    const raid = inARaid('pallet-town');
+    const lines = raid.scene.tryActivatePoiAt(open.position) ?? [];
+    expect(lines.join(' ')).not.toMatch(/secured/i);
+    expect(lines).toEqual(['TOWN PUMP: 2 Potions and 1 Antidote went into the PACK. Lost if you wipe - extract to bank them.']);
+  });
+
+  it('names every piece of a cache that pays more than one thing', () => {
+    const crate = crateNamed('KILN STRONGBOX');
+    const raid = inARaid('pallet-town', ['lockpick']);
+    const lines = raid.scene.tryActivatePoiAt(crate.position) ?? [];
+    expect(lines.join(' ')).not.toMatch(/secured/i);
+    expect(lines[1]).toMatch(/^KILN STRONGBOX: .+ went into the PACK\. Lost if you wipe - extract to bank them\.$/);
+    for (const { itemId, quantity } of crate.reward) {
+      expect(lines[1]).toContain(itemAmountFor(itemId, quantity));
+    }
+  });
+
+  // A full pack at a cache said "No room for 2× POTION and 1× ANTIDOTE", while
+  // the same pack at a ground find says "No room for 3 POTIONS" and the cache
+  // itself, once taken, says "2 Potions and 1 Antidote". One pack, one way of
+  // counting what will not go in it.
+  it('names what will not fit in the same amounts as everything else', () => {
+    const open = crateNamed('TOWN PUMP');
+    const raid = inARaid('pallet-town', [], new Bag({ potion: 18 }, { width: 6, height: 3 }));
+    const lines = raid.scene.tryActivatePoiAt(open.position) ?? [];
+    expect(lines[0]).toBe(
+      'No room for 2 POTIONS and 1 ANTIDOTE - the cache needs 3 squares. Drop something from the PACK and work it again.',
+    );
+    expect(lines.join(' ')).not.toContain('×');
+  });
+});
+
+describe('the flash a cache opens with', () => {
+  // Playtest 6: every pickup and every cache flashed the whole screen to solid
+  // colour for a frame, because Phaser's flash starts fully opaque. It is a
+  // glint now: whatever the camera's flash starts from is held to the peak.
+  it('starts no stronger than a glint, so the map stays readable under it', async () => {
+    const { FLASH_PEAK_ALPHA } = await import('../ui/screenFlash');
+    const raid = inARaid('pallet-town');
+    const startedAt: number[] = [];
+    const flashEffect = { alpha: 1 };
+    (raid.scene as unknown as { cameras: unknown }).cameras = {
+      main: { shake: vi.fn(), flashEffect, flash: () => startedAt.push(flashEffect.alpha) },
+    };
+    raid.scene.tryActivatePoiAt(crateNamed('TOWN PUMP').position);
+    expect(startedAt).toHaveLength(1);
+    expect(startedAt[0]).toBeLessThanOrEqual(FLASH_PEAK_ALPHA);
   });
 });

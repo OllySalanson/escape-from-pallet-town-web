@@ -278,3 +278,104 @@ describe('the pixel-ui stylesheet', () => {
     expect(betweenPairs).toBeGreaterThanOrEqual(withinPair * 2);
   });
 });
+
+describe('the box strip that leads a list of Pokemon', () => {
+  // The strip's lines are centred against each other on one row wherever they
+  // fit (`align-items: center` on `.box-bar`), so a line with a foot of its own
+  // is a taller box and its chips sit higher than its neighbours'. The naming
+  // line carried the padding it had as a row of the list (#127) into the strip,
+  // and RENAME and NEW BOX stood a game pixel above PREV, NEXT, SORT and FIND
+  // on the Pokemon Center at 1280x800 - and indented three when it wrapped.
+  const lineClasses = [
+    ...new Set(
+      gameSources.flatMap((source) =>
+        [...source.matchAll(/class="box-line([^"]*)"/g)].flatMap((match) => match[1].trim().split(/\s+/).filter(Boolean)),
+      ),
+    ),
+  ];
+
+  it('is read off the markup, so a new kind of line is asked about too', () => {
+    expect(lineClasses).toContain('box-manage');
+  });
+
+  it('pads no line of its own, so every chip in the strip stands on one line', () => {
+    const padded = ['box-line', ...lineClasses].flatMap((name) =>
+      [...pixelUiRules.matchAll(new RegExp(`([^{}]*\\.${name}(?![\\w-])[^{}]*)\\{([^}]*)\\}`, 'g'))]
+        .filter((match) => /(?:^|[\s;])padding(?:-[a-z]+)?:\s*(?!0;)/.test(match[2]))
+        .map((match) => match[1].trim()),
+    );
+    expect(padded).toEqual([]);
+  });
+});
+
+describe('a card on the teaching screen', () => {
+  // At 1280x800 a card listed its four moves one a line, which made each card
+  // so tall that a party of four showed two cards, a blank band and "2 MORE"
+  // over the other two - one of them the Seel the disc was meant for. Short of
+  // the room for a band the moves stand two abreast, and a move too long to
+  // share half the card keeps a line of its own rather than being clipped.
+  const bodiesFor = (room: 'narrow' | 'tight', selector: string): string[] =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) =>
+        selectors.split(',').some((one) => one.trim() === `:where(.pixel-ui[data-room='${room}']) ${selector}`),
+      )
+      .map(([, , body]) => body);
+
+  it.each(['narrow', 'tight'] as const)('stands its moves two abreast in %s room', (room) => {
+    const list = bodiesFor(room, '.teach-moves').join(';');
+    expect(list).toMatch(/display:\s*flex;/);
+    expect(list).toMatch(/flex-wrap:\s*wrap;/);
+    const move = bodiesFor(room, '.teach-moves > li').join(';');
+    const basis = Number(/flex:\s*1 0 (\d+)%;/.exec(move)?.[1]);
+    expect(basis).toBeGreaterThan(25);
+    expect(basis).toBeLessThan(50);
+    expect(move).toMatch(/min-width:\s*max-content;/);
+  });
+});
+
+describe('a row of wrapped copy', () => {
+  // A pane's fold may fall between such a row's lines (`rowPieces`), so its icon
+  // stands beside the first line rather than centred down all of them, where
+  // the result screen's contract lost it to the MORE strip.
+  it('keeps its icon beside its first line', () => {
+    const body = [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) =>
+        selectors.split(',').some((one) => one.trim() === ':where(.pixel-ui) .px-row.has-icon:has(.px-wrap) > .item-icon'),
+      )
+      .map(([, , rule]) => rule)
+      .join(';');
+    expect(body).toMatch(/align-self:\s*start;/);
+  });
+});
+
+describe('the defeat line-up', () => {
+  // The line-up in front of a lost raid's report is not a pixel-ui screen, but
+  // it is set in the same face, and the face has two limits that hold anywhere
+  // it is drawn: there is no bold cut, so a weight above 400 is the browser
+  // smearing the letters sideways, and below twelve pixels `W` reads `V`.
+  const block = stylesheet
+    .slice(stylesheet.indexOf('.defeat-stage {'), stylesheet.indexOf('@media (prefers-reduced-motion: reduce)'))
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const rule = (selector: string): string =>
+    new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`).exec(block)?.[1] ?? '';
+  const declared = (body: string, property: string): string | undefined =>
+    new RegExp(`(?:^|[\\s;])${property}:\\s*([^;]+);`).exec(body)?.[1]?.trim();
+
+  it('never asks the face for a bold it does not have', () => {
+    const weights = [...block.matchAll(/font-weight:\s*([^;]+);/g)].map((match) => match[1].trim());
+    expect(weights.filter((weight) => weight !== '400')).toEqual([]);
+    // A plate's name is a `<b>`, which the browser draws bold unless told not to.
+    expect(declared(rule('.defeat-plate b'), 'font-weight')).toBe('400');
+  });
+
+  it('writes a plate at one readable size: the level, the count and the verdict as large as the name', () => {
+    // Orange Kid's own grid is 12.5 pixels: at that size a stem is one pixel.
+    expect(declared(rule('.defeat-plate'), 'font-size')).toBe('12.5px');
+    for (const selector of ['.defeat-meta', '.defeat-tag', '.defeat-plate b']) {
+      expect({ selector, size: declared(rule(selector), 'font-size') }).toEqual({ selector, size: undefined });
+    }
+    // The level and the count are a `<small>`, which the browser draws a size
+    // down unless told to keep its parent's.
+    expect(declared(rule('.defeat-meta small'), 'font-size')).toBe('inherit');
+  });
+});

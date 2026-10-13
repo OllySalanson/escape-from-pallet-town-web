@@ -8,7 +8,7 @@ vi.mock('phaser', () => ({
   },
 }));
 
-import { Bag } from '../items';
+import { Bag, ITEM_DEFINITIONS } from '../items';
 import {
   BULBASAUR,
   CHARMANDER,
@@ -1079,6 +1079,24 @@ describe('the standing board in the lobby', () => {
     }
   });
 
+  it('names what a reward is for, so the pane under the errands is not read as theirs', () => {
+    // The pane under the board shows the first contract's reward until a row is
+    // pointed at, and the errands are listed between that contract and the pane:
+    // "Reward The Cordon Ledger..." sat straight under OAK'S PARCEL.
+    const progress: RaidProgress = {
+      ...chainBanked(2),
+      errands: [{ id: 'oaks-parcel', status: 'started', found: 0, lossesHeard: 0 }],
+    };
+    const home = markupOf(createHub(progress).hub);
+    const panes = [...home.matchAll(/<div class="px-detail" data-shown-by="([^"]+)"( hidden(?:="")?)?>(.*?)<\/div>/g)];
+    const shown = panes.filter((pane) => pane[2] === undefined);
+    expect(shown).toHaveLength(1);
+    const first = standingBoard(progress).find((contract) => contract.id === shown[0][1])!;
+    expect(shown[0][3]).toContain(`<small>Reward for</small> ${first.name}:`);
+    const parcel = panes.find((pane) => pane[1] === 'errand-oaks-parcel')!;
+    expect(parcel[3]).toContain("<small>Reward for</small> Oak's Parcel:");
+  });
+
   it('says what a contract costs before it is taken: the row opens its own insertion and the hunter is on it', () => {
     const progress = chainBanked(2);
     const raised = standingBoard(progress).find((contract) => contract.hunterPressure === 1)!;
@@ -1149,6 +1167,23 @@ describe('what the base screen leads with', () => {
     expect(home).not.toContain('swap-panel');
     expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('Contract board'));
     expect(home).toContain('Contract board');
+  });
+
+  it('counts the stash in the title bar the way the Pokémon Center counts it: kinds, not items', () => {
+    const hub = createFreshHub();
+    const kinds = ITEM_DEFINITIONS.filter((item) => hub.stash.itemCount(item.id) > 0).length;
+    const units = ITEM_DEFINITIONS.reduce((sum, item) => sum + hub.stash.itemCount(item.id), 0);
+    // The case that misled: a stack of several is one kind, not one item.
+    expect(units).toBeGreaterThan(kinds);
+    const aside = (markup: string) => /class="px-title-aside">([^<]*)</.exec(markup)?.[1];
+
+    // Oak's Lab, and Brock's Workshop, which shares the line.
+    expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
+    hub.setView('workshop');
+    expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
+    // The Pokémon Center's own pane says the same number in the same word.
+    hub.setView('stash');
+    expect(markupOf(hub)).toContain(`${kinds} kinds`);
   });
 
   it('keeps the swap offer, in the stash beside the Pokémon it would trade away', () => {
@@ -1539,7 +1574,7 @@ describe('Brock', () => {
     const pane = markupOf(hub).slice(markupOf(hub).indexOf('data-shown-by="beacon"'));
 
     // No lamp oil and no cable at all.
-    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 4× Lamp oil, 3× Cable coil.</span>');
+    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 4 Lamp oils and 3 Cable coils.</span>');
   });
 
   it('names the materials it is spending, and asks before it spends them', () => {
@@ -1553,7 +1588,7 @@ describe('Brock', () => {
     // The row becomes the question, as Bill's barters do, with the cursor on
     // the answer that changes nothing and on no other row.
     expect(hub.workshopArmed).toBe('secure-locker-1');
-    expect(armed).toContain('Spend 4× Parts crate on it for good?');
+    expect(armed).toContain('Spend 4 Parts crates on it for good?');
     expect(armed).toContain('data-outfit-confirm="secure-locker-1"');
     expect(armed).toMatch(/data-deal-cancel data-cursor-start[^>]*>Keep them</);
     expect(armed.match(/data-cursor-start/g)).toHaveLength(1);
@@ -1630,7 +1665,7 @@ describe('Brock', () => {
     // Choosing a rung that cannot be paid for is answered, and goes nowhere.
     workshop.armUpgrade('radio-mast');
     const refused = markupOf(hub);
-    expect(refused).toContain('Radio mast still needs 3× Radio valve, 1× Mooring rope.');
+    expect(refused).toContain('Radio mast still needs 3 Radio valves and 1 Mooring rope.');
     expect(refused).not.toContain('data-outfit-confirm');
   });
 
@@ -1975,7 +2010,7 @@ describe('HubScene - Bill', () => {
     armed.traderArmed = 'barter-quick-claw';
     const asking = markupOf(hub);
 
-    expect(asking).toContain('Hand over 2× Parts crate, 1× Cable coil for good?');
+    expect(asking).toContain('Hand over 2 Parts crates and 1 Cable coil for good?');
     expect(asking).toMatch(/data-deal-cancel[^>]*data-cursor-start/);
     expect(asking).toContain('data-barter-confirm="barter-quick-claw"');
     // The armed row is no longer the one-press deal it replaced.

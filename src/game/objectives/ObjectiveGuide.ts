@@ -4,8 +4,11 @@ import type { ActiveRunSession } from '../run/RunSession';
 import type { GridPosition } from '../movement/gridMovement';
 import { compassBearing, compassWord } from '../world/bearing';
 import { type WorldMapId, worldMapName } from '../worldMap';
-import { poisForMap } from '../world/pois';
+import { poisForMap, type WorldPoi } from '../world/pois';
+import { isLandmarkWorked } from '../world/workedLandmarks';
 import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/errands';
+import { isDugExit, itemThatOpens } from '../world/extractionPoints';
+import { ITEMS } from '../items/items';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -17,6 +20,25 @@ export interface ObjectiveGuideContext {
    */
   readonly towards?: (target: GridPosition) => GridPosition;
   readonly activatedPoiIds: ReadonlySet<string>;
+  /**
+   * How many of an item the raid's pack holds now. A thing picked up can be
+   * put down again for good, so what was found is not what is carried.
+   */
+  readonly carried?: (itemId: string) => number;
+  /**
+   * The open exit the fewest walking steps from here (`../world/nearestExit`),
+   * named by the guide in place of the first in the map's list. Absent when
+   * the scene did not measure one, or none is open and in reach.
+   */
+  readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition };
+  /**
+   * Walking steps from here to a tile, or undefined when it cannot be reached
+   * now (`../world/nearestExit`'s `walkingStepsFrom`). Absent is a straight
+   * line: the scene did not measure.
+   */
+  readonly stepsTo?: (target: GridPosition) => number | undefined;
+  /** The trainers beaten this raid. A toll stands up again next raid, but not in this one. */
+  readonly defeatedTrainerIds?: ReadonlySet<string>;
 }
 
 export interface ObjectiveGuideObjective {
@@ -63,7 +85,9 @@ export function buildObjectiveGuide(
     hints: [
       ...(contract
         ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
-        : laterRunHints(context, currentExit?.label)),
+        : laterRunHints(session, context, currentExit?.label)),
+      ...barredExitHints(session, context),
+      ...lockedCacheHints(session, context),
       ...errandHints(session, context, snapshot.foundItems),
       ...shinyHints(snapshot.caughtPokemon),
     ],
@@ -87,7 +111,11 @@ function errandHints(
     }
     const thing = errandThing(errand);
     if (found.some((stack) => stack.itemId === piece.itemId)) {
-      return [`You are carrying ${thing} for ${errand.name}. Walk out with it and it is theirs; wipe and it is lost with the pack.`];
+      // Found is not carried: the pack can put it down for good to make room,
+      // and then it is not out here this raid any more.
+      return (context.carried?.(piece.itemId) ?? 1) > 0
+        ? [`You are carrying ${thing} for ${errand.name}. Walk out with it and it is theirs; wipe and it is lost with the pack.`]
+        : [`You put ${thing} down. ${errand.name} is still waiting for it, and it will be out here again next raid.`];
     }
     const squares = errandSquares(errand);
     const heading = context.towards?.(piece.position) ?? piece.position;
@@ -95,6 +123,49 @@ function errandHints(
       `${errand.name}'s errand: ${thing} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}. It takes ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`,
     ];
   });
+}
+
+/**
+ * A barred exit on this map that what is in the pack can open - a locked gate
+ * and its own key, or rubble and a Pickaxe - and which way it is. The nearest
+ * open exit never counts one (`isBarredExit`), so without this a player who
+ * carried a key in at the risk of losing it was never told where its gate is.
+ * Said only while it is still barred: opened, it is an ordinary way out.
+ */
+function barredExitHints(session: ActiveRunSession, context: ObjectiveGuideContext): string[] {
+  const opened = session.exitsOpened ?? [];
+  return (session.plan?.extractionPoints ?? []).flatMap((point) => {
+    const opener = itemThatOpens(point);
+    if (
+      point.mapId !== context.currentMapId ||
+      !opener ||
+      opened.includes(point.label) ||
+      (context.carried?.(opener) ?? 0) === 0
+    ) {
+      return [];
+    }
+    const where = directionTo(context.currentPosition, context.towards?.(point.position) ?? point.position);
+    return isDugExit(point)
+      ? [`Your ${ITEMS[opener].displayName} can dig out ${point.label}, ${where}, as a way out for this raid.`]
+      : [`You carry the ${ITEMS[opener].displayName}: it opens ${point.label}, ${where}, as a way out for this raid.`];
+  });
+}
+
+/**
+ * The nearest locked cache still to open, for a pack with a Lockpick in it -
+ * the one thing that opens it. Never named as the landmark to work otherwise
+ * (`nearestLandmarkToWork`), because a pack with no pick is only refused at it.
+ */
+function lockedCacheHints(session: ActiveRunSession, context: ObjectiveGuideContext): string[] {
+  if ((context.carried?.('lockpick') ?? 0) === 0) {
+    return [];
+  }
+  const cache = nearestLandmarkToWork(session, context, (poi) => poi.locked === true, true);
+  if (!cache) {
+    return [];
+  }
+  const where = directionTo(context.currentPosition, context.towards?.(cache.position) ?? cache.position);
+  return [`You carry a Lockpick: ${cache.label}, ${where}, is locked and pays more than the open caches round it.`];
 }
 
 /**
@@ -147,7 +218,7 @@ function contractHints(
   currentExit: string | undefined,
 ): readonly string[] {
   const outstanding = remainingMarkers(contract, contractSteps);
-  const extractionHint = bankingHint(contract, safeExit, currentExit);
+  const extractionHint = bankingHint(contract, session, context, safeExit, currentExit);
 
   if (outstanding.length === 0) {
     return [
@@ -190,43 +261,156 @@ function directionTo(from: GridPosition, to: GridPosition): string {
   return bearing ? `to the ${compassWord(bearing)}` : 'right here';
 }
 
-function laterRunHints(context: ObjectiveGuideContext, currentExit: string | undefined): readonly string[] {
+/** The Floodplain's toll on the shore road (`../world/trainers`). */
+const MAYA_ID = 'floodplain-checkpoint-maya';
+
+function laterRunHints(
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+  currentExit: string | undefined,
+): readonly string[] {
+  const nearest = nearestExitHint(context);
   if (context.currentMapId === 'floodplain-relay') {
     const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
-    // The landmark is named from its own data here too. This line used to be a
-    // sentence about the supply vault written out by hand, which went on telling
-    // a fresh save to go to a cache that is now behind two bosses.
-    const landmark = poisForMap(context.currentMapId).find(
-      (poi) => poi.effect === undefined && !context.activatedPoiIds.has(poi.id),
-    );
+    // Banking the first contract finishes the station for good: it refuses to
+    // be worked again and the Radio Exit is open from the first second.
+    const radioKept = isLandmarkWorked('floodplain-ranger-radio', session.plan?.completedContracts ?? []);
+    // The landmark and the exit are the nearest ones, as on every other map:
+    // the Floodplain is 128 tiles across and has ten landings, and the first
+    // cache in its list and a gate named by hand were a hundred tiles off from
+    // most of them. The station keeps a line of its own, because its radio is
+    // the one landmark that changes the map's ways out.
+    const landmark = nearestLandmarkToWork(session, context, (poi) => poi.effect === undefined);
+    // Maya stands up again every raid, but not in the one that beat her.
+    const mayaBeaten = context.defeatedTrainerIds?.has(MAYA_ID) ?? false;
     return [
-      'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
+      mayaBeaten
+        ? 'You beat Maya this raid: the shore road is clear past her checkpoint. She will be back on it next raid.'
+        : 'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
       landmark
-        ? `${landmark.label} is on this map. ${landmark.description}`
-        : 'Every marked cache on this map has been worked this raid.',
-      radioActive
-        ? 'Radio Exit is active at Ranger Station. South Gate is always open; Ferry Dock opens on its signal.'
-        : 'Ranger Station gives a hunter forecast and activates the Radio Exit. South Gate is always open; Ferry Dock opens on its signal.',
+        ? landmarkHint(landmark, context)
+        : 'No marked cache in reach is left to work this raid.',
+      radioKept
+        ? 'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.'
+        : radioActive
+          ? 'Radio Exit is active at Ranger Station.'
+          : 'Ranger Station gives a hunter forecast and activates the Radio Exit.',
+      nearest
+        ? `The nearest open exit is ${nearest}. Use it to bank your haul.`
+        : 'South Gate is always open; Ferry Dock opens on its signal.',
     ];
   }
   // Named and explained by the landmark itself. Every map has its own, and more
   // than one on some, so a sentence that wrote a landmark's name or what it does
   // as a literal would be right on one map and misdirecting on the other three.
-  const landmark = poisForMap(context.currentMapId).find((poi) => !context.activatedPoiIds.has(poi.id));
-  const landmarkHint = landmark
-    ? `${landmark.label} is nearby. ${landmark.description}`
-    : 'Search marked caches and loose supplies, then leave before the raid turns against you.';
-  return [landmarkHint, currentExit ? `Use ${currentExit} on this map to bank your haul.` : 'Return to a marked extraction gate to bank your haul.'];
+  // The nearest one still to work, and which way: the vast maps hold a dozen,
+  // and the first in authored order was the Green's pump whichever end of the
+  // valley the player stood in.
+  const landmark = nearestLandmarkToWork(session, context);
+  return [
+    landmark
+      ? landmarkHint(landmark, context)
+      : 'Search marked caches and loose supplies, then leave before the raid turns against you.',
+    nearest
+      ? `The nearest open exit is ${nearest}. Use it to bank your haul.`
+      : currentExit
+        ? `Use ${currentExit} on this map to bank your haul.`
+        : 'Return to a marked extraction gate to bank your haul.',
+  ];
+}
+
+/**
+ * The one exit that banks this contract, which way it is from here, and - while
+ * a landmark still seals it - which landmark and which way that is: the ledger
+ * in hand and a shut culvert is exactly when a player walks the wrong way.
+ */
+function requiredExitHint(
+  label: string,
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+): string {
+  const unpaid = 'Any other gate ends the raid and leaves it unpaid.';
+  const exit = session.plan?.extractionPoints.find(
+    (point) => point.mapId === context.currentMapId && point.label === label,
+  );
+  if (!exit) {
+    return `Only ${label} banks this contract. ${unpaid}`;
+  }
+  const way = (target: GridPosition): string =>
+    directionTo(context.currentPosition, context.towards?.(target) ?? target);
+  const seal = exit.requirement;
+  const sealedBy =
+    seal?.kind === 'poi-activated' && !context.activatedPoiIds.has(seal.poiId)
+      ? poisForMap(context.currentMapId).find((poi) => poi.id === seal.poiId)
+      : undefined;
+  const sealed = sealedBy
+    ? ` It stays sealed until ${sealedBy.label} is worked, ${way(sealedBy.position)}.`
+    : '';
+  return `Only ${label}, ${way(exit.position)}, banks this contract.${sealed} ${unpaid}`;
+}
+
+/** The nearest open exit and which way it is, as a sentence names it. */
+function nearestExitHint(context: ObjectiveGuideContext): string | undefined {
+  const exit = context.nearestOpenExit;
+  if (!exit) {
+    return undefined;
+  }
+  return `${exit.label}, ${directionTo(context.currentPosition, context.towards?.(exit.position) ?? exit.position)}`;
+}
+
+function landmarkHint(landmark: WorldPoi, context: ObjectiveGuideContext): string {
+  return `The nearest landmark still to work is ${landmark.label}, ${directionTo(context.currentPosition, context.towards?.(landmark.position) ?? landmark.position)}. ${landmark.description}`;
+}
+
+/**
+ * The landmark on this map closest to the player that this raid can still work:
+ * not worked this raid, and not finished with for good by a banked contract
+ * (`../world/workedLandmarks`), which still stands but hands out nothing.
+ * A locked cache is asked for only by name (`locked`): to a pack with no
+ * Lockpick it is a crate that refuses, never the next place to go.
+ * Closest on foot when the scene measured the walk, so one behind a shut gate
+ * or across the river is never named over one down the lane; in a straight
+ * line otherwise.
+ */
+function nearestLandmarkToWork(
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+  kind: (poi: WorldPoi) => boolean = () => true,
+  locked = false,
+): WorldPoi | undefined {
+  const completed = session.plan?.completedContracts ?? [];
+  const here = context.currentPosition;
+  const distanceTo = (poi: WorldPoi): number | undefined =>
+    context.stepsTo
+      ? context.stepsTo(poi.position)
+      : Math.abs(poi.position.x - here.x) + Math.abs(poi.position.y - here.y);
+  let best: { readonly poi: WorldPoi; readonly distance: number } | undefined;
+  for (const poi of poisForMap(context.currentMapId)) {
+    if (!kind(poi) || (poi.locked === true) !== locked || context.activatedPoiIds.has(poi.id) || isLandmarkWorked(poi.id, completed)) {
+      continue;
+    }
+    const distance = distanceTo(poi);
+    if (distance !== undefined && (!best || distance < best.distance)) {
+      best = { poi, distance };
+    }
+  }
+  return best?.poi;
 }
 
 /** How this contract gets banked, which is not always "any exit will do". */
 function bankingHint(
   contract: RaidContract,
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
   safeExit: string | undefined,
   currentExit: string | undefined,
 ): string {
   if (contract.requiredExitLabel) {
-    return `Only ${contract.requiredExitLabel} banks this contract. Any other gate ends the raid and leaves it unpaid.`;
+    return requiredExitHint(contract.requiredExitLabel, session, context);
+  }
+  const nearest = nearestExitHint(context);
+  if (nearest) {
+    return `The nearest open exit is ${nearest}. Extract there to bank the contract and your haul.`;
   }
   if (safeExit) {
     return `Extract through the known safe gate, ${safeExit}, to bank the contract and your haul.`;

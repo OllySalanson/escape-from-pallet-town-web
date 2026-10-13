@@ -53,6 +53,19 @@ export interface WorldEntity {
 }
 
 /**
+ * Stands in a townsperson's line for the name of whoever hunts this raid. The
+ * hunter rotates per raid (`rivalForRaid`), so a line about who is asking after
+ * the player names them through this rather than describing one of the five -
+ * and never says how they look or which pronoun fits, because that is only true
+ * of some of them. `spokenLines` fills it in.
+ */
+export const RIVAL_NAME = '{RIVAL}';
+
+/** A townsperson's lines as said on a raid hunted by `rivalName`. */
+export const spokenLines = (lines: readonly string[], rivalName: string): string[] =>
+  lines.map((line) => line.split(RIVAL_NAME).join(rivalName));
+
+/**
  * Signs and townsfolk block their own tile, so every one of them stands at the
  * end of a lane you walk into or on a one-tile stub off one. A sign placed on a
  * lane is a severed route, not a landmark.
@@ -1899,7 +1912,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     facing: 'down',
     dialogLines: [
       'VIRIDIAN CITY - The Eternally Green Paradise',
-      'Three roads out. South to Pallet Town down the terraces, north to Viridian Forest, west to the Pokemon League.',
+      'Three roads out. South to Pallet Town down the terraces, north to Viridian Forest, west to the Pokémon League.',
       'PALLET ROAD and FOREST GATE are always open. The EAST TRAIL leaves through the wood. WEST STILE opens on the ranger\'s round.',
     ],
   },
@@ -1922,7 +1935,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     position: { x: 10, y: 15 },
     facing: 'down',
     dialogLines: [
-      'POKEMON LEAGUE - FRONT GATE',
+      'POKéMON LEAGUE - FRONT GATE',
       'Only trainers who have proven themselves may pass. The keeper holds the fence.',
       'Beat him and the side gate onto the high path opens as well.',
     ],
@@ -1946,7 +1959,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     position: { x: 17, y: 35 },
     facing: 'down',
     dialogLines: [
-      'ROUTE 22 - POKEMON LEAGUE FRONT GATE',
+      'ROUTE 22 - POKéMON LEAGUE FRONT GATE',
       'North up the lane to the League fence. South through the border fields to the WEST STILE and the ranger\'s hut.',
     ],
   },
@@ -2098,8 +2111,8 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     design: 'youngster',
     idle: { roam: [{ x: 57, y: 33 }], glances: ['left', 'right'], beatMs: 2600 },
     dialogLines: [
-      'Those are Poke Balls on your belt! You\'re a trainer!',
-      "The Mart's door isn't locked. There's still a box of Poke Balls in the stockroom behind the counter.",
+      'Those are Poké Balls on your belt! You\'re a trainer!',
+      "The Mart's door isn't locked. There's still a box of Poké Balls in the stockroom behind the counter.",
     ],
   },
   {
@@ -2124,7 +2137,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     idle: { roam: [{ x: 39, y: 44 }], glances: ['down', 'up'], beatMs: 3700 },
     dialogLines: [
       'Nurse Joy leaves a Potion in the night hatch for anyone who comes in after dark.',
-      'The hatch is in the Pokemon Center door. You only have to step up to it.',
+      'The hatch is in the Pokémon Center door. You only have to step up to it.',
     ],
   },
   {
@@ -2175,7 +2188,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     dialogLines: [
       'VIRIDIAN CITY NOTICE BOARD',
       'The Gym is closed until further notice. The League fence is kept by GATEKEEPER ROSS.',
-      'A small tree has grown across the gate of the trade house on the hill. A Pokemon that knows CUT would clear it.',
+      'A small tree has grown across the gate of the trade house on the hill. A Pokémon that knows CUT would clear it.',
     ],
   },
   {
@@ -2200,8 +2213,8 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     design: 'lass',
     idle: { roam: [{ x: 49, y: 47 }], glances: ['left', 'right'], beatMs: 3550 },
     dialogLines: [
-      'A trainer in a dark jacket was asking after you.',
-      'He said he would catch you up once you had set off. He did not look like he meant to be friends.',
+      `${RIVAL_NAME} was asking after you - something about catching you up once you had set off.`,
+      'It did not sound like a friendly visit to me.',
     ],
   },
   {
@@ -2213,7 +2226,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     design: 'heavy-man',
     dialogLines: [
       'Quickest way east is the trail through the wood past the Mart.',
-      "The woodcutter keeps a store in the clearing on the way. He won't miss a Poke Ball.",
+      "The woodcutter keeps a store in the clearing on the way. He won't miss a Poké Ball.",
     ],
   },
   {

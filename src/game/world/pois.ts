@@ -1,4 +1,4 @@
-import { ITEMS, cellsFor, type ItemId } from '../items';
+import { cellsFor, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { fileMap } from './playerMaps';
@@ -32,7 +32,7 @@ export type PoiActivationResult = 'activated' | 'unavailable' | 'bag-full' | 'lo
 /** The Lockpicks a raid is carrying, as `tryActivatePoi` asks about them. */
 export interface PoiLockpicks {
   readonly count: () => number;
-  /** Spends one, which happens only once the crate's whole cache is in the pack. */
+  /** Spends one, which happens only once the crate's whole cache is known to fit. */
   readonly spend: () => void;
 }
 
@@ -45,7 +45,8 @@ export function tryActivatePoi(
   isRunActive: boolean,
   activatedPoiIds: Set<string>,
   collectRunItem: (itemId: ItemId, quantity: number) => boolean,
-  hasRoomForAll: (reward: WorldPoi['reward']) => boolean,
+  /** `freeing` is what opening it uses up - the Lockpick - whose squares are room too. */
+  hasRoomForAll: (reward: WorldPoi['reward'], freeing: readonly { readonly itemId: ItemId; readonly quantity: number }[]) => boolean,
   lockpicks: PoiLockpicks = { count: () => 0, spend: () => undefined },
 ): PoiActivationResult {
   if (!poi || !isRunActive || activatedPoiIds.has(poi.id)) {
@@ -58,15 +59,18 @@ export function tryActivatePoi(
   // Whole or not at all. Taken a piece at a time, two Poke Balls that fit and a
   // Potion that does not left the balls in the pack with the landmark still
   // unworked - so walking over it again paid the balls out a second time.
-  if (!hasRoomForAll(poi.reward)) {
+  // The pick snaps in the lock, so its square is room for the cache: asked
+  // without it, a crate one square short was refused and the player told to
+  // put something down for good to make room the pick was about to make.
+  if (!hasRoomForAll(poi.reward, poi.locked ? [{ itemId: 'lockpick', quantity: 1 }] : [])) {
     return 'bag-full';
   }
-  poi.reward.forEach((item) => collectRunItem(item.itemId, item.quantity));
-  // The pick goes after the cache is in, so a crate refused for room never
-  // costs one: the lock is still on it and so is the pick in the pack.
+  // Spent only once the room is known, so a crate refused for room never costs
+  // one - and before the cache goes in, so the cache has the pick's square.
   if (poi.locked) {
     lockpicks.spend();
   }
+  poi.reward.forEach((item) => collectRunItem(item.itemId, item.quantity));
 
   activatedPoiIds.add(poi.id);
   return 'activated';
@@ -200,7 +204,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     position: { x: 17, y: 7 },
     label: 'THE SCARE POST',
     description:
-      'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and two spare Poke Balls wedged in the crook of it.',
+      'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and two spare Poké Balls wedged in the crook of it.',
     reward: [{ itemId: 'poke-ball', quantity: 2 }],
   },
   {
@@ -612,7 +616,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 44, y: 41 },
     label: "JOY'S NIGHT HATCH",
-    description: "The hatch in the Pokemon Center's door, for trainers who come in after the lights are off: a Potion and an Antidote on the shelf.",
+    description: "The hatch in the Pokémon Center's door, for trainers who come in after the lights are off: a Potion and an Antidote on the shelf.",
     reward: [
       { itemId: 'potion', quantity: 1 },
       { itemId: 'antidote', quantity: 1 },
@@ -623,7 +627,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 53, y: 41 },
     label: 'MART STOCKROOM',
-    description: "The Poke Mart's back room, through a door nobody locked: two Poke Balls still in their box, and an Antidote off the shelf by the till.",
+    description: "The Poké Mart's back room, through a door nobody locked: two Poké Balls still in their box, and an Antidote off the shelf by the till.",
     reward: [
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'antidote', quantity: 1 },
@@ -686,7 +690,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 67, y: 41 },
     label: "WOODCUTTER'S STORE",
-    description: "The woodcutter's store in the clearing, where the east trail leaves the wood: a can of lamp oil and a Poke Ball.",
+    description: "The woodcutter's store in the clearing, where the east trail leaves the wood: a can of lamp oil and a Poké Ball.",
     reward: [
       { itemId: 'lamp-oil', quantity: 1 },
       { itemId: 'poke-ball', quantity: 1 },
@@ -708,7 +712,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-city',
     position: { x: 6, y: 66 },
     label: "RANGER'S FIRST-AID BOX",
-    description: 'The box the ranger patches up hurt wild Pokemon from, nailed to a post in her meadow: two Super Potions.',
+    description: 'The box the ranger patches up hurt wild Pokémon from, nailed to a post in her meadow: two Super Potions.',
     reward: [{ itemId: 'super-potion', quantity: 2 }],
   },
   {
@@ -801,14 +805,6 @@ export function poisForMap(mapId: WorldMapId): readonly WorldPoi[] {
 }
 
 /**
- * What a landmark says when its cache will not go into the pack.
- *
- * It names the cache and the squares it needs, exactly as ground loot does:
- * "bag is full" on its own is a wall, and the grid's promise is that a refusal
- * hands the player the decision. Nothing is taken and nothing is worked, so
- * the answer is to put something down and step back on to it.
- */
-/**
  * What a locked crate says to a raid with no Lockpick: FireRed's own words for
  * a lock (`CinnabarIsland_Text_DoorIsLocked`), then what would open it.
  */
@@ -819,15 +815,47 @@ export function lockedCrateLines(poi: WorldPoi): readonly string[] {
   ];
 }
 
+/**
+ * What a cache paid, said where it went. A cache pays into the pack, which a
+ * wipe takes, so the line says that and never "secured" - that is the secure
+ * container's word, and a cache can never fill it (playtest 6, B9).
+ */
+export function cachePayoutLine(poi: WorldPoi, opensAnExit: boolean): string {
+  const named = rewardAmounts(poi);
+  const one = poi.reward.length === 1 && poi.reward[0].quantity === 1;
+  const bank = `extract to bank ${one ? 'it' : 'them'}.`;
+  return opensAnExit
+    ? `${named} went into the PACK - ${bank}`
+    : `${poi.label}: ${named} went into the PACK. Lost if you wipe - ${bank}`;
+}
+
+/**
+ * What a cache holds, as a sentence says it: "2 Potions and 1 Antidote". The
+ * payout and the refusal both say it this way, as ground loot's refusal does,
+ * so one pack is never counted "2× POTION" in one breath and "2 Potions" in
+ * the next.
+ */
+function rewardAmounts(poi: WorldPoi, write: (amount: string) => string = (amount) => amount): string {
+  const amounts = poi.reward.map(({ itemId, quantity }) => write(itemAmountFor(itemId, quantity)));
+  return amounts.length <= 1
+    ? amounts.join('')
+    : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
+}
+
+/**
+ * What a landmark says when its cache will not go into the pack.
+ *
+ * It names the cache and the squares it needs, exactly as ground loot does:
+ * "bag is full" on its own is a wall, and the grid's promise is that a refusal
+ * hands the player the decision. Nothing is taken and nothing is worked, so
+ * the answer is to put something down and step back on to it.
+ */
 export function cacheRefusalLine(poi: WorldPoi): string {
   const squares = poi.reward.reduce(
     (total, { itemId, quantity }) => total + cellsFor(itemId, quantity),
     0,
   );
-  const names = poi.reward
-    .map(({ itemId, quantity }) => `${quantity}\u00d7 ${ITEMS[itemId].displayName.toUpperCase()}`)
-    .join(' and ');
-  return `No room for ${names} - the cache needs ${
+  return `No room for ${rewardAmounts(poi, (amount) => amount.toUpperCase())} - the cache needs ${
     squares === 1 ? '1 square' : `${squares} squares`
   }.`;
 }

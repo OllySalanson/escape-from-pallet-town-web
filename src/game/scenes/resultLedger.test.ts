@@ -20,8 +20,12 @@ import {
   foldedRows,
   hasMoreBelow,
   moreLabel,
+  READ_STEP_UNITS,
+  readOn,
+  rowPieces,
   SCROLL_ROWS,
   scrollCoverHeight,
+  scrollEntries,
   scrollTopCoverHeight,
   settledScrollTop,
 } from '../ui/MenuOverlay';
@@ -135,6 +139,65 @@ describe('the result screen ledger', () => {
     expect(scrollCoverHeight(pane, [{ top: 20, bottom: 300 }], 3)).toBe(39);
   });
 
+  it('never leaves a heading as the last thing above the strip', () => {
+    // The drop-in screen at 1200x768, a save with errands in hand: the pane's
+    // last whole line above the MORE strip was the ERRANDS band, with every
+    // errand under the fold - a heading over nothing.
+    const pane = { top: 0, bottom: 168 };
+    const contract = { top: 40, bottom: 78 };
+    const errands = { top: 104, bottom: 126, heading: true };
+    const firstErrand = { top: 128, bottom: 176 };
+    expect(scrollCoverHeight(pane, [contract, errands, firstErrand], 3)).toBe(66);
+    // With a row of its own drawn under it, the heading stays.
+    expect(scrollCoverHeight(pane, [contract, { ...errands, top: 80, bottom: 96 }, { top: 98, bottom: 126 }], 3)).toBe(39);
+    // A row beside it in the other column is something of its part drawn too.
+    expect(scrollCoverHeight(pane, [contract, errands, { top: 100, bottom: 124 }, firstErrand], 3)).toBe(42);
+    // Two headings in a row go together.
+    expect(scrollCoverHeight(pane, [contract, { top: 80, bottom: 100, heading: true }, errands, firstErrand], 3)).toBe(
+      90,
+    );
+  });
+
+  it("folds between the lines of a wrapped row rather than hiding the contract under the strip", () => {
+    // The result screen at 1200x768 (2x), a Route 1 survey banked, measured off
+    // the live screen: the contract row's reward runs four lines and the pane
+    // overflowed by its last. Taken whole, the row and its CONTRACT heading went
+    // under a blank strip the moment the MORE cue arrived.
+    type Node = { name: string; wrap?: boolean; button?: boolean; children?: Node[] };
+    const tree = {
+      children: (node: Node) => node.children ?? [],
+      wraps: (node: Node) => node.wrap === true,
+      holdsWrap: function holds(node: Node): boolean {
+        return (node.children ?? []).some((child) => child.wrap === true || holds(child));
+      },
+      isTextRow: (node: Node) => node.button !== true,
+    };
+    const icon = { name: 'icon' };
+    const title = { name: 'title', wrap: true };
+    const reward = { name: 'reward', wrap: true };
+    const contract = { name: 'contract', children: [icon, { name: 'main', children: [title, reward] }] };
+    expect(rowPieces(contract, tree).map((piece) => piece.name)).toEqual(['icon', 'title', 'reward']);
+    // A control stays whole, and so does a row with no wrapped copy in it.
+    const control = { name: 'board row', button: true, children: [{ name: 'main', children: [title] }] };
+    expect(rowPieces(control, tree)).toEqual([control]);
+    const potion = { name: 'potion', children: [icon, { name: 'main', children: [{ name: 'name' }] }] };
+    expect(rowPieces(potion, tree)).toEqual([potion]);
+
+    const pane = { top: 182, bottom: 610 };
+    const heading = { top: 462, bottom: 490, heading: true };
+    const lines = [
+      { top: 496, bottom: 528 },
+      { top: 496, bottom: 520 },
+      { top: 520, bottom: 544 },
+      { top: 544, bottom: 568 },
+      { top: 568, bottom: 592 },
+      { top: 592, bottom: 616 },
+    ];
+    expect(scrollCoverHeight(pane, [heading, { top: 494, bottom: 618 }], 2)).toBe(148);
+    expect(scrollCoverHeight(pane, [heading, ...lines], 2)).toBe(42);
+    expect(foldedRows(pane, lines, pane.bottom - 42)).toEqual([]);
+  });
+
   it('leaves out the line beside a covered row that the fold would cut, in either column', () => {
     // Bill's shelf at 2x, measured off the live screen: the Poke Ball's pane
     // is two columns, and covering the price's second row whole (from 496)
@@ -220,6 +283,106 @@ describe('the result screen ledger', () => {
     // one the strip is covering, so it is not yet read.
     expect(moreLabel([{ bottom: 40 }, { bottom: 80 }, { bottom: 120 }, { bottom: 160 }], 100)).toBe('2 MORE');
     expect(moreLabel([{ bottom: 40 }, { bottom: 100 }], 100)).toBe('MORE');
+  });
+
+  it('counts a row with a count selector in it once, not once a button (playtest 6 B6)', () => {
+    // The loadout's supplies: seven rows, each a `.px-row` holding a minus and
+    // a plus. Bill's shelf: a `.px-pair` of the row's own button and the pair.
+    interface Node {
+      readonly classes: readonly string[];
+      readonly parent: Node | null;
+      readonly bottom: number;
+    }
+    const node = (classes: readonly string[], parent: Node | null, bottom = 0): Node => ({ classes, parent, bottom });
+    // The DOM's own rules: a node is its own closest match and contains itself.
+    const lineage = (node: Node | null): Node[] => (node === null ? [] : [node, ...lineage(node.parent)]);
+    const closest = (node: Node, selector: string) =>
+      lineage(node).find((up) => up.classes.includes(selector.replace(/^\./, ''))) ?? null;
+    const contains = (outer: Node, inner: Node) => lineage(inner).includes(outer);
+    const pane = node(['px-list', 'px-scroll'], null);
+    const controls: Node[] = [];
+    for (let row = 0; row < 7; row += 1) {
+      const supply = node(['px-row'], pane, 100 + row * 20);
+      const stepper = node(['px-stepper'], supply);
+      controls.push(node(['px-step'], stepper, supply.bottom), node(['px-step'], stepper, supply.bottom));
+    }
+    const pair = node(['px-pair'], pane, 300);
+    controls.push(node(['px-row'], pair, 300), node(['px-step'], pair, 300), node(['px-step'], pair, 300));
+    const back = node(['px-button'], pane, 320);
+    controls.push(back);
+
+    const entries = scrollEntries(controls, pane, closest, contains);
+    expect(entries).toHaveLength(9);
+    // Everything is below a fold at 90: seven supplies, the shelf row and the button.
+    expect(moreLabel(entries, 90)).toBe('9 MORE');
+  });
+});
+
+/**
+ * Played to the end of a Route 1 raid at 1200x768: the BANKED pane ran past its
+ * fold and held no control, so the arrow keys never reached it and the rest of
+ * the contract could only be read with the mouse wheel.
+ */
+describe('reading the result screen with the keyboard', () => {
+  const report = {
+    outcome: 'ESCAPED',
+    ledger: { pokemon: [], items: [] },
+    ledgerHeading: 'Banked',
+    ledgerEmptyText: 'Nothing.',
+    contract: { description: 'Survey the braid', complete: true, reward: 'A long reward.' },
+    secured: { pokemon: [], items: [] },
+    risked: { pokemon: [], items: [] },
+    securedEmptyText: 'Nothing secured.',
+    gambleVerdict: 'Nothing was at risk.',
+    progress: [],
+    gear: [],
+    gearSummary: null,
+    pack: null,
+    packSummary: null,
+  } as unknown as ExtractionReport;
+
+  it('marks both panes of words as ones the arrow keys read through', () => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    Object.assign(scene as object, { report });
+    const panels = scene as unknown as { ledgerPanel(): string; gamblePanel(): string };
+
+    expect(panels.ledgerPanel()).toContain('px-scroll" data-reads');
+    expect(panels.gamblePanel()).toContain('px-scroll" data-reads');
+  });
+
+  it('hands the arrow keys to the cursor once the screen answers, and leaves on Enter as before', () => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const moveCursor = vi.fn((key: string) => key.startsWith('Arrow'));
+    const leave = vi.fn();
+    Object.assign(scene as object, { report, locked: false, sequencePlaying: false, overlay: { moveCursor }, leave });
+    const press = (key: string) => {
+      const preventDefault = vi.fn();
+      (scene as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({ key, preventDefault } as unknown as KeyboardEvent);
+      return preventDefault;
+    };
+
+    expect(press('ArrowDown')).toHaveBeenCalled();
+    expect(moveCursor).toHaveBeenCalledWith('ArrowDown');
+    expect(leave).not.toHaveBeenCalled();
+    press('Enter');
+    expect(leave).toHaveBeenCalledTimes(1);
+
+    Object.assign(scene as object, { locked: true });
+    moveCursor.mockClear();
+    press('ArrowUp');
+    expect(moveCursor).not.toHaveBeenCalled();
+  });
+
+  it('reads on a row at a time, and lets the cursor leave only at the end', () => {
+    // The live BANKED pane: 439 pixels of rows in a 428-pixel window, at 2x.
+    const unit = 2;
+    const pane = { scrollTop: 0, scrollHeight: 439 * unit, clientHeight: 400 * unit };
+    expect(readOn(pane, 'up', unit)).toBeNull();
+    expect(readOn(pane, 'down', unit)).toBe(READ_STEP_UNITS * unit);
+    expect(readOn({ ...pane, scrollTop: 32 * unit }, 'down', unit)).toBe(39 * unit);
+    expect(readOn({ ...pane, scrollTop: 39 * unit }, 'down', unit)).toBeNull();
+    expect(readOn({ ...pane, scrollTop: 39 * unit }, 'up', unit)).toBe(23 * unit);
+    expect(readOn({ ...pane, scrollTop: 10 * unit }, 'up', unit)).toBe(0);
   });
 });
 

@@ -16,6 +16,12 @@ import {
 
 export type BagContents = Readonly<Record<string, number>>;
 
+/** A quantity of one id: a line of what goes into the pack, or comes out of it. */
+export interface BagLine {
+  readonly itemId: string;
+  readonly quantity: number;
+}
+
 /**
  * A run's item inventory, and the chequered squares it is packed into.
  *
@@ -162,17 +168,11 @@ export class Bag {
   }
 
   /** Whether a tidy would seat a whole set of additions the pack as packed will not. */
-  public tidyWouldFitAll(
-    additions: readonly { readonly itemId: string; readonly quantity: number }[],
-  ): boolean {
+  public tidyWouldFitAll(additions: readonly BagLine[], freeing: readonly BagLine[] = []): boolean {
     if (this.capacity === null) {
       return false;
     }
-    const trial: Record<string, number> = { ...this.contents };
-    for (const { itemId, quantity } of additions) {
-      trial[itemId] = (trial[itemId] ?? 0) + quantity;
-    }
-    return tidyWouldFit(trial, this.capacity, this.cargoValue, this.arrangementValue);
+    return tidyWouldFit(this.trialContents(additions, freeing), this.capacity, this.cargoValue, this.arrangementValue);
   }
 
   /** Whether a tidy would seat one more piece of cargo the pack will not. */
@@ -290,17 +290,32 @@ export class Bag {
    * not used to leave the balls in the pack and the cache still sealed, which
    * is a cache that can be opened twice.
    */
-  public fitsAll(
-    additions: readonly { readonly itemId: string; readonly quantity: number }[],
-  ): boolean {
+  public fitsAll(additions: readonly BagLine[], freeing: readonly BagLine[] = []): boolean {
     if (this.capacity === null) {
       return true;
     }
+    return fitsInGrid(this.trialContents(additions, freeing), this.capacity, this.cargoValue, this.arrangementValue);
+  }
+
+  /**
+   * The pack as it would be with `additions` in and `freeing` out. What goes out
+   * is what the taking itself uses up - the Lockpick that snaps opening a
+   * crate - so its square is room for what the crate holds.
+   */
+  private trialContents(additions: readonly BagLine[], freeing: readonly BagLine[]): Record<string, number> {
     const trial: Record<string, number> = { ...this.contents };
     for (const { itemId, quantity } of additions) {
       trial[itemId] = (trial[itemId] ?? 0) + quantity;
     }
-    return fitsInGrid(trial, this.capacity, this.cargoValue, this.arrangementValue);
+    for (const { itemId, quantity } of freeing) {
+      const left = (trial[itemId] ?? 0) - quantity;
+      if (left > 0) {
+        trial[itemId] = left;
+      } else {
+        delete trial[itemId];
+      }
+    }
+    return trial;
   }
 
   /** How many more of an id would go in, up to `limit`. */

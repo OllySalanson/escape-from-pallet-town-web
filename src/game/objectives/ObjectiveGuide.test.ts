@@ -3,12 +3,15 @@ import { Pokemon, BULBASAUR } from '../pokemon';
 import { RunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId, requireInsertion } from '../run/runGeneration';
-import { FIRST_CONTRACT } from './contracts';
+import { FIRST_CONTRACT, getContract } from './contracts';
 import { objectivesForContract } from './RunObjectives';
 import { buildObjectiveGuide } from './ObjectiveGuide';
+import { ERRANDS, errandLoot } from '../hub/errands';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_POIS, poisForMap } from '../world/pois';
-import type { WorldMapId } from '../worldMap';
+import { WORKED_LANDMARKS } from '../world/workedLandmarks';
+import { getWorldMap, type WorldMapId } from '../worldMap';
+import { walkingStepsFrom } from '../world/nearestExit';
 
 function createFirstContractSession() {
   const manager = new RunManager();
@@ -184,10 +187,41 @@ describe('objective field guide', () => {
     expect(before.hints.join(' ')).toContain('activates the Radio Exit');
     expect(after.hints.join(' ')).toContain('Radio Exit is active');
 
-    // The cache it points at is read from the map's own landmarks, in order: the
-    // one a fresh save can walk to first, and the next once that is worked. It
-    // used to be a sentence about the supply vault typed out by hand, which went
-    // on sending a fresh save to a cache that is now behind two bosses.
+    // Once the first contract is banked the station is worked for good: it
+    // cannot be switched on again (nothing to switch) and the Radio Exit is open
+    // from the first second, so the line that sends a player to activate it
+    // was sending them to a landmark that refuses them.
+    const banked = buildObjectiveGuide(
+      { ...session, plan: { ...session.plan!, completedContracts: ['recover-lost-field-kit'] } },
+      {
+        currentMapId: 'floodplain-relay',
+        currentPosition: { x: 15, y: 3 },
+        activatedPoiIds: new Set(),
+      },
+    ).hints.join(' ');
+    expect(banked).not.toContain('activates the Radio Exit');
+    expect(banked).toContain(
+      'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.',
+    );
+
+    // Maya stands up again every raid, but beaten in this one she is not on the
+    // road any more: a line saying walking it means fighting her is a warning
+    // about a fight that cannot happen, and steers the player into the reeds.
+    const mayaBeaten = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
+      activatedPoiIds: new Set(),
+      defeatedTrainerIds: new Set(['floodplain-checkpoint-maya']),
+    }).hints.join(' ');
+    expect(mayaBeaten).not.toContain('walking that means fighting her');
+    expect(mayaBeaten).toContain(
+      'You beat Maya this raid: the shore road is clear past her checkpoint. She will be back on it next raid.',
+    );
+
+    // The cache it points at is read from the map's own landmarks: the nearest
+    // still to work, and the next nearest once that is worked. It used to be a
+    // sentence about the supply vault typed out by hand, which went on sending a
+    // fresh save to a cache that is now behind two bosses.
     const caches = poisForMap('floodplain-relay').filter((poi) => poi.effect === undefined);
     expect(caches.map((poi) => poi.label)).toEqual([
       'DROWNED CHAPEL',
@@ -214,7 +248,8 @@ describe('objective field guide', () => {
       currentPosition: caches[0].position,
       activatedPoiIds: new Set([caches[0].id]),
     });
-    expect(chapelWorked.hints.join(' ')).toContain(caches[1].label);
+    // From the chapel the lighter on the bar is nearer than the vault.
+    expect(chapelWorked.hints.join(' ')).toContain('The nearest landmark still to work is STRANDED LIGHTER');
   });
 
   it('names the landmark the map actually has, on every map', () => {
@@ -233,22 +268,205 @@ describe('objective field guide', () => {
       });
       const text = guide.hints.join(' ').toUpperCase();
 
-      expect(text).toContain(poisForMap(mapId)[0].label.toUpperCase());
+      expect(poisForMap(mapId).some((poi) => text.includes(poi.label.toUpperCase()))).toBe(true);
       for (const elsewhere of WORLD_POIS.filter((poi) => poi.mapId !== mapId)) {
         expect(text).not.toContain(elsewhere.label.toUpperCase());
       }
     }
   });
 
-  it('moves on to the next landmark on a map that has two', () => {
+  it('moves on to the next landmark once one is worked', () => {
     const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
       currentMapId: 'pallet-town',
-      currentPosition: { x: 7, y: 9 },
+      currentPosition: { x: 3, y: 17 },
       activatedPoiIds: new Set(['pallet-town-pump']),
     });
 
-    expect(guide.hints[0]).toContain('SLUICE WHEEL');
-    expect(guide.hints[0]).toContain('opens it as an exit');
+    expect(guide.hints[0]).not.toContain('TOWN PUMP');
+    expect(guide.hints[0]).toContain('THE SCARE POST');
+  });
+
+  it('names the landmark nearest the player and which way it is, not the first on the map', () => {
+    // Standing in THE QUARRY, the far east of the valley: the Green's pump is
+    // fifty tiles west and the adit is two tiles away.
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 53, y: 19 },
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints[0]).not.toContain('TOWN PUMP');
+    expect(guide.hints[0]).toContain('The nearest landmark still to work is THE ADIT, to the north.');
+  });
+
+  it('passes over a landmark a banked contract finished for good', () => {
+    const session = createUncontractedSession('town-square');
+    const worked = WORLD_POIS.find((poi) => poi.id === 'pallet-sluice-wheel')!;
+    const contractId = WORKED_LANDMARKS.find((work) => work.poiId === worked.id)!.contractId;
+    const plan = { ...session.plan!, completedContracts: [contractId] };
+    const guide = buildObjectiveGuide({ ...session, plan }, {
+      currentMapId: 'pallet-town',
+      currentPosition: worked.position,
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints[0]).not.toContain(worked.label);
+    const unbanked = buildObjectiveGuide(session, {
+      currentMapId: 'pallet-town',
+      currentPosition: worked.position,
+      activatedPoiIds: new Set(),
+    });
+    expect(unbanked.hints[0]).toContain(`${worked.label}, right here.`);
+  });
+});
+
+describe('the Floodplain field notes, from a far landing', () => {
+  // THE LIGHT, the map's south-east corner: the Drowned Chapel, first in the
+  // map's list, is a hundred tiles west, and so is the South Gate.
+  const light = requireInsertion('floodplain-light').position;
+  const map = getWorldMap('floodplain-relay');
+  const stepsTo = walkingStepsFrom(light, map.collision, map.links);
+  const guide = (nearestOpenExit?: { readonly label: string; readonly position: { x: number; y: number } }) =>
+    buildObjectiveGuide(createUncontractedSession('floodplain-light'), {
+      currentMapId: 'floodplain-relay',
+      currentPosition: light,
+      activatedPoiIds: new Set(),
+      stepsTo,
+      ...(nearestOpenExit ? { nearestOpenExit } : {}),
+    }).hints;
+
+  it('names the landmark nearest on foot, not the first in the map list', () => {
+    const caches = poisForMap('floodplain-relay').filter(
+      (poi) => poi.effect === undefined && stepsTo(poi.position) !== undefined,
+    );
+    const nearest = caches.reduce((best, poi) => (stepsTo(poi.position)! < stepsTo(best.position)! ? poi : best));
+    const text = guide().join(' ');
+
+    expect(nearest.label).not.toBe('DROWNED CHAPEL');
+    expect(text).not.toContain('DROWNED CHAPEL');
+    expect(text).toContain(`The nearest landmark still to work is ${nearest.label}, `);
+  });
+
+  it('names the nearest open exit rather than gates across the map', () => {
+    const exit = EXTRACTION_POINTS.find((point) => point.mapId === 'floodplain-relay' && point.label === 'CUTTER\'S GATE')!;
+    const text = guide({ label: exit.label, position: exit.position }).join(' ');
+
+    expect(text).toContain("The nearest open exit is CUTTER'S GATE, ");
+    expect(text).not.toContain('South Gate is always open');
+    expect(text).toContain('Ranger Station gives a hunter forecast and activates the Radio Exit.');
+  });
+
+  it('never names a landmark it cannot walk to', () => {
+    const text = buildObjectiveGuide(createUncontractedSession('floodplain-light'), {
+      currentMapId: 'floodplain-relay',
+      currentPosition: light,
+      activatedPoiIds: new Set(),
+      stepsTo: () => undefined,
+    }).hints.join(' ');
+
+    expect(text).toContain('No marked cache in reach is left to work this raid.');
+  });
+});
+
+describe('the exit the field guide names', () => {
+  // Standing on the quarry's landing, nine steps from the QUARRY TRACK; the
+  // SOUTH GATE, first in Pallet's list, is the far side of the valley.
+  const quarryTrack = EXTRACTION_POINTS.find((point) => point.label === 'QUARRY TRACK')!;
+  const here = requireInsertion('pallet-quarry').position;
+
+  it('names the nearest open exit and which way it is, not the first in the map list', () => {
+    const guide = buildObjectiveGuide(createUncontractedSession('pallet-quarry'), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(),
+      nearestOpenExit: { label: quarryTrack.label, position: quarryTrack.position },
+    });
+
+    expect(guide.hints.join(' ')).not.toContain('SOUTH GATE');
+    expect(guide.hints).toContain('The nearest open exit is QUARRY TRACK, to the north-east. Use it to bank your haul.');
+  });
+
+  it('banks a contract at the nearest open exit too, unless the contract names its own', () => {
+    const contracted = createActiveRunSession(
+      new RunManager(),
+      {},
+      {},
+      [],
+      [],
+      objectivesForContract(FIRST_CONTRACT),
+      generateRunPlan(42, undefined, 'floodplain-relay', FIRST_CONTRACT),
+    );
+    const southGate = EXTRACTION_POINTS.find((point) => point.mapId === 'floodplain-relay' && point.label === 'SOUTH GATE')!;
+    const guide = buildObjectiveGuide(contracted, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: southGate.position,
+      activatedPoiIds: new Set(),
+      nearestOpenExit: { label: southGate.label, position: southGate.position },
+    });
+
+    expect(guide.hints).toContain(
+      'The nearest open exit is SOUTH GATE, right here. Extract there to bank the contract and your haul.',
+    );
+  });
+
+  it('falls back to the map list when no open exit was measured', () => {
+    const guide = buildObjectiveGuide(createUncontractedSession('pallet-quarry'), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints).toContain('Use SOUTH GATE on this map to bank your haul.');
+  });
+});
+
+describe('a contract only one exit banks', () => {
+  // The cordon ledger, picked up in the Allotments: only the WEST CULVERT, far
+  // to the south-west, banks it, and the SLUICE WHEEL at the east end of the
+  // south bank has to be wound first. The guide named the culvert and nothing
+  // else - not which way it was, nor that it was still shut.
+  const ledger = getContract('cordon-ledger')!;
+  const inHand = () => {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+    );
+    manager.registerContractStep(ledger.markers[0].id);
+    return createActiveRunSession(
+      manager,
+      {},
+      {},
+      [],
+      [],
+      objectivesForContract(ledger),
+      generateRunPlan(42, undefined, 'town-square', ledger),
+    );
+  };
+  const here = ledger.markers[0].position;
+
+  it('says which way the exit is and which landmark still seals it', () => {
+    const guide = buildObjectiveGuide(inHand(), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(),
+    });
+
+    expect(guide.hints).toContain(
+      'Only WEST CULVERT, to the south-west, banks this contract. It stays sealed until SLUICE WHEEL is worked, to the south-east. Any other gate ends the raid and leaves it unpaid.',
+    );
+  });
+
+  it('drops the seal once the landmark is worked', () => {
+    const guide = buildObjectiveGuide(inHand(), {
+      currentMapId: 'pallet-town',
+      currentPosition: here,
+      activatedPoiIds: new Set(['pallet-sluice-wheel']),
+    });
+
+    expect(guide.hints).toContain(
+      'Only WEST CULVERT, to the south-west, banks this contract. Any other gate ends the raid and leaves it unpaid.',
+    );
   });
 });
 
@@ -269,5 +487,119 @@ describe('a shiny in the field guide', () => {
     expect(hints.filter((hint) => hint.includes('shiny'))).toEqual([
       'You are carrying a shiny Bulbasaur. It is only yours once you extract.',
     ]);
+  });
+});
+
+describe('an errand in the field guide', () => {
+  /** A Pallet Town raid with Brock's crate laid in THE QUARRY. */
+  function createErrandSession() {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+    );
+    const brock = ERRANDS.find((errand) => errand.id === 'brocks-crate')!;
+    return createActiveRunSession(
+      manager,
+      {},
+      {},
+      [],
+      [],
+      [],
+      generateRunPlan(7, undefined, 'town-square', undefined, undefined, [], {}, [], [], false, [], [errandLoot(brock)]),
+    );
+  }
+
+  const errandHints = (session: ReturnType<typeof createErrandSession>, carried: number) =>
+    buildObjectiveGuide(session, {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 7, y: 9 },
+      activatedPoiIds: new Set(),
+      carried: (itemId) => (itemId === 'brocks-crate' ? carried : 0),
+    }).hints.filter((hint) => hint.includes('crate'));
+
+  it('says where the thing lies, then that it is being carried', () => {
+    const session = createErrandSession();
+    expect(errandHints(session, 0)).toEqual([expect.stringMatching(/^Brock's errand: Brock's crate lies in THE QUARRY, /)]);
+
+    session.manager.registerFoundItem('brocks-crate', 1);
+    expect(errandHints(session, 1)).toEqual([
+      "You are carrying Brock's crate for Brock. Walk out with it and it is theirs; wipe and it is lost with the pack.",
+    ]);
+  });
+
+  it('never says it is being carried once it has been dropped out of the pack', () => {
+    const session = createErrandSession();
+    session.manager.registerFoundItem('brocks-crate', 1);
+
+    // Picked up, then put down for good to make room: the pack no longer holds it.
+    expect(errandHints(session, 0)).toEqual([
+      "You put Brock's crate down. Brock is still waiting for it, and it will be out here again next raid.",
+    ]);
+  });
+});
+
+describe('a barred exit the pack can open', () => {
+  const barredHints = (
+    session: ReturnType<typeof createUncontractedSession>,
+    carried: readonly string[],
+  ) =>
+    buildObjectiveGuide(session, {
+      currentMapId: 'route-1',
+      currentPosition: { x: 50, y: 24 },
+      activatedPoiIds: new Set(),
+      carried: (itemId) => (carried.includes(itemId) ? 1 : 0),
+    }).hints.filter((hint) => hint.includes('PADDOCK GATE') || hint.includes('FALLEN CUT'));
+
+  it('names the gate a carried key opens, and which way it is', () => {
+    expect(barredHints(createUncontractedSession('route-1'), ['paddock-key'])).toEqual([
+      'You carry the Paddock Key: it opens PADDOCK GATE, to the east, as a way out for this raid.',
+    ]);
+  });
+
+  it('names the rubble a carried Pickaxe digs out', () => {
+    expect(barredHints(createUncontractedSession('route-1'), ['pickaxe'])).toEqual([
+      'Your Pickaxe can dig out FALLEN CUT, to the south, as a way out for this raid.',
+    ]);
+  });
+
+  it('says nothing of a barred exit with nothing in the pack to open it, or once it is open', () => {
+    expect(barredHints(createUncontractedSession('route-1'), [])).toEqual([]);
+
+    const opened = createUncontractedSession('route-1');
+    opened.exitsOpened = ['PADDOCK GATE', 'FALLEN CUT'];
+    expect(barredHints(opened, ['paddock-key', 'pickaxe'])).toEqual([]);
+  });
+});
+
+describe('a locked cache', () => {
+  const guideBeside = (carried: readonly string[]) =>
+    buildObjectiveGuide(createUncontractedSession('route-1'), {
+      currentMapId: 'route-1',
+      currentPosition: { x: 45, y: 24 },
+      activatedPoiIds: new Set(),
+      carried: (itemId) => (carried.includes(itemId) ? 1 : 0),
+    }).hints;
+
+  it('is never the landmark to work for a pack with no Lockpick, even one step away', () => {
+    const hints = guideBeside([]);
+    expect(hints.some((hint) => hint.includes("PACKER'S CHEST"))).toBe(false);
+    expect(hints.some((hint) => hint.startsWith('The nearest landmark still to work is '))).toBe(true);
+  });
+
+  it('is named, with its heading, once the pack holds a Lockpick', () => {
+    expect(guideBeside(['lockpick']).filter((hint) => hint.includes("PACKER'S CHEST"))).toEqual([
+      "You carry a Lockpick: PACKER'S CHEST, to the west, is locked and pays more than the open caches round it.",
+    ]);
+  });
+
+  it('is forgotten once it has been opened this raid', () => {
+    const hints = buildObjectiveGuide(createUncontractedSession('route-1'), {
+      currentMapId: 'route-1',
+      currentPosition: { x: 45, y: 24 },
+      activatedPoiIds: new Set(['route-1-packers-chest']),
+      carried: (itemId) => (itemId === 'lockpick' ? 1 : 0),
+    }).hints;
+    expect(hints.some((hint) => hint.includes("PACKER'S CHEST"))).toBe(false);
   });
 });

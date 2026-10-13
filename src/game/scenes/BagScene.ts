@@ -3,10 +3,14 @@ import { audioManager } from '../audio/AudioManager';
 import {
   footprintOf,
   gridCells,
+  isCurrency,
+  itemAmountFor,
   itemCountTag,
+  lastBlockOf,
   ITEM_CATEGORY_LABELS,
   ItemCategory,
   machineForItem,
+  stackSizeOf,
   teachFromMachine,
   useFieldItem,
   type Bag,
@@ -378,10 +382,17 @@ export class BagScene extends Phaser.Scene {
     const shows = `data-shows="${item.id}"`;
     const squares = this.squares(item.id);
     const freed = squares === 1 ? '1 square' : `${squares} squares`;
+    const carried = this.bag.count(item.id);
+    // Money is carried in bundles, a square each: what frees a square is the
+    // part-filled bundle, and that is what is put down (`lastBlockOf`).
+    const dropped = isCurrency(item.id) ? itemAmountFor(item.id, lastBlockOf(item.id, carried)) : `one ${item.displayName}`;
     const drop = `<button class="px-window px-chip" data-drop="${item.id}" ${shows} data-help="${escapeAttribute(
-      `Put one ${item.displayName} on the ground for good. It frees ${freed}.`,
-    )}">Drop one</button>`;
-    return `<div class="px-detail" data-shown-by="${item.id}"${first ? '' : ' hidden'}><span class="px-wrap">${item.description}</span><div class="care-options"><small class="px-label">${this.bag.count(item.id)} carried · ${freed} each</small>${drop}</div></div>`;
+      `Put ${dropped} on the ground for good. It frees ${freed}.`,
+    )}">${isCurrency(item.id) ? `Drop ${dropped}` : 'Drop one'}</button>`;
+    const holding = isCurrency(item.id)
+      ? `${itemCountTag(item.id, carried)} carried · ${itemCountTag(item.id, stackSizeOf(item.id))} to ${freed}`
+      : `${carried} carried · ${freed} each`;
+    return `<div class="px-detail" data-shown-by="${item.id}"${first ? '' : ' hidden'}><span class="px-wrap">${item.description}</span><div class="care-options"><small class="px-label">${holding}</small>${drop}</div></div>`;
   }
 
   /**
@@ -686,12 +697,14 @@ export class BagScene extends Phaser.Scene {
   /** Puts one of the chosen item on the ground, and says the room it bought. */
   private dropOne(itemId: string): void {
     const item = this.itemById(itemId);
-    if (!item || !this.bag.remove(item.id)) {
+    const quantity = item ? lastBlockOf(item.id, this.bag.count(item.id)) : 0;
+    if (!item || !this.bag.remove(item.id, quantity)) {
       return;
     }
     audioManager.play('menuClose');
     this.onItemUsed();
-    this.status = `Dropped ${item.displayName}. ${this.packLabel()}.`;
+    const dropped = isCurrency(item.id) ? itemAmountFor(item.id, quantity) : item.displayName;
+    this.status = `Dropped ${dropped}. ${this.packLabel()}.`;
     this.render([`[data-item="${item.id}"]`]);
   }
 

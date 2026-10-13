@@ -184,6 +184,22 @@ export class MenuOverlay {
     if (!direction) {
       return false;
     }
+    // A pane of words with no control in it is a cursor stop of its own, and
+    // Up and Down read on through it until its end before the cursor leaves.
+    const active = document.activeElement;
+    if (
+      (direction === 'up' || direction === 'down') &&
+      active instanceof HTMLElement &&
+      this.root.contains(active) &&
+      active.matches(READING_PANES)
+    ) {
+      const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 1;
+      const to = readOn(active, direction, unit);
+      if (to !== null) {
+        active.scrollTop = to;
+        return true;
+      }
+    }
     const controls = this.cursorControls();
     const current = controls.indexOf(document.activeElement as HTMLElement);
     const panes: HTMLElement[] = [];
@@ -433,14 +449,19 @@ export class MenuOverlay {
       }
       const scrolled = unit > 0 && pane.scrollTop > 0.5;
       const more = unit > 0 && hasMoreBelow(pane, unit);
+      if (pane.hasAttribute('data-reads')) {
+        markReadingPane(pane, scrolled || more);
+      }
       const box = pane.getBoundingClientRect();
       const rows =
         scrolled || more
-          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((element) =>
-              (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
-                ({ top, bottom }) => ({ top, bottom, element }),
-              ),
-            )
+          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)]
+              .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
+              .flatMap((element) =>
+                (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
+                  ({ top, bottom }) => ({ top, bottom, element, heading: element.classList.contains('px-subheading') }),
+                ),
+              )
           : [];
       this.markTopCut(pane, box, rows, scrolled ? unit : 0);
       pane.querySelectorAll<HTMLElement>('[data-folded]').forEach((element) => {
@@ -467,7 +488,12 @@ export class MenuOverlay {
       // the same answer as "there are nine more": the first leaves a player
       // guessing whether the thing they want is one row down or off the end of
       // a list they cannot see the size of.
-      const entries = [...pane.querySelectorAll<HTMLElement>(SCROLL_ENTRIES)].map((row) => row.getBoundingClientRect());
+      const entries = scrollEntries<Element>(
+        [...pane.querySelectorAll(SCROLL_ENTRIES)],
+        pane,
+        (entry, selector) => entry.closest(selector),
+        (outer, inner) => outer.contains(inner),
+      ).map((row) => row.getBoundingClientRect());
       pane.setAttribute('data-more', moreLabel(entries, box.bottom - cover));
     });
   }
@@ -595,8 +621,74 @@ function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
   return lines.length > 0 ? lines : [element.getBoundingClientRect()];
 }
 
+/** How `rowPieces` sees a tree of elements: what is in one, and what kind of thing each is. */
+export interface RowTree<Node> {
+  readonly children: (node: Node) => readonly Node[];
+  /** A run of wrapped copy, which the fold may fall between the lines of. */
+  readonly wraps: (node: Node) => boolean;
+  /** Holds a run of wrapped copy somewhere inside it. */
+  readonly holdsWrap: (node: Node) => boolean;
+  /** A row that is wrapped copy beside its icon and tag rather than a control. */
+  readonly isTextRow: (node: Node) => boolean;
+}
+
+/**
+ * What a fold has to keep whole in one of a pane's rows: the row itself, unless
+ * it is a row of wrapped copy, which is its own lines beside its icon and tag.
+ * The result screen's contract is one row of four or five lines, and taken
+ * whole a pane that overflowed by one line of it covered the row and its
+ * heading with a blank strip - the contract, the thing the raid was for, gone
+ * from the screen the moment the MORE cue arrived. A control stays whole: a
+ * button with no lower edge is the fault this rule exists to prevent.
+ */
+export function rowPieces<Node>(row: Node, tree: RowTree<Node>): Node[] {
+  if (!tree.isTextRow(row) || !tree.holdsWrap(row)) {
+    return [row];
+  }
+  const pieces = (node: Node): Node[] =>
+    tree.wraps(node) ? [node] : tree.holdsWrap(node) ? tree.children(node).flatMap(pieces) : [node];
+  return tree.children(row).flatMap(pieces);
+}
+
+const DOM_ROW_TREE: RowTree<HTMLElement> = {
+  children: (node) => [...node.children].filter((child): child is HTMLElement => child instanceof HTMLElement),
+  wraps: (node) => node.classList.contains('px-wrap'),
+  holdsWrap: (node) => node.querySelector('.px-wrap') !== null,
+  isTextRow: (node) => node.matches('.px-row:not(button)') && node.querySelector('button') === null,
+};
+
 /** What the strip counts: the entries a player is looking for, not the bands between them. */
 const SCROLL_ENTRIES = 'button, .px-empty';
+
+/**
+ * A row of a list, which is one entry however many buttons are in it - a pair
+ * first, because the row button in one is itself a `.px-row`.
+ */
+const SCROLL_ENTRY_ROWS = ['.px-pair', '.px-row'];
+
+/**
+ * The entries a pane's MORE strip counts, one per row: a supply in the loadout
+ * is a row with a count selector in it, and Bill's shelf a row beside one, so
+ * counted by button a list of seven supplies said `14 MORE` (playtest 6 B6).
+ * A control in no row of the pane is an entry of its own.
+ */
+export function scrollEntries<Entry>(
+  controls: readonly Entry[],
+  pane: Entry,
+  closest: (entry: Entry, selector: string) => Entry | null,
+  contains: (outer: Entry, inner: Entry) => boolean,
+): Entry[] {
+  return [
+    ...new Set(
+      controls.map((control) => {
+        const row = SCROLL_ENTRY_ROWS.map((selector) => closest(control, selector)).find(
+          (found) => found !== null && found !== pane && contains(pane, found),
+        );
+        return row ?? control;
+      }),
+    ),
+  ];
+}
 
 /**
  * How tall the MORE strip on a pane's foot must be so that no row is left half
@@ -661,18 +753,44 @@ export function foldedRows<Row extends { readonly top: number; readonly bottom: 
 
 export function scrollCoverHeight(
   pane: { readonly top: number; readonly bottom: number },
-  rows: readonly { readonly top: number; readonly bottom: number }[],
+  rows: readonly { readonly top: number; readonly bottom: number; readonly heading?: boolean }[],
   unit: number,
 ): number {
   const minimum = MORE_STRIP_UNITS * unit;
   const line = pane.bottom - minimum;
   const cut = rows.filter((row) => row.top < line - 0.5 && row.bottom > line + 0.5 && row.top >= pane.top);
-  const top = Math.min(line, ...cut.map((row) => row.top));
+  let top = Math.min(line, ...cut.map((row) => row.top));
+  // A heading is never the last thing above the strip: with every row of its
+  // part below the fold it heads nothing, and the drop-in screen's pane ended
+  // on ERRANDS over a strip, which reads as a list of no errands. It goes under
+  // the strip with its rows, and the strip counts them.
+  for (let heading = orphanedHeading(rows, pane.top, top); heading; heading = orphanedHeading(rows, pane.top, top)) {
+    top = heading.top;
+  }
   const cover = pane.bottom - top;
   if (cover > ((pane.bottom - pane.top) * 3) / 4) {
     return minimum;
   }
   return Math.ceil(cover / unit - 0.001) * unit;
+}
+
+/**
+ * The heading standing last above a fold with nothing of its own beside or
+ * under it still drawn, if there is one.
+ */
+function orphanedHeading<Row extends { readonly top: number; readonly bottom: number; readonly heading?: boolean }>(
+  rows: readonly Row[],
+  paneTop: number,
+  fold: number,
+): Row | undefined {
+  const above = rows.filter((row) => row.top >= paneTop && row.bottom <= fold + 0.5);
+  const heading = above
+    .filter((row) => row.heading)
+    .reduce<Row | undefined>((lowest, row) => (!lowest || row.bottom > lowest.bottom ? row : lowest), undefined);
+  if (!heading || heading.top <= paneTop + 0.5) {
+    return undefined;
+  }
+  return above.some((row) => !row.heading && row.bottom > heading.top + 0.5) ? undefined : heading;
 }
 
 /**
@@ -754,8 +872,53 @@ export function settledScrollTop(
 }
 
 /** Everything on a pixel-ui screen that takes its width from the words inside it. */
+/**
+ * A pane of words that holds no control: the result screen's ledger and its
+ * gamble. It opts in with `data-reads`, and only while it has more to show
+ * than fits is it a stop for the cursor (`markReadingPane`), lit like a row.
+ */
+const READING_PANES = '.px-scroll[data-reads][tabindex]';
+
 /** What the arrow keys can rest on: a text field is one, so a keyboard can reach it. */
-const CURSOR_CONTROLS = 'button:not([disabled]), input:not([disabled])';
+const CURSOR_CONTROLS = `button:not([disabled]), input:not([disabled]), ${READING_PANES}`;
+
+/**
+ * Makes a `data-reads` pane a cursor stop while it overflows, and takes the
+ * stop away once everything in it fits. A pane with a control inside is never
+ * one: its rows are the stops, and the focus scrolls them into view.
+ */
+function markReadingPane(pane: HTMLElement, overflows: boolean): void {
+  const reads = overflows && !pane.querySelector('button:not([disabled]), input:not([disabled])');
+  if (reads) {
+    pane.tabIndex = -1;
+  } else {
+    pane.removeAttribute('tabindex');
+  }
+}
+
+/** How far one press of Up or Down reads on through a pane: one row's height. */
+export const READ_STEP_UNITS = 16;
+
+/**
+ * Where a press of Up or Down leaves a reading pane's scroll, or null where the
+ * pane has nothing further that way and the cursor should move on instead.
+ *
+ * Without it the result screen's ledger had no control in it to walk to, so
+ * the arrow keys never reached it and the end of a long contract could only be
+ * read with the mouse wheel.
+ */
+export function readOn(
+  pane: { readonly scrollTop: number; readonly scrollHeight: number; readonly clientHeight: number },
+  direction: 'up' | 'down',
+  unit = 1,
+): number | null {
+  const bottom = Math.max(0, pane.scrollHeight - pane.clientHeight);
+  const step = READ_STEP_UNITS * unit;
+  if (direction === 'down') {
+    return hasMoreBelow(pane, unit) ? Math.min(bottom, pane.scrollTop + step) : null;
+  }
+  return pane.scrollTop > 0.5 ? Math.max(0, pane.scrollTop - step) : null;
+}
 
 const TEXT_SIZED_BOXES = '.px-name, .px-tag, .px-button, .px-chip, .px-back, .px-type, .px-place, .px-rail li';
 

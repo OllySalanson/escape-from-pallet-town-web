@@ -585,7 +585,7 @@ export class DeploymentFlow {
       return undefined;
     }
     if (this.selectedPokemonIds.length >= MAX_RUN_PARTY) {
-      return `Your run party can hold up to ${MAX_RUN_PARTY} Pokemon.`;
+      return `Your run party can hold up to ${MAX_RUN_PARTY} Pokémon.`;
     }
     this.selectedPokemonIds.push(id);
     this.refillSecureSlot();
@@ -894,8 +894,8 @@ export class DeploymentFlow {
     if (this.currentStep === 'loadout') {
       if (!this.isDeployable) {
         return this.party.length === 0
-          ? 'Choose at least one Pokemon to take into the raid.'
-          : 'Every Pokemon in this loadout has fainted. Recover one at base first.';
+          ? 'Choose at least one Pokémon to take into the raid.'
+          : 'Every Pokémon in this loadout has fainted. Recover one at base first.';
       }
       this.currentStep = 'dropin';
       return undefined;

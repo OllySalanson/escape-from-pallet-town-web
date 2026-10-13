@@ -2604,6 +2604,27 @@ describe('a legend', () => {
     expect(bag.count('poke-ball')).toBe(0);
   });
 
+  it('caught after its one throw, comes away hanging on at 1 HP rather than fainted', () => {
+    // The throw is rolled against a legend with nothing left, but a Pokemon in
+    // a ball is never one that fainted: it joins the party able to stand.
+    const party = new PokemonParty([new Pokemon(CHARMANDER, 50)]);
+    const { press, beat, readOn, renderedTexts } = meet(new Bag({ 'poke-ball': 1 }), party);
+
+    const before = renderedTexts.length;
+    beat();
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      press('POKé BALL x', before);
+    } finally {
+      roll.mockRestore();
+    }
+    readOn();
+
+    const articuno = party.pokemon.find((pokemon) => pokemon.base.id === 'articuno');
+    expect(articuno?.currentHp).toBe(1);
+    expect(articuno?.isFainted).toBe(false);
+  });
+
   it('beaten with no ball in the pack, gets away', () => {
     const { dialog, beat, readOn, returned } = meet(new Bag({ potion: 1 }));
 

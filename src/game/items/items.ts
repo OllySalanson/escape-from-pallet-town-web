@@ -425,7 +425,7 @@ export const ITEMS = {
     displayName: 'Thunder Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A stone with a thunderbolt in it. Some Pokémon answer to it.',
+    description: 'A stone with a thunderbolt in it. Pikachu and Eevee answer to it.',
     effect: { type: 'evolution-stone' },
   },
   'fire-stone': {
@@ -433,7 +433,7 @@ export const ITEMS = {
     displayName: 'Fire Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A stone with a flame trapped in it. Vulpix and Growlithe answer to it.',
+    description: 'A stone with a flame trapped in it. Vulpix, Growlithe and Eevee answer to it.',
     effect: { type: 'evolution-stone' },
   },
   'water-stone': {
@@ -441,7 +441,7 @@ export const ITEMS = {
     displayName: 'Water Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A stone the colour of deep water. Shellder, Poliwhirl and Staryu answer to it.',
+    description: 'A stone the colour of deep water. Shellder, Poliwhirl, Staryu and Eevee answer to it.',
     effect: { type: 'evolution-stone' },
   },
   'leaf-stone': {
@@ -475,7 +475,7 @@ export const ITEMS = {
     displayName: 'TM09 Bullet Seed',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Bullet Seed: two to five seeds in one turn. Only the Bulbasaur line can read it.',
+    description: 'Teaches Bullet Seed: two to five seeds in one turn. Mostly Grass Pokémon can read it.',
     effect: { type: 'machine' },
   },
   'tm13-ice-beam': {
@@ -483,7 +483,7 @@ export const ITEMS = {
     displayName: 'TM13 Ice Beam',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Ice Beam: a beam of cold that may freeze. The only Ice move there is.',
+    description: 'Teaches Ice Beam: a beam of cold that may freeze. Grass, Ground, Flying and Dragon foes all fear it.',
     effect: { type: 'machine' },
   },
   'tm23-iron-tail': {
@@ -551,7 +551,7 @@ export const ITEMS = {
     displayName: 'HM06 Rock Smash',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Rock Smash, and is never used up: a weak blow that often lowers Defense.',
+    description: 'Teaches Rock Smash, and is never used up. A Pokémon that knows it can break cracked rocks in the field.',
     effect: { type: 'machine' },
   },
   pickaxe: {
@@ -1140,6 +1140,18 @@ export function itemAmountFor(itemId: string, quantity: number): string {
 }
 
 /**
+ * Several quantities as a sentence says them: "2 Parts crates and 1 Cable
+ * coil". The `2× Parts crate` tag is for a price column or a row's count, where
+ * it stands beside other figures; in a sentence it read as a stock list.
+ */
+export function itemAmountsFor(stacks: readonly { readonly itemId: string; readonly quantity: number }[]): string {
+  const amounts = stacks.map(({ itemId, quantity }) => itemAmountFor(itemId, quantity));
+  return amounts.length <= 1
+    ? amounts.join('')
+    : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
+}
+
+/**
  * How many of an item a row holds, in the tag beside its name: "×3", and for
  * money the amount, "₽40", because a count of Pokedollars is a sum.
  */
@@ -1264,7 +1276,7 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       // answer for the two screens that only ever offer medicine - the battle's
       // ITEM command and the base treatment bench - if either is ever pointed
       // at a disc.
-      return { used: false, message: `${item.displayName} is read to a Pokémon from the bag.` };
+      return { used: false, message: `${item.displayName} is read to a Pokémon from the pack.` };
     case 'evolution-stone': {
       const species = evolutionByStone(pokemon.base.id, item.id);
       // Named as it was called before: a nickname, else the species it was.

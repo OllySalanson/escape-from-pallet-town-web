@@ -692,7 +692,12 @@ button {
   border: 2px solid #593330;
   background: rgb(10 7 10 / 82%);
   color: #f4ece2;
-  font-size: clamp(11px, 1.35vw, 15px);
+  /* One size for the whole plate, and the face's own: at 12.5 pixels a stem of
+     Orange Kid is one pixel. The level, the count and the verdict used to be
+     drawn smaller than the name, at nine pixels on a laptop, where the face no
+     longer holds its letters (playtest 6). */
+  font-size: 12.5px;
+  font-weight: 400;
   line-height: 1.05;
   text-align: center;
   text-transform: uppercase;
@@ -704,17 +709,24 @@ button {
 .defeat-figure.is-last-stand .defeat-plate b {
   color: #ffd9d1;
 }
+/* A name is a `<b>`, and Orange Kid has no bold cut: the browser would smear
+   every letter a pixel sideways to fake one. */
+.defeat-plate b {
+  font-weight: 400;
+}
 .defeat-meta {
   display: flex;
   align-items: center;
   gap: 5px;
   color: #a78a86;
-  font-size: 0.85em;
+}
+/* The level and the count are a `<small>`, which is a size down by default. */
+.defeat-meta small {
+  font-size: inherit;
 }
 .defeat-tag {
   opacity: 0;
   color: var(--menu-danger);
-  font-weight: 700;
 }
 .defeat-figure.is-trainer .defeat-meta {
   color: #d8a79c;
@@ -1486,6 +1498,13 @@ button {
 :where(.pixel-ui) .px-row.has-icon {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
+/* A row of wrapped copy keeps its icon beside its first line, the line that
+   names it. Centred down four or five lines it stood where a pane's fold may
+   fall between them (`rowPieces` in MenuOverlay.ts), and the result screen's
+   contract lost its icon to the MORE strip with three of its lines drawn. */
+:where(.pixel-ui) .px-row.has-icon:has(.px-wrap) > .item-icon {
+  align-self: start;
+}
 /* A row with a count selector beside it: the row is still the one control that
    acts, and the selector says how many. The pair is a grid so the selector
    keeps its own width and the row takes the rest. */
@@ -1536,6 +1555,13 @@ button {
 .pixel-ui button.px-row:focus,
 .pixel-ui .px-chip:focus,
 .pixel-ui .px-step:focus {
+  background: var(--cream-lit);
+}
+/* A pane of words the arrow keys read through (`data-reads` in
+   `MenuOverlay.ts`) is lit like a row while the cursor is in it. */
+.pixel-ui .px-scroll[data-reads]:focus {
+  outline: none;
+  --fill: var(--cream-lit);
   background: var(--cream-lit);
 }
 .pixel-ui button.px-row.is-selected:focus {
@@ -2837,9 +2863,6 @@ button {
 :where(.pixel-ui[data-room='tight']) .box-bar {
   position: static;
 }
-:where(.pixel-ui) .box-manage {
-  padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
-}
 
 /* --- Bill ------------------------------------------------------- */
 /* Standing across the top, then the shelf and the barter table side by side,
@@ -3246,6 +3269,22 @@ button {
   min-width: 0;
   white-space: nowrap;
 }
+/* Short of the room for a band, a card's four moves stand two abreast rather
+   than one a line: at 1280x800 a column of four made every card so tall that
+   a party of four showed two cards, a blank band and "2 MORE" over the other
+   two - one of them the Pokemon the disc was meant for. A move whose name and
+   type will not share half the card keeps a line to itself. */
+:where(.pixel-ui[data-room='narrow']) .teach-moves,
+:where(.pixel-ui[data-room='tight']) .teach-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 calc(var(--u) * 6);
+}
+:where(.pixel-ui[data-room='narrow']) .teach-moves > li,
+:where(.pixel-ui[data-room='tight']) .teach-moves > li {
+  flex: 1 0 40%;
+  min-width: max-content;
+}
 :where(.pixel-ui) .teach-moves > li.is-known .px-name {
   text-decoration: underline;
   text-decoration-thickness: var(--u);
@@ -3280,8 +3319,6 @@ button {
   display: none;
 }
 :where(.pixel-ui[data-room='tight']) .teach-moves {
-  display: flex;
-  flex-wrap: wrap;
   gap: var(--u) calc(var(--u) * 6);
   margin: var(--u) 0;
 }

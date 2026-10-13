@@ -39,8 +39,8 @@ describe('who can read a disc', () => {
     expect(pupilVerdict(machine, knows)).toBe('knows');
     expect(pupilOutcome(machine, free)).toBe('Has a free slot: learns AERIAL ACE and forgets nothing.');
     expect(pupilOutcome(machine, full)).toBe('Knows four moves: you pick which one AERIAL ACE replaces.');
-    expect(pupilOutcome(machine, refused)).toBe('Cannot learn AERIAL ACE.');
-    expect(pupilOutcome(machine, knows)).toBe('Already knows AERIAL ACE.');
+    expect(pupilOutcome(machine, refused)).toBe('Not compatible with TM40: no SQUIRTLE can read it, at any level.');
+    expect(pupilOutcome(machine, knows)).toBe('AERIAL ACE is already one of its moves: the disc would do nothing.');
   });
 
   it('only lets a Pokemon that would learn it be chosen', () => {
@@ -77,6 +77,18 @@ describe('the teaching screen', () => {
     expect(markup).toMatch(/is-knows"[^>]*data-pupil="3" aria-disabled="true"/);
     expect(markup).not.toMatch(/data-pupil="0" aria-disabled/);
     expect(markup).toContain('2 of 4 can');
+  });
+
+  it('says a refusal once on the card and gives the reason, not the tag again (playtest 6)', () => {
+    const markup = teachBody(view(null));
+    const card = (index: number): string =>
+      markup.match(new RegExp(`<button[^>]*data-pupil="${index}"[\\s\\S]*?</button>`))?.[0] ?? '';
+    // What a player reads on the card, the help line left out.
+    const shown = (index: number): string => card(index).replace(/data-help="[^"]*"/, '').replace(/<[^>]+>/g, ' ');
+    expect(shown(2).match(/cannot learn/gi)).toHaveLength(1);
+    expect(shown(2)).toContain('Not compatible with TM40');
+    expect(shown(3).match(/knows/gi)).toHaveLength(1);
+    expect(shown(3)).toContain('the disc would do nothing');
   });
 
   it('teaches nothing until a Pokemon is chosen', () => {
@@ -125,5 +137,16 @@ describe('the teaching screen', () => {
 
   it('draws no typed arrows or ticks, which the face does not have', () => {
     expect(teachBody(view(1))).not.toMatch(/[→←↑↓▶✓✔]/);
+  });
+});
+
+describe('what the teach screen says a disc is (playtest 6, B2)', () => {
+  it('does not call Ice Beam the only Ice move, or Bullet Seed the Bulbasaur line alone', () => {
+    const iceBeam = teachBody(view(null, disc('tm13-ice-beam')));
+    expect(iceBeam).toContain('Teaches Ice Beam');
+    expect(iceBeam).not.toMatch(/only Ice move/i);
+    const bulletSeed = teachBody(view(null, disc('tm09-bullet-seed')));
+    expect(bulletSeed).toContain('Teaches Bullet Seed');
+    expect(bulletSeed).not.toMatch(/only the Bulbasaur line/i);
   });
 });

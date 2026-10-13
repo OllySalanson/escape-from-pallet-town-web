@@ -1023,7 +1023,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     sightRange: 2,
     design: 'youngster',
-    introLines: ['This road goes to the Pokemon League!', 'You have to beat me before you even see it.'],
+    introLines: ['This road goes to the Pokémon League!', 'You have to beat me before you even see it.'],
     trainer: createTrainer(
       'viridian-camper-liam',
       'CAMPER LIAM',
@@ -1045,7 +1045,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     sightRange: 3,
     design: 'lass',
-    introLines: ['Going up to Viridian?', 'Not on this road, not without a battle!'],
+    introLines: ['Up the terraces or down them, this road is mine!', 'Nobody walks it without a battle!'],
     trainer: createTrainer(
       'viridian-lass-ada',
       'LASS ADA',
@@ -1053,7 +1053,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // starter with the pack won 72/96/51% (Bulbasaur/Charmander/Squirtle);
       // the Rattata a level down is 89/99/82%.
       [new Pokemon(PIDGEY, 7), new Pokemon(RATTATA, 5)],
-      'Fine, go on up. The Center is right in the middle of town.',
+      'Fine, go on. The Center is right in the middle of town.',
     ),
   },
 ];

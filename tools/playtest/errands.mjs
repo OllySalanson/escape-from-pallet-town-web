@@ -129,7 +129,7 @@ try {
   await load(`(save) => { save.raidProgress.errands = [...save.raidProgress.errands.filter((e) => e.id !== 'oaks-parcel'), { id: 'oaks-parcel', status: 'started', found: 1, lossesHeard: 0 }]; }`);
   await walkIntoBase(page, 'oaks-lab');
   await sleep(500);
-  expectSaid(await said(), 'You found my parcel, and it was lost with your pack?', 'Oak hears of the loss');
+  expectSaid(await said(), 'You found my parcel, and it never made it home?', 'Oak hears of the loss');
   await page.screenshot(`${out}/oak-lost.png`);
   await click('[data-speech-done]', 'Got it');
   const oak = (await progress()).errands.find((e) => e.id === 'oaks-parcel');

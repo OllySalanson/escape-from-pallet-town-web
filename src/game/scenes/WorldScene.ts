@@ -78,7 +78,7 @@ import {
   type WorldMapId,
   worldMapName,
 } from '../worldMap';
-import { type WorldEntity } from '../world/npcs';
+import { spokenLines, type WorldEntity } from '../world/npcs';
 import {
   advanceIdleFigures,
   createIdleFigures,
@@ -97,6 +97,7 @@ import {
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { createGiftPokemon, giftGivenBy, giftNicknamePrompt, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
+import { flashScreen } from '../ui/screenFlash';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
 import { caughtLegends, legendStandingAs } from '../world/legends';
@@ -155,6 +156,7 @@ import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
+import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
 import { arrivalPlace } from '../base/partner';
@@ -184,6 +186,7 @@ import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/grou
 import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
+import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -266,7 +269,7 @@ import {
   tryCollectLoot,
   type WorldLoot,
 } from '../world/loot';
-import { cacheRefusalLine, lockedCrateLines, tryActivatePoi } from '../world/pois';
+import { cachePayoutLine, cacheRefusalLine, lockedCrateLines, tryActivatePoi } from '../world/pois';
 import {
   isLandmarkWorked,
   withWorkedExitsOpen,
@@ -479,18 +482,6 @@ const WATCH_LIFT_FADE_MS = 520;
 const SPOTTED_INK = 0x171717;
 const SPOTTED_CREAM = 0xfdf6e3;
 const SPOTTED_MARK = 0xdc2626;
-/**
- * Compass letters rather than arrow glyphs: the caption font is 7px, and an
- * arrow at that size renders as a tick with no head. The raid HUD already gives
- * the hunter and the objective a bearing, so this is the language the player is
- * reading directions in anyway.
- */
-const WATCH_BEARING: Readonly<Record<Direction, string>> = {
-  up: 'N',
-  down: 'S',
-  left: 'W',
-  right: 'E',
-};
 /**
  * The dialogue frame keeps the authored size it was written for and is centred
  * on the bottom of whatever screen it is on. Stretching it to a wide window
@@ -1919,7 +1910,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // A place reached rather than a thing picked up, so it sounds like a
     // landmark and not like loot.
     audioManager.play('landmarkWorked');
-    this.cameras.main.flash(120, 94, 234, 212, false);
+    flashScreen(this.cameras.main, 120, [94, 234, 212]);
     return dropInReachedLine(insertion.label);
   }
 
@@ -2263,7 +2254,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         // The third line is the price the shading cannot show: this fight has no
         // exit, and the player has to know that before the step into the lane,
         // not from inside the battle.
-        text: trainerWatchCaption(encounter.trainer.name, WATCH_BEARING[encounter.facing]),
+        text: trainerWatchCaption(encounter.trainer.name, encounter.facing),
         tone: LABEL_TONES.watch,
         depth: atRow(CAPTION_BAND, encounter.position.y),
         placement,
@@ -2683,12 +2674,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.runSession || !areas) {
       return;
     }
-    const ARROWS: Readonly<Record<Direction, string>> = {
-      up: '↑',
-      down: '↓',
-      left: '←',
-      right: '→',
-    };
     const doorways: { readonly spec: WorldLabelSpec; readonly key: string }[] = [];
     for (const warp of this.currentMap.warps) {
       if (
@@ -2714,7 +2699,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const bottom = Math.max(warp.source.y, doorway.y, art.y + art.height - 1);
       // Named for the place it comes out in, as the plate that rises there
       // will name it: the room, or the district outside its door.
-      const text = `${districtAt(this.currentMap.id, warp.destination)?.name ?? leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`;
+      const text = `${districtAt(this.currentMap.id, warp.destination)?.name ?? leadsTo.name.toUpperCase()} ${PRESS_ARROWS[warp.toward]}`;
       doorways.push({
         key: `doors:${placedAreaAt(areas, warp.source)?.id ?? ''}:${text}`,
         spec: {
@@ -2758,9 +2743,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private warpArrow(warp: MapWarp): string {
-    if (warp.source.y === 0) return '↑';
-    if (warp.source.y === this.currentMap.height - 1) return '↓';
-    return warp.source.x === 0 ? '←' : '→';
+    if (warp.source.y === 0) return PRESS_ARROWS.up;
+    if (warp.source.y === this.currentMap.height - 1) return PRESS_ARROWS.down;
+    return warp.source.x === 0 ? PRESS_ARROWS.left : PRESS_ARROWS.right;
   }
 
   private createHunterSprite(): void {
@@ -3168,7 +3153,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ]
         : // FireRed's own words for a locked door, then for the key it wants
           // (`CinnabarIsland_Text_DoorIsLocked`, `Text_ItNeedsCardKey`).
-          [`${point.label}: the gate is locked…`, `No! It needs the ${keyName}!`];
+          // Then where that key comes from, as the rubble and the water say
+          // Bill trades their tools: a key is never sold, it is a prize laid
+          // on its own gate's map, and a player who did not know that went
+          // looking for it at Bill's.
+          [
+            `${point.label}: the gate is locked…`,
+            `No! It needs the ${keyName}!`,
+            ...(this.currentMap.loot.some((loot) => loot.itemId === opener)
+              ? [`The ${keyName} is a rare find, somewhere on this map.`]
+              : []),
+          ];
     }
     this.runSession.exitsOpened = [...(this.runSession.exitsOpened ?? []), point.label];
     audioManager.play('landmarkWorked');
@@ -3701,14 +3696,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
         this.timerThreat = 'enraged';
-        this.cameras.main.flash(160, 239, 68, 68, false);
+        flashScreen(this.cameras.main, 160, [239, 68, 68]);
         audioManager.play('clockEnraged');
       }
     } else {
       const tier = raidClockAlertTier(snapshot.remainingMs);
       if (tier !== this.timerThreat) {
         this.timerThreat = tier;
-        this.cameras.main.flash(120, 251, 191, 36, false);
+        flashScreen(this.cameras.main, 120, [251, 191, 36]);
         audioManager.play('clockUrgent');
       }
     }
@@ -4140,7 +4135,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    this.dialogBox.showMessages([...entity!.dialogLines]);
+    this.dialogBox.showMessages(spokenLines(entity!.dialogLines, this.hunterRival().name));
   }
 
   /**
@@ -4289,8 +4284,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Headings across a door point at the door (`areaRoutes.ts`).
       towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
       activatedPoiIds: [...this.activatedPoiIds],
+      carried: (itemId: string) => this.bag.count(itemId),
+      ...this.nearestOpenExitHere(),
+      stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, this.currentMap.links),
+      defeatedTrainerIds: [...this.defeatedTrainerIds],
       pausedWorld: true,
     });
+  }
+
+  /** The open exit the fewest walking steps from the player, for the field guide. */
+  private nearestOpenExitHere(): { readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition } } {
+    const exit = nearestOpenExit(
+      (this.runSession?.plan?.extractionPoints ?? []).filter((point) => point.mapId === this.currentMap.id),
+      this.currentTile,
+      this.collisionData,
+      (point) => this.isExtractionOpen(point),
+      this.currentMap.links,
+    );
+    return exit ? { nearestOpenExit: { label: exit.label, position: exit.position } } : {};
   }
 
   /**
@@ -4309,9 +4320,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const outstanding = remainingMarkers(contract, contractSteps);
     if (outstanding.length === 0) {
-      return contract.requiredExitLabel
-        ? `BANK VIA ${contract.requiredExitLabel}`
-        : undefined;
+      return contract.requiredExitLabel ? this.requiredExitCue(contract.requiredExitLabel) : undefined;
     }
     // Straight-line distance, not a path search: the chip names the stop the
     // player is closest to so it changes as they move, and running that search
@@ -4323,6 +4332,28 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
     const remaining = outstanding.length > 1 ? ` (${outstanding.length} LEFT)` : '';
     return `${next.cue}: ${this.headingTo(next.position)}${remaining}`;
+  }
+
+  /**
+   * The chip once a contract's stops are made and only one exit banks it: which
+   * way that exit is, or - while a landmark still seals it - which way the
+   * landmark is, because walking to a shut gate with the job in hand is the
+   * one wrong turn this contract is built round.
+   */
+  private requiredExitCue(label: string): string {
+    const exit = this.extractionPointsForCurrentMap().find((point) => point.label === label);
+    if (!exit) {
+      return `BANK VIA ${label}`;
+    }
+    const seal = exit.requirement;
+    const sealedBy =
+      seal?.kind === 'poi-activated' && !this.isExtractionOpen(exit)
+        ? this.currentMap.pois.find((poi) => poi.id === seal.poiId)
+        : undefined;
+    if (sealedBy) {
+      return `${sealedBy.label}: ${this.headingTo(sealedBy.position)}, THEN ${label}`;
+    }
+    return `BANK VIA ${label}: ${this.headingTo(exit.position)}`;
   }
 
   private showFirstDeploymentBriefing(): void {
@@ -5517,7 +5548,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     const marker = this.lootSprites.get(loot!.id);
-    this.cameras.main.flash(100, 250, 204, 21, false);
+    flashScreen(this.cameras.main, 100, [250, 204, 21]);
     audioManager.play('lootPickup');
     marker?.destroy();
     this.lootSprites.delete(loot!.id);
@@ -5563,11 +5594,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Whole or not at all, and the pack will re-seat itself to take the
       // whole of it: a cache refused for the way the pack happens to be packed
       // would be a seal the player could not open from where they stand.
-      (reward) => {
-        if (this.bag.fitsAll(reward)) {
+      (reward, freeing) => {
+        if (this.bag.fitsAll(reward, freeing)) {
           return true;
         }
-        if (!this.bag.tidyWouldFitAll(reward)) {
+        if (!this.bag.tidyWouldFitAll(reward, freeing)) {
           return false;
         }
         this.bag.tidy();
@@ -5604,25 +5635,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.poiSprites.delete(poi!.id);
     this.removeWorldLabel(this.poiLabels.get(poi!.id));
     this.poiLabels.delete(poi!.id);
-    this.cameras.main.flash(140, 56, 189, 248, false);
+    flashScreen(this.cameras.main, 140, [56, 189, 248]);
     // A cache pays out; a landmark is worked. They are different deeds on the
     // map and the field guide, so they are different sounds.
     audioManager.play(poi!.effect === 'unlock-extraction' ? 'landmarkWorked' : 'cacheOpen');
-    const reward = poi!.reward
-      .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName}`)
-      .join(' + ');
     if (poi!.effect === 'unlock-extraction') {
       const exit = poi!.unlockedExtractionLabel ?? 'A NEW EXIT';
       this.refreshExtractionMarkers();
       return [
         `${poi!.label}: ${exit} is open.`,
         this.rangerForecast(),
-        ...(reward ? [`${reward} secured. Extract to bank it.${this.reseatNote()}`] : []),
+        ...(poi!.reward.length > 0 ? [`${cachePayoutLine(poi!, true)}${this.reseatNote()}`] : []),
       ];
     }
     return [
       ...(poi!.locked ? ['The Lockpick turned the lock, and snapped in it.'] : []),
-      `${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.${this.reseatNote()}`,
+      `${cachePayoutLine(poi!, false)}${this.reseatNote()}`,
     ];
   }
 
@@ -5701,7 +5729,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     drawn?.image.destroy();
     this.removeWorldLabel(drawn?.label);
     this.contractMarkers.delete(marker.id);
-    this.cameras.main.flash(120, 96, 165, 250, false);
+    flashScreen(this.cameras.main, 120, [96, 165, 250]);
     audioManager.play('contractStop');
     this.refreshRunTimerHud();
     this.saveGame();
@@ -5850,7 +5878,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.runSession.manager.resolveEscape();
     this.destroyRunTimerHud();
-    this.cameras.main.flash(240, 134, 239, 172, false);
+    flashScreen(this.cameras.main, 240, [134, 239, 172]);
     this.cameras.main.shake(120, 0.004);
     audioManager.play('extract');
     const snapshot = this.runSession.manager.snapshot();
@@ -6043,7 +6071,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
     const snapshot = this.runSession.manager.snapshot();
     this.destroyRunTimerHud();
-    this.cameras.main.flash(220, 239, 68, 68, false);
+    flashScreen(this.cameras.main, 220, [239, 68, 68]);
     this.cameras.main.shake(180, 0.009);
     audioManager.play('clockExpired');
     const carriedOut = this.bag.toJSON();
@@ -6399,7 +6427,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     // The same flash-and-warning language the raid timer uses for a threat change,
     // rather than a dialogue box that would freeze the player exactly as pursuit resumes.
-    this.cameras.main.flash(120, 251, 191, 36, false);
+    flashScreen(this.cameras.main, 120, [251, 191, 36]);
     audioManager.play('hunterResume');
   }
 

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
 import { BUILT_IN_MAP_IDS, getWorldMap, isMapInProgress } from '../worldMap';
-import { WORLD_POIS, cacheRefusalLine, lockedCrateLines, tryActivatePoi, type WorldPoi } from './pois';
+import { WORLD_POIS, cachePayoutLine, cacheRefusalLine, lockedCrateLines, tryActivatePoi, type WorldPoi } from './pois';
 
 const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
 
@@ -79,7 +79,7 @@ describe('world POIs', () => {
     // "Bag is full" is a wall; this is a decision, and the pack is one key
     // away from where the player is standing.
     expect(cacheRefusalLine(fieldStation)).toBe(
-      'No room for 2\u00d7 POKÉ BALL and 1\u00d7 POTION - the cache needs 3 squares.',
+      'No room for 2 POKÉ BALLS and 1 POTION - the cache needs 3 squares.',
     );
   });
 
@@ -324,5 +324,23 @@ describe('a locked crate', () => {
   it('says it is locked in FireRed\'s words, and what would open it', () => {
     expect(lockedCrateLines(locked[0])[0]).toBe(`${locked[0].label}: the crate is locked…`);
     expect(lockedCrateLines(locked[0])[1]).toContain('Lockpick');
+  });
+});
+
+describe('cachePayoutLine', () => {
+  const one = { ...WORLD_POIS[0], label: 'OLD WELL', reward: [{ itemId: 'potion' as const, quantity: 1 }] };
+
+  it('says a cache paid into the pack, and what a wipe would cost', () => {
+    expect(cachePayoutLine(one, false)).toBe('OLD WELL: 1 Potion went into the PACK. Lost if you wipe - extract to bank it.');
+  });
+
+  it('names a landmark\'s payout under the exit it opened, with no second label', () => {
+    expect(cachePayoutLine(one, true)).toBe('1 Potion went into the PACK - extract to bank it.');
+  });
+
+  it('never calls a payout secured, on any shipped landmark', () => {
+    for (const poi of WORLD_POIS.filter((candidate) => candidate.reward.length > 0)) {
+      expect(cachePayoutLine(poi, poi.effect === 'unlock-extraction')).not.toMatch(/secured|×/i);
+    }
   });
 });

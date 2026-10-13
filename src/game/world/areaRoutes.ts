@@ -33,22 +33,27 @@ export function wayTowards(
     return to;
   }
   const field = distancesTo(map, to);
-  let best: { readonly doorway: GridPosition; readonly cost: number } | null = null;
+  // A door whose far side walks to the target beats every door whose far side
+  // does not; among those, the one whose far side is nearest in a straight
+  // line. A target nothing reaches today - ground behind a shut gate - is
+  // still out of the room, and a straight line across the grid the places are
+  // laid out on points at a wall.
+  let best: { readonly doorway: GridPosition; readonly walks: boolean; readonly cost: number } | null = null;
   for (const warp of map.warps) {
     if (warp.activation !== 'push' || !warp.toward || placedAreaAt(areas, warp.source) !== here) {
       continue;
     }
     const beyond = field[warp.destination.y]?.[warp.destination.x] ?? -1;
-    if (beyond < 0) {
-      continue;
-    }
+    const walks = beyond >= 0;
+    const far = walks
+      ? beyond
+      : Math.abs(warp.destination.x - to.x) + Math.abs(warp.destination.y - to.y);
     // The far side of the door's own walk, plus the straight line to the door
     // from here: within one room that is close enough to the walk, and it
     // keeps this to one search per target rather than one per frame.
-    const cost =
-      beyond + Math.abs(warp.source.x - from.x) + Math.abs(warp.source.y - from.y);
-    if (!best || cost < best.cost) {
-      best = { doorway: nextTileFromDirection(warp.source, warp.toward), cost };
+    const cost = far + Math.abs(warp.source.x - from.x) + Math.abs(warp.source.y - from.y);
+    if (!best || (walks && !best.walks) || (walks === best.walks && cost < best.cost)) {
+      best = { doorway: nextTileFromDirection(warp.source, warp.toward), walks, cost };
     }
   }
   return best?.doorway ?? to;

@@ -3,6 +3,7 @@ import {
   formatMoney,
   getItemById,
   isFoundOnly,
+  itemAmountsFor,
   SECURE_COLUMNS_PER_UPGRADE,
   type GridSize,
   type ItemId,
@@ -371,7 +372,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-moon-stone',
     name: 'Moon Stone',
     detail:
-      'The stone that crosses the most lines there are: Clefairy, Jigglypuff and both Nidoran. The last thing he brings up, and the dearest.',
+      'The stone that crosses the most lines there are: Clefairy, Jigglypuff and both Nidoran. The last of the stones he brings up, kept back for a partner.',
     icon: 'moon-stone',
     gives: { itemId: 'moon-stone', quantity: 1 },
     takes: [
@@ -411,7 +412,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-hm01',
     name: 'HM01 Cut',
     detail:
-      'It opens the coppice ride in Viridian Forest for good. Forty-three of the 151 read it - both the Grass and Fire starter lines, and a Rattata off any verge.',
+      'Growth bars a way on Route 1, in Viridian Forest, in Viridian City and on the Floodplain, and it opens each for good. Forty-three of the 151 read it - both the Grass and Fire starter lines, and a Rattata off any verge.',
     icon: 'hm01-cut',
     gives: { itemId: 'hm01-cut', quantity: 1 },
     takes: [
@@ -438,14 +439,15 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'regular',
     once: true,
   },
-  // The tool for a map maker's buried exits. Repeating, unlike an HM, because a
-  // Pickaxe is carried in the pack and lost with it: a deal struck once would
-  // be a way home a single wipe took away for good.
+  // The tool for buried exits: one on each of four shipped maps, and any a map
+  // maker buries. Repeating, unlike an HM, because a Pickaxe is carried in the
+  // pack and lost with it: a deal struck once would be a way home a single wipe
+  // took away for good.
   {
     id: 'barter-pickaxe',
     name: 'Pickaxe',
     detail:
-      'It digs out an exit a map maker buried under rubble - for the raid it is carried on. Lose it and he will find you another.',
+      'Four of the maps out there have an exit fallen in under rubble, and a map maker can bury more. Lose it and he will find you another.',
     icon: 'pickaxe',
     gives: { itemId: 'pickaxe', quantity: 1 },
     takes: [
@@ -515,7 +517,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
   {
     id: 'barter-life-orb',
     name: 'Life Orb',
-    detail: 'A second Life Orb, and the last thing he brings up.',
+    detail: 'A second Life Orb, kept back for a partner.',
     icon: 'life-orb',
     gives: { itemId: 'life-orb', quantity: 1 },
     takes: [
@@ -730,7 +732,7 @@ function judgeBarter(counter: TraderCounter, barter: TraderBarter, quantity = 1)
   }
   const short = barterShortfall(counter.stash, barter, quantity);
   if (short.length > 0) {
-    return refuse('goods-short', `Still short ${formatTraderStacks(short)}.`);
+    return refuse('goods-short', `Still short ${itemAmountsFor(short)}.`);
   }
   return {};
 }

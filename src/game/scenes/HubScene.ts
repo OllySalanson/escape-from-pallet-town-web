@@ -81,6 +81,7 @@ import {
   gridCells,
   isFoundOnly,
   isFurniture,
+  itemAmountsFor,
   type ItemDefinition,
   type ItemId,
   type PackItemId,
@@ -611,8 +612,8 @@ export class HubScene extends Phaser.Scene {
     }
     const short = missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
     return short.length === 0
-      ? `<p class="px-note px-wrap carry-note">${contract!.name}: ${formatStacks(required)} packed for the drop. They are spent when you hand them over.</p>`
-      : `<p class="px-warning px-wrap carry-note">${contract!.name} needs ${formatStacks(required)} in your pack. Still short: ${formatStacks(short)}.</p>`;
+      ? `<p class="px-note px-wrap carry-note">${contract!.name}: ${itemAmountsFor(required)} packed for the drop. They are spent when you hand them over.</p>`
+      : `<p class="px-warning px-wrap carry-note">${contract!.name} needs ${itemAmountsFor(required)} in your pack. Still short: ${itemAmountsFor(short)}.</p>`;
   }
 
   /**
@@ -931,7 +932,7 @@ export class HubScene extends Phaser.Scene {
   private confirmSwap(): void {
     if (!this.sparePartner) {
       this.setView('stash');
-      this.refuse('Swapping is only offered while one Pokemon remains at base.');
+      this.refuse('Swapping is only offered while one Pokémon remains at base.');
       return;
     }
     if (!this.saveManager.reselectStarter(this.reselectStarterId)) {
@@ -1461,7 +1462,10 @@ export class HubScene extends Phaser.Scene {
                   ? wallMapNote(this.savedGame)
                   : this.view === 'daycare'
                     ? `${this.stashPokemon.length} Pokémon at base`
-                    : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'item' : 'items'}`,
+                    // Kinds, as the Pokémon Center's own pane counts them:
+                    // "7 items" over three Potions and three Poké Balls read
+                    // as a miscount (playtest 6).
+                    : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'kind' : 'kinds'} of item`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -2055,10 +2059,12 @@ export class HubScene extends Phaser.Scene {
         return `<button class="px-row has-icon px-tall px-contract" ${wiring}${row.hunterPressure > 0 ? ` data-hunter-pressure="${row.hunterPressure}"` : ''}>${objectiveIcon('Contract')}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${row.name}</strong><small>${place}</small></span><span class="px-wrap">${row.description}.</span></span>${raised}</button>`;
       })
       .join('');
+    // A pane names what it is the reward for: until a row is pointed at it shows
+    // the first contract's, under the errands' rows, where it read as theirs.
     const details = board.rows
       .map(
         (row, index) =>
-          `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward</small> ${row.reward}</span></div>`,
+          `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward for</small> ${row.name}: ${row.reward}</span></div>`,
       )
       .join('');
     return pixelWindow(
@@ -2103,7 +2109,7 @@ export class HubScene extends Phaser.Scene {
     const details = inHand
       .map(
         (errand, index) =>
-          `<div class="px-detail" data-shown-by="errand-${errand.id}"${firstShown && index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>Reward</small> ${errand.reward.summary}, from ${errand.name}. Lost with the pack if you wipe.</span></div>`,
+          `<div class="px-detail" data-shown-by="errand-${errand.id}"${firstShown && index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>Reward for</small> ${errandThing(errand)}: ${errand.reward.summary}, from ${errand.name}. Lost with the pack if you wipe.</span></div>`,
       )
       .join('');
     return { rows: `<h3 class="px-subheading">Errands</h3>${rows}`, details };
@@ -3489,10 +3495,10 @@ export class HubScene extends Phaser.Scene {
             id: barter.id,
             icon: iconMarkup(barter.icon, barter.name),
             name: count > 1 ? `${barter.name} ×${count}` : barter.name,
-            question: `Hand over ${formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for good?`,
+            question: `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for good?`,
             confirm: `data-barter-confirm="${barter.id}"`,
             confirmLabel: 'Hand it over',
-            confirmHelp: `Spends ${escapeAttribute(formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
+            confirmHelp: `Spends ${escapeAttribute(itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
           });
         }
         // A struck deal's price column says it is paid, as a built rung's does:
@@ -3518,7 +3524,7 @@ export class HubScene extends Phaser.Scene {
         const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
         const help =
           offer.refusal === undefined
-            ? `Hand over ${formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? `a ${barter.name}` : `${count} ${barter.name}s`}. He asks again.`
+            ? `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? `a ${barter.name}` : `${count} ${barter.name}s`}. He asks again.`
             : offer.message ?? '';
         const wiring =
           offer.refusal === undefined
@@ -3744,7 +3750,7 @@ export class HubScene extends Phaser.Scene {
     if (offer.state === 'locked') {
       return `${offer.upgrade.name} is built after ${offer.requires?.name ?? 'an earlier upgrade'}.`;
     }
-    return `${offer.upgrade.name} still needs ${formatStacks(offer.suppliesShort)}.`;
+    return `${offer.upgrade.name} still needs ${itemAmountsFor(offer.suppliesShort)}.`;
   }
 
   /**
@@ -3767,7 +3773,7 @@ export class HubScene extends Phaser.Scene {
       .map((offer) => {
         const { upgrade } = offer;
         if (this.workshopArmed === upgrade.id) {
-          const spent = formatStacks(upgrade.cost.supplies);
+          const spent = itemAmountsFor(upgrade.cost.supplies);
           return this.armedDeal({
             id: upgrade.id,
             icon: iconMarkup(upgrade.icon, upgrade.name),
