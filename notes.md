@@ -336,6 +336,14 @@ One finding a fix, each with a behavioural test.
 - **Checked in the browser:** the same scratch run, before trimming, showed the new line on the row and in the pane; a first draft that kept the fight half ran to four lines on the row, so it was cut to HM01's length.
 - **Looked at, left alone:** no shipped map has a Rock Smash door (`WORLD_GATES` has Cut and Surf only), so Bill's detail names no map. HM04's "boulders a map maker leaves" is still true: boulders are maker-only.
 
+## 44. At Bill's top standing, two deals each said they were "the last thing he brings up", and the Moon Stone called itself the dearest (playtested: Bill's cottage at PARTNER)
+
+- **Found:** reaching PARTNER with Bill opens three deals at once: the Moon Stone, the Life Orb and the Bicycle. The Moon Stone's pane read "The last thing he brings up, and the dearest." and the Life Orb's read "A second Life Orb, and the last thing he brings up." Both cannot be last, and the Moon Stone asks five materials beside the Life Orb's six and the Bicycle's eight, so it is the cheapest of the three, not the dearest. Each line was true when it was written; the Life Orb and then the Bicycle were added at the same standing later.
+- **Reproduced:** a scratch copy of `tools/playtest/shopScreens.mjs` (deleted afterwards) seeded `traderMoneySpent: 6000` so the save stands at PARTNER, walked into Bill's cottage at 1280x800 on a test-mode build, and printed the three partner deals' panes: both claims were on screen. In `hub/trader.test.ts` the new "only calls a deal the last or the dearest when it is" (a "last thing he brings up" must be the only deal at the top standing; "the dearest" must ask more materials than every other deal) failed before the fix on the Moon Stone.
+- **Fixed:** in `hub/trader.ts` the Moon Stone now reads "The last of the stones he brings up, kept back for a partner." (the other four stones open at TRUSTED) and the Life Orb "A second Life Orb, kept back for a partner."
+- **How a player meets it:** stand at PARTNER and point at the Moon Stone or the Life Orb on Bill's barter table. Neither claims to be his last or dearest deal any more; the Bicycle, at eight materials, is the dearest and says nothing it is not.
+- **Checked in the browser:** the same scratch run on a rebuilt test-mode build reads the new lines in both panes.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

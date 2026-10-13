@@ -372,7 +372,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-moon-stone',
     name: 'Moon Stone',
     detail:
-      'The stone that crosses the most lines there are: Clefairy, Jigglypuff and both Nidoran. The last thing he brings up, and the dearest.',
+      'The stone that crosses the most lines there are: Clefairy, Jigglypuff and both Nidoran. The last of the stones he brings up, kept back for a partner.',
     icon: 'moon-stone',
     gives: { itemId: 'moon-stone', quantity: 1 },
     takes: [
@@ -517,7 +517,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
   {
     id: 'barter-life-orb',
     name: 'Life Orb',
-    detail: 'A second Life Orb, and the last thing he brings up.',
+    detail: 'A second Life Orb, kept back for a partner.',
     icon: 'life-orb',
     gives: { itemId: 'life-orb', quantity: 1 },
     takes: [

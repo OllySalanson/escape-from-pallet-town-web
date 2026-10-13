@@ -38,6 +38,7 @@ import {
   STANDING_PER_CONTRACT,
   POKEDOLLARS_PER_STANDING,
   TRADER_BARTERS,
+  TRADER_STANDING_IDS,
   TRADER_BERTH_PRICE,
   TRADER_STANDINGS,
   TRADER_STOCK,
@@ -316,6 +317,27 @@ describe('the barter table', () => {
         // Named as a player says it: "the Floodplain" for Floodplain Relay.
         const name = WORLD_MAP_NAMES[mapId as BuiltInMapId].replace(' Relay', '');
         expect(detail, `${barterId} names ${name}`).toContain(name);
+      }
+    }
+  });
+
+  it('only calls a deal the last or the dearest when it is', () => {
+    // At PARTNER the Moon Stone, the Life Orb and the Bicycle open together.
+    // Two of them each said they were "the last thing he brings up", and the
+    // Moon Stone called itself "the dearest" for five materials beside the
+    // Bicycle's eight - on one table, read one row after the other.
+    const asked = (barter: (typeof TRADER_BARTERS)[number]) =>
+      barter.takes.reduce((sum, stack) => sum + stack.quantity, 0);
+    const top = TRADER_STANDING_IDS[TRADER_STANDING_IDS.length - 1];
+    const atTop = TRADER_BARTERS.filter((barter) => barter.standing === top);
+    for (const barter of TRADER_BARTERS) {
+      if (/the last thing he brings up/i.test(barter.detail)) {
+        expect(atTop, `${barter.id} is the last thing he brings up`).toEqual([barter]);
+      }
+      if (/the dearest\b(?! of)/i.test(barter.detail)) {
+        for (const other of TRADER_BARTERS.filter((candidate) => candidate !== barter)) {
+          expect(asked(barter), `${barter.id} is dearer than ${other.id}`).toBeGreaterThan(asked(other));
+        }
       }
     }
   });
