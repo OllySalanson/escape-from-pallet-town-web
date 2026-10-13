@@ -7,8 +7,10 @@ import { tileReader, type PropCell, type PropDefinition } from './catalogue';
  *
  * Nothing here knows a coordinate on the sheet: the cut script writes where
  * each named piece landed (`generated/areaPieces.ts`), and everything that
- * draws from it asks by name. Numbered from 10000, clear of every other sheet
- * the loader fetches (`catalogue.test.ts` holds the whole list apart).
+ * draws from it asks by name. Numbered from 11000, clear of every other sheet
+ * the loader fetches (`catalogue.test.ts` holds the whole list apart) - the
+ * town sheet below it outgrew 10000 when Route 10's Power Plant was cut, and
+ * a tile number is never stored, so the sheet moved rather than the town's.
  */
 export const AREA_SHEET_SOURCE = tileReader(
   {
@@ -17,7 +19,7 @@ export const AREA_SHEET_SOURCE = tileReader(
     columns: AREA_SHEET.columns,
     rows: AREA_SHEET.rows,
   },
-  10000,
+  11000,
 );
 
 /** One cell of a named piece, as a tile number in the shared index space. */

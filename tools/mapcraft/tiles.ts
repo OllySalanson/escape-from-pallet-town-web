@@ -108,6 +108,10 @@ export function readTiles(file: MapFile, crop?: TileRect): TileMap {
       const x = building.x + (index % prop.width);
       const y = building.y + Math.floor(index / prop.width);
       if (kinds[y]?.[x] === undefined) return;
+      // A cell the prop draws nothing in leaves the ground to decide, as the
+      // game's `buildMapLayers` does: the gaps between the Power Plant's
+      // chimney caps are the cliff it stands against, not a lot to stand on.
+      if (cell.tile < 0) return;
       // A prop is the last word on its own tiles: a cell you may stand on is
       // ground whatever it is laid over, which is what makes a deck a bridge.
       if (cell.solid) kinds[y][x] = 'building';
