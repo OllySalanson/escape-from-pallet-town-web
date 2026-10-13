@@ -28,6 +28,8 @@ export interface ObjectivesSceneData {
   readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition };
   /** Walking steps from the player to a tile, undefined out of reach. */
   readonly stepsTo?: (target: GridPosition) => number | undefined;
+  /** The trainers beaten this raid. */
+  readonly defeatedTrainerIds?: readonly string[];
   /** Only resume WorldScene when this overlay paused it. */
   readonly pausedWorld: boolean;
 }
@@ -64,6 +66,7 @@ export class ObjectivesScene extends Phaser.Scene {
       ...(data.carried ? { carried: data.carried } : {}),
       ...(data.nearestOpenExit ? { nearestOpenExit: data.nearestOpenExit } : {}),
       ...(data.stepsTo ? { stepsTo: data.stepsTo } : {}),
+      ...(data.defeatedTrainerIds ? { defeatedTrainerIds: new Set(data.defeatedTrainerIds) } : {}),
     });
     this.createOverlay(guide);
   }

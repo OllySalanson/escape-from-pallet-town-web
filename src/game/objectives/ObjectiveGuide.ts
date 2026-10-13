@@ -37,6 +37,8 @@ export interface ObjectiveGuideContext {
    * line: the scene did not measure.
    */
   readonly stepsTo?: (target: GridPosition) => number | undefined;
+  /** The trainers beaten this raid. A toll stands up again next raid, but not in this one. */
+  readonly defeatedTrainerIds?: ReadonlySet<string>;
 }
 
 export interface ObjectiveGuideObjective {
@@ -259,6 +261,9 @@ function directionTo(from: GridPosition, to: GridPosition): string {
   return bearing ? `to the ${compassWord(bearing)}` : 'right here';
 }
 
+/** The Floodplain's toll on the shore road (`../world/trainers`). */
+const MAYA_ID = 'floodplain-checkpoint-maya';
+
 function laterRunHints(
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
@@ -276,8 +281,12 @@ function laterRunHints(
     // most of them. The station keeps a line of its own, because its radio is
     // the one landmark that changes the map's ways out.
     const landmark = nearestLandmarkToWork(session, context, (poi) => poi.effect === undefined);
+    // Maya stands up again every raid, but not in the one that beat her.
+    const mayaBeaten = context.defeatedTrainerIds?.has(MAYA_ID) ?? false;
     return [
-      'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
+      mayaBeaten
+        ? 'You beat Maya this raid: the shore road is clear past her checkpoint. She will be back on it next raid.'
+        : 'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
       landmark
         ? landmarkHint(landmark, context)
         : 'No marked cache in reach is left to work this raid.',

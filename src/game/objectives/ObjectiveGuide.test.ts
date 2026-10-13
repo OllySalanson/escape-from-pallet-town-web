@@ -204,6 +204,20 @@ describe('objective field guide', () => {
       'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.',
     );
 
+    // Maya stands up again every raid, but beaten in this one she is not on the
+    // road any more: a line saying walking it means fighting her is a warning
+    // about a fight that cannot happen, and steers the player into the reeds.
+    const mayaBeaten = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
+      activatedPoiIds: new Set(),
+      defeatedTrainerIds: new Set(['floodplain-checkpoint-maya']),
+    }).hints.join(' ');
+    expect(mayaBeaten).not.toContain('walking that means fighting her');
+    expect(mayaBeaten).toContain(
+      'You beat Maya this raid: the shore road is clear past her checkpoint. She will be back on it next raid.',
+    );
+
     // The cache it points at is read from the map's own landmarks: the nearest
     // still to work, and the next nearest once that is worked. It used to be a
     // sentence about the supply vault typed out by hand, which went on sending a

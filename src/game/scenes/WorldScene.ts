@@ -4287,6 +4287,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       carried: (itemId: string) => this.bag.count(itemId),
       ...this.nearestOpenExitHere(),
       stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, this.currentMap.links),
+      defeatedTrainerIds: [...this.defeatedTrainerIds],
       pausedWorld: true,
     });
   }
