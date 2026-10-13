@@ -184,11 +184,42 @@ try {
       recording.frames.push(Buffer.from(data, 'base64'));
     }
   };
+  /** Where both figures are drawn, frame by frame, while `sampling` is on: the judder check. */
+  const sampling = { on: false, trail: [] };
+  const sample = async () => {
+    if (sampling.on) {
+      sampling.trail.push(
+        await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); const s = b.partner && b.partner.sprite;
+          return { px: b.player.x, py: b.player.y, fx: s ? s.x : null, fy: s ? s.y : null, out: !!(b.partner && b.partner.place.out) }; })()`),
+      );
+    }
+  };
   const frames = async (count) => {
     for (let index = 0; index < count; index += 1) {
       await step(1);
       await record();
+      await sample();
     }
+  };
+  /**
+   * A partner walking in the player's footsteps moves exactly as far as the
+   * player does on every frame of a walk: a frame where it stands while the
+   * player walks is lag, one where it moves further is a jump.
+   */
+  const expectSmooth = (when) => {
+    const trail = sampling.trail;
+    let walked = 0;
+    for (let index = 1; index < trail.length; index += 1) {
+      const [a, b] = [trail[index - 1], trail[index]];
+      if (!a.out || !b.out || a.fx === null) continue;
+      const player = Math.hypot(b.px - a.px, b.py - a.py);
+      const partner = Math.hypot(b.fx - a.fx, b.fy - a.fy);
+      if (Math.abs(player - partner) > 0.01) {
+        fail(`${when}: on frame ${index} the player moved ${player.toFixed(2)}px and the partner ${partner.toFixed(2)}px`);
+      }
+      if (player > 0) walked += 1;
+    }
+    return walked;
   };
   const hold = async (code, ms) => {
     await page.keyDown(code);
@@ -230,15 +261,19 @@ try {
   const arrived = await expectAtHeel('arriving');
   if (arrived.partner.species !== starter) fail(`the partner is ${arrived.partner.species}, not the ${starter} picked`);
 
-  // Footsteps: every step ends with the partner on the tile the player left.
+  // Footsteps: every step ends with the partner on the tile the player left,
+  // and every frame of the walk moves it exactly as far as the player.
+  sampling.on = true;
   for (const [code, ms] of [['ArrowLeft', 600], ['ArrowDown', 150], ['ArrowRight', 300]]) {
     const before = await state();
     await hold(code, ms);
-    await until(`!${GAME}.scene.getScene('base').targetTile`);
+    while (await page.evaluate(`!!${GAME}.scene.getScene('base').targetTile`)) await frames(1);
     const after = await expectAtHeel(`after walking ${code}`);
     if (JSON.stringify(after.tile) === JSON.stringify(before.tile)) fail(`${code} walked nowhere`);
   }
   await frames(50);
+  sampling.on = false;
+  console.log(`walked ${expectSmooth('walking')} frames with the partner in step`);
   await endClip();
   await page.screenshot(`${out}/walked.png`);
 
