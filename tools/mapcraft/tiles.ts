@@ -13,6 +13,7 @@ export type TileKind =
   | 'grass'
   | 'road'
   | 'ford'
+  | 'ice'
   | 'water'
   | 'wood'
   | 'rock'
@@ -35,6 +36,7 @@ const KIND_OF_LETTER: Readonly<Record<string, TileKind>> = {
   v: 'road',
   M: 'road',
   w: 'ford',
+  i: 'ice',
   W: 'water',
   T: 'wood',
   '#': 'wood',
@@ -56,6 +58,9 @@ export const WALKABLE_KINDS: ReadonlySet<TileKind> = new Set([
   'grass',
   'road',
   'ford',
+  // Walked onto, and slid across: the searches here read it as ground, as the
+  // hunter does (`slidingFloor.ts` reads it the way a player has to).
+  'ice',
 ]);
 
 /**

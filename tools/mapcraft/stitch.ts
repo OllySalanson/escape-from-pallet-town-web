@@ -20,6 +20,7 @@ import {
   type MapFileExit,
   type MapFileItemSpot,
   type MapFileLimits,
+  type MapFileFacing,
   type MapFileLink,
   type MapFileSpot,
 } from '../../src/game/world/mapFile';
@@ -37,6 +38,7 @@ import {
   planBounds,
   SEAM_DEPTH,
   type Opening,
+  type PlannedSailing,
   type WorldPlan,
 } from './worldPlan';
 
@@ -306,6 +308,14 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
     merged.exits.push({ x: rect.x + x, y: rect.y + y, name: exit.name, opens: exit.opens ?? { when: 'always' } });
   }
   merged.exits = uniqueNames(merged.exits);
+  // A boat runs once both its jetties are drawn: a link sailed across the sea
+  // cells the plan routes it through.
+  for (const sailing of plan.sailings ?? []) {
+    if (!built[sailing.from.district] || !built[sailing.to.district]) continue;
+    const boat = sailingLink(plan, sailing, ground);
+    if (typeof boat === 'string') problems.push(boat);
+    else merged.links.push(boat);
+  }
   const file: MapFile = {
     format: MAP_FILE_FORMAT,
     id: plan.id,
@@ -322,6 +332,90 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
   problems.push(...seams.filter((seam) => seam.status === 'broken').map((seam) => seam.detail));
   problems.push(...leaks(plan, built));
   return { file, seams, problems };
+}
+
+const STEPS: readonly (readonly [MapFileFacing, number, number])[] = [
+  ['up', 0, -1],
+  ['down', 0, 1],
+  ['left', -1, 0],
+  ['right', 1, 0],
+];
+
+/**
+ * A planned boat as the link it ships as (`MapFileSailing`): its two jetties,
+ * each boarded by pressing onto the deep water beside it, and the fewest
+ * straight legs of deep water between them that stay inside the cells the
+ * plan routes it through - its jetties' districts and its `via` sea.
+ */
+export function sailingLink(
+  plan: WorldPlan,
+  sailing: PlannedSailing,
+  ground: readonly (readonly string[])[],
+): MapFileLink | string {
+  const what = `The boat '${sailing.name}'`;
+  const cells = [districtOf(plan, sailing.from.district).cell, ...sailing.via, districtOf(plan, sailing.to.district).cell];
+  const inRoute = (x: number, y: number): boolean =>
+    cells.some((cell) => {
+      const rect = cellRect(plan, cell);
+      return x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height;
+    });
+  const water = (x: number, y: number): boolean => ground[y]?.[x] === 'W' && inRoute(x, y);
+  const jetty = (end: PlannedSailing['from']): [number, number] => {
+    const rect = districtRect(plan, end.district);
+    return [rect.x + end.at[0], rect.y + end.at[1]];
+  };
+  const [from, to] = [jetty(sailing.from), jetty(sailing.to)];
+  const moorings = ([x, y]: [number, number]) =>
+    STEPS.filter(([, dx, dy]) => water(x + dx, y + dy)).map(([toward, dx, dy]) => ({ toward, boat: [x + dx, y + dy] as const }));
+  const starts = moorings(from);
+  const ends = moorings(to);
+  if (starts.length === 0 || ends.length === 0)
+    return `${what} has no deep water beside its jetty at ${starts.length === 0 ? from : to}.`;
+  // The fewest legs: a breadth-first search in which one move is a whole leg,
+  // as far as the water goes in a straight line.
+  const width = ground[0]?.length ?? 0;
+  const key = (x: number, y: number) => y * width + x;
+  let best: { legs: [number, number][]; start: (typeof starts)[number]; end: (typeof ends)[number] } | undefined;
+  for (const start of starts) {
+    const legs = new Map<number, number>([[key(...start.boat), 0]]);
+    const back = new Map<number, number>();
+    const queue: [number, number][] = [[start.boat[0], start.boat[1]]];
+    for (let head = 0; head < queue.length; head += 1) {
+      const [x, y] = queue[head];
+      const turns = legs.get(key(x, y))!;
+      for (const [, dx, dy] of STEPS) {
+        for (let nx = x + dx, ny = y + dy; water(nx, ny); nx += dx, ny += dy) {
+          const known = legs.get(key(nx, ny));
+          if (known !== undefined && known <= turns) continue;
+          if (known === undefined) {
+            legs.set(key(nx, ny), turns + 1);
+            back.set(key(nx, ny), key(x, y));
+            queue.push([nx, ny]);
+          }
+        }
+      }
+    }
+    for (const end of ends) {
+      if (!legs.has(key(...end.boat))) continue;
+      const path: [number, number][] = [];
+      for (let at: number | undefined = key(...end.boat); at !== undefined; at = back.get(at))
+        path.unshift([at % width, Math.floor(at / width)]);
+      if (!best || path.length < best.legs.length) best = { legs: path, start, end };
+    }
+  }
+  if (!best) return `${what} cannot sail from ${from} to ${to} over deep water by the route the plan gives it.`;
+  return {
+    ends: [
+      { x: from[0], y: from[1], toward: best.start.toward, look: 'boat' },
+      { x: to[0], y: to[1], toward: best.end.toward, look: 'boat' },
+    ],
+    sails: {
+      name: sailing.name,
+      from: sailing.runs.from,
+      until: sailing.runs.until,
+      course: best.legs.slice(1, -1).map(([x, y]) => ({ x, y })),
+    },
+  };
 }
 
 /**

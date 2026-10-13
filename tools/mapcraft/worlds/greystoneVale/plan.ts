@@ -381,8 +381,8 @@ export const GREYSTONE_VALE: WorldPlan = {
     { district: 'moor-chapel', name: 'Lantern Cross', at: [52, 18], kind: 'landmark' },
     { district: 'lost-garden', name: 'The Glasshouse', at: [30, 30], kind: 'landmark' },
     { district: 'lost-garden', name: 'The Old Bloom', at: [46, 50], kind: 'secret' },
-    { district: 'frostreef', name: 'Ice Jetty', at: [30, 20], kind: 'landmark' },
-    { district: 'frostreef', name: 'The Frozen Lagoon', at: [34, 36], kind: 'landmark' },
+    { district: 'frostreef', name: 'Ice Jetty', at: [30, 12], kind: 'landmark' },
+    { district: 'frostreef', name: 'The Frozen Lagoon', at: [34, 40], kind: 'landmark' },
     { district: 'ember-isle', name: "Smugglers' Landing", at: [50, 20], kind: 'landmark' },
     { district: 'ember-isle', name: 'The Crater', at: [28, 34], kind: 'landmark' },
     { district: 'ember-isle', name: 'The Hoard', at: [30, 38], kind: 'secret' },
@@ -437,11 +437,16 @@ export const GREYSTONE_VALE: WorldPlan = {
       },
     },
     {
+      // Under the berg: in from the shore the launch puts in at, and out the
+      // far side onto the frozen lagoon, which has no other way in.
       id: 'berg-cave',
       name: 'Berg Cave',
       floors: 2,
       style: 'ice',
-      mouths: [{ district: 'frostreef', at: [46, 22], floor: 1 }],
+      mouths: [
+        { district: 'frostreef', at: [46, 25], floor: 1 },
+        { district: 'frostreef', at: [20, 31], floor: 2 },
+      ],
     },
     {
       // The only way into Ember Isle's crater: in on the cone's flank, out on
@@ -469,7 +474,7 @@ export const GREYSTONE_VALE: WorldPlan = {
     {
       name: 'The Ice Run',
       from: { district: 'the-wreck', at: [56, 41] },
-      to: { district: 'frostreef', at: [30, 20] },
+      to: { district: 'frostreef', at: [30, 10] },
       via: [
         [4, 2],
         [4, 3],

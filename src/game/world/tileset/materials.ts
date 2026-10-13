@@ -122,7 +122,7 @@ export const MATERIAL_CHARS: Readonly<Record<Material, string>> = {
   cliff: 'C',
   fence: 'F',
   wall: 'B',
-  ice: 'I',
+  ice: 'i',
 };
 
 const BY_CHAR = new Map<string, Material>(

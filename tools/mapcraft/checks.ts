@@ -123,7 +123,8 @@ function wholeTrees(
 
 /**
  * Every open tile outdoors can be walked to from a drop-in - on foot, over a
- * ledge, or through a door or a cave: ground reached only through the
+ * ledge, through a door or a cave, or across the sea by boat (a sailing is a
+ * link with both ends outdoors): ground reached only through the
  * Greystone Caves (Stormcrown, whose one way in is the deepest floor's mouth)
  * is ground a raid can walk to. A place behind a door is taken as one room,
  * every way through it reaching every other: whether its own floor joins them

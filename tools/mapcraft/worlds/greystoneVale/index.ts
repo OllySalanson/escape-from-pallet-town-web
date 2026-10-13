@@ -7,6 +7,7 @@
  * once the vale can reach it.
  */
 import type { WorldResult } from '../../worldReport';
+import { frostreef } from './frostreef';
 import { greystonePeaks } from './greystonePeaks';
 import { gullStrand } from './gullStrand';
 import { highMoor } from './highMoor';
@@ -45,6 +46,7 @@ export default function greystoneVale(): WorldResult {
       'smugglers-cove': smugglersCove(),
       stormcrown: stormcrown(),
       'lost-garden': lostGarden(),
+      frostreef: frostreef(),
     },
   };
 }
