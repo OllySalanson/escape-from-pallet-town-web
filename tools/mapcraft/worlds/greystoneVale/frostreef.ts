@@ -130,7 +130,6 @@ export function frostreef(): MapcraftResult {
       areas: cave.areas,
       links: cave.links,
       districts: [
-        { name: 'ICE JETTY', x: 4, y: 6, width: 56, height: 22, wildlife: 'ice' },
         { name: 'THE FROZEN LAGOON', x: 6, y: 28, width: 58, height: 24, wildlife: 'ice' },
       ],
       signs: [

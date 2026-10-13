@@ -13,9 +13,10 @@ The Crossing, Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the
 five it grew into, all drawn too: The Power Station, Safari Marsh, The Wreck,
 The Sunken Quarter and Smugglers' Cove. Round them is the ring it has grown
 into since ([The far places](#the-far-places)): open sea in the south, and wood
-in the north where the far places will be drawn. Two far places are drawn:
-[Stormcrown](#stormcrown), the summit above the peaks, and
-[The Lost Garden](#the-lost-garden), east of the Power Station.
+in the north where the far places will be drawn. Three far places are drawn:
+[Stormcrown](#stormcrown), the summit above the peaks,
+[The Lost Garden](#the-lost-garden), east of the Power Station, and
+[Frostreef](#frostreef), an island of ice out on the reef.
 
 ![the vale as it ships](vale.png)
 
@@ -1065,8 +1066,8 @@ The plan names what each place needs and does not have yet, in its `reach`;
 - **A gear row each** for the Spell Tag, the Miracle Seed, the NeverMeltIce and
   Charcoal, and **a habitat each** for the summit, the garden, the haunted fell,
   the ice and the volcano, measured as every table is. The NeverMeltIce and the
-  ice are in: the gear is FireRed's type-boosting kind (`type-boost` in
-  `items.ts`), which the other three are rows of too, and a far place's
+  ice are in: the gear is the Miracle Seed's own `type-power` row, one rule
+  for every type-boosting piece, and a far place's
   only-here find is a row of `BUILT_IN_FILE_PRIZES` (`world/filePrizes.ts`).
 
 One per place:
@@ -1348,6 +1349,117 @@ The same route on another seed found the Old Bloom bare, as three raids in four 
 ![The glasshouse](lost-garden-walk/7-glasshouse.png)
 ![The Miracle Seed, taken](lost-garden-walk/8-miracle-seed.png)
 ![Out by the Gardener's Gate](lost-garden-walk/9-out-by-the-gardeners-gate.png)
+
+## Frostreef
+
+The third far place drawn: an island of ice on the outer reef, south-east of
+the Wreck, that nobody walks to. It built the two mechanics the ring shares,
+the boat and the ice.
+
+- **The way in: The Ice Run.** The salvage launch puts in at the Wreck's pier
+  on the flood tide, from 2:00 until 4:00 of a raid, and nowhere else and at no
+  other time. Pressing out to sea from the end of the pier asks first, in
+  FireRed's sailor's words ("Ahoy, there!"), and then carries the player tile
+  by tile east along the coast and south across two cells of open sea to the
+  Ice Jetty: 134 tiles, about twenty seconds of the raid clock, charged as
+  walking that far would be. The hunter cannot follow across the water, so
+  the island is the one place in the vale a raid can put the sea between
+  itself and the hunter - at the price of the tide.
+- **The north shore.** The jetty lands on a beach and a meadow under the berg.
+  The Old Whaler there says what the island is, and a frozen pool in the
+  meadow teaches the ice where getting it wrong costs nothing: a step onto ice
+  carries on until something stops it.
+- **Berg Cave.** Two floors of FireRed's Icefall Cave under the berg, the only
+  way to the far side of the ridge. Each is a sheet of ice round crags of rock,
+  and the way on is reached only by stopping against the right snowy boulder;
+  every boulder on the ice is a stop some way across needs. A hidden find waits
+  in a pocket of each that only a slide reaches.
+- **The Frozen Lagoon.** The island's best ground, walled off by the ridge: a
+  lagoon frozen solid, Lapras waiting on the snow-bank in the middle of it at
+  level 10, and the NeverMeltIce, FireRed's Ice-type gear, found nowhere else in
+  the game (a prize, so three raids in ten).
+- **The way out: the Whaler's Boat.** The whalers put in at the lagoon's
+  channel at 3:40. Miss the tide back on the launch and it is the only other way
+  off the island, and the lagoon is on the far side of the cave.
+
+What is only here: Seel, Shellder and Jynx, on every step of Berg Cave's floor
+(FireRed's Seafoam Islands and Icefall Cave, brought to a route's levels and
+measured with a level-8 starter of each kind at 73% to 90%); Lapras; and the
+NeverMeltIce. Dewgong is the one of Seafoam's own left out: it evolves at 34,
+and nothing in the game is fielded below the level it evolves at.
+
+### How it is built
+
+- **A boat is a link.** A map file's boat is a link whose two ends are `boat`
+  jetties outdoors, with a `sails` field: its name, its window in seconds and
+  the turns of its course (`MapFileSailing`). It is not a new top-level key, so
+  `submit_map` needs no migration, and a player's map can carry one. The game
+  lays it out as a boat (`world/sailing.ts`), never as a way through: every
+  search that asks where a player can get to - the checks, run generation, the
+  structure rules - adds its two ways across (`playerLinks`), and nothing the
+  hunter asks does. The stitcher writes one for each planned sailing once both
+  its jetties are drawn, with the fewest straight legs of deep water that stay
+  inside the cells the plan routes it through (`sailingLink` in `stitch.ts`).
+- **Ice is a material.** `ice` is the seventeenth (letter `i`), walkable and
+  `slides`; Berg Cave is a cave in the new `ice` style, drawn from FireRed's
+  Icefall Cave by `scripts/cut-frlg-ice.mjs` (`frlg-ice.png`), and the frozen
+  lagoon and pool out of doors are the same sheet of ice on the player-map
+  catalogue, with Icefall Cave's snowy boulders to stop against. A map maker
+  can paint it in an ice cave.
+- **Fair by construction.** `frostreef.test.ts` slides the whole island the
+  way a player has to, through the cave's ladders, with Lapras standing and
+  without: from the jetty everything is reached - every find, Lapras, the
+  whalers' boat - and nowhere a slide can leave you is somewhere the jetty and
+  the boat are both out of reach.
+
+![Frostreef](frostreef/frostreef.png)
+
+Berg Cave 1F and B1F:
+
+![Berg Cave 1F](frostreef/berg-cave-1f.png)
+![Berg Cave B1F](frostreef/berg-cave-b1f.png)
+
+### Played through
+
+`tools/playtest/frostreef.mjs` plays it in the real game on a test-mode build:
+the explorer run dropped in at the Salvage Camp, the walk to the pier, the
+boarding question, the crossing, the shore, both floors of Berg Cave solved a
+slide at a time (planned the way the player has to, by sliding), Lapras
+spoken to and fought, and away by the Whaler's Boat. The crossing cost 20.5
+seconds of raid clock for its 134 tiles, exactly what walking that far does.
+
+![Ahoy](frostreef/02-ahoy.png)
+![At sea](frostreef/03-at-sea.png)
+![The Ice Jetty](frostreef/04-ice-jetty.png)
+![Berg Cave 1F](frostreef/06-berg-cave-1f.png)
+![Out onto the frozen lagoon](frostreef/09-the-frozen-lagoon.png)
+![Lapras](frostreef/10-lapras.png)
+![Away on the Whaler's Boat](frostreef/12-away.png)
+
+### Judged blind
+
+Judged against FireRed's own island places, redrawn in this game's tiles by
+`tools/mapcraft/fromPret.mts` (Four Island, Birth Island, One Island's
+Treasure Beach and Two Island's Cape Brink), the island as two 48x40 views,
+two fresh judges a round. Berg Cave was judged against FireRed's own Icefall
+Cave and Seafoam Islands floors, drawn from pret in their own tiles, which are
+the tiles Berg Cave is cut from. Each round had two broken controls (a
+place's blocks shuffled); a judge who scored one level with or above a real
+place does not count.
+
+| Round | What changed | Island | Real mean | Berg Cave | Real mean |
+|---|---|---|---|---|---|
+| 1 | first draw | 4 and 4, 4 and 4 | judges did not count | 3 and 3, 3 and 3 | 7.0, 5.25 |
+| 2 | organic lagoon, rock drawn solid, boulders only where a way needs one | 6 and 6, 5 and 5 | judges did not count | **7 and 6, 6 and 5: passes** | 4.75, 5.5 |
+| 3 | meadow, track, pool at the headland | 5 and 6 | 7.5 | | |
+| 4 | ridge stepping in and out, sand round the pool | 6 and 5, 6 and 6 | 7.25, 6.75 | | |
+| 5 | reef and sandbar in the lagoon, south edge broken up | **6 and 6, 6 and 6** | 7.0, 7.5 | | |
+
+In round 5 both judges counted, and both scored the island above the weakest
+real place in the batch (4 and 5) and within one and a half points of the real
+mean. What both still named, for a later pass: the track is one ruled L, the
+tall-grass beds and the pool's rim are blocky, the two knolls in the lagoon
+read as pasted, and the berg is a very square block.
 
 ## How it ships
 

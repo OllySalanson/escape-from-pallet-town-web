@@ -256,7 +256,8 @@ export const GREYSTONE_VALE: WorldPlan = {
       cell: [4, 4],
       island: true,
       terrain: 'coast',
-      wildlife: 'shore',
+      // FireRed's Seafoam Islands and Icefall Cave (`ICEFALL_WILDLIFE`).
+      wildlife: 'ice',
       idea: "An island of ice on the outer reef, by boat on the tide from the wreck's pier: a frozen lagoon, and a cave of sliding ice.",
       reach: {
         wayIn:
