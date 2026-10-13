@@ -118,6 +118,10 @@ export function powerStation(): MapcraftResult {
   // Its bed is gravel, and the grass has come up through it in drifts.
   p.yard(20, 31, 20, 12, { gates: [[31, 31], [32, 31]], inner: 'v' });
   p.put(30, 42, 'v'); // the service gate, let into the back fence
+  // A bush outside it keeps the gate a pocket stepped into from the yard: with
+  // Safari Marsh drawn, a gate open on both sides was the short way from the
+  // dam to the south road, and an exit takes whoever steps on it.
+  p.bushes([30, 43]);
   p.bedRows(
     [32, 21, 27], [33, 21, 29], [34, 22, 28], [35, 21, 25],
     [32, 35, 38], [33, 34, 38], [34, 33, 38], [35, 35, 38], [36, 36, 38],

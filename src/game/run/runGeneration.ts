@@ -293,6 +293,13 @@ export const RUN_INSERTIONS = {
     position: { x: 222, y: 28 },
     description: 'The forecourt of the power station, under the dam, with the switchyard gone to grass beyond it.',
   },
+  'greystone-vale-rest-house': {
+    id: 'greystone-vale-rest-house',
+    label: 'Rest House',
+    mapId: 'greystone-vale',
+    position: { x: 222, y: 96 },
+    description: "The rest house in the middle of the Safari Marsh, the warden's reserve behind the Safari Zone gate.",
+  },
   'greystone-vale-salvage-camp': {
     id: 'greystone-vale-salvage-camp',
     label: 'Salvage Camp',

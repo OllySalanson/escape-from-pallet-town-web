@@ -16,6 +16,7 @@ import { pineHollow } from './pineHollow';
 import { GREYSTONE_VALE } from './plan';
 import { powerStation } from './powerStation';
 import { reedmere } from './reedmere';
+import { safariMarsh } from './safariMarsh';
 import { smugglersCove } from './smugglersCove';
 import { sunkenQuarter } from './sunkenQuarter';
 import { tanglewood } from './tanglewood';
@@ -36,6 +37,7 @@ export default function greystoneVale(): WorldResult {
       'gull-strand': gullStrand(),
       'orchard-terraces': orchardTerraces(),
       'power-station': powerStation(),
+      'safari-marsh': safariMarsh(),
       'the-wreck': theWreck(),
       'sunken-quarter': sunkenQuarter(),
       'smugglers-cove': smugglersCove(),

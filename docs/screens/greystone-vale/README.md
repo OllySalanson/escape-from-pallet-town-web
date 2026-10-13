@@ -8,9 +8,9 @@ is the plan, each district that is drawn marked DRAWN:
 
 And the vale as it ships now, with the nine districts it was planned as all
 drawn - Millbrook, High Moor, Greystone Peaks, Pine Hollow, The Crossing,
-Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and of the five it has
-grown into, The Wreck, The Sunken Quarter and Smugglers' Cove. The Power
-Station and Safari Marsh are wood until each is drawn.
+Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the five it has
+grown into, all drawn too: The Power Station, Safari Marsh, The Wreck, The
+Sunken Quarter and Smugglers' Cove.
 
 ![the vale as it ships](vale.png)
 
@@ -726,6 +726,10 @@ plan standing.
   landing. The fishers' boat, a hidden way out, puts in from a step off the
   jetty. Without it, the cove under Gull Strand's cliffs is past the hunter's
   blind window (`hunterFlee.test.ts`).
+- **One change in The Power Station:** a bush now stands outside its service
+  gate. Without it, once the marsh was drawn, the gate became the short way
+  from the dam to the south road, and an exit takes whoever steps on it. With
+  the bush, the gate is a pocket stepped into from the switchyard.
 - **The upper town:** the quay, the upper street with the harbour office and
   its houses, and the high street down to the water. The Harbourmaster stands
   at the office.
@@ -823,6 +827,60 @@ What is left for a later pass:
 
 - the brook runs ruler-straight through the wood;
 - the beach is still wide and open.
+
+## Safari Marsh
+
+A warden's reserve east of Tanglewood, behind FireRed's own Safari Zone gate,
+where the vale's rarest Pokemon live.
+
+- **The gate:** the road from Tanglewood comes in past the Safari Zone gate,
+  with the Warden at the roadside and the reserve's sign.
+- **The paths:** sand paths with mown verges wind through the reed beds,
+  between copses and round two pools, to the rest house in the middle.
+- **The rest house:** the Rest House landing, with a bench in its yard. It is
+  the dry ground a raid stops at.
+- **Ways on and out:** the paths go north to the power station, south through
+  the reeds to the wreck, and east past Ranger Moss to the Ranger's Track, the
+  way off the map. A second hut stands by the pond in the north-east.
+- **The Wardens' Stile:** a hidden way out in the reeds beside the north road.
+  Once the marsh is drawn, the Power Station's road south is no longer a stand-in
+  way out, and without the stile that station's far side is past the hunter's
+  blind window (`hunterFlee.test.ts`).
+- **The wildlife:** the reeds roll a habitat of their own, `safari`
+  (`SAFARI_ZONE_WILDLIFE`). These are FireRed's own Safari Zone species, brought
+  down from its levels 22-33 to a route's: Nidoran, Exeggcute, Venonat, Paras
+  and Rhyhorn, and the Chansey, Kangaskhan, Scyther, Pinsir and Tauros that live
+  nowhere else in the game. Every species is one of the 151 already in the game,
+  with its own stats. Doduo is left out, because by night its slot would go to a
+  Golbat far below the level a Zubat evolves at. A level-8 starter of each kind
+  wins at least 54% of what it meets there (`safariHabitat.test.ts` holds 45%).
+  The map maker offers the habitat as "Safari Zone".
+
+![Safari Marsh](safari-marsh.png)
+
+### Judged blind
+
+Judged beside FireRed's marshy, grassy routes: two windows of Route 12, and one
+each of Route 14, Route 24 and Route 2. The two broken controls were Route 14
+with every block shuffled and Route 12 with four blocks swapped. Every round
+used two fresh judges.
+
+| Round | Real mean | Safari Marsh |
+|---|---|---|
+| 1 | 4.8, 5.2 | 6 and 3, 5 and 3 |
+| 2 | 5.6, 5.6 | **6 and 4, 7 and 4: passes** |
+
+Every judge counted in both rounds. Round 2 passes for both judges: each view
+is at or above that judge's weakest real route (4), and each mean is within a
+point of the real mean.
+
+What round 1's judges named, and round 2 fixed: the middle of the reserve read
+as a sea of tall grass with path pieces in it. Every path now has a mown verge,
+and copses break up the reeds.
+
+What is left for a later pass: the middle view is the weak one (4 from both).
+Its paths leave the view in pieces, and it reads as open country rather than a
+corridor. The west view, with the gate, scored 6 and 7.
 
 ## How it ships
 

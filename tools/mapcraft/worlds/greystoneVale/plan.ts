@@ -133,7 +133,7 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: 'SAFARI MARSH',
       cell: [3, 1],
       terrain: 'marsh',
-      wildlife: 'wetland',
+      wildlife: 'safari',
       idea: "Behind the Safari Zone's own gate, a warden's reserve of reed beds and pools where the vale's rarest Pokemon live; the rest huts are the only dry ground.",
     },
     {
