@@ -178,7 +178,10 @@ Four lessons, each paid for by at least one round:
 ## Pine Hollow, Tanglewood and the Greystone Caves
 
 The two woods in the east of the vale, the deer path between them, and the
-caves under them. Both woods are FireRed's own forest conifer, the tree
+caves under them. They are drawn and pass, and are stitched into the vale the
+game ships once The Crossing is in: it is the only way to them from Millbrook,
+and a vale they joined before then would be a wood nobody can walk to.
+`forests.test.ts` holds each to every hard check until then. Both woods are FireRed's own forest conifer, the tree
 Viridian Forest is drawn in. FireRed's broadleaf stands alone, and planted
 shoulder to shoulder it reads as an orchard, so each wood has one broadleaf
 standing in a clearing.
