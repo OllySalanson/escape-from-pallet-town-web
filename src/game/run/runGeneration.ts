@@ -265,6 +265,13 @@ export const RUN_INSERTIONS = {
     position: { x: 105, y: 173 },
     description: 'The strand on Gull Strand, where the road comes down to the sea and the jetty runs out.',
   },
+  'greystone-vale-farmhouse': {
+    id: 'greystone-vale-farmhouse',
+    label: 'Farmhouse',
+    mapId: 'greystone-vale',
+    position: { x: 152, y: 140 },
+    description: 'The farmyard at Orchard Terraces, between the orchards, above the terraces down to the sea.',
+  },
 } as const satisfies Record<string, BuiltInInsertion>;
 
 interface BuiltInInsertion {
