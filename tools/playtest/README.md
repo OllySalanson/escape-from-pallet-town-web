@@ -98,6 +98,14 @@ the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen
 otherwise, so nothing else checks that one can be walked to.
 
+`raid.mjs --through=x:y:dir` goes through the doorway whose landing is that tile
+(a cave mouth, a building's door) by pressing `dir` into it, notes the place it
+came out in, and comes back out the same way. Walking cannot do it, because a
+link is a press into a door, not a step onto a tile. With `--explorer` it reads
+back the explorer run's own save, so `--explorer --insertion=id` reaches any
+landing on a map still being drawn: that is how all of Greystone Vale was
+played (`docs/screens/greystone-vale/README.md`, "Played through").
+
 Battle HP numbers, HP bars and the sprite entrance are wall-clock tweens, so in a
 stepped check they lag the state badly (a plate read `16/16` for three turns of a
 Pokemon going 16 to 1) and the sprites sit half out of frame. Assert on
