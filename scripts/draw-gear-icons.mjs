@@ -31,6 +31,9 @@ const C = {
   a: hex('a85e14'), A: hex('f0a02e'),
   // seed green, as FireRed's Miracle Seed is a green bud with a leaf on it
   s: hex('2f6b2a'), S: hex('4fa83d'), t: hex('9be070'),
+  // never-melt ice, in FireRed's own icon palette
+  // (`graphics/items/icon_palettes/never_melt_ice.pal`, pret/pokefirered at 037335f)
+  i: hex('f6ffff'), j: hex('def6ff'), k: hex('a4d5e6'), K: hex('73a4c5'), z: hex('317ba4'),
 };
 
 const blank = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -179,6 +182,30 @@ icons['miracle-seed'] = outline(
     '....sSSSSSSss...',
     '.....ssSSsss....',
     '.......sss......',
+    '................',
+  ]),
+);
+
+// NeverMeltIce: a cluster of icicles standing up out of a frozen base, the
+// tallest in the middle and two shorter either side, as FireRed's own 24x24
+// icon draws it - redrawn at sixteen rather than resampled.
+icons['never-melt-ice'] = outline(
+  fromRows([
+    '................',
+    '......i.........',
+    '.....iiK........',
+    '.....ikK........',
+    '.....ikK...i....',
+    '..i..ikKz.iiK...',
+    '.iiK.ikKz.ikK...',
+    '.ikK.ikKzjikKz..',
+    '.ikKjikKzjikKz..',
+    '.ikKjikkKjjkKz..',
+    '.ikkjjkkKjjkkz..',
+    '.jkkjjkkkjjkkz..',
+    '.jkkkjkkkkjkKz..',
+    '.zKkkkkkkkkkKz..',
+    '..zzzzzzzzzzz...',
     '................',
   ]),
 );

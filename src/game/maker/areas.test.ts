@@ -6,6 +6,7 @@ import {
   MAP_FILE_FURNITURE,
   readMapFile,
   type MapFile,
+  type MapFileArea,
 } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import {
@@ -402,8 +403,11 @@ describe('the maker screen with an inside', () => {
     // No house furniture in a cave, and no field-move doors indoors at all.
     expect(markup).not.toContain('data-building="single-bed"');
     expect(markup).not.toContain('data-place="cut-tree"');
-    // A cave has one look, so there is no choosing it.
-    expect(markup).not.toContain('data-area-style');
+    // A cave is Mt. Moon's or Icefall Cave's, and the ice is only in the ice.
+    expect(markup).toContain('<option value="ice">Ice cave</option>');
+    expect(markup).not.toContain('data-brush="ice"');
+    const icy = withAreaStyle(file, area, 'ice');
+    expect(makerScreen(state(icy, area))).toContain('data-brush="ice"');
     const exit = makerScreen({ ...state(file, area), doorway: { link: file.links!.length - 1, end: 1 } });
     expect(exit).toContain('daylight in its south wall');
     expect(exit).toContain('data-go-end');
@@ -443,6 +447,11 @@ function laneWithARockFace(): MapFile {
     itemSpots: SAMPLE.itemSpots.map((spot) => (spot.x === 28 && spot.y === 12 ? { x: 25, y: 13 } : spot)),
     buildings: [...SAMPLE.buildings, { kind: 'cave-mouth', x: 27, y: 14 }],
   };
+}
+
+/** The file with one of its areas dressed in another style. */
+function withAreaStyle(file: MapFile, area: string, style: MapFileArea['style']): MapFile {
+  return { ...file, areas: file.areas!.map((one) => (one.id === area ? { ...one, style } : one)) };
 }
 
 function withCave(): { file: MapFile; area: string } {

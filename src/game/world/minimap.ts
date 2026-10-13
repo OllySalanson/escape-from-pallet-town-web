@@ -136,6 +136,7 @@ const GROUND: Readonly<Record<Material, MinimapChar>> = {
   cliff: 'C',
   fence: 'C',
   wall: 'B',
+  ice: 'P',
 };
 
 /**

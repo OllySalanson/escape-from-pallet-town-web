@@ -44,6 +44,7 @@ import { pokemonName } from './pokemonFigures';
 import { berryName } from './berries';
 import { trainerSightTiles } from './trainerSight';
 import { refusedWords } from './wordFilter';
+import { courseFaults, coursePath, sailingLinks } from './sailing';
 
 /**
  * Whether a map works - and nothing else.
@@ -136,6 +137,7 @@ const DOORWAY_NAMES: Readonly<Record<MapFileDoorwayLook, string>> = {
   'cave-exit': 'way out',
   'ladder-up': 'ladder up',
   'ladder-down': 'ladder down',
+  boat: 'boat',
 };
 
 /** The ways through a cave has, and nothing else does. */
@@ -484,7 +486,12 @@ export function checkMapFile(
       const kind = area?.kind;
       const ground = (x: number, y: number): string | undefined => area?.ground[y]?.[x];
       const doorway = doorwayOf(end);
-      if (end.look === 'door') {
+      if (end.look === 'boat') {
+        // A boat lies off its jetty in deep water, the way it is boarded.
+        if (end.area !== undefined || file.ground[doorway.y]?.[doorway.x] !== MATERIAL_CHARS.water) {
+          found.push(`${what} has to lie in deep water off its jetty, the way it is boarded.`);
+        }
+      } else if (end.look === 'door') {
         const building = buildingAt(end);
         if (!building) {
           found.push(`${what} is not in front of a building's door.`);
@@ -603,6 +610,26 @@ export function checkMapFile(
       return found.map((text) => fault(text, 'doorways', end));
     }),
   );
+  // A boat sails straight from turn to turn, and only over deep water.
+  for (const link of fileLinks) {
+    if (!link.sails) {
+      continue;
+    }
+    const [a, b] = link.ends;
+    const turns = [doorwayOf(a), ...link.sails.course, doorwayOf(b)];
+    const crooked = courseFaults(turns);
+    const dry = coursePath(turns).filter((tile) => file.ground[tile.y]?.[tile.x] !== MATERIAL_CHARS.water);
+    if (crooked.length > 0 || dry.length > 0) {
+      doors.push(
+        fault(
+          `The boat ${link.sails.name} ${crooked.length > 0 ? crooked[0] : `runs aground at ${at(dry[0])}`}: a course is straight legs of deep water.`,
+          'doorways',
+          ...(dry.length > 0 ? [dry[0]] : []),
+          a,
+        ),
+      );
+    }
+  }
   // A cave mouth is a way in or it is a hole in a hill that goes nowhere.
   for (const building of file.buildings) {
     const front = doorFront(building);
@@ -661,7 +688,12 @@ export function checkMapFile(
       };
     }),
   );
-  const walks: GridLinks = new Map([...links, ...linkTable(hops, composed.width)]);
+  // A boat is a player's too, and the hunter's room is asked without it.
+  const walks: GridLinks = new Map([
+    ...links,
+    ...linkTable(hops, composed.width),
+    ...linkTable(sailingLinks(composed.sailings), composed.width),
+  ]);
   // A raid has to be leavable by a player who brought no Pokemon that knows Cut
   // or Surf, so the way out is walked with every door shut; what is behind a
   // door is still somewhere a map is for, so reaching it is walked with them open.
@@ -929,6 +961,9 @@ export function checkMapFile(
       at: district,
     })),
     ...(file.areas ?? []).map((area) => ({ what: `The inside ${area.name}`, text: area.name })),
+    ...fileLinks.flatMap((link) =>
+      link.sails ? [{ what: `The boat ${link.sails.name}`, text: link.sails.name, at: link.ends[0] }] : [],
+    ),
   ];
   const words = said
     .filter(({ text }) => refusedWords(text).length > 0)

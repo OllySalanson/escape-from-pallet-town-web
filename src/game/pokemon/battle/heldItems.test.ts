@@ -99,6 +99,13 @@ describe('what each piece of gear does', () => {
     expect(rollsFirstStrike(holding(null), () => 0)).toBe(false);
   });
 
+  it("NeverMeltIce raises an ICE move's power by FireRed's ten per cent, and nothing else's", () => {
+    const ice = holding('never-melt-ice');
+    expect(attackMultiplier(ice, PokemonType.Ice)).toBeCloseTo(1.1);
+    expect(attackMultiplier(ice, PokemonType.Water)).toBe(1);
+    expect(attackMultiplier(ice)).toBe(1);
+  });
+
   it('names itself in the battle log', () => {
     expect(gearLabel('focus-band')).toBe('FOCUS BAND');
     expect(gearLabel(null)).toBe('');

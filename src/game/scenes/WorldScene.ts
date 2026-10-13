@@ -63,6 +63,18 @@ import {
   berryTreeLines,
   type BerryId,
 } from '../world/berries';
+import {
+  boardingPrompt,
+  boatAt,
+  boatAwayLines,
+  boatCaption,
+  castOffLine,
+  playerLinks,
+  sailingState,
+  voyage,
+  type MapSailing,
+} from '../world/sailing';
+import { carriedOn } from '../world/slidingFloor';
 import { boulderDestination, canStillReach } from '../world/boulders';
 import {
   barriersOpenedBy,
@@ -199,6 +211,7 @@ import { HarbourFigures } from '../base/harbourFigures';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
+import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
 import {
   INTERIOR_COVER_MS,
@@ -412,6 +425,7 @@ const LABEL_TONES: Readonly<
     | 'station'
     | 'exitOpen'
     | 'exitShut'
+    | 'boat'
     | 'route'
     | 'watch'
     | 'contract'
@@ -435,6 +449,9 @@ const LABEL_TONES: Readonly<
   contract: { fill: 0x281a3d, border: 0xc4b5fd, ink: '#ede9fe' },
   exitOpen: { fill: 0x123d22, border: 0x86efac, ink: '#dcfce7' },
   exitShut: { fill: 0x3d1414, border: 0xfca5a5, ink: '#fecaca' },
+  // A boat is the sea's way across, the one place on a map that is water you
+  // can go over: open-water blue while it sails, iron while it does not.
+  boat: { fill: 0x0c2a4a, border: 0x7dd3fc, ink: '#e0f2fe' },
   route: { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' },
   // A trainer's watch is the one caption that is a threat rather than a place,
   // so it borrows the hunter chip's red rather than the sealed exit's.
@@ -601,6 +618,26 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Every `JustDown` this scene would ask goes through here - see `KeyPresses`. */
   private readonly keyPresses = new KeyPresses(() => this.currentFrame());
   private isWarping = false;
+  /** The boats moored at this map's jetties, each drawn while it sails (`sailing.ts`). */
+  private boats: Array<{
+    readonly sailing: MapSailing;
+    readonly end: 0 | 1;
+    readonly sprite: Phaser.GameObjects.Image;
+    readonly label: WorldLabel;
+  }> = [];
+  /** A boat the player has said yes to, casting off once its line is read. */
+  private pendingVoyage: { readonly sailing: MapSailing; readonly from: 0 | 1 } | undefined;
+  /** The boat the player is aboard, and how far along its course it is. */
+  private voyaging:
+    | {
+        readonly sailing: MapSailing;
+        readonly from: 0 | 1;
+        readonly tiles: readonly GridPosition[];
+        index: number;
+        progress: number;
+        readonly boat: Phaser.GameObjects.Image;
+      }
+    | undefined;
   private extractionMarkers: Array<{
     readonly point: ExtractionPoint;
     readonly marker: Phaser.GameObjects.Image;
@@ -889,6 +926,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.caughtPokemonStash = [];
     this.unclaimedBossGear = [];
     this.extractionMarkers = [];
+    this.boats = [];
+    this.pendingVoyage = undefined;
+    this.voyaging = undefined;
     this.timerThreat = 'normal';
     // A gate opened in the last raid is in the save, and is read back from it;
     // what must not survive is this instance's own copy of the list.
@@ -1550,6 +1590,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    // Aboard, the boat has the frame: nothing the player presses steers it.
+    if (this.pendingVoyage) {
+      this.castOff();
+      return;
+    }
+    if (this.voyaging) {
+      this.advanceVoyage(deltaMs);
+      return;
+    }
+
     if (this.keyPresses.justPressed(this.controls.party)) {
       this.learnKey('party');
       this.openParty();
@@ -1624,6 +1674,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     });
 
     const pushing = input.up || input.down || input.left || input.right;
+    // The water off a jetty is solid, and pressing out into it while the
+    // boat is in is asking to board.
+    if (!decision.target && pushing && this.tryBoard(decision.facing, false)) {
+      return;
+    }
     // A doorway is solid too - a door, the dark past a room's mat - and
     // pressing into one is going through it.
     if (!decision.target && pushing && this.tryPushThrough(decision.facing)) {
@@ -1770,6 +1825,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.createInteriors(map, sheets, layers);
 
     this.createExtractionPoints();
+    this.createBoats();
     this.createRouteTransitionLabels();
     this.createDoorwayLabels();
     this.createGateLabels();
@@ -4225,6 +4281,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.warp(warp);
       return;
     }
+    // A boat off a jetty, before the water it lies in is fished.
+    if (this.tryBoard(this.facing, true)) {
+      return;
+    }
 
     const picked = this.tryCollectLootAt(targetTile);
     if (picked !== null) {
@@ -4460,7 +4520,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       activatedPoiIds: [...this.activatedPoiIds],
       carried: (itemId: string) => this.bag.count(itemId),
       ...this.nearestOpenExitHere(),
-      stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, this.currentMap.links),
+      stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, playerLinks(this.currentMap)),
       defeatedTrainerIds: [...this.defeatedTrainerIds],
       pausedWorld: true,
     });
@@ -5019,6 +5079,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    // Ice carries a step on until something stops it (`slidingFloor.ts`), and
+    // nothing rolls for a wild Pokemon until it has.
+    if (this.trySlideOn()) {
+      return;
+    }
+
     const encounters = this.encountersAtCurrentTile();
     if (stepRolls(this.currentMap, this.currentTile) && encounters) {
       const rng = this.runSession?.rng;
@@ -5036,6 +5102,34 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.transitionToBattle({ wild, teachingBattle });
       }
     }
+  }
+
+  /**
+   * Carries the step just finished on across ice, if it landed on ice and the
+   * next tile the same way can be walked onto: a whole step of the raid, taken
+   * standing, as FireRed's player slides. Whatever the landing worked, opened
+   * or started has already had its turn - a slide only ever continues a step
+   * that nothing stopped.
+   */
+  private trySlideOn(): boolean {
+    const carried = carriedOn(this.currentMap.terrain, this.currentTile, this.facing);
+    if (carried === null) {
+      return false;
+    }
+    const next = nextTileFromDirection(this.currentTile, carried);
+    if (
+      next.x < 0 ||
+      next.y < 0 ||
+      next.x >= this.bounds.width ||
+      next.y >= this.bounds.height ||
+      this.isBlocked(next)
+    ) {
+      return false;
+    }
+    this.beginStep(next);
+    this.player.stop();
+    this.player.setFrame(this.playerIdleFrame(this.facing));
+    return true;
   }
 
   private showIdlePose(): void {
@@ -5302,6 +5396,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.contractMarkers.clear();
     this.dropInLabels.clear();
     this.extractionMarkers = [];
+    this.boats = [];
   }
 
   private removeWorldLabel(label: WorldLabel | undefined): void {
@@ -5508,7 +5603,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ]
         : [],
     );
-    return [...signs, ...crates, ...standing, ...this.watchedGround, ...doorways];
+    // A boat at its jetty is the thing its caption names too.
+    const boats = (this.boats ?? [])
+      .filter(({ sprite }) => sprite.visible)
+      .map(({ sprite }) => ({
+        x: sprite.x - sprite.width / 2,
+        y: sprite.y - sprite.height / 2,
+        width: sprite.width,
+        height: sprite.height,
+      }));
+    return [...signs, ...crates, ...standing, ...this.watchedGround, ...doorways, ...boats];
   }
 
   /**
@@ -6221,10 +6325,241 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.advanceHunterWhileStill(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
     this.refreshExtractionMarkers();
+    this.refreshBoats();
     this.refreshRunTimerHud(deltaMs);
     if (snapshot.isEnraged && this.runSession.manager.isEnrageGraceExpired) {
       this.resolveExpiredRun();
     }
+  }
+
+  // -- boats -------------------------------------------------------------------
+
+  /** A boat's state at this point in the raid; every boat sails in an explorer run, as every door is open. */
+  private sailingStateNow(sailing: MapSailing): ReturnType<typeof sailingState> {
+    return isPlaytestRun() ? 'sailing' : sailingState(sailing, this.runSession?.manager.snapshot().elapsedMs ?? 0);
+  }
+
+  /** The Seagallop, FireRed's own ferry, off the town sheet: drawn as a figure because it moves. */
+  private boatSprite(at: GridPosition, moored?: Direction): Phaser.GameObjects.Image {
+    const texture = this.textures.get(TOWN_SHEET_SOURCE.source.textureKey);
+    if (!texture.has(BOAT_FRAME)) {
+      const piece = TOWN_PIECES.seagallop;
+      // The piece's top row is empty: the boat is the three below it.
+      texture.add(BOAT_FRAME, 0, piece.column * TILE_SIZE, (piece.row + 1) * TILE_SIZE, piece.width * TILE_SIZE, (piece.height - 1) * TILE_SIZE);
+    }
+    const sprite = this.add.image(0, 0, TOWN_SHEET_SOURCE.source.textureKey, BOAT_FRAME);
+    this.placeBoat(sprite, at.x, at.y, moored);
+    return sprite;
+  }
+
+  /**
+   * Stands a boat on a tile of water: its deck level with the tile's top, so a
+   * boat off a jetty lies below the boards rather than over them, and its bow
+   * and stern out either side.
+   */
+  private placeBoat(sprite: Phaser.GameObjects.Image, x: number, y: number, moored?: Direction): void {
+    // Moored, the boat lies out from its jetty, its side to the boards rather
+    // than across them: off a jetty's west side it lies west of the tile it is
+    // boarded at, off its east side east, and off its head or its foot it is
+    // centred on it, deck to the boards.
+    const half = sprite.width / 2;
+    const across = moored === 'left' ? TILE_SIZE - half : moored === 'right' ? half : TILE_SIZE / 2;
+    const down = moored === 'up' ? TILE_SIZE - sprite.height / 2 + BOAT_RIDE_Y : sprite.height / 2 - BOAT_RIDE_Y;
+    sprite
+      .setPosition(x * TILE_SIZE + across, y * TILE_SIZE + down)
+      .setDepth(atRow(FIGURE_BAND, moored === 'up' ? y : y + 2));
+  }
+
+  private createBoats(): void {
+    if (!this.runSession) {
+      return;
+    }
+    for (const sailing of this.currentMap.sailings ?? []) {
+      for (const end of [0, 1] as const) {
+        const jetty = sailing.ends[end];
+        const sprite = this.boatSprite(jetty.boat, jetty.toward);
+        const label = new WorldLabel(this, {
+          subject: tileRect(jetty.landing),
+          text: sailing.name.toUpperCase(),
+          tone: LABEL_TONES.boat,
+          depth: atRow(CAPTION_BAND, jetty.landing.y),
+          speech: { voice: 'name', tiles: [jetty.landing, jetty.boat] },
+        });
+        this.mapObjects.push(sprite);
+        this.worldLabels.push(label);
+        this.boats.push({ sailing, end, sprite, label });
+      }
+    }
+    this.refreshBoats();
+  }
+
+  private refreshBoats(): void {
+    const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
+    // A harness that never built the map has no boats to show.
+    for (const { sailing, end, sprite, label } of this.boats ?? []) {
+      const state = this.sailingStateNow(sailing);
+      const away = this.voyaging?.sailing === sailing && this.voyaging.from === end;
+      sprite.setVisible(state === 'sailing' && !away);
+      label.setText(
+        `${sailing.name.toUpperCase()}\n${isPlaytestRun() ? 'SAILING' : boatCaption(sailing, state, elapsedMs)}`,
+        state === 'sailing' ? LABEL_TONES.boat : LABEL_TONES.gateShut,
+      );
+    }
+  }
+
+  /**
+   * Pressing out to sea from a jetty: a question while the boat sails, and on
+   * the interact key the times it sails while it does not. Pushing into a jetty
+   * whose boat is away is only a bump, as pushing into the water is.
+   */
+  private tryBoard(facing: Direction, asked: boolean): boolean {
+    const found = boatAt(this.currentMap.sailings, this.currentTile, facing);
+    if (!found) {
+      return false;
+    }
+    const state = this.sailingStateNow(found.sailing);
+    if (state !== 'sailing') {
+      if (!asked) {
+        return false;
+      }
+      this.dialogBox.showMessages([...boatAwayLines(found.sailing, state)]);
+      return true;
+    }
+    this.facing = facing;
+    this.pushingAgainst = null;
+    this.showIdlePose();
+    const far = found.sailing.ends[1 - found.from].landing;
+    const prompt = boardingPrompt(found.sailing, this.placeNameAt(far));
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
+      padding: 10,
+      lines: prompt.lines,
+      options: prompt.options,
+      selected: prompt.selected,
+      onChoose: (index) => this.answerBoarding(found.sailing, found.from, index === 0),
+    });
+    return true;
+  }
+
+  private answerBoarding(sailing: MapSailing, from: 0 | 1, sailingAway: boolean): void {
+    this.trainerPrompt?.destroy();
+    this.trainerPrompt = undefined;
+    if (!sailingAway) {
+      audioManager.play('cancel');
+      return;
+    }
+    this.pendingVoyage = { sailing, from };
+    this.dialogBox.showMessages([castOffLine(sailing)]);
+  }
+
+  /**
+   * Casts off: the player goes aboard and is carried along the course a tile a
+   * step, at walking pace, so the trip costs the raid clock exactly what
+   * walking that far would. The figure is the boat until it puts in.
+   */
+  private castOff(): void {
+    const voyageNow = this.pendingVoyage;
+    this.pendingVoyage = undefined;
+    if (!voyageNow) {
+      return;
+    }
+    const tiles = voyage(voyageNow.sailing, voyageNow.from);
+    const boat = this.boatSprite(tiles[0]);
+    this.mapObjects.push(boat);
+    this.voyaging = { ...voyageNow, tiles, index: 0, progress: 0, boat };
+    this.partner?.tuckIn();
+    this.player.setVisible(false);
+    this.playerGroundMark.setVisible(false);
+    this.playerHeadMark.setVisible(false);
+    this.currentTile = { ...tiles[0] };
+    this.setPlayerPosition(tiles[0].x * TILE_SIZE, tiles[0].y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
+    this.refreshBoats();
+    audioManager.play('warp');
+  }
+
+  /**
+   * One frame of the voyage. Each tile of water is a step of the raid; the last
+   * step is ashore, onto the far jetty, facing away from the water. Nothing on
+   * land can reach a player on the water: no hunter, no wild Pokemon, no door.
+   */
+  private advanceVoyage(deltaMs: number): void {
+    const trip = this.voyaging;
+    if (!trip) {
+      return;
+    }
+    trip.progress += deltaMs / STEP_DURATION_MS;
+    while (trip.progress >= 1 && trip.index < trip.tiles.length - 1) {
+      trip.progress -= 1;
+      trip.index += 1;
+      this.currentTile = { ...trip.tiles[trip.index] };
+      if (this.runSession) {
+        this.runSession.stepsTaken = (this.runSession.stepsTaken ?? 0) + 1;
+      }
+      this.hunterStillMs = 0;
+    }
+    const last = trip.tiles.length - 1;
+    if (trip.index >= last) {
+      this.putIn(trip);
+      return;
+    }
+    const from = trip.tiles[trip.index];
+    const to = trip.tiles[trip.index + 1];
+    const heading = stepDirection(from, to) ?? this.facing;
+    if (trip.index < last - 1) {
+      // Afloat: the boat carries the player, its bow the way it goes.
+      const t = Math.min(1, trip.progress);
+      this.placeBoat(trip.boat, from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+      if (heading === 'left' || heading === 'right') {
+        trip.boat.setFlipX(heading === 'right');
+      }
+      this.facing = heading;
+      this.setPlayerPosition(
+        Phaser.Math.Linear(from.x, to.x, t) * TILE_SIZE,
+        Phaser.Math.Linear(from.y, to.y, t) * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+      );
+    } else {
+      // The last step is ashore: the boat lies at the far jetty and the
+      // player walks off it onto the boards.
+      this.player.setVisible(true);
+      this.playerGroundMark.setVisible(true);
+      this.playerHeadMark.setVisible(true);
+      this.facing = heading;
+      this.player.play(this.playerWalkKey(), true);
+      this.setPlayerPosition(
+        Phaser.Math.Linear(from.x, to.x, trip.progress) * TILE_SIZE,
+        Phaser.Math.Linear(from.y, to.y, trip.progress) * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+      );
+    }
+  }
+
+  private putIn(trip: NonNullable<WorldScene['voyaging']>): void {
+    trip.boat.destroy();
+    this.mapObjects = this.mapObjects.filter((object) => object !== trip.boat);
+    this.voyaging = undefined;
+    const ashore = trip.sailing.ends[1 - trip.from];
+    this.currentTile = { ...ashore.landing };
+    this.facing = OPPOSITE_DIRECTION[ashore.toward];
+    this.player.setVisible(true);
+    this.playerGroundMark.setVisible(true);
+    this.playerHeadMark.setVisible(true);
+    this.setPlayerPosition(this.currentTile.x * TILE_SIZE, this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
+    this.showIdlePose();
+    this.standPartnerBesidePlayer();
+    this.refreshBoats();
+    this.saveGame();
+    this.noteDistrict();
+    this.surveyGround();
+    // The key that boarded is still down: it must not walk the player straight
+    // back off the jetty they have just been put down on.
+    this.spentPresses.spendHeld(this.directionKeys);
+  }
+
+  /** The named place a tile is in, as the arrival plate would say it. */
+  private placeNameAt(tile: GridPosition): string | undefined {
+    return districtAt(this.currentMap.id, tile)?.name;
   }
 
   private refreshExtractionMarkers(): void {
@@ -6729,6 +7064,10 @@ const BOULDER_FRAME = 'strength-boulder';
 const SWITCH_UP_FRAME = 'floor-switch';
 const BARRIER_TOP_FRAME = 'rock-barrier-top';
 const BARRIER_FOOT_FRAME = 'rock-barrier-foot';
+/** The Seagallop's frame on the town sheet, cut the first time a boat is drawn. */
+const BOAT_FRAME = 'seagallop-boat';
+/** How far the Seagallop's deck rises above the top of the tile it lies on. */
+const BOAT_RIDE_Y = 4;
 
 /**
  * What the result screen says about the contract, including the case the whole

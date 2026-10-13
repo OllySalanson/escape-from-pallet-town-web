@@ -166,6 +166,20 @@ export const CAVE_BRUSHES: readonly GroundBrush[] = [
   plain('sand', 'Sand', MATERIAL_CHARS.sand, 'Sand on the cave floor. Wild Pokémon live on it too.'),
 ];
 
+/**
+ * A cave of ice is painted with a cave's brushes and the ice: Icefall Cave's
+ * sheet, which carries a step on until something stops it.
+ */
+export const ICE_CAVE_BRUSHES: readonly GroundBrush[] = [
+  ...CAVE_BRUSHES,
+  plain(
+    'ice',
+    'Ice',
+    MATERIAL_CHARS.ice,
+    'A sheet of ice. A step onto it slides on until something stops it - a boulder, the rock, the floor beyond.',
+  ),
+];
+
 /** The brushes for the place being drawn: outdoors, the inside of a building, or a cave. */
 /**
  * What a tunnel is painted with: the Underground Path's floor and its walls,
@@ -176,9 +190,14 @@ export const TUNNEL_BRUSHES: readonly GroundBrush[] = [
   plain('wall', 'Wall', MATERIAL_CHARS.wall, 'The wall of the tunnel. Solid.'),
 ];
 
-export function brushesFor(place: MapFileAreaKind | undefined): readonly GroundBrush[] {
+export function brushesFor(
+  place: MapFileAreaKind | undefined,
+  style?: MapFileAreaStyle,
+): readonly GroundBrush[] {
   return place === 'cave'
-    ? CAVE_BRUSHES
+    ? style === 'ice'
+      ? ICE_CAVE_BRUSHES
+      : CAVE_BRUSHES
     : place === 'tunnel'
       ? TUNNEL_BRUSHES
       : place === 'inside'
@@ -186,8 +205,8 @@ export function brushesFor(place: MapFileAreaKind | undefined): readonly GroundB
         : GROUND_BRUSHES;
 }
 
-export function groundBrush(id: string, place?: MapFileAreaKind): GroundBrush | undefined {
-  return brushesFor(place).find((brush) => brush.id === id);
+export function groundBrush(id: string, place?: MapFileAreaKind, style?: MapFileAreaStyle): GroundBrush | undefined {
+  return brushesFor(place, style).find((brush) => brush.id === id);
 }
 
 /**
@@ -304,6 +323,11 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     ['rock-stair', 'Rock with steps', 'Nature'],
     ['cave-mouth', 'Cave mouth', 'Nature'],
     ['wet-rock', 'Rock in water', 'Nature', 'water'],
+    ['snowy-boulder', 'Snowy boulder', 'Nature'],
+    ['snowy-boulder-low', 'Snowy boulder, low', 'Nature'],
+    ['snowy-boulder-tall', 'Snowy boulder, tall', 'Nature'],
+    ['ice-rocks', 'Ice rocks', 'Nature'],
+    ['ice-spire', 'Ice spire', 'Nature'],
     ['stump', 'Stump', 'Nature'],
     ['big-stump', 'Big stump', 'Nature'],
     ['dead-stump', 'Dead stump', 'Nature'],
@@ -478,6 +502,12 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['rocks', 'Rocks', 'cave'],
     ['crater', 'Crater', 'cave'],
     ['dripping-water', 'Dripping water', 'cave'],
+    ['ice-boulder', 'Snowy boulder', 'ice'],
+    ['ice-boulder-low', 'Snowy boulder, low', 'ice'],
+    ['ice-boulder-tall', 'Snowy boulder, tall', 'ice'],
+    ['ice-rock', 'Ice rock', 'ice'],
+    ['ice-crystal', 'Ice crystal', 'ice'],
+    ['ice-crystal-low', 'Ice crystal, low', 'ice'],
     ['gate-runner', 'Runner', 'gatehouse'],
     ['gate-short-runner', 'Runner, short', 'gatehouse'],
     ['gate-rug', 'Rug, wide', 'gatehouse'],
@@ -510,6 +540,7 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   warehouse: 'Warehouse',
   gatehouse: 'Gatehouse',
   cave: 'Cave',
+  ice: 'Ice cave',
   underground: 'Underground Path',
 };
 
@@ -525,6 +556,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   safari: 'Safari Zone',
   summit: 'Mountain summit',
   garden: 'Overgrown garden',
+  ice: 'Ice',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */

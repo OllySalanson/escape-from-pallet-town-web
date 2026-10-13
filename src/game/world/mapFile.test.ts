@@ -262,7 +262,7 @@ describe('a map from a file is a map like any other', () => {
     expect(worldMapMaker('route-1')).toBeUndefined();
   });
 
-  it('is drawn on the Kanto sheets, plus the base, Overworld and town pieces, at the size its file says', () => {
+  it('is drawn on the Kanto sheets, plus the base, Overworld, town and ice pieces, at the size its file says', () => {
     const map = getWorldMap(sample.id);
     expect([map.width, map.height]).toEqual([32, 24]);
     expect(map.tileset.sources.map((source) => source.imagePath)).toEqual([
@@ -270,6 +270,7 @@ describe('a map from a file is a map like any other', () => {
       'assets/Overworld.png',
       'assets/frlg-base.png',
       'assets/frlg-towns.png',
+      'assets/frlg-ice.png',
     ]);
     // Tall grass is the file's `g`, so it costs encounters exactly where it is drawn.
     expect(map.tallGrass[4][6]).toBe(true);

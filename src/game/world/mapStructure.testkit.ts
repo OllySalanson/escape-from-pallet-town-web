@@ -36,6 +36,7 @@ import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
 import { RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
+import { playerLinks } from './sailing';
 
 /** How far you may hold a direction from an insertion before something answers. */
 const INSERTION_DECISION_STEPS = 4;
@@ -434,7 +435,7 @@ export function describeMapStructure(partName: string): void {
           (tile) => !blocked.has(`${tile.x},${tile.y}`),
         );
         expect(start).toBeDefined();
-        expect(unreachableTiles(map.collision, start!, blocked, map.links)).toEqual([]);
+        expect(unreachableTiles(map.collision, start!, blocked, playerLinks(map))).toEqual([]);
       },
     );
 
@@ -451,7 +452,7 @@ export function describeMapStructure(partName: string): void {
         const { map, mapId } = state;
         const blocked = entityTiles(state);
         for (const insertion of insertionsOn(mapId)) {
-          const distances = stepDistances(map.collision, insertion.position, blocked, map.links);
+          const distances = stepDistances(map.collision, insertion.position, blocked, playerLinks(map));
           const within = (position: GridPosition): boolean =>
             (distances[position.y]?.[position.x] ?? -1) >= 0;
           const usable = extractionPointsOn(mapId).filter((point) => {
@@ -479,7 +480,7 @@ export function describeMapStructure(partName: string): void {
       expect(insertions.length).toBeGreaterThan(0);
       const blocked = entityTiles(state);
       for (const insertion of insertions) {
-        const distances = stepDistances(map.collision, insertion.position, blocked, map.links);
+        const distances = stepDistances(map.collision, insertion.position, blocked, playerLinks(map));
         for (const landmark of landmarksOn(map)) {
           const steps = distances[landmark.position.y][landmark.position.x];
           expect(`${insertion.id} -> ${landmark.what}: ${steps < 0 ? 'unreachable' : `${steps} steps`}`)
@@ -537,8 +538,8 @@ export function describeMapStructure(partName: string): void {
         ),
       );
       for (const insertion of insertionsOn(mapId)) {
-        const open = stepDistances(map.collision, insertion.position, undefined, map.links);
-        const shut = stepDistances(map.collision, insertion.position, exits, map.links);
+        const open = stepDistances(map.collision, insertion.position, undefined, playerLinks(map));
+        const shut = stepDistances(map.collision, insertion.position, exits, playerLinks(map));
         const cutOff = walkableTiles(map.collision).filter(
           (tile) =>
             !exits.has(`${tile.x},${tile.y}`) && open[tile.y][tile.x] >= 0 && shut[tile.y][tile.x] < 0,
@@ -569,7 +570,7 @@ export function describeMapStructure(partName: string): void {
         ),
       );
       const places = placesOn(state);
-      expect(walksLengthenedBy(map.collision, exits, places, undefined, map.links)).toEqual([]);
+      expect(walksLengthenedBy(map.collision, exits, places, undefined, playerLinks(map))).toEqual([]);
 
       const isSightBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
       for (const trainer of trainersIn(state)) {
@@ -579,7 +580,7 @@ export function describeMapStructure(partName: string): void {
         }
         const detour = new Set([trainer.position, ...watched].map((tile) => `${tile.x},${tile.y}`));
         expect(
-          walksLengthenedBy(map.collision, exits, places, detour, map.links).map(
+          walksLengthenedBy(map.collision, exits, places, detour, playerLinks(map)).map(
             (walk) => `round ${trainer.trainer.id}: ${walk}`,
           ),
         ).toEqual([]);
@@ -642,7 +643,7 @@ export function describeMapStructure(partName: string): void {
       expect(taken.map((key) => `${key} is ${sacred.get(key)}`)).toEqual([]);
 
       expect(
-        walksLengthenedBy(map.collision, exits, placesOn(state), roamed, map.links).map(
+        walksLengthenedBy(map.collision, exits, placesOn(state), roamed, playerLinks(map)).map(
           (walk) => `with everyone off their mark: ${walk}`,
         ),
       ).toEqual([]);

@@ -707,6 +707,26 @@ export const POWER_PLANT_WILDLIFE = wildlife(0.1, [
 ]);
 
 /**
+ * Ice: FireRed's Seafoam Islands and Four Island's Icefall Cave - Shellder and
+ * Seel off the ice, the Zubat of its caves and the Psyduck and Slowpoke of its
+ * pools, and Jynx, which FireRed keeps for Icefall Cave alone - brought down
+ * from its 30s and 40s to a route's levels, as the Power Plant is. Dewgong is
+ * the one of Seafoam's own left out: it becomes one at level 34, and nothing
+ * is fielded below the level it evolves at. Measured over the real engine
+ * with a level-8 starter of each kind (`tools/encounters/report.mts`): 73% to
+ * 90%, the vale's own band, because what is hard about the ice is getting
+ * there and getting across it, never the fights.
+ */
+export const ICEFALL_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'shellder', minLevel: 7, maxLevel: 8, weight: 6 },
+  { speciesId: 'seel', minLevel: 6, maxLevel: 6, weight: 5 },
+  { speciesId: 'zubat', minLevel: 7, maxLevel: 8, weight: 4 },
+  { speciesId: 'psyduck', minLevel: 7, maxLevel: 8, weight: 3 },
+  { speciesId: 'slowpoke', minLevel: 7, maxLevel: 8, weight: 3 },
+  { speciesId: 'jynx', minLevel: 7, maxLevel: 7, weight: 1 },
+]);
+
+/**
  * The Safari Zone, run as a warden's reserve: FireRed's own Safari Zone species
  * (the Nidoran, Exeggcute, Venonat, Paras and Rhyhorn of its grass, and
  * the Chansey, Kangaskhan, Scyther, Pinsir and Tauros it is famous for), brought

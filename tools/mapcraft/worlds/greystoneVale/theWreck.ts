@@ -12,7 +12,7 @@
  * Drawn as the rest of the vale taught: the cliff top a framed corridor
  * between the wood and the cliff, the beach a band between the cliff and the
  * sea rather than a field of sand, rock in masses, a way down you can see from
- * either end, and FireRed's own harbour - its pier, its crates, its ferry and
+ * either end, and FireRed's own harbour - its pier, its crates, its launch and
  * its liner - rather than another game's barrels and huts.
  */
 import type { MapcraftResult } from '../../report';
@@ -54,8 +54,10 @@ export function theWreck(): MapcraftResult {
   p.draw(6, 36, ['WW', 'WWW', 'WW']); // the sea comes in at the cove's west end
 
   // -- The camp and its pier, FireRed's own harbour ------------------------------
-  p.block(50, 40, 14, 2, 'M'); // the pier the salvage launch puts in at
-  p.building('ferry', 52, 42, { lot: 'W' });
+  // The pier the salvage launch puts in at: on the flood tide it runs out to
+  // Frostreef from the pier's end (The Ice Run, `plan.ts`), and the game draws
+  // it moored there while it sails, so nothing stands in its water.
+  p.block(50, 40, 14, 2, 'M');
   p.building('crate', 42, 37, { lot: '~' }).building('crate', 46, 37, { lot: '~' }).building('crate', 47, 38, { lot: '~' });
 
   // -- The reef: a bar of sand out to the wreck, the cargo thrown up along it ---
@@ -74,6 +76,7 @@ export function theWreck(): MapcraftResult {
     extra: {
       signs: [
         { x: 22, y: 27, lines: ['THE WRECK', 'The liner went onto the reef in the last storm. The camp is below the cliff.'] },
+        { x: 54, y: 40, lines: ['THE ICE RUN', 'The launch runs out to Frostreef on the flood tide.', 'It sails from 2:00 until 4:00.'] },
       ],
       people: [
         { x: 12, y: 38, name: 'Beachcomber', look: 'fisherman', facing: 'right', lines: ['The bar to the wreck only shows at low water.', "Whatever the sea throws up on it is anybody's."] },

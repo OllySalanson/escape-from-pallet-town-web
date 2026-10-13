@@ -210,7 +210,9 @@ honour:
   ice cave or tower), and the mouths in which districts, each onto which floor
   and whether the Card Key locks it;
 - `sailings`: a boat between two jetties, its route a cell at a time across
-  `seas` and the window it runs in;
+  `seas` and the window it runs in - stitched, once both jetties are drawn, as
+  a boat link with the fewest straight legs of deep water inside those cells
+  (`sailingLink`), which the game sails (`world/sailing.ts`);
 - a far place's `reach`, which is the brief its drawing worker starts from: how
   a raid gets in, why that is hard, what is only there, and what the game still
   has to learn to build it.
@@ -221,6 +223,16 @@ being drawn this way: `worlds/greystoneVale/` is the first
 (`docs/screens/greystone-vale/`), shipped as
 `src/game/world/maps/greystoneVale.json` and held to its program by
 `worlds/greystoneVale/greystoneVale.test.ts`.
+
+## Judging against FireRed's own places
+
+`fromPret.mts -- <pokefirered> <Layout> <out.png> [--crop=x,y,w,h]
+[--shuffle=seed] [--swap=seed]` redraws any FireRed layout from pret in this
+game's tiles - each metatile read as what its behaviour and collision say it
+is - so a district is judged blind beside the real thing in the same art, and
+`--shuffle` and `--swap` make the broken controls. A shuffled map that is
+mostly sea still looks whole: shuffle a busy one (Frostreef's rounds,
+`docs/screens/greystone-vale/README.md`).
 
 ## Caves
 

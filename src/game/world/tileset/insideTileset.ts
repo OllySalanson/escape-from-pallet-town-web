@@ -8,6 +8,7 @@ import {
 import type { BasePieceName } from '../../base/generated/basePieces';
 import { AREA_WEAVES } from '../generated/areaPieces';
 import { AREA_SHEET_SOURCE, areaFloorProp, areaProp, areaTile } from './areaSheet';
+import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
 import type { MaterialTiles, PropDefinition, TilesetCatalogue } from './catalogue';
 import type { Material } from './materials';
 
@@ -47,8 +48,8 @@ import type { Material } from './materials';
 
 /** The rooms a building's inside may be drawn as. */
 export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse' | 'gatehouse';
-/** The caves a cave may be drawn as. */
-export type CaveStyle = 'cave';
+/** The caves a cave may be drawn as: Mt. Moon's, or Icefall Cave's ice. */
+export type CaveStyle = 'cave' | 'ice';
 /** The tunnels a tunnel may be drawn as: the Underground Path's. */
 export type TunnelStyle = 'underground';
 export type InsideStyle = RoomStyle | CaveStyle | TunnelStyle;
@@ -156,6 +157,19 @@ export const INSIDE_PROPS = {
   caveLadder: areaProp('cave.ladder', 'ladder up', ['#', '.']),
   caveExit: areaProp('cave.exit', 'way out'),
 
+  // --- a cave of ice: Icefall Cave --------------------------------------------
+  // Boulders and ice crystals stand on the floor or the ice alike, and a slide
+  // across the ice stops against them.
+  iceBoulder: iceProp('ice.boulder', 'boulder'),
+  iceBoulderLow: iceProp('ice.boulderLow', 'boulder'),
+  iceBoulderTall: iceProp('ice.boulderTall', 'boulder'),
+  iceRock: iceProp('ice.rock', 'rock'),
+  iceCrystal: iceProp('ice.crystal', 'ice crystal'),
+  iceCrystalLow: iceProp('ice.crystalLow', 'ice crystal'),
+  iceHole: iceProp('ice.hole', 'ladder down'),
+  iceLadder: iceProp('ice.ladder', 'ladder up', ['#', '.']),
+  iceExit: iceProp('ice.exit', 'way out'),
+
   // --- a gatehouse: FireRed's on Route 2, and the two kinds into Saffron -----
   gateWindow: areaProp('gate.window', 'window'),
   gatePlant: areaProp('gate.plant', 'plant'),
@@ -206,6 +220,10 @@ interface StyleArt {
   readonly tunnelStairs?: { readonly left: InsidePropName; readonly right: InsidePropName };
   /** A cave's sand; a room has none, and draws it as floor. */
   readonly sand?: MaterialTiles;
+  /** An ice cave's ice; anywhere else it is drawn as floor. */
+  readonly ice?: MaterialTiles;
+  /** A cave's ways through, in its own rock: the way out, a ladder up and a hole down. */
+  readonly caveWays?: { readonly exit: InsidePropName; readonly ladder: InsidePropName; readonly hole: InsidePropName };
 }
 
 /** A shell from the base's sheet: a floor shaded under the wall, and two rows of wall. */
@@ -311,6 +329,7 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
         'inner-nw': areaTile('cave.cornerSe'),
       },
     },
+    caveWays: { exit: 'caveExit', ladder: 'caveLadder', hole: 'caveHole' },
     // The sand runs on under the rock, as FireRed's does: against a wall it is
     // more sand, and only where it meets the floor does it grow an edge.
     sand: {
@@ -331,6 +350,32 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
         'inner-se': areaTile('cave.sandInSe'),
       },
     },
+  },
+  // Icefall Cave, on Four Island: a floor of FireRed's cave stone, the rock
+  // round it the lumps FireRed heaps between its rooms with a face where it
+  // stands over the floor - its back wall and its sides, as Icefall Cave B1F
+  // draws them - and the sheet of ice a step slides across, which runs up to
+  // the rock and the floor without an edge, as FireRed's own does. The rock
+  // under a room's south side is the same lumps: FireRed's snow-capped rim is
+  // two tiles of wall, and one tile of it alone reads as no wall at all.
+  ice: {
+    floor: { roles: { fill: iceTile('ice.floor') } },
+    wall: {
+      overlay: true,
+      edgesAtMapEdge: false,
+      roles: {
+        fill: iceTile('ice.crag'),
+        'edge-s': iceTile('ice.faceSouth'),
+        'edge-e': iceTile('ice.faceEast'),
+        'edge-w': iceTile('ice.faceWest'),
+        'corner-sw': iceTile('ice.spurSw'),
+        'corner-se': iceTile('ice.spurSe'),
+        'inner-se': iceTile('ice.cornerNw'),
+        'inner-sw': iceTile('ice.cornerNe'),
+      },
+    },
+    ice: { roles: { fill: iceTile('ice.sheet') } },
+    caveWays: { exit: 'iceExit', ladder: 'iceLadder', hole: 'iceHole' },
   },
 };
 
@@ -365,16 +410,18 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
         'hedge',
         'tree',
         'fence',
+        'ice',
       ] as const
     ).map((material) => [material, art.floor]),
   ) as Record<Exclude<Material, 'wall' | 'cliff'>, MaterialTiles>;
   return {
-    sources: [BASE_SHEET_SOURCE.source, AREA_SHEET_SOURCE.source],
+    sources: [BASE_SHEET_SOURCE.source, AREA_SHEET_SOURCE.source, ICE_SHEET_SOURCE.source],
     materials: {
       ...floors,
       wall: art.wall,
       cliff: DARK,
       ...(art.sand ? { sand: art.sand } : {}),
+      ...(art.ice ? { ice: art.ice } : {}),
     },
     props: INSIDE_PROPS,
   };
@@ -389,7 +436,7 @@ export const ROOM_STYLES: readonly RoomStyle[] = [
   'warehouse',
   'gatehouse',
 ];
-export const CAVE_STYLES: readonly CaveStyle[] = ['cave'];
+export const CAVE_STYLES: readonly CaveStyle[] = ['cave', 'ice'];
 export const TUNNEL_STYLES: readonly TunnelStyle[] = ['underground'];
 export const INSIDE_STYLES: readonly InsideStyle[] = [...ROOM_STYLES, ...CAVE_STYLES, ...TUNNEL_STYLES];
 
@@ -422,4 +469,9 @@ export function insideStairwell(style: InsideStyle): InsidePropName | undefined 
 /** The stairs up out of a tunnel of a style, pressed into west or east; a style that has none, undefined. */
 export function tunnelStairs(style: InsideStyle, toward: 'left' | 'right'): InsidePropName | undefined {
   return STYLE_ART[style].tunnelStairs?.[toward];
+}
+
+/** A cave style's ways through, in its own rock; none for a style that is no cave. */
+export function caveWays(style: InsideStyle): StyleArt['caveWays'] {
+  return STYLE_ART[style].caveWays;
 }

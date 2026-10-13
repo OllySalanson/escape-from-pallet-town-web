@@ -7,8 +7,10 @@ import {
 import type { Rect } from './interiors';
 import type { WorldMapId } from '../worldMap';
 import { applyGates } from './gates';
+import { sailingOf, type MapSailing } from './sailing';
 import {
   buildingDoorAt,
+  isSailing,
   doorwayTiles,
   fileDoorGates,
   MAP_FILE_FURNITURE,
@@ -23,6 +25,7 @@ import { MapSketch } from './mapGrid';
 import { buildMapLayers, type MapLayers, type TileLayer } from './tiles';
 import type { TileSource, TilesetCatalogue } from './tileset/catalogue';
 import {
+  caveWays,
   INSIDE_TILESETS,
   insideBackDoor,
   insideMat,
@@ -133,6 +136,8 @@ export interface ComposedMap {
   readonly doorways: readonly ComposedDoorway[];
   /** Every sheet any area is drawn from, so the scene loads them all. */
   readonly tileset: TilesetCatalogue;
+  /** Its boats, sailed rather than gone through (`sailing.ts`); none on most maps. */
+  readonly sailings?: readonly MapSailing[];
 }
 
 /** The solid dark between areas, as the ground under it is reported. */
@@ -212,6 +217,8 @@ export function sketchArea(
     }
   }
   const mat = insideMat(area.style);
+  // A cave's ways through are drawn in its own rock; anywhere else, Mt. Moon's.
+  const ways = caveWays(area.style) ?? { exit: 'caveExit', ladder: 'caveLadder', hole: 'caveHole' };
   for (const link of links) {
     for (const end of link.ends) {
       if (end.area !== area.id) {
@@ -256,15 +263,15 @@ export function sketchArea(
         }
       } else if (end.look === 'cave-exit') {
         if (inArea(doorway.x - 1, doorway.y) && inArea(doorway.x + 1, doorway.y)) {
-          sketch.plant(doorway.x - 1, doorway.y, 'caveExit');
+          sketch.plant(doorway.x - 1, doorway.y, ways.exit);
         }
       } else if (end.look === 'ladder-up') {
         if (inArea(end.x, end.y - 1)) {
-          sketch.plant(end.x, end.y - 1, 'caveLadder');
+          sketch.plant(end.x, end.y - 1, ways.ladder);
         }
       } else if (end.look === 'ladder-down') {
         if (inArea(doorway.x, doorway.y)) {
-          sketch.plant(doorway.x, doorway.y, 'caveHole');
+          sketch.plant(doorway.x, doorway.y, ways.hole);
         }
       } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
         const at = stairsAt(end);
@@ -465,8 +472,14 @@ export function composeMapFile(
   const outdoors = applyGates(sketchMapFile(file), doors, opened);
   const outdoorLayers = buildMapLayers(outdoors, PLAYER_MAP_TILESET);
   const areas = file.areas ?? [];
-  if (areas.length === 0 && (file.links ?? []).length === 0) {
+  // A boat is a link that is sailed rather than gone through: it is laid out
+  // as nothing on the grid and handed over beside it, outdoors being the origin.
+  const links = (file.links ?? []).filter((link) => !isSailing(link));
+  const boats = (file.links ?? []).filter(isSailing).map((link) => sailingOf(link));
+  const sailings = boats.length > 0 ? { sailings: boats } : {};
+  if (areas.length === 0 && links.length === 0) {
     return {
+      ...sailings,
       width: file.width,
       height: file.height,
       layers: outdoorLayers,
@@ -478,15 +491,18 @@ export function composeMapFile(
       tileset: PLAYER_MAP_TILESET,
     };
   }
-  return composeAreas({
-    name: file.name,
-    sketch: outdoors,
-    layers: outdoorLayers,
-    tileset: PLAYER_MAP_TILESET,
-    areas,
-    links: file.links ?? [],
-    landingsOf: (end) => landingsOf(file, end),
-  });
+  return {
+    ...composeAreas({
+      name: file.name,
+      sketch: outdoors,
+      layers: outdoorLayers,
+      tileset: PLAYER_MAP_TILESET,
+      areas,
+      links,
+      landingsOf: (end) => landingsOf(file, end),
+    }),
+    ...sailings,
+  };
 }
 
 /** An outdoors already drawn, and the places beside it and the ways between. */
