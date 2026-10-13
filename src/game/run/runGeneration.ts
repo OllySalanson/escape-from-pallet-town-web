@@ -677,6 +677,72 @@ export function generateRunPlan(
   };
 }
 
+/**
+ * The ground a raid room shares (`raidRoom/`): the room map's loot, laid from
+ * the room's own seed - which the database hands out - so every player in the
+ * room lays the same pieces on the same tiles, and the database decides who
+ * picks each one up (`take_raid_loot`).
+ *
+ * Every player's save has opened different doors, so the ground is laid as a
+ * fresh save would see it - every gate shut, walked from the map's front door
+ * - which is ground every member can reach whatever they have opened. It is
+ * laid on a stream of its own, so nothing else in anybody's raid moves for it.
+ */
+export function generateRoomLoot(mapId: WorldMapId, roomSeed: number): readonly WorldLoot[] {
+  const map = getWorldMap(mapId, []);
+  const front = frontDoorFor(mapId);
+  if (!front) {
+    return [];
+  }
+  const walkable = stepDistances(map.collision, front.position, undefined, map.links);
+  const isReachable: Reachability = {
+    mapId,
+    steps: walkable,
+    reaches: (where, position) => where !== mapId || (walkable[position.y]?.[position.x] ?? -1) >= 0,
+  };
+  const reservedTiles = new Map<WorldMapId, Set<string>>();
+  for (const dropIn of insertionsOn(mapId)) {
+    reserve(reservedTiles, mapId, dropIn.position);
+  }
+  for (const point of extractionPointsOn(mapId)) {
+    reserve(reservedTiles, mapId, point.position);
+  }
+  for (const poi of map.pois) {
+    reserve(reservedTiles, mapId, poi.position);
+  }
+  const rng = createSeededRng((roomSeed ^ ROOM_LOOT_STREAM) >>> 0);
+  return generateLoot({ [mapId]: map } as Record<WorldMapId, WorldMapDefinition>, reservedTiles, rng, isReachable)[mapId] ?? [];
+}
+
+/**
+ * A raid's plan with its own map's loot replaced by the room's (`generateRoomLoot`).
+ * What is this raid's own stays its own - an errand's thing is somebody at
+ * this player's base waiting on it - and a room piece is left off any tile
+ * this raid has already given to something else (a trainer, a way out, a
+ * contract stop), so it never lands under somebody standing on it.
+ */
+export function withRoomLoot(
+  plan: RunPlan,
+  roomLoot: readonly WorldLoot[],
+  isOwn: (loot: WorldLoot) => boolean,
+): RunPlan {
+  const mapId = plan.insertion.mapId;
+  const taken = new Set<string>([
+    ...plan.trainers.filter((trainer) => trainer.mapId === mapId).map((trainer) => tileKey(trainer.position)),
+    ...plan.extractionPoints.filter((point) => point.mapId === mapId).map((point) => tileKey(point.position)),
+    ...(plan.contract?.mapId === mapId ? plan.contract.markers.map((marker) => tileKey(marker.position)) : []),
+  ]);
+  const own = (plan.loot[mapId] ?? []).filter(isOwn);
+  for (const loot of own) {
+    taken.add(tileKey(loot.position));
+  }
+  const shared = roomLoot.filter((loot) => !taken.has(tileKey(loot.position)));
+  return { ...plan, loot: { ...plan.loot, [mapId]: [...shared, ...own] } };
+}
+
+/** The stream a room's shared loot is laid on, apart from every stream a raid's own plan uses. */
+const ROOM_LOOT_STREAM = 0xc2b2ae35;
+
 const DISTRICT_ENCOUNTER_STREAM = 0x9e3779b9;
 const ERRAND_STREAM = 0x85ebca6b;
 

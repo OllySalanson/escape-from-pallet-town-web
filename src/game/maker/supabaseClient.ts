@@ -185,6 +185,18 @@ export type GameDatabase = {
         Args: { room_code: string };
         Returns: string;
       };
+      raid_room_seed: {
+        Args: { room_code: string };
+        Returns: number;
+      };
+      take_raid_loot: {
+        Args: { room_code: string; loot_id: string };
+        Returns: { readonly outcome: string; readonly taker_uid: string | null }[];
+      };
+      raid_loot_taken: {
+        Args: { room_code: string };
+        Returns: { readonly loot_id: string; readonly taker_uid: string }[];
+      };
       /** Counting play (`analytics/playCounter.ts`), sent by plain `fetch` rather than this client. */
       record_play: {
         Args: { visitor_id: string; build: string; events: unknown };
