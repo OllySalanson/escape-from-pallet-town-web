@@ -46,6 +46,12 @@ const check = (ok, what) => {
   failures += ok ? 0 : 1;
 };
 
+/** Who is at heel (`base/partner.ts`): an abandoned raid keeps the team, so the starter still follows. */
+const follower = (page) =>
+  page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); const p = b.partner; const t = b.currentTile;
+    return { partnerId: b.savedGame.stash.partnerId(), out: Boolean(p && p.place.out && p.sprite.visible), id: b.savedGame.stash.partner()?.id ?? null,
+      atHeel: Boolean(p) && Math.abs(p.place.tile.x - t.x) + Math.abs(p.place.tile.y - t.y) === 1 }; })()`);
+
 async function newGame(page) {
   await page.waitFor(sceneIs('title'));
   await page.evaluate(`localStorage.removeItem('${SAVE_KEY}')`);
@@ -104,6 +110,8 @@ try {
     after.stash.pokemon.length === before.stash.pokemon.length,
     `the team came home (${after.stash.pokemon.map((p) => p.id).join(', ')})`,
   );
+  const heel = await follower(tab);
+  check(heel.out && heel.atHeel && heel.id === before.stash.partnerId, `the starter still follows at heel (${JSON.stringify(heel)})`);
 
   // A reload at base, outside a raid, costs nothing.
   const atBase = JSON.stringify(await save(tab));
@@ -119,6 +127,8 @@ try {
   after = await save(reopened);
   check((await said(reopened)).includes('The game closed'), 'a new tab says the closed tab\'s raid was abandoned');
   check(!after.raidInFlight, 'and has settled it');
+  const reopenedHeel = await follower(reopened);
+  check(reopenedHeel.out && reopenedHeel.atHeel && reopenedHeel.id === before.stash.partnerId, `and the starter still follows at heel (${JSON.stringify(reopenedHeel)})`);
   await readThrough(reopened);
 
   // 3. A second tab while the first is still in its raid.

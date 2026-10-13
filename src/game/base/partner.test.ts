@@ -23,6 +23,7 @@ import { evolutionFamily } from '../pokemon/evolution';
 import { createStartingStash, Stash } from '../stash';
 import { SaveManager } from '../save/SaveManager';
 import { applyRecovery } from '../hub/recovery';
+import type { RaidInFlight } from '../run/raidInFlight';
 import { baseGame, restoreBase } from './baseGames.testkit';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from './baseMap';
 import { BASE_DOORS } from './doors';
@@ -351,6 +352,52 @@ describe('who the partner is', () => {
       }
     },
   );
+
+  it('after every way a raid ends, is the starter while it came home and nobody once it was lost', () => {
+    const storeFor = (stash: Stash, raidInFlight?: RaidInFlight): SaveManager => {
+      const stored = new Map<string, string>();
+      const manager = new SaveManager({
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => void stored.set(key, value),
+        removeItem: (key: string) => void stored.delete(key),
+      });
+      manager.save({ ...restoreBase(stash), stash, raidInFlight });
+      return manager;
+    };
+    const charmanderSave = (): { stash: Stash; id: string } => {
+      const stash = createStartingStash(CHARMANDER);
+      return { stash, id: stash.partner()!.id };
+    };
+
+    // Lost with nothing secured: the whole vault goes, the base re-issues a
+    // Charmander under the very same id, and it is not the partner.
+    const wiped = charmanderSave();
+    const wipedSaves = storeFor(wiped.stash);
+    expect(wipedSaves.applyWipeLoss([wiped.id], [{ itemId: 'potion', quantity: 1 }], { items: [{ itemId: 'potion', quantity: 1 }] })).toBe(true);
+    const afterWipe = wipedSaves.load()!.stash;
+    expect(afterWipe.listPokemon().map((entry) => entry.id)).toEqual([wiped.id]);
+    expect(afterWipe.partnerId()).toBeNull();
+    expect(partnerOf(afterWipe)).toBeNull();
+
+    // Lost with the starter in the secure container, as the container fills
+    // itself by default (the clock running out settles the same way).
+    const secured = charmanderSave();
+    const securedSaves = storeFor(secured.stash);
+    securedSaves.applyWipeLoss([secured.id], [], { pokemonIds: [secured.id] });
+    expect(partnerOf(securedSaves.load()!.stash)?.id).toBe(secured.id);
+
+    // Abandoned - the page closed mid-raid - keeps the team whatever was secured.
+    const abandoned = charmanderSave();
+    const abandonedSaves = storeFor(abandoned.stash, {
+      id: 'raid-1',
+      mapId: 'floodplain-relay',
+      packItemId: 'raid-pack',
+      items: { potion: 3 },
+      secured: {},
+    });
+    expect(abandonedSaves.settleAbandonedRaid()).not.toBeNull();
+    expect(partnerOf(abandonedSaves.load()!.stash)?.id).toBe(abandoned.id);
+  });
 
   it('is still the partner while fainted, and the same one once the Pokemon Center has healed it', () => {
     const stash = createStartingStash(CHARMANDER);
