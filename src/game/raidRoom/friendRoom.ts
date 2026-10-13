@@ -6,6 +6,7 @@ import { HunterBoard, encodeHunterSignal, readHunterSignal, type HunterSignal } 
 import { mapPlace, type RaidPlace } from './raidProtocol';
 import { LootLedger, encodeTook, readTook } from './roomLoot';
 import { ROOM_PHRASES, TalkBoard, encodeTalk, readTalk } from './roomTalk';
+import { encodeWon, readWon } from './roomBosses';
 import { liveRaidWire, localRaidWire } from './raidWire';
 import { liveRoomService, localRoomService, type HeldRoom, type RaidRoomService, type RoomAnswer } from './roomService';
 
@@ -68,6 +69,10 @@ export class FriendRoom {
   private askedTaken = false;
   /** What everybody in the room has said and pinged, this player included (`roomTalk.ts`). */
   public readonly talk = new TalkBoard();
+  /** The bosses beaten in this room's raid, by whoever beat them (`roomBosses.ts`). */
+  private readonly wins = new Map<string, string>();
+  /** The bosses this player beat in this room's raid, said to everybody who arrives. */
+  private readonly myWins = new Set<string>();
 
   private readonly service: RaidRoomService;
   private readonly wireFor: (code: string) => HarbourWire<RaidPlace>;
@@ -116,6 +121,8 @@ export class FriendRoom {
     this.loot.clear();
     this.askedTaken = false;
     this.talk.clear();
+    this.wins.clear();
+    this.myWins.clear();
     void this.service.leave(held.code);
   }
 
@@ -237,6 +244,29 @@ export class FriendRoom {
     return true;
   }
 
+  /**
+   * This player beat these bosses in this raid: said to the room, so their
+   * doors open for everybody (`roomBosses.ts`). Saying one twice is harmless.
+   */
+  public won(bossIds: readonly string[]): void {
+    const held = this.held;
+    if (!held) {
+      return;
+    }
+    for (const bossId of bossIds) {
+      if (!this.myWins.has(bossId)) {
+        this.myWins.add(bossId);
+        this.wins.set(bossId, held.me);
+        this.link?.signal(encodeWon({ from: held.me, bossId }));
+      }
+    }
+  }
+
+  /** Every boss beaten in this room's raid, and by whom - this player included. */
+  public get bossesWon(): ReadonlyMap<string, string> {
+    return this.wins;
+  }
+
   /** This player's id in the room, if one is held. */
   public get me(): string | null {
     return this.held?.me ?? null;
@@ -274,6 +304,10 @@ export class FriendRoom {
         if (took && took.from !== this.held?.me) {
           this.loot.heard(took.lootId, took.from);
         }
+        const won = readWon(payload);
+        if (won && won.from !== this.held?.me && !this.wins.has(won.bossId)) {
+          this.wins.set(won.bossId, won.from);
+        }
         const talk = readTalk(payload);
         if (talk && talk.from !== this.held?.me && this.talk.hear(talk, this.now)) {
           const name = this.nameOf(talk.from) ?? 'A FRIEND';
@@ -302,6 +336,10 @@ export class FriendRoom {
       if (!this.known.has(id)) {
         this.known.set(id, name);
         this.lastNews = { name, came: true, at: nowMs };
+        // Somebody new: they are told every boss this player beat this raid.
+        for (const bossId of this.myWins) {
+          this.link?.signal(encodeWon({ from: this.held!.me, bossId }));
+        }
       }
     }
     for (const [id, name] of this.known) {

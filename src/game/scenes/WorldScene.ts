@@ -182,6 +182,7 @@ import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
 import { friendRoom } from '../raidRoom/friendRoom';
 import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/groupHunter';
 import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
+import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
@@ -224,6 +225,7 @@ import {
   gateCaption,
   gateKey,
   gatesByKeeper,
+  gatesForMap,
   gatesOpenedLines,
   isGateOpen,
   jointGateCaption,
@@ -817,6 +819,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private hunterDrawnAs: string | null = null;
   /** How long the room's phrase list stays open, while it is (`roomTalk.ts`). */
   private talkOpenMs = 0;
+  /** The room-opened doors the map was last built with (`roomDoors`), so a new one rebuilds it. */
+  private roomDoorsBuilt = '';
+  /** Each friend's tile last surveyed round, so their walk lights this raid's ground too. */
+  private friendSurveyed = new Map<string, number>();
   /** The pings on the map, drawn, by who sent each. */
   private pingMarks = new Map<string, { readonly tile: string; readonly mark: Phaser.GameObjects.Graphics }>();
 
@@ -907,6 +913,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.friendTiles = new Map();
     this.hunterDrawnAs = null;
     this.talkOpenMs = 0;
+    this.roomDoorsBuilt = '';
+    this.friendSurveyed = new Map();
     // Phaser destroyed the marks with the scene; the next frame draws them again.
     this.pingMarks = new Map();
     // Where the last raid ended is not where this one starts, and the plate
@@ -1133,12 +1141,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the gates their wins took and the ones a field move cut or swam.
    */
   private mapFor(mapId: WorldMapId): WorldMapDefinition {
-    return getWorldMap(mapId, this.openedDoorKeys());
+    return getWorldMap(mapId, this.openedDoorKeys(mapId));
   }
 
-  /** Both halves of the door state as the one list every gate rule reads. */
-  private openedDoorKeys(): readonly string[] {
-    return openedDoors({ defeatedBosses: this.defeatedBosses, openedGates: this.openedGates });
+  /**
+   * Both halves of the door state as the one list every gate rule reads - and,
+   * in a raid room, the doors a friend's win opened for this raid alone
+   * (`raidRoom/roomBosses.ts`), which are never written to this save.
+   */
+  private openedDoorKeys(mapId: WorldMapId = this.currentMap.id): readonly string[] {
+    return [
+      ...openedDoors({ defeatedBosses: this.defeatedBosses, openedGates: this.openedGates }),
+      ...this.roomDoors(mapId),
+    ];
+  }
+
+  /** The doors a room's wins open on this map this raid, whoever won them. */
+  private roomDoors(mapId: WorldMapId = this.currentMap.id): readonly string[] {
+    const rooms = friendRoom();
+    if (!this.runSession || rooms?.room?.mapId !== mapId) {
+      return [];
+    }
+    const bosses = gatesForMap(mapId).flatMap((gate) => (gate.bossId === undefined ? [] : [gate.bossId]));
+    return roomOpenedDoors(rooms.bossesWon, bosses);
   }
 
   public update(_time: number, deltaMs: number): void {
@@ -1167,6 +1192,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Anything the others took before this player dropped in, or while they
     // were in a fight, is already gone.
     rooms.askWhatWasTaken();
+    // A boss this player beat this raid opens its doors for everybody in the room.
+    rooms.won(
+      bossEncounters(this.trainerEncounters)
+        .filter((boss) => boss.mapId === this.currentMap.id && this.defeatedTrainerIds.has(boss.trainer.id))
+        .map((boss) => boss.bossId),
+    );
+    this.roomDoorsBuilt = this.roomDoors().join();
     // Back from a fight: the room is told it is over, and after the hunter's
     // own fight what it left of the hunter - fled from, and where it fell back
     // to, or beaten for everybody.
@@ -1391,6 +1423,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.settleRoomLoot();
     this.talkInTheRoom(deltaMs);
     this.drawPings();
+    this.openRoomDoors();
+    this.surveyWithFriends(rooms.figuresOn(this.currentMap.id));
   }
 
   /** The friend as drawn, for a playtest to read (`tools/playtest/friendRaid.mjs`). */
@@ -3572,15 +3606,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     this.surveyedFrom = index;
+    this.surveyAround(this.currentTile);
+  }
+
+  /** The survey's disc round one tile, kept to the place of the map that tile is in. */
+  private surveyAround(centre: GridPosition): void {
+    const session = this.runSession;
+    if (!session || session.manager.phase !== RunPhase.InRun) {
+      return;
+    }
     const surveyed = session.surveyed ?? new Set<number>();
     session.surveyed = surveyed;
-    // Only the place the player is in: on a map of several places laid side by
+    // Only the place the tile is in: on a map of several places laid side by
     // side, a disc round someone standing in a house would otherwise reach
     // across the dark into the edge of the outdoors.
-    const area = this.currentArea()?.rect;
+    const areas = this.currentMap.areas;
+    const area = areas ? (placedAreaAt(areas, centre) ?? areas[0])?.rect : undefined;
     const width = this.currentMap.width;
     for (const tile of tilesAround(
-      this.currentTile,
+      centre,
       SURVEY_RADIUS,
       this.currentMap.width,
       this.currentMap.height,
@@ -5326,6 +5370,45 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
+  /**
+   * A friend beat a boss: its doors open in this raid too, now. The map is
+   * rebuilt in the new gate state under a player who has not moved, as a
+   * field move rebuilds it, and the keeper is no longer standing in the lane.
+   */
+  private openRoomDoors(): void {
+    const doors = this.roomDoors();
+    const key = doors.join();
+    if (key === this.roomDoorsBuilt || this.isWarping || this.pendingHubTransition || this.targetTile) {
+      return;
+    }
+    const opened = doors.filter((bossId) => !this.roomDoorsBuilt.split(',').includes(bossId));
+    this.roomDoorsBuilt = key;
+    this.currentMap = this.mapFor(this.currentMap.id);
+    this.rebuildMapInPlace();
+    const rooms = friendRoom();
+    for (const bossId of opened) {
+      const winner = rooms?.bossesWon.get(bossId);
+      const gate = this.currentMap.gates.find((each) => each.bossId === bossId);
+      audioManager.play('landmarkWorked');
+      rooms?.tell(`${(winner && rooms.nameOf(winner)) ?? 'A FRIEND'} OPENED ${gate?.label ?? 'A GATE'}`);
+    }
+  }
+
+  /**
+   * The ground a friend walks is ground this raid has seen: the same disc
+   * round them as round the player, written with the raid's own survey when it
+   * ends, so the drop-in map's dark lifts over everywhere the room went.
+   */
+  private surveyWithFriends(figures: readonly { readonly id: string; readonly tile: GridPosition }[]): void {
+    for (const figure of figures) {
+      const index = figure.tile.y * this.currentMap.width + figure.tile.x;
+      if (this.friendSurveyed.get(figure.id) !== index) {
+        this.friendSurveyed.set(figure.id, index);
+        this.surveyAround(figure.tile);
+      }
+    }
+  }
+
   /** Every ping still showing, drawn on its tile: a ring above the canopy, so it shows in a wood. */
   private drawPings(): void {
     const rooms = friendRoom();
@@ -5635,9 +5718,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private trainersForCurrentMap(): readonly RunTrainerEncounter[] {
+    // A keeper beaten by somebody in the room steps aside for the rest of the
+    // raid, so the door that win opened is a door and not a keeper in a lane.
+    const roomDoors = this.roomDoors();
     return this.trainerEncounters.filter(
       (trainer) =>
-        trainer.mapId === this.currentMap.id && !this.defeatedTrainerIds.has(trainer.trainer.id),
+        trainer.mapId === this.currentMap.id &&
+        !this.defeatedTrainerIds.has(trainer.trainer.id) &&
+        !(trainer.bossId !== undefined && roomDoors.includes(trainer.bossId)),
     );
   }
 
