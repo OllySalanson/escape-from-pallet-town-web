@@ -966,3 +966,39 @@ player's map is built by). While its districts are being drawn it is on
 - **No other map's raid changes**: like a player's map, it is in a raid's
   content only when the raid is on it, so every seeded roll on the shipped five
   is what it was.
+
+## The north half, walked
+
+High Moor, Greystone Peaks, Pine Hollow and The Power Station, toured in the
+real game through the explorer run (a test-mode build, stepped, 3x window).
+Three faults, all fixed:
+
+- **Three roads broke at a seam.** A crossing the plan calls a `trail` is cut
+  as grass, but at three of them both districts drew a sand road up to the
+  seam, so the road stopped four tiles short and went on again beyond a strip
+  of grass through the trees: High Moor to Greystone Peaks, Pine Hollow to The
+  Power Station, and Greystone Peaks to The Crossing. All three are roads in
+  the plan now.
+
+  ![the road east out of High Moor, before](north-walk/moor-seam-before.png)
+  ![and after](north-walk/moor-seam-after.png)
+
+- **The road south out of the peaks narrowed at the seam.** Both districts
+  draw it four tiles wide and the opening was two, so a conifer stood half
+  in the road there. That crossing is four wide now.
+
+  ![the road south out of the peaks, narrowed](north-walk/peaks-seam-narrow.png)
+  ![and after](north-walk/peaks-seam-after.png)
+
+- **The workers' garden fence stood on the lane's sand.** At The Power
+  Station the garden's top fence ran right along the lane, and the sand's
+  fringe showed under the rails. A row of grass between them now.
+
+  ![the workers' garden, before](north-walk/garden-before.png)
+  ![and after](north-walk/garden-after.png)
+
+Four trail crossings in the south half also take a sand road into grass at the
+seam (Reedmere to Gull Strand, Millbrook to Reedmere, Smugglers' Cove to the
+Sunken Quarter, Safari Marsh to The Wreck). They are left to the south
+half's walk, since a road that turns into a trail at a district's edge can be
+meant.

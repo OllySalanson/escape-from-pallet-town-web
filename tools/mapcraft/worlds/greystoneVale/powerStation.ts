@@ -134,7 +134,7 @@ export function powerStation(): MapcraftResult {
   p.building('grey-house', 6, 31).building('house', 13, 31);
   p.road([[9, 28], [9, 35]]);
   p.road([[5, 35], [16, 35]]); // the lane along their doors, the garden across it
-  p.yard(5, 37, 14, 6, { gates: [[9, 37], [10, 37], [11, 42], [12, 42]], inner: '.' }); // their garden
+  p.yard(5, 38, 14, 5, { gates: [[9, 38], [10, 38], [11, 42], [12, 42]], inner: '.' }); // their garden, a strip of grass off the lane
   p.flowers([6, 39], [7, 39], [6, 40], [8, 41], [15, 40]);
   // and out of its back gate, down to the pond, where they fished off shift
   p.road([[11, 43], [11, 48], [38, 48]]);

@@ -163,7 +163,7 @@ export const GREYSTONE_VALE: WorldPlan = {
   ],
   crossings: [
     // East and west, measured down the shared edge from its north end.
-    { between: ['high-moor', 'greystone-peaks'], at: 36, kind: 'trail' },
+    { between: ['high-moor', 'greystone-peaks'], at: 36, kind: 'road' },
     { between: ['greystone-peaks', 'pine-hollow'], at: 22, kind: 'trail', hidden: true },
     { between: ['millbrook', 'the-crossing'], at: 30, kind: 'road' },
     { between: ['the-crossing', 'tanglewood'], at: 32, kind: 'road' },
@@ -171,14 +171,14 @@ export const GREYSTONE_VALE: WorldPlan = {
     { between: ['reedmere', 'gull-strand'], at: 18, kind: 'trail' },
     { between: ['gull-strand', 'orchard-terraces'], at: 14, kind: 'road' },
     // Where the vale grew: each of the old ways out east is the way on now.
-    { between: ['pine-hollow', 'power-station'], at: 26, kind: 'trail' },
+    { between: ['pine-hollow', 'power-station'], at: 26, kind: 'road' },
     { between: ['tanglewood', 'safari-marsh'], at: 40, kind: 'road' },
     { between: ['orchard-terraces', 'the-wreck'], at: 30, kind: 'road' },
     { between: ['smugglers-cove', 'sunken-quarter'], at: 40, kind: 'trail' },
     // North and south, measured along the shared edge from its west end.
     { between: ['high-moor', 'millbrook'], at: 30, kind: 'road' },
     { between: ['greystone-peaks', 'the-crossing'], at: 28, kind: 'river' },
-    { between: ['greystone-peaks', 'the-crossing'], at: 46, kind: 'trail' },
+    { between: ['greystone-peaks', 'the-crossing'], at: 46, kind: 'road', width: 4 },
     { between: ['pine-hollow', 'tanglewood'], at: 18, kind: 'trail', hidden: true },
     { between: ['millbrook', 'reedmere'], at: 40, kind: 'trail' },
     { between: ['the-crossing', 'gull-strand'], at: 28, kind: 'river' },
