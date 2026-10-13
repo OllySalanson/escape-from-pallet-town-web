@@ -274,8 +274,8 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
       write(rooms);
       return { outcome: 'yours' };
     },
-    async lootTaken(code) {
-      return new Map(Object.entries(read()[code]?.taken ?? {}));
+    lootTaken(code) {
+      return Promise.resolve(new Map(Object.entries(read()[code]?.taken ?? {})));
     },
   };
 }

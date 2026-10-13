@@ -17,9 +17,9 @@ describe('the ground a raid room shares', () => {
   it('replaces a raid’s own ground on the room’s map, keeps what is its own, and never lands under something', () => {
     const plan = generateRunPlan(7, undefined, 'floodplain-relay', undefined);
     const room = generateRoomLoot('floodplain-relay', 1234);
-    const own = plan.loot['floodplain-relay']![0]!;
+    const own = plan.loot['floodplain-relay'][0];
     const shared = withRoomLoot(plan, room, (loot) => loot.id === own.id);
-    const laid = shared.loot['floodplain-relay']!;
+    const laid = shared.loot['floodplain-relay'];
     expect(laid).toContainEqual(own);
     expect(shared.roomLootIds).not.toContain(own.id);
     expect(shared.roomLootIds!.length).toBeGreaterThan(0);
