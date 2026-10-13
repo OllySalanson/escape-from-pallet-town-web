@@ -412,7 +412,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-hm01',
     name: 'HM01 Cut',
     detail:
-      'It opens the coppice ride in Viridian Forest for good. Forty-three of the 151 read it - both the Grass and Fire starter lines, and a Rattata off any verge.',
+      'Growth bars a way on Route 1, in Viridian Forest, in Viridian City and on the Floodplain, and it opens each for good. Forty-three of the 151 read it - both the Grass and Fire starter lines, and a Rattata off any verge.',
     icon: 'hm01-cut',
     gives: { itemId: 'hm01-cut', quantity: 1 },
     takes: [

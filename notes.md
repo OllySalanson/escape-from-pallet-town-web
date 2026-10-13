@@ -317,6 +317,16 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** point at a stone on Bill's barter table, or in the pack. The line names every Pokémon it evolves, Eevee included.
 - **Checked in the browser:** the same scratch run (deleted afterwards) reads the new line in each of the three stones' panes.
 
+## 42. Bill's HM01 deal said Cut opens a door in Viridian Forest only, when four maps have one (playtested: Bill's cottage)
+
+- **Found:** at Bill's barter table, the HM01 Cut pane read "It opens the coppice ride in Viridian Forest for good." Four shipped maps have a Cut door: Route 1's THORN GATE, Viridian Forest's COPPICE RIDE, the Floodplain's OSIER RIDE and Viridian City's TRADE HOUSE TREE. A player who raids Route 1, the city or the Floodplain was told the disc did nothing for them.
+- **Reproduced:** `tools/playtest/shopScreens.mjs` at 1600x900 against a test-mode build, then a scratch copy of it (deleted afterwards) that put the cursor on HM01 CUT and read the visible detail panes. In `hub/trader.test.ts` the new "says every shipped map a field-move HM opens a door on" (each map with a Cut or Surf gate in `WORLD_GATES` must be named in that HM's detail) failed before the fix on Route 1.
+- **Fixed:** in `hub/trader.ts` the HM01 detail now reads "Growth bars a way on Route 1, in Viridian Forest, in Viridian City and on the Floodplain, and it opens each for good." followed by the unchanged reader count. HM03's line (the shoal crossing on the Floodplain, the only Surf door) was already right, and the test holds it too.
+- **How a player meets it:** point at HM01 CUT on Bill's barter table. The pane names every map where Cut opens a way.
+- **Checked in the browser:** the same scratch run on a rebuilt test-mode build reads the new line.
+- **Drivers mended on the way:** `shopScreens.mjs` and `wallMapShots.mjs` both stalled because Brock's and Oak's errand asks stood over the keeper's screen and took the first key. Both seed every errand as already asked now, as `menuShots.mjs` does, and both run clean.
+- **Looked at, left alone:** `abandonRaid.mjs`, `staleTab.mjs`, `packArrange.mjs` and `hunterShots.mjs` all pass as written. The wall map's "N keepers still holding doors" and the drop-in's "Doors 5 held" count keepers, consistently. Every key's description names the district its gate stands in (checked against `districtAt`).
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).

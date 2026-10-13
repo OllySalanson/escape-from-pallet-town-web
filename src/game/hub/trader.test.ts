@@ -14,7 +14,8 @@ import { secureGrid } from '../objectives/contracts';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
-import { isMapInProgress, WORLD_MAPS } from '../worldMap';
+import { WORLD_GATES } from '../world/gates';
+import { isMapInProgress, WORLD_MAPS, WORLD_MAP_NAMES, type BuiltInMapId } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
   barterShortfall,
@@ -297,6 +298,26 @@ describe('the barter table', () => {
     // The pane prints the item's own line above the detail, so the detail adds
     // to it rather than saying it again.
     expect(pickaxe?.detail).not.toContain('buried under rubble');
+  });
+
+  it('says every shipped map a field-move HM opens a door on', () => {
+    // Cut opens a door on four shipped maps (THORN GATE, COPPICE RIDE, OSIER
+    // RIDE, TRADE HOUSE TREE). A deal that named only Viridian Forest's told a
+    // player the disc was no use on Route 1, Viridian City or the Floodplain.
+    const discs = [
+      { barterId: 'barter-hm01', move: 'cut' },
+      { barterId: 'barter-hm03', move: 'surf' },
+    ] as const;
+    for (const { barterId, move } of discs) {
+      const maps = new Set(WORLD_GATES.filter((gate) => gate.fieldMove === move).map((gate) => gate.mapId));
+      const detail = TRADER_BARTERS.find((barter) => barter.id === barterId)?.detail ?? '';
+      expect(maps.size).toBeGreaterThan(0);
+      for (const mapId of maps) {
+        // Named as a player says it: "the Floodplain" for Floodplain Relay.
+        const name = WORLD_MAP_NAMES[mapId as BuiltInMapId].replace(' Relay', '');
+        expect(detail, `${barterId} names ${name}`).toContain(name);
+      }
+    }
   });
 
   const GOODS = {

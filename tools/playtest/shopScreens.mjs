@@ -36,6 +36,9 @@ const SEED = `(() => {
     completedContracts: ['recover-lost-field-kit', 'survey-the-braid'],
     unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     defeatedBosses: ['floodplain-toll-keeper', 'floodplain-sluice-keeper', 'floodplain-orchard-warden'],
+    // Every keeper's errand already asked: an ask stands over the keeper's
+    // screen and takes the first key pressed there (\`hub/errands.ts\`).
+    errands: ['oaks-parcel', 'medicine-bag', 'brocks-crate', 'old-amber'].map((id) => ({ id, status: 'started', found: 0, lossesHeard: 0 })),
   });
   const seed = save.stash.pokemon[0];
   // A vault with a real amount in it, because the title bar's own count is one

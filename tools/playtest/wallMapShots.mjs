@@ -89,6 +89,8 @@ try {
     // A save this far in has heard Oak out, and his first words would take
     // the Escape that leaves the lab (`hub/firstWords.ts`).
     firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'],
+    // And has been asked every errand, whose ask would take the same Escape.
+    errands: ['oaks-parcel', 'medicine-bag', 'brocks-crate', 'old-amber'].map((id) => ({ id, status: 'started', found: 0, lossesHeard: 0 })),
   })}); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
