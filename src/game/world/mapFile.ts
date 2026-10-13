@@ -11,6 +11,7 @@ import {
   SAFARI_ZONE_WILDLIFE,
   SUMMIT_WILDLIFE,
   LOST_GARDEN_WILDLIFE,
+  ICEFALL_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -880,6 +881,9 @@ export const MAP_FILE_HABITATS = {
   summit: SUMMIT_WILDLIFE,
   // A walled garden gone wild: the grass Pokemon, and Tangela, which nowhere else has.
   garden: LOST_GARDEN_WILDLIFE,
+  // Ice: FireRed's Seafoam Islands and Icefall Cave, at a route's levels. A
+  // cave dressed as ice rolls it on every step of its floor.
+  ice: ICEFALL_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -2644,7 +2648,14 @@ export function buildFileMap(
         areas: [placed.rect],
         // A cave's floor is wild ground on every step, and what lives there
         // is the cave's own.
-        ...(placed.kind === 'cave' ? { encounters: MAP_FILE_HABITATS.cave } : {}),
+        ...(placed.kind === 'cave'
+          ? {
+              encounters:
+                file.areas?.find((area) => area.id === placed.id)?.style === 'ice'
+                  ? MAP_FILE_HABITATS.ice
+                  : MAP_FILE_HABITATS.cave,
+            }
+          : {}),
       })),
       ...(areas.length > 1 && hasUnnamedOutdoorGround(file)
         ? [

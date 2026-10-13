@@ -1,6 +1,7 @@
 import { evolutionByStone, type Pokemon } from '../pokemon';
 import { PokemonType } from '../pokemon/PokemonType';
 import { PrimaryStatus } from '../pokemon/battle/status';
+import { PokemonType } from '../pokemon/PokemonType';
 import { POKEDOLLAR_SIGN } from '../ui/gameFont';
 
 export { POKEDOLLAR_SIGN };
@@ -750,6 +751,19 @@ export const ITEMS = {
     effect: {
       type: 'held',
       held: { type: 'type-power', moveType: PokemonType.Grass, powerPercent: 10 },
+    },
+  },
+  // FireRed's own, and its words: found on Frostreef, the vale's island of
+  // ice, and nowhere else. HOLD_EFFECT_ICE_POWER, ten in a hundred.
+  'never-melt-ice': {
+    id: 'never-melt-ice',
+    displayName: 'NeverMeltIce',
+    category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
+    description: 'A hold item that raises the power of ICE-type moves.',
+    effect: {
+      type: 'held',
+      held: { type: 'type-power', moveType: PokemonType.Ice, powerPercent: 10 },
     },
   },
 
