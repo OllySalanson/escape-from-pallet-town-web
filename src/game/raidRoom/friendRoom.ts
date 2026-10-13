@@ -154,7 +154,7 @@ export class FriendRoom {
   /** Tells everybody else about the hunter. Returns whether anybody was there to tell. */
   public sayHunter(signal: HunterSignal): boolean {
     if (signal.kind !== 'busy') {
-      this.hunters.said(signal.hunter, signal.from, this.now);
+      this.hunters.said(signal.hunter, signal.from);
     }
     return this.link?.signal(encodeHunterSignal(signal)) ?? false;
   }
@@ -175,7 +175,7 @@ export class FriendRoom {
       this.link.whenSignalled((payload) => {
         const signal = readHunterSignal(payload);
         if (signal && signal.from !== this.held?.me) {
-          this.hunters.hear(signal, this.now);
+          this.hunters.hear(signal);
         }
       });
     }

@@ -161,8 +161,10 @@ export class HunterBoard {
   private latestHeard: { readonly hunter: SharedHunter; readonly from: string; readonly at: number; readonly after: boolean } | null =
     null;
   private readonly fights = new Map<string, boolean>();
+  /** Counts every word heard or said, so "newer" never depends on two arriving in different frames. */
+  private count = 0;
 
-  public hear(signal: HunterSignal, at: number): void {
+  public hear(signal: HunterSignal): void {
     if (signal.kind === 'busy') {
       if (signal.busy) {
         this.fights.set(signal.from, signal.withHunter);
@@ -175,12 +177,14 @@ export class HunterBoard {
     if (signal.kind === 'after') {
       this.fights.delete(signal.from);
     }
-    this.latestHeard = { hunter: signal.hunter, from: signal.from, at, after: signal.kind === 'after' };
+    this.count += 1;
+    this.latestHeard = { hunter: signal.hunter, from: signal.from, at: this.count, after: signal.kind === 'after' };
   }
 
   /** This browser's own word on the hunter, kept as the latest so a handover starts from it. */
-  public said(hunter: SharedHunter, from: string, at: number): void {
-    this.latestHeard = { hunter, from, at, after: false };
+  public said(hunter: SharedHunter, from: string): void {
+    this.count += 1;
+    this.latestHeard = { hunter, from, at: this.count, after: false };
   }
 
   /** Somebody left the room: whatever fight they were in is over for the hunter. */
@@ -188,7 +192,7 @@ export class HunterBoard {
     this.fights.delete(id);
   }
 
-  /** The hunter as last heard of, and from whom. */
+  /** The hunter as last heard of, from whom, and in what order (`at` only ever grows). */
   public get latest(): { readonly hunter: SharedHunter; readonly from: string; readonly at: number; readonly after: boolean } | null {
     return this.latestHeard;
   }
