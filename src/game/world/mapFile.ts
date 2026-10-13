@@ -56,6 +56,7 @@ import {
 } from './mapAreas';
 import { foldedSlug, isMapText, typedMapText } from './mapText';
 import { RAID_DURATION_MS } from '../run/raidClock';
+import { filePrizes } from './filePrizes';
 
 /**
  * A raid map as one file.
@@ -2530,7 +2531,7 @@ export function buildFileMap(
     compose: (opened = []) => composeMapFile(file, opened, id),
     areas,
     encounters: MAP_FILE_HABITATS[file.wildlife],
-    loot: lootFor(id, file.itemSpots, at, file.districts ?? []),
+    loot: [...lootFor(id, file.itemSpots, at, file.districts ?? []), ...filePrizes(id, file, at)],
     // The front door carries the map's name, as every shipped map's does - it
     // is the row a map is chosen by - and says which of the map's places it is
     // in its description, the way the Floodplain's says "The Landing:".
