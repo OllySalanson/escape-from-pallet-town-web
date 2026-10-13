@@ -4,7 +4,7 @@ import { HARBOUR_SEND_EVERY_MS } from '../harbour/harbourProtocol';
 import { FRIEND_NEWS_MS, FriendRoom } from './friendRoom';
 import { encodeRaidMove, isRaidPlace, mapPlace, raidMembersOf, readRaidMove, readRaidPresence, type RaidMove, type RaidPlace } from './raidProtocol';
 import { isRoomCode, raidTopic, typedRoomCode } from './roomCode';
-import { joinAnswer, ROOM_FULL, ROOM_NOT_FOUND, ROOM_UNREACHABLE, worded, type HeldRoom, type RaidRoomService, type RoomAnswer } from './roomService';
+import { joinAnswer, ROOM_FULL, ROOM_NOT_FOUND, ROOM_UNREACHABLE, worded, type HeldRoom, type LootClaim, type RaidRoomService, type RoomAnswer } from './roomService';
 
 const ME = '11111111-1111-4111-8111-111111111111';
 const ASH = '22222222-2222-4222-8222-222222222222';
@@ -65,21 +65,21 @@ describe('what two players in a room tell each other', () => {
 
 describe("what the database's answers mean", () => {
   it('reads a join as a room, held as host or guest', () => {
-    expect(joinAnswer({ outcome: 'joined', map_id: 'route-1', host_uid: ASH, host_name: 'ASH' }, 'BHRK', ME)).toEqual({
+    expect(joinAnswer({ outcome: 'joined', map_id: 'route-1', host_uid: ASH, host_name: 'ASH' }, 'BHRK', ME, 7)).toEqual({
       ok: true,
-      room: { code: 'BHRK', mapId: 'route-1', role: 'guest', me: ME, hostName: 'ASH' },
+      room: { code: 'BHRK', mapId: 'route-1', role: 'guest', me: ME, hostName: 'ASH', seed: 7 },
     });
-    expect(joinAnswer({ outcome: 'joined', map_id: 'route-1', host_uid: ME, host_name: 'ME' }, 'BHRK', ME)).toMatchObject({
+    expect(joinAnswer({ outcome: 'joined', map_id: 'route-1', host_uid: ME, host_name: 'ME' }, 'BHRK', ME, 7)).toMatchObject({
       ok: true,
       room: { role: 'host', hostName: null },
     });
   });
 
   it('says a wrong code, a full room and anything strange in words', () => {
-    expect(joinAnswer(undefined, 'BHRK', ME)).toEqual({ ok: false, reason: ROOM_NOT_FOUND });
-    expect(joinAnswer({ outcome: 'no-room', map_id: null, host_uid: null, host_name: null }, 'BHRK', ME)).toEqual({ ok: false, reason: ROOM_NOT_FOUND });
-    expect(joinAnswer({ outcome: 'full', map_id: null, host_uid: null, host_name: null }, 'BHRK', ME)).toEqual({ ok: false, reason: ROOM_FULL });
-    expect(joinAnswer({ outcome: 'joined', map_id: 'route-1', host_uid: 'x', host_name: 'ASH' }, 'BHRK', ME)).toEqual({ ok: false, reason: ROOM_UNREACHABLE });
+    expect(joinAnswer(undefined, 'BHRK', ME, 7)).toEqual({ ok: false, reason: ROOM_NOT_FOUND });
+    expect(joinAnswer({ outcome: 'no-room', map_id: null, host_uid: null, host_name: null }, 'BHRK', ME, 7)).toEqual({ ok: false, reason: ROOM_NOT_FOUND });
+    expect(joinAnswer({ outcome: 'full', map_id: null, host_uid: null, host_name: null }, 'BHRK', ME, 7)).toEqual({ ok: false, reason: ROOM_FULL });
+    expect(joinAnswer({ outcome: 'joined', map_id: 'route-1', host_uid: 'x', host_name: 'ASH' }, 'BHRK', ME, 7)).toEqual({ ok: false, reason: ROOM_UNREACHABLE });
   });
 
   it("says the project's own refusals as they are worded, and nothing else it says", () => {
@@ -126,14 +126,26 @@ class FakeWire implements HarbourWire<RaidPlace> {
 class FakeService implements RaidRoomService {
   public left: string[] = [];
   public open(mapId: string): Promise<RoomAnswer> {
-    return Promise.resolve({ ok: true, room: { code: 'BHRK', mapId, role: 'host', me: ME, hostName: null } satisfies HeldRoom });
+    return Promise.resolve({ ok: true, room: { code: 'BHRK', mapId, role: 'host', me: ME, hostName: null, seed: 7 } satisfies HeldRoom });
   }
   public join(code: string): Promise<RoomAnswer> {
-    return Promise.resolve(code === 'BHRK' ? { ok: true, room: { code, mapId: 'route-1', role: 'guest', me: ME, hostName: 'ASH' } } : { ok: false, reason: ROOM_NOT_FOUND });
+    return Promise.resolve(code === 'BHRK' ? { ok: true, room: { code, mapId: 'route-1', role: 'guest', me: ME, hostName: 'ASH', seed: 7 } } : { ok: false, reason: ROOM_NOT_FOUND });
   }
   public leave(code: string): Promise<void> {
     this.left.push(code);
     return Promise.resolve();
+  }
+  public taken = new Map<string, string>();
+  public takeLoot(_code: string, lootId: string): Promise<LootClaim> {
+    const holder = this.taken.get(lootId);
+    if (holder !== undefined) {
+      return Promise.resolve(holder === ME ? { outcome: 'yours' } : { outcome: 'taken', by: holder });
+    }
+    this.taken.set(lootId, ME);
+    return Promise.resolve({ outcome: 'yours' });
+  }
+  public lootTaken(): Promise<ReadonlyMap<string, string>> {
+    return Promise.resolve(this.taken);
   }
 }
 

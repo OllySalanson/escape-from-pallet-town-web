@@ -104,6 +104,8 @@ import {
   FIRST_CONTRACT,
   frontDoorFor,
   generateRunPlan,
+  generateRoomLoot,
+  withRoomLoot,
   isDropInPoint,
   isRunInsertionId,
   type RunInsertion,
@@ -189,6 +191,7 @@ import {
   errandThing,
   errandsInHand,
   errandsToLay,
+  errandForItem,
   withErrandAsked,
   withErrandLossesHeard,
 } from '../hub/errands';
@@ -1152,7 +1155,7 @@ export class HubScene extends Phaser.Scene {
       deployment.secureArrangement,
     );
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-    const plan = generateRunPlan(
+    const ownPlan = generateRunPlan(
       seed,
       undefined,
       deployment.insertionId,
@@ -1180,6 +1183,13 @@ export class HubScene extends Phaser.Scene {
       // What the people at base are waiting on, each laid in its own place.
       errandsToLay(this.savedGame.raidProgress, (itemId) => this.stash.itemCount(itemId)).map(errandLoot),
     );
+    // A raid with friends shares its map's ground: the room's loot, laid from
+    // the room's seed, in place of this raid's own (`raidRoom/roomLoot.ts`).
+    // An errand's thing stays this player's - somebody at their base is waiting.
+    const plan =
+      room && room.mapId === ownPlan.insertion.mapId
+        ? withRoomLoot(ownPlan, generateRoomLoot(room.mapId, room.seed), (loot) => errandForItem(loot.itemId) !== undefined)
+        : ownPlan;
     const runSession = createActiveRunSession(
       activeRunManager,
       deployment.secureSlot,
@@ -1842,9 +1852,14 @@ export class HubScene extends Phaser.Scene {
   }
 
   /** The room this browser holds, if raiding with a friend is offered here at all. */
-  private get heldRoom(): { readonly code: string; readonly mapId: WorldMapId; readonly hostName: string | null } | null {
+  private get heldRoom(): {
+    readonly code: string;
+    readonly mapId: WorldMapId;
+    readonly hostName: string | null;
+    readonly seed: number;
+  } | null {
     const room = this.roomsOffered ? friendRoom()?.room : null;
-    return room ? { code: room.code, mapId: room.mapId as WorldMapId, hostName: room.hostName } : null;
+    return room ? { code: room.code, mapId: room.mapId as WorldMapId, hostName: room.hostName, seed: room.seed } : null;
   }
 
   /** The line preparation carries while a room is held: whose room, and that the raid is on its map. */

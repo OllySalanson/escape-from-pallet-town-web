@@ -29,6 +29,15 @@ have left, and the raid carries on. How it works and what is trusted where:
 
 `node tools/playtest/friendHunter.mjs <url> <dir>` plays it (the driver skips the arrival's wait).
 
+## Loot to whoever steps on it first
+
+| | |
+|---|---|
+| `l1-olly-picks-it-up.png` | Both raids lay the room's 25 shared pieces on the same tiles. OLLY walks onto the lockpick, the database says he was first, and it goes into his pack. |
+| `l2-amy-sees-it-gone.png` | On AMY's screen the lockpick is gone from that tile the moment he takes it. |
+
+`node tools/playtest/friendLoot.mjs <url> <dir>` plays it.
+
 All but the first are two tabs of one test-mode build talking over the local
 stand-in, never the live project:
 `node tools/playtest/friendRaid.mjs <url> <dir>`.

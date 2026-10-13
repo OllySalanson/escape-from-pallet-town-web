@@ -363,8 +363,8 @@ export interface FriendChipFriend {
 export interface FriendChipInput {
   /** The room's code, said while nobody else is in it so it can be read out. */
   readonly code: string;
-  /** Somebody came or went just now. */
-  readonly news: { readonly name: string; readonly came: boolean } | null;
+  /** Somebody came or went just now, or did something worth saying (`line`). */
+  readonly news: { readonly name: string; readonly came: boolean; readonly line?: string } | null;
   /** Everybody else in the room. */
   readonly friends: readonly FriendChipFriend[];
 }
@@ -382,10 +382,10 @@ export interface FriendChipInput {
  */
 export function friendChipLines(input: FriendChipInput): readonly string[] {
   const news = input.news
-    ? [input.news.came ? `${input.news.name} IS IN THE ROOM` : `${input.news.name} LEFT THE RAID`]
+    ? [input.news.line ?? (input.news.came ? `${input.news.name} IS IN THE ROOM` : `${input.news.name} LEFT THE RAID`)]
     : [];
   const friends = input.friends
-    .filter((friend) => !(input.news?.came && input.news.name === friend.name))
+    .filter((friend) => !(input.news?.came && !input.news.line && input.news.name === friend.name))
     .map(friendLine);
   const lines = [...news, ...friends];
   return lines.length > 0 ? lines : [`ROOM ${input.code}`];

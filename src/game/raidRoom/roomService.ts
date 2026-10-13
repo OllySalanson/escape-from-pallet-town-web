@@ -17,7 +17,15 @@ export interface HeldRoom {
   readonly me: string;
   /** Who made the room, by the name on their door; null for the one who made it. */
   readonly hostName: string | null;
+  /** The room's own seed, which lays the ground everybody in it shares (`generateRoomLoot`). */
+  readonly seed: number;
 }
+
+/** What the database said to a claim on a piece of the room's loot. */
+export type LootClaim =
+  | { readonly outcome: 'yours' }
+  | { readonly outcome: 'taken'; readonly by: string | null }
+  | { readonly outcome: 'unreachable' };
 
 export type RoomAnswer =
   | { readonly ok: true; readonly room: HeldRoom }
@@ -30,6 +38,10 @@ export interface RaidRoomService {
   join(code: string, name: string): Promise<RoomAnswer>;
   /** Out of the room. Never fails: a room nobody answers for closes on its own within the hour. */
   leave(code: string): Promise<void>;
+  /** Claims one piece of the room's loot: the first claim holds. */
+  takeLoot(code: string, lootId: string): Promise<LootClaim>;
+  /** Every piece already taken in the room, and by whom. */
+  lootTaken(code: string): Promise<ReadonlyMap<string, string>>;
 }
 
 /** Said when the database could not be reached, or said nothing the game understands. */
@@ -60,12 +72,17 @@ export function liveRoomService(): RaidRoomService {
           return { ok: false, reason: ROOM_UNREACHABLE };
         }
         const { supabase } = await import('../maker/supabaseClient');
-        const { data, error } = await (await supabase()).rpc('open_raid_room', { map_id: mapId });
+        const db = await supabase();
+        const { data, error } = await db.rpc('open_raid_room', { map_id: mapId });
         if (error) {
           return { ok: false, reason: worded(error.message) };
         }
-        return isRoomCode(data)
-          ? { ok: true, room: { code: data, mapId, role: 'host', me, hostName: null } }
+        if (!isRoomCode(data)) {
+          return { ok: false, reason: ROOM_UNREACHABLE };
+        }
+        const seed = await db.rpc('raid_room_seed', { room_code: data });
+        return typeof seed.data === 'number'
+          ? { ok: true, room: { code: data, mapId, role: 'host', me, hostName: null, seed: seed.data } }
           : { ok: false, reason: ROOM_UNREACHABLE };
       } catch {
         return { ok: false, reason: ROOM_UNREACHABLE };
@@ -78,11 +95,13 @@ export function liveRoomService(): RaidRoomService {
           return { ok: false, reason: ROOM_UNREACHABLE };
         }
         const { supabase } = await import('../maker/supabaseClient');
-        const { data, error } = await (await supabase()).rpc('join_raid_room', { room_code: code });
+        const db = await supabase();
+        const { data, error } = await db.rpc('join_raid_room', { room_code: code });
         if (error) {
           return { ok: false, reason: worded(error.message) };
         }
-        return joinAnswer(data?.[0], code, me);
+        const seed = data?.[0]?.outcome === 'joined' ? await db.rpc('raid_room_seed', { room_code: code }) : null;
+        return joinAnswer(data?.[0], code, me, typeof seed?.data === 'number' ? seed.data : null);
       } catch {
         return { ok: false, reason: ROOM_UNREACHABLE };
       }
@@ -95,6 +114,28 @@ export function liveRoomService(): RaidRoomService {
         // Closed on its own within the hour.
       }
     },
+    async takeLoot(code, lootId) {
+      try {
+        const { supabase } = await import('../maker/supabaseClient');
+        const { data, error } = await (await supabase()).rpc('take_raid_loot', { room_code: code, loot_id: lootId });
+        const row = data?.[0];
+        if (error || !row) {
+          return { outcome: 'unreachable' };
+        }
+        return row.outcome === 'yours' ? { outcome: 'yours' } : { outcome: 'taken', by: row.taker_uid };
+      } catch {
+        return { outcome: 'unreachable' };
+      }
+    },
+    async lootTaken(code) {
+      try {
+        const { supabase } = await import('../maker/supabaseClient');
+        const { data } = await (await supabase()).rpc('raid_loot_taken', { room_code: code });
+        return new Map((data ?? []).map((row) => [row.loot_id, row.taker_uid] as const));
+      } catch {
+        return new Map();
+      }
+    },
   };
 }
 
@@ -103,6 +144,7 @@ export function joinAnswer(
   row: { readonly outcome: string; readonly map_id: string | null; readonly host_uid: string | null; readonly host_name: string | null } | undefined,
   code: string,
   me: string,
+  seed: number | null,
 ): RoomAnswer {
   if (!row || row.outcome === 'no-room') {
     return { ok: false, reason: ROOM_NOT_FOUND };
@@ -110,7 +152,7 @@ export function joinAnswer(
   if (row.outcome === 'full') {
     return { ok: false, reason: ROOM_FULL };
   }
-  if (row.outcome !== 'joined' || !row.map_id || !isPlayerId(row.host_uid) || !row.host_name) {
+  if (row.outcome !== 'joined' || !row.map_id || !isPlayerId(row.host_uid) || !row.host_name || seed === null) {
     return { ok: false, reason: ROOM_UNREACHABLE };
   }
   return {
@@ -121,6 +163,7 @@ export function joinAnswer(
       role: row.host_uid === me ? 'host' : 'guest',
       me,
       hostName: row.host_uid === me ? null : row.host_name,
+      seed,
     },
   };
 }
@@ -144,7 +187,10 @@ interface LocalRoom {
   readonly mapId: string;
   readonly host: string;
   readonly hostName: string;
+  readonly seed: number;
   members: string[];
+  /** Loot taken, by piece id: whose it is. */
+  taken?: Record<string, string>;
 }
 
 /**
@@ -177,9 +223,10 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
           () => ROOM_CODE_LETTERS[Math.floor(Math.random() * ROOM_CODE_LETTERS.length)],
         ).join('');
       } while (rooms[code]?.members.length);
-      rooms[code] = { mapId, host: id, hostName: name, members: [id] };
+      const seed = Math.floor(Math.random() * 2_147_483_647);
+      rooms[code] = { mapId, host: id, hostName: name, seed, members: [id] };
       write(rooms);
-      return { ok: true, room: { code, mapId, role: 'host', me: id, hostName: null } };
+      return { ok: true, room: { code, mapId, role: 'host', me: id, hostName: null, seed } };
     },
     async join(typed) {
       const id = await me();
@@ -197,7 +244,10 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
         write(rooms);
       }
       const host = room.host === id;
-      return { ok: true, room: { code, mapId: room.mapId, role: host ? 'host' : 'guest', me: id, hostName: host ? null : room.hostName } };
+      return {
+        ok: true,
+        room: { code, mapId: room.mapId, role: host ? 'host' : 'guest', me: id, hostName: host ? null : room.hostName, seed: room.seed },
+      };
     },
     async leave(code) {
       const id = await me();
@@ -207,6 +257,25 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
         room.members = room.members.filter((member) => member !== id);
         write(rooms);
       }
+    },
+    async takeLoot(code, lootId) {
+      const id = await me();
+      const rooms = read();
+      const room = rooms[code];
+      if (!room?.members.includes(id)) {
+        return { outcome: 'unreachable' };
+      }
+      room.taken ??= {};
+      const holder = room.taken[lootId];
+      if (holder !== undefined) {
+        return holder === id ? { outcome: 'yours' } : { outcome: 'taken', by: holder };
+      }
+      room.taken[lootId] = id;
+      write(rooms);
+      return { outcome: 'yours' };
+    },
+    lootTaken(code) {
+      return Promise.resolve(new Map(Object.entries(read()[code]?.taken ?? {})));
     },
   };
 }
