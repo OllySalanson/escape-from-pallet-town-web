@@ -6379,7 +6379,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private refreshBoats(): void {
     const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
-    for (const { sailing, end, sprite, label } of this.boats) {
+    // A harness that never built the map has no boats to show.
+    for (const { sailing, end, sprite, label } of this.boats ?? []) {
       const state = this.sailingStateNow(sailing);
       const away = this.voyaging?.sailing === sailing && this.voyaging.from === end;
       sprite.setVisible(state === 'sailing' && !away);

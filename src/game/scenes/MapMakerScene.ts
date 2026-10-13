@@ -530,8 +530,8 @@ export class MapMakerScene extends Phaser.Scene {
     this.doorway = undefined;
     this.pendingAreaRemoval = undefined;
     this.panel = 'map';
-    if (!brushesFor(this.inside?.kind).some((brush) => brush.id === this.brushId)) {
-      this.brushId = brushesFor(this.inside?.kind)[0].id;
+    if (!brushesFor(this.inside?.kind, this.inside?.style).some((brush) => brush.id === this.brushId)) {
+      this.brushId = brushesFor(this.inside?.kind, this.inside?.style)[0].id;
     }
     if (this.place.kind === 'building') {
       this.place = { kind: 'drop-in' };
@@ -1843,7 +1843,8 @@ export class MapMakerScene extends Phaser.Scene {
 
   private brush() {
     const place = this.inside?.kind;
-    return groundBrush(this.brushId, place) ?? brushesFor(place)[0];
+    const style = this.inside?.style;
+    return groundBrush(this.brushId, place, style) ?? brushesFor(place, style)[0];
   }
 
   // --- What may go where (`maker/placement.ts`) -----------------------------------
@@ -2193,7 +2194,7 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       case 'pick': {
         const letter = groundAt(this.view, tile) ?? '.';
-        const brushes = brushesFor(this.inside?.kind);
+        const brushes = brushesFor(this.inside?.kind, this.inside?.style);
         const picked =
           brushes.find((brush) => brush.letterFor(groundUnder(letter)) === letter) ??
           brushes.find((brush) => brush.swatch === groundUnder(letter));

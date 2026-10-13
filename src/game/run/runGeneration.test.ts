@@ -75,6 +75,14 @@ function walkableFrom(
     if (warp) {
       pending.push({ mapId: warp.destinationMapId, position: warp.destination });
     }
+    // A boat takes the player from its jetty to the one at its other end.
+    for (const sailing of map.sailings ?? []) {
+      for (const [near, far] of [[0, 1], [1, 0]] as const) {
+        if (sailing.ends[near].landing.x === tile.x && sailing.ends[near].landing.y === tile.y) {
+          pending.push({ mapId: currentMapId, position: sailing.ends[far].landing });
+        }
+      }
+    }
     for (const step of [
       { x: tile.x + 1, y: tile.y },
       { x: tile.x - 1, y: tile.y },

@@ -356,7 +356,7 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
     (tool) =>
       `<button class="px-window px-chip maker-tool${state.tool === tool.id ? ' is-selected' : ''}" data-tool="${tool.id}" aria-pressed="${state.tool === tool.id}" data-help="${escapeAttribute(`${tool.help(inside)} Key: ${tool.key}.`)}">${tool.label}</button>`,
   ).join('');
-  const brushes = brushesFor(inside?.kind).map((brush) =>
+  const brushes = brushesFor(inside?.kind, inside?.style).map((brush) =>
     toolRow(
       `data-brush="${brush.id}"`,
       brush.label,

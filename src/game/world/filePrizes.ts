@@ -25,9 +25,10 @@ export interface FilePrize {
 
 export const BUILT_IN_FILE_PRIZES: Readonly<Partial<Record<WorldMapId, readonly FilePrize[]>>> = {
   'greystone-vale': [
-    // Frostreef's: out on the frozen lagoon, which only Berg Cave reaches.
-    // Getting there is the price, so it is always there.
-    { itemId: 'never-melt-ice', quantity: 1, chance: 1, place: 'THE FROZEN LAGOON' },
+    // Frostreef's: out on the frozen lagoon, which only Berg Cave reaches. As
+    // rare as a prize may be and still be one (`loot.test.ts`): a raid that
+    // finds it there has found the one in the game.
+    { itemId: 'never-melt-ice', quantity: 1, chance: 0.3, place: 'THE FROZEN LAGOON' },
   ],
 };
 
