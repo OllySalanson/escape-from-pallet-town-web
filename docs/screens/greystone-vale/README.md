@@ -175,6 +175,118 @@ Four lessons, each paid for by at least one round:
 - **The road:** a straight road with things set beside it is "a checklist of
   features"; the road has to wind round what stands in its way.
 
+## Pine Hollow, Tanglewood and the Greystone Caves
+
+The two woods in the east of the vale, the deer path between them, and the
+caves under them. Both woods are FireRed's own forest conifer, the tree
+Viridian Forest is drawn in. FireRed's broadleaf stands alone, and planted
+shoulder to shoulder it reads as an orchard, so each wood has one broadleaf
+standing in a clearing.
+
+- **Pine Hollow**, the dark pine wood: one unsigned trail threads three
+  clearings.
+  - **The spring:** the trail comes in over the col from the peaks and skirts
+    a pool.
+  - **The hollow:** a sand floor worn bare in the middle of the wood, with a
+    berry tree in it.
+  - **The oak:** the one broadleaf among the pines, with Collier Bram burning
+    charcoal under it.
+  - The trail leaves east as the Pine Trail.
+  - The deer path south is tall grass between the trunks, and nothing signs
+    it.
+- **Tanglewood**, the labyrinth on the road east. Its lanes loop and fork
+  through thick wood, so a raid that leaves the road can lose it.
+  - **The shrine:** a statue on bare ground in a glade the wood closes round,
+    its ring of stones fallen, with one broadleaf leaning over it.
+  - **The way underground:** a worn path runs from the shrine to the mouth of
+    the Greystone Caves in the rock outcrop.
+  - **A pool** where three lanes meet in the north-west, with a berry tree
+    beside it.
+- **Two hidden ways out**, one in each wood: the Charcoal Track at the back of
+  the nook south of Pine Hollow's col, and the Deer Gap in a pocket by
+  Tanglewood's road. Each wood's planned way out is at its far east end, and
+  without these the hunter's blind window would not cover the walk out
+  (`hunterFlee.test.ts`).
+- **The Greystone Caves** (`greystoneCaves.ts`), five floors:
+  - **Each mouth opens onto a floor of its own:** the peaks onto the top
+    floor, the wood one floor down, the sea at the bottom. The only way
+    between them is down and up again.
+  - **The two middle floors are sealed:** each is two halves joined only
+    through the floors above and below.
+  - **Every third dead end hides something.**
+  - **Mouths in districts drawn later:** the floors and ladders ride in
+    Tanglewood's file, and Greystone Peaks and Gull Strand plant their mouths
+    with `caveMouthLink`. Until then, their ways out are passages into the
+    south wall that go nowhere yet.
+
+![Pine Hollow](pine-hollow.png)
+
+![Tanglewood](tanglewood.png)
+
+![The Greystone Caves, top floor on the left](greystone-caves.png)
+
+### Judged blind
+
+Each round, two 24x40 views of each district were judged blind beside five
+FireRed windows redrawn in the same tiles: three of Viridian Forest and two of
+Route 2. Every round used two fresh judges. Two broken real windows rode in
+every batch as controls (four blocks swapped, every block shuffled). A judge
+only counts if it rates both below every real map. The bar is Millbrook's: for
+each judge that counts, both views score at least that judge's lowest real
+map, and their mean is within a point of the real mean.
+
+| Round | Real mean | Pine Hollow | Tanglewood |
+|---|---|---|---|
+| 1 | 6.4, 6.2 | 5 and 4, 5 and 4 | |
+| 2 | 6.0 | 5 and 4 | |
+| 3 | 6.2 | 5 and 4 | |
+| 4 | 6.0, 7.0 | 5 and 5 (pass), 4 and 4 | |
+| 5 | 6.8 | 6 and 4 | |
+| T1 | 6.4 | | 4 and 3 |
+| 6 / T2 | 6.2, 6.0 | **6 and 6, 5 and 5: passes** | 5 and 5, 4 and 6 (pass) |
+| T3 | 6.0 | | **6 and 6: passes** |
+
+Rows show only the judges that counted. Pine Hollow round 6 and Tanglewood
+round 2 shared one batch.
+
+What each round fixed was what the judges named:
+
+- **Pine Hollow:**
+  - a trail of grass that read as no path at all, so a sand path wears down
+    it;
+  - switchbacks that nothing forced, so the trail now bends only where the
+    wood turns it;
+  - single-file tree columns, a monolith block, and a ledge with nothing at
+    its ends (the ledge went: it was not part of the one idea);
+  - a pond like a plus sign, and paths that started and stopped in open
+    grass, until the path led into the hollow's worn floor and out again.
+- **Tanglewood:**
+  - first drawn as islands of trees in open grass, which both judges called a
+    stamped checkerboard with no walls, so it was redrawn as a labyrinth of
+    lanes through thick wood;
+  - a shrine pad the road's spur did not reach;
+  - a north-west with nothing to find;
+  - a cave mouth no path went to.
+
+![Pine Hollow as first drawn](pine-hollow-first-draw.png)
+
+![Tanglewood as first drawn](tanglewood-first-draw.png)
+
+The caves were judged the same way, two floors beside five FireRed cave floors
+(three of Mt. Moon, two of Rock Tunnel) with two broken ones as controls.
+
+| Round | Real mean | Greystone Caves |
+|---|---|---|
+| 1 | 5.6, 4.6 | **6 and 5, 5 and 7: passes** (one judge took B2F for real) |
+
+What is left for the next pass:
+
+- **Pine Hollow:** the lower half of the spring's screen is still a dense
+  block.
+- **Tanglewood:** its north-west lanes are plain grass.
+- **The caves:** both judges named the sand drifts as noisy blobs that do not
+  belong.
+
 ## How it ships
 
 As the game's own map, beside the shipped five (`greystone-vale`, built from the
