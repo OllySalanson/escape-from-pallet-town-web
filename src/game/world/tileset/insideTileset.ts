@@ -352,30 +352,29 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     },
   },
   // Icefall Cave, on Four Island: a floor of FireRed's cave stone, the rock
-  // round it laid as Icefall Cave B1F lays it - its faces on the floor's side
-  // and the snow over the rock beyond - and the sheet of ice a step slides
-  // across, which runs up to the rock and the floor without an edge, as
-  // FireRed's own does. The map's edge is more rock, as Mt. Moon's is.
+  // round it the lumps FireRed heaps between its rooms with a face where it
+  // stands over the floor - its back wall and its sides, as Icefall Cave B1F
+  // draws them - and the sheet of ice a step slides across, which runs up to
+  // the rock and the floor without an edge, as FireRed's own does. The rock
+  // under a room's south side is the same lumps: FireRed's snow-capped rim is
+  // two tiles of wall, and one tile of it alone reads as no wall at all.
   ice: {
     floor: { roles: { fill: iceTile('ice.floor') } },
     wall: {
       overlay: true,
       edgesAtMapEdge: false,
       roles: {
-        fill: iceTile('ice.snow'),
+        fill: iceTile('ice.crag'),
         'edge-s': iceTile('ice.faceSouth'),
         'edge-e': iceTile('ice.faceEast'),
         'edge-w': iceTile('ice.faceWest'),
-        'edge-n': iceTile('ice.rim'),
         'corner-sw': iceTile('ice.spurSw'),
         'corner-se': iceTile('ice.spurSe'),
         'inner-se': iceTile('ice.cornerNw'),
         'inner-sw': iceTile('ice.cornerNe'),
-        'inner-ne': iceTile('ice.cornerSw'),
-        'inner-nw': iceTile('ice.cornerSe'),
       },
     },
-    ice: { joins: ['wall', 'paving'], roles: { fill: iceTile('ice.sheet') } },
+    ice: { roles: { fill: iceTile('ice.sheet') } },
     caveWays: { exit: 'iceExit', ladder: 'iceLadder', hole: 'iceHole' },
   },
 };

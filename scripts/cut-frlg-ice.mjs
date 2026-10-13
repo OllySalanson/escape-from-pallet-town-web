@@ -77,17 +77,16 @@ const PIECES = [
   // --- the rock, laid round the floor as B1F lays it ------------------------------
   // Snow over the rock beyond the cave's walls, seen from above.
   { name: 'ice.snow', metatiles: [[0x291]], layers: 'both' },
-  // The faces: the back wall over the floor, the rock either side of it, and
-  // the rim where the rock meets the floor below it.
+  // The rock itself, seen from above where it is too thick for snow to show:
+  // the lumps FireRed heaps between its rooms.
+  { name: 'ice.crag', metatiles: [[0x28b]], layers: 'both' },
+  // The faces: the back wall over the floor, and the rock either side of it.
   { name: 'ice.faceSouth', metatiles: [[0x299]], layers: 'both' },
   { name: 'ice.faceEast', metatiles: [[0x292]], layers: 'both' },
   { name: 'ice.faceWest', metatiles: [[0x290]], layers: 'both' },
-  { name: 'ice.rim', metatiles: [[0x289]], layers: 'both' },
-  // A room's corners, turned by the rock round the floor.
+  // A room's back corners, turned by the rock round the floor.
   { name: 'ice.cornerNw', metatiles: [[0x29b]], layers: 'both' },
   { name: 'ice.cornerNe', metatiles: [[0x29c]], layers: 'both' },
-  { name: 'ice.cornerSw', metatiles: [[0x355]], layers: 'both' },
-  { name: 'ice.cornerSe', metatiles: [[0x356]], layers: 'both' },
   // Where a spur of rock ends in the floor.
   { name: 'ice.spurSw', metatiles: [[0x298]], layers: 'both' },
   { name: 'ice.spurSe', metatiles: [[0x29a]], layers: 'both' },

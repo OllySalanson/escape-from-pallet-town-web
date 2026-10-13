@@ -119,7 +119,7 @@ export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
   ],
   materials: {
     ...KANTO_TILESET.materials,
-    ice: { joins: ['water'], roles: { fill: iceTile('ice.sheet') } },
+    ice: { roles: { fill: iceTile('ice.sheet') } },
   },
   props: { ...cc0, ...BASE_BUILDINGS, ...TOWN_PROPS, ...ICE, ...KANTO_TILESET.props },
 };

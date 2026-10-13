@@ -16,9 +16,14 @@
  * on, and nowhere a slide can leave you is somewhere you cannot slide out of.
  *
  * - **1F**, in from the shore by the jetty: a stone landing, a sheet of ice
- *   up to the hole in its north-west corner, and the ladder down beside it.
+ *   round two crags of rock, and the hole down in its north-west corner,
+ *   reached only by stopping against the right boulder.
  * - **B1F**, under the ridge: down the ladder in its north-east corner, a
- *   wider sheet, and the way out in its south wall onto the frozen lagoon.
+ *   sheet round three crags, and the way out in its south wall onto the
+ *   frozen lagoon.
+ *
+ * Every boulder on the ice is a stop some way across it needs: a boulder no
+ * way across ever stops against is noise, and was taken out.
  */
 import type { MapFileArea, MapFileBuilding, MapFileItemSpot, MapFileLink } from '../../../../src/game/world/mapFile';
 import type { Point } from '../../program';
@@ -27,22 +32,23 @@ const FLOOR_1F = [
   '##############################',
   '##############################',
   '###...########################',
-  '###.E.##IIIIIIIIIIIIIIII######',
-  '###...IIIIIIIIIIIIIIIIIIII####',
-  '####IoIIIIIIIIIIIIIIIIIIIII###',
-  '####IoIIIIIIIIIIIIIIIIoIIIII##',
-  '###IoIIIIIIIIIIIIIIIIIIIIIII##',
-  '###IIIIIIIIIIIIIIIIIIIIIIIII##',
-  '###IIIIIIIIIIIIIIoIIIIIoIIh.##',
-  '###IIIIIIIIIIIIIIIIIIIoIII..##',
-  '####IIIIIIIIIIIIIIIIIIIIII####',
-  '####IIIIIIIIIIIIIoIIIIIIII####',
-  '#####IIIIIIoIIIIIIIIIIIIII####',
-  '######.......IIIIIIIIIoII#####',
-  '######.............###########',
-  '#######...........############',
-  '##########.....###############',
-  '##########.....###############',
+  '###.E...####IIIIIIIII..#######',
+  '###.....##IIIIIIIIIIII...#####',
+  '####..oIIIIIIIIIIII##III...###',
+  '#####IIIIIIIII###IIII##IIIII##',
+  '####IIIIIIIIII###IIIIIIIIIII##',
+  '####IIIII###IIIIIIIIIIIIIIII##',
+  '###IIIIII###IIIIIIIIIIIII.h.##',
+  '###IIIIIIIIIIIIIIIIIIIIII...##',
+  '####IIIIIIIIIIIIIIIIIIII######',
+  '#####IIIIoIIII##IIIIIIII######',
+  '######IIIIIII####IIIIII.######',
+  '######..oIIIIIIIIIIII....#####',
+  '#######.....IIIIIIII......####',
+  '######................########',
+  '#######...###........#########',
+  '########....##.....###########',
+  '#########.........############',
   '###########.S.################',
   '##############################',
 ];
@@ -50,21 +56,20 @@ const FLOOR_1F = [
 const FLOOR_B1F = [
   '################################',
   '################################',
-  '#####################.....######',
-  '#######IIIIIIIIIIIoII..S..######',
-  '####..IIIIIIIIIIIIIIIoII...#####',
-  '####..oIIIIIIIIIIoIIIIIIIIII####',
-  '####IIIIIIIIIIIIIIIIIIIIIIIIII##',
-  '###IoIIIIIIIIIIIIIIIIIIIIIIIII##',
-  '###IIIIIIIIIIIIIIIIIIIIIIIIIIh##',
-  '###IIIIIIIIIIIIIIIIIIoIIIIoIII##',
-  '###IIIIIIIIIIIoIIIIIIIIIIIIIII##',
-  '###IIIIIIIIIIIIIIIIIIIIIIIIIII##',
-  '###IIoIIIIIIIIIIIIIIIIIIIIIII###',
+  '####################......######',
+  '######IIIIIIIIIIIIIII..S..######',
+  '####..IIIIIIIIIIIIIIIIII...#####',
+  '####..III####IoIIIIIIIIIIIII####',
+  '####IIIII####IIIIIII###IIIIIII##',
+  '###IIIIIIIIIIIIIIIII###IIIIIII##',
+  '###IIIIIIIIIIIIIIIIIIIIoIIIIIh##',
+  '###IIIIIII###IIIIIIIIIIIIIIIII##',
+  '###IIIIIII###IIIIIIIIII###IIII##',
+  '###IIIIIIIIIIIIIIIIIIII###III###',
   '####IIIIIIIIIIIIIIIIIIIIIIII####',
-  '####...IIIIIIIIIIIIIIooIII######',
-  '#####.....IIIIIIIoIIIII#########',
-  '######......IoIIIIII############',
+  '####...IIIIIoIIIIIIIIIIIIII#####',
+  '#####.....IIIIIIIIIIIIIII#######',
+  '######.......IIIIIIIII##########',
   '#######..E..####################',
   '################################',
 ];
