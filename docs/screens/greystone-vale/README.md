@@ -6,8 +6,8 @@ is the plan, before any district was drawn:
 
 ![plan](plan.png)
 
-And the vale as it ships now, with Millbrook, High Moor, Reedmere and Gull
-Strand drawn:
+And the vale as it ships now, with Millbrook, High Moor, Reedmere, Gull Strand
+and Orchard Terraces drawn:
 every district still to draw is wood, and each road into one runs into the
 trees at a way out.
 
@@ -387,6 +387,56 @@ Round 2's remaining faults, for the next pass: the lagoon's stepped bank, the
 straight line of the cliff, and the empty grass on the heath.
 
 ![Gull Strand as first drawn](gull-strand-first-draw.png)
+
+## Orchard Terraces
+
+The farm in the south-east. **It does not pass the blind check**, and it ships
+explorer-only as the best of eight rounds, as the night's instruction allowed
+when a district could not pass in time.
+
+- **The farmyard:** the farmhouse, the apple store, a kitchen garden with a
+  berry bush, and the landing.
+- **The shelves:** three of them step down the hillside, each edged by broken
+  runs of ledge anchored on clumps of trees.
+  - The top shelf holds the farmyard and the north orchard, where the trail
+    from Tanglewood comes in.
+  - The middle shelf holds the west orchard and the cornfield, with the lane
+    out east as Orchard Lane.
+  - The bottom shelf is the pasture over the shore.
+- **The ledges:** the farm road goes down by the one gap in each edge, the long
+  way round; a hop down a ledge is the quick way, never back up.
+
+![Orchard Terraces](orchard-terraces.png)
+
+It was judged beside FireRed's Route 1, Route 2, Route 6, Route 24 and
+Route 10 (two broken real routes as controls), the bar the other districts
+met.
+
+| Round | Real mean | Orchard Terraces | What was tried |
+|---|---|---|---|
+| 1 | 7.2, 6.2 | 2 and 2, 3 and 4 | open slope, orchard pens, ruled ledges |
+| 2 | 7.0, 6.8 | 5 and 3, 3 and 4 | wooded shelves, a ledge cut through each band |
+| 3 | 7.4, 7.6 | 6 and 5, 4 and 4 | denser: a sand yard, fields, wide road |
+| 4 | 7.0, 7.0 | 5 and 4, 4 and 5 | ragged bands, rocks at the ledges' ends |
+| 5 | 7.6, 7.0 | 4 and 5, 4 and 5 | the shelf edges are the ledges |
+| 6 | 6.2, 7.2 | **5 and 5, 5 and 5** (ships) | irregular orchards, paths across the shelves |
+| 7 | 7.0, 7.2 | 4 and 4, 4 and 4 | thicker wood at the sides |
+| 8 | 7.4, 7.0 | 4 and 4, 4 and 4 | fields in hedgerows of trees |
+
+Every judge counted in every round. Round 6 came within 0.2 of the bar with
+one judge. After it, three shrubs were added round the landing for the
+held-direction rule.
+
+What the judges kept naming, for the next pass:
+
+- **The orchards** read as stamped grids, however the trees are spaced.
+- **Too much lawn** with little edge.
+- **Every ledge reads as floating**, whatever stands at its ends.
+
+Route 1 and Route 2 are the hardest references any district has been held
+to: they scored 7 to 9 every round.
+
+![Orchard Terraces as first drawn](orchard-terraces-first-draw.png)
 
 ## How it ships
 
