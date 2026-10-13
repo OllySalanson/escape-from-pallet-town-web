@@ -67,6 +67,8 @@ export const ITEM_ICONS = {
   'forester-key': 'forester-key',
   'garden-key': 'garden-key',
   'market-key': 'market-key',
+  // FireRed's Card Key, the key a map file's locked exits open to.
+  'card-key': 'card-key',
   // Four sizes of one silhouette: which pack you are wearing has to be legible
   // at a glance on the loadout, because it is the decision that screen is for.
   satchel: 'satchel',

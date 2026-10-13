@@ -456,6 +456,7 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   'forester-key': 0,
   'garden-key': 0,
   'market-key': 0,
+  'card-key': 0,
   'hm06-rock-smash': 0,
   // Berries grow only on the trees a map maker plants, and the board never pays
   // one: a berry is picked, not awarded. Priced like the medicine it is.

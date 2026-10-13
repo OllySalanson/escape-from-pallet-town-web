@@ -1,5 +1,6 @@
 // Draws the lock icons into public/assets/icons: the Lockpick a raid carries,
-// the five keys that each open one map's locked exit, and the two things on the
+// the five keys that each open one map's locked exit, the Card Key a map file's
+// locked exits open to, and the two things on the
 // map they open - a locked gate (a keyed exit) and a locked crate.
 //
 //   node scripts/draw-lock-icons.mjs [--preview=<out.png>]
@@ -82,6 +83,29 @@ const ICONS = {
   'forester-key': key('7cc06a', '3f7a34'),
   'garden-key': key('e88aa8', 'a8506c'),
   'market-key': key('c8443c', '86261f'),
+  'card-key': {
+    // FireRed's Card Key: a plastic card with a magnetic stripe and a brass
+    // chip, not a key, because what it opens is a door made by a company.
+    tones: { c: 'e8eef4', C: 'b8c4d0', m: '3f5f8f', y: 'f1c84a', Y: 'b8862a' },
+    rows: [
+      '................',
+      '................',
+      '................',
+      'oooooooooooooooo',
+      'occcccccccccccCo',
+      'ommmmmmmmmmmmmmo',
+      'ommmmmmmmmmmmmmo',
+      'occcccccccccccCo',
+      'ocoyyocccccccCCo',
+      'ocoyYocccccccCCo',
+      'ocoooocccCCCCCCo',
+      'occcccccccccccCo',
+      'oCCCCCCCCCCCCCCo',
+      'oooooooooooooooo',
+      '................',
+      '................',
+    ],
+  },
   'locked-gate': {
     // A plank gate between two posts, padlocked shut across its middle rail.
     tones: { p: '6b4a2b', w: 'c9974a', W: '8a6430', ...PADLOCK },

@@ -520,6 +520,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   town: 'Town',
   woodland: 'Woodland',
   cave: 'Cave',
+  'power-plant': 'Power plant',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */

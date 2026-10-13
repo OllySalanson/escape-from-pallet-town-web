@@ -1,7 +1,7 @@
 import type { GridLinks, GridPosition } from '../movement/gridMovement';
 import { linkKey } from '../movement/gridMovement';
 import { formatMoney, isMaterial } from '../items/items';
-import { fileDoorGates, itemSpotContents, MAP_FILE_LANDMARKS, trainerTemplate } from './mapFile';
+import { fileDoorGates, isBarredFileExit, itemSpotContents, MAP_FILE_LANDMARKS, trainerTemplate } from './mapFile';
 import type { MapFile, MapFileSpot, MapFileTrainerTeam } from './mapFile';
 import { mapFileGrid, spotPlacer } from './mapFileChecks';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
@@ -116,7 +116,7 @@ function summarise(file: MapFile): MapFileSummary {
     ].filter((value): value is number => value !== undefined && value >= 0);
     return beside.length > 0 ? Math.min(...beside) + 1 : -1;
   };
-  const openExits = file.exits.filter((exit) => exit.opens.when !== 'dug').map(onGrid);
+  const openExits = file.exits.filter((exit) => !isBarredFileExit(exit)).map(onGrid);
   const nearestExit = dropIns
     .map(({ steps }) =>
       Math.min(...openExits.map((exit) => stepsOnto(steps, exit)).filter((walk) => walk >= 0)),
@@ -148,14 +148,15 @@ function summarise(file: MapFile): MapFileSummary {
       links,
       tile,
       new Set(
-        file.exits.filter((exit) => exit.opens.when !== 'dug').map((exit) => key(onGrid(exit))),
+        file.exits.filter((exit) => !isBarredFileExit(exit)).map((exit) => key(onGrid(exit))),
       ),
-      // An exit under rubble is a wall until somebody digs it, and nobody has to.
+      // An exit under rubble or behind a lock is a wall until somebody opens it, and
+      // nobody has to.
       new Set(
         [
           ...figureTiles,
           ...boulders.map(onGrid),
-          ...file.exits.filter((exit) => exit.opens.when === 'dug').map(onGrid),
+          ...file.exits.filter(isBarredFileExit).map(onGrid),
         ].map(key),
       ),
       watches,
@@ -177,11 +178,14 @@ function summarise(file: MapFile): MapFileSummary {
     return walks.length > 0 ? Math.min(...walks) : -1;
   };
   const paid = [
-    ...file.itemSpots.map((spot, index) => ({
-      spot,
-      pays: [itemSpotContents(index)],
-      cache: false,
-    })),
+    // A Card Key spot is a key, not a pickup, and takes no turn in the rotation.
+    ...file.itemSpots
+      .filter((spot) => !spot.key)
+      .map((spot, turn) => ({
+        spot,
+        pays: [itemSpotContents(turn)],
+        cache: false,
+      })),
     ...landmarks.map((spot) => ({ spot, pays: MAP_FILE_LANDMARKS[spot.kind].reward, cache: true })),
   ]
     .map((pickup) => ({ ...pickup, steps: reach(pickup.spot) }))
