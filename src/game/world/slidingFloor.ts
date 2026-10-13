@@ -51,35 +51,48 @@ export function carriedOn(
 }
 
 /**
- * Where one press from `from` toward `direction` comes to rest: the first
- * step, and every tile the floor carries it on to. Null when the first step
- * cannot be taken at all.
+ * Every tile one press from `from` toward `direction` steps on, in order: the
+ * first step, and every tile the floor carries it on to. Empty when the first
+ * step cannot be taken at all. A slide works whatever it steps on - picks up
+ * what lies there - so this is where it can reach as well as where it stops.
  */
+export function slideTrail(
+  terrain: readonly (readonly Material[])[],
+  isBlocked: (tile: GridPosition) => boolean,
+  from: GridPosition,
+  direction: Direction,
+): GridPosition[] {
+  const delta = DIRECTION_DELTAS[direction];
+  let at = { x: from.x + delta.x, y: from.y + delta.y };
+  if (isBlocked(at)) {
+    return [];
+  }
+  const trail = [at];
+  // A sheet of ice can be a ring with nothing on it; a slide never visits
+  // more tiles than there are on the map.
+  for (let guard = 0; guard < 100_000; guard += 1) {
+    const on = carriedOn(terrain, at, direction);
+    if (on === null) {
+      break;
+    }
+    const next = { x: at.x + DIRECTION_DELTAS[on].x, y: at.y + DIRECTION_DELTAS[on].y };
+    if (isBlocked(next)) {
+      break;
+    }
+    at = next;
+    trail.push(at);
+  }
+  return trail;
+}
+
+/** Where one press from `from` toward `direction` comes to rest, or null if it cannot be taken. */
 export function slideStops(
   terrain: readonly (readonly Material[])[],
   isBlocked: (tile: GridPosition) => boolean,
   from: GridPosition,
   direction: Direction,
 ): GridPosition | null {
-  const delta = DIRECTION_DELTAS[direction];
-  let at = { x: from.x + delta.x, y: from.y + delta.y };
-  if (isBlocked(at)) {
-    return null;
-  }
-  // A sheet of ice can be a ring with nothing on it; a slide never visits
-  // more tiles than there are on the map.
-  for (let guard = 0; guard < 100_000; guard += 1) {
-    const on = carriedOn(terrain, at, direction);
-    if (on === null) {
-      return at;
-    }
-    const next = { x: at.x + DIRECTION_DELTAS[on].x, y: at.y + DIRECTION_DELTAS[on].y };
-    if (isBlocked(next)) {
-      return at;
-    }
-    at = next;
-  }
-  return at;
+  return slideTrail(terrain, isBlocked, from, direction).at(-1) ?? null;
 }
 
 /**
