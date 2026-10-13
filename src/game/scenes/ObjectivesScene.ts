@@ -26,6 +26,8 @@ export interface ObjectivesSceneData {
   readonly carried?: (itemId: string) => number;
   /** The open exit the fewest steps away, measured on the world's own collision. */
   readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition };
+  /** Walking steps from the player to a tile, undefined out of reach. */
+  readonly stepsTo?: (target: GridPosition) => number | undefined;
   /** Only resume WorldScene when this overlay paused it. */
   readonly pausedWorld: boolean;
 }
@@ -61,6 +63,7 @@ export class ObjectivesScene extends Phaser.Scene {
       activatedPoiIds: new Set(data.activatedPoiIds),
       ...(data.carried ? { carried: data.carried } : {}),
       ...(data.nearestOpenExit ? { nearestOpenExit: data.nearestOpenExit } : {}),
+      ...(data.stepsTo ? { stepsTo: data.stepsTo } : {}),
     });
     this.createOverlay(guide);
   }

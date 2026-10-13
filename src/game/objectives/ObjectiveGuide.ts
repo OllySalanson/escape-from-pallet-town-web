@@ -29,6 +29,12 @@ export interface ObjectiveGuideContext {
    * the scene did not measure one, or none is open and in reach.
    */
   readonly nearestOpenExit?: { readonly label: string; readonly position: GridPosition };
+  /**
+   * Walking steps from here to a tile, or undefined when it cannot be reached
+   * now (`../world/nearestExit`'s `walkingStepsFrom`). Absent is a straight
+   * line: the scene did not measure.
+   */
+  readonly stepsTo?: (target: GridPosition) => number | undefined;
 }
 
 export interface ObjectiveGuideObjective {
@@ -211,22 +217,26 @@ function laterRunHints(
   context: ObjectiveGuideContext,
   currentExit: string | undefined,
 ): readonly string[] {
+  const nearest = nearestExitHint(context);
   if (context.currentMapId === 'floodplain-relay') {
     const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
-    // The landmark is named from its own data here too. This line used to be a
-    // sentence about the supply vault written out by hand, which went on telling
-    // a fresh save to go to a cache that is now behind two bosses.
-    const landmark = poisForMap(context.currentMapId).find(
-      (poi) => poi.effect === undefined && !context.activatedPoiIds.has(poi.id),
-    );
+    // The landmark and the exit are the nearest ones, as on every other map:
+    // the Floodplain is 128 tiles across and has ten landings, and the first
+    // cache in its list and a gate named by hand were a hundred tiles off from
+    // most of them. The station keeps a line of its own, because its radio is
+    // the one landmark that changes the map's ways out.
+    const landmark = nearestLandmarkToWork(session, context, (poi) => poi.effect === undefined);
     return [
       'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
       landmark
-        ? `${landmark.label} is on this map. ${landmark.description}`
-        : 'Every marked cache on this map has been worked this raid.',
+        ? landmarkHint(landmark, context)
+        : 'No marked cache in reach is left to work this raid.',
       radioActive
-        ? 'Radio Exit is active at Ranger Station. South Gate is always open; Ferry Dock opens on its signal.'
-        : 'Ranger Station gives a hunter forecast and activates the Radio Exit. South Gate is always open; Ferry Dock opens on its signal.',
+        ? 'Radio Exit is active at Ranger Station.'
+        : 'Ranger Station gives a hunter forecast and activates the Radio Exit.',
+      nearest
+        ? `The nearest open exit is ${nearest}. Use it to bank your haul.`
+        : 'South Gate is always open; Ferry Dock opens on its signal.',
     ];
   }
   // Named and explained by the landmark itself. Every map has its own, and more
@@ -236,12 +246,10 @@ function laterRunHints(
   // and the first in authored order was the Green's pump whichever end of the
   // valley the player stood in.
   const landmark = nearestLandmarkToWork(session, context);
-  const landmarkHint = landmark
-    ? `The nearest landmark still to work is ${landmark.label}, ${directionTo(context.currentPosition, context.towards?.(landmark.position) ?? landmark.position)}. ${landmark.description}`
-    : 'Search marked caches and loose supplies, then leave before the raid turns against you.';
-  const nearest = nearestExitHint(context);
   return [
-    landmarkHint,
+    landmark
+      ? landmarkHint(landmark, context)
+      : 'Search marked caches and loose supplies, then leave before the raid turns against you.',
     nearest
       ? `The nearest open exit is ${nearest}. Use it to bank your haul.`
       : currentExit
@@ -259,22 +267,40 @@ function nearestExitHint(context: ObjectiveGuideContext): string | undefined {
   return `${exit.label}, ${directionTo(context.currentPosition, context.towards?.(exit.position) ?? exit.position)}`;
 }
 
+function landmarkHint(landmark: WorldPoi, context: ObjectiveGuideContext): string {
+  return `The nearest landmark still to work is ${landmark.label}, ${directionTo(context.currentPosition, context.towards?.(landmark.position) ?? landmark.position)}. ${landmark.description}`;
+}
+
 /**
  * The landmark on this map closest to the player that this raid can still work:
  * not worked this raid, and not finished with for good by a banked contract
  * (`../world/workedLandmarks`), which still stands but hands out nothing.
+ * Closest on foot when the scene measured the walk, so one behind a shut gate
+ * or across the river is never named over one down the lane; in a straight
+ * line otherwise.
  */
-function nearestLandmarkToWork(session: ActiveRunSession, context: ObjectiveGuideContext): WorldPoi | undefined {
+function nearestLandmarkToWork(
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+  kind: (poi: WorldPoi) => boolean = () => true,
+): WorldPoi | undefined {
   const completed = session.plan?.completedContracts ?? [];
   const here = context.currentPosition;
-  return poisForMap(context.currentMapId)
-    .filter((poi) => !context.activatedPoiIds.has(poi.id) && !isLandmarkWorked(poi.id, completed))
-    .reduce<WorldPoi | undefined>((nearest, poi) => {
-      const distance = Math.abs(poi.position.x - here.x) + Math.abs(poi.position.y - here.y);
-      return nearest && Math.abs(nearest.position.x - here.x) + Math.abs(nearest.position.y - here.y) <= distance
-        ? nearest
-        : poi;
-    }, undefined);
+  const distanceTo = (poi: WorldPoi): number | undefined =>
+    context.stepsTo
+      ? context.stepsTo(poi.position)
+      : Math.abs(poi.position.x - here.x) + Math.abs(poi.position.y - here.y);
+  let best: { readonly poi: WorldPoi; readonly distance: number } | undefined;
+  for (const poi of poisForMap(context.currentMapId)) {
+    if (!kind(poi) || context.activatedPoiIds.has(poi.id) || isLandmarkWorked(poi.id, completed)) {
+      continue;
+    }
+    const distance = distanceTo(poi);
+    if (distance !== undefined && (!best || distance < best.distance)) {
+      best = { poi, distance };
+    }
+  }
+  return best?.poi;
 }
 
 /** How this contract gets banked, which is not always "any exit will do". */

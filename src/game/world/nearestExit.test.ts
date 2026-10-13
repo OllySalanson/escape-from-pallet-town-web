@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getWorldMap } from '../worldMap';
 import { requireInsertion } from '../run/runGeneration';
 import { EXTRACTION_POINTS, isExtractionAvailable, type ExtractionPoint } from './extractionPoints';
-import { nearestOpenExit } from './nearestExit';
+import { nearestOpenExit, walkingStepsFrom } from './nearestExit';
 
 const pallet = getWorldMap('pallet-town');
 const palletExits = EXTRACTION_POINTS.filter((point) => point.mapId === 'pallet-town');
@@ -40,5 +40,30 @@ describe('the nearest open exit', () => {
 
   it('is nothing when no exit is open', () => {
     expect(nearestOpenExit(palletExits, { x: 7, y: 9 }, pallet.collision, () => false, pallet.links)).toBeUndefined();
+  });
+});
+
+describe('walking steps to a place', () => {
+  // A wall down the middle with a gap at the bottom; the top right is a solid
+  // tile standing on its own, worked from beside it.
+  const o = false;
+  const X = true;
+  const grid = [
+    [o, X, o, X],
+    [o, X, o, o],
+    [o, o, o, o],
+  ];
+  const stepsTo = walkingStepsFrom({ x: 0, y: 0 }, grid);
+
+  it('counts the walk round a wall, not the straight line', () => {
+    expect(stepsTo({ x: 2, y: 0 })).toBe(6);
+  });
+
+  it('reaches a solid tile from the tile beside it', () => {
+    expect(stepsTo({ x: 3, y: 0 })).toBe(6);
+  });
+
+  it('is undefined for a place nobody can stand beside', () => {
+    expect(walkingStepsFrom({ x: 0, y: 0 }, [[o, X, X, X]])({ x: 3, y: 0 })).toBeUndefined();
   });
 });

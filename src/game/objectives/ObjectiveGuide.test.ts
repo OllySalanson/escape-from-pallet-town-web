@@ -10,7 +10,8 @@ import { ERRANDS, errandLoot } from '../hub/errands';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_POIS, poisForMap } from '../world/pois';
 import { WORKED_LANDMARKS } from '../world/workedLandmarks';
-import type { WorldMapId } from '../worldMap';
+import { getWorldMap, type WorldMapId } from '../worldMap';
+import { walkingStepsFrom } from '../world/nearestExit';
 
 function createFirstContractSession() {
   const manager = new RunManager();
@@ -186,10 +187,10 @@ describe('objective field guide', () => {
     expect(before.hints.join(' ')).toContain('activates the Radio Exit');
     expect(after.hints.join(' ')).toContain('Radio Exit is active');
 
-    // The cache it points at is read from the map's own landmarks, in order: the
-    // one a fresh save can walk to first, and the next once that is worked. It
-    // used to be a sentence about the supply vault typed out by hand, which went
-    // on sending a fresh save to a cache that is now behind two bosses.
+    // The cache it points at is read from the map's own landmarks: the nearest
+    // still to work, and the next nearest once that is worked. It used to be a
+    // sentence about the supply vault typed out by hand, which went on sending a
+    // fresh save to a cache that is now behind two bosses.
     const caches = poisForMap('floodplain-relay').filter((poi) => poi.effect === undefined);
     expect(caches.map((poi) => poi.label)).toEqual([
       'DROWNED CHAPEL',
@@ -216,7 +217,8 @@ describe('objective field guide', () => {
       currentPosition: caches[0].position,
       activatedPoiIds: new Set([caches[0].id]),
     });
-    expect(chapelWorked.hints.join(' ')).toContain(caches[1].label);
+    // From the chapel the lighter on the bar is nearer than the vault.
+    expect(chapelWorked.hints.join(' ')).toContain('The nearest landmark still to work is STRANDED LIGHTER');
   });
 
   it('names the landmark the map actually has, on every map', () => {
@@ -284,6 +286,54 @@ describe('objective field guide', () => {
       activatedPoiIds: new Set(),
     });
     expect(unbanked.hints[0]).toContain(`${worked.label}, right here.`);
+  });
+});
+
+describe('the Floodplain field notes, from a far landing', () => {
+  // THE LIGHT, the map's south-east corner: the Drowned Chapel, first in the
+  // map's list, is a hundred tiles west, and so is the South Gate.
+  const light = requireInsertion('floodplain-light').position;
+  const map = getWorldMap('floodplain-relay');
+  const stepsTo = walkingStepsFrom(light, map.collision, map.links);
+  const guide = (nearestOpenExit?: { readonly label: string; readonly position: { x: number; y: number } }) =>
+    buildObjectiveGuide(createUncontractedSession('floodplain-light'), {
+      currentMapId: 'floodplain-relay',
+      currentPosition: light,
+      activatedPoiIds: new Set(),
+      stepsTo,
+      ...(nearestOpenExit ? { nearestOpenExit } : {}),
+    }).hints;
+
+  it('names the landmark nearest on foot, not the first in the map list', () => {
+    const caches = poisForMap('floodplain-relay').filter(
+      (poi) => poi.effect === undefined && stepsTo(poi.position) !== undefined,
+    );
+    const nearest = caches.reduce((best, poi) => (stepsTo(poi.position)! < stepsTo(best.position)! ? poi : best));
+    const text = guide().join(' ');
+
+    expect(nearest.label).not.toBe('DROWNED CHAPEL');
+    expect(text).not.toContain('DROWNED CHAPEL');
+    expect(text).toContain(`The nearest landmark still to work is ${nearest.label}, `);
+  });
+
+  it('names the nearest open exit rather than gates across the map', () => {
+    const exit = EXTRACTION_POINTS.find((point) => point.mapId === 'floodplain-relay' && point.label === 'CUTTER\'S GATE')!;
+    const text = guide({ label: exit.label, position: exit.position }).join(' ');
+
+    expect(text).toContain("The nearest open exit is CUTTER'S GATE, ");
+    expect(text).not.toContain('South Gate is always open');
+    expect(text).toContain('Ranger Station gives a hunter forecast and activates the Radio Exit.');
+  });
+
+  it('never names a landmark it cannot walk to', () => {
+    const text = buildObjectiveGuide(createUncontractedSession('floodplain-light'), {
+      currentMapId: 'floodplain-relay',
+      currentPosition: light,
+      activatedPoiIds: new Set(),
+      stepsTo: () => undefined,
+    }).hints.join(' ');
+
+    expect(text).toContain('No marked cache in reach is left to work this raid.');
   });
 });
 

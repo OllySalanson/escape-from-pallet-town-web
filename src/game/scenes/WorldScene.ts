@@ -186,7 +186,7 @@ import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/grou
 import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
-import { nearestOpenExit } from '../world/nearestExit';
+import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -4276,6 +4276,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       activatedPoiIds: [...this.activatedPoiIds],
       carried: (itemId: string) => this.bag.count(itemId),
       ...this.nearestOpenExitHere(),
+      stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, this.currentMap.links),
       pausedWorld: true,
     });
   }
