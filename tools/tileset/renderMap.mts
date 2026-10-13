@@ -28,7 +28,7 @@ import { insertionsOn } from '../../src/game/run/runGeneration';
 import { RAID_CONTRACTS } from '../../src/game/objectives/contracts';
 import { createRunTrainerEncounters } from '../../src/game/world/trainers';
 import { readFileSync } from 'node:fs';
-import { buildPlayerMap, readMapFile } from '../../src/game/world/mapFile';
+import { BUILT_IN_MAP_FILE_LIMITS, buildPlayerMap, readMapFile } from '../../src/game/world/mapFile';
 import { registerPlayerMap } from '../../src/game/world/playerMaps';
 
 const args = process.argv.slice(2);
@@ -41,9 +41,11 @@ const [which = 'all', target = 'map.png', zoomArgument = '2'] = args.filter(
 const zoom = Number(zoomArgument);
 const fileFlag = args.find((value) => value.startsWith('--file='));
 if (fileFlag) {
-  const reading = readMapFile(JSON.parse(readFileSync(fileFlag.slice(7), 'utf8')));
+  const reading = readMapFile(JSON.parse(readFileSync(fileFlag.slice(7), 'utf8')), {
+    limits: BUILT_IN_MAP_FILE_LIMITS,
+  });
   if (!reading.ok) throw new Error(reading.problems.join(' '));
-  registerPlayerMap(buildPlayerMap(reading.file));
+  registerPlayerMap(buildPlayerMap(reading.file, BUILT_IN_MAP_FILE_LIMITS));
 }
 
 function renderMap(id: WorldMapId) {

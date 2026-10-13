@@ -141,6 +141,32 @@ export const MAP_FILE_LIMITS = {
   maxFurniture: 80,
 } as const;
 
+/** What a map file may hold, field by field: `MAP_FILE_LIMITS` is a player's. */
+export type MapFileLimits = { readonly [Limit in keyof typeof MAP_FILE_LIMITS]: number };
+
+/**
+ * What the game's own maps drawn as files may hold (Greystone Vale, read by
+ * `builtInFileMap` and written by `tools/mapcraft`). A vale of sixteen
+ * districts needs more landings, ways out and places than a map anybody draws
+ * in an evening, and nothing a player sends is read against these:
+ * `submit_map` and the map maker keep `MAP_FILE_LIMITS`. The size of a map and
+ * of everything in it is the same for both.
+ */
+export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
+  ...MAP_FILE_LIMITS,
+  maxBytes: 1_000_000,
+  maxDropIns: 16,
+  maxExits: 24,
+  maxItemSpots: 96,
+  maxPeople: 64,
+  maxSigns: 64,
+  maxLandmarks: 32,
+  maxDistricts: 32,
+  maxTrainers: 24,
+  maxAreas: 32,
+  maxLinks: 64,
+};
+
 /** Every file map's id is its own id with this in front, so none can collide with a shipped map. */
 export const PLAYER_MAP_PREFIX = 'player-';
 
@@ -1257,9 +1283,14 @@ export function readMapFile(
    * no way in or out, and the editor still has to be able to open it. Every
    * other rule - the shape, the letters, the bounds - holds for a draft too.
    */
-  options: { readonly draft?: boolean } = {},
+  options: {
+    readonly draft?: boolean;
+    /** What the file may hold: a player's map is held to `MAP_FILE_LIMITS`, the default. */
+    readonly limits?: MapFileLimits;
+  } = {},
 ): MapFileReading {
   const draft = options.draft === true;
+  const limits = options.limits ?? MAP_FILE_LIMITS;
   const problems: string[] = [];
   if (!isRecord(value)) {
     return { ok: false, problems: ['The file is not a map.'] };
@@ -1288,20 +1319,20 @@ export function readMapFile(
   if (id !== undefined && !ID_PATTERN.test(id)) {
     problems.push(`'id' may only hold lower-case letters, digits and single dashes.`);
   }
-  text('name', 'a name', MAP_FILE_LIMITS.maxNameLength);
-  text('maker', "its maker's name", MAP_FILE_LIMITS.maxMakerLength);
+  text('name', 'a name', limits.maxNameLength);
+  text('maker', "its maker's name", limits.maxMakerLength);
 
   const { width, height } = value;
   const sized =
     isWholeNumber(width) &&
     isWholeNumber(height) &&
-    width >= MAP_FILE_LIMITS.minWidth &&
-    height >= MAP_FILE_LIMITS.minHeight &&
-    width <= MAP_FILE_LIMITS.maxWidth &&
-    height <= MAP_FILE_LIMITS.maxHeight;
+    width >= limits.minWidth &&
+    height >= limits.minHeight &&
+    width <= limits.maxWidth &&
+    height <= limits.maxHeight;
   if (!sized) {
     problems.push(
-      `A map is ${MAP_FILE_LIMITS.minWidth}x${MAP_FILE_LIMITS.minHeight} to ${MAP_FILE_LIMITS.maxWidth}x${MAP_FILE_LIMITS.maxHeight} tiles.`,
+      `A map is ${limits.minWidth}x${limits.minHeight} to ${limits.maxWidth}x${limits.maxHeight} tiles.`,
     );
   }
 
@@ -1325,7 +1356,7 @@ export function readMapFile(
 
   // The areas come first, because everything placed is measured against the
   // area it says it stands in rather than against the outdoor map.
-  const areaSizes = readAreas(value.areas, problems);
+  const areaSizes = readAreas(value.areas, problems, limits);
   const sizeOf = (spot: Record<string, unknown>): { width: number; height: number } | undefined => {
     if (spot.area === undefined) {
       return sized ? { width: width, height: height } : undefined;
@@ -1396,8 +1427,8 @@ export function readMapFile(
         problems.push(`${field === 'dropIns' ? 'Drop-in' : 'Exit'} ${index + 1} needs a name.`);
         continue;
       }
-      if (name.length > MAP_FILE_LIMITS.maxPlaceNameLength) {
-        problems.push(`'${name}' is longer than ${MAP_FILE_LIMITS.maxPlaceNameLength} letters.`);
+      if (name.length > limits.maxPlaceNameLength) {
+        problems.push(`'${name}' is longer than ${limits.maxPlaceNameLength} letters.`);
       }
       const key = placeSlug(name);
       if (key.length === 0) {
@@ -1414,16 +1445,16 @@ export function readMapFile(
       if (
         spot.description !== undefined &&
         (typeof spot.description !== 'string' ||
-          spot.description.length > MAP_FILE_LIMITS.maxDescriptionLength)
+          spot.description.length > limits.maxDescriptionLength)
       ) {
         problems.push(
-          `The description of '${name}' must be text of at most ${MAP_FILE_LIMITS.maxDescriptionLength} letters.`,
+          `The description of '${name}' must be text of at most ${limits.maxDescriptionLength} letters.`,
         );
       }
     }
     return spots;
   };
-  const dropInSpots = names('dropIns', MAP_FILE_LIMITS.maxDropIns);
+  const dropInSpots = names('dropIns', limits.maxDropIns);
   // A kept id stands in for its drop-in's name, so no two may come out the same.
   const landings = dropInSpots.flatMap((spot) =>
     typeof spot.name === 'string' && (spot.id === undefined || typeof spot.id === 'string')
@@ -1433,7 +1464,7 @@ export function readMapFile(
   if (new Set(landings).size !== landings.length && problems.every((problem) => !problem.startsWith('Two drop-ins'))) {
     problems.push('Two drop-ins would be the same landing: give one another name.');
   }
-  names('exits', MAP_FILE_LIMITS.maxExits);
+  names('exits', limits.maxExits);
 
   for (const exit of Array.isArray(value.exits) ? value.exits.filter(isRecord) : []) {
     const opens = exit.opens;
@@ -1444,15 +1475,15 @@ export function readMapFile(
         (opens.when === 'after' &&
           isWholeNumber(opens.seconds) &&
           opens.seconds > 0 &&
-          opens.seconds <= MAP_FILE_LIMITS.maxExitDelaySeconds));
+          opens.seconds <= limits.maxExitDelaySeconds));
     if (!valid) {
       problems.push(
-        `Exit '${String(exit.name)}' must open always, after 1 to ${MAP_FILE_LIMITS.maxExitDelaySeconds} seconds, or when dug out.`,
+        `Exit '${String(exit.name)}' must open always, after 1 to ${limits.maxExitDelaySeconds} seconds, or when dug out.`,
       );
     }
   }
 
-  list('itemSpots', MAP_FILE_LIMITS.maxItemSpots).forEach((spot, index) => {
+  list('itemSpots', limits.maxItemSpots).forEach((spot, index) => {
     if (spot.hidden !== undefined && typeof spot.hidden !== 'boolean') {
       problems.push(`Item spot ${index + 1}'s hidden must be yes or no.`);
     }
@@ -1461,11 +1492,11 @@ export function readMapFile(
   const linesOf = (what: string, raw: unknown): void => {
     if (
       !Array.isArray(raw) ||
-      raw.length > MAP_FILE_LIMITS.maxLines ||
-      !raw.every((line) => typeof line === 'string' && line.length <= MAP_FILE_LIMITS.maxLineLength)
+      raw.length > limits.maxLines ||
+      !raw.every((line) => typeof line === 'string' && line.length <= limits.maxLineLength)
     ) {
       problems.push(
-        `${what} may say up to ${MAP_FILE_LIMITS.maxLines} lines of at most ${MAP_FILE_LIMITS.maxLineLength} letters.`,
+        `${what} may say up to ${limits.maxLines} lines of at most ${limits.maxLineLength} letters.`,
       );
     }
   };
@@ -1473,10 +1504,10 @@ export function readMapFile(
     if (
       typeof raw !== 'string' ||
       raw.trim().length === 0 ||
-      raw.length > MAP_FILE_LIMITS.maxPlaceNameLength
+      raw.length > limits.maxPlaceNameLength
     ) {
       problems.push(
-        `${what} needs a name of at most ${MAP_FILE_LIMITS.maxPlaceNameLength} letters.`,
+        `${what} needs a name of at most ${limits.maxPlaceNameLength} letters.`,
       );
     }
   };
@@ -1488,14 +1519,14 @@ export function readMapFile(
   const optional = (field: string, max: number): Record<string, unknown>[] =>
     value[field] === undefined ? [] : list(field, max);
 
-  optional('people', MAP_FILE_LIMITS.maxPeople).forEach((person, index) => {
+  optional('people', limits.maxPeople).forEach((person, index) => {
     const what = `Person ${index + 1}`;
     nameOf(what, person.name);
     oneOf(`${what}'s look`, person.look, MAP_FILE_LOOKS);
     oneOf(`${what}'s facing`, person.facing, MAP_FILE_FACINGS);
     linesOf(what, person.lines);
   });
-  optional('pokemon', MAP_FILE_LIMITS.maxPokemon).forEach((standing, index) => {
+  optional('pokemon', limits.maxPokemon).forEach((standing, index) => {
     if (!isFigureSpecies(standing.species)) {
       problems.push(`Pokémon ${index + 1} is not a Pokémon the game has.`);
     }
@@ -1503,25 +1534,25 @@ export function readMapFile(
       standing.level !== undefined &&
       (!isWholeNumber(standing.level) ||
         standing.level < 2 ||
-        standing.level > MAP_FILE_LIMITS.maxPokemonLevel)
+        standing.level > limits.maxPokemonLevel)
     ) {
       problems.push(
-        `Pokémon ${index + 1} fights at a level from 2 to ${MAP_FILE_LIMITS.maxPokemonLevel}.`,
+        `Pokémon ${index + 1} fights at a level from 2 to ${limits.maxPokemonLevel}.`,
       );
     }
   });
-  optional('berryTrees', MAP_FILE_LIMITS.maxBerryTrees).forEach((tree, index) => {
+  optional('berryTrees', limits.maxBerryTrees).forEach((tree, index) => {
     oneOf(`Berry tree ${index + 1}'s berry`, tree.berry, BERRY_IDS);
   });
-  optional('boulders', MAP_FILE_LIMITS.maxBoulders);
-  optional('signs', MAP_FILE_LIMITS.maxSigns).forEach((sign, index) =>
+  optional('boulders', limits.maxBoulders);
+  optional('signs', limits.maxSigns).forEach((sign, index) =>
     linesOf(`Sign ${index + 1}`, sign.lines),
   );
-  optional('landmarks', MAP_FILE_LIMITS.maxLandmarks).forEach((landmark, index) => {
+  optional('landmarks', limits.maxLandmarks).forEach((landmark, index) => {
     nameOf(`Landmark ${index + 1}`, landmark.name);
     oneOf(`Landmark ${index + 1}'s kind`, landmark.kind, Object.keys(MAP_FILE_LANDMARKS));
   });
-  optional('trainers', MAP_FILE_LIMITS.maxTrainers).forEach((trainer, index) => {
+  optional('trainers', limits.maxTrainers).forEach((trainer, index) => {
     const what = `Trainer ${index + 1}`;
     nameOf(what, trainer.name);
     oneOf(`${what}'s team`, trainer.team, Object.keys(MAP_FILE_TRAINER_TEAMS));
@@ -1530,9 +1561,9 @@ export function readMapFile(
     if (
       !isWholeNumber(trainer.sight) ||
       trainer.sight < 0 ||
-      trainer.sight > MAP_FILE_LIMITS.maxSight
+      trainer.sight > limits.maxSight
     ) {
-      problems.push(`${what} watches 0 to ${MAP_FILE_LIMITS.maxSight} tiles ahead.`);
+      problems.push(`${what} watches 0 to ${limits.maxSight} tiles ahead.`);
     }
     linesOf(what, trainer.lines);
   });
@@ -1541,8 +1572,8 @@ export function readMapFile(
     if (!Array.isArray(districts) || !districts.every(isRecord)) {
       problems.push(`'districts' must be a list.`);
     } else {
-      if (districts.length > MAP_FILE_LIMITS.maxDistricts) {
-        problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxDistricts} districts.`);
+      if (districts.length > limits.maxDistricts) {
+        problems.push(`A map holds at most ${limits.maxDistricts} districts.`);
       }
       districts.forEach((district, index) => {
         const what = `District ${index + 1}`;
@@ -1578,8 +1609,8 @@ export function readMapFile(
     if (!Array.isArray(doors) || !doors.every(isRecord)) {
       problems.push(`'doors' must be a list.`);
     } else {
-      if (doors.length > MAP_FILE_LIMITS.maxDoors) {
-        problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxDoors} doors.`);
+      if (doors.length > limits.maxDoors) {
+        problems.push(`A map holds at most ${limits.maxDoors} doors.`);
       }
       doors.forEach((door, index) => {
         const what = `Door ${index + 1}`;
@@ -1595,8 +1626,8 @@ export function readMapFile(
           y >= 0 &&
           w > 0 &&
           h > 0 &&
-          w <= MAP_FILE_LIMITS.maxDoorSide &&
-          h <= MAP_FILE_LIMITS.maxDoorSide &&
+          w <= limits.maxDoorSide &&
+          h <= limits.maxDoorSide &&
           x + w <= width &&
           y + h <= height;
         if (!fits) {
@@ -1614,6 +1645,7 @@ export function readMapFile(
     sized ? { width: width, height: height } : undefined,
     areaSizes,
     problems,
+    limits,
   );
 
   if (typeof value.wildlife !== 'string' || !Object.hasOwn(MAP_FILE_HABITATS, value.wildlife)) {
@@ -1642,6 +1674,7 @@ export function readMapFile(
 function readAreas(
   raw: unknown,
   problems: string[],
+  held: MapFileLimits,
 ): ReadonlyMap<string, { readonly width: number; readonly height: number }> {
   const sizes = new Map<string, { width: number; height: number }>();
   if (raw === undefined) {
@@ -1651,8 +1684,8 @@ function readAreas(
     problems.push(`'areas' must be a list.`);
     return sizes;
   }
-  if (raw.length > MAP_FILE_LIMITS.maxAreas) {
-    problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxAreas} areas.`);
+  if (raw.length > held.maxAreas) {
+    problems.push(`A map holds at most ${held.maxAreas} areas.`);
   }
   raw.forEach((area, index) => {
     const what = `Area ${index + 1}`;
@@ -1665,10 +1698,10 @@ function readAreas(
     if (
       typeof area.name !== 'string' ||
       area.name.trim().length === 0 ||
-      area.name.length > MAP_FILE_LIMITS.maxPlaceNameLength
+      area.name.length > held.maxPlaceNameLength
     ) {
       problems.push(
-        `${what} needs a name of at most ${MAP_FILE_LIMITS.maxPlaceNameLength} letters.`,
+        `${what} needs a name of at most ${held.maxPlaceNameLength} letters.`,
       );
     }
     const kind: MapFileAreaKind | undefined = (MAP_FILE_AREA_KINDS as readonly unknown[]).includes(
@@ -1727,8 +1760,8 @@ function readAreas(
       problems.push(`${what}'s furniture must be a list.`);
       return;
     }
-    if (furniture.length > MAP_FILE_LIMITS.maxFurniture) {
-      problems.push(`${what} holds at most ${MAP_FILE_LIMITS.maxFurniture} pieces of furniture.`);
+    if (furniture.length > held.maxFurniture) {
+      problems.push(`${what} holds at most ${held.maxFurniture} pieces of furniture.`);
     }
     furniture.forEach((piece, at) => {
       if (typeof piece.kind !== 'string' || !isFurniture(piece.kind)) {
@@ -1758,6 +1791,7 @@ function readLinks(
   outdoors: { readonly width: number; readonly height: number } | undefined,
   areaSizes: ReadonlyMap<string, { readonly width: number; readonly height: number }>,
   problems: string[],
+  limits: MapFileLimits,
 ): void {
   if (raw === undefined) {
     return;
@@ -1766,8 +1800,8 @@ function readLinks(
     problems.push(`'links' must be a list.`);
     return;
   }
-  if (raw.length > MAP_FILE_LIMITS.maxLinks) {
-    problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxLinks} ways through.`);
+  if (raw.length > limits.maxLinks) {
+    problems.push(`A map holds at most ${limits.maxLinks} ways through.`);
   }
   raw.forEach((link, index) => {
     const what = `Way through ${index + 1}`;
@@ -2108,13 +2142,17 @@ function hasUnnamedOutdoorGround(file: MapFile): boolean {
  * file it has not, because loading one is a bug in the caller rather than
  * something to recover from.
  */
-export function buildPlayerMap(file: MapFile): PlayerMap {
-  return buildFileMap(file, playerMapId(file)) as PlayerMap;
+export function buildPlayerMap(file: MapFile, limits: MapFileLimits = MAP_FILE_LIMITS): PlayerMap {
+  return buildFileMap(file, playerMapId(file), limits) as PlayerMap;
 }
 
 /** A map file built into game content under `id`: a player's `player-` id, or a shipped map's own. */
-export function buildFileMap(file: MapFile, id: WorldMapId): FileMap {
-  const reading = readMapFile(file);
+export function buildFileMap(
+  file: MapFile,
+  id: WorldMapId,
+  limits: MapFileLimits = MAP_FILE_LIMITS,
+): FileMap {
+  const reading = readMapFile(file, { limits });
   if (!reading.ok) {
     throw new Error(
       `map file '${String(file.id)}' cannot be loaded: ${reading.problems.join(' ')}`,

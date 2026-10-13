@@ -20,9 +20,11 @@ import { extractionPointsOn } from './extractionPoints';
 import { districtAt } from './districts';
 import { districtEncounterTables } from './localEncounters';
 import {
+  BUILT_IN_MAP_FILE_LIMITS,
   buildPlayerMap,
   freeMapFileId,
   keepPublishedIds,
+  MAP_FILE_LIMITS,
   MAP_FILE_TRAINER_TEAMS,
   plainText,
   readMapFile,
@@ -72,6 +74,31 @@ const withTile = (x: number, y: number, letter: string): string[] =>
 describe('reading a map file', () => {
   it('reads the sample', () => {
     expect(problemsOf(SAMPLE)).toEqual([]);
+  });
+
+  it("holds a player's map to a player's limits, and the game's own to its own", () => {
+    // One way out past a player's limit, each with a name of its own.
+    const exits = Array.from({ length: MAP_FILE_LIMITS.maxExits + 1 }, (_, index) => ({
+      ...SAMPLE.exits[0],
+      name: `Way ${index + 1}`,
+    }));
+    const crowded = edited({ exits });
+    expect(problemsOf(crowded).join(' ')).toContain(`${MAP_FILE_LIMITS.maxExits}`);
+    expect(readMapFile(crowded, { limits: BUILT_IN_MAP_FILE_LIMITS }).ok).toBe(true);
+  });
+
+  it("only ever lets the game's own maps hold more, never be bigger or smaller", () => {
+    for (const key of Object.keys(MAP_FILE_LIMITS) as (keyof typeof MAP_FILE_LIMITS)[]) {
+      if (key.startsWith('min')) {
+        expect(`${key} ${BUILT_IN_MAP_FILE_LIMITS[key]}`).toBe(`${key} ${MAP_FILE_LIMITS[key]}`);
+      } else {
+        expect(BUILT_IN_MAP_FILE_LIMITS[key]).toBeGreaterThanOrEqual(MAP_FILE_LIMITS[key]);
+      }
+    }
+    expect([BUILT_IN_MAP_FILE_LIMITS.maxWidth, BUILT_IN_MAP_FILE_LIMITS.maxHeight]).toEqual([
+      MAP_FILE_LIMITS.maxWidth,
+      MAP_FILE_LIMITS.maxHeight,
+    ]);
   });
 
   it('refuses a file from a format it does not know, and says which', () => {

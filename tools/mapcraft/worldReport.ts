@@ -5,7 +5,7 @@
 import { allPassed, hardChecks, type HardCheck } from './checks';
 import { formatReport, reportOn, type MapcraftReport, type MapcraftResult } from './report';
 import { stitch, type StitchResult } from './stitch';
-import { checkPlan, planBounds, unreachableDistricts, type WorldPlan } from './worldPlan';
+import { checkPlan, planBounds, planLimits, unreachableDistricts, type WorldPlan } from './worldPlan';
 
 /** What a world program module's default export returns: the plan, and the districts drawn so far. */
 export interface WorldResult {
@@ -25,7 +25,7 @@ export function reportOnWorld(world: WorldResult): WorldReport {
     world.plan,
     Object.fromEntries(Object.entries(world.districts).map(([id, result]) => [id, result.file])),
   );
-  const checks = hardChecks(stitched.file);
+  const checks = hardChecks(stitched.file, { limits: planLimits(world.plan) });
   const districts = Object.fromEntries(
     Object.entries(world.districts).map(([id, result]) => [id, reportOn(result)]),
   );

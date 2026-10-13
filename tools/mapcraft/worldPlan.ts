@@ -17,7 +17,13 @@
  * Sizes, offsets and widths are even, because the Kanto sheet draws trees on
  * a 2x2 lattice: an odd seam would cut every tree along it in half.
  */
-import { MAP_FILE_LIMITS, type MapFileExit, type MapFileHabitat } from '../../src/game/world/mapFile';
+import {
+  BUILT_IN_MAP_FILE_LIMITS,
+  MAP_FILE_LIMITS,
+  type MapFileExit,
+  type MapFileHabitat,
+  type MapFileLimits,
+} from '../../src/game/world/mapFile';
 import { MapProgram } from './program';
 import type { TileRect } from './tiles';
 
@@ -100,6 +106,17 @@ export interface WorldPlan {
   readonly exits: readonly WorldExit[];
   readonly landmarks?: readonly PlannedLandmark[];
   readonly caves?: readonly PlannedCave[];
+  /**
+   * The game's own map, not a player's: its stitched file is held to
+   * `BUILT_IN_MAP_FILE_LIMITS`, as `builtInFileMap` reads it. Each district's
+   * own file is still a map anybody could draw.
+   */
+  readonly builtIn?: true;
+}
+
+/** What a plan's stitched file may hold. */
+export function planLimits(plan: WorldPlan): MapFileLimits {
+  return plan.builtIn === true ? BUILT_IN_MAP_FILE_LIMITS : MAP_FILE_LIMITS;
 }
 
 /** One gap in a district's sealed edge, in the district's own tiles. */
@@ -238,6 +255,7 @@ export function openingTiles(size: number, opening: Opening, depth = 1): [number
 export function checkPlan(plan: WorldPlan): string[] {
   const problems: string[] = [];
   const size = plan.districtSize;
+  const held = planLimits(plan);
   if (size % 2 !== 0 || size < 16)
     problems.push(`districtSize ${size} has to be even and at least 16.`);
   const ids = new Set<string>();
@@ -252,23 +270,23 @@ export function checkPlan(plan: WorldPlan): string[] {
     const key = district.cell.join(',');
     if (cells.has(key)) problems.push(`Two districts stand on cell ${key}.`);
     cells.add(key);
-    if (district.name.length > MAP_FILE_LIMITS.maxPlaceNameLength)
+    if (district.name.length > held.maxPlaceNameLength)
       problems.push(
-        `'${district.name}' is longer than ${MAP_FILE_LIMITS.maxPlaceNameLength} letters.`,
+        `'${district.name}' is longer than ${held.maxPlaceNameLength} letters.`,
       );
   }
-  if (plan.districts.length > MAP_FILE_LIMITS.maxDistricts)
+  if (plan.districts.length > held.maxDistricts)
     problems.push(
-      `A map file holds ${MAP_FILE_LIMITS.maxDistricts} districts at most; the plan has ${plan.districts.length}.`,
+      `A map file holds ${held.maxDistricts} districts at most; the plan has ${plan.districts.length}.`,
     );
   if (plan.districts.length > 0) {
     const bounds = planBounds(plan);
     if (
-      bounds.columns * size > MAP_FILE_LIMITS.maxWidth ||
-      bounds.rows * size > MAP_FILE_LIMITS.maxHeight
+      bounds.columns * size > held.maxWidth ||
+      bounds.rows * size > held.maxHeight
     ) {
       problems.push(
-        `The plan is ${bounds.columns * size}x${bounds.rows * size} tiles; a map file is ${MAP_FILE_LIMITS.maxWidth}x${MAP_FILE_LIMITS.maxHeight} at most.`,
+        `The plan is ${bounds.columns * size}x${bounds.rows * size} tiles; a map file is ${held.maxWidth}x${held.maxHeight} at most.`,
       );
     }
   }
@@ -328,17 +346,17 @@ export function checkPlan(plan: WorldPlan): string[] {
     for (const mouth of cave.mouths) inside(`A mouth of ${cave.name}`, mouth.district, mouth.at);
   }
   const landings = (plan.landmarks ?? []).filter((landmark) => landmark.kind === 'landing').length;
-  if (landings > MAP_FILE_LIMITS.maxDropIns)
+  if (landings > held.maxDropIns)
     problems.push(
-      `A map file holds ${MAP_FILE_LIMITS.maxDropIns} drop-ins at most; the plan has ${landings} landings.`,
+      `A map file holds ${held.maxDropIns} drop-ins at most; the plan has ${landings} landings.`,
     );
   const floors = (plan.caves ?? []).reduce((total, cave) => total + cave.floors, 0);
-  if (floors > MAP_FILE_LIMITS.maxAreas)
+  if (floors > held.maxAreas)
     problems.push(
-      `A map file holds ${MAP_FILE_LIMITS.maxAreas} insides and cave floors at most; the plan's caves have ${floors}.`,
+      `A map file holds ${held.maxAreas} insides and cave floors at most; the plan's caves have ${floors}.`,
     );
-  if (plan.exits.length > MAP_FILE_LIMITS.maxExits)
-    problems.push(`A map file holds ${MAP_FILE_LIMITS.maxExits} ways out at most.`);
+  if (plan.exits.length > held.maxExits)
+    problems.push(`A map file holds ${held.maxExits} ways out at most.`);
   return problems;
 }
 
