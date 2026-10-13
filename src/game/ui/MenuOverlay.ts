@@ -436,11 +436,13 @@ export class MenuOverlay {
       const box = pane.getBoundingClientRect();
       const rows =
         scrolled || more
-          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((element) =>
-              (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
-                ({ top, bottom }) => ({ top, bottom, element, heading: element.classList.contains('px-subheading') }),
-              ),
-            )
+          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)]
+              .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
+              .flatMap((element) =>
+                (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
+                  ({ top, bottom }) => ({ top, bottom, element, heading: element.classList.contains('px-subheading') }),
+                ),
+              )
           : [];
       this.markTopCut(pane, box, rows, scrolled ? unit : 0);
       pane.querySelectorAll<HTMLElement>('[data-folded]').forEach((element) => {
@@ -599,6 +601,42 @@ function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
   }
   return lines.length > 0 ? lines : [element.getBoundingClientRect()];
 }
+
+/** How `rowPieces` sees a tree of elements: what is in one, and what kind of thing each is. */
+export interface RowTree<Node> {
+  readonly children: (node: Node) => readonly Node[];
+  /** A run of wrapped copy, which the fold may fall between the lines of. */
+  readonly wraps: (node: Node) => boolean;
+  /** Holds a run of wrapped copy somewhere inside it. */
+  readonly holdsWrap: (node: Node) => boolean;
+  /** A row that is wrapped copy beside its icon and tag rather than a control. */
+  readonly isTextRow: (node: Node) => boolean;
+}
+
+/**
+ * What a fold has to keep whole in one of a pane's rows: the row itself, unless
+ * it is a row of wrapped copy, which is its own lines beside its icon and tag.
+ * The result screen's contract is one row of four or five lines, and taken
+ * whole a pane that overflowed by one line of it covered the row and its
+ * heading with a blank strip - the contract, the thing the raid was for, gone
+ * from the screen the moment the MORE cue arrived. A control stays whole: a
+ * button with no lower edge is the fault this rule exists to prevent.
+ */
+export function rowPieces<Node>(row: Node, tree: RowTree<Node>): Node[] {
+  if (!tree.isTextRow(row) || !tree.holdsWrap(row)) {
+    return [row];
+  }
+  const pieces = (node: Node): Node[] =>
+    tree.wraps(node) ? [node] : tree.holdsWrap(node) ? tree.children(node).flatMap(pieces) : [node];
+  return tree.children(row).flatMap(pieces);
+}
+
+const DOM_ROW_TREE: RowTree<HTMLElement> = {
+  children: (node) => [...node.children].filter((child): child is HTMLElement => child instanceof HTMLElement),
+  wraps: (node) => node.classList.contains('px-wrap'),
+  holdsWrap: (node) => node.querySelector('.px-wrap') !== null,
+  isTextRow: (node) => node.matches('.px-row:not(button)') && node.querySelector('button') === null,
+};
 
 /** What the strip counts: the entries a player is looking for, not the bands between them. */
 const SCROLL_ENTRIES = 'button, .px-empty';

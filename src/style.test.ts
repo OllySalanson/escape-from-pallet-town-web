@@ -333,6 +333,21 @@ describe('a card on the teaching screen', () => {
   });
 });
 
+describe('a row of wrapped copy', () => {
+  // A pane's fold may fall between such a row's lines (`rowPieces`), so its icon
+  // stands beside the first line rather than centred down all of them, where
+  // the result screen's contract lost it to the MORE strip.
+  it('keeps its icon beside its first line', () => {
+    const body = [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) =>
+        selectors.split(',').some((one) => one.trim() === ':where(.pixel-ui) .px-row.has-icon:has(.px-wrap) > .item-icon'),
+      )
+      .map(([, , rule]) => rule)
+      .join(';');
+    expect(body).toMatch(/align-self:\s*start;/);
+  });
+});
+
 describe('the defeat line-up', () => {
   // The line-up in front of a lost raid's report is not a pixel-ui screen, but
   // it is set in the same face, and the face has two limits that hold anywhere

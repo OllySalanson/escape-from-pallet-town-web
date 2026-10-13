@@ -1498,6 +1498,13 @@ button {
 :where(.pixel-ui) .px-row.has-icon {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
+/* A row of wrapped copy keeps its icon beside its first line, the line that
+   names it. Centred down four or five lines it stood where a pane's fold may
+   fall between them (`rowPieces` in MenuOverlay.ts), and the result screen's
+   contract lost its icon to the MORE strip with three of its lines drawn. */
+:where(.pixel-ui) .px-row.has-icon:has(.px-wrap) > .item-icon {
+  align-self: start;
+}
 /* A row with a count selector beside it: the row is still the one control that
    acts, and the selector says how many. The pair is a grid so the selector
    keeps its own width and the row takes the rest. */

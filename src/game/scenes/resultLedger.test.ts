@@ -20,6 +20,7 @@ import {
   foldedRows,
   hasMoreBelow,
   moreLabel,
+  rowPieces,
   SCROLL_ROWS,
   scrollCoverHeight,
   scrollEntries,
@@ -153,6 +154,46 @@ describe('the result screen ledger', () => {
     expect(scrollCoverHeight(pane, [contract, { top: 80, bottom: 100, heading: true }, errands, firstErrand], 3)).toBe(
       90,
     );
+  });
+
+  it("folds between the lines of a wrapped row rather than hiding the contract under the strip", () => {
+    // The result screen at 1200x768 (2x), a Route 1 survey banked, measured off
+    // the live screen: the contract row's reward runs four lines and the pane
+    // overflowed by its last. Taken whole, the row and its CONTRACT heading went
+    // under a blank strip the moment the MORE cue arrived.
+    type Node = { name: string; wrap?: boolean; button?: boolean; children?: Node[] };
+    const tree = {
+      children: (node: Node) => node.children ?? [],
+      wraps: (node: Node) => node.wrap === true,
+      holdsWrap: function holds(node: Node): boolean {
+        return (node.children ?? []).some((child) => child.wrap === true || holds(child));
+      },
+      isTextRow: (node: Node) => node.button !== true,
+    };
+    const icon = { name: 'icon' };
+    const title = { name: 'title', wrap: true };
+    const reward = { name: 'reward', wrap: true };
+    const contract = { name: 'contract', children: [icon, { name: 'main', children: [title, reward] }] };
+    expect(rowPieces(contract, tree).map((piece) => piece.name)).toEqual(['icon', 'title', 'reward']);
+    // A control stays whole, and so does a row with no wrapped copy in it.
+    const control = { name: 'board row', button: true, children: [{ name: 'main', children: [title] }] };
+    expect(rowPieces(control, tree)).toEqual([control]);
+    const potion = { name: 'potion', children: [icon, { name: 'main', children: [{ name: 'name' }] }] };
+    expect(rowPieces(potion, tree)).toEqual([potion]);
+
+    const pane = { top: 182, bottom: 610 };
+    const heading = { top: 462, bottom: 490, heading: true };
+    const lines = [
+      { top: 496, bottom: 528 },
+      { top: 496, bottom: 520 },
+      { top: 520, bottom: 544 },
+      { top: 544, bottom: 568 },
+      { top: 568, bottom: 592 },
+      { top: 592, bottom: 616 },
+    ];
+    expect(scrollCoverHeight(pane, [heading, { top: 494, bottom: 618 }], 2)).toBe(148);
+    expect(scrollCoverHeight(pane, [heading, ...lines], 2)).toBe(42);
+    expect(foldedRows(pane, lines, pane.bottom - 42)).toEqual([]);
   });
 
   it('leaves out the line beside a covered row that the fold would cut, in either column', () => {
