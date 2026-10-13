@@ -6,16 +6,19 @@
  * road comes down beside it to the strand, where a stone jetty runs out into
  * the sea to Fisher's Jetty, the way off the map. In the west the land ends in
  * cliffs with the sea cave at their foot (the Greystone Caves' lowest mouth,
- * planted once the caves are stitched into the vale), and the trail from
+ * onto the caves' bottom floor), and the trail from
  * Reedmere crosses the river on a stone bridge on its way to the road. The
  * road for the orchards leaves east along the top of the heath.
  *
  * Stone laid over water is the bridge and the jetty, as at The Crossing; the
  * sea runs to the map's south edge, which needs no wood to seal it.
  */
+import { plantCaveMouth } from '../../caves';
+import type { Point } from '../../program';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { SEAM_DEPTH, startDistrict } from '../../worldPlan';
+import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { GREYSTONE_VALE } from './plan';
 
 /** The land above the coast, a letter a lattice cell: T the wood, . the heath. */
@@ -144,12 +147,22 @@ export function gullStrand(): MapcraftResult {
   // (`hunterFlee.test.ts`).
   p.meadow(4, 8, 2, 2);
 
+  // -- The sea cave: the Greystone Caves' lowest mouth, in the cliff foot over
+  // the cove, onto the caves' bottom floor. Placed by hand: `caveMouthSpots`
+  // wants grass or a path in front, and this one opens straight onto the beach.
+  const mouth: Point = [13, 32];
+  plantCaveMouth(p, mouth);
+  const cave = greystoneCaves();
+
   const file = districtFile(GREYSTONE_VALE, 'gull-strand', p, {
     exits: [{ x: 4, y: 8, name: "Smugglers' Path", opens: { when: 'always' } }],
     dropIns: [{ x: 41, y: 45, name: 'The Strand', description: 'The strand where the road comes down to the sea.' }],
     itemSpots: [{ x: 3, y: 36, hidden: true }, { x: 56, y: 44 }, { x: 18, y: 8 }],
     extra: {
       landmarks: [{ x: 35, y: 45, name: 'River Mouth', kind: 'jetty' }],
+      // The caves' floors ride in Tanglewood's file too; the stitcher takes them once.
+      areas: cave.areas,
+      links: [caveMouthLink(cave, 'sea', mouth), ...caveLadders(cave)],
       signs: [{ x: 48, y: 12, lines: ['GULL STRAND', 'East: the orchards. South: the strand and the jetty.'] }],
       people: [
         {
