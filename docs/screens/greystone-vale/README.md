@@ -1402,8 +1402,8 @@ road the drovers carried their dead along:
   FireRed's third floor stands them, cell for cell. Beside its inner block of
   gold graves are the grave goods, a cache of lamp oil and linen.
 - **The Spell Tag.** It lies where FireRed's third floor leaves its item, one raid
-  in two, as a prize. It is the fifth piece of gear: Ghost moves hit a tenth harder,
-  as FireRed's does.
+  in four, as a prize. It is a piece of gear the Miracle Seed's kind: Ghost moves
+  hit a tenth harder, as FireRed's do.
 
 ![The nave](moor-chapel-nave.png) ![The crypt](moor-chapel-crypt.png)
 

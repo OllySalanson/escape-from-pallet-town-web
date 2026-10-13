@@ -78,42 +78,42 @@
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........ddd..gggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddddddddddddddddddddddd........CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTdd......................W.....................TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT......f.ddd.ggggggg.TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddddddddddddddddddddddd........CCCCCCCCCCTTTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..dd............WWWWWWWWWWWWWWWWWWWWW.............TTTTTTTTTTTTTTTTTTTTTTTTTTCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT......f.ddd.ggggggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWddd........CCCCCCCCCCTTTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..dd........WWWWWWWWWWWWWWWWWWWWWWWWWWWWW.........TTTTTTTTTTTTTTTTTTTTTTTTTTCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...dd...ddd..gggggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT...WWWWWWWW.......TTTTTTTTTTTTTTTTTT........TTTTTTTTTTTTTTTTTT..dd......WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.......TTTTTTTTTTTTTTTTTTTTTTTTTTCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...dddddddd...ggggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT..WWWWWWWWWW..ggggTTTTTTTTTTTTTTTTTT........TTTTTTTTTTTTTTTTTT..dd.....WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW......TTTTTTTTTTTTTTTTTTTTTTTTTTCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.ddddddddddddgggg.TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCvvvvvvvvvvTTTTTTTTTTTTTT....WWWWWWWWWW.ggggg..TTTTTTTTTTTTTT.....f........TTTTTTTTTTTTdddddd....WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.......TTTTTTTTTTTTTTTTTTTTTTCCCC....................TTTTTTTTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT......ddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCvvvvvvvvvvTTTTTTTTTTTTTT.....WWWWWWWW...ggg...TTTTTTTTTTTTTT..............TTTTTTTTTTTTdddddd.....WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW........TTTTTTTTTTTTTTTTTTTTTTCCCC.ggggg..............TTTTTTTTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........TTTTTT........ddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTT..................dddddddddddd..TTTT.......###......TTTTTTTTTTdd..........WWWWWWWWWWWWWWWWWWWWCCCCWWWWWWWWW.........TTTTTTTTTTTTTTTTTTTTTTCCCCggggggg...............f.TTTTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..WWWWW.TTTTTTCCCCCCCCCC..ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTT..................dddddddddddd..TTTT...........f....TTTTTTTTTTdd............WWCCCWWWWWWWWWWWWCCCCCCWWWWWW...........TTTTTTTTTTTTTTTTTTTTTTCCCC..gggg..................TTTTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.WWWWWWW....TTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTddddddddddddddddddddTTTTTTTTddTTTTTT............f...TTTTTTTTTTdd..........CCCCCCCWWWWWWWWWWWCCCCCCCWWWW.............TTTTTTTTTTTTTTTTTTTTTTCCCCFFFFFFFFFFF..FFFFFFF..........TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.WWWWWWW....TTCCCCCCCCCC..dddgggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTddddddddddddddddddddTTTTTTTTddTTTTTT...........f....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFgg................F..........TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.WWWWWWW....TTCCCCCCCCCC..dddgggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTdd..gggggg..........TTTTTTTTdd......ggg...ddddd.....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFg.................F..........TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..WWWWW.....TTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTdd...gggg...........TTTTTTTTdd......gggg.ddddddd....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFdddddddddddddddddddddddddd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..................TTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.<=====>TTTTTTTTTTTTTTdd..TTTTTT..TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW..gTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCFdddddddddddddddddddddddddd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..................TTCCCCCCCCCC..ddd..gggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.gggggg.TTTTTTTTTTTTTTdd..TTTTTT..TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW.ggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF..................F.....dd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT............TTCCCCCCCCCC..ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCC......ddd...CCCCCCWWWWCCCC.dddCCCCCCCCdd..ggggg.TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTTTTTT....dd....dd..TTTTTTTTTTTTddTTTTTTTTTTTTTT......................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF.......#.....gggggF.....dd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........f...TT............ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCC......ddd...CCCCCCWWWWCCCC.dddCCCCCCCCdd........TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTTTTTT....dd....dd..TTTTTTTTTTTTddTTTTTTTTTTTTTT......................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF...........gggggggF...f.dd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..f......f..TTTTTT.dddddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCddddddddddddddd..............dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTT..dd....ddTTTTTTTTTTTTTTddTTTTTTTTTTTT........................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCFFFFFF..FFFFFFFFF.FF.....dd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....dd.....TTTTTT.dddddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCddddddddddddddd..............dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTT..dd....ddTTTTTTTTTTTTTTddTTTTTTTTTTTT........................WWW.ggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC...f..........f..........dd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....ddddddddddddddddddddddddgggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCdddddddddddddddTTTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTT..TTddTTTTTTTTTTdd..TTdd..TTTTTTTTTTTTdd...................dddddddddd.......WWW.gg..........TTTTTTTTTTTTTTTTTTTTTTCCCCCCCCC....CCCCCCC...CCCCC.dd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....ddddddddddddddddddgggggggggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCC......ddd.....TTTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTT..TTddTTTTTTTTTTdd..TTdd..TTTTTTTTTTTTdd..................dddddddddddd.....MMMMM............TTTTTTTTTTTTTTTTTTTTTTCCCCCCCCC<==>CCCCCCC<=>CCCCC.dd...TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..ggggg.TTgggg.ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTT........TTddTTTTTTTTTTdd..TTdddddddddddddddddddddddddddddddddddddddddddddddddddddMMMMMdddddddd....TTTTTTTTTTTTTTTTTTTTTTCCCCF......................F.dd...........TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..ggggg.TTggg..ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTT........TTddTTTTTTTTTTdd..TTdddddddddddddddddddddddddddddddddddddddddddddddddddddMMMMMdddddddd....TTTTTTTTTTTTTTTTTTTTTTCCCCF.ggggg..........fff...F.dd.FFFFFFFFF.TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...gggg.TTggg..ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCgggg..dddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTT........dddd....TTTTdd..TTTTTTTTTTTTTTTT.....dd................dddddddd.dd.....MMMMM......dd....TTTTTTTTTTTTTTTTTTTTTTCCCCFgggggg.........ffffo..F.dd.........F.TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........TT.....ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCgggg..dddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTT.......dddddddd.TTTTdd..TTTTTTTTTTTTTTTT.....dd....................dd.........ggWWW.......dd....TTTTTTTTTTTTTTTTTTTTTTCCCCFggggg.........fff#ff..F.dd.........F.TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTgggg......dddddddddd..TTdd..TTTTTTTTTTTTTTTT.....dd....................dd........gggWWW.ggggggdd....TTTTTTCCCCCCCCCCCCCCCCCCCCF.ggg..o.....o..ff.ff..F.dd.........F.TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTggggg.....ddddddddddd.TTdd..TTTTTTTTTTTTTTTT.....dd.........FFFFFFFFFFFddFFFFFFF.gggWWWgggggggdd....TTTTTTCCCCCCCCCCCCCCCCCCCCF......PPPPPPPPPP......F.dd.f.........TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....dddddd...............gggggg......TTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCC..ggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTgggg......dddddddddddddddd..TTTTTTTTTTTTTTTT.....dd.........FgggggggvvvvvvvggggF..ggWWW.ggggg.dd....TTTTTTCCCCCCCCCCCCCC......F....PPPPPPP...PP......F.dd..f......F.TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....dddddd..............gggggggg.....TTTTTTTTCCCCCCCCggggddd.ggggggCCCCWWWWCCCC..ggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT..........dd.ddddd..dddddd..TTTTTTTTTTTTTTTT.....dd.........FgggggggggvvvvgggggF.gggWWW.......dd....TTTTTTggg.dddddd..........F....PPPPPPP...PP......F.dd...........TTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC.dddddd...........................TTTTTTTTTTTTTT......ddd.ggggggCCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT..........TTTT..............TTTTTTTTTTTTTTTT.....dd.........FvgggggggvvvvggggggF..ggWWW.......dd....TTTTTTgggddddddddddddddddd.PPPPPPPPPPP...PPPPPPPPPdddddddd..TTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC....ddd...........................TTTTTTTTTTTTTT......ddd.ggggggCCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT..........TTTT..............TTTTTTTTTTTTTTTT.ddddddddddddd..FgggggvvvvvvvvvggggF.gggWWW.......dd....TTTTTTggg.dddddddddddddddd.PPPPPPPPPPPPPPP.PPPPPPPdddddddd..TTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........ddddddddddddddddddddddddddddddddddddddddddddddddddddd.......CCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT............................TTTTTTTTTTTTTTTT.ddddddddddddd..FvvvvvvvvvvvvvvvgggF.gggWWWgggggggdd....TTTTTTTTggg......ggggggg..F.....PPPPPPP..........F......dddddddddd..",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....o..ddddddddddddddddddddddddddddddddddddddddddddddddddddd.......CCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.gggggggg...................TTTTTTTTTTTTTTTT................FvvvggggggggggvvvvvF....WWW.ggggggdd....TTTTTTTT.ggggg..ggggggggg.F.......f.PP.f.........F......dddddddddd.o",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....o..ddd................gggggggg...TTTTTTTTddddddddddddddd.....CCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTgggggggggg................TTTTTTTTTTTTTTTTTT.FFFF..FFFFFFFF.FvgggggggggggggvvvvF..WWWWW.......dd....TTTTTT.....ggg....TTTTTTTTFggggggg..PP.........f.F.......ggg..TTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTf..f....ddd.................gggggg....TTTTTTTTdddddd..............CCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggggg...................TTTTTTTTTTTTTTTTTT.Fff..........F.FvvgggggggggggggvggF..WWWWWWWWW...dd....TTTTTT............TTTTTTTTFgggggggg.PP...gggggg..F..WWWWWW....TTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.f..ddddddd.........TTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTgggggggg..................TTTT..TTTT......TTTTTTTT.Ff........f..F.FvvvvvgggggggvvvgggFWWWWWWWWWWWWW.dd....TTTTTTTTTT......TTTTTTTTTTFgggggggggPP..gggggggg.F..WWWWWWggTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddd.........TTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTgggggggg..................TTTT..TTTT......TTTTTTTT.F..f.........F.FvvvvvvvvvvvvvvggggFWWWWWWWWWWWWW.dd....TTTTTTTTTT......TTTTTTTTTTF.ggggggg.PP.ggggggggg.F..WWWWWWggTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT<==>ddddddd...gggg..TTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTggggggggTT..........TTTTTTTTTT..TTTT......TTTTTTTT.FFFFFF..FFFFFF.FFFFFFFFFFvFFFFFFFFFWWWWWWWWWWWWWWdd....TTTTTTTTTTTTTTTTTTTTTTTTTTF..ggggg..PP..ggggggg..F..WWWWWW..TTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTggggggggTT..........TTTTTTTTTT..TTTT......TTTTTTTT.......dd.................o.........WWWWWWWWWWWWW.dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF...ggg...PP....gggg...F.gggg.....TTTTTTTT",
+  "TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...dd...ddd..gggggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT...WWWWWWWW.......TTTTTTTTTTTTTTTTTT........TTTTTTTTTTTTTTTTTT..dd......WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.......TTTTTTTTTTTTTTTTTTTTTTTTTTCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...dddddddd...ggggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT..WWWWWWWWWW..ggggTTTTTTTTTTTTTTTTTT........TTTTTTTTTTTTTTTTTT..dd.....WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW......TTTTTTTTTTTTTTTTTTTTTTTTTTCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.ddddddddddddgggg.TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCvvvvvvvvvvTTTTTTTTTTTTTT....WWWWWWWWWW.ggggg..TTTTTTTTTTTTTT.....f........TTTTTTTTTTTTdddddd....WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.......TTTTTTTTTTTTTTTTTTTTTTCCCC....................TTTTTTTTTTTTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT......ddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCCCCdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCvvvvvvvvvvTTTTTTTTTTTTTT.....WWWWWWWW...ggg...TTTTTTTTTTTTTT..............TTTTTTTTTTTTdddddd.....WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW........TTTTTTTTTTTTTTTTTTTTTTCCCC.ggggg..............TTTTTTTTTTTTTTTTTTTTTT",
+  "TTTTTTTTCCCCCCCCCCCCCCCC......CCCCCCCC..........TTTTTTTTTTTTTTTTTTTTTT........TTTTTT........ddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTT..................dddddddddddd..TTTT.......###......TTTTTTTTTTdd..........WWWWWWWWWWWWWWWWWWWWCCCCWWWWWWWWW.........TTTTTTTTTTTTTTTTTTTTTTCCCCggggggg...............f.TTTTTTTTTTTTTTTTTT",
+  "TTTTTTTTCCCCCCCCCCCCC....ggggg..CCCC.......ggg..TTTTTTTTTTTTTTTTTTTTTT..WWWWW.TTTTTTCCCCCCCCCC..ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddWWWWWWWWWWWWWWWWWWdddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTT..................dddddddddddd..TTTT...........f....TTTTTTTTTTdd............WWCCCWWWWWWWWWWWWCCCCCCWWWWWW...........TTTTTTTTTTTTTTTTTTTTTTCCCC..gggg..................TTTTTTTTTTTTTTTTTT",
+  "TTTTTTTTCCCCWWWWCCC....gggggggg..........gggggg.TTTTTTTTTTTTTTTTTTTTTT.WWWWWWW....TTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTddddddddddddddddddddTTTTTTTTddTTTTTT............f...TTTTTTTTTTdd..........CCCCCCCWWWWWWWWWWWCCCCCCCWWWW.............TTTTTTTTTTTTTTTTTTTTTTCCCCFFFFFFFFFFF..FFFFFFF..........TTTTTTTTTTTT",
+  "TTTTTTTTCCCWWWWWW.....gggggggggg.......gggggggg.TTTTTTTTTTTTTTTTTTTTTT.WWWWWWW....TTCCCCCCCCCC..dddgggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTddddddddddddddddddddTTTTTTTTddTTTTTT...........f....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFgg................F..........TTTTTTTTTTTT",
+  "TTTTTTTTCCWWWWWWW.....ggggggggggg.....gggggggg..ddTTTTTTTTTTTTTTTTTTTT.WWWWWWW....TTCCCCCCCCCC..dddgggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTdd..gggggg..........TTTTTTTTdd......ggg...ddddd.....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFg.................F..........TTTTTTTTTTTT",
+  "TTTTTTTTCCWWWWWWW......ggggggggg..ddddddddddddddddTTTTTTTTTTTTTTTTTTTT..WWWWW.....TTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTdd...gggg...........TTTTTTTTdd......gggg.ddddddd....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFdddddddddddddddddddddddddd...TTTTTTTTTTTT",
+  "TTTTTTTT..WWWWWW.........ggggg....dddddddddddddddd................................TTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.<=====>TTTTTTTTTTTTTTdd..TTTTTT..TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW..gTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCFdddddddddddddddddddddddddd...TTTTTTTTTTTT",
+  "TTTTTTTT..ggggggg..ddddddddddddddddddddddddddddddd................................TTCCCCCCCCCC..ddd..gggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.gggggg.TTTTTTTTTTTTTTdd..TTTTTT..TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW.ggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF..................F.....dd...TTTTTTTTTTTT",
+  "TTTTTTTT...gggg....dddddddddddddddddd.......dd..TTTTTTTTTTTTTTTTTTTTTT............TTCCCCCCCCCC..ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCC......ddd...CCCCCCWWWWCCCC.dddCCCCCCCCdd..ggggg.TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTTTTTT....dd....dd..TTTTTTTTTTTTddTTTTTTTTTTTTTT......................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF.......#.....gggggF.....dd...TTTTTTTTTTTT",
+  "TTTTTTTT...........dddddddddddddddddd.......ddggTTTTTTTTTTTTTTTTTTTTTT........f...TT............ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCC......ddd...CCCCCCWWWWCCCC.dddCCCCCCCCdd........TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTTTTTT....dd....dd..TTTTTTTTTTTTddTTTTTTTTTTTTTT......................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF...........gggggggF...f.dd...TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTT.....dddFFFFFFFFFFFFTT........ddggTTTTTTTTTTTTTTTTTTTTTT..f......f..TTTTTT.dddddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCddddddddddddddd..............dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTT..dd....ddTTTTTTTTTTTTTTddTTTTTTTTTTTT........................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCFFFFFF..FFFFFFFFF.FF.....dd...TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTggg..dddF..........FTT........ddggTTTTTTTTTTTTTTTTTTTTTT.....dd.....TTTTTT.dddddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCddddddddddddddd..............dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTT..dd....ddTTTTTTTTTTTTTTddTTTTTTTTTTTT........................WWW.ggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC...f..........f..........dd...TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTgggg.dddF..........FTT........ddggTTTTTTTTTTTTTTTTTTTTTT.....ddddddddddddddddddddddddgggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCdddddddddddddddTTTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTT..TTddTTTTTTTTTTdd..TTdd..TTTTTTTTTTTTdd...................dddddddddd.......WWW.gg..........TTTTTTTTTTTTTTTTTTTTTTCCCCCCCCC....CCCCCCC...CCCCC.dd...TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTgggg.dddF..........FTT........ddggTTTTTTTTTTTTTTTTTTTTTT.....ddddddddddddddddddgggggggggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCC......ddd.....TTTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTT..TTddTTTTTTTTTTdd..TTdd..TTTTTTTTTTTTdd..................dddddddddddd.....MMMMM............TTTTTTTTTTTTTTTTTTTTTTCCCCCCCCC<==>CCCCCCC<=>CCCCC.dd...TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTgggg.dddF..........FTT........dd.gTTTTTTTTTTTTTTTTTTTTTTTTTT..ggggg.TTgggg.ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTT........TTddTTTTTTTTTTdd..TTdddddddddddddddddddddddddddddddddddddddddddddddddddddMMMMMdddddddd....TTTTTTTTTTTTTTTTTTTTTTCCCCF......................F.dd...........TTTT",
+  "TTTTTTTTTTTTTTgggg.dddF..........FTT..dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTTT..ggggg.TTggg..ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTT........TTddTTTTTTTTTTdd..TTdddddddddddddddddddddddddddddddddddddddddddddddddddddMMMMMdddddddd....TTTTTTTTTTTTTTTTTTTTTTCCCCF.ggggg..........fff...F.dd.FFFFFFFFF.TTTT",
+  "TTTTTTTTTTTTTTgggg.dddF..........FTT..dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTTT...gggg.TTggg..ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCgggg..dddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTT........dddd....TTTTdd..TTTTTTTTTTTTTTTT.....dd................dddddddd.dd.....MMMMM......dd....TTTTTTTTTTTTTTTTTTTTTTCCCCFgggggg.........ffffo..F.dd.........F.TTTT",
+  "TTTTTTTTTTTTTTgggg.dddF..........FTT..dd........TTTTTTTTTTTTTTTTTTTTTTTTTT........TT.....ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCgggg..dddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTT.......dddddddd.TTTTdd..TTTTTTTTTTTTTTTT.....dd....................dd.........ggWWW.......dd....TTTTTTTTTTTTTTTTTTTTTTCCCCFggggg.........fff#ff..F.dd.........F.TTTT",
+  "TTTTTTTTTTTTTTgggg.ddddddddd.....FTT..ddggggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTgggg......dddddddddd..TTdd..TTTTTTTTTTTTTTTT.....dd....................dd........gggWWW.ggggggdd....TTTTTTCCCCCCCCCCCCCCCCCCCCF.ggg..o.....o..ff.ff..F.dd.........F.TTTT",
+  "TTTTTTTTTTTTTTgggg.ddddddddd.....FTT..ddgggggg..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTggggg.....ddddddddddd.TTdd..TTTTTTTTTTTTTTTT.....dd.........FFFFFFFFFFFddFFFFFFF.gggWWWgggggggdd....TTTTTTCCCCCCCCCCCCCCCCCCCCF......PPPPPPPPPP......F.dd.f.........TTTT",
+  "TTTTTTTTTTTTTTgggg.dddF..........FTT..dd.ggggg..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....dddddd...............gggggg......TTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCC..ggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTgggg......dddddddddddddddd..TTTTTTTTTTTTTTTT.....dd.........FgggggggvvvvvvvggggF..ggWWW.ggggg.dd....TTTTTTCCCCCCCCCCCCCC......F....PPPPPPP...PP......F.dd..f......F.TTTT",
+  "TTTTTTTTTTTTTTggg..dddF..........FTT..dd..ggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....dddddd..............gggggggg.....TTTTTTTTCCCCCCCCggggddd.ggggggCCCCWWWWCCCC..ggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT..........dd.ddddd..dddddd..TTTTTTTTTTTTTTTT.....dd.........FgggggggggvvvvgggggF.gggWWW.......dd....TTTTTTggg.dddddd..........F....PPPPPPP...PP......F.dd...........TTTT",
+  "TTTTTTTTTTTTTTgg...dddF..........FTT..dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC.dddddd...........................TTTTTTTTTTTTTT......ddd.ggggggCCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT..........TTTT..............TTTTTTTTTTTTTTTT.....dd.........FvgggggggvvvvggggggF..ggWWW.......dd....TTTTTTgggddddddddddddddddd.PPPPPPPPPPP...PPPPPPPPPdddddddd..TTTTTTTT",
+  "TTTTTTTTTTTTTT.....dddF...g...g..FTT..ddggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC....ddd...........................TTTTTTTTTTTTTT......ddd.ggggggCCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT..........TTTT..............TTTTTTTTTTTTTTTT.ddddddddddddd..FgggggvvvvvvvvvggggF.gggWWW.......dd....TTTTTTggg.dddddddddddddddd.PPPPPPPPPPPPPPP.PPPPPPPdddddddd..TTTTTTTT",
+  "TTTTTTTTTTTTTT.....dddF.gggggggggFTT..ddggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........ddddddddddddddddddddddddddddddddddddddddddddddddddddd.......CCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT............................TTTTTTTTTTTTTTTT.ddddddddddddd..FvvvvvvvvvvvvvvvgggF.gggWWWgggggggdd....TTTTTTTTggg......ggggggg..F.....PPPPPPP..........F......dddddddddd..",
+  "TTTTTTTTTTTTTT.....dddF.g..g.g..gFTT..dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....o..ddddddddddddddddddddddddddddddddddddddddddddddddddddd.......CCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.gggggggg...................TTTTTTTTTTTTTTTT................FvvvggggggggggvvvvvF....WWW.ggggggdd....TTTTTTTT.ggggg..ggggggggg.F.......f.PP.f.........F......dddddddddd.o",
+  "TTdddddddddddd.....dddF...gggggg.FTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....o..ddd................gggggggg...TTTTTTTTddddddddddddddd.....CCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTgggggggggg................TTTTTTTTTTTTTTTTTT.FFFF..FFFFFFFF.FvgggggggggggggvvvvF..WWWWW.......dd....TTTTTT.....ggg....TTTTTTTTFggggggg..PP.........f.F.......ggg..TTTTTT",
+  "TTddddddddddddddddddddFFFFFFFFFFFFTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTf..f....ddd.................gggggg....TTTTTTTTdddddd..............CCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggggg...................TTTTTTTTTTTTTTTTTT.Fff..........F.FvvgggggggggggggvggF..WWWWWWWWW...dd....TTTTTT............TTTTTTTTFgggggggg.PP...gggggg..F..WWWWWW....TTTTTT",
+  "..dddddddddddddddddddd........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.f..ddddddd.........TTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTgggggggg..................TTTT..TTTT......TTTTTTTT.Ff........f..F.FvvvvvgggggggvvvgggFWWWWWWWWWWWWW.dd....TTTTTTTTTT......TTTTTTTTTTFgggggggggPP..gggggggg.F..WWWWWWggTTTTTTTT",
+  "o.dddddddddddddddddddd........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddd.........TTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTgggggggg..................TTTT..TTTT......TTTTTTTT.F..f.........F.FvvvvvvvvvvvvvvggggFWWWWWWWWWWWWW.dd....TTTTTTTTTT......TTTTTTTTTTF.ggggggg.PP.ggggggggg.F..WWWWWWggTTTTTTTT",
+  "TTTTTTTTTTTT..gggggg......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT<==>ddddddd...gggg..TTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTggggggggTT..........TTTTTTTTTT..TTTT......TTTTTTTT.FFFFFF..FFFFFF.FFFFFFFFFFvFFFFFFFFFWWWWWWWWWWWWWWdd....TTTTTTTTTTTTTTTTTTTTTTTTTTF..ggggg..PP..ggggggg..F..WWWWWW..TTTTTTTT",
+  "TTTTTTTTTTTT...gggggggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTggggggggTT..........TTTTTTTTTT..TTTT......TTTTTTTT.......dd.................o.........WWWWWWWWWWWWW.dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF...ggg...PP....gggg...F.gggg.....TTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC........ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTTgggggg.dd.............TTTTTTTTTT....WWWWWWWWWWWWW.dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........F..TTTTTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggg.ddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC........ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTTgggggggdd.............TTTTTTTTTT......WWWWWWWWW...dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........F..TTTTTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.ggggg.dd...........TTTTTTTTTTTTTT..ggggggggggg...dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........FTTTTTT....TTTTTTTT",
@@ -998,6 +998,131 @@
    "kind": "cave-mouth"
   },
   {
+   "x": 24,
+   "y": 87,
+   "kind": "pokemon-tower"
+  },
+  {
+   "x": 31,
+   "y": 88,
+   "kind": "grave"
+  },
+  {
+   "x": 32,
+   "y": 90,
+   "kind": "grave"
+  },
+  {
+   "x": 31,
+   "y": 92,
+   "kind": "grave"
+  },
+  {
+   "x": 25,
+   "y": 97,
+   "kind": "grave"
+  },
+  {
+   "x": 26,
+   "y": 97,
+   "kind": "grave"
+  },
+  {
+   "x": 27,
+   "y": 97,
+   "kind": "grave"
+  },
+  {
+   "x": 29,
+   "y": 97,
+   "kind": "grave"
+  },
+  {
+   "x": 30,
+   "y": 97,
+   "kind": "grave"
+  },
+  {
+   "x": 31,
+   "y": 97,
+   "kind": "grave"
+  },
+  {
+   "x": 24,
+   "y": 99,
+   "kind": "grave"
+  },
+  {
+   "x": 25,
+   "y": 99,
+   "kind": "grave"
+  },
+  {
+   "x": 27,
+   "y": 99,
+   "kind": "grave"
+  },
+  {
+   "x": 28,
+   "y": 99,
+   "kind": "grave"
+  },
+  {
+   "x": 29,
+   "y": 99,
+   "kind": "grave"
+  },
+  {
+   "x": 31,
+   "y": 99,
+   "kind": "grave"
+  },
+  {
+   "x": 25,
+   "y": 101,
+   "kind": "grave"
+  },
+  {
+   "x": 26,
+   "y": 101,
+   "kind": "grave"
+  },
+  {
+   "x": 28,
+   "y": 101,
+   "kind": "grave"
+  },
+  {
+   "x": 30,
+   "y": 101,
+   "kind": "grave"
+  },
+  {
+   "x": 31,
+   "y": 101,
+   "kind": "grave"
+  },
+  {
+   "x": 24,
+   "y": 96,
+   "kind": "gold-grave"
+  },
+  {
+   "x": 32,
+   "y": 96,
+   "kind": "gold-grave"
+  },
+  {
+   "x": 47,
+   "y": 76,
+   "kind": "grave-statue"
+  },
+  {
+   "x": 38,
+   "y": 88,
+   "kind": "cottage"
+  },
+  {
    "x": 328,
    "y": 96,
    "kind": "cave-mouth"
@@ -1394,12 +1519,11 @@
    }
   },
   {
-   "x": 64,
-   "y": 82,
-   "name": "To THE MOOR CHAPEL",
+   "x": 38,
+   "y": 103,
+   "name": "Drovers' Gap",
    "opens": {
-    "when": "after",
-    "seconds": 90
+    "when": "always"
    }
   },
   {
@@ -1473,6 +1597,14 @@
    "x": 168,
    "y": 0,
    "name": "Cloud Stair",
+   "opens": {
+    "when": "always"
+   }
+  },
+  {
+   "x": 0,
+   "y": 104,
+   "name": "Corpse Road",
    "opens": {
     "when": "always"
    }
@@ -1740,6 +1872,26 @@
    "hidden": true
   },
   {
+   "x": 32,
+   "y": 102,
+   "hidden": true
+  },
+  {
+   "x": 40,
+   "y": 76
+  },
+  {
+   "area": "moor-chapel-crypt",
+   "x": 13,
+   "y": 2,
+   "prize": "spell-tag"
+  },
+  {
+   "area": "moor-chapel-crypt",
+   "x": 7,
+   "y": 16
+  },
+  {
    "x": 368,
    "y": 117,
    "prize": "miracle-seed"
@@ -1863,7 +2015,8 @@
    "facing": "right",
    "lines": [
     "The tarn never freezes, whatever the winter.",
-    "The drovers fight for the right of way on the road."
+    "There was a sheep track west, under it, to the old chapel.",
+    "By day the fog turns you back. Go after dark, if you go."
    ]
   },
   {
@@ -1996,6 +2149,7 @@
    ]
   },
   {
+<<<<<<< HEAD
    "x": 347,
    "y": 337,
    "name": "Old Whaler",
@@ -2005,6 +2159,30 @@
     "The lagoon is the other side of the berg. The cave under it is ice the whole way.",
     "Once you are moving on ice you go till something stops you. Look before you step.",
     "Our boat comes into the lagoon late, for anyone who got that far."
+=======
+   "area": "moor-chapel-nave",
+   "x": 18,
+   "y": 7,
+   "name": "Channeler",
+   "look": "channeler",
+   "facing": "left",
+   "lines": [
+    "I am a CHANNELER.",
+    "There are spirits up to mischief.",
+    "I sense them under the floor."
+   ]
+  },
+  {
+   "area": "moor-chapel-nave",
+   "x": 5,
+   "y": 14,
+   "name": "Mourner",
+   "look": "old-woman",
+   "facing": "up",
+   "lines": [
+    "I came to pray for my dearly departed CLEFAIRY.",
+    "Sniff!"
+>>>>>>> 47e53143 (WIP: rebased onto the Lost Garden: one prize and type-power mechanism, the Spell Tag beside the Miracle Seed)
    ]
   },
   {
@@ -2233,6 +2411,38 @@
    ]
   },
   {
+   "x": 37,
+   "y": 89,
+   "lines": [
+    "DROVERS' BOTHY",
+    "The drovers slept here the night before the fair."
+   ]
+  },
+  {
+   "x": 46,
+   "y": 79,
+   "lines": [
+    "LANTERN CROSS",
+    "Lit for the drovers coming over the fell after dark."
+   ]
+  },
+  {
+   "x": 21,
+   "y": 96,
+   "lines": [
+    "THE MOOR CHAPEL",
+    "Erected in the memory of the drovers and their POKéMON."
+   ]
+  },
+  {
+   "x": 12,
+   "y": 106,
+   "lines": [
+    "THE CORPSE ROAD",
+    "West, off the fell."
+   ]
+  },
+  {
    "x": 341,
    "y": 97,
    "lines": [
@@ -2355,6 +2565,19 @@
    "y": 27,
    "name": "Storm Shelter",
    "kind": "spring"
+  },
+  {
+   "area": "moor-chapel-crypt",
+   "x": 9,
+   "y": 9,
+   "name": "Grave Goods",
+   "kind": "grave"
+  },
+  {
+   "x": 23,
+   "y": 102,
+   "name": "The Ossuary",
+   "kind": "shrine"
   },
   {
    "x": 352,
@@ -2520,6 +2743,31 @@
    "height": 64,
    "wildlife": "summit",
    "rain": true
+  },
+  {
+   "name": "The Churchyard",
+   "x": 22,
+   "y": 86,
+   "width": 12,
+   "height": 18,
+   "wildlife": "haunted"
+  },
+  {
+   "area": "moor-chapel-crypt",
+   "name": "The Crypt",
+   "x": 0,
+   "y": 0,
+   "width": 24,
+   "height": 20,
+   "wildlife": "haunted"
+  },
+  {
+   "name": "THE MOOR CHAPEL",
+   "x": 0,
+   "y": 64,
+   "width": 64,
+   "height": 64,
+   "wildlife": "meadow"
   },
   {
    "name": "THE OLD BLOOM",
@@ -2790,7 +3038,15 @@
    ]
   }
  ],
- "doors": [],
+ "doors": [
+  {
+   "kind": "night",
+   "x": 56,
+   "y": 82,
+   "width": 2,
+   "height": 2
+  }
+ ],
  "pokemon": [
   {
    "x": 156,
@@ -3387,6 +3643,7 @@
    ]
   },
   {
+<<<<<<< HEAD
    "id": "berg-cave-1f",
    "name": "Berg Cave",
    "kind": "cave",
@@ -3435,10 +3692,161 @@
      "x": 8,
      "y": 14,
      "kind": "ice-boulder"
+=======
+   "id": "moor-chapel-nave",
+   "name": "Moor Chapel",
+   "kind": "tower",
+   "style": "tower",
+   "width": 24,
+   "height": 20,
+   "ground": [
+    "CCCCCCCCBBBBBBBCCCCCCCCC",
+    "CCCCCCBBBBBBBBBBBCCCCCCC",
+    "CCCCBBBBBPPPPPBBBBBCCCCC",
+    "CCCBBBBPPPPPPPPPBBBBCCCC",
+    "CCBBBPPPPPPPPPPPPPBBBCCC",
+    "CCBBPPPPPPPPPPPPPPPBBCCC",
+    "CCBPPPPPPPPPPPPPPPPPBCCC",
+    "CCBPPPPPPPPPPPPPPPPPBCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCCPPPPPPPPPPPPPPPPPCCCC",
+    "CCCPPPPPPPPPPPPPPPPPCCCC",
+    "CCCCPPPPPPPPPPPPPPPCCCCC",
+    "CCCCCCPPPPPPPPPPPCCCCCCC",
+    "CCCCCCCCCPPPPPCCCCCCCCCC",
+    "CCCCCCCCCCPPPCCCCCCCCCCC",
+    "CCCCCCCCCCCCCCCCCCCCCCCC"
+   ],
+   "buildings": [
+    {
+     "x": 9,
+     "y": 2,
+     "kind": "tower-statue"
+    },
+    {
+     "x": 13,
+     "y": 2,
+     "kind": "tower-statue"
+    },
+    {
+     "x": 6,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 7,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 7,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 8,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 8,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 9,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 9,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 13,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 13,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 14,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 14,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 15,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 15,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 16,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 16,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 7,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 8,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 9,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 13,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 14,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 15,
+     "y": 15,
+     "kind": "tower-grave"
+>>>>>>> 47e53143 (WIP: rebased onto the Lost Garden: one prize and type-power mechanism, the Spell Tag beside the Miracle Seed)
     }
    ]
   },
   {
+<<<<<<< HEAD
    "id": "berg-cave-b1f",
    "name": "Berg Cave B1F",
    "kind": "cave",
@@ -3483,6 +3891,306 @@
      "x": 12,
      "y": 13,
      "kind": "ice-boulder-low"
+=======
+   "id": "moor-chapel-crypt",
+   "name": "The Crypt",
+   "kind": "tower",
+   "style": "tower",
+   "width": 24,
+   "height": 20,
+   "ground": [
+    "CCCCCCCCBBBBBBBCCCCCCCCC",
+    "CCCCCCBBBBBBBBBBBCCCCCCC",
+    "CCCCBBBBBPPPPPBBBBBCCCCC",
+    "CCCBBBBPPPPPPPPPBBBBCCCC",
+    "CCBBBPPPPPPPPPPPPPBBBCCC",
+    "CCBBPPPPPPPPPPPPPPPBBCCC",
+    "CCBPPPPPPPPPPPPPPPPPBCCC",
+    "CCBPPPPPPPPPPPPPPPPPBCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCPPPPPPPPPPPPPPPPPPPCCC",
+    "CCCPPPPPPPPPPPPPPPPPCCCC",
+    "CCCPPPPPPPPPPPPPPPPPCCCC",
+    "CCCCPPPPPPPPPPPPPPPCCCCC",
+    "CCCCCCPPPPPPPPPPPCCCCCCC",
+    "CCCCCCCCCPPPPPCCCCCCCCCC",
+    "CCCCCCCCCCCCCCCCCCCCCCCC",
+    "CCCCCCCCCCCCCCCCCCCCCCCC"
+   ],
+   "buildings": [
+    {
+     "x": 8,
+     "y": 4,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 7,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 8,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 9,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 10,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 11,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 12,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 13,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 14,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 15,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 16,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 17,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 18,
+     "y": 6,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 7,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 8,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 17,
+     "y": 8,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 9,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 10,
+     "y": 9,
+     "kind": "tower-gold-grave"
+    },
+    {
+     "x": 11,
+     "y": 9,
+     "kind": "tower-gold-grave"
+    },
+    {
+     "x": 12,
+     "y": 9,
+     "kind": "tower-gold-grave"
+    },
+    {
+     "x": 16,
+     "y": 9,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 10,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 10,
+     "y": 10,
+     "kind": "tower-gold-grave"
+    },
+    {
+     "x": 11,
+     "y": 10,
+     "kind": "tower-gold-grave"
+    },
+    {
+     "x": 12,
+     "y": 10,
+     "kind": "tower-gold-grave"
+    },
+    {
+     "x": 16,
+     "y": 10,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 16,
+     "y": 11,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 12,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 16,
+     "y": 12,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 19,
+     "y": 12,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 20,
+     "y": 12,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 10,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 11,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 12,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 13,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 14,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 15,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 16,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 18,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 19,
+     "y": 13,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 4,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 5,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 17,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 18,
+     "y": 15,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 6,
+     "y": 16,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 9,
+     "y": 17,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 10,
+     "y": 17,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 11,
+     "y": 17,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 12,
+     "y": 17,
+     "kind": "tower-grave"
+    },
+    {
+     "x": 13,
+     "y": 17,
+     "kind": "tower-grave"
+>>>>>>> 47e53143 (WIP: rebased onto the Lost Garden: one prize and type-power mechanism, the Spell Tag beside the Miracle Seed)
     }
    ]
   },
@@ -3822,6 +4530,41 @@
      "y": 7,
      "toward": "up",
      "look": "ladder-up"
+    }
+   ]
+  },
+  {
+   "ends": [
+    {
+     "x": 27,
+     "y": 94,
+     "toward": "up",
+     "look": "door"
+    },
+    {
+     "area": "moor-chapel-nave",
+     "x": 11,
+     "y": 18,
+     "toward": "down",
+     "look": "mat"
+    }
+   ]
+  },
+  {
+   "ends": [
+    {
+     "area": "moor-chapel-nave",
+     "x": 4,
+     "y": 10,
+     "toward": "left",
+     "look": "stairs-down"
+    },
+    {
+     "area": "moor-chapel-crypt",
+     "x": 18,
+     "y": 10,
+     "toward": "right",
+     "look": "stairs-up"
     }
    ]
   },
