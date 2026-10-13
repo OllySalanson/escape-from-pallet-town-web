@@ -8,9 +8,9 @@ is the plan, each district that is drawn marked DRAWN:
 
 And the vale as it ships now, with the nine districts it was planned as all
 drawn - Millbrook, High Moor, Greystone Peaks, Pine Hollow, The Crossing,
-Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the five it has
-grown into (The Power Station, Safari Marsh, The Wreck, The Sunken Quarter and
-Smugglers' Cove) still wood until each is drawn.
+Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and of the five it has
+grown into, The Wreck. The Power Station, Safari Marsh, The Sunken Quarter and
+Smugglers' Cove are wood until each is drawn.
 
 ![the vale as it ships](vale.png)
 
@@ -558,10 +558,15 @@ when a district could not pass in time.
   - The top shelf holds the farmyard and the north orchard, where the trail
     from Tanglewood comes in.
   - The middle shelf holds the west orchard and the cornfield, with the lane
-    out east as Orchard Lane.
+    out east to The Wreck.
   - The bottom shelf is the pasture over the shore.
 - **The ledges:** the farm road goes down by the one gap in each edge, the long
   way round; a hop down a ledge is the quick way, never back up.
+- **Two ways out of its own:** the Cockle Path up from the west end of the
+  sands, and Pickers' Path at the top of the lane beside the north orchard.
+  They were added when The Wreck took the lane's way on east, so that no
+  corner of the farm is further from a way out than the hunter's blind window
+  covers.
 
 ![Orchard Terraces](orchard-terraces.png)
 
@@ -594,6 +599,55 @@ Route 1 and Route 2 are the hardest references any district has been held
 to: they scored 7 to 9 every round.
 
 ![Orchard Terraces as first drawn](orchard-terraces-first-draw.png)
+
+## The Wreck
+
+The east cape, where the vale meets the open sea: the first of the five new
+districts drawn.
+
+- **The cliff top:** a corridor between the wood and the cliff, where the
+  road comes in from the orchards and runs past the salvage master's house.
+- **The cliff:** three masses of rock. The camp road goes down the cleft
+  between the last two.
+- **The beach:** a band between the cliff and the sea, with the salvage camp
+  at the foot of the cleft (the Salvage Camp landing) and the camp's pier. The
+  Salvage Launch puts in at the pier two minutes into a raid.
+- **The reef:** a bar of sand out to the liner aground on it, the only way out
+  to the wreck, with what the sea has thrown up along it.
+- **A trail** comes down through the wood from the Safari Marsh.
+
+![The Wreck](the-wreck.png)
+
+In the game, at the Salvage Camp landing in the explorer run:
+
+![The Wreck in the game](the-wreck-in-game.png)
+
+It was judged as two 24x40 views of the cliff top and beach beside FireRed's
+Route 1, Route 2, Route 6, Route 10 and Route 24, with two broken real routes as
+controls.
+
+| Round | Real mean | The Wreck | What was tried |
+|---|---|---|---|
+| 1 | 6.0, 7.4 | 3 and 4, 3 and 4 | a cliff the width of the map; another game's barrels, logs and huts on the beach |
+| 2 | 5.8, 6.6 | 5 and 6, 5 and 4 | FireRed's crates, pier, ferry and liner; the cliff in masses |
+| 3 | 6.0, 4.4 | **4 and 7, 5 and 7** (passes, ships) | the sea frees the rim; a bar of sand out to the wreck |
+| 4 | 5.6, 6.2 | 5 and 8, 4 and 5 | the west gap opened; a fenced salvage yard |
+| 5 | 6.2, 5.4 | 4 and 5, 5 and 5 | roads down the west gap and down from the Safari Marsh |
+
+Rounds 4 and 5 answered round 3's faults and each passed with one judge only,
+so it ships as round 3 drew it. Its landing was then moved onto the camp's
+crates, where every way you set off meets something within four steps.
+
+What the judges kept naming:
+
+- **A sand road laid on the beach** draws a seam down each side of it, so
+  every road ends where the beach begins.
+- **The gap in the cliff** reads as a way down plugged with trees. Opened, it
+  read as a hole; given a road, as one more ruled line.
+- **The beach and the cliff-top lawn** are wide bands. A fenced yard put in
+  the lawn read as "a pen of evenly spaced stones".
+
+![The Wreck as first drawn](the-wreck-first-draw.png)
 
 ## How it ships
 

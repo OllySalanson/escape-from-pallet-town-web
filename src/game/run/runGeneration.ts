@@ -286,6 +286,13 @@ export const RUN_INSERTIONS = {
     position: { x: 152, y: 140 },
     description: 'The farmyard at Orchard Terraces, between the orchards, above the terraces down to the sea.',
   },
+  'greystone-vale-salvage-camp': {
+    id: 'greystone-vale-salvage-camp',
+    label: 'Salvage Camp',
+    mapId: 'greystone-vale',
+    position: { x: 235, y: 165 },
+    description: 'The salvage camp on the beach under the east cape, with the wreck out on the reef.',
+  },
 } as const satisfies Record<string, BuiltInInsertion>;
 
 interface BuiltInInsertion {
