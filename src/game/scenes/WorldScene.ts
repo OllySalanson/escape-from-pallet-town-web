@@ -1192,12 +1192,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Anything the others took before this player dropped in, or while they
     // were in a fight, is already gone.
     rooms.askWhatWasTaken();
-    // A boss this player beat this raid opens its doors for everybody in the room.
-    rooms.won(
-      bossEncounters(this.trainerEncounters)
-        .filter((boss) => boss.mapId === this.currentMap.id && this.defeatedTrainerIds.has(boss.trainer.id))
-        .map((boss) => boss.bossId),
-    );
+    this.sayRoomWins();
     this.roomDoorsBuilt = this.roomDoors().join();
     // Back from a fight: the room is told it is over, and after the hunter's
     // own fight what it left of the hunter - fled from, and where it fell back
@@ -1209,6 +1204,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     } else if (was === 'wild') {
       rooms.sayHunter({ kind: 'busy', from: rooms.room.me, busy: false, withHunter: false });
     }
+  }
+
+  /** A boss this player beat this raid opens its doors for everybody in the room (`roomBosses.ts`). */
+  private sayRoomWins(): void {
+    friendRoom()?.won(
+      bossEncounters(this.trainerEncounters)
+        .filter((boss) => boss.mapId === this.currentMap.id && this.defeatedTrainerIds.has(boss.trainer.id))
+        .map((boss) => boss.bossId),
+    );
   }
 
   /**
@@ -5386,11 +5390,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.currentMap = this.mapFor(this.currentMap.id);
     this.rebuildMapInPlace();
     const rooms = friendRoom();
+    // One line a keeper, by the keeper's name: a keeper can hold two doors, and
+    // which ones is what the map now shows.
     for (const bossId of opened) {
       const winner = rooms?.bossesWon.get(bossId);
-      const gate = this.currentMap.gates.find((each) => each.bossId === bossId);
+      const keeper = this.trainerEncounters.find((encounter) => encounter.bossId === bossId)?.trainer.name;
       audioManager.play('landmarkWorked');
-      rooms?.tell(`${(winner && rooms.nameOf(winner)) ?? 'A FRIEND'} OPENED ${gate?.label ?? 'A GATE'}`);
+      rooms?.tell(`${(winner && rooms.nameOf(winner)) ?? 'A FRIEND'} BEAT ${(keeper ?? 'A KEEPER').toUpperCase()}`);
     }
   }
 
