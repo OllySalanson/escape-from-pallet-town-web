@@ -85,8 +85,8 @@ export interface RaidHudState {
   readonly weather: string | null;
   /** A rare find this raid has laid eyes on and not yet picked up. */
   readonly prize: PrizeChipView | null;
-  /** The other player in a raid room, while one is held (`friendChipLine`). */
-  readonly friend?: string | null;
+  /** Everybody else in a raid room, while one is held (`friendChipLines`). */
+  readonly friend?: readonly string[] | null;
 }
 
 export class RaidHud {
@@ -184,7 +184,7 @@ export class RaidHud {
     if (state.friend) {
       column = this.placeChip(
         this.friendText,
-        [state.friend],
+        state.friend,
         { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
         1,
         () => ({ x: EDGE_MARGIN, y: column.y + column.height + CHIP_GAP }),

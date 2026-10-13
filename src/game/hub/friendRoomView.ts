@@ -1,5 +1,5 @@
 import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelWindow } from '../ui/pixelUi';
-import { ROOM_CODE_LENGTH } from '../raidRoom/roomCode';
+import { ROOM_CODE_LENGTH, ROOM_SIZE } from '../raidRoom/roomCode';
 import type { RaidPlace } from '../raidRoom/raidProtocol';
 
 /**
@@ -37,25 +37,26 @@ export interface FriendRoomScreen {
   readonly typed: string;
 }
 
-/** What the screen says about the other player, as the room's channel has them. */
+/** What the screen says about everybody else in the room, as the room's channel has them. */
 export function friendStatusLine(
-  friend: { readonly name: string; readonly place: RaidPlace } | null,
+  friends: readonly { readonly name: string; readonly place: RaidPlace }[],
   code: string,
   mapName: string,
 ): string {
-  if (!friend) {
-    return `Nobody else is in yet. Your friend types ${code} under Raid with a friend.`;
+  if (friends.length === 0) {
+    return `Nobody else is in yet. Your friends type ${code} under Raid with a friend.`;
   }
-  return friend.place === 'lab'
-    ? `${friend.name} is in the room, getting ready.`
-    : `${friend.name} is already on ${mapName}.`;
+  const each = friends
+    .map((friend) => (friend.place === 'lab' ? `${friend.name} is getting ready.` : `${friend.name} is already on ${mapName}.`))
+    .join(' ');
+  return friends.length + 1 >= ROOM_SIZE ? `${each} The room is full.` : each;
 }
 
 /** The lab's card for it: what a press there opens. */
 export function friendRoomCard(room: { readonly code: string; readonly mapName: string } | null): string {
-  const line = room
-    ? `Room ${room.code} on ${room.mapName}. Your raid drops in there.`
-    : 'Make a room and read your friend its code, or type theirs.';
+  // One short line, because at the smallest stage a third card is room the
+  // contract board under it gives up.
+  const line = room ? `Room ${room.code}, on ${room.mapName}.` : 'Make a room, or type a friend’s code.';
   return `<button class="px-window px-card hub-friend" data-view="friend" data-help="Two players on one map, each with their own team, pack and clock."><strong>Raid with a friend</strong><p>${line}</p></button>`;
 }
 
@@ -74,7 +75,7 @@ function choosingView(screen: FriendRoomScreen): string {
   const maps = screen.maps
     .map(
       (map, index) =>
-        `<button class="px-row" data-room-map="${escapeAttribute(map.mapId)}"${index === 0 ? ' data-cursor-start' : ''}${disabled} data-help="${escapeAttribute(`Make a room on ${map.name}. Your friend drops in there too.`)}"><span class="px-row-main"><strong class="px-name">${map.name}</strong></span></button>`,
+        `<button class="px-row" data-room-map="${escapeAttribute(map.mapId)}"${index === 0 ? ' data-cursor-start' : ''}${disabled} data-help="${escapeAttribute(`Make a room on ${map.name}. Your friends drop in there too.`)}"><span class="px-row-main"><strong class="px-name">${map.name}</strong></span></button>`,
     )
     .join('');
   const make = pixelWindow(
@@ -86,7 +87,7 @@ function choosingView(screen: FriendRoomScreen): string {
     { className: 'friend-join-window', heading: 'Join a friend' },
   );
   return `<main class="px-body friend-layout">${make}${join}${pixelWindow(
-    `<p class="px-wrap">You each bring your own team and pack, keep your own clock and loot, and fight your own fights. You see each other walk, and leave by any exit alone.</p>`,
+    `<p class="px-wrap">Up to four of you on one map. You each bring your own team and pack, keep your own clock and loot, and fight your own fights. You see each other walk, and leave by any exit alone.</p>`,
     { className: 'friend-about', heading: 'Together, apart' },
   )}</main>`;
 }
@@ -94,11 +95,11 @@ function choosingView(screen: FriendRoomScreen): string {
 function heldView(screen: FriendRoomScreen, room: NonNullable<FriendRoomScreen['room']>): string {
   const whose = room.hostName ? `${room.hostName}’s room` : 'Your room';
   return `<main class="px-body friend-layout is-held">${pixelWindow(
-    `<p class="friend-code" data-room-code>${room.code}</p><p class="px-wrap">${room.hostName ? `You are in ${room.hostName}’s room.` : 'Read this code to your friend.'} The raid is on ${room.mapName}.</p><p class="px-wrap" data-room-friend aria-live="polite">${screen.friendLine}</p>`,
+    `<p class="friend-code" data-room-code>${room.code}</p><p class="px-wrap">${room.hostName ? `You are in ${room.hostName}’s room.` : 'Read this code to up to three friends.'} The raid is on ${room.mapName}.</p><p class="px-wrap" data-room-friend aria-live="polite">${screen.friendLine}</p>`,
     { className: 'friend-room', heading: whose, note: room.mapName },
   )}${pixelCommitBar({
     title: `Raid ${room.mapName} together`,
     lines: ['<small class="px-wrap">Get ready as for any raid. You drop in when you are ready, not together.</small>'],
-    actions: `<button class="px-window px-button" data-room-leave data-help="Leave the room. Your friend raids on alone.">Leave the room</button><button class="px-window px-button is-primary" data-room-prepare data-cursor-start data-help="Build a loadout for ${escapeAttribute(room.mapName)}.">Get ready</button>`,
+    actions: `<button class="px-window px-button" data-room-leave data-help="Leave the room. Anybody else in it raids on without you.">Leave the room</button><button class="px-window px-button is-primary" data-room-prepare data-cursor-start data-help="Build a loadout for ${escapeAttribute(room.mapName)}.">Get ready</button>`,
   })}</main>`;
 }

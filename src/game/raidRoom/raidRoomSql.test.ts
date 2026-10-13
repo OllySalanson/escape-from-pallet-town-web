@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ROOM_CODE_LENGTH, ROOM_CODE_LETTERS } from './roomCode';
+import { ROOM_CODE_LENGTH, ROOM_CODE_LETTERS, ROOM_SIZE } from './roomCode';
 
 /**
  * The database is what a raid room believes, so its copy of the rules is held
@@ -49,8 +49,8 @@ describe("the database's side of raiding with a friend", () => {
     expect(join).toContain('private.house_is_open(caller)');
   });
 
-  it('lets two into a room and no more', () => {
-    expect(definition('private.join_raid_room')).toContain('m.left_at is null) >= 2');
+  it('lets four into a room and no more', () => {
+    expect(definition('private.join_raid_room')).toContain(`m.left_at is null) >= ${ROOM_SIZE}`);
   });
 
   it('puts only the players in an open room on its channel', () => {

@@ -212,7 +212,10 @@ export function harbour(): HarbourSession | null {
 
 /** Which service this page talks to: the live project, the tab-to-tab stand-in of a test, or none. */
 export function pageHarbourMode(): HarbourMode {
-  return typeof window === 'undefined' ? 'off' : harbourMode(requestedTestMode(), window.location.search);
+  // A page with no address - a scene test's stand-in window - has no harbour either.
+  return typeof window === 'undefined' || !window.location
+    ? 'off'
+    : harbourMode(requestedTestMode(), window.location.search);
 }
 
 /** Knocking: the service that asks the database, and the player's own front door. */

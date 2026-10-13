@@ -69,6 +69,11 @@ for (const [name, body] of [['unclaimed_feedback_uploads', { older_than_hours: 2
   const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });
   check(askedSignedOut.status >= 400, `cannot ask ${name} signed out (${askedSignedOut.status})`);
 }
+// Raid rooms are made, joined and left only signed in (`src/game/raidRoom/`).
+for (const [name, body] of [['open_raid_room', { map_id: 'route-1' }], ['join_raid_room', { room_code: 'BBBB' }], ['leave_raid_room', { room_code: 'BBBB' }]]) {
+  const askedSignedOut = await call(`/rest/v1/rpc/${name}`, { method: 'POST', body });
+  check(askedSignedOut.status >= 400, `cannot ${name} signed out (${askedSignedOut.status})`);
+}
 const nobody = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', body: message('FB-AAAC') });
 check(nobody.status >= 400, `cannot send without a session (${nobody.status})`);
 // A board is read signed out too, so looking signs nobody up (the red team's
@@ -99,7 +104,7 @@ if (!signUp?.json?.access_token) {
 const token = signUp.json.access_token;
 const me = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub;
 
-for (const table of ['feedback', 'map_submissions', 'admins', 'blocked_makers']) {
+for (const table of ['feedback', 'map_submissions', 'admins', 'blocked_makers', 'raid_rooms', 'raid_room_members', 'raid_room_tries']) {
   const read = await call(`/rest/v1/${table}?select=*`, { token });
   check(read.status >= 400 || (Array.isArray(read.json) && read.json.length === 0), `reads nothing from ${table} (${read.status})`);
 }
@@ -119,6 +124,13 @@ check(replaces.status >= 400 || (Array.isArray(replaces.json) && replaces.json.l
 const tiny = { format: 1, id: 'probe', name: 'Probe', maker: 'Probe', width: 20, height: 16, ground: Array.from({ length: 16 }, () => '.'.repeat(20)), buildings: [], dropIns: [], exits: [], itemSpots: [], wildlife: 'meadow' };
 const hijack = await call('/rest/v1/rpc/submit_map', { method: 'POST', token, body: { map: tiny, maker_name: 'Probe', resubmits: 'AAAAAAAAAA' } });
 check(hijack.status >= 400, `cannot send a map as the update of one it did not send (${hijack.status} ${JSON.stringify(hijack.json)})`);
+
+// A fresh player has no house, so it can neither make a room nor try a code:
+// both are refused before anything is written, so this stays read-only.
+for (const [name, body] of [['open_raid_room', { map_id: 'route-1' }], ['join_raid_room', { room_code: 'BBBB' }]]) {
+  const unnamed = await call(`/rest/v1/rpc/${name}`, { method: 'POST', token, body });
+  check(unnamed.status >= 400, `cannot ${name} without a named house (${unnamed.status} ${JSON.stringify(unnamed.json)})`);
+}
 
 const list = await call('/storage/v1/object/list/feedback', { method: 'POST', token, body: { prefix: '' } });
 check(Array.isArray(list.json) ? list.json.length === 0 : list.status >= 400, `lists no feedback files (${list.status})`);

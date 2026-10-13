@@ -1,5 +1,5 @@
 import { isPlayerId } from '../harbour/harbourProtocol';
-import { isRoomCode, typedRoomCode, ROOM_CODE_LENGTH, ROOM_CODE_LETTERS } from './roomCode';
+import { isRoomCode, typedRoomCode, ROOM_CODE_LENGTH, ROOM_CODE_LETTERS, ROOM_SIZE } from './roomCode';
 
 /**
  * Making, joining and leaving a raid room: the three things only the database
@@ -7,7 +7,7 @@ import { isRoomCode, typedRoomCode, ROOM_CODE_LENGTH, ROOM_CODE_LETTERS } from '
  * comes back is what the room is.
  */
 
-/** A room this browser holds: its code, its map, and who the two players are. */
+/** A room this browser holds: its code, its map, and who made it. */
 export interface HeldRoom {
   readonly code: string;
   readonly mapId: string;
@@ -38,8 +38,8 @@ export const ROOM_UNREACHABLE = 'Pallet Town is not answering. Check your connec
 /** Said for a code no open room has. */
 export const ROOM_NOT_FOUND = 'No room has that code. Check it with your friend.';
 
-/** Said for a room that already has two players in it. */
-export const ROOM_FULL = 'That room already has two players in it.';
+/** Said for a room that already has four players in it (`ROOM_SIZE`). */
+export const ROOM_FULL = 'That room is full: four players is a room.';
 
 /**
  * The live service: the game's one anonymous sign-in, a named house (the
@@ -190,7 +190,7 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
         return { ok: false, reason: ROOM_NOT_FOUND };
       }
       if (!room.members.includes(id)) {
-        if (room.members.length >= 2) {
+        if (room.members.length >= ROOM_SIZE) {
           return { ok: false, reason: ROOM_FULL };
         }
         room.members.push(id);

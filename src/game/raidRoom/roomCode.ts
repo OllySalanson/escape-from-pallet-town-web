@@ -12,6 +12,9 @@ export const ROOM_CODE_LETTERS = 'BCDFGHJKLMNPQRSTVWXZ';
 
 export const ROOM_CODE_LENGTH = 4;
 
+/** The most players a room holds: whoever made it and three friends. The database holds the same number. */
+export const ROOM_SIZE = 4;
+
 /** What is typed, as a code: capitals, only the letters a code is made of, at most four. */
 export function typedRoomCode(raw: string): string {
   return [...raw.toUpperCase()]

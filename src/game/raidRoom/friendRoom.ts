@@ -11,7 +11,7 @@ import { liveRoomService, localRoomService, type HeldRoom, type RaidRoomService,
  * browser is in, kept for the page's life because every scene a raid passes
  * through - the lab, the world, every fight, the result - is started afresh.
  *
- * A room is held from the moment it is made or joined until the raid it was
+ * A room holds up to four players (`ROOM_SIZE`). It is held from the moment it is made or joined until the raid it was
  * for ends (the result screen leaves it, `ExtractionScene`) or the player leaves it at the lab. While it is
  * held the browser is on the room's channel - the harbour's own link over the
  * room's own wire (`raidWire.ts`) - saying where it is: `lab` while getting
@@ -35,7 +35,7 @@ export interface FriendNews {
   readonly at: number;
 }
 
-/** The other player as the raid sees them: their name and where they are. */
+/** Another player in the room as the raid sees them: their name and where they are. */
 export interface FriendHere {
   readonly id: string;
   readonly name: string;
@@ -123,15 +123,14 @@ export class FriendRoom {
     this.notice(nowMs);
   }
 
-  /** The other player, while they are on the room's channel. */
-  public friend(): FriendHere | null {
-    for (const [id, { name, place }] of this.link?.othersPresent() ?? []) {
-      return { id, name, place };
-    }
-    return null;
+  /** Everybody else on the room's channel, by name. */
+  public friends(): readonly FriendHere[] {
+    return [...(this.link?.othersPresent() ?? [])]
+      .map(([id, { name, place }]) => ({ id, name, place }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  /** The other player as drawn on this map: where they walk, under their name. */
+  /** Everybody else as drawn on this map: where each walks, under their name. */
   public figuresOn(mapId: string): readonly NamedFigure<RaidPlace>[] {
     return this.held?.mapId === mapId ? (this.link?.figuresIn(mapPlace(mapId)) ?? []) : [];
   }

@@ -171,7 +171,7 @@ describe('raiding with a friend', () => {
     wire.present([[ME, mapPlace('route-1')], [ASH, 'lab']]);
     await settle();
     room.tick(1_000, 16);
-    expect(room.friend()).toEqual({ id: ASH, name: 'ASH', place: 'lab' });
+    expect(room.friends()).toEqual([{ id: ASH, name: 'ASH', place: 'lab' }]);
     expect(room.news()).toEqual({ name: 'ASH', came: true, at: 1_000 });
 
     wire.present([[ME, mapPlace('route-1')], [ASH, mapPlace('route-1')]]);
@@ -184,7 +184,7 @@ describe('raiding with a friend', () => {
     // Gone from the channel: an exit, a loss and a closed tab are all this.
     wire.present([[ME, mapPlace('route-1')]]);
     room.tick(2_000 + FRIEND_NEWS_MS, 16);
-    expect(room.friend()).toBeNull();
+    expect(room.friends()).toEqual([]);
     expect(room.news()).toMatchObject({ name: 'ASH', came: false });
     expect(room.figuresOn('route-1')).toEqual([]);
   });

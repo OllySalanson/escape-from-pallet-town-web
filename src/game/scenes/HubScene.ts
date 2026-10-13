@@ -1880,7 +1880,7 @@ export class HubScene extends Phaser.Scene {
     const mapName = room ? worldMapName(room.mapId) : '';
     return friendRoomView({
       room: room ? { code: room.code, mapName, hostName: room.hostName } : null,
-      friendLine: room ? friendStatusLine(friendRoom()?.friend() ?? null, room.code, mapName) : '',
+      friendLine: room ? friendStatusLine(friendRoom()?.friends() ?? [], room.code, mapName) : '',
       maps: this.roomMaps,
       name: raidName(),
       busy: this.roomBusy,
@@ -2001,7 +2001,7 @@ export class HubScene extends Phaser.Scene {
     const room = this.heldRoom;
     const line = this.overlay?.root.querySelector<HTMLElement>('[data-room-friend]');
     if (room && line) {
-      const said = friendStatusLine(rooms.friend(), room.code, worldMapName(room.mapId));
+      const said = friendStatusLine(rooms.friends(), room.code, worldMapName(room.mapId));
       if (line.textContent !== said) {
         line.textContent = said;
       }

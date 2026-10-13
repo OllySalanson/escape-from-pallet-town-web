@@ -201,7 +201,7 @@ import {
   placePlateLine,
   weatherChipLine,
   prizeChipView,
-  friendChipLine,
+  friendChipLines,
   type PrizeChipInput,
   raidClockAlertTier,
   raidClockView,
@@ -1136,36 +1136,46 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.friendFigures.update(rooms.figuresOn(this.currentMap.id));
   }
 
-  /** The friend chip's line, while this raid is in a room (`friendChipLine`). */
-  private friendChip(): string | null {
+  /** The friend as drawn, for a playtest to read (`tools/playtest/friendRaid.mjs`). */
+  public get friendFiguresShown(): readonly { readonly name: string; readonly tile: GridPosition }[] {
+    if (!this.friendFigures) {
+      return [];
+    }
+    return (friendRoom()?.figuresOn(this.currentMap.id) ?? []).map((figure) => ({ name: figure.name, tile: { ...figure.tile } }));
+  }
+
+  /** The friend chip's lines, while this raid is in a room (`friendChipLines`). */
+  private friendChip(): readonly string[] | null {
     const rooms = friendRoom();
     const room = rooms?.room;
     if (!rooms || !room || room.mapId !== this.currentMap.id || !this.runSession) {
       return null;
     }
-    const friend = rooms.friend();
     const news = rooms.news();
-    const figure = friend ? rooms.figuresOn(this.currentMap.id).find((drawn) => drawn.id === friend.id) : undefined;
+    const drawn = rooms.figuresOn(this.currentMap.id);
     const areas = this.currentMap.areas;
-    const theirArea = figure && areas ? (placedAreaAt(areas, figure.tile) ?? areas[0]) : undefined;
-    const elsewhere = theirArea && theirArea !== this.currentArea() ? (theirArea === areas?.[0] ? 'outdoors' : 'indoors') : null;
-    return friendChipLine({
+    return friendChipLines({
       code: room.code,
       news: news ? { name: news.name, came: news.came } : null,
-      friend: friend
-        ? {
-            name: friend.name,
-            atLab: friend.place === 'lab',
-            heading: figure ? this.headingTo(figure.tile) : null,
-            distance:
-              figure && !elsewhere
-                ? Math.abs(figure.tile.x - this.currentTile.x) + Math.abs(figure.tile.y - this.currentTile.y)
-                : null,
-            elsewhere,
-          }
-        : null,
+      friends: rooms.friends().map((friend) => {
+        const figure = drawn.find((each) => each.id === friend.id);
+        const theirArea = figure && areas ? (placedAreaAt(areas, figure.tile) ?? areas[0]) : undefined;
+        const elsewhere =
+          theirArea && theirArea !== this.currentArea() ? (theirArea === areas?.[0] ? 'outdoors' : 'indoors') : null;
+        return {
+          name: friend.name,
+          atLab: friend.place === 'lab',
+          heading: figure ? this.headingTo(figure.tile) : null,
+          distance:
+            figure && !elsewhere
+              ? Math.abs(figure.tile.x - this.currentTile.x) + Math.abs(figure.tile.y - this.currentTile.y)
+              : null,
+          elsewhere,
+        };
+      }),
     });
   }
+
 
   private updateRaid(deltaMs: number): void {
     const stepCarryMs = this.stepCarryMs;

@@ -345,44 +345,51 @@ export function prizeChipView(input: PrizeChipInput | null): PrizeChipView | nul
 // The friend chip
 // ---------------------------------------------------------------------------
 
-/** What the raid knows of the other player in a raid room (`raidRoom/friendRoom.ts`). */
+/** One other player in a raid room, as the raid knows them (`raidRoom/friendRoom.ts`). */
+export interface FriendChipFriend {
+  readonly name: string;
+  /** Still getting ready at base. */
+  readonly atLab: boolean;
+  /** Which way to go for them - straight at them, or at the door between - once they are seen. */
+  readonly heading: string | null;
+  /** Tiles away, on the same place of the map; null in another place, or not yet seen. */
+  readonly distance: number | null;
+  /** Where they are when it is another place of the map than the player's. */
+  readonly elsewhere: 'indoors' | 'outdoors' | null;
+}
+
 export interface FriendChipInput {
   /** The room's code, said while nobody else is in it so it can be read out. */
   readonly code: string;
   /** Somebody came or went just now. */
   readonly news: { readonly name: string; readonly came: boolean } | null;
-  /** The other player, while they are in the room. */
-  readonly friend: {
-    readonly name: string;
-    /** Still getting ready at base. */
-    readonly atLab: boolean;
-    /** Which way to go for them - straight at them, or at the door between - once they are seen. */
-    readonly heading: string | null;
-    /** Tiles away, on the same place of the map; null in another place, or not yet seen. */
-    readonly distance: number | null;
-    /** Where they are when it is another place of the map than the player's. */
-    readonly elsewhere: 'indoors' | 'outdoors' | null;
-  } | null;
+  /** Everybody else in the room. */
+  readonly friends: readonly FriendChipFriend[];
 }
 
 /**
- * The friend chip: who else is raiding this map and which way they are.
+ * The friend chip: who else is raiding this map and which way each of them is,
+ * a line each (a room holds four, so at most three).
  *
- * It answers the one question a vast map asks of two players - where did they
- * go - in the hunter chip's own words (a name, a heading, how far), and says
- * the moment they leave, whichever way they went: an exit, a loss and a closed
- * tab all look the same from here, and all mean the raid carries on alone.
- * While nobody else is in, it is the room's code, which is the thing to read
- * out to a friend.
+ * It answers the one question a vast map asks of players raiding together -
+ * where did they go - in the hunter chip's own words (a name, a heading, how
+ * far), and says the moment one of them leaves, whichever way they went: an
+ * exit, a loss and a closed tab all look the same from here, and all mean the
+ * raid carries on. While nobody else is in, it is the room's code, which is
+ * the thing to read out to a friend.
  */
-export function friendChipLine(input: FriendChipInput): string {
-  if (input.news) {
-    return input.news.came ? `${input.news.name} IS IN THE ROOM` : `${input.news.name} LEFT THE RAID`;
-  }
-  const friend = input.friend;
-  if (!friend) {
-    return `ROOM ${input.code}`;
-  }
+export function friendChipLines(input: FriendChipInput): readonly string[] {
+  const news = input.news
+    ? [input.news.came ? `${input.news.name} IS IN THE ROOM` : `${input.news.name} LEFT THE RAID`]
+    : [];
+  const friends = input.friends
+    .filter((friend) => !(input.news?.came && input.news.name === friend.name))
+    .map(friendLine);
+  const lines = [...news, ...friends];
+  return lines.length > 0 ? lines : [`ROOM ${input.code}`];
+}
+
+function friendLine(friend: FriendChipFriend): string {
   if (friend.atLab) {
     return `${friend.name} GETTING READY`;
   }
