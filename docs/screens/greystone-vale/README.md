@@ -6,9 +6,11 @@ is the plan, each district that is drawn marked DRAWN:
 
 ![plan](plan.png)
 
-And the vale as it ships now, with all nine of its districts drawn: Millbrook,
-High Moor, Greystone Peaks, Pine Hollow, The Crossing, Tanglewood, Reedmere,
-Gull Strand and Orchard Terraces.
+And the vale as it ships now, with the nine districts it was planned as all
+drawn - Millbrook, High Moor, Greystone Peaks, Pine Hollow, The Crossing,
+Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the five it has
+grown into (The Power Station, Safari Marsh, The Wreck, The Sunken Quarter and
+Smugglers' Cove) still wood until each is drawn.
 
 ![the vale as it ships](vale.png)
 
@@ -127,39 +129,53 @@ Its first judged draw, a wide valley:
 
 ## The vale
 
-Nine districts of 64x64 tiles make a 192x192 map, with room left to grow a
-column east and a row south inside a map file's 256x256. Each district has one
-idea, which its program is written to:
+Fourteen districts of 64x64 tiles in a 256x256 map, a map file's largest. The
+vale was planned as nine, 192 square; once they were drawn it grew a column
+east and a coast south into the room left for it. Each district has one idea,
+which its program is written to:
 
 | District | Terrain | The one idea |
 |---|---|---|
 | Millbrook | town | The mill village on the brook: a square, the mill race, cottages and the Centre. Every road starts here. |
-| High Moor | moor | The old drove road crosses between standing stones and drops south to the village by stacked ledges. |
+| High Moor | moor | The old drove road crosses past the Grey Stones, a tor, and drops south to the village by stacked ledges. |
 | Greystone Peaks | mountain | A switchback pass climbs past quarry benches to the mouth of the Greystone Caves; the river is born in a tarn. |
 | Pine Hollow | forest | A dark pine wood where one hidden trail threads three clearings; the way south is a deer path nobody signs. |
-| The Crossing | river | The river splits the vale; a stone bridge, a ford and stepping stones are three different walks over it. |
+| The Crossing | river | The river splits the vale; a stone bridge and stepping stones are two different walks over it. |
 | Tanglewood | forest | A broadleaf maze of paths that loop and fork, opening onto a ruined shrine in a glade. |
 | Reedmere | marsh | Boardwalks over reed beds round a still mere: tall grass everywhere, and the dry way is the long way. |
 | Gull Strand | coast | Sea cliffs where the river meets the sea; a sea cave runs back under the cliffs into the Greystone Caves. |
 | Orchard Terraces | farmland | Orchards and pastures step down to the sea; the ledges on the farm road are the quick way home. |
+| The Power Station | mountain | A derelict hydro-electric station on the falls below the pines: a fenced compound, the turbine hall, and a substation gate only its card key opens. |
+| Safari Marsh | marsh | Behind the Safari Zone's own gate, a warden's reserve of reed beds and pools where the vale's rarest Pokemon live. |
+| The Wreck | coast | A liner aground on the reef off the east cape: the salvage camp picks it over, and the reef is the only way out to it. |
+| The Sunken Quarter | coast | The drowned lower town of the old port, reached along the jetty from the strand: streets under the tide. |
+| Smugglers' Cove | coast | A hidden cove under the cliffs where the marsh drains to the sea: the smugglers' jetty, their boat, and contraband. |
 
-- **Barriers.** The river runs the length of the middle column, so east and west
-  meet only at The Crossing's three ways over. The peaks and the sea close the
-  north and south.
+- **Barriers.** The river runs the length of the old middle column, so east
+  and west meet only at The Crossing's two ways over. The peaks, the sea and the
+  wood close the edges.
 - **Main routes.** The road from the Westward Road through Millbrook, over the
-  river and on into Tanglewood; the drove road down from the moor; and the coast
-  road along the strand to the orchards.
-- **Hidden forest routes** (dashed): a col from the peaks into Pine Hollow, a deer
-  path from Pine Hollow down into Tanglewood, and a wood-edge path from The
-  Crossing into Tanglewood.
+  river, into Tanglewood and on into the Safari Marsh; the drove road down from
+  the moor; the coast road along the strand to the orchards and out to the
+  wreck; and the jetty from the strand to the drowned quarter.
+- **Hidden routes** (dashed): a col from the peaks into Pine Hollow, a deer path
+  from Pine Hollow down into Tanglewood, a wood-edge path from The Crossing into
+  Tanglewood, and a way down through the reeds from Reedmere to the cove.
 - **The Greystone Caves**: five floors, with mouths in the peaks, in Tanglewood
   and in the sea cliffs, so a group can go underground at one end of the vale and
   come out at another.
-- **Seven ways out** (red), **five landings** (Mill Square is the front door) and
-  two secrets to find.
+- **Ways out** (red): the Westward Road, the Moor Gate and the Mere Path from the
+  first nine, and from the new five the Pylon Road, the Ranger's Track and three
+  that open a while into a raid - the salvage launch, the low-water stair and the
+  smugglers' boat. A district far from all of them has a hidden way out of its
+  own.
 - **Crossings are fixed in the plan**, so each district can be drawn on its own
-  and still meet its neighbours, and a district added later at the plan's edge
-  joins at a way out that becomes a crossing.
+  and still meet its neighbours. The four old ways out east and south - the Pine
+  Trail, the Eastern Track, Orchard Lane and Fisher's Jetty - became the
+  crossings the new districts join at.
+- **What it may hold.** The vale is the game's own map, so its file is held to
+  `BUILT_IN_MAP_FILE_LIMITS` rather than a player's: fourteen districts need
+  more than eight landings and twelve ways out.
 
 ## Judged blind
 

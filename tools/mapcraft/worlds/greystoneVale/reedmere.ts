@@ -162,6 +162,9 @@ export function reedmere(): MapcraftResult {
   p.road([[12, 46], [12, 50]], { letter: ',' }); // the spur to the hide
   p.building('shed', 9, 49, { lot: '.' });
 
+  // A way nobody signs, down from the reeds through the wood to Smugglers' Cove.
+  p.trail([[20, 54], [20, 61]]);
+
   const file = districtFile(GREYSTONE_VALE, 'reedmere', p, {
     dropIns: [],
     itemSpots: [{ x: 38, y: 31 }, { x: 54, y: 12, hidden: true }, { x: 22, y: 52 }],

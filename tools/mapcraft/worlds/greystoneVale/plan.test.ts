@@ -9,14 +9,35 @@ describe('the Greystone Vale plan', () => {
     expect(unreachableDistricts(GREYSTONE_VALE, 'millbrook')).toEqual([]);
   });
 
-  it('keeps room to grow a column and a row inside a map file', () => {
+  it('has grown into the room it kept, and fits a map file exactly', () => {
+    // Planned as nine districts, 192 square, with a column and a row to spare;
+    // grown into them once the nine were drawn.
     const bounds = planBounds(GREYSTONE_VALE);
-    expect((bounds.columns + 1) * GREYSTONE_VALE.districtSize).toBeLessThanOrEqual(
-      MAP_FILE_LIMITS.maxWidth,
-    );
-    expect((bounds.rows + 1) * GREYSTONE_VALE.districtSize).toBeLessThanOrEqual(
-      MAP_FILE_LIMITS.maxHeight,
-    );
+    expect(bounds.columns * GREYSTONE_VALE.districtSize).toBe(MAP_FILE_LIMITS.maxWidth);
+    expect(bounds.rows * GREYSTONE_VALE.districtSize).toBe(MAP_FILE_LIMITS.maxHeight);
+    expect(GREYSTONE_VALE.builtIn).toBe(true);
+  });
+
+  it('opens the old ways out east and south onto what it grew into', () => {
+    const joins = (a: string, b: string) =>
+      GREYSTONE_VALE.crossings.some(
+        (crossing) => crossing.between.includes(a) && crossing.between.includes(b),
+      );
+    expect(joins('pine-hollow', 'power-station')).toBe(true);
+    expect(joins('tanglewood', 'safari-marsh')).toBe(true);
+    expect(joins('orchard-terraces', 'the-wreck')).toBe(true);
+    expect(joins('gull-strand', 'sunken-quarter')).toBe(true);
+    expect(joins('reedmere', 'smugglers-cove')).toBe(true);
+    const names = GREYSTONE_VALE.exits.map((exit) => exit.name);
+    for (const old of ['Pine Trail', 'Eastern Track', 'Orchard Lane', "Fisher's Jetty"]) {
+      expect(names).not.toContain(old);
+    }
+    // A raid needs a way out that opens later, and boats and the tide are those.
+    expect(GREYSTONE_VALE.exits.filter((exit) => exit.opens?.when === 'after').map((exit) => exit.name)).toEqual([
+      'Salvage Launch',
+      'Low Water Stair',
+      "Smugglers' Boat",
+    ]);
   });
 
   it('gives every district an idea and a terrain, and the village the front door', () => {
