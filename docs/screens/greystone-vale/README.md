@@ -580,7 +580,7 @@ player's map is built by). While its districts are being drawn it is on
   `greystoneVale.test.ts` holds that against every contract banked.
 - **Every structure and safety rule holds it now** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
-  walked tile - through `mapStructure.greystoneVale.test.ts` and the rest of
+  walked tile - through `mapStructure.greystoneVale1-4.test.ts` and the rest of
   the suite.
 - **What a finished map pays and guards waits for its districts**: its boss and
   two doors, its key exit and key, its locked crate, its loot (money,

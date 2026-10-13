@@ -660,7 +660,8 @@
    "y": 191,
    "name": "Fisher's Jetty",
    "opens": {
-    "when": "always"
+    "when": "after",
+    "seconds": 90
    }
   }
  ],

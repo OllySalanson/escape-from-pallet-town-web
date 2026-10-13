@@ -17,7 +17,7 @@
  * Sizes, offsets and widths are even, because the Kanto sheet draws trees on
  * a 2x2 lattice: an odd seam would cut every tree along it in half.
  */
-import { MAP_FILE_LIMITS, type MapFileHabitat } from '../../src/game/world/mapFile';
+import { MAP_FILE_LIMITS, type MapFileExit, type MapFileHabitat } from '../../src/game/world/mapFile';
 import { MapProgram } from './program';
 import type { TileRect } from './tiles';
 
@@ -61,6 +61,13 @@ export interface WorldExit {
   readonly name: string;
   readonly kind?: 'road' | 'trail';
   readonly width?: number;
+  /**
+   * When it opens; always, unless the plan says otherwise. A raid needs one way
+   * out that opens later as well as one open from the start
+   * (`runGeneration.test.ts`), and once every district is drawn the stand-ins
+   * that used to be the later ones are gone.
+   */
+  readonly opens?: MapFileExit['opens'];
 }
 
 /** Something a district's program has to put on the map, roughly where the plan says. */

@@ -253,7 +253,7 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
     );
     if (!opening) continue;
     const [x, y] = exitTile(size, opening);
-    merged.exits.push({ x: rect.x + x, y: rect.y + y, name: exit.name, opens: { when: 'always' } });
+    merged.exits.push({ x: rect.x + x, y: rect.y + y, name: exit.name, opens: exit.opens ?? { when: 'always' } });
   }
   merged.exits = uniqueNames(merged.exits);
   const file: MapFile = {
