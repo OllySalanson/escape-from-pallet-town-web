@@ -348,8 +348,8 @@ standing in a clearing.
     with `caveMouthLink`. A district with a mouth carries the floors and the
     ladders as well, so it passes its checks on its own; the stitcher takes a
     floor or a ladder two districts carry alike once (one carried differently
-    is two places, and a problem). The peaks' mouth is in; until Gull Strand's
-    is, its way out is a passage into the south wall that goes nowhere yet.
+    is two places, and a problem). All three mouths are in: the peaks', the
+    wood's and the sea cave in Gull Strand's cliffs.
 
 ![Pine Hollow](pine-hollow.png)
 
@@ -479,8 +479,12 @@ cliffs and the strand.
   orchards. The trail from Reedmere crosses the river on a stone bridge.
 - **The cliffs:** a band of rock with a cove under it. The sea comes in behind
   a sand bar to make a lagoon, there is a tide pool in the rocks, and stone
-  steps lead down from the cliff-top path. The sea cave's mouth is planted in
-  the cliff foot once the Greystone Caves are stitched into the vale.
+  steps lead down from the cliff-top path.
+- **The sea cave:** the Greystone Caves' lowest mouth, cut into the cliff foot
+  over the cove and opening straight onto the beach. It leads to the caves'
+  bottom floor, so a raid can go in from the shore and come up in Tanglewood
+  or the peaks. Old Ness on the jetty says it is there: "There is a cave under
+  the cliffs. The tide hides it."
 - **The Smugglers' Path:** a way out in a nook of the west wood above the
   heath. It was added when The Crossing was drawn: its stand-in ways out had
   kept the heath's far corner within the hunter's blind window.
@@ -517,6 +521,11 @@ Round 2's remaining faults, for the next pass: the lagoon's stepped bank, the
 straight line of the cliff, and the empty grass on the heath.
 
 ![Gull Strand as first drawn](gull-strand-first-draw.png)
+
+The sea cave, before and after: the cliff band over the cove, and the mouth cut
+into its foot.
+
+![The cliffs over the cove before and after the sea cave](sea-cave.png)
 
 ## Orchard Terraces
 

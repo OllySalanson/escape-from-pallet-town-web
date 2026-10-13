@@ -436,6 +436,11 @@
    "kind": "cottage"
   },
   {
+   "x": 77,
+   "y": 160,
+   "kind": "cave-mouth"
+  },
+  {
    "x": 148,
    "y": 135,
    "kind": "warden-house"
@@ -1840,6 +1845,23 @@
      "area": "greystone-caves-b1f",
      "x": 26,
      "y": 40,
+     "toward": "down",
+     "look": "cave-exit"
+    }
+   ]
+  },
+  {
+   "ends": [
+    {
+     "x": 77,
+     "y": 161,
+     "toward": "up",
+     "look": "door"
+    },
+    {
+     "area": "greystone-caves-b4f",
+     "x": 26,
+     "y": 38,
      "toward": "down",
      "look": "cave-exit"
     }
