@@ -23,6 +23,7 @@ import { composeMapFile } from '../../src/game/world/mapAreas';
 import { readTiles, WALL_KINDS, type TileRect } from './tiles';
 import type { DesignMoves } from './measures';
 import {
+  cellRect,
   districtRect,
   openingsOf,
   planBounds,
@@ -185,6 +186,8 @@ const TERRAIN_COLOUR: Readonly<Record<Terrain, Rgb>> = {
   farmland: [92, 112, 60],
   moor: [100, 80, 100],
 };
+/** A cell of the plan that is open sea, darker than any coast. */
+const SEA_COLOUR: Rgb = [40, 72, 108];
 const MARK_COLOUR: Readonly<Record<PlannedLandmark['kind'], Rgb>> = {
   landmark: [255, 214, 92],
   landing: [120, 240, 255],
@@ -277,6 +280,13 @@ export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Se
   for (const district of plan.districts) {
     const { x, y } = origin(district.id);
     box(image, x + 2, y + 2, CELL - 4, CELL - 4, TERRAIN_COLOUR[district.terrain ?? 'forest']);
+  }
+  for (const sea of plan.seas ?? []) {
+    const rect = cellRect(plan, sea);
+    const x = 8 + rect.x * scale;
+    const y = 32 + rect.y * scale;
+    box(image, x + 2, y + 2, CELL - 4, CELL - 4, SEA_COLOUR);
+    label(image, 'OPEN SEA', x + 12, y + 12, 1, [150, 180, 210]);
   }
   // The ways through each district, from every opening to its heart.
   const heart = (id: string): [number, number] => {

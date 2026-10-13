@@ -178,7 +178,10 @@ without anything already drawn moving:
    dead end - and every seam is reported as joined, broken or waiting. A
    district left open at its edge where no crossing is planned is a problem, as
    is anything over a map file's limits (256x256 tiles, 8 drop-ins, 12 ways out,
-   40 item spots, 16 places, 32 links).
+   40 item spots, 16 places, 32 links; a plan marked `builtIn` is the game's
+   own map and is held to `BUILT_IN_MAP_FILE_LIMITS` instead). A cell of the
+   plan that is no district is wood too, unless the plan names it in `seas`:
+   open sea, laid as deep water, so a coast that faces it meets the sea.
 
 ```sh
 npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/examples/quarryRoad.ts out/quarry-road
