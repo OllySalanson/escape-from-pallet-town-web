@@ -425,7 +425,7 @@ export const ITEMS = {
     displayName: 'Thunder Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A stone with a thunderbolt in it. Some Pokémon answer to it.',
+    description: 'A stone with a thunderbolt in it. Pikachu and Eevee answer to it.',
     effect: { type: 'evolution-stone' },
   },
   'fire-stone': {
@@ -433,7 +433,7 @@ export const ITEMS = {
     displayName: 'Fire Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A stone with a flame trapped in it. Vulpix and Growlithe answer to it.',
+    description: 'A stone with a flame trapped in it. Vulpix, Growlithe and Eevee answer to it.',
     effect: { type: 'evolution-stone' },
   },
   'water-stone': {
@@ -441,7 +441,7 @@ export const ITEMS = {
     displayName: 'Water Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A stone the colour of deep water. Shellder, Poliwhirl and Staryu answer to it.',
+    description: 'A stone the colour of deep water. Shellder, Poliwhirl, Staryu and Eevee answer to it.',
     effect: { type: 'evolution-stone' },
   },
   'leaf-stone': {

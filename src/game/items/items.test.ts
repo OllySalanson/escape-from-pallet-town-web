@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { BULBASAUR, Pokemon } from '../pokemon';
+import { EVOLUTIONS } from '../pokemon/evolution';
+import { getSpeciesById } from '../pokemon/species';
 import { MINIMUM_SUPPLIES } from '../stash';
 import { isMapInProgress, WORLD_MAPS } from '../worldMap';
 import {
@@ -109,5 +111,26 @@ describe('materials', () => {
     const everywhere = new Set(kindsByMap.flatMap(({ kinds }) => [...kinds]));
     expect([...everywhere].sort()).toEqual([...MATERIAL_IDS].sort());
     expect(kindsByMap.some(({ kinds }) => kinds.size < MATERIAL_IDS.length)).toBe(true);
+  });
+});
+
+describe('evolution stones', () => {
+  // A stone's line is the only place a player is told what it is for, at Bill's
+  // counter and in the pack. Bill's own errand hands over an Eevee, and three of
+  // the stones evolve it, so a line that leaves a reader out sends the player
+  // to the wrong stone - or to none.
+  it('names every Pokémon that answers to it', () => {
+    for (const stoneId of EVOLUTION_STONE_IDS) {
+      const description = getItemById(stoneId)!.description;
+      const readers = EVOLUTIONS.filter(
+        (rule) => rule.trigger.kind === 'stone' && rule.trigger.itemId === stoneId,
+      ).map((rule) => getSpeciesById(rule.from)!.name);
+      expect(readers.length, stoneId).toBeGreaterThan(0);
+      for (const reader of readers) {
+        // Nidorina and Nidorino are named together as the Nidoran lines.
+        const named = reader.startsWith('Nidor') ? 'Nidoran' : reader;
+        expect(description, `${stoneId} leaves out ${reader}`).toContain(named);
+      }
+    }
   });
 });

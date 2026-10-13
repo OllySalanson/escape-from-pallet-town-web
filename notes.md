@@ -309,6 +309,14 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** beat Maya on the shore road and press O. The notes say the road is clear for the rest of the raid, and that she will be back next time.
 - **Checked in the browser:** the same scratch run now reads the old warning before and the new line after.
 
+## 41. Three evolution stones never said they evolve Eevee, the Pokémon Bill's own errand hands over (newest feature: errands, playtested)
+
+- **Found:** Bill pays for OLD AMBER with an Eevee, and three stones evolve it (Fire to Flareon, Thunder to Jolteon, Water to Vaporeon). But a stone's line is the only place a player is told what it is for - in the pack and at Bill's counter, where it is printed over his own detail - and none of them named Eevee. The Thunder Stone said only "Some Pokémon answer to it."; the Fire Stone named Vulpix and Growlithe; the Water Stone named Shellder, Poliwhirl and Staryu. A player holding Bill's Eevee had no way to learn which stone it reads, short of spending one.
+- **Reproduced:** a scratch copy of `menuShots.mjs` at 1280x800 against a test-mode build walked into Bill's cottage and put the cursor on each stone's row: the barter pane read the old lines. In `items/items.test.ts` the new "names every Pokémon that answers to it" (every `from` species of a stone rule in `EVOLUTIONS` must be named, the Nidoran lines together) failed before the fix on the Thunder Stone.
+- **Fixed:** in `items/items.ts` the Thunder Stone now reads "Pikachu and Eevee answer to it.", the Fire Stone "Vulpix, Growlithe and Eevee", the Water Stone "Shellder, Poliwhirl, Staryu and Eevee". The test reads the evolution table itself, so a stone line can no longer leave a reader out.
+- **How a player meets it:** point at a stone on Bill's barter table, or in the pack. The line names every Pokémon it evolves, Eevee included.
+- **Checked in the browser:** the same scratch run (deleted afterwards) reads the new line in each of the three stones' panes.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
