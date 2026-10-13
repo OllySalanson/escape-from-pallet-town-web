@@ -4,6 +4,7 @@ import { KANTO_TILESET, type KantoPropName } from './kantoTileset';
 import { OVERWORLD } from './sheets';
 import { BASE_SHEET_SOURCE, solidPiece } from '../../base/baseSheet';
 import { TOWN_PROPS, TOWN_SHEET_SOURCE } from './townSheet';
+import { AREA_SHEET_SOURCE, areaProp } from './areaSheet';
 import type { TownPieceName } from '../generated/townPieces';
 import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
 import { EMBER_SHEET_SOURCE, emberProp } from './emberSheet';
@@ -111,12 +112,24 @@ const MOUNTAIN = {
   cliffSteps: emberProp('ember.steps', 'steps', ['..']),
 } as const satisfies Record<string, PropDefinition>;
 
+/**
+ * The Pokemon Tower's graves and statues, cut from the top layer of its floors
+ * (`scripts/cut-frlg-areas.mjs`) and so clear of any ground: FireRed's own
+ * graves, stood out of doors as no FireRed map stands them.
+ */
+const TOWER_STONES = {
+  graveStone: areaProp('tower.grave', 'grave'),
+  goldGraveStone: areaProp('tower.goldGrave', 'grave'),
+  graveStatue: areaProp('tower.statue', 'statue'),
+} as const satisfies Record<string, PropDefinition>;
+
 export type PlayerMapPropName =
   | KantoPropName
   | Cc0ObjectName
   | keyof typeof BASE_BUILDINGS
   | keyof typeof ICE
   | keyof typeof MOUNTAIN
+  | keyof typeof TOWER_STONES
   | TownPieceName;
 
 export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
@@ -128,10 +141,19 @@ export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
     TOWN_SHEET_SOURCE.source,
     ICE_SHEET_SOURCE.source,
     EMBER_SHEET_SOURCE.source,
+    AREA_SHEET_SOURCE.source,
   ],
   materials: {
     ...KANTO_TILESET.materials,
     ice: { roles: { fill: iceTile('ice.sheet') } },
   },
-  props: { ...cc0, ...BASE_BUILDINGS, ...TOWN_PROPS, ...ICE, ...MOUNTAIN, ...KANTO_TILESET.props },
+  props: {
+    ...cc0,
+    ...BASE_BUILDINGS,
+    ...TOWER_STONES,
+    ...TOWN_PROPS,
+    ...ICE,
+    ...MOUNTAIN,
+    ...KANTO_TILESET.props,
+  },
 };

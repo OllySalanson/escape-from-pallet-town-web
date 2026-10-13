@@ -20,7 +20,7 @@
 // --insertion and the save flags beside it are deploy.mjs's; README.md has the
 // rest, and how the two endings nobody chooses are reached with them.
 import { writeFileSync } from 'node:fs';
-import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
+import { LOGIC_WINDOW, PIXEL_WINDOW, attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, deploy, deployOptions, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -87,11 +87,25 @@ const SEEDED = (n) => `(() => {
 // are laid out against the browser window now (`src/game/display/menuStage.ts`)
 // and the result screen at the end of a raid is one of them.
 const sized = /^(\d+)x(\d+)$/.exec(option('window') ?? '');
-const browser = await launchBrowser({
-  window: sized
-    ? { width: Number(sized[1]), height: Number(sized[2]) }
-    : option('window') === 'pixel' ? PIXEL_WINDOW : LOGIC_WINDOW,
-});
+const windowSize = sized
+  ? { width: Number(sized[1]), height: Number(sized[2]) }
+  : option('window') === 'pixel' ? PIXEL_WINDOW : LOGIC_WINDOW;
+// `--attach=PORT` drives a browser already running on that CDP port - one a
+// machine's memory watchdog can see - rather than launching one of its own.
+const attach = option('attach');
+const browser = attach ? attachBrowser(Number(attach), { window: windowSize }) : await launchBrowser({ window: windowSize });
+
+// `--clock=night|day` puts the page in a time zone where it is eleven at night
+// or noon now, so the raid deploys as a night raid or a day raid by the
+// player's own clock (`world/nightRaids.ts`) whenever the driver is run. The
+// Etc zones are named the other way round from the offset they keep.
+const clock = option('clock');
+const ZONE_HOUR = { night: 23, day: 12 };
+const zoneFor = (hour) => {
+  let offset = (hour - new Date().getUTCHours() + 24) % 24;
+  if (offset > 14) offset -= 24;
+  return offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+};
 const log = [];
 const note = (line) => {
   log.push(line);
@@ -101,6 +115,12 @@ const note = (line) => {
 try {
   const started = Date.now();
   const page = await browser.openPage('about:blank');
+  if (clock !== undefined) {
+    if (!(clock in ZONE_HOUR)) throw new Error('--clock is night or day');
+    const timezoneId = zoneFor(ZONE_HOUR[clock]);
+    await page.send('Emulation.setTimezoneOverride', { timezoneId });
+    note(`clock: ${clock}, in ${timezoneId}`);
+  }
   if (seed !== undefined) {
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: SEEDED(seed) });
   }

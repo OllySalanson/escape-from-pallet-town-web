@@ -377,6 +377,10 @@ export const MAP_FILE_BUILDINGS = {
   statue: 'statue',
   gravestone: 'gravestone',
   'gravestone-worn': 'gravestoneWorn',
+  // FireRed's own graves, the Pokemon Tower's, and the statue that stands in it.
+  grave: 'graveStone',
+  'gold-grave': 'goldGraveStone',
+  'grave-statue': 'graveStatue',
   'stone-arch': 'stoneArch',
   'gate-arch': 'gateArch',
   'stone-bridge': 'stoneBridge',

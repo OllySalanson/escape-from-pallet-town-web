@@ -103,8 +103,19 @@ export function districtFile(
  * first opening, and the stitcher leaves that stand-in out, as it does the
  * stand-in ways out.
  */
+/**
+ * The opening a district's stand-in landing is just inside: its first that is
+ * not a river - and not a night track either, if it has another, because a
+ * night track is shut whenever a district is checked alone and a landing just
+ * inside one is a landing in a pocket.
+ */
+function standInOpening(plan: WorldPlan, id: string): Opening | undefined {
+  const ways = openingsOf(plan, id).filter((candidate) => candidate.kind !== 'river');
+  return ways.find((candidate) => candidate.opens === undefined) ?? ways[0];
+}
+
 function standInDropIn(plan: WorldPlan, id: string): MapFileDropIn {
-  const opening = openingsOf(plan, id).find((candidate) => candidate.kind !== 'river');
+  const opening = standInOpening(plan, id);
   if (!opening) throw new Error(`${id} has no way in to be dropped at`);
   const [x, y] = standInDropInTile(plan.districtSize, opening);
   return { x, y, name: 'Way in', description: 'A stand-in landing, for walking this district alone.' };
@@ -211,9 +222,7 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
       ),
     );
     merged.buildings.push(...file.buildings.map(move));
-    const standInLanding = openingsOf(plan, district.id).find(
-      (opening) => opening.kind !== 'river',
-    );
+    const standInLanding = standInOpening(plan, district.id);
     const standInAt = standInLanding ? standInDropInTile(size, standInLanding).join(',') : '';
     merged.dropIns.push(
       ...file.dropIns

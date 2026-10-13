@@ -1,0 +1,268 @@
+/**
+ * THE MOOR CHAPEL, on the fell west of High Moor: a far place, reached only
+ * after dark.
+ *
+ * The one idea: a ruined chapel on a fell, in a fog that lifts only after
+ * dark - its graveyard, its crypt and its ghosts. The sheep track nobody signs
+ * leaves the shepherd's clearing on High Moor and runs west through the wood;
+ * by day the fog turns it back (a night track, `gates.ts`), and on a night raid
+ * it comes out at the Lantern Cross, at the head of the fell. From the cross
+ * the track drops through the heather, under the crags, to the chapel on its
+ * knoll - FireRed's own Pokemon Tower - with the graveyard walled round it,
+ * and the old corpse road the drovers carried their dead along leaves by the
+ * lych gate, west off the fell and out of the vale. Under the chapel's floor is
+ * the crypt, the one place a raid meets Ghost Pokemon on every step, and what
+ * the drovers buried with their dead, and the Spell Tag.
+ */
+import type { MapFileArea, MapFileLink } from '../../../../src/game/world/mapFile';
+import { TOWER_GROUND } from '../../../../src/game/world/tileset/insideTileset';
+import type { MapcraftResult } from '../../report';
+import { districtFile } from '../../stitch';
+import { planLimits, startDistrict } from '../../worldPlan';
+import { GREYSTONE_VALE } from './plan';
+
+/**
+ * The fell as it is drawn, a letter a tile: T the wood, C the crags, . the
+ * fell's grass, g heather, W the tarn, d the corpse road. Everything stands
+ * along the one road the drovers carried their dead on: in off the sheep
+ * track at the Lantern Cross, west along a corridor under the crags with the
+ * heather either side, round the tarn at the crags' west foot, south past the
+ * chapel's door and the graveyard's lych gate, and west out of the vale. The
+ * wood frames every side, on whole lattice cells so its trees are whole.
+ */
+const GROUND = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCTTTTTTTTTTTTTTTT',
+  'TTTTTTTTCCCCCCCCCCCCCCCC......CCCCCCCC..........TTTTTTTTTTTTTTTT',
+  'TTTTTTTTCCCCCCCCCCCCC....ggggg..CCCC............TTTTTTTTTTTTTTTT',
+  'TTTTTTTTCCCCWWWWCCC....gggggggg.................TTTTTTTTTTTTTTTT',
+  'TTTTTTTTCCCWWWWWW.....gggggggggg......ggggg.....TTTTTTTTTTTTTTTT',
+  'TTTTTTTTCCWWWWWWW.....ggggggggggg....ggggggg....TTTTTTTTTTTTTTTT',
+  'TTTTTTTTCCWWWWWWW......ggggggggg......gggg......TTTTTTTTTTTTTTTT',
+  'TTTTTTTT..WWWWWW.........ggggg....dddddddddddddd................',
+  'TTTTTTTT..ggggggg.................dddddddddddddd................',
+  'TTTTTTTT...gggg.....dddddddddddddddd......dd....TTTTTTTTTTTTTTTT',
+  'TTTTTTTT............dddddddddddddddd......dd....TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTT......dd............TT......dd....TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTggg...dd............TTgggg..dd....TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTgggg..dd............TTggggg.dddd..TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTggggg.dd............TTggggg.dddd..TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTggggg.dd............TT.ggg....dd..TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTT.gggg.dd............TT........dd..TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTggggg.dd............TT........dd..TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTgggg..dd............TT........ggggTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTT.ggg..dd............TT.......gggggTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTgggg..dd............TT............TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTggggg.dd............TT............TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTggggg.dd............TT............TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTggg...dd............TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTgg....dd............TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTT......dd............TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTT......dd............TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTT......dd............TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTT......dd............TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'dddddddddddddddddddddd........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'dddddddddddddddddddddd........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTT..gggggg......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTT...gggggggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+];
+
+/** Where FireRed's Pokemon Tower stands, and so the tile in front of its door. */
+const CHAPEL = { x: 24, y: 22 } as const;
+const CHAPEL_DOOR = { x: CHAPEL.x + 3, y: CHAPEL.y + 7 } as const;
+
+/** The nave: FireRed's Pokemon Tower's ground floor, quiet, its pews of graves either side of the aisle. */
+const NAVE: MapFileArea = {
+  id: 'moor-chapel-nave',
+  name: 'Moor Chapel',
+  kind: 'tower',
+  style: 'tower',
+  width: 24,
+  height: 20,
+  ground: TOWER_GROUND,
+  buildings: [
+    // The two statues either side of where the altar was, as Lavender's top floor stands them.
+    { x: 9, y: 2, kind: 'tower-statue' },
+    { x: 13, y: 2, kind: 'tower-statue' },
+    // Pews of graves either side of the aisle.
+    ...[6, 7, 8, 9, 13, 14, 15, 16].flatMap((x) => [
+      { x, y: 7, kind: 'tower-grave' as const },
+      { x, y: 11, kind: 'tower-grave' as const },
+    ]),
+    ...[7, 8, 9, 13, 14, 15].map((x) => ({ x, y: 15, kind: 'tower-grave' as const })),
+  ],
+};
+
+/**
+ * Where FireRed's Pokemon Tower 3F stands its graves, cell for cell: the maze
+ * Game Freak drew round its stairs up on the east, which are where the crypt's
+ * are.
+ */
+const TOWER_3F_GRAVES: readonly (readonly [number, number])[] = [
+  [8, 4], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6], [12, 6], [13, 6], [14, 6], [15, 6],
+  [16, 6], [17, 6], [18, 6], [6, 7], [6, 8], [17, 8], [19, 8], [6, 9], [10, 9], [11, 9], [12, 9],
+  [16, 9], [6, 10], [10, 10], [11, 10], [12, 10], [16, 10], [6, 11], [16, 11], [6, 12], [16, 12],
+  [19, 12], [20, 12], [6, 13], [10, 13], [11, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13],
+  [18, 13], [19, 13], [4, 15], [5, 15], [6, 15], [17, 15], [18, 15], [6, 16], [9, 17], [10, 17],
+  [11, 17], [12, 17], [13, 17],
+];
+
+/**
+ * The crypt under the nave: the same round room, its own stairs up in the east
+ * and nothing at its foot, its graves the maze FireRed's third floor is - and
+ * the drovers' own, in gold, in the inner block where the grave goods are.
+ */
+const CRYPT: MapFileArea = {
+  id: 'moor-chapel-crypt',
+  // The place on it that names its wildlife is THE CRYPT, and is the plate.
+  name: 'Chapel Crypt',
+  kind: 'tower',
+  style: 'tower',
+  width: 24,
+  height: 20,
+  ground: TOWER_GROUND.map((row, y) => (y === 18 ? 'C'.repeat(24) : row)),
+  buildings: TOWER_3F_GRAVES.map(([x, y]) => ({
+    x,
+    y,
+    kind: x >= 10 && x <= 12 && (y === 9 || y === 10) ? ('tower-gold-grave' as const) : ('tower-grave' as const),
+  })),
+};
+
+export function moorChapel(): MapcraftResult {
+  const p = startDistrict(GREYSTONE_VALE, 'moor-chapel');
+  p.draw(0, 0, GROUND);
+
+  // -- The chapel on its knoll beside the road: FireRed's own Pokemon Tower,
+  // the road's sand worn up to its door
+  p.building('pokemon-tower', CHAPEL.x, CHAPEL.y);
+  p.road([[22, 29], [CHAPEL_DOOR.x - 1, 29]]);
+
+  // -- The graveyard below the chapel, walled with the fell's own post and
+  // rail, its lych gate onto the road; graves in broken rows and the grass
+  // come up between them
+  p.fenceLine([[23, 31], [33, 31]]).fenceLine([[33, 31], [33, 39]]).fenceLine([[23, 39], [33, 39]]);
+  p.fenceLine([[23, 31], [23, 33]]).fenceLine([[23, 36], [23, 39]]);
+  p.bedRows([34, 28, 31], [36, 24, 26], [37, 24, 27], [38, 29, 32]);
+  for (const [x, y] of [
+    [25, 33], [26, 33], [28, 33], [30, 33], [31, 33],
+    [26, 35], [27, 35], [29, 35], [31, 35],
+    [28, 37], [30, 37], [32, 37],
+  ] as const) {
+    p.building('grave', x, y);
+  }
+  // The gold ones nearest the chapel: the drovers who paid for theirs.
+  p.building('gold-grave', 25, 32).building('gold-grave', 29, 32);
+
+  // The Lantern Cross: the tower's statue at the head of the fell, where the
+  // sheep track comes out of the wood.
+  p.building('grave-statue', 44, 13);
+  // -- The drove track south from the cross through the wood: the way the
+  // flocks came down to the chapel, past the peat pool and the shepherds'
+  // pen, gone to heather with nobody's sheep in it now
+  p.yard(40, 28, 6, 5, { gates: [[44, 28], [45, 28]], inner: 'g' });
+
+  // -- The night track: wood by day, where the fog turns the sheep track
+  // back, and a way through on a night raid. A whole lattice cell, so by day
+  // it is one whole tree.
+  const nightTrack = { kind: 'night' as const, x: 56, y: 18, width: 2, height: 2 };
+
+  const links: MapFileLink[] = [
+    {
+      ends: [
+        { x: CHAPEL_DOOR.x, y: CHAPEL_DOOR.y, toward: 'up', look: 'door' },
+        { area: NAVE.id, x: 11, y: 18, toward: 'down', look: 'mat' },
+      ],
+    },
+    {
+      ends: [
+        { area: NAVE.id, x: 4, y: 10, toward: 'left', look: 'stairs-down' },
+        { area: CRYPT.id, x: 18, y: 10, toward: 'right', look: 'stairs-up' },
+      ],
+    },
+  ];
+
+  const file = districtFile(GREYSTONE_VALE, 'moor-chapel', p, {
+    dropIns: [],
+    itemSpots: [
+      { x: 32, y: 38, hidden: true }, // in the graveyard's far corner
+      { x: 40, y: 12 }, // under the crags
+      // In the crypt: the Spell Tag where FireRed's third floor leaves its item,
+      // and what else was left in the far corner.
+      { area: CRYPT.id, x: 13, y: 2, prize: 'spell-tag' },
+      { area: CRYPT.id, x: 7, y: 16 },
+    ],
+    extra: {
+      doors: [nightTrack],
+      areas: [NAVE, CRYPT],
+      links,
+      districts: [
+        { name: 'The Graveyard', x: 23, y: 31, width: 11, height: 9, wildlife: 'haunted' },
+        { area: CRYPT.id, name: 'The Crypt', x: 0, y: 0, width: 24, height: 20, wildlife: 'haunted' },
+      ],
+      landmarks: [
+        { area: CRYPT.id, x: 9, y: 9, name: 'Grave Goods', kind: 'grave' },
+        { x: 32, y: 32, name: 'The Ossuary', kind: 'shrine' },
+      ],
+      signs: [
+        { x: 46, y: 17, lines: ['LANTERN CROSS', 'Lit for the drovers coming over the fell after dark.'] },
+        { x: 22, y: 28, lines: ['THE MOOR CHAPEL', 'Erected in the memory of the drovers and their POKéMON.'] },
+        { x: 12, y: 42, lines: ['THE CORPSE ROAD', 'West, off the fell.'] },
+      ],
+      people: [
+        {
+          area: NAVE.id,
+          x: 18,
+          y: 7,
+          name: 'Channeler',
+          look: 'channeler',
+          facing: 'left',
+          lines: ['I am a CHANNELER.', 'There are spirits up to mischief.', 'I sense them under the floor.'],
+        },
+        {
+          area: NAVE.id,
+          x: 5,
+          y: 14,
+          name: 'Mourner',
+          look: 'old-woman',
+          facing: 'up',
+          lines: ['I came to pray for my dearly departed CLEFAIRY.', 'Sniff!'],
+        },
+      ],
+    },
+  });
+  // The crypt's prize is the game's own map's: checked alone, it is held to the vale's limits.
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
+}
+
+/** For `look.mts`: the district alone. */
+export default moorChapel;
