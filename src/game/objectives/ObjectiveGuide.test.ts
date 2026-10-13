@@ -6,6 +6,7 @@ import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId, requireInsertion 
 import { FIRST_CONTRACT } from './contracts';
 import { objectivesForContract } from './RunObjectives';
 import { buildObjectiveGuide } from './ObjectiveGuide';
+import { ERRANDS, errandLoot } from '../hub/errands';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_POIS, poisForMap } from '../world/pois';
 import type { WorldMapId } from '../worldMap';
@@ -268,6 +269,55 @@ describe('a shiny in the field guide', () => {
 
     expect(hints.filter((hint) => hint.includes('shiny'))).toEqual([
       'You are carrying a shiny Bulbasaur. It is only yours once you extract.',
+    ]);
+  });
+});
+
+describe('an errand in the field guide', () => {
+  /** A Pallet Town raid with Brock's crate laid in THE QUARRY. */
+  function createErrandSession() {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+    );
+    const brock = ERRANDS.find((errand) => errand.id === 'brocks-crate')!;
+    return createActiveRunSession(
+      manager,
+      {},
+      {},
+      [],
+      [],
+      [],
+      generateRunPlan(7, undefined, 'town-square', undefined, undefined, [], {}, [], [], false, [], [errandLoot(brock)]),
+    );
+  }
+
+  const errandHints = (session: ReturnType<typeof createErrandSession>, carried: number) =>
+    buildObjectiveGuide(session, {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 7, y: 9 },
+      activatedPoiIds: new Set(),
+      carried: (itemId) => (itemId === 'brocks-crate' ? carried : 0),
+    }).hints.filter((hint) => hint.includes('crate'));
+
+  it('says where the thing lies, then that it is being carried', () => {
+    const session = createErrandSession();
+    expect(errandHints(session, 0)).toEqual([expect.stringMatching(/^Brock's errand: Brock's crate lies in THE QUARRY, /)]);
+
+    session.manager.registerFoundItem('brocks-crate', 1);
+    expect(errandHints(session, 1)).toEqual([
+      "You are carrying Brock's crate for Brock. Walk out with it and it is theirs; wipe and it is lost with the pack.",
+    ]);
+  });
+
+  it('never says it is being carried once it has been dropped out of the pack', () => {
+    const session = createErrandSession();
+    session.manager.registerFoundItem('brocks-crate', 1);
+
+    // Picked up, then put down for good to make room: the pack no longer holds it.
+    expect(errandHints(session, 0)).toEqual([
+      "You put Brock's crate down. Brock is still waiting for it, and it will be out here again next raid.",
     ]);
   });
 });

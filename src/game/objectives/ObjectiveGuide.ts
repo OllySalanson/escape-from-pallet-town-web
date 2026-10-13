@@ -17,6 +17,11 @@ export interface ObjectiveGuideContext {
    */
   readonly towards?: (target: GridPosition) => GridPosition;
   readonly activatedPoiIds: ReadonlySet<string>;
+  /**
+   * How many of an item the raid's pack holds now. A thing picked up can be
+   * put down again for good, so what was found is not what is carried.
+   */
+  readonly carried?: (itemId: string) => number;
 }
 
 export interface ObjectiveGuideObjective {
@@ -87,7 +92,11 @@ function errandHints(
     }
     const thing = errandThing(errand);
     if (found.some((stack) => stack.itemId === piece.itemId)) {
-      return [`You are carrying ${thing} for ${errand.name}. Walk out with it and it is theirs; wipe and it is lost with the pack.`];
+      // Found is not carried: the pack can put it down for good to make room,
+      // and then it is not out here this raid any more.
+      return (context.carried?.(piece.itemId) ?? 1) > 0
+        ? [`You are carrying ${thing} for ${errand.name}. Walk out with it and it is theirs; wipe and it is lost with the pack.`]
+        : [`You put ${thing} down. ${errand.name} is still waiting for it, and it will be out here again next raid.`];
     }
     const squares = errandSquares(errand);
     const heading = context.towards?.(piece.position) ?? piece.position;

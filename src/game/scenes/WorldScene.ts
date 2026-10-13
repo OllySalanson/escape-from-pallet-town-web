@@ -4273,6 +4273,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Headings across a door point at the door (`areaRoutes.ts`).
       towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
       activatedPoiIds: [...this.activatedPoiIds],
+      carried: (itemId: string) => this.bag.count(itemId),
       pausedWorld: true,
     });
   }

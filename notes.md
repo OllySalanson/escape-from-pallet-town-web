@@ -209,6 +209,14 @@ One finding a fix, each with a behavioural test.
 - **How a player meets it:** catch a legend after beating it and it joins the party on 1 HP, able to fight, and a Potion brings it up like any other Pokémon.
 - **Checked, left alone:** not driven in a browser this time - reaching a legend means beating its map's keeper first; the scene harness is the real battle scene.
 
+## 29. The field guide said "You are carrying Brock's crate" after it was dropped (newest feature: errands, playtested)
+
+- **Found:** playing Brock's errand on Pallet Town: pick up BROCK'S CRATE in THE QUARRY, then open the pack and DROP ONE to make room. The field guide (O) still said "You are carrying Brock's crate for Brock. Walk out with it and it is theirs". `ObjectiveGuide.errandHints` read the raid's found list, which keeps everything ever picked up, not the pack - and a drop puts the thing down for good.
+- **Reproduced:** in the real game with a copy of `raid.mjs --insertion=town-square --completed=floodplain-first-contract --level=15 --seed=3 --errands=brocks-crate --grab=brocks-crate --stepped --pixels`, with the bag's drop and the guide added after the grab. And in `ObjectiveGuide.test.ts` ("an errand in the field guide"): found, then not in the pack - the test failed before the fix with the "carrying" line.
+- **Fixed:** the guide is handed what the pack holds (`ObjectiveGuideContext.carried`, from `WorldScene`'s bag through `ObjectivesScene`). Found and still in the pack says "carrying" as before; found and no longer in the pack says "You put Brock's crate down. Brock is still waiting for it, and it will be out here again next raid." - true, because `errandsToLay` lays an errand again while the vault does not hold its thing.
+- **How a player meets it:** drop an errand's thing to make room and the field guide tells you it is gone and that it will be back next raid, rather than promising it is in your pack.
+- **Checked, left alone:** in the same guide, standing in THE QUARRY, the first note said "TOWN PUMP is nearby" for a pump on the Green far to the west - worth a look in a later iteration.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
