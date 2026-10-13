@@ -208,16 +208,23 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
         ...(district.wildlife ? { wildlife: district.wildlife } : {}),
       },
     );
+    // A place two districts both carry (a cave whose floors ride in one
+    // district's file and are carried by another with a mouth onto them, so
+    // each district passes its checks alone) is taken once, as is a way
+    // between two such places; carried differently, it is two places.
     for (const area of file.areas ?? []) {
-      if (merged.areas.some((other) => other.id === area.id))
-        problems.push(`Two districts have a place called '${area.id}'.`);
+      const other = merged.areas.find((candidate) => candidate.id === area.id);
+      if (other && JSON.stringify(other) === JSON.stringify(area)) continue;
+      if (other) problems.push(`Two districts have a place called '${area.id}'.`);
       merged.areas.push(area);
     }
-    merged.links.push(
-      ...(file.links ?? []).map((link) => ({
-        ends: [move(link.ends[0]), move(link.ends[1])] as const,
-      })),
-    );
+    for (const link of file.links ?? []) {
+      const moved: MapFileLink = { ends: [move(link.ends[0]), move(link.ends[1])] };
+      const shared = link.ends.every((end) => end.area !== undefined);
+      if (shared && merged.links.some((other) => JSON.stringify(other) === JSON.stringify(moved)))
+        continue;
+      merged.links.push(moved);
+    }
   }
   // A road into a district not drawn yet is a way out until that district is
   // drawn, so no part of an unfinished map is a dead end a raid cannot leave.

@@ -138,7 +138,14 @@ export function gullStrand(): MapcraftResult {
   p.flowers([50, 35], [51, 36], [55, 35]);
   p.road([[52, 34], [52, 40]]); // the loft's path, down to the strand
 
+  // A nook in the west wood above the heath, where a smugglers' path goes off
+  // through the trees: with The Crossing drawn its stand-in ways out are gone,
+  // and without this the heath's far corner is past the hunter's blind window
+  // (`hunterFlee.test.ts`).
+  p.meadow(4, 8, 2, 2);
+
   const file = districtFile(GREYSTONE_VALE, 'gull-strand', p, {
+    exits: [{ x: 4, y: 8, name: "Smugglers' Path", opens: { when: 'always' } }],
     dropIns: [{ x: 41, y: 45, name: 'The Strand', description: 'The strand where the road comes down to the sea.' }],
     itemSpots: [{ x: 3, y: 36, hidden: true }, { x: 56, y: 44 }, { x: 18, y: 8 }],
     extra: {

@@ -258,6 +258,20 @@ export const RUN_INSERTIONS = {
     position: { x: 22, y: 37 },
     description: 'The top of the drove road on High Moor, with the Grey Stones ahead and Millbrook below.',
   },
+  'greystone-vale-the-quarry': {
+    id: 'greystone-vale-the-quarry',
+    label: 'The Quarry',
+    mapId: 'greystone-vale',
+    position: { x: 120, y: 13 },
+    description: 'The quarry bench high in Greystone Peaks, beside the cliff the Greystone Caves open in.',
+  },
+  'greystone-vale-stepping-stones': {
+    id: 'greystone-vale-stepping-stones',
+    label: 'Stepping Stones',
+    mapId: 'greystone-vale',
+    position: { x: 104, y: 120 },
+    description: 'By the heron hide at the foot of The Crossing, over the stepping stones from the west bank.',
+  },
   'greystone-vale-the-strand': {
     id: 'greystone-vale-the-strand',
     label: 'The Strand',

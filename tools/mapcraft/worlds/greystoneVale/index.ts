@@ -4,17 +4,33 @@
  *   npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/worlds/greystoneVale/index.ts out/greystone-vale
  *
  * A district is added here as it is drawn, each in its own file beside this one,
- * once the vale can reach it: Pine Hollow and Tanglewood (`pineHollow.ts`,
- * `tanglewood.ts`) wait for The Crossing, the only way in to them from Millbrook.
+ * once the vale can reach it.
  */
 import type { WorldResult } from '../../worldReport';
+import { greystonePeaks } from './greystonePeaks';
+import { gullStrand } from './gullStrand';
 import { highMoor } from './highMoor';
 import { millbrook } from './millbrook';
-import { gullStrand } from './gullStrand';
 import { orchardTerraces } from './orchardTerraces';
+import { pineHollow } from './pineHollow';
 import { GREYSTONE_VALE } from './plan';
 import { reedmere } from './reedmere';
+import { tanglewood } from './tanglewood';
+import { theCrossing } from './theCrossing';
 
 export default function greystoneVale(): WorldResult {
-  return { plan: GREYSTONE_VALE, districts: { millbrook: millbrook(), 'high-moor': highMoor(), reedmere: reedmere(), 'gull-strand': gullStrand(), 'orchard-terraces': orchardTerraces() } };
+  return {
+    plan: GREYSTONE_VALE,
+    districts: {
+      millbrook: millbrook(),
+      'high-moor': highMoor(),
+      'greystone-peaks': greystonePeaks(),
+      'pine-hollow': pineHollow(),
+      'the-crossing': theCrossing(),
+      tanglewood: tanglewood(),
+      reedmere: reedmere(),
+      'gull-strand': gullStrand(),
+      'orchard-terraces': orchardTerraces(),
+    },
+  };
 }
