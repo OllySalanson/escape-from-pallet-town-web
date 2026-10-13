@@ -729,3 +729,27 @@ export const SAFARI_ZONE_WILDLIFE = wildlife(0.1, [
   { speciesId: 'pinsir', minLevel: 8, maxLevel: 8, weight: 1 },
   { speciesId: 'tauros', minLevel: 8, maxLevel: 8, weight: 1 },
 ]);
+
+/**
+ * A storm-struck summit: FireRed's climb to the Indigo Plateau, Route 23's
+ * Spearow and Mankey in the grass and Victory Road's Geodude, Machop and Onix
+ * on the crags, brought from their 32-46 down to the vale's levels as the Power
+ * Plant is. Nothing evolved is fielded, because every one of Route 23's and
+ * Victory Road's second stages (Fearow, Primeape, Graveler, Machoke) evolves
+ * above these levels; Onix evolves from nothing in the 151 and stands as the
+ * rare roll. Ekans is left out because by night its slot would go to a
+ * Raticate (`nightRaids.ts`) fielded far below the level a Rattata becomes one.
+ *
+ * It is the deepest ground in the vale and is fought in the rain (Stormcrown),
+ * measured: a level-8 Bulbasaur wins 58%, Charmander 91% and Squirtle 75% in
+ * the clear; in the rain Charmander falls to 57%, and by night, when Rattata
+ * take Spearow's slots, to 43% - the storm is the place's price, and the Water
+ * starter's ground.
+ */
+export const SUMMIT_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'spearow', minLevel: 8, maxLevel: 9, weight: 7 },
+  { speciesId: 'mankey', minLevel: 8, maxLevel: 9, weight: 5 },
+  { speciesId: 'geodude', minLevel: 8, maxLevel: 10, weight: 5 },
+  { speciesId: 'machop', minLevel: 9, maxLevel: 10, weight: 4 },
+  { speciesId: 'onix', minLevel: 10, maxLevel: 10, weight: 1 },
+]);

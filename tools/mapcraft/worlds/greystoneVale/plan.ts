@@ -188,7 +188,9 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: 'STORMCROWN',
       cell: [1, -1],
       terrain: 'mountain',
-      wildlife: 'field',
+      wildlife: 'summit',
+      // The storm: every fight up there is in the rain.
+      rain: true,
       idea: 'The storm-struck summit above the peaks, reached only from the deepest cave floor and a climb; Mew watches from the cairn.',
       reach: {
         wayIn:

@@ -485,7 +485,7 @@ export interface RunPlan {
    */
   readonly openedGates: readonly string[];
   /**
-   * The legends this save had caught when the raid deployed, by entity id
+   * The legends this save had caught when the raid deployed, by kind
    * (`world/legends.ts`): none of them stands this raid. Read off the plan for
    * the reason `completedContracts` is.
    */

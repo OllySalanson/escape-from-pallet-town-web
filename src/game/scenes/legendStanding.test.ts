@@ -94,10 +94,10 @@ describe('a legend standing in the world', () => {
 
   it('does not stand at all on a save that has caught it', () => {
     const [articuno, zapdos] = LEGENDS;
-    const { internals, entity } = besideLegend(articuno, [legendEntityId(articuno)]);
+    const { internals, entity } = besideLegend(articuno, [articuno.speciesId]);
     expect(internals.wasMet(entity)).toBe(true);
 
-    const other = besideLegend(zapdos, [legendEntityId(articuno)]);
+    const other = besideLegend(zapdos, [articuno.speciesId]);
     expect(other.internals.wasMet(other.entity)).toBe(false);
   });
 });

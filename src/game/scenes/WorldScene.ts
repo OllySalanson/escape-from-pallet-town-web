@@ -100,7 +100,7 @@ import { DialogBox } from '../ui/DialogBox';
 import { flashScreen } from '../ui/screenFlash';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
-import { caughtLegends, legendStandingAs } from '../world/legends';
+import { caughtLegends, legendCaught } from '../world/legends';
 import {
   NOT_EVEN_A_NIBBLE,
   ON_THE_HOOK,
@@ -4154,7 +4154,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       speciesId: species,
       level,
       // A legend is a boss you can keep: no ball until it is beaten, then one.
-      ...(legendStandingAs(entity.id) ? { legendary: true } : {}),
+      ...(entity.legendary ? { legendary: true } : {}),
     };
     this.dialogBox.showMessages([...entity.dialogLines]);
   }
@@ -4166,7 +4166,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private wasMet(entity: WorldEntity): boolean {
     return (
       entity.pokemon !== undefined &&
-      ((this.runSession?.pokemonMet ?? []).includes(entity.id) || this.caughtLegends.includes(entity.id))
+      ((this.runSession?.pokemonMet ?? []).includes(entity.id) || legendCaught(entity, this.caughtLegends))
     );
   }
 

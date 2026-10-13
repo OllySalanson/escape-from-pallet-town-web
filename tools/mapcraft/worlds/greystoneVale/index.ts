@@ -18,6 +18,7 @@ import { powerStation } from './powerStation';
 import { reedmere } from './reedmere';
 import { safariMarsh } from './safariMarsh';
 import { smugglersCove } from './smugglersCove';
+import { stormcrown } from './stormcrown';
 import { sunkenQuarter } from './sunkenQuarter';
 import { tanglewood } from './tanglewood';
 import { theCrossing } from './theCrossing';
@@ -41,6 +42,7 @@ export default function greystoneVale(): WorldResult {
       'the-wreck': theWreck(),
       'sunken-quarter': sunkenQuarter(),
       'smugglers-cove': smugglersCove(),
+      stormcrown: stormcrown(),
     },
   };
 }

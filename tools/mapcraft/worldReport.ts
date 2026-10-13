@@ -34,7 +34,7 @@ export function reportOnWorld(world: WorldResult): WorldReport {
   );
   const checks = hardChecks(stitched.file, { limits: planLimits(world.plan) });
   const districts = Object.fromEntries(
-    Object.entries(world.districts).map(([id, result]) => [id, reportOn(result)]),
+    Object.entries(world.districts).map(([id, result]) => [id, reportOn(result, planLimits(world.plan))]),
   );
   return {
     stitched,
