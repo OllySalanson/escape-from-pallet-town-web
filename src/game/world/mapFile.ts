@@ -2604,6 +2604,18 @@ export function fileLedges(file: MapFile, id: WorldMapId = playerMapId(file)): r
 }
 
 /** Whether any outdoor ground of a file lies outside every district the file names. */
+/** Whether the maker's places in an inside cover the whole of it. */
+function namedWhole(file: MapFile, placed: PlacedArea): boolean {
+  return (file.districts ?? []).some(
+    (district) =>
+      district.area === placed.id &&
+      district.x <= 0 &&
+      district.y <= 0 &&
+      district.x + district.width >= placed.rect.width &&
+      district.y + district.height >= placed.rect.height,
+  );
+}
+
 function hasUnnamedOutdoorGround(file: MapFile): boolean {
   const outdoorDistricts = (file.districts ?? []).filter((district) => district.area === undefined);
   return file.ground.some((row, y) =>
@@ -2778,7 +2790,9 @@ export function buildFileMap(
           ...(district.floorRolls ? { floorRolls: true } : {}),
         };
       }),
-      ...areas.slice(1).map((placed) => ({
+      // An inside the maker's own places already name all of is left to them,
+      // as the outdoors is: a place with no ground is no place.
+      ...areas.slice(1).filter((placed) => !namedWhole(file, placed)).map((placed) => ({
         id: `${id}/area-${String(placed.id)}`,
         mapId: id,
         name: placed.name.toUpperCase(),

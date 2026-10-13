@@ -145,8 +145,7 @@ const TOWER_3F_GRAVES: readonly (readonly [number, number])[] = [
  */
 const CRYPT: MapFileArea = {
   id: 'moor-chapel-crypt',
-  // The place on it that names its wildlife is THE CRYPT, and is the plate.
-  name: 'Chapel Crypt',
+  name: 'The Crypt',
   kind: 'tower',
   style: 'tower',
   width: 24,
