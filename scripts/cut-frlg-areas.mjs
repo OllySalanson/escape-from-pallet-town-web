@@ -42,7 +42,7 @@ const SHEET_COLUMNS = 20;
 
 const [pret, ...options] = process.argv.slice(2);
 if (!pret) {
-  console.error('usage: node scripts/cut-frlg-areas.mjs <pokefirered checkout> [--dump=<layout>:<out.png>]');
+  console.error('usage: node scripts/cut-frlg-areas.mjs <pokefirered checkout> [--dump=<layout>:<out.png>[:bottom]]');
   process.exit(2);
 }
 // The pieces are read from two folders of the game, so a checkout at another
@@ -100,6 +100,13 @@ const ROOMS = {
   // sets it with `setmetatile` while the switch is up, so it is not in the
   // layout and is cut by its metatile number instead).
   victory: { layout: 'VictoryRoad_2F', primary: 'general', secondary: 'cave' },
+  // Lavender Town's Pokemon Tower: its ground floor, with the way in and the
+  // stairs up, and the floors of graves above it - the third, whose stairs
+  // down are on the west, and the seventh, whose graves are gold and whose
+  // statues stand by Mr. Fuji.
+  tower: { layout: 'PokemonTower_1F', primary: 'building', secondary: 'pokemon_tower' },
+  towerGraves: { layout: 'PokemonTower_3F', primary: 'building', secondary: 'pokemon_tower' },
+  towerTop: { layout: 'PokemonTower_7F', primary: 'building', secondary: 'pokemon_tower' },
 };
 
 /**
@@ -273,6 +280,43 @@ const PIECES = [
   // in the north wall, and up westward from the south end.
   { name: 'tunnel.stairsEast', room: 'tunnel', at: [5, 1], size: [2, 4], layers: 'both' },
   { name: 'tunnel.stairsWest', room: 'tunnel', at: [1, 59], size: [2, 3], layers: 'both' },
+
+  // --- the Pokemon Tower ------------------------------------------------------
+  // Its stairs up, let into the east of the floor: FireRed's rail reaches into
+  // the tile stood on at its foot, so that column is cut from the top layer
+  // alone, over whatever floor is there.
+  { name: 'tower.stairsUp', room: 'tower', at: [18, 8], size: [3, 3], layers: ['t22', 't22', 't22'] },
+  // Its stairs down, on the west, whose frame reaches into the tile east of it.
+  { name: 'tower.stairsDown', room: 'towerGraves', at: [2, 9], size: [3, 3], layers: ['22t', '22t', '22t'] },
+  // The mat at the foot of the ground floor, half a tile off the grid as
+  // FireRed draws it, put back on the one row a mat stands on.
+  { name: 'tower.mat', room: 'tower', at: [10, 18], size: [3, 2], layers: 'top', fit: [3, 1] },
+  // What stands on its floors: a grave, a gold one, and a statue.
+  { name: 'tower.grave', room: 'towerGraves', at: [5, 4], size: [1, 1], layers: 'top' },
+  { name: 'tower.goldGrave', room: 'towerTop', at: [16, 5], size: [1, 1], layers: 'top' },
+  { name: 'tower.statue', room: 'towerTop', at: [9, 2], size: [1, 3], layers: 'top' },
+];
+
+/**
+ * What the Pokemon Tower's ground floor is under its own furniture: floor
+ * under the counter and the stairs, with the shade FireRed draws under the
+ * wall where no stairs are let into it, and that wall's plain piece - each
+ * a cell, its metatile, and whether it is walked.
+ */
+const TOWER_PATCH = [
+  // The stairs up, let into the east wall.
+  ...[18, 19].flatMap((x) => [8, 9, 10].map((y) => [x, y, 642, true])),
+  [20, 8, 644, true],
+  [20, 9, 642, true],
+  [20, 10, 642, true],
+  [20, 7, 672, false],
+  // The counter, in an L.
+  ...[15, 16, 17, 18, 19, 20].flatMap((x) => [11, 12].map((y) => [x, y, 642, true])),
+  ...[13, 14, 15, 16].map((y) => [15, y, 642, true]),
+  // The way out under the mat is black below it.
+  [10, 19, 641, false],
+  [11, 19, 641, false],
+  [12, 19, 641, false],
 ];
 
 /**
@@ -288,6 +332,24 @@ const PIECES = [
  * row, or of the nearest row that has one.
  */
 const WEAVES = [
+  // The Pokemon Tower's round room, every floor of it the same shell: its
+  // ground floor with the counter, the stairs and the mat taken out of it and
+  // the floor FireRed lays where it has none - plain floor, a shade under the
+  // wall the stairs were let into, and that wall's own run. The floor is cut
+  // from the bottom layer, under everything standing on it; the walls are
+  // whole. `ground` writes the shell's letters out as well, so a tower floor
+  // is the ground FireRed's is.
+  {
+    name: 'tower.floor',
+    room: 'tower',
+    at: [0, 0],
+    size: [24, 20],
+    cells: 'walked',
+    layers: 'bottom',
+    patch: TOWER_PATCH,
+    ground: true,
+  },
+  { name: 'tower.wall', room: 'tower', at: [0, 0], size: [24, 20], cells: 'solid', patch: TOWER_PATCH },
   { name: 'tunnel.floor', room: 'tunnel', at: [0, 0], size: [8, 63], cells: 'walked' },
   {
     name: 'tunnel.wall',
@@ -397,7 +459,9 @@ const rooms = new Map(Object.entries(ROOMS).map(([key, room]) => [key, loadRoom(
 // picture, never guessed. Any layout will do; its tilesets are read from
 // `layouts.json`.
 if (dump) {
-  const [name, out] = dump;
+  // `--dump=<layout>:<out.png>:bottom` draws the bottom layer alone: a room's
+  // floor and walls, with what stands on them taken away.
+  const [name, out, only] = dump;
   const entry = layouts.find((candidate) => candidate.name === `${name}_Layout`);
   if (!entry || !out) {
     console.error('--dump=<layout>:<out.png>, a layout of data/layouts/layouts.json without its _Layout');
@@ -409,7 +473,7 @@ if (dump) {
   const image = blank(room.width * TILE, height * TILE);
   for (let my = 0; my < height; my += 1) {
     for (let mx = 0; mx < room.width; mx += 1) {
-      drawMetatile(room, mx, my, image, mx * TILE, my * TILE, [0, 1]);
+      drawMetatile(room, mx, my, image, mx * TILE, my * TILE, only === 'bottom' ? [0] : [0, 1]);
     }
   }
   for (let y = 0; y < image.height; y += 1) {
@@ -535,7 +599,10 @@ function fitted(image, [w, h]) {
 function weaveOf(weave) {
   const room = rooms.get(weave.room);
   const [w, h] = weave.size;
-  const block = (x, y) => room.map.readUInt16LE((y * room.width + x) * 2);
+  const raw = (x, y) => room.map.readUInt16LE((y * room.width + x) * 2);
+  // A patched cell is the metatile it is patched to, walked or not.
+  const patched = new Map((weave.patch ?? []).map(([x, y, metatile, walked]) => [`${x},${y}`, metatile | (walked ? 0 : 1 << 10)]));
+  const block = (x, y) => patched.get(`${x},${y}`) ?? raw(x, y);
   const pieces = new Map();
   const skipped = (x, y) =>
     (weave.skip ?? []).some(([sx, sy, sw, sh]) => x >= sx && y >= sy && x < sx + sw && y < sy + sh);
@@ -568,20 +635,34 @@ function weaveOf(weave) {
   for (const [y, row] of grid.entries()) {
     for (const [x, metatile] of row.entries()) {
       if (!pieces.has(metatile)) {
-        const at = [...Array(h).keys()].flatMap((cy) => [...Array(w).keys()].map((cx) => [cx, cy]))
-          .find(([cx, cy]) => (block(weave.at[0] + cx, weave.at[1] + cy) & 1023) === metatile);
+        // Cut from a cell of the room that really is that metatile.
+        const at = [...Array(room.map.length / 2 / room.width).keys()]
+          .flatMap((cy) => [...Array(room.width).keys()].map((cx) => [cx, cy]))
+          .find(([cx, cy]) => (raw(cx, cy) & 1023) === metatile);
         pieces.set(metatile, {
           name: `${weave.name}.${metatile}`,
           room: weave.room,
-          at: [weave.at[0] + at[0], weave.at[1] + at[1]],
+          at,
           size: [1, 1],
-          layers: 'both',
+          layers: weave.layers ?? 'both',
         });
       }
       grid[y][x] = `${weave.name}.${metatile}`;
     }
   }
-  return { name: weave.name, grid, pieces: [...pieces.values()] };
+  // The shell's own letters, cell for cell: floor where it is walked, the dark
+  // where FireRed draws nothing, and wall everywhere else.
+  const ground = weave.ground
+    ? taken.map((row, y) =>
+        row
+          .map((_metatile, x) => {
+            const value = block(weave.at[0] + x, weave.at[1] + y);
+            return ((value >> 10) & 3) === 0 ? 'P' : (value & 1023) === 641 ? 'C' : 'B';
+          })
+          .join(''),
+      )
+    : undefined;
+  return { name: weave.name, grid, pieces: [...pieces.values()], ground };
 }
 
 const weaves = WEAVES.map(weaveOf);
@@ -660,6 +741,14 @@ ${weaves
   )
   .join('\n')}
 } as const satisfies Record<string, readonly (readonly AreaPieceName[])[]>;
+
+/** The ground letters of a weave that is a whole room: floor (P), wall (B) and the dark beyond (C). */
+export const AREA_WEAVE_GROUND = {
+${weaves
+  .filter((weave) => weave.ground)
+  .map((weave) => `  '${weave.name}': [\n${weave.ground.map((row) => `    '${row}',`).join('\n')}\n  ],`)
+  .join('\n')}
+} as const satisfies Record<string, readonly string[]>;
 `,
 );
 console.log(`public/assets/frlg-areas.png  ${SHEET_COLUMNS}x${rows} tiles, ${cut.length} pieces`);

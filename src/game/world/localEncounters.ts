@@ -53,7 +53,10 @@ export function encounterTableAt(
  * floor of a place that rolls on every step - which is what a cave is, and the
  * only reason its wildlife is ever met (`interiors.ts`, and a player's cave,
  * `MapFileArea`), and what a named place out of doors may be too (a district's
- * `floorRolls`: Ember Isle's crater). There is no tall grass underground. The raid asks it of every
+ * `floorRolls`: Ember Isle's crater). There is no tall grass underground. A
+ * floor of the Pokemon Tower rolls on every step where a place on it names what
+ * lives there, as FireRed's upper floors do, and is quiet where none does, as
+ * its lower ones are. The raid asks it of every
  * step, and the drop-in screen asks it of the ground a place is graded on.
  */
 export function stepRolls(
@@ -64,6 +67,9 @@ export function stepRolls(
     map.tallGrass[tile.y]?.[tile.x] === true ||
     interiorFloorRolls(map.id, tile) ||
     (map.areas !== undefined && placedAreaAt(map.areas, tile)?.kind === 'cave') ||
-    districtAt(map.id, tile)?.floorRolls === true
+    districtAt(map.id, tile)?.floorRolls === true ||
+    (map.areas !== undefined &&
+      placedAreaAt(map.areas, tile)?.kind === 'tower' &&
+      districtAt(map.id, tile)?.encounters !== undefined)
   );
 }

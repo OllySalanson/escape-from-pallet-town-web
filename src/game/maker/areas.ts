@@ -4,6 +4,7 @@ import {
   MAP_FILE_BUILDING_DOORS,
   MAP_FILE_LIMITS,
   placeSlug,
+  TOWER_SIZE,
   TUNNEL_SIZE,
   type MapFile,
   type MapFileArea,
@@ -18,6 +19,7 @@ import {
   plantedProp,
 } from '../world/mapFile';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
+import { TOWER_GROUND } from '../world/tileset/insideTileset';
 import { BUILDING_CHOICES } from './palette';
 import { keepOnMap, moveThing, removeThing, type GridPoint, type PlaceOutcome } from './draft';
 import { capital, doorwayArt, SPOT_ORDER, spotName, spotsOf } from './placement';
@@ -241,6 +243,8 @@ interface InsideTemplate {
    * notch in its south wall - the middle when absent.
    */
   readonly mat?: number;
+  /** The row its mat is on, the bottom row when absent: a tower's is a row above its dark. */
+  readonly matRow?: number;
   /**
    * A gatehouse's ways out, one for each of the building's doors in order: the
    * end in the room that each door's way through comes out at.
@@ -270,6 +274,8 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
       return SAFFRON_SIDE_GATEHOUSE;
     case 'underground-path':
       return PATH_ENTRANCE;
+    case 'pokemon-tower':
+      return TOWER_GROUND_FLOOR;
     // Kanto's town buildings, each into the room it is: a Gym and the Dojo
     // into a hall cleared for battling, the Department Store and the Bike Shop
     // into a shop, and the places somebody studies into Oak's own Lab.
@@ -410,6 +416,23 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
       return HOUSE_GROUND_FLOOR;
   }
 }
+
+/**
+ * The Pokemon Tower's ground floor: FireRed's own round room, cell for cell,
+ * with the way in at the foot of it where the game's is, and the floor left
+ * for the maker to fill with graves.
+ */
+const TOWER_GROUND_FLOOR: InsideTemplate = {
+  name: 'Pokémon Tower',
+  kind: 'tower',
+  style: 'tower',
+  width: TOWER_SIZE.width,
+  height: TOWER_SIZE.height,
+  ground: TOWER_GROUND,
+  furniture: [],
+  mat: 11,
+  matRow: 18,
+};
 
 /**
  * Oak's Lab, laid out as the base's own Lab is: his computers and bookcases
@@ -937,7 +960,7 @@ export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome 
     : [
         area.kind === 'cave'
           ? { area: area.id, x, y: area.height - 2, toward: 'down', look: 'cave-exit' }
-          : { area: area.id, x, y: area.height - 1, toward: 'down', look: 'mat' },
+          : { area: area.id, x, y: template.matRow ?? area.height - 1, toward: 'down', look: 'mat' },
       ];
   return {
     made: true,
@@ -1081,6 +1104,10 @@ export function moveDoorway(
     switch (end.look) {
       case 'stairs-up':
       case 'stairs-down': {
+        // A tower's stairs are let into its edge where FireRed's are, and stay.
+        if (inside.kind === 'tower') {
+          return end;
+        }
         // A staircase moves along the back wall it stands against, its foot
         // on the row it was on. Its rug is west of a way up and east of a way
         // down, so the whole of the staircase stays on the room wherever the
@@ -1107,7 +1134,10 @@ export function moveDoorway(
         return end;
       default:
         // A mat in a side wall moves up and down it; one at the foot of the
-        // room along the south wall.
+        // room along the south wall; a tower's stays where FireRed's is.
+        if (inside.kind === 'tower') {
+          return end;
+        }
         return end.toward === 'left' || end.toward === 'right'
           ? { ...end, y: clamp(to.y, 1, inside.height - 2) }
           : { ...end, x: clamp(to.x, 0, inside.width - 1), y: inside.height - 1, toward: 'down' };

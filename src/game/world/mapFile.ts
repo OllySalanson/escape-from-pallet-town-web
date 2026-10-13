@@ -46,6 +46,7 @@ import {
   INSIDE_PROPS,
   INSIDE_STYLES,
   ROOM_STYLES,
+  TOWER_STYLES,
   TUNNEL_STYLES,
   type InsidePropName,
   type InsideStyle,
@@ -563,6 +564,10 @@ export const MAP_FILE_FURNITURE = {
   // stairwell.
   'path-counter': 'pathCounterWest',
   'path-counter-east': 'pathCounterEast',
+  // The Pokemon Tower's: its graves, grey and gold, and the statues of its top floor.
+  'tower-grave': 'towerGrave',
+  'tower-gold-grave': 'towerGoldGrave',
+  'tower-statue': 'towerStatue',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -790,9 +795,11 @@ export function doorwayTiles(doorway: BuildingDoorway): readonly MapFileSpot[] {
  * What kind of place an area is: the inside of a building; a cave - the same
  * thing in rock, whose floor is wild ground on every step; or a tunnel, the
  * Underground Path's, gone down into by the stairs in a hut and come up out of
- * in another.
+ * in another; or a floor of a tower, Lavender Town's Pokemon Tower, a round
+ * room of graves joined to the floors above and below it by stairs, which is
+ * wild ground on every step wherever a place on it names what lives there.
  */
-export const MAP_FILE_AREA_KINDS = ['inside', 'cave', 'tunnel'] as const;
+export const MAP_FILE_AREA_KINDS = ['inside', 'cave', 'tunnel', 'tower'] as const;
 export type MapFileAreaKind = (typeof MAP_FILE_AREA_KINDS)[number];
 
 /** How an area is dressed: which FireRed room, or which cave, its ground is. */
@@ -804,6 +811,7 @@ export const MAP_FILE_STYLES_OF: Readonly<Record<MapFileAreaKind, readonly MapFi
   inside: ROOM_STYLES,
   cave: CAVE_STYLES,
   tunnel: TUNNEL_STYLES,
+  tower: TOWER_STYLES,
 };
 
 /**
@@ -815,6 +823,7 @@ export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly st
   inside: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.cliff],
   cave: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.sand, MATERIAL_CHARS.ice],
   tunnel: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall],
+  tower: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.cliff],
 };
 
 /**
@@ -824,6 +833,9 @@ export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly st
  */
 export const TUNNEL_SIZE = { width: 8, height: 63 } as const;
 
+/** A tower floor is the size every floor of FireRed's Pokemon Tower is, for the same reason. */
+export const TOWER_SIZE = { width: 24, height: 20 } as const;
+
 /** The sizes each kind of area may be. */
 export function areaLimits(kind: MapFileAreaKind): {
   readonly minWidth: number;
@@ -832,8 +844,8 @@ export function areaLimits(kind: MapFileAreaKind): {
   readonly maxHeight: number;
 } {
   const L = MAP_FILE_LIMITS;
-  if (kind === 'tunnel') {
-    const { width, height } = TUNNEL_SIZE;
+  if (kind === 'tunnel' || kind === 'tower') {
+    const { width, height } = kind === 'tunnel' ? TUNNEL_SIZE : TOWER_SIZE;
     return { minWidth: width, minHeight: height, maxWidth: width, maxHeight: height };
   }
   return kind === 'cave'
@@ -2005,7 +2017,7 @@ function readAreas(
         const unknown = [...new Set([...row].filter((letter) => !letters.includes(letter)))];
         if (unknown.length > 0) {
           problems.push(
-            `${what}'s ground row ${y} uses letters ${kind === 'cave' ? 'a cave' : kind === 'tunnel' ? 'a tunnel' : 'an inside'} does not draw: ${unknown.join(' ')}`,
+            `${what}'s ground row ${y} uses letters ${kind === 'cave' ? 'a cave' : kind === 'tunnel' ? 'a tunnel' : kind === 'tower' ? 'a tower' : 'an inside'} does not draw: ${unknown.join(' ')}`,
           );
         }
       });

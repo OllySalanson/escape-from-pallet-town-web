@@ -10,7 +10,7 @@ import {
   type MapFileOutdoorBuildingKind,
   MAP_FILE_BUILDING_DOORS,
 } from '../world/mapFile';
-import { CAVE_STYLES, TUNNEL_STYLES } from '../world/tileset/insideTileset';
+import { CAVE_STYLES, TOWER_STYLES, TUNNEL_STYLES } from '../world/tileset/insideTileset';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 
 /**
@@ -190,6 +190,16 @@ export const TUNNEL_BRUSHES: readonly GroundBrush[] = [
   plain('wall', 'Wall', MATERIAL_CHARS.wall, 'The wall of the tunnel. Solid.'),
 ];
 
+/**
+ * What a tower floor is painted with: the Pokemon Tower's floor, its wall and
+ * the dark round it, each laid as FireRed's are wherever they are painted.
+ */
+export const TOWER_BRUSHES: readonly GroundBrush[] = [
+  plain('floor', 'Floor', MATERIAL_CHARS.paving, 'The floor of the tower. Walked on.'),
+  plain('wall', 'Wall', MATERIAL_CHARS.wall, 'The wall of the tower. Solid.'),
+  plain('dark', 'Dark', MATERIAL_CHARS.cliff, 'The dark round the tower floor. Solid.'),
+];
+
 export function brushesFor(
   place: MapFileAreaKind | undefined,
   style?: MapFileAreaStyle,
@@ -200,6 +210,8 @@ export function brushesFor(
       : CAVE_BRUSHES
     : place === 'tunnel'
       ? TUNNEL_BRUSHES
+      : place === 'tower'
+        ? TOWER_BRUSHES
       : place === 'inside'
         ? INSIDE_BRUSHES
         : GROUND_BRUSHES;
@@ -517,6 +529,9 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['gate-runner', 'Runner', 'gatehouse'],
     ['gate-short-runner', 'Runner, short', 'gatehouse'],
     ['gate-rug', 'Rug, wide', 'gatehouse'],
+    ['tower-grave', 'Grave', 'tower'],
+    ['tower-gold-grave', 'Grave, gold', 'tower'],
+    ['tower-statue', 'Statue', 'tower'],
   ] as const satisfies readonly (readonly [
     MapFileFurnitureKind,
     string,
@@ -526,11 +541,11 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
 
 /**
  * The furniture a place in this style is furnished from: a room's own pieces
- * and the house's, which stand in any room; a cave or a tunnel has only its
- * own.
+ * and the house's, which stand in any room; a cave, a tunnel or a tower has
+ * only its own.
  */
 export function furnitureFor(style: MapFileAreaStyle): readonly FurnitureChoice[] {
-  const ownOnly = ([...CAVE_STYLES, ...TUNNEL_STYLES] as readonly string[]).includes(style);
+  const ownOnly = ([...CAVE_STYLES, ...TUNNEL_STYLES, ...TOWER_STYLES] as readonly string[]).includes(style);
   return FURNITURE_CHOICES.filter((choice) =>
     choice.style === undefined ? !ownOnly : choice.style === style,
   );
@@ -549,6 +564,7 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   ice: 'Ice cave',
   ember: 'Volcano cave',
   underground: 'Underground Path',
+  tower: 'Pokémon Tower',
 };
 
 export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {

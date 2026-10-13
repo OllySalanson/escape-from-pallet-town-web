@@ -856,13 +856,14 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   pieces come from ten of the game's own places, drawn from their tilesets
   (`data/tilesets/primary/building`, `secondary/generic_building_1`,
   `secondary/generic_building_2`, `secondary/mart`,
-  `secondary/underground_path`, and for the cave `primary/general` and
+  `secondary/underground_path`, `secondary/pokemon_tower`, and for the cave `primary/general` and
   `secondary/cave`: the 4bpp tile sheets, the JASC palettes and the metatile
   tables) and their layouts (`data/layouts/PalletTown_PlayersHouse_1F`,
   `PalletTown_PlayersHouse_2F`, `Mart`, `MtMoon_1F`, `MtMoon_B1F`,
   `Route2_Entrance`, `SaffronCity_NorthSouthEntrance`,
   `SaffronCity_EastWestEntrance`, `UndergroundPath_Entrance`,
-  `UndergroundPath_NorthSouthTunnel`): the house
+  `UndergroundPath_NorthSouthTunnel`, `PokemonTower_1F`, `PokemonTower_3F`,
+  `PokemonTower_7F`): the house
   and the Mart; Mt. Moon's floor, rock, sand, boulders, crater, dripping water,
   ladders and the daylight of its way out; and three gatehouses' floor, walls,
   windows, palms, tables, chairs, counters, runners and rugs, the doorway in
@@ -870,14 +871,19 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   walls of the gatehouse walked through west to east; and the Underground
   Path's entrance - its guard posts and its stairwell - and its tunnel north
   to south: every floor and wall metatile of it, cut one to a piece, and its
-  stairs up at either end.
+  stairs up at either end; and Lavender Town's Pokemon Tower (added 2026-10-13
+  for Greystone Vale's Moor Chapel): every floor and wall metatile of its round
+  room, its stairs up and down, its mat, its grey and gold graves and the
+  statues of its top floor. The tower's pieces were cut from a checkout at
+  `037335f`, whose `data/tilesets` and `data/layouts` are byte for byte the
+  pinned commit's - the script checks exactly that.
 - **Terms.** pret publishes no licence for the graphics it extracts: they are
   the game's own, and this file treats them exactly as it treats the other
   ripped sheets. **Nothing of the checkout is committed**: what ships is a cut -
-  137 named pieces drawn out of the game's metatiles and packed onto a new 20x25
+  160 named pieces drawn out of the game's metatiles and packed onto a new 20x28
   grid that matches none of the game's own sheets.
 - **How it was cut.** `scripts/cut-frlg-areas.mjs` is the whole method: it
-  refuses a checkout at any other commit, names the room, the metatile and the
+  refuses a checkout whose tilesets or layouts are not the pinned commit's, names the room, the metatile and the
   layer of every piece, and writes `src/game/world/generated/areaPieces.ts`,
   the only thing in the game that knows where a piece sits on the sheet. Two
   things are done to the game's art and nothing else. Every colour is read back
@@ -892,7 +898,11 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   the dark - lifted out. The tunnel's floor and walls are cut one metatile to
   a piece, and the script also writes which piece stands at each cell of the
   tunnel (`AREA_WEAVES` in the generated module), so the game lays its floor
-  and walls exactly as FireRed's own layout does.
+  and walls exactly as FireRed's own layout does. The tower is laid the same
+  way, from its ground floor with the counter, the stairs and the mat taken out
+  and the floor FireRed lays where they are not put back (`TOWER_PATCH`); its
+  floor is cut from the bottom layer alone, under what stands on it, and the
+  script writes the room's ground letters too (`AREA_WEAVE_GROUND`).
 
 ### `berry-trees.png` - the berry trees a map maker plants
 

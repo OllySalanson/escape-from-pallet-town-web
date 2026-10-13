@@ -801,6 +801,7 @@ const BRUSH_HEADINGS: Readonly<Record<MapFileArea['kind'], string>> = {
   inside: 'Room',
   cave: 'Cave',
   tunnel: 'Tunnel',
+  tower: 'Tower',
 };
 
 /** What each kind of place is called in the editor. */
@@ -808,6 +809,7 @@ const AREA_KIND_NAMES: Readonly<Record<MapFileArea['kind'], string>> = {
   inside: 'Inside',
   cave: 'Cave',
   tunnel: 'Tunnel',
+  tower: 'Tower floor',
 };
 
 /** How a building's door is gone in by, from the way it is pressed. */
