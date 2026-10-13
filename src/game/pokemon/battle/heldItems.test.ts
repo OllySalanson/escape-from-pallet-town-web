@@ -17,7 +17,6 @@ import {
   rollsFirstStrike,
   survivesKnockout,
 } from './heldItems';
-import { PokemonType } from '../PokemonType';
 
 /** A random source that answers with a fixed list, then always zero. */
 const rolls = (...values: readonly number[]): (() => number) => {

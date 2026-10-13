@@ -1,7 +1,6 @@
 import { evolutionByStone, type Pokemon } from '../pokemon';
 import { PokemonType } from '../pokemon/PokemonType';
 import { PrimaryStatus } from '../pokemon/battle/status';
-import { PokemonType } from '../pokemon/PokemonType';
 import { POKEDOLLAR_SIGN } from '../ui/gameFont';
 
 export { POKEDOLLAR_SIGN };
