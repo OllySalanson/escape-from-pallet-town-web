@@ -46,7 +46,7 @@ describe('Ember Isle', () => {
     const places = new Map((file.districts ?? []).map((place) => [place.name, place]));
     expect(places.get('THE HOARD')).toMatchObject({ ...HOARD, floorRolls: true, wildlife: 'volcano' });
     expect(places.get('THE CRATER')).toMatchObject({ floorRolls: true, wildlife: 'volcano' });
-    expect(places.get('EMBER ISLE')?.floorRolls).toBeUndefined();
+    expect(file.wildlife).toBe('volcano');
     for (const spot of hoard) {
       const holds = (place: { x: number; y: number; width: number; height: number }) =>
         spot.x >= place.x && spot.y >= place.y && spot.x < place.x + place.width && spot.y < place.y + place.height;

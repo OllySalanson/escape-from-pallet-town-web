@@ -9,9 +9,12 @@
  * onto the crater floor, each a pocket with daylight in its south wall; `h` is
  * a find hidden in the dead end the tube forks into. All four are floor.
  *
- * The way through bends back on itself under the rim - north, west, then down
- * again into the crater's pocket - so nobody sees the far end from the near
- * one, and every step of its floor rolls for a wild Pokemon, as a cave's does.
+ * It is chambers joined by necks, as the Ruby Path is: in from the flank at
+ * the foot of the south-east chamber, up into the hall under the rim, and down
+ * again through the west neck into the crater's pocket, so nobody sees the far
+ * end from the near one. Off the hall, the spring's chamber and the dead end
+ * the find is hidden in. Every step of its floor rolls for a wild Pokemon, as
+ * a cave's does.
  */
 import type { MapFileArea, MapFileBuilding, MapFileItemSpot, MapFileLink } from '../../../../src/game/world/mapFile';
 import type { Point } from '../../program';
@@ -20,26 +23,26 @@ export const TUBE_FLOOR = [
   '##############################',
   '##############################',
   '##############################',
-  '####.....############.....####',
-  '###.......##########...h...###',
-  '###...o....########.......####',
-  '####.......#######....o..#####',
-  '#####...p..######.......######',
-  '######.....#####.......#######',
-  '######......###.......########',
-  '#######..............#########',
-  '########...o.......###########',
-  '#########.......##############',
-  '##########.....###############',
-  '##########......##############',
-  '#####......o.....#############',
-  '####..............############',
-  '####...####........###########',
-  '###...######....o...##########',
-  '###.E.#######........#########',
-  '##########.....##.......######',
-  '#############....##......#####',
-  '##############.........S.#####',
+  '###.......######.........#####',
+  '###........#####..........####',
+  '###..o.....#####.....h....####',
+  '####........####..........####',
+  '####...p....#####.......######',
+  '#####......#######......######',
+  '######...##########...########',
+  '######...##########...########',
+  '#####............o.......#####',
+  '####......................####',
+  '####...o...........###....####',
+  '#####.....#########.......####',
+  '##.....############....#######',
+  '##.....##########........#####',
+  '##.....#########..........####',
+  '##..o..########.....o.....####',
+  '##.....#######............####',
+  '###.E.#########..........#####',
+  '#####################..S.#####',
+  '##############################',
   '##############################',
 ];
 

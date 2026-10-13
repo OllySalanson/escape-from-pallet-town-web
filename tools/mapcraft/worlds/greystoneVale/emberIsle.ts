@@ -49,47 +49,47 @@ export const EMBER_ISLE = [
   'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWW',
   'WWWWWWWWWWWWWWWWWWWWWWWWWWWWCCCCWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWW',
   'WWWWWWWWWWWWWWWWWWWWWWWWWWCCCCCCCWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWW',
-  'WWWWWWWWWWWWWWWWWWWWW~~~~CCCCCCCCC~~~~WWWWWWWWWWWWMMWWWWWWWWWWWW',
-  'WWWWWWWWWWWWWWWWWW~~~~...CCCCCCCC.....~~WWWWWWWWWWMMWWWWWWWWWWWW',
-  'WWWWWWWWWWWWWWW~~~~..gg...CCCCCC.ggg....~~~WWWWWWWMMWWW~~WWWWWWW',
-  'WWWWWWWWWWWWW~~~...ggggg...CCCC..gggggg...~~~~~~~~MM~~~~~~~WWWWW',
-  'WWWWWWWWWWW~.....ggggggg........gggggggg...........~~~~~~~~~WWWW',
-  'WWWWWWWWWWW~....gggggg.ddddddddddddddddddddddddddddddd..ggg..~WW',
-  'WWWWWWWWWWW~....gggg..dddddddddddddddddddddddddddddddd.ggggg.~~W',
-  'WWWWWWWWW~.....gg....dd...gggg........ggggg..........gggg....~WW',
-  'WWWWWWWWW~..........dd...ggggggg....gggggggggg...............~WW',
-  'WWWWWWWWW~....gg...ddd..ggggCCCCCCCCCCCCCCCCCggg..CCCCCC.....~WW',
-  'WWWWWWWWW~...gggg..dd...CCCCCCCCCCCCCCCCCCCCCCCC.CCCCCCCCCC..~WW',
-  'WWWWWWW~.....ggg..dd..CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC~~WW',
-  'WWWWWWW~........ddd..CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWW',
-  'WWWWWWW~.......dd...CCCCCCCCCCCvvvvvvvvvCCCCCCCCCCCCCCCCCCCCCWWW',
-  'WWWWWWW~......dd...CCCCCCCCCvvvvvvvvvvvvvvvvCCCCCCCCCCCCCCCCWWWW',
-  'WWWWW~.......ddd..CCCCCCCCvvvvvvvvvvvWWWvvvvvvCCCCCCCCCCCCCCWWWW',
-  'WWWWW~......dd...CCCCCCCvvvvvvvvvCCvWWWWWvvvvvvvCCCCCCCCCCCWWWWW',
-  'WWWWW~.....ddd...CCCCCCvvvvvvvvvCCCCvWWWvvvvvvvvvCCCCCCCCCCWWWWW',
-  'WWWWW~.....dd...CCCCCCCvvvvvvvvvvCCvvvvvvvvvvvvvvCCCCCCCCCCCWWWW',
-  'WW~.....gg.dd...CCCCCCvvvvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCCCCCWWWW',
-  'WW~WWW..ggddd...CCCCCCCvvvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCCCCWWWWW',
-  'ddMMMMMMMMMdd..CCCCCCCCvvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCCCCWWWWWW',
-  'WWMMMMMMMMMdd..CCCCCCCCCvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCCCCWWWWWW',
-  'WW~WWWW~...dd..CCCCCCCCCCvvvvvvvvvvvvvvvCCvvvvvvvCCCCCCCCCCWWWWW',
-  'WWW~~~~....ddd.CCCCCCCCCCCCCvvvvvvvvvvvvCCvvvvvvCCCCCCCCCCCWWWWW',
-  'WWWW~.......dd..CCCCCCCCCCCCCCCCvvvvvvvvvvvvvvvCCCCCCCCCCCCWWWWW',
-  'WWWW~........dd.CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWWWW',
-  'WWWW~........dd..CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWWWWW',
-  'WWWW~.......ddd..CCCCCC......gggg..CCCC...ggCCCCCCCCCCCCCWWWWWWW',
-  'WWWWWW~.....dd..CCCCC.....gggggggg.........gggCCCC...CCCCWWWWWWW',
-  'WWWWWW~.....dd..CCCCCC........CCCCC...................CCCWWWWWWW',
-  'WWWWWW~.....dd..CCC...CCC...CCCCCCCCCCCCCCCCCCCCCC..CCCCCWWWWWWW',
-  'WWWWWW~.....dd..CC.....CC===CCCCCCCCCCCCCCCCCCCCCCMMCCCCCWWWWWWW',
-  'WWWWWWW~....dd..CCCCCC.....ggggg........ggg.CCCCCC.....CCCWWWWWW',
-  'WWWWWWW~....dd..CCC.....gggggggg......ggggggg.....gggg..CCWWWWWW',
-  'WWWWWWW~....dd..CCC.......ggg.....ggggggggg......ggg....CCWWWWWW',
-  'WWWWWWW~.....dd.CCCMMCCCCCCCCCCCCCC....CCCCCCCCCCCCCCCCCCCWWWWWW',
-  'WWWWWWWW~.....dddddMMCCCCCCCCCCCCCC====CCCCCCCCCCCCCCCCCWWWWWWWW',
-  'WWWWWWWWWW~~~.....ddd~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~CCCCWWWWWWWW',
-  'WWWWWWWWWWWWW~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~CCCWWWWWWWWWWW',
-  'WWWWWWWWWWWWWWWWW~~~~~~~~~~~~~~~WW~~~~~~~~~~~~~~WWWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWW~~~~~~CCCCCCC~~~~WWWWWWWWWWWWWMMWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWW~......CCCCCC.....~~~~~WWWWWWWWMMWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWW~~~~~~...gg..CCCC.............~WWWWWMMWWWW~~~WWWWW',
+  'WWWWWWWWWWWWWW~.......gggg.......gg.........~~~~~~MM~~~~~~~~~WWW',
+  'WWWWWWWWWWWWWW~......ggggggg....ggggg.................~~~~~~~WWW',
+  'WWWWWWWWWWW~~~~.dddddddddddddddddddddddddddddddddddddddd....g~WW',
+  'WWWWWWWWWWW~....dddddddddddddddddddddddddddddddddddddddd...ggg~W',
+  'WWWWWWWWWWW~....dd........................ggg...........gggg~WWW',
+  'WWWWWWWWWWW~....dd....ggggg....CCCC......ggggggg.........gg.~WWW',
+  'WWWWWWWWWWW~.gg.dd...gggggggCCCCCCCCCCCC..ggggg..CCCCCC.....~WWW',
+  'WWWWWWWWW~~~.gggdd....ggggCCCCCCCCCCCCCCCCCC....CCCCCCCCCC..~WWW',
+  'WWWWWWWWW~......dd....CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWW',
+  'WWWWWWWWW~......dd...CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWW',
+  'WWWWWWWWW~......dd...CCCCCCCCCCCvvvvvvvCCCCCCCCCCCCCCCCCCCCCWWWW',
+  'WWWWWWW~~~......dd...CCCCCCCCvvvvvvvvvvvvvvvCCCCCCCCCCCCCCCCCWWW',
+  'WWWWWWW~..g.....dd..CCCCCCCCvvvvvvvvvvvvvvvvvvCCCCCCCCCCCCCCCWWW',
+  'WWWWWWW~.ggg....dd..CCCCCCvvvvvvvvvCCvvvvvvvvvvCCCCCCCCCCCCCCWWW',
+  'WWWWW~~~.gggg...dd..CCCCCvvvvvvvvCCCCvvvvvvvvvvvCCCCCCCCCCCCWWWW',
+  'WWWWW~...ggg....dd..CCCCvvvvvvvvvvCCvvvvvvvvvvvvvCCCCCCCCCCCWWWW',
+  'WWWWW~..........dd..CCCCvvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCCCCCWWWW',
+  'WW~~~~..........dd..CCCCvvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCCCCWWWWW',
+  'ddMMMMMMMMMMMddddd..CCCCvvvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCCCWWWWW',
+  'WWMMMMMMMMMMMddddd..CCCCvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCWWWW',
+  'WW~~~~..........dd..CCCCCCvvvvvvvvvvvvvvvvvvvvvCCvvvvvvCCCCCWWWW',
+  'WWWWW~..........dd..CCCCCCvvvvvvvvvvvvvvvvvvvvvCCvvvvvvCCCCCWWWW',
+  'WWWWW~...gggg...dd..CCCCCCCCCCvvvvvvvvvvvvvvvvvvvvvvvvCCCCCCWWWW',
+  'WWWWW~..gggggg..dd..CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWW',
+  'WWWWW~...gggg...dd..CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWWW',
+  'WWWWWW~.........dd..CCCC...gg.......ggggg...CCCCCCCCCCCCCCCWWWWW',
+  'WWWWWW~.........dd..CCCC..gggggg...ggggggg....CCCCCCCCCCCCWWWWWW',
+  'WWWWWW~~........dd..CCCCC...ggg......ggg.......CCCCCCCCCCCWWWWWW',
+  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC...CCCCC.MM.CCCCCCCCCCWWWWWWW',
+  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC===CCCCC.MM...CCCCCCCCWWWWWWW',
+  'WWWWWWWW~.......dd..CCCCCCCCCCC.....................CCCCCWWWWWWW',
+  'WWWWWWWWW~......dd..CCCCCCCCCC...ggggg.....gggg......CCCCWWWWWWW',
+  'WWWWWWWWW~......dd....CCCCCCC...ggggggg...gggggggg...CCCWWWWWWWW',
+  'WWWWWWWWW~~.....dd....CCCCCCCMM....ggg.......C...CCCCCWWWWWWWWWW',
+  'WWWWWWWWWWW~....dddddddddddddMMCCCCCCCCCCCCCCC===CCCCCWWWWWWWWWW',
+  'WWWWWWWWWWWW~~~~~......ddddd~~~~~~~~~~~~~~~~~~~~~~~CCWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWW~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWWWWW~~~~~~~~~~~~~WWW~~~~~~~WWWWWWWWWWWWWWWWWW',
   'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
@@ -97,27 +97,27 @@ export const EMBER_ISLE = [
 ];
 
 /** The tube's two mouths: in the face under the rim over the upper terrace, and in the crater's north wall. */
-export const FLANK_MOUTH: Point = [27, 46];
-export const CRATER_MOUTH: Point = [34, 31];
+export const FLANK_MOUTH: Point = [25, 46];
+export const CRATER_MOUTH: Point = [35, 31];
 
 /** The jetty the skiff puts in at (`plan.ts`'s Smugglers' Run lands here). */
 export const LANDING: Point = [50, 20];
 
 /** The hoard's nook, in the crater's south-east: its item spots, one for every piece (`BUILT_IN_FILE_HOARDS`). */
-export const HOARD = { x: 42, y: 40, width: 7, height: 5 } as const;
+export const HOARD = { x: 49, y: 41, width: 6, height: 4 } as const;
 export const HOARD_SPOTS: readonly Point[] = [
-  [43, 40],
-  [45, 40],
-  [47, 40],
-  [44, 41],
-  [45, 42],
-  [46, 43],
-  [42, 44],
-  [45, 44],
+  [49, 41],
+  [51, 41],
+  [53, 41],
+  [50, 42],
+  [52, 43],
+  [49, 43],
+  [51, 44],
+  [53, 44],
 ];
 
 /** Where the fire horse stands, on its own shelf of the crater floor. */
-export const RAPIDASH: Point = [24, 37];
+export const RAPIDASH: Point = [25, 38];
 
 export function emberIsle(): MapcraftResult {
   const p = startDistrict(GREYSTONE_VALE, 'ember-isle');
@@ -130,24 +130,24 @@ export function emberIsle(): MapcraftResult {
   p.building('crate-pair', 53, 22, { lot: '~' }).building('barrels', 57, 22, { lot: '~' });
   p.building('sack', 55, 23, { lot: '~' });
 
-  // -- The charcoal burners' camp in the west cove: their hut, the kiln and
-  // the wood they bring up from the wreck-wood on the beach
-  p.building('hut', 9, 30, { lot: '.' }).building('log', 7, 35, { lot: '.' });
-  p.building('big-stump', 10, 27, { lot: '.' }).building('dead-stump', 13, 26, { lot: '.' });
+  // -- The charcoal burners' camp in the west cove: their hut, the kiln, and
+  // the drift-wood they burn
+  p.building('hut', 11, 30, { lot: '.' }).building('log', 10, 38, { lot: '.' });
+  p.building('big-stump', 12, 26, { lot: '.' }).building('dead-stump', 12, 32, { lot: '.' });
 
   // -- The crater: boulders the cone threw, and the hoard's crates
-  p.building('round-boulder', 28, 39, { lot: 'v' }).building('rock', 42, 33, { lot: 'v' });
-  p.building('rock', 31, 42, { lot: 'v' }).building('rock', 44, 36, { lot: 'v' });
-  p.building('crate-stack', 47, 41, { lot: 'v' }).building('barrels', 43, 43, { lot: 'v' });
+  p.building('round-boulder', 29, 40, { lot: 'v' }).building('rock', 42, 33, { lot: 'v' });
+  p.building('rock', 32, 43, { lot: 'v' }).building('rock', 45, 36, { lot: 'v' });
+  p.building('crate-stack', 53, 42, { lot: 'v' });
 
   // -- The black beach under the cone: rocks at the tide line
-  p.building('rock', 24, 58, { lot: '~' }).building('rock', 41, 57, { lot: '~' });
+  p.building('rock', 24, 58, { lot: '~' }).building('rock', 41, 58, { lot: '~' });
 
   const file = districtFile(GREYSTONE_VALE, 'ember-isle', p, {
     dropIns: [],
     itemSpots: [
       // In the crater, against its west wall: the Charcoal falls back here (`filePrizes.ts`).
-      { x: 25, y: 35 },
+      { x: 26, y: 36 },
       // On the black beach, under the tide line, for whoever takes the ledge down.
       { x: 45, y: 58, hidden: true },
       // The hoard: what the smugglers keep in the crater.
@@ -158,20 +158,20 @@ export function emberIsle(): MapcraftResult {
       areas: [tube.area],
       links: tube.links,
       // The hoard first, because the first named place wins a tile; then the
-      // crater, every step of whose ash rolls for a wild Pokemon; then the
-      // island round it, whose tall grass does.
+      // crater, every step of whose ash rolls for a wild Pokemon. The island
+      // round them is the plan's district, whose tall grass rolls the volcano
+      // too (`plan.ts`).
       districts: [
         { name: 'THE HOARD', ...HOARD, wildlife: 'volcano', floorRolls: true },
-        { name: 'THE CRATER', x: 21, y: 31, width: 29, height: 15, wildlife: 'volcano', floorRolls: true },
-        { name: 'EMBER ISLE', x: 2, y: 14, width: 60, height: 47, wildlife: 'volcano' },
+        { name: 'THE CRATER', x: 22, y: 31, width: 34, height: 15, wildlife: 'volcano', floorRolls: true },
       ],
       signs: [
-        { x: 14, y: 37, lines: ['EMBER ISLE', 'The path climbs the south face to the Lava Tube. The crater is past it.'] },
-        { x: 26, y: 47, lines: ['LAVA TUBE', 'The only way into the crater. Mind your step on the ash.'] },
+        { x: 15, y: 39, lines: ['EMBER ISLE', 'The path climbs the south face to the Lava Tube. The crater is past it.'] },
+        { x: 24, y: 47, lines: ['LAVA TUBE', 'The only way into the crater. Mind your step on the ash.'] },
       ],
       people: [
         {
-          x: 55,
+          x: 57,
           y: 25,
           name: 'Lookout',
           look: 'rocket-grunt',
@@ -182,7 +182,7 @@ export function emberIsle(): MapcraftResult {
           ],
         },
         {
-          x: 12,
+          x: 14,
           y: 34,
           name: 'Charcoal Burner',
           look: 'hiker',
@@ -195,12 +195,12 @@ export function emberIsle(): MapcraftResult {
       ],
       landmarks: [
         { x: 51, y: 18, name: "Smugglers' Landing", kind: 'jetty' },
-        { x: 12, y: 33, name: "Burners' Kiln", kind: 'kiln' },
+        { x: 13, y: 33, name: "Burners' Kiln", kind: 'kiln' },
       ],
       trainers: [
         {
-          x: 42,
-          y: 39,
+          x: 48,
+          y: 41,
           name: 'Smuggler',
           team: 'netter',
           look: 'rocket-grunt',
@@ -209,7 +209,7 @@ export function emberIsle(): MapcraftResult {
           lines: ['Nobody comes through the tube but us!'],
         },
         {
-          x: 41,
+          x: 48,
           y: 44,
           name: 'Smuggler',
           team: 'lengthsman',

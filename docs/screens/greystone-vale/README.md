@@ -13,10 +13,11 @@ The Crossing, Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the
 five it grew into, all drawn too: The Power Station, Safari Marsh, The Wreck,
 The Sunken Quarter and Smugglers' Cove. Round them is the ring it has grown
 into since ([The far places](#the-far-places)): open sea in the south, and wood
-in the north where the far places will be drawn. Three far places are drawn:
+in the north where the far places will be drawn. Four far places are drawn:
 [Stormcrown](#stormcrown), the summit above the peaks,
-[The Lost Garden](#the-lost-garden), east of the Power Station, and
-[Frostreef](#frostreef), an island of ice out on the reef.
+[The Lost Garden](#the-lost-garden), east of the Power Station,
+[Frostreef](#frostreef), an island of ice out on the reef, and
+[Ember Isle](#ember-isle), a volcano beyond the smugglers' cove.
 
 ![the vale as it ships](vale.png)
 
@@ -1033,7 +1034,7 @@ boat, Stormcrown only from the deepest floor, and nothing at all is out of reach
 | The Lost Garden | east of the Power Station | the Falls Cave, a mouth hidden behind the water at the foot of the dam | Strength boulders onto floor switches open its rock barrier (Victory Road's rule), so HM04 and the order to push them in | the rarest grass Pokemon (Tangela, Exeggcute), berry trees, the Miracle Seed |
 | The Bunker | under the Power Station | the station's door into the turbine hall, then a steel door only the Card Key opens | the card is one raid in five in Pine Hollow, and it is also the Service Gate's key; B3F and B4F are lift-only, and the lift is dead until the generator on B2F is back on, across a spinner floor | the war room's strongroom (the vale's locked crate), an escape hatch |
 | Frostreef | out on the reef, south-east | The Ice Run, the salvage launch from the Wreck's pier, across two cells of sea | it sails only from 2:00 until 4:00; then Berg Cave is FireRed's sliding ice | ice Pokemon (Seel, Dewgong, Shellder, Jynx), a Lapras on the lagoon, the NeverMeltIce |
-| Ember Isle | out beyond the cove, south-west | The Smugglers' Run, their skiff off the cove's jetty, across a cell of sea | only from the hidden cove, only from 1:00 until the smugglers sail at 2:30; the crater only through the Lava Tube, rolling on every step | the smugglers' hoard (the richest ground in the vale), fire Pokemon (Ponyta, Rapidash, Magmar), Charcoal |
+| [Ember Isle](#ember-isle) (drawn) | out beyond the cove, south-west | The Smugglers' Run, their skiff off the cove's jetty, across a cell of sea | only from the hidden cove, only from 1:00 until the smugglers sail at 2:30; the crater only through the Lava Tube, rolling on every step | the smugglers' hoard (the richest ground in the vale), fire Pokemon (Ponyta, Rapidash, Magmar), Charcoal |
 
 The plan gives Stormcrown **Mew**, not Zapdos. The storm bird would fit the
 storm, but Zapdos already stands on Route 1's Overlook. A legend stands until
@@ -1066,9 +1067,10 @@ The plan names what each place needs and does not have yet, in its `reach`;
 - **A gear row each** for the Spell Tag, the Miracle Seed, the NeverMeltIce and
   Charcoal, and **a habitat each** for the summit, the garden, the haunted fell,
   the ice and the volcano, measured as every table is. The NeverMeltIce and the
-  ice are in: the gear is the Miracle Seed's own `type-power` row, one rule
-  for every type-boosting piece, and a far place's
-  only-here find is a row of `BUILT_IN_FILE_PRIZES` (`world/filePrizes.ts`).
+  ice are in, and so are Charcoal and the volcano. The gear is the Miracle
+  Seed's own `type-power` row, one rule for every type-boosting piece, and a far
+  place's only-here find is a row of `BUILT_IN_FILE_PRIZES`
+  (`world/filePrizes.ts`).
 
 One per place:
 
@@ -1082,7 +1084,8 @@ One per place:
   in the Falls Cave.
 - **The Bunker**: an inside for the Power Plant; a door the Card Key opens; a
   lift that offers its floors; and FireRed's Rocket Hideout as a room style.
-- **Ember Isle**: outdoor ground that rolls on every step, as a cave floor does.
+- **Ember Isle** (built - [Ember Isle](#ember-isle)): outdoor ground that rolls
+  on every step, as a cave floor does.
 
 Order them like this:
 
