@@ -19,6 +19,13 @@ describe('MapProgram', () => {
     expect(p.compile()[1]).toBe('.<===>..=.');
   });
 
+  it('lays a sketch a letter a lattice cell, so a lane drawn in it is never eaten', () => {
+    const p = new MapProgram(8, 6, 'T');
+    p.cells(['T.T', ' g'], 1, 0);
+    const rows = p.compile();
+    expect(rows.slice(0, 4)).toEqual(['TTTT..TT', 'TTTT..TT', 'TTTTggTT', 'TTTTggTT']);
+  });
+
   it('leaves locked ground alone, in strokes and in compiling', () => {
     const p = new MapProgram(6, 4, '.');
     p.put(0, 0, 'T').lock(0, 0, 6, 2);

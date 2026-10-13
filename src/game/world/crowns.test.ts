@@ -90,7 +90,8 @@ describe('tree crowns', () => {
    * a tree drawn over the figures is its tip, which hangs over the ground above
    * the wood the way FireRed draws it: a point in front of the feet of whoever
    * stands there, never a canopy over them. So a lattice wood carries tips -
-   * canopy that is walked under - instead, and hundreds of them.
+   * canopy that is walked under - instead, and hundreds of them, with at most
+   * a lone broadleaf planted among them.
    */
   it('are on every wooded map, so the rule is asking about something', () => {
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
@@ -98,7 +99,10 @@ describe('tree crowns', () => {
       const crowns = crowned.flat().filter(Boolean).length;
       if (getWorldMap(id).tileset.materials.tree.lattice) {
         const tips = canopy.tiles.flatMap((row, y) => row.filter((tile, x) => tile >= 0 && !crowned[y][x])).length;
-        expect(crowns, id).toBe(0);
+        // A lone broadleaf may stand among the conifers - Greystone Vale's woods
+        // each have one - and its crown is held by the walked-ground rule above;
+        // a wood of them is not a lattice wood.
+        expect(crowns, id).toBeLessThan(Math.max(1, tips / 20));
         // A map still being drawn is wood round the districts drawn so far, so
         // its tips grow with it; that it has some is what keeps the rule honest.
         expect(tips, id).toBeGreaterThan(isMapInProgress(id) ? 0 : 100);

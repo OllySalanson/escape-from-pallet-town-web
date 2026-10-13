@@ -376,6 +376,12 @@ export function caveMaze({
     const x = Math.floor(plan.width / 2);
     for (let y = plan.height - 6; y <= plan.height - 2; y += 1)
       for (let i = -1; i <= 1; i += 1) ground[y][x + i] = FLOOR;
+    // On north until it meets the floor: no room may lie near the south wall,
+    // and a way in that ends in rock is a cave you cannot enter.
+    const open = (y: number) =>
+      [-1, 0, 1].some((i) => ground[y][x + i] === FLOOR || ground[y][x + i] === SAND);
+    for (let y = plan.height - 7; y >= 3 && !open(y); y -= 1)
+      for (let i = -1; i <= 1; i += 1) ground[y][x + i] = FLOOR;
     for (let i = -1; i <= 1; i += 1) ground[plan.height - 1][x + i] = ROCK;
     links.push({
       ends: [
