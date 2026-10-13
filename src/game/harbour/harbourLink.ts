@@ -43,6 +43,12 @@ export interface HarbourWire<P extends string = HarbourPlace> {
   send(move: HarbourMove<P>): void;
   /** Tells one other player's browser to look now (`HarbourNudge`). */
   nudge(nudge: HarbourNudge): void;
+  /**
+   * Something else a place shares beyond where people stand - a raid room's
+   * hunter, say (`raidRoom/`). The wire carries it as it is and the place
+   * reads it; a wire for a place that shares nothing more leaves it out.
+   */
+  signal?(payload: Record<string, unknown>): void;
   /** The names on the doors of these players, as the database has them. */
   names(ids: readonly string[]): Promise<ReadonlyMap<string, string>>;
   leave(): Promise<void>;
@@ -53,6 +59,8 @@ export interface HarbourHeard<P extends string = HarbourPlace> {
   nudge(nudge: HarbourNudge): void;
   /** Everybody present now, and where each says they are. */
   present(members: ReadonlyMap<string, P>): void;
+  /** A signal another browser sent (`HarbourWire.signal`), unread: whoever handles it reads it. */
+  signal?(payload: unknown): void;
 }
 
 /** Another player as drawn: where, and the name on their door. */
@@ -88,6 +96,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private awaySince: number | null = null;
   private now = 0;
   private onNudge: ((from: string) => void) | null = null;
+  private onSignal: ((payload: unknown) => void) | null = null;
   /** Counts every `leave`, so a join still on its way when the link was left is let go of. */
   private generation = 0;
 
@@ -197,6 +206,23 @@ export class HarbourLink<P extends string = HarbourPlace> {
     this.onNudge = handler;
   }
 
+  /** What to do with a signal another browser sent (`HarbourWire.signal`). */
+  public whenSignalled(handler: ((payload: unknown) => void) | null): void {
+    this.onSignal = handler;
+  }
+
+  /**
+   * Sends a signal to everybody else, if this player can be heard and anybody
+   * is there to hear it. Returns whether it went.
+   */
+  public signal(payload: Record<string, unknown>): boolean {
+    if (!this.seen() || !this.anybodyElse() || !this.wire.signal) {
+      return false;
+    }
+    this.wire.signal(payload);
+    return true;
+  }
+
   /** Tells one other player's browser to look now. Said only by a player who can be heard. */
   public nudge(to: string): void {
     if (this.joined === 'yes' && this.joinedAs && this.joinedAs === this.me) {
@@ -279,6 +305,11 @@ export class HarbourLink<P extends string = HarbourPlace> {
         present: (members) => {
           if (generation === this.generation) {
             this.hearPresent(members);
+          }
+        },
+        signal: (payload) => {
+          if (generation === this.generation) {
+            this.onSignal?.(payload);
           }
         },
       })

@@ -1,6 +1,9 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { HarbourHeard, HarbourWire } from '../harbour/harbourLink';
 import { HARBOUR_MOVE_EVENT, isPlayerId } from '../harbour/harbourProtocol';
+
+/** The broadcast event a room's signals travel on (`raidRoom/roomSignals.ts` reads them). */
+export const RAID_SIGNAL_EVENT = 'signal';
 import { supabase } from '../maker/supabaseClient';
 import { raidTopic } from './roomCode';
 import {
@@ -48,6 +51,9 @@ export function liveRaidWire(code: string): HarbourWire<RaidPlace> {
           heard.move(move);
         }
       });
+      joining.on('broadcast', { event: RAID_SIGNAL_EVENT }, ({ payload }) => {
+        heard.signal?.(payload);
+      });
       joining.on('presence', { event: 'sync' }, () => {
         heard.present(raidMembersOf(joining.presenceState()));
       });
@@ -77,7 +83,10 @@ export function liveRaidWire(code: string): HarbourWire<RaidPlace> {
       void channel?.send({ type: 'broadcast', event: HARBOUR_MOVE_EVENT, payload: encodeRaidMove(move) });
     },
     nudge() {
-      // A room has nobody to knock for: the two players are on one channel already.
+      // A room has nobody to knock for: everybody in it is on one channel already.
+    },
+    signal(payload) {
+      void channel?.send({ type: 'broadcast', event: RAID_SIGNAL_EVENT, payload });
     },
     async names(ids) {
       const db = await supabase();
@@ -144,6 +153,8 @@ export function localRaidWire(code: string, nameOf: () => string | null): Harbou
       if (move) {
         heard.move(move);
       }
+    } else if (data.kind === 'signal') {
+      heard.signal?.(data.payload);
     } else if (data.kind === 'here' && isPlayerId(data.id)) {
       const known = seen.has(data.id);
       seen.set(data.id, {
@@ -180,6 +191,9 @@ export function localRaidWire(code: string, nameOf: () => string | null): Harbou
     },
     nudge() {
       // Nobody to knock for, as on the live wire.
+    },
+    signal(payload) {
+      wire.postMessage({ kind: 'signal', payload });
     },
     names(ids) {
       return Promise.resolve(

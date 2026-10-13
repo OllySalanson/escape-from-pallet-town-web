@@ -179,6 +179,7 @@ import {
 } from '../world/depths';
 import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
 import { friendRoom } from '../raidRoom/friendRoom';
+import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/groupHunter';
 import { HarbourFigures } from '../base/harbourFigures';
 import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
@@ -328,6 +329,12 @@ function paintFloat(float: Phaser.GameObjects.Graphics, sunk: boolean): Phaser.G
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 const HUNTER_FIGURE_ID = 'rival-hunter';
+
+/** This raid's part in a room's one hunter (`WorldScene.huntRole`). */
+type HuntRole = 'solo' | 'keeper' | 'follower';
+
+/** How often a room's keeper says the hunter again when nothing about it has changed. */
+const HUNTER_RESAY_MS = 3_000;
 
 /** The rectangle of map a tile covers - what a caption naming that tile is seated around. */
 const tileRect = (tile: GridPosition): Rect => ({
@@ -788,6 +795,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private partner: PartnerFigure | null = null;
   /** The other player in a raid room, drawn where they walk (`raidRoom/`). */
   private friendFigures: HarbourFigures | null = null;
+  /** This raid's part in the room's one hunter last frame (`huntRole`). */
+  private huntRoleWas: HuntRole = 'solo';
+  /** When the room's word on the hunter was last taken (`HunterBoard.latest.at`). */
+  private hunterHeardAt = -1;
+  /** What this browser last said of the hunter, and when, so it says it again only when it changes. */
+  private hunterSaidKey = '';
+  private hunterSaidAt = Number.NEGATIVE_INFINITY;
+  /** Each friend's tile last frame, so the keeper can step the hunter when its quarry steps. */
+  private friendTiles = new Map<string, string>();
+  /** Whose art the hunter's figure was drawn in, so a room's rival can redraw it. */
+  private hunterDrawnAs: string | null = null;
 
   public constructor() {
     super('world');
@@ -867,6 +885,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.partner = null;
     // And the friend's, for the same reason.
     this.friendFigures = null;
+    // The room's hunter is read afresh after every rebuild: the last word heard
+    // is taken again, and nothing said before is assumed still said.
+    this.huntRoleWas = 'solo';
+    this.hunterHeardAt = -1;
+    this.hunterSaidKey = '';
+    this.hunterSaidAt = Number.NEGATIVE_INFINITY;
+    this.friendTiles = new Map();
+    this.hunterDrawnAs = null;
     // Where the last raid ended is not where this one starts, and the plate
     // that named it must not flash up over the next insertion.
     this.districtId = null;
@@ -1100,6 +1126,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   public update(_time: number, deltaMs: number): void {
+    // Before the raid's own frame, which steps and catches with the hunter the
+    // room shares (`raidRoom/groupHunter.ts`).
+    this.updateGroupHunter();
     this.updateRaid(deltaMs);
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
@@ -1119,6 +1148,206 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     rooms.inRaid(this.currentMap.id, this.currentTile, this.facing);
     this.friendFigures = new HarbourFigures(this);
+    // Back from a fight: the room is told it is over, and after the hunter's
+    // own fight what it left of the hunter - fled from, and where it fell back
+    // to, or beaten for everybody.
+    const was = rooms.fighting;
+    rooms.fighting = null;
+    if (was === 'hunter') {
+      rooms.sayHunter({ kind: 'after', from: rooms.room.me, hunter: this.sharedHunterNow() });
+    } else if (was === 'wild') {
+      rooms.sayHunter({ kind: 'busy', from: rooms.room.me, busy: false, withHunter: false });
+    }
+  }
+
+  /**
+   * This raid's part in the room's one hunter: alone on the map (`solo`, the
+   * hunter is this raid's own, as ever), running it for everybody (`keeper`),
+   * or drawing it where the keeper says (`follower`).
+   */
+  private huntRole(): HuntRole {
+    const rooms = friendRoom();
+    const room = rooms?.room;
+    if (!rooms || !room || !this.runSession || room.mapId !== this.currentMap.id) {
+      return 'solo';
+    }
+    const others = rooms.othersOn(this.currentMap.id).map((friend) => friend.id);
+    if (others.length === 0) {
+      return 'solo';
+    }
+    return hunterKeeper(room.me, others, rooms.hunters.busy) === room.me ? 'keeper' : 'follower';
+  }
+
+  /**
+   * The room's one hunter, each frame. A follower takes whatever the keeper
+   * last said; a keeper takes over from the last word heard when the keeping
+   * passes to it, and from a fight's ending, then says the hunter again
+   * whenever it changes - and steps it when the friend it is chasing steps.
+   */
+  private updateGroupHunter(): void {
+    const rooms = friendRoom();
+    const room = rooms?.room;
+    const role = this.huntRole();
+    const was = this.huntRoleWas;
+    this.huntRoleWas = role;
+    if (!rooms || !room || role === 'solo') {
+      return;
+    }
+    const latest = rooms.hunters.latest;
+    const fresh = latest && latest.from !== room.me && latest.at > this.hunterHeardAt ? latest : null;
+    if (role === 'follower') {
+      if (fresh || was !== 'follower') {
+        this.takeSharedHunter(fresh ?? latest, role);
+      }
+      return;
+    }
+    if (fresh && (was !== 'keeper' || fresh.after)) {
+      this.takeSharedHunter(fresh, role);
+    } else if (fresh) {
+      this.hunterHeardAt = fresh.at;
+    }
+    this.stepForFriends(rooms.figuresOn(this.currentMap.id));
+    this.sayHunterIfChanged();
+  }
+
+  /** The hunter as the room shares it, from this raid's own state. */
+  private sharedHunterNow(): SharedHunter {
+    return {
+      spawned: this.hunterState.spawned,
+      defeated: this.hunterState.defeated,
+      position: this.hunterState.mapId === this.currentMap.id ? (this.hunterState.position ?? null) : null,
+      facing: this.hunterFacing,
+      searchMs: this.hunterState.searchRemainingMs ?? 0,
+      rivalId: this.hunterRival().id,
+    };
+  }
+
+  /** The keeper's word on the hunter: said when it changes, and again now and then for anybody who missed it. */
+  private sayHunterIfChanged(): void {
+    const rooms = friendRoom();
+    const room = rooms?.room;
+    // Silent while somebody fights it: the fight's end is the next word on the
+    // hunter, and a word from before it arriving after it would undo it.
+    if (!rooms || !room || rooms.hunters.hunterHeld) {
+      return;
+    }
+    const shared = this.sharedHunterNow();
+    const key = [
+      shared.spawned,
+      shared.defeated,
+      shared.position?.x,
+      shared.position?.y,
+      shared.facing,
+      shared.searchMs > 0,
+      shared.rivalId,
+    ].join();
+    const now = this.time.now;
+    if (key === this.hunterSaidKey && now - this.hunterSaidAt < HUNTER_RESAY_MS) {
+      return;
+    }
+    if (rooms.sayHunter({ kind: 'hunter', from: room.me, hunter: shared })) {
+      this.hunterSaidKey = key;
+      this.hunterSaidAt = now;
+    }
+  }
+
+  /** Takes the room's word on the hunter as this raid's own, and draws it there. */
+  private takeSharedHunter(
+    heard: { readonly hunter: SharedHunter; readonly at: number } | null,
+    role: HuntRole,
+  ): void {
+    if (!heard) {
+      // A follower who has heard nothing yet: the keeper's hunter has not come.
+      if (role === 'follower' && this.hunterState.spawned && !this.hunterState.defeated) {
+        this.hunterState = { ...this.hunterState, spawned: false, position: undefined };
+        this.drawSharedHunter();
+      }
+      return;
+    }
+    this.hunterHeardAt = heard.at;
+    const hunter = heard.hunter;
+    const arriving = role === 'follower' && hunter.spawned && !hunter.defeated && hunter.position !== null &&
+      !(this.hunterState.spawned && !this.hunterState.defeated && this.hunterState.position);
+    this.hunterState = {
+      ...this.hunterState,
+      spawned: hunter.spawned,
+      defeated: hunter.defeated,
+      mapId: this.currentMap.id,
+      position: hunter.position ?? undefined,
+      searchRemainingMs: hunter.searchMs,
+    };
+    this.hunterFacing = hunter.facing;
+    this.drawSharedHunter();
+    if (arriving && hunter.position) {
+      audioManager.play('hunterArrival');
+      this.interrupt([this.hunterRival().arrival], [hunter.position]);
+    }
+  }
+
+  /** The hunter's figure where the room's word puts it, in the room's rival's art. */
+  private drawSharedHunter(): void {
+    const sprite = this.npcSprites.get(HUNTER_FIGURE_ID);
+    const rival = this.hunterRival().id;
+    if (sprite && this.hunterDrawnAs !== null && this.hunterDrawnAs !== rival) {
+      sprite.destroy();
+      this.npcSprites.delete(HUNTER_FIGURE_ID);
+      this.npcAppearances.delete(HUNTER_FIGURE_ID);
+    }
+    if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
+      this.npcSprites.get(HUNTER_FIGURE_ID)?.setVisible(false);
+      return;
+    }
+    if (!this.npcSprites.has(HUNTER_FIGURE_ID)) {
+      this.createHunterSprite();
+      return;
+    }
+    const { x, y } = this.hunterState.position;
+    this.placeFigure(HUNTER_FIGURE_ID, x, y, this.hunterFacing);
+  }
+
+  /**
+   * The keeper steps the hunter when the friend it is chasing steps, as a raid
+   * alone steps it when its player does - so the hunter is no faster for being
+   * shared, and no slower for chasing somebody else.
+   */
+  private stepForFriends(figures: readonly { readonly id: string; readonly tile: GridPosition }[]): void {
+    const seen = new Map<string, string>();
+    const stepped: string[] = [];
+    for (const figure of figures) {
+      const key = `${figure.tile.x},${figure.tile.y}`;
+      seen.set(figure.id, key);
+      const before = this.friendTiles.get(figure.id);
+      if (before !== undefined && before !== key) {
+        stepped.push(figure.id);
+      }
+    }
+    this.friendTiles = seen;
+    const chased = this.groupQuarry();
+    if (chased && stepped.includes(chased.id)) {
+      this.hunterStillMs = 0;
+      this.advanceHunterPursuit(chased.id);
+    }
+  }
+
+  /**
+   * Who the room's hunter is after: the nearest of everybody on the map who is
+   * not in a fight, this player included. Null when the hunter is this raid's
+   * alone, or not out.
+   */
+  private groupQuarry(): { readonly id: string; readonly tile: GridPosition } | null {
+    const rooms = friendRoom();
+    const room = rooms?.room;
+    const hunter = this.hunterState.position;
+    if (!rooms || !room || !hunter || this.huntRole() === 'solo') {
+      return null;
+    }
+    const busy = rooms.hunters.busy;
+    const onMap = new Set(rooms.othersOn(this.currentMap.id).map((friend) => friend.id));
+    const friends = rooms
+      .figuresOn(this.currentMap.id)
+      .filter((figure) => onMap.has(figure.id) && !busy.has(figure.id))
+      .map((figure) => ({ id: figure.id, tile: figure.tile }));
+    return nearestQuarry(hunter, [{ id: room.me, tile: this.currentTile }, ...friends]);
   }
 
   /**
@@ -1165,6 +1394,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         return {
           name: friend.name,
           atLab: friend.place === 'lab',
+          fighting: rooms.hunters.fightOf(friend.id),
           heading: figure ? this.headingTo(figure.tile) : null,
           distance:
             figure && !elsewhere
@@ -2465,6 +2695,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       'hunter',
       this.hunterRival().design,
     );
+    this.hunterDrawnAs = this.hunterRival().id;
   }
 
   /**
@@ -4670,6 +4901,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Whatever beat was playing has been overtaken by the fight it was leading
     // to, so it lets go of the frame before the world is torn down.
     this.endCutscene();
+    // A room is told: a player in a fight is nobody's quarry and nobody's
+    // keeper, and while it is the hunter's own fight the hunter holds still.
+    const rooms = friendRoom();
+    if (rooms?.room && rooms.room.mapId === this.currentMap.id && this.runSession) {
+      const withHunter = 'hunterBattle' in encounter && encounter.hunterBattle;
+      rooms.fighting = withHunter ? 'hunter' : 'wild';
+      rooms.sayHunter({ kind: 'busy', from: rooms.room.me, busy: true, withHunter });
+    }
     // Weather is not carried through the fight the way the hunter and the pack
     // are: it is a fact about the tile the player is standing on, so it is read
     // fresh here and never stored. A fight is fought in the weather of the
@@ -5611,6 +5850,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * walking out of that pocket is what fixes it.
    */
   private placeHunterIfDue(elapsedMs: number): void {
+    // A room's hunter is brought in by its keeper, and only drawn here.
+    if (this.huntRoleWas === 'follower') {
+      return;
+    }
     if (
       !this.runSession ||
       this.runSession.manager.phase !== RunPhase.InRun ||
@@ -5654,7 +5897,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** Who is hunting this raid - a face and lines, never a fight (`hunters.ts`). */
   private hunterRival(): HunterRival {
-    return hunterRival(this.runSession?.plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL);
+    // In a room the hunter is everybody's, so it is whoever the room first
+    // heard hunting: one face, one set of lines, one lead (`groupHunter.ts`).
+    const shared = this.huntRoleWas === 'solo' ? undefined : friendRoom()?.hunters.latest?.hunter.rivalId;
+    return hunterRival(shared ?? this.runSession?.plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL);
   }
 
   private isHunterEligible(): boolean {
@@ -5708,12 +5954,31 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
   }
 
-  private advanceHunterPursuit(): void {
+  /**
+   * One step of the hunter's chase, paid for by a step of whoever it is after:
+   * this player (`stepper` left out) or, for a room's keeper, the friend it is
+   * chasing (`stepForFriends`). A step by anybody else moves it nowhere.
+   */
+  private advanceHunterPursuit(stepper?: string): void {
     if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return;
     }
     // A hunter that lost the trail holds where the player slipped away from it.
     if (isHunterSearching(this.hunterState)) {
+      return;
+    }
+    // A room's hunter is walked by its keeper, and holds where it stands while
+    // anybody fights it.
+    if (this.huntRoleWas === 'follower' || (this.huntRoleWas === 'keeper' && friendRoom()?.hunters.hunterHeld)) {
+      return;
+    }
+    const chased = this.groupQuarry();
+    const me = friendRoom()?.room?.me;
+    if (chased && chased.id !== (stepper ?? me)) {
+      return;
+    }
+    if (chased && chased.id !== me) {
+      this.chaseFriend(chased.tile);
       return;
     }
     const aggression = this.runSession?.plan?.hunter.aggressionStepsPerPlayerStep
@@ -5754,6 +6019,26 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     // Placed a tile at a time and turned the way it went: until the hunters
     // had faces it stood facing down for the whole raid, gliding sideways.
+    this.placeFigure(HUNTER_FIGURE_ID, position.x, position.y, this.hunterFacing);
+  }
+
+  /** The keeper's hunter, a step towards a friend: their own browser makes the catch when it gets there. */
+  private chaseFriend(target: GridPosition): void {
+    let position = this.hunterState.position!;
+    const aggression = this.runSession?.plan?.hunter.aggressionStepsPerPlayerStep
+      ?? DEFAULT_HUNTER_TUNING.aggressionStepsPerPlayerStep;
+    const steps = this.runSession?.manager.isEnraged
+      ? Math.max(aggression, HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP)
+      : aggression;
+    const path = findHunterPursuitPath(position, target, this.bounds, (tile) => this.isBlockedForHunter(tile));
+    for (let index = 0; index < steps && index < path.length; index += 1) {
+      if (isHunterContactingPlayer(position, target)) {
+        break;
+      }
+      this.hunterFacing = bearingFrom(position, path[index]) ?? this.hunterFacing;
+      position = path[index];
+    }
+    this.hunterState = { ...this.hunterState, position };
     this.placeFigure(HUNTER_FIGURE_ID, position.x, position.y, this.hunterFacing);
   }
 
@@ -5802,6 +6087,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * starts underneath one.
    */
   private advanceHunterWhileStill(chargedMs: number): void {
+    if (this.huntRoleWas === 'follower') {
+      this.hunterStillMs = 0;
+      return;
+    }
     if (
       this.targetTile ||
       !this.isHunterOnCurrentMap() ||
@@ -5818,7 +6107,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (isHunterContactingPlayer(this.hunterState.position, this.currentTile)) {
         return;
       }
-      this.advanceHunterPursuit();
+      // Whoever it is after: standing still is standing still, whoever it is.
+      this.advanceHunterPursuit(this.groupQuarry()?.id);
     }
   }
 
@@ -5849,6 +6139,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private tryStartHunterBattle(): boolean {
     if (
+      this.hunterFightingSomebodyElse() ||
       !this.isHunterOnCurrentMap() ||
       !this.hunterState.position ||
       isHunterSearching(this.hunterState) ||
@@ -5886,7 +6177,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * ever be reached by a player pushing into a hunter that is holding still.
    */
   private tryWalkIntoHunter(facing: Direction): boolean {
-    if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
+    if (this.hunterFightingSomebodyElse() || !this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return false;
     }
     const into = nextTileFromDirection(this.currentTile, facing);
@@ -5896,6 +6187,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.facing = facing;
     this.catchPlayer(this.hunterState.position);
     return true;
+  }
+
+  /** Whether a room's hunter is in a fight with another player, and so catches nobody else until it is over. */
+  private hunterFightingSomebodyElse(): boolean {
+    return this.huntRoleWas !== 'solo' && (friendRoom()?.hunters.hunterHeld ?? false);
   }
 
   /** The one catch: the fight is queued, and the beat that hands it over plays. */
@@ -5909,7 +6205,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       trainer: createHunterTrainer(
         this.runSession!.manager.snapshot().elapsedMs,
         this.runSession!.manager.isEnraged,
-        this.runSession!.plan?.hunter,
+        this.runSession!.plan?.hunter && { ...this.runSession!.plan.hunter, rivalId: this.hunterRival().id },
         this.party.pokemon,
       ),
       introLines: this.hunterRival().caught,
