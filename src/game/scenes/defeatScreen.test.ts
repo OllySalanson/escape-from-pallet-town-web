@@ -422,8 +422,10 @@ describe('the result screen on what a contract paid', () => {
       saved: true,
     });
     const { root } = open(report);
+    // A ledger row names its item first in its <strong>; the contract row,
+    // which leads the pane once banked, only mentions the Super Potion.
     const rowOf = (label: string) =>
-      root.html.match(new RegExp(`<div class="px-row[^"]*">(?:(?!<div class="px-row).)*?${label}(?:(?!<div class="px-row).)*`, 's'))?.[0] ?? '';
+      root.html.match(new RegExp(`<div class="px-row[^"]*">(?:(?!<div class="px-row).)*?<strong>${label}(?:(?!<div class="px-row).)*`, 's'))?.[0] ?? '';
 
     expect(rowOf('Super Potion')).toContain('>Reward<');
     expect(rowOf('Super Potion')).not.toContain('>Banked<');

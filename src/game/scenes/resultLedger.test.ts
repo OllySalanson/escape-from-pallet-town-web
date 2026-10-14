@@ -69,6 +69,8 @@ describe('the result screen ledger', () => {
     const report = {
       outcome: 'ESCAPED',
       ledger: { pokemon: [], items: [{ itemId: 'mooring-rope', label: 'Mooring rope', quantity: 1 }] },
+      ledgerFound: { pokemon: [], items: [{ itemId: 'mooring-rope', label: 'Mooring rope', quantity: 1 }] },
+      ledgerPaid: { pokemon: [], items: [] },
       ledgerHeading: 'Banked',
       ledgerEmptyText: 'Nothing.',
       contract: { description: 'Recover the lost field kit', complete: true, reward: 'Four more insertions are permanently unlocked.' },
