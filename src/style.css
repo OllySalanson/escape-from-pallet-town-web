@@ -1269,6 +1269,18 @@ button {
 :where(.pixel-ui) .px-rail .done {
   color: var(--teal);
 }
+/* Done is said by a shape as well as by teal, which a red-green or no-colour
+   eye reads as the same grey as a step to come (playtest 40 #7). */
+:where(.pixel-ui) .px-rail .done::after {
+  content: '';
+  display: inline-block;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  margin-left: calc(var(--u) * 3);
+  background: currentColor;
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
 :where(.pixel-ui) .px-rail .current {
   color: var(--bar-text);
 }
