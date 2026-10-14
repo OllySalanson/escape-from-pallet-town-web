@@ -1893,9 +1893,11 @@ button {
   transform-origin: 50% 100%;
 }
 :where(.pixel-ui) .px-type {
+  /* Every fill holds the cream letters at WCAG AA, 4.5 to 1 or better, so a
+     tag reads for everybody (playtest 40; `style.test.ts` measures them). */
   display: inline-block;
   padding: 0 calc(var(--u) * 3);
-  background: #6d8c9c;
+  background: #55707e;
   box-shadow: 0 0 0 var(--u) var(--frame);
   color: var(--cream-lit);
   text-transform: uppercase;
@@ -1905,29 +1907,29 @@ button {
   margin: var(--u) calc(var(--u) * 3) var(--u) var(--u);
 }
 :where(.pixel-ui) .px-type-fire {
-  background: #c8502c;
+  background: #a83e20;
 }
 :where(.pixel-ui) .px-type-grass {
-  background: #3f8f4f;
+  background: #2f7a3e;
 }
 :where(.pixel-ui) .px-type-water {
   background: #3a6fc0;
 }
 :where(.pixel-ui) .px-type-electric {
-  background: #b98f12;
+  background: #8a6a00;
 }
 :where(.pixel-ui) .px-type-poison {
   background: #8a4aa0;
 }
 :where(.pixel-ui) .px-type-flying {
-  background: #6f86c8;
+  background: #5068a8;
 }
 :where(.pixel-ui) .px-type-bug {
-  background: #7d9a1e;
+  background: #5e7414;
 }
 :where(.pixel-ui) .px-type-normal,
 :where(.pixel-ui) .px-type-fairy {
-  background: #8c8a6c;
+  background: #686650;
 }
 
 /* --- The commitment bar: every screen that commits ends on it ----------- */
