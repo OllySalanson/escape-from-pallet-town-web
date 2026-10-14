@@ -116,3 +116,33 @@ describe('RaidHud under a raised dialogue box', () => {
     expect(texts.filter((text) => text.visible)).toHaveLength(5);
   });
 });
+
+describe('RaidHud clock in the last minute', () => {
+  // Playtest 40 #5: the caution clock was the calm clock in a yellower fill, so
+  // in greyscale the last minute looked exactly like the first four. It has to
+  // say so by shape as well: a frame twice as heavy.
+  const ruleCount = (fills: readonly Rect[], chip: Rect) =>
+    fills.filter(
+      (fill) =>
+        fill.height === 1 &&
+        fill.x >= chip.x &&
+        fill.x + fill.width <= chip.x + chip.width &&
+        fill.y >= chip.y &&
+        fill.y < chip.y + chip.height,
+    ).length;
+
+  it('draws the caution clock with a frame twice as heavy as the calm one', () => {
+    const calm = stubScene(400);
+    const calmHud = new RaidHud(calm.scene);
+    calmHud.render(STATE, 0);
+    const caution = stubScene(400);
+    const cautionHud = new RaidHud(caution.scene);
+    cautionHud.render({ ...STATE, clock: { label: 'RAID 0:55', tone: 'caution', pulses: false } }, 0);
+
+    const calmClock = calmHud.occupied[0];
+    const cautionClock = cautionHud.occupied[0];
+    expect(calmClock.width).toBe(cautionClock.width);
+    expect(ruleCount(calm.fills, calmClock)).toBe(2);
+    expect(ruleCount(caution.fills, cautionClock)).toBe(4);
+  });
+});

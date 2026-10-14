@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import {
   CURSOR_HEIGHT,
   CURSOR_WIDTH,
+  WINDOW_BORDER,
   WINDOW_CREAM,
   WINDOW_INK_VALUE,
   drawMenuCursor,
@@ -40,11 +41,19 @@ const HUD_DEPTH = 100;
 interface ChipStyle {
   readonly fill: number;
   readonly ink: number;
+  /**
+   * A second frame one pixel inside the first, so a chip can say something by
+   * shape as well as by colour (playtest 40 #5: the caution clock's yellow was
+   * the calm cream in greyscale).
+   */
+  readonly heavy?: boolean;
 }
 
 const CLOCK_STYLES: Readonly<Record<RaidClockTone, ChipStyle>> = {
   calm: { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
-  caution: { fill: 0xf0c454, ink: 0x2a1c00 },
+  // The last minute is a yellower fill and a frame twice as heavy: the fill
+  // alone is the calm clock to anybody who does not see the yellow.
+  caution: { fill: 0xf0c454, ink: 0x2a1c00, heavy: true },
   // The alarm states invert: a light box on a dark map is furniture, a dark red
   // box with light type is a warning, and the difference reads at a glance.
   urgent: { fill: 0xb0201c, ink: 0xffe8d8 },
@@ -290,6 +299,13 @@ export class RaidHud {
     }
     this.covered.push(rect);
     drawPixelWindow(this.frames, rect, { fill: style.fill, fillAlpha: alpha });
+    if (style.heavy) {
+      this.frames.fillStyle(WINDOW_BORDER, alpha);
+      this.frames.fillRect(rect.x + 2, rect.y + 1, rect.width - 4, 1);
+      this.frames.fillRect(rect.x + 2, rect.y + rect.height - 2, rect.width - 4, 1);
+      this.frames.fillRect(rect.x + 1, rect.y + 2, 1, rect.height - 4);
+      this.frames.fillRect(rect.x + rect.width - 2, rect.y + 2, 1, rect.height - 4);
+    }
     if (withCursor) {
       drawMenuCursor(
         this.frames,
