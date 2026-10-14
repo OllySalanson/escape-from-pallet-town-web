@@ -65,14 +65,14 @@ describe('an exit locked to the Card Key', () => {
     expect(problemsOf(file, 'way-out')).toEqual([]);
     const onlyLocked = setExitOpens(file, 0, { when: 'key' });
     expect(problemsOf(onlyLocked, 'way-out')).toEqual([
-      'Drop-in Drop-in 1 cannot walk to any exit without the Card Key.',
+      'Drop-in 1 cannot walk to any exit without the Card Key.',
     ]);
   });
 
   it('comes with somewhere its card lies, and a card comes with a lock', () => {
     expect(problemsOf(lockedMap(), 'reachable')).toEqual([]);
     expect(problemsOf(setItemHoldsKey(lockedMap(), 1, false), 'reachable')).toEqual([
-      'Exit Exit 2 at 20,4 is locked to the Card Key, and no item spot holds one.',
+      'Exit 2 at 20,4 is locked to the Card Key, and no item spot holds one.',
     ]);
     expect(problemsOf(setExitOpens(lockedMap(), 1, { when: 'always' }), 'reachable')).toEqual([
       'Item spot 2 at 10,12 holds a Card Key no exit or door is locked to.',

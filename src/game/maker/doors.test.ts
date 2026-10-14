@@ -256,7 +256,7 @@ describe('the checks and a painted ledge', () => {
       dropIns: [{ ...file.dropIns[0], y: 15 }],
       exits: [{ ...file.exits[0], y: 3 }],
     };
-    expect(check(file, 'way-out')?.problems).toEqual(['Drop-in Drop-in 1 cannot walk to any exit.']);
+    expect(check(file, 'way-out')?.problems).toEqual(['Drop-in 1 cannot walk to any exit.']);
   });
 
   it('refuse a ledge that drops where no exit can be walked to', () => {

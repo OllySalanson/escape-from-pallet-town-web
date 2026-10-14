@@ -198,6 +198,17 @@ describe('whether a map works', () => {
     ]);
   });
 
+  it('names a thing whose name already says its kind once (playtest 39 A1)', () => {
+    // The maker names a new drop-in "Drop-in 1"; "Drop-in Drop-in 1" said the
+    // kind twice in every check that named it.
+    const inTheTrees = edited({
+      dropIns: [{ ...SAMPLE.dropIns[0], name: 'Drop-in 1', x: 0, y: 23 }],
+    });
+    const problems = checkMapFile(inTheTrees).flatMap((check) => check.problems);
+    expect(problems).toContain('Drop-in 1 at 0,23 stands in the trees.');
+    expect(problems.join(' ')).not.toMatch(/Drop-in Drop-in/);
+  });
+
   it('fails two things on one tile', () => {
     const shared = edited({ itemSpots: [{ x: SAMPLE.exits[0].x, y: SAMPLE.exits[0].y }] });
     expect(failing(shared)).toEqual(['apart']);
