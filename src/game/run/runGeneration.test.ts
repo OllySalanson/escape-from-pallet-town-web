@@ -4,6 +4,8 @@ import { gateBossIds, gateKeys, gatesForMap, NIGHT_KEY, WORLD_GATES, type BossGa
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
+import { RAID_DURATION_MS } from './raidClock';
+import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { createActiveRunSession } from './RunSession';
 import { FIRST_CONTRACT, RAID_CONTRACTS } from '../objectives';
 import {
@@ -605,5 +607,35 @@ describe('what a landing says of itself', () => {
     // (the vale's playtest, B3): the first sentence a player reads about it.
     const stale = Object.values(RUN_INSERTIONS).filter((insertion) => /still being drawn/i.test(insertion.description));
     expect(stale.map((insertion) => insertion.id)).toEqual([]);
+  });
+});
+
+describe('a raid the Pokemon Center cut short', () => {
+  // Every authored timed exit is drawn against the full clock and is about how
+  // long is left. Read against the elapsed clock alone, a raid cut short met
+  // the islands' last boats home after it had ended, under captions counting
+  // down to them (the vale's playtest, B1). At the deepest debt the Center can
+  // book, each opens as far before the end as it was drawn to, or from the
+  // first second.
+  const shortest = RAID_DURATION_MS - MAX_PENDING_RECOVERY_MS;
+  const landings = ['floodplain-relay', 'greystone-vale-cove-steps', 'greystone-vale-salvage-camp'] as RunInsertionId[];
+
+  it.each(landings)('%s: every timed exit opens before the end, as far before it as drawn', (insertionId) => {
+    const full = generateRunPlan(7, undefined, insertionId, undefined);
+    const short = generateRunPlan(7, undefined, insertionId, undefined, undefined, [], { raidClockMs: shortest });
+    expect(short.clockShortfallMs).toBe(MAX_PENDING_RECOVERY_MS);
+    const timed = full.extractionPoints.filter((point) => point.requirement?.kind === 'elapsed');
+    expect(timed.length).toBeGreaterThan(0);
+    for (const point of timed) {
+      const drawn = (point.requirement as { unlockAtMs: number }).unlockAtMs;
+      const met = short.extractionPoints.find((each) => each.label === point.label)!;
+      const opens = (met.requirement as { unlockAtMs: number }).unlockAtMs;
+      expect(`${point.label} ${opens}`).toBe(`${point.label} ${Math.max(0, drawn - MAX_PENDING_RECOVERY_MS)}`);
+      expect(met.unlockAtMs).toBe(opens);
+      expect(opens).toBeLessThan(shortest);
+    }
+    // Nothing else about the raid moves: the same seed lays the same ground.
+    expect(short.loot).toEqual(full.loot);
+    expect(short.hunter).toEqual(full.hunter);
   });
 });
