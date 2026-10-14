@@ -67,6 +67,11 @@ vi.mock('phaser', () => ({
 }));
 
 const spoken: string[][] = [];
+/** Every line put up, as `onLineShown` is told of it, and the holds a line asked for. */
+const shownLines: string[] = [];
+const holds: { line: string; ms: number }[] = [];
+/** Every sound effect played, in order, with the line up at the time. */
+const played: { name: string; line: string | undefined }[] = [];
 
 vi.mock('../ui/DialogBox', () => ({
   DialogBox: class {
@@ -83,9 +88,17 @@ vi.mock('../ui/DialogBox', () => ({
       this.visible = true;
       spoken.push([message]);
     }
-    public showMessages(messages: string[]): void {
+    public showMessages(messages: string[], onLineShown?: (index: number) => void): void {
       this.visible = true;
       spoken.push([...messages]);
+      // Every line is read in turn, as a player pressing through them would.
+      messages.forEach((message, index) => {
+        shownLines.push(message);
+        onLineShown?.(index);
+      });
+    }
+    public hold(ms: number): void {
+      holds.push({ line: shownLines.at(-1)!, ms });
     }
     public advance(): void {}
     public skip(): void {}
@@ -96,7 +109,15 @@ vi.mock('../ui/DialogBox', () => ({
 // The save is reached through `window.localStorage`, and a `window` that exists
 // would otherwise have the audio manager reach for a real AudioContext.
 vi.mock('../audio/AudioManager', () => ({
-  audioManager: new Proxy({}, { get: () => vi.fn() }),
+  audioManager: new Proxy(
+    {},
+    {
+      get: (_target, method) =>
+        method === 'play'
+          ? (name: string) => played.push({ name, line: shownLines.at(-1) })
+          : () => undefined,
+    },
+  ),
 }));
 
 import { Bag } from '../items';
@@ -286,6 +307,9 @@ describe('a boss-held gate in a live raid', () => {
 
   beforeEach(() => {
     spoken.length = 0;
+    shownLines.length = 0;
+    holds.length = 0;
+    played.length = 0;
     storage = new MemoryStorage();
     vi.stubGlobal('window', { localStorage: storage });
     new SaveManager(storage).save({
@@ -351,6 +375,51 @@ describe('a boss-held gate in a live raid', () => {
     expect(spoken).toHaveLength(1);
     expect(internalsOf(scene).bag.count('life-orb')).toBe(1);
     expect(new SaveManager(storage).load()!.raidProgress.defeatedBosses).toEqual([GATE.bossId]);
+  });
+
+  /**
+   * Gear is the rarest thing a raid hands over, and it went by as one more line
+   * pressed through after the fight: playtest 42 lost a Life Orb it never knew
+   * it had. It is FireRed's obtained-an-item beat now - the jingle as the line
+   * is put up, and the line held until it has played.
+   */
+  it("hands a boss's gear over to its own jingle, with the line held until it has played", () => {
+    const scene = new WorldScene();
+    attachSceneStubs(scene);
+    const { data } = deploy('route-1');
+    scene.create(data);
+    played.length = 0;
+
+    const beside = { x: BOSS.position.x - 1, y: BOSS.position.y };
+    scene.create(returnFromWinning(data, BOSS.trainer.id, beside));
+
+    const gearLine = 'WARDEN WREN was carrying a LIFE ORB. You take it.';
+    expect(played.filter(({ name }) => name === 'itemObtained')).toEqual([
+      { name: 'itemObtained', line: gearLine },
+    ]);
+    expect(holds).toHaveLength(1);
+    expect(holds[0].line).toBe(gearLine);
+    expect(holds[0].ms).toBeGreaterThanOrEqual(1000);
+  });
+
+  it('gives gear handed over once there is room the same beat, and only the line that hands it over', () => {
+    const scene = new WorldScene();
+    attachSceneStubs(scene);
+    const { data } = deploy('route-1');
+    const bag = new Bag({ potion: 18 });
+    scene.create({ ...data, bag });
+    const beside = { x: BOSS.position.x - 1, y: BOSS.position.y };
+    scene.create(returnFromWinning({ ...data, bag }, BOSS.trainer.id, beside));
+    // No room: nothing is handed over, so nothing sounds as though it was.
+    expect(played.filter(({ name }) => name === 'itemObtained')).toEqual([]);
+    expect(holds).toEqual([]);
+
+    bag.remove('potion', 1);
+    expect(internalsOf(scene).tryClaimWaitingBossGear()).toBe(true);
+    expect(played.filter(({ name }) => name === 'itemObtained')).toEqual([
+      { name: 'itemObtained', line: 'WARDEN WREN was carrying a LIFE ORB. You take it.' },
+    ]);
+    expect(holds.map(({ line }) => line)).toEqual(['WARDEN WREN was carrying a LIFE ORB. You take it.']);
   });
 
   /**

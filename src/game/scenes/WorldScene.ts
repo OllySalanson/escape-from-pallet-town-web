@@ -155,6 +155,7 @@ import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
+import { SOUND_EFFECTS, soundEffectLength } from '../audio/soundEffects';
 import { getSpeciesById } from '../pokemon/species';
 import {
   entersTallGrass,
@@ -383,6 +384,17 @@ type HuntRole = 'solo' | 'keeper' | 'follower';
 
 /** How often a room's keeper says the hunter again when nothing about it has changed. */
 const HUNTER_RESAY_MS = 3_000;
+
+/**
+ * A line the world says unasked, and whether it is FireRed's obtained-an-item
+ * beat: put up to its jingle (`itemObtained`), with the prompt held back until
+ * the jingle has played, as FireRed's text waits out its fanfare - so a key
+ * pressed through the lines before it is not also pressed past it.
+ */
+type WorldLine = string | { readonly text: string; readonly obtained: true };
+
+/** How long an obtained line is held before a key moves it on: its jingle, and never under a second. */
+const OBTAINED_HOLD_MS = Math.max(1_000, Math.ceil(soundEffectLength(SOUND_EFFECTS.itemObtained) * 1000));
 
 /** The colour of a ping's mark: the prize gleam's warm gold would read as loot, so a clear sky blue. */
 const PING_COLOUR = 0x5ec8f2;
@@ -1125,7 +1137,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * data rather than read back from storage, so the door opens in the raid that
    * won it even in a browser that cannot save.
    */
-  private settleBossProgress(savedGame: RestoredGame | undefined): readonly string[] {
+  private settleBossProgress(savedGame: RestoredGame | undefined): readonly WorldLine[] {
     const saveManager = new SaveManager();
     const stored = (saveManager.load() ?? savedGame)?.raidProgress;
     const deployedWith = this.runSession?.plan?.defeatedBosses ?? stored?.defeatedBosses ?? [];
@@ -1172,7 +1184,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * carried out: from here it is one more thing in the bag, so the wipe ledger,
    * the supply delta and the result screen all already know what to do with it.
    */
-  private takeBossGear(newlyBeaten: readonly string[]): readonly string[] {
+  private takeBossGear(newlyBeaten: readonly string[]): readonly WorldLine[] {
     this.unclaimedBossGear = [
       ...this.unclaimedBossGear,
       ...bossGearDropped(this.trainerEncounters, newlyBeaten).map(({ itemId, name }) => ({
@@ -1194,12 +1206,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * make room. Nothing is claimed twice: a piece leaves this list only when the
    * pack has actually taken it.
    */
-  private claimBossGear(): readonly string[] {
+  private claimBossGear(): readonly WorldLine[] {
     if (this.unclaimedBossGear.length === 0) {
       return [];
     }
     const waiting: { itemId: string; name: string }[] = [];
-    const lines: string[] = [];
+    const lines: WorldLine[] = [];
     for (const drop of this.unclaimedBossGear) {
       const item = getItemById(drop.itemId);
       const gearName = item?.displayName.toUpperCase() ?? 'PIECE OF GEAR';
@@ -1211,8 +1223,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         );
         continue;
       }
+      // Gear is the rarest thing a raid hands over, and it used to go by as
+      // one more line pressed through after the fight (playtest 42): it is
+      // FireRed's obtained-an-item beat now, a jingle with the line held.
       lines.push(
-        `${drop.name} was carrying a ${gearName}. You take it.${this.reseatNote()}`,
+        { text: `${drop.name} was carrying a ${gearName}. You take it.${this.reseatNote()}`, obtained: true },
         `${item?.description ?? ''} Give it to a POKéMON from the party screen - and get it home.`,
       );
     }
@@ -4339,13 +4354,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * of them by `placeDialog` - the hunter's arrival used to be announced by a
    * box drawn over the hunter.
    */
-  private interrupt(lines: readonly string[], about: readonly GridPosition[] = []): void {
+  private interrupt(lines: readonly WorldLine[], about: readonly GridPosition[] = []): void {
     // Whatever landed in front of the player takes the box the cast was using,
     // and the cast with it: a line that arrives unasked is read, not fished past.
     this.stopFishing();
     this.unsolicitedDialog = true;
     this.seatDialog(about);
-    this.dialogBox.showMessages([...lines]);
+    this.dialogBox.showMessages(
+      lines.map((line) => (typeof line === 'string' ? line : line.text)),
+      (index) => {
+        const line = lines[index];
+        if (typeof line !== 'string' && line?.obtained) {
+          audioManager.play('itemObtained');
+          this.dialogBox.hold(OBTAINED_HOLD_MS);
+        }
+      },
+    );
   }
 
   private seatDialog(about: readonly GridPosition[]): void {
@@ -6317,9 +6341,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.unclaimedBossGear.length === owed) {
       return false;
     }
-    audioManager.play('lootPickup');
     // An interruption, because the player did not ask for it and the key they
-    // are already holding has to be able to answer it.
+    // are already holding has to be able to answer it. The gear line sounds
+    // its own jingle as it is put up.
     this.interrupt(lines);
     return true;
   }

@@ -1686,7 +1686,7 @@ export class HubScene extends Phaser.Scene {
     // answer. Nothing on the lab screen is lost by it: it is the room's front.
     this.applyLoadedGame(reloaded);
     this.speaking = { screen: 'lab', words: milestoneWords(given.milestone, given.owned, continuing), reward: true };
-    audioManager.play('pokedexReward');
+    audioManager.play('itemObtained');
   }
 
   /**
@@ -1724,7 +1724,7 @@ export class HubScene extends Phaser.Scene {
         words: words([`You handed over ${errandThing(errand)}.`, ...errand.thanks, errand.reward.received]),
         reward: true,
       };
-      audioManager.play('pokedexReward');
+      audioManager.play('itemObtained');
       return;
     }
     const recorded =
