@@ -2868,6 +2868,10 @@ export class MapMakerScene extends Phaser.Scene {
    * opens as a picture of itself rather than as its top-left corner.
    */
   private fitZoom(): void {
+    this.afterLayout(() => this.fitZoomNow());
+  }
+
+  private fitZoomNow(): void {
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const map = this.mapCanvas();
     if (!viewport || !map || viewport.clientWidth === 0) {
@@ -2884,8 +2888,32 @@ export class MapMakerScene extends Phaser.Scene {
     if (zoom !== this.zoom) {
       this.zoom = zoom;
       this.render();
+      this.afterLayout(() => this.lookAtMap());
+      return;
     }
     this.lookAtMap();
+  }
+
+  /**
+   * Runs `then` once the screen just drawn has been laid out. The overlay
+   * settles a fresh screen a frame after its markup is written (`refocus` runs
+   * `MenuOverlay.relayout`, which snaps every box of words to the pixel grid),
+   * and until then the map window measured 104 pixels narrower than it would
+   * be: a fresh 40x30 map, which fits the window at 1/2, opened scrolled to
+   * its top-left corner with its east edge cut off and the overview drawn over
+   * its south-east corner (playtest 48). Frames run in the order asked for, so
+   * this comes after the overlay's own, and before the frame is painted.
+   */
+  private afterLayout(then: () => void): void {
+    if (typeof requestAnimationFrame !== 'function') {
+      then();
+      return;
+    }
+    requestAnimationFrame(() => {
+      if (this.scene.isActive()) {
+        then();
+      }
+    });
   }
 
   /**

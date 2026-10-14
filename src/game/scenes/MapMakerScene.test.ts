@@ -525,6 +525,29 @@ describe('a mouse tool that says so', () => {
   });
 });
 
+describe('opening a map', () => {
+  it('fits it to the window as the window is once the screen has been laid out', () => {
+    // The overlay snaps the screen a frame after drawing it, and the map
+    // window is narrower until then: a 40x30 map that fits it was opened as
+    // though it did not (playtest 48).
+    const frames: (() => void)[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => frames.push(callback));
+    storeDraft(withSigns());
+    page.viewport.clientWidth = 600;
+    try {
+      const { scene } = openMaker();
+      page.viewport.clientWidth = 1_300;
+      while (frames.length > 0) {
+        frames.shift()!();
+      }
+      // At 16 the map is 1,280 pixels across: it fits the window as laid out.
+      expect(scene.zoom).toBe(16);
+    } finally {
+      page.viewport.clientWidth = 0;
+    }
+  });
+});
+
 describe('undo and zoom across the session', () => {
   it('survive a trip to the title', () => {
     storeDraft(withSigns());
