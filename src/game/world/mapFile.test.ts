@@ -314,6 +314,20 @@ describe('whether a map works', () => {
       'Item spot 1 at 16,0 cannot be walked to from any drop-in.',
     ]);
   });
+
+  it('names landmarks in the heading of the check that fails a landmark nobody can reach (playtest 39 B11)', () => {
+    // The same walled-off tile behind the two exits, holding a landmark.
+    const behind = edited({
+      exits: [
+        { x: 16, y: 1, name: 'North Stile', opens: { when: 'always' } },
+        { x: 17, y: 1, name: 'North Gap', opens: { when: 'always' } },
+      ],
+      landmarks: [{ x: 16, y: 0, name: 'Pond Hide', kind: 'hide' }],
+    });
+    const reachable = checkMapFile(behind).find((check) => check.id === 'reachable');
+    expect(reachable?.problems).toEqual(['Landmark Pond Hide at 16,0 cannot be walked to from any drop-in.']);
+    expect(reachable?.label).toBe('Every exit, item spot and landmark can be walked to');
+  });
 });
 
 describe('a map from a file is a map like any other', () => {

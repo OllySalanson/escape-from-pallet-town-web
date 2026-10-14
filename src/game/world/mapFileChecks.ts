@@ -151,7 +151,7 @@ const LABELS: Readonly<Record<MapCheckId, string>> = {
   apart: 'No two things share a tile',
   doors: 'Every door leads somewhere you can stand',
   'way-out': 'Every drop-in can walk out before the clock runs out',
-  reachable: 'Every exit and item spot can be walked to',
+  reachable: 'Every exit, item spot and landmark can be walked to',
   areas: 'Every inside and cave can be walked into',
   'hunter-room': 'The hunter has room to arrive near every drop-in',
   watch: 'No trainer watches a drop-in or an exit',
