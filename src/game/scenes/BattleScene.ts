@@ -284,7 +284,9 @@ const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
   // Read on the panel's cream, so these are the dark end of each hue.
   good: '#166534',
   bad: PANEL_REFUSAL_INK,
-  none: '#64748b',
+  // A muted violet rather than a paler slate: #64748b read 3.9:1 on the cream
+  // (playtest 40), and a darker slate would match the neutral line's ink.
+  none: '#5c4a72',
   neutral: PANEL_GUIDANCE_INK,
 };
 /**

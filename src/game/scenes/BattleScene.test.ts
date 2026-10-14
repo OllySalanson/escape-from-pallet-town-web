@@ -510,6 +510,33 @@ describe('BattleScene command presentation', () => {
     expect(matchupLine.setColor).toHaveBeenLastCalledWith('#166534');
   });
 
+  it('prints a no-effect matchup in an ink that reads on the panel and is not the neutral one (playtest 40)', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness({
+      wild: new Pokemon(getSpeciesById('gastly')!, 10),
+    });
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts)[0].handlers.pointerdown();
+
+    const [, matchupLine, scratchRow, , emberRow] = read(renderedTexts).slice(5);
+    emberRow.handlers.pointerover();
+    const neutralInk = matchupLine.setColor.mock.lastCall?.[0] as string;
+    scratchRow.handlers.pointerover();
+    const noEffectInk = matchupLine.setColor.mock.lastCall?.[0] as string;
+
+    expect(matchupLine.text).toContain('NO EFFECT');
+    const luminance = (hex: string): number => {
+      const [r, g, b] = [1, 3, 5]
+        .map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const panel = luminance('#ebeac5');
+    // WCAG AA for normal text, against the battle panel's cream.
+    expect((panel + 0.05) / (luminance(noEffectInk) + 0.05)).toBeGreaterThanOrEqual(4.5);
+    expect(noEffectInk).not.toBe(neutralInk);
+  });
+
   it('shows the Run outcome as visible dialogue and returns map control after it advances', () => {
     const { scene, renderedTexts, dialog, commandContainer } = createBattleSceneHarness();
     vi.spyOn(Math, 'random').mockReturnValue(0);
