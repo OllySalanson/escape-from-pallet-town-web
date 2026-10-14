@@ -23,6 +23,8 @@ import {
 import { evolutionFamily } from '../pokemon/evolution';
 import { createStartingStash, Stash } from '../stash';
 import { SaveManager } from '../save/SaveManager';
+import { setActiveSaveSlot } from '../dev/playtestMode';
+import { createPlaytestGame } from '../dev/playtestSave';
 import { applyRecovery } from '../hub/recovery';
 import { withErrandAsked } from '../hub/errands';
 import type { RaidInFlight } from '../run/raidInFlight';
@@ -639,6 +641,37 @@ describe('who the partner is', () => {
         },
       });
       expect(partnerOf(restored?.stash ?? new Stash())?.id).toBe('charmander-1');
+    }
+  });
+
+  it('is the ordinary game’s own starter again after an explorer run and a TRY IT, each of which has its own', () => {
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    const partnerIn = (slot: 'normal' | 'playtest' | 'try-it') => {
+      setActiveSaveSlot(slot);
+      return partnerOf(manager.load()?.stash ?? new Stash());
+    };
+    try {
+      setActiveSaveSlot('normal');
+      manager.save(restoreBase(createStartingStash(CHARMANDER)));
+      // PLAYTEST on the title: its own save, with its Charizard at heel.
+      setActiveSaveSlot('playtest');
+      manager.save(createPlaytestGame());
+      // A try deals a team of its own and may lose all of it.
+      setActiveSaveSlot('try-it');
+      const tried = createStartingStash(SQUIRTLE);
+      tried.applyWipeLoss([tried.partner()?.id ?? ''], []);
+      manager.save(restoreBase(tried));
+
+      expect(partnerIn('playtest')).toMatchObject({ id: 'charizard-1', species: 'charizard' });
+      expect(partnerIn('try-it')).toBeNull();
+      expect(partnerIn('normal')).toMatchObject({ id: 'charmander-1', species: 'charmander' });
+    } finally {
+      setActiveSaveSlot('normal');
     }
   });
 });
