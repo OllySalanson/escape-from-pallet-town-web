@@ -354,6 +354,8 @@ export const MAP_FILE_BUILDINGS = {
   'snowy-boulder-tall': 'snowyBoulderTall',
   'ice-rocks': 'iceRocks',
   'ice-spire': 'iceSpire',
+  // A mountain's: FireRed's stone steps through a band of rock (`playerMapTileset.ts`).
+  'cliff-steps': 'cliffSteps',
   stump: 'stump',
   'big-stump': 'bigStump',
   'dead-stump': 'deadStump',

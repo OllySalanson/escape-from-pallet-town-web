@@ -98,6 +98,10 @@ const PIECES = [
   { name: 'ember.stones', metatiles: [[0x283]], layers: 'top' },
   // The spring that seeps out of the rock on B3F, and the pool it makes.
   { name: 'ember.spring', metatiles: [[0x2ee, 0x2ef], [0x2f6, 0x2f7]], layers: 'both' },
+  // --- out of doors -----------------------------------------------------------------
+  // The stone steps FireRed cuts through a band of rock on Mt. Ember's slopes,
+  // two metatiles wide: the General tileset's own, which every route shares.
+  { name: 'ember.steps', metatiles: [[0x091, 0x089]], layers: 'both' },
   // --- the ways through --------------------------------------------------------------
   // A hole with a ladder down it, and a ladder up with its top in the rock.
   { name: 'ember.hole', metatiles: [[0x2af]], layers: 'both' },

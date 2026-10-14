@@ -18,8 +18,8 @@
  * the skiff before it stops running.
  *
  * Drawn letter for letter: W the sea, ~ the beach, . the cone's grassy foot,
- * g its tall grass, d the path, M the jetty and the steps cut through the
- * rock, C the rock and v the crater's ash.
+ * g its tall grass, d the path, M the jetty and the pier, C the rock and v
+ * the crater's ash; the steps cut through the rock are planted over its gaps.
  */
 import { plantCaveMouth } from '../../caves';
 import type { Point } from '../../program';
@@ -80,13 +80,13 @@ export const EMBER_ISLE = [
   'WWWWWW~.........dd..CCCC...gg.......ggggg...CCCCCCCCCCCCCCCWWWWW',
   'WWWWWW~.........dd..CCCC..gggggg...ggggggg....CCCCCCCCCCCCWWWWWW',
   'WWWWWW~~........dd..CCCCC...ggg......ggg.......CCCCCCCCCCCWWWWWW',
-  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC...CCCCC.MM.CCCCCCCCCCWWWWWWW',
-  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC===CCCCC.MM...CCCCCCCCWWWWWWW',
+  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC...CCCCCC..CCCCCCCCCCCWWWWWWW',
+  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC===CCCCCC..CCCCCCCCCCCWWWWWWW',
   'WWWWWWWW~.......dd..CCCCCCCCCCC.....................CCCCCWWWWWWW',
   'WWWWWWWWW~......dd..CCCCCCCCCC...ggggg.....gggg......CCCCWWWWWWW',
   'WWWWWWWWW~......dd....CCCCCCC...ggggggg...gggggggg...CCCWWWWWWWW',
-  'WWWWWWWWW~~.....dd....CCCCCCCMM....ggg.......C...CCCCCWWWWWWWWWW',
-  'WWWWWWWWWWW~....dddddddddddddMMCCCCCCCCCCCCCCC===CCCCCWWWWWWWWWW',
+  'WWWWWWWWW~~.....dd....CCCCCCC......ggg.......C...CCCCCWWWWWWWWWW',
+  'WWWWWWWWWWW~....ddddddddddddd..CCCCCCCCCCCCCCC===CCCCCWWWWWWWWWW',
   'WWWWWWWWWWWW~~~~~......ddddd~~~~~~~~~~~~~~~~~~~~~~~CCWWWWWWWWWWW',
   'WWWWWWWWWWWWWWWW~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWW',
   'WWWWWWWWWWWWWWWWWWWWWWW~~~~~~~~~~~~~WWW~~~~~~~WWWWWWWWWWWWWWWWWW',
@@ -116,6 +116,14 @@ export const HOARD_SPOTS: readonly Point[] = [
   [53, 44],
 ];
 
+/** The steps up the south face, two rows each: off the beach, and between the terraces. */
+export const STEPS: readonly Point[] = [
+  [29, 55],
+  [29, 56],
+  [44, 50],
+  [44, 51],
+];
+
 /** Where the fire horse stands, on its own shelf of the crater floor. */
 export const RAPIDASH: Point = [25, 38];
 
@@ -134,6 +142,10 @@ export function emberIsle(): MapcraftResult {
   // the drift-wood they burn
   p.building('hut', 11, 30, { lot: '.' }).building('log', 10, 38, { lot: '.' });
   p.building('big-stump', 12, 26, { lot: '.' }).building('dead-stump', 12, 32, { lot: '.' });
+
+  // -- The climb: FireRed's stone steps through each band of rock, from the
+  // black beach onto the lower terrace and from its east end onto the upper
+  for (const [x, y] of STEPS) p.building('cliff-steps', x, y, { lot: '.' });
 
   // -- The crater: boulders the cone threw, and the hoard's crates
   p.building('round-boulder', 29, 40, { lot: 'v' }).building('rock', 42, 33, { lot: 'v' });

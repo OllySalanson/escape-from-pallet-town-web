@@ -321,6 +321,7 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     ['rock', 'Rock', 'Nature'],
     ['round-boulder', 'Boulder', 'Nature'],
     ['rock-stair', 'Rock with steps', 'Nature'],
+    ['cliff-steps', 'Stone steps', 'Nature'],
     ['cave-mouth', 'Cave mouth', 'Nature'],
     ['wet-rock', 'Rock in water', 'Nature', 'water'],
     ['snowy-boulder', 'Snowy boulder', 'Nature'],
