@@ -64,6 +64,37 @@ describe('AudioManager', () => {
     expect(stub.sources).toHaveLength(5);
   });
 
+  it('wakes a sleeping browser audio on the press that asks for a sound (playtest 41)', async () => {
+    const stub = createStubAudioContext();
+    // A browser hands out audio asleep until somebody presses something.
+    const context = stub.context as unknown as { state: string; resume(): Promise<void> };
+    context.state = 'suspended';
+    context.resume = () => {
+      context.state = 'running';
+      return Promise.resolve();
+    };
+    const audio = new AudioManager(() => stub.context);
+
+    expect(audio.play('select')).toBe(false);
+    expect(stub.sources).toHaveLength(0);
+
+    await expect(audio.playWaking('select')).resolves.toBe(true);
+    expect(stub.sources.length).toBeGreaterThan(0);
+    expect(stub.sources.every((source) => source.started)).toBe(true);
+  });
+
+  it('wakes nothing and sounds nothing while muted', async () => {
+    let made = 0;
+    const audio = new AudioManager(() => {
+      made += 1;
+      return createStubAudioContext().context;
+    });
+    audio.setMuted(true);
+
+    await expect(audio.playWaking('select')).resolves.toBe(false);
+    expect(made).toBe(0);
+  });
+
   it('mutes sound effects when muted and resumes them when unmuted', async () => {
     const stub = createStubAudioContext();
     const audio = new AudioManager(() => stub.context);
