@@ -24,6 +24,7 @@ import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { formatExperience } from '../ui/pokemonSummary';
 import { pixelCommitBar, pixelHpBar, pixelScreen, pixelShinyStar, pixelTag, pixelWindow } from '../ui/pixelUi';
 
 export interface ExtractionSceneData {
@@ -526,7 +527,7 @@ export class ExtractionScene extends Phaser.Scene {
         return `<div class="px-row${levelled ? ' is-selected' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(entry.name)}</strong>${entry.shiny ? pixelShinyStar() : ''}</span><small>${
           levelled
             ? `Level ${entry.fromLevel} to ${entry.toLevel}`
-            : `Level ${entry.toLevel} · ${entry.experienceToNextLevel} to go`
+            : `Level ${entry.toLevel} · ${shortOfNextLevel(entry)}`
         }</small></span>${levelled ? pixelTag(`Level ${entry.toLevel}`, 'good', true) : pixelTag(`+${entry.experienceGained} xp`)}</div>`;
       })
       .join('');
@@ -699,4 +700,14 @@ function escapeHtml(value: string): string {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+/**
+ * What a Pokemon that did not level is short of, in the words the stash's
+ * dossier says it in (`experienceLine`): "1 to go" left one what unsaid.
+ */
+function shortOfNextLevel(entry: { readonly toLevel: number; readonly experienceToNextLevel: number }): string {
+  return entry.experienceToNextLevel > 0
+    ? `${formatExperience(entry.experienceToNextLevel)} XP to Lv ${entry.toLevel + 1}`
+    : 'fully grown';
 }
