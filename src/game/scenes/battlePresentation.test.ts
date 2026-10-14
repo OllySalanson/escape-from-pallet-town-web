@@ -425,6 +425,16 @@ describe('the small wording faults the battles playtest found', () => {
     expect(eventToMessage({ type: 'nothing-happened', user: 'enemy' })).toBe('But nothing happened!');
   });
 
+  it('names a status an ability kept off, shed or cleared as a thing, never an adjective (playtest 38 #81)', () => {
+    const line = (effect: string, status: string, ability = 'INSOMNIA') =>
+      eventToMessage({ type: 'ability', user: 'player', name: 'Drowzee', ability, effect, status } as never);
+    expect(line('blocked-status', 'sleep')).toBe("Your DROWZEE's INSOMNIA kept sleep off it!");
+    expect(line('blocked-status', 'freeze', 'MAGMA ARMOR')).toBe("Your DROWZEE's MAGMA ARMOR kept freezing off it!");
+    expect(line('blocked-status', 'confusion', 'OWN TEMPO')).toBe("Your DROWZEE's OWN TEMPO kept confusion off it!");
+    expect(line('shed', 'sleep', 'SHED SKIN')).toBe("Your DROWZEE's SHED SKIN shed sleep with its skin!");
+    expect(line('blocked-status', 'burn', 'WATER VEIL')).toBe("Your DROWZEE's WATER VEIL kept a burn off it!");
+  });
+
   it("names the Pokemon a move did not affect, as FireRed's line does", () => {
     expect(
       eventToMessage({ type: 'effectiveness', multiplier: 0, user: 'enemy', name: 'Geodude' }),

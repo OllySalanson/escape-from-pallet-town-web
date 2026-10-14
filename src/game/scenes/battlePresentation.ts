@@ -1239,14 +1239,16 @@ const statusHolds = (status: string): string =>
   })[status] ?? `is ${status} and can't move`;
 
 /** The adjectival one, for the lines that name the condition in passing. */
+// A status as a thing a Pokemon can be hurt by, keep off, shed or clear up -
+// a noun every time, because "kept asleep off it" is what the adjectives read.
 const statusLabel = (status: string): string =>
   ({
     poison: 'poison',
     burn: 'a burn',
     paralysis: 'paralysis',
-    sleep: 'asleep',
-    freeze: 'frozen',
-    confusion: 'confused',
+    sleep: 'sleep',
+    freeze: 'freezing',
+    confusion: 'confusion',
   })[status] ?? status;
 
 const statLabel = (stat: string): string =>
