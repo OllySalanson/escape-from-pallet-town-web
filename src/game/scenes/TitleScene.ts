@@ -816,7 +816,7 @@ export class TitleScene extends Phaser.Scene {
     const next = moveTitleChoice(this.menu, this.choice, step);
     if (next !== this.choice) {
       this.choice = next;
-      audioManager.play('select');
+      void audioManager.playWaking('select');
       this.redraw();
     }
   }
@@ -829,7 +829,7 @@ export class TitleScene extends Phaser.Scene {
     const next = moveTitleChoiceAcross(this.menu, this.choice, step);
     if (next !== this.choice) {
       this.choice = next;
-      audioManager.play('select');
+      void audioManager.playWaking('select');
       this.redraw();
     }
   }
@@ -863,7 +863,7 @@ export class TitleScene extends Phaser.Scene {
     if (this.choice === 'touch-anyway') {
       // Waved past by touch: not asked again until the page is reloaded.
       dismissKeyboardNotice();
-      audioManager.play('confirm');
+      void audioManager.playWaking('confirm');
       this.leaveKeyboardNotice();
     } else if (this.choice === 'continue') {
       this.startGame('continue');
@@ -871,7 +871,7 @@ export class TitleScene extends Phaser.Scene {
       if (needsEraseConfirmation(this.summary)) {
         // The key that opened the game is still held down, so the question
         // starts on the answer that changes nothing.
-        audioManager.play('confirm');
+        void audioManager.playWaking('confirm');
         const menu = eraseMenu();
         this.showMenu(menu, menu.initial);
       } else {
@@ -881,7 +881,7 @@ export class TitleScene extends Phaser.Scene {
       this.startMapMaker();
     } else if (this.choice === 'playtest') {
       if (this.playtestSummary.kind === 'game') {
-        audioManager.play('confirm');
+        void audioManager.playWaking('confirm');
         const menu = playtestMenu();
         this.showMenu(menu, menu.initial);
       } else {
@@ -932,14 +932,14 @@ export class TitleScene extends Phaser.Scene {
 
   /** YOUR NAME? over the title (`ui/PlayerNameOverlay.ts`), then the game - or back to the menu. */
   private askName(mode: 'continue' | 'new', service: NameService): void {
-    audioManager.play('confirm');
+    void audioManager.playWaking('confirm');
     this.naming = openNameScreen(this, { where: mode === 'new' ? 'new-game' : 'continue', service }, (end) => {
       this.naming = null;
       // The screen kept every key to itself, so a key the title saw go down
       // before it opened never came back up here.
       this.input.keyboard?.resetKeys();
       if (end === 'away') {
-        audioManager.play('cancel');
+        void audioManager.playWaking('cancel');
         return;
       }
       this.beginGame(mode);

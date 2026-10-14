@@ -198,6 +198,17 @@ describe('whether a map works', () => {
     ]);
   });
 
+  it('names a thing whose name already says its kind once (playtest 39 A1)', () => {
+    // The maker names a new drop-in "Drop-in 1"; "Drop-in Drop-in 1" said the
+    // kind twice in every check that named it.
+    const inTheTrees = edited({
+      dropIns: [{ ...SAMPLE.dropIns[0], name: 'Drop-in 1', x: 0, y: 23 }],
+    });
+    const problems = checkMapFile(inTheTrees).flatMap((check) => check.problems);
+    expect(problems).toContain('Drop-in 1 at 0,23 stands in the trees.');
+    expect(problems.join(' ')).not.toMatch(/Drop-in Drop-in/);
+  });
+
   it('fails two things on one tile', () => {
     const shared = edited({ itemSpots: [{ x: SAMPLE.exits[0].x, y: SAMPLE.exits[0].y }] });
     expect(failing(shared)).toEqual(['apart']);
@@ -232,6 +243,63 @@ describe('whether a map works', () => {
     expect(failing(slow)).toEqual([]);
   });
 
+  it('says how long a raid lasts and what to do when a drop-in is too far from every exit (playtest 39 B12)', () => {
+    // A lane that winds back and forth across 80 tiles for 64 rows: the only
+    // exit is at its far end, about 2,600 steps from the drop-in at its start.
+    const width = 80;
+    const height = 64;
+    const ground = Array.from({ length: height }, (_, y) => {
+      if (y % 2 === 0) {
+        return '.'.repeat(width);
+      }
+      // A wall with one gap, at the east end and then the west in turn.
+      const gap = y % 4 === 1 ? width - 1 : 0;
+      return Array.from({ length: width }, (__, x) => (x === gap ? '.' : 'C')).join('');
+    });
+    const winding = edited({
+      width,
+      height,
+      ground,
+      buildings: [],
+      people: [],
+      signs: [],
+      landmarks: [],
+      districts: [],
+      trainers: [],
+      itemSpots: [],
+      dropIns: [{ ...SAMPLE.dropIns[0], name: 'Lane End', x: 0, y: 0 }],
+      exits: [{ x: width - 1, y: height - 2, name: 'Far Stile', opens: { when: 'always' } }],
+    });
+    expect(checkMapFile(winding).find((check) => check.id === 'way-out')?.problems).toEqual([
+      'Drop-in Lane End cannot reach an exit before the 5-minute raid clock runs out. Move an exit closer to it.',
+    ]);
+  });
+
+  it('says why a boxed-in drop-in leaves the hunter nowhere to arrive, and what to do (playtest 39 B9)', () => {
+    // A three-tile pocket with its exit beside the drop-in: it can leave, but
+    // nothing stands five steps out for the hunter.
+    const ground = Array.from({ length: 16 }, (_, y) => (y === 1 ? `C...${'C'.repeat(16)}` : 'C'.repeat(20)));
+    const pocket = edited({
+      width: 20,
+      height: 16,
+      ground,
+      buildings: [],
+      people: [],
+      signs: [],
+      landmarks: [],
+      districts: [],
+      trainers: [],
+      itemSpots: [],
+      dropIns: [{ ...SAMPLE.dropIns[0], name: 'Drop-in 1', x: 1, y: 1 }],
+      exits: [{ x: 3, y: 1, name: 'Stile', opens: { when: 'always' } }],
+    });
+    const room = checkMapFile(pocket).find((check) => check.id === 'hunter-room');
+    expect(room?.problems).toEqual([
+      'Drop-in 1 is too boxed in: the hunter arrives 5 steps away and has nowhere to stand. Open up more ground around it.',
+    ]);
+    expect(room?.faults?.[0]?.says).toBe('are too boxed in: the hunter arrives 5 steps away and has nowhere to stand');
+  });
+
   it('does not count a walk across one exit as a walk to anything beyond it', () => {
     // Two exits side by side across the north gap, and something to find
     // behind them: an open exit takes whoever steps on it, so nobody reaches it.
@@ -245,6 +313,20 @@ describe('whether a map works', () => {
     expect(checkMapFile(behind).find((check) => check.id === 'reachable')?.problems).toEqual([
       'Item spot 1 at 16,0 cannot be walked to from any drop-in.',
     ]);
+  });
+
+  it('names landmarks in the heading of the check that fails a landmark nobody can reach (playtest 39 B11)', () => {
+    // The same walled-off tile behind the two exits, holding a landmark.
+    const behind = edited({
+      exits: [
+        { x: 16, y: 1, name: 'North Stile', opens: { when: 'always' } },
+        { x: 17, y: 1, name: 'North Gap', opens: { when: 'always' } },
+      ],
+      landmarks: [{ x: 16, y: 0, name: 'Pond Hide', kind: 'hide' }],
+    });
+    const reachable = checkMapFile(behind).find((check) => check.id === 'reachable');
+    expect(reachable?.problems).toEqual(['Landmark Pond Hide at 16,0 cannot be walked to from any drop-in.']);
+    expect(reachable?.label).toBe('Every exit, item spot and landmark can be walked to');
   });
 });
 
@@ -421,6 +503,26 @@ describe('people, signs, landmarks, districts and trainers in a file', () => {
     const watching = { ...full, trainers: [{ ...full.trainers![0], x: 15, y: 17, facing: 'down', sight: 4 }] } as MapFile;
     expect(failing(watching)).toEqual(['watch']);
     expect(failing({ ...full, signs: [{ x: 13, y: 19, lines: ['what the fuck'] }] })).toEqual(['words']);
+  });
+
+  it('names the field a refused word is in, and never repeats a refused name (playtest 39 B7)', () => {
+    const problems = (file: MapFile) => checkMapFile(file).find((check) => check.id === 'words')?.problems;
+    const trainer = full.trainers![0];
+    expect(problems({ ...full, trainers: [{ ...trainer, name: 'Dick' }] })).toEqual([
+      'Trainer 1: their name uses a word the game does not show. Change it.',
+    ]);
+    expect(problems({ ...full, trainers: [{ ...trainer, lines: ['Hello there', 'what the fuck'] }] })).toEqual([
+      'Trainer Bug Kid: line 2 uses a word the game does not show. Change it.',
+    ]);
+    expect(problems({ ...full, signs: [{ x: 13, y: 19, lines: ['you bitch', 'shit'] }] })).toEqual([
+      'Sign 1: line 1 and line 2 use words the game does not show. Change them.',
+    ]);
+  });
+
+  it('names the drop-in a trainer can see, so the maker knows which one to clear (playtest 39 B10)', () => {
+    const watching = { ...full, trainers: [{ ...full.trainers![0], x: 15, y: 17, facing: 'down', sight: 4 }] } as MapFile;
+    const watch = checkMapFile(watching).find((check) => check.id === 'watch');
+    expect(watch?.problems).toEqual(['Trainer Bug Kid can see Drop-in South Road. Turn them, or watch less far.']);
   });
 
   it('puts them in the game: townsfolk, a landmark, a named place with its own wildlife, and a trainer', () => {

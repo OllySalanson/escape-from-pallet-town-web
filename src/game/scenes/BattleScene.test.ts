@@ -52,6 +52,8 @@ import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
+import { buildDefeatSequence } from '../run/defeatSequence';
+import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { BattleScene } from './BattleScene';
 import { combatantSpot } from './battlePresentation';
@@ -506,6 +508,33 @@ describe('BattleScene command presentation', () => {
     expect(summaryLine.text).toBe('FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
     expect(matchupLine.text).toBe('vs BULBASAUR: SUPER EFFECTIVE x2');
     expect(matchupLine.setColor).toHaveBeenLastCalledWith('#166534');
+  });
+
+  it('prints a no-effect matchup in an ink that reads on the panel and is not the neutral one (playtest 40)', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness({
+      wild: new Pokemon(getSpeciesById('gastly')!, 10),
+    });
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts)[0].handlers.pointerdown();
+
+    const [, matchupLine, scratchRow, , emberRow] = read(renderedTexts).slice(5);
+    emberRow.handlers.pointerover();
+    const neutralInk = matchupLine.setColor.mock.lastCall?.[0] as string;
+    scratchRow.handlers.pointerover();
+    const noEffectInk = matchupLine.setColor.mock.lastCall?.[0] as string;
+
+    expect(matchupLine.text).toContain('NO EFFECT');
+    const luminance = (hex: string): number => {
+      const [r, g, b] = [1, 3, 5]
+        .map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const panel = luminance('#ebeac5');
+    // WCAG AA for normal text, against the battle panel's cream.
+    expect((panel + 0.05) / (luminance(noEffectInk) + 0.05)).toBeGreaterThanOrEqual(4.5);
+    expect(noEffectInk).not.toBe(neutralInk);
   });
 
   it('shows the Run outcome as visible dialogue and returns map control after it advances', () => {
@@ -969,6 +998,33 @@ describe('a lost raid resolved inside a battle', () => {
     expect(report.spent.map(({ itemId, quantity }) => [itemId, quantity])).toEqual([['potion', 1]]);
   });
 
+  /** Playtest 43 B6: a wild Pokemon won, and the screen said "THEY STRIPPED YOU." */
+  it.each([
+    [{}, 'YOUR PACK IS LOST.'],
+    [{ authoredTrainer: true }, 'THEY STRIPPED YOU.'],
+    [{ hunterBattle: true }, 'THEY STRIPPED YOU.'],
+  ] as const)('only blames somebody for the pack when somebody won (%o)', (fight, headline) => {
+    const manager = new RunManager();
+    const deployed = new Pokemon(CHARMANDER, 5);
+    manager.startRun(
+      { party: [deployed], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'floodplain-relay', durationMs: 300_000 },
+    );
+    const runSession = createActiveRunSession(manager, {}, {}, ['charmander-1'], [
+      { itemId: 'potion', quantity: 2 },
+    ]);
+    const start = vi.fn();
+    const { scene } = createBattleSceneHarness({ ...fight, runSession, bag: new Bag({ potion: 2 }) });
+    Object.assign(scene as object, {
+      scene: { manager: { keys: { world: {}, base: {}, extraction: {} } }, start },
+    });
+
+    (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
+
+    const { report } = start.mock.calls[0][1] as { report: ExtractionReport };
+    expect(buildDefeatSequence(report)?.beats[1].headline).toBe(headline);
+  });
+
   it('never claims supplies were spent by a raid that did not open the pack', () => {
     const manager = new RunManager();
     const deployed = new Pokemon(CHARMANDER, 5);
@@ -1337,6 +1393,27 @@ describe('the forced replacement list', () => {
     expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(charmander);
   });
 
+  it('opens a Potion on the Pokemon now out, never on the fainted lead (playtest 42)', () => {
+    const { scene, renderedTexts, charmander } = readToTheReplacement();
+    const battle = scene as unknown as {
+      confirm(): void;
+      showItemSelection(): void;
+      selectItem(index: number): void;
+      selectedCommand: number;
+      mode: string;
+    };
+    battle.confirm();
+    expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(charmander);
+
+    battle.showItemSelection();
+    battle.selectItem(0);
+
+    expect(battle.mode).toBe('party');
+    expect(battle.selectedCommand).toBe(1);
+    expect(read(renderedTexts).some(({ text }) => text.startsWith('▶ CHARMANDER'))).toBe(true);
+    expect(read(renderedTexts).some(({ text }) => text.startsWith('▶ PIDGEY'))).toBe(false);
+  });
+
   it('says the fainted Pokemon has no energy left, not that it is already out', () => {
     const { scene, renderedTexts } = readToTheReplacement();
 
@@ -1344,6 +1421,28 @@ describe('the forced replacement list', () => {
     const texts = read(renderedTexts).map(({ text }) => text.trim());
     expect(texts).toContain('PIDGEY has no energy left to battle!');
     expect(texts.some((text) => text.includes('already out'))).toBe(false);
+  });
+});
+
+describe('the party list with nobody else to send out', () => {
+  it('keeps the way back on the line that says the lead is already out (playtest 47)', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness({
+      party: new PokemonParty([new Pokemon(CHARMANDER, 7)]),
+      wild: new Pokemon(PIDGEY, 3),
+    });
+    const battle = scene as unknown as {
+      onMessagesComplete(): void;
+      showPartySelection(forced: boolean): void;
+      switchPokemon(index: number): void;
+      mode: string;
+    };
+    battle.onMessagesComplete();
+    battle.showPartySelection(false);
+    battle.switchPokemon(0);
+
+    const texts = read(renderedTexts).map(({ text }) => text.trim());
+    expect(texts).toContain('CHARMANDER is already out!  ESC: cancel');
+    expect(battle.mode).toBe('party');
   });
 });
 
@@ -1686,6 +1785,28 @@ describe('a catch the pack has no room for', () => {
     } finally {
       roll.mockRestore();
     }
+  });
+
+  it('tells the raid what was put down, so the result screen does not call it spent', () => {
+    const bag = fullPack();
+    const runSession = startedRunSession();
+    const harness = createBattleSceneHarness({ bag, runSession });
+    const { scene, renderedTexts } = harness;
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    const press = (match: string, from = 0): void => {
+      const row = renderedTexts.slice(from).filter(({ text }) => text.includes(match)).at(-1);
+      if (!row) {
+        throw new Error(`No command row matching ${match}`);
+      }
+      row.handlers.pointerdown();
+    };
+
+    const before = renderedTexts.length;
+    press('BALL x1');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    press('POTION x', before);
+
+    expect(runSession.manager.snapshot().droppedItems).toEqual([{ itemId: 'potion', quantity: 1 }]);
   });
 
   it('keeps the pack, spends nothing, and hands the fight back whole', () => {

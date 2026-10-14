@@ -105,6 +105,7 @@ export const classify = (move) => {
     if (move.target === 'user') needs.push('stat stage on the user');
     if (move.stat_chance > 0) needs.push('stat stage on a chance');
   }
+  if (move.user_faints) needs.push('user faints');
   if (move.accuracy === null) needs.push('always hits');
   return { ok: true, why: needs.length === 0 ? 'plain damage' : needs.join(' + ') };
 };

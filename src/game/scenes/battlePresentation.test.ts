@@ -128,14 +128,21 @@ describe('battle presentation', () => {
   });
 
   it('names the key that cancels, and says a refusal on the prompt line beside the list', () => {
-    expect(partyPrompt({ forced: false, refusal: '' })).toBe('Choose a POKéMON  ESC: cancel');
-    expect(partyPrompt({ forced: true, refusal: '' })).toBe('Choose a POKéMON!');
-    expect(partyPrompt({ item: { displayName: 'Potion' }, forced: false, refusal: '' })).toBe(
+    expect(partyPrompt({ forced: false, refusal: '' })).toEqual(['Choose a POKéMON  ESC: cancel']);
+    expect(partyPrompt({ forced: true, refusal: '' })).toEqual(['Choose a POKéMON!']);
+    expect(partyPrompt({ item: { displayName: 'Potion' }, forced: false, refusal: '' })).toEqual([
       'Use POTION on whom?  ESC: cancel',
-    );
-    expect(partyPrompt({ forced: false, refusal: 'SQUIRTLE is already at full HP!' })).toBe(
-      'SQUIRTLE is already at full HP!',
-    );
+    ]);
+    // A refusal keeps the way back, so "already out" with one Pokemon in the
+    // party is never a dead end (playtest 47); too long for it, it says the
+    // refusal alone. A forced replacement has no way back to name.
+    expect(partyPrompt({ forced: false, refusal: 'CHARMANDER is already out!' })).toEqual([
+      'CHARMANDER is already out!  ESC: cancel',
+      'CHARMANDER is already out!',
+    ]);
+    expect(partyPrompt({ forced: true, refusal: 'PIDGEY has no energy left to battle!' })).toEqual([
+      'PIDGEY has no energy left to battle!',
+    ]);
   });
 
   it('marks a move with no PP left as unusable in its own label', () => {
@@ -423,6 +430,16 @@ describe('the small wording faults the battles playtest found', () => {
 
   it('says that Splash did nothing, as FireRed does', () => {
     expect(eventToMessage({ type: 'nothing-happened', user: 'enemy' })).toBe('But nothing happened!');
+  });
+
+  it('names a status an ability kept off, shed or cleared as a thing, never an adjective (playtest 38 #81)', () => {
+    const line = (effect: string, status: string, ability = 'INSOMNIA') =>
+      eventToMessage({ type: 'ability', user: 'player', name: 'Drowzee', ability, effect, status } as never);
+    expect(line('blocked-status', 'sleep')).toBe("Your DROWZEE's INSOMNIA kept sleep off it!");
+    expect(line('blocked-status', 'freeze', 'MAGMA ARMOR')).toBe("Your DROWZEE's MAGMA ARMOR kept freezing off it!");
+    expect(line('blocked-status', 'confusion', 'OWN TEMPO')).toBe("Your DROWZEE's OWN TEMPO kept confusion off it!");
+    expect(line('shed', 'sleep', 'SHED SKIN')).toBe("Your DROWZEE's SHED SKIN shed sleep with its skin!");
+    expect(line('blocked-status', 'burn', 'WATER VEIL')).toBe("Your DROWZEE's WATER VEIL kept a burn off it!");
   });
 
   it("names the Pokemon a move did not affect, as FireRed's line does", () => {

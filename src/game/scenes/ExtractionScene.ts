@@ -24,6 +24,7 @@ import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { formatExperience } from '../ui/pokemonSummary';
 import { pixelCommitBar, pixelHpBar, pixelScreen, pixelShinyStar, pixelTag, pixelWindow } from '../ui/pixelUi';
 
 export interface ExtractionSceneData {
@@ -389,7 +390,10 @@ export class ExtractionScene extends Phaser.Scene {
   private ledgerPanel(): string {
     const report = this.report;
     const escaped = report.outcome === 'ESCAPED';
-    const rows = groupRows(report.ledger, escaped ? 'banked' : 'lost');
+    // What a contract paid is tagged as its reward, never as banked: listed
+    // as banked, the contract's Super Potion read as one found in the field.
+    const rows =
+      groupRows(report.ledgerFound, escaped ? 'banked' : 'lost') + groupRows(report.ledgerPaid, 'reward');
     // The note counts every row under the heading that went the heading's way,
     // so a lost raid counts the pack and the gear that went down with it: they
     // are drawn GONE in this same window, and "1 ENTRY" over two GONE rows read
@@ -523,7 +527,7 @@ export class ExtractionScene extends Phaser.Scene {
         return `<div class="px-row${levelled ? ' is-selected' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(entry.name)}</strong>${entry.shiny ? pixelShinyStar() : ''}</span><small>${
           levelled
             ? `Level ${entry.fromLevel} to ${entry.toLevel}`
-            : `Level ${entry.toLevel} · ${entry.experienceToNextLevel} to go`
+            : `Level ${entry.toLevel} · ${shortOfNextLevel(entry)}`
         }</small></span>${levelled ? pixelTag(`Level ${entry.toLevel}`, 'good', true) : pixelTag(`+${entry.experienceGained} xp`)}</div>`;
       })
       .join('');
@@ -538,6 +542,10 @@ export class ExtractionScene extends Phaser.Scene {
       ...(spent === undefined
         ? []
         : [spent.length ? `Supplies spent: ${spent.map(itemText).join(', ')}` : 'No supplies spent']),
+      // Put down for room is not spent: nothing drank it (playtest 43 B6).
+      ...(this.report.dropped.length > 0
+        ? [`Put down for room: ${this.report.dropped.map(itemText).join(', ')}`]
+        : []),
       ...this.report.pressure,
     ];
   }
@@ -655,13 +663,14 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
   </figure>`;
 }
 
-type RowTag = 'banked' | 'lost' | 'secured' | 'survived';
+type RowTag = 'banked' | 'lost' | 'secured' | 'survived' | 'reward';
 
 const ROW_TAGS: Record<RowTag, string> = {
   banked: pixelTag('Banked', 'good', true),
   lost: pixelTag('Gone', 'risk'),
   secured: pixelTag('Protected', 'secure'),
   survived: pixelTag('Made it', 'plain', true),
+  reward: pixelTag('Reward', 'good', true),
 };
 
 function groupRows(group: ReportGroup, tag: RowTag): string {
@@ -672,7 +681,7 @@ function groupRows(group: ReportGroup, tag: RowTag): string {
 }
 
 function pokemonRow(member: ReportPokemon, tag: RowTag): string {
-  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${member.shiny ? pixelShinyStar() : ''}${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp} HP</small></span>${ROW_TAGS[tag]}</div>`;
+  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${member.shiny ? pixelShinyStar() : ''}${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp}\u00a0HP</small></span>${ROW_TAGS[tag]}</div>`;
 }
 
 function itemRow(item: ReportItem, tag: RowTag): string {
@@ -691,4 +700,14 @@ function escapeHtml(value: string): string {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+/**
+ * What a Pokemon that did not level is short of, in the words the stash's
+ * dossier says it in (`experienceLine`): "1 to go" left one what unsaid.
+ */
+function shortOfNextLevel(entry: { readonly toLevel: number; readonly experienceToNextLevel: number }): string {
+  return entry.experienceToNextLevel > 0
+    ? `${formatExperience(entry.experienceToNextLevel)} XP to Lv ${entry.toLevel + 1}`
+    : 'fully grown';
 }

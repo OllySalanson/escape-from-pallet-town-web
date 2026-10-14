@@ -61,14 +61,15 @@ export interface WorkedLandmark {
 export const WORKED_LANDMARKS: readonly WorkedLandmark[] = [
   {
     // The teaching contract, on the starting map: the first thing a player ever
-    // banks is also the first time the world keeps something. The ranger whose
-    // kit you carried out of the reeds is back at his station, so the forecast
-    // is on and the Radio Exit out west in the marsh stands open - a second
-    // always-open door on the home bank, in the corner the reeds detour ends in.
+    // banks is also the first time the world keeps something. The station the
+    // kit came out of the reeds for stays switched on, so the forecast is on and
+    // the Radio Exit out west in the marsh stands open - a second always-open
+    // door on the home bank, in the corner the reeds detour ends in. The note
+    // names the station, never its ranger: nobody meets one (playtest 43).
     poiId: 'floodplain-ranger-radio',
     contractId: 'recover-lost-field-kit',
     standing: 'RELAY LIVE\nRADIO EXIT: OPEN',
-    note: 'The ranger is back at his station: the RADIO EXIT is open from the first second of every Floodplain raid from now on.',
+    note: 'The RANGER STATION stays switched on: the RADIO EXIT is open from the first second of every Floodplain raid from now on.',
   },
   {
     // The one that costs something. The station is a sealed exit *and* a cache,
@@ -89,7 +90,7 @@ export const WORKED_LANDMARKS: readonly WorkedLandmark[] = [
     poiId: 'pallet-sluice-wheel',
     contractId: 'cordon-ledger',
     standing: 'PEGGED SHUT\nWEST CULVERT: OPEN',
-    note: 'The sluice hatch stays pegged: the WEST CULVERT is open from the first second of every Pallet Town raid from now on.',
+    note: 'The SLUICE WHEEL stays pegged shut: the WEST CULVERT is open from the first second of every Pallet Town raid from now on.',
   },
   {
     // The forest's own briefing already tells you to light the tower on the way

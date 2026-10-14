@@ -50,14 +50,19 @@ export const RUN_INSERTIONS = {
     label: 'Floodplain Relay',
     mapId: 'floodplain-relay',
     position: { x: 13, y: 9 },
-    description: 'The Landing: the relay office, the quay and the ferry jetty. A watched road south, the reeds round it, and a river town past that with three doors somebody is holding.',
+    description: 'The Landing: the relay office, the quay and the ferry jetty. A watched road south, the reeds round it, and a river town past that.',
+    whileHeld: {
+      bossIds: ['floodplain-toll-keeper', 'floodplain-sluice-keeper', 'floodplain-orchard-warden'],
+      line: 'Somebody is holding its doors.',
+    },
   },
   'floodplain-market-isle': {
     id: 'floodplain-market-isle',
     label: 'Market Isle',
     mapId: 'floodplain-relay',
     position: { x: 27, y: 39 },
-    description: 'The square in the middle of the river. Home is the plank bridge; the towered one beside it is the way east, and it is held.',
+    description: 'The square in the middle of the river. Home is the plank bridge; the towered one beside it is the way east.',
+    whileHeld: { bossIds: ['floodplain-toll-keeper'], line: 'It is held.' },
   },
   'floodplain-mill-weir': {
     id: 'floodplain-mill-weir',
@@ -85,7 +90,8 @@ export const RUN_INSERTIONS = {
     label: 'The Quarry',
     mapId: 'floodplain-relay',
     position: { x: 80, y: 10 },
-    description: 'The top bench of the workings the keep was cut from, east of the court. The incline down to the floor is shut, the old quarry road out is not, and the kilns are along the tramway.',
+    description: 'The top bench of the workings the keep was cut from, east of the court. The old quarry road runs out from here, and the kilns are along the tramway.',
+    whileHeld: { bossIds: ['floodplain-quarry-foreman'], line: 'The incline down to the floor is shut.' },
   },
   'floodplain-cider-yard': {
     id: 'floodplain-cider-yard',
@@ -106,7 +112,8 @@ export const RUN_INSERTIONS = {
     label: 'The Staithe',
     mapId: 'floodplain-relay',
     position: { x: 24, y: 105 },
-    description: 'The wharf at the river mouth: a stone quay, a crane nobody has swung since the flood, and two rows of cottages. The hard in the quay wall is barred from the sands side.',
+    description: 'The wharf at the river mouth: a stone quay, a crane nobody has swung since the flood, and two rows of cottages.',
+    whileHeld: { bossIds: ['floodplain-sea-wall-keeper'], line: 'The hard in the quay wall is barred from the sands side.' },
   },
   'floodplain-light': {
     id: 'floodplain-light',
@@ -234,7 +241,8 @@ export const RUN_INSERTIONS = {
     label: 'League Road',
     mapId: 'viridian-city',
     position: { x: 7, y: 26 },
-    description: "A gap in the trees on Route 22, the lane up to the Pokémon League's front gate. There is a keeper at the fence, and a pond field between here and the town.",
+    description: "A gap in the trees on Route 22, the lane up to the Pokémon League's front gate, with a pond field between here and the town.",
+    whileHeld: { bossIds: ['viridian-league-gatekeeper'], line: 'There is a keeper at the fence.' },
   },
   'viridian-city-south-road': {
     id: 'viridian-city-south-road',
@@ -331,6 +339,7 @@ interface BuiltInInsertion {
   readonly mapId: BuiltInMapId;
   readonly position: GridPosition;
   readonly description: string;
+  readonly whileHeld?: RunInsertion['whileHeld'];
 }
 
 /** A shipped landing's id. */
@@ -347,7 +356,26 @@ export interface RunInsertion {
   readonly label: string;
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
+  /** What is always true of the place, whatever this save has beaten. */
   readonly description: string;
+  /**
+   * What is true of it only while a keeper still stands: a door they hold. A
+   * beaten boss is gone for good and their doors open, so a blurb that said
+   * "it is held" for ever told a player who had won it that it was not.
+   * `insertionDescription` adds the line while any of these bosses stands.
+   */
+  readonly whileHeld?: { readonly bossIds: readonly string[]; readonly line: string };
+}
+
+/** The place's description as this save would find it. */
+export function insertionDescription(
+  insertion: RunInsertion,
+  defeatedBosses: readonly string[],
+): string {
+  const held = insertion.whileHeld;
+  return held && held.bossIds.some((bossId) => !defeatedBosses.includes(bossId))
+    ? `${insertion.description} ${held.line}`
+    : insertion.description;
 }
 
 /**

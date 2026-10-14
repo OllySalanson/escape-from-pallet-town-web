@@ -144,7 +144,7 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
       label: 'LOST FIELD KIT',
       cue: 'LOST KIT',
       icon: 'field-kit',
-      collectedMessage: 'Recovered the lost field kit! Extract to secure it.',
+      collectedMessage: 'Recovered the lost field kit! Extract to bank it.',
     },
   ],
   reward: {
@@ -254,7 +254,7 @@ const CORDON_LEDGER: RaidContract = {
     },
   ],
   reward: {
-    summary: 'The secure slot is rebuilt: one more item stack comes home from every raid.',
+    summary: 'The secure slot grows a column: more of what you carry comes home from every raid, even a lost one.',
     items: [],
     secureItemStack: true,
   },

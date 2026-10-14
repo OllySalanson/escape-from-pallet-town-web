@@ -118,6 +118,7 @@ vi.mock('../maker/mapCanvas', () => ({
 
 import { makeInside } from '../maker/areas';
 import {
+  addDistrict,
   blankMap,
   buildingSize,
   groundAt,
@@ -360,6 +361,22 @@ describe('taking a thing off the map', () => {
 
     expect(scene.file.signs).toHaveLength(3);
     expect(scene.selected).toBeUndefined();
+  });
+
+  it('with the remove tool says which district a click on plain ground took away (playtest 39 B3)', () => {
+    const outcome = addDistrict(withSigns(), { x: 2, y: 8 }, { x: 25, y: 22 });
+    if (!outcome.placed) {
+      throw new Error(outcome.reason);
+    }
+    storeDraft(outcome.file);
+    const { scene } = openMaker();
+    scene.tool = 'erase';
+
+    // Bare grass inside the district: nothing is drawn there to show it went.
+    scene.pointerDown(at(10, 15), page.canvas);
+
+    expect(scene.file.districts ?? []).toHaveLength(0);
+    expect(scene.overlay.root.innerHTML).toContain('District 1 is gone. Undo brings it back.');
   });
 
   it('undoing a placement drops a choice of what is no longer there', () => {
@@ -988,7 +1005,7 @@ describe('typing what a map cannot hold', () => {
 });
 
 describe('deleting a draft', () => {
-  it('keeps saying "Delete for good" once pressed, however often the screen is drawn again', () => {
+  it('keeps asking "Sure?" once pressed, however often the screen is drawn again', () => {
     localStorage.setItem(
       MAKER_STORAGE_KEY,
       JSON.stringify({
@@ -1003,15 +1020,53 @@ describe('deleting a draft', () => {
     const { scene } = openMaker();
     const internals = scene as unknown as {
       openPanel(panel: string): void;
-      deleteDraft(button: { textContent: string }, key: string): void;
+      deleteDraft(button: HTMLElement, key: string): void;
     };
     internals.openPanel('drafts');
-    internals.deleteDraft({ textContent: 'Delete' }, 'draft-2');
+    internals.deleteDraft({ textContent: 'Delete', dataset: {} } as unknown as HTMLElement, 'draft-2');
     // A tool key draws the screen again while the Delete is waiting on its
     // second press. The button must still say what that press does: drawn as
     // a plain Delete, one press of it took the draft for good.
     scene.handleKey(key('r'));
-    expect(scene.overlay.root.innerHTML).toMatch(/data-delete-draft="draft-2"[^>]*>Delete for good</);
+    expect(scene.overlay.root.innerHTML).toMatch(/data-delete-draft="draft-2"[^>]*>Sure\?</);
+  });
+
+  it('asks in a word that fits the button and names the draft the next press takes (playtest 39 A7)', () => {
+    localStorage.setItem(
+      MAKER_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        current: 'draft-1',
+        drafts: [
+          { key: 'draft-1', file: blankMap(), updatedAt: 1 },
+          { key: 'draft-2', file: { ...blankMap(), name: 'Brook Lane' }, updatedAt: 2 },
+        ],
+      }),
+    );
+    const { scene } = openMaker();
+    const internals = scene as unknown as {
+      openPanel(panel: string): void;
+      deleteDraft(button: HTMLElement, key: string): void;
+    };
+    internals.openPanel('drafts');
+    expect(scene.overlay.root.innerHTML).toMatch(
+      /data-delete-draft="draft-2" data-help="Deletes Brook Lane from this browser\. It cannot be undone\.">Delete</,
+    );
+    // The button as the screen holds it: pressed once, it is told in place.
+    const button = { textContent: 'Delete', dataset: {} as DOMStringMap } as unknown as HTMLElement;
+    internals.deleteDraft(button, 'draft-2');
+    // "Delete for good" ran out of the button the size of "Delete" and was
+    // read as "DELETE F": the armed word is no longer than the one it replaces.
+    expect(button.textContent).toBe('Sure?');
+    expect(button.textContent.length).toBeLessThanOrEqual('Delete'.length);
+    const armed = 'Press again to delete Brook Lane for good. Anything else keeps it.';
+    expect(button.dataset.help).toBe(armed);
+    // Drawn again while it waits, it still asks and still names the draft.
+    scene.handleKey(key('r'));
+    expect(scene.overlay.root.innerHTML).toContain(`data-delete-draft="draft-2" data-help="${armed}">Sure?<`);
+    internals.deleteDraft(button, 'draft-2');
+    expect(scene.overlay.root.innerHTML).not.toContain('data-delete-draft="draft-2"');
+    expect(scene.overlay.root.innerHTML).toContain('Brook Lane deleted.');
   });
 });
 
@@ -1155,6 +1210,41 @@ describe('what the maker will not do', () => {
     expect(scene.file).toBe(before);
     expect(scene.history.canUndo).toBe(false);
     expect(scene.overlay.root.innerHTML).toContain('The house is in the way.');
+  });
+
+  it('keeps a refusal up until the next thing is done, never taking it down on a timer (playtest 39 A5)', () => {
+    vi.useFakeTimers();
+    try {
+      storeDraft(house());
+      const { scene } = openMaker();
+      // The status line as the page holds it, so taking it down is seen.
+      let takenDown = false;
+      const root = scene.overlay.root as unknown as { querySelector: (selector: string) => unknown };
+      const pageSelector = root.querySelector;
+      root.querySelector = (selector: string) =>
+        selector === '.px-status-line'
+          ? {
+              parentElement: { classList: { remove: () => undefined } },
+              remove: () => {
+                takenDown = true;
+              },
+            }
+          : pageSelector(selector);
+      (scene as unknown as { place: unknown }).place = { kind: 'berry-tree' };
+      scene.tool = 'place';
+      scene.pointerDown(at(14, 11), page.canvas);
+      scene.pointerUp(at(14, 11), page.canvas);
+      expect(scene.overlay.root.innerHTML).toContain('The house is in the way.');
+      // Read from across the screen, long after the click.
+      vi.advanceTimersByTime(60_000);
+      expect(takenDown).toBe(false);
+      // The next thing done draws the screen again without it.
+      scene.pointerDown(at(30, 20), page.canvas);
+      scene.pointerUp(at(30, 20), page.canvas);
+      expect(scene.overlay.root.innerHTML).not.toContain('The house is in the way.');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('paints a stroke of trees round a berry tree, says what it left, and is one step', () => {

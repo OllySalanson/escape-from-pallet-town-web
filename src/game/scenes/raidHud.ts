@@ -9,6 +9,8 @@ import {
   raidKeysToName,
   READING_KEYS,
 } from '../input/keyBindings';
+import type { GridPosition } from '../movement/gridMovement';
+import { placedAreaAt, type PlacedArea } from '../world/mapAreas';
 
 /**
  * What the in-raid overlays say, as data.
@@ -370,7 +372,52 @@ export interface FriendChipFriend {
   /** In a fight: the room's hunter's, or any other. Optional, so a raid with no hunter to share says nothing of it. */
   readonly fighting?: 'hunter' | 'wild' | null;
   /** Which way, and how far, to the tile they pinged, while their ping shows. */
-  readonly ping?: { readonly heading: string; readonly distance: number };
+  readonly ping?: FriendChipPing;
+}
+
+/** A friend's ping as the chip says it: which way, and how far on the player's own place of the map. */
+export interface FriendChipPing {
+  readonly heading: string;
+  /** Tiles away, on the same place of the map; null in another place. */
+  readonly distance: number | null;
+  /** Where the pinged tile is when it is another place of the map than the player's. */
+  readonly elsewhere: 'indoors' | 'outdoors' | null;
+}
+
+/**
+ * Where `tile` is when it is another place of the map than the one `from` is
+ * in, or null on the same place (or a map with no insides). A map's insides
+ * are laid east of the outdoors on one grid (`mapAreas.ts`), so steps counted
+ * across that grid between two places are no walk anybody can take: a line
+ * about somebody or something in another place says which place and which
+ * door, never a number.
+ */
+export function placeApart(
+  areas: readonly PlacedArea[] | undefined,
+  from: GridPosition,
+  tile: GridPosition,
+): 'indoors' | 'outdoors' | null {
+  if (!areas || areas.length === 0) {
+    return null;
+  }
+  const mine = placedAreaAt(areas, from) ?? areas[0];
+  const theirs = placedAreaAt(areas, tile) ?? areas[0];
+  return theirs === mine ? null : theirs === areas[0] ? 'outdoors' : 'indoors';
+}
+
+/** A friend's ping, read from where the player stands (`heading` is the way to it, door-aware). */
+export function friendChipPing(
+  areas: readonly PlacedArea[] | undefined,
+  from: GridPosition,
+  tile: GridPosition,
+  heading: string,
+): FriendChipPing {
+  const elsewhere = placeApart(areas, from, tile);
+  return {
+    heading,
+    distance: elsewhere ? null : Math.abs(tile.x - from.x) + Math.abs(tile.y - from.y),
+    elsewhere,
+  };
 }
 
 export interface FriendChipInput {
@@ -409,7 +456,10 @@ function friendLine(friend: FriendChipFriend): string {
     return `${friend.name} GETTING READY`;
   }
   if (friend.ping) {
-    return `${friend.name} PING ${friend.ping.heading} ${friend.ping.distance}`;
+    const { heading, distance, elsewhere } = friend.ping;
+    return elsewhere
+      ? `${friend.name} PING ${elsewhere.toUpperCase()} ${heading}`
+      : `${friend.name} PING ${heading} ${distance ?? ''}`.trimEnd();
   }
   if (friend.fighting === 'hunter') {
     return `${friend.name} FIGHTS THE HUNTER`;

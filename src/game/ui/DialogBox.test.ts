@@ -141,4 +141,36 @@ describe('DialogBox', () => {
     expect(shown()).toBe('You lie down in your own bed.');
     expect(read()).toBe(false);
   });
+
+  /**
+   * FireRed's obtained-an-item beat: the box waits out the jingle before a key
+   * can move it on, so a player pressing through the lines before it cannot
+   * press past the one that says what they were given (playtest 42: a boss's
+   * Life Orb went by unread and was only met again in the wipe report).
+   */
+  it('holds a line it is told to hold until the time has passed, however often a key is pressed', () => {
+    const { box, shown } = baseBox();
+    box.showMessages(['The fight is won.', 'WREN was carrying a LIFE ORB.', 'Get it home.'], (index) => {
+      if (index === 1) box.hold(1000);
+    });
+    box.skip();
+    expect(box.advance()).toBe(true);
+
+    // Pressed and pressed again inside the hold: the line stays up.
+    for (let press = 0; press < 6; press += 1) {
+      box.skip();
+      expect(box.isCurrentMessageComplete).toBe(false);
+      expect(box.advance()).toBe(false);
+      box.update(150);
+    }
+    expect(shown()).toBe('WREN was carrying a LIFE ORB.');
+
+    box.update(150);
+    expect(box.isCurrentMessageComplete).toBe(true);
+    expect(box.advance()).toBe(true);
+    box.skip();
+    expect(shown()).toBe('Get it home.');
+    // The next line is not held unless asked.
+    expect(box.isCurrentMessageComplete).toBe(true);
+  });
 });

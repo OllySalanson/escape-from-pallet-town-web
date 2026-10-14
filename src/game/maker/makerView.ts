@@ -43,7 +43,7 @@ import type { StoredDraft } from './drafts';
 import { PASSAGE_TARGETS, type PassageLook, type PendingPassage } from './passages';
 import type { QueuedMap } from './review';
 import { summariseMapFile, summaryLine, summaryLines } from '../world/mapFileSummary';
-import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
+import { canTryAgain, STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
   plantsAlong,
@@ -150,10 +150,12 @@ export type MakerCheck = Omit<MapCheck, 'id'> & { readonly id: string };
 
 /** The last check, which is not a fact about the file but about its maker. */
 export function walkedCheck(walked: boolean): MakerCheck {
-  const problems = walked ? [] : ['WALK IT or RAID IT, and leave by an exit.'];
+  const problems = walked
+    ? []
+    : ['Once every other check passes, press WALK IT or RAID IT and leave by an exit.'];
   return {
     id: 'walked',
-    label: 'You walked out of it yourself in TRY IT',
+    label: 'You walked out of it yourself',
     passed: walked,
     problems,
     faults: problems.map((text) => ({ text, places: [], group: 'tries' })),
@@ -186,6 +188,8 @@ export interface MakerViewState {
   readonly drafts: readonly StoredDraft[];
   /** How many drafts in this browser this editor cannot open: kept, and said so. */
   readonly unreadableDrafts?: number;
+  /** The time now, which the drafts panel says each draft's last change against. */
+  readonly now?: number;
   /** The draft whose Delete has been pressed once: the next press deletes it. */
   readonly pendingDelete?: string;
   /** The inside whose Remove has been pressed once: the next press removes it. */
@@ -378,13 +382,20 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
   // the thing itself drawn whole (`drawPlantSwatch`), because eighty names are
   // not a palette. Indoors what is planted is the room's furniture: the same
   // tool, planted the same way, from the pieces a FireRed room is furnished with.
-  const plantRow = (choice: { readonly kind: MapFileBuildingKind; readonly label: string }): string =>
+  // A sign planted from Signs is a picture of one: it has no words to read, so
+  // its help says where the sign that does is (playtest 39 B5).
+  const plantRow = (choice: {
+    readonly kind: MapFileBuildingKind;
+    readonly label: string;
+    readonly group?: string;
+  }): string =>
     toolRow(
       `data-place="building" data-building="${choice.kind}"`,
       choice.label,
-      plantsAlong(choice.kind)
+      (plantsAlong(choice.kind)
         ? `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click. Drag to plant a row, each clear of the last.`
-        : `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
+        : `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`) +
+        (choice.group === 'Signs' ? ' It is only a picture: for words to read, place a Sign under Places.' : ''),
       chosenPlace === `building:${choice.kind}`,
       `<canvas class="maker-swatch" data-plant="${choice.kind}"${inside ? ` data-swatch-style="${inside.style}"` : ''} width="16" height="16" aria-hidden="true"></canvas>`,
     );
@@ -1008,22 +1019,79 @@ function settingsPane(file: MapFile): string {
   );
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const sameDay = (a: Date, b: Date): boolean =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/**
+ * When a draft was last changed, in the browser's own clock: what tells two
+ * drafts of the same name and size apart - a downloaded file opened again is a
+ * second draft of exactly that (playtest 46). Nothing for a draft whose time is
+ * not known (one stored before it was recorded).
+ */
+export function draftEdited(updatedAt: number, now: number): string | undefined {
+  if (!(updatedAt > 0)) {
+    return undefined;
+  }
+  const ago = now - updatedAt;
+  if (ago < 60_000) {
+    return 'edited just now';
+  }
+  if (ago < 60 * 60_000) {
+    return `edited ${Math.floor(ago / 60_000)} min ago`;
+  }
+  const then = new Date(updatedAt);
+  const today = new Date(now);
+  const clock = `${String(then.getHours()).padStart(2, '0')}:${String(then.getMinutes()).padStart(2, '0')}`;
+  if (sameDay(then, today)) {
+    return `edited today ${clock}`;
+  }
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (sameDay(then, yesterday)) {
+    return `edited yesterday ${clock}`;
+  }
+  const day = `${then.getDate()} ${MONTHS[then.getMonth()]}`;
+  return then.getFullYear() === today.getFullYear() ? `edited ${day}` : `edited ${day} ${then.getFullYear()}`;
+}
+
+/** What a draft's Delete says once pressed: it fits the button "Delete" was drawn in. */
+export const DELETE_ARMED_LABEL = 'Sure?';
+
+/**
+ * A draft's Delete, in words: once pressed, the help line names the draft the
+ * next press takes and says that anything else keeps it (playtest 39 A7).
+ */
+export function deleteDraftHelp(draft: StoredDraft, armed: boolean): string {
+  const name = draftName(draft);
+  return armed
+    ? `Press again to delete ${name} for good. Anything else keeps it.`
+    : `Deletes ${name} from this browser. It cannot be undone.`;
+}
+
+/** A draft as the list names it. */
+export function draftName(draft: StoredDraft): string {
+  return draft.file.name || 'Untitled map';
+}
+
 function draftsPane(
   drafts: readonly StoredDraft[],
   current: string,
   unreadable = 0,
   pendingDelete?: string,
+  now = Date.now(),
 ): string {
   const rows = drafts
     .map(
       (draft) =>
-        `<div class="maker-draft"><button class="px-row${draft.key === current ? ' is-selected' : ''}" data-open-draft="${escapeAttribute(draft.key)}" data-help="Opens this draft."><span class="px-row-main"><span class="px-name">${escapeHtml(draft.file.name || 'Untitled map')}</span><small class="px-note">${draft.file.width}x${draft.file.height}</small></span></button>${
+        `<div class="maker-draft"><button class="px-row${draft.key === current ? ' is-selected' : ''}" data-open-draft="${escapeAttribute(draft.key)}" data-help="Opens this draft."><span class="px-row-main"><span class="px-name">${escapeHtml(draftName(draft))}</span><small class="px-note">${[`${draft.file.width}x${draft.file.height}`, draftEdited(draft.updatedAt, now)].filter(Boolean).join(' · ')}</small></span></button>${
           draft.key === current
             ? ''
-            : `<button class="px-window px-button" data-delete-draft="${escapeAttribute(draft.key)}" data-help="Deletes this draft from this browser. It cannot be undone.">${
+            : `<button class="px-window px-button" data-delete-draft="${escapeAttribute(draft.key)}" data-help="${escapeAttribute(deleteDraftHelp(draft, draft.key === pendingDelete))}">${
                 // Pressed once, it says what the next press does, however
-                // often the screen is drawn again in between.
-                draft.key === pendingDelete ? 'Delete for good' : 'Delete'
+                // often the screen is drawn again in between - in a word
+                // that fits the button, with the draft named on the help line.
+                draft.key === pendingDelete ? DELETE_ARMED_LABEL : 'Delete'
               }</button>`
         }</div>`,
     )
@@ -1037,7 +1105,10 @@ function draftsPane(
     {
       className: 'maker-drafts',
       heading: 'Your drafts',
-      note: 'kept in this browser',
+      // Short enough to stand on the one-line strip beside its heading: the
+      // longer 'kept in this browser' wrapped off it and was never drawn,
+      // which left no word that a draft is in no other place (playtest 39 A6).
+      note: 'browser only',
     },
   );
 }
@@ -1085,10 +1156,14 @@ function sendPane(file: MapFile, sending: SendState): string {
       body = `<p class="px-note">Sending…</p>`;
       break;
     case 'sent':
-      body = `<p class="px-wrap">Sent. Your receipt is <strong>${sending.receipt}</strong>.</p><p class="px-note px-wrap">Sent in, under Drafts, shows what becomes of it.</p><div class="maker-actions">${back}</div>`;
+      body = `<p class="px-wrap">Sent. Your receipt is <strong>${sending.receipt}</strong>.</p><p class="px-note px-wrap">To see what becomes of it, open Drafts, then Sent in.</p><div class="maker-actions">${back}</div>`;
       break;
     case 'failed':
-      body = `<p class="px-warning px-wrap">${escapeHtml(sending.reason)}</p><div class="maker-actions">${back}${button('data-send', 'Try again')}</div>`;
+      // TRY AGAIN only where trying again can work: a daily limit or a
+      // blocked maker says the same thing however often it is pressed.
+      body = `<p class="px-warning px-wrap">${escapeHtml(sending.reason)}</p>${
+        /drafts\.$/.test(sending.reason) ? '' : '<p class="px-note px-wrap">Your map is safe in your drafts.</p>'
+      }<div class="maker-actions">${back}${canTryAgain(sending.reason) ? button('data-send', 'Try again') : ''}</div>`;
       break;
   }
   return pixelWindow(`<div class="maker-form">${body}</div>`, {
@@ -1096,6 +1171,9 @@ function sendPane(file: MapFile, sending: SendState): string {
     heading: 'Send it in',
   });
 }
+
+/** Under a map sent back: how it is sent again. */
+const SEND_AGAIN_NOTE = 'Open this map in Drafts, fix it, walk it again, then press SEND IN.';
 
 /** Every map this browser has sent, and what became of each. */
 function sentPane(sent: SentState): string {
@@ -1112,6 +1190,12 @@ function sentPane(sent: SentState): string {
         (map) =>
           `<div class="maker-sent"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''} · ${map.receiptCode}</small>${
             map.note ? `<small class="px-wrap maker-note">${escapeHtml(map.note)}</small>` : ''
+          }${
+            // A map is sent again only from its own draft (the draft keeps its
+            // receipt), so the row says where to go and what to do there.
+            map.status === 'sent_back'
+              ? `<small class="px-note px-wrap">${SEND_AGAIN_NOTE}</small>`
+              : ''
           }</div>`,
       )
       .join('');
@@ -1247,7 +1331,7 @@ export function makerScreen(state: MakerViewState): string {
   const panels: Readonly<Record<MakerPanel, () => string>> = {
     map: () =>
       `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(state.file, inside, state.pendingAreaRemoval) : settingsPane(state.file)}`,
-    drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts, state.pendingDelete),
+    drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts, state.pendingDelete, state.now),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),
     review: () => reviewPane(state.review, state.reviewing, state.checks, state.file),
@@ -1273,7 +1357,7 @@ export function makerScreen(state: MakerViewState): string {
   const tryHelp = (what: string): string =>
     works
       ? `${what} ${state.selected?.kind === 'drop-in' ? 'Starts at the chosen drop-in.' : 'Starts at the front door; choose a drop-in first to start there.'}`
-      : 'Make the map pass the checks above first.';
+      : 'Fix the other checks first. The last one, walking out of it, is passed here.';
   const actions = [
     button('data-undo', 'Undo', 'Takes back the last change. Ctrl+Z.', state.canUndo),
     button('data-redo', 'Redo', 'Puts it back again. Ctrl+Y.', state.canRedo),
@@ -1284,7 +1368,7 @@ export function makerScreen(state: MakerViewState): string {
       'Every map you have drawn in this browser, and what became of the ones you sent in.',
     ),
     button('data-open-file', 'Open file', 'Opens a map file you downloaded or were sent.'),
-    button('data-download', 'Download', 'Saves this map as a file you can keep or share.'),
+    button('data-download', 'Download', 'Saves this map as a file you can keep or share: the only copy of it outside this browser.'),
     tryLevelChoice(state),
     button(
       'data-try="walk"',
@@ -1303,7 +1387,7 @@ export function makerScreen(state: MakerViewState): string {
       'Send in',
       ready
         ? 'Sends this map in to be played and, if it is approved, put in the game.'
-        : 'Pass every check above first, walking out of it in TRY IT included.',
+        : 'Pass every check above first, walking out of it with WALK IT or RAID IT included.',
       ready,
       true,
     ),
@@ -1312,7 +1396,7 @@ export function makerScreen(state: MakerViewState): string {
     place: 'Map maker',
     title: escapeHtml(state.file.name || 'Untitled map'),
     back: { label: 'TITLE', attribute: 'data-back' },
-    aside: `<span>${state.checks.every((check) => check.passed) ? 'READY' : works ? 'WORKS · TRY IT' : 'NOT FINISHED'}</span>`,
+    aside: `<span>${state.checks.every((check) => check.passed) ? 'READY' : works ? 'WORKS · WALK IT' : 'NOT FINISHED'}</span>`,
     hints: 'CLICK the map to paint · CTRL+Z undo · ESC cancel',
     ...(state.status ? { status: escapeHtml(state.status) } : {}),
     body: `<main class="px-body maker-shell">${toolsPane(state, inside)}${mapPane(state, view, inside)}${side}${pixelCommitBar(

@@ -5,6 +5,7 @@ import { getSpeciesById } from '../pokemon/species';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import {
   frontDoorFor,
+  insertionDescription,
   isDropInPoint,
   type RunInsertion,
   type RunInsertionId,
@@ -215,6 +216,8 @@ export interface PlaceRecord {
 
 export interface DropInBriefing {
   readonly insertion: RunInsertion;
+  /** The place's own words, less any door its beaten keeper no longer holds. */
+  readonly description: string;
   readonly mapId: WorldMapId;
   readonly mapName: string;
   /** A second entrance on a map, which does not carry the map's own name. */
@@ -389,6 +392,7 @@ export function buildDropInBriefing(
 
   return {
     insertion,
+    description: insertionDescription(insertion, context.defeatedBosses),
     mapId,
     mapName: worldMapName(mapId),
     isDropIn: isDropInPoint(insertion),

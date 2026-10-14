@@ -85,7 +85,7 @@ describe('a berry tree', () => {
   it('is a wall to the checks, as a person is', () => {
     const file = place(mapWith((start) => start), 'berry-tree', 15, 10).file;
     expect(problemsOf(walledOff(file), 'way-out')).toEqual([
-      'Drop-in Drop-in 1 cannot walk to any exit.',
+      'Drop-in 1 cannot walk to any exit.',
     ]);
   });
 
@@ -115,7 +115,7 @@ describe('a Strength boulder', () => {
     expect(isBlockedAt(mapFileGrid(open).collision, 15, 10)).toBe(false);
     expect(problemsOf(open, 'way-out')).toEqual([]);
     const blocked = place(open, 'boulder', 15, 10).file;
-    expect(problemsOf(blocked, 'way-out')).toEqual(['Drop-in Drop-in 1 cannot walk to any exit.']);
+    expect(problemsOf(blocked, 'way-out')).toEqual(['Drop-in 1 cannot walk to any exit.']);
   });
 
   it('but moves aside for what can be reached, as a door opens', () => {
@@ -154,7 +154,7 @@ describe('an exit under rubble', () => {
     expect(problemsOf(file, 'way-out')).toEqual([]);
     const onlyBuried = setExitOpens(file, 0, { when: 'dug' });
     expect(problemsOf(onlyBuried, 'way-out')).toEqual([
-      'Drop-in Drop-in 1 cannot walk to any exit without a Pickaxe.',
+      'Drop-in 1 cannot walk to any exit without a Pickaxe.',
     ]);
   });
 

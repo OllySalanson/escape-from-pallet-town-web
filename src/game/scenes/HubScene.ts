@@ -81,7 +81,6 @@ import {
   gridCells,
   isFoundOnly,
   isFurniture,
-  isMachine,
   itemAmountsFor,
   READ_IN_A_RAID,
   type ItemDefinition,
@@ -109,6 +108,7 @@ import {
   generateRunPlan,
   generateRoomLoot,
   withRoomLoot,
+  insertionDescription,
   isDropInPoint,
   isRunInsertionId,
   type RunInsertion,
@@ -180,6 +180,7 @@ import {
   shopDetailPane,
   shopPaidColumn,
   shopPriceColumn,
+  SHORT_MARK_LEGEND,
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
@@ -218,6 +219,7 @@ import { DAY_CARE_KEEPER } from '../base/dayCarePen';
 import { friendRoom, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomCard, friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
+import { RAID_KEY_LETTERS } from '../input/keyBindings';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -613,10 +615,17 @@ export class HubScene extends Phaser.Scene {
     if (required.length === 0) {
       return '';
     }
-    const short = missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
+    const short = this.carryInShort();
     return short.length === 0
       ? `<p class="px-note px-wrap carry-note">${contract!.name}: ${itemAmountsFor(required)} packed for the drop. They are spent when you hand them over.</p>`
       : `<p class="px-warning px-wrap carry-note">${contract!.name} needs ${itemAmountsFor(required)} in your pack. Still short: ${itemAmountsFor(short)}.</p>`;
+  }
+
+  /** What the chosen contract's drop asks for that the loadout does not hold. */
+  private carryInShort(): ReturnType<typeof missingCarryIn> {
+    const contract = this.contractFor(this.flow.insertionId);
+    const required = contract ? contractCarryIn(contract) : [];
+    return required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
   }
 
   /**
@@ -1146,6 +1155,7 @@ export class HubScene extends Phaser.Scene {
         durationMs: this.raidClockMs,
         secureGrid: this.flow.secureGrid,
         securePokemonLimit: this.flow.securePokemonSlots,
+        secureFilledForYou: deployment.secureFilledForYou,
       },
       deployment.secureSlot,
     );
@@ -1685,7 +1695,7 @@ export class HubScene extends Phaser.Scene {
     // answer. Nothing on the lab screen is lost by it: it is the room's front.
     this.applyLoadedGame(reloaded);
     this.speaking = { screen: 'lab', words: milestoneWords(given.milestone, given.owned, continuing), reward: true };
-    audioManager.play('pokedexReward');
+    audioManager.play('itemObtained');
   }
 
   /**
@@ -1723,7 +1733,7 @@ export class HubScene extends Phaser.Scene {
         words: words([`You handed over ${errandThing(errand)}.`, ...errand.thanks, errand.reward.received]),
         reward: true,
       };
-      audioManager.play('pokedexReward');
+      audioManager.play('itemObtained');
       return;
     }
     const recorded =
@@ -2533,7 +2543,7 @@ export class HubScene extends Phaser.Scene {
     const supplyRow = (item: ItemDefinition): string =>
       // One line a supply, as a bag lists them: what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
     const materialRows = this.stashItems
       .filter((item) => isFoundOnly(item.id) && !isFurniture(item.id))
       .map(supplyRow)
@@ -2668,9 +2678,7 @@ export class HubScene extends Phaser.Scene {
         // the player can see what was packed for them and take it back out.
         const prepacked = this.flow.isPrepacked(item.id as ItemId);
         const help = escapeAttribute(
-          `${item.displayName}: ${item.description} ${size} each, ${held} at base.${
-            isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''
-          }${
+          `${item.displayName}: ${item.description}${usedInARaid(item)} ${size} each, ${held} at base.${
             prepacked ? ' Packed for you - medicine goes in by default. Take it out if you want the squares.' : ''
           }`,
         );
@@ -2835,7 +2843,7 @@ export class HubScene extends Phaser.Scene {
                 : []),
             ].join(' · ');
         const heading = id === firstPlayerMap ? `<p class="px-subheading">Player maps</p>` : '';
-        return `${heading}<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
+        return `${heading}<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertionDescription(insertion, this.savedGame.raidProgress.defeatedBosses))}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
     const walked = Math.round(briefing.record.surveyed * 100);
@@ -3180,7 +3188,7 @@ export class HubScene extends Phaser.Scene {
     // above cannot state, because it is about the loadout rather than about
     // the place. Everything else the strip already counts, and a screen this
     // size cannot afford to say a number twice.
-    return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${errands}${prizes}${exits}${doors}${wildlife}`;
+    return `<p class="px-wrap dropin-blurb">${briefing.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${errands}${prizes}${exits}${doors}${wildlife}`;
   }
 
   private secureView(): string {
@@ -3355,6 +3363,7 @@ export class HubScene extends Phaser.Scene {
     // full-width bar beside the button that pays it.
     const threat = this.hunterThreatAt(this.flow.insertionId, this.flow.party);
     const hunter = hunterThreatLine(threat);
+    const carryShort = this.carryInShort();
     // The window a row stands in is what says whether it is lost or comes home,
     // so the rows do not each say it again.
     const itemRow = (item: { readonly itemId: ItemId; readonly quantity: number }, secured: boolean): string =>
@@ -3394,7 +3403,10 @@ export class HubScene extends Phaser.Scene {
         this.roomNote(),
         // A night raid is named here as its clock chip will name it, so the
         // last screen before the raid says what the drop-in pane's wildlife did.
-        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · ${this.clockNote()}</span>`,
+        // A drop that will refuse you is said again here, on the last screen
+        // before the raid: the drop-in pane said it a step back, and a raid
+        // that opens on the refusal is a raid already spent (playtest 47).
+        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'}${carryShort.length === 0 ? '' : ` · <span class="px-warning carry-short">Still short: ${itemAmountsFor(carryShort)}</span>`} · ${this.clockNote()}</span>`,
         `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
@@ -3853,7 +3865,7 @@ export class HubScene extends Phaser.Scene {
       {
         className: 'objectives-panel',
         heading: 'What extraction buys',
-        note: 'Red is not yet spare at base',
+        note: SHORT_MARK_LEGEND,
       },
     )}</main>`;
   }
@@ -4152,6 +4164,22 @@ export class HubScene extends Phaser.Scene {
   }
 }
 
+/**
+ * What a supply row owes a player about where it is used, when that is not
+ * here. A disc and a stone are read from the raid pack and nowhere else (the
+ * treatment bench takes medicine only), and the Center listed TM40 with what
+ * it teaches and nothing about how (playtest 47).
+ */
+function usedInARaid(item: ItemDefinition): string {
+  switch (item.effect.type) {
+    case 'machine':
+      return ` ${READ_IN_A_RAID}`;
+    case 'evolution-stone':
+      return ` Pack it, then use it from your pack (${RAID_KEY_LETTERS.bag}) in a raid.`;
+    default:
+      return '';
+  }
+}
 
 /** Names in a sentence: `Tackle`, `Tackle and Growl`, `Tackle, Growl and Ember`. */
 function formatNames(names: readonly string[]): string {

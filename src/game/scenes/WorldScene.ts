@@ -37,6 +37,7 @@ import {
 import type { CharacterDesignId } from '../world/characterDesigns';
 import {
   getWorldCharacterAppearance,
+  headMarkCoversSomebody,
   NO_TINT,
   PLAYER_MARKER_DEPTH,
   PLAYER_MARKER_GROUND_LAYERS,
@@ -92,6 +93,7 @@ import {
   barriersOpenedBy,
   isBarrierOpen,
   LEVER_LINES,
+  SEATED_BOULDER_LINES,
   switchAt,
   switchesOn,
   type WorldSwitch,
@@ -154,6 +156,7 @@ import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
+import { SOUND_EFFECTS, soundEffectLength } from '../audio/soundEffects';
 import { getSpeciesById } from '../pokemon/species';
 import {
   entersTallGrass,
@@ -162,14 +165,13 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag, ITEMS, formatMoney, getItemById, isCurrency, type ItemId } from '../items';
+import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
   contractCarryIn,
   contractReportLine,
   contractStopMessage,
-  formatStacks,
   isContractBankable,
   missingCarryIn,
   remainingMarkers,
@@ -244,6 +246,8 @@ import {
   weatherChipLine,
   prizeChipView,
   friendChipLines,
+  friendChipPing,
+  placeApart,
   type PrizeChipInput,
   raidClockAlertTier,
   raidClockView,
@@ -381,6 +385,17 @@ type HuntRole = 'solo' | 'keeper' | 'follower';
 /** How often a room's keeper says the hunter again when nothing about it has changed. */
 const HUNTER_RESAY_MS = 3_000;
 
+/**
+ * A line the world says unasked, and whether it is FireRed's obtained-an-item
+ * beat: put up to its jingle (`itemObtained`), with the prompt held back until
+ * the jingle has played, as FireRed's text waits out its fanfare - so a key
+ * pressed through the lines before it is not also pressed past it.
+ */
+type WorldLine = string | { readonly text: string; readonly obtained: true };
+
+/** How long an obtained line is held before a key moves it on: its jingle, and never under a second. */
+const OBTAINED_HOLD_MS = Math.max(1_000, Math.ceil(soundEffectLength(SOUND_EFFECTS.itemObtained) * 1000));
+
 /** The colour of a ping's mark: the prize gleam's warm gold would read as loot, so a clear sky blue. */
 const PING_COLOUR = 0x5ec8f2;
 
@@ -511,6 +526,18 @@ const LEDGE_MARK_SHADE = 0x1c2733;
 const WATCH_TINT = 0xf87171;
 const WATCH_FILL_ALPHA = 0.16;
 const WATCH_EDGE_ALPHA = 0.42;
+/**
+ * A pale red over a sand road is a change of hue with almost no change of
+ * light, so for red-green and colour-blind players the watch was not there at
+ * all (playtest 40, finding 1). The shading therefore also carries a shape:
+ * diagonal hatching and a border in dark ink, which read in any vision. The
+ * hatch runs across tile joins (it is laid on map pixels, not per tile), so a
+ * watched lane is one striped strip.
+ */
+const WATCH_INK = 0x171717;
+const WATCH_HATCH_ALPHA = 0.34;
+const WATCH_INK_EDGE_ALPHA = 0.6;
+const WATCH_HATCH_SPACING = 6;
 /**
  * When a beaten trainer's watch is lifted the shading is not just removed: it
  * lets go tile by tile from the trainer's end, so the player sees the route open
@@ -1122,7 +1149,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * data rather than read back from storage, so the door opens in the raid that
    * won it even in a browser that cannot save.
    */
-  private settleBossProgress(savedGame: RestoredGame | undefined): readonly string[] {
+  private settleBossProgress(savedGame: RestoredGame | undefined): readonly WorldLine[] {
     const saveManager = new SaveManager();
     const stored = (saveManager.load() ?? savedGame)?.raidProgress;
     const deployedWith = this.runSession?.plan?.defeatedBosses ?? stored?.defeatedBosses ?? [];
@@ -1169,7 +1196,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * carried out: from here it is one more thing in the bag, so the wipe ledger,
    * the supply delta and the result screen all already know what to do with it.
    */
-  private takeBossGear(newlyBeaten: readonly string[]): readonly string[] {
+  private takeBossGear(newlyBeaten: readonly string[]): readonly WorldLine[] {
     this.unclaimedBossGear = [
       ...this.unclaimedBossGear,
       ...bossGearDropped(this.trainerEncounters, newlyBeaten).map(({ itemId, name }) => ({
@@ -1191,12 +1218,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * make room. Nothing is claimed twice: a piece leaves this list only when the
    * pack has actually taken it.
    */
-  private claimBossGear(): readonly string[] {
+  private claimBossGear(): readonly WorldLine[] {
     if (this.unclaimedBossGear.length === 0) {
       return [];
     }
     const waiting: { itemId: string; name: string }[] = [];
-    const lines: string[] = [];
+    const lines: WorldLine[] = [];
     for (const drop of this.unclaimedBossGear) {
       const item = getItemById(drop.itemId);
       const gearName = item?.displayName.toUpperCase() ?? 'PIECE OF GEAR';
@@ -1208,8 +1235,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         );
         continue;
       }
+      // Gear is the rarest thing a raid hands over, and it used to go by as
+      // one more line pressed through after the fight (playtest 42): it is
+      // FireRed's obtained-an-item beat now, a jingle with the line held.
       lines.push(
-        `${drop.name} was carrying a ${gearName}. You take it.${this.reseatNote()}`,
+        { text: `${drop.name} was carrying a ${gearName}. You take it.${this.reseatNote()}`, obtained: true },
         `${item?.description ?? ''} Give it to a POKéMON from the party screen - and get it home.`,
       );
     }
@@ -1254,6 +1284,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // room shares (`raidRoom/groupHunter.ts`).
     this.updateGroupHunter();
     this.updateRaid(deltaMs);
+    this.settleHeadMark();
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
     this.updateFriend(deltaMs);
@@ -1538,20 +1569,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       news: news ? { name: news.name, came: news.came, ...(news.line ? { line: news.line } : {}) } : null,
       friends: rooms.friends().map((friend) => {
         const figure = drawn.find((each) => each.id === friend.id);
-        const theirArea = figure && areas ? (placedAreaAt(areas, figure.tile) ?? areas[0]) : undefined;
-        const elsewhere =
-          theirArea && theirArea !== this.currentArea() ? (theirArea === areas?.[0] ? 'outdoors' : 'indoors') : null;
+        const elsewhere = figure ? placeApart(areas, this.currentTile, figure.tile) : null;
         return {
           name: friend.name,
           atLab: friend.place === 'lab',
           fighting: rooms.hunters.fightOf(friend.id),
           ...(pings.has(friend.id)
             ? {
-                ping: {
-                  heading: this.headingTo(pings.get(friend.id)!),
-                  distance:
-                    Math.abs(pings.get(friend.id)!.x - this.currentTile.x) + Math.abs(pings.get(friend.id)!.y - this.currentTile.y),
-                },
+                ping: friendChipPing(areas, this.currentTile, pings.get(friend.id)!, this.headingTo(pings.get(friend.id)!)),
               }
             : {}),
           heading: figure ? this.headingTo(figure.tile) : null,
@@ -2352,18 +2377,38 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const y = tile.y * TILE_SIZE;
       shading.fillStyle(WATCH_TINT, WATCH_FILL_ALPHA);
       shading.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-      shading.fillStyle(WATCH_TINT, WATCH_EDGE_ALPHA);
+      shading.fillStyle(WATCH_INK, WATCH_HATCH_ALPHA);
+      for (let row = 0; row < TILE_SIZE; row += 1) {
+        // One ink pixel a row, stepping along the diagonal from map pixel 0, so
+        // neighbouring tiles continue each other's stripes.
+        const first = (WATCH_HATCH_SPACING - ((x + y + row) % WATCH_HATCH_SPACING)) % WATCH_HATCH_SPACING;
+        for (let column = first; column < TILE_SIZE; column += WATCH_HATCH_SPACING) {
+          shading.fillRect(x + column, y + row, 1, 1);
+        }
+      }
+      const edges: Array<readonly [number, number, number, number]> = [];
       if (!inWatch.has(`${tile.x},${tile.y - 1}`)) {
-        shading.fillRect(x, y, TILE_SIZE, 1);
+        edges.push([x, y, TILE_SIZE, 1]);
       }
       if (!inWatch.has(`${tile.x},${tile.y + 1}`)) {
-        shading.fillRect(x, y + TILE_SIZE - 1, TILE_SIZE, 1);
+        edges.push([x, y + TILE_SIZE - 1, TILE_SIZE, 1]);
       }
       if (!inWatch.has(`${tile.x - 1},${tile.y}`)) {
-        shading.fillRect(x, y, 1, TILE_SIZE);
+        edges.push([x, y, 1, TILE_SIZE]);
       }
       if (!inWatch.has(`${tile.x + 1},${tile.y}`)) {
-        shading.fillRect(x + TILE_SIZE - 1, y, 1, TILE_SIZE);
+        edges.push([x + TILE_SIZE - 1, y, 1, TILE_SIZE]);
+      }
+      // The red edge over a dark one: the colour still says "red", and the ink
+      // under it is what says "edge" to anyone who cannot see red.
+      for (const [inkStyle, alpha] of [
+        [WATCH_INK, WATCH_INK_EDGE_ALPHA],
+        [WATCH_TINT, WATCH_EDGE_ALPHA],
+      ] as const) {
+        shading.fillStyle(inkStyle, alpha);
+        for (const [ex, ey, width, height] of edges) {
+          shading.fillRect(ex, ey, width, height);
+        }
       }
     }
     this.mapObjects.push(shading);
@@ -3669,6 +3714,26 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.playerHeadMark.setPosition(x, y + (this.riding ? BIKE_HEAD_DROP : 0));
   }
 
+  /**
+   * The chevron gives way to anybody standing in the tile above the player,
+   * where it would be drawn over their face (`headMarkCoversSomebody`). Asked
+   * every frame, after the step and the townsfolk have moved, so a trainer
+   * walking up or a neighbour stepping in is cleared the frame they arrive.
+   */
+  private settleHeadMark(): void {
+    if (!this.player || !this.playerHeadMark) {
+      return;
+    }
+    const figures: Phaser.GameObjects.Sprite[] = [];
+    for (const id of this.npcAppearances.keys()) {
+      const sprite = this.npcSprites.get(id);
+      if (sprite?.visible) {
+        figures.push(sprite);
+      }
+    }
+    this.playerHeadMark.setAlpha(headMarkCoversSomebody(this.player, figures, TILE_SIZE) ? 0 : 1);
+  }
+
   // -- the partner -----------------------------------------------------------
 
   /** Who walks at the player's heel as the raid now stands (`world/raidFollower.ts`). */
@@ -4342,13 +4407,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * of them by `placeDialog` - the hunter's arrival used to be announced by a
    * box drawn over the hunter.
    */
-  private interrupt(lines: readonly string[], about: readonly GridPosition[] = []): void {
+  private interrupt(lines: readonly WorldLine[], about: readonly GridPosition[] = []): void {
     // Whatever landed in front of the player takes the box the cast was using,
     // and the cast with it: a line that arrives unasked is read, not fished past.
     this.stopFishing();
     this.unsolicitedDialog = true;
     this.seatDialog(about);
-    this.dialogBox.showMessages([...lines]);
+    this.dialogBox.showMessages(
+      lines.map((line) => (typeof line === 'string' ? line : line.text)),
+      (index) => {
+        const line = lines[index];
+        if (typeof line !== 'string' && line?.obtained) {
+          audioManager.play('itemObtained');
+          this.dialogBox.hold(OBTAINED_HOLD_MS);
+        }
+      },
+    );
   }
 
   private seatDialog(about: readonly GridPosition[]): void {
@@ -4460,7 +4534,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     if (entity?.boulder) {
       this.dialogBox.showMessages([
-        ...fieldMoveLines('strength', fieldMoveUser(this.party.pokemon, 'strength')),
+        ...(this.boulderIsSeated(entity)
+          ? SEATED_BOULDER_LINES
+          : fieldMoveLines('strength', fieldMoveUser(this.party.pokemon, 'strength'))),
       ]);
       return;
     }
@@ -4613,6 +4689,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.settleRiding();
         this.saveGame();
       },
+      onItemDropped: (itemId: string, quantity: number) =>
+        this.runSession?.manager.registerDroppedItem(itemId as ItemId, quantity),
       bike: { riding: this.riding, toggle: () => this.toggleBike() },
     });
   }
@@ -4731,12 +4809,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     session.firstDeploymentBriefingShown = true;
     this.openingBriefingOpen = true;
     // A contract that needs supplies out of the pack says so before the first
-    // step, because arriving at the drop without them wastes the whole raid.
+    // step, because arriving at the drop without them wastes the whole raid -
+    // after the briefing, never instead of it, or the raid opens without saying
+    // where the drop is or which key is the field guide (playtest 47).
     const missing = missingCarryIn(contractCarryIn(contract), (itemId) => this.bag.count(itemId));
-    this.dialogBox.showMessage(
+    this.dialogBox.showMessages(
       missing.length === 0
-        ? contract.deploymentBriefing
-        : `You are still short ${formatStacks(missing)} for this contract's drop. It will refuse you.`,
+        ? [contract.deploymentBriefing]
+        : [
+            contract.deploymentBriefing,
+            `You are still short ${itemAmountsFor(missing)} for this contract's drop. It will refuse you.`,
+          ],
     );
   }
 
@@ -5779,7 +5862,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the player sets off towards it, instead of sliding along ahead of them.
    */
   private captionPlayer(): Rect[] {
-    return [this.currentTile, ...(this.targetTile ? [this.targetTile] : [])].map(landingRect);
+    return [this.currentTile, ...(this.targetTile ? [this.targetTile] : []), ...this.steppingAshore()].map(
+      landingRect,
+    );
+  }
+
+  /**
+   * The jetty a voyage's last step is walking the player onto. That step is
+   * not a `targetTile` - the voyage owns it - so without this the far jetty's
+   * own caption, which names that very tile, was seated across the head of the
+   * player stepping off the boat until the frame after they landed.
+   */
+  private steppingAshore(): GridPosition[] {
+    const trip = this.voyaging;
+    return trip && trip.index === trip.tiles.length - 2 ? [trip.tiles[trip.tiles.length - 1]] : [];
   }
 
   private isLootAvailable(): boolean {
@@ -6303,9 +6399,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.unclaimedBossGear.length === owed) {
       return false;
     }
-    audioManager.play('lootPickup');
     // An interruption, because the player did not ask for it and the key they
-    // are already holding has to be able to answer it.
+    // are already holding has to be able to answer it. The gear line sounds
+    // its own jingle as it is put up.
     this.interrupt(lines);
     return true;
   }

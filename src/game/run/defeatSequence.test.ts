@@ -18,6 +18,8 @@ interface WipeOptions {
   readonly caught?: readonly Pokemon[];
   /** The one still standing when it was a catch rather than the party. */
   readonly lastStand?: Pokemon;
+  readonly lostTo?: 'wild' | 'trainer';
+  readonly secureFilledForYou?: boolean;
 }
 
 /**
@@ -39,7 +41,12 @@ function wipedReport(
     // A Pokemon takes four squares of the container and a supply beside it
     // takes more, so these reports are built against a container that has been
     // grown - the squares are `RunManager`'s own test, not this one's.
-    { mapId: 'floodplain-relay', durationMs: DURATION_MS, secureGrid: { width: 6, height: 2 } },
+    {
+      mapId: 'floodplain-relay',
+      durationMs: DURATION_MS,
+      secureGrid: { width: 6, height: 2 },
+      ...(options.secureFilledForYou ? { secureFilledForYou: true } : {}),
+    },
     secureSlot,
   );
   manager.tick(60_000);
@@ -66,6 +73,7 @@ function wipedReport(
     carriedOut,
     ...(options.lastStandIndex === undefined ? {} : { lastStand: party[options.lastStandIndex] }),
     ...(options.lastStand === undefined ? {} : { lastStand: options.lastStand }),
+    ...(options.lostTo ? { lostTo: options.lostTo } : {}),
     saved: true,
   });
 }
@@ -145,6 +153,48 @@ describe('the defeat sequence a lost raid opens on', () => {
     expect(sequence?.beats[1].detail).toBe('Charmander and 2 Potions lifted off you and gone from your stash.');
     expect(sequence?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
     expect(sequence?.beats[2].detail).toContain('Squirtle and 1 Potion came home with you.');
+  });
+
+  /**
+   * Playtest 43 B6: the container fills itself, and a player who never opened
+   * it was told what it held was "the call you made before you deployed".
+   */
+  it('only calls the secure slot the player\'s call when the player made it', () => {
+    const held = (secureFilledForYou: boolean): string | undefined => {
+      const party = [new Pokemon(CHARMANDER, 12), new Pokemon(SQUIRTLE, 11)];
+      return buildDefeatSequence(
+        wipedReport(party, [], { secureIndex: 0, lastStandIndex: 1, secureFilledForYou }),
+      )?.beats[2].detail;
+    };
+
+    expect(held(true)).toBe('Charmander came home with you. The container filled itself before you deployed.');
+    expect(held(true)).not.toContain('call you made');
+    expect(held(false)).toBe('Charmander came home with you. That was the call you made before you deployed.');
+  });
+
+  /**
+   * Playtest 43 B6: a raid lost to a wild Pokemon read "THEY STRIPPED YOU.",
+   * with no "they" anywhere in the story - a Rattata does not go through a bag.
+   */
+  it('blames nobody when the raid was lost to a wild Pokemon', () => {
+    const party = [new Pokemon(CHARMANDER, 12)];
+    const sequence = buildDefeatSequence(
+      wipedReport(party, [{ itemId: 'potion', quantity: 2 }], { lastStandIndex: 0, lostTo: 'wild' }),
+    );
+
+    const taken = sequence?.beats[1];
+    expect(taken?.headline).toBe('YOUR PACK IS LOST.');
+    expect(taken?.detail).toBe('Charmander and 2 Potions went down with you, gone from your stash for good.');
+    expect(`${taken?.headline} ${taken?.detail}`).not.toMatch(/\bthey\b|stripped|lifted/i);
+  });
+
+  it('still says a trainer took it when a trainer won', () => {
+    const party = [new Pokemon(CHARMANDER, 12)];
+    const sequence = buildDefeatSequence(
+      wipedReport(party, [{ itemId: 'potion', quantity: 2 }], { lastStandIndex: 0, lostTo: 'trainer' }),
+    );
+
+    expect(sequence?.beats[1].headline).toBe('THEY STRIPPED YOU.');
   });
 
   it('says so plainly when the slot was empty, rather than skipping the beat', () => {

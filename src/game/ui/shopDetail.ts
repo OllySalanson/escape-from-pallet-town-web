@@ -54,6 +54,18 @@ export interface ShopPricePart {
 }
 
 /**
+ * The drawn cross a short part carries, so "not yet spare" is a shape as well
+ * as the red it is inked in (playtest 40: red is ink to a protan eye and the
+ * same grey as a covered part in greyscale). Orange Kid has no cross to type,
+ * so it is a mask, `--px-cross`, in whatever ink it stands in - which is also
+ * what lets a heading's legend show the same mark on its dark strip.
+ */
+export const SHORT_MARK = '<span class="cost-mark" aria-hidden="true"></span>';
+
+/** A heading's legend for the mark: the words a heading bar can hold. */
+export const SHORT_MARK_LEGEND = `${SHORT_MARK}Not yet spare at base`;
+
+/**
  * A row's price, in a column of its own on the right of the row.
  *
  * One line a part, so a price of two materials is two short lines rather than
@@ -63,7 +75,7 @@ export interface ShopPricePart {
  */
 export function shopPriceColumn(parts: readonly ShopPricePart[]): string {
   return `<span class="px-price">${parts
-    .map((part) => `<small${part.short ? ' class="cost-short"' : ''}>${part.ask}</small>`)
+    .map((part) => (part.short ? `<small class="cost-short">${SHORT_MARK}${part.ask}</small>` : `<small>${part.ask}</small>`))
     .join('')}</span>`;
 }
 
@@ -108,7 +120,9 @@ export function shopDetailPane(options: ShopDetailOptions): string {
         // asks start on the same pixel.
         `<div${part.short ? ' class="is-short"' : ''}><dt>${
           part.icon ?? '<span class="shop-price-nib" aria-hidden="true"></span>'
-        }<span>${part.ask}</span></dt>${part.held === undefined ? '<dd></dd>' : `<dd>${part.held}</dd>`}</div>`,
+        }<span>${part.ask}</span></dt>${
+          part.held === undefined ? '<dd></dd>' : `<dd>${part.short ? SHORT_MARK : ''}${part.held}</dd>`
+        }</div>`,
     )
     .join('');
   // A span, not a `small`: `.pixel-ui small` is soft ink at a weight the

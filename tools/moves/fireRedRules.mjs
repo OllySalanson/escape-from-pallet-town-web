@@ -94,6 +94,10 @@ export const withFireRedRules = (move) => {
   if (row.target === 'MOVE_TARGET_BOTH') corrected.target = 'all-opponents';
   else if (move.target === 'all-opponents') corrected.target = 'selected-pokemon';
 
+  // Self-Destruct and Explosion: the user faints for the blow. PokeAPI's row
+  // says nothing of it (its meta is a plain hit), so the effect id is the rule.
+  if (row.effect === 'EFFECT_EXPLOSION') corrected.user_faints = true;
+
   const stats = statEffectOf(row.effect);
   if (stats) {
     corrected.stat_changes = stats.changes;

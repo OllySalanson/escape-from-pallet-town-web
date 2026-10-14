@@ -87,6 +87,7 @@ import {
 } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
 import { overviewOf, type Overview } from '../maker/overview';
+import { openMapFileText } from '../maker/openFile';
 import { paintGhost, type GhostTiles } from '../maker/ghost';
 import {
   clearGrownWood,
@@ -155,6 +156,9 @@ import {
   type MakerCheck,
   type PlaceChoice,
   stackLayout,
+  DELETE_ARMED_LABEL,
+  deleteDraftHelp,
+  draftName,
 } from '../maker/makerView';
 import {
   BUILDING_CHOICES,
@@ -172,7 +176,6 @@ import { refusedTextNote, typedMapText } from '../world/mapText';
 import {
   MAP_FILE_LIMITS,
   plainText,
-  readMapFile,
   MAP_FILE_AREA_STYLES,
   MAP_FILE_STYLES_OF,
   type MapFile,
@@ -182,7 +185,7 @@ import {
   type MapFileDoorKind,
   type MapFileHabitat,
 } from '../world/mapFile';
-import { checkMapFile, type MapCheck, type MapFaultPlace } from '../world/mapFileChecks';
+import { checkMapFile, kindAndName, type MapCheck, type MapFaultPlace } from '../world/mapFileChecks';
 
 /**
  * The map maker: a player draws their own raid map, in the FireRed style, and
@@ -202,6 +205,10 @@ import { checkMapFile, type MapCheck, type MapFaultPlace } from '../world/mapFil
  * stops clicking is still saved every this often.
  */
 const AUTOSAVE_MS = 400;
+/**
+ * How long a note about text taken out of a field stays up. Only that note is
+ * timed: it is put up while the maker types, with no render to take it down.
+ */
 const STATUS_MS = 3_500;
 const DRAFTS_FULL =
   'Your drafts could not be saved: this browser may be out of room. DOWNLOAD this map to keep it, and delete drafts you do not need.';
@@ -796,11 +803,13 @@ export class MapMakerScene extends Phaser.Scene {
     // A frame later, so letting go of a stroke is not held up by the overview.
     this.scheduleOverview();
     this.overlay.refocus('[data-tool].is-selected', '[data-tool]');
-    if (status) {
-      if (this.statusTimer) {
-        clearTimeout(this.statusTimer);
-      }
-      this.statusTimer = setTimeout(() => takeDownPixelStatus(this.overlay.root), STATUS_MS);
+    // A status stays up until the next thing done draws the screen again: the
+    // maker is looking at the map, across the screen from the help bar, and a
+    // refusal or a try's result taken down on a timer was missed (playtest 39
+    // A5). A timer left from a typed-in note must not take this one down.
+    if (this.statusTimer) {
+      clearTimeout(this.statusTimer);
+      this.statusTimer = undefined;
     }
   }
 
@@ -821,6 +830,7 @@ export class MapMakerScene extends Phaser.Scene {
       canRedo: this.history.canRedo,
       drafts: this.store.drafts,
       unreadableDrafts: this.store.unreadable?.length ?? 0,
+      now: Date.now(),
       pendingDelete: this.pendingDelete,
       pendingAreaRemoval: this.pendingAreaRemoval,
       draftKey: this.draftKey,
@@ -2212,8 +2222,15 @@ export class MapMakerScene extends Phaser.Scene {
         }
         const thing = inMap ? thingAt(this.view, tile) : undefined;
         if (thing) {
+          // A district has no mark of its own: a click on plain ground inside
+          // one takes the whole of it, so say so or it went without a trace.
+          const district =
+            thing.kind === 'district' ? (this.view.districts ?? [])[thing.index] : undefined;
           this.selected = thing;
           this.removeSelected();
+          if (district) {
+            this.render(`${kindAndName('District', district.name)} is gone. Undo brings it back.`);
+          }
         }
         return;
       }
@@ -2927,9 +2944,20 @@ export class MapMakerScene extends Phaser.Scene {
 
   /** Two presses: a draft deleted is gone from this browser for good. */
   private deleteDraft(button: HTMLElement, key: string): void {
+    const draft = this.store.drafts.find((stored) => stored.key === key);
+    if (!draft) {
+      return;
+    }
     if (this.pendingDelete !== key) {
       this.pendingDelete = key;
-      button.textContent = 'Delete for good';
+      // Said in place rather than drawn again, so the cursor stays on the
+      // button whose next press is the one being described.
+      button.textContent = DELETE_ARMED_LABEL;
+      button.dataset.help = deleteDraftHelp(draft, true);
+      const help = this.overlay.root.querySelector<HTMLElement>('[data-help-text]');
+      if (help) {
+        help.textContent = button.dataset.help;
+      }
       return;
     }
     this.pendingDelete = undefined;
@@ -2937,7 +2965,7 @@ export class MapMakerScene extends Phaser.Scene {
     saveMakerStore(this.store);
     sessionHistories.delete(key);
     sessionViews.delete(key);
-    this.render('Draft deleted.');
+    this.render(`${draftName(draft)} deleted.`);
   }
 
   private download(): void {
@@ -2955,16 +2983,9 @@ export class MapMakerScene extends Phaser.Scene {
   }
 
   private openFileText(text: string, name: string): void {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      this.render(`${name} is not a map file.`);
-      return;
-    }
-    const reading = readMapFile(parsed, { draft: true });
+    const reading = openMapFileText(text, name);
     if (!reading.ok) {
-      this.render(`${name} cannot be opened: ${reading.problems[0]}`);
+      this.render(reading.says);
       return;
     }
     this.flushAutosave();
@@ -3014,7 +3035,7 @@ export class MapMakerScene extends Phaser.Scene {
    */
   private openSend(): void {
     if (!this.currentChecks().every((check) => check.passed) || !this.walkedOut()) {
-      this.render('Pass every check first, walking out of it in TRY IT included.');
+      this.render('Pass every check first, walking out of it with WALK IT or RAID IT included.');
       return;
     }
     const refusal = sendRefusal(this.file);

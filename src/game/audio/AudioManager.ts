@@ -192,6 +192,20 @@ export class AudioManager {
     }
   }
 
+  /**
+   * A sound asked for by a key or a click that may be the first the page has
+   * had. A browser keeps audio asleep until somebody presses something, and
+   * `play` never wakes it, so on the title every cursor blip before the first
+   * choice was silent (playtest 41). The press is the gesture that may wake
+   * it, so this wakes it and then plays. Returns whether it sounded.
+   */
+  public async playWaking(name: SoundEffectName, options: PlayOptions = {}): Promise<boolean> {
+    if (this.muted || !(await this.activate())) {
+      return false;
+    }
+    return this.play(name, options);
+  }
+
   public async startTheme(theme: AudioTheme = this.theme): Promise<void> {
     if (this.theme !== theme) {
       this.stopTheme();

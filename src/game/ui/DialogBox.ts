@@ -71,6 +71,8 @@ export class DialogBox extends Phaser.GameObjects.Container {
   private prompting = true;
   /** What the prompt says when it is asking to go on. */
   private readonly promptText: string;
+  /** How much longer the line up now is held before a key may move it on. See `hold`. */
+  private heldMs = 0;
 
   public constructor(scene: Phaser.Scene, options: DialogBoxOptions = {}) {
     const widthPx = options.width ?? DEFAULT_WIDTH;
@@ -155,6 +157,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.lineOfBox = boxes.map((box) => box.line);
     this.onLineShown = onLineShown;
     this.lineIndex = 0;
+    this.heldMs = 0;
     this.hasTriggeredCompletion = false;
     this.prompting = true;
     this.indicatorObject.setText(this.promptText);
@@ -189,10 +192,23 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.setVisible(true);
   }
 
+  /**
+   * Holds the line up now for `ms` before any key can move it on: the prompt
+   * stays hidden and `isCurrentMessageComplete` answers no until it has passed.
+   * It is FireRed's obtained-an-item beat - the text box waits out the jingle
+   * (`WaitFanfare`) - so a player pressing through the lines before it cannot
+   * press past the one that says what they were given. Called from a line's
+   * `onLineShown`, it holds that line; the next line is never held unless asked.
+   */
+  public hold(ms: number): void {
+    this.heldMs = Math.max(this.heldMs, ms);
+  }
+
   public update(deltaMs: number): void {
     if (!this.visible || !this.typewriter || this.typewriter.isDone) {
       return;
     }
+    this.heldMs = Math.max(0, this.heldMs - Math.max(0, deltaMs));
 
     this.typewriter.update(deltaMs);
     this.textObject.setText(this.typewriter.visibleText);
@@ -214,7 +230,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.typewriter.skip();
     this.textObject.setText(this.typewriter.visibleText);
     this.indicatorElapsedMs = 0;
-    this.indicatorObject.setVisible(true);
+    this.indicatorObject.setVisible(this.heldMs <= 0);
   }
 
   public advance(): boolean {
@@ -222,7 +238,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
       return false;
     }
 
-    if (!this.typewriter.isComplete) {
+    if (!this.typewriter.isComplete || this.heldMs > 0) {
       return false;
     }
 
@@ -246,7 +262,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
   }
 
   public get isCurrentMessageComplete(): boolean {
-    return this.typewriter?.isComplete ?? false;
+    return (this.typewriter?.isComplete ?? false) && this.heldMs <= 0;
   }
 
   public get isDone(): boolean {
@@ -317,6 +333,10 @@ export class DialogBox extends Phaser.GameObjects.Container {
 
   private blinkIndicator(deltaMs: number): void {
     if (!this.prompting) {
+      return;
+    }
+    if (this.heldMs > 0) {
+      this.indicatorObject.setVisible(false);
       return;
     }
     this.indicatorElapsedMs += Math.max(0, deltaMs);

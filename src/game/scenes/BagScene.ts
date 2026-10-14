@@ -16,7 +16,7 @@ import {
   type Bag,
   type ItemDefinition,
 } from '../items';
-import type { Pokemon, PokemonParty } from '../pokemon';
+import { evolutionByStone, type Pokemon, type PokemonParty } from '../pokemon';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { bikeAction } from '../world/bicycle';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -132,6 +132,8 @@ interface BagSceneData {
   readonly bag: Bag;
   readonly party: PokemonParty;
   readonly onItemUsed: () => void;
+  /** Told what was put down for good, so the raid's result can name it. */
+  readonly onItemDropped?: (itemId: string, quantity: number) => void;
   /** Absent where nothing can be ridden - the bag is only ever opened in a raid today. */
   readonly bike?: BagBike;
 }
@@ -153,6 +155,7 @@ export class BagScene extends Phaser.Scene {
   private bag!: Bag;
   private party!: PokemonParty;
   private onItemUsed!: () => void;
+  private onItemDropped?: (itemId: string, quantity: number) => void;
   private bike?: BagBike;
   /** The item whose recipient list is open, if one is. */
   private usingItemId?: string;
@@ -199,6 +202,7 @@ export class BagScene extends Phaser.Scene {
     this.bag = data.bag;
     this.party = data.party;
     this.onItemUsed = data.onItemUsed;
+    this.onItemDropped = data.onItemDropped;
     this.bike = data.bike;
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
@@ -405,9 +409,9 @@ export class BagScene extends Phaser.Scene {
   private recipientBody(item: ItemDefinition): string {
     const rows = this.party.pokemon
       .map((pokemon, index) => {
-        const note = this.targetNote(pokemon);
+        const note = this.targetNote(pokemon, item);
         return `<button class="px-row" data-target="${index}" data-item="${item.id}" data-help="${escapeAttribute(
-          `Use ${item.displayName} on ${pokemon.name}. ${note}`,
+          `Use ${item.displayName} on ${pokemon.name}. ${this.targetHelp(pokemon, item) ?? note}`,
         )}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}</small></span><span class="px-tag">${note}</span></button>`;
       })
       .join('');
@@ -505,9 +509,26 @@ export class BagScene extends Phaser.Scene {
       : undefined;
   }
 
-  /** What the row on the recipient list says on its end: the HP a Potion is for. */
-  private targetNote(pokemon: Pokemon): string {
-    return `${pokemon.currentHp}/${pokemon.maxHp} HP`;
+  /**
+   * What the row on the recipient list says on its end: the HP a Potion is
+   * for, or - for an evolution stone - whether it would work at all, which is
+   * FireRed's ABLE / NOT ABLE on its own party screen. HP says nothing about a
+   * stone, and a list of HP made a player try the stone on each in turn.
+   */
+  private targetNote(pokemon: Pokemon, item: ItemDefinition): string {
+    if (item.effect.type === 'evolution-stone') {
+      return evolutionByStone(pokemon.base.id, item.id) ? 'Able' : 'Not able';
+    }
+    return `${pokemon.currentHp}/${pokemon.maxHp}\u00a0HP`;
+  }
+
+  /** The help line's answer where the tag alone is too short to say it. */
+  private targetHelp(pokemon: Pokemon, item: ItemDefinition): string | undefined {
+    if (item.effect.type !== 'evolution-stone') {
+      return undefined;
+    }
+    const species = evolutionByStone(pokemon.base.id, item.id);
+    return species ? `It would evolve into ${species.name}.` : 'It will not have any effect.';
   }
 
   /** The row's own press: open the recipient list, or say why there is nobody to open it for. */
@@ -702,6 +723,7 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     audioManager.play('menuClose');
+    this.onItemDropped?.(item.id, quantity);
     this.onItemUsed();
     const dropped = isCurrency(item.id) ? itemAmountFor(item.id, quantity) : item.displayName;
     this.status = `Dropped ${dropped}. ${this.packLabel()}.`;

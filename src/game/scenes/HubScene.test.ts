@@ -143,6 +143,21 @@ describe('the lobby as a screen of the game', () => {
     expect(stash).not.toContain('1 kinds');
   });
 
+  it('says at base that a TM or a stone is used from the pack in a raid (playtest 47)', () => {
+    const { hub } = createHub();
+    hub.stash.addItem('tm40-aerial-ace', 1);
+    hub.stash.addItem('fire-stone', 1);
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+    const helpOf = (markup: string, attribute: string, id: string): string =>
+      new RegExp(`${attribute}="${id}"[^>]*data-help="([^"]*)"`).exec(markup)?.[1] ?? '';
+    expect(helpOf(stash, 'data-supply', 'tm40-aerial-ace')).toContain('read it from your pack (B) in a raid');
+    expect(helpOf(stash, 'data-supply', 'fire-stone')).toContain('use it from your pack (B) in a raid');
+    // A Potion is used at base too, so it carries no such line.
+    expect(helpOf(stash, 'data-supply', 'potion')).not.toContain('in a raid');
+  });
+
   it('says on the base screen that someone is hurt, and bills it in the stash', () => {
     const { hub } = createWornHub();
 
@@ -684,6 +699,9 @@ describe('hub deployment route', () => {
       'recover-lost-field-kit',
     ]);
     expect(activeRunManager.snapshot().mapId).toBe('floodplain-relay');
+    // The container was never opened, so the raid knows the autofill filled
+    // it, and a lost raid will not call its contents the player's call.
+    expect(activeRunManager.snapshot().secureFilledForYou).toBe(true);
   });
 
   /**
@@ -691,6 +709,35 @@ describe('hub deployment route', () => {
    * (`world/nightRaids.ts`), the same reading the drop-in screen's wildlife was
    * shown in, so what the screen named is what the raid meets.
    */
+  /**
+   * A delivery is decided at base or not at all: the drop refuses a player who
+   * arrives short, and the raid is spent by then. The drop-in pane said so and
+   * the final check - the last screen before the raid - did not (playtest 47).
+   */
+  it('says on the final check what a delivery contract is still short of', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID, 'survey-the-braid'],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+    });
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.chooseInsertion('viridian-forest');
+    hub.flow.setItemQuantity('potion', 1);
+    readyToDeploy(hub);
+    expect(hub.flow.step).toBe('confirm');
+    hub.render();
+    const check = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+    expect(check).toContain('<span class="px-warning carry-short">Still short: 1 Potion</span>');
+
+    hub.flow.setItemQuantity('potion', 2);
+    hub.render();
+    expect((hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML).not.toContain(
+      'Still short',
+    );
+  });
+
   it.each([
     { hour: 23, night: true, heading: 'Wildlife by night' },
     { hour: 12, night: false, heading: 'Wildlife<' },
@@ -1323,12 +1370,12 @@ describe('what the base screen leads with', () => {
 
     hub.setView('reselect');
     swapping.reselectStarterId = 'charmander';
-    expect(markupOf(hub)).toContain('Level 5 · 1/16 HP');
+    expect(markupOf(hub)).toContain('Level 5 · 1/16\u00a0HP');
 
     swapping.swapArmed = true;
     const armed = markupOf(hub);
     expect(armed).toContain('data-swap-confirm');
-    expect(armed).toContain('Level 5 · 1/16 HP');
+    expect(armed).toContain('Level 5 · 1/16\u00a0HP');
   });
 
   it('cannot be released by double-clicking SWAP FOR X', () => {
@@ -1565,7 +1612,10 @@ describe('Brock', () => {
     expect(ladder).toContain('<span class="px-price"><small>4× Parts crate</small></span>');
     expect(ladder).not.toContain('Pokémon</small>');
     // One mooring rope cannot pay the four the second locker asks.
-    expect(ladder).toContain('<small class="cost-short">4× Mooring rope</small>');
+    expect(ladder).toContain('<small class="cost-short"><span class="cost-mark" aria-hidden="true"></span>4× Mooring rope</small>');
+    // The heading names the drawn cross, never the colour (playtest 40 #4).
+    expect(ladder).not.toContain('Red is not yet spare');
+    expect(ladder).toContain('<span class="cost-mark" aria-hidden="true"></span>Not yet spare at base</small>');
     // A rung that cannot be built is still a control, so the cursor can reach it
     // and the pane under the list can say what it does.
     expect(ladder).toMatch(/data-outfit="secure-locker-1"(?![^>]*aria-disabled)[^>]* data-shows/);
@@ -2026,7 +2076,7 @@ describe('HubScene - Bill', () => {
     const shelf = boat.slice(boat.indexOf('data-shown-by="super-potion"'));
     // ₽260 against ₽200 held, so the held half is the one written in red.
     expect(shelf).toContain('<div class="is-short"><dt>');
-    expect(shelf).toContain('<dd>₽200 in the vault</dd>');
+    expect(shelf).toContain('<dd><span class="cost-mark" aria-hidden="true"></span>₽200 in the vault</dd>');
     expect(shelf).toContain('<dt><span class="shop-price-nib" aria-hidden="true"></span><span>1 of his ration</span></dt>');
 
     const table = boat.slice(boat.indexOf('data-shown-by="barter-hm03"'));

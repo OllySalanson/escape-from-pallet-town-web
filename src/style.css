@@ -532,6 +532,9 @@ button {
   position: absolute;
   inset: 0;
   display: grid;
+  /* One column the stage's own width: an `auto` column grows to the widest
+     child, which let a long line-up widen the stage it was drawn on. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: center;
   justify-items: center;
   gap: clamp(12px, 3vh, 28px);
@@ -585,26 +588,54 @@ button {
   border-top: 3px solid #3a5233;
   box-shadow: 0 5px 0 rgb(0 0 0 / 45%);
 }
+/* The cast is the window's width and no wider: nine figures (you, six Pokemon,
+   two kinds of ball) at their roomy widths are wider than a 1280 window, and a
+   line-up that scrolled sideways cut you off at the left edge (playtest 42).
+   The margin either side keeps the end figures off the window's edge once the
+   columns fill it. */
 .defeat-cast {
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: clamp(4px, 1.4vw, 16px);
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
+  padding-inline: clamp(8px, 2.5vw, 40px);
 }
-/* Fixed columns: the plates below stay side by side however long a species name
-   is, which is what stopped "CHARMANDER" from running under its neighbour. */
+/* Columns of a set width: the plates below stay side by side however long a
+   species name is, which is what stopped "CHARMANDER" from running under its
+   neighbour. A full line-up shares out the room it has instead, every column
+   giving way alike, and a plate wraps a long name onto a second line. */
 .defeat-figure {
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) var(--defeat-band);
   justify-items: center;
+  flex: 0 1 auto;
   width: clamp(72px, 10.5vw, 116px);
+  min-width: 0;
   margin: 0;
 }
 .defeat-figure.is-last-stand {
   width: clamp(96px, 14vw, 152px);
+}
+/* A crowded line-up (you, six Pokemon and the supplies) gives the room
+   between columns and the last stand's extra width to the plates, so a
+   ten-letter name like CHARMANDER stays whole on a 900-pixel window rather
+   than breaking as CHARMANDE / R (playtest 42). A supply's column gives way
+   first: its crate is small and its name, two words, breaks at the space -
+   down to the width its count and verdict need on one line. */
+.defeat-cast:has(> .defeat-figure:nth-child(7)) {
+  gap: clamp(2px, 0.5vw, 8px);
+}
+.defeat-cast:has(> .defeat-figure:nth-child(7)) .defeat-figure[data-kind='item'] {
+  flex-shrink: 6;
+  min-width: 54px;
+}
+.defeat-cast:has(> .defeat-figure:nth-child(7)) .defeat-figure.is-last-stand {
+  width: clamp(72px, 10.5vw, 116px);
 }
 .defeat-sprite {
   display: grid;
@@ -630,8 +661,10 @@ button {
   image-rendering: pixelated;
 }
 .defeat-trainer {
-  height: 100%;
-  width: auto;
+  /* As tall as the column, unless the column is too narrow for that: a figure
+     wider than its column ran under its neighbour's. */
+  width: min(100%, calc(var(--defeat-tall) * 16 / 22));
+  height: auto;
   /* Frame 0 of the character sheet - the player standing, facing the camera -
      cropped to the drawn figure rather than to its frame. The frame is 16x32 but
      the figure only occupies rows 5 to 27 (see CHARACTER_HEAD_PIXEL_Y and
@@ -653,7 +686,7 @@ button {
 .defeat-item-glyph {
   display: grid;
   place-items: center;
-  width: 80px;
+  width: min(80px, 100%);
   aspect-ratio: 1;
   border: 3px solid #a8564a;
   background: #2c1a1b;
@@ -668,7 +701,7 @@ button {
 }
 @media (width <= 720px), (height <= 560px) {
   .defeat-item-glyph {
-    width: 56px;
+    width: min(56px, 100%);
   }
   .defeat-item-glyph img {
     width: 32px;
@@ -688,7 +721,7 @@ button {
   gap: 1px;
   width: 100%;
   height: var(--defeat-band);
-  padding: 2px 4px;
+  padding: 2px 1px;
   border: 2px solid #593330;
   background: rgb(10 7 10 / 82%);
   color: #f4ece2;
@@ -718,6 +751,9 @@ button {
   display: flex;
   align-items: center;
   gap: 5px;
+  /* "x12" and "Lv 12" are one reading each: never a count on one line and its
+     number on the next. */
+  white-space: nowrap;
   color: #a78a86;
 }
 /* The level and the count are a `<small>`, which is a size down by default. */
@@ -1064,6 +1100,9 @@ button {
   --bar-muted: #9cafc7;
   --teal: #55d6be;
   --teal-wash: #bfe6cf;
+  /* Teal dark enough to be a mark on cream (4.9:1); --teal is 1.5:1 there and
+     reads only on the dark bar (playtest 39 D1). */
+  --teal-ink: #17705f;
   --gold: #f0c454;
   --gold-wash: #f2e5ab;
   --red: #b0201c;
@@ -1071,6 +1110,8 @@ button {
   --px-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h1v1h1v1h-1v1h-1v1h-1z'/%3E%3C/svg%3E");
   --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%235d5c47' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
   --px-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h1v1h-1zM5 1h1v1h-1zM4 2h1v1h-1zM0 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1z'/%3E%3C/svg%3E");
+  --px-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM3 1h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E");
+  --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
   overflow: hidden;
   /* Two-pixel bands, the way the party screen of the games this is dressed as
      is never one flat colour. */
@@ -1230,6 +1271,18 @@ button {
 }
 :where(.pixel-ui) .px-rail .done {
   color: var(--teal);
+}
+/* Done is said by a shape as well as by teal, which a red-green or no-colour
+   eye reads as the same grey as a step to come (playtest 40 #7). */
+:where(.pixel-ui) .px-rail .done::after {
+  content: '';
+  display: inline-block;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  margin-left: calc(var(--u) * 3);
+  background: currentColor;
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }
 :where(.pixel-ui) .px-rail .current {
   color: var(--bar-text);
@@ -1843,9 +1896,11 @@ button {
   transform-origin: 50% 100%;
 }
 :where(.pixel-ui) .px-type {
+  /* Every fill holds the cream letters at WCAG AA, 4.5 to 1 or better, so a
+     tag reads for everybody (playtest 40; `style.test.ts` measures them). */
   display: inline-block;
   padding: 0 calc(var(--u) * 3);
-  background: #6d8c9c;
+  background: #55707e;
   box-shadow: 0 0 0 var(--u) var(--frame);
   color: var(--cream-lit);
   text-transform: uppercase;
@@ -1855,29 +1910,59 @@ button {
   margin: var(--u) calc(var(--u) * 3) var(--u) var(--u);
 }
 :where(.pixel-ui) .px-type-fire {
-  background: #c8502c;
+  background: #a83e20;
 }
 :where(.pixel-ui) .px-type-grass {
-  background: #3f8f4f;
+  background: #2f7a3e;
 }
 :where(.pixel-ui) .px-type-water {
   background: #3a6fc0;
 }
 :where(.pixel-ui) .px-type-electric {
-  background: #b98f12;
+  background: #8a6a00;
 }
 :where(.pixel-ui) .px-type-poison {
   background: #8a4aa0;
 }
 :where(.pixel-ui) .px-type-flying {
-  background: #6f86c8;
+  background: #5068a8;
 }
 :where(.pixel-ui) .px-type-bug {
-  background: #7d9a1e;
+  background: #5e7414;
 }
 :where(.pixel-ui) .px-type-normal,
 :where(.pixel-ui) .px-type-fairy {
-  background: #8c8a6c;
+  background: #686650;
+}
+/* The other nine each have a fill of their own, in FireRed's own hue for the
+   type darkened to hold AA: on the shared default a Fighting tag and a Steel
+   tag were the same grey box. */
+:where(.pixel-ui) .px-type-fighting {
+  background: #962a20;
+}
+:where(.pixel-ui) .px-type-ground {
+  background: #7c5c26;
+}
+:where(.pixel-ui) .px-type-rock {
+  background: #6c6430;
+}
+:where(.pixel-ui) .px-type-psychic {
+  background: #b0305c;
+}
+:where(.pixel-ui) .px-type-ice {
+  background: #287478;
+}
+:where(.pixel-ui) .px-type-ghost {
+  background: #5c4882;
+}
+:where(.pixel-ui) .px-type-dragon {
+  background: #5a30c0;
+}
+:where(.pixel-ui) .px-type-dark {
+  background: #4e3e34;
+}
+:where(.pixel-ui) .px-type-steel {
+  background: #5c6478;
 }
 
 /* --- The commitment bar: every screen that commits ends on it ----------- */
@@ -2335,6 +2420,19 @@ button {
 :where(.pixel-ui) small.cost-short {
   color: var(--red);
 }
+/* ...and in a shape, because red alone is ink to a protan eye and the same
+   grey as a covered part in greyscale (playtest 40 #4). A drawn cross in the
+   ink it stands in: red on a short part, the bar's own ink in a heading's
+   legend. Orange Kid has no cross to type. */
+:where(.pixel-ui) .cost-mark {
+  display: inline-block;
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 5);
+  margin-right: calc(var(--u) * 2);
+  background: currentColor;
+  mask: var(--px-cross) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cross) center / 100% 100% no-repeat;
+}
 
 /* --- A shelf: the thing on the left, the price on the right ------------- */
 /* Brock's ladder and Bill's two lists. A row's own line says
@@ -2746,15 +2844,21 @@ button {
 }
 /* What is being carried, drawn where it would land. Green over a seat that
    would take it, red over one that would not - the whole answer to "will this
-   go here", on the squares rather than in a line of words under them. */
+   go here", on the squares rather than in a line of words under them. It is
+   positioned and raised because a block is positioned, and a positioned box
+   paints over every box that is not: unraised, the red ghost was drawn under
+   the very block it collides with (playtest 40). "Will not fit" has a frame
+   twice as heavy as well as a red one, so it is not told by colour alone. */
 :where(.pixel-ui) .px-grid-ghost {
+  position: relative;
+  z-index: 1;
   pointer-events: none;
   box-shadow: inset 0 0 0 var(--u) var(--ink);
   background: var(--teal-wash);
 }
 :where(.pixel-ui) .px-grid-ghost.is-bad {
   background: var(--red-wash);
-  box-shadow: inset 0 0 0 var(--u) var(--red);
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--red);
 }
 /* The strip under a container: the way back to an automatic pack. It is a chip
    on its own because the pack's column is a third of the stage wide - what the
@@ -3477,6 +3581,32 @@ button {
 .pixel-ui .px-chip.maker-tool.is-selected {
   --fill: var(--teal-wash);
 }
+/* What is chosen - tool, brush, place, zoom - is said by the drawn tick as well
+   as the teal wash, which an eye that sees no colour reads as cream once the
+   cursor has gone to the map (playtest 40 #8). Every one keeps the tick's room,
+   so choosing never moves a chip along its row. */
+:where(.pixel-ui) .maker-tool[aria-pressed]::after,
+:where(.pixel-ui) .maker-area[aria-pressed]::after,
+:where(.pixel-ui) .maker-zoom[aria-pressed]::after,
+:where(.pixel-ui) .maker-choice[aria-pressed]::after {
+  content: '';
+  display: inline-block;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  margin-left: calc(var(--u) * 3);
+  background: transparent;
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .maker-choice[aria-pressed]::after {
+  margin-left: 0;
+}
+:where(.pixel-ui) .maker-tool[aria-pressed='true']::after,
+:where(.pixel-ui) .maker-area[aria-pressed='true']::after,
+:where(.pixel-ui) .maker-zoom[aria-pressed='true']::after,
+:where(.pixel-ui) .maker-choice[aria-pressed='true']::after {
+  background: currentColor;
+}
 :where(.pixel-ui) .maker-pane {
   min-height: 0;
 }
@@ -3631,7 +3761,7 @@ button {
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 5);
   margin-top: calc(var(--u) * 4);
-  background: var(--teal);
+  background: var(--teal-ink);
   mask: var(--px-tick) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }
@@ -3639,15 +3769,15 @@ button {
   width: calc(var(--u) * 5);
   margin-left: var(--u);
   background: var(--ink-soft);
-  mask: none;
-  -webkit-mask: none;
+  mask: var(--px-hollow) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-hollow) center / 100% 100% no-repeat;
 }
 :where(.pixel-ui) .maker-check.is-failed .maker-check-mark {
   width: calc(var(--u) * 5);
   margin-left: var(--u);
   background: var(--red);
-  mask: none;
-  -webkit-mask: none;
+  mask: var(--px-cross) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cross) center / 100% 100% no-repeat;
 }
 /* A fault that names a tile is a button that goes there: said in the check's
    red, as before, with the one cursor beside it when it has the focus. */

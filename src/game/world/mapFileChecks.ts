@@ -146,17 +146,36 @@ const CAVE_LOOKS: readonly MapFileDoorwayLook[] = ['cave-exit', 'ladder-up', 'la
 const TOWER_LOOKS: readonly MapFileDoorwayLook[] = ['stairs-up', 'stairs-down', 'mat'];
 
 const LABELS: Readonly<Record<MapCheckId, string>> = {
-  loads: 'The game can load it',
+  loads: 'It has a name, a maker, a drop-in and an exit',
   standing: 'Everything stands on ground you can walk on',
   apart: 'No two things share a tile',
   doors: 'Every door leads somewhere you can stand',
   'way-out': 'Every drop-in can walk out before the clock runs out',
-  reachable: 'Every exit and item spot can be walked to',
+  reachable: 'Every exit, item spot and landmark can be walked to',
   areas: 'Every inside and cave can be walked into',
   'hunter-room': 'The hunter has room to arrive near every drop-in',
   watch: 'No trainer watches a drop-in or an exit',
   words: 'Every name and line is fit for everyone',
 };
+
+/** What the first check is called when the file itself is broken, not merely unfinished. */
+const BROKEN_FILE_LABEL = 'The game can load it';
+
+/**
+ * What a draft still lacks, said as where in the maker it is done: the shape
+ * check's own words name a field ("its maker's name") the maker never sees by
+ * that name, and say a drop-in is needed without saying what one is
+ * (playtest 39 A4).
+ */
+const STILL_TO_DO: Readonly<Record<string, string>> = {
+  'The map needs a name.': 'Type a name in Name, under The map.',
+  "The map needs its maker's name.": 'Type your name in Drawn by, under The map.',
+  'A map needs at least 1 drop-in.': 'Put down a Drop-in from Places, under Paint: where a raid starts.',
+  'A map needs at least 1 exit.': 'Put down an Exit from Places, under Paint: the way out.',
+};
+
+/** How long a raid lasts, as the checks say it. */
+const RAID_MINUTES = Math.round(RAID_DURATION_MS / 60_000);
 
 const at = ({ x, y }: GridPosition): string => `${x},${y}`;
 
@@ -209,6 +228,15 @@ const PROPER_WORDS: Readonly<Record<string, string>> = {
 };
 
 /**
+ * A thing by its kind and its name, said once: "Drop-in South Road", but
+ * "Drop-in 1" for a drop-in the maker left named "Drop-in 1", where kind and
+ * name together read "Drop-in Drop-in 1" (playtest 39 A1).
+ */
+export function kindAndName(kind: string, name: string): string {
+  return name.toLowerCase().startsWith(`${kind.toLowerCase()} `) ? name : `${kind} ${name}`;
+}
+
+/**
  * A planted piece by the file's own word for it, as words: "house", "Pewter
  * gym", "Pokémon Center". A shut-door copy of a building is the building.
  */
@@ -227,7 +255,10 @@ function pieceWords(kind: string): string {
  * a maker hunting through the map for what it was.
  */
 function standsOn(file: MapFile, spot: MapFileSpot): string {
-  const area = spot.area === undefined ? undefined : file.areas?.find((candidate) => candidate.id === spot.area);
+  const area =
+    spot.area === undefined
+      ? undefined
+      : file.areas?.find((candidate) => candidate.id === spot.area);
   const pieces = area ? area.buildings : file.buildings;
   // The piece planted last is drawn on top, so it is the one stood on.
   for (let index = pieces.length - 1; index >= 0; index -= 1) {
@@ -317,20 +348,29 @@ export function checkMapFile(
     problems: faults.map((fault) => fault.text),
     faults,
   });
-  const unloadable = (problems: readonly string[]): readonly MapCheck[] =>
+  const unloadable = (problems: readonly string[], unfinished = false): readonly MapCheck[] =>
     (Object.keys(LABELS) as MapCheckId[])
       .filter((id) => id !== 'doors' && id !== 'areas')
       .map((id) =>
         id === 'loads'
-          ? check(
-              id,
-              problems.map((text) => ({ text, places: [], group: 'problems with the file' })),
-            )
+          ? {
+              ...check(
+                id,
+                problems.map((text) => ({
+                  text: unfinished ? (STILL_TO_DO[text] ?? text) : text,
+                  places: [],
+                  group: unfinished ? 'things still to do' : 'problems with the file',
+                })),
+              ),
+              // A file broken past what a draft may be is not a list of
+              // things to do, so it is said as the file not loading.
+              ...(unfinished ? {} : { label: BROKEN_FILE_LABEL }),
+            }
           : { ...check(id, []), passed: false },
       );
   const reading = readMapFile(value, { limits });
   if (!reading.ok) {
-    return unloadable(reading.problems);
+    return unloadable(reading.problems, readMapFile(value, { limits, draft: true }).ok);
   }
   const file = reading.file;
   // The shape check is meant to refuse anything the game cannot draw, but the
@@ -369,7 +409,9 @@ export function checkMapFile(
   const berryTrees = file.berryTrees ?? [];
   const boulders = file.boulders ?? [];
   const plates = (file.areas ?? []).flatMap((area) =>
-    (area.switches ?? []).filter((spot) => spot.kind === 'plate').map((spot) => ({ spot, area: area.id })),
+    (area.switches ?? [])
+      .filter((spot) => spot.kind === 'plate')
+      .map((spot) => ({ spot, area: area.id })),
   );
   const barrierTiles = (file.areas ?? []).flatMap((area) =>
     (area.barriers ?? []).flatMap((barrier) =>
@@ -387,17 +429,29 @@ export function checkMapFile(
     area.lift ? [{ spot: { x: area.lift.x, y: area.lift.y, area: area.id }, area }] : [],
   );
   const named = [
-    ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}`, group: 'drop-ins' })),
-    ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}`, group: 'exits' })),
+    ...file.dropIns.map((spot) => ({
+      spot,
+      what: kindAndName('Drop-in', spot.name),
+      group: 'drop-ins',
+    })),
+    ...file.exits.map((spot) => ({ spot, what: kindAndName('Exit', spot.name), group: 'exits' })),
     ...file.itemSpots.map((spot, index) => ({
       spot,
       what: `Item spot ${index + 1}`,
       group: 'item spots',
     })),
-    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}`, group: 'landmarks' })),
+    ...landmarks.map((spot) => ({
+      spot,
+      what: kindAndName('Landmark', spot.name),
+      group: 'landmarks',
+    })),
     ...people.map((spot) => ({ spot, what: `${spot.name}`, group: 'people' })),
     ...signs.map((spot, index) => ({ spot, what: `Sign ${index + 1}`, group: 'signs' })),
-    ...trainers.map((spot) => ({ spot, what: `Trainer ${spot.name}`, group: 'trainers' })),
+    ...trainers.map((spot) => ({
+      spot,
+      what: kindAndName('Trainer', spot.name),
+      group: 'trainers',
+    })),
     ...pokemon.map((spot) => ({ spot, what: pokemonName(spot.species), group: 'Pokémon' })),
     ...berryTrees.map((spot) => ({
       spot,
@@ -426,7 +480,8 @@ export function checkMapFile(
     places: places.map(({ x, y, area }) => (area === undefined ? { x, y } : { x, y, area })),
   });
   /** "stands in the trees" said of many: "stand in the trees". */
-  const plural = (phrase: string): string => phrase.replace(/^stands /, 'stand ').replace(/^is /, 'are ');
+  const plural = (phrase: string): string =>
+    phrase.replace(/^stands /, 'stand ').replace(/^is /, 'are ');
 
   const standing = named
     .filter(({ spot }) => !walkable(spot))
@@ -495,7 +550,10 @@ export function checkMapFile(
       const doorway = doorwayOf(end);
       if (end.look === 'boat') {
         // A boat lies off its jetty in deep water, the way it is boarded.
-        if (end.area !== undefined || file.ground[doorway.y]?.[doorway.x] !== MATERIAL_CHARS.water) {
+        if (
+          end.area !== undefined ||
+          file.ground[doorway.y]?.[doorway.x] !== MATERIAL_CHARS.water
+        ) {
           found.push(`${what} has to lie in deep water off its jetty, the way it is boarded.`);
         }
       } else if (end.look === 'door') {
@@ -504,14 +562,17 @@ export function checkMapFile(
           found.push(`${what} is not in front of a building's door.`);
         } else if (building.kind === 'cave-mouth') {
           // FireRed cuts a cave's mouth into the foot of a rock face.
-          const rock = (x: number, y: number): boolean => file.ground[y]?.[x] === MATERIAL_CHARS.cliff;
+          const rock = (x: number, y: number): boolean =>
+            file.ground[y]?.[x] === MATERIAL_CHARS.cliff;
           if (
             !rock(building.x, building.y) ||
             !rock(building.x - 1, building.y) ||
             !rock(building.x + 1, building.y) ||
             !rock(building.x, building.y - 1)
           ) {
-            found.push(`${what} has to be cut into the foot of a rock face, with rock either side of it and above it.`);
+            found.push(
+              `${what} has to be cut into the foot of a rock face, with rock either side of it and above it.`,
+            );
           }
           if (areaOf(other)?.kind !== 'cave') {
             found.push(`${what} has to lead into a cave.`);
@@ -547,9 +608,20 @@ export function checkMapFile(
           found.push(`${what} belongs in a tunnel.`);
         } else {
           const at = tunnelStairsAt(end);
-          const size = end.toward === 'left' || end.toward === 'right' ? TUNNEL_STAIRS_SIZE[end.toward] : undefined;
-          if (!size || at.x < 0 || at.y < 0 || at.x + size.width > area!.width || at.y + size.height > area!.height) {
-            found.push(`${what} has to stand in the tunnel, pressed into west or east from beside them.`);
+          const size =
+            end.toward === 'left' || end.toward === 'right'
+              ? TUNNEL_STAIRS_SIZE[end.toward]
+              : undefined;
+          if (
+            !size ||
+            at.x < 0 ||
+            at.y < 0 ||
+            at.x + size.width > area!.width ||
+            at.y + size.height > area!.height
+          ) {
+            found.push(
+              `${what} has to stand in the tunnel, pressed into west or east from beside them.`,
+            );
           }
         }
       } else if (end.look === 'stairwell') {
@@ -561,7 +633,9 @@ export function checkMapFile(
         if (!area || !insideStairwell(area.style)) {
           found.push(`${what} is the Underground Path's: give the room the Gatehouse look.`);
         } else if (end.toward !== 'left' || !clear) {
-          found.push(`${what} needs clear floor three tiles square, gone into westward from its east side.`);
+          found.push(
+            `${what} needs clear floor three tiles square, gone into westward from its east side.`,
+          );
         }
       } else if (CAVE_LOOKS.includes(end.look) && kind !== 'cave') {
         found.push(`${what} belongs in a cave.`);
@@ -570,8 +644,15 @@ export function checkMapFile(
       } else if (end.look === 'cave-exit') {
         // Daylight in a notch of the south wall, with rock either side of it.
         const wall = (x: number): boolean => ground(x, doorway.y) === MATERIAL_CHARS.wall;
-        if (end.toward !== 'down' || !wall(doorway.x) || !wall(doorway.x - 1) || !wall(doorway.x + 1)) {
-          found.push(`${what} has to be cut into the cave's south wall, with rock either side of it.`);
+        if (
+          end.toward !== 'down' ||
+          !wall(doorway.x) ||
+          !wall(doorway.x - 1) ||
+          !wall(doorway.x + 1)
+        ) {
+          found.push(
+            `${what} has to be cut into the cave's south wall, with rock either side of it.`,
+          );
         }
       } else if (end.look === 'ladder-up') {
         if (end.toward !== 'up' || ground(end.x, end.y - 1) === undefined) {
@@ -607,9 +688,13 @@ export function checkMapFile(
         const wall = (x: number, y: number): boolean => ground(x, y) === MATERIAL_CHARS.wall;
         const framed =
           end.toward === 'up' &&
-          [-1, 0, 1].every((dx) => wall(doorway.x + dx, doorway.y) && wall(doorway.x + dx, doorway.y - 1));
+          [-1, 0, 1].every(
+            (dx) => wall(doorway.x + dx, doorway.y) && wall(doorway.x + dx, doorway.y - 1),
+          );
         if (!framed) {
-          found.push(`${what} has to be let into the back wall of the room, with wall either side of it.`);
+          found.push(
+            `${what} has to be let into the back wall of the room, with wall either side of it.`,
+          );
         } else if (area && !insideBackDoor(area.style)) {
           found.push(`${what} is a gatehouse's: give the room the Gatehouse look.`);
         }
@@ -632,7 +717,9 @@ export function checkMapFile(
           (end.toward === 'left' || end.toward === 'right') &&
           !insideSideMat(area.style, end.toward)
         ) {
-          found.push(`${what} is let into a side wall, as a gatehouse's is: give the room the Gatehouse look.`);
+          found.push(
+            `${what} is let into a side wall, as a gatehouse's is: give the room the Gatehouse look.`,
+          );
         }
       }
       return found.map((text) => fault(text, 'doorways', end));
@@ -659,7 +746,9 @@ export function checkMapFile(
     const [a, b] = link.ends;
     const turns = [doorwayOf(a), ...link.sails.course, doorwayOf(b)];
     const crooked = courseFaults(turns);
-    const dry = coursePath(turns).filter((tile) => file.ground[tile.y]?.[tile.x] !== MATERIAL_CHARS.water);
+    const dry = coursePath(turns).filter(
+      (tile) => file.ground[tile.y]?.[tile.x] !== MATERIAL_CHARS.water,
+    );
     if (crooked.length > 0 || dry.length > 0) {
       doors.push(
         fault(
@@ -695,7 +784,9 @@ export function checkMapFile(
   // because an open exit takes whoever steps on it: a way out that is only
   // reached across another exit is not a way out, it is that exit.
   const exitTiles = new Set(file.exits.map((exit) => at(onGrid(exit))));
-  const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].map((spot) => at(onGrid(spot)));
+  const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].map((spot) =>
+    at(onGrid(spot)),
+  );
   // A rock barrier is a wall for the way out, as a boulder is - nobody has to
   // solve a floor of switches to leave - and stands open for what is reached.
   const shut = new Set([
@@ -794,7 +885,7 @@ export function checkMapFile(
     if (best === Infinity) {
       return [
         fault(
-          `Drop-in ${dropIn.name} cannot walk to any exit${without}.`,
+          `${kindAndName('Drop-in', dropIn.name)} cannot walk to any exit${without}.`,
           {
             group: 'drop-ins',
             says: `cannot walk to any exit${without}`,
@@ -803,11 +894,14 @@ export function checkMapFile(
         ),
       ];
     }
+    // An exit opens at most `maxExitDelaySeconds` in, inside the clock, so
+    // the walk is always what is too long: the fix is an exit nearer, never
+    // one that opens sooner (playtest 39 B12).
     return best > RAID_DURATION_MS
       ? [
           fault(
-            `Drop-in ${dropIn.name} cannot reach an open exit in time.`,
-            { group: 'drop-ins', says: 'cannot reach an open exit in time' },
+            `${kindAndName('Drop-in', dropIn.name)} cannot reach an exit before the ${RAID_MINUTES}-minute raid clock runs out. Move an exit closer to it.`,
+            { group: 'drop-ins', says: `cannot reach an exit before the ${RAID_MINUTES}-minute raid clock runs out` },
             dropIn,
           ),
         ]
@@ -842,13 +936,17 @@ export function checkMapFile(
   ];
 
   const reachable = [
-    ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}`, group: 'exits' })),
+    ...file.exits.map((spot) => ({ spot, what: kindAndName('Exit', spot.name), group: 'exits' })),
     ...file.itemSpots.map((spot, index) => ({
       spot,
       what: `Item spot ${index + 1}`,
       group: 'item spots',
     })),
-    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}`, group: 'landmarks' })),
+    ...landmarks.map((spot) => ({
+      spot,
+      what: kindAndName('Landmark', spot.name),
+      group: 'landmarks',
+    })),
   ]
     .filter(({ spot }) => walkable(spot))
     .filter(({ spot }) => fromDropIn.every(({ opened }) => stepsTo(opened, spot) < 0))
@@ -873,7 +971,7 @@ export function checkMapFile(
       ? [
           ...lockedExits.map((exit) =>
             fault(
-              `Exit ${exit.name} at ${tileOf(exit)} is locked to the Card Key, and no item spot holds one.`,
+              `${kindAndName('Exit', exit.name)} at ${tileOf(exit)} is locked to the Card Key, and no item spot holds one.`,
               { group: 'exits', says: 'is locked to a Card Key nothing holds' },
               exit,
             ),
@@ -937,22 +1035,26 @@ export function checkMapFile(
 
   // The hunter arrives exactly this many steps from the player, never closer
   // (`findHunterSpawnTile`), so a drop-in with no ground that far out is a raid
-  // the hunter can never join.
+  // the hunter can never join. A maker has never been told that rule, so the
+  // problem says it and what to do (playtest 39 B9).
+  const boxedIn = `the hunter arrives ${HUNTER_SPAWN_DISTANCE} steps away and has nowhere to stand`;
   const hunterRoom = fromDropIn
     .filter(({ dropIn }) => walkable(dropIn))
     .filter(({ ground }) => !ground.some((row) => row.includes(HUNTER_SPAWN_DISTANCE)))
     .map(({ dropIn }) =>
       fault(
-        `Drop-in ${dropIn.name} has no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on.`,
-        {
-          group: 'drop-ins',
-          says: `have no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on`,
-        },
+        `${kindAndName('Drop-in', dropIn.name)} is too boxed in: ${boxedIn}. Open up more ground around it.`,
+        { group: 'drop-ins', says: `are too boxed in: ${boxedIn}` },
         dropIn,
       ),
     );
 
-  const ends = new Map([...file.dropIns, ...file.exits].map((spot) => [at(onGrid(spot)), spot]));
+  // Each end by its own name, so the fault says which one a trainer sees
+  // rather than "a drop-in or an exit" (playtest 39 B10).
+  const ends = new Map([
+    ...file.dropIns.map((spot) => [at(onGrid(spot)), { spot, what: kindAndName('Drop-in', spot.name) }] as const),
+    ...file.exits.map((spot) => [at(onGrid(spot)), { spot, what: kindAndName('Exit', spot.name) }] as const),
+  ]);
   const watch = trainers.flatMap((trainer) => {
     const seen = trainerSightTiles(
       { position: onGrid(trainer), facing: trainer.facing, sightRange: trainer.sight },
@@ -970,10 +1072,10 @@ export function checkMapFile(
       ...(seenEnds.length > 0
         ? [
             fault(
-              `Trainer ${trainer.name} can see a drop-in or an exit. Turn them, or watch less far.`,
+              `${kindAndName('Trainer', trainer.name)} can see ${seenEnds.map((end) => end.what).join(' and ')}. Turn them, or watch less far.`,
               { group: 'trainers', says: 'can see a drop-in or an exit' },
               trainer,
-              ...seenEnds,
+              ...seenEnds.map((end) => end.spot),
             ),
           ]
         : []),
@@ -981,7 +1083,7 @@ export function checkMapFile(
       ...(seenLandings.length > 0
         ? [
             fault(
-              `Trainer ${trainer.name} can see where a ledge lands. Turn them, or watch less far.`,
+              `${kindAndName('Trainer', trainer.name)} can see where a ledge lands. Turn them, or watch less far.`,
               { group: 'trainers', says: 'can see where a ledge lands' },
               trainer,
               ...seenLandings,
@@ -991,50 +1093,100 @@ export function checkMapFile(
     ];
   });
 
-  const said: { what: string; text: string; at?: MapFileSpot }[] = [
-    { what: "The map's name", text: file.name },
-    { what: "The maker's name", text: file.maker },
-    ...file.dropIns.flatMap((spot) => [
-      { what: `Drop-in ${spot.name}`, text: spot.name, at: spot },
-      { what: `Drop-in ${spot.name}`, text: spot.description ?? '', at: spot },
-    ]),
-    ...file.exits.map((spot) => ({ what: `Exit ${spot.name}`, text: spot.name, at: spot })),
-    ...landmarks.map((spot) => ({ what: `Landmark ${spot.name}`, text: spot.name, at: spot })),
-    ...people.map((spot) => ({
-      what: spot.name,
-      text: [spot.name, ...spot.lines].join(' '),
+  // A refusal names the field a word is in and never quotes the word (the
+  // filter's list stays private), and a thing whose *name* is refused is
+  // called by its number, because its name is the very word being refused
+  // (playtest 39 B7: "Trainer Dick says something the game will not show"
+  // left a maker guessing whether the name or a line was at fault).
+  const lineFields = (lines: readonly string[]) =>
+    lines.map((text, index) => ({ field: `line ${index + 1}`, text }));
+  const said: {
+    who: string;
+    numbered: string;
+    at?: MapFileSpot;
+    fields: { field: string; text: string }[];
+  }[] = [
+    { who: 'The map', numbered: 'The map', fields: [{ field: 'its name', text: file.name }] },
+    { who: 'The map', numbered: 'The map', fields: [{ field: "its maker's name", text: file.maker }] },
+    ...file.dropIns.map((spot, index) => ({
+      who: kindAndName('Drop-in', spot.name),
+      numbered: `Drop-in ${index + 1}`,
       at: spot,
+      fields: [
+        { field: 'its name', text: spot.name },
+        { field: 'its description', text: spot.description ?? '' },
+      ],
+    })),
+    ...file.exits.map((spot, index) => ({
+      who: kindAndName('Exit', spot.name),
+      numbered: `Exit ${index + 1}`,
+      at: spot,
+      fields: [{ field: 'its name', text: spot.name }],
+    })),
+    ...landmarks.map((spot, index) => ({
+      who: kindAndName('Landmark', spot.name),
+      numbered: `Landmark ${index + 1}`,
+      at: spot,
+      fields: [{ field: 'its name', text: spot.name }],
+    })),
+    ...people.map((spot, index) => ({
+      who: spot.name,
+      numbered: `Person ${index + 1}`,
+      at: spot,
+      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines)],
     })),
     ...signs.map((spot, index) => ({
-      what: `Sign ${index + 1}`,
-      text: spot.lines.join(' '),
+      who: `Sign ${index + 1}`,
+      numbered: `Sign ${index + 1}`,
       at: spot,
+      fields: lineFields(spot.lines),
     })),
-    ...trainers.map((spot) => ({
-      what: `Trainer ${spot.name}`,
-      text: [spot.name, ...spot.lines].join(' '),
+    ...trainers.map((spot, index) => ({
+      who: kindAndName('Trainer', spot.name),
+      numbered: `Trainer ${index + 1}`,
       at: spot,
+      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines)],
     })),
-    ...(file.districts ?? []).map((district) => ({
-      what: `District ${district.name}`,
-      text: district.name,
+    ...(file.districts ?? []).map((district, index) => ({
+      who: `District ${district.name}`,
+      numbered: `District ${index + 1}`,
       at: district,
+      fields: [{ field: 'its name', text: district.name }],
     })),
-    ...(file.areas ?? []).map((area) => ({ what: `The inside ${area.name}`, text: area.name })),
-    ...fileLinks.flatMap((link) =>
-      link.sails ? [{ what: `The boat ${link.sails.name}`, text: link.sails.name, at: link.ends[0] }] : [],
-    ),
+    ...(file.areas ?? []).map((area, index) => ({
+      who: `The inside ${area.name}`,
+      numbered: `Inside ${index + 1}`,
+      fields: [{ field: 'its name', text: area.name }],
+    })),
+    ...fileLinks
+      .flatMap((link) => (link.sails ? [{ sails: link.sails, at: link.ends[0] }] : []))
+      .map(({ sails, at: place }, index) => ({
+        who: `The boat ${sails.name}`,
+        numbered: `Boat ${index + 1}`,
+        at: place,
+        fields: [{ field: 'its name', text: sails.name }],
+      })),
   ];
   const words = said
-    .filter(({ text }) => refusedWords(text).length > 0)
-    .map(({ what, at: place }) =>
-      fault(
-        `${what} says something the game will not show. Reword it.`,
-        { group: 'names and lines', says: 'say something the game will not show' },
+    .map((thing) => ({
+      ...thing,
+      refused: thing.fields.filter(({ text }) => refusedWords(text).length > 0),
+    }))
+    .filter(({ refused }) => refused.length > 0)
+    .map(({ who, numbered, at: place, refused }) => {
+      const nameRefused = refused.some(({ field }) => field.endsWith('name'));
+      const fields = refused.map(({ field }) => field);
+      const listed =
+        fields.length === 1
+          ? fields[0]
+          : `${fields.slice(0, -1).join(', ')} and ${fields[fields.length - 1]}`;
+      const subject = `${nameRefused ? numbered : who}: ${listed}`;
+      return fault(
+        `${subject[0].toUpperCase()}${subject.slice(1)} ${fields.length === 1 ? 'uses a word' : 'use words'} the game does not show. Change ${fields.length === 1 ? 'it' : 'them'}.`,
+        { group: 'names and lines', says: 'use a word the game does not show' },
         ...(place ? [place] : []),
-      ),
-    )
-    .filter((found, index, all) => all.findIndex((other) => other.text === found.text) === index);
+      );
+    })
 
   // The two checks about insides are only asked of a map that has one: a
   // tick against "every door leads somewhere" on a map with no doors says

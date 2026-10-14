@@ -49,6 +49,12 @@ export interface RunConfig {
   readonly secureGrid?: GridSize;
   /** How many Pokemon it protects, which Brock's second locker raises. */
   readonly securePokemonLimit?: number;
+  /**
+   * Whether the secure container went in as the autofill left it, never
+   * touched by the player. A lost raid's result screen only calls what it held
+   * "the call you made" when the player made it.
+   */
+  readonly secureFilledForYou?: boolean;
 }
 
 export interface SecureSlot {
@@ -69,6 +75,14 @@ export interface RunSnapshot {
    */
   readonly giftIds: readonly string[];
   readonly foundItems: readonly ItemStack[];
+  /**
+   * What the player put down out of the pack this raid, for good - to make
+   * room for a find or a catch. It was neither used up nor carried out, so the
+   * result screen names it on its own rather than as supplies spent.
+   */
+  readonly droppedItems: readonly ItemStack[];
+  /** See `RunConfig.secureFilledForYou`; absent reads as chosen. */
+  readonly secureFilledForYou?: boolean;
   /**
    * Contract stops made this raid, by marker id. A contract is a list of stops
    * rather than one flag because the braid survey is three of them.
@@ -148,6 +162,8 @@ export class RunManager {
   private caughtPokemonValue: Pokemon[] = [];
   private giftIdsValue: string[] = [];
   private foundItemsValue: ItemStack[] = [];
+  private droppedItemsValue: ItemStack[] = [];
+  private secureFilledForYouValue = false;
   private contractStepsValue: string[] = [];
   private secureFootprintsValue: readonly GridCargo[] = [];
   private secureGridValue: GridSize = DEFAULT_SECURE_GRID;
@@ -211,6 +227,8 @@ export class RunManager {
     this.caughtPokemonValue = [];
     this.giftIdsValue = [];
     this.foundItemsValue = [];
+    this.droppedItemsValue = [];
+    this.secureFilledForYouValue = config.secureFilledForYou ?? false;
     this.contractStepsValue = [];
     this.defeatedTrainersValue = 0;
     this.hunterFleesValue = 0;
@@ -263,6 +281,14 @@ export class RunManager {
     this.requirePhase('register a found item', RunPhase.InRun);
     validateItemStack({ itemId, quantity });
     this.foundItemsValue = combineItems([...this.foundItemsValue, { itemId, quantity }]);
+    return this.snapshot();
+  }
+
+  /** Records something put down out of the pack, which is gone for good. */
+  public registerDroppedItem(itemId: ItemId, quantity = 1): RunSnapshot {
+    this.requirePhase('register a dropped item', RunPhase.InRun);
+    validateItemStack({ itemId, quantity });
+    this.droppedItemsValue = combineItems([...this.droppedItemsValue, { itemId, quantity }]);
     return this.snapshot();
   }
 
@@ -434,6 +460,8 @@ export class RunManager {
       caughtPokemon: [...this.caughtPokemonValue],
       giftIds: [...this.giftIdsValue],
       foundItems: [...this.foundItemsValue],
+      droppedItems: [...this.droppedItemsValue],
+      ...(this.secureFilledForYouValue ? { secureFilledForYou: true } : {}),
       contractSteps: [...this.contractStepsValue],
       recoveredFieldKit: this.contractStepsValue.includes(FIELD_KIT_STEP_ID),
       defeatedTrainers: this.defeatedTrainersValue,

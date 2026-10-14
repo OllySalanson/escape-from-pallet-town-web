@@ -13,8 +13,8 @@ import type { MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
-import { CHECK_FIRST_NOTE, makerScreen, walkedCheck, type MakerViewState } from './makerView';
-import { reasonFor, signInReason } from './submissions';
+import { CHECK_FIRST_NOTE, draftEdited, makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { reasonFor, signInReason, type SentMap } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
 
 const SAMPLE = sampleLane as MapFile;
@@ -76,18 +76,48 @@ describe('the map maker screen', () => {
     }
   });
 
+  it('never names two rows of the paint pane alike, and says a planted sign cannot be read (playtest 39 B5)', () => {
+    const markup = makerScreen(state(SAMPLE, false));
+    const rows = [
+      ...markup.matchAll(/data-place="[^"]+"[^>]*>(?:<[^>]*>)*?<span class="px-row-main">([^<]+)</g),
+    ].map((match) => match[1].toLowerCase());
+    const repeated = rows.filter((label, index) => rows.indexOf(label) !== index);
+    expect(repeated).toEqual([]);
+    const planted = /data-building="sign"[^>]*data-help="([^"]+)"/.exec(markup)?.[1] ?? '';
+    expect(planted).toContain('only a picture');
+    expect(planted).toContain('Sign under Places');
+  });
+
+  it('names only buttons that exist, and never asks for the walk before the walk (playtest 39 A3)', () => {
+    const unfinished = makerScreen(state(blankMap(), false));
+    const said = [...unfinished.matchAll(/data-help="([^"]*)"|<small[^>]*>([^<]*)<\/small>|<span>([^<]*)<\/span>|<strong[^>]*>([^<]*)<\/strong>/g)]
+      .map((match) => match.slice(1).find(Boolean) ?? '')
+      .join('\n');
+    // There is no TRY IT button: the two that try a map are WALK IT and RAID IT.
+    expect(said).not.toMatch(/TRY IT/i);
+    expect(walkedCheck(false).label).not.toMatch(/TRY IT/i);
+    expect(walkedCheck(false).problems.join(' ')).toMatch(/WALK IT or RAID IT/);
+    // A greyed try button may not send the maker to "the checks above", which
+    // include the walk it is the only way to pass.
+    for (const button of tryButtons(unfinished)) {
+      expect(button).not.toContain('pass the checks above first');
+      expect(button).toMatch(/other checks/);
+    }
+    expect(walkedCheck(false).problems.join(' ')).toMatch(/every other check/);
+  });
+
   it('lets a map be tried only once it works, and says so on the button', () => {
     const unfinished = makerScreen(state(blankMap(), false));
     expect(tryButtons(unfinished)).toHaveLength(2);
     for (const button of tryButtons(unfinished)) {
       expect(button).toContain('aria-disabled="true"');
-      expect(button).toContain('pass the checks above first');
+      expect(button).toContain('Fix the other checks first');
     }
     const works = makerScreen(state(SAMPLE, false));
     for (const button of tryButtons(works)) {
       expect(button).not.toContain('aria-disabled');
     }
-    expect(works).toContain('WORKS · TRY IT');
+    expect(works).toContain('WORKS · WALK IT');
     // A finished map's checks fold to one line.
     expect(makerScreen(state(SAMPLE, true))).toContain('Every check passes.');
     expect(makerScreen(state(SAMPLE, true))).toContain('READY');
@@ -129,7 +159,7 @@ describe('the map maker screen', () => {
       'words',
       'walked',
     ]);
-    expect(markup).toContain("The map needs its maker's name.");
+    expect(markup).toContain('Type your name in Drawn by, under The map.');
     expect(markup).toContain('0 of 9');
   });
 
@@ -139,6 +169,32 @@ describe('the map maker screen', () => {
     expect(makerScreen({ ...drafts, unreadableDrafts: 1 })).toContain(
       'One draft here cannot be opened. It is kept, not deleted.',
     );
+  });
+
+  it('tells two drafts of the same name and size apart by when each was last changed', () => {
+    // Playtest 46: a downloaded map opened again is a second draft with the
+    // same name and size, and the list had nothing else to say about either.
+    const now = new Date(2026, 9, 14, 21, 30).getTime();
+    const drafts = [
+      { key: 'draft-a', file: SAMPLE, updatedAt: new Date(2026, 9, 12, 9, 15).getTime() },
+      { key: 'draft-b', file: SAMPLE, updatedAt: now - 5 * 60_000 },
+    ];
+    const markup = makerScreen({ ...state(SAMPLE, false), panel: 'drafts', drafts, now });
+    const notes = [...markup.matchAll(/data-open-draft="[^"]+"[^>]*>.*?<small class="px-note">([^<]*)<\/small>/g)].map(
+      (match) => match[1],
+    );
+    const size = `${SAMPLE.width}x${SAMPLE.height}`;
+    expect(notes).toEqual([`${size} · edited 12 Oct`, `${size} · edited 5 min ago`]);
+  });
+
+  it('says a draft was last changed today, yesterday or long ago in the words a person would', () => {
+    const now = new Date(2026, 9, 14, 21, 30).getTime();
+    expect(draftEdited(now - 20_000, now)).toBe('edited just now');
+    expect(draftEdited(new Date(2026, 9, 14, 8, 5).getTime(), now)).toBe('edited today 08:05');
+    expect(draftEdited(new Date(2026, 9, 13, 23, 59).getTime(), now)).toBe('edited yesterday 23:59');
+    expect(draftEdited(new Date(2025, 11, 31, 12, 0).getTime(), now)).toBe('edited 31 Dec 2025');
+    // A draft stored before its time was kept says nothing rather than 1970.
+    expect(draftEdited(0, now)).toBeUndefined();
   });
 
   it('greys out undo when there is nothing to undo', () => {
@@ -263,6 +319,30 @@ describe('sending a map in', () => {
     expect(reasonFor({ message: 'captcha protection: request disallowed' })).toMatch(/bot check did not pass/);
   });
 
+  it('offers TRY AGAIN only where trying again can work (playtest 39 A8)', () => {
+    const failed = (message: string): string =>
+      ready({ step: 'failed', reason: reasonFor({ message }) });
+    for (const message of [
+      'You can send three maps a day. Try again tomorrow.',
+      'The inbox is full for today. Try again tomorrow.',
+      'This maker cannot send maps.',
+      'Only a map sent back to you can be sent again.',
+      'Anonymous sign-ins are disabled',
+    ]) {
+      const markup = failed(message);
+      expect(markup, message).not.toContain('data-send>');
+      expect(markup, message).toContain('Back to map');
+      expect(markup, message).toContain('safe in your drafts');
+    }
+    for (const message of ['TypeError: Failed to fetch', 'captcha protection: request disallowed']) {
+      expect(failed(message), message).toContain('data-send>Try again');
+    }
+    expect(failed('You can send three maps a day. Try again tomorrow.')).toContain(
+      '<p class="px-note px-wrap">Your map is safe in your drafts.</p>',
+    );
+    expect(failed('TypeError: Failed to fetch').match(/safe in your drafts/g)).toHaveLength(1);
+  });
+
   it('says plainly why a bot check stopped a map, and that the map is safe to send again', () => {
     for (const trouble of ['unavailable', 'failed', 'refused', 'busy', 'offline'] as const) {
       expect(signInReason(trouble)).toMatch(/safe in your drafts\.$/);
@@ -292,6 +372,28 @@ describe('sending a map in', () => {
     });
     expect(markup).toContain('Sent back with notes · try 2 · ABCDEFGHJK');
     expect(markup).toContain('Move the exit off the road.');
+  });
+
+  it('says how to send a map sent back again, and only under one sent back (playtest 39 A9)', () => {
+    const row = (status: SentMap['status']) =>
+      makerScreen({
+        ...state(SAMPLE, true),
+        panel: 'sent',
+        sent: {
+          step: 'loaded',
+          maps: [
+            { receiptCode: 'ABCDEFGHJK', mapName: 'Reed Ford', status, note: null, revision: 1, sentAt: '', updatedAt: '' },
+          ],
+        },
+      });
+    expect(row('sent_back')).toContain('Open this map in Drafts, fix it, walk it again, then press SEND IN.');
+    for (const status of ['waiting', 'approved', 'rejected', 'published'] as const) {
+      expect(row(status), status).not.toContain('then press SEND IN');
+    }
+    expect(row('rejected')).toContain('Turned down for good');
+    expect(ready({ step: 'sent', receipt: 'ABCDEFGHJK' })).toContain(
+      'To see what becomes of it, open Drafts, then Sent in.',
+    );
   });
 });
 
@@ -345,7 +447,9 @@ describe('the checks, as a list a maker works through', () => {
   it('only says a fault about the whole map, with nothing to press', () => {
     const walked = checks.length - 1;
     expect(markup).not.toContain(`data-goto="${walked}:0"`);
-    expect(markup).toContain('<small class="maker-fault-text px-wrap">WALK IT or RAID IT, and leave by an exit.</small>');
+    expect(markup).toContain(
+      '<small class="maker-fault-text px-wrap">Once every other check passes, press WALK IT or RAID IT and leave by an exit.</small>',
+    );
   });
 
   it('names an inside as well as a tile', () => {

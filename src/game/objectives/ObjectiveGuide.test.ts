@@ -129,7 +129,12 @@ describe('objective field guide', () => {
     });
 
     expect(after.hints).toHaveLength(2);
-    expect(after.hints[0]).toContain('Lost field kit secured');
+    // Never 'secured': that is the secure container's word, and a hint that
+    // called the kit secured and then said it only banks on the way out
+    // contradicted itself (playtest 43).
+    expect(after.hints[0]).toBe('Lost field kit is ready. It only banks when you extract.');
+    expect(after.hints.join(' ')).not.toMatch(/secured/i);
+    expect(FIRST_CONTRACT.markers[0].collectedMessage).not.toMatch(/secure/i);
     expect(after.hints.join(' ')).toContain('SOUTH GATE');
   });
 
@@ -200,8 +205,9 @@ describe('objective field guide', () => {
       },
     ).hints.join(' ');
     expect(banked).not.toContain('activates the Radio Exit');
+    expect(banked).not.toMatch(/the ranger is back/i);
     expect(banked).toContain(
-      'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.',
+      'Ranger Station stays switched on: the Radio Exit is open from the first second of every raid.',
     );
 
     // Maya stands up again every raid, but beaten in this one she is not on the

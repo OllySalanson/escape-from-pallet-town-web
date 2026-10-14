@@ -444,4 +444,221 @@ describe('the defeat line-up', () => {
       }
     }
   });
+
+  it('fits a full line-up in the window rather than scrolling it sideways (playtest 42)', () => {
+    // Nine figures (you, six Pokemon, two kinds of ball) at their roomy widths
+    // are wider than a 1280 window: every column has to be able to give way,
+    // and nothing inside one may hold it open at a fixed width.
+    expect(declared(rule('.defeat-stage'), 'grid-template-columns')).toBe('minmax(0, 1fr)');
+    expect(declared(rule('.defeat-figure'), 'min-width')).toBe('0');
+    expect(declared(rule('.defeat-figure'), 'flex')).toBe('0 1 auto');
+    expect(declared(rule('.defeat-cast'), 'width')).toBe('100%');
+    expect(declared(rule('.defeat-item-glyph'), 'width')).toMatch(/^min\(.*100%\)$/);
+    expect(declared(rule('.defeat-trainer'), 'width')).toMatch(/^min\(100%,/);
+    // A margin either side keeps the end figures off the window's edge.
+    expect(declared(rule('.defeat-cast'), 'padding-inline')).toBeDefined();
+  });
+
+  it('keeps a ten-letter name whole in a full line-up on a 900-pixel window (playtest 42)', () => {
+    // Measured in the browser: at 900x600 nine columns came out 67 pixels
+    // wide, a plate's inside 61, and CHARMANDER is 62 - so it broke as
+    // CHARMANDE / R. A crowded line-up (seven figures or more after you)
+    // closes the gaps, stops widening the last stand and lets a supply's
+    // column give way first; it came out 83 at 900 and 71 at 800.
+    const crowded = '.defeat-cast:has(> .defeat-figure:nth-child(7))';
+    const roomyGap = declared(rule('.defeat-cast'), 'gap') ?? '';
+    const crowdedGap = declared(rule(crowded), 'gap') ?? '';
+    const middle = (value: string) => Number(/,\s*([\d.]+)vw/.exec(value)?.[1]);
+    expect(middle(crowdedGap)).toBeLessThan(middle(roomyGap));
+    expect(declared(rule(`${crowded} .defeat-figure.is-last-stand`), 'width')).toBe(
+      declared(rule('.defeat-figure'), 'width'),
+    );
+    const supply = rule(`${crowded} .defeat-figure[data-kind='item']`);
+    expect(Number(declared(supply, 'flex-shrink'))).toBeGreaterThan(1);
+    // ...but never so far that its count breaks from its number.
+    expect(declared(supply, 'min-width')).toMatch(/^\d+px$/);
+    expect(declared(rule('.defeat-meta'), 'white-space')).toBe('nowrap');
+  });
+});
+
+describe('the ghost of a carried piece', () => {
+  // Playtest 40: carried over a seat another piece already holds, the ghost was
+  // marked "will not fit" and nothing red showed. A block is positioned (its
+  // stack count is pinned to its corner), and a positioned box paints over every
+  // box that is not, whatever the order of the markup - so the ghost was drawn
+  // under the very block it collides with, the one place "no" is ever needed.
+  const bodyOf = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
+      .map(([, , rule]) => rule)
+      .join(';');
+  const declared = (body: string, property: string): string | undefined =>
+    new RegExp(`(?:^|[\\s;])${property}:\\s*([^;]+);`).exec(body)?.[1]?.trim();
+
+  it('is drawn over the blocks it lands on, not under them', () => {
+    expect(declared(bodyOf(':where(.pixel-ui) .px-grid-block'), 'position')).toBe('relative');
+    const ghost = bodyOf(':where(.pixel-ui) .px-grid-ghost');
+    expect(declared(ghost, 'position')).toMatch(/^(relative|absolute)$/);
+    expect(Number(declared(ghost, 'z-index'))).toBeGreaterThan(0);
+  });
+
+  it('says "will not fit" with a heavier edge as well as a red one, so it is not colour alone', () => {
+    const good = declared(bodyOf(':where(.pixel-ui) .px-grid-ghost'), 'box-shadow') ?? '';
+    const bad = declared(bodyOf(':where(.pixel-ui) .px-grid-ghost.is-bad'), 'box-shadow') ?? '';
+    expect(good).toMatch(/var\(--u\) var\(--ink\)/);
+    expect(bad).toMatch(/calc\(var\(--u\) \* 2\) var\(--red\)/);
+  });
+});
+
+describe('the map maker check marks', () => {
+  // Playtest 40 #6: a check still waiting and a check that failed were both a
+  // plain 5x5 square, grey or red - the same square to anybody who cannot tell
+  // those two apart. Each state is its own drawn shape now, as passed is a tick.
+  const bodyOf = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
+      .map(([, , rule]) => rule)
+      .join(';');
+  const maskOf = (state: string): string | undefined =>
+    /(?:^|[\s;])mask:\s*([^;]+);/.exec(bodyOf(state === '' ? ':where(.pixel-ui) .maker-check-mark' : `:where(.pixel-ui) .maker-check${state} .maker-check-mark`))?.[1]?.trim();
+
+  it('draws passed, waiting and failed as three different shapes, not one square in two colours', () => {
+    const passed = maskOf('') ?? '';
+    const waiting = maskOf('.is-waiting') ?? '';
+    const failed = maskOf('.is-failed') ?? '';
+    for (const mask of [passed, waiting, failed]) {
+      expect(mask).toMatch(/^var\(--px-[a-z-]+\)/);
+    }
+    expect(new Set([passed, waiting, failed].map((mask) => /var\((--px-[a-z-]+)\)/.exec(mask)?.[1])).size).toBe(3);
+  });
+
+  it('declares every shape it draws', () => {
+    for (const state of ['', '.is-waiting', '.is-failed']) {
+      const name = /var\((--px-[a-z-]+)\)/.exec(maskOf(state) ?? '')?.[1];
+      expect(stylesheet).toMatch(new RegExp(`${name}: url\\("data:image/svg\\+xml`));
+    }
+  });
+});
+
+describe('the deploy progress rail', () => {
+  // Playtest 40 #7: a step already done was teal and a step to come grey-blue,
+  // the same grey to anybody who cannot tell those two apart. A done step
+  // carries the drawn tick, as a fact on a tag does.
+  const bodyOf = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
+      .map(([, , rule]) => rule)
+      .join(';');
+
+  it('draws a tick after a done step and nothing after a step to come', () => {
+    const done = bodyOf(':where(.pixel-ui) .px-rail .done::after');
+    expect(done).toMatch(/mask:\s*var\(--px-tick\)/);
+    expect(done).toMatch(/content:\s*''/);
+    expect(bodyOf(':where(.pixel-ui) .px-rail .upcoming::after')).toBe('');
+    expect(bodyOf(':where(.pixel-ui) .px-rail .current::after')).toBe('');
+  });
+});
+
+describe('the map maker chosen tool, brush, place and zoom', () => {
+  // Playtest 40 #8: which tool, brush, place and zoom were chosen was a pale
+  // teal wash and nothing else, the same as cream to an eye that sees no
+  // colour, and once the cursor left for the map nothing else said it. Each
+  // chosen one carries the drawn tick; one not chosen keeps the tick's room
+  // and draws nothing in it, so choosing never moves a button along its row.
+  const bodyOf = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
+      .map(([, , rule]) => rule)
+      .join(';');
+
+  it.each(['.maker-tool', '.maker-area', '.maker-zoom', '.maker-choice'])(
+    'draws a tick on a chosen %s and none on one not chosen',
+    (control) => {
+      const every = bodyOf(`:where(.pixel-ui) ${control}[aria-pressed]::after`);
+      expect(every).toMatch(/content:\s*''/);
+      expect(every).toMatch(/mask:\s*var\(--px-tick\)/);
+      expect(every).toMatch(/background:\s*transparent/);
+      expect(bodyOf(`:where(.pixel-ui) ${control}[aria-pressed='true']::after`)).toMatch(
+        /background:\s*currentColor/,
+      );
+    },
+  );
+});
+
+describe('a type tag', () => {
+  /** WCAG 2.x relative luminance of a `#rrggbb` colour. */
+  function luminance(hex: string): number {
+    const [r, g, b] = [1, 3, 5].map((at) => {
+      const channel = Number.parseInt(hex.slice(at, at + 2), 16) / 255;
+      return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  function contrast(a: string, b: string): number {
+    const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (light + 0.05) / (dark + 0.05);
+  }
+  const ink = /--cream-lit:\s*(#[0-9a-f]{6});/i.exec(stylesheet)?.[1] ?? '';
+  const fills = [...stylesheet.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .filter(([, selectors]) => /\.px-type\b/.test(selectors) || /\.px-type-[a-z]+/.test(selectors))
+    .map(([, selectors, rule]) => ({
+      selectors: selectors.trim(),
+      fill: /background:\s*(#[0-9a-f]{6})/i.exec(rule)?.[1],
+    }))
+    .filter((entry): entry is { selectors: string; fill: string } => entry.fill !== undefined);
+
+  it('is lettered in the cream ink every fill is measured against', () => {
+    expect(ink).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(fills.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('can be read by everybody: every fill holds its letters at WCAG AA, 4.5 to 1 (playtest 40)', () => {
+    const faint = fills
+      .map(({ selectors, fill }) => ({ selectors, fill, ratio: Number(contrast(ink, fill).toFixed(2)) }))
+      .filter(({ ratio }) => ratio < 4.5);
+    expect(faint).toEqual([]);
+  });
+
+  it('tells every one of the seventeen types apart by its own fill', async () => {
+    const { PokemonType } = await import('./game/pokemon/PokemonType');
+    const fillOf = (type: string): string | undefined =>
+      fills.find(({ selectors }) =>
+        selectors.split(',').some((selector) => selector.trim().endsWith(`.px-type-${type.toLowerCase()}`)),
+      )?.fill;
+    const types = Object.values(PokemonType);
+    expect(types.filter((type) => fillOf(type) === undefined)).toEqual([]);
+    const shared = types.filter(
+      (type, index) => types.findIndex((other) => fillOf(other)?.toLowerCase() === fillOf(type)?.toLowerCase()) !== index,
+    );
+    expect(shared).toEqual([]);
+  });
+});
+
+describe("the map maker's passed-check tick", () => {
+  // Teal on cream was 1.46 to 1, so a passed check and a waiting one read as
+  // the same faint square (playtest 39 D1). A mark that means something has to
+  // hold 3 to 1 against the cream it stands on.
+  function luminance(hex: string): number {
+    const [r, g, b] = [1, 3, 5].map((at) => {
+      const channel = Number.parseInt(hex.slice(at, at + 2), 16) / 255;
+      return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  const colourOf = (value: string): string => {
+    const name = /var\((--[a-z-]+)\)/.exec(value)?.[1];
+    if (!name) return value;
+    return new RegExp(`${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(stylesheet)?.[1] ?? '';
+  };
+
+  it('stands out from the cream it is drawn on, at 3 to 1 or better', () => {
+    const rule = [...stylesheet.matchAll(/([^{}]+)\{([^}]*)\}/g)].find(
+      ([, selectors]) => selectors.trim() === ':where(.pixel-ui) .maker-check-mark',
+    )?.[2];
+    const mark = colourOf(/background:\s*([^;]+);/.exec(rule ?? '')?.[1]?.trim() ?? '');
+    const cream = colourOf('var(--cream)');
+    expect(mark).toMatch(/^#[0-9a-f]{6}$/i);
+    const [light, dark] = [luminance(mark), luminance(cream)].sort((x, y) => y - x);
+    expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(3);
+  });
 });

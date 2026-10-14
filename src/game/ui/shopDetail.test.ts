@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pricePart, shopDetailPane, shopPaidColumn, shopPriceColumn } from './shopDetail';
+import { pricePart, shopDetailPane, shopPaidColumn, shopPriceColumn, SHORT_MARK, SHORT_MARK_LEGEND } from './shopDetail';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { TRADER_BARTERS } from '../hub/trader';
 import { getItemById } from '../items';
@@ -11,15 +11,40 @@ import { getItemById } from '../items';
  * built and its effect afterwards - which is the fault this module exists for.
  */
 describe('a priced row', () => {
-  it('gives every part of a price its own line, and reddens only what is short', () => {
+  it('gives every part of a price its own line, and marks only what is short', () => {
     const column = shopPriceColumn([
       { ask: '2 Pokémon' },
       { ask: '2× Parts crate', short: true },
     ]);
 
     expect(column).toBe(
-      '<span class="px-price"><small>2 Pokémon</small><small class="cost-short">2× Parts crate</small></span>',
+      `<span class="px-price"><small>2 Pokémon</small><small class="cost-short">${SHORT_MARK}2× Parts crate</small></span>`,
     );
+  });
+
+  /**
+   * Playtest 40 #4: Brock's heading said "Red is not yet spare at base" and the
+   * short part was told apart by red alone, which is ink to a protan eye and
+   * the same grey as a covered part to an achromat. A short part carries a
+   * drawn cross, and the legend names the cross rather than the colour.
+   */
+  it('marks a short part with a drawn cross, not by colour alone', () => {
+    const column = shopPriceColumn([{ ask: '1× Radio valve', short: true }, { ask: '1× Cable coil' }]);
+    expect(column.match(/class="cost-mark"/g)).toHaveLength(1);
+    expect(SHORT_MARK).toContain('aria-hidden="true"');
+    expect(SHORT_MARK_LEGEND).toContain(SHORT_MARK);
+    expect(SHORT_MARK_LEGEND.toLowerCase()).not.toContain('red');
+
+    const detail = shopDetailPane({
+      id: 'radio-mast',
+      shown: true,
+      effect: 'x',
+      detail: 'y',
+      priceLabel: 'Price',
+      price: [pricePart('1× Radio valve', 0, 1, 'spare at base'), pricePart('1× Cable coil', 3, 1, 'spare at base')],
+    });
+    expect(detail).toContain(`<dd>${SHORT_MARK}0 spare at base</dd>`);
+    expect(detail).toContain('<dd>3 spare at base</dd>');
   });
 
   it('says a bought thing is paid for rather than dropping its price column', () => {
@@ -57,7 +82,7 @@ describe('the pane under a shelf', () => {
     expect(detail).toContain('<dd>3 you can release</dd>');
     // Short, so the row is marked - and only the held half is drawn in red.
     expect(detail).toContain('<div class="is-short"><dt>');
-    expect(detail).toContain('<dd>1 spare at base</dd>');
+    expect(detail).toContain(`<dd>${SHORT_MARK}1 spare at base</dd>`);
   });
 
   it('draws an icon slot on a price with no icon, so the asks line up', () => {

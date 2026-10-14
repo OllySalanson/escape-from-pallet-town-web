@@ -355,13 +355,15 @@ function turned(glyph: readonly string[], toward: MapFileLinkEnd['toward']): rea
 
 /**
  * Each place is a frame and a glyph in its own colour - a way in is an arrow
- * pointing down onto the tile, a way out a cross, a find a gem - drawn in whole
+ * pointing down onto the tile, a way out an arrow pointing up off it (the shape
+ * of the game's own open-exit tile: a cross read as "no" or "delete", playtest
+ * 39 B1), a find a gem - drawn in whole
  * pixels of the tile rather than in text, which the game's face cannot set this
  * small.
  */
 const MARK_GLYPHS: Readonly<Record<'drop-in' | 'exit' | 'item' | 'landmark', readonly string[]>> = {
   'drop-in': ['#######', '.#####.', '..###..', '...#...'],
-  exit: ['#.....#', '.#...#.', '..#.#..', '...#...', '..#.#..', '.#...#.', '#.....#'],
+  exit: ['...#...', '..###..', '.#####.', '#.###.#', '..###..', '..###..', '..###..'],
   item: ['..#..', '.###.', '#####', '.###.', '..#..'],
   landmark: ['...#...', '..###..', '#######', '.#####.', '.##.##.', '#.....#'],
 };
@@ -574,7 +576,7 @@ export function drawMap(
     });
   }
   // A buried exit is drawn as the rubble it is under, framed in the exit's
-  // colour: the cross would say "a way out" of something that is a wall until
+  // colour: the arrow would say "a way out" of something that is a wall until
   // a Pickaxe meets it.
   file.exits.forEach((spot, index) => {
     if (spot.opens.when !== 'dug') {

@@ -153,7 +153,12 @@ export const calculateDamage = (
   const attackStat = move.category === MoveCategory.Physical ? 'attack' : 'spAttack';
   const defenseStat = move.category === MoveCategory.Physical ? 'defense' : 'spDefense';
   const attack = getStagedStat(attacker.stats[attackStat], attackerStages[attackStat]);
-  const defense = getStagedStat(defender.stats[defenseStat], defenderStages[defenseStat]);
+  // Self-Destruct and Explosion halve the defense they meet before its stages
+  // are applied, as FireRed's `CalculateBaseDamage` does for `EFFECT_EXPLOSION`.
+  const unstagedDefense = move.userFaints
+    ? Math.max(1, Math.floor(defender.stats[defenseStat] / 2))
+    : defender.stats[defenseStat];
+  const defense = getStagedStat(unstagedDefense, defenderStages[defenseStat]);
   // The roll is spent whether or not the defender's armour turns it aside, so
   // Shell Armor changes what a hit costs and never what the next roll is.
   const rolledCritical = clampRandom(random) * 100 <= criticalHitChancePercent(move.critStage);

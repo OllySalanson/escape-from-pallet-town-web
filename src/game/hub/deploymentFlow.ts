@@ -115,6 +115,8 @@ export interface Deployment {
   readonly stashSecureSlot: StashSecureSlot;
   /** What the container was filled with, so the next raid can start from it. */
   readonly securePreference: SecurePreference;
+  /** True when the player never touched the container and the autofill chose. */
+  readonly secureFilledForYou: boolean;
   /** How the player laid the pack out, so the raid deploys the pack they packed. */
   readonly bagArrangement: GridArrangement;
   /** How the player laid the secure container out, remembered the same way. */
@@ -990,6 +992,7 @@ export class DeploymentFlow {
         items: securedItems.map(({ itemId, quantity }) => ({ itemId, quantity })),
       },
       securePreference: this.securePreference,
+      secureFilledForYou: !this.secureTouched,
       // The pack deploys laid out the way the player left it, so what they
       // arranged at base is the pack they open in the field.
       bagArrangement: this.bagSeats,

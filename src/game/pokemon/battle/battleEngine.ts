@@ -2012,6 +2012,17 @@ const applyMove = (
     }
   }
 
+  // Self-Destruct and Explosion cost the user everything, hit or miss
+  // (`Cmd_faintifabilitynotdamp` runs before the accuracy check). It falls
+  // after whatever it struck, through the same faint as a recoil's below.
+  if (move.base.userFaints) {
+    const spentUser = attackerNow();
+    nextState = withUnit(nextState, ref, {
+      ...spentUser,
+      currentHp: hpAfterDamage(ref.side, spentUser.currentHp, spentUser.currentHp),
+    });
+  }
+
   for (const hit of struck) {
     if (!hit.fainted) {
       continue;

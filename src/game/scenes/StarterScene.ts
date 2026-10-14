@@ -94,7 +94,7 @@ export class StarterScene extends Phaser.Scene {
     this.overlay.root.innerHTML = pixelScreen({
       place: 'First raid briefing',
       title: 'Choose your partner',
-      hints: 'ARROWS move · ENTER choose',
+      hints: 'ARROWS choose · ENTER on CONFIRM to begin',
       body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner enters the lost field kit raid with you. Choose carefully.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
         title: selected.name,
         // The bar's title is the name and the button confirms it by name, so

@@ -74,6 +74,22 @@ export function reasonFor(error: { readonly message?: string } | null | undefine
   return signInReason(troubleOf(error));
 }
 
+/**
+ * Whether pressing TRY AGAIN could ever change the answer. Only a sign-in that
+ * did not go through, a bot check that would not load or pass, and a lost
+ * connection clear by trying again at once; a daily limit, a blocked maker,
+ * sending switched off, a map that is already in or a map the database will
+ * not read give the same answer however often it is sent (playtest 39 A8).
+ */
+export function canTryAgain(reason: string): boolean {
+  return [
+    'Sign in before sending a map.',
+    signInReason('unavailable'),
+    signInReason('failed'),
+    signInReason('offline'),
+  ].includes(reason);
+}
+
 /** Whether this browser already has a maker's session, so sending draws no bot check. */
 export async function isSignedIn(): Promise<boolean> {
   return (await currentPlayer()) !== null;
@@ -161,6 +177,6 @@ export const STATUS_WORDS: Readonly<Record<SubmissionStatus, string>> = {
   waiting: 'Waiting to be played',
   sent_back: 'Sent back with notes',
   approved: 'Approved',
-  rejected: 'Turned down',
+  rejected: 'Turned down for good',
   published: 'In the game',
 };

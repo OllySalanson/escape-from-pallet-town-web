@@ -17,7 +17,10 @@ interface PackHarness {
 }
 
 /** The raid pack open over a bag holding `contents`. */
-function packHolding(contents: Record<string, number>): { scene: PackHarness; bag: Bag } {
+function packHolding(
+  contents: Record<string, number>,
+  onItemDropped?: (itemId: string, quantity: number) => void,
+): { scene: PackHarness; bag: Bag } {
   const bag = new Bag();
   for (const [itemId, quantity] of Object.entries(contents)) {
     bag.add(itemId, quantity);
@@ -27,6 +30,7 @@ function packHolding(contents: Record<string, number>): { scene: PackHarness; ba
     bag,
     party: { pokemon: [new Pokemon(getSpeciesById('rattata')!, 10)] },
     onItemUsed: () => undefined,
+    onItemDropped,
     render: () => undefined,
   });
   return { scene: scene as unknown as PackHarness, bag };
@@ -79,5 +83,18 @@ describe('dropping Pokédollars from the raid pack', () => {
     scene.dropOne('potion');
     expect(bag.count('potion')).toBe(2);
     expect(scene.status).toContain('Dropped Potion.');
+  });
+});
+
+describe('what a drop tells the raid', () => {
+  it('names the item and how much went on the ground, so the result can say it was put down', () => {
+    const drops: [string, number][] = [];
+    const { scene } = packHolding({ money: 300, 'parts-crate': 1 }, (itemId, quantity) => drops.push([itemId, quantity]));
+    scene.dropOne('parts-crate');
+    scene.dropOne('money');
+    expect(drops).toEqual([
+      ['parts-crate', 1],
+      ['money', 50],
+    ]);
   });
 });

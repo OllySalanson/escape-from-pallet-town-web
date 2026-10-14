@@ -105,7 +105,7 @@ import {
   carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
-import { Bag, ITEMS, heldItemName, type ItemDefinition } from '../items';
+import { Bag, ITEMS, heldItemName, type ItemDefinition, type ItemId } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
@@ -284,7 +284,9 @@ const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
   // Read on the panel's cream, so these are the dark end of each hue.
   good: '#166534',
   bad: PANEL_REFUSAL_INK,
-  none: '#64748b',
+  // A muted violet rather than a paler slate: #64748b read 3.9:1 on the cream
+  // (playtest 40), and a darker slate would match the neutral line's ink.
+  none: '#5c4a72',
   neutral: PANEL_GUIDANCE_INK,
 };
 /**
@@ -1662,6 +1664,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.bag.remove(choice.itemId, choice.drops)) {
       return;
     }
+    this.runSession?.manager.registerDroppedItem(choice.itemId as ItemId, choice.drops);
     audioManager.play('menuClose');
     if (packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
       const ballIndex = Math.max(
@@ -2586,8 +2589,23 @@ export class BattleScene extends Phaser.Scene {
     this.mode = 'party';
     this.forcedReplacement = false;
     this.partyMessage = '';
-    this.selectedCommand = 0;
+    // On the Pokemon fighting now, as FireRed's list (whose first slot is
+    // always the one out) opens: opened on the fainted lead, the first press
+    // was answered with "cannot revive" (playtest 42).
+    this.selectedCommand = this.firstMedicineTargetIndex();
     this.showCommands();
+  }
+
+  /** The first Pokemon standing on the field, else the first standing at all, else the first. */
+  private firstMedicineTargetIndex(): number {
+    const standing = playerCombatants(this.state)
+      .filter((combatant) => combatant.currentHp > 0)
+      .map((combatant) => combatant.pokemon);
+    const onField = this.party.pokemon.findIndex((pokemon) => standing.includes(pokemon));
+    if (onField >= 0) {
+      return onField;
+    }
+    return Math.max(0, this.party.pokemon.findIndex((pokemon) => !pokemon.isFainted));
   }
 
   /**
@@ -3931,6 +3949,8 @@ export class BattleScene extends Phaser.Scene {
       // sequence names it, and it cannot be recovered afterwards: by then every
       // member of the party is at 0 HP and indistinguishable from every other.
       lastStand: this.state.player.pokemon,
+      // Whether anybody was there to go through the bag: a wild Pokemon is not.
+      lostTo: this.trainer || this.hunterBattle ? 'trainer' : 'wild',
       // A wipe restocks the kit but revives nobody, so whether the lab will
       // let this player out again is read off the stash just written.
       fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),

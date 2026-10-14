@@ -36,6 +36,8 @@ export type ExtractionOutcome = 'ESCAPED' | 'WIPED';
 /** Why a lost raid ended, which changes the headline but not the accounting. */
 export type WipeCause = 'defeated' | 'timer';
 
+export type LostTo = 'wild' | 'trainer';
+
 /** How much a successful raid was actually worth, used to grade the headline. */
 export type HaulTier = 'empty' | 'thin' | 'solid' | 'loaded';
 
@@ -147,6 +149,15 @@ export interface ExtractionReport {
   readonly durationMs: number;
   /** Everything the stash gained (ESCAPED) or lost for good (WIPED). */
   readonly ledger: ReportGroup;
+  /**
+   * The part of `ledger` a contract paid rather than the raid found. The
+   * result screen tags it as the contract's reward, because a Super Potion the
+   * contract handed over listed as banked read as one found in the field
+   * (playtest 43 B6). Empty on a lost raid.
+   */
+  readonly ledgerPaid: ReportGroup;
+  /** The rest of `ledger`: what the raid itself brought out, or lost. */
+  readonly ledgerFound: ReportGroup;
   readonly ledgerHeading: string;
   readonly ledgerEmptyText: string;
   readonly contract?: ReportContract;
@@ -162,6 +173,11 @@ export interface ExtractionReport {
   readonly gambleVerdict: string;
   /** Undefined when the losing scene could not see the bag, never an empty lie. */
   readonly spent?: readonly ReportItem[];
+  /**
+   * What was put down out of the pack for room. Neither used up nor carried
+   * out, so it is never counted as spent (playtest 43 B6).
+   */
+  readonly dropped: readonly ReportItem[];
   /**
    * Every Pokemon that came home having learned something, most improved
    * first. Empty when the raid taught nobody anything, which is when the screen
@@ -189,6 +205,13 @@ export interface ExtractionReport {
    * was lost in a battle, which is the one ending with a line-up to show.
    */
   readonly fallen?: readonly FallenPokemon[];
+  /** What won the fight the raid was lost in, when it was lost in one. */
+  readonly lostTo?: LostTo;
+  /**
+   * The secure container went in as the autofill left it, so what it held was
+   * not a call the player made. Absent reads as chosen.
+   */
+  readonly secureFilledForYou?: boolean;
   /**
    * What the base is like to come home to after a lost raid, or null after a
    * survived one. A wipe restocks the kit, but it revives nobody: a secured
@@ -228,6 +251,13 @@ export interface ExtractionReportInput {
    */
   readonly lastStand?: Pokemon;
   /**
+   * What won the fight a raid was lost in: a wild Pokemon, or a trainer (the
+   * hunter is one). A wild Pokemon takes nothing off anybody, so the defeat
+   * sequence only says somebody stripped you when somebody was there. Absent
+   * reads as a trainer.
+   */
+  readonly lostTo?: LostTo;
+  /**
    * Rare finds this raid saw and left on the ground, by display name.
    *
    * It is passed in rather than derived because only the world knows what was
@@ -256,6 +286,15 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     pokemon: ledgerSource.pokemon.map(toReportPokemon),
     items: toReportItems(ledgerSource.items),
   };
+  const ledgerPaid: ReportGroup = escaped
+    ? { pokemon: contractPaid.pokemon.map(toReportPokemon), items: toReportItems(contractPaid.items) }
+    : { pokemon: [], items: [] };
+  const ledgerFound: ReportGroup = escaped
+    ? {
+      pokemon: banked.pokemon.filter((pokemon) => !contractPaid.pokemon.includes(pokemon)).map(toReportPokemon),
+      items: toReportItems(subtractStacks(banked.items, contractPaid.items)),
+    }
+    : ledger;
 
   // A secure slot is a decision right up until the raid ends, and then it is an
   // outcome - on a survived raid as much as a lost one. A Potion declared secure
@@ -322,10 +361,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
       ? escapeSummary(
-        {
-          pokemon: banked.pokemon.filter((pokemon) => !contractPaid.pokemon.includes(pokemon)).map(toReportPokemon),
-          items: toReportItems(subtractStacks(banked.items, contractPaid.items)),
-        },
+        ledgerFound,
         risked,
         contractBanked,
         progress,
@@ -338,6 +374,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     elapsedMs: snapshot.elapsedMs,
     durationMs: input.durationMs,
     ledger,
+    ledgerPaid,
+    ledgerFound,
     ledgerHeading: escaped ? 'Banked' : 'Gone for good',
     ledgerEmptyText: escaped
       ? gear.some((piece) => piece.fate === 'found')
@@ -369,6 +407,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     risked,
     gambleVerdict: gambleVerdict(escaped, secured, stakes),
     ...(spent === undefined ? {} : { spent }),
+    dropped: toReportItems(snapshot.droppedItems),
     progress,
     progressSummary: progressSummary(progress),
     gear,
@@ -385,6 +424,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       ...pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ],
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
+    ...(input.cause === 'defeated' && input.lostTo ? { lostTo: input.lostTo } : {}),
+    ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
   };
@@ -520,12 +561,15 @@ function gambleVerdict(escaped: boolean, secured: ReportGroup, riskedDescription
 
 /**
  * Supplies burned during the raid: what was carried in, plus what was picked up,
- * minus what was still in the bag at the end.
+ * minus what was still in the bag at the end and what was put down for room.
  */
 function suppliesSpent(snapshot: RunSnapshot, carriedOut: BagContents): ReportItem[] {
   const held = new Map<string, number>();
   for (const { itemId, quantity } of [...(snapshot.loadout?.items ?? []), ...snapshot.foundItems]) {
     held.set(itemId, (held.get(itemId) ?? 0) + quantity);
+  }
+  for (const { itemId, quantity } of snapshot.droppedItems) {
+    held.set(itemId, (held.get(itemId) ?? 0) - quantity);
   }
   return toReportItems(
     [...held].map(([itemId, quantity]) => ({

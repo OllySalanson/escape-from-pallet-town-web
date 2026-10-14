@@ -12,12 +12,14 @@ import {
   formatMoney,
   isFoundOnly,
   itemAmountFor,
+  BASE_SECURE_GRID,
   itemAmountsFor,
   readArrangement,
   type GridArrangement,
 } from '../items';
 import {
   TRADER_BERTH_PRICE,
+  berthSquares,
   checkBarter,
   checkBerth,
   checkPurchase,
@@ -1420,7 +1422,7 @@ export class SaveManager {
     };
     return {
       ok: true,
-      message: `Berth paid. One more stack comes home from this raid.`,
+      message: `Berth paid. +${berthSquares(BASE_SECURE_GRID)} protected squares in the secure slot, this raid.`,
       saved: this.save({ ...game, raidProgress, traderBerthPaid: true }),
     };
   }

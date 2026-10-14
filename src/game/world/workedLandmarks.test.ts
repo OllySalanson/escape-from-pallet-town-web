@@ -83,6 +83,17 @@ describe('a landmark the world keeps worked', () => {
     }
   });
 
+  it('names on the result screen the landmark the player worked, never somebody they never met (playtest 43)', () => {
+    for (const work of WORKED_LANDMARKS) {
+      const label = poiOf(work.poiId).label.toLowerCase();
+      expect(`${work.contractId}: ${work.note.toLowerCase().includes(label) ? label : work.note}`).toBe(
+        `${work.contractId}: ${label}`,
+      );
+    }
+    const floodplain = WORKED_LANDMARKS.find((work) => work.poiId === 'floodplain-ranger-radio')!;
+    expect(floodplain.note).not.toMatch(/\bhis\b|\bhe\b|the ranger is/i);
+  });
+
   it('holds its caption to the width every other map caption is held to', () => {
     // The same rule and the same number as `extractionPoints.test.ts`: a wider
     // window than this has nowhere to sit on the base stage.

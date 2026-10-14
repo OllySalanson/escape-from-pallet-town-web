@@ -43,6 +43,8 @@ describe('the result screen ledger', () => {
     const report = {
       outcome: 'ESCAPED',
       ledger: { pokemon: [], items: [] },
+      ledgerFound: { pokemon: [], items: [] },
+      ledgerPaid: { pokemon: [], items: [] },
       ledgerHeading: 'Banked',
       ledgerEmptyText: 'Nothing.',
       contract: { description: 'Recover the lost field kit', complete: false, reward: 'It stays on the board.' },
@@ -67,6 +69,8 @@ describe('the result screen ledger', () => {
     const report = {
       outcome: 'ESCAPED',
       ledger: { pokemon: [], items: [{ itemId: 'mooring-rope', label: 'Mooring rope', quantity: 1 }] },
+      ledgerFound: { pokemon: [], items: [{ itemId: 'mooring-rope', label: 'Mooring rope', quantity: 1 }] },
+      ledgerPaid: { pokemon: [], items: [] },
       ledgerHeading: 'Banked',
       ledgerEmptyText: 'Nothing.',
       contract: { description: 'Recover the lost field kit', complete: true, reward: 'Four more insertions are permanently unlocked.' },
@@ -97,6 +101,8 @@ describe('the result screen ledger', () => {
     const report = {
       outcome: 'ESCAPED',
       ledger: { pokemon: [], items: [] },
+      ledgerFound: { pokemon: [], items: [] },
+      ledgerPaid: { pokemon: [], items: [] },
       ledgerHeading: 'Banked',
       ledgerEmptyText: 'Nothing.',
       progress: [
@@ -115,6 +121,54 @@ describe('the result screen ledger', () => {
 
     expect(rows.find((row) => row.includes('Charmander'))).toContain('px-shiny');
     expect(rows.find((row) => row.includes('Pidgey'))).not.toContain('px-shiny');
+  });
+
+  it("says what a Pokemon that did not level is short of in the dossier's own words", () => {
+    // "Level 5 · 1 to go" left a player to guess one what: a raid, a fight, a
+    // level. The stash's dossier says the same fact as "1 XP to Lv 6".
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const report = {
+      outcome: 'ESCAPED',
+      ledger: { pokemon: [], items: [] },
+      ledgerFound: { pokemon: [], items: [] },
+      ledgerPaid: { pokemon: [], items: [] },
+      ledgerHeading: 'Banked',
+      ledgerEmptyText: 'Nothing.',
+      progress: [
+        { name: 'Bulbasaur', fromLevel: 5, toLevel: 5, experienceGained: 43, experienceToNextLevel: 1 },
+        { name: 'Charizard', fromLevel: 60, toLevel: 60, experienceGained: 900, experienceToNextLevel: 12345 },
+      ],
+      gear: [],
+      gearSummary: null,
+      pack: null,
+      packSummary: null,
+    } as unknown as ExtractionReport;
+    Object.assign(scene as object, { report });
+
+    const html = (scene as unknown as { ledgerPanel(): string }).ledgerPanel();
+
+    expect(html).toContain('Level 5 · 1 XP to Lv 6');
+    expect(html).toContain('Level 60 · 12,345 XP to Lv 61');
+    expect(html).not.toContain('to go');
+  });
+
+  it('keeps a Pokemon\'s HP figure and its unit on one line in the gamble pane', () => {
+    // At 1200 wide a level 99 Charizard's row read "Level 99 · 186/186" with
+    // "HP" alone on the line under it (gnhf 20, out over Stormcrown's Cloud Stair).
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const report = {
+      outcome: 'ESCAPED',
+      secured: { pokemon: [], items: [] },
+      securedEmptyText: 'Nothing.',
+      risked: { pokemon: [{ name: 'Charizard', dexId: 6, level: 99, currentHp: 186, maxHp: 186 }], items: [] },
+      gambleVerdict: 'It did not happen this time.',
+    } as unknown as ExtractionReport;
+    Object.assign(scene as object, { report });
+
+    const html = (scene as unknown as { gamblePanel(): string }).gamblePanel();
+
+    expect(html).toContain('186/186\u00a0HP');
+    expect(html).not.toMatch(/\d HP/);
   });
 
   it('knows a pane has more below the fold, and that a rounding error is not more', () => {
@@ -357,6 +411,8 @@ describe('reading the result screen with the keyboard', () => {
   const report = {
     outcome: 'ESCAPED',
     ledger: { pokemon: [], items: [] },
+    ledgerFound: { pokemon: [], items: [] },
+    ledgerPaid: { pokemon: [], items: [] },
     ledgerHeading: 'Banked',
     ledgerEmptyText: 'Nothing.',
     contract: { description: 'Survey the braid', complete: true, reward: 'A long reward.' },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { friendChipLines, type FriendChipFriend } from '../scenes/raidHud';
+import { friendChipLines, friendChipPing, type FriendChipFriend } from '../scenes/raidHud';
+import { getWorldMap } from '../worldMap';
 import { friendRoomCard, friendRoomView, friendStatusLine } from '../hub/friendRoomView';
 
 describe('the friend chip', () => {
@@ -24,8 +25,41 @@ describe('the friend chip', () => {
     expect(chip([{ ...ash, heading: null, distance: null }])).toEqual(['ASH ON THE MAP']);
     expect(chip([{ ...ash, atLab: true }, { ...ash, name: 'BEA', heading: 'S', distance: 3 }])).toEqual(['ASH GETTING READY', 'BEA S 3']);
     expect(chip([{ ...ash, fighting: 'hunter' }, { ...ash, name: 'BEA', fighting: 'wild' }])).toEqual(['ASH FIGHTS THE HUNTER', 'BEA IN A FIGHT']);
-    expect(chip([{ ...ash, ping: { heading: 'SE', distance: 9 } }])).toEqual(['ASH PING SE 9']);
+    expect(chip([{ ...ash, ping: { heading: 'SE', distance: 9, elsewhere: null } }])).toEqual(['ASH PING SE 9']);
     expect(friendChipLines({ code: 'BHRK', news: { name: '', came: true, line: 'ASH: THANKS!' }, friends: [ash] })).toEqual(['ASH: THANKS!', 'ASH NE 14']);
+  });
+});
+
+describe('a friend’s ping on a map with insides', () => {
+  // The Floodplain's rooms are laid east of the outdoors on the same grid, so
+  // the steps across that grid from the landing to a room are no walk at all.
+  const map = getWorldMap('floodplain-relay');
+  const areas = map.areas!;
+  const outdoors = areas[0].rect;
+  const room = areas[1].rect;
+  const standing = { x: outdoors.x + 5, y: outdoors.y + 5 };
+  const inTheRoom = { x: room.x + 1, y: room.y + 1 };
+  const chip = (ping: FriendChipFriend['ping']) =>
+    friendChipLines({
+      code: 'BHRK',
+      news: null,
+      friends: [{ name: 'ASH', atLab: false, heading: 'E', distance: 3, elsewhere: null, ping }],
+    });
+
+  it('says a ping in a room is indoors and which way the door is, never a count of grid tiles', () => {
+    const ping = friendChipPing(areas, standing, inTheRoom, 'NE');
+    expect(ping).toEqual({ heading: 'NE', distance: null, elsewhere: 'indoors' });
+    expect(chip(ping)).toEqual(['ASH PING INDOORS NE']);
+  });
+
+  it('says a ping outdoors from inside a room is outdoors', () => {
+    expect(chip(friendChipPing(areas, inTheRoom, standing, 'S'))).toEqual(['ASH PING OUTDOORS S']);
+  });
+
+  it('counts the steps to a ping on the player’s own place', () => {
+    const near = { x: standing.x + 2, y: standing.y + 3 };
+    expect(chip(friendChipPing(areas, standing, near, 'SE'))).toEqual(['ASH PING SE 5']);
+    expect(chip(friendChipPing(undefined, standing, near, 'SE'))).toEqual(['ASH PING SE 5']);
   });
 });
 
