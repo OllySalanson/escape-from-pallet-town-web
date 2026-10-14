@@ -510,3 +510,33 @@ describe('the ghost of a carried piece', () => {
     expect(bad).toMatch(/calc\(var\(--u\) \* 2\) var\(--red\)/);
   });
 });
+
+describe('the map maker check marks', () => {
+  // Playtest 40 #6: a check still waiting and a check that failed were both a
+  // plain 5x5 square, grey or red - the same square to anybody who cannot tell
+  // those two apart. Each state is its own drawn shape now, as passed is a tick.
+  const bodyOf = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
+      .map(([, , rule]) => rule)
+      .join(';');
+  const maskOf = (state: string): string | undefined =>
+    /(?:^|[\s;])mask:\s*([^;]+);/.exec(bodyOf(state === '' ? ':where(.pixel-ui) .maker-check-mark' : `:where(.pixel-ui) .maker-check${state} .maker-check-mark`))?.[1]?.trim();
+
+  it('draws passed, waiting and failed as three different shapes, not one square in two colours', () => {
+    const passed = maskOf('') ?? '';
+    const waiting = maskOf('.is-waiting') ?? '';
+    const failed = maskOf('.is-failed') ?? '';
+    for (const mask of [passed, waiting, failed]) {
+      expect(mask).toMatch(/^var\(--px-[a-z-]+\)/);
+    }
+    expect(new Set([passed, waiting, failed].map((mask) => /var\((--px-[a-z-]+)\)/.exec(mask)?.[1])).size).toBe(3);
+  });
+
+  it('declares every shape it draws', () => {
+    for (const state of ['', '.is-waiting', '.is-failed']) {
+      const name = /var\((--px-[a-z-]+)\)/.exec(maskOf(state) ?? '')?.[1];
+      expect(stylesheet).toMatch(new RegExp(`${name}: url\\("data:image/svg\\+xml`));
+    }
+  });
+});
