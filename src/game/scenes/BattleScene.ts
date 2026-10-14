@@ -185,6 +185,7 @@ import {
   changesShownStatus,
   shownStatusLabel,
   statusAfterLine,
+  statusTagSeat,
   statusBeforeLines,
   type MatchupTone,
   type ShownStatus,
@@ -236,6 +237,8 @@ const EVOLUTION_PULSE_MS = 260;
 const PANEL_REFUSAL_INK = '#9b1c1c';
 /** Guidance under a list: quieter than the rows it describes. */
 const PANEL_GUIDANCE_INK = '#475569';
+/** Where a plate's status tag stands, from the plate's left edge, when the name leaves room. */
+const STATUS_TAG_HOME = 82;
 /** One name for the face, so nothing can drift from what BootScene waits on. */
 const BATTLE_FONT = GAME_FONT;
 /** What a battle launched outside a raid stocks its stand-in pack with. */
@@ -348,6 +351,15 @@ interface CombatantPlate {
   readonly barY: number;
   readonly barWidth: number;
   readonly hpText?: Phaser.GameObjects.Text;
+  readonly nameText: Phaser.GameObjects.Text;
+  readonly hpLabel: Phaser.GameObjects.Text;
+  /** The status tag's two seats: on the name's row, or over the "HP:" label. */
+  readonly statusSeats: {
+    readonly home: number;
+    readonly nameY: number;
+    readonly hpLabelX: number;
+    readonly barY: number;
+  };
   readonly statusText: Phaser.GameObjects.Text;
   readonly levelText: Phaser.GameObjects.Text;
   readonly typeText?: Phaser.GameObjects.Text;
@@ -1048,15 +1060,14 @@ export class BattleScene extends Phaser.Scene {
     drawPixelWindow(frame, { x, y, width: layout.width, height: layout.height }, { fill: WINDOW_CREAM });
     container.add(frame);
     const nameSize = layout.showsTyping ? CAPTION_FONT_SIZE : '14px';
-    container.add(
-      this.add
-        .text(x + 9, y + layout.nameY, combatant.pokemon.name.toUpperCase(), {
-          fontFamily: BATTLE_FONT,
-          fontSize: nameSize,
-          color: '#202020',
-        })
-        .setDepth(6),
-    );
+    const nameText = this.add
+      .text(x + 9, y + layout.nameY, combatant.pokemon.name.toUpperCase(), {
+        fontFamily: BATTLE_FONT,
+        fontSize: nameSize,
+        color: '#202020',
+      })
+      .setDepth(6);
+    container.add(nameText);
     const levelText = this.add
       // Set from the plate's right edge, so a level of any length ends where
       // the HP bar under it ends instead of starting at a guessed column.
@@ -1070,7 +1081,7 @@ export class BattleScene extends Phaser.Scene {
     container.add(levelText);
     const statusText = this.add
       .text(
-        x + (layout.showsTyping ? 82 : 82),
+        x + STATUS_TAG_HOME,
         y + layout.nameY + 1,
         statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '',
         {
@@ -1081,15 +1092,14 @@ export class BattleScene extends Phaser.Scene {
       )
       .setDepth(6);
     container.add(statusText);
-    container.add(
-      this.add
-        .text(x + layout.hpLabelX, y + layout.barY - 1, 'HP:', {
-          fontFamily: BATTLE_FONT,
-          fontSize: '12px',
-          color: '#202020',
-        })
-        .setDepth(6),
-    );
+    const hpLabel = this.add
+      .text(x + layout.hpLabelX, y + layout.barY - 1, 'HP:', {
+        fontFamily: BATTLE_FONT,
+        fontSize: '12px',
+        color: '#202020',
+      })
+      .setDepth(6);
+    container.add(hpLabel);
     const hpBar = this.add.graphics();
     hpBar.setDepth(6);
     container.add(hpBar);
@@ -1172,11 +1182,20 @@ export class BattleScene extends Phaser.Scene {
       barY,
       barWidth: layout.barWidth,
       hpText,
+      nameText,
+      hpLabel,
+      statusSeats: {
+        home: x + STATUS_TAG_HOME,
+        nameY: y + layout.nameY + 1,
+        hpLabelX: x + layout.hpLabelX,
+        barY: y + layout.barY - 1,
+      },
       statusText,
       levelText,
       typeText,
       banner,
     };
+    this.seatStatusTag(plate);
     this.plates.set(plateKey(ref.side, ref.slot), plate);
     this.displayed.set(plateKey(ref.side, ref.slot), combatant.pokemon);
     this.displayedHp.set(plateKey(ref.side, ref.slot), combatant.currentHp);
@@ -2891,7 +2910,31 @@ export class BattleScene extends Phaser.Scene {
 
   private showStatus(ref: SlotRef, shown: ShownStatus): void {
     this.shownStatus.set(plateKey(ref.side, ref.slot), shown);
-    this.plateFor(ref)?.statusText.setText(shownStatusLabel(shown));
+    const plate = this.plateFor(ref);
+    if (plate) {
+      plate.statusText.setText(shownStatusLabel(shown));
+      this.seatStatusTag(plate);
+    }
+  }
+
+  /**
+   * Stands a plate's status tag between its name and its level, measured
+   * (`statusTagSeat`): asked whenever the tag's words or the level change, because
+   * either changes how wide it is.
+   */
+  private seatStatusTag(plate: CombatantPlate): void {
+    const seats = plate.statusSeats;
+    const seat = statusTagSeat({
+      home: seats.home,
+      nameRight: plate.nameText.x + plate.nameText.width,
+      levelLeft: plate.levelText.x - plate.levelText.width,
+      tagWidth: plate.statusText.width,
+      hpLabelX: seats.hpLabelX,
+    });
+    plate.statusText.setPosition(seat.x, seat.row === 'name' ? seats.nameY : seats.barY);
+    // Over the bar the tag stands where "HP:" does, so the label gives way to
+    // it while there is a status to show.
+    plate.hpLabel.setVisible(seat.row === 'name' || plate.statusText.text === '');
   }
 
   /**
@@ -3503,6 +3546,7 @@ export class BattleScene extends Phaser.Scene {
     }
     const shown = this.displayedHp.get(key) ?? currentHp;
     plate.levelText.setText(levelLabel(pokemon.level));
+    this.seatStatusTag(plate);
     this.drawHpBar(plate.hpBar, plate.barX, plate.barY, shown / pokemon.maxHp, plate.barWidth);
     plate.hpText?.setText(`${shown}/${pokemon.maxHp}`);
   }

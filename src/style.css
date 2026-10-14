@@ -775,21 +775,26 @@ button {
 }
 @keyframes defeat-slump {
   0% {
-    transform: rotate(0) translateY(0);
+    transform: translate(0, 0) rotate(0deg) scale(1);
     filter: none;
   }
   55% {
-    transform: translateX(-6%) rotate(-18deg);
+    transform: translate(calc(var(--defeat-tall) * 0.17), 0) rotate(-18deg) scale(0.66);
   }
   100% {
     /* Down like the rest of them, but never greyed: this is the player, not an
-       asset the raid took. They fall away from the party so the pile reads. */
-    /* Turned about the middle of its feet, the downhill foot swings below the
-       ground line - and lay across the corner of the YOU / DOWN plate. It is
-       lifted by that dip so the foot rests on the ground. The drawn figure is
-       12 of its frame's 16 pixels wide with rounded soles, so the dip is
-       measured rather than derived: 19px on a 182px figure. */
-    transform: translate(-20%, calc(var(--defeat-tall) * -0.105)) rotate(-54deg) scale(0.82);
+       asset the raid took. */
+    /* Laid across its own column, which is the first of the line-up: tipped
+       about its feet and pushed back over the column as it goes, and shrunk to
+       the size the fallen Pokemon beside it are. Slumped at full size it lay
+       half out of the column and, with a full line-up, half off the screen
+       (playtest 47). Turned about the middle of its feet, the downhill foot
+       swings below the ground line, so it is lifted by that dip: the drawn
+       figure is 12 of its frame's 16 pixels wide with rounded soles, so the dip
+       is measured rather than derived - 19px on a 182px figure at 0.82, which
+       is 0.07 of the figure at 0.55. `style.test.ts` lays the body out at real
+       window sizes and holds it inside its column. */
+    transform: translate(calc(var(--defeat-tall) * 0.25), calc(var(--defeat-tall) * -0.07)) rotate(-54deg) scale(0.55);
     filter: brightness(0.72) saturate(0.7);
   }
 }

@@ -138,7 +138,7 @@ describe('the named districts of a map', () => {
         ROCKFALL: 'THE NORTH FIELD',
       },
       landings: {
-        'Town Square': 'MARKET SQUARE',
+        'Pallet Town': 'MARKET SQUARE',
         'The Far Bank': 'THE FAR BANK',
         'The Quarry': 'THE QUARRY',
         'The Hard': 'THE HARD',

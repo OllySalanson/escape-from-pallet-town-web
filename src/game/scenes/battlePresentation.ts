@@ -876,6 +876,37 @@ export interface ShownStatus {
 export const shownStatusLabel = (shown: ShownStatus): string =>
   statusAbbreviation(shown.primary, shown.confused ? 1 : 0) ?? '';
 
+/** The clear pixels a plate's status tag keeps from the name and the level. */
+export const STATUS_TAG_GAP = 4;
+
+/**
+ * Where a plate's status tag stands, from what the name, the level and the tag
+ * itself measure. It used to stand at a fixed column, 82 pixels in, which a
+ * ten-letter name runs past: a poisoned CHARMANDER's plate read
+ * "CHARMANDERPSN" (playtest 47). So it stands where it always stood when the
+ * name leaves room, after the name when it does not - and when the name row has
+ * no room left between the name and the level, it takes the place of the "HP:"
+ * label at the head of the bar, which is where FireRed draws a status.
+ */
+export type StatusTagSeat =
+  | { readonly row: 'name'; readonly x: number }
+  | { readonly row: 'bar'; readonly x: number };
+
+export const statusTagSeat = (measured: {
+  /** The column the tag stands at when the name leaves room for it. */
+  readonly home: number;
+  readonly nameRight: number;
+  readonly levelLeft: number;
+  readonly tagWidth: number;
+  /** Where the "HP:" label starts, which is the tag's other seat. */
+  readonly hpLabelX: number;
+}): StatusTagSeat => {
+  const afterName = Math.max(measured.home, measured.nameRight + STATUS_TAG_GAP);
+  return afterName + measured.tagWidth <= measured.levelLeft - STATUS_TAG_GAP
+    ? { row: 'name', x: afterName }
+    : { row: 'bar', x: measured.hpLabelX };
+};
+
 /**
  * The tag once this line has been read. A turn is resolved whole before its
  * first line is put up, so a plate set from the state at the end of it showed

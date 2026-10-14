@@ -1188,6 +1188,11 @@ describe('what the base screen leads with', () => {
 
   it('keeps the swap offer, in the stash beside the Pokémon it would trade away', () => {
     const hub = createFreshHub();
+    const saved = (hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame;
+    saved.raidProgress = {
+      ...saved.raidProgress,
+      raidRecord: { 'floodplain-relay': { deployed: 1, extracted: 0, wiped: 1 } },
+    };
 
     hub.setView('stash');
     const stash = markupOf(hub);
@@ -1195,6 +1200,18 @@ describe('what the base screen leads with', () => {
     expect(stash).toContain('swap-panel');
     expect(stash).toContain('Down to one Pokémon');
     expect(stash).toContain('data-view="reselect"');
+  });
+
+  it('words the swap as an option, not an alarm, before a raid has been lost (playtest 47)', () => {
+    const hub = createFreshHub();
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+
+    expect(stash).toContain('data-view="reselect"');
+    expect(stash).toContain('Swap your partner');
+    expect(stash).not.toContain('Down to one Pokémon');
+    expect(stash).not.toContain('is all you have left');
   });
 
   /**

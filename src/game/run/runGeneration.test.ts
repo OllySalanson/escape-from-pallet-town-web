@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isExtractionAvailable, type ExtractionPoint } from '../world/extractionPoints';
 import { gateBossIds, gateKeys, gatesForMap, NIGHT_KEY, WORLD_GATES, type BossGate } from '../world/gates';
-import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { getWorldMap, WORLD_MAP_NAMES, WORLD_MAPS, type BuiltInMapId, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
 import { RAID_DURATION_MS } from './raidClock';
@@ -607,6 +607,19 @@ describe('what a landing says of itself', () => {
     // (the vale's playtest, B3): the first sentence a player reads about it.
     const stale = Object.values(RUN_INSERTIONS).filter((insertion) => /still being drawn/i.test(insertion.description));
     expect(stale.map((insertion) => insertion.id)).toEqual([]);
+  });
+
+  it('names every front door after its map, so choosing Pallet Town says Pallet Town (playtest 47)', () => {
+    // Pallet's front door was "Town Square", so the drop-in list and the
+    // contract board never named the town the game is called after while
+    // Brock's errand sent the player to "THE QUARRY, Pallet Town".
+    const named = (Object.keys(WORLD_MAP_NAMES) as BuiltInMapId[]).map((mapId) => ({
+      mapId,
+      door: frontDoorFor(mapId)?.label,
+    }));
+    expect(named).toEqual(
+      (Object.keys(WORLD_MAP_NAMES) as BuiltInMapId[]).map((mapId) => ({ mapId, door: WORLD_MAP_NAMES[mapId] })),
+    );
   });
 });
 

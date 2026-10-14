@@ -89,15 +89,32 @@ describe("what each of the base's doors says", () => {
   });
 
   /**
-   * A player down to one Pokemon has to be told the swap exists, and the screen
-   * that holds it is behind a door they have no reason to open. It was said on
-   * the lobby's stash card; it is said on the Center now.
+   * A player a wipe has left with one Pokemon has to be told the swap exists,
+   * and the screen that holds it is behind a door they have no reason to open.
+   * It was said on the lobby's stash card; it is said on the Center now.
    */
-  it('offers the swap on the Center when there is only a partner left', () => {
+  it('offers the swap on the Center when a lost raid has left only a partner', () => {
     const spare = createStartingStash(CHARMANDER);
-    expect(doorStatusLine(doorNamed('pokemon-centre'), restore(spare))).toBe(
-      'Your last partner can be swapped here',
-    );
+    expect(
+      doorStatusLine(
+        doorNamed('pokemon-centre'),
+        restore(spare, { raidRecord: { 'floodplain-relay': { deployed: 1, extracted: 0, wiped: 1 } } }),
+      ),
+    ).toBe('Your last partner can be swapped here');
+  });
+
+  it('never tells a brand-new player the partner they just chose can be swapped (playtest 47)', () => {
+    const fresh = createStartingStash(CHARMANDER);
+    expect(doorStatusLine(doorNamed('pokemon-centre'), restore(fresh))).toBe('Everyone is fit');
+
+    // Nor after raids that all came home: one Pokemon is not a loss.
+    const banked = createStartingStash(CHARMANDER);
+    expect(
+      doorStatusLine(
+        doorNamed('pokemon-centre'),
+        restore(banked, { raidRecord: { 'route-1': { deployed: 3, extracted: 3, wiped: 0 } } }),
+      ),
+    ).toBe('Everyone is fit');
   });
 
   it('says how much of the ladder stands, and how much of it is payable', () => {

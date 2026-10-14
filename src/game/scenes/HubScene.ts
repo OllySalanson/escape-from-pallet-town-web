@@ -125,7 +125,7 @@ import {
   type RaidContract,
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
-import { raidsDeployed, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
+import { raidsDeployed, raidsLost, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
   sortPokemon,
@@ -3866,7 +3866,15 @@ export class HubScene extends Phaser.Scene {
   private swapPanel(): string {
     const spare = this.sparePartner;
     if (!spare) return '';
-    return `<section class="swap-panel"><h3 class="px-subheading">Down to one Pokémon</h3><p class="px-note px-wrap">${spare.pokemon.name} is all you have left. You can trade it for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
+    // Said as an option to a player who has lost nothing yet, whose one Pokemon
+    // is the partner they chose a moment ago, and as the news it is to one a
+    // wipe has left with one (playtest 47).
+    const afterALoss = raidsLost(this.savedGame.raidProgress) > 0;
+    const heading = afterALoss ? 'Down to one Pokémon' : 'Swap your partner';
+    const lead = afterALoss
+      ? `${spare.pokemon.name} is all you have left. You can trade it`
+      : `While ${spare.pokemon.name} is your only Pokémon, you can trade it`;
+    return `<section class="swap-panel"><h3 class="px-subheading">${heading}</h3><p class="px-note px-wrap">${lead} for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
   }
 
   private reselectView(): string {

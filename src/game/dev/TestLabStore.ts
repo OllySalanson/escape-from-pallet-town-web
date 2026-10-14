@@ -28,7 +28,7 @@ export const TEST_LAB_SCENARIOS: readonly TestLabScenario[] = [
   {
     id: 'safe-extraction',
     title: 'Safe extraction',
-    setup: 'Fixed Town Square raid.',
+    setup: 'Fixed Pallet Town raid.',
     expected: 'Extracted haul reaches the Base stash.',
     route: 'run-town',
   },
@@ -77,7 +77,7 @@ export const TEST_LAB_SCENARIOS: readonly TestLabScenario[] = [
   {
     id: 'battle-return',
     title: 'Battle return location',
-    setup: 'Town Square raid encounter.',
+    setup: 'Pallet Town raid encounter.',
     expected: 'Battle returns to the exact overworld tile.',
     route: 'run-town',
   },
