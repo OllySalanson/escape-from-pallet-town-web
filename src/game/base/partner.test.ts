@@ -542,6 +542,53 @@ describe('who the partner is', () => {
     expect(partnerOf(manager.load()?.stash ?? new Stash())?.id).toBe('charmeleon-1');
   });
 
+  it('on a save whose mark names nobody, the Day-Care or nothing, is exactly who the mark names in the vault', () => {
+    const charmander = { speciesId: 'charmander', level: 5, currentHp: 19, xp: 125, moves: ['Scratch', 'Growl'], primaryStatus: null };
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    manager.save(restoreBase(createStartingStash(CHARMANDER)));
+    const written = JSON.parse([...stored.values()][0]) as { stash: Record<string, unknown> };
+    const load = (stash: Record<string, unknown>) => {
+      stored.clear();
+      stored.set('escape-from-pallet-town.save.v1', JSON.stringify({ ...written, stash: { ...written.stash, ...stash } }));
+      return manager.load()!.stash;
+    };
+    const starter = { id: 'charmander-1', pokemon: charmander };
+
+    // A mark naming nobody the vault holds is no partner, and a starter later
+    // issued under that id is a newcomer, not the friend the mark meant.
+    const nobody = load({ pokemon: [starter], partnerId: 'charmander-9' });
+    expect(nobody.partnerId()).toBeNull();
+    nobody.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-9');
+    expect(partnerOf(nobody)).toBeNull();
+
+    // A mark on the Day-Care's Pokemon holds while it is away and walks again once taken back.
+    const away = load({
+      pokemon: [{ id: 'pidgey-1', pokemon: { ...charmander, speciesId: 'pidgey', moves: ['Tackle'] } }],
+      boxes: undefined,
+      dayCare: { ...starter, leftAfterRaids: 0 },
+      partnerId: 'charmander-1',
+    });
+    expect(away.partnerId()).toBe('charmander-1');
+    expect(partnerOf(away)).toBeNull();
+    expect(away.takeBackFromDayCare()).toBe('charmander-1');
+    expect(partnerOf(away)).toMatchObject({ id: 'charmander-1', species: 'charmander' });
+
+    // A stay that is also in the vault is dropped, and the vault's copy is the partner.
+    const twice = load({ pokemon: [starter], dayCare: { ...starter, leftAfterRaids: 0 }, partnerId: 'charmander-1' });
+    expect(twice.dayCare()).toBeNull();
+    expect(partnerOf(twice)).toMatchObject({ id: 'charmander-1' });
+
+    // Lost stays lost however strong the line still in the vault, and a mark that is not an id is none.
+    const evolved = { ...charmander, speciesId: 'charmeleon', level: 20, xp: 8000, currentHp: 60 };
+    expect(partnerOf(load({ pokemon: [{ id: 'charmander-1', pokemon: evolved }, { id: 'charmander-2', pokemon: charmander }], partnerId: null }))).toBeNull();
+    expect(partnerOf(load({ pokemon: [starter], partnerId: 42 }))).toBeNull();
+  });
+
   it('on every older save version the loader accepts, is the starter that save was played with', () => {
     const charmander = { speciesId: 'charmander', level: 5, currentHp: 19, xp: 125, moves: ['Scratch', 'Growl'], primaryStatus: null };
     const stored = new Map<string, string>();
