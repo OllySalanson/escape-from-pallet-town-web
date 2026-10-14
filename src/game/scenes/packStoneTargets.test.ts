@@ -34,6 +34,6 @@ describe("the raid pack's recipient list (playtest 32's stone list)", () => {
 
   it('still shows the HP a Potion is for', () => {
     const [rattata] = recipientRows('potion', ['rattata']);
-    expect(rattata.tag).toMatch(/^\d+\/\d+ HP$/);
+    expect(rattata.tag).toMatch(/^\d+\/\d+\u00a0HP$/);
   });
 });

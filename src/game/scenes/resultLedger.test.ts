@@ -43,6 +43,8 @@ describe('the result screen ledger', () => {
     const report = {
       outcome: 'ESCAPED',
       ledger: { pokemon: [], items: [] },
+      ledgerFound: { pokemon: [], items: [] },
+      ledgerPaid: { pokemon: [], items: [] },
       ledgerHeading: 'Banked',
       ledgerEmptyText: 'Nothing.',
       contract: { description: 'Recover the lost field kit', complete: false, reward: 'It stays on the board.' },
@@ -97,6 +99,8 @@ describe('the result screen ledger', () => {
     const report = {
       outcome: 'ESCAPED',
       ledger: { pokemon: [], items: [] },
+      ledgerFound: { pokemon: [], items: [] },
+      ledgerPaid: { pokemon: [], items: [] },
       ledgerHeading: 'Banked',
       ledgerEmptyText: 'Nothing.',
       progress: [
@@ -115,6 +119,25 @@ describe('the result screen ledger', () => {
 
     expect(rows.find((row) => row.includes('Charmander'))).toContain('px-shiny');
     expect(rows.find((row) => row.includes('Pidgey'))).not.toContain('px-shiny');
+  });
+
+  it('keeps a Pokemon\'s HP figure and its unit on one line in the gamble pane', () => {
+    // At 1200 wide a level 99 Charizard's row read "Level 99 · 186/186" with
+    // "HP" alone on the line under it (gnhf 20, out over Stormcrown's Cloud Stair).
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const report = {
+      outcome: 'ESCAPED',
+      secured: { pokemon: [], items: [] },
+      securedEmptyText: 'Nothing.',
+      risked: { pokemon: [{ name: 'Charizard', dexId: 6, level: 99, currentHp: 186, maxHp: 186 }], items: [] },
+      gambleVerdict: 'It did not happen this time.',
+    } as unknown as ExtractionReport;
+    Object.assign(scene as object, { report });
+
+    const html = (scene as unknown as { gamblePanel(): string }).gamblePanel();
+
+    expect(html).toContain('186/186\u00a0HP');
+    expect(html).not.toMatch(/\d HP/);
   });
 
   it('knows a pane has more below the fold, and that a rounding error is not more', () => {
@@ -357,6 +380,8 @@ describe('reading the result screen with the keyboard', () => {
   const report = {
     outcome: 'ESCAPED',
     ledger: { pokemon: [], items: [] },
+    ledgerFound: { pokemon: [], items: [] },
+    ledgerPaid: { pokemon: [], items: [] },
     ledgerHeading: 'Banked',
     ledgerEmptyText: 'Nothing.',
     contract: { description: 'Survey the braid', complete: true, reward: 'A long reward.' },

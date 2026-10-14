@@ -29,7 +29,9 @@ export function healthLine(pokemon: Omit<PokemonCondition, 'level'>): string {
     ...(pokemon.isFainted ? ['fainted'] : []),
     ...(pokemon.primaryStatus === null ? [] : [pokemon.primaryStatus]),
   ];
-  return `${pokemon.currentHp}/${pokemon.maxHp} HP${flags.length ? ` \u00b7 ${flags.join(' \u00b7 ')}` : ''}`;
+  // A no-break space: a figure and its unit never part across a line (the
+  // result screen once left "HP" alone under a level 99's "186/186").
+  return `${pokemon.currentHp}/${pokemon.maxHp}\u00a0HP${flags.length ? ` \u00b7 ${flags.join(' \u00b7 ')}` : ''}`;
 }
 
 /** One Pokemon at base, as the team's condition line reads it. */

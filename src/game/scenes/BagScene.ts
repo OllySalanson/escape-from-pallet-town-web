@@ -519,7 +519,7 @@ export class BagScene extends Phaser.Scene {
     if (item.effect.type === 'evolution-stone') {
       return evolutionByStone(pokemon.base.id, item.id) ? 'Able' : 'Not able';
     }
-    return `${pokemon.currentHp}/${pokemon.maxHp} HP`;
+    return `${pokemon.currentHp}/${pokemon.maxHp}\u00a0HP`;
   }
 
   /** The help line's answer where the tag alone is too short to say it. */

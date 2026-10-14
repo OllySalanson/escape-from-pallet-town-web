@@ -680,7 +680,7 @@ function groupRows(group: ReportGroup, tag: RowTag): string {
 }
 
 function pokemonRow(member: ReportPokemon, tag: RowTag): string {
-  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${member.shiny ? pixelShinyStar() : ''}${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp} HP</small></span>${ROW_TAGS[tag]}</div>`;
+  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${member.shiny ? pixelShinyStar() : ''}${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp}\u00a0HP</small></span>${ROW_TAGS[tag]}</div>`;
 }
 
 function itemRow(item: ReportItem, tag: RowTag): string {
