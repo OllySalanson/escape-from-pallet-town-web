@@ -4,7 +4,8 @@ import type { WorldMapDefinition, WorldMapId } from '../worldMap';
 import { MAP_DISTRICTS, districtAt } from './districts';
 import { interiorFloorRolls } from './interiors';
 import { districtTableFor } from './nightRaids';
-import { placedAreaAt } from './mapAreas';
+import { placedAreaAt, type PlacedArea } from './mapAreas';
+import { floorHabitat } from './mapFile';
 import { fileMap } from './playerMaps';
 
 /**
@@ -66,10 +67,15 @@ export function stepRolls(
   return (
     map.tallGrass[tile.y]?.[tile.x] === true ||
     interiorFloorRolls(map.id, tile) ||
-    (map.areas !== undefined && placedAreaAt(map.areas, tile)?.kind === 'cave') ||
+    (map.areas !== undefined && rollsUnderfoot(placedAreaAt(map.areas, tile))) ||
     districtAt(map.id, tile)?.floorRolls === true ||
     (map.areas !== undefined &&
       placedAreaAt(map.areas, tile)?.kind === 'tower' &&
       districtAt(map.id, tile)?.encounters !== undefined)
   );
+}
+
+/** Whether a place's floor rolls on every step: a cave, or a room FireRed fills (`floorHabitat`). */
+function rollsUnderfoot(area: PlacedArea | undefined): boolean {
+  return area !== undefined && area.kind !== 'outdoors' && floorHabitat(area.kind, area.style) !== undefined;
 }

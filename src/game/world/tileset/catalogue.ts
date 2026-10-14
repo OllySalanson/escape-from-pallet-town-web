@@ -136,6 +136,14 @@ export interface MaterialTiles {
    * room's top row and is no rim.
    */
   readonly edgesAtMapEdge?: boolean;
+  /**
+   * A material a sheet draws by a rule of its own, read off what is round it
+   * rather than off whether its neighbours match: FireRed's Rocket Hideout
+   * draws the white rule of a room's border on the dark beside it, which side
+   * depending on where the room is. `at` names the material that far from the
+   * tile, undefined off the map; an undefined answer falls back to the roles.
+   */
+  readonly pick?: (at: (dx: number, dy: number) => Material | undefined) => number | undefined;
 }
 
 /**
@@ -283,6 +291,18 @@ export interface TileSource {
    * calls it a firstgid: one tilemap, several images, one index space.
    */
   readonly firstIndex: number;
+}
+
+/**
+ * The Rocket Hideout's spinner floor drawn as `tiles` on a sheet that has no
+ * art for it. Only a room dressed as the hideout lays it (`insideTileset.ts`);
+ * anywhere else this is a stray tile's fallback, and it still spins, because
+ * what a tile does is its material, never its art.
+ */
+export function spinnerFallback(
+  tiles: MaterialTiles,
+): Record<'spin-up' | 'spin-down' | 'spin-left' | 'spin-right' | 'spin-stop', MaterialTiles> {
+  return { 'spin-up': tiles, 'spin-down': tiles, 'spin-left': tiles, 'spin-right': tiles, 'spin-stop': tiles };
 }
 
 /** Numbers tiles from a sheet into a catalogue's shared index space. */

@@ -860,3 +860,20 @@ export const HAUNTED_WILDLIFE = wildlife(0.07, [
   { speciesId: 'cubone', minLevel: 11, maxLevel: 12, weight: 9 },
   { speciesId: 'haunter', minLevel: 25, maxLevel: 25, weight: 1 },
 ]);
+
+/**
+ * The Bunker under the Greystone power station, gone dark: the Rocket
+ * Hideout's floors with nobody in them, where what lives on the current and
+ * on what was left behind lives now. FireRed's Pokemon Mansion gives it its
+ * Grimer and Koffing and the Power Plant above it its Voltorb and Magnemite,
+ * brought to a route's levels as the Power Plant is. Measured over the real
+ * engine with a level-8 starter of each kind (`tools/encounters/report.mts`):
+ * Bulbasaur 94%, Charmander 99%, Squirtle 67% - the Power Plant's own band
+ * (87%, 95%, 54%), a Water starter's hard ground as the current always is.
+ */
+export const HIDEOUT_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'grimer', minLevel: 7, maxLevel: 9, weight: 6 },
+  { speciesId: 'koffing', minLevel: 7, maxLevel: 9, weight: 6 },
+  { speciesId: 'voltorb', minLevel: 7, maxLevel: 8, weight: 4 },
+  { speciesId: 'magnemite', minLevel: 7, maxLevel: 8, weight: 4 },
+]);

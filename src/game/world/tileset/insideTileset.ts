@@ -10,6 +10,8 @@ import { AREA_WEAVE_GROUND, AREA_WEAVES } from '../generated/areaPieces';
 import { AREA_SHEET_SOURCE, areaFloorProp, areaProp, areaTile } from './areaSheet';
 import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
 import { EMBER_SHEET_SOURCE, emberProp, emberTile } from './emberSheet';
+import { HIDEOUT_SHEET_SOURCE, hideoutProp, hideoutTile } from './hideoutSheet';
+import type { HideoutPieceName } from '../generated/hideoutPieces';
 import type { MaterialTiles, PropDefinition, TilesetCatalogue } from './catalogue';
 import type { Material } from './materials';
 
@@ -50,10 +52,28 @@ import type { Material } from './materials';
  * room every one of its floors is, its stepped walls and its shaded floor laid
  * cell for cell from FireRed's own, with the graves, the statues, the stairs
  * and the way out standing on it as FireRed stands them.
+ *
+ * The Rocket Hideout is FireRed's own rooms in the dark, drawn as FireRed
+ * draws them: the dark beside a room (`C`) carries the white rule of its
+ * border, the last row of floor carries the rule along its foot, a back wall
+ * that ends against a corridor turns its corner into the corridor's border,
+ * and a partition of the maze (`F`, a wall you see the top of) is a run of
+ * FireRed's own teal panels. Its floor may also spin you on - the arrows and
+ * the stop plate - and its ways between floors are its own stairs and its lift.
+ * The Power Plant is a hall under a wall of machinery three rows deep.
  */
 
 /** The rooms a building's inside may be drawn as. */
-export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse' | 'gatehouse';
+export type RoomStyle =
+  | 'house'
+  | 'mart'
+  | 'cottage'
+  | 'lab'
+  | 'center'
+  | 'warehouse'
+  | 'gatehouse'
+  | 'hideout'
+  | 'power-plant';
 /** The caves a cave may be drawn as: Mt. Moon's, Icefall Cave's ice, or Mt. Ember's Ruby Path. */
 export type CaveStyle = 'cave' | 'ice' | 'ember';
 /** The tunnels a tunnel may be drawn as: the Underground Path's. */
@@ -228,6 +248,44 @@ export const INSIDE_PROPS = {
   towerGrave: areaProp('tower.grave', 'grave'),
   towerGoldGrave: areaProp('tower.goldGrave', 'grave'),
   towerStatue: areaProp('tower.statue', 'statue'),
+
+  // --- the Rocket Hideout ------------------------------------------------------
+  // Its stairs: up, climbing west from the step at their east side, the rail
+  // in the wall above; down, going down east from the step at their west side.
+  hideoutStairsUp: hideoutProp('hideout.stairsUp', 'stairs', ['###', '###', '##.', '##.']),
+  hideoutStairsDown: hideoutProp('hideout.stairsDown', 'stairs', ['###', '.##', '.##']),
+  // The lift door let into the back wall.
+  hideoutLift: hideoutProp('hideout.lift', 'lift'),
+  // The stairs that climb out, standing free against an east wall.
+  hideoutStairsOut: hideoutProp('hideout.stairsOut', 'stairs', ['.##', '.##', '.##']),
+  // The generator, its head in the back wall and its feet on the floor.
+  hideoutGenerator: hideoutProp('hideout.generator', 'generator', ['###', '###', '##.']),
+  hideoutVent: hideoutProp('hideout.vent', 'vent'),
+  hideoutPhone: hideoutProp('hideout.phone', 'telephone'),
+  hideoutDesk: hideoutProp('hideout.desk', 'desk', ['...', '###', '###', '...']),
+  hideoutDeskPlain: hideoutProp('hideout.deskPlain', 'desk', ['...', '###', '###', '...']),
+  hideoutStool: hideoutProp('hideout.stool', 'stool', ['.']),
+  hideoutStoolEast: hideoutProp('hideout.stoolEast', 'stool', ['.']),
+  hideoutPlant: hideoutProp('hideout.plant', 'plant', ['^', '#']),
+  hideoutPlanTable: hideoutProp('hideout.planTable', 'table of plans', ['######', '######', '######', '......']),
+  hideoutCabinet: hideoutProp('hideout.cabinet', 'cabinet'),
+  hideoutSofa: hideoutProp('hideout.sofa', 'sofa', ['###', '...']),
+  hideoutConsole: hideoutProp('hideout.console', 'console', ['#', '.']),
+  hideoutCrate: hideoutProp('hideout.crate', 'crate'),
+
+  // --- the Power Plant -----------------------------------------------------------
+  powerGenerator: hideoutProp('power.generator', 'generator', ['###', '###', '###', '...']),
+  powerGeneratorEast: hideoutProp('power.generatorEast', 'generator', ['###', '###', '###', '...']),
+  powerGirderWest: hideoutProp('power.girderWest', 'girders'),
+  powerGirderEast: hideoutProp('power.girderEast', 'girders'),
+  powerBarrel: hideoutProp('power.barrel', 'barrel', ['^', '#']),
+  powerRubble: hideoutProp('power.rubble', 'rubble'),
+  powerRubbleLow: hideoutProp('power.rubbleLow', 'rubble'),
+  powerConsole: hideoutProp('power.console', 'console', ['#', '.']),
+  powerConsoleDials: hideoutProp('power.consoleDials', 'console', ['#', '.']),
+  powerComputer: hideoutProp('power.computer', 'computer', ['#', '#', '.']),
+  powerGrating: hideoutProp('power.grating', 'grating', ['.']),
+  powerMat: hideoutProp('power.mat', 'door mat', ['...']),
 } as const satisfies Record<string, PropDefinition>;
 
 export type InsidePropName = keyof typeof INSIDE_PROPS;
@@ -259,6 +317,158 @@ interface StyleArt {
   readonly ice?: MaterialTiles;
   /** A cave's ways through, in its own rock: the way out, a ladder up and a hole down. */
   readonly caveWays?: { readonly exit: InsidePropName; readonly ladder: InsidePropName; readonly hole: InsidePropName };
+  /** Its own stairs, where it does not have the house's. */
+  readonly stairs?: { readonly up?: StairArt; readonly down?: StairArt };
+  /** The lift door let into its back wall, three tiles wide and two high. */
+  readonly lift?: InsidePropName;
+  /**
+   * The rest of what it draws: the dark beyond its walls, which a hideout
+   * draws its border on; the partitions of a maze (`fence`, `F`); and the
+   * spinner floor. Anything it leaves out is drawn as its floor, or as
+   * nothing for the dark.
+   */
+  readonly dark?: MaterialTiles;
+  readonly partition?: MaterialTiles;
+  readonly spinners?: Partial<Record<'spin-up' | 'spin-down' | 'spin-left' | 'spin-right' | 'spin-stop', MaterialTiles>>;
+}
+
+/**
+ * A staircase in a room: the piece, where it stands from the end of the way
+ * through that goes up or down it (`dx`, `dy` to its top-left), the way you
+ * press from that end, and how many of its rows stand in the room's back wall
+ * - which is two rows deep, so the rows of wall above a staircase are the rest.
+ */
+export interface StairArt {
+  readonly prop: InsidePropName;
+  readonly dx: number;
+  readonly dy: number;
+  readonly width: number;
+  readonly height: number;
+  readonly toward: 'left' | 'right';
+  readonly wallRows: number;
+}
+
+/**
+ * The house's stairs, which every room without its own climbs: FireRed puts
+ * the way onto a staircase on a little rug beside its middle row - west of a
+ * staircase up, east of one down.
+ */
+const HOUSE_STAIRS: { readonly up: StairArt; readonly down: StairArt } = {
+  up: { prop: 'stairsUp', dx: 1, dy: -1, width: 2, height: 3, toward: 'right', wallRows: 1 },
+  down: { prop: 'stairsDown', dx: -2, dy: -1, width: 2, height: 3, toward: 'left', wallRows: 1 },
+};
+
+/**
+ * The Rocket Hideout's, which are FireRed's the other way about: you step on
+ * at the head of the stairs - the east side of a way up, the west side of a
+ * way down - and press across them.
+ */
+const HIDEOUT_STAIRS: { readonly up: StairArt; readonly down: StairArt } = {
+  up: { prop: 'hideoutStairsUp', dx: -2, dy: -2, width: 3, height: 4, toward: 'left', wallRows: 2 },
+  down: { prop: 'hideoutStairsDown', dx: 0, dy: -1, width: 3, height: 3, toward: 'right', wallRows: 1 },
+};
+
+const hideout = (name: HideoutPieceName): number => hideoutTile(name);
+
+/** What counts as the floor of a hideout's room, which its shade and its foot are read off. */
+const HIDEOUT_FLOORS: readonly (Material | undefined)[] = [
+  'paving',
+  'spin-up',
+  'spin-down',
+  'spin-left',
+  'spin-right',
+  'spin-stop',
+];
+const isHideoutFloor = (material: Material | undefined): boolean => HIDEOUT_FLOORS.includes(material);
+/** Anything of a room: its floor, its walls, its partitions - everything but the dark. */
+const isRoom = (material: Material | undefined): boolean => material !== undefined && material !== 'cliff';
+
+/**
+ * The hideout's floor: shaded down its west side and under its back wall, and
+ * its last row carrying the room's border along its foot - turned down into
+ * a corridor's border where the corridor leaves the room southward.
+ */
+function hideoutFloor(at: (dx: number, dy: number) => Material | undefined): number {
+  const shaded = !isHideoutFloor(at(-1, 0)) && at(-1, 0) !== 'fence' ? true : at(0, -1) === 'wall';
+  if (at(0, 1) === 'cliff') {
+    if (isHideoutFloor(at(1, 1))) {
+      return hideout(shaded ? 'hideout.footShadeTurnsEast' : 'hideout.footTurnsEast');
+    }
+    if (isHideoutFloor(at(-1, 1))) {
+      return hideout('hideout.footTurnsWest');
+    }
+    return hideout(shaded ? 'hideout.footShade' : 'hideout.foot');
+  }
+  return hideout(shaded ? 'hideout.floorShade' : 'hideout.floor');
+}
+
+/**
+ * The dark beside a room, where FireRed draws its border: a rule down the
+ * side the room is on, turned along the top of its back wall at the top and
+ * along its foot at the bottom. Dark with no room beside it is nothing.
+ */
+function hideoutDark(at: (dx: number, dy: number) => Material | undefined): number | undefined {
+  for (const [side, nw, w, sw] of [
+    [1, 'hideout.borderNw', 'hideout.borderW', 'hideout.borderSw'],
+    [-1, 'hideout.borderNe', 'hideout.borderE', 'hideout.borderSe'],
+  ] as const) {
+    const beside = at(side, 0);
+    if (!isRoom(beside)) {
+      continue;
+    }
+    if (beside === 'wall' && at(side, -1) !== 'wall') {
+      return hideout(nw);
+    }
+    if (isHideoutFloor(beside) && at(side, 1) === 'cliff') {
+      return hideout(sw);
+    }
+    return hideout(w);
+  }
+  return undefined;
+}
+
+/**
+ * The hideout's back wall, two rows: the panel under its white rule, and the
+ * skirting - turned into a corridor's border where the wall ends against one.
+ */
+function hideoutWall(at: (dx: number, dy: number) => Material | undefined): number {
+  const upper = at(0, -1) !== 'wall';
+  if (isHideoutFloor(at(1, 0))) {
+    return hideoutTile('hideout.wallEndEast', 0, upper ? 0 : 1);
+  }
+  if (isHideoutFloor(at(-1, 0))) {
+    return hideoutTile('hideout.wallEndWest', 0, upper ? 0 : 1);
+  }
+  return hideout(upper ? 'hideout.wallUpper' : 'hideout.wallLower');
+}
+
+/**
+ * The Power Plant's wall of machinery, three rows deep: its top seen from
+ * above, the lamps along its face and its foot, each with its own ends.
+ */
+function powerWall(at: (dx: number, dy: number) => Material | undefined): number {
+  const row = at(0, -1) !== 'wall' ? 'Top' : at(0, 1) !== 'wall' ? 'Foot' : 'Face';
+  const end = at(-1, 0) !== 'wall' ? 'West' : at(1, 0) !== 'wall' ? 'East' : '';
+  // A wall standing out in the hall has floor behind it: its crown is a plate.
+  if (row === 'Top' && at(0, -1) !== undefined && at(0, -1) !== 'cliff') {
+    return hideout(`power.plate${end}` as HideoutPieceName);
+  }
+  return hideout(`power.wall${row}${end}` as HideoutPieceName);
+}
+
+/** The Power Plant's floor, shaded under its wall and down its west side. */
+function powerFloor(at: (dx: number, dy: number) => Material | undefined): number {
+  const north = at(0, -1) === 'wall';
+  const west = at(-1, 0) === 'wall' || at(-1, 0) === 'cliff' || at(-1, 0) === undefined;
+  return hideout(
+    north && west
+      ? 'power.floorShadeCorner'
+      : north
+        ? 'power.floorShade'
+        : west
+          ? 'power.floorShadeWest'
+          : 'power.floor',
+  );
 }
 
 /** A shell from the base's sheet: a floor shaded under the wall, and two rows of wall. */
@@ -446,6 +656,50 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     },
     caveWays: { exit: 'emberExit', ladder: 'emberLadder', hole: 'emberHole' },
   },
+  // FireRed's Rocket Hideout, under the Game Corner: rooms in the dark with a
+  // white rule round them, a maze of partitions, a floor of spinner arrows,
+  // and its own stairs and lift. There is no mat: its ways out are its stairs.
+  hideout: {
+    floor: { roles: { fill: hideout('hideout.floor') }, pick: hideoutFloor },
+    wall: { roles: { fill: hideout('hideout.wallUpper') }, pick: hideoutWall },
+    dark: { roles: {}, pick: hideoutDark },
+    partition: {
+      roles: {
+        single: hideout('hideout.partition'),
+        fill: hideout('hideout.partition'),
+        'cap-w': hideout('hideout.partitionCapW'),
+        'run-h': hideout('hideout.partitionRunH'),
+        'cap-e': hideout('hideout.partitionCapE'),
+        'cap-n': hideout('hideout.partitionCapN'),
+        'run-v': hideout('hideout.partitionRunV'),
+        'cap-s': hideout('hideout.partitionCapS'),
+        'corner-nw': hideout('hideout.partitionNw'),
+        'corner-ne': hideout('hideout.partitionNe'),
+        'corner-sw': hideout('hideout.partitionSw'),
+        'corner-se': hideout('hideout.partitionSe'),
+      },
+      // A partition run up to the back wall stands in its skirting.
+      pick: (at) => (at(0, -1) === 'wall' ? hideout('hideout.partitionWall') : undefined),
+    },
+    spinners: {
+      'spin-up': { roles: { fill: hideout('hideout.spinUp') } },
+      'spin-down': { roles: { fill: hideout('hideout.spinDown') } },
+      'spin-left': { roles: { fill: hideout('hideout.spinLeft') } },
+      'spin-right': { roles: { fill: hideout('hideout.spinRight') } },
+      'spin-stop': { roles: { fill: hideout('hideout.spinStop') } },
+    },
+    stairs: HIDEOUT_STAIRS,
+    lift: 'hideoutLift',
+  },
+  // FireRed's Power Plant on Route 10: a hall under a wall of machinery, its
+  // red mat on a grating at the door. Its way down is the hideout's own
+  // stairs, because what goes down from it is the hideout.
+  'power-plant': {
+    floor: { roles: { fill: hideout('power.floor') }, pick: powerFloor },
+    wall: { roles: { fill: hideout('power.wallFace') }, pick: powerWall },
+    mat: 'powerMat',
+    stairs: { down: HIDEOUT_STAIRS.down },
+  },
 };
 
 /** A weave cut from FireRed's own ground, as the tiles each of its cells is. */
@@ -480,17 +734,30 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
         'tree',
         'fence',
         'ice',
+        'spin-up',
+        'spin-down',
+        'spin-left',
+        'spin-right',
+        'spin-stop',
       ] as const
     ).map((material) => [material, art.floor]),
   ) as Record<Exclude<Material, 'wall' | 'cliff'>, MaterialTiles>;
   return {
-    sources: [BASE_SHEET_SOURCE.source, AREA_SHEET_SOURCE.source, ICE_SHEET_SOURCE.source, EMBER_SHEET_SOURCE.source],
+    sources: [
+      BASE_SHEET_SOURCE.source,
+      AREA_SHEET_SOURCE.source,
+      ICE_SHEET_SOURCE.source,
+      EMBER_SHEET_SOURCE.source,
+      HIDEOUT_SHEET_SOURCE.source,
+    ],
     materials: {
       ...floors,
       wall: art.wall,
-      cliff: DARK,
+      cliff: art.dark ?? DARK,
       ...(art.sand ? { sand: art.sand } : {}),
       ...(art.ice ? { ice: art.ice } : {}),
+      ...(art.partition ? { fence: art.partition } : {}),
+      ...art.spinners,
     },
     props: INSIDE_PROPS,
   };
@@ -504,6 +771,8 @@ export const ROOM_STYLES: readonly RoomStyle[] = [
   'center',
   'warehouse',
   'gatehouse',
+  'hideout',
+  'power-plant',
 ];
 export const CAVE_STYLES: readonly CaveStyle[] = ['cave', 'ice', 'ember'];
 export const TUNNEL_STYLES: readonly TunnelStyle[] = ['underground'];
@@ -552,6 +821,17 @@ export function towerStairs(style: InsideStyle, way: 'up' | 'down'): InsidePropN
 /** The stairs up out of a tunnel of a style, pressed into west or east; a style that has none, undefined. */
 export function tunnelStairs(style: InsideStyle, toward: 'left' | 'right'): InsidePropName | undefined {
   return STYLE_ART[style].tunnelStairs?.[toward];
+}
+
+/** The staircase up or down a style's room climbs: its own, or the house's. */
+export function insideStairs(style: InsideStyle, look: 'stairs-up' | 'stairs-down'): StairArt {
+  const own = STYLE_ART[style].stairs;
+  return (look === 'stairs-up' ? own?.up : own?.down) ?? (look === 'stairs-up' ? HOUSE_STAIRS.up : HOUSE_STAIRS.down);
+}
+
+/** The lift door let into a style's back wall; a style that has none, undefined. */
+export function insideLift(style: InsideStyle): InsidePropName | undefined {
+  return STYLE_ART[style].lift;
 }
 
 /** A cave style's ways through, in its own rock; none for a style that is no cave. */

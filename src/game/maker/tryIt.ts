@@ -7,6 +7,7 @@ import { hunterSpeciesAt } from '../world/hunter';
 import {
   buildPlayerMap,
   MAP_FILE_HABITATS,
+  floorHabitat,
   trainerTemplate,
   type MapFile,
   type PlayerMap,
@@ -127,7 +128,12 @@ export function suitedTryLevel(file: MapFile): number {
     ...(file.districts ?? []).flatMap((district) =>
       district.wildlife ? [MAP_FILE_HABITATS[district.wildlife]] : [],
     ),
-    ...((file.areas ?? []).some((area) => area.kind === 'cave') ? [MAP_FILE_HABITATS.cave] : []),
+    // A floor that rolls on every step - a cave's, the ice, the Power Plant's,
+    // the hideout's - fights at its own habitat's levels.
+    ...(file.areas ?? []).flatMap((area) => {
+      const habitat = floorHabitat(area.kind, area.style);
+      return habitat ? [MAP_FILE_HABITATS[habitat]] : [];
+    }),
   ];
   const levels = [
     ...tables.flatMap((table) => table.entries.map((entry) => entry.maxLevel)),

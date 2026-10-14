@@ -180,6 +180,26 @@ export const ICE_CAVE_BRUSHES: readonly GroundBrush[] = [
   ),
 ];
 
+/**
+ * A room dressed as the Rocket Hideout is painted with a room's brushes and
+ * what the hideout adds: the teal partitions of its maze, and its spinner
+ * floor - the four arrows, and the plate a spin stops on.
+ */
+export const HIDEOUT_BRUSHES: readonly GroundBrush[] = [
+  ...INSIDE_BRUSHES,
+  plain('partition', 'Partition', MATERIAL_CHARS.fence, 'A partition of the maze. Solid. Runs join up as you paint them.'),
+  plain(
+    'spin-up',
+    'Arrow north',
+    MATERIAL_CHARS['spin-up'],
+    'A spinner arrow. A step onto it spins the player north, on over the floor, until a stop plate or something in the way stops them.',
+  ),
+  plain('spin-down', 'Arrow south', MATERIAL_CHARS['spin-down'], 'A spinner arrow, spinning the player south.'),
+  plain('spin-left', 'Arrow west', MATERIAL_CHARS['spin-left'], 'A spinner arrow, spinning the player west.'),
+  plain('spin-right', 'Arrow east', MATERIAL_CHARS['spin-right'], 'A spinner arrow, spinning the player east.'),
+  plain('spin-stop', 'Stop plate', MATERIAL_CHARS['spin-stop'], 'Where a spin stops. Walked on like the floor.'),
+];
+
 /** The brushes for the place being drawn: outdoors, the inside of a building, or a cave. */
 /**
  * What a tunnel is painted with: the Underground Path's floor and its walls,
@@ -213,7 +233,9 @@ export function brushesFor(
       : place === 'tower'
         ? TOWER_BRUSHES
       : place === 'inside'
-        ? INSIDE_BRUSHES
+        ? style === 'hideout'
+          ? HIDEOUT_BRUSHES
+          : INSIDE_BRUSHES
         : GROUND_BRUSHES;
 }
 
@@ -535,6 +557,31 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['tower-grave', 'Grave', 'tower'],
     ['tower-gold-grave', 'Grave, gold', 'tower'],
     ['tower-statue', 'Statue', 'tower'],
+    ['hideout-generator', 'Generator', 'hideout'],
+    ['hideout-vent', 'Vent', 'hideout'],
+    ['hideout-phone', 'Telephone', 'hideout'],
+    ['hideout-desk', 'Desk with a terminal', 'hideout'],
+    ['hideout-desk-plain', 'Desk', 'hideout'],
+    ['hideout-stool', 'Stool', 'hideout'],
+    ['hideout-stool-east', 'Stool, turned', 'hideout'],
+    ['hideout-plant', 'Plant', 'hideout'],
+    ['hideout-plan-table', 'Table of plans', 'hideout'],
+    ['hideout-cabinet', 'Cabinet', 'hideout'],
+    ['hideout-sofa', 'Sofa', 'hideout'],
+    ['hideout-console', 'Console', 'hideout'],
+    ['hideout-crate', 'Crate', 'hideout'],
+    ['hideout-stairs-out', 'Stairs out', 'hideout'],
+    ['power-generator', 'Generator', 'power-plant'],
+    ['power-generator-east', 'Generator, lit from the east', 'power-plant'],
+    ['power-girder-west', 'Girders, west', 'power-plant'],
+    ['power-girder-east', 'Girders, east', 'power-plant'],
+    ['power-barrel', 'Barrel', 'power-plant'],
+    ['power-rubble', 'Rubble', 'power-plant'],
+    ['power-rubble-low', 'Rubble, low', 'power-plant'],
+    ['power-console', 'Console', 'power-plant'],
+    ['power-console-dials', 'Console with dials', 'power-plant'],
+    ['power-computer', 'Computer', 'power-plant'],
+    ['power-grating', 'Grating', 'power-plant'],
   ] as const satisfies readonly (readonly [
     MapFileFurnitureKind,
     string,
@@ -562,6 +609,8 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   lab: 'Lab',
   center: 'Pokémon Center',
   warehouse: 'Warehouse',
+  hideout: 'Rocket Hideout',
+  'power-plant': 'Power Plant',
   gatehouse: 'Gatehouse',
   cave: 'Cave',
   ice: 'Ice cave',
@@ -585,6 +634,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   ice: 'Ice',
   volcano: 'Volcano',
   haunted: 'Haunted',
+  hideout: 'Rocket hideout',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */

@@ -6,6 +6,7 @@ import {
 } from '../movement/gridMovement';
 import type { Rect } from './interiors';
 import type { WorldMapId } from '../worldMap';
+import { liftsOf, type MapLift } from './lifts';
 import { applyGates } from './gates';
 import { sailingOf, type MapSailing } from './sailing';
 import {
@@ -18,6 +19,7 @@ import {
   type MapFile,
   type MapFileArea,
   type MapFileAreaKind,
+  type MapFileAreaStyle,
   type MapFileLink,
   type MapFileLinkEnd,
 } from './mapFile';
@@ -28,6 +30,8 @@ import {
   caveWays,
   INSIDE_TILESETS,
   insideBackDoor,
+  insideLift,
+  insideStairs,
   insideMat,
   insideSideMat,
   insideStairwell,
@@ -64,6 +68,8 @@ export interface PlacedArea {
   /** What it is called on the plate that rises when you walk in. */
   readonly name: string;
   readonly kind: 'outdoors' | MapFileAreaKind;
+  /** How it is dressed (`MapFileArea.style`); the outdoors has none. */
+  readonly style?: MapFileAreaStyle;
   /** Where it lies in the composed grid. */
   readonly rect: Rect;
   /**
@@ -139,6 +145,8 @@ export interface ComposedMap {
   readonly tileset: TilesetCatalogue;
   /** Its boats, sailed rather than gone through (`sailing.ts`); none on most maps. */
   readonly sailings?: readonly MapSailing[];
+  /** Its lifts, ridden rather than gone through (`lifts.ts`); none on most maps. */
+  readonly lifts?: readonly MapLift[];
 }
 
 /** The solid dark between areas, as the ground under it is reported. */
@@ -285,20 +293,24 @@ export function sketchArea(
           sketch.plant(x, at.y, stairs);
         }
       } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
-        const at = stairsAt(end);
-        if (
-          at.x >= 0 &&
-          at.y >= 0 &&
-          at.x + STAIRS_SIZE.width <= area.width &&
-          end.y + 1 < area.height
-        ) {
-          sketch.plant(at.x, at.y, end.look === 'stairs-up' ? 'stairsUp' : 'stairsDown');
+        const at = stairsAt(end, area.style);
+        const stairs = insideStairs(area.style, end.look);
+        if (at.x >= 0 && at.y >= 0 && at.x + at.width <= area.width && at.y + at.height <= area.height) {
+          sketch.plant(at.x, at.y, stairs.prop);
           // The little rug the way up is stood on, as FireRed lays one beside
-          // every staircase in a house.
-          sketch.plant(end.x, end.y, 'smallRug');
+          // every staircase in a house; the hideout's are stepped on at their
+          // head, which is part of their own art.
+          if (stairs.prop === 'stairsUp' || stairs.prop === 'stairsDown') {
+            sketch.plant(end.x, end.y, 'smallRug');
+          }
         }
       }
     }
+  }
+  // A lift's door, let into the back wall above the tile it is pressed into from.
+  const lift = insideLift(area.style);
+  if (area.lift && lift && area.lift.x >= 1 && area.lift.y >= 2 && area.lift.x + 1 < area.width) {
+    sketch.plant(area.lift.x - 1, area.lift.y - 2, lift);
   }
   return sketch;
 }
@@ -334,21 +346,25 @@ export const STAIRS_SIZE = { width: 2, height: 3 } as const;
 
 /**
  * Where a staircase stands, from the end of the way through that is gone up
- * or down it. FireRed puts the way onto a staircase on a little rug beside its
- * middle row - west of a staircase up, east of one down - and in its own
- * player's house the two rugs are the same tile of the two floors, so going up
- * and coming down never moves you across the room. You stand on the rug and
- * press towards the stairs.
+ * or down it, and how big it is - a room's own staircase, or the house's
+ * (`insideStairs`). FireRed puts the way onto a house's staircase on a little
+ * rug beside its middle row - west of a staircase up, east of one down - and
+ * in its own player's house the two rugs are the same tile of the two floors,
+ * so going up and coming down never moves you across the room. You stand on
+ * the rug and press towards the stairs. The Rocket Hideout's are stepped onto
+ * at their head and pressed across.
  */
-export function stairsAt(end: Pick<MapFileLinkEnd, 'x' | 'y' | 'look'>): { x: number; y: number } {
-  return end.look === 'stairs-down'
-    ? { x: end.x - STAIRS_SIZE.width, y: end.y - 1 }
-    : { x: end.x + 1, y: end.y - 1 };
+export function stairsAt(
+  end: Pick<MapFileLinkEnd, 'x' | 'y' | 'look'>,
+  style: MapFileAreaStyle = 'house',
+): { x: number; y: number; width: number; height: number } {
+  const stairs = insideStairs(style, end.look === 'stairs-down' ? 'stairs-down' : 'stairs-up');
+  return { x: end.x + stairs.dx, y: end.y + stairs.dy, width: stairs.width, height: stairs.height };
 }
 
-/** The way you press to go onto a staircase from its rug. */
-export function stairsToward(look: 'stairs-up' | 'stairs-down'): 'left' | 'right' {
-  return look === 'stairs-up' ? 'right' : 'left';
+/** The way you press to go onto a staircase from where it is stood on. */
+export function stairsToward(look: 'stairs-up' | 'stairs-down', style: MapFileAreaStyle = 'house'): 'left' | 'right' {
+  return insideStairs(style, look).toward;
 }
 
 /** Where each area lies in the composed grid, and how big that grid is. */
@@ -369,7 +385,8 @@ export function layOutMapFile(file: MapFile): {
  */
 export function layOutAreas(
   outdoors: { readonly name: string; readonly width: number; readonly height: number },
-  areas: readonly Pick<MapFileArea, 'id' | 'name' | 'kind' | 'width' | 'height'>[],
+  areas: readonly (Pick<MapFileArea, 'id' | 'name' | 'kind' | 'width' | 'height'> &
+    Partial<Pick<MapFileArea, 'style'>>)[],
   margin = 0,
 ): {
   readonly width: number;
@@ -400,6 +417,7 @@ export function layOutAreas(
       id: area.id,
       name: area.name,
       kind: area.kind,
+      ...(area.style ? { style: area.style } : {}),
       rect: { x: columnX, y, width: area.width, height: area.height },
     });
     columnWidth = Math.max(columnWidth, area.width);
@@ -502,18 +520,18 @@ export function composeMapFile(
       tileset: PLAYER_MAP_TILESET,
     };
   }
-  return {
-    ...composeAreas({
-      name: file.name,
-      sketch: outdoors,
-      layers: outdoorLayers,
-      tileset: PLAYER_MAP_TILESET,
-      areas,
-      links,
-      landingsOf: (end) => landingsOf(file, end),
-    }),
-    ...sailings,
-  };
+  const composed = composeAreas({
+    name: file.name,
+    sketch: outdoors,
+    layers: outdoorLayers,
+    tileset: PLAYER_MAP_TILESET,
+    areas,
+    links,
+    landingsOf: (end) => landingsOf(file, end),
+  });
+  // A lift is a way only a player rides, laid out beside the grid as a boat is.
+  const lifts = liftsOf(areas, composed.areas);
+  return { ...composed, ...sailings, ...(lifts.length > 0 ? { lifts } : {}) };
 }
 
 /** An outdoors already drawn, and the places beside it and the ways between. */
@@ -587,7 +605,8 @@ export function composeAreas(input: AreasToCompose): ComposedMap {
     ] as const) {
       const delta = DIRECTION_DELTAS[from.toward];
       const own = toGrid(from);
-      const art = artOf(from, own, { x: own.x + delta.x, y: own.y + delta.y });
+      const style = from.area === undefined ? undefined : areas.find((area) => area.id === from.area)?.style;
+      const art = artOf(from, own, { x: own.x + delta.x, y: own.y + delta.y }, style);
       const near = input.landingsOf(from).map((tile) => toGridIn(from.area, tile));
       const far = input.landingsOf(to).map((tile) => toGridIn(to.area, tile));
       near.forEach((landing, index) => {
@@ -639,14 +658,15 @@ export function composeAreas(input: AreasToCompose): ComposedMap {
 }
 
 /** What a way through draws, in the composed grid: the staircase, the mat, or the door. */
-function artOf(end: MapFileLinkEnd, landing: GridPosition, doorway: GridPosition): Rect {
+function artOf(
+  end: MapFileLinkEnd,
+  landing: GridPosition,
+  doorway: GridPosition,
+  style: MapFileAreaStyle | undefined,
+): Rect {
   if (end.look === 'stairs-up' || end.look === 'stairs-down') {
-    const at = stairsAt(end);
-    return {
-      x: landing.x + (at.x - end.x),
-      y: landing.y + (at.y - end.y),
-      ...STAIRS_SIZE,
-    };
+    const at = stairsAt(end, style);
+    return { x: landing.x + (at.x - end.x), y: landing.y + (at.y - end.y), width: at.width, height: at.height };
   }
   if (end.look === 'mat' && (end.toward === 'left' || end.toward === 'right')) {
     return { x: end.toward === 'left' ? landing.x - 1 : landing.x, y: landing.y - 1, width: 2, height: 3 };

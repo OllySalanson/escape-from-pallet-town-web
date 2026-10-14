@@ -292,6 +292,20 @@ export const SOUND_EFFECTS = {
     // the rubble settling. Noise for the crack, a low fall under it.
     tones: [noise(3200, 0.05, 0.06), noise(1400, 0.12, 0.05, 0.04), sweep(tri(220, 0.18, 0.05, 0.03), 110)],
   },
+  spin: {
+    channel: 'world',
+    moment: "An arrow of the Rocket Hideout's floor takes hold and spins the player on",
+    // FireRed's PlaySpinSound is a whoosh (SE_M_RAZOR_WIND2): a quick rush of
+    // noise rising, and a second turn of it behind.
+    tones: [noise(1600, 0.06, 0.05), noise(2600, 0.07, 0.055, 0.05)],
+  },
+  lift: {
+    channel: 'world',
+    moment: 'The lift goes to the floor chosen: the doors shut, the car hums and shudders',
+    // FireRed's SE_ELEVATOR: a low motor that holds while the car shakes, and
+    // the bell as it stops.
+    tones: [sweep(sq(98, 0.4, 0.035), 110), tri(82, 0.4, 0.04), sq(1047, 0.12, 0.05, 0.42)],
+  },
   contractStop: {
     channel: 'world',
     moment: 'A contract stop is made',

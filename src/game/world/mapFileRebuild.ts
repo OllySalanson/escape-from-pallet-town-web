@@ -11,6 +11,7 @@ import type {
   MapFileExit,
   MapFileItemSpot,
   MapFileLandmark,
+  MapFileLiftStop,
   MapFileLink,
   MapFileLinkEnd,
   MapFileSailing,
@@ -67,16 +68,17 @@ const EXIT = keysOf<MapFileExit>()(['x', 'y', 'area', 'name', 'opens']);
 const ITEM_SPOT = keysOf<MapFileItemSpot>()(['x', 'y', 'area', 'hidden', 'key', 'prize']);
 const PERSON = keysOf<MapFilePerson>()(['x', 'y', 'area', 'name', 'look', 'facing', 'lines']);
 const SIGN = keysOf<MapFileSign>()(['x', 'y', 'area', 'lines']);
-const LANDMARK = keysOf<MapFileLandmark>()(['x', 'y', 'area', 'name', 'kind']);
+const LANDMARK = keysOf<MapFileLandmark>()(['x', 'y', 'area', 'name', 'kind', 'locked']);
 const DISTRICT = keysOf<MapFileDistrict>()(['area', 'name', 'x', 'y', 'width', 'height', 'wildlife', 'rain', 'floorRolls']);
 const TRAINER = keysOf<MapFileTrainer>()(['x', 'y', 'area', 'name', 'team', 'look', 'facing', 'sight', 'lines']);
 const DOOR = keysOf<MapFileDoor>()(['kind', 'x', 'y', 'width', 'height']);
 const POKEMON = keysOf<MapFilePokemon>()(['x', 'y', 'area', 'species', 'level', 'legendary']);
 const AREA = keysOf<MapFileArea>()([
-  'id', 'name', 'kind', 'style', 'width', 'height', 'ground', 'buildings', 'switches', 'barriers',
+  'id', 'name', 'kind', 'style', 'width', 'height', 'ground', 'buildings', 'switches', 'barriers', 'lift',
 ]);
+const LIFT_STOP = keysOf<MapFileLiftStop>()(['x', 'y', 'lift']);
 const SWITCH = keysOf<MapFileSwitch>()(['x', 'y', 'kind', 'opens']);
-const BARRIER = keysOf<MapFileBarrier>()(['id', 'x', 'y', 'width', 'height']);
+const BARRIER = keysOf<MapFileBarrier>()(['id', 'x', 'y', 'width', 'height', 'look']);
 const LINK = keysOf<MapFileLink>()(['ends', 'sails']);
 const SAILING = keysOf<MapFileSailing>()(['name', 'from', 'until', 'course']);
 const TURN = keysOf<MapFileSailing['course'][number]>()(['x', 'y']);
@@ -133,6 +135,7 @@ export function onlyMapFileFields(file: MapFile): MapFile {
       buildings: each(area.buildings, BUILDING),
       ...(area.switches ? { switches: each(area.switches, SWITCH) } : {}),
       ...(area.barriers ? { barriers: each(area.barriers, BARRIER) } : {}),
+      ...(area.lift ? { lift: pick(area.lift, LIFT_STOP) } : {}),
     })),
     berryTrees: each(file.berryTrees, BERRY_TREE),
     boulders: each(file.boulders, BOULDER),

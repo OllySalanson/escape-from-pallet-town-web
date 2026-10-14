@@ -13,6 +13,7 @@ import { TOWN_PIECES, TOWN_SHEET } from '../../src/game/world/generated/townPiec
 import { BERRY_TREE_SHEET } from '../../src/game/world/generated/berryTrees';
 import { berryTreeFrames } from '../../src/game/world/berries';
 import { switchesOn } from '../../src/game/world/switches';
+import { HIDEOUT_PIECES, HIDEOUT_SHEET } from '../../src/game/world/generated/hideoutPieces';
 
 export type MapImage = ReturnType<typeof canvas>;
 
@@ -93,6 +94,10 @@ function drawStanding(id: WorldMapId, image: MapImage, [cx, cy, cw, ch]: TileCro
     if (entity.boulder) {
       const at = TOWN_PIECES.strengthBoulder;
       piece(sheetFor(TOWN_SHEET.imagePath), at.column, at.row, x, y);
+    } else if (entity.barrier?.cell) {
+      // The hideout's shutter, a cell of it a tile.
+      const at = HIDEOUT_PIECES['hideout.shutter'];
+      piece(sheetFor(HIDEOUT_SHEET.imagePath), at.column + entity.barrier.cell.dx, at.row + entity.barrier.cell.dy, x, y);
     } else if (entity.barrier) {
       const at = AREA_PIECES['cave.barrier'];
       piece(areas, at.column, at.row + (entity.barrier.top ? 0 : 1), x, y);

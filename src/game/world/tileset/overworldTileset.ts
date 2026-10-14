@@ -1,4 +1,5 @@
 import type { PropCell, PropDefinition, TilesetCatalogue } from './catalogue';
+import { spinnerFallback } from './catalogue';
 import { OVERWORLD } from './sheets';
 
 /**
@@ -446,6 +447,8 @@ export const OVERWORLD_TILESET: TilesetCatalogue<OverworldPropName> = {
     // draw it (`insideTileset.ts`, `playerMapTileset.ts`), and a map drawn
     // on this one is never frozen, so this is only a stray tile's fallback.
     ice: { roles: { fill: PAVING.fill } },
+    // Nor a spinner floor, which is the Rocket Hideout's (`insideTileset.ts`).
+    ...spinnerFallback({ roles: { fill: PAVING.fill } }),
     stone: {
       roles: { fill: BOARDWALK.fill },
       fillVariants: [...BOARDWALK.variants],

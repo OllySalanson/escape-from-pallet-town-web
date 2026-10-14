@@ -1,3 +1,4 @@
+import type { MapLift } from './world/lifts';
 import type { MapSailing } from './world/sailing';
 import {
   linkTable,
@@ -136,6 +137,11 @@ export interface WorldMapDefinition {
    * player can get to reads them through `playerLinks`.
    */
   readonly sailings?: readonly MapSailing[];
+  /**
+   * Its lifts (`world/lifts.ts`): ways between floors only a player rides,
+   * so, like the boats, never in `links`.
+   */
+  readonly lifts?: readonly MapLift[];
 }
 
 /** The maps the game shipped with, authored in its own source. */
@@ -331,6 +337,7 @@ function createComposedMap(
       ? { areas: composed.areas, links: linkTable(searchedLinks(composed.doorways), width) }
       : {}),
     ...(composed.sailings ? { sailings: composed.sailings } : {}),
+    ...(composed.lifts ? { lifts: composed.lifts } : {}),
   };
 }
 

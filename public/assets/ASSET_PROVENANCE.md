@@ -844,6 +844,37 @@ Nintendo / Creatures / Game Freak, no licence from them.
   GBA's five bits a channel and written `x << 3`, and a piece is drawn from a
   metatile's bottom layer, its top layer or both, as the script names.
 
+### `frlg-hideout.png` - the Rocket Hideout and the Power Plant
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-areas.png` below: Pokemon FireRed/LeafGreen art, rights holders
+Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Source.** pret's FireRed disassembly, **pret/pokefirered**
+  (<https://github.com/pret/pokefirered>), at commit
+  `037335f4c725d7c9aecdac87066f2002b4bd7e14`, read 2026-10-14: two tileset
+  pairs. The Rocket Hideout's - `data/tilesets/primary/building` with
+  `secondary/silph_co`'s metatiles drawn on `secondary/condominiums`' tiles and
+  palettes, which is what `gTileset_SilphCo` loads (`src/data/tilesets/headers.h`)
+  - named by metatile as `data/layouts/RocketHideout_B1F` to `_B4F` and
+  `FiveIsland_RocketWarehouse` use them, and by pret's own labels
+  (`include/constants/metatile_labels.h`) for the spinner arrows, the
+  elevator door and the hideout's shutter: its floor, walls and the white
+  rule round its rooms, the partitions of its maze, the four arrows and the
+  stop plate, its stairs, lift and shutter, and the generator, desks, plants,
+  table of plans, cabinet, sofa, consoles and crates standing in it. And the
+  Power Plant's - `primary/building` with `secondary/power_plant` - named as
+  `data/layouts/PowerPlant` uses them: its floor, its wall of machinery and the
+  plates along a wall's crown, the girders, the generators, barrels, rubble,
+  consoles, computer, grating and mat.
+- **Terms.** As for `frlg-areas.png`: nothing of the checkout is committed;
+  what ships is a cut - 80 named pieces on a new 16x17 grid.
+- **How it was cut.** `scripts/cut-frlg-hideout.mjs` is the whole method, and
+  writes `src/game/world/generated/hideoutPieces.ts`. Colours are read back to
+  the GBA's five bits a channel and written `x << 3`; every piece is drawn from
+  both of a metatile's layers, with FireRed's black lifted out of a border
+  piece so it stands against whatever dark the game draws round a room.
+
 ### `frlg-areas.png` - the insides of a player's buildings, and its caves
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling

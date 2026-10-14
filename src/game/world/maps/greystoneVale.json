@@ -1487,6 +1487,15 @@
    }
   },
   {
+   "area": "bunker-b4f",
+   "x": 16,
+   "y": 17,
+   "name": "Escape Hatch",
+   "opens": {
+    "when": "always"
+   }
+  },
+  {
    "x": 285,
    "y": 132,
    "name": "Wardens' Stile",
@@ -1794,6 +1803,55 @@
    "x": 31,
    "y": 2,
    "area": "falls-cave",
+   "hidden": true
+  },
+  {
+   "area": "turbine-hall",
+   "x": 12,
+   "y": 4,
+   "hidden": true
+  },
+  {
+   "area": "bunker-b1f",
+   "x": 22,
+   "y": 5
+  },
+  {
+   "area": "bunker-b1f",
+   "x": 31,
+   "y": 19,
+   "hidden": true
+  },
+  {
+   "area": "bunker-b2f",
+   "x": 2,
+   "y": 11
+  },
+  {
+   "area": "bunker-b3f",
+   "x": 31,
+   "y": 4
+  },
+  {
+   "area": "bunker-b3f",
+   "x": 29,
+   "y": 11
+  },
+  {
+   "area": "bunker-b3f",
+   "x": 20,
+   "y": 9,
+   "hidden": true
+  },
+  {
+   "area": "bunker-b4f",
+   "x": 2,
+   "y": 19
+  },
+  {
+   "area": "bunker-b4f",
+   "x": 28,
+   "y": 10,
    "hidden": true
   },
   {
@@ -2362,6 +2420,24 @@
    ]
   },
   {
+   "area": "turbine-hall",
+   "x": 23,
+   "y": 12,
+   "lines": [
+    "STAFF ONLY",
+    "Plant room below. Keep the shutter locked."
+   ]
+  },
+  {
+   "area": "bunker-b2f",
+   "x": 20,
+   "y": 5,
+   "lines": [
+    "ELEVATOR",
+    "Runs off the B2F generator. If it stops, switch it back on."
+   ]
+  },
+  {
    "x": 269,
    "y": 166,
    "lines": [
@@ -2547,6 +2623,21 @@
    "y": 73,
    "name": "Relay Mast",
    "kind": "mast"
+  },
+  {
+   "area": "bunker-b4f",
+   "x": 21,
+   "y": 8,
+   "name": "War Room",
+   "kind": "war-room"
+  },
+  {
+   "area": "bunker-b4f",
+   "x": 26,
+   "y": 18,
+   "name": "Strongroom",
+   "kind": "strongroom",
+   "locked": true
   },
   {
    "x": 312,
@@ -2938,6 +3029,45 @@
    "sight": 3,
    "lines": [
     "Nobody touches the sluices but me!"
+   ]
+  },
+  {
+   "area": "bunker-b1f",
+   "x": 9,
+   "y": 17,
+   "name": "Grunt",
+   "team": "collier",
+   "look": "rocket-grunt",
+   "facing": "right",
+   "sight": 3,
+   "lines": [
+    "Who let you down here? The shutter was locked!"
+   ]
+  },
+  {
+   "area": "bunker-b3f",
+   "x": 31,
+   "y": 7,
+   "name": "Grunt",
+   "team": "netter",
+   "look": "rocket-grunt-woman",
+   "facing": "left",
+   "sight": 2,
+   "lines": [
+    "You came through the arrows? Then you can go back the same way!"
+   ]
+  },
+  {
+   "area": "bunker-b4f",
+   "x": 24,
+   "y": 11,
+   "name": "Grunt",
+   "team": "raider",
+   "look": "rocket-grunt",
+   "facing": "left",
+   "sight": 3,
+   "lines": [
+    "The war room is off limits. Orders are orders!"
    ]
   },
   {
@@ -3513,6 +3643,693 @@
      "height": 2
     }
    ]
+  },
+  {
+   "id": "turbine-hall",
+   "name": "Turbine Hall",
+   "kind": "inside",
+   "style": "power-plant",
+   "width": 24,
+   "height": 16,
+   "ground": [
+    "BBBBBBBBBBBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBBBBBBBBBBB",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "BBBBBBBBBBPPPPBBBBBBBBBB",
+    "BBBBBBBBBBPPPPBBBBBBBBBB",
+    "BBBBBBBBBBPPPPBBBBBBBBBB",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPP"
+   ],
+   "buildings": [
+    {
+     "kind": "power-girder-west",
+     "x": 0,
+     "y": 1
+    },
+    {
+     "kind": "power-girder-east",
+     "x": 22,
+     "y": 1
+    },
+    {
+     "kind": "power-generator",
+     "x": 2,
+     "y": 4
+    },
+    {
+     "kind": "power-generator",
+     "x": 6,
+     "y": 4
+    },
+    {
+     "kind": "power-generator-east",
+     "x": 15,
+     "y": 4
+    },
+    {
+     "kind": "power-generator-east",
+     "x": 19,
+     "y": 4
+    },
+    {
+     "kind": "power-console",
+     "x": 10,
+     "y": 3
+    },
+    {
+     "kind": "power-console-dials",
+     "x": 13,
+     "y": 3
+    },
+    {
+     "kind": "power-girder-west",
+     "x": 0,
+     "y": 10
+    },
+    {
+     "kind": "power-girder-east",
+     "x": 22,
+     "y": 10
+    },
+    {
+     "kind": "power-computer",
+     "x": 1,
+     "y": 12
+    },
+    {
+     "kind": "power-barrel",
+     "x": 2,
+     "y": 13
+    },
+    {
+     "kind": "power-barrel",
+     "x": 3,
+     "y": 13
+    },
+    {
+     "kind": "power-barrel",
+     "x": 22,
+     "y": 13
+    },
+    {
+     "kind": "power-rubble",
+     "x": 11,
+     "y": 7
+    },
+    {
+     "kind": "power-rubble-low",
+     "x": 6,
+     "y": 13
+    },
+    {
+     "kind": "power-rubble",
+     "x": 16,
+     "y": 14
+    },
+    {
+     "kind": "power-rubble-low",
+     "x": 17,
+     "y": 14
+    },
+    {
+     "kind": "power-console",
+     "x": 8,
+     "y": 12
+    },
+    {
+     "kind": "power-grating",
+     "x": 11,
+     "y": 15
+    },
+    {
+     "kind": "power-grating",
+     "x": 13,
+     "y": 15
+    }
+   ]
+  },
+  {
+   "id": "bunker-b1f",
+   "name": "Bunker B1F",
+   "kind": "inside",
+   "style": "hideout",
+   "width": 34,
+   "height": 22,
+   "ground": [
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "CBBBBBBBBBCCCBBBBBBBBBBBBCCCCCCCCC",
+    "CBBBBBBBBBCCCBBBBBBBBBBBBCCCCCCCCC",
+    "CPPPPPPPPPCCCPPPPPPPPPPPPCCCCCCCCC",
+    "CPPPPPPPPPCCCPPPPPPPPPPPPCCCCCCCCC",
+    "CPPPPPPPPPCCCPPPPPPPPPPPPCCCCCCCCC",
+    "CPPPPPPPPPCCCPPPPPPPPPPPPCCCCCCCCC",
+    "CCCCCPPCCCCCCPPPPPPPPPPPPCCCCCCCCC",
+    "CCCCCPPCCCCCCCCCCCCCPPCCCCCCCCCCCC",
+    "CCCCCPPCCCCCCCCCCCCCPPCCCCCCCCCCCC",
+    "CCCCCPPCCCCCCCCCCCCCPPCCCCCCCCCCCC",
+    "CBBBBPPBBBBBBBBBBBBBPPBBBBBBBBBBBC",
+    "CBBBBPPBBBBBBBBBBBBBPPBBBBBBBBBBBC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+   ],
+   "buildings": [
+    {
+     "kind": "hideout-vent",
+     "x": 6,
+     "y": 1
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 9,
+     "y": 3
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 14,
+     "y": 3
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 16,
+     "y": 3
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 14,
+     "y": 5
+    },
+    {
+     "kind": "hideout-cabinet",
+     "x": 23,
+     "y": 2
+    },
+    {
+     "kind": "hideout-phone",
+     "x": 18,
+     "y": 1
+    },
+    {
+     "kind": "hideout-desk",
+     "x": 15,
+     "y": 14
+    },
+    {
+     "kind": "hideout-stool",
+     "x": 14,
+     "y": 16
+    },
+    {
+     "kind": "hideout-plan-table",
+     "x": 20,
+     "y": 15
+    },
+    {
+     "kind": "hideout-console",
+     "x": 18,
+     "y": 12
+    },
+    {
+     "kind": "hideout-vent",
+     "x": 8,
+     "y": 11
+    },
+    {
+     "kind": "hideout-phone",
+     "x": 25,
+     "y": 11
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 2,
+     "y": 13
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 2,
+     "y": 17
+    },
+    {
+     "kind": "hideout-cabinet",
+     "x": 31,
+     "y": 12
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 29,
+     "y": 18
+    },
+    {
+     "kind": "hideout-sofa",
+     "x": 4,
+     "y": 18
+    }
+   ],
+   "lift": {
+    "x": 12,
+    "y": 13,
+    "lift": "bunker-lift"
+   },
+   "switches": [
+    {
+     "x": 5,
+     "y": 8,
+     "kind": "key",
+     "opens": "bunker-shutter"
+    }
+   ],
+   "barriers": [
+    {
+     "id": "bunker-shutter",
+     "x": 5,
+     "y": 8,
+     "width": 2,
+     "height": 2,
+     "look": "shutter"
+    }
+   ]
+  },
+  {
+   "id": "bunker-b2f",
+   "name": "Bunker B2F",
+   "kind": "inside",
+   "style": "hideout",
+   "width": 34,
+   "height": 22,
+   "ground": [
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "CBBBBBBBBBBBBBBBBCCCBBBBBBBBBBBBBC",
+    "CBBBBBBBBBBBBBBBBCCCBBBBBBBBBBBBBC",
+    "CPPPPKKKKKKKKKKKFCCCPPPPPPPPPPPPPC",
+    "CPPPPFFFFFFFFFFUFCCCPPPPPPPPPPPPPC",
+    "CPPPPFZRRZFFZRRZFCCCPPPPPPPPPPPPPC",
+    "CFFFDFUPPDPPUPPDFCCCPPPPPPPPPPPPPC",
+    "CPPPDFUPPDPPUPPDFCCCPPPPPPPPPPPPPC",
+    "CPPPDFZKKZRRZKKZFCCCPPPPPPPPPPPPPC",
+    "CPPPDFDPPUPPDPPUFCCCPPPPPPPPPPPPPC",
+    "CPPPDFDPPUPPDPPUFCCCPPPPPPPPPPPPPC",
+    "CPPPDFZRRZFFZRRZFCCCPPPPPPPPPPPPPC",
+    "CPPPDFUPPDPPUPPDFCCCPPPPPPPPPPPPPC",
+    "CPPPDFUPPDPPUPPDFCCCPPPPPPPPPPPPPC",
+    "CPPPDFZKKZRRZKKZFCCCPPPPPPPPPPPPPC",
+    "CPPPDFDFFUFFFFFDFBBBPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPBBBPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPCCCPPPPPPPPPPPPPC",
+    "CPPPPPPPPPPPPPPPPCCCPPPPPPPPPPPPPC",
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+   ],
+   "buildings": [
+    {
+     "kind": "hideout-generator",
+     "x": 2,
+     "y": 1
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 1,
+     "y": 8
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 7,
+     "y": 6
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 13,
+     "y": 9
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 10,
+     "y": 12
+    },
+    {
+     "kind": "hideout-vent",
+     "x": 8,
+     "y": 1
+    },
+    {
+     "kind": "hideout-vent",
+     "x": 13,
+     "y": 1
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 1,
+     "y": 17
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 11,
+     "y": 18
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 13,
+     "y": 18
+    },
+    {
+     "kind": "hideout-console",
+     "x": 20,
+     "y": 2
+    },
+    {
+     "kind": "hideout-phone",
+     "x": 26,
+     "y": 1
+    },
+    {
+     "kind": "hideout-desk",
+     "x": 25,
+     "y": 7
+    },
+    {
+     "kind": "hideout-stool",
+     "x": 24,
+     "y": 9
+    },
+    {
+     "kind": "hideout-desk-plain",
+     "x": 29,
+     "y": 7
+    },
+    {
+     "kind": "hideout-sofa",
+     "x": 21,
+     "y": 16
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 32,
+     "y": 3
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 32,
+     "y": 12
+    },
+    {
+     "kind": "hideout-cabinet",
+     "x": 31,
+     "y": 16
+    },
+    {
+     "kind": "hideout-plan-table",
+     "x": 23,
+     "y": 12
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 29,
+     "y": 16
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 27,
+     "y": 18
+    }
+   ],
+   "lift": {
+    "x": 23,
+    "y": 3,
+    "lift": "bunker-lift"
+   },
+   "switches": [
+    {
+     "x": 3,
+     "y": 3,
+     "kind": "lever",
+     "opens": "bunker-lift"
+    }
+   ]
+  },
+  {
+   "id": "bunker-b3f",
+   "name": "Bunker B3F",
+   "kind": "inside",
+   "style": "hideout",
+   "width": 34,
+   "height": 19,
+   "ground": [
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "CBBBBBBBBBCCCBBBBBBBBBBBBCCCBBBBBC",
+    "CBBBBBBBBBCCCBBBBBBBBBBBBCCCBBBBBC",
+    "CPPPPPPPPPCCCFZRRZKKZRRZFCCCPPPPPC",
+    "CPPPPPPPPPBBBFUPPDPPUPPDFBBBPPPPPC",
+    "CPPPPPPPPPBBBFUPPDPPUPPDFBBBPPPPPC",
+    "CPPPPPPPPPPPPRZFFZRRZFFZRPPPPPPPPC",
+    "CPPPPPPPPPPPPFDPPUPPDPPUFPPPPPPPPC",
+    "CPPPPPPPPPCCCFDPPUPPDPPUFCCCPPPPPC",
+    "CPPPPPPPPPCCCFZRRZKKZRRZFCCCPPPPPC",
+    "CCCCCPPCCCCCCFFFFFFFFFFFFCCCPPPPPC",
+    "CCCCCPPCCCCCCCCCCCCCCCCCCCCCPPPPPC",
+    "CCCCCPPCCCCCCCCCCCCCCCCCCCCCPPPPPC",
+    "CCCCCPPCCCCCCCCCCCCCCCCCCCCCCPPCCC",
+    "CCCCCPPBBBBBBBBBBBBBBBBBBBBBBPPCCC",
+    "CCCCCPPBBBBBBBBBBBBBBBBBBBBBBPPCCC",
+    "CCCCCUUPPPPPPPPPPPPPPPPPPPPPPKKCCC",
+    "CCCCCUUPPPPPPPPPPPPPPPPPPPPPPKKCCC",
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+   ],
+   "buildings": [
+    {
+     "kind": "hideout-vent",
+     "x": 7,
+     "y": 1
+    },
+    {
+     "kind": "hideout-cabinet",
+     "x": 1,
+     "y": 2
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 9,
+     "y": 3
+    },
+    {
+     "kind": "hideout-vent",
+     "x": 17,
+     "y": 1
+    },
+    {
+     "kind": "hideout-vent",
+     "x": 21,
+     "y": 1
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 15,
+     "y": 4
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 21,
+     "y": 7
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 28,
+     "y": 3
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 28,
+     "y": 9
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 31,
+     "y": 9
+    },
+    {
+     "kind": "hideout-phone",
+     "x": 30,
+     "y": 1
+    },
+    {
+     "kind": "hideout-sofa",
+     "x": 2,
+     "y": 6
+    }
+   ],
+   "lift": {
+    "x": 4,
+    "y": 3,
+    "lift": "bunker-lift"
+   }
+  },
+  {
+   "id": "bunker-b4f",
+   "name": "Bunker B4F",
+   "kind": "inside",
+   "style": "hideout",
+   "width": 32,
+   "height": 22,
+   "ground": [
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "CBBBBBBBBBBCCCBBBBBBBBBBBBBBBBCC",
+    "CBBBBBBBBBBCCCBBBBBBBBBBBBBBBBCC",
+    "CPPPPPPPPPPCCCPPPPPPPPPPPPPPPPCC",
+    "CPPPPPPPPPPBBBPPPPPPPPPPPPPPPPCC",
+    "CPPPPPPPPPPBBBPPPPPPPPPPPPPPPPCC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPCC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPCC",
+    "CPPPPPPPPPPCCCPPPPPPPPPPPPPPPPCC",
+    "CCCCCCCCCCCCCCPPPPPPPPPPPPPPPPCC",
+    "CCCCCCCCCCCCCCPPPPPPPPPPPPPPPPCC",
+    "CCCCCCCCCCCCCCPPPPPPPPPPPPPPPPCC",
+    "CCCCCCCCCCCCCCPPPPPPPPPPPPPPPPCC",
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCPPCCCC",
+    "CBBBBBBBBBBBBBBBBBBCCCBBBBPPBBCC",
+    "CBBBBBBBBBBBBBBBBBBCCCBBBBPPBBCC",
+    "CPPPPPPPPPPPPPPPPPPCCCPPPPPPPPCC",
+    "CPPPPPPPPPPPPPPPPPPBBBPPPPPPPPCC",
+    "CPPPPPPPPPPPPPPPPPPBBBPPPPPPPPCC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPCC",
+    "CPPPPPPPPPPPPPPPPPPPPPPPPPPPPPCC",
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+   ],
+   "buildings": [
+    {
+     "kind": "hideout-vent",
+     "x": 7,
+     "y": 1
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 1,
+     "y": 3
+    },
+    {
+     "kind": "hideout-desk-plain",
+     "x": 6,
+     "y": 4
+    },
+    {
+     "kind": "hideout-stool",
+     "x": 5,
+     "y": 6
+    },
+    {
+     "kind": "hideout-plan-table",
+     "x": 18,
+     "y": 4
+    },
+    {
+     "kind": "hideout-console",
+     "x": 15,
+     "y": 2
+    },
+    {
+     "kind": "hideout-console",
+     "x": 16,
+     "y": 2
+    },
+    {
+     "kind": "hideout-phone",
+     "x": 25,
+     "y": 1
+    },
+    {
+     "kind": "hideout-desk",
+     "x": 25,
+     "y": 8
+    },
+    {
+     "kind": "hideout-stool-east",
+     "x": 28,
+     "y": 10
+    },
+    {
+     "kind": "hideout-cabinet",
+     "x": 28,
+     "y": 2
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 22,
+     "y": 16
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 28,
+     "y": 16
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 28,
+     "y": 18
+    },
+    {
+     "kind": "hideout-cabinet",
+     "x": 24,
+     "y": 15
+    },
+    {
+     "kind": "hideout-stairs-out",
+     "x": 16,
+     "y": 16
+    },
+    {
+     "kind": "hideout-desk-plain",
+     "x": 4,
+     "y": 16
+    },
+    {
+     "kind": "hideout-stool",
+     "x": 3,
+     "y": 18
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 9,
+     "y": 16
+    },
+    {
+     "kind": "hideout-crate",
+     "x": 11,
+     "y": 16
+    },
+    {
+     "kind": "hideout-sofa",
+     "x": 8,
+     "y": 18
+    },
+    {
+     "kind": "hideout-plant",
+     "x": 1,
+     "y": 16
+    },
+    {
+     "kind": "hideout-console",
+     "x": 13,
+     "y": 15
+    }
+   ],
+   "lift": {
+    "x": 4,
+    "y": 3,
+    "lift": "bunker-lift"
+   }
   },
   {
    "id": "greystone-caves-b5f",
@@ -4497,6 +5314,59 @@
      "y": 24,
      "toward": "down",
      "look": "cave-exit"
+    }
+   ]
+  },
+  {
+   "ends": [
+    {
+     "x": 287,
+     "y": 88,
+     "toward": "up",
+     "look": "door"
+    },
+    {
+     "area": "turbine-hall",
+     "x": 12,
+     "y": 15,
+     "toward": "down",
+     "look": "mat"
+    }
+   ]
+  },
+  {
+   "ends": [
+    {
+     "area": "turbine-hall",
+     "x": 20,
+     "y": 12,
+     "toward": "right",
+     "look": "stairs-down"
+    },
+    {
+     "area": "bunker-b1f",
+     "x": 3,
+     "y": 3,
+     "toward": "left",
+     "look": "stairs-up"
+    }
+   ]
+  },
+  {
+   "ends": [
+    {
+     "area": "bunker-b1f",
+     "x": 28,
+     "y": 13,
+     "toward": "right",
+     "look": "stairs-down"
+    },
+    {
+     "area": "bunker-b2f",
+     "x": 29,
+     "y": 3,
+     "toward": "left",
+     "look": "stairs-up"
     }
    ]
   },

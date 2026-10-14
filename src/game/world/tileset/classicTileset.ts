@@ -1,4 +1,4 @@
-import type { TilesetCatalogue } from './catalogue';
+import { spinnerFallback, type TilesetCatalogue } from './catalogue';
 import { CLASSIC } from './sheets';
 
 /**
@@ -86,6 +86,8 @@ export const CLASSIC_TILESET: TilesetCatalogue<never> = {
     // draw it (`insideTileset.ts`, `playerMapTileset.ts`), and a map drawn
     // on this one is never frozen, so this is only a stray tile's fallback.
     ice: { roles: { fill: CLASSIC_TILE.DIRT_PATH } },
+    // Nor a spinner floor, which is the Rocket Hideout's (`insideTileset.ts`).
+    ...spinnerFallback({ roles: { fill: CLASSIC_TILE.DIRT_PATH } }),
     stone: { roles: { fill: CLASSIC_TILE.DIRT_PATH } },
     gravel: { roles: { fill: CLASSIC_TILE.DIRT_PATH } },
     ford: { roles: { fill: CLASSIC_TILE.DIRT_PATH } },
