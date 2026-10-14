@@ -528,6 +528,18 @@ const WATCH_TINT = 0xf87171;
 const WATCH_FILL_ALPHA = 0.16;
 const WATCH_EDGE_ALPHA = 0.42;
 /**
+ * A pale red over a sand road is a change of hue with almost no change of
+ * light, so for red-green and colour-blind players the watch was not there at
+ * all (playtest 40, finding 1). The shading therefore also carries a shape:
+ * diagonal hatching and a border in dark ink, which read in any vision. The
+ * hatch runs across tile joins (it is laid on map pixels, not per tile), so a
+ * watched lane is one striped strip.
+ */
+const WATCH_INK = 0x171717;
+const WATCH_HATCH_ALPHA = 0.34;
+const WATCH_INK_EDGE_ALPHA = 0.6;
+const WATCH_HATCH_SPACING = 6;
+/**
  * When a beaten trainer's watch is lifted the shading is not just removed: it
  * lets go tile by tile from the trainer's end, so the player sees the route open
  * rather than infer it from a missing colour. Times are wall-clock tweens, which
@@ -2366,18 +2378,38 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const y = tile.y * TILE_SIZE;
       shading.fillStyle(WATCH_TINT, WATCH_FILL_ALPHA);
       shading.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-      shading.fillStyle(WATCH_TINT, WATCH_EDGE_ALPHA);
+      shading.fillStyle(WATCH_INK, WATCH_HATCH_ALPHA);
+      for (let row = 0; row < TILE_SIZE; row += 1) {
+        // One ink pixel a row, stepping along the diagonal from map pixel 0, so
+        // neighbouring tiles continue each other's stripes.
+        const first = (WATCH_HATCH_SPACING - ((x + y + row) % WATCH_HATCH_SPACING)) % WATCH_HATCH_SPACING;
+        for (let column = first; column < TILE_SIZE; column += WATCH_HATCH_SPACING) {
+          shading.fillRect(x + column, y + row, 1, 1);
+        }
+      }
+      const edges: Array<readonly [number, number, number, number]> = [];
       if (!inWatch.has(`${tile.x},${tile.y - 1}`)) {
-        shading.fillRect(x, y, TILE_SIZE, 1);
+        edges.push([x, y, TILE_SIZE, 1]);
       }
       if (!inWatch.has(`${tile.x},${tile.y + 1}`)) {
-        shading.fillRect(x, y + TILE_SIZE - 1, TILE_SIZE, 1);
+        edges.push([x, y + TILE_SIZE - 1, TILE_SIZE, 1]);
       }
       if (!inWatch.has(`${tile.x - 1},${tile.y}`)) {
-        shading.fillRect(x, y, 1, TILE_SIZE);
+        edges.push([x, y, 1, TILE_SIZE]);
       }
       if (!inWatch.has(`${tile.x + 1},${tile.y}`)) {
-        shading.fillRect(x + TILE_SIZE - 1, y, 1, TILE_SIZE);
+        edges.push([x + TILE_SIZE - 1, y, 1, TILE_SIZE]);
+      }
+      // The red edge over a dark one: the colour still says "red", and the ink
+      // under it is what says "edge" to anyone who cannot see red.
+      for (const [inkStyle, alpha] of [
+        [WATCH_INK, WATCH_INK_EDGE_ALPHA],
+        [WATCH_TINT, WATCH_EDGE_ALPHA],
+      ] as const) {
+        shading.fillStyle(inkStyle, alpha);
+        for (const [ex, ey, width, height] of edges) {
+          shading.fillRect(ex, ey, width, height);
+        }
       }
     }
     this.mapObjects.push(shading);
