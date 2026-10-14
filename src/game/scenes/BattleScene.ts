@@ -2587,8 +2587,23 @@ export class BattleScene extends Phaser.Scene {
     this.mode = 'party';
     this.forcedReplacement = false;
     this.partyMessage = '';
-    this.selectedCommand = 0;
+    // On the Pokemon fighting now, as FireRed's list (whose first slot is
+    // always the one out) opens: opened on the fainted lead, the first press
+    // was answered with "cannot revive" (playtest 42).
+    this.selectedCommand = this.firstMedicineTargetIndex();
     this.showCommands();
+  }
+
+  /** The first Pokemon standing on the field, else the first standing at all, else the first. */
+  private firstMedicineTargetIndex(): number {
+    const standing = playerCombatants(this.state)
+      .filter((combatant) => combatant.currentHp > 0)
+      .map((combatant) => combatant.pokemon);
+    const onField = this.party.pokemon.findIndex((pokemon) => standing.includes(pokemon));
+    if (onField >= 0) {
+      return onField;
+    }
+    return Math.max(0, this.party.pokemon.findIndex((pokemon) => !pokemon.isFainted));
   }
 
   /**

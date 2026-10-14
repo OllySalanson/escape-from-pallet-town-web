@@ -1366,6 +1366,27 @@ describe('the forced replacement list', () => {
     expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(charmander);
   });
 
+  it('opens a Potion on the Pokemon now out, never on the fainted lead (playtest 42)', () => {
+    const { scene, renderedTexts, charmander } = readToTheReplacement();
+    const battle = scene as unknown as {
+      confirm(): void;
+      showItemSelection(): void;
+      selectItem(index: number): void;
+      selectedCommand: number;
+      mode: string;
+    };
+    battle.confirm();
+    expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(charmander);
+
+    battle.showItemSelection();
+    battle.selectItem(0);
+
+    expect(battle.mode).toBe('party');
+    expect(battle.selectedCommand).toBe(1);
+    expect(read(renderedTexts).some(({ text }) => text.startsWith('▶ CHARMANDER'))).toBe(true);
+    expect(read(renderedTexts).some(({ text }) => text.startsWith('▶ PIDGEY'))).toBe(false);
+  });
+
   it('says the fainted Pokemon has no energy left, not that it is already out', () => {
     const { scene, renderedTexts } = readToTheReplacement();
 
