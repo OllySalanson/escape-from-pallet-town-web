@@ -80,11 +80,24 @@ describe('the tide', () => {
   });
 
   it('is said on the jetty: when it sails, how long it has, and that it has gone', () => {
-    expect(boatCaption(sailing, 'not-yet', 0)).toBe('SAILS AT 0:30');
+    expect(boatCaption(sailing, 'not-yet', 0)).toBe('SAILS IN 30s');
     expect(boatCaption(sailing, 'sailing', 100_000)).toBe('SAILING 20s');
     expect(boatCaption(sailing, 'gone', 200_000)).toBe('SAILED');
-    expect(boatAwayLines(sailing, 'not-yet').join(' ')).toContain('from 0:30 until 2:00');
-    expect(boatAwayLines(sailing, 'gone').join(' ')).toContain('will not sail again');
+    expect(boatAwayLines(sailing, 'not-yet', 0).join(' ')).toContain('in 30s, and sails for 90s');
+    expect(boatAwayLines(sailing, 'gone', 200_000).join(' ')).toContain('will not sail again');
+  });
+
+  it('counts down to the tide as the raid clock does, never in time since the drop', () => {
+    // The raid clock counts down, so "SAILS AT 0:30" read off a clock showing
+    // 4:50 sent a player to wait for a boat that had already sailed. A jetty
+    // says how long until, as an exit's OPENS IN does.
+    expect(boatCaption(sailing, 'not-yet', 20_000)).toBe('SAILS IN 10s');
+    expect(boatCaption(sailing, 'not-yet', 29_001)).toBe('SAILS IN 1s');
+    expect(boatAwayLines(sailing, 'not-yet', 20_000).join(' ')).toContain('in 10s, and sails for 90s');
+    for (const elapsed of [0, 20_000]) {
+      expect(boatCaption(sailing, 'not-yet', elapsed)).not.toMatch(/\d:\d\d/);
+      expect(boatAwayLines(sailing, 'not-yet', elapsed).join(' ')).not.toMatch(/\d:\d\d/);
+    }
   });
 
   it("asks before it takes anybody, in FireRed's sailor's words, the cursor on staying ashore", () => {

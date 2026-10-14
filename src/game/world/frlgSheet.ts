@@ -211,6 +211,12 @@ export const FRLG_TILES = {
   CRATE: { column: 12, row: 30 },
   WATER_OPEN: { column: 13, row: 30 },
   SAND_SOLID: { column: 14, row: 30 },
+  /**
+   * `ROCK` with the grass in its corners made clear, so whatever ground it is
+   * planted on shows round it - sand on a beach, not a square of lawn
+   * (`scripts/cut-frlg-clear-rock.mjs`).
+   */
+  ROCK_CLEAR: { column: 15, row: 30 },
 } as const satisfies Record<string, SheetCell>;
 
 export type FrlgTileName = keyof typeof FRLG_TILES;

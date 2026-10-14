@@ -20,6 +20,10 @@ import {
   type SheetRegion,
 } from './frlgSheet';
 import { FRLG_TILESET } from './tileset/frlgTileset';
+import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
+import { MATERIAL_CHARS } from './tileset/materials';
+import { MAP_FILE_BUILDINGS } from './mapFile';
+import greystoneVale from './maps/greystoneVale.json';
 
 const SHEET = new URL('../../../public/assets/frlg-tiles.png', import.meta.url);
 
@@ -303,5 +307,68 @@ describe('the FireRed/LeafGreen sheet', () => {
     for (const cell of ['innerNorthWest', 'innerNorthEast', 'innerSouthWest', 'innerSouthEast']) {
       expect(MATERIAL_CELL_OFFSETS).toHaveProperty(cell);
     }
+  });
+});
+
+/** `FRLG_TILES.GRASS`'s green, which the sheet's objects carry in their corners. */
+const GRASS_GREEN = [112, 200, 160] as const;
+
+/** How many of a tile's pixels are that grass, drawn opaque. */
+const grassPixels = (sheet: Decoded, column: number, row: number): number => {
+  let count = 0;
+  for (let y = 0; y < TILE_SIZE; y += 1) {
+    for (let x = 0; x < TILE_SIZE; x += 1) {
+      const px = (row * TILE_SIZE + y) * sheet.width * 4 + (column * TILE_SIZE + x) * 4;
+      if (sheet.pixels[px + 3] === 255 && GRASS_GREEN.every((value, channel) => sheet.pixels[px + channel] === value)) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+};
+
+describe('a rock on any ground', () => {
+  it('is the sheet rock with the grass in its corners cleared and nothing else changed', async () => {
+    const sheet = await sheetPromise;
+    const at = (cell: { column: number; row: number }, x: number, y: number) =>
+      (cell.row * TILE_SIZE + y) * sheet.width * 4 + (cell.column * TILE_SIZE + x) * 4;
+    expect(grassPixels(sheet, FRLG_TILES.ROCK.column, FRLG_TILES.ROCK.row)).toBeGreaterThan(0);
+    expect(grassPixels(sheet, FRLG_TILES.ROCK_CLEAR.column, FRLG_TILES.ROCK_CLEAR.row)).toBe(0);
+    for (let y = 0; y < TILE_SIZE; y += 1) {
+      for (let x = 0; x < TILE_SIZE; x += 1) {
+        const rock = [...sheet.pixels.subarray(at(FRLG_TILES.ROCK, x, y), at(FRLG_TILES.ROCK, x, y) + 4)];
+        const clear = [...sheet.pixels.subarray(at(FRLG_TILES.ROCK_CLEAR, x, y), at(FRLG_TILES.ROCK_CLEAR, x, y) + 4)];
+        const grass = GRASS_GREEN.every((value, channel) => rock[channel] === value);
+        expect(clear).toEqual(grass ? [0, 0, 0, 0] : rock);
+      }
+    }
+  });
+
+  it("stands on the vale's sand and beach without a square of lawn round it (Gull Strand's rocks)", async () => {
+    // The vale's playtest found Gull Strand's rocks each in a square of grass
+    // on the sand: their lot was sand, and the rock's own corners covered it.
+    // Every thing the vale plants out of doors on sand or a beach is asked.
+    const sheet = await sheetPromise;
+    const first = FRLG_TILESET.sources[0].firstIndex;
+    const sand = new Set([MATERIAL_CHARS.sand, MATERIAL_CHARS.beach]);
+    const onSand: string[] = [];
+    const lawned: string[] = [];
+    for (const building of greystoneVale.buildings) {
+      if ((building as { area?: string }).area) continue;
+      const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[building.kind as keyof typeof MAP_FILE_BUILDINGS]];
+      prop.cells.forEach((cell, index) => {
+        const x = building.x + (index % prop.width);
+        const y = building.y + Math.floor(index / prop.width);
+        const local = cell.tile - first;
+        if (cell.tile < 0 || cell.canopy || local < 0 || local >= FRLG_SHEET_COLUMNS * (sheet.height / TILE_SIZE)) return;
+        if (!sand.has(greystoneVale.ground[y][x])) return;
+        onSand.push(`${building.kind} ${x},${y}`);
+        if (grassPixels(sheet, local % FRLG_SHEET_COLUMNS, Math.floor(local / FRLG_SHEET_COLUMNS)) > 0) {
+          lawned.push(`${building.kind} ${x},${y}`);
+        }
+      });
+    }
+    expect(onSand.filter((name) => name.startsWith('rock '))).not.toHaveLength(0);
+    expect(lawned).toEqual([]);
   });
 });

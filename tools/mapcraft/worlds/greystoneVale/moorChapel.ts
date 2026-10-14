@@ -196,6 +196,12 @@ export function moorChapel(): MapcraftResult {
   // way through on a night raid. Whole lattice cells, so by day it is whole
   // trees, as deep as a door may be wide.
   const nightTrack = { kind: 'night' as const, x: 48, y: 18, width: 12, height: 2 };
+  // The track is a place of its own, the one the shepherd names, out to the
+  // fell's edge: the door stops four tiles short of the seam (the opening is
+  // ground), and those tiles are walked by day from the clearing, where the
+  // plate named THE MOOR CHAPEL in a wood with the fog lines up - the one
+  // place nothing on the moor is meant to point to (the vale's playtest, B5).
+  const sheepTrack = { name: 'The Sheep Track', x: 48, y: 18, width: 16, height: 2 };
 
   const links: MapFileLink[] = [
     {
@@ -231,6 +237,7 @@ export function moorChapel(): MapcraftResult {
       areas: [NAVE, CRYPT],
       links,
       districts: [
+        sheepTrack,
         { name: 'The Churchyard', x: 22, y: 22, width: 12, height: 18, wildlife: 'haunted' },
         { area: CRYPT.id, name: 'The Crypt', x: 0, y: 0, width: 24, height: 20, wildlife: 'haunted' },
       ],

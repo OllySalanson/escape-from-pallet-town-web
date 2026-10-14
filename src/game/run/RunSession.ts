@@ -113,6 +113,13 @@ export interface ActiveRunSession {
    */
   switchesThrown?: string[];
   /**
+   * The jetty this raid last put out to sea from, while the player is across
+   * the water from it (`shoreLeftBehind`): the hunter cannot sail, so it
+   * comes in on this shore rather than beside a player on an island. On the
+   * map named, since a boat never leaves its map; gone once they sail back.
+   */
+  shoreLeftBehind?: { readonly mapId: string; readonly position: GridPosition };
+  /**
    * Whether the player is riding the Bicycle (`world/bicycle.ts`). The world is
    * rebuilt after every fight, and getting back on after each one is FireRed's
    * rule nowhere, so it rides here; it is re-asked on every rebuild, so a

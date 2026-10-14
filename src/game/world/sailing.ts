@@ -8,6 +8,7 @@ import {
 } from '../movement/gridMovement';
 import type { MapFileLink } from './mapFile';
 import { liftLinks, type MapLift } from './lifts';
+import { stepDistances } from './mapStructure';
 
 /**
  * A boat between two jetties: the one way onto a place the sea cuts off.
@@ -150,6 +151,27 @@ export function voyage(sailing: MapSailing, from: 0 | 1): readonly GridPosition[
   return [...course, sailing.ends[1 - from].landing];
 }
 
+/**
+ * The shore a player has put the sea between themselves and, after a voyage
+ * from `boardedAt` to `landedAt`: where the hunter, which cannot sail, comes
+ * in for a player who is across the water - on the shore they left, never
+ * beside them on an island (playtest of the vale's far places, B2). It is the
+ * shore they were already across the water from, if any - a second boat out
+ * from an island is still the sea between them and the hunter - and nothing
+ * once they come ashore on ground the hunter can walk to from it, which is
+ * asked of the hunter's own ways: the ground and the doors, never a boat.
+ */
+export function shoreLeftBehind(
+  map: { readonly collision: readonly (readonly boolean[])[]; readonly links?: GridLinks },
+  shore: GridPosition | undefined,
+  boardedAt: GridPosition,
+  landedAt: GridPosition,
+): GridPosition | undefined {
+  const left = shore ?? boardedAt;
+  const walk = stepDistances(map.collision, landedAt, undefined, map.links);
+  return (walk[left.y]?.[left.x] ?? -1) >= 0 ? undefined : { ...left };
+}
+
 /** Each boat as the two ways through a player can take: jetty to jetty, both ways. */
 export function sailingLinks(sailings: readonly MapSailing[] | undefined): GridLink[] {
   return (sailings ?? []).flatMap((sailing) => [
@@ -180,10 +202,14 @@ export function playerLinks(map: {
   ]);
 }
 
-/** Seconds into a raid as the clock reads them: `2:00`. */
-function clockTime(ms: number): string {
-  const seconds = Math.round(ms / 1_000);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+/**
+ * Whole seconds from `fromMs` until `untilMs`, as an exit's OPENS IN counts
+ * them. Never a clock time: the raid clock counts down, and a deployed clock
+ * can be shortened by the Pokemon Center's bill, so "1:00" into a raid is no
+ * reading the player can watch for.
+ */
+function secondsUntil(untilMs: number, fromMs: number): string {
+  return `${Math.max(0, Math.ceil((untilMs - fromMs) / 1_000))}s`;
 }
 
 /**
@@ -208,10 +234,17 @@ export function castOffLine(sailing: MapSailing): string {
 }
 
 /** What a jetty says while its boat is not there to board. */
-export function boatAwayLines(sailing: MapSailing, state: Exclude<SailingState, 'sailing'>): readonly string[] {
+export function boatAwayLines(
+  sailing: MapSailing,
+  state: Exclude<SailingState, 'sailing'>,
+  elapsedMs: number,
+): readonly string[] {
   const name = sailing.name.toUpperCase();
   return state === 'not-yet'
-    ? [`${name} puts in on the tide.`, `It sails from ${clockTime(sailing.runsFromMs)} until ${clockTime(sailing.runsUntilMs)}.`]
+    ? [
+        `${name} puts in on the tide.`,
+        `It comes in ${secondsUntil(sailing.runsFromMs, elapsedMs)}, and sails for ${secondsUntil(sailing.runsUntilMs, sailing.runsFromMs)}.`,
+      ]
     : [`The tide has turned.`, `${name} will not sail again this raid.`];
 }
 
@@ -222,7 +255,7 @@ export function boatCaption(sailing: MapSailing, state: SailingState, elapsedMs:
     return `SAILING ${left}s`;
   }
   if (state === 'not-yet') {
-    return `SAILS AT ${clockTime(sailing.runsFromMs)}`;
+    return `SAILS IN ${secondsUntil(sailing.runsFromMs, elapsedMs)}`;
   }
   return 'SAILED';
 }

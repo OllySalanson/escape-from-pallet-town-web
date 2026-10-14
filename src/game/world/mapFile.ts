@@ -377,7 +377,9 @@ export const MAP_FILE_BUILDINGS = {
   pine: 'pine',
   'tall-bush': 'tallBush',
   'small-tree': 'cutTree',
-  rock: 'rock',
+  // Clear-cornered, so a rock planted on sand stands on sand (the vale's
+  // playtest found Gull Strand's in squares of lawn).
+  rock: 'rockClear',
   'rock-stair': 'rockStair',
   'round-boulder': 'roundBoulder',
   'wet-rock': 'wetRock',

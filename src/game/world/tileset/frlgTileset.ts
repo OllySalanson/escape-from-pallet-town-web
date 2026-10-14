@@ -209,6 +209,12 @@ const PROPS = {
   boulder: object('boulder', FRLG_OBJECTS.BOULDERS, { width: 2, height: 2 }),
   rock: single('rock', FRLG_TILES.ROCK),
   /**
+   * The same rock with clear corners: it stands on whatever ground it is
+   * planted on, where `rock` stands in its own square of plain grass. A
+   * player's map plants this one, on sand as readily as on the Kanto weave.
+   */
+  rockClear: single('rock', FRLG_TILES.ROCK_CLEAR),
+  /**
    * The brown outcrop with a flight of steps cut into its face: the first four
    * columns of the sheet's boulder strip. Only the steps are ground - a stair
    * is somewhere you go up and out by, not a room to stand in.

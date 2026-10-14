@@ -71,6 +71,7 @@ import {
   castOffLine,
   playerLinks,
   sailingState,
+  shoreLeftBehind,
   voyage,
   type MapSailing,
 } from '../world/sailing';
@@ -646,6 +647,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     readonly sprite: Phaser.GameObjects.Image;
     readonly label: WorldLabel;
   }> = [];
+  /**
+   * The jetty a push out to sea has already been told the boat is away on,
+   * until the player steps off it: told once a visit, and a bump after that,
+   * so a held key does not put the same lines up again and again.
+   */
+  private boatAwayToldAt: GridPosition | null = null;
   /** A boat the player has said yes to, casting off once its line is read. */
   private pendingVoyage: { readonly sailing: MapSailing; readonly from: 0 | 1 } | undefined;
   /** The boat the player is aboard, and how far along its course it is. */
@@ -657,6 +664,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         index: number;
         progress: number;
         readonly boat: Phaser.GameObjects.Image;
+        /** The shore the player was across the water from before casting off, if any. */
+        readonly shoreBefore: GridPosition | undefined;
       }
     | undefined;
   private extractionMarkers: Array<{
@@ -951,6 +960,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.boats = [];
     this.pendingVoyage = undefined;
     this.voyaging = undefined;
+    this.boatAwayToldAt = null;
     this.timerThreat = 'normal';
     // A gate opened in the last raid is in the save, and is read back from it;
     // what must not survive is this instance's own copy of the list.
@@ -5107,6 +5117,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const steppedFrom = this.currentTile;
     this.currentTile = { ...this.targetTile };
     this.targetTile = null;
+    this.boatAwayToldAt = null;
     this.partner?.arrived();
     if (this.runSession) {
       this.runSession.stepsTaken = (this.runSession.stepsTaken ?? 0) + 1;
@@ -6451,7 +6462,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** A boat's state at this point in the raid; every boat sails in an explorer run, as every door is open. */
   private sailingStateNow(sailing: MapSailing): ReturnType<typeof sailingState> {
-    return isPlaytestRun() ? 'sailing' : sailingState(sailing, this.runSession?.manager.snapshot().elapsedMs ?? 0);
+    return isPlaytestRun() ? 'sailing' : sailingState(sailing, this.tideMs());
+  }
+
+  /**
+   * The raid's time as the tides are drawn against it: the elapsed clock plus
+   * however much the Pokemon Center took off this raid's (`authoredTimeIn`),
+   * so a boat sails as far before the end of a short raid as of a full one.
+   */
+  private tideMs(): number {
+    return (this.runSession?.manager.snapshot().elapsedMs ?? 0) + (this.runSession?.plan?.clockShortfallMs ?? 0);
   }
 
   /** The Seagallop, FireRed's own ferry, off the town sheet: drawn as a figure because it moves. */
@@ -6540,7 +6560,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private refreshBoats(): void {
-    const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
+    const elapsedMs = this.tideMs();
     // A harness that never built the map has no boats to show.
     for (const { sailing, end, sprite, label } of this.boats ?? []) {
       const state = this.sailingStateNow(sailing);
@@ -6651,9 +6671,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * Pressing out to sea from a jetty: a question while the boat sails, and on
-   * the interact key the times it sails while it does not. Pushing into a jetty
-   * whose boat is away is only a bump, as pushing into the water is.
+   * Pressing out to sea from a jetty: a question while the boat sails, and
+   * while it does not, when it sails - on the interact key every time, and on
+   * a push the first time a visit to the jetty presses out, because pressing
+   * out to sea is what a newcomer does and a silent bump told them nothing.
+   * After that a push is a bump, as pushing into the water is.
    */
   private tryBoard(facing: Direction, asked: boolean): boolean {
     const found = boatAt(this.currentMap.sailings, this.currentTile, facing);
@@ -6662,10 +6684,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const state = this.sailingStateNow(found.sailing);
     if (state !== 'sailing') {
-      if (!asked) {
+      const told =
+        this.boatAwayToldAt?.x === this.currentTile.x && this.boatAwayToldAt.y === this.currentTile.y;
+      if (!asked && told) {
         return false;
       }
-      this.dialogBox.showMessages([...boatAwayLines(found.sailing, state)]);
+      this.boatAwayToldAt = { ...this.currentTile };
+      this.facing = facing;
+      this.pushingAgainst = null;
+      this.showIdlePose();
+      this.dialogBox.showMessages([
+        ...boatAwayLines(found.sailing, state, this.tideMs()),
+      ]);
       return true;
     }
     this.facing = facing;
@@ -6712,7 +6742,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const tiles = voyage(voyageNow.sailing, voyageNow.from);
     const boat = this.boatSprite(tiles[0]);
     this.mapObjects.push(boat);
-    this.voyaging = { ...voyageNow, tiles, index: 0, progress: 0, boat };
+    // The shore the player was already across the water from, if any, and
+    // otherwise the one they are putting out from: afloat, that is where the
+    // hunter is left (`hunterArrivesFrom`).
+    const shoreBefore =
+      this.runSession?.shoreLeftBehind?.mapId === this.currentMap.id
+        ? this.runSession.shoreLeftBehind.position
+        : undefined;
+    const boardedAt = voyageNow.sailing.ends[voyageNow.from].landing;
+    if (this.runSession) {
+      this.runSession.shoreLeftBehind = { mapId: this.currentMap.id, position: { ...(shoreBefore ?? boardedAt) } };
+    }
+    this.voyaging = { ...voyageNow, tiles, index: 0, progress: 0, boat, shoreBefore };
     this.partner?.tuckIn();
     this.player.setVisible(false);
     this.playerGroundMark.setVisible(false);
@@ -6784,6 +6825,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.voyaging = undefined;
     const ashore = trip.sailing.ends[1 - trip.from];
     this.currentTile = { ...ashore.landing };
+    // Ashore: across the water from the shore left behind, or back on ground
+    // the hunter can walk to from it, and so nothing left behind at all.
+    if (this.runSession) {
+      const shore = shoreLeftBehind(
+        this.currentMap,
+        trip.shoreBefore,
+        trip.sailing.ends[trip.from].landing,
+        ashore.landing,
+      );
+      this.runSession.shoreLeftBehind = shore ? { mapId: this.currentMap.id, position: shore } : undefined;
+    }
     this.facing = OPPOSITE_DIRECTION[ashore.toward];
     this.player.setVisible(true);
     this.playerGroundMark.setVisible(true);
@@ -6904,6 +6956,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
+   * Where the hunter's arrival is measured from: the player, or the jetty they
+   * last put out from while they are across the water from it - on the water
+   * included, so a hunter due mid-voyage waits on the shore it was left on.
+   */
+  private hunterArrivesFrom(): GridPosition {
+    const shore = this.runSession?.shoreLeftBehind;
+    return shore && shore.mapId === this.currentMap.id ? shore.position : this.currentTile;
+  }
+
+  /**
    * Brings the hunter into the raid, and re-places one that arrived somewhere unfair.
    *
    * Both cases retry every tick rather than settle for a bad tile: the spawn search
@@ -6978,7 +7040,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private findHunterSpawnTile(): GridPosition | null {
     const rng = this.runSession?.rng;
     return findHunterSpawnTile(
-      this.currentTile,
+      // The hunter cannot sail: for a player across the water it comes in on
+      // the shore they put out from, never beside them (`shoreLeftBehind`).
+      this.hunterArrivesFrom(),
       this.bounds,
       (tile) => this.isBlockedForHunter(tile),
       // Wrapped rather than passed by reference so the RNG keeps its own `this`.
