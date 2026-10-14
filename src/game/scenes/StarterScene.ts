@@ -6,6 +6,7 @@ import { SaveManager } from '../save/SaveManager';
 import {
   createStartingStash,
   getStarterSpecies,
+  STARTER_SPECIES,
   type StarterSpeciesId,
 } from '../stash';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -41,7 +42,7 @@ export class StarterScene extends Phaser.Scene {
     // one deliberate step down.
     this.overlay.root.addEventListener('focusin', (event) => {
       const card = (event.target as Element | null)?.closest?.<HTMLElement>('[data-starter]');
-      const starter = card?.dataset.starter as StarterSpeciesId | undefined;
+      const starter = STARTER_SPECIES.find((species) => species.id === card?.dataset.starter)?.id;
       if (starter && starter !== this.selectedStarterId) {
         this.selectedStarterId = starter;
         this.render();
