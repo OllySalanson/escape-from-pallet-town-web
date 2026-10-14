@@ -134,6 +134,7 @@ import {
   NOT_NOW,
   knockQuestion,
   notYoursLine,
+  notYoursToMoveLine,
   visitWelcomeLines,
   visitorThingName,
 } from '../home/knocking';
@@ -686,8 +687,8 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
-    if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home && !this.visit) {
-      this.startDecorating();
+    if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home) {
+      this.decorateHere();
       return;
     }
 
@@ -1848,6 +1849,19 @@ export class BaseScene extends Phaser.Scene {
    * Everything else answers with what it is.
    */
   // -- decorating -------------------------------------------------------------
+
+  /**
+   * H in a house: the player's own is picked up to decorate, and somebody
+   * else's says why it cannot be - a key that did nothing at all left a
+   * visitor wondering whether it was broken (playtest 48).
+   */
+  private decorateHere(): void {
+    if (this.visit) {
+      this.say([notYoursToMoveLine(this.visit.ownerName)], []);
+      return;
+    }
+    this.startDecorating();
+  }
 
   /**
    * Picks the house up to decorate it (`base/decorateMode.ts`): the player

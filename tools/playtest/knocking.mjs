@@ -8,7 +8,7 @@
 // home. OLLY goes home; AMY knocks again from her own step; OLLY is asked, with
 // the cursor on NOT NOW, and lets her in. AMY is shown OLLY's house - his name
 // on his things, and him standing in it - and he sees her there. She cannot
-// pick his furniture up, and down off the mat takes her home to her own step.
+// pick his furniture up (H says why), and down off the mat takes her home to her own step.
 // It fails loudly - a thrown error - when any of that does not happen, and
 // photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
@@ -172,7 +172,12 @@ try {
   await amy.screenshot(`${out}/visiting.png`);
   // Nobody moves the host's furniture.
   await press(amy, 'KeyH');
-  if ((await amy.evaluate(state)).decorating) throw new Error('a visitor picked the house up');
+  const refused = await until(amy, 'AMY told the furniture is not hers', (s) => s.dialog?.endsWith('move.') ?? false);
+  if (refused.decorating) throw new Error('a visitor picked the house up');
+  if (!refused.dialog.includes("OLLY's house")) throw new Error(`H in a visit said ${JSON.stringify(refused.dialog)}`);
+  console.log(`H in a visit: ${refused.dialog}`);
+  await amy.screenshot(`${out}/visitor-presses-h.png`);
+  await readThrough(amy);
 
   // Down off the mat: home, on her own step.
   const mat = await amy.evaluate(`${BASE}.room.mat`);
