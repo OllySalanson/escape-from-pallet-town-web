@@ -621,6 +621,22 @@ button {
 .defeat-figure.is-last-stand {
   width: clamp(96px, 14vw, 152px);
 }
+/* A crowded line-up (you, six Pokemon and the supplies) gives the room
+   between columns and the last stand's extra width to the plates, so a
+   ten-letter name like CHARMANDER stays whole on a 900-pixel window rather
+   than breaking as CHARMANDE / R (playtest 42). A supply's column gives way
+   first: its crate is small and its name, two words, breaks at the space -
+   down to the width its count and verdict need on one line. */
+.defeat-cast:has(> .defeat-figure:nth-child(7)) {
+  gap: clamp(2px, 0.5vw, 8px);
+}
+.defeat-cast:has(> .defeat-figure:nth-child(7)) .defeat-figure[data-kind='item'] {
+  flex-shrink: 6;
+  min-width: 54px;
+}
+.defeat-cast:has(> .defeat-figure:nth-child(7)) .defeat-figure.is-last-stand {
+  width: clamp(72px, 10.5vw, 116px);
+}
 .defeat-sprite {
   display: grid;
   place-items: end center;
@@ -735,6 +751,9 @@ button {
   display: flex;
   align-items: center;
   gap: 5px;
+  /* "x12" and "Lv 12" are one reading each: never a count on one line and its
+     number on the next. */
+  white-space: nowrap;
   color: #a78a86;
 }
 /* The level and the count are a `<small>`, which is a size down by default. */

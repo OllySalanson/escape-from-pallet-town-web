@@ -459,4 +459,25 @@ describe('the defeat line-up', () => {
     // that its body can lie in when the columns fill the window.
     expect(declared(rule('.defeat-cast'), 'padding-inline')).toBeDefined();
   });
+
+  it('keeps a ten-letter name whole in a full line-up on a 900-pixel window (playtest 42)', () => {
+    // Measured in the browser: at 900x600 nine columns came out 67 pixels
+    // wide, a plate's inside 61, and CHARMANDER is 62 - so it broke as
+    // CHARMANDE / R. A crowded line-up (seven figures or more after you)
+    // closes the gaps, stops widening the last stand and lets a supply's
+    // column give way first; it came out 83 at 900 and 71 at 800.
+    const crowded = '.defeat-cast:has(> .defeat-figure:nth-child(7))';
+    const roomyGap = declared(rule('.defeat-cast'), 'gap') ?? '';
+    const crowdedGap = declared(rule(crowded), 'gap') ?? '';
+    const middle = (value: string) => Number(/,\s*([\d.]+)vw/.exec(value)?.[1]);
+    expect(middle(crowdedGap)).toBeLessThan(middle(roomyGap));
+    expect(declared(rule(`${crowded} .defeat-figure.is-last-stand`), 'width')).toBe(
+      declared(rule('.defeat-figure'), 'width'),
+    );
+    const supply = rule(`${crowded} .defeat-figure[data-kind='item']`);
+    expect(Number(declared(supply, 'flex-shrink'))).toBeGreaterThan(1);
+    // ...but never so far that its count breaks from its number.
+    expect(declared(supply, 'min-width')).toMatch(/^\d+px$/);
+    expect(declared(rule('.defeat-meta'), 'white-space')).toBe('nowrap');
+  });
 });
