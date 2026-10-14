@@ -177,6 +177,6 @@ export const STATUS_WORDS: Readonly<Record<SubmissionStatus, string>> = {
   waiting: 'Waiting to be played',
   sent_back: 'Sent back with notes',
   approved: 'Approved',
-  rejected: 'Turned down',
+  rejected: 'Turned down for good',
   published: 'In the game',
 };

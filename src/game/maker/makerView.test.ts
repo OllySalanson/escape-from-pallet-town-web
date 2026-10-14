@@ -14,7 +14,7 @@ import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
 import { CHECK_FIRST_NOTE, draftEdited, makerScreen, walkedCheck, type MakerViewState } from './makerView';
-import { reasonFor, signInReason } from './submissions';
+import { reasonFor, signInReason, type SentMap } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
 
 const SAMPLE = sampleLane as MapFile;
@@ -360,6 +360,28 @@ describe('sending a map in', () => {
     });
     expect(markup).toContain('Sent back with notes · try 2 · ABCDEFGHJK');
     expect(markup).toContain('Move the exit off the road.');
+  });
+
+  it('says how to send a map sent back again, and only under one sent back (playtest 39 A9)', () => {
+    const row = (status: SentMap['status']) =>
+      makerScreen({
+        ...state(SAMPLE, true),
+        panel: 'sent',
+        sent: {
+          step: 'loaded',
+          maps: [
+            { receiptCode: 'ABCDEFGHJK', mapName: 'Reed Ford', status, note: null, revision: 1, sentAt: '', updatedAt: '' },
+          ],
+        },
+      });
+    expect(row('sent_back')).toContain('Open this map in Drafts, fix it, walk it again, then press SEND IN.');
+    for (const status of ['waiting', 'approved', 'rejected', 'published'] as const) {
+      expect(row(status), status).not.toContain('then press SEND IN');
+    }
+    expect(row('rejected')).toContain('Turned down for good');
+    expect(ready({ step: 'sent', receipt: 'ABCDEFGHJK' })).toContain(
+      'To see what becomes of it, open Drafts, then Sent in.',
+    );
   });
 });
 

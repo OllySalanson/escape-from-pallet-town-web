@@ -1149,7 +1149,7 @@ function sendPane(file: MapFile, sending: SendState): string {
       body = `<p class="px-note">Sending…</p>`;
       break;
     case 'sent':
-      body = `<p class="px-wrap">Sent. Your receipt is <strong>${sending.receipt}</strong>.</p><p class="px-note px-wrap">Sent in, under Drafts, shows what becomes of it.</p><div class="maker-actions">${back}</div>`;
+      body = `<p class="px-wrap">Sent. Your receipt is <strong>${sending.receipt}</strong>.</p><p class="px-note px-wrap">To see what becomes of it, open Drafts, then Sent in.</p><div class="maker-actions">${back}</div>`;
       break;
     case 'failed':
       // TRY AGAIN only where trying again can work: a daily limit or a
@@ -1164,6 +1164,9 @@ function sendPane(file: MapFile, sending: SendState): string {
     heading: 'Send it in',
   });
 }
+
+/** Under a map sent back: how it is sent again. */
+const SEND_AGAIN_NOTE = 'Open this map in Drafts, fix it, walk it again, then press SEND IN.';
 
 /** Every map this browser has sent, and what became of each. */
 function sentPane(sent: SentState): string {
@@ -1180,6 +1183,12 @@ function sentPane(sent: SentState): string {
         (map) =>
           `<div class="maker-sent"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''} · ${map.receiptCode}</small>${
             map.note ? `<small class="px-wrap maker-note">${escapeHtml(map.note)}</small>` : ''
+          }${
+            // A map is sent again only from its own draft (the draft keeps its
+            // receipt), so the row says where to go and what to do there.
+            map.status === 'sent_back'
+              ? `<small class="px-note px-wrap">${SEND_AGAIN_NOTE}</small>`
+              : ''
           }</div>`,
       )
       .join('');
