@@ -1,3 +1,5 @@
+import { battleCaps, withArticle } from './battleItems';
+
 /**
  * `names` is everybody the side is sending out, in slot order: one in a single
  * battle and two in a double, joined with "and" exactly as the tutorial's own
@@ -38,4 +40,26 @@ export function teachingBattleMessages(playerName: string, enemyName: string): s
     "FIGHT shows each move's POWER and type matchup.",
     'Every hit reports the HP it cost you.',
   ];
+}
+
+/**
+ * The teaching fight's last lesson, said once, after the first turn that left
+ * the player's Pokemon hurt and still standing with medicine in the pack. The
+ * opening lines teach FIGHT; nothing taught ITEM, and the toll on the road
+ * just past this fight is beaten by drinking a Potion in the yellow, so a
+ * newcomer lost to it with Potions unused (playtest 47, finding 1). Said when
+ * it is true rather than up front, because a lesson about being hurt read
+ * before the first hit is a lesson about nothing.
+ */
+export function itemLessonMessage(facts: {
+  readonly currentHp: number;
+  readonly maxHp: number;
+  readonly fightGoesOn: boolean;
+  /** The first medicine the ITEM list offers, or undefined with none packed. */
+  readonly medicine: string | undefined;
+}): string | null {
+  if (!facts.fightGoesOn || !facts.medicine || facts.currentHp <= 0 || facts.currentHp >= facts.maxHp) {
+    return null;
+  }
+  return `Hurt? ITEM drinks ${withArticle(battleCaps(facts.medicine))}. It costs your turn.`;
 }

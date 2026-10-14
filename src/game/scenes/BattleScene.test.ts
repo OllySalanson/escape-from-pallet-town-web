@@ -130,6 +130,8 @@ interface HarnessOptions {
   readonly wild?: Pokemon;
   /** Whether the wild Pokemon is a legend (`world/legends.ts`). */
   readonly legendary?: boolean;
+  /** The authored opening fight that explains the screen once a save. */
+  readonly teachingBattle?: boolean;
 }
 
 const graphicsStub = () => ({
@@ -373,6 +375,8 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     // Raid resolution waits a beat before handing over; run it now.
     time: { delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()) },
     hunterBattle: options.hunterBattle ?? false,
+    teachingBattle: options.teachingBattle ?? false,
+    itemLessonGiven: false,
     hunterState: options.hunterBattle
       ? { ...createHunterState(), spawned: true, mapId: 'route-1', position: { x: 4, y: 4 } }
       : undefined,
@@ -929,6 +933,63 @@ describe('using an item in a battle', () => {
 
     expect(dialog.shownMessages).toEqual(['No medicine in your pack!']);
     expect((scene as unknown as { mode: string }).mode).toBe('events');
+  });
+});
+
+/**
+ * Playtest 47, finding 1: the teaching fight taught FIGHT and never ITEM, so a
+ * newcomer met the toll past it half drained and lost with Potions unused.
+ */
+describe('the teaching fight teaching ITEM', () => {
+  const ITEM_LESSON = 'Hurt? ITEM drinks a POTION. It costs your turn.';
+  const playTurn = (scene: BattleScene): void => {
+    (scene as unknown as { useMove(choice: number): void }).useMove(0);
+  };
+
+  it('says what ITEM does after the first turn that hurt, and only once', () => {
+    const charmander = new Pokemon(CHARMANDER, 5);
+    const { scene, dialog } = createBattleSceneHarness({
+      teachingBattle: true,
+      party: new PokemonParty([charmander]),
+      wild: new Pokemon(PIDGEY, 5),
+    });
+    // Low rolls: every move lands, nothing crits, and the Pidgey Tackles.
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const hp = () => (scene as unknown as { state: { player: { currentHp: number } } }).state.player.currentHp;
+
+    const turns: string[][] = [];
+    for (let turn = 0; turn < 3; turn += 1) {
+      const before = dialog.shownMessages.length;
+      playTurn(scene);
+      for (let step = 0; step < 20 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+        (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      }
+      turns.push(dialog.shownMessages.slice(before));
+    }
+
+    expect(hp()).toBeLessThan(charmander.maxHp);
+    // Read at the end of the first turn, after the hit it is about.
+    expect(turns[0].at(-1)).toBe(ITEM_LESSON);
+    expect(turns.flat().filter((line) => line === ITEM_LESSON)).toHaveLength(1);
+  });
+
+  it('is never said in an ordinary fight, nor with no medicine packed', () => {
+    for (const options of [
+      { teachingBattle: false, bag: new Bag({ potion: 2 }) },
+      { teachingBattle: true, bag: new Bag({ 'poke-ball': 5 }) },
+    ]) {
+      const { scene, dialog } = createBattleSceneHarness({
+        ...options,
+        party: new PokemonParty([new Pokemon(CHARMANDER, 5)]),
+        wild: new Pokemon(PIDGEY, 5),
+      });
+      vi.spyOn(Math, 'random').mockReturnValue(0.1);
+      playTurn(scene);
+      for (let step = 0; step < 20 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+        (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      }
+      expect(dialog.shownMessages.join(' ')).not.toContain('ITEM drinks');
+    }
   });
 });
 

@@ -39,7 +39,11 @@ import {
   type SlotRef,
   type TrainerBattle,
 } from '../pokemon/battle/battleEngine';
-import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
+import {
+  battleOpeningMessages,
+  itemLessonMessage,
+  teachingBattleMessages,
+} from '../pokemon/battle/battleFlow';
 import type { WeatherId } from '../pokemon/battle/weather';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
@@ -471,6 +475,8 @@ export class BattleScene extends Phaser.Scene {
   private trainer: TrainerBattle | undefined;
   private hunterBattle = false;
   private teachingBattle = false;
+  /** Whether the teaching fight has said what ITEM does (`itemLessonMessage`). */
+  private itemLessonGiven = false;
   private hunterState: HunterState | undefined;
   private readonly defeatedTrainerIds = new Set<string>();
   /** A beaten boss's gear the pack had no room for, carried back to the world. */
@@ -615,6 +621,7 @@ export class BattleScene extends Phaser.Scene {
     this.trainer = data.trainer;
     this.hunterBattle = data.hunterBattle ?? false;
     this.teachingBattle = data.teachingBattle ?? false;
+    this.itemLessonGiven = false;
     this.hunterState = data.hunterState;
     this.returnLocation = data.returnLocation;
     this.returnScene = data.returnScene;
@@ -2333,7 +2340,26 @@ export class BattleScene extends Phaser.Scene {
     this.commandContainer.setVisible(false);
     const leading = this.struggleLines;
     this.struggleLines = [];
-    this.showCombatEvents(result.events, leading, [], rewardMessages);
+    this.showCombatEvents(result.events, leading, this.itemLesson(), rewardMessages);
+  }
+
+  /** The teaching fight's ITEM lesson, once, on the first turn that hurt. */
+  private itemLesson(): string[] {
+    if (!this.teachingBattle || this.itemLessonGiven) {
+      return [];
+    }
+    const lead = this.state.player;
+    const line = itemLessonMessage({
+      currentHp: lead.currentHp,
+      maxHp: lead.pokemon.maxHp,
+      fightGoesOn: this.state.outcome === 'active',
+      medicine: usableBattleItems(this.bag)[0]?.displayName,
+    });
+    if (!line) {
+      return [];
+    }
+    this.itemLessonGiven = true;
+    return [line];
   }
 
   /**

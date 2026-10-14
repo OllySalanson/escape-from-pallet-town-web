@@ -12,7 +12,11 @@ import {
 import { PokemonType } from '../pokemon/PokemonType';
 import { MOVE_CATALOGUE } from '../pokemon/moveCatalogue';
 import type { PrimaryStatus, StatusName } from '../pokemon/battle/status';
-import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
+import {
+  battleOpeningMessages,
+  itemLessonMessage,
+  teachingBattleMessages,
+} from '../pokemon/battle/battleFlow';
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
   BATTLE_SCREEN_WIDTH,
@@ -216,6 +220,20 @@ describe('battle presentation', () => {
     expect(messages.some((message) => message.includes('HP it cost you'))).toBe(true);
     // The battle dialogue frame fits two lines of about 34 characters.
     expect(Math.max(...messages.map((message) => message.length))).toBeLessThanOrEqual(68);
+  });
+
+  it('teaches ITEM only to a Pokemon that is hurt, standing and carrying medicine', () => {
+    const hurt = { currentHp: 8, maxHp: 19, fightGoesOn: true, medicine: 'Super Potion' };
+    expect(itemLessonMessage(hurt)).toBe('Hurt? ITEM drinks a SUPER POTION. It costs your turn.');
+    expect(itemLessonMessage({ ...hurt, medicine: 'Oran Berry' })).toBe(
+      'Hurt? ITEM drinks an ORAN BERRY. It costs your turn.',
+    );
+    expect(itemLessonMessage({ ...hurt, currentHp: 19 })).toBeNull();
+    expect(itemLessonMessage({ ...hurt, currentHp: 0 })).toBeNull();
+    expect(itemLessonMessage({ ...hurt, fightGoesOn: false })).toBeNull();
+    expect(itemLessonMessage({ ...hurt, medicine: undefined })).toBeNull();
+    // The battle dialogue frame fits two lines of about 34 characters.
+    expect(itemLessonMessage(hurt)!.length).toBeLessThanOrEqual(68);
   });
 
   it('reports the HP a hit took, so a defeat can be read back from the log', () => {
