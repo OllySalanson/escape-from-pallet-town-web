@@ -6665,7 +6665,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (!asked) {
         return false;
       }
-      this.dialogBox.showMessages([...boatAwayLines(found.sailing, state)]);
+      this.dialogBox.showMessages([
+        ...boatAwayLines(found.sailing, state, this.runSession?.manager.snapshot().elapsedMs ?? 0),
+      ]);
       return true;
     }
     this.facing = facing;

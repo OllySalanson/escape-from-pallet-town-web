@@ -180,10 +180,14 @@ export function playerLinks(map: {
   ]);
 }
 
-/** Seconds into a raid as the clock reads them: `2:00`. */
-function clockTime(ms: number): string {
-  const seconds = Math.round(ms / 1_000);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+/**
+ * Whole seconds from `fromMs` until `untilMs`, as an exit's OPENS IN counts
+ * them. Never a clock time: the raid clock counts down, and a deployed clock
+ * can be shortened by the Pokemon Center's bill, so "1:00" into a raid is no
+ * reading the player can watch for.
+ */
+function secondsUntil(untilMs: number, fromMs: number): string {
+  return `${Math.max(0, Math.ceil((untilMs - fromMs) / 1_000))}s`;
 }
 
 /**
@@ -208,10 +212,17 @@ export function castOffLine(sailing: MapSailing): string {
 }
 
 /** What a jetty says while its boat is not there to board. */
-export function boatAwayLines(sailing: MapSailing, state: Exclude<SailingState, 'sailing'>): readonly string[] {
+export function boatAwayLines(
+  sailing: MapSailing,
+  state: Exclude<SailingState, 'sailing'>,
+  elapsedMs: number,
+): readonly string[] {
   const name = sailing.name.toUpperCase();
   return state === 'not-yet'
-    ? [`${name} puts in on the tide.`, `It sails from ${clockTime(sailing.runsFromMs)} until ${clockTime(sailing.runsUntilMs)}.`]
+    ? [
+        `${name} puts in on the tide.`,
+        `It comes in ${secondsUntil(sailing.runsFromMs, elapsedMs)}, and sails for ${secondsUntil(sailing.runsUntilMs, sailing.runsFromMs)}.`,
+      ]
     : [`The tide has turned.`, `${name} will not sail again this raid.`];
 }
 
@@ -222,7 +233,7 @@ export function boatCaption(sailing: MapSailing, state: SailingState, elapsedMs:
     return `SAILING ${left}s`;
   }
   if (state === 'not-yet') {
-    return `SAILS AT ${clockTime(sailing.runsFromMs)}`;
+    return `SAILS IN ${secondsUntil(sailing.runsFromMs, elapsedMs)}`;
   }
   return 'SAILED';
 }

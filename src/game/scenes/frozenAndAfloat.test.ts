@@ -407,6 +407,10 @@ describe('a boat', () => {
     // Asked, it says when it sails.
     expect(driven.tryBoard('right', true)).toBe(true);
     expect(prompts).toHaveLength(0);
-    expect(shown.at(-1)!.join(' ')).toContain('from 2:00 until 4:00');
+    // As a countdown from where the raid is, never a clock time: the raid
+    // clock counts down, so "from 2:00" read off it is the wrong moment.
+    const elapsed = driven.runSession.manager.snapshot().elapsedMs;
+    const until = Math.ceil((120_000 - elapsed) / 1_000);
+    expect(shown.at(-1)!.join(' ')).toContain(`in ${until}s, and sails for 120s`);
   });
 });
