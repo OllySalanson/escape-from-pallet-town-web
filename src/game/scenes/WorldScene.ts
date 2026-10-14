@@ -5779,7 +5779,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the player sets off towards it, instead of sliding along ahead of them.
    */
   private captionPlayer(): Rect[] {
-    return [this.currentTile, ...(this.targetTile ? [this.targetTile] : [])].map(landingRect);
+    return [this.currentTile, ...(this.targetTile ? [this.targetTile] : []), ...this.steppingAshore()].map(
+      landingRect,
+    );
+  }
+
+  /**
+   * The jetty a voyage's last step is walking the player onto. That step is
+   * not a `targetTile` - the voyage owns it - so without this the far jetty's
+   * own caption, which names that very tile, was seated across the head of the
+   * player stepping off the boat until the frame after they landed.
+   */
+  private steppingAshore(): GridPosition[] {
+    const trip = this.voyaging;
+    return trip && trip.index === trip.tiles.length - 2 ? [trip.tiles[trip.tiles.length - 1]] : [];
   }
 
   private isLootAvailable(): boolean {

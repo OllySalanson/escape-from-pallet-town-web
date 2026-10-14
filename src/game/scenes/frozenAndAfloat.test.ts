@@ -111,6 +111,7 @@ vi.mock('../ui/DialogBox', () => ({
 import { Bag } from '../items';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
+import { TILE_SIZE, type WorldMapDefinition } from '../worldMap';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession';
@@ -120,7 +121,7 @@ import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { placedAreaAt } from '../world/mapAreas';
 import { sailingOf, type MapSailing } from '../world/sailing';
 import type { Material } from '../world/tileset/materials';
-import type { WorldMapDefinition } from '../worldMap';
+
 import { WorldScene } from './WorldScene';
 
 /** A display object that answers every chainable setter with itself. */
@@ -232,6 +233,7 @@ interface Driven {
   collisionData: boolean[][];
   hunterState: { spawned: boolean; position?: GridPosition };
   placeHunterIfDue(elapsedMs: number): void;
+  captionPlayer(): { x: number; y: number; width: number; height: number }[];
 }
 
 /** Drops into the Floodplain, briefing read, with this pack. */
@@ -391,6 +393,31 @@ describe('a boat', () => {
     const spent = driven.runSession.manager.snapshot().elapsedMs - clock;
     expect(spent).toBeGreaterThanOrEqual(sailing.course.length * STEP_DURATION_MS);
     expect(spent).toBeLessThanOrEqual((sailing.course.length + 1) * STEP_DURATION_MS);
+  });
+
+  it('keeps every caption off the player as they step ashore, not only off the boat they step from', () => {
+    const { scene, driven } = dropIn({});
+    const { run } = moor(driven, 0, 300);
+    prompts.length = 0;
+    driven.tryBoard('right', true);
+    prompts.at(-1)!.onChoose(0);
+    driven.dialogBox.visible = false;
+
+    // The last step of a voyage is walked, off the boat onto the boards: the
+    // figure is drawn between the two, so a caption may sit over neither -
+    // the far jetty's own caption names the very tile being stepped onto.
+    const ashore = run[7];
+    let stepsAshore = 0;
+    for (let frame = 0; frame < 400 && (driven.voyaging || driven.currentTile.x !== ashore.x); frame += 1) {
+      const trip = driven.voyaging as { index: number; tiles: GridPosition[] } | undefined;
+      if (trip && trip.index === trip.tiles.length - 2) {
+        stepsAshore += 1;
+        const avoided = driven.captionPlayer();
+        expect(avoided.some((rect) => rect.x === ashore.x * TILE_SIZE && rect.y < ashore.y * TILE_SIZE)).toBe(true);
+      }
+      scene.update(0, 10);
+    }
+    expect(stepsAshore).toBeGreaterThan(0);
   });
 
   it('stays ashore when the player says so', () => {
