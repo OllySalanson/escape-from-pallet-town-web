@@ -13,7 +13,7 @@ import {
 } from './dropIn';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { getWorldMap } from '../worldMap';
-import { frontDoorFor, type RunInsertionId, requireInsertion } from '../run/runGeneration';
+import { frontDoorFor, type RunInsertionId, requireInsertion, runInsertions } from '../run/runGeneration';
 import { extractionPointsOn } from '../world/extractionPoints';
 import { gatesForMap } from '../world/gates';
 import { BUILT_IN_MAP_IDS, isMapInProgress } from '../worldMap';
@@ -160,6 +160,53 @@ describe('what the drop-in screen says about a place', () => {
     expect(cleared.grade.opposition).toBe(
       Math.max(cleared.grade.wild.max, cleared.grade.trainer),
     );
+  });
+
+  it('stops saying a door is held once the keeper holding it is beaten', () => {
+    const keepers = [
+      'floodplain-toll-keeper',
+      'floodplain-sluice-keeper',
+      'floodplain-orchard-warden',
+      'floodplain-quarry-foreman',
+      'floodplain-sea-wall-keeper',
+    ];
+    const fresh = buildDropInBriefing('floodplain-relay', contextFor('floodplain-relay'));
+    expect(fresh.description).toMatch(/holding its doors/);
+    // One keeper beaten still leaves two holding the town's doors.
+    const oneDown = buildDropInBriefing(
+      'floodplain-relay',
+      contextFor('floodplain-relay', { defeatedBosses: ['floodplain-toll-keeper'] }),
+    );
+    expect(oneDown.description).toMatch(/holding its doors/);
+    expect(
+      buildDropInBriefing(
+        'floodplain-market-isle',
+        contextFor('floodplain-market-isle', { defeatedBosses: ['floodplain-toll-keeper'] }),
+      ).description,
+    ).not.toMatch(/held/);
+
+    for (const id of ['floodplain-relay', 'floodplain-market-isle', 'floodplain-quarry', 'floodplain-staithe'] as const) {
+      const cleared = buildDropInBriefing(id, contextFor(id, { defeatedBosses: keepers }));
+      expect(cleared.description, id).not.toMatch(/\b(held|holding|barred|shut)\b/);
+      expect(cleared.description, id).toBe(requireInsertion(id).description);
+    }
+    const league = buildDropInBriefing(
+      'viridian-city-league-road',
+      contextFor('viridian-city-league-road', { defeatedBosses: ['viridian-league-gatekeeper'] }),
+    );
+    expect(league.description).not.toMatch(/keeper/);
+  });
+
+  it('only says a door is held in words tied to the keeper who holds it', () => {
+    for (const insertion of runInsertions()) {
+      // A blurb that is always shown may not claim a keeper stands, because
+      // that stops being true the day they are beaten.
+      expect(insertion.description, insertion.id).not.toMatch(/\b(held|holding|barred)\b|keeper at/);
+      const bosses = new Set(gatesForMap(insertion.mapId).flatMap((gate) => (gate.bossId ? [gate.bossId] : [])));
+      for (const bossId of insertion.whileHeld?.bossIds ?? []) {
+        expect(bosses.has(bossId), `${insertion.id}: ${bossId}`).toBe(true);
+      }
+    }
   });
 
   it('grades the forest above the three early maps on its ground alone', () => {

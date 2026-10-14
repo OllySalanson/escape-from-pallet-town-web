@@ -109,6 +109,7 @@ import {
   generateRunPlan,
   generateRoomLoot,
   withRoomLoot,
+  insertionDescription,
   isDropInPoint,
   isRunInsertionId,
   type RunInsertion,
@@ -2836,7 +2837,7 @@ export class HubScene extends Phaser.Scene {
                 : []),
             ].join(' · ');
         const heading = id === firstPlayerMap ? `<p class="px-subheading">Player maps</p>` : '';
-        return `${heading}<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
+        return `${heading}<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertionDescription(insertion, this.savedGame.raidProgress.defeatedBosses))}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
     const walked = Math.round(briefing.record.surveyed * 100);
@@ -3181,7 +3182,7 @@ export class HubScene extends Phaser.Scene {
     // above cannot state, because it is about the loadout rather than about
     // the place. Everything else the strip already counts, and a screen this
     // size cannot afford to say a number twice.
-    return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${errands}${prizes}${exits}${doors}${wildlife}`;
+    return `<p class="px-wrap dropin-blurb">${briefing.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${errands}${prizes}${exits}${doors}${wildlife}`;
   }
 
   private secureView(): string {
