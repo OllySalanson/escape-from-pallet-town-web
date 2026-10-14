@@ -619,4 +619,18 @@ describe('a type tag', () => {
       .filter(({ ratio }) => ratio < 4.5);
     expect(faint).toEqual([]);
   });
+
+  it('tells every one of the seventeen types apart by its own fill', async () => {
+    const { PokemonType } = await import('./game/pokemon/PokemonType');
+    const fillOf = (type: string): string | undefined =>
+      fills.find(({ selectors }) =>
+        selectors.split(',').some((selector) => selector.trim().endsWith(`.px-type-${type.toLowerCase()}`)),
+      )?.fill;
+    const types = Object.values(PokemonType);
+    expect(types.filter((type) => fillOf(type) === undefined)).toEqual([]);
+    const shared = types.filter(
+      (type, index) => types.findIndex((other) => fillOf(other)?.toLowerCase() === fillOf(type)?.toLowerCase()) !== index,
+    );
+    expect(shared).toEqual([]);
+  });
 });

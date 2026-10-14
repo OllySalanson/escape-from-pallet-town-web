@@ -1931,6 +1931,36 @@ button {
 :where(.pixel-ui) .px-type-fairy {
   background: #686650;
 }
+/* The other nine each have a fill of their own, in FireRed's own hue for the
+   type darkened to hold AA: on the shared default a Fighting tag and a Steel
+   tag were the same grey box. */
+:where(.pixel-ui) .px-type-fighting {
+  background: #962a20;
+}
+:where(.pixel-ui) .px-type-ground {
+  background: #7c5c26;
+}
+:where(.pixel-ui) .px-type-rock {
+  background: #6c6430;
+}
+:where(.pixel-ui) .px-type-psychic {
+  background: #b0305c;
+}
+:where(.pixel-ui) .px-type-ice {
+  background: #287478;
+}
+:where(.pixel-ui) .px-type-ghost {
+  background: #5c4882;
+}
+:where(.pixel-ui) .px-type-dragon {
+  background: #5a30c0;
+}
+:where(.pixel-ui) .px-type-dark {
+  background: #4e3e34;
+}
+:where(.pixel-ui) .px-type-steel {
+  background: #5c6478;
+}
 
 /* --- The commitment bar: every screen that commits ends on it ----------- */
 :where(.pixel-ui) .confirm-bar.px-window {
