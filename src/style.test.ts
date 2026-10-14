@@ -559,3 +559,29 @@ describe('the deploy progress rail', () => {
     expect(bodyOf(':where(.pixel-ui) .px-rail .current::after')).toBe('');
   });
 });
+
+describe('the map maker chosen tool, brush, place and zoom', () => {
+  // Playtest 40 #8: which tool, brush, place and zoom were chosen was a pale
+  // teal wash and nothing else, the same as cream to an eye that sees no
+  // colour, and once the cursor left for the map nothing else said it. Each
+  // chosen one carries the drawn tick; one not chosen keeps the tick's room
+  // and draws nothing in it, so choosing never moves a button along its row.
+  const bodyOf = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
+      .map(([, , rule]) => rule)
+      .join(';');
+
+  it.each(['.maker-tool', '.maker-area', '.maker-zoom', '.maker-choice'])(
+    'draws a tick on a chosen %s and none on one not chosen',
+    (control) => {
+      const every = bodyOf(`:where(.pixel-ui) ${control}[aria-pressed]::after`);
+      expect(every).toMatch(/content:\s*''/);
+      expect(every).toMatch(/mask:\s*var\(--px-tick\)/);
+      expect(every).toMatch(/background:\s*transparent/);
+      expect(bodyOf(`:where(.pixel-ui) ${control}[aria-pressed='true']::after`)).toMatch(
+        /background:\s*currentColor/,
+      );
+    },
+  );
+});

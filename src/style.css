@@ -3533,6 +3533,32 @@ button {
 .pixel-ui .px-chip.maker-tool.is-selected {
   --fill: var(--teal-wash);
 }
+/* What is chosen - tool, brush, place, zoom - is said by the drawn tick as well
+   as the teal wash, which an eye that sees no colour reads as cream once the
+   cursor has gone to the map (playtest 40 #8). Every one keeps the tick's room,
+   so choosing never moves a chip along its row. */
+:where(.pixel-ui) .maker-tool[aria-pressed]::after,
+:where(.pixel-ui) .maker-area[aria-pressed]::after,
+:where(.pixel-ui) .maker-zoom[aria-pressed]::after,
+:where(.pixel-ui) .maker-choice[aria-pressed]::after {
+  content: '';
+  display: inline-block;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  margin-left: calc(var(--u) * 3);
+  background: transparent;
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .maker-choice[aria-pressed]::after {
+  margin-left: 0;
+}
+:where(.pixel-ui) .maker-tool[aria-pressed='true']::after,
+:where(.pixel-ui) .maker-area[aria-pressed='true']::after,
+:where(.pixel-ui) .maker-zoom[aria-pressed='true']::after,
+:where(.pixel-ui) .maker-choice[aria-pressed='true']::after {
+  background: currentColor;
+}
 :where(.pixel-ui) .maker-pane {
   min-height: 0;
 }
