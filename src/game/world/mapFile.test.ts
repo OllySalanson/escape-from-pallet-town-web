@@ -243,6 +243,38 @@ describe('whether a map works', () => {
     expect(failing(slow)).toEqual([]);
   });
 
+  it('says how long a raid lasts and what to do when a drop-in is too far from every exit (playtest 39 B12)', () => {
+    // A lane that winds back and forth across 80 tiles for 64 rows: the only
+    // exit is at its far end, about 2,600 steps from the drop-in at its start.
+    const width = 80;
+    const height = 64;
+    const ground = Array.from({ length: height }, (_, y) => {
+      if (y % 2 === 0) {
+        return '.'.repeat(width);
+      }
+      // A wall with one gap, at the east end and then the west in turn.
+      const gap = y % 4 === 1 ? width - 1 : 0;
+      return Array.from({ length: width }, (__, x) => (x === gap ? '.' : 'C')).join('');
+    });
+    const winding = edited({
+      width,
+      height,
+      ground,
+      buildings: [],
+      people: [],
+      signs: [],
+      landmarks: [],
+      districts: [],
+      trainers: [],
+      itemSpots: [],
+      dropIns: [{ ...SAMPLE.dropIns[0], name: 'Lane End', x: 0, y: 0 }],
+      exits: [{ x: width - 1, y: height - 2, name: 'Far Stile', opens: { when: 'always' } }],
+    });
+    expect(checkMapFile(winding).find((check) => check.id === 'way-out')?.problems).toEqual([
+      'Drop-in Lane End cannot reach an exit before the 5-minute raid clock runs out. Move an exit closer to it.',
+    ]);
+  });
+
   it('does not count a walk across one exit as a walk to anything beyond it', () => {
     // Two exits side by side across the north gap, and something to find
     // behind them: an open exit takes whoever steps on it, so nobody reaches it.

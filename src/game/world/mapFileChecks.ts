@@ -158,6 +158,9 @@ const LABELS: Readonly<Record<MapCheckId, string>> = {
   words: 'Every name and line is fit for everyone',
 };
 
+/** How long a raid lasts, as the checks say it. */
+const RAID_MINUTES = Math.round(RAID_DURATION_MS / 60_000);
+
 const at = ({ x, y }: GridPosition): string => `${x},${y}`;
 
 /** What standing on a tile of solid ground is called, outdoors. */
@@ -866,11 +869,14 @@ export function checkMapFile(
         ),
       ];
     }
+    // An exit opens at most `maxExitDelaySeconds` in, inside the clock, so
+    // the walk is always what is too long: the fix is an exit nearer, never
+    // one that opens sooner (playtest 39 B12).
     return best > RAID_DURATION_MS
       ? [
           fault(
-            `${kindAndName('Drop-in', dropIn.name)} cannot reach an open exit in time.`,
-            { group: 'drop-ins', says: 'cannot reach an open exit in time' },
+            `${kindAndName('Drop-in', dropIn.name)} cannot reach an exit before the ${RAID_MINUTES}-minute raid clock runs out. Move an exit closer to it.`,
+            { group: 'drop-ins', says: `cannot reach an exit before the ${RAID_MINUTES}-minute raid clock runs out` },
             dropIn,
           ),
         ]
