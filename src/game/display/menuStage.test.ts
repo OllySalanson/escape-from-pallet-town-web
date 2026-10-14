@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import {
   applyMenuStage,
   computeMenuStage,
+  FEEDBACK_BOTTOM_MIN_HEIGHT,
+  FEEDBACK_RIGHT_MIN_WIDTH,
   FEEDBACK_TAB_STRIP,
   feedbackTabEdge,
   MAX_MENU_SCALE,
@@ -182,12 +184,48 @@ describe('the menu screens are laid out against the window', () => {
     }
   });
 
+  it('moves the tab under a menu that has no room beside it but room beneath', () => {
+    // A 650-wide window holds the smallest screen (640 at 2x) and not the strip
+    // beside it: on the right, the tab sat over Bill's prices and the stash's
+    // counts. Wherever either edge has room for the strip, a menu is never under it.
+    for (let width = 600; width <= 720; width += 1) {
+      for (const height of [480, 511, 512, 600, 700, 900]) {
+        const stage = computeMenuStage(width, height);
+        const menuWidth = stage.width * stage.scale;
+        const menuHeight = stage.height * stage.scale;
+        // Room for the smallest screen there is, not for this one: a menu grows
+        // into whatever the window has, strip included, until the strip is kept.
+        const roomBeside = MENU_MIN_WIDTH * MIN_MENU_SCALE <= width - FEEDBACK_TAB_STRIP;
+        const roomBeneath = MENU_MIN_HEIGHT * MIN_MENU_SCALE <= height - FEEDBACK_TAB_STRIP;
+        if (!roomBeside && !roomBeneath) continue;
+        const layer = fakeLayer();
+        applyMenuStage(layer as unknown as HTMLElement, width, height);
+        const right = Number.parseFloat(layer.style.left) + menuWidth;
+        const bottom = Number.parseFloat(layer.style.top) + menuHeight;
+        if (feedbackTabEdge(width, height) === 'right') {
+          expect(right, `${width}x${height}`).toBeLessThanOrEqual(width - FEEDBACK_TAB_STRIP);
+        } else {
+          expect(bottom, `${width}x${height}`).toBeLessThanOrEqual(height - FEEDBACK_TAB_STRIP);
+        }
+      }
+    }
+    expect(feedbackTabEdge(650, 700)).toBe('bottom');
+    expect(feedbackTabEdge(672, 700)).toBe('right');
+    // Room on neither edge: the tab stays where it always stood.
+    expect(feedbackTabEdge(640, 480)).toBe('right');
+  });
+
   it('keeps the strip on the edge the stylesheet puts the tab on', () => {
     const css = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
-    expect(css).toContain('@media (max-width: 600px) and (orientation: portrait) {\n  .feedback-tab {');
+    expect(css).toContain(
+      `@media (max-width: 600px) and (orientation: portrait), (max-width: ${FEEDBACK_RIGHT_MIN_WIDTH - 1}px) and (min-height: ${FEEDBACK_BOTTOM_MIN_HEIGHT}px) {\n  .feedback-tab {`,
+    );
     expect(feedbackTabEdge(600, 900)).toBe('bottom');
-    expect(feedbackTabEdge(601, 900)).toBe('right');
     expect(feedbackTabEdge(500, 400)).toBe('right');
+    expect(feedbackTabEdge(FEEDBACK_RIGHT_MIN_WIDTH - 1, FEEDBACK_BOTTOM_MIN_HEIGHT)).toBe('bottom');
+    expect(feedbackTabEdge(FEEDBACK_RIGHT_MIN_WIDTH - 1, FEEDBACK_BOTTOM_MIN_HEIGHT - 1)).toBe('right');
+    expect(feedbackTabEdge(FEEDBACK_RIGHT_MIN_WIDTH - 0.5, 900)).toBe('right');
+    expect(feedbackTabEdge(FEEDBACK_RIGHT_MIN_WIDTH, 900)).toBe('right');
     // The tab is 30 wide with a 2-pixel shadow: the strip holds both.
     expect(css).toMatch(/\.feedback-tab \{[^}]*width: 30px;[^}]*box-shadow: 2px 0 0/);
     expect(FEEDBACK_TAB_STRIP).toBe(32);

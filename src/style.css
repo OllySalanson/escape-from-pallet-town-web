@@ -1031,8 +1031,10 @@ button {
 .feedback-tab[hidden] {
   display: none;
 }
-/* A phone held upright has room under the game and none beside it. */
-@media (max-width: 600px) and (orientation: portrait) {
+/* A phone held upright has room under the game and none beside it, and so
+   does a window too narrow for the strip beside the smallest menu screen
+   (`feedbackTabEdge` in display/menuStage.ts, which holds these numbers). */
+@media (max-width: 600px) and (orientation: portrait), (max-width: 671px) and (min-height: 512px) {
   .feedback-tab {
     top: auto;
     bottom: 0;
