@@ -69,12 +69,24 @@ describe('a new map', () => {
 
   it('fails the checks until it has a maker, a way in and a way out, and then passes them', () => {
     const fresh = blankMap(24, 20);
-    expect(checkMapFile(fresh).find((check) => check.id === 'loads')?.problems).toEqual([
-      "The map needs its maker's name.",
-      'A map needs at least 1 drop-in.',
-      'A map needs at least 1 exit.',
+    const loads = checkMapFile(fresh).find((check) => check.id === 'loads');
+    // Playtest 39 A4: said as things to do and where in the maker to do them,
+    // never as the shape check's own words.
+    expect(loads?.label).toBe('It has a name, a maker, a drop-in and an exit');
+    expect(loads?.problems).toEqual([
+      'Type your name in Drawn by, under The map.',
+      'Put down a Drop-in from Places, under Paint: where a raid starts.',
+      'Put down an Exit from Places, under Paint: the way out.',
     ]);
     expect(checkMapFile(working()).every((check) => check.passed)).toBe(true);
+  });
+
+  it('still says a broken file cannot be loaded, rather than listing it as things to do', () => {
+    const broken = { ...blankMap(24, 20), ground: [] };
+    const loads = checkMapFile(broken).find((check) => check.id === 'loads');
+    expect(loads?.label).toBe('The game can load it');
+    expect(loads?.passed).toBe(false);
+    expect(loads?.problems.some((problem) => problem.startsWith('Type your name'))).toBe(false);
   });
 
   it('is only ever a size a file can be', () => {

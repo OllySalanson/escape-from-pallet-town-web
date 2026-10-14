@@ -159,7 +159,7 @@ describe('the map maker screen', () => {
       'words',
       'walked',
     ]);
-    expect(markup).toContain("The map needs its maker's name.");
+    expect(markup).toContain('Type your name in Drawn by, under The map.');
     expect(markup).toContain('0 of 9');
   });
 

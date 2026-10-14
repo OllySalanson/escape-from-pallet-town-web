@@ -146,7 +146,7 @@ const CAVE_LOOKS: readonly MapFileDoorwayLook[] = ['cave-exit', 'ladder-up', 'la
 const TOWER_LOOKS: readonly MapFileDoorwayLook[] = ['stairs-up', 'stairs-down', 'mat'];
 
 const LABELS: Readonly<Record<MapCheckId, string>> = {
-  loads: 'The game can load it',
+  loads: 'It has a name, a maker, a drop-in and an exit',
   standing: 'Everything stands on ground you can walk on',
   apart: 'No two things share a tile',
   doors: 'Every door leads somewhere you can stand',
@@ -156,6 +156,22 @@ const LABELS: Readonly<Record<MapCheckId, string>> = {
   'hunter-room': 'The hunter has room to arrive near every drop-in',
   watch: 'No trainer watches a drop-in or an exit',
   words: 'Every name and line is fit for everyone',
+};
+
+/** What the first check is called when the file itself is broken, not merely unfinished. */
+const BROKEN_FILE_LABEL = 'The game can load it';
+
+/**
+ * What a draft still lacks, said as where in the maker it is done: the shape
+ * check's own words name a field ("its maker's name") the maker never sees by
+ * that name, and say a drop-in is needed without saying what one is
+ * (playtest 39 A4).
+ */
+const STILL_TO_DO: Readonly<Record<string, string>> = {
+  'The map needs a name.': 'Type a name in Name, under The map.',
+  "The map needs its maker's name.": 'Type your name in Drawn by, under The map.',
+  'A map needs at least 1 drop-in.': 'Put down a Drop-in from Places, under Paint: where a raid starts.',
+  'A map needs at least 1 exit.': 'Put down an Exit from Places, under Paint: the way out.',
 };
 
 /** How long a raid lasts, as the checks say it. */
@@ -332,20 +348,29 @@ export function checkMapFile(
     problems: faults.map((fault) => fault.text),
     faults,
   });
-  const unloadable = (problems: readonly string[]): readonly MapCheck[] =>
+  const unloadable = (problems: readonly string[], unfinished = false): readonly MapCheck[] =>
     (Object.keys(LABELS) as MapCheckId[])
       .filter((id) => id !== 'doors' && id !== 'areas')
       .map((id) =>
         id === 'loads'
-          ? check(
-              id,
-              problems.map((text) => ({ text, places: [], group: 'problems with the file' })),
-            )
+          ? {
+              ...check(
+                id,
+                problems.map((text) => ({
+                  text: unfinished ? (STILL_TO_DO[text] ?? text) : text,
+                  places: [],
+                  group: unfinished ? 'things still to do' : 'problems with the file',
+                })),
+              ),
+              // A file broken past what a draft may be is not a list of
+              // things to do, so it is said as the file not loading.
+              ...(unfinished ? {} : { label: BROKEN_FILE_LABEL }),
+            }
           : { ...check(id, []), passed: false },
       );
   const reading = readMapFile(value, { limits });
   if (!reading.ok) {
-    return unloadable(reading.problems);
+    return unloadable(reading.problems, readMapFile(value, { limits, draft: true }).ok);
   }
   const file = reading.file;
   // The shape check is meant to refuse anything the game cannot draw, but the
