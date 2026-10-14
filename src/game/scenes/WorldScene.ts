@@ -165,14 +165,13 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag, ITEMS, formatMoney, getItemById, isCurrency, type ItemId } from '../items';
+import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
   contractCarryIn,
   contractReportLine,
   contractStopMessage,
-  formatStacks,
   isContractBankable,
   missingCarryIn,
   remainingMarkers,
@@ -4810,12 +4809,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     session.firstDeploymentBriefingShown = true;
     this.openingBriefingOpen = true;
     // A contract that needs supplies out of the pack says so before the first
-    // step, because arriving at the drop without them wastes the whole raid.
+    // step, because arriving at the drop without them wastes the whole raid -
+    // after the briefing, never instead of it, or the raid opens without saying
+    // where the drop is or which key is the field guide (playtest 47).
     const missing = missingCarryIn(contractCarryIn(contract), (itemId) => this.bag.count(itemId));
-    this.dialogBox.showMessage(
+    this.dialogBox.showMessages(
       missing.length === 0
-        ? contract.deploymentBriefing
-        : `You are still short ${formatStacks(missing)} for this contract's drop. It will refuse you.`,
+        ? [contract.deploymentBriefing]
+        : [
+            contract.deploymentBriefing,
+            `You are still short ${itemAmountsFor(missing)} for this contract's drop. It will refuse you.`,
+          ],
     );
   }
 
