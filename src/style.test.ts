@@ -455,8 +455,7 @@ describe('the defeat line-up', () => {
     expect(declared(rule('.defeat-cast'), 'width')).toBe('100%');
     expect(declared(rule('.defeat-item-glyph'), 'width')).toMatch(/^min\(.*100%\)$/);
     expect(declared(rule('.defeat-trainer'), 'width')).toMatch(/^min\(100%,/);
-    // The trainer falls to the left, so the line-up keeps a margin either side
-    // that its body can lie in when the columns fill the window.
+    // A margin either side keeps the end figures off the window's edge.
     expect(declared(rule('.defeat-cast'), 'padding-inline')).toBeDefined();
   });
 

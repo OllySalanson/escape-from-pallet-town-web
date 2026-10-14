@@ -591,8 +591,8 @@ button {
 /* The cast is the window's width and no wider: nine figures (you, six Pokemon,
    two kinds of ball) at their roomy widths are wider than a 1280 window, and a
    line-up that scrolled sideways cut you off at the left edge (playtest 42).
-   The margin either side is room for the trainer's body, which falls to the
-   left of its column once the columns fill the window. */
+   The margin either side keeps the end figures off the window's edge once the
+   columns fill it. */
 .defeat-cast {
   position: relative;
   display: flex;
