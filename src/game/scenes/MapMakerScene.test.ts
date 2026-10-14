@@ -1212,6 +1212,41 @@ describe('what the maker will not do', () => {
     expect(scene.overlay.root.innerHTML).toContain('The house is in the way.');
   });
 
+  it('keeps a refusal up until the next thing is done, never taking it down on a timer (playtest 39 A5)', () => {
+    vi.useFakeTimers();
+    try {
+      storeDraft(house());
+      const { scene } = openMaker();
+      // The status line as the page holds it, so taking it down is seen.
+      let takenDown = false;
+      const root = scene.overlay.root as unknown as { querySelector: (selector: string) => unknown };
+      const pageSelector = root.querySelector;
+      root.querySelector = (selector: string) =>
+        selector === '.px-status-line'
+          ? {
+              parentElement: { classList: { remove: () => undefined } },
+              remove: () => {
+                takenDown = true;
+              },
+            }
+          : pageSelector(selector);
+      (scene as unknown as { place: unknown }).place = { kind: 'berry-tree' };
+      scene.tool = 'place';
+      scene.pointerDown(at(14, 11), page.canvas);
+      scene.pointerUp(at(14, 11), page.canvas);
+      expect(scene.overlay.root.innerHTML).toContain('The house is in the way.');
+      // Read from across the screen, long after the click.
+      vi.advanceTimersByTime(60_000);
+      expect(takenDown).toBe(false);
+      // The next thing done draws the screen again without it.
+      scene.pointerDown(at(30, 20), page.canvas);
+      scene.pointerUp(at(30, 20), page.canvas);
+      expect(scene.overlay.root.innerHTML).not.toContain('The house is in the way.');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('paints a stroke of trees round a berry tree, says what it left, and is one step', () => {
     const start: MapFile = { ...blankMap(), berryTrees: [{ x: 10, y: 10, berry: 'oran' }] };
     storeDraft(start);

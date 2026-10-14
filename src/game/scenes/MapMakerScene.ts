@@ -205,6 +205,10 @@ import { checkMapFile, kindAndName, type MapCheck, type MapFaultPlace } from '..
  * stops clicking is still saved every this often.
  */
 const AUTOSAVE_MS = 400;
+/**
+ * How long a note about text taken out of a field stays up. Only that note is
+ * timed: it is put up while the maker types, with no render to take it down.
+ */
 const STATUS_MS = 3_500;
 const DRAFTS_FULL =
   'Your drafts could not be saved: this browser may be out of room. DOWNLOAD this map to keep it, and delete drafts you do not need.';
@@ -799,11 +803,13 @@ export class MapMakerScene extends Phaser.Scene {
     // A frame later, so letting go of a stroke is not held up by the overview.
     this.scheduleOverview();
     this.overlay.refocus('[data-tool].is-selected', '[data-tool]');
-    if (status) {
-      if (this.statusTimer) {
-        clearTimeout(this.statusTimer);
-      }
-      this.statusTimer = setTimeout(() => takeDownPixelStatus(this.overlay.root), STATUS_MS);
+    // A status stays up until the next thing done draws the screen again: the
+    // maker is looking at the map, across the screen from the help bar, and a
+    // refusal or a try's result taken down on a timer was missed (playtest 39
+    // A5). A timer left from a typed-in note must not take this one down.
+    if (this.statusTimer) {
+      clearTimeout(this.statusTimer);
+      this.statusTimer = undefined;
     }
   }
 
