@@ -613,7 +613,7 @@ export class BaseScene extends Phaser.Scene {
     const shared = harbour();
     if (shared) {
       shared.tick(time, deltaMs);
-      this.harbourFigures?.update(shared.figuresHere());
+      this.harbourFigures?.update(shared.figuresHere(), this.player);
     }
     this.watchFrontDoor(time);
     this.updateWalking(deltaMs);

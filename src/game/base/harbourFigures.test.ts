@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type Phaser from 'phaser';
 import type { GridPosition } from '../movement/gridMovement';
 import type { Pokemon } from '../pokemon/Pokemon';
+import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
+import { TILE_SIZE } from '../worldMap';
 import { HarbourFigures } from './harbourFigures';
 import { PartnerFigure, type PartnerHost } from './partnerFigure';
 
@@ -128,5 +130,51 @@ describe('another player in the harbour and this player\'s partner', () => {
     const { partner, amyOn } = ollyWithPartner();
     expect(amyOn({ x: HEEL.x, y: HEEL.y + 1 }).depth).toBeGreaterThan(partner.depth);
     expect(amyOn({ x: HEEL.x, y: HEEL.y - 1 }).depth).toBeLessThan(partner.depth);
+  });
+});
+
+describe('another player arriving on this player\'s own tile', () => {
+  /** Where the player's sprite is drawn standing on a tile, as the scenes draw it. */
+  const drawnAt = (tile: GridPosition) => ({ x: tile.x * TILE_SIZE, y: tile.y * TILE_SIZE + TILE_SIZE - CHARACTER_FEET_PIXEL_Y });
+
+  function amyAndHerPlate() {
+    const plates: Drawn[] = [];
+    const texts: Drawn[] = [];
+    const scene = {
+      add: {
+        sprite: () => new Drawn(),
+        graphics: () => {
+          const plate = new Drawn();
+          plates.push(plate);
+          return plate;
+        },
+        text: (_x: number, _y: number, text: string) => {
+          const name = new Drawn().setText(text);
+          texts.push(name);
+          return name;
+        },
+      },
+    } as unknown as Phaser.Scene;
+    const others = new HarbourFigures(scene);
+    const amyOn = (tile: GridPosition, self: GridPosition) => {
+      others.update([{ id: 'amy', place: 'yard', tile, toward: null, progress: 0, facing: 'down', name: 'AMY' }], drawnAt(self));
+      return { plate: plates[0], name: texts[0] };
+    };
+    return { amyOn };
+  }
+
+  it('does not put her name over the head they share', () => {
+    const { amyOn } = amyAndHerPlate();
+    const { plate, name } = amyOn(PLAYER, PLAYER);
+    expect(plate.visible).toBe(false);
+    expect(name.visible).toBe(false);
+  });
+
+  it('names her again once either of them has walked off', () => {
+    const { amyOn } = amyAndHerPlate();
+    amyOn(PLAYER, PLAYER);
+    const { plate, name } = amyOn({ x: PLAYER.x + 1, y: PLAYER.y }, PLAYER);
+    expect(plate.visible).toBe(true);
+    expect(name.visible).toBe(true);
   });
 });
