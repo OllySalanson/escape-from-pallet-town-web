@@ -64,13 +64,31 @@ try {
     page.evaluate(`(() => { const w = ${WORLD}; return { tile: w.currentTile, target: w.targetTile, dialog: w.dialogBox.visible, prompt: Boolean(w.trainerPrompt), voyaging: Boolean(w.voyaging || w.pendingVoyage), elapsedMs: w.runSession?.manager.snapshot().elapsedMs, place: w.placeName ?? null }; })()`);
   const inBattle = () => page.evaluate(sceneIs('battle'));
   const inWorld = () => page.evaluate(sceneIs('world'));
+  /**
+   * Gets out of a fight the way a player in a hurry does: a wild one by RUN
+   * (a level-99 explorer always gets away), because what the walk proves is
+   * the way in and out, and fighting every roll on the crater's ash spends the
+   * lead's best move dry. A trainer, which cannot be left, is fought on the
+   * first move.
+   */
   const fightThrough = async () => {
     for (let guard = 0; guard < 400 && (await inBattle()); guard += 1) {
-      if (await page.evaluate(`Boolean(document.querySelector('.move-chooser, [data-move-chooser]'))`)) await press('Escape');
-      else await press('Space');
+      if (await page.evaluate(`Boolean(document.querySelector('.move-chooser, [data-move-chooser]'))`)) {
+        await press('Escape');
+        await wait(300);
+        continue;
+      }
+      const menu = await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('battle'); if (b.mode !== 'main' || !b.commandTexts?.length) return null;
+        const count = b.mainCommandLabels().length;
+        return { at: b.selectedCommand, columns: count > 4 ? 3 : 2, leave: b.trainer ? (b.hunterBattle ? 1 : 0) : count - 1 }; })()`);
+      if (menu && menu.at !== menu.leave) {
+        const [row, column] = [Math.floor(menu.at / menu.columns), menu.at % menu.columns];
+        const [toRow, toColumn] = [Math.floor(menu.leave / menu.columns), menu.leave % menu.columns];
+        await press(row !== toRow ? (row < toRow ? 'ArrowDown' : 'ArrowUp') : column < toColumn ? 'ArrowRight' : 'ArrowLeft');
+      } else await press('Space');
       await wait(300);
     }
-    await until(sceneIs('world'), 'the world after a fight', 600);
+    await until(`${sceneIs('world')} || ${sceneIs('extraction')}`, 'the world after a fight', 600);
     await wait(600);
   };
   const settle = async () => {
@@ -99,7 +117,7 @@ try {
    * (tiles, by "x,y"), each a slide on ice and a step anywhere else, and
    * through doorways and ladders where pressing into one goes through it.
    */
-  const plan = (goals, avoidIce) =>
+  const plan = (goals, avoidIce, throughHunter = false) =>
     page.evaluate(`(async () => {
       // The game's own rule (world/slidingFloor.ts), restated here because a
       // build serves no source modules: a step onto ice carries on until the
@@ -115,7 +133,10 @@ try {
       const w = ${WORLD}; const map = w.currentMap; const width = map.width;
       const goals = new Set(${JSON.stringify(goals)});
       const dirs = [['up', 'ArrowUp'], ['down', 'ArrowDown'], ['left', 'ArrowLeft'], ['right', 'ArrowRight']];
-      const isBlocked = (t) => t.x < 0 || t.y < 0 || t.x >= width || t.y >= map.height || w.isBlocked(t) || (${avoidIce} && map.terrain[t.y][t.x] === 'ice');
+      // A hunter standing in the way is walked into, as a player gets past
+      // one: it catches them, and the fight is fled.
+      const hunter = ${throughHunter} ? w.hunterState?.position : undefined;
+      const isBlocked = (t) => t.x < 0 || t.y < 0 || t.x >= width || t.y >= map.height || ((w.isBlocked(t) && !(hunter && hunter.x === t.x && hunter.y === t.y))) || (${avoidIce} && map.terrain[t.y][t.x] === 'ice');
       const start = w.currentTile; const key = (t) => t.x + ',' + t.y;
       const prev = new Map([[key(start), null]]); const queue = [start];
       while (queue.length) {
@@ -135,7 +156,7 @@ try {
     // a press, and the plan is only ever the way from where the player stands.
     let presses = 0;
     for (; presses < 300; presses += 1) {
-      const keys = await plan(goals, avoidIce);
+      const keys = (await plan(goals, avoidIce)) ?? (await plan(goals, avoidIce, true));
       if (!keys) throw new Error(`no way ${what}`);
       if (keys.length === 0) break;
       await press(keys[0]);

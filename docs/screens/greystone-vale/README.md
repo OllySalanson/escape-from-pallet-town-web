@@ -1562,6 +1562,41 @@ right, out into the crater bottom left):
   sailing, stitched once its jetty was drawn. The cove's mooring post moved
   off the water the skiff moors on.
 
+### Played through
+
+`tools/playtest/emberIsle.mjs` plays it in the real game on a test-mode build:
+- the explorer run dropped in at the Cove Steps;
+- down to the smugglers' jetty, and the skiff's question;
+- the crossing: 80 tiles of sea, 12.4 seconds of raid clock, as walking that
+  far costs;
+- round the cone to the burners' camp, and up the steps to the Lava Tube;
+- through the tube onto the crater floor, where a step on bare ash started a
+  wild fight;
+- the hoard, and back out through the tube;
+- away on the Cinder Boat.
+
+Every press is planned over the scene's own collision and doorways. A hunter
+standing in the one way back to the tube is walked into and fled, as a player
+gets past one. The run ended in 4:14 of raid clock, with a share of the hoard
+banked.
+
+    node tools/playtest/emberIsle.mjs <url of a test-mode build> <out dir> [--port=N]
+
+| | |
+|---|---|
+| ![Ahoy](ember-isle/02-ahoy.png) | ![At sea](ember-isle/03-at-sea.png) |
+| ![The Smugglers' Landing](ember-isle/04-smugglers-landing.png) | ![The burners' camp](ember-isle/05-burners-camp.png) |
+| ![The climb](ember-isle/06-the-climb.png) | ![The Lava Tube's mouth](ember-isle/07-lava-tube-mouth.png) |
+| ![Inside the Lava Tube](ember-isle/08-lava-tube.png) | ![The crater](ember-isle/09-the-crater.png) |
+| ![A wild Machop on the ash](ember-isle/10-a-wild-pokemon-on-the-ash.png) | ![The hoard](ember-isle/11-the-hoard.png) |
+
+![Away on the Cinder Boat](ember-isle/12-away-on-the-cinder-boat.png)
+
+The structure sweeps found one fault the mapcraft checks did not. Once the
+steps were cut, the far end of the upper terrace was 88 steps from a way out,
+past the hunter's 86-step blind window (`hunterFlee.test.ts`). The upper steps
+moved three tiles west, which brings everything on the island under 85.
+
 ### Judged blind
 
 Judged against FireRed's own Sevii Islands places, redrawn in this game's tiles
