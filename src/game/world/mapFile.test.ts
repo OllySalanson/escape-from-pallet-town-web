@@ -505,6 +505,12 @@ describe('people, signs, landmarks, districts and trainers in a file', () => {
     expect(failing({ ...full, signs: [{ x: 13, y: 19, lines: ['what the fuck'] }] })).toEqual(['words']);
   });
 
+  it('names the drop-in a trainer can see, so the maker knows which one to clear (playtest 39 B10)', () => {
+    const watching = { ...full, trainers: [{ ...full.trainers![0], x: 15, y: 17, facing: 'down', sight: 4 }] } as MapFile;
+    const watch = checkMapFile(watching).find((check) => check.id === 'watch');
+    expect(watch?.problems).toEqual(['Trainer Bug Kid can see Drop-in South Road. Turn them, or watch less far.']);
+  });
+
   it('puts them in the game: townsfolk, a landmark, a named place with its own wildlife, and a trainer', () => {
     const map = buildPlayerMap(full);
     registerPlayerMap(map);

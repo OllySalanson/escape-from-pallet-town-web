@@ -1024,7 +1024,12 @@ export function checkMapFile(
       ),
     );
 
-  const ends = new Map([...file.dropIns, ...file.exits].map((spot) => [at(onGrid(spot)), spot]));
+  // Each end by its own name, so the fault says which one a trainer sees
+  // rather than "a drop-in or an exit" (playtest 39 B10).
+  const ends = new Map([
+    ...file.dropIns.map((spot) => [at(onGrid(spot)), { spot, what: kindAndName('Drop-in', spot.name) }] as const),
+    ...file.exits.map((spot) => [at(onGrid(spot)), { spot, what: kindAndName('Exit', spot.name) }] as const),
+  ]);
   const watch = trainers.flatMap((trainer) => {
     const seen = trainerSightTiles(
       { position: onGrid(trainer), facing: trainer.facing, sightRange: trainer.sight },
@@ -1042,10 +1047,10 @@ export function checkMapFile(
       ...(seenEnds.length > 0
         ? [
             fault(
-              `${kindAndName('Trainer', trainer.name)} can see a drop-in or an exit. Turn them, or watch less far.`,
+              `${kindAndName('Trainer', trainer.name)} can see ${seenEnds.map((end) => end.what).join(' and ')}. Turn them, or watch less far.`,
               { group: 'trainers', says: 'can see a drop-in or an exit' },
               trainer,
-              ...seenEnds,
+              ...seenEnds.map((end) => end.spot),
             ),
           ]
         : []),
