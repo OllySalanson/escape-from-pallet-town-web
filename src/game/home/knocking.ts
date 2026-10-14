@@ -27,7 +27,13 @@ export type KnockView =
   | { readonly kind: 'knocking'; readonly name: string }
   | { readonly kind: 'trouble' };
 
-export function knockScreenMarkup(view: KnockView): string {
+/**
+ * Where ESC takes the knock screen: back into the house it was opened in, or
+ * out into the yard when it was opened on the step outside.
+ */
+export type KnockOpenedFrom = 'house' | 'step';
+
+export function knockScreenMarkup(view: KnockView, from: KnockOpenedFrom = 'house'): string {
   const pane =
     view.kind === 'asking'
       ? '<p class="px-empty px-wrap">Asking the harbour whose doors there are...</p>'
@@ -41,7 +47,7 @@ export function knockScreenMarkup(view: KnockView): string {
   return pixelScreen({
     title: 'Knock on a door',
     place: 'The harbour',
-    back: { label: 'House', attribute: 'data-knock-close' },
+    back: { label: from === 'step' ? 'Yard' : 'House', attribute: 'data-knock-close' },
     body,
     hints: view.kind === 'knocking' ? 'ESC stop knocking' : KNOCK_HINTS,
     ...(view.kind === 'houses' && view.status ? { status: view.status } : {}),
@@ -58,7 +64,7 @@ function houseRows(houses: readonly HarbourHouse[]): string {
         `<button class="px-row" data-knock="${escapeAttribute(house.id)}" data-name="${escapeAttribute(house.name)}"${
           index === 0 ? ' data-cursor-start' : ''
         } data-help="${escapeAttribute(
-          house.atHome ? `Knock on ${house.name}'s door: they are in.` : `${house.name} is out. Knock anyway?`,
+          house.atHome ? `Knock on ${house.name}'s door: they are in.` : `${house.name} is out. Come back when they are home.`,
         )}"><span class="px-row-main"><strong class="px-name">${house.name}'s house</strong></span>${pixelTag(
           house.atHome ? 'Home' : 'Out',
           house.atHome ? 'good' : 'plain',

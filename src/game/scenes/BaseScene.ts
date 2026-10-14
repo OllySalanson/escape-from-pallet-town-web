@@ -2301,6 +2301,7 @@ export class BaseScene extends Phaser.Scene {
       houses.service,
       (owner) => harbour()?.link.nudge(owner),
       (letIn) => this.knocked(letIn),
+      this.place.room ? 'house' : 'step',
     );
   }
 

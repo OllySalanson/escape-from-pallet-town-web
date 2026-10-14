@@ -131,6 +131,8 @@ try {
   await press(amy, 'KeyK');
   const list = await until(amy, "AMY's knock list with OLLY in it", (s) => s.rows.some((row) => row.includes("OLLY's house")));
   if (!list.rows.find((row) => row.includes("OLLY's house"))?.includes('Out')) throw new Error(`the list says ${JSON.stringify(list.rows)}`);
+  const back = await amy.evaluate(`document.querySelector('.knock-menu [data-knock-close]')?.textContent ?? ''`);
+  if (back.trim().toUpperCase() !== 'YARD') throw new Error(`opened on the step, the way back says "${back}"`);
   await amy.screenshot(`${out}/knock-list.png`);
   await press(amy, 'Enter');
   const notHome = await until(amy, 'told OLLY is not home', (s) => s.status !== null);

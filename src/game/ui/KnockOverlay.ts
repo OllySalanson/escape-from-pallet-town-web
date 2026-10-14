@@ -6,6 +6,7 @@ import {
   KNOCK_WAIT_MS,
   knockOutcomeLine,
   knockScreenMarkup,
+  type KnockOpenedFrom,
   type KnockView,
 } from '../home/knocking';
 import { MenuOverlay } from './MenuOverlay';
@@ -32,6 +33,7 @@ export function openKnockScreen(
   service: HouseService,
   nudge: (owner: string) => void,
   onDone: (letIn: LetIn | null) => void,
+  from: KnockOpenedFrom = 'house',
 ): MenuOverlay {
   let settled = false;
   let view: KnockView = { kind: 'asking' };
@@ -48,7 +50,7 @@ export function openKnockScreen(
     onDone(letIn);
   };
   const render = (): void => {
-    overlay.root.innerHTML = knockScreenMarkup(view);
+    overlay.root.innerHTML = knockScreenMarkup(view, from);
     overlay.root.querySelector<HTMLButtonElement>('[data-knock-close]')!.onclick = () => settle(null);
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-knock]').forEach((row) => {
       row.onclick = () => knock(row.dataset.knock ?? '', row.dataset.name ?? '');

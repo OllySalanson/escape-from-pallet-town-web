@@ -13,7 +13,20 @@ vi.mock('phaser', () => ({
   },
 }));
 
+const knockScreens = vi.hoisted(() => [] as unknown[][]);
+vi.mock('../ui/KnockOverlay', () => ({
+  openKnockScreen: (...args: unknown[]) => {
+    knockScreens.push(args);
+    return {};
+  },
+}));
+vi.mock('../harbour/harbour', () => ({
+  harbour: () => ({ seenAs: 'me', link: { nudge: () => undefined } }),
+  harbourHouses: () => ({ service: {}, door: {} }),
+}));
+
 import { BaseScene } from './BaseScene';
+import { knockScreenMarkup } from '../home/knocking';
 
 /**
  * H in somebody else's house (playtest 48): it did nothing and said nothing,
@@ -48,5 +61,36 @@ describe('H in a house', () => {
     house.pressH();
     expect(house.decorating()).toBe(1);
     expect(house.said).toEqual([]);
+  });
+});
+
+/**
+ * K on the step outside THE BOLTHOLE (playtest 48): the knock screen's way back
+ * said HOUSE, though ESC put the player back in the yard they were standing in.
+ */
+describe('the knock screen says where ESC goes', () => {
+  function knockFrom(room: object | undefined) {
+    knockScreens.length = 0;
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    Object.assign(scene, {
+      place: { room },
+      facing: 'down',
+      learnKey: () => undefined,
+      showHint: () => undefined,
+      player: { stop: () => undefined, setFrame: () => undefined },
+    });
+    (scene.openKnock as () => void).call(scene);
+    const from = knockScreens[0]?.[4] as 'house' | 'step';
+    return knockScreenMarkup({ kind: 'houses', houses: [] }, from);
+  }
+
+  it('back to the yard when it was opened on the step', () => {
+    const markup = knockFrom(undefined);
+    expect(markup).toContain('>Yard</button>');
+    expect(markup).not.toContain('>House</button>');
+  });
+
+  it('back into the house when it was opened inside', () => {
+    expect(knockFrom({ id: 'bolthole', home: true })).toContain('>House</button>');
   });
 });
