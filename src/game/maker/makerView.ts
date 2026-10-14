@@ -1046,6 +1046,25 @@ export function draftEdited(updatedAt: number, now: number): string | undefined 
   return then.getFullYear() === today.getFullYear() ? `edited ${day}` : `edited ${day} ${then.getFullYear()}`;
 }
 
+/** What a draft's Delete says once pressed: it fits the button "Delete" was drawn in. */
+export const DELETE_ARMED_LABEL = 'Sure?';
+
+/**
+ * A draft's Delete, in words: once pressed, the help line names the draft the
+ * next press takes and says that anything else keeps it (playtest 39 A7).
+ */
+export function deleteDraftHelp(draft: StoredDraft, armed: boolean): string {
+  const name = draftName(draft);
+  return armed
+    ? `Press again to delete ${name} for good. Anything else keeps it.`
+    : `Deletes ${name} from this browser. It cannot be undone.`;
+}
+
+/** A draft as the list names it. */
+export function draftName(draft: StoredDraft): string {
+  return draft.file.name || 'Untitled map';
+}
+
 function draftsPane(
   drafts: readonly StoredDraft[],
   current: string,
@@ -1056,13 +1075,14 @@ function draftsPane(
   const rows = drafts
     .map(
       (draft) =>
-        `<div class="maker-draft"><button class="px-row${draft.key === current ? ' is-selected' : ''}" data-open-draft="${escapeAttribute(draft.key)}" data-help="Opens this draft."><span class="px-row-main"><span class="px-name">${escapeHtml(draft.file.name || 'Untitled map')}</span><small class="px-note">${[`${draft.file.width}x${draft.file.height}`, draftEdited(draft.updatedAt, now)].filter(Boolean).join(' · ')}</small></span></button>${
+        `<div class="maker-draft"><button class="px-row${draft.key === current ? ' is-selected' : ''}" data-open-draft="${escapeAttribute(draft.key)}" data-help="Opens this draft."><span class="px-row-main"><span class="px-name">${escapeHtml(draftName(draft))}</span><small class="px-note">${[`${draft.file.width}x${draft.file.height}`, draftEdited(draft.updatedAt, now)].filter(Boolean).join(' · ')}</small></span></button>${
           draft.key === current
             ? ''
-            : `<button class="px-window px-button" data-delete-draft="${escapeAttribute(draft.key)}" data-help="Deletes this draft from this browser. It cannot be undone.">${
+            : `<button class="px-window px-button" data-delete-draft="${escapeAttribute(draft.key)}" data-help="${escapeAttribute(deleteDraftHelp(draft, draft.key === pendingDelete))}">${
                 // Pressed once, it says what the next press does, however
-                // often the screen is drawn again in between.
-                draft.key === pendingDelete ? 'Delete for good' : 'Delete'
+                // often the screen is drawn again in between - in a word
+                // that fits the button, with the draft named on the help line.
+                draft.key === pendingDelete ? DELETE_ARMED_LABEL : 'Delete'
               }</button>`
         }</div>`,
     )
@@ -1076,7 +1096,10 @@ function draftsPane(
     {
       className: 'maker-drafts',
       heading: 'Your drafts',
-      note: 'kept in this browser',
+      // Short enough to stand on the one-line strip beside its heading: the
+      // longer 'kept in this browser' wrapped off it and was never drawn,
+      // which left no word that a draft is in no other place (playtest 39 A6).
+      note: 'browser only',
     },
   );
 }
@@ -1323,7 +1346,7 @@ export function makerScreen(state: MakerViewState): string {
       'Every map you have drawn in this browser, and what became of the ones you sent in.',
     ),
     button('data-open-file', 'Open file', 'Opens a map file you downloaded or were sent.'),
-    button('data-download', 'Download', 'Saves this map as a file you can keep or share.'),
+    button('data-download', 'Download', 'Saves this map as a file you can keep or share: the only copy of it outside this browser.'),
     tryLevelChoice(state),
     button(
       'data-try="walk"',

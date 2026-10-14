@@ -155,6 +155,9 @@ import {
   type MakerCheck,
   type PlaceChoice,
   stackLayout,
+  DELETE_ARMED_LABEL,
+  deleteDraftHelp,
+  draftName,
 } from '../maker/makerView';
 import {
   BUILDING_CHOICES,
@@ -2928,9 +2931,20 @@ export class MapMakerScene extends Phaser.Scene {
 
   /** Two presses: a draft deleted is gone from this browser for good. */
   private deleteDraft(button: HTMLElement, key: string): void {
+    const draft = this.store.drafts.find((stored) => stored.key === key);
+    if (!draft) {
+      return;
+    }
     if (this.pendingDelete !== key) {
       this.pendingDelete = key;
-      button.textContent = 'Delete for good';
+      // Said in place rather than drawn again, so the cursor stays on the
+      // button whose next press is the one being described.
+      button.textContent = DELETE_ARMED_LABEL;
+      button.dataset.help = deleteDraftHelp(draft, true);
+      const help = this.overlay.root.querySelector<HTMLElement>('[data-help-text]');
+      if (help) {
+        help.textContent = button.dataset.help;
+      }
       return;
     }
     this.pendingDelete = undefined;
@@ -2938,7 +2952,7 @@ export class MapMakerScene extends Phaser.Scene {
     saveMakerStore(this.store);
     sessionHistories.delete(key);
     sessionViews.delete(key);
-    this.render('Draft deleted.');
+    this.render(`${draftName(draft)} deleted.`);
   }
 
   private download(): void {

@@ -988,7 +988,7 @@ describe('typing what a map cannot hold', () => {
 });
 
 describe('deleting a draft', () => {
-  it('keeps saying "Delete for good" once pressed, however often the screen is drawn again', () => {
+  it('keeps asking "Sure?" once pressed, however often the screen is drawn again', () => {
     localStorage.setItem(
       MAKER_STORAGE_KEY,
       JSON.stringify({
@@ -1003,15 +1003,53 @@ describe('deleting a draft', () => {
     const { scene } = openMaker();
     const internals = scene as unknown as {
       openPanel(panel: string): void;
-      deleteDraft(button: { textContent: string }, key: string): void;
+      deleteDraft(button: HTMLElement, key: string): void;
     };
     internals.openPanel('drafts');
-    internals.deleteDraft({ textContent: 'Delete' }, 'draft-2');
+    internals.deleteDraft({ textContent: 'Delete', dataset: {} } as unknown as HTMLElement, 'draft-2');
     // A tool key draws the screen again while the Delete is waiting on its
     // second press. The button must still say what that press does: drawn as
     // a plain Delete, one press of it took the draft for good.
     scene.handleKey(key('r'));
-    expect(scene.overlay.root.innerHTML).toMatch(/data-delete-draft="draft-2"[^>]*>Delete for good</);
+    expect(scene.overlay.root.innerHTML).toMatch(/data-delete-draft="draft-2"[^>]*>Sure\?</);
+  });
+
+  it('asks in a word that fits the button and names the draft the next press takes (playtest 39 A7)', () => {
+    localStorage.setItem(
+      MAKER_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        current: 'draft-1',
+        drafts: [
+          { key: 'draft-1', file: blankMap(), updatedAt: 1 },
+          { key: 'draft-2', file: { ...blankMap(), name: 'Brook Lane' }, updatedAt: 2 },
+        ],
+      }),
+    );
+    const { scene } = openMaker();
+    const internals = scene as unknown as {
+      openPanel(panel: string): void;
+      deleteDraft(button: HTMLElement, key: string): void;
+    };
+    internals.openPanel('drafts');
+    expect(scene.overlay.root.innerHTML).toMatch(
+      /data-delete-draft="draft-2" data-help="Deletes Brook Lane from this browser\. It cannot be undone\.">Delete</,
+    );
+    // The button as the screen holds it: pressed once, it is told in place.
+    const button = { textContent: 'Delete', dataset: {} as DOMStringMap } as unknown as HTMLElement;
+    internals.deleteDraft(button, 'draft-2');
+    // "Delete for good" ran out of the button the size of "Delete" and was
+    // read as "DELETE F": the armed word is no longer than the one it replaces.
+    expect(button.textContent).toBe('Sure?');
+    expect(button.textContent.length).toBeLessThanOrEqual('Delete'.length);
+    const armed = 'Press again to delete Brook Lane for good. Anything else keeps it.';
+    expect(button.dataset.help).toBe(armed);
+    // Drawn again while it waits, it still asks and still names the draft.
+    scene.handleKey(key('r'));
+    expect(scene.overlay.root.innerHTML).toContain(`data-delete-draft="draft-2" data-help="${armed}">Sure?<`);
+    internals.deleteDraft(button, 'draft-2');
+    expect(scene.overlay.root.innerHTML).not.toContain('data-delete-draft="draft-2"');
+    expect(scene.overlay.root.innerHTML).toContain('Brook Lane deleted.');
   });
 });
 
