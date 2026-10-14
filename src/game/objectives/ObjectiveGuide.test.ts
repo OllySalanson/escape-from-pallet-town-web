@@ -205,8 +205,9 @@ describe('objective field guide', () => {
       },
     ).hints.join(' ');
     expect(banked).not.toContain('activates the Radio Exit');
+    expect(banked).not.toMatch(/the ranger is back/i);
     expect(banked).toContain(
-      'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.',
+      'Ranger Station stays switched on: the Radio Exit is open from the first second of every raid.',
     );
 
     // Maya stands up again every raid, but beaten in this one she is not on the

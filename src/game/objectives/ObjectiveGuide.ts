@@ -291,7 +291,7 @@ function laterRunHints(
         ? landmarkHint(landmark, context)
         : 'No marked cache in reach is left to work this raid.',
       radioKept
-        ? 'The ranger is back at Ranger Station: the Radio Exit is open from the first second of every raid.'
+        ? 'Ranger Station stays switched on: the Radio Exit is open from the first second of every raid.'
         : radioActive
           ? 'Radio Exit is active at Ranger Station.'
           : 'Ranger Station gives a hunter forecast and activates the Radio Exit.',
