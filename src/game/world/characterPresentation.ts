@@ -241,3 +241,37 @@ export const PLAYER_MARKER_HEAD_LAYERS: readonly MarkerLayer[] = [
   { colour: PLAYER_MARKER_SHADE_COLOUR, alpha: 0.85, rects: outlineRects(chevronRows()) },
   { colour: PLAYER_MARKER_COLOUR, alpha: 1, rects: chevronRows() },
 ];
+
+/** Where a figure is drawn: the top-left of its frame, as the player's sprite is placed. */
+export interface FigurePlace {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Whether the head mark would sit on somebody's face: a figure standing in the
+ * tile directly above the player, which is where the chevron is drawn. It is
+ * exactly where a player stands to talk to anyone north of them, and painted
+ * over every figure the chevron covered their face for the whole conversation.
+ *
+ * Hiding it there costs nothing. The mark exists for a figure standing in
+ * *front* of the player, which covers them; a figure to the north sorts behind
+ * the player, so the player's own sprite is drawn whole over theirs and is as
+ * findable as it ever is. Positions are the sprites' own, so a figure partway
+ * through a step (a townsperson's beat, a trainer walking up) counts once it is
+ * mostly in that tile.
+ */
+export function headMarkCoversSomebody(
+  player: FigurePlace,
+  figures: Iterable<FigurePlace>,
+  tileSize: number,
+): boolean {
+  for (const figure of figures) {
+    const across = Math.abs(figure.x - player.x);
+    const above = player.y - figure.y;
+    if (across < tileSize / 2 && above > tileSize / 2 && above < tileSize * 1.5) {
+      return true;
+    }
+  }
+  return false;
+}

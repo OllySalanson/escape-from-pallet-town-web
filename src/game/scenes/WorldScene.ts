@@ -37,6 +37,7 @@ import {
 import type { CharacterDesignId } from '../world/characterDesigns';
 import {
   getWorldCharacterAppearance,
+  headMarkCoversSomebody,
   NO_TINT,
   PLAYER_MARKER_DEPTH,
   PLAYER_MARKER_GROUND_LAYERS,
@@ -1272,6 +1273,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // room shares (`raidRoom/groupHunter.ts`).
     this.updateGroupHunter();
     this.updateRaid(deltaMs);
+    this.settleHeadMark();
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
     this.updateFriend(deltaMs);
@@ -3679,6 +3681,26 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.player.setDepth(depth);
     this.playerGroundMark.setPosition(x, y).setDepth(depth);
     this.playerHeadMark.setPosition(x, y + (this.riding ? BIKE_HEAD_DROP : 0));
+  }
+
+  /**
+   * The chevron gives way to anybody standing in the tile above the player,
+   * where it would be drawn over their face (`headMarkCoversSomebody`). Asked
+   * every frame, after the step and the townsfolk have moved, so a trainer
+   * walking up or a neighbour stepping in is cleared the frame they arrive.
+   */
+  private settleHeadMark(): void {
+    if (!this.player || !this.playerHeadMark) {
+      return;
+    }
+    const figures: Phaser.GameObjects.Sprite[] = [];
+    for (const id of this.npcAppearances.keys()) {
+      const sprite = this.npcSprites.get(id);
+      if (sprite?.visible) {
+        figures.push(sprite);
+      }
+    }
+    this.playerHeadMark.setAlpha(headMarkCoversSomebody(this.player, figures, TILE_SIZE) ? 0 : 1);
   }
 
   // -- the partner -----------------------------------------------------------
