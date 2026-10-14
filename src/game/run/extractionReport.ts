@@ -165,6 +165,11 @@ export interface ExtractionReport {
   /** Undefined when the losing scene could not see the bag, never an empty lie. */
   readonly spent?: readonly ReportItem[];
   /**
+   * What was put down out of the pack for room. Neither used up nor carried
+   * out, so it is never counted as spent (playtest 43 B6).
+   */
+  readonly dropped: readonly ReportItem[];
+  /**
    * Every Pokemon that came home having learned something, most improved
    * first. Empty when the raid taught nobody anything, which is when the screen
    * says nothing about it at all.
@@ -380,6 +385,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     risked,
     gambleVerdict: gambleVerdict(escaped, secured, stakes),
     ...(spent === undefined ? {} : { spent }),
+    dropped: toReportItems(snapshot.droppedItems),
     progress,
     progressSummary: progressSummary(progress),
     gear,
@@ -532,12 +538,15 @@ function gambleVerdict(escaped: boolean, secured: ReportGroup, riskedDescription
 
 /**
  * Supplies burned during the raid: what was carried in, plus what was picked up,
- * minus what was still in the bag at the end.
+ * minus what was still in the bag at the end and what was put down for room.
  */
 function suppliesSpent(snapshot: RunSnapshot, carriedOut: BagContents): ReportItem[] {
   const held = new Map<string, number>();
   for (const { itemId, quantity } of [...(snapshot.loadout?.items ?? []), ...snapshot.foundItems]) {
     held.set(itemId, (held.get(itemId) ?? 0) + quantity);
+  }
+  for (const { itemId, quantity } of snapshot.droppedItems) {
+    held.set(itemId, (held.get(itemId) ?? 0) - quantity);
   }
   return toReportItems(
     [...held].map(([itemId, quantity]) => ({

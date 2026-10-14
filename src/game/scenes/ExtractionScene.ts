@@ -538,6 +538,10 @@ export class ExtractionScene extends Phaser.Scene {
       ...(spent === undefined
         ? []
         : [spent.length ? `Supplies spent: ${spent.map(itemText).join(', ')}` : 'No supplies spent']),
+      // Put down for room is not spent: nothing drank it (playtest 43 B6).
+      ...(this.report.dropped.length > 0
+        ? [`Put down for room: ${this.report.dropped.map(itemText).join(', ')}`]
+        : []),
       ...this.report.pressure,
     ];
   }

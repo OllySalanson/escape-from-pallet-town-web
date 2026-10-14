@@ -4616,6 +4616,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.settleRiding();
         this.saveGame();
       },
+      onItemDropped: (itemId: string, quantity: number) =>
+        this.runSession?.manager.registerDroppedItem(itemId as ItemId, quantity),
       bike: { riding: this.riding, toggle: () => this.toggleBike() },
     });
   }

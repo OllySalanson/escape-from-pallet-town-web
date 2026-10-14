@@ -105,7 +105,7 @@ import {
   carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
-import { Bag, ITEMS, heldItemName, type ItemDefinition } from '../items';
+import { Bag, ITEMS, heldItemName, type ItemDefinition, type ItemId } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
@@ -1662,6 +1662,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.bag.remove(choice.itemId, choice.drops)) {
       return;
     }
+    this.runSession?.manager.registerDroppedItem(choice.itemId as ItemId, choice.drops);
     audioManager.play('menuClose');
     if (packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
       const ballIndex = Math.max(

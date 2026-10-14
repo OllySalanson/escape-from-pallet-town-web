@@ -132,6 +132,8 @@ interface BagSceneData {
   readonly bag: Bag;
   readonly party: PokemonParty;
   readonly onItemUsed: () => void;
+  /** Told what was put down for good, so the raid's result can name it. */
+  readonly onItemDropped?: (itemId: string, quantity: number) => void;
   /** Absent where nothing can be ridden - the bag is only ever opened in a raid today. */
   readonly bike?: BagBike;
 }
@@ -153,6 +155,7 @@ export class BagScene extends Phaser.Scene {
   private bag!: Bag;
   private party!: PokemonParty;
   private onItemUsed!: () => void;
+  private onItemDropped?: (itemId: string, quantity: number) => void;
   private bike?: BagBike;
   /** The item whose recipient list is open, if one is. */
   private usingItemId?: string;
@@ -199,6 +202,7 @@ export class BagScene extends Phaser.Scene {
     this.bag = data.bag;
     this.party = data.party;
     this.onItemUsed = data.onItemUsed;
+    this.onItemDropped = data.onItemDropped;
     this.bike = data.bike;
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
@@ -702,6 +706,7 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     audioManager.play('menuClose');
+    this.onItemDropped?.(item.id, quantity);
     this.onItemUsed();
     const dropped = isCurrency(item.id) ? itemAmountFor(item.id, quantity) : item.displayName;
     this.status = `Dropped ${dropped}. ${this.packLabel()}.`;

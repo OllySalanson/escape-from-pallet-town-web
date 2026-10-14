@@ -70,6 +70,12 @@ export interface RunSnapshot {
   readonly giftIds: readonly string[];
   readonly foundItems: readonly ItemStack[];
   /**
+   * What the player put down out of the pack this raid, for good - to make
+   * room for a find or a catch. It was neither used up nor carried out, so the
+   * result screen names it on its own rather than as supplies spent.
+   */
+  readonly droppedItems: readonly ItemStack[];
+  /**
    * Contract stops made this raid, by marker id. A contract is a list of stops
    * rather than one flag because the braid survey is three of them.
    */
@@ -148,6 +154,7 @@ export class RunManager {
   private caughtPokemonValue: Pokemon[] = [];
   private giftIdsValue: string[] = [];
   private foundItemsValue: ItemStack[] = [];
+  private droppedItemsValue: ItemStack[] = [];
   private contractStepsValue: string[] = [];
   private secureFootprintsValue: readonly GridCargo[] = [];
   private secureGridValue: GridSize = DEFAULT_SECURE_GRID;
@@ -211,6 +218,7 @@ export class RunManager {
     this.caughtPokemonValue = [];
     this.giftIdsValue = [];
     this.foundItemsValue = [];
+    this.droppedItemsValue = [];
     this.contractStepsValue = [];
     this.defeatedTrainersValue = 0;
     this.hunterFleesValue = 0;
@@ -263,6 +271,14 @@ export class RunManager {
     this.requirePhase('register a found item', RunPhase.InRun);
     validateItemStack({ itemId, quantity });
     this.foundItemsValue = combineItems([...this.foundItemsValue, { itemId, quantity }]);
+    return this.snapshot();
+  }
+
+  /** Records something put down out of the pack, which is gone for good. */
+  public registerDroppedItem(itemId: ItemId, quantity = 1): RunSnapshot {
+    this.requirePhase('register a dropped item', RunPhase.InRun);
+    validateItemStack({ itemId, quantity });
+    this.droppedItemsValue = combineItems([...this.droppedItemsValue, { itemId, quantity }]);
     return this.snapshot();
   }
 
@@ -434,6 +450,7 @@ export class RunManager {
       caughtPokemon: [...this.caughtPokemonValue],
       giftIds: [...this.giftIdsValue],
       foundItems: [...this.foundItemsValue],
+      droppedItems: [...this.droppedItemsValue],
       contractSteps: [...this.contractStepsValue],
       recoveredFieldKit: this.contractStepsValue.includes(FIELD_KIT_STEP_ID),
       defeatedTrainers: this.defeatedTrainersValue,

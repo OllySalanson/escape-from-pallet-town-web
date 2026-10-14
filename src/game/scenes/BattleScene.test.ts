@@ -1717,6 +1717,28 @@ describe('a catch the pack has no room for', () => {
     }
   });
 
+  it('tells the raid what was put down, so the result screen does not call it spent', () => {
+    const bag = fullPack();
+    const runSession = startedRunSession();
+    const harness = createBattleSceneHarness({ bag, runSession });
+    const { scene, renderedTexts } = harness;
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    const press = (match: string, from = 0): void => {
+      const row = renderedTexts.slice(from).filter(({ text }) => text.includes(match)).at(-1);
+      if (!row) {
+        throw new Error(`No command row matching ${match}`);
+      }
+      row.handlers.pointerdown();
+    };
+
+    const before = renderedTexts.length;
+    press('BALL x1');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    press('POTION x', before);
+
+    expect(runSession.manager.snapshot().droppedItems).toEqual([{ itemId: 'potion', quantity: 1 }]);
+  });
+
   it('keeps the pack, spends nothing, and hands the fight back whole', () => {
     const bag = fullPack();
     const { scene, press, renderedTexts } = open(bag);

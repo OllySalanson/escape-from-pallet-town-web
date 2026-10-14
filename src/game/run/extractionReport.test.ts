@@ -122,6 +122,39 @@ describe('extraction report after a survived raid', () => {
   });
 
   /**
+   * Playtest 43 B6: a Parts crate picked up and then put down to make room for
+   * a catch was listed under "Supplies spent", as if the raid had used it up.
+   */
+  it('names what was put down for room apart from what was spent', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [{ itemId: 'potion', quantity: 2 }],
+    });
+    manager.registerFoundItem('parts-crate', 1);
+    manager.registerDroppedItem('parts-crate', 1);
+    manager.registerDroppedItem('potion', 1);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      exitLabel: 'FERRY DOCK',
+      banked: { pokemon: [], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    // One Potion was drunk; the other and the crate went on the ground.
+    expect(report.spent).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 1 }]);
+    expect(report.dropped).toEqual([
+      { itemId: 'parts-crate', label: 'Parts crate', quantity: 1 },
+      { itemId: 'potion', label: 'Potion', quantity: 1 },
+    ]);
+  });
+
+  /**
    * Playtest 3, B3: three secured Potions drunk and one of two balls thrown.
    * The screen listed "Potion x3 Protected" and "Poke Ball x2 Made it back"
    * above "Supplies spent: 3x Potion, 1x Poke Ball", under a footer saying

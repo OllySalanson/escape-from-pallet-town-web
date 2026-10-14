@@ -385,6 +385,20 @@ describe('the result screen counts what it lists', () => {
   });
 });
 
+describe('the result screen on what was put down', () => {
+  it('says what went on the ground for room, and does not call it spent (playtest 43 B6)', () => {
+    const report: ExtractionReport = {
+      ...escapeReport(),
+      spent: [],
+      dropped: [{ itemId: 'parts-crate', label: 'Parts crate', quantity: 1 }],
+    };
+    const { root } = open(report);
+
+    expect(root.html).toContain('Put down for room: 1× Parts crate');
+    expect(root.html).not.toMatch(/Supplies spent:[^<]*Parts crate/);
+  });
+});
+
 /** Walks the whole sequence the way a player who reads it does. */
 function readThrough(advance: (ms: number) => void): void {
   for (let beat = 0; beat < 3; beat += 1) {
