@@ -81,6 +81,9 @@ try {
       const key = await page.evaluate(firstStep(goals));
       if (key === 'here') return;
       if (key === 'unreachable') {
+        // A door can finish taking the player through between `done()` and the
+        // search, which then looks for the yard's door from inside the room.
+        if (await done()) return;
         const now = await page.evaluate(state());
         throw new Error(`nothing reaches ${JSON.stringify(goals)} from ${JSON.stringify(now)}`);
       }

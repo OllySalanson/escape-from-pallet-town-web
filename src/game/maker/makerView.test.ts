@@ -13,7 +13,7 @@ import type { MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
-import { CHECK_FIRST_NOTE, makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { CHECK_FIRST_NOTE, draftEdited, makerScreen, walkedCheck, type MakerViewState } from './makerView';
 import { reasonFor, signInReason } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
 
@@ -139,6 +139,32 @@ describe('the map maker screen', () => {
     expect(makerScreen({ ...drafts, unreadableDrafts: 1 })).toContain(
       'One draft here cannot be opened. It is kept, not deleted.',
     );
+  });
+
+  it('tells two drafts of the same name and size apart by when each was last changed', () => {
+    // Playtest 46: a downloaded map opened again is a second draft with the
+    // same name and size, and the list had nothing else to say about either.
+    const now = new Date(2026, 9, 14, 21, 30).getTime();
+    const drafts = [
+      { key: 'draft-a', file: SAMPLE, updatedAt: new Date(2026, 9, 12, 9, 15).getTime() },
+      { key: 'draft-b', file: SAMPLE, updatedAt: now - 5 * 60_000 },
+    ];
+    const markup = makerScreen({ ...state(SAMPLE, false), panel: 'drafts', drafts, now });
+    const notes = [...markup.matchAll(/data-open-draft="[^"]+"[^>]*>.*?<small class="px-note">([^<]*)<\/small>/g)].map(
+      (match) => match[1],
+    );
+    const size = `${SAMPLE.width}x${SAMPLE.height}`;
+    expect(notes).toEqual([`${size} · edited 12 Oct`, `${size} · edited 5 min ago`]);
+  });
+
+  it('says a draft was last changed today, yesterday or long ago in the words a person would', () => {
+    const now = new Date(2026, 9, 14, 21, 30).getTime();
+    expect(draftEdited(now - 20_000, now)).toBe('edited just now');
+    expect(draftEdited(new Date(2026, 9, 14, 8, 5).getTime(), now)).toBe('edited today 08:05');
+    expect(draftEdited(new Date(2026, 9, 13, 23, 59).getTime(), now)).toBe('edited yesterday 23:59');
+    expect(draftEdited(new Date(2025, 11, 31, 12, 0).getTime(), now)).toBe('edited 31 Dec 2025');
+    // A draft stored before its time was kept says nothing rather than 1970.
+    expect(draftEdited(0, now)).toBeUndefined();
   });
 
   it('greys out undo when there is nothing to undo', () => {

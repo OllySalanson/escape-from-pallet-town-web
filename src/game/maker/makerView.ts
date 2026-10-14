@@ -186,6 +186,8 @@ export interface MakerViewState {
   readonly drafts: readonly StoredDraft[];
   /** How many drafts in this browser this editor cannot open: kept, and said so. */
   readonly unreadableDrafts?: number;
+  /** The time now, which the drafts panel says each draft's last change against. */
+  readonly now?: number;
   /** The draft whose Delete has been pressed once: the next press deletes it. */
   readonly pendingDelete?: string;
   /** The inside whose Remove has been pressed once: the next press removes it. */
@@ -1008,16 +1010,53 @@ function settingsPane(file: MapFile): string {
   );
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const sameDay = (a: Date, b: Date): boolean =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/**
+ * When a draft was last changed, in the browser's own clock: what tells two
+ * drafts of the same name and size apart - a downloaded file opened again is a
+ * second draft of exactly that (playtest 46). Nothing for a draft whose time is
+ * not known (one stored before it was recorded).
+ */
+export function draftEdited(updatedAt: number, now: number): string | undefined {
+  if (!(updatedAt > 0)) {
+    return undefined;
+  }
+  const ago = now - updatedAt;
+  if (ago < 60_000) {
+    return 'edited just now';
+  }
+  if (ago < 60 * 60_000) {
+    return `edited ${Math.floor(ago / 60_000)} min ago`;
+  }
+  const then = new Date(updatedAt);
+  const today = new Date(now);
+  const clock = `${String(then.getHours()).padStart(2, '0')}:${String(then.getMinutes()).padStart(2, '0')}`;
+  if (sameDay(then, today)) {
+    return `edited today ${clock}`;
+  }
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (sameDay(then, yesterday)) {
+    return `edited yesterday ${clock}`;
+  }
+  const day = `${then.getDate()} ${MONTHS[then.getMonth()]}`;
+  return then.getFullYear() === today.getFullYear() ? `edited ${day}` : `edited ${day} ${then.getFullYear()}`;
+}
+
 function draftsPane(
   drafts: readonly StoredDraft[],
   current: string,
   unreadable = 0,
   pendingDelete?: string,
+  now = Date.now(),
 ): string {
   const rows = drafts
     .map(
       (draft) =>
-        `<div class="maker-draft"><button class="px-row${draft.key === current ? ' is-selected' : ''}" data-open-draft="${escapeAttribute(draft.key)}" data-help="Opens this draft."><span class="px-row-main"><span class="px-name">${escapeHtml(draft.file.name || 'Untitled map')}</span><small class="px-note">${draft.file.width}x${draft.file.height}</small></span></button>${
+        `<div class="maker-draft"><button class="px-row${draft.key === current ? ' is-selected' : ''}" data-open-draft="${escapeAttribute(draft.key)}" data-help="Opens this draft."><span class="px-row-main"><span class="px-name">${escapeHtml(draft.file.name || 'Untitled map')}</span><small class="px-note">${[`${draft.file.width}x${draft.file.height}`, draftEdited(draft.updatedAt, now)].filter(Boolean).join(' · ')}</small></span></button>${
           draft.key === current
             ? ''
             : `<button class="px-window px-button" data-delete-draft="${escapeAttribute(draft.key)}" data-help="Deletes this draft from this browser. It cannot be undone.">${
@@ -1247,7 +1286,7 @@ export function makerScreen(state: MakerViewState): string {
   const panels: Readonly<Record<MakerPanel, () => string>> = {
     map: () =>
       `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(state.file, inside, state.pendingAreaRemoval) : settingsPane(state.file)}`,
-    drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts, state.pendingDelete),
+    drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts, state.pendingDelete, state.now),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),
     review: () => reviewPane(state.review, state.reviewing, state.checks, state.file),

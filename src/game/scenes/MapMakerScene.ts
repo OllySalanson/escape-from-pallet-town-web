@@ -821,6 +821,7 @@ export class MapMakerScene extends Phaser.Scene {
       canRedo: this.history.canRedo,
       drafts: this.store.drafts,
       unreadableDrafts: this.store.unreadable?.length ?? 0,
+      now: Date.now(),
       pendingDelete: this.pendingDelete,
       pendingAreaRemoval: this.pendingAreaRemoval,
       draftKey: this.draftKey,
