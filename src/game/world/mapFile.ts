@@ -25,7 +25,7 @@ import type { CastCharacterDesignId } from './characterDesigns';
 import type { MapDistrict } from './districts';
 import type { WorldMapId } from '../worldMap';
 import type { MapGate } from './gates';
-import type { FieldMoveId } from './fieldMoves';
+import { SMALL_TREE_OBSTACLE, type FieldMoveId } from './fieldMoves';
 import type { MapLedge } from './ledges';
 import { WeatherId } from '../pokemon/battle/weather';
 import type { ExtractionPoint } from './extractionPoints';
@@ -2811,6 +2811,7 @@ export function fileDoorGates(file: MapFile, id: WorldMapId = playerMapId(file))
       return {
         ...base,
         fieldMove: look.fieldMove,
+        ...(door.kind === 'cut-tree' ? { obstacle: SMALL_TREE_OBSTACLE } : {}),
         closed: { material: ground, props: [{ name: stands, x: door.x, y: door.y }] },
         open: { material: ground },
       };

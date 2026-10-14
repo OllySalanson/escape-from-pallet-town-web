@@ -1,6 +1,6 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
-import { FIELD_MOVES, type FieldMoveId } from './fieldMoves';
+import { FIELD_MOVES, SMALL_TREE_OBSTACLE, type FieldMoveId } from './fieldMoves';
 import type { MapSketch, PlantedProp } from './mapGrid';
 import { MATERIAL_CHARS, type Material } from './tileset/materials';
 import { fileMap } from './playerMaps';
@@ -73,6 +73,7 @@ export interface BossGate extends MapGateBase {
   /** The `bossId` of the trainer whose defeat opens this gate. */
   readonly bossId: string;
   readonly fieldMove?: undefined;
+  readonly obstacle?: undefined;
   readonly night?: undefined;
 }
 
@@ -84,6 +85,12 @@ export interface BossGate extends MapGateBase {
  */
 export interface FieldMoveGate extends MapGateBase {
   readonly fieldMove: FieldMoveId;
+  /**
+   * What is in the way, where it is not the move's own words: a ride grown
+   * shut is the Cut door's default, and a small tree in a fence gap says
+   * FireRed's own line instead (`SMALL_TREE_OBSTACLE`).
+   */
+  readonly obstacle?: string;
   readonly bossId?: undefined;
   readonly night?: undefined;
 }
@@ -101,6 +108,7 @@ export interface NightGate extends MapGateBase {
   readonly night: true;
   readonly bossId?: undefined;
   readonly fieldMove?: undefined;
+  readonly obstacle?: undefined;
 }
 
 export type MapGate = BossGate | FieldMoveGate | NightGate;
@@ -559,6 +567,7 @@ export const WORLD_GATES: readonly MapGate[] = [
     mapId: 'viridian-city',
     fieldMove: 'cut',
     label: 'TRADE HOUSE TREE',
+    obstacle: SMALL_TREE_OBSTACLE,
     tiles: [{ x: 57, y: 13 }],
     closed: { material: 'grass', props: [{ name: 'cutTree', x: 57, y: 13 }] },
     open: { material: 'grass' },

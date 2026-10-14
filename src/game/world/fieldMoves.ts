@@ -91,6 +91,13 @@ export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
   },
 };
 
+/**
+ * FireRed's own words for its small Cut tree (`Text_TreeCanBeCutDown`), said
+ * by a Cut door that is one tree rather than a ride grown shut: Viridian
+ * City's in its fence gap and every map maker's `cut-tree`.
+ */
+export const SMALL_TREE_OBSTACLE = 'This tree looks like it can be CUT down!';
+
 export const FIELD_MOVE_LIST: readonly FieldMove[] = Object.values(FIELD_MOVES);
 
 /** What this species is being asked for, by the id a gate names. */
@@ -129,12 +136,13 @@ export function partyHasFieldMove(party: readonly Pokemon[], id: FieldMoveId): b
 export function fieldMoveLines(
   id: FieldMoveId,
   user: Pokemon | undefined,
+  obstacle: string = FIELD_MOVES[id].obstacle,
 ): readonly string[] {
   const authored = FIELD_MOVES[id];
   if (!user) {
-    return [authored.obstacle, authored.refusal];
+    return [obstacle, authored.refusal];
   }
-  return [authored.obstacle, authored.worked(user.name.toUpperCase())];
+  return [obstacle, authored.worked(user.name.toUpperCase())];
 }
 
 /**

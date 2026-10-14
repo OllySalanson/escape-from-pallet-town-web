@@ -4615,7 +4615,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return null;
     }
     const user = fieldMoveUser(this.party.pokemon, gate.fieldMove);
-    const lines = fieldMoveLines(gate.fieldMove, user);
+    const lines = fieldMoveLines(gate.fieldMove, user, gate.obstacle);
     if (!user) {
       audioManager.play('denied');
       return lines;
