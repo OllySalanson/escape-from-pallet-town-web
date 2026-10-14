@@ -19,6 +19,10 @@ vi.mock('../ui/MenuOverlay', () => ({
       addEventListener: (event: string, handler: (event: unknown) => void) => this.listeners.set(event, handler),
     };
     public focus(): void {}
+    /** The real one moves the cursor on an arrow key; the test says where it lands. */
+    public moveCursor(key: string): boolean {
+      return key.startsWith('Arrow');
+    }
   },
 }));
 
@@ -50,6 +54,7 @@ class RefusingStorage extends MemoryStorage {
 
 interface StarterInternals {
   create(): void;
+  handleKey(event: KeyboardEvent): void;
   confirmStarter(): void;
   readonly overlay: {
     root: { innerHTML: string };
@@ -139,6 +144,22 @@ describe('choosing a partner', () => {
     expect(scene.overlay.root.innerHTML).not.toContain('Confirm Bulbasaur');
     // Moving the cursor commits nothing.
     expect(start).not.toHaveBeenCalled();
+  });
+
+  it('follows an arrow key even where moving the cursor fires no focus event', () => {
+    // A page without the window's focus moves the cursor silently, which is
+    // how the browser check of this fix first saw CONFIRM BULBASAUR again.
+    const { scene } = openStarter(new MemoryStorage());
+    vi.stubGlobal('document', {
+      activeElement: { closest: (selector: string) => (selector === '[data-starter]' ? { dataset: { starter: 'charmander' } } : null) },
+    });
+    try {
+      scene.handleKey({ key: 'ArrowRight', preventDefault: () => undefined } as KeyboardEvent);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(scene.overlay.root.innerHTML).toContain('Confirm Charmander');
   });
 
   it('confirms the starter the cursor last chose', () => {

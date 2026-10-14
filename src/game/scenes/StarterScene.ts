@@ -40,15 +40,22 @@ export class StarterScene extends Phaser.Scene {
     // to leave the bar reading CONFIRM BULBASAUR until Enter was pressed on the
     // card (playtest 47). Moving the cursor still commits nothing - CONFIRM is
     // one deliberate step down.
-    this.overlay.root.addEventListener('focusin', (event) => {
-      const card = (event.target as Element | null)?.closest?.<HTMLElement>('[data-starter]');
-      const starter = STARTER_SPECIES.find((species) => species.id === card?.dataset.starter)?.id;
-      if (starter && starter !== this.selectedStarterId) {
-        this.selectedStarterId = starter;
-        this.render();
-      }
-    });
+    this.overlay.root.addEventListener('focusin', (event) => this.followCursor(event.target));
     this.render();
+  }
+
+  /**
+   * Makes the card the cursor is on the chosen one. Asked on `focusin` and
+   * again after an arrow key, because a page without the window's focus moves
+   * the cursor without firing a focus event (`MenuOverlay.moveCursorTo`).
+   */
+  private followCursor(target: EventTarget | null): void {
+    const card = (target as Element | null)?.closest?.<HTMLElement>('[data-starter]');
+    const starter = STARTER_SPECIES.find((species) => species.id === card?.dataset.starter)?.id;
+    if (starter && starter !== this.selectedStarterId) {
+      this.selectedStarterId = starter;
+      this.render();
+    }
   }
 
   /**
@@ -78,6 +85,7 @@ export class StarterScene extends Phaser.Scene {
   private handleKey(event: KeyboardEvent): void {
     if (this.overlay.moveCursor(event.key)) {
       event.preventDefault();
+      this.followCursor(document.activeElement);
     }
   }
 
