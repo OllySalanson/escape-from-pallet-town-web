@@ -14,6 +14,7 @@ import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
 import { CHECK_FIRST_NOTE, draftEdited, makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { PLANT_GROUPS } from './palette';
 import { reasonFor, signInReason, type SentMap } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
 
@@ -77,7 +78,7 @@ describe('the map maker screen', () => {
   });
 
   it('never names two rows of the paint pane alike, and says a planted sign cannot be read (playtest 39 B5)', () => {
-    const markup = makerScreen(state(SAMPLE, false));
+    const markup = makerScreen({ ...state(SAMPLE, false), openGroups: PLANT_GROUPS });
     const rows = [
       ...markup.matchAll(/data-place="[^"]+"[^>]*>(?:<[^>]*>)*?<span class="px-row-main">([^<]+)</g),
     ].map((match) => match[1].toLowerCase());

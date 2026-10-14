@@ -48,6 +48,7 @@ import {
   BUILDING_CHOICES,
   plantsAlong,
   PLANT_GROUPS,
+  type PlantGroup,
   brushesFor,
   FACING_LABELS,
   FURNITURE_CHOICES,
@@ -181,6 +182,14 @@ export interface MakerViewState {
   readonly zoom: MakerZoom;
   /** Whether the overview is wanted in the corner of the map window. */
   readonly overview: boolean;
+  /**
+   * The plant groups the maker has opened in the Paint list. Every other group
+   * is folded to its heading, because the six of them are 140 rows and the
+   * Cave mouth was four thousand pixels of scrolling down (playtest 48 #2).
+   * A thing is only chosen from an open group, so a chosen one is folded away
+   * only by the maker's own press.
+   */
+  readonly openGroups?: readonly PlantGroup[];
   readonly checks: readonly MakerCheck[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -401,12 +410,14 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
     );
   const plants = inside
     ? `<p class="px-subheading">Furniture</p>${furnitureFor(inside.style).map(plantRow).join('')}`
-    : PLANT_GROUPS.map(
-        (group) =>
-          `<p class="px-subheading">${group}</p>${BUILDING_CHOICES.filter((choice) => choice.group === group)
-            .map(plantRow)
-            .join('')}`,
-      ).join('');
+    : PLANT_GROUPS.map((group) => {
+        const choices = BUILDING_CHOICES.filter((choice) => choice.group === group);
+        const open = state.openGroups?.includes(group) ?? false;
+        const help = open
+          ? `Folds ${group} away to its heading.`
+          : `Opens ${group}: ${choices.length} things to plant.`;
+        return `<button class="px-subheading maker-fold" data-fold="${group}" aria-expanded="${open}" data-help="${escapeAttribute(help)}"><span>${group}</span><span class="maker-fold-mark">${choices.length} ${open ? '-' : '+'}</span></button>${open ? choices.map(plantRow).join('') : ''}`;
+      }).join('');
   return pixelWindow(
     `<div class="maker-toolbar">${tools}${MOUSE_NOTE}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">${inside ? BRUSH_HEADINGS[inside.kind] : 'Ground'}</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
     { className: 'maker-tools', heading: 'Paint' },

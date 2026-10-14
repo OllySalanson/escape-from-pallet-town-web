@@ -12,7 +12,7 @@
 // exits non-zero on any FAIL. It starts from the sample map as a draft, so the
 // house is the open-door house at the top of the lane (`maps/sample/`).
 import { readFileSync } from 'node:fs';
-import { launchBrowser, PIXEL_WINDOW, sleep } from './browser.mjs';
+import { launchBrowser, PIXEL_WINDOW, OPEN_PLANT_FOLDS, sleep } from './browser.mjs';
 import { GAME } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -49,6 +49,7 @@ try {
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
   };
   const click = async (selector) => {
+    await evaluate(OPEN_PLANT_FOLDS);
     const at = await evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); element?.scrollIntoView({ block: 'nearest' }); const box = element?.getBoundingClientRect(); return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null; })()`);
     if (!at) {
       throw new Error(`nothing on screen matches ${selector}`);
@@ -90,6 +91,7 @@ try {
   report('making it opens the inside', inside.area === 'house', JSON.stringify(inside));
   await shot('maker-2-inside');
   // The furniture of the room, each row pictured on the room's own floor.
+  await evaluate(OPEN_PLANT_FOLDS);
   await evaluate(`document.querySelector('[data-plant="bed"]')?.scrollIntoView({ block: 'start' })`);
   await sleep(200);
   const pictured = await evaluate(`[...document.querySelectorAll('.maker-tools canvas[data-plant]')].every((canvas) => canvas.width === 16 && canvas.getContext('2d').getImageData(0, 0, 16, 16).data.some((value, index) => index % 4 === 3 && value > 0))`);

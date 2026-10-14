@@ -14,6 +14,8 @@ vi.mock('phaser', () => ({
 const VIEW = { left: 100, top: 100, width: 320, height: 240 };
 const TILE_PX = 16;
 const page = {
+  /** What a clicked control's `data-` attributes say, for a handler that reads them. */
+  clicked: {} as Record<string, string>,
   mapWidth: 40,
   mapHeight: 30,
   /** The frame flashed round a tile a fault was found on. */
@@ -93,7 +95,9 @@ vi.mock('../ui/MenuOverlay', () => ({
         selector.startsWith('[data-') && selector !== '[data-field]'
           ? [
               {
-                dataset: {},
+                get dataset() {
+                  return page.clicked;
+                },
                 getAttribute: () => null,
                 addEventListener: (_type: string, handler: () => void) =>
                   this.clicks.set(selector, handler),
@@ -349,6 +353,32 @@ describe('taking a thing off the map', () => {
     // The screen answers the next click: the tool changes and the screen is drawn.
     expect(() => scene.handleKey(key('b'))).not.toThrow();
     expect(scene.tool).toBe('brush');
+  });
+
+  it('opens and folds a plant group in the paint list on a press, and keeps it for the session (playtest 48 #2)', () => {
+    const { scene } = openMaker();
+    // Folded, the Cave mouth is not 4,200 pixels of scrolling down: it is
+    // not in the list at all until NATURE is opened.
+    expect(scene.overlay.root.innerHTML).toContain('data-fold="Nature" aria-expanded="false"');
+    expect(scene.overlay.root.innerHTML).not.toContain('data-plant="cave-mouth"');
+
+    page.clicked = { fold: 'Nature' };
+    try {
+      scene.overlay.clicks.get('[data-fold]')!();
+      expect(scene.overlay.root.innerHTML).toContain('data-fold="Nature" aria-expanded="true"');
+      expect(scene.overlay.root.innerHTML).toContain('data-plant="cave-mouth"');
+      expect(scene.overlay.root.innerHTML).toContain('data-fold="Buildings" aria-expanded="false"');
+
+      // Back from the title, the list is as the maker left it.
+      reopen(scene);
+      expect(scene.overlay.root.innerHTML).toContain('data-plant="cave-mouth"');
+
+      scene.overlay.clicks.get('[data-fold]')!();
+      expect(scene.overlay.root.innerHTML).toContain('data-fold="Nature" aria-expanded="false"');
+      expect(scene.overlay.root.innerHTML).not.toContain('data-plant="cave-mouth"');
+    } finally {
+      page.clicked = {};
+    }
   });
 
   it('with the remove tool clears a choice its removal would have moved on', () => {

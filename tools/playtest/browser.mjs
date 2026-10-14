@@ -335,4 +335,11 @@ async function openPage(port, url, window, { save, init, project = false } = {})
   };
 }
 
+/**
+ * A page expression that opens every folded plant group in the map maker's
+ * Paint list, so a driver can click any thing to plant by its selector. Each
+ * press draws the screen again, so the next fold is looked up afresh.
+ */
+export const OPEN_PLANT_FOLDS = `(() => { for (let fold; (fold = document.querySelector('[data-fold][aria-expanded="false"]')); ) fold.click(); })()`;
+
 export { sleep };

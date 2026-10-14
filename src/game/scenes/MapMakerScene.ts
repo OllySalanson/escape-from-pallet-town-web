@@ -168,6 +168,7 @@ import {
   groundBrush,
   groundUnder,
   plantsAlong,
+  type PlantGroup,
 } from '../maker/palette';
 import { isFigureSpecies } from '../world/pokemonFigures';
 import { isBerry } from '../world/berries';
@@ -305,11 +306,15 @@ const grownFrom = new WeakMap<MapFile, { readonly before: MapFile; readonly shif
 /** Whether the maker wants the overview in the map window's corner: theirs to turn off, for the page's life. */
 let overviewWanted = true;
 
+/** The plant groups opened in the Paint list, for the page's life: every other is folded. */
+const openPlantGroups = new Set<PlantGroup>();
+
 /** Forgets the session's histories and views: for tests, which share the module. */
 export function forgetMakerSession(): void {
   sessionHistories.clear();
   sessionViews.clear();
   sessionTryLevels.clear();
+  openPlantGroups.clear();
 }
 
 export class MapMakerScene extends Phaser.Scene {
@@ -826,6 +831,7 @@ export class MapMakerScene extends Phaser.Scene {
       selected: this.selected,
       zoom: this.zoom,
       overview: overviewWanted,
+      openGroups: [...openPlantGroups],
       checks: [...this.currentChecks(), walkedCheck(this.walkedOut())],
       canUndo: this.history.canUndo,
       canRedo: this.history.canRedo,
@@ -1012,6 +1018,16 @@ export class MapMakerScene extends Phaser.Scene {
           : { kind: kind as SpotKind | 'district' | MakerDoorKind };
       this.tool = 'place';
       this.render();
+    });
+    on('[data-fold]', (element) => {
+      const group = element.dataset.fold as PlantGroup;
+      if (openPlantGroups.has(group)) {
+        openPlantGroups.delete(group);
+      } else {
+        openPlantGroups.add(group);
+      }
+      this.render();
+      this.overlay.refocus(`[data-fold="${group}"]`);
     });
     on('[data-zoom]', (element) => this.setZoom(Number(element.dataset.zoom) as MakerZoom));
     on('[data-fit]', () => this.fitWhole());
