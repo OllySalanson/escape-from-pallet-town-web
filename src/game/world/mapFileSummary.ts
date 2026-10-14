@@ -1,7 +1,7 @@
 import type { GridLinks, GridPosition } from '../movement/gridMovement';
 import { linkKey } from '../movement/gridMovement';
 import { formatMoney, isMaterial } from '../items/items';
-import { fileDoorGates, isBarredFileExit, itemSpotContents, MAP_FILE_LANDMARKS, trainerTemplate } from './mapFile';
+import { fileDoorGates, floorHabitat, isBarredFileExit, itemSpotContents, MAP_FILE_LANDMARKS, trainerTemplate } from './mapFile';
 import type { MapFile, MapFileSpot, MapFileTrainerTeam } from './mapFile';
 import { mapFileGrid, spotPlacer } from './mapFileChecks';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
@@ -223,7 +223,7 @@ function summarise(file: MapFile): MapFileSummary {
   );
 
   const wildGround =
-    composed.areas.some((area) => area.kind === 'cave') ||
+    composed.areas.some((area) => area.kind !== 'outdoors' && floorHabitat(area.kind, area.style) !== undefined) ||
     composed.terrain.some((row, y) =>
       row.some((material, x) => material === 'tall-grass' && !isBlockedAt(collision, x, y)),
     );

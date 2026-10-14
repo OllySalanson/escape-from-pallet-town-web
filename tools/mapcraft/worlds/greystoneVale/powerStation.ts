@@ -22,10 +22,22 @@ import { plantCaveMouth } from '../../caves';
 import { districtFile } from '../../stitch';
 import { startDistrict } from '../../worldPlan';
 import { fallsCaveArea, fallsCaveBoulders, fallsCaveSecrets, fallsMouthLink } from './fallsCave';
+import {
+  bunkerAreas,
+  bunkerExits,
+  bunkerItemSpots,
+  bunkerLandmarks,
+  bunkerLinks,
+  bunkerSigns,
+  bunkerTrainers,
+} from './bunker';
 import { GREYSTONE_VALE } from './plan';
 
 /** The Falls Cave's mouth, in the cliff behind the water where it spills through the dam. */
 export const FALLS_MOUTH = [48, 17] as const;
+
+/** The tile in front of the Power Plant's door, which goes into its turbine hall and the Bunker under it. */
+export const PLANT_DOOR = [31, 24] as const;
 
 /**
  * The valley, a letter a lattice cell: T the wood, . open ground. The wood fills
@@ -175,17 +187,20 @@ export function powerStation(): MapcraftResult {
       { x: 57, y: 30 }, // the bank of the tailrace
       { x: 44, y: 3 }, // the reservoir's north shore
       ...fallsCaveSecrets(),
+      ...bunkerItemSpots(),
     ],
-    exits: [{ x: 30, y: 42, name: 'Service Gate', opens: { when: 'key' } }],
+    exits: [{ x: 30, y: 42, name: 'Service Gate', opens: { when: 'key' } }, ...bunkerExits()],
     extra: {
       landmarks: [
         { x: 38, y: 24, name: 'Control Room', kind: 'shed' },
         { x: 52, y: 9, name: 'Relay Mast', kind: 'mast' },
+        ...bunkerLandmarks(),
       ],
       signs: [
         { x: 23, y: 25, lines: ['GREYSTONE POWER STATION', 'Service gate locked. Card Key holders only.'] },
         { x: 8, y: 25, lines: ['PYLON ROAD', 'North: along the reservoir and out of the vale.'] },
         { x: 28, y: 49, lines: ['SAFARI ZONE', 'South: the marsh reserve.'] },
+        ...bunkerSigns(),
       ],
       people: [
         {
@@ -203,8 +218,8 @@ export function powerStation(): MapcraftResult {
       // The Falls Cave rides in both its districts' files, so each passes
       // its checks alone, and the stitcher takes it once; what stands in it,
       // the Strength boulders, rides here, where the cave is entered.
-      areas: [fallsCaveArea()],
-      links: [fallsMouthLink('station', FALLS_MOUTH)],
+      areas: [fallsCaveArea(), ...bunkerAreas()],
+      links: [fallsMouthLink('station', FALLS_MOUTH), ...bunkerLinks(PLANT_DOOR)],
       boulders: fallsCaveBoulders(),
       trainers: [
         {
@@ -217,6 +232,7 @@ export function powerStation(): MapcraftResult {
           sight: 3,
           lines: ['Nobody touches the sluices but me!'],
         },
+        ...bunkerTrainers(),
       ],
     },
   });

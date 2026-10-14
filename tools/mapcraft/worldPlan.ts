@@ -120,8 +120,8 @@ export interface PlannedLandmark {
 /**
  * What a place under the map is drawn as: `cave` is Mt. Moon's floors
  * (`caves.ts`), `hideout` FireRed's Rocket Hideout, `ice` its Icefall Cave and
- * `tower` its Pokemon Tower. Only `cave` has art yet; the others are a style
- * their drawing worker cuts from pret first.
+ * `tower` its Pokemon Tower. `cave`, `ice` and `hideout` have art; `tower` is a
+ * style its drawing worker cuts from pret first.
  */
 export type CaveStyle = 'cave' | 'hideout' | 'ice' | 'tower';
 

@@ -50,7 +50,18 @@ export type Material =
    * A sheet of ice, FireRed's Icefall Cave floor: walkable, and a step onto
    * it carries on the same way until something stops it (`slidingFloor.ts`).
    */
-  | 'ice';
+  | 'ice'
+  /**
+   * The Rocket Hideout's spinner floor (`METATILE_SilphCo_Arrow_*`): a step
+   * onto an arrow spins the player on the way it points, over plain floor,
+   * until a stop plate or something in the way stops them (`slidingFloor.ts`).
+   */
+  | 'spin-up'
+  | 'spin-down'
+  | 'spin-left'
+  | 'spin-right'
+  /** The yellow plate a spin stops on (`MB_STOP_SPINNING`). */
+  | 'spin-stop';
 
 export interface MaterialTraits {
   readonly solid: boolean;
@@ -63,6 +74,10 @@ export interface MaterialTraits {
   readonly ground: boolean;
   /** A step onto it carries on the same way until something stops it. */
   readonly slides?: boolean;
+  /** A step onto it spins the player on this way, over plain floor, until something stops them. */
+  readonly spins?: 'up' | 'down' | 'left' | 'right';
+  /** A spin stops here. */
+  readonly stopsSpin?: boolean;
 }
 
 const walkable = { solid: false, encounters: false, ground: true } as const;
@@ -86,6 +101,11 @@ export const MATERIALS: Readonly<Record<Material, MaterialTraits>> = {
   fence: wall,
   wall,
   ice: { solid: false, encounters: false, ground: true, slides: true },
+  'spin-up': { solid: false, encounters: false, ground: true, spins: 'up' },
+  'spin-down': { solid: false, encounters: false, ground: true, spins: 'down' },
+  'spin-left': { solid: false, encounters: false, ground: true, spins: 'left' },
+  'spin-right': { solid: false, encounters: false, ground: true, spins: 'right' },
+  'spin-stop': { solid: false, encounters: false, ground: true, stopsSpin: true },
 };
 
 export function isSolidMaterial(material: Material): boolean {
@@ -123,6 +143,11 @@ export const MATERIAL_CHARS: Readonly<Record<Material, string>> = {
   fence: 'F',
   wall: 'B',
   ice: 'i',
+  'spin-up': 'U',
+  'spin-down': 'D',
+  'spin-left': 'K',
+  'spin-right': 'R',
+  'spin-stop': 'Z',
 };
 
 const BY_CHAR = new Map<string, Material>(

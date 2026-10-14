@@ -1033,7 +1033,7 @@ boat, Stormcrown only from the deepest floor, and nothing at all is out of reach
 | [Stormcrown](#stormcrown) (drawn) | above the peaks | the Greystone Caves' new B5F, by a hole in B4F's far corner, to the Chimney; then a climb round three bands of crag | the bottom of a five-floor maze, with no landing near; ledges only take you down; the storm's rain in every fight | Mew at level 50 by the cairn, the vale's legendary boss |
 | The Moor Chapel | west of High Moor | a sheep track nobody signs, west out of the shepherd's clearing into the fog | only on a night raid (9 pm to 5 am on the player's clock, fixed when the raid deploys); by day the fog turns it back | ghost Pokemon (Gastly, Haunter, Cubone), the crypt, the Spell Tag |
 | The Lost Garden | east of the Power Station | the Falls Cave, a mouth hidden behind the water at the foot of the dam | Strength boulders onto floor switches open its rock barrier (Victory Road's rule), so HM04 and the order to push them in | the rarest grass Pokemon (Tangela, Exeggcute), berry trees, the Miracle Seed |
-| The Bunker | under the Power Station | the station's door into the turbine hall, then a steel door only the Card Key opens | the card is one raid in five in Pine Hollow, and it is also the Service Gate's key; B3F and B4F are lift-only, and the lift is dead until the generator on B2F is back on, across a spinner floor | the war room's strongroom (the vale's locked crate), an escape hatch |
+| [The Bunker](#the-bunker) (drawn) | under the Power Station | the station's door into the turbine hall, then a steel door only the Card Key opens | the card is one raid in five in Pine Hollow, and it is also the Service Gate's key; B3F and B4F are lift-only, and the lift is dead until the generator on B2F is back on, across a spinner floor | the war room's strongroom (the vale's locked crate), an escape hatch |
 | Frostreef | out on the reef, south-east | The Ice Run, the salvage launch from the Wreck's pier, across two cells of sea | it sails only from 2:00 until 4:00; then Berg Cave is FireRed's sliding ice | ice Pokemon (Seel, Dewgong, Shellder, Jynx), a Lapras on the lagoon, the NeverMeltIce |
 | [Ember Isle](#ember-isle) (drawn) | out beyond the cove, south-west | The Smugglers' Run, their skiff off the cove's jetty, across a cell of sea | only from the hidden cove, only from 1:00 until the smugglers sail at 2:30; the crater only through the Lava Tube, rolling on every step | the smugglers' hoard (the richest ground in the vale), fire Pokemon (Ponyta, Rapidash, Magmar), Charcoal |
 
@@ -1059,12 +1059,15 @@ The plan names what each place needs and does not have yet, in its `reach`;
 - **A switch** (the Lost Garden's boulder plates, the Bunker's generator). A
   plate a boulder rests on, or a lever, that opens a barrier for the rest of the
   raid. **Built with the Lost Garden** ([below](#the-lost-garden)): an area's
-  `switches` and `barriers` (`world/switches.ts`).
+  `switches` and `barriers` (`world/switches.ts`). The Bunker's generator is a
+  lever, and a switch may also be a `key`: the lock in a door the Card Key
+  opens ([below](#the-bunker)).
 - **A floor that carries you on** (Frostreef's ice, the Bunker's spinner
   tiles) - **built with Frostreef**, as ice. A step continues the same way
   until something stops it. `carriedOn` in `world/slidingFloor.ts` is the one
   question the scene asks, so a spinner is another answer to it: a tile that
-  names its own way rather than keeping the one you came in on.
+  names its own way rather than keeping the one you came in on. **The
+  spinners were built with the Bunker** ([below](#the-bunker)).
 - **A gear row each** for the Spell Tag, the Miracle Seed, the NeverMeltIce and
   Charcoal, and **a habitat each** for the summit, the garden, the haunted fell,
   the ice and the volcano, measured as every table is. The NeverMeltIce and the
@@ -1083,7 +1086,7 @@ One per place:
   door is; and FireRed's Pokemon Tower as a room style.
 - **The Lost Garden**: Strength boulders in a cave floor. Built: they stand
   in the Falls Cave.
-- **The Bunker**: an inside for the Power Plant; a door the Card Key opens; a
+- **The Bunker** (built - [The Bunker](#the-bunker)): an inside for the Power Plant; a door the Card Key opens; a
   lift that offers its floors; and FireRed's Rocket Hideout as a room style.
 - **Ember Isle** (built - [Ember Isle](#ember-isle)): outdoor ground that rolls
   on every step, as a cave floor does.
@@ -1789,6 +1792,152 @@ What the judges still named, for a later pass: ragged edges to the heather, gras
 growing between the graves, and the crags reading partly as a slab on the lawn.
 
 ![The Moor Chapel as first drawn](moor-chapel-first-draw.png)
+
+## The Bunker
+
+The sixth and last far place drawn: a wartime hideout under the Power Station,
+reached with a key and a machine (`bunker.ts`, carried in the Power
+Station's file). It is FireRed's Rocket Hideout gone dark under FireRed's
+Power Plant, and it built the hideout's four mechanics: the room styles, the
+spinner floor, the lift and the door the Card Key opens.
+
+![B2F, the spinner floor: the generator in the alcove top left, the lift and the stairs in the room beside it](bunker/bunker-b2f.png)
+
+### How a player gets there
+
+1. **The Card Key.** It lies in Pine Hollow one raid in five (a prize, as the
+   shipped maps' keys are). It is the same card that opens the switchyard's
+   Service Gate, which is a way out of the vale, so a raid that carries it
+   chooses where to spend the clock: out by the gate, or down.
+2. **The turbine hall.** The Power Plant's door opens at last: FireRed's own
+   Power Plant inside, four generators silent in a row under a wall of
+   machinery, a second wall across the hall with one aisle through it, and
+   Voltorb, Magnemite and Pikachu on every step of the floor. The stair down
+   is let into the dividing wall: the hideout's own stair, because what goes
+   down from here is the hideout.
+3. **The shutter.** At the stair's foot on B1F, the Rocket Hideout's shutter
+   stands across the only corridor on. Faced without the card it says, in
+   FireRed's words, "No! It needs the Card Key!"; with it, "Bingo! The Card
+   Key opened the door!", and it stays open for the rest of the raid. The card
+   is not used up.
+4. **The lift, dead.** B1F's hall has the lift in its back wall, captioned
+   ELEVATOR / NO POWER. Pressed, it says "The elevator doesn't work..." -
+   the hideout grunt's own line - and that a generator somewhere has stopped.
+   The stairs go on down to B2F, and stop there.
+5. **The spinner floor.** B2F's generator stands in an alcove at the far end
+   of a floor of FireRed's spinner arrows. An arrow spins whoever steps on it
+   the way it points, over plain floor, turned by every arrow it crosses,
+   until it lands on a stop plate or something is in the way. The arrows join
+   the stop plates one way only, so the floor is a maze of one-way lanes: the
+   shortest way to the generator is eight spins, and the arrows along the back
+   wall carry the last spin into the alcove against the machine.
+6. **The generator.** Faced, it roars into life and the lift starts up, on
+   every floor at once, for the rest of the raid. A down arrow takes the player
+   out of the alcove and back to the lift.
+7. **The lift.** FireRed's panel: "Which floor do you want?", every floor
+   offered with the cursor on this one. The car shakes, and the doors open on
+   the floor chosen. B3F and B4F have no stairs: the lift is the only way.
+8. **B3F, the stores.** A smaller spinner run between the lift and the
+   stores, with a find hidden on one of its plates, and a one-way run of
+   arrows that carries the player back from the stores to the lift.
+9. **B4F, the war room.** The table of plans and its cache; below it the
+   strongroom, the vale's locked crate, which pays only to a Lockpick; and
+   the escape hatch, the Bunker's own way out, at the head of the stair out.
+
+Three grunts keep the floors as tolls, never walls: one in B1F's hall, one in
+the stores, one at the war room's door.
+
+### Why it is hard
+
+- **The card is rare, and wanted elsewhere.** One raid in five finds it, and a
+  raid that has it can also just leave by the Service Gate.
+- **The lift is dead until the generator runs**, and the generator is across
+  the spinner floor, where the obvious way is never the way: a lane only goes
+  one way, and a spin only stops on a plate.
+- **The bottom two floors are lift-only.** Nobody walks down to the war room.
+- **The dark is alive.** Every step of every floor rolls the hideout's own
+  wildlife (`hideout`, `HIDEOUT_WILDLIFE`): FireRed's Pokemon Mansion's Grimer
+  and Koffing and the Power Plant's Voltorb and Magnemite, at a route's levels.
+  A level-8 Bulbasaur wins 94% of it, Charmander 99% and Squirtle 67%.
+
+### What the game learned for it
+
+- **FireRed's Rocket Hideout and Power Plant as room styles** (`hideout`,
+  `power-plant`), cut by `scripts/cut-frlg-hideout.mjs` onto `frlg-hideout.png`
+  from pret at the shared commit (the older `cut-frlg-areas.mjs` is pinned to
+  a commit the shared checkout is not at, as Frostreef's ice cutter found). A
+  hideout room is drawn as FireRed draws one: the white rule of a room's
+  border is on the dark beside it, its foot on the last row of floor, and a
+  wall that ends against a corridor turns into the corridor's border - a
+  material may now be drawn by a rule of its own (`MaterialTiles.pick`). A
+  hideout room may also hold partitions (`F`) and the spinner floor.
+- **The spinner floor**: five materials (`spin-up`, `spin-down`, `spin-left`,
+  `spin-right`, `spin-stop`), and `carriedOn`'s second answer, read off
+  FireRed's `TryUpdatePlayerSpinDirection`. The figure turns as it spins.
+- **A lift** (`world/lifts.ts`): a floor's `lift` stop, one door a floor; it
+  offers every floor its stops share, runs once every switch naming it is
+  thrown, and is ridden only by the player - every search that asks where a
+  player can get to rides it (`playerLinks`), the hunter never does.
+- **A door the Card Key opens**: a switch of kind `key` standing in a barrier
+  drawn as the hideout's shutter.
+- **A locked crate on a map file** (`MapFileLandmark.locked`), on the game's
+  own maps only, and two landmark kinds, the war room and the strongroom.
+- The map maker paints a Rocket Hideout room with its partitions, arrows and
+  stop plates, and furnishes it and a Power Plant room with their own pieces.
+
+`bunker.test.ts` holds the spinner floors fair on the Power Station's own
+grid, walked as a player must: from the stairs to the generator, from the
+generator to the lift, and nowhere a spin can leave a player that they cannot
+get back from; and B3F's stores and their hidden find only by spinning.
+
+### Judged blind
+
+The four hideout floors were judged beside FireRed's own Rocket Hideout B1F,
+B2F and B3F and Five Island's Rocket Warehouse, drawn from pret in the same
+tiles at the same scale, with two broken controls (B2F and B4F with their
+blocks shuffled), two fresh judges looking at one picture at a time.
+
+| Round | Real mean | Controls | B1F | B2F | B3F | B4F | Bunker mean |
+|---|---|---|---|---|---|---|---|
+| 1 | 6.75, 5.75 | 2 and 1, 1 and 1 | 6, 6 | 6, 5 | 7, 6 | 5, 6 | **6.0, 5.75: passes** |
+| 2 | 6.5, 6.0 | 1 and 1, 1 and 1 | 7, 5 | 5, 5 | 6, 7 | 6, 5 | **6.0, 5.5: passes** |
+
+All four judges counted, and each put every Bunker floor at or above the
+weakest real one (FireRed's own B2F scored 3 to 5). Round 1 named B2F's
+lattice of plates as a little mechanical, B1F's hall and B2F's landing room as
+empty, and B4F as sparse; round 2 stood crates in some of the lattice's
+squares, as the Rocket Warehouse stacks them through its spinner floor, and
+furnished the rooms. Round 2 still reads B2F's lattice as stamped, which is
+left for a later pass; it also caught a console standing out on the floor
+and a stop plate left on plain floor, both fixed.
+
+![B1F](bunker/bunker-b1f.png)
+![B3F](bunker/bunker-b3f.png)
+![B4F](bunker/bunker-b4f.png)
+![The turbine hall](bunker/turbine-hall.png)
+
+### Walked in the game
+
+`tools/playtest/bunker.mjs` plays it on the explorer run against a test-mode
+build, a press at a time: dropped in at the Dam with the Card Key and a
+Lockpick packed, in through the station's door, across the turbine hall and
+down the stair, the shutter opened with the card, the lift found dead, down
+the stairs to B2F, across the spinner floor to the generator (44 presses,
+every spin planned the way the player has to plan it), back to the lift, down
+to B4F, past the grunt at the war room's door, the war room's cache, the
+strongroom opened with the Lockpick, and out by the escape hatch: 1:37 of the
+raid clock at walking pace, with every wild fight on the way left by RUN.
+
+    node tools/playtest/bunker.mjs <url of a test-mode build> <out dir> [--port=<CDP port>]
+
+| | |
+|---|---|
+| ![the station's door](bunker/01-the-station-door.png) | ![the turbine hall](bunker/02-turbine-hall.png) |
+| ![the shutter](bunker/05-the-shutter.png) | ![the Card Key opens it](bunker/06-the-card-key.png) |
+| ![the lift, dead](bunker/07-the-lift-is-dead.png) | ![B2F, the spinner floor](bunker/08-b2f-the-spinner-floor.png) |
+| ![the generator runs](bunker/10-the-generator-runs.png) | ![which floor](bunker/11-which-floor.png) |
+| ![B4F](bunker/12-b4f.png) | ![the war room](bunker/13-the-war-room.png) |
+| ![the strongroom](bunker/14-the-strongroom.png) | ![out by the escape hatch](bunker/15-out-by-the-escape-hatch.png) |
 
 ## How it ships
 

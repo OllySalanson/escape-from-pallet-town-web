@@ -216,6 +216,11 @@ export function buildMapLayers(
       if (!isOverlay && material !== base) {
         continue;
       }
+      const picked = tiles.pick?.((dx, dy) => materialAt(x + dx, y + dy));
+      if (picked !== undefined) {
+        (isOverlay ? overlay : ground).tiles[y][x] = picked;
+        continue;
+      }
       if (!isOverlay) {
         // A non-overlay material still wants its own edges: water, cliff and
         // paving all change tile where they stop. The diagonals are asked too,

@@ -74,7 +74,18 @@ import {
   voyage,
   type MapSailing,
 } from '../world/sailing';
-import { carriedOn } from '../world/slidingFloor';
+import { carriedOn, spinsOn } from '../world/slidingFloor';
+import { MAP_FILE_EXIT_KEY } from '../world/mapFile';
+import {
+  DEAD_LIFT_LINES,
+  floorPrompt,
+  LIFT_RUNNING_LINES,
+  liftAt,
+  liftRuns,
+  type MapLift,
+} from '../world/lifts';
+import { HIDEOUT_SHEET_SOURCE } from '../world/tileset/hideoutSheet';
+import { HIDEOUT_PIECES } from '../world/generated/hideoutPieces';
 import { boulderDestination, canStillReach } from '../world/boulders';
 import {
   barriersOpenedBy,
@@ -598,6 +609,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** True while the step in progress is a ledge hop, so the figure arcs over it. */
   private hopping = false;
   /**
+   * The spin the player is in on the Rocket Hideout's arrows, if they are in
+   * one: the way it is carrying them, and how far round the figure has turned.
+   */
+  private spin: { readonly heading: Direction; readonly turn: number } | null = null;
+  /** The caption on every lift door on the map, and the lift it is. */
+  private liftLabels: { readonly lift: MapLift; readonly label: WorldLabel }[] = [];
+  /**
    * Whether the player is on the Bicycle (`world/bicycle.ts`). Mirrored onto
    * the run session, which is what carries it through a fight; asked again on
    * every rebuild, every door and every change to the pack (`settleRiding`).
@@ -896,6 +914,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    this.spin = null;
     // Phaser destroyed the plate with the scene; only the reference outlives it.
     this.windowPausePlate = null;
     this.canopyInViewCache = null;
@@ -1684,6 +1703,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!decision.target && pushing && this.tryBoard(decision.facing, false)) {
       return;
     }
+    // A lift's door is in the wall, and pressing up into it calls the lift -
+    // the moment the press begins, so a held key asks once.
+    if (!decision.target && pushing && this.tryRideLift(decision.facing, this.pushingAgainst !== decision.facing)) {
+      return;
+    }
     // A doorway is solid too - a door, the dark past a room's mat - and
     // pressing into one is going through it.
     if (!decision.target && pushing && this.tryPushThrough(decision.facing)) {
@@ -1712,6 +1736,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.facing = decision.facing;
 
     if (decision.target) {
+      // A step the player chose is never a spin.
+      this.spin = null;
       this.beginStep(decision.target);
       // Walking on from a step that ended part-way through a frame: this one
       // started then, not now. A step begun from rest starts from nothing.
@@ -1831,6 +1857,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     this.createExtractionPoints();
     this.createBoats();
+    this.createLiftLabels();
     this.createRouteTransitionLabels();
     this.createDoorwayLabels();
     this.createGateLabels();
@@ -2261,7 +2288,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
       if (entity.barrier) {
         if (!this.barrierIsOpen(entity.barrier.id)) {
-          this.createBarrier(entity.id, entity.position, entity.barrier.top);
+          this.createBarrier(entity.id, entity.position, entity.barrier.top, entity.barrier.cell);
         }
         continue;
       }
@@ -3204,12 +3231,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const before = this.runSession.switchesThrown ?? [];
     const opened = barriersOpenedBy(thrown, this.switchesHere(), before);
     this.runSession.switchesThrown = [...before, thrown.id];
+    this.refreshLiftLabels();
     if (opened.length === 0) {
       audioManager.play('select');
       return;
     }
-    audioManager.play('barrierLifts');
-    this.cameras.main.shake(120, 0.003);
+    if (thrown.kind === 'key') {
+      // A door opened with its card slides back; nothing cracks.
+      audioManager.play('landmarkWorked');
+    } else {
+      audioManager.play('barrierLifts');
+      this.cameras.main.shake(120, 0.003);
+    }
     for (const entity of this.currentMap.entities) {
       if (entity.barrier && opened.includes(entity.barrier.id)) {
         const sprite = this.npcSprites.get(entity.id);
@@ -3246,8 +3279,43 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
-  /** One tile of a rock barrier: its top on the barrier's first row, its foot below. */
-  private createBarrier(id: string, position: GridPosition, top: boolean): void {
+  /**
+   * One tile of a barrier: a rock barrier's top on its first row and its foot
+   * below, or the cell of the hideout's shutter it is.
+   */
+  private createBarrier(
+    id: string,
+    position: GridPosition,
+    top: boolean,
+    shutterCell?: { readonly dx: number; readonly dy: number },
+  ): void {
+    if (shutterCell) {
+      const sheet = this.textures.get(HIDEOUT_SHEET_SOURCE.source.textureKey);
+      const frame = SHUTTER_FRAME(shutterCell.dx, shutterCell.dy);
+      if (!sheet.has(frame)) {
+        const piece = HIDEOUT_PIECES['hideout.shutter'];
+        sheet.add(
+          frame,
+          0,
+          (piece.column + shutterCell.dx) * TILE_SIZE,
+          (piece.row + shutterCell.dy) * TILE_SIZE,
+          TILE_SIZE,
+          TILE_SIZE,
+        );
+      }
+      const sprite = this.add
+        .sprite(
+          position.x * TILE_SIZE + TILE_SIZE / 2,
+          position.y * TILE_SIZE + TILE_SIZE / 2,
+          HIDEOUT_SHEET_SOURCE.source.textureKey,
+          frame,
+        )
+        // The shutter is a door in the floor, not a figure: drawn under them.
+        .setDepth(atRow(MARKER_BAND, position.y));
+      this.npcSprites.set(id, sprite);
+      this.mapObjects.push(sprite);
+      return;
+    }
     const texture = this.textures.get(AREA_SHEET_SOURCE.source.textureKey);
     if (!texture.has(BARRIER_TOP_FRAME)) {
       const piece = AREA_PIECES['cave.barrier'];
@@ -4291,6 +4359,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.tryBoard(this.facing, true)) {
       return;
     }
+    if (this.tryRideLift(this.facing, true)) {
+      return;
+    }
 
     const picked = this.tryCollectLootAt(targetTile);
     if (picked !== null) {
@@ -4315,7 +4386,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const lever = switchAt(this.switchesHere(), targetTile);
     if (lever?.kind === 'lever') {
       if (!this.switchThrown(lever)) {
-        this.dialogBox.showMessages([...LEVER_LINES]);
+        // A lever that runs a lift is the generator that powers it, and says so.
+        const powers = (this.currentMap.lifts ?? []).some((lift) => lift.id === lever.opens);
+        this.dialogBox.showMessages(powers ? [...LIFT_RUNNING_LINES] : [...LEVER_LINES]);
         this.throwSwitch(lever);
       }
       return;
@@ -4353,8 +4426,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.dialogBox.showMessages([...this.pickBerry(entity, entity.berry)]);
       return;
     }
-    // FireRed's rock barrier is scenery: facing it says nothing.
+    // FireRed's rock barrier is scenery: facing it says nothing. A door with
+    // a lock in it is a door: faced, it asks for its card.
     if (entity?.barrier) {
+      const lock = this.switchesHere().find(
+        (candidate) => candidate.kind === 'key' && candidate.opens === entity.barrier!.id,
+      );
+      if (lock && !this.switchThrown(lock)) {
+        this.dialogBox.showMessages([...this.turnKeyIn(lock)]);
+      }
       return;
     }
     if (entity?.boulder) {
@@ -5124,19 +5204,42 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * that nothing stopped.
    */
   private trySlideOn(): boolean {
-    const carried = carriedOn(this.currentMap.terrain, this.currentTile, this.facing);
-    if (carried === null) {
-      return false;
-    }
-    const next = nextTileFromDirection(this.currentTile, carried);
+    const terrain = this.currentMap.terrain;
+    // A spin begins on an arrow and goes on over plain floor until it stops.
+    const spinning = this.spin !== null || spinsOn(terrain[this.currentTile.y]?.[this.currentTile.x]) !== undefined;
+    const carried = carriedOn(terrain, this.currentTile, this.spin?.heading ?? this.facing, spinning);
+    const next = carried === null ? null : nextTileFromDirection(this.currentTile, carried);
     if (
+      carried === null ||
+      next === null ||
       next.x < 0 ||
       next.y < 0 ||
       next.x >= this.bounds.width ||
       next.y >= this.bounds.height ||
       this.isBlocked(next)
     ) {
+      // Stopped: on a plate, against something, or never carried at all. A
+      // spin leaves the player facing the way it was carrying them.
+      if (this.spin) {
+        this.facing = this.spin.heading;
+        this.showIdlePose();
+        this.spin = null;
+      }
       return false;
+    }
+    if (spinning) {
+      // FireRed's player turns round and round while an arrow carries them,
+      // and the spin says so as it starts (`PlaySpinSound`).
+      const turn = (this.spin?.turn ?? -1) + 1;
+      if (this.spin === null || this.spin.heading !== carried) {
+        audioManager.play('spin');
+      }
+      this.spin = { heading: carried, turn };
+      this.facing = carried;
+      this.beginStep(next);
+      this.player.stop();
+      this.player.setFrame(this.playerIdleFrame(SPIN_TURNS[turn % SPIN_TURNS.length]));
+      return true;
     }
     this.beginStep(next);
     this.player.stop();
@@ -6405,6 +6508,37 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.refreshBoats();
   }
 
+  /**
+   * Every lift door on the map, captioned with FireRed's word for it and,
+   * while its generator is off, that it has no power - read from in front of
+   * the door, as a boat's is.
+   */
+  private createLiftLabels(): void {
+    this.liftLabels = [];
+    for (const lift of this.currentMap.lifts ?? []) {
+      for (const stop of lift.stops) {
+        const door = { x: stop.landing.x, y: stop.landing.y - 1 };
+        const label = new WorldLabel(this, {
+          subject: { x: (door.x - 1) * TILE_SIZE, y: (door.y - 1) * TILE_SIZE, width: TILE_SIZE * 3, height: TILE_SIZE * 2 },
+          text: 'ELEVATOR',
+          tone: LABEL_TONES.boat,
+          depth: atRow(CAPTION_BAND, door.y),
+          speech: { voice: 'name', tiles: [stop.landing] },
+        });
+        this.worldLabels.push(label);
+        this.liftLabels.push({ lift, label });
+      }
+    }
+    this.refreshLiftLabels();
+  }
+
+  private refreshLiftLabels(): void {
+    for (const { lift, label } of this.liftLabels ?? []) {
+      const running = this.liftIsRunning(lift);
+      label.setText(running ? 'ELEVATOR' : 'ELEVATOR\nNO POWER', running ? LABEL_TONES.boat : LABEL_TONES.gateShut);
+    }
+  }
+
   private refreshBoats(): void {
     const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
     // A harness that never built the map has no boats to show.
@@ -6417,6 +6551,103 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         state === 'sailing' ? LABEL_TONES.boat : LABEL_TONES.gateShut,
       );
     }
+  }
+
+  /**
+   * A door with a lock in it, faced: FireRed's Card Key opens it for the rest
+   * of the raid, in FireRed's words (`Text_CardKeyOpenedDoor`), and is not used
+   * up; without one it says what it wants (`Text_ItNeedsCardKey`) and where
+   * that is found, as a locked gate does.
+   */
+  private turnKeyIn(lock: WorldSwitch): readonly string[] {
+    const keyName = ITEMS[MAP_FILE_EXIT_KEY].displayName;
+    if (this.bag.count(MAP_FILE_EXIT_KEY) === 0) {
+      audioManager.play('denied');
+      return [
+        'The door is locked...',
+        `No! It needs the ${keyName}!`,
+        ...(this.currentMap.loot.some((loot) => loot.itemId === MAP_FILE_EXIT_KEY)
+          ? [`The ${keyName} is a rare find, somewhere on this map.`]
+          : []),
+      ];
+    }
+    this.throwSwitch(lock);
+    return [`Bingo! The ${keyName} opened the door!`];
+  }
+
+  /** Whether a lift runs this raid: its generator thrown, or it needs none. */
+  private liftIsRunning(lift: MapLift): boolean {
+    return liftRuns(lift.id, this.switchesHere(), this.runSession?.switchesThrown ?? []);
+  }
+
+  /**
+   * A lift's door pressed into from the tile in front of it: FireRed's floor
+   * panel, the cursor on this floor, every floor offered. A dead lift says so
+   * when asked - pressed into, or faced with the interact key - and is a wall
+   * to a held key, as a boat away from its jetty is.
+   */
+  private tryRideLift(facing: Direction, asked: boolean): boolean {
+    const found = liftAt(this.currentMap.lifts, this.currentTile, facing);
+    if (!found) {
+      return false;
+    }
+    if (!this.liftIsRunning(found.lift)) {
+      if (!asked) {
+        return false;
+      }
+      this.facing = facing;
+      this.showIdlePose();
+      audioManager.play('denied');
+      this.dialogBox.showMessages([...DEAD_LIFT_LINES]);
+      return true;
+    }
+    this.facing = facing;
+    this.pushingAgainst = null;
+    this.showIdlePose();
+    const prompt = floorPrompt(found.lift, found.stop);
+    const columns = 2;
+    const height = 20 + 20 * (prompt.lines.length + Math.ceil(prompt.options.length / columns));
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - height - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height,
+      padding: 10,
+      lines: prompt.lines,
+      options: prompt.options,
+      selected: prompt.selected,
+      columns,
+      onChoose: (index) => this.answerLift(found.lift, found.stop, index),
+    });
+    return true;
+  }
+
+  /** The floor chosen at the panel: the same floor or EXIT is nothing; another floor is the ride. */
+  private answerLift(lift: MapLift, here: number, chosen: number): void {
+    this.trainerPrompt?.destroy();
+    this.trainerPrompt = undefined;
+    const to = lift.stops[chosen];
+    if (!to || chosen === here) {
+      audioManager.play('cancel');
+      return;
+    }
+    // The doors shut and the car shakes, as FireRed's does, and the doors open
+    // on the floor chosen: the player steps out facing away from them.
+    this.isWarping = true;
+    this.player.stop();
+    this.showIdlePose();
+    audioManager.play('lift');
+    this.cameras.main.shake(LIFT_RIDE_MS, 0.004);
+    this.time.delayedCall(LIFT_RIDE_MS, () =>
+      this.walkThrough({
+        source: lift.stops[here].landing,
+        destinationMapId: this.currentMap.id,
+        destination: to.landing,
+        facing: 'down',
+        activation: 'push',
+        toward: 'up',
+      }),
+    );
   }
 
   /**
@@ -7074,6 +7305,12 @@ function extractionIconKey(point: ExtractionPoint, isOpen: boolean): string {
 const BOULDER_FRAME = 'strength-boulder';
 /** And Victory Road's floor switch and rock barrier, on the area sheet's. */
 const SWITCH_UP_FRAME = 'floor-switch';
+/** The way a spinning figure turns, a facing a tile, as FireRed's does. */
+const SPIN_TURNS: readonly Direction[] = ['down', 'left', 'up', 'right'];
+/** The Rocket Hideout's shutter, a frame a cell. */
+const SHUTTER_FRAME = (dx: number, dy: number): string => `hideout-shutter-${dx}-${dy}`;
+/** How long the lift's car shakes before its doors open on another floor, as FireRed's `AnimateElevator`. */
+const LIFT_RIDE_MS = 900;
 const BARRIER_TOP_FRAME = 'rock-barrier-top';
 const BARRIER_FOOT_FRAME = 'rock-barrier-foot';
 /** The Seagallop's frame on the town sheet, cut the first time a boat is drawn. */

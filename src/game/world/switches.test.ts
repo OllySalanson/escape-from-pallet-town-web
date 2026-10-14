@@ -87,7 +87,7 @@ describe('switches in a map file', () => {
     const orphan = readMapFile(caveMap({ switches: [{ x: 2, y: 2, kind: 'plate', opens: 'elsewhere' }] }));
     expect(orphan.ok).toBe(false);
     if (!orphan.ok) {
-      expect(orphan.problems).toContain("A switch opens 'elsewhere', and the map has no barrier called that.");
+      expect(orphan.problems).toContain("A switch opens 'elsewhere', and the map has no barrier or lift called that.");
       expect(orphan.problems).toContain("The barrier 'rocks' has no switch to open it.");
     }
     expect(readMapFile(caveMap({ switches: [{ x: 2, y: 2, kind: 'button' as never, opens: 'rocks' }] })).ok).toBe(

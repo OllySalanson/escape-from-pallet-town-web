@@ -83,6 +83,13 @@ function walkableFrom(
         }
       }
     }
+    // And a lift from any floor it stops at to every other (`world/lifts.ts`),
+    // running, as a barrier stands open.
+    for (const lift of map.lifts ?? []) {
+      if (lift.stops.some((stop) => stop.landing.x === tile.x && stop.landing.y === tile.y)) {
+        pending.push(...lift.stops.map((stop) => ({ mapId: currentMapId, position: stop.landing })));
+      }
+    }
     for (const step of [
       { x: tile.x + 1, y: tile.y },
       { x: tile.x - 1, y: tile.y },

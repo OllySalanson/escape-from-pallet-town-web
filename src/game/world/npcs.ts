@@ -49,11 +49,17 @@ export interface WorldEntity {
    */
   boulder?: true;
   /**
-   * A tile of a rock barrier (`switches.ts`): a wall until every switch that
-   * opens the barrier named is thrown, drawn as the rock's top on the
-   * barrier's first row and its foot below.
+   * A tile of a barrier (`switches.ts`): a wall until every switch that opens
+   * the barrier named is thrown, drawn as the rock's top on the barrier's
+   * first row and its foot below - or, for the Rocket Hideout's shutter, as
+   * the cell of it at `cell`, its two tiles wide by two deep.
    */
-  barrier?: { readonly id: string; readonly top: boolean };
+  barrier?: {
+    readonly id: string;
+    readonly top: boolean;
+    readonly look?: 'shutter';
+    readonly cell?: { readonly dx: number; readonly dy: number };
+  };
   /**
    * The small schedule this townsperson keeps: where they drift and which way
    * they look. Signs and anyone without one stand where they were put. Every

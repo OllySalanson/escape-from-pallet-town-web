@@ -23,6 +23,11 @@ export interface ChoicePromptOptions {
   readonly options: readonly string[];
   /** Which option starts highlighted. Should be the one that costs nothing. */
   readonly selected?: number;
+  /**
+   * How many options stand in a row; the rest go on rows below, the last row
+   * on the panel's bottom line. One row of every option unless it says.
+   */
+  readonly columns?: number;
   readonly onChoose: (index: number) => void;
 }
 
@@ -67,13 +72,20 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     // The options sit on the bottom line of the panel, where the dialogue box
     // puts its continue indicator - the place the eye is already looking for
     // "what happens when I press the key".
-    const optionsY = options.height - padding - LINE_HEIGHT;
+    const columns = options.columns ?? options.options.length;
+    const rows = Math.ceil(options.options.length / columns);
+    const optionsY = options.height - padding - LINE_HEIGHT * rows;
     this.optionTexts = options.options.map((label, index) =>
-      scene.add.text(padding + index * OPTION_COLUMN_WIDTH, optionsY, label, {
-        fontFamily: GAME_FONT,
-        fontSize: DIALOG_FONT_SIZE,
-        color: UNSELECTED_COLOR,
-      }),
+      scene.add.text(
+        padding + (index % columns) * OPTION_COLUMN_WIDTH,
+        optionsY + Math.floor(index / columns) * LINE_HEIGHT,
+        label,
+        {
+          fontFamily: GAME_FONT,
+          fontSize: DIALOG_FONT_SIZE,
+          color: UNSELECTED_COLOR,
+        },
+      ),
     );
     this.optionTexts.forEach((text, index) => {
       text

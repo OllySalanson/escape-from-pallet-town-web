@@ -14,7 +14,7 @@ import {
   type SheetRegion,
 } from '../frlgSheet';
 import type { MaterialTiles, PropCell, PropDefinition, TilesetCatalogue } from './catalogue';
-import { tileReader, withMirroredCell } from './catalogue';
+import { spinnerFallback, tileReader, withMirroredCell } from './catalogue';
 
 /**
  * The FireRed/LeafGreen terrain sheet, catalogued.
@@ -282,6 +282,8 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
     // draw it (`insideTileset.ts`, `playerMapTileset.ts`), and a map drawn
     // on this one is never frozen, so this is only a stray tile's fallback.
     ice: ground(FRLG_MATERIALS.PAVING),
+    // Nor a spinner floor, which is the Rocket Hideout's (`insideTileset.ts`).
+    ...spinnerFallback(ground(FRLG_MATERIALS.PAVING)),
     stone: ground(FRLG_MATERIALS.STONE_BRICK),
     gravel: ground(FRLG_MATERIALS.GRAVEL),
     // The shallows are part of the river, so neither draws its bank against

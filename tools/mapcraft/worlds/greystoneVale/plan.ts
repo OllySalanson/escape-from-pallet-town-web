@@ -435,7 +435,7 @@ export const GREYSTONE_VALE: WorldPlan = {
           'A lift: one doorway that offers its floors and goes to the one chosen, running only once its switch is on.',
           'A switch (shared with the Lost Garden).',
           "Spinner floors (FireRed's Rocket Hideout arrows): the same rule as Frostreef's ice, a floor that carries you on until something stops you; whoever is drawn first builds it.",
-          "FireRed's Rocket Hideout as a room style, cut by `scripts/cut-frlg-areas.mjs`.",
+          "FireRed's Rocket Hideout as a room style, cut from pret (built: `scripts/cut-frlg-hideout.mjs`).",
         ],
       },
     },

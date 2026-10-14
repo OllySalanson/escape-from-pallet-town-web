@@ -15,7 +15,6 @@ import {
   tunnelStairsAt,
   landingsOf,
   searchedLinks,
-  STAIRS_SIZE,
   stairsAt,
   stairsToward,
   type ComposedMap,
@@ -38,7 +37,8 @@ import {
   type MapFileSpot,
 } from './mapFile';
 import { MATERIAL_CHARS } from './tileset/materials';
-import { insideBackDoor, insideSideMat, insideStairwell } from './tileset/insideTileset';
+import { insideBackDoor, insideLift, insideSideMat, insideStairs, insideStairwell } from './tileset/insideTileset';
+import { liftLinks, liftNeedsPower } from './lifts';
 import { gateKey } from './gates';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { pokemonName } from './pokemonFigures';
@@ -383,6 +383,9 @@ export function checkMapFile(
       })),
     ),
   );
+  const liftStops = (file.areas ?? []).flatMap((area) =>
+    area.lift ? [{ spot: { x: area.lift.x, y: area.lift.y, area: area.id }, area }] : [],
+  );
   const named = [
     ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}`, group: 'drop-ins' })),
     ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}`, group: 'exits' })),
@@ -410,6 +413,7 @@ export function checkMapFile(
       group: 'floor switches',
     })),
     ...barrierTiles.map(({ spot, id }) => ({ spot, what: `Barrier ${id}`, group: 'barriers' })),
+    ...liftStops.map(({ spot, area }) => ({ spot, what: `The lift in ${area.name}`, group: 'doorways' })),
   ];
   /** A fault about the things on some tiles, the first of them the one to look at. */
   const fault = (
@@ -524,7 +528,7 @@ export function checkMapFile(
         // them is the edge of the room.
         const top = stairsAt(end);
         const floor = (x: number, y: number): boolean => ground(x, y) === MATERIAL_CHARS.paving;
-        const beyond = end.look === 'stairs-up' ? top.x + STAIRS_SIZE.width : top.x - 1;
+        const beyond = end.look === 'stairs-up' ? top.x + top.width : top.x - 1;
         const fits =
           end.toward === stairsToward(end.look) &&
           [0, 1, 2].every((dy) => floor(top.x, top.y + dy) && floor(top.x + 1, top.y + dy)) &&
@@ -579,18 +583,20 @@ export function checkMapFile(
           found.push(`${what} has to have floor for its hole, the way it faces.`);
         }
       } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
-        // A staircase stands against the back wall of a room: the row above
-        // its top is wall, and all of it is on the room.
-        const top = stairsAt(end);
+        // A staircase stands against the back wall of a room, which is two
+        // rows deep: whatever of those two rows the staircase does not stand
+        // in is wall above it, and all of it is on the room.
+        const top = area ? stairsAt(end, area.style) : stairsAt(end);
+        const above = area ? 2 - insideStairs(area.style, end.look).wallRows : 1;
         const fits =
           area !== undefined &&
-          end.toward === stairsToward(end.look) &&
+          end.toward === stairsToward(end.look, area.style) &&
           top.x >= 0 &&
-          top.y >= 1 &&
-          top.x + STAIRS_SIZE.width <= area.width &&
-          end.y + 1 < area.height &&
-          [...area.ground[top.y - 1].slice(top.x, top.x + STAIRS_SIZE.width)].every(
-            (letter) => letter === 'B',
+          top.y >= above &&
+          top.x + top.width <= area.width &&
+          top.y + top.height <= area.height &&
+          Array.from({ length: above }, (_, row) => area.ground[top.y - 1 - row]).every((ground) =>
+            [...ground.slice(top.x, top.x + top.width)].every((letter) => letter === 'B'),
           );
         if (!fits) {
           found.push(`${what} has to stand against the back wall of the room.`);
@@ -632,6 +638,19 @@ export function checkMapFile(
       return found.map((text) => fault(text, 'doorways', end));
     }),
   );
+  // A lift's door is let into the back wall above where it is stood on, with
+  // wall either side of it and above it, in a room that has a lift to draw.
+  for (const { spot, area } of liftStops) {
+    const wall = (x: number, y: number): boolean => area.ground[y]?.[x] === MATERIAL_CHARS.wall;
+    const framed = [-1, 0, 1].every((dx) => wall(spot.x + dx, spot.y - 1) && wall(spot.x + dx, spot.y - 2));
+    if (!insideLift(area.style)) {
+      doors.push(fault(`The lift in ${area.name} is the Rocket Hideout's: give the room the Rocket Hideout look.`, 'doorways', spot));
+    } else if (!framed) {
+      doors.push(
+        fault(`The lift in ${area.name} has to be let into the back wall, with wall either side of it.`, 'doorways', spot),
+      );
+    }
+  }
   // A boat sails straight from turn to turn, and only over deep water.
   for (const link of fileLinks) {
     if (!link.sails) {
@@ -710,18 +729,24 @@ export function checkMapFile(
       };
     }),
   );
-  // A boat is a player's too, and the hunter's room is asked without it.
-  const walks: GridLinks = new Map([
+  // A boat is a player's too, and the hunter's room is asked without it; so
+  // is a lift, which runs for what is reached - as a barrier stands open - and
+  // is ridden on the way out only if nothing has to be switched on to run it,
+  // because nobody has to bring a floor back to life to leave.
+  const switches = (file.areas ?? []).flatMap((area) => area.switches ?? []);
+  const walksOut: GridLinks = new Map([
     ...links,
     ...linkTable(hops, composed.width),
     ...linkTable(sailingLinks(composed.sailings), composed.width),
+    ...linkTable(liftLinks(composed.lifts?.filter((lift) => !liftNeedsPower(lift.id, switches))), composed.width),
   ]);
+  const walks: GridLinks = new Map([...walksOut, ...linkTable(liftLinks(composed.lifts), composed.width)]);
   // A raid has to be leavable by a player who brought no Pokemon that knows Cut
   // or Surf, so the way out is walked with every door shut; what is behind a
   // door is still somewhere a map is for, so reaching it is walked with them open.
   const fromDropIn = file.dropIns.map((dropIn) => ({
     dropIn,
-    steps: stepDistances(collision, onGrid(dropIn), shut, walks),
+    steps: stepDistances(collision, onGrid(dropIn), shut, walksOut),
     opened: stepDistances(openCollision, onGrid(dropIn), pushedAside, walks),
     ground: stepDistances(collision, onGrid(dropIn), shut, links),
   }));
@@ -799,7 +824,7 @@ export function checkMapFile(
   const hopLandings = new Map(hopped.map((hop) => [at(hop.to), hop]));
   const strandedHops = [...hopLandings.values()]
     .filter((hop) => !shut.has(at(hop.to)))
-    .filter((hop) => soonestOut(stepDistances(collision, hop.to, shut, walks)) === Infinity)
+    .filter((hop) => soonestOut(stepDistances(collision, hop.to, shut, walksOut)) === Infinity)
     .map((hop) =>
       fault(
         `The ledge at ${at(hop.ledge)} drops where no exit can be walked to.`,
@@ -838,22 +863,35 @@ export function checkMapFile(
   // pair: a lock with nowhere its card lies is a wall, and a card with no lock
   // is a key to nothing.
   const lockedExits = file.exits.filter((exit) => exit.opens.when === 'key');
+  // A door locked to the card is a lock too (`MapFileSwitch`, a `key`).
+  const lockedDoors = (file.areas ?? []).flatMap((area) =>
+    (area.switches ?? []).filter((spot) => spot.kind === 'key').map((spot) => ({ ...spot, area: area.id })),
+  );
   const keySpots = file.itemSpots.filter((spot) => spot.key);
   reachable.push(
     ...(keySpots.length === 0
-      ? lockedExits.map((exit) =>
-          fault(
-            `Exit ${exit.name} at ${tileOf(exit)} is locked to the Card Key, and no item spot holds one.`,
-            { group: 'exits', says: 'is locked to a Card Key nothing holds' },
-            exit,
+      ? [
+          ...lockedExits.map((exit) =>
+            fault(
+              `Exit ${exit.name} at ${tileOf(exit)} is locked to the Card Key, and no item spot holds one.`,
+              { group: 'exits', says: 'is locked to a Card Key nothing holds' },
+              exit,
+            ),
           ),
-        )
+          ...lockedDoors.map((door) =>
+            fault(
+              `The door at ${tileOf(door)} is locked to the Card Key, and no item spot holds one.`,
+              { group: 'barriers', says: 'is locked to a Card Key nothing holds' },
+              door,
+            ),
+          ),
+        ]
       : []),
-    ...(lockedExits.length === 0
+    ...(lockedExits.length === 0 && lockedDoors.length === 0
       ? keySpots.map((spot) =>
           fault(
-            `Item spot ${file.itemSpots.indexOf(spot) + 1} at ${tileOf(spot)} holds a Card Key no exit is locked to.`,
-            { group: 'item spots', says: 'holds a Card Key no exit is locked to' },
+            `Item spot ${file.itemSpots.indexOf(spot) + 1} at ${tileOf(spot)} holds a Card Key no exit or door is locked to.`,
+            { group: 'item spots', says: 'holds a Card Key no exit or door is locked to' },
             spot,
           ),
         )

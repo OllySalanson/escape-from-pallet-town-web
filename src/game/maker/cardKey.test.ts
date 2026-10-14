@@ -75,7 +75,7 @@ describe('an exit locked to the Card Key', () => {
       'Exit Exit 2 at 20,4 is locked to the Card Key, and no item spot holds one.',
     ]);
     expect(problemsOf(setExitOpens(lockedMap(), 1, { when: 'always' }), 'reachable')).toEqual([
-      'Item spot 2 at 10,12 holds a Card Key no exit is locked to.',
+      'Item spot 2 at 10,12 holds a Card Key no exit or door is locked to.',
     ]);
   });
 

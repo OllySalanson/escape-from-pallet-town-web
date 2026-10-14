@@ -7,6 +7,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import type { MapFileLink } from './mapFile';
+import { liftLinks, type MapLift } from './lifts';
 
 /**
  * A boat between two jetties: the one way onto a place the sea cuts off.
@@ -159,17 +160,24 @@ export function sailingLinks(sailings: readonly MapSailing[] | undefined): GridL
 
 /**
  * Every way through a player can take on a map: its doors and ladders, which
- * the hunter takes too, and its boats, which only a player does. Asked by
+ * the hunter takes too, and its boats and lifts, which only a player does. Asked by
  * whatever wants to know where a raid can get to rather than where the hunter
  * can follow it.
  */
-export function playerLinks(
-  map: { readonly width: number; readonly links?: GridLinks; readonly sailings?: readonly MapSailing[] },
-): GridLinks | undefined {
-  if (!map.sailings || map.sailings.length === 0) {
+export function playerLinks(map: {
+  readonly width: number;
+  readonly links?: GridLinks;
+  readonly sailings?: readonly MapSailing[];
+  readonly lifts?: readonly MapLift[];
+}): GridLinks | undefined {
+  if ((!map.sailings || map.sailings.length === 0) && (!map.lifts || map.lifts.length === 0)) {
     return map.links;
   }
-  return new Map([...(map.links ?? []), ...linkTable(sailingLinks(map.sailings), map.width)]);
+  return new Map([
+    ...(map.links ?? []),
+    ...linkTable(sailingLinks(map.sailings), map.width),
+    ...linkTable(liftLinks(map.lifts), map.width),
+  ]);
 }
 
 /** Seconds into a raid as the clock reads them: `2:00`. */

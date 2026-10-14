@@ -23,9 +23,13 @@ import { MATERIALS, type Material } from './tileset/materials';
  * step does.
  *
  * It is the general form of FireRed's forced-movement floors: `carriedOn` is
- * the one question the scene asks, and a floor that pushes one way only (the
- * Rocket Hideout's spinner arrows) is another answer to it - a tile that names
- * its own way rather than keeping the one you came in on.
+ * the one question the scene asks, and the Rocket Hideout's spinner arrows are
+ * the other answer to it (`TryUpdatePlayerSpinDirection` in pret's
+ * `field_player_avatar.c`): a step onto an arrow spins the player on the way
+ * the arrow points, whichever way they came, and a spin, unlike a slide, keeps
+ * going over plain floor - turned by every arrow it crosses - until it lands on
+ * a stop plate or something is in the way. So a spinner floor is a maze of
+ * arrows, and the plates are where it can be left.
  *
  * Only the player slides. The hunter walks the ice as ground, as FireRed's
  * people do, so every search over the map - the hunter's, the checks' - reads
@@ -33,21 +37,39 @@ import { MATERIALS, type Material } from './tileset/materials';
  * `slideReach` are the searches that read it the way the player has to.
  */
 
-/** What carries a step on, by material: nothing but ice, today. */
+/** Whether a material carries a step on the way it came: ice. */
 export function slides(material: Material | undefined): boolean {
   return material !== undefined && MATERIALS[material].slides === true;
 }
 
+/** The way a spinner arrow spins whoever lands on it, if the material is one. */
+export function spinsOn(material: Material | undefined): Direction | undefined {
+  return material === undefined ? undefined : MATERIALS[material].spins;
+}
+
 /**
  * The way a step that has just landed on `tile`, moving `moving`, carries on,
- * or null if it stops there.
+ * or null if it stops there. `spinning` is whether the step was a spin - begun
+ * on an arrow and not stopped since - which carries on over plain floor.
  */
 export function carriedOn(
   terrain: readonly (readonly Material[])[],
   tile: GridPosition,
   moving: Direction,
+  spinning = false,
 ): Direction | null {
-  return slides(terrain[tile.y]?.[tile.x]) ? moving : null;
+  const material = terrain[tile.y]?.[tile.x];
+  if (material === undefined) {
+    return null;
+  }
+  const traits = MATERIALS[material];
+  if (traits.spins) {
+    return traits.spins;
+  }
+  if (traits.stopsSpin) {
+    return null;
+  }
+  return traits.slides || spinning ? moving : null;
 }
 
 /**
@@ -68,10 +90,13 @@ export function slideTrail(
     return [];
   }
   const trail = [at];
-  // A sheet of ice can be a ring with nothing on it; a slide never visits
-  // more tiles than there are on the map.
+  let heading = direction;
+  let spinning = false;
+  // A sheet of ice can be a ring with nothing on it, and so can a ring of
+  // arrows; a slide never visits more tiles than there are on the map.
   for (let guard = 0; guard < 100_000; guard += 1) {
-    const on = carriedOn(terrain, at, direction);
+    spinning ||= spinsOn(terrain[at.y]?.[at.x]) !== undefined;
+    const on = carriedOn(terrain, at, heading, spinning);
     if (on === null) {
       break;
     }
@@ -79,6 +104,7 @@ export function slideTrail(
     if (isBlocked(next)) {
       break;
     }
+    heading = on;
     at = next;
     trail.push(at);
   }

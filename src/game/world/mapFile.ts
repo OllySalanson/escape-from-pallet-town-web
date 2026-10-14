@@ -15,6 +15,7 @@ import {
   VOLCANO_WILDLIFE,
   VOLCANO_NIGHT_WILDLIFE,
   HAUNTED_WILDLIFE,
+  HIDEOUT_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -134,6 +135,12 @@ export const MAP_FILE_LIMITS = {
    * files may stand them (`BUILT_IN_MAP_FILE_LIMITS`).
    */
   maxLegends: 0,
+  /**
+   * Landmarks behind a lock (`MapFileLandmark.locked`): a crate a Lockpick
+   * opens. None on a player's map, whose caches are all measured open; the
+   * game's own maps drawn as files have their one, as every shipped map does.
+   */
+  maxLockedLandmarks: 0,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -203,6 +210,7 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxAreas: 32,
   maxLinks: 64,
   maxLegends: 2,
+  maxLockedLandmarks: 2,
 };
 
 /** Every file map's id is its own id with this in front, so none can collide with a shipped map. */
@@ -311,7 +319,23 @@ export const MAP_FILE_STAMPS: Readonly<Record<string, PropStamp<PlayerMapPropNam
   k: { prop: 'shrub', anchor: [0, 0], ground: 'P' },
 };
 
-const GROUND_LETTERS = new Set([...Object.values(MATERIAL_CHARS), ...Object.keys(MAP_FILE_STAMPS)]);
+/**
+ * The letters outdoor ground may be painted in: every material but the Rocket
+ * Hideout's spinner floor, which is a room's (`areaLetters`) and has no art out
+ * of doors.
+ */
+const GROUND_LETTERS = new Set(
+  [...Object.values(MATERIAL_CHARS), ...Object.keys(MAP_FILE_STAMPS)].filter(
+    (letter) =>
+      ![
+        MATERIAL_CHARS['spin-up'],
+        MATERIAL_CHARS['spin-down'],
+        MATERIAL_CHARS['spin-left'],
+        MATERIAL_CHARS['spin-right'],
+        MATERIAL_CHARS['spin-stop'],
+      ].includes(letter),
+  ),
+);
 
 /**
  * What a file calls a building, and the Kanto landmark it plants. The file has
@@ -580,6 +604,34 @@ export const MAP_FILE_FURNITURE = {
   'tower-grave': 'towerGrave',
   'tower-gold-grave': 'towerGoldGrave',
   'tower-statue': 'towerStatue',
+  // The Rocket Hideout's: FireRed's own, from under the Game Corner and Five
+  // Island's Rocket Warehouse.
+  'hideout-generator': 'hideoutGenerator',
+  'hideout-vent': 'hideoutVent',
+  'hideout-phone': 'hideoutPhone',
+  'hideout-desk': 'hideoutDesk',
+  'hideout-desk-plain': 'hideoutDeskPlain',
+  'hideout-stool': 'hideoutStool',
+  'hideout-stool-east': 'hideoutStoolEast',
+  'hideout-plant': 'hideoutPlant',
+  'hideout-plan-table': 'hideoutPlanTable',
+  'hideout-cabinet': 'hideoutCabinet',
+  'hideout-sofa': 'hideoutSofa',
+  'hideout-console': 'hideoutConsole',
+  'hideout-crate': 'hideoutCrate',
+  'hideout-stairs-out': 'hideoutStairsOut',
+  // The Power Plant's, from Route 10.
+  'power-generator': 'powerGenerator',
+  'power-generator-east': 'powerGeneratorEast',
+  'power-girder-west': 'powerGirderWest',
+  'power-girder-east': 'powerGirderEast',
+  'power-barrel': 'powerBarrel',
+  'power-rubble': 'powerRubble',
+  'power-rubble-low': 'powerRubbleLow',
+  'power-console': 'powerConsole',
+  'power-console-dials': 'powerConsoleDials',
+  'power-computer': 'powerComputer',
+  'power-grating': 'powerGrating',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -839,6 +891,34 @@ export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly st
 };
 
 /**
+ * The ground letters an area of this kind and style draws. Ice is drawn only
+ * in a cave of ice: anywhere else it would be a floor that looked like stone
+ * and slid like ice. And only the Rocket Hideout has partitions (`F`, the
+ * teal panels of its maze) and a floor that spins you on - its four arrows
+ * and the plate that stops a spin.
+ */
+export function areaLetters(kind: MapFileAreaKind, style: unknown): readonly string[] {
+  const own = MAP_FILE_AREA_LETTERS[kind];
+  if (kind === 'cave' && style !== 'ice') {
+    return own.filter((letter) => letter !== MATERIAL_CHARS.ice);
+  }
+  if (kind === 'inside' && style === 'hideout') {
+    return [...own, ...HIDEOUT_LETTERS];
+  }
+  return own;
+}
+
+/** What a hideout adds to an inside's ground. */
+export const HIDEOUT_LETTERS: readonly string[] = [
+  MATERIAL_CHARS.fence,
+  MATERIAL_CHARS['spin-up'],
+  MATERIAL_CHARS['spin-down'],
+  MATERIAL_CHARS['spin-left'],
+  MATERIAL_CHARS['spin-right'],
+  MATERIAL_CHARS['spin-stop'],
+];
+
+/**
  * A tunnel is the size FireRed made the Underground Path north to south: its
  * floor and walls are laid cell for cell as the game's own are, so they are
  * that size or they are not the Underground Path.
@@ -926,6 +1006,10 @@ export const MAP_FILE_HABITATS = {
   volcano: VOLCANO_WILDLIFE,
   // Haunted ground: FireRed's Pokemon Tower, Gastly and Cubone and the rare Haunter.
   haunted: HAUNTED_WILDLIFE,
+  // A Rocket hideout gone dark under a power station: FireRed's Pokemon
+  // Mansion and Power Plant, at a route's levels. A room dressed as the
+  // hideout rolls it on every step of its floor.
+  hideout: HIDEOUT_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -948,6 +1032,22 @@ export const CAVE_STYLE_HABITATS: Readonly<Partial<Record<MapFileAreaStyle, MapF
   ice: 'ice',
   ember: 'volcano',
 };
+
+/**
+ * What the floor of a place of this kind and style rolls on every step, or
+ * undefined where only tall grass rolls: a cave's own (`CAVE_STYLE_HABITATS`,
+ * Mt. Moon's where its style has none), and two rooms FireRed fills with what
+ * lives in them, the Power Plant's hall and the Rocket Hideout gone dark.
+ */
+export function floorHabitat(kind: string, style: string | undefined): MapFileHabitat | undefined {
+  if (kind === 'cave') {
+    return CAVE_STYLE_HABITATS[(style ?? 'cave') as MapFileAreaStyle] ?? 'cave';
+  }
+  if (style === 'power-plant') {
+    return 'power-plant';
+  }
+  return style === 'hideout' ? 'hideout' : undefined;
+}
 
 /**
  * When an exit can be left by. Locks and keys are more values of this: `dug` is
@@ -1161,6 +1261,24 @@ export const MAP_FILE_LANDMARKS = {
       { itemId: 'linen-roll', quantity: 1 },
     ],
   },
+  'war-room': {
+    label: 'War room',
+    says: 'A table of plans, and the sets that ran the place.',
+    reward: [
+      { itemId: 'radio-valve', quantity: 1 },
+      { itemId: 'cable-coil', quantity: 1 },
+    ],
+  },
+  strongroom: {
+    label: 'Strongroom',
+    says: 'Whatever was worth locking away, locked away.',
+    reward: [
+      { itemId: 'super-potion', quantity: 2 },
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'radio-valve', quantity: 1 },
+      { itemId: 'parts-crate', quantity: 1 },
+    ],
+  },
 } as const satisfies Record<
   string,
   {
@@ -1244,6 +1362,11 @@ export interface MapFileSign extends MapFileSpot {
 export interface MapFileLandmark extends MapFileSpot {
   readonly name: string;
   readonly kind: MapFileLandmarkKind;
+  /**
+   * A crate with a lock on it, which pays only to a raid that spends a
+   * Lockpick on it - the game's own maps' locked crates (`WorldPoi.locked`).
+   */
+  readonly locked?: true;
 }
 
 /** A named part of the map: a rectangle, with its own wildlife if it has any. */
@@ -1316,15 +1439,34 @@ export interface MapFileArea {
   /** Floor switches and levers (`switches.ts`), and the barriers they open. */
   readonly switches?: readonly MapFileSwitch[];
   readonly barriers?: readonly MapFileBarrier[];
+  /** Where a lift stops on this floor, if one does (`lifts.ts`). */
+  readonly lift?: MapFileLiftStop;
+}
+
+/**
+ * Where a lift stops on a floor: the tile in front of its door, which is let
+ * into the back wall above it and pressed up into, as FireRed's hideout
+ * elevator is. Every floor a lift stops at names the same lift, and its door
+ * offers each of them; a lift a switch names runs only once that switch is
+ * thrown - a generator on one floor runs it on every floor - and one no switch
+ * names always runs.
+ */
+export interface MapFileLiftStop {
+  readonly x: number;
+  readonly y: number;
+  /** Lower-case letters, digits and dashes: the lift, which its stops and its switches share. */
+  readonly lift: string;
 }
 
 /**
  * How a switch is thrown: a `plate` is FireRed's Victory Road floor switch,
- * thrown when a Strength boulder comes to rest on it, and a `lever` is
- * whatever stands on its tile (a generator, a wall panel) faced with the
- * interact key.
+ * thrown when a Strength boulder comes to rest on it; a `lever` is whatever
+ * stands on its tile (a generator, a wall panel) faced with the interact key;
+ * and a `key` is the lock of a door - the barrier it stands on, faced with
+ * FireRed's Card Key in the pack, which opens it as the card opens Silph Co.'s
+ * doors and is not used up (`MAP_FILE_EXIT_KEY`).
  */
-export const MAP_FILE_SWITCH_KINDS = ['plate', 'lever'] as const;
+export const MAP_FILE_SWITCH_KINDS = ['plate', 'lever', 'key'] as const;
 export type MapFileSwitchKind = (typeof MAP_FILE_SWITCH_KINDS)[number];
 
 /**
@@ -1353,7 +1495,16 @@ export interface MapFileBarrier {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /**
+   * What it is drawn as: FireRed's rock barrier, or the Rocket Hideout's
+   * shutter (`METATILE_SilphCo_HideoutBarrier_*`), two tiles wide and two
+   * deep. The rock unless it says otherwise.
+   */
+  readonly look?: MapFileBarrierLook;
 }
+
+export const MAP_FILE_BARRIER_LOOKS = ['rock', 'shutter'] as const;
+export type MapFileBarrierLook = (typeof MAP_FILE_BARRIER_LOOKS)[number];
 
 /**
  * One end of a way through: the tile you stand on to go through it, and come
@@ -1843,10 +1994,22 @@ export function readMapFile(
   optional('signs', limits.maxSigns).forEach((sign, index) =>
     linesOf(`Sign ${index + 1}`, sign.lines),
   );
-  optional('landmarks', limits.maxLandmarks).forEach((landmark, index) => {
+  const landmarks = optional('landmarks', limits.maxLandmarks);
+  landmarks.forEach((landmark, index) => {
     nameOf(`Landmark ${index + 1}`, landmark.name);
     oneOf(`Landmark ${index + 1}'s kind`, landmark.kind, Object.keys(MAP_FILE_LANDMARKS));
+    if (landmark.locked !== undefined && landmark.locked !== true) {
+      problems.push(`Landmark ${index + 1} is locked or says nothing about it.`);
+    }
   });
+  const lockedLandmarks = landmarks.filter((landmark) => landmark.locked === true).length;
+  if (lockedLandmarks > limits.maxLockedLandmarks) {
+    problems.push(
+      limits.maxLockedLandmarks === 0
+        ? 'A locked crate stands only on a map the game draws.'
+        : `The map locks ${lockedLandmarks} landmarks; a map file holds ${limits.maxLockedLandmarks}.`,
+    );
+  }
   optional('trainers', limits.maxTrainers).forEach((trainer, index) => {
     const what = `Trainer ${index + 1}`;
     nameOf(what, trainer.name);
@@ -1987,6 +2150,8 @@ function readAreas(
   }
   const barrierIds = new Set<string>();
   const switchTargets: string[] = [];
+  /** How many floors each lift stops at. */
+  const liftStops = new Map<string, number>();
   raw.forEach((area, index) => {
     const what = `Area ${index + 1}`;
     const id = area.id;
@@ -2046,11 +2211,7 @@ function readAreas(
         if (row.length !== width) {
           problems.push(`${what}'s ground row ${y} is ${row.length} letters; it is ${width} wide.`);
         }
-        // Ice is drawn only in a cave of ice: anywhere else it would be a
-        // floor that looked like stone and slid like ice.
-        const letters = MAP_FILE_AREA_LETTERS[kind ?? 'inside'].filter(
-          (letter) => letter !== MATERIAL_CHARS.ice || area.style === 'ice',
-        );
+        const letters = areaLetters(kind ?? 'inside', area.style);
         const unknown = [...new Set([...row].filter((letter) => !letters.includes(letter)))];
         if (unknown.length > 0) {
           problems.push(
@@ -2068,6 +2229,20 @@ function readAreas(
       problems.push(`${what} holds at most ${held.maxFurniture} pieces of furniture.`);
     }
     readSwitches(area, what, sized ? { width, height } : undefined, barrierIds, switchTargets, problems);
+    if (area.lift !== undefined) {
+      const stop = area.lift;
+      if (!isRecord(stop) || typeof stop.lift !== 'string' || !ID_PATTERN.test(stop.lift) || stop.lift.length > MAP_FILE_ID_MAX_LENGTH) {
+        problems.push(`${what}'s lift has to name the lift it stops for, in lower-case letters, digits and single dashes.`);
+      } else {
+        liftStops.set(stop.lift, (liftStops.get(stop.lift) ?? 0) + 1);
+        if (!sized || !isWholeNumber(stop.x) || !isWholeNumber(stop.y) || stop.x < 0 || stop.y < 1 || stop.x >= width || stop.y >= height) {
+          problems.push(`${what}'s lift stop is not inside it.`);
+        }
+        if (kind !== 'inside') {
+          problems.push(`${what}'s lift stops in a building: a cave or a tunnel has none.`);
+        }
+      }
+    }
     furniture.forEach((piece, at) => {
       if (typeof piece.kind !== 'string' || !isFurniture(piece.kind)) {
         problems.push(`${what}'s furniture ${at + 1} is not furniture the game has: ${String(piece.kind)}.`);
@@ -2087,9 +2262,17 @@ function readAreas(
       }
     });
   });
+  for (const [lift, stops] of liftStops) {
+    if (stops < 2) {
+      problems.push(`The lift '${lift}' stops at one floor; a lift goes between two at least.`);
+    }
+    if (barrierIds.has(lift)) {
+      problems.push(`A lift and a barrier are both called '${lift}'.`);
+    }
+  }
   for (const target of new Set(switchTargets)) {
-    if (!barrierIds.has(target)) {
-      problems.push(`A switch opens '${target}', and the map has no barrier called that.`);
+    if (!barrierIds.has(target) && !liftStops.has(target)) {
+      problems.push(`A switch opens '${target}', and the map has no barrier or lift called that.`);
     }
   }
   for (const id of barrierIds) {
@@ -2136,6 +2319,28 @@ function readSwitches(
         } else {
           switchTargets.push(spot.opens);
         }
+        // A lock is in the door it opens: the key is turned facing the door.
+        const barriers: readonly unknown[] = Array.isArray(area.barriers) ? area.barriers : [];
+        const door = barriers.length > 0
+          ? barriers.find(
+              (barrier) =>
+                isRecord(barrier) &&
+                barrier.id === spot.opens &&
+                isWholeNumber(barrier.x) &&
+                isWholeNumber(barrier.y) &&
+                isWholeNumber(barrier.width) &&
+                isWholeNumber(barrier.height) &&
+                isWholeNumber(spot.x) &&
+                isWholeNumber(spot.y) &&
+                spot.x >= barrier.x &&
+                spot.y >= barrier.y &&
+                spot.x < barrier.x + barrier.width &&
+                spot.y < barrier.y + barrier.height,
+            )
+          : undefined;
+        if (spot.kind === 'key' && !door) {
+          problems.push(`${what}'s switch ${at + 1} is a lock, and stands in no door it opens.`);
+        }
       });
     }
   }
@@ -2155,6 +2360,11 @@ function readSwitches(
         const { width, height } = barrier;
         if (!isWholeNumber(width) || !isWholeNumber(height) || width < 1 || height < 1 || !inside(barrier.x, barrier.y, width, height)) {
           problems.push(`${what}'s barrier ${at + 1} is not inside it.`);
+        }
+        if (barrier.look !== undefined && !(MAP_FILE_BARRIER_LOOKS as readonly unknown[]).includes(barrier.look)) {
+          problems.push(`${what}'s barrier ${at + 1} must look like one of: ${MAP_FILE_BARRIER_LOOKS.join(', ')}.`);
+        } else if (barrier.look === 'shutter' && (width !== 2 || height !== 2)) {
+          problems.push(`${what}'s barrier ${at + 1} is a shutter, which FireRed draws two tiles wide and two deep.`);
         }
       });
     }
@@ -2746,7 +2956,11 @@ export function buildFileMap(
               facing: 'down',
               // FireRed's barrier is scenery and says nothing when faced.
               dialogLines: [],
-              barrier: { id: barrier.id, top: dy === 0 },
+              barrier: {
+                id: barrier.id,
+                top: dy === 0,
+                ...(barrier.look === 'shutter' ? { look: 'shutter' as const, cell: { dx, dy } } : {}),
+              },
             };
           }),
         ),
@@ -2769,6 +2983,7 @@ export function buildFileMap(
         label: landmark.name.toUpperCase(),
         description: `${kind.label}. ${kind.says}`,
         reward: kind.reward.map((entry) => ({ ...entry })),
+        ...(landmark.locked ? { locked: true as const } : {}),
       };
     }),
     // The maker's own districts first, because the first listed wins a tile;
@@ -2797,13 +3012,13 @@ export function buildFileMap(
         mapId: id,
         name: placed.name.toUpperCase(),
         areas: [placed.rect],
-        // A cave's floor is wild ground on every step, and what lives there
-        // is the cave's own.
-        ...(placed.kind === 'cave'
-          ? habitatTables(
-              CAVE_STYLE_HABITATS[file.areas?.find((area) => area.id === placed.id)?.style ?? 'cave'] ?? 'cave',
-            )
-          : {}),
+        // A cave's floor is wild ground on every step, and so is the floor of
+        // a room FireRed fills with what lives in it (`floorHabitat`); what
+        // lives there is the place's own.
+        ...(() => {
+          const habitat = floorHabitat(placed.kind, placed.style);
+          return habitat ? habitatTables(habitat) : {};
+        })(),
       })),
       ...(areas.length > 1 && hasUnnamedOutdoorGround(file)
         ? [
