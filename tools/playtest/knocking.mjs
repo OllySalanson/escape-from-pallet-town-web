@@ -148,6 +148,15 @@ try {
   await sleep(2500);
   const told = await olly.evaluate(`${BASE}.doorTold`);
   if (!told) throw new Error(`OLLY's door never said he was home: ${JSON.stringify(await olly.evaluate(state))}`);
+  // He arrives on the mat, and the mat names the house's own keys he has not
+  // used yet beside the way out (playtest 48: it said only [DOWN] OUT).
+  const homeHint = await olly.evaluate(`(() => { const b = ${BASE}; return { hint: b.hintShown, learned: b.savedGame.raidProgress.keysLearned ?? [] }; })()`);
+  console.log(`on his mat: ${homeHint.hint}`);
+  for (const [key, word] of [['decorate', '[H] DECORATE'], ['knock', '[K] KNOCK']]) {
+    if (!homeHint.learned.includes(key) && !homeHint.hint.includes(word)) throw new Error(`OLLY's mat did not name ${word}: "${homeHint.hint}"`);
+  }
+  await toFront(olly);
+  await olly.screenshot(`${out}/home-mat-hint.png`);
 
   // AMY knocks again: OLLY is home now.
   await press(amy, 'KeyK');

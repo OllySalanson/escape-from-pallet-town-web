@@ -1355,8 +1355,11 @@ export class BaseScene extends Phaser.Scene {
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
     if (this.onMat(room)) {
-      // The player's own house has nobody to speak to from the mat.
-      const speak = partner ?? keeper;
+      // The player's own house has nobody to speak to from the mat, so it
+      // names its own keys there instead: the mat is where everybody arrives,
+      // and the house's H and K went unsaid until they stepped off it
+      // (playtest 48).
+      const speak = partner ?? (keeper || this.houseKeys());
       return speak ? `${speak}   [DOWN] OUT` : '[DOWN] OUT';
     }
     if (partner) {
@@ -1378,6 +1381,11 @@ export class BaseScene extends Phaser.Scene {
       return '[SPACE] LOOK CLOSER';
     }
     // The player's own house says it can be decorated, until it has been.
+    return this.houseKeys();
+  }
+
+  /** The keys the player's own house answers that this save has not used yet. */
+  private houseKeys(): string {
     return this.place.room?.home && !this.visit
       ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), harbourHouses() !== null)
       : '';

@@ -94,3 +94,36 @@ describe('the knock screen says where ESC goes', () => {
     expect(knockFrom({ id: 'bolthole', home: true })).toContain('>House</button>');
   });
 });
+
+/**
+ * The hint on THE BOLTHOLE's mat (playtest 48): everybody arrives on the mat,
+ * and the house's own keys went unsaid there - only `[DOWN] OUT` - so K, which
+ * knocks from inside, was never named to a player who had not stepped off it.
+ */
+describe('the hint on the house mat', () => {
+  function hintOnMat(visit: boolean, keysLearned: string[] = []): string {
+    const mat = { x: 4, y: 8 };
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    Object.assign(scene, {
+      place: { room: { room: { mat, keeper: null, things: [] }, home: {} } },
+      currentTile: { ...mat },
+      facing: 'down',
+      partner: null,
+      visit: visit ? { ownerId: 'pip-id', ownerName: 'PIP', game: {} } : null,
+      savedGame: { raidProgress: { keysLearned } },
+    });
+    return (scene.hintHere as () => string).call(scene);
+  }
+
+  it('names decorating and knocking beside the way out', () => {
+    expect(hintOnMat(false)).toBe('[H] DECORATE   [K] KNOCK   [DOWN] OUT');
+  });
+
+  it('stops naming a key once it has been used', () => {
+    expect(hintOnMat(false, ['decorate', 'knock'])).toBe('[DOWN] OUT');
+  });
+
+  it("names none of them in somebody else's house", () => {
+    expect(hintOnMat(true)).toBe('[DOWN] OUT');
+  });
+});
