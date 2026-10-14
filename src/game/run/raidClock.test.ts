@@ -9,7 +9,7 @@ import {
   HUNTER_FLEE_PENALTY_CAP_MS,
   hunterFleePenaltyMs,
 } from './fleePenalty';
-import { RAID_DURATION_MS, formatRaidClock, raidClockProgress } from './raidClock';
+import { RAID_DURATION_MS, formatElapsedClock, formatRaidClock, raidClockProgress } from './raidClock';
 import { FIRST_CONTRACT, RUN_GENERATION_BOUNDS, RUN_INSERTIONS } from './runGeneration';
 
 /** Tiles between two walkable tiles of one map, by breadth-first search. */
@@ -192,5 +192,13 @@ describe('raid clock readings', () => {
     expect(formatRaidClock(65_000)).toBe('1:05');
     expect(formatRaidClock(0)).toBe('0:00');
     expect(formatRaidClock(-5_000)).toBe('0:00');
+  });
+
+  it('counts time gone by in whole seconds, so time taken and time left add up to the raid', () => {
+    expect(formatElapsedClock(299_500)).toBe('4:59');
+    expect(formatRaidClock(RAID_DURATION_MS - 299_500)).toBe('0:01');
+    expect(formatElapsedClock(RAID_DURATION_MS)).toBe('5:00');
+    expect(formatElapsedClock(65_999)).toBe('1:05');
+    expect(formatElapsedClock(-5_000)).toBe('0:00');
   });
 });

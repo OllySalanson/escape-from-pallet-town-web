@@ -538,7 +538,7 @@ describe('the result screen of a map maker try', () => {
   it('says how long a walked try took rather than counting it against the eight-hour stand-in clock', () => {
     const aside = () => {
       const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
-      const report = { clockLabel: '0:07 of 480:00', elapsedMs: 7_000, durationMs: 480 * 60_000 } as unknown as ExtractionReport;
+      const report = { clockLabel: '0:07 of 480:00', elapsedMs: 7_600, durationMs: 480 * 60_000 } as unknown as ExtractionReport;
       Object.assign(scene as object, { report });
       return (scene as unknown as { clockAside(): string }).clockAside();
     };

@@ -3,7 +3,7 @@ import { BULBASAUR, CHARMANDER, PIDGEY } from '../pokemon/species';
 import { Pokemon, experienceForLevel } from '../pokemon';
 import { RunManager, type ItemStack, type RunSnapshot, type SecureSlot } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
-import { RAID_DURATION_MS } from './raidClock';
+import { RAID_DURATION_MS, formatRaidClock } from './raidClock';
 import { Stash } from '../stash/Stash';
 import { anyoneFitToRaid } from '../hub/recovery';
 import { ERRANDS } from '../hub/errands';
@@ -47,6 +47,27 @@ function startedRun(options: {
 }
 
 describe('extraction report after a survived raid', () => {
+  it('says a raid that got out with half a second on the clock took 4:59, as the HUD left 0:01', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({ party: [starter], items: [{ itemId: 'potion', quantity: 1 }] });
+    manager.tick(RAID_DURATION_MS - 500);
+    // The last thing the raid clock on the HUD said before the exit took the step.
+    expect(formatRaidClock(RAID_DURATION_MS - manager.snapshot().elapsedMs)).toBe('0:01');
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      exitLabel: 'FERRY DOCK',
+      banked: { pokemon: [], items: [] },
+      carriedOut: { potion: 1 },
+      saved: true,
+    });
+
+    expect(report.clockLabel).toBe('4:59 of 5:00');
+  });
+
   it('reports exactly what was banked, and prices the risk the player actually took', () => {
     const starter = new Pokemon(BULBASAUR, 5);
     const manager = startedRun({
