@@ -204,6 +204,17 @@ function isOnScreen(subject: Rect, bounds: Rect): boolean {
   return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
 }
 
+/**
+ * Whether one piece of screen furniture - in practice an open dialogue box -
+ * hides every pixel of a subject. A subject nobody can see is as gone as one
+ * scrolled off: in the Bunker a grunt under the box had every seat near him
+ * under it too, and his CANNOT BE FLED was lifted over the player's head
+ * naming an empty corridor.
+ */
+function isCovered(subject: Rect, furniture: readonly Rect[]): boolean {
+  return furniture.some((piece) => overlap(subject, piece) >= subject.width * subject.height);
+}
+
 interface Candidate {
   readonly x: number;
   readonly y: number;
@@ -445,7 +456,7 @@ export function placeCaptions(
       visible: false,
     });
 
-    if (!isOnScreen(request.subject, surroundings.bounds)) {
+    if (!isOnScreen(request.subject, surroundings.bounds) || isCovered(request.subject, surroundings.furniture)) {
       return hidden(0);
     }
 

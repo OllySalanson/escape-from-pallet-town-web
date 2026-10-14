@@ -682,3 +682,30 @@ describe('a figure or a dialogue box arriving in a held seat', () => {
     expect(overlaps(rectOf(after, 60, 40), box)).toBe(false);
   });
 });
+
+/**
+ * Greystone Vale's Bunker, B1F: facing the dead lift raises "The elevator
+ * doesn't work..." at the foot of the screen, and the hall's Grunt stands four
+ * tiles south of the player - under the box. Every seat near him was under
+ * the box too, so the last resort lifted his GRUNT / CANNOT BE FLED over the
+ * player's head, naming an empty corridor with nobody in it.
+ */
+describe('a subject the dialogue box covers', () => {
+  const box = { x: 48, y: 168, width: 304, height: 80 };
+  const player: Rect = { x: 192, y: 120, width: TILE, height: 32 };
+  const grunt: Rect = { x: 144, y: 200, width: TILE, height: 24 };
+  const warning = { subject: grunt, warns: true, width: 88, height: 46 };
+
+  it('goes with its subject rather than being seated far from it', () => {
+    expect(seat(warning, { furniture: [box], player: [player] }).visible).toBe(false);
+  });
+
+  it('comes back once the box is put away', () => {
+    expect(seat(warning, { player: [player] }).visible).toBe(true);
+  });
+
+  it('still speaks for a subject the box only partly covers', () => {
+    const atTheEdge: Rect = { x: 144, y: 160, width: TILE, height: 24 };
+    expect(seat({ ...warning, subject: atTheEdge }, { furniture: [box], player: [player] }).visible).toBe(true);
+  });
+});
