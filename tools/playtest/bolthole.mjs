@@ -220,7 +220,9 @@ try {
   if (kept !== houseName) throw new Error(`the name kept on the device is "${kept}"`);
   console.log(`name: ${welcome.join(' / ')}`);
   const inside = await settle('inside THE BOLTHOLE', "s.room === 'bolthole' && !s.naming");
-  if (inside.hint !== '[DOWN] OUT') throw new Error(`the house's mat says "${inside.hint}"`);
+  // The mat names the house's own keys not used yet beside the way out
+  // (playtest 48), so only the way out is fixed.
+  if (!inside.hint?.endsWith('[DOWN] OUT')) throw new Error(`the house's mat says "${inside.hint}"`);
   await page.screenshot(`${out}/downstairs.png`);
   console.log(`downstairs: in on ${inside.tile.x},${inside.tile.y} (hint: ${inside.hint})`);
 

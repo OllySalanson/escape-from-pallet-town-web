@@ -5097,8 +5097,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.keyPresses.justPressed(this.controls.up) ||
       this.keyPresses.justPressed(this.controls.w)
     ) {
-      prompt.moveSelection(-1);
-      audioManager.play('select');
+      if (prompt.moveSelection(-1)) {
+        audioManager.play('select');
+      }
       return;
     }
     if (
@@ -5107,8 +5108,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.keyPresses.justPressed(this.controls.down) ||
       this.keyPresses.justPressed(this.controls.s)
     ) {
-      prompt.moveSelection(1);
-      audioManager.play('select');
+      if (prompt.moveSelection(1)) {
+        audioManager.play('select');
+      }
       return;
     }
     if (this.isInteractionPressed()) {

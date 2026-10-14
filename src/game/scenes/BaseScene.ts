@@ -2266,11 +2266,13 @@ export class BaseScene extends Phaser.Scene {
     const pressed = (keys: readonly Phaser.Input.Keyboard.Key[]): boolean =>
       keys.some((key) => this.keyPresses.justPressed(key));
     if (pressed([this.controls.left, this.controls.up, this.controls.a, this.controls.w])) {
-      asking.prompt.moveSelection(-1);
-      audioManager.play('select');
+      if (asking.prompt.moveSelection(-1)) {
+        audioManager.play('select');
+      }
     } else if (pressed([this.controls.right, this.controls.down, this.controls.d, this.controls.s])) {
-      asking.prompt.moveSelection(1);
-      audioManager.play('select');
+      if (asking.prompt.moveSelection(1)) {
+        audioManager.play('select');
+      }
     } else if (pressed(this.controls.interact)) {
       asking.prompt.confirm();
     } else if (pressed([this.controls.back])) {

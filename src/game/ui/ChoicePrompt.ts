@@ -104,13 +104,21 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     this.render();
   }
 
-  /** Moves the highlight; any non-zero step toggles a two-option prompt. */
-  public moveSelection(step: number): void {
-    const count = this.optionTexts.length;
-    if (count === 0) {
-      return;
+  /**
+   * Moves the highlight towards the end the key points at, and stops there:
+   * FireRed's YES/NO box does not wrap (`Menu_ProcessInputNoWrap`). Wrapping
+   * made a key a toggle, so Right on BACK AWAY - the safe answer, and the side
+   * the key points at - flipped the cursor onto the fight it was guarding.
+   * Says whether the highlight moved, so a key at the end makes no sound.
+   */
+  public moveSelection(step: number): boolean {
+    const last = this.optionTexts.length - 1;
+    const index = Math.max(0, Math.min(last, this.selectedIndex + Math.sign(step)));
+    if (last < 0 || index === this.selectedIndex) {
+      return false;
     }
-    this.select((this.selectedIndex + step + count) % count);
+    this.select(index);
+    return true;
   }
 
   public confirm(): void {
