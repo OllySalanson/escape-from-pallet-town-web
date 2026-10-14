@@ -264,9 +264,14 @@ const PLACE_ROWS = [
     'Surf water',
     'Drag out deep water a Pokémon that knows Surf can cross. Crossed once, it stays open.',
   ],
+  [
+    'night',
+    'Night track',
+    'Drag out a stand of wood that is a way through only on a night raid, nine at night until five in the morning.',
+  ],
 ] as const;
 
-/** A field move's doors - a Cut tree, a Rock Smash rock, Surf water - stand outdoors, so an inside has none of them. */
+/** A field move's doors - a Cut tree, a Rock Smash rock, Surf water - and a night track stand outdoors, so an inside has none of them. */
 const placesFor = (inside: MapFileArea | undefined): readonly (typeof PLACE_ROWS)[number][] =>
   inside
     ? PLACE_ROWS.filter(([kind]) => !(MAP_FILE_DOOR_KINDS as readonly string[]).includes(kind))
@@ -733,12 +738,17 @@ function selectedPane(
     }
     case 'door': {
       const door = (file.doors ?? [])[selected.index];
-      heading = { 'cut-tree': 'Cut tree', 'smash-rock': 'Rock Smash rock', surf: 'Surf water' }[
-        door.kind
-      ];
+      heading = {
+        'cut-tree': 'Cut tree',
+        'smash-rock': 'Rock Smash rock',
+        surf: 'Surf water',
+        night: 'Night track',
+      }[door.kind];
       body = `<p class="px-note px-wrap">${
         door.kind === 'surf'
           ? `${door.width}x${door.height} tiles of deep water, crossed by a Pokémon that knows Surf.`
+          : door.kind === 'night'
+            ? `${door.width}x${door.height} tiles of wood by day, and a way through on a raid played between nine at night and five in the morning.`
           : door.kind === 'cut-tree'
             ? 'Shut until a Pokémon that knows Cut clears it.'
             : 'Shut until a Pokémon that knows Rock Smash breaks it.'
@@ -791,6 +801,7 @@ const BRUSH_HEADINGS: Readonly<Record<MapFileArea['kind'], string>> = {
   inside: 'Room',
   cave: 'Cave',
   tunnel: 'Tunnel',
+  tower: 'Tower',
 };
 
 /** What each kind of place is called in the editor. */
@@ -798,6 +809,7 @@ const AREA_KIND_NAMES: Readonly<Record<MapFileArea['kind'], string>> = {
   inside: 'Inside',
   cave: 'Cave',
   tunnel: 'Tunnel',
+  tower: 'Tower floor',
 };
 
 /** How a building's door is gone in by, from the way it is pressed. */

@@ -13,11 +13,12 @@ The Crossing, Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the
 five it grew into, all drawn too: The Power Station, Safari Marsh, The Wreck,
 The Sunken Quarter and Smugglers' Cove. Round them is the ring it has grown
 into since ([The far places](#the-far-places)): open sea in the south, and wood
-in the north where the far places will be drawn. Four far places are drawn:
+in the north where the far places are being drawn. Five are drawn:
 [Stormcrown](#stormcrown), the summit above the peaks,
 [The Lost Garden](#the-lost-garden), east of the Power Station,
-[Frostreef](#frostreef), an island of ice out on the reef, and
-[Ember Isle](#ember-isle), a volcano beyond the smugglers' cove.
+[Frostreef](#frostreef), an island of ice out on the reef,
+[Ember Isle](#ember-isle), a volcano beyond the smugglers' cove, and
+[The Moor Chapel](#the-moor-chapel), on the fell west of the moor.
 
 ![the vale as it ships](vale.png)
 
@@ -1077,9 +1078,9 @@ One per place:
 - **Stormcrown** (built - [Stormcrown](#stormcrown)): B5F as a maze of its
   own seed, so the five floors that ship do not move; and a legendary on a map
   file.
-- **The Moor Chapel**: a night door, shut by day and open on a night raid, built
-  per state as a field-move door is; and FireRed's Pokemon Tower as a room
-  style.
+- **The Moor Chapel** (built - [The Moor Chapel](#the-moor-chapel)): a night
+  door, shut by day and open on a night raid, built per state as a field-move
+  door is; and FireRed's Pokemon Tower as a room style.
 - **The Lost Garden**: Strength boulders in a cave floor. Built: they stand
   in the Falls Cave.
 - **The Bunker**: an inside for the Power Plant; a door the Card Key opens; a
@@ -1098,8 +1099,8 @@ Order them like this:
   file. The Moor Chapel needs nothing else drawn: High Moor's track to it is
   cut already.
 
-The track ends at a way out that opens 90 seconds into a raid, which stands in
-for the chapel until the chapel is drawn.
+The track used to end at a way out that opened 90 seconds into a raid, standing
+in for the chapel until it was drawn. It is drawn now ([The Moor Chapel](#the-moor-chapel)).
 
 ## Stormcrown
 
@@ -1352,7 +1353,6 @@ The same route on another seed found the Old Bloom bare, as three raids in four 
 ![The glasshouse](lost-garden-walk/7-glasshouse.png)
 ![The Miracle Seed, taken](lost-garden-walk/8-miracle-seed.png)
 ![Out by the Gardener's Gate](lost-garden-walk/9-out-by-the-gardeners-gate.png)
-
 ## Frostreef
 
 The third far place drawn: an island of ice on the outer reef, south-east of
@@ -1641,6 +1641,155 @@ Both round-2 judges still named, for a later pass: the road's legs are dead
 straight with square corners, the tall-grass beds are still rectangles, and the
 ash floor is wide with little on it.
 
+## The Moor Chapel
+
+The fifth far place drawn: a ruined chapel on the fell west of High Moor, reached
+only on a night raid. Its program is `tools/mapcraft/worlds/greystoneVale/moorChapel.ts`.
+
+![The Moor Chapel](moor-chapel.png)
+
+**How a player gets there.** Drop in at Moor Top on High Moor, walk west into the
+shepherd's clearing by the tarn, and take the sheep track west through the wood.
+Nothing signs it, but the shepherd says it is there. On a raid deployed between
+nine at night and five in the morning, by the player's own clock (the same clock
+THE BOLTHOLE's window reads, `world/nightRaids.ts`), the track runs on through the
+wood and out at the Lantern Cross, at the head of the fell. On a day raid it stops
+in the trees, and pressing at them says why: the fog has the track. The raid is a
+night raid or a day raid from the moment it deploys, so nothing changes under a
+player's feet.
+
+**The one idea, and what stands along it.** Everything is on one road, the corpse
+road the drovers carried their dead along:
+
+- **The Lantern Cross:** the Pokemon Tower's statue, in the corner where the crags
+  meet the wood, where the sheep track comes out of the trees.
+- **Under the crags:** the corridor runs west with the crags as its north wall, a
+  wide bed of heather below them and the tarn in their west corner.
+- **The chapel in its churchyard:** the road turns south past the chapel's door.
+  The chapel is FireRed's own Pokemon Tower, standing in a churchyard fenced with
+  post and rail, with graves in broken rows and the grass come up between them.
+  The two gold graves are nearest the door.
+- **Out of the vale:** the road leaves west as the Corpse Road.
+- **The drove track:** from the cross a second, narrower track runs south through
+  the wood. It passes the drovers' bothy at its bend and goes on to the Drovers'
+  Gap. That is the fell's second way out, so a raid at the cross need not go round
+  by the corpse road.
+
+**What is only there.**
+
+- **Ghosts.** The churchyard's grass and every step of the crypt roll the new
+  `haunted` habitat: FireRed's Pokemon Tower, Gastly, Cubone and a Haunter, in the
+  tower's own proportions (90, 9 and 1), at a far place's levels. Nothing is
+  fielded below the level it evolves at, so the one Haunter in a hundred is at 25.
+  A level-8 starter of each kind wins 59 to 67% of what it meets
+  (`hauntedHabitat.test.ts`).
+- **The crypt.** The chapel's door opens on its nave, a floor of FireRed's
+  Pokemon Tower, quiet like the tower's ground floor. A Channeler and a mourner
+  are there in FireRed's own words, with pews of graves either side of the aisle.
+  Its stairs down on the west lead to the crypt. The crypt's graves stand where
+  FireRed's third floor stands them, cell for cell. Beside its inner block of
+  gold graves are the grave goods, a cache of lamp oil and linen.
+- **The Spell Tag.** It lies where FireRed's third floor leaves its item, one raid
+  in four, as a prize. It is a piece of gear the Miracle Seed's kind: Ghost moves
+  hit a tenth harder, as FireRed's do.
+
+![The nave](moor-chapel-nave.png) ![The crypt](moor-chapel-crypt.png)
+
+**Played through** on the explorer run, stepped, with `tools/playtest/raid.mjs`.
+
+By day, from Moor Top, the track ends in the wood. Pressing at the trees gives
+the fog's two lines, and the raid leaves by the Moor Gate:
+
+```sh
+node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
+  --clock=day --open="night track" --exit="Moor Gate"
+```
+
+By night the same walk goes on through the wood to the Lantern Cross, along
+the corpse road, in at the chapel's door and down the nave's stairs into the
+crypt, then back up and out by the Corpse Road:
+
+```sh
+node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
+  --clock=night --via=70:82,58:82,50:82,44:82 \
+  --through=27:94:up,moor-chapel-nave@4:10:left --deep --exit="Corpse Road"
+```
+
+![By day: the fog has the track](moor-chapel-fog-by-day.png)
+![By night: the track through the wood to the Lantern Cross](moor-chapel-track-by-night.png)
+
+![In at the chapel's door](moor-chapel-played-nave.png)
+![Down in the crypt](moor-chapel-played-crypt.png)
+
+The night track is twelve tiles of wood, two deep. Drawn as one tree, it showed
+the fell through the gap beside it by day.
+
+### What the game learned for it
+
+- **A night track** (`NightGate` in `world/gates.ts`, a map file's `doors` kind
+  `night`). It is a stand of wood by day and a way through on a night raid. Nobody
+  opens it and nothing about it is saved: its key is the one word every night
+  track shares, in the opened list only while `RunPlan.night` holds. It is built
+  per gate state as a field-move door is, so the hunter, the checks and the
+  picture all read it as a door. The map maker offers it beside Surf water.
+- **A tower floor** (area kind `tower`, style `tower`). It is Lavender Town's
+  round room, laid cell for cell from FireRed's own metatiles as the Underground
+  Path is (`AREA_WEAVES`, `AREA_WEAVE_GROUND`), at the size every floor of the
+  tower is. It has its stairs up on the east and down on the west, its mat, and
+  its grey and gold graves and statues. It keeps the Bicycle out, as FireRed does.
+  It rolls for wildlife on every step only where a place on it names what lives
+  there. The map maker's Pokemon Tower opens onto one.
+- **FireRed's graves outdoors** (`grave`, `gold-grave`, `grave-statue`). These are
+  the tower's own, cut from the top layer of its floors. Until now the only graves
+  were the CC0 sheet's.
+- **A game map's prizes.** An item spot on the game's own map may name a prize
+  (`MAP_FILE_PRIZES`): gear found in one place and nowhere else, on its own odds
+  and in its own place, as the Card Key is. No player's map may.
+- **A haunted habitat, the grave goods landmark and the Spell Tag.**
+
+### Judged blind
+
+The chapel was judged as two 24x40 views beside five FireRed routes (Routes 1, 2,
+6, 10 and 24), with two of them broken on purpose as controls, every round with
+two fresh judges. This time the FireRed routes were drawn straight from pret's
+own layouts and tilesets (FireRed's art, which this game's tiles are cut from),
+without the earlier rounds' redrawing.
+
+| Round | What changed | Judges that counted: real mean, chapel |
+|---|---|---|
+| 1 | an open fell with the chapel, crags and graveyard set on it | 7.8: 4 and 3; 7.4: 4 and 4 |
+| 2 | one road from the cross to the way out, crags as the frame | 7.0: 7 and 4; 7.0: 7 and 4 |
+| 3 | a loop of road round a square pond in the south-east | 7.8: 5 and 4; 7.2: 5 and 4 |
+| 4 | a framed corridor, the tarn under the crags | 7.6: 7 and 6 |
+| 5 | the drove track straight down to a fold | 7.0: 5 and 5; 7.4: 5 and 5 |
+| 6 | the churchyard round the chapel, the cross in its corner | 7.6: 5 and 4; 6.8: 6 and 5 |
+| 7 | the road two wide where a fence had narrowed it | 6.8: **6 and 6** |
+| 8 | the corpse road three wide, the graves in rows | 7.8: 5 and 4; 7.4: **7 and 6** |
+| 9 | the fold replaced by the drovers' bothy at the track's bend | 6.6: **6 and 6** |
+
+**It passes on round 9.** A judge counts only if it rates both broken controls
+below every real route. In round 9 the judge that counted passed both views. The
+other judge rated a broken control above a real route, so it did not count; it
+gave both views 7. Three of the last four judges that counted passed it, and
+round 8 was split.
+
+What the rounds taught, beyond what High Moor and The Crossing already had:
+
+- **A building in a field is a field.** The Pokemon Tower set on lawn read as "a
+  city tower dropped into empty grass" until the churchyard's fence went round
+  it.
+- **A spur to a box is a dead end.** A track to a fenced pen was named a
+  "purposeless pen and a dead-end spur" twice. A track past a cottage at its bend,
+  on to a way out, was not.
+- **Width is read as weight.** A two-wide road beside fences read as "thin". The
+  vale's drove road is three wide for the same reason, and so is the corpse road
+  now.
+
+What the judges still named, for a later pass: ragged edges to the heather, grass
+growing between the graves, and the crags reading partly as a slab on the lawn.
+
+![The Moor Chapel as first drawn](moor-chapel-first-draw.png)
+
 ## How it ships
 
 As the game's own map, beside the shipped five (`greystone-vale`, built from the
@@ -1653,7 +1802,7 @@ player's map is built by). While its districts are being drawn it is on
   `greystoneVale.test.ts` holds that against every contract banked.
 - **Every structure and safety rule holds it now** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
-  walked tile - through `mapStructure.greystoneVale1-6.test.ts` and the rest of
+  walked tile - through `mapStructure.greystoneVale1-8.test.ts` and the rest of
   the suite.
 - **What a finished map pays and guards waits for its districts**: its boss and
   two doors, its locked crate, its loot (money,

@@ -6,7 +6,7 @@ import {
   solidPiece,
 } from '../../base/baseSheet';
 import type { BasePieceName } from '../../base/generated/basePieces';
-import { AREA_WEAVES } from '../generated/areaPieces';
+import { AREA_WEAVE_GROUND, AREA_WEAVES } from '../generated/areaPieces';
 import { AREA_SHEET_SOURCE, areaFloorProp, areaProp, areaTile } from './areaSheet';
 import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
 import { EMBER_SHEET_SOURCE, emberProp, emberTile } from './emberSheet';
@@ -45,6 +45,11 @@ import type { Material } from './materials';
  * its length, and every rivet of its walls is where the game puts one. Floor
  * and wall join each other, so neither draws an edge of its own and both are
  * the weave everywhere.
+ *
+ * A tower floor is the same thing for Lavender Town's Pokemon Tower: the round
+ * room every one of its floors is, its stepped walls and its shaded floor laid
+ * cell for cell from FireRed's own, with the graves, the statues, the stairs
+ * and the way out standing on it as FireRed stands them.
  */
 
 /** The rooms a building's inside may be drawn as. */
@@ -53,7 +58,9 @@ export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'wareh
 export type CaveStyle = 'cave' | 'ice' | 'ember';
 /** The tunnels a tunnel may be drawn as: the Underground Path's. */
 export type TunnelStyle = 'underground';
-export type InsideStyle = RoomStyle | CaveStyle | TunnelStyle;
+/** The towers a tower floor may be drawn as: Lavender Town's Pokemon Tower. */
+export type TowerStyle = 'tower';
+export type InsideStyle = RoomStyle | CaveStyle | TunnelStyle | TowerStyle;
 
 export const INSIDE_PROPS = {
   computers: solidPiece('lab.computers', 'computers'),
@@ -211,6 +218,16 @@ export const INSIDE_PROPS = {
   // the north wall, and westward from its south end.
   tunnelStairsEast: areaProp('tunnel.stairsEast', 'stairs up'),
   tunnelStairsWest: areaProp('tunnel.stairsWest', 'stairs up'),
+
+  // --- the Pokemon Tower -----------------------------------------------------
+  // Its stairs up on the east and down on the west, each reaching into the
+  // tile stood on at its foot, which stays floor.
+  towerStairsUp: areaProp('tower.stairsUp', 'stairs up', ['.##', '.##', '.##']),
+  towerStairsDown: areaProp('tower.stairsDown', 'stairs down', ['##.', '##.', '##.']),
+  towerMat: areaFloorProp('tower.mat', 'door mat'),
+  towerGrave: areaProp('tower.grave', 'grave'),
+  towerGoldGrave: areaProp('tower.goldGrave', 'grave'),
+  towerStatue: areaProp('tower.statue', 'statue'),
 } as const satisfies Record<string, PropDefinition>;
 
 export type InsidePropName = keyof typeof INSIDE_PROPS;
@@ -231,6 +248,11 @@ interface StyleArt {
   readonly stairwell?: InsidePropName;
   /** The stairs up out of a tunnel, pressed into east or west from beside them. */
   readonly tunnelStairs?: { readonly left: InsidePropName; readonly right: InsidePropName };
+  /**
+   * A tower's own staircases, which stand a column wider than a house's: each
+   * reaches into the tile stood on at its foot.
+   */
+  readonly towerStairs?: { readonly up: InsidePropName; readonly down: InsidePropName };
   /** A cave's sand; a room has none, and draws it as floor. */
   readonly sand?: MaterialTiles;
   /** An ice cave's ice; anywhere else it is drawn as floor. */
@@ -319,6 +341,15 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     floor: { roles: { fill: areaTile('tunnel.floor.649') }, weave: woven('tunnel.floor'), joins: ['wall'] },
     wall: { roles: { fill: areaTile('tunnel.wall.645') }, weave: woven('tunnel.wall'), joins: ['paving'] },
     tunnelStairs: { left: 'tunnelStairsWest', right: 'tunnelStairsEast' },
+  },
+  // Lavender Town's Pokemon Tower, laid as FireRed lays it.
+  tower: {
+    floor: { roles: { fill: areaTile('tower.floor.642') }, weave: woven('tower.floor'), joins: ['wall'] },
+    // The wall meets the dark round the room as well as the floor, and draws
+    // its own caps and edges, so it joins both.
+    wall: { roles: { fill: areaTile('tower.wall.641') }, weave: woven('tower.wall'), joins: ['paving', 'cliff'] },
+    mat: 'towerMat',
+    towerStairs: { up: 'towerStairsUp', down: 'towerStairsDown' },
   },
   // Mt. Moon. The rock's top row is the lumps of its back wall and every face
   // that meets the ground stands on it from the top layer; the corners of a
@@ -476,7 +507,16 @@ export const ROOM_STYLES: readonly RoomStyle[] = [
 ];
 export const CAVE_STYLES: readonly CaveStyle[] = ['cave', 'ice', 'ember'];
 export const TUNNEL_STYLES: readonly TunnelStyle[] = ['underground'];
-export const INSIDE_STYLES: readonly InsideStyle[] = [...ROOM_STYLES, ...CAVE_STYLES, ...TUNNEL_STYLES];
+export const TOWER_STYLES: readonly TowerStyle[] = ['tower'];
+export const INSIDE_STYLES: readonly InsideStyle[] = [
+  ...ROOM_STYLES,
+  ...CAVE_STYLES,
+  ...TUNNEL_STYLES,
+  ...TOWER_STYLES,
+];
+
+/** The ground of a Pokemon Tower floor, cell for cell as FireRed's: floor, wall and the dark round it. */
+export const TOWER_GROUND: readonly string[] = AREA_WEAVE_GROUND['tower.floor'];
 
 export const INSIDE_TILESETS: Readonly<Record<InsideStyle, TilesetCatalogue<InsidePropName>>> =
   Object.fromEntries(INSIDE_STYLES.map((style) => [style, styleCatalogue(style)])) as Record<
@@ -502,6 +542,11 @@ export function insideBackDoor(style: InsideStyle): InsidePropName | undefined {
 /** The stairwell down into the Underground Path a style's room has; a style that has none, undefined. */
 export function insideStairwell(style: InsideStyle): InsidePropName | undefined {
   return STYLE_ART[style].stairwell;
+}
+
+/** A tower style's own staircase, up or down; a style that has none, undefined. */
+export function towerStairs(style: InsideStyle, way: 'up' | 'down'): InsidePropName | undefined {
+  return STYLE_ART[style].towerStairs?.[way];
 }
 
 /** The stairs up out of a tunnel of a style, pressed into west or east; a style that has none, undefined. */

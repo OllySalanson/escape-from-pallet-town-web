@@ -845,3 +845,18 @@ export const LOST_GARDEN_WILDLIFE = wildlife(0.1, [
   // wild, and the station master's garden is where it would.
   { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 8, weight: 1 },
 ]);
+
+/**
+ * Haunted ground: FireRed's Pokemon Tower, whose upper floors are ninety parts
+ * Gastly, nine Cubone and one Haunter, slot for slot as the game weighs them.
+ * Brought from the tower's 13-19 down to a far place's levels, a little above
+ * the vale's routes, as the Power Plant and the Safari Zone were: nothing is
+ * fielded below the level it evolves at, so the one Haunter in a hundred is a
+ * Haunter at 25 - the thing the fell is feared for. Nobody walks it by day,
+ * and no night swap touches a ghost, so it is the night's table as it stands.
+ */
+export const HAUNTED_WILDLIFE = wildlife(0.07, [
+  { speciesId: 'gastly', minLevel: 10, maxLevel: 13, weight: 90 },
+  { speciesId: 'cubone', minLevel: 11, maxLevel: 12, weight: 9 },
+  { speciesId: 'haunter', minLevel: 25, maxLevel: 25, weight: 1 },
+]);

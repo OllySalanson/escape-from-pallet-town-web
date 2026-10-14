@@ -100,7 +100,7 @@ export function highMoor(): MapcraftResult {
         { x: 30, y: 13, lines: ['THE GREY STONES', 'The tor the vale is named for. The drovers touch it for luck.'] },
       ],
       people: [
-        { x: 15, y: 26, name: 'Shepherd', look: 'old-man', facing: 'right', lines: ['The tarn never freezes, whatever the winter.', 'The drovers fight for the right of way on the road.'] },
+        { x: 15, y: 26, name: 'Shepherd', look: 'old-man', facing: 'right', lines: ['The tarn never freezes, whatever the winter.', 'There was a sheep track west, under it, to the old chapel.', 'By day the fog turns you back. Go after dark, if you go.'] },
       ],
       trainers: [
         { x: 28, y: 29, name: 'Drover Hale', team: 'drover', look: 'hiker', facing: 'left', sight: 0, lines: ['This road is for the herd!', 'Show me your Pokemon if you want to pass.'] },

@@ -31,6 +31,7 @@ import {
   insideMat,
   insideSideMat,
   insideStairwell,
+  towerStairs,
   tunnelStairs,
   type InsidePropName,
 } from './tileset/insideTileset';
@@ -272,6 +273,16 @@ export function sketchArea(
       } else if (end.look === 'ladder-down') {
         if (inArea(doorway.x, doorway.y)) {
           sketch.plant(doorway.x, doorway.y, ways.hole);
+        }
+      } else if ((end.look === 'stairs-up' || end.look === 'stairs-down') && area.kind === 'tower') {
+        // A tower's stairs stand where a house's do and reach a column further,
+        // over the tile stood on at their foot: up on the east, down on the west.
+        const up = end.look === 'stairs-up';
+        const stairs = towerStairs(area.style, up ? 'up' : 'down');
+        const at = stairsAt(end);
+        const x = up ? at.x - 1 : at.x;
+        if (stairs && inArea(x, at.y) && inArea(x + STAIRS_SIZE.width, at.y + STAIRS_SIZE.height - 1)) {
+          sketch.plant(x, at.y, stairs);
         }
       } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
         const at = stairsAt(end);

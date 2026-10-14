@@ -14,6 +14,7 @@ import { gullStrand } from './gullStrand';
 import { highMoor } from './highMoor';
 import { lostGarden } from './lostGarden';
 import { millbrook } from './millbrook';
+import { moorChapel } from './moorChapel';
 import { orchardTerraces } from './orchardTerraces';
 import { pineHollow } from './pineHollow';
 import { GREYSTONE_VALE } from './plan';
@@ -45,10 +46,12 @@ export default function greystoneVale(): WorldResult {
       'the-wreck': theWreck(),
       'sunken-quarter': sunkenQuarter(),
       'smugglers-cove': smugglersCove(),
+      // The far places, each as it is drawn.
       stormcrown: stormcrown(),
       'lost-garden': lostGarden(),
       frostreef: frostreef(),
       'ember-isle': emberIsle(),
+      'moor-chapel': moorChapel(),
     },
   };
 }

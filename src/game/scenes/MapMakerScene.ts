@@ -1916,7 +1916,7 @@ export class MapMakerScene extends Phaser.Scene {
       return undefined;
     }
     const kind = this.place.kind;
-    if (kind === 'district' || kind === 'surf') {
+    if (kind === 'district' || kind === 'surf' || kind === 'night') {
       return undefined;
     }
     // Past the edge, it is asked of the map grown round it, as the click would grow it.
@@ -2262,7 +2262,7 @@ export class MapMakerScene extends Phaser.Scene {
           this.plantAt(stroke, tile);
           return;
         }
-        if (this.place.kind === 'district' || this.place.kind === 'surf') {
+        if (this.place.kind === 'district' || this.place.kind === 'surf' || this.place.kind === 'night') {
           this.stroke = {
             tool: 'place',
             start: tile,
@@ -2419,8 +2419,8 @@ export class MapMakerScene extends Phaser.Scene {
       const from = { x: stroke.start.x + by.x, y: stroke.start.y + by.y };
       const to = { x: stroke.last.x + by.x, y: stroke.last.y + by.y };
       const outcome =
-        this.place.kind === 'surf'
-          ? placeDoor(growth.file, 'surf', from, to, { area: this.area })
+        this.place.kind === 'surf' || this.place.kind === 'night'
+          ? placeDoor(growth.file, this.place.kind, from, to, { area: this.area })
           : addDistrict(growth.file, from, to);
       if (outcome.placed) {
         this.commitGrown(before, outcome.file, outcome.thing, by);

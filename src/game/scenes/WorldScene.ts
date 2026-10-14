@@ -255,6 +255,9 @@ import {
   gatesOpenedLines,
   isGateOpen,
   jointGateCaption,
+  NIGHT_TRACK_LINES,
+  nightDoors,
+  nightGateAt,
   openedDoors,
   WORLD_GATES,
   type MapGate,
@@ -1194,6 +1197,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return [
       ...openedDoors({ defeatedBosses: this.defeatedBosses, openedGates: this.openedGates }),
       ...this.roomDoors(mapId),
+      // The hour's: a night track stands open for the whole of a night raid.
+      ...nightDoors(this.runSession?.plan?.night),
     ];
   }
 
@@ -1859,7 +1864,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         bottom,
       };
     };
-    for (const doors of gatesByKeeper(this.currentMap.gates)) {
+    // A night track is a way nobody signs, by day or by night: nothing names it.
+    for (const doors of gatesByKeeper(this.currentMap.gates.filter((gate) => gate.night !== true))) {
       const [front] = doors;
       const open = isGateOpen(front, this.openedDoorKeys());
       const tone = open ? LABEL_TONES.gateOpen : LABEL_TONES.gateShut;
@@ -4421,6 +4427,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * even in a browser that cannot save.
    */
   private tryFieldMoveAt(tile: GridPosition): readonly string[] | null {
+    // A night track pressed at by daylight is the other door here a press is
+    // answered at: it says why there is no way through, and when there is one.
+    const track = nightGateAt(this.currentMap.gates, tile);
+    if (track && !isGateOpen(track, this.openedDoorKeys())) {
+      return NIGHT_TRACK_LINES;
+    }
     const gate = fieldMoveGateAt(this.currentMap.gates, tile);
     if (!gate || isGateOpen(gate, this.openedDoorKeys())) {
       return null;

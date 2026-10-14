@@ -32,6 +32,7 @@ import {
   type MapFileArea,
   type MapFileBuilding,
   type MapFileDoorwayLook,
+  type MapFileDoorKind,
   type MapFileLimits,
   type MapFileLinkEnd,
   type MapFileSpot,
@@ -142,6 +143,7 @@ const DOORWAY_NAMES: Readonly<Record<MapFileDoorwayLook, string>> = {
 
 /** The ways through a cave has, and nothing else does. */
 const CAVE_LOOKS: readonly MapFileDoorwayLook[] = ['cave-exit', 'ladder-up', 'ladder-down'];
+const TOWER_LOOKS: readonly MapFileDoorwayLook[] = ['stairs-up', 'stairs-down', 'mat'];
 
 const LABELS: Readonly<Record<MapCheckId, string>> = {
   loads: 'The game can load it',
@@ -175,10 +177,11 @@ const SOLID_GROUND: Readonly<Record<string, string>> = {
 };
 
 /** What a door shut by a field move is, stood on. */
-const ON_A_DOOR: Readonly<Record<string, string>> = {
+const ON_A_DOOR: Readonly<Record<MapFileDoorKind, string>> = {
   'cut-tree': 'stands on a small tree',
   'smash-rock': 'stands on a cracked rock',
   surf: 'stands in deep water',
+  night: 'stands on a night track, which is wood by day',
 };
 
 /** Words of a piece's name that are names, and are written as the games write them. */
@@ -509,8 +512,27 @@ export function checkMapFile(
           if (areaOf(other)?.kind !== 'cave') {
             found.push(`${what} has to lead into a cave.`);
           }
-        } else if (areaOf(other)?.kind !== 'inside') {
+        } else if (areaOf(other)?.kind !== 'inside' && areaOf(other)?.kind !== 'tower') {
           found.push(`${what} has to lead into the inside of a building.`);
+        }
+      } else if (kind === 'tower' && !TOWER_LOOKS.includes(end.look)) {
+        // A tower floor is gone into by its mat and between floors by its stairs.
+        found.push(`${what} cannot be on a tower floor: its ways through are its stairs and its mat.`);
+      } else if ((end.look === 'stairs-up' || end.look === 'stairs-down') && kind === 'tower') {
+        // FireRed lets a tower's stairs into the edge of its floor, up on the
+        // east and down on the west: every tile of them is floor, and beyond
+        // them is the edge of the room.
+        const top = stairsAt(end);
+        const floor = (x: number, y: number): boolean => ground(x, y) === MATERIAL_CHARS.paving;
+        const beyond = end.look === 'stairs-up' ? top.x + STAIRS_SIZE.width : top.x - 1;
+        const fits =
+          end.toward === stairsToward(end.look) &&
+          [0, 1, 2].every((dy) => floor(top.x, top.y + dy) && floor(top.x + 1, top.y + dy)) &&
+          !floor(beyond, end.y);
+        if (!fits) {
+          found.push(
+            `${what} has to be let into the ${end.look === 'stairs-up' ? 'east' : 'west'} edge of the tower floor, on floor three tiles deep.`,
+          );
         }
       } else if (end.look === 'tunnel-stairs' || kind === 'tunnel') {
         // A tunnel is gone down into and come up out of by its stairs, and

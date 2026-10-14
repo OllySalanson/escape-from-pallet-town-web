@@ -14,6 +14,7 @@ import {
   ICEFALL_WILDLIFE,
   VOLCANO_WILDLIFE,
   VOLCANO_NIGHT_WILDLIFE,
+  HAUNTED_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -46,6 +47,7 @@ import {
   INSIDE_PROPS,
   INSIDE_STYLES,
   ROOM_STYLES,
+  TOWER_STYLES,
   TUNNEL_STYLES,
   type InsidePropName,
   type InsideStyle,
@@ -108,6 +110,12 @@ export const MAP_FILE_LIMITS = {
   maxDropIns: 8,
   maxExits: 12,
   maxItemSpots: 40,
+  /**
+   * Item spots that hold one of the game's own prizes (`MAP_FILE_PRIZES`):
+   * none on a player's map, because a prize is gear, and gear is never handed
+   * out by anything a maker places.
+   */
+  maxPrizes: 0,
   /** The latest an exit may open: the raid clock is five minutes. */
   maxExitDelaySeconds: 240,
   maxPeople: 30,
@@ -186,6 +194,7 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxDropIns: 16,
   maxExits: 32,
   maxItemSpots: 96,
+  maxPrizes: 8,
   maxPeople: 64,
   maxSigns: 64,
   maxLandmarks: 32,
@@ -368,6 +377,10 @@ export const MAP_FILE_BUILDINGS = {
   statue: 'statue',
   gravestone: 'gravestone',
   'gravestone-worn': 'gravestoneWorn',
+  // FireRed's own graves, the Pokemon Tower's, and the statue that stands in it.
+  grave: 'graveStone',
+  'gold-grave': 'goldGraveStone',
+  'grave-statue': 'graveStatue',
   'stone-arch': 'stoneArch',
   'gate-arch': 'gateArch',
   'stone-bridge': 'stoneBridge',
@@ -563,6 +576,10 @@ export const MAP_FILE_FURNITURE = {
   // stairwell.
   'path-counter': 'pathCounterWest',
   'path-counter-east': 'pathCounterEast',
+  // The Pokemon Tower's: its graves, grey and gold, and the statues of its top floor.
+  'tower-grave': 'towerGrave',
+  'tower-gold-grave': 'towerGoldGrave',
+  'tower-statue': 'towerStatue',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -790,9 +807,11 @@ export function doorwayTiles(doorway: BuildingDoorway): readonly MapFileSpot[] {
  * What kind of place an area is: the inside of a building; a cave - the same
  * thing in rock, whose floor is wild ground on every step; or a tunnel, the
  * Underground Path's, gone down into by the stairs in a hut and come up out of
- * in another.
+ * in another; or a floor of a tower, Lavender Town's Pokemon Tower, a round
+ * room of graves joined to the floors above and below it by stairs, which is
+ * wild ground on every step wherever a place on it names what lives there.
  */
-export const MAP_FILE_AREA_KINDS = ['inside', 'cave', 'tunnel'] as const;
+export const MAP_FILE_AREA_KINDS = ['inside', 'cave', 'tunnel', 'tower'] as const;
 export type MapFileAreaKind = (typeof MAP_FILE_AREA_KINDS)[number];
 
 /** How an area is dressed: which FireRed room, or which cave, its ground is. */
@@ -804,6 +823,7 @@ export const MAP_FILE_STYLES_OF: Readonly<Record<MapFileAreaKind, readonly MapFi
   inside: ROOM_STYLES,
   cave: CAVE_STYLES,
   tunnel: TUNNEL_STYLES,
+  tower: TOWER_STYLES,
 };
 
 /**
@@ -815,6 +835,7 @@ export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly st
   inside: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.cliff],
   cave: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.sand, MATERIAL_CHARS.ice],
   tunnel: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall],
+  tower: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.cliff],
 };
 
 /**
@@ -824,6 +845,9 @@ export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly st
  */
 export const TUNNEL_SIZE = { width: 8, height: 63 } as const;
 
+/** A tower floor is the size every floor of FireRed's Pokemon Tower is, for the same reason. */
+export const TOWER_SIZE = { width: 24, height: 20 } as const;
+
 /** The sizes each kind of area may be. */
 export function areaLimits(kind: MapFileAreaKind): {
   readonly minWidth: number;
@@ -832,8 +856,8 @@ export function areaLimits(kind: MapFileAreaKind): {
   readonly maxHeight: number;
 } {
   const L = MAP_FILE_LIMITS;
-  if (kind === 'tunnel') {
-    const { width, height } = TUNNEL_SIZE;
+  if (kind === 'tunnel' || kind === 'tower') {
+    const { width, height } = kind === 'tunnel' ? TUNNEL_SIZE : TOWER_SIZE;
     return { minWidth: width, minHeight: height, maxWidth: width, maxHeight: height };
   }
   return kind === 'cave'
@@ -900,6 +924,8 @@ export const MAP_FILE_HABITATS = {
   // A volcano: FireRed's Mt. Ember, at the vale's levels. A cave dressed as a
   // volcano rolls it on every step of its floor.
   volcano: VOLCANO_WILDLIFE,
+  // Haunted ground: FireRed's Pokemon Tower, Gastly and Cubone and the rare Haunter.
+  haunted: HAUNTED_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -985,6 +1011,9 @@ export const MAP_FILE_PRIZES = {
   // The Lost Garden's: FireRed's Miracle Seed, one raid in four that gets
   // there - a prize's odds (`loot.test.ts` holds every prize under a third).
   'miracle-seed': 0.25,
+  // The Moor Chapel's: FireRed's Spell Tag, in the crypt among the graves,
+  // one raid in four that gets there.
+  'spell-tag': 0.25,
 } as const satisfies Partial<Record<ItemId, number>>;
 export type MapFilePrize = keyof typeof MAP_FILE_PRIZES;
 
@@ -1122,6 +1151,16 @@ export const MAP_FILE_LANDMARKS = {
     says: 'Somebody grows their own cures here.',
     reward: [{ itemId: 'antidote', quantity: 2 }],
   },
+  // A grave's lamp and its shroud: the oil from the place that burns it, the
+  // cloth from the place that keeps it.
+  grave: {
+    label: 'Grave goods',
+    says: 'What the drovers buried with their dead: a lamp and a shroud.',
+    reward: [
+      { itemId: 'lamp-oil', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 1 },
+    ],
+  },
 } as const satisfies Record<
   string,
   {
@@ -1231,8 +1270,12 @@ export interface MapFileDistrict {
  * (one tile), a cracked rock Rock Smash breaks (one tile) and a stretch of deep
  * water Surf crosses (a rectangle). Each is the
  * game's own field-move gate (`gates.ts`), opened for good once worked.
+ *
+ * And one the hour opens: a `night` track (a rectangle), a stand of wood by
+ * day that is a way through on a night raid (`NightGate`) - opened by nobody,
+ * saved nowhere, and shut again on the next raid played by daylight.
  */
-export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf', 'smash-rock'] as const;
+export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf', 'smash-rock', 'night'] as const;
 export type MapFileDoorKind = (typeof MAP_FILE_DOOR_KINDS)[number];
 
 export interface MapFileDoor {
@@ -1713,6 +1756,16 @@ export function readMapFile(
       }
     }
   });
+  const prizes = (Array.isArray(value.itemSpots) ? value.itemSpots : []).filter(
+    (spot) => isRecord(spot) && spot.prize !== undefined,
+  ).length;
+  if (prizes > limits.maxPrizes) {
+    problems.push(
+      limits.maxPrizes === 0
+        ? 'Item spots cannot hold a prize: the game decides what is in them.'
+        : `A map holds at most ${limits.maxPrizes} prizes.`,
+    );
+  }
 
   const linesOf = (what: string, raw: unknown): void => {
     if (
@@ -1878,7 +1931,7 @@ export function readMapFile(
         if (!fits) {
           problems.push(`${what} is not on the map.`);
         }
-        if (door.kind !== 'surf' && (w !== 1 || h !== 1)) {
+        if (door.kind !== 'surf' && door.kind !== 'night' && (w !== 1 || h !== 1)) {
           problems.push(`${what} stands on one tile.`);
         }
       });
@@ -2001,7 +2054,7 @@ function readAreas(
         const unknown = [...new Set([...row].filter((letter) => !letters.includes(letter)))];
         if (unknown.length > 0) {
           problems.push(
-            `${what}'s ground row ${y} uses letters ${kind === 'cave' ? 'a cave' : kind === 'tunnel' ? 'a tunnel' : 'an inside'} does not draw: ${unknown.join(' ')}`,
+            `${what}'s ground row ${y} uses letters ${kind === 'cave' ? 'a cave' : kind === 'tunnel' ? 'a tunnel' : kind === 'tower' ? 'a tower' : 'an inside'} does not draw: ${unknown.join(' ')}`,
           );
         }
       });
@@ -2401,14 +2454,17 @@ export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
   return sketch;
 }
 
-/** What a door is called over it, and what it looks like shut and open. */
+/** What a field-move door is called over it, and the move that opens it. */
 const DOOR_LOOKS: Readonly<
-  Record<MapFileDoorKind, { readonly label: string; readonly fieldMove: FieldMoveId }>
+  Record<Exclude<MapFileDoorKind, 'night'>, { readonly label: string; readonly fieldMove: FieldMoveId }>
 > = {
   'cut-tree': { label: 'SMALL TREE', fieldMove: 'cut' },
   surf: { label: 'DEEP WATER', fieldMove: 'surf' },
   'smash-rock': { label: 'CRACKED ROCK', fieldMove: 'rock-smash' },
 };
+
+/** What a night track is called: nothing names it on the map, but a list of doors does. */
+export const NIGHT_TRACK_LABEL = 'NIGHT TRACK';
 
 /** The material a ground letter is, reading a stamp as what it stands on. */
 function materialOf(letter: string | undefined): Material | undefined {
@@ -2431,11 +2487,26 @@ function materialOf(letter: string | undefined): Material | undefined {
  */
 export function fileDoorGates(file: MapFile, id: WorldMapId = playerMapId(file)): readonly MapGate[] {
   return (file.doors ?? []).map((door, index): MapGate => {
-    const look = DOOR_LOOKS[door.kind];
     const tiles = Array.from({ length: door.width * door.height }, (_tile, cell) => ({
       x: door.x + (cell % door.width),
       y: door.y + Math.floor(cell / door.width),
     }));
+    if (door.kind === 'night') {
+      // Wood by day, so the track is lost in it - on a lattice cell a whole
+      // tree - and by night the ground painted under it, walked.
+      const under = materialOf(file.ground[door.y]?.[door.x]);
+      const ground: Material = under && !MATERIALS[under].solid ? under : 'grass';
+      return {
+        id: `${id}/door-${index + 1}`,
+        mapId: id,
+        label: NIGHT_TRACK_LABEL,
+        tiles,
+        night: true,
+        closed: { material: 'tree' },
+        open: { material: ground },
+      };
+    }
+    const look = DOOR_LOOKS[door.kind];
     const base = { id: `${id}/door-${index + 1}`, mapId: id, label: look.label, tiles };
     if (door.kind !== 'surf') {
       const under = materialOf(file.ground[door.y]?.[door.x]);
@@ -2533,6 +2604,18 @@ export function fileLedges(file: MapFile, id: WorldMapId = playerMapId(file)): r
 }
 
 /** Whether any outdoor ground of a file lies outside every district the file names. */
+/** Whether the maker's places in an inside cover the whole of it. */
+function namedWhole(file: MapFile, placed: PlacedArea): boolean {
+  return (file.districts ?? []).some(
+    (district) =>
+      district.area === placed.id &&
+      district.x <= 0 &&
+      district.y <= 0 &&
+      district.x + district.width >= placed.rect.width &&
+      district.y + district.height >= placed.rect.height,
+  );
+}
+
 function hasUnnamedOutdoorGround(file: MapFile): boolean {
   const outdoorDistricts = (file.districts ?? []).filter((district) => district.area === undefined);
   return file.ground.some((row, y) =>
@@ -2707,7 +2790,9 @@ export function buildFileMap(
           ...(district.floorRolls ? { floorRolls: true } : {}),
         };
       }),
-      ...areas.slice(1).map((placed) => ({
+      // An inside the maker's own places already name all of is left to them,
+      // as the outdoors is: a place with no ground is no place.
+      ...areas.slice(1).filter((placed) => !namedWhole(file, placed)).map((placed) => ({
         id: `${id}/area-${String(placed.id)}`,
         mapId: id,
         name: placed.name.toUpperCase(),

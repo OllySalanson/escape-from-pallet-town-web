@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { blankMap, placeSpot } from '../maker/draft';
-import { buildPlayerMap, readMapFile, type MapFile, type MapFileArea } from './mapFile';
+import {
+  BUILT_IN_MAP_FILE_LIMITS,
+  buildPlayerMap,
+  readMapFile,
+  type MapFile,
+  type MapFileArea,
+} from './mapFile';
 import { checkMapFile } from './mapFileChecks';
 import { onlyMapFileFields } from './mapFileRebuild';
 import { barriersOpenedBy, isBarrierOpen, type WorldSwitch } from './switches';
@@ -106,10 +112,13 @@ describe('a prize spot', () => {
       file = outcome.placed ? outcome.file : file;
     }
     file = { ...file, itemSpots: [{ x: 8, y: 8, prize: 'miracle-seed' }, { x: 9, y: 9 }] };
-    expect(readMapFile(file).ok).toBe(true);
-    const [prize, ordinary] = buildPlayerMap(file).loot;
+    // A prize is gear, so only the game's own map may lay one (`maxPrizes`).
+    const limits = BUILT_IN_MAP_FILE_LIMITS;
+    expect(readMapFile(file, { limits }).ok).toBe(true);
+    expect(readMapFile(file).ok).toBe(false);
+    const [prize, ordinary] = buildPlayerMap(file, limits).loot;
     expect(prize).toMatchObject({ itemId: 'miracle-seed', chance: 0.25 });
     expect(ordinary.chance).toBeUndefined();
-    expect(readMapFile({ ...file, itemSpots: [{ x: 8, y: 8, prize: 'potion' as never }] }).ok).toBe(false);
+    expect(readMapFile({ ...file, itemSpots: [{ x: 8, y: 8, prize: 'potion' as never }] }, { limits }).ok).toBe(false);
   });
 });

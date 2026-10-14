@@ -1,4 +1,4 @@
 import { describeMapStructure } from './mapStructure.testkit';
 
-/** Every rule a map is held to, asked of Greystone Vale - part 3 of 6, by tiles. See `mapStructure.testkit.ts`. */
-describeMapStructure('greystone-vale 3/6');
+/** Every rule a map is held to, asked of Greystone Vale - part 3 of 8, by tiles. See `mapStructure.testkit.ts`. */
+describeMapStructure('greystone-vale 3/8');

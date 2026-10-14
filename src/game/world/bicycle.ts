@@ -72,12 +72,13 @@ export type RidePlace = 'outdoors' | MapFileAreaKind;
  * every route and town has, and every cave and tunnel too - Mt. Moon, Rock
  * Tunnel and the Underground Path all allow it - while every house, shop and
  * gatehouse does not. A map maker's inside of kind `inside`, and every room a
- * shipped building has, is the one place that is no. Tall grass is ridden
+ * shipped building has, is no, and so is a floor of the Pokemon Tower, which
+ * FireRed keeps the Bicycle out of. Tall grass is ridden
  * through in FireRed (its long grass, which forbids it, is Hoenn's and has no
  * Kanto tile), so it is here too.
  */
 export function mayRideIn(place: RidePlace): boolean {
-  return place !== 'inside';
+  return place !== 'inside' && place !== 'tower';
 }
 
 /**

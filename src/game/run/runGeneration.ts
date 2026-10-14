@@ -12,7 +12,7 @@ import { playerLinks } from '../world/sailing';
 import { isPlayerMapId, type PlayerMapId } from '../world/mapFile';
 import { fileMap, isPublishedMap, playerMap, playerMaps } from '../world/playerMaps';
 import type { GridPosition } from '../movement/gridMovement';
-import { openedDoors } from '../world/gates';
+import { nightDoors, openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
 import { districtEncounterTables } from '../world/localEncounters';
 import { districtsForMap, type DistrictArea } from '../world/districts';
@@ -613,7 +613,8 @@ export function generateRunPlan(
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = requireInsertion(insertionId);
-  const openedDoorKeys = openedDoors({ defeatedBosses, openedGates });
+  // A night raid is played with every night track open (`gates.ts`).
+  const openedDoorKeys = [...openedDoors({ defeatedBosses, openedGates }), ...nightDoors(night)];
   const authored =
     suppliedContent ?? authoredContent(insertion.mapId, openedDoorKeys, completedContracts);
   // A beaten boss is gone for good, so they are dropped before anything is

@@ -20,7 +20,7 @@
 // --insertion and the save flags beside it are deploy.mjs's; README.md has the
 // rest, and how the two endings nobody chooses are reached with them.
 import { writeFileSync } from 'node:fs';
-import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
+import { LOGIC_WINDOW, PIXEL_WINDOW, attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, deploy, deployOptions, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -87,11 +87,25 @@ const SEEDED = (n) => `(() => {
 // are laid out against the browser window now (`src/game/display/menuStage.ts`)
 // and the result screen at the end of a raid is one of them.
 const sized = /^(\d+)x(\d+)$/.exec(option('window') ?? '');
-const browser = await launchBrowser({
-  window: sized
-    ? { width: Number(sized[1]), height: Number(sized[2]) }
-    : option('window') === 'pixel' ? PIXEL_WINDOW : LOGIC_WINDOW,
-});
+const windowSize = sized
+  ? { width: Number(sized[1]), height: Number(sized[2]) }
+  : option('window') === 'pixel' ? PIXEL_WINDOW : LOGIC_WINDOW;
+// `--attach=PORT` drives a browser already running on that CDP port - one a
+// machine's memory watchdog can see - rather than launching one of its own.
+const attach = option('attach');
+const browser = attach ? attachBrowser(Number(attach), { window: windowSize }) : await launchBrowser({ window: windowSize });
+
+// `--clock=night|day` puts the page in a time zone where it is eleven at night
+// or noon now, so the raid deploys as a night raid or a day raid by the
+// player's own clock (`world/nightRaids.ts`) whenever the driver is run. The
+// Etc zones are named the other way round from the offset they keep.
+const hour = option('clock');
+const ZONE_HOUR = { night: 23, day: 12 };
+const zoneFor = (hour) => {
+  let offset = (hour - new Date().getUTCHours() + 24) % 24;
+  if (offset > 14) offset -= 24;
+  return offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+};
 const log = [];
 const note = (line) => {
   log.push(line);
@@ -101,6 +115,12 @@ const note = (line) => {
 try {
   const started = Date.now();
   const page = await browser.openPage('about:blank');
+  if (hour !== undefined) {
+    if (!(hour in ZONE_HOUR)) throw new Error('--clock is night or day');
+    const timezoneId = zoneFor(ZONE_HOUR[hour]);
+    await page.send('Emulation.setTimezoneOverride', { timezoneId });
+    note(`clock: ${hour}, in ${timezoneId}`);
+  }
   if (seed !== undefined) {
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: SEEDED(seed) });
   }
@@ -147,7 +167,7 @@ try {
   if (option('shot')) {
     await page.screenshot(option('shot').replace(/\.png$/, '-world.png'));
   }
-  const cpuAtDeploy = browser.cpuSeconds();
+  const cpuAtDeploy = browser.cpuSeconds?.() ?? 0;
   const raidStarted = Date.now();
 
   // `plan.loot` is where this raid's loot actually lies. A map's authored
@@ -424,12 +444,12 @@ try {
   const opening = option('open')?.toLowerCase().replace(/[-_]/g, ' ');
   if (opening && !ended) {
     const door = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
-      const g = w.currentMap.gates.find((g) => g.fieldMove && g.label.toLowerCase().includes(${JSON.stringify(opening)})); if (!g) return null;
+      const g = w.currentMap.gates.find((g) => (g.fieldMove || g.night) && g.label.toLowerCase().includes(${JSON.stringify(opening)})); if (!g) return null;
       const beside = g.tiles.flatMap((t) => [[0,1,'ArrowUp'],[0,-1,'ArrowDown'],[1,0,'ArrowLeft'],[-1,0,'ArrowRight']]
         .map(([dx, dy, key]) => ({ x: t.x + dx, y: t.y + dy, key }))).filter((t) => !w.isBlocked(t));
-      return { id: g.id, label: g.label, move: g.fieldMove, beside, shut: w.isBlocked(g.tiles[0]) }; })()`);
+      return { id: g.id, label: g.label, move: g.fieldMove ?? 'night', beside, shut: w.isBlocked(g.tiles[0]) }; })()`);
     if (!door) {
-      throw new Error(`no field-move door called ${opening} on this map`);
+      throw new Error(`no field-move door or night track called ${opening} on this map`);
     }
     note(`${door.label} wants ${door.move.toUpperCase()}, and is ${door.shut ? 'shut' : 'already open'}`);
     for (const side of door.beside) {
@@ -464,7 +484,7 @@ try {
     await clearInterruptions();
     const state = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
       const g = w.currentMap.gates.find((g) => g.id === ${JSON.stringify(door.id)});
-      return { shut: w.isBlocked(g.tiles[0]), saved: JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress.openedGates ?? [] }; })()`);
+      return { shut: w.isBlocked(g.tiles[0]), saved: JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1'))?.raidProgress.openedGates ?? [] }; })()`);
     note(`${door.label} is now ${state.shut ? 'STILL SHUT' : 'OPEN'}; the save has ${JSON.stringify(state.saved)}`);
     if (option('shot')) {
       await page.screenshot(option('shot').replace(/\.png$/, `-${door.move}-open.png`));
@@ -532,31 +552,69 @@ try {
   for (const tile of (option('via') ?? '').split(',').filter(Boolean)) {
     const [x, y] = tile.split(':').map(Number);
     await walkTo({ x, y }, `waypoint ${x},${y}`);
+    // With --shot, each waypoint is photographed as it is reached.
+    if (option('shot')) {
+      await wait(300);
+      await page.screenshot(option('shot').replace(/\.png$/, `-via-${x}-${y}.png`));
+    }
   }
   // --through=x:y:Dir,.. goes through the doorway whose landing is that tile -
   // a cave mouth, a building's door - by pressing Dir into it, notes the place
   // it came out in, and comes back out the way it went in (the far landing is
   // left by pressing back into its own doorway). Walking cannot do it: a link
-  // is a press into a door, not a step onto a tile.
+  // is a press into a door, not a step onto a tile. A landing in an inside is
+  // written `area@x:y:Dir`, the area's id and its own tiles. With --deep the
+  // doors are a chain - each gone through from the place the last came out in,
+  // the stairs down from a chapel's nave, say - and the way back is the chain
+  // in reverse.
   const opposite = { ArrowUp: 'ArrowDown', ArrowDown: 'ArrowUp', ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft' };
-  for (const door of (option('through') ?? '').split(',').filter(Boolean)) {
-    const [x, y, dir] = door.split(':');
+  const place = `(() => { const w = ${GAME}.scene.getScene('world'); const a = w.currentArea(); return { area: a?.name ?? 'outdoors', tile: w.currentTile }; })()`;
+  const landing = async (spec) => {
+    const [where, rest] = spec.includes('@') ? spec.split('@') : [undefined, spec];
+    const [x, y, dir] = rest.split(':');
     const key = `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
-    await walkTo({ x: Number(x), y: Number(y) }, `the doorway at ${x},${y}`);
-    const place = `(() => { const w = ${GAME}.scene.getScene('world'); const a = w.currentArea(); return { area: a?.name ?? 'outdoors', tile: w.currentTile }; })()`;
-    await press(key);
+    if (where === undefined) return { x: Number(x), y: Number(y), key };
+    const origin = await page.evaluate(`(() => { const a = ${GAME}.scene.getScene('world').currentMap.areas?.find((p) => p.id === ${JSON.stringify(where)}); return a ? { x: a.rect.x, y: a.rect.y } : null; })()`);
+    if (!origin) throw new Error(`no area ${where} on this map`);
+    return { x: origin.x + Number(x), y: origin.y + Number(y), key };
+  };
+  const goThrough = async (door) => {
+    await walkTo({ x: door.x, y: door.y }, `the doorway at ${door.x},${door.y}`);
+    await press(door.key);
     await wait(1200);
     await clearInterruptions();
     const inside = await page.evaluate(place);
-    note(`through ${x},${y} ${dir}: now in ${inside.area} at ${inside.tile.x},${inside.tile.y}`);
+    note(`through ${door.x},${door.y}: now in ${inside.area} at ${inside.tile.x},${inside.tile.y}`);
     if (option('shot')) {
-      await page.screenshot(option('shot').replace(/\.png$/, `-through-${x}-${y}.png`));
+      await page.screenshot(option('shot').replace(/\.png$/, `-through-${door.x}-${door.y}.png`));
     }
-    await press(opposite[key]);
+    return inside;
+  };
+  const comeBack = async (door) => {
+    await press(opposite[door.key]);
     await wait(1200);
     await clearInterruptions();
     const back = await page.evaluate(place);
     note(`back out: now in ${back.area} at ${back.tile.x},${back.tile.y}`);
+  };
+  const doors = (option('through') ?? '').split(',').filter(Boolean);
+  if (flag('deep')) {
+    const chain = [];
+    for (const spec of doors) {
+      const door = await landing(spec);
+      const inside = await goThrough(door);
+      chain.push({ door, landedAt: inside.tile });
+    }
+    for (const { door, landedAt } of chain.reverse()) {
+      await walkTo(landedAt, 'the landing the chain came in at');
+      await comeBack(door);
+    }
+  } else {
+    for (const spec of doors) {
+      const door = await landing(spec);
+      await goThrough(door);
+      await comeBack(door);
+    }
   }
   // --grab=itemId picks up every piece of that item this raid laid, wherever it
   // laid it. Loot is re-seated every raid, so a driver cannot be pointed at it
@@ -686,7 +744,7 @@ try {
   const clock = clockMs === null ? 'unknown' : `${Math.floor(clockMs / 60000)}:${String(Math.floor(clockMs / 1000) % 60).padStart(2, '0')}`;
   const report = await page.evaluate(`(document.querySelector('[data-continue]')?.closest('.menu-overlay') ?? document.querySelector('#app'))?.innerText.replace(/\\n+/g, ' | ').slice(0, 420)`);
   note(`result after ${clock} of raid: ${ended ? report : 'raid did not end'}`);
-  const cpu = browser.cpuSeconds() - cpuAtDeploy;
+  const cpu = (browser.cpuSeconds?.() ?? 0) - cpuAtDeploy;
   const wall = (Date.now() - raidStarted) / 1000;
   console.log(JSON.stringify({
     testMode, stepped, steps,

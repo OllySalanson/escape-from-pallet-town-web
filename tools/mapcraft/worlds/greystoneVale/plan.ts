@@ -379,8 +379,9 @@ export const GREYSTONE_VALE: WorldPlan = {
     { district: 'smugglers-cove', name: 'Cove Steps', at: [30, 20], kind: 'landing' },
     { district: 'stormcrown', name: 'Storm Shelter', at: [44, 34], kind: 'landmark' },
     { district: 'stormcrown', name: 'The Cairn', at: [30, 18], kind: 'secret' },
-    { district: 'moor-chapel', name: 'The Chapel', at: [28, 24], kind: 'landmark' },
-    { district: 'moor-chapel', name: 'Lantern Cross', at: [52, 18], kind: 'landmark' },
+    { district: 'moor-chapel', name: 'The Chapel', at: [27, 26], kind: 'landmark' },
+    { district: 'moor-chapel', name: 'Lantern Cross', at: [46, 14], kind: 'landmark' },
+    { district: 'moor-chapel', name: "Drovers' Bothy", at: [40, 25], kind: 'landmark' },
     { district: 'lost-garden', name: 'The Glasshouse', at: [30, 30], kind: 'landmark' },
     { district: 'lost-garden', name: 'The Old Bloom', at: [46, 50], kind: 'secret' },
     { district: 'frostreef', name: 'Ice Jetty', at: [30, 12], kind: 'landmark' },
@@ -467,7 +468,7 @@ export const GREYSTONE_VALE: WorldPlan = {
       floors: 2,
       style: 'tower',
       // The chapel's door, and under its nave the crypt.
-      mouths: [{ district: 'moor-chapel', at: [28, 30], floor: 1 }],
+      mouths: [{ district: 'moor-chapel', at: [27, 30], floor: 1 }],
     },
   ],
   // The boats to the two islands, each a trip across open sea that runs only
