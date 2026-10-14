@@ -117,7 +117,7 @@ export const RUN_INSERTIONS = {
   },
   'town-square': {
     id: 'town-square',
-    label: 'Town Square',
+    label: 'Pallet Town',
     mapId: 'pallet-town',
     position: { x: 7, y: 9 },
     description: 'The market square under the two houses. East for the north field and the mill, south for the green and the allotments - and the leat between you and every way out but one.',

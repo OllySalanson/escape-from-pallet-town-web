@@ -16,6 +16,8 @@ import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
   BATTLE_SCREEN_WIDTH,
+  STATUS_TAG_GAP,
+  statusTagSeat,
   MAKE_ROOM_PAGE,
   MOVE_COMMAND_HEIGHT,
   formatPackRoomRow,
@@ -529,5 +531,46 @@ describe('a status move caption', () => {
       'Seeds the target, sapping 1/8 of its HP each turn.',
     ]);
     expect(captionBySentence('vs PIDGEY: NORMAL DAMAGE x1')).toEqual(['vs PIDGEY: NORMAL DAMAGE x1']);
+  });
+});
+
+describe('statusTagSeat', () => {
+  const plate = { home: 82, hpLabelX: 15, levelLeft: 112 };
+
+  it('stands where it always stood when the name leaves room', () => {
+    expect(statusTagSeat({ ...plate, nameRight: 50, tagWidth: 18 })).toEqual({ row: 'name', x: 82 });
+  });
+
+  it('follows a longer name rather than running into it', () => {
+    expect(statusTagSeat({ ...plate, nameRight: 80, tagWidth: 18 })).toEqual({
+      row: 'name',
+      x: 80 + STATUS_TAG_GAP,
+    });
+  });
+
+  it('takes the "HP:" label\'s place when the name row has no room left (playtest 47)', () => {
+    // CHARMANDER at the plate's name size ran from 9 to past 82.
+    expect(statusTagSeat({ ...plate, nameRight: 90, tagWidth: 18 })).toEqual({ row: 'bar', x: 15 });
+  });
+});
+
+describe('a status move on a Pokemon that already has one', () => {
+  it("says FireRed's line for the status it already has (playtest 47)", () => {
+    // Sing on a sleeping Charmander said "already has a status condition!".
+    expect(eventToMessage({ type: 'status-already', user: 'player', name: 'Charmander', status: 'sleep' })).toBe(
+      'Your CHARMANDER is already asleep!',
+    );
+    expect(eventToMessage({ type: 'status-already', user: 'enemy', name: 'Pidgey', status: 'confusion' })).toBe(
+      'Foe PIDGEY is already confused!',
+    );
+    expect(eventToMessage({ type: 'status-already', user: 'enemy', name: 'Pidgey', status: 'burn' })).toBe(
+      'Foe PIDGEY already has a burn.',
+    );
+  });
+
+  it('fails a move for a different status, as FireRed does', () => {
+    expect(
+      eventToMessage({ type: 'status-already', user: 'player', name: 'Charmander', status: 'sleep', held: 'poison' }),
+    ).toBe('But it failed!');
   });
 });

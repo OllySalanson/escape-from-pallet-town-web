@@ -14,6 +14,16 @@ export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 
 /**
+ * An expression that puts a Pokemon in the raid party on the loadout and is
+ * true once it is there - the named one, or with no name whichever row comes
+ * first. A row is only clicked when it is not already in the party: a vault's
+ * only Pokemon is packed by default (`DeploymentFlow.packLonePokemon`), and
+ * clicking its row again would take it back out.
+ */
+export const takePokemon = (name = null) =>
+  `(() => { const rows = [...document.querySelectorAll('button[data-pokemon]')].filter((b) => ${JSON.stringify(name?.toLowerCase() ?? null)} === null || b.innerText.toLowerCase().includes(${JSON.stringify(name?.toLowerCase() ?? '')})); if (rows.length === 0) return false; if (rows.some((b) => b.classList.contains('is-selected'))) return true; const row = rows.find((b) => b.getAttribute('aria-disabled') !== 'true'); if (!row) return false; row.click(); return true; })()`;
+
+/**
  * Walks the base to one of its keepers' doors, goes in, and speaks to the keeper.
  *
  * The lobby used to be a screen with four cards on it, so every driver here
@@ -206,7 +216,7 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
   // The lobby is a town now, and preparation is done inside Oak's Lab.
   await walkIntoBase(page, 'oaks-lab', { press, until, wait });
   await click('Start a raid');
-  await click(starter);
+  await until(takePokemon(starter), `${starter} in the raid party`);
   // Everybody else the vault holds, so a `--team` deploys as a team. The rows
   // carry the stash id they are for, and one already in the raid is
   // `is-selected` - clicking it again would take it back out.

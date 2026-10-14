@@ -22,7 +22,7 @@
 // selector lands on the next one, because Left and Right belong to the count.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -243,7 +243,7 @@ try {
   await shoot('lobby');
   await click('Start a raid');
   await shoot('loadout');
-  await click('Bulbasaur');
+  await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
   // Pack something, so the final check is photographed with a loadout on it
   // rather than as two empty windows: what those screens look like full is the
   // question, and an empty one answers it for nobody.
@@ -333,7 +333,7 @@ try {
     }
     await walkIntoBase(page, 'oaks-lab');
     await click('Start a raid');
-    await click('Bulbasaur');
+    await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
     await sleep(400);
     const STEPPERS = `[...document.querySelectorAll('.px-count[data-count^="item:"]')]`;
     const steppers = JSON.parse(await page.evaluate(`JSON.stringify(${STEPPERS}.map((group) => group.dataset.count))`));

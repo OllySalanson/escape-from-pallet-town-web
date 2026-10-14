@@ -47,6 +47,7 @@ import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { FIRST_WORDS } from '../hub/firstWords';
+import { PLAYER_NAME_STORAGE_KEY } from '../console/playerName';
 import { setActiveSaveSlot } from '../dev/playtestMode';
 import { ALL_SPECIES } from '../pokemon/species';
 import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
@@ -617,10 +618,10 @@ describe('hub deployment route', () => {
     // and the loadout is rebuilt against the vault as it stands.
     expect(stale.stash.listPokemon().some((stored) => stored.id === 'charmander-1')).toBe(false);
     expect(stale.stash.itemCount('leftovers')).toBe(0);
-    expect(stale.flow.party).toEqual([]);
+    // Bulbasaur is the vault's only Pokemon now, so it is packed by default.
+    expect(stale.flow.party.map(({ id }) => id)).toEqual(['bulbasaur-1']);
 
     // The next deploy is made against the game as it now stands, and goes.
-    stale.flow.togglePokemon('bulbasaur-1');
     readyToDeploy(stale);
     deploy(stale, staleStart);
     expect(staleStart).toHaveBeenCalledTimes(1);
@@ -1188,6 +1189,11 @@ describe('what the base screen leads with', () => {
 
   it('keeps the swap offer, in the stash beside the Pokémon it would trade away', () => {
     const hub = createFreshHub();
+    const saved = (hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame;
+    saved.raidProgress = {
+      ...saved.raidProgress,
+      raidRecord: { 'floodplain-relay': { deployed: 1, extracted: 0, wiped: 1 } },
+    };
 
     hub.setView('stash');
     const stash = markupOf(hub);
@@ -1195,6 +1201,53 @@ describe('what the base screen leads with', () => {
     expect(stash).toContain('swap-panel');
     expect(stash).toContain('Down to one Pokémon');
     expect(stash).toContain('data-view="reselect"');
+  });
+
+  it('says on the raid card when the next raid starts on a shortened clock (playtest 47)', () => {
+    const hub = createFreshHub();
+    expect(markupOf(hub)).not.toContain('Next raid');
+
+    // A revive after a lost raid: a third of the next raid gone to Joy.
+    (hub as unknown as { savedGame: { pendingRecoveryMs: number } }).savedGame.pendingRecoveryMs = 100_000;
+    const card = /<button[^>]*data-deploy-flow[^>]*>[\s\S]*?<\/button>/.exec(markupOf(hub))?.[0] ?? '';
+
+    expect(card).toContain('Next raid 3:20: 1:40 went on recovery.');
+  });
+
+  it('never breaks "packed for you" across two lines of a loadout row (playtest 47)', () => {
+    const hub = createFreshHub();
+    hub.setView('deploy');
+    const row = /<div class="px-row has-icon[^"]*">(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"/.exec(markupOf(hub))?.[0] ?? '';
+    const facts = /<small>([^<]*)<\/small>/.exec(row)?.[1] ?? '';
+
+    // Breaks fall between the facts, never inside one.
+    expect(facts.split(' · ')).toEqual(['1&nbsp;square', '3&nbsp;at&nbsp;base', 'packed&nbsp;for&nbsp;you']);
+  });
+
+  it('says at base that a disc is read from the pack in a raid (playtest 47)', () => {
+    const hub = createFreshHub();
+    hub.stash.addItem('tm40-aerial-ace', 1);
+
+    hub.setView('stash');
+    const row = /<button[^>]*data-supply="tm40-aerial-ace"[^>]*>/.exec(markupOf(hub))?.[0] ?? '';
+
+    expect(row).toContain('Teaches Aerial Ace');
+    expect(row).toContain('read it from your pack (B) in a raid');
+    // And on the loadout, where it is packed.
+    hub.setView('deploy');
+    expect(markupOf(hub)).toContain('read it from your pack (B) in a raid');
+  });
+
+  it('words the swap as an option, not an alarm, before a raid has been lost (playtest 47)', () => {
+    const hub = createFreshHub();
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+
+    expect(stash).toContain('data-view="reselect"');
+    expect(stash).toContain('Swap your partner');
+    expect(stash).not.toContain('Down to one Pokémon');
+    expect(stash).not.toContain('is all you have left');
   });
 
   /**
@@ -2330,6 +2383,18 @@ describe('first words: Oak and Joy speak once per save', () => {
     putDown(hub, 'escape');
     expect(start).not.toHaveBeenCalled();
     expect(speechOn(screenOf(hub))).toBeUndefined();
+  });
+
+  it("has Oak greet the player by the name given at NEW GAME (playtest 47)", () => {
+    const names = new MemoryStorage();
+    names.setItem(PLAYER_NAME_STORAGE_KEY, 'ROWAN');
+    vi.stubGlobal('window', { localStorage: names });
+    try {
+      const { hub } = createHub(DEFAULT_RAID_PROGRESS, seededStorage());
+      expect(speechOn(screenOf(hub))).toContain('Ah, ROWAN, there you are!');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('never says the same words twice to one save, read or not', () => {

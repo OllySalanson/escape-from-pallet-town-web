@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { Bag } from '../items';
-import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE } from '../pokemon';
+import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, SQUIRTLE } from '../pokemon';
 import { RunManager, type ItemStack } from './RunManager';
 import { buildDefeatSequence, createBeatGate } from './defeatSequence';
 import { buildExtractionReport, type ExtractionReport } from './extractionReport';
@@ -14,6 +14,10 @@ interface WipeOptions {
   readonly securedItems?: readonly ItemStack[];
   readonly lastStandIndex?: number;
   readonly cause?: 'defeated' | 'timer';
+  /** Pokemon the raid caught before it was lost. */
+  readonly caught?: readonly Pokemon[];
+  /** The one still standing when it was a catch rather than the party. */
+  readonly lastStand?: Pokemon;
 }
 
 /**
@@ -39,6 +43,10 @@ function wipedReport(
     secureSlot,
   );
   manager.tick(60_000);
+  for (const catchOfTheRaid of options.caught ?? []) {
+    manager.registerCaughtPokemon(catchOfTheRaid);
+    catchOfTheRaid.takeDamage(catchOfTheRaid.maxHp);
+  }
   for (const member of party) {
     member.takeDamage(member.maxHp);
   }
@@ -57,6 +65,7 @@ function wipedReport(
     lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
     carriedOut,
     ...(options.lastStandIndex === undefined ? {} : { lastStand: party[options.lastStandIndex] }),
+    ...(options.lastStand === undefined ? {} : { lastStand: options.lastStand }),
     saved: true,
   });
 }
@@ -94,6 +103,23 @@ describe('the defeat sequence a lost raid opens on', () => {
         lastStand: false,
       },
     ]);
+  });
+
+  it('gives a catch lost with the raid a column of its own (playtest 47)', () => {
+    const charmander = new Pokemon(CHARMANDER, 5);
+    const pidgey = new Pokemon(PIDGEY, 2);
+    const report = wipedReport([charmander], [], { caught: [pidgey], lastStand: pidgey });
+    const sequence = buildDefeatSequence(report);
+
+    // It was named among what was stripped off you...
+    expect(sequence?.beats[1].detail).toContain('Pidgey');
+    // ...so it stands in the line-up beside the partner, taken with it.
+    expect(sequence?.figures.filter((figure) => figure.kind === 'pokemon')).toEqual([
+      expect.objectContaining({ label: 'Charmander', fate: 'taken', lastStand: false }),
+      expect.objectContaining({ label: 'Pidgey', level: 2, fate: 'taken', lastStand: true }),
+    ]);
+    // And it was the one still standing, sent in once the partner fell.
+    expect(sequence?.beats[0].headline).toBe('PIDGEY FAINTED.');
   });
 
   /** The point of the whole moment: the slot's verdict has to be legible. */

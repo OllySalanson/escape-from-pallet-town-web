@@ -1488,6 +1488,11 @@ export function raidsDeployed(progress: RaidProgress): number {
   return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0);
 }
 
+/** Every raid this save has lost, on every map, however it was lost. */
+export function raidsLost(progress: RaidProgress): number {
+  return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.wiped, 0);
+}
+
 /** One more raid of a kind on one map, leaving every other map's count alone. */
 function bumpRaid(
   progress: RaidProgress,

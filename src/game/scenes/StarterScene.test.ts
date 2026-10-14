@@ -9,14 +9,20 @@ vi.mock('phaser', () => ({
 vi.mock('../ui/MenuOverlay', () => ({
   MenuOverlay: class {
     public readonly clicks = new Map<string, () => void>();
+    public readonly listeners = new Map<string, (event: unknown) => void>();
     public readonly root = {
       innerHTML: '',
       querySelector: (selector: string) => ({
         addEventListener: (_event: string, handler: () => void) => this.clicks.set(selector, handler),
       }),
       querySelectorAll: () => [],
+      addEventListener: (event: string, handler: (event: unknown) => void) => this.listeners.set(event, handler),
     };
     public focus(): void {}
+    /** The real one moves the cursor on an arrow key; the test says where it lands. */
+    public moveCursor(key: string): boolean {
+      return key.startsWith('Arrow');
+    }
   },
 }));
 
@@ -48,8 +54,13 @@ class RefusingStorage extends MemoryStorage {
 
 interface StarterInternals {
   create(): void;
+  handleKey(event: KeyboardEvent): void;
   confirmStarter(): void;
-  readonly overlay: { root: { innerHTML: string }; clicks: Map<string, () => void> };
+  readonly overlay: {
+    root: { innerHTML: string };
+    clicks: Map<string, () => void>;
+    listeners: Map<string, (event: unknown) => void>;
+  };
 }
 
 function openStarter(storage: StorageLike | null): { scene: StarterInternals; start: ReturnType<typeof vi.fn> } {
@@ -111,5 +122,53 @@ describe('NEW GAME in a browser that cannot save', () => {
     // The game the base reads is the saved one, whole - never the unsaved draft.
     expect(data.savedGame.raidProgress).toBeDefined();
     expect(new SaveManager(storage).load()?.starterSpeciesId).toBe('bulbasaur');
+  });
+});
+
+describe('choosing a partner', () => {
+  /** The cursor arriving on a card, as an arrow key or the pointer moves it. */
+  const cursorOn = (scene: StarterInternals, starter: string) =>
+    scene.overlay.listeners.get('focusin')!({
+      target: { closest: (selector: string) => (selector === '[data-starter]' ? { dataset: { starter } } : null) },
+    });
+
+  it('names the starter the cursor is on in the bar under the cards (playtest 47)', () => {
+    const { scene, start } = openStarter(new MemoryStorage());
+    expect(scene.overlay.root.innerHTML).toContain('Confirm Bulbasaur');
+
+    cursorOn(scene, 'charmander');
+
+    // The bar used to go on saying CONFIRM BULBASAUR until Enter was pressed
+    // on Charmander's card.
+    expect(scene.overlay.root.innerHTML).toContain('Confirm Charmander');
+    expect(scene.overlay.root.innerHTML).not.toContain('Confirm Bulbasaur');
+    // Moving the cursor commits nothing.
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('follows an arrow key even where moving the cursor fires no focus event', () => {
+    // A page without the window's focus moves the cursor silently, which is
+    // how the browser check of this fix first saw CONFIRM BULBASAUR again.
+    const { scene } = openStarter(new MemoryStorage());
+    vi.stubGlobal('document', {
+      activeElement: { closest: (selector: string) => (selector === '[data-starter]' ? { dataset: { starter: 'charmander' } } : null) },
+    });
+    try {
+      scene.handleKey({ key: 'ArrowRight', preventDefault: () => undefined } as KeyboardEvent);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(scene.overlay.root.innerHTML).toContain('Confirm Charmander');
+  });
+
+  it('confirms the starter the cursor last chose', () => {
+    const storage = new MemoryStorage();
+    const { scene } = openStarter(storage);
+
+    cursorOn(scene, 'squirtle');
+    scene.confirmStarter();
+
+    expect(new SaveManager(storage).load()?.starterSpeciesId).toBe('squirtle');
   });
 });

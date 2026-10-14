@@ -11,7 +11,7 @@
 // (`run/raidInFlight.ts`) so it may deploy at all, which is the one thing these
 // drivers do that no player ever could.
 import { sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 export const page = (base) => `${base}${base.includes('?') ? '&' : '?'}testmode=pixels&harbour=local`;
 export const WORLD = `${GAME}.scene.getScene('world')`;
@@ -68,10 +68,7 @@ export async function twoInARoom(browser, url, out) {
     await click(tab, 'Get ready');
     // The first Pokemon the vault offers, then on through the steps.
     await bring(tab);
-    await tab.waitFor(
-      `(() => { const b = document.querySelector('button[data-pokemon]:not(.is-selected)'); if (!b) return false; b.click(); return true; })()`,
-      { what: 'a Pokémon to take' },
-    );
+    await tab.waitFor(takePokemon(), { what: 'a Pokémon to take' });
     await sleep(300);
     for (const label of ['Choose drop-in', 'Review & deploy', 'Enter the raid']) await click(tab, label);
     await tab.waitFor(sceneIs('world'), { what: 'the raid' });

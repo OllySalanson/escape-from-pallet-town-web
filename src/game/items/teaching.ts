@@ -1,5 +1,6 @@
 import { canLearnFromMachine, MACHINES, type MachineDefinition } from '../pokemon/machines';
 import type { MoveBase, Pokemon } from '../pokemon';
+import { RAID_KEY_LETTERS } from '../input/keyBindings';
 import { getItemById, type ItemDefinition } from './items';
 
 /**
@@ -37,6 +38,14 @@ export type TeachOutcome =
    * exactly as a level-up does. Nothing is spent until that choice forgets one.
    */
   | { readonly kind: 'choose'; readonly move: MoveBase; readonly machine: MachineDefinition };
+
+/**
+ * What the base says beside a disc, because the base is not where one is read:
+ * a disc is read from the pack in a raid (`BagScene.readMachine`), and the
+ * Pokémon Center listed TM40 with what it teaches and nothing about how
+ * (playtest 47). The letter is the pack's own raid key.
+ */
+export const READ_IN_A_RAID = `Pack it, then read it from your pack (${RAID_KEY_LETTERS.bag}) in a raid.`;
 
 /** The machine an item is, or undefined for anything that is not a disc. */
 export function machineForItem(item: ItemDefinition): MachineDefinition | undefined {

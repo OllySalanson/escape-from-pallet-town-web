@@ -214,6 +214,21 @@ export class DeploymentFlow {
     this.secureArranged =
       arrangements.secure.items.length > 0 || arrangements.secure.cargo.length > 0;
     this.packMedicine();
+    this.packLonePokemon();
+  }
+
+  /**
+   * Puts a vault's only Pokemon in the raid party, as a default and never a
+   * cage, the way the medicine is packed: a player with one Pokemon has one
+   * party to send, and was made to ADD it again on every raid under "0/6
+   * POKEMON PACKED" (playtest 47). One that cannot fight is left out, because a
+   * party of one fainted Pokemon is no party; a team is still chosen by hand.
+   */
+  private packLonePokemon(): void {
+    const [only, ...others] = this.stash.listPokemon();
+    if (only && others.length === 0 && !only.pokemon.isFainted) {
+      this.togglePokemon(only.id);
+    }
   }
 
   /**

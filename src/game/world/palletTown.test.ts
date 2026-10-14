@@ -167,7 +167,7 @@ describe('Pallet Town', () => {
           return [insertion.label, Math.min(...reachable)];
         }),
     );
-    expect(home).toEqual({ 'Town Square': 49, 'The Far Bank': 3, 'The Quarry': 9, 'The Hard': 6 });
+    expect(home).toEqual({ 'Pallet Town': 49, 'The Far Bank': 3, 'The Quarry': 9, 'The Hard': 6 });
     for (const [label, count] of Object.entries(home)) {
       expect(`${label}: ${((count * STEP_DURATION_MS) / RAID_DURATION_MS) < 0.1}`).toBe(`${label}: true`);
     }

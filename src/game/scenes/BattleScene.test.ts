@@ -42,6 +42,7 @@ import {
   createTrainerBattleState,
   slotRef,
   unitAt,
+  type BattleCombatant,
   type BattleState,
 } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
@@ -240,8 +241,13 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
         barY: 0,
         barWidth: 88,
         hpText: { setText: vi.fn() },
-        statusText: { setText: vi.fn() },
+        nameText: { x: 9, width: 0 },
+        hpLabel: { setVisible: vi.fn() },
+        statusSeats: { home: 82, nameY: 8, hpLabelX: 15, barY: 25 },
+        statusText: { x: 82, width: 0, text: '', setText: vi.fn(), setPosition: vi.fn() },
         levelText: {
+          x: 135,
+          width: 0,
           text: `Lv ${combatant.pokemon.level}`,
           setText: vi.fn(function (this: { text: string }, value: string) {
             this.text = value;
@@ -730,6 +736,45 @@ describe('a status tag on a plate', () => {
     }
     expect(dialog.visibleText).toBe('Wild PIDGEY became confused!');
     expect(tagNow()).toBe('CNF');
+  });
+
+  it('never runs into a ten-letter name: "CHARMANDERPSN" (playtest 47)', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness();
+    const harness = scene as unknown as {
+      add: { text: (...args: unknown[]) => RenderedText };
+      state: BattleState;
+      createStatusBox(ref: ReturnType<typeof slotRef>, combatant: BattleCombatant): unknown;
+    };
+    // The stub's text has no width; measure it as Orange Kid draws capitals,
+    // about seven pixels a letter at the plate's name size.
+    const unmeasured = harness.add.text;
+    harness.add.text = (...args: unknown[]) => {
+      const text = unmeasured(...args);
+      text.width = text.text.length * 7;
+      text.setText = vi.fn(function (this: RenderedText, value: string) {
+        this.text = value;
+        this.width = value.length * 7;
+        return this;
+      });
+      return text;
+    };
+    const lead = unitAt(harness.state, slotRef('player', 0))!;
+    expect(lead.pokemon.name.length).toBe(10);
+    harness.createStatusBox(slotRef('player', 0), { ...lead, primaryStatus: 'poison' });
+
+    const at = (words: string): RenderedText => renderedTexts.filter((text) => text.text === words).at(-1)!;
+    const name = at('CHARMANDER');
+    const tag = at('PSN');
+    const level = at(`Lv ${lead.pokemon.level}`);
+    const hpLabel = at('HP:');
+    const overlaps = (a: RenderedText, b: RenderedText): boolean =>
+      a.y === b.y && a.x < b.x + b.width && b.x < a.x + a.width;
+    expect(overlaps(tag, name)).toBe(false);
+    // The level is set from its right edge, so its box runs leftwards from x.
+    expect(overlaps(tag, { ...level, x: level.x - level.width })).toBe(false);
+    // With no room between the name and the level it stands where "HP:" did.
+    expect(tag.x).toBe(hpLabel.x);
+    expect(hpLabel.visible).toBe(false);
   });
 });
 

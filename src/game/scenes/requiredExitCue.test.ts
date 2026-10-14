@@ -18,6 +18,7 @@ import { WorldScene } from './WorldScene';
 /** What the objective chip reads, asked of the real scene. */
 interface Driven {
   contractNavigationCue(contractSteps: readonly string[]): string | undefined;
+  nearestExitCue(): { readonly label: string; readonly heading: string } | undefined;
 }
 
 const LEDGER = getContract('cordon-ledger')!;
@@ -52,5 +53,39 @@ describe('the objective chip on a contract only one exit banks', () => {
     expect(ledgerInHand(['pallet-sluice-wheel']).contractNavigationCue([LEDGER.markers[0].id])).toBe(
       'BANK VIA WEST CULVERT: SW',
     );
+  });
+});
+
+describe('the objective chip once the job is done', () => {
+  /** A Floodplain raid with no contract, the player standing where `at` says. */
+  function standingAt(at: { readonly x: number; readonly y: number }): Driven {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+      { mapId: 'floodplain-relay', durationMs: 300_000 },
+    );
+    const map = getWorldMap('floodplain-relay');
+    const scene = Object.create(WorldScene.prototype) as WorldScene;
+    Object.assign(scene as object, {
+      currentMap: map,
+      currentTile: at,
+      collisionData: map.collision,
+      activatedPoiIds: new Set<string>(),
+      exitCueKey: '',
+      runSession: { manager, exitsOpened: [], plan: generateRunPlan(42, undefined, 'floodplain-relay', undefined) },
+    });
+    return scene as unknown as Driven;
+  }
+
+  it('names the nearest open exit and which way it is (playtest 47)', () => {
+    // After the kit the chip read EXTRACT WITH YOUR HAUL with no direction in
+    // it, where a moment before it had said LOST KIT: S.
+    const plan = generateRunPlan(42, undefined, 'floodplain-relay', undefined);
+    const landing = plan.insertion.position;
+    const cue = standingAt(landing).nearestExitCue();
+
+    expect(cue).toBeDefined();
+    expect(plan.extractionPoints.map((point) => point.label)).toContain(cue!.label);
+    expect(cue!.heading).toMatch(/^(N|NE|E|SE|S|SW|W|NW)$/);
   });
 });

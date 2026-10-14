@@ -876,6 +876,37 @@ export interface ShownStatus {
 export const shownStatusLabel = (shown: ShownStatus): string =>
   statusAbbreviation(shown.primary, shown.confused ? 1 : 0) ?? '';
 
+/** The clear pixels a plate's status tag keeps from the name and the level. */
+export const STATUS_TAG_GAP = 4;
+
+/**
+ * Where a plate's status tag stands, from what the name, the level and the tag
+ * itself measure. It used to stand at a fixed column, 82 pixels in, which a
+ * ten-letter name runs past: a poisoned CHARMANDER's plate read
+ * "CHARMANDERPSN" (playtest 47). So it stands where it always stood when the
+ * name leaves room, after the name when it does not - and when the name row has
+ * no room left between the name and the level, it takes the place of the "HP:"
+ * label at the head of the bar, which is where FireRed draws a status.
+ */
+export type StatusTagSeat =
+  | { readonly row: 'name'; readonly x: number }
+  | { readonly row: 'bar'; readonly x: number };
+
+export const statusTagSeat = (measured: {
+  /** The column the tag stands at when the name leaves room for it. */
+  readonly home: number;
+  readonly nameRight: number;
+  readonly levelLeft: number;
+  readonly tagWidth: number;
+  /** Where the "HP:" label starts, which is the tag's other seat. */
+  readonly hpLabelX: number;
+}): StatusTagSeat => {
+  const afterName = Math.max(measured.home, measured.nameRight + STATUS_TAG_GAP);
+  return afterName + measured.tagWidth <= measured.levelLeft - STATUS_TAG_GAP
+    ? { row: 'name', x: afterName }
+    : { row: 'bar', x: measured.hpLabelX };
+};
+
 /**
  * The tag once this line has been read. A turn is resolved whole before its
  * first line is put up, so a plate set from the state at the end of it showed
@@ -966,7 +997,13 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'status-applied':
       return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
     case 'status-already':
-      return `${combatantName(event, foe)} already has a status condition!`;
+      // FireRed's own lines: the status it already has, said by name, and a
+      // move for a different status simply failing. "Already has a status
+      // condition!" was this game's, said of a Pokemon put to sleep twice
+      // (playtest 47).
+      return event.held === undefined
+        ? `${combatantName(event, foe)} ${statusAlready(event.status)}`
+        : 'But it failed!';
     case 'status-prevented':
       return `${combatantName(event, foe)} ${statusHolds(event.status)}!`;
     case 'status-damage':
@@ -1174,6 +1211,21 @@ const statusApplied = (status: string): string =>
     freeze: 'was frozen solid',
     confusion: 'became confused',
   })[status] ?? `is ${status}`;
+
+/**
+ * What it says when a move tries a status the target already has, in
+ * FireRed's words and stops (`sText_PkmnAlreadyAsleep` and its neighbours in
+ * pret/pokefirered `src/battle_message.c`), spelt as this game spells them.
+ */
+const statusAlready = (status: string): string =>
+  ({
+    poison: 'is already poisoned.',
+    burn: 'already has a burn.',
+    paralysis: 'is already paralysed!',
+    sleep: 'is already asleep!',
+    freeze: 'is already frozen!',
+    confusion: 'is already confused!',
+  })[status] ?? `is already ${status}!`;
 
 /** What it says when the status is the reason a turn was lost. */
 const statusHolds = (status: string): string =>

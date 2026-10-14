@@ -81,7 +81,9 @@ import {
   gridCells,
   isFoundOnly,
   isFurniture,
+  isMachine,
   itemAmountsFor,
+  READ_IN_A_RAID,
   type ItemDefinition,
   type ItemId,
   type PackItemId,
@@ -125,7 +127,7 @@ import {
   type RaidContract,
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
-import { raidsDeployed, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
+import { raidsDeployed, raidsLost, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
   sortPokemon,
@@ -183,7 +185,8 @@ import {
 import { starterCards } from '../ui/starterPicker';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
 import { focusDirectionForKey } from '../ui/spatialFocus';
-import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWords, type FirstWordsId } from '../hub/firstWords';
+import { FIRST_WORDS, firstWordsFor, hasHeard, spokenLines, type FirstWords, type FirstWordsId } from '../hub/firstWords';
+import { loadPlayerName } from '../console/playerName';
 import {
   errandBeat,
   errandLoot,
@@ -1772,7 +1775,7 @@ export class HubScene extends Phaser.Scene {
     // The person, then what they say, then the one way on: a text box with a
     // face beside it, as the room's own dialogue box would be.
     return pixelWindow(
-      `<div class="px-lead">${pixelFigure(words.speaker, words.name)}<div class="px-speech-words"><strong>${words.name}</strong>${words.lines
+      `<div class="px-lead">${pixelFigure(words.speaker, words.name)}<div class="px-speech-words"><strong>${words.name}</strong>${spokenLines(words, loadPlayerName())
         .map((line) => `<p class="px-wrap px-speech-line">${line}</p>`)
         .join('')}</div><button class="px-window px-button is-primary" data-speech-done data-help="Read it? ENTER, and the screen is yours.">Got it</button></div>`,
       { className: 'px-speech', tag: 'div' },
@@ -1841,7 +1844,14 @@ export class HubScene extends Phaser.Scene {
     // overworld draws him from, at the same scale. The other three people are
     // in their own buildings now (`base/doors.ts`), so the only other face here
     // is Nurse Joy's, on the line that says somebody needs her.
-    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
+    // A clock the Pokémon Center has shortened is said on the card that starts
+    // the raid it shortens: after a wipe and a revive nothing here said the next
+    // raid was 3:20 until the final check (playtest 47).
+    const shortened =
+      this.pendingRecoveryMs > 0 && !isPlaytestRun()
+        ? `<p class="px-warning">Next raid ${formatRecoveryClock(this.raidClockMs)}: ${formatRecoveryClock(this.pendingRecoveryMs)} went on recovery.</p>`
+        : '';
+    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${shortened}${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
     const condition = said
       ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
       : '<p>Everyone is fit to deploy.</p>';
@@ -2523,7 +2533,7 @@ export class HubScene extends Phaser.Scene {
     const supplyRow = (item: ItemDefinition): string =>
       // One line a supply, as a bag lists them: what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
     const materialRows = this.stashItems
       .filter((item) => isFoundOnly(item.id) && !isFurniture(item.id))
       .map(supplyRow)
@@ -2659,6 +2669,8 @@ export class HubScene extends Phaser.Scene {
         const prepacked = this.flow.isPrepacked(item.id as ItemId);
         const help = escapeAttribute(
           `${item.displayName}: ${item.description} ${size} each, ${held} at base.${
+            isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''
+          }${
             prepacked ? ' Packed for you - medicine goes in by default. Take it out if you want the squares.' : ''
           }`,
         );
@@ -2676,7 +2688,13 @@ export class HubScene extends Phaser.Scene {
             ? `The pack has room for ${limit} ${item.displayName} as you have laid it out - ${tidied} if it is packed again. Tidy is under the squares.`
             : `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
           : `All ${held} at base are packed.`;
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base${prepacked ? ' · packed for you' : ''}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
+        // Each fact is held together, so a row too narrow for all three breaks
+        // between them: "packed for you" wrapped "you" onto a line of its own
+        // (playtest 47).
+        const facts = [size, `${held} at base`, ...(prepacked ? ['packed for you'] : [])]
+          .map((fact) => fact.replace(/ /g, '&nbsp;'))
+          .join(' · ');
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${facts}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;
@@ -3866,7 +3884,15 @@ export class HubScene extends Phaser.Scene {
   private swapPanel(): string {
     const spare = this.sparePartner;
     if (!spare) return '';
-    return `<section class="swap-panel"><h3 class="px-subheading">Down to one Pokémon</h3><p class="px-note px-wrap">${spare.pokemon.name} is all you have left. You can trade it for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
+    // Said as an option to a player who has lost nothing yet, whose one Pokemon
+    // is the partner they chose a moment ago, and as the news it is to one a
+    // wipe has left with one (playtest 47).
+    const afterALoss = raidsLost(this.savedGame.raidProgress) > 0;
+    const heading = afterALoss ? 'Down to one Pokémon' : 'Swap your partner';
+    const lead = afterALoss
+      ? `${spare.pokemon.name} is all you have left. You can trade it`
+      : `While ${spare.pokemon.name} is your only Pokémon, you can trade it`;
+    return `<section class="swap-panel"><h3 class="px-subheading">${heading}</h3><p class="px-note px-wrap">${lead} for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
   }
 
   private reselectView(): string {

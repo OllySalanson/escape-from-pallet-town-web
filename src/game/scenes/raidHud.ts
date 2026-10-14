@@ -157,9 +157,20 @@ export function placePlateLine(name: string | null, remainingMs: number): string
  * What the chip says once no objective is left to name. It said EXTRACT WITH
  * YOUR HAUL to a player carrying nothing, which is an instruction to bank an
  * empty pack; with nothing found yet the raid's business is still the finding.
+ *
+ * With a haul it names the nearest open exit and which way it is, as every
+ * stop before it was named: the chip read LOST KIT: S and then, the moment the
+ * kit was found, an instruction with no direction in it (playtest 47). Only
+ * with no open exit in reach does it fall back on the bare instruction.
  */
-export function openRaidCue(carried: { readonly items: number; readonly pokemon: number }): string {
-  return carried.items + carried.pokemon > 0 ? 'EXTRACT WITH YOUR HAUL' : 'FIND LOOT, THEN EXTRACT';
+export function openRaidCue(
+  carried: { readonly items: number; readonly pokemon: number },
+  exit?: { readonly label: string; readonly heading: string },
+): string {
+  if (carried.items + carried.pokemon === 0) {
+    return 'FIND LOOT, THEN EXTRACT';
+  }
+  return exit ? `EXTRACT VIA ${exit.label.toUpperCase()}: ${exit.heading}` : 'EXTRACT WITH YOUR HAUL';
 }
 
 /**

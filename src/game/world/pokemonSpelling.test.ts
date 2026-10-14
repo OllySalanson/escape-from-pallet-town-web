@@ -53,6 +53,8 @@ describe('the name is spelled with its accent wherever the game writes it', () =
   it("in the loadout's refusals", () => {
     const stash = createStartingStash();
     const empty = new DeploymentFlow(stash);
+    // A lone Pokemon is packed by default; taken back out, the party is empty.
+    empty.togglePokemon(stash.listPokemon()[0].id);
     const refusals = [empty.advance()];
 
     const fainted = createStartingStash();

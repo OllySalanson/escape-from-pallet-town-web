@@ -378,4 +378,70 @@ describe('the defeat line-up', () => {
     // down unless told to keep its parent's.
     expect(declared(rule('.defeat-meta small'), 'font-size')).toBe('inherit');
   });
+
+  /**
+   * The player is the first column of the line-up, and slumped at full size
+   * they lay half out of it - with a full line-up, half off the screen
+   * (playtest 47). This lays the drawn figure out frame by frame, as the
+   * stepped animation shows it, at real window sizes, and holds it inside its
+   * own column: never past the column's left edge, which is the line-up's, and
+   * never further right than the gap to the next column.
+   */
+  it('lays the fallen player inside their own column at every window size', () => {
+    const keyframes = /@keyframes defeat-slump \{([\s\S]*?)\n\}/.exec(block)?.[1] ?? '';
+    const tall = String.raw`calc\(var\(--defeat-tall\) \* (-?[\d.]+)\)`;
+    const frame = new RegExp(
+      String.raw`(\d+)% \{\s*transform: translate\((?:${tall}|0), (?:${tall}|0)\) rotate\((-?[\d.]+)deg\) scale\(([\d.]+)\);`,
+      'g',
+    );
+    const frames = [...keyframes.matchAll(frame)].map((match) => ({
+      at: Number(match[1]) / 100,
+      x: Number(match[2] ?? 0),
+      degrees: Number(match[4]),
+      scale: Number(match[5]),
+    }));
+    // Every frame says the same functions, so the browser interpolates each
+    // number rather than a matrix, and this can do the same.
+    expect(frames.map((one) => one.at)).toEqual([0, 0.55, 1]);
+    const steps = Number(/defeat-slump \d+ms steps\((\d+)\)/.exec(block)?.[1]);
+    const shown = Array.from({ length: steps + 1 }, (_, index) => index / steps).map((at) => {
+      const next = frames.findIndex((one) => one.at >= at);
+      const from = frames[Math.max(0, next - 1)];
+      const to = frames[next];
+      const part = to.at === from.at ? 1 : (at - from.at) / (to.at - from.at);
+      const mix = (key: 'x' | 'degrees' | 'scale') => from[key] + (to[key] - from[key]) * part;
+      return { x: mix('x'), degrees: mix('degrees'), scale: mix('scale') };
+    });
+    const clampTo = (low: number, value: number, high: number) => Math.min(high, Math.max(low, value));
+    for (const [width, height] of [[640, 480], [800, 600], [1024, 768], [1280, 800], [1366, 768], [1920, 1080], [2560, 1440]]) {
+      // `.defeat-figure`'s column, and the trainer's `--defeat-tall`.
+      const column = clampTo(72, width * 0.105, 116);
+      const figure = clampTo(126, height * 0.23, 182);
+      // `.defeat-cast`'s gap, which is empty ground between two columns.
+      const gap = clampTo(4, width * 0.014, 16);
+      for (const { x, degrees, scale } of shown) {
+        // The drawn figure, from the middle of its feet: 12 of 22 rows wide.
+        const half = (figure * 12) / 22 / 2;
+        const radians = (degrees * Math.PI) / 180;
+        const across = [
+          [-half, 0],
+          [half, 0],
+          [-half, -figure],
+          [half, -figure],
+        ].map(([px, py]) => (px * Math.cos(radians) - py * Math.sin(radians)) * scale + x * figure);
+        expect({ width, height, degrees, left: Math.min(...across) >= -column / 2 }).toEqual({
+          width,
+          height,
+          degrees,
+          left: true,
+        });
+        expect({ width, height, degrees, right: Math.max(...across) <= column / 2 + gap }).toEqual({
+          width,
+          height,
+          degrees,
+          right: true,
+        });
+      }
+    }
+  });
 });

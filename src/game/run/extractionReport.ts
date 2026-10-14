@@ -397,16 +397,20 @@ function wipedBaseNote(fitToRaid: boolean): string {
 }
 
 /**
- * The deployed party in the order it was deployed, flagged with what the secure
- * slot did for each member.
+ * The deployed party in the order it was deployed, then every Pokemon the raid
+ * caught or was given, flagged with what the secure slot did for each member.
+ * A catch goes down with the raid like the rest of them - it was named among
+ * what "they stripped" off you and stood in no column of its own (playtest 47)
+ * - and is often the one still standing, sent in once the party had fallen.
  *
  * The last-stand flag falls back to the final member rather than going missing:
  * a losing battle always has one Pokemon out when it ends, and a caller that
  * cannot name it should still get a line-up with a subject.
  */
 function fallenParty(snapshot: RunSnapshot, lastStand: Pokemon | undefined): FallenPokemon[] {
-  const party = snapshot.loadout?.party ?? [];
-  const standing = party.includes(lastStand as Pokemon) ? lastStand : party[party.length - 1];
+  const deployed = snapshot.loadout?.party ?? [];
+  const party = [...deployed, ...snapshot.caughtPokemon];
+  const standing = party.includes(lastStand as Pokemon) ? lastStand : deployed[deployed.length - 1];
   return party.map((member) => ({
     ...toReportPokemon(member),
     secured: securedPokemon(snapshot).includes(member),

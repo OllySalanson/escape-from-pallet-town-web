@@ -1,4 +1,4 @@
-import { traderProgressOf, type RestoredGame } from '../save/SaveManager';
+import { raidsLost, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import { buildContractBoard } from '../hub/contractBoard';
 import { WORKSHOP_UPGRADES, builtUpgrades, workshopOffers } from '../hub/workshop';
 import { pokemonNeedingRecovery } from '../hub/recovery';
@@ -62,11 +62,13 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
         return 'Nobody fit to raid';
       }
       // The swap offer is said here for the reason it was said on the lobby's
-      // stash card: a player down to one Pokemon needs to be told it exists,
-      // and the screen that holds it is behind a door they have no reason to
-      // open. It outranks the condition line because a vault with one Pokemon
-      // left in it is the only state that has it.
-      if (game.stash.canSwapStarter()) {
+      // stash card: a player a wipe has left with one Pokemon needs to be told
+      // it exists, and the screen that holds it is behind a door they have no
+      // reason to open. It outranks the condition line because a vault with one
+      // Pokemon left in it is the only state that has it. Never before a raid
+      // has been lost: a new player has one Pokemon too, and was told seconds
+      // after choosing it that it could be swapped (playtest 47).
+      if (game.stash.canSwapStarter() && raidsLost(game.raidProgress) > 0) {
         return 'Your last partner can be swapped here';
       }
       if (errand) {

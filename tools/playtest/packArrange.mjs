@@ -14,7 +14,7 @@
 // nothing could be turned on its side.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -125,7 +125,7 @@ try {
   // The lobby is a town now, and preparation is done inside Oak's Lab.
   await walkIntoBase(page, 'oaks-lab', { press, until });
   await click('Start a raid');
-  await click('Bulbasaur');
+  await until(takePokemon('Bulbasaur'), 'Bulbasaur in the raid party');
   // The stash's medicine is packed for you (`DeploymentFlow.packMedicine`), so
   // the pack is emptied first and filled with exactly the case below.
   for (const itemId of ['super-potion', 'potion', 'poke-ball']) {
