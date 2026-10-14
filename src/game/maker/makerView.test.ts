@@ -14,6 +14,7 @@ import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
 import { CHECK_FIRST_NOTE, draftEdited, makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { CURSOR_CONTROLS } from '../ui/menuFocus';
 import { PLANT_GROUPS } from './palette';
 import { reasonFor, signInReason, type SentMap } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
@@ -46,6 +47,22 @@ const tryButtons = (markup: string): string[] =>
   [...markup.matchAll(/<button[^>]*data-try="(walk|raid)"[^>]*>/g)].map((match) => match[0]);
 
 describe('the map maker screen', () => {
+  it('draws no field the cursor cannot come back to after the screen is drawn again', () => {
+    // A change to a field draws the maker again, and the cursor returns only to
+    // a control it can rest on: a dropdown left off that list took one arrow
+    // press before the keyboard was back on the tools (playtest 48).
+    const map = makerScreen(state(SAMPLE, false));
+    const sign = makerScreen({ ...state(SAMPLE, false), selected: { kind: 'sign', index: 0 } });
+    const fields = new Set(
+      [...`${map}${sign}`.matchAll(/<(input|select|textarea|button)[\s>]/g)].map((match) => match[1]),
+    );
+    expect([...fields].sort()).toEqual(['button', 'input', 'select', 'textarea']);
+    const restsOn = CURSOR_CONTROLS.split(',').map((part) => part.trim());
+    for (const field of fields) {
+      expect(restsOn).toContain(`${field}:not([disabled])`);
+    }
+  });
+
   it('names every kind of thing SELECT and REMOVE work on, as the Places list names it', () => {
     const markup = makerScreen(state(SAMPLE, false));
     const places = [

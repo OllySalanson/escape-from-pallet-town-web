@@ -3,7 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import { menuClickSound } from '../audio/menuSounds';
 import { menuLayer } from '../display/menuStage';
 import { columnTracks, planColumns, roomFor } from './columnLayout';
-import { firstMatching } from './menuFocus';
+import { CURSOR_CONTROLS, firstMatching, READING_PANES } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 import { PointerPreview, type PointerRule } from './pointerPreview';
 import {
@@ -872,16 +872,6 @@ export function settledScrollTop(
 }
 
 /** Everything on a pixel-ui screen that takes its width from the words inside it. */
-/**
- * A pane of words that holds no control: the result screen's ledger and its
- * gamble. It opts in with `data-reads`, and only while it has more to show
- * than fits is it a stop for the cursor (`markReadingPane`), lit like a row.
- */
-const READING_PANES = '.px-scroll[data-reads][tabindex]';
-
-/** What the arrow keys can rest on: a text field is one, so a keyboard can reach it. */
-const CURSOR_CONTROLS = `button:not([disabled]), input:not([disabled]), ${READING_PANES}`;
-
 /**
  * Makes a `data-reads` pane a cursor stop while it overflows, and takes the
  * stop away once everything in it fits. A pane with a control inside is never
