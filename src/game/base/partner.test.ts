@@ -399,6 +399,24 @@ describe('who the partner is', () => {
     });
     expect(abandonedSaves.settleAbandonedRaid()).not.toBeNull();
     expect(partnerOf(abandonedSaves.load()!.stash)?.id).toBe(abandoned.id);
+
+    // Abandoned with a stronger Pokemon beside it, which the container fills
+    // itself with instead - the starter went unprotected and still comes home
+    // as the partner, at the health the vault kept, not the Pidgey.
+    const unsecured = charmanderSave();
+    unsecured.stash.addPokemon(new Pokemon(PIDGEY, 20), 'pidgey-1');
+    const unsecuredSaves = storeFor(unsecured.stash, {
+      id: 'raid-2',
+      mapId: 'floodplain-relay',
+      packItemId: 'raid-pack',
+      items: { potion: 3 },
+      secured: {},
+    });
+    expect(unsecuredSaves.settleAbandonedRaid()).not.toBeNull();
+    const settled = unsecuredSaves.load()!.stash;
+    expect(settled.listPokemon().map((entry) => entry.id)).toEqual([unsecured.id, 'pidgey-1']);
+    expect(partnerOf(settled)?.id).toBe(unsecured.id);
+    expect(partnerOf(settled)?.species).toBe('charmander');
   });
 
   it('is still the partner while fainted, and the same one once the Pokemon Center has healed it', () => {
