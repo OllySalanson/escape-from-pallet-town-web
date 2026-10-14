@@ -18,11 +18,13 @@ import {
   SQUIRTLE,
   VENUSAUR,
   WARTORTLE,
+  experienceForLevel,
 } from '../pokemon';
 import { evolutionFamily } from '../pokemon/evolution';
 import { createStartingStash, Stash } from '../stash';
 import { SaveManager } from '../save/SaveManager';
 import { applyRecovery } from '../hub/recovery';
+import { withErrandAsked } from '../hub/errands';
 import type { RaidInFlight } from '../run/raidInFlight';
 import { baseGame, restoreBase } from './baseGames.testkit';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from './baseMap';
@@ -460,6 +462,52 @@ describe('who the partner is', () => {
     replacement.addPokemon(new Pokemon(CHARMANDER, 5));
     replacement.swapStarter(BULBASAUR);
     expect(partnerOf(replacement)).toBeNull();
+  });
+
+  it('is the same Pokemon after every deed at base that changes the vault', () => {
+    const stored = new Map<string, string>();
+    const saves = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    const stash = createStartingStash(CHARMANDER);
+    const id = stash.partner()!.id;
+    stash.addItem('old-amber', 1);
+    // Nine more kinds beside the Charmander, so Oak has a reward due.
+    for (const species of [PIDGEY, SQUIRTLE, BULBASAUR, IVYSAUR, WARTORTLE, VENUSAUR, BLASTOISE, CHARIZARD, CHARMELEON]) {
+      stash.addPokemon(new Pokemon(species, 5));
+    }
+    saves.save({ ...restoreBase(stash), stash, raidProgress: { ...restoreBase(stash).raidProgress, errands: withErrandAsked(undefined, 'old-amber') } });
+
+    // A level evolution the raid earned, settled at base when it is banked.
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        {
+          condition: [
+            {
+              id,
+              currentHp: 30,
+              primaryStatus: null,
+              experience: experienceForLevel(16, CHARMANDER.growthRate),
+              speciesId: 'charmeleon',
+              heldItemId: null,
+            },
+          ],
+          supplies: [],
+        },
+      ),
+    ).toBe(true);
+    expect(partnerOf(saves.load()!.stash)).toMatchObject({ id, species: 'charmeleon' });
+
+    // Bill's errand pays a Pokemon into the vault, and Oak pays the Pokedex.
+    expect(saves.completeErrand('old-amber')).toBeDefined();
+    expect(saves.claimPokedexReward()).toBeDefined();
+    const after = saves.load()!.stash;
+    expect(after.listPokemon().some(({ pokemon }) => pokemon.base.id === 'eevee')).toBe(true);
+    expect(after.partnerId()).toBe(id);
+    expect(partnerOf(after)).toMatchObject({ id, species: 'charmeleon' });
   });
 
   it('is saved, and a lost one stays lost through a save and load', () => {
