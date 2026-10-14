@@ -634,3 +634,32 @@ describe('a type tag', () => {
     expect(shared).toEqual([]);
   });
 });
+
+describe("the map maker's passed-check tick", () => {
+  // Teal on cream was 1.46 to 1, so a passed check and a waiting one read as
+  // the same faint square (playtest 39 D1). A mark that means something has to
+  // hold 3 to 1 against the cream it stands on.
+  function luminance(hex: string): number {
+    const [r, g, b] = [1, 3, 5].map((at) => {
+      const channel = Number.parseInt(hex.slice(at, at + 2), 16) / 255;
+      return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  const colourOf = (value: string): string => {
+    const name = /var\((--[a-z-]+)\)/.exec(value)?.[1];
+    if (!name) return value;
+    return new RegExp(`${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(stylesheet)?.[1] ?? '';
+  };
+
+  it('stands out from the cream it is drawn on, at 3 to 1 or better', () => {
+    const rule = [...stylesheet.matchAll(/([^{}]+)\{([^}]*)\}/g)].find(
+      ([, selectors]) => selectors.trim() === ':where(.pixel-ui) .maker-check-mark',
+    )?.[2];
+    const mark = colourOf(/background:\s*([^;]+);/.exec(rule ?? '')?.[1]?.trim() ?? '');
+    const cream = colourOf('var(--cream)');
+    expect(mark).toMatch(/^#[0-9a-f]{6}$/i);
+    const [light, dark] = [luminance(mark), luminance(cream)].sort((x, y) => y - x);
+    expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(3);
+  });
+});

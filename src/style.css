@@ -1100,6 +1100,9 @@ button {
   --bar-muted: #9cafc7;
   --teal: #55d6be;
   --teal-wash: #bfe6cf;
+  /* Teal dark enough to be a mark on cream (4.9:1); --teal is 1.5:1 there and
+     reads only on the dark bar (playtest 39 D1). */
+  --teal-ink: #17705f;
   --gold: #f0c454;
   --gold-wash: #f2e5ab;
   --red: #b0201c;
@@ -3758,7 +3761,7 @@ button {
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 5);
   margin-top: calc(var(--u) * 4);
-  background: var(--teal);
+  background: var(--teal-ink);
   mask: var(--px-tick) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }
