@@ -80,8 +80,8 @@ export const EMBER_ISLE = [
   'WWWWWW~.........dd..CCCC...gg.......ggggg...CCCCCCCCCCCCCCCWWWWW',
   'WWWWWW~.........dd..CCCC..gggggg...ggggggg....CCCCCCCCCCCCWWWWWW',
   'WWWWWW~~........dd..CCCCC...ggg......ggg.......CCCCCCCCCCCWWWWWW',
-  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC...CCCCCC..CCCCCCCCCCCWWWWWWW',
-  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC===CCCCCC..CCCCCCCCCCCWWWWWWW',
+  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC...CCC..CCCCCCCCCCCCCCWWWWWWW',
+  'WWWWWWWW~.......dd..CCCCCCCCCCCCCCC===CCC..CCCCCCCCCCCCCCWWWWWWW',
   'WWWWWWWW~.......dd..CCCCCCCCCCC.....................CCCCCWWWWWWW',
   'WWWWWWWWW~......dd..CCCCCCCCCC...ggggg.....gggg......CCCCWWWWWWW',
   'WWWWWWWWW~......dd....CCCCCCC...ggggggg...gggggggg...CCCWWWWWWWW',
@@ -120,8 +120,8 @@ export const HOARD_SPOTS: readonly Point[] = [
 export const STEPS: readonly Point[] = [
   [29, 55],
   [29, 56],
-  [44, 50],
-  [44, 51],
+  [41, 50],
+  [41, 51],
 ];
 
 /** Where the fire horse stands, on its own shelf of the crater floor. */
