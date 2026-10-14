@@ -1146,6 +1146,7 @@ export class HubScene extends Phaser.Scene {
         durationMs: this.raidClockMs,
         secureGrid: this.flow.secureGrid,
         securePokemonLimit: this.flow.securePokemonSlots,
+        secureFilledForYou: deployment.secureFilledForYou,
       },
       deployment.secureSlot,
     );

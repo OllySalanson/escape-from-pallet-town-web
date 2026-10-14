@@ -19,6 +19,7 @@ interface WipeOptions {
   /** The one still standing when it was a catch rather than the party. */
   readonly lastStand?: Pokemon;
   readonly lostTo?: 'wild' | 'trainer';
+  readonly secureFilledForYou?: boolean;
 }
 
 /**
@@ -40,7 +41,12 @@ function wipedReport(
     // A Pokemon takes four squares of the container and a supply beside it
     // takes more, so these reports are built against a container that has been
     // grown - the squares are `RunManager`'s own test, not this one's.
-    { mapId: 'floodplain-relay', durationMs: DURATION_MS, secureGrid: { width: 6, height: 2 } },
+    {
+      mapId: 'floodplain-relay',
+      durationMs: DURATION_MS,
+      secureGrid: { width: 6, height: 2 },
+      ...(options.secureFilledForYou ? { secureFilledForYou: true } : {}),
+    },
     secureSlot,
   );
   manager.tick(60_000);
@@ -147,6 +153,23 @@ describe('the defeat sequence a lost raid opens on', () => {
     expect(sequence?.beats[1].detail).toBe('Charmander and 2 Potions lifted off you and gone from your stash.');
     expect(sequence?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
     expect(sequence?.beats[2].detail).toContain('Squirtle and 1 Potion came home with you.');
+  });
+
+  /**
+   * Playtest 43 B6: the container fills itself, and a player who never opened
+   * it was told what it held was "the call you made before you deployed".
+   */
+  it('only calls the secure slot the player\'s call when the player made it', () => {
+    const held = (secureFilledForYou: boolean): string | undefined => {
+      const party = [new Pokemon(CHARMANDER, 12), new Pokemon(SQUIRTLE, 11)];
+      return buildDefeatSequence(
+        wipedReport(party, [], { secureIndex: 0, lastStandIndex: 1, secureFilledForYou }),
+      )?.beats[2].detail;
+    };
+
+    expect(held(true)).toBe('Charmander came home with you. The container filled itself before you deployed.');
+    expect(held(true)).not.toContain('call you made');
+    expect(held(false)).toBe('Charmander came home with you. That was the call you made before you deployed.');
   });
 
   /**

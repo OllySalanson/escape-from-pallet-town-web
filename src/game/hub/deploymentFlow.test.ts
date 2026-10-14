@@ -332,6 +332,21 @@ describe('deployment flow', () => {
     });
     expect(flow.secureCells).toEqual({ used: 4, total: 4 });
     expect(flow.securePreference).toEqual({ pokemon: true, items: [] });
+    // And the raid is told the autofill chose, so a lost raid does not call
+    // what it held the player's call (playtest 43 B6).
+    expect(flow.deploy().secureFilledForYou).toBe(true);
+  });
+
+  it('tells the raid the container was the player\'s call once they touch it', () => {
+    const { flow } = seedFlow();
+
+    flow.togglePokemon('charmander-1');
+    flow.toggleSecurePokemon('charmander-1');
+    flow.toggleSecurePokemon('charmander-1');
+    flow.advance();
+    flow.advance();
+
+    expect(flow.deploy().secureFilledForYou).toBe(false);
   });
 
   it('is a default and not a cage: letting the Pokemon go frees the container for gear', () => {

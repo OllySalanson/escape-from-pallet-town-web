@@ -199,6 +199,11 @@ export interface ExtractionReport {
   /** What won the fight the raid was lost in, when it was lost in one. */
   readonly lostTo?: LostTo;
   /**
+   * The secure container went in as the autofill left it, so what it held was
+   * not a call the player made. Absent reads as chosen.
+   */
+  readonly secureFilledForYou?: boolean;
+  /**
    * What the base is like to come home to after a lost raid, or null after a
    * survived one. A wipe restocks the kit, but it revives nobody: a secured
    * partner comes home fainted, and promising "a loadout you can deploy with"
@@ -403,6 +408,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ],
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     ...(input.cause === 'defeated' && input.lostTo ? { lostTo: input.lostTo } : {}),
+    ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
   };

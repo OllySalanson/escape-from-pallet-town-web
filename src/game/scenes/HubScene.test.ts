@@ -684,6 +684,9 @@ describe('hub deployment route', () => {
       'recover-lost-field-kit',
     ]);
     expect(activeRunManager.snapshot().mapId).toBe('floodplain-relay');
+    // The container was never opened, so the raid knows the autofill filled
+    // it, and a lost raid will not call its contents the player's call.
+    expect(activeRunManager.snapshot().secureFilledForYou).toBe(true);
   });
 
   /**

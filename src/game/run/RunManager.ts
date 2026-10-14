@@ -49,6 +49,12 @@ export interface RunConfig {
   readonly secureGrid?: GridSize;
   /** How many Pokemon it protects, which Brock's second locker raises. */
   readonly securePokemonLimit?: number;
+  /**
+   * Whether the secure container went in as the autofill left it, never
+   * touched by the player. A lost raid's result screen only calls what it held
+   * "the call you made" when the player made it.
+   */
+  readonly secureFilledForYou?: boolean;
 }
 
 export interface SecureSlot {
@@ -75,6 +81,8 @@ export interface RunSnapshot {
    * result screen names it on its own rather than as supplies spent.
    */
   readonly droppedItems: readonly ItemStack[];
+  /** See `RunConfig.secureFilledForYou`; absent reads as chosen. */
+  readonly secureFilledForYou?: boolean;
   /**
    * Contract stops made this raid, by marker id. A contract is a list of stops
    * rather than one flag because the braid survey is three of them.
@@ -155,6 +163,7 @@ export class RunManager {
   private giftIdsValue: string[] = [];
   private foundItemsValue: ItemStack[] = [];
   private droppedItemsValue: ItemStack[] = [];
+  private secureFilledForYouValue = false;
   private contractStepsValue: string[] = [];
   private secureFootprintsValue: readonly GridCargo[] = [];
   private secureGridValue: GridSize = DEFAULT_SECURE_GRID;
@@ -219,6 +228,7 @@ export class RunManager {
     this.giftIdsValue = [];
     this.foundItemsValue = [];
     this.droppedItemsValue = [];
+    this.secureFilledForYouValue = config.secureFilledForYou ?? false;
     this.contractStepsValue = [];
     this.defeatedTrainersValue = 0;
     this.hunterFleesValue = 0;
@@ -451,6 +461,7 @@ export class RunManager {
       giftIds: [...this.giftIdsValue],
       foundItems: [...this.foundItemsValue],
       droppedItems: [...this.droppedItemsValue],
+      ...(this.secureFilledForYouValue ? { secureFilledForYou: true } : {}),
       contractSteps: [...this.contractStepsValue],
       recoveredFieldKit: this.contractStepsValue.includes(FIELD_KIT_STEP_ID),
       defeatedTrainers: this.defeatedTrainersValue,

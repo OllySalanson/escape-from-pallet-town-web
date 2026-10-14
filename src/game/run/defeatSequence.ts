@@ -156,7 +156,11 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
       detail:
         heldNames === null
           ? 'You deployed with nothing protected, so nothing came back with you.'
-          : `${capitalise(heldNames)} came home with you. That was the call you made before you deployed.`,
+          : report.secureFilledForYou
+            // The container filled itself and was never opened, so it was not
+            // the player's call (playtest 43 B6); say what decided it instead.
+            ? `${capitalise(heldNames)} came home with you. The container filled itself before you deployed.`
+            : `${capitalise(heldNames)} came home with you. That was the call you made before you deployed.`,
       prompt: FINAL_PROMPT,
     },
   ];
