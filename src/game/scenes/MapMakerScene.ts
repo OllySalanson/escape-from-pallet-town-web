@@ -87,6 +87,7 @@ import {
 } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
 import { overviewOf, type Overview } from '../maker/overview';
+import { openMapFileText } from '../maker/openFile';
 import { paintGhost, type GhostTiles } from '../maker/ghost';
 import {
   clearGrownWood,
@@ -175,7 +176,6 @@ import { refusedTextNote, typedMapText } from '../world/mapText';
 import {
   MAP_FILE_LIMITS,
   plainText,
-  readMapFile,
   MAP_FILE_AREA_STYLES,
   MAP_FILE_STYLES_OF,
   type MapFile,
@@ -2977,16 +2977,9 @@ export class MapMakerScene extends Phaser.Scene {
   }
 
   private openFileText(text: string, name: string): void {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      this.render(`${name} is not a map file.`);
-      return;
-    }
-    const reading = readMapFile(parsed, { draft: true });
+    const reading = openMapFileText(text, name);
     if (!reading.ok) {
-      this.render(`${name} cannot be opened: ${reading.problems[0]}`);
+      this.render(reading.says);
       return;
     }
     this.flushAutosave();
