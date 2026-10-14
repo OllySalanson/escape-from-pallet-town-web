@@ -3931,6 +3931,8 @@ export class BattleScene extends Phaser.Scene {
       // sequence names it, and it cannot be recovered afterwards: by then every
       // member of the party is at 0 HP and indistinguishable from every other.
       lastStand: this.state.player.pokemon,
+      // Whether anybody was there to go through the bag: a wild Pokemon is not.
+      lostTo: this.trainer || this.hunterBattle ? 'trainer' : 'wild',
       // A wipe restocks the kit but revives nobody, so whether the lab will
       // let this player out again is read off the stash just written.
       fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),

@@ -18,6 +18,7 @@ interface WipeOptions {
   readonly caught?: readonly Pokemon[];
   /** The one still standing when it was a catch rather than the party. */
   readonly lastStand?: Pokemon;
+  readonly lostTo?: 'wild' | 'trainer';
 }
 
 /**
@@ -66,6 +67,7 @@ function wipedReport(
     carriedOut,
     ...(options.lastStandIndex === undefined ? {} : { lastStand: party[options.lastStandIndex] }),
     ...(options.lastStand === undefined ? {} : { lastStand: options.lastStand }),
+    ...(options.lostTo ? { lostTo: options.lostTo } : {}),
     saved: true,
   });
 }
@@ -145,6 +147,31 @@ describe('the defeat sequence a lost raid opens on', () => {
     expect(sequence?.beats[1].detail).toBe('Charmander and 2 Potions lifted off you and gone from your stash.');
     expect(sequence?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
     expect(sequence?.beats[2].detail).toContain('Squirtle and 1 Potion came home with you.');
+  });
+
+  /**
+   * Playtest 43 B6: a raid lost to a wild Pokemon read "THEY STRIPPED YOU.",
+   * with no "they" anywhere in the story - a Rattata does not go through a bag.
+   */
+  it('blames nobody when the raid was lost to a wild Pokemon', () => {
+    const party = [new Pokemon(CHARMANDER, 12)];
+    const sequence = buildDefeatSequence(
+      wipedReport(party, [{ itemId: 'potion', quantity: 2 }], { lastStandIndex: 0, lostTo: 'wild' }),
+    );
+
+    const taken = sequence?.beats[1];
+    expect(taken?.headline).toBe('YOUR PACK IS LOST.');
+    expect(taken?.detail).toBe('Charmander and 2 Potions went down with you, gone from your stash for good.');
+    expect(`${taken?.headline} ${taken?.detail}`).not.toMatch(/\bthey\b|stripped|lifted/i);
+  });
+
+  it('still says a trainer took it when a trainer won', () => {
+    const party = [new Pokemon(CHARMANDER, 12)];
+    const sequence = buildDefeatSequence(
+      wipedReport(party, [{ itemId: 'potion', quantity: 2 }], { lastStandIndex: 0, lostTo: 'trainer' }),
+    );
+
+    expect(sequence?.beats[1].headline).toBe('THEY STRIPPED YOU.');
   });
 
   it('says so plainly when the slot was empty, rather than skipping the beat', () => {

@@ -36,6 +36,8 @@ export type ExtractionOutcome = 'ESCAPED' | 'WIPED';
 /** Why a lost raid ended, which changes the headline but not the accounting. */
 export type WipeCause = 'defeated' | 'timer';
 
+export type LostTo = 'wild' | 'trainer';
+
 /** How much a successful raid was actually worth, used to grade the headline. */
 export type HaulTier = 'empty' | 'thin' | 'solid' | 'loaded';
 
@@ -189,6 +191,8 @@ export interface ExtractionReport {
    * was lost in a battle, which is the one ending with a line-up to show.
    */
   readonly fallen?: readonly FallenPokemon[];
+  /** What won the fight the raid was lost in, when it was lost in one. */
+  readonly lostTo?: LostTo;
   /**
    * What the base is like to come home to after a lost raid, or null after a
    * survived one. A wipe restocks the kit, but it revives nobody: a secured
@@ -227,6 +231,13 @@ export interface ExtractionReportInput {
    * cannot be recovered from the party afterwards: by then they are all at 0 HP.
    */
   readonly lastStand?: Pokemon;
+  /**
+   * What won the fight a raid was lost in: a wild Pokemon, or a trainer (the
+   * hunter is one). A wild Pokemon takes nothing off anybody, so the defeat
+   * sequence only says somebody stripped you when somebody was there. Absent
+   * reads as a trainer.
+   */
+  readonly lostTo?: LostTo;
   /**
    * Rare finds this raid saw and left on the ground, by display name.
    *
@@ -385,6 +396,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       ...pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ],
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
+    ...(input.cause === 'defeated' && input.lostTo ? { lostTo: input.lostTo } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
   };

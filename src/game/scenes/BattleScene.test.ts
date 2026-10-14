@@ -52,6 +52,8 @@ import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
+import { buildDefeatSequence } from '../run/defeatSequence';
+import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { BattleScene } from './BattleScene';
 import { combatantSpot } from './battlePresentation';
@@ -967,6 +969,33 @@ describe('a lost raid resolved inside a battle', () => {
       ['potion', 1],
     ]);
     expect(report.spent.map(({ itemId, quantity }) => [itemId, quantity])).toEqual([['potion', 1]]);
+  });
+
+  /** Playtest 43 B6: a wild Pokemon won, and the screen said "THEY STRIPPED YOU." */
+  it.each([
+    [{}, 'YOUR PACK IS LOST.'],
+    [{ authoredTrainer: true }, 'THEY STRIPPED YOU.'],
+    [{ hunterBattle: true }, 'THEY STRIPPED YOU.'],
+  ] as const)('only blames somebody for the pack when somebody won (%o)', (fight, headline) => {
+    const manager = new RunManager();
+    const deployed = new Pokemon(CHARMANDER, 5);
+    manager.startRun(
+      { party: [deployed], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'floodplain-relay', durationMs: 300_000 },
+    );
+    const runSession = createActiveRunSession(manager, {}, {}, ['charmander-1'], [
+      { itemId: 'potion', quantity: 2 },
+    ]);
+    const start = vi.fn();
+    const { scene } = createBattleSceneHarness({ ...fight, runSession, bag: new Bag({ potion: 2 }) });
+    Object.assign(scene as object, {
+      scene: { manager: { keys: { world: {}, base: {}, extraction: {} } }, start },
+    });
+
+    (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
+
+    const { report } = start.mock.calls[0][1] as { report: ExtractionReport };
+    expect(buildDefeatSequence(report)?.beats[1].headline).toBe(headline);
   });
 
   it('never claims supplies were spent by a raid that did not open the pack', () => {

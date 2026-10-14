@@ -149,15 +149,7 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
           : `The last of ${fallen.length} still standing. You went down beside it.`,
       prompt: ADVANCE_PROMPT,
     },
-    {
-      id: 'taken',
-      headline: takenNames === null ? 'NOTHING LEFT TO TAKE.' : 'THEY STRIPPED YOU.',
-      detail:
-        takenNames === null
-          ? 'Everything you carried out was already protected. They went through your bag for nothing.'
-          : `${capitalise(takenNames)} lifted off you and gone from your stash.`,
-      prompt: ADVANCE_PROMPT,
-    },
+    report.lostTo === 'wild' ? lostToTheWild(takenNames) : strippedByTrainer(takenNames),
     {
       id: 'held',
       headline: heldNames === null ? 'THE SECURE SLOT WAS EMPTY.' : 'THE SECURE SLOT HELD.',
@@ -170,6 +162,35 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
   ];
 
   return { figures, beats, leadInMs: LEAD_IN_MS, holdMs: BEAT_HOLD_MS, promptIndicator: PROMPT_INDICATOR };
+}
+
+/** A trainer won, so somebody was there to go through the bag. */
+function strippedByTrainer(takenNames: string | null): DefeatBeat {
+  return {
+    id: 'taken',
+    headline: takenNames === null ? 'NOTHING LEFT TO TAKE.' : 'THEY STRIPPED YOU.',
+    detail:
+      takenNames === null
+        ? 'Everything you carried out was already protected. They went through your bag for nothing.'
+        : `${capitalise(takenNames)} lifted off you and gone from your stash.`,
+    prompt: ADVANCE_PROMPT,
+  };
+}
+
+/**
+ * A wild Pokemon won, and a Rattata goes through nobody's bag (playtest 43
+ * B6): the pack is simply lost with the raid, so nobody is blamed for it.
+ */
+function lostToTheWild(takenNames: string | null): DefeatBeat {
+  return {
+    id: 'taken',
+    headline: takenNames === null ? 'NOTHING WAS LOST.' : 'YOUR PACK IS LOST.',
+    detail:
+      takenNames === null
+        ? 'Everything you carried out was already protected.'
+        : `${capitalise(takenNames)} went down with you, gone from your stash for good.`,
+    prompt: ADVANCE_PROMPT,
+  };
 }
 
 /**
