@@ -185,7 +185,7 @@ import {
   type MapFileDoorKind,
   type MapFileHabitat,
 } from '../world/mapFile';
-import { checkMapFile, type MapCheck, type MapFaultPlace } from '../world/mapFileChecks';
+import { checkMapFile, kindAndName, type MapCheck, type MapFaultPlace } from '../world/mapFileChecks';
 
 /**
  * The map maker: a player draws their own raid map, in the FireRed style, and
@@ -2216,8 +2216,15 @@ export class MapMakerScene extends Phaser.Scene {
         }
         const thing = inMap ? thingAt(this.view, tile) : undefined;
         if (thing) {
+          // A district has no mark of its own: a click on plain ground inside
+          // one takes the whole of it, so say so or it went without a trace.
+          const district =
+            thing.kind === 'district' ? (this.view.districts ?? [])[thing.index] : undefined;
           this.selected = thing;
           this.removeSelected();
+          if (district) {
+            this.render(`${kindAndName('District', district.name)} is gone. Undo brings it back.`);
+          }
         }
         return;
       }

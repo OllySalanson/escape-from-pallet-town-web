@@ -118,6 +118,7 @@ vi.mock('../maker/mapCanvas', () => ({
 
 import { makeInside } from '../maker/areas';
 import {
+  addDistrict,
   blankMap,
   buildingSize,
   groundAt,
@@ -360,6 +361,22 @@ describe('taking a thing off the map', () => {
 
     expect(scene.file.signs).toHaveLength(3);
     expect(scene.selected).toBeUndefined();
+  });
+
+  it('with the remove tool says which district a click on plain ground took away (playtest 39 B3)', () => {
+    const outcome = addDistrict(withSigns(), { x: 2, y: 8 }, { x: 25, y: 22 });
+    if (!outcome.placed) {
+      throw new Error(outcome.reason);
+    }
+    storeDraft(outcome.file);
+    const { scene } = openMaker();
+    scene.tool = 'erase';
+
+    // Bare grass inside the district: nothing is drawn there to show it went.
+    scene.pointerDown(at(10, 15), page.canvas);
+
+    expect(scene.file.districts ?? []).toHaveLength(0);
+    expect(scene.overlay.root.innerHTML).toContain('District 1 is gone. Undo brings it back.');
   });
 
   it('undoing a placement drops a choice of what is no longer there', () => {
