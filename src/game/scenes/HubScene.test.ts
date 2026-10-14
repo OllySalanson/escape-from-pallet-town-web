@@ -47,6 +47,7 @@ import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { FIRST_WORDS } from '../hub/firstWords';
+import { PLAYER_NAME_STORAGE_KEY } from '../console/playerName';
 import { setActiveSaveSlot } from '../dev/playtestMode';
 import { ALL_SPECIES } from '../pokemon/species';
 import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
@@ -1213,6 +1214,16 @@ describe('what the base screen leads with', () => {
     expect(card).toContain('Next raid 3:20: 1:40 went on recovery.');
   });
 
+  it('never breaks "packed for you" across two lines of a loadout row (playtest 47)', () => {
+    const hub = createFreshHub();
+    hub.setView('deploy');
+    const row = /<div class="px-row has-icon[^"]*">(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"/.exec(markupOf(hub))?.[0] ?? '';
+    const facts = /<small>([^<]*)<\/small>/.exec(row)?.[1] ?? '';
+
+    // Breaks fall between the facts, never inside one.
+    expect(facts.split(' · ')).toEqual(['1&nbsp;square', '3&nbsp;at&nbsp;base', 'packed&nbsp;for&nbsp;you']);
+  });
+
   it('says at base that a disc is read from the pack in a raid (playtest 47)', () => {
     const hub = createFreshHub();
     hub.stash.addItem('tm40-aerial-ace', 1);
@@ -2372,6 +2383,18 @@ describe('first words: Oak and Joy speak once per save', () => {
     putDown(hub, 'escape');
     expect(start).not.toHaveBeenCalled();
     expect(speechOn(screenOf(hub))).toBeUndefined();
+  });
+
+  it("has Oak greet the player by the name given at NEW GAME (playtest 47)", () => {
+    const names = new MemoryStorage();
+    names.setItem(PLAYER_NAME_STORAGE_KEY, 'ROWAN');
+    vi.stubGlobal('window', { localStorage: names });
+    try {
+      const { hub } = createHub(DEFAULT_RAID_PROGRESS, seededStorage());
+      expect(speechOn(screenOf(hub))).toContain('Ah, ROWAN, there you are!');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('never says the same words twice to one save, read or not', () => {

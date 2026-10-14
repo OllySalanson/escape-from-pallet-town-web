@@ -28,14 +28,21 @@ export interface FirstWords {
   readonly name: string;
   /** A few short lines, each one fact a newcomer needs on this screen. */
   readonly lines: readonly string[];
+  /**
+   * How the first line is opened to the player by name, when it is: Oak met a
+   * newcomer with "Ah, there you are!" seconds after they had told the game
+   * what they are called (playtest 47). `spokenLines` puts the name in.
+   */
+  readonly greeting?: string;
 }
 
 export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
   lab: {
     speaker: 'prof-oak',
     name: 'Professor Oak',
+    greeting: 'there you are!',
     lines: [
-      'Ah, there you are! Out there are maps full of loot and wild Pokémon.',
+      'Out there are maps full of loot and wild Pokémon.',
       'A raid is a few minutes on one. Grab what you can, then walk out through an exit.',
       'Walk out and you keep it all. If your team faints or the clock runs out, the pack is lost.',
     ],
@@ -93,6 +100,16 @@ export function firstWordsFor(view: FirstWordsView, step: DeploymentStep): First
   if (step === 'dropin') return 'dropin';
   if (step === 'confirm') return 'check';
   return undefined;
+}
+
+/** The lines as said to this player: the greeting by name, else without one. */
+export function spokenLines(words: FirstWords, playerName: string | null): readonly string[] {
+  if (words.greeting === undefined) {
+    return words.lines;
+  }
+  const [first = '', ...rest] = words.lines;
+  const ah = playerName ? `Ah, ${playerName}, ${words.greeting}` : `Ah, ${words.greeting}`;
+  return [`${ah} ${first}`.trim(), ...rest];
 }
 
 /** Whether a save has already heard these words. */

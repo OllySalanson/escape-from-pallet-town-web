@@ -997,7 +997,13 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'status-applied':
       return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
     case 'status-already':
-      return `${combatantName(event, foe)} already has a status condition!`;
+      // FireRed's own lines: the status it already has, said by name, and a
+      // move for a different status simply failing. "Already has a status
+      // condition!" was this game's, said of a Pokemon put to sleep twice
+      // (playtest 47).
+      return event.held === undefined
+        ? `${combatantName(event, foe)} ${statusAlready(event.status)}`
+        : 'But it failed!';
     case 'status-prevented':
       return `${combatantName(event, foe)} ${statusHolds(event.status)}!`;
     case 'status-damage':
@@ -1205,6 +1211,21 @@ const statusApplied = (status: string): string =>
     freeze: 'was frozen solid',
     confusion: 'became confused',
   })[status] ?? `is ${status}`;
+
+/**
+ * What it says when a move tries a status the target already has, in
+ * FireRed's words and stops (`sText_PkmnAlreadyAsleep` and its neighbours in
+ * pret/pokefirered `src/battle_message.c`), spelt as this game spells them.
+ */
+const statusAlready = (status: string): string =>
+  ({
+    poison: 'is already poisoned.',
+    burn: 'already has a burn.',
+    paralysis: 'is already paralysed!',
+    sleep: 'is already asleep!',
+    freeze: 'is already frozen!',
+    confusion: 'is already confused!',
+  })[status] ?? `is already ${status}!`;
 
 /** What it says when the status is the reason a turn was lost. */
 const statusHolds = (status: string): string =>

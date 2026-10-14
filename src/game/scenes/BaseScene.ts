@@ -194,38 +194,28 @@ const figureRect = (tile: GridPosition): Rect => ({
   height: FIGURE_HEIGHT,
 });
 
-/**
- * The rectangle a planted landmark covers, read off the art rather than typed.
- * `frontageRows` takes only that many rows off the bottom of it.
- */
-const propsRect = (
-  props: readonly { name: BasePropName; x: number; y: number }[],
-  frontageRows?: number,
-): Rect => {
-  const boxes = props.map((prop) => {
-    const art = BASE_TILESET.props[prop.name];
-    return { x: prop.x, y: prop.y, right: prop.x + art.width, bottom: prop.y + art.height };
-  });
-  return boxRect(boxes, frontageRows);
-};
+/** The rectangle a planted landmark covers, read off the art rather than typed. */
+const propsRect = (props: readonly { name: BasePropName; x: number; y: number }[]): Rect =>
+  boxRect(
+    props.map((prop) => {
+      const art = BASE_TILESET.props[prop.name];
+      return { x: prop.x, y: prop.y, right: prop.x + art.width, bottom: prop.y + art.height };
+    }),
+  );
 
 const tilesRect = (tiles: readonly GridPosition[]): Rect =>
   boxRect(tiles.map((tile) => ({ x: tile.x, y: tile.y, right: tile.x + 1, bottom: tile.y + 1 })));
 
-function boxRect(
-  boxes: readonly { x: number; y: number; right: number; bottom: number }[],
-  frontageRows?: number,
-): Rect {
+function boxRect(boxes: readonly { x: number; y: number; right: number; bottom: number }[]): Rect {
   const left = Math.min(...boxes.map((box) => box.x));
   const top = Math.min(...boxes.map((box) => box.y));
   const right = Math.max(...boxes.map((box) => box.right));
   const bottom = Math.max(...boxes.map((box) => box.bottom));
-  const from = frontageRows === undefined ? top : Math.max(top, bottom - frontageRows);
   return {
     x: left * TILE_SIZE,
-    y: from * TILE_SIZE,
+    y: top * TILE_SIZE,
     width: (right - left) * TILE_SIZE,
-    height: (bottom - from) * TILE_SIZE,
+    height: (bottom - top) * TILE_SIZE,
   };
 }
 
@@ -1223,29 +1213,22 @@ export class BaseScene extends Phaser.Scene {
     }
     for (const door of BASE_DOORS) {
       /*
-       * Seated against the building's **frontage** - its bottom row - rather
-       * than against its doorway or its whole footprint, and both of those
-       * were tried first.
+       * Seated against the whole building, so it stands over its roof or under
+       * its front and never on it. It used to be seated against the building's
+       * **frontage** - its bottom row - which put it over the lower wall: the
+       * caption covered the lab's own front on arrival (playtest 47).
        *
-       * Against the doorway the caption sat squarely over the building it was
-       * naming. Against the whole footprint it could not sit anywhere near it:
-       * a caption is about eight tiles wide, these buildings stand two tiles
-       * apart, and the player is always in the row under the door they are
-       * walking to - so every ordinary seat was taken and the lab ended up
-       * captioned four rows away, down on the quay.
-       *
-       * The frontage is the answer to both. The caption seats above it, which
-       * is over the lower wall of the building and unmistakably that
-       * building's, and the roof and the door are both still on screen.
+       * The frontage was the answer to a whole footprint that could not seat a
+       * caption anywhere near it: a caption is about eight tiles wide, these
+       * buildings stand two tiles apart, and in the order the doors were made
+       * every ordinary seat was taken and the lab ended up captioned four rows
+       * away, down on the quay. Names are seated nearest first now
+       * (`labelPlacement.ts`), so the door being walked to takes the seat over
+       * its own roof; `doorCaptions.test.ts` holds both.
        */
       this.worldLabels.push(
         new WorldLabel(this, {
-          subject: propsRect(
-            [{ ...door.building, name: door.building.prop }],
-            // A building three rows tall is all frontage: seated against its
-            // bottom row, the caption covered the whole of Bill's cottage.
-            BASE_TILESET.props[door.building.prop].height > 3 ? 1 : undefined,
-          ),
+          subject: propsRect([{ ...door.building, name: door.building.prop }]),
           // Two lines, and no more. The name says what the building is and
           // the second line says what is waiting inside today, which is the
           // whole of what the lobby's four cards carried

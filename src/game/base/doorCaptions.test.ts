@@ -6,7 +6,7 @@ import { placeCaptions, type Rect } from '../ui/labelPlacement';
 import { WorldLabel } from '../ui/WorldLabel';
 import { BASE_TILESET } from './baseTileset';
 import { BASE_DOORS, type BaseDoor } from './doors';
-import { BASE_MAP_HEIGHT, BASE_MAP_WIDTH } from './baseMap';
+import { BASE_MAP_HEIGHT, BASE_MAP_WIDTH, BASE_SPAWN } from './baseMap';
 import type { GridPosition } from '../movement/gridMovement';
 
 /**
@@ -62,15 +62,14 @@ function standInScene(): Phaser.Scene {
   } as unknown as Phaser.Scene;
 }
 
-/** The building's frontage, as `BaseScene` names a door: a tall building by its bottom row. */
-function frontage(door: BaseDoor): Rect {
+/** The whole building, as `BaseScene` names a door. */
+function building(door: BaseDoor): Rect {
   const art = BASE_TILESET.props[door.building.prop];
-  const rows = art.height > 3 ? 1 : art.height;
   return {
     x: door.building.x * TILE_SIZE,
-    y: (door.building.y + art.height - rows) * TILE_SIZE,
+    y: door.building.y * TILE_SIZE,
     width: art.width * TILE_SIZE,
-    height: rows * TILE_SIZE,
+    height: art.height * TILE_SIZE,
   };
 }
 
@@ -95,26 +94,44 @@ function viewOn(tile: GridPosition): Rect {
   };
 }
 
-/** Which doors are named with the player standing on `tile`, the look key held. */
-function namedFrom(tile: GridPosition): string[] {
+interface Seated {
+  readonly door: BaseDoor;
+  readonly at: Rect;
+}
+
+/** Where every door's caption is drawn with the player on `tile`, the look key held or not. */
+function seatedFrom(tile: GridPosition, looking = true): Seated[] {
   const scene = standInScene();
   const labels = BASE_DOORS.map(
     (door) =>
       new WorldLabel(scene, {
-        subject: frontage(door),
+        subject: building(door),
         text: `${door.id}\nstatus`,
         tone: { fill: 0, border: 0, ink: '#fff' },
         depth: 0,
         speech: { voice: 'name', tiles: door.tiles },
       }),
   );
-  labels.forEach((label) => label.describe({ player: tile, looking: true, raidRemainingMs: Infinity }));
+  labels.forEach((label) => label.describe({ player: tile, looking, raidRemainingMs: Infinity }));
+  const requests = labels.map((label) => label.request());
   const placements = placeCaptions(
-    labels.map((label) => label.request()),
+    requests,
     { bounds: viewOn(tile), furniture: [], keepClear: [], canopy: [], player: [figure(tile)] },
   );
-  return BASE_DOORS.filter((_, index) => placements[index].visible).map((door) => door.id);
+  return BASE_DOORS.flatMap((door, index) => {
+    const placed = placements[index];
+    const { width, height } = requests[index];
+    return placed.visible ? [{ door, at: { x: placed.x, y: placed.y, width, height } }] : [];
+  });
 }
+
+/** Which doors are named with the player standing on `tile`, the look key held. */
+function namedFrom(tile: GridPosition): string[] {
+  return seatedFrom(tile).map(({ door }) => door.id);
+}
+
+const overlaps = (a: Rect, b: Rect): boolean =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 describe('the harbour door captions', () => {
   it.each(BASE_DOORS.map((door) => [door.id, door.returnTo] as const))(
@@ -124,6 +141,18 @@ describe('the harbour door captions', () => {
       // neighbours wanted, and BROCK'S WORKSHOP went unnamed with the player
       // standing under its own door.
       expect(namedFrom(doorstep)).toContain(id);
+    },
+  );
+
+  it.each([['the spawn', BASE_SPAWN] as const, ...BASE_DOORS.map((door) => [`${door.id}'s doorstep`, door.returnTo] as const)])(
+    'covers no building with a caption, walking from %s (playtest 47)',
+    (_where, tile) => {
+      // Seated against a building's bottom row, OAK'S LAB was drawn over the
+      // lab's own front as the player arrived.
+      const covering = seatedFrom(tile, false).flatMap(({ door, at }) =>
+        BASE_DOORS.filter((other) => overlaps(at, building(other))).map((other) => `${door.id} over ${other.id}`),
+      );
+      expect(covering).toEqual([]);
     },
   );
 });

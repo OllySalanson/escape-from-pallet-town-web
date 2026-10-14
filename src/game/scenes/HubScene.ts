@@ -185,7 +185,8 @@ import {
 import { starterCards } from '../ui/starterPicker';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
 import { focusDirectionForKey } from '../ui/spatialFocus';
-import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWords, type FirstWordsId } from '../hub/firstWords';
+import { FIRST_WORDS, firstWordsFor, hasHeard, spokenLines, type FirstWords, type FirstWordsId } from '../hub/firstWords';
+import { loadPlayerName } from '../console/playerName';
 import {
   errandBeat,
   errandLoot,
@@ -1774,7 +1775,7 @@ export class HubScene extends Phaser.Scene {
     // The person, then what they say, then the one way on: a text box with a
     // face beside it, as the room's own dialogue box would be.
     return pixelWindow(
-      `<div class="px-lead">${pixelFigure(words.speaker, words.name)}<div class="px-speech-words"><strong>${words.name}</strong>${words.lines
+      `<div class="px-lead">${pixelFigure(words.speaker, words.name)}<div class="px-speech-words"><strong>${words.name}</strong>${spokenLines(words, loadPlayerName())
         .map((line) => `<p class="px-wrap px-speech-line">${line}</p>`)
         .join('')}</div><button class="px-window px-button is-primary" data-speech-done data-help="Read it? ENTER, and the screen is yours.">Got it</button></div>`,
       { className: 'px-speech', tag: 'div' },
@@ -2687,7 +2688,13 @@ export class HubScene extends Phaser.Scene {
             ? `The pack has room for ${limit} ${item.displayName} as you have laid it out - ${tidied} if it is packed again. Tidy is under the squares.`
             : `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
           : `All ${held} at base are packed.`;
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base${prepacked ? ' · packed for you' : ''}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
+        // Each fact is held together, so a row too narrow for all three breaks
+        // between them: "packed for you" wrapped "you" onto a line of its own
+        // (playtest 47).
+        const facts = [size, `${held} at base`, ...(prepacked ? ['packed for you'] : [])]
+          .map((fact) => fact.replace(/ /g, '&nbsp;'))
+          .join(' · ');
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${facts}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;

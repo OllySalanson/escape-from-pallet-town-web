@@ -357,7 +357,9 @@ export type BattleEvent =
   | { readonly type: 'status-applied'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly status: StatusName }
   | { readonly type: 'status-already'; readonly user: 'player' | 'enemy';
-      readonly slot?: number; readonly name: string; readonly status: StatusName }
+      readonly slot?: number; readonly name: string; readonly status: StatusName;
+      /** The status it already has, when that is not the one just tried: FireRed's "But it failed!". */
+      readonly held?: PrimaryStatusType }
   | { readonly type: 'status-prevented'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly status: PrimaryStatusType }
   | { readonly type: 'status-damage'; readonly user: 'player' | 'enemy';
@@ -2695,7 +2697,8 @@ const applyStatus = (
     };
   }
   if (combatant.primaryStatus) {
-    return { state, events: [{ type: 'status-already', user, ...slot, name, status }] };
+    const held = combatant.primaryStatus === status ? {} : { held: combatant.primaryStatus };
+    return { state, events: [{ type: 'status-already', user, ...slot, name, status, ...held }] };
   }
   const updated = {
     ...combatant,
