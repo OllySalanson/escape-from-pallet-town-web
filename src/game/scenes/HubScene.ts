@@ -181,6 +181,7 @@ import {
   shopDetailPane,
   shopPaidColumn,
   shopPriceColumn,
+  SHORT_MARK_LEGEND,
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
@@ -3855,7 +3856,7 @@ export class HubScene extends Phaser.Scene {
       {
         className: 'objectives-panel',
         heading: 'What extraction buys',
-        note: 'Red is not yet spare at base',
+        note: SHORT_MARK_LEGEND,
       },
     )}</main>`;
   }

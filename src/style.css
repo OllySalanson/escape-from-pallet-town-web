@@ -2385,6 +2385,19 @@ button {
 :where(.pixel-ui) small.cost-short {
   color: var(--red);
 }
+/* ...and in a shape, because red alone is ink to a protan eye and the same
+   grey as a covered part in greyscale (playtest 40 #4). A drawn cross in the
+   ink it stands in: red on a short part, the bar's own ink in a heading's
+   legend. Orange Kid has no cross to type. */
+:where(.pixel-ui) .cost-mark {
+  display: inline-block;
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 5);
+  margin-right: calc(var(--u) * 2);
+  background: currentColor;
+  mask: var(--px-cross) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cross) center / 100% 100% no-repeat;
+}
 
 /* --- A shelf: the thing on the left, the price on the right ------------- */
 /* Brock's ladder and Bill's two lists. A row's own line says

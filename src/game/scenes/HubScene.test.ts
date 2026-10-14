@@ -1568,7 +1568,10 @@ describe('Brock', () => {
     expect(ladder).toContain('<span class="px-price"><small>4× Parts crate</small></span>');
     expect(ladder).not.toContain('Pokémon</small>');
     // One mooring rope cannot pay the four the second locker asks.
-    expect(ladder).toContain('<small class="cost-short">4× Mooring rope</small>');
+    expect(ladder).toContain('<small class="cost-short"><span class="cost-mark" aria-hidden="true"></span>4× Mooring rope</small>');
+    // The heading names the drawn cross, never the colour (playtest 40 #4).
+    expect(ladder).not.toContain('Red is not yet spare');
+    expect(ladder).toContain('<span class="cost-mark" aria-hidden="true"></span>Not yet spare at base</small>');
     // A rung that cannot be built is still a control, so the cursor can reach it
     // and the pane under the list can say what it does.
     expect(ladder).toMatch(/data-outfit="secure-locker-1"(?![^>]*aria-disabled)[^>]* data-shows/);
@@ -2029,7 +2032,7 @@ describe('HubScene - Bill', () => {
     const shelf = boat.slice(boat.indexOf('data-shown-by="super-potion"'));
     // ₽260 against ₽200 held, so the held half is the one written in red.
     expect(shelf).toContain('<div class="is-short"><dt>');
-    expect(shelf).toContain('<dd>₽200 in the vault</dd>');
+    expect(shelf).toContain('<dd><span class="cost-mark" aria-hidden="true"></span>₽200 in the vault</dd>');
     expect(shelf).toContain('<dt><span class="shop-price-nib" aria-hidden="true"></span><span>1 of his ration</span></dt>');
 
     const table = boat.slice(boat.indexOf('data-shown-by="barter-hm03"'));
