@@ -144,7 +144,7 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
       label: 'LOST FIELD KIT',
       cue: 'LOST KIT',
       icon: 'field-kit',
-      collectedMessage: 'Recovered the lost field kit! Extract to secure it.',
+      collectedMessage: 'Recovered the lost field kit! Extract to bank it.',
     },
   ],
   reward: {

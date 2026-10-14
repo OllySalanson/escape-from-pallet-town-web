@@ -222,7 +222,7 @@ function contractHints(
 
   if (outstanding.length === 0) {
     return [
-      `${contract.name} secured. It only banks when you extract.`,
+      `${contract.name} is ready. It only banks when you extract.`,
       extractionHint,
     ];
   }
