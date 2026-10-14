@@ -35,6 +35,18 @@ export class StarterScene extends Phaser.Scene {
       this.renderCannotSave();
       return;
     }
+    // The choice follows the cursor: arrowing or pointing to Charmander used
+    // to leave the bar reading CONFIRM BULBASAUR until Enter was pressed on the
+    // card (playtest 47). Moving the cursor still commits nothing - CONFIRM is
+    // one deliberate step down.
+    this.overlay.root.addEventListener('focusin', (event) => {
+      const card = (event.target as Element | null)?.closest?.<HTMLElement>('[data-starter]');
+      const starter = card?.dataset.starter as StarterSpeciesId | undefined;
+      if (starter && starter !== this.selectedStarterId) {
+        this.selectedStarterId = starter;
+        this.render();
+      }
+    });
     this.render();
   }
 

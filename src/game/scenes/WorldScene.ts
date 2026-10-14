@@ -700,6 +700,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private windowPausePlate: PausePlate | null = null;
   /** The cue the objective chip is currently showing, so a change can be noticed. */
   private objectiveCue = '';
+  /** The nearest open exit the chip names, and what it was asked for (`nearestExitCue`). */
+  private exitCue: { readonly label: string; readonly heading: string } | undefined;
+  private exitCueKey = '';
+  /** The collision the cue was walked over: a door opened mid-raid rebuilds it. */
+  private exitCueGrid: readonly (readonly boolean[])[] | undefined;
   /** Counts down the window in which a changed objective shows its extra line. */
   private objectiveDetailMs = 0;
   /** The district the player is standing in, and how long its arrival plate has left. */
@@ -962,6 +967,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.voyaging = undefined;
     this.boatAwayToldAt = null;
     this.timerThreat = 'normal';
+    this.exitCue = undefined;
+    this.exitCueKey = '';
+    this.exitCueGrid = undefined;
     // A gate opened in the last raid is in the save, and is read back from it;
     // what must not survive is this instance's own copy of the list.
     this.defeatedBosses = [];
@@ -3978,7 +3986,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const snapshot = manager.snapshot();
     const navigationCue = this.contractNavigationCue(snapshot.contractSteps)
       ?? session.objectives.find((objective) => !objective.progress(snapshot).complete)?.description
-      ?? openRaidCue({ items: snapshot.foundItems.length, pokemon: snapshot.caughtPokemon.length });
+      ?? openRaidCue(
+        { items: snapshot.foundItems.length, pokemon: snapshot.caughtPokemon.length },
+        this.nearestExitCue(),
+      );
     if (navigationCue !== this.objectiveCue) {
       this.objectiveCue = navigationCue;
       this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
@@ -4626,6 +4637,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       defeatedTrainerIds: [...this.defeatedTrainerIds],
       pausedWorld: true,
     });
+  }
+
+  /**
+   * The open exit the fewest walking steps away and which way it is, for the
+   * objective chip. The chip is drawn every frame and the search walks the
+   * whole map, so it is asked again only when the player's tile, the map or
+   * which exits are open has changed.
+   */
+  private nearestExitCue(): { readonly label: string; readonly heading: string } | undefined {
+    const exits = (this.runSession?.plan?.extractionPoints ?? []).filter((point) => point.mapId === this.currentMap.id);
+    const open = exits.filter((point) => this.isExtractionOpen(point)).map((point) => point.label).join('|');
+    const key = `${this.currentMap.id}:${this.currentTile.x},${this.currentTile.y}:${open}`;
+    if (this.exitCueKey !== key || this.exitCueGrid !== this.collisionData) {
+      this.exitCueKey = key;
+      this.exitCueGrid = this.collisionData;
+      const exit = this.nearestOpenExitHere().nearestOpenExit;
+      this.exitCue = exit ? { label: exit.label, heading: this.headingTo(exit.position) } : undefined;
+    }
+    return this.exitCue;
   }
 
   /** The open exit the fewest walking steps from the player, for the field guide. */

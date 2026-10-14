@@ -400,14 +400,20 @@ export class ExtractionScene extends Phaser.Scene {
       (escaped
         ? report.gear.filter((piece) => piece.fate === 'found').length
         : report.gear.filter((piece) => piece.fate === 'lost').length + (report.pack?.fate === 'lost' ? 1 : 0));
-    // Experience before the contract: the verdict window above has already said
-    // what became of the contract, while a level gained in the field is said
-    // nowhere else - and under a four-line contract row it was below the fold.
+    // A contract banked leads, with field experience straight under it: what it
+    // paid for good - the insertions it unlocked, the exit it opened - is said
+    // nowhere else, and as the last block of the pane it was under the fold on
+    // the very raid that unlocked the rest of the game (playtest 47). The
+    // verdict above already says what was banked beside it. An unpaid contract
+    // is said last, after the experience, as before: under a four-line contract
+    // row a level gained in the field was below the fold (playtest 4).
     const contract = report.contract
       ? `<h3 class="px-subheading">Contract</h3><div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
       : '';
     return pixelWindow(
-      `<div class="px-list px-scroll" data-reads>${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.packRow()}${this.gearRows()}${this.progressRows()}${contract}</div>`,
+      report.contract?.complete
+        ? `<div class="px-list px-scroll" data-reads>${contract}${this.progressRows()}${rows ? `<h3 class="px-subheading">${escapeHtml(report.ledgerHeading)}</h3>${rows}` : ''}${this.packRow()}${this.gearRows()}</div>`
+        : `<div class="px-list px-scroll" data-reads>${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.packRow()}${this.gearRows()}${this.progressRows()}${contract}</div>`,
       {
         className: 'extraction-ledger',
         heading: escapeHtml(report.ledgerHeading),

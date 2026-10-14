@@ -14,7 +14,7 @@
 // words, not the pursuit.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
-import { GAME, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const [base, outDir] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 mkdirSync(outDir, { recursive: true });
@@ -45,7 +45,7 @@ try {
   await click('Confirm Bulbasaur');
   await walkIntoBase(page, 'oaks-lab', { press, until, wait });
   await click('Start a raid');
-  await click('Bulbasaur');
+  await until(takePokemon('Bulbasaur'));
   // Point at the Potion row so its help line says why it is packed.
   await page.evaluate(`document.querySelector('button[data-count-kind="item"][data-count-id="potion"][data-count-dir="-1"]')?.focus()`);
   await shot('01-loadout-medicine-packed');

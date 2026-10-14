@@ -103,6 +103,7 @@ export {
   canBeTaught,
   machineForItem,
   machineForItemId,
+  READ_IN_A_RAID,
   teachFromMachine,
   type TeachOutcome,
 } from './teaching';

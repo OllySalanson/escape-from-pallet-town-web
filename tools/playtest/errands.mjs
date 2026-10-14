@@ -11,7 +11,7 @@
 // vault. Photographs each beat and fails loudly when one is not what it promises.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -141,7 +141,7 @@ try {
 
   // The drop-in screen names the errands on the map being looked at.
   await click('[data-deploy-flow]', 'Start a raid');
-  await click('button[data-pokemon]:not(.is-selected)', 'a Pokémon for the raid');
+  await page.waitFor(takePokemon(), { what: 'a Pokémon for the raid' });
   await click('[data-advance]', 'on to the drop-in');
   await click('button[data-insertion="route-1"]', 'Route 1');
   await sleep(600);

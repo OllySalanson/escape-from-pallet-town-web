@@ -617,10 +617,10 @@ describe('hub deployment route', () => {
     // and the loadout is rebuilt against the vault as it stands.
     expect(stale.stash.listPokemon().some((stored) => stored.id === 'charmander-1')).toBe(false);
     expect(stale.stash.itemCount('leftovers')).toBe(0);
-    expect(stale.flow.party).toEqual([]);
+    // Bulbasaur is the vault's only Pokemon now, so it is packed by default.
+    expect(stale.flow.party.map(({ id }) => id)).toEqual(['bulbasaur-1']);
 
     // The next deploy is made against the game as it now stands, and goes.
-    stale.flow.togglePokemon('bulbasaur-1');
     readyToDeploy(stale);
     deploy(stale, staleStart);
     expect(staleStart).toHaveBeenCalledTimes(1);
@@ -1200,6 +1200,31 @@ describe('what the base screen leads with', () => {
     expect(stash).toContain('swap-panel');
     expect(stash).toContain('Down to one Pokémon');
     expect(stash).toContain('data-view="reselect"');
+  });
+
+  it('says on the raid card when the next raid starts on a shortened clock (playtest 47)', () => {
+    const hub = createFreshHub();
+    expect(markupOf(hub)).not.toContain('Next raid');
+
+    // A revive after a lost raid: a third of the next raid gone to Joy.
+    (hub as unknown as { savedGame: { pendingRecoveryMs: number } }).savedGame.pendingRecoveryMs = 100_000;
+    const card = /<button[^>]*data-deploy-flow[^>]*>[\s\S]*?<\/button>/.exec(markupOf(hub))?.[0] ?? '';
+
+    expect(card).toContain('Next raid 3:20: 1:40 went on recovery.');
+  });
+
+  it('says at base that a disc is read from the pack in a raid (playtest 47)', () => {
+    const hub = createFreshHub();
+    hub.stash.addItem('tm40-aerial-ace', 1);
+
+    hub.setView('stash');
+    const row = /<button[^>]*data-supply="tm40-aerial-ace"[^>]*>/.exec(markupOf(hub))?.[0] ?? '';
+
+    expect(row).toContain('Teaches Aerial Ace');
+    expect(row).toContain('read it from your pack (B) in a raid');
+    // And on the loadout, where it is packed.
+    hub.setView('deploy');
+    expect(markupOf(hub)).toContain('read it from your pack (B) in a raid');
   });
 
   it('words the swap as an option, not an alarm, before a raid has been lost (playtest 47)', () => {

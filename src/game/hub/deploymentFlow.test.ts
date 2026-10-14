@@ -137,6 +137,27 @@ describe('deployment flow', () => {
     expect(flow.isDeployable).toBe(false);
   });
 
+  it('packs a vault\'s only Pokemon by default, and lets it be taken back out (playtest 47)', () => {
+    // A new player was made to ADD their one Pokemon again on every raid,
+    // under "0/6 POKEMON PACKED".
+    const stash = createStartingStash();
+    const [only] = stash.listPokemon();
+    const flow = new DeploymentFlow(stash);
+
+    expect(flow.party.map(({ id }) => id)).toEqual([only.id]);
+    expect(flow.isDeployable).toBe(true);
+    // A default, never a cage.
+    flow.togglePokemon(only.id);
+    expect(flow.party).toEqual([]);
+  });
+
+  it('leaves a lone Pokemon that cannot fight out of the party', () => {
+    const stash = createStartingStash();
+    stash.listPokemon()[0].pokemon.currentHp = 0;
+
+    expect(new DeploymentFlow(stash).party).toEqual([]);
+  });
+
   it('deploys, and secures, a Pokemon kept in a later box exactly as one kept in the first', () => {
     const { flow, stash } = seedFlow();
     const shelf = stash.addBox();
@@ -399,7 +420,6 @@ describe('deployment flow', () => {
     );
 
     remembered.adjustItem('potion', 3);
-    remembered.togglePokemon('bulbasaur-1');
 
     expect(remembered.securedPokemon.map(({ id }) => id)).toEqual(['bulbasaur-1']);
     expect(remembered.securedItems).toEqual([]);

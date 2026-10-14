@@ -38,14 +38,14 @@ import { ExtractionScene } from './ExtractionScene';
  * it scrolled.
  */
 describe('the result screen ledger', () => {
-  it('lists field experience above the contract the verdict has already spoken for', () => {
+  it('lists field experience above a contract left unpaid', () => {
     const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
     const report = {
       outcome: 'ESCAPED',
       ledger: { pokemon: [], items: [] },
       ledgerHeading: 'Banked',
       ledgerEmptyText: 'Nothing.',
-      contract: { description: 'Recover the lost field kit', complete: true, reward: 'Three more insertions.' },
+      contract: { description: 'Recover the lost field kit', complete: false, reward: 'It stays on the board.' },
       progress: [
         { name: 'Charmander', fromLevel: 5, toLevel: 6, experienceGained: 40, experienceToNextLevel: 20 },
       ],
@@ -59,7 +59,37 @@ describe('the result screen ledger', () => {
     const html = (scene as unknown as { ledgerPanel(): string }).ledgerPanel();
 
     expect(html).toContain('Level 5 to 6');
-    expect(html.indexOf('Field experience')).toBeLessThan(html.indexOf('Contract complete'));
+    expect(html.indexOf('Field experience')).toBeLessThan(html.indexOf('Contract unpaid'));
+  });
+
+  it('leads with a contract banked, so what it paid for good is never under the fold (playtest 47)', () => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const report = {
+      outcome: 'ESCAPED',
+      ledger: { pokemon: [], items: [{ itemId: 'mooring-rope', label: 'Mooring rope', quantity: 1 }] },
+      ledgerHeading: 'Banked',
+      ledgerEmptyText: 'Nothing.',
+      contract: { description: 'Recover the lost field kit', complete: true, reward: 'Four more insertions are permanently unlocked.' },
+      progress: [
+        { name: 'Charmander', fromLevel: 5, toLevel: 6, experienceGained: 40, experienceToNextLevel: 20 },
+      ],
+      gear: [],
+      gearSummary: null,
+      pack: { itemId: 'satchel', name: 'Satchel', squares: 12, fate: 'kept' },
+      packSummary: 'Your Satchel came home, all 12 squares of it.',
+    } as unknown as ExtractionReport;
+    Object.assign(scene as object, { report });
+
+    const html = (scene as unknown as { ledgerPanel(): string }).ledgerPanel();
+    const at = (words: string) => html.indexOf(words);
+
+    // The payoff first, the level gained in the field straight under it, and
+    // then what was banked beside them - still under a heading of its own.
+    expect(at('Contract complete')).toBeGreaterThan(-1);
+    expect(at('Contract complete')).toBeLessThan(at('Field experience'));
+    expect(at('Four more insertions')).toBeLessThan(at('Field experience'));
+    expect(at('Field experience')).toBeLessThan(at('Mooring rope'));
+    expect(at('Field experience')).toBeLessThan(at('Satchel'));
   });
 
   it('stars a shiny in the field experience rows, as every list naming a Pokemon does', () => {

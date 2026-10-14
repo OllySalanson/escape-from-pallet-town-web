@@ -10,7 +10,7 @@
 // does instead of cutting is on record.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
-import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -79,7 +79,7 @@ try {
   await walkIntoBase(page, 'oaks-lab');
   await click('Start a raid');
   await shoot('loadout');
-  await click('Bulbasaur');
+  await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
   await click('Choose drop-in');
   await shoot('dropin');
   await click('Review & deploy');

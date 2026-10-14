@@ -14,7 +14,7 @@
 // how many were drunk, then taps Enter once more and expects exactly one.
 // Exit code 1 is the bug.
 import { launchBrowser, sleep } from './browser.mjs';
-import { GAME, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const [url = 'http://localhost:5173/'] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 
@@ -64,7 +64,7 @@ try {
   await until(sceneIs('base'));
   await walkIntoBase(page, 'oaks-lab', { press, until });
   await click('Start a raid');
-  await click('Bulbasaur');
+  await until(takePokemon('Bulbasaur'), 'Bulbasaur in the raid party');
   await click('Choose drop-in');
 
   await focus('Review & deploy');

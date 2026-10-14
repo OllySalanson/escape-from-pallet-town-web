@@ -81,7 +81,9 @@ import {
   gridCells,
   isFoundOnly,
   isFurniture,
+  isMachine,
   itemAmountsFor,
+  READ_IN_A_RAID,
   type ItemDefinition,
   type ItemId,
   type PackItemId,
@@ -1841,7 +1843,14 @@ export class HubScene extends Phaser.Scene {
     // overworld draws him from, at the same scale. The other three people are
     // in their own buildings now (`base/doors.ts`), so the only other face here
     // is Nurse Joy's, on the line that says somebody needs her.
-    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
+    // A clock the Pokémon Center has shortened is said on the card that starts
+    // the raid it shortens: after a wipe and a revive nothing here said the next
+    // raid was 3:20 until the final check (playtest 47).
+    const shortened =
+      this.pendingRecoveryMs > 0 && !isPlaytestRun()
+        ? `<p class="px-warning">Next raid ${formatRecoveryClock(this.raidClockMs)}: ${formatRecoveryClock(this.pendingRecoveryMs)} went on recovery.</p>`
+        : '';
+    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${shortened}${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
     const condition = said
       ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
       : '<p>Everyone is fit to deploy.</p>';
@@ -2523,7 +2532,7 @@ export class HubScene extends Phaser.Scene {
     const supplyRow = (item: ItemDefinition): string =>
       // One line a supply, as a bag lists them: what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
     const materialRows = this.stashItems
       .filter((item) => isFoundOnly(item.id) && !isFurniture(item.id))
       .map(supplyRow)
@@ -2659,6 +2668,8 @@ export class HubScene extends Phaser.Scene {
         const prepacked = this.flow.isPrepacked(item.id as ItemId);
         const help = escapeAttribute(
           `${item.displayName}: ${item.description} ${size} each, ${held} at base.${
+            isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''
+          }${
             prepacked ? ' Packed for you - medicine goes in by default. Take it out if you want the squares.' : ''
           }`,
         );

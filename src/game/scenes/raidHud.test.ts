@@ -113,6 +113,16 @@ describe('the cue with no objective left', () => {
     expect(openRaidCue({ items: 1, pokemon: 0 })).toBe('EXTRACT WITH YOUR HAUL');
     expect(openRaidCue({ items: 0, pokemon: 1 })).toBe('EXTRACT WITH YOUR HAUL');
   });
+
+  it('says which way the nearest open exit is, as every stop before it was said (playtest 47)', () => {
+    expect(openRaidCue({ items: 2, pokemon: 0 }, { label: 'Radio Exit', heading: 'SW' })).toBe(
+      'EXTRACT VIA RADIO EXIT: SW',
+    );
+    // An empty pack is still told to find something first.
+    expect(openRaidCue({ items: 0, pokemon: 0 }, { label: 'Radio Exit', heading: 'SW' })).toBe(
+      'FIND LOOT, THEN EXTRACT',
+    );
+  });
 });
 
 describe('the arrival plate', () => {
