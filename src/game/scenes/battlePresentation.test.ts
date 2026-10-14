@@ -128,14 +128,21 @@ describe('battle presentation', () => {
   });
 
   it('names the key that cancels, and says a refusal on the prompt line beside the list', () => {
-    expect(partyPrompt({ forced: false, refusal: '' })).toBe('Choose a POKéMON  ESC: cancel');
-    expect(partyPrompt({ forced: true, refusal: '' })).toBe('Choose a POKéMON!');
-    expect(partyPrompt({ item: { displayName: 'Potion' }, forced: false, refusal: '' })).toBe(
+    expect(partyPrompt({ forced: false, refusal: '' })).toEqual(['Choose a POKéMON  ESC: cancel']);
+    expect(partyPrompt({ forced: true, refusal: '' })).toEqual(['Choose a POKéMON!']);
+    expect(partyPrompt({ item: { displayName: 'Potion' }, forced: false, refusal: '' })).toEqual([
       'Use POTION on whom?  ESC: cancel',
-    );
-    expect(partyPrompt({ forced: false, refusal: 'SQUIRTLE is already at full HP!' })).toBe(
-      'SQUIRTLE is already at full HP!',
-    );
+    ]);
+    // A refusal keeps the way back, so "already out" with one Pokemon in the
+    // party is never a dead end (playtest 47); too long for it, it says the
+    // refusal alone. A forced replacement has no way back to name.
+    expect(partyPrompt({ forced: false, refusal: 'CHARMANDER is already out!' })).toEqual([
+      'CHARMANDER is already out!  ESC: cancel',
+      'CHARMANDER is already out!',
+    ]);
+    expect(partyPrompt({ forced: true, refusal: 'PIDGEY has no energy left to battle!' })).toEqual([
+      'PIDGEY has no energy left to battle!',
+    ]);
   });
 
   it('marks a move with no PP left as unusable in its own label', () => {

@@ -1424,6 +1424,28 @@ describe('the forced replacement list', () => {
   });
 });
 
+describe('the party list with nobody else to send out', () => {
+  it('keeps the way back on the line that says the lead is already out (playtest 47)', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness({
+      party: new PokemonParty([new Pokemon(CHARMANDER, 7)]),
+      wild: new Pokemon(PIDGEY, 3),
+    });
+    const battle = scene as unknown as {
+      onMessagesComplete(): void;
+      showPartySelection(forced: boolean): void;
+      switchPokemon(index: number): void;
+      mode: string;
+    };
+    battle.onMessagesComplete();
+    battle.showPartySelection(false);
+    battle.switchPokemon(0);
+
+    const texts = read(renderedTexts).map(({ text }) => text.trim());
+    expect(texts).toContain('CHARMANDER is already out!  ESC: cancel');
+    expect(battle.mode).toBe('party');
+  });
+});
+
 describe('the battle menu remembers where the cursor was left, as FireRed does', () => {
   it('opens the next turn on RUN after a failed escape, so trying again is one press (playtest 45)', () => {
     // A wild Pokemon faster than the player, or there is no failed escape to try again.

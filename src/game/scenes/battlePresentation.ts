@@ -109,21 +109,33 @@ export const formatPartyRow = (pokemon: {
 export const CANCEL_HINT = 'ESC: cancel';
 
 /**
- * The party list's top line. A refusal takes the line over rather than being
- * added under the list: it is the answer to the row the cursor is on, so it is
- * said beside that row and not at the far end of the panel.
+ * The party list's top line, then a shorter way of saying it. A refusal takes
+ * the line over rather than being added under the list: it is the answer to
+ * the row the cursor is on, so it is said beside that row and not at the far
+ * end of the panel.
+ *
+ * A refusal still names the key that cancels whenever there is one, because
+ * the refusal is often the whole of the list's news: with one Pokemon in the
+ * party, POKEMON lists only the one already out, and "CHARMANDER is already
+ * out!" with no way back written anywhere read as a dead end (playtest 47).
+ * Only a refusal too long for the panel with the hint drops it.
  */
 export const partyPrompt = (state: {
   readonly item?: { readonly displayName: string };
   readonly forced: boolean;
   readonly refusal: string;
-}): string =>
-  state.refusal ||
-  (state.item
-    ? `${itemTargetPrompt(state.item)}  ${CANCEL_HINT}`
-    : state.forced
-      ? 'Choose a POKéMON!'
-      : `Choose a POKéMON  ${CANCEL_HINT}`);
+}): readonly string[] => {
+  if (state.refusal) {
+    return state.forced ? [state.refusal] : [`${state.refusal}  ${CANCEL_HINT}`, state.refusal];
+  }
+  return [
+    state.item
+      ? `${itemTargetPrompt(state.item)}  ${CANCEL_HINT}`
+      : state.forced
+        ? 'Choose a POKéMON!'
+        : `Choose a POKéMON  ${CANCEL_HINT}`,
+  ];
+};
 
 /**
  * The beat before a trainer's next Pokemon lands.
