@@ -1539,10 +1539,9 @@ export class BaseScene extends Phaser.Scene {
     labels.forEach((label, index) => label.seat(placements[index]));
   }
 
-  /** Where the hint line is, in the world, so no caption is seated under it. */
   /** The FEEDBACK tab where it stands over the yard, in world space (`feedbackTabCover.ts`). */
   private feedbackTabIn(view: Phaser.Geom.Rectangle): Rect[] {
-    const tab = feedbackTabOverGame(this.game?.canvas, this.scale.gameSize);
+    const tab = feedbackTabOverGame(this.game?.canvas, this.scale?.gameSize);
     return tab ? [{ ...tab, x: tab.x + view.left, y: tab.y + view.top }] : [];
   }
 

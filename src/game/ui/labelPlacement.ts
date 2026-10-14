@@ -87,7 +87,8 @@ export interface CaptionRequest {
    * most of them are silent most of the time. Absent means yes.
    *
    * A silent caption is still an obstacle: the thing it names is drawn where it
-   * always was, and no other caption may sit on that. It also still counts as
+   * always was, and no other caption may sit on that - bar a warning with
+   * nowhere else to sit (`placeCaptions`). It also still counts as
    * one of its group's members in view, because two doors on one screen want
    * one sentence whether or not the player has walked up to both.
    */
@@ -433,6 +434,7 @@ export function placeCaptions(
   // obstacles before the first caption is seated.
   // A caption silenced by its group still names something that is drawn there.
   const everySubject = requests.map((request) => request.subject);
+  const warningSubjects = requests.filter((request) => request.warns === true).map((request) => request.subject);
   const speaking = resolveGroups(requests, surroundings.bounds);
   const around: CaptionSurroundings = {
     ...surroundings,
@@ -476,10 +478,25 @@ export function placeCaptions(
       besideFollower >= 0 || (surroundings.follower ?? []).length === 0
         ? besideFollower
         : seatClearOf({ ...around, follower: [] });
-    const index =
+    const overPlayer =
       clearOfPlayer >= 0 || request.warns !== true
         ? clearOfPlayer
         : seatClearOf({ ...around, follower: [], player: [] });
+    // Last of all, a warning may sit on ground a name is about. Viridian
+    // City's Lass Ada watches the road between two terrace ledges, each named
+    // across its whole band, and with both bands kept clear there was no seat
+    // anywhere round her: the toll's price was never on screen. A warning
+    // outranks a name, so it is the name that gives up that ground - never a
+    // person, a sign, watched ground or another warning's subject.
+    const index =
+      overPlayer >= 0 || request.warns !== true
+        ? overPlayer
+        : seatClearOf({
+            ...surroundings,
+            keepClear: [...surroundings.keepClear, ...warningSubjects],
+            follower: [],
+            player: [],
+          });
     if (index < 0) {
       return hidden(0);
     }

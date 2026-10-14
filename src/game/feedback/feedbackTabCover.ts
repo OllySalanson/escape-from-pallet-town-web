@@ -53,9 +53,9 @@ export function tabOverGame(
 /** The tab as it stands on this page now, over `canvas` - see `tabOverGame`. */
 export function feedbackTabOverGame(
   canvas: HTMLCanvasElement | undefined,
-  game: { readonly width: number; readonly height: number },
+  game: { readonly width: number; readonly height: number } | undefined,
 ): Rect | null {
-  if (typeof document === 'undefined' || !canvas) {
+  if (typeof document === 'undefined' || !canvas || !game) {
     return null;
   }
   const tab = document.querySelector<HTMLElement>('.feedback-tab');

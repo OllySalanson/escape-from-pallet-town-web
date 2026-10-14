@@ -5701,7 +5701,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ? [{ x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
       : [];
     // The FEEDBACK tab stands over the right edge of the screen (`feedbackTabCover.ts`).
-    const tab = feedbackTabOverGame(this.game?.canvas, this.scale.gameSize);
+    const tab = feedbackTabOverGame(this.game?.canvas, this.scale?.gameSize);
     const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
