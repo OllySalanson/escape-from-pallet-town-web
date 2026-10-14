@@ -76,18 +76,36 @@ describe('the map maker screen', () => {
     }
   });
 
+  it('names only buttons that exist, and never asks for the walk before the walk (playtest 39 A3)', () => {
+    const unfinished = makerScreen(state(blankMap(), false));
+    const said = [...unfinished.matchAll(/data-help="([^"]*)"|<small[^>]*>([^<]*)<\/small>|<span>([^<]*)<\/span>|<strong[^>]*>([^<]*)<\/strong>/g)]
+      .map((match) => match.slice(1).find(Boolean) ?? '')
+      .join('\n');
+    // There is no TRY IT button: the two that try a map are WALK IT and RAID IT.
+    expect(said).not.toMatch(/TRY IT/i);
+    expect(walkedCheck(false).label).not.toMatch(/TRY IT/i);
+    expect(walkedCheck(false).problems.join(' ')).toMatch(/WALK IT or RAID IT/);
+    // A greyed try button may not send the maker to "the checks above", which
+    // include the walk it is the only way to pass.
+    for (const button of tryButtons(unfinished)) {
+      expect(button).not.toContain('pass the checks above first');
+      expect(button).toMatch(/other checks/);
+    }
+    expect(walkedCheck(false).problems.join(' ')).toMatch(/every other check/);
+  });
+
   it('lets a map be tried only once it works, and says so on the button', () => {
     const unfinished = makerScreen(state(blankMap(), false));
     expect(tryButtons(unfinished)).toHaveLength(2);
     for (const button of tryButtons(unfinished)) {
       expect(button).toContain('aria-disabled="true"');
-      expect(button).toContain('pass the checks above first');
+      expect(button).toContain('Fix the other checks first');
     }
     const works = makerScreen(state(SAMPLE, false));
     for (const button of tryButtons(works)) {
       expect(button).not.toContain('aria-disabled');
     }
-    expect(works).toContain('WORKS · TRY IT');
+    expect(works).toContain('WORKS · WALK IT');
     // A finished map's checks fold to one line.
     expect(makerScreen(state(SAMPLE, true))).toContain('Every check passes.');
     expect(makerScreen(state(SAMPLE, true))).toContain('READY');
@@ -371,7 +389,9 @@ describe('the checks, as a list a maker works through', () => {
   it('only says a fault about the whole map, with nothing to press', () => {
     const walked = checks.length - 1;
     expect(markup).not.toContain(`data-goto="${walked}:0"`);
-    expect(markup).toContain('<small class="maker-fault-text px-wrap">WALK IT or RAID IT, and leave by an exit.</small>');
+    expect(markup).toContain(
+      '<small class="maker-fault-text px-wrap">Once every other check passes, press WALK IT or RAID IT and leave by an exit.</small>',
+    );
   });
 
   it('names an inside as well as a tile', () => {

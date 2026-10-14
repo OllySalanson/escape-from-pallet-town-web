@@ -150,10 +150,12 @@ export type MakerCheck = Omit<MapCheck, 'id'> & { readonly id: string };
 
 /** The last check, which is not a fact about the file but about its maker. */
 export function walkedCheck(walked: boolean): MakerCheck {
-  const problems = walked ? [] : ['WALK IT or RAID IT, and leave by an exit.'];
+  const problems = walked
+    ? []
+    : ['Once every other check passes, press WALK IT or RAID IT and leave by an exit.'];
   return {
     id: 'walked',
-    label: 'You walked out of it yourself in TRY IT',
+    label: 'You walked out of it yourself',
     passed: walked,
     problems,
     faults: problems.map((text) => ({ text, places: [], group: 'tries' })),
@@ -1335,7 +1337,7 @@ export function makerScreen(state: MakerViewState): string {
   const tryHelp = (what: string): string =>
     works
       ? `${what} ${state.selected?.kind === 'drop-in' ? 'Starts at the chosen drop-in.' : 'Starts at the front door; choose a drop-in first to start there.'}`
-      : 'Make the map pass the checks above first.';
+      : 'Fix the other checks first. The last one, walking out of it, is passed here.';
   const actions = [
     button('data-undo', 'Undo', 'Takes back the last change. Ctrl+Z.', state.canUndo),
     button('data-redo', 'Redo', 'Puts it back again. Ctrl+Y.', state.canRedo),
@@ -1365,7 +1367,7 @@ export function makerScreen(state: MakerViewState): string {
       'Send in',
       ready
         ? 'Sends this map in to be played and, if it is approved, put in the game.'
-        : 'Pass every check above first, walking out of it in TRY IT included.',
+        : 'Pass every check above first, walking out of it with WALK IT or RAID IT included.',
       ready,
       true,
     ),
@@ -1374,7 +1376,7 @@ export function makerScreen(state: MakerViewState): string {
     place: 'Map maker',
     title: escapeHtml(state.file.name || 'Untitled map'),
     back: { label: 'TITLE', attribute: 'data-back' },
-    aside: `<span>${state.checks.every((check) => check.passed) ? 'READY' : works ? 'WORKS · TRY IT' : 'NOT FINISHED'}</span>`,
+    aside: `<span>${state.checks.every((check) => check.passed) ? 'READY' : works ? 'WORKS · WALK IT' : 'NOT FINISHED'}</span>`,
     hints: 'CLICK the map to paint · CTRL+Z undo · ESC cancel',
     ...(state.status ? { status: escapeHtml(state.status) } : {}),
     body: `<main class="px-body maker-shell">${toolsPane(state, inside)}${mapPane(state, view, inside)}${side}${pixelCommitBar(

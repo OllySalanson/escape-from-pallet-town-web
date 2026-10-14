@@ -3029,7 +3029,7 @@ export class MapMakerScene extends Phaser.Scene {
    */
   private openSend(): void {
     if (!this.currentChecks().every((check) => check.passed) || !this.walkedOut()) {
-      this.render('Pass every check first, walking out of it in TRY IT included.');
+      this.render('Pass every check first, walking out of it with WALK IT or RAID IT included.');
       return;
     }
     const refusal = sendRefusal(this.file);
