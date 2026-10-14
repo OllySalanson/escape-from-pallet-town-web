@@ -131,7 +131,10 @@ export function gullStrand(): MapcraftResult {
   p.unlock([[44, 60], [45, 60], [44, 61], [45, 61], [44, 62], [45, 62], [44, 63], [45, 63]]);
   p.block(44, 46, 2, 18, 'M'); // the jetty, out to the boats...
   p.building('ferry', 46, 52, { lot: 'W' }); // ...and the boat moored at it
-  p.road([[6, 20], [6, 29]]); // the cliff-top path, down to the steps
+  // The cliff-top path, down to the steps: it ends on the outcrop's grassy top
+  // rather than running under it, where its sand met the stair's baked-in
+  // grass in a hard line (the vale's playtest, B4).
+  p.road([[6, 20], [6, 28]]);
 
   // -- The heath: grass in beds, flowers on the dry ground ---------------------
   p.bedRows([8, 34, 40], [9, 33, 41], [10, 34, 40], [22, 8, 16], [23, 7, 17], [24, 9, 15], [24, 50, 56], [25, 49, 57], [26, 50, 55]);

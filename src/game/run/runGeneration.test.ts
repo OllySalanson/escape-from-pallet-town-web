@@ -597,3 +597,13 @@ describe('run generation', () => {
     });
   });
 });
+
+describe('what a landing says of itself', () => {
+  it('describes a finished place: no landing says its map is still being drawn', () => {
+    // Greystone Vale's front door said "The rest of the vale is still being
+    // drawn." on the drop-in screen long after every district of it was drawn
+    // (the vale's playtest, B3): the first sentence a player reads about it.
+    const stale = Object.values(RUN_INSERTIONS).filter((insertion) => /still being drawn/i.test(insertion.description));
+    expect(stale.map((insertion) => insertion.id)).toEqual([]);
+  });
+});
