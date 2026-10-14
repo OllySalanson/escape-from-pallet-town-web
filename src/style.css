@@ -2782,15 +2782,21 @@ button {
 }
 /* What is being carried, drawn where it would land. Green over a seat that
    would take it, red over one that would not - the whole answer to "will this
-   go here", on the squares rather than in a line of words under them. */
+   go here", on the squares rather than in a line of words under them. It is
+   positioned and raised because a block is positioned, and a positioned box
+   paints over every box that is not: unraised, the red ghost was drawn under
+   the very block it collides with (playtest 40). "Will not fit" has a frame
+   twice as heavy as well as a red one, so it is not told by colour alone. */
 :where(.pixel-ui) .px-grid-ghost {
+  position: relative;
+  z-index: 1;
   pointer-events: none;
   box-shadow: inset 0 0 0 var(--u) var(--ink);
   background: var(--teal-wash);
 }
 :where(.pixel-ui) .px-grid-ghost.is-bad {
   background: var(--red-wash);
-  box-shadow: inset 0 0 0 var(--u) var(--red);
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--red);
 }
 /* The strip under a container: the way back to an automatic pack. It is a chip
    on its own because the pack's column is a third of the stage wide - what the

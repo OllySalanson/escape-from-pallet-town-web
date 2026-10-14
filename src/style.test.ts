@@ -481,3 +481,32 @@ describe('the defeat line-up', () => {
     expect(declared(rule('.defeat-meta'), 'white-space')).toBe('nowrap');
   });
 });
+
+describe('the ghost of a carried piece', () => {
+  // Playtest 40: carried over a seat another piece already holds, the ghost was
+  // marked "will not fit" and nothing red showed. A block is positioned (its
+  // stack count is pinned to its corner), and a positioned box paints over every
+  // box that is not, whatever the order of the markup - so the ghost was drawn
+  // under the very block it collides with, the one place "no" is ever needed.
+  const bodyOf = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
+      .map(([, , rule]) => rule)
+      .join(';');
+  const declared = (body: string, property: string): string | undefined =>
+    new RegExp(`(?:^|[\\s;])${property}:\\s*([^;]+);`).exec(body)?.[1]?.trim();
+
+  it('is drawn over the blocks it lands on, not under them', () => {
+    expect(declared(bodyOf(':where(.pixel-ui) .px-grid-block'), 'position')).toBe('relative');
+    const ghost = bodyOf(':where(.pixel-ui) .px-grid-ghost');
+    expect(declared(ghost, 'position')).toMatch(/^(relative|absolute)$/);
+    expect(Number(declared(ghost, 'z-index'))).toBeGreaterThan(0);
+  });
+
+  it('says "will not fit" with a heavier edge as well as a red one, so it is not colour alone', () => {
+    const good = declared(bodyOf(':where(.pixel-ui) .px-grid-ghost'), 'box-shadow') ?? '';
+    const bad = declared(bodyOf(':where(.pixel-ui) .px-grid-ghost.is-bad'), 'box-shadow') ?? '';
+    expect(good).toMatch(/var\(--u\) var\(--ink\)/);
+    expect(bad).toMatch(/calc\(var\(--u\) \* 2\) var\(--red\)/);
+  });
+});
