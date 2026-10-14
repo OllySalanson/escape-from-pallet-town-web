@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -5699,7 +5700,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const dialog = this.dialogBox?.visible
       ? [{ x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
       : [];
-    const furniture = [...(this.raidHud?.occupied ?? []), ...dialog].map((chip) => ({
+    // The FEEDBACK tab stands over the right edge of the screen (`feedbackTabCover.ts`).
+    const tab = feedbackTabOverGame(this.game?.canvas, this.scale.gameSize);
+    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,

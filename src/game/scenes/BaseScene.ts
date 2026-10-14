@@ -140,6 +140,7 @@ import {
   visitorThingName,
 } from '../home/knocking';
 import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
+import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { HarbourFigures } from '../base/harbourFigures';
@@ -1513,6 +1514,7 @@ export class BaseScene extends Phaser.Scene {
         // half under the box whenever anything here was spoken to.
         furniture: [
           ...(this.hintShown ? [this.hintRect(view)] : []),
+          ...this.feedbackTabIn(view),
           ...(this.dialogBox.visible
             ? [{ x: this.dialogBox.x + view.left, y: this.dialogBox.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
             : []),
@@ -1538,6 +1540,12 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** Where the hint line is, in the world, so no caption is seated under it. */
+  /** The FEEDBACK tab where it stands over the yard, in world space (`feedbackTabCover.ts`). */
+  private feedbackTabIn(view: Phaser.Geom.Rectangle): Rect[] {
+    const tab = feedbackTabOverGame(this.game?.canvas, this.scale.gameSize);
+    return tab ? [{ ...tab, x: tab.x + view.left, y: tab.y + view.top }] : [];
+  }
+
   private hintRect(view: Phaser.Geom.Rectangle): Rect {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
     return {
