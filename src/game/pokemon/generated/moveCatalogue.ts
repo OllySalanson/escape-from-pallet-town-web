@@ -535,12 +535,13 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'explosion': new MoveBase({
     name: 'Explosion',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'A Normal physical attack. The user faints. Halves the target\'s Defense for the hit.',
     type: PokemonType.Normal,
     power: 250,
     accuracy: 100,
     pp: 5,
     category: MoveCategory.Physical,
+    userFaints: true,
   }),
   'extreme-speed': new MoveBase({
     name: 'Extreme Speed',
@@ -1426,12 +1427,13 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'self-destruct': new MoveBase({
     name: 'Self-Destruct',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'A Normal physical attack. The user faints. Halves the target\'s Defense for the hit.',
     type: PokemonType.Normal,
     power: 200,
     accuracy: 100,
     pp: 5,
     category: MoveCategory.Physical,
+    userFaints: true,
   }),
   'shadow-ball': new MoveBase({
     name: 'Shadow Ball',

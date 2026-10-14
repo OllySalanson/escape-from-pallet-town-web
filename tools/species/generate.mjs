@@ -205,6 +205,7 @@ const describe = (move, effects) => {
   }
   if (CHARGE.has(move.name)) sentences.push('Spends the first turn winding up.');
   if (RECHARGE.has(move.name)) sentences.push('The user must recharge the turn after.');
+  if (move.user_faints) sentences.push("The user faints. Halves the target's Defense for the hit.");
   if (sentences.length === 1) sentences.push('No side effect.');
   return sentences.join(' ');
 };
@@ -245,6 +246,7 @@ const renderMove = (move) => {
   if (move.healing > 0) lines.push(`  healing: ${share(move.healing)},`);
   if (CHARGE.has(move.name)) lines.push('  charge: MoveCharge.Charge,');
   if (RECHARGE.has(move.name)) lines.push('  charge: MoveCharge.Recharge,');
+  if (move.user_faints) lines.push('  userFaints: true,');
   if (effects.guaranteed) {
     const parts = [];
     if (effects.guaranteed.boosts.length > 0) parts.push(`boosts: ${boostList(effects.guaranteed.boosts)}`);

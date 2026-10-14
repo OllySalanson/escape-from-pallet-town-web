@@ -82,8 +82,14 @@ export function bestPlayFor(
   let best = 0;
   let bestTarget: SlotRef | undefined = foes[0];
   let bestScore = -1;
+  const damaging = (move: BattleState['player']['moves'][number]): boolean =>
+    move.pp > 0 && move.base.category !== MoveCategory.Status && move.base.power > 0;
+  // Self-Destruct and Explosion faint the user, so they are a last resort: a
+  // play that throws its biggest number every turn would spend a Pokemon on
+  // its first swing.
+  const lastResortOnly = !combatant.moves.some((move) => damaging(move) && !move.base.userFaints);
   combatant.moves.forEach((move, index) => {
-    if (move.pp <= 0 || move.base.category === MoveCategory.Status || move.base.power <= 0) {
+    if (!damaging(move) || (move.base.userFaints && !lastResortOnly)) {
       return;
     }
     if (move.base.target === MoveTarget.BothFoes) {

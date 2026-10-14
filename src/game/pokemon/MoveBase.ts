@@ -156,6 +156,13 @@ export interface MoveBaseInit {
   readonly healing?: number;
   /** Two-turn shape, if any. */
   readonly charge?: MoveCharge;
+  /**
+   * The user faints for using it, hit or miss, and the target's Defense is
+   * halved for the blow - FireRed's `EFFECT_EXPLOSION` (Self-Destruct,
+   * Explosion): `Cmd_faintifabilitynotdamp` takes the user's HP to nothing and
+   * `CalculateBaseDamage` halves the defense before its stages.
+   */
+  readonly userFaints?: boolean;
   /** Applied every time the move connects. */
   readonly effects?: MoveEffects;
   /** Each rolled on its own chance, after the hit. */
@@ -208,6 +215,7 @@ export class MoveBase {
   public readonly drain: number;
   public readonly healing: number;
   public readonly charge: MoveCharge | null;
+  public readonly userFaints: boolean;
   public readonly effects: NormalizedMoveEffects;
   public readonly secondaries: readonly NormalizedSecondaryEffect[];
   public readonly flags: readonly MoveFlag[];
@@ -230,6 +238,7 @@ export class MoveBase {
     this.drain = init.drain ?? 0;
     this.healing = init.healing ?? 0;
     this.charge = init.charge ?? null;
+    this.userFaints = init.userFaints ?? false;
     this.effects = normalizeEffects(init.effects);
     // A secondary with no target of its own follows the move's, which is what
     // makes "30% chance to lower the target's Speed" the default reading and
