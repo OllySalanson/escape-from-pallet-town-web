@@ -76,6 +76,18 @@ describe('the map maker screen', () => {
     }
   });
 
+  it('never names two rows of the paint pane alike, and says a planted sign cannot be read (playtest 39 B5)', () => {
+    const markup = makerScreen(state(SAMPLE, false));
+    const rows = [
+      ...markup.matchAll(/data-place="[^"]+"[^>]*>(?:<[^>]*>)*?<span class="px-row-main">([^<]+)</g),
+    ].map((match) => match[1].toLowerCase());
+    const repeated = rows.filter((label, index) => rows.indexOf(label) !== index);
+    expect(repeated).toEqual([]);
+    const planted = /data-building="sign"[^>]*data-help="([^"]+)"/.exec(markup)?.[1] ?? '';
+    expect(planted).toContain('only a picture');
+    expect(planted).toContain('Sign under Places');
+  });
+
   it('names only buttons that exist, and never asks for the walk before the walk (playtest 39 A3)', () => {
     const unfinished = makerScreen(state(blankMap(), false));
     const said = [...unfinished.matchAll(/data-help="([^"]*)"|<small[^>]*>([^<]*)<\/small>|<span>([^<]*)<\/span>|<strong[^>]*>([^<]*)<\/strong>/g)]

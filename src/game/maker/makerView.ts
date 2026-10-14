@@ -382,13 +382,20 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
   // the thing itself drawn whole (`drawPlantSwatch`), because eighty names are
   // not a palette. Indoors what is planted is the room's furniture: the same
   // tool, planted the same way, from the pieces a FireRed room is furnished with.
-  const plantRow = (choice: { readonly kind: MapFileBuildingKind; readonly label: string }): string =>
+  // A sign planted from Signs is a picture of one: it has no words to read, so
+  // its help says where the sign that does is (playtest 39 B5).
+  const plantRow = (choice: {
+    readonly kind: MapFileBuildingKind;
+    readonly label: string;
+    readonly group?: string;
+  }): string =>
     toolRow(
       `data-place="building" data-building="${choice.kind}"`,
       choice.label,
-      plantsAlong(choice.kind)
+      (plantsAlong(choice.kind)
         ? `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click. Drag to plant a row, each clear of the last.`
-        : `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
+        : `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`) +
+        (choice.group === 'Signs' ? ' It is only a picture: for words to read, place a Sign under Places.' : ''),
       chosenPlace === `building:${choice.kind}`,
       `<canvas class="maker-swatch" data-plant="${choice.kind}"${inside ? ` data-swatch-style="${inside.style}"` : ''} width="16" height="16" aria-hidden="true"></canvas>`,
     );
