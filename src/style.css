@@ -532,6 +532,9 @@ button {
   position: absolute;
   inset: 0;
   display: grid;
+  /* One column the stage's own width: an `auto` column grows to the widest
+     child, which let a long line-up widen the stage it was drawn on. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: center;
   justify-items: center;
   gap: clamp(12px, 3vh, 28px);
@@ -585,22 +588,34 @@ button {
   border-top: 3px solid #3a5233;
   box-shadow: 0 5px 0 rgb(0 0 0 / 45%);
 }
+/* The cast is the window's width and no wider: nine figures (you, six Pokemon,
+   two kinds of ball) at their roomy widths are wider than a 1280 window, and a
+   line-up that scrolled sideways cut you off at the left edge (playtest 42).
+   The margin either side is room for the trainer's body, which falls to the
+   left of its column once the columns fill the window. */
 .defeat-cast {
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: clamp(4px, 1.4vw, 16px);
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
+  padding-inline: clamp(8px, 2.5vw, 40px);
 }
-/* Fixed columns: the plates below stay side by side however long a species name
-   is, which is what stopped "CHARMANDER" from running under its neighbour. */
+/* Columns of a set width: the plates below stay side by side however long a
+   species name is, which is what stopped "CHARMANDER" from running under its
+   neighbour. A full line-up shares out the room it has instead, every column
+   giving way alike, and a plate wraps a long name onto a second line. */
 .defeat-figure {
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) var(--defeat-band);
   justify-items: center;
+  flex: 0 1 auto;
   width: clamp(72px, 10.5vw, 116px);
+  min-width: 0;
   margin: 0;
 }
 .defeat-figure.is-last-stand {
@@ -630,8 +645,10 @@ button {
   image-rendering: pixelated;
 }
 .defeat-trainer {
-  height: 100%;
-  width: auto;
+  /* As tall as the column, unless the column is too narrow for that: a figure
+     wider than its column ran under its neighbour's. */
+  width: min(100%, calc(var(--defeat-tall) * 16 / 22));
+  height: auto;
   /* Frame 0 of the character sheet - the player standing, facing the camera -
      cropped to the drawn figure rather than to its frame. The frame is 16x32 but
      the figure only occupies rows 5 to 27 (see CHARACTER_HEAD_PIXEL_Y and
@@ -653,7 +670,7 @@ button {
 .defeat-item-glyph {
   display: grid;
   place-items: center;
-  width: 80px;
+  width: min(80px, 100%);
   aspect-ratio: 1;
   border: 3px solid #a8564a;
   background: #2c1a1b;
@@ -668,7 +685,7 @@ button {
 }
 @media (width <= 720px), (height <= 560px) {
   .defeat-item-glyph {
-    width: 56px;
+    width: min(56px, 100%);
   }
   .defeat-item-glyph img {
     width: 32px;
@@ -688,7 +705,7 @@ button {
   gap: 1px;
   width: 100%;
   height: var(--defeat-band);
-  padding: 2px 4px;
+  padding: 2px 1px;
   border: 2px solid #593330;
   background: rgb(10 7 10 / 82%);
   color: #f4ece2;

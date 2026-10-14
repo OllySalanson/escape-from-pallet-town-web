@@ -444,4 +444,19 @@ describe('the defeat line-up', () => {
       }
     }
   });
+
+  it('fits a full line-up in the window rather than scrolling it sideways (playtest 42)', () => {
+    // Nine figures (you, six Pokemon, two kinds of ball) at their roomy widths
+    // are wider than a 1280 window: every column has to be able to give way,
+    // and nothing inside one may hold it open at a fixed width.
+    expect(declared(rule('.defeat-stage'), 'grid-template-columns')).toBe('minmax(0, 1fr)');
+    expect(declared(rule('.defeat-figure'), 'min-width')).toBe('0');
+    expect(declared(rule('.defeat-figure'), 'flex')).toBe('0 1 auto');
+    expect(declared(rule('.defeat-cast'), 'width')).toBe('100%');
+    expect(declared(rule('.defeat-item-glyph'), 'width')).toMatch(/^min\(.*100%\)$/);
+    expect(declared(rule('.defeat-trainer'), 'width')).toMatch(/^min\(100%,/);
+    // The trainer falls to the left, so the line-up keeps a margin either side
+    // that its body can lie in when the columns fill the window.
+    expect(declared(rule('.defeat-cast'), 'padding-inline')).toBeDefined();
+  });
 });
