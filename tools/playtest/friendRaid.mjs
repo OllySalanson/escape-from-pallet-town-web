@@ -22,6 +22,19 @@ mkdirSync(out, { recursive: true });
 const browser = await launchBrowser({ window: { width, height } });
 try {
   const { olly, amy, code, bring, press, until, forget } = await twoInARoom(browser, url, out);
+  // Both dropped in by the same door: on one tile, OLLY's name plate must not
+  // be drawn over the head AMY shares with him (playtest 48 finding 6, raid half).
+  const shared = await amy.evaluate(`(() => { const w = ${WORLD}; const me = w.currentTile;
+    const drawn = [...(w.friendFigures?.drawn?.values() ?? [])];
+    return { me, seen: w.friendFiguresShown, plates: drawn.map((d) => d.name.visible) }; })()`);
+  if (shared.seen.some((f) => f.tile.x === shared.me.x && f.tile.y === shared.me.y)) {
+    if (shared.plates.some(Boolean)) throw new Error(`AMY's screen names OLLY over the head they share: ${JSON.stringify(shared)}`);
+    console.log(`On one tile ${JSON.stringify(shared.me)}: no plate over the shared head`);
+    await amy.screenshot(`${out}/3b-amy-shares-a-tile.png`);
+  } else {
+    console.log(`Landed apart: AMY ${JSON.stringify(shared.me)}, OLLY ${JSON.stringify(shared.seen.map((f) => f.tile))}`);
+  }
+
   // OLLY walks; AMY sees him get where he stopped.
   const ollyWalk = await olly.evaluate(`(() => { const w = ${WORLD}; const c = w.collisionData, s = w.currentTile;
     const open = (x, y) => y >= 0 && x >= 0 && y < c.length && x < c[0].length && !c[y][x];

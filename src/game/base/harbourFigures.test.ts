@@ -178,3 +178,34 @@ describe('another player arriving on this player\'s own tile', () => {
     expect(name.visible).toBe(true);
   });
 });
+
+describe('a friend in a raid room saying something on this player\'s own tile', () => {
+  it('keeps the plate that carries what they said, because it names its speaker', () => {
+    const plates: Drawn[] = [];
+    const texts: Drawn[] = [];
+    const scene = {
+      add: {
+        sprite: () => new Drawn(),
+        graphics: () => {
+          const plate = new Drawn();
+          plates.push(plate);
+          return plate;
+        },
+        text: (_x: number, _y: number, text: string) => {
+          const name = new Drawn().setText(text);
+          texts.push(name);
+          return name;
+        },
+      },
+    } as unknown as Phaser.Scene;
+    const others = new HarbourFigures(scene);
+    const self = { x: PLAYER.x * TILE_SIZE, y: PLAYER.y * TILE_SIZE + TILE_SIZE - CHARACTER_FEET_PIXEL_Y };
+    const amy = { id: 'amy', place: 'yard', tile: PLAYER, toward: null, progress: 0, facing: 'down' as const };
+    others.update([{ ...amy, name: 'AMY: OVER HERE!', speaking: true }], self);
+    expect(plates[0].visible).toBe(true);
+    expect(texts[0].visible).toBe(true);
+    // Once she has finished saying it, her bare name goes back to being hidden.
+    others.update([{ ...amy, name: 'AMY' }], self);
+    expect(plates[0].visible).toBe(false);
+  });
+});

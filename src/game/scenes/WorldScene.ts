@@ -1531,12 +1531,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     rooms.moved(this.currentTile, this.facing);
     rooms.tick(this.time.now, deltaMs);
-    // What somebody is saying rides on their name plate while it is said.
+    // What somebody is saying rides on their name plate while it is said. Two
+    // friends dropping in by the same door land on one tile, and a friend's
+    // bare name over the head they share reads as this player's own, so it is
+    // left off until one of them walks away; a plate saying something is kept.
     this.friendFigures.update(
       rooms.figuresOn(this.currentMap.id).map((figure) => {
         const said = rooms.talk.saying(figure.id, this.time.now);
-        return said ? { ...figure, name: `${figure.name}: ${said}` } : figure;
+        return said ? { ...figure, name: `${figure.name}: ${said}`, speaking: true } : figure;
       }),
+      this.player,
     );
     this.settleRoomLoot();
     this.talkInTheRoom(deltaMs);
