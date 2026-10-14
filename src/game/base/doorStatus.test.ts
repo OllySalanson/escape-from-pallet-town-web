@@ -13,7 +13,7 @@ import { FIRST_CONTRACT_ID } from '../objectives';
 import { BASE_DOORS } from './doors';
 import { doorStatusLine } from './doorStatus';
 import { baseGame } from './baseGames.testkit';
-import { BADGES } from './badgeCase';
+import { BADGES, caseBadges } from './badgeCase';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -167,7 +167,7 @@ describe("what each of the base's doors says", () => {
     expect(doorStatusLine(home, baseGame())).toBe('Your house');
     expect(
       doorStatusLine(home, baseGame({ progress: { defeatedBosses: ['overlook-warden', 'pallet-mill-keeper'] } })),
-    ).toBe(`Your house · 2 of ${BADGES.length} badges`);
+    ).toBe(`Your house · 2 of ${caseBadges().length} badges`);
   });
 
   /** Once somebody has given their name at the door, the door says whose house it is. */
@@ -176,7 +176,7 @@ describe("what each of the base's doors says", () => {
     expect(doorStatusLine(home, baseGame(), 'OLLY')).toBe("OLLY's house");
     const everyBadge = baseGame({ progress: { defeatedBosses: BADGES.map((badge) => badge.bossId) } });
     const longest = doorStatusLine(home, everyBadge, 'WWWWWWWWWW');
-    expect(longest).toBe(`WWWWWWWWWW's house · ${BADGES.length} of ${BADGES.length} badges`);
+    expect(longest).toBe(`WWWWWWWWWW's house · ${caseBadges().length} of ${caseBadges().length} badges`);
     expect(longest.length).toBeLessThanOrEqual(40);
   });
 

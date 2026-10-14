@@ -1,7 +1,7 @@
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
-import { WORLD_MAP_NAMES, TILE_SIZE, type BuiltInMapId } from '../worldMap';
+import { isMapInProgress, WORLD_MAP_NAMES, TILE_SIZE, type BuiltInMapId } from '../worldMap';
 
 /**
  * PENNANTS: a string of them along the wall of the player's room, one for every
@@ -12,8 +12,8 @@ import { WORLD_MAP_NAMES, TILE_SIZE, type BuiltInMapId } from '../worldMap';
  * home: `raidProgress.raidRecord` counts the raids that extracted from each
  * map, and the first one hangs that map's pennant on the wall. Each is in the
  * colours of its place with its mark on it - the river's wave, the route's
- * signpost, the forest's pine, the town's mill, the city's gate - and a place
- * not yet come home from is a bare pin on the string, so the wall says how many
+ * signpost, the forest's pine, the town's mill, the city's gate, the vale's
+ * peak - and a place not yet come home from is a bare pin on the string, so the wall says how many
  * there are to collect. Nothing is stored; the record is the save's own.
  */
 
@@ -52,7 +52,21 @@ export const PENNANTS: readonly Pennant[] = [
     ink: { field: '#8858b8', band: '#f8f8f8', mark: '#f8e070', shade: '#583080' },
     mark: ['x.x.x', 'xxxxx', 'x...x', 'x...x', 'x...x'],
   },
+  {
+    // Greystone Vale, last because it opens last: the grey of its stones, and
+    // the peak the whole vale stands under.
+    mapId: 'greystone-vale',
+    ink: { field: '#78808c', band: '#f8f8f8', mark: '#e8e4d8', shade: '#484e58' },
+    mark: ['.....', '..x..', '.x.x.', 'x...x', '.....'],
+  },
 ];
+
+/**
+ * The pennants on the string: one for every map a save can go to. A map not
+ * yet offered to saves (`MAPS_IN_PROGRESS`) has its pennant made and waiting,
+ * and it goes up on the string the day the map opens.
+ */
+export const STRUNG_PENNANTS: readonly Pennant[] = PENNANTS.filter((pennant) => !isMapInProgress(pennant.mapId));
 
 /** How many raids came home from a map. */
 const homecomings = (game: RestoredGame, mapId: BuiltInMapId): number =>
@@ -60,13 +74,13 @@ const homecomings = (game: RestoredGame, mapId: BuiltInMapId): number =>
 
 /** The pennants earned, in the string's order. */
 export function earnedPennants(game: RestoredGame): readonly Pennant[] {
-  return PENNANTS.filter((pennant) => homecomings(game, pennant.mapId) > 0);
+  return STRUNG_PENNANTS.filter((pennant) => homecomings(game, pennant.mapId) > 0);
 }
 
 /** The caption's second line. */
 export function pennantsNote(game: RestoredGame): string {
   const earned = earnedPennants(game).length;
-  return earned === 0 ? 'Bare pins, waiting' : `${earned} of ${PENNANTS.length} places come home from`;
+  return earned === 0 ? 'Bare pins, waiting' : `${earned} of ${STRUNG_PENNANTS.length} places come home from`;
 }
 
 /** What the string says when it is faced: one line for every pennant on it. */
@@ -74,12 +88,12 @@ export function pennantLines(game: RestoredGame): readonly string[] {
   const earned = earnedPennants(game);
   if (earned.length === 0) {
     return [
-      `PENNANTS. ${PENNANTS.length} bare pins on a string along the wall.`,
+      `PENNANTS. ${STRUNG_PENNANTS.length} bare pins on a string along the wall.`,
       'Come home from a place - alive, with the pack on your back - and its pennant goes up.',
     ];
   }
   return [
-    `PENNANTS. ${earned.length} of ${PENNANTS.length} places you have come home from.`,
+    `PENNANTS. ${earned.length} of ${STRUNG_PENNANTS.length} places you have come home from.`,
     ...earned.map((pennant) => {
       const times = homecomings(game, pennant.mapId);
       return `${WORLD_MAP_NAMES[pennant.mapId].toUpperCase()}: home ${times === 1 ? 'once' : times === 2 ? 'twice' : `${times} times`}.`;
@@ -91,7 +105,7 @@ const STRING = '#4a3418';
 const PIN = '#c0c8d0';
 const OUTLINE = '#2b2228';
 /** A pennant's top edge, and how far it hangs below the string. */
-const PENNANT_WIDTH = 12;
+export const PENNANT_WIDTH = 12;
 const PENNANT_DROP = 16;
 /** Where the string is tied at each end, below the band along the top of the wall. */
 const STRING_Y = 5;
@@ -99,8 +113,9 @@ const STRING_Y = 5;
 const STRING_SAG = 2;
 
 /**
- * The string of pennants, painted from the save, one per tile of wall: the
- * string across the top, a pin at each pennant's corners, and the pennant
+ * The string of pennants, painted from the save, spaced evenly along the wall -
+ * a tile each while there are no more pennants than tiles, closer once there
+ * are, never closer than a pennant and a pixel: the string across the top, a pin at each pennant's corners, and the pennant
  * itself hanging to a point - or, where none has been earned, a pin and
  * nothing. Transparent everywhere else, so the wall shows through.
  */
@@ -120,8 +135,9 @@ export function pennantsPoster(game: RestoredGame, area: Rect): PaintedPicture {
   };
   for (let x = 1; x < width - 1; x += 1) plot(x, stringAt(x), STRING);
   const earned = new Set(earnedPennants(game).map((pennant) => pennant.mapId));
-  PENNANTS.slice(0, area.width).forEach((pennant, slot) => {
-    const left = slot * TILE_SIZE + Math.floor((TILE_SIZE - PENNANT_WIDTH) / 2);
+  const pitch = Math.min(TILE_SIZE, width / STRUNG_PENNANTS.length);
+  STRUNG_PENNANTS.filter((_pennant, slot) => (slot + 1) * pitch <= width).forEach((pennant, slot) => {
+    const left = Math.round(slot * pitch + Math.floor((pitch - PENNANT_WIDTH) / 2));
     const top = stringAt(left + PENNANT_WIDTH / 2) + 1;
     if (!earned.has(pennant.mapId)) {
       plot(left + PENNANT_WIDTH / 2, top - 1, PIN);

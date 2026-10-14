@@ -136,9 +136,7 @@ export const MAP_STRUCTURE_PARTS: readonly MapStructurePart[] = [
   { name: 'floodplain-relay 2/3', mapId: 'floodplain-relay', part: 2, of: 3, file: 'mapStructure.floodplainRelay2.test.ts' },
   { name: 'floodplain-relay 3/3', mapId: 'floodplain-relay', part: 3, of: 3, file: 'mapStructure.floodplainRelay3.test.ts' },
   { name: 'viridian-city', mapId: 'viridian-city', part: 1, of: 1, file: 'mapStructure.viridianCity.test.ts' },
-  // Still being drawn (`MAPS_IN_PROGRESS`), and held to every structure rule
-  // all the same: an unfinished map is still a map somebody can be raided on.
-  // One gate state too big for one file, so it is split by tiles: in one file
+  // Greystone Vale: one gate state too big for one file, so it is split by tiles: in one file
   // its flee sweeps alone ran seven minutes, and in four the slowest part's
   // took 103 of its 120 seconds on CI before Stormcrown and the caves' sixth
   // floor added an eighth more ground, and the Lost Garden more again. The

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { isMapInProgress, WORLD_MAPS } from '../worldMap';
-import { largestMapSize, pictureSize } from '../hub/dropIn';
+import { BUILT_IN_MAP_IDS } from '../worldMap';
+import { MAPS_OPENED_BY_THE_FINISHED_CHAIN } from '../objectives/contracts';
+import { largestMapSize, mapPictureSize } from '../hub/dropIn';
 import { mapPictureFrame, planOwnFrame, planSharedRow, shareTracks, PICTURE_RING } from './mapPicture';
 
 const FLOODPLAIN = { width: 128, height: 128 };
@@ -27,13 +28,26 @@ describe('one place in a frame sized for the biggest', () => {
     // The banner this replaced drew the Floodplain at two tiles to the pixel.
     // The smallest stage is 320x240 and at it the frame has about 126 pixels
     // of height, which is the one place a map is still condensed.
-    const largest = largestMapSize();
-    // A map still being drawn is left out of the frame's size (`largestMapSize`)
-    // until it opens to saves, so the explorer run may see it condensed.
-    for (const [id, map] of Object.entries(WORLD_MAPS).filter(([mapId]) => !isMapInProgress(mapId))) {
-      expect([id, planOwnFrame(pictureSize(map), largest, { width: 180, height: 180 }).fit.step]).toEqual([id, 1]);
+    const chainMaps = BUILT_IN_MAP_IDS.filter((mapId) => !MAPS_OPENED_BY_THE_FINISHED_CHAIN.includes(mapId));
+    const largest = largestMapSize(chainMaps);
+    expect(largest).toEqual(FLOODPLAIN);
+    for (const id of chainMaps) {
+      expect([id, planOwnFrame(mapPictureSize(id), largest, { width: 180, height: 180 }).fit.step]).toEqual([id, 1]);
     }
     expect(planOwnFrame(FLOODPLAIN, largest, { width: 131, height: 126 }).fit).toEqual({ step: 2, zoom: 1 });
+  });
+
+  it('frames the vale only for a save that can go there, and draws it as big as the room allows', () => {
+    // Greystone Vale is three Floodplains across: on the lobby's usual 270 of
+    // height it is two tiles to the pixel, and the Floodplain in the same frame
+    // one to the pixel - as big as the frame lets every map be at once.
+    const everything = largestMapSize(BUILT_IN_MAP_IDS);
+    expect(everything).toEqual({ width: 384, height: 384 });
+    const vale = planOwnFrame(mapPictureSize('greystone-vale'), everything, { width: 400, height: 270 });
+    expect(vale.fit).toEqual({ step: 2, zoom: 1 });
+    expect(planOwnFrame(FLOODPLAIN, everything, { width: 400, height: 270 }).fit).toEqual({ step: 1, zoom: 1 });
+    // And on a big display it is drawn tile for tile like the rest.
+    expect(planOwnFrame(mapPictureSize('greystone-vale'), everything, { width: 500, height: 400 }).fit.step).toBe(1);
   });
 });
 

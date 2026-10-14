@@ -32,6 +32,12 @@ export const BUILT_IN_FILE_PRIZES: Readonly<Partial<Record<WorldMapId, readonly 
     // Ember Isle's: in the crater, which only the Lava Tube reaches, and the
     // crater is ash every step of which is a wild Pokemon's.
     { itemId: 'charcoal', quantity: 1, chance: 0.3, place: 'THE CRATER' },
+    // Packs, as every map lays them: rolled, never certain (`packs.test.ts`).
+    // A Raid pack left at the salvage camp by somebody who rowed out to the
+    // wreck and did not row back; and a Ranger pack in the drowned quarter,
+    // behind Boatswain Cragg's barricades, where only a raid that beat him goes.
+    { itemId: 'raid-pack', quantity: 1, chance: 0.25, place: 'THE WRECK' },
+    { itemId: 'ranger-pack', quantity: 1, chance: 0.2, place: 'THE DROWNED TOWN' },
   ],
 };
 

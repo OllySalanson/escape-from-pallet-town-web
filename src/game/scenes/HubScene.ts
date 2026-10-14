@@ -151,10 +151,10 @@ import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
 import { isNightRaid } from '../world/nightRaids';
 import type { GridPosition } from '../movement/gridMovement';
-import { getWorldMap, type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
+import { getWorldMap, isBuiltInMapId, type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
 import { fitMapPictures, mapPictureFrame, pictureRowAttributes } from '../ui/mapPicture';
-import { WALL_MAP_ORDER, wallMapContext, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
+import { wallMapContext, wallMapOrder, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -1802,7 +1802,7 @@ export class HubScene extends Phaser.Scene {
     if (kind === 'dropin' && isRunInsertionId(id)) {
       return placePicture(id, this.dropInContext(id), step);
     }
-    if (kind === 'wall' && (WALL_MAP_ORDER as readonly string[]).includes(id)) {
+    if (kind === 'wall' && (wallMapOrder(this.savedGame) as readonly string[]).includes(id)) {
       return wallMapPicture(this.savedGame, id as WorldMapId, step);
     }
     return undefined;
@@ -2853,7 +2853,10 @@ export class HubScene extends Phaser.Scene {
         key: `dropin:${chosen}`,
         label: `${briefing.mapName}, ${walked}% walked`,
         size: pictureSize(context.map),
-        reference: largestMapSize(),
+        // Sized for the biggest of the game's own maps on offer, so the frame
+        // holds still as the cursor moves and a save that cannot go to the
+        // vale keeps its pictures as big as they were (`largestMapSize`).
+        reference: largestMapSize(this.unlockedInsertions.map(([, insertion]) => insertion.mapId).filter(isBuiltInMapId)),
         mode: 'own',
         // What the right-hand side needs to stay a column of one-line rows:
         // its measure, the gap and the body's own padding.
@@ -3010,7 +3013,7 @@ export class HubScene extends Phaser.Scene {
         key: `wall:${entry.mapId}`,
         label: `${entry.name}, ${known}% known`,
         size: entry.size,
-        reference: largestMapSize(),
+        reference: largestMapSize(wallMapOrder(this.savedGame)),
         mode: 'own',
         leave: COLUMN_MEASURES.line + DROPIN_SIDE_ALLOWANCE,
         className: 'dropin-picture',

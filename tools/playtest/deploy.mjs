@@ -99,12 +99,16 @@ export async function walkIntoBase(page, door, options = {}) {
   await until(sceneIs('hub'), `the ${door}`);
 }
 
-/** `--insertion=id --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,..`, out of a driver's arguments. */
+/** `--insertion=id [--offered] --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const list = (name) => (option(name) ?? '').split(',').filter(Boolean);
   return {
     insertion: option('insertion'),
+    // --offered picks the insertion only if the lobby offers it on its own,
+    // rather than writing it into the save as walked to: the check that a
+    // contract, the chain or a map's opening offers a landing.
+    offered: args.includes('--offered'),
     explorer: args.includes('--explorer'),
     beaten: list('beaten'),
     opened: list('opened'),
@@ -128,12 +132,12 @@ export function deployOptions(args) {
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
  * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, explorer = false, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
-  // its own save, every map's landings offered - the one way to a map still
-  // being drawn (`MAPS_IN_PROGRESS`) - and its partner a level-99 Charizard.
+  // its own save, every map's landings offered - the one way to a map not yet
+  // offered to saves (`MAPS_IN_PROGRESS`) - and its partner a level-99 Charizard.
   if (explorer) {
     await press('ArrowDown'); await press('ArrowRight'); await press('Space');
     await until(sceneIs('base'));
@@ -169,7 +173,7 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       // --errands=id,.. - those errands asked (\`hub/errands.ts\`), so the raid
       // lays their things: \`--errands=brocks-crate --grab=brocks-crate\`.
       for (const id of ${JSON.stringify(errands)}) { p.errands = [...(p.errands ?? []).filter((e) => e.id !== id), { id, status: 'started', found: 0, lossesHeard: 0 }]; }
-      if (${JSON.stringify(insertion ?? null)}) { p.firstContractExtracted = true; p.reachedInsertions = [...new Set([...p.reachedInsertions, ${JSON.stringify(insertion ?? '')}])]; }
+      if (${JSON.stringify(offered ? null : (insertion ?? null))}) { p.firstContractExtracted = true; p.reachedInsertions = [...new Set([...p.reachedInsertions, ${JSON.stringify(insertion ?? '')}])]; }
       if (${hp !== undefined}) for (const stored of save.stash.pokemon) stored.pokemon.currentHp = Math.min(stored.pokemon.currentHp, ${Number(hp)});
       // --stash=itemId[:n],.. is a player who has banked supplies. The loadout
       // stepper cannot pack more than the vault holds, so a check that needs a

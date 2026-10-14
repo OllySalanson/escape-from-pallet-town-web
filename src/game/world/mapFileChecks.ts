@@ -201,6 +201,7 @@ const ON_A_DOOR: Readonly<Record<MapFileDoorKind, string>> = {
   'smash-rock': 'stands on a cracked rock',
   surf: 'stands in deep water',
   night: 'stands on a night track, which is wood by day',
+  boss: "stands on a keeper's gate, sandbagged shut",
 };
 
 /** Words of a piece's name that are names, and are written as the games write them. */
@@ -863,8 +864,10 @@ export function checkMapFile(
     Math.min(
       ...file.exits.map((exit) => {
         // A buried exit and a locked one are a way out only for a raid that
-        // brought the Pickaxe or found the card, so neither is the way out.
-        if (isBarredFileExit(exit)) {
+        // brought the Pickaxe or found the card, so neither is the way out -
+        // and one a landmark opens is a way out only once it is worked, so a
+        // drop-in is never held to it either.
+        if (isBarredFileExit(exit) || exit.opens.when === 'landmark') {
           return Infinity;
         }
         const walk = stepsTo(steps, exit);

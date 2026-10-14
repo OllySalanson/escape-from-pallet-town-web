@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isExtractionAvailable, type ExtractionPoint } from '../world/extractionPoints';
 import { gateBossIds, gateKeys, gatesForMap, NIGHT_KEY, WORLD_GATES, type BossGate } from '../world/gates';
-import { getWorldMap, WORLD_MAP_NAMES, WORLD_MAPS, type BuiltInMapId, type WorldMapId } from '../worldMap';
+import { BUILT_IN_MAP_IDS, getWorldMap, WORLD_MAP_NAMES, WORLD_MAPS, type BuiltInMapId, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
 import { RAID_DURATION_MS } from './raidClock';
@@ -26,7 +26,8 @@ const insertionIds = Object.keys(RUN_INSERTIONS) as RunInsertionId[];
 /** The roadmap found the vanishing-exit defect by sampling this many runs. */
 const SAMPLED_RUNS = 500;
 /** Every gate on every map open: the most of the world a raid could walk. */
-const EVERY_BOSS = gateBossIds(WORLD_GATES);
+// Every keeper on every map the game ships, a map file's own doors among them.
+const EVERY_BOSS = gateBossIds(BUILT_IN_MAP_IDS.flatMap((mapId) => gatesForMap(mapId)));
 
 /**
  * Every tile a player can walk to from a starting tile, following warps between
@@ -538,7 +539,7 @@ describe('run generation', () => {
         for (let seed = 1; seed <= 100; seed += 1) {
           const plan = generateRunPlan(seed, undefined, insertionId, undefined, undefined, EVERY_BOSS);
           for (const dropIn of Object.values(RUN_INSERTIONS)) {
-            // A map still being drawn is laid only for a raid on itself (`MAPS_IN_PROGRESS`).
+            // A vast map is laid only for a raid on itself (`LAZY_MAPS`).
             if ((plan.loot[dropIn.mapId] ?? []).some((loot) => tileKey(loot.position) === tileKey(dropIn.position))) {
               spokenOver.push(`${insertionId} seed ${seed}: loot on ${dropIn.id}`);
             }

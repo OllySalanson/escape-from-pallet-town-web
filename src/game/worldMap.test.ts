@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSIC_TILE, getWorldMap, isMapInProgress, isTallGrassInMap, WORLD_MAPS } from './worldMap';
+import { CLASSIC_TILE, getWorldMap, isTallGrassInMap, WORLD_MAPS } from './worldMap';
 import { EXTRACTION_POINTS, extractionPointsOn, isBarredExit, isDugExit } from './world/extractionPoints';
 import { builtInFileMap } from './world/playerMaps';
 import { MapSketch } from './world/mapGrid';
@@ -185,8 +185,7 @@ describe('worldMap', () => {
   // Three is the floor, not the count: a region behind a boss-held gate brings
   // its own way out, so a gated map has more exits than rules.
   it('gives every map at least three exits, on three different rules', () => {
-    // A map still being drawn gets its landmark-opened exit with its districts (`MAPS_IN_PROGRESS`).
-    for (const map of Object.values(WORLD_MAPS).filter((candidate) => !isMapInProgress(candidate.id))) {
+    for (const map of Object.values(WORLD_MAPS)) {
       const exits = extractionPointsOn(map.id);
       expect({ map: map.id, enoughExits: exits.length >= 3 }).toMatchObject({ enoughExits: true });
       // Three rules anybody can use; a barred exit - rubble or a locked gate -

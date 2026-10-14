@@ -1943,27 +1943,50 @@ raid clock at walking pace, with every wild fight on the way left by RUN.
 
 As the game's own map, beside the shipped five (`greystone-vale`, built from the
 stitched file `src/game/world/maps/greystoneVale.json` through the same path a
-player's map is built by). While its districts are being drawn it is on
-`MAPS_IN_PROGRESS` (`src/game/worldMap.ts`):
+player's map is built by).
 
-- **Only the explorer run reaches it** (PLAYTEST on the title, then Oak's Lab):
-  no save is offered its landing, no contract or board names it, and
-  `greystoneVale.test.ts` holds that against every contract banked.
-- **Every structure and safety rule holds it now** - every way out reachable in
+- **It carries everything a finished map does, and no test excuses it**:
+  - **Its keeper and his two doors.** Boatswain Cragg holds the Sunken Quarter:
+    he stands at the head of the old high street, where it leaves the quay's
+    lower street for the drowned town, behind a barricade of sandbags across
+    it, and the drowned street in from the shingle under the west cliff is
+    sandbagged too. The mansion and the Low Water Stair are behind them. Beat
+    him and both come down, so the cove's shingle is a short way back in.
+    The doors are the map file's `boss` door kind, which only the game's own
+    maps may hold; he is authored and measured in `src/game/world/trainers.ts`
+    like every keeper - Magnemite, Shellder and Machop at 14, the last rung of
+    the ladder at 33%, inside the band where Banksman Nye is not.
+  - **An exit a landmark opens.** Work the Relay Mast on the reservoir's east
+    shore at the Power Station and the Linesmen's Track, a nub off the shore's
+    north-east corner, opens as a way out - the map file's `landmark` exit.
+  - **Its key exit and locked crate**: the Power Station's Service Gate, locked
+    to FireRed's Card Key with the card a prize in Pine Hollow, and the Bunker's
+    Strongroom.
+  - **A loot pool**: the item spots' money and materials, the hoard, the
+    prizes, and two packs rolled like every map's - a Raid pack at the Wreck's
+    salvage camp and a Ranger pack in THE DROWNED TOWN, the named place
+    behind Cragg's barricades, so only a raid that beat him finds it.
+  - **Wildlife place by place**, and a place in the drop-in frame: a screen
+    sizes its picture's frame off the maps it shows, so the vale - three
+    Floodplains across - sets the frame only for a save that can go there.
+- **It is built only when asked for** (`LAZY_MAPS`): never at boot, and in a
+  raid's content only when the raid is on it, so no seeded roll on any other map
+  moves and nothing else pays its 86 MB.
+- **Whether a save may go there is the captain's call** (the playtest of 14
+  October, call C6), so it stays on `MAPS_IN_PROGRESS`: only the explorer run
+  (PLAYTEST on the title) reaches it, the wall map does not hang it, and the
+  pennants and the badge case leave its place out. **Opening it is one line** -
+  take `'greystone-vale'` out of `MAPS_IN_PROGRESS` in `src/game/worldMap.ts` -
+  and then a save is offered its front door once the authored chain is
+  finished, the moment the standing board takes over: the chain teaches the
+  four maps round the Floodplain, and the vale is the country past them.
+- **It is the thinnest map in the game.** `density.mts` measures 20.6 steps from
+  a walkable tile to the nearest authored thing, against 4.5-7.4 on the other
+  five; the caves are the thinnest of it. That is places still to add.
+- **Every structure and safety rule holds it** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
   walked tile - through `mapStructure.greystoneVale1-8.test.ts` and the rest of
   the suite.
-- **What a finished map pays and guards waits for its districts**: its boss and
-  two doors, its locked crate, its loot (money,
-  materials, packs and prizes), an exit a landmark opens, wildlife that differs
-  from place to place, and a place in the drop-in frame's size. Each test that
-  asks one of those names `MAPS_IN_PROGRESS` where it excuses the vale. It
-  opens to saves with all of them once the vale is drawn.
-- **Its key exit is in**: the Power Station's Service Gate, locked to FireRed's
-  Card Key, with the card a prize in Pine Hollow.
-- **No other map's raid changes**: like a player's map, it is in a raid's
-  content only when the raid is on it, so every seeded roll on the shipped five
-  is what it was.
 - **Its tiles moved when it grew a ring.** A row north and a column west put
   every tile of the fourteen drawn districts 64 east and 64 south of where it
   was. The landings in `RUN_INSERTIONS` moved with them, and

@@ -5,15 +5,15 @@ import { evolutionFamily } from '../pokemon';
 import { STARTER_SPECIES } from '../stash/Stash';
 import { generateRunPlan, frontDoorFor, insertionsOn } from '../run/runGeneration';
 import { extractionPointsOn } from '../world/extractionPoints';
-import { WORLD_GATES, gateBossIds, gatesForMap } from '../world/gates';
+import { gateBossIds, gatesForMap } from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
 import { stepDistances } from '../world/mapStructure';
 import { trainersOn } from '../world/mapTrainers';
 import { isPublishedMap, playerMaps } from '../world/playerMaps';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { trainerSightTiles } from '../world/trainerSight';
-import { getWorldMap, type WorldMapId } from '../worldMap';
-import { contractCarryIn, RAID_CONTRACTS, type RaidContract } from './contracts';
+import { BUILT_IN_MAP_IDS, getWorldMap, isMapInProgress, type WorldMapId } from '../worldMap';
+import { contractCarryIn, MAPS_OPENED_BY_THE_FINISHED_CHAIN, RAID_CONTRACTS, type RaidContract } from './contracts';
 import {
   boardContractForMap,
   boardContracts,
@@ -39,10 +39,17 @@ const EVERY_FRONT_DOOR = ['floodplain-relay', 'town-square', 'route-1', 'viridia
  * (`publishedMapFixture.testkit.ts`), because a board test that counted only
  * the shipped maps is what kept every approved map from publishing.
  */
+/**
+ * The maps the finished chain opens (`MAPS_OPENED_BY_THE_FINISHED_CHAIN`), on
+ * every board below, which all have the chain banked - once they are open to
+ * saves at all (`MAPS_IN_PROGRESS`).
+ */
+const OPENED_BY_THE_CHAIN = MAPS_OPENED_BY_THE_FINISHED_CHAIN.filter((mapId) => !isMapInProgress(mapId));
 const PUBLISHED_MAPS = playerMaps()
   .map((map) => map.id)
   .filter((id) => isPublishedMap(id));
-const EVERY_BOSS = gateBossIds(WORLD_GATES);
+// Every keeper on every map the game ships, Greystone Vale's file-drawn doors among them.
+const EVERY_BOSS = gateBossIds(BUILT_IN_MAP_IDS.flatMap((mapId) => gatesForMap(mapId)));
 const SEEDS = Array.from({ length: 300 }, (_, index) => Math.imul(index + 1, 0x9e3779b1) >>> 0);
 
 const progressWith = (overrides: Partial<StandingBoardProgress> = {}): StandingBoardProgress => ({
@@ -123,11 +130,12 @@ describe('a drawn board', () => {
   it('never offers a map the player cannot deploy to, and offers every map they can', () => {
     const partial = progressWith({ unlockedInsertions: ['floodplain-relay', 'route-1'] });
     expect(PUBLISHED_MAPS.length).toBeGreaterThan(0);
-    expect(deployableMapIds(partial)).toEqual(['floodplain-relay', 'route-1', ...PUBLISHED_MAPS]);
+    expect(deployableMapIds(partial)).toEqual(['floodplain-relay', 'route-1', ...OPENED_BY_THE_CHAIN, ...PUBLISHED_MAPS]);
     for (const seed of SEEDS) {
       expect(standingOffers(seed, partial).map((contract) => contract.mapId)).toEqual([
         'floodplain-relay',
         'route-1',
+        ...OPENED_BY_THE_CHAIN,
         ...PUBLISHED_MAPS,
       ]);
       expect(standingOffers(seed, progressWith()).map((contract) => contract.mapId)).toEqual(
@@ -144,6 +152,7 @@ describe('a drawn board', () => {
     expect(standingBoard(progress).map((contract) => contract.mapId)).toEqual([
       'floodplain-relay',
       'route-1',
+      ...OPENED_BY_THE_CHAIN,
       ...PUBLISHED_MAPS,
     ]);
   });
@@ -276,7 +285,8 @@ describe('every standing contract', () => {
         continue;
       }
       const steps = walkFromFrontDoor(contract.mapId, defeatedBosses);
-      const longest = longestOf.get(steps) ?? Math.max(...steps.flatMap((row) => [...row]));
+      // A loop, not a spread: Greystone Vale's grid is more numbers than one call takes.
+      const longest = longestOf.get(steps) ?? steps.reduce((most, row) => row.reduce((m, value) => Math.max(m, value), most), 0);
       longestOf.set(steps, longest);
       for (const marker of contract.markers) {
         expect(steps[marker.position.y][marker.position.x], contract.id).toBeGreaterThanOrEqual(longest * 0.45);
@@ -351,7 +361,10 @@ describe('every standing contract', () => {
 });
 
 describe('the sealed district', () => {
-  const gatedMaps = [...new Set(WORLD_GATES.map((gate) => gate.mapId))];
+  // Every map on the board that has a keeper.
+  const gatedMaps = deployableMapIds(progressWith()).filter((mapId) =>
+    gatesForMap(mapId).some((gate) => gate.bossId !== undefined),
+  );
 
   it('is pointed at while its gate is shut: the board names the door and who holds it', () => {
     for (const mapId of gatedMaps) {

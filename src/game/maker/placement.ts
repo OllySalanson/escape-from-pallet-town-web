@@ -285,6 +285,7 @@ const DOOR_NAMES: Readonly<Record<MapFileDoorKind, string>> = {
   'smash-rock': 'the cracked rock',
   surf: 'the deep water',
   night: 'the night track',
+  boss: "the keeper's gate",
 };
 
 /** A name said at the start of a sentence: "the house" as "The house". */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUILT_IN_MAP_IDS, isMapInProgress } from '../worldMap';
+import { BUILT_IN_MAP_IDS } from '../worldMap';
 import { stepDistances, walkableTiles } from './mapStructure';
 import { densityOf, nearestThingSteps, SHIPPED_DENSITY } from './nearestThing';
 import { shippedNearestSteps } from './shippedDensity';
@@ -10,8 +10,7 @@ import { shippedNearestSteps } from './shippedDensity';
  * quotes are held to those maps here rather than to a note.
  */
 describe("the game's own maps, measured for the review summary", () => {
-  // The reference is the finished maps: one still being drawn is mostly wood (`MAPS_IN_PROGRESS`).
-  const means = BUILT_IN_MAP_IDS.filter((mapId) => !isMapInProgress(mapId)).map((mapId) => {
+  const means = BUILT_IN_MAP_IDS.map((mapId) => {
     const { map, nearest } = shippedNearestSteps(mapId);
     return densityOf(walkableTiles(map.collision).map((tile) => nearest[tile.y][tile.x]))!.mean;
   });

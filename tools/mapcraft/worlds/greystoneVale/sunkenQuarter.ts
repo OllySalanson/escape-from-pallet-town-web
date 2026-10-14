@@ -15,10 +15,20 @@
  *
  * Stone laid over water is a drowned street, as the jetty is at Gull Strand;
  * the sea runs to the map's edges, which needs no wood to seal it.
+ *
+ * And it is the vale's one keeper's ground. Boatswain Cragg holds the old
+ * high street where it leaves the lower street for the drowned town,
+ * sandbagged across, and the only other way into the drowned town - the
+ * street in from the shingle under the west cliff - is sandbagged too: two
+ * doors (`MapFileDoor` 'boss'), the keeper authored and measured in
+ * `src/game/world/trainers.ts` as every boss is. The quay, the upper street and
+ * the Old Quay landing are on his side of them; the mansion and the Low Water
+ * Stair are behind. Beat him and both come down, so the shingle and the cove
+ * beyond it are a short way back into the town the quay was the only way into.
  */
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
-import { openingsOf, openingTiles, startDistrict } from '../../worldPlan';
+import { openingsOf, openingTiles, planLimits, startDistrict } from '../../worldPlan';
 import { GREYSTONE_VALE } from './plan';
 
 export function sunkenQuarter(): MapcraftResult {
@@ -138,6 +148,11 @@ export function sunkenQuarter(): MapcraftResult {
     dropIns: [{ x: 37, y: 14, name: 'Old Quay', description: 'The quay of the drowned port, where the jetty from the strand comes in.' }],
     itemSpots: [{ x: 36, y: 35, hidden: true }, { x: 3, y: 40 }, { x: 33, y: 58 }, { x: 53, y: 28 }],
     extra: {
+      // Behind the keeper's barricades, a place of its own: the drowned town,
+      // the mansion on its terrace and the stair. Its own name is what keeps
+      // what is only found there (`BUILT_IN_FILE_PRIZES`) behind the
+      // barricades rather than anywhere on the quay.
+      districts: [{ name: 'THE DROWNED TOWN', x: 10, y: 31, width: 54, height: 33, wildlife: 'shore' }],
       signs: [{ x: 32, y: 26, lines: ['THE SUNKEN QUARTER', 'The old high street. Mind the tide.'] }],
       people: [
         {
@@ -148,6 +163,13 @@ export function sunkenQuarter(): MapcraftResult {
           facing: 'down',
           lines: ['The sea took the lower town in one winter.', 'At low water you can walk the old streets to the stair.'],
         },
+      ],
+      // The keeper's two doors: across the high street where it leaves the
+      // lower street, the boatswain standing on the town's side of his
+      // sandbags; and across the drowned street where it leaves the shingle.
+      doors: [
+        { kind: 'boss', keeper: KEEPER, name: 'Street Barricade', x: 30, y: 30, width: 2, height: 1 },
+        { kind: 'boss', keeper: KEEPER, name: 'Shingle Barricade', x: 11, y: 46, width: 1, height: 2 },
       ],
       trainers: [
         {
@@ -163,5 +185,8 @@ export function sunkenQuarter(): MapcraftResult {
       ],
     },
   });
-  return { file, notes: p.notes };
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
 }
+
+/** The boss who holds the quarter's doors, by the id `trainers.ts` gives him. */
+export const KEEPER = 'vale-quay-keeper';

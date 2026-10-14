@@ -13,6 +13,7 @@ import {
 } from '../run/runGeneration';
 import type { MapRaidRecord } from '../save/SaveManager';
 import { districtAt, districtsForMap, type MapDistrict } from '../world/districts';
+import { builtInFileMap } from '../world/playerMaps';
 import { extractionPointsOn, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
@@ -27,9 +28,7 @@ import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } fro
 import { exitsOpenForGood, withWorkedExitsOpen, workedLandmarksOn } from '../world/workedLandmarks';
 import {
   getWorldMap,
-  isMapInProgress,
-  WORLD_MAPS,
-  type BuiltInMapId,
+  isLazyMap,
   type WorldMapDefinition,
   type WorldMapId,
   worldMapName,
@@ -584,20 +583,31 @@ export function placePicture(
 }
 
 /**
- * The biggest map there is, in tiles, which is what a picture's frame is sized
- * against so a screen does not move when the picture in it changes. A map still
- * being drawn is left out: no save is offered it, and the explorer run that
- * walks it sees it condensed into the frame the finished maps set.
+ * The biggest of these maps, in tiles, which is what a picture's frame is sized
+ * against so a screen does not move when the picture in it changes. A screen
+ * asks it of the maps it shows - the drop-in screen of the maps it offers, the
+ * wall map of the maps it hangs - so Greystone Vale, six Floodplains of
+ * ground, sets the frame only for a save that can go there, and every other
+ * save's pictures are drawn as big as they ever were.
  */
-export function largestMapSize(): { readonly width: number; readonly height: number } {
-  const finished = (Object.keys(WORLD_MAPS) as BuiltInMapId[]).filter((id) => !isMapInProgress(id));
-  return finished.map((id) => pictureSize(WORLD_MAPS[id])).reduce(
+export function largestMapSize(mapIds: readonly WorldMapId[]): { readonly width: number; readonly height: number } {
+  return [...new Set(mapIds)].map(mapPictureSize).reduce(
     (biggest, size) => ({
       width: Math.max(biggest.width, size.width),
       height: Math.max(biggest.height, size.height),
     }),
     { width: 0, height: 0 },
   );
+}
+
+/**
+ * How big a map's picture is, in tiles, without building a vast map to ask it:
+ * a map built only when asked for (`LAZY_MAPS`) is a file whose outdoors is
+ * the file's own size.
+ */
+export function mapPictureSize(mapId: WorldMapId): { readonly width: number; readonly height: number } {
+  const file = isLazyMap(mapId) ? builtInFileMap(mapId)?.file : undefined;
+  return file ? { width: file.width, height: file.height } : pictureSize(getWorldMap(mapId));
 }
 
 /**

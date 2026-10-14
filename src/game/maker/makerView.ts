@@ -20,7 +20,7 @@ import {
   type MapFileLinkEnd,
   type MapFileArea,
   type MapFileBuildingKind,
-  type MapFileDoorKind,
+  type MakerDoorKind,
   type MapFileHabitat,
   type MapFileLandmarkKind,
   type MapFileTrainerTeam,
@@ -108,7 +108,7 @@ export type MakerTool = 'brush' | 'rect' | 'fill' | 'pick' | 'select' | 'erase' 
 
 /** What the place tool puts down. */
 export type PlaceChoice =
-  | { readonly kind: SpotKind | 'district' | MapFileDoorKind | CavePassage }
+  | { readonly kind: SpotKind | 'district' | MakerDoorKind | CavePassage }
   | { readonly kind: 'building'; readonly building: MapFileBuildingKind };
 
 /** The ways through a cave a maker puts down one end at a time (`passages.ts`). */
@@ -754,6 +754,7 @@ function selectedPane(
         'smash-rock': 'Rock Smash rock',
         surf: 'Surf water',
         night: 'Night track',
+        boss: "Keeper's gate",
       }[door.kind];
       body = `<p class="px-note px-wrap">${
         door.kind === 'surf'

@@ -5,7 +5,7 @@ import { getWorldMap, type BuiltInMapId, type WorldMapDefinition } from '../worl
 import { extractionPointsOn } from './extractionPoints';
 import { gateKeys, gatesForMap } from './gates';
 import { nearestThingSteps } from './nearestThing';
-import { createRunTrainerEncounters } from './trainers';
+import { trainersOn } from './mapTrainers';
 
 /**
  * The permanent authored things on one of the game's own maps, as
@@ -27,9 +27,8 @@ export function permanentThingsOn(mapId: BuiltInMapId): {
     ...map.pois.map((poi) => poi.position),
     ...map.entities.map((entity) => entity.position),
     ...gatesForMap(mapId).flatMap((gate) => gate.tiles),
-    ...createRunTrainerEncounters()
-      .filter((trainer) => trainer.mapId === mapId)
-      .map((trainer) => trainer.position),
+    // Every trainer standing there: the authored ones and a file map's own.
+    ...trainersOn(mapId).map((trainer) => trainer.position),
     ...RAID_CONTRACTS.filter((contract) => contract.mapId === mapId).flatMap((contract) =>
       contract.markers.map((marker) => marker.position),
     ),
@@ -44,5 +43,6 @@ export function shippedNearestSteps(mapId: BuiltInMapId): {
   readonly nearest: readonly Int32Array[];
 } {
   const { map, things } = permanentThingsOn(mapId);
-  return { map, things, nearest: nearestThingSteps(map.collision, things) };
+  // Through the map's doors, so a room is as near as the door it is behind.
+  return { map, things, nearest: nearestThingSteps(map.collision, things, map.links) };
 }

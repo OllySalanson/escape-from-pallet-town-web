@@ -1,5 +1,6 @@
 import type { GridPosition } from '../movement/gridMovement';
-import { largestMapSize, mapPicture, pictureSize, type MapPictureContext } from '../hub/dropIn';
+import { largestMapSize, mapPicture, mapPictureSize, pictureSize, type MapPictureContext } from '../hub/dropIn';
+import { isChainFinished, MAPS_OPENED_BY_THE_FINISHED_CHAIN } from '../objectives/contracts';
 import { availableInsertionIds } from '../run/runGeneration';
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
@@ -16,7 +17,7 @@ import {
 } from '../world/minimap';
 import { surveyedTiles } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { getWorldMap, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
+import { getWorldMap, isMapInProgress, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
 
 /**
  * The wall map in Oak's Lab: the four raid maps, hung side by side on the
@@ -50,7 +51,24 @@ export const WALL_MAP_ORDER: readonly WorldMapId[] = [
   'route-1',
   'viridian-forest',
   'viridian-city',
+  'greystone-vale',
 ];
+
+/**
+ * The maps hung on this save's wall, in that order. Every map the chain opens
+ * hangs from the first raid, dark until walked; a map the finished chain opens
+ * (`MAPS_OPENED_BY_THE_FINISHED_CHAIN`) goes up when it opens, because hung at
+ * one scale with the rest, Greystone Vale - as big as every other map put
+ * together - takes half the board, and a save that cannot go there yet should
+ * not have its whole wall drawn small for it. A map not yet offered to saves
+ * (`MAPS_IN_PROGRESS`) never hangs.
+ */
+export function wallMapOrder(game: Pick<RestoredGame, 'raidProgress'>): readonly WorldMapId[] {
+  const open = isChainFinished(game.raidProgress.completedContracts);
+  return WALL_MAP_ORDER.filter(
+    (mapId) => !isMapInProgress(mapId) && (open || !MAPS_OPENED_BY_THE_FINISHED_CHAIN.includes(mapId)),
+  );
+}
 
 /** One beaten keeper's sign: who held the doors, and what the doors are called. */
 export interface WallSign {
@@ -159,13 +177,10 @@ function districtsReached(
   return { districtsKnown: reached.size, districts: all.length };
 }
 
-/** The four maps, in the order they hang. */
+/** The maps on this save's wall, in the order they hang. */
 export function wallMapEntries(game: RestoredGame): readonly WallMapEntry[] {
-  return WALL_MAP_ORDER.map((mapId) => wallMapEntry(game, mapId));
+  return wallMapOrder(game).map((mapId) => wallMapEntry(game, mapId));
 }
-
-/** The biggest of the four maps, which every picture on the wall is sized against. */
-export const wallMapReference = largestMapSize;
 
 // --- the poster on the lab wall -------------------------------------------
 
@@ -222,14 +237,16 @@ export interface PosterLayout {
  * largest the biggest map fits at - and stand on one line, so their feet and
  * the signs under them are level whatever shape each map is.
  */
-export function posterLayout(area: Rect, signCounts: Readonly<Record<string, number>>): PosterLayout {
+export function posterLayout(
+  area: Rect,
+  signCounts: Readonly<Record<string, number>>,
+  mapIds: readonly WorldMapId[] = WALL_MAP_ORDER,
+): PosterLayout {
   const width = area.width * POSTER_TILE;
   const height = area.height * POSTER_TILE;
-  const reference = wallMapReference();
-  const sizes = WALL_MAP_ORDER.map((mapId) => {
-    return { mapId, ...pictureSize(getWorldMap(mapId, [])) };
-  });
-  const innerWidth = width - POSTER_BORDER * 2 - POSTER_GAP * (WALL_MAP_ORDER.length + 1);
+  const reference = largestMapSize(mapIds);
+  const sizes = mapIds.map((mapId) => ({ mapId, ...mapPictureSize(mapId) }));
+  const innerWidth = width - POSTER_BORDER * 2 - POSTER_GAP * (mapIds.length + 1);
   const innerHeight =
     height - POSTER_BORDER * 2 - POSTER_MARGIN * 2 - SIGN_DROP - SIGN_HEIGHT;
   // Every ring is a pixel each side, so the room a picture has is two short.
@@ -293,10 +310,9 @@ export function posterLayout(area: Rect, signCounts: Readonly<Record<string, num
 
 /** The board as pixels, for this save. */
 export function wallMapPoster(game: RestoredGame, area: Rect): PaintedPicture {
-  const signCounts = Object.fromEntries(
-    WALL_MAP_ORDER.map((mapId) => [mapId, wallSigns(game, mapId).length]),
-  );
-  const layout = posterLayout(area, signCounts);
+  const hung = wallMapOrder(game);
+  const signCounts = Object.fromEntries(hung.map((mapId) => [mapId, wallSigns(game, mapId).length]));
+  const layout = posterLayout(area, signCounts, hung);
   const { width, height } = layout;
   const data = new Uint8ClampedArray(width * height * 4);
   const fill = (x: number, y: number, w: number, h: number, ink: string): void => {

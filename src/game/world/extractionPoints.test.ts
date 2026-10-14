@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { KEY_ITEM_IDS } from '../items';
-import { BUILT_IN_MAP_IDS, isMapInProgress, WORLD_MAPS, type BuiltInMapId } from '../worldMap';
+import { BUILT_IN_MAP_IDS, WORLD_MAPS, type BuiltInMapId } from '../worldMap';
 import { districtAt } from './districts';
 import {
   EXTRACTION_POINTS,
+  extractionPointsOn,
   extractionCaption,
   extractionRequirementText,
   isBarredExit,
@@ -122,14 +123,25 @@ describe('a barred exit', () => {
   });
 
   it('stands on every shipped map: a key exit on each, and rubble wherever the rock allows', () => {
-    // A map still being drawn gets its key exit and key with its districts (`MAPS_IN_PROGRESS`).
-    for (const mapId of BUILT_IN_MAP_IDS.filter((id) => !isMapInProgress(id))) {
-      const barred = EXTRACTION_POINTS.filter((point) => point.mapId === mapId && isBarredExit(point));
+    // Asked of each map through `extractionPointsOn`, which a map drawn as a
+    // file answers too: Greystone Vale's key exit is its file's.
+    const every = BUILT_IN_MAP_IDS.flatMap((mapId) => extractionPointsOn(mapId));
+    for (const mapId of BUILT_IN_MAP_IDS) {
+      const barred = extractionPointsOn(mapId).filter(isBarredExit);
       expect(barred.filter((point) => point.requirement?.kind === 'key'), mapId).toHaveLength(1);
       expect(barred.filter(isDugExit).length, mapId).toBeLessThanOrEqual(1);
     }
-    expect(EXTRACTION_POINTS.filter(isDugExit).map((point) => point.mapId).sort()).toEqual(
+    expect(every.filter(isDugExit).map((point) => point.mapId).sort()).toEqual(
       ['floodplain-relay', 'pallet-town', 'route-1', 'viridian-forest'],
     );
+    // A file's key exit opens to the Card Key, laid as a prize in a district
+    // of its own on the same map, a walk from the gate.
+    const [vale] = extractionPointsOn('greystone-vale').filter((point) => point.requirement?.kind === 'key');
+    expect(itemThatOpens(vale)).toBe(MAP_FILE_EXIT_KEY);
+    const cards = WORLD_MAPS['greystone-vale'].loot.filter((loot) => loot.itemId === MAP_FILE_EXIT_KEY);
+    expect(cards).toHaveLength(1);
+    expect(isPrize(cards[0])).toBe(true);
+    expect(cards[0].district).toBeDefined();
+    expect(districtAt('greystone-vale', vale.position)?.id).not.toBe(cards[0].district);
   });
 });

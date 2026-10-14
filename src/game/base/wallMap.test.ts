@@ -6,6 +6,7 @@ import { encodeSurvey } from '../world/survey';
 import { tilesAround } from '../world/minimap';
 import { frontDoorFor } from '../run/runGeneration';
 import { isMapInProgress, WORLD_MAPS } from '../worldMap';
+import { RAID_CONTRACTS } from '../objectives/contracts';
 import type { RaidProgress } from '../save/SaveManager';
 import { restoreBase } from './baseGames.testkit';
 import { OAK_WALL_MAP } from './rooms';
@@ -14,6 +15,7 @@ import {
   WALL_MAP_ORDER,
   posterLayout,
   wallMapEntries,
+  wallMapOrder,
   wallMapNote,
   wallMapPoster,
   wallSigns,
@@ -37,14 +39,20 @@ const EVERY_KEEPER = [
 
 describe('the wall map in Oak’s Lab', () => {
   it('hangs every raid map, and only those', () => {
-    // A map still being drawn is reached by the explorer run alone, so it is not on the wall.
-    expect([...WALL_MAP_ORDER].sort()).toEqual(
-      Object.keys(WORLD_MAPS)
-        .filter((mapId) => !isMapInProgress(mapId))
-        .sort(),
-    );
+    expect([...WALL_MAP_ORDER].sort()).toEqual(Object.keys(WORLD_MAPS).sort());
     // Where every save starts is the first thing on the wall.
     expect(WALL_MAP_ORDER[0]).toBe('floodplain-relay');
+  });
+
+  it('hangs a map the finished chain opens only once it is open to saves and the chain is done', () => {
+    const chain = RAID_CONTRACTS.map((contract) => contract.id);
+    const hung = (completedContracts: readonly string[]) => wallMapOrder(game({ completedContracts }));
+    expect(hung([])).toEqual(WALL_MAP_ORDER.filter((mapId) => mapId !== 'greystone-vale'));
+    // The vale is not yet offered to saves (`MAPS_IN_PROGRESS`), so even a
+    // finished chain does not hang it; the day it opens, a finished chain does.
+    expect(hung(chain)).toEqual(
+      WALL_MAP_ORDER.filter((mapId) => mapId !== 'greystone-vale' || !isMapInProgress(mapId)),
+    );
   });
 
   it('pins a sign for every keeper beaten, under the map they held, and none for anyone else', () => {
