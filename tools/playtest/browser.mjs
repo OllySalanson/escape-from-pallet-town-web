@@ -171,10 +171,19 @@ export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.
  * launch cannot. Its CDP port is given; `close` leaves the browser running.
  */
 export function attachBrowser(port, { window = LOGIC_WINDOW } = {}) {
+  // The browser is somebody else's to stop, but the tabs this opened are ours:
+  // left open, a tab's socket keeps the driver from ever exiting.
+  const opened = [];
   return {
     port,
-    close: async () => undefined,
-    openPage: (url, options) => openPage(port, url, window, options),
+    close: async () => {
+      await Promise.all(opened.map((page) => page.close()));
+    },
+    openPage: async (url, options) => {
+      const page = await openPage(port, url, window, options);
+      opened.push(page);
+      return page;
+    },
   };
 }
 

@@ -3041,9 +3041,9 @@
  "doors": [
   {
    "kind": "night",
-   "x": 56,
+   "x": 48,
    "y": 82,
-   "width": 2,
+   "width": 12,
    "height": 2
   }
  ],

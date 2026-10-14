@@ -1518,6 +1518,35 @@ road the drovers carried their dead along:
 
 ![The nave](moor-chapel-nave.png) ![The crypt](moor-chapel-crypt.png)
 
+**Played through** on the explorer run, stepped, with `tools/playtest/raid.mjs`.
+
+By day, from Moor Top, the track ends in the wood. Pressing at the trees gives
+the fog's two lines, and the raid leaves by the Moor Gate:
+
+```sh
+node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
+  --clock=day --open="night track" --exit="Moor Gate"
+```
+
+By night the same walk goes on through the wood to the Lantern Cross, along
+the corpse road, in at the chapel's door and down the nave's stairs into the
+crypt, then back up and out by the Corpse Road:
+
+```sh
+node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
+  --clock=night --via=70:82,58:82,50:82,44:82 \
+  --through=27:94:up,moor-chapel-nave@4:10:left --deep --exit="Corpse Road"
+```
+
+![By day: the fog has the track](moor-chapel-fog-by-day.png)
+![By night: the track through the wood to the Lantern Cross](moor-chapel-track-by-night.png)
+
+![In at the chapel's door](moor-chapel-played-nave.png)
+![Down in the crypt](moor-chapel-played-crypt.png)
+
+The night track is twelve tiles of wood, two deep. Drawn as one tree, it showed
+the fell through the gap beside it by day.
+
 ### What the game learned for it
 
 - **A night track** (`NightGate` in `world/gates.ts`, a map file's `doors` kind

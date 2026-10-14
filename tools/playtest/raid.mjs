@@ -99,7 +99,7 @@ const browser = attach ? attachBrowser(Number(attach), { window: windowSize }) :
 // or noon now, so the raid deploys as a night raid or a day raid by the
 // player's own clock (`world/nightRaids.ts`) whenever the driver is run. The
 // Etc zones are named the other way round from the offset they keep.
-const clock = option('clock');
+const hour = option('clock');
 const ZONE_HOUR = { night: 23, day: 12 };
 const zoneFor = (hour) => {
   let offset = (hour - new Date().getUTCHours() + 24) % 24;
@@ -115,11 +115,11 @@ const note = (line) => {
 try {
   const started = Date.now();
   const page = await browser.openPage('about:blank');
-  if (clock !== undefined) {
-    if (!(clock in ZONE_HOUR)) throw new Error('--clock is night or day');
-    const timezoneId = zoneFor(ZONE_HOUR[clock]);
+  if (hour !== undefined) {
+    if (!(hour in ZONE_HOUR)) throw new Error('--clock is night or day');
+    const timezoneId = zoneFor(ZONE_HOUR[hour]);
     await page.send('Emulation.setTimezoneOverride', { timezoneId });
-    note(`clock: ${clock}, in ${timezoneId}`);
+    note(`clock: ${hour}, in ${timezoneId}`);
   }
   if (seed !== undefined) {
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: SEEDED(seed) });
@@ -167,7 +167,7 @@ try {
   if (option('shot')) {
     await page.screenshot(option('shot').replace(/\.png$/, '-world.png'));
   }
-  const cpuAtDeploy = browser.cpuSeconds();
+  const cpuAtDeploy = browser.cpuSeconds?.() ?? 0;
   const raidStarted = Date.now();
 
   // `plan.loot` is where this raid's loot actually lies. A map's authored
@@ -484,7 +484,7 @@ try {
     await clearInterruptions();
     const state = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
       const g = w.currentMap.gates.find((g) => g.id === ${JSON.stringify(door.id)});
-      return { shut: w.isBlocked(g.tiles[0]), saved: JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress.openedGates ?? [] }; })()`);
+      return { shut: w.isBlocked(g.tiles[0]), saved: JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1'))?.raidProgress.openedGates ?? [] }; })()`);
     note(`${door.label} is now ${state.shut ? 'STILL SHUT' : 'OPEN'}; the save has ${JSON.stringify(state.saved)}`);
     if (option('shot')) {
       await page.screenshot(option('shot').replace(/\.png$/, `-${door.move}-open.png`));
@@ -552,6 +552,11 @@ try {
   for (const tile of (option('via') ?? '').split(',').filter(Boolean)) {
     const [x, y] = tile.split(':').map(Number);
     await walkTo({ x, y }, `waypoint ${x},${y}`);
+    // With --shot, each waypoint is photographed as it is reached.
+    if (option('shot')) {
+      await wait(300);
+      await page.screenshot(option('shot').replace(/\.png$/, `-via-${x}-${y}.png`));
+    }
   }
   // --through=x:y:Dir,.. goes through the doorway whose landing is that tile -
   // a cave mouth, a building's door - by pressing Dir into it, notes the place
@@ -739,7 +744,7 @@ try {
   const clock = clockMs === null ? 'unknown' : `${Math.floor(clockMs / 60000)}:${String(Math.floor(clockMs / 1000) % 60).padStart(2, '0')}`;
   const report = await page.evaluate(`(document.querySelector('[data-continue]')?.closest('.menu-overlay') ?? document.querySelector('#app'))?.innerText.replace(/\\n+/g, ' | ').slice(0, 420)`);
   note(`result after ${clock} of raid: ${ended ? report : 'raid did not end'}`);
-  const cpu = browser.cpuSeconds() - cpuAtDeploy;
+  const cpu = (browser.cpuSeconds?.() ?? 0) - cpuAtDeploy;
   const wall = (Date.now() - raidStarted) / 1000;
   console.log(JSON.stringify({
     testMode, stepped, steps,

@@ -191,10 +191,11 @@ export function moorChapel(): MapcraftResult {
   // they slept the night before the fair, and on to the gap they left by
   p.building('cottage', 38, 24);
 
-  // -- The night track: wood by day, where the fog turns the sheep track
-  // back, and a way through on a night raid. A whole lattice cell, so by day
-  // it is one whole tree.
-  const nightTrack = { kind: 'night' as const, x: 56, y: 18, width: 2, height: 2 };
+  // -- The night track: the sheep track's whole run through the wood is wood
+  // by day, so the fog has turned it back before the fell is in sight, and a
+  // way through on a night raid. Whole lattice cells, so by day it is whole
+  // trees, as deep as a door may be wide.
+  const nightTrack = { kind: 'night' as const, x: 48, y: 18, width: 12, height: 2 };
 
   const links: MapFileLink[] = [
     {
