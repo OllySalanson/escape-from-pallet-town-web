@@ -389,7 +389,10 @@ export class ExtractionScene extends Phaser.Scene {
   private ledgerPanel(): string {
     const report = this.report;
     const escaped = report.outcome === 'ESCAPED';
-    const rows = groupRows(report.ledger, escaped ? 'banked' : 'lost');
+    // What a contract paid is tagged as its reward, never as banked: listed
+    // as banked, the contract's Super Potion read as one found in the field.
+    const rows =
+      groupRows(report.ledgerFound, escaped ? 'banked' : 'lost') + groupRows(report.ledgerPaid, 'reward');
     // The note counts every row under the heading that went the heading's way,
     // so a lost raid counts the pack and the gear that went down with it: they
     // are drawn GONE in this same window, and "1 ENTRY" over two GONE rows read
@@ -659,13 +662,14 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
   </figure>`;
 }
 
-type RowTag = 'banked' | 'lost' | 'secured' | 'survived';
+type RowTag = 'banked' | 'lost' | 'secured' | 'survived' | 'reward';
 
 const ROW_TAGS: Record<RowTag, string> = {
   banked: pixelTag('Banked', 'good', true),
   lost: pixelTag('Gone', 'risk'),
   secured: pixelTag('Protected', 'secure'),
   survived: pixelTag('Made it', 'plain', true),
+  reward: pixelTag('Reward', 'good', true),
 };
 
 function groupRows(group: ReportGroup, tag: RowTag): string {

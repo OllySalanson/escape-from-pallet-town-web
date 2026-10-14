@@ -399,6 +399,38 @@ describe('the result screen on what was put down', () => {
   });
 });
 
+describe('the result screen on what a contract paid', () => {
+  it('tags the contract reward as a reward, not as something banked from the field (playtest 43 B6)', () => {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(CHARMANDER, 12)], items: [] },
+      { mapId: 'floodplain-relay', durationMs: DURATION_MS },
+    );
+    manager.registerFoundItem('cable-coil', 1);
+    const result = manager.resolveEscape();
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: DURATION_MS,
+      banked: {
+        pokemon: result.bankedPokemon,
+        items: [...result.bankedItems, { itemId: 'super-potion', quantity: 1 }],
+      },
+      contractPaid: { pokemon: [], items: [{ itemId: 'super-potion', quantity: 1 }] },
+      contract: { description: 'Recover the field kit', complete: true, reward: 'A Super Potion.' },
+      carriedOut: { 'cable-coil': 1 },
+      saved: true,
+    });
+    const { root } = open(report);
+    const rowOf = (label: string) =>
+      root.html.match(new RegExp(`<div class="px-row[^"]*">(?:(?!<div class="px-row).)*?${label}(?:(?!<div class="px-row).)*`, 's'))?.[0] ?? '';
+
+    expect(rowOf('Super Potion')).toContain('>Reward<');
+    expect(rowOf('Super Potion')).not.toContain('>Banked<');
+    expect(rowOf('Cable coil')).toContain('>Banked<');
+  });
+});
+
 /** Walks the whole sequence the way a player who reads it does. */
 function readThrough(advance: (ms: number) => void): void {
   for (let beat = 0; beat < 3; beat += 1) {

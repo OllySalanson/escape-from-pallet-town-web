@@ -149,6 +149,15 @@ export interface ExtractionReport {
   readonly durationMs: number;
   /** Everything the stash gained (ESCAPED) or lost for good (WIPED). */
   readonly ledger: ReportGroup;
+  /**
+   * The part of `ledger` a contract paid rather than the raid found. The
+   * result screen tags it as the contract's reward, because a Super Potion the
+   * contract handed over listed as banked read as one found in the field
+   * (playtest 43 B6). Empty on a lost raid.
+   */
+  readonly ledgerPaid: ReportGroup;
+  /** The rest of `ledger`: what the raid itself brought out, or lost. */
+  readonly ledgerFound: ReportGroup;
   readonly ledgerHeading: string;
   readonly ledgerEmptyText: string;
   readonly contract?: ReportContract;
@@ -277,6 +286,15 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     pokemon: ledgerSource.pokemon.map(toReportPokemon),
     items: toReportItems(ledgerSource.items),
   };
+  const ledgerPaid: ReportGroup = escaped
+    ? { pokemon: contractPaid.pokemon.map(toReportPokemon), items: toReportItems(contractPaid.items) }
+    : { pokemon: [], items: [] };
+  const ledgerFound: ReportGroup = escaped
+    ? {
+      pokemon: banked.pokemon.filter((pokemon) => !contractPaid.pokemon.includes(pokemon)).map(toReportPokemon),
+      items: toReportItems(subtractStacks(banked.items, contractPaid.items)),
+    }
+    : ledger;
 
   // A secure slot is a decision right up until the raid ends, and then it is an
   // outcome - on a survived raid as much as a lost one. A Potion declared secure
@@ -343,10 +361,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
       ? escapeSummary(
-        {
-          pokemon: banked.pokemon.filter((pokemon) => !contractPaid.pokemon.includes(pokemon)).map(toReportPokemon),
-          items: toReportItems(subtractStacks(banked.items, contractPaid.items)),
-        },
+        ledgerFound,
         risked,
         contractBanked,
         progress,
@@ -359,6 +374,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     elapsedMs: snapshot.elapsedMs,
     durationMs: input.durationMs,
     ledger,
+    ledgerPaid,
+    ledgerFound,
     ledgerHeading: escaped ? 'Banked' : 'Gone for good',
     ledgerEmptyText: escaped
       ? gear.some((piece) => piece.fate === 'found')
