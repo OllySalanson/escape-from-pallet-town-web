@@ -81,7 +81,6 @@ import {
   gridCells,
   isFoundOnly,
   isFurniture,
-  isMachine,
   itemAmountsFor,
   READ_IN_A_RAID,
   type ItemDefinition,
@@ -220,6 +219,7 @@ import { DAY_CARE_KEEPER } from '../base/dayCarePen';
 import { friendRoom, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomCard, friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
+import { RAID_KEY_LETTERS } from '../input/keyBindings';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -2543,7 +2543,7 @@ export class HubScene extends Phaser.Scene {
     const supplyRow = (item: ItemDefinition): string =>
       // One line a supply, as a bag lists them: what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
     const materialRows = this.stashItems
       .filter((item) => isFoundOnly(item.id) && !isFurniture(item.id))
       .map(supplyRow)
@@ -2678,9 +2678,7 @@ export class HubScene extends Phaser.Scene {
         // the player can see what was packed for them and take it back out.
         const prepacked = this.flow.isPrepacked(item.id as ItemId);
         const help = escapeAttribute(
-          `${item.displayName}: ${item.description} ${size} each, ${held} at base.${
-            isMachine(item.id) ? ` ${READ_IN_A_RAID}` : ''
-          }${
+          `${item.displayName}: ${item.description}${usedInARaid(item)} ${size} each, ${held} at base.${
             prepacked ? ' Packed for you - medicine goes in by default. Take it out if you want the squares.' : ''
           }`,
         );
@@ -4166,6 +4164,22 @@ export class HubScene extends Phaser.Scene {
   }
 }
 
+/**
+ * What a supply row owes a player about where it is used, when that is not
+ * here. A disc and a stone are read from the raid pack and nowhere else (the
+ * treatment bench takes medicine only), and the Center listed TM40 with what
+ * it teaches and nothing about how (playtest 47).
+ */
+function usedInARaid(item: ItemDefinition): string {
+  switch (item.effect.type) {
+    case 'machine':
+      return ` ${READ_IN_A_RAID}`;
+    case 'evolution-stone':
+      return ` Pack it, then use it from your pack (${RAID_KEY_LETTERS.bag}) in a raid.`;
+    default:
+      return '';
+  }
+}
 
 /** Names in a sentence: `Tackle`, `Tackle and Growl`, `Tackle, Growl and Ember`. */
 function formatNames(names: readonly string[]): string {

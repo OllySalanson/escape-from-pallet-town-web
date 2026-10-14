@@ -143,6 +143,21 @@ describe('the lobby as a screen of the game', () => {
     expect(stash).not.toContain('1 kinds');
   });
 
+  it('says at base that a TM or a stone is used from the pack in a raid (playtest 47)', () => {
+    const { hub } = createHub();
+    hub.stash.addItem('tm40-aerial-ace', 1);
+    hub.stash.addItem('fire-stone', 1);
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+    const helpOf = (markup: string, attribute: string, id: string): string =>
+      new RegExp(`${attribute}="${id}"[^>]*data-help="([^"]*)"`).exec(markup)?.[1] ?? '';
+    expect(helpOf(stash, 'data-supply', 'tm40-aerial-ace')).toContain('read it from your pack (B) in a raid');
+    expect(helpOf(stash, 'data-supply', 'fire-stone')).toContain('use it from your pack (B) in a raid');
+    // A Potion is used at base too, so it carries no such line.
+    expect(helpOf(stash, 'data-supply', 'potion')).not.toContain('in a raid');
+  });
+
   it('says on the base screen that someone is hurt, and bills it in the stash', () => {
     const { hub } = createWornHub();
 
