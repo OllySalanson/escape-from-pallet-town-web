@@ -1304,4 +1304,30 @@ describe('what the maker will not do', () => {
     scene.handleKey(key('z', { ctrlKey: true }));
     expect(scene.file).toEqual(wood);
   });
+
+  it('grows the wood back where a building stood once it is carried away (playtest 48, finding 4)', () => {
+    const base = blankMap();
+    const wood: MapFile = {
+      ...base,
+      ground: base.ground.map((row, y) =>
+        [...row].map((letter, x) => (x >= 6 && x <= 25 && y >= 6 && y <= 19 ? 'T' : letter)).join(''),
+      ),
+    };
+    storeDraft(wood);
+    const { scene } = openMaker();
+    (scene as unknown as { place: unknown }).place = { kind: 'building', building: 'gym' };
+    scene.tool = 'place';
+    scene.pointerDown(at(11, 9), page.canvas);
+    scene.pointerUp(at(11, 9), page.canvas);
+    expect(scene.file.ground[11].slice(10, 18)).toBe('........');
+
+    scene.tool = 'select';
+    scene.pointerDown(at(12, 10), page.canvas);
+    scene.pointerMove(at(21, 10), page.canvas);
+    scene.pointerUp(at(21, 10), page.canvas);
+
+    expect(scene.file.buildings).toEqual([{ x: 18, y: 9, kind: 'gym' }]);
+    expect(scene.file.ground[11].slice(10, 18)).toBe(wood.ground[11].slice(10, 18));
+    expect(scene.overlay.root.innerHTML).toMatch(/grew back where it stood\./);
+  });
 });

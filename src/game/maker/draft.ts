@@ -25,11 +25,14 @@ import { joinLedges, LEDGE_LETTERS, type GroundBrush } from './palette';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 import {
   doorRefusal,
+  growthCleared,
   planPiece,
+  regrowCleared,
   SPOT_LISTS,
   SPOT_ORDER,
   spotRefusal,
   spotsOf,
+  type ClearedGrowth,
   type PlacementPlace,
 } from './placement';
 import { generateMapName } from './mapNames';
@@ -578,6 +581,7 @@ export function placeBuilding(
   if (!plan.ok || !plan.file || plan.index === undefined) {
     return { placed: false, reason: plan.reason ?? 'It cannot go there.', blocked: plan.blocked };
   }
+  rememberClearing(plan.file.buildings[plan.index], file, plan.file);
   return {
     placed: true,
     file: plan.file,
@@ -586,11 +590,29 @@ export function placeBuilding(
   };
 }
 
-/** Takes one placed thing off the map. */
+/**
+ * The growth each building cleared when it was put down, by the building -
+ * which a map file never changes in place, so every version of the map that
+ * still holds it, undo included, names the same clearing. It is the session's
+ * and never saved: a map read back from storage has new buildings and no
+ * clearings, and its wood is simply where the maker left it.
+ */
+const clearings = new WeakMap<MapFileBuilding, readonly ClearedGrowth[]>();
+
+function rememberClearing(building: MapFileBuilding, before: MapFile, after: MapFile): void {
+  const cleared = growthCleared(before, after);
+  if (cleared.length > 0) {
+    clearings.set(building, cleared);
+  }
+}
+
+/** Takes one placed thing off the map: a building gives back the growth it cleared. */
 export function removeThing(file: MapFile, thing: ThingRef): MapFile {
   const without = <T>(list: readonly T[]): T[] => list.filter((_, index) => index !== thing.index);
   if (thing.kind === 'building') {
-    return { ...file, buildings: without(file.buildings) };
+    const rest = { ...file, buildings: without(file.buildings) };
+    const cleared = clearings.get(file.buildings[thing.index]);
+    return cleared ? regrowCleared(rest, cleared) : rest;
   }
   if (thing.kind === 'door') {
     return { ...file, doors: without(file.doors ?? []) };
@@ -640,12 +662,31 @@ export function moveThing(
     // change - less whatever it cleared away from before it.
     const buildings = plan.file.buildings.slice(0, -1);
     const index = thing.index - (plan.felled ?? []).filter((felled) => felled < thing.index).length;
-    buildings.splice(index, 0, { ...building, x: to.x, y: to.y });
+    const moved = { ...building, x: to.x, y: to.y };
+    buildings.splice(index, 0, moved);
+    rememberClearing(moved, rest, plan.file);
+    // What grew back where it stood, less anything its new place cleared again.
+    const regrown = growthCleared(plan.file, file);
+    const trees = new Set(
+      regrown
+        .filter((tile) => tile.letter === MATERIAL_CHARS.tree)
+        .map((tile) => `${tile.x - (tile.x % 2)},${tile.y - (tile.y % 2)}`),
+    ).size;
+    const bushes = regrown.length - regrown.filter((tile) => tile.letter === MATERIAL_CHARS.tree).length;
+    const grew = [
+      trees > 0 ? (trees === 1 ? 'a tree' : `${trees} trees`) : '',
+      bushes > 0 ? (bushes === 1 ? 'a bush' : `${bushes} bushes`) : '',
+    ].filter((part) => part.length > 0);
+    const grown = grew.join(' and ');
+    const note = [
+      plan.note,
+      grown ? `${grown[0].toUpperCase()}${grown.slice(1)} grew back where it stood.` : undefined,
+    ].filter((part): part is string => part !== undefined);
     return {
       placed: true,
       file: { ...plan.file, buildings },
       thing: { kind: 'building', index },
-      ...(plan.note ? { note: plan.note } : {}),
+      ...(note.length > 0 ? { note: note.join(' ') } : {}),
     };
   }
   if (thing.kind === 'door') {
