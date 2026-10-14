@@ -24,6 +24,17 @@ import { TILE_SIZE } from '../worldMap';
 
 const SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 
+/**
+ * How far behind this player's own figures on the same row another player is
+ * drawn. Everybody arrives on the same spawn with their partner on the same
+ * tile at heel, so somebody else standing on this player's partner is common -
+ * and drawn level with it, their figure hid the partner whole, which reads as
+ * the partner not being there. Behind the partner (a hair behind the player,
+ * `partnerFigure.ts`) and the player, and still a row's worth ahead of anybody
+ * on the row above, so the y-sort between rows is unchanged.
+ */
+export const OTHER_PLAYERS_BEHIND = 0.0001;
+
 /** The name plate's words: ink, in the chip size, on the game's own cream window. */
 const NAME_STYLE = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK } as const;
 
@@ -67,7 +78,7 @@ export class HarbourFigures {
       const x = (figure.tile.x + (toward.x - figure.tile.x) * figure.progress) * TILE_SIZE;
       const row = figure.tile.y + (toward.y - figure.tile.y) * figure.progress;
       const y = row * TILE_SIZE + SPRITE_Y_OFFSET;
-      drawn.sprite.setPosition(x, y).setDepth(atRow(FIGURE_BAND, row));
+      drawn.sprite.setPosition(x, y).setDepth(atRow(FIGURE_BAND, row) - OTHER_PLAYERS_BEHIND);
       const walking = figure.toward ? getWalkAnimationKey(figure.facing) : null;
       if (walking !== drawn.walking) {
         drawn.walking = walking;

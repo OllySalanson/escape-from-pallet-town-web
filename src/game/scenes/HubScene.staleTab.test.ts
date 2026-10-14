@@ -21,6 +21,8 @@ import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty, WATER_GUN } from '../pokemon';
 import { FIRST_CONTRACT_ID } from '../objectives';
 import { createStartingStash, type Stash } from '../stash';
+import { partnerOf } from '../base/partner';
+import { takeBack } from '../hub/dayCare';
 import { SAVE_KEY, SaveManager, type RestoredGame, type StorageLike } from '../save/SaveManager';
 import { HubScene, STALE_SAVE_REFUSAL } from './HubScene';
 
@@ -58,6 +60,8 @@ interface CenterInternals {
   pickUp(pokemonId: string): void;
   putDown(destination: string): void;
   addBoxAndShow(): void;
+  leaveAtDayCare(pokemonId: string): void;
+  takeBackFromDayCare(): void;
   deleteBox(): void;
   submitBoxForm(text: string): void;
   offerPendingMoves(): void;
@@ -203,5 +207,62 @@ describe('a Pokemon Center left open in another tab', () => {
     expect(saved.stash.listBoxes()).toHaveLength(3);
     const charmander = saved.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
     expect(charmander.pokemon.currentHp).toBe(charmander.pokemon.maxHp);
+  });
+});
+
+/** Tab A does something to the Day-Care through the save, as its own Day-Care screen does. */
+function dayCareElsewhere(storage: MemoryStorage, deed: (stash: Stash) => void): void {
+  const saves = new SaveManager(storage);
+  const game = saves.load()!;
+  deed(game.stash);
+  expect(saves.save(game)).toBe(true);
+}
+
+describe('a Day-Care screen left open in another tab', () => {
+  // The partner is the Pokemon a player is most likely to hand him, and the
+  // one whose absence is noticed: a stale screen that took it back a second
+  // time, or left it a second time, would put two of it in the save or none.
+  it('never takes the partner back twice', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    const partnerId = new SaveManager(storage).load()!.stash.partnerId()!;
+    dayCareElsewhere(storage, (stash) => expect(stash.leaveAtDayCare(partnerId, 0)).toBe(true));
+    const screen = openCenter(storage);
+    expect(screen.stash.dayCare()?.id).toBe(partnerId);
+    dayCareElsewhere(storage, (stash) => expect(takeBack(stash, 0)?.id).toBe(partnerId));
+    const takenBack = storage.getItem(SAVE_KEY);
+
+    screen.takeBackFromDayCare();
+
+    expect(screen.status).toBe(STALE_SAVE_REFUSAL);
+    expect(storage.getItem(SAVE_KEY)).toBe(takenBack);
+    const saved = new SaveManager(storage).load()!.stash;
+    expect(saved.listPokemon().filter((stored) => stored.id === partnerId)).toHaveLength(1);
+    expect(saved.dayCare()).toBeNull();
+    expect(partnerOf(saved)?.id).toBe(partnerId);
+    // Caught up, the screen walks the partner at heel again as the other tab does.
+    expect(partnerOf(screen.stash)?.id).toBe(partnerId);
+  });
+
+  it('never leaves the partner a second time over what another tab did', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    const partnerId = new SaveManager(storage).load()!.stash.partnerId()!;
+    const screen = openCenter(storage);
+    dayCareElsewhere(storage, (stash) => expect(stash.leaveAtDayCare(partnerId, 0)).toBe(true));
+    const left = storage.getItem(SAVE_KEY);
+
+    screen.leaveAtDayCare(partnerId);
+
+    expect(screen.status).toBe(STALE_SAVE_REFUSAL);
+    expect(storage.getItem(SAVE_KEY)).toBe(left);
+    const saved = new SaveManager(storage).load()!.stash;
+    expect(saved.dayCare()?.id).toBe(partnerId);
+    expect(saved.listPokemon().some((stored) => stored.id === partnerId)).toBe(false);
+    // Away, not gone: it keeps its mark and walks again once it is taken back.
+    expect(saved.partnerId()).toBe(partnerId);
+    expect(partnerOf(saved)).toBeNull();
+    expect(takeBack(saved, 0)?.id).toBe(partnerId);
+    expect(partnerOf(saved)?.id).toBe(partnerId);
   });
 });

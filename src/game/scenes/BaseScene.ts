@@ -629,6 +629,10 @@ export class BaseScene extends Phaser.Scene {
     this.updateWalking(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
+    // Seated last, against this frame's figures: seated before the partner's
+    // frame, a bubble it had just put up was a frame late into the seating and
+    // a caption was drawn across it for that frame.
+    this.containWorldLabels();
   }
 
   private updateWalking(deltaMs: number): void {
@@ -639,7 +643,6 @@ export class BaseScene extends Phaser.Scene {
       this.learnKey('look');
     }
     this.lookMs = advanceLookMs(this.lookMs, looked, deltaMs);
-    this.containWorldLabels();
     this.dialogBox.update(deltaMs);
 
     if (this.leaving || this.resting || this.namePrompt || this.knockScreen) {
@@ -1504,6 +1507,7 @@ export class BaseScene extends Phaser.Scene {
     const view = this.cameras.main.worldView;
     const bounds: Rect = { x: view.left, y: view.top, width: view.width, height: view.height };
     const room = this.place.room?.room;
+    const bubble = this.partner?.place.out ? this.partner.bubbleRect() : null;
     const placements = placeCaptions(
       labels.map((label) => label.request()),
       {
@@ -1523,6 +1527,9 @@ export class BaseScene extends Phaser.Scene {
           ...(room ? [] : [figureRect(DAY_CARE_KEEPER.position)]),
           ...(this.penPokemon ? [figureRect(this.penPokemon.tile)] : []),
           ...(this.partner?.place.out ? [this.partner.rect()] : []),
+          // And what it is saying: a door's name seated across its bubble hid
+          // the heart it answers a word with, on the quay and at the Day-Care.
+          ...(bubble ? [bubble] : []),
           // A piece of furniture is drawn among the figures, over any caption under it.
           ...(this.place.room?.home?.placed ?? [])
             .filter((piece) => piece.definition.layer !== 'floor')

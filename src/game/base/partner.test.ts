@@ -6,10 +6,28 @@ import {
   type Direction,
   type GridPosition,
 } from '../movement/gridMovement';
-import { BULBASAUR, CHARMANDER, CHARMELEON, PIDGEY, Pokemon, SQUIRTLE } from '../pokemon';
+import {
+  BLASTOISE,
+  BULBASAUR,
+  CHARIZARD,
+  CHARMANDER,
+  CHARMELEON,
+  IVYSAUR,
+  PIDGEY,
+  Pokemon,
+  SQUIRTLE,
+  VENUSAUR,
+  WARTORTLE,
+  experienceForLevel,
+} from '../pokemon';
 import { evolutionFamily } from '../pokemon/evolution';
 import { createStartingStash, Stash } from '../stash';
 import { SaveManager } from '../save/SaveManager';
+import { setActiveSaveSlot } from '../dev/playtestMode';
+import { createPlaytestGame } from '../dev/playtestSave';
+import { applyRecovery } from '../hub/recovery';
+import { withErrandAsked } from '../hub/errands';
+import type { RaidInFlight } from '../run/raidInFlight';
 import { baseGame, restoreBase } from './baseGames.testkit';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from './baseMap';
 import { BASE_DOORS } from './doors';
@@ -309,6 +327,126 @@ describe('who the partner is', () => {
     expect(partnerOf(stash)?.species).toBe('charmeleon');
   });
 
+  it.each([
+    ['Bulbasaur', BULBASAUR, [IVYSAUR, VENUSAUR]],
+    ['Charmander', CHARMANDER, [CHARMELEON, CHARIZARD]],
+    ['Squirtle', SQUIRTLE, [WARTORTLE, BLASTOISE]],
+  ] as const)(
+    'stays the %s picked at every stage, nicknamed and shiny, through a save and a load',
+    (_name, starter, stages) => {
+      const stash = createStartingStash(starter);
+      const id = stash.partner()?.id;
+      const stored = new Map<string, string>();
+      const manager = new SaveManager({
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => void stored.set(key, value),
+        removeItem: (key: string) => void stored.delete(key),
+      });
+      for (const stage of stages) {
+        const partner = stash.partner()!.pokemon;
+        partner.evolveInto(stage);
+        partner.giveNickname('Pal');
+        partner.shiny = true;
+        manager.save({ ...restoreBase(stash), stash });
+        const loaded = partnerOf(manager.load()!.stash);
+        expect(loaded?.id).toBe(id);
+        expect(loaded?.species).toBe(stage.id);
+        expect(existsSync(join(__dirname, '../../../public', partnerAssetPath(loaded!.species)))).toBe(true);
+        expect(partnerReaction(loaded!.pokemon, 'yard', 0).line).toContain('PAL');
+      }
+    },
+  );
+
+  it('after every way a raid ends, is the starter while it came home and nobody once it was lost', () => {
+    const storeFor = (stash: Stash, raidInFlight?: RaidInFlight): SaveManager => {
+      const stored = new Map<string, string>();
+      const manager = new SaveManager({
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => void stored.set(key, value),
+        removeItem: (key: string) => void stored.delete(key),
+      });
+      manager.save({ ...restoreBase(stash), stash, raidInFlight });
+      return manager;
+    };
+    const charmanderSave = (): { stash: Stash; id: string } => {
+      const stash = createStartingStash(CHARMANDER);
+      return { stash, id: stash.partner()!.id };
+    };
+
+    // Lost with nothing secured: the whole vault goes, the base re-issues a
+    // Charmander under the very same id, and it is not the partner.
+    const wiped = charmanderSave();
+    const wipedSaves = storeFor(wiped.stash);
+    expect(wipedSaves.applyWipeLoss([wiped.id], [{ itemId: 'potion', quantity: 1 }], { items: [{ itemId: 'potion', quantity: 1 }] })).toBe(true);
+    const afterWipe = wipedSaves.load()!.stash;
+    expect(afterWipe.listPokemon().map((entry) => entry.id)).toEqual([wiped.id]);
+    expect(afterWipe.partnerId()).toBeNull();
+    expect(partnerOf(afterWipe)).toBeNull();
+
+    // Lost with the starter in the secure container, as the container fills
+    // itself by default (the clock running out settles the same way).
+    const secured = charmanderSave();
+    const securedSaves = storeFor(secured.stash);
+    securedSaves.applyWipeLoss([secured.id], [], { pokemonIds: [secured.id] });
+    expect(partnerOf(securedSaves.load()!.stash)?.id).toBe(secured.id);
+
+    // Abandoned - the page closed mid-raid - keeps the team whatever was secured.
+    const abandoned = charmanderSave();
+    const abandonedSaves = storeFor(abandoned.stash, {
+      id: 'raid-1',
+      mapId: 'floodplain-relay',
+      packItemId: 'raid-pack',
+      items: { potion: 3 },
+      secured: {},
+    });
+    expect(abandonedSaves.settleAbandonedRaid()).not.toBeNull();
+    expect(partnerOf(abandonedSaves.load()!.stash)?.id).toBe(abandoned.id);
+
+    // Abandoned with a stronger Pokemon beside it, which the container fills
+    // itself with instead - the starter went unprotected and still comes home
+    // as the partner, at the health the vault kept, not the Pidgey.
+    const unsecured = charmanderSave();
+    unsecured.stash.addPokemon(new Pokemon(PIDGEY, 20), 'pidgey-1');
+    const unsecuredSaves = storeFor(unsecured.stash, {
+      id: 'raid-2',
+      mapId: 'floodplain-relay',
+      packItemId: 'raid-pack',
+      items: { potion: 3 },
+      secured: {},
+    });
+    expect(unsecuredSaves.settleAbandonedRaid()).not.toBeNull();
+    const settled = unsecuredSaves.load()!.stash;
+    expect(settled.listPokemon().map((entry) => entry.id)).toEqual([unsecured.id, 'pidgey-1']);
+    expect(partnerOf(settled)?.id).toBe(unsecured.id);
+    expect(partnerOf(settled)?.species).toBe('charmander');
+  });
+
+  it('is still the partner while fainted, and the same one once the Pokemon Center has healed it', () => {
+    const stash = createStartingStash(CHARMANDER);
+    stash.addPokemon(new Pokemon(PIDGEY, 20));
+    const id = stash.partner()!.id;
+    stash.partner()!.pokemon.takeDamage(stash.partner()!.pokemon.maxHp);
+    expect(partnerOf(stash)?.id).toBe(id);
+    expect(partnerReaction(partnerOf(stash)!.pokemon, 'yard', 0).line).toContain('too worn out');
+    expect(idleBeat(0.9, partnerOf(stash)!.pokemon)).toBeNull();
+
+    const outcome = applyRecovery(stash, 0, [id]);
+    expect(outcome.recoveredIds).toEqual([id]);
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    manager.save({ ...restoreBase(stash), stash, pendingRecoveryMs: outcome.pendingRecoveryMs });
+    const healed = partnerOf(manager.load()!.stash);
+    expect(healed?.id).toBe(id);
+    expect(healed?.pokemon.isFainted).toBe(false);
+    expect(healed?.pokemon.currentHp).toBe(healed?.pokemon.maxHp);
+    expect(partnerReaction(healed!.pokemon, 'yard', 0).line).not.toContain('worn out');
+    expect(idleBeat(0.9, healed!.pokemon)).toBe('hop-and-chirp');
+  });
+
   it('is never chosen: a stronger Pokemon of the same line does not take its place', () => {
     const stash = createStartingStash(CHARMANDER);
     const original = stash.partner()?.id;
@@ -346,6 +484,52 @@ describe('who the partner is', () => {
     expect(partnerOf(replacement)).toBeNull();
   });
 
+  it('is the same Pokemon after every deed at base that changes the vault', () => {
+    const stored = new Map<string, string>();
+    const saves = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    const stash = createStartingStash(CHARMANDER);
+    const id = stash.partner()!.id;
+    stash.addItem('old-amber', 1);
+    // Nine more kinds beside the Charmander, so Oak has a reward due.
+    for (const species of [PIDGEY, SQUIRTLE, BULBASAUR, IVYSAUR, WARTORTLE, VENUSAUR, BLASTOISE, CHARIZARD, CHARMELEON]) {
+      stash.addPokemon(new Pokemon(species, 5));
+    }
+    saves.save({ ...restoreBase(stash), stash, raidProgress: { ...restoreBase(stash).raidProgress, errands: withErrandAsked(undefined, 'old-amber') } });
+
+    // A level evolution the raid earned, settled at base when it is banked.
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        {
+          condition: [
+            {
+              id,
+              currentHp: 30,
+              primaryStatus: null,
+              experience: experienceForLevel(16, CHARMANDER.growthRate),
+              speciesId: 'charmeleon',
+              heldItemId: null,
+            },
+          ],
+          supplies: [],
+        },
+      ),
+    ).toBe(true);
+    expect(partnerOf(saves.load()!.stash)).toMatchObject({ id, species: 'charmeleon' });
+
+    // Bill's errand pays a Pokemon into the vault, and Oak pays the Pokedex.
+    expect(saves.completeErrand('old-amber')).toBeDefined();
+    expect(saves.claimPokedexReward()).toBeDefined();
+    const after = saves.load()!.stash;
+    expect(after.listPokemon().some(({ pokemon }) => pokemon.base.id === 'eevee')).toBe(true);
+    expect(after.partnerId()).toBe(id);
+    expect(partnerOf(after)).toMatchObject({ id, species: 'charmeleon' });
+  });
+
   it('is saved, and a lost one stays lost through a save and load', () => {
     const kept = restoreBase(createStartingStash(CHARMANDER));
     expect(partnerOf(kept.stash)?.species).toBe('charmander');
@@ -376,6 +560,119 @@ describe('who the partner is', () => {
       stored.set(key, JSON.stringify(save));
     }
     expect(partnerOf(manager.load()?.stash ?? new Stash())?.id).toBe('charmeleon-1');
+  });
+
+  it('on a save whose mark names nobody, the Day-Care or nothing, is exactly who the mark names in the vault', () => {
+    const charmander = { speciesId: 'charmander', level: 5, currentHp: 19, xp: 125, moves: ['Scratch', 'Growl'], primaryStatus: null };
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    manager.save(restoreBase(createStartingStash(CHARMANDER)));
+    const written = JSON.parse([...stored.values()][0]) as { stash: Record<string, unknown> };
+    const load = (stash: Record<string, unknown>) => {
+      stored.clear();
+      stored.set('escape-from-pallet-town.save.v1', JSON.stringify({ ...written, stash: { ...written.stash, ...stash } }));
+      return manager.load()!.stash;
+    };
+    const starter = { id: 'charmander-1', pokemon: charmander };
+
+    // A mark naming nobody the vault holds is no partner, and a starter later
+    // issued under that id is a newcomer, not the friend the mark meant.
+    const nobody = load({ pokemon: [starter], partnerId: 'charmander-9' });
+    expect(nobody.partnerId()).toBeNull();
+    nobody.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-9');
+    expect(partnerOf(nobody)).toBeNull();
+
+    // A mark on the Day-Care's Pokemon holds while it is away and walks again once taken back.
+    const away = load({
+      pokemon: [{ id: 'pidgey-1', pokemon: { ...charmander, speciesId: 'pidgey', moves: ['Tackle'] } }],
+      boxes: undefined,
+      dayCare: { ...starter, leftAfterRaids: 0 },
+      partnerId: 'charmander-1',
+    });
+    expect(away.partnerId()).toBe('charmander-1');
+    expect(partnerOf(away)).toBeNull();
+    expect(away.takeBackFromDayCare()).toBe('charmander-1');
+    expect(partnerOf(away)).toMatchObject({ id: 'charmander-1', species: 'charmander' });
+
+    // A stay that is also in the vault is dropped, and the vault's copy is the partner.
+    const twice = load({ pokemon: [starter], dayCare: { ...starter, leftAfterRaids: 0 }, partnerId: 'charmander-1' });
+    expect(twice.dayCare()).toBeNull();
+    expect(partnerOf(twice)).toMatchObject({ id: 'charmander-1' });
+
+    // Lost stays lost however strong the line still in the vault, and a mark that is not an id is none.
+    const evolved = { ...charmander, speciesId: 'charmeleon', level: 20, xp: 8000, currentHp: 60 };
+    expect(partnerOf(load({ pokemon: [{ id: 'charmander-1', pokemon: evolved }, { id: 'charmander-2', pokemon: charmander }], partnerId: null }))).toBeNull();
+    expect(partnerOf(load({ pokemon: [starter], partnerId: 42 }))).toBeNull();
+  });
+
+  it('on every older save version the loader accepts, is the starter that save was played with', () => {
+    const charmander = { speciesId: 'charmander', level: 5, currentHp: 19, xp: 125, moves: ['Scratch', 'Growl'], primaryStatus: null };
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    const load = (save: object) => {
+      stored.clear();
+      stored.set('escape-from-pallet-town.save.v1', JSON.stringify({ mapId: 'pallet-town', position: { x: 1, y: 1 }, items: [], bag: {}, ...save }));
+      return manager.load();
+    };
+
+    // A free-roam save: the team was the party, and is moved into the vault.
+    const freeRoam = load({ version: 3, party: [charmander] });
+    expect(partnerOf(freeRoam?.stash ?? new Stash())?.species).toBe('charmander');
+
+    for (const version of [4, 5, 6]) {
+      const restored = load({
+        version,
+        party: [],
+        starterSpeciesId: 'charmander',
+        stash: {
+          pokemon: [
+            { id: 'pidgey-1', pokemon: { ...charmander, speciesId: 'pidgey', level: 30, xp: 27000 } },
+            { id: 'charmander-1', pokemon: charmander },
+          ],
+          items: {},
+        },
+      });
+      expect(partnerOf(restored?.stash ?? new Stash())?.id).toBe('charmander-1');
+    }
+  });
+
+  it('is the ordinary game’s own starter again after an explorer run and a TRY IT, each of which has its own', () => {
+    const stored = new Map<string, string>();
+    const manager = new SaveManager({
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: (key: string) => void stored.delete(key),
+    });
+    const partnerIn = (slot: 'normal' | 'playtest' | 'try-it') => {
+      setActiveSaveSlot(slot);
+      return partnerOf(manager.load()?.stash ?? new Stash());
+    };
+    try {
+      setActiveSaveSlot('normal');
+      manager.save(restoreBase(createStartingStash(CHARMANDER)));
+      // PLAYTEST on the title: its own save, with its Charizard at heel.
+      setActiveSaveSlot('playtest');
+      manager.save(createPlaytestGame());
+      // A try deals a team of its own and may lose all of it.
+      setActiveSaveSlot('try-it');
+      const tried = createStartingStash(SQUIRTLE);
+      tried.applyWipeLoss([tried.partner()?.id ?? ''], []);
+      manager.save(restoreBase(tried));
+
+      expect(partnerIn('playtest')).toMatchObject({ id: 'charizard-1', species: 'charizard' });
+      expect(partnerIn('try-it')).toBeNull();
+      expect(partnerIn('normal')).toMatchObject({ id: 'charmander-1', species: 'charmander' });
+    } finally {
+      setActiveSaveSlot('normal');
+    }
   });
 });
 

@@ -765,6 +765,11 @@ try {
     await until(sceneIs('base'), 'the base');
     await wait(400);
     note(`home at ${await page.evaluate(`JSON.stringify(${GAME}.scene.getScene('base').currentTile)`)}`);
+    // Who walks at heel once home (`base/partner.ts`): the starter by stash id,
+    // or nobody once it is lost - which every raid ending can change.
+    note(`partner: ${await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); const p = b.partner; const stash = b.savedGame.stash;
+      return JSON.stringify({ partnerId: stash.partnerId(), vault: stash.listPokemon().map((s) => s.id + ':' + s.pokemon.base.id + ':' + s.pokemon.level),
+        follower: p && p.place.out && p.sprite.visible ? { id: stash.partner()?.id ?? null, species: p.pokemon?.base.id, tile: p.place.tile, facing: p.place.facing } : null }); })()`)}`);
     await walkIntoBase(page, 'oaks-lab', { press, until, wait });
     await wait(400);
     note(`lobby: ${await page.evaluate(`document.querySelector('.menu-overlay')?.innerText.replace(/\\n+/g, ' | ').slice(0, 160)`)}`);

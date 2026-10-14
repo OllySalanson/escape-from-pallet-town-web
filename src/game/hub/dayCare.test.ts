@@ -8,6 +8,7 @@ import {
   type RaidProgress,
   type StorageLike,
 } from '../save/SaveManager';
+import { partnerOf } from '../base/partner';
 import { Stash, createStartingStash } from '../stash/Stash';
 import {
   DAY_CARE_SHARE_OF_A_LEVEL,
@@ -174,6 +175,22 @@ describe('leaving a Pokémon with him', () => {
     expect(stash.listPokemon()).toHaveLength(1);
     expect(stash.listPokemon()[0].id).not.toBe(pidgey);
     expect(stash.canSwapStarter()).toBe(false);
+  });
+
+  it('keeps the partner through a wipe of the rest: the re-issued starter never follows, the one taken back does', () => {
+    const { stash, partner } = vault();
+    stash.leaveAtDayCare(partner, 0);
+    expect(partnerOf(stash)).toBeNull();
+    stash.applyWipeLoss(stash.listPokemon().map((stored) => stored.id), []);
+    expect(stash.ensurePlayable(CHARMANDER)).toBe(true);
+    const reissued = stash.listPokemon()[0];
+    expect(reissued.pokemon.base.id).toBe('charmander');
+    expect(reissued.id).not.toBe(partner);
+    // The fresh Charmander is a stand-in, not the friend who is away.
+    expect(partnerOf(stash)).toBeNull();
+
+    takeBack(stash, 0);
+    expect(partnerOf(stash)?.id).toBe(partner);
   });
 });
 
