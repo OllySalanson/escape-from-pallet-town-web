@@ -6,6 +6,7 @@ import {
   KNOCK_WAIT_MS,
   knockOutcomeLine,
   knockScreenMarkup,
+  type KnockOpenedFrom,
   type KnockView,
 } from '../home/knocking';
 import { MenuOverlay } from './MenuOverlay';
@@ -25,30 +26,46 @@ export interface LetIn {
  * with the house to step into if the answer was yes, else null.
  *
  * Every step asks the database (`harbour/houseService.ts`); the only thing it
- * tells another browser is a nudge to the owner's, so they look at once.
+ * tells another browser is a nudge to the owner's, so they look at once - and,
+ * when the player stops knocking, that the knock is gone, so the owner is not
+ * left answering it.
  */
 export function openKnockScreen(
   scene: Phaser.Scene,
   service: HouseService,
-  nudge: (owner: string) => void,
+  nudge: (owner: string, gone?: string) => void,
   onDone: (letIn: LetIn | null) => void,
+  from: KnockOpenedFrom = 'house',
 ): MenuOverlay {
   let settled = false;
   let view: KnockView = { kind: 'asking' };
   let waiting: number | undefined;
-  let knockingOn: { id: string; name: string } | null = null;
+  let knockingOn: { id: string; name: string; knockId?: string } | null = null;
+
+  /** Stops knocking: the owner's browser is told, so it does not ask about it. */
+  const walkAway = (): void => {
+    window.clearTimeout(waiting);
+    if (knockingOn?.knockId) {
+      nudge(knockingOn.id, knockingOn.knockId);
+    }
+    knockingOn = null;
+  };
 
   const settle = (letIn: LetIn | null): void => {
     if (settled) {
       return;
     }
     settled = true;
-    window.clearTimeout(waiting);
+    if (letIn) {
+      window.clearTimeout(waiting);
+    } else {
+      walkAway();
+    }
     overlay.destroy();
     onDone(letIn);
   };
   const render = (): void => {
-    overlay.root.innerHTML = knockScreenMarkup(view);
+    overlay.root.innerHTML = knockScreenMarkup(view, from);
     overlay.root.querySelector<HTMLButtonElement>('[data-knock-close]')!.onclick = () => settle(null);
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-knock]').forEach((row) => {
       row.onclick = () => knock(row.dataset.knock ?? '', row.dataset.name ?? '');
@@ -91,6 +108,7 @@ export function openKnockScreen(
           showHouses(knockOutcomeLine(name, outcome === 'knocking' ? 'gone' : outcome));
           return;
         }
+        knockingOn = { id: owner, name, knockId };
         nudge(owner);
         waitFor(knockId, owner, name, performance.now());
       },
@@ -127,7 +145,7 @@ export function openKnockScreen(
       event.preventDefault();
       if (knockingOn) {
         // Stopping is walking away from the door, not leaving the screen.
-        window.clearTimeout(waiting);
+        walkAway();
         showHouses('You stopped knocking.');
       } else {
         settle(null);

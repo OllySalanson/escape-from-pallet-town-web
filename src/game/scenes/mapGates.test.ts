@@ -664,6 +664,19 @@ describe('a field-move gate in a live raid', () => {
     expect(internalsOf(scene).tryFieldMoveAt(RIDE_TILE)).toBeNull();
   });
 
+  it("says FireRed's own line at a small tree, and the ride's only at a ride", () => {
+    const tree = WORLD_GATES.find((gate) => gate.id === 'viridian-trade-tree')!;
+    const scene = new WorldScene();
+    attachSceneStubs(scene);
+    scene.create(deploy('viridian-city', [], { party: withoutCut() }).data);
+
+    expect(internalsOf(scene).isBlocked(tree.tiles[0])).toBe(true);
+    expect(internalsOf(scene).tryFieldMoveAt(tree.tiles[0])).toEqual([
+      'This tree looks like it can be CUT down!',
+      'Nothing in the party can cut it. Something that reads HM01 could.',
+    ]);
+  });
+
   it('is open from the first step of every later raid, whoever is deployed', () => {
     const scene = new WorldScene();
     attachSceneStubs(scene);

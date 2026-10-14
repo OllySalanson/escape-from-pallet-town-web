@@ -1036,7 +1036,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
   },
   {
     // Route 1's toll, on the middle terrace. She looks up across the road from
-    // the grass bed under it, so the road up from Pallet passes through him and
+    // the grass bed under it, so the road up from Pallet passes through her and
     // the bed is the way round. Going down, nobody needs the road: it is three
     // hops.
     mapId: 'viridian-city',

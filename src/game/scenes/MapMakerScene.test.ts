@@ -14,6 +14,8 @@ vi.mock('phaser', () => ({
 const VIEW = { left: 100, top: 100, width: 320, height: 240 };
 const TILE_PX = 16;
 const page = {
+  /** What a clicked control's `data-` attributes say, for a handler that reads them. */
+  clicked: {} as Record<string, string>,
   mapWidth: 40,
   mapHeight: 30,
   /** The frame flashed round a tile a fault was found on. */
@@ -93,7 +95,9 @@ vi.mock('../ui/MenuOverlay', () => ({
         selector.startsWith('[data-') && selector !== '[data-field]'
           ? [
               {
-                dataset: {},
+                get dataset() {
+                  return page.clicked;
+                },
                 getAttribute: () => null,
                 addEventListener: (_type: string, handler: () => void) =>
                   this.clicks.set(selector, handler),
@@ -351,6 +355,32 @@ describe('taking a thing off the map', () => {
     expect(scene.tool).toBe('brush');
   });
 
+  it('opens and folds a plant group in the paint list on a press, and keeps it for the session (playtest 48 #2)', () => {
+    const { scene } = openMaker();
+    // Folded, the Cave mouth is not 4,200 pixels of scrolling down: it is
+    // not in the list at all until NATURE is opened.
+    expect(scene.overlay.root.innerHTML).toContain('data-fold="Nature" aria-expanded="false"');
+    expect(scene.overlay.root.innerHTML).not.toContain('data-plant="cave-mouth"');
+
+    page.clicked = { fold: 'Nature' };
+    try {
+      scene.overlay.clicks.get('[data-fold]')!();
+      expect(scene.overlay.root.innerHTML).toContain('data-fold="Nature" aria-expanded="true"');
+      expect(scene.overlay.root.innerHTML).toContain('data-plant="cave-mouth"');
+      expect(scene.overlay.root.innerHTML).toContain('data-fold="Buildings" aria-expanded="false"');
+
+      // Back from the title, the list is as the maker left it.
+      reopen(scene);
+      expect(scene.overlay.root.innerHTML).toContain('data-plant="cave-mouth"');
+
+      scene.overlay.clicks.get('[data-fold]')!();
+      expect(scene.overlay.root.innerHTML).toContain('data-fold="Nature" aria-expanded="false"');
+      expect(scene.overlay.root.innerHTML).not.toContain('data-plant="cave-mouth"');
+    } finally {
+      page.clicked = {};
+    }
+  });
+
   it('with the remove tool clears a choice its removal would have moved on', () => {
     storeDraft(withSigns());
     const { scene } = openMaker();
@@ -495,6 +525,29 @@ describe('a mouse tool that says so', () => {
   });
 });
 
+describe('opening a map', () => {
+  it('fits it to the window as the window is once the screen has been laid out', () => {
+    // The overlay snaps the screen a frame after drawing it, and the map
+    // window is narrower until then: a 40x30 map that fits it was opened as
+    // though it did not (playtest 48).
+    const frames: (() => void)[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => frames.push(callback));
+    storeDraft(withSigns());
+    page.viewport.clientWidth = 600;
+    try {
+      const { scene } = openMaker();
+      page.viewport.clientWidth = 1_300;
+      while (frames.length > 0) {
+        frames.shift()!();
+      }
+      // At 16 the map is 1,280 pixels across: it fits the window as laid out.
+      expect(scene.zoom).toBe(16);
+    } finally {
+      page.viewport.clientWidth = 0;
+    }
+  });
+});
+
 describe('undo and zoom across the session', () => {
   it('survive a trip to the title', () => {
     storeDraft(withSigns());
@@ -538,6 +591,24 @@ describe('undo and zoom across the session', () => {
     expect(scene.history.canUndo).toBe(true);
     scene.handleKey(key('z', { ctrlKey: true }));
     expect(groundAt(scene.file, { x: 20, y: 4 })).toBe('.');
+  });
+
+  it('survive a trip to the title on a map with an inside', () => {
+    storeDraft(sampleLane);
+    const { scene } = openMaker();
+    // What GO INSIDE does: the room and its door, as one step of undo.
+    const made = makeInside(scene.file, 0);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    scene.history.push(made.file);
+
+    scene.overlay.clicks.get('[data-back]')!();
+    reopen(scene);
+
+    expect(scene.history.canUndo).toBe(true);
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect(scene.file.areas ?? []).toHaveLength(0);
   });
 
   it('start afresh when the stored draft is not the one the history ends on', () => {
@@ -1285,5 +1356,31 @@ describe('what the maker will not do', () => {
     expect(scene.overlay.root.innerHTML).toMatch(/Clears \d+ trees\./);
     scene.handleKey(key('z', { ctrlKey: true }));
     expect(scene.file).toEqual(wood);
+  });
+
+  it('grows the wood back where a building stood once it is carried away (playtest 48, finding 4)', () => {
+    const base = blankMap();
+    const wood: MapFile = {
+      ...base,
+      ground: base.ground.map((row, y) =>
+        [...row].map((letter, x) => (x >= 6 && x <= 25 && y >= 6 && y <= 19 ? 'T' : letter)).join(''),
+      ),
+    };
+    storeDraft(wood);
+    const { scene } = openMaker();
+    (scene as unknown as { place: unknown }).place = { kind: 'building', building: 'gym' };
+    scene.tool = 'place';
+    scene.pointerDown(at(11, 9), page.canvas);
+    scene.pointerUp(at(11, 9), page.canvas);
+    expect(scene.file.ground[11].slice(10, 18)).toBe('........');
+
+    scene.tool = 'select';
+    scene.pointerDown(at(12, 10), page.canvas);
+    scene.pointerMove(at(21, 10), page.canvas);
+    scene.pointerUp(at(21, 10), page.canvas);
+
+    expect(scene.file.buildings).toEqual([{ x: 18, y: 9, kind: 'gym' }]);
+    expect(scene.file.ground[11].slice(10, 18)).toBe(wood.ground[11].slice(10, 18));
+    expect(scene.overlay.root.innerHTML).toMatch(/grew back where it stood\./);
   });
 });

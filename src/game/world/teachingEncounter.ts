@@ -41,3 +41,14 @@ export const consumeTeachingEncounter = (
   session!.teachingEncounterUsed = true;
   return { ...TEACHING_ENCOUNTER };
 };
+
+/**
+ * Whether a fight in this raid still owes the newcomer the ITEM lesson
+ * (`itemLessonMessage`). It is owed to the raid, not to the teaching fight: a
+ * newcomer who ran from the Pidgey, or beat it without being touched, was never
+ * told and met the toll on the road past it with every Potion unused, which is
+ * exactly what the lesson exists to stop. So every fight of a raid carrying the
+ * first contract may say it - on the first turn that hurts - until one has.
+ */
+export const owesItemLesson = (session: ActiveRunSession | undefined): boolean =>
+  session?.plan?.contract?.id === FIRST_CONTRACT_ID && session.itemLessonSaid !== true;

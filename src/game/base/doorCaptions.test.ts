@@ -3,6 +3,7 @@ import type Phaser from 'phaser';
 import { CHARACTER_FEET_PIXEL_Y, CHARACTER_HEAD_PIXEL_Y } from '../playerFrames';
 import { TILE_SIZE } from '../worldMap';
 import { placeCaptions, type Rect } from '../ui/labelPlacement';
+import { tabOverGame } from '../feedback/feedbackTabCover';
 import { WorldLabel } from '../ui/WorldLabel';
 import { BASE_TILESET } from './baseTileset';
 import { BASE_DOORS, type BaseDoor } from './doors';
@@ -100,7 +101,7 @@ interface Seated {
 }
 
 /** Where every door's caption is drawn with the player on `tile`, the look key held or not. */
-function seatedFrom(tile: GridPosition, looking = true): Seated[] {
+function seatedFrom(tile: GridPosition, looking = true, onScreen: readonly Rect[] = []): Seated[] {
   const scene = standInScene();
   const labels = BASE_DOORS.map(
     (door) =>
@@ -116,7 +117,14 @@ function seatedFrom(tile: GridPosition, looking = true): Seated[] {
   const requests = labels.map((label) => label.request());
   const placements = placeCaptions(
     requests,
-    { bounds: viewOn(tile), furniture: [], keepClear: [], canopy: [], player: [figure(tile)] },
+    {
+      bounds: viewOn(tile),
+      // Screen furniture is pinned to the screen; the scene moves it into the world.
+      furniture: onScreen.map((piece) => ({ ...piece, x: piece.x + viewOn(tile).x, y: piece.y + viewOn(tile).y })),
+      keepClear: [],
+      canopy: [],
+      player: [figure(tile)],
+    },
   );
   return BASE_DOORS.flatMap((door, index) => {
     const placed = placements[index];
@@ -155,4 +163,27 @@ describe('the harbour door captions', () => {
       expect(covering).toEqual([]);
     },
   );
+
+  it('writes no door name under the FEEDBACK tab, from the spawn or any doorstep', () => {
+    // The yard at 1200x768, drawn three to the pixel: the tab stands half way
+    // down the window's right edge, 30 by 112 (`style.css`), over the map. THE
+    // BOLTHOLE's name was seated against the screen's edge and read THE BOLTHOL.
+    const tab = tabOverGame({ left: 1170, top: 328, width: 30, height: 112 }, { left: 0, top: 0, width: 1200, height: 768 }, VIEW);
+    expect(tab).toEqual({ x: 390, y: 109, width: 10, height: 38 });
+    const onScreen = (tile: GridPosition) => {
+      const view = viewOn(tile);
+      return { ...tab!, x: tab!.x + view.x, y: tab!.y + view.y };
+    };
+    const walks = [BASE_SPAWN, ...BASE_DOORS.map((door) => door.returnTo)];
+    const underTheTab = (withTab: boolean) =>
+      walks.flatMap((tile) =>
+        seatedFrom(tile, true, withTab ? [tab!] : [])
+          .filter(({ at }) => overlaps(at, onScreen(tile)))
+          .map(({ door }) => `${door.id} from ${tile.x},${tile.y}`),
+      );
+    // Told nothing of the tab, the seating does put a name under it - which is
+    // what makes the next line a test of something.
+    expect(underTheTab(false)).not.toEqual([]);
+    expect(underTheTab(true)).toEqual([]);
+  });
 });

@@ -28,7 +28,8 @@ import { browserOutbox } from './outbox';
  * puts nothing: the raid's chips are in the corners and its talk box along the
  * bottom. On a window the game does not fill it sits in the empty margin; on
  * one it does, it covers a strip of map edge and never the clock, the chips,
- * the box or the player.
+ * the box or the player - and the world's captions are seated clear of it
+ * (`feedbackTabCover.ts`).
  *
  * Pressing it, in this order: the picture is asked for (it is taken a frame
  * later, so what the player saw is what is attached - the panel is drawn in the

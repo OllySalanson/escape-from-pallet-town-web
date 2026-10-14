@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -1531,12 +1532,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     rooms.moved(this.currentTile, this.facing);
     rooms.tick(this.time.now, deltaMs);
-    // What somebody is saying rides on their name plate while it is said.
+    // What somebody is saying rides on their name plate while it is said. Two
+    // friends dropping in by the same door land on one tile, and a friend's
+    // bare name over the head they share reads as this player's own, so it is
+    // left off until one of them walks away; a plate saying something is kept.
     this.friendFigures.update(
       rooms.figuresOn(this.currentMap.id).map((figure) => {
         const said = rooms.talk.saying(figure.id, this.time.now);
-        return said ? { ...figure, name: `${figure.name}: ${said}` } : figure;
+        return said ? { ...figure, name: `${figure.name}: ${said}`, speaking: true } : figure;
       }),
+      this.player,
     );
     this.settleRoomLoot();
     this.talkInTheRoom(deltaMs);
@@ -4615,7 +4620,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return null;
     }
     const user = fieldMoveUser(this.party.pokemon, gate.fieldMove);
-    const lines = fieldMoveLines(gate.fieldMove, user);
+    const lines = fieldMoveLines(gate.fieldMove, user, gate.obstacle);
     if (!user) {
       audioManager.play('denied');
       return lines;
@@ -5092,8 +5097,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.keyPresses.justPressed(this.controls.up) ||
       this.keyPresses.justPressed(this.controls.w)
     ) {
-      prompt.moveSelection(-1);
-      audioManager.play('select');
+      if (prompt.moveSelection(-1)) {
+        audioManager.play('select');
+      }
       return;
     }
     if (
@@ -5102,8 +5108,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.keyPresses.justPressed(this.controls.down) ||
       this.keyPresses.justPressed(this.controls.s)
     ) {
-      prompt.moveSelection(1);
-      audioManager.play('select');
+      if (prompt.moveSelection(1)) {
+        audioManager.play('select');
+      }
       return;
     }
     if (this.isInteractionPressed()) {
@@ -5695,7 +5702,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const dialog = this.dialogBox?.visible
       ? [{ x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
       : [];
-    const furniture = [...(this.raidHud?.occupied ?? []), ...dialog].map((chip) => ({
+    // The FEEDBACK tab stands over the right edge of the screen (`feedbackTabCover.ts`).
+    const tab = feedbackTabOverGame(this.game?.canvas, this.scale?.gameSize);
+    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,

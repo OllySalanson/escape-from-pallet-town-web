@@ -1031,8 +1031,10 @@ button {
 .feedback-tab[hidden] {
   display: none;
 }
-/* A phone held upright has room under the game and none beside it. */
-@media (max-width: 600px) and (orientation: portrait) {
+/* A phone held upright has room under the game and none beside it, and so
+   does a window too narrow for the strip beside the smallest menu screen
+   (`feedbackTabEdge` in display/menuStage.ts, which holds these numbers). */
+@media (max-width: 600px) and (orientation: portrait), (max-width: 671px) and (min-height: 512px) {
   .feedback-tab {
     top: auto;
     bottom: 0;
@@ -3609,6 +3611,26 @@ button {
 }
 :where(.pixel-ui) .maker-pane {
   min-height: 0;
+}
+/* A plant group's heading is a fold (playtest 48 #2): the same band as any
+   heading in a list, the whole width, with how many things are under it and
+   whether it is open on the right. Lit and underlined under the cursor, as a
+   fault is, because the band has no room beside it for the drawn cursor. */
+:where(.pixel-ui) .maker-fold {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--u) * 4);
+  width: 100%;
+}
+:where(.pixel-ui) .maker-fold-mark {
+  color: var(--ink-soft);
+}
+.pixel-ui .maker-fold:hover,
+.pixel-ui .maker-fold:focus {
+  background: var(--cream-lit);
+  text-decoration: underline;
+  text-decoration-thickness: var(--u);
+  text-underline-offset: calc(var(--u) * 2);
 }
 :where(.pixel-ui) .maker-swatch {
   display: block;

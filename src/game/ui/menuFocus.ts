@@ -50,3 +50,18 @@ export function bagFocusPreference(state: BagFocusState): readonly string[] {
     ? ['[data-target]', '[data-close]']
     : ['[data-item]', '[data-close]'];
 }
+
+/**
+ * A pane of words that holds no control: the result screen's ledger and its
+ * gamble. It opts in with `data-reads`, and only while it has more to show
+ * than fits is it a stop for the cursor (`markReadingPane`), lit like a row.
+ */
+export const READING_PANES = '.px-scroll[data-reads][tabindex]';
+
+/**
+ * What the arrow keys can rest on: a field is one, so a keyboard can reach it.
+ * A dropdown and a box of lines are fields too: left off this list, the map
+ * maker's "Looks like" took one arrow press and the re-render that followed
+ * could not find it again, so the cursor went back to the tools (playtest 48).
+ */
+export const CURSOR_CONTROLS = `button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), ${READING_PANES}`;

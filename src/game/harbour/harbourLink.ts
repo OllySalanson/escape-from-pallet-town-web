@@ -95,7 +95,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private greetOwed = false;
   private awaySince: number | null = null;
   private now = 0;
-  private onNudge: ((from: string) => void) | null = null;
+  private onNudge: ((from: string, gone?: string) => void) | null = null;
   private onSignal: ((payload: unknown) => void) | null = null;
   /** Counts every `leave`, so a join still on its way when the link was left is let go of. */
   private generation = 0;
@@ -201,8 +201,8 @@ export class HarbourLink<P extends string = HarbourPlace> {
       });
   }
 
-  /** What to do when another player's browser says to look now. */
-  public whenNudged(handler: ((from: string) => void) | null): void {
+  /** What to do when another player's browser says to look now, or that its knock is gone. */
+  public whenNudged(handler: ((from: string, gone?: string) => void) | null): void {
     this.onNudge = handler;
   }
 
@@ -223,10 +223,13 @@ export class HarbourLink<P extends string = HarbourPlace> {
     return true;
   }
 
-  /** Tells one other player's browser to look now. Said only by a player who can be heard. */
-  public nudge(to: string): void {
+  /**
+   * Tells one other player's browser to look now - or, with `gone`, that the
+   * knock of that id has been walked away from. Said only by a player who can be heard.
+   */
+  public nudge(to: string, gone?: string): void {
     if (this.joined === 'yes' && this.joinedAs && this.joinedAs === this.me) {
-      this.wire.nudge({ from: this.joinedAs, to });
+      this.wire.nudge(gone ? { from: this.joinedAs, to, gone } : { from: this.joinedAs, to });
     }
   }
 
@@ -299,7 +302,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
         },
         nudge: (nudge) => {
           if (generation === this.generation && nudge.to === this.me) {
-            this.onNudge?.(nudge.from);
+            this.onNudge?.(nudge.from, nudge.gone);
           }
         },
         present: (members) => {

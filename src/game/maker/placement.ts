@@ -697,6 +697,108 @@ export function clearGrownWood(
   };
 }
 
+/** A tile of growth a placement cleared, and the letter that grew there. */
+export interface ClearedGrowth {
+  readonly x: number;
+  readonly y: number;
+  readonly letter: string;
+}
+
+/** The growth a placement cleared: every tile of ground it changed, and what stood there before. */
+export function growthCleared(before: MapFile, after: MapFile): ClearedGrowth[] {
+  if (before.width !== after.width || before.height !== after.height) {
+    return [];
+  }
+  const cleared: ClearedGrowth[] = [];
+  before.ground.forEach((row, y) => {
+    const now = after.ground[y];
+    if (now === row) {
+      return;
+    }
+    for (let x = 0; x < row.length; x += 1) {
+      if (now[x] !== row[x] && GROWTH.has(row[x])) {
+        cleared.push({ x, y, letter: row[x] });
+      }
+    }
+  });
+  return cleared;
+}
+
+/**
+ * The map with the growth a building cleared grown back, once the building
+ * has gone from there: a clearing is the building's, so carried out of a wood
+ * it takes its clearing with it rather than leaving a hole in the trees. Only
+ * where the ground is still the cleared ground and nothing else has come to
+ * stand on it, under it or at its door since - a tree whole or not at all, and
+ * never with its tip over anything - and nothing grows back if it would box a
+ * thing in.
+ */
+export function regrowCleared(
+  file: MapFile,
+  cleared: readonly ClearedGrowth[],
+  place: PlacementPlace = {},
+): MapFile {
+  const survey = new Survey(file, place);
+  const taken = (x: number, y: number): boolean =>
+    !survey.onMap(x, y) ||
+    survey.claim(x, y) !== undefined ||
+    survey.crown(x, y) !== undefined ||
+    survey.span(x, y) !== undefined ||
+    survey.door(x, y) !== undefined ||
+    survey.doorstep(x, y) !== undefined ||
+    survey.spot(x, y) !== undefined ||
+    survey.isArt(x, y);
+  const groups = new Map<string, ClearedGrowth[]>();
+  for (const tile of cleared) {
+    const group =
+      tile.letter === MATERIAL_CHARS.tree
+        ? `tree ${tile.x - (tile.x % 2)},${tile.y - (tile.y % 2)}`
+        : at(tile);
+    groups.set(group, [...(groups.get(group) ?? []), tile]);
+  }
+  const regrown = new Map<string, ClearedGrowth>();
+  for (const group of groups.values()) {
+    const fits = group.every(
+      (tile) =>
+        survey.letter(tile.x, tile.y) === clearedLetter(tile.letter) && !taken(tile.x, tile.y),
+    );
+    if (!fits) {
+      continue;
+    }
+    if (group[0].letter === MATERIAL_CHARS.tree) {
+      const left = group[0].x - (group[0].x % 2);
+      const top = group[0].y - (group[0].y % 2);
+      const whole = [
+        [left, top],
+        [left + 1, top],
+        [left, top + 1],
+        [left + 1, top + 1],
+      ].every(
+        ([x, y]) =>
+          survey.letter(x, y) === MATERIAL_CHARS.tree ||
+          group.some((tile) => tile.x === x && tile.y === y),
+      );
+      // A whole tree's tip hangs on the row above, and a crown hangs over nothing but ground.
+      if (whole && top > 0 && (taken(left, top - 1) || taken(left + 1, top - 1))) {
+        continue;
+      }
+    }
+    for (const tile of group) {
+      regrown.set(at(tile), tile);
+    }
+  }
+  if (regrown.size === 0) {
+    return file;
+  }
+  const next: MapFile = {
+    ...file,
+    ground: file.ground.map((row, y) =>
+      [...row].map((letter, x) => regrown.get(key(x, y))?.letter ?? letter).join(''),
+    ),
+  };
+  return boxedIn(survey, new Survey(next, place), [...regrown.values()]) ? file : next;
+}
+
 /** Whether a whole tree stands with its body's west cell at an even tile: its tip hangs on the row above. */
 function wholeTreeAt(file: MapFile, left: number, top: number): boolean {
   return [

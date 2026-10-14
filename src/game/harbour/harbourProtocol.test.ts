@@ -74,4 +74,9 @@ describe('what the harbour hears', () => {
     expect(readHarbourPresence({ p: 'nowhere' })).toBeNull();
     expect(readHarbourPresence(undefined)).toBeNull();
   });
+  it('carries a stopped knock by its id, and reads anything else in its place as only "look now"', () => {
+    const gone = { from: AMY, to: '11111111-1111-4111-8111-111111111111', gone: '22222222-2222-4222-8222-222222222222' };
+    expect(readHarbourNudge(encodeHarbourNudge(gone))).toEqual(gone);
+    expect(readHarbourNudge({ u: gone.from, t: gone.to, g: 'not a knock' })).toEqual({ from: gone.from, to: gone.to });
+  });
 });

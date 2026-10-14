@@ -8,7 +8,7 @@
 //
 // Prints PASS or FAIL per case and exits non-zero on any FAIL.
 import { join } from 'node:path';
-import { launchBrowser, sleep } from './browser.mjs';
+import { launchBrowser, OPEN_PLANT_FOLDS, sleep } from './browser.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const shots = process.argv.find((arg) => arg.startsWith('--shots='))?.slice('--shots='.length);
@@ -81,6 +81,7 @@ try {
     await sleep(150);
   };
   const click = async (selector) => {
+    await evaluate(OPEN_PLANT_FOLDS);
     await evaluate(`document.querySelector(${JSON.stringify(selector)})?.click()`);
     await sleep(80);
   };

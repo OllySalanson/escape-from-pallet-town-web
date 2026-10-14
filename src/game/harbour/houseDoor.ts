@@ -59,6 +59,21 @@ export class HouseDoor {
     this.lastLookedAt = Number.NEGATIVE_INFINITY;
   }
 
+  /**
+   * Somebody's browser says it stopped knocking: that knock is not asked about,
+   * and is no longer at the door. Nothing is said to the database - the knock
+   * runs out there on its own - so a false word only takes a question down.
+   */
+  public withdrawn(knockId: string): void {
+    this.answered.add(knockId);
+    this.waiting = this.waiting.filter((knock) => knock.knockId !== knockId);
+  }
+
+  /** Whether this knock is still waiting at the door, as last looked. */
+  public stillAtTheDoor(knockId: string): boolean {
+    return this.waiting.some((knock) => knock.knockId === knockId);
+  }
+
   public tick(nowMs: number): void {
     this.now = nowMs;
     if (!this.home) {

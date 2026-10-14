@@ -39,6 +39,7 @@ import { generateMapName } from '../maker/mapNames';
 import {
   loadMakerStore,
   mapFileText,
+  sameMapFile,
   walkedVersion,
   isUntouchedBlank,
   lastMakerName,
@@ -167,6 +168,7 @@ import {
   groundBrush,
   groundUnder,
   plantsAlong,
+  type PlantGroup,
 } from '../maker/palette';
 import { isFigureSpecies } from '../world/pokemonFigures';
 import { isBerry } from '../world/berries';
@@ -304,11 +306,15 @@ const grownFrom = new WeakMap<MapFile, { readonly before: MapFile; readonly shif
 /** Whether the maker wants the overview in the map window's corner: theirs to turn off, for the page's life. */
 let overviewWanted = true;
 
+/** The plant groups opened in the Paint list, for the page's life: every other is folded. */
+const openPlantGroups = new Set<PlantGroup>();
+
 /** Forgets the session's histories and views: for tests, which share the module. */
 export function forgetMakerSession(): void {
   sessionHistories.clear();
   sessionViews.clear();
   sessionTryLevels.clear();
+  openPlantGroups.clear();
 }
 
 export class MapMakerScene extends Phaser.Scene {
@@ -566,7 +572,7 @@ export class MapMakerScene extends Phaser.Scene {
    */
   private openHistory(file: MapFile): void {
     const kept = sessionHistories.get(this.draftKey);
-    if (kept && (kept.value === file || mapFileText(kept.value) === mapFileText(file))) {
+    if (kept && sameMapFile(kept.value, file)) {
       this.history = kept;
       return;
     }
@@ -825,6 +831,7 @@ export class MapMakerScene extends Phaser.Scene {
       selected: this.selected,
       zoom: this.zoom,
       overview: overviewWanted,
+      openGroups: [...openPlantGroups],
       checks: [...this.currentChecks(), walkedCheck(this.walkedOut())],
       canUndo: this.history.canUndo,
       canRedo: this.history.canRedo,
@@ -1011,6 +1018,16 @@ export class MapMakerScene extends Phaser.Scene {
           : { kind: kind as SpotKind | 'district' | MakerDoorKind };
       this.tool = 'place';
       this.render();
+    });
+    on('[data-fold]', (element) => {
+      const group = element.dataset.fold as PlantGroup;
+      if (openPlantGroups.has(group)) {
+        openPlantGroups.delete(group);
+      } else {
+        openPlantGroups.add(group);
+      }
+      this.render();
+      this.overlay.refocus(`[data-fold="${group}"]`);
     });
     on('[data-zoom]', (element) => this.setZoom(Number(element.dataset.zoom) as MakerZoom));
     on('[data-fit]', () => this.fitWhole());
@@ -2851,6 +2868,10 @@ export class MapMakerScene extends Phaser.Scene {
    * opens as a picture of itself rather than as its top-left corner.
    */
   private fitZoom(): void {
+    this.afterLayout(() => this.fitZoomNow());
+  }
+
+  private fitZoomNow(): void {
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const map = this.mapCanvas();
     if (!viewport || !map || viewport.clientWidth === 0) {
@@ -2867,8 +2888,32 @@ export class MapMakerScene extends Phaser.Scene {
     if (zoom !== this.zoom) {
       this.zoom = zoom;
       this.render();
+      this.afterLayout(() => this.lookAtMap());
+      return;
     }
     this.lookAtMap();
+  }
+
+  /**
+   * Runs `then` once the screen just drawn has been laid out. The overlay
+   * settles a fresh screen a frame after its markup is written (`refocus` runs
+   * `MenuOverlay.relayout`, which snaps every box of words to the pixel grid),
+   * and until then the map window measured 104 pixels narrower than it would
+   * be: a fresh 40x30 map, which fits the window at 1/2, opened scrolled to
+   * its top-left corner with its east edge cut off and the overview drawn over
+   * its south-east corner (playtest 48). Frames run in the order asked for, so
+   * this comes after the overlay's own, and before the frame is painted.
+   */
+  private afterLayout(then: () => void): void {
+    if (typeof requestAnimationFrame !== 'function') {
+      then();
+      return;
+    }
+    requestAnimationFrame(() => {
+      if (this.scene.isActive()) {
+        then();
+      }
+    });
   }
 
   /**

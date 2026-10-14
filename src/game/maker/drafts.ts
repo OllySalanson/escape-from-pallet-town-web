@@ -217,6 +217,25 @@ export function walkedVersion(file: MapFile): string {
   return hash.toString(16).padStart(8, '0');
 }
 
+/**
+ * Whether two files are the same map. The reader hands back every object's
+ * fields in its own order while the maker's tools build them in theirs (a
+ * link's inside end is written `area` first), so the text of the two is
+ * compared with every object's keys sorted: the order of a list is the map,
+ * the order of an object's keys is not.
+ */
+export function sameMapFile(a: MapFile, b: MapFile): boolean {
+  return a === b || canonicalText(a) === canonicalText(b);
+}
+
+function canonicalText(value: unknown): string {
+  return JSON.stringify(value, (_key, field: unknown) =>
+    isRecord(field)
+      ? Object.fromEntries(Object.entries(field).sort(([a], [b]) => a.localeCompare(b)))
+      : field,
+  );
+}
+
 /** The file a maker downloads: the map, pretty-printed, as the game reads it. */
 export function mapFileText(file: MapFile): string {
   return `${JSON.stringify(file, null, 2)}\n`;

@@ -48,6 +48,11 @@ export const MENU_STEP_HEIGHT = 360;
 /** CSS pixels of window kept clear on every side, for the frame and its margin. */
 export const MENU_INSET = 8;
 
+/** Below 2x the face is unreadable, exactly as it is on the canvas. */
+export const MIN_MENU_SCALE = 2;
+/** Above 4x a menu is magnified rather than roomier - see the note above. */
+export const MAX_MENU_SCALE = 4;
+
 /**
  * CSS pixels of window no menu is ever laid out under: the FEEDBACK tab's
  * strip (`feedback/feedbackDesk.ts`, 30 wide with its 2-pixel shadow). Before
@@ -57,13 +62,29 @@ export const MENU_INSET = 8;
 export const FEEDBACK_TAB_STRIP = 32;
 
 /**
+ * The narrowest window the tab's strip fits beside the narrowest menu screen
+ * in (`MENU_MIN_WIDTH` at `MIN_MENU_SCALE`, 640 CSS pixels): any narrower and a
+ * menu runs under a tab on the right, and the tab sat over a list's counts and
+ * prices - Bill's LOCKED, the stash's x5 - in a 640-wide window.
+ */
+export const FEEDBACK_RIGHT_MIN_WIDTH = MENU_MIN_WIDTH * MIN_MENU_SCALE + FEEDBACK_TAB_STRIP;
+/** The same for a strip under the shortest menu screen (480 CSS pixels tall). */
+export const FEEDBACK_BOTTOM_MIN_HEIGHT = MENU_MIN_HEIGHT * MIN_MENU_SCALE + FEEDBACK_TAB_STRIP;
+
+/**
  * Which edge of the window the FEEDBACK tab stands on: the right, or the
- * bottom of a phone held upright - exactly the stylesheet's
- * `(max-width: 600px) and (orientation: portrait)`, so the strip kept clear
- * and the tab can never be on different edges.
+ * bottom - of a phone held upright, and of any window too narrow to keep the
+ * strip clear beside a menu that is tall enough to keep it clear underneath.
+ * Exactly the stylesheet's `(max-width: 600px) and (orientation: portrait),
+ * (max-width: 671px) and (min-height: 512px)`, so the strip kept clear and the
+ * tab can never be on different edges. A window with room on neither edge
+ * (640x480, the smallest screen at 2x) keeps the tab on the right.
  */
 export function feedbackTabEdge(viewportWidth: number, viewportHeight: number): 'right' | 'bottom' {
-  return viewportWidth <= 600 && viewportHeight >= viewportWidth ? 'bottom' : 'right';
+  const uprightPhone = viewportWidth <= 600 && viewportHeight >= viewportWidth;
+  // `<= ... - 1` rather than `<`, as `max-width: 671px` reads a fractional width.
+  const noRoomBeside = viewportWidth <= FEEDBACK_RIGHT_MIN_WIDTH - 1 && viewportHeight >= FEEDBACK_BOTTOM_MIN_HEIGHT;
+  return uprightPhone || noRoomBeside ? 'bottom' : 'right';
 }
 
 /** The window a menu may use: the whole of it, less the tab's strip on its edge. */
@@ -74,11 +95,6 @@ function menuRoom(viewportWidth: number, viewportHeight: number): { readonly wid
     height: Math.floor(viewportHeight) - (edge === 'bottom' ? FEEDBACK_TAB_STRIP : 0),
   };
 }
-
-/** Below 2x the face is unreadable, exactly as it is on the canvas. */
-export const MIN_MENU_SCALE = 2;
-/** Above 4x a menu is magnified rather than roomier - see the note above. */
-export const MAX_MENU_SCALE = 4;
 
 export interface MenuStage {
   /** Logical screen width in game pixels. */

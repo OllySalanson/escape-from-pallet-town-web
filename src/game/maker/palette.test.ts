@@ -79,33 +79,58 @@ describe('the ground brushes', () => {
   );
 });
 
+/** The maker's screen over a working map, with whatever the test changes. */
+function paintScreen(extra: Partial<Parameters<typeof makerScreen>[0]> = {}): string {
+  const file = workingMap();
+  return makerScreen({
+    file,
+    tool: 'brush',
+    brushId: 'grass',
+    place: { kind: 'drop-in' },
+    selected: undefined,
+    zoom: 16,
+    overview: true,
+    checks: checkMapFile(file),
+    canUndo: false,
+    canRedo: false,
+    drafts: [],
+    draftKey: 'draft-a',
+    panel: 'map',
+    sending: { step: 'checking' },
+    sent: { step: 'loading' },
+    review: { step: 'checking' },
+    reviewing: undefined,
+    ...extra,
+  });
+}
+
 describe('the paint list', () => {
   it('puts every thing to plant under its heading, each with a picture of itself', () => {
-    const file = workingMap();
-    const markup = makerScreen({
-      file,
-      tool: 'brush',
-      brushId: 'grass',
-      place: { kind: 'drop-in' },
-      selected: undefined,
-      zoom: 16,
-      overview: true,
-      checks: checkMapFile(file),
-      canUndo: false,
-      canRedo: false,
-      drafts: [],
-      draftKey: 'draft-a',
-      panel: 'map',
-      sending: { step: 'checking' },
-      sent: { step: 'loading' },
-      review: { step: 'checking' },
-      reviewing: undefined,
-    });
+    const markup = paintScreen({ openGroups: PLANT_GROUPS });
     for (const group of PLANT_GROUPS) {
-      expect(markup).toContain(`<p class="px-subheading">${group}</p>`);
+      expect(markup).toContain(`data-fold="${group}" aria-expanded="true"`);
     }
     for (const choice of BUILDING_CHOICES) {
       expect(markup).toContain(`data-plant="${choice.kind}"`);
     }
+  });
+
+  it('folds every plant group to its heading until it is opened (playtest 48 #2)', () => {
+    // The Cave mouth was 4,200 px down one 174-row list: folded, it is one
+    // press on NATURE away, and the heading says how many are inside.
+    const markup = paintScreen();
+    for (const group of PLANT_GROUPS) {
+      const count = BUILDING_CHOICES.filter((choice) => choice.group === group).length;
+      expect(markup).toContain(`data-fold="${group}" aria-expanded="false"`);
+      expect(markup).toContain(`${count} +</span>`);
+    }
+    expect(markup).not.toContain('data-plant="cave-mouth"');
+    // Ground and places are never folded: they are what a map is drawn with.
+    expect(markup).toContain('data-brush="grass"');
+    expect(markup).toContain('data-place="drop-in"');
+
+    const opened = paintScreen({ openGroups: ['Nature'] });
+    expect(opened).toContain('data-plant="cave-mouth"');
+    expect(opened).not.toContain('data-plant="pokemon-center"');
   });
 });

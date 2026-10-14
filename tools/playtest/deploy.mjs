@@ -126,6 +126,24 @@ export function deployOptions(args) {
 }
 
 /**
+ * PLAYTEST on the title, into the harbour of a fresh explorer run. A browser
+ * that already holds an explorer save is asked first - CARRY ON or START A
+ * FRESH ONE (`playtestMenu`) - and the driver that pressed PLAYTEST once waited
+ * on the harbour behind that question until it gave up, so every explorer
+ * driver failed the second time it ran in the same browser. A fresh run is what
+ * the first time gives, so that is the answer.
+ */
+export async function startExplorerRun(page, { press, until }) {
+  const asked = `${GAME}?.scene.getScene('title')?.menu?.question === 'PLAYTEST RUN'`;
+  await press('ArrowDown'); await press('ArrowRight'); await press('Space');
+  await until(`${sceneIs('base')} || ${asked}`, "the harbour, or the explorer run's question");
+  if (await page.evaluate(asked)) {
+    await press('ArrowDown'); await press('Space');
+  }
+  await until(sceneIs('base'));
+}
+
+/**
  * Title, starter, lobby, loadout, final check, raid. `press`, `click`, `until`
  * and `wait` are the driver's own, because only it knows whether the game is
  * being stepped; `paused` puts the loop to sleep on every load, for a driver
@@ -139,10 +157,10 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
   // its own save, every map's landings offered - the one way to a map not yet
   // offered to saves (`MAPS_IN_PROGRESS`) - and its partner a level-99 Charizard.
   if (explorer) {
-    await press('ArrowDown'); await press('ArrowRight'); await press('Space');
-    await until(sceneIs('base'));
+    await startExplorerRun(page, { press, until });
     // --pack works here too: the explorer's vault holds everything, so a
-    // driver can carry a disc in (`--pack=hm04 --read=hm04` is Strength).
+    // driver can carry a disc in (`--pack=hm04-strength --read=hm04-strength`
+    // is Strength: a disc's id is its number and its move, `machines.ts`).
     return enterRaid(page, { press, click, until, wait, insertion, starter: 'Charizard', team: [], pack, secure: [] });
   }
   await press('Space'); await until(sceneIs('starter'));

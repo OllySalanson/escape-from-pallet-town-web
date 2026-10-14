@@ -30,6 +30,9 @@ describe('knocking on a door', () => {
     expect(markup).toContain('Out');
     expect(markup).toContain(KNOCK_HINTS);
     expect(markup).toContain('2 houses');
+    // A door nobody is behind is not offered as a knock worth trying (playtest 48).
+    expect(markup).toContain("O'NEIL is out. Come back when they are home.");
+    expect(markup).not.toContain('Knock anyway');
   });
 
   it('says plainly when there is nobody else, while it asks, while it knocks and when the harbour is not answering', () => {

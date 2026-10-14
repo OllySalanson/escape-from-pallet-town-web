@@ -10,10 +10,13 @@ import {
   fieldMoveOpenedLine,
   fieldMoveUser,
   partyHasFieldMove,
+  SMALL_TREE_OBSTACLE,
 } from './fieldMoves';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { WORLD_GATES, fieldMoveGateAt, gatesForMap } from './gates';
 import { stepDistances } from './mapStructure';
+import { fileDoorGates, type MapFile } from './mapFile';
+import sampleLane from '../../maps/sample/sample-lane.json';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { getWorldMap } from '../worldMap';
 
@@ -52,6 +55,10 @@ describe('a move that is also a route', () => {
       'Growth has closed the ride. Thick, old and shoulder high.',
       'BULBASAUR cut the growth away.',
     ]);
+    // A small tree is not a ride: FireRed's own line, wherever one stands.
+    expect(fieldMoveLines('cut', undefined, SMALL_TREE_OBSTACLE)[0]).toBe(
+      'This tree looks like it can be CUT down!',
+    );
     // The same promise a boss's gate makes, because it is the same door.
     expect(fieldMoveOpenedLine('COPPICE RIDE')).toBe(
       'COPPICE RIDE is open - and stays open on every raid from now on.',
@@ -244,5 +251,23 @@ describe('a move that is also a route', () => {
     for (const boss of WORLD_GATES.filter((gate) => gate.bossId !== undefined)) {
       expect(fieldMoveGateAt(gatesForMap(boss.mapId), boss.tiles[0])).toBeUndefined();
     }
+  });
+});
+
+describe("a map maker's door", () => {
+  it("speaks of what stands there: a small tree in FireRed's words, a rock in its own", () => {
+    const file: MapFile = {
+      ...(sampleLane as MapFile),
+      doors: [
+        { kind: 'cut-tree', x: 24, y: 6, width: 1, height: 1 },
+        { kind: 'smash-rock', x: 26, y: 6, width: 1, height: 1 },
+      ],
+    };
+    const [tree, rock] = fileDoorGates(file);
+    expect(tree.obstacle).toBe(SMALL_TREE_OBSTACLE);
+    expect(rock.obstacle).toBeUndefined();
+    // Every shipped ride keeps the ride's words; only the Viridian tree is a tree.
+    const trees = WORLD_GATES.filter((gate) => gate.obstacle === SMALL_TREE_OBSTACLE);
+    expect(trees.map((gate) => gate.id)).toEqual(['viridian-trade-tree']);
   });
 });

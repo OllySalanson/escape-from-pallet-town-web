@@ -14,6 +14,9 @@ import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
 import { CHECK_FIRST_NOTE, draftEdited, makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { CURSOR_CONTROLS } from '../ui/menuFocus';
+import { BERRY_IDS } from '../world/berries';
+import { PLANT_GROUPS } from './palette';
 import { reasonFor, signInReason, type SentMap } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
 
@@ -45,6 +48,68 @@ const tryButtons = (markup: string): string[] =>
   [...markup.matchAll(/<button[^>]*data-try="(walk|raid)"[^>]*>/g)].map((match) => match[0]);
 
 describe('the map maker screen', () => {
+  it('draws no field the cursor cannot come back to after the screen is drawn again', () => {
+    // A change to a field draws the maker again, and the cursor returns only to
+    // a control it can rest on: a dropdown left off that list took one arrow
+    // press before the keyboard was back on the tools (playtest 48).
+    const map = makerScreen(state(SAMPLE, false));
+    const sign = makerScreen({ ...state(SAMPLE, false), selected: { kind: 'sign', index: 0 } });
+    const fields = new Set(
+      [...`${map}${sign}`.matchAll(/<(input|select|textarea|button)[\s>]/g)].map((match) => match[1]),
+    );
+    expect([...fields].sort()).toEqual(['button', 'input', 'select', 'textarea']);
+    const restsOn = CURSOR_CONTROLS.split(',').map((part) => part.trim());
+    for (const field of fields) {
+      expect(restsOn).toContain(`${field}:not([disabled])`);
+    }
+  });
+
+  it('gives every field a help line of its own, so the help bar never speaks for the last tool', () => {
+    // The help bar reads the nearest `data-help` round the focused control and
+    // otherwise keeps what it last said: with a dropdown focused it still read
+    // "Paints the ground under the pointer" (playtest 48's dropdown finding).
+    const things = [
+      ['drop-in', 0],
+      ['exit', 0],
+      ['item', 0],
+      ['sign', 0],
+      ['person', 0],
+      ['trainer', 0],
+      ['landmark', 0],
+      ['district', 0],
+      ['pokemon', 0],
+      ['berry-tree', 0],
+    ] as const;
+    const file: MapFile = {
+      ...SAMPLE,
+      pokemon: [{ x: 3, y: 3, species: 'pikachu' }],
+      berryTrees: [{ x: 4, y: 3, berry: BERRY_IDS[0] }],
+    };
+    const screens = [
+      makerScreen(state(file, false)),
+      ...things.map(([kind, index]) =>
+        makerScreen({ ...state(file, false), selected: { kind, index } }),
+      ),
+    ];
+    const fields = screens.flatMap((markup) => [
+      ...markup.matchAll(/<(?:div|label) class="maker-field"[^>]*>/g),
+    ]);
+    expect(fields.length).toBeGreaterThan(20);
+    for (const [field] of fields) {
+      expect(field).toMatch(/data-help="[^"]{20,}"/);
+    }
+    // And no field control stands outside a helped `maker-field`.
+    for (const markup of screens) {
+      const bare = markup.replace(
+        /<(?:div|label) class="maker-field"[^>]*>[\s\S]*?<\/(?:div|label)>/g,
+        '',
+      );
+      expect(
+        bare.match(/<(?:input|select|textarea)(?![^>]*\b(?:hidden|data-help)\b)[^>]*>/g) ?? [],
+      ).toEqual([]);
+    }
+  });
+
   it('names every kind of thing SELECT and REMOVE work on, as the Places list names it', () => {
     const markup = makerScreen(state(SAMPLE, false));
     const places = [
@@ -77,7 +142,7 @@ describe('the map maker screen', () => {
   });
 
   it('never names two rows of the paint pane alike, and says a planted sign cannot be read (playtest 39 B5)', () => {
-    const markup = makerScreen(state(SAMPLE, false));
+    const markup = makerScreen({ ...state(SAMPLE, false), openGroups: PLANT_GROUPS });
     const rows = [
       ...markup.matchAll(/data-place="[^"]+"[^>]*>(?:<[^>]*>)*?<span class="px-row-main">([^<]+)</g),
     ].map((match) => match[1].toLowerCase());

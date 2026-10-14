@@ -4,7 +4,7 @@ import { countPlay, raidEnding } from '../analytics/playCounter';
 import { friendRoom } from '../raidRoom/friendRoom';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
-import { formatRaidClock } from '../run/raidClock';
+import { formatElapsedClock } from '../run/raidClock';
 import {
   buildDefeatSequence,
   createBeatGate,
@@ -363,7 +363,7 @@ export class ExtractionScene extends Phaser.Scene {
    */
   private clockAside(): string {
     return isPlaytestRun()
-      ? `Time taken ${formatRaidClock(this.report.elapsedMs)}`
+      ? `Time taken ${formatElapsedClock(this.report.elapsedMs)}`
       : `Raid clock ${this.report.clockLabel}`;
   }
 

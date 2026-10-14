@@ -27,7 +27,13 @@ export type KnockView =
   | { readonly kind: 'knocking'; readonly name: string }
   | { readonly kind: 'trouble' };
 
-export function knockScreenMarkup(view: KnockView): string {
+/**
+ * Where ESC takes the knock screen: back into the house it was opened in, or
+ * out into the yard when it was opened on the step outside.
+ */
+export type KnockOpenedFrom = 'house' | 'step';
+
+export function knockScreenMarkup(view: KnockView, from: KnockOpenedFrom = 'house'): string {
   const pane =
     view.kind === 'asking'
       ? '<p class="px-empty px-wrap">Asking the harbour whose doors there are...</p>'
@@ -41,7 +47,7 @@ export function knockScreenMarkup(view: KnockView): string {
   return pixelScreen({
     title: 'Knock on a door',
     place: 'The harbour',
-    back: { label: 'House', attribute: 'data-knock-close' },
+    back: { label: from === 'step' ? 'Yard' : 'House', attribute: 'data-knock-close' },
     body,
     hints: view.kind === 'knocking' ? 'ESC stop knocking' : KNOCK_HINTS,
     ...(view.kind === 'houses' && view.status ? { status: view.status } : {}),
@@ -58,7 +64,7 @@ function houseRows(houses: readonly HarbourHouse[]): string {
         `<button class="px-row" data-knock="${escapeAttribute(house.id)}" data-name="${escapeAttribute(house.name)}"${
           index === 0 ? ' data-cursor-start' : ''
         } data-help="${escapeAttribute(
-          house.atHome ? `Knock on ${house.name}'s door: they are in.` : `${house.name} is out. Knock anyway?`,
+          house.atHome ? `Knock on ${house.name}'s door: they are in.` : `${house.name} is out. Come back when they are home.`,
         )}"><span class="px-row-main"><strong class="px-name">${house.name}'s house</strong></span>${pixelTag(
           house.atHome ? 'Home' : 'Out',
           house.atHome ? 'good' : 'plain',
@@ -93,6 +99,11 @@ export function knockQuestion(knockerName: string): string {
   return `${knockerName} is at your door.`;
 }
 
+/** Said in place of the question once the knock is no longer at the door. */
+export function knockGoneLine(knockerName: string): string {
+  return `${knockerName} has gone from the step.`;
+}
+
 export const LET_IN = 'LET THEM IN';
 export const NOT_NOW = 'NOT NOW';
 
@@ -104,6 +115,11 @@ export function visitWelcomeLines(ownerName: string): readonly string[] {
 /** What a visitor is told about something that is the owner's to use. */
 export function notYoursLine(ownerName: string): string {
   return `That's ${ownerName}'s. Better not touch.`;
+}
+
+/** What a visitor is told who tries to decorate the owner's house. */
+export function notYoursToMoveLine(ownerName: string): string {
+  return `This is ${ownerName}'s house - nothing here is yours to move.`;
 }
 
 /** A thing's name as a visitor reads it: the owner's, not "YOUR". */

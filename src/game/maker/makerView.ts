@@ -48,6 +48,7 @@ import {
   BUILDING_CHOICES,
   plantsAlong,
   PLANT_GROUPS,
+  type PlantGroup,
   brushesFor,
   FACING_LABELS,
   FURNITURE_CHOICES,
@@ -181,6 +182,14 @@ export interface MakerViewState {
   readonly zoom: MakerZoom;
   /** Whether the overview is wanted in the corner of the map window. */
   readonly overview: boolean;
+  /**
+   * The plant groups the maker has opened in the Paint list. Every other group
+   * is folded to its heading, because the six of them are 140 rows and the
+   * Cave mouth was four thousand pixels of scrolling down (playtest 48 #2).
+   * A thing is only chosen from an open group, so a chosen one is folded away
+   * only by the maker's own press.
+   */
+  readonly openGroups?: readonly PlantGroup[];
   readonly checks: readonly MakerCheck[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -401,12 +410,14 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
     );
   const plants = inside
     ? `<p class="px-subheading">Furniture</p>${furnitureFor(inside.style).map(plantRow).join('')}`
-    : PLANT_GROUPS.map(
-        (group) =>
-          `<p class="px-subheading">${group}</p>${BUILDING_CHOICES.filter((choice) => choice.group === group)
-            .map(plantRow)
-            .join('')}`,
-      ).join('');
+    : PLANT_GROUPS.map((group) => {
+        const choices = BUILDING_CHOICES.filter((choice) => choice.group === group);
+        const open = state.openGroups?.includes(group) ?? false;
+        const help = open
+          ? `Folds ${group} away to its heading.`
+          : `Opens ${group}: ${choices.length} things to plant.`;
+        return `<button class="px-subheading maker-fold" data-fold="${group}" aria-expanded="${open}" data-help="${escapeAttribute(help)}"><span>${group}</span><span class="maker-fold-mark">${choices.length} ${open ? '-' : '+'}</span></button>${open ? choices.map(plantRow).join('') : ''}`;
+      }).join('');
   return pixelWindow(
     `<div class="maker-toolbar">${tools}${MOUSE_NOTE}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">${inside ? BRUSH_HEADINGS[inside.kind] : 'Ground'}</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
     { className: 'maker-tools', heading: 'Paint' },
@@ -610,18 +621,20 @@ function selectedPane(
     label: string,
     value: string,
     max: number,
+    help: string,
     placeholder = '',
   ): string =>
-    `<label class="maker-field"><span>${label}</span><input class="px-window px-field" data-field="${field}" value="${escapeAttribute(value)}" maxlength="${max}" spellcheck="false" autocomplete="off"${placeholder ? ` placeholder="${escapeAttribute(placeholder)}"` : ''} /></label>`;
-  const lines = (label: string, value: readonly string[]): string =>
-    `<label class="maker-field"><span>${label}</span><textarea class="px-window px-field maker-lines" data-field="lines" rows="${MAP_FILE_LIMITS.maxLines}" maxlength="${(MAP_FILE_LIMITS.maxLineLength + 1) * MAP_FILE_LIMITS.maxLines}" spellcheck="true" placeholder="One line per box of dialogue">${escapeHtml(value.join('\n'))}</textarea><span class="px-note">Up to ${MAP_FILE_LIMITS.maxLines} lines.</span></label>`;
+    `<label class="maker-field" data-help="${escapeAttribute(help)}"><span>${label}</span><input class="px-window px-field" data-field="${field}" value="${escapeAttribute(value)}" maxlength="${max}" spellcheck="false" autocomplete="off"${placeholder ? ` placeholder="${escapeAttribute(placeholder)}"` : ''} /></label>`;
+  const lines = (label: string, value: readonly string[], help: string): string =>
+    `<label class="maker-field" data-help="${escapeAttribute(help)}"><span>${label}</span><textarea class="px-window px-field maker-lines" data-field="lines" rows="${MAP_FILE_LIMITS.maxLines}" maxlength="${(MAP_FILE_LIMITS.maxLineLength + 1) * MAP_FILE_LIMITS.maxLines}" spellcheck="true" placeholder="One line per box of dialogue">${escapeHtml(value.join('\n'))}</textarea><span class="px-note">Up to ${MAP_FILE_LIMITS.maxLines} lines.</span></label>`;
   const choose = (
     field: string,
     label: string,
     value: string,
     options: readonly (readonly [string, string])[],
+    help: string,
   ): string =>
-    `<label class="maker-field"><span>${label}</span><select class="px-window px-field" data-field="${field}">${options
+    `<label class="maker-field" data-help="${escapeAttribute(help)}"><span>${label}</span><select class="px-window px-field" data-field="${field}">${options
       .map(
         ([option, name]) =>
           `<option value="${escapeAttribute(option)}"${option === value ? ' selected' : ''}>${escapeHtml(name)}</option>`,
@@ -630,7 +643,13 @@ function selectedPane(
   const looks = MAP_FILE_LOOKS.map((look) => [look, LOOK_LABELS[look]] as const);
   const facings = MAP_FILE_FACINGS.map((facing) => [facing, FACING_LABELS[facing]] as const);
   const name = (value: string): string =>
-    text('name', 'Name', value, MAP_FILE_LIMITS.maxPlaceNameLength);
+    text(
+      'name',
+      'Name',
+      value,
+      MAP_FILE_LIMITS.maxPlaceNameLength,
+      'The name a player reads on it in the game. Type to change it.',
+    );
 
   let body: string;
   let heading: string;
@@ -638,7 +657,7 @@ function selectedPane(
     case 'drop-in': {
       const spot = file.dropIns[selected.index];
       heading = selected.index === 0 ? 'Front door' : 'Drop-in';
-      body = `${name(spot.name)}${text('description', 'Says', spot.description ?? '', MAP_FILE_LIMITS.maxDescriptionLength, 'What the drop-in screen says about it')}`;
+      body = `${name(spot.name)}${text('description', 'Says', spot.description ?? '', MAP_FILE_LIMITS.maxDescriptionLength, 'What the drop-in screen says about this landing when a player chooses where to drop in.', 'What the drop-in screen says about it')}`;
       break;
     }
     case 'exit': {
@@ -655,13 +674,14 @@ function selectedPane(
         'Lies',
         spot.opens.when === 'dug' || spot.opens.when === 'key' ? spot.opens.when : '',
         buried,
+        'Whether it is open ground, rubble a Pickaxe digs, or a gate the Card Key opens. Up and Down choose.',
       );
       body =
         spot.opens.when === 'dug'
           ? `${name(spot.name)}${lies}<p class="px-note px-wrap">A wall of rubble until somebody faces it with a Pickaxe in the pack, then a way out for that raid. Every drop-in still needs a way out without one.</p>`
           : spot.opens.when === 'key'
             ? `${name(spot.name)}${lies}<p class="px-note px-wrap">A locked gate until somebody carries the Card Key to it, then a way out for that raid. The card lies on an item spot set to hold it, one raid in five. Every drop-in still needs a way out without it.</p>`
-            : `${name(spot.name)}${lies}<label class="maker-field"><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
+            : `${name(spot.name)}${lies}<label class="maker-field" data-help="How long into a raid before it takes anybody out. Up and Down change it by five seconds."><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
       break;
     }
     case 'item': {
@@ -675,7 +695,7 @@ function selectedPane(
         ['', 'What the game decides'],
         ['key', 'The Card Key, one raid in five'],
       ];
-      body = `${choose('hidden', 'Lies', spot.hidden ? 'hidden' : '', shows)}${choose('holds', 'Holds', spot.key ? 'key' : '', holds)}<p class="px-note px-wrap">${
+      body = `${choose('hidden', 'Lies', spot.hidden ? 'hidden' : '', shows, 'Whether the find is drawn on the ground or hidden in the tile, as FireRed hides one. Up and Down choose.')}${choose('holds', 'Holds', spot.key ? 'key' : '', holds, 'What lies there: what the game decides, or the Card Key that opens locked exits. Up and Down choose.')}<p class="px-note px-wrap">${
         spot.key
           ? 'The Card Key, which opens every exit locked to it, lies here one raid in five.'
           : "Something to find. The game decides what, from what the game's own maps hold."
@@ -685,21 +705,21 @@ function selectedPane(
     case 'person': {
       const person = (file.people ?? [])[selected.index];
       heading = 'Person';
-      body = `${name(person.name)}${choose('look', 'Looks like', person.look, looks)}${choose('facing', 'Faces', person.facing, facings)}${lines('Says', person.lines)}<p class="px-note px-wrap">Nobody can walk through a person, so leave the lanes clear.</p>`;
+      body = `${name(person.name)}${choose('look', 'Looks like', person.look, looks, 'How they are drawn. Up and Down step through the looks.')}${choose('facing', 'Faces', person.facing, facings, 'The way they stand facing. Up and Down choose.')}${lines('Says', person.lines, 'What they say when spoken to. Each line is one box of dialogue.')}<p class="px-note px-wrap">Nobody can walk through a person, so leave the lanes clear.</p>`;
       break;
     }
     case 'pokemon': {
       const standing = (file.pokemon ?? [])[selected.index];
       heading = 'Pokémon';
       const species = POKEMON_ICON_ORDER.map((id) => [id, pokemonName(id)] as const);
-      body = `${choose('species', 'Which', standing.species, species)}<label class="maker-field"><span>Fights</span><input class="px-window px-field" data-field="level" type="number" min="0" max="${MAP_FILE_LIMITS.maxPokemonLevel}" value="${standing.level ?? 0}" /><span class="px-note">at this level when spoken to, once a raid; 0 only says its name</span></label><p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
+      body = `${choose('species', 'Which', standing.species, species, 'Which Pokémon stands there. Up and Down step through all of them.')}<label class="maker-field" data-help="The level it fights at when spoken to, once a raid. At 0 it only says its name."><span>Fights</span><input class="px-window px-field" data-field="level" type="number" min="0" max="${MAP_FILE_LIMITS.maxPokemonLevel}" value="${standing.level ?? 0}" /><span class="px-note">at this level when spoken to, once a raid; 0 only says its name</span></label><p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
       break;
     }
     case 'berry-tree': {
       const tree = (file.berryTrees ?? [])[selected.index];
       heading = 'Berry tree';
       const berries = BERRY_IDS.map((berry) => [berry, berryName(berry)] as const);
-      body = `${choose('berry', 'Grows', tree.berry, berries)}<p class="px-note px-wrap">${escapeHtml(ITEMS[berryItemId(tree.berry)].description)} Solid as a person; facing it and pressing the interact key picks one berry, once a raid.</p>`;
+      body = `${choose('berry', 'Grows', tree.berry, berries, 'Which berry hangs on the tree. Up and Down choose.')}<p class="px-note px-wrap">${escapeHtml(ITEMS[berryItemId(tree.berry)].description)} Solid as a person; facing it and pressing the interact key picks one berry, once a raid.</p>`;
       break;
     }
     case 'boulder': {
@@ -710,7 +730,7 @@ function selectedPane(
     case 'sign': {
       const sign = (file.signs ?? [])[selected.index];
       heading = 'Sign';
-      body = `${lines('Reads', sign.lines)}`;
+      body = `${lines('Reads', sign.lines, 'What the sign says when read. Each line is one box of dialogue.')}`;
       break;
     }
     case 'landmark': {
@@ -719,7 +739,7 @@ function selectedPane(
       const kinds = (Object.keys(MAP_FILE_LANDMARKS) as MapFileLandmarkKind[]).map(
         (kind) => [kind, MAP_FILE_LANDMARKS[kind].label] as const,
       );
-      body = `${name(landmark.name)}${choose('kind', 'What it is', landmark.kind, kinds)}<p class="px-note px-wrap">${escapeHtml(MAP_FILE_LANDMARKS[landmark.kind].says)} Worked once a raid by walking onto it.</p>`;
+      body = `${name(landmark.name)}${choose('kind', 'What it is', landmark.kind, kinds, 'What kind of place it is, which decides what it pays out. Up and Down choose.')}<p class="px-note px-wrap">${escapeHtml(MAP_FILE_LANDMARKS[landmark.kind].says)} Worked once a raid by walking onto it.</p>`;
       break;
     }
     case 'trainer': {
@@ -728,7 +748,7 @@ function selectedPane(
       const teams = (Object.keys(MAP_FILE_TRAINER_TEAMS) as MapFileTrainerTeam[]).map(
         (team) => [team, teamLine(team)] as const,
       );
-      body = `${name(trainer.name)}${choose('team', 'Team', trainer.team, teams)}${choose('look', 'Looks like', trainer.look, looks)}${choose('facing', 'Faces', trainer.facing, facings)}<label class="maker-field"><span>Watches</span><input class="px-window px-field" data-field="sight" type="number" min="0" max="${MAP_FILE_LIMITS.maxSight}" value="${trainer.sight}" /><span class="px-note">tiles ahead; 0 waits to be spoken to</span></label>${lines('Says', trainer.lines)}`;
+      body = `${name(trainer.name)}${choose('team', 'Team', trainer.team, teams, "The Pokémon they fight with, one of the game's own measured teams. Up and Down choose.")}${choose('look', 'Looks like', trainer.look, looks, 'How they are drawn. Up and Down step through the looks.')}${choose('facing', 'Faces', trainer.facing, facings, 'The way they watch. Up and Down choose.')}<label class="maker-field" data-help="How many tiles ahead they see. Anybody who steps there is challenged. At 0 they wait to be spoken to."><span>Watches</span><input class="px-window px-field" data-field="sight" type="number" min="0" max="${MAP_FILE_LIMITS.maxSight}" value="${trainer.sight}" /><span class="px-note">tiles ahead; 0 waits to be spoken to</span></label>${lines('Says', trainer.lines, 'What they say before the fight. Each line is one box of dialogue.')}`;
       break;
     }
     case 'district': {
@@ -744,7 +764,7 @@ function selectedPane(
         ['', 'Dry'],
         ['rain', 'Rain'],
       ];
-      body = `${name(district.name)}${choose('wildlife', 'Wild Pokémon', district.wildlife ?? '', habitats)}${choose('rain', 'Weather', district.rain ? 'rain' : '', weathers)}<p class="px-note px-wrap">${district.width}x${district.height} tiles. Its name comes up as a player walks in. Rain makes Water moves stronger and Fire moves weaker in every fight there.</p>`;
+      body = `${name(district.name)}${choose('wildlife', 'Wild Pokémon', district.wildlife ?? '', habitats, 'What lives in the tall grass here, if not what lives in the rest of the map. Up and Down choose.')}${choose('rain', 'Weather', district.rain ? 'rain' : '', weathers, 'Dry, or rain over every fight here. Up and Down choose.')}<p class="px-note px-wrap">${district.width}x${district.height} tiles. Its name comes up as a player walks in. Rain makes Water moves stronger and Fire moves weaker in every fight there.</p>`;
       break;
     }
     case 'door': {
@@ -984,7 +1004,7 @@ function insidePane(file: MapFile, area: MapFileArea, pendingRemoval?: string): 
   // A choice of one is not a choice: a cave has one look, and says nothing.
   const looks =
     kinds.length > 1
-      ? `<label class="maker-field"><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label>`
+      ? `<label class="maker-field" data-help="Which FireRed room its floor and walls are drawn as. Up and Down choose."><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label>`
       : '';
   const limits = areaLimits(area.kind);
   const tunnel = area.kind === 'tunnel';
@@ -997,9 +1017,9 @@ function insidePane(file: MapFile, area: MapFileArea, pendingRemoval?: string): 
   // size to choose.
   const size = tunnel
     ? `<p class="px-note px-wrap">The Underground Path, as FireRed lays it: ${area.width} wide and ${area.height} long, with its stairs up at either end.</p>`
-    : `<div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${limits.minWidth}" max="${limits.maxWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${limits.minHeight}" max="${limits.maxHeight}" value="${area.height}" /></label></div>`;
+    : `<div class="maker-size"><label class="maker-field" data-help="How many tiles across it is. Up and Down change it."><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${limits.minWidth}" max="${limits.maxWidth}" value="${area.width}" /></label><label class="maker-field" data-help="How many tiles deep it is. Up and Down change it."><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${limits.minHeight}" max="${limits.maxHeight}" value="${area.height}" /></label></div>`;
   return pixelWindow(
-    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label>${looks}${size}${upstairsButton(file, area)}${belowButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="${escapeAttribute(removeHelp)}">${
+    `<div class="maker-form"><label class="maker-field" data-help="The name of this place, said on its door. Type to change it."><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label>${looks}${size}${upstairsButton(file, area)}${belowButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="${escapeAttribute(removeHelp)}">${
       // Pressed once, it says what the next press does, as a draft's Delete does.
       area.id === pendingRemoval ? 'Remove for good' : 'Remove'
     }</button></div></div>`,
@@ -1015,7 +1035,7 @@ function settingsPane(file: MapFile): string {
     )
     .join('');
   return pixelWindow(
-    `<div class="maker-form"><div class="maker-field"><span>Name</span><div class="maker-name-row"><input class="px-window px-field" data-map-name value="${escapeAttribute(file.name)}" maxlength="${MAP_FILE_LIMITS.maxNameLength}" spellcheck="false" autocomplete="off" aria-label="Name" /><button type="button" class="px-window px-button" data-map-reroll data-help="Draw another name for the map, in Pallet Town's own words. Type over it to make it yours.">Reroll</button></div></div><label class="maker-field"><span>Drawn by</span><input class="px-window px-field" data-map-maker value="${escapeAttribute(file.maker)}" maxlength="${MAP_FILE_LIMITS.maxMakerLength}" spellcheck="false" autocomplete="off" placeholder="your maker name" /></label><label class="maker-field"><span>Wild Pokémon</span><select class="px-window px-field" data-map-wildlife>${habitats}</select></label><div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-map-width type="number" min="${MAP_FILE_LIMITS.minWidth}" max="${MAP_FILE_LIMITS.maxWidth}" value="${file.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-map-height type="number" min="${MAP_FILE_LIMITS.minHeight}" max="${MAP_FILE_LIMITS.maxHeight}" value="${file.height}" /></label></div></div>`,
+    `<div class="maker-form"><div class="maker-field" data-help="The map's name, as players see it in the list of maps. Type to change it."><span>Name</span><div class="maker-name-row"><input class="px-window px-field" data-map-name value="${escapeAttribute(file.name)}" maxlength="${MAP_FILE_LIMITS.maxNameLength}" spellcheck="false" autocomplete="off" aria-label="Name" /><button type="button" class="px-window px-button" data-map-reroll data-help="Draw another name for the map, in Pallet Town's own words. Type over it to make it yours.">Reroll</button></div></div><label class="maker-field" data-help="Your maker name, credited beside the map when it is in the game."><span>Drawn by</span><input class="px-window px-field" data-map-maker value="${escapeAttribute(file.maker)}" maxlength="${MAP_FILE_LIMITS.maxMakerLength}" spellcheck="false" autocomplete="off" placeholder="your maker name" /></label><label class="maker-field" data-help="What lives in the map's tall grass. A district can have its own. Up and Down choose."><span>Wild Pokémon</span><select class="px-window px-field" data-map-wildlife>${habitats}</select></label><div class="maker-size"><label class="maker-field" data-help="How many tiles across the map is. Drawing past its edge grows it too."><span>Width</span><input class="px-window px-field" data-map-width type="number" min="${MAP_FILE_LIMITS.minWidth}" max="${MAP_FILE_LIMITS.maxWidth}" value="${file.width}" /></label><label class="maker-field" data-help="How many tiles deep the map is. Drawing past its edge grows it too."><span>Height</span><input class="px-window px-field" data-map-height type="number" min="${MAP_FILE_LIMITS.minHeight}" max="${MAP_FILE_LIMITS.maxHeight}" value="${file.height}" /></label></div></div>`,
     { className: 'maker-settings', heading: 'The map' },
   );
 }
@@ -1282,7 +1302,7 @@ function reviewPane(
             : ''
         }<p class="px-note px-wrap">${passed} of ${total} checks pass. Play it with WALK IT or RAID IT; fix anything here before approving and the fixed map is what is approved.</p>${glance}${
           review.reason ? `<p class="px-warning px-wrap">${escapeHtml(review.reason)}</p>` : ''
-        }<label class="maker-field"><span>Note to the maker</span><textarea class="px-window px-field maker-lines" data-review-note rows="3" maxlength="2000" placeholder="Needed to send back or turn down">${escapeHtml(reviewing.note ?? '')}</textarea></label><div class="maker-actions">${button(
+        }<label class="maker-field" data-help="What the maker reads when their map is sent back or turned down."><span>Note to the maker</span><textarea class="px-window px-field maker-lines" data-review-note rows="3" maxlength="2000" placeholder="Needed to send back or turn down">${escapeHtml(reviewing.note ?? '')}</textarea></label><div class="maker-actions">${button(
           'data-decide="sent_back"',
           'Send back',
           false,

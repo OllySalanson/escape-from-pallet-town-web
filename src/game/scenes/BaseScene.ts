@@ -132,12 +132,15 @@ import { houseSnapshot, readHouseSnapshot } from '../home/houseSnapshot';
 import {
   LET_IN,
   NOT_NOW,
+  knockGoneLine,
   knockQuestion,
   notYoursLine,
+  notYoursToMoveLine,
   visitWelcomeLines,
   visitorThingName,
 } from '../home/knocking';
 import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
+import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { HarbourFigures } from '../base/harbourFigures';
@@ -603,7 +606,9 @@ export class BaseScene extends Phaser.Scene {
       this.askHouseName();
     }
     // Another player's browser saying it knocked here: look at the door now.
-    harbour()?.link.whenNudged(() => harbourHouses()?.door.knocked());
+    harbour()?.link.whenNudged((_from, gone) =>
+      gone ? harbourHouses()?.door.withdrawn(gone) : harbourHouses()?.door.knocked(),
+    );
   }
 
   public update(time: number, deltaMs: number): void {
@@ -613,7 +618,7 @@ export class BaseScene extends Phaser.Scene {
     const shared = harbour();
     if (shared) {
       shared.tick(time, deltaMs);
-      this.harbourFigures?.update(shared.figuresHere());
+      this.harbourFigures?.update(shared.figuresHere(), this.player);
     }
     this.watchFrontDoor(time);
     this.updateWalking(deltaMs);
@@ -686,8 +691,8 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
-    if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home && !this.visit) {
-      this.startDecorating();
+    if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home) {
+      this.decorateHere();
       return;
     }
 
@@ -1354,8 +1359,11 @@ export class BaseScene extends Phaser.Scene {
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
     if (this.onMat(room)) {
-      // The player's own house has nobody to speak to from the mat.
-      const speak = partner ?? keeper;
+      // The player's own house has nobody to speak to from the mat, so it
+      // names its own keys there instead: the mat is where everybody arrives,
+      // and the house's H and K went unsaid until they stepped off it
+      // (playtest 48).
+      const speak = partner ?? (keeper || this.houseKeys());
       return speak ? `${speak}   [DOWN] OUT` : '[DOWN] OUT';
     }
     if (partner) {
@@ -1377,6 +1385,11 @@ export class BaseScene extends Phaser.Scene {
       return '[SPACE] LOOK CLOSER';
     }
     // The player's own house says it can be decorated, until it has been.
+    return this.houseKeys();
+  }
+
+  /** The keys the player's own house answers that this save has not used yet. */
+  private houseKeys(): string {
     return this.place.room?.home && !this.visit
       ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), harbourHouses() !== null)
       : '';
@@ -1501,6 +1514,7 @@ export class BaseScene extends Phaser.Scene {
         // half under the box whenever anything here was spoken to.
         furniture: [
           ...(this.hintShown ? [this.hintRect(view)] : []),
+          ...this.feedbackTabIn(view),
           ...(this.dialogBox.visible
             ? [{ x: this.dialogBox.x + view.left, y: this.dialogBox.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
             : []),
@@ -1525,7 +1539,12 @@ export class BaseScene extends Phaser.Scene {
     labels.forEach((label, index) => label.seat(placements[index]));
   }
 
-  /** Where the hint line is, in the world, so no caption is seated under it. */
+  /** The FEEDBACK tab where it stands over the yard, in world space (`feedbackTabCover.ts`). */
+  private feedbackTabIn(view: Phaser.Geom.Rectangle): Rect[] {
+    const tab = feedbackTabOverGame(this.game?.canvas, this.scale?.gameSize);
+    return tab ? [{ ...tab, x: tab.x + view.left, y: tab.y + view.top }] : [];
+  }
+
   private hintRect(view: Phaser.Geom.Rectangle): Rect {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
     return {
@@ -1848,6 +1867,19 @@ export class BaseScene extends Phaser.Scene {
    * Everything else answers with what it is.
    */
   // -- decorating -------------------------------------------------------------
+
+  /**
+   * H in a house: the player's own is picked up to decorate, and somebody
+   * else's says why it cannot be - a key that did nothing at all left a
+   * visitor wondering whether it was broken (playtest 48).
+   */
+  private decorateHere(): void {
+    if (this.visit) {
+      this.say([notYoursToMoveLine(this.visit.ownerName)], []);
+      return;
+    }
+    this.startDecorating();
+  }
 
   /**
    * Picks the house up to decorate it (`base/decorateMode.ts`): the player
@@ -2183,6 +2215,11 @@ export class BaseScene extends Phaser.Scene {
       this.doorLayout = layout;
       houses.door.inside(houseSnapshot(this.savedGame));
     }
+    // A question about a knock that is no longer at the door - the knocker
+    // stopped, or the minute ran out - is taken down rather than answered.
+    if (this.knockPrompt && !houses.door.stillAtTheDoor(this.knockPrompt.knock.knockId)) {
+      this.knockerWentAway(this.knockPrompt.knock);
+    }
     const knock = houses.door.atTheDoor;
     if (
       knock &&
@@ -2229,11 +2266,13 @@ export class BaseScene extends Phaser.Scene {
     const pressed = (keys: readonly Phaser.Input.Keyboard.Key[]): boolean =>
       keys.some((key) => this.keyPresses.justPressed(key));
     if (pressed([this.controls.left, this.controls.up, this.controls.a, this.controls.w])) {
-      asking.prompt.moveSelection(-1);
-      audioManager.play('select');
+      if (asking.prompt.moveSelection(-1)) {
+        audioManager.play('select');
+      }
     } else if (pressed([this.controls.right, this.controls.down, this.controls.d, this.controls.s])) {
-      asking.prompt.moveSelection(1);
-      audioManager.play('select');
+      if (asking.prompt.moveSelection(1)) {
+        audioManager.play('select');
+      }
     } else if (pressed(this.controls.interact)) {
       asking.prompt.confirm();
     } else if (pressed([this.controls.back])) {
@@ -2249,6 +2288,14 @@ export class BaseScene extends Phaser.Scene {
     void harbourHouses()?.door.answer(knock.knockId, letIn);
     audioManager.play(letIn ? 'confirm' : 'cancel');
     this.say([letIn ? `You open the door to ${knock.knockerName}.` : `You leave ${knock.knockerName} on the step.`], []);
+  }
+
+  private knockerWentAway(knock: KnockAtTheDoor): void {
+    this.knockPrompt?.prompt.destroy();
+    this.knockPrompt = null;
+    this.spentPresses.spendHeld(this.directionKeys());
+    audioManager.play('cancel');
+    this.say([knockGoneLine(knock.knockerName)], []);
   }
 
   /** Whether K knocks here: in the player's own house, or on its step outside. */
@@ -2285,8 +2332,9 @@ export class BaseScene extends Phaser.Scene {
     this.knockScreen = openKnockScreen(
       this,
       houses.service,
-      (owner) => harbour()?.link.nudge(owner),
+      (owner, gone) => harbour()?.link.nudge(owner, gone),
       (letIn) => this.knocked(letIn),
+      this.place.room ? 'house' : 'step',
     );
   }
 

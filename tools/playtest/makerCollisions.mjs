@@ -22,7 +22,7 @@
 // line, the checks - are written beside it as JSON for `makerCollisionSheets.mjs`.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, OPEN_PLANT_FOLDS, sleep } from './browser.mjs';
 import { GAME } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -512,6 +512,7 @@ try {
       continue;
     }
     for (const selector of [test.choose].flat()) {
+      await evaluate(OPEN_PLANT_FOLDS);
       await evaluate(`document.querySelector(${JSON.stringify(selector)})?.click()`);
       await sleep(120);
     }

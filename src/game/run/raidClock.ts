@@ -75,11 +75,23 @@ export const RAID_DURATION_MS = 5 * 60 * 1000;
 export const raidClockProgress = (elapsedMs: number, durationMs = RAID_DURATION_MS): number =>
   durationMs <= 0 ? 1 : Math.max(0, Math.min(1, elapsedMs / durationMs));
 
-/** mm:ss for any raid-clock reading. */
-export const formatRaidClock = (remainingMs: number): string => {
-  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1_000));
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
-};
+const minutesAndSeconds = (totalSeconds: number): string =>
+  `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+
+/**
+ * mm:ss for a countdown - the time left, or until something happens. A part
+ * second counts as a whole one, so the clock reads 0:00 only once it is out.
+ */
+export const formatRaidClock = (remainingMs: number): string =>
+  minutesAndSeconds(Math.max(0, Math.ceil(remainingMs / 1_000)));
+
+/**
+ * mm:ss for time gone by. A part second counts for nothing, so what a result
+ * screen says was used and what the HUD said was left add up to the raid: a
+ * raid left with half a second on a clock that read 0:01 took 4:59, not 5:00.
+ */
+export const formatElapsedClock = (elapsedMs: number): string =>
+  minutesAndSeconds(Math.max(0, Math.floor(elapsedMs / 1_000)));
 
 /**
  * How much shorter than `RAID_DURATION_MS` a raid deployed with `deployedMs`

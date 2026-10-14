@@ -10,6 +10,7 @@ import {
   placeDoor,
   placeSpot,
   rectangle,
+  removeThing,
   setMaker,
 } from './draft';
 import { groundBrush } from './palette';
@@ -445,6 +446,38 @@ describe('moving and growing', () => {
     expect(halfTrees(moved.file)).toEqual([]);
     expect(readMapFile(moved.file).ok).toBe(true);
     expect(checkMapFile(moved.file).find((check) => check.id === 'doors')?.passed).toBe(true);
+  });
+
+  it('gives back the wood it cleared when it is carried out of it (playtest 48, finding 4)', () => {
+    // The Pokémon Center planted over the map's south ring of trees, then carried north.
+    const ring = map();
+    const planted = placed(placeBuilding(ring, 'pokemon-center', { x: 14, y: 20 }));
+    expect(planted.note).toMatch(/^Clears/);
+    const moved = placed(moveThing(planted.file, { kind: 'building', index: 0 }, { x: 14, y: 8 }));
+    expect(moved.file.ground.slice(22)).toEqual(ring.ground.slice(22));
+    expect(halfTrees(moved.file)).toEqual([]);
+    expect(moved.note).toMatch(/trees grew back where it stood\.$/);
+    // And taken off the map, it gives it back too.
+    expect(removeThing(planted.file, { kind: 'building', index: 0 }).ground).toEqual(ring.ground);
+  });
+
+  it('grows nothing back where something has come to stand since', () => {
+    const ring = map();
+    let file = placed(placeBuilding(ring, 'pokemon-center', { x: 14, y: 20 })).file;
+    const cleared = ring.ground.flatMap((row, y) =>
+      [...row].flatMap((letter, x) => (letter !== file.ground[y][x] ? [{ x, y }] : [])),
+    );
+    const outside = cleared.find(
+      (tile) =>
+        !footprintOf(file.buildings[0]).claimed.some(
+          (cell) => cell.x === tile.x && cell.y === tile.y,
+        ),
+    );
+    expect(outside).toBeDefined();
+    file = placed(placeSpot(file, 'item', outside!)).file;
+    const moved = placed(moveThing(file, { kind: 'building', index: 0 }, { x: 14, y: 8 }));
+    expect(moved.file.ground[outside!.y][outside!.x]).not.toBe('T');
+    expect(halfTrees(moved.file)).toEqual([]);
   });
 
   it('keeps a carried building in its own place in the list when it clears clutter before it', () => {

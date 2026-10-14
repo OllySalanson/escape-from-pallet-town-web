@@ -12,7 +12,7 @@ import { experienceForLevel, type Pokemon } from '../pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
 import { survivingSecureItems } from './raidSettlement';
-import { formatRaidClock } from './raidClock';
+import { formatElapsedClock, formatRaidClock } from './raidClock';
 import { errandForItem } from '../hub/errands';
 
 /**
@@ -370,7 +370,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       )
       : wipeSummary(input.cause, stakes, secured),
     haulTier,
-    clockLabel: `${formatRaidClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
+    clockLabel: `${formatElapsedClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
     elapsedMs: snapshot.elapsedMs,
     durationMs: input.durationMs,
     ledger,
@@ -642,7 +642,7 @@ function pressureLines(
   }
   if (snapshot.defeatedTrainers > 0) {
     lines.push(
-      `${snapshot.defeatedTrainers} ${snapshot.defeatedTrainers === 1 ? 'trainer' : 'trainers'} put down`,
+      `${snapshot.defeatedTrainers} ${snapshot.defeatedTrainers === 1 ? 'trainer' : 'trainers'} beaten`,
     );
   }
   if (snapshot.visitedMapIds.length > 1) {

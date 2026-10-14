@@ -41,6 +41,9 @@ const NAME_STYLE = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WIN
 /** Pixels of cream either side of the name, inside the frame. */
 const PLATE_PAD_X = 3;
 
+/** A figure to draw, and whether its plate is carrying something it is saying. */
+export type PlateFigure = NamedFigure<string> & { readonly speaking?: boolean };
+
 interface Drawn {
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly plate: Phaser.GameObjects.Graphics;
@@ -63,8 +66,20 @@ export class HarbourFigures {
     this.plateDepth = plateDepth;
   }
 
-  /** Draws this frame's figures: new ones stood up, gone ones taken down, the rest moved. */
-  public update(figures: readonly NamedFigure<string>[]): void {
+  /**
+   * Draws this frame's figures: new ones stood up, gone ones taken down, the rest moved.
+   *
+   * @param self Where this player's own figure is drawn (its sprite's top-left).
+   * Everybody arrives on the same spawn, mat or step, so another player is
+   * often on this player's very tile, drawn behind them - and their name plate,
+   * over the head they share, read as this player's own name (playtest 48,
+   * finding 6: AMY's first sight of the harbour was herself labelled PIP). A
+   * plate is not drawn while its figure is under this player's, and comes back
+   * once either has walked half a tile away - unless the plate is carrying
+   * something its figure is saying (`speaking`, a raid room's quick phrase):
+   * "AMY: OVER HERE!" names its speaker, and hiding it would lose what was said.
+   */
+  public update(figures: readonly PlateFigure[], self: { readonly x: number; readonly y: number } | null = null): void {
     const here = new Set(figures.map((figure) => figure.id));
     for (const [id, drawn] of this.drawn) {
       if (!here.has(id)) {
@@ -101,6 +116,10 @@ export class HarbourFigures {
       const plateY = Math.round(y + CHARACTER_HEAD_PIXEL_Y - plateHeight - 1);
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
+      const underSelf = self !== null && Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2;
+      const named = !underSelf || figure.speaking === true;
+      drawn.plate.setVisible(named);
+      drawn.name.setVisible(named);
     }
   }
 
@@ -116,7 +135,7 @@ export class HarbourFigures {
     this.drawn.clear();
   }
 
-  private standUp(figure: NamedFigure<string>): Drawn {
+  private standUp(figure: PlateFigure): Drawn {
     const sprite = this.scene.add.sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);

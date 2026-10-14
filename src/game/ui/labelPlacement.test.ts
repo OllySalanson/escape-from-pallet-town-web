@@ -313,6 +313,55 @@ describe('where a map caption is allowed to sit', () => {
       expect(seat({ warns: true }, { keepClear: [everyone] }).visible).toBe(false);
       expect(seat({ warns: true }, { canopy: [everyone] }).visible).toBe(false);
     });
+
+    describe('between two named bands, as Viridian City’s Lass Ada stands', () => {
+      // She watches north up the road between the upper and lower terrace
+      // ledges, each captioned across its whole brow and bank, and her watch
+      // fills the ground above her. Kept clear of both bands, every seat round
+      // her was taken and the toll's price was never drawn at all.
+      const lass = { x: 152, y: 110, width: 16, height: 23 };
+      const watch: Rect = { x: 152, y: 64, width: 16, height: 46 };
+      const upperBand: Rect = { x: 0, y: 32, width: 320, height: 32 };
+      const lowerBand: Rect = { x: 0, y: 144, width: 320, height: 32 };
+      const ledgeName = (subject: Rect, speaks: boolean): CaptionRequest =>
+        request({ subject, width: 90, height: 27, speaks });
+      const warning = request({ subject: lass, width: 90, height: 48, preferred: 'below', warns: true });
+      // Trees either side of the road, down to the lower band's brow.
+      const woods: Rect[] = [
+        { x: 0, y: 64, width: 140, height: 70 },
+        { x: 180, y: 64, width: 140, height: 70 },
+      ];
+      const scene = around({ keepClear: [lass, watch, ...woods] });
+
+      it('sits over a name’s ground rather than vanish', () => {
+        for (const speaks of [false, true]) {
+          const [placement] = placeCaptions(
+            [warning, ledgeName(upperBand, speaks), ledgeName(lowerBand, speaks)],
+            scene,
+          );
+          expect(`${speaks}: ${placement.visible}`).toBe(`${speaks}: true`);
+          const drawn = rectOf(placement, 90, 48);
+          expect(overlaps(drawn, lass)).toBe(false);
+          expect(overlaps(drawn, watch)).toBe(false);
+        }
+      });
+
+      it('leaves that ground to the name when it is only a name', () => {
+        const [placement] = placeCaptions(
+          [{ ...warning, warns: false }, ledgeName(upperBand, true), ledgeName(lowerBand, true)],
+          scene,
+        );
+        expect(placement.visible).toBe(false);
+      });
+
+      it('never sits on another warning’s subject', () => {
+        const [placement] = placeCaptions(
+          [warning, { ...ledgeName(upperBand, true), warns: true }, { ...ledgeName(lowerBand, true), warns: true }],
+          scene,
+        );
+        expect(placement.visible).toBe(false);
+      });
+    });
   });
 
   /**
@@ -680,5 +729,32 @@ describe('a figure or a dialogue box arriving in a held seat', () => {
     const after = seat({ ...warning, held: before.candidate }, { furniture: [box] });
     expect(after.visible).toBe(true);
     expect(overlaps(rectOf(after, 60, 40), box)).toBe(false);
+  });
+});
+
+/**
+ * Greystone Vale's Bunker, B1F: facing the dead lift raises "The elevator
+ * doesn't work..." at the foot of the screen, and the hall's Grunt stands four
+ * tiles south of the player - under the box. Every seat near him was under
+ * the box too, so the last resort lifted his GRUNT / CANNOT BE FLED over the
+ * player's head, naming an empty corridor with nobody in it.
+ */
+describe('a subject the dialogue box covers', () => {
+  const box = { x: 48, y: 168, width: 304, height: 80 };
+  const player: Rect = { x: 192, y: 120, width: TILE, height: 32 };
+  const grunt: Rect = { x: 144, y: 200, width: TILE, height: 24 };
+  const warning = { subject: grunt, warns: true, width: 88, height: 46 };
+
+  it('goes with its subject rather than being seated far from it', () => {
+    expect(seat(warning, { furniture: [box], player: [player] }).visible).toBe(false);
+  });
+
+  it('comes back once the box is put away', () => {
+    expect(seat(warning, { player: [player] }).visible).toBe(true);
+  });
+
+  it('still speaks for a subject the box only partly covers', () => {
+    const atTheEdge: Rect = { x: 144, y: 160, width: TILE, height: 24 };
+    expect(seat({ ...warning, subject: atTheEdge }, { furniture: [box], player: [player] }).visible).toBe(true);
   });
 });

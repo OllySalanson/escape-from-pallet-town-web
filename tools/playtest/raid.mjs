@@ -9,7 +9,9 @@
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--through=x:y:dir,..] [--grab=itemId,..] [--fight]
-//        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--errands=id,..]
+//        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--said] [--errands=id,..]
+//
+// --said prints every line a battle puts up, once it has finished typing.
 //
 // --shot-dialogs (with --shot) photographs every line of dialogue a step raised
 // before the driver presses past it - a pickup's "Found ₽40!", say, which is
@@ -70,7 +72,12 @@ const STATE = `(() => {
     // seatRowsBesideCursor), so the driver puts it back in front of the row it
     // is on, as the screen shows it.
     const cursor = b.mode === 'make-room' ? b.selectedCommand - b.makeRoomPage * 6 : b.selectedCommand;
-    out.battle = { mode: b.mode, commands: b.commandTexts.map((t, i) => (i === cursor ? '\u25b6 ' : '') + t.text) };
+    out.battle = {
+      mode: b.mode,
+      commands: b.commandTexts.map((t, i) => (i === cursor ? '\u25b6 ' : '') + t.text),
+      // The line on the battle's dialogue once it has finished typing, for --said.
+      said: b.dialog?.isCurrentMessageComplete ? b.dialog.textObject?.text : undefined,
+    };
   }
   return out;
 })()`;
@@ -214,6 +221,7 @@ try {
 
   /** Whatever is in the way of walking: dialogue, a prompt, a battle, the result. */
   const seenCommands = new Set();
+  let lastSaid = '';
   const clearInterruptions = async () => {
     for (let guard = 0; guard < 600; guard += 1) {
       const s = await state();
@@ -222,6 +230,10 @@ try {
         return;
       }
       if (s.battle) {
+        if (flag('said') && s.battle.said && s.battle.said !== lastSaid) {
+          lastSaid = s.battle.said;
+          note(`battle says: ${lastSaid.replace(/\s+/g, ' ')}`);
+        }
         // A level crossed mid-fight can offer a move against a full moveset,
         // and that question is a DOM overlay with no battle command behind it:
         // the driver would sit on the events mode for ever. Escape in a fight

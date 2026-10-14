@@ -8,7 +8,7 @@
 // home. OLLY goes home; AMY knocks again from her own step; OLLY is asked, with
 // the cursor on NOT NOW, and lets her in. AMY is shown OLLY's house - his name
 // on his things, and him standing in it - and he sees her there. She cannot
-// pick his furniture up, and down off the mat takes her home to her own step.
+// pick his furniture up (H says why), and down off the mat takes her home to her own step.
 // It fails loudly - a thrown error - when any of that does not happen, and
 // photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
@@ -131,6 +131,8 @@ try {
   await press(amy, 'KeyK');
   const list = await until(amy, "AMY's knock list with OLLY in it", (s) => s.rows.some((row) => row.includes("OLLY's house")));
   if (!list.rows.find((row) => row.includes("OLLY's house"))?.includes('Out')) throw new Error(`the list says ${JSON.stringify(list.rows)}`);
+  const back = await amy.evaluate(`document.querySelector('.knock-menu [data-knock-close]')?.textContent ?? ''`);
+  if (back.trim().toUpperCase() !== 'YARD') throw new Error(`opened on the step, the way back says "${back}"`);
   await amy.screenshot(`${out}/knock-list.png`);
   await press(amy, 'Enter');
   const notHome = await until(amy, 'told OLLY is not home', (s) => s.status !== null);
@@ -146,6 +148,33 @@ try {
   await sleep(2500);
   const told = await olly.evaluate(`${BASE}.doorTold`);
   if (!told) throw new Error(`OLLY's door never said he was home: ${JSON.stringify(await olly.evaluate(state))}`);
+  // He arrives on the mat, and the mat names the house's own keys he has not
+  // used yet beside the way out (playtest 48: it said only [DOWN] OUT).
+  const homeHint = await olly.evaluate(`(() => { const b = ${BASE}; return { hint: b.hintShown, learned: b.savedGame.raidProgress.keysLearned ?? [] }; })()`);
+  console.log(`on his mat: ${homeHint.hint}`);
+  for (const [key, word] of [['decorate', '[H] DECORATE'], ['knock', '[K] KNOCK']]) {
+    if (!homeHint.learned.includes(key) && !homeHint.hint.includes(word)) throw new Error(`OLLY's mat did not name ${word}: "${homeHint.hint}"`);
+  }
+  await toFront(olly);
+  await olly.screenshot(`${out}/home-mat-hint.png`);
+
+  // AMY knocks and stops before he answers (playtest 48, finding 8): OLLY's
+  // question is taken down, rather than left to open the door to nobody.
+  await press(amy, 'KeyK');
+  await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.includes("OLLY's house") && row.includes('Home')));
+  await press(amy, 'Enter');
+  await until(amy, 'knocking', (s) => s.knockScreen && s.status === null);
+  await until(olly, 'OLLY asked', (s) => s.asked === 'AMY');
+  await press(amy, 'Escape');
+  await until(amy, 'AMY stopped knocking', (s) => s.status?.includes('stopped knocking') ?? false);
+  const goneFromStep = await until(olly, "OLLY's question taken down", (s) => s.asked === null && (s.dialog?.endsWith('step.') ?? false), 6000);
+  if (!goneFromStep.dialog.includes('AMY has gone from the step.')) throw new Error(`OLLY was told ${JSON.stringify(goneFromStep.dialog)}`);
+  console.log(`a stopped knock: ${goneFromStep.dialog}`);
+  await toFront(olly);
+  await olly.screenshot(`${out}/knock-withdrawn.png`);
+  await readThrough(olly);
+  await press(amy, 'Escape');
+  await until(amy, 'the knock screen put away', (s) => !s.knockScreen && s.live);
 
   // AMY knocks again: OLLY is home now.
   await press(amy, 'KeyK');
@@ -172,7 +201,12 @@ try {
   await amy.screenshot(`${out}/visiting.png`);
   // Nobody moves the host's furniture.
   await press(amy, 'KeyH');
-  if ((await amy.evaluate(state)).decorating) throw new Error('a visitor picked the house up');
+  const refused = await until(amy, 'AMY told the furniture is not hers', (s) => s.dialog?.endsWith('move.') ?? false);
+  if (refused.decorating) throw new Error('a visitor picked the house up');
+  if (!refused.dialog.includes("OLLY's house")) throw new Error(`H in a visit said ${JSON.stringify(refused.dialog)}`);
+  console.log(`H in a visit: ${refused.dialog}`);
+  await amy.screenshot(`${out}/visitor-presses-h.png`);
+  await readThrough(amy);
 
   // Down off the mat: home, on her own step.
   const mat = await amy.evaluate(`${BASE}.room.mat`);

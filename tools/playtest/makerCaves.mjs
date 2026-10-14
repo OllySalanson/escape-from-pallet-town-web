@@ -11,7 +11,7 @@
 // non-zero on any FAIL. It starts from the sample map as a draft, with the one
 // find that stands where the rock goes moved off it.
 import { readFileSync } from 'node:fs';
-import { launchBrowser, PIXEL_WINDOW, sleep } from './browser.mjs';
+import { launchBrowser, PIXEL_WINDOW, OPEN_PLANT_FOLDS, sleep } from './browser.mjs';
 import { GAME } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -59,6 +59,7 @@ try {
     await press('mouseReleased', x, y);
   };
   const click = async (selector) => {
+    await evaluate(OPEN_PLANT_FOLDS);
     const at = await evaluate(
       `(() => { const element = document.querySelector(${JSON.stringify(selector)}); element?.scrollIntoView({ block: 'nearest' }); const box = element?.getBoundingClientRect(); return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null; })()`,
     );
