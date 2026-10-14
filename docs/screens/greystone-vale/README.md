@@ -1464,266 +1464,6 @@ mean. What both still named, for a later pass: the track is one ruled L, the
 tall-grass beds and the pool's rim are blocky, the two knolls in the lagoon
 read as pasted, and the berg is a very square block.
 
-## The Moor Chapel
-
-The fourth far place drawn: a ruined chapel on the fell west of High Moor, reached
-only on a night raid. Its program is `tools/mapcraft/worlds/greystoneVale/moorChapel.ts`.
-
-![The Moor Chapel](moor-chapel.png)
-
-**How a player gets there.** Drop in at Moor Top on High Moor, walk west into the
-shepherd's clearing by the tarn, and take the sheep track west through the wood.
-Nothing signs it, but the shepherd says it is there. On a raid deployed between
-nine at night and five in the morning, by the player's own clock (the same clock
-THE BOLTHOLE's window reads, `world/nightRaids.ts`), the track runs on through the
-wood and out at the Lantern Cross, at the head of the fell. On a day raid it stops
-in the trees, and pressing at them says why: the fog has the track. The raid is a
-night raid or a day raid from the moment it deploys, so nothing changes under a
-player's feet.
-
-**The one idea, and what stands along it.** Everything is on one road, the corpse
-road the drovers carried their dead along:
-
-- **The Lantern Cross:** the Pokemon Tower's statue, in the corner where the crags
-  meet the wood, where the sheep track comes out of the trees.
-- **Under the crags:** the corridor runs west with the crags as its north wall, a
-  wide bed of heather below them and the tarn in their west corner.
-- **The chapel in its churchyard:** the road turns south past the chapel's door.
-  The chapel is FireRed's own Pokemon Tower, standing in a churchyard fenced with
-  post and rail, with graves in broken rows and the grass come up between them.
-  The two gold graves are nearest the door.
-- **Out of the vale:** the road leaves west as the Corpse Road.
-- **The drove track:** from the cross a second, narrower track runs south through
-  the wood. It passes the drovers' bothy at its bend and goes on to the Drovers'
-  Gap. That is the fell's second way out, so a raid at the cross need not go round
-  by the corpse road.
-
-**What is only there.**
-
-- **Ghosts.** The churchyard's grass and every step of the crypt roll the new
-  `haunted` habitat: FireRed's Pokemon Tower, Gastly, Cubone and a Haunter, in the
-  tower's own proportions (90, 9 and 1), at a far place's levels. Nothing is
-  fielded below the level it evolves at, so the one Haunter in a hundred is at 25.
-  A level-8 starter of each kind wins 59 to 67% of what it meets
-  (`hauntedHabitat.test.ts`).
-- **The crypt.** The chapel's door opens on its nave, a floor of FireRed's
-  Pokemon Tower, quiet like the tower's ground floor. A Channeler and a mourner
-  are there in FireRed's own words, with pews of graves either side of the aisle.
-  Its stairs down on the west lead to the crypt. The crypt's graves stand where
-  FireRed's third floor stands them, cell for cell. Beside its inner block of
-  gold graves are the grave goods, a cache of lamp oil and linen.
-- **The Spell Tag.** It lies where FireRed's third floor leaves its item, one raid
-  in four, as a prize. It is a piece of gear the Miracle Seed's kind: Ghost moves
-  hit a tenth harder, as FireRed's do.
-
-![The nave](moor-chapel-nave.png) ![The crypt](moor-chapel-crypt.png)
-
-**Played through** on the explorer run, stepped, with `tools/playtest/raid.mjs`.
-
-By day, from Moor Top, the track ends in the wood. Pressing at the trees gives
-the fog's two lines, and the raid leaves by the Moor Gate:
-
-```sh
-node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
-  --clock=day --open="night track" --exit="Moor Gate"
-```
-
-By night the same walk goes on through the wood to the Lantern Cross, along
-the corpse road, in at the chapel's door and down the nave's stairs into the
-crypt, then back up and out by the Corpse Road:
-
-```sh
-node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
-  --clock=night --via=70:82,58:82,50:82,44:82 \
-  --through=27:94:up,moor-chapel-nave@4:10:left --deep --exit="Corpse Road"
-```
-
-![By day: the fog has the track](moor-chapel-fog-by-day.png)
-![By night: the track through the wood to the Lantern Cross](moor-chapel-track-by-night.png)
-
-![In at the chapel's door](moor-chapel-played-nave.png)
-![Down in the crypt](moor-chapel-played-crypt.png)
-
-The night track is twelve tiles of wood, two deep. Drawn as one tree, it showed
-the fell through the gap beside it by day.
-
-### What the game learned for it
-
-- **A night track** (`NightGate` in `world/gates.ts`, a map file's `doors` kind
-  `night`). It is a stand of wood by day and a way through on a night raid. Nobody
-  opens it and nothing about it is saved: its key is the one word every night
-  track shares, in the opened list only while `RunPlan.night` holds. It is built
-  per gate state as a field-move door is, so the hunter, the checks and the
-  picture all read it as a door. The map maker offers it beside Surf water.
-- **A tower floor** (area kind `tower`, style `tower`). It is Lavender Town's
-  round room, laid cell for cell from FireRed's own metatiles as the Underground
-  Path is (`AREA_WEAVES`, `AREA_WEAVE_GROUND`), at the size every floor of the
-  tower is. It has its stairs up on the east and down on the west, its mat, and
-  its grey and gold graves and statues. It keeps the Bicycle out, as FireRed does.
-  It rolls for wildlife on every step only where a place on it names what lives
-  there. The map maker's Pokemon Tower opens onto one.
-- **FireRed's graves outdoors** (`grave`, `gold-grave`, `grave-statue`). These are
-  the tower's own, cut from the top layer of its floors. Until now the only graves
-  were the CC0 sheet's.
-- **A game map's prizes.** An item spot on the game's own map may name a prize
-  (`MAP_FILE_PRIZES`): gear found in one place and nowhere else, on its own odds
-  and in its own place, as the Card Key is. No player's map may.
-- **A haunted habitat, the grave goods landmark and the Spell Tag.**
-
-### Judged blind
-
-The chapel was judged as two 24x40 views beside five FireRed routes (Routes 1, 2,
-6, 10 and 24), with two of them broken on purpose as controls, every round with
-two fresh judges. This time the FireRed routes were drawn straight from pret's
-own layouts and tilesets (FireRed's art, which this game's tiles are cut from),
-without the earlier rounds' redrawing.
-
-| Round | What changed | Judges that counted: real mean, chapel |
-|---|---|---|
-| 1 | an open fell with the chapel, crags and graveyard set on it | 7.8: 4 and 3; 7.4: 4 and 4 |
-| 2 | one road from the cross to the way out, crags as the frame | 7.0: 7 and 4; 7.0: 7 and 4 |
-| 3 | a loop of road round a square pond in the south-east | 7.8: 5 and 4; 7.2: 5 and 4 |
-| 4 | a framed corridor, the tarn under the crags | 7.6: 7 and 6 |
-| 5 | the drove track straight down to a fold | 7.0: 5 and 5; 7.4: 5 and 5 |
-| 6 | the churchyard round the chapel, the cross in its corner | 7.6: 5 and 4; 6.8: 6 and 5 |
-| 7 | the road two wide where a fence had narrowed it | 6.8: **6 and 6** |
-| 8 | the corpse road three wide, the graves in rows | 7.8: 5 and 4; 7.4: **7 and 6** |
-| 9 | the fold replaced by the drovers' bothy at the track's bend | 6.6: **6 and 6** |
-
-**It passes on round 9.** A judge counts only if it rates both broken controls
-below every real route. In round 9 the judge that counted passed both views. The
-other judge rated a broken control above a real route, so it did not count; it
-gave both views 7. Three of the last four judges that counted passed it, and
-round 8 was split.
-
-What the rounds taught, beyond what High Moor and The Crossing already had:
-
-- **A building in a field is a field.** The Pokemon Tower set on lawn read as "a
-  city tower dropped into empty grass" until the churchyard's fence went round
-  it.
-- **A spur to a box is a dead end.** A track to a fenced pen was named a
-  "purposeless pen and a dead-end spur" twice. A track past a cottage at its bend,
-  on to a way out, was not.
-- **Width is read as weight.** A two-wide road beside fences read as "thin". The
-  vale's drove road is three wide for the same reason, and so is the corpse road
-  now.
-
-What the judges still named, for a later pass: ragged edges to the heather, grass
-growing between the graves, and the crags reading partly as a slab on the lawn.
-
-![The Moor Chapel as first drawn](moor-chapel-first-draw.png)
-
-## Frostreef
-
-The third far place drawn: an island of ice on the outer reef, south-east of
-the Wreck, that nobody walks to. It built the two mechanics the ring shares,
-the boat and the ice.
-
-- **The way in: The Ice Run.** The salvage launch puts in at the Wreck's pier
-  on the flood tide, from 2:00 until 4:00 of a raid, and nowhere else and at no
-  other time. Pressing out to sea from the end of the pier asks first, in
-  FireRed's sailor's words ("Ahoy, there!"), and then carries the player tile
-  by tile east along the coast and south across two cells of open sea to the
-  Ice Jetty: 134 tiles, about twenty seconds of the raid clock, charged as
-  walking that far would be. The hunter cannot follow across the water, so
-  the island is the one place in the vale a raid can put the sea between
-  itself and the hunter - at the price of the tide.
-- **The north shore.** The jetty lands on a beach and a meadow under the berg.
-  The Old Whaler there says what the island is, and a frozen pool in the
-  meadow teaches the ice where getting it wrong costs nothing: a step onto ice
-  carries on until something stops it.
-- **Berg Cave.** Two floors of FireRed's Icefall Cave under the berg, the only
-  way to the far side of the ridge. Each is a sheet of ice round crags of rock,
-  and the way on is reached only by stopping against the right snowy boulder;
-  every boulder on the ice is a stop some way across needs. A hidden find waits
-  in a pocket of each that only a slide reaches.
-- **The Frozen Lagoon.** The island's best ground, walled off by the ridge: a
-  lagoon frozen solid, Lapras waiting on the snow-bank in the middle of it at
-  level 10, and the NeverMeltIce, FireRed's Ice-type gear, found nowhere else in
-  the game (a prize, so three raids in ten).
-- **The way out: the Whaler's Boat.** The whalers put in at the lagoon's
-  channel at 3:40. Miss the tide back on the launch and it is the only other way
-  off the island, and the lagoon is on the far side of the cave.
-
-What is only here: Seel, Shellder and Jynx, on every step of Berg Cave's floor
-(FireRed's Seafoam Islands and Icefall Cave, brought to a route's levels and
-measured with a level-8 starter of each kind at 73% to 90%); Lapras; and the
-NeverMeltIce. Dewgong is the one of Seafoam's own left out: it evolves at 34,
-and nothing in the game is fielded below the level it evolves at.
-
-### How it is built
-
-- **A boat is a link.** A map file's boat is a link whose two ends are `boat`
-  jetties outdoors, with a `sails` field: its name, its window in seconds and
-  the turns of its course (`MapFileSailing`). It is not a new top-level key, so
-  `submit_map` needs no migration, and a player's map can carry one. The game
-  lays it out as a boat (`world/sailing.ts`), never as a way through: every
-  search that asks where a player can get to - the checks, run generation, the
-  structure rules - adds its two ways across (`playerLinks`), and nothing the
-  hunter asks does. The stitcher writes one for each planned sailing once both
-  its jetties are drawn, with the fewest straight legs of deep water that stay
-  inside the cells the plan routes it through (`sailingLink` in `stitch.ts`).
-- **Ice is a material.** `ice` is the seventeenth (letter `i`), walkable and
-  `slides`; Berg Cave is a cave in the new `ice` style, drawn from FireRed's
-  Icefall Cave by `scripts/cut-frlg-ice.mjs` (`frlg-ice.png`), and the frozen
-  lagoon and pool out of doors are the same sheet of ice on the player-map
-  catalogue, with Icefall Cave's snowy boulders to stop against. A map maker
-  can paint it in an ice cave.
-- **Fair by construction.** `frostreef.test.ts` slides the whole island the
-  way a player has to, through the cave's ladders, with Lapras standing and
-  without: from the jetty everything is reached - every find, Lapras, the
-  whalers' boat - and nowhere a slide can leave you is somewhere the jetty and
-  the boat are both out of reach.
-
-![Frostreef](frostreef/frostreef.png)
-
-Berg Cave 1F and B1F:
-
-![Berg Cave 1F](frostreef/berg-cave-1f.png)
-![Berg Cave B1F](frostreef/berg-cave-b1f.png)
-
-### Played through
-
-`tools/playtest/frostreef.mjs` plays it in the real game on a test-mode build:
-the explorer run dropped in at the Salvage Camp, the walk to the pier, the
-boarding question, the crossing, the shore, both floors of Berg Cave solved a
-slide at a time (planned the way the player has to, by sliding), Lapras
-spoken to and fought, and away by the Whaler's Boat. The crossing cost 20.5
-seconds of raid clock for its 134 tiles, exactly what walking that far does.
-
-![Ahoy](frostreef/02-ahoy.png)
-![At sea](frostreef/03-at-sea.png)
-![The Ice Jetty](frostreef/04-ice-jetty.png)
-![Berg Cave 1F](frostreef/06-berg-cave-1f.png)
-![Out onto the frozen lagoon](frostreef/09-the-frozen-lagoon.png)
-![Lapras](frostreef/10-lapras.png)
-![Away on the Whaler's Boat](frostreef/12-away.png)
-
-### Judged blind
-
-Judged against FireRed's own island places, redrawn in this game's tiles by
-`tools/mapcraft/fromPret.mts` (Four Island, Birth Island, One Island's
-Treasure Beach and Two Island's Cape Brink), the island as two 48x40 views,
-two fresh judges a round. Berg Cave was judged against FireRed's own Icefall
-Cave and Seafoam Islands floors, drawn from pret in their own tiles, which are
-the tiles Berg Cave is cut from. Each round had two broken controls (a
-place's blocks shuffled); a judge who scored one level with or above a real
-place does not count.
-
-| Round | What changed | Island | Real mean | Berg Cave | Real mean |
-|---|---|---|---|---|---|
-| 1 | first draw | 4 and 4, 4 and 4 | judges did not count | 3 and 3, 3 and 3 | 7.0, 5.25 |
-| 2 | organic lagoon, rock drawn solid, boulders only where a way needs one | 6 and 6, 5 and 5 | judges did not count | **7 and 6, 6 and 5: passes** | 4.75, 5.5 |
-| 3 | meadow, track, pool at the headland | 5 and 6 | 7.5 | | |
-| 4 | ridge stepping in and out, sand round the pool | 6 and 5, 6 and 6 | 7.25, 6.75 | | |
-| 5 | reef and sandbar in the lagoon, south edge broken up | **6 and 6, 6 and 6** | 7.0, 7.5 | | |
-
-In round 5 both judges counted, and both scored the island above the weakest
-real place in the batch (4 and 5) and within one and a half points of the real
-mean. What both still named, for a later pass: the track is one ruled L, the
-tall-grass beds and the pool's rim are blocky, the two knolls in the lagoon
-read as pasted, and the berg is a very square block.
-
 ## Ember Isle
 
 The fourth far place drawn: a volcano out in the open sea beyond the
@@ -1900,6 +1640,155 @@ of stone.
 Both round-2 judges still named, for a later pass: the road's legs are dead
 straight with square corners, the tall-grass beds are still rectangles, and the
 ash floor is wide with little on it.
+
+## The Moor Chapel
+
+The fifth far place drawn: a ruined chapel on the fell west of High Moor, reached
+only on a night raid. Its program is `tools/mapcraft/worlds/greystoneVale/moorChapel.ts`.
+
+![The Moor Chapel](moor-chapel.png)
+
+**How a player gets there.** Drop in at Moor Top on High Moor, walk west into the
+shepherd's clearing by the tarn, and take the sheep track west through the wood.
+Nothing signs it, but the shepherd says it is there. On a raid deployed between
+nine at night and five in the morning, by the player's own clock (the same clock
+THE BOLTHOLE's window reads, `world/nightRaids.ts`), the track runs on through the
+wood and out at the Lantern Cross, at the head of the fell. On a day raid it stops
+in the trees, and pressing at them says why: the fog has the track. The raid is a
+night raid or a day raid from the moment it deploys, so nothing changes under a
+player's feet.
+
+**The one idea, and what stands along it.** Everything is on one road, the corpse
+road the drovers carried their dead along:
+
+- **The Lantern Cross:** the Pokemon Tower's statue, in the corner where the crags
+  meet the wood, where the sheep track comes out of the trees.
+- **Under the crags:** the corridor runs west with the crags as its north wall, a
+  wide bed of heather below them and the tarn in their west corner.
+- **The chapel in its churchyard:** the road turns south past the chapel's door.
+  The chapel is FireRed's own Pokemon Tower, standing in a churchyard fenced with
+  post and rail, with graves in broken rows and the grass come up between them.
+  The two gold graves are nearest the door.
+- **Out of the vale:** the road leaves west as the Corpse Road.
+- **The drove track:** from the cross a second, narrower track runs south through
+  the wood. It passes the drovers' bothy at its bend and goes on to the Drovers'
+  Gap. That is the fell's second way out, so a raid at the cross need not go round
+  by the corpse road.
+
+**What is only there.**
+
+- **Ghosts.** The churchyard's grass and every step of the crypt roll the new
+  `haunted` habitat: FireRed's Pokemon Tower, Gastly, Cubone and a Haunter, in the
+  tower's own proportions (90, 9 and 1), at a far place's levels. Nothing is
+  fielded below the level it evolves at, so the one Haunter in a hundred is at 25.
+  A level-8 starter of each kind wins 59 to 67% of what it meets
+  (`hauntedHabitat.test.ts`).
+- **The crypt.** The chapel's door opens on its nave, a floor of FireRed's
+  Pokemon Tower, quiet like the tower's ground floor. A Channeler and a mourner
+  are there in FireRed's own words, with pews of graves either side of the aisle.
+  Its stairs down on the west lead to the crypt. The crypt's graves stand where
+  FireRed's third floor stands them, cell for cell. Beside its inner block of
+  gold graves are the grave goods, a cache of lamp oil and linen.
+- **The Spell Tag.** It lies where FireRed's third floor leaves its item, one raid
+  in four, as a prize. It is a piece of gear the Miracle Seed's kind: Ghost moves
+  hit a tenth harder, as FireRed's do.
+
+![The nave](moor-chapel-nave.png) ![The crypt](moor-chapel-crypt.png)
+
+**Played through** on the explorer run, stepped, with `tools/playtest/raid.mjs`.
+
+By day, from Moor Top, the track ends in the wood. Pressing at the trees gives
+the fog's two lines, and the raid leaves by the Moor Gate:
+
+```sh
+node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
+  --clock=day --open="night track" --exit="Moor Gate"
+```
+
+By night the same walk goes on through the wood to the Lantern Cross, along
+the corpse road, in at the chapel's door and down the nave's stairs into the
+crypt, then back up and out by the Corpse Road:
+
+```sh
+node tools/playtest/raid.mjs <url> --stepped --explorer --insertion=greystone-vale-moor-top \
+  --clock=night --via=70:82,58:82,50:82,44:82 \
+  --through=27:94:up,moor-chapel-nave@4:10:left --deep --exit="Corpse Road"
+```
+
+![By day: the fog has the track](moor-chapel-fog-by-day.png)
+![By night: the track through the wood to the Lantern Cross](moor-chapel-track-by-night.png)
+
+![In at the chapel's door](moor-chapel-played-nave.png)
+![Down in the crypt](moor-chapel-played-crypt.png)
+
+The night track is twelve tiles of wood, two deep. Drawn as one tree, it showed
+the fell through the gap beside it by day.
+
+### What the game learned for it
+
+- **A night track** (`NightGate` in `world/gates.ts`, a map file's `doors` kind
+  `night`). It is a stand of wood by day and a way through on a night raid. Nobody
+  opens it and nothing about it is saved: its key is the one word every night
+  track shares, in the opened list only while `RunPlan.night` holds. It is built
+  per gate state as a field-move door is, so the hunter, the checks and the
+  picture all read it as a door. The map maker offers it beside Surf water.
+- **A tower floor** (area kind `tower`, style `tower`). It is Lavender Town's
+  round room, laid cell for cell from FireRed's own metatiles as the Underground
+  Path is (`AREA_WEAVES`, `AREA_WEAVE_GROUND`), at the size every floor of the
+  tower is. It has its stairs up on the east and down on the west, its mat, and
+  its grey and gold graves and statues. It keeps the Bicycle out, as FireRed does.
+  It rolls for wildlife on every step only where a place on it names what lives
+  there. The map maker's Pokemon Tower opens onto one.
+- **FireRed's graves outdoors** (`grave`, `gold-grave`, `grave-statue`). These are
+  the tower's own, cut from the top layer of its floors. Until now the only graves
+  were the CC0 sheet's.
+- **A game map's prizes.** An item spot on the game's own map may name a prize
+  (`MAP_FILE_PRIZES`): gear found in one place and nowhere else, on its own odds
+  and in its own place, as the Card Key is. No player's map may.
+- **A haunted habitat, the grave goods landmark and the Spell Tag.**
+
+### Judged blind
+
+The chapel was judged as two 24x40 views beside five FireRed routes (Routes 1, 2,
+6, 10 and 24), with two of them broken on purpose as controls, every round with
+two fresh judges. This time the FireRed routes were drawn straight from pret's
+own layouts and tilesets (FireRed's art, which this game's tiles are cut from),
+without the earlier rounds' redrawing.
+
+| Round | What changed | Judges that counted: real mean, chapel |
+|---|---|---|
+| 1 | an open fell with the chapel, crags and graveyard set on it | 7.8: 4 and 3; 7.4: 4 and 4 |
+| 2 | one road from the cross to the way out, crags as the frame | 7.0: 7 and 4; 7.0: 7 and 4 |
+| 3 | a loop of road round a square pond in the south-east | 7.8: 5 and 4; 7.2: 5 and 4 |
+| 4 | a framed corridor, the tarn under the crags | 7.6: 7 and 6 |
+| 5 | the drove track straight down to a fold | 7.0: 5 and 5; 7.4: 5 and 5 |
+| 6 | the churchyard round the chapel, the cross in its corner | 7.6: 5 and 4; 6.8: 6 and 5 |
+| 7 | the road two wide where a fence had narrowed it | 6.8: **6 and 6** |
+| 8 | the corpse road three wide, the graves in rows | 7.8: 5 and 4; 7.4: **7 and 6** |
+| 9 | the fold replaced by the drovers' bothy at the track's bend | 6.6: **6 and 6** |
+
+**It passes on round 9.** A judge counts only if it rates both broken controls
+below every real route. In round 9 the judge that counted passed both views. The
+other judge rated a broken control above a real route, so it did not count; it
+gave both views 7. Three of the last four judges that counted passed it, and
+round 8 was split.
+
+What the rounds taught, beyond what High Moor and The Crossing already had:
+
+- **A building in a field is a field.** The Pokemon Tower set on lawn read as "a
+  city tower dropped into empty grass" until the churchyard's fence went round
+  it.
+- **A spur to a box is a dead end.** A track to a fenced pen was named a
+  "purposeless pen and a dead-end spur" twice. A track past a cottage at its bend,
+  on to a way out, was not.
+- **Width is read as weight.** A two-wide road beside fences read as "thin". The
+  vale's drove road is three wide for the same reason, and so is the corpse road
+  now.
+
+What the judges still named, for a later pass: ragged edges to the heather, grass
+growing between the graves, and the crags reading partly as a slab on the lawn.
+
+![The Moor Chapel as first drawn](moor-chapel-first-draw.png)
 
 ## How it ships
 
