@@ -615,10 +615,17 @@ export class HubScene extends Phaser.Scene {
     if (required.length === 0) {
       return '';
     }
-    const short = missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
+    const short = this.carryInShort();
     return short.length === 0
       ? `<p class="px-note px-wrap carry-note">${contract!.name}: ${itemAmountsFor(required)} packed for the drop. They are spent when you hand them over.</p>`
       : `<p class="px-warning px-wrap carry-note">${contract!.name} needs ${itemAmountsFor(required)} in your pack. Still short: ${itemAmountsFor(short)}.</p>`;
+  }
+
+  /** What the chosen contract's drop asks for that the loadout does not hold. */
+  private carryInShort(): ReturnType<typeof missingCarryIn> {
+    const contract = this.contractFor(this.flow.insertionId);
+    const required = contract ? contractCarryIn(contract) : [];
+    return required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
   }
 
   /**
@@ -3358,6 +3365,7 @@ export class HubScene extends Phaser.Scene {
     // full-width bar beside the button that pays it.
     const threat = this.hunterThreatAt(this.flow.insertionId, this.flow.party);
     const hunter = hunterThreatLine(threat);
+    const carryShort = this.carryInShort();
     // The window a row stands in is what says whether it is lost or comes home,
     // so the rows do not each say it again.
     const itemRow = (item: { readonly itemId: ItemId; readonly quantity: number }, secured: boolean): string =>
@@ -3397,7 +3405,10 @@ export class HubScene extends Phaser.Scene {
         this.roomNote(),
         // A night raid is named here as its clock chip will name it, so the
         // last screen before the raid says what the drop-in pane's wildlife did.
-        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · ${this.clockNote()}</span>`,
+        // A drop that will refuse you is said again here, on the last screen
+        // before the raid: the drop-in pane said it a step back, and a raid
+        // that opens on the refusal is a raid already spent (playtest 47).
+        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'}${carryShort.length === 0 ? '' : ` · <span class="px-warning carry-short">Still short: ${itemAmountsFor(carryShort)}</span>`} · ${this.clockNote()}</span>`,
         `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],

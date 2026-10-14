@@ -694,6 +694,35 @@ describe('hub deployment route', () => {
    * (`world/nightRaids.ts`), the same reading the drop-in screen's wildlife was
    * shown in, so what the screen named is what the raid meets.
    */
+  /**
+   * A delivery is decided at base or not at all: the drop refuses a player who
+   * arrives short, and the raid is spent by then. The drop-in pane said so and
+   * the final check - the last screen before the raid - did not (playtest 47).
+   */
+  it('says on the final check what a delivery contract is still short of', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID, 'survey-the-braid'],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+    });
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.chooseInsertion('viridian-forest');
+    hub.flow.setItemQuantity('potion', 1);
+    readyToDeploy(hub);
+    expect(hub.flow.step).toBe('confirm');
+    hub.render();
+    const check = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+    expect(check).toContain('<span class="px-warning carry-short">Still short: 1 Potion</span>');
+
+    hub.flow.setItemQuantity('potion', 2);
+    hub.render();
+    expect((hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML).not.toContain(
+      'Still short',
+    );
+  });
+
   it.each([
     { hour: 23, night: true, heading: 'Wildlife by night' },
     { hour: 12, night: false, heading: 'Wildlife<' },
