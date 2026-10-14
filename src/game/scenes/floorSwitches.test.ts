@@ -137,3 +137,43 @@ describe('the Falls Cave floor switches', () => {
     expect(raid.runSession.bouldersMoved).toEqual({});
   });
 });
+
+describe('a boulder that has fallen onto its switch, faced', () => {
+  /** Faces the tile and presses the interact key, with nothing else on the way. */
+  const interactAt = (raid: ReturnType<typeof inTheFallsCave>, [x, y]: readonly [number, number]): string[] => {
+    const said: string[] = [];
+    Object.assign(raid.scene as object, {
+      facing: 'down',
+      tryBoard: () => false,
+      tryCollectLootAt: () => null,
+      tryActivatePoiAt: () => null,
+      tryFieldMoveAt: () => null,
+      tryOpenBarredExitAt: () => null,
+      trainersForCurrentMap: () => [],
+      npcAppearances: new Map(),
+      dialogBox: {
+        showMessage: (line: string) => said.push(line),
+        showMessages: (lines: string[]) => said.push(...lines),
+      },
+    });
+    raid.scene.currentTile = raid.at(x, y - 1);
+    (raid.scene as unknown as { tryInteract(): void }).tryInteract();
+    return said;
+  };
+
+  it('still offers a loose boulder to the Strength user', () => {
+    const raid = inTheFallsCave();
+    expect(interactAt(raid, [11, 4]).join(' ')).toMatch(/Walk into the boulder to move it/);
+  });
+
+  it('says it has settled, never that walking into it will move it', () => {
+    const raid = inTheFallsCave();
+    for (const y of [4, 5, 6, 7, 8]) push(raid, [11, y], 'down');
+    // Walking into it does nothing, so nothing may promise that it would.
+    expect(push(raid, [11, 9], 'down')).toBe(false);
+    const said = interactAt(raid, [11, 9]).join(' ');
+    expect(said).not.toMatch(/Walk into the boulder/);
+    expect(said).toMatch(/switch/i);
+    expect(said).toMatch(/won't move/i);
+  });
+});

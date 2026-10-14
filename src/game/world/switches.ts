@@ -81,3 +81,12 @@ export function barriersOpenedBy(
  * (`VictoryRoad_2F_EventScript_FloorSwitch1AlreadyPressed`).
  */
 export const LEVER_LINES: readonly string[] = ['A secret switch!'];
+
+/**
+ * What a boulder that has fallen onto its floor switch says when faced. It
+ * stays there for the rest of the raid (`WorldScene.boulderIsSeated`), so the
+ * Strength user's "walk into it" would be a promise the next step breaks.
+ */
+export const SEATED_BOULDER_LINES: readonly string[] = [
+  "The boulder is wedged on the switch. It won't move again.",
+];

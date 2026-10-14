@@ -92,6 +92,7 @@ import {
   barriersOpenedBy,
   isBarrierOpen,
   LEVER_LINES,
+  SEATED_BOULDER_LINES,
   switchAt,
   switchesOn,
   type WorldSwitch,
@@ -4460,7 +4461,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     if (entity?.boulder) {
       this.dialogBox.showMessages([
-        ...fieldMoveLines('strength', fieldMoveUser(this.party.pokemon, 'strength')),
+        ...(this.boulderIsSeated(entity)
+          ? SEATED_BOULDER_LINES
+          : fieldMoveLines('strength', fieldMoveUser(this.party.pokemon, 'strength'))),
       ]);
       return;
     }
