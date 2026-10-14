@@ -245,6 +245,8 @@ import {
   weatherChipLine,
   prizeChipView,
   friendChipLines,
+  friendChipPing,
+  placeApart,
   type PrizeChipInput,
   raidClockAlertTier,
   raidClockView,
@@ -1539,20 +1541,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       news: news ? { name: news.name, came: news.came, ...(news.line ? { line: news.line } : {}) } : null,
       friends: rooms.friends().map((friend) => {
         const figure = drawn.find((each) => each.id === friend.id);
-        const theirArea = figure && areas ? (placedAreaAt(areas, figure.tile) ?? areas[0]) : undefined;
-        const elsewhere =
-          theirArea && theirArea !== this.currentArea() ? (theirArea === areas?.[0] ? 'outdoors' : 'indoors') : null;
+        const elsewhere = figure ? placeApart(areas, this.currentTile, figure.tile) : null;
         return {
           name: friend.name,
           atLab: friend.place === 'lab',
           fighting: rooms.hunters.fightOf(friend.id),
           ...(pings.has(friend.id)
             ? {
-                ping: {
-                  heading: this.headingTo(pings.get(friend.id)!),
-                  distance:
-                    Math.abs(pings.get(friend.id)!.x - this.currentTile.x) + Math.abs(pings.get(friend.id)!.y - this.currentTile.y),
-                },
+                ping: friendChipPing(areas, this.currentTile, pings.get(friend.id)!, this.headingTo(pings.get(friend.id)!)),
               }
             : {}),
           heading: figure ? this.headingTo(figure.tile) : null,
