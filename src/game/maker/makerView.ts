@@ -43,7 +43,7 @@ import type { StoredDraft } from './drafts';
 import { PASSAGE_TARGETS, type PassageLook, type PendingPassage } from './passages';
 import type { QueuedMap } from './review';
 import { summariseMapFile, summaryLine, summaryLines } from '../world/mapFileSummary';
-import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
+import { canTryAgain, STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
   plantsAlong,
@@ -1152,7 +1152,11 @@ function sendPane(file: MapFile, sending: SendState): string {
       body = `<p class="px-wrap">Sent. Your receipt is <strong>${sending.receipt}</strong>.</p><p class="px-note px-wrap">Sent in, under Drafts, shows what becomes of it.</p><div class="maker-actions">${back}</div>`;
       break;
     case 'failed':
-      body = `<p class="px-warning px-wrap">${escapeHtml(sending.reason)}</p><div class="maker-actions">${back}${button('data-send', 'Try again')}</div>`;
+      // TRY AGAIN only where trying again can work: a daily limit or a
+      // blocked maker says the same thing however often it is pressed.
+      body = `<p class="px-warning px-wrap">${escapeHtml(sending.reason)}</p>${
+        /drafts\.$/.test(sending.reason) ? '' : '<p class="px-note px-wrap">Your map is safe in your drafts.</p>'
+      }<div class="maker-actions">${back}${canTryAgain(sending.reason) ? button('data-send', 'Try again') : ''}</div>`;
       break;
   }
   return pixelWindow(`<div class="maker-form">${body}</div>`, {

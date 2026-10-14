@@ -307,6 +307,30 @@ describe('sending a map in', () => {
     expect(reasonFor({ message: 'captcha protection: request disallowed' })).toMatch(/bot check did not pass/);
   });
 
+  it('offers TRY AGAIN only where trying again can work (playtest 39 A8)', () => {
+    const failed = (message: string): string =>
+      ready({ step: 'failed', reason: reasonFor({ message }) });
+    for (const message of [
+      'You can send three maps a day. Try again tomorrow.',
+      'The inbox is full for today. Try again tomorrow.',
+      'This maker cannot send maps.',
+      'Only a map sent back to you can be sent again.',
+      'Anonymous sign-ins are disabled',
+    ]) {
+      const markup = failed(message);
+      expect(markup, message).not.toContain('data-send>');
+      expect(markup, message).toContain('Back to map');
+      expect(markup, message).toContain('safe in your drafts');
+    }
+    for (const message of ['TypeError: Failed to fetch', 'captcha protection: request disallowed']) {
+      expect(failed(message), message).toContain('data-send>Try again');
+    }
+    expect(failed('You can send three maps a day. Try again tomorrow.')).toContain(
+      '<p class="px-note px-wrap">Your map is safe in your drafts.</p>',
+    );
+    expect(failed('TypeError: Failed to fetch').match(/safe in your drafts/g)).toHaveLength(1);
+  });
+
   it('says plainly why a bot check stopped a map, and that the map is safe to send again', () => {
     for (const trouble of ['unavailable', 'failed', 'refused', 'busy', 'offline'] as const) {
       expect(signInReason(trouble)).toMatch(/safe in your drafts\.$/);
