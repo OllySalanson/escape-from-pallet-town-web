@@ -257,6 +257,20 @@ describe('what a banked contract buys', () => {
   });
 
   /**
+   * The secure container grows a column of squares, never an "item stack":
+   * the ledger's reward once promised "one more item stack" on a container
+   * that holds by the square, which a player reads as one more of anything.
+   */
+  it('says the secure slot grows a column, not a stack', () => {
+    const growers = RAID_CONTRACTS.filter((contract) => contract.reward.secureItemStack);
+    expect(growers.map((contract) => contract.id)).toEqual(['cordon-ledger']);
+    for (const contract of growers) {
+      expect(contract.reward.summary).toMatch(/\bcolumn\b/);
+      expect(contract.reward.summary).not.toMatch(/\bstacks?\b/i);
+    }
+  });
+
+  /**
    * The warden's contract used to raise the kit base restocks after a wipe, so
    * banking it made Great Balls and a Super Potion refill themselves for good.
    * A contract pays once; the last resort is the same kit for every save.

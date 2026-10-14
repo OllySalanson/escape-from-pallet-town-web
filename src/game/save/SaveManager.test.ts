@@ -1725,10 +1725,13 @@ describe('SaveManager', () => {
     expect(saves.load()!.raidProgress.traderCabinet).toEqual([]);
   });
 
-  it('rents a berth that protects one more stack, and only for that raid', () => {
+  it('rents a berth that protects one more column, and only for that raid', () => {
     const storage = new MemoryStorage();
     const saves = counterSave(storage);
-    expect(saves.buyTraderBerth()).toMatchObject({ ok: true });
+    const paid = saves.buyTraderBerth();
+    expect(paid).toMatchObject({ ok: true });
+    // The receipt says what the row it was bought from says: squares, this raid.
+    expect(paid.message).toBe('Berth paid. +2 protected squares in the secure slot, this raid.');
     expect(saves.load()!.traderBerthPaid).toBe(true);
     expect(saves.load()!.stash.itemCount('money')).toBe(1_000 - 250);
 
