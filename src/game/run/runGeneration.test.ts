@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isExtractionAvailable, type ExtractionPoint } from '../world/extractionPoints';
-import { gateBossIds, gateKeys, gatesForMap, WORLD_GATES, type BossGate } from '../world/gates';
+import { gateBossIds, gateKeys, gatesForMap, NIGHT_KEY, WORLD_GATES, type BossGate } from '../world/gates';
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
@@ -308,13 +308,15 @@ describe('run generation', () => {
    * A boss-held gate makes "walkable" a question with two answers. An exit behind
    * a shut gate is still offered - the boss can be beaten and the door walked
    * through in this same raid, and an exit seen across a fence is the reason to
-   * try - so every offered exit is held to the map with its doors open. The exit
-   * promised open from the first second is held to the map as it stands.
+   * try - so every offered exit is held to the map with its doors open, the
+   * night's among them (a night track is a door the hour opens, and the Moor
+   * Chapel's ways out are behind one). The exit promised open from the first
+   * second is held to the map as it stands.
    */
   it.each(insertionIds)('never generates a run with one exit, and every offered exit can be walked to: %s', (insertionId) => {
     {
       const insertion = requireInsertion(insertionId);
-      const walkable = walkableFrom(insertion.mapId, insertion.position, EVERY_BOSS);
+      const walkable = walkableFrom(insertion.mapId, insertion.position, [...EVERY_BOSS, NIGHT_KEY]);
       const walkableNow = walkableFrom(insertion.mapId, insertion.position);
       for (let seed = 1; seed <= SAMPLED_RUNS; seed += 1) {
         const { extractionPoints } = generateRunPlan(seed, undefined, insertionId);

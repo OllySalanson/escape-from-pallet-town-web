@@ -387,13 +387,14 @@ describe('gate state', () => {
     // a boss with one door would be a keeper who opens no way back. A field
     // move is its own group of one on purpose - it is spent on the lock in
     // front of it and opens nothing else, so there is no second door to name in
-    // the same breath.
+    // the same breath; and so is a night track, which the hour opens and no
+    // keeper holds.
     for (const mapId of GATED_MAP_IDS) {
       const groups = gatesByKeeper(gatesForMap(mapId));
       expect(groups.flat()).toHaveLength(gatesForMap(mapId).length);
       for (const doors of groups) {
         expect(new Set(doors.map(gateKey)).size).toBe(1);
-        expect(doors).toHaveLength(doors[0].fieldMove === undefined ? 2 : 1);
+        expect(doors).toHaveLength(doors[0].fieldMove === undefined && doors[0].night !== true ? 2 : 1);
       }
     }
   });
