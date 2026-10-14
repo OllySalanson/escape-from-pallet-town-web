@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BULBASAUR, CHARMANDER, PIDGEY } from '../pokemon/species';
 import { Pokemon, experienceForLevel } from '../pokemon';
-import { RunManager, type ItemStack, type SecureSlot } from './RunManager';
+import { RunManager, type ItemStack, type RunSnapshot, type SecureSlot } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS } from './raidClock';
 import { Stash } from '../stash/Stash';
@@ -152,6 +152,32 @@ describe('extraction report after a survived raid', () => {
       { itemId: 'parts-crate', label: 'Parts crate', quantity: 1 },
       { itemId: 'potion', label: 'Potion', quantity: 1 },
     ]);
+  });
+
+  /**
+   * Played through the Bunker: the result's footer read "Supplies spent: 1x
+   * Lockpick · 1 trainer put down", which counts a beaten grunt in the words
+   * the same screen uses for an item dropped from the pack.
+   */
+  it('counts the trainers beaten in a word of their own, never "put down"', () => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    manager.registerTrainerDefeat();
+    manager.resolveEscape();
+    const report = (snapshot: RunSnapshot) =>
+      buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot,
+        durationMs: RAID_DURATION_MS,
+        exitLabel: 'FERRY DOCK',
+        banked: { pokemon: [], items: [] },
+        carriedOut: {},
+        saved: true,
+      });
+
+    const one = report(manager.snapshot());
+    expect(one.pressure).toContain('1 trainer beaten');
+    expect(one.pressure.join(' ')).not.toContain('put down');
+    expect(report({ ...manager.snapshot(), defeatedTrainers: 3 }).pressure).toContain('3 trainers beaten');
   });
 
   /**
