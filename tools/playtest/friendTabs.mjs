@@ -21,6 +21,19 @@ export const raid = `(() => { const w = ${WORLD}; const live = w && w.sys.isActi
     dialog: live ? w.dialogBox.visible : false, battle: ${sceneIs('battle')} }; })()`;
 
 /**
+ * Reads past every line the raid opens on, so the player can walk. A fight is
+ * not read past: Space there chooses FIGHT and then a move, so a driver that
+ * meant to flee (`friendHunter.mjs`) would win the fight instead.
+ */
+export async function readOnRaid(tab, press) {
+  for (let guard = 0; guard < 20; guard += 1) {
+    const now = await tab.evaluate(raid);
+    if (now.battle || (now.live && !now.dialog)) return;
+    await press(tab, 'Space');
+  }
+}
+
+/**
  * Puts OLLY and AMY in one room's raid, each seeing the other, and hands back
  * the two tabs and the way to drive them.
  */
@@ -56,14 +69,7 @@ export async function twoInARoom(browser, url, out) {
       await sleep(200);
     }
   };
-  /** Reads past every line the raid opens on, so the player can walk. */
-  const readOn = async (tab) => {
-    for (let guard = 0; guard < 20; guard += 1) {
-      const now = await tab.evaluate(raid);
-      if (now.live && !now.dialog) return;
-      await press(tab, 'Space');
-    }
-  };
+  const readOn = (tab) => readOnRaid(tab, press);
   const prepareAndDropIn = async (tab) => {
     await click(tab, 'Get ready');
     // The first Pokemon the vault offers, then on through the steps.
