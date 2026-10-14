@@ -91,6 +91,9 @@ vi.mock('../ui/DialogBox', () => ({
       this.visible = value;
       return this;
     }
+    public setY(): this {
+      return this;
+    }
     public showMessage(message: string): void {
       shown.push([message]);
       this.visible = true;
@@ -226,6 +229,9 @@ interface Driven {
   isBlocked(tile: GridPosition): boolean;
   tryBoard(facing: Direction, asked: boolean): boolean;
   createBoats(): void;
+  collisionData: boolean[][];
+  hunterState: { spawned: boolean; position?: GridPosition };
+  placeHunterIfDue(elapsedMs: number): void;
 }
 
 /** Drops into the Floodplain, briefing read, with this pack. */
@@ -402,8 +408,6 @@ describe('a boat', () => {
     moor(driven, 120, 240);
     prompts.length = 0;
 
-    // Pushed into, it is the water it lies in: a bump.
-    expect(driven.tryBoard('right', false)).toBe(false);
     // Asked, it says when it sails.
     expect(driven.tryBoard('right', true)).toBe(true);
     expect(prompts).toHaveLength(0);
@@ -412,5 +416,127 @@ describe('a boat', () => {
     const elapsed = driven.runSession.manager.snapshot().elapsedMs;
     const until = Math.ceil((120_000 - elapsed) / 1_000);
     expect(shown.at(-1)!.join(' ')).toContain(`in ${until}s, and sails for 120s`);
+  });
+
+  it('says why on the first push out to sea from a jetty off the tide, and is a bump after that', () => {
+    // A newcomer's natural press is out to sea, and it used to be a silent
+    // bump: only the interact key said the boat was away (the vale's
+    // playtest, B6). Told once a visit to the jetty, so a held key does not
+    // put the same lines up again and again.
+    const { scene, driven, controls } = dropIn({});
+    const { run } = moor(driven, 120, 240);
+    prompts.length = 0;
+    const told = shown.length;
+
+    expect(driven.tryBoard('right', false)).toBe(true);
+    expect(shown.at(-1)![0]).toBe('THE ICE RUN puts in on the tide.');
+    expect(prompts).toHaveLength(0);
+    driven.dialogBox.visible = false;
+    expect(driven.tryBoard('right', false)).toBe(false);
+    expect(shown).toHaveLength(told + 1);
+
+    // Off the jetty and back on it is a new visit, and the push tells again.
+    press(scene, controls, 'right');
+    expect(driven.currentTile).toEqual(run[1]);
+    for (let tries = 0; tries < 3 && driven.currentTile.x !== run[0].x; tries += 1) {
+      press(scene, controls, 'left');
+    }
+    expect(driven.currentTile).toEqual(run[0]);
+    driven.dialogBox.visible = false;
+    expect(driven.tryBoard('right', false)).toBe(true);
+    expect(shown).toHaveLength(told + 2);
+
+    // And after the tide has turned it says so on a push, too.
+    const late = dropIn({});
+    moor(late.driven, 0, 0);
+    expect(late.driven.tryBoard('right', false)).toBe(true);
+    expect(shown.at(-1)).toEqual(['The tide has turned.', 'THE ICE RUN will not sail again this raid.']);
+  });
+
+  describe('on a raid the Pokemon Center cut short', () => {
+    // A boat's tide is drawn against the full five minutes, about how long is
+    // left. Read off the elapsed clock alone, a raid 110s short met the last
+    // boat home 110s later than drawn - after the raid had ended, under a
+    // caption still counting down to it (the vale's playtest, B1).
+    const SHORT_BY_MS = 110_000;
+
+    function shortRaid() {
+      const manager = new RunManager();
+      manager.startRun(
+        { party: new PokemonParty([new Pokemon(CHARMANDER, 10)]).pokemon, items: [] },
+        { mapId: requireInsertion('floodplain-relay').mapId, durationMs: RAID_DURATION_MS - SHORT_BY_MS },
+      );
+      const plan = generateRunPlan(7, undefined, 'floodplain-relay', undefined, undefined, [], {
+        raidClockMs: RAID_DURATION_MS - SHORT_BY_MS,
+      });
+      return dropIn({}, createActiveRunSession(manager, {}, {}, [], [], [], plan, []));
+    }
+
+    it('sails as far before the end of the raid as it was drawn to', () => {
+      const { driven } = shortRaid();
+      // Drawn to sail from 1:00 to 2:30: at the start of a raid 1:50 short it
+      // is 1:50 into the tide, and in.
+      moor(driven, 60, 150);
+      prompts.length = 0;
+      expect(driven.tryBoard('right', true)).toBe(true);
+      expect(prompts.at(-1)!.lines[0]).toBe('Ahoy, there!');
+    });
+
+    it('counts down to the tide the raid will actually reach', () => {
+      const { driven } = shortRaid();
+      // Drawn for 3:20, the Cinder Boat's hour: 1:40 before the end.
+      moor(driven, 200, 300);
+      prompts.length = 0;
+      driven.tryBoard('right', true);
+      expect(prompts).toHaveLength(0);
+      const elapsed = driven.runSession.manager.snapshot().elapsedMs;
+      const until = Math.ceil((200_000 - SHORT_BY_MS - elapsed) / 1_000);
+      expect(shown.at(-1)!.join(' ')).toContain(`in ${until}s`);
+      expect(elapsed + until * 1_000).toBeLessThan(driven.runSession.manager.snapshot().durationMs);
+    });
+  });
+
+  it('leaves the hunter on the shore the player sailed from', () => {
+    // The hunter cannot sail. Due while a player is across the water, it
+    // arrived beside them on the island all the same - five steps away on the
+    // beach, which is the one place a raid can put the sea between itself and
+    // the hunter (the vale's playtest, B2). It comes in on the shore they left.
+    const { scene, driven } = dropIn({});
+    const { run, sailing } = moor(driven, 0, 300);
+    // The far jetty is an island: nothing round it but the sea.
+    const island = run[7];
+    const shut = (tile: GridPosition) => {
+      driven.collisionData[tile.y][tile.x] = true;
+      const collision = driven.currentMap.collision.map((row) => [...row]);
+      collision[tile.y][tile.x] = true;
+      driven.currentMap = { ...driven.currentMap, collision };
+    };
+    for (const tile of [
+      { x: island.x, y: island.y - 1 },
+      { x: island.x, y: island.y + 1 },
+      { x: island.x + 1, y: island.y },
+      ...sailing.course,
+    ]) {
+      shut(tile);
+    }
+    prompts.length = 0;
+    driven.tryBoard('right', true);
+    prompts.at(-1)!.onChoose(0);
+    driven.dialogBox.visible = false;
+    for (let frame = 0; frame < 400 && (driven.voyaging || driven.currentTile.x !== island.x); frame += 1) {
+      scene.update(0, 10);
+    }
+    expect(driven.currentTile).toEqual(island);
+    expect(driven.hunterState.spawned).toBe(false);
+
+    driven.runSession.stepsTaken = 50;
+    driven.placeHunterIfDue(10 * 60_000);
+
+    expect(driven.hunterState.spawned).toBe(true);
+    const position = driven.hunterState.position!;
+    // On the mainland, at its usual distance from the jetty the player left.
+    expect(Math.abs(position.x - run[0].x) + Math.abs(position.y - run[0].y)).toBeLessThanOrEqual(5);
+    expect(position).not.toEqual(island);
+    expect(Math.abs(position.x - island.x) + Math.abs(position.y - island.y)).toBeGreaterThan(1);
   });
 });

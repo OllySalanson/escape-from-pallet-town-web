@@ -1167,9 +1167,12 @@ export class HubScene extends Phaser.Scene {
       this.savedGame.raidProgress.defeatedBosses,
       // The beacon opens against the clock this raid actually deploys with, so
       // booked recovery shortens the wait for it along with everything else.
-      hasBeacon(this.builtUpgradeIds)
-        ? { beaconUnlockAtMs: beaconUnlockAtMs(this.raidClockMs) }
-        : {},
+      // So does every timed exit and every boat's tide, which come as much
+      // sooner as the clock is short and stand as far before its end as drawn.
+      {
+        raidClockMs: this.raidClockMs,
+        ...(hasBeacon(this.builtUpgradeIds) ? { beaconUnlockAtMs: beaconUnlockAtMs(this.raidClockMs) } : {}),
+      },
       // Which landmarks the world keeps worked, and whose exits therefore
       // stand open from the first second - the same list the lobby's map read.
       this.savedGame.raidProgress.completedContracts,

@@ -80,3 +80,24 @@ export const formatRaidClock = (remainingMs: number): string => {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1_000));
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
 };
+
+/**
+ * How much shorter than `RAID_DURATION_MS` a raid deployed with `deployedMs`
+ * is - the Pokemon Center's bill, booked against it. Never below nothing: an
+ * explorer run's eight hours are not a reason for anything to come later.
+ */
+export const clockShortfallMs = (deployedMs: number): number =>
+  Number.isFinite(deployedMs) ? Math.max(0, RAID_DURATION_MS - deployedMs) : 0;
+
+/**
+ * An authored time - a timed exit, a boat's tide - in a raid that deployed
+ * `shortfallMs` short. Every one is drawn against the full clock and is about
+ * how long is *left*, so it comes that much sooner and stands as far before
+ * the end as it was drawn to: an island whose last boat home sails at 3:20 of
+ * five minutes still has it a minute and forty before the end of a raid the
+ * Pokemon Center cut to three. Read against the elapsed clock alone, that
+ * boat sailed after the raid was over, under a caption still counting down
+ * to it (playtest of the vale's far places, B1).
+ */
+export const authoredTimeIn = (authoredMs: number, shortfallMs: number): number =>
+  Math.max(0, authoredMs - Math.max(0, shortfallMs));

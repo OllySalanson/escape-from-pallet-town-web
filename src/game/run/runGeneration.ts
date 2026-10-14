@@ -30,6 +30,7 @@ import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/
 import { FIRST_HUNTER_RIVAL, type HunterRivalId } from '../world/hunters';
 import { forTheHour } from '../world/nightRaids';
 import { createSeededRng } from './rng';
+import { authoredTimeIn, clockShortfallMs } from './raidClock';
 
 export { FIRST_CONTRACT } from '../objectives/contracts';
 
@@ -250,7 +251,7 @@ export const RUN_INSERTIONS = {
     label: 'Greystone Vale',
     mapId: 'greystone-vale',
     position: { x: 94, y: 160 },
-    description: 'Mill Square in Millbrook, where every road in the vale starts. The rest of the vale is still being drawn.',
+    description: 'Mill Square in Millbrook, where every road in the vale starts: down from the moor, east to The Crossing, south to the marsh, and out by the Westward Road.',
   },
   'greystone-vale-moor-top': {
     id: 'greystone-vale-moor-top',
@@ -514,6 +515,13 @@ export interface RunPlan {
   readonly trainers: readonly RunTrainerEncounter[];
   readonly extractionPoints: readonly ExtractionPoint[];
   readonly hunter: HunterTuning;
+  /**
+   * How much shorter than `RAID_DURATION_MS` this raid deployed
+   * (`clockShortfallMs`): every authored time comes that much sooner. The
+   * timed exits in `extractionPoints` already have it taken off; a boat's tide
+   * is read with it by `WorldScene`. Absent is a full clock.
+   */
+  readonly clockShortfallMs?: number;
 }
 
 /**
@@ -522,6 +530,12 @@ export interface RunPlan {
  */
 export interface RunOutfitting {
   readonly beaconUnlockAtMs?: number;
+  /**
+   * The clock this raid deploys with, less whatever recovery is booked against
+   * it. Absent is the full `RAID_DURATION_MS`. Every authored time on the map
+   * comes as much sooner as the clock is short (`authoredTimeIn`).
+   */
+  readonly raidClockMs?: number;
 }
 
 export const BEACON_EXIT_LABEL = 'BEACON';
@@ -658,8 +672,10 @@ export function generateRunPlan(
     reaches: (mapId, position) =>
       mapId !== insertion.mapId || (walkable[position.y]?.[position.x] ?? -1) >= 0,
   };
+  const shortfallMs =
+    outfitting.raidClockMs === undefined ? 0 : clockShortfallMs(outfitting.raidClockMs);
   const extractionPoints = [
-    ...generateExtractionPoints(content.extractionPoints, rng, insertion, content.maps, isReachable),
+    ...generateExtractionPoints(content.extractionPoints, rng, insertion, content.maps, isReachable, shortfallMs),
     ...beaconExit(insertion, content.extractionPoints, outfitting),
   ];
   const reservedTiles = new Map<WorldMapId, Set<string>>();
@@ -711,6 +727,7 @@ export function generateRunPlan(
     loot,
     trainers,
     extractionPoints,
+    ...(shortfallMs > 0 ? { clockShortfallMs: shortfallMs } : {}),
     hunter: applyHunterThreat(
       {
         spawnDelayMs: rng.int(
@@ -848,6 +865,9 @@ function generateExtractionPoints(
   insertion: RunInsertion,
   maps: Readonly<Record<WorldMapId, WorldMapDefinition>>,
   isReachable: Reachability,
+  // How short the raid's clock is: an authored timed exit opens that much
+  // sooner, so it is as far before the end as it was drawn to be.
+  shortfallMs: number,
 ): ExtractionPoint[] {
   const reachableMaps = mapsReachableFrom(insertion.mapId, maps);
   const available = points.filter((point) => reachableMaps.has(point.mapId));
@@ -879,6 +899,12 @@ function generateExtractionPoints(
     ...available.filter((point) => !walkableNow.has(point)),
   ];
   return ordered.map((point) => {
+    if (point.requirement?.kind === 'elapsed') {
+      const unlockAtMs = authoredTimeIn(point.requirement.unlockAtMs, shortfallMs);
+      return unlockAtMs === point.requirement.unlockAtMs
+        ? point
+        : { ...point, unlockAtMs, requirement: { kind: 'elapsed' as const, unlockAtMs } };
+    }
     if (point.requirement) {
       return point;
     }

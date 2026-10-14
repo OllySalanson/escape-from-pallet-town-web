@@ -8,6 +8,7 @@ import {
 } from '../movement/gridMovement';
 import type { MapFileLink } from './mapFile';
 import { liftLinks, type MapLift } from './lifts';
+import { stepDistances } from './mapStructure';
 
 /**
  * A boat between two jetties: the one way onto a place the sea cuts off.
@@ -148,6 +149,27 @@ export function boatAt(
 export function voyage(sailing: MapSailing, from: 0 | 1): readonly GridPosition[] {
   const course = from === 0 ? sailing.course : [...sailing.course].reverse();
   return [...course, sailing.ends[1 - from].landing];
+}
+
+/**
+ * The shore a player has put the sea between themselves and, after a voyage
+ * from `boardedAt` to `landedAt`: where the hunter, which cannot sail, comes
+ * in for a player who is across the water - on the shore they left, never
+ * beside them on an island (playtest of the vale's far places, B2). It is the
+ * shore they were already across the water from, if any - a second boat out
+ * from an island is still the sea between them and the hunter - and nothing
+ * once they come ashore on ground the hunter can walk to from it, which is
+ * asked of the hunter's own ways: the ground and the doors, never a boat.
+ */
+export function shoreLeftBehind(
+  map: { readonly collision: readonly (readonly boolean[])[]; readonly links?: GridLinks },
+  shore: GridPosition | undefined,
+  boardedAt: GridPosition,
+  landedAt: GridPosition,
+): GridPosition | undefined {
+  const left = shore ?? boardedAt;
+  const walk = stepDistances(map.collision, landedAt, undefined, map.links);
+  return (walk[left.y]?.[left.x] ?? -1) >= 0 ? undefined : { ...left };
 }
 
 /** Each boat as the two ways through a player can take: jetty to jetty, both ways. */
