@@ -1503,6 +1503,11 @@ smugglers' cove, the vale's richest ground and its worst
 7. **Away.** The charcoal burners' Cinder Boat puts out from the west cove at
    3:20. Before then, the only way off is the skiff, if it is still running.
 
+The Lava Tube, in FireRed's own Mt. Ember art (in from the flank bottom
+right, out into the crater bottom left):
+
+![The Lava Tube](ember-isle/lava-tube.png)
+
 ### Why it is hard
 
 - **The way in is hidden and timed.** The cove is a way nobody signs, and the
@@ -1587,6 +1592,15 @@ What round 1 named, and what was done:
   size.
 - **The west road stepped diagonally.** It is two straight legs and one turn.
 - **The pool on the crater floor was stacked rectangles.** It is gone.
+
+Round 1's two views, before:
+
+![Round 1, the west view](ember-isle/round1-west.png)
+![Round 1, the east view](ember-isle/round1-east.png)
+
+After round 2 the climb's steps became FireRed's own stone steps through the
+rock (cut from the General tileset), where the judged drawing had pale squares
+of stone.
 
 Both round-2 judges still named, for a later pass: the road's legs are dead
 straight with square corners, the tall-grass beds are still rectangles, and the
