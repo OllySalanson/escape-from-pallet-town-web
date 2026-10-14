@@ -57,6 +57,7 @@ import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import { prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
 import { legendFledLine, legendOneThrowLine, legendTooStrongLine } from '../world/legends';
+import { owesItemLesson } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
@@ -2343,9 +2344,13 @@ export class BattleScene extends Phaser.Scene {
     this.showCombatEvents(result.events, leading, this.itemLesson(), rewardMessages);
   }
 
-  /** The teaching fight's ITEM lesson, once, on the first turn that hurt. */
+  /**
+   * The ITEM lesson, once, on the first turn that hurt: in the teaching fight,
+   * and in any fight of a first-contract raid that has not yet heard it
+   * (`owesItemLesson`), because the teaching fight can be left unhurt.
+   */
   private itemLesson(): string[] {
-    if (!this.teachingBattle || this.itemLessonGiven) {
+    if (this.itemLessonGiven || !(this.teachingBattle || owesItemLesson(this.runSession))) {
       return [];
     }
     const lead = this.state.player;
@@ -2359,6 +2364,9 @@ export class BattleScene extends Phaser.Scene {
       return [];
     }
     this.itemLessonGiven = true;
+    if (this.runSession) {
+      this.runSession.itemLessonSaid = true;
+    }
     return [line];
   }
 

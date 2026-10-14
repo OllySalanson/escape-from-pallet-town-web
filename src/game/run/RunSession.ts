@@ -75,6 +75,11 @@ export interface ActiveRunSession {
   /** Set once the authored teaching encounter has been handed to BattleScene. */
   teachingEncounterUsed?: boolean;
   /**
+   * Set once a fight in this raid has said what ITEM does
+   * (`world/teachingEncounter.ts`, `owesItemLesson`).
+   */
+  itemLessonSaid?: boolean;
+  /**
    * Steps walked this raid, which is how the hunter's first arrival tells a
    * player who has set off from one still reading the insertion screen - see
    * `world/hunterArrival.ts`.

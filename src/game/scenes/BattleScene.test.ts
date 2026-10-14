@@ -52,6 +52,8 @@ import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
+import type { RunPlan } from '../run/runGeneration';
+import { FIRST_CONTRACT } from '../objectives/contracts';
 import { buildDefeatSequence } from '../run/defeatSequence';
 import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
@@ -971,6 +973,37 @@ describe('the teaching fight teaching ITEM', () => {
     // Read at the end of the first turn, after the hit it is about.
     expect(turns[0].at(-1)).toBe(ITEM_LESSON);
     expect(turns.flat().filter((line) => line === ITEM_LESSON)).toHaveLength(1);
+  });
+
+  // Playtest of 2026-10-14: the newcomer ran from the teaching Pidgey before it
+  // landed a hit, so the lesson was never said, and lost to Raider Maya on the
+  // same raid with four Potions in the pack.
+  it('is owed to the whole first-contract raid, so a teaching fight left unhurt does not lose it', () => {
+    const firstRaid = (contract = FIRST_CONTRACT) => ({
+      ...createActiveRunSession(new RunManager(), {}, {}, [], []),
+      plan: { contract } as unknown as RunPlan,
+      teachingEncounterUsed: true,
+    });
+    const fight = (runSession: ReturnType<typeof firstRaid>) => {
+      const { scene, dialog } = createBattleSceneHarness({
+        runSession,
+        party: new PokemonParty([new Pokemon(CHARMANDER, 5)]),
+        wild: new Pokemon(PIDGEY, 5),
+      });
+      vi.spyOn(Math, 'random').mockReturnValue(0.1);
+      playTurn(scene);
+      for (let step = 0; step < 20 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+        (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      }
+      return dialog.shownMessages.filter((line) => line === ITEM_LESSON).length;
+    };
+
+    const raid = firstRaid();
+    expect(fight(raid)).toBe(1);
+    // Said once a raid: the next fight of the same raid leaves it alone.
+    expect(fight(raid)).toBe(0);
+    // A raid on any later contract has been taught already.
+    expect(fight(firstRaid({ ...FIRST_CONTRACT, id: 'some-later-contract' }))).toBe(0);
   });
 
   it('is never said in an ordinary fight, nor with no medicine packed', () => {
