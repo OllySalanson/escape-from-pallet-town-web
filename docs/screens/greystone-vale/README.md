@@ -13,10 +13,11 @@ The Crossing, Tanglewood, Reedmere, Gull Strand and Orchard Terraces - and the
 five it grew into, all drawn too: The Power Station, Safari Marsh, The Wreck,
 The Sunken Quarter and Smugglers' Cove. Round them is the ring it has grown
 into since ([The far places](#the-far-places)): open sea in the south, and wood
-in the north where the far places will be drawn. Three far places are drawn:
+in the north where the far places will be drawn. Four far places are drawn:
 [Stormcrown](#stormcrown), the summit above the peaks,
-[The Lost Garden](#the-lost-garden), east of the Power Station, and
-[Frostreef](#frostreef), an island of ice out on the reef.
+[The Lost Garden](#the-lost-garden), east of the Power Station,
+[Frostreef](#frostreef), an island of ice out on the reef, and
+[Ember Isle](#ember-isle), a volcano beyond the smugglers' cove.
 
 ![the vale as it ships](vale.png)
 
@@ -1033,7 +1034,7 @@ boat, Stormcrown only from the deepest floor, and nothing at all is out of reach
 | The Lost Garden | east of the Power Station | the Falls Cave, a mouth hidden behind the water at the foot of the dam | Strength boulders onto floor switches open its rock barrier (Victory Road's rule), so HM04 and the order to push them in | the rarest grass Pokemon (Tangela, Exeggcute), berry trees, the Miracle Seed |
 | The Bunker | under the Power Station | the station's door into the turbine hall, then a steel door only the Card Key opens | the card is one raid in five in Pine Hollow, and it is also the Service Gate's key; B3F and B4F are lift-only, and the lift is dead until the generator on B2F is back on, across a spinner floor | the war room's strongroom (the vale's locked crate), an escape hatch |
 | Frostreef | out on the reef, south-east | The Ice Run, the salvage launch from the Wreck's pier, across two cells of sea | it sails only from 2:00 until 4:00; then Berg Cave is FireRed's sliding ice | ice Pokemon (Seel, Dewgong, Shellder, Jynx), a Lapras on the lagoon, the NeverMeltIce |
-| Ember Isle | out beyond the cove, south-west | The Smugglers' Run, their skiff off the cove's jetty, across a cell of sea | only from the hidden cove, only from 1:00 until the smugglers sail at 2:30; the crater only through the Lava Tube, rolling on every step | the smugglers' hoard (the richest ground in the vale), fire Pokemon (Ponyta, Rapidash, Magmar), Charcoal |
+| [Ember Isle](#ember-isle) (drawn) | out beyond the cove, south-west | The Smugglers' Run, their skiff off the cove's jetty, across a cell of sea | only from the hidden cove, only from 1:00 until the smugglers sail at 2:30; the crater only through the Lava Tube, rolling on every step | the smugglers' hoard (the richest ground in the vale), fire Pokemon (Ponyta, Rapidash, Magmar), Charcoal |
 
 The plan gives Stormcrown **Mew**, not Zapdos. The storm bird would fit the
 storm, but Zapdos already stands on Route 1's Overlook. A legend stands until
@@ -1066,9 +1067,10 @@ The plan names what each place needs and does not have yet, in its `reach`;
 - **A gear row each** for the Spell Tag, the Miracle Seed, the NeverMeltIce and
   Charcoal, and **a habitat each** for the summit, the garden, the haunted fell,
   the ice and the volcano, measured as every table is. The NeverMeltIce and the
-  ice are in: the gear is the Miracle Seed's own `type-power` row, one rule
-  for every type-boosting piece, and a far place's
-  only-here find is a row of `BUILT_IN_FILE_PRIZES` (`world/filePrizes.ts`).
+  ice are in, and so are Charcoal and the volcano. The gear is the Miracle
+  Seed's own `type-power` row, one rule for every type-boosting piece, and a far
+  place's only-here find is a row of `BUILT_IN_FILE_PRIZES`
+  (`world/filePrizes.ts`).
 
 One per place:
 
@@ -1082,7 +1084,8 @@ One per place:
   in the Falls Cave.
 - **The Bunker**: an inside for the Power Plant; a door the Card Key opens; a
   lift that offers its floors; and FireRed's Rocket Hideout as a room style.
-- **Ember Isle**: outdoor ground that rolls on every step, as a cave floor does.
+- **Ember Isle** (built - [Ember Isle](#ember-isle)): outdoor ground that rolls
+  on every step, as a cave floor does.
 
 Order them like this:
 
@@ -1460,6 +1463,183 @@ real place in the batch (4 and 5) and within one and a half points of the real
 mean. What both still named, for a later pass: the track is one ruled L, the
 tall-grass beds and the pool's rim are blocky, the two knolls in the lagoon
 read as pasted, and the berg is a very square block.
+
+## Ember Isle
+
+The fourth far place drawn: a volcano out in the open sea beyond the
+smugglers' cove, the vale's richest ground and its worst
+(`worlds/greystoneVale/emberIsle.ts`, `lavaTube.ts`).
+
+![Ember Isle](ember-isle/ember-isle.png)
+
+### How a player gets there
+
+1. **Find the cove.** Smugglers' Cove is reached by the deer path nobody
+   signs, down through Reedmere's reeds, or along the shore from the Sunken
+   Quarter. The Cove Steps landing is on its cliff top.
+2. **Catch the skiff.** Walk out along the smugglers' jetty and press out to
+   sea from its end. The smugglers' skiff runs only from 1:00 until their own
+   boat sails at 2:30, and it asks first, in FireRed's sailor's words. It
+   carries the player west round the cove's headland and south across a cell
+   of open sea - The Smugglers' Run - to the Smugglers' Landing on the island's
+   north-east beach. The hunter cannot follow across the water.
+3. **Round the cone.** From the landing the road runs west through the tall
+   grass of the cone's north foot and down its west side to the charcoal
+   burners' camp in the west cove: their hut, their kiln and their pier.
+4. **The climb.** Steps cut through the rock lead from the black beach under
+   the cone up onto the lower terrace of its south face, and more steps at its
+   east end onto the upper terrace. The Lava Tube is in the face under the
+   rim. Two ledges are the quick way back down, and never a way up.
+5. **The Lava Tube.** One floor of FireRed's Mt. Ember (the Ruby Path), in
+   its own art: chambers joined by necks, up into a hall under the rim and down
+   again into the crater's pocket. Off the hall are a hot spring and a dead end
+   with something hidden in it. Every step of its floor rolls for a wild
+   Pokemon, as a cave floor does.
+6. **The crater.** Ash, with nothing growing on it, and every step of it rolls
+   for a wild Pokemon all the same. Rapidash stands on its own shelf of the
+   floor at level 40, its FireRed level. In the crater's south-east corner,
+   behind a spur of rock, two of the smugglers' best guard their hoard, one
+   on each way in.
+7. **Away.** The charcoal burners' Cinder Boat puts out from the west cove at
+   3:20. Before then, the only way off is the skiff, if it is still running.
+
+The Lava Tube, in FireRed's own Mt. Ember art (in from the flank bottom
+right, out into the crater bottom left):
+
+![The Lava Tube](ember-isle/lava-tube.png)
+
+### Why it is hard
+
+- **The way in is hidden and timed.** The cove is a way nobody signs, and the
+  skiff sails only between 1:00 and 2:30. A raid that dawdles in the vale
+  misses it.
+- **The crater has one door.** The Lava Tube is the only way in, at the top of
+  the climb.
+- **The crater is the worst ground in the vale.** Every step rolls, on a table
+  a level above the summit's, and the hoard is behind two trainers.
+- **Getting off is timed too.** The skiff stops at 2:30 and the Cinder Boat
+  only opens at 3:20, so a raid that went into the crater waits for the boat
+  with the clock running, or leaves without the hoard.
+
+### What is only there
+
+- **The volcano's wildlife**, the `volcano` habitat (`VOLCANO_WILDLIFE`):
+  FireRed and LeafGreen's Mt. Ember at the vale's levels, 9 to 11 - Ponyta,
+  the Spearow of its slopes, the Geodude and Machop of its crags, and Magmar
+  as the rare roll. Ponyta and Magmar live nowhere else in the game.
+  - Measured with a level-8 starter of each kind
+    (`volcanoHabitat.test.ts`): Bulbasaur 59%, Charmander 62%, Squirtle 82%.
+  - By night the Spearow give their slots to Rattata. The night's own rule
+    would have given Ponyta's slots to Poliwhirl, which is Crystal's Route 28,
+    so the volcano's night table is written out (`MAP_FILE_NIGHT_HABITATS`).
+- **Rapidash**, standing in the crater at level 40. FireRed's Rapidash is met at
+  39 to 42, and nothing in a table may be fielded below the level it evolves at,
+  so it stands rather than rolls.
+- **The smugglers' hoard**, the richest ground in the vale: eight item spots in
+  the hoard's nook, more than any other place. They hold money and the rarest
+  of Brock's materials (radio valves, cable and lamp oil) rather than the
+  rotation every other spot is dealt from (`BUILT_IN_FILE_HOARDS`). Its money
+  is held so that the whole vale stays under one berth (`trader.test.ts`).
+- **Charcoal**, FireRed's Fire-type booster (`type-power` gear: Fire moves hit
+  10% harder), somewhere on the crater floor three raids in ten.
+
+### What the game learned for it
+
+- **Ground out of doors that rolls on every step**: a map file's named place
+  may say `floorRolls` (`MapFileDistrict`), and `stepRolls`
+  (`world/localEncounters.ts`) asks it after tall grass, a roofed floor and a
+  cave. It is a field of the place, not a new top-level key, so `submit_map`
+  needed no migration.
+- **A volcano cave**: the `ember` cave style, FireRed's Mt. Ember cut from
+  pret by `scripts/cut-frlg-ember.mjs` onto `frlg-ember.png` (16000), with its
+  boulders, rocks and hot spring as furniture a map maker can place
+  (`Volcano cave`). A cave dressed as a volcano rolls the volcano habitat
+  (`CAVE_STYLE_HABITATS`).
+- **A hoard**: a place whose item spots hold what it is
+  (`BUILT_IN_FILE_HOARDS`, `hoardOf` in `world/filePrizes.ts`).
+- **Charcoal**, the NeverMeltIce's rule for Fire.
+- **Sailing** needed nothing new. The Smugglers' Run is the plan's second
+  sailing, stitched once its jetty was drawn. The cove's mooring post moved
+  off the water the skiff moors on.
+
+### Played through
+
+`tools/playtest/emberIsle.mjs` plays it in the real game on a test-mode build:
+- the explorer run dropped in at the Cove Steps;
+- down to the smugglers' jetty, and the skiff's question;
+- the crossing: 80 tiles of sea, 12.4 seconds of raid clock, as walking that
+  far costs;
+- round the cone to the burners' camp, and up the steps to the Lava Tube;
+- through the tube onto the crater floor, where a step on bare ash started a
+  wild fight;
+- the hoard, and back out through the tube;
+- away on the Cinder Boat.
+
+Every press is planned over the scene's own collision and doorways. A hunter
+standing in the one way back to the tube is walked into and fled, as a player
+gets past one. The run ended in 4:14 of raid clock, with a share of the hoard
+banked.
+
+    node tools/playtest/emberIsle.mjs <url of a test-mode build> <out dir> [--port=N]
+
+| | |
+|---|---|
+| ![Ahoy](ember-isle/02-ahoy.png) | ![At sea](ember-isle/03-at-sea.png) |
+| ![The Smugglers' Landing](ember-isle/04-smugglers-landing.png) | ![The burners' camp](ember-isle/05-burners-camp.png) |
+| ![The climb](ember-isle/06-the-climb.png) | ![The Lava Tube's mouth](ember-isle/07-lava-tube-mouth.png) |
+| ![Inside the Lava Tube](ember-isle/08-lava-tube.png) | ![The crater](ember-isle/09-the-crater.png) |
+| ![A wild Machop on the ash](ember-isle/10-a-wild-pokemon-on-the-ash.png) | ![The hoard](ember-isle/11-the-hoard.png) |
+
+![Away on the Cinder Boat](ember-isle/12-away-on-the-cinder-boat.png)
+
+The structure sweeps found one fault the mapcraft checks did not. Once the
+steps were cut, the far end of the upper terrace was 88 steps from a way out,
+past the hunter's 86-step blind window (`hunterFlee.test.ts`). The upper steps
+moved three tiles west, which brings everything on the island under 85.
+
+### Judged blind
+
+Judged against FireRed's own Sevii Islands places, redrawn in this game's tiles
+by `tools/mapcraft/fromPret.mts`:
+
+- Four Island and Six Island's Ruin Valley, whole;
+- Mt. Ember's slopes, cropped to 48x40;
+- a stretch of Kindle Road;
+- Treasure Beach in round 1, Cape Brink in round 2.
+
+The island was judged as two 48x40 views. Two broken controls rode in each
+round: Mt. Ember and Four Island, each with every block shuffled. There were
+two fresh judges a round, and each wrote a picture's notes under its code
+before opening the next. A judge who scored a control level with or above a
+real place does not count.
+
+| Round | What changed | Ember Isle | Real places | Controls |
+|---|---|---|---|---|
+| 1 | first draw | 7 and 6; 6 and 5 | 3 to 7; 2 to 8 | 2 and 2; 1 and 2 (second judge did not count) |
+| 2 | one straight road round the cone, terraces staggered, chunkier crater and coast, the tube as chambers | **6 and 6; 7 and 7: passes** | 2 to 6; 2 to 5 | 1 and 1; 1 and 1 |
+
+What round 1 named, and what was done:
+
+- **The terraces south of the crater were ruled parallel bands** across the
+  whole width. Now the two terraces are offset, one rock mass between them,
+  each band a different length, with the steps at alternate ends.
+- **The tall grass was tidy strips along the rim.** It is now beds of unequal
+  size.
+- **The west road stepped diagonally.** It is two straight legs and one turn.
+- **The pool on the crater floor was stacked rectangles.** It is gone.
+
+Round 1's two views, before:
+
+![Round 1, the west view](ember-isle/round1-west.png)
+![Round 1, the east view](ember-isle/round1-east.png)
+
+After round 2 the climb's steps became FireRed's own stone steps through the
+rock (cut from the General tileset), where the judged drawing had pale squares
+of stone.
+
+Both round-2 judges still named, for a later pass: the road's legs are dead
+straight with square corners, the tall-grass beds are still rectangles, and the
+ash floor is wide with little on it.
 
 ## How it ships
 

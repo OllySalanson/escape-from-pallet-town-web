@@ -9,6 +9,7 @@ import type { BasePieceName } from '../../base/generated/basePieces';
 import { AREA_WEAVES } from '../generated/areaPieces';
 import { AREA_SHEET_SOURCE, areaFloorProp, areaProp, areaTile } from './areaSheet';
 import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
+import { EMBER_SHEET_SOURCE, emberProp, emberTile } from './emberSheet';
 import type { MaterialTiles, PropDefinition, TilesetCatalogue } from './catalogue';
 import type { Material } from './materials';
 
@@ -48,8 +49,8 @@ import type { Material } from './materials';
 
 /** The rooms a building's inside may be drawn as. */
 export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse' | 'gatehouse';
-/** The caves a cave may be drawn as: Mt. Moon's, or Icefall Cave's ice. */
-export type CaveStyle = 'cave' | 'ice';
+/** The caves a cave may be drawn as: Mt. Moon's, Icefall Cave's ice, or Mt. Ember's Ruby Path. */
+export type CaveStyle = 'cave' | 'ice' | 'ember';
 /** The tunnels a tunnel may be drawn as: the Underground Path's. */
 export type TunnelStyle = 'underground';
 export type InsideStyle = RoomStyle | CaveStyle | TunnelStyle;
@@ -169,6 +170,18 @@ export const INSIDE_PROPS = {
   iceHole: iceProp('ice.hole', 'ladder down'),
   iceLadder: iceProp('ice.ladder', 'ladder up', ['#', '.']),
   iceExit: iceProp('ice.exit', 'way out'),
+
+  // --- a volcano's cave: Mt. Ember's Ruby Path ----------------------------------
+  emberBoulder: emberProp('ember.boulder', 'boulder'),
+  emberBoulderLow: emberProp('ember.boulderLow', 'boulder'),
+  emberStone: emberProp('ember.stone', 'rock'),
+  emberStones: emberProp('ember.stones', 'rocks'),
+  // The spring seeps out of the rock and pools at its foot, where FireRed lets
+  // you stand in it.
+  emberSpring: emberProp('ember.spring', 'hot spring', ['##', '..']),
+  emberHole: emberProp('ember.hole', 'ladder down'),
+  emberLadder: emberProp('ember.ladder', 'ladder up', ['#', '.']),
+  emberExit: emberProp('ember.exit', 'way out'),
 
   // --- a gatehouse: FireRed's on Route 2, and the two kinds into Saffron -----
   gateWindow: areaProp('gate.window', 'window'),
@@ -377,6 +390,31 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     ice: { roles: { fill: iceTile('ice.sheet') } },
     caveWays: { exit: 'iceExit', ladder: 'iceLadder', hole: 'iceHole' },
   },
+  // Mt. Ember's Ruby Path, on One Island: an ash floor, and the red rock round
+  // it laid as Mt. Moon's is - its back wall a face standing on the floor, its
+  // sides, the rim where it stands south of a room with its two ends, and the
+  // joints in a room's corners. The map's edge is more rock.
+  ember: {
+    floor: { roles: { fill: emberTile('ember.floor') } },
+    wall: {
+      overlay: true,
+      edgesAtMapEdge: false,
+      roles: {
+        fill: emberTile('ember.rock'),
+        'edge-s': emberTile('ember.faceSouth'),
+        'edge-e': emberTile('ember.faceEast'),
+        'edge-w': emberTile('ember.faceWest'),
+        'edge-n': emberTile('ember.rim'),
+        'corner-nw': emberTile('ember.rimWest'),
+        'corner-ne': emberTile('ember.rimEast'),
+        'corner-sw': emberTile('ember.spurSw'),
+        'corner-se': emberTile('ember.spurSe'),
+        'inner-se': emberTile('ember.cornerNw'),
+        'inner-sw': emberTile('ember.cornerNe'),
+      },
+    },
+    caveWays: { exit: 'emberExit', ladder: 'emberLadder', hole: 'emberHole' },
+  },
 };
 
 /** A weave cut from FireRed's own ground, as the tiles each of its cells is. */
@@ -415,7 +453,7 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
     ).map((material) => [material, art.floor]),
   ) as Record<Exclude<Material, 'wall' | 'cliff'>, MaterialTiles>;
   return {
-    sources: [BASE_SHEET_SOURCE.source, AREA_SHEET_SOURCE.source, ICE_SHEET_SOURCE.source],
+    sources: [BASE_SHEET_SOURCE.source, AREA_SHEET_SOURCE.source, ICE_SHEET_SOURCE.source, EMBER_SHEET_SOURCE.source],
     materials: {
       ...floors,
       wall: art.wall,
@@ -436,7 +474,7 @@ export const ROOM_STYLES: readonly RoomStyle[] = [
   'warehouse',
   'gatehouse',
 ];
-export const CAVE_STYLES: readonly CaveStyle[] = ['cave', 'ice'];
+export const CAVE_STYLES: readonly CaveStyle[] = ['cave', 'ice', 'ember'];
 export const TUNNEL_STYLES: readonly TunnelStyle[] = ['underground'];
 export const INSIDE_STYLES: readonly InsideStyle[] = [...ROOM_STYLES, ...CAVE_STYLES, ...TUNNEL_STYLES];
 

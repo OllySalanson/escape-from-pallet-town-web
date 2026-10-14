@@ -66,6 +66,13 @@ export interface MapDistrict {
    * FireRed's Viridian City pond, which is every river, brook, pond and tarn.
    */
   readonly water?: FishingWater;
+  /**
+   * Whether every step here rolls for wildlife, as a cave floor's does, rather
+   * than only a step into tall grass (`stepRolls`). A map file's place says so
+   * (`MapFileDistrict.floorRolls`): Ember Isle's crater, ash nothing grows on
+   * and the vale's worst ground all the same.
+   */
+  readonly floorRolls?: boolean;
 }
 
 /**

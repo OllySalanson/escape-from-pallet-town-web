@@ -6,6 +6,7 @@ import { BASE_SHEET_SOURCE, solidPiece } from '../../base/baseSheet';
 import { TOWN_PROPS, TOWN_SHEET_SOURCE } from './townSheet';
 import type { TownPieceName } from '../generated/townPieces';
 import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
+import { EMBER_SHEET_SOURCE, emberProp } from './emberSheet';
 
 /**
  * What a player's map is drawn with: the Kanto catalogue Viridian City is
@@ -101,11 +102,21 @@ const ICE = {
   iceSpire: iceProp('ice.crystal', 'ice crystal'),
 } as const satisfies Record<string, PropDefinition>;
 
+/**
+ * A mountain's own, out of doors: the stone steps FireRed cuts through a band
+ * of rock on Mt. Ember's slopes, which are ground - laid over a gap in the
+ * rock, they are the way up it.
+ */
+const MOUNTAIN = {
+  cliffSteps: emberProp('ember.steps', 'steps', ['..']),
+} as const satisfies Record<string, PropDefinition>;
+
 export type PlayerMapPropName =
   | KantoPropName
   | Cc0ObjectName
   | keyof typeof BASE_BUILDINGS
   | keyof typeof ICE
+  | keyof typeof MOUNTAIN
   | TownPieceName;
 
 export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
@@ -116,10 +127,11 @@ export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
     BASE_SHEET_SOURCE.source,
     TOWN_SHEET_SOURCE.source,
     ICE_SHEET_SOURCE.source,
+    EMBER_SHEET_SOURCE.source,
   ],
   materials: {
     ...KANTO_TILESET.materials,
     ice: { roles: { fill: iceTile('ice.sheet') } },
   },
-  props: { ...cc0, ...BASE_BUILDINGS, ...TOWN_PROPS, ...ICE, ...KANTO_TILESET.props },
+  props: { ...cc0, ...BASE_BUILDINGS, ...TOWN_PROPS, ...ICE, ...MOUNTAIN, ...KANTO_TILESET.props },
 };

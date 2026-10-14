@@ -321,6 +321,7 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     ['rock', 'Rock', 'Nature'],
     ['round-boulder', 'Boulder', 'Nature'],
     ['rock-stair', 'Rock with steps', 'Nature'],
+    ['cliff-steps', 'Stone steps', 'Nature'],
     ['cave-mouth', 'Cave mouth', 'Nature'],
     ['wet-rock', 'Rock in water', 'Nature', 'water'],
     ['snowy-boulder', 'Snowy boulder', 'Nature'],
@@ -508,6 +509,11 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['ice-rock', 'Ice rock', 'ice'],
     ['ice-crystal', 'Ice crystal', 'ice'],
     ['ice-crystal-low', 'Ice crystal, low', 'ice'],
+    ['ember-boulder', 'Boulder', 'ember'],
+    ['ember-boulder-low', 'Boulder, low', 'ember'],
+    ['ember-rock', 'Rock', 'ember'],
+    ['ember-rocks', 'Rocks', 'ember'],
+    ['hot-spring', 'Hot spring', 'ember'],
     ['gate-runner', 'Runner', 'gatehouse'],
     ['gate-short-runner', 'Runner, short', 'gatehouse'],
     ['gate-rug', 'Rug, wide', 'gatehouse'],
@@ -541,6 +547,7 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   gatehouse: 'Gatehouse',
   cave: 'Cave',
   ice: 'Ice cave',
+  ember: 'Volcano cave',
   underground: 'Underground Path',
 };
 
@@ -557,6 +564,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   summit: 'Mountain summit',
   garden: 'Overgrown garden',
   ice: 'Ice',
+  volcano: 'Volcano',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */

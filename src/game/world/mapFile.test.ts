@@ -129,7 +129,7 @@ describe('reading a map file', () => {
     expect(problemsOf(edited({ buildings: [{ x: 1, y: 1, kind: 'castle' }] }))).toContain(
       'Building 1 is not a building the game has: castle.',
     );
-    expect(problemsOf(edited({ wildlife: 'volcano' }))[0]).toMatch(
+    expect(problemsOf(edited({ wildlife: 'moon' }))[0]).toMatch(
       /^'wildlife' must be one of: meadow/,
     );
   });
@@ -262,7 +262,7 @@ describe('a map from a file is a map like any other', () => {
     expect(worldMapMaker('route-1')).toBeUndefined();
   });
 
-  it('is drawn on the Kanto sheets, plus the base, Overworld, town and ice pieces, at the size its file says', () => {
+  it('is drawn on the Kanto sheets, plus the base, Overworld, town, ice and mountain pieces, at the size its file says', () => {
     const map = getWorldMap(sample.id);
     expect([map.width, map.height]).toEqual([32, 24]);
     expect(map.tileset.sources.map((source) => source.imagePath)).toEqual([
@@ -271,6 +271,7 @@ describe('a map from a file is a map like any other', () => {
       'assets/frlg-base.png',
       'assets/frlg-towns.png',
       'assets/frlg-ice.png',
+      'assets/frlg-ember.png',
     ]);
     // Tall grass is the file's `g`, so it costs encounters exactly where it is drawn.
     expect(map.tallGrass[4][6]).toBe(true);

@@ -280,7 +280,8 @@ export const GREYSTONE_VALE: WorldPlan = {
       cell: [-1, 4],
       island: true,
       terrain: 'mountain',
-      wildlife: 'field',
+      // FireRed's Mt. Ember at the vale's levels: the volcano habitat.
+      wildlife: 'volcano',
       idea: "A volcano island beyond the smugglers' cove, by their skiff: a climb round the cone to the crater, the vale's richest and worst ground.",
       reach: {
         wayIn:

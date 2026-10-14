@@ -765,6 +765,19 @@ export const ITEMS = {
       held: { type: 'type-power', moveType: PokemonType.Ice, powerPercent: 10 },
     },
   },
+  // FireRed's own, and its words: found in Ember Isle's crater, the vale's
+  // volcano, and nowhere else. HOLD_EFFECT_FIRE_POWER, ten in a hundred.
+  charcoal: {
+    id: 'charcoal',
+    displayName: 'Charcoal',
+    category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
+    description: 'A hold item that raises the power of FIRE-type moves.',
+    effect: {
+      type: 'held',
+      held: { type: 'type-power', moveType: PokemonType.Fire, powerPercent: 10 },
+    },
+  },
 
   /* --- Furniture -----------------------------------------------------------
      Found on a raid, carried home in the pack and put down in THE BOLTHOLE

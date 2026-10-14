@@ -52,7 +52,8 @@ export function encounterTableAt(
  * Whether a step onto `tile` rolls for wildlife at all: tall grass, or the
  * floor of a place that rolls on every step - which is what a cave is, and the
  * only reason its wildlife is ever met (`interiors.ts`, and a player's cave,
- * `MapFileArea`). There is no tall grass underground. The raid asks it of every
+ * `MapFileArea`), and what a named place out of doors may be too (a district's
+ * `floorRolls`: Ember Isle's crater). There is no tall grass underground. The raid asks it of every
  * step, and the drop-in screen asks it of the ground a place is graded on.
  */
 export function stepRolls(
@@ -62,6 +63,7 @@ export function stepRolls(
   return (
     map.tallGrass[tile.y]?.[tile.x] === true ||
     interiorFloorRolls(map.id, tile) ||
-    (map.areas !== undefined && placedAreaAt(map.areas, tile)?.kind === 'cave')
+    (map.areas !== undefined && placedAreaAt(map.areas, tile)?.kind === 'cave') ||
+    districtAt(map.id, tile)?.floorRolls === true
   );
 }
