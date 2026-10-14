@@ -351,6 +351,27 @@ export function availableContracts(completedContractIds: readonly string[]): rea
 }
 
 /**
+ * Whether the authored chain is finished: every contract banked, and the
+ * standing board dealing from now on (`standingBoard.ts`).
+ */
+export function isChainFinished(completedContractIds: readonly string[]): boolean {
+  return availableContracts(completedContractIds).length === 0;
+}
+
+/**
+ * The maps no contract opens, whose front door is offered once the chain is
+ * finished instead (`availableInsertionIds`).
+ *
+ * The chain teaches the four maps round the Floodplain and then hands the
+ * board over; Greystone Vale is the country past them - six times the
+ * Floodplain's ground, its keeper and its far places the hardest things to
+ * reach in the game - so it is what a save is offered when there is nothing
+ * left to be taught. A save that finished the chain before the vale opened is
+ * offered it the next time it looks, because this is derived and never stored.
+ */
+export const MAPS_OPENED_BY_THE_FINISHED_CHAIN: readonly WorldMapId[] = ['greystone-vale'];
+
+/**
  * The contract a raid inserting here would carry. A contract belongs to its map,
  * so choosing where to drop in is choosing which contract to take: there is no
  * separate acceptance step to get out of step with the insertion.

@@ -32,6 +32,7 @@ import {
 } from '../worldMap';
 import {
   availableContracts,
+  isChainFinished,
   type ContractMarker,
   type ContractPokemon,
   type ContractReward,
@@ -104,7 +105,7 @@ export function isStandingContractId(id: string): boolean {
 
 /** Whether the authored chain is finished, which is when the standing board opens. */
 export function isStandingBoardOpen(completedContractIds: readonly string[]): boolean {
-  return availableContracts(completedContractIds).length === 0;
+  return isChainFinished(completedContractIds);
 }
 
 /**
@@ -631,7 +632,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       markers: [
         {
           position,
-          label: `OUTPOST CACHE\nNEEDS ${asked.toUpperCase()}`,
+          label: `OUTPOST CACHE${roomLine(ground.map, position)}\nNEEDS ${asked.toUpperCase()}`,
           cue: 'CACHE DROP',
           icon: 'supply-cache',
           carriedIn: [delivery.asks],
@@ -675,7 +676,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       ...(exit ? { requiredExitLabel: exit.label } : {}),
       markers: stops.map((position, index) => ({
         position,
-        label: `SEALED CACHE${stops.length > 1 ? ` ${index + 1}` : ''}\nPAST ${gate}`,
+        label: `SEALED CACHE${stops.length > 1 ? ` ${index + 1}` : ''}${roomLine(ground.map, position)}\nPAST ${gate}`,
         cue: stops.length > 1 ? `SEALED ${index + 1}` : 'SEALED CACHE',
         icon: 'supply-cache',
         collectedMessage: exit
@@ -844,6 +845,16 @@ function regions(map: WorldMapDefinition, tiles: readonly GridPosition[]): strin
   ];
   const inside = [...new Set(tiles.map((tile) => insidePlace(map, tile)).filter((place) => place !== undefined))];
   return andList([...(outside.length > 0 ? [`${andList(outside)} of the map`] : []), ...inside]);
+}
+
+/**
+ * A caption's line naming the room a stop is in, and nothing outdoors: a stop
+ * whose label otherwise says what it needs or what it is past still says where
+ * it is once it is indoors, because a room has no point of the compass.
+ */
+function roomLine(map: WorldMapDefinition, tile: GridPosition): string {
+  const place = insidePlace(map, tile);
+  return place ? `\n${place.toUpperCase()}` : '';
 }
 
 /** The name of the room a tile is in, or undefined outdoors. */

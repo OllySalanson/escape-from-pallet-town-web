@@ -173,21 +173,32 @@ export const WORLD_MAP_NAMES: Readonly<Record<BuiltInMapId, string>> = {
 };
 
 /**
- * Shipped maps still being drawn, district by district (`tools/mapcraft`).
+ * Shipped maps too big to build until something asks for them.
  *
- * One is in the game so it can be walked - the explorer run (PLAYTEST on the
- * title) reaches every landing there is - but no save is offered it until it is
- * finished: nothing unlocks its front door, no board deals a contract on it,
- * and the base's wall map and pennants leave it out. The structure and safety
- * rules hold it as they hold every map. What a finished map pays and guards
- * waits until it leaves this list, and each test that asks it names this list
- * where it does: its boss and the doors before and behind them, its key exit
- * and key, its locked crate, its loot pool (money, materials, packs, prizes),
- * a landmark-opened exit, wildlife varied from place to place, and a place in
- * the drop-in frame's size (`largestMapSize`). And a raid on any other map
- * rolls exactly as it did before it was added: like a player's map, it is only
- * in a raid's content when the raid is on it (`runGeneration.ts`), which
- * `fileMapLoot.test.ts`'s fingerprint holds.
+ * Greystone Vale is 384 tiles square, and a raid there holds about 86 MB more
+ * heap than a raid anywhere else (`docs/screens/greystone-vale/README.md`,
+ * 'Growing to 384'). So it is built the first time it is asked for, never at
+ * boot, and - like a player's map - it is in a raid's content only when the
+ * raid is on it (`runGeneration.ts`): a raid on any other map neither builds
+ * it nor spends a roll on it, which `fileMapLoot.test.ts`'s fingerprint holds.
+ */
+export const LAZY_MAPS: ReadonlySet<BuiltInMapId> = new Set<BuiltInMapId>(['greystone-vale']);
+
+export function isLazyMap(id: string): boolean {
+  return (LAZY_MAPS as ReadonlySet<string>).has(id);
+}
+
+/**
+ * Shipped maps not yet offered to a save. Greystone Vale carries everything a
+ * finished map does - its keeper and his two doors, its key exit and locked
+ * crate, a loot pool with packs and prizes, an exit a landmark opens, wildlife
+ * place by place - and every test that asks it of a map asks it of the vale.
+ * What is still the captain's call is whether a save may go there (the
+ * playtest of 14 Oct 2026, call C6), so until then only the explorer run
+ * reaches it: the finished chain does not open its front door
+ * (`availableInsertionIds`), the wall map does not hang it, and the pennants
+ * and the badge case leave its place out. Opening it is taking it off this
+ * list, and nothing else.
  */
 export const MAPS_IN_PROGRESS: ReadonlySet<BuiltInMapId> = new Set<BuiltInMapId>(['greystone-vale']);
 
@@ -727,7 +738,7 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
     ],
   },
   // Drawn as a file by the game's own tools, a district at a time
-  // (`tools/mapcraft/worlds/greystoneVale`), and still in progress.
+  // (`tools/mapcraft/worlds/greystoneVale`).
   'greystone-vale': contentFromFile('greystone-vale'),
 };
 
@@ -746,12 +757,12 @@ export function isBuiltInMapId(id: string): id is BuiltInMapId {
 export const WORLD_MAPS: Readonly<Record<BuiltInMapId, WorldMapDefinition>> = (() => {
   const maps = {} as Record<BuiltInMapId, WorldMapDefinition>;
   for (const id of BUILT_IN_MAP_IDS) {
-    if (!MAPS_IN_PROGRESS.has(id)) {
+    if (!LAZY_MAPS.has(id)) {
       maps[id] = createMap(id, MAP_CONTENT[id]);
       continue;
     }
-    // A map still being drawn is built when something first asks for it, so the
-    // many modules that only want the finished maps do not pay for it.
+    // A vast map is built when something first asks for it, so the many
+    // modules that never touch it do not pay for it.
     let built: WorldMapDefinition | undefined;
     Object.defineProperty(maps, id, {
       enumerable: true,

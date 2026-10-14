@@ -12,7 +12,7 @@ import {
 import { formatMoney } from '../items';
 import type { BaseDoor, BaseScreen } from './doors';
 import { errandBeat, errandThing } from '../hub/errands';
-import { BADGES, wonBadges } from './badgeCase';
+import { caseBadges, wonBadges } from './badgeCase';
 
 /**
  * What each door says about what is waiting inside it.
@@ -39,7 +39,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
       // that was given at its door (`home/houseName.ts`).
       const whose = ownerName ? `${ownerName}'s house` : 'Your house';
       const won = wonBadges(game).length;
-      return won === 0 ? whose : `${whose} · ${won} of ${BADGES.length} badges`;
+      return won === 0 ? whose : `${whose} · ${won} of ${caseBadges().length} badges`;
     }
     case 'raid': {
       if (errand) {

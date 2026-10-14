@@ -1056,4 +1056,44 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'Fine, go on. The Center is right in the middle of town.',
     ),
   },
+
+  // -- Greystone Vale ----------------------------------------------------------
+  {
+    // The keeper of the Sunken Quarter, the drowned lower town at the end of
+    // the jetty from Gull Strand. He stands on the lower street at the head of
+    // the old high street, on the town's side of the sandbags he has piled
+    // across it, and the drowned street in from the shingle under the west
+    // cliff is sandbagged too (`maps/greystoneVale.json`, its `boss` doors,
+    // drawn by `tools/mapcraft/worlds/greystoneVale/sunkenQuarter.ts`). The
+    // mansion and the Low Water Stair are behind them. Beaten, both come down,
+    // and the cove's shingle is a short way back into the drowned town. No
+    // watch: a boss who is the door does not need one.
+    mapId: 'greystone-vale',
+    position: { x: 158, y: 285 },
+    facing: 'up',
+    fixedPosition: true,
+    bossId: 'vale-quay-keeper',
+    design: 'sailor',
+    introLines: [
+      'BOATSWAIN CRAGG HOLDS THE QUAY.',
+      'The tide took the lower town and I took what the tide left. Get past me first.',
+    ],
+    trainer: createTrainer(
+      'vale-quay-keeper-cragg',
+      'BOATSWAIN CRAGG',
+      // The harbour's own: a Shellder off the drowned streets, a Machop who
+      // works the quay, and a Magnemite out of the old cranes. Measured over the
+      // real engine (`tools/trainers/report.mts`): 33% over the four reference
+      // parties - 13/28/65% for Charmander, Squirtle and Bulbasaur at 14 alone,
+      // 26% for the team - which is the last rung of the ladder, beside
+      // Banksman Nye, and no starter's lottery: an all-Water party here was 3%
+      // for a Charmander, the Magnemite and the Machop are what flatten it.
+      [
+        new Pokemon(getSpeciesById('magnemite')!, 14),
+        new Pokemon(getSpeciesById('shellder')!, 14),
+        new Pokemon(getSpeciesById('machop')!, 14),
+      ],
+      'The barricades are down, the high street and the shingle both. The old town is yours.',
+    ),
+  },
 ];

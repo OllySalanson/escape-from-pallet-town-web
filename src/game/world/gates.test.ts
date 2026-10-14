@@ -46,6 +46,12 @@ const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
 const MAP_IDS = Object.keys(WORLD_MAPS) as WorldMapId[];
 const GATED_MAP_IDS = MAP_IDS.filter((mapId) => gatesForMap(mapId).length > 0);
 const BOSSES = bossEncounters(createRunTrainerEncounters());
+/**
+ * Every gate on the game's own maps: the authored ones (`WORLD_GATES`) and the
+ * doors a map drawn as a file stands - Greystone Vale's keeper's two among
+ * them - because a door is held to the same rules wherever it was drawn.
+ */
+const GATES = MAP_IDS.flatMap((mapId) => gatesForMap(mapId));
 
 /** Everything authored onto a tile of this map that a gate must not swallow. */
 function authoredTiles(mapId: WorldMapId): Map<string, string> {
@@ -85,9 +91,9 @@ function reachable(mapId: WorldMapId, defeatedBosses: readonly string[], from: G
 
 describe('authored gates', () => {
   it('names every gate once, on a map that exists, with tiles to stand in', () => {
-    const ids = WORLD_GATES.map((gate) => gate.id);
+    const ids = GATES.map((gate) => gate.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const gate of WORLD_GATES) {
+    for (const gate of GATES) {
       expect(MAP_IDS).toContain(gate.mapId);
       expect(gate.tiles.length).toBeGreaterThan(0);
       expect(gate.label).toBe(gate.label.toUpperCase());
@@ -95,7 +101,7 @@ describe('authored gates', () => {
   });
 
   it('is solid when shut and ground when open, however the author drew the two states', () => {
-    for (const gate of WORLD_GATES) {
+    for (const gate of GATES) {
       const shut = getWorldMap(gate.mapId);
       const open = getWorldMap(gate.mapId, [gateKey(gate)]);
       // Read off the built collision rather than the material, because a state
@@ -118,8 +124,8 @@ describe('authored gates', () => {
    * may change what is solid on that boss's own gate tiles and nowhere else.
    */
   it('changes what is solid on its own tiles and nowhere else', () => {
-    for (const bossId of gateBossIds(WORLD_GATES)) {
-      const gates = WORLD_GATES.filter((gate) => gate.bossId === bossId);
+    for (const bossId of gateBossIds(GATES)) {
+      const gates = GATES.filter((gate) => gate.bossId === bossId);
       for (const mapId of new Set(gates.map((gate) => gate.mapId))) {
         const own = new Set(
           gates.filter((gate) => gate.mapId === mapId).flatMap((gate) => gate.tiles.map(key)),
@@ -139,7 +145,7 @@ describe('authored gates', () => {
   });
 
   it('names only landmarks its map\'s own tileset can draw', () => {
-    for (const gate of WORLD_GATES) {
+    for (const gate of GATES) {
       const known = Object.keys(getWorldMap(gate.mapId).tileset.props);
       for (const prop of [...(gate.closed.props ?? []), ...(gate.open.props ?? [])]) {
         expect(known).toContain(prop.name);
@@ -149,7 +155,7 @@ describe('authored gates', () => {
 
   it('keeps every gate tile inside the map edge and off everything else authored', () => {
     const claimed = new Map<string, string>();
-    for (const gate of WORLD_GATES) {
+    for (const gate of GATES) {
       const map = getWorldMap(gate.mapId);
       const authored = authoredTiles(gate.mapId);
       for (const tile of gate.tiles) {
@@ -169,11 +175,16 @@ describe('authored gates', () => {
   it('gives every gate a boss on its own map or a field move, and every boss a gate', () => {
     const bossIds = BOSSES.map((boss) => boss.bossId);
     expect(new Set(bossIds).size).toBe(bossIds.length);
-    for (const gate of WORLD_GATES) {
+    for (const gate of GATES) {
       // Exactly one key per door. The type already refuses both and neither;
       // this is the half of it that says what a key has to be attached to - a
       // boss standing on the same map, or a move this game actually ships a
       // disc for.
+      // A night track is the hour's door: nobody holds it and nothing opens it
+      // but the clock (`nightDoors`).
+      if (gate.night) {
+        continue;
+      }
       if (gate.fieldMove !== undefined) {
         expect(FIELD_MOVE_IDS, `${gate.id} wants a move nobody has`).toContain(gate.fieldMove);
         expect(
@@ -190,7 +201,7 @@ describe('authored gates', () => {
       expect(boss?.mapId).toBe(gate.mapId);
     }
     for (const boss of BOSSES) {
-      expect(`${boss.bossId} holds ${WORLD_GATES.filter((gate) => gate.bossId === boss.bossId).length} gates`)
+      expect(`${boss.bossId} holds ${GATES.filter((gate) => gate.bossId === boss.bossId).length} gates`)
         .not.toBe(`${boss.bossId} holds 0 gates`);
       // A boss that a seed could move would be a door whose guard wanders off.
       expect(boss.fixedPosition).toBe(true);
@@ -202,7 +213,7 @@ describe('authored gates', () => {
    * every gate has to take something away from the raid that starts at the
    * front door - and opening it has to give exactly that back.
    */
-  it.each(WORLD_GATES.map((gate) => [gate.id, gate] as const))(
+  it.each(GATES.map((gate) => [gate.id, gate] as const))(
     '%s actually closes something off',
     (_id, gate) => {
       const door = frontDoorFor(gate.mapId)!;

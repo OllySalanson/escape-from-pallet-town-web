@@ -13,6 +13,9 @@
  * Its service gate at the back of the yard is a way out that opens only to the
  * Card Key, and the card was lost in the pines next door. The workers' row,
  * two houses and a garden, is down the valley on the far side of the road.
+ * And up on the reservoir's east shore the relay mast still works: raise the
+ * linesmen on it and their track out of the north-east corner of the shore is a
+ * way out, as the shipped maps' Sluice Wheel opens the West Culvert.
  *
  * FireRed's own Power Plant, cut off Route 10 (`scripts/cut-frlg-towns.mjs`),
  * stands against the dam's cliff as it stands against Route 10's.
@@ -20,7 +23,7 @@
 import type { MapcraftResult } from '../../report';
 import { plantCaveMouth } from '../../caves';
 import { districtFile } from '../../stitch';
-import { startDistrict } from '../../worldPlan';
+import { planLimits, startDistrict } from '../../worldPlan';
 import { fallsCaveArea, fallsCaveBoulders, fallsCaveSecrets, fallsMouthLink } from './fallsCave';
 import {
   bunkerAreas,
@@ -50,7 +53,7 @@ const LAND = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   'TTTTTT.....................TTTTT',
   'TTTTT.......................TTTT',
-  'TTTT.........................TTT',
+  'TTTT..........................TT', // the linesmen's track, a nub off the reservoir's north-east shore
   'TTTT.........................TTT',
   'TTT...........................TT',
   'TTT...........................TT',
@@ -189,7 +192,12 @@ export function powerStation(): MapcraftResult {
       ...fallsCaveSecrets(),
       ...bunkerItemSpots(),
     ],
-    exits: [{ x: 30, y: 42, name: 'Service Gate', opens: { when: 'key' } }, ...bunkerExits()],
+    exits: [
+      { x: 30, y: 42, name: 'Service Gate', opens: { when: 'key' } },
+      // Sealed until the relay mast on the shore below raises the linesmen.
+      { x: 59, y: 7, name: "Linesmen's Track", opens: { when: 'landmark', landmark: 'Relay Mast' } },
+      ...bunkerExits(),
+    ],
     extra: {
       landmarks: [
         { x: 38, y: 24, name: 'Control Room', kind: 'shed' },
@@ -236,5 +244,5 @@ export function powerStation(): MapcraftResult {
       ],
     },
   });
-  return { file, notes: p.notes };
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
 }

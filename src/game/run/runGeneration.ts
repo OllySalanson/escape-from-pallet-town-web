@@ -3,6 +3,7 @@ import { Pokemon } from '../pokemon';
 import {
   BUILT_IN_MAP_IDS,
   getWorldMap,
+  isLazyMap,
   isMapInProgress,
   type BuiltInMapId,
   type WorldMapDefinition,
@@ -25,7 +26,12 @@ import {
   withoutDefeatedBosses,
   type RunTrainerEncounter,
 } from '../world/trainers';
-import { FIRST_CONTRACT_ID, type RaidContract } from '../objectives/contracts';
+import {
+  FIRST_CONTRACT_ID,
+  isChainFinished,
+  MAPS_OPENED_BY_THE_FINISHED_CHAIN,
+  type RaidContract,
+} from '../objectives/contracts';
 import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/hunterThreat';
 import { FIRST_HUNTER_RIVAL, type HunterRivalId } from '../world/hunters';
 import { forTheHour } from '../world/nightRaids';
@@ -251,7 +257,7 @@ export const RUN_INSERTIONS = {
     position: { x: 38, y: 73 },
     description: "The foot of Route 1's terraces, where the road comes up from Pallet Town. The way home is behind you; the way up is the long road round every ledge.",
   },
-  // Still being drawn (`MAPS_IN_PROGRESS`): only the explorer run lands here.
+  // Greystone Vale's landings, each a drop-in of its map file.
   // The landing is the map file's first drop-in, where its district is, and
   // `greystoneVale.test.ts` holds the two together.
   'greystone-vale': {
@@ -323,6 +329,7 @@ export const RUN_INSERTIONS = {
     mapId: 'greystone-vale',
     position: { x: 165, y: 270 },
     description: 'The quay of the drowned port in the Sunken Quarter, where the jetty from the strand comes in.',
+    whileHeld: { bossIds: ['vale-quay-keeper'], line: 'Boatswain Cragg has sandbagged the old high street down into the drowned town.' },
   },
   'greystone-vale-cove-steps': {
     id: 'greystone-vale-cove-steps',
@@ -456,12 +463,20 @@ export function availableInsertionIds(progress: {
   // opens: once the Floodplain's field kit is home, every player map's front
   // door is on the board. Its drop-in points are reached on foot, as any map's are.
   const playerMapsOpen = progress.completedContracts?.includes(FIRST_CONTRACT_ID) === true;
+  // And a map no contract opens is offered once the chain is finished - unless
+  // it is not yet offered to saves at all (`MAPS_IN_PROGRESS`).
+  const chainFinished = isChainFinished(progress.completedContracts ?? []);
+  const frontDoor = (insertion: RunInsertion): boolean => frontDoorFor(insertion.mapId)?.id === insertion.id;
   return runInsertions()
     .filter(
       (insertion) =>
         progress.unlockedInsertions.includes(insertion.id) ||
         progress.reachedInsertions.includes(insertion.id) ||
-        (playerMapsOpen && isPublishedMap(insertion.mapId) && frontDoorFor(insertion.mapId)?.id === insertion.id),
+        (playerMapsOpen && isPublishedMap(insertion.mapId) && frontDoor(insertion)) ||
+        (chainFinished &&
+          MAPS_OPENED_BY_THE_FINISHED_CHAIN.includes(insertion.mapId) &&
+          !isMapInProgress(insertion.mapId) &&
+          frontDoor(insertion)),
     )
     .map((insertion) => insertion.id);
 }
@@ -580,8 +595,9 @@ export interface RunGenerationContent {
  * reads collision - where loot may land, which exit is guaranteed - so it has
  * to be this raid's collision and not a fresh save's.
  *
- * That is every finished shipped map, plus the raid's own map when it is a file
- * map or a shipped map still being drawn - and never any other. The rolls below are one seeded stream across
+ * That is every shipped map built at boot, plus the raid's own map when it is a
+ * file map or a vast shipped map built only when asked for (`LAZY_MAPS`) - and
+ * never any other. The rolls below are one seeded stream across
  * every map in here, so a raid on a shipped map plays exactly the raid it
  * always did however many maps players have added to the game.
  */
@@ -590,9 +606,9 @@ function authoredContent(
   opened: readonly string[],
   completedContracts: readonly string[],
 ): RunGenerationContent {
-  // A shipped map still being drawn is in here only when the raid is on it, as
-  // a file map is: adding one moves no roll of a raid on any other map.
-  const finished = BUILT_IN_MAP_IDS.filter((id) => !isMapInProgress(id));
+  // A vast shipped map is in here only when the raid is on it, as a file map
+  // is: adding one moves no roll of a raid on any other map, and builds nothing.
+  const finished = BUILT_IN_MAP_IDS.filter((id) => !isLazyMap(id));
   const mapIds: WorldMapId[] = [...finished, ...(finished.includes(raidMapId as BuiltInMapId) ? [] : [raidMapId])];
   return {
     maps: Object.fromEntries(mapIds.map((id) => [id, getWorldMap(id, opened)])) as Record<
@@ -605,9 +621,10 @@ function authoredContent(
       mapIds.flatMap((id) => extractionPointsOn(id)),
       completedContracts,
     ),
-    // The raid's own file map brings its trainers, after every shipped one.
+    // The raid's own file map brings its trainers, after every shipped one,
+    // and a vast map's own authored keeper only to a raid on it.
     trainers: [
-      ...createRunTrainerEncounters(),
+      ...createRunTrainerEncounters().filter((trainer) => mapIds.includes(trainer.mapId)),
       ...(finished.includes(raidMapId as BuiltInMapId) ? [] : (fileMap(raidMapId)?.trainers() ?? [])),
     ],
   };

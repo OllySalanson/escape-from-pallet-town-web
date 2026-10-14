@@ -182,7 +182,7 @@ import {
   type MapFileArea,
   type MapFileAreaStyle,
   type MapFileBuildingKind,
-  type MapFileDoorKind,
+  type MakerDoorKind,
   type MapFileHabitat,
 } from '../world/mapFile';
 import { checkMapFile, kindAndName, type MapCheck, type MapFaultPlace } from '../world/mapFileChecks';
@@ -1008,7 +1008,7 @@ export class MapMakerScene extends Phaser.Scene {
       this.place =
         kind === 'building'
           ? { kind: 'building', building: element.dataset.building as MapFileBuildingKind }
-          : { kind: kind as SpotKind | 'district' | MapFileDoorKind };
+          : { kind: kind as SpotKind | 'district' | MakerDoorKind };
       this.tool = 'place';
       this.render();
     });

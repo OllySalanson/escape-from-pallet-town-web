@@ -71,7 +71,7 @@ const SIGN = keysOf<MapFileSign>()(['x', 'y', 'area', 'lines']);
 const LANDMARK = keysOf<MapFileLandmark>()(['x', 'y', 'area', 'name', 'kind', 'locked']);
 const DISTRICT = keysOf<MapFileDistrict>()(['area', 'name', 'x', 'y', 'width', 'height', 'wildlife', 'rain', 'floorRolls']);
 const TRAINER = keysOf<MapFileTrainer>()(['x', 'y', 'area', 'name', 'team', 'look', 'facing', 'sight', 'lines']);
-const DOOR = keysOf<MapFileDoor>()(['kind', 'x', 'y', 'width', 'height']);
+const DOOR = keysOf<MapFileDoor>()(['kind', 'x', 'y', 'width', 'height', 'keeper', 'name']);
 const POKEMON = keysOf<MapFilePokemon>()(['x', 'y', 'area', 'species', 'level', 'legendary']);
 const AREA = keysOf<MapFileArea>()([
   'id', 'name', 'kind', 'style', 'width', 'height', 'ground', 'buildings', 'switches', 'barriers', 'lift',
@@ -85,7 +85,7 @@ const TURN = keysOf<MapFileSailing['course'][number]>()(['x', 'y']);
 const LINK_END = keysOf<MapFileLinkEnd>()(['x', 'y', 'area', 'toward', 'look']);
 const BERRY_TREE = keysOf<MapFileBerryTree>()(['x', 'y', 'area', 'berry']);
 const BOULDER = keysOf<MapFileBoulder>()(['x', 'y', 'area']);
-const OPENS = keysOfEvery<MapFileOpens>()(['when', 'seconds']);
+const OPENS = keysOfEvery<MapFileOpens>()(['when', 'seconds', 'landmark']);
 
 /** The listed keys of `value` that it has, and no others. A list of strings is copied. */
 function pick<T>(value: T, keys: readonly (keyof T)[]): T {

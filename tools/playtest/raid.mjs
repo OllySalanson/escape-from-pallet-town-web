@@ -494,6 +494,10 @@ try {
   // --steps=a,b,.. plays a route through places walking cannot see, in order:
   // `walk:x:y` (the grid's own tiles), `into:x:y:Dir` (goes through the
   // doorway whose landing is that tile and stays on the far side),
+  // `challenge:x:y:Dir` (walks to that tile, speaks to the trainer standing
+  // the way Dir points and takes the challenge - the prompt opens on BACK
+  // AWAY, so the cursor is moved to the fight first: how a keeper with no
+  // watch is fought, Greystone Vale's Boatswain Cragg among them),
   // `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
@@ -513,6 +517,18 @@ try {
       await wait(1200);
       await clearInterruptions();
       note(`through ${parts[0]},${parts[1]}: now in ${await page.evaluate(`${GAME}.scene.getScene('world').currentArea()?.name ?? 'outdoors'`)} at ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').currentTile`))}`);
+    } else if (kind === 'challenge') {
+      await walkTo({ x: Number(parts[0]), y: Number(parts[1]) }, `the tile in front of the trainer at ${parts[0]},${parts[1]}`);
+      await press(keyFor(parts[2]));
+      await wait(200);
+      await press('Space');
+      await wait(400);
+      await press('ArrowUp');
+      await wait(200);
+      await press('Space');
+      await wait(400);
+      await clearInterruptions();
+      note(`challenged from ${parts[0]},${parts[1]}: trainers beaten ${JSON.stringify(await page.evaluate(`[...${GAME}.scene.getScene('world').defeatedTrainerIds]`))}`);
     } else if (kind === 'push') {
       const [area, x, y, dir] = parts;
       const key = keyFor(dir);

@@ -15,7 +15,7 @@ import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_GATES } from '../world/gates';
-import { isMapInProgress, WORLD_MAPS, WORLD_MAP_NAMES, type BuiltInMapId } from '../worldMap';
+import { WORLD_MAPS, WORLD_MAP_NAMES, type BuiltInMapId } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
   barterShortfall,
@@ -110,8 +110,7 @@ describe('money, the Pokedollar', () => {
   });
 
   it('is field loot on every map, so a raid is the only way to earn it', () => {
-    // A map still being drawn has no loot pool of its own yet (`MAPS_IN_PROGRESS`).
-    for (const map of Object.values(WORLD_MAPS).filter((candidate) => !isMapInProgress(candidate.id))) {
+    for (const map of Object.values(WORLD_MAPS)) {
       const bundles = map.loot.filter((item) => item.itemId === CURRENCY_ITEM_ID);
       expect(bundles.length, `${map.id} holds no money`).toBeGreaterThan(0);
       // Part of the ordinary pool rather than a rare roll of its own: money

@@ -76,6 +76,10 @@ const rungOf = (trainer: TrainerBattle): number =>
  * time and a Bulbasaur 100% - the starter lottery the band exists to refuse -
  * and changing who she fields is a design call, not a measurement.
  *
+ * Boatswain Cragg holds Greystone Vale's Sunken Quarter, the map a save is
+ * offered once the chain is finished, so he is the last rung: 33%, beside Nye,
+ * and inside the band where she is not (a lone Charmander 14 on 13%).
+ *
  * Every rung was re-measured on 2026-10-06, once the battle rules were
  * FireRed's. They were first taken while a trainer's replacement attacked in
  * the turn its predecessor fell, so every party with a second Pokemon was a
@@ -103,6 +107,7 @@ const LADDER: readonly [string, string][] = [
   ['floodplain-quarry-foreman-rudd', 'FOREMAN RUDD'],
   ['floodplain-orchard-warden-holt', 'WARDEN HOLT'],
   ['floodplain-sea-wall-keeper-nye', 'BANKSMAN NYE'],
+  ['vale-quay-keeper-cragg', 'BOATSWAIN CRAGG'],
 ];
 
 describe('the boss ladder, played out', () => {
@@ -131,6 +136,7 @@ describe('the boss ladder, played out', () => {
       'forest-quarry-keeper-mott',
       'viridian-gatekeeper-ross',
       'floodplain-quarry-foreman-rudd',
+      'vale-quay-keeper-cragg',
     ]) {
       const trainer = trainerOf(id);
       const solo = trainerWinRate(SOLO, trainer, TRIALS);

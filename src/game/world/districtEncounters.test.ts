@@ -5,7 +5,7 @@ import { Pokemon } from '../pokemon';
 import { BULBASAUR, CHARMANDER, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import type { WildEncounterTable } from '../pokemon/encounters';
-import { WORLD_MAPS, type WorldMapId, getWorldMap, isMapInProgress } from '../worldMap';
+import { WORLD_MAPS, type WorldMapId, getWorldMap } from '../worldMap';
 import { generateRunPlan } from '../run/runGeneration';
 import { MAP_DISTRICTS, districtAt, districtsForMap } from './districts';
 import { WORLD_INTERIORS } from './interiors';
@@ -14,12 +14,6 @@ import { measureTable } from './encounterMeasure';
 import { districtTableFor } from './nightRaids';
 
 const MAPS = Object.values(WORLD_MAPS);
-/**
- * Variety from place to place and a target for every starter are asked of a
- * map's wildlife as a whole, which a map still being drawn does not have yet:
- * Greystone Vale's one drawn district is one place (`MAPS_IN_PROGRESS`).
- */
-const FINISHED_MAPS = MAPS.filter((map) => !isMapInProgress(map.id));
 
 /** Every tall-grass tile of a map, with the district it stands in. */
 const grassTiles = (mapId: WorldMapId) => {
@@ -128,7 +122,7 @@ describe('wildlife authored per place', () => {
   });
 
   it.each(HOURS)('is not the same wildlife from one place to the next, $hour', ({ night }) => {
-    for (const map of FINISHED_MAPS) {
+    for (const map of MAPS) {
       const mixes = tablesOf(map.id, night).map((table) =>
         [...new Set(table.entries.map((entry) => entry.speciesId))].sort().join('/'),
       );
@@ -162,7 +156,7 @@ describe('wildlife authored per place', () => {
       [CHARMANDER, PokemonType.Fire],
       [SQUIRTLE, PokemonType.Water],
     ];
-    for (const map of FINISHED_MAPS) {
+    for (const map of MAPS) {
       const wild = tablesOf(map.id, night).flatMap((table) =>
         table.entries.map((entry) => getSpeciesById(entry.speciesId)!),
       );

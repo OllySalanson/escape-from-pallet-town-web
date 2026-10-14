@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { TILE_SIZE } from '../worldMap';
+import { isMapInProgress, TILE_SIZE } from '../worldMap';
 import { baseGame } from './baseGames.testkit';
 import {
   BADGES,
+  caseBadges,
   badgeCaseLines,
   badgeCaseNote,
   badgeCasePoster,
@@ -45,36 +46,47 @@ describe('THE BADGE CASE', () => {
     expect(new Set(BADGES.map((badge) => badge.art.join('|'))).size).toBe(BADGES.length);
   });
 
+  it('has a slot for every keeper on a map a save can go to, and keeps the rest waiting', () => {
+    const keepers = bossEncounters(createRunTrainerEncounters());
+    expect(caseBadges().map((badge) => badge.bossId)).toEqual(
+      BADGES.filter((badge) => !isMapInProgress(keepers.find((boss) => boss.bossId === badge.bossId)!.mapId)).map(
+        (badge) => badge.bossId,
+      ),
+    );
+    // Boatswain Cragg's badge is made, and has a slot the day the vale opens.
+    expect(BADGES.some((badge) => badge.bossId === 'vale-quay-keeper')).toBe(true);
+  });
+
   it('shines a badge only once its keeper is beaten', () => {
     expect(wonBadges(baseGame())).toEqual([]);
     const game = baseGame({ progress: { defeatedBosses: ['overlook-warden', 'floodplain-toll-keeper'] } });
     // In the case's own order, whatever order the save beat them in.
     expect(wonBadges(game).map((badge) => badge.name)).toEqual(['TOLL BADGE', 'OVERLOOK BADGE']);
-    expect(badgeCaseNote(game)).toBe(`2 of ${BADGES.length} badges`);
+    expect(badgeCaseNote(game)).toBe(`2 of ${caseBadges().length} badges`);
     expect(badgeCaseNote(baseGame())).toBe('Every slot still empty');
   });
 
   it('reads out every badge it holds, and says how many slots are left', () => {
     const empty = badgeCaseLines(baseGame());
-    expect(empty[0]).toContain(`${BADGES.length} slots`);
+    expect(empty[0]).toContain(`${caseBadges().length} slots`);
     const two = badgeCaseLines(
       baseGame({ progress: { defeatedBosses: ['pallet-mill-keeper', 'floodplain-toll-keeper'] } }),
     );
-    expect(two[0]).toContain(`2 of ${BADGES.length} badges`);
-    expect(two[0]).toContain(`${BADGES.length - 2} slots still empty`);
+    expect(two[0]).toContain(`2 of ${caseBadges().length} badges`);
+    expect(two[0]).toContain(`${caseBadges().length - 2} slots still empty`);
     expect(two.slice(1)).toEqual([
       'TOLL BADGE: from Tollman Briggs, who held the bridge off Market Isle.',
       'MILL BADGE: from Miller Vance, who held the far bank of the millpond.',
     ]);
-    const full = badgeCaseLines(baseGame({ progress: { defeatedBosses: BADGES.map((badge) => badge.bossId) } }));
-    expect(full[0]).toContain(`All ${BADGES.length} badges`);
-    expect(full).toHaveLength(BADGES.length + 1);
+    const full = badgeCaseLines(baseGame({ progress: { defeatedBosses: caseBadges().map((badge) => badge.bossId) } }));
+    expect(full[0]).toContain(`All ${caseBadges().length} badges`);
+    expect(full).toHaveLength(caseBadges().length + 1);
   });
 
-  /** Eleven badges a pixel apart in a case four tiles wide: none may touch the frame or another. */
+  /** Twelve badges a pixel apart in a case four tiles wide: none may touch the frame or another. */
   it('seats every badge inside the velvet, clear of the frame and of every other badge', () => {
     const { frame, seats } = badgeSeats(BADGE_CASE_WALL);
-    expect(seats).toHaveLength(BADGES.length);
+    expect(seats).toHaveLength(caseBadges().length);
     const velvet = { left: frame.x + 2, top: frame.y + 2, right: frame.x + frame.width - 3, bottom: frame.y + frame.height - 3 };
     for (const seat of seats) {
       expect(seat.x).toBeGreaterThanOrEqual(velvet.left);

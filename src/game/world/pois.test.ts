@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
-import { BUILT_IN_MAP_IDS, getWorldMap, isMapInProgress } from '../worldMap';
-import { WORLD_POIS, cachePayoutLine, cacheRefusalLine, lockedCrateLines, tryActivatePoi, type WorldPoi } from './pois';
+import { BUILT_IN_MAP_IDS, getWorldMap } from '../worldMap';
+import { WORLD_POIS, cachePayoutLine, poisForMap, cacheRefusalLine, lockedCrateLines, tryActivatePoi, type WorldPoi } from './pois';
 
 const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
 
@@ -266,7 +266,10 @@ describe('what a cache pays', () => {
  * spent opening. Most locks in the game are these.
  */
 describe('a locked crate', () => {
-  const locked = WORLD_POIS.filter((poi) => poi.locked);
+  // Asked of each map through `poisForMap`, which a map drawn as a file
+  // answers too: Greystone Vale's crate is its file's strongroom.
+  const everyPoi = BUILT_IN_MAP_IDS.flatMap((mapId) => poisForMap(mapId));
+  const locked = everyPoi.filter((poi) => poi.locked);
   const unitsIn = (poi: WorldPoi) => poi.reward.reduce((total, { quantity }) => total + quantity, 0);
   const picks = (count: number) => {
     let held = count;
@@ -274,10 +277,7 @@ describe('a locked crate', () => {
   };
 
   it('stands on every shipped map, once, and opens no exit', () => {
-    // A map still being drawn gets its locked crate with its caches (`MAPS_IN_PROGRESS`).
-    expect(locked.map((poi) => poi.mapId).sort()).toEqual(
-      BUILT_IN_MAP_IDS.filter((mapId) => !isMapInProgress(mapId)).sort(),
-    );
+    expect(locked.map((poi) => poi.mapId).sort()).toEqual([...BUILT_IN_MAP_IDS].sort());
     for (const poi of locked) {
       expect(poi.effect, poi.label).toBeUndefined();
     }
@@ -285,7 +285,7 @@ describe('a locked crate', () => {
 
   it('pays more than any open cache on its own map, for the pick and the square it cost', () => {
     for (const poi of locked) {
-      const open = WORLD_POIS.filter((other) => other.mapId === poi.mapId && !other.locked);
+      const open = everyPoi.filter((other) => other.mapId === poi.mapId && !other.locked);
       for (const other of open) {
         expect(unitsIn(poi), `${poi.label} against ${other.label}`).toBeGreaterThanOrEqual(unitsIn(other));
       }

@@ -1,7 +1,8 @@
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
-import { TILE_SIZE } from '../worldMap';
+import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
+import { isMapInProgress, TILE_SIZE } from '../worldMap';
 
 /**
  * THE BADGE CASE: a glass-fronted case on the wall of THE BOLTHOLE's front
@@ -135,18 +136,43 @@ export const BADGES: readonly Badge[] = [
     art: ['...ooo..', '..obbao.', '.obaooo.', '.oao....', 'oaao..oo', 'oaaaooao', '.oaaaaco', '..oooooo'],
     ink: { o: RIM, a: '#30b0a8', b: '#b0f0e8', c: '#18706c', g: '#30b0a8' },
   },
+  {
+    bossId: 'vale-quay-keeper',
+    name: 'ANCHOR BADGE',
+    keeper: 'Boatswain Cragg',
+    held: 'the quay of the drowned port in Greystone Vale',
+    art: ['...oo...', '..obao..', '.ooaaoo.', '..oaco..', 'o.oaco.o', 'oaoaocao', '.oaaaco.', '..oooo..'],
+    ink: { o: RIM, a: '#5890c8', b: '#d0e8ff', c: '#2c5888', g: '#5890c8' },
+  },
 ];
+
+/**
+ * The badges the case has a slot for: every keeper on a map a save can go to.
+ * A keeper on a map not yet offered to saves (`MAPS_IN_PROGRESS`) has a badge
+ * made and waiting, and a slot the day the map opens.
+ */
+let caseBadgesMemo: readonly Badge[] | undefined;
+export function caseBadges(): readonly Badge[] {
+  caseBadgesMemo ??= (() => {
+    const keepers = bossEncounters(createRunTrainerEncounters());
+    return BADGES.filter((badge) => {
+      const keeper = keepers.find((boss) => boss.bossId === badge.bossId);
+      return keeper === undefined || !isMapInProgress(keeper.mapId);
+    });
+  })();
+  return caseBadgesMemo;
+}
 
 /** Badges won, in the case's order. */
 export function wonBadges(game: RestoredGame): readonly Badge[] {
   const beaten = new Set(game.raidProgress.defeatedBosses);
-  return BADGES.filter((badge) => beaten.has(badge.bossId));
+  return caseBadges().filter((badge) => beaten.has(badge.bossId));
 }
 
 /** The caption's second line: how full the case is. */
 export function badgeCaseNote(game: RestoredGame): string {
   const won = wonBadges(game).length;
-  return won === 0 ? 'Every slot still empty' : `${won} of ${BADGES.length} badges`;
+  return won === 0 ? 'Every slot still empty' : `${won} of ${caseBadges().length} badges`;
 }
 
 /** What the case says when it is faced: how full it is, then every badge in it. */
@@ -154,15 +180,15 @@ export function badgeCaseLines(game: RestoredGame): readonly string[] {
   const won = wonBadges(game);
   if (won.length === 0) {
     return [
-      `THE BADGE CASE. ${BADGES.length} slots, every one of them empty.`,
+      `THE BADGE CASE. ${caseBadges().length} slots, every one of them empty.`,
       'Every keeper out there holds a door, and every one of them has a badge for whoever beats them.',
     ];
   }
-  const left = BADGES.length - won.length;
+  const left = caseBadges().length - won.length;
   return [
     left === 0
-      ? `THE BADGE CASE. All ${BADGES.length} badges. Every keeper in Kanto has been beaten.`
-      : `THE BADGE CASE. ${won.length} of ${BADGES.length} badges, and ${left} slot${left === 1 ? '' : 's'} still empty.`,
+      ? `THE BADGE CASE. All ${caseBadges().length} badges. Every keeper in Kanto has been beaten.`
+      : `THE BADGE CASE. ${won.length} of ${caseBadges().length} badges, and ${left} slot${left === 1 ? '' : 's'} still empty.`,
     ...won.map((badge) => `${badge.name}: from ${badge.keeper}, who held ${badge.held}.`),
   ];
 }
@@ -193,7 +219,7 @@ export function badgeSeats(area: Rect): { readonly frame: Rect; readonly seats: 
   const width = area.width * TILE_SIZE;
   const height = area.height * TILE_SIZE;
   const frame = { x: 2, y: 4, width: width - 4, height: height - 8 };
-  const rows = [BADGES.slice(0, 6), BADGES.slice(6)];
+  const rows = [caseBadges().slice(0, 6), caseBadges().slice(6)];
   const rowHeight = BADGE_SIZE + 1;
   const top = frame.y + Math.floor((frame.height - (rows.length * rowHeight - 1)) / 2);
   const seats = rows.flatMap((row, rowIndex) => {

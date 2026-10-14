@@ -141,6 +141,19 @@ export const MAP_FILE_LIMITS = {
    * game's own maps drawn as files have their one, as every shipped map does.
    */
   maxLockedLandmarks: 0,
+  /**
+   * Exits a landmark opens (`MapFileOpens` 'landmark'): none on a player's map
+   * yet - the maker has no way to draw the pair - and one or two on the game's
+   * own, as the shipped maps' Sluice Wheel opens the West Culvert.
+   */
+  maxLandmarkExits: 0,
+  /**
+   * Doors a keeper holds (`MapFileDoor` 'boss'): none on a player's map, where a
+   * boss would be a party nobody measured; the game's own maps drawn as files
+   * hold their keeper's two, the keeper authored and measured in `trainers.ts`
+   * as every boss is.
+   */
+  maxBossDoors: 0,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -211,6 +224,8 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxLinks: 64,
   maxLegends: 2,
   maxLockedLandmarks: 2,
+  maxLandmarkExits: 2,
+  maxBossDoors: 4,
 };
 
 /** Every file map's id is its own id with this in front, so none can collide with a shipped map. */
@@ -1058,13 +1073,17 @@ export function floorHabitat(kind: string, style: string | undefined): MapFileHa
  * Key, which a raid opens by carrying the card to it - the shipped maps' key
  * exits (`extractionPoints.ts`), with the card the key every file shares. The
  * card lies on an item spot marked `key`, one raid in five, as the shipped
- * maps lay their keys.
+ * maps lay their keys. And `landmark` is an exit sealed until a raid works the
+ * landmark the file names, as the shipped maps' Sluice Wheel opens the West
+ * Culvert (`WorldPoi.effect`) - the game's own maps only
+ * (`maxLandmarkExits`).
  */
 export type MapFileOpens =
   | { readonly when: 'always' }
   | { readonly when: 'after'; readonly seconds: number }
   | { readonly when: 'dug' }
-  | { readonly when: 'key' };
+  | { readonly when: 'key' }
+  | { readonly when: 'landmark'; readonly landmark: string };
 
 /** The key a file's locked exits open to: FireRed's Card Key. */
 export const MAP_FILE_EXIT_KEY = 'card-key' satisfies ItemId;
@@ -1399,9 +1418,17 @@ export interface MapFileDistrict {
  * And one the hour opens: a `night` track (a rectangle), a stand of wood by
  * day that is a way through on a night raid (`NightGate`) - opened by nobody,
  * saved nowhere, and shut again on the next raid played by daylight.
+ *
+ * And one a keeper holds: a `boss` door (a rectangle), sandbagged shut until
+ * the keeper it names (`keeper`, the boss's id) is beaten, and open for good
+ * after, as every boss's gate is (`BossGate`). The keeper is authored and
+ * measured in `trainers.ts` like every boss, so only the game's own maps drawn
+ * as files hold one (`maxBossDoors`), each keeper with two.
  */
-export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf', 'smash-rock', 'night'] as const;
+export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf', 'smash-rock', 'night', 'boss'] as const;
 export type MapFileDoorKind = (typeof MAP_FILE_DOOR_KINDS)[number];
+/** The doors the map maker puts down: every kind but a keeper's, which only the game's own maps hold. */
+export type MakerDoorKind = Exclude<MapFileDoorKind, 'boss'>;
 
 export interface MapFileDoor {
   readonly kind: MapFileDoorKind;
@@ -1409,6 +1436,10 @@ export interface MapFileDoor {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /** A `boss` door's keeper: the boss id of the trainer who holds it (`trainers.ts`). */
+  readonly keeper?: string;
+  /** A `boss` door's name, as its caption and the drop-in screen say it. */
+  readonly name?: string;
 }
 
 export interface MapFileTrainer extends MapFileSpot {
@@ -1881,6 +1912,7 @@ export function readMapFile(
       (opens.when === 'always' ||
         opens.when === 'dug' ||
         opens.when === 'key' ||
+        (opens.when === 'landmark' && typeof opens.landmark === 'string') ||
         (opens.when === 'after' &&
           isWholeNumber(opens.seconds) &&
           opens.seconds > 0 &&
@@ -2004,6 +2036,27 @@ export function readMapFile(
       problems.push(`Landmark ${index + 1} is locked or says nothing about it.`);
     }
   });
+  // An exit a landmark opens names one the file stands, which is no locked
+  // crate: a lock is worked by a pick, and a pick opens nothing but the crate.
+  const landmarkExits = (Array.isArray(value.exits) ? value.exits.filter(isRecord) : []).filter(
+    (exit) => isRecord(exit.opens) && exit.opens.when === 'landmark',
+  );
+  if (landmarkExits.length > limits.maxLandmarkExits) {
+    problems.push(
+      limits.maxLandmarkExits === 0
+        ? 'An exit a landmark opens stands only on a map the game draws.'
+        : `A map holds at most ${limits.maxLandmarkExits} exits a landmark opens.`,
+    );
+  }
+  for (const exit of landmarkExits) {
+    const named = (exit.opens as Record<string, unknown>).landmark;
+    const landmark = landmarks.find((candidate) => candidate.name === named);
+    if (!landmark) {
+      problems.push(`Exit '${String(exit.name)}' is opened by a landmark the map does not have.`);
+    } else if (landmark.locked === true) {
+      problems.push(`Exit '${String(exit.name)}' is opened by a locked crate, which opens nothing.`);
+    }
+  }
   const lockedLandmarks = landmarks.filter((landmark) => landmark.locked === true).length;
   if (lockedLandmarks > limits.maxLockedLandmarks) {
     problems.push(
@@ -2096,10 +2149,26 @@ export function readMapFile(
         if (!fits) {
           problems.push(`${what} is not on the map.`);
         }
-        if (door.kind !== 'surf' && door.kind !== 'night' && (w !== 1 || h !== 1)) {
+        if (door.kind !== 'surf' && door.kind !== 'night' && door.kind !== 'boss' && (w !== 1 || h !== 1)) {
           problems.push(`${what} stands on one tile.`);
         }
+        if (door.kind === 'boss') {
+          if (typeof door.keeper !== 'string' || !/^[a-z0-9-]{1,40}$/.test(door.keeper)) {
+            problems.push(`${what} must name the keeper who holds it.`);
+          }
+          nameOf(what, door.name);
+        } else if (door.keeper !== undefined || door.name !== undefined) {
+          problems.push(`${what} is no keeper's door, so it has no keeper or name.`);
+        }
       });
+      const held = doors.filter((door) => door.kind === 'boss').length;
+      if (held > limits.maxBossDoors) {
+        problems.push(
+          limits.maxBossDoors === 0
+            ? 'A keeper\'s door is the game\'s own: a map holds none.'
+            : `A map holds at most ${limits.maxBossDoors} doors a keeper holds.`,
+        );
+      }
     }
   }
 
@@ -2668,7 +2737,7 @@ export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
 
 /** What a field-move door is called over it, and the move that opens it. */
 const DOOR_LOOKS: Readonly<
-  Record<Exclude<MapFileDoorKind, 'night'>, { readonly label: string; readonly fieldMove: FieldMoveId }>
+  Record<Exclude<MapFileDoorKind, 'night' | 'boss'>, { readonly label: string; readonly fieldMove: FieldMoveId }>
 > = {
   'cut-tree': { label: 'SMALL TREE', fieldMove: 'cut' },
   surf: { label: 'DEEP WATER', fieldMove: 'surf' },
@@ -2715,6 +2784,21 @@ export function fileDoorGates(file: MapFile, id: WorldMapId = playerMapId(file))
         tiles,
         night: true,
         closed: { material: 'tree' },
+        open: { material: ground },
+      };
+    }
+    if (door.kind === 'boss') {
+      // Sandbagged shut across whatever ground it stands on, and that ground
+      // walked once the keeper is beaten.
+      const under = materialOf(file.ground[door.y]?.[door.x]);
+      const ground: Material = under && !MATERIALS[under].solid ? under : 'grass';
+      return {
+        id: `${id}/door-${index + 1}`,
+        mapId: id,
+        label: (door.name ?? 'GATE').toUpperCase(),
+        tiles,
+        bossId: door.keeper ?? '',
+        closed: { material: ground, props: tiles.map((tile) => ({ name: 'sack', ...tile })) },
         open: { material: ground },
       };
     }
@@ -2878,6 +2962,12 @@ export function buildFileMap(
     const origin = origins.get(spot.area) ?? areas[0].rect;
     return { x: origin.x + spot.x, y: origin.y + spot.y };
   };
+  // A landmark by its name, as an exit it opens names it; and the exit each
+  // landmark opens, which its description says.
+  const landmarkId = (name: string): string =>
+    `${id}/landmark-${(file.landmarks ?? []).findIndex((landmark) => landmark.name === name) + 1}`;
+  const opensExit = (name: string): string | undefined =>
+    file.exits.find((exit) => exit.opens.when === 'landmark' && exit.opens.landmark === name)?.name.toUpperCase();
   return {
     id,
     name: file.name,
@@ -2978,14 +3068,17 @@ export function buildFileMap(
     ],
     pois: (file.landmarks ?? []).map((landmark, index) => {
       const kind = MAP_FILE_LANDMARKS[landmark.kind];
+      const opens = opensExit(landmark.name);
       return {
         id: `${id}/landmark-${index + 1}`,
         mapId: id,
         position: at(landmark),
         label: landmark.name.toUpperCase(),
-        description: `${kind.label}. ${kind.says}`,
+        description: `${kind.label}. ${kind.says}${opens ? ` Working it opens ${opens} as a way out.` : ''}`,
         reward: kind.reward.map((entry) => ({ ...entry })),
         ...(landmark.locked ? { locked: true as const } : {}),
+        // The exit it opens, as the shipped maps' Sluice Wheel opens theirs.
+        ...(opens ? { effect: 'unlock-extraction' as const, unlockedExtractionLabel: opens } : {}),
       };
     }),
     // The maker's own districts first, because the first listed wins a tile;
@@ -3083,7 +3176,9 @@ export function buildFileMap(
               ? { kind: 'dug' }
               : exit.opens.when === 'key'
                 ? { kind: 'key', keyId: MAP_FILE_EXIT_KEY }
-                : { kind: 'always' },
+                : exit.opens.when === 'landmark'
+                  ? { kind: 'poi-activated', poiId: landmarkId(exit.opens.landmark), poiLabel: exit.opens.landmark.toUpperCase() }
+                  : { kind: 'always' },
       };
     }),
   };

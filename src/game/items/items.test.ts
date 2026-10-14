@@ -4,7 +4,7 @@ import { BULBASAUR, Pokemon } from '../pokemon';
 import { EVOLUTIONS } from '../pokemon/evolution';
 import { getSpeciesById } from '../pokemon/species';
 import { MINIMUM_SUPPLIES } from '../stash';
-import { isMapInProgress, WORLD_MAPS } from '../worldMap';
+import { WORLD_MAPS } from '../worldMap';
 import {
   ITEM_DEFINITIONS,
   ItemCategory,
@@ -100,8 +100,7 @@ describe('materials', () => {
   });
 
   it('are field loot on every map, and not the same ones on each', () => {
-    // A map still being drawn has no loot pool of its own yet (`MAPS_IN_PROGRESS`).
-    const kindsByMap = Object.values(WORLD_MAPS).filter((map) => !isMapInProgress(map.id)).map((map) => ({
+    const kindsByMap = Object.values(WORLD_MAPS).map((map) => ({
       id: map.id,
       kinds: new Set(map.loot.map((item) => item.itemId).filter((itemId) => isMaterial(itemId))),
     }));
