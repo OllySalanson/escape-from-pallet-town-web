@@ -275,6 +275,31 @@ describe('whether a map works', () => {
     ]);
   });
 
+  it('says why a boxed-in drop-in leaves the hunter nowhere to arrive, and what to do (playtest 39 B9)', () => {
+    // A three-tile pocket with its exit beside the drop-in: it can leave, but
+    // nothing stands five steps out for the hunter.
+    const ground = Array.from({ length: 16 }, (_, y) => (y === 1 ? `C...${'C'.repeat(16)}` : 'C'.repeat(20)));
+    const pocket = edited({
+      width: 20,
+      height: 16,
+      ground,
+      buildings: [],
+      people: [],
+      signs: [],
+      landmarks: [],
+      districts: [],
+      trainers: [],
+      itemSpots: [],
+      dropIns: [{ ...SAMPLE.dropIns[0], name: 'Drop-in 1', x: 1, y: 1 }],
+      exits: [{ x: 3, y: 1, name: 'Stile', opens: { when: 'always' } }],
+    });
+    const room = checkMapFile(pocket).find((check) => check.id === 'hunter-room');
+    expect(room?.problems).toEqual([
+      'Drop-in 1 is too boxed in: the hunter arrives 5 steps away and has nowhere to stand. Open up more ground around it.',
+    ]);
+    expect(room?.faults?.[0]?.says).toBe('are too boxed in: the hunter arrives 5 steps away and has nowhere to stand');
+  });
+
   it('does not count a walk across one exit as a walk to anything beyond it', () => {
     // Two exits side by side across the north gap, and something to find
     // behind them: an open exit takes whoever steps on it, so nobody reaches it.

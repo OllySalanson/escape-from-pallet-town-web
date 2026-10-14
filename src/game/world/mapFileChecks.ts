@@ -1010,17 +1010,16 @@ export function checkMapFile(
 
   // The hunter arrives exactly this many steps from the player, never closer
   // (`findHunterSpawnTile`), so a drop-in with no ground that far out is a raid
-  // the hunter can never join.
+  // the hunter can never join. A maker has never been told that rule, so the
+  // problem says it and what to do (playtest 39 B9).
+  const boxedIn = `the hunter arrives ${HUNTER_SPAWN_DISTANCE} steps away and has nowhere to stand`;
   const hunterRoom = fromDropIn
     .filter(({ dropIn }) => walkable(dropIn))
     .filter(({ ground }) => !ground.some((row) => row.includes(HUNTER_SPAWN_DISTANCE)))
     .map(({ dropIn }) =>
       fault(
-        `${kindAndName('Drop-in', dropIn.name)} has no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on.`,
-        {
-          group: 'drop-ins',
-          says: `have no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on`,
-        },
+        `${kindAndName('Drop-in', dropIn.name)} is too boxed in: ${boxedIn}. Open up more ground around it.`,
+        { group: 'drop-ins', says: `are too boxed in: ${boxedIn}` },
         dropIn,
       ),
     );
