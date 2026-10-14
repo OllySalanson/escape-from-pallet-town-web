@@ -124,14 +124,20 @@ export const HARBOUR_NUDGE_EVENT = 'nudge';
  * A nudge: one browser telling another "look now" - that it has knocked at its
  * door, so the owner asks the database at once rather than at its next look.
  * It is a hint and nothing more: a nudge that is not true costs one question.
+ *
+ * A nudge may also say that a knock is `gone` - the knocker stopped knocking -
+ * so the owner is not asked about somebody who has walked off. It names the
+ * knock by its id, which only the knocker and the owner hold, and all it can
+ * do is take a question down.
  */
 export interface HarbourNudge {
   readonly from: string;
   readonly to: string;
+  readonly gone?: string;
 }
 
 export function encodeHarbourNudge(nudge: HarbourNudge): Record<string, unknown> {
-  return { u: nudge.from, t: nudge.to };
+  return nudge.gone ? { u: nudge.from, t: nudge.to, g: nudge.gone } : { u: nudge.from, t: nudge.to };
 }
 
 /** A nudge heard from another browser, or null if it is anything else. */
@@ -139,8 +145,12 @@ export function readHarbourNudge(payload: unknown): HarbourNudge | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
-  const { u, t } = payload as Record<string, unknown>;
-  return isPlayerId(u) && isPlayerId(t) ? { from: u, to: t } : null;
+  const { u, t, g } = payload as Record<string, unknown>;
+  if (!isPlayerId(u) || !isPlayerId(t)) {
+    return null;
+  }
+  // A knock id is the same shape as a player's; anything else is only "look now".
+  return isPlayerId(g) ? { from: u, to: t, gone: g } : { from: u, to: t };
 }
 
 /** What a player says about themselves on joining: only where they are. */

@@ -161,6 +161,20 @@ describe("this browser's place in the shared harbour", () => {
     expect(heard).toEqual([AMY]);
   });
 
+  it('tells the owner a knock is gone, and hands the owner which one', async () => {
+    const { link, wire } = await joined();
+    const heard: [string, string | undefined][] = [];
+    link.whenNudged((from, gone) => heard.push([from, gone]));
+    link.nudge(AMY, 'knock-id');
+    expect(wire.nudged).toEqual([{ from: ME, to: AMY, gone: 'knock-id' }]);
+    wire.hearNudge({ from: AMY, to: ME, gone: 'knock-id' });
+    wire.hearNudge({ from: AMY, to: ME });
+    expect(heard).toEqual([
+      [AMY, 'knock-id'],
+      [AMY, undefined],
+    ]);
+  });
+
   it('joins again as the player when the name was written while the first join was on its way', async () => {
     const wire = new FakeWire();
     let answer: (ok: boolean) => void = () => undefined;

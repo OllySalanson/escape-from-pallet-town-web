@@ -99,6 +99,11 @@ export function knockQuestion(knockerName: string): string {
   return `${knockerName} is at your door.`;
 }
 
+/** Said in place of the question once the knock is no longer at the door. */
+export function knockGoneLine(knockerName: string): string {
+  return `${knockerName} has gone from the step.`;
+}
+
 export const LET_IN = 'LET THEM IN';
 export const NOT_NOW = 'NOT NOW';
 

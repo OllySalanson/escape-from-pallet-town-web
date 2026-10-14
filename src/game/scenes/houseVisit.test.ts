@@ -20,12 +20,15 @@ vi.mock('../ui/KnockOverlay', () => ({
     return {};
   },
 }));
+const frontDoor = vi.hoisted((): { door: unknown } => ({ door: {} }));
 vi.mock('../harbour/harbour', () => ({
   harbour: () => ({ seenAs: 'me', link: { nudge: () => undefined } }),
-  harbourHouses: () => ({ service: {}, door: {} }),
+  harbourHouses: () => ({ service: {}, door: frontDoor.door }),
 }));
 
 import { BaseScene } from './BaseScene';
+import { HouseDoor } from '../harbour/houseDoor';
+import type { HouseService, KnockAtTheDoor } from '../harbour/houseService';
 import { knockScreenMarkup } from '../home/knocking';
 
 /**
@@ -125,5 +128,104 @@ describe('the hint on the house mat', () => {
 
   it("names none of them in somebody else's house", () => {
     expect(hintOnMat(true)).toBe('[DOWN] OUT');
+  });
+});
+
+/**
+ * A knock the knocker has walked away from (playtest 48, finding 8): the owner
+ * was still asked "AMY is at your door." six seconds after AMY stopped
+ * knocking, and LET THEM IN opened the door to nobody. The question is taken
+ * down once the knock is no longer at the door - withdrawn by the knocker's
+ * browser, or run out.
+ */
+describe('a knock that is no longer at the door', () => {
+  async function askedAtHome() {
+    let knocks: KnockAtTheDoor[] = [{ knockId: 'k-1', knockerName: 'AMY' }];
+    const service = {
+      atHome: () => Promise.resolve(),
+      knocksAtMyDoor: () => Promise.resolve(knocks),
+      answer: () => Promise.resolve(),
+    } as unknown as HouseService;
+    const door = new HouseDoor(service);
+    frontDoor.door = door;
+    door.inside({});
+    door.tick(1);
+    for (let turn = 0; turn < 3; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    const said: string[][] = [];
+    let promptsUp = 0;
+    let promptsDown = 0;
+    const layout = undefined;
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    Object.assign(scene, {
+      place: { room: { home: true } },
+      visit: null,
+      savedGame: { raidProgress: { homeLayout: layout } },
+      doorTold: true,
+      doorLayout: layout,
+      knockPrompt: null,
+      knockScreen: null,
+      namePrompt: null,
+      decor: null,
+      resting: false,
+      leaving: false,
+      targetTile: null,
+      dialogBox: { visible: false },
+      directionKeys: () => [],
+      spentPresses: { spendHeld: () => undefined },
+      say: (lines: readonly string[]) => said.push([...lines]),
+      askToLetIn(this: Record<string, unknown>, knock: KnockAtTheDoor) {
+        promptsUp += 1;
+        this.knockPrompt = { knock, prompt: { destroy: () => (promptsDown += 1) } };
+      },
+    });
+    const frame = (time: number) => (scene.watchFrontDoor as (time: number) => void).call(scene, time);
+    frame(2);
+    return {
+      door,
+      frame,
+      said,
+      scene,
+      runOut: () => {
+        knocks = [];
+      },
+      prompts: () => ({ up: promptsUp, down: promptsDown }),
+    };
+  }
+
+  it('takes the question down once the knocker has stopped knocking', async () => {
+    const home = await askedAtHome();
+    expect(home.prompts()).toEqual({ up: 1, down: 0 });
+    home.door.withdrawn('k-1');
+    home.frame(3);
+    expect(home.prompts()).toEqual({ up: 1, down: 1 });
+    expect(home.scene.knockPrompt).toBeNull();
+    expect(home.said).toEqual([['AMY has gone from the step.']]);
+    // Nor is the owner asked about the same knock again on the next look.
+    home.door.knocked();
+    home.frame(4);
+    for (let turn = 0; turn < 3; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    home.frame(5);
+    expect(home.prompts().up).toBe(1);
+  });
+
+  it('takes the question down once the knock has run out', async () => {
+    const home = await askedAtHome();
+    home.runOut();
+    home.door.knocked();
+    home.frame(3);
+    for (let turn = 0; turn < 3; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    home.frame(4);
+    expect(home.prompts()).toEqual({ up: 1, down: 1 });
+    expect(home.said).toEqual([['AMY has gone from the step.']]);
+  });
+
+  it('keeps asking while the knock is still at the door', async () => {
+    const home = await askedAtHome();
+    home.door.knocked();
+    home.frame(3);
+    for (let turn = 0; turn < 3; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    home.frame(4);
+    expect(home.prompts()).toEqual({ up: 1, down: 0 });
+    expect(home.said).toEqual([]);
   });
 });

@@ -158,6 +158,24 @@ try {
   await toFront(olly);
   await olly.screenshot(`${out}/home-mat-hint.png`);
 
+  // AMY knocks and stops before he answers (playtest 48, finding 8): OLLY's
+  // question is taken down, rather than left to open the door to nobody.
+  await press(amy, 'KeyK');
+  await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.includes("OLLY's house") && row.includes('Home')));
+  await press(amy, 'Enter');
+  await until(amy, 'knocking', (s) => s.knockScreen && s.status === null);
+  await until(olly, 'OLLY asked', (s) => s.asked === 'AMY');
+  await press(amy, 'Escape');
+  await until(amy, 'AMY stopped knocking', (s) => s.status?.includes('stopped knocking') ?? false);
+  const goneFromStep = await until(olly, "OLLY's question taken down", (s) => s.asked === null && (s.dialog?.endsWith('step.') ?? false), 6000);
+  if (!goneFromStep.dialog.includes('AMY has gone from the step.')) throw new Error(`OLLY was told ${JSON.stringify(goneFromStep.dialog)}`);
+  console.log(`a stopped knock: ${goneFromStep.dialog}`);
+  await toFront(olly);
+  await olly.screenshot(`${out}/knock-withdrawn.png`);
+  await readThrough(olly);
+  await press(amy, 'Escape');
+  await until(amy, 'the knock screen put away', (s) => !s.knockScreen && s.live);
+
   // AMY knocks again: OLLY is home now.
   await press(amy, 'KeyK');
   await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.includes("OLLY's house") && row.includes('Home')));

@@ -132,6 +132,7 @@ import { houseSnapshot, readHouseSnapshot } from '../home/houseSnapshot';
 import {
   LET_IN,
   NOT_NOW,
+  knockGoneLine,
   knockQuestion,
   notYoursLine,
   notYoursToMoveLine,
@@ -604,7 +605,9 @@ export class BaseScene extends Phaser.Scene {
       this.askHouseName();
     }
     // Another player's browser saying it knocked here: look at the door now.
-    harbour()?.link.whenNudged(() => harbourHouses()?.door.knocked());
+    harbour()?.link.whenNudged((_from, gone) =>
+      gone ? harbourHouses()?.door.withdrawn(gone) : harbourHouses()?.door.knocked(),
+    );
   }
 
   public update(time: number, deltaMs: number): void {
@@ -2205,6 +2208,11 @@ export class BaseScene extends Phaser.Scene {
       this.doorLayout = layout;
       houses.door.inside(houseSnapshot(this.savedGame));
     }
+    // A question about a knock that is no longer at the door - the knocker
+    // stopped, or the minute ran out - is taken down rather than answered.
+    if (this.knockPrompt && !houses.door.stillAtTheDoor(this.knockPrompt.knock.knockId)) {
+      this.knockerWentAway(this.knockPrompt.knock);
+    }
     const knock = houses.door.atTheDoor;
     if (
       knock &&
@@ -2273,6 +2281,14 @@ export class BaseScene extends Phaser.Scene {
     this.say([letIn ? `You open the door to ${knock.knockerName}.` : `You leave ${knock.knockerName} on the step.`], []);
   }
 
+  private knockerWentAway(knock: KnockAtTheDoor): void {
+    this.knockPrompt?.prompt.destroy();
+    this.knockPrompt = null;
+    this.spentPresses.spendHeld(this.directionKeys());
+    audioManager.play('cancel');
+    this.say([knockGoneLine(knock.knockerName)], []);
+  }
+
   /** Whether K knocks here: in the player's own house, or on its step outside. */
   private canKnockHere(): boolean {
     return (Boolean(this.place.room?.home) && !this.visit) || (!this.place.room && this.onHomeStep());
@@ -2307,7 +2323,7 @@ export class BaseScene extends Phaser.Scene {
     this.knockScreen = openKnockScreen(
       this,
       houses.service,
-      (owner) => harbour()?.link.nudge(owner),
+      (owner, gone) => harbour()?.link.nudge(owner, gone),
       (letIn) => this.knocked(letIn),
       this.place.room ? 'house' : 'step',
     );
