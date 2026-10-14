@@ -505,6 +505,20 @@ describe('people, signs, landmarks, districts and trainers in a file', () => {
     expect(failing({ ...full, signs: [{ x: 13, y: 19, lines: ['what the fuck'] }] })).toEqual(['words']);
   });
 
+  it('names the field a refused word is in, and never repeats a refused name (playtest 39 B7)', () => {
+    const problems = (file: MapFile) => checkMapFile(file).find((check) => check.id === 'words')?.problems;
+    const trainer = full.trainers![0];
+    expect(problems({ ...full, trainers: [{ ...trainer, name: 'Dick' }] })).toEqual([
+      'Trainer 1: their name uses a word the game does not show. Change it.',
+    ]);
+    expect(problems({ ...full, trainers: [{ ...trainer, lines: ['Hello there', 'what the fuck'] }] })).toEqual([
+      'Trainer Bug Kid: line 2 uses a word the game does not show. Change it.',
+    ]);
+    expect(problems({ ...full, signs: [{ x: 13, y: 19, lines: ['you bitch', 'shit'] }] })).toEqual([
+      'Sign 1: line 1 and line 2 use words the game does not show. Change them.',
+    ]);
+  });
+
   it('names the drop-in a trainer can see, so the maker knows which one to clear (playtest 39 B10)', () => {
     const watching = { ...full, trainers: [{ ...full.trainers![0], x: 15, y: 17, facing: 'down', sight: 4 }] } as MapFile;
     const watch = checkMapFile(watching).find((check) => check.id === 'watch');

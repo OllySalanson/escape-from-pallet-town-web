@@ -1068,60 +1068,100 @@ export function checkMapFile(
     ];
   });
 
-  const said: { what: string; text: string; at?: MapFileSpot }[] = [
-    { what: "The map's name", text: file.name },
-    { what: "The maker's name", text: file.maker },
-    ...file.dropIns.flatMap((spot) => [
-      { what: kindAndName('Drop-in', spot.name), text: spot.name, at: spot },
-      { what: kindAndName('Drop-in', spot.name), text: spot.description ?? '', at: spot },
-    ]),
-    ...file.exits.map((spot) => ({
-      what: kindAndName('Exit', spot.name),
-      text: spot.name,
+  // A refusal names the field a word is in and never quotes the word (the
+  // filter's list stays private), and a thing whose *name* is refused is
+  // called by its number, because its name is the very word being refused
+  // (playtest 39 B7: "Trainer Dick says something the game will not show"
+  // left a maker guessing whether the name or a line was at fault).
+  const lineFields = (lines: readonly string[]) =>
+    lines.map((text, index) => ({ field: `line ${index + 1}`, text }));
+  const said: {
+    who: string;
+    numbered: string;
+    at?: MapFileSpot;
+    fields: { field: string; text: string }[];
+  }[] = [
+    { who: 'The map', numbered: 'The map', fields: [{ field: 'its name', text: file.name }] },
+    { who: 'The map', numbered: 'The map', fields: [{ field: "its maker's name", text: file.maker }] },
+    ...file.dropIns.map((spot, index) => ({
+      who: kindAndName('Drop-in', spot.name),
+      numbered: `Drop-in ${index + 1}`,
       at: spot,
+      fields: [
+        { field: 'its name', text: spot.name },
+        { field: 'its description', text: spot.description ?? '' },
+      ],
     })),
-    ...landmarks.map((spot) => ({
-      what: kindAndName('Landmark', spot.name),
-      text: spot.name,
+    ...file.exits.map((spot, index) => ({
+      who: kindAndName('Exit', spot.name),
+      numbered: `Exit ${index + 1}`,
       at: spot,
+      fields: [{ field: 'its name', text: spot.name }],
     })),
-    ...people.map((spot) => ({
-      what: spot.name,
-      text: [spot.name, ...spot.lines].join(' '),
+    ...landmarks.map((spot, index) => ({
+      who: kindAndName('Landmark', spot.name),
+      numbered: `Landmark ${index + 1}`,
       at: spot,
+      fields: [{ field: 'its name', text: spot.name }],
+    })),
+    ...people.map((spot, index) => ({
+      who: spot.name,
+      numbered: `Person ${index + 1}`,
+      at: spot,
+      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines)],
     })),
     ...signs.map((spot, index) => ({
-      what: `Sign ${index + 1}`,
-      text: spot.lines.join(' '),
+      who: `Sign ${index + 1}`,
+      numbered: `Sign ${index + 1}`,
       at: spot,
+      fields: lineFields(spot.lines),
     })),
-    ...trainers.map((spot) => ({
-      what: kindAndName('Trainer', spot.name),
-      text: [spot.name, ...spot.lines].join(' '),
+    ...trainers.map((spot, index) => ({
+      who: kindAndName('Trainer', spot.name),
+      numbered: `Trainer ${index + 1}`,
       at: spot,
+      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines)],
     })),
-    ...(file.districts ?? []).map((district) => ({
-      what: `District ${district.name}`,
-      text: district.name,
+    ...(file.districts ?? []).map((district, index) => ({
+      who: `District ${district.name}`,
+      numbered: `District ${index + 1}`,
       at: district,
+      fields: [{ field: 'its name', text: district.name }],
     })),
-    ...(file.areas ?? []).map((area) => ({ what: `The inside ${area.name}`, text: area.name })),
-    ...fileLinks.flatMap((link) =>
-      link.sails
-        ? [{ what: `The boat ${link.sails.name}`, text: link.sails.name, at: link.ends[0] }]
-        : [],
-    ),
+    ...(file.areas ?? []).map((area, index) => ({
+      who: `The inside ${area.name}`,
+      numbered: `Inside ${index + 1}`,
+      fields: [{ field: 'its name', text: area.name }],
+    })),
+    ...fileLinks
+      .flatMap((link) => (link.sails ? [{ sails: link.sails, at: link.ends[0] }] : []))
+      .map(({ sails, at: place }, index) => ({
+        who: `The boat ${sails.name}`,
+        numbered: `Boat ${index + 1}`,
+        at: place,
+        fields: [{ field: 'its name', text: sails.name }],
+      })),
   ];
   const words = said
-    .filter(({ text }) => refusedWords(text).length > 0)
-    .map(({ what, at: place }) =>
-      fault(
-        `${what} says something the game will not show. Reword it.`,
-        { group: 'names and lines', says: 'say something the game will not show' },
+    .map((thing) => ({
+      ...thing,
+      refused: thing.fields.filter(({ text }) => refusedWords(text).length > 0),
+    }))
+    .filter(({ refused }) => refused.length > 0)
+    .map(({ who, numbered, at: place, refused }) => {
+      const nameRefused = refused.some(({ field }) => field.endsWith('name'));
+      const fields = refused.map(({ field }) => field);
+      const listed =
+        fields.length === 1
+          ? fields[0]
+          : `${fields.slice(0, -1).join(', ')} and ${fields[fields.length - 1]}`;
+      const subject = `${nameRefused ? numbered : who}: ${listed}`;
+      return fault(
+        `${subject[0].toUpperCase()}${subject.slice(1)} ${fields.length === 1 ? 'uses a word' : 'use words'} the game does not show. Change ${fields.length === 1 ? 'it' : 'them'}.`,
+        { group: 'names and lines', says: 'use a word the game does not show' },
         ...(place ? [place] : []),
-      ),
-    )
-    .filter((found, index, all) => all.findIndex((other) => other.text === found.text) === index);
+      );
+    })
 
   // The two checks about insides are only asked of a map that has one: a
   // tick against "every door leads somewhere" on a map with no doors says
