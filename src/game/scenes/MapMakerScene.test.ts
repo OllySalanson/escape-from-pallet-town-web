@@ -540,6 +540,24 @@ describe('undo and zoom across the session', () => {
     expect(groundAt(scene.file, { x: 20, y: 4 })).toBe('.');
   });
 
+  it('survive a trip to the title on a map with an inside', () => {
+    storeDraft(sampleLane);
+    const { scene } = openMaker();
+    // What GO INSIDE does: the room and its door, as one step of undo.
+    const made = makeInside(scene.file, 0);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    scene.history.push(made.file);
+
+    scene.overlay.clicks.get('[data-back]')!();
+    reopen(scene);
+
+    expect(scene.history.canUndo).toBe(true);
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect(scene.file.areas ?? []).toHaveLength(0);
+  });
+
   it('start afresh when the stored draft is not the one the history ends on', () => {
     storeDraft(withSigns());
     const { scene } = openMaker();

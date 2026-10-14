@@ -39,6 +39,7 @@ import { generateMapName } from '../maker/mapNames';
 import {
   loadMakerStore,
   mapFileText,
+  sameMapFile,
   walkedVersion,
   isUntouchedBlank,
   lastMakerName,
@@ -566,7 +567,7 @@ export class MapMakerScene extends Phaser.Scene {
    */
   private openHistory(file: MapFile): void {
     const kept = sessionHistories.get(this.draftKey);
-    if (kept && (kept.value === file || mapFileText(kept.value) === mapFileText(file))) {
+    if (kept && sameMapFile(kept.value, file)) {
       this.history = kept;
       return;
     }
