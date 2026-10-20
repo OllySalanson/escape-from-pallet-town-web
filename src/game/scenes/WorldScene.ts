@@ -4769,7 +4769,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const outstanding = remainingMarkers(contract, contractSteps);
     if (outstanding.length === 0) {
-      return contract.requiredExitLabel ? this.requiredExitCue(contract.requiredExitLabel) : undefined;
+      if (contract.requiredExitLabel) {
+        return this.requiredExitCue(contract.requiredExitLabel);
+      }
+      // The job is done and only walking out banks it, so the chip names the
+      // way out - with an empty pack it fell through to FIND LOOT, THEN
+      // EXTRACT, which sends a player holding a finished survey off looking.
+      const exit = this.nearestExitCue();
+      return exit ? `BANK VIA ${exit.label.toUpperCase()}: ${exit.heading}` : 'EXTRACT TO BANK THE CONTRACT';
     }
     // Straight-line distance, not a path search: the chip names the stop the
     // player is closest to so it changes as they move, and running that search

@@ -88,4 +88,34 @@ describe('the objective chip once the job is done', () => {
     expect(plan.extractionPoints.map((point) => point.label)).toContain(cue!.label);
     expect(cue!.heading).toMatch(/^(N|NE|E|SE|S|SW|W|NW)$/);
   });
+
+  it('names the way out once every stop of a contract is made, pack empty or not', () => {
+    // Route 1's braid survey is three stakes and no thing to carry, so with
+    // the third one read the chip fell through to FIND LOOT, THEN EXTRACT -
+    // sending a player with the job done off looking, when walking out is
+    // the one thing left that banks it.
+    const survey = getContract('survey-the-braid')!;
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+      { mapId: 'route-1', durationMs: 300_000 },
+    );
+    const map = getWorldMap('route-1');
+    const scene = Object.create(WorldScene.prototype) as WorldScene;
+    Object.assign(scene as object, {
+      currentMap: map,
+      currentTile: survey.markers[survey.markers.length - 1].position,
+      collisionData: map.collision,
+      activatedPoiIds: new Set<string>(),
+      exitCueKey: '',
+      runSession: { manager, exitsOpened: [], plan: generateRunPlan(42, undefined, 'route-1', survey) },
+    });
+    const driven = scene as unknown as Driven;
+    const exit = driven.nearestExitCue();
+
+    expect(exit).toBeDefined();
+    expect(driven.contractNavigationCue(survey.markers.map((marker) => marker.id))).toBe(
+      `BANK VIA ${exit!.label.toUpperCase()}: ${exit!.heading}`,
+    );
+  });
 });
