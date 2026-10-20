@@ -1536,7 +1536,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .figuresOn(this.currentMap.id)
       .filter((figure) => onMap.has(figure.id) && !busy.has(figure.id))
       .map((figure) => ({ id: figure.id, tile: figure.tile }));
-    return nearestQuarry(hunter, [{ id: room.me, tile: this.currentTile }, ...friends]);
+    // By the walk through the doors, as the chip counts it: one search from the hunter serves every player.
+    return nearestQuarry(hunter, [{ id: room.me, tile: this.currentTile }, ...friends], (tile) =>
+      stepsTowards(this.currentMap, tile, hunter),
+    );
   }
 
   /**

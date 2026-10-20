@@ -139,15 +139,22 @@ export function hunterKeeper(me: string, othersOnMap: readonly string[], busy: R
   return free[0] ?? me;
 }
 
-/** Whoever of these players is nearest the hunter, by tiles; a tie goes to the lowest id. */
+/**
+ * Whoever of these players is nearest the hunter; a tie goes to the lowest id.
+ * Nearest is `stepsTo` when the scene measures the walk - on a map with rooms
+ * a room is laid east of the outdoors with dark between, so a straight count
+ * sent the hunter on its doorstep after a friend down the lane instead of the
+ * player just inside - and tiles otherwise.
+ */
 export function nearestQuarry<T extends { readonly id: string; readonly tile: GridPosition }>(
   hunter: GridPosition,
   players: readonly T[],
+  stepsTo: (tile: GridPosition) => number = (tile) => Math.abs(tile.x - hunter.x) + Math.abs(tile.y - hunter.y),
 ): T | null {
   let best: T | null = null;
   let bestDistance = Infinity;
   for (const player of [...players].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
-    const distance = Math.abs(player.tile.x - hunter.x) + Math.abs(player.tile.y - hunter.y);
+    const distance = stepsTo(player.tile);
     if (distance < bestDistance) {
       best = player;
       bestDistance = distance;
