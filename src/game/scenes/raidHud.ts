@@ -55,9 +55,10 @@ export function raidClockView(
   // An explorer run's clock is eight hours long, which is a number nobody
   // wants counted down in the corner of a map they are looking at. The chip
   // says which game this is instead - the one thing about the corner of the
-  // screen that is still worth saying in that mode.
+  // screen that is still worth saying in that mode - and whether it is night,
+  // which the explorer's final check promised and nothing else in the world says.
   if (playtest) {
-    return { label: PLAYTEST_CLOCK_LABEL, tone: 'calm', pulses: false };
+    return { label: night ? `NIGHT ${PLAYTEST_CLOCK_LABEL}` : PLAYTEST_CLOCK_LABEL, tone: 'calm', pulses: false };
   }
   if (isEnraged) {
     // The raid clock is spent, but the grace period is the number that now

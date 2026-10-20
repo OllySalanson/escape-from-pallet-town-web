@@ -133,6 +133,13 @@ describe('the explorer run', () => {
     // And the ordinary raid's clock is the clock it always was.
     expect(raidClockView(1_000, false, 0).label).toMatch(/RAID/);
   });
+
+  it('still says a raid is at night, because the clock chip is the only place that does', () => {
+    // The final check promises an explorer a "night raid", the night track and
+    // the night's wildlife are open, and the chip is the one marker in the world.
+    expect(raidClockView(1_000, false, 0, true, true).label).toBe(`NIGHT ${PLAYTEST_CLOCK_LABEL}`);
+    expect(raidClockView(1_000, false, 0, true, false).label).toBe(PLAYTEST_CLOCK_LABEL);
+  });
 });
 
 describe('the explorer run it deals', () => {
