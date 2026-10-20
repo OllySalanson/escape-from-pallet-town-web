@@ -14,7 +14,7 @@
 // out stands the player where they read it from rather than at the door.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -158,11 +158,16 @@ try {
 
   // And the drop-in screen, which draws the same picture as big as it goes.
   await walkIntoBase(page, 'oaks-lab');
-  for (const label of ['Start a raid', 'Bulbasaur', 'Choose drop-in']) {
-    await page.waitFor(
-      `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return false; b.click(); return true; })()`,
-      { what: label },
-    );
+  // A lone Pokemon is packed for the raid already (`packLonePokemon`), and
+  // clicking its row again would take it back out: `takePokemon` never does.
+  const clickLabelled = (label) =>
+    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return false; b.click(); return true; })()`;
+  for (const [step, what] of [
+    [clickLabelled('Start a raid'), 'Start a raid'],
+    [takePokemon('Bulbasaur'), 'Bulbasaur in the raid party'],
+    [clickLabelled('Choose drop-in'), 'Choose drop-in'],
+  ]) {
+    await page.waitFor(step, { what });
     await sleep(250);
   }
   await page.waitFor(`document.querySelector('canvas[data-picture][data-painted]') !== null`, { what: 'the drop-in picture' });

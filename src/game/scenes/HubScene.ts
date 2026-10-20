@@ -8,6 +8,7 @@ import {
   beaconUnlockAtMs,
   checkBerth,
   DeploymentFlow,
+  faintedRefusal,
   FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
   getWorkshopUpgrade,
@@ -743,6 +744,7 @@ export class HubScene extends Phaser.Scene {
     }
 
     audioManager.play('heal');
+    this.flow?.packRevivedLonePokemon();
     this.savedGame = { ...this.savedGame, pendingRecoveryMs: outcome.pendingRecoveryMs };
     this.savedGame = {
       ...this.savedGame,
@@ -2648,11 +2650,14 @@ export class HubScene extends Phaser.Scene {
         const name = escapeAttribute(stored.pokemon.name);
         // The cursor starts on the first Pokemon, not on the sort chip above
         // the list: an Enter on arrival re-sorted the stash (playtest 44 #2).
-        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${added ? `Take ${name} back out of the raid.` : stored.pokemon.isFainted ? `${name} has fainted and cannot fight. Only the Pokémon Center can revive ${single ? 'your only Pokémon' : 'it'}.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
+        // A fainted Pokemon is refused by the flow (`togglePokemon`), so its row
+        // is a cursor stop that says why rather than an ADD that does nothing.
+        const fainted = !added && stored.pokemon.isFainted;
+        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}${fainted ? ' aria-disabled="true"' : ''} data-help="${added ? `Take ${name} back out of the raid.` : fainted ? faintedRefusal(name, single) : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
           stored,
           // A tick, as every chosen row on these screens is marked: a ten-letter
           // name and its health bar leave no room for a word beside them.
-          added ? pixelTag('', 'good', true) : pixelTag('Add'),
+          added ? pixelTag('', 'good', true) : fainted ? pixelTag('Fainted', 'risk') : pixelTag('Add'),
         )}</button>`;
       })
       .join('');

@@ -225,6 +225,9 @@ describe('the lobby as a screen of the game', () => {
     expect(wiped).toContain('2 fainted · see Nurse Joy');
     expect(wiped).not.toContain('treat them first');
     expect(wiped).not.toContain(`Add ${partner.pokemon.base.name}`);
+    // The row says so too: no ADD on a Pokemon the party will not take.
+    expect(wiped).toContain(`data-pokemon="${partner.id}" data-shows="${partner.id}" data-cursor-start aria-disabled="true"`);
+    expect(wiped).not.toContain('px-tag-plain">Add<');
     // Nothing is packed yet, and the bar says why nothing can be.
     expect(wiped).not.toContain('Add a Pokémon from your stash');
     expect(wiped).toContain('Every Pokémon here has fainted. Revive one at the Pokémon Center before you deploy.');
@@ -505,15 +508,17 @@ describe('hub deployment route', () => {
 
   it('revives a sole Pokemon that came home fainted and lets it deploy again', () => {
     const { hub, start, worn } = createWornHub((maxHp) => maxHp);
-    hub.flow.togglePokemon('charmander-1');
+    // A fainted Pokemon is never packed, so the row refuses it and says why.
+    expect(hub.flow.togglePokemon('charmander-1')).toMatch(/fainted/);
 
     expect(worn.pokemon.isFainted).toBe(true);
     expect(hub.flow.isDeployable).toBe(false);
-    expect(hub.flow.advance()).toMatch(/fainted/);
+    expect(hub.flow.advance()).toMatch(/Choose at least one/);
 
     hub.recover(['charmander-1']);
 
     expect(worn.pokemon.isFainted).toBe(false);
+    expect(hub.flow.togglePokemon('charmander-1')).toBeUndefined();
     expect(hub.flow.advance()).toBeUndefined();
     readyToDeploy(hub);
     deploy(hub, start);

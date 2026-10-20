@@ -158,6 +158,19 @@ describe('deployment flow', () => {
     expect(new DeploymentFlow(stash).party).toEqual([]);
   });
 
+  it('packs a lone Pokemon revived while the loadout is open, which it left out for fainting', () => {
+    const stash = createStartingStash();
+    const [only] = stash.listPokemon();
+    only.pokemon.currentHp = 0;
+    const flow = new DeploymentFlow(stash);
+    expect(flow.togglePokemon(only.id)).toMatch(/your only|revive it/);
+    expect(flow.party).toEqual([]);
+
+    expect(stash.recoverPokemon(only.id)).toBe(true);
+    flow.packRevivedLonePokemon();
+    expect(flow.party.map(({ id }) => id)).toEqual([only.id]);
+  });
+
   it('deploys, and secures, a Pokemon kept in a later box exactly as one kept in the first', () => {
     const { flow, stash } = seedFlow();
     const shelf = stash.addBox();
@@ -202,31 +215,35 @@ describe('deployment flow', () => {
     const fainted = stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon;
     fainted.takeDamage(fainted.maxHp);
 
-    flow.togglePokemon('charmander-1');
-    expect(flow.party).toHaveLength(1);
+    expect(flow.togglePokemon('charmander-1')).toMatch(/fainted/);
+    expect(flow.party).toHaveLength(0);
     expect(flow.isDeployable).toBe(false);
-    expect(flow.advance()).toMatch(/fainted/);
+    expect(flow.advance()).toMatch(/Choose at least one/);
     expect(flow.step).toBe('loadout');
 
     // A recovery at base is the way out, and reopens the same route.
     expect(stash.recoverPokemon('charmander-1')).toBe(true);
+    expect(flow.togglePokemon('charmander-1')).toBeUndefined();
     expect(flow.isDeployable).toBe(true);
     expect(flow.advance()).toBeUndefined();
     expect(flow.step).toBe('dropin');
   });
 
-  it('still deploys a fainted Pokemon alongside one that can fight', () => {
+  it('never packs a fainted Pokemon, which could only be lost, even beside one that can fight', () => {
     const { flow, stash } = seedFlow();
     const fainted = stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon;
     fainted.takeDamage(fainted.maxHp);
 
-    flow.togglePokemon('charmander-1');
-    flow.togglePokemon('bulbasaur-1');
+    expect(flow.togglePokemon('charmander-1')).toBe(
+      `${fainted.name} has fainted and cannot fight. Only the Pokémon Center can revive it.`,
+    );
+    expect(flow.togglePokemon('bulbasaur-1')).toBeUndefined();
 
-    expect(flow.isDeployable).toBe(true);
+    expect(flow.includesPokemon('charmander-1')).toBe(false);
+    expect(flow.securesPokemon('charmander-1')).toBe(false);
     expect(flow.advance()).toBeUndefined();
     expect(flow.advance()).toBeUndefined();
-    expect(flow.deploy().party.map((stored) => stored.id)).toEqual(['charmander-1', 'bulbasaur-1']);
+    expect(flow.deploy().party.map((stored) => stored.id)).toEqual(['bulbasaur-1']);
   });
 
   it('deploys exactly the party, supplies, insertion and secure slot that were confirmed', () => {
