@@ -473,7 +473,7 @@ export class MenuOverlay {
               .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
               .flatMap((element) =>
                 (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
-                  ({ top, bottom }) => ({ top, bottom, element, heading: element.classList.contains('px-subheading') }),
+                  ({ top, bottom }) => ({ top, bottom, element, heading: headsWhatFollows(element.classList) }),
                 ),
               )
           : [];
@@ -786,6 +786,17 @@ export function scrollCoverHeight(
     return minimum;
   }
   return Math.ceil(cover / unit - 0.001) * unit;
+}
+
+/**
+ * Whether a row is a heading over the rows under it, and so never the last
+ * line above a MORE strip: a list's `.px-subheading` band, and the small
+ * `.px-label` a pane names its parts with. Only the band counted, and the raid
+ * party's pane at the smallest stage ended on STATS over its strip, which
+ * reads as a Pokemon with no stats.
+ */
+export function headsWhatFollows(classes: { contains(name: string): boolean }): boolean {
+  return classes.contains('px-subheading') || classes.contains('px-label');
 }
 
 /**

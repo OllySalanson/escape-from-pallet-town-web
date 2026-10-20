@@ -10,7 +10,7 @@ vi.mock('phaser', () => ({
 
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
-import { scrollCoverHeight } from './MenuOverlay';
+import { headsWhatFollows, scrollCoverHeight } from './MenuOverlay';
 import { pokemonDossier } from './pokemonDossier';
 
 const stylesheet = await readFile(new URL('../../style.css', import.meta.url), 'utf8');
@@ -46,6 +46,8 @@ const ROWS: Record<Block, readonly (readonly [gapAbove: number, height: number])
   moves: [[0, 12], [1, 12], [3, 12]],
 };
 const BLOCK_GAP = 2;
+/** Which of those rows are a block's `.px-label` (EXPERIENCE, STATS, MOVES, the deeds' label). */
+const LABELS: Record<Block, readonly number[]> = { figure: [], vitals: [], deeds: [0], growth: [0, 3], moves: [0] };
 /** The dossier pane under the party list at 640x480, in game pixels. */
 const PANE = { top: 0, bottom: 139 };
 /** The MORE strip when it covers nothing: a line and its rule (`MORE_STRIP_UNITS`). */
@@ -83,5 +85,35 @@ describe("the dossier's fold at the smallest stage", () => {
     expect(cover - BARE_STRIP).toBeLessThan(13);
     // And the strip still has something under it to count.
     expect(rows.some((row) => row.bottom > PANE.bottom - cover)).toBe(true);
+  });
+
+  it('never leaves a label such as STATS as the last line above the strip', () => {
+    // The same pane stacked at the smallest stage, but a little taller (the
+    // pane takes the room the list leaves it): the fold falls through the
+    // stats themselves, and taken alone that left STATS over the strip.
+    const stacked: Block[] = ['vitals', 'deeds', 'growth', 'moves', 'figure'];
+    const rows: { top: number; bottom: number; heading: boolean; name: string }[] = [];
+    let y = 0;
+    stacked.forEach((block, index) => {
+      y += index === 0 ? 0 : BLOCK_GAP;
+      ROWS[block].forEach(([gap, height], row) => {
+        y += gap;
+        const classes = LABELS[block].includes(row) ? ['px-label'] : [];
+        rows.push({
+          top: y,
+          bottom: y + height,
+          heading: headsWhatFollows({ contains: (name) => classes.includes(name) }),
+          name: `${block}:${row}`,
+        });
+        y += height;
+      });
+    });
+    const pane = { top: 0, bottom: 152 };
+
+    const cover = scrollCoverHeight(pane, rows, 1);
+    const fold = pane.bottom - cover;
+    const lastAbove = rows.filter((row) => row.bottom <= fold + 0.5).at(-1)!;
+    expect(lastAbove.name).not.toBe('growth:3');
+    expect(lastAbove.heading).toBe(false);
   });
 });
