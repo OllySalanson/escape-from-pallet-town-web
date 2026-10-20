@@ -9,6 +9,9 @@ import { BASE_TILESET } from './baseTileset';
 import { BASE_DOORS, type BaseDoor } from './doors';
 import { BASE_MAP_HEIGHT, BASE_MAP_WIDTH, BASE_SPAWN } from './baseMap';
 import type { GridPosition } from '../movement/gridMovement';
+import { FIRST_CONTRACT_ID } from '../objectives';
+import { doorStatusLine } from './doorStatus';
+import { baseGame } from './baseGames.testkit';
 
 /**
  * The harbour's door captions, seated the way `BaseScene.updateCaptions` seats
@@ -27,6 +30,14 @@ const MEASURED_WIDTH: Record<string, number> = {
   bolthole: 81,
 };
 const MEASURED_HEIGHT = 33;
+/**
+ * Wider second lines, measured the same way: the whole caption's width with
+ * that line under the door's name, in the real yard at 1200x768.
+ */
+const MEASURED_LINE_WIDTH: Record<string, number> = {
+  'Professor Oak has a favour to ask': 181,
+  'Prof. Oak has a favour to ask': 155,
+};
 /** `WorldLabel`'s own padding, which its window adds round the text. */
 const PADDING_X = 3;
 const PADDING_Y = 2;
@@ -58,7 +69,10 @@ function standInScene(): Phaser.Scene {
   return {
     add: {
       graphics: () => chain,
-      text: (_x: number, _y: number, words: string) => text(MEASURED_WIDTH[words.split('\n')[0]]),
+      text: (_x: number, _y: number, words: string) => {
+        const [id, line] = words.split('\n');
+        return text(MEASURED_LINE_WIDTH[line] ?? MEASURED_WIDTH[id]);
+      },
     },
   } as unknown as Phaser.Scene;
 }
@@ -101,13 +115,18 @@ interface Seated {
 }
 
 /** Where every door's caption is drawn with the player on `tile`, the look key held or not. */
-function seatedFrom(tile: GridPosition, looking = true, onScreen: readonly Rect[] = []): Seated[] {
+function seatedFrom(
+  tile: GridPosition,
+  looking = true,
+  onScreen: readonly Rect[] = [],
+  status: (door: BaseDoor) => string = () => 'status',
+): Seated[] {
   const scene = standInScene();
   const labels = BASE_DOORS.map(
     (door) =>
       new WorldLabel(scene, {
         subject: building(door),
-        text: `${door.id}\nstatus`,
+        text: `${door.id}\n${status(door)}`,
         tone: { fill: 0, border: 0, ink: '#fff' },
         depth: 0,
         speech: { voice: 'name', tiles: door.tiles },
@@ -163,6 +182,24 @@ describe('the harbour door captions', () => {
       expect(covering).toEqual([]);
     },
   );
+
+  it('names OAK’S LAB from the spawn while Professor Oak has a favour to ask', () => {
+    // The lab sits a row below its neighbours, so a caption over it has only
+    // the gap between the Pokémon Center's roof and THE BOLTHOLE's, and at the
+    // spawn the player stands under it. "Professor Oak has a favour to ask"
+    // fitted neither, and every visit to the yard opened on the lab two steps
+    // away with no name on it.
+    const opened = {
+      completedContracts: [FIRST_CONTRACT_ID],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'],
+    };
+    const game = baseGame({ progress: opened });
+    const line = doorStatusLine(BASE_DOORS.find((door) => door.id === 'oaks-lab')!, game);
+    expect(line).toMatch(/favour/);
+    expect(MEASURED_LINE_WIDTH[line], `measure "${line}" in the yard and add it above`).toBeDefined();
+    const named = seatedFrom(BASE_SPAWN, false, [], (door) => doorStatusLine(door, game)).map(({ door }) => door.id);
+    expect(named).toContain('oaks-lab');
+  });
 
   it('writes no door name under the FEEDBACK tab, from the spawn or any doorstep', () => {
     // The yard at 1200x768, drawn three to the pixel: the tab stands half way

@@ -1,0 +1,45 @@
+# Playtest fixes log
+
+One short entry per iteration: what a player met, how it was reproduced, what changed, and how to use it.
+
+## Report findings checked (so later iterations do not re-check)
+
+Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b13).
+
+### Playtest 48 (map maker and shared harbour)
+- F1 maker undo lost on maps with an inside: fixed (#347).
+- F2 174-row palette: fixed, groups fold (#347).
+- F3 cave and room fights drawn on grass: captain's call (art), not touched.
+- F4 moving a building leaves cleared wood gone: fixed (#347).
+- F5 Cut tree speaks Viridian Forest's words: fixed (#347).
+- F6 another player's name plate on your head: fixed (#347), raid half too.
+- F7 other players have no partner: captain's call.
+- F8 a stopped knock still asks the host: fixed (#347).
+- Small: building anchored top-left (nudge, open, low); dropdown arrow keys fixed; overview over the corner fixed; cave encounters thick (luck, open, needs measuring); knock-screen back label, "Knock anyway?", H as a visitor, house hint all fixed.
+
+### Playtest 47 (first hour)
+- F1 nothing teaches ITEM: fixed (#347).
+- F2 shortfall not on the final check / briefing replaced: fixed (check shows "Still short", briefing then warning).
+- F3 CHARMANDERPSN status tag: fixed (#344).
+- F4 defeat line-up off the edge: fixed (#344/#345).
+- F5 Pallet Town never named: fixed (#344).
+- F6 newcomer told the partner can be swapped: fixed (#344).
+- F7 lone Pokemon not packed by default: fixed (packLonePokemon). Starter confirm bar follows the cursor: fixed. TM note at base: fixed. Objective chip bearing after the kit: fixed. First contract payoff under the fold: fixed. Next raid clock at Oak's: fixed.
+- F8 polish: Sing on a sleeper says "is already asleep!": fixed. Title POKéMON: fixed. Oak's first words use the name: fixed. "Packed for you" wrap: fixed. Jigglypuff harmless fight: FireRed canon, left.
+- C1-C5: captain's calls.
+
+### Greystone Vale playtest
+- B1 boats ignore a short clock, B2 hunter on Ember Isle: fixed (#343).
+- B3 "still being drawn" landing text: fixed (test holds it).
+- B4 strand boulders on lawn, B5 chapel plate by day: map drawing, needs the captain (map edits are off limits here).
+- B6 silent bump at a jetty outside the tide: captain's call (by design).
+- Explorer-only: Oak's errand completes from the explorer vault: very low, left.
+
+## Iterations
+
+### 1. OAK'S LAB unnamed at the yard spawn while Oak has a favour to ask
+- What a player met: on every visit to the harbour after the first contract (Oak asking for his parcel), the player spawns two steps below Oak's Lab and the lab has no caption at all, with or without L held; with L, BROCK'S WORKSHOP's caption was drawn over the lab's roof instead.
+- How reproduced: a fresh game with the first contract banked and Oak's errand unasked, standing on the spawn (16,13) at 1200x768; `explainSeats` showed every seat refused - "Professor Oak has a favour to ask" made the caption 181 px wide, and the only row above the lab is the 176 px between the Pokémon Center's roof and THE BOLTHOLE's, while every row below is the player and partner.
+- What changed: an errand may carry `called`, the name a door caption uses (`hub/errands.ts`); Oak's is FireRed's "Prof. Oak", so his door reads "Prof. Oak has a favour to ask" (155 px) and seats over the lab. Test: `doorCaptions.test.ts` "names OAK'S LAB from the spawn while Professor Oak has a favour to ask" (fails on the old wording).
+- How to use it: walk into the harbour after banking the first contract - OAK'S LAB / Prof. Oak has a favour to ask is over the lab.
+- Also checked this iteration and passing: dayCare.mjs, decorate.mjs, bolthole.mjs, bicycle.mjs, packFull.mjs, locks.mjs, errands.mjs.
