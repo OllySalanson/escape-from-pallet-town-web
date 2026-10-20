@@ -153,6 +153,7 @@ import {
 } from '../world/fishing';
 import { rollShiny } from '../pokemon/shiny';
 import { encounterTableAt, stepRolls } from '../world/localEncounters';
+import { areaFrame } from '../world/areaFrame';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
@@ -4268,28 +4269,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private frameArea(area: PlacedArea): void {
     const camera = this.cameras.main;
-    const x = area.rect.x * TILE_SIZE;
-    const y = area.rect.y * TILE_SIZE;
-    const width = area.rect.width * TILE_SIZE;
-    const height = area.rect.height * TILE_SIZE;
-    const viewWidth = this.scale.width / CAMERA_ZOOM;
-    const viewHeight = this.scale.height / CAMERA_ZOOM;
-    const left = width < viewWidth ? x + Math.floor((width - viewWidth) / 2) : x;
-    const top = height < viewHeight ? y + Math.floor((height - viewHeight) / 2) : y;
+    const view = { width: this.scale.width / CAMERA_ZOOM, height: this.scale.height / CAMERA_ZOOM };
+    const { bounds, slabs } = areaFrame(area.rect, view, area.kind === 'outdoors');
     camera.setBackgroundColor(0x000000);
-    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height, viewHeight));
+    camera.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
     // Four slabs of dark round the place, each reaching a screen past it, so
     // nothing of the grid beyond it is drawn whatever the camera does.
-    const reach = Math.max(viewWidth, viewHeight) * 2;
-    const slabs: readonly (readonly [number, number, number, number])[] = [
-      [x - reach, y - reach, width + reach * 2, reach],
-      [x - reach, y + height, width + reach * 2, reach],
-      [x - reach, y, reach, height],
-      [x + width, y, reach, height],
-    ];
     this.areaDark.forEach((slab) => slab.destroy());
-    this.areaDark = slabs.map(([sx, sy, sw, sh]) =>
-      this.add.rectangle(sx, sy, sw, sh, 0x000000, 1).setOrigin(0, 0).setDepth(AREA_DARK_DEPTH),
+    this.areaDark = slabs.map((slab) =>
+      this.add
+        .rectangle(slab.x, slab.y, slab.width, slab.height, 0x000000, 1)
+        .setOrigin(0, 0)
+        .setDepth(AREA_DARK_DEPTH),
     );
   }
 
