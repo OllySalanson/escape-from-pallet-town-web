@@ -6062,7 +6062,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         continue;
       }
       if (holder === room.me) {
-        if (rooms.loot.firstTry(loot.id) && !this.dialogBox.visible && !this.pendingHubTransition) {
+        // Asked only once nothing is on screen, so a win answered while a line
+        // is up is collected when the line is read rather than spent unseen.
+        if (!this.dialogBox.visible && !this.pendingHubTransition && rooms.loot.firstTry(loot.id)) {
           const said = this.collectLootHere(loot);
           if (said) {
             this.dialogBox.showMessages([said]);

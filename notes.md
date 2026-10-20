@@ -155,3 +155,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `nearestQuarry` (`raidRoom/groupHunter.ts`) takes the scene's step count, and `WorldScene.groupQuarry` passes `stepsTowards` to the hunter (straight within one place, the walk through the doors across places, one search from the hunter shared by every player and the hunter chip). Test: `scenes/groupQuarry.test.ts` "chases whoever is nearest by the walk through the door, not by a straight line across the grid" (fails before: amy was chased).
 - How to use it: in a friend's room, step into a house with the hunter at the door - it comes in after you, not your friend.
 - Not checked live (the same count the hunter chip uses, already played).
+
+### 18. Raiding with a friend, a piece you won while a line was up stayed on the ground
+- What a player met: in a raid room, stepping onto a shared piece is a claim and the piece comes into the pack on the frame the database answers "you were first". If a line was on screen on that frame (the step that claimed it also walked into a trainer's watch, or the hunter arrived), the one try was spent unseen: the piece stayed drawn on the map, never came into the pack, and only stepping back onto its tile picked it up.
+- How reproduced: `settleRoomLoot` on a scene with the real `LootLedger` holding the piece for this player and the dialogue box up, then again with it down - nothing was ever collected.
+- What changed: `WorldScene.settleRoomLoot` asks `firstTry` only once nothing is on screen, so a win answered under a line is collected when the line is read. Test: `scenes/roomLootSettle.test.ts` "is collected once the line is read, not left on the ground for good" (fails before).
+- How to use it: in a friend's room, win a race for a piece on the step a trainer stops you - read the line (or fight) and the piece is in your pack.
+- Also seen this iteration: `raid.mjs` without `--window=pixel` runs a 400x256 window, under the game's 2x minimum, so its screenshots are the canvas overflowing (captions look cut at the top) - a driver artefact, not a game fault. walkJudder base and world: clean.
