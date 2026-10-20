@@ -43,6 +43,19 @@ describe('signing a browser in as a player', () => {
     }
   });
 
+  it('says a browser that knows it is offline is offline, without drawing a check the network cannot load', async () => {
+    const { calls, parts: made } = parts({
+      online: () => false,
+      check: () => (calls.push('check'), Promise.resolve({ passed: false, why: 'unavailable' })),
+    });
+    expect(await signInWith(made)).toEqual({ ok: false, trouble: 'offline' });
+    expect(calls).toEqual(['session']);
+    // A yes is not believed beyond letting the check be tried.
+    const online = parts({ online: () => true });
+    expect(await signInWith(online.parts)).toEqual({ ok: true, uid: 'u1' });
+    expect(online.calls).toEqual(['session', 'check', 'sign in tok']);
+  });
+
   it('reads what the project said when it refused', async () => {
     const refused = (message: string, status?: number) =>
       parts({ signIn: () => Promise.resolve({ uid: null, error: { message, ...(status ? { status } : {}) } }) }).parts;

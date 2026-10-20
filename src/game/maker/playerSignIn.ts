@@ -43,6 +43,13 @@ export interface SignInParts {
   check(): Promise<BotCheck>;
   /** Whether this build asks for the check at all. */
   readonly needsCheck: boolean;
+  /**
+   * Whether the browser thinks it has a connection (`navigator.onLine`). Only
+   * a no is believed: a browser that knows it is offline cannot load the check
+   * or reach the project, and saying the check "would not load" would send the
+   * player hunting for a blocker that is not there.
+   */
+  readonly online?: () => boolean;
 }
 
 export interface SignInError {
@@ -57,6 +64,9 @@ export async function signInWith(parts: SignInParts): Promise<PlayerSignIn> {
     const existing = await parts.session();
     if (existing) {
       return { ok: true, uid: existing };
+    }
+    if (parts.online?.() === false) {
+      return { ok: false, trouble: 'offline' };
     }
     let token: string | undefined;
     if (parts.needsCheck) {
@@ -114,6 +124,7 @@ export async function currentPlayer(): Promise<string | null> {
 function liveParts(): SignInParts {
   return {
     needsCheck: botCheckNeeded(),
+    online: () => navigator.onLine,
     session: currentPlayer,
     signIn: async (captchaToken) => {
       const db = await supabase();
