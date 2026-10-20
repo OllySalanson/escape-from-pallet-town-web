@@ -59,6 +59,38 @@ export function wayTowards(
   return best?.doorway ?? to;
 }
 
+/**
+ * How many steps something is, for a chip that prints the number beside the
+ * heading `wayTowards` gives. Within one place it is the straight count, as it
+ * always was; in another place it is the walk there through the doors, because
+ * the places are laid side by side in the grid with dark between them, and a
+ * straight count across it once told a player on Ember Isle's crater that the
+ * Charcoal in the Lava Tube under their feet was 605 steps off.
+ */
+export function stepsTowards(
+  map: WorldMapDefinition,
+  from: GridPosition,
+  to: GridPosition,
+): number {
+  const straight = Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+  const areas = map.areas;
+  if (!areas || map.warps.length === 0) {
+    return straight;
+  }
+  const here = placedAreaAt(areas, from);
+  if (!here || here === placedAreaAt(areas, to)) {
+    return straight;
+  }
+  const walk = distancesTo(map, to)[from.y]?.[from.x] ?? -1;
+  if (walk >= 0) {
+    return walk;
+  }
+  // Ground nothing reaches today: as far as the door the heading points at,
+  // which is at least a number about this place.
+  const doorway = wayTowards(map, from, to);
+  return Math.abs(doorway.x - from.x) + Math.abs(doorway.y - from.y);
+}
+
 const fields = new WeakMap<WorldMapDefinition, Map<string, readonly Int32Array[]>>();
 
 /** Walking steps to `to` from every tile of the map, through its doors; kept per map and target. */

@@ -6,7 +6,7 @@ import { districtAt } from './districts';
 import { gateKey } from './gates';
 import { collisionBlocker, findHunterPursuitPath, findHunterSpawnTile } from './hunter';
 import { composeMapFile, doorwayOf } from './mapAreas';
-import { wayTowards } from './areaRoutes';
+import { stepsTowards, wayTowards } from './areaRoutes';
 import {
   buildPlayerMap,
   doorFront,
@@ -250,6 +250,21 @@ describe('a map with the inside of a building', () => {
     expect(wayTowards(world, { x: 15, y: 12 }, { x: 41, y: 5 })).toEqual(doorwayOf(DOOR.ends[0]));
     // Inside one place, it is straight there.
     expect(wayTowards(world, { x: 15, y: 12 }, { x: 16, y: 0 })).toEqual({ x: 16, y: 0 });
+  });
+
+  it('counts the steps to something on the far side of a door as the walk there, not across the grid', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const spot = { x: 33 + 8, y: 5 };
+    // On the doorstep, the house's item spot is one step through the door onto
+    // the mat (5,7) and five across the room - not the 33 + 8 columns the room
+    // happens to be laid along the grid from the lane.
+    expect(stepsTowards(world, FRONT, spot)).toBe(1 + 3 + 2);
+    // And back out: from the item spot, the doorstep is the same walk.
+    expect(stepsTowards(world, spot, FRONT)).toBe(6);
+    // Inside one place, it is the straight count it always was.
+    expect(stepsTowards(world, { x: 15, y: 12 }, { x: 16, y: 0 })).toBe(13);
   });
 });
 

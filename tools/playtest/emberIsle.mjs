@@ -241,7 +241,8 @@ try {
   await press('ArrowDown');
   await wait(600);
   await countingSettle();
-  check(JSON.stringify((await state()).tile) === JSON.stringify({ x: 35, y: 352 }), 'out of the tube onto the crater floor');
+  const crater = (await state()).tile;
+  check(JSON.stringify(crater) === JSON.stringify({ x: 35, y: 352 }), `out of the tube onto the crater floor (${JSON.stringify(crater)})`);
   await shot('09-the-crater');
 
   // -- Across the ash: every step rolls -----------------------------------------

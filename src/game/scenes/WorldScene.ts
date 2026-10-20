@@ -225,7 +225,7 @@ import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
-import { wayTowards } from '../world/areaRoutes';
+import { stepsTowards, wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -2649,7 +2649,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (!this.seenPrizeIds.has(loot.id)) {
         continue;
       }
-      const steps = manhattan(this.currentTile, loot.position);
+      const steps = stepsTowards(this.currentMap, this.currentTile, loot.position);
       if (nearest === null || steps < nearest.steps) {
         nearest = { loot, steps };
       }

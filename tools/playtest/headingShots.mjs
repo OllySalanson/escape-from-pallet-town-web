@@ -39,6 +39,12 @@ try {
     await page.waitFor(`(() => { const b = document.querySelector(${JSON.stringify(selector)}); if (!b) return false; b.click(); return true; })()`, { what: selector });
     await sleep(250);
   };
+  // A keeper with something to ask (an errand) puts a box over the room on
+  // the way in; Escape puts the box down first, so leaving takes one more.
+  const leave = async () => {
+    if (await page.evaluate(`document.querySelector('[data-speech-done]') !== null`)) await press('Escape');
+    await press('Escape');
+  };
   let bad = 0;
   const shoot = async (name) => {
     await sleep(500);
@@ -69,13 +75,13 @@ try {
   await shoot('lobby');
   await walkIntoBase(page, 'bills-cottage');
   await shoot('bill');
-  await press('Escape');
+  await leave();
   await walkIntoBase(page, 'pokemon-centre');
   await shoot('stash');
-  await press('Escape');
+  await leave();
   await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
-  await press('Escape');
+  await leave();
   await walkIntoBase(page, 'oaks-lab');
   await click('Start a raid');
   await shoot('loadout');
