@@ -1053,13 +1053,30 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ? 'enraged'
         : raidClockAlertTier(manager.snapshot().remainingMs);
     }
+  }
+
+  /**
+   * Whether the hunter was already near when the world comes back from a
+   * fight, so its heartbeat is not sounded again for a hunter it already
+   * warned of. Counted as the pursuit counts it, by the walk - through doors,
+   * round walls - never a straight line across the composed grid, where a
+   * room is laid east of the outdoors: a hunter on the doorstep of the room
+   * the player is in read as far away and sounded again after every fight,
+   * and one beyond a wall read as near and never sounded as it came round.
+   * Asked once the map, its figures and any breakaway are in place.
+   */
+  private resumeHunterProximity(): void {
     const hunter = this.hunterState.position;
+    if (!hunter || this.hunterState.mapId !== this.currentMap.id) {
+      this.hunterNear = false;
+      return;
+    }
+    const path = findHunterPursuitPath(hunter, this.currentTile, this.bounds, (tile) =>
+      this.isBlockedForHunter(tile),
+    );
     this.hunterNear =
-      hunter !== undefined &&
-      hunter !== null &&
-      this.hunterState.mapId === this.currentMap.id &&
-      Math.abs(hunter.x - this.currentTile.x) + Math.abs(hunter.y - this.currentTile.y) <=
-        HUNTER_NEAR_STEPS;
+      isHunterContactingPlayer(hunter, this.currentTile) ||
+      (path.length > 0 && path.length <= HUNTER_NEAR_STEPS);
   }
 
   public create(data: WorldSceneData = {}): void {
@@ -1112,6 +1129,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.applyPendingHunterBreakaway();
     this.createEntities();
     this.liftBeatenWatches();
+    this.resumeHunterProximity();
     this.createPlayer();
     this.joinFriendRoom();
     // Back on the Bicycle after a fight, if it is still in the pack.
