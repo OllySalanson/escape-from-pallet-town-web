@@ -62,6 +62,18 @@ describe('the feedback panel', () => {
     expect(outcomeMarkup('queued', 'FB-7K2Q')).not.toContain('data-retry-check');
     expect(outcomeMarkup('sent', 'FB-7K2Q')).not.toContain('data-retry-check');
   });
+
+  it('says the check is being taken again while TRY AGAIN runs, never that it jammed', () => {
+    for (const outcome of ['check-failed', 'check-missing'] as const) {
+      const retrying = outcomeMarkup(outcome, 'FB-7K2Q', true);
+      expect(retrying).not.toContain('Bot check jammed.');
+      expect(retrying).not.toContain("Bot check won't load.");
+      expect(retrying).toContain('Taking the check again.');
+      // Still where the cursor was, but pressing it again does nothing.
+      expect(retrying).toMatch(/data-retry-check aria-disabled="true"/);
+      expect(retrying).toContain('<span class="feedback-tag">FB-7K2Q</span>');
+    }
+  });
 });
 
 describe('the voice row', () => {

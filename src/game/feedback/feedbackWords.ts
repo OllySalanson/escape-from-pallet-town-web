@@ -64,6 +64,16 @@ export function canTryTheCheckAgain(outcome: FeedbackOutcome): boolean {
 
 export const TRY_THE_CHECK_AGAIN = 'Try again';
 
+/**
+ * What the panel says while TRY AGAIN is taking the check again. The ending it
+ * was pressed on said the check had jammed, and left standing it went on saying
+ * so under "Transmitting..." for as long as the new check took.
+ */
+export const RETRYING_WORDS: OutcomeWords = {
+  headline: 'Taking the check again.',
+  line: 'One more go at the bot check. If it passes, your message goes now.',
+};
+
 export interface OutcomeWords {
   readonly headline: string;
   readonly line: string;
