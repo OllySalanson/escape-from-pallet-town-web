@@ -91,7 +91,22 @@ export function stepsTowards(
   return Math.abs(doorway.x - from.x) + Math.abs(doorway.y - from.y);
 }
 
+/**
+ * How many walks a map keeps at once. A walk is a whole grid of numbers, and a
+ * target that moves - the hunter, asked every frame - is a new target every
+ * step: kept without a limit, a hunter walking about outside while the player
+ * waited in a room on Greystone Vale kept a grid the size of the whole vale
+ * for every tile it stood on. The still targets (a prize, a stop) are asked
+ * every frame and so stay among the newest.
+ */
+export const ROUTE_FIELDS_KEPT = 8;
+
 const fields = new WeakMap<WorldMapDefinition, Map<string, readonly Int32Array[]>>();
+
+/** How many walks are kept for `map` just now; for tests. */
+export function keptRouteFields(map: WorldMapDefinition): number {
+  return fields.get(map)?.size ?? 0;
+}
 
 /** Walking steps to `to` from every tile of the map, through its doors; kept per map and target. */
 function distancesTo(map: WorldMapDefinition, to: GridPosition): readonly Int32Array[] {
@@ -99,12 +114,18 @@ function distancesTo(map: WorldMapDefinition, to: GridPosition): readonly Int32A
   fields.set(map, kept);
   const key = `${to.x},${to.y}`;
   let field = kept.get(key);
-  if (!field) {
+  if (field) {
+    // Newest last, so the one let go is the one asked about longest ago.
+    kept.delete(key);
+  } else {
     // The target itself may be solid - a person, an exit marker - so the walk
     // is measured to it from whatever is beside it, as the hunter's is.
     field = stepDistances(withOpen(map.collision, to), to, new Set(), map.links);
-    kept.set(key, field);
+    if (kept.size >= ROUTE_FIELDS_KEPT) {
+      kept.delete(kept.keys().next().value!);
+    }
   }
+  kept.set(key, field);
   return field;
 }
 

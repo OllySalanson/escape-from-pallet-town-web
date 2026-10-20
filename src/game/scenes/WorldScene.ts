@@ -4149,10 +4149,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return null;
     }
-    const hunter = this.hunterState.position;
-    return (
-      Math.abs(hunter.x - this.currentTile.x) + Math.abs(hunter.y - this.currentTile.y)
-    );
+    // The walk through the doors when it is in another place: a hunter on the
+    // doorstep of the room the player is in is a step away, however far along
+    // the grid the room happens to be laid.
+    return stepsTowards(this.currentMap, this.currentTile, this.hunterState.position);
   }
 
   private hunterBearing(): string {

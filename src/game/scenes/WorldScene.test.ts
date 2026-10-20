@@ -93,6 +93,7 @@ describe('in-run objective HUD layout', () => {
     // And the number beside a prize's heading is the walk there through those
     // doors, not a straight count across the grid the places are laid on.
     expect(sceneSource).toContain('stepsTowards(this.currentMap, this.currentTile, loot.position)');
+    expect(sceneSource).toContain('stepsTowards(this.currentMap, this.currentTile, this.hunterState.position)');
     expect(sceneSource).toContain('contractNavigationCue');
     // A contract that banks through one exit says so on the map too, because
     // the temptation is a gate the player walks past with the job in hand.

@@ -6,7 +6,8 @@ import { districtAt } from './districts';
 import { gateKey } from './gates';
 import { collisionBlocker, findHunterPursuitPath, findHunterSpawnTile } from './hunter';
 import { composeMapFile, doorwayOf } from './mapAreas';
-import { stepsTowards, wayTowards } from './areaRoutes';
+import { keptRouteFields, ROUTE_FIELDS_KEPT, stepsTowards, wayTowards } from './areaRoutes';
+import { hunterChipView } from '../scenes/raidHud';
 import {
   buildPlayerMap,
   doorFront,
@@ -265,6 +266,40 @@ describe('a map with the inside of a building', () => {
     expect(stepsTowards(world, spot, FRONT)).toBe(6);
     // Inside one place, it is the straight count it always was.
     expect(stepsTowards(world, { x: 15, y: 12 }, { x: 16, y: 0 })).toBe(13);
+  });
+
+  it('warns of a hunter on the doorstep of the room the player is in', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    // The player has just come in and stands on the mat; the hunter is a tile
+    // off the doorstep outside. Straight along the grid that is the width of
+    // the dark the room is laid past, and the chip said nothing.
+    const mat = { x: 33 + 5, y: 7 };
+    const hunter = { x: FRONT.x, y: FRONT.y + 1 };
+    expect(Math.abs(hunter.x - mat.x) + Math.abs(hunter.y - mat.y)).toBeGreaterThan(8);
+    const steps = stepsTowards(world, mat, hunter);
+    expect(steps).toBe(2);
+    const chip = hunterChipView({
+      searching: false,
+      distance: steps,
+      direction: 'S',
+    });
+    expect(chip?.label).toBe('HUNTER S 2');
+  });
+
+  it('keeps only a few walks however many tiles a moving target stands on', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const mat = { x: 33 + 5, y: 7 };
+    // A hunter walking the lane outside, one tile a step, asked about from the room.
+    for (let x = 2; x < 30; x += 1) {
+      stepsTowards(world, mat, { x, y: 12 });
+    }
+    expect(keptRouteFields(world)).toBeLessThanOrEqual(ROUTE_FIELDS_KEPT);
+    // And what was asked last is still the right answer.
+    expect(stepsTowards(world, mat, { x: FRONT.x, y: FRONT.y + 1 })).toBe(2);
   });
 });
 
