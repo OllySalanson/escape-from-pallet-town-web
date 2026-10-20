@@ -10,7 +10,7 @@ vi.mock('phaser', () => ({
 
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
-import { headsWhatFollows, scrollCoverHeight } from './MenuOverlay';
+import { headingsOrphanedInColumn, headsWhatFollows, scrollCoverHeight } from './MenuOverlay';
 import { pokemonDossier } from './pokemonDossier';
 
 const stylesheet = await readFile(new URL('../../style.css', import.meta.url), 'utf8');
@@ -115,5 +115,47 @@ describe("the dossier's fold at the smallest stage", () => {
     const lastAbove = rows.filter((row) => row.bottom <= fold + 0.5).at(-1)!;
     expect(lastAbove.name).not.toBe('growth:3');
     expect(lastAbove.heading).toBe(false);
+  });
+
+  it('leaves STATS out when only the moves beside it are still above the strip', () => {
+    // The loadout's dossier at 1200x768 (measured, screen pixels): experience
+    // and stats down the left, the moves down the right. The strip falls under
+    // the last move, which is beside STATS, so STATS was drawn over the strip
+    // with every stat under it.
+    const row = (name: string, left: number, top: number, right: number, bottom: number, heading = false) => ({
+      name,
+      left,
+      top,
+      right,
+      bottom,
+      heading,
+    });
+    const rows = [
+      row('EXPERIENCE', 30, 460, 129, 484, true),
+      row('xp to next', 30, 492, 160, 516),
+      row('STATS', 30, 522, 87, 546, true),
+      row('Attack', 30, 548, 114, 572),
+      row('Defense', 130, 548, 214, 572),
+      row('Sp. Def', 30, 572, 114, 596),
+      row('MOVES', 350, 460, 670, 484, true),
+      row('TACKLE', 350, 484, 670, 512),
+      row('GROWL', 350, 514, 670, 542),
+    ];
+    const pane = { top: 324, bottom: 586 };
+    const fold = pane.bottom - scrollCoverHeight(pane, rows, 2);
+    // The strip stays under the last move...
+    expect(fold).toBeGreaterThanOrEqual(542);
+    // ...and STATS, which heads nothing above it, is left out of its column.
+    expect(headingsOrphanedInColumn(pane, rows, fold).map((heading) => heading.name)).toEqual(['STATS']);
+  });
+
+  it('keeps a label whose own rows are still drawn', () => {
+    const rows = [
+      { name: 'STATS', left: 30, top: 522, right: 87, bottom: 546, heading: true },
+      { name: 'Attack', left: 30, top: 548, right: 114, bottom: 572, heading: false },
+    ];
+    expect(headingsOrphanedInColumn({ top: 324 }, rows, 580)).toEqual([]);
+    // A band across the pane over nothing is `scrollCoverHeight`'s to raise the strip over, and still found here.
+    expect(headingsOrphanedInColumn({ top: 324 }, rows, 547).map((heading) => heading.name)).toEqual(['STATS']);
   });
 });

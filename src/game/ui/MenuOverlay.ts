@@ -473,7 +473,15 @@ export class MenuOverlay {
               .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
               .flatMap((element) =>
                 (element.classList.contains('px-wrap') ? lineBoxes(element) : [elementBox(element)]).map(
-                  ({ top, bottom, ink }) => ({ top, bottom, ink, element, heading: headsWhatFollows(element.classList) }),
+                  ({ top, bottom, ink, left, right }) => ({
+                    top,
+                    bottom,
+                    ink,
+                    left,
+                    right,
+                    element,
+                    heading: headsWhatFollows(element.classList),
+                  }),
                 ),
               )
           : [];
@@ -497,6 +505,15 @@ export class MenuOverlay {
       for (const { element, top } of foldedRows(box, rows, box.bottom - cover)) {
         element.setAttribute('data-folded', '');
         element.style.clipPath = `inset(0 0 ${element.getBoundingClientRect().bottom - top}px 0)`;
+      }
+      // A label over a column whose rows are all below the strip heads nothing
+      // there, even with the next column's rows still drawn beside it: the
+      // loadout's dossier ended on STATS beside the last move, with none of
+      // the stats under it. The strip stays where the other column needs it,
+      // and the label is left out of its own column.
+      for (const { element } of headingsOrphanedInColumn(box, rows, box.bottom - cover)) {
+        element.setAttribute('data-folded', '');
+        element.style.clipPath = 'inset(0 0 100% 0)';
       }
       // The strip says how much is down there, because "there is more" is not
       // the same answer as "there are nine more": the first leaves a player
@@ -623,6 +640,7 @@ function lineBoxes(element: HTMLElement): RowBox[] {
   // content area's foot is kept as the line's `ink`: a descender is drawn down
   // to it, past the line box, so it is how far a line shows below its box.
   const height = Number.parseFloat(getComputedStyle(element).lineHeight);
+  const { left, right } = element.getBoundingClientRect();
   const lines: RowBox[] = [];
   for (const rect of [...range.getClientRects()].sort((a, b) => a.top - b.top)) {
     if (rect.height <= 0) {
@@ -636,7 +654,7 @@ function lineBoxes(element: HTMLElement): RowBox[] {
       line.bottom = Math.max(line.bottom, middle + half);
       line.ink = Math.max(line.ink, rect.bottom);
     } else {
-      lines.push({ top: middle - half, bottom: middle + half, ink: Math.max(middle + half, rect.bottom) });
+      lines.push({ top: middle - half, bottom: middle + half, ink: Math.max(middle + half, rect.bottom), left, right });
     }
   }
   return lines.length > 0 ? lines : [elementBox(element)];
@@ -647,15 +665,17 @@ interface RowBox {
   top: number;
   bottom: number;
   ink: number;
+  left: number;
+  right: number;
 }
 
 /** An element measured whole as one row, its text's reach included. */
 function elementBox(element: HTMLElement): RowBox {
-  const { top, bottom } = element.getBoundingClientRect();
+  const { top, bottom, left, right } = element.getBoundingClientRect();
   const range = document.createRange();
   range.selectNodeContents(element);
   const text = [...range.getClientRects()].filter((rect) => rect.height > 0).map((rect) => rect.bottom);
-  return { top, bottom, ink: Math.max(bottom, ...text) };
+  return { top, bottom, ink: Math.max(bottom, ...text), left, right };
 }
 
 /** How `rowPieces` sees a tree of elements: what is in one, and what kind of thing each is. */
@@ -839,6 +859,49 @@ function orphanedHeading<Row extends { readonly top: number; readonly bottom: nu
     return undefined;
   }
   return above.some((row) => !row.heading && row.bottom > heading.top + 0.5) ? undefined : heading;
+}
+
+/**
+ * The headings above a fold whose own column - the rows under them that share
+ * some of their width - has rows and none of them above the fold. A list's
+ * band spans the pane, so for it this is `orphanedHeading`'s question; a
+ * pane's `.px-label` heads one column of two, and the other column's rows
+ * beside it are not its own.
+ */
+export function headingsOrphanedInColumn<
+  Row extends {
+    readonly top: number;
+    readonly bottom: number;
+    readonly left: number;
+    readonly right: number;
+    readonly heading?: boolean;
+  },
+>(pane: { readonly top: number }, rows: readonly Row[], fold: number): Row[] {
+  return rows.filter((heading) => {
+    if (!heading.heading || heading.top <= pane.top + 0.5 || heading.bottom > fold + 0.5) {
+      return false;
+    }
+    const own = rows.filter(
+      (row) =>
+        !row.heading &&
+        row.top >= heading.bottom - 0.5 &&
+        row.left < heading.right - 0.5 &&
+        row.right > heading.left + 0.5,
+    );
+    // Its rows run until the next heading in the same column.
+    const next = rows
+      .filter(
+        (row) =>
+          row !== heading &&
+          row.heading &&
+          row.top >= heading.bottom - 0.5 &&
+          row.left < heading.right - 0.5 &&
+          row.right > heading.left + 0.5,
+      )
+      .reduce((nearest, row) => Math.min(nearest, row.top), Number.POSITIVE_INFINITY);
+    const part = own.filter((row) => row.top < next - 0.5);
+    return part.length > 0 && part.every((row) => row.top >= fold - 0.5);
+  });
 }
 
 /**
