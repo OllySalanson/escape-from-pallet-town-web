@@ -250,6 +250,9 @@ export class ExtractionScene extends Phaser.Scene {
     // is its own full-bleed tableau with its own type scale.
     this.overlay.root.classList.add('pixel-ui');
     this.overlay.root.innerHTML = this.markup();
+    // Measured now rather than when the cursor lands, which waits out the lock:
+    // the screen a player reads first is the one with its MORE strips drawn.
+    this.overlay.layout();
     const control = this.overlay.root.querySelector<HTMLButtonElement>('[data-continue]')!;
     control.onclick = () => this.leave();
     control.disabled = true;

@@ -152,6 +152,20 @@ export class MenuOverlay {
     this.root.remove();
   }
 
+  /**
+   * Measures a screen that has just been drawn - its columns, its boxes of
+   * words and the MORE strip over every pane with more below - without moving
+   * the cursor. Placing the cursor does all of this too, so a screen that
+   * focuses as it opens needs nothing else; this is for one that holds its
+   * cursor back. The raid result locks its way out for most of a second, and
+   * until then its ledger was drawn unmeasured: the last row sliced through its
+   * letters at the pane's foot with no strip over it.
+   */
+  public layout(): void {
+    this.relayout();
+    this.markScrollCues();
+  }
+
   /** Starts the cursor on the first of these selectors the screen has. */
   public focus(...selectors: string[]): void {
     requestAnimationFrame(() => this.moveCursorTo(this.firstMatch(selectors)));
