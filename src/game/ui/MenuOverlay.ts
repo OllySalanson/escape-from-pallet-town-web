@@ -472,8 +472,8 @@ export class MenuOverlay {
           ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)]
               .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
               .flatMap((element) =>
-                (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
-                  ({ top, bottom }) => ({ top, bottom, element, heading: headsWhatFollows(element.classList) }),
+                (element.classList.contains('px-wrap') ? lineBoxes(element) : [elementBox(element)]).map(
+                  ({ top, bottom, ink }) => ({ top, bottom, ink, element, heading: headsWhatFollows(element.classList) }),
                 ),
               )
           : [];
@@ -524,7 +524,7 @@ export class MenuOverlay {
   private markTopCut(
     pane: HTMLElement,
     box: DOMRect,
-    rows: readonly { readonly top: number; readonly bottom: number }[],
+    rows: readonly { readonly top: number; readonly bottom: number; readonly ink?: number }[],
     unit: number,
   ): void {
     const head = Number.parseFloat(pane.style.scrollPaddingTop) || 0;
@@ -552,7 +552,7 @@ export class MenuOverlay {
 export function scrollTopCoverHeight(
   pane: { readonly top: number; readonly bottom: number },
   head: number,
-  rows: readonly { readonly top: number; readonly bottom: number }[],
+  rows: readonly { readonly top: number; readonly bottom: number; readonly ink?: number }[],
   unit: number,
 ): number {
   const line = pane.top + head;
@@ -562,11 +562,15 @@ export function scrollTopCoverHeight(
   // that one pixel - and read as a cut, the box strip at the top of the
   // Pokémon Center's list was hidden whole, Sort and Find and all.
   const slack = Math.max(0.5, unit / 2);
-  const cut = rows.filter((row) => row.top < line - slack && row.bottom > line + 0.5);
+  // A row reaches as far down as its text is drawn, which in Orange Kid is
+  // past its line box: masked to the box, the top of the map maker's side
+  // column showed the foot of a cut line's `g` over the next line.
+  const reach = (row: { readonly bottom: number; readonly ink?: number }) => Math.max(row.bottom, row.ink ?? row.bottom);
+  const cut = rows.filter((row) => row.top < line - slack && reach(row) > line + 0.5);
   if (cut.length === 0) {
     return 0;
   }
-  const cover = Math.max(...cut.map((row) => row.bottom)) - line;
+  const cover = Math.max(...cut.map(reach)) - line;
   if (cover > ((pane.bottom - line) * 3) / 4) {
     return 0;
   }
@@ -609,15 +613,17 @@ export const SCROLL_ROWS =
  * through the middle of one of its lines. The fold may fall between any two
  * of them; it is a line's waist it must not go through.
  */
-function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
+function lineBoxes(element: HTMLElement): RowBox[] {
   const range = document.createRange();
   range.selectNodeContents(element);
   // A text fragment's rectangle is the face's content area, which in Orange
   // Kid is taller than the line it sits on and overlaps the lines either side
   // of it: measured that way, the fold went three pixels into the line above.
-  // The line box is the line height, centred where the content area is.
+  // The line box is the line height, centred where the content area is. The
+  // content area's foot is kept as the line's `ink`: a descender is drawn down
+  // to it, past the line box, so it is how far a line shows below its box.
   const height = Number.parseFloat(getComputedStyle(element).lineHeight);
-  const lines: { top: number; bottom: number }[] = [];
+  const lines: RowBox[] = [];
   for (const rect of [...range.getClientRects()].sort((a, b) => a.top - b.top)) {
     if (rect.height <= 0) {
       continue;
@@ -628,11 +634,28 @@ function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
     // Fragments of one line share its middle; the next line's is below it.
     if (line && middle < line.bottom) {
       line.bottom = Math.max(line.bottom, middle + half);
+      line.ink = Math.max(line.ink, rect.bottom);
     } else {
-      lines.push({ top: middle - half, bottom: middle + half });
+      lines.push({ top: middle - half, bottom: middle + half, ink: Math.max(middle + half, rect.bottom) });
     }
   }
-  return lines.length > 0 ? lines : [element.getBoundingClientRect()];
+  return lines.length > 0 ? lines : [elementBox(element)];
+}
+
+/** A row's box, and how far its own text is drawn below it (`lineBoxes`). */
+interface RowBox {
+  top: number;
+  bottom: number;
+  ink: number;
+}
+
+/** An element measured whole as one row, its text's reach included. */
+function elementBox(element: HTMLElement): RowBox {
+  const { top, bottom } = element.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const text = [...range.getClientRects()].filter((rect) => rect.height > 0).map((rect) => rect.bottom);
+  return { top, bottom, ink: Math.max(bottom, ...text) };
 }
 
 /** How `rowPieces` sees a tree of elements: what is in one, and what kind of thing each is. */

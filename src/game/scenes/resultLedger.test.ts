@@ -362,6 +362,23 @@ describe('the result screen ledger', () => {
     expect(scrollTopCoverHeight(pane, 0, [{ top: 197, bottom: 231 }, ...rows.slice(1)], 3)).toBe(33);
   });
 
+  it('hides the foot of a cut line that Orange Kid draws below its line box', () => {
+    // The map maker's side column at 1200x768, scrolled to its name field: the
+    // check above was cut through "...the first check that passes", and its
+    // line box ended 22 screen pixels below the pane's top while the `g` of
+    // that line was drawn down to 25 - a red sliver over the next line. Each
+    // line's `ink` is its content area's foot, measured in the browser; the
+    // next line's own letters start 5 game pixels below its box's top.
+    const pane = { top: 48, bottom: 606 };
+    const cutLine = { top: 46, bottom: 70, ink: 73 };
+    const nextLine = { top: 70, bottom: 94, ink: 97 };
+    expect(scrollTopCoverHeight(pane, 0, [cutLine, nextLine], 2)).toBe(26);
+    // A line whose box is already above the edge still shows its descender.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 24, bottom: 48, ink: 51 }, { top: 48, bottom: 72, ink: 75 }], 2)).toBe(4);
+    // A row with nothing drawn past its box is covered to its box, as before.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 46, bottom: 70 }, nextLine], 2)).toBe(22);
+  });
+
   it('counts what is under the strip rather than only saying there is something', () => {
     // A pane whose fold is at 100: two rows are under it, and the third is the
     // one the strip is covering, so it is not yet read.
