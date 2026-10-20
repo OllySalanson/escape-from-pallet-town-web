@@ -1,4 +1,5 @@
 import { recordAction } from '../feedback/actionLog';
+import { claimOverlayKeyboard } from '../ui/overlayKeyboard';
 import { supabase } from './supabaseClient';
 import { botCheckNeeded, runBotCheck, type BotCheck } from './turnstile';
 
@@ -167,9 +168,45 @@ async function checkInItsOwnBox(): Promise<BotCheck> {
   card.append(line, widget);
   box.append(card);
   document.body.append(box);
+  const keys = keysHeldByTheCheck();
   try {
-    return await runBotCheck(widget, { onAsking: () => box.classList.add('is-asking') });
+    return await runBotCheck(widget, {
+      onAsking: () => {
+        box.classList.add('is-asking');
+        keys.asking();
+      },
+    });
   } finally {
+    keys.done();
     box.remove();
   }
+}
+
+/**
+ * The keyboard while the check is asking. The dimmed card stops the pointer,
+ * but a key went on to whatever had it - a console game's PLAY AGAIN started a
+ * new game under the card, the map maker drew its tools - so while it asks the
+ * check takes every key, as any overlay does (`ui/overlayKeyboard.ts`), and
+ * hands them back when it ends. Tab still moves the focus, which is how the
+ * box is reached without a mouse. An invisible pass never asks, so it never
+ * holds a key.
+ */
+export function keysHeldByTheCheck(
+  claim: (handler: (event: KeyboardEvent) => void) => () => void = (handler) =>
+    claimOverlayKeyboard(handler, window),
+): { readonly asking: () => void; readonly done: () => void } {
+  let release: (() => void) | undefined;
+  return {
+    asking: () => {
+      release ??= claim((event) => {
+        if (event.key !== 'Tab') {
+          event.preventDefault();
+        }
+      });
+    },
+    done: () => {
+      release?.();
+      release = undefined;
+    },
+  };
 }
