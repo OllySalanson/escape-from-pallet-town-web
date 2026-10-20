@@ -66,6 +66,16 @@ export const ROOM_KEY_LETTERS = {
   ping: 'G',
 } as const;
 
+/**
+ * The phrase list as a raid room's chip shows it while T holds it open: each
+ * phrase beside the number key that says it, bracketed as every other key the
+ * HUD names. Written bare, Orange Kid's narrow 1 and its round O ran together
+ * and "1 OVER HERE!" read "10VER HERE!".
+ */
+export function phraseListLines(phrases: readonly string[]): string[] {
+  return phrases.map((phrase, index) => keyHint(String(index + 1), phrase));
+}
+
 /** What a raid room's chip teaches until each has been done once. */
 export function roomKeyHintLine(learned: ReadonlySet<string>): string {
   return [

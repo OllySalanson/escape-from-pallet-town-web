@@ -12,7 +12,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
-import { RAID_KEY_LETTERS, ROOM_KEY_LETTERS, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
+import { RAID_KEY_LETTERS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -1615,7 +1615,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // The phrase list while it is open, else the room's two keys until each is used.
     const talk =
       this.talkOpenMs > 0
-        ? ROOM_PHRASES.map((phrase, index) => `${index + 1} ${phrase}`)
+        ? phraseListLines(ROOM_PHRASES)
         : [roomKeyHintLine(this.keysLearned)].filter(Boolean);
     return [...lines, ...talk];
   }
