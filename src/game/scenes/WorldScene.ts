@@ -225,7 +225,7 @@ import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
-import { stepsTowards, wayTowards } from '../world/areaRoutes';
+import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -4769,14 +4769,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const exit = this.nearestExitCue();
       return exit ? `BANK VIA ${exit.label.toUpperCase()}: ${exit.heading}` : 'EXTRACT TO BANK THE CONTRACT';
     }
-    // Straight-line distance, not a path search: the chip names the stop the
-    // player is closest to so it changes as they move, and running that search
-    // every frame would buy nothing a bearing does not already say.
-    const next = outstanding.reduce((closest, marker) =>
-      manhattan(this.currentTile, marker.position) < manhattan(this.currentTile, closest.position)
-        ? marker
-        : closest,
-    );
+    // The stop the player is closest to, so the chip changes as they move:
+    // straight within one place, the walk through the doors from a room, cave
+    // or tunnel (`areaRoutes.ts`) - counted straight along the grid, a player
+    // in a room was sent to whichever stop lay nearest the column it is laid at.
+    const next = nearestByWalk(this.currentMap, this.currentTile, outstanding)!;
     const remaining = outstanding.length > 1 ? ` (${outstanding.length} LEFT)` : '';
     return `${next.cue}: ${this.headingTo(next.position)}${remaining}`;
   }
@@ -7519,10 +7516,6 @@ const BOAT_RIDE_Y = 4;
  * What the result screen says about the contract, including the case the whole
  * cordon ledger exists for: every stop made and the wrong gate taken.
  */
-
-function manhattan(from: GridPosition, to: GridPosition): number {
-  return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
-}
 
 function contractMarkerIcon(marker: ContractMarker): string {
   return marker.icon === 'supply-cache' ? WORLD_ICONS.supplyCache : WORLD_ICONS.fieldKit;

@@ -92,6 +92,30 @@ export function stepsTowards(
 }
 
 /**
+ * Whichever of `targets` is the fewest steps from `from` by `stepsTowards`:
+ * straight within one place, the walk through the doors across places. The
+ * contract chip names its next stop with this, and counted straight along the
+ * grid a player in a room was sent to whichever stop happened to lie nearest
+ * the column the room is laid at - the far side of the map, past the dark.
+ */
+export function nearestByWalk<T extends { readonly position: GridPosition }>(
+  map: WorldMapDefinition,
+  from: GridPosition,
+  targets: readonly T[],
+): T | undefined {
+  let best: T | undefined;
+  let bestSteps = Infinity;
+  for (const target of targets) {
+    const steps = stepsTowards(map, from, target.position);
+    if (steps < bestSteps) {
+      best = target;
+      bestSteps = steps;
+    }
+  }
+  return best;
+}
+
+/**
  * How many walks a map keeps at once. A walk is a whole grid of numbers, and a
  * target that moves - the hunter, asked every frame - is a new target every
  * step: kept without a limit, a hunter walking about outside while the player

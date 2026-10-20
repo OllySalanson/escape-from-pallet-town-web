@@ -94,6 +94,8 @@ describe('in-run objective HUD layout', () => {
     // doors, not a straight count across the grid the places are laid on.
     expect(sceneSource).toContain('stepsTowards(this.currentMap, this.currentTile, loot.position)');
     expect(sceneSource).toContain('stepsTowards(this.currentMap, this.currentTile, this.hunterState.position)');
+    // Which stop is nearest is asked the same way (`nearestByWalk`).
+    expect(sceneSource).toContain('nearestByWalk(this.currentMap, this.currentTile, outstanding)');
     expect(sceneSource).toContain('contractNavigationCue');
     // A contract that banks through one exit says so on the map too, because
     // the temptation is a gate the player walks past with the job in hand.

@@ -6,7 +6,7 @@ import { districtAt } from './districts';
 import { gateKey } from './gates';
 import { collisionBlocker, findHunterPursuitPath, findHunterSpawnTile } from './hunter';
 import { composeMapFile, doorwayOf } from './mapAreas';
-import { keptRouteFields, ROUTE_FIELDS_KEPT, stepsTowards, wayTowards } from './areaRoutes';
+import { keptRouteFields, nearestByWalk, ROUTE_FIELDS_KEPT, stepsTowards, wayTowards } from './areaRoutes';
 import { hunterChipView } from '../scenes/raidHud';
 import {
   buildPlayerMap,
@@ -286,6 +286,25 @@ describe('a map with the inside of a building', () => {
       direction: 'S',
     });
     expect(chip?.label).toBe('HUNTER S 2');
+  });
+
+  it('names the contract stop nearest the room by the walk out through its door', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const mat = { x: 33 + 5, y: 7 };
+    // One stop just off the doorstep, one at the far east of the lane. Straight
+    // along the grid the far one is nearer the room, which is laid east of the
+    // lane, and the chip sent the player out of the door and away from the stop
+    // beside it.
+    const byTheDoor = { id: 'door', position: { x: FRONT.x, y: FRONT.y + 1 } };
+    const farEast = { id: 'east', position: { x: SAMPLE.width - 2, y: 12 } };
+    const straight = (to: { x: number; y: number }) => Math.abs(to.x - mat.x) + Math.abs(to.y - mat.y);
+    expect(straight(farEast.position)).toBeLessThan(straight(byTheDoor.position));
+    expect(nearestByWalk(world, mat, [farEast, byTheDoor])?.id).toBe('door');
+    // Outdoors it is the straight count it always was.
+    expect(nearestByWalk(world, { x: SAMPLE.width - 3, y: 12 }, [byTheDoor, farEast])?.id).toBe('east');
+    expect(nearestByWalk(world, mat, [])).toBeUndefined();
   });
 
   it('keeps only a few walks however many tiles a moving target stands on', () => {
