@@ -348,6 +348,17 @@ describe('recoil, drain and healing', () => {
     expect(types(wasted.events)).toContain('heal-failed');
     expect(wasted.state.player.currentHp).toBe(player.maxHp);
   });
+
+  it('says a healing move in FireRed\'s words, with no number', () => {
+    // FireRed's sText_PkmnRegainedHealth (BattleScript_EffectRestoreHp): the
+    // HP bar shows how much came back.
+    const player = armed(BULBASAUR, 40, SYNTHESIS);
+    const fresh = createBattleState(player, armed(PIDGEY, 5));
+    const hurt = { ...fresh, player: { ...fresh.player, currentHp: 1 } };
+
+    const healed = find(resolveTurn(hurt, 0, always).events, 'healed')!;
+    expect(eventToMessage(healed, 'Wild')).toBe('Your BULBASAUR regained health!');
+  });
 });
 
 describe('priority', () => {

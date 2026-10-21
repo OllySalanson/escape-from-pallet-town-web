@@ -1252,8 +1252,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     // sText_ItSuckedLiquidOoze for a drain a Liquid Ooze turned round.
     case 'recoil':
       return event.oozed ? 'It sucked up the LIQUID OOZE!' : `${combatantName(event, foe)} is hit with recoil!`;
+    // FireRed's sText_PkmnRegainedHealth: the HP bar says how much came back.
     case 'healed':
-      return `${combatantName(event, foe)} restored +${event.amount} HP.`;
+      return `${combatantName(event, foe)} regained health!`;
     // FireRed's sText_PkmnHPFull.
     case 'heal-failed':
       return `${combatantName(event, foe)}'s HP is full!`;

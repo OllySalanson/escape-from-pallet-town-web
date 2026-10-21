@@ -414,3 +414,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: the engine's `drained` event carries `from`, the Pokémon the drain hit (`battleEngine.ts`), and `battlePresentation.ts` prints FireRed's line about it. Test: `moveEffects.test.ts` "says a drain in FireRed's words, naming the Pokemon whose energy was drained" (fails before).
 - How to use it: use Absorb with a hurt Oddish or Paras - the line says the foe had its energy drained.
 - Checked and left: the remaining ability lines (powered-up, sharpened, shrugged-off, hardened, cured-on-switch, quickened, hidden, weathered-out) print nothing at all in FireRed; AGENTS.md says every ability arrives as a battle line here on purpose, so they keep the game's words. Other lines still in the game's own words: a healing move's "X restored +N HP." (FireRed: "X regained health!"), and hail's chip "is buffeted by the hail!" (FireRed: "is pelted by HAIL!"; no shipped place or learnset brings hail).
+
+### 55. A healing move said "Your BULBASAUR restored +34 HP." in the game's own words
+- What a player met: Synthesis, Recover, Soft-Boiled, Milk Drink and the other healing moves read "Your BULBASAUR restored +34 HP." (or "Wild CHANSEY restored +N HP."). FireRed says "BULBASAUR regained health!" with no number (pret's `sText_PkmnRegainedHealth`, `BattleScript_EffectRestoreHp`); the HP bar shows what came back.
+- How reproduced: `resolveTurn` with Synthesis from a hurt Bulbasaur, the `healed` event read through `eventToMessage`.
+- What changed: `battlePresentation.ts` prints FireRed's line for `healed`. Test: `moveEffects.test.ts` "says a healing move in FireRed's words, with no number" (fails before: received "Your BULBASAUR restored +34 HP.").
+- How to use it: use Synthesis or Recover while hurt - the line says the Pokémon regained health.
+- Still in the game's own words: an absorbing ability's "restored HP using its WATER ABSORB! +N HP" (FireRed's `sText_PkmnRestoredHPUsing` has no number), and hail's chip line.
