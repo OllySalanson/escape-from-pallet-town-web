@@ -536,3 +536,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: a new `withdrawLine` in `pokemon/battle/battleFlow.ts` holds FireRed's line, used by both of `BattleScene`'s withdraw paths. Test: `battlePresentation.test.ts` "calls a Pokemon back in FireRed's own words" (fails before); `BattleScene.test.ts` now expects the new line.
 - How to use it: switch Pokémon in any fight - the old one goes back with "X, come back!".
 - Left on purpose: FireRed's HP-dependent variants ("that's enough!", "OK!", "good!", chosen by how hurt the foe is) - choosing among them is a wording design call.
+
+### 73. One score waiting on the console was "they"
+- What a player met: sitting back down at THE BOLTHOLE's console with one score left over from a game whose bot check did not pass (or that Pallet Town did not answer), the GAMES menu said "One score is still waiting: the bot check didn't pass. They go next time you sit down here." - one score, then "they".
+- How reproduced: `waitingLine({ sent: 0, left: 1, stopped: 'bot-check' })` in `console/gamesMenu.ts` printed the line; the old test only matched its first half.
+- What changed: `waitingLine` says "It goes" for one score and "They go" for several. Test: `gamesMenu.test.ts` 'says one waiting score goes up as "it", and several as "they"' (fails before).
+- How to use it: leave one score waiting and sit at the console again - the line reads "One score is still waiting... It goes next time you sit down here."
+- Read and left: the console menu's keys and name flow (`ConsoleScene.ts`); a claim answered after the menu is closed still calls `keepName` on the stopped scene (harmless: the overlay is gone, so it draws nothing). The playtest 48 nudge to plant a building by its door rather than its top-left corner touches the ghost, the drag-planting and every maker driver's clicks - a bigger change, left for its own iteration.

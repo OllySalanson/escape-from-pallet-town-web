@@ -145,8 +145,10 @@ export function waitingLine(result: WaitingSent): string | undefined {
         ? 'Your waiting score is on the Pallet Town board now.'
         : `Your ${result.sent} waiting scores are on the Pallet Town board now.`;
   }
-  const scores = result.left === 1 ? 'One score is' : `${result.left} scores are`;
+  const one = result.left === 1;
+  const scores = one ? 'One score is' : `${result.left} scores are`;
+  const goes = one ? 'It goes' : 'They go';
   return result.stopped === 'bot-check'
-    ? `${scores} still waiting: the bot check didn't pass. They go next time you sit down here.`
-    : `${scores} still waiting for Pallet Town to answer. They go next time you sit down here.`;
+    ? `${scores} still waiting: the bot check didn't pass. ${goes} next time you sit down here.`
+    : `${scores} still waiting for Pallet Town to answer. ${goes} next time you sit down here.`;
 }

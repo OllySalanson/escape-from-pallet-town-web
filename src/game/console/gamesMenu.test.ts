@@ -126,4 +126,16 @@ describe('a score that did not reach Pallet Town, as the player is told it', () 
     expect(waitingLine({ sent: 0, left: 1, stopped: 'bot-check' })).toMatch(/One score is still waiting: the bot check/);
     expect(waitingLine({ sent: 0, left: 3, stopped: 'device' })).toMatch(/3 scores are still waiting for Pallet Town to answer/);
   });
+
+  it('says one waiting score goes up as "it", and several as "they"', () => {
+    expect(waitingLine({ sent: 0, left: 1, stopped: 'bot-check' })).toBe(
+      "One score is still waiting: the bot check didn't pass. It goes next time you sit down here.",
+    );
+    expect(waitingLine({ sent: 0, left: 1, stopped: 'device' })).toBe(
+      'One score is still waiting for Pallet Town to answer. It goes next time you sit down here.',
+    );
+    expect(waitingLine({ sent: 1, left: 2, stopped: 'device' })).toBe(
+      '2 scores are still waiting for Pallet Town to answer. They go next time you sit down here.',
+    );
+  });
 });
