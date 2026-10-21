@@ -351,6 +351,13 @@ describe('battle presentation', () => {
     ]);
   });
 
+  it("opens a trainer fight in FireRed's own words", () => {
+    // pret's sText_Trainer1WantsToBattle.
+    expect(battleOpeningMessages('LASS ADA', ['Bulbasaur'], ['Pidgey'])[0]).toBe(
+      'LASS ADA would like to battle!',
+    );
+  });
+
   it('advances opening narration before presenting the actionable command menu', () => {
     const narration = new TypewriterQueue(
       battleOpeningMessages(undefined, ['Bulbasaur'], ['Pidgey']),

@@ -15,7 +15,7 @@ export function battleOpeningMessages(
     return [`Wild ${listNames(enemyNames)} appeared!`];
   }
   return [
-    `${trainerName} wants to battle!`,
+    trainerChallengeLine(trainerName),
     // Only a double battle names what was sent out. A single battle's one foe
     // is named on the plate and in every line of the log that follows, and an
     // extra press before every trainer fight in the game is not worth saying it
@@ -24,6 +24,10 @@ export function battleOpeningMessages(
     `Go, ${listNames(playerNames)}!`,
   ];
 }
+
+/** FireRed's sText_Trainer1WantsToBattle: "X would like to battle!". */
+export const trainerChallengeLine = (trainerName: string): string =>
+  `${trainerName} would like to battle!`;
 
 const listNames = (names: readonly string[]): string =>
   names.map((name) => name.toUpperCase()).join(' and ');

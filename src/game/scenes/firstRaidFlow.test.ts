@@ -22,7 +22,7 @@ describe('first raid flow regressions', () => {
 
   it('introduces an ordinary trainer battle before showing its action menu', () => {
     expect(battleOpeningMessages('RIVAL HUNTER', ['Charmander'], ['Pidgey'])).toEqual([
-      'RIVAL HUNTER wants to battle!',
+      'RIVAL HUNTER would like to battle!',
       'Go, CHARMANDER!',
     ]);
   });

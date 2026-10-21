@@ -515,3 +515,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `battleOpeningMessages` and `teachingBattleMessages` in `pokemon/battle/battleFlow.ts` say FireRed's line. Test: `battlePresentation.test.ts` "opens a wild fight in FireRed's own words" (single and double; fails before).
 - How to use it: step into tall grass until something bites - the fight opens "Wild PIDGEY appeared!".
 - Seen and left (later candidates): a trainer fight opens "X wants to battle!" (FireRed: "X would like to battle!") and sends out with "Go, X!" (FireRed: "Go! X!"). Route 1's southern places (Steading, Pound, Hollow Oak, Brook, Common, South Gate, Water Meadows) and their signs were toured and read fine.
+
+### 70. Every trainer fight opened "X wants to battle!"
+- What a player met: every trainer fight (Raider Maya, every keeper, the hunter) opened on "RAIDER MAYA wants to battle!", and a trainer on a player's map with no lines of their own said the same before the fight. FireRed says "X would like to battle!" (pret's `sText_Trainer1WantsToBattle`).
+- How reproduced: `battleOpeningMessages('LASS ADA', ...)` and `firstRaidFlow.test.ts`'s hunter opening printed the old line; seen on the trainer fights in earlier tours.
+- What changed: a new `trainerChallengeLine` in `pokemon/battle/battleFlow.ts` holds FireRed's line, used by the battle's opening and by `mapFile.ts`'s fallback line for a map-file trainer. Test: `battlePresentation.test.ts` "opens a trainer fight in FireRed's own words" (fails before the fix); `firstRaidFlow.test.ts` now expects the new line.
+- How to use it: walk into a trainer's watch - the fight opens "X would like to battle!".
+- Left: the README's battle picture still shows "BLUE wants to battle!" and its alt text describes that picture truthfully; it changes when the picture is made again (`tools/playtest/readmeShots.mjs`). Still a later candidate: the send-out "Go, X!" (FireRed: "Go! X!").
