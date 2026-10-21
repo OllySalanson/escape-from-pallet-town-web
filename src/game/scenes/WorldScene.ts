@@ -4445,11 +4445,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
   }
 
-  private seatDialog(about: readonly GridPosition[]): void {
+  private seatDialog(
+    about: readonly GridPosition[],
+    seen?: { readonly left: number; readonly top: number },
+  ): void {
     if (about.length === 0 && !this.dialogRaised) {
       return;
     }
-    const view = this.cameras.main.worldView;
+    const view = seen ?? this.cameras.main.worldView;
     const seat = placeDialog({
       viewHeight: this.scale.height,
       box: { x: this.dialogBox.x, width: DIALOG_WIDTH, height: DIALOG_HEIGHT },
@@ -4837,6 +4840,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // after the briefing, never instead of it, or the raid opens without saying
     // where the drop is or which key is the field guide (playtest 47).
     const missing = missingCarryIn(contractCarryIn(contract), (itemId) => this.bag.count(itemId));
+    // Clear of the player, who is read against it: a landing by the map's
+    // bottom edge (THE STRAND) stands where the camera cannot centre them, and
+    // the box at the bottom hid them for the whole briefing. The camera's own
+    // scroll, because `startFollow` set it this frame and its `worldView` is
+    // only brought up to date when it is first drawn.
+    const camera = this.cameras.main;
+    this.seatDialog([this.currentTile], { left: camera.scrollX, top: camera.scrollY });
     this.dialogBox.showMessages(
       missing.length === 0
         ? [contract.deploymentBriefing]
