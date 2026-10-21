@@ -824,8 +824,11 @@ export const hunterFleeMessages = (
 
 export const WILD_ESCAPE_SUCCESS_MESSAGE = 'Got away safely!';
 
-export const wildEscapeFailureMessage = (enemyName: string): string =>
-  `Couldn't get away from ${enemyName.toUpperCase()}!`;
+/**
+ * FireRed's failed run, `sText_CantEscape2` (`HandleAction_Run` in pret's
+ * `battle_main.c`), which names nobody.
+ */
+export const WILD_ESCAPE_FAILURE_MESSAGE = "Can't escape!";
 
 export const combatPresentationSteps = (
   events: readonly BattleEvent[],

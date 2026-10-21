@@ -191,7 +191,7 @@ import {
   NO_BALLS_MESSAGE,
   NOTHING_TO_DROP_MESSAGE,
   weatherSetMessage,
-  wildEscapeFailureMessage,
+  WILD_ESCAPE_FAILURE_MESSAGE,
   changesShownStatus,
   shownStatusLabel,
   statusAfterLine,
@@ -2285,7 +2285,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.showCombatEvents(enemyResult.events, [
       {
-        message: wildEscapeFailureMessage(this.state.enemy.pokemon.name),
+        message: WILD_ESCAPE_FAILURE_MESSAGE,
         sound: 'denied',
       },
     ]);

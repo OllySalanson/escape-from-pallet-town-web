@@ -442,3 +442,9 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `WorldScene` keeps each prize's gleam by loot id (`prizeGleams`), and one `takeLootMarksOff` stops its tween and destroys it with the icon and caption, for both a pickup and a friend's claim. Test: `scenes/prizeGleam.test.ts` (fails before: the gleam is never destroyed and its tween runs on).
 - How to use it: pick up any rare find - its light goes out with it.
 - Checked and left: a Floodplain night raid and a Pallet night raid (wording, result screen, lobby) were otherwise clean. The result line "Banked 1 TM28 Dig" reads a little stiffly but is the same sum every item uses.
+
+### 59. A failed wild run said "Couldn't get away from PIDGEY!" in the game's own words
+- What a player met: choosing RUN against a faster wild Pokemon and losing the roll put up "Couldn't get away from PIDGEY!". FireRed says "Can't escape!" and names nobody (pret's `HandleAction_Run` in `battle_main.c` sets chooser 3, `B_MSG_CANT_ESCAPE_2`, which is `sText_CantEscape2`).
+- How reproduced: `BattleScene.test.ts` "keeps the fight going on a failed roll..." presses RUN 38% against a level-20 Pidgey with the roll forced to fail, and reads the first line.
+- What changed: `battlePresentation.ts` has `WILD_ESCAPE_FAILURE_MESSAGE`, FireRed's line, in place of `wildEscapeFailureMessage(name)`, and `BattleScene.ts` shows it. Test: that test now expects "Can't escape!" (fails before the fix).
+- How to use it: run from a faster wild Pokemon - a failed roll says "Can't escape!" before the foe moves.

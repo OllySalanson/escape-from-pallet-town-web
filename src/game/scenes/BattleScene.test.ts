@@ -712,7 +712,8 @@ describe('escaping a wild encounter', () => {
     expect(read(renderedTexts)[4].text).toBe('  RUN 38%');
     read(renderedTexts)[4].handlers.pointerdown();
 
-    expect(dialog.shownMessages[0]).toBe("Couldn't get away from PIDGEY!");
+    // FireRed's own line, which names nobody (`sText_CantEscape2`).
+    expect(dialog.shownMessages[0]).toBe("Can't escape!");
     expect((scene as unknown as { pendingBattleExit: boolean }).pendingBattleExit).toBe(false);
     expect((scene as unknown as { wildEscapeAttempts: number }).wildEscapeAttempts).toBe(1);
   });
