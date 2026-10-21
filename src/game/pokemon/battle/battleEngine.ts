@@ -313,7 +313,13 @@ export type BattleEvent =
        */
       readonly spread?: boolean;
     }
-  | { readonly type: 'missed'; readonly user: 'player' | 'enemy'; readonly slot?: number }
+  | {
+      readonly type: 'missed';
+      readonly user: 'player' | 'enemy';
+      readonly slot?: number;
+      /** Whose attack missed, so the line can say so as FireRed's does. */
+      readonly name: string;
+    }
   // What a move that hits more than one Pokemon took off each of them.
   //
   // `used-move` carries the damage when there is exactly one target, which is
@@ -1779,7 +1785,7 @@ const applyMove = (
       events.push(
         move.base.effects.seed
           ? { type: 'seed-evaded', user: targetRef.side, ...inSlot(targetRef), name: defenderName }
-          : { type: 'missed', user, ...inSlot(ref) },
+          : { type: 'missed', user, ...inSlot(ref), name: attackerName },
       );
       struck.push({
         ref: targetRef,

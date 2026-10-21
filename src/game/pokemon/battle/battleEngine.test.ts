@@ -517,7 +517,7 @@ describe('battle turn resolution', () => {
     const state = { ...initial, player: { ...initial.player, moves: [{ base: inaccurateMove, pp: 10 }] } };
     const result = resolveTurn(state, 0, () => 0.999999);
 
-    expect(result.events).toContainEqual({ type: 'missed', user: 'player' });
+    expect(result.events).toContainEqual({ type: 'missed', user: 'player', name: 'Charmander' });
     expect(result.state.enemy.currentHp).toBe(state.enemy.currentHp);
     expect(result.state.player.moves[0]?.pp).toBe(9);
   });

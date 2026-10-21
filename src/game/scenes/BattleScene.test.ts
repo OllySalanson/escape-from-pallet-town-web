@@ -2522,6 +2522,16 @@ describe('the blink a blow lands with', () => {
     expect(dialog.shownMessages[used + 1]).toBe("Your PIDGEY's Speed won't go higher!");
   });
 
+  it("says whose attack missed, as FireRed does, rather than an attack nobody threw", () => {
+    // The fight holds every roll at a half, which a 50% move misses.
+    const { dialog } = fight(GENERATED_MOVES['zap-cannon'], GENERATED_MOVES['dynamic-punch']);
+    const used = dialog.shownMessages.indexOf('Your PIDGEY used ZAP CANNON!');
+    expect(used).toBeGreaterThanOrEqual(0);
+    expect(dialog.shownMessages[used + 1]).toBe("Your PIDGEY's attack missed!");
+    expect(dialog.shownMessages).toContain("Wild RATTATA's attack missed!");
+    expect(dialog.shownMessages).not.toContain('The attack missed!');
+  });
+
   it('still blinks the Pokemon a damaging move hits, and only that one', () => {
     const { blinked, shake } = fight(TACKLE, TAIL_WHIP);
     expect(blinked).toEqual(['enemy']);

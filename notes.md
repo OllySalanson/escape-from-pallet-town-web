@@ -264,3 +264,11 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `sayAccuracy` in `battleEngine.ts` keeps quiet for a move with `alwaysHits` (Agility, Swift, every self-targeted status move), so the once-a-battle line waits for the first move that rolls accuracy. Test: `abilities.test.ts` "keeps Compound Eyes quiet on a move that cannot miss, and says it on the first that can" (fails before).
 - How to use it: lead with Agility on a Compound Eyes Pokémon - nothing about aim is said until it uses a move that can miss.
 - Not re-checked live: the line is the engine's event, which the test reads directly; seen live in entry 32 before the fix.
+
+### 34. A miss said "The attack missed!" without saying whose
+- What a player met: every miss in a fight read "The attack missed!" - in a double battle, after a run of lines from four Pokémon, nothing said which one had swung and missed. FireRed names the attacker ("CHARMANDER's attack missed!").
+- How reproduced: the `BattleScene.test.ts` blink harness (rolls held at a half) with Zap Cannon against Dynamic Punch, both 50% moves; the `missed` event carried only the side.
+- What changed: the `missed` event carries the attacker's name (`battleEngine.ts`) and the line is FireRed's `sText_AttackMissed` - "Your PIDGEY's attack missed!" / "Wild RATTATA's attack missed!" (`battlePresentation.ts`). Test: `BattleScene.test.ts` "says whose attack missed, as FireRed does, rather than an attack nobody threw" (fails before: "The attack missed!").
+- How to use it: miss with any move - the line names whose attack it was.
+- Not checked live: the line is the presentation function the dialogue prints, and is shorter than the 40-character stat-cap line already seen to fit one row.
+- Seen and left: "No PP left for X!" (FireRed: "There's no PP left for this move!") and "X is already at full HP." (FireRed: "X's HP is full!") are other lines in this game's own words.

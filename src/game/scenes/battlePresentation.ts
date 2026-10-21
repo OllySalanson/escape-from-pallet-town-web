@@ -1119,7 +1119,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return `${combatantName({ user: event.target, name: event.name }, foe)} -${event.damage} HP${stab}`;
     }
     case 'missed':
-      return 'The attack missed!';
+      // FireRed's `sText_AttackMissed`: whose attack it was, because in a
+      // double battle the line can follow a different Pokemon's turn.
+      return `${combatantName(event, foe)}'s attack missed!`;
     case 'no-target':
       return 'But there was no target!';
     case 'nothing-happened':
