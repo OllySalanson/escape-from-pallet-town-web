@@ -360,3 +360,9 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - How to use it: use Ember on a wild Vulpix or Ponyta, or a Ground move on a Gastly - the line names what the ability did.
 - Also played: raids from viridian-kilns (Lv 14) and viridian-city-league-road (Lv 12) with `--said`; both clean.
 - Seen and left (mechanics, a later candidate): FireRed's Volt Absorb and Water Absorb only take a move with power (`gBattleMoves[move].power != 0`), so Thunder Wave still paralyses a Jolteon there; this game's `absorbsMoveType` checks the type alone.
+
+### 47. Thunder Wave did nothing to a Jolteon (Volt Absorb)
+- What a player met: Thunder Wave at a wild or trainer Jolteon (Volt Absorb) was swallowed by the ability, so it could never be paralysed. FireRed's Volt Absorb and Water Absorb take only a move with power (`battle_util.c`: `gBattleMoves[move].power != 0`), so there Thunder Wave paralyses it.
+- How reproduced: `resolveTurn` with Thunder Wave into a Volt Absorb holder - an `absorbed` event fired and no paralysis.
+- What changed: `absorbsMoveType` is handed the move's power as well as its type, and Volt Absorb and Water Absorb take a move only when its power is above zero. Flash Fire, Levitate and Soundproof are unchanged (FireRed's Flash Fire takes any Fire move, Will-O-Wisp included). Test: `abilities.test.ts` "lets Thunder Wave through a Volt Absorb, which FireRed only lets take a move with power" (fails before).
+- How to use it: Thunder Wave a Jolteon - it is paralysed, as in FireRed.

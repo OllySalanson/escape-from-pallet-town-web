@@ -421,6 +421,20 @@ describe('the abilities that let nothing through at all', () => {
     expect(dealt(swallowed)).toBeGreaterThan(dealt(cold));
   });
 
+  it('lets Thunder Wave through a Volt Absorb, which FireRed only lets take a move with power', () => {
+    const result = resolveTurn(
+      createBattleState(
+        armed(species({ abilityId: null }), 20, THUNDER_WAVE),
+        armed(species({ abilityId: 'volt-absorb' }), 20),
+      ),
+      0,
+      at({}),
+    );
+
+    expect(result.state.enemy.primaryStatus).toBe(PrimaryStatus.Paralysis);
+    expect(didFire(result.events, 'absorbed')).toBe(false);
+  });
+
   it('hears nothing through Soundproof', () => {
     const result = resolveTurn(
       createBattleState(

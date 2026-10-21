@@ -152,8 +152,8 @@ export interface AbilityHooks {
   readonly blocksCriticalHits?: true;
   /** The holder pays no recoil for its own move. */
   readonly blocksRecoil?: true;
-  /** What a move of this type does to the holder instead of its damage. */
-  readonly absorbsMoveType?: (type: PokemonType) => AbilityAbsorption | null;
+  /** What a move of this type and power does to the holder instead of its damage. */
+  readonly absorbsMoveType?: (type: PokemonType, power: number) => AbilityAbsorption | null;
   /**
    * A move carrying this flag does not touch the holder at all. Soundproof is
    * the first thing in the game to read a `MoveFlag`, which is what those flags
