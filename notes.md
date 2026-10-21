@@ -379,3 +379,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: the `shed` line in `battlePresentation.ts` is FireRed's, through a small `problemLabel` (burn and ice in FireRed's words, the rest as before). Test: `battlePresentation.test.ts` "says a Shed Skin cured its problem, in FireRed's own words" (fails before); the old pin is gone from the "names a status..." test.
 - How to use it: poison a wild Ekans and keep fighting - when its Shed Skin works, the line says it cured its poison problem.
 - Ability lines still in the game's own words: powered-up, sharpened, shrugged-off, hardened, blocked-status, cured-on-switch (FireRed's Natural Cure says nothing), reflected, contact, quickened, hidden, weathered-out.
+
+### 50. An ability refusing a status "kept sleep off it!" in the game's own words
+- What a player met: a Thunder Wave at a wild Persian's Limber, a Sleep Powder at a Drowzee's Insomnia or a Headbutt flinch on an Inner Focus read "... kept paralysis off it!", "... kept sleep off it!", "... would not let it flinch!". FireRed says "Wild PERSIAN's LIMBER prevents paralysis!", "Wild DROWZEE stayed awake using its INSOMNIA!", "... prevents poisoning!", "... prevents burns!", "... prevents confusion!", "... prevents flinching!" (pret's `battle_message.c`).
+- How reproduced: `eventToMessage` for an `ability` event with effect `blocked-status` and each status printed the old lines.
+- What changed: the `blocked-status` line in `battlePresentation.ts` is FireRed's for each status. FireRed says nothing when Magma Armor refuses a freeze, so that one keeps the game's words. Test: `battlePresentation.test.ts` "says an ability refused a status in FireRed's own words" (fails before).
+- How to use it: Thunder Wave a Persian or Sleep Powder a Drowzee - the line says the ability prevents it, as in FireRed.
+- Ability lines still in the game's own words: powered-up, sharpened, shrugged-off, hardened, blocked-boost (FireRed: "prevents stat loss!"), cured-on-switch, reflected, contact, quickened, hidden, weathered-out.

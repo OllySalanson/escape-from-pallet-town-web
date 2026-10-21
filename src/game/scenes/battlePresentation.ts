@@ -1335,10 +1335,26 @@ const abilityLine = (
             : `${who} made ${move} useless!`;
       }
     }
+    // FireRed's own refusals (`sText_PkmnPreventsParalysisWith` and the rest,
+    // `sText_PkmnStayedAwakeUsing` for sleep). FireRed says nothing for a
+    // freeze an ability refused, so that one keeps the game's own words.
     case 'blocked-status':
-      return event.status
-        ? `${who} kept ${statusLabel(event.status)} off it!`
-        : `${who} would not let it flinch!`;
+      switch (event.status) {
+        case undefined:
+          return `${who} prevents flinching!`;
+        case 'paralysis':
+          return `${who} prevents paralysis!`;
+        case 'poison':
+          return `${who} prevents poisoning!`;
+        case 'burn':
+          return `${who} prevents burns!`;
+        case 'confusion':
+          return `${who} prevents confusion!`;
+        case 'sleep':
+          return `${combatantName(event, foe)} stayed awake using its ${event.ability}!`;
+        default:
+          return `${who} kept ${statusLabel(event.status)} off it!`;
+      }
     case 'blocked-boost':
       return `${who} would not let its ${statLabel(event.stat ?? '')} drop!`;
     case 'blocked-secondaries':

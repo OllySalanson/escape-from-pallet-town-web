@@ -627,16 +627,30 @@ describe('the small wording faults the battles playtest found', () => {
         effect,
         status,
       } as never);
-    expect(line('blocked-status', 'sleep')).toBe("Your DROWZEE's INSOMNIA kept sleep off it!");
     expect(line('blocked-status', 'freeze', 'MAGMA ARMOR')).toBe(
       "Your DROWZEE's MAGMA ARMOR kept freezing off it!",
     );
-    expect(line('blocked-status', 'confusion', 'OWN TEMPO')).toBe(
-      "Your DROWZEE's OWN TEMPO kept confusion off it!",
-    );
-    expect(line('blocked-status', 'burn', 'WATER VEIL')).toBe(
-      "Your DROWZEE's WATER VEIL kept a burn off it!",
-    );
+  });
+
+  it("says an ability refused a status in FireRed's own words", () => {
+    const line = (status: string | undefined, ability: string) =>
+      eventToMessage(
+        {
+          type: 'ability',
+          user: 'enemy',
+          name: 'Snorlax',
+          ability,
+          effect: 'blocked-status',
+          status,
+        } as never,
+        'Wild',
+      );
+    expect(line('sleep', 'INSOMNIA')).toBe('Wild SNORLAX stayed awake using its INSOMNIA!');
+    expect(line('paralysis', 'LIMBER')).toBe("Wild SNORLAX's LIMBER prevents paralysis!");
+    expect(line('poison', 'IMMUNITY')).toBe("Wild SNORLAX's IMMUNITY prevents poisoning!");
+    expect(line('burn', 'WATER VEIL')).toBe("Wild SNORLAX's WATER VEIL prevents burns!");
+    expect(line('confusion', 'OWN TEMPO')).toBe("Wild SNORLAX's OWN TEMPO prevents confusion!");
+    expect(line(undefined, 'INNER FOCUS')).toBe("Wild SNORLAX's INNER FOCUS prevents flinching!");
   });
 
   it("names the Pokemon a move did not affect, as FireRed's line does", () => {
