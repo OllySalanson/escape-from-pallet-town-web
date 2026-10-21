@@ -176,3 +176,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `raidClockView` (`scenes/raidHud.ts`) says `NIGHT PLAYTEST` for an explorer run at night. Test: `playtestMode.test.ts` "still says a raid is at night, because the clock chip is the only place that does" (fails before).
 - How to use it: play the explorer run after nine at night - the corner chip reads NIGHT PLAYTEST.
 - Also checked this iteration and clean: stormcrown.mjs (every step ok, Mew's one throw, out by the Cloud Stair). Note: drivers need `EPTW_CHROME_LIBS` from `tools/playtest/ensure-libs.sh` on this box or Chromium exits 127 (libasound).
+
+### 21. A raid that found a spare pack said a wipe would cost "1 Raid pack and your Raid pack"
+- What a player met: a Pallet Town raid from the Strand picked up a Raid pack on the walk to the South Gate. The result screen's gamble line read "A wipe would have cost you 3 Potions, 1 Raid pack and your Raid pack" - the same thing named twice, which reads like a typo or a double count. A lost raid said the same in "You lost ...".
+- How reproduced: `raid.mjs <url> --testmode --stepped --window=pixel --insertion=pallet-strand --level=14 --completed=recover-lost-field-kit --fight --said --shot=...` (the run whose page seed was 671761143 found the pack).
+- What changed: `describeStakes` (`run/extractionReport.ts`) calls a pack in the list beside the worn one a spare: "3 Potions, 1 spare Raid pack and your Raid pack", and "2 spare Raid packs" in a loss. Test: `extractionReport.test.ts` "calls a pack found on the raid a spare, never the same name twice beside the worn one" (fails before).
+- How to use it: pick up a pack on a raid and walk out - the gamble line names it as a spare beside the one you wore.
+- Not checked live with the new words (finding a pack is a roll of the loot); the line is the pure function the screen prints.

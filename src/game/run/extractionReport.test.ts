@@ -1059,6 +1059,42 @@ describe('what the raid had at stake', () => {
     expect(report.gambleVerdict).toBe('A wipe would have cost you your Raid pack. It did not happen this time.');
   });
 
+  it('calls a pack found on the raid a spare, never the same name twice beside the worn one', () => {
+    const starter = new Pokemon(BULBASAUR, 14);
+    const manager = startedRun({
+      party: [starter],
+      items: [{ itemId: 'potion', quantity: 3 }],
+      secure: { pokemon: [starter] },
+      packItemId: 'raid-pack',
+    });
+    manager.resolveEscape();
+
+    const escaped = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [{ itemId: 'raid-pack', quantity: 1 }] },
+      carriedOut: { potion: 3, 'raid-pack': 1 },
+      saved: true,
+    });
+    // Seen on a Pallet Town raid: "3 Potions, 1 Raid pack and your Raid pack".
+    expect(escaped.gambleVerdict).toBe(
+      'A wipe would have cost you 3 Potions, 1 spare Raid pack and your Raid pack. It did not happen this time.',
+    );
+
+    const lost = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: [], items: [{ itemId: 'raid-pack', quantity: 2 }] },
+      carriedOut: { 'raid-pack': 2 },
+      lastStand: starter,
+      saved: true,
+    });
+    expect(lost.summary).toContain('You lost 2 spare Raid packs and your Raid pack.');
+  });
+
   it('never says nothing was taken from a wipe that took the pack', () => {
     const starter = new Pokemon(BULBASAUR, 5);
     const manager = startedRun({
