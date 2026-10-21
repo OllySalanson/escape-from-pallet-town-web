@@ -162,7 +162,7 @@ describe('the lobby as a screen of the game', () => {
     const { hub } = createWornHub();
 
     const home = markupOf(hub);
-    expect(home).toContain('1 Pokémon came home hurt');
+    expect(home).toContain('Charmander came home hurt');
     expect(home).not.toContain('recovery-panel');
 
     hub.setView('stash');
@@ -175,7 +175,7 @@ describe('the lobby as a screen of the game', () => {
   it('tells a team with nobody standing that it cannot raid, rather than that it is hurt', () => {
     const { hub } = createWornHub((maxHp) => maxHp);
     // The starting stash's own partner is fit, so the team can still go.
-    expect(markupOf(hub)).toContain('1 Pokémon fainted. NURSE JOY is across the yard.');
+    expect(markupOf(hub)).toContain('Charmander fainted. NURSE JOY is across the yard.');
 
     for (const stored of hub.stash.listPokemon()) {
       stored.pokemon.takeDamage(stored.pokemon.maxHp);

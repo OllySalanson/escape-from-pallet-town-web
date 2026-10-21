@@ -209,7 +209,8 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
         stored.pokemon.level = ${Number(level)};
         stored.pokemon.moves = [];
         stored.pokemon.experience = 0;
-        stored.pokemon.currentHp = 9999;
+        // --hp still holds: a raid lost at a level is --level with --hp=1.
+        stored.pokemon.currentHp = ${hp !== undefined ? Number(hp) : 9999};
       }
       // --team=speciesId:level,.. puts more Pokemon in the vault beside the
       // starter, and every one of them is then added to the raid party below.
