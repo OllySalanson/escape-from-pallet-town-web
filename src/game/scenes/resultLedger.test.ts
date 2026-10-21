@@ -26,6 +26,7 @@ import {
   SCROLL_ROWS,
   scrollCoverHeight,
   scrollEntries,
+  scrollPastTopCutBy,
   scrollTopCoverHeight,
   settledScrollTop,
 } from '../ui/MenuOverlay';
@@ -360,6 +361,28 @@ describe('the result screen ledger', () => {
     expect(scrollTopCoverHeight(pane, 0, [{ top: 199, bottom: 231 }, ...rows.slice(1)], 3)).toBe(0);
     // A whole game pixel off its top is a cut.
     expect(scrollTopCoverHeight(pane, 0, [{ top: 197, bottom: 231 }, ...rows.slice(1)], 3)).toBe(33);
+  });
+
+  it('scrolls on past a row the cursor left cut at the top, rather than hide it as a blank band', () => {
+    // Bill's barter table at 1280x800, walked down to HM06 ROCK SMASH: the
+    // browser scrolled just far enough to show it and left WATER STONE with 8
+    // of its 104 pixels out of sight, so the whole row was hidden - a blank
+    // band 96 pixels deep over LEAF STONE.
+    const pane = { top: 126, bottom: 544 };
+    const rows = [
+      { top: 118, bottom: 222 },
+      { top: 224, bottom: 304 },
+      { top: 306, bottom: 410 },
+      { top: 412, bottom: 516 },
+    ];
+    expect(scrollPastTopCutBy(pane, 0, rows, 2, { top: 412 })).toBe(96);
+    // Nothing cut, nothing to scroll.
+    expect(scrollPastTopCutBy(pane, 0, rows.slice(1), 2, { top: 412 })).toBe(0);
+    // The cursor's own row would go under the edge, so the cut is covered instead.
+    expect(scrollPastTopCutBy(pane, 0, rows, 2, { top: 150 })).toBe(0);
+    // Under a sticky head the cursor must stay below the head.
+    expect(scrollPastTopCutBy(pane, 40, rows, 2, { top: 200 })).toBe(0);
+    expect(scrollPastTopCutBy(pane, 40, rows, 2, { top: 412 })).toBe(56);
   });
 
   it('hides the foot of a cut line that Orange Kid draws below its line box', () => {

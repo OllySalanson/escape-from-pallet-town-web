@@ -226,9 +226,10 @@ export class MenuOverlay {
       return { left, top, right, bottom, ...(pane ? { group: `pane-${panes.indexOf(pane)}` } : {}) };
     });
     const next = nextFocusIndex(rects, current, direction);
-    controls[
-      direction === 'up' && current >= 0 ? leavingPaneIndex(controls.map(detailRefOf), current, next) : next
-    ]?.focus();
+    const target =
+      controls[direction === 'up' && current >= 0 ? leavingPaneIndex(controls.map(detailRefOf), current, next) : next];
+    target?.focus();
+    this.scrollPastTopCut(target ?? null);
     return true;
   }
 
@@ -383,6 +384,7 @@ export class MenuOverlay {
   private moveCursorTo(control: HTMLElement | null): void {
     this.relayout();
     control?.focus();
+    this.scrollPastTopCut(control);
     // Focus that did not move fires no event, and the help bar was just rebuilt.
     this.showHelpFor(control);
   }
@@ -467,24 +469,7 @@ export class MenuOverlay {
         markReadingPane(pane, scrolled || more);
       }
       const box = pane.getBoundingClientRect();
-      const rows =
-        scrolled || more
-          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)]
-              .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
-              .flatMap((element) =>
-                (element.classList.contains('px-wrap') ? lineBoxes(element) : [elementBox(element)]).map(
-                  ({ top, bottom, ink, left, right }) => ({
-                    top,
-                    bottom,
-                    ink,
-                    left,
-                    right,
-                    element,
-                    heading: headsWhatFollows(element.classList),
-                  }),
-                ),
-              )
-          : [];
+      const rows = scrolled || more ? scrollRowsOf(pane) : [];
       this.markTopCut(pane, box, rows, scrolled ? unit : 0);
       pane.querySelectorAll<HTMLElement>('[data-folded]').forEach((element) => {
         element.removeAttribute('data-folded');
@@ -527,6 +512,29 @@ export class MenuOverlay {
       ).map((row) => row.getBoundingClientRect());
       pane.setAttribute('data-more', moreLabel(entries, box.bottom - cover));
     });
+  }
+
+  /**
+   * The browser scrolls the cursor's row into view by just enough to show it,
+   * which walking down a list of rows of different heights leaves the row
+   * above cut by a few pixels - and a cut row is hidden whole (`markTopCut`),
+   * so walking down Bill's barter table left a blank band nearly a row deep
+   * over its stones. The pane scrolls on past the cut row instead, whenever
+   * that keeps the cursor's row whole.
+   */
+  private scrollPastTopCut(control: HTMLElement | null): void {
+    const pane = control ? scrollingAncestor(control, this.root) : null;
+    const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
+    if (!control || !pane || unit <= 0 || pane.scrollTop <= 0.5) {
+      return;
+    }
+    const head = Number.parseFloat(pane.style.scrollPaddingTop) || 0;
+    const further = scrollPastTopCutBy(pane.getBoundingClientRect(), head, scrollRowsOf(pane), unit, {
+      top: control.getBoundingClientRect().top,
+    });
+    if (further > 0) {
+      pane.scrollTop += further;
+    }
   }
 
   /**
@@ -592,6 +600,46 @@ export function scrollTopCoverHeight(
     return 0;
   }
   return Math.ceil(cover / unit - 0.001) * unit;
+}
+
+/**
+ * How much further to scroll a pane so that its top edge cuts no row, when
+ * that leaves the cursor's row whole below the edge: the depth the cut would
+ * be covered to (`scrollTopCoverHeight`), or zero when there is no cut or the
+ * cursor's row would go under the edge with it.
+ */
+export function scrollPastTopCutBy(
+  pane: { readonly top: number; readonly bottom: number },
+  head: number,
+  rows: readonly { readonly top: number; readonly bottom: number; readonly ink?: number }[],
+  unit: number,
+  cursor: { readonly top: number },
+): number {
+  const cover = scrollTopCoverHeight(pane, head, rows, unit);
+  if (cover <= 0) {
+    return 0;
+  }
+  const slack = Math.max(0.5, unit / 2);
+  return cursor.top - cover >= pane.top + head - slack ? cover : 0;
+}
+
+/** A scrolling pane's rows as the fold and the top cut measure them. */
+function scrollRowsOf(pane: HTMLElement) {
+  return [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)]
+    .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
+    .flatMap((element) =>
+      (element.classList.contains('px-wrap') ? lineBoxes(element) : [elementBox(element)]).map(
+        ({ top, bottom, ink, left, right }) => ({
+          top,
+          bottom,
+          ink,
+          left,
+          right,
+          element,
+          heading: headsWhatFollows(element.classList),
+        }),
+      ),
+    );
 }
 
 /**

@@ -183,3 +183,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `describeStakes` (`run/extractionReport.ts`) calls a pack in the list beside the worn one a spare: "3 Potions, 1 spare Raid pack and your Raid pack", and "2 spare Raid packs" in a loss. Test: `extractionReport.test.ts` "calls a pack found on the raid a spare, never the same name twice beside the worn one" (fails before).
 - How to use it: pick up a pack on a raid and walk out - the gamble line names it as a spare beside the one you wore.
 - Not checked live with the new words (finding a pack is a roll of the loot); the line is the pure function the screen prints.
+
+### 22. Walking down Bill's barter table left a blank band a row deep over its stones
+- What a player met: in Bill's cottage at 1280x800, arrowing down OUT OF THE HOLD to HM06 ROCK SMASH left an empty band about 96 screen pixels deep at the top of the list, over LEAF STONE. The browser had scrolled just far enough to show the cursor's row, which left WATER STONE with 8 of its 104 pixels out of sight, and a cut row is hidden whole. Brock's ladder does the same when it is walked down.
+- How reproduced: `shopScreens.mjs <url> <out> --window=1280x800` (bill-table picture), plus a probe of the `.px-scroll` panes at that moment: scrollTop 442, `data-above`, `--above-cover: 96px`.
+- What changed: when an arrow key moves the cursor, `MenuOverlay.scrollPastTopCut` scrolls the pane on past a row the top edge cuts, whenever the cursor's row stays whole (`scrollPastTopCutBy`). The list then starts on a whole row, and the space left over sits above the MORE strip at the foot, which explains it. The pointer never triggers it, so a hovered list never moves under the mouse. Test: `resultLedger.test.ts` "scrolls on past a row the cursor left cut at the top, rather than hide it as a blank band".
+- How to use it: arrow down any long list of tall rows (Bill's table, Brock's ladder) - the list starts on a whole row with no blank band above it.
+- Also checked this iteration and clean: shopScreens.mjs at 1280x800 (all faults clean before and after).
