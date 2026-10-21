@@ -1,8 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYER_NAME_MAX_LENGTH } from '../console/playerName';
+import { CONSOLE_GAMES } from '../console/consoleGames';
+import { gamesMenuMarkup } from '../console/gamesMenu';
+import { PLAYER_NAME_MAX_LENGTH, typedPlayerName } from '../console/playerName';
 import { YOUR_NAME_TITLE, nameClaimLine, nameCountLine, nameProblemLine, nameScreenHints, nameScreenMarkup } from './nameScreen';
 
+/**
+ * The characters a line under a name field lists as allowed: whatever stands
+ * after its last " and ", one character a word, to the end of the line.
+ */
+function listedCharacters(line: string): string[] {
+  return line.slice(line.lastIndexOf(' and ') + ' and '.length).trim().split(' ');
+}
+
 describe('YOUR NAME?', () => {
+  it('says under both name fields every mark a name may hold, the dash and the space included', () => {
+    // What the rule takes, asked of the rule: every printable mark that is not a letter or a number.
+    const marks = Array.from({ length: 95 }, (_, at) => String.fromCharCode(32 + at))
+      .filter((mark) => !/[A-Za-z0-9 ]/.test(mark) && typedPlayerName(`A${mark}A`) === `A${mark}A`);
+    expect(marks).toContain('-');
+    expect(typedPlayerName('A A')).toBe('A A');
+
+    const help = /data-name-field[^>]*data-help="([^"]*)"/.exec(nameScreenMarkup({ where: 'house', value: '' }))?.[1];
+    const consoleLine = /On every board[^<]*/.exec(
+      gamesMenuMarkup({ games: CONSOLE_GAMES, boards: new Map(), playerName: null, naming: { value: '' } }),
+    )?.[0];
+    for (const line of [help, consoleLine]) {
+      expect(line).toBeDefined();
+      // Listed last, so nothing after the dash makes it read as a break in the sentence.
+      expect(listedCharacters(line!).sort()).toEqual([...marks].sort());
+      expect(line).toContain('spaces');
+    }
+  });
+
   it("asks in FireRed's words, with one line of ten letters and OK, wherever it is asked", () => {
     for (const where of ['new-game', 'continue', 'house'] as const) {
       const markup = nameScreenMarkup({ where, value: '' });

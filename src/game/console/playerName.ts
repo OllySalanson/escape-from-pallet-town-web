@@ -24,6 +24,14 @@ export const PLAYER_NAME_MAX_LENGTH = 10;
 const NAME_CHARACTER = /[A-Z0-9 .!?'-]/;
 
 /**
+ * What a name may hold, in words, for the line under a name field. It ends on
+ * the dash, so the dash reads as one of the characters rather than as the
+ * break before whatever would follow it - followed by " - up to 10" it was
+ * read as punctuation and nobody knew a name could have one.
+ */
+export const NAME_CHARACTERS_WORDS = "letters, numbers, spaces and . ! ? ' -";
+
+/**
  * What is left of a name as it is typed: capitals, only the characters a name
  * may hold, no run of spaces, and no more than ten. Leading spaces go; one
  * trailing space is kept, because it is the space before the next word.
