@@ -397,6 +397,10 @@ export type BattleEvent =
     }
   | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly stat: StageStat; readonly stages: number }
+  // A status move asked a stat already at +6 or -6 to move further. FireRed
+  // says so ("won't go higher!"); a rolled secondary at the cap says nothing.
+  | { readonly type: 'stat-capped'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly stat: StageStat; readonly rising: boolean }
   // What a move does beyond its damage, each announced where it happens, so the
   // battle log explains a turn without the player having to read the HP bar.
   | { readonly type: 'flinched'; readonly user: 'player' | 'enemy';
@@ -2281,7 +2285,10 @@ const applyMoveEffects = (
   const events: BattleEvent[] = [];
 
   if (effects.boosts.length > 0) {
-    const boosted = applyStatBoosts(nextState, side, effects.boosts, ref);
+    // Only a status move's own effect says it found the stat at its cap, as
+    // FireRed's `ChangeStatBuffs` does for a certain change and not a rolled one.
+    const sayCapped = effects === move.effects && move.category === MoveCategory.Status;
+    const boosted = applyStatBoosts(nextState, side, effects.boosts, ref, sayCapped);
     nextState = boosted.state;
     events.push(...boosted.events);
   }
@@ -2860,6 +2867,7 @@ const applyStatBoosts = (
   ref: SlotRef,
   boosts: readonly StatBoost[],
   source: SlotRef = ref,
+  sayCapped = false,
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
   let nextState = state;
   const events: BattleEvent[] = [];
@@ -2878,6 +2886,16 @@ const applyStatBoosts = (
     const updatedStages = applyStatBoost(combatant.statStages, boost);
     const change = updatedStages[boost.stat] - combatant.statStages[boost.stat];
     if (change === 0) {
+      if (sayCapped && boost.stages !== 0) {
+        events.push({
+          type: 'stat-capped',
+          user: ref.side,
+          ...inSlot(ref),
+          name: combatant.pokemon.name,
+          stat: boost.stat,
+          rising: boost.stages > 0,
+        });
+      }
       continue;
     }
     nextState = withUnit(nextState, ref, { ...combatant, statStages: updatedStages });

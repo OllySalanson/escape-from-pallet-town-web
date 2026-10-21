@@ -1170,6 +1170,8 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
         : `${combatantName(event, foe)}'s health is sapped by LEECH SEED!`;
     case 'stat-stage-changed':
       return `${combatantName(event, foe)}'s ${statLabel(event.stat)} ${statChangeWords(event.stages)}!`;
+    case 'stat-capped':
+      return `${combatantName(event, foe)}'s ${statLabel(event.stat)} won't go ${event.rising ? 'higher' : 'lower'}!`;
     case 'ball-thrown':
       return `Threw ${withArticle(battleCaps(event.ball ?? 'Poké Ball'))} at ${event.name.toUpperCase()}!`;
     case 'catch-shake':

@@ -89,6 +89,9 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return withLine('heal');
     case 'stat-stage-changed':
       return withLine(event.stages > 0 ? 'statUp' : 'statDown');
+    // Nothing moved, so nothing sounds, as Splash is silent.
+    case 'stat-capped':
+      return null;
     case 'ball-thrown':
       return withLine('ballThrow');
     case 'catch-shake':

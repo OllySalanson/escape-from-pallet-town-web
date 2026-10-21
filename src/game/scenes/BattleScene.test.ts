@@ -2461,7 +2461,7 @@ describe('a ball that opens', () => {
  * damage.
  */
 describe('the blink a blow lands with', () => {
-  const fight = (playerMove: MoveBase, wildMove: MoveBase) => {
+  const fight = (playerMove: MoveBase, wildMove: MoveBase, startingSpeed = 0) => {
     const pidgey = new Pokemon(PIDGEY, 8);
     pidgey.moves.splice(0, pidgey.moves.length, new Move(playerMove));
     const wild = new Pokemon(getSpeciesById('rattata')!, 3);
@@ -2482,6 +2482,11 @@ describe('the blink a blow lands with', () => {
     (harness.scene as unknown as { cameras: { main: { shake: unknown } } }).cameras.main.shake = shake;
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const { scene, renderedTexts, dialog } = harness;
+    const battle = scene as unknown as { state: BattleState };
+    battle.state = {
+      ...battle.state,
+      player: { ...battle.state.player, statStages: { ...battle.state.player.statStages, speed: startingSpeed } },
+    };
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
     read(renderedTexts)
@@ -2508,6 +2513,13 @@ describe('the blink a blow lands with', () => {
     const { dialog } = fight(GENERATED_MOVES.agility, GENERATED_MOVES.screech);
     expect(dialog.shownMessages).toContain("Your PIDGEY's Speed sharply rose!");
     expect(dialog.shownMessages).toContain("Your PIDGEY's Defense harshly fell!");
+  });
+
+  it("says a stat already at its cap won't go higher, as FireRed does, rather than saying nothing", () => {
+    const { dialog } = fight(GENERATED_MOVES.agility, GENERATED_MOVES.screech, 6);
+    const used = dialog.shownMessages.indexOf('Your PIDGEY used AGILITY!');
+    expect(used).toBeGreaterThanOrEqual(0);
+    expect(dialog.shownMessages[used + 1]).toBe("Your PIDGEY's Speed won't go higher!");
   });
 
   it('still blinks the Pokemon a damaging move hits, and only that one', () => {
