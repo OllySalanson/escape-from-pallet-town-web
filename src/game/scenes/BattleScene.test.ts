@@ -1861,8 +1861,8 @@ describe('BattleScene about-to-use switch prompt', () => {
     const shown = dialog.shownMessages;
     // The switch lands in front of the send-out it was offered against, and the
     // turn that was already queued behind it carries on unchanged.
-    expect(shown.slice(shown.indexOf('Come back, SQUIRTLE!'), shown.indexOf('Come back, SQUIRTLE!') + 3)).toEqual([
-      'Come back, SQUIRTLE!',
+    expect(shown.slice(shown.indexOf('SQUIRTLE, come back!'), shown.indexOf('SQUIRTLE, come back!') + 3)).toEqual([
+      'SQUIRTLE, come back!',
       'Go! BULBASAUR!',
       'RAIDER MAYA sent out PIDGEY!',
     ]);

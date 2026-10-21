@@ -31,6 +31,12 @@ export function battleOpeningMessages(
  */
 export const sendOutLine = (names: readonly string[]): string => `Go! ${listNames(names)}!`;
 
+/**
+ * FireRed's sText_PkmnComeBack ("X, come back!"): what the player says calling
+ * a Pokemon back on a switch.
+ */
+export const withdrawLine = (name: string): string => `${name.toUpperCase()}, come back!`;
+
 /** FireRed's sText_Trainer1WantsToBattle: "X would like to battle!". */
 export const trainerChallengeLine = (trainerName: string): string =>
   `${trainerName} would like to battle!`;

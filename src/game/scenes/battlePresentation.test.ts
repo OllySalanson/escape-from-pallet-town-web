@@ -16,6 +16,7 @@ import {
   battleOpeningMessages,
   itemLessonMessage,
   teachingBattleMessages,
+  withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
@@ -364,6 +365,11 @@ describe('battle presentation', () => {
     expect(battleOpeningMessages('LASS ADA', ['Bulbasaur', 'Pidgey'], ['Rattata', 'Spearow']).at(-1)).toBe(
       'Go! BULBASAUR and PIDGEY!',
     );
+  });
+
+  it("calls a Pokemon back in FireRed's own words", () => {
+    // pret's sText_PkmnComeBack.
+    expect(withdrawLine('Squirtle')).toBe('SQUIRTLE, come back!');
   });
 
   it('advances opening narration before presenting the actionable command menu', () => {

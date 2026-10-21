@@ -529,3 +529,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: a new `sendOutLine` in `pokemon/battle/battleFlow.ts` holds FireRed's line, used by the opening and by `BattleScene`'s three send-out paths (chosen switch, forced replacement, about-to-use switch). Test: `battlePresentation.test.ts` "sends a Pokemon out in FireRed's own words" (single and double; fails before); `BattleScene.test.ts` and `firstRaidFlow.test.ts` now expect the new line.
 - How to use it: switch Pokémon in any fight - the new one comes out with "Go! X!".
 - Later candidate: the withdraw line "Come back, X!" (FireRed: "X, come back!", `sText_PkmnComeBack`, with HP-dependent variants) in `BattleScene.ts`.
+
+### 72. Every switch said "Come back, X!"
+- What a player met: switching Pokémon in a fight (from the commands, or when offered a switch against a trainer's next Pokémon) called the old one back with "Come back, SQUIRTLE!". FireRed says "SQUIRTLE, come back!" (pret's `sText_PkmnComeBack`).
+- How reproduced: `BattleScene.test.ts`'s about-to-use switch test reads the line off the dialogue.
+- What changed: a new `withdrawLine` in `pokemon/battle/battleFlow.ts` holds FireRed's line, used by both of `BattleScene`'s withdraw paths. Test: `battlePresentation.test.ts` "calls a Pokemon back in FireRed's own words" (fails before); `BattleScene.test.ts` now expects the new line.
+- How to use it: switch Pokémon in any fight - the old one goes back with "X, come back!".
+- Left on purpose: FireRed's HP-dependent variants ("that's enough!", "OK!", "good!", chosen by how hurt the foe is) - choosing among them is a wording design call.

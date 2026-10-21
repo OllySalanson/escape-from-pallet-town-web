@@ -44,6 +44,7 @@ import {
   itemLessonMessage,
   sendOutLine,
   teachingBattleMessages,
+  withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import type { WeatherId } from '../pokemon/battle/weather';
 import { statusAbbreviation } from '../pokemon/battle/status';
@@ -2852,7 +2853,7 @@ export class BattleScene extends Phaser.Scene {
     this.showCombatEvents(
       events,
       [
-        ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
+        ...(wasForcedReplacement ? [] : [withdrawLine(outgoingName)]),
         {
           message: sendOutLine([pokemon.name]),
           sound: 'sendOut',
@@ -2938,7 +2939,7 @@ export class BattleScene extends Phaser.Scene {
     this.refreshPlayerCombatant();
     this.refreshStatusLabels();
     this.pendingCombatMessages.unshift(
-      stagedNote(`Come back, ${outgoingName}!`),
+      stagedNote(withdrawLine(outgoingName)),
       stagedNote({
         message: sendOutLine([pokemon.name]),
         sound: 'sendOut',
