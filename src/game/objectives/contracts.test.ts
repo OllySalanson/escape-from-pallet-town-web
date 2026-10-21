@@ -6,8 +6,10 @@ import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash, MINIMUM_SUPPLIES, Stash } from '../stash';
-import { EXTRACTION_POINTS } from '../world/extractionPoints';
+import { districtsForMap } from '../world/districts';
+import { EXTRACTION_POINTS, extractionPointsOn } from '../world/extractionPoints';
 import { stepDistances } from '../world/mapStructure';
+import { poisForMap } from '../world/pois';
 import { createRunTrainerEncounters } from '../world/trainers';
 import { getWorldMap } from '../worldMap';
 import {
@@ -367,7 +369,38 @@ describe('what making a stop says', () => {
         `${order[2].collectedMessage} That is all three.`,
       ]);
     }
-    expect(contractStopMessage(braid, c, [c.id, a.id])).toBe('East road logged. One left.');
+    expect(contractStopMessage(braid, c, [c.id, a.id])).toBe('EAST ROAD logged. One left.');
+  });
+
+  /**
+   * What a raid says about a contract - the field guide's briefing, the line the
+   * raid opens on, a stop's line - names a place in the capitals its caption,
+   * plate or chip uses, as the standing board's contracts and the guide's own
+   * exit lines do. The cordon ledger's guide said "Only the West Culvert banks
+   * it" straight above "Only WEST CULVERT, to the south-west, banks this
+   * contract": one exit in two spellings in one list.
+   */
+  it('names every place the way the map captions it', () => {
+    const misspelt = RAID_CONTRACTS.flatMap((contract) => {
+      const places = [
+        ...extractionPointsOn(contract.mapId).map((exit) => exit.label),
+        ...poisForMap(contract.mapId).map((poi) => poi.label),
+        ...districtsForMap(contract.mapId).map((district) => district.name.replace(/^THE /, '')),
+      ];
+      const said = [
+        ...contract.briefing,
+        contract.deploymentBriefing,
+        ...contract.markers.flatMap((marker) => [marker.collectedMessage, marker.shortMessage ?? '']),
+      ];
+      return said.flatMap((line) =>
+        places.flatMap((place) =>
+          [...line.matchAll(new RegExp(`\\b${place.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'))]
+            .filter(([written]) => written !== place)
+            .map(([written]) => `${contract.id}: "${written}" in "${line}"`),
+        ),
+      );
+    });
+    expect(misspelt).toEqual([]);
   });
 
   it('says a single stop as written', () => {
