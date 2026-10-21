@@ -179,6 +179,23 @@ const overlap = (a: Rect, b: Rect): number => {
   return width > 0 && height > 0 ? width * height : 0;
 };
 
+/**
+ * Whether any caption that was given a seat is drawn over `figure`: the
+ * question the follower is asked after every seating, because a caption that
+ * had nowhere to sit but over it is read through it (`PartnerFigure.setVeiled`).
+ */
+export function seatedOver(
+  placements: readonly CaptionPlacement[],
+  requests: readonly Pick<CaptionRequest, 'width' | 'height'>[],
+  figure: Rect,
+): boolean {
+  return placements.some(
+    (placement, index) =>
+      placement.visible &&
+      overlap({ x: placement.x, y: placement.y, width: requests[index].width, height: requests[index].height }, figure) > 0,
+  );
+}
+
 /** Whether two screen rectangles share any pixel. */
 export const overlaps = (a: Rect, b: Rect): boolean => overlap(a, b) > 0;
 

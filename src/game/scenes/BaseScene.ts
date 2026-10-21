@@ -45,7 +45,7 @@ import {
   type LearnableKeyId,
 } from '../input/keyBindings';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
-import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
+import { placeCaptions, placeDialog, seatedOver, type Rect } from '../ui/labelPlacement';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
@@ -1484,6 +1484,7 @@ export class BaseScene extends Phaser.Scene {
     // Decorating is looking at the room itself: no caption over it.
     if (this.decor) {
       this.worldLabels.forEach((label) => label.hide());
+      this.partner?.setVeiled(false);
       return;
     }
     const audience = {
@@ -1503,7 +1504,8 @@ export class BaseScene extends Phaser.Scene {
     const view = this.cameras.main.worldView;
     const bounds: Rect = { x: view.left, y: view.top, width: view.width, height: view.height };
     const room = this.place.room?.room;
-    const bubble = this.partner?.place.out ? this.partner.bubbleRect() : null;
+    const partner = this.partner?.place.out ? this.partner : null;
+    const bubble = partner ? partner.bubbleRect() : null;
     const placements = placeCaptions(
       labels.map((label) => label.request()),
       {
@@ -1523,8 +1525,7 @@ export class BaseScene extends Phaser.Scene {
           ...(room?.keeper ? [figureRect(room.keeper.position)] : []),
           ...(room ? [] : [figureRect(DAY_CARE_KEEPER.position)]),
           ...(this.penPokemon ? [figureRect(this.penPokemon.tile)] : []),
-          ...(this.partner?.place.out ? [this.partner.rect()] : []),
-          // And what it is saying: a door's name seated across its bubble hid
+          // What the partner is saying: a door's name seated across its bubble hid
           // the heart it answers a word with, on the quay and at the Day-Care.
           ...(bubble ? [bubble] : []),
           // A piece of furniture is drawn among the figures, over any caption under it.
@@ -1534,9 +1535,24 @@ export class BaseScene extends Phaser.Scene {
         ],
         canopy: this.canopyInView(bounds),
         player: [figureRect(this.currentTile), figureRect(this.targetTile ?? this.currentTile)],
+        // The partner itself is company, as it is on a raid: a caption would
+        // rather sit clear of it, but never goes unseated for it, and it goes
+        // faint under one instead. Kept clear outright, it tucked in under the
+        // player on THE BOLTHOLE's step - where everybody comes out - and took
+        // the house's name away, with the trees over the roof and the workshop
+        // beside it already taken.
+        follower: partner ? [partner.rect()] : [],
       },
     );
     labels.forEach((label, index) => label.seat(placements[index]));
+    this.partner?.setVeiled(
+      partner !== null &&
+        seatedOver(
+          placements,
+          labels.map((label) => label.request()),
+          partner.rect(),
+        ),
+    );
   }
 
   /** The FEEDBACK tab where it stands over the yard, in world space (`feedbackTabCover.ts`). */

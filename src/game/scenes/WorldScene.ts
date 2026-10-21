@@ -196,7 +196,7 @@ import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/Worl
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
-import { placeCaptions, placeDialog, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
+import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
 import { arrivalPlace } from '../base/partner';
 import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
 import { raidFollower, sameFollower, type RaidFollower } from '../world/raidFollower';
@@ -5754,20 +5754,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!partner) {
       return;
     }
-    const figure = partner.rect();
     partner.setVeiled(
-      placements.some((placement, index) => {
-        if (!placement.visible) {
-          return false;
-        }
-        const { width, height } = this.worldLabels[index].request();
-        return (
-          placement.x < figure.x + figure.width &&
-          placement.x + width > figure.x &&
-          placement.y < figure.y + figure.height &&
-          placement.y + height > figure.y
-        );
-      }),
+      seatedOver(
+        placements,
+        this.worldLabels.map((label) => label.request()),
+        partner.rect(),
+      ),
     );
   }
 
