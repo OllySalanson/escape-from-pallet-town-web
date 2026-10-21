@@ -295,3 +295,11 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - How to use it: get burned (Ember, Flame Body) and end a turn - the line says the Pokémon is hurt by its burn.
 - Not checked live: the line is the presentation function the dialogue prints, and is the same length as lines already seen to fit one row.
 - Seen and left, other lines still in the game's own words: "X flinched and couldn't move!" (FireRed: "X flinched!"), "X was hurt by the recoil! -N HP" (FireRed: "X is hit with recoil!"), "X hurt itself in confusion!" (FireRed: "It hurt itself in its confusion!").
+
+### 38. A flinch said "flinched and couldn't move!" in the game's own words
+- What a player met: when a faster foe's Bite or Headbutt made a Pokémon flinch, the line read "Your CHARMANDER flinched and couldn't move!". FireRed says only "CHARMANDER flinched!" (pret's `sText_PkmnFlinched`). This was seen and left in entry 37.
+- How reproduced: `eventToMessage` for a `flinched` event, the line the dialogue prints when the engine's `flinched` event comes up.
+- What changed: the `flinched` line in `battlePresentation.ts` now reads "Your CHARMANDER flinched!" / "Wild RATTATA flinched!". Test: `battlePresentation.test.ts` "says a Pokemon that flinched simply flinched, as FireRed does" (fails before).
+- How to use it: let a faster foe flinch you with Bite or Headbutt. The line says your Pokémon flinched.
+- Not checked live: the line is the presentation function the dialogue prints, and it is shorter than lines already seen to fit on one row.
+- Still left in the game's own words: recoil ("was hurt by the recoil! -N HP") and the confusion self-hit ("hurt itself in confusion!"). The recoil line's HP figure follows this game's rule that a line says what it cost, so a change there would be a design choice, not a wording fix.

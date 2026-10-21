@@ -1205,8 +1205,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     // What a move does beyond its damage, in the same voice as everything else:
     // the line says who it happened to and what it cost, so a turn can be read
     // back from the log without watching the HP bar.
+    // FireRed's sText_PkmnFlinched.
     case 'flinched':
-      return `${combatantName(event, foe)} flinched and couldn't move!`;
+      return `${combatantName(event, foe)} flinched!`;
     case 'multi-hit':
       return `Hit ${event.hits} times!`;
     case 'drained':

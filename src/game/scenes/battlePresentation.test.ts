@@ -407,6 +407,15 @@ describe('what a status condition reads like', () => {
       eventToMessage({ type: 'status-damage', user: 'enemy', name: 'Pidgey', status: 'poison', damage: 2 }),
     ).toBe('Foe PIDGEY is hurt by poison!');
   });
+
+  it('says a Pokemon that flinched simply flinched, as FireRed does', () => {
+    expect(eventToMessage({ type: 'flinched', user: 'player', name: 'Charmander' })).toBe(
+      'Your CHARMANDER flinched!',
+    );
+    expect(eventToMessage({ type: 'flinched', user: 'enemy', name: 'Rattata' }, 'Wild')).toBe(
+      'Wild RATTATA flinched!',
+    );
+  });
 });
 
 describe('making room for a catch from inside the fight', () => {
