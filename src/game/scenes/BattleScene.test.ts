@@ -1886,6 +1886,52 @@ describe('a catch the pack has no room for', () => {
     expect(panel.some((text) => text.includes('KEEP THE PACK'))).toBe(true);
   });
 
+  it('keeps every row inside the panel, a disc with a long name included', () => {
+    const bag = new Bag({
+      'poke-ball': 3,
+      'super-potion': 2,
+      'parts-crate': 2,
+      'mooring-rope': 1,
+      'thunder-stone': 1,
+      'tm09-bullet-seed': 1,
+    });
+    const { scene, press, renderedTexts } = open(bag);
+    const harness = scene as unknown as {
+      add: { text: (...args: unknown[]) => RenderedText };
+      captionWidth(line: string): number;
+    };
+    // Measured as Orange Kid draws a caption: "TM09 BULLET SEED x1 · 1sq" came
+    // out 131 pixels wide, and ran out to 308 against the inner edge at 302.
+    const drawnWidth = (line: string): number => line.length * 5.6;
+    harness.captionWidth = drawnWidth;
+    const unmeasured = harness.add.text;
+    harness.add.text = (...args: unknown[]) => {
+      const text = unmeasured(...args);
+      text.width = text.text === '▶ ' ? CURSOR_GUTTER : drawnWidth(text.text);
+      return text;
+    };
+    const before = renderedTexts.length;
+
+    press('BALL x3');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect((scene as unknown as { mode: string }).mode).toBe('make-room');
+
+    const rows = renderedTexts
+      .slice(before)
+      .filter(({ text }) => ['SUPER POTION', 'PARTS CRATE', 'MOORING ROPE', 'THUNDER STONE', 'TM09'].some((name) => text.startsWith(name)));
+    expect(rows.some(({ text }) => text.startsWith('TM09 BULLET SEED'))).toBe(true);
+    // The panel's inner edge: its frame at 8 + 304, less the 10 its text keeps in.
+    rows.forEach((row) => expect(row.x + row.width, row.text).toBeLessThanOrEqual(302));
+    // The left column stops short of where the right column's cursor stands.
+    const right = Math.max(...rows.map(({ x }) => x));
+    rows
+      .filter(({ x }) => x < right)
+      .forEach((row) => expect(row.x + row.width, row.text).toBeLessThan(right - CURSOR_GUTTER));
+    // Still says how many of each, in one form for the whole page.
+    expect(rows.every(({ text }) => / x\d/.test(text))).toBe(true);
+    expect(rows.every(({ text }) => text.endsWith('sq')) || rows.every(({ text }) => !text.endsWith('sq'))).toBe(true);
+  });
+
   it('says there is no ball before asking for room, so nothing is put down for a throw that cannot happen', () => {
     const bag = new Bag({ potion: 18 });
     const { scene, dialog, press } = open(bag);

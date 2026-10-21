@@ -160,6 +160,7 @@ import {
   formatBallCommand,
   formatMoveCommand,
   formatPackRoomRow,
+  packRoomRowForm,
   formatWildEscapeCommand,
   heldGearLabel,
   hunterFleeMessages,
@@ -1613,12 +1614,14 @@ export class BattleScene extends Phaser.Scene {
         },
       ),
     );
-    this.commandTexts = rows.slice(start, start + MAKE_ROOM_PAGE).map((choice, offset) => {
+    const page = rows.slice(start, start + MAKE_ROOM_PAGE);
+    const form = packRoomRowForm(page, this.cursorGutter(CAPTION_FONT_SIZE), (row) => this.captionWidth(row));
+    this.commandTexts = page.map((choice, offset) => {
       const layout = makeRoomRowLayout(offset);
       const text = this.add.text(
         layout.x,
         COMMAND_Y + layout.y,
-        choice ? formatPackRoomRow(choice) : KEEP_PACK_ROW,
+        choice ? formatPackRoomRow(choice, form) : KEEP_PACK_ROW,
         {
           fontFamily: BATTLE_FONT,
           fontSize: CAPTION_FONT_SIZE,

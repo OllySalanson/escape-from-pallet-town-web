@@ -25,6 +25,7 @@ import {
   MAKE_ROOM_PAGE,
   MOVE_COMMAND_HEIGHT,
   formatPackRoomRow,
+  packRoomRowForm,
   makeRoomPromptLayout,
   makeRoomRowLayout,
   packRoomPrompt,
@@ -428,6 +429,19 @@ describe('making room for a catch from inside the fight', () => {
     );
     // The row that changes nothing says so in the same place.
     expect(packRoomPrompt()).toBe('Keep everything. The catch is off.');
+  });
+
+  it('writes a page in the longest form every row on it fits', () => {
+    const disc = { displayName: 'TM09 Bullet Seed', carried: 1, squares: 1 };
+    const potion = { displayName: 'Super Potion', carried: 2, squares: 2 };
+    expect(formatPackRoomRow(disc, 1)).toBe('TM09 BULLET SEED x1');
+    expect(formatPackRoomRow(disc, 2)).toBe('TM09 BULLET SEED');
+    const width = (row: string): number => row.length * 5.6;
+    // Short names keep their squares; one disc on the page drops them all.
+    expect(packRoomRowForm([potion, potion, undefined], 10, width)).toBe(0);
+    expect(packRoomRowForm([potion, disc, undefined], 10, width)).toBe(1);
+    // KEEP THE PACK is never shortened, so it never decides the form.
+    expect(packRoomRowForm([undefined], 10, () => 1_000)).toBe(0);
   });
 
   it('seats its prompt and every row inside the one battle panel', () => {

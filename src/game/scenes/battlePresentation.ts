@@ -610,10 +610,8 @@ export const MAKE_ROOM_ROWS = 3;
 export const MAKE_ROOM_PAGE = MAKE_ROOM_COLUMNS * MAKE_ROOM_ROWS;
 
 export const makeRoomPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 4 } as const;
-export const makeRoomRowLayout = (index: number): { x: number; y: number } => ({
-  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % MAKE_ROOM_COLUMNS) * MOVE_COLUMN_WIDTH,
-  y: 19 + Math.floor(index / MAKE_ROOM_COLUMNS) * 14,
-});
+/** The party list's own seats, so its columns share the panel evenly too. */
+export const makeRoomRowLayout = partyRowLayout;
 
 /**
  * The row that changes nothing, spelled out rather than left to Escape.
@@ -641,18 +639,57 @@ export const NOTHING_TO_DROP_MESSAGE =
  */
 export const NO_BALLS_MESSAGE = 'There are no POKé BALLS in the pack!';
 
-/** One kind in the pack: what it is, how many, and the squares one stands on. */
-export const formatPackRoomRow = (choice: {
+/**
+ * One kind in the pack, in one of three forms, longest first: what it is, how
+ * many, and the squares one stands on; then without the squares (the line above
+ * the rows says what the one under the cursor frees); then the name alone. The
+ * shorter forms exist because a disc's name ("TM09 BULLET SEED x1 · 1sq") is
+ * wider than a column and ran out past the panel's frame.
+ */
+export const PACK_ROOM_ROW_FORMS = 3;
+
+type PackRoomRow = {
   readonly itemId?: string;
   readonly displayName: string;
   readonly carried: number;
   readonly squares: number;
-}): string =>
-  `${battleCaps(choice.displayName)} ${
+};
+
+export const formatPackRoomRow = (choice: PackRoomRow, form = 0): string => {
+  const name = battleCaps(choice.displayName);
+  if (form >= 2) {
+    return name;
+  }
+  const count =
     choice.itemId !== undefined && isCurrency(choice.itemId)
       ? itemCountTag(choice.itemId, choice.carried)
-      : `x${choice.carried}`
-  } · ${choice.squares}sq`;
+      : `x${choice.carried}`;
+  return form >= 1 ? `${name} ${count}` : `${name} ${count} · ${choice.squares}sq`;
+};
+
+/**
+ * The one form a page of the make-room panel is written in: the longest in
+ * which every row on it fits its column, as the party list chooses. `rows` are
+ * the page's rows in seat order, undefined being KEEP THE PACK, which never
+ * changes; `width` is the drawn width, which only the scene can measure.
+ */
+export const packRoomRowForm = (
+  rows: readonly (PackRoomRow | undefined)[],
+  gutter: number,
+  width: (row: string) => number,
+): number => {
+  for (let form = 0; form < PACK_ROOM_ROW_FORMS; form += 1) {
+    if (
+      rows.every(
+        (row, index) =>
+          row === undefined || width(formatPackRoomRow(row, form)) <= partyRowRoom(index, gutter),
+      )
+    ) {
+      return form;
+    }
+  }
+  return PACK_ROOM_ROW_FORMS - 1;
+};
 
 /**
  * The line above the rows, answering whichever one the cursor is on.
