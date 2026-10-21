@@ -429,7 +429,9 @@ export type BattleEvent =
   | { readonly type: 'drained'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly amount: number }
   | { readonly type: 'recoil'; readonly user: 'player' | 'enemy';
-      readonly slot?: number; readonly name: string; readonly damage: number }
+      readonly slot?: number; readonly name: string; readonly damage: number;
+      /** A drain that met Liquid Ooze, rather than recoil. */
+      readonly oozed?: boolean }
   | { readonly type: 'healed'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly amount: number }
   | { readonly type: 'heal-failed'; readonly user: 'player' | 'enemy';
@@ -2039,15 +2041,12 @@ const applyMove = (
     const oozing = struck.find((hit) => hit.damage > 0 && drainBackfires(abilityCarrier(unitAt(nextState, hit.ref)!)));
     if (oozing) {
       // Liquid Ooze: the same figure, taken off the drainer instead of given to
-      // it. It is announced by the Pokemon that was drained, because it is that
-      // Pokemon's ability that did it.
-      const said = announceAbility(nextState, oozing.ref, 'contact', { amount: taste });
-      nextState = said.state;
-      events.push(...said.events);
+      // it, in FireRed's one line in place of the drain's (`oozed`), never as
+      // recoil.
       const sickened = attackerNow();
       const paid = Math.min(sickened.currentHp, taste);
       nextState = withUnit(nextState, ref, { ...sickened, currentHp: sickened.currentHp - paid });
-      events.push({ type: 'recoil', user, ...inSlot(ref), name: attackerName, damage: paid });
+      events.push({ type: 'recoil', user, ...inSlot(ref), name: attackerName, damage: paid, oozed: true });
     } else {
       const drained = Math.min(healer.pokemon.maxHp - healer.currentHp, taste);
       if (drained > 0) {

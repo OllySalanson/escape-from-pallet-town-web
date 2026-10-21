@@ -1246,9 +1246,10 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return `Hit ${event.hits} times!`;
     case 'drained':
       return `${combatantName(event, foe)} drained +${event.amount} HP.`;
-    // FireRed's sText_PkmnHitWithRecoil, Struggle's kick-back included.
+    // FireRed's sText_PkmnHitWithRecoil, Struggle's kick-back included, and
+    // sText_ItSuckedLiquidOoze for a drain a Liquid Ooze turned round.
     case 'recoil':
-      return `${combatantName(event, foe)} is hit with recoil!`;
+      return event.oozed ? 'It sucked up the LIQUID OOZE!' : `${combatantName(event, foe)} is hit with recoil!`;
     case 'healed':
       return `${combatantName(event, foe)} restored +${event.amount} HP.`;
     // FireRed's sText_PkmnHPFull.
@@ -1373,9 +1374,7 @@ const abilityLine = (
     case 'reflected':
       return `${who} passed ${statusLabel(event.status ?? '')} straight back!`;
     case 'contact':
-      return event.amount
-        ? `${who} tasted foul! -${event.amount} HP`
-        : `${who} answered the touch!`;
+      return `${who} answered the touch!`;
     // FireRed's `sText_PkmnCutsAttackWith`, one line for each foe it cuts.
     case 'sent-out':
       return event.target
