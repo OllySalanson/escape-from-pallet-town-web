@@ -1169,7 +1169,7 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
         ? 'It sucked up the LIQUID OOZE!'
         : `${combatantName(event, foe)}'s health is sapped by LEECH SEED!`;
     case 'stat-stage-changed':
-      return `${combatantName(event, foe)}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
+      return `${combatantName(event, foe)}'s ${statLabel(event.stat)} ${statChangeWords(event.stages)}!`;
     case 'ball-thrown':
       return `Threw ${withArticle(battleCaps(event.ball ?? 'Poké Ball'))} at ${event.name.toUpperCase()}!`;
     case 'catch-shake':
@@ -1393,6 +1393,14 @@ const statusLabel = (status: string): string =>
     freeze: 'freezing',
     confusion: 'confusion',
   })[status] ?? status;
+
+/**
+ * How far a stat moved, in FireRed's words (pret/pokefirered `battle_message.c`,
+ * `sText_StatSharply` and `sText_StatHarshly`): two stages or more is "sharply
+ * rose" or "harshly fell", so Agility does not read like Growl's little cousin.
+ */
+const statChangeWords = (stages: number): string =>
+  stages > 0 ? (stages >= 2 ? 'sharply rose' : 'rose') : stages <= -2 ? 'harshly fell' : 'fell';
 
 const statLabel = (stat: string): string =>
   ({

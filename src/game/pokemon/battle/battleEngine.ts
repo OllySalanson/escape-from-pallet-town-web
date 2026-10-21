@@ -811,7 +811,7 @@ const openingEventsFor = (state: BattleState, ref: SlotRef): readonly BattleEven
                 ...inSlot(foeRef),
                 name: foe.pokemon.name,
                 stat: boost.stat,
-                stages: foe.statStages[boost.stat],
+                stages: boost.stages,
               },
             ],
       );

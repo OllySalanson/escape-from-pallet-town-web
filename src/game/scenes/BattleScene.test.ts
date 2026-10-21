@@ -48,6 +48,7 @@ import {
 import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { Move } from '../pokemon/Move';
 import { GROWL, SUPER_SONIC, TACKLE, TAIL_WHIP } from '../pokemon/moves';
+import { GENERATED_MOVES } from '../pokemon/generated/moveCatalogue';
 import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
@@ -2501,6 +2502,12 @@ describe('the blink a blow lands with', () => {
     expect(dialog.shownMessages).toContain("Your PIDGEY's Defense fell!");
     expect(blinked).toEqual([]);
     expect(shake).not.toHaveBeenCalled();
+  });
+
+  it('says a stat moved by two stages sharply rose or harshly fell, as FireRed does', () => {
+    const { dialog } = fight(GENERATED_MOVES.agility, GENERATED_MOVES.screech);
+    expect(dialog.shownMessages).toContain("Your PIDGEY's Speed sharply rose!");
+    expect(dialog.shownMessages).toContain("Your PIDGEY's Defense harshly fell!");
   });
 
   it('still blinks the Pokemon a damaging move hits, and only that one', () => {
