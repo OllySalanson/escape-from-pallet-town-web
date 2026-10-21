@@ -2554,6 +2554,12 @@ describe('the blink a blow lands with', () => {
     expect(dialog.shownMessages.some((line) => line.includes('used'))).toBe(false);
   });
 
+  it("says a Pokemon at full HP that tries to heal has its HP full, as FireRed does", () => {
+    const { dialog } = fight(GENERATED_MOVES.recover, GROWL);
+    expect(dialog.shownMessages).toContain("Your PIDGEY's HP is full!");
+    expect(dialog.shownMessages.some((line) => line.includes('already at full HP'))).toBe(false);
+  });
+
   it('still blinks the Pokemon a damaging move hits, and only that one', () => {
     const { blinked, shake } = fight(TACKLE, TAIL_WHIP);
     expect(blinked).toEqual(['enemy']);

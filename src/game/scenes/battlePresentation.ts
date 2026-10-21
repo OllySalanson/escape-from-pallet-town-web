@@ -1211,8 +1211,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return `${combatantName(event, foe)} was hurt by the recoil! -${event.damage} HP`;
     case 'healed':
       return `${combatantName(event, foe)} restored +${event.amount} HP.`;
+    // FireRed's sText_PkmnHPFull.
     case 'heal-failed':
-      return `${combatantName(event, foe)} is already at full HP.`;
+      return `${combatantName(event, foe)}'s HP is full!`;
     case 'charging':
       return `${combatantName(event, foe)} is gathering itself...`;
     case 'recharging':

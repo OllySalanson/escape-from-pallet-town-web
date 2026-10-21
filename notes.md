@@ -280,3 +280,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - How to use it: run a move dry and pick it again - the line says there's no PP left for this move, and you choose again.
 - Not checked live: the line is the presentation function the dialogue prints and is shorter than lines already seen to fit one row.
 - Seen and left: a healing move at full HP still reads "X is already at full HP." (FireRed: "X's HP is full!").
+
+### 36. A healing move at full HP said "X is already at full HP." in the game's own words
+- What a player met: using Recover (or any healing move) with a full HP bar read "Your PIDGEY is already at full HP." - not FireRed's line, and the only battle line ending in a full stop rather than "!" (seen and left in entries 34 and 35).
+- How reproduced: the `BattleScene.test.ts` blink harness with a full-HP Pidgey using Recover against Growl: the `heal-failed` line read "Your PIDGEY is already at full HP.".
+- What changed: the `heal-failed` line is FireRed's `sText_PkmnHPFull`, "Your PIDGEY's HP is full!" (`battlePresentation.ts`). Medicine at full HP keeps its own refusal ("is already at full HP!"), because that one is said before the item is spent and costs no turn, which FireRed's bag says differently and is not a battle line. Test: `BattleScene.test.ts` "says a Pokemon at full HP that tries to heal has its HP full, as FireRed does" (fails before).
+- How to use it: use Recover or Soft-Boiled at full HP - the line says the HP is full.
+- Not checked live: the line is the presentation function the dialogue prints and is shorter than lines already seen to fit one row.
