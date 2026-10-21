@@ -38,6 +38,9 @@ import {
   formatMoveCommand,
   BATTLE_PANEL,
   formatPartyRow,
+  partyRowForm,
+  partyRowRoom,
+  PARTY_ROW_FORMS,
   levelLabel,
   mainCommandColumns,
   mainCommandLayout,
@@ -116,6 +119,21 @@ describe('battle presentation', () => {
       .toBe('SQUIRTLE Lv 5 HP 17/17');
     expect(formatPartyRow({ name: 'Squirtle', level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
       .toBe('SQUIRTLE Lv 5 FNT');
+  });
+
+  it('writes the party list in the longest form every row fits, the same form for all', () => {
+    const squirtle = { name: 'Squirtle', level: 5, currentHp: 17, maxHp: 17, isFainted: false };
+    const butterfree = { name: 'Butterfree', level: 14, currentHp: 32, maxHp: 32, isFainted: false };
+    const fainted = { name: 'Butterfree', level: 14, currentHp: 0, maxHp: 32, isFainted: true };
+    expect(formatPartyRow(butterfree, 1)).toBe('BUTTERFREE Lv 14 32/32');
+    expect(formatPartyRow(butterfree, 2)).toBe('BUTTERFREE 32/32');
+    expect(formatPartyRow(fainted, 2)).toBe('BUTTERFREE FNT');
+    const width = (row: string): number => row.length * 5.6;
+    expect(partyRowForm([squirtle, squirtle], 11, width)).toBe(0);
+    // In the right-hand column the full row is 140 pixels against 131.
+    expect(partyRowForm([squirtle, butterfree], 11, width)).toBe(1);
+    expect(width(formatPartyRow(butterfree, 1))).toBeLessThanOrEqual(partyRowRoom(1, 11));
+    expect(partyRowForm([squirtle, butterfree], 11, () => 999)).toBe(PARTY_ROW_FORMS - 1);
   });
 
   it('calls a wild Pokemon Wild and a trainer\'s Foe, as the banner over its plate does', () => {

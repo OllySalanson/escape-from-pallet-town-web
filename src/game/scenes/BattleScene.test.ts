@@ -773,6 +773,47 @@ describe('a status tag on a plate', () => {
     expect(tagNow()).toBe('CNF');
   });
 
+  it('keeps every party row inside the panel, a ten-letter name with two-digit HP included', () => {
+    const butterfree = new Pokemon(getSpeciesById('butterfree')!, 14);
+    butterfree.currentHp = 32;
+    const party = new PokemonParty([
+      new Pokemon(getSpeciesById('ivysaur')!, 18),
+      butterfree,
+      new Pokemon(getSpeciesById('pidgeotto')!, 17),
+    ]);
+    const { scene, renderedTexts } = createBattleSceneHarness({ party });
+    const harness = scene as unknown as {
+      add: { text: (...args: unknown[]) => RenderedText };
+      captionWidth(line: string): number;
+    };
+    // Measured as Orange Kid draws a caption: "BUTTERFREE Lv 14 HP 32/32" came
+    // out 141 pixels wide, against 131 to the panel's inner edge.
+    const drawnWidth = (line: string): number => line.length * 5.6;
+    harness.captionWidth = drawnWidth;
+    const unmeasured = harness.add.text;
+    harness.add.text = (...args: unknown[]) => {
+      const text = unmeasured(...args);
+      text.width = text.text === '▶ ' ? CURSOR_GUTTER : drawnWidth(text.text);
+      return text;
+    };
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.filter(({ text }) => text.includes('POKéMON')).at(-1)!.handlers.pointerdown();
+    expect((scene as unknown as { mode: string }).mode).toBe('party');
+
+    const rows = party.pokemon.map((pokemon) =>
+      renderedTexts.filter((text) => text.text.startsWith(pokemon.name.toUpperCase())).at(-1)!,
+    );
+    // The panel's inner edge: its frame at 8 + 304, less the 10 its text keeps in.
+    rows.forEach((row) => expect(row.x + row.width, row.text).toBeLessThanOrEqual(302));
+    // The left column stops short of where the right column's cursor stands.
+    expect(rows[0].x + rows[0].width).toBeLessThan(rows[1].x - CURSOR_GUTTER);
+    expect(rows[2].x + rows[2].width).toBeLessThan(rows[1].x - CURSOR_GUTTER);
+    // Still says who and how hurt, in one form for the whole list.
+    expect(rows[1].text).toContain('BUTTERFREE');
+    expect(rows[1].text).toContain('32/');
+    expect(rows.every((row) => row.text.includes('HP ')) || rows.every((row) => !row.text.includes('HP '))).toBe(true);
+  });
+
   it('never runs into a ten-letter name: "CHARMANDERPSN" (playtest 47)', () => {
     const { scene, renderedTexts } = createBattleSceneHarness();
     const harness = scene as unknown as {

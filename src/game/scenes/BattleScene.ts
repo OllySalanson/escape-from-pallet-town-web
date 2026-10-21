@@ -131,6 +131,7 @@ import {
   mainCommandLayout,
   partyPrompt,
   partyRowLayout,
+  partyRowForm,
   partyPromptLayout,
   WILD_ESCAPE_SUCCESS_MESSAGE,
   ABOUT_TO_USE_DECLINE,
@@ -1420,9 +1421,12 @@ export class BattleScene extends Phaser.Scene {
         },
       ),
     );
+    // Every row is moved right by the cursor's gutter once it is drawn, so the
+    // room a row has is measured from there.
+    const form = partyRowForm(this.party.pokemon, this.cursorGutter(CAPTION_FONT_SIZE), (row) => this.captionWidth(row));
     this.commandTexts = this.party.pokemon.map((pokemon, index) => {
       const layout = partyRowLayout(index);
-      const text = this.add.text(layout.x, COMMAND_Y + layout.y, formatPartyRow(pokemon), {
+      const text = this.add.text(layout.x, COMMAND_Y + layout.y, formatPartyRow(pokemon, form), {
         fontFamily: BATTLE_FONT,
         fontSize: CAPTION_FONT_SIZE,
         color: pokemon.isFainted ? PANEL_REFUSAL_INK : WINDOW_INK,

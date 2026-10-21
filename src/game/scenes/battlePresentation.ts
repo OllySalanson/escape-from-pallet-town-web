@@ -85,25 +85,76 @@ export const mainCommandLayout = (index: number, count: number): { x: number; y:
   };
 };
 
-/** The party list: a prompt line, then the party two abreast - six fit the panel. */
+/**
+ * The party list: a prompt line, then the party two abreast - six fit the panel.
+ * The two columns share the panel's inner width evenly, as the command grid's
+ * do, because a row in either can be a ten-letter name.
+ */
 export const PARTY_COLUMNS = 2;
+const PARTY_COLUMN_PITCH = Math.floor((BATTLE_PANEL.width - PANEL_INSET_X * 2) / PARTY_COLUMNS);
 export const partyPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 4 } as const;
 export const partyRowLayout = (index: number): { x: number; y: number } => ({
-  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % PARTY_COLUMNS) * MOVE_COLUMN_WIDTH,
+  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % PARTY_COLUMNS) * PARTY_COLUMN_PITCH,
   y: 19 + Math.floor(index / PARTY_COLUMNS) * 14,
 });
 
-/** One party member as the list names them. A fainted one has no HP worth a column. */
-export const formatPartyRow = (pokemon: {
-  readonly name: string;
-  readonly level: number;
-  readonly currentHp: number;
-  readonly maxHp: number;
-  readonly isFainted: boolean;
-}): string =>
-  `${pokemon.name.toUpperCase()} ${levelLabel(pokemon.level)} ${
-    pokemon.isFainted ? 'FNT' : `HP ${pokemon.currentHp}/${pokemon.maxHp}`
-  }`;
+/**
+ * One party member as the list names them, in one of three forms, longest first:
+ * the full row, then without the "HP" word, then without the level as well. A
+ * fainted one has no HP worth a column. The shorter forms exist because a
+ * ten-letter name with two-digit HP ("BUTTERFREE Lv 14 HP 32/32") is wider than
+ * the right-hand column and ran out past the panel's frame.
+ */
+export const PARTY_ROW_FORMS = 3;
+
+export const formatPartyRow = (
+  pokemon: {
+    readonly name: string;
+    readonly level: number;
+    readonly currentHp: number;
+    readonly maxHp: number;
+    readonly isFainted: boolean;
+  },
+  form = 0,
+): string => {
+  const level = form >= 2 ? '' : ` ${levelLabel(pokemon.level)}`;
+  const health = pokemon.isFainted ? 'FNT' : `${form >= 1 ? '' : 'HP '}${pokemon.currentHp}/${pokemon.maxHp}`;
+  return `${pokemon.name.toUpperCase()}${level} ${health}`;
+};
+
+/** The clear pixels kept between the left column's rows and the right column. */
+const PARTY_COLUMN_GAP = 4;
+
+/**
+ * How wide a party row may be drawn, once it has been moved right by the
+ * cursor's `gutter`: up to the next column, or to the panel's inner edge.
+ */
+export const partyRowRoom = (index: number, gutter: number): number => {
+  const column = index % PARTY_COLUMNS;
+  const edge =
+    column === PARTY_COLUMNS - 1
+      ? BATTLE_PANEL.x + BATTLE_PANEL.width - PANEL_INSET_X
+      : partyRowLayout(index + 1).x - PARTY_COLUMN_GAP;
+  return edge - partyRowLayout(index).x - gutter;
+};
+
+/**
+ * The one form the whole list is written in: the longest in which every row
+ * fits its column, so the two columns read alike. `width` is the drawn width,
+ * which only the scene can measure. If none fits, the shortest.
+ */
+export const partyRowForm = (
+  party: readonly Parameters<typeof formatPartyRow>[0][],
+  gutter: number,
+  width: (row: string) => number,
+): number => {
+  for (let form = 0; form < PARTY_ROW_FORMS; form += 1) {
+    if (party.every((pokemon, index) => width(formatPartyRow(pokemon, form)) <= partyRowRoom(index, gutter))) {
+      return form;
+    }
+  }
+  return PARTY_ROW_FORMS - 1;
+};
 
 /** Names the key. It said `BACK: cancel`, and BACK is not written on any keyboard. */
 export const CANCEL_HINT = 'ESC: cancel';
