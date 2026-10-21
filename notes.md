@@ -543,3 +543,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `waitingLine` says "It goes" for one score and "They go" for several. Test: `gamesMenu.test.ts` 'says one waiting score goes up as "it", and several as "they"' (fails before).
 - How to use it: leave one score waiting and sit at the console again - the line reads "One score is still waiting... It goes next time you sit down here."
 - Read and left: the console menu's keys and name flow (`ConsoleScene.ts`); a claim answered after the menu is closed still calls `keepName` on the stopped scene (harmless: the overlay is gone, so it draws nothing). The playtest 48 nudge to plant a building by its door rather than its top-left corner touches the ghost, the drag-planting and every maker driver's clicks - a bigger change, left for its own iteration.
+
+### 74. Every won fight ended on an extra "You won the battle!"
+- What a player met: after every wild fight's experience lines (and after a trainer's own defeat words), one more box said "You won the battle!" and waited for a press before the map came back. FireRed says nothing there: the fight fades out on its last line.
+- How reproduced: `BattleScene.onMessagesComplete` with the fight won and the rewards paid showed the line in `finished` mode; nothing tested it.
+- What changed: a won fight goes back to the map once its last line is read (`BattleScene.ts`); "You blacked out!" (outside a raid only) is kept. Test: `BattleScene.test.ts` "goes back to the map on its last line, with no "You won the battle!" after it" (fails before: the map never came back without the extra press).
+- How to use it: win any fight - pressing past the last experience line takes you straight back to the map.
+- Read and left: every authored trainer, the hunter and map-file trainers carry `defeatText`, so the "X was defeated!" fallback is never seen. The Day-Care's lines are FireRed's.

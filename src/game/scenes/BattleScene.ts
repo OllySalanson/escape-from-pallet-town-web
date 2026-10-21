@@ -3393,9 +3393,14 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.mode = 'finished';
-    this.dialog.showMessage(
-      this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!',
-    );
+    // A win ends on its last line - the experience, or the trainer's own words -
+    // as FireRed's does: a "You won the battle!" after it was one more press
+    // after every fight, saying what the screen already said.
+    if (this.state.outcome === 'victory') {
+      this.returnToWorld();
+      return;
+    }
+    this.dialog.showMessage('You blacked out!');
   }
 
   /**

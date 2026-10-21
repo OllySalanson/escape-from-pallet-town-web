@@ -3283,3 +3283,29 @@ describe('a legend', () => {
     expect(returned).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('the end of a won fight', () => {
+  it('goes back to the map on its last line, with no "You won the battle!" after it, as FireRed does', () => {
+    const { scene, dialog } = createBattleSceneHarness();
+    const driven = scene as unknown as {
+      onMessagesComplete(): void;
+      returnToWorld(): void;
+      mode: string;
+      state: { outcome: string; enemy: { currentHp: number } };
+    };
+    const returned = vi.fn();
+    driven.returnToWorld = returned;
+    driven.onMessagesComplete();
+    driven.state = { ...driven.state, outcome: 'victory', enemy: { ...driven.state.enemy, currentHp: 0 } };
+    driven.mode = 'events';
+
+    // Reads the experience lines as pressing through them does.
+    for (let line = 0; line < 20 && returned.mock.calls.length === 0; line += 1) {
+      driven.onMessagesComplete();
+    }
+
+    expect(returned).toHaveBeenCalledTimes(1);
+    expect(dialog.shownMessages.some((message) => message.includes('gained'))).toBe(true);
+    expect(dialog.shownMessages).not.toContain('You won the battle!');
+  });
+});
