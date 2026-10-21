@@ -286,6 +286,14 @@ export interface BattleState {
   readonly playerParty?: readonly Pokemon[];
 }
 
+/** Who gave a status by their ability rather than by a move. */
+export interface StatusCause {
+  readonly user: 'player' | 'enemy';
+  readonly slot?: number;
+  readonly name: string;
+  readonly ability: string;
+}
+
 export type BattleEvent =
   | {
       readonly type: 'used-move';
@@ -361,7 +369,9 @@ export type BattleEvent =
   | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly move: string }
   | { readonly type: 'status-applied'; readonly user: 'player' | 'enemy';
-      readonly slot?: number; readonly name: string; readonly status: StatusName }
+      readonly slot?: number; readonly name: string; readonly status: StatusName;
+      /** The ability that gave it (a Static touched, a Synchronize handing it back), said in the same line as FireRed's `sText_PkmnWasParalyzedBy` and its neighbours do. */
+      readonly by?: StatusCause }
   | { readonly type: 'status-already'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly status: StatusName;
       /** The status it already has, when that is not the one just tried: FireRed's "But it failed!". */
@@ -1997,12 +2007,12 @@ const applyMove = (
       // `SetMoveEffect` simply breaks on a Pokemon already carrying a status,
       // a type that refuses it or an ability that does (playtest finding B7 -
       // "Your SQUIRTLE already has a status condition!" off a Static).
+      // FireRed says it in one line, the holder's ability naming whom it hit:
+      // "Foe PIKACHU's STATIC paralyzed CHARMANDER!" (`sText_PkmnWasParalyzedBy`).
       if (shock && wouldTakeStatus(nextState, ref, shock, targetRef)) {
-        const said = announceAbility(nextState, targetRef, 'contact', { status: shock });
-        nextState = said.state;
-        const strike = applyStatus(nextState, ref, shock, random, targetRef);
+        const strike = applyStatus(nextState, ref, shock, random, targetRef, statusCause(nextState, targetRef));
         nextState = strike.state;
-        events.push(...said.events, ...strike.events);
+        events.push(...strike.events);
       }
     }
 
@@ -2740,12 +2750,20 @@ const wouldTakeStatus = (
  * to pass one back to when there is somebody. A status a Pokemon gives itself -
  * Rest, a confusion off its own move - passes straight through both.
  */
+/** The ability of whoever stands at `ref`, as the cause of a status it gave. */
+const statusCause = (state: BattleState, ref: SlotRef): StatusCause | undefined => {
+  const holder = unitAt(state, ref);
+  const ability = holder ? abilityLabel(abilityCarrier(holder)) : undefined;
+  return holder && ability ? { user: ref.side, ...inSlot(ref), name: holder.pokemon.name, ability } : undefined;
+};
+
 const applyStatus = (
   state: BattleState,
   ref: SlotRef,
   status: StatusName,
   random: RandomSource,
   source: SlotRef = ref,
+  by?: StatusCause,
 ): TurnResult => {
   const combatant = unitAt(state, ref);
   if (!combatant) {
@@ -2774,7 +2792,7 @@ const applyStatus = (
     const updated = { ...combatant, confusionTurns: randomTurnCount(random, 4) + 1 };
     return {
       state: withUnit(state, ref, updated),
-      events: [{ type: 'status-applied', user, ...slot, name, status }],
+      events: [{ type: 'status-applied', user, ...slot, name, status, ...(by ? { by } : {}) }],
     };
   }
   if (combatant.primaryStatus) {
@@ -2788,17 +2806,17 @@ const applyStatus = (
     // - one to four turns asleep, since it is spent before each move.
     sleepTurns: status === PrimaryStatus.Sleep ? randomTurnCount(random, 4) + 1 : 0,
   };
-  let nextState = withUnit(state, ref, updated);
-  const events: BattleEvent[] = [{ type: 'status-applied', user, ...slot, name, status }];
+  const nextState = withUnit(state, ref, updated);
+  const events: BattleEvent[] = [{ type: 'status-applied', user, ...slot, name, status, ...(by ? { by } : {}) }];
   // Synchronize hands it straight back, and the return trip goes through this
   // same function - so the other side's own Limber can refuse it and say so.
   // Two Synchronizes cannot rally: the second pass finds the first holder
   // already carrying the status and stops on `status-already`.
+  // FireRed's Synchronize says nothing of its own: the status it hands back is
+  // said as given by it ("Foe ABRA's SYNCHRONIZE poisoned CHARMANDER!").
   if (fromElsewhere && reflectsStatus(abilityCarrier(updated), status)) {
-    const announced = announceAbility(nextState, ref, 'reflected', { status });
-    nextState = announced.state;
-    const passed = applyStatus(nextState, source, status, random, ref);
-    return { state: passed.state, events: [...events, ...announced.events, ...passed.events] };
+    const passed = applyStatus(nextState, source, status, random, ref, statusCause(nextState, ref));
+    return { state: passed.state, events: [...events, ...passed.events] };
   }
   return { state: nextState, events };
 };

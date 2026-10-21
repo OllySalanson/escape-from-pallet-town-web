@@ -538,7 +538,7 @@ describe('the abilities that answer back', () => {
       at({ 3: 0, 4: 0 }),
     );
     expect(shocked.state.player.primaryStatus).toBe(PrimaryStatus.Paralysis);
-    expect(didFire(shocked.events, 'contact')).toBe(true);
+    expect(find(shocked.events, 'status-applied')?.by?.ability).toBe('STATIC');
 
     const distant = resolveTurn(
       createBattleState(
@@ -572,7 +572,38 @@ describe('the abilities that answer back', () => {
 
     expect(result.state.enemy.primaryStatus).toBe(PrimaryStatus.Paralysis);
     expect(result.state.player.primaryStatus).toBe(PrimaryStatus.Paralysis);
-    expect(didFire(result.events, 'reflected')).toBe(true);
+    expect(result.events.filter((event) => event.type === 'status-applied').map((event) => event.by?.ability)).toEqual([
+      undefined,
+      'SYNCHRONIZE',
+    ]);
+  });
+
+  it("says a status an ability gave in FireRed's one line, naming the ability and whom it hit", () => {
+    const touched = resolveTurn(
+      createBattleState(
+        armed(species({ abilityId: null, name: 'Charmander' }), 20, SCRATCH),
+        armed(species({ abilityId: 'static', name: 'Pikachu' }), 20),
+      ),
+      0,
+      at({ 3: 0, 4: 0 }),
+    );
+    const touchLines = touched.events.map((event) => eventToMessage(event, 'Wild'));
+    expect(touchLines).toContain("Wild PIKACHU's STATIC paralysed your CHARMANDER! It may be unable to move!");
+    expect(touchLines.filter((line) => line.includes('STATIC'))).toHaveLength(1);
+    expect(touchLines.some((line) => line.includes('is paralysed'))).toBe(false);
+
+    const handedBack = resolveTurn(
+      createBattleState(
+        armed(species({ abilityId: null, name: 'Pikachu', primaryType: PokemonType.Electric }), 20, THUNDER_WAVE),
+        armed(species({ abilityId: 'synchronize', name: 'Abra' }), 20),
+      ),
+      0,
+      at({}),
+    );
+    const backLines = handedBack.events.map((event) => eventToMessage(event, 'Wild'));
+    expect(backLines).toContain('Wild ABRA is paralysed! It may be unable to move!');
+    expect(backLines).toContain("Wild ABRA's SYNCHRONIZE paralysed your PIKACHU! It may be unable to move!");
+    expect(backLines.filter((line) => line.includes('SYNCHRONIZE'))).toHaveLength(1);
   });
 
   it('hurts whatever drained a Liquid Ooze instead of feeding it', () => {

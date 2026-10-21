@@ -1169,7 +1169,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       // FireRed's own line (pret's sText_NoPPLeft), said over the move list.
       return "There's no PP left for this move!";
     case 'status-applied':
-      return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
+      return event.by
+        ? statusGivenBy(event, event.by, foe)
+        : `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
     case 'status-already':
       // FireRed's own lines: the status it already has, said by name, and a
       // move for a different status simply failing. "Already has a status
@@ -1450,6 +1452,35 @@ const chargeWords = (move: string): string =>
  * A burn or a paralysis now arrives on almost any Fire or Electric move rather
  * than only on the two moves that spelled it out, so these are read often.
  */
+/**
+ * A status an ability gave, in FireRed's one line naming the ability and whom
+ * it hit (`sText_PkmnWasParalyzedBy`, `sText_PkmnPoisonedBy`,
+ * `sText_PkmnBurnedBy`, `sText_PkmnMadeSleep`, `sText_PkmnFrozenBy`), the
+ * player's own Pokemon named "your X" as an Intimidate's cut names it.
+ */
+const statusGivenBy = (
+  event: { readonly user: 'player' | 'enemy'; readonly name: string; readonly status: string },
+  by: { readonly user: 'player' | 'enemy'; readonly name: string; readonly ability: string },
+  foe: FoeWord,
+): string => {
+  const giver = `${combatantName(by, foe)}'s ${by.ability}`;
+  const hit = event.user === 'player' ? `your ${event.name.toUpperCase()}` : combatantName(event, foe);
+  switch (event.status) {
+    case 'paralysis':
+      return `${giver} paralysed ${hit}! It may be unable to move!`;
+    case 'poison':
+      return `${giver} poisoned ${hit}!`;
+    case 'burn':
+      return `${giver} burned ${hit}!`;
+    case 'sleep':
+      return `${giver} made ${hit} sleep!`;
+    case 'freeze':
+      return `${giver} froze ${hit} solid!`;
+    default:
+      return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
+  }
+};
+
 const statusApplied = (status: string): string =>
   ({
     poison: 'was poisoned',
