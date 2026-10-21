@@ -166,6 +166,36 @@ describe('objective field guide', () => {
     expect(insertionGuide.hints.join(' ')).not.toContain('Viridian');
   });
 
+  it("names Maya's shore road only where the player can walk to her", () => {
+    const session = createActiveRunSession(
+      createFirstContractSession().manager,
+      {},
+      {},
+      [],
+      [],
+      [],
+      generateRunPlan(42, undefined, 'floodplain-relay', undefined),
+    );
+    const map = getWorldMap('floodplain-relay', []);
+    const hintsFrom = (position: { x: number; y: number }) =>
+      buildObjectiveGuide(session, {
+        currentMapId: 'floodplain-relay',
+        currentPosition: position,
+        activatedPoiIds: new Set(),
+        stepsTo: walkingStepsFrom(position, map.collision, map.links),
+      }).hints.join(' ');
+
+    // The front door's road runs past her.
+    expect(hintsFrom(requireInsertion('floodplain-relay').position)).toContain('walking that means fighting her');
+    // Dropped at the Quarry or the Light, every door between is shut: she is
+    // not on any road this raid can take, so the guide does not send it to her.
+    for (const id of ['floodplain-quarry', 'floodplain-light'] as const) {
+      const hints = hintsFrom(requireInsertion(id).position);
+      expect(hints).not.toContain('Maya');
+      expect(hints).toContain('The nearest landmark still to work is');
+    }
+  });
+
   it('explains Floodplain route and Radio Exit trade-offs before and after Ranger activation', () => {
     const firstSession = createFirstContractSession();
     const session = createActiveRunSession(

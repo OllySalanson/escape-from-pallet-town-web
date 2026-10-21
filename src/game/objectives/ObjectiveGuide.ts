@@ -9,6 +9,7 @@ import { isLandmarkWorked } from '../world/workedLandmarks';
 import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/errands';
 import { isDugExit, itemThatOpens } from '../world/extractionPoints';
 import { ITEMS } from '../items/items';
+import { createRunTrainerEncounters } from '../world/trainers';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -289,10 +290,17 @@ function laterRunHints(
     const radioExit = station?.unlockedExtractionLabel ?? 'RADIO EXIT';
     // Maya stands up again every raid, but not in the one that beat her.
     const mayaBeaten = context.defeatedTrainerIds?.has(MAYA_ID) ?? false;
+    // Her road is the front door's: from six of the map's ten landings it is
+    // behind a shut door, and a first line about a toll nobody can walk to
+    // sent a raid dropped at the Quarry or the Light looking for her.
+    const maya = createRunTrainerEncounters().find((encounter) => encounter.trainer.id === MAYA_ID);
+    const mayaInReach = maya !== undefined && (!context.stepsTo || context.stepsTo(maya.position) !== undefined);
     return [
-      mayaBeaten
-        ? 'You beat Maya this raid: the shore road is clear past her checkpoint. She will be back on it next raid.'
-        : 'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
+      ...(mayaBeaten
+        ? ['You beat Maya this raid: the shore road is clear past her checkpoint. She will be back on it next raid.']
+        : mayaInReach
+          ? ['Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.']
+          : []),
       landmark
         ? landmarkHint(landmark, context)
         : 'No marked cache in reach is left to work this raid.',
