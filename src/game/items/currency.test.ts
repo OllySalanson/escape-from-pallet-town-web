@@ -30,6 +30,10 @@ describe('the Pokedollar', () => {
     expect(itemAmountFor('potion', 3)).toBe('3 Potions');
     expect(itemAmountFor('potion', 1)).toBe('1 Potion');
     expect(itemCountTag('potion', 3)).toBe('×3');
+    // Read off the name: no "Berrys", no "Leftoverss", and a disc counts discs.
+    expect(itemAmountFor('oran-berry', 3)).toBe('3 Oran Berries');
+    expect(itemNameFor('leftovers', 2)).toBe('Leftovers');
+    expect(itemNameFor('hm06-rock-smash', 2)).toBe(getItemById('hm06-rock-smash')?.displayName);
   });
 
   it('answers to its old name when a save still uses it', () => {

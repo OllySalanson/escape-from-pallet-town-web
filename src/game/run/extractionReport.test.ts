@@ -1095,6 +1095,28 @@ describe('what the raid had at stake', () => {
     expect(lost.summary).toContain('You lost 2 spare Raid packs and your Raid pack.');
   });
 
+  it('names berries picked on the raid as berries, never "Berrys"', () => {
+    const starter = new Pokemon(BULBASAUR, 14);
+    const manager = startedRun({
+      party: [starter],
+      items: [{ itemId: 'potion', quantity: 2 }],
+      secure: { pokemon: [starter] },
+      packItemId: 'raid-pack',
+    });
+    manager.resolveEscape();
+
+    const escaped = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [{ itemId: 'oran-berry', quantity: 3 }] },
+      carriedOut: { potion: 2, 'oran-berry': 3 },
+      saved: true,
+    });
+    expect(escaped.gambleVerdict).toContain('3 Oran Berries');
+    expect(escaped.gambleVerdict).not.toContain('Berrys');
+  });
+
   it('never says nothing was taken from a wipe that took the pack', () => {
     const starter = new Pokemon(BULBASAUR, 5);
     const manager = startedRun({

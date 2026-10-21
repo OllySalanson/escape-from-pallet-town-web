@@ -1186,7 +1186,22 @@ export function itemNameFor(itemId: string, quantity: number): string {
   }
   return item.effect.type === 'currency' || quantity === 1
     ? item.displayName
-    : `${item.displayName}s`;
+    : pluralName(item.displayName, item.effect.type === 'machine');
+}
+
+/**
+ * An item's name for more than one: "Oran Berries", never "Oran Berrys", and
+ * "Leftovers" or "Pretty Flowers" as they are. A disc is named for the move on
+ * it, so "2 TM09 Bullet Seed" counts the discs rather than the seeds.
+ */
+function pluralName(name: string, isDisc: boolean): string {
+  if (isDisc || /s$/i.test(name)) {
+    return name;
+  }
+  if (/[^aeiou]y$/i.test(name)) {
+    return `${name.slice(0, -1)}ies`;
+  }
+  return /(sh|ch|x|z)$/i.test(name) ? `${name}es` : `${name}s`;
 }
 
 /**

@@ -229,3 +229,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - How reproduced: `raid.mjs --stepped --pixels --window=pixel --insertion=route-1 --completed=floodplain-first-contract --level=12` (the first run happened to find a Great Ball); the note counted `report.ledger`, where the two Great Ball stacks are one entry, while the rows are drawn from `ledgerFound` and `ledgerPaid` apart.
 - What changed: `ExtractionScene.ledgerPanel` counts the rows as drawn - found and paid apart. Test: `defeatScreen.test.ts` "counts a kind found in the field and also paid by the contract as the two rows it is drawn as" (fails before: "2 entries" over three rows).
 - How to use it: bank a contract that pays something you also found - the heading's count matches the rows under it. Checked live with `--level=40 --grab=great-ball`: six rows, "6 ENTRIES" (5 before).
+
+### 29. Berries counted as "Oran Berrys" in a sentence
+- What a player met: a raid on a map with berry trees that picked three Oran Berries walked out to "A wipe would have cost you 2 Potions, 3 Oran Berrys ..."; every sentence that counts an item (the gamble line, "You lost ...", loot captions, Bill's and Brock's prices in words) built a plural by adding "s", so "Leftovers" became "Leftoverss", "Pretty Flowers" "Pretty Flowerss" and a disc "2 HM06 Rock Smashs".
+- How reproduced: `itemNameFor` (`items/items.ts`) read through `buildExtractionReport` with three Oran Berries carried out - the gamble verdict said "3 Oran Berrys".
+- What changed: `itemNameFor` asks `pluralName`: a name already ending in s stays as it is, a consonant and y becomes "ies", sh/ch/x/z take "es", and a disc keeps its name ("2 TM09 Bullet Seed" counts the discs). Tests: `extractionReport.test.ts` "names berries picked on the raid as berries, never "Berrys"" and `currency.test.ts` (both fail before).
+- How to use it: pick berries on a raid and walk out - the result screen counts "3 Oran Berries".
+- Not checked live (berries grow only on map-maker trees); the line is the pure function the screen prints.
