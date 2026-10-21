@@ -124,6 +124,7 @@ import {
   formatPartyRow,
   levelLabel,
   evolvingLine,
+  experienceGainedLine,
   evolvedLine,
   stoppedEvolvingLine,
   STOP_EVOLVING_HINT,
@@ -3570,7 +3571,7 @@ export class BattleScene extends Phaser.Scene {
       }
       const grewAs = pokemon.name;
       messages.push({
-        message: `${grewAs.toUpperCase()} gained ${result.awarded} XP!`,
+        message: experienceGainedLine(grewAs, result.awarded),
         sound: 'xpGain',
       });
       messages.push(

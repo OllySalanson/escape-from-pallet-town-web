@@ -448,3 +448,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - How reproduced: `BattleScene.test.ts` "keeps the fight going on a failed roll..." presses RUN 38% against a level-20 Pidgey with the roll forced to fail, and reads the first line.
 - What changed: `battlePresentation.ts` has `WILD_ESCAPE_FAILURE_MESSAGE`, FireRed's line, in place of `wildEscapeFailureMessage(name)`, and `BattleScene.ts` shows it. Test: that test now expects "Can't escape!" (fails before the fix).
 - How to use it: run from a faster wild Pokemon - a failed roll says "Can't escape!" before the foe moves.
+
+### 60. A knockout paid "SQUIRTLE gained 12 XP!" in the game's own shorthand
+- What a player met: every knockout that paid experience read "SQUIRTLE gained 12 XP!". FireRed says "SQUIRTLE gained 12 EXP. Points!" (pret's `sText_PkmnGainedEXP` in `battle_message.c`; its `B_BUFF2` is " a boosted" only for a traded Pokemon, which this game has none of).
+- How reproduced: `BattleScene.test.ts` "says what the knockout paid straight after the faint..." knocks out Raider Maya's lead and reads the line after the faint.
+- What changed: `experienceGainedLine` in `battlePresentation.ts` holds FireRed's line and `BattleScene.awardVictoryExperience` prints it. Test: that test now expects "gained N EXP. Points!" (fails before the fix).
+- How to use it: knock out any wild or trainer Pokemon - the line says how many EXP. Points it paid.
+- Seen and left: the level-up line is "grew to Lv 12!" (FireRed: "grew to LV. 12!"); `levelLabel` is the one level format every plate and list uses, so changing that line alone would make the dialogue disagree with the plate it updates.

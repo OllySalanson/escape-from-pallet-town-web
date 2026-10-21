@@ -1417,7 +1417,7 @@ describe('a level reached in the middle of a trainer battle', () => {
     const fainted = shown.indexOf('Foe PIDGEY fainted!');
     const sentOut = shown.indexOf('RAIDER MAYA sent out PIDGEY!');
     expect(fainted).toBeGreaterThanOrEqual(0);
-    expect(shown[fainted + 1]).toMatch(/^SQUIRTLE gained \d+ XP!$/);
+    expect(shown[fainted + 1]).toMatch(/^SQUIRTLE gained \d+ EXP\. Points!$/);
     expect(sentOut).toBeGreaterThan(fainted);
     // And the newcomer takes nothing on its way in: its first move is next turn.
     expect(shown.slice(fainted, sentOut + 1).some((line) => line.startsWith('Foe PIDGEY used'))).toBe(false);

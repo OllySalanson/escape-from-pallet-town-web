@@ -966,6 +966,15 @@ export const heldGearLabel = (heldItemName: string | undefined): string =>
 export const levelLabel = (level: number): string => `Lv ${level}`;
 
 /**
+ * What a knockout paid one Pokemon, in FireRed's own words
+ * (`sText_PkmnGainedEXP`: "X gained 12 EXP. Points!"). It used to say
+ * "gained 12 XP!", which is this game's shorthand rather than the line the
+ * games it is dressed as print after every knockout.
+ */
+export const experienceGainedLine = (name: string, amount: number): string =>
+  `${name.toUpperCase()} gained ${amount} EXP. Points!`;
+
+/**
  * The three lines of a level evolution, in FireRed's own words
  * (`gText_PkmnIsEvolving`, `gText_CongratsPkmnEvolved`,
  * `gText_PkmnStoppedEvolving`, pret/pokefirered `src/strings.c`), each on the
