@@ -41,6 +41,8 @@ import {
   type StorageLike,
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
+import { planOwnFrame } from '../ui/mapPicture';
+import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { SCROLL_ROWS } from '../ui/MenuOverlay';
 import { extractionPointsOn } from '../world/extractionPoints';
 import { gatesForMap } from '../world/gates';
@@ -2394,6 +2396,28 @@ describe('the wall map in Oak’s Lab', () => {
     // And out of the screen, back to the tile it was read from.
     hub.goBack();
     expect(start).toHaveBeenCalledWith('base', expect.objectContaining({ room: 'oaks-lab', at: { x: 6, y: 2 } }));
+  });
+
+  it('draws every map close up at one tile a pixel in the smallest window, whatever its name holds the column open to', () => {
+    // At 640x480 the body is the smallest stage across. The picture's room is
+    // what the body leaves it, or what the place's heading holds its column
+    // open to - so with the room left too narrow for the biggest map, a map
+    // with a short name (PALLET TOWN) was drawn at half the scale of one with
+    // a long one (FLOODPLAIN RELAY), a postage stamp in an empty pane.
+    const { hub } = createHub({ ...DEFAULT_RAID_PROGRESS });
+    walkUpToTheWall(hub);
+    for (const mapId of ['floodplain-relay', 'pallet-town', 'route-1', 'viridian-forest', 'viridian-city']) {
+      hub.wallMapInspect = mapId;
+      const markup = markupOf(hub);
+      const read = (name: string): number => Number(new RegExp(`data-${name}="(\\d+)"`).exec(markup)?.[1]);
+      expect(markup).toContain('data-fit="own"');
+      const plan = planOwnFrame(
+        { width: read('picture-width'), height: read('picture-height') },
+        { width: read('fit-width'), height: read('fit-height') },
+        { width: BASE_STAGE_WIDTH - read('fit-leave'), height: BASE_STAGE_HEIGHT },
+      );
+      expect({ mapId, step: plan.fit.step }).toEqual({ mapId, step: 1 });
+    }
   });
 });
 
