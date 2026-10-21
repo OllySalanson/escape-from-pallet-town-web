@@ -2532,6 +2532,28 @@ describe('the blink a blow lands with', () => {
     expect(dialog.shownMessages).not.toContain('The attack missed!');
   });
 
+  it("says there's no PP left for this move, as FireRed does, and spends no turn", () => {
+    const pidgey = new Pokemon(PIDGEY, 8);
+    const spent = new Move(TACKLE);
+    spent.setPp(0);
+    pidgey.moves.splice(0, pidgey.moves.length, spent, new Move(GROWL));
+    const harness = createBattleSceneHarness({
+      party: new PokemonParty([pidgey]),
+      wild: new Pokemon(getSpeciesById('rattata')!, 3),
+    });
+    const { scene, renderedTexts, dialog } = harness;
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
+    read(renderedTexts)
+      .filter(({ text }) => text.includes('TACKLE'))
+      .at(-1)!
+      .handlers.pointerdown();
+
+    expect(dialog.shownMessages).toContain("There's no PP left for this move!");
+    expect(dialog.shownMessages.some((line) => line.startsWith('No PP left'))).toBe(false);
+    expect(dialog.shownMessages.some((line) => line.includes('used'))).toBe(false);
+  });
+
   it('still blinks the Pokemon a damaging move hits, and only that one', () => {
     const { blinked, shake } = fight(TACKLE, TAIL_WHIP);
     expect(blinked).toEqual(['enemy']);

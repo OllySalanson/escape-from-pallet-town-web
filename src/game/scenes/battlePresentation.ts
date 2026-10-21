@@ -1138,7 +1138,8 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'fainted':
       return `${combatantName(event, foe)} fainted!`;
     case 'no-pp':
-      return `No PP left for ${event.move}!`;
+      // FireRed's own line (pret's sText_NoPPLeft), said over the move list.
+      return "There's no PP left for this move!";
     case 'status-applied':
       return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
     case 'status-already':

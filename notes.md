@@ -272,3 +272,11 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - How to use it: miss with any move - the line names whose attack it was.
 - Not checked live: the line is the presentation function the dialogue prints, and is shorter than the 40-character stat-cap line already seen to fit one row.
 - Seen and left: "No PP left for X!" (FireRed: "There's no PP left for this move!") and "X is already at full HP." (FireRed: "X's HP is full!") are other lines in this game's own words.
+
+### 35. Choosing a move with no PP said "No PP left for Tackle!" in mixed case and in the game's own words
+- What a player met: picking a move marked "--" in the move list read "No PP left for Tackle!" - the move's name in lower case where every other battle line shouts it (TACKLE), and not FireRed's line (seen and left in entry 34).
+- How reproduced: the `BattleScene.test.ts` harness with a Pidgey whose Tackle is at 0 PP, clicking FIGHT then TACKLE: the one line shown was "No PP left for Tackle!".
+- What changed: the `no-pp` line is FireRed's own, "There's no PP left for this move!" (pret's `sText_NoPPLeft`, `battlePresentation.ts`); still no turn is spent. Test: `BattleScene.test.ts` "says there's no PP left for this move, as FireRed does, and spends no turn" (fails before).
+- How to use it: run a move dry and pick it again - the line says there's no PP left for this move, and you choose again.
+- Not checked live: the line is the presentation function the dialogue prints and is shorter than lines already seen to fit one row.
+- Seen and left: a healing move at full HP still reads "X is already at full HP." (FireRed: "X's HP is full!").
