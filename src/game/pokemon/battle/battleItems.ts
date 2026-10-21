@@ -1,4 +1,4 @@
-import { curedLine, ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../../items';
+import { curedLine, hpRestoredLine, ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../../items';
 import type { Pokemon } from '../Pokemon';
 import { playerSlotOf, unitAt, type BattleState, type SlotRef } from './battleEngine';
 
@@ -147,7 +147,7 @@ export function applyBattleItem(
     used: true,
     message:
       restored > 0
-        ? `${name} recovered ${restored} HP!`
+        ? hpRestoredLine(name, restored)
         : curedOf
           ? curedLine(name, curedOf)
           : `${name} was cured of its condition!`,

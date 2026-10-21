@@ -1281,6 +1281,14 @@ export function heldItemName(id: string | null | undefined): string | undefined 
 }
 
 /**
+ * What is said when medicine gives HP back, in FireRed's party-menu words
+ * (`gText_PkmnHPRestoredByVar2`), the same line in a fight and out of one.
+ */
+export function hpRestoredLine(name: string, amount: number): string {
+  return `${name}'s HP was restored by ${amount} point(s).`;
+}
+
+/**
  * What is said when a status is cured, in FireRed's own words for each: a
  * berry cures five different things, and "cured of poison" was once said of
  * every one of them.
@@ -1313,7 +1321,7 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
     case 'heal': {
       const healed = pokemon.heal(item.effect.amount);
       return healed > 0
-        ? { used: true, message: `${pokemon.name} recovered ${healed} HP!` }
+        ? { used: true, message: hpRestoredLine(pokemon.name, healed) }
         : { used: false, message: `${pokemon.name}'s HP is already full.` };
     }
     case 'cure-status':

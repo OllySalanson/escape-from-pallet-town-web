@@ -48,7 +48,7 @@ describe('treating a Pokemon at base with a stash item', () => {
 
     expect(treatWithItem(stash, 'charmander-1', 'potion')).toEqual({
       used: true,
-      message: `${pokemon.base.name} recovered 8 HP! 1 Potion left at base.`,
+      message: `${pokemon.base.name}'s HP was restored by 8 point(s). 1 Potion left at base.`,
     });
     expect(pokemon.currentHp).toBe(pokemon.maxHp);
     expect(stash.itemCount('potion')).toBe(1);

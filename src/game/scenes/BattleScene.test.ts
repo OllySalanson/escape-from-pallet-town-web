@@ -916,7 +916,7 @@ describe('using an item in a battle', () => {
 
     chooseItemFor(scene, renderedTexts);
 
-    expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
+    expect(dialog.shownMessages[0]).toBe("CHARMANDER's HP was restored by 15 point(s).");
     expect(state().player.currentHp).toBeGreaterThan(hpBefore);
     expect(hurt.currentHp).toBe(state().player.currentHp);
     // One Potion, out of the bag the raid deployed with.
@@ -935,7 +935,7 @@ describe('using an item in a battle', () => {
     chooseItemFor(scene, renderedTexts);
 
     // The heal is said first; the rest of the log is the turn it was paid with.
-    expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
+    expect(dialog.shownMessages[0]).toBe("CHARMANDER's HP was restored by 15 point(s).");
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
     expect(dialog.shownMessages.slice(1).join(' ')).toContain('Wild BULBASAUR used');
