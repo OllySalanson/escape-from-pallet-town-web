@@ -504,12 +504,10 @@ describe("a move an ability took, said in FireRed's own words", () => {
     ]);
   });
 
-  it('says a Water Absorb restored HP, or made the move useless at full health', () => {
+  it('says a Water Absorb restored HP in FireRed\'s words, or made the move useless at full health', () => {
     const lapras = (): Pokemon => armed(species({ abilityId: 'water-absorb', name: 'Lapras' }), 20);
-    const hurtLapras = lapras();
-    expect(turn(SOAK, hurtLapras, 10)).toEqual([
-      `Foe LAPRAS restored HP using its WATER ABSORB! +${Math.floor(hurtLapras.maxHp / 4)} HP`,
-    ]);
+    // FireRed's sText_PkmnRestoredHPUsing gives no number: the HP bar shows it.
+    expect(turn(SOAK, lapras(), 10)).toEqual(['Foe LAPRAS restored HP using its WATER ABSORB!']);
     expect(turn(SOAK, lapras())).toEqual(["Foe LAPRAS's WATER ABSORB made SOAK useless!"]);
   });
 

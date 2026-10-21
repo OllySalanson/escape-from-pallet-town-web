@@ -1335,9 +1335,10 @@ const abilityLine = (
           return `${who} blocks ${move}!`;
         case 'missed':
           return `${combatantName(event, foe)} makes GROUND moves miss with ${event.ability}!`;
+        // FireRed's `sText_PkmnRestoredHPUsing`, with no number: the HP bar shows it.
         default:
           return event.amount
-            ? `${combatantName(event, foe)} restored HP using its ${event.ability}! +${event.amount} HP`
+            ? `${combatantName(event, foe)} restored HP using its ${event.ability}!`
             : `${who} made ${move} useless!`;
       }
     }

@@ -421,3 +421,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `battlePresentation.ts` prints FireRed's line for `healed`. Test: `moveEffects.test.ts` "says a healing move in FireRed's words, with no number" (fails before: received "Your BULBASAUR restored +34 HP.").
 - How to use it: use Synthesis or Recover while hurt - the line says the Pokémon regained health.
 - Still in the game's own words: an absorbing ability's "restored HP using its WATER ABSORB! +N HP" (FireRed's `sText_PkmnRestoredHPUsing` has no number), and hail's chip line.
+
+### 56. A Water Absorb said "restored HP using its WATER ABSORB! +8 HP"
+- What a player met: a Water move into a hurt Lapras, Poliwag or Vaporeon line (Water Absorb), or an Electric move into a Volt Absorb, read "Foe LAPRAS restored HP using its WATER ABSORB! +8 HP" - FireRed's sentence with the game's own number tacked on. FireRed says "Foe LAPRAS restored HP using its WATER ABSORB!" (pret's `sText_PkmnRestoredHPUsing`); the HP bar shows what came back, as the drain and healing lines (54, 55) now do.
+- How reproduced: `resolveTurn` with a Water move into a hurt Water Absorb holder, the `absorbed` event read through `eventToMessage`.
+- What changed: `battlePresentation.ts` drops the "+N HP" from the `absorbed` line. Test: `abilities.test.ts` "says a Water Absorb restored HP in FireRed's words..." (fails before).
+- How to use it: Water Gun a hurt wild Poliwag - the line says it restored HP using its WATER ABSORB.
+- Still in the game's own words: hail's chip line (no shipped place or learnset brings hail).
