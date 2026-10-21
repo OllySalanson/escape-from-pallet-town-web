@@ -585,6 +585,20 @@ describe('the map maker chosen tool, brush, place and zoom', () => {
   );
 });
 
+describe("the map maker's zoom buttons", () => {
+  // In a window under about 1100 pixels wide the map's window is narrower than
+  // its row of zoom buttons, and OVERVIEW ran out of it over the checks beside
+  // it. The row wraps instead, and keeps to its own window.
+  it('wrap onto a second row rather than run out of the map window', () => {
+    const body = [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.trim() === ':where(.pixel-ui) .maker-zooms')
+      .map(([, , rule]) => rule)
+      .join(';');
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/flex-wrap:\s*wrap/);
+  });
+});
+
 describe('a type tag', () => {
   /** WCAG 2.x relative luminance of a `#rrggbb` colour. */
   function luminance(hex: string): number {

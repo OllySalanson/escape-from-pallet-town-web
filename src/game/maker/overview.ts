@@ -22,6 +22,17 @@ import { buildingSize } from './draft';
 /** The most room the overview takes in the corner of the map window, in game pixels. */
 export const OVERVIEW_ROOM: PictureSize = { width: 96, height: 72 };
 
+/**
+ * Whether the overview, `frame` across and down as drawn, leaves the map window
+ * it stands in most of itself: it is shown only while it covers no more than
+ * half of that window across and half of it down. In a small window it was
+ * bigger than the window and spilled out over the paint tools beside it, and a
+ * map you cannot see for its overview is no help finding your way round it.
+ */
+export function overviewLeavesRoom(frame: PictureSize, window: PictureSize): boolean {
+  return frame.width * 2 <= window.width && frame.height * 2 <= window.height;
+}
+
 export interface Overview {
   readonly picture: PaintedPicture;
   readonly fit: PictureFit;

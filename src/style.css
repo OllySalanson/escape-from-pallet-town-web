@@ -3648,8 +3648,12 @@ button {
   image-rendering: pixelated;
   box-shadow: 0 0 0 var(--u) var(--frame);
 }
+/* The zoom buttons wrap onto a second row rather than run out of the map's
+   window over the checks beside it, which they did in any window under about
+   1100 pixels wide. */
 :where(.pixel-ui) .maker-zooms {
   display: flex;
+  flex-wrap: wrap;
   gap: calc(var(--u) * 2);
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }

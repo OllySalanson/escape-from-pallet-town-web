@@ -491,7 +491,7 @@ function mapPane(state: MakerViewState, view: MapFile, inside: MapFileArea | und
     (level) =>
       `<button class="px-window px-button maker-zoom${level === zoom ? ' is-primary' : ''}" data-zoom="${level}" aria-pressed="${level === zoom}" data-help="Draws a tile ${level} pixels wide. Ctrl and the mouse wheel zoom about the pointer.">${level === 16 ? '1x' : level < 16 ? `1/${16 / level}` : `${level / 16}x`}</button>`,
   ).join('');
-  const overviewToggle = `<button class="px-window px-button maker-zoom${state.overview ? ' is-primary' : ''}" data-overview-toggle aria-pressed="${state.overview}" data-help="Shows or hides the whole map in the corner of the window, while the map is bigger than the window. Press it to look there.">Overview</button>`;
+  const overviewToggle = `<button class="px-window px-button maker-zoom${state.overview ? ' is-primary' : ''}" data-overview-toggle aria-pressed="${state.overview}" data-help="Shows or hides the whole map in the corner of the window, while the map is bigger than the window and the window has room for it. Press it to look there.">Overview</button>`;
   const fit = `<button class="px-window px-button maker-zoom" data-fit data-help="Zooms out as far as it takes to see the whole map, or as much of it as the window holds, and puts it in the middle.">Fit</button>`;
   // The overview stands in the window's corner, over the map, and is only
   // shown while the map does not fit the window (`MapMakerScene.showOverview`).
