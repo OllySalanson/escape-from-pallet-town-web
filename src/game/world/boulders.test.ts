@@ -29,11 +29,11 @@ describe('pushing a boulder', () => {
 });
 
 describe('a cure', () => {
-  it("is said in FireRed's own words for each status a berry can cure", () => {
-    expect(curedLine('PIKACHU', PrimaryStatus.Poison)).toBe('PIKACHU was cured of poison!');
-    expect(curedLine('PIKACHU', PrimaryStatus.Paralysis)).toBe('PIKACHU was cured of paralysis!');
-    expect(curedLine('PIKACHU', PrimaryStatus.Burn)).toBe("PIKACHU's burn was healed!");
-    expect(curedLine('PIKACHU', PrimaryStatus.Sleep)).toBe('PIKACHU woke up!');
-    expect(curedLine('PIKACHU', PrimaryStatus.Freeze)).toBe('PIKACHU was thawed out!');
+  it("is said in FireRed's party-menu words for each status a berry can cure", () => {
+    expect(curedLine('PIKACHU', PrimaryStatus.Poison)).toBe('PIKACHU was cured of its poisoning.');
+    expect(curedLine('PIKACHU', PrimaryStatus.Paralysis)).toBe('PIKACHU was cured of paralysis.');
+    expect(curedLine('PIKACHU', PrimaryStatus.Burn)).toBe("PIKACHU's burn was healed.");
+    expect(curedLine('PIKACHU', PrimaryStatus.Sleep)).toBe('PIKACHU woke up.');
+    expect(curedLine('PIKACHU', PrimaryStatus.Freeze)).toBe('PIKACHU was thawed out.');
   });
 });

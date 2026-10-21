@@ -482,3 +482,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `hpRestoredLine` in `items/items.ts` holds FireRed's line, and both `useFieldItem` (pack and base) and `applyBattleItem` (fight) print it. Tests: those three now expect the new line (fail before the fix).
 - How to use it: use a Potion on a hurt Pokémon anywhere - the line says its HP was restored by so many point(s).
 - Still in the game's own words (a candidate for later): the cure lines, "was cured of poison!" (FireRed's party menu: "was cured of its poisoning."), "woke up!" ("woke up."), "'s burn was healed!", "was thawed out!"; and the full-HP refusal "HP is already full." (FireRed: "It won't have any effect.").
+
+### 65. An Antidote said "CHARMANDER was cured of poison!" in the game's own words
+- What a player met: every status cure from medicine or a berry - in a fight, from the raid pack or at base's treatment bench - ended in "!" and the poison one said "was cured of poison!". FireRed's party menu says "CHARMANDER was cured of its poisoning.", "was cured of paralysis.", "'s burn was healed.", "woke up." and "was thawed out." (pret's `gText_PkmnCuredOfPoison` and neighbours in `strings.c`), in a fight and out of one.
+- How reproduced: `battleItems.test.ts` uses an Antidote on a poisoned Charmander through `applyBattleItem`; `treatment.test.ts` treats one at base; `boulders.test.ts` reads `curedLine` for all five statuses.
+- What changed: `curedLine` in `items/items.ts` holds FireRed's five lines. Tests: those three now expect them (fail before the fix). The battle engine's own "woke up!" and "thawed out!" (a Pokemon waking on its own) are FireRed's battle lines and were left.
+- How to use it: use an Antidote (or any cure) on a poisoned Pokémon - the line says it was cured of its poisoning.
+- Still in the game's own words (a candidate for later): the full-HP refusal "HP is already full." (FireRed: "It won't have any effect.").

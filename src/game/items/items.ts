@@ -1289,22 +1289,23 @@ export function hpRestoredLine(name: string, amount: number): string {
 }
 
 /**
- * What is said when a status is cured, in FireRed's own words for each: a
- * berry cures five different things, and "cured of poison" was once said of
- * every one of them.
+ * What is said when a status is cured, in FireRed's party-menu words for each
+ * (`gText_PkmnCuredOfPoison` and its neighbours in pret's `strings.c`), the
+ * same line in a fight and out of one: a berry cures five different things,
+ * and "cured of poison" was once said of every one of them.
  */
 export function curedLine(name: string, status: PrimaryStatus): string {
   switch (status) {
     case PrimaryStatus.Poison:
-      return `${name} was cured of poison!`;
+      return `${name} was cured of its poisoning.`;
     case PrimaryStatus.Paralysis:
-      return `${name} was cured of paralysis!`;
+      return `${name} was cured of paralysis.`;
     case PrimaryStatus.Burn:
-      return `${name}'s burn was healed!`;
+      return `${name}'s burn was healed.`;
     case PrimaryStatus.Sleep:
-      return `${name} woke up!`;
+      return `${name} woke up.`;
     case PrimaryStatus.Freeze:
-      return `${name} was thawed out!`;
+      return `${name} was thawed out.`;
   }
 }
 

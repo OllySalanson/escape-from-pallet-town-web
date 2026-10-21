@@ -88,7 +88,7 @@ describe('treating a Pokemon at base with a stash item', () => {
     expect(treatWithItem(stash, 'charmander-1', 'antidote')).toEqual({
       used: true,
       // The last of a medicine says so, rather than reading "0 Antidotes".
-      message: `${pokemon.base.name} was cured of poison! No Antidote left at base.`,
+      message: `${pokemon.base.name} was cured of its poisoning. No Antidote left at base.`,
     });
     expect(pokemon.primaryStatus).toBe(null);
     expect(stash.itemCount('antidote')).toBe(0);

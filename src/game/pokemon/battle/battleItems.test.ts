@@ -53,7 +53,7 @@ describe('using a medicine on the Pokemon that is out', () => {
     const use = applyBattleItem(state, ITEMS.antidote, charmander);
 
     expect(use.used).toBe(true);
-    expect(use.message).toBe('CHARMANDER was cured of poison!');
+    expect(use.message).toBe('CHARMANDER was cured of its poisoning.');
     expect(use.state.player.primaryStatus).toBeNull();
   });
 
