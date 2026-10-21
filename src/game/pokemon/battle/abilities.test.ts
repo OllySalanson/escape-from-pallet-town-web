@@ -310,6 +310,40 @@ describe('the abilities that refuse something', () => {
     expect(clawed.state.player.statStages.attack).toBe(1);
   });
 
+  it("says a refused stat drop in FireRed's own words, once a move for Clear Body", () => {
+    const tickle = new MoveBase({
+      name: 'Tickle',
+      type: PokemonType.Normal,
+      power: 0,
+      accuracy: 100,
+      pp: 10,
+      category: MoveCategory.Status,
+      effects: {
+        boosts: [
+          { stat: 'attack', stages: -1 },
+          { stat: 'defense', stages: -1 },
+        ],
+      },
+    });
+    const refusals = (abilityId: string, move: MoveBase) =>
+      abilityEvents(
+        resolveTurn(
+          createBattleState(
+            armed(species({ abilityId: null }), 20, move),
+            armed(species({ abilityId, name: 'Tentacool' }), 20),
+          ),
+          0,
+          at({}),
+        ).events,
+      )
+        .filter((event) => event.effect === 'blocked-boost')
+        .map((event) => eventToMessage(event, 'Wild'));
+
+    expect(refusals('clear-body', tickle)).toEqual(["Wild TENTACOOL's CLEAR BODY prevents stat loss!"]);
+    expect(refusals('keen-eye', SMOKESCREEN)).toEqual(["Wild TENTACOOL's KEEN EYE prevents accuracy loss!"]);
+    expect(refusals('hyper-cutter', tickle)).toEqual(["Wild TENTACOOL's HYPER CUTTER prevents Attack loss!"]);
+  });
+
   it('refuses a status from the other side, and a flinch is one of them', () => {
     const asleep = resolveTurn(
       createBattleState(

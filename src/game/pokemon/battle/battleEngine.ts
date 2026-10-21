@@ -2927,13 +2927,24 @@ const applyStatBoosts = (
   let nextState = state;
   const events: BattleEvent[] = [];
   const fromElsewhere = !sameSlot(source, ref);
+  let saidEveryStat = false;
   for (const boost of boosts) {
     const combatant = unitAt(nextState, ref);
     if (!combatant) {
       break;
     }
-    if (boost.stages < 0 && fromElsewhere && blocksBoost(abilityCarrier(combatant), boost.stat)) {
-      const refused = announceAbility(nextState, ref, 'blocked-boost', { stat: boost.stat });
+    const carrier = abilityCarrier(combatant);
+    if (boost.stages < 0 && fromElsewhere && blocksBoost(carrier, boost.stat)) {
+      // FireRed's Clear Body refuses every stat and says so once a move
+      // ("prevents stat loss!"); Keen Eye and Hyper Cutter name the one they keep.
+      const everyStat = (Object.keys(combatant.statStages) as StageStat[]).every((stat) =>
+        blocksBoost(carrier, stat),
+      );
+      if (everyStat && saidEveryStat) {
+        continue;
+      }
+      saidEveryStat ||= everyStat;
+      const refused = announceAbility(nextState, ref, 'blocked-boost', everyStat ? {} : { stat: boost.stat });
       nextState = refused.state;
       events.push(...refused.events);
       continue;

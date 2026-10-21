@@ -1355,8 +1355,10 @@ const abilityLine = (
         default:
           return `${who} kept ${statusLabel(event.status)} off it!`;
       }
+    // FireRed's `sText_PkmnPreventsStatLossWith` for an ability that keeps
+    // every stat, `sText_PkmnsXPreventsYLoss` for one that keeps one.
     case 'blocked-boost':
-      return `${who} would not let its ${statLabel(event.stat ?? '')} drop!`;
+      return event.stat ? `${who} prevents ${statLabel(event.stat)} loss!` : `${who} prevents stat loss!`;
     case 'blocked-secondaries':
       return `${who} blocked the extra effect!`;
     case 'no-recoil':

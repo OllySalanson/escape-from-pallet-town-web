@@ -386,3 +386,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: the `blocked-status` line in `battlePresentation.ts` is FireRed's for each status. FireRed says nothing when Magma Armor refuses a freeze, so that one keeps the game's words. Test: `battlePresentation.test.ts` "says an ability refused a status in FireRed's own words" (fails before).
 - How to use it: Thunder Wave a Persian or Sleep Powder a Drowzee - the line says the ability prevents it, as in FireRed.
 - Ability lines still in the game's own words: powered-up, sharpened, shrugged-off, hardened, blocked-boost (FireRed: "prevents stat loss!"), cured-on-switch, reflected, contact, quickened, hidden, weathered-out.
+
+### 51. A refused stat drop "would not let its Attack drop!" in the game's own words
+- What a player met: a Growl or Tickle at a wild Tentacool's Clear Body, a Sand-Attack at a Pidgey's Keen Eye or a Growl at a Krabby's Hyper Cutter read "... would not let its Attack drop!" - and a Tickle at Clear Body said it twice, once for each stat. FireRed says "Wild TENTACOOL's CLEAR BODY prevents stat loss!" once a move (`sText_PkmnPreventsStatLossWith`, guarded by `statLowered`), and Keen Eye and Hyper Cutter name the stat they keep: "... KEEN EYE prevents accuracy loss!" (`sText_PkmnsXPreventsYLoss`, pret's `battle_script_commands.c` `ChangeStatBuffs`).
+- How reproduced: `resolveTurn` with a two-stat drop at a Clear Body foe gave two `blocked-boost` events, which `eventToMessage` printed in the old words.
+- What changed: `applyStatBoosts` in `battleEngine.ts` gives an ability that refuses every stat one event without a stat, once per call; `battlePresentation.ts` prints FireRed's two lines. Test: `abilities.test.ts` "says a refused stat drop in FireRed's own words, once a move for Clear Body" (fails before).
+- How to use it: Growl a wild Tentacool or Sand-Attack a Pidgey - one line says the ability prevents the loss.
+- Ability lines still in the game's own words: powered-up, sharpened, shrugged-off, hardened, cured-on-switch, reflected, contact, quickened, hidden, weathered-out.
