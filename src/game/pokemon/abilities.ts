@@ -108,13 +108,19 @@ export const ABILITIES: readonly AbilityBase[] = [
     id: 'water-absorb',
     name: 'Water Absorb',
     description: 'Water heals it for a quarter of its health instead of hurting it.',
-    absorbsMoveType: (type) => (type === PokemonType.Water ? { heal: 1 / 4 } : null),
+    // FireRed takes only a Water move with power (battle_util.c), so a Water
+    // status move still lands on it.
+    absorbsMoveType: (type, power) =>
+      type === PokemonType.Water && power > 0 ? { heal: 1 / 4 } : null,
   },
   {
     id: 'volt-absorb',
     name: 'Volt Absorb',
     description: 'Electricity heals it for a quarter of its health instead of hurting it.',
-    absorbsMoveType: (type) => (type === PokemonType.Electric ? { heal: 1 / 4 } : null),
+    // FireRed takes only an Electric move with power (battle_util.c), so
+    // Thunder Wave still paralyses it.
+    absorbsMoveType: (type, power) =>
+      type === PokemonType.Electric && power > 0 ? { heal: 1 / 4 } : null,
   },
   {
     id: 'soundproof',

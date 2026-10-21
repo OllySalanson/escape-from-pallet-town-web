@@ -528,12 +528,12 @@ export class FeedbackScene extends Phaser.Scene {
     this.showOutcome(outcomeAfterCheck(outcome, signedIn.ok ? undefined : signedIn.trouble), tag);
   }
 
-  private showOutcome(outcome: FeedbackOutcome, tag: string): void {
-    this.overlay.root.innerHTML = outcomeMarkup(outcome, tag);
+  private showOutcome(outcome: FeedbackOutcome, tag: string, retrying = false): void {
+    this.overlay.root.innerHTML = outcomeMarkup(outcome, tag, retrying);
     this.overlay.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     const retry = this.overlay.root.querySelector<HTMLButtonElement>('[data-retry-check]');
     if (retry) {
-      retry.onclick = () => void this.retryCheck(tag);
+      retry.onclick = () => void this.retryCheck(tag, outcome);
     }
     this.overlay.focus(canTryTheCheckAgain(outcome) ? '[data-retry-check]' : '[data-close]');
   }
@@ -542,11 +542,14 @@ export class FeedbackScene extends Phaser.Scene {
    * TRY AGAIN on a message the bot check kept in the pack: the check again,
    * and once it passes, everything in the pack that is due, this one first.
    */
-  private async retryCheck(tag: string): Promise<void> {
+  private async retryCheck(tag: string, kept: FeedbackOutcome): Promise<void> {
     if (this.phase !== 'done') {
       return;
     }
     this.phase = 'sending';
+    // The ending TRY AGAIN was pressed on said the check jammed; while the new
+    // one is taken the panel says that is what is happening instead.
+    this.showOutcome(kept, tag, true);
     this.say(SENDING_LINE);
     const signedIn = await signInAsPlayer();
     let outcome: FeedbackOutcome = outcomeAfterCheck('queued', signedIn.ok ? undefined : signedIn.trouble);

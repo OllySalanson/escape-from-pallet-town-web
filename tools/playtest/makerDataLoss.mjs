@@ -189,6 +189,7 @@ try {
     await click('[data-map-name]');
     await selectAll();
     await type('Alpha');
+    await tab(); // onto REROLL, beside the name
     await tab();
     await type('Bob');
     await tab();

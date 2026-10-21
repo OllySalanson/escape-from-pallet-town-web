@@ -6,7 +6,8 @@ import { districtAt } from './districts';
 import { gateKey } from './gates';
 import { collisionBlocker, findHunterPursuitPath, findHunterSpawnTile } from './hunter';
 import { composeMapFile, doorwayOf } from './mapAreas';
-import { wayTowards } from './areaRoutes';
+import { keptRouteFields, nearestByWalk, ROUTE_FIELDS_KEPT, stepsTowards, wayTowards } from './areaRoutes';
+import { hunterChipView } from '../scenes/raidHud';
 import {
   buildPlayerMap,
   doorFront,
@@ -250,6 +251,74 @@ describe('a map with the inside of a building', () => {
     expect(wayTowards(world, { x: 15, y: 12 }, { x: 41, y: 5 })).toEqual(doorwayOf(DOOR.ends[0]));
     // Inside one place, it is straight there.
     expect(wayTowards(world, { x: 15, y: 12 }, { x: 16, y: 0 })).toEqual({ x: 16, y: 0 });
+  });
+
+  it('counts the steps to something on the far side of a door as the walk there, not across the grid', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const spot = { x: 33 + 8, y: 5 };
+    // On the doorstep, the house's item spot is one step through the door onto
+    // the mat (5,7) and five across the room - not the 33 + 8 columns the room
+    // happens to be laid along the grid from the lane.
+    expect(stepsTowards(world, FRONT, spot)).toBe(1 + 3 + 2);
+    // And back out: from the item spot, the doorstep is the same walk.
+    expect(stepsTowards(world, spot, FRONT)).toBe(6);
+    // Inside one place, it is the straight count it always was.
+    expect(stepsTowards(world, { x: 15, y: 12 }, { x: 16, y: 0 })).toBe(13);
+  });
+
+  it('warns of a hunter on the doorstep of the room the player is in', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    // The player has just come in and stands on the mat; the hunter is a tile
+    // off the doorstep outside. Straight along the grid that is the width of
+    // the dark the room is laid past, and the chip said nothing.
+    const mat = { x: 33 + 5, y: 7 };
+    const hunter = { x: FRONT.x, y: FRONT.y + 1 };
+    expect(Math.abs(hunter.x - mat.x) + Math.abs(hunter.y - mat.y)).toBeGreaterThan(8);
+    const steps = stepsTowards(world, mat, hunter);
+    expect(steps).toBe(2);
+    const chip = hunterChipView({
+      searching: false,
+      distance: steps,
+      direction: 'S',
+    });
+    expect(chip?.label).toBe('HUNTER S 2');
+  });
+
+  it('names the contract stop nearest the room by the walk out through its door', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const mat = { x: 33 + 5, y: 7 };
+    // One stop just off the doorstep, one at the far east of the lane. Straight
+    // along the grid the far one is nearer the room, which is laid east of the
+    // lane, and the chip sent the player out of the door and away from the stop
+    // beside it.
+    const byTheDoor = { id: 'door', position: { x: FRONT.x, y: FRONT.y + 1 } };
+    const farEast = { id: 'east', position: { x: SAMPLE.width - 2, y: 12 } };
+    const straight = (to: { x: number; y: number }) => Math.abs(to.x - mat.x) + Math.abs(to.y - mat.y);
+    expect(straight(farEast.position)).toBeLessThan(straight(byTheDoor.position));
+    expect(nearestByWalk(world, mat, [farEast, byTheDoor])?.id).toBe('door');
+    // Outdoors it is the straight count it always was.
+    expect(nearestByWalk(world, { x: SAMPLE.width - 3, y: 12 }, [byTheDoor, farEast])?.id).toBe('east');
+    expect(nearestByWalk(world, mat, [])).toBeUndefined();
+  });
+
+  it('keeps only a few walks however many tiles a moving target stands on', () => {
+    const map = buildPlayerMap({ ...WITH_HOUSE, id: 'sample-lane-inside' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const mat = { x: 33 + 5, y: 7 };
+    // A hunter walking the lane outside, one tile a step, asked about from the room.
+    for (let x = 2; x < 30; x += 1) {
+      stepsTowards(world, mat, { x, y: 12 });
+    }
+    expect(keptRouteFields(world)).toBeLessThanOrEqual(ROUTE_FIELDS_KEPT);
+    // And what was asked last is still the right answer.
+    expect(stepsTowards(world, mat, { x: FRONT.x, y: FRONT.y + 1 })).toBe(2);
   });
 });
 

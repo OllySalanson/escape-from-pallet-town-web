@@ -10,7 +10,7 @@ import { RunManager } from '../run/RunManager';
 import { BULBASAUR, Pokemon } from '../pokemon';
 import { baseGame } from '../base/baseGames.testkit';
 import { ownedFurniture } from './arrangement';
-import { FOUND_FURNITURE, FURNITURE, furnitureNamed } from './furniture';
+import { FOUND_FURNITURE, FURNITURE, dollId, furnitureNamed } from './furniture';
 import { FURNITURE_PIECES } from './generated/furniturePieces';
 
 /**
@@ -44,6 +44,11 @@ describe('the furniture catalogue', () => {
         expect(definition.cells.join('')).toMatch(/\./);
       }
     }
+  });
+
+  it('says "An EKANS doll" and "A PIDGEY doll", never "A EKANS"', () => {
+    expect(furnitureNamed(dollId(23))?.line).toBe('An EKANS doll, for the first EKANS you ever brought home.');
+    expect(furnitureNamed(dollId(16))?.line).toBe('A PIDGEY doll, for the first PIDGEY you ever brought home.');
   });
 
   it('has a doll for each of the 151, and every other piece once', () => {

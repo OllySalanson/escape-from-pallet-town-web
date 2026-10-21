@@ -1,5 +1,6 @@
 import { ITEMS, type ItemId } from '../items/items';
 import { BERRY_TREE_ORDER, BERRY_TREE_SHEET } from './generated/berryTrees';
+import { aOrAn } from '../ui/article';
 
 /**
  * A berry tree, as a map maker plants one: Emerald's own tree
@@ -57,5 +58,5 @@ export function berryTreeLines(berry: BerryId, picked: boolean): readonly string
   const name = berryName(berry).toUpperCase();
   return picked
     ? [`The ${name} tree has been picked bare. It will be ripe again next time.`]
-    : [`It's a ${name} tree. It is heavy with berries.`];
+    : [`It's ${aOrAn(name)} ${name} tree. It is heavy with berries.`];
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { signInWith, troubleOf, type SignInParts } from './playerSignIn';
+import { keysHeldByTheCheck, signInWith, troubleOf, type SignInParts } from './playerSignIn';
 import { BOT_CHECK_QUIET_MS, BOT_CHECK_TIMEOUT_MS, botCheckNeeded, checkWith, type TurnstileApi } from './turnstile';
 import { TURNSTILE_SITE_KEY } from './submitConfig';
 
@@ -41,6 +41,19 @@ describe('signing a browser in as a player', () => {
       expect(await signInWith(made)).toEqual({ ok: false, trouble: why });
       expect(calls).toEqual(['session']);
     }
+  });
+
+  it('says a browser that knows it is offline is offline, without drawing a check the network cannot load', async () => {
+    const { calls, parts: made } = parts({
+      online: () => false,
+      check: () => (calls.push('check'), Promise.resolve({ passed: false, why: 'unavailable' })),
+    });
+    expect(await signInWith(made)).toEqual({ ok: false, trouble: 'offline' });
+    expect(calls).toEqual(['session']);
+    // A yes is not believed beyond letting the check be tried.
+    const online = parts({ online: () => true });
+    expect(await signInWith(online.parts)).toEqual({ ok: true, uid: 'u1' });
+    expect(online.calls).toEqual(['session', 'check', 'sign in tok']);
   });
 
   it('reads what the project said when it refused', async () => {
@@ -156,5 +169,62 @@ describe('the bot check', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('the keyboard while the bot check is asking', () => {
+  /** A window with one capture-phase keydown listener at most, as the overlay keyboard installs. */
+  function fakeWindow() {
+    let listener: ((event: KeyboardEvent) => void) | undefined;
+    return {
+      host: {
+        addEventListener: (_type: 'keydown', added: (event: KeyboardEvent) => void) => {
+          listener = added;
+        },
+        removeEventListener: () => {
+          listener = undefined;
+        },
+      },
+      /** A key pressed: whether the game behind (listening on its own element) still gets it, and whether its default went. */
+      press(key: string) {
+        const event = {
+          key,
+          target: { tagName: 'DIV' },
+          repeat: false,
+          defaultPrevented: false,
+          stopped: false,
+          preventDefault() {
+            this.defaultPrevented = true;
+          },
+          stopPropagation() {
+            this.stopped = true;
+          },
+        };
+        listener?.(event as unknown as KeyboardEvent);
+        return { reachesTheGame: !event.stopped, defaultPrevented: event.defaultPrevented };
+      },
+    };
+  }
+
+  it('keeps every key from the console game behind the card until the check ends, then gives them back', async () => {
+    const { claimOverlayKeyboard } = await import('../ui/overlayKeyboard');
+    const window = fakeWindow();
+    const keys = keysHeldByTheCheck((handler) => claimOverlayKeyboard(handler, window.host));
+
+    // An invisible pass never asks, so the game keeps its keys throughout.
+    expect(window.press('Enter').reachesTheGame).toBe(true);
+
+    // Asked: Enter on the game-over screen must not start PLAY AGAIN under the card.
+    keys.asking();
+    expect(window.press('Enter')).toEqual({ reachesTheGame: false, defaultPrevented: true });
+    expect(window.press(' ')).toEqual({ reachesTheGame: false, defaultPrevented: true });
+    expect(window.press('ArrowLeft').reachesTheGame).toBe(false);
+    // Tab still moves the focus, so the box can be reached from the keyboard.
+    expect(window.press('Tab')).toEqual({ reachesTheGame: false, defaultPrevented: false });
+
+    keys.done();
+    expect(window.press('Enter')).toEqual({ reachesTheGame: true, defaultPrevented: false });
+    // Ending twice is harmless.
+    keys.done();
   });
 });

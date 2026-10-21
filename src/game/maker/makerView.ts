@@ -44,6 +44,7 @@ import { PASSAGE_TARGETS, type PassageLook, type PendingPassage } from './passag
 import type { QueuedMap } from './review';
 import { summariseMapFile, summaryLine, summaryLines } from '../world/mapFileSummary';
 import { canTryAgain, STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
+import { isPluralName, withArticle } from '../ui/article';
 import {
   BUILDING_CHOICES,
   plantsAlong,
@@ -293,6 +294,7 @@ const placesFor = (inside: MapFileArea | undefined): readonly (typeof PLACE_ROWS
 /** Everything SELECT and REMOVE work on in this place, named as the Paint pane names it. */
 const placedThings = (inside: MapFileArea | undefined): string =>
   [...placesFor(inside).map(([, label]) => label.toLowerCase()), inside ? 'piece of furniture' : 'building']
+    .map(withArticle)
     .join(', ')
     .replace(/, ([^,]+)$/, ' or $1');
 
@@ -333,13 +335,13 @@ const TOOLS: readonly {
     id: 'select',
     label: 'Select',
     key: 'V',
-    help: (inside) => `Chooses a ${placedThings(inside)}. Drag it to move it.`,
+    help: (inside) => `Chooses ${placedThings(inside)}. Drag it to move it.`,
   },
   {
     id: 'erase',
     label: 'Remove',
     key: 'X',
-    help: (inside) => `Takes a ${placedThings(inside)} off the map.`,
+    help: (inside) => `Takes ${placedThings(inside)} off the map.`,
   },
 ];
 
@@ -401,9 +403,8 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
     toolRow(
       `data-place="building" data-building="${choice.kind}"`,
       choice.label,
-      (plantsAlong(choice.kind)
-        ? `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click. Drag to plant a row, each clear of the last.`
-        : `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`) +
+      `Plants ${withArticle(choice.label.toLowerCase())} with ${isPluralName(choice.label) ? 'their' : 'its'} top-left corner on the tile you click.` +
+        (plantsAlong(choice.kind) ? ' Drag to plant a row, each clear of the last.' : '') +
         (choice.group === 'Signs' ? ' It is only a picture: for words to read, place a Sign under Places.' : ''),
       chosenPlace === `building:${choice.kind}`,
       `<canvas class="maker-swatch" data-plant="${choice.kind}"${inside ? ` data-swatch-style="${inside.style}"` : ''} width="16" height="16" aria-hidden="true"></canvas>`,

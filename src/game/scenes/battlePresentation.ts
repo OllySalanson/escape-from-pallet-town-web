@@ -1,5 +1,6 @@
 import type { BattleEvent } from '../pokemon/battle/battleEngine';
 import { MoveCategory, type MoveBase } from '../pokemon/MoveBase';
+import type { AbsorbedOutcome } from '../pokemon/AbilityBase';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
@@ -25,6 +26,31 @@ export const MOVE_COMMAND_ROWS = 2;
 export const MOVE_COMMAND_HEIGHT = 64;
 /** Move rows are single-line so the two guidance lines share the same panel. */
 export const MOVE_GUIDANCE_ROWS = 2;
+/**
+ * The rows of the move, item and ball lists the panel holds at once: two
+ * columns of `MOVE_COMMAND_ROWS`, above the guidance lines. A moveset is never
+ * more, but a raid pack can carry ten kinds of medicine, and drawn whole the
+ * fifth sat on the guidance line and the rest below the panel, out of sight
+ * and out of reach of the pointer.
+ */
+export const ROW_LIST_PAGE = 2 * MOVE_COMMAND_ROWS;
+
+/** Which page of a row list the cursor's row is on, and where that page starts. */
+export const rowListPage = (
+  selected: number,
+): { readonly page: number; readonly start: number } => {
+  const page = Math.floor(Math.max(0, selected) / ROW_LIST_PAGE);
+  return { page, start: page * ROW_LIST_PAGE };
+};
+
+/**
+ * Said under a row list that runs to more than one page, on the guidance line
+ * the list leaves free, so a pack's sixth medicine is known to be there.
+ */
+export const rowListPageNote = (page: number, count: number): string => {
+  const pages = Math.ceil(count / ROW_LIST_PAGE);
+  return pages > 1 ? `Page ${page + 1} of ${pages} - more with Up and Down.` : '';
+};
 
 export interface MoveCommandLayout {
   readonly x: number;
@@ -50,7 +76,11 @@ export interface CombatPresentationStep {
    * A second bar the same line moves, signed as `hpDelta` is. Only Leech
    * Seed's drain has one: what the seeded Pokemon loses, the seeder gains.
    */
-  readonly alsoHp?: { readonly side: 'player' | 'enemy'; readonly slot: number; readonly hpDelta: number };
+  readonly alsoHp?: {
+    readonly side: 'player' | 'enemy';
+    readonly slot: number;
+    readonly hpDelta: number;
+  };
 }
 
 export const formatMoveCommand = (move: {
@@ -85,25 +115,82 @@ export const mainCommandLayout = (index: number, count: number): { x: number; y:
   };
 };
 
-/** The party list: a prompt line, then the party two abreast - six fit the panel. */
+/**
+ * The party list: a prompt line, then the party two abreast - six fit the panel.
+ * The two columns share the panel's inner width evenly, as the command grid's
+ * do, because a row in either can be a ten-letter name.
+ */
 export const PARTY_COLUMNS = 2;
+const PARTY_COLUMN_PITCH = Math.floor((BATTLE_PANEL.width - PANEL_INSET_X * 2) / PARTY_COLUMNS);
 export const partyPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 4 } as const;
 export const partyRowLayout = (index: number): { x: number; y: number } => ({
-  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % PARTY_COLUMNS) * MOVE_COLUMN_WIDTH,
+  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % PARTY_COLUMNS) * PARTY_COLUMN_PITCH,
   y: 19 + Math.floor(index / PARTY_COLUMNS) * 14,
 });
 
-/** One party member as the list names them. A fainted one has no HP worth a column. */
-export const formatPartyRow = (pokemon: {
-  readonly name: string;
-  readonly level: number;
-  readonly currentHp: number;
-  readonly maxHp: number;
-  readonly isFainted: boolean;
-}): string =>
-  `${pokemon.name.toUpperCase()} ${levelLabel(pokemon.level)} ${
-    pokemon.isFainted ? 'FNT' : `HP ${pokemon.currentHp}/${pokemon.maxHp}`
-  }`;
+/**
+ * One party member as the list names them, in one of three forms, longest first:
+ * the full row, then without the "HP" word, then without the level as well. A
+ * fainted one has no HP worth a column. The shorter forms exist because a
+ * ten-letter name with two-digit HP ("BUTTERFREE Lv 14 HP 32/32") is wider than
+ * the right-hand column and ran out past the panel's frame.
+ */
+export const PARTY_ROW_FORMS = 3;
+
+export const formatPartyRow = (
+  pokemon: {
+    readonly name: string;
+    readonly level: number;
+    readonly currentHp: number;
+    readonly maxHp: number;
+    readonly isFainted: boolean;
+  },
+  form = 0,
+): string => {
+  const level = form >= 2 ? '' : ` ${levelLabel(pokemon.level)}`;
+  const health = pokemon.isFainted
+    ? 'FNT'
+    : `${form >= 1 ? '' : 'HP '}${pokemon.currentHp}/${pokemon.maxHp}`;
+  return `${pokemon.name.toUpperCase()}${level} ${health}`;
+};
+
+/** The clear pixels kept between the left column's rows and the right column. */
+const PARTY_COLUMN_GAP = 4;
+
+/**
+ * How wide a party row may be drawn, once it has been moved right by the
+ * cursor's `gutter`: up to the next column, or to the panel's inner edge.
+ */
+export const partyRowRoom = (index: number, gutter: number): number => {
+  const column = index % PARTY_COLUMNS;
+  const edge =
+    column === PARTY_COLUMNS - 1
+      ? BATTLE_PANEL.x + BATTLE_PANEL.width - PANEL_INSET_X
+      : partyRowLayout(index + 1).x - PARTY_COLUMN_GAP;
+  return edge - partyRowLayout(index).x - gutter;
+};
+
+/**
+ * The one form the whole list is written in: the longest in which every row
+ * fits its column, so the two columns read alike. `width` is the drawn width,
+ * which only the scene can measure. If none fits, the shortest.
+ */
+export const partyRowForm = (
+  party: readonly Parameters<typeof formatPartyRow>[0][],
+  gutter: number,
+  width: (row: string) => number,
+): number => {
+  for (let form = 0; form < PARTY_ROW_FORMS; form += 1) {
+    if (
+      party.every(
+        (pokemon, index) => width(formatPartyRow(pokemon, form)) <= partyRowRoom(index, gutter),
+      )
+    ) {
+      return form;
+    }
+  }
+  return PARTY_ROW_FORMS - 1;
+};
 
 /** Names the key. It said `BACK: cancel`, and BACK is not written on any keyboard. */
 export const CANCEL_HINT = 'ESC: cancel';
@@ -289,8 +376,12 @@ export const CAPTION_LINE_WIDTH = BATTLE_PANEL.width - PANEL_INSET_X * 2;
  * battle screen.
  */
 export const captionBySentence = (text: string): readonly string[] => {
-  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((sentence) => sentence.trim()) ?? [text];
-  return sentences.map((_, kept) => sentences.slice(0, sentences.length - kept).join(' ')).filter(Boolean);
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((sentence) => sentence.trim()) ?? [
+    text,
+  ];
+  return sentences
+    .map((_, kept) => sentences.slice(0, sentences.length - kept).join(' '))
+    .filter(Boolean);
 };
 
 export const fitCaption = (
@@ -472,7 +563,8 @@ export const describeMoveGuidance = (
       compactSummary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
       // The line above already says the type and that it is a status move, so
       // a generated description's opening sentence saying the same is dropped.
-      matchup: move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
+      matchup:
+        move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
       tone: 'neutral',
       effectiveness: 1,
     };
@@ -520,10 +612,8 @@ export const catchChanceLabel = (chance: number): string => {
 export const formatItemCommand = (count: number): string => `ITEM x${count}`;
 
 /** One medicine row in the item submenu, counted the way the pocket counts it. */
-export const formatItemRow = (
-  item: { readonly displayName: string },
-  count: number,
-): string => `${battleCaps(item.displayName)} x${count}`;
+export const formatItemRow = (item: { readonly displayName: string }, count: number): string =>
+  `${battleCaps(item.displayName)} x${count}`;
 
 /** The party screen's heading while it is choosing who to give an item to. */
 export const itemTargetPrompt = (item: { readonly displayName: string }): string =>
@@ -534,8 +624,16 @@ export const itemTargetPrompt = (item: { readonly displayName: string }): string
  * puts a move's numbers - and it ends with the turn, because that is the price
  * and it has to be read before the item is spent, not after.
  */
-export const describeItemGuidance = (item: { readonly description: string }): string =>
-  `${item.description} Using it costs your turn.`;
+export const describeItemGuidance = (item: { readonly description: string }): readonly string[] => {
+  // Longest first, for `fitCaption`: a berry's description is two sentences,
+  // and whole it ran the line past the panel's edge. The description loses its
+  // last sentences before the price does, and the price is said shorter last.
+  const said = captionBySentence(item.description);
+  return [
+    ...said.map((description) => `${description} Using it costs your turn.`),
+    `${said[said.length - 1] ?? item.description} Costs your turn.`,
+  ];
+};
 
 /** Said when the ITEM command is chosen with nothing in the medicine pocket. */
 export const NO_BATTLE_ITEMS_MESSAGE = 'No medicine in your pack!';
@@ -559,10 +657,8 @@ export const MAKE_ROOM_ROWS = 3;
 export const MAKE_ROOM_PAGE = MAKE_ROOM_COLUMNS * MAKE_ROOM_ROWS;
 
 export const makeRoomPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 4 } as const;
-export const makeRoomRowLayout = (index: number): { x: number; y: number } => ({
-  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % MAKE_ROOM_COLUMNS) * MOVE_COLUMN_WIDTH,
-  y: 19 + Math.floor(index / MAKE_ROOM_COLUMNS) * 14,
-});
+/** The party list's own seats, so its columns share the panel evenly too. */
+export const makeRoomRowLayout = partyRowLayout;
 
 /**
  * The row that changes nothing, spelled out rather than left to Escape.
@@ -581,8 +677,7 @@ export const MAKE_ROOM_INVITE = 'Choose what to put down - what you drop stays h
  * it is already being carried home. It is a statement rather than an
  * instruction, because there is nothing here the player could do about it.
  */
-export const NOTHING_TO_DROP_MESSAGE =
-  'Nothing in the pack can be put down - it is all POKéMON.';
+export const NOTHING_TO_DROP_MESSAGE = 'Nothing in the pack can be put down - it is all POKéMON.';
 
 /**
  * BALL with none carried. Not "none left": the base packs medicine for you and
@@ -590,18 +685,57 @@ export const NOTHING_TO_DROP_MESSAGE =
  */
 export const NO_BALLS_MESSAGE = 'There are no POKé BALLS in the pack!';
 
-/** One kind in the pack: what it is, how many, and the squares one stands on. */
-export const formatPackRoomRow = (choice: {
+/**
+ * One kind in the pack, in one of three forms, longest first: what it is, how
+ * many, and the squares one stands on; then without the squares (the line above
+ * the rows says what the one under the cursor frees); then the name alone. The
+ * shorter forms exist because a disc's name ("TM09 BULLET SEED x1 · 1sq") is
+ * wider than a column and ran out past the panel's frame.
+ */
+export const PACK_ROOM_ROW_FORMS = 3;
+
+type PackRoomRow = {
   readonly itemId?: string;
   readonly displayName: string;
   readonly carried: number;
   readonly squares: number;
-}): string =>
-  `${battleCaps(choice.displayName)} ${
+};
+
+export const formatPackRoomRow = (choice: PackRoomRow, form = 0): string => {
+  const name = battleCaps(choice.displayName);
+  if (form >= 2) {
+    return name;
+  }
+  const count =
     choice.itemId !== undefined && isCurrency(choice.itemId)
       ? itemCountTag(choice.itemId, choice.carried)
-      : `x${choice.carried}`
-  } · ${choice.squares}sq`;
+      : `x${choice.carried}`;
+  return form >= 1 ? `${name} ${count}` : `${name} ${count} · ${choice.squares}sq`;
+};
+
+/**
+ * The one form a page of the make-room panel is written in: the longest in
+ * which every row on it fits its column, as the party list chooses. `rows` are
+ * the page's rows in seat order, undefined being KEEP THE PACK, which never
+ * changes; `width` is the drawn width, which only the scene can measure.
+ */
+export const packRoomRowForm = (
+  rows: readonly (PackRoomRow | undefined)[],
+  gutter: number,
+  width: (row: string) => number,
+): number => {
+  for (let form = 0; form < PACK_ROOM_ROW_FORMS; form += 1) {
+    if (
+      rows.every(
+        (row, index) =>
+          row === undefined || width(formatPackRoomRow(row, form)) <= partyRowRoom(index, gutter),
+      )
+    ) {
+      return form;
+    }
+  }
+  return PACK_ROOM_ROW_FORMS - 1;
+};
 
 /**
  * The line above the rows, answering whichever one the cursor is on.
@@ -867,10 +1001,8 @@ export const enemyBannerRole = (battle: {
   readonly hunter: boolean;
 }): BannerRole => (battle.hunter ? 'RIVAL' : battle.trainer ? 'FOE' : 'WILD');
 
-export const combatantBanner = (
-  role: BannerRole,
-  types: readonly PokemonType[],
-): string => `${role}  ${formatTypeList(types)}`;
+export const combatantBanner = (role: BannerRole, types: readonly PokemonType[]): string =>
+  `${role}  ${formatTypeList(types)}`;
 
 /**
  * One line of battle log per event. Damaging hits carry the HP they took, so a
@@ -901,8 +1033,7 @@ export const STATUS_TAG_GAP = 4;
  * label at the head of the bar, which is where FireRed draws a status.
  */
 export type StatusTagSeat =
-  | { readonly row: 'name'; readonly x: number }
-  | { readonly row: 'bar'; readonly x: number };
+  { readonly row: 'name'; readonly x: number } | { readonly row: 'bar'; readonly x: number };
 
 export const statusTagSeat = (measured: {
   /** The column the tag stands at when the name leaves room for it. */
@@ -927,10 +1058,14 @@ export const statusTagSeat = (measured: {
  */
 export const statusAfterLine = (shown: ShownStatus, event: BattleEvent): ShownStatus => {
   if (event.type === 'status-applied') {
-    return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+    return event.status === 'confusion'
+      ? { ...shown, confused: true }
+      : { ...shown, primary: event.status };
   }
   if (event.type === 'status-cured') {
-    return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+    return event.status === 'confusion'
+      ? { ...shown, confused: false }
+      : { ...shown, primary: null };
   }
   if (event.type === 'ability' && event.effect === 'shed') {
     return { ...shown, primary: null };
@@ -946,12 +1081,21 @@ export const statusAfterLine = (shown: ShownStatus, event: BattleEvent): ShownSt
 export const statusBeforeLines = (end: ShownStatus, events: readonly BattleEvent[]): ShownStatus =>
   events.reduceRight<ShownStatus>((shown, event) => {
     if (event.type === 'status-applied') {
-      return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+      return event.status === 'confusion'
+        ? { ...shown, confused: false }
+        : { ...shown, primary: null };
     }
     if (event.type === 'status-cured') {
-      return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+      return event.status === 'confusion'
+        ? { ...shown, confused: true }
+        : { ...shown, primary: event.status };
     }
-    if (event.type === 'ability' && event.effect === 'shed' && event.status && event.status !== 'confusion') {
+    if (
+      event.type === 'ability' &&
+      event.effect === 'shed' &&
+      event.status &&
+      event.status !== 'confusion'
+    ) {
       return { ...shown, primary: event.status };
     }
     return shown;
@@ -960,10 +1104,25 @@ export const statusBeforeLines = (end: ShownStatus, events: readonly BattleEvent
 /** Whether a line moves a plate's status tag. */
 export const changesShownStatus = (
   event: BattleEvent,
-): event is Extract<BattleEvent, { readonly type: 'status-applied' | 'status-cured' | 'ability' }> =>
+): event is Extract<
+  BattleEvent,
+  { readonly type: 'status-applied' | 'status-cured' | 'ability' }
+> =>
   event.type === 'status-applied' ||
   event.type === 'status-cured' ||
   (event.type === 'ability' && event.effect === 'shed');
+
+/**
+ * What a ball that opens says, by how many times it shook first - FireRed's own
+ * four lines (pret/pokefirered `battle_message.c`, `sText_PkmnBrokeFree` to
+ * `sText_ShootSoClose`), so a throw that nearly held reads as nearly holding.
+ */
+export const BROKE_FREE_LINES = [
+  'Oh, no! The POKéMON broke free!',
+  'Aww! It appeared to be caught!',
+  'Aargh! Almost had it!',
+  'Shoot! It was so close, too!',
+] as const;
 
 export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string => {
   switch (event.type) {
@@ -988,7 +1147,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return `${combatantName({ user: event.target, name: event.name }, foe)} -${event.damage} HP${stab}`;
     }
     case 'missed':
-      return 'The attack missed!';
+      // FireRed's `sText_AttackMissed`: whose attack it was, because in a
+      // double battle the line can follow a different Pokemon's turn.
+      return `${combatantName(event, foe)}'s attack missed!`;
     case 'no-target':
       return 'But there was no target!';
     case 'nothing-happened':
@@ -1005,9 +1166,12 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'fainted':
       return `${combatantName(event, foe)} fainted!`;
     case 'no-pp':
-      return `No PP left for ${event.move}!`;
+      // FireRed's own line (pret's sText_NoPPLeft), said over the move list.
+      return "There's no PP left for this move!";
     case 'status-applied':
-      return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
+      return event.by
+        ? statusGivenBy(event, event.by, foe)
+        : `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
     case 'status-already':
       // FireRed's own lines: the status it already has, said by name, and a
       // move for a different status simply failing. "Already has a status
@@ -1019,15 +1183,23 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'status-prevented':
       return `${combatantName(event, foe)} ${statusHolds(event.status)}!`;
     case 'status-damage':
-      return `${combatantName(event, foe)} is hurt by ${statusLabel(event.status)}!`;
+      // FireRed's own lines (pret's sText_PkmnHurtByPoison, sText_PkmnHurtByBurn):
+      // a burn is the Pokemon's own, "hurt by its burn", never "a burn".
+      return event.status === 'burn'
+        ? `${combatantName(event, foe)} is hurt by its burn!`
+        : `${combatantName(event, foe)} is hurt by ${statusLabel(event.status)}!`;
     case 'status-cured':
       return event.status === 'sleep'
         ? `${combatantName(event, foe)} woke up!`
         : event.status === 'freeze'
           ? `${combatantName(event, foe)} thawed out!`
           : `${combatantName(event, foe)} snapped out of confusion!`;
+    // FireRed's sText_PkmnIsConfused, then sText_ItHurtConfusion: the name is
+    // said once, before the coin, and the self-hit is only "It".
+    case 'confused':
+      return `${combatantName(event, foe)} is confused!`;
     case 'confusion-self-hit':
-      return `${combatantName(event, foe)} hurt itself in confusion!`;
+      return 'It hurt itself in its confusion!';
     // Leech Seed, in FireRed's own words (pret/pokefirered `battle_message.c`).
     case 'seeded':
       return `${combatantName(event, foe)} was seeded!`;
@@ -1038,7 +1210,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
         ? 'It sucked up the LIQUID OOZE!'
         : `${combatantName(event, foe)}'s health is sapped by LEECH SEED!`;
     case 'stat-stage-changed':
-      return `${combatantName(event, foe)}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
+      return `${combatantName(event, foe)}'s ${statLabel(event.stat)} ${statChangeWords(event.stages)}!`;
+    case 'stat-capped':
+      return `${combatantName(event, foe)}'s ${statLabel(event.stat)} won't go ${event.rising ? 'higher' : 'lower'}!`;
     case 'ball-thrown':
       return `Threw ${withArticle(battleCaps(event.ball ?? 'Poké Ball'))} at ${event.name.toUpperCase()}!`;
     case 'catch-shake':
@@ -1046,7 +1220,7 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'caught':
       return `Gotcha! ${event.name.toUpperCase()} was caught!`;
     case 'broke-free':
-      return `${event.name.toUpperCase()} broke free!`;
+      return BROKE_FREE_LINES[Math.min(event.shakes ?? 0, BROKE_FREE_LINES.length - 1)];
     case 'catch-disabled':
       return "You can't catch a trainer's POKéMON!";
     case 'enemy-sent-out':
@@ -1065,20 +1239,23 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     // What a move does beyond its damage, in the same voice as everything else:
     // the line says who it happened to and what it cost, so a turn can be read
     // back from the log without watching the HP bar.
+    // FireRed's sText_PkmnFlinched.
     case 'flinched':
-      return `${combatantName(event, foe)} flinched and couldn't move!`;
+      return `${combatantName(event, foe)} flinched!`;
     case 'multi-hit':
       return `Hit ${event.hits} times!`;
     case 'drained':
       return `${combatantName(event, foe)} drained +${event.amount} HP.`;
+    // FireRed's sText_PkmnHitWithRecoil, Struggle's kick-back included.
     case 'recoil':
-      return `${combatantName(event, foe)} was hurt by the recoil! -${event.damage} HP`;
+      return `${combatantName(event, foe)} is hit with recoil!`;
     case 'healed':
       return `${combatantName(event, foe)} restored +${event.amount} HP.`;
+    // FireRed's sText_PkmnHPFull.
     case 'heal-failed':
-      return `${combatantName(event, foe)} is already at full HP.`;
+      return `${combatantName(event, foe)}'s HP is full!`;
     case 'charging':
-      return `${combatantName(event, foe)} is gathering itself...`;
+      return `${combatantName(event, foe)} ${chargeWords(event.move)}`;
     case 'recharging':
       return `${combatantName(event, foe)} must recharge!`;
     // Weather speaks about the field rather than about either side, so these
@@ -1124,6 +1301,9 @@ const abilityLine = (
     readonly status?: string;
     readonly stat?: string;
     readonly amount?: number;
+    readonly move?: string;
+    readonly absorbed?: AbsorbedOutcome;
+    readonly target?: { readonly user: 'player' | 'enemy'; readonly name: string };
   },
   foe: FoeWord,
 ): string => {
@@ -1137,22 +1317,57 @@ const abilityLine = (
       return `${who} is soaking that up!`;
     case 'hardened':
       return `${who} turned the critical hit aside!`;
-    case 'absorbed':
-      return event.amount
-        ? `${who} drank it in. +${event.amount} HP`
-        : `${who} let it straight past!`;
+    // FireRed's own lines for a move an ability took instead of being hit.
+    case 'absorbed': {
+      const move = (event.move ?? 'it').toUpperCase();
+      switch (event.absorbed) {
+        case 'charged':
+          return `${who} raised its FIRE power!`;
+        case 'ineffective':
+          return `${who} made ${move} ineffective!`;
+        case 'useless':
+          return `${who} made ${move} useless!`;
+        case 'blocked':
+          return `${who} blocks ${move}!`;
+        case 'missed':
+          return `${combatantName(event, foe)} makes GROUND moves miss with ${event.ability}!`;
+        default:
+          return event.amount
+            ? `${combatantName(event, foe)} restored HP using its ${event.ability}! +${event.amount} HP`
+            : `${who} made ${move} useless!`;
+      }
+    }
+    // FireRed's own refusals (`sText_PkmnPreventsParalysisWith` and the rest,
+    // `sText_PkmnStayedAwakeUsing` for sleep). FireRed says nothing for a
+    // freeze an ability refused, so that one keeps the game's own words.
     case 'blocked-status':
-      return event.status
-        ? `${who} kept ${statusLabel(event.status)} off it!`
-        : `${who} would not let it flinch!`;
+      switch (event.status) {
+        case undefined:
+          return `${who} prevents flinching!`;
+        case 'paralysis':
+          return `${who} prevents paralysis!`;
+        case 'poison':
+          return `${who} prevents poisoning!`;
+        case 'burn':
+          return `${who} prevents burns!`;
+        case 'confusion':
+          return `${who} prevents confusion!`;
+        case 'sleep':
+          return `${combatantName(event, foe)} stayed awake using its ${event.ability}!`;
+        default:
+          return `${who} kept ${statusLabel(event.status)} off it!`;
+      }
+    // FireRed's `sText_PkmnPreventsStatLossWith` for an ability that keeps
+    // every stat, `sText_PkmnsXPreventsYLoss` for one that keeps one.
     case 'blocked-boost':
-      return `${who} would not let its ${statLabel(event.stat ?? '')} drop!`;
+      return event.stat ? `${who} prevents ${statLabel(event.stat)} loss!` : `${who} prevents stat loss!`;
     case 'blocked-secondaries':
       return `${who} blocked the extra effect!`;
     case 'no-recoil':
       return `${who} took no recoil.`;
+    // FireRed's `sText_PkmnsXCuredYProblem`, its status named as `gText_Poison` and the rest.
     case 'shed':
-      return `${who} shed ${statusLabel(event.status ?? '')} with its skin!`;
+      return `${who} cured its ${problemLabel(event.status ?? '')} problem!`;
     case 'cured-on-switch':
       return `${who} cleared up ${statusLabel(event.status ?? '')}!`;
     case 'reflected':
@@ -1161,8 +1376,11 @@ const abilityLine = (
       return event.amount
         ? `${who} tasted foul! -${event.amount} HP`
         : `${who} answered the touch!`;
+    // FireRed's `sText_PkmnCutsAttackWith`, one line for each foe it cuts.
     case 'sent-out':
-      return `${who} sized up the other side!`;
+      return event.target
+        ? `${who} cuts ${event.target.user === 'player' ? `your ${event.target.name.toUpperCase()}` : combatantName(event.target, foe)}'s ${statLabel(event.stat ?? 'attack')}!`
+        : `${who} sized up the other side!`;
     case 'quickened':
       return `${who} is racing the weather!`;
     case 'hidden':
@@ -1208,17 +1426,68 @@ export const weatherEndedMessage = (weather: WeatherId): string =>
   })[weather];
 
 /**
+ * What a two-turn move's first turn looks like, in FireRed's words (pret/pokefirered
+ * `battle_message.c`: `sText_PkmnTookSunlight`, `sText_PkmnLoweredHead`,
+ * `sText_PkmnIsGlowing`, `sText_PkmnDugHole`, `sText_PkmnSprangUp` and their
+ * neighbours), because each says what the Pokemon is doing - a dug hole is not
+ * a Pokemon taking in sunlight. A move FireRed has no line for keeps this
+ * game's own.
+ */
+const chargeWords = (move: string): string =>
+  ({
+    'solar beam': 'took in sunlight!',
+    'skull bash': 'lowered its head!',
+    'sky attack': 'is glowing!',
+    dig: 'dug a hole!',
+    bounce: 'sprang up!',
+    fly: 'flew up high!',
+    'razor wind': 'whipped up a whirlwind!',
+    dive: 'hid underwater!',
+  })[move.toLowerCase()] ?? 'is gathering itself...';
+
+/**
  * Three phrasings, because one noun cannot do all three jobs. The status lines
  * used to read them all off a single label, which gave "is poison!" and "is
  * paralysis and can't move!" - fine for sleep, wrong English for the other two.
  * A burn or a paralysis now arrives on almost any Fire or Electric move rather
  * than only on the two moves that spelled it out, so these are read often.
  */
+/**
+ * A status an ability gave, in FireRed's one line naming the ability and whom
+ * it hit (`sText_PkmnWasParalyzedBy`, `sText_PkmnPoisonedBy`,
+ * `sText_PkmnBurnedBy`, `sText_PkmnMadeSleep`, `sText_PkmnFrozenBy`), the
+ * player's own Pokemon named "your X" as an Intimidate's cut names it.
+ */
+const statusGivenBy = (
+  event: { readonly user: 'player' | 'enemy'; readonly name: string; readonly status: string },
+  by: { readonly user: 'player' | 'enemy'; readonly name: string; readonly ability: string },
+  foe: FoeWord,
+): string => {
+  const giver = `${combatantName(by, foe)}'s ${by.ability}`;
+  const hit = event.user === 'player' ? `your ${event.name.toUpperCase()}` : combatantName(event, foe);
+  switch (event.status) {
+    case 'paralysis':
+      return `${giver} paralysed ${hit}! It may be unable to move!`;
+    case 'poison':
+      return `${giver} poisoned ${hit}!`;
+    case 'burn':
+      return `${giver} burned ${hit}!`;
+    case 'sleep':
+      return `${giver} made ${hit} sleep!`;
+    case 'freeze':
+      return `${giver} froze ${hit} solid!`;
+    default:
+      return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
+  }
+};
+
 const statusApplied = (status: string): string =>
   ({
     poison: 'was poisoned',
     burn: 'was burned',
-    paralysis: 'was paralysed',
+    // FireRed's sText_PkmnWasParalyzed: the line that paralyses says what
+    // paralysis does, because no other line ever will.
+    paralysis: 'is paralysed! It may be unable to move',
     sleep: 'fell asleep',
     freeze: 'was frozen solid',
     confusion: 'became confused',
@@ -1244,15 +1513,20 @@ const statusHolds = (status: string): string =>
   ({
     poison: "is hurt and can't move",
     burn: "is burned and can't move",
-    paralysis: "is fully paralysed and can't move",
+    // FireRed's sText_PkmnIsParalyzed.
+    paralysis: "is paralysed! It can't move",
     sleep: 'is fast asleep',
     freeze: 'is frozen solid',
-    confusion: "is too confused to move",
+    confusion: 'is too confused to move',
   })[status] ?? `is ${status} and can't move`;
 
 /** The adjectival one, for the lines that name the condition in passing. */
 // A status as a thing a Pokemon can be hurt by, keep off, shed or clear up -
 // a noun every time, because "kept asleep off it" is what the adjectives read.
+/** FireRed's own name for a status in "cured its X problem" (`gText_Sleep` and the rest). */
+const problemLabel = (status: string): string =>
+  ({ burn: 'burn', freeze: 'ice' })[status] ?? statusLabel(status);
+
 const statusLabel = (status: string): string =>
   ({
     poison: 'poison',
@@ -1262,6 +1536,14 @@ const statusLabel = (status: string): string =>
     freeze: 'freezing',
     confusion: 'confusion',
   })[status] ?? status;
+
+/**
+ * How far a stat moved, in FireRed's words (pret/pokefirered `battle_message.c`,
+ * `sText_StatSharply` and `sText_StatHarshly`): two stages or more is "sharply
+ * rose" or "harshly fell", so Agility does not read like Growl's little cousin.
+ */
+const statChangeWords = (stages: number): string =>
+  stages > 0 ? (stages >= 2 ? 'sharply rose' : 'rose') : stages <= -2 ? 'harshly fell' : 'fell';
 
 const statLabel = (stat: string): string =>
   ({

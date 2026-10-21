@@ -1,5 +1,5 @@
 import { isPlaytestRun } from '../../dev/playtestMode';
-import type { AbilityEffectKind } from '../AbilityBase';
+import type { AbilityEffectKind, AbsorbedOutcome } from '../AbilityBase';
 import type { MoveBase, NormalizedMoveEffects, NormalizedSecondaryEffect } from '../MoveBase';
 import { MoveCategory, MoveCharge, MoveTarget, targetsTheOtherSide } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
@@ -286,6 +286,14 @@ export interface BattleState {
   readonly playerParty?: readonly Pokemon[];
 }
 
+/** Who gave a status by their ability rather than by a move. */
+export interface StatusCause {
+  readonly user: 'player' | 'enemy';
+  readonly slot?: number;
+  readonly name: string;
+  readonly ability: string;
+}
+
 export type BattleEvent =
   | {
       readonly type: 'used-move';
@@ -313,7 +321,13 @@ export type BattleEvent =
        */
       readonly spread?: boolean;
     }
-  | { readonly type: 'missed'; readonly user: 'player' | 'enemy'; readonly slot?: number }
+  | {
+      readonly type: 'missed';
+      readonly user: 'player' | 'enemy';
+      readonly slot?: number;
+      /** Whose attack missed, so the line can say so as FireRed's does. */
+      readonly name: string;
+    }
   // What a move that hits more than one Pokemon took off each of them.
   //
   // `used-move` carries the damage when there is exactly one target, which is
@@ -355,7 +369,9 @@ export type BattleEvent =
   | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly move: string }
   | { readonly type: 'status-applied'; readonly user: 'player' | 'enemy';
-      readonly slot?: number; readonly name: string; readonly status: StatusName }
+      readonly slot?: number; readonly name: string; readonly status: StatusName;
+      /** The ability that gave it (a Static touched, a Synchronize handing it back), said in the same line as FireRed's `sText_PkmnWasParalyzedBy` and its neighbours do. */
+      readonly by?: StatusCause }
   | { readonly type: 'status-already'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly status: StatusName;
       /** The status it already has, when that is not the one just tried: FireRed's "But it failed!". */
@@ -366,6 +382,10 @@ export type BattleEvent =
       readonly slot?: number; readonly name: string; readonly status: PrimaryStatusType; readonly damage: number }
   | { readonly type: 'status-cured'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
+  // FireRed's "X is confused!", said every turn a confused Pokemon tries to
+  // move before the coin is tossed, so the self-hit after it needs no name.
+  | { readonly type: 'confused'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
   | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly damage: number }
   // Leech Seed, in FireRed's three lines. `seed-evaded` is "X evaded the
@@ -397,6 +417,10 @@ export type BattleEvent =
     }
   | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly stat: StageStat; readonly stages: number }
+  // A status move asked a stat already at +6 or -6 to move further. FireRed
+  // says so ("won't go higher!"); a rolled secondary at the cap says nothing.
+  | { readonly type: 'stat-capped'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly stat: StageStat; readonly rising: boolean }
   // What a move does beyond its damage, each announced where it happens, so the
   // battle log explains a turn without the player having to read the HP bar.
   | { readonly type: 'flinched'; readonly user: 'player' | 'enemy';
@@ -418,7 +442,12 @@ export type BattleEvent =
   | { readonly type: 'ball-thrown'; readonly name: string; readonly ball?: string }
   | { readonly type: 'catch-shake'; readonly count: number }
   | { readonly type: 'caught'; readonly name: string }
-  | { readonly type: 'broke-free'; readonly name: string }
+  /**
+   * `shakes` is how many of the four checks the ball passed before it opened -
+   * absent is none, as an absent `slot` is the lead - because FireRed's line
+   * for a break-out says how close it came.
+   */
+  | { readonly type: 'broke-free'; readonly name: string; readonly shakes?: number }
   | { readonly type: 'catch-disabled' }
   // `trainer` is who sent it, because the line is theirs - "MAYA sent out
   // PIKACHU!" - and "Go, PIKACHU!" is the player's own words.
@@ -456,6 +485,12 @@ export type BattleEvent =
       readonly status?: StatusName;
       readonly stat?: StageStat;
       readonly amount?: number;
+      /** The move an absorbing ability took, named by its line. */
+      readonly move?: string;
+      /** How that move ended, when it healed nobody. */
+      readonly absorbed?: AbsorbedOutcome;
+      /** The Pokemon an arrival's ability cut a stat of (Intimidate), named by its line. */
+      readonly target?: { readonly user: 'player' | 'enemy'; readonly slot?: number; readonly name: string };
     };
 
 export type { StatusName } from './status';
@@ -694,7 +729,14 @@ const announceAbility = (
   state: BattleState,
   ref: SlotRef,
   effect: AbilityEffectKind,
-  detail: { readonly status?: StatusName; readonly stat?: StageStat; readonly amount?: number } = {},
+  detail: {
+    readonly status?: StatusName;
+    readonly stat?: StageStat;
+    readonly amount?: number;
+    readonly move?: string;
+    readonly absorbed?: AbsorbedOutcome;
+    readonly target?: { readonly user: 'player' | 'enemy'; readonly slot?: number; readonly name: string };
+  } = {},
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
   const combatant = unitAt(state, ref);
   if (!combatant) {
@@ -748,13 +790,27 @@ const applySendOut = (
   if (boosts.length === 0) {
     return { state, events: [] };
   }
-  const announced = announceAbility(state, ref, 'sent-out');
-  let nextState = announced.state;
-  const events: BattleEvent[] = [...announced.events];
+  // FireRed says it once for each foe it cuts, in one line ("Foe ARBOK's
+  // INTIMIDATE cuts BULBASAUR's ATTACK!", `sText_PkmnCutsAttackWith`), says
+  // nothing for a foe already at the floor, and lets a Clear Body say why it
+  // did not work - so the cut is the ability's line, not a separate fall.
+  let nextState = state;
+  const events: BattleEvent[] = [];
   for (const foe of engagedSlots(nextState, opposing(ref.side))) {
     const boosted = applyStatBoosts(nextState, foe, boosts, ref);
     nextState = boosted.state;
-    events.push(...boosted.events);
+    for (const event of boosted.events) {
+      if (event.type !== 'stat-stage-changed') {
+        events.push(event);
+        continue;
+      }
+      const cut = announceAbility(nextState, ref, 'sent-out', {
+        stat: event.stat,
+        target: { user: event.user, ...(event.slot ? { slot: event.slot } : {}), name: event.name },
+      });
+      nextState = cut.state;
+      events.push(...cut.events);
+    }
   }
   return { state: nextState, events };
 };
@@ -782,36 +838,31 @@ const openingEventsFor = (state: BattleState, ref: SlotRef): readonly BattleEven
     return [];
   }
   const ability = abilityLabel(abilityCarrier(combatant));
-  return [
-    {
-      type: 'ability',
-      user: ref.side,
-      ...inSlot(ref),
-      name: combatant.pokemon.name,
-      ability,
-      effect: 'sent-out',
-    },
-    ...engagedSlots(state, opposing(ref.side)).flatMap((foeRef): BattleEvent[] => {
-      const foe = unitAt(state, foeRef);
-      if (!foe) {
-        return [];
-      }
-      return boosts.flatMap((boost): BattleEvent[] =>
-        foe.statStages[boost.stat] === 0
-          ? []
-          : [
-              {
-                type: 'stat-stage-changed',
-                user: foeRef.side,
-                ...inSlot(foeRef),
-                name: foe.pokemon.name,
-                stat: boost.stat,
-                stages: foe.statStages[boost.stat],
-              },
-            ],
-      );
-    }),
-  ];
+  if (!ability) {
+    return [];
+  }
+  return engagedSlots(state, opposing(ref.side)).flatMap((foeRef): BattleEvent[] => {
+    const foe = unitAt(state, foeRef);
+    if (!foe) {
+      return [];
+    }
+    return boosts.flatMap((boost): BattleEvent[] =>
+      foe.statStages[boost.stat] === 0
+        ? []
+        : [
+            {
+              type: 'ability',
+              user: ref.side,
+              ...inSlot(ref),
+              name: combatant.pokemon.name,
+              ability,
+              effect: 'sent-out',
+              stat: boost.stat,
+              target: { user: foeRef.side, ...inSlot(foeRef), name: foe.pokemon.name },
+            },
+          ],
+    );
+  });
 };
 
 /**
@@ -1492,7 +1543,10 @@ export const resolveCatchAttempt = (
       events: [...events, { type: 'caught', name }],
     };
   }
-  return { state, events: [...events, { type: 'broke-free', name }] };
+  return {
+    state,
+    events: [...events, { type: 'broke-free', name, ...(attempt.shakes ? { shakes: attempt.shakes } : {}) }],
+  };
 };
 
 /**
@@ -1701,13 +1755,32 @@ const applyMove = (
             currentHp: soaked.currentHp + healed,
           });
         }
+        const wasCharged = defenderNow().abilityCharged;
         if (absorption.charges) {
           nextState = withUnit(nextState, targetRef, {
             ...defenderNow(),
             abilityCharged: true,
           });
         }
-        const said = announceAbility(nextState, targetRef, 'absorbed', { amount: healed });
+        // FireRed says each of these its own way (`battle_util.c`'s
+        // ABILITYEFFECT_ABSORBING and the Soundproof and Levitate checks).
+        const outcome: AbsorbedOutcome | undefined =
+          healed > 0
+            ? undefined
+            : absorption.charges
+              ? wasCharged
+                ? 'ineffective'
+                : 'charged'
+              : absorption.heal
+                ? 'useless'
+                : absorption.blocks
+                  ? 'blocked'
+                  : 'missed';
+        const said = announceAbility(nextState, targetRef, 'absorbed', {
+          amount: healed,
+          move: move.base.name,
+          ...(outcome ? { absorbed: outcome } : {}),
+        });
         nextState = said.state;
         events.push(...said.events);
         struck.push({
@@ -1728,10 +1801,12 @@ const applyMove = (
     // the attacker's own ability. A move with `alwaysHits` skips it, which is
     // the only way Swift can exist. Compound Eyes is read here and said after
     // the move is named, because a line about taking aim before anyone knows
-    // what is being aimed reads backwards.
+    // what is being aimed reads backwards. A move that cannot miss is not
+    // aimed at all, so it says nothing - and leaves the once-a-battle line for
+    // the first move the eye does change.
     const abilityAccuracy = accuracyMultiplier(abilityCarrier(attackerNow()), move.base);
     const sayAccuracy = (): void => {
-      if (abilityAccuracy === 1) {
+      if (abilityAccuracy === 1 || move.base.alwaysHits) {
         return;
       }
       const sharpened = announceAbility(nextState, ref, 'sharpened');
@@ -1765,7 +1840,7 @@ const applyMove = (
       events.push(
         move.base.effects.seed
           ? { type: 'seed-evaded', user: targetRef.side, ...inSlot(targetRef), name: defenderName }
-          : { type: 'missed', user, ...inSlot(ref) },
+          : { type: 'missed', user, ...inSlot(ref), name: attackerName },
       );
       struck.push({
         ref: targetRef,
@@ -1932,12 +2007,12 @@ const applyMove = (
       // `SetMoveEffect` simply breaks on a Pokemon already carrying a status,
       // a type that refuses it or an ability that does (playtest finding B7 -
       // "Your SQUIRTLE already has a status condition!" off a Static).
+      // FireRed says it in one line, the holder's ability naming whom it hit:
+      // "Foe PIKACHU's STATIC paralyzed CHARMANDER!" (`sText_PkmnWasParalyzedBy`).
       if (shock && wouldTakeStatus(nextState, ref, shock, targetRef)) {
-        const said = announceAbility(nextState, targetRef, 'contact', { status: shock });
-        nextState = said.state;
-        const strike = applyStatus(nextState, ref, shock, random, targetRef);
+        const strike = applyStatus(nextState, ref, shock, random, targetRef, statusCause(nextState, targetRef));
         nextState = strike.state;
-        events.push(...said.events, ...strike.events);
+        events.push(...strike.events);
       }
     }
 
@@ -2273,7 +2348,10 @@ const applyMoveEffects = (
   const events: BattleEvent[] = [];
 
   if (effects.boosts.length > 0) {
-    const boosted = applyStatBoosts(nextState, side, effects.boosts, ref);
+    // Only a status move's own effect says it found the stat at its cap, as
+    // FireRed's `ChangeStatBuffs` does for a certain change and not a rolled one.
+    const sayCapped = effects === move.effects && move.category === MoveCategory.Status;
+    const boosted = applyStatBoosts(nextState, side, effects.boosts, ref, sayCapped);
     nextState = boosted.state;
     events.push(...boosted.events);
   }
@@ -2492,8 +2570,9 @@ const resolveStatusBeforeMove = (
         canAct: true,
       };
     }
+    const announced: BattleEvent = { type: 'confused', user, ...slot, name };
     if (clampRandom(random()) < 0.5) {
-      return { state, events: [], canAct: true };
+      return { state, events: [announced], canAct: true };
     }
     const damage = confusionSelfHitDamage(
       combatant.pokemon,
@@ -2503,6 +2582,7 @@ const resolveStatusBeforeMove = (
     const hurt = { ...confused, currentHp: hpAfterDamage(ref.side, confused.currentHp, damage) };
     state = withUnit(state, ref, hurt);
     const events: BattleEvent[] = [
+      announced,
       { type: 'confusion-self-hit', user, ...slot, name, damage: confused.currentHp - hurt.currentHp },
     ];
     if (hurt.currentHp === 0) {
@@ -2670,12 +2750,20 @@ const wouldTakeStatus = (
  * to pass one back to when there is somebody. A status a Pokemon gives itself -
  * Rest, a confusion off its own move - passes straight through both.
  */
+/** The ability of whoever stands at `ref`, as the cause of a status it gave. */
+const statusCause = (state: BattleState, ref: SlotRef): StatusCause | undefined => {
+  const holder = unitAt(state, ref);
+  const ability = holder ? abilityLabel(abilityCarrier(holder)) : undefined;
+  return holder && ability ? { user: ref.side, ...inSlot(ref), name: holder.pokemon.name, ability } : undefined;
+};
+
 const applyStatus = (
   state: BattleState,
   ref: SlotRef,
   status: StatusName,
   random: RandomSource,
   source: SlotRef = ref,
+  by?: StatusCause,
 ): TurnResult => {
   const combatant = unitAt(state, ref);
   if (!combatant) {
@@ -2704,7 +2792,7 @@ const applyStatus = (
     const updated = { ...combatant, confusionTurns: randomTurnCount(random, 4) + 1 };
     return {
       state: withUnit(state, ref, updated),
-      events: [{ type: 'status-applied', user, ...slot, name, status }],
+      events: [{ type: 'status-applied', user, ...slot, name, status, ...(by ? { by } : {}) }],
     };
   }
   if (combatant.primaryStatus) {
@@ -2718,17 +2806,17 @@ const applyStatus = (
     // - one to four turns asleep, since it is spent before each move.
     sleepTurns: status === PrimaryStatus.Sleep ? randomTurnCount(random, 4) + 1 : 0,
   };
-  let nextState = withUnit(state, ref, updated);
-  const events: BattleEvent[] = [{ type: 'status-applied', user, ...slot, name, status }];
+  const nextState = withUnit(state, ref, updated);
+  const events: BattleEvent[] = [{ type: 'status-applied', user, ...slot, name, status, ...(by ? { by } : {}) }];
   // Synchronize hands it straight back, and the return trip goes through this
   // same function - so the other side's own Limber can refuse it and say so.
   // Two Synchronizes cannot rally: the second pass finds the first holder
   // already carrying the status and stops on `status-already`.
+  // FireRed's Synchronize says nothing of its own: the status it hands back is
+  // said as given by it ("Foe ABRA's SYNCHRONIZE poisoned CHARMANDER!").
   if (fromElsewhere && reflectsStatus(abilityCarrier(updated), status)) {
-    const announced = announceAbility(nextState, ref, 'reflected', { status });
-    nextState = announced.state;
-    const passed = applyStatus(nextState, source, status, random, ref);
-    return { state: passed.state, events: [...events, ...announced.events, ...passed.events] };
+    const passed = applyStatus(nextState, source, status, random, ref, statusCause(nextState, ref));
+    return { state: passed.state, events: [...events, ...passed.events] };
   }
   return { state: nextState, events };
 };
@@ -2852,17 +2940,29 @@ const applyStatBoosts = (
   ref: SlotRef,
   boosts: readonly StatBoost[],
   source: SlotRef = ref,
+  sayCapped = false,
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
   let nextState = state;
   const events: BattleEvent[] = [];
   const fromElsewhere = !sameSlot(source, ref);
+  let saidEveryStat = false;
   for (const boost of boosts) {
     const combatant = unitAt(nextState, ref);
     if (!combatant) {
       break;
     }
-    if (boost.stages < 0 && fromElsewhere && blocksBoost(abilityCarrier(combatant), boost.stat)) {
-      const refused = announceAbility(nextState, ref, 'blocked-boost', { stat: boost.stat });
+    const carrier = abilityCarrier(combatant);
+    if (boost.stages < 0 && fromElsewhere && blocksBoost(carrier, boost.stat)) {
+      // FireRed's Clear Body refuses every stat and says so once a move
+      // ("prevents stat loss!"); Keen Eye and Hyper Cutter name the one they keep.
+      const everyStat = (Object.keys(combatant.statStages) as StageStat[]).every((stat) =>
+        blocksBoost(carrier, stat),
+      );
+      if (everyStat && saidEveryStat) {
+        continue;
+      }
+      saidEveryStat ||= everyStat;
+      const refused = announceAbility(nextState, ref, 'blocked-boost', everyStat ? {} : { stat: boost.stat });
       nextState = refused.state;
       events.push(...refused.events);
       continue;
@@ -2870,6 +2970,16 @@ const applyStatBoosts = (
     const updatedStages = applyStatBoost(combatant.statStages, boost);
     const change = updatedStages[boost.stat] - combatant.statStages[boost.stat];
     if (change === 0) {
+      if (sayCapped && boost.stages !== 0) {
+        events.push({
+          type: 'stat-capped',
+          user: ref.side,
+          ...inSlot(ref),
+          name: combatant.pokemon.name,
+          stat: boost.stat,
+          rising: boost.stages > 0,
+        });
+      }
       continue;
     }
     nextState = withUnit(nextState, ref, { ...combatant, statStages: updatedStages });

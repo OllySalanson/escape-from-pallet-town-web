@@ -117,9 +117,9 @@ export function absorbs(carrier: AbilityCarrier, move: MoveBase): AbilityAbsorpt
     return null;
   }
   if (ability.blocksMoveFlag && move.flags.includes(ability.blocksMoveFlag)) {
-    return {};
+    return { blocks: true };
   }
-  return ability.absorbsMoveType?.(move.type) ?? null;
+  return ability.absorbsMoveType?.(move.type, move.power) ?? null;
 }
 
 /** What an absorption is worth in HP, capped at what the holder is missing. */
@@ -237,7 +237,7 @@ export function isGrounded(carrier: AbilityCarrier): boolean {
   if (carrier.types.includes(PokemonType.Flying)) {
     return false;
   }
-  return abilityOf(carrier)?.absorbsMoveType?.(PokemonType.Ground) == null;
+  return abilityOf(carrier)?.absorbsMoveType?.(PokemonType.Ground, 1) == null;
 }
 
 const clamp = (value: number): number => Math.min(0.999999, Math.max(0, value));

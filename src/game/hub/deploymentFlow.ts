@@ -57,6 +57,10 @@ export const MAX_RUN_PARTY = 6;
  */
 export const MEDICINE_PREPACK_SHARE = 0.5;
 
+/** Why a fainted Pokemon stays out of the raid party: the row's help line and the refusal of a press on it. */
+export const faintedRefusal = (name: string, only = false): string =>
+  `${name} has fainted and cannot fight. Only the Pokémon Center can revive ${only ? 'your only Pokémon' : 'it'}.`;
+
 /**
  * What the *base* has built: the container a wipe cannot touch, and how many
  * Pokemon it protects.
@@ -226,6 +230,17 @@ export class DeploymentFlow {
    * POKEMON PACKED" (playtest 47). One that cannot fight is left out, because a
    * party of one fainted Pokemon is no party; a team is still chosen by hand.
    */
+  /**
+   * A lone Pokemon revived while the loadout is open goes into the party as it
+   * would have at the door: it was left out only because it had fainted, and a
+   * fainted Pokemon is never packed (`togglePokemon`).
+   */
+  public packRevivedLonePokemon(): void {
+    if (this.selectedPokemonIds.length === 0) {
+      this.packLonePokemon();
+    }
+  }
+
   private packLonePokemon(): void {
     const [only, ...others] = this.stash.listPokemon();
     if (only && others.length === 0 && !only.pokemon.isFainted) {
@@ -600,6 +615,14 @@ export class DeploymentFlow {
       this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
       this.refillSecureSlot();
       return undefined;
+    }
+    // A fainted Pokemon cannot fight and nothing in a raid revives one, so in
+    // the party it is only something a wipe can take: the row used to read ADD
+    // and pack it, secure slot and all, under a help line saying it could not
+    // fight.
+    const fainted = this.stash.listPokemon().find((stored) => stored.id === id)?.pokemon;
+    if (fainted?.isFainted) {
+      return faintedRefusal(fainted.name, this.stash.listPokemon().length === 1);
     }
     if (this.selectedPokemonIds.length >= MAX_RUN_PARTY) {
       return `Your run party can hold up to ${MAX_RUN_PARTY} Pokémon.`;

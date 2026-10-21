@@ -16,12 +16,16 @@ import { collisionBlocker, DEFAULT_HUNTER_TUNING, type HunterState } from '../wo
 import { placedAreaAt } from '../world/mapAreas';
 import { stepDistances } from '../world/mapStructure';
 import { WorldScene } from './WorldScene';
+import { audioManager } from '../audio/AudioManager';
+import { HUNTER_NEAR_STEPS } from '../audio/worldSounds';
 
 /** The parts of the scene these tests drive, which are private to it. */
 interface Driven {
   hunterState: HunterState;
   currentTile: GridPosition;
+  hunterNear: boolean;
   advanceHunterPursuit(): void;
+  resumeHunterProximity(): void;
 }
 
 /**
@@ -122,5 +126,52 @@ describe('a building with two doors is off the hunter’s line', () => {
     scene.advanceHunterPursuit();
     expect(scene.hunterState.lastSeen).toEqual(tile);
     expect(scene.hunterState.position).toEqual({ x: inside.x + 1, y: inside.y });
+  });
+});
+
+describe('coming back from a fight beside the hunter', () => {
+  /** A tile of the press house and an outdoor tile `steps` walking steps from it. */
+  function besideTheDoor(steps: number): { room: GridPosition; yard: GridPosition } {
+    const map = getWorldMap('floodplain-relay');
+    const room = map.areas!.find((area) => area.id === PRESS.area.id)!.rect;
+    const outdoors = map.areas![0].rect;
+    for (let y = room.y; y < room.y + room.height; y += 1) {
+      for (let x = room.x; x < room.x + room.width; x += 1) {
+        if (map.collision[y][x]) {
+          continue;
+        }
+        const distances = stepDistances(map.collision, { x, y }, undefined, map.links);
+        for (let oy = 0; oy < outdoors.height; oy += 1) {
+          for (let ox = 0; ox < outdoors.width; ox += 1) {
+            if (distances[oy][ox] === steps) {
+              return { room: { x, y }, yard: { x: ox, y: oy } };
+            }
+          }
+        }
+      }
+    }
+    throw new Error(`no yard tile ${steps} steps from the press house`);
+  }
+
+  it('remembers a hunter on the doorstep was already near, counted by the walk through the door', () => {
+    const { room, yard } = besideTheDoor(3);
+    // Straight across the composed grid the room is laid far east of the yard.
+    expect(Math.abs(room.x - yard.x) + Math.abs(room.y - yard.y)).toBeGreaterThan(
+      HUNTER_NEAR_STEPS,
+    );
+    const { scene } = inThePressHouse({ player: room, hunter: yard });
+    scene.resumeHunterProximity();
+    expect(scene.hunterNear).toBe(true);
+    // So the next step of the pursuit does not sound the heartbeat again.
+    const played = vi.spyOn(audioManager, 'play').mockImplementation(() => true);
+    scene.advanceHunterPursuit();
+    expect(played).not.toHaveBeenCalledWith('hunterNear');
+  });
+
+  it('does not count a hunter far off by the walk as near', () => {
+    const { room, yard } = besideTheDoor(12);
+    const { scene } = inThePressHouse({ player: room, hunter: yard });
+    scene.resumeHunterProximity();
+    expect(scene.hunterNear).toBe(false);
   });
 });

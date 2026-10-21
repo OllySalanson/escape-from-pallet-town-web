@@ -4,6 +4,7 @@ import {
   isFoundOnly,
   isPackId,
   itemAmountFor,
+  itemNameFor,
   packName,
   packSquares,
   type BagContents,
@@ -873,7 +874,13 @@ function describeStakes(
     ...group.pokemon.map((member) => member.name),
     // The catalogue owns the plural, and money is not counted at all: "₽40",
     // never "40 Scrips", which is what this line printed in a playtest.
-    ...group.items.map((item) => itemAmountFor(item.itemId, item.quantity)),
+    // A pack in the list beside the worn one was found on the raid, and named
+    // plainly the two read as one thing twice: "1 Raid pack and your Raid pack".
+    ...group.items.map((item) =>
+      pack !== null && isPackId(item.itemId)
+        ? `${item.quantity} spare ${itemNameFor(item.itemId, item.quantity)}`
+        : itemAmountFor(item.itemId, item.quantity),
+    ),
     ...gear.map((piece) => `${piece.holder}'s ${piece.label}`),
     ...(pack === null ? [] : [`your ${pack.name}`]),
   ];

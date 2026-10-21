@@ -1,6 +1,7 @@
 import { POKEMON_ICON_ORDER } from '../pokemon/generated/pokemonIcons';
 import { pokemonName, type FigureSpeciesId } from '../world/pokemonFigures';
 import { FURNITURE_PIECES, type FurniturePieceName } from './generated/furniturePieces';
+import { aOrAn } from '../ui/article';
 
 /**
  * The things a player can pick up and put down in THE BOLTHOLE.
@@ -415,7 +416,7 @@ function doll(dexId: number): FurnitureDefinition {
     name: `${name} DOLL`,
     line: big
       ? `A huge ${name} doll. It is for the first ${name} you ever brought home.`
-      : `A ${name} doll, for the first ${name} you ever brought home.`,
+      : `${aOrAn(name) === 'an' ? 'An' : 'A'} ${name} doll, for the first ${name} you ever brought home.`,
     layer: big ? 'standing' : 'small',
     width: big ? FURNITURE_PIECES[emerald].width : 1,
     height: big ? FURNITURE_PIECES[emerald].height : 1,

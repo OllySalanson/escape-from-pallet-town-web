@@ -59,7 +59,78 @@ export function wayTowards(
   return best?.doorway ?? to;
 }
 
+/**
+ * How many steps something is, for a chip that prints the number beside the
+ * heading `wayTowards` gives. Within one place it is the straight count, as it
+ * always was; in another place it is the walk there through the doors, because
+ * the places are laid side by side in the grid with dark between them, and a
+ * straight count across it once told a player on Ember Isle's crater that the
+ * Charcoal in the Lava Tube under their feet was 605 steps off.
+ */
+export function stepsTowards(
+  map: WorldMapDefinition,
+  from: GridPosition,
+  to: GridPosition,
+): number {
+  const straight = Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+  const areas = map.areas;
+  if (!areas || map.warps.length === 0) {
+    return straight;
+  }
+  const here = placedAreaAt(areas, from);
+  if (!here || here === placedAreaAt(areas, to)) {
+    return straight;
+  }
+  const walk = distancesTo(map, to)[from.y]?.[from.x] ?? -1;
+  if (walk >= 0) {
+    return walk;
+  }
+  // Ground nothing reaches today: as far as the door the heading points at,
+  // which is at least a number about this place.
+  const doorway = wayTowards(map, from, to);
+  return Math.abs(doorway.x - from.x) + Math.abs(doorway.y - from.y);
+}
+
+/**
+ * Whichever of `targets` is the fewest steps from `from` by `stepsTowards`:
+ * straight within one place, the walk through the doors across places. The
+ * contract chip names its next stop with this, and counted straight along the
+ * grid a player in a room was sent to whichever stop happened to lie nearest
+ * the column the room is laid at - the far side of the map, past the dark.
+ */
+export function nearestByWalk<T extends { readonly position: GridPosition }>(
+  map: WorldMapDefinition,
+  from: GridPosition,
+  targets: readonly T[],
+): T | undefined {
+  let best: T | undefined;
+  let bestSteps = Infinity;
+  for (const target of targets) {
+    const steps = stepsTowards(map, from, target.position);
+    if (steps < bestSteps) {
+      best = target;
+      bestSteps = steps;
+    }
+  }
+  return best;
+}
+
+/**
+ * How many walks a map keeps at once. A walk is a whole grid of numbers, and a
+ * target that moves - the hunter, asked every frame - is a new target every
+ * step: kept without a limit, a hunter walking about outside while the player
+ * waited in a room on Greystone Vale kept a grid the size of the whole vale
+ * for every tile it stood on. The still targets (a prize, a stop) are asked
+ * every frame and so stay among the newest.
+ */
+export const ROUTE_FIELDS_KEPT = 8;
+
 const fields = new WeakMap<WorldMapDefinition, Map<string, readonly Int32Array[]>>();
+
+/** How many walks are kept for `map` just now; for tests. */
+export function keptRouteFields(map: WorldMapDefinition): number {
+  return fields.get(map)?.size ?? 0;
+}
 
 /** Walking steps to `to` from every tile of the map, through its doors; kept per map and target. */
 function distancesTo(map: WorldMapDefinition, to: GridPosition): readonly Int32Array[] {
@@ -67,12 +138,18 @@ function distancesTo(map: WorldMapDefinition, to: GridPosition): readonly Int32A
   fields.set(map, kept);
   const key = `${to.x},${to.y}`;
   let field = kept.get(key);
-  if (!field) {
+  if (field) {
+    // Newest last, so the one let go is the one asked about longest ago.
+    kept.delete(key);
+  } else {
     // The target itself may be solid - a person, an exit marker - so the walk
     // is measured to it from whatever is beside it, as the hunter's is.
     field = stepDistances(withOpen(map.collision, to), to, new Set(), map.links);
-    kept.set(key, field);
+    if (kept.size >= ROUTE_FIELDS_KEPT) {
+      kept.delete(kept.keys().next().value!);
+    }
   }
+  kept.set(key, field);
   return field;
 }
 

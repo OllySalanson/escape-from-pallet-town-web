@@ -40,7 +40,7 @@ try {
 
   // A phrase.
   await press(amy, 'KeyT');
-  const amyList = await wait(amy, 'AMY opening the phrase list', (s) => s.chip.includes('2 HUNTER COMING!'));
+  const amyList = await wait(amy, 'AMY opening the phrase list', (s) => s.chip.includes('[2] HUNTER COMING!'));
   console.log(`AMY's list: ${amyList.chip}`);
   await amy.screenshot(`${out}/t1-amy-phrase-list.png`);
   await press(amy, 'Digit2');

@@ -12,7 +12,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
-import { RAID_KEY_LETTERS, ROOM_KEY_LETTERS, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
+import { RAID_KEY_LETTERS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -153,6 +153,7 @@ import {
 } from '../world/fishing';
 import { rollShiny } from '../pokemon/shiny';
 import { encounterTableAt, stepRolls } from '../world/localEncounters';
+import { areaFrame } from '../world/areaFrame';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
@@ -224,7 +225,7 @@ import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
-import { wayTowards } from '../world/areaRoutes';
+import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -353,6 +354,7 @@ import {
 } from '../world/hunter';
 import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
 import { hunterForecastLine } from '../world/hunterForecast';
+import { withArticle } from '../ui/article';
 
 const CAMERA_ZOOM = 1;
 /** The dark a doorway is gone through in, each way: FireRed's own door is about this quick. */
@@ -1052,13 +1054,30 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ? 'enraged'
         : raidClockAlertTier(manager.snapshot().remainingMs);
     }
+  }
+
+  /**
+   * Whether the hunter was already near when the world comes back from a
+   * fight, so its heartbeat is not sounded again for a hunter it already
+   * warned of. Counted as the pursuit counts it, by the walk - through doors,
+   * round walls - never a straight line across the composed grid, where a
+   * room is laid east of the outdoors: a hunter on the doorstep of the room
+   * the player is in read as far away and sounded again after every fight,
+   * and one beyond a wall read as near and never sounded as it came round.
+   * Asked once the map, its figures and any breakaway are in place.
+   */
+  private resumeHunterProximity(): void {
     const hunter = this.hunterState.position;
+    if (!hunter || this.hunterState.mapId !== this.currentMap.id) {
+      this.hunterNear = false;
+      return;
+    }
+    const path = findHunterPursuitPath(hunter, this.currentTile, this.bounds, (tile) =>
+      this.isBlockedForHunter(tile),
+    );
     this.hunterNear =
-      hunter !== undefined &&
-      hunter !== null &&
-      this.hunterState.mapId === this.currentMap.id &&
-      Math.abs(hunter.x - this.currentTile.x) + Math.abs(hunter.y - this.currentTile.y) <=
-        HUNTER_NEAR_STEPS;
+      isHunterContactingPlayer(hunter, this.currentTile) ||
+      (path.length > 0 && path.length <= HUNTER_NEAR_STEPS);
   }
 
   public create(data: WorldSceneData = {}): void {
@@ -1111,6 +1130,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.applyPendingHunterBreakaway();
     this.createEntities();
     this.liftBeatenWatches();
+    this.resumeHunterProximity();
     this.createPlayer();
     this.joinFriendRoom();
     // Back on the Bicycle after a fight, if it is still in the pack.
@@ -1231,7 +1251,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (this.bag.takeFind(drop.itemId, 1) === 'refused') {
         waiting.push({ ...drop });
         lines.push(
-          `${drop.name} was carrying a ${gearName} - and your pack has no room for it.`,
+          `${drop.name} was carrying ${withArticle(gearName)} - and your pack has no room for it.`,
           'It is yours the moment you make room: drop something from the PACK.',
         );
         continue;
@@ -1240,7 +1260,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // one more line pressed through after the fight (playtest 42): it is
       // FireRed's obtained-an-item beat now, a jingle with the line held.
       lines.push(
-        { text: `${drop.name} was carrying a ${gearName}. You take it.${this.reseatNote()}`, obtained: true },
+        { text: `${drop.name} was carrying ${withArticle(gearName)}. You take it.${this.reseatNote()}`, obtained: true },
         `${item?.description ?? ''} Give it to a POKéMON from the party screen - and get it home.`,
       );
     }
@@ -1517,7 +1537,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .figuresOn(this.currentMap.id)
       .filter((figure) => onMap.has(figure.id) && !busy.has(figure.id))
       .map((figure) => ({ id: figure.id, tile: figure.tile }));
-    return nearestQuarry(hunter, [{ id: room.me, tile: this.currentTile }, ...friends]);
+    // By the walk through the doors, as the chip counts it: one search from the hunter serves every player.
+    return nearestQuarry(hunter, [{ id: room.me, tile: this.currentTile }, ...friends], (tile) =>
+      stepsTowards(this.currentMap, tile, hunter),
+    );
   }
 
   /**
@@ -1596,7 +1619,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // The phrase list while it is open, else the room's two keys until each is used.
     const talk =
       this.talkOpenMs > 0
-        ? ROOM_PHRASES.map((phrase, index) => `${index + 1} ${phrase}`)
+        ? phraseListLines(ROOM_PHRASES)
         : [roomKeyHintLine(this.keysLearned)].filter(Boolean);
     return [...lines, ...talk];
   }
@@ -2648,7 +2671,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (!this.seenPrizeIds.has(loot.id)) {
         continue;
       }
-      const steps = manhattan(this.currentTile, loot.position);
+      const steps = stepsTowards(this.currentMap, this.currentTile, loot.position);
       if (nearest === null || steps < nearest.steps) {
         nearest = { loot, steps };
       }
@@ -4148,10 +4171,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return null;
     }
-    const hunter = this.hunterState.position;
-    return (
-      Math.abs(hunter.x - this.currentTile.x) + Math.abs(hunter.y - this.currentTile.y)
-    );
+    // The walk through the doors when it is in another place: a hunter on the
+    // doorstep of the room the player is in is a step away, however far along
+    // the grid the room happens to be laid.
+    return stepsTowards(this.currentMap, this.currentTile, this.hunterState.position);
   }
 
   private hunterBearing(): string {
@@ -4268,28 +4291,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private frameArea(area: PlacedArea): void {
     const camera = this.cameras.main;
-    const x = area.rect.x * TILE_SIZE;
-    const y = area.rect.y * TILE_SIZE;
-    const width = area.rect.width * TILE_SIZE;
-    const height = area.rect.height * TILE_SIZE;
-    const viewWidth = this.scale.width / CAMERA_ZOOM;
-    const viewHeight = this.scale.height / CAMERA_ZOOM;
-    const left = width < viewWidth ? x + Math.floor((width - viewWidth) / 2) : x;
-    const top = height < viewHeight ? y + Math.floor((height - viewHeight) / 2) : y;
+    const view = { width: this.scale.width / CAMERA_ZOOM, height: this.scale.height / CAMERA_ZOOM };
+    const { bounds, slabs } = areaFrame(area.rect, view, area.kind === 'outdoors');
     camera.setBackgroundColor(0x000000);
-    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height, viewHeight));
+    camera.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
     // Four slabs of dark round the place, each reaching a screen past it, so
     // nothing of the grid beyond it is drawn whatever the camera does.
-    const reach = Math.max(viewWidth, viewHeight) * 2;
-    const slabs: readonly (readonly [number, number, number, number])[] = [
-      [x - reach, y - reach, width + reach * 2, reach],
-      [x - reach, y + height, width + reach * 2, reach],
-      [x - reach, y, reach, height],
-      [x + width, y, reach, height],
-    ];
     this.areaDark.forEach((slab) => slab.destroy());
-    this.areaDark = slabs.map(([sx, sy, sw, sh]) =>
-      this.add.rectangle(sx, sy, sw, sh, 0x000000, 1).setOrigin(0, 0).setDepth(AREA_DARK_DEPTH),
+    this.areaDark = slabs.map((slab) =>
+      this.add
+        .rectangle(slab.x, slab.y, slab.width, slab.height, 0x000000, 1)
+        .setOrigin(0, 0)
+        .setDepth(AREA_DARK_DEPTH),
     );
   }
 
@@ -4769,16 +4782,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const outstanding = remainingMarkers(contract, contractSteps);
     if (outstanding.length === 0) {
-      return contract.requiredExitLabel ? this.requiredExitCue(contract.requiredExitLabel) : undefined;
+      if (contract.requiredExitLabel) {
+        return this.requiredExitCue(contract.requiredExitLabel);
+      }
+      // The job is done and only walking out banks it, so the chip names the
+      // way out - with an empty pack it fell through to FIND LOOT, THEN
+      // EXTRACT, which sends a player holding a finished survey off looking.
+      const exit = this.nearestExitCue();
+      return exit ? `BANK VIA ${exit.label.toUpperCase()}: ${exit.heading}` : 'EXTRACT TO BANK THE CONTRACT';
     }
-    // Straight-line distance, not a path search: the chip names the stop the
-    // player is closest to so it changes as they move, and running that search
-    // every frame would buy nothing a bearing does not already say.
-    const next = outstanding.reduce((closest, marker) =>
-      manhattan(this.currentTile, marker.position) < manhattan(this.currentTile, closest.position)
-        ? marker
-        : closest,
-    );
+    // The stop the player is closest to, so the chip changes as they move:
+    // straight within one place, the walk through the doors from a room, cave
+    // or tunnel (`areaRoutes.ts`) - counted straight along the grid, a player
+    // in a room was sent to whichever stop lay nearest the column it is laid at.
+    const next = nearestByWalk(this.currentMap, this.currentTile, outstanding)!;
     const remaining = outstanding.length > 1 ? ` (${outstanding.length} LEFT)` : '';
     return `${next.cue}: ${this.headingTo(next.position)}${remaining}`;
   }
@@ -6046,7 +6063,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         continue;
       }
       if (holder === room.me) {
-        if (rooms.loot.firstTry(loot.id) && !this.dialogBox.visible && !this.pendingHubTransition) {
+        // Asked only once nothing is on screen, so a win answered while a line
+        // is up is collected when the line is read rather than spent unseen.
+        if (!this.dialogBox.visible && !this.pendingHubTransition && rooms.loot.firstTry(loot.id)) {
           const said = this.collectLootHere(loot);
           if (said) {
             this.dialogBox.showMessages([said]);
@@ -7521,10 +7540,6 @@ const BOAT_RIDE_Y = 4;
  * What the result screen says about the contract, including the case the whole
  * cordon ledger exists for: every stop made and the wrong gate taken.
  */
-
-function manhattan(from: GridPosition, to: GridPosition): number {
-  return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
-}
 
 function contractMarkerIcon(marker: ContractMarker): string {
   return marker.icon === 'supply-cache' ? WORLD_ICONS.supplyCache : WORLD_ICONS.fieldKit;

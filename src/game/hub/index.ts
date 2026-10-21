@@ -20,6 +20,7 @@ export {
 export {
   BASE_LOADOUT_CAPACITY,
   DeploymentFlow,
+  faintedRefusal,
   MAX_RUN_PARTY,
   type Deployment,
   type DeploymentStep,

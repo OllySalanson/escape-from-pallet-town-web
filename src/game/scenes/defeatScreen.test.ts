@@ -24,6 +24,8 @@ vi.mock('../audio/AudioManager', () => ({
 }));
 
 const overlayRoots: FakeRoot[] = [];
+/** What was on screen each time the overlay measured it (`MenuOverlay.layout`). */
+const laidOut: string[] = [];
 vi.mock('../ui/MenuOverlay', () => ({
   MenuOverlay: class {
     public readonly root = new FakeRoot();
@@ -39,6 +41,9 @@ vi.mock('../ui/MenuOverlay', () => ({
       window.addEventListener('keydown', this.onKeyDown);
     }
     public focus(): void {}
+    public layout(): void {
+      laidOut.push(this.root.html);
+    }
     /** The real one moves the cursor on an arrow key; nothing here is one. */
     public moveCursor(key: string): boolean {
       return key.startsWith('Arrow');
@@ -143,6 +148,7 @@ let keyListeners: ((event: KeyboardEvent) => void)[] = [];
 beforeEach(() => {
   keyListeners = [];
   overlayRoots.length = 0;
+  laidOut.length = 0;
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: {
@@ -431,6 +437,35 @@ describe('the result screen on what a contract paid', () => {
     expect(rowOf('Super Potion')).not.toContain('>Banked<');
     expect(rowOf('Cable coil')).toContain('>Banked<');
   });
+
+  it('counts a kind found in the field and also paid by the contract as the two rows it is drawn as', () => {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(CHARMANDER, 12)], items: [] },
+      { mapId: 'route-1', durationMs: DURATION_MS },
+    );
+    manager.registerFoundItem('great-ball', 1);
+    const result = manager.resolveEscape();
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: DURATION_MS,
+      banked: {
+        pokemon: result.bankedPokemon,
+        items: [{ itemId: 'great-ball', quantity: 3 }],
+      },
+      contractPaid: { pokemon: [], items: [{ itemId: 'great-ball', quantity: 2 }] },
+      contract: { description: 'Read all three survey stakes', complete: true, reward: 'Two Great Balls.' },
+      carriedOut: { 'great-ball': 1 },
+      saved: true,
+    });
+    const { root } = open(report);
+
+    // Charmander, the Great Ball found (BANKED) and the two paid (REWARD) are
+    // three rows under the heading; the ledger merged the balls into one entry,
+    // and "2 entries" over three rows read as the screen miscounting.
+    expect(root.html).toContain('<h2>Banked</h2><small>3 entries</small>');
+  });
 });
 
 /** Walks the whole sequence the way a player who reads it does. */
@@ -569,5 +604,30 @@ describe('the defeat sequence across raids', () => {
 
     expect(root.html).not.toContain('defeat-stage');
     expect(root.html).toContain('extraction-won');
+  });
+});
+
+describe('the result screen as it arrives', () => {
+  /**
+   * Its way out is locked for most of a second, and the cursor - which is what
+   * used to measure the screen - only lands once it opens. Until then the ledger
+   * was drawn unmeasured: a contract, its experience, its haul and its pack
+   * overflowed the pane and the last row was sliced through its letters with no
+   * MORE strip over it, then jumped as the lock lifted.
+   */
+  it('is measured as soon as it is drawn, before the lock lifts', () => {
+    const { root } = open(escapeReport());
+
+    expect(root.continueButton.disabled).toBe(true);
+    expect(laidOut.at(-1)).toBe(root.html);
+    expect(laidOut.at(-1)).toContain('data-continue');
+  });
+
+  it('is measured as soon as the accounting follows a defeat, before its lock lifts', () => {
+    const { root, advance } = open(defeatReport());
+    readThrough(advance);
+
+    expect(root.continueButton.disabled).toBe(true);
+    expect(laidOut.at(-1)).toBe(root.html);
   });
 });

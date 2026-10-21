@@ -48,6 +48,7 @@ import {
 import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { Move } from '../pokemon/Move';
 import { GROWL, SUPER_SONIC, TACKLE, TAIL_WHIP } from '../pokemon/moves';
+import { GENERATED_MOVES } from '../pokemon/generated/moveCatalogue';
 import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
@@ -773,6 +774,47 @@ describe('a status tag on a plate', () => {
     expect(tagNow()).toBe('CNF');
   });
 
+  it('keeps every party row inside the panel, a ten-letter name with two-digit HP included', () => {
+    const butterfree = new Pokemon(getSpeciesById('butterfree')!, 14);
+    butterfree.currentHp = 32;
+    const party = new PokemonParty([
+      new Pokemon(getSpeciesById('ivysaur')!, 18),
+      butterfree,
+      new Pokemon(getSpeciesById('pidgeotto')!, 17),
+    ]);
+    const { scene, renderedTexts } = createBattleSceneHarness({ party });
+    const harness = scene as unknown as {
+      add: { text: (...args: unknown[]) => RenderedText };
+      captionWidth(line: string): number;
+    };
+    // Measured as Orange Kid draws a caption: "BUTTERFREE Lv 14 HP 32/32" came
+    // out 141 pixels wide, against 131 to the panel's inner edge.
+    const drawnWidth = (line: string): number => line.length * 5.6;
+    harness.captionWidth = drawnWidth;
+    const unmeasured = harness.add.text;
+    harness.add.text = (...args: unknown[]) => {
+      const text = unmeasured(...args);
+      text.width = text.text === '▶ ' ? CURSOR_GUTTER : drawnWidth(text.text);
+      return text;
+    };
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.filter(({ text }) => text.includes('POKéMON')).at(-1)!.handlers.pointerdown();
+    expect((scene as unknown as { mode: string }).mode).toBe('party');
+
+    const rows = party.pokemon.map((pokemon) =>
+      renderedTexts.filter((text) => text.text.startsWith(pokemon.name.toUpperCase())).at(-1)!,
+    );
+    // The panel's inner edge: its frame at 8 + 304, less the 10 its text keeps in.
+    rows.forEach((row) => expect(row.x + row.width, row.text).toBeLessThanOrEqual(302));
+    // The left column stops short of where the right column's cursor stands.
+    expect(rows[0].x + rows[0].width).toBeLessThan(rows[1].x - CURSOR_GUTTER);
+    expect(rows[2].x + rows[2].width).toBeLessThan(rows[1].x - CURSOR_GUTTER);
+    // Still says who and how hurt, in one form for the whole list.
+    expect(rows[1].text).toContain('BUTTERFREE');
+    expect(rows[1].text).toContain('32/');
+    expect(rows.every((row) => row.text.includes('HP ')) || rows.every((row) => !row.text.includes('HP '))).toBe(true);
+  });
+
   it('never runs into a ten-letter name: "CHARMANDERPSN" (playtest 47)', () => {
     const { scene, renderedTexts } = createBattleSceneHarness();
     const harness = scene as unknown as {
@@ -887,6 +929,82 @@ describe('using an item in a battle', () => {
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
     expect(dialog.shownMessages.slice(1).join(' ')).toContain('Wild BULBASAUR used');
+  });
+
+  it('holds a page of four medicines and pages on to the rest, never drawing one off the panel', () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    // Six kinds: a raid pack can carry ten, and drawn whole the fifth sat on
+    // the guidance line and the sixth below the panel, out of reach.
+    const bag = new Bag({
+      potion: 1,
+      'super-potion': 1,
+      antidote: 1,
+      'oran-berry': 1,
+      'pecha-berry': 1,
+      'cheri-berry': 1,
+    });
+    const { scene, renderedTexts } = createBattleSceneHarness({ bag, party: new PokemonParty([hurt]) });
+    const battle = scene as unknown as { onMessagesComplete(): void; moveSelection(direction: string): void };
+    battle.onMessagesComplete();
+    const rowsFrom = (from: number): string[] =>
+      read(renderedTexts)
+        .slice(from)
+        .map(({ text }) => text)
+        .filter((text) => / x\d+$/.test(text));
+
+    const beforeList = renderedTexts.length;
+    read(renderedTexts).filter(({ text }) => text.includes('ITEM x')).at(-1)!.handlers.pointerdown();
+
+    expect(rowsFrom(beforeList)).toEqual([
+      '▶ POTION x1',
+      '  SUPER POTION x1',
+      '  ANTIDOTE x1',
+      '  ORAN BERRY x1',
+    ]);
+    expect(renderedTexts.slice(beforeList).some(({ text }) => text.startsWith('Page 1 of 2'))).toBe(true);
+
+    battle.moveSelection('down');
+    const beforePage = renderedTexts.length;
+    battle.moveSelection('down');
+
+    expect(rowsFrom(beforePage)).toEqual(['▶ PECHA BERRY x1', '  CHERI BERRY x1']);
+    expect(renderedTexts.slice(beforePage).some(({ text }) => text.startsWith('Page 2 of 2'))).toBe(true);
+
+    // The rows on the second page are the list's own fifth and sixth: the
+    // pointer on CHERI BERRY chooses Cheri Berry, not the second row of page one.
+    read(renderedTexts).slice(beforePage).find(({ text }) => text.includes('CHERI BERRY'))!.handlers.pointerdown();
+    expect(renderedTexts.some(({ text }) => text.includes('CHERI BERRY on whom?'))).toBe(true);
+  });
+
+  it("keeps a berry's guidance inside the panel, saying what it does and that it costs the turn", () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    const { scene, renderedTexts } = createBattleSceneHarness({
+      bag: new Bag({ 'pecha-berry': 1 }),
+      party: new PokemonParty([hurt]),
+    });
+    const harness = scene as unknown as {
+      add: { text: (...args: unknown[]) => RenderedText };
+      captionWidth(line: string): number;
+    };
+    // Measured as Orange Kid draws a caption, about 5.6 pixels a character:
+    // "Cures poison. Picked off a berry tree. Using it costs your turn." ran
+    // to about 360 pixels against 284 of line.
+    const drawnWidth = (line: string): number => line.length * 5.6;
+    harness.captionWidth = drawnWidth;
+    const unmeasured = harness.add.text;
+    harness.add.text = (...args: unknown[]) => {
+      const text = unmeasured(...args);
+      text.width = text.text === '▶ ' ? CURSOR_GUTTER : drawnWidth(text.text);
+      return text;
+    };
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).filter(({ text }) => text.includes('ITEM x')).at(-1)!.handlers.pointerdown();
+
+    const guidance = renderedTexts.filter((text) => text.text.includes('Cures poison')).at(-1)!;
+    expect(guidance.text).toContain('turn');
+    expect(guidance.x + drawnWidth(guidance.text)).toBeLessThanOrEqual(302);
   });
 
   it('names the wild Pokemon Wild on every line, never Foe, under its WILD banner', () => {
@@ -1845,6 +1963,52 @@ describe('a catch the pack has no room for', () => {
     expect(panel.some((text) => text.includes('KEEP THE PACK'))).toBe(true);
   });
 
+  it('keeps every row inside the panel, a disc with a long name included', () => {
+    const bag = new Bag({
+      'poke-ball': 3,
+      'super-potion': 2,
+      'parts-crate': 2,
+      'mooring-rope': 1,
+      'thunder-stone': 1,
+      'tm09-bullet-seed': 1,
+    });
+    const { scene, press, renderedTexts } = open(bag);
+    const harness = scene as unknown as {
+      add: { text: (...args: unknown[]) => RenderedText };
+      captionWidth(line: string): number;
+    };
+    // Measured as Orange Kid draws a caption: "TM09 BULLET SEED x1 · 1sq" came
+    // out 131 pixels wide, and ran out to 308 against the inner edge at 302.
+    const drawnWidth = (line: string): number => line.length * 5.6;
+    harness.captionWidth = drawnWidth;
+    const unmeasured = harness.add.text;
+    harness.add.text = (...args: unknown[]) => {
+      const text = unmeasured(...args);
+      text.width = text.text === '▶ ' ? CURSOR_GUTTER : drawnWidth(text.text);
+      return text;
+    };
+    const before = renderedTexts.length;
+
+    press('BALL x3');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect((scene as unknown as { mode: string }).mode).toBe('make-room');
+
+    const rows = renderedTexts
+      .slice(before)
+      .filter(({ text }) => ['SUPER POTION', 'PARTS CRATE', 'MOORING ROPE', 'THUNDER STONE', 'TM09'].some((name) => text.startsWith(name)));
+    expect(rows.some(({ text }) => text.startsWith('TM09 BULLET SEED'))).toBe(true);
+    // The panel's inner edge: its frame at 8 + 304, less the 10 its text keeps in.
+    rows.forEach((row) => expect(row.x + row.width, row.text).toBeLessThanOrEqual(302));
+    // The left column stops short of where the right column's cursor stands.
+    const right = Math.max(...rows.map(({ x }) => x));
+    rows
+      .filter(({ x }) => x < right)
+      .forEach((row) => expect(row.x + row.width, row.text).toBeLessThan(right - CURSOR_GUTTER));
+    // Still says how many of each, in one form for the whole page.
+    expect(rows.every(({ text }) => / x\d/.test(text))).toBe(true);
+    expect(rows.every(({ text }) => text.endsWith('sq')) || rows.every(({ text }) => !text.endsWith('sq'))).toBe(true);
+  });
+
   it('says there is no ball before asking for room, so nothing is put down for a throw that cannot happen', () => {
     const bag = new Bag({ potion: 18 });
     const { scene, dialog, press } = open(bag);
@@ -2032,6 +2196,7 @@ function createFakeClock() {
         tween.onUpdate?.({ getValue: () => tween.counter!.value });
         if (progress === 1) {
           tween.live = false;
+          tween.onComplete?.();
         }
         continue;
       }
@@ -2063,7 +2228,7 @@ function createFakeClock() {
   return {
     tweens: {
       add: vi.fn(add),
-      addCounter: vi.fn((config: { from: number; to: number; duration: number; onUpdate: FakeTween['onUpdate'] }) => {
+      addCounter: vi.fn((config: Pick<FakeTween, 'duration' | 'onUpdate' | 'onComplete'> & { from: number; to: number }) => {
         const tween: FakeTween = {
           target: {},
           props: [],
@@ -2071,6 +2236,7 @@ function createFakeClock() {
           yoyo: false,
           repeat: 0,
           onUpdate: config.onUpdate,
+          onComplete: config.onComplete,
           counter: { from: config.from, to: config.to, value: config.from },
           elapsed: 0,
           live: true,
@@ -2114,6 +2280,7 @@ const standingSprite = (side: 'player' | 'enemy') => {
     setTexture: (key: string) => ((sprite.texture = key), sprite),
     setPosition: (x: number, y: number) => ((sprite.x = x), (sprite.y = y), sprite),
     setAlpha: (alpha: number) => ((sprite.alpha = alpha), sprite),
+    setScale: (scale: number) => ((sprite.scaleX = scale), (sprite.scaleY = scale), sprite),
     setTintFill: () => ((sprite.tinted = true), sprite),
     clearTint: () => ((sprite.tinted = false), sprite),
   };
@@ -2204,13 +2371,97 @@ describe('a trainer sending out Pokemon after a knockout', () => {
 });
 
 /**
+ * A ball arcs to the foe and only then draws it in, so a player who reads
+ * "Threw a POKé BALL!" and "Oh no! The POKéMON broke free!" before the ball has
+ * landed meets the break-out first. The landing used to shrink the foe into a
+ * ball that was already gone, and it was fought at nothing for the rest of the
+ * fight.
+ */
+describe('a wild Pokemon breaking free of a ball', () => {
+  it('stands whole on its spot however fast the throw is read', () => {
+    const caterpie = new Pokemon(getSpeciesById('caterpie')!, 2);
+    const harness = createBattleSceneHarness({ party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]), wild: caterpie });
+    const clock = createFakeClock();
+    const enemySprite = standingSprite('enemy');
+    const sprites = new Map([
+      ['player0', standingSprite('player')],
+      ['enemy0', enemySprite],
+    ]);
+    Object.assign(harness.scene as object, { tweens: clock.tweens, time: clock.time, sprites });
+    const { scene, dialog } = harness;
+    const spot = combatantSpot('enemy', 0, 1);
+    enemySprite.setScale(spot.scale);
+    // Every shake fails: the ball breaks open at once, and Caterpie's Tackle misses.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    (scene as unknown as { throwBall(index: number): void }).throwBall(0);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    expect(dialog.shownMessages.some((line) => line.includes('broke free'))).toBe(true);
+    clock.advance(1500);
+
+    expect({ x: enemySprite.x, y: enemySprite.y, alpha: enemySprite.alpha, scale: enemySprite.scaleX }).toEqual({
+      x: spot.x,
+      y: spot.y,
+      alpha: 1,
+      scale: spot.scale,
+    });
+  });
+});
+
+/**
+ * A ball that opens says how close it came, in FireRed's own four lines: a
+ * ball that shook three times and still opened is "so close", never the same
+ * flat line as one that burst at once.
+ */
+describe('a ball that opens', () => {
+  const throwWithShakes = (shakes: number): readonly string[] => {
+    const harness = createBattleSceneHarness({
+      party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]),
+      wild: new Pokemon(getSpeciesById('pidgey')!, 4),
+    });
+    const { scene, dialog } = harness;
+    // Each shake check passes on a roll of 0 and fails on 0.99; everything
+    // after the ball (Pidgey's turn) rolls high, so nothing else is decided.
+    let rolls = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => (rolls++ < shakes ? 0 : 0.99));
+    try {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      (scene as unknown as { throwBall(index: number): void }).throwBall(0);
+      dialog.isCurrentMessageComplete = true;
+      for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+        (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      }
+    } finally {
+      vi.restoreAllMocks();
+    }
+    return dialog.shownMessages;
+  };
+
+  it.each([
+    [0, 'Oh, no! The POKéMON broke free!'],
+    [1, 'Aww! It appeared to be caught!'],
+    [2, 'Aargh! Almost had it!'],
+    [3, 'Shoot! It was so close, too!'],
+  ])('after %i shakes says "%s"', (shakes, line) => {
+    const shown = throwWithShakes(shakes);
+
+    expect(shown.filter((message) => /^[123]\.\.\.$/.test(message))).toHaveLength(shakes);
+    expect(shown).toContain(line);
+  });
+});
+
+/**
  * A Pokemon blinks white when a blow takes HP off it, and only then. Growl and
  * Tail Whip used to blink their target and shake the screen exactly as a
  * Tackle does, so a move that lowered a stat looked like a hit that did no
  * damage.
  */
 describe('the blink a blow lands with', () => {
-  const fight = (playerMove: MoveBase, wildMove: MoveBase) => {
+  const fight = (playerMove: MoveBase, wildMove: MoveBase, startingSpeed = 0) => {
     const pidgey = new Pokemon(PIDGEY, 8);
     pidgey.moves.splice(0, pidgey.moves.length, new Move(playerMove));
     const wild = new Pokemon(getSpeciesById('rattata')!, 3);
@@ -2231,6 +2482,11 @@ describe('the blink a blow lands with', () => {
     (harness.scene as unknown as { cameras: { main: { shake: unknown } } }).cameras.main.shake = shake;
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const { scene, renderedTexts, dialog } = harness;
+    const battle = scene as unknown as { state: BattleState };
+    battle.state = {
+      ...battle.state,
+      player: { ...battle.state.player, statStages: { ...battle.state.player.statStages, speed: startingSpeed } },
+    };
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
     read(renderedTexts)
@@ -2251,6 +2507,57 @@ describe('the blink a blow lands with', () => {
     expect(dialog.shownMessages).toContain("Your PIDGEY's Defense fell!");
     expect(blinked).toEqual([]);
     expect(shake).not.toHaveBeenCalled();
+  });
+
+  it('says a stat moved by two stages sharply rose or harshly fell, as FireRed does', () => {
+    const { dialog } = fight(GENERATED_MOVES.agility, GENERATED_MOVES.screech);
+    expect(dialog.shownMessages).toContain("Your PIDGEY's Speed sharply rose!");
+    expect(dialog.shownMessages).toContain("Your PIDGEY's Defense harshly fell!");
+  });
+
+  it("says a stat already at its cap won't go higher, as FireRed does, rather than saying nothing", () => {
+    const { dialog } = fight(GENERATED_MOVES.agility, GENERATED_MOVES.screech, 6);
+    const used = dialog.shownMessages.indexOf('Your PIDGEY used AGILITY!');
+    expect(used).toBeGreaterThanOrEqual(0);
+    expect(dialog.shownMessages[used + 1]).toBe("Your PIDGEY's Speed won't go higher!");
+  });
+
+  it("says whose attack missed, as FireRed does, rather than an attack nobody threw", () => {
+    // The fight holds every roll at a half, which a 50% move misses.
+    const { dialog } = fight(GENERATED_MOVES['zap-cannon'], GENERATED_MOVES['dynamic-punch']);
+    const used = dialog.shownMessages.indexOf('Your PIDGEY used ZAP CANNON!');
+    expect(used).toBeGreaterThanOrEqual(0);
+    expect(dialog.shownMessages[used + 1]).toBe("Your PIDGEY's attack missed!");
+    expect(dialog.shownMessages).toContain("Wild RATTATA's attack missed!");
+    expect(dialog.shownMessages).not.toContain('The attack missed!');
+  });
+
+  it("says there's no PP left for this move, as FireRed does, and spends no turn", () => {
+    const pidgey = new Pokemon(PIDGEY, 8);
+    const spent = new Move(TACKLE);
+    spent.setPp(0);
+    pidgey.moves.splice(0, pidgey.moves.length, spent, new Move(GROWL));
+    const harness = createBattleSceneHarness({
+      party: new PokemonParty([pidgey]),
+      wild: new Pokemon(getSpeciesById('rattata')!, 3),
+    });
+    const { scene, renderedTexts, dialog } = harness;
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
+    read(renderedTexts)
+      .filter(({ text }) => text.includes('TACKLE'))
+      .at(-1)!
+      .handlers.pointerdown();
+
+    expect(dialog.shownMessages).toContain("There's no PP left for this move!");
+    expect(dialog.shownMessages.some((line) => line.startsWith('No PP left'))).toBe(false);
+    expect(dialog.shownMessages.some((line) => line.includes('used'))).toBe(false);
+  });
+
+  it("says a Pokemon at full HP that tries to heal has its HP full, as FireRed does", () => {
+    const { dialog } = fight(GENERATED_MOVES.recover, GROWL);
+    expect(dialog.shownMessages).toContain("Your PIDGEY's HP is full!");
+    expect(dialog.shownMessages.some((line) => line.includes('already at full HP'))).toBe(false);
   });
 
   it('still blinks the Pokemon a damaging move hits, and only that one', () => {
@@ -2837,7 +3144,7 @@ describe('a legend', () => {
     readOn();
 
     expect(bag.count('poke-ball')).toBe(2);
-    expect(dialog.shownMessages).toContain('ARTICUNO broke free!');
+    expect(dialog.shownMessages).toContain('Oh, no! The POKéMON broke free!');
     expect(dialog.shownMessages.at(-1)).toBe('Wild ARTICUNO fled!');
     expect(scene.state.outcome).toBe('victory');
     expect(returned).toHaveBeenCalledTimes(1);

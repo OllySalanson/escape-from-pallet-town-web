@@ -73,6 +73,9 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return null;
     case 'status-applied':
       return withLine('statusApplied');
+    // A confused Pokemon wobbling before its move is its status showing.
+    case 'confused':
+      return withLine('statusApplied');
     case 'status-damage':
     case 'confusion-self-hit':
       return withLine('statusDamage');
@@ -89,6 +92,9 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return withLine('heal');
     case 'stat-stage-changed':
       return withLine(event.stages > 0 ? 'statUp' : 'statDown');
+    // Nothing moved, so nothing sounds, as Splash is silent.
+    case 'stat-capped':
+      return null;
     case 'ball-thrown':
       return withLine('ballThrow');
     case 'catch-shake':

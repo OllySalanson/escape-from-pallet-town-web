@@ -152,6 +152,20 @@ export class MenuOverlay {
     this.root.remove();
   }
 
+  /**
+   * Measures a screen that has just been drawn - its columns, its boxes of
+   * words and the MORE strip over every pane with more below - without moving
+   * the cursor. Placing the cursor does all of this too, so a screen that
+   * focuses as it opens needs nothing else; this is for one that holds its
+   * cursor back. The raid result locks its way out for most of a second, and
+   * until then its ledger was drawn unmeasured: the last row sliced through its
+   * letters at the pane's foot with no strip over it.
+   */
+  public layout(): void {
+    this.relayout();
+    this.markScrollCues();
+  }
+
   /** Starts the cursor on the first of these selectors the screen has. */
   public focus(...selectors: string[]): void {
     requestAnimationFrame(() => this.moveCursorTo(this.firstMatch(selectors)));
@@ -212,9 +226,10 @@ export class MenuOverlay {
       return { left, top, right, bottom, ...(pane ? { group: `pane-${panes.indexOf(pane)}` } : {}) };
     });
     const next = nextFocusIndex(rects, current, direction);
-    controls[
-      direction === 'up' && current >= 0 ? leavingPaneIndex(controls.map(detailRefOf), current, next) : next
-    ]?.focus();
+    const target =
+      controls[direction === 'up' && current >= 0 ? leavingPaneIndex(controls.map(detailRefOf), current, next) : next];
+    target?.focus();
+    this.scrollPastTopCut(target ?? null);
     return true;
   }
 
@@ -369,6 +384,7 @@ export class MenuOverlay {
   private moveCursorTo(control: HTMLElement | null): void {
     this.relayout();
     control?.focus();
+    this.scrollPastTopCut(control);
     // Focus that did not move fires no event, and the help bar was just rebuilt.
     this.showHelpFor(control);
   }
@@ -453,16 +469,7 @@ export class MenuOverlay {
         markReadingPane(pane, scrolled || more);
       }
       const box = pane.getBoundingClientRect();
-      const rows =
-        scrolled || more
-          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)]
-              .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
-              .flatMap((element) =>
-                (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
-                  ({ top, bottom }) => ({ top, bottom, element, heading: element.classList.contains('px-subheading') }),
-                ),
-              )
-          : [];
+      const rows = scrolled || more ? scrollRowsOf(pane) : [];
       this.markTopCut(pane, box, rows, scrolled ? unit : 0);
       pane.querySelectorAll<HTMLElement>('[data-folded]').forEach((element) => {
         element.removeAttribute('data-folded');
@@ -484,6 +491,15 @@ export class MenuOverlay {
         element.setAttribute('data-folded', '');
         element.style.clipPath = `inset(0 0 ${element.getBoundingClientRect().bottom - top}px 0)`;
       }
+      // A label over a column whose rows are all below the strip heads nothing
+      // there, even with the next column's rows still drawn beside it: the
+      // loadout's dossier ended on STATS beside the last move, with none of
+      // the stats under it. The strip stays where the other column needs it,
+      // and the label is left out of its own column.
+      for (const { element } of headingsOrphanedInColumn(box, rows, box.bottom - cover)) {
+        element.setAttribute('data-folded', '');
+        element.style.clipPath = 'inset(0 0 100% 0)';
+      }
       // The strip says how much is down there, because "there is more" is not
       // the same answer as "there are nine more": the first leaves a player
       // guessing whether the thing they want is one row down or off the end of
@@ -499,6 +515,29 @@ export class MenuOverlay {
   }
 
   /**
+   * The browser scrolls the cursor's row into view by just enough to show it,
+   * which walking down a list of rows of different heights leaves the row
+   * above cut by a few pixels - and a cut row is hidden whole (`markTopCut`),
+   * so walking down Bill's barter table left a blank band nearly a row deep
+   * over its stones. The pane scrolls on past the cut row instead, whenever
+   * that keeps the cursor's row whole.
+   */
+  private scrollPastTopCut(control: HTMLElement | null): void {
+    const pane = control ? scrollingAncestor(control, this.root) : null;
+    const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
+    if (!control || !pane || unit <= 0 || pane.scrollTop <= 0.5) {
+      return;
+    }
+    const head = Number.parseFloat(pane.style.scrollPaddingTop) || 0;
+    const further = scrollPastTopCutBy(pane.getBoundingClientRect(), head, scrollRowsOf(pane), unit, {
+      top: control.getBoundingClientRect().top,
+    });
+    if (further > 0) {
+      pane.scrollTop += further;
+    }
+  }
+
+  /**
    * The pane's top edge, given the same care as its foot. The cursor scrolls a
    * row into view by just enough to show it, so walking down Brock's ladder
    * left the row above it sliced through its name at the top of the pane - a
@@ -510,7 +549,7 @@ export class MenuOverlay {
   private markTopCut(
     pane: HTMLElement,
     box: DOMRect,
-    rows: readonly { readonly top: number; readonly bottom: number }[],
+    rows: readonly { readonly top: number; readonly bottom: number; readonly ink?: number }[],
     unit: number,
   ): void {
     const head = Number.parseFloat(pane.style.scrollPaddingTop) || 0;
@@ -538,7 +577,7 @@ export class MenuOverlay {
 export function scrollTopCoverHeight(
   pane: { readonly top: number; readonly bottom: number },
   head: number,
-  rows: readonly { readonly top: number; readonly bottom: number }[],
+  rows: readonly { readonly top: number; readonly bottom: number; readonly ink?: number }[],
   unit: number,
 ): number {
   const line = pane.top + head;
@@ -548,15 +587,59 @@ export function scrollTopCoverHeight(
   // that one pixel - and read as a cut, the box strip at the top of the
   // Pokémon Center's list was hidden whole, Sort and Find and all.
   const slack = Math.max(0.5, unit / 2);
-  const cut = rows.filter((row) => row.top < line - slack && row.bottom > line + 0.5);
+  // A row reaches as far down as its text is drawn, which in Orange Kid is
+  // past its line box: masked to the box, the top of the map maker's side
+  // column showed the foot of a cut line's `g` over the next line.
+  const reach = (row: { readonly bottom: number; readonly ink?: number }) => Math.max(row.bottom, row.ink ?? row.bottom);
+  const cut = rows.filter((row) => row.top < line - slack && reach(row) > line + 0.5);
   if (cut.length === 0) {
     return 0;
   }
-  const cover = Math.max(...cut.map((row) => row.bottom)) - line;
+  const cover = Math.max(...cut.map(reach)) - line;
   if (cover > ((pane.bottom - line) * 3) / 4) {
     return 0;
   }
   return Math.ceil(cover / unit - 0.001) * unit;
+}
+
+/**
+ * How much further to scroll a pane so that its top edge cuts no row, when
+ * that leaves the cursor's row whole below the edge: the depth the cut would
+ * be covered to (`scrollTopCoverHeight`), or zero when there is no cut or the
+ * cursor's row would go under the edge with it.
+ */
+export function scrollPastTopCutBy(
+  pane: { readonly top: number; readonly bottom: number },
+  head: number,
+  rows: readonly { readonly top: number; readonly bottom: number; readonly ink?: number }[],
+  unit: number,
+  cursor: { readonly top: number },
+): number {
+  const cover = scrollTopCoverHeight(pane, head, rows, unit);
+  if (cover <= 0) {
+    return 0;
+  }
+  const slack = Math.max(0.5, unit / 2);
+  return cursor.top - cover >= pane.top + head - slack ? cover : 0;
+}
+
+/** A scrolling pane's rows as the fold and the top cut measure them. */
+function scrollRowsOf(pane: HTMLElement) {
+  return [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)]
+    .flatMap((element) => rowPieces<HTMLElement>(element, DOM_ROW_TREE))
+    .flatMap((element) =>
+      (element.classList.contains('px-wrap') ? lineBoxes(element) : [elementBox(element)]).map(
+        ({ top, bottom, ink, left, right }) => ({
+          top,
+          bottom,
+          ink,
+          left,
+          right,
+          element,
+          heading: headsWhatFollows(element.classList),
+        }),
+      ),
+    );
 }
 
 /**
@@ -595,15 +678,18 @@ export const SCROLL_ROWS =
  * through the middle of one of its lines. The fold may fall between any two
  * of them; it is a line's waist it must not go through.
  */
-function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
+function lineBoxes(element: HTMLElement): RowBox[] {
   const range = document.createRange();
   range.selectNodeContents(element);
   // A text fragment's rectangle is the face's content area, which in Orange
   // Kid is taller than the line it sits on and overlaps the lines either side
   // of it: measured that way, the fold went three pixels into the line above.
-  // The line box is the line height, centred where the content area is.
+  // The line box is the line height, centred where the content area is. The
+  // content area's foot is kept as the line's `ink`: a descender is drawn down
+  // to it, past the line box, so it is how far a line shows below its box.
   const height = Number.parseFloat(getComputedStyle(element).lineHeight);
-  const lines: { top: number; bottom: number }[] = [];
+  const { left, right } = element.getBoundingClientRect();
+  const lines: RowBox[] = [];
   for (const rect of [...range.getClientRects()].sort((a, b) => a.top - b.top)) {
     if (rect.height <= 0) {
       continue;
@@ -614,11 +700,30 @@ function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
     // Fragments of one line share its middle; the next line's is below it.
     if (line && middle < line.bottom) {
       line.bottom = Math.max(line.bottom, middle + half);
+      line.ink = Math.max(line.ink, rect.bottom);
     } else {
-      lines.push({ top: middle - half, bottom: middle + half });
+      lines.push({ top: middle - half, bottom: middle + half, ink: Math.max(middle + half, rect.bottom), left, right });
     }
   }
-  return lines.length > 0 ? lines : [element.getBoundingClientRect()];
+  return lines.length > 0 ? lines : [elementBox(element)];
+}
+
+/** A row's box, and how far its own text is drawn below it (`lineBoxes`). */
+interface RowBox {
+  top: number;
+  bottom: number;
+  ink: number;
+  left: number;
+  right: number;
+}
+
+/** An element measured whole as one row, its text's reach included. */
+function elementBox(element: HTMLElement): RowBox {
+  const { top, bottom, left, right } = element.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const text = [...range.getClientRects()].filter((rect) => rect.height > 0).map((rect) => rect.bottom);
+  return { top, bottom, ink: Math.max(bottom, ...text), left, right };
 }
 
 /** How `rowPieces` sees a tree of elements: what is in one, and what kind of thing each is. */
@@ -775,6 +880,17 @@ export function scrollCoverHeight(
 }
 
 /**
+ * Whether a row is a heading over the rows under it, and so never the last
+ * line above a MORE strip: a list's `.px-subheading` band, and the small
+ * `.px-label` a pane names its parts with. Only the band counted, and the raid
+ * party's pane at the smallest stage ended on STATS over its strip, which
+ * reads as a Pokemon with no stats.
+ */
+export function headsWhatFollows(classes: { contains(name: string): boolean }): boolean {
+  return classes.contains('px-subheading') || classes.contains('px-label');
+}
+
+/**
  * The heading standing last above a fold with nothing of its own beside or
  * under it still drawn, if there is one.
  */
@@ -791,6 +907,49 @@ function orphanedHeading<Row extends { readonly top: number; readonly bottom: nu
     return undefined;
   }
   return above.some((row) => !row.heading && row.bottom > heading.top + 0.5) ? undefined : heading;
+}
+
+/**
+ * The headings above a fold whose own column - the rows under them that share
+ * some of their width - has rows and none of them above the fold. A list's
+ * band spans the pane, so for it this is `orphanedHeading`'s question; a
+ * pane's `.px-label` heads one column of two, and the other column's rows
+ * beside it are not its own.
+ */
+export function headingsOrphanedInColumn<
+  Row extends {
+    readonly top: number;
+    readonly bottom: number;
+    readonly left: number;
+    readonly right: number;
+    readonly heading?: boolean;
+  },
+>(pane: { readonly top: number }, rows: readonly Row[], fold: number): Row[] {
+  return rows.filter((heading) => {
+    if (!heading.heading || heading.top <= pane.top + 0.5 || heading.bottom > fold + 0.5) {
+      return false;
+    }
+    const own = rows.filter(
+      (row) =>
+        !row.heading &&
+        row.top >= heading.bottom - 0.5 &&
+        row.left < heading.right - 0.5 &&
+        row.right > heading.left + 0.5,
+    );
+    // Its rows run until the next heading in the same column.
+    const next = rows
+      .filter(
+        (row) =>
+          row !== heading &&
+          row.heading &&
+          row.top >= heading.bottom - 0.5 &&
+          row.left < heading.right - 0.5 &&
+          row.right > heading.left + 0.5,
+      )
+      .reduce((nearest, row) => Math.min(nearest, row.top), Number.POSITIVE_INFINITY);
+    const part = own.filter((row) => row.top < next - 0.5);
+    return part.length > 0 && part.every((row) => row.top >= fold - 0.5);
+  });
 }
 
 /**

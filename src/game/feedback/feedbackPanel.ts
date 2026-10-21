@@ -20,6 +20,7 @@ import {
   SCRAP_IT,
   SCRAP_QUESTION,
   TAG_NOTE,
+  RETRYING_WORDS,
   TRY_THE_CHECK_AGAIN,
   canTryTheCheckAgain,
   outcomeWords,
@@ -170,11 +171,13 @@ export function commitBar(phase: 'writing' | 'scrapping'): string {
 }
 
 /** The panel once a message is away (or kept): the line, the tag, and the way back. */
-export function outcomeMarkup(outcome: FeedbackOutcome, tag: string): string {
-  const words = outcomeWords(outcome);
-  const retry = canTryTheCheckAgain(outcome)
-    ? `<button class="px-window px-button" data-retry-check data-help="Take the bot check again and send what is waiting in your pack.">${TRY_THE_CHECK_AGAIN}</button>`
-    : '';
+export function outcomeMarkup(outcome: FeedbackOutcome, tag: string, retrying = false): string {
+  const words = retrying ? RETRYING_WORDS : outcomeWords(outcome);
+  const retry = !canTryTheCheckAgain(outcome)
+    ? ''
+    : retrying
+      ? `<button class="px-window px-button" data-retry-check aria-disabled="true" data-help="The bot check is being taken again.">${TRY_THE_CHECK_AGAIN}</button>`
+      : `<button class="px-window px-button" data-retry-check data-help="Take the bot check again and send what is waiting in your pack.">${TRY_THE_CHECK_AGAIN}</button>`;
   const body = `<main class="px-body feedback-outcome-body">${pixelWindow(
     `<p class="px-wrap">${words.line}</p><p class="feedback-tag-row"><span class="feedback-tag">${tag}</span><span class="px-wrap">${TAG_NOTE}</span></p>${retry}<button class="px-window px-button is-primary" data-close data-help="Close the radio and carry on.">${BACK_TO_THE_GAME}</button>`,
     { heading: words.headline, className: `feedback-outcome is-${outcome}` },

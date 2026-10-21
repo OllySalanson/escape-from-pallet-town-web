@@ -105,7 +105,18 @@ export interface AbilityAbsorption {
   readonly heal?: number;
   /** Sets `AbilityHolder.charged` for the rest of the battle. */
   readonly charges?: boolean;
+  /** Turned away by what the move is made of (Soundproof), not by its type. */
+  readonly blocks?: boolean;
 }
+
+/**
+ * How an absorbed move ended, so the line can say it in FireRed's words:
+ * `charged` raised a Flash Fire, `ineffective` met one already raised,
+ * `useless` met a Water or Volt Absorb with no HP to restore, `missed` went
+ * past a Levitate and `blocked` was not heard by a Soundproof. A heal is told
+ * by its `amount` instead.
+ */
+export type AbsorbedOutcome = 'charged' | 'ineffective' | 'useless' | 'missed' | 'blocked';
 
 /** What touching the holder may cost. All four of these are 30% in FireRed. */
 export interface AbilityContactEffect {
@@ -141,8 +152,8 @@ export interface AbilityHooks {
   readonly blocksCriticalHits?: true;
   /** The holder pays no recoil for its own move. */
   readonly blocksRecoil?: true;
-  /** What a move of this type does to the holder instead of its damage. */
-  readonly absorbsMoveType?: (type: PokemonType) => AbilityAbsorption | null;
+  /** What a move of this type and power does to the holder instead of its damage. */
+  readonly absorbsMoveType?: (type: PokemonType, power: number) => AbilityAbsorption | null;
   /**
    * A move carrying this flag does not touch the holder at all. Soundproof is
    * the first thing in the game to read a `MoveFlag`, which is what those flags

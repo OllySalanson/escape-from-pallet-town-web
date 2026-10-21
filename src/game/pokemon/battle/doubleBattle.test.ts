@@ -816,9 +816,9 @@ describe('the multi-unit ability hooks, against imported species', () => {
       always,
     );
 
-    const shocks = of(result.events, 'ability').filter((event) => event.effect === 'contact');
+    const shocks = of(result.events, 'status-applied').filter((event) => event.by);
     expect(shocks).toHaveLength(2);
-    expect(shocks.every((event) => event.user === 'enemy' && (event.slot ?? 0) === 0)).toBe(true);
+    expect(shocks.every((event) => event.by?.user === 'enemy' && (event.by.slot ?? 0) === 0)).toBe(true);
   });
 
   it("lowers both foes' Attack when a real Intimidate lands - Arbok's", () => {
@@ -837,8 +837,8 @@ describe('the multi-unit ability hooks, against imported species', () => {
     expect(unitAt(state, slotRef('player', 1))?.statStages.attack).toBe(-1);
     expect(
       openingAbilityEvents(state)
-        .filter((event) => event.type === 'stat-stage-changed')
-        .map((event) => `${event.user}${'slot' in event ? (event.slot ?? 0) : 0}`),
+        .flatMap((event) => (event.type === 'ability' && event.target ? [event.target] : []))
+        .map((target) => `${target.user}${target.slot ?? 0}`),
     ).toEqual(['player0', 'player1']);
   });
 

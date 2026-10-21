@@ -28,6 +28,7 @@ import {
 } from './battleEngine';
 import { attemptWildEscape, wildEscapeChanceFor } from './escape';
 import { PrimaryStatus } from './status';
+import { eventToMessage } from '../../scenes/battlePresentation';
 import { WeatherId } from './weather';
 
 /**
@@ -242,6 +243,29 @@ describe('the abilities that change a number', () => {
     expect(didFire(first.events, 'sharpened')).toBe(true);
     expect(didFire(second.events, 'sharpened')).toBe(false);
   });
+
+  it('keeps Compound Eyes quiet on a move that cannot miss, and says it on the first that can', () => {
+    // Agility and Swift roll no accuracy, so a keener eye changes nothing about
+    // them; "has it in its sights!" after Agility was a line about nothing, and
+    // being said once a battle it then stayed silent when it did matter.
+    const agility = new MoveBase({
+      name: 'Agility',
+      type: PokemonType.Psychic,
+      power: 0,
+      accuracy: 100,
+      pp: 30,
+      category: MoveCategory.Status,
+      alwaysHits: true,
+      target: MoveTarget.Self,
+      effects: { boosts: [{ stat: 'speed', stages: 2 }] },
+    });
+    const player = armed(species({ abilityId: 'compound-eyes' }), 20, agility, SMOKESCREEN);
+    const first = resolveTurn(createBattleState(player, armed(species({ abilityId: null }), 20)), 0, at({}));
+    const second = resolveTurn(first.state, 1, at({}));
+
+    expect(didFire(first.events, 'sharpened')).toBe(false);
+    expect(didFire(second.events, 'sharpened')).toBe(true);
+  });
 });
 
 describe('the abilities that refuse something', () => {
@@ -284,6 +308,40 @@ describe('the abilities that refuse something', () => {
       at({ 3: 0 }),
     );
     expect(clawed.state.player.statStages.attack).toBe(1);
+  });
+
+  it("says a refused stat drop in FireRed's own words, once a move for Clear Body", () => {
+    const tickle = new MoveBase({
+      name: 'Tickle',
+      type: PokemonType.Normal,
+      power: 0,
+      accuracy: 100,
+      pp: 10,
+      category: MoveCategory.Status,
+      effects: {
+        boosts: [
+          { stat: 'attack', stages: -1 },
+          { stat: 'defense', stages: -1 },
+        ],
+      },
+    });
+    const refusals = (abilityId: string, move: MoveBase) =>
+      abilityEvents(
+        resolveTurn(
+          createBattleState(
+            armed(species({ abilityId: null }), 20, move),
+            armed(species({ abilityId, name: 'Tentacool' }), 20),
+          ),
+          0,
+          at({}),
+        ).events,
+      )
+        .filter((event) => event.effect === 'blocked-boost')
+        .map((event) => eventToMessage(event, 'Wild'));
+
+    expect(refusals('clear-body', tickle)).toEqual(["Wild TENTACOOL's CLEAR BODY prevents stat loss!"]);
+    expect(refusals('keen-eye', SMOKESCREEN)).toEqual(["Wild TENTACOOL's KEEN EYE prevents accuracy loss!"]);
+    expect(refusals('hyper-cutter', tickle)).toEqual(["Wild TENTACOOL's HYPER CUTTER prevents Attack loss!"]);
   });
 
   it('refuses a status from the other side, and a flinch is one of them', () => {
@@ -397,6 +455,20 @@ describe('the abilities that let nothing through at all', () => {
     expect(dealt(swallowed)).toBeGreaterThan(dealt(cold));
   });
 
+  it('lets Thunder Wave through a Volt Absorb, which FireRed only lets take a move with power', () => {
+    const result = resolveTurn(
+      createBattleState(
+        armed(species({ abilityId: null }), 20, THUNDER_WAVE),
+        armed(species({ abilityId: 'volt-absorb' }), 20),
+      ),
+      0,
+      at({}),
+    );
+
+    expect(result.state.enemy.primaryStatus).toBe(PrimaryStatus.Paralysis);
+    expect(didFire(result.events, 'absorbed')).toBe(false);
+  });
+
   it('hears nothing through Soundproof', () => {
     const result = resolveTurn(
       createBattleState(
@@ -412,6 +484,49 @@ describe('the abilities that let nothing through at all', () => {
   });
 });
 
+describe("a move an ability took, said in FireRed's own words", () => {
+  const abilityLines = (events: readonly BattleEvent[]): string[] =>
+    events.filter((event) => event.type === 'ability').map((event) => eventToMessage(event));
+  const turn = (attackerMove: MoveBase, defender: Pokemon, hurt?: number): string[] => {
+    const opening = createBattleState(armed(species({ abilityId: null, name: 'Rattata' }), 20, attackerMove), defender);
+    return abilityLines(resolveTurn(hurt === undefined ? opening : hurtTo(opening, 'enemy', hurt), 0, at({})).events);
+  };
+
+  it('says a Levitate makes Ground moves miss', () => {
+    expect(turn(GROUND_STOMP, armed(species({ abilityId: 'levitate', name: 'Gastly' }), 20))).toEqual([
+      'Foe GASTLY makes GROUND moves miss with LEVITATE!',
+    ]);
+  });
+
+  it('says a Soundproof blocks the move by name', () => {
+    expect(turn(GROWL, armed(species({ abilityId: 'soundproof', name: 'Voltorb' }), 20))).toEqual([
+      "Foe VOLTORB's SOUNDPROOF blocks GROWL!",
+    ]);
+  });
+
+  it('says a Water Absorb restored HP, or made the move useless at full health', () => {
+    const lapras = (): Pokemon => armed(species({ abilityId: 'water-absorb', name: 'Lapras' }), 20);
+    const hurtLapras = lapras();
+    expect(turn(SOAK, hurtLapras, 10)).toEqual([
+      `Foe LAPRAS restored HP using its WATER ABSORB! +${Math.floor(hurtLapras.maxHp / 4)} HP`,
+    ]);
+    expect(turn(SOAK, lapras())).toEqual(["Foe LAPRAS's WATER ABSORB made SOAK useless!"]);
+  });
+
+  it('says a Flash Fire raised its Fire power, then made the next Fire move ineffective', () => {
+    const vulpix = armed(species({ abilityId: 'flash-fire', name: 'Vulpix' }), 20);
+    const first = resolveTurn(
+      createBattleState(armed(species({ abilityId: null, name: 'Rattata' }), 20, EMBER), vulpix),
+      0,
+      at({}),
+    );
+    expect(abilityLines(first.events)).toEqual(["Foe VULPIX's FLASH FIRE raised its FIRE power!"]);
+    expect(abilityLines(resolveTurn(first.state, 0, at({})).events)).toEqual([
+      "Foe VULPIX's FLASH FIRE made EMBER ineffective!",
+    ]);
+  });
+});
+
 describe('the abilities that answer back', () => {
   it('paralyses whoever touched a Static, and only on a move that made contact', () => {
     const shocked = resolveTurn(
@@ -423,7 +538,7 @@ describe('the abilities that answer back', () => {
       at({ 3: 0, 4: 0 }),
     );
     expect(shocked.state.player.primaryStatus).toBe(PrimaryStatus.Paralysis);
-    expect(didFire(shocked.events, 'contact')).toBe(true);
+    expect(find(shocked.events, 'status-applied')?.by?.ability).toBe('STATIC');
 
     const distant = resolveTurn(
       createBattleState(
@@ -457,7 +572,38 @@ describe('the abilities that answer back', () => {
 
     expect(result.state.enemy.primaryStatus).toBe(PrimaryStatus.Paralysis);
     expect(result.state.player.primaryStatus).toBe(PrimaryStatus.Paralysis);
-    expect(didFire(result.events, 'reflected')).toBe(true);
+    expect(result.events.filter((event) => event.type === 'status-applied').map((event) => event.by?.ability)).toEqual([
+      undefined,
+      'SYNCHRONIZE',
+    ]);
+  });
+
+  it("says a status an ability gave in FireRed's one line, naming the ability and whom it hit", () => {
+    const touched = resolveTurn(
+      createBattleState(
+        armed(species({ abilityId: null, name: 'Charmander' }), 20, SCRATCH),
+        armed(species({ abilityId: 'static', name: 'Pikachu' }), 20),
+      ),
+      0,
+      at({ 3: 0, 4: 0 }),
+    );
+    const touchLines = touched.events.map((event) => eventToMessage(event, 'Wild'));
+    expect(touchLines).toContain("Wild PIKACHU's STATIC paralysed your CHARMANDER! It may be unable to move!");
+    expect(touchLines.filter((line) => line.includes('STATIC'))).toHaveLength(1);
+    expect(touchLines.some((line) => line.includes('is paralysed'))).toBe(false);
+
+    const handedBack = resolveTurn(
+      createBattleState(
+        armed(species({ abilityId: null, name: 'Pikachu', primaryType: PokemonType.Electric }), 20, THUNDER_WAVE),
+        armed(species({ abilityId: 'synchronize', name: 'Abra' }), 20),
+      ),
+      0,
+      at({}),
+    );
+    const backLines = handedBack.events.map((event) => eventToMessage(event, 'Wild'));
+    expect(backLines).toContain('Wild ABRA is paralysed! It may be unable to move!');
+    expect(backLines).toContain("Wild ABRA's SYNCHRONIZE paralysed your PIKACHU! It may be unable to move!");
+    expect(backLines.filter((line) => line.includes('SYNCHRONIZE'))).toHaveLength(1);
   });
 
   it('hurts whatever drained a Liquid Ooze instead of feeding it', () => {
@@ -511,6 +657,21 @@ describe('the abilities that work off the clock, the bench and the exit', () => 
     const switched = replacePlayerPokemon(plain, scary);
     expect(switched.state.enemy.statStages.attack).toBe(-1);
     expect(abilityEvents(switched.events).map((event) => event.effect)).toContain('sent-out');
+  });
+
+  it("says an Intimidate in FireRed's one line, naming who it cut", () => {
+    const scary = armed(species({ name: 'Arbok', abilityId: 'intimidate' }), 20, TACKLE);
+    const opening = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), scary);
+
+    expect(openingAbilityEvents(opening).map((event) => eventToMessage(event))).toEqual([
+      "Foe ARBOK's INTIMIDATE cuts your BULBASAUR's Attack!",
+    ]);
+
+    const plain = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), armed(species({ name: 'Pidgey', abilityId: null }), 20));
+    const switched = replacePlayerPokemon(plain, armed(species({ name: 'Ekans', abilityId: 'intimidate' }), 20, TACKLE));
+    expect(switched.events.map((event) => eventToMessage(event, 'Wild'))).toEqual([
+      "Your EKANS's INTIMIDATE cuts Wild PIDGEY's Attack!",
+    ]);
   });
 
   it('clears a status on the way out with Natural Cure', () => {

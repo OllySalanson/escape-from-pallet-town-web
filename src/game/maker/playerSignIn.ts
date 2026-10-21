@@ -1,4 +1,5 @@
 import { recordAction } from '../feedback/actionLog';
+import { claimOverlayKeyboard } from '../ui/overlayKeyboard';
 import { supabase } from './supabaseClient';
 import { botCheckNeeded, runBotCheck, type BotCheck } from './turnstile';
 
@@ -43,6 +44,13 @@ export interface SignInParts {
   check(): Promise<BotCheck>;
   /** Whether this build asks for the check at all. */
   readonly needsCheck: boolean;
+  /**
+   * Whether the browser thinks it has a connection (`navigator.onLine`). Only
+   * a no is believed: a browser that knows it is offline cannot load the check
+   * or reach the project, and saying the check "would not load" would send the
+   * player hunting for a blocker that is not there.
+   */
+  readonly online?: () => boolean;
 }
 
 export interface SignInError {
@@ -57,6 +65,9 @@ export async function signInWith(parts: SignInParts): Promise<PlayerSignIn> {
     const existing = await parts.session();
     if (existing) {
       return { ok: true, uid: existing };
+    }
+    if (parts.online?.() === false) {
+      return { ok: false, trouble: 'offline' };
     }
     let token: string | undefined;
     if (parts.needsCheck) {
@@ -114,6 +125,7 @@ export async function currentPlayer(): Promise<string | null> {
 function liveParts(): SignInParts {
   return {
     needsCheck: botCheckNeeded(),
+    online: () => navigator.onLine,
     session: currentPlayer,
     signIn: async (captchaToken) => {
       const db = await supabase();
@@ -156,9 +168,45 @@ async function checkInItsOwnBox(): Promise<BotCheck> {
   card.append(line, widget);
   box.append(card);
   document.body.append(box);
+  const keys = keysHeldByTheCheck();
   try {
-    return await runBotCheck(widget, { onAsking: () => box.classList.add('is-asking') });
+    return await runBotCheck(widget, {
+      onAsking: () => {
+        box.classList.add('is-asking');
+        keys.asking();
+      },
+    });
   } finally {
+    keys.done();
     box.remove();
   }
+}
+
+/**
+ * The keyboard while the check is asking. The dimmed card stops the pointer,
+ * but a key went on to whatever had it - a console game's PLAY AGAIN started a
+ * new game under the card, the map maker drew its tools - so while it asks the
+ * check takes every key, as any overlay does (`ui/overlayKeyboard.ts`), and
+ * hands them back when it ends. Tab still moves the focus, which is how the
+ * box is reached without a mouse. An invisible pass never asks, so it never
+ * holds a key.
+ */
+export function keysHeldByTheCheck(
+  claim: (handler: (event: KeyboardEvent) => void) => () => void = (handler) =>
+    claimOverlayKeyboard(handler, window),
+): { readonly asking: () => void; readonly done: () => void } {
+  let release: (() => void) | undefined;
+  return {
+    asking: () => {
+      release ??= claim((event) => {
+        if (event.key !== 'Tab') {
+          event.preventDefault();
+        }
+      });
+    },
+    done: () => {
+      release?.();
+      release = undefined;
+    },
+  };
 }

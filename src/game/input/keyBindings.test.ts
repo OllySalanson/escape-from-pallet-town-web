@@ -35,7 +35,15 @@ import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
 import { lootRefusalLine } from '../world/loot';
-import { KNOCK_FROM_THE_STEP_HINT, decorateKeyHintLine, houseKeyHintLine, roomKeyHintLine, yardKeyHintLine } from './keyBindings';
+import {
+  KNOCK_FROM_THE_STEP_HINT,
+  decorateKeyHintLine,
+  houseKeyHintLine,
+  phraseListLines,
+  roomKeyHintLine,
+  yardKeyHintLine,
+} from './keyBindings';
+import { ROOM_PHRASES } from '../raidRoom/roomTalk';
 
 /** Phaser's own table, not the mock's: the codes a real keyboard sends. */
 const { default: KEY_CODES } = await vi.importActual<{ default: Record<string, number> }>(
@@ -108,6 +116,18 @@ describe('the keys a HUD names', () => {
       ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'].map((digit) => KEY_CODES[digit]),
     );
     expect(roomKeyHintLine(new Set(['talk', 'ping']))).toBe('');
+  });
+
+  it('names each phrase by its number key in brackets, so a 1 never runs into the O after it', () => {
+    const controls = controlsOf(new WorldScene());
+    const lines = phraseListLines(ROOM_PHRASES);
+    expect(lines[0]).toBe('[1] OVER HERE!');
+    const keys = (controls.phrases as readonly BoundKey[]).map((key) => key.keyCode);
+    lines.forEach((line, index) => {
+      const [, key, phrase] = /^\[(\d)\] (.+)$/.exec(line) ?? [];
+      expect(phrase, line).toBe(ROOM_PHRASES[index]);
+      expect(keys[index], `${line} is said by [${key}]`).toBe(KEY_CODES[['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'][Number(key) - 1]]);
+    });
   });
 
   it('names B by the word a full pack tells the player to open', () => {

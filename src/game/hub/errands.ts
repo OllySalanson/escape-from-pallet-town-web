@@ -50,6 +50,15 @@ export interface Errand {
   readonly speaker: CharacterDesignId;
   /** The giver's name, as their first words name them. */
   readonly name: string;
+  /**
+   * What the door caption calls them, when the name is too long for the yard.
+   * Oak's Lab sits a row lower than its neighbours, so a caption over it has
+   * the 176 pixels between the Pokémon Center's roof and THE BOLTHOLE's, and
+   * at the spawn the player stands under it: "Professor Oak has a favour to
+   * ask" fitted neither, and the lab two steps away went unnamed. FireRed's
+   * own short form is PROF. OAK.
+   */
+  readonly called?: string;
   /** The thing: what lies on the map, what takes the squares, what is handed over. */
   readonly itemId: ErrandItemId;
   readonly mapId: BuiltInMapId;
@@ -86,6 +95,7 @@ export const ERRANDS: readonly Errand[] = [
     giver: 'raid',
     speaker: 'prof-oak',
     name: 'Professor Oak',
+    called: 'Prof. Oak',
     itemId: 'oaks-parcel',
     mapId: 'viridian-city',
     // FireRed's errand, in FireRed's place: the Poké Mart stands on the square.

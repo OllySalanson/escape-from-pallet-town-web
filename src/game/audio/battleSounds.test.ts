@@ -33,7 +33,7 @@ describe('battleEventSound', () => {
 
   it('leaves a missed move to the miss that follows it', () => {
     expect(battleEventSound(used({}))).toBeNull();
-    expect(battleEventSound({ type: 'missed', user: 'player' })?.name).toBe('miss');
+    expect(battleEventSound({ type: 'missed', user: 'player', name: 'Charmander' })?.name).toBe('miss');
   });
 
   it('tells the three effectiveness lines apart', () => {
@@ -60,7 +60,7 @@ describe('battleEventSound', () => {
 
   it('only ever defers a sound for a move that does damage', () => {
     const events: BattleEvent[] = [
-      { type: 'missed', user: 'enemy' },
+      { type: 'missed', user: 'enemy', name: 'Pidgey' },
       { type: 'critical-hit' },
       { type: 'enemy-sent-out', trainer: 'MAYA', name: 'Pidgey' },
       { type: 'no-pp', user: 'player', move: 'Tackle' },
@@ -98,7 +98,7 @@ describe('battleEventCry', () => {
       { type: 'ball-thrown', name: 'Pidgey' },
       { type: 'broke-free', name: 'Pidgey' },
       { type: 'critical-hit' },
-      { type: 'missed', user: 'enemy' },
+      { type: 'missed', user: 'enemy', name: 'Pidgey' },
     ] as const) {
       expect(battleEventCry(event), event.type).toBeNull();
     }

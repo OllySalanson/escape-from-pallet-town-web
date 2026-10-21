@@ -69,7 +69,12 @@ try {
   // The first message is written with the lab out of reach, so it is the one
   // kept in the pack; the voice message later goes straight through.
   await page.send('Network.enable');
-  await page.send('Network.setBlockedURLs', { urls: ['*supabase.co*'] });
+  // Out of reach the way a player with no internet is: nothing gets through,
+  // and the browser says it is offline (a headless Chromium otherwise sits on
+  // the bot check, which a person would pass in a second).
+  const offline = (yes) => page.evaluate(`Object.defineProperty(Navigator.prototype, 'onLine', { get: () => ${!yes}, configurable: true }); true`);
+  await page.send('Network.setBlockedURLs', { urls: ['*supabase.co*', '*challenges.cloudflare.com*'] });
+  await offline(true);
   await page.waitFor(sceneIs('title'));
   await sleep(600);
   const tab = await page.evaluate(`(() => { const t = document.querySelector('.feedback-tab'); if (!t) return null; const r = t.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, hidden: t.hidden }; })()`);
@@ -141,6 +146,7 @@ try {
   // really reaches the lab.
   if (live) {
     await page.send('Network.setBlockedURLs', { urls: [] });
+    await offline(false);
     await page.evaluate(`window.dispatchEvent(new Event('online'))`);
     await page.waitFor(`${outbox}.then((all) => JSON.parse(all).length === 0)`, { what: 'the kept message to go once the browser is back online', timeoutMs: 30_000 })
       .then(() => { sentTags.push(tag); check(true, 'back online, the kept message goes by itself'); })

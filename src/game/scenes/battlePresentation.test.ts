@@ -25,6 +25,7 @@ import {
   MAKE_ROOM_PAGE,
   MOVE_COMMAND_HEIGHT,
   formatPackRoomRow,
+  packRoomRowForm,
   makeRoomPromptLayout,
   makeRoomRowLayout,
   packRoomPrompt,
@@ -38,6 +39,9 @@ import {
   formatMoveCommand,
   BATTLE_PANEL,
   formatPartyRow,
+  partyRowForm,
+  partyRowRoom,
+  PARTY_ROW_FORMS,
   levelLabel,
   mainCommandColumns,
   mainCommandLayout,
@@ -108,27 +112,65 @@ describe('battle presentation', () => {
 
   it('writes a level so it cannot be read as a digit, and names every combatant one way', () => {
     expect(levelLabel(6)).toBe('Lv 6');
-    expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' })).toBe('Foe PIDGEY fainted!');
+    expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' })).toBe(
+      'Foe PIDGEY fainted!',
+    );
     expect(
-      eventToMessage({ type: 'status-applied', user: 'player', name: 'Squirtle', status: 'confusion' }),
+      eventToMessage({
+        type: 'status-applied',
+        user: 'player',
+        name: 'Squirtle',
+        status: 'confusion',
+      }),
     ).toBe('Your SQUIRTLE became confused!');
-    expect(formatPartyRow({ name: 'Squirtle', level: 5, currentHp: 17, maxHp: 17, isFainted: false }))
-      .toBe('SQUIRTLE Lv 5 HP 17/17');
-    expect(formatPartyRow({ name: 'Squirtle', level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
-      .toBe('SQUIRTLE Lv 5 FNT');
+    expect(
+      formatPartyRow({ name: 'Squirtle', level: 5, currentHp: 17, maxHp: 17, isFainted: false }),
+    ).toBe('SQUIRTLE Lv 5 HP 17/17');
+    expect(
+      formatPartyRow({ name: 'Squirtle', level: 5, currentHp: 0, maxHp: 17, isFainted: true }),
+    ).toBe('SQUIRTLE Lv 5 FNT');
   });
 
-  it('calls a wild Pokemon Wild and a trainer\'s Foe, as the banner over its plate does', () => {
+  it('writes the party list in the longest form every row fits, the same form for all', () => {
+    const squirtle = { name: 'Squirtle', level: 5, currentHp: 17, maxHp: 17, isFainted: false };
+    const butterfree = {
+      name: 'Butterfree',
+      level: 14,
+      currentHp: 32,
+      maxHp: 32,
+      isFainted: false,
+    };
+    const fainted = { name: 'Butterfree', level: 14, currentHp: 0, maxHp: 32, isFainted: true };
+    expect(formatPartyRow(butterfree, 1)).toBe('BUTTERFREE Lv 14 32/32');
+    expect(formatPartyRow(butterfree, 2)).toBe('BUTTERFREE 32/32');
+    expect(formatPartyRow(fainted, 2)).toBe('BUTTERFREE FNT');
+    const width = (row: string): number => row.length * 5.6;
+    expect(partyRowForm([squirtle, squirtle], 11, width)).toBe(0);
+    // In the right-hand column the full row is 140 pixels against 131.
+    expect(partyRowForm([squirtle, butterfree], 11, width)).toBe(1);
+    expect(width(formatPartyRow(butterfree, 1))).toBeLessThanOrEqual(partyRowRoom(1, 11));
+    expect(partyRowForm([squirtle, butterfree], 11, () => 999)).toBe(PARTY_ROW_FORMS - 1);
+  });
+
+  it("calls a wild Pokemon Wild and a trainer's Foe, as the banner over its plate does", () => {
     const wild = foeWordFor({ trainer: false });
     const trainer = foeWordFor({ trainer: true });
-    expect(eventToMessage({ type: 'used-move', user: 'enemy', name: 'Rattata', move: 'Tackle' }, wild)).toBe(
-      'Wild RATTATA used TACKLE!',
+    expect(
+      eventToMessage({ type: 'used-move', user: 'enemy', name: 'Rattata', move: 'Tackle' }, wild),
+    ).toBe('Wild RATTATA used TACKLE!');
+    expect(
+      eventToMessage(
+        { type: 'stat-stage-changed', user: 'enemy', name: 'Rattata', stat: 'attack', stages: -1 },
+        wild,
+      ),
+    ).toBe("Wild RATTATA's Attack fell!");
+    expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' }, trainer)).toBe(
+      'Foe PIDGEY fainted!',
     );
-    expect(eventToMessage({ type: 'stat-stage-changed', user: 'enemy', name: 'Rattata', stat: 'attack', stages: -1 }, wild))
-      .toBe("Wild RATTATA's Attack fell!");
-    expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' }, trainer)).toBe('Foe PIDGEY fainted!');
     // The player's own side is Your whoever they are fighting.
-    expect(eventToMessage({ type: 'fainted', user: 'player', name: 'Squirtle' }, wild)).toBe('Your SQUIRTLE fainted!');
+    expect(eventToMessage({ type: 'fainted', user: 'player', name: 'Squirtle' }, wild)).toBe(
+      'Your SQUIRTLE fainted!',
+    );
   });
 
   it('names the key that cancels, and says a refusal on the prompt line beside the list', () => {
@@ -168,21 +210,29 @@ describe('battle presentation', () => {
     });
   });
 
-  it('warns when the attacker\'s own signature move is resisted', () => {
-    const guidance = describeMoveGuidance({ base: VINE_WHIP, pp: 20 }, [PokemonType.Grass, PokemonType.Poison], {
-      name: 'Bulbasaur',
-      types: [PokemonType.Grass, PokemonType.Poison],
-    });
+  it("warns when the attacker's own signature move is resisted", () => {
+    const guidance = describeMoveGuidance(
+      { base: VINE_WHIP, pp: 20 },
+      [PokemonType.Grass, PokemonType.Poison],
+      {
+        name: 'Bulbasaur',
+        types: [PokemonType.Grass, PokemonType.Poison],
+      },
+    );
 
     expect(guidance.matchup).toBe('vs BULBASAUR: RESISTED x0.25');
     expect(guidance.tone).toBe('bad');
   });
 
   it('reports a neutral matchup rather than staying silent about it', () => {
-    const guidance = describeMoveGuidance({ base: TACKLE, pp: 18 }, [PokemonType.Grass, PokemonType.Poison], {
-      name: 'Pidgey',
-      types: [PokemonType.Normal, PokemonType.Flying],
-    });
+    const guidance = describeMoveGuidance(
+      { base: TACKLE, pp: 18 },
+      [PokemonType.Grass, PokemonType.Poison],
+      {
+        name: 'Pidgey',
+        types: [PokemonType.Normal, PokemonType.Flying],
+      },
+    );
 
     expect(guidance.summary).toBe('NORMAL · PHYSICAL · POWER 35 · PP 18/35');
     expect(guidance.matchup).toBe('vs PIDGEY: NORMAL DAMAGE x1');
@@ -283,14 +333,18 @@ describe('battle presentation', () => {
     expect(battleSceneSource).not.toContain('0x111827');
     expect(battleSceneSource).not.toContain('0x93c5fd');
     expect(battleSceneSource).not.toContain('text.setBackgroundColor');
-    expect(battleSceneSource).toContain('drawPixelWindow(frame, BATTLE_PANEL, { fill: WINDOW_CREAM });');
+    expect(battleSceneSource).toContain(
+      'drawPixelWindow(frame, BATTLE_PANEL, { fill: WINDOW_CREAM });',
+    );
     expect(battleSceneSource).toContain('...BATTLE_PANEL,');
-    expect(battleSceneSource).toContain(".setInteractive({ useHandCursor: true })");
+    expect(battleSceneSource).toContain('.setInteractive({ useHandCursor: true })');
     expect(battleSceneSource).toContain(".on('pointerdown'");
   });
 
   it('advances opening narration before presenting the actionable command menu', () => {
-    const narration = new TypewriterQueue(battleOpeningMessages(undefined, ['Bulbasaur'], ['Pidgey']));
+    const narration = new TypewriterQueue(
+      battleOpeningMessages(undefined, ['Bulbasaur'], ['Pidgey']),
+    );
     narration.skip();
 
     expect(narration.advance()).toBe(false);
@@ -344,8 +398,12 @@ describe('battle presentation', () => {
 
     it('carries the time left once the price is a large share of it', () => {
       expect(formatHunterFleeCommand(60_000, 84_000)).toBe('FLEE -60s OF 84s');
-      expect(formatHunterFleeCommand(40_000, 40_000 / HUNTER_FLEE_WARNING_SHARE)).toBe('FLEE -40s OF 80s');
-      expect(formatHunterFleeCommand(40_000, 40_000 / HUNTER_FLEE_WARNING_SHARE + 1_000)).toBe('FLEE -40s');
+      expect(formatHunterFleeCommand(40_000, 40_000 / HUNTER_FLEE_WARNING_SHARE)).toBe(
+        'FLEE -40s OF 80s',
+      );
+      expect(formatHunterFleeCommand(40_000, 40_000 / HUNTER_FLEE_WARNING_SHARE + 1_000)).toBe(
+        'FLEE -40s',
+      );
     });
 
     it('says what the escape does when it costs everything that is left', () => {
@@ -366,7 +424,6 @@ describe('what a status condition reads like', () => {
       eventToMessage({ type: 'status-applied', user: 'enemy', name: 'Pidgey', status });
     expect(applied('poison')).toBe('Foe PIDGEY was poisoned!');
     expect(applied('burn')).toBe('Foe PIDGEY was burned!');
-    expect(applied('paralysis')).toBe('Foe PIDGEY was paralysed!');
     expect(applied('sleep')).toBe('Foe PIDGEY fell asleep!');
     expect(applied('freeze')).toBe('Foe PIDGEY was frozen solid!');
     expect(applied('confusion')).toBe('Foe PIDGEY became confused!');
@@ -375,15 +432,88 @@ describe('what a status condition reads like', () => {
   it('says why a turn was lost in the words of the condition that took it', () => {
     const held = (status: PrimaryStatus): string =>
       eventToMessage({ type: 'status-prevented', user: 'player', name: 'Squirtle', status });
-    expect(held('paralysis')).toBe("Your SQUIRTLE is fully paralysed and can't move!");
     expect(held('sleep')).toBe('Your SQUIRTLE is fast asleep!');
     expect(held('freeze')).toBe('Your SQUIRTLE is frozen solid!');
   });
 
-  it('keeps the adjectival phrasing where the line names the condition in passing', () => {
+  it('says paralysis may stop a Pokemon moving when it lands, and that it did when it does, as FireRed does', () => {
     expect(
-      eventToMessage({ type: 'status-damage', user: 'player', name: 'Squirtle', status: 'burn', damage: 4 }),
-    ).toBe('Your SQUIRTLE is hurt by a burn!');
+      eventToMessage({
+        type: 'status-applied',
+        user: 'enemy',
+        name: 'Pidgey',
+        status: 'paralysis',
+      }),
+    ).toBe('Foe PIDGEY is paralysed! It may be unable to move!');
+    expect(
+      eventToMessage({
+        type: 'status-prevented',
+        user: 'player',
+        name: 'Squirtle',
+        status: 'paralysis',
+      }),
+    ).toBe("Your SQUIRTLE is paralysed! It can't move!");
+  });
+
+  it('says a burn hurts a Pokemon as its own burn, and poison as poison, as FireRed does', () => {
+    expect(
+      eventToMessage({
+        type: 'status-damage',
+        user: 'player',
+        name: 'Squirtle',
+        status: 'burn',
+        damage: 4,
+      }),
+    ).toBe('Your SQUIRTLE is hurt by its burn!');
+    expect(
+      eventToMessage({
+        type: 'status-damage',
+        user: 'enemy',
+        name: 'Pidgey',
+        status: 'poison',
+        damage: 2,
+      }),
+    ).toBe('Foe PIDGEY is hurt by poison!');
+  });
+
+  it('says a confused Pokemon is confused, then that it hurt itself in its confusion, as FireRed does', () => {
+    expect(eventToMessage({ type: 'confused', user: 'player', name: 'Squirtle' })).toBe(
+      'Your SQUIRTLE is confused!',
+    );
+    expect(eventToMessage({ type: 'confused', user: 'enemy', name: 'Pidgey' }, 'Wild')).toBe(
+      'Wild PIDGEY is confused!',
+    );
+    expect(
+      eventToMessage({ type: 'confusion-self-hit', user: 'player', name: 'Squirtle', damage: 3 }),
+    ).toBe('It hurt itself in its confusion!');
+  });
+
+  it('says a Pokemon that flinched simply flinched, as FireRed does', () => {
+    expect(eventToMessage({ type: 'flinched', user: 'player', name: 'Charmander' })).toBe(
+      'Your CHARMANDER flinched!',
+    );
+    expect(eventToMessage({ type: 'flinched', user: 'enemy', name: 'Rattata' }, 'Wild')).toBe(
+      'Wild RATTATA flinched!',
+    );
+  });
+
+  it('says a Pokemon hurt by its own move is hit with recoil, as FireRed does', () => {
+    expect(eventToMessage({ type: 'recoil', user: 'player', name: 'Pikachu', damage: 6 })).toBe(
+      'Your PIKACHU is hit with recoil!',
+    );
+    expect(
+      eventToMessage({ type: 'recoil', user: 'enemy', name: 'Rattata', damage: 2 }, 'Wild'),
+    ).toBe('Wild RATTATA is hit with recoil!');
+  });
+
+  it('says what a two-turn move is doing on its first turn, as FireRed does', () => {
+    const charging = (move: string, user: 'player' | 'enemy' = 'player') =>
+      eventToMessage({ type: 'charging', user, name: 'Bulbasaur', move }, 'Wild');
+    expect(charging('Solar Beam')).toBe('Your BULBASAUR took in sunlight!');
+    expect(charging('Dig', 'enemy')).toBe('Wild BULBASAUR dug a hole!');
+    expect(charging('Skull Bash')).toBe('Your BULBASAUR lowered its head!');
+    expect(charging('Sky Attack')).toBe('Your BULBASAUR is glowing!');
+    expect(charging('Bounce')).toBe('Your BULBASAUR sprang up!');
   });
 });
 
@@ -402,14 +532,27 @@ describe('making room for a catch from inside the fight', () => {
     );
     // Money stacks on a square, so a press puts down a square's worth and the
     // row counts it as the sum it is (playtest 29 B6, T5).
-    expect(formatPackRoomRow({ itemId: 'money', displayName: 'Pokédollars', carried: 300, squares: 1 })).toBe(
-      'POKéDOLLARS \u20bd300 · 1sq',
-    );
+    expect(
+      formatPackRoomRow({ itemId: 'money', displayName: 'Pokédollars', carried: 300, squares: 1 }),
+    ).toBe('POKéDOLLARS \u20bd300 · 1sq');
     expect(packRoomPrompt({ itemId: 'money', drops: 50, squares: 1, freesEnough: false })).toBe(
       '\u20bd50 frees 1 square - not enough yet.',
     );
     // The row that changes nothing says so in the same place.
     expect(packRoomPrompt()).toBe('Keep everything. The catch is off.');
+  });
+
+  it('writes a page in the longest form every row on it fits', () => {
+    const disc = { displayName: 'TM09 Bullet Seed', carried: 1, squares: 1 };
+    const potion = { displayName: 'Super Potion', carried: 2, squares: 2 };
+    expect(formatPackRoomRow(disc, 1)).toBe('TM09 BULLET SEED x1');
+    expect(formatPackRoomRow(disc, 2)).toBe('TM09 BULLET SEED');
+    const width = (row: string): number => row.length * 5.6;
+    // Short names keep their squares; one disc on the page drops them all.
+    expect(packRoomRowForm([potion, potion, undefined], 10, width)).toBe(0);
+    expect(packRoomRowForm([potion, disc, undefined], 10, width)).toBe(1);
+    // KEEP THE PACK is never shortened, so it never decides the form.
+    expect(packRoomRowForm([undefined], 10, () => 1_000)).toBe(0);
   });
 
   it('seats its prompt and every row inside the one battle panel', () => {
@@ -432,7 +575,9 @@ describe('the small wording faults the battles playtest found', () => {
     expect(eventToMessage({ type: 'ball-thrown', name: 'Pikachu', ball: 'Poké Ball' })).toBe(
       'Threw a POKé BALL at PIKACHU!',
     );
-    expect(eventToMessage({ type: 'ball-thrown', name: 'Pikachu' })).toBe('Threw a POKé BALL at PIKACHU!');
+    expect(eventToMessage({ type: 'ball-thrown', name: 'Pikachu' })).toBe(
+      'Threw a POKé BALL at PIKACHU!',
+    );
   });
 
   it('writes POKé with a small accent in every list, as the command grid does', () => {
@@ -440,24 +585,72 @@ describe('the small wording faults the battles playtest found', () => {
     expect(itemTargetPrompt({ displayName: 'Poké Ball' })).toBe('Use POKé BALL on whom?');
   });
 
-  it("has a trainer send their next Pokemon out in their own name, not the player's \"Go\"", () => {
+  it('has a trainer send their next Pokemon out in their own name, not the player\'s "Go"', () => {
     expect(eventToMessage({ type: 'enemy-sent-out', trainer: 'MAYA', name: 'Pikachu' })).toBe(
       'MAYA sent out PIKACHU!',
     );
   });
 
   it('says that Splash did nothing, as FireRed does', () => {
-    expect(eventToMessage({ type: 'nothing-happened', user: 'enemy' })).toBe('But nothing happened!');
+    expect(eventToMessage({ type: 'nothing-happened', user: 'enemy' })).toBe(
+      'But nothing happened!',
+    );
+  });
+
+  it("says a Shed Skin cured its problem, in FireRed's own words", () => {
+    const line = (status: string) =>
+      eventToMessage(
+        {
+          type: 'ability',
+          user: 'enemy',
+          name: 'Ekans',
+          ability: 'SHED SKIN',
+          effect: 'shed',
+          status,
+        } as never,
+        'Wild',
+      );
+    expect(line('poison')).toBe("Wild EKANS's SHED SKIN cured its poison problem!");
+    expect(line('burn')).toBe("Wild EKANS's SHED SKIN cured its burn problem!");
+    expect(line('paralysis')).toBe("Wild EKANS's SHED SKIN cured its paralysis problem!");
+    expect(line('sleep')).toBe("Wild EKANS's SHED SKIN cured its sleep problem!");
+    expect(line('freeze')).toBe("Wild EKANS's SHED SKIN cured its ice problem!");
   });
 
   it('names a status an ability kept off, shed or cleared as a thing, never an adjective (playtest 38 #81)', () => {
     const line = (effect: string, status: string, ability = 'INSOMNIA') =>
-      eventToMessage({ type: 'ability', user: 'player', name: 'Drowzee', ability, effect, status } as never);
-    expect(line('blocked-status', 'sleep')).toBe("Your DROWZEE's INSOMNIA kept sleep off it!");
-    expect(line('blocked-status', 'freeze', 'MAGMA ARMOR')).toBe("Your DROWZEE's MAGMA ARMOR kept freezing off it!");
-    expect(line('blocked-status', 'confusion', 'OWN TEMPO')).toBe("Your DROWZEE's OWN TEMPO kept confusion off it!");
-    expect(line('shed', 'sleep', 'SHED SKIN')).toBe("Your DROWZEE's SHED SKIN shed sleep with its skin!");
-    expect(line('blocked-status', 'burn', 'WATER VEIL')).toBe("Your DROWZEE's WATER VEIL kept a burn off it!");
+      eventToMessage({
+        type: 'ability',
+        user: 'player',
+        name: 'Drowzee',
+        ability,
+        effect,
+        status,
+      } as never);
+    expect(line('blocked-status', 'freeze', 'MAGMA ARMOR')).toBe(
+      "Your DROWZEE's MAGMA ARMOR kept freezing off it!",
+    );
+  });
+
+  it("says an ability refused a status in FireRed's own words", () => {
+    const line = (status: string | undefined, ability: string) =>
+      eventToMessage(
+        {
+          type: 'ability',
+          user: 'enemy',
+          name: 'Snorlax',
+          ability,
+          effect: 'blocked-status',
+          status,
+        } as never,
+        'Wild',
+      );
+    expect(line('sleep', 'INSOMNIA')).toBe('Wild SNORLAX stayed awake using its INSOMNIA!');
+    expect(line('paralysis', 'LIMBER')).toBe("Wild SNORLAX's LIMBER prevents paralysis!");
+    expect(line('poison', 'IMMUNITY')).toBe("Wild SNORLAX's IMMUNITY prevents poisoning!");
+    expect(line('burn', 'WATER VEIL')).toBe("Wild SNORLAX's WATER VEIL prevents burns!");
+    expect(line('confusion', 'OWN TEMPO')).toBe("Wild SNORLAX's OWN TEMPO prevents confusion!");
+    expect(line(undefined, 'INNER FOCUS')).toBe("Wild SNORLAX's INNER FOCUS prevents flinching!");
   });
 
   it("names the Pokemon a move did not affect, as FireRed's line does", () => {
@@ -515,9 +708,9 @@ describe("the ball list's help line", () => {
   const ball = { effect: { type: 'capture-modifier', multiplier: 1 } };
   it('says what the throw would catch it with now, as RUN says its odds', () => {
     expect(describeBallGuidance(ball, 0.34)).toBe('Standard catch rate. 34% to catch it now.');
-    expect(describeBallGuidance({ effect: { type: 'capture-modifier', multiplier: 1.5 } }, 0.5)).toBe(
-      '1.5x catch rate. 50% to catch it now.',
-    );
+    expect(
+      describeBallGuidance({ effect: { type: 'capture-modifier', multiplier: 1.5 } }, 0.5),
+    ).toBe('1.5x catch rate. 50% to catch it now.');
   });
 
   it('never calls a small chance nothing', () => {
@@ -539,8 +732,18 @@ describe('formatWildEscapeCommand', () => {
 describe('a status tag moved line by line', () => {
   it('reads SLP until the line that wakes the Pokemon, then CNF until it snaps out', () => {
     const woke = { type: 'status-cured', user: 'enemy', name: 'PIDGEY', status: 'sleep' } as const;
-    const snapped = { type: 'status-cured', user: 'enemy', name: 'PIDGEY', status: 'confusion' } as const;
-    const confused = { type: 'status-applied', user: 'enemy', name: 'PIDGEY', status: 'confusion' } as const;
+    const snapped = {
+      type: 'status-cured',
+      user: 'enemy',
+      name: 'PIDGEY',
+      status: 'confusion',
+    } as const;
+    const confused = {
+      type: 'status-applied',
+      user: 'enemy',
+      name: 'PIDGEY',
+      status: 'confusion',
+    } as const;
     // Asleep going in; confused, woken and snapped out of it by the turn's end.
     const before = statusBeforeLines({ primary: null, confused: false }, [confused, woke, snapped]);
     expect(shownStatusLabel(before)).toBe('SLP');
@@ -560,12 +763,16 @@ describe('a status move caption', () => {
       { name: 'Pidgey', types: [PokemonType.Normal, PokemonType.Flying] },
     );
     expect(guidance.summary).toBe('GRASS · STATUS · PP 10/10');
-    expect(guidance.matchup).toBe('Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.');
+    expect(guidance.matchup).toBe(
+      'Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
+    );
     expect(captionBySentence(guidance.matchup)).toEqual([
       'Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
       'Seeds the target, sapping 1/8 of its HP each turn.',
     ]);
-    expect(captionBySentence('vs PIDGEY: NORMAL DAMAGE x1')).toEqual(['vs PIDGEY: NORMAL DAMAGE x1']);
+    expect(captionBySentence('vs PIDGEY: NORMAL DAMAGE x1')).toEqual([
+      'vs PIDGEY: NORMAL DAMAGE x1',
+    ]);
   });
 });
 
@@ -573,7 +780,10 @@ describe('statusTagSeat', () => {
   const plate = { home: 82, hpLabelX: 15, levelLeft: 112 };
 
   it('stands where it always stood when the name leaves room', () => {
-    expect(statusTagSeat({ ...plate, nameRight: 50, tagWidth: 18 })).toEqual({ row: 'name', x: 82 });
+    expect(statusTagSeat({ ...plate, nameRight: 50, tagWidth: 18 })).toEqual({
+      row: 'name',
+      x: 82,
+    });
   });
 
   it('follows a longer name rather than running into it', () => {
@@ -592,20 +802,36 @@ describe('statusTagSeat', () => {
 describe('a status move on a Pokemon that already has one', () => {
   it("says FireRed's line for the status it already has (playtest 47)", () => {
     // Sing on a sleeping Charmander said "already has a status condition!".
-    expect(eventToMessage({ type: 'status-already', user: 'player', name: 'Charmander', status: 'sleep' })).toBe(
-      'Your CHARMANDER is already asleep!',
-    );
-    expect(eventToMessage({ type: 'status-already', user: 'enemy', name: 'Pidgey', status: 'confusion' })).toBe(
-      'Foe PIDGEY is already confused!',
-    );
-    expect(eventToMessage({ type: 'status-already', user: 'enemy', name: 'Pidgey', status: 'burn' })).toBe(
-      'Foe PIDGEY already has a burn.',
-    );
+    expect(
+      eventToMessage({
+        type: 'status-already',
+        user: 'player',
+        name: 'Charmander',
+        status: 'sleep',
+      }),
+    ).toBe('Your CHARMANDER is already asleep!');
+    expect(
+      eventToMessage({
+        type: 'status-already',
+        user: 'enemy',
+        name: 'Pidgey',
+        status: 'confusion',
+      }),
+    ).toBe('Foe PIDGEY is already confused!');
+    expect(
+      eventToMessage({ type: 'status-already', user: 'enemy', name: 'Pidgey', status: 'burn' }),
+    ).toBe('Foe PIDGEY already has a burn.');
   });
 
   it('fails a move for a different status, as FireRed does', () => {
     expect(
-      eventToMessage({ type: 'status-already', user: 'player', name: 'Charmander', status: 'sleep', held: 'poison' }),
+      eventToMessage({
+        type: 'status-already',
+        user: 'player',
+        name: 'Charmander',
+        status: 'sleep',
+        held: 'poison',
+      }),
     ).toBe('But it failed!');
   });
 });

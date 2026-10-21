@@ -3180,6 +3180,15 @@ button {
 :where(.pixel-ui[data-room='tight']) .px-dossier-deeds {
   order: -1;
 }
+/* Stacked, the portrait goes last. It is one block 64 game pixels tall, and a
+   MORE strip never cuts a row through its waist, so wherever the fold met it
+   the strip took the whole figure: the raid's party pane at 640x480 was the
+   vitals, the gear and a blank band half the pane deep over "2 MORE". The
+   experience, the stats and the moves are a line at a time, so the fold falls
+   between two of them and the pane is full to its strip. */
+:where(.pixel-ui[data-room='tight']) .px-dossier-figure {
+  order: 1;
+}
 /* The foot is on what scrolls, never on the pane: `.px-scroll` sets its own
    bottom padding to nothing because a sticky MORE strip sticks to the content
    edge and leaves a pane's bottom padding showing the tops of the next line's

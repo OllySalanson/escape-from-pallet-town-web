@@ -48,6 +48,17 @@ const tryButtons = (markup: string): string[] =>
   [...markup.matchAll(/<button[^>]*data-try="(walk|raid)"[^>]*>/g)].map((match) => match[0]);
 
 describe('the map maker screen', () => {
+  it('plants "an underground path", "some crates" and "two crates", never "a underground path"', () => {
+    const markup = makerScreen({ ...state(SAMPLE, false), openGroups: PLANT_GROUPS });
+    const helps = [...markup.matchAll(/data-help="(Plants [^"]*)"/g)].map((match) => match[1]);
+    expect(helps.some((help) => help.startsWith('Plants an underground path with its top-left corner'))).toBe(true);
+    expect(helps.some((help) => help.startsWith('Plants some crates with their top-left corner'))).toBe(true);
+    expect(helps.some((help) => help.startsWith('Plants two crates with their top-left corner'))).toBe(true);
+    expect(helps.some((help) => help.startsWith('Plants a block of flats with its top-left corner'))).toBe(true);
+    expect(helps.filter((help) => /^Plants a [aeiou]/i.test(help))).toEqual([]);
+    expect(markup).toContain('Chooses a drop-in, an exit, an item spot,');
+  });
+
   it('draws no field the cursor cannot come back to after the screen is drawn again', () => {
     // A change to a field draws the maker again, and the cursor returns only to
     // a control it can rest on: a dropdown left off that list took one arrow
