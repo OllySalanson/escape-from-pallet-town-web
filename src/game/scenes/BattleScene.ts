@@ -2771,14 +2771,14 @@ export class BattleScene extends Phaser.Scene {
     // Already out means out in *either* slot: a double battle can otherwise be
     // asked to put the same Pokemon on the field twice.
     // Fainted is asked first: the Pokemon that just fell is still in its slot,
-    // and "already out" is the wrong thing to say about it. The line is
-    // FireRed's own (`gText_PkmnHasNoEnergy`).
+    // and "already in battle" is the wrong thing to say about it. Both lines
+    // are FireRed's own (`gText_PkmnHasNoEnergy`, `gText_PkmnAlreadyInBattle`).
     if (pokemon.isFainted) {
       this.showPartyMessage(`${pokemon.name.toUpperCase()} has no energy left to battle!`);
       return;
     }
     if (playerCombatants(this.state).some((combatant) => combatant.pokemon === pokemon)) {
-      this.showPartyMessage(`${pokemon.name.toUpperCase()} is already out!`);
+      this.showPartyMessage(`${pokemon.name.toUpperCase()} is already in battle!`);
       return;
     }
 
@@ -2981,7 +2981,7 @@ export class BattleScene extends Phaser.Scene {
     this.showNextCombatMessage();
   }
 
-  /** Every line shown here is a refusal: already out, fainted, nothing to heal. */
+  /** Every line shown here is a refusal: already in battle, fainted, nothing to heal. */
   private showPartyMessage(message: string): void {
     audioManager.play('denied');
     this.partyMessage = message;

@@ -455,3 +455,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `experienceGainedLine` in `battlePresentation.ts` holds FireRed's line and `BattleScene.awardVictoryExperience` prints it. Test: that test now expects "gained N EXP. Points!" (fails before the fix).
 - How to use it: knock out any wild or trainer Pokemon - the line says how many EXP. Points it paid.
 - Seen and left: the level-up line is "grew to Lv 12!" (FireRed: "grew to LV. 12!"); `levelLabel` is the one level format every plate and list uses, so changing that line alone would make the dialogue disagree with the plate it updates.
+
+### 61. Choosing the Pokemon already fighting said "CHARMANDER is already out!"
+- What a player met: opening POKEMON in a fight and choosing the one already on the field put up "CHARMANDER is already out!", the game's own words. FireRed's party menu says "CHARMANDER is already in battle!" (`gText_PkmnAlreadyInBattle`, beside the `gText_PkmnHasNoEnergy` line this list already uses for a fainted Pokemon).
+- How reproduced: `BattleScene.test.ts` "keeps the way back on the line that says the lead is already out (playtest 47)" opens the party list with one Pokemon and chooses it.
+- What changed: `BattleScene.switchPokemon` shows FireRed's line. Tests: that test now expects "is already in battle!  ESC: cancel" (fails before the fix); `battlePresentation.test.ts`'s prompt examples use the same line.
+- How to use it: in any fight, open POKEMON and choose the one fighting - it says it is already in battle, with ESC to go back.
+- Still to check against FireRed: the move-learning question "wants to learn X, but already knows four moves." (FireRed asks it over several lines).

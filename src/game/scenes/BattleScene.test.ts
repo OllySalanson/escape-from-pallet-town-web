@@ -1633,7 +1633,7 @@ describe('the forced replacement list', () => {
     (scene as unknown as { switchPokemon(index: number): void }).switchPokemon(0);
     const texts = read(renderedTexts).map(({ text }) => text.trim());
     expect(texts).toContain('PIDGEY has no energy left to battle!');
-    expect(texts.some((text) => text.includes('already out'))).toBe(false);
+    expect(texts.some((text) => text.includes('already in battle'))).toBe(false);
   });
 });
 
@@ -1654,7 +1654,8 @@ describe('the party list with nobody else to send out', () => {
     battle.switchPokemon(0);
 
     const texts = read(renderedTexts).map(({ text }) => text.trim());
-    expect(texts).toContain('CHARMANDER is already out!  ESC: cancel');
+    // FireRed's party menu words it `gText_PkmnAlreadyInBattle`.
+    expect(texts).toContain('CHARMANDER is already in battle!  ESC: cancel');
     expect(battle.mode).toBe('party');
   });
 });

@@ -182,9 +182,9 @@ describe('battle presentation', () => {
     // A refusal keeps the way back, so "already out" with one Pokemon in the
     // party is never a dead end (playtest 47); too long for it, it says the
     // refusal alone. A forced replacement has no way back to name.
-    expect(partyPrompt({ forced: false, refusal: 'CHARMANDER is already out!' })).toEqual([
-      'CHARMANDER is already out!  ESC: cancel',
-      'CHARMANDER is already out!',
+    expect(partyPrompt({ forced: false, refusal: 'CHARMANDER is already in battle!' })).toEqual([
+      'CHARMANDER is already in battle!  ESC: cancel',
+      'CHARMANDER is already in battle!',
     ]);
     expect(partyPrompt({ forced: true, refusal: 'PIDGEY has no energy left to battle!' })).toEqual([
       'PIDGEY has no energy left to battle!',

@@ -204,7 +204,7 @@ export const CANCEL_HINT = 'ESC: cancel';
  * A refusal still names the key that cancels whenever there is one, because
  * the refusal is often the whole of the list's news: with one Pokemon in the
  * party, POKEMON lists only the one already out, and "CHARMANDER is already
- * out!" with no way back written anywhere read as a dead end (playtest 47).
+ * in battle!" with no way back written anywhere read as a dead end (playtest 47).
  * Only a refusal too long for the panel with the hint drops it.
  */
 export const partyPrompt = (state: {
