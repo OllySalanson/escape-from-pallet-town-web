@@ -920,7 +920,7 @@ export const combatPresentationSteps = (
 /**
  * The word a line of battle text puts in front of the other side's Pokemon:
  * `Wild` in a wild fight and `Foe` against anyone with a trainer, as FireRed
- * words it. A wild fight that opened "A wild RATTATA appeared!" under a WILD
+ * words it. A wild fight that opened "Wild RATTATA appeared!" under a WILD
  * banner used to go on to say "Foe RATTATA used TACKLE!".
  */
 export type FoeWord = 'Foe' | 'Wild';

@@ -264,7 +264,7 @@ describe('battle presentation', () => {
   it('opens the teaching fight by explaining the guidance surfaces', () => {
     const messages = teachingBattleMessages('Squirtle', 'Pidgey');
 
-    expect(messages[0]).toBe('A wild PIDGEY appeared!');
+    expect(messages[0]).toBe('Wild PIDGEY appeared!');
     expect(messages.join(' ')).toContain('SQUIRTLE is stronger');
     expect(messages.some((message) => message.includes('POWER'))).toBe(true);
     expect(messages.some((message) => message.includes('HP it cost you'))).toBe(true);
@@ -339,6 +339,16 @@ describe('battle presentation', () => {
     expect(battleSceneSource).toContain('...BATTLE_PANEL,');
     expect(battleSceneSource).toContain('.setInteractive({ useHandCursor: true })');
     expect(battleSceneSource).toContain(".on('pointerdown'");
+  });
+
+  it("opens a wild fight in FireRed's own words", () => {
+    // pret's sText_WildPkmnAppeared and sText_TwoWildPkmnAppeared: no article.
+    expect(battleOpeningMessages(undefined, ['Bulbasaur'], ['Zapdos'])).toEqual([
+      'Wild ZAPDOS appeared!',
+    ]);
+    expect(battleOpeningMessages(undefined, ['Bulbasaur', 'Pidgey'], ['Oddish', 'Rattata'])).toEqual([
+      'Wild ODDISH and RATTATA appeared!',
+    ]);
   });
 
   it('advances opening narration before presenting the actionable command menu', () => {
