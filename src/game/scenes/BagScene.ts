@@ -13,6 +13,7 @@ import {
   stackSizeOf,
   teachFromMachine,
   useFieldItem,
+  WONT_HAVE_EFFECT_LINE,
   type Bag,
   type ItemDefinition,
 } from '../items';
@@ -550,7 +551,7 @@ export class BagScene extends Phaser.Scene {
       return undefined;
     }
     const species = evolutionByStone(pokemon.base.id, item.id);
-    return species ? `It would evolve into ${species.name}.` : 'It will not have any effect.';
+    return species ? `It would evolve into ${species.name}.` : WONT_HAVE_EFFECT_LINE;
   }
 
   /** The row's own press: open the recipient list, or say why there is nobody to open it for. */

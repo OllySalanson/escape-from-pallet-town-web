@@ -1045,7 +1045,7 @@ describe('using an item in a battle', () => {
     expect(dialog.shownMessages).toEqual([]);
     expect((scene as unknown as { mode: string }).mode).toBe('party');
     expect(
-      read(renderedTexts).filter(({ text }) => text.includes('already at full HP')),
+      read(renderedTexts).filter(({ text }) => text.includes("It won't have any effect.")),
     ).toHaveLength(1);
   });
 

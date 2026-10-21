@@ -88,6 +88,7 @@ export {
   isHeldItemId,
   curedLine,
   hpRestoredLine,
+  WONT_HAVE_EFFECT_LINE,
   useFieldItem,
   type FieldItemUseResult,
   type HeldItemEffect,

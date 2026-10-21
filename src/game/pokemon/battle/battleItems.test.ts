@@ -110,7 +110,7 @@ describe('what a medicine refuses to do', () => {
     const use = applyBattleItem(state, ITEMS.potion, charmander);
 
     expect(use.used).toBe(false);
-    expect(use.message).toBe('CHARMANDER is already at full HP!');
+    expect(use.message).toBe("It won't have any effect.");
     expect(use.state).toBe(state);
   });
 
@@ -122,7 +122,7 @@ describe('what a medicine refuses to do', () => {
     const use = applyBattleItem(state, ITEMS.antidote, charmander);
 
     expect(use.used).toBe(false);
-    expect(use.message).toBe('It would not have any effect on CHARMANDER.');
+    expect(use.message).toBe("It won't have any effect.");
     expect(charmander.primaryStatus).toBe(PrimaryStatus.Burn);
   });
 });

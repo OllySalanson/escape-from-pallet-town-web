@@ -1289,6 +1289,13 @@ export function hpRestoredLine(name: string, amount: number): string {
 }
 
 /**
+ * What is said when medicine or a stone would do nothing to the Pokemon it is
+ * pointed at, in FireRed's party-menu words (`gText_WontHaveEffect`), the same
+ * line in a fight and out of one. Nothing is spent.
+ */
+export const WONT_HAVE_EFFECT_LINE = "It won't have any effect.";
+
+/**
  * What is said when a status is cured, in FireRed's party-menu words for each
  * (`gText_PkmnCuredOfPoison` and its neighbours in pret's `strings.c`), the
  * same line in a fight and out of one: a berry cures five different things,
@@ -1323,11 +1330,11 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       const healed = pokemon.heal(item.effect.amount);
       return healed > 0
         ? { used: true, message: hpRestoredLine(pokemon.name, healed) }
-        : { used: false, message: `${pokemon.name}'s HP is already full.` };
+        : { used: false, message: WONT_HAVE_EFFECT_LINE };
     }
     case 'cure-status':
       if (pokemon.primaryStatus !== item.effect.status) {
-        return { used: false, message: `It will not have any effect.` };
+        return { used: false, message: WONT_HAVE_EFFECT_LINE };
       }
       pokemon.primaryStatus = null;
       return { used: true, message: curedLine(pokemon.name, item.effect.status) };
@@ -1366,7 +1373,7 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       const evolution = species ? pokemon.evolveInto(species) : null;
       return evolution
         ? { used: true, message: `${was} evolved into ${evolution.to.name}!` }
-        : { used: false, message: `It will not have any effect.` };
+        : { used: false, message: WONT_HAVE_EFFECT_LINE };
     }
     case 'pack':
       // A spare pack found in the field is cargo, nothing more. Which one is

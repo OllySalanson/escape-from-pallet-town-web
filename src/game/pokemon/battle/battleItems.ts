@@ -1,4 +1,4 @@
-import { curedLine, hpRestoredLine, ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../../items';
+import { curedLine, hpRestoredLine, ItemCategory, WONT_HAVE_EFFECT_LINE, useFieldItem, type Bag, type ItemDefinition } from '../../items';
 import type { Pokemon } from '../Pokemon';
 import { playerSlotOf, unitAt, type BattleState, type SlotRef } from './battleEngine';
 
@@ -135,7 +135,7 @@ export function applyBattleItem(
   const curedOf = target.primaryStatus;
   const result = useFieldItem(item, target);
   if (!result.used) {
-    return { state, used: false, message: refusalMessage(item, name) };
+    return { state, used: false, message: refusalMessage(item) };
   }
 
   const restored = target.currentHp - healedFrom;
@@ -158,12 +158,11 @@ export function applyBattleItem(
  * Why nothing happened, said before the item is spent rather than after. A
  * refused use costs neither the item nor the turn.
  */
-function refusalMessage(item: ItemDefinition, name: string): string {
+function refusalMessage(item: ItemDefinition): string {
   switch (item.effect.type) {
     case 'heal':
-      return `${name} is already at full HP!`;
     case 'cure-status':
-      return `It would not have any effect on ${name}.`;
+      return WONT_HAVE_EFFECT_LINE;
     case 'capture-modifier':
       return `${withArticle(battleCaps(item.displayName), true)} is thrown with the BALL command.`;
     case 'material':
