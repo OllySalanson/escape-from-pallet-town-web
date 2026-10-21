@@ -83,10 +83,10 @@ describe('a landmark the world keeps worked', () => {
     }
   });
 
-  it('names on the result screen the landmark the player worked, never somebody they never met (playtest 43)', () => {
+  it('names on the result screen the landmark the player worked, in its caption’s capitals, never somebody they never met (playtest 43)', () => {
     for (const work of WORKED_LANDMARKS) {
-      const label = poiOf(work.poiId).label.toLowerCase();
-      expect(`${work.contractId}: ${work.note.toLowerCase().includes(label) ? label : work.note}`).toBe(
+      const label = poiOf(work.poiId).label;
+      expect(`${work.contractId}: ${work.note.includes(label) ? label : work.note}`).toBe(
         `${work.contractId}: ${label}`,
       );
     }
