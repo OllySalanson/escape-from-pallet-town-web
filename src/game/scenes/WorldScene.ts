@@ -771,6 +771,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly lootSprites = new Map<string, Phaser.GameObjects.Image>();
   /** A rare find's caption, so picking it up takes the writing with it. */
   private readonly prizeLabels = new Map<string, WorldLabel>();
+  private readonly prizeGleams = new Map<string, Phaser.GameObjects.Graphics>();
   private readonly activatedPoiIds = new Set<string>();
   private readonly poiSprites = new Map<string, Phaser.GameObjects.Container>();
   private readonly poiLabels = new Map<string, WorldLabel>();
@@ -2601,6 +2602,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ease: 'Sine.easeInOut',
     });
     this.mapObjects.push(gleam);
+    this.prizeGleams.set(loot.id, gleam);
 
     const label = new WorldLabel(this, {
       subject: prizeRect(loot.position),
@@ -5654,6 +5656,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.idleFigures = [];
     this.lootSprites.clear();
     this.prizeLabels.clear();
+    this.prizeGleams.clear();
     this.poiSprites.clear();
     this.poiLabels.clear();
     this.contractMarkers.clear();
@@ -6084,10 +6087,26 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** A piece nobody here will pick up any more: its mark, its gleam and its caption go. */
   private takeLootOffTheMap(loot: WorldLoot): void {
     this.collectedLootIds.add(loot.id);
-    this.lootSprites.get(loot.id)?.destroy();
-    this.lootSprites.delete(loot.id);
-    this.removeWorldLabel(this.prizeLabels.get(loot.id));
-    this.prizeLabels.delete(loot.id);
+    this.takeLootMarksOff(loot.id);
+  }
+
+  /**
+   * A piece's icon, and a prize's gleam and caption. The gleam pulses on a
+   * tween of its own, so it is stopped as well as destroyed: left behind, it
+   * shone over an empty tile until the next fight rebuilt the map.
+   */
+  private takeLootMarksOff(lootId: string): void {
+    this.lootSprites.get(lootId)?.destroy();
+    this.lootSprites.delete(lootId);
+    const gleam = this.prizeGleams.get(lootId);
+    if (gleam) {
+      this.tweens.killTweensOf(gleam);
+      gleam.destroy();
+      this.mapObjects = this.mapObjects.filter((object) => object !== gleam);
+      this.prizeGleams.delete(lootId);
+    }
+    this.removeWorldLabel(this.prizeLabels.get(lootId));
+    this.prizeLabels.delete(lootId);
   }
 
   /** Collects a piece of loot into the pack and returns what to say, as `tryCollectLootAt` always has. */
@@ -6109,13 +6128,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return lootRefusalLine(loot!.itemId, loot!.quantity, this.bag.count(loot!.itemId));
     }
 
-    const marker = this.lootSprites.get(loot!.id);
     flashScreen(this.cameras.main, 100, [250, 204, 21]);
     audioManager.play('lootPickup');
-    marker?.destroy();
-    this.lootSprites.delete(loot!.id);
-    this.removeWorldLabel(this.prizeLabels.get(loot!.id));
-    this.prizeLabels.delete(loot!.id);
+    this.takeLootMarksOff(loot!.id);
     const item = ITEMS[loot!.itemId];
     // Somebody at base is waiting on this one (`hub/errands.ts`). That it was
     // picked up is written now, as a beaten boss is, so the giver knows to ask
