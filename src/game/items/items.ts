@@ -1371,8 +1371,10 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       // Named as it was called before: a nickname, else the species it was.
       const was = pokemon.name;
       const evolution = species ? pokemon.evolveInto(species) : null;
+      // FireRed's own line (`gText_CongratsPkmnEvolved`), the one a level
+      // evolution in a fight says too, so a stone does not speak differently.
       return evolution
-        ? { used: true, message: `${was} evolved into ${evolution.to.name}!` }
+        ? { used: true, message: `Congratulations! Your ${was} evolved into ${evolution.to.name}!` }
         : { used: false, message: WONT_HAVE_EFFECT_LINE };
     }
     case 'pack':

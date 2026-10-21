@@ -550,3 +550,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: a won fight goes back to the map once its last line is read (`BattleScene.ts`); "You blacked out!" (outside a raid only) is kept. Test: `BattleScene.test.ts` "goes back to the map on its last line, with no "You won the battle!" after it" (fails before: the map never came back without the extra press).
 - How to use it: win any fight - pressing past the last experience line takes you straight back to the map.
 - Read and left: every authored trainer, the hunter and map-file trainers carry `defeatText`, so the "X was defeated!" fallback is never seen. The Day-Care's lines are FireRed's.
+
+### 75. A stone used from the pack said "Pikachu evolved into Raichu!" in the game's own words
+- What a player met: using a Thunder Stone (or any of the five stones) from the raid's pack, the pack's line read "Pikachu evolved into Raichu!", while the same evolution by level in a fight says FireRed's "Congratulations! Your CHARMANDER evolved into CHARMELEON!" (`gText_CongratsPkmnEvolved`), which FireRed also says for a stone.
+- How reproduced: `useFieldItem(thunder-stone, pikachu)` returned the old line; `evolution.test.ts` and `nickname.test.ts` pinned it.
+- What changed: `useFieldItem` in `items/items.ts` says "Congratulations! Your X evolved into Y!" (X the nickname if it has one, in the pack's own casing). Tests: `evolution.test.ts` "turns the one species that answers to it, and says so in FireRed's own words" and `nickname.test.ts` now expect FireRed's line (both fail before).
+- How to use it: use an evolution stone from the pack in a raid - the pack says "Congratulations! Your Pikachu evolved into Raichu!".
+- Read and left: medicine on a fainted Pokémon in the pack says "It will not have any effect on a fainted Pokémon." where FireRed says only "It won't have any effect."; the longer line explains the no-revive rule, so it stays.
