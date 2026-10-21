@@ -28,6 +28,7 @@ import {
 } from './battleEngine';
 import { attemptWildEscape, wildEscapeChanceFor } from './escape';
 import { PrimaryStatus } from './status';
+import { eventToMessage } from '../../scenes/battlePresentation';
 import { WeatherId } from './weather';
 
 /**
@@ -432,6 +433,49 @@ describe('the abilities that let nothing through at all', () => {
 
     expect(result.state.enemy.statStages.attack).toBe(0);
     expect(didFire(result.events, 'absorbed')).toBe(true);
+  });
+});
+
+describe("a move an ability took, said in FireRed's own words", () => {
+  const abilityLines = (events: readonly BattleEvent[]): string[] =>
+    events.filter((event) => event.type === 'ability').map((event) => eventToMessage(event));
+  const turn = (attackerMove: MoveBase, defender: Pokemon, hurt?: number): string[] => {
+    const opening = createBattleState(armed(species({ abilityId: null, name: 'Rattata' }), 20, attackerMove), defender);
+    return abilityLines(resolveTurn(hurt === undefined ? opening : hurtTo(opening, 'enemy', hurt), 0, at({})).events);
+  };
+
+  it('says a Levitate makes Ground moves miss', () => {
+    expect(turn(GROUND_STOMP, armed(species({ abilityId: 'levitate', name: 'Gastly' }), 20))).toEqual([
+      'Foe GASTLY makes GROUND moves miss with LEVITATE!',
+    ]);
+  });
+
+  it('says a Soundproof blocks the move by name', () => {
+    expect(turn(GROWL, armed(species({ abilityId: 'soundproof', name: 'Voltorb' }), 20))).toEqual([
+      "Foe VOLTORB's SOUNDPROOF blocks GROWL!",
+    ]);
+  });
+
+  it('says a Water Absorb restored HP, or made the move useless at full health', () => {
+    const lapras = (): Pokemon => armed(species({ abilityId: 'water-absorb', name: 'Lapras' }), 20);
+    const hurtLapras = lapras();
+    expect(turn(SOAK, hurtLapras, 10)).toEqual([
+      `Foe LAPRAS restored HP using its WATER ABSORB! +${Math.floor(hurtLapras.maxHp / 4)} HP`,
+    ]);
+    expect(turn(SOAK, lapras())).toEqual(["Foe LAPRAS's WATER ABSORB made SOAK useless!"]);
+  });
+
+  it('says a Flash Fire raised its Fire power, then made the next Fire move ineffective', () => {
+    const vulpix = armed(species({ abilityId: 'flash-fire', name: 'Vulpix' }), 20);
+    const first = resolveTurn(
+      createBattleState(armed(species({ abilityId: null, name: 'Rattata' }), 20, EMBER), vulpix),
+      0,
+      at({}),
+    );
+    expect(abilityLines(first.events)).toEqual(["Foe VULPIX's FLASH FIRE raised its FIRE power!"]);
+    expect(abilityLines(resolveTurn(first.state, 0, at({})).events)).toEqual([
+      "Foe VULPIX's FLASH FIRE made EMBER ineffective!",
+    ]);
   });
 });
 

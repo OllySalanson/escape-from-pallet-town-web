@@ -117,7 +117,7 @@ export function absorbs(carrier: AbilityCarrier, move: MoveBase): AbilityAbsorpt
     return null;
   }
   if (ability.blocksMoveFlag && move.flags.includes(ability.blocksMoveFlag)) {
-    return {};
+    return { blocks: true };
   }
   return ability.absorbsMoveType?.(move.type) ?? null;
 }

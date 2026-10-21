@@ -1,5 +1,5 @@
 import { isPlaytestRun } from '../../dev/playtestMode';
-import type { AbilityEffectKind } from '../AbilityBase';
+import type { AbilityEffectKind, AbsorbedOutcome } from '../AbilityBase';
 import type { MoveBase, NormalizedMoveEffects, NormalizedSecondaryEffect } from '../MoveBase';
 import { MoveCategory, MoveCharge, MoveTarget, targetsTheOtherSide } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
@@ -475,6 +475,10 @@ export type BattleEvent =
       readonly status?: StatusName;
       readonly stat?: StageStat;
       readonly amount?: number;
+      /** The move an absorbing ability took, named by its line. */
+      readonly move?: string;
+      /** How that move ended, when it healed nobody. */
+      readonly absorbed?: AbsorbedOutcome;
     };
 
 export type { StatusName } from './status';
@@ -713,7 +717,13 @@ const announceAbility = (
   state: BattleState,
   ref: SlotRef,
   effect: AbilityEffectKind,
-  detail: { readonly status?: StatusName; readonly stat?: StageStat; readonly amount?: number } = {},
+  detail: {
+    readonly status?: StatusName;
+    readonly stat?: StageStat;
+    readonly amount?: number;
+    readonly move?: string;
+    readonly absorbed?: AbsorbedOutcome;
+  } = {},
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
   const combatant = unitAt(state, ref);
   if (!combatant) {
@@ -1723,13 +1733,32 @@ const applyMove = (
             currentHp: soaked.currentHp + healed,
           });
         }
+        const wasCharged = defenderNow().abilityCharged;
         if (absorption.charges) {
           nextState = withUnit(nextState, targetRef, {
             ...defenderNow(),
             abilityCharged: true,
           });
         }
-        const said = announceAbility(nextState, targetRef, 'absorbed', { amount: healed });
+        // FireRed says each of these its own way (`battle_util.c`'s
+        // ABILITYEFFECT_ABSORBING and the Soundproof and Levitate checks).
+        const outcome: AbsorbedOutcome | undefined =
+          healed > 0
+            ? undefined
+            : absorption.charges
+              ? wasCharged
+                ? 'ineffective'
+                : 'charged'
+              : absorption.heal
+                ? 'useless'
+                : absorption.blocks
+                  ? 'blocked'
+                  : 'missed';
+        const said = announceAbility(nextState, targetRef, 'absorbed', {
+          amount: healed,
+          move: move.base.name,
+          ...(outcome ? { absorbed: outcome } : {}),
+        });
         nextState = said.state;
         events.push(...said.events);
         struck.push({

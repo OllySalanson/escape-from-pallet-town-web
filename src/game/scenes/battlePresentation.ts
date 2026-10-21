@@ -1,5 +1,6 @@
 import type { BattleEvent } from '../pokemon/battle/battleEngine';
 import { MoveCategory, type MoveBase } from '../pokemon/MoveBase';
+import type { AbsorbedOutcome } from '../pokemon/AbilityBase';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
@@ -1271,6 +1272,8 @@ const abilityLine = (
     readonly status?: string;
     readonly stat?: string;
     readonly amount?: number;
+    readonly move?: string;
+    readonly absorbed?: AbsorbedOutcome;
   },
   foe: FoeWord,
 ): string => {
@@ -1284,10 +1287,26 @@ const abilityLine = (
       return `${who} is soaking that up!`;
     case 'hardened':
       return `${who} turned the critical hit aside!`;
-    case 'absorbed':
-      return event.amount
-        ? `${who} drank it in. +${event.amount} HP`
-        : `${who} let it straight past!`;
+    // FireRed's own lines for a move an ability took instead of being hit.
+    case 'absorbed': {
+      const move = (event.move ?? 'it').toUpperCase();
+      switch (event.absorbed) {
+        case 'charged':
+          return `${who} raised its FIRE power!`;
+        case 'ineffective':
+          return `${who} made ${move} ineffective!`;
+        case 'useless':
+          return `${who} made ${move} useless!`;
+        case 'blocked':
+          return `${who} blocks ${move}!`;
+        case 'missed':
+          return `${combatantName(event, foe)} makes GROUND moves miss with ${event.ability}!`;
+        default:
+          return event.amount
+            ? `${combatantName(event, foe)} restored HP using its ${event.ability}! +${event.amount} HP`
+            : `${who} made ${move} useless!`;
+      }
+    }
     case 'blocked-status':
       return event.status
         ? `${who} kept ${statusLabel(event.status)} off it!`
