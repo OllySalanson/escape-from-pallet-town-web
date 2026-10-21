@@ -1274,6 +1274,7 @@ const abilityLine = (
     readonly amount?: number;
     readonly move?: string;
     readonly absorbed?: AbsorbedOutcome;
+    readonly target?: { readonly user: 'player' | 'enemy'; readonly name: string };
   },
   foe: FoeWord,
 ): string => {
@@ -1327,8 +1328,11 @@ const abilityLine = (
       return event.amount
         ? `${who} tasted foul! -${event.amount} HP`
         : `${who} answered the touch!`;
+    // FireRed's `sText_PkmnCutsAttackWith`, one line for each foe it cuts.
     case 'sent-out':
-      return `${who} sized up the other side!`;
+      return event.target
+        ? `${who} cuts ${event.target.user === 'player' ? `your ${event.target.name.toUpperCase()}` : combatantName(event.target, foe)}'s ${statLabel(event.stat ?? 'attack')}!`
+        : `${who} sized up the other side!`;
     case 'quickened':
       return `${who} is racing the weather!`;
     case 'hidden':

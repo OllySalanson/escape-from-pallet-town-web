@@ -837,8 +837,8 @@ describe('the multi-unit ability hooks, against imported species', () => {
     expect(unitAt(state, slotRef('player', 1))?.statStages.attack).toBe(-1);
     expect(
       openingAbilityEvents(state)
-        .filter((event) => event.type === 'stat-stage-changed')
-        .map((event) => `${event.user}${'slot' in event ? (event.slot ?? 0) : 0}`),
+        .flatMap((event) => (event.type === 'ability' && event.target ? [event.target] : []))
+        .map((target) => `${target.user}${target.slot ?? 0}`),
     ).toEqual(['player0', 'player1']);
   });
 

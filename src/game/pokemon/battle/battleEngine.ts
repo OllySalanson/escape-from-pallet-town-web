@@ -479,6 +479,8 @@ export type BattleEvent =
       readonly move?: string;
       /** How that move ended, when it healed nobody. */
       readonly absorbed?: AbsorbedOutcome;
+      /** The Pokemon an arrival's ability cut a stat of (Intimidate), named by its line. */
+      readonly target?: { readonly user: 'player' | 'enemy'; readonly slot?: number; readonly name: string };
     };
 
 export type { StatusName } from './status';
@@ -723,6 +725,7 @@ const announceAbility = (
     readonly amount?: number;
     readonly move?: string;
     readonly absorbed?: AbsorbedOutcome;
+    readonly target?: { readonly user: 'player' | 'enemy'; readonly slot?: number; readonly name: string };
   } = {},
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
   const combatant = unitAt(state, ref);
@@ -777,13 +780,27 @@ const applySendOut = (
   if (boosts.length === 0) {
     return { state, events: [] };
   }
-  const announced = announceAbility(state, ref, 'sent-out');
-  let nextState = announced.state;
-  const events: BattleEvent[] = [...announced.events];
+  // FireRed says it once for each foe it cuts, in one line ("Foe ARBOK's
+  // INTIMIDATE cuts BULBASAUR's ATTACK!", `sText_PkmnCutsAttackWith`), says
+  // nothing for a foe already at the floor, and lets a Clear Body say why it
+  // did not work - so the cut is the ability's line, not a separate fall.
+  let nextState = state;
+  const events: BattleEvent[] = [];
   for (const foe of engagedSlots(nextState, opposing(ref.side))) {
     const boosted = applyStatBoosts(nextState, foe, boosts, ref);
     nextState = boosted.state;
-    events.push(...boosted.events);
+    for (const event of boosted.events) {
+      if (event.type !== 'stat-stage-changed') {
+        events.push(event);
+        continue;
+      }
+      const cut = announceAbility(nextState, ref, 'sent-out', {
+        stat: event.stat,
+        target: { user: event.user, ...(event.slot ? { slot: event.slot } : {}), name: event.name },
+      });
+      nextState = cut.state;
+      events.push(...cut.events);
+    }
   }
   return { state: nextState, events };
 };
@@ -811,36 +828,31 @@ const openingEventsFor = (state: BattleState, ref: SlotRef): readonly BattleEven
     return [];
   }
   const ability = abilityLabel(abilityCarrier(combatant));
-  return [
-    {
-      type: 'ability',
-      user: ref.side,
-      ...inSlot(ref),
-      name: combatant.pokemon.name,
-      ability,
-      effect: 'sent-out',
-    },
-    ...engagedSlots(state, opposing(ref.side)).flatMap((foeRef): BattleEvent[] => {
-      const foe = unitAt(state, foeRef);
-      if (!foe) {
-        return [];
-      }
-      return boosts.flatMap((boost): BattleEvent[] =>
-        foe.statStages[boost.stat] === 0
-          ? []
-          : [
-              {
-                type: 'stat-stage-changed',
-                user: foeRef.side,
-                ...inSlot(foeRef),
-                name: foe.pokemon.name,
-                stat: boost.stat,
-                stages: boost.stages,
-              },
-            ],
-      );
-    }),
-  ];
+  if (!ability) {
+    return [];
+  }
+  return engagedSlots(state, opposing(ref.side)).flatMap((foeRef): BattleEvent[] => {
+    const foe = unitAt(state, foeRef);
+    if (!foe) {
+      return [];
+    }
+    return boosts.flatMap((boost): BattleEvent[] =>
+      foe.statStages[boost.stat] === 0
+        ? []
+        : [
+            {
+              type: 'ability',
+              user: ref.side,
+              ...inSlot(ref),
+              name: combatant.pokemon.name,
+              ability,
+              effect: 'sent-out',
+              stat: boost.stat,
+              target: { user: foeRef.side, ...inSlot(foeRef), name: foe.pokemon.name },
+            },
+          ],
+    );
+  });
 };
 
 /**

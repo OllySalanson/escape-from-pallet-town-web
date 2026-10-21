@@ -594,6 +594,21 @@ describe('the abilities that work off the clock, the bench and the exit', () => 
     expect(abilityEvents(switched.events).map((event) => event.effect)).toContain('sent-out');
   });
 
+  it("says an Intimidate in FireRed's one line, naming who it cut", () => {
+    const scary = armed(species({ name: 'Arbok', abilityId: 'intimidate' }), 20, TACKLE);
+    const opening = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), scary);
+
+    expect(openingAbilityEvents(opening).map((event) => eventToMessage(event))).toEqual([
+      "Foe ARBOK's INTIMIDATE cuts your BULBASAUR's Attack!",
+    ]);
+
+    const plain = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), armed(species({ name: 'Pidgey', abilityId: null }), 20));
+    const switched = replacePlayerPokemon(plain, armed(species({ name: 'Ekans', abilityId: 'intimidate' }), 20, TACKLE));
+    expect(switched.events.map((event) => eventToMessage(event, 'Wild'))).toEqual([
+      "Your EKANS's INTIMIDATE cuts Wild PIDGEY's Attack!",
+    ]);
+  });
+
   it('clears a status on the way out with Natural Cure', () => {
     const healer = armed(species({ abilityId: 'natural-cure' }), 20, TACKLE);
     const opening = createBattleState(healer, armed(species({ abilityId: null }), 20));
