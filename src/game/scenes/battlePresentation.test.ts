@@ -408,6 +408,14 @@ describe('what a status condition reads like', () => {
     ).toBe('Foe PIDGEY is hurt by poison!');
   });
 
+  it('says a confused Pokemon is confused, then that it hurt itself in its confusion, as FireRed does', () => {
+    expect(eventToMessage({ type: 'confused', user: 'player', name: 'Squirtle' })).toBe('Your SQUIRTLE is confused!');
+    expect(eventToMessage({ type: 'confused', user: 'enemy', name: 'Pidgey' }, 'Wild')).toBe('Wild PIDGEY is confused!');
+    expect(eventToMessage({ type: 'confusion-self-hit', user: 'player', name: 'Squirtle', damage: 3 })).toBe(
+      'It hurt itself in its confusion!',
+    );
+  });
+
   it('says a Pokemon that flinched simply flinched, as FireRed does', () => {
     expect(eventToMessage({ type: 'flinched', user: 'player', name: 'Charmander' })).toBe(
       'Your CHARMANDER flinched!',

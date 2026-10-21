@@ -73,6 +73,9 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return null;
     case 'status-applied':
       return withLine('statusApplied');
+    // A confused Pokemon wobbling before its move is its status showing.
+    case 'confused':
+      return withLine('statusApplied');
     case 'status-damage':
     case 'confusion-self-hit':
       return withLine('statusDamage');

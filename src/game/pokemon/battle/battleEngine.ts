@@ -372,6 +372,10 @@ export type BattleEvent =
       readonly slot?: number; readonly name: string; readonly status: PrimaryStatusType; readonly damage: number }
   | { readonly type: 'status-cured'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
+  // FireRed's "X is confused!", said every turn a confused Pokemon tries to
+  // move before the coin is tossed, so the self-hit after it needs no name.
+  | { readonly type: 'confused'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
   | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly damage: number }
   // Leech Seed, in FireRed's three lines. `seed-evaded` is "X evaded the
@@ -2515,8 +2519,9 @@ const resolveStatusBeforeMove = (
         canAct: true,
       };
     }
+    const announced: BattleEvent = { type: 'confused', user, ...slot, name };
     if (clampRandom(random()) < 0.5) {
-      return { state, events: [], canAct: true };
+      return { state, events: [announced], canAct: true };
     }
     const damage = confusionSelfHitDamage(
       combatant.pokemon,
@@ -2526,6 +2531,7 @@ const resolveStatusBeforeMove = (
     const hurt = { ...confused, currentHp: hpAfterDamage(ref.side, confused.currentHp, damage) };
     state = withUnit(state, ref, hurt);
     const events: BattleEvent[] = [
+      announced,
       { type: 'confusion-self-hit', user, ...slot, name, damage: confused.currentHp - hurt.currentHp },
     ];
     if (hurt.currentHp === 0) {

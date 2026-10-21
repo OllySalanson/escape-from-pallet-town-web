@@ -1199,6 +1199,21 @@ describe('status conditions', () => {
     expect(result.events.some((event) => event.type === 'used-move')).toBe(false);
   });
 
+  it('says a confused Pokemon is confused before every move it tries, as FireRed does', () => {
+    const hurt = enemyAction(null, (() => {
+      const rolls = [0, 0.5];
+      return () => rolls.shift() ?? 1;
+    })(), { confusionTurns: 2 });
+    const moved = enemyAction(null, () => 0.1, { confusionTurns: 2 });
+    const snapped = enemyAction(null, maximumRandom, { confusionTurns: 1 });
+    const announced = { type: 'confused', user: 'enemy', name: 'Bulbasaur' };
+
+    expect(hurt.events.slice(0, 2).map((event) => event.type)).toEqual(['confused', 'confusion-self-hit']);
+    expect(moved.events[0]).toEqual(announced);
+    expect(moved.events.some((event) => event.type === 'used-move')).toBe(true);
+    expect(snapped.events).not.toContainEqual(announced);
+  });
+
   it('snaps out of confusion and moves when the counter runs out, with no roll', () => {
     const result = enemyAction(null, maximumRandom, { confusionTurns: 1 });
     expect(result.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Bulbasaur', status: 'confusion' });

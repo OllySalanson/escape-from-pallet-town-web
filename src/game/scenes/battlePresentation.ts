@@ -1164,8 +1164,12 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
         : event.status === 'freeze'
           ? `${combatantName(event, foe)} thawed out!`
           : `${combatantName(event, foe)} snapped out of confusion!`;
+    // FireRed's sText_PkmnIsConfused, then sText_ItHurtConfusion: the name is
+    // said once, before the coin, and the self-hit is only "It".
+    case 'confused':
+      return `${combatantName(event, foe)} is confused!`;
     case 'confusion-self-hit':
-      return `${combatantName(event, foe)} hurt itself in confusion!`;
+      return 'It hurt itself in its confusion!';
     // Leech Seed, in FireRed's own words (pret/pokefirered `battle_message.c`).
     case 'seeded':
       return `${combatantName(event, foe)} was seeded!`;
