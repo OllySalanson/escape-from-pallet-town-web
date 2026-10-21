@@ -189,8 +189,8 @@ describe('objective field guide', () => {
     });
 
     expect(before.hints.join(' ')).toContain('Maya');
-    expect(before.hints.join(' ')).toContain('activates the Radio Exit');
-    expect(after.hints.join(' ')).toContain('Radio Exit is active');
+    expect(before.hints.join(' ')).toContain('activates the RADIO EXIT');
+    expect(after.hints.join(' ')).toContain('The RADIO EXIT is active at the RANGER STATION.');
 
     // Once the first contract is banked the station is worked for good: it
     // cannot be switched on again (nothing to switch) and the Radio Exit is open
@@ -204,10 +204,10 @@ describe('objective field guide', () => {
         activatedPoiIds: new Set(),
       },
     ).hints.join(' ');
-    expect(banked).not.toContain('activates the Radio Exit');
+    expect(banked).not.toContain('activates the RADIO EXIT');
     expect(banked).not.toMatch(/the ranger is back/i);
     expect(banked).toContain(
-      'Ranger Station stays switched on: the Radio Exit is open from the first second of every raid.',
+      'The RANGER STATION stays switched on: the RADIO EXIT is open from the first second of every raid.',
     );
 
     // Maya stands up again every raid, but beaten in this one she is not on the
@@ -353,13 +353,43 @@ describe('the Floodplain field notes, from a far landing', () => {
     expect(text).toContain(`The nearest landmark still to work is ${nearest.label}, `);
   });
 
+  /**
+   * Played: the field guide said "Ranger Station stays switched on: the Radio
+   * Exit is open..." straight above "The nearest open exit is RADIO EXIT", one
+   * exit spelled two ways in one list. Every other line names a place by its
+   * label, in capitals.
+   */
+  it('names the ranger station and its exit as the map labels them, in every state', () => {
+    const station = poisForMap('floodplain-relay').find((poi) => poi.id === 'floodplain-ranger-radio')!;
+    const banked = createUncontractedSession('floodplain-light');
+    const lines = [
+      guide(),
+      buildObjectiveGuide(banked, {
+        currentMapId: 'floodplain-relay',
+        currentPosition: light,
+        activatedPoiIds: new Set(['floodplain-ranger-radio']),
+        stepsTo,
+      }).hints,
+      buildObjectiveGuide(
+        { ...banked, plan: { ...banked.plan!, completedContracts: ['recover-lost-field-kit'] } },
+        { currentMapId: 'floodplain-relay', currentPosition: light, activatedPoiIds: new Set(), stepsTo },
+      ).hints,
+    ].map((hints) => hints.join(' '));
+
+    for (const text of lines) {
+      expect(text).toContain(station.label);
+      expect(text).toContain(station.unlockedExtractionLabel!);
+      expect(text).not.toMatch(/Ranger Station|Radio Exit|South Gate|Ferry Dock/);
+    }
+  });
+
   it('names the nearest open exit rather than gates across the map', () => {
     const exit = EXTRACTION_POINTS.find((point) => point.mapId === 'floodplain-relay' && point.label === 'CUTTER\'S GATE')!;
     const text = guide({ label: exit.label, position: exit.position }).join(' ');
 
     expect(text).toContain("The nearest open exit is CUTTER'S GATE, ");
-    expect(text).not.toContain('South Gate is always open');
-    expect(text).toContain('Ranger Station gives a hunter forecast and activates the Radio Exit.');
+    expect(text).not.toContain('SOUTH GATE is always open');
+    expect(text).toContain('The RANGER STATION gives a hunter forecast and activates the RADIO EXIT.');
   });
 
   it('never names a landmark it cannot walk to', () => {

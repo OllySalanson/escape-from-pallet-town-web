@@ -281,6 +281,12 @@ function laterRunHints(
     // most of them. The station keeps a line of its own, because its radio is
     // the one landmark that changes the map's ways out.
     const landmark = nearestLandmarkToWork(session, context, (poi) => poi.effect === undefined);
+    // Named as the map names them, in the capitals every other line of the
+    // guide prints a place in: typed by hand, the station's line said "Radio
+    // Exit" straight above a line saying "RADIO EXIT".
+    const station = poisForMap('floodplain-relay').find((poi) => poi.id === 'floodplain-ranger-radio');
+    const stationName = station?.label ?? 'RANGER STATION';
+    const radioExit = station?.unlockedExtractionLabel ?? 'RADIO EXIT';
     // Maya stands up again every raid, but not in the one that beat her.
     const mayaBeaten = context.defeatedTrainerIds?.has(MAYA_ID) ?? false;
     return [
@@ -291,13 +297,13 @@ function laterRunHints(
         ? landmarkHint(landmark, context)
         : 'No marked cache in reach is left to work this raid.',
       radioKept
-        ? 'Ranger Station stays switched on: the Radio Exit is open from the first second of every raid.'
+        ? `The ${stationName} stays switched on: the ${radioExit} is open from the first second of every raid.`
         : radioActive
-          ? 'Radio Exit is active at Ranger Station.'
-          : 'Ranger Station gives a hunter forecast and activates the Radio Exit.',
+          ? `The ${radioExit} is active at the ${stationName}.`
+          : `The ${stationName} gives a hunter forecast and activates the ${radioExit}.`,
       nearest
         ? `The nearest open exit is ${nearest}. Use it to bank your haul.`
-        : 'South Gate is always open; Ferry Dock opens on its signal.',
+        : 'The SOUTH GATE is always open; the FERRY DOCK opens on its signal.',
     ];
   }
   // Named and explained by the landmark itself. Every map has its own, and more
