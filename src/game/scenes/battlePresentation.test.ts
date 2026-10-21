@@ -399,10 +399,13 @@ describe('what a status condition reads like', () => {
     expect(held('freeze')).toBe('Your SQUIRTLE is frozen solid!');
   });
 
-  it('keeps the adjectival phrasing where the line names the condition in passing', () => {
+  it('says a burn hurts a Pokemon as its own burn, and poison as poison, as FireRed does', () => {
     expect(
       eventToMessage({ type: 'status-damage', user: 'player', name: 'Squirtle', status: 'burn', damage: 4 }),
-    ).toBe('Your SQUIRTLE is hurt by a burn!');
+    ).toBe('Your SQUIRTLE is hurt by its burn!');
+    expect(
+      eventToMessage({ type: 'status-damage', user: 'enemy', name: 'Pidgey', status: 'poison', damage: 2 }),
+    ).toBe('Foe PIDGEY is hurt by poison!');
   });
 });
 

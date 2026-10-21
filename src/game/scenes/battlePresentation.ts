@@ -1153,7 +1153,11 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'status-prevented':
       return `${combatantName(event, foe)} ${statusHolds(event.status)}!`;
     case 'status-damage':
-      return `${combatantName(event, foe)} is hurt by ${statusLabel(event.status)}!`;
+      // FireRed's own lines (pret's sText_PkmnHurtByPoison, sText_PkmnHurtByBurn):
+      // a burn is the Pokemon's own, "hurt by its burn", never "a burn".
+      return event.status === 'burn'
+        ? `${combatantName(event, foe)} is hurt by its burn!`
+        : `${combatantName(event, foe)} is hurt by ${statusLabel(event.status)}!`;
     case 'status-cured':
       return event.status === 'sleep'
         ? `${combatantName(event, foe)} woke up!`

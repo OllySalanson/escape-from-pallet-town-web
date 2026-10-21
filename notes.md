@@ -287,3 +287,11 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: the `heal-failed` line is FireRed's `sText_PkmnHPFull`, "Your PIDGEY's HP is full!" (`battlePresentation.ts`). Medicine at full HP keeps its own refusal ("is already at full HP!"), because that one is said before the item is spent and costs no turn, which FireRed's bag says differently and is not a battle line. Test: `BattleScene.test.ts` "says a Pokemon at full HP that tries to heal has its HP full, as FireRed does" (fails before).
 - How to use it: use Recover or Soft-Boiled at full HP - the line says the HP is full.
 - Not checked live: the line is the presentation function the dialogue prints and is shorter than lines already seen to fit one row.
+
+### 37. A burned Pokémon was "hurt by a burn!" rather than by its own
+- What a player met: at the end of every turn a burned Pokémon read "Your SQUIRTLE is hurt by a burn!" - as if some passing burn had hit it. FireRed says "Your SQUIRTLE is hurt by its burn!" (pret's `sText_PkmnHurtByBurn`); poison was already FireRed's "is hurt by poison!".
+- How reproduced: `eventToMessage` for a `status-damage` event with status `burn`; the existing test pinned the game's own wording.
+- What changed: the `status-damage` line in `battlePresentation.ts` says "is hurt by its burn!" for a burn and keeps "is hurt by poison!" for poison. Test: `battlePresentation.test.ts` "says a burn hurts a Pokemon as its own burn, and poison as poison, as FireRed does" (fails before).
+- How to use it: get burned (Ember, Flame Body) and end a turn - the line says the Pokémon is hurt by its burn.
+- Not checked live: the line is the presentation function the dialogue prints, and is the same length as lines already seen to fit one row.
+- Seen and left, other lines still in the game's own words: "X flinched and couldn't move!" (FireRed: "X flinched!"), "X was hurt by the recoil! -N HP" (FireRed: "X is hit with recoil!"), "X hurt itself in confusion!" (FireRed: "It hurt itself in its confusion!").
