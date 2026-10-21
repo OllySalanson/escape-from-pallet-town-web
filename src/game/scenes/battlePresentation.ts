@@ -1223,7 +1223,7 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
         ? `${combatantName(event, foe)} ${statusAlready(event.status)}`
         : 'But it failed!';
     case 'status-prevented':
-      return `${combatantName(event, foe)} ${statusHolds(event.status)}!`;
+      return `${combatantName(event, foe)} ${statusHolds(event.status)}`;
     case 'status-damage':
       // FireRed's own lines (pret's sText_PkmnHurtByPoison, sText_PkmnHurtByBurn):
       // a burn is the Pokemon's own, "hurt by its burn", never "a burn".
@@ -1560,17 +1560,22 @@ const statusAlready = (status: string): string =>
     confusion: 'is already confused!',
   })[status] ?? `is already ${status}!`;
 
-/** What it says when the status is the reason a turn was lost. */
+/**
+ * What it says when the status is the reason a turn was lost, stop and all:
+ * FireRed's sText_PkmnFastAsleep ends on a full stop where its neighbours
+ * shout.
+ */
 const statusHolds = (status: string): string =>
   ({
-    poison: "is hurt and can't move",
-    burn: "is burned and can't move",
+    poison: "is hurt and can't move!",
+    burn: "is burned and can't move!",
     // FireRed's sText_PkmnIsParalyzed.
-    paralysis: "is paralysed! It can't move",
-    sleep: 'is fast asleep',
-    freeze: 'is frozen solid',
-    confusion: 'is too confused to move',
-  })[status] ?? `is ${status} and can't move`;
+    paralysis: "is paralysed! It can't move!",
+    sleep: 'is fast asleep.',
+    // FireRed's sText_PkmnIsFrozen.
+    freeze: 'is frozen solid!',
+    confusion: 'is too confused to move!',
+  })[status] ?? `is ${status} and can't move!`;
 
 /** The adjectival one, for the lines that name the condition in passing. */
 // A status as a thing a Pokemon can be hurt by, keep off, shed or clear up -

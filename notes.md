@@ -585,3 +585,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: the freeze line of `status-cured` says "X was defrosted!". Test: `battlePresentation.test.ts` "says a thawed Pokemon was defrosted, in FireRed's own words" (fails before).
 - How to use it: freeze a Pokémon (Ice Beam) and wait - it comes out of it with "X was defrosted!".
 - Read and left: the Ice Heal's field line "was thawed out." is FireRed's own (`gText_PkmnThawedOut`). Later candidates, both checked in `battle_message.c`: "The sunlight turned harsh!" (FireRed: "The sunlight got bright!") and the hail chip "is buffeted by the hail!" (FireRed: "is pelted by HAIL!") - neither is reachable yet (no place has sun or hail, and nothing learns Sunny Day or Hail by level); a ball thrown at a trainer's Pokémon says "You can't catch a trainer's POKéMON!" where FireRed says "The TRAINER blocked the BALL!" then "Don't be a thief!".
+
+### 80. A sleeping Pokémon was "fast asleep!"
+- What a player met: every turn a Pokémon slept through, the fight said "Foe PIDGEY is fast asleep!" - shouted. FireRed says "Foe PIDGEY is fast asleep." with a full stop (pret's `sText_PkmnFastAsleep`), the one turn-lost line it does not shout.
+- How reproduced: `eventToMessage({ type: 'status-prevented', status: 'sleep', ... })` in `scenes/battlePresentation.ts`; checked against `src/battle_message.c` at pret 037335f.
+- What changed: `statusHolds` carries each line's own stop, so sleep ends on "." and the rest keep "!". Test: `battlePresentation.test.ts` "says why a turn was lost in the words of the condition that took it" now expects "is fast asleep." (fails before).
+- How to use it: put a foe to sleep (Sing, Sleep Powder) - each turn it sleeps through reads "Foe X is fast asleep."
+- Checked and left: the trainer-ball refusal ("You can't catch a trainer's POKéMON!") cannot be met - a trainer fight's commands have no BALL.

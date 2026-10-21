@@ -473,7 +473,8 @@ describe('what a status condition reads like', () => {
   it('says why a turn was lost in the words of the condition that took it', () => {
     const held = (status: PrimaryStatus): string =>
       eventToMessage({ type: 'status-prevented', user: 'player', name: 'Squirtle', status });
-    expect(held('sleep')).toBe('Your SQUIRTLE is fast asleep!');
+    // pret's sText_PkmnFastAsleep ends on a full stop, not a shout.
+    expect(held('sleep')).toBe('Your SQUIRTLE is fast asleep.');
     expect(held('freeze')).toBe('Your SQUIRTLE is frozen solid!');
   });
 
