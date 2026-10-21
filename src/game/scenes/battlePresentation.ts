@@ -1216,8 +1216,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return `Hit ${event.hits} times!`;
     case 'drained':
       return `${combatantName(event, foe)} drained +${event.amount} HP.`;
+    // FireRed's sText_PkmnHitWithRecoil, Struggle's kick-back included.
     case 'recoil':
-      return `${combatantName(event, foe)} was hurt by the recoil! -${event.damage} HP`;
+      return `${combatantName(event, foe)} is hit with recoil!`;
     case 'healed':
       return `${combatantName(event, foe)} restored +${event.amount} HP.`;
     // FireRed's sText_PkmnHPFull.

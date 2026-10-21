@@ -345,3 +345,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `BagScene.ts` refuses a Lockpick, a key, an errand's thing, furniture and gear at the row, with a buzz and their own line ("Face a locked crate and press the interact key to pick it.", "Face its own locked gate and press the interact key.", "Carry it home to whoever asked for it.", "Carry it home and put it down in THE BOLTHOLE.", "Gear is given on the PARTY screen..."), and the help line says the same before the press. Tests: `packTools.test.ts` '%s says where it is used, and its help never offers to use it on a Pokemon' and 'says gear is given on the PARTY screen, in its help as when it is pressed' (both fail before).
 - How to use it: carry a Lockpick or Oak's Parcel in a raid, press B and rest on it - the help says where it is used, and Enter says so rather than opening the party.
 - Not checked live: the test drives the scene's own press and row markup.
+
+### 45. Recoil said "was hurt by the recoil! -6 HP" in the game's own words
+- What a player met: after Take Down, Double-Edge, Submission or a Struggle, the line read "Your PIKACHU was hurt by the recoil! -6 HP". FireRed says "Your PIKACHU is hit with recoil!" (pret's `sText_PkmnHitWithRecoil`). This was the last of the lines seen and left in entry 37.
+- How reproduced: `eventToMessage` for a `recoil` event printed the old wording; no test pinned it.
+- What changed: the `recoil` line in `battlePresentation.ts` is FireRed's. Like the confusion self-hit (entry 39), it gives no number, as the HP bar shows the cost. Test: `battlePresentation.test.ts` "says a Pokemon hurt by its own move is hit with recoil, as FireRed does" (fails before).
+- How to use it: use a recoil move such as Take Down, or run out of PP and Struggle - the line says the Pokémon is hit with recoil.
+- Also checked this iteration: the friend chip's straight-line distance (from entry 13) is only shown when the friend is in the same place, and a friend through a door reads INDOORS, so it is not a bug. Rendered the yard and the Pokémon Center with every rung built and five waiting - both clean.

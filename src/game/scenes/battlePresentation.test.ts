@@ -432,6 +432,15 @@ describe('what a status condition reads like', () => {
     );
   });
 
+  it('says a Pokemon hurt by its own move is hit with recoil, as FireRed does', () => {
+    expect(eventToMessage({ type: 'recoil', user: 'player', name: 'Pikachu', damage: 6 })).toBe(
+      'Your PIKACHU is hit with recoil!',
+    );
+    expect(eventToMessage({ type: 'recoil', user: 'enemy', name: 'Rattata', damage: 2 }, 'Wild')).toBe(
+      'Wild RATTATA is hit with recoil!',
+    );
+  });
+
   it('says what a two-turn move is doing on its first turn, as FireRed does', () => {
     const charging = (move: string, user: 'player' | 'enemy' = 'player') =>
       eventToMessage({ type: 'charging', user, name: 'Bulbasaur', move }, 'Wild');
