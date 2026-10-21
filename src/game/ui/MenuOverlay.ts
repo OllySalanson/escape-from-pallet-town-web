@@ -666,9 +666,11 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
  * a check's last line and through the panel's heading (playtest 45). A stat
  * is a `dt` and a `dd` rather than a `small`, so the fold went through the
  * middle of a dossier's `Attack 7 Defense 16` line until each was named here.
+ * The drop-in's facts (Wild, Fights, Doors...) are the same `dt` and `dd`, and
+ * at the smallest stage the fold went through `Doors 5 held`.
  */
 export const SCROLL_ROWS =
-  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body :is(small, .summary-stats > div), .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
+  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body :is(small, .summary-stats > div), .dropin-facts > div, .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
 
 /**
  * The lines a run of wrapped copy is set in, top to bottom. A `.px-wrap`

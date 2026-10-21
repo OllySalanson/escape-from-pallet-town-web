@@ -41,6 +41,7 @@ import {
   type StorageLike,
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
+import { SCROLL_ROWS } from '../ui/MenuOverlay';
 import { extractionPointsOn } from '../world/extractionPoints';
 import { gatesForMap } from '../world/gates';
 import { encodeSurvey } from '../world/survey';
@@ -909,6 +910,19 @@ describe('hub deployment route', () => {
     expect(markup).toMatch(/\d+ ways out to find\./);
     expect(markup).toMatch(/\d+ doors to find\./);
     expect(markup).toContain('You have walked none of this map');
+  });
+
+  it("measures the place's facts as lines, so the fold never cuts one through", () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.advance();
+
+    // Each fact is a `dt` and a `dd` in a `div`, with nothing else in it for the
+    // fold to find, so at 640x480 the pane's MORE strip came to rest across the
+    // middle of `Doors 5 held`.
+    expect(markupOf(hub)).toMatch(/<dl class="dropin-facts"><div><dt>Wild<\/dt><dd>[^<]+<\/dd><\/div>/);
+    expect(SCROLL_ROWS.split(', ')).toContain('.dropin-facts > div');
   });
 
   it('names the ways out and doors you have walked to, and counts the rest', () => {
