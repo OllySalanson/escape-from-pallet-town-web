@@ -2119,6 +2119,7 @@ function createFakeClock() {
         tween.onUpdate?.({ getValue: () => tween.counter!.value });
         if (progress === 1) {
           tween.live = false;
+          tween.onComplete?.();
         }
         continue;
       }
@@ -2150,7 +2151,7 @@ function createFakeClock() {
   return {
     tweens: {
       add: vi.fn(add),
-      addCounter: vi.fn((config: { from: number; to: number; duration: number; onUpdate: FakeTween['onUpdate'] }) => {
+      addCounter: vi.fn((config: Pick<FakeTween, 'duration' | 'onUpdate' | 'onComplete'> & { from: number; to: number }) => {
         const tween: FakeTween = {
           target: {},
           props: [],
@@ -2158,6 +2159,7 @@ function createFakeClock() {
           yoyo: false,
           repeat: 0,
           onUpdate: config.onUpdate,
+          onComplete: config.onComplete,
           counter: { from: config.from, to: config.to, value: config.from },
           elapsed: 0,
           live: true,
@@ -2201,6 +2203,7 @@ const standingSprite = (side: 'player' | 'enemy') => {
     setTexture: (key: string) => ((sprite.texture = key), sprite),
     setPosition: (x: number, y: number) => ((sprite.x = x), (sprite.y = y), sprite),
     setAlpha: (alpha: number) => ((sprite.alpha = alpha), sprite),
+    setScale: (scale: number) => ((sprite.scaleX = scale), (sprite.scaleY = scale), sprite),
     setTintFill: () => ((sprite.tinted = true), sprite),
     clearTint: () => ((sprite.tinted = false), sprite),
   };
@@ -2287,6 +2290,48 @@ describe('a trainer sending out Pokemon after a knockout', () => {
 
     const { displayedHp } = scene as unknown as { displayedHp: Map<string, number> };
     expect(displayedHp.get('enemy0')).toBe(party[1].currentHp);
+  });
+});
+
+/**
+ * A ball arcs to the foe and only then draws it in, so a player who reads
+ * "Threw a POKé BALL!" and "Oh no! The POKéMON broke free!" before the ball has
+ * landed meets the break-out first. The landing used to shrink the foe into a
+ * ball that was already gone, and it was fought at nothing for the rest of the
+ * fight.
+ */
+describe('a wild Pokemon breaking free of a ball', () => {
+  it('stands whole on its spot however fast the throw is read', () => {
+    const caterpie = new Pokemon(getSpeciesById('caterpie')!, 2);
+    const harness = createBattleSceneHarness({ party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]), wild: caterpie });
+    const clock = createFakeClock();
+    const enemySprite = standingSprite('enemy');
+    const sprites = new Map([
+      ['player0', standingSprite('player')],
+      ['enemy0', enemySprite],
+    ]);
+    Object.assign(harness.scene as object, { tweens: clock.tweens, time: clock.time, sprites });
+    const { scene, dialog } = harness;
+    const spot = combatantSpot('enemy', 0, 1);
+    enemySprite.setScale(spot.scale);
+    // Every shake fails: the ball breaks open at once, and Caterpie's Tackle misses.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    (scene as unknown as { throwBall(index: number): void }).throwBall(0);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    expect(dialog.shownMessages.some((line) => line.includes('broke free'))).toBe(true);
+    clock.advance(1500);
+
+    expect({ x: enemySprite.x, y: enemySprite.y, alpha: enemySprite.alpha, scale: enemySprite.scaleX }).toEqual({
+      x: spot.x,
+      y: spot.y,
+      alpha: 1,
+      scale: spot.scale,
+    });
   });
 });
 

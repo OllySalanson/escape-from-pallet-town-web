@@ -946,12 +946,21 @@ export class BattleScene extends Phaser.Scene {
       to: 1,
       duration: 420,
       onUpdate: (tween: Phaser.Tweens.Tween) => {
+        if (this.ballSprite !== ball) {
+          return;
+        }
         const t = tween.getValue() ?? 0;
         // A throw, not a slide: up and over, landing where the foe stood.
         ball.setPosition(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t - Math.sin(Math.PI * t) * 60);
         ball.setAngle(t * 540);
       },
       onComplete: () => {
+        // A ball the foe has already broken out of draws nothing in: read
+        // quickly, "broke free!" lands before the ball does, and the foe it
+        // put back on its spot was shrunk to nothing for the rest of the fight.
+        if (this.ballSprite !== ball) {
+          return;
+        }
         ball.setAngle(0);
         const foe = this.spriteFor(slotRef('enemy', 0));
         if (foe) {
