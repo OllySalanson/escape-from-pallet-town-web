@@ -930,6 +930,52 @@ describe('using an item in a battle', () => {
     expect(dialog.shownMessages.slice(1).join(' ')).toContain('Wild BULBASAUR used');
   });
 
+  it('holds a page of four medicines and pages on to the rest, never drawing one off the panel', () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    // Six kinds: a raid pack can carry ten, and drawn whole the fifth sat on
+    // the guidance line and the sixth below the panel, out of reach.
+    const bag = new Bag({
+      potion: 1,
+      'super-potion': 1,
+      antidote: 1,
+      'oran-berry': 1,
+      'pecha-berry': 1,
+      'cheri-berry': 1,
+    });
+    const { scene, renderedTexts } = createBattleSceneHarness({ bag, party: new PokemonParty([hurt]) });
+    const battle = scene as unknown as { onMessagesComplete(): void; moveSelection(direction: string): void };
+    battle.onMessagesComplete();
+    const rowsFrom = (from: number): string[] =>
+      read(renderedTexts)
+        .slice(from)
+        .map(({ text }) => text)
+        .filter((text) => / x\d+$/.test(text));
+
+    const beforeList = renderedTexts.length;
+    read(renderedTexts).filter(({ text }) => text.includes('ITEM x')).at(-1)!.handlers.pointerdown();
+
+    expect(rowsFrom(beforeList)).toEqual([
+      '▶ POTION x1',
+      '  SUPER POTION x1',
+      '  ANTIDOTE x1',
+      '  ORAN BERRY x1',
+    ]);
+    expect(renderedTexts.slice(beforeList).some(({ text }) => text.startsWith('Page 1 of 2'))).toBe(true);
+
+    battle.moveSelection('down');
+    const beforePage = renderedTexts.length;
+    battle.moveSelection('down');
+
+    expect(rowsFrom(beforePage)).toEqual(['▶ PECHA BERRY x1', '  CHERI BERRY x1']);
+    expect(renderedTexts.slice(beforePage).some(({ text }) => text.startsWith('Page 2 of 2'))).toBe(true);
+
+    // The rows on the second page are the list's own fifth and sixth: the
+    // pointer on CHERI BERRY chooses Cheri Berry, not the second row of page one.
+    read(renderedTexts).slice(beforePage).find(({ text }) => text.includes('CHERI BERRY'))!.handlers.pointerdown();
+    expect(renderedTexts.some(({ text }) => text.includes('CHERI BERRY on whom?'))).toBe(true);
+  });
+
   it('names the wild Pokemon Wild on every line, never Foe, under its WILD banner', () => {
     const hurt = new Pokemon(CHARMANDER, 12);
     hurt.takeDamage(15);

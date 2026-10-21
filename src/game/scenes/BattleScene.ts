@@ -183,6 +183,9 @@ import {
   MAKE_ROOM_COLUMNS,
   MAKE_ROOM_INVITE,
   MAKE_ROOM_PAGE,
+  ROW_LIST_PAGE,
+  rowListPage,
+  rowListPageNote,
   makeRoomPromptLayout,
   makeRoomRowLayout,
   NO_BALLS_MESSAGE,
@@ -1304,16 +1307,17 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const labels =
-      this.mode === 'main'
-        ? this.mainCommandLabels()
-        : this.mode === 'items'
-          ? this.itemCommandLabels()
-          : this.mode === 'balls'
-            ? this.ballCommandLabels()
-          : (this.chooser()?.moves ?? []).map(formatMoveCommand);
-    this.createCommandBox(labels);
-    this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
+    const labels = this.commandLabels();
+    if (this.isRowListMode) {
+      // A row list holds one page; the cursor walks the whole list and the
+      // page follows it, as the make-room panel's does.
+      this.selectedCommand = Math.max(0, Math.min(this.selectedCommand, labels.length - 1));
+      const { start } = rowListPage(this.selectedCommand);
+      this.createCommandBox(labels.slice(start, start + ROW_LIST_PAGE), start);
+    } else {
+      this.createCommandBox(labels);
+      this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
+    }
     this.updateSelection();
   }
 
@@ -1339,6 +1343,17 @@ export class BattleScene extends Phaser.Scene {
       ];
   }
 
+  /** Every row of the command list on screen, a row list's other pages included. */
+  private commandLabels(): readonly string[] {
+    return this.mode === 'main'
+      ? this.mainCommandLabels()
+      : this.mode === 'items'
+        ? this.itemCommandLabels()
+        : this.mode === 'balls'
+          ? this.ballCommandLabels()
+          : (this.chooser()?.moves ?? []).map(formatMoveCommand);
+  }
+
   private itemCommandLabels(): readonly string[] {
     return usableBattleItems(this.bag).map((item) => formatItemRow(item, this.bag.count(item.id)));
   }
@@ -1352,7 +1367,8 @@ export class BattleScene extends Phaser.Scene {
     return this.mode === 'moves' || this.mode === 'items' || this.mode === 'balls';
   }
 
-  private createCommandBox(labels: readonly string[]): void {
+  /** `start` is where the rows drawn begin in the whole list, for a row list's later pages. */
+  private createCommandBox(labels: readonly string[], start = 0): void {
     this.commandContainer.add(this.createPanelFrame());
     this.moveGuidanceTexts = this.isRowListMode
       ? [0, 1].map((line) => {
@@ -1390,11 +1406,11 @@ export class BattleScene extends Phaser.Scene {
       text
         .setInteractive({ useHandCursor: true })
         .on('pointerover', () => {
-          this.selectedCommand = index;
+          this.selectedCommand = start + index;
           this.updateSelection();
         })
         .on('pointerdown', () => {
-          this.selectedCommand = index;
+          this.selectedCommand = start + index;
           this.updateSelection();
           this.confirm();
         });
@@ -1722,7 +1738,12 @@ export class BattleScene extends Phaser.Scene {
   private moveSelection(direction: 'left' | 'right' | 'up' | 'down'): void {
     // The make-room panel draws one page of a longer list, so what the cursor
     // walks is the list rather than the rows on screen.
-    const count = this.mode === 'make-room' ? this.makeRoomRows().length : this.commandTexts.length;
+    const count =
+      this.mode === 'make-room'
+        ? this.makeRoomRows().length
+        : this.isRowListMode
+          ? this.commandLabels().length
+          : this.commandTexts.length;
     if (count === 0) {
       return;
     }
@@ -1746,8 +1767,12 @@ export class BattleScene extends Phaser.Scene {
         : direction === 'right'
           ? (column + 1) % columns
           : column;
+    const pageBefore = rowListPage(this.selectedCommand).page;
     this.selectedCommand = Math.min(nextRow * columns + nextColumn, count - 1);
-    if (this.mode === 'make-room') {
+    if (
+      this.mode === 'make-room' ||
+      (this.isRowListMode && rowListPage(this.selectedCommand).page !== pageBefore)
+    ) {
       // The prompt answers the row the cursor is on and the page follows it, so
       // the panel is redrawn rather than re-inked.
       this.showCommands();
@@ -1764,7 +1789,9 @@ export class BattleScene extends Phaser.Scene {
     const cursor =
       this.mode === 'make-room'
         ? this.selectedCommand - this.makeRoomPage * MAKE_ROOM_PAGE
-        : this.selectedCommand;
+        : this.isRowListMode
+          ? this.selectedCommand - rowListPage(this.selectedCommand).start
+          : this.selectedCommand;
     this.seatRowsBesideCursor();
     this.commandTexts.forEach((text, index) => {
       // The cursor is the whole of the selection, as it is in the dialogue this
@@ -1859,7 +1886,9 @@ export class BattleScene extends Phaser.Scene {
     if (this.mode === 'items') {
       const item = usableBattleItems(this.bag)[this.selectedCommand];
       this.moveGuidanceTexts[0]?.setText(this.fitCaption(item ? describeItemGuidance(item) : '')).setColor(PANEL_GUIDANCE_INK);
-      this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
+      this.moveGuidanceTexts[1]
+        ?.setText(this.fitCaption(rowListPageNote(rowListPage(this.selectedCommand).page, usableBattleItems(this.bag).length)))
+        .setColor(PANEL_GUIDANCE_INK);
       return;
     }
     if (this.mode === 'balls') {
@@ -1877,7 +1906,9 @@ export class BattleScene extends Phaser.Scene {
       this.moveGuidanceTexts[0]
         ?.setText(this.fitCaption(ball ? describeBallGuidance(ball, chance) : ''))
         .setColor(PANEL_GUIDANCE_INK);
-      this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
+      this.moveGuidanceTexts[1]
+        ?.setText(this.fitCaption(rowListPageNote(rowListPage(this.selectedCommand).page, carriedBalls(this.bag).length)))
+        .setColor(PANEL_GUIDANCE_INK);
       return;
     }
     if (this.mode !== 'moves') {

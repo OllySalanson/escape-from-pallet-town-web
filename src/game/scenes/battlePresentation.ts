@@ -25,6 +25,29 @@ export const MOVE_COMMAND_ROWS = 2;
 export const MOVE_COMMAND_HEIGHT = 64;
 /** Move rows are single-line so the two guidance lines share the same panel. */
 export const MOVE_GUIDANCE_ROWS = 2;
+/**
+ * The rows of the move, item and ball lists the panel holds at once: two
+ * columns of `MOVE_COMMAND_ROWS`, above the guidance lines. A moveset is never
+ * more, but a raid pack can carry ten kinds of medicine, and drawn whole the
+ * fifth sat on the guidance line and the rest below the panel, out of sight
+ * and out of reach of the pointer.
+ */
+export const ROW_LIST_PAGE = 2 * MOVE_COMMAND_ROWS;
+
+/** Which page of a row list the cursor's row is on, and where that page starts. */
+export const rowListPage = (selected: number): { readonly page: number; readonly start: number } => {
+  const page = Math.floor(Math.max(0, selected) / ROW_LIST_PAGE);
+  return { page, start: page * ROW_LIST_PAGE };
+};
+
+/**
+ * Said under a row list that runs to more than one page, on the guidance line
+ * the list leaves free, so a pack's sixth medicine is known to be there.
+ */
+export const rowListPageNote = (page: number, count: number): string => {
+  const pages = Math.ceil(count / ROW_LIST_PAGE);
+  return pages > 1 ? `Page ${page + 1} of ${pages} - more with Up and Down.` : '';
+};
 
 export interface MoveCommandLayout {
   readonly x: number;
