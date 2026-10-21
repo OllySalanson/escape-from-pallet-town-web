@@ -988,6 +988,23 @@ export const tryingToLearnLines = (name: string, move: string): readonly [string
 ];
 
 /**
+ * What the battle says once a move has been forgotten for a new one, in
+ * FireRed's own four boxes (`BattleScript_ForgotAndLearnedNewMove`:
+ * `sText_123Poof`, `sText_PkmnForgotMove`, `sText_AndEllipsis`,
+ * `sText_PkmnLearnedMove`, pret/pokefirered), rather than one line of our own.
+ */
+export const forgotAndLearnedLines = (
+  name: string,
+  forgotten: string,
+  learned: string,
+): readonly [string, string, string, string] => [
+  '1, 2, and... ... ... Poof!',
+  `${name.toUpperCase()} forgot ${forgotten.toUpperCase()}.`,
+  'And...',
+  `${name.toUpperCase()} learned ${learned.toUpperCase()}!`,
+];
+
+/**
  * The three lines of a level evolution, in FireRed's own words
  * (`gText_PkmnIsEvolving`, `gText_CongratsPkmnEvolved`,
  * `gText_PkmnStoppedEvolving`, pret/pokefirered `src/strings.c`), each on the

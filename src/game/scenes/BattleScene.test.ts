@@ -29,6 +29,15 @@ vi.mock('../ui/NamingScreenOverlay', () => ({
   },
 }));
 
+/** The move chooser is a DOM overlay too: the stand-in keeps the answer for the test. */
+type ChooserAnswer = (choice: { kind: 'forget'; index: number } | { kind: 'decline' }) => void;
+const chooser = vi.hoisted(() => ({ answers: [] as ChooserAnswer[] }));
+vi.mock('../ui/MoveChooserOverlay', () => ({
+  openMoveChooser: (_scene: unknown, _view: unknown, onChoice: ChooserAnswer) => {
+    chooser.answers.push(onChoice);
+  },
+}));
+
 import { Bag } from '../items';
 import {
   CHARMANDER,
@@ -1450,6 +1459,35 @@ describe('a level reached in the middle of a trainer battle', () => {
     expect(shown.at(-1)).toBe("But, SQUIRTLE can't learn more than four moves.");
     expect(shown.some((line) => line.includes('wants to learn'))).toBe(false);
     expect(opened).toHaveLength(1);
+  });
+
+  it("says a forgotten move in FireRed's four boxes, the fanfare on the last", () => {
+    const { scene, renderedTexts, dialog, squirtle } = levellingBattle();
+    squirtle.moves.push(new Move(GROWL), new Move(SUPER_SONIC));
+    knockOutTheLead(scene, renderedTexts);
+    const internals = scene as unknown as { onMessagesComplete(): void };
+    chooser.answers.length = 0;
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && chooser.answers.length === 0; step += 1) {
+      internals.onMessagesComplete();
+    }
+    expect(chooser.answers).toHaveLength(1);
+    const played = vi.spyOn(audioManager, 'play');
+    const before = dialog.shownMessages.length;
+
+    chooser.answers[0]({ kind: 'forget', index: 0 });
+    for (let step = 0; step < 3; step += 1) {
+      internals.onMessagesComplete();
+    }
+
+    expect(dialog.shownMessages.slice(before, before + 4)).toEqual([
+      '1, 2, and... ... ... Poof!',
+      'SQUIRTLE forgot TACKLE.',
+      'And...',
+      'SQUIRTLE learned BUBBLE!',
+    ]);
+    expect(played.mock.calls.filter(([name]) => name === 'moveLearned')).toHaveLength(1);
+    played.mockRestore();
   });
 
   it('offers the move it just said was learned, with the PP of the old moves untouched', () => {

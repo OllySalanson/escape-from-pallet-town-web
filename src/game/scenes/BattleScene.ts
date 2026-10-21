@@ -126,6 +126,7 @@ import {
   evolvingLine,
   experienceGainedLine,
   tryingToLearnLines,
+  forgotAndLearnedLines,
   evolvedLine,
   stoppedEvolvingLine,
   STOP_EVOLVING_HINT,
@@ -3408,22 +3409,30 @@ export class BattleScene extends Phaser.Scene {
       (choice) => {
         const forgetIndex = choice.kind === 'forget' ? choice.index : null;
         const result = offer.pokemon.resolvePendingMove(offer.move, forgetIndex);
-        if (result?.forgotten) {
-          audioManager.play('moveLearned');
-        }
         const slot = playerSlotOf(this.state, offer.pokemon);
         if (slot) {
           // The moves menu reads the combatant's snapshot, so the new move has to
           // reach it or "learned" is followed by a menu that does not offer it.
           this.state = refreshPlayerAfterLevelUp(this.state, offer.pokemon.maxHp, slot.slot);
         }
-        this.pendingCombatMessages.unshift({
-          message: moveChoiceMessage(
+        const forgotten = result?.forgotten ?? null;
+        if (forgotten) {
+          const [poof, forgot, and, learned] = forgotAndLearnedLines(
             offer.pokemon.name,
-            offer.move,
-            result?.forgotten ?? null,
-          ),
-        });
+            forgotten.name,
+            offer.move.name,
+          );
+          this.pendingCombatMessages.unshift(
+            { message: poof },
+            { message: forgot },
+            { message: and },
+            { message: learned, sound: 'moveLearned' },
+          );
+        } else {
+          this.pendingCombatMessages.unshift({
+            message: moveChoiceMessage(offer.pokemon.name, offer.move, null),
+          });
+        }
         this.showNextCombatMessage();
       },
     );
