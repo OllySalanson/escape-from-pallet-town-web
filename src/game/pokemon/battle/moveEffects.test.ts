@@ -21,6 +21,7 @@ import {
 } from '../moves';
 import { BULBASAUR, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE, getSpeciesById } from '../species';
 import { MOVE_CATALOGUE } from '../moveCatalogue';
+import { eventToMessage } from '../../scenes/battlePresentation';
 import {
   createBattleState,
   createTrainerBattleState,
@@ -322,6 +323,17 @@ describe('recoil, drain and healing', () => {
     const dealt = enemy.maxHp - result.state.enemy.currentHp;
     expect(find(result.events, 'drained')?.amount).toBe(Math.floor(dealt / 2));
     expect(result.state.player.currentHp).toBe(1 + Math.floor(dealt / 2));
+  });
+
+  it('says a drain in FireRed\'s words, naming the Pokemon whose energy was drained', () => {
+    // FireRed's sText_PkmnEnergyDrained names the target of the drain, never
+    // the drainer, and gives no number: the drainer's HP bar shows what it took.
+    const player = armed(BULBASAUR, 40, MOVE_CATALOGUE.absorb);
+    const fresh = createBattleState(player, armed(PIDGEY, 90));
+    const hurt = { ...fresh, player: { ...fresh.player, currentHp: 1 } };
+
+    const drained = find(resolveTurn(hurt, 0, at({})).events, 'drained')!;
+    expect(eventToMessage(drained, 'Wild')).toBe('Wild PIDGEY had its energy drained!');
   });
 
   it('restores half of the user’s maximum HP, and says so when there is nothing to restore', () => {

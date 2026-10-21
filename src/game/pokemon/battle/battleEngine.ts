@@ -427,7 +427,9 @@ export type BattleEvent =
       readonly slot?: number; readonly name: string }
   | { readonly type: 'multi-hit'; readonly hits: number }
   | { readonly type: 'drained'; readonly user: 'player' | 'enemy';
-      readonly slot?: number; readonly name: string; readonly amount: number }
+      readonly slot?: number; readonly name: string; readonly amount: number;
+      /** Whose energy was drained: FireRed's line names the target, not the drainer. */
+      readonly from: { readonly user: 'player' | 'enemy'; readonly name: string } }
   | { readonly type: 'recoil'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly damage: number;
       /** A drain that met Liquid Ooze, rather than recoil. */
@@ -2049,9 +2051,17 @@ const applyMove = (
       events.push({ type: 'recoil', user, ...inSlot(ref), name: attackerName, damage: paid, oozed: true });
     } else {
       const drained = Math.min(healer.pokemon.maxHp - healer.currentHp, taste);
+      const tapped = struck.find((hit) => hit.damage > 0)!;
       if (drained > 0) {
         nextState = withUnit(nextState, ref, { ...healer, currentHp: healer.currentHp + drained });
-        events.push({ type: 'drained', user, ...inSlot(ref), name: attackerName, amount: drained });
+        events.push({
+          type: 'drained',
+          user,
+          ...inSlot(ref),
+          name: attackerName,
+          amount: drained,
+          from: { user: tapped.ref.side, name: unitAt(nextState, tapped.ref)!.pokemon.name },
+        });
       }
     }
   }

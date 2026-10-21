@@ -1244,8 +1244,10 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return `${combatantName(event, foe)} flinched!`;
     case 'multi-hit':
       return `Hit ${event.hits} times!`;
+    // FireRed's sText_PkmnEnergyDrained: the line names the Pokemon drained, and
+    // the drainer's HP bar says what it took.
     case 'drained':
-      return `${combatantName(event, foe)} drained +${event.amount} HP.`;
+      return `${combatantName(event.from, foe)} had its energy drained!`;
     // FireRed's sText_PkmnHitWithRecoil, Struggle's kick-back included, and
     // sText_ItSuckedLiquidOoze for a drain a Liquid Ooze turned round.
     case 'recoil':
