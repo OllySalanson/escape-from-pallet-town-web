@@ -42,6 +42,7 @@ import {
 import {
   battleOpeningMessages,
   itemLessonMessage,
+  sendOutLine,
   teachingBattleMessages,
 } from '../pokemon/battle/battleFlow';
 import type { WeatherId } from '../pokemon/battle/weather';
@@ -2831,7 +2832,7 @@ export class BattleScene extends Phaser.Scene {
       this.commandContainer.setVisible(false);
       this.showCombatEvents(switchIn.events, [
         {
-          message: `Go, ${pokemon.name.toUpperCase()}!`,
+          message: sendOutLine([pokemon.name]),
           sound: 'sendOut',
           cries: [{ name: 'cry', species: pokemon.base.dexId }],
         },
@@ -2853,7 +2854,7 @@ export class BattleScene extends Phaser.Scene {
       [
         ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
         {
-          message: `Go, ${pokemon.name.toUpperCase()}!`,
+          message: sendOutLine([pokemon.name]),
           sound: 'sendOut',
           cries: [{ name: 'cry', species: pokemon.base.dexId }],
         },
@@ -2939,7 +2940,7 @@ export class BattleScene extends Phaser.Scene {
     this.pendingCombatMessages.unshift(
       stagedNote(`Come back, ${outgoingName}!`),
       stagedNote({
-        message: `Go, ${pokemon.name.toUpperCase()}!`,
+        message: sendOutLine([pokemon.name]),
         sound: 'sendOut',
         cries: [{ name: 'cry', species: pokemon.base.dexId }],
       }),

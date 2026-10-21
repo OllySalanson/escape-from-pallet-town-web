@@ -358,6 +358,14 @@ describe('battle presentation', () => {
     );
   });
 
+  it("sends a Pokemon out in FireRed's own words", () => {
+    // pret's sText_GoPkmn and sText_GoTwoPkmn.
+    expect(battleOpeningMessages('LASS ADA', ['Bulbasaur'], ['Pidgey']).at(-1)).toBe('Go! BULBASAUR!');
+    expect(battleOpeningMessages('LASS ADA', ['Bulbasaur', 'Pidgey'], ['Rattata', 'Spearow']).at(-1)).toBe(
+      'Go! BULBASAUR and PIDGEY!',
+    );
+  });
+
   it('advances opening narration before presenting the actionable command menu', () => {
     const narration = new TypewriterQueue(
       battleOpeningMessages(undefined, ['Bulbasaur'], ['Pidgey']),

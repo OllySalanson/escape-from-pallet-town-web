@@ -1628,7 +1628,7 @@ describe('a replacement sent in after a faint', () => {
     }
 
     const shown = dialog.shownMessages;
-    const goLine = shown.lastIndexOf('Go, CHARMANDER!');
+    const goLine = shown.lastIndexOf('Go! CHARMANDER!');
     expect(goLine).toBeGreaterThanOrEqual(0);
     expect(shown.slice(goLine + 1).some((line) => line.startsWith('Foe RATTATA used'))).toBe(false);
     expect(mode()).toBe('main');
@@ -1863,7 +1863,7 @@ describe('BattleScene about-to-use switch prompt', () => {
     // turn that was already queued behind it carries on unchanged.
     expect(shown.slice(shown.indexOf('Come back, SQUIRTLE!'), shown.indexOf('Come back, SQUIRTLE!') + 3)).toEqual([
       'Come back, SQUIRTLE!',
-      'Go, BULBASAUR!',
+      'Go! BULBASAUR!',
       'RAIDER MAYA sent out PIDGEY!',
     ]);
   });

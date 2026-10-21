@@ -522,3 +522,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: a new `trainerChallengeLine` in `pokemon/battle/battleFlow.ts` holds FireRed's line, used by the battle's opening and by `mapFile.ts`'s fallback line for a map-file trainer. Test: `battlePresentation.test.ts` "opens a trainer fight in FireRed's own words" (fails before the fix); `firstRaidFlow.test.ts` now expects the new line.
 - How to use it: walk into a trainer's watch - the fight opens "X would like to battle!".
 - Left: the README's battle picture still shows "BLUE wants to battle!" and its alt text describes that picture truthfully; it changes when the picture is made again (`tools/playtest/readmeShots.mjs`). Still a later candidate: the send-out "Go, X!" (FireRed: "Go! X!").
+
+### 71. Every send-out said "Go, X!"
+- What a player met: every trainer fight's opening, every switch and every replacement after a faint said "Go, CHARMANDER!". FireRed says "Go! CHARMANDER!" (pret's `sText_GoPkmn`; a double is `sText_GoTwoPkmn`, "Go! X and Y!").
+- How reproduced: `battleOpeningMessages('LASS ADA', ...)` printed the old line last; `BattleScene.test.ts`'s switch and forced-replacement tests read it off the dialogue.
+- What changed: a new `sendOutLine` in `pokemon/battle/battleFlow.ts` holds FireRed's line, used by the opening and by `BattleScene`'s three send-out paths (chosen switch, forced replacement, about-to-use switch). Test: `battlePresentation.test.ts` "sends a Pokemon out in FireRed's own words" (single and double; fails before); `BattleScene.test.ts` and `firstRaidFlow.test.ts` now expect the new line.
+- How to use it: switch Pokémon in any fight - the new one comes out with "Go! X!".
+- Later candidate: the withdraw line "Come back, X!" (FireRed: "X, come back!", `sText_PkmnComeBack`, with HP-dependent variants) in `BattleScene.ts`.

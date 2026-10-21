@@ -454,7 +454,7 @@ export type BattleEvent =
   | { readonly type: 'broke-free'; readonly name: string; readonly shakes?: number }
   | { readonly type: 'catch-disabled' }
   // `trainer` is who sent it, because the line is theirs - "MAYA sent out
-  // PIKACHU!" - and "Go, PIKACHU!" is the player's own words.
+  // PIKACHU!" - and "Go! PIKACHU!" is the player's own words.
   | { readonly type: 'enemy-sent-out'; readonly trainer: string; readonly name: string; readonly slot?: number }
   // Gear. Each one is announced the moment it acts, because an item whose effect
   // is only visible in the HP bar is an item the player has to be told about in

@@ -21,9 +21,15 @@ export function battleOpeningMessages(
     // extra press before every trainer fight in the game is not worth saying it
     // twice.
     ...(enemyNames.length > 1 ? [`${trainerName} sent out ${listNames(enemyNames)}!`] : []),
-    `Go, ${listNames(playerNames)}!`,
+    sendOutLine(playerNames),
   ];
 }
+
+/**
+ * FireRed's sText_GoPkmn ("Go! X!") and sText_GoTwoPkmn ("Go! X and Y!"):
+ * what the player says sending a Pokemon out, at the opening or on a switch.
+ */
+export const sendOutLine = (names: readonly string[]): string => `Go! ${listNames(names)}!`;
 
 /** FireRed's sText_Trainer1WantsToBattle: "X would like to battle!". */
 export const trainerChallengeLine = (trainerName: string): string =>
