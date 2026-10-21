@@ -418,7 +418,12 @@ export type BattleEvent =
   | { readonly type: 'ball-thrown'; readonly name: string; readonly ball?: string }
   | { readonly type: 'catch-shake'; readonly count: number }
   | { readonly type: 'caught'; readonly name: string }
-  | { readonly type: 'broke-free'; readonly name: string }
+  /**
+   * `shakes` is how many of the four checks the ball passed before it opened -
+   * absent is none, as an absent `slot` is the lead - because FireRed's line
+   * for a break-out says how close it came.
+   */
+  | { readonly type: 'broke-free'; readonly name: string; readonly shakes?: number }
   | { readonly type: 'catch-disabled' }
   // `trainer` is who sent it, because the line is theirs - "MAYA sent out
   // PIKACHU!" - and "Go, PIKACHU!" is the player's own words.
@@ -1492,7 +1497,10 @@ export const resolveCatchAttempt = (
       events: [...events, { type: 'caught', name }],
     };
   }
-  return { state, events: [...events, { type: 'broke-free', name }] };
+  return {
+    state,
+    events: [...events, { type: 'broke-free', name, ...(attempt.shakes ? { shakes: attempt.shakes } : {}) }],
+  };
 };
 
 /**

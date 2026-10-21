@@ -2412,6 +2412,48 @@ describe('a wild Pokemon breaking free of a ball', () => {
 });
 
 /**
+ * A ball that opens says how close it came, in FireRed's own four lines: a
+ * ball that shook three times and still opened is "so close", never the same
+ * flat line as one that burst at once.
+ */
+describe('a ball that opens', () => {
+  const throwWithShakes = (shakes: number): readonly string[] => {
+    const harness = createBattleSceneHarness({
+      party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]),
+      wild: new Pokemon(getSpeciesById('pidgey')!, 4),
+    });
+    const { scene, dialog } = harness;
+    // Each shake check passes on a roll of 0 and fails on 0.99; everything
+    // after the ball (Pidgey's turn) rolls high, so nothing else is decided.
+    let rolls = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => (rolls++ < shakes ? 0 : 0.99));
+    try {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      (scene as unknown as { throwBall(index: number): void }).throwBall(0);
+      dialog.isCurrentMessageComplete = true;
+      for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+        (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      }
+    } finally {
+      vi.restoreAllMocks();
+    }
+    return dialog.shownMessages;
+  };
+
+  it.each([
+    [0, 'Oh, no! The POKéMON broke free!'],
+    [1, 'Aww! It appeared to be caught!'],
+    [2, 'Aargh! Almost had it!'],
+    [3, 'Shoot! It was so close, too!'],
+  ])('after %i shakes says "%s"', (shakes, line) => {
+    const shown = throwWithShakes(shakes);
+
+    expect(shown.filter((message) => /^[123]\.\.\.$/.test(message))).toHaveLength(shakes);
+    expect(shown).toContain(line);
+  });
+});
+
+/**
  * A Pokemon blinks white when a blow takes HP off it, and only then. Growl and
  * Tail Whip used to blink their target and shake the screen exactly as a
  * Tackle does, so a move that lowered a stat looked like a hit that did no
@@ -3045,7 +3087,7 @@ describe('a legend', () => {
     readOn();
 
     expect(bag.count('poke-ball')).toBe(2);
-    expect(dialog.shownMessages).toContain('ARTICUNO broke free!');
+    expect(dialog.shownMessages).toContain('Oh, no! The POKéMON broke free!');
     expect(dialog.shownMessages.at(-1)).toBe('Wild ARTICUNO fled!');
     expect(scene.state.outcome).toBe('victory');
     expect(returned).toHaveBeenCalledTimes(1);

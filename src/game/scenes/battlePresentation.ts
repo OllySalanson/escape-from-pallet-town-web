@@ -1084,6 +1084,18 @@ export const changesShownStatus = (
   event.type === 'status-cured' ||
   (event.type === 'ability' && event.effect === 'shed');
 
+/**
+ * What a ball that opens says, by how many times it shook first - FireRed's own
+ * four lines (pret/pokefirered `battle_message.c`, `sText_PkmnBrokeFree` to
+ * `sText_ShootSoClose`), so a throw that nearly held reads as nearly holding.
+ */
+export const BROKE_FREE_LINES = [
+  'Oh, no! The POKéMON broke free!',
+  'Aww! It appeared to be caught!',
+  'Aargh! Almost had it!',
+  'Shoot! It was so close, too!',
+] as const;
+
 export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string => {
   switch (event.type) {
     case 'used-move': {
@@ -1165,7 +1177,7 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'caught':
       return `Gotcha! ${event.name.toUpperCase()} was caught!`;
     case 'broke-free':
-      return `${event.name.toUpperCase()} broke free!`;
+      return BROKE_FREE_LINES[Math.min(event.shakes ?? 0, BROKE_FREE_LINES.length - 1)];
     case 'catch-disabled':
       return "You can't catch a trainer's POKéMON!";
     case 'enemy-sent-out':

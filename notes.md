@@ -236,3 +236,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `itemNameFor` asks `pluralName`: a name already ending in s stays as it is, a consonant and y becomes "ies", sh/ch/x/z take "es", and a disc keeps its name ("2 TM09 Bullet Seed" counts the discs). Tests: `extractionReport.test.ts` "names berries picked on the raid as berries, never "Berrys"" and `currency.test.ts` (both fail before).
 - How to use it: pick berries on a raid and walk out - the result screen counts "3 Oran Berries".
 - Not checked live (berries grow only on map-maker trees); the line is the pure function the screen prints.
+
+### 30. A ball that shook three times and opened said the same flat line as one that burst at once
+- What a player met: throwing at a wild Pokémon (or a beaten legend's one throw), a ball that wobbled "1... 2... 3..." and then opened ended on "PIDGEY broke free!" - the same words as a ball that burst on the spot, so nothing said how close the catch had come.
+- How reproduced: a scratch probe started a legend fight from the title (Mewtwo 100 against a beaten Articuno 50) and threw the one ball: "ARTICUNO broke free!". The engine already counted the shakes; the break-out event did not carry them.
+- What changed: the `broke-free` event carries `shakes` (absent is none, as an absent `slot` is the lead) and the line is FireRed's own for that count (`BROKE_FREE_LINES` in `battlePresentation.ts`, pret's `sText_PkmnBrokeFree` to `sText_ShootSoClose`): "Oh, no! The POKéMON broke free!", "Aww! It appeared to be caught!", "Aargh! Almost had it!", "Shoot! It was so close, too!". Test: `BattleScene.test.ts` "a ball that opens" (one case per shake count; all four fail before).
+- How to use it: throw a ball and watch it shake - the line it opens on says how near you were.
+- Also checked this iteration and clean: Warden Holt's double battle (two 10-letter nicknames with status tags on both plates, the target choice, a full turn's lines), an in-battle evolution (Charmeleon 35 to Charizard, the move chooser for Wing Attack, forgetting Metal Claw), a legend's refusal, one throw and flight.
