@@ -329,6 +329,23 @@ describe("the drop-in's facts about a place", () => {
   });
 });
 
+describe('the raid field guide', () => {
+  const rulesFor = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter((match) => match[1].split(',').some((part) => part.trim() === `:where(.pixel-ui) ${selector}`))
+      .map((match) => match[2])
+      .join(';');
+
+  // In a window too narrow for its two panes side by side (1024x640) they
+  // stack, and a first row of `1fr` took the whole screen: CONTRACT STATUS at
+  // the top, WHAT TO DO NEXT at the foot and half a screen of backdrop between.
+  it('stacks its panes one under the other with nothing between them', () => {
+    const layout = rulesFor('.raid-guide-layout');
+    expect(layout).not.toMatch(/grid-template-rows:[^;]*fr/);
+    expect(layout).toMatch(/grid-auto-rows:\s*minmax\(0, auto\);/);
+  });
+});
+
 describe('a card on the teaching screen', () => {
   // At 1280x800 a card listed its four moves one a line, which made each card
   // so tall that a party of four showed two cards, a blank band and "2 MORE"
