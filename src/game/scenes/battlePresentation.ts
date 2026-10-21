@@ -1224,7 +1224,7 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     case 'heal-failed':
       return `${combatantName(event, foe)}'s HP is full!`;
     case 'charging':
-      return `${combatantName(event, foe)} is gathering itself...`;
+      return `${combatantName(event, foe)} ${chargeWords(event.move)}`;
     case 'recharging':
       return `${combatantName(event, foe)} must recharge!`;
     // Weather speaks about the field rather than about either side, so these
@@ -1352,6 +1352,26 @@ export const weatherEndedMessage = (weather: WeatherId): string =>
     [WeatherId.Rain]: 'The rain stopped.',
     [WeatherId.HarshSunlight]: 'The sunlight faded.',
   })[weather];
+
+/**
+ * What a two-turn move's first turn looks like, in FireRed's words (pret/pokefirered
+ * `battle_message.c`: `sText_PkmnTookSunlight`, `sText_PkmnLoweredHead`,
+ * `sText_PkmnIsGlowing`, `sText_PkmnDugHole`, `sText_PkmnSprangUp` and their
+ * neighbours), because each says what the Pokemon is doing - a dug hole is not
+ * a Pokemon taking in sunlight. A move FireRed has no line for keeps this
+ * game's own.
+ */
+const chargeWords = (move: string): string =>
+  ({
+    'solar beam': 'took in sunlight!',
+    'skull bash': 'lowered its head!',
+    'sky attack': 'is glowing!',
+    dig: 'dug a hole!',
+    bounce: 'sprang up!',
+    fly: 'flew up high!',
+    'razor wind': 'whipped up a whirlwind!',
+    dive: 'hid underwater!',
+  })[move.toLowerCase()] ?? 'is gathering itself...';
 
 /**
  * Three phrasings, because one noun cannot do all three jobs. The status lines

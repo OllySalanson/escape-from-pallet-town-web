@@ -431,6 +431,16 @@ describe('what a status condition reads like', () => {
       'Wild RATTATA flinched!',
     );
   });
+
+  it('says what a two-turn move is doing on its first turn, as FireRed does', () => {
+    const charging = (move: string, user: 'player' | 'enemy' = 'player') =>
+      eventToMessage({ type: 'charging', user, name: 'Bulbasaur', move }, 'Wild');
+    expect(charging('Solar Beam')).toBe('Your BULBASAUR took in sunlight!');
+    expect(charging('Dig', 'enemy')).toBe('Wild BULBASAUR dug a hole!');
+    expect(charging('Skull Bash')).toBe('Your BULBASAUR lowered its head!');
+    expect(charging('Sky Attack')).toBe('Your BULBASAUR is glowing!');
+    expect(charging('Bounce')).toBe('Your BULBASAUR sprang up!');
+  });
 });
 
 describe('making room for a catch from inside the fight', () => {
