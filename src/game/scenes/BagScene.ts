@@ -70,7 +70,19 @@ const POCKETS = [
  * offer a live USE ITEM that could only ever refuse itself, and a rod, a
  * Pickaxe and a spare pack opened a list of Pokemon to use them on.
  */
-const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency', 'rod', 'pickaxe', 'pack']);
+const USELESS_IN_THE_FIELD = new Set([
+  'capture-modifier',
+  'material',
+  'currency',
+  'rod',
+  'pickaxe',
+  'pack',
+  'lockpick',
+  'key',
+  'errand',
+  'furniture',
+  'held',
+]);
 
 /**
  * What pressing a row does, in the words of the help bar.
@@ -95,6 +107,16 @@ const useLabel = (item: ItemDefinition): string => {
       return 'Face the rubble over a buried exit and press the interact key.';
     case 'pack':
       return 'Carry it home: which pack is worn is chosen at base.';
+    case 'lockpick':
+      return 'Face a locked crate and press the interact key to pick it.';
+    case 'key':
+      return 'Face its own locked gate and press the interact key.';
+    case 'errand':
+      return 'Carry it home to whoever asked for it.';
+    case 'furniture':
+      return 'Carry it home and put it down in THE BOLTHOLE.';
+    case 'held':
+      return 'Gear is given on the PARTY screen, where the Pokémon that would carry it is.';
     case 'machine':
       return `Read ${item.displayName} to a Pokémon. A move learned is learned for good.`;
     default:
@@ -545,12 +567,6 @@ export class BagScene extends Phaser.Scene {
     }
     if (item.effect.type === 'bike') {
       this.rideOrWalk();
-      return;
-    }
-    if (item.category === ItemCategory.Held) {
-      audioManager.play('denied');
-      this.status = `Gear is given on the PARTY screen, where the Pokémon that would carry it is.`;
-      this.render();
       return;
     }
     this.usingItemId = itemId;

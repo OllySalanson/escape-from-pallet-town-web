@@ -10,7 +10,7 @@ vi.mock('../audio/AudioManager', () => ({
   ),
 }));
 
-import { Bag } from '../items';
+import { Bag, getItemById } from '../items';
 import { getSpeciesById, Pokemon } from '../pokemon';
 import { BagScene } from './BagScene';
 
@@ -48,6 +48,32 @@ describe('a tool in the raid pack', () => {
     expect(scene.usingItemId).toBeUndefined();
     expect(scene.status).toContain(where);
     expect(played).toEqual(['denied']);
+  });
+
+  it.each([
+    ['lockpick', 'locked crate'],
+    ['card-key', 'locked gate'],
+    ['oaks-parcel', 'Carry it home'],
+    ['pika-cushion', 'THE BOLTHOLE'],
+  ])('%s says where it is used, and its help never offers to use it on a Pokemon', (itemId, where) => {
+    played.length = 0;
+    const scene = packHolding(itemId) as PackHarness & { itemRow(item: unknown): string };
+    scene.pressItem(itemId);
+    expect(scene.usingItemId).toBeUndefined();
+    expect(scene.status).toContain(where);
+    expect(played).toEqual(['denied']);
+    const row = scene.itemRow(getItemById(itemId));
+    expect(row).toContain(where);
+    expect(row).not.toContain('on a Pokémon');
+  });
+
+  it('says gear is given on the PARTY screen, in its help as when it is pressed', () => {
+    const scene = packHolding('leftovers') as PackHarness & { itemRow(item: unknown): string };
+    expect(scene.itemRow(getItemById('leftovers'))).toContain('PARTY screen');
+    expect(scene.itemRow(getItemById('leftovers'))).not.toContain('Use Leftovers on a Pokémon');
+    scene.pressItem('leftovers');
+    expect(scene.usingItemId).toBeUndefined();
+    expect(scene.status).toContain('PARTY screen');
   });
 
   it('still opens the list of Pokemon for a Potion', () => {
