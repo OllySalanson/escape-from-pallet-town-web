@@ -1364,7 +1364,9 @@ const statusApplied = (status: string): string =>
   ({
     poison: 'was poisoned',
     burn: 'was burned',
-    paralysis: 'was paralysed',
+    // FireRed's sText_PkmnWasParalyzed: the line that paralyses says what
+    // paralysis does, because no other line ever will.
+    paralysis: 'is paralysed! It may be unable to move',
     sleep: 'fell asleep',
     freeze: 'was frozen solid',
     confusion: 'became confused',
@@ -1390,7 +1392,8 @@ const statusHolds = (status: string): string =>
   ({
     poison: "is hurt and can't move",
     burn: "is burned and can't move",
-    paralysis: "is fully paralysed and can't move",
+    // FireRed's sText_PkmnIsParalyzed.
+    paralysis: "is paralysed! It can't move",
     sleep: 'is fast asleep',
     freeze: 'is frozen solid',
     confusion: "is too confused to move",

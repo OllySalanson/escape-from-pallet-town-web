@@ -385,7 +385,6 @@ describe('what a status condition reads like', () => {
       eventToMessage({ type: 'status-applied', user: 'enemy', name: 'Pidgey', status });
     expect(applied('poison')).toBe('Foe PIDGEY was poisoned!');
     expect(applied('burn')).toBe('Foe PIDGEY was burned!');
-    expect(applied('paralysis')).toBe('Foe PIDGEY was paralysed!');
     expect(applied('sleep')).toBe('Foe PIDGEY fell asleep!');
     expect(applied('freeze')).toBe('Foe PIDGEY was frozen solid!');
     expect(applied('confusion')).toBe('Foe PIDGEY became confused!');
@@ -394,9 +393,17 @@ describe('what a status condition reads like', () => {
   it('says why a turn was lost in the words of the condition that took it', () => {
     const held = (status: PrimaryStatus): string =>
       eventToMessage({ type: 'status-prevented', user: 'player', name: 'Squirtle', status });
-    expect(held('paralysis')).toBe("Your SQUIRTLE is fully paralysed and can't move!");
     expect(held('sleep')).toBe('Your SQUIRTLE is fast asleep!');
     expect(held('freeze')).toBe('Your SQUIRTLE is frozen solid!');
+  });
+
+  it('says paralysis may stop a Pokemon moving when it lands, and that it did when it does, as FireRed does', () => {
+    expect(
+      eventToMessage({ type: 'status-applied', user: 'enemy', name: 'Pidgey', status: 'paralysis' }),
+    ).toBe('Foe PIDGEY is paralysed! It may be unable to move!');
+    expect(
+      eventToMessage({ type: 'status-prevented', user: 'player', name: 'Squirtle', status: 'paralysis' }),
+    ).toBe("Your SQUIRTLE is paralysed! It can't move!");
   });
 
   it('says a burn hurts a Pokemon as its own burn, and poison as poison, as FireRed does', () => {
