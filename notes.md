@@ -324,3 +324,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `chargeWords` in `battlePresentation.ts` gives each two-turn move FireRed's first-turn line (Fly, Razor Wind and Dive too, for when they are expressible); any other keeps "is gathering itself...". Test: `battlePresentation.test.ts` "says what a two-turn move is doing on its first turn, as FireRed does" (fails before).
 - How to use it: use Solar Beam or Dig - the first turn says the Pokémon took in sunlight or dug a hole.
 - Not checked live: the line is the presentation function the dialogue prints, and is shorter than lines already seen to fit one row.
+
+### 42. "A EKANS doll", "a ORAN BERRY tree" and "a LEFTOVERS"
+- What a player met: a doll of a Pokémon whose name starts with a vowel read "A EKANS doll" (also Eevee, Oddish, Abra, Onix and the rest), a ripe berry tree said "It's a ORAN BERRY tree.", a beaten boss "was carrying a LEFTOVERS", and Bill's help line offered "for a Old Rod". Only Oak's Pokédex rewards got the article right, with a helper private to `pokedex.ts`.
+- How reproduced: the doll's `line` in `home/furniture.ts`, `berryTreeLines('oran', false)`, the boss-gear lines in `WorldScene.claimBossGear` and the barter help in `HubScene` all typed a bare "a".
+- What changed: `ui/article.ts` is the one rule (`aOrAn`, `withArticle`: "an" before a vowel or an HM, "some" before a plural name like Leftovers, in any case), used by the doll, the berry tree, the boss gear, Bill's help line and Oak's rewards. Tests: `ui/article.test.ts`, `furniture.test.ts` 'says "An EKANS doll"...' and `world/berries.test.ts` (the last two fail before).
+- How to use it: face an Oran tree or look at an Ekans doll in THE BOLTHOLE - each takes "an".
+- Not checked live: the lines are the strings the dialogue prints.

@@ -221,6 +221,7 @@ import { friendRoom, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomCard, friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
 import { RAID_KEY_LETTERS } from '../input/keyBindings';
+import { withArticle } from '../ui/article';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -3565,7 +3566,7 @@ export class HubScene extends Phaser.Scene {
         const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
         const help =
           offer.refusal === undefined
-            ? `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? `a ${barter.name}` : `${count} ${barter.name}s`}. He asks again.`
+            ? `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? withArticle(barter.name) : `${count} ${barter.name}s`}. He asks again.`
             : offer.message ?? '';
         const wiring =
           offer.refusal === undefined

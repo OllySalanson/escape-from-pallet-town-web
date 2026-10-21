@@ -1,6 +1,7 @@
 import { getItemById, itemAmountFor, type ItemId, type SupplyItemId } from '../items/items';
 import type { Stash } from '../stash/Stash';
 import type { FirstWords } from './firstWords';
+import { withArticle } from '../ui/article';
 
 /**
  * The Pokédex, as far as this game keeps one: which kinds of Pokémon the save
@@ -161,20 +162,12 @@ export function nextMilestone(owned: number): PokedexMilestone | undefined {
 export function rewardList(reward: readonly PokedexRewardStack[]): string {
   const named = reward.map(({ itemId, quantity }) =>
     quantity === 1
-      ? anArticle(getItemById(itemId)?.displayName ?? itemId)
+      ? withArticle(getItemById(itemId)?.displayName ?? itemId)
       : itemAmountFor(itemId, quantity),
   );
   return named.length <= 1
     ? (named[0] ?? '')
     : `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`;
-}
-
-/** "a Good Rod", "an …", and "some Leftovers", which is one item with a plural name. */
-function anArticle(name: string): string {
-  if (/s$/.test(name)) {
-    return `some ${name}`;
-  }
-  return `${/^[AEIOU]/i.test(name) ? 'an' : 'a'} ${name}`;
 }
 
 /**

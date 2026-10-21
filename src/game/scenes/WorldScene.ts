@@ -354,6 +354,7 @@ import {
 } from '../world/hunter';
 import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
 import { hunterForecastLine } from '../world/hunterForecast';
+import { withArticle } from '../ui/article';
 
 const CAMERA_ZOOM = 1;
 /** The dark a doorway is gone through in, each way: FireRed's own door is about this quick. */
@@ -1250,7 +1251,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (this.bag.takeFind(drop.itemId, 1) === 'refused') {
         waiting.push({ ...drop });
         lines.push(
-          `${drop.name} was carrying a ${gearName} - and your pack has no room for it.`,
+          `${drop.name} was carrying ${withArticle(gearName)} - and your pack has no room for it.`,
           'It is yours the moment you make room: drop something from the PACK.',
         );
         continue;
@@ -1259,7 +1260,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // one more line pressed through after the fight (playtest 42): it is
       // FireRed's obtained-an-item beat now, a jingle with the line held.
       lines.push(
-        { text: `${drop.name} was carrying a ${gearName}. You take it.${this.reseatNote()}`, obtained: true },
+        { text: `${drop.name} was carrying ${withArticle(gearName)}. You take it.${this.reseatNote()}`, obtained: true },
         `${item?.description ?? ''} Give it to a POKéMON from the party screen - and get it home.`,
       );
     }
