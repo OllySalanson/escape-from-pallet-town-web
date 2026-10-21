@@ -437,6 +437,35 @@ describe('the result screen on what a contract paid', () => {
     expect(rowOf('Super Potion')).not.toContain('>Banked<');
     expect(rowOf('Cable coil')).toContain('>Banked<');
   });
+
+  it('counts a kind found in the field and also paid by the contract as the two rows it is drawn as', () => {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [new Pokemon(CHARMANDER, 12)], items: [] },
+      { mapId: 'route-1', durationMs: DURATION_MS },
+    );
+    manager.registerFoundItem('great-ball', 1);
+    const result = manager.resolveEscape();
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: DURATION_MS,
+      banked: {
+        pokemon: result.bankedPokemon,
+        items: [{ itemId: 'great-ball', quantity: 3 }],
+      },
+      contractPaid: { pokemon: [], items: [{ itemId: 'great-ball', quantity: 2 }] },
+      contract: { description: 'Read all three survey stakes', complete: true, reward: 'Two Great Balls.' },
+      carriedOut: { 'great-ball': 1 },
+      saved: true,
+    });
+    const { root } = open(report);
+
+    // Charmander, the Great Ball found (BANKED) and the two paid (REWARD) are
+    // three rows under the heading; the ledger merged the balls into one entry,
+    // and "2 entries" over three rows read as the screen miscounting.
+    expect(root.html).toContain('<h2>Banked</h2><small>3 entries</small>');
+  });
 });
 
 /** Walks the whole sequence the way a player who reads it does. */

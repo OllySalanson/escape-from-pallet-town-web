@@ -400,10 +400,14 @@ export class ExtractionScene extends Phaser.Scene {
     // The note counts every row under the heading that went the heading's way,
     // so a lost raid counts the pack and the gear that went down with it: they
     // are drawn GONE in this same window, and "1 ENTRY" over two GONE rows read
-    // as the screen miscounting what was lost.
+    // as the screen miscounting what was lost. The rows are counted as drawn,
+    // found and paid apart: a Great Ball found beside the contract's two is one
+    // ledger entry and two rows.
     const total =
-      report.ledger.pokemon.length +
-      report.ledger.items.length +
+      report.ledgerFound.pokemon.length +
+      report.ledgerFound.items.length +
+      report.ledgerPaid.pokemon.length +
+      report.ledgerPaid.items.length +
       (escaped
         ? report.gear.filter((piece) => piece.fate === 'found').length
         : report.gear.filter((piece) => piece.fate === 'lost').length + (report.pack?.fate === 'lost' ? 1 : 0));
