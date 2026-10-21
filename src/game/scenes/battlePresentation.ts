@@ -975,6 +975,19 @@ export const experienceGainedLine = (name: string, amount: number): string =>
   `${name.toUpperCase()} gained ${amount} EXP. Points!`;
 
 /**
+ * What a battle says when a level offers a move and all four slots are full,
+ * in FireRed's own words (`sText_TryToLearnMove1` and `sText_TryToLearnMove2`,
+ * pret/pokefirered `battle_message.c`), one box each: the chooser that opens
+ * after the second is FireRed's third line, "Delete a move to make room for
+ * X?". It used to be one line of the game's own, "X wants to learn Y, but
+ * already knows four moves."
+ */
+export const tryingToLearnLines = (name: string, move: string): readonly [string, string] => [
+  `${name.toUpperCase()} is trying to learn ${move.toUpperCase()}.`,
+  `But, ${name.toUpperCase()} can't learn more than four moves.`,
+];
+
+/**
  * The three lines of a level evolution, in FireRed's own words
  * (`gText_PkmnIsEvolving`, `gText_CongratsPkmnEvolved`,
  * `gText_PkmnStoppedEvolving`, pret/pokefirered `src/strings.c`), each on the

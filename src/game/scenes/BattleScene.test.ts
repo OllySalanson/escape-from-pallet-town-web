@@ -1424,6 +1424,34 @@ describe('a level reached in the middle of a trainer battle', () => {
     expect(shown.slice(sentOut + 1).some((line) => line.startsWith('Foe PIDGEY used'))).toBe(false);
   });
 
+  it("asks about a fifth move in FireRed's two lines, and opens the chooser only after the second", () => {
+    const { scene, renderedTexts, dialog, squirtle } = levellingBattle();
+    // Four moves already, so Bubble at level 7 has nowhere to go.
+    squirtle.moves.push(new Move(GROWL), new Move(SUPER_SONIC));
+    expect(squirtle.moves).toHaveLength(4);
+
+    knockOutTheLead(scene, renderedTexts);
+    const internals = scene as unknown as {
+      moveOffer: unknown;
+      openMoveOffer(offer: unknown): void;
+      onMessagesComplete(): void;
+    };
+    const opened: unknown[] = [];
+    internals.openMoveOffer = (offer) => opened.push(offer);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && opened.length === 0; step += 1) {
+      internals.onMessagesComplete();
+    }
+
+    const shown = dialog.shownMessages;
+    const trying = shown.indexOf('SQUIRTLE is trying to learn BUBBLE.');
+    expect(trying).toBeGreaterThanOrEqual(0);
+    expect(shown[trying + 1]).toBe("But, SQUIRTLE can't learn more than four moves.");
+    expect(shown.at(-1)).toBe("But, SQUIRTLE can't learn more than four moves.");
+    expect(shown.some((line) => line.includes('wants to learn'))).toBe(false);
+    expect(opened).toHaveLength(1);
+  });
+
   it('offers the move it just said was learned, with the PP of the old moves untouched', () => {
     const { scene, renderedTexts, dialog } = levellingBattle();
 

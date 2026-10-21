@@ -125,6 +125,7 @@ import {
   levelLabel,
   evolvingLine,
   experienceGainedLine,
+  tryingToLearnLines,
   evolvedLine,
   stoppedEvolvingLine,
   STOP_EVOLVING_HINT,
@@ -346,6 +347,22 @@ const stagedNote = (
   note: StagedNote,
 ): ReturnType<typeof battleNote> & { readonly onShow?: () => void } =>
   typeof note === 'string' ? battleNote(note) : note;
+
+/**
+ * A level's move with no slot free, said as FireRed says it: two lines, and the
+ * chooser opens once the second has been read (`resolveMoveOffer`), so a full
+ * moveset never loses a move silently.
+ */
+const moveOfferNotes = (
+  pokemon: PokemonInstance,
+  move: MoveBase,
+): readonly {
+  readonly message: string;
+  readonly offerMove?: { readonly pokemon: PokemonInstance; readonly move: MoveBase };
+}[] => {
+  const [trying, cannot] = tryingToLearnLines(pokemon.name, move.name);
+  return [{ message: trying }, { message: cannot, offerMove: { pokemon, move } }];
+};
 
 /**
  * One Pokemon's plate on screen: everything about it that can change without
@@ -3534,10 +3551,7 @@ export class BattleScene extends Phaser.Scene {
         message: `${name} learned ${move.name.toUpperCase()}!`,
         sound: 'moveLearned' as const,
       })),
-      ...result.movesToChoose.map((move) => ({
-        message: `${name} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
-        offerMove: { pokemon, move },
-      })),
+      ...result.movesToChoose.flatMap((move) => moveOfferNotes(pokemon, move)),
     );
     this.showNextCombatMessage();
   }
@@ -3589,10 +3603,7 @@ export class BattleScene extends Phaser.Scene {
       // A full moveset never loses a move silently: the line announces it, and
       // the chooser opens when the line has been read (`resolveMoveOffer`).
       messages.push(
-        ...result.movesToChoose.map((move) => ({
-          message: `${pokemon.name.toUpperCase()} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
-          offerMove: { pokemon, move },
-        })),
+        ...result.movesToChoose.flatMap((move) => moveOfferNotes(pokemon, move)),
       );
       // FireRed asks after the level's own lines, and only of a Pokemon that
       // levelled: one whose evolution was stopped is asked again at its next

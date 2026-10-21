@@ -462,3 +462,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `BattleScene.switchPokemon` shows FireRed's line. Tests: that test now expects "is already in battle!  ESC: cancel" (fails before the fix); `battlePresentation.test.ts`'s prompt examples use the same line.
 - How to use it: in any fight, open POKEMON and choose the one fighting - it says it is already in battle, with ESC to go back.
 - Still to check against FireRed: the move-learning question "wants to learn X, but already knows four moves." (FireRed asks it over several lines).
+
+### 62. A fifth move was asked about as "X wants to learn Y, but already knows four moves."
+- What a player met: a level-up offering a move with all four slots full (a Charmeleon reaching 36 and Wing Attack, a Squirtle line at Rain Dance) put up one line of the game's own: "CHARMELEON wants to learn WING ATTACK, but already knows four moves.". FireRed asks it over two boxes before its chooser: "CHARMELEON is trying to learn WING ATTACK." and "But, CHARMELEON can't learn more than four moves." (pret's `sText_TryToLearnMove1` and `sText_TryToLearnMove2` in `battle_message.c`; its third line, "Delete a move to make room for X?", is the chooser this game opens).
+- How reproduced: `BattleScene.test.ts`'s levelling trainer fight with a Squirtle that already knows four moves, reading the lines up to the chooser.
+- What changed: `tryingToLearnLines` in `battlePresentation.ts` holds FireRed's two lines and `BattleScene` (`moveOfferNotes`, used by both the knockout and the evolution path) puts them up one box each, opening the chooser only after the second. Test: `BattleScene.test.ts` "asks about a fifth move in FireRed's two lines..." (fails before the fix).
+- How to use it: level a Pokemon that knows four moves to its next move - two lines say it is trying to learn it and cannot hold more than four, then the chooser asks which to forget.
+- Seen and left: after the choice the battle says "X forgot Y and learned Z!" in one line (FireRed: "1, 2, and... Poof!", "X forgot Y.", "And... X learned Z!"); a candidate for a later iteration.
