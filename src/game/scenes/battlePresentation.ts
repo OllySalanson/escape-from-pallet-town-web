@@ -608,8 +608,16 @@ export const itemTargetPrompt = (item: { readonly displayName: string }): string
  * puts a move's numbers - and it ends with the turn, because that is the price
  * and it has to be read before the item is spent, not after.
  */
-export const describeItemGuidance = (item: { readonly description: string }): string =>
-  `${item.description} Using it costs your turn.`;
+export const describeItemGuidance = (item: { readonly description: string }): readonly string[] => {
+  // Longest first, for `fitCaption`: a berry's description is two sentences,
+  // and whole it ran the line past the panel's edge. The description loses its
+  // last sentences before the price does, and the price is said shorter last.
+  const said = captionBySentence(item.description);
+  return [
+    ...said.map((description) => `${description} Using it costs your turn.`),
+    `${said[said.length - 1] ?? item.description} Costs your turn.`,
+  ];
+};
 
 /** Said when the ITEM command is chosen with nothing in the medicine pocket. */
 export const NO_BATTLE_ITEMS_MESSAGE = 'No medicine in your pack!';

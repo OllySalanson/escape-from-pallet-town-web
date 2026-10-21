@@ -976,6 +976,36 @@ describe('using an item in a battle', () => {
     expect(renderedTexts.some(({ text }) => text.includes('CHERI BERRY on whom?'))).toBe(true);
   });
 
+  it("keeps a berry's guidance inside the panel, saying what it does and that it costs the turn", () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    const { scene, renderedTexts } = createBattleSceneHarness({
+      bag: new Bag({ 'pecha-berry': 1 }),
+      party: new PokemonParty([hurt]),
+    });
+    const harness = scene as unknown as {
+      add: { text: (...args: unknown[]) => RenderedText };
+      captionWidth(line: string): number;
+    };
+    // Measured as Orange Kid draws a caption, about 5.6 pixels a character:
+    // "Cures poison. Picked off a berry tree. Using it costs your turn." ran
+    // to about 360 pixels against 284 of line.
+    const drawnWidth = (line: string): number => line.length * 5.6;
+    harness.captionWidth = drawnWidth;
+    const unmeasured = harness.add.text;
+    harness.add.text = (...args: unknown[]) => {
+      const text = unmeasured(...args);
+      text.width = text.text === '▶ ' ? CURSOR_GUTTER : drawnWidth(text.text);
+      return text;
+    };
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).filter(({ text }) => text.includes('ITEM x')).at(-1)!.handlers.pointerdown();
+
+    const guidance = renderedTexts.filter((text) => text.text.includes('Cures poison')).at(-1)!;
+    expect(guidance.text).toContain('turn');
+    expect(guidance.x + drawnWidth(guidance.text)).toBeLessThanOrEqual(302);
+  });
+
   it('names the wild Pokemon Wild on every line, never Foe, under its WILD banner', () => {
     const hurt = new Pokemon(CHARMANDER, 12);
     hurt.takeDamage(15);
