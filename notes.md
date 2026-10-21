@@ -331,3 +331,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: `ui/article.ts` is the one rule (`aOrAn`, `withArticle`: "an" before a vowel or an HM, "some" before a plural name like Leftovers, in any case), used by the doll, the berry tree, the boss gear, Bill's help line and Oak's rewards. Tests: `ui/article.test.ts`, `furniture.test.ts` 'says "An EKANS doll"...' and `world/berries.test.ts` (the last two fail before).
 - How to use it: face an Oran tree or look at an Ekans doll in THE BOLTHOLE - each takes "an".
 - Not checked live: the lines are the strings the dialogue prints.
+
+### 43. The map maker offered to plant "a underground path" and "a two crates"
+- What a player met: the help line under each thing in the map maker's plant lists typed a bare "a": "Plants a underground path", "a orange-roof house", "a awning", "a old gravestone", "a crates", "a two crates", "a stone steps". Select and Remove said "Chooses a drop-in, exit, item spot, ..., surf water ... or building".
+- How reproduced: `makerScreen` with every plant group open; the `data-help` of each plant row and of the Select and Remove tools.
+- What changed: the plant rows and both tools go through `withArticle` in `ui/article.ts`, which now reads the word a name is about ("a block of flats", "a house with flowers", "some stone steps"), leaves a name that counts itself bare ("two crates") and gives ground that is never one of "some" ("some surf water"); a plural piece is planted "with their top-left corner". Every thing in the Select and Remove lists has its own article. Tests: `makerView.test.ts` 'plants "an underground path"...' (fails before) and `article.test.ts` 'reads the word a name is about...'.
+- How to use it: open MAKE A MAP, open Buildings or Things and rest the pointer on Underground Path or Crates - the help line reads "Plants an underground path..." / "Plants some crates...".
+- Not checked live: the lines are the markup the help bar reads.
