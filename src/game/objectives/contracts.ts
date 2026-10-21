@@ -154,11 +154,11 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
     unlockedInsertionIds: ['town-square', 'route-1', 'viridian-forest', 'viridian-city'],
   },
   briefing: [
-    'The kit is close: follow the road down from the Landing to the ranger hut, and where the road turns east carry straight on - it is beside the lone tree at the edge of the pool, a few steps into the reeds. Going on south is the real choice: the shore road is quick and dry but narrows to one tile where Maya watches it, and she fights whoever walks that; the reeds go round her and come back to the road below her, the long way, and nothing in them is free.',
+    'The kit is close: follow the road down from THE LANDING to the RANGER STATION, and where the road turns east carry straight on - it is beside the lone tree at the edge of the pool, a few steps into the reeds. Going on south is the real choice: the shore road is quick and dry but narrows to one tile where Maya watches it, and she fights whoever walks that; the reeds go round her and come back to the road below her, the long way, and nothing in them is free.',
     'Step onto the lost field kit marker to retrieve it.',
   ],
   deploymentBriefing:
-    'ARROW KEYS / WASD: move. The field kit is SOUTH, in the reeds past the ranger hut. Press O for the FIELD GUIDE.',
+    'ARROW KEYS / WASD: move. The field kit is SOUTH, in the reeds past the RANGER STATION. Press O for the FIELD GUIDE.',
 };
 
 /**
@@ -187,7 +187,7 @@ const SURVEY_THE_BRAID: RaidContract = {
       label: 'SURVEY STAKE\nWEST ROAD',
       cue: 'WEST STAKE',
       icon: 'field-kit',
-      collectedMessage: 'West road logged.',
+      collectedMessage: 'WEST ROAD logged.',
     },
     {
       id: 'braid-stake-field',
@@ -195,7 +195,7 @@ const SURVEY_THE_BRAID: RaidContract = {
       label: 'SURVEY STAKE\nMIDDLE FIELD',
       cue: 'FIELD STAKE',
       icon: 'field-kit',
-      collectedMessage: 'Middle field logged.',
+      collectedMessage: 'MIDDLE FIELD logged.',
     },
     {
       id: 'braid-stake-east',
@@ -203,7 +203,7 @@ const SURVEY_THE_BRAID: RaidContract = {
       label: 'SURVEY STAKE\nEAST ROAD',
       cue: 'EAST STAKE',
       icon: 'field-kit',
-      collectedMessage: 'East road logged.',
+      collectedMessage: 'EAST ROAD logged.',
     },
   ],
   reward: {
@@ -212,12 +212,12 @@ const SURVEY_THE_BRAID: RaidContract = {
     items: [{ itemId: 'great-ball', quantity: 2 }],
   },
   briefing: [
-    'Three stakes: west road, middle field, east road. No single road passes two of them.',
-    'The Middle Field is fenced. Its two north doors open off the second way across the Meadows; its south door is the third way across, a gap one tile wide, and June stands in it until you have beaten her.',
-    'Between the Route Head and the Outpost every way across is tall grass, so each crossing of the braid is a fight you are choosing to take.',
+    'Three stakes: WEST ROAD, MIDDLE FIELD, EAST ROAD. No single road passes two of them.',
+    'The MIDDLE FIELD is fenced. Its two north doors open off the second way across THE MEADOWS; its south door is the third way across, a gap one tile wide, and June stands in it until you have beaten her.',
+    'Between ROUTE HEAD and THE OUTPOST every way across is tall grass, so each crossing of the braid is a fight you are choosing to take.',
   ],
   deploymentBriefing:
-    'Three survey stakes: west road, middle field, east road. No one road passes two. Press O for the FIELD GUIDE.',
+    'Three survey stakes: WEST ROAD, MIDDLE FIELD, EAST ROAD. No one road passes two. Press O for the FIELD GUIDE.',
 };
 
 /**
@@ -250,7 +250,7 @@ const CORDON_LEDGER: RaidContract = {
       label: 'CORDON LEDGER',
       cue: 'LEDGER',
       icon: 'field-kit',
-      collectedMessage: 'Ledger recovered. Only the West Culvert will take it.',
+      collectedMessage: 'Ledger recovered. Only the WEST CULVERT will take it.',
     },
   ],
   reward: {
@@ -259,12 +259,12 @@ const CORDON_LEDGER: RaidContract = {
     secureItemStack: true,
   },
   briefing: [
-    'The ledger is in the Allotments, in one of the beds gone to seed below the sheds.',
-    'Only the West Culvert banks it - the mouth on the far shore of the Flood, in the south-west - and it stays sealed until the Sluice Wheel is wound, at the head of the leat at the east end of the south bank.',
-    'The South Gate will still take you home. It will not take the ledger.',
+    'The ledger is in THE ALLOTMENTS, in one of the beds gone to seed below the sheds.',
+    'Only the WEST CULVERT banks it - the mouth on the far shore of THE FLOOD, in the south-west - and it stays sealed until the SLUICE WHEEL is wound, at the head of the leat at the east end of the south bank.',
+    'The SOUTH GATE will still take you home. It will not take the ledger.',
   ],
   deploymentBriefing:
-    'Ledger in the Allotments, Sluice Wheel in the south-east, out through the West Culvert. Press O for the FIELD GUIDE.',
+    'Ledger in THE ALLOTMENTS, SLUICE WHEEL in the south-east, out through the WEST CULVERT. Press O for the FIELD GUIDE.',
 };
 
 /**
@@ -312,11 +312,11 @@ const WARDENS_RESUPPLY: RaidContract = {
   },
   briefing: [
     'Pack the two Potions at base. Nothing in this forest replaces them.',
-    'The cache is at East Rise, in the east of the map. Every trail there is tall grass.',
-    'Light the Fire Tower on the way in - it is four steps out of your way - and the Tower Steps open twenty-one steps from the cache. Skip it and the only near exit is the Forest Clearing, which opens late; the Brook Ford is the whole forest away.',
+    'The cache is at EAST RISE, in the east of the map. Every trail there is tall grass.',
+    'Light the FIRE TOWER on the way in - it is four steps out of your way - and the TOWER STEPS open twenty-one steps from the cache. Skip it and the only near exit is the FOREST CLEARING, which opens late; the BROOK FORD is the whole forest away.',
   ],
   deploymentBriefing:
-    'Two Potions to the warden’s cache at East Rise, in the east. Every trail is grass. Press O for the FIELD GUIDE.',
+    'Two Potions to the warden’s cache at EAST RISE, in the east. Every trail is grass. Press O for the FIELD GUIDE.',
 };
 
 export const RAID_CONTRACTS: readonly RaidContract[] = [

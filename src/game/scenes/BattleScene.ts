@@ -42,7 +42,9 @@ import {
 import {
   battleOpeningMessages,
   itemLessonMessage,
+  sendOutLine,
   teachingBattleMessages,
+  withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import type { WeatherId } from '../pokemon/battle/weather';
 import { statusAbbreviation } from '../pokemon/battle/status';
@@ -124,6 +126,9 @@ import {
   formatPartyRow,
   levelLabel,
   evolvingLine,
+  experienceGainedLine,
+  tryingToLearnLines,
+  forgotAndLearnedLines,
   evolvedLine,
   stoppedEvolvingLine,
   STOP_EVOLVING_HINT,
@@ -191,7 +196,7 @@ import {
   NO_BALLS_MESSAGE,
   NOTHING_TO_DROP_MESSAGE,
   weatherSetMessage,
-  wildEscapeFailureMessage,
+  WILD_ESCAPE_FAILURE_MESSAGE,
   changesShownStatus,
   shownStatusLabel,
   statusAfterLine,
@@ -345,6 +350,22 @@ const stagedNote = (
   note: StagedNote,
 ): ReturnType<typeof battleNote> & { readonly onShow?: () => void } =>
   typeof note === 'string' ? battleNote(note) : note;
+
+/**
+ * A level's move with no slot free, said as FireRed says it: two lines, and the
+ * chooser opens once the second has been read (`resolveMoveOffer`), so a full
+ * moveset never loses a move silently.
+ */
+const moveOfferNotes = (
+  pokemon: PokemonInstance,
+  move: MoveBase,
+): readonly {
+  readonly message: string;
+  readonly offerMove?: { readonly pokemon: PokemonInstance; readonly move: MoveBase };
+}[] => {
+  const [trying, cannot] = tryingToLearnLines(pokemon.name, move.name);
+  return [{ message: trying }, { message: cannot, offerMove: { pokemon, move } }];
+};
 
 /**
  * One Pokemon's plate on screen: everything about it that can change without
@@ -2285,7 +2306,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.showCombatEvents(enemyResult.events, [
       {
-        message: wildEscapeFailureMessage(this.state.enemy.pokemon.name),
+        message: WILD_ESCAPE_FAILURE_MESSAGE,
         sound: 'denied',
       },
     ]);
@@ -2770,14 +2791,14 @@ export class BattleScene extends Phaser.Scene {
     // Already out means out in *either* slot: a double battle can otherwise be
     // asked to put the same Pokemon on the field twice.
     // Fainted is asked first: the Pokemon that just fell is still in its slot,
-    // and "already out" is the wrong thing to say about it. The line is
-    // FireRed's own (`gText_PkmnHasNoEnergy`).
+    // and "already in battle" is the wrong thing to say about it. Both lines
+    // are FireRed's own (`gText_PkmnHasNoEnergy`, `gText_PkmnAlreadyInBattle`).
     if (pokemon.isFainted) {
       this.showPartyMessage(`${pokemon.name.toUpperCase()} has no energy left to battle!`);
       return;
     }
     if (playerCombatants(this.state).some((combatant) => combatant.pokemon === pokemon)) {
-      this.showPartyMessage(`${pokemon.name.toUpperCase()} is already out!`);
+      this.showPartyMessage(`${pokemon.name.toUpperCase()} is already in battle!`);
       return;
     }
 
@@ -2812,7 +2833,7 @@ export class BattleScene extends Phaser.Scene {
       this.commandContainer.setVisible(false);
       this.showCombatEvents(switchIn.events, [
         {
-          message: `Go, ${pokemon.name.toUpperCase()}!`,
+          message: sendOutLine([pokemon.name]),
           sound: 'sendOut',
           cries: [{ name: 'cry', species: pokemon.base.dexId }],
         },
@@ -2832,9 +2853,9 @@ export class BattleScene extends Phaser.Scene {
     this.showCombatEvents(
       events,
       [
-        ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
+        ...(wasForcedReplacement ? [] : [withdrawLine(outgoingName)]),
         {
-          message: `Go, ${pokemon.name.toUpperCase()}!`,
+          message: sendOutLine([pokemon.name]),
           sound: 'sendOut',
           cries: [{ name: 'cry', species: pokemon.base.dexId }],
         },
@@ -2918,9 +2939,9 @@ export class BattleScene extends Phaser.Scene {
     this.refreshPlayerCombatant();
     this.refreshStatusLabels();
     this.pendingCombatMessages.unshift(
-      stagedNote(`Come back, ${outgoingName}!`),
+      stagedNote(withdrawLine(outgoingName)),
       stagedNote({
-        message: `Go, ${pokemon.name.toUpperCase()}!`,
+        message: sendOutLine([pokemon.name]),
         sound: 'sendOut',
         cries: [{ name: 'cry', species: pokemon.base.dexId }],
       }),
@@ -2980,7 +3001,7 @@ export class BattleScene extends Phaser.Scene {
     this.showNextCombatMessage();
   }
 
-  /** Every line shown here is a refusal: already out, fainted, nothing to heal. */
+  /** Every line shown here is a refusal: already in battle, fainted, nothing to heal. */
   private showPartyMessage(message: string): void {
     audioManager.play('denied');
     this.partyMessage = message;
@@ -3372,9 +3393,14 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.mode = 'finished';
-    this.dialog.showMessage(
-      this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!',
-    );
+    // A win ends on its last line - the experience, or the trainer's own words -
+    // as FireRed's does: a "You won the battle!" after it was one more press
+    // after every fight, saying what the screen already said.
+    if (this.state.outcome === 'victory') {
+      this.returnToWorld();
+      return;
+    }
+    this.dialog.showMessage('You blacked out!');
   }
 
   /**
@@ -3390,22 +3416,30 @@ export class BattleScene extends Phaser.Scene {
       (choice) => {
         const forgetIndex = choice.kind === 'forget' ? choice.index : null;
         const result = offer.pokemon.resolvePendingMove(offer.move, forgetIndex);
-        if (result?.forgotten) {
-          audioManager.play('moveLearned');
-        }
         const slot = playerSlotOf(this.state, offer.pokemon);
         if (slot) {
           // The moves menu reads the combatant's snapshot, so the new move has to
           // reach it or "learned" is followed by a menu that does not offer it.
           this.state = refreshPlayerAfterLevelUp(this.state, offer.pokemon.maxHp, slot.slot);
         }
-        this.pendingCombatMessages.unshift({
-          message: moveChoiceMessage(
+        const forgotten = result?.forgotten ?? null;
+        if (forgotten) {
+          const [poof, forgot, and, learned] = forgotAndLearnedLines(
             offer.pokemon.name,
-            offer.move,
-            result?.forgotten ?? null,
-          ),
-        });
+            forgotten.name,
+            offer.move.name,
+          );
+          this.pendingCombatMessages.unshift(
+            { message: poof },
+            { message: forgot },
+            { message: and },
+            { message: learned, sound: 'moveLearned' },
+          );
+        } else {
+          this.pendingCombatMessages.unshift({
+            message: moveChoiceMessage(offer.pokemon.name, offer.move, null),
+          });
+        }
         this.showNextCombatMessage();
       },
     );
@@ -3533,10 +3567,7 @@ export class BattleScene extends Phaser.Scene {
         message: `${name} learned ${move.name.toUpperCase()}!`,
         sound: 'moveLearned' as const,
       })),
-      ...result.movesToChoose.map((move) => ({
-        message: `${name} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
-        offerMove: { pokemon, move },
-      })),
+      ...result.movesToChoose.flatMap((move) => moveOfferNotes(pokemon, move)),
     );
     this.showNextCombatMessage();
   }
@@ -3570,7 +3601,7 @@ export class BattleScene extends Phaser.Scene {
       }
       const grewAs = pokemon.name;
       messages.push({
-        message: `${grewAs.toUpperCase()} gained ${result.awarded} XP!`,
+        message: experienceGainedLine(grewAs, result.awarded),
         sound: 'xpGain',
       });
       messages.push(
@@ -3588,10 +3619,7 @@ export class BattleScene extends Phaser.Scene {
       // A full moveset never loses a move silently: the line announces it, and
       // the chooser opens when the line has been read (`resolveMoveOffer`).
       messages.push(
-        ...result.movesToChoose.map((move) => ({
-          message: `${pokemon.name.toUpperCase()} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
-          offerMove: { pokemon, move },
-        })),
+        ...result.movesToChoose.flatMap((move) => moveOfferNotes(pokemon, move)),
       );
       // FireRed asks after the level's own lines, and only of a Pokemon that
       // levelled: one whose evolution was stopped is asked again at its next

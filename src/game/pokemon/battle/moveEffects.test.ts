@@ -21,6 +21,7 @@ import {
 } from '../moves';
 import { BULBASAUR, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE, getSpeciesById } from '../species';
 import { MOVE_CATALOGUE } from '../moveCatalogue';
+import { eventToMessage } from '../../scenes/battlePresentation';
 import {
   createBattleState,
   createTrainerBattleState,
@@ -324,6 +325,17 @@ describe('recoil, drain and healing', () => {
     expect(result.state.player.currentHp).toBe(1 + Math.floor(dealt / 2));
   });
 
+  it('says a drain in FireRed\'s words, naming the Pokemon whose energy was drained', () => {
+    // FireRed's sText_PkmnEnergyDrained names the target of the drain, never
+    // the drainer, and gives no number: the drainer's HP bar shows what it took.
+    const player = armed(BULBASAUR, 40, MOVE_CATALOGUE.absorb);
+    const fresh = createBattleState(player, armed(PIDGEY, 90));
+    const hurt = { ...fresh, player: { ...fresh.player, currentHp: 1 } };
+
+    const drained = find(resolveTurn(hurt, 0, at({})).events, 'drained')!;
+    expect(eventToMessage(drained, 'Wild')).toBe('Wild PIDGEY had its energy drained!');
+  });
+
   it('restores half of the user’s maximum HP, and says so when there is nothing to restore', () => {
     const player = armed(BULBASAUR, 40, SYNTHESIS);
     const fresh = createBattleState(player, armed(PIDGEY, 5));
@@ -335,6 +347,17 @@ describe('recoil, drain and healing', () => {
     const wasted = resolveTurn(fresh, 0, always);
     expect(types(wasted.events)).toContain('heal-failed');
     expect(wasted.state.player.currentHp).toBe(player.maxHp);
+  });
+
+  it('says a healing move in FireRed\'s words, with no number', () => {
+    // FireRed's sText_PkmnRegainedHealth (BattleScript_EffectRestoreHp): the
+    // HP bar shows how much came back.
+    const player = armed(BULBASAUR, 40, SYNTHESIS);
+    const fresh = createBattleState(player, armed(PIDGEY, 5));
+    const hurt = { ...fresh, player: { ...fresh.player, currentHp: 1 } };
+
+    const healed = find(resolveTurn(hurt, 0, always).events, 'healed')!;
+    expect(eventToMessage(healed, 'Wild')).toBe('Your BULBASAUR regained health!');
   });
 });
 

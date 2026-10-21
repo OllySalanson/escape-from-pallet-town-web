@@ -80,7 +80,7 @@ export const WORKED_LANDMARKS: readonly WorkedLandmark[] = [
     poiId: 'oak-field-station-relay',
     contractId: 'survey-the-braid',
     standing: 'RELAY ON, CACHE EMPTY\nSTATION RELAY: OPEN',
-    note: "Oak's field station is signed off: the STATION RELAY is open from the first second of every Route 1 raid from now on, and the cache at its door stays empty.",
+    note: "OAK'S FIELD STATION is signed off: the STATION RELAY is open from the first second of every Route 1 raid from now on, and the cache at its door stays empty.",
   },
   {
     // The contract *was* winding this hatch and carrying the ledger out through
@@ -100,7 +100,7 @@ export const WORKED_LANDMARKS: readonly WorkedLandmark[] = [
     poiId: 'forest-fire-tower',
     contractId: 'wardens-resupply',
     standing: 'LIT\nTOWER STEPS: OPEN',
-    note: 'The warden keeps the fire tower lit: the TOWER STEPS are open from the first second of every Viridian Forest raid from now on.',
+    note: 'The warden keeps the FIRE TOWER lit: the TOWER STEPS are open from the first second of every Viridian Forest raid from now on.',
   },
 ];
 

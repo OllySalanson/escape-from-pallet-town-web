@@ -41,6 +41,9 @@ import {
   type StorageLike,
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
+import { planOwnFrame } from '../ui/mapPicture';
+import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
+import { SCROLL_ROWS } from '../ui/MenuOverlay';
 import { extractionPointsOn } from '../world/extractionPoints';
 import { gatesForMap } from '../world/gates';
 import { encodeSurvey } from '../world/survey';
@@ -162,7 +165,7 @@ describe('the lobby as a screen of the game', () => {
     const { hub } = createWornHub();
 
     const home = markupOf(hub);
-    expect(home).toContain('1 Pokémon came home hurt');
+    expect(home).toContain('Charmander came home hurt');
     expect(home).not.toContain('recovery-panel');
 
     hub.setView('stash');
@@ -175,7 +178,7 @@ describe('the lobby as a screen of the game', () => {
   it('tells a team with nobody standing that it cannot raid, rather than that it is hurt', () => {
     const { hub } = createWornHub((maxHp) => maxHp);
     // The starting stash's own partner is fit, so the team can still go.
-    expect(markupOf(hub)).toContain('1 Pokémon fainted. NURSE JOY is across the yard.');
+    expect(markupOf(hub)).toContain('Charmander fainted. NURSE JOY is across the yard.');
 
     for (const stored of hub.stash.listPokemon()) {
       stored.pokemon.takeDamage(stored.pokemon.maxHp);
@@ -909,6 +912,19 @@ describe('hub deployment route', () => {
     expect(markup).toMatch(/\d+ ways out to find\./);
     expect(markup).toMatch(/\d+ doors to find\./);
     expect(markup).toContain('You have walked none of this map');
+  });
+
+  it("measures the place's facts as lines, so the fold never cuts one through", () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.advance();
+
+    // Each fact is a `dt` and a `dd` in a `div`, with nothing else in it for the
+    // fold to find, so at 640x480 the pane's MORE strip came to rest across the
+    // middle of `Doors 5 held`.
+    expect(markupOf(hub)).toMatch(/<dl class="dropin-facts"><div><dt>Wild<\/dt><dd>[^<]+<\/dd><\/div>/);
+    expect(SCROLL_ROWS.split(', ')).toContain('.dropin-facts > div');
   });
 
   it('names the ways out and doors you have walked to, and counts the rest', () => {
@@ -2380,6 +2396,28 @@ describe('the wall map in Oak’s Lab', () => {
     // And out of the screen, back to the tile it was read from.
     hub.goBack();
     expect(start).toHaveBeenCalledWith('base', expect.objectContaining({ room: 'oaks-lab', at: { x: 6, y: 2 } }));
+  });
+
+  it('draws every map close up at one tile a pixel in the smallest window, whatever its name holds the column open to', () => {
+    // At 640x480 the body is the smallest stage across. The picture's room is
+    // what the body leaves it, or what the place's heading holds its column
+    // open to - so with the room left too narrow for the biggest map, a map
+    // with a short name (PALLET TOWN) was drawn at half the scale of one with
+    // a long one (FLOODPLAIN RELAY), a postage stamp in an empty pane.
+    const { hub } = createHub({ ...DEFAULT_RAID_PROGRESS });
+    walkUpToTheWall(hub);
+    for (const mapId of ['floodplain-relay', 'pallet-town', 'route-1', 'viridian-forest', 'viridian-city']) {
+      hub.wallMapInspect = mapId;
+      const markup = markupOf(hub);
+      const read = (name: string): number => Number(new RegExp(`data-${name}="(\\d+)"`).exec(markup)?.[1]);
+      expect(markup).toContain('data-fit="own"');
+      const plan = planOwnFrame(
+        { width: read('picture-width'), height: read('picture-height') },
+        { width: read('fit-width'), height: read('fit-height') },
+        { width: BASE_STAGE_WIDTH - read('fit-leave'), height: BASE_STAGE_HEIGHT },
+      );
+      expect({ mapId, step: plan.fit.step }).toEqual({ mapId, step: 1 });
+    }
   });
 });
 

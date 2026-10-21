@@ -204,7 +204,7 @@ export const CANCEL_HINT = 'ESC: cancel';
  * A refusal still names the key that cancels whenever there is one, because
  * the refusal is often the whole of the list's news: with one Pokemon in the
  * party, POKEMON lists only the one already out, and "CHARMANDER is already
- * out!" with no way back written anywhere read as a dead end (playtest 47).
+ * in battle!" with no way back written anywhere read as a dead end (playtest 47).
  * Only a refusal too long for the panel with the hint drops it.
  */
 export const partyPrompt = (state: {
@@ -824,8 +824,11 @@ export const hunterFleeMessages = (
 
 export const WILD_ESCAPE_SUCCESS_MESSAGE = 'Got away safely!';
 
-export const wildEscapeFailureMessage = (enemyName: string): string =>
-  `Couldn't get away from ${enemyName.toUpperCase()}!`;
+/**
+ * FireRed's failed run, `sText_CantEscape2` (`HandleAction_Run` in pret's
+ * `battle_main.c`), which names nobody.
+ */
+export const WILD_ESCAPE_FAILURE_MESSAGE = "Can't escape!";
 
 export const combatPresentationSteps = (
   events: readonly BattleEvent[],
@@ -917,7 +920,7 @@ export const combatPresentationSteps = (
 /**
  * The word a line of battle text puts in front of the other side's Pokemon:
  * `Wild` in a wild fight and `Foe` against anyone with a trainer, as FireRed
- * words it. A wild fight that opened "A wild RATTATA appeared!" under a WILD
+ * words it. A wild fight that opened "Wild RATTATA appeared!" under a WILD
  * banner used to go on to say "Foe RATTATA used TACKLE!".
  */
 export type FoeWord = 'Foe' | 'Wild';
@@ -961,6 +964,45 @@ export const heldGearLabel = (heldItemName: string | undefined): string =>
  * draws as a dotted stroke against the number, so a level-6 PIDGEY read as 16.
  */
 export const levelLabel = (level: number): string => `Lv ${level}`;
+
+/**
+ * What a knockout paid one Pokemon, in FireRed's own words
+ * (`sText_PkmnGainedEXP`: "X gained 12 EXP. Points!"). It used to say
+ * "gained 12 XP!", which is this game's shorthand rather than the line the
+ * games it is dressed as print after every knockout.
+ */
+export const experienceGainedLine = (name: string, amount: number): string =>
+  `${name.toUpperCase()} gained ${amount} EXP. Points!`;
+
+/**
+ * What a battle says when a level offers a move and all four slots are full,
+ * in FireRed's own words (`sText_TryToLearnMove1` and `sText_TryToLearnMove2`,
+ * pret/pokefirered `battle_message.c`), one box each: the chooser that opens
+ * after the second is FireRed's third line, "Delete a move to make room for
+ * X?". It used to be one line of the game's own, "X wants to learn Y, but
+ * already knows four moves."
+ */
+export const tryingToLearnLines = (name: string, move: string): readonly [string, string] => [
+  `${name.toUpperCase()} is trying to learn ${move.toUpperCase()}.`,
+  `But, ${name.toUpperCase()} can't learn more than four moves.`,
+];
+
+/**
+ * What the battle says once a move has been forgotten for a new one, in
+ * FireRed's own four boxes (`BattleScript_ForgotAndLearnedNewMove`:
+ * `sText_123Poof`, `sText_PkmnForgotMove`, `sText_AndEllipsis`,
+ * `sText_PkmnLearnedMove`, pret/pokefirered), rather than one line of our own.
+ */
+export const forgotAndLearnedLines = (
+  name: string,
+  forgotten: string,
+  learned: string,
+): readonly [string, string, string, string] => [
+  '1, 2, and... ... ... Poof!',
+  `${name.toUpperCase()} forgot ${forgotten.toUpperCase()}.`,
+  'And...',
+  `${name.toUpperCase()} learned ${learned.toUpperCase()}!`,
+];
 
 /**
  * The three lines of a level evolution, in FireRed's own words
@@ -1181,18 +1223,20 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
         ? `${combatantName(event, foe)} ${statusAlready(event.status)}`
         : 'But it failed!';
     case 'status-prevented':
-      return `${combatantName(event, foe)} ${statusHolds(event.status)}!`;
+      return `${combatantName(event, foe)} ${statusHolds(event.status)}`;
     case 'status-damage':
       // FireRed's own lines (pret's sText_PkmnHurtByPoison, sText_PkmnHurtByBurn):
       // a burn is the Pokemon's own, "hurt by its burn", never "a burn".
       return event.status === 'burn'
         ? `${combatantName(event, foe)} is hurt by its burn!`
         : `${combatantName(event, foe)} is hurt by ${statusLabel(event.status)}!`;
+    // FireRed's sText_PkmnWokeUp and sText_PkmnWasDefrosted (a thaw on its own
+    // turn and one a Fire hit brings on say the same).
     case 'status-cured':
       return event.status === 'sleep'
         ? `${combatantName(event, foe)} woke up!`
         : event.status === 'freeze'
-          ? `${combatantName(event, foe)} thawed out!`
+          ? `${combatantName(event, foe)} was defrosted!`
           : `${combatantName(event, foe)} snapped out of confusion!`;
     // FireRed's sText_PkmnIsConfused, then sText_ItHurtConfusion: the name is
     // said once, before the coin, and the self-hit is only "It".
@@ -1230,12 +1274,17 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     // piece of gear in the catalogue is held to.
     case 'gear-first-strike':
       return `${combatantName(event, foe)}'s ${event.item} let it move first!`;
+    // FireRed's sText_PkmnHungOnWithX.
     case 'gear-endured':
-      return `${combatantName(event, foe)} hung on with its ${event.item}!`;
+      return `${combatantName(event, foe)} hung on using its ${battleCaps(event.item)}!`;
     case 'gear-recoil':
       return `${combatantName(event, foe)} paid ${event.damage} HP to its ${event.item}.`;
+    // FireRed's sText_PkmnsItemRestoredHPALittle, Leftovers' end-of-turn line:
+    // no number, the HP bar says what came back. Quick Claw and Life Orb have no
+    // line in FireRed (the one is silent there, the other is not in it), so
+    // they keep this game's words above.
     case 'gear-heal':
-      return `${combatantName(event, foe)} took +${event.amount} HP from its ${event.item}.`;
+      return `${combatantName(event, foe)}'s ${battleCaps(event.item)} restored its HP a little!`;
     // What a move does beyond its damage, in the same voice as everything else:
     // the line says who it happened to and what it cost, so a turn can be read
     // back from the log without watching the HP bar.
@@ -1244,13 +1293,17 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return `${combatantName(event, foe)} flinched!`;
     case 'multi-hit':
       return `Hit ${event.hits} times!`;
+    // FireRed's sText_PkmnEnergyDrained: the line names the Pokemon drained, and
+    // the drainer's HP bar says what it took.
     case 'drained':
-      return `${combatantName(event, foe)} drained +${event.amount} HP.`;
-    // FireRed's sText_PkmnHitWithRecoil, Struggle's kick-back included.
+      return `${combatantName(event.from, foe)} had its energy drained!`;
+    // FireRed's sText_PkmnHitWithRecoil, Struggle's kick-back included, and
+    // sText_ItSuckedLiquidOoze for a drain a Liquid Ooze turned round.
     case 'recoil':
-      return `${combatantName(event, foe)} is hit with recoil!`;
+      return event.oozed ? 'It sucked up the LIQUID OOZE!' : `${combatantName(event, foe)} is hit with recoil!`;
+    // FireRed's sText_PkmnRegainedHealth: the HP bar says how much came back.
     case 'healed':
-      return `${combatantName(event, foe)} restored +${event.amount} HP.`;
+      return `${combatantName(event, foe)} regained health!`;
     // FireRed's sText_PkmnHPFull.
     case 'heal-failed':
       return `${combatantName(event, foe)}'s HP is full!`;
@@ -1331,9 +1384,10 @@ const abilityLine = (
           return `${who} blocks ${move}!`;
         case 'missed':
           return `${combatantName(event, foe)} makes GROUND moves miss with ${event.ability}!`;
+        // FireRed's `sText_PkmnRestoredHPUsing`, with no number: the HP bar shows it.
         default:
           return event.amount
-            ? `${combatantName(event, foe)} restored HP using its ${event.ability}! +${event.amount} HP`
+            ? `${combatantName(event, foe)} restored HP using its ${event.ability}!`
             : `${who} made ${move} useless!`;
       }
     }
@@ -1373,9 +1427,7 @@ const abilityLine = (
     case 'reflected':
       return `${who} passed ${statusLabel(event.status ?? '')} straight back!`;
     case 'contact':
-      return event.amount
-        ? `${who} tasted foul! -${event.amount} HP`
-        : `${who} answered the touch!`;
+      return `${who} answered the touch!`;
     // FireRed's `sText_PkmnCutsAttackWith`, one line for each foe it cuts.
     case 'sent-out':
       return event.target
@@ -1508,17 +1560,22 @@ const statusAlready = (status: string): string =>
     confusion: 'is already confused!',
   })[status] ?? `is already ${status}!`;
 
-/** What it says when the status is the reason a turn was lost. */
+/**
+ * What it says when the status is the reason a turn was lost, stop and all:
+ * FireRed's sText_PkmnFastAsleep ends on a full stop where its neighbours
+ * shout.
+ */
 const statusHolds = (status: string): string =>
   ({
-    poison: "is hurt and can't move",
-    burn: "is burned and can't move",
+    poison: "is hurt and can't move!",
+    burn: "is burned and can't move!",
     // FireRed's sText_PkmnIsParalyzed.
-    paralysis: "is paralysed! It can't move",
-    sleep: 'is fast asleep',
-    freeze: 'is frozen solid',
-    confusion: 'is too confused to move',
-  })[status] ?? `is ${status} and can't move`;
+    paralysis: "is paralysed! It can't move!",
+    sleep: 'is fast asleep.',
+    // FireRed's sText_PkmnIsFrozen.
+    freeze: 'is frozen solid!',
+    confusion: 'is too confused to move!',
+  })[status] ?? `is ${status} and can't move!`;
 
 /** The adjectival one, for the lines that name the condition in passing. */
 // A status as a thing a Pokemon can be hurt by, keep off, shed or clear up -

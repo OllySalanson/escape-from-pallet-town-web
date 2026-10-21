@@ -28,6 +28,7 @@ import type { MapGate } from './gates';
 import { SMALL_TREE_OBSTACLE, type FieldMoveId } from './fieldMoves';
 import type { MapLedge } from './ledges';
 import { WeatherId } from '../pokemon/battle/weather';
+import { trainerChallengeLine } from '../pokemon/battle/battleFlow';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
 import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigures';
@@ -3151,7 +3152,7 @@ export function buildFileMap(
           fixedPosition: true,
           ...(placed.sight > 0 ? { sightRange: placed.sight } : {}),
           design: placed.look,
-          introLines: placed.lines.length > 0 ? [...placed.lines] : [`${name} wants to battle!`],
+          introLines: placed.lines.length > 0 ? [...placed.lines] : [trainerChallengeLine(name)],
           trainer: {
             id: `${id}/trainer-${index + 1}`,
             name,

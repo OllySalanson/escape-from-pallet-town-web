@@ -29,7 +29,7 @@ describe("the raid pack's recipient list (playtest 32's stone list)", () => {
     expect(rattata.tag).toBe('Not able');
     // The help line names what the stone would make of it, or that it would do nothing.
     expect(pikachu.help).toContain('Raichu');
-    expect(rattata.help).toContain('It will not have any effect.');
+    expect(rattata.help).toContain("It won't have any effect.");
   });
 
   it('still shows the HP a Potion is for', () => {

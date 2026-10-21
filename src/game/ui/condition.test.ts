@@ -80,14 +80,28 @@ describe('what the base says of the whole team', () => {
   });
 
   it('calls a scratch hurt', () => {
-    expect(teamConditionLine([member('Bulbasaur', hurt), member('Pidgey')])).toBe('1 Pokémon came home hurt');
+    expect(teamConditionLine([member('Bulbasaur', hurt), member('Pidgey', hurt)])).toBe('2 Pokémon came home hurt');
+  });
+
+  it('names one Pokemon rather than counting it', () => {
+    expect(teamConditionLine([member('Bulbasaur', hurt)])).toBe('Bulbasaur came home hurt');
+    expect(teamConditionLine([member('Bulbasaur', hurt), member('Pidgey')])).toBe('Bulbasaur came home hurt');
+    expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey')])).toBe('Bulbasaur fainted');
   });
 
   it('never calls a faint hurt, and counts the two apart', () => {
-    expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey')])).toBe('1 Pokémon fainted');
     expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey', hurt), member('Rattata')])).toBe(
-      '1 Pokémon fainted and 1 came home hurt',
+      'Bulbasaur fainted and Pidgey came home hurt',
     );
+    expect(
+      teamConditionLine([
+        member('Bulbasaur', fainted),
+        member('Oddish', fainted),
+        member('Pidgey', hurt),
+        member('Rattata', hurt),
+        member('Zubat'),
+      ]),
+    ).toBe('2 Pokémon fainted and 2 came home hurt');
   });
 
   it('says when nobody is left standing to raid with', () => {

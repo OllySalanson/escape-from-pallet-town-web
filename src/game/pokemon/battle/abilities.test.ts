@@ -504,12 +504,10 @@ describe("a move an ability took, said in FireRed's own words", () => {
     ]);
   });
 
-  it('says a Water Absorb restored HP, or made the move useless at full health', () => {
+  it('says a Water Absorb restored HP in FireRed\'s words, or made the move useless at full health', () => {
     const lapras = (): Pokemon => armed(species({ abilityId: 'water-absorb', name: 'Lapras' }), 20);
-    const hurtLapras = lapras();
-    expect(turn(SOAK, hurtLapras, 10)).toEqual([
-      `Foe LAPRAS restored HP using its WATER ABSORB! +${Math.floor(hurtLapras.maxHp / 4)} HP`,
-    ]);
+    // FireRed's sText_PkmnRestoredHPUsing gives no number: the HP bar shows it.
+    expect(turn(SOAK, lapras(), 10)).toEqual(['Foe LAPRAS restored HP using its WATER ABSORB!']);
     expect(turn(SOAK, lapras())).toEqual(["Foe LAPRAS's WATER ABSORB made SOAK useless!"]);
   });
 
@@ -613,6 +611,17 @@ describe('the abilities that answer back', () => {
 
     expect(result.state.player.currentHp).toBeLessThan(20);
     expect(types(result.events)).not.toContain('drained');
+  });
+
+  it("says a drain into a Liquid Ooze in FireRed's one line, never as recoil", () => {
+    const drainer = armed(species({ abilityId: null }), 20, SIPHON);
+    const opening = createBattleState(drainer, armed(species({ abilityId: 'liquid-ooze' }), 20));
+    const result = resolveTurn(hurtTo(opening, 'player', 20), 0, at({}));
+    const lines = result.events.map((event) => eventToMessage(event, 'Wild'));
+
+    // pret's `sText_ItSuckedLiquidOoze`, printed once in place of the drain line.
+    expect(lines.filter((line) => line === 'It sucked up the LIQUID OOZE!')).toHaveLength(1);
+    expect(lines.some((line) => /recoil|LIQUID OOZE tasted/.test(line))).toBe(false);
   });
 });
 

@@ -2084,18 +2084,23 @@ button {
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
   box-shadow: 0 var(--u) 0 var(--frame);
 }
+/* A value is set a fixed step after its own label, so the values still stand
+   in one column when the facts are stacked. Pushed to the far end of its
+   track, a value sat a gap away from the next fact's label and a whole track
+   away from its own, and across a wide pane it read "5 held Raids" and
+   "none yet Known". The value has the rest of the track and wraps inside it
+   rather than run into the next fact, which only a map's name is long enough
+   to do. */
 :where(.pixel-ui) .dropin-facts > div {
-  display: flex;
-  justify-content: space-between;
-  gap: calc(var(--u) * 3);
+  display: grid;
+  grid-template-columns: calc(var(--u) * 28) minmax(0, 1fr);
+  column-gap: calc(var(--u) * 3);
 }
 :where(.pixel-ui) .dropin-facts dt {
   color: var(--ink-soft);
 }
 :where(.pixel-ui) .dropin-facts dd {
   margin: 0;
-  text-align: right;
-  white-space: nowrap;
 }
 :where(.pixel-ui) .dropin-blurb,
 :where(.pixel-ui) .dropin-brief > .px-note,
@@ -3106,10 +3111,14 @@ button {
   height: 100%;
 }
 /* The guide is two panes of sentences, side by side while there is room for
-   two columns of them and stacked when there is not. */
+   two columns of them and stacked when there is not. Every row is as tall as
+   its pane and no taller, sharing the screen only once they cannot both be
+   whole: one first row of `1fr` took the whole screen when the panes stacked,
+   so a short CONTRACT STATUS stood at the top and WHAT TO DO NEXT at the foot
+   with half a screen of backdrop between them. */
 :where(.pixel-ui) .raid-guide-layout {
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 260), 1fr));
-  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: minmax(0, auto);
   height: 100%;
 }
 /* A numbered note in the field guide: the route is read in order, and the
@@ -3648,8 +3657,12 @@ button {
   image-rendering: pixelated;
   box-shadow: 0 0 0 var(--u) var(--frame);
 }
+/* The zoom buttons wrap onto a second row rather than run out of the map's
+   window over the checks beside it, which they did in any window under about
+   1100 pixels wide. */
 :where(.pixel-ui) .maker-zooms {
   display: flex;
+  flex-wrap: wrap;
   gap: calc(var(--u) * 2);
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }

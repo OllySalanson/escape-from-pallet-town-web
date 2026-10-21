@@ -38,7 +38,7 @@ describe('using a medicine on the Pokemon that is out', () => {
     const use = applyBattleItem(state, ITEMS.potion, charmander);
 
     expect(use.used).toBe(true);
-    expect(use.message).toBe('CHARMANDER recovered 12 HP!');
+    expect(use.message).toBe("CHARMANDER's HP was restored by 12 point(s).");
     // The battle reads HP off the combatant. Healing only the Pokemon would
     // have left the bar and every damage calculation on the old number.
     expect(use.state.player.currentHp).toBe(charmander.maxHp);
@@ -53,7 +53,7 @@ describe('using a medicine on the Pokemon that is out', () => {
     const use = applyBattleItem(state, ITEMS.antidote, charmander);
 
     expect(use.used).toBe(true);
-    expect(use.message).toBe('CHARMANDER was cured of poison!');
+    expect(use.message).toBe('CHARMANDER was cured of its poisoning.');
     expect(use.state.player.primaryStatus).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe('using a medicine on the Pokemon that is out', () => {
 
     const use = applyBattleItem(state, ITEMS.potion, charmander);
 
-    expect(use.message).toBe(`CHARMANDER recovered ${charmander.maxHp - 1} HP!`);
+    expect(use.message).toBe(`CHARMANDER's HP was restored by ${charmander.maxHp - 1} point(s).`);
     expect(use.state.player.currentHp).toBe(charmander.maxHp);
     expect(charmander.currentHp).toBe(use.state.player.currentHp);
   });
@@ -83,7 +83,7 @@ describe('using a medicine on a benched Pokemon', () => {
     const use = applyBattleItem(state, ITEMS.potion, squirtle);
 
     expect(use.used).toBe(true);
-    expect(use.message).toBe(`SQUIRTLE recovered ${9} HP!`);
+    expect(use.message).toBe("SQUIRTLE's HP was restored by 9 point(s).");
     expect(use.state).toBe(state);
     expect(squirtle.currentHp).toBe(squirtle.maxHp);
   });
@@ -110,7 +110,7 @@ describe('what a medicine refuses to do', () => {
     const use = applyBattleItem(state, ITEMS.potion, charmander);
 
     expect(use.used).toBe(false);
-    expect(use.message).toBe('CHARMANDER is already at full HP!');
+    expect(use.message).toBe("It won't have any effect.");
     expect(use.state).toBe(state);
   });
 
@@ -122,7 +122,7 @@ describe('what a medicine refuses to do', () => {
     const use = applyBattleItem(state, ITEMS.antidote, charmander);
 
     expect(use.used).toBe(false);
-    expect(use.message).toBe('It would not have any effect on CHARMANDER.');
+    expect(use.message).toBe("It won't have any effect.");
     expect(charmander.primaryStatus).toBe(PrimaryStatus.Burn);
   });
 });

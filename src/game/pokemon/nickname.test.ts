@@ -59,7 +59,7 @@ describe('a nickname, on FireRed rules', () => {
     pikachu.giveNickname('Volt');
     const result = useFieldItem(getItemById('thunder-stone')!, pikachu);
 
-    expect(result.message).toBe('Volt evolved into Raichu!');
+    expect(result.message).toBe('Congratulations! Your Volt evolved into Raichu!');
     expect(pikachu.name).toBe('Volt');
   });
 });

@@ -7,7 +7,7 @@
  * Phaser-free, so the words and the markup are tested without a browser; the
  * DOM half is `ui/PlayerNameOverlay.ts`.
  */
-import { PLAYER_NAME_MAX_LENGTH, type PlayerNameCheck } from '../console/playerName';
+import { NAME_CHARACTERS_WORDS, PLAYER_NAME_MAX_LENGTH, type PlayerNameCheck } from '../console/playerName';
 import { escapeAttribute, pixelCommitBar, pixelScreen, pixelWindow } from '../ui/pixelUi';
 import type { NameCheck, NameClaim } from './nameService';
 
@@ -102,7 +102,7 @@ export function nameScreenMarkup(view: NameScreenView): string {
   const field = `<input class="px-window px-field naming-field" data-name-field name="name" value="${escapeAttribute(
     view.value,
   )}" maxlength="${PLAYER_NAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="NAME" data-help="${escapeAttribute(
-    `Type your name: capitals, numbers and . ! ? ' - up to ${PLAYER_NAME_MAX_LENGTH}.`,
+    `Type your name, up to ${PLAYER_NAME_MAX_LENGTH}: ${NAME_CHARACTERS_WORDS}`,
   )}" />`;
   const entry = `<form class="naming-body is-single" data-name-form><div class="naming-entry"><p class="px-wrap">${words.lead}</p>${field}<small data-name-count aria-live="polite">${nameCountLine(
     view.value,

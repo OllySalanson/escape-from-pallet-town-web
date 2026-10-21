@@ -226,7 +226,7 @@ const cries = (species: readonly number[]): CrySound[] => species.map((id) => ({
  * the same order. A wild Pokemon cries as it appears. A trainer's single
  * battle names nobody it sent out, so its Pokemon cries on the challenge line,
  * after the sting that opens the fight; a double names them, and both cry on
- * that line with the ball's pop. Every "Go, X!" is the pop and then the cry -
+ * that line with the ball's pop. Every "Go! X!" is the pop and then the cry -
  * which is the opening send-out the playtest found silent (playtest 28, S2).
  * The teaching fight's opening is the wild opening with three lines after it,
  * and anything the scene reads after these lines (the weather, an ability)
@@ -258,7 +258,7 @@ export type BattleNote =
   | {
       readonly message: string;
       readonly sound?: SoundEffectName;
-      /** Cries heard with the line, after its sound - the Pokemon a "Go, X!" lets out. */
+      /** Cries heard with the line, after its sound - the Pokemon a "Go! X!" lets out. */
       readonly cries?: readonly CrySound[];
       /** Once this line has been read, the player is asked which move to forget. */
       readonly offerMove?: { readonly pokemon: Pokemon; readonly move: MoveBase };

@@ -487,7 +487,8 @@ export class MenuOverlay {
       // lines do not share a rhythm (Bill's, a price beside a note) was folded
       // through the middle of the other column's line. That line is clipped off
       // from its own top, so the fold leaves it whole or leaves it out.
-      for (const { element, top } of foldedRows(box, rows, box.bottom - cover)) {
+      const folded = foldedRows(box, rows, box.bottom - cover);
+      for (const { element, top } of folded) {
         element.setAttribute('data-folded', '');
         element.style.clipPath = `inset(0 0 ${element.getBoundingClientRect().bottom - top}px 0)`;
       }
@@ -495,8 +496,10 @@ export class MenuOverlay {
       // there, even with the next column's rows still drawn beside it: the
       // loadout's dossier ended on STATS beside the last move, with none of
       // the stats under it. The strip stays where the other column needs it,
-      // and the label is left out of its own column.
-      for (const { element } of headingsOrphanedInColumn(box, rows, box.bottom - cover)) {
+      // and the label is left out of its own column. A row the fold has just
+      // clipped away is gone as surely: Brock's pane at 800x600 kept PRICE
+      // over an empty column once its first line was folded out.
+      for (const { element } of headingsOrphanedInColumn(box, rows, box.bottom - cover, folded)) {
         element.setAttribute('data-folded', '');
         element.style.clipPath = 'inset(0 0 100% 0)';
       }
@@ -666,9 +669,11 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
  * a check's last line and through the panel's heading (playtest 45). A stat
  * is a `dt` and a `dd` rather than a `small`, so the fold went through the
  * middle of a dossier's `Attack 7 Defense 16` line until each was named here.
+ * The drop-in's facts (Wild, Fights, Doors...) are the same `dt` and `dd`, and
+ * at the smallest stage the fold went through `Doors 5 held`.
  */
 export const SCROLL_ROWS =
-  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body :is(small, .summary-stats > div), .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
+  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body :is(small, .summary-stats > div), .dropin-facts > div, .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
 
 /**
  * The lines a run of wrapped copy is set in, top to bottom. A `.px-wrap`
@@ -911,7 +916,8 @@ function orphanedHeading<Row extends { readonly top: number; readonly bottom: nu
 
 /**
  * The headings above a fold whose own column - the rows under them that share
- * some of their width - has rows and none of them above the fold. A list's
+ * some of their width - has rows and none of them drawn: each one below the
+ * fold, or among the `folded` rows the fold has clipped out of view. A list's
  * band spans the pane, so for it this is `orphanedHeading`'s question; a
  * pane's `.px-label` heads one column of two, and the other column's rows
  * beside it are not its own.
@@ -924,7 +930,7 @@ export function headingsOrphanedInColumn<
     readonly right: number;
     readonly heading?: boolean;
   },
->(pane: { readonly top: number }, rows: readonly Row[], fold: number): Row[] {
+>(pane: { readonly top: number }, rows: readonly Row[], fold: number, folded: readonly Row[] = []): Row[] {
   return rows.filter((heading) => {
     if (!heading.heading || heading.top <= pane.top + 0.5 || heading.bottom > fold + 0.5) {
       return false;
@@ -948,7 +954,7 @@ export function headingsOrphanedInColumn<
       )
       .reduce((nearest, row) => Math.min(nearest, row.top), Number.POSITIVE_INFINITY);
     const part = own.filter((row) => row.top < next - 0.5);
-    return part.length > 0 && part.every((row) => row.top >= fold - 0.5);
+    return part.length > 0 && part.every((row) => row.top >= fold - 0.5 || folded.includes(row));
   });
 }
 

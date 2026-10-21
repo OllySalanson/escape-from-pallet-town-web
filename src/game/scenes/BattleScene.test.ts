@@ -29,6 +29,15 @@ vi.mock('../ui/NamingScreenOverlay', () => ({
   },
 }));
 
+/** The move chooser is a DOM overlay too: the stand-in keeps the answer for the test. */
+type ChooserAnswer = (choice: { kind: 'forget'; index: number } | { kind: 'decline' }) => void;
+const chooser = vi.hoisted(() => ({ answers: [] as ChooserAnswer[] }));
+vi.mock('../ui/MoveChooserOverlay', () => ({
+  openMoveChooser: (_scene: unknown, _view: unknown, onChoice: ChooserAnswer) => {
+    chooser.answers.push(onChoice);
+  },
+}));
+
 import { Bag } from '../items';
 import {
   CHARMANDER,
@@ -712,7 +721,8 @@ describe('escaping a wild encounter', () => {
     expect(read(renderedTexts)[4].text).toBe('  RUN 38%');
     read(renderedTexts)[4].handlers.pointerdown();
 
-    expect(dialog.shownMessages[0]).toBe("Couldn't get away from PIDGEY!");
+    // FireRed's own line, which names nobody (`sText_CantEscape2`).
+    expect(dialog.shownMessages[0]).toBe("Can't escape!");
     expect((scene as unknown as { pendingBattleExit: boolean }).pendingBattleExit).toBe(false);
     expect((scene as unknown as { wildEscapeAttempts: number }).wildEscapeAttempts).toBe(1);
   });
@@ -906,7 +916,7 @@ describe('using an item in a battle', () => {
 
     chooseItemFor(scene, renderedTexts);
 
-    expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
+    expect(dialog.shownMessages[0]).toBe("CHARMANDER's HP was restored by 15 point(s).");
     expect(state().player.currentHp).toBeGreaterThan(hpBefore);
     expect(hurt.currentHp).toBe(state().player.currentHp);
     // One Potion, out of the bag the raid deployed with.
@@ -925,7 +935,7 @@ describe('using an item in a battle', () => {
     chooseItemFor(scene, renderedTexts);
 
     // The heal is said first; the rest of the log is the turn it was paid with.
-    expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
+    expect(dialog.shownMessages[0]).toBe("CHARMANDER's HP was restored by 15 point(s).");
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
     expect(dialog.shownMessages.slice(1).join(' ')).toContain('Wild BULBASAUR used');
@@ -1035,7 +1045,7 @@ describe('using an item in a battle', () => {
     expect(dialog.shownMessages).toEqual([]);
     expect((scene as unknown as { mode: string }).mode).toBe('party');
     expect(
-      read(renderedTexts).filter(({ text }) => text.includes('already at full HP')),
+      read(renderedTexts).filter(({ text }) => text.includes("It won't have any effect.")),
     ).toHaveLength(1);
   });
 
@@ -1416,11 +1426,68 @@ describe('a level reached in the middle of a trainer battle', () => {
     const fainted = shown.indexOf('Foe PIDGEY fainted!');
     const sentOut = shown.indexOf('RAIDER MAYA sent out PIDGEY!');
     expect(fainted).toBeGreaterThanOrEqual(0);
-    expect(shown[fainted + 1]).toMatch(/^SQUIRTLE gained \d+ XP!$/);
+    expect(shown[fainted + 1]).toMatch(/^SQUIRTLE gained \d+ EXP\. Points!$/);
     expect(sentOut).toBeGreaterThan(fainted);
     // And the newcomer takes nothing on its way in: its first move is next turn.
     expect(shown.slice(fainted, sentOut + 1).some((line) => line.startsWith('Foe PIDGEY used'))).toBe(false);
     expect(shown.slice(sentOut + 1).some((line) => line.startsWith('Foe PIDGEY used'))).toBe(false);
+  });
+
+  it("asks about a fifth move in FireRed's two lines, and opens the chooser only after the second", () => {
+    const { scene, renderedTexts, dialog, squirtle } = levellingBattle();
+    // Four moves already, so Bubble at level 7 has nowhere to go.
+    squirtle.moves.push(new Move(GROWL), new Move(SUPER_SONIC));
+    expect(squirtle.moves).toHaveLength(4);
+
+    knockOutTheLead(scene, renderedTexts);
+    const internals = scene as unknown as {
+      moveOffer: unknown;
+      openMoveOffer(offer: unknown): void;
+      onMessagesComplete(): void;
+    };
+    const opened: unknown[] = [];
+    internals.openMoveOffer = (offer) => opened.push(offer);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && opened.length === 0; step += 1) {
+      internals.onMessagesComplete();
+    }
+
+    const shown = dialog.shownMessages;
+    const trying = shown.indexOf('SQUIRTLE is trying to learn BUBBLE.');
+    expect(trying).toBeGreaterThanOrEqual(0);
+    expect(shown[trying + 1]).toBe("But, SQUIRTLE can't learn more than four moves.");
+    expect(shown.at(-1)).toBe("But, SQUIRTLE can't learn more than four moves.");
+    expect(shown.some((line) => line.includes('wants to learn'))).toBe(false);
+    expect(opened).toHaveLength(1);
+  });
+
+  it("says a forgotten move in FireRed's four boxes, the fanfare on the last", () => {
+    const { scene, renderedTexts, dialog, squirtle } = levellingBattle();
+    squirtle.moves.push(new Move(GROWL), new Move(SUPER_SONIC));
+    knockOutTheLead(scene, renderedTexts);
+    const internals = scene as unknown as { onMessagesComplete(): void };
+    chooser.answers.length = 0;
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && chooser.answers.length === 0; step += 1) {
+      internals.onMessagesComplete();
+    }
+    expect(chooser.answers).toHaveLength(1);
+    const played = vi.spyOn(audioManager, 'play');
+    const before = dialog.shownMessages.length;
+
+    chooser.answers[0]({ kind: 'forget', index: 0 });
+    for (let step = 0; step < 3; step += 1) {
+      internals.onMessagesComplete();
+    }
+
+    expect(dialog.shownMessages.slice(before, before + 4)).toEqual([
+      '1, 2, and... ... ... Poof!',
+      'SQUIRTLE forgot TACKLE.',
+      'And...',
+      'SQUIRTLE learned BUBBLE!',
+    ]);
+    expect(played.mock.calls.filter(([name]) => name === 'moveLearned')).toHaveLength(1);
+    played.mockRestore();
   });
 
   it('offers the move it just said was learned, with the PP of the old moves untouched', () => {
@@ -1561,7 +1628,7 @@ describe('a replacement sent in after a faint', () => {
     }
 
     const shown = dialog.shownMessages;
-    const goLine = shown.lastIndexOf('Go, CHARMANDER!');
+    const goLine = shown.lastIndexOf('Go! CHARMANDER!');
     expect(goLine).toBeGreaterThanOrEqual(0);
     expect(shown.slice(goLine + 1).some((line) => line.startsWith('Foe RATTATA used'))).toBe(false);
     expect(mode()).toBe('main');
@@ -1632,7 +1699,7 @@ describe('the forced replacement list', () => {
     (scene as unknown as { switchPokemon(index: number): void }).switchPokemon(0);
     const texts = read(renderedTexts).map(({ text }) => text.trim());
     expect(texts).toContain('PIDGEY has no energy left to battle!');
-    expect(texts.some((text) => text.includes('already out'))).toBe(false);
+    expect(texts.some((text) => text.includes('already in battle'))).toBe(false);
   });
 });
 
@@ -1653,7 +1720,8 @@ describe('the party list with nobody else to send out', () => {
     battle.switchPokemon(0);
 
     const texts = read(renderedTexts).map(({ text }) => text.trim());
-    expect(texts).toContain('CHARMANDER is already out!  ESC: cancel');
+    // FireRed's party menu words it `gText_PkmnAlreadyInBattle`.
+    expect(texts).toContain('CHARMANDER is already in battle!  ESC: cancel');
     expect(battle.mode).toBe('party');
   });
 });
@@ -1793,9 +1861,9 @@ describe('BattleScene about-to-use switch prompt', () => {
     const shown = dialog.shownMessages;
     // The switch lands in front of the send-out it was offered against, and the
     // turn that was already queued behind it carries on unchanged.
-    expect(shown.slice(shown.indexOf('Come back, SQUIRTLE!'), shown.indexOf('Come back, SQUIRTLE!') + 3)).toEqual([
-      'Come back, SQUIRTLE!',
-      'Go, BULBASAUR!',
+    expect(shown.slice(shown.indexOf('SQUIRTLE, come back!'), shown.indexOf('SQUIRTLE, come back!') + 3)).toEqual([
+      'SQUIRTLE, come back!',
+      'Go! BULBASAUR!',
       'RAIDER MAYA sent out PIDGEY!',
     ]);
   });
@@ -3213,5 +3281,31 @@ describe('a legend', () => {
     expect(bag.count('poke-ball')).toBe(2);
     expect(dialog.shownMessages.at(-1)).toBe('Wild ARTICUNO fled!');
     expect(returned).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the end of a won fight', () => {
+  it('goes back to the map on its last line, with no "You won the battle!" after it, as FireRed does', () => {
+    const { scene, dialog } = createBattleSceneHarness();
+    const driven = scene as unknown as {
+      onMessagesComplete(): void;
+      returnToWorld(): void;
+      mode: string;
+      state: { outcome: string; enemy: { currentHp: number } };
+    };
+    const returned = vi.fn();
+    driven.returnToWorld = returned;
+    driven.onMessagesComplete();
+    driven.state = { ...driven.state, outcome: 'victory', enemy: { ...driven.state.enemy, currentHp: 0 } };
+    driven.mode = 'events';
+
+    // Reads the experience lines as pressing through them does.
+    for (let line = 0; line < 20 && returned.mock.calls.length === 0; line += 1) {
+      driven.onMessagesComplete();
+    }
+
+    expect(returned).toHaveBeenCalledTimes(1);
+    expect(dialog.shownMessages.some((message) => message.includes('gained'))).toBe(true);
+    expect(dialog.shownMessages).not.toContain('You won the battle!');
   });
 });

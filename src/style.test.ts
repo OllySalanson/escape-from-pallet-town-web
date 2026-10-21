@@ -308,6 +308,44 @@ describe('the box strip that leads a list of Pokemon', () => {
   });
 });
 
+describe("the drop-in's facts about a place", () => {
+  // Five label-and-value facts laid across the pane in tracks. Pushed to the
+  // far end of its track, a value stood a gap from the next fact's label and a
+  // whole track from its own: at 1366x657 the strip read "Wild ... Lv 3-7
+  // Fights ... 7 · Lv 13 Doors ... 5 held Raids ... none yet Known".
+  const rulesFor = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter((match) => match[1].split(',').some((part) => part.trim().endsWith(selector)))
+      .map((match) => match[2])
+      .join(';');
+
+  it('sets each value beside its own label, never at the far end of its track', () => {
+    const fact = rulesFor('.dropin-facts > div');
+    expect(fact).not.toMatch(/justify-content:\s*space-between/);
+    expect(rulesFor('.dropin-facts dd')).not.toMatch(/text-align:\s*right/);
+    // The labels are one width, so the values still stand in a column when
+    // the facts are stacked one to a line at the smallest stage.
+    expect(fact).toMatch(/grid-template-columns:\s*calc\(var\(--u\) \* \d+\) minmax\(0, 1fr\);/);
+  });
+});
+
+describe('the raid field guide', () => {
+  const rulesFor = (selector: string): string =>
+    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter((match) => match[1].split(',').some((part) => part.trim() === `:where(.pixel-ui) ${selector}`))
+      .map((match) => match[2])
+      .join(';');
+
+  // In a window too narrow for its two panes side by side (1024x640) they
+  // stack, and a first row of `1fr` took the whole screen: CONTRACT STATUS at
+  // the top, WHAT TO DO NEXT at the foot and half a screen of backdrop between.
+  it('stacks its panes one under the other with nothing between them', () => {
+    const layout = rulesFor('.raid-guide-layout');
+    expect(layout).not.toMatch(/grid-template-rows:[^;]*fr/);
+    expect(layout).toMatch(/grid-auto-rows:\s*minmax\(0, auto\);/);
+  });
+});
+
 describe('a card on the teaching screen', () => {
   // At 1280x800 a card listed its four moves one a line, which made each card
   // so tall that a party of four showed two cards, a blank band and "2 MORE"
@@ -583,6 +621,20 @@ describe('the map maker chosen tool, brush, place and zoom', () => {
       );
     },
   );
+});
+
+describe("the map maker's zoom buttons", () => {
+  // In a window under about 1100 pixels wide the map's window is narrower than
+  // its row of zoom buttons, and OVERVIEW ran out of it over the checks beside
+  // it. The row wraps instead, and keeps to its own window.
+  it('wrap onto a second row rather than run out of the map window', () => {
+    const body = [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.trim() === ':where(.pixel-ui) .maker-zooms')
+      .map(([, , rule]) => rule)
+      .join(';');
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/flex-wrap:\s*wrap/);
+  });
 });
 
 describe('a type tag', () => {

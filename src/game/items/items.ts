@@ -1281,22 +1281,38 @@ export function heldItemName(id: string | null | undefined): string | undefined 
 }
 
 /**
- * What is said when a status is cured, in FireRed's own words for each: a
- * berry cures five different things, and "cured of poison" was once said of
- * every one of them.
+ * What is said when medicine gives HP back, in FireRed's party-menu words
+ * (`gText_PkmnHPRestoredByVar2`), the same line in a fight and out of one.
+ */
+export function hpRestoredLine(name: string, amount: number): string {
+  return `${name}'s HP was restored by ${amount} point(s).`;
+}
+
+/**
+ * What is said when medicine or a stone would do nothing to the Pokemon it is
+ * pointed at, in FireRed's party-menu words (`gText_WontHaveEffect`), the same
+ * line in a fight and out of one. Nothing is spent.
+ */
+export const WONT_HAVE_EFFECT_LINE = "It won't have any effect.";
+
+/**
+ * What is said when a status is cured, in FireRed's party-menu words for each
+ * (`gText_PkmnCuredOfPoison` and its neighbours in pret's `strings.c`), the
+ * same line in a fight and out of one: a berry cures five different things,
+ * and "cured of poison" was once said of every one of them.
  */
 export function curedLine(name: string, status: PrimaryStatus): string {
   switch (status) {
     case PrimaryStatus.Poison:
-      return `${name} was cured of poison!`;
+      return `${name} was cured of its poisoning.`;
     case PrimaryStatus.Paralysis:
-      return `${name} was cured of paralysis!`;
+      return `${name} was cured of paralysis.`;
     case PrimaryStatus.Burn:
-      return `${name}'s burn was healed!`;
+      return `${name}'s burn was healed.`;
     case PrimaryStatus.Sleep:
-      return `${name} woke up!`;
+      return `${name} woke up.`;
     case PrimaryStatus.Freeze:
-      return `${name} was thawed out!`;
+      return `${name} was thawed out.`;
   }
 }
 
@@ -1313,12 +1329,12 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
     case 'heal': {
       const healed = pokemon.heal(item.effect.amount);
       return healed > 0
-        ? { used: true, message: `${pokemon.name} recovered ${healed} HP!` }
-        : { used: false, message: `${pokemon.name}'s HP is already full.` };
+        ? { used: true, message: hpRestoredLine(pokemon.name, healed) }
+        : { used: false, message: WONT_HAVE_EFFECT_LINE };
     }
     case 'cure-status':
       if (pokemon.primaryStatus !== item.effect.status) {
-        return { used: false, message: `It will not have any effect.` };
+        return { used: false, message: WONT_HAVE_EFFECT_LINE };
       }
       pokemon.primaryStatus = null;
       return { used: true, message: curedLine(pokemon.name, item.effect.status) };
@@ -1355,9 +1371,11 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       // Named as it was called before: a nickname, else the species it was.
       const was = pokemon.name;
       const evolution = species ? pokemon.evolveInto(species) : null;
+      // FireRed's own line (`gText_CongratsPkmnEvolved`), the one a level
+      // evolution in a fight says too, so a stone does not speak differently.
       return evolution
-        ? { used: true, message: `${was} evolved into ${evolution.to.name}!` }
-        : { used: false, message: `It will not have any effect.` };
+        ? { used: true, message: `Congratulations! Your ${was} evolved into ${evolution.to.name}!` }
+        : { used: false, message: WONT_HAVE_EFFECT_LINE };
     }
     case 'pack':
       // A spare pack found in the field is cargo, nothing more. Which one is

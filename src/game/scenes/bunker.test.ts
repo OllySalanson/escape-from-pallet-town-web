@@ -90,6 +90,9 @@ vi.mock('../ui/DialogBox', () => ({
     public setScrollFactor(): this {
       return this;
     }
+    public setY(): this {
+      return this;
+    }
     public setVisible(value: boolean): this {
       this.visible = value;
       return this;

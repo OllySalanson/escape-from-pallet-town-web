@@ -87,7 +87,7 @@ import {
   type DoorwayMark,
 } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
-import { overviewOf, type Overview } from '../maker/overview';
+import { overviewLeavesRoom, overviewOf, type Overview } from '../maker/overview';
 import { openMapFileText } from '../maker/openFile';
 import { paintGhost, type GhostTiles } from '../maker/ghost';
 import {
@@ -1606,6 +1606,15 @@ export class MapMakerScene extends Phaser.Scene {
     outline.style.top = at(2 + top * scale);
     outline.style.width = at(Math.max(2, (right - left) * scale));
     outline.style.height = at(Math.max(2, (bottom - top) * scale));
+    const drawn = frame.getBoundingClientRect();
+    if (
+      !overviewLeavesRoom(
+        { width: drawn.width, height: drawn.height },
+        { width: viewport.clientWidth, height: viewport.clientHeight },
+      )
+    ) {
+      frame.hidden = true;
+    }
   }
 
   /** A press on the overview: the map window looks at that part of the map. */

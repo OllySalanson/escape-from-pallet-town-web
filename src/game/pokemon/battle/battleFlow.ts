@@ -11,18 +11,35 @@ export function battleOpeningMessages(
   enemyNames: readonly string[],
 ): string[] {
   if (!trainerName) {
-    return [`A wild ${listNames(enemyNames)} appeared!`];
+    // FireRed's sText_WildPkmnAppeared, which has no article.
+    return [`Wild ${listNames(enemyNames)} appeared!`];
   }
   return [
-    `${trainerName} wants to battle!`,
+    trainerChallengeLine(trainerName),
     // Only a double battle names what was sent out. A single battle's one foe
     // is named on the plate and in every line of the log that follows, and an
     // extra press before every trainer fight in the game is not worth saying it
     // twice.
     ...(enemyNames.length > 1 ? [`${trainerName} sent out ${listNames(enemyNames)}!`] : []),
-    `Go, ${listNames(playerNames)}!`,
+    sendOutLine(playerNames),
   ];
 }
+
+/**
+ * FireRed's sText_GoPkmn ("Go! X!") and sText_GoTwoPkmn ("Go! X and Y!"):
+ * what the player says sending a Pokemon out, at the opening or on a switch.
+ */
+export const sendOutLine = (names: readonly string[]): string => `Go! ${listNames(names)}!`;
+
+/**
+ * FireRed's sText_PkmnComeBack ("X, come back!"): what the player says calling
+ * a Pokemon back on a switch.
+ */
+export const withdrawLine = (name: string): string => `${name.toUpperCase()}, come back!`;
+
+/** FireRed's sText_Trainer1WantsToBattle: "X would like to battle!". */
+export const trainerChallengeLine = (trainerName: string): string =>
+  `${trainerName} would like to battle!`;
 
 const listNames = (names: readonly string[]): string =>
   names.map((name) => name.toUpperCase()).join(' and ');
@@ -35,7 +52,7 @@ export function teachingBattleMessages(playerName: string, enemyName: string): s
   // Each line is kept short enough to fit the two text lines the battle
   // dialogue box can show without spilling past its frame.
   return [
-    `A wild ${enemyName.toUpperCase()} appeared!`,
+    `Wild ${enemyName.toUpperCase()} appeared!`,
     `${playerName.toUpperCase()} is stronger. This fight is yours to win.`,
     "FIGHT shows each move's POWER and type matchup.",
     'Every hit reports the HP it cost you.',

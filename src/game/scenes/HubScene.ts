@@ -3021,7 +3021,12 @@ export class HubScene extends Phaser.Scene {
         size: entry.size,
         reference: largestMapSize(wallMapOrder(this.savedGame)),
         mode: 'own',
-        leave: COLUMN_MEASURES.line + DROPIN_SIDE_ALLOWANCE,
+        // The line measure alone, not the drop-in's allowance beside it: the
+        // side here is one column of one-line rows, which stands a little
+        // under its measure at the smallest stage, and the allowance left the
+        // biggest map six pixels short of a tile a pixel there - so whether a
+        // map was drawn whole or at half scale hung on how long its name was.
+        leave: COLUMN_MEASURES.line,
         className: 'dropin-picture',
       }),
       {

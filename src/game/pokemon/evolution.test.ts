@@ -337,14 +337,14 @@ describe('evolving on a level', () => {
 describe('evolving with a stone', () => {
   const stone = getItemById('thunder-stone' satisfies ItemId)!;
 
-  it('turns the one species that answers to it, and says so', () => {
+  it('turns the one species that answers to it, and says so in FireRed\'s own words', () => {
     const pikachu = new Pokemon(PIKACHU, 12);
     pikachu.takeDamage(5);
     const maximumBefore = pikachu.maxHp;
 
     const result = useFieldItem(stone, pikachu);
 
-    expect(result).toEqual({ used: true, message: 'Pikachu evolved into Raichu!' });
+    expect(result).toEqual({ used: true, message: 'Congratulations! Your Pikachu evolved into Raichu!' });
     expect(pikachu.base).toBe(RAICHU);
     expect(pikachu.level).toBe(12);
     expect(pikachu.stats).toEqual(computePokemonStats(RAICHU.baseStats, 12));

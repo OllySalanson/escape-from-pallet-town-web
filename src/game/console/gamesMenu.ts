@@ -1,7 +1,7 @@
 import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
 import type { ConsoleGame } from './consoleGames';
 import { formatScore, type Board, type Posted, type WaitingSent } from './leaderboard';
-import { PLAYER_NAME_MAX_LENGTH } from './playerName';
+import { NAME_CHARACTERS_WORDS, PLAYER_NAME_MAX_LENGTH } from './playerName';
 
 /**
  * The GAMES menu the console in the player's room opens: every game it plays
@@ -103,7 +103,7 @@ function nameBar(state: GamesMenuState): string {
     const okHelp = waiting ? `Play ${waiting.name} under this name.` : 'Keep this name for every board.';
     return pixelCommitBar({
       title: 'Your name',
-      lines: ['<small class="px-wrap">On every board, for everybody who plays. Letters, numbers and . ! ? \' - up to ten.</small>'],
+      lines: [`<small class="px-wrap">On every board, for everybody who plays. Up to ten: ${NAME_CHARACTERS_WORDS}</small>`],
       actions: `<form class="box-form console-name-form" data-name-form><input class="px-window px-field" name="name" value="${escapeAttribute(state.naming.value)}" maxlength="${PLAYER_NAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="NAME" data-help="${escapeAttribute(namingHints(waiting))}" /><button type="submit" class="px-window px-button is-primary" data-help="${escapeAttribute(okHelp)}">OK</button><button type="button" class="px-window px-button" data-name-cancel data-help="Keep the name you had.">Cancel</button></form>`,
     });
   }
@@ -145,8 +145,10 @@ export function waitingLine(result: WaitingSent): string | undefined {
         ? 'Your waiting score is on the Pallet Town board now.'
         : `Your ${result.sent} waiting scores are on the Pallet Town board now.`;
   }
-  const scores = result.left === 1 ? 'One score is' : `${result.left} scores are`;
+  const one = result.left === 1;
+  const scores = one ? 'One score is' : `${result.left} scores are`;
+  const goes = one ? 'It goes' : 'They go';
   return result.stopped === 'bot-check'
-    ? `${scores} still waiting: the bot check didn't pass. They go next time you sit down here.`
-    : `${scores} still waiting for Pallet Town to answer. They go next time you sit down here.`;
+    ? `${scores} still waiting: the bot check didn't pass. ${goes} next time you sit down here.`
+    : `${scores} still waiting for Pallet Town to answer. ${goes} next time you sit down here.`;
 }

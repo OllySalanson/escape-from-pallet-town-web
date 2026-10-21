@@ -51,6 +51,17 @@ describe('medicine in the field', () => {
     expect(useFieldItem(getItemById('potion')!, pokemon).used).toBe(true);
     expect(pokemon.currentHp).toBe(pokemon.maxHp);
   });
+
+  /**
+   * FireRed's party menu answers a Potion on a full Pokemon, or an Antidote on
+   * one that is not poisoned, with `gText_WontHaveEffect`; this game said
+   * "X's HP is already full." and "It will not have any effect.".
+   */
+  it("says FireRed's 'It won't have any effect.' when medicine would do nothing", () => {
+    const full = new Pokemon(BULBASAUR, 5);
+    expect(useFieldItem(getItemById('potion')!, full).message).toBe("It won't have any effect.");
+    expect(useFieldItem(getItemById('antidote')!, full).message).toBe("It won't have any effect.");
+  });
 });
 
 describe('materials', () => {

@@ -16,6 +16,7 @@ import {
   battleOpeningMessages,
   itemLessonMessage,
   teachingBattleMessages,
+  withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
@@ -182,9 +183,9 @@ describe('battle presentation', () => {
     // A refusal keeps the way back, so "already out" with one Pokemon in the
     // party is never a dead end (playtest 47); too long for it, it says the
     // refusal alone. A forced replacement has no way back to name.
-    expect(partyPrompt({ forced: false, refusal: 'CHARMANDER is already out!' })).toEqual([
-      'CHARMANDER is already out!  ESC: cancel',
-      'CHARMANDER is already out!',
+    expect(partyPrompt({ forced: false, refusal: 'CHARMANDER is already in battle!' })).toEqual([
+      'CHARMANDER is already in battle!  ESC: cancel',
+      'CHARMANDER is already in battle!',
     ]);
     expect(partyPrompt({ forced: true, refusal: 'PIDGEY has no energy left to battle!' })).toEqual([
       'PIDGEY has no energy left to battle!',
@@ -264,7 +265,7 @@ describe('battle presentation', () => {
   it('opens the teaching fight by explaining the guidance surfaces', () => {
     const messages = teachingBattleMessages('Squirtle', 'Pidgey');
 
-    expect(messages[0]).toBe('A wild PIDGEY appeared!');
+    expect(messages[0]).toBe('Wild PIDGEY appeared!');
     expect(messages.join(' ')).toContain('SQUIRTLE is stronger');
     expect(messages.some((message) => message.includes('POWER'))).toBe(true);
     expect(messages.some((message) => message.includes('HP it cost you'))).toBe(true);
@@ -339,6 +340,36 @@ describe('battle presentation', () => {
     expect(battleSceneSource).toContain('...BATTLE_PANEL,');
     expect(battleSceneSource).toContain('.setInteractive({ useHandCursor: true })');
     expect(battleSceneSource).toContain(".on('pointerdown'");
+  });
+
+  it("opens a wild fight in FireRed's own words", () => {
+    // pret's sText_WildPkmnAppeared and sText_TwoWildPkmnAppeared: no article.
+    expect(battleOpeningMessages(undefined, ['Bulbasaur'], ['Zapdos'])).toEqual([
+      'Wild ZAPDOS appeared!',
+    ]);
+    expect(battleOpeningMessages(undefined, ['Bulbasaur', 'Pidgey'], ['Oddish', 'Rattata'])).toEqual([
+      'Wild ODDISH and RATTATA appeared!',
+    ]);
+  });
+
+  it("opens a trainer fight in FireRed's own words", () => {
+    // pret's sText_Trainer1WantsToBattle.
+    expect(battleOpeningMessages('LASS ADA', ['Bulbasaur'], ['Pidgey'])[0]).toBe(
+      'LASS ADA would like to battle!',
+    );
+  });
+
+  it("sends a Pokemon out in FireRed's own words", () => {
+    // pret's sText_GoPkmn and sText_GoTwoPkmn.
+    expect(battleOpeningMessages('LASS ADA', ['Bulbasaur'], ['Pidgey']).at(-1)).toBe('Go! BULBASAUR!');
+    expect(battleOpeningMessages('LASS ADA', ['Bulbasaur', 'Pidgey'], ['Rattata', 'Spearow']).at(-1)).toBe(
+      'Go! BULBASAUR and PIDGEY!',
+    );
+  });
+
+  it("calls a Pokemon back in FireRed's own words", () => {
+    // pret's sText_PkmnComeBack.
+    expect(withdrawLine('Squirtle')).toBe('SQUIRTLE, come back!');
   });
 
   it('advances opening narration before presenting the actionable command menu', () => {
@@ -429,10 +460,21 @@ describe('what a status condition reads like', () => {
     expect(applied('confusion')).toBe('Foe PIDGEY became confused!');
   });
 
+  it('says a thawed Pokemon was defrosted, in FireRed\'s own words', () => {
+    // pret's sText_PkmnWasDefrosted / sText_PkmnWasDefrosted2: the same line for
+    // a thaw on its own turn and for one a Fire hit brought on.
+    const cured = (status: 'sleep' | 'freeze' | 'confusion'): string =>
+      eventToMessage({ type: 'status-cured', user: 'enemy', name: 'Seel', status });
+    expect(cured('freeze')).toBe('Foe SEEL was defrosted!');
+    expect(cured('sleep')).toBe('Foe SEEL woke up!');
+    expect(cured('confusion')).toBe('Foe SEEL snapped out of confusion!');
+  });
+
   it('says why a turn was lost in the words of the condition that took it', () => {
     const held = (status: PrimaryStatus): string =>
       eventToMessage({ type: 'status-prevented', user: 'player', name: 'Squirtle', status });
-    expect(held('sleep')).toBe('Your SQUIRTLE is fast asleep!');
+    // pret's sText_PkmnFastAsleep ends on a full stop, not a shout.
+    expect(held('sleep')).toBe('Your SQUIRTLE is fast asleep.');
     expect(held('freeze')).toBe('Your SQUIRTLE is frozen solid!');
   });
 
@@ -595,6 +637,18 @@ describe('the small wording faults the battles playtest found', () => {
     expect(eventToMessage({ type: 'nothing-happened', user: 'enemy' })).toBe(
       'But nothing happened!',
     );
+  });
+
+  it("says Leftovers and a Focus Band in FireRed's own words", () => {
+    expect(
+      eventToMessage(
+        { type: 'gear-heal', user: 'player', name: 'Charmander', item: 'Leftovers', amount: 2 },
+        'Wild',
+      ),
+    ).toBe("Your CHARMANDER's LEFTOVERS restored its HP a little!");
+    expect(
+      eventToMessage({ type: 'gear-endured', user: 'enemy', name: 'Pidgey', item: 'Focus Band' }, 'Foe'),
+    ).toBe('Foe PIDGEY hung on using its FOCUS BAND!');
   });
 
   it("says a Shed Skin cured its problem, in FireRed's own words", () => {
