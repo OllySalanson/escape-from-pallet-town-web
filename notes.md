@@ -372,3 +372,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - How reproduced: `openingAbilityEvents` and `replacePlayerPokemon` with an Intimidate holder, each event read through `eventToMessage`.
 - What changed: the engine's arrival (`applySendOut`, `openingEventsFor` in `battleEngine.ts`) gives one `sent-out` ability event for each foe whose stat it cut, carrying the stat and a `target`, in place of the announcement plus a `stat-stage-changed`; a Clear Body still says it would not let its Attack drop. `battlePresentation.ts` says "Foe ARBOK's INTIMIDATE cuts your BULBASAUR's Attack!". Test: `abilities.test.ts` "says an Intimidate in FireRed's one line, naming who it cut" (fails before); `doubleBattle.test.ts`'s Arbok test reads the targets off the new events.
 - How to use it: meet a wild Growlithe or Ekans - the opening line names whose Attack its Intimidate cut.
+
+### 49. Shed Skin "shed sleep with its skin!" in the game's own words
+- What a player met: a wild Ekans or Metapod, or a player's Kakuna, shrugging off a status read "Wild EKANS's SHED SKIN shed poison with its skin!". FireRed says "Wild EKANS's SHED SKIN cured its poison problem!" (pret's `sText_PkmnsXCuredYProblem`, the status named by `gText_Poison`, `gText_Burn`, `gText_Ice` and the rest - so a freeze is an "ice problem").
+- How reproduced: `eventToMessage` for an `ability` event with effect `shed` printed the old line, which a test pinned.
+- What changed: the `shed` line in `battlePresentation.ts` is FireRed's, through a small `problemLabel` (burn and ice in FireRed's words, the rest as before). Test: `battlePresentation.test.ts` "says a Shed Skin cured its problem, in FireRed's own words" (fails before); the old pin is gone from the "names a status..." test.
+- How to use it: poison a wild Ekans and keep fighting - when its Shed Skin works, the line says it cured its poison problem.
+- Ability lines still in the game's own words: powered-up, sharpened, shrugged-off, hardened, blocked-status, cured-on-switch (FireRed's Natural Cure says nothing), reflected, contact, quickened, hidden, weathered-out.

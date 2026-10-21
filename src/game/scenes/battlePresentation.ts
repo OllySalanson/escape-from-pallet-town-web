@@ -36,7 +36,9 @@ export const MOVE_GUIDANCE_ROWS = 2;
 export const ROW_LIST_PAGE = 2 * MOVE_COMMAND_ROWS;
 
 /** Which page of a row list the cursor's row is on, and where that page starts. */
-export const rowListPage = (selected: number): { readonly page: number; readonly start: number } => {
+export const rowListPage = (
+  selected: number,
+): { readonly page: number; readonly start: number } => {
   const page = Math.floor(Math.max(0, selected) / ROW_LIST_PAGE);
   return { page, start: page * ROW_LIST_PAGE };
 };
@@ -74,7 +76,11 @@ export interface CombatPresentationStep {
    * A second bar the same line moves, signed as `hpDelta` is. Only Leech
    * Seed's drain has one: what the seeded Pokemon loses, the seeder gains.
    */
-  readonly alsoHp?: { readonly side: 'player' | 'enemy'; readonly slot: number; readonly hpDelta: number };
+  readonly alsoHp?: {
+    readonly side: 'player' | 'enemy';
+    readonly slot: number;
+    readonly hpDelta: number;
+  };
 }
 
 export const formatMoveCommand = (move: {
@@ -142,7 +148,9 @@ export const formatPartyRow = (
   form = 0,
 ): string => {
   const level = form >= 2 ? '' : ` ${levelLabel(pokemon.level)}`;
-  const health = pokemon.isFainted ? 'FNT' : `${form >= 1 ? '' : 'HP '}${pokemon.currentHp}/${pokemon.maxHp}`;
+  const health = pokemon.isFainted
+    ? 'FNT'
+    : `${form >= 1 ? '' : 'HP '}${pokemon.currentHp}/${pokemon.maxHp}`;
   return `${pokemon.name.toUpperCase()}${level} ${health}`;
 };
 
@@ -173,7 +181,11 @@ export const partyRowForm = (
   width: (row: string) => number,
 ): number => {
   for (let form = 0; form < PARTY_ROW_FORMS; form += 1) {
-    if (party.every((pokemon, index) => width(formatPartyRow(pokemon, form)) <= partyRowRoom(index, gutter))) {
+    if (
+      party.every(
+        (pokemon, index) => width(formatPartyRow(pokemon, form)) <= partyRowRoom(index, gutter),
+      )
+    ) {
       return form;
     }
   }
@@ -364,8 +376,12 @@ export const CAPTION_LINE_WIDTH = BATTLE_PANEL.width - PANEL_INSET_X * 2;
  * battle screen.
  */
 export const captionBySentence = (text: string): readonly string[] => {
-  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((sentence) => sentence.trim()) ?? [text];
-  return sentences.map((_, kept) => sentences.slice(0, sentences.length - kept).join(' ')).filter(Boolean);
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((sentence) => sentence.trim()) ?? [
+    text,
+  ];
+  return sentences
+    .map((_, kept) => sentences.slice(0, sentences.length - kept).join(' '))
+    .filter(Boolean);
 };
 
 export const fitCaption = (
@@ -547,7 +563,8 @@ export const describeMoveGuidance = (
       compactSummary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
       // The line above already says the type and that it is a status move, so
       // a generated description's opening sentence saying the same is dropped.
-      matchup: move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
+      matchup:
+        move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
       tone: 'neutral',
       effectiveness: 1,
     };
@@ -595,10 +612,8 @@ export const catchChanceLabel = (chance: number): string => {
 export const formatItemCommand = (count: number): string => `ITEM x${count}`;
 
 /** One medicine row in the item submenu, counted the way the pocket counts it. */
-export const formatItemRow = (
-  item: { readonly displayName: string },
-  count: number,
-): string => `${battleCaps(item.displayName)} x${count}`;
+export const formatItemRow = (item: { readonly displayName: string }, count: number): string =>
+  `${battleCaps(item.displayName)} x${count}`;
 
 /** The party screen's heading while it is choosing who to give an item to. */
 export const itemTargetPrompt = (item: { readonly displayName: string }): string =>
@@ -662,8 +677,7 @@ export const MAKE_ROOM_INVITE = 'Choose what to put down - what you drop stays h
  * it is already being carried home. It is a statement rather than an
  * instruction, because there is nothing here the player could do about it.
  */
-export const NOTHING_TO_DROP_MESSAGE =
-  'Nothing in the pack can be put down - it is all POKéMON.';
+export const NOTHING_TO_DROP_MESSAGE = 'Nothing in the pack can be put down - it is all POKéMON.';
 
 /**
  * BALL with none carried. Not "none left": the base packs medicine for you and
@@ -987,10 +1001,8 @@ export const enemyBannerRole = (battle: {
   readonly hunter: boolean;
 }): BannerRole => (battle.hunter ? 'RIVAL' : battle.trainer ? 'FOE' : 'WILD');
 
-export const combatantBanner = (
-  role: BannerRole,
-  types: readonly PokemonType[],
-): string => `${role}  ${formatTypeList(types)}`;
+export const combatantBanner = (role: BannerRole, types: readonly PokemonType[]): string =>
+  `${role}  ${formatTypeList(types)}`;
 
 /**
  * One line of battle log per event. Damaging hits carry the HP they took, so a
@@ -1021,8 +1033,7 @@ export const STATUS_TAG_GAP = 4;
  * label at the head of the bar, which is where FireRed draws a status.
  */
 export type StatusTagSeat =
-  | { readonly row: 'name'; readonly x: number }
-  | { readonly row: 'bar'; readonly x: number };
+  { readonly row: 'name'; readonly x: number } | { readonly row: 'bar'; readonly x: number };
 
 export const statusTagSeat = (measured: {
   /** The column the tag stands at when the name leaves room for it. */
@@ -1047,10 +1058,14 @@ export const statusTagSeat = (measured: {
  */
 export const statusAfterLine = (shown: ShownStatus, event: BattleEvent): ShownStatus => {
   if (event.type === 'status-applied') {
-    return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+    return event.status === 'confusion'
+      ? { ...shown, confused: true }
+      : { ...shown, primary: event.status };
   }
   if (event.type === 'status-cured') {
-    return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+    return event.status === 'confusion'
+      ? { ...shown, confused: false }
+      : { ...shown, primary: null };
   }
   if (event.type === 'ability' && event.effect === 'shed') {
     return { ...shown, primary: null };
@@ -1066,12 +1081,21 @@ export const statusAfterLine = (shown: ShownStatus, event: BattleEvent): ShownSt
 export const statusBeforeLines = (end: ShownStatus, events: readonly BattleEvent[]): ShownStatus =>
   events.reduceRight<ShownStatus>((shown, event) => {
     if (event.type === 'status-applied') {
-      return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+      return event.status === 'confusion'
+        ? { ...shown, confused: false }
+        : { ...shown, primary: null };
     }
     if (event.type === 'status-cured') {
-      return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+      return event.status === 'confusion'
+        ? { ...shown, confused: true }
+        : { ...shown, primary: event.status };
     }
-    if (event.type === 'ability' && event.effect === 'shed' && event.status && event.status !== 'confusion') {
+    if (
+      event.type === 'ability' &&
+      event.effect === 'shed' &&
+      event.status &&
+      event.status !== 'confusion'
+    ) {
       return { ...shown, primary: event.status };
     }
     return shown;
@@ -1080,7 +1104,10 @@ export const statusBeforeLines = (end: ShownStatus, events: readonly BattleEvent
 /** Whether a line moves a plate's status tag. */
 export const changesShownStatus = (
   event: BattleEvent,
-): event is Extract<BattleEvent, { readonly type: 'status-applied' | 'status-cured' | 'ability' }> =>
+): event is Extract<
+  BattleEvent,
+  { readonly type: 'status-applied' | 'status-cured' | 'ability' }
+> =>
   event.type === 'status-applied' ||
   event.type === 'status-cured' ||
   (event.type === 'ability' && event.effect === 'shed');
@@ -1318,8 +1345,9 @@ const abilityLine = (
       return `${who} blocked the extra effect!`;
     case 'no-recoil':
       return `${who} took no recoil.`;
+    // FireRed's `sText_PkmnsXCuredYProblem`, its status named as `gText_Poison` and the rest.
     case 'shed':
-      return `${who} shed ${statusLabel(event.status ?? '')} with its skin!`;
+      return `${who} cured its ${problemLabel(event.status ?? '')} problem!`;
     case 'cured-on-switch':
       return `${who} cleared up ${statusLabel(event.status ?? '')}!`;
     case 'reflected':
@@ -1440,12 +1468,16 @@ const statusHolds = (status: string): string =>
     paralysis: "is paralysed! It can't move",
     sleep: 'is fast asleep',
     freeze: 'is frozen solid',
-    confusion: "is too confused to move",
+    confusion: 'is too confused to move',
   })[status] ?? `is ${status} and can't move`;
 
 /** The adjectival one, for the lines that name the condition in passing. */
 // A status as a thing a Pokemon can be hurt by, keep off, shed or clear up -
 // a noun every time, because "kept asleep off it" is what the adjectives read.
+/** FireRed's own name for a status in "cured its X problem" (`gText_Sleep` and the rest). */
+const problemLabel = (status: string): string =>
+  ({ burn: 'burn', freeze: 'ice' })[status] ?? statusLabel(status);
+
 const statusLabel = (status: string): string =>
   ({
     poison: 'poison',
