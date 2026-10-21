@@ -1272,12 +1272,17 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     // piece of gear in the catalogue is held to.
     case 'gear-first-strike':
       return `${combatantName(event, foe)}'s ${event.item} let it move first!`;
+    // FireRed's sText_PkmnHungOnWithX.
     case 'gear-endured':
-      return `${combatantName(event, foe)} hung on with its ${event.item}!`;
+      return `${combatantName(event, foe)} hung on using its ${battleCaps(event.item)}!`;
     case 'gear-recoil':
       return `${combatantName(event, foe)} paid ${event.damage} HP to its ${event.item}.`;
+    // FireRed's sText_PkmnsItemRestoredHPALittle, Leftovers' end-of-turn line:
+    // no number, the HP bar says what came back. Quick Claw and Life Orb have no
+    // line in FireRed (the one is silent there, the other is not in it), so
+    // they keep this game's words above.
     case 'gear-heal':
-      return `${combatantName(event, foe)} took +${event.amount} HP from its ${event.item}.`;
+      return `${combatantName(event, foe)}'s ${battleCaps(event.item)} restored its HP a little!`;
     // What a move does beyond its damage, in the same voice as everything else:
     // the line says who it happened to and what it cost, so a turn can be read
     // back from the log without watching the HP bar.

@@ -597,6 +597,18 @@ describe('the small wording faults the battles playtest found', () => {
     );
   });
 
+  it("says Leftovers and a Focus Band in FireRed's own words", () => {
+    expect(
+      eventToMessage(
+        { type: 'gear-heal', user: 'player', name: 'Charmander', item: 'Leftovers', amount: 2 },
+        'Wild',
+      ),
+    ).toBe("Your CHARMANDER's LEFTOVERS restored its HP a little!");
+    expect(
+      eventToMessage({ type: 'gear-endured', user: 'enemy', name: 'Pidgey', item: 'Focus Band' }, 'Foe'),
+    ).toBe('Foe PIDGEY hung on using its FOCUS BAND!');
+  });
+
   it("says a Shed Skin cured its problem, in FireRed's own words", () => {
     const line = (status: string) =>
       eventToMessage(
