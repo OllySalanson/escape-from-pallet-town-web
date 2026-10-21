@@ -57,7 +57,7 @@ export function friendRoomCard(room: { readonly code: string; readonly mapName: 
   // One short line, because at the smallest stage a third card is room the
   // contract board under it gives up.
   const line = room ? `Room ${room.code}, on ${room.mapName}.` : 'Make a room, or type a friend’s code.';
-  return `<button class="px-window px-card hub-friend" data-view="friend" data-help="Two players on one map, each with their own team, pack and clock."><strong>Raid with a friend</strong><p>${line}</p></button>`;
+  return `<button class="px-window px-card hub-friend" data-view="friend" data-help="Up to four players on one map, each with their own team, pack and clock."><strong>Raid with a friend</strong><p>${line}</p></button>`;
 }
 
 export function friendRoomView(screen: FriendRoomScreen): string {
@@ -87,7 +87,7 @@ function choosingView(screen: FriendRoomScreen): string {
     { className: 'friend-join-window', heading: 'Join a friend' },
   );
   return `<main class="px-body friend-layout">${make}${join}${pixelWindow(
-    `<p class="px-wrap">Up to four of you on one map. You each bring your own team and pack, keep your own clock and loot, and fight your own fights. You see each other walk, and leave by any exit alone.</p>`,
+    `<p class="px-wrap">Up to four of you on one map, each with your own team, pack and clock. The loot goes to whoever steps on it first, one hunter chases you all, and a keeper one of you beats opens his doors for everyone. Leave by any exit alone.</p>`,
     { className: 'friend-about', heading: 'Together, apart' },
   )}</main>`;
 }

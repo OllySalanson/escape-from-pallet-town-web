@@ -73,6 +73,15 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).toContain('maxlength="4"');
   });
 
+  it('says what a room shares as the raid plays it: first-step loot, one hunter, a keeper’s doors', () => {
+    const html = friendRoomView({ ...base, room: null });
+    expect(html).not.toContain('own clock and loot');
+    expect(html).toContain('The loot goes to whoever steps on it first');
+    expect(html).toContain('one hunter chases you all');
+    expect(html).toContain('opens his doors for everyone');
+    expect(friendRoomCard(null)).toContain('Up to four players on one map');
+  });
+
   it('asks for a name before anything else', () => {
     const html = friendRoomView({ ...base, room: null, name: null });
     expect(html).not.toContain('data-room-map');
