@@ -242,6 +242,29 @@ describe('the abilities that change a number', () => {
     expect(didFire(first.events, 'sharpened')).toBe(true);
     expect(didFire(second.events, 'sharpened')).toBe(false);
   });
+
+  it('keeps Compound Eyes quiet on a move that cannot miss, and says it on the first that can', () => {
+    // Agility and Swift roll no accuracy, so a keener eye changes nothing about
+    // them; "has it in its sights!" after Agility was a line about nothing, and
+    // being said once a battle it then stayed silent when it did matter.
+    const agility = new MoveBase({
+      name: 'Agility',
+      type: PokemonType.Psychic,
+      power: 0,
+      accuracy: 100,
+      pp: 30,
+      category: MoveCategory.Status,
+      alwaysHits: true,
+      target: MoveTarget.Self,
+      effects: { boosts: [{ stat: 'speed', stages: 2 }] },
+    });
+    const player = armed(species({ abilityId: 'compound-eyes' }), 20, agility, SMOKESCREEN);
+    const first = resolveTurn(createBattleState(player, armed(species({ abilityId: null }), 20)), 0, at({}));
+    const second = resolveTurn(first.state, 1, at({}));
+
+    expect(didFire(first.events, 'sharpened')).toBe(false);
+    expect(didFire(second.events, 'sharpened')).toBe(true);
+  });
 });
 
 describe('the abilities that refuse something', () => {

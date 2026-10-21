@@ -1740,10 +1740,12 @@ const applyMove = (
     // the attacker's own ability. A move with `alwaysHits` skips it, which is
     // the only way Swift can exist. Compound Eyes is read here and said after
     // the move is named, because a line about taking aim before anyone knows
-    // what is being aimed reads backwards.
+    // what is being aimed reads backwards. A move that cannot miss is not
+    // aimed at all, so it says nothing - and leaves the once-a-battle line for
+    // the first move the eye does change.
     const abilityAccuracy = accuracyMultiplier(abilityCarrier(attackerNow()), move.base);
     const sayAccuracy = (): void => {
-      if (abilityAccuracy === 1) {
+      if (abilityAccuracy === 1 || move.base.alwaysHits) {
         return;
       }
       const sharpened = announceAbility(nextState, ref, 'sharpened');
