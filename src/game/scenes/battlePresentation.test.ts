@@ -460,6 +460,16 @@ describe('what a status condition reads like', () => {
     expect(applied('confusion')).toBe('Foe PIDGEY became confused!');
   });
 
+  it('says a thawed Pokemon was defrosted, in FireRed\'s own words', () => {
+    // pret's sText_PkmnWasDefrosted / sText_PkmnWasDefrosted2: the same line for
+    // a thaw on its own turn and for one a Fire hit brought on.
+    const cured = (status: 'sleep' | 'freeze' | 'confusion'): string =>
+      eventToMessage({ type: 'status-cured', user: 'enemy', name: 'Seel', status });
+    expect(cured('freeze')).toBe('Foe SEEL was defrosted!');
+    expect(cured('sleep')).toBe('Foe SEEL woke up!');
+    expect(cured('confusion')).toBe('Foe SEEL snapped out of confusion!');
+  });
+
   it('says why a turn was lost in the words of the condition that took it', () => {
     const held = (status: PrimaryStatus): string =>
       eventToMessage({ type: 'status-prevented', user: 'player', name: 'Squirtle', status });

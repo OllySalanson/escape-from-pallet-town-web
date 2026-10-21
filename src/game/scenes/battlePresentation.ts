@@ -1230,11 +1230,13 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return event.status === 'burn'
         ? `${combatantName(event, foe)} is hurt by its burn!`
         : `${combatantName(event, foe)} is hurt by ${statusLabel(event.status)}!`;
+    // FireRed's sText_PkmnWokeUp and sText_PkmnWasDefrosted (a thaw on its own
+    // turn and one a Fire hit brings on say the same).
     case 'status-cured':
       return event.status === 'sleep'
         ? `${combatantName(event, foe)} woke up!`
         : event.status === 'freeze'
-          ? `${combatantName(event, foe)} thawed out!`
+          ? `${combatantName(event, foe)} was defrosted!`
           : `${combatantName(event, foe)} snapped out of confusion!`;
     // FireRed's sText_PkmnIsConfused, then sText_ItHurtConfusion: the name is
     // said once, before the coin, and the self-hit is only "It".

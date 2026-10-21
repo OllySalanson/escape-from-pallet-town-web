@@ -578,3 +578,10 @@ Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b
 - What changed: the TOGETHER, APART paragraph and the card's help in `hub/friendRoomView.ts` say what the room shares now; still fits the smallest stage. Test: `friendScreens.test.ts` "says what a room shares as the raid plays it" (fails before).
 - How to use it: open Raid with a friend in Oak's Lab - TOGETHER, APART says the loot is first come, the hunter is shared and a beaten keeper's doors open for all.
 - Seen and left: at 640x480 the FEEDBACK tab stands over the JOIN button's right edge (the designed "no room on either edge" case in AGENTS.md).
+
+### 79. A thawed Pokémon "thawed out!" in a fight
+- What a player met: a frozen Pokémon coming out of it in battle (one in five on its own turn, or hit by a Fire move) read "Foe SEEL thawed out!" - a later generation's line. FireRed says "Foe SEEL was defrosted!" (pret's `sText_PkmnWasDefrosted`, and `sText_PkmnWasDefrosted2` for its own-turn thaw).
+- How reproduced: `eventToMessage({ type: 'status-cured', status: 'freeze', ... })` in `scenes/battlePresentation.ts`; checked against `src/battle_message.c` at pret 037335f, fetched with curl (the local clone has no `src/`).
+- What changed: the freeze line of `status-cured` says "X was defrosted!". Test: `battlePresentation.test.ts` "says a thawed Pokemon was defrosted, in FireRed's own words" (fails before).
+- How to use it: freeze a Pokémon (Ice Beam) and wait - it comes out of it with "X was defrosted!".
+- Read and left: the Ice Heal's field line "was thawed out." is FireRed's own (`gText_PkmnThawedOut`). Later candidates, both checked in `battle_message.c`: "The sunlight turned harsh!" (FireRed: "The sunlight got bright!") and the hail chip "is buffeted by the hail!" (FireRed: "is pelted by HAIL!") - neither is reachable yet (no place has sun or hail, and nothing learns Sunny Day or Hail by level); a ball thrown at a trainer's Pokémon says "You can't catch a trainer's POKéMON!" where FireRed says "The TRAINER blocked the BALL!" then "Don't be a thief!".
