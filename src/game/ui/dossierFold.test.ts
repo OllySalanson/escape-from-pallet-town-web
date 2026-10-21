@@ -10,7 +10,7 @@ vi.mock('phaser', () => ({
 
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
-import { headingsOrphanedInColumn, headsWhatFollows, scrollCoverHeight } from './MenuOverlay';
+import { foldedRows, headingsOrphanedInColumn, headsWhatFollows, scrollCoverHeight } from './MenuOverlay';
 import { pokemonDossier } from './pokemonDossier';
 
 const stylesheet = await readFile(new URL('../../style.css', import.meta.url), 'utf8');
@@ -157,5 +157,24 @@ describe("the dossier's fold at the smallest stage", () => {
     expect(headingsOrphanedInColumn({ top: 324 }, rows, 580)).toEqual([]);
     // A band across the pane over nothing is `scrollCoverHeight`'s to raise the strip over, and still found here.
     expect(headingsOrphanedInColumn({ top: 324 }, rows, 547).map((heading) => heading.name)).toEqual(['STATS']);
+  });
+
+  it("leaves out a label whose column's only line the fold has clipped away", () => {
+    // Brock's workshop at 800x600 (2x), measured off the live screen: the
+    // fold at 480 runs through the price's first line (454-486), which is
+    // folded out of view, and PRICE stood over an empty column beside WHAT IT
+    // DOES and its line.
+    const rows = [
+      { name: 'WHAT IT DOES', left: 30, top: 428, right: 378, bottom: 452, heading: true },
+      { name: 'effect', left: 30, top: 454, right: 378, bottom: 478, heading: false },
+      { name: 'PRICE', left: 390, top: 428, right: 738, bottom: 452, heading: true },
+      { name: 'radio valve', left: 390, top: 454, right: 738, bottom: 486, heading: false },
+      { name: 'mooring rope', left: 390, top: 488, right: 738, bottom: 520, heading: false },
+    ];
+    const pane = { top: 424, bottom: 516 };
+    const fold = pane.bottom - 36;
+    const folded = foldedRows(pane, rows, fold);
+    expect(folded.map((row) => row.name)).toEqual(['radio valve']);
+    expect(headingsOrphanedInColumn(pane, rows, fold, folded).map((heading) => heading.name)).toEqual(['PRICE']);
   });
 });
