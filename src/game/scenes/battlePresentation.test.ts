@@ -21,6 +21,8 @@ import {
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
   BATTLE_SCREEN_WIDTH,
+  combatantSpot,
+  seatedSpriteY,
   STATUS_TAG_GAP,
   statusTagSeat,
   MAKE_ROOM_PAGE,
@@ -887,5 +889,35 @@ describe('a status move on a Pokemon that already has one', () => {
         held: 'poison',
       }),
     ).toBe('But it failed!');
+  });
+});
+
+/**
+ * FireRed stands every picture on one line by its own empty rows
+ * (`GetBattlerSpriteDefault_Y`): a front picture's feet on the foe's platform,
+ * a back picture's base on the top of the text box, and a foe that flies or
+ * floats lifted off its line by its elevation.
+ */
+describe('where a Pokemon stands on the field', () => {
+  /** The bottom edge of the lowest drawn row of a 64x64 picture drawn at this centre. */
+  const base = (centre: number, scale: number, emptyRows: number) => centre + (32 - emptyRows) * scale;
+
+  it('stands the player’s back picture on the top of the panel, whatever its empty rows', () => {
+    const spot = combatantSpot('player', 0, 1);
+    // Bulbasaur's back picture has sixteen empty rows under it, Charizard's four.
+    expect(base(seatedSpriteY(spot, 'player', 1), spot.scale, 16)).toBeCloseTo(174);
+    expect(base(seatedSpriteY(spot, 'player', 6), spot.scale, 4)).toBeCloseTo(174);
+  });
+
+  it('stands every foe’s feet on one line, and lifts a floating one off it', () => {
+    const spot = combatantSpot('enemy', 0, 1);
+    // Eevee: thirteen empty rows, standing. Geodude: eighteen, floating sixteen up.
+    expect(base(seatedSpriteY(spot, 'enemy', 133), spot.scale, 13)).toBeCloseTo(spot.ground);
+    expect(base(seatedSpriteY(spot, 'enemy', 74), spot.scale, 18)).toBeCloseTo(spot.ground - 16 * spot.scale);
+  });
+
+  it('keeps the double battle’s spots where they were authored for a typical picture', () => {
+    expect(combatantSpot('enemy', 0, 2)).toMatchObject({ x: 202, y: 76, scale: 0.9 });
+    expect(combatantSpot('player', 1, 2)).toMatchObject({ x: 128, y: 80, scale: 1.1 });
   });
 });

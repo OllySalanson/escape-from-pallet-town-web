@@ -118,6 +118,7 @@ import {
   runInsertions,
 } from '../run/runGeneration';
 import {
+  availableContracts,
   boardContractForMap,
   contractCarryIn,
   formatStacks,
@@ -577,8 +578,14 @@ export class HubScene extends Phaser.Scene {
     return ITEM_DEFINITIONS.filter((item) => this.stash.itemCount(item.id) > 0);
   }
 
+  /**
+   * Whether the first contract is still on the board. A save that has banked it
+   * is past it, and so is every save while its map is retired
+   * (`world/mapRoster.ts`), which is what lets a new game drop straight in
+   * wherever the game is played.
+   */
   private get firstContractActive(): boolean {
-    return !this.savedGame.raidProgress.firstContractExtracted;
+    return availableContracts(this.savedGame.raidProgress.completedContracts).includes(FIRST_CONTRACT);
   }
 
   /**

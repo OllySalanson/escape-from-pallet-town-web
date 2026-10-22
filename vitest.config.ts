@@ -48,8 +48,10 @@ export default defineConfig({
     /**
      * One approved player map is in the game for every test file, so a test
      * that assumes only the shipped maps exist fails here rather than in the
-     * publish workflow. See `publishedMapFixture.testkit.ts`.
+     * publish workflow. See `publishedMapFixture.testkit.ts`. And no shipped
+     * map is retired, so every rule goes on being asked of the maps put away
+     * for now and they stay fit to bring back (`mapRoster.testkit.ts`).
      */
-    setupFiles: ['src/game/world/publishedMapFixture.testkit.ts'],
+    setupFiles: ['src/game/world/publishedMapFixture.testkit.ts', 'src/game/world/mapRoster.testkit.ts'],
   },
 });

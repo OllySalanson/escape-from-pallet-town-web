@@ -68,7 +68,7 @@ import { buildDefeatSequence } from '../run/defeatSequence';
 import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { BattleScene } from './BattleScene';
-import { combatantSpot } from './battlePresentation';
+import { combatantSpot, seatedSpriteY } from './battlePresentation';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 
@@ -2418,7 +2418,7 @@ describe('a trainer sending out Pokemon after a knockout', () => {
       expect(enemySprite.texture).toBe(`pokemon-front-${next.base.dexId}`);
       expect({ x: enemySprite.x, y: enemySprite.y, alpha: enemySprite.alpha, tinted: enemySprite.tinted }).toEqual({
         x: spot.x,
-        y: spot.y,
+        y: seatedSpriteY(spot, 'enemy', next.base.dexId),
         alpha: 1,
         tinted: false,
       });
@@ -2473,7 +2473,7 @@ describe('a wild Pokemon breaking free of a ball', () => {
 
     expect({ x: enemySprite.x, y: enemySprite.y, alpha: enemySprite.alpha, scale: enemySprite.scaleX }).toEqual({
       x: spot.x,
-      y: spot.y,
+      y: seatedSpriteY(spot, 'enemy', caterpie.base.dexId),
       alpha: 1,
       scale: spot.scale,
     });

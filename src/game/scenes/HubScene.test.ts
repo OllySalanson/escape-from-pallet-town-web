@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('phaser', () => ({
   default: {
@@ -25,6 +25,7 @@ import { deployableMapIds } from '../objectives/standingBoard';
 import { frontDoorFor } from '../run/runGeneration';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
+import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import {
   FAINTED_TREATMENT_NOTE,
   MAX_PENDING_RECOVERY_MS,
@@ -2665,5 +2666,41 @@ describe('the Pokédex: Professor Oak rewards each milestone in his lab, once', 
 
     readOn(hub);
     expect(speechOn(screenOf(hub))).toBeUndefined();
+  });
+});
+
+/**
+ * The shipped roster (`world/mapRoster.ts`): every map but Greystone Vale is
+ * retired, so the lab sends every save there - a new one and one whose every
+ * landing was on a map put away.
+ */
+describe('the lab with only Greystone Vale in play', () => {
+  beforeEach(() => retireMapsForTests(RETIRED_MAPS));
+  afterEach(() => retireMapsForTests([]));
+
+  it('sends a brand new save into Greystone Vale on a contract that lives there', () => {
+    const { hub, start } = createHub();
+
+    expect(hub.flow.insertionId).toBe('greystone-vale');
+    hub.flow.togglePokemon('charmander-1');
+    readyToDeploy(hub);
+    deploy(hub, start);
+
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.insertion.id).toBe('greystone-vale');
+    expect(runSession.plan?.contract?.mapId).toBe('greystone-vale');
+  });
+
+  it('turns a save whose landings are all on retired maps towards the vale, and refuses the old ones', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+    });
+
+    expect(hub.flow.insertionId).toBe('greystone-vale');
+    hub.openDeployment('route-1');
+    expect(hub.flow.insertionId).toBe('greystone-vale');
   });
 });

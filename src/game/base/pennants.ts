@@ -1,7 +1,7 @@
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
-import { isMapInProgress, WORLD_MAP_NAMES, TILE_SIZE, type BuiltInMapId } from '../worldMap';
+import { isMapOffered, WORLD_MAP_NAMES, TILE_SIZE, type BuiltInMapId } from '../worldMap';
 
 /**
  * PENNANTS: a string of them along the wall of the player's room, one for every
@@ -63,10 +63,11 @@ export const PENNANTS: readonly Pennant[] = [
 
 /**
  * The pennants on the string: one for every map a save can go to. A map not
- * yet offered to saves (`MAPS_IN_PROGRESS`) has its pennant made and waiting,
- * and it goes up on the string the day the map opens.
+ * offered to saves (`world/mapRoster.ts`: retired, or still in progress) has
+ * its pennant made and waiting, and it goes up on the string the day the map
+ * is offered.
  */
-export const STRUNG_PENNANTS: readonly Pennant[] = PENNANTS.filter((pennant) => !isMapInProgress(pennant.mapId));
+export const STRUNG_PENNANTS: readonly Pennant[] = PENNANTS.filter((pennant) => isMapOffered(pennant.mapId));
 
 /** How many raids came home from a map. */
 const homecomings = (game: RestoredGame, mapId: BuiltInMapId): number =>

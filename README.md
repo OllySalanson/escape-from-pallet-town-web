@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://ollysalanson.github.io/escape-from-pallet-town-web/">
-    <img src="docs/readme/hero.svg" width="800" alt="Escape from Pallet Town. Grab the loot. Beat the clock. Leg it. A trainer in a red cap runs through Viridian City at dusk with Blue, the rival, right behind them, while the raid clock flashes 0:09.">
+    <img src="docs/readme/hero.svg" width="800" alt="Escape from Pallet Town. Grab the loot. Beat the clock. Leg it. A trainer in a red cap runs through Millbrook, in Greystone Vale, at dusk with Blue, the rival, right behind them, while the raid clock flashes 0:09.">
   </a>
 </p>
 
@@ -45,7 +45,7 @@ never played an extraction game? Lucky you, here is the whole genre in five word
 That's it. Go out, get greedy, come home. Or don't come home, and learn something about greed.
 
 <p align="center">
-  <img src="docs/readme/walk.webp" width="800" alt="A raid in Viridian City: the trainer walks from the Pokemon Center up Main Street towards the Gym, the raid clock ticking down in the corner.">
+  <img src="docs/readme/walk.webp" width="800" alt="A raid in Greystone Vale: the trainer walks out of Mill Square in Millbrook, past the fountain and the cottages, the raid clock ticking down in the corner.">
 </p>
 
 ## How a raid goes
@@ -63,17 +63,17 @@ parts are fighting for the same space.
 
 ### 2. Drop in, and the clock starts
 
-Five maps, each drawn tile by tile, each far bigger than one raid can cover, so there is always
-somewhere you didn't get to. Tall grass rolls wild encounters, and whatever lives in the water
+One map, Greystone Vale, drawn tile by tile and far bigger than one raid can cover, so there is
+always somewhere you didn't get to. Tall grass rolls wild encounters, and whatever lives in the water
 bites on a rod, if you can spare the clock to stand there. Landmarks hide caches, and the good
-ones are padlocked: bring a Lockpick, and expect it to snap. Every map has a gate only its own key
-opens, and somewhere on that map is the key. Find it, get it home, and from then on you can bring
+ones are padlocked: bring a Lockpick, and expect it to snap. There is a gate only its own key
+opens, and somewhere on the map is the key. Find it, get it home, and from then on you can bring
 it along for a shortcut out. Lose a raid with it in your pack and it's gone. Contracts
 from the board send you looking for something specific. Somewhere on the map there is a prize,
 glinting, that is definitely worth the detour. Probably.
 
 <p align="center">
-  <img src="docs/readme/forest.png" width="800" alt="Viridian Forest's North Landing mid-raid: tall grass, a fire tower, a trainer watching the path, and the raid clock at 4:58.">
+  <img src="docs/readme/quarry.png" width="800" alt="The Quarry in Greystone Peaks mid-raid: a hut under the cliffs with a cache by its door, a ledge you can only drop down, pine woods all round, and the raid clock at 4:59.">
 </p>
 
 ### 3. Somebody's coming
@@ -87,7 +87,7 @@ everything ends up running out of time instead. Beat them and they're gone for g
 clock runs out.
 
 <p align="center">
-  <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Viridian City: &quot;BLUE is on your trail! Whatever you found, loser, it's mine!&quot;">
+  <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Millbrook: &quot;BLUE is on your trail! Whatever you found, loser, it's mine!&quot;">
 </p>
 
 ### 4. Fight like it's 2004
@@ -101,7 +101,7 @@ pocket-sized? Press ESC while it evolves, the way you mashed B in 2004, and it w
 at its next level.
 
 <p align="center">
-  <img src="docs/readme/battle.png" width="800" alt="A battle against Blue: Bulbasaur, level 5, faces his level 2 Eevee. &quot;BLUE wants to battle!&quot;">
+  <img src="docs/readme/battle.png" width="800" alt="A battle against Blue: Bulbasaur, level 5, sits on its patch of grass facing his level 2 Eevee on the far one. &quot;BLUE would like to battle!&quot;">
 </p>
 
 ### 5. Get out (or don't)
@@ -111,8 +111,8 @@ gone, along with every Pokémon you brought that wasn't tucked into the secure c
 result screen is very polite about it either way.
 
 <p align="center">
-  <img src="docs/readme/extracted.png" width="400" alt="Extracted through the South Gate: &quot;You walked out loaded.&quot; Parts crate, Linen roll and Super Potion banked.">
-  <img src="docs/readme/raid-lost.png" width="400" alt="Raid lost: &quot;You went down.&quot; Three Potions, 55 Pokedollars and the Raid pack gone for good; the secure slot held Bulbasaur.">
+  <img src="docs/readme/extracted.png" width="400" alt="Extracted along the Mere Path: &quot;You walked out loaded.&quot; Two Mooring ropes and two Super Potions banked.">
+  <img src="docs/readme/raid-lost.png" width="400" alt="Raid lost: &quot;You went down.&quot; Three Potions, two Mooring ropes, a Super Potion, 45 Pokedollars, a Parts crate and the Raid pack gone for good; the secure slot held Bulbasaur.">
 </p>
 
 <p align="center"><sub>You'll never be left with nothing, mind. Lose everything and the base quietly tops you back up to a kit you can deploy with.</sub></p>
@@ -166,11 +166,8 @@ all October and a tree in the corner all December. Nobody hunts you there.
 
 And it's yours to arrange. Press **H** in the house and it's a Habbo room: pick things up, carry
 them about, turn them round and put them down, a tile at a time. Shove the table across the room,
-move the pot plants, then fill the place with what you've carried home - cushions, desks, chairs
-and Surf Mats out of Emerald's Secret Bases, lying about on the raid maps (a handful so rare you
-may never see one), and a doll of every kind of Pokémon you've ever brought back alive. Dolls go
-on desks. Nothing goes on the door mat. And a Glitter Mat still in your pack when a raid goes
-wrong is a Glitter Mat you never had.
+move the pot plants, then fill the place with a doll of every kind of Pokémon you've ever brought
+back alive. Dolls go on the table. Nothing goes on the door mat.
 
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
@@ -196,21 +193,27 @@ losing you and losing to you. None of them is subtle about it.
 
 ## The world
 
-| Map | What it is |
+For now the world is one map, **Greystone Vale**: 384 tiles square, bigger than every map that came
+before it put together, and drawn district by district around a mill town. Eleven ways in, and
+twenty-eight ways out to find.
+
+| Part of it | What it is |
 |---|---|
-| **Floodplain Relay** | Where it all starts: a drowned river town round Market Isle, 128 tiles square, with the river running on south to the tide. |
-| **Pallet Town** | A mill town in a valley that's mostly water, read from the spring at the top to the saltings at the bottom. There's a cave under the quarry hill. |
-| **Route 1** | Two roads and a braid of paths between them, plus orchards, paddocks and a brook with three very different crossings. |
-| **Viridian Forest** | A deep wood, with a fire tower, a charcoal burn somebody still works, and a ledge only you can jump down. |
-| **Viridian City** | Drawn to FireRed's own standard on Kanto's own art, with eighteen townspeople who'll tell you where things are. |
+| **Millbrook** | The mill town every road in the vale starts from, round Mill Square and its fountain. |
+| **High Moor** and **Greystone Peaks** | A drove road over the moor past the Grey Stones, and the quarry under the peaks where the Greystone Caves open. |
+| **The Crossing**, **Reedmere** and **Safari Marsh** | The river, its stone bridge and stepping stones, a mere with a duck hide, and a marsh behind the Safari Zone gate. |
+| **Pine Hollow** and **Tanglewood** | Thick woods with clearings that are hard to find on purpose, and a ruined shrine. |
+| **Orchard Terraces** and **The Power Station** | Terraced orchards down to the sea, and a dam, a turbine hall and a switchyard gone to grass. |
+| **Gull Strand**, **The Wreck** and **The Sunken Quarter** | A beach and a jetty, a salvage camp under a wreck on the reef, and a drowned port held by Boatswain Cragg. |
+| **The far places** | Stormcrown, the Moor Chapel, the Lost Garden, Frostreef and Ember Isle, each hard to reach in its own way: from the deepest cave, only at night, through a boulder puzzle, or only by boat on the tide. |
 
 A few things worth knowing before you go:
 
-- **Every map has a boss, and every boss holds a door.** Beat them and the door stays open for good.
-- **Some doors need a move, not a fight.** Teach a Pokémon Cut or Surf and new places open up.
-- **Prizes gleam.** Every map has an evolution stone somewhere in it, and on a raid where one turns up you can see it shining from a long way off. Is it worth the detour with forty seconds on the clock? Yes. No. Maybe.
+- **The vale has a boss, and the boss holds two doors.** Win, and they stay open for good.
+- **Some ways need a move, not a fight.** Teach a Pokémon Strength and the boulders in your way start to shift.
+- **Prizes gleam.** A few places in the vale hold something only they have, and on a raid where one turns up you can see it shining from a long way off. Is it worth the detour with forty seconds on the clock? Yes. No. Maybe.
 - **The drop-in map is dark where you haven't been.** Walk it, come home, and watch the dark pull back.
-- **Contracts change how a raid goes:** survey three stakes, carry a ledger out through one particular exit, or spend your own Potions resupplying a warden.
+- **Contracts change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost.
 
 ## Draw your own map
 
@@ -232,9 +235,8 @@ sightseeing.
 
 - Pokémon that learn moves as they level, and ask before forgetting one.
 - Evolution by level and by five evolution stones.
-- Ten TMs and HMs to find, barter for or earn.
-- A double battle, if you get far enough to earn it.
-- Rain in the places that are made of water, and it changes how the fight goes.
+- Ten TMs and HMs to teach, the HMs bartered from Bill, and boulders only Strength will shift.
+- Rain on the high tops, and it changes how the fight goes.
 - Trainers who watch a stretch of road. Step into it and you're paying a toll.
 - Every sound effect synthesised in the browser, except the Pokémon themselves: each one cries its own FireRed cry as it comes out, faints and gets caught.
 

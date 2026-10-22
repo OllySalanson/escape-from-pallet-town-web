@@ -173,6 +173,7 @@ import {
   moveGuidanceLayout,
   moveGuidanceFor,
   combatantSpot,
+  seatedSpriteY,
   combatantEntryX,
   statusPlateLayout,
   captionBySentence,
@@ -960,7 +961,7 @@ export class BattleScene extends Phaser.Scene {
     const spot = combatantSpot('enemy', 0, this.state.unitCount);
     const from = { x: 60, y: 150 };
     // At the foe's feet, and clear of the banner over the player's plate below them.
-    const to = { x: spot.x, y: spot.y + 14 };
+    const to = { x: spot.x, y: spot.ground - 8 };
     const ball = this.add
       .image(from.x, from.y, iconTextureKey(itemIconName(this.thrownBallId ?? 'poke-ball')))
       .setDepth(3);
@@ -1058,7 +1059,11 @@ export class BattleScene extends Phaser.Scene {
   private createCombatantSprite(ref: SlotRef, combatant: BattleCombatant): Phaser.GameObjects.Image {
     const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
     const sprite = this.add
-      .image(combatantEntryX(ref.side), spot.y, this.spriteTexture(ref.side, combatant.pokemon))
+      .image(
+        combatantEntryX(ref.side),
+        seatedSpriteY(spot, ref.side, combatant.pokemon.base.dexId),
+        this.spriteTexture(ref.side, combatant.pokemon),
+      )
       .setScale(spot.scale)
       // The pair nearer the front of the field is drawn over the pair behind
       // it, exactly as the plates are ordered: a slot is a place on the ground.
@@ -1276,7 +1281,18 @@ export class BattleScene extends Phaser.Scene {
     }
     const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
     this.tweens.killTweensOf(sprite);
-    return sprite.clearTint().setPosition(spot.x, spot.y).setAlpha(1);
+    return sprite.clearTint().setPosition(spot.x, this.seatedY(ref)).setAlpha(1);
+  }
+
+  /**
+   * Where the sprite in a slot stands for the Pokemon it shows now: each
+   * species on the ground line by its own picture (`seatedSpriteY`), so a
+   * switch, a replacement or an evolution re-seats it.
+   */
+  private seatedY(ref: SlotRef): number {
+    const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
+    const shown = this.displayed.get(plateKey(ref.side, ref.slot)) ?? unitAt(this.state, ref)?.pokemon;
+    return shown ? seatedSpriteY(spot, ref.side, shown.base.dexId) : spot.y;
   }
 
   private drawHpBar(
@@ -3188,7 +3204,7 @@ export class BattleScene extends Phaser.Scene {
         for (const next of now) {
           const mote = motes.get(next.id) ?? this.createSparkleMote(next.frame, spot.scale);
           motes.set(next.id, mote);
-          mote.setPosition(spot.x + next.dx * spot.scale, spot.y + next.dy * spot.scale);
+          mote.setPosition(spot.x + next.dx * spot.scale, seatedSpriteY(spot, ref.side, pokemon.base.dexId) + next.dy * spot.scale);
         }
       },
       onComplete: clear,
