@@ -5,7 +5,8 @@
 //
 // OLLY starts a game, makes a room in Oak's Lab and drops into the raid. AMY is
 // the second tab (named by the driver) and types OLLY's code: she is told the
-// room is on OLLY's map and that he is already there, gets ready and drops in.
+// room is on OLLY's map and that he is already there, walks to the Raid Arena
+// and drops in.
 // Both tabs share one browser's storage and so one save. Two players are two
 // devices; here the second tab steps round the first's raid-in-flight mark
 // (`run/raidInFlight.ts`) so it may deploy at all, which is the one thing these
@@ -71,7 +72,12 @@ export async function twoInARoom(browser, url, out) {
   };
   const readOn = (tab) => readOnRaid(tab, press);
   const prepareAndDropIn = async (tab) => {
-    await click(tab, 'Get ready');
+    // Out of the room's screen and the lab, and across the yard to the Raid
+    // Arena, whose door opens on the loadout.
+    await press(tab, 'Escape');
+    await press(tab, 'Escape');
+    await tab.waitFor(sceneIs('base'), { what: 'the lab' });
+    await walkIntoBase(tab, 'raid-arena');
     // The first Pokemon the vault offers, then on through the steps.
     await bring(tab);
     await tab.waitFor(takePokemon(), { what: 'a Pokémon to take' });

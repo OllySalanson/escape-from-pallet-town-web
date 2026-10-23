@@ -239,9 +239,8 @@ try {
   await walkIntoBase(page, 'bills-cottage');
   await shoot('bill');
   await leave();
-  await walkIntoBase(page, 'oaks-lab');
+  await walkIntoBase(page, 'raid-arena');
   await shoot('lobby');
-  await click('Start a raid');
   await shoot('loadout');
   await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
   // Pack something, so the final check is photographed with a loadout on it
@@ -331,8 +330,7 @@ try {
       await press('Escape');
       await sleep(250);
     }
-    await walkIntoBase(page, 'oaks-lab');
-    await click('Start a raid');
+    await walkIntoBase(page, 'raid-arena');
     await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
     await sleep(400);
     const STEPPERS = `[...document.querySelectorAll('.px-count[data-count^="item:"]')]`;

@@ -92,7 +92,7 @@ export interface Errand {
 export const ERRANDS: readonly Errand[] = [
   {
     id: 'oaks-parcel',
-    giver: 'raid',
+    giver: 'lab',
     speaker: 'prof-oak',
     name: 'Professor Oak',
     called: 'Prof. Oak',

@@ -7,6 +7,7 @@ import {
   BASE_MAP_WIDTH,
   BASE_SPAWN,
   HOME_SIGN,
+  NOTICE_BOARD,
   getBaseMap,
 } from './baseMap';
 import { BASE_DOORS } from './doors';
@@ -55,40 +56,39 @@ describe('the base map', () => {
   });
 
   /**
-   * The one number this map is designed against. A player re-kits between raids
-   * many times an hour, so a base that is a pleasure the first time and a
-   * corridor the fourth is a base that is too big. Measured with every rung
-   * built, which is the longest the walk ever gets. Inside, the keeper is one
-   * key from the mat (`rooms.test.ts`), so this is the whole of the walk.
+   * The walks this map is designed against, measured with every rung built,
+   * which is the longest they ever get. The harbour was a tight yard with
+   * every door seven steps from the spawn; the captain asked for room
+   * (2026-10-23: "more open space, all the pathways need to be a bit wider"),
+   * so the lanes between buildings are two tiles of lawn and the yard is
+   * deeper, and what is held now is the walk that is taken every raid: the
+   * Raid Arena, which every raid starts from, is a short walk from where the
+   * game opens and from the boat that brings a raid home.
    */
-  it("keeps every keeper's door within seven steps of where the player is put down", () => {
+  it('keeps the Raid Arena a short walk from where the player is put down, both ways in', () => {
+    expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('raid-arena'))).toBeLessThanOrEqual(10);
+    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('raid-arena'))).toBeLessThanOrEqual(12);
+  });
+
+  it("keeps every keeper's door within a stroll of where the game opens", () => {
     const steps = stepsFrom(BASE_SPAWN);
-    const walks = BASE_DOORS.filter((door) => door.screen !== null).map(
-      (door) => [door.id, stepsTo(steps, approachesTo(door.id))] as const,
-    );
-    for (const [id, walk] of walks) {
-      expect(`${id}:${walk}`).toBe(`${id}:${walk}`);
-      expect(walk).toBeLessThanOrEqual(7);
+    for (const door of BASE_DOORS.filter((each) => each.screen !== null)) {
+      expect([door.id, stepsTo(steps, approachesTo(door.id)) <= 18]).toEqual([door.id, true]);
     }
-    // And the lab, which is what a raid is prepared in, is right in front of you.
-    expect(stepsTo(steps, approachesTo('oaks-lab'))).toBeLessThanOrEqual(2);
   });
 
   /**
    * The player's own house is not on the way to re-kitting - nothing in it is
-   * a screen a raid needs - so it is not one of the seven-step doors. It is a
-   * short stroll up the yard instead, which is held so that it stays one: two
-   * seconds from the middle of the yard, and a little more from the boat.
+   * a screen a raid needs - so it is a stroll up the yard instead, held so
+   * that it stays one.
    */
-  it('keeps THE BOLTHOLE a short stroll from both landings', () => {
-    expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('bolthole'))).toBeLessThanOrEqual(13);
-    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('bolthole'))).toBeLessThanOrEqual(17);
+  it('keeps THE BOLTHOLE a stroll from both landings', () => {
+    expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('bolthole'))).toBeLessThanOrEqual(24);
+    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('bolthole'))).toBeLessThanOrEqual(34);
   });
 
-  it('lands a raid within four steps of Bill and eight of the lab', () => {
-    const steps = stepsFrom(BASE_LANDING);
-    expect(stepsTo(steps, approachesTo('bills-cottage'))).toBeLessThanOrEqual(4);
-    expect(stepsTo(steps, approachesTo('oaks-lab'))).toBeLessThanOrEqual(8);
+  it('lands a raid within four steps of Bill', () => {
+    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('bills-cottage'))).toBeLessThanOrEqual(4);
   });
 
   it('reaches every door and every fixture from both landings, whatever is built', () => {
@@ -181,11 +181,11 @@ describe('the base map', () => {
 
   it('stands the notice board where somebody coming off the boat can read it', () => {
     const map = fullyBuilt();
-    const board = { x: 14, y: 15 };
+    const board = NOTICE_BOARD;
     expect(map.collision[board.y][board.x]).toBe(true);
     expect(map.collision[board.y + 1][board.x]).toBe(false);
     // And it is a short walk from where a raid puts the player down.
-    expect(stepsFrom(BASE_LANDING)[board.y + 1][board.x]).toBeLessThanOrEqual(6);
+    expect(stepsFrom(BASE_LANDING)[board.y + 1][board.x]).toBeLessThanOrEqual(7);
   });
 
   it('opens every doorway the catalogue cut, and nothing else in a building', () => {
@@ -226,12 +226,11 @@ describe('the Day-Care', () => {
   /**
    * Like THE BOLTHOLE he is not on the way to re-kitting - a Pokémon is left
    * with him and fetched back, not visited every raid - so he is a stroll
-   * past the house rather than one of the seven-step doors: about three
-   * seconds from the middle of the yard, held so that it stays one.
+   * past the house, held so that it stays one.
    */
-  it('keeps him a short stroll up the lawn past THE BOLTHOLE', () => {
-    expect(stepsTo(aroundHim(BASE_SPAWN), besideHim())).toBeLessThanOrEqual(21);
-    expect(stepsTo(aroundHim(BASE_LANDING), besideHim())).toBeLessThanOrEqual(23);
+  it('keeps him a stroll up the lawn past THE BOLTHOLE', () => {
+    expect(stepsTo(aroundHim(BASE_SPAWN), besideHim())).toBeLessThanOrEqual(30);
+    expect(stepsTo(aroundHim(BASE_LANDING), besideHim())).toBeLessThanOrEqual(40);
   });
 
   it('fences the pen in: grass inside, and no way in from the yard', () => {

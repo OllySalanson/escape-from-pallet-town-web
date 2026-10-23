@@ -88,7 +88,7 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).toContain('THE BOLTHOLE');
   });
 
-  it('shows a held room’s code, the friend’s line and the way to get ready', () => {
+  it('shows a held room’s code, the friend’s line and where to get ready', () => {
     const html = friendRoomView({
       ...base,
       room: { code: 'BHRK', mapName: 'Floodplain Relay', hostName: 'ASH' },
@@ -97,7 +97,8 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).toContain('BHRK');
     expect(html).toContain('ASH’s room');
     expect(html).toContain('ASH is getting ready.');
-    expect(html).toContain('data-room-prepare');
+    expect(html).toContain('RAID ARENA');
+    expect(html).not.toContain('data-room-prepare');
     expect(html).toContain('data-room-leave');
   });
 

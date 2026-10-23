@@ -57,8 +57,11 @@ const STATES = [
 ] as const;
 
 describe('the rooms behind the base doors', () => {
-  it('puts one room behind every door, under the same name, opening the same screen', () => {
-    for (const door of BASE_DOORS) {
+  it('puts one room behind every door that opens onto one, under the same name, opening the same screen', () => {
+    // The Raid Arena's door opens straight onto the raid's loadout, so there
+    // is no room behind it to name (`RoomId` has no such id).
+    expect(BASE_DOORS.filter((door) => door.opens === 'screen').map((door) => door.id)).toEqual(['raid-arena']);
+    for (const door of BASE_DOORS.filter((each) => each.opens === 'room')) {
       const inside = room(door.id);
       expect([door.id, inside.name, inside.screen]).toEqual([door.id, door.name, door.screen]);
     }
@@ -145,10 +148,10 @@ describe('the rooms behind the base doors', () => {
    */
   it('keeps every keeper a short walk from the door, and every door where it was', () => {
     const game = baseGame({ built: EVERY_RUNG });
-    // Seven from the middle of the yard (`baseMap.test.ts`), and from the
-    // quay no further than the Center and the workshop were before any door
-    // had a room behind it.
-    const limits: Record<string, number> = { 'the yard': 7, 'the quay (home from a raid)': 11 };
+    // A stroll from where the game opens (`baseMap.test.ts`), and from the
+    // quay the length of the widened yard: the Raid Arena and Bill are what a
+    // raid comes home to, and they stand beside the jetty.
+    const limits: Record<string, number> = { 'the yard': 18, 'the quay (home from a raid)': 28 };
     for (const start of BASE_STARTS) {
       for (const walk of walksToKeepers(start.tile, game)) {
         expect([start.name, walk.door.id, walk.yard <= limits[start.name]]).toEqual([

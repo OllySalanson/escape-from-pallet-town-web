@@ -1,7 +1,8 @@
 import { raidsLost, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import { buildContractBoard } from '../hub/contractBoard';
 import { WORKSHOP_UPGRADES, builtUpgrades, workshopOffers } from '../hub/workshop';
-import { pokemonNeedingRecovery } from '../hub/recovery';
+import { formatRecoveryClock, pokemonNeedingRecovery, raidClockAfterRecovery } from '../hub/recovery';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import {
   moneyHeld,
   traderBarterOffers,
@@ -41,7 +42,14 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
       const won = wonBadges(game).length;
       return won === 0 ? whose : `${whose} · ${won} of ${caseBadges().length} badges`;
     }
-    case 'raid': {
+    case 'arena': {
+      // The raid's own number: how long the next one runs, said only when the
+      // Pokémon Center has taken some of it, which is when it is news.
+      return game.pendingRecoveryMs > 0
+        ? `Next raid ${formatRecoveryClock(raidClockAfterRecovery(RAID_DURATION_MS, game.pendingRecoveryMs))}`
+        : 'Every raid starts here';
+    }
+    case 'lab': {
       if (errand) {
         return errand;
       }

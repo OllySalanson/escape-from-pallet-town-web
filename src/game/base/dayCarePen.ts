@@ -33,12 +33,12 @@ export const DAY_CARE_KEEPER: DayCareKeeper = {
   design: 'gentleman',
   // At the west fence of his pen, looking down the lawn towards the house the
   // player comes from.
-  position: { x: 34, y: 11 },
+  position: { x: 45, y: 11 },
   facing: 'left',
 };
 
 /** The grass inside the fence: where the Pokémon he is raising may stand. */
-export const DAY_CARE_PEN = { x: 36, y: 9, width: 5, height: 4 } as const;
+export const DAY_CARE_PEN = { x: 47, y: 9, width: 5, height: 4 } as const;
 
 /** Every tile inside the fence, row by row. */
 export function penTiles(): readonly GridPosition[] {

@@ -202,7 +202,7 @@ import {
   withErrandAsked,
   withErrandLossesHeard,
 } from '../hub/errands';
-import type { BaseScreen } from '../base/doors';
+import { doorNamed, type BaseScreen } from '../base/doors';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
@@ -257,7 +257,7 @@ type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' 
 
 /** Which keeper's errand a screen is asked on: the four rooms with somebody behind the counter. */
 const ERRAND_GIVERS: Partial<Record<HubView, BaseScreen>> = {
-  home: 'raid',
+  home: 'lab',
   stash: 'stash',
   workshop: 'workshop',
   trader: 'trader',
@@ -430,6 +430,10 @@ export class HubScene extends Phaser.Scene {
     this.errandAskedOn = undefined;
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
+    // Through the Raid Arena's door is preparation, from its first step.
+    if (this.view === 'deploy') {
+      this.pointAtHeldRoom();
+    }
   }
 
   private applyLoadedGame(loaded: RestoredGame): void {
@@ -1045,17 +1049,12 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Opens preparation. Coming from a contract row it is already pointed at that
-   * contract's insertion - where you drop in is which contract you take, so the
-   * board is allowed to make that one choice. It never picks a party.
+   * Preparation is opened by walking through the Raid Arena's door, and it
+   * never picks a party. A room is a map to raid together, so while one is
+   * held the drop-in is on its map: the one chosen if it is, else the first
+   * way in there.
    */
-  private openDeployment(insertionId?: RunInsertionId): void {
-    this.flow.restart();
-    if (insertionId !== undefined && this.unlockedInsertions.some(([id]) => id === insertionId)) {
-      this.flow.chooseInsertion(insertionId);
-    }
-    // A room is a map to raid together, so while one is held the drop-in is
-    // on its map: the one chosen if it is, else the first way in there.
+  private pointAtHeldRoom(): void {
     const room = this.heldRoom;
     if (room && requireInsertion(this.flow.insertionId).mapId !== room.mapId) {
       const there = this.insertionFor(room.mapId);
@@ -1063,15 +1062,6 @@ export class HubScene extends Phaser.Scene {
         this.flow.chooseInsertion(there[0]);
       }
     }
-    this.setView('deploy');
-    this.render();
-  }
-
-  /** Backing out of preparation returns to the lab it is done in. */
-  private leaveDeployment(): void {
-    this.flow.restart();
-    this.setView('home');
-    this.render();
   }
 
   /**
@@ -1086,9 +1076,12 @@ export class HubScene extends Phaser.Scene {
    */
   private leaveToBase(): void {
     this.flow.restart();
+    // Out of a keeper's screen is back into their room; out of the Raid
+    // Arena, which has no room, is back onto its step in the yard.
+    const door = this.enteredFrom === undefined ? undefined : doorNamed(this.enteredFrom);
     this.scene.start('base', {
       savedGame: this.savedGame,
-      ...(this.enteredFrom === undefined ? {} : { room: this.enteredFrom }),
+      ...(this.enteredFrom === undefined ? {} : door?.opens === 'screen' ? { from: this.enteredFrom } : { room: this.enteredFrom }),
       ...(this.enteredAt === undefined ? {} : { at: this.enteredAt }),
     });
   }
@@ -1269,12 +1262,13 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    // Preparation is done inside Oak's Lab, so its first step backs out to the
-    // lab rather than out of the building; so does the friend's room.
-    if (this.view === 'deploy' || this.view === 'friend') {
-      this.leaveDeployment();
+    // The friend's room is opened from Oak's Lab, so it backs out to the lab.
+    if (this.view === 'friend') {
+      this.setView('home');
+      this.render();
       return;
     }
+    // Preparation's first step backs out of the Raid Arena into the yard.
     this.leaveToBase();
   }
 
@@ -1440,7 +1434,7 @@ export class HubScene extends Phaser.Scene {
     if (this.flow.step === 'secure') {
       return this.flow.secureReturnStep === 'confirm' ? 'Final check' : 'Loadout';
     }
-    return 'Oak’s Lab';
+    return 'Yard';
   }
 
   /** What the keys do, said once along the bottom of every screen. */
@@ -1589,8 +1583,6 @@ export class HubScene extends Phaser.Scene {
       this.dealAtCounter(() => this.saveManager.buyTraderBerth());
     });
     on('[data-refused]', (button) => this.setStatus(button.dataset.refused));
-    on('[data-deploy-flow]', () => this.openDeployment());
-    on('[data-contract]', (button) => this.openDeployment(button.dataset.contract as RunInsertionId));
     on('[data-recover]', (button) => this.recover([button.dataset.recover!]));
     on('[data-recover-all]', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
     on('[data-supply]', (button) => this.setStatus(button.dataset.help));
@@ -1627,7 +1619,6 @@ export class HubScene extends Phaser.Scene {
     on('[data-start]', () => this.startRun());
     on('[data-room-map]', (button) => this.makeRoom(button.dataset.roomMap!));
     on('[data-room-leave]', () => this.leaveRoom());
-    on('[data-room-prepare]', () => this.openDeployment());
     this.wireRoomForm(root);
     on('[data-day-care-leave]', (button) => this.leaveAtDayCare(button.dataset.dayCareLeave!));
     on('[data-day-care-take]', () => this.takeBackFromDayCare());
@@ -1846,7 +1837,11 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Oak's Lab: the one room a raid is prepared in.
+   * Oak's Lab: the board of work on offer, and the wall map.
+   *
+   * Raids are prepared at the Raid Arena now (the captain, 2026-10-23), which
+   * opens straight onto the loadout; the lab keeps the board, the team's
+   * condition and the friend's room, and its card says where the Arena is.
    *
    * This used to be the lobby - the raid card, the stash, the Outfitter and the
    * Ferryman side by side, with the contract board under them. Three of those
@@ -1871,7 +1866,9 @@ export class HubScene extends Phaser.Scene {
       this.pendingRecoveryMs > 0 && !isPlaytestRun()
         ? `<p class="px-warning">Next raid ${formatRecoveryClock(this.raidClockMs)}: ${formatRecoveryClock(this.pendingRecoveryMs)} went on recovery.</p>`
         : '';
-    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${shortened}${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
+    // Raids start at the Raid Arena now (`base/doors.ts`), so the card that
+    // used to open preparation here says where to go instead.
+    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-refused="Raids start at the RAID ARENA, west of the yard. Walk in, and the loadout is the first thing you see." data-cursor-start data-help="Every raid starts at the RAID ARENA, west of the yard."><strong>The Raid Arena</strong><p>Walk west across the yard to kit up and drop in.</p>${shortened}${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
     const condition = said
       ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
       : '<p>Everyone is fit to deploy.</p>';
@@ -2064,8 +2061,7 @@ export class HubScene extends Phaser.Scene {
    * The contract board: every contract on offer, what it asks and what it pays.
    *
    * Each row names its insertion because taking a contract is choosing where to
-   * drop in - so the row is that choice: it opens preparation already pointed at
-   * its own insertion. It also names what has to be packed, because a delivery
+   * drop in, which is done at the Raid Arena's drop-in step. It also names what has to be packed, because a delivery
    * decided at the loadout screen is decided too late once the raid has started.
    */
   private contractBoard(): string {
@@ -2084,7 +2080,7 @@ export class HubScene extends Phaser.Scene {
         const insertion = this.insertionFor(row.mapId);
         const place = insertion?.[1].label ?? worldMapName(row.mapId);
         const wiring = insertion
-          ? `data-contract="${insertion[0]}" data-shows="${row.contractId}" data-help="Prepare a raid that drops in at ${escapeAttribute(place)}."`
+          ? `data-refused="${escapeAttribute(`Drop in at ${place} to take it. Raids start at the RAID ARENA, west of the yard.`)}" data-shows="${row.contractId}" data-help="${escapeAttribute(`Taken by dropping in at ${place}, from the RAID ARENA.`)}"`
           : 'disabled';
         // A raised contract says so on the row itself: the detail under the list
         // only shows the row in hand, and the hunter is what is being chosen between.
@@ -2131,7 +2127,7 @@ export class HubScene extends Phaser.Scene {
         const wiring = home
           ? `data-refused="${escapeAttribute(`${thing} is home. Walk in to ${errand.name} and it is handed over.`)}" ${shows} data-help="${escapeAttribute(`${thing} is in your stash. ${errand.name} takes it when you walk in.`)}"`
           : insertion
-            ? `data-contract="${insertion[0]}" ${shows} data-help="${escapeAttribute(`Prepare a raid that drops in at ${insertion[1].label}.`)}"`
+            ? `data-refused="${escapeAttribute(`Drop in at ${insertion[1].label} for it. Raids start at the RAID ARENA, west of the yard.`)}" ${shows} data-help="${escapeAttribute(`Found by dropping in at ${insertion[1].label}, from the RAID ARENA.`)}"`
             : 'disabled';
         const line = home
           ? `Home. Take it to ${errand.name}.`

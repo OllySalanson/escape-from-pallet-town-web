@@ -62,8 +62,7 @@ try {
 
   // The lobby is a town now, and a raid is prepared inside Oak's Lab.
   const toDropIn = async () => {
-    await walkIntoBase(page, 'oaks-lab');
-    await click('Start a raid');
+    await walkIntoBase(page, 'raid-arena');
     await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
     await click('Choose drop-in');
   };

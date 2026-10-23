@@ -24,8 +24,8 @@ import type { Rect } from '../ui/labelPlacement';
 import type { GridPosition } from '../movement/gridMovement';
 
 /**
- * Talking to the partner at the Day-Care fence: the player on (32,11), the
- * partner on (33,11) beside the Day-Care man at (34,11), and the heart it
+ * Talking to the partner at the Day-Care fence: the player two tiles west of
+ * the Day-Care man, the partner between them, and the heart it
  * answers with seated where the real yard seated it at 800x512 (the stage is
  * 400x256 there). The DAY-CARE MAN caption is the width the real yard measured
  * it at in the game's own face. Before the bubble was ground a caption keeps
@@ -33,11 +33,14 @@ import type { GridPosition } from '../movement/gridMovement';
  * heart drawn through the word "one" - and the Bill's Cottage caption did the
  * same to its greeting on the quay.
  */
-const PLAYER: GridPosition = { x: 32, y: 11 };
-const PARTNER: GridPosition = { x: 33, y: 11 };
-const BUBBLE = { x: 531, y: 157 };
+const KEEPER = DAY_CARE_KEEPER.position;
+const PLAYER: GridPosition = { x: KEEPER.x - 2, y: KEEPER.y };
+const PARTNER: GridPosition = { x: KEEPER.x - 1, y: KEEPER.y };
+// Measured with the man at (34,11); everything here moves with him.
+const SHIFT = (KEEPER.x - 34) * TILE_SIZE;
+const BUBBLE = { x: 531 + SHIFT, y: 157 };
 const CAPTION = { width: 133, height: 33 };
-const VIEW: Rect = { x: 320, y: 56, width: 400, height: 256 };
+const VIEW: Rect = { x: 320 + SHIFT, y: 56, width: 400, height: 256 };
 
 function standInScene(): Phaser.Scene {
   const chain: unknown = new Proxy(() => chain, { get: () => () => chain });

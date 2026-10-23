@@ -6,10 +6,10 @@ import type { RaidPlace } from '../raidRoom/raidProtocol';
  * RAID WITH A FRIEND, in Oak's Lab: what the screen says, Phaser-free.
  *
  * Two things can be done with no room held - make one on a map you can drop
- * into, or type a friend's code - and with a room held, one thing: get ready
- * and go. A room is a map and nothing else; the raid itself is prepared
- * exactly as one alone is (`hub/deploymentFlow.ts`), with the drop-in held to
- * the room's map.
+ * into, or type a friend's code - and with a room held, one thing: walk over
+ * to the Raid Arena and go. A room is a map and nothing else; the raid itself
+ * is prepared exactly as one alone is (`hub/deploymentFlow.ts`), through the
+ * Arena's door, with the drop-in held to the room's map.
  */
 
 /** A map a room can be made on: one this save can drop into. */
@@ -99,7 +99,7 @@ function heldView(screen: FriendRoomScreen, room: NonNullable<FriendRoomScreen['
     { className: 'friend-room', heading: whose, note: room.mapName },
   )}${pixelCommitBar({
     title: `Raid ${room.mapName} together`,
-    lines: ['<small class="px-wrap">Get ready as for any raid. You drop in when you are ready, not together.</small>'],
-    actions: `<button class="px-window px-button" data-room-leave data-help="Leave the room. Anybody else in it raids on without you.">Leave the room</button><button class="px-window px-button is-primary" data-room-prepare data-cursor-start data-help="Build a loadout for ${escapeAttribute(room.mapName)}.">Get ready</button>`,
+    lines: ['<small class="px-wrap">Get ready at the RAID ARENA, west of the yard, as for any raid. You drop in when you are ready, not together.</small>'],
+    actions: `<button class="px-window px-button" data-room-leave data-help="Leave the room. Anybody else in it raids on without you.">Leave the room</button><button class="px-window px-button is-primary" data-back data-cursor-start data-help="Back to the lab. The room stays yours while you walk to the Raid Arena.">Back to the lab</button>`,
   })}</main>`;
 }

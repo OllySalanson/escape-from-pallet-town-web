@@ -62,7 +62,7 @@ import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
 import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap } from '../base/baseMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
-import { BASE_DOORS, doorAt, doorNamed, type BaseDoor } from '../base/doors';
+import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
 import { BASE_SHEET_SOURCE } from '../base/baseSheet';
 import { BASE_PIECES } from '../base/generated/basePieces';
@@ -2111,6 +2111,12 @@ export class BaseScene extends Phaser.Scene {
   private enterRoom(door: BaseDoor): void {
     // Through a door is the yard's lesson done: the room's own hint takes over.
     this.learnKey('walk');
+    // The Raid Arena has no room to stand in: through its door is the raid's
+    // loadout, and backing out of that puts the player on its step again.
+    if (door.opens === 'screen' && door.screen) {
+      this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[door.screen], from: door.id });
+      return;
+    }
     this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
   }
 
@@ -2465,10 +2471,11 @@ const PEN_STEP_SPREAD_MS = 2400;
 const SLEEP_FADE_MS = 450;
 const SLEEP_DARK_MS = 600;
 
-/** Which screen each room's keeper opens, as `HubScene` names its views. */
+/** Which screen each door opens, as `HubScene` names its views. */
 const SCREEN_VIEWS = {
-  raid: 'home',
+  lab: 'home',
+  arena: 'deploy',
   stash: 'stash',
   workshop: 'workshop',
   trader: 'trader',
-} as const satisfies Record<NonNullable<BaseRoom['screen']>, NonNullable<HubSceneData['view']>>;
+} as const satisfies Record<BaseScreen, NonNullable<HubSceneData['view']>>;

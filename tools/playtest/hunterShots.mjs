@@ -43,8 +43,7 @@ try {
   await until(sceneIs('starter'));
   await until(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`);
   await click('Confirm Bulbasaur');
-  await walkIntoBase(page, 'oaks-lab', { press, until, wait });
-  await click('Start a raid');
+  await walkIntoBase(page, 'raid-arena', { press, until, wait });
   await until(takePokemon('Bulbasaur'));
   // Point at the Potion row so its help line says why it is packed.
   await page.evaluate(`document.querySelector('button[data-count-kind="item"][data-count-id="potion"][data-count-dir="-1"]')?.focus()`);
