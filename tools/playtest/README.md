@@ -166,7 +166,8 @@ taken: NEW GAME asks YOUR NAME?, *ash* is said to be taken and refused, MISTY
 is free and kept, CONTINUE does not ask again, CONTINUE with no name asks and
 LATER goes in without one, and a new map in MAKE A MAP is named in the world's
 words and REROLL draws another - `docs/screens/player-names/`.
-`knocking.mjs <url> <dir>` knocks: AMY is told OLLY is not home while he is
+`knocking.mjs <url> <dir>` knocks from THE BOLTHOLE's garden sign (text box,
+then the list of players): AMY is told OLLY is not home while he is
 out, knocks again once he is, OLLY is asked with the cursor on NOT NOW and lets
 her in, each sees the other in his house, she cannot pick his furniture up, and
 down off the mat takes her to her own step - `docs/screens/knocking/`.

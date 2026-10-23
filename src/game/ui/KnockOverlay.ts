@@ -6,7 +6,6 @@ import {
   KNOCK_WAIT_MS,
   knockOutcomeLine,
   knockScreenMarkup,
-  type KnockOpenedFrom,
   type KnockView,
 } from '../home/knocking';
 import { MenuOverlay } from './MenuOverlay';
@@ -20,9 +19,10 @@ export interface LetIn {
 }
 
 /**
- * The knock screen, over the player's own house (`home/knocking.ts`): every
- * door in the harbour, and a knock on the one picked - waiting at it until the
- * owner answers, or a minute passes, or the player stops. Calls back once:
+ * The knock screen, opened by THE BOLTHOLE's garden sign (`home/knocking.ts`):
+ * every player with a house in the harbour, and a knock on the one picked -
+ * waiting at it until the owner answers, or a minute passes, or the player
+ * stops. Calls back once:
  * with the house to step into if the answer was yes, else null.
  *
  * Every step asks the database (`harbour/houseService.ts`); the only thing it
@@ -35,7 +35,6 @@ export function openKnockScreen(
   service: HouseService,
   nudge: (owner: string, gone?: string) => void,
   onDone: (letIn: LetIn | null) => void,
-  from: KnockOpenedFrom = 'house',
 ): MenuOverlay {
   let settled = false;
   let view: KnockView = { kind: 'asking' };
@@ -65,7 +64,7 @@ export function openKnockScreen(
     onDone(letIn);
   };
   const render = (): void => {
-    overlay.root.innerHTML = knockScreenMarkup(view, from);
+    overlay.root.innerHTML = knockScreenMarkup(view);
     overlay.root.querySelector<HTMLButtonElement>('[data-knock-close]')!.onclick = () => settle(null);
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-knock]').forEach((row) => {
       row.onclick = () => knock(row.dataset.knock ?? '', row.dataset.name ?? '');
@@ -141,7 +140,7 @@ export function openKnockScreen(
   };
 
   const overlay: MenuOverlay = new MenuOverlay(scene, 'knock-menu pixel-ui', (event) => {
-    if (isOverlayDismissKey(event, 'k')) {
+    if (isOverlayDismissKey(event)) {
       event.preventDefault();
       if (knockingOn) {
         // Stopping is walking away from the door, not leaving the screen.

@@ -63,6 +63,13 @@ export interface BaseSign {
   readonly x: number;
   readonly y: number;
   readonly lines: readonly string[];
+  /**
+   * A sign that is a way to knock on somebody else's door: read while the
+   * shared harbour is up (`harbour/`), it asks whose, and the player picks
+   * from every house in the harbour (`ui/KnockOverlay.ts`). Its `lines` are
+   * what it says when there is no harbour to knock in.
+   */
+  readonly knocks?: true;
 }
 
 /**
@@ -79,11 +86,16 @@ export const NOTICE_BOARD: BaseSign = {
   ],
 };
 
-/** The sign in THE BOLTHOLE's front garden, beside the path up to the step. */
+/**
+ * The sign in THE BOLTHOLE's front garden, beside the path up to the step, and
+ * the way to knock on another player's door: everybody's house is behind this
+ * one door, so this one sign is outside every door in the harbour.
+ */
 export const HOME_SIGN: BaseSign = {
   x: 38,
   y: 12,
   lines: ['THE BOLTHOLE', 'Home. Nobody hunts you here.'],
+  knocks: true,
 };
 
 /**

@@ -14,7 +14,7 @@ const AMY = '22222222-2222-4222-8222-222222222222';
 const BOB = '33333333-3333-4333-8333-333333333333';
 
 describe('knocking on a door', () => {
-  it('lists every door in the harbour, who is in first, and starts the cursor on the first', () => {
+  it('lists every player in the harbour by name, who is in first, and starts the cursor on the first', () => {
     const markup = knockScreenMarkup({
       kind: 'houses',
       houses: [
@@ -22,14 +22,14 @@ describe('knocking on a door', () => {
         { id: BOB, name: "O'NEIL", atHome: false },
       ],
     });
-    expect(markup).toContain("AMY's house");
+    expect(markup).toContain('<strong class="px-name">AMY</strong>');
     expect(markup).toContain(`data-knock="${AMY}"`);
     expect(markup.indexOf(AMY)).toBeLessThan(markup.indexOf(BOB));
     expect(markup).toContain('data-cursor-start');
     expect(markup).toContain('Home');
     expect(markup).toContain('Out');
     expect(markup).toContain(KNOCK_HINTS);
-    expect(markup).toContain('2 houses');
+    expect(markup).toContain('2 players');
     // A door nobody is behind is not offered as a knock worth trying (playtest 48).
     expect(markup).toContain("O'NEIL is out. Come back when they are home.");
     expect(markup).not.toContain('Knock anyway');
