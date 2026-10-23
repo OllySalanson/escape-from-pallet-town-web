@@ -2,11 +2,11 @@
 // (docs/readme/hero.svg), the cast strip (docs/readme/cast.png) and the
 // repository's link preview (docs/readme/social-preview.png).
 //
-//   npx vite-node tools/tileset/renderMap.mts -- viridian-city <scratch>/viridian-city.png 1
-//   node tools/readme/drawArt.mjs <scratch>/viridian-city.png <url of a test-mode build>
+//   npx vite-node tools/tileset/renderMap.mts -- greystone-vale <scratch>/vale-band.png 1 --crop=66,147,72,14
+//   node tools/readme/drawArt.mjs <scratch>/vale-band.png <url of a test-mode build>
 //
-// Nothing here is new art. The banner's town is Viridian City drawn by the
-// game's own layer builder (`renderMap.mts`), the figures are the FireRed
+// Nothing here is new art. The banner's town is Millbrook, in Greystone Vale,
+// drawn by the game's own layer builder (`renderMap.mts`), the figures are the FireRed
 // sheets the overworld walks (`public/assets/characters/`), and every word is
 // set by the running game itself - a Phaser text on its title scene, cut to
 // whole pixels by `src/game/ui/pixelText.ts` - so a letter on the front page
@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { launchBrowser } from '../playtest/browser.mjs';
 
 const [mapPng, gameUrl] = process.argv.slice(2);
-if (!gameUrl) throw new Error('usage: drawArt.mjs <viridian-city.png from renderMap.mts at zoom 1> <url of a test-mode build>');
+if (!gameUrl) throw new Error('usage: drawArt.mjs <a 72x14-tile crop from renderMap.mts at zoom 1> <url of a test-mode build>');
 const root = new URL('../../', import.meta.url);
 const dataUrl = (path, type = 'image/png') => `data:${type};base64,${readFileSync(path).toString('base64')}`;
 const asset = (path) => dataUrl(new URL(`public/assets/${path}`, root));
@@ -78,11 +78,14 @@ const DRAW = async ({ map, sheets }) => {
   const png = (c) => c.toDataURL('image/png');
   const out = {};
 
-  // The town: a band through the middle of Viridian City, its streets and the
-  // Pokemon Center, which the banner drifts across.
+  // The town: a band through Millbrook, the vale's town - Mill Square, its
+  // fountain and the Pokemon Center, with the Westward Road running the length
+  // of it along the bottom, where the chase runs. The picture handed in is
+  // renderMap's crop of just that band (72x14 tiles, the road on the band's
+  // thirteenth row, under the runners' feet).
   const town = await load(map);
   const MAP_X = 16, MAP_Y = 26; // renderMap's frame and title bar
-  const BAND = { y: 330, h: 224 };
+  const BAND = { y: 0, h: 224 };
   {
     const [c, g] = canvas(72 * 16, BAND.h);
     g.drawImage(town, MAP_X, MAP_Y + BAND.y, c.width, BAND.h, 0, 0, c.width, BAND.h);

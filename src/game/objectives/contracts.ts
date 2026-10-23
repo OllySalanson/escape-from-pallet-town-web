@@ -11,6 +11,7 @@ import { berthSecureColumns } from '../hub/trader';
 import type { GridPosition } from '../movement/gridMovement';
 import type { RunSnapshot } from '../run/RunManager';
 import type { WorldMapId } from '../worldMap';
+import { isMapRetired } from '../world/mapRoster';
 
 /**
  * The raid contracts, and everything that makes one different from a waypoint.
@@ -335,8 +336,9 @@ export function getContract(id: string | undefined): RaidContract | undefined {
 
 /**
  * The contracts on the board: every one whose prerequisite is banked and which
- * is not banked itself. A banked contract never comes back, so the board is a
- * queue of things still worth a raid rather than a repeatable chore list.
+ * is not banked itself, on a map that is not retired. A banked contract never
+ * comes back, so the board is a queue of things still worth a raid rather than
+ * a repeatable chore list.
  *
  * When this is empty the chain is finished and `./standingBoard` takes the
  * board over; `boardContracts()` there is what the lobby actually lists.
@@ -345,6 +347,9 @@ export function availableContracts(completedContractIds: readonly string[]): rea
   const completed = new Set(completedContractIds);
   return RAID_CONTRACTS.filter(
     (contract) =>
+      // A contract on a retired map is put away with it (`world/mapRoster.ts`),
+      // so a chain whose maps are all retired is finished before it starts.
+      !isMapRetired(contract.mapId) &&
       !completed.has(contract.id) &&
       (contract.unlockedBy === undefined || completed.has(contract.unlockedBy)),
   );

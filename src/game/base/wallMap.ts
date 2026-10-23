@@ -17,7 +17,7 @@ import {
 } from '../world/minimap';
 import { surveyedTiles } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { getWorldMap, isMapInProgress, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
+import { getWorldMap, isMapOffered, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
 
 /**
  * The wall map in Oak's Lab: the four raid maps, hung side by side on the
@@ -60,13 +60,13 @@ export const WALL_MAP_ORDER: readonly WorldMapId[] = [
  * (`MAPS_OPENED_BY_THE_FINISHED_CHAIN`) goes up when it opens, because hung at
  * one scale with the rest, Greystone Vale - as big as every other map put
  * together - takes half the board, and a save that cannot go there yet should
- * not have its whole wall drawn small for it. A map not yet offered to saves
- * (`MAPS_IN_PROGRESS`) never hangs.
+ * not have its whole wall drawn small for it. A map not offered to saves
+ * (`world/mapRoster.ts`: retired, or still in progress) never hangs.
  */
 export function wallMapOrder(game: Pick<RestoredGame, 'raidProgress'>): readonly WorldMapId[] {
   const open = isChainFinished(game.raidProgress.completedContracts);
   return WALL_MAP_ORDER.filter(
-    (mapId) => !isMapInProgress(mapId) && (open || !MAPS_OPENED_BY_THE_FINISHED_CHAIN.includes(mapId)),
+    (mapId) => isMapOffered(mapId) && (open || !MAPS_OPENED_BY_THE_FINISHED_CHAIN.includes(mapId)),
   );
 }
 

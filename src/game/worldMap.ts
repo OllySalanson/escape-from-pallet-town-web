@@ -189,22 +189,13 @@ export function isLazyMap(id: string): boolean {
 }
 
 /**
- * Shipped maps not yet offered to a save. Greystone Vale carries everything a
- * finished map does - its keeper and his two doors, its key exit and locked
- * crate, a loot pool with packs and prizes, an exit a landmark opens, wildlife
- * place by place - and every test that asks it of a map asks it of the vale.
- * What is still the captain's call is whether a save may go there (the
- * playtest of 14 Oct 2026, call C6), so until then only the explorer run
- * reaches it: the finished chain does not open its front door
- * (`availableInsertionIds`), the wall map does not hang it, and the pennants
- * and the badge case leave its place out. Opening it is taking it off this
- * list, and nothing else.
+ * Which shipped maps a save may go to is `world/mapRoster.ts`: the maps
+ * retired for now (every one but Greystone Vale) and any still in progress.
+ * Greystone Vale carries everything a finished map does - its keeper and his
+ * two doors, its key exit and locked crate, a loot pool with packs and prizes,
+ * an exit a landmark opens, wildlife place by place.
  */
-export const MAPS_IN_PROGRESS: ReadonlySet<BuiltInMapId> = new Set<BuiltInMapId>(['greystone-vale']);
-
-export function isMapInProgress(id: string): boolean {
-  return (MAPS_IN_PROGRESS as ReadonlySet<string>).has(id);
-}
+export { isMapInProgress, isMapOffered, isMapRetired, MAPS_IN_PROGRESS, RETIRED_MAPS } from './world/mapRoster';
 
 /** A shipped map drawn as a file: everything about it is its file's, built when first asked for. */
 function contentFromFile(id: BuiltInMapId): MapContent {

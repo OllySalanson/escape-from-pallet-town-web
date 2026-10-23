@@ -2,7 +2,7 @@ import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { isMapInProgress, TILE_SIZE } from '../worldMap';
+import { isMapOffered, TILE_SIZE } from '../worldMap';
 
 /**
  * THE BADGE CASE: a glass-fronted case on the wall of THE BOLTHOLE's front
@@ -148,8 +148,9 @@ export const BADGES: readonly Badge[] = [
 
 /**
  * The badges the case has a slot for: every keeper on a map a save can go to.
- * A keeper on a map not yet offered to saves (`MAPS_IN_PROGRESS`) has a badge
- * made and waiting, and a slot the day the map opens.
+ * A keeper on a map not offered to saves (`world/mapRoster.ts`: retired, or
+ * still in progress) has a badge made and waiting, and a slot the day the map
+ * is offered.
  */
 let caseBadgesMemo: readonly Badge[] | undefined;
 export function caseBadges(): readonly Badge[] {
@@ -157,7 +158,7 @@ export function caseBadges(): readonly Badge[] {
     const keepers = bossEncounters(createRunTrainerEncounters());
     return BADGES.filter((badge) => {
       const keeper = keepers.find((boss) => boss.bossId === badge.bossId);
-      return keeper === undefined || !isMapInProgress(keeper.mapId);
+      return keeper === undefined || isMapOffered(keeper.mapId);
     });
   })();
   return caseBadgesMemo;

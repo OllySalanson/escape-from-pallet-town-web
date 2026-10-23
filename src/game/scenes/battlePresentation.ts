@@ -3,6 +3,7 @@ import { MoveCategory, type MoveBase } from '../pokemon/MoveBase';
 import type { AbsorbedOutcome } from '../pokemon/AbilityBase';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
+import { BATTLE_PIC_COORDS } from '../pokemon/generated/battlePicCoords';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
@@ -326,7 +327,12 @@ const SINGLE_ENEMY_PLATE: PlateLayout = {
   showsTyping: false,
 };
 
-const SINGLE_PLAYER_PLATE: PlateLayout = { ...SINGLE_ENEMY_PLATE, x: 150, y: 104, height: 58 };
+/**
+ * Down on the panel, as FireRed's healthbox sits on its text box: the foe
+ * stands just above this plate's banner, and every pixel the plate gives up is
+ * a pixel more of the foe's platform the foe can stand on.
+ */
+const SINGLE_PLAYER_PLATE: PlateLayout = { ...SINGLE_ENEMY_PLATE, x: 150, y: 114, height: 58 };
 
 /** The double battle's plate: two of these a side, side by side. */
 const DOUBLE_PLATE_WIDTH = 148;
@@ -426,9 +432,50 @@ export const statusPlateLayout = (
 
 export interface SpotLayout {
   readonly x: number;
+  /** Where the frame's centre stands for a picture with `REFERENCE_PIC_OFFSET` empty rows under it. */
   readonly y: number;
   readonly scale: number;
+  /**
+   * The line the picture stands on: a foe's feet on its platform, the base of
+   * the player's back picture on the top of the panel, as FireRed stands them
+   * on its own platform and on the top of its text box. `seatedSpriteY` puts
+   * each species there by its own empty rows.
+   */
+  readonly ground: number;
 }
+
+/** A battle picture is a 64x64 frame, drawn about its centre. */
+const PIC_SIZE = 64;
+/** The empty rows under a typical picture, which the double battle's spots were authored for. */
+const REFERENCE_PIC_OFFSET = 12;
+
+/**
+ * Where a single battle's foe stands on its platform: inside its back rim and
+ * just clear of the banner over the player's plate, as FireRed's foe stands
+ * just above the player's healthbox.
+ */
+const ENEMY_GROUND = 100;
+
+const spotOn = (x: number, ground: number, scale: number): SpotLayout => ({
+  x,
+  y: ground - (PIC_SIZE / 2 - REFERENCE_PIC_OFFSET) * scale,
+  scale,
+  ground,
+});
+
+/**
+ * Where a picture's centre goes so this species stands on its spot's ground
+ * line: FireRed's `GetBattlerSpriteDefault_Y` - the frame moved down by the
+ * species' own empty rows (`BATTLE_PIC_COORDS`), and a foe that flies or
+ * floats lifted by its elevation. Drawn at the frame's centre alone, a
+ * Bulbasaur (sixteen empty rows) stood on the far rim of its platform.
+ */
+export const seatedSpriteY = (spot: SpotLayout, side: 'player' | 'enemy', dexId: number): number => {
+  const [front, back, elevation] = BATTLE_PIC_COORDS[dexId] ?? [REFERENCE_PIC_OFFSET, REFERENCE_PIC_OFFSET, 0];
+  const empty = side === 'player' ? back : front;
+  const lift = side === 'player' ? 0 : elevation;
+  return spot.ground - (PIC_SIZE / 2 - empty + lift) * spot.scale;
+};
 
 /**
  * Where a combatant stands. In a double battle all four are inside the band
@@ -442,16 +489,19 @@ export const combatantSpot = (
   unitCount: number,
 ): SpotLayout => {
   if (unitCount < 2) {
-    return side === 'player' ? { x: 75, y: 137, scale: 1.55 } : { x: 245, y: 68, scale: 1.45 };
+    // The player's back picture stands on the top of the panel (174), as
+    // FireRed's stands on the top of its text box; the foe's feet stand on its
+    // platform, in front of the back rim.
+    return side === 'player' ? spotOn(75, 174, 1.55) : spotOn(245, ENEMY_GROUND, 1.45);
   }
   // Inside the 80 pixels of field between the two plate rows. A 64-pixel sprite
   // at the single battle's 1.45 is 93 tall and two of them will not go, so both
   // pairs are smaller - and the player's pair is drawn larger and lower than the
   // foe's, which is the only depth cue a field this shallow has room for.
   if (side === 'enemy') {
-    return slot === 0 ? { x: 202, y: 76, scale: 0.9 } : { x: 264, y: 86, scale: 0.9 };
+    return slot === 0 ? spotOn(202, 94, 0.9) : spotOn(264, 104, 0.9);
   }
-  return slot === 0 ? { x: 58, y: 90, scale: 1.1 } : { x: 128, y: 80, scale: 1.1 };
+  return slot === 0 ? spotOn(58, 112, 1.1) : spotOn(128, 102, 1.1);
 };
 
 /** Where a combatant slides in from, so it comes in past the field's frame. */

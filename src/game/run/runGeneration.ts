@@ -4,7 +4,7 @@ import {
   BUILT_IN_MAP_IDS,
   getWorldMap,
   isLazyMap,
-  isMapInProgress,
+  isMapOffered,
   type BuiltInMapId,
   type WorldMapDefinition,
   type WorldMapId,
@@ -459,15 +459,18 @@ export function availableInsertionIds(progress: {
   readonly reachedInsertions: readonly string[];
   readonly completedContracts?: readonly string[];
 }): readonly RunInsertionId[] {
-  // A map the owner approved opens with the shipped maps the first contract
-  // opens: once the Floodplain's field kit is home, every player map's front
-  // door is on the board. Its drop-in points are reached on foot, as any map's are.
-  const playerMapsOpen = progress.completedContracts?.includes(FIRST_CONTRACT_ID) === true;
-  // And a map no contract opens is offered once the chain is finished - unless
-  // it is not yet offered to saves at all (`MAPS_IN_PROGRESS`).
+  // A map no contract opens is offered once the chain is finished. The chain
+  // reads as finished from the first raid while its maps are retired
+  // (`availableContracts`), which is what opens Greystone Vale to a new save.
   const chainFinished = isChainFinished(progress.completedContracts ?? []);
+  // A map the owner approved opens with the shipped maps the first contract
+  // opens: once the Floodplain's field kit is home - or there is no Floodplain
+  // to carry it out of - every player map's front door is on the board. Its
+  // drop-in points are reached on foot, as any map's are.
+  const playerMapsOpen = chainFinished || progress.completedContracts?.includes(FIRST_CONTRACT_ID) === true;
   const frontDoor = (insertion: RunInsertion): boolean => frontDoorFor(insertion.mapId)?.id === insertion.id;
   return runInsertions()
+    .filter((insertion) => isMapOffered(insertion.mapId))
     .filter(
       (insertion) =>
         progress.unlockedInsertions.includes(insertion.id) ||
@@ -475,7 +478,6 @@ export function availableInsertionIds(progress: {
         (playerMapsOpen && isPublishedMap(insertion.mapId) && frontDoor(insertion)) ||
         (chainFinished &&
           MAPS_OPENED_BY_THE_FINISHED_CHAIN.includes(insertion.mapId) &&
-          !isMapInProgress(insertion.mapId) &&
           frontDoor(insertion)),
     )
     .map((insertion) => insertion.id);

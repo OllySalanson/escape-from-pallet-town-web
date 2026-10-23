@@ -3,7 +3,7 @@
 //   node tools/playtest/readmeShots.mjs <url of a test-mode build> <out dir> [--part=raid|base|maker|place] [--window=WxH]
 //
 //   raid (default)  the title, Oak's Lab, the loadout, drop-in and final check, a
-//                   raid in Viridian City (or --insertion=), the frames of a walk,
+//                   raid in Greystone Vale (or --insertion=), the frames of a walk,
 //                   the pack, the hunter arriving, being caught and the fight
 //   base            the harbour with every workshop rung built, and each room in
 //                   --rooms=id,.. (default oaks-lab) with the keeper's screen
@@ -131,7 +131,7 @@ const main = async () => {
       await click(text);
     },
   };
-  await deploy(page, url.href, { ...hooks, paused: true, ...options, insertion: options.insertion ?? 'viridian-city' });
+  await deploy(page, url.href, { ...hooks, paused: true, ...options, insertion: options.insertion ?? 'greystone-vale' });
   await until(sceneIs('world'));
   await wait(600);
   await shot('briefing');
@@ -152,24 +152,40 @@ const main = async () => {
     return keys; })()`);
   console.log('walk', path.join(' '));
   let frame = 0;
-  let held = null;
-  // Fifteen frames a second keeps the file small; a townsperson keeping a beat
-  // can step into the lane after it was planned, and the walk ends there rather
-  // than filming the player bumping into them.
+  // Fifteen frames a second keeps the file small. The path is walked a straight
+  // run at a time, the key let go as the run's last step begins - held to the
+  // frame the tile changes, a step that ends part-way through a frame has
+  // already begun the next one and the walk drifts off its path. A townsperson
+  // keeping a beat can step into the lane after it was planned, and the walk
+  // ends there rather than filming the player bumping into them.
   const frameMs = 1000 / 15;
-  walk: for (const key of path) {
-    if (key !== held) { if (held) await page.keyUp(held); await page.keyDown(key); held = key; }
+  const runs = [];
+  for (const key of path) {
+    if (runs.at(-1)?.key === key) runs.at(-1).steps += 1;
+    else runs.push({ key, steps: 1 });
+  }
+  const offset = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+  const film = async () => {
+    await wait(frameMs, frameMs);
+    await page.screenshot(`${outDir}/frames/${String(frame).padStart(3, '0')}.png`);
+    frame += 1;
+  };
+  walk: for (const { key, steps } of runs) {
     const from = await page.evaluate(`${world}.currentTile`);
-    for (let guard = 0; ; guard += 1) {
-      if (guard === 4 || frame === 60) break walk;
-      await wait(frameMs, frameMs);
-      await page.screenshot(`${outDir}/frames/${String(frame).padStart(3, '0')}.png`);
-      frame += 1;
-      const now = await page.evaluate(`${world}.currentTile`);
-      if (now.x !== from.x || now.y !== from.y) break;
+    const end = { x: from.x + offset[key][0] * steps, y: from.y + offset[key][1] * steps };
+    const at = (tile) => tile && tile.x === end.x && tile.y === end.y;
+    await page.keyDown(key);
+    let down = true;
+    for (let still = 0; ; ) {
+      if (still === 4 || frame === 60) { if (down) await page.keyUp(key); break walk; }
+      const before = await page.evaluate(`${world}.currentTile`);
+      await film();
+      const now = await page.evaluate(`({ tile: ${world}.currentTile, target: ${world}.targetTile })`);
+      if (down && (at(now.target) || at(now.tile))) { await page.keyUp(key); down = false; }
+      if (at(now.tile) && !now.target) break;
+      still = now.tile.x === before.x && now.tile.y === before.y && !now.target ? still + 1 : 0;
     }
   }
-  if (held) await page.keyUp(held);
   await wait(300);
 
   // The pack, opened in the raid, holding what a raid this far in might have
