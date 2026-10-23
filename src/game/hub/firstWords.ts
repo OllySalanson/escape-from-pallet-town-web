@@ -45,13 +45,14 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       'Out there are maps full of loot and wild Pokémon.',
       'A raid is a few minutes on one. Grab what you can, then walk out through an exit.',
       'Walk out and you keep it all. If your team faints or the clock runs out, the pack is lost.',
+      'Every raid starts at the RAID ARENA, west across the yard.',
     ],
   },
   loadout: {
     speaker: 'prof-oak',
     name: 'Professor Oak',
     lines: [
-      'Choose who comes with you, and what goes in the pack.',
+      'This is the RAID ARENA. Choose who comes with you, and what goes in the pack.',
       'Pack Poké Balls: throw one at a weakened wild Pokémon to bring it home.',
       'Leave room, though. A caught Pokémon takes 4 squares of the pack, or more.',
     ],

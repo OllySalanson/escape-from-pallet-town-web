@@ -140,6 +140,10 @@ first. `baseRooms.mjs <url> <dir> [--built=all|none|id,..] [--hurt=N]` walks
 into all four rooms, photographs each, and fails if the mat's key does not open
 the keeper's screen, backing out does not land in the room, or down off the mat
 does not leave it - `docs/screens/base-rooms/` is what it photographs.
+`raidArena.mjs <url> <dir>` plays the one way into a raid: a fresh save walks to
+the Raid Arena at the harbour's west end, whose door opens the loadout, backs out
+onto its step, checks Oak's Lab starts no raid, and deploys from the Arena -
+`docs/screens/raid-arena/`.
 `billCabinet.mjs <url> <dir> [--traded=N]` strikes a barter at Bill's table,
 backs out into his cottage and looks along his cabinet with the keys and the
 pointer, failing if the goods paid are not on the shelf or the look moves the

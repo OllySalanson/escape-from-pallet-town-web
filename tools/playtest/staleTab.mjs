@@ -45,9 +45,8 @@ try {
   await tabA.waitFor(sceneIs('title'));
   await tabA.tap('Space', 60);
   await tabA.waitFor(sceneIs('base'));
-  await walkIntoBase(tabA, 'oaks-lab');
+  await walkIntoBase(tabA, 'raid-arena');
   const clickA = clicker(tabA);
-  await clickA('Start a raid');
   // The lone Pokemon is packed by default; clicking its row would take it out.
   await tabA.waitFor(takePokemon('Charmander'), { what: 'Charmander in the raid party' });
   for (const label of ['Choose drop-in', 'Review & deploy', 'Enter the raid']) await clickA(label);

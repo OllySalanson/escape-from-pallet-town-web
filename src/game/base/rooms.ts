@@ -670,7 +670,7 @@ export const CENTER_DISPLAY: readonly RungDisplay[] = [
 export const BASE_ROOMS: readonly BaseRoom[] = [
   {
     id: 'oaks-lab',
-    screen: 'raid',
+    screen: 'lab',
     name: 'OAK’S LAB',
     width: 13,
     height: 12,

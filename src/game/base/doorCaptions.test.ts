@@ -23,6 +23,7 @@ import { baseGame } from './baseGames.testkit';
  * widest), in the game's own face.
  */
 const MEASURED_WIDTH: Record<string, number> = {
+  'raid-arena': 118,
   'oaks-lab': 123,
   'pokemon-centre': 203,
   'brocks-workshop': 110,
@@ -183,12 +184,11 @@ describe('the harbour door captions', () => {
     },
   );
 
-  it('names OAK’S LAB from the spawn while Professor Oak has a favour to ask', () => {
+  it('names OAK’S LAB from its doorstep while Professor Oak has a favour to ask', () => {
     // The lab sits a row below its neighbours, so a caption over it has only
-    // the gap between the Pokémon Center's roof and THE BOLTHOLE's, and at the
-    // spawn the player stands under it. "Professor Oak has a favour to ask"
-    // fitted neither, and every visit to the yard opened on the lab two steps
-    // away with no name on it.
+    // the gap between the Pokémon Center's roof and the workshop's, and on its
+    // doorstep the player stands under it. "Professor Oak has a favour to ask"
+    // once fitted neither, and the lab two steps away had no name on it.
     const opened = {
       completedContracts: [FIRST_CONTRACT_ID],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'],
@@ -197,7 +197,8 @@ describe('the harbour door captions', () => {
     const line = doorStatusLine(BASE_DOORS.find((door) => door.id === 'oaks-lab')!, game);
     expect(line).toMatch(/favour/);
     expect(MEASURED_LINE_WIDTH[line], `measure "${line}" in the yard and add it above`).toBeDefined();
-    const named = seatedFrom(BASE_SPAWN, false, [], (door) => doorStatusLine(door, game)).map(({ door }) => door.id);
+    const doorstep = BASE_DOORS.find((door) => door.id === 'oaks-lab')!.returnTo;
+    const named = seatedFrom(doorstep, false, [], (door) => doorStatusLine(door, game)).map(({ door }) => door.id);
     expect(named).toContain('oaks-lab');
   });
 

@@ -50,15 +50,16 @@ That's it. Go out, get greedy, come home. Or don't come home, and learn somethin
 
 ## How a raid goes
 
-### 1. Kit up at Oak's Lab
+### 1. Kit up at the Raid Arena
 
-Pick who comes with you and what goes in the pack. Everything you take is at risk, which is the
+Walk into the Raid Arena at the west end of the harbour, and the loadout is the first thing you
+see. Pick who comes with you and what goes in the pack. Everything you take is at risk, which is the
 point: a Potion in the pack is a Potion you might lose, and a Potion left at home is a fight you
 might lose instead. The pack is a grid of squares, not a list, so a Super Potion and a crate of
 parts are fighting for the same space.
 
 <p align="center">
-  <img src="docs/readme/loadout.png" width="800" alt="The loadout screen in Oak's Lab: the stash on the left, the pack's grid of squares on the right, three Potions packed.">
+  <img src="docs/readme/loadout.png" width="800" alt="The loadout screen: the stash on the left, the pack's grid of squares on the right, three Potions packed.">
 </p>
 
 ### 2. Drop in, and the clock starts
@@ -138,10 +139,12 @@ than the secure container you start with, so every raid you ride it is a raid yo
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
 than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
 with the name on their front door over their head, and they see yours. Press **K** in your house or on its step to knock on somebody else's door; if they're in
-and say yes, you're let in to have a nose round. Four buildings, four people you'll recognise, and each one is a thing you can do:
+and say yes, you're let in to have a nose round. Five buildings, four of them kept by people you'll recognise, and each one is a thing you can do:
 
-- **Professor Oak's Lab** is where raids start: the contract board, your loadout, and a wall map
-  that lights up wherever you've walked.
+- **The Raid Arena**, a Gym on its own stone forecourt at the west end, by the jetty, is where every
+  raid starts: walk in and you're kitting up.
+- **Professor Oak's Lab** keeps the contract board, and a wall map that lights up wherever you've
+  walked.
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full, and she charges in
   time: what she spends comes off your next raid's clock.
 - **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home, and
@@ -175,7 +178,7 @@ following-Pokémon art. Turn round, press Space, and it'll tell you how it's doi
 Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
 
 <p align="center">
-  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: the Pokémon Center, Oak's Lab and Brock's Workshop above a sandy yard, the Bolthole's window boxes at the end of the row, your Charmander at your heel, Bill's cottage on the stone quay, and the sea below.">
+  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: the Raid Arena, a Gym between purple banners on its stone forecourt with a statue either side of the way up; the Pokémon Center and Oak's Lab above a sandy yard; your Charmander at your heel; Bill's cottage and the barrels on the stone quay.">
 </p>
 
 <p align="center">

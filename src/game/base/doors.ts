@@ -14,6 +14,9 @@ import type { BasePropName } from './baseTileset';
  * - a door names its room by sharing its id - and the scene only has to ask
  * which door a tile belongs to.
  *
+ * One door has no room behind it: the Raid Arena's opens straight onto the
+ * raid's loadout, and it is the only way into a raid.
+ *
  * Nobody stands in the yard any more. The four keepers used to wait outside
  * their own doors because there was nowhere else for them to be; they are
  * inside now, behind their counters, which is where a player walking in looks
@@ -22,8 +25,13 @@ import type { BasePropName } from './baseTileset';
  * well wants is him.
  */
 
-/** Which screen a room's keeper opens. `HubScene` is the one place these are rendered. */
-export type BaseScreen = 'raid' | 'stash' | 'workshop' | 'trader';
+/**
+ * Which screen a door leads to. `HubScene` is the one place these are rendered.
+ * `arena` is the raid itself: the Raid Arena's door opens preparation straight
+ * away, and it is the only way into a raid. `lab` is Oak's room, where the
+ * contract board and the wall map are read.
+ */
+export type BaseScreen = 'lab' | 'arena' | 'stash' | 'workshop' | 'trader';
 
 export interface BaseKeeper {
   readonly id: string;
@@ -61,35 +69,59 @@ export interface BaseDoor {
   readonly tiles: readonly GridPosition[];
   /** Where the player is put down when they come back out. */
   readonly returnTo: GridPosition;
+  /**
+   * Whether the door opens onto a room with somebody in it (`rooms.ts`), or
+   * straight onto its screen. The Raid Arena is the one that opens straight
+   * onto its screen (the captain, 2026-10-23: "you go into it and then that's
+   * when the loadout screen goes"), because a raid is the thing a player
+   * walks over to it for, every time.
+   */
+  readonly opens: 'room' | 'screen';
 }
 
 export const BASE_DOORS: readonly BaseDoor[] = [
   {
-    id: 'oaks-lab',
-    screen: 'raid',
-    name: 'OAK’S LAB',
-    building: { prop: 'oakLab', x: 15, y: 8 },
-    tiles: [
-      { x: 16, y: 11 },
-      { x: 17, y: 11 },
-    ],
-    returnTo: { x: 16, y: 12 },
+    // The way into every raid: a FireRed Gym on its own stone forecourt at
+    // the west end of the harbour, between statues and under its banners. It
+    // stands nearest the jetty, because coming home and going back out is the
+    // loop the harbour is walked for.
+    id: 'raid-arena',
+    screen: 'arena',
+    name: 'RAID ARENA',
+    building: { prop: 'raidArena', x: 5, y: 8 },
+    tiles: [{ x: 8, y: 12 }],
+    returnTo: { x: 8, y: 13 },
+    opens: 'screen',
   },
   {
     id: 'pokemon-centre',
     screen: 'stash',
     name: 'POKÉMON CENTER',
-    building: { prop: 'pokemonCentre', x: 9, y: 7 },
-    tiles: [{ x: 11, y: 11 }],
-    returnTo: { x: 11, y: 12 },
+    building: { prop: 'pokemonCentre', x: 17, y: 7 },
+    tiles: [{ x: 19, y: 11 }],
+    returnTo: { x: 19, y: 12 },
+    opens: 'room',
+  },
+  {
+    id: 'oaks-lab',
+    screen: 'lab',
+    name: 'OAK’S LAB',
+    building: { prop: 'oakLab', x: 24, y: 8 },
+    tiles: [
+      { x: 25, y: 11 },
+      { x: 26, y: 11 },
+    ],
+    returnTo: { x: 25, y: 12 },
+    opens: 'room',
   },
   {
     id: 'brocks-workshop',
     screen: 'workshop',
     name: 'BROCK’S WORKSHOP',
-    building: { prop: 'workshop', x: 20, y: 8 },
-    tiles: [{ x: 21, y: 11 }],
-    returnTo: { x: 21, y: 12 },
+    building: { prop: 'workshop', x: 30, y: 8 },
+    tiles: [{ x: 31, y: 11 }],
+    returnTo: { x: 31, y: 12 },
+    opens: 'room',
   },
   {
     id: 'bills-cottage',
@@ -97,22 +129,24 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     name: 'BILL’S COTTAGE',
     // On the yard's edge beside the jetty, with its door on the quay: four
     // steps from where the boat puts a raid down.
-    building: { prop: 'billsCottage', x: 17, y: 13 },
-    tiles: [{ x: 18, y: 15 }],
-    returnTo: { x: 18, y: 16 },
+    building: { prop: 'billsCottage', x: 13, y: 15 },
+    tiles: [{ x: 14, y: 17 }],
+    returnTo: { x: 14, y: 18 },
+    opens: 'room',
   },
   {
     // The player's own house, at the end of the row the keepers stand in, with
     // its window boxes and its own patch of garden. It is not on the way to
-    // re-kitting, so it does not have to be one of the seven-step doors; it is
-    // a short stroll up the yard, and in view from the middle of it.
+    // re-kitting, so it is not held to the keepers' walk; it is a stroll up
+    // the yard, and in view from the middle of it.
     id: 'bolthole',
     screen: null,
     name: 'THE BOLTHOLE',
-    building: { prop: 'bolthole', x: 25, y: 7 },
-    tiles: [{ x: 26, y: 10 }],
+    building: { prop: 'bolthole', x: 36, y: 7 },
+    tiles: [{ x: 37, y: 10 }],
     // The step between the window boxes.
-    returnTo: { x: 26, y: 11 },
+    returnTo: { x: 37, y: 11 },
+    opens: 'room',
   },
 ];
 

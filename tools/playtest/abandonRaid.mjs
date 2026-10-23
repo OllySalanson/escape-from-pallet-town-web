@@ -65,9 +65,8 @@ async function newGame(page) {
 }
 
 async function deployFrom(page) {
-  await walkIntoBase(page, 'oaks-lab');
+  await walkIntoBase(page, 'raid-arena');
   const click = clicker(page);
-  await click('Start a raid');
   await page.waitFor(takePokemon('Charmander'), { what: 'Charmander in the raid party' });
   for (const label of ['Choose drop-in', 'Review & deploy', 'Enter the raid']) await click(label);
   await page.waitFor(sceneIs('world'));

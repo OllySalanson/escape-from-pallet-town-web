@@ -82,8 +82,7 @@ try {
   await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
   await leave();
-  await walkIntoBase(page, 'oaks-lab');
-  await click('Start a raid');
+  await walkIntoBase(page, 'raid-arena');
   await shoot('loadout');
   await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
   await click('Choose drop-in');

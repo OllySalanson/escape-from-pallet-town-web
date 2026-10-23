@@ -34,8 +34,9 @@ export const takePokemon = (name = null) =>
  * own collision and the scene's own door list rather than typed here, so a
  * redrawn base moves the walk with it.
  *
- * `door` is a `BASE_DOORS` id: `oaks-lab`, `pokemon-centre`, `brocks-workshop`
- * or `bills-cottage`. Inside, the interact key on the door mat is the keeper's
+ * `door` is a `BASE_DOORS` id: `raid-arena`, `oaks-lab`, `pokemon-centre`,
+ * `brocks-workshop` or `bills-cottage`. The Raid Arena has no room: its door
+ * opens the loadout. Inside the others, the interact key on the door mat is the keeper's
  * screen - the one-key way in a player re-kitting takes - so that is what this
  * presses. A driver already in the right room (backed out of its screen) just
  * presses it again; one in another room walks back out first.
@@ -234,11 +235,11 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
   return enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure });
 }
 
-/** From the harbour into a raid: Oak's Lab, the party, the pack, the drop-in. */
+/** From the harbour into a raid: the Raid Arena, the party, the pack, the drop-in. */
 async function enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure }) {
-  // The lobby is a town now, and preparation is done inside Oak's Lab.
-  await walkIntoBase(page, 'oaks-lab', { press, until, wait });
-  await click('Start a raid');
+  // The lobby is a town now, and the Raid Arena's door opens straight onto
+  // the loadout.
+  await walkIntoBase(page, 'raid-arena', { press, until, wait });
   await until(takePokemon(starter), `${starter} in the raid party`);
   // Everybody else the vault holds, so a `--team` deploys as a team. The rows
   // carry the stash id they are for, and one already in the raid is

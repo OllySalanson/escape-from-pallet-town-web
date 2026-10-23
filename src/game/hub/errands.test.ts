@@ -36,7 +36,7 @@ const nothing = (): number => 0;
 
 describe('errands', () => {
   it('gives one errand to each of the four people at base, and only theirs', () => {
-    expect(ERRANDS.map((errand) => errand.giver).sort()).toEqual(['raid', 'stash', 'trader', 'workshop']);
+    expect(ERRANDS.map((errand) => errand.giver).sort()).toEqual(['lab', 'stash', 'trader', 'workshop']);
     expect(new Set(ERRANDS.map((errand) => errand.id)).size).toBe(ERRANDS.length);
     for (const errand of ERRANDS) {
       expect(errandOf(errand.giver)).toBe(errand);

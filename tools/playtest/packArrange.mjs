@@ -123,8 +123,7 @@ try {
   await press('Space');
   await until(sceneIs('base'), 'the base');
   // The lobby is a town now, and preparation is done inside Oak's Lab.
-  await walkIntoBase(page, 'oaks-lab', { press, until });
-  await click('Start a raid');
+  await walkIntoBase(page, 'raid-arena', { press, until });
   await until(takePokemon('Bulbasaur'), 'Bulbasaur in the raid party');
   // The stash's medicine is packed for you (`DeploymentFlow.packMedicine`), so
   // the pack is emptied first and filled with exactly the case below.

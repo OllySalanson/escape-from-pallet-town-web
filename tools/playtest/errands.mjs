@@ -139,8 +139,11 @@ try {
   if (!/ERRANDS/i.test(board) || !/Oak's Parcel/i.test(board)) throw new Error(`the lab's board has no errands: ${board.slice(0, 300)}`);
   await page.screenshot(`${out}/lab-board.png`);
 
-  // The drop-in screen names the errands on the map being looked at.
-  await click('[data-deploy-flow]', 'Start a raid');
+  // The drop-in screen names the errands on the map being looked at. Raids
+  // start at the Raid Arena, so out of the lab and across the yard to it.
+  await press('Escape');
+  await page.waitFor(sceneIs('base'));
+  await walkIntoBase(page, 'raid-arena');
   await page.waitFor(takePokemon(), { what: 'a Pokémon for the raid' });
   await click('[data-advance]', 'on to the drop-in');
   await click('button[data-insertion="route-1"]', 'Route 1');

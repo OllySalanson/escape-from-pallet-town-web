@@ -156,14 +156,14 @@ try {
     throw new Error(`backing out of the wall map left the player at ${standing}`);
   }
 
-  // And the drop-in screen, which draws the same picture as big as it goes.
-  await walkIntoBase(page, 'oaks-lab');
+  // And the drop-in screen, which draws the same picture as big as it goes:
+  // through the Raid Arena's door, which opens on the loadout.
+  await walkIntoBase(page, 'raid-arena');
   // A lone Pokemon is packed for the raid already (`packLonePokemon`), and
   // clicking its row again would take it back out: `takePokemon` never does.
   const clickLabelled = (label) =>
     `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return false; b.click(); return true; })()`;
   for (const [step, what] of [
-    [clickLabelled('Start a raid'), 'Start a raid'],
     [takePokemon('Bulbasaur'), 'Bulbasaur in the raid party'],
     [clickLabelled('Choose drop-in'), 'Choose drop-in'],
   ]) {

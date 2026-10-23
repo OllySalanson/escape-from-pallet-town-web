@@ -11,21 +11,21 @@ import { standingFixtures } from './fixtures';
  *
  * (Every building on it can be walked into: see `rooms.ts`.)
  *
- * The lobby used to be a list of four cards. This is the same four places as a
- * town you walk around: Oak's Lab for the raid, the Pokémon Center for the
- * team, Brock's Workshop for the base, and the quay where Bill takes what you
- * dragged home. Everything the screens do is untouched - what changed is that
- * you reach one by walking to its door instead of choosing its row.
+ * The lobby used to be a list of four cards. This is the same places as a
+ * town you walk around: the Raid Arena for the raid, Oak's Lab for the board
+ * of work and the wall map, the Pokémon Center for the team, Brock's Workshop
+ * for the base, and the quay where Bill takes what you dragged home.
  *
- * It is small on purpose and the size is the design. A player re-kits between
- * raids many times an hour, so the walk has to stay a pleasure rather than
- * become a corridor: the three doors sit in one row across the head of one
- * yard, the quay is below it, and nothing is more than **seven steps** from
- * where the player is put down (`baseMap.test.ts` holds that, with every
- * fixture built and every keeper standing). At 150ms a tile that is about a
- * second. The room the map does have goes sideways, into the frontage the
- * things you build stand on - the west side for the healing machines and the
- * ward, the east for the mast, the quay for the lockers and the lamp house.
+ * It was a tight yard with every door seven steps from the spawn, and the
+ * captain asked for room (2026-10-23: "more open space, all the pathways need
+ * to be a bit wider"), so it was redrawn wider: two tiles of lawn between
+ * every pair of buildings, a yard five rows deep, and the RAID ARENA on its
+ * own forecourt at the west end - a FireRed Gym, the one door every raid
+ * goes through, beside the jetty a raid comes home to. What is held short is
+ * the walk taken every raid (`baseMap.test.ts`): the Arena from the spawn and
+ * from the boat, and Bill from the boat. What you build stands in the
+ * clearings behind the keepers' row, the mast beside the house and the
+ * lockers and the lamp house on the quay.
  *
  * It is not a `WorldMapId`. A raid map carries a hunter, a clock, wildlife,
  * loot, districts, gates and a density budget, and every one of those is a rule
@@ -38,15 +38,15 @@ import { standingFixtures } from './fixtures';
  * that name would have the player dropping into Pallet Town from Pallet Town.
  */
 
-export const BASE_MAP_WIDTH = 51;
-export const BASE_MAP_HEIGHT = 21;
+export const BASE_MAP_WIDTH = 64;
+export const BASE_MAP_HEIGHT = 24;
 
 /** What the screens call this place, on the way out of every one of them. */
 export const BASE_PLACE_NAME = 'The Harbour';
 
 /**
  * Where the player stands when they walk in off the title screen: the middle of
- * the yard, with all three doors in view and two steps from Oak's.
+ * the yard, between the Raid Arena and the keepers' row, with both in view.
  */
 export const BASE_SPAWN: GridPosition = { x: 16, y: 13 };
 
@@ -56,7 +56,7 @@ export const BASE_SPAWN: GridPosition = { x: 16, y: 13 };
  * looked at rather than crossed, and it lands the player beside Bill, who is
  * the first thing a raid that went well wants.
  */
-export const BASE_LANDING: GridPosition = { x: 16, y: 17 };
+export const BASE_LANDING: GridPosition = { x: 12, y: 19 };
 
 /** Something on a post that says something when faced: a board, a house's sign. */
 export interface BaseSign {
@@ -70,18 +70,18 @@ export interface BaseSign {
  * where a player who has just come home is standing.
  */
 export const NOTICE_BOARD: BaseSign = {
-  x: 14,
-  y: 15,
+  x: 18,
+  y: 17,
   lines: [
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
-    'OAK kits you out. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
+    'Every raid starts at the RAID ARENA, west of the yard. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
     'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
   ],
 };
 
 /** The sign in THE BOLTHOLE's front garden, beside the path up to the step. */
 export const HOME_SIGN: BaseSign = {
-  x: 27,
+  x: 38,
   y: 12,
   lines: ['THE BOLTHOLE', 'Home. Nobody hunts you here.'],
 };
@@ -92,15 +92,22 @@ export const HOME_SIGN: BaseSign = {
  * stand about that is nobody's door.
  */
 export const GREEN_SIGN: BaseSign = {
-  x: 43,
+  x: 54,
   y: 12,
   lines: ['THE GREEN', 'Everybody in Pallet Town comes home to this harbour. Stand about - somebody always turns up.'],
 };
 
-export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN, GREEN_SIGN];
+/** The Raid Arena's own sign, beside the way up to its door. */
+export const ARENA_SIGN: BaseSign = {
+  x: 12,
+  y: 14,
+  lines: ['THE RAID ARENA', 'Every raid starts here. Walk in, kit up, drop in.'],
+};
+
+export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN, GREEN_SIGN, ARENA_SIGN];
 
 /** FireRed's red flowers in the front garden, either side of the path. */
-const GARDEN_FLOWERS: readonly (readonly [number, number])[] = [28, 29, 30, 31].flatMap(
+const GARDEN_FLOWERS: readonly (readonly [number, number])[] = [39, 40, 41, 42].flatMap(
   (x) => [12, 13].map((y) => [x, y] as const),
 );
 
@@ -148,27 +155,30 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   });
 
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TtT......TTtTTTtTTTtTTTtTTTtTTTTTTTtTTTtTTTtTTTtTTT',
-    'TTT...........TTTTTTTTTTT.......TTTTTTTTTTTTTTTTTTT',
-    'TTT...........T....T....T.......T..FFFFFFFT.......T',
-    'TtT...........T....T....T.......T..F.....FT.......T',
-    'TTT...........T....T....T.......T..F.....FT.......T',
-    'TTT...,,,,,,,,,,,,,,,,,,,..........F.....F........T',
-    'TtT...,,,,,,,,,,,,,,,,,,,..........F.....F........T',
-    'TTT...,,,,,,,,,,,,,,,,,,,..........FFFFFFF........T',
-    'TTT...,,,,,,,,,,,,,,,,,,,.........................T',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTTTTTTTTTTTT',
+    'TtTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTTTTTTTTTTTT',
+    'TTT..........................................................TTT',
+    'TTT...........................................FFFFFFF........TTT',
+    'TtTMMMMMMMMMMM................................F.....F........TTT',
+    'TTTMMMMMMMMMMM................................F.....F........TTT',
+    'TTTMMMMMMMMMMM................................F.....F........TTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.F.....F........TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FFFFFFF........TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
   // The four buildings, each with its own doorway cut into it by the base's
@@ -182,12 +192,23 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   // crates, a post to moor against and the harbour's own board.
   // Two jetties abreast: one is two planks wide, which from above reads as two
   // planks rather than as something a boat ties up to.
-  map.plant(15, 17, 'jetty');
-  map.plant(17, 17, 'jetty');
-  map.plant(12, 15, 'crateStack');
-  map.plant(14, 15, 'noticeBoard');
-  map.plant(22, 15, 'barrelPair');
-  map.plant(24, 15, 'mooringPost');
+  map.plant(11, 19, 'jetty');
+  map.plant(13, 19, 'jetty');
+  map.plant(30, 17, 'crateStack');
+  map.plant(NOTICE_BOARD.x, NOTICE_BOARD.y, 'noticeBoard');
+  map.plant(19, 17, 'barrelPair');
+  map.plant(21, 17, 'mooringPost');
+
+  // THE RAID ARENA's forecourt: a pair of statues on the way up from the
+  // quay, as every Gym in Kanto has, with the forecourt in front of the door
+  // left open so the yard walks straight across to it, its colours hung either side of
+  // the building, and its sign. The Gym backs onto lawn because FireRed drew
+  // the grass behind it into its roof.
+  map.plant(6, 15, 'gymStatue');
+  map.plant(10, 15, 'gymStatue');
+  map.plant(3, 11, 'bannerPair');
+  map.plant(12, 11, 'bannerPair');
+  map.plant(ARENA_SIGN.x, ARENA_SIGN.y, 'homeSign');
 
   // THE BOLTHOLE's front garden: its sign beside the path to the step, and
   // FireRed's red flowers either side of it.
@@ -198,10 +219,10 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
 
   // THE GREEN, past the Day-Care: a fountain to meet at, a bench, flowers and
   // its sign.
-  map.plant(45, 9, 'stoneFountain');
-  map.plant(45, 13, 'bench');
+  map.plant(56, 9, 'stoneFountain');
+  map.plant(56, 13, 'bench');
   map.plant(GREEN_SIGN.x, GREEN_SIGN.y, 'homeSign');
-  for (const [x, y] of [[43, 8], [49, 8], [43, 9], [49, 9]] as const) {
+  for (const [x, y] of [[54, 8], [60, 8], [54, 9], [60, 9]] as const) {
     map.plant(x, y, 'gardenFlowers');
   }
 

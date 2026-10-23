@@ -5,6 +5,7 @@ import {
   type FloodTownPropName,
 } from '../world/tileset/floodTownTileset';
 import { KANTO_TILESET } from '../world/tileset/kantoTileset';
+import { TOWN_PROPS, TOWN_SHEET_SOURCE } from '../world/tileset/townSheet';
 
 /**
  * The base is drawn on the same sheet the four raid maps are, with its
@@ -24,6 +25,8 @@ import { KANTO_TILESET } from '../world/tileset/kantoTileset';
  */
 export type BasePropName =
   | FloodTownPropName
+  | 'raidArena'
+  | 'gymStatue'
   | 'oakLab'
   | 'pokemonCentre'
   | 'workshop'
@@ -84,9 +87,15 @@ function workshopShed(): PropDefinition {
 
 export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
   ...FLOOD_TOWN_TILESET,
-  sources: [...FLOOD_TOWN_TILESET.sources, BASE_SHEET_SOURCE.source],
+  sources: [...FLOOD_TOWN_TILESET.sources, BASE_SHEET_SOURCE.source, TOWN_SHEET_SOURCE.source],
   props: {
     ...FLOOD_TOWN_TILESET.props,
+    // 7x5. THE RAID ARENA: Saffron's Gym, cut from FireRed's own town by
+    // `scripts/cut-frlg-towns.mjs`, with its door open. A Gym is the one
+    // building Kanto puts up to fight in, which is what a raid is.
+    raidArena: withDoorway(TOWN_PROPS.saffronGym, [[3, 4]]),
+    // FireRed's own Gym statue, which stands either side of every Gym's door.
+    gymStatue: TOWN_PROPS.gymStatue,
     // 4x4. The shop front, which is the one building on the FireRed sheet and
     // the only one that reads as an institution rather than as somebody's home.
     oakLab: withDoorway(FLOOD_TOWN_TILESET.props.building, [

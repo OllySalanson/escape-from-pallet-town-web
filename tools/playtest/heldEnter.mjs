@@ -62,8 +62,7 @@ try {
   await until(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`, 'the picker');
   await click('Confirm Bulbasaur');
   await until(sceneIs('base'));
-  await walkIntoBase(page, 'oaks-lab', { press, until });
-  await click('Start a raid');
+  await walkIntoBase(page, 'raid-arena', { press, until });
   await until(takePokemon('Bulbasaur'), 'Bulbasaur in the raid party');
   await click('Choose drop-in');
 

@@ -25,8 +25,8 @@ import type { Rect } from '../ui/labelPlacement';
 import type { GridPosition } from '../movement/gridMovement';
 
 /**
- * Coming out of THE BOLTHOLE: the player on its step (26,11) and the partner
- * tucked in behind them on (26,12), the camera where the real yard put it at
+ * Coming out of THE BOLTHOLE: the player on its step and the partner
+ * tucked in behind them on the tile below, the camera where the real yard put it at
  * 1200x768 (the stage is 400x256 there), and every door's caption the width
  * the real yard measured it at - the house's own once it is named,
  * "OLLY's house · 1 of 11 badges". Over the roof is the wood's canopy and to
@@ -36,9 +36,10 @@ import type { GridPosition } from '../movement/gridMovement';
  */
 const BOLTHOLE = BASE_DOORS.find((door) => door.id === 'bolthole')!;
 const PARTNER: GridPosition = { x: BOLTHOLE.returnTo.x, y: BOLTHOLE.returnTo.y + 1 };
-const VIEW: Rect = { x: 216, y: 37, width: 400, height: 256 };
+const VIEW: Rect = { x: 400, y: 56, width: 400, height: 256 };
 const HEIGHT = 33;
 const WIDTH: Record<string, number> = {
+  'raid-arena': 118,
   'oaks-lab': 123,
   'pokemon-centre': 203,
   'brocks-workshop': 110,
@@ -143,9 +144,11 @@ describe('THE BOLTHOLE named as you walk out of it', () => {
     expect(walkingOutOfTheBolthole().named).toBe(true);
   });
 
-  it('draws the partner faint under the name it gave its seat to', () => {
+  it('draws the partner faint exactly when the name is seated over it', () => {
+    // In the old, tight yard the one seat left was over the partner; the
+    // widened yard leaves the house a seat of its own, and a partner nobody
+    // writes over is drawn whole.
     const out = walkingOutOfTheBolthole();
-    expect(crosses(out.caption, out.figure)).toBe(true);
-    expect(out.veiled).toBe(true);
+    expect(out.veiled).toBe(crosses(out.caption, out.figure));
   });
 });

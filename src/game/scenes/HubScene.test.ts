@@ -70,7 +70,7 @@ describe('the lobby as a screen of the game', () => {
     screens.push(markupOf(hub));
     hub.setView('reselect');
     screens.push(markupOf(hub));
-    hub.openDeployment();
+    intoTheArena(hub);
     hub.flow.togglePokemon('charmander-1');
     hub.flow.adjustItem('potion', 1);
     screens.push(markupOf(hub));
@@ -109,7 +109,7 @@ describe('the lobby as a screen of the game', () => {
     }
   });
 
-  it('points preparation at a contract\'s own insertion when its row is chosen', () => {
+  it('sends a contract row to the Raid Arena rather than starting a raid from the lab', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
@@ -117,21 +117,14 @@ describe('the lobby as a screen of the game', () => {
       completedContracts: [FIRST_CONTRACT_ID],
     });
 
-    expect(markupOf(hub)).toContain('data-contract="route-1"');
-    hub.openDeployment('route-1');
+    const lab = markupOf(hub);
+    expect(lab).not.toContain('data-contract=');
+    expect(lab).toContain('Raids start at the RAID ARENA');
+    intoTheArena(hub);
 
-    expect(hub.flow.insertionId).toBe('route-1');
+    // Through the Arena's door is the loadout, with nobody packed for you.
     expect(hub.flow.step).toBe('loadout');
-    // Where you drop in is the one thing the board may choose. It never packs.
     expect(hub.flow.party).toEqual([]);
-  });
-
-  it('will not be pointed at an insertion the save has not unlocked', () => {
-    const { hub } = createHub();
-
-    hub.openDeployment('viridian-forest');
-
-    expect(hub.flow.insertionId).toBe('floodplain-relay');
   });
 
   it('counts one kind of supply in the stash as one kind, not "1 kinds"', () => {
@@ -211,7 +204,7 @@ describe('the lobby as a screen of the game', () => {
 
   it('never tells the loadout to treat a fainted Pokemon a Potion cannot revive', () => {
     const { hub } = createWornHub();
-    hub.openDeployment();
+    intoTheArena(hub);
     expect(markupOf(hub)).toContain('1 hurt · treat them first');
 
     const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
@@ -253,7 +246,7 @@ describe('the lobby as a screen of the game', () => {
     expect(markupOf(hub)).toContain('data-fit="shelved"');
 
     // The loadout is drawn from all of them, so nothing to spend or deploy hides.
-    hub.openDeployment();
+    intoTheArena(hub);
     expect(markupOf(hub)).toContain('data-pokemon="shelved"');
   });
 
@@ -262,7 +255,7 @@ describe('the lobby as a screen of the game', () => {
     // the first button in the body - SORT - and the first Enter re-sorted the
     // stash instead of choosing who goes.
     const { hub } = createHub();
-    hub.openDeployment();
+    intoTheArena(hub);
     const markup = markupOf(hub);
 
     const starts = markup.match(/<button[^>]*data-cursor-start[^>]*>/g) ?? [];
@@ -297,7 +290,7 @@ describe('the lobby as a screen of the game', () => {
   it('lets the cursor rest on a medicine that would do nothing, to be told why', () => {
     const { hub } = createWornHub();
 
-    hub.openDeployment();
+    intoTheArena(hub);
     const loadout = markupOf(hub);
 
     // `disabled` would make the reason unreachable: the help bar only speaks for
@@ -325,11 +318,16 @@ interface HubInternals {
   pickUp(pokemonId: string): void;
   putDown(destination: string): void;
   stepBox(direction: number): void;
-  openDeployment(insertionId?: string): void;
   readonly flow: DeploymentFlow;
   readonly stash: Stash;
   readonly raidClockMs: number;
   readonly pendingRecoveryMs: number;
+}
+
+/** Preparation as the Raid Arena's door opens it: a fresh loadout. */
+function intoTheArena(hub: HubInternals): void {
+  hub.flow.restart();
+  hub.setView('deploy');
 }
 
 class MemoryStorage implements StorageLike {
@@ -1167,12 +1165,13 @@ describe('the standing board in the lobby', () => {
     expect(parcel[3]).toContain("<small>Reward for</small> Oak's Parcel:");
   });
 
-  it('says what a contract costs before it is taken: the row opens its own insertion and the hunter is on it', () => {
+  it('says what a contract costs before it is taken: the row names its own insertion and the hunter is on it', () => {
     const progress = chainBanked(2);
     const raised = standingBoard(progress).find((contract) => contract.hunterPressure === 1)!;
     const home = markupOf(createHub(progress).hub);
     const insertion = frontDoorFor(raised.mapId)!;
-    expect(home).toContain(`data-contract="${insertion.id}" data-shows="${raised.id}"`);
+    expect(home).toContain(`Drop in at ${insertion.label} to take it.`);
+    expect(home).toContain(`data-shows="${raised.id}"`);
     expect(home).toContain('data-hunter-pressure="1"');
     expect(home).toContain('Hunter +1 tier');
     // The raised contract leads the board.
@@ -1235,7 +1234,7 @@ describe('what the base screen leads with', () => {
     // "DOWN TO ONE POKEMON". It also pushed the contract board past the frame.
     expect(home).not.toContain('Down to one Pokémon');
     expect(home).not.toContain('swap-panel');
-    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('Contract board'));
+    expect(home.indexOf('The Raid Arena')).toBeLessThan(home.indexOf('Contract board'));
     expect(home).toContain('Contract board');
   });
 
@@ -1278,7 +1277,7 @@ describe('what the base screen leads with', () => {
 
     // A revive after a lost raid: a third of the next raid gone to Joy.
     (hub as unknown as { savedGame: { pendingRecoveryMs: number } }).savedGame.pendingRecoveryMs = 100_000;
-    const card = /<button[^>]*data-deploy-flow[^>]*>[\s\S]*?<\/button>/.exec(markupOf(hub))?.[0] ?? '';
+    const card = /<button[^>]*px-tone-primary[^>]*>[\s\S]*?<\/button>/.exec(markupOf(hub))?.[0] ?? '';
 
     expect(card).toContain('Next raid 3:20: 1:40 went on recovery.');
   });
@@ -1330,7 +1329,7 @@ describe('what the base screen leads with', () => {
     const hub = createFreshHub();
 
     const lab = markupOf(hub);
-    expect(lab).toContain('Start a raid');
+    expect(lab).toContain('The Raid Arena');
     expect(lab).not.toContain('data-view=');
   });
 
@@ -2509,7 +2508,7 @@ describe('first words: Oak and Joy speak once per save', () => {
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
     expect(speechOn(screenOf(hub))).toBeUndefined();
 
-    hub.openDeployment();
+    intoTheArena(hub);
     expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.loadout.lines[2]);
     putDown(hub, 'button');
     expect(speechOn(screenOf(hub))).toBeUndefined();
@@ -2542,7 +2541,7 @@ describe('first words: Oak and Joy speak once per save', () => {
     const focus = (hub as unknown as { overlay: { focus: ReturnType<typeof vi.fn> } }).overlay.focus;
     const markup = screenOf(hub);
     // The lab is drawn whole underneath, so nothing moves when the box goes.
-    expect(markup).toContain('data-deploy-flow');
+    expect(markup).toContain('The Raid Arena');
     expect(focus).toHaveBeenLastCalledWith('[data-speech-done]');
   });
 
@@ -2700,7 +2699,9 @@ describe('the lab with only Greystone Vale in play', () => {
     });
 
     expect(hub.flow.insertionId).toBe('greystone-vale');
-    hub.openDeployment('route-1');
+    intoTheArena(hub);
     expect(hub.flow.insertionId).toBe('greystone-vale');
+    const offered = (hub as unknown as { unlockedInsertions: readonly (readonly [string, unknown])[] }).unlockedInsertions;
+    expect(offered.map(([id]) => id)).not.toContain('route-1');
   });
 });

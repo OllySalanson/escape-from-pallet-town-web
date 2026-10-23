@@ -23,7 +23,7 @@ import type { BasePropName } from './baseTileset';
  * Where each one stands is chosen for the same reason a shop window is: it has
  * to be seen from where the player spends their time. Everything here is
  * visible from the middle of the yard - the mast and the light on the skyline
- * either side, the bay and the ward up the west side, the lockers along the
+ * either side, the bay and the ward in the clearings behind the keepers, the lockers along the
  * quay the salvage lands on.
  */
 
@@ -60,8 +60,8 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     // tallest thing in the base, for the rung most players build first. A first
     // purchase should change the skyline, and the house the player lives in is
     // where they will see it from.
-    props: [{ name: 'tower', x: 30, y: 4 }],
-    at: { x: 31, y: 10 },
+    props: [{ name: 'tower', x: 41, y: 4 }],
+    at: { x: 42, y: 10 },
   },
   {
     upgradeId: 'beacon',
@@ -69,22 +69,22 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     note: 'It burns for your landing',
     // On the quay at the harbour mouth, which is where a light goes, and in
     // full view of the jetty the player comes home to.
-    props: [{ name: 'roundhouse', x: 3, y: 13 }],
-    at: { x: 5, y: 15 },
+    props: [{ name: 'roundhouse', x: 3, y: 15 }],
+    at: { x: 5, y: 17 },
   },
   {
     upgradeId: 'secure-locker-1',
     name: 'THE STRONGROOM',
     note: 'What a lost raid cannot take',
-    props: [{ name: 'cellarDoors', x: 7, y: 15 }],
-    at: { x: 7, y: 15 },
+    props: [{ name: 'cellarDoors', x: 24, y: 17 }],
+    at: { x: 24, y: 17 },
   },
   {
     upgradeId: 'secure-locker-2',
     name: 'THE SECOND LOCKER',
     note: 'A second door, and room behind it',
-    props: [{ name: 'cellarDoors', x: 10, y: 15 }],
-    at: { x: 10, y: 15 },
+    props: [{ name: 'cellarDoors', x: 27, y: 17 }],
+    at: { x: 27, y: 17 },
   },
   {
     upgradeId: 'recovery-bay-1',
@@ -92,28 +92,28 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     note: 'Beds under a canopy, beside the Center',
     // A white canopy on legs. The sheet's awning is a flat yellow board and
     // read as a sign rather than as somewhere to be treated.
-    props: [{ name: 'marketStall', x: 5, y: 8 }],
-    at: { x: 6, y: 10 },
+    props: [{ name: 'marketStall', x: 22, y: 4 }],
+    at: { x: 23, y: 6 },
   },
   {
     upgradeId: 'recovery-bay-2',
     name: 'THE SECOND MACHINE',
     note: 'Twice the beds, half the wait',
-    props: [{ name: 'hut', x: 3, y: 8 }],
-    at: { x: 3, y: 10 },
+    props: [{ name: 'hut', x: 26, y: 4 }],
+    at: { x: 26, y: 6 },
   },
   {
     upgradeId: 'quarantine-ward',
     name: 'THE WARD',
     note: 'Set apart, and free of the clock',
-    // In its own clearing in the wood behind the Center, with its colours
+    // At the end of the clearing behind the lab and the workshop, with its colours
     // flying: that is what a quarantine ward is, and it is why it does not
     // stand beside the bay.
     props: [
-      { name: 'hut', x: 3, y: 4 },
-      { name: 'bannerPair', x: 5, y: 4 },
+      { name: 'hut', x: 29, y: 4 },
+      { name: 'bannerPair', x: 31, y: 4 },
     ],
-    at: { x: 3, y: 6 },
+    at: { x: 29, y: 6 },
   },
 ];
 
