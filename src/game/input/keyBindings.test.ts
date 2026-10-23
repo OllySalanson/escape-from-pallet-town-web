@@ -36,7 +36,7 @@ import { PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
 import { lootRefusalLine } from '../world/loot';
 import {
-  KNOCK_FROM_THE_STEP_HINT,
+  HOME_KEY_LETTERS,
   decorateKeyHintLine,
   houseKeyHintLine,
   phraseListLines,
@@ -163,7 +163,6 @@ const HOUSE_WORD_CONTROLS: Readonly<Record<string, string>> = {
   DONE: 'decorate',
   TURN: 'turn',
   PUT: 'putAway',
-  KNOCK: 'knock',
 };
 
 describe('the keys the house names', () => {
@@ -171,7 +170,6 @@ describe('the keys the house names', () => {
     const controls = controlsOf(new BaseScene());
     const lines = [
       houseKeyHintLine(new Set()),
-      KNOCK_FROM_THE_STEP_HINT,
       decorateKeyHintLine('holding', true),
       decorateKeyHintLine('on-a-piece', true),
       decorateKeyHintLine('on-the-floor', true),
@@ -188,12 +186,11 @@ describe('the keys the house names', () => {
     expect((controls.boxNext as BoundKey).keyCode).toBe(KEY_CODES[box[2]]);
   });
 
-  it('stops offering to decorate, or to knock, once each has been done', () => {
-    expect(houseKeyHintLine(new Set())).toBe('[H] DECORATE   [K] KNOCK');
-    expect(houseKeyHintLine(new Set(['decorate']))).toBe('[K] KNOCK');
-    expect(houseKeyHintLine(new Set(['decorate', 'knock']))).toBe('');
-    // Nowhere to knock - no harbour on this page - is nothing to offer.
-    expect(houseKeyHintLine(new Set(), false)).toBe('[H] DECORATE');
+  it('stops offering to decorate once it has been done, and never names a knock key', () => {
+    expect(houseKeyHintLine(new Set())).toBe('[H] DECORATE');
+    expect(houseKeyHintLine(new Set(['decorate']))).toBe('');
+    // Knocking is THE BOLTHOLE's garden sign, read like any other sign.
+    expect(Object.keys(HOME_KEY_LETTERS)).not.toContain('knock');
   });
 });
 

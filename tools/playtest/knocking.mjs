@@ -4,8 +4,10 @@
 //
 //   node tools/playtest/knocking.mjs <url> <out dir> [--window=1200x768]
 //
+// Knocking is THE BOLTHOLE's garden sign: read like any sign, it asks whose
+// door in the text box, and the list of players follows once that is read.
 // AMY knocks on OLLY's door while he is out in the yard and is told he is not
-// home. OLLY goes home; AMY knocks again from her own step; OLLY is asked, with
+// home. OLLY goes home; AMY knocks again from the sign; OLLY is asked, with
 // the cursor on NOT NOW, and lets her in. AMY is shown OLLY's house - his name
 // on his things, and him standing in it - and he sees her there. She cannot
 // pick his furniture up (H says why), and down off the mat takes her home to her own step.
@@ -84,6 +86,20 @@ try {
       await sleep(250);
     }
   };
+  // Up to the garden sign, facing it, and read it: the ordinary text box asks
+  // whose door, and once it is read the list of players comes up.
+  const sign = { x: 38, y: 12 };
+  const readKnockSign = async (tab, shot) => {
+    // The sign stands east of the path up to THE BOLTHOLE's step.
+    await walkTo(tab, { x: sign.x - 1, y: sign.y });
+    await press(tab, 'ArrowRight');
+    await press(tab, 'Space');
+    const asked = await until(tab, 'the sign asking whose door', (s) => s.dialog?.includes('Select the player you want to knock on the door of.') ?? false);
+    if (asked.knockScreen) throw new Error('the list came up before the sign was read');
+    if (shot) await tab.screenshot(shot);
+    await press(tab, 'Space');
+    await until(tab, 'the list of players', (s) => s.knockScreen);
+  };
   const readThrough = async (tab) => {
     for (let guard = 0; guard < 30; guard += 1) {
       const now = await tab.evaluate(state);
@@ -123,16 +139,17 @@ try {
   await amy.waitFor(sceneIs('base'));
   await until(amy, 'AMY in the yard', (s) => s.live && s.room === null);
   const home = await amy.evaluate(`${BASE}.doors.find((d) => d.id === 'bolthole')`);
+  // K knocks no more: the step names no key for it.
   await walkTo(amy, home.returnTo);
   const onStep = await amy.evaluate(`${BASE}.hintShown`);
-  if (!onStep.includes('[K] KNOCK ON A DOOR')) throw new Error(`AMY's step says "${onStep}"`);
+  if (onStep.includes('KNOCK')) throw new Error(`AMY's step still says "${onStep}"`);
 
   // Knocking while OLLY is out: listed as out, and not home.
-  await press(amy, 'KeyK');
-  const list = await until(amy, "AMY's knock list with OLLY in it", (s) => s.rows.some((row) => row.includes("OLLY's house")));
-  if (!list.rows.find((row) => row.includes("OLLY's house"))?.includes('Out')) throw new Error(`the list says ${JSON.stringify(list.rows)}`);
+  await readKnockSign(amy, `${out}/knock-sign.png`);
+  const list = await until(amy, "AMY's knock list with OLLY in it", (s) => s.rows.some((row) => row.startsWith('OLLY')));
+  if (!list.rows.find((row) => row.startsWith('OLLY'))?.includes('Out')) throw new Error(`the list says ${JSON.stringify(list.rows)}`);
   const back = await amy.evaluate(`document.querySelector('.knock-menu [data-knock-close]')?.textContent ?? ''`);
-  if (back.trim().toUpperCase() !== 'YARD') throw new Error(`opened on the step, the way back says "${back}"`);
+  if (back.trim().toUpperCase() !== 'YARD') throw new Error(`opened from the sign, the way back says "${back}"`);
   await amy.screenshot(`${out}/knock-list.png`);
   await press(amy, 'Enter');
   const notHome = await until(amy, 'told OLLY is not home', (s) => s.status !== null);
@@ -152,16 +169,15 @@ try {
   // used yet beside the way out (playtest 48: it said only [DOWN] OUT).
   const homeHint = await olly.evaluate(`(() => { const b = ${BASE}; return { hint: b.hintShown, learned: b.savedGame.raidProgress.keysLearned ?? [] }; })()`);
   console.log(`on his mat: ${homeHint.hint}`);
-  for (const [key, word] of [['decorate', '[H] DECORATE'], ['knock', '[K] KNOCK']]) {
-    if (!homeHint.learned.includes(key) && !homeHint.hint.includes(word)) throw new Error(`OLLY's mat did not name ${word}: "${homeHint.hint}"`);
-  }
+  if (!homeHint.learned.includes('decorate') && !homeHint.hint.includes('[H] DECORATE')) throw new Error(`OLLY's mat did not name [H] DECORATE: "${homeHint.hint}"`);
+  if (homeHint.hint.includes('KNOCK')) throw new Error(`OLLY's mat still names a knock key: "${homeHint.hint}"`);
   await toFront(olly);
   await olly.screenshot(`${out}/home-mat-hint.png`);
 
   // AMY knocks and stops before he answers (playtest 48, finding 8): OLLY's
   // question is taken down, rather than left to open the door to nobody.
-  await press(amy, 'KeyK');
-  await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.includes("OLLY's house") && row.includes('Home')));
+  await readKnockSign(amy);
+  await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.startsWith('OLLY') && row.includes('Home')));
   await press(amy, 'Enter');
   await until(amy, 'knocking', (s) => s.knockScreen && s.status === null);
   await until(olly, 'OLLY asked', (s) => s.asked === 'AMY');
@@ -177,8 +193,8 @@ try {
   await until(amy, 'the knock screen put away', (s) => !s.knockScreen && s.live);
 
   // AMY knocks again: OLLY is home now.
-  await press(amy, 'KeyK');
-  await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.includes("OLLY's house") && row.includes('Home')));
+  await readKnockSign(amy);
+  await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.startsWith('OLLY') && row.includes('Home')));
   await press(amy, 'Enter');
   await until(amy, 'knocking', (s) => s.knockScreen && s.status === null);
   const asked = await until(olly, 'OLLY asked', (s) => s.asked === 'AMY');

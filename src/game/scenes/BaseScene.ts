@@ -40,7 +40,6 @@ import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
   houseKeyHintLine,
-  KNOCK_FROM_THE_STEP_HINT,
   yardKeyHintLine,
   type LearnableKeyId,
 } from '../input/keyBindings';
@@ -130,6 +129,7 @@ import { harbour, harbourHouses, type HarbourWhere } from '../harbour/harbour';
 import type { KnockAtTheDoor } from '../harbour/houseService';
 import { houseSnapshot, readHouseSnapshot } from '../home/houseSnapshot';
 import {
+  KNOCK_SIGN_LINE,
   LET_IN,
   NOT_NOW,
   knockGoneLine,
@@ -290,8 +290,6 @@ interface BaseControls {
   readonly boxBack: Phaser.Input.Keyboard.Key;
   readonly boxNext: Phaser.Input.Keyboard.Key;
   readonly putAway: Phaser.Input.Keyboard.Key;
-  /** K: knock on somebody else's door, from the house or its step. */
-  readonly knock: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -388,6 +386,8 @@ export class BaseScene extends Phaser.Scene {
   private knockScreen: MenuOverlay | null = null;
   /** Somebody knocking at this player's own door, being asked about. */
   private knockPrompt: { readonly prompt: ChoicePrompt; readonly knock: KnockAtTheDoor } | null = null;
+  /** What to do once the dialogue box now up has been read to its end (`say`). */
+  private afterSaid: (() => void) | null = null;
   /**
    * Whether the front door has told the harbour this player is home, and the
    * furniture it told it about, so a change is told again. (A save that has
@@ -476,6 +476,7 @@ export class BaseScene extends Phaser.Scene {
     this.harbourFigures = null;
     this.knockScreen = null;
     this.knockPrompt = null;
+    this.afterSaid = null;
     this.doorTold = false;
     this.doorLayout = undefined;
     this.visit = null;
@@ -693,11 +694,6 @@ export class BaseScene extends Phaser.Scene {
 
     if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home) {
       this.decorateHere();
-      return;
-    }
-
-    if (this.keyPresses.justPressed(this.controls.knock) && this.canKnockHere()) {
-      this.openKnock();
       return;
     }
 
@@ -1352,9 +1348,6 @@ export class BaseScene extends Phaser.Scene {
       if (!partner && sameTile(facing, DAY_CARE_KEEPER.position)) {
         return `[SPACE] ${DAY_CARE_KEEPER.name}`;
       }
-      if (!partner && this.onHomeStep() && harbourHouses()) {
-        return KNOCK_FROM_THE_STEP_HINT;
-      }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
@@ -1391,7 +1384,7 @@ export class BaseScene extends Phaser.Scene {
   /** The keys the player's own house answers that this save has not used yet. */
   private houseKeys(): string {
     return this.place.room?.home && !this.visit
-      ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), harbourHouses() !== null)
+      ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []))
       : '';
   }
 
@@ -1637,7 +1630,6 @@ export class BaseScene extends Phaser.Scene {
       boxBack: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxBack], false),
       boxNext: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxNext], false),
       putAway: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.putAway], false),
-      knock: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.knock], false),
     };
     this.latchDirectionPresses();
     this.keyPresses.watch([
@@ -1650,7 +1642,6 @@ export class BaseScene extends Phaser.Scene {
       this.controls.boxBack,
       this.controls.boxNext,
       this.controls.putAway,
-      this.controls.knock,
     ]);
   }
 
@@ -2068,6 +2059,10 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const sign = BASE_SIGNS.find((each) => each.x === target.x && each.y === target.y);
+    if (sign?.knocks && harbourHouses()) {
+      this.readKnockSign(target);
+      return;
+    }
     if (sign) {
       this.say(sign.lines, [target]);
     }
@@ -2087,12 +2082,23 @@ export class BaseScene extends Phaser.Scene {
     if (this.dialogBox.isCurrentMessageComplete) {
       audioManager.play('textAdvance');
       this.dialogBox.advance();
+      const then = this.dialogBox.visible ? null : this.afterSaid;
+      if (then) {
+        this.afterSaid = null;
+        then();
+      }
       return;
     }
     this.dialogBox.skip();
   }
 
-  private say(lines: readonly string[], about: readonly GridPosition[]): void {
+  /**
+   * Puts lines up in the dialogue box; `then` runs once the last of them has
+   * been read and the box is down - a sign that opens something after it has
+   * spoken (the knock sign's list of players).
+   */
+  private say(lines: readonly string[], about: readonly GridPosition[], then?: () => void): void {
+    this.afterSaid = then ?? null;
     const view = this.cameras.main.worldView;
     const seat = placeDialog({
       viewHeight: this.scale.height,
@@ -2320,31 +2326,28 @@ export class BaseScene extends Phaser.Scene {
     this.say([knockGoneLine(knock.knockerName)], []);
   }
 
-  /** Whether K knocks here: in the player's own house, or on its step outside. */
-  private canKnockHere(): boolean {
-    return (Boolean(this.place.room?.home) && !this.visit) || (!this.place.room && this.onHomeStep());
-  }
-
-  /** On THE BOLTHOLE's step in the yard: where the player comes out of their house. */
-  private onHomeStep(): boolean {
-    const home = doorNamed('bolthole');
-    return !this.place.room && home !== undefined && sameTile(this.currentTile, home.returnTo);
+  /**
+   * THE BOLTHOLE's garden sign, read while the shared harbour is up: it asks
+   * whose door to knock on in the ordinary text box, and once that is read the
+   * list of players comes up (`ui/KnockOverlay.ts`). A player nobody can see
+   * yet is told why nobody would answer instead.
+   */
+  private readKnockSign(sign: GridPosition): void {
+    if (!harbour()?.seenAs) {
+      this.say(['Nobody will answer a knock from somebody they cannot see. Give your house a name first.'], [sign]);
+      return;
+    }
+    this.say([KNOCK_SIGN_LINE], [sign], () => this.openKnock());
   }
 
   /**
-   * The knock screen (`ui/KnockOverlay.ts`), over a house that stands still
+   * The knock screen (`ui/KnockOverlay.ts`), over a yard that stands still
    * while it is up. A yes is a walk through somebody else's front door; any
-   * other ending is back where the player stood.
+   * other ending is back where the player stood, facing the sign.
    */
   private openKnock(): void {
-    this.learnKey('knock');
     const houses = harbourHouses();
-    if (!houses) {
-      this.say(['The harbour is quiet. There are no other doors to knock on.'], []);
-      return;
-    }
-    if (!harbour()?.seenAs) {
-      this.say(['Nobody will answer a knock from somebody they cannot see. Give your house a name first.'], []);
+    if (!houses || this.leaving) {
       return;
     }
     this.player.stop();
@@ -2356,7 +2359,6 @@ export class BaseScene extends Phaser.Scene {
       houses.service,
       (owner, gone) => harbour()?.link.nudge(owner, gone),
       (letIn) => this.knocked(letIn),
-      this.place.room ? 'house' : 'step',
     );
   }
 

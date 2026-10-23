@@ -20,6 +20,12 @@ export const KNOCK_WAIT_MS = 65_000;
 /** What the foot of the knock screen says the keys do. */
 export const KNOCK_HINTS = 'ARROWS choose · ENTER knock · ESC back';
 
+/**
+ * What THE BOLTHOLE's garden sign says, in the ordinary text box, before the
+ * list of players comes up (`BaseScene`, `HOME_SIGN.knocks`).
+ */
+export const KNOCK_SIGN_LINE = 'Select the player you want to knock on the door of.';
+
 export type KnockView =
   /** Asking the harbour who has a house. */
   | { readonly kind: 'asking' }
@@ -27,13 +33,8 @@ export type KnockView =
   | { readonly kind: 'knocking'; readonly name: string }
   | { readonly kind: 'trouble' };
 
-/**
- * Where ESC takes the knock screen: back into the house it was opened in, or
- * out into the yard when it was opened on the step outside.
- */
-export type KnockOpenedFrom = 'house' | 'step';
-
-export function knockScreenMarkup(view: KnockView, from: KnockOpenedFrom = 'house'): string {
+/** The knock screen: opened from the sign in the yard, so ESC goes back to the yard. */
+export function knockScreenMarkup(view: KnockView): string {
   const pane =
     view.kind === 'asking'
       ? '<p class="px-empty px-wrap">Asking the harbour whose doors there are...</p>'
@@ -42,12 +43,12 @@ export function knockScreenMarkup(view: KnockView, from: KnockOpenedFrom = 'hous
         : view.kind === 'knocking'
           ? `<p class="px-empty px-wrap">Knocking on ${view.name}'s door... Somebody's coming?</p>`
           : houseRows(view.houses);
-  const note = view.kind === 'houses' ? `${view.houses.length} house${view.houses.length === 1 ? '' : 's'}` : '';
-  const body = `<main class="px-body knock-screen">${pixelWindow(pane, { heading: 'Doors in the harbour', note })}</main>`;
+  const note = view.kind === 'houses' ? `${view.houses.length} player${view.houses.length === 1 ? '' : 's'}` : '';
+  const body = `<main class="px-body knock-screen">${pixelWindow(pane, { heading: 'Whose door?', note })}</main>`;
   return pixelScreen({
     title: 'Knock on a door',
     place: 'The harbour',
-    back: { label: from === 'step' ? 'Yard' : 'House', attribute: 'data-knock-close' },
+    back: { label: 'Yard', attribute: 'data-knock-close' },
     body,
     hints: view.kind === 'knocking' ? 'ESC stop knocking' : KNOCK_HINTS,
     ...(view.kind === 'houses' && view.status ? { status: view.status } : {}),
@@ -65,7 +66,7 @@ function houseRows(houses: readonly HarbourHouse[]): string {
           index === 0 ? ' data-cursor-start' : ''
         } data-help="${escapeAttribute(
           house.atHome ? `Knock on ${house.name}'s door: they are in.` : `${house.name} is out. Come back when they are home.`,
-        )}"><span class="px-row-main"><strong class="px-name">${house.name}'s house</strong></span>${pixelTag(
+        )}"><span class="px-row-main"><strong class="px-name">${house.name}</strong></span>${pixelTag(
           house.atHome ? 'Home' : 'Out',
           house.atHome ? 'good' : 'plain',
         )}</button>`,

@@ -53,7 +53,6 @@ export const HOME_KEY_LETTERS = {
   boxBack: 'Q',
   boxNext: 'E',
   putAway: 'X',
-  knock: 'K',
 } as const;
 
 /**
@@ -87,7 +86,7 @@ export function roomKeyHintLine(learned: ReadonlySet<string>): string {
 }
 
 /** Every key the save can have learned, in one list (`raidProgress.keysLearned`). */
-export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'knock', 'talk', 'ping'] as const;
+export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping'] as const;
 export type LearnableKeyId = (typeof LEARNABLE_KEYS)[number];
 
 export function isLearnableKey(value: unknown): value is LearnableKeyId {
@@ -126,20 +125,13 @@ export function yardKeyHintLine(learned: ReadonlySet<string>): string {
 }
 
 /**
- * What the player's own house says while nothing else is to be said: decorating
- * and knocking on somebody else's door, each until it has been done once.
+ * What the player's own house says while nothing else is to be said: decorating,
+ * until it has been done once. Knocking on somebody else's door is the sign in
+ * the front garden (`base/baseMap.ts`, `KNOCK_SIGN`), read like any sign.
  */
-export function houseKeyHintLine(learned: ReadonlySet<string>, canKnock = true): string {
-  return [
-    learned.has('decorate') ? '' : keyHint(HOME_KEY_LETTERS.decorate, 'DECORATE'),
-    learned.has('knock') || !canKnock ? '' : keyHint(HOME_KEY_LETTERS.knock, 'KNOCK'),
-  ]
-    .filter(Boolean)
-    .join('   ');
+export function houseKeyHintLine(learned: ReadonlySet<string>): string {
+  return learned.has('decorate') ? '' : keyHint(HOME_KEY_LETTERS.decorate, 'DECORATE');
 }
-
-/** What the step outside THE BOLTHOLE's door says: the way to somebody else's door. */
-export const KNOCK_FROM_THE_STEP_HINT = keyHint(HOME_KEY_LETTERS.knock, 'KNOCK ON A DOOR');
 
 /**
  * The keys while decorating, for what the player can do now: put down what is

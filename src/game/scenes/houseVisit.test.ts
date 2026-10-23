@@ -29,7 +29,8 @@ vi.mock('../harbour/harbour', () => ({
 import { BaseScene } from './BaseScene';
 import { HouseDoor } from '../harbour/houseDoor';
 import type { HouseService, KnockAtTheDoor } from '../harbour/houseService';
-import { knockScreenMarkup } from '../home/knocking';
+import { KNOCK_SIGN_LINE, knockScreenMarkup } from '../home/knocking';
+import { HOME_SIGN } from '../base/baseMap';
 
 /**
  * H in somebody else's house (playtest 48): it did nothing and said nothing,
@@ -68,40 +69,101 @@ describe('H in a house', () => {
 });
 
 /**
- * K on the step outside THE BOLTHOLE (playtest 48): the knock screen's way back
- * said HOUSE, though ESC put the player back in the yard they were standing in.
+ * Knocking is a sign, not a key (the captain, 23 Oct): THE BOLTHOLE's garden
+ * sign is read like any other, says in the ordinary text box whose door to
+ * pick, and once that line is read the list of players comes up, opened from
+ * the yard so ESC goes back to it.
  */
-describe('the knock screen says where ESC goes', () => {
-  function knockFrom(room: object | undefined) {
+describe('the knock sign in the garden', () => {
+  function yardBeforeTheSign() {
     knockScreens.length = 0;
+    const shown: string[][] = [];
+    const dialogBox = {
+      x: 0,
+      visible: false,
+      isCurrentMessageComplete: true,
+      setY: () => dialogBox,
+      showMessages: (lines: string[]) => {
+        shown.push(lines);
+        dialogBox.visible = true;
+      },
+      advance: () => {
+        dialogBox.visible = false;
+        return true;
+      },
+      skip: () => undefined,
+    };
+    let pressed = false;
     const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
     Object.assign(scene, {
-      place: { room },
-      facing: 'down',
-      learnKey: () => undefined,
+      place: { room: undefined },
+      // On the path beside the sign, facing it.
+      currentTile: { x: HOME_SIGN.x - 1, y: HOME_SIGN.y },
+      facing: 'right',
+      fixtures: [],
+      afterSaid: null,
+      leaving: false,
+      partnerAt: () => false,
+      dialogBox,
+      cameras: { main: { worldView: { left: 0, top: 0 } } },
+      scale: { height: 240 },
+      spentPresses: { spendHeld: () => undefined },
+      directionKeys: () => [],
+      isInteractionPressed: () => pressed,
       showHint: () => undefined,
       player: { stop: () => undefined, setFrame: () => undefined },
     });
-    (scene.openKnock as () => void).call(scene);
-    const from = knockScreens[0]?.[4] as 'house' | 'step';
-    return knockScreenMarkup({ kind: 'houses', houses: [] }, from);
+    const press = () => {
+      pressed = true;
+      (scene.handleDialogInput as () => void).call(scene);
+      pressed = false;
+    };
+    return { scene, shown, press, dialogBox };
   }
 
-  it('back to the yard when it was opened on the step', () => {
-    const markup = knockFrom(undefined);
-    expect(markup).toContain('>Yard</button>');
-    expect(markup).not.toContain('>House</button>');
+  it('asks whose door in the text box, then opens the list of players once that is read', () => {
+    const yard = yardBeforeTheSign();
+    (yard.scene.tryInteract as () => void).call(yard.scene);
+    expect(yard.shown).toEqual([[KNOCK_SIGN_LINE]]);
+    expect(KNOCK_SIGN_LINE).toBe('Select the player you want to knock on the door of.');
+    // The list waits until the line has been read.
+    expect(knockScreens).toHaveLength(0);
+    yard.press();
+    expect(yard.dialogBox.visible).toBe(false);
+    expect(knockScreens).toHaveLength(1);
+    expect(yard.scene.knockScreen).toBeTruthy();
   });
 
-  it('back into the house when it was opened inside', () => {
-    expect(knockFrom({ id: 'bolthole', home: true })).toContain('>House</button>');
+  it('opens the list once only, however many more lines are said after', () => {
+    const yard = yardBeforeTheSign();
+    (yard.scene.tryInteract as () => void).call(yard.scene);
+    yard.press();
+    (yard.scene.say as (lines: string[], about: unknown[]) => void).call(yard.scene, ['Something else.'], []);
+    yard.press();
+    expect(knockScreens).toHaveLength(1);
+  });
+
+  it('lists every player by name, and goes back to the yard', () => {
+    const markup = knockScreenMarkup({
+      kind: 'houses',
+      houses: [
+        { id: 'amy-id', name: 'AMY', atHome: true },
+        { id: 'pip-id', name: 'PIP', atHome: false },
+      ],
+    });
+    expect(markup).toContain('data-knock="amy-id"');
+    expect(markup).toContain('<strong class="px-name">AMY</strong>');
+    expect(markup).toContain('<strong class="px-name">PIP</strong>');
+    expect(markup).toContain('2 players');
+    expect(markup).toContain('>Yard</button>');
   });
 });
 
 /**
  * The hint on THE BOLTHOLE's mat (playtest 48): everybody arrives on the mat,
- * and the house's own keys went unsaid there - only `[DOWN] OUT` - so K, which
- * knocks from inside, was never named to a player who had not stepped off it.
+ * and the house's own keys went unsaid there - only `[DOWN] OUT` - so H, which
+ * decorates, was never named to a player who had not stepped off it. There is
+ * no knock key to name: knocking is the garden sign.
  */
 describe('the hint on the house mat', () => {
   function hintOnMat(visit: boolean, keysLearned: string[] = []): string {
@@ -118,12 +180,12 @@ describe('the hint on the house mat', () => {
     return (scene.hintHere as () => string).call(scene);
   }
 
-  it('names decorating and knocking beside the way out', () => {
-    expect(hintOnMat(false)).toBe('[H] DECORATE   [K] KNOCK   [DOWN] OUT');
+  it('names decorating beside the way out', () => {
+    expect(hintOnMat(false)).toBe('[H] DECORATE   [DOWN] OUT');
   });
 
   it('stops naming a key once it has been used', () => {
-    expect(hintOnMat(false, ['decorate', 'knock'])).toBe('[DOWN] OUT');
+    expect(hintOnMat(false, ['decorate'])).toBe('[DOWN] OUT');
   });
 
   it("names none of them in somebody else's house", () => {
