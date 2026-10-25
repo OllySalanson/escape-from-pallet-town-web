@@ -33,7 +33,11 @@ export type BasePropName =
   | 'billsCottage'
   | 'bolthole'
   | 'homeSign'
-  | 'gardenFlowers';
+  | 'gardenFlowers'
+  | 'raidFerry'
+  | 'ssAnne'
+  | 'shipPier'
+  | 'warehouses';
 
 /**
  * Bill's cottage: a little blue-roofed FireRed house, cut onto the base's own
@@ -85,6 +89,30 @@ function workshopShed(): PropDefinition {
   };
 }
 
+/**
+ * A thing that stands in the water: solid in every cell except the ones named,
+ * which are the deck or the walkway you stand on. A prop is the last word on
+ * its own tiles, so a cell of a ship left walkable is a cell of the sea you
+ * could walk out onto - the cut pieces were authored to stand on land, where
+ * that did not matter.
+ */
+function afloat(
+  prop: PropDefinition,
+  walked: readonly (readonly [number, number])[] = [],
+  under: readonly (readonly [number, number])[] = [],
+): PropDefinition {
+  const open = new Set(walked.map(([x, y]) => y * prop.width + x));
+  const roofed = new Set(under.map(([x, y]) => y * prop.width + x));
+  return {
+    ...prop,
+    cells: prop.cells.map((cell, ordinal) =>
+      roofed.has(ordinal)
+        ? { ...cell, solid: false, canopy: true, walkedUnder: true }
+        : { ...cell, solid: !open.has(ordinal) },
+    ),
+  };
+}
+
 export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
   ...FLOOD_TOWN_TILESET,
   sources: [...FLOOD_TOWN_TILESET.sources, BASE_SHEET_SOURCE.source, TOWN_SHEET_SOURCE.source],
@@ -118,5 +146,24 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     homeSign: KANTO_TILESET.props.signTown,
     // FireRed's red flowers, walked through as FireRed's are.
     gardenFlowers: KANTO_TILESET.props.flowers,
+    // 4x4. FireRed's Seagallop, the ferry to the islands, tied up at the
+    // jetty: the boat every raid goes out on and comes home in.
+    raidFerry: afloat(TOWN_PROPS.seagallop),
+    // 8x4. The S.S. Anne, moored at the end of the long pier.
+    ssAnne: afloat(TOWN_PROPS.ssAnne),
+    // 7x8. Vermilion's own pier: the two bollard towers on the quay with a
+    // rope between them, the awning the walkway passes under, and the walkway
+    // running out over the water - and only the walkway walked, because its
+    // sides are sea.
+    shipPier: afloat(
+      TOWN_PROPS.pier,
+      [
+        ...[0, 1].flatMap((y) => [3, 4].map((x) => [x, y] as const)),
+        ...[4, 5, 6, 7].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
+      ],
+      [2, 3].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
+    ),
+    // 10x4. Fuchsia's brick terrace, which on a quay is a row of warehouses.
+    warehouses: TOWN_PROPS.brickRow,
   },
 };

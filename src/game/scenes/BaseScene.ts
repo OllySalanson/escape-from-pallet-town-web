@@ -78,6 +78,7 @@ import {
   type RoomThing,
 } from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
+import { HARBOUR_LANDMARKS } from '../base/landmarks';
 import {
   CABINET_UNITS,
   EMPTY_CABINET_LINE,
@@ -232,6 +233,8 @@ const WALL_MAP_TEXTURE = 'base-wall-map';
 
 const DOOR_TONE: WorldLabelTone = { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' };
 const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' };
+/** The harbour's own landmarks (`base/landmarks.ts`): white on the sea's own deep blue. */
+const LANDMARK_TONE: WorldLabelTone = { fill: 0x0e2a44, border: 0xf4efe2, ink: '#f4efe2' };
 /** The label on the one oddity being looked at: brass, like the case it is in. */
 const ODDITY_TONE: WorldLabelTone = { fill: 0x2b1d0e, border: 0xd8b070, ink: '#f4efe2' };
 /** The frame round the oddity being looked at. */
@@ -1257,6 +1260,17 @@ export class BaseScene extends Phaser.Scene {
         speech: { voice: 'name', tiles: [DAY_CARE_KEEPER.position] },
       }),
     );
+    for (const landmark of HARBOUR_LANDMARKS) {
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: propsRect(landmark.props),
+          text: `${landmark.name}\n${landmark.note}`,
+          tone: LANDMARK_TONE,
+          depth: atRow(CAPTION_BAND, landmark.at.y),
+          speech: { voice: 'name', tiles: landmark.near ?? [landmark.at] },
+        }),
+      );
+    }
     for (const fixture of this.fixtures) {
       this.worldLabels.push(
         new WorldLabel(this, {
@@ -2056,6 +2070,11 @@ export class BaseScene extends Phaser.Scene {
     );
     if (fixture) {
       this.say([`${fixture.name} - ${fixture.note.toLowerCase()}.`], [target]);
+      return;
+    }
+    const landmark = HARBOUR_LANDMARKS.find((each) => sameTile(each.at, target));
+    if (landmark) {
+      this.say([`${landmark.name} - ${landmark.note.toLowerCase()}.`], [target]);
       return;
     }
     const sign = BASE_SIGNS.find((each) => each.x === target.x && each.y === target.y);
