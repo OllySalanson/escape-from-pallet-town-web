@@ -1,7 +1,7 @@
 // Photographs THE HARBOUR as a player stands in it, a spot at a time, at the
 // game's real 3x window, and records a short walk along the waterfront:
 //
-//   node tools/playtest/harbourTour.mjs <test-mode build url> <out dir> [--built=all] [--clip] [--at=name:x:y,..] [--port=N]
+//   node tools/playtest/harbourTour.mjs <test-mode build url> <out dir> [--built=all] [--clip] [--at=name:x:y,..] [--port=N] [--clock=day|dusk|night]
 //
 // A new game is started (so the harbour is what a newcomer walks into), then
 // the base scene is restarted standing on each spot - the spawn, the jetty a
@@ -31,6 +31,15 @@ const extraSpots = (option('at') ?? '')
     return { name, at: { x: Number(x), y: Number(y) } };
   });
 const FRAME_MS = 1000 / 60;
+// `--clock=day|dusk|night` puts the page in a time zone where it is that hour
+// now, for the harbour that follows the player's clock (`base/harbourLight.ts`).
+const clock = option('clock');
+const CLOCK_HOUR = { day: 12, dusk: 19, night: 23 };
+const zoneFor = (hour) => {
+  let offset = (hour - new Date().getUTCHours() + 24) % 24;
+  if (offset > 14) offset -= 24;
+  return offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+};
 mkdirSync(out, { recursive: true });
 
 const fail = (why) => {
@@ -42,6 +51,10 @@ const browser = option('port')
   : await launchBrowser({ window: PIXEL_WINDOW });
 try {
   const page = await browser.openPage('about:blank');
+  if (clock !== undefined) {
+    if (!(clock in CLOCK_HOUR)) fail('--clock is day, dusk or night');
+    await page.send('Emulation.setTimezoneOverride', { timezoneId: zoneFor(CLOCK_HOUR[clock]) });
+  }
   // A browser kept between runs keeps its storage: start every tour fresh.
   await page.send('Page.navigate', { url });
   await page.waitFor(sceneIs('title'));

@@ -83,6 +83,7 @@ import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
+import { HarbourNight } from '../base/harbourNight';
 import { TILE_ANIMATIONS_BY_TILE, animatedTileAt } from '../world/tileAnimation';
 import type { Material } from '../world/tileset/materials';
 import {
@@ -404,6 +405,8 @@ export class BaseScene extends Phaser.Scene {
   private terrain: readonly (readonly Material[])[] | null = null;
   /** Until the sea is next heard lapping at the quay. */
   private untilWaveMs = WAVE_EVERY_MS;
+  /** THE HARBOUR after dark (`base/harbourNight.ts`), outdoors only. */
+  private night: HarbourNight | null = null;
   /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
   private boats: FloatingBoats | null = null;
   /** FireRed's map-name board (`base/placeNameSign.ts`), outdoors only. */
@@ -596,6 +599,24 @@ export class BaseScene extends Phaser.Scene {
         data.arrival === 'raid',
       );
     }
+    this.night = null;
+    if (this.tilemap && !this.place.room) {
+      const beacon = this.fixtures.find((fixture) => fixture.upgradeId === 'beacon')?.props[0];
+      this.night = new HarbourNight(this, {
+        now: new Date(),
+        map: this.tilemap,
+        buildings: [
+          ...BASE_DOORS.map((door) => [{ ...door.building, name: door.building.prop }]),
+          ...HARBOUR_LANDMARKS.filter((landmark) => !landmark.floats).map((landmark) => landmark.props),
+        ],
+        boats: this.boats,
+        crowns: this.crownBoxes(),
+        // The lamp at the top of the harbour light's roof.
+        beacon: beacon
+          ? { x: (beacon.x + BASE_TILESET.props[beacon.name].width / 2) * TILE_SIZE, y: beacon.y * TILE_SIZE + 5 }
+          : null,
+      });
+    }
     this.drawSprites();
     this.drawFurniture();
     this.drawOddities();
@@ -683,6 +704,7 @@ export class BaseScene extends Phaser.Scene {
     this.listenToTheSea(deltaMs);
     this.noticePlace(deltaMs);
     this.boats?.update(deltaMs);
+    this.night?.update(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
     // The harbour's people keep their beats, and stand still while anything
@@ -808,6 +830,23 @@ export class BaseScene extends Phaser.Scene {
   }
 
   // -- the map ---------------------------------------------------------------
+
+  /** Every tile a crown or a brim is drawn on over the figures, in pixels: what a night wash lays over again. */
+  private crownBoxes(): { x: number; y: number; width: number; height: number }[] {
+    const { canopy, brimDepth } = this.place.layers;
+    const boxes: { x: number; y: number; width: number; height: number }[] = [];
+    canopy.tiles.forEach((row, y) =>
+      row.forEach((tile, x) => {
+        if (tile >= 0) {
+          boxes.push({ x: x * TILE_SIZE, y: y * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE });
+        } else if ((brimDepth[y]?.[x] ?? 0) > 0) {
+          const depth = brimDepth[y][x];
+          boxes.push({ x: x * TILE_SIZE, y: (y + 1) * TILE_SIZE - depth, width: TILE_SIZE, height: depth });
+        }
+      }),
+    );
+    return boxes;
+  }
 
   /** Lays the map's tile layers, and hands back the detail layer landmarks are drawn on. */
   private drawMap(): Phaser.Tilemaps.TilemapLayer | null {

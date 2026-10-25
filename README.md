@@ -162,7 +162,9 @@ old angler grumbles about Magikarp, a policeman walks the yard with his Growlith
 Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
 bay. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
 Seagallop sounds her horn as she glides in to the jetty to bring you home, and the boats ride the
-swell while they're moored. Every part of the harbour has a name, and like a
+swell while they're moored. And it keeps your clock: the harbour goes gold at dusk and blue at
+night, every window lights up, the S.S. Anne's portholes glow, and once Brock has built you the
+beacon, its beam sweeps the bay. Every part of the harbour has a name, and like a
 FireRed town it tells you on a little board at the top of the screen as you walk into it - Arena
 Square, Keepers' Row, Harbour Square with its fountain and its town map, the Quay, the Docks, the
 Long Pier, the Cove and the Green.
