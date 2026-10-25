@@ -51,8 +51,9 @@ export function greystonePeaks(): MapcraftResult {
   p.meadow(6, 56, 2, 2); // a nook in the wood, where the goat track goes over the hill
   // THE HIGH PASTURE: the lawn under the outcrop fenced for the ponies that
   // summer up here, a gate at each end, so the goat track's way up goes
-  // through it rather than round.
-  p.yard(14, 46, 10, 6, { gates: [[16, 46], [15, 51]], inner: '.' });
+  // through it rather than round. Its south fence stands a row clear of the
+  // wood, or the pines' tips hang over it.
+  p.yard(14, 46, 10, 5, { gates: [[16, 46], [15, 50]], inner: '.' });
 
   // -- The cliff the caves open in, joined to the crag over the quarry ---------------
   p.rock(48, 4, 10, 6);
@@ -116,7 +117,7 @@ export function greystonePeaks(): MapcraftResult {
       // edge watching whoever comes down the pass.
       pokemon: [
         { x: 19, y: 48, species: 'ponyta', level: 10 },
-        { x: 21, y: 50, species: 'ponyta' },
+        { x: 21, y: 49, species: 'ponyta' },
         { x: 37, y: 34, species: 'mankey', level: 9 },
         { x: 36, y: 44, species: 'mankey' },
       ],

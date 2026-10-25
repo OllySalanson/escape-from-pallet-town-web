@@ -1983,7 +1983,7 @@ player's map is built by).
 - **It is the thinnest map in the game.** `density.mts` measured 20.6 steps
   from a walkable tile to the nearest authored thing, against 4.5-7.4 on the
   other five, and the caves were the thinnest of it; with the caves peopled
-  ([below](#the-greystone-caves-peopled)) it is 13.0. That is places still to add.
+  and every district given its own people and Pokémon ([below](#the-greystone-caves-peopled)) it is 10.7. That is places still to add.
 - **Every structure and safety rule holds it** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
   walked tile - through `mapStructure.greystoneVale1-8.test.ts` and the rest of
@@ -2052,9 +2052,28 @@ each, chosen so the floor reads as a place:
 Every Pokémon with a level fights once a raid when spoken to and can be
 caught; the ones without stand and say their name. Everything stands in the
 open middle of a room, never in a passage, because a figure is a wall to a walk
-out. The whole vale went from 20.6 steps to 13.0, and the worst tile from 100
-steps to 58; no cave floor is above 10.5 now.
+out. With the caves alone the vale went from 20.6 steps to 13.0, and no cave
+floor is above 10.5 now.
 
-![1F, the quarryman](caves-peopled/1f-after.png)
-![B1F, the Fallen Star](caves-peopled/b1f-after.png)
+![B1F, the Fallen Star, before](caves-peopled/b1f-before.png)
+![and after](caves-peopled/b1f-after.png)
 ![B3F, the Sleeper](caves-peopled/b3f-after.png)
+
+The same went round the eight districts a raid walks most, each thing put in
+the place `density.mts` measured furthest from anything and chosen for what
+the place is:
+
+| District | Before | After | What stands there now |
+|---|---|---|---|
+| Greystone Peaks | 18.9 | 8.3 | THE HIGH PASTURE, a fenced paddock with Ponyta, a Mankey troop on the gorge, a ranger who points out the Goat Track, a rowan at the head of the pass, a sign at the foot |
+| Gull Strand | 16.1 | 7.7 | Krabby in the cove and a beachcomber, Doduo on the heath, a fisherman and a Psyduck up the river, a kite flyer |
+| Orchard Terraces | 15.1 | 8.9 | Tauros on the pasture, an apple picker, a shell digger on the far sands, a sign on the lane |
+| Tanglewood | 16.1 | 13.7 | a woodcutter in the maze's furthest glade who says the road is always north |
+| Reedmere | 13.5 | 8.0 | a Farfetch'd, Poliwag, Venonat, Oddish and Bellsprout in the reeds, a reed cutter |
+| The Crossing | 13.4 | 7.2 | a Slowpoke where the river leaves the gorge, a Psyduck on the Wide Water, a peddler, a sign at each road out |
+| Pine Hollow | 12.5 | 7.4 | a Beedrill nest, a Pikachu in the east glade, Nidoran on the deer path |
+| Millbrook | 11.3 | 6.8 | four more villagers, the village dog and cat, a sign up to the moor |
+
+The whole vale is 10.7 now, and its worst tile 54 steps from anything.
+
+![The High Pasture](caves-peopled/peaks-after.png)

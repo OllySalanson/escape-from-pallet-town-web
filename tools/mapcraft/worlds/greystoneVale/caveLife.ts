@@ -127,7 +127,7 @@ export function caveLife(): CaveLife {
       // The miners' spoil heap on 1F.
       { area: F1, x: 28, y: 28, species: 'geodude', level: 8 },
       // THE FALLEN STAR: Clefairy round the crater, one that will fight.
-      { area: B1, x: 41, y: 11, species: 'clefairy', level: 9 },
+      { area: B1, x: 42, y: 13, species: 'clefairy', level: 9 },
       { area: B1, x: 45, y: 10, species: 'clefairy' },
       // The sand room in the middle of B1F, where the mushrooms grow.
       { area: B1, x: 28, y: 21, species: 'paras', level: 8 },
