@@ -171,7 +171,19 @@ export function gullStrand(): MapcraftResult {
       // The caves' floors ride in Tanglewood's file too; the stitcher takes them once.
       areas: cave.areas,
       links: [caveMouthLink(cave, 'sea', mouth), ...caveLadders(cave)],
-      signs: [{ x: 48, y: 12, lines: ['GULL STRAND', 'East: the orchards. South: the strand and the jetty.'] }],
+      signs: [
+        { x: 48, y: 12, lines: ['GULL STRAND', 'East: the orchards. South: the strand and the jetty.'] },
+        { x: 16, y: 15, lines: ['GULL STRAND', 'West: Reedmere, over the stone bridge. The cliff path goes down to the cove.'] },
+      ],
+      // The heath's own: a pair of Doduo on the dry ground, a Psyduck up the
+      // river, and the Krabby that have the cove to themselves.
+      pokemon: [
+        { x: 14, y: 25, species: 'doduo', level: 9 },
+        { x: 34, y: 5, species: 'psyduck', level: 8 },
+        { x: 3, y: 42, species: 'krabby', level: 9 },
+        { x: 8, y: 36, species: 'krabby' },
+      ],
+      berryTrees: [{ x: 23, y: 28, berry: 'rawst' }],
       people: [
         {
           x: 45,
@@ -180,6 +192,30 @@ export function gullStrand(): MapcraftResult {
           look: 'fisherman',
           facing: 'down',
           lines: ['The boats go out from the end of the jetty.', 'There is a cave under the cliffs. The tide hides it.'],
+        },
+        {
+          x: 17,
+          y: 34,
+          name: 'Beachcomber',
+          look: 'old-woman',
+          facing: 'down',
+          lines: ['Everything the sea takes off the wreck ends up in this cove.', 'Mind the Krabby. They think it is theirs.'],
+        },
+        {
+          x: 25,
+          y: 6,
+          name: 'Fisherman',
+          look: 'fisherman',
+          facing: 'right',
+          lines: ['The Magikarp come up from the sea this far, and no further.'],
+        },
+        {
+          x: 37,
+          y: 28,
+          name: 'Kite Flyer',
+          look: 'little-girl',
+          facing: 'down',
+          lines: ['The wind off the sea takes my kite right over the cliffs!'],
         },
       ],
       trainers: [

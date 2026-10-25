@@ -177,7 +177,7 @@ describe("a player's map summed up for review", () => {
     expect(lines[2]).toBe(
       'Payout: 2 pickups (1 item spot, 1 cache), paying 1 material; 2 within 20 steps of a drop-in, 7.1 per 100 tiles.',
     );
-    expect(lines[3]).toBe("Nearest thing: 1.8 steps on average (the game's own maps: 4.5-20.6).");
+    expect(lines[3]).toBe("Nearest thing: 1.8 steps on average (the game's own maps: 4.5-10.7).");
   });
 
   it('measures fights in a row as a series, so a second one never makes getting through likelier', () => {

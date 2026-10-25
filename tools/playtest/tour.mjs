@@ -58,7 +58,9 @@ try {
       throw new Error('no ground on this map'); })()`);
     if (x !== Number(wantX) || y !== Number(wantY)) console.log(`${name}: ${wantX},${wantY} is not ground, standing at ${x},${y}`);
     await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const off = w.player.y - w.currentTile.y * 16;
-      w.currentTile = { x: ${x}, y: ${y} }; w.setPlayerPosition(${x} * 16, ${y} * 16 + off); })()`);
+      w.currentTile = { x: ${x}, y: ${y} }; w.setPlayerPosition(${x} * 16, ${y} * 16 + off);
+      // A stop inside a cave or a room frames that place, as walking through its door would.
+      w.configureCamera(); w.cameras.main.centerOn(w.player.x, w.player.y); })()`);
     // Long enough for whatever the scene starts on arrival to have finished.
     // Phaser advances a tween on the real clock rather than on the game time a
     // stepped frame hands it, so a stepped frame is worth a few milliseconds to

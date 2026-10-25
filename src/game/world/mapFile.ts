@@ -220,6 +220,10 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxSigns: 64,
   maxLandmarks: 32,
   maxDistricts: 32,
+  // The vale's caves and hills are where its Pokemon stand to be met: a
+  // roost, a herd, the Sleeper (`caveLife.ts`).
+  maxPokemon: 64,
+  maxBerryTrees: 64,
   maxTrainers: 32,
   maxAreas: 32,
   maxLinks: 64,

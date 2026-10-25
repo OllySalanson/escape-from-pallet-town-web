@@ -116,11 +116,11 @@
   "TTTTTTTTTTTT...gggggggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTggggggggTT..........TTTTTTTTTT..TTTT......TTTTTTTT.......dd.................o.........WWWWWWWWWWWWW.dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF...ggg...PP....gggg...F.gggg.....TTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC........ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTTgggggg.dd.............TTTTTTTTTT....WWWWWWWWWWWWW.dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........F..TTTTTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggg.ddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC........ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTTgggggggdd.............TTTTTTTTTT......WWWWWWWWW...dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........F..TTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.ggggg.dd...........TTTTTTTTTTTTTT..ggggggggggg...dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........FTTTTTT....TTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.......dd...........TTTTTTTTTTTTTT.gggggggggggggg.dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTFFFFFFFFFFPPFFFFFFFFFFFFTTTTTT....TTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....gggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCggggggddddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd.ggggggggg..TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddgggggggg............TTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..f.ddd....ggg....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd............TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddggggggggggff........TTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd.......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggdd.gggggggggf..###..TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCFF.FFFFFFFCCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.ggggg.dd...........TTTTTTTTTTTTTT..ggggggggggg...dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........FTTTTTT....TTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF........FCCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.......dd...........TTTTTTTTTTTTTT.gggggggggggggg.dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTFFFFFFFFFFPPFFFFFFFFFFFFTTTTTT....TTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....gggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF........FCCCCWWWWCCCCCCggggggddddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd.ggggggggg..TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddgggggggg............TTTTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..f.ddd....ggg....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF........FCCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd............TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddggggggggggff........TTTTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd.......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF.FFFFFFFFCCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggdd.gggggggggf..###..TTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd...f...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggdd..................TTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd....f..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..TTTTTTTTCCCCWWWWCCCC..........ddddTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddddddddddddddddddddddddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..dddddddddddd.......fTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT<========>ddd<=====>TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..TTTTTTTTCCCCWWWWCCCC..........ddddTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddddddddddddddddddddddddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..dddddddddddd......ffTTTTTTTTTTTT",
@@ -2075,6 +2075,49 @@
    ]
   },
   {
+   "x": 81,
+   "y": 176,
+   "name": "Tom",
+   "look": "youngster",
+   "facing": "right",
+   "lines": [
+    "The pool is full of Magikarp!",
+    "Nobody believes me."
+   ]
+  },
+  {
+   "x": 75,
+   "y": 138,
+   "name": "Grandpa Ott",
+   "look": "old-man",
+   "facing": "down",
+   "lines": [
+    "This is the oldest cottage in the vale.",
+    "When I was a boy there was snow on the peaks all summer."
+   ]
+  },
+  {
+   "x": 83,
+   "y": 166,
+   "name": "Pip",
+   "look": "little-boy",
+   "facing": "up",
+   "lines": [
+    "Race you to the square!"
+   ]
+  },
+  {
+   "x": 111,
+   "y": 162,
+   "name": "Gardener",
+   "look": "woman",
+   "facing": "left",
+   "lines": [
+    "Every Pidgey in the vale nests in my roof.",
+    "East of the village the road goes over the bridge at The Crossing."
+   ]
+  },
+  {
    "x": 79,
    "y": 90,
    "name": "Shepherd",
@@ -2094,6 +2137,16 @@
    "facing": "right",
    "lines": [
     "The river is born in this tarn. Follow it down and you come to The Crossing."
+   ]
+  },
+  {
+   "x": 177,
+   "y": 109,
+   "name": "Mountain Ranger",
+   "look": "camper",
+   "facing": "left",
+   "lines": [
+    "Lost on the hill? The Goat Track leaves through the pasture, west of the gorge."
    ]
   },
   {
@@ -2119,6 +2172,99 @@
    ]
   },
   {
+   "x": 180,
+   "y": 163,
+   "name": "Peddler",
+   "look": "heavy-man",
+   "facing": "up",
+   "lines": [
+    "East is Tanglewood. I go round it, myself.",
+    "Folk who leave that road come out a day later."
+   ]
+  },
+  {
+   "x": 242,
+   "y": 181,
+   "name": "Woodcutter",
+   "look": "bald-man",
+   "facing": "left",
+   "lines": [
+    "Lost? Every path in Tanglewood comes back to the road in the end.",
+    "The road is north of here. It always is."
+   ]
+  },
+  {
+   "area": "greystone-caves-1f",
+   "x": 28,
+   "y": 7,
+   "name": "Quarryman",
+   "look": "hiker",
+   "facing": "down",
+   "lines": [
+    "We broke into this from the quarry above.",
+    "Every ladder in here goes down. To cross the vale you go down and come up again."
+   ]
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 10,
+   "y": 32,
+   "name": "Camper Lin",
+   "look": "camper",
+   "facing": "right",
+   "lines": [
+    "I followed the bats down from the wood.",
+    "Now every passage looks like the last one."
+   ]
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 46,
+   "y": 21,
+   "name": "Lost Hiker",
+   "look": "hiker",
+   "facing": "left",
+   "lines": [
+    "This floor is two caves with a wall of rock between.",
+    "To get to the other side you go down a floor and back up. I have done it twice."
+   ]
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 8,
+   "y": 30,
+   "name": "Miner",
+   "look": "heavy-man",
+   "facing": "right",
+   "lines": [
+    "Listen. That rushing is the sea, three floors down."
+   ]
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 11,
+   "y": 31,
+   "name": "Old Miner",
+   "look": "old-man",
+   "facing": "right",
+   "lines": [
+    "We called it the Sleeper.",
+    "An Onix, in the east sand. It was lying there before the quarry was dug."
+   ]
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 42,
+   "y": 33,
+   "name": "Fisherman",
+   "look": "fisherman",
+   "facing": "up",
+   "lines": [
+    "The tide comes up the passage from the strand.",
+    "The Shellder ride in on it and stay."
+   ]
+  },
+  {
    "x": 79,
    "y": 243,
    "name": "Birder Tess",
@@ -2126,6 +2272,17 @@
    "facing": "left",
    "lines": [
     "Hush. The ducks only come in when nobody wades the reeds."
+   ]
+  },
+  {
+   "x": 120,
+   "y": 209,
+   "name": "Reed Cutter",
+   "look": "straw-hat",
+   "facing": "left",
+   "lines": [
+    "We cut the reeds for thatch.",
+    "Wade through them if you like. The boardwalk is longer, but you stay dry."
    ]
   },
   {
@@ -2140,6 +2297,37 @@
    ]
   },
   {
+   "x": 145,
+   "y": 226,
+   "name": "Beachcomber",
+   "look": "old-woman",
+   "facing": "down",
+   "lines": [
+    "Everything the sea takes off the wreck ends up in this cove.",
+    "Mind the Krabby. They think it is theirs."
+   ]
+  },
+  {
+   "x": 153,
+   "y": 198,
+   "name": "Fisherman",
+   "look": "fisherman",
+   "facing": "right",
+   "lines": [
+    "The Magikarp come up from the sea this far, and no further."
+   ]
+  },
+  {
+   "x": 165,
+   "y": 220,
+   "name": "Kite Flyer",
+   "look": "little-girl",
+   "facing": "down",
+   "lines": [
+    "The wind off the sea takes my kite right over the cliffs!"
+   ]
+  },
+  {
    "x": 219,
    "y": 205,
    "name": "Farmer Hale",
@@ -2147,6 +2335,26 @@
    "facing": "down",
    "lines": [
     "Hop the terraces if you are in a hurry. Mind, you will not climb back."
+   ]
+  },
+  {
+   "x": 241,
+   "y": 200,
+   "name": "Picker",
+   "look": "picnicker",
+   "facing": "up",
+   "lines": [
+    "These are the old trees. The best apples are always the highest ones."
+   ]
+  },
+  {
+   "x": 250,
+   "y": 243,
+   "name": "Shell Digger",
+   "look": "tuber-girl",
+   "facing": "down",
+   "lines": [
+    "The tide leaves the best shells right at the far end of the sands!"
    ]
   },
   {
@@ -2213,6 +2421,18 @@
    "lines": [
     "I came up for the view and the storm came with me.",
     "Something small and pink watches from the cairn."
+   ]
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 50,
+   "y": 38,
+   "name": "Spelunker",
+   "look": "scientist",
+   "facing": "left",
+   "lines": [
+    "I am mapping the deepest floor.",
+    "Up the far passage there is daylight, and a storm."
    ]
   },
   {
@@ -2301,6 +2521,14 @@
    ]
   },
   {
+   "x": 96,
+   "y": 137,
+   "lines": [
+    "North to HIGH MOOR",
+    "Up the drove road, past the Grey Stones."
+   ]
+  },
+  {
    "x": 97,
    "y": 120,
    "lines": [
@@ -2349,6 +2577,22 @@
    ]
   },
   {
+   "x": 145,
+   "y": 111,
+   "lines": [
+    "THE HIGH PASTURE",
+    "Shut the gate behind you. The ponies wander."
+   ]
+  },
+  {
+   "x": 172,
+   "y": 121,
+   "lines": [
+    "THE PASS",
+    "Down: The Crossing. Up: the caves, the quarry and the tarn."
+   ]
+  },
+  {
    "x": 150,
    "y": 157,
    "lines": [
@@ -2365,11 +2609,45 @@
    ]
   },
   {
+   "x": 130,
+   "y": 160,
+   "lines": [
+    "THE CROSSING",
+    "West: Millbrook and the Mill Square."
+   ]
+  },
+  {
+   "x": 174,
+   "y": 186,
+   "lines": [
+    "The road south",
+    "Down to Gull Strand and the sea."
+   ]
+  },
+  {
    "x": 209,
    "y": 164,
    "lines": [
     "TANGLEWOOD",
     "East to the Eastern Track. Keep to the road."
+   ]
+  },
+  {
+   "area": "greystone-caves-1f",
+   "x": 41,
+   "y": 24,
+   "lines": [
+    "Chalked on the rock:",
+    "DOWN - THE WOOD, ONE FLOOR. DOWN - THE SEA, FOUR FLOORS."
+   ]
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 30,
+   "y": 10,
+   "lines": [
+    "Scratched on the rock by the hole:",
+    "COLD WIND FROM BELOW. NOBODY CAME BACK UP THIS WAY."
    ]
   },
   {
@@ -2389,6 +2667,14 @@
    ]
   },
   {
+   "x": 144,
+   "y": 207,
+   "lines": [
+    "GULL STRAND",
+    "West: Reedmere, over the stone bridge. The cliff path goes down to the cove."
+   ]
+  },
+  {
    "x": 216,
    "y": 240,
    "lines": [
@@ -2402,6 +2688,14 @@
    "lines": [
     "ORCHARD TERRACES",
     "The lane is east. The terraces are down, and the ledges are quicker."
+   ]
+  },
+  {
+   "x": 250,
+   "y": 224,
+   "lines": [
+    "THE LANE",
+    "East: The Wreck, on the cape. West and up: the farm."
    ]
   },
   {
@@ -2493,6 +2787,15 @@
    "lines": [
     "THE CLOUD STAIR",
     "Over the top, and down the far side out of the storm."
+   ]
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 33,
+   "y": 9,
+   "lines": [
+    "Scratched deep in the rock:",
+    "NO WAY BACK BUT UP."
    ]
   },
   {
@@ -2598,6 +2901,27 @@
    "kind": "shrine"
   },
   {
+   "area": "greystone-caves-1f",
+   "x": 11,
+   "y": 28,
+   "name": "Lamp Store",
+   "kind": "kiln"
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 29,
+   "y": 21,
+   "name": "Drip Pool",
+   "kind": "spring"
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 14,
+   "y": 15,
+   "name": "Rope Store",
+   "kind": "jetty"
+  },
+  {
    "x": 103,
    "y": 222,
    "name": "The Mere",
@@ -2665,6 +2989,13 @@
    "y": 27,
    "name": "Storm Shelter",
    "kind": "spring"
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 51,
+   "y": 15,
+   "name": "Explorers Camp",
+   "kind": "shed"
   },
   {
    "area": "moor-chapel-crypt",
@@ -3008,6 +3339,58 @@
    ]
   },
   {
+   "area": "greystone-caves-b1f",
+   "x": 11,
+   "y": 10,
+   "name": "Hiker Gorse",
+   "team": "breaker",
+   "look": "hiker",
+   "facing": "right",
+   "sight": 3,
+   "lines": [
+    "Mind the sand. It sinks under you."
+   ]
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 12,
+   "y": 8,
+   "name": "Collier Wyn",
+   "team": "collier",
+   "look": "bald-man",
+   "facing": "down",
+   "sight": 2,
+   "lines": [
+    "There was coal down here once. Now there is only me."
+   ]
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 48,
+   "y": 34,
+   "name": "Collier Dunn",
+   "team": "collier",
+   "look": "bald-man",
+   "facing": "left",
+   "sight": 3,
+   "lines": [
+    "Do not wake the Sleeper. I have to work next to it."
+   ]
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 35,
+   "y": 17,
+   "name": "Smuggler Gill",
+   "team": "netter",
+   "look": "sailor",
+   "facing": "down",
+   "sight": 3,
+   "lines": [
+    "That rope is spoken for."
+   ]
+  },
+  {
    "x": 108,
    "y": 223,
    "name": "Netter Fen",
@@ -3156,6 +3539,19 @@
    ]
   },
   {
+   "area": "greystone-caves-b5f",
+   "x": 16,
+   "y": 20,
+   "name": "Hiker Rudd",
+   "team": "breaker",
+   "look": "hiker",
+   "facing": "right",
+   "sight": 3,
+   "lines": [
+    "Nobody comes this deep for the view."
+   ]
+  },
+  {
    "x": 372,
    "y": 96,
    "name": "Gardener Rowan",
@@ -3221,11 +3617,279 @@
  ],
  "pokemon": [
   {
+   "x": 119,
+   "y": 156,
+   "species": "growlithe"
+  },
+  {
+   "x": 120,
+   "y": 142,
+   "species": "meowth"
+  },
+  {
+   "x": 147,
+   "y": 112,
+   "species": "ponyta",
+   "level": 10
+  },
+  {
+   "x": 149,
+   "y": 113,
+   "species": "ponyta"
+  },
+  {
+   "x": 165,
+   "y": 98,
+   "species": "mankey",
+   "level": 9
+  },
+  {
+   "x": 164,
+   "y": 108,
+   "species": "mankey"
+  },
+  {
+   "x": 227,
+   "y": 117,
+   "species": "beedrill",
+   "level": 10
+  },
+  {
+   "x": 229,
+   "y": 118,
+   "species": "weedle"
+  },
+  {
+   "x": 241,
+   "y": 99,
+   "species": "pikachu",
+   "level": 8
+  },
+  {
+   "x": 204,
+   "y": 116,
+   "species": "nidoran-m",
+   "level": 8
+  },
+  {
+   "x": 212,
+   "y": 106,
+   "species": "caterpie"
+  },
+  {
+   "x": 161,
+   "y": 136,
+   "species": "slowpoke",
+   "level": 9
+  },
+  {
+   "x": 161,
+   "y": 171,
+   "species": "psyduck",
+   "level": 8
+  },
+  {
+   "x": 164,
+   "y": 141,
+   "species": "spearow",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-1f",
+   "x": 28,
+   "y": 28,
+   "species": "geodude",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 42,
+   "y": 13,
+   "species": "clefairy",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 45,
+   "y": 10,
+   "species": "clefairy"
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 28,
+   "y": 21,
+   "species": "paras",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 25,
+   "y": 7,
+   "species": "zubat",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 21,
+   "y": 6,
+   "species": "zubat"
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 28,
+   "y": 8,
+   "species": "zubat"
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 13,
+   "y": 36,
+   "species": "sandshrew",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 32,
+   "y": 36,
+   "species": "diglett",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 46,
+   "y": 23,
+   "species": "onix",
+   "level": 12
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 48,
+   "y": 14,
+   "species": "geodude",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 29,
+   "y": 37,
+   "species": "zubat",
+   "level": 10
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 45,
+   "y": 30,
+   "species": "shellder",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 16,
+   "y": 28,
+   "species": "zubat",
+   "level": 10
+  },
+  {
+   "x": 95,
+   "y": 240,
+   "species": "farfetchd",
+   "level": 9
+  },
+  {
+   "x": 88,
+   "y": 228,
+   "species": "poliwag",
+   "level": 8
+  },
+  {
+   "x": 78,
+   "y": 212,
+   "species": "poliwag"
+  },
+  {
+   "x": 99,
+   "y": 211,
+   "species": "venonat",
+   "level": 8
+  },
+  {
+   "x": 72,
+   "y": 206,
+   "species": "oddish"
+  },
+  {
+   "x": 119,
+   "y": 232,
+   "species": "bellsprout",
+   "level": 8
+  },
+  {
+   "x": 142,
+   "y": 217,
+   "species": "doduo",
+   "level": 9
+  },
+  {
+   "x": 162,
+   "y": 197,
+   "species": "psyduck",
+   "level": 8
+  },
+  {
+   "x": 131,
+   "y": 234,
+   "species": "krabby",
+   "level": 9
+  },
+  {
+   "x": 136,
+   "y": 228,
+   "species": "krabby"
+  },
+  {
+   "x": 240,
+   "y": 230,
+   "species": "tauros",
+   "level": 9
+  },
+  {
+   "x": 224,
+   "y": 238,
+   "species": "tauros"
+  },
+  {
    "x": 156,
    "y": 3,
    "species": "mew",
    "level": 50,
    "legendary": true
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 25,
+   "y": 33,
+   "species": "golbat",
+   "level": 14
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 22,
+   "y": 31,
+   "species": "zubat"
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 14,
+   "y": 44,
+   "species": "geodude",
+   "level": 11
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 38,
+   "y": 41,
+   "species": "zubat",
+   "level": 12
   },
   {
    "x": 349,
@@ -5646,9 +6310,19 @@
  ],
  "berryTrees": [
   {
+   "x": 173,
+   "y": 69,
+   "berry": "oran"
+  },
+  {
    "x": 223,
    "y": 98,
    "berry": "oran"
+  },
+  {
+   "x": 239,
+   "y": 73,
+   "berry": "pecha"
   },
   {
    "x": 208,
@@ -5661,9 +6335,19 @@
    "berry": "cheri"
   },
   {
+   "x": 151,
+   "y": 220,
+   "berry": "rawst"
+  },
+  {
    "x": 203,
    "y": 200,
    "berry": "sitrus"
+  },
+  {
+   "x": 204,
+   "y": 220,
+   "berry": "cheri"
   },
   {
    "x": 346,

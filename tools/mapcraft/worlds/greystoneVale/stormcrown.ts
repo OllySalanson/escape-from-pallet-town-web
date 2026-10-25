@@ -38,6 +38,7 @@ import { plantCaveMouth } from '../../caves';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { planLimits, startDistrict } from '../../worldPlan';
+import { deepLife } from './caveLife';
 import { caveLadders, chimneyLink, greystoneCaves, greystoneDeep } from './greystoneCaves';
 import { GREYSTONE_VALE } from './plan';
 
@@ -139,6 +140,7 @@ export function stormcrown(): MapcraftResult {
   plantCaveMouth(p, mouth);
   const cave = greystoneCaves();
   const deep = greystoneDeep(cave);
+  const life = deepLife();
 
   const file = districtFile(GREYSTONE_VALE, 'stormcrown', p, {
     // The scree gully: a pocket in the treeline at the foot of the east gap,
@@ -166,6 +168,7 @@ export function stormcrown(): MapcraftResult {
       signs: [
         { x: 26, y: 55, lines: ['STORMCROWN', 'The path climbs round the three crags to the cairn.'] },
         { x: 37, y: 9, lines: ['THE CLOUD STAIR', 'Over the top, and down the far side out of the storm.'] },
+        ...life.signs,
       ],
       people: [
         {
@@ -176,13 +179,15 @@ export function stormcrown(): MapcraftResult {
           facing: 'right',
           lines: ['I came up for the view and the storm came with me.', 'Something small and pink watches from the cairn.'],
         },
+        ...life.people,
       ],
       trainers: [
         { x: 30, y: 41, name: 'Hiker Brann', team: 'breaker', look: 'hiker', facing: 'up', sight: 2, lines: ['Nobody climbs Stormcrown without a fight!'] },
+        ...life.trainers,
       ],
-      landmarks: [{ x: 52, y: 27, name: 'Storm Shelter', kind: 'spring' }],
+      landmarks: [{ x: 52, y: 27, name: 'Storm Shelter', kind: 'spring' }, ...life.landmarks],
       // Mew, behind the cairn on the very top: the vale's legend.
-      pokemon: [{ x: 28, y: 3, species: 'mew', level: 50, legendary: true }],
+      pokemon: [{ x: 28, y: 3, species: 'mew', level: 50, legendary: true }, ...life.pokemon],
       areas: [...cave.areas, deep.area],
       links: [chimneyLink(mouth), deep.hole, ...caveLadders(cave)],
     },
