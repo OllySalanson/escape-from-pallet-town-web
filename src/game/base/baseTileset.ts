@@ -6,6 +6,7 @@ import {
 } from '../world/tileset/floodTownTileset';
 import { KANTO_TILESET } from '../world/tileset/kantoTileset';
 import { TOWN_PROPS, TOWN_SHEET_SOURCE } from '../world/tileset/townSheet';
+import { TILE_ANIMATION_SOURCE } from '../world/tileAnimation';
 
 /**
  * The base is drawn on the same sheet the four raid maps are, with its
@@ -115,7 +116,25 @@ function afloat(
 
 export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
   ...FLOOD_TOWN_TILESET,
-  sources: [...FLOOD_TOWN_TILESET.sources, BASE_SHEET_SOURCE.source, TOWN_SHEET_SOURCE.source],
+  // THE COVE's beach is a shoreline, so it draws its surf where it meets the
+  // sea and nowhere else: against the green above it and the quay beside it
+  // it simply carries on, and the sea gives up its earth bank to it - FireRed
+  // draws a beach's waterline in the sand, not under it.
+  materials: {
+    ...FLOOD_TOWN_TILESET.materials,
+    beach: { ...FLOOD_TOWN_TILESET.materials.beach, joins: ['grass', 'turf', 'stone', 'sand', 'earth', 'paving', 'tree', 'hedge'] },
+    water: {
+      ...FLOOD_TOWN_TILESET.materials.water,
+      joins: [...(FLOOD_TOWN_TILESET.materials.water.joins ?? []), 'beach'],
+    },
+  },
+  sources: [
+    ...FLOOD_TOWN_TILESET.sources,
+    BASE_SHEET_SOURCE.source,
+    TOWN_SHEET_SOURCE.source,
+    // The frames the harbour's sea, surf and flowers move through (`world/tileAnimation.ts`).
+    TILE_ANIMATION_SOURCE.source,
+  ],
   props: {
     ...FLOOD_TOWN_TILESET.props,
     // 7x5. THE RAID ARENA: Saffron's Gym, cut from FireRed's own town by

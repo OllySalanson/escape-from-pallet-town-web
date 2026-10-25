@@ -160,7 +160,8 @@ cove with a jetty to fish off. And it's busy: a sailor waits by the ferry, a Gym
 outside the Raid Arena, the captain paces the pier, a dock worker and his Machop shift crates, an
 old angler grumbles about Magikarp, a policeman walks the yard with his Growlithe, and there's a
 Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
-bay. Talk to any of them.
+bay. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
+Seagallop sounds her horn when she brings you home.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
 When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else

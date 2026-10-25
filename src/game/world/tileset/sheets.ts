@@ -1,4 +1,5 @@
 import { tileReader, type TileSource } from './catalogue';
+import { TILE_ANIMATION_SOURCE } from '../tileAnimation';
 import { FRLG_TILESET } from './frlgTileset';
 import { BASE_SHEET_SOURCE } from '../../base/baseSheet';
 import { HOME_SHEET_SOURCE } from '../../base/homeSheet';
@@ -65,4 +66,7 @@ export const TILE_SOURCES: readonly TileSource[] = [
   EMBER_SHEET_SOURCE.source,
   // A room dressed as the Rocket Hideout or the Power Plant (`hideoutSheet.ts`).
   HIDEOUT_SHEET_SOURCE.source,
+  // FireRed's own tile animations for the ground sheets' sea, surf and
+  // flowers (`world/tileAnimation.ts`).
+  TILE_ANIMATION_SOURCE.source,
 ];
