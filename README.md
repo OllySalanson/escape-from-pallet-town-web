@@ -138,7 +138,7 @@ than the secure container you start with, so every raid you ride it is a raid yo
 
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
 than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
-with the name on their front door over their head, and they see yours. Press **K** in your house or on its step to knock on somebody else's door; if they're in
+with the name on their front door over their head, and they see yours. Read the sign in your front garden to knock on somebody else's door; if they're in
 and say yes, you're let in to have a nose round. Five buildings, four of them kept by people you'll recognise, and each one is a thing you can do:
 
 - **The Raid Arena**, a Gym on its own stone forecourt at the west end, by the jetty, is where every
@@ -152,6 +152,11 @@ and say yes, you're let in to have a nose round. Five buildings, four of them ke
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
   HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found. Everything you trade him ends up on his
   shelves.
+
+And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty: every
+raid sails out on her and comes home on her. The **S.S. Anne** lies at the end of the long pier,
+the warehouses along the east quay hold what the boats bring in, and past them there's a little
+cove with a jetty to fish off.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
 When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else

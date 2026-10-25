@@ -5,6 +5,7 @@ import type { Material } from '../world/tileset/materials';
 import { BASE_TILESET, type BasePropName } from './baseTileset';
 import { BASE_DOORS } from './doors';
 import { standingFixtures } from './fixtures';
+import { HARBOUR_LANDMARKS } from './landmarks';
 
 /**
  * THE HARBOUR - the one map in the game nobody is hunting you on.
@@ -39,7 +40,7 @@ import { standingFixtures } from './fixtures';
  */
 
 export const BASE_MAP_WIDTH = 64;
-export const BASE_MAP_HEIGHT = 24;
+export const BASE_MAP_HEIGHT = 34;
 
 /** What the screens call this place, on the way out of every one of them. */
 export const BASE_PLACE_NAME = 'The Harbour';
@@ -81,7 +82,7 @@ export const NOTICE_BOARD: BaseSign = {
   y: 17,
   lines: [
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
-    'Every raid starts at the RAID ARENA, west of the yard. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
+    'THE SEAGALLOP at the jetty takes every raid out and brings it home. Every raid starts at the RAID ARENA, west of the yard. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
     'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
   ],
 };
@@ -116,7 +117,21 @@ export const ARENA_SIGN: BaseSign = {
   lines: ['THE RAID ARENA', 'Every raid starts here. Walk in, kit up, drop in.'],
 };
 
-export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN, GREEN_SIGN, ARENA_SIGN];
+/** At the head of the long pier, beside the bollards. */
+export const PIER_SIGN: BaseSign = {
+  x: 25,
+  y: 20,
+  lines: ['THE LONG PIER', 'The S.S. ANNE lies at the end of it. Nobody aboard has said when she sails.'],
+};
+
+/** On the beach past the warehouses, where the fishing jetty goes out. */
+export const COVE_SIGN: BaseSign = {
+  x: 49,
+  y: 17,
+  lines: ['THE COVE', 'Sand, rocks and a jetty to fish off.'],
+};
+
+export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN, GREEN_SIGN, ARENA_SIGN, PIER_SIGN, COVE_SIGN];
 
 /** FireRed's red flowers in the front garden, either side of the path. */
 const GARDEN_FLOWERS: readonly (readonly [number, number])[] = [39, 40, 41, 42].flatMap(
@@ -137,7 +152,12 @@ export interface BaseMapDefinition {
  *
  * Five bands read from the top: the wood the harbour is cut out of, the grass
  * the buildings stand on, the trodden earth of the yard in front of them, the
- * stone quay, and the water. Earth for the yard and stone for the quay because
+ * stone quay, and the water - which is a harbour rather than a sea's edge
+ * because of what is on it (`landmarks.ts`): the ferry at the jetty, the
+ * S.S. Anne at the end of the long pier, the warehouses on the deeper east
+ * quay and THE COVE's beach past them. The three tiles of quay under the
+ * pier's awning are ground the awning is walked under, because a canopy cell
+ * leaves the ground to decide whether it is walked. Earth for the yard and stone for the quay because
  * the two have to tell each other apart at a glance - paving on this sheet is a
  * flat pale slab with nothing in it, and a yard drawn in it read as a blank
  * grey rectangle across the middle of the base. `t` is a tree, and every one of
@@ -184,9 +204,19 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
     'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
     'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~TTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~TTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~TTT',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~WWW',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
@@ -207,6 +237,31 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(11, 19, 'jetty');
   map.plant(13, 19, 'jetty');
   map.plant(30, 17, 'crateStack');
+
+  // The waterfront (`landmarks.ts`): the ferry a raid goes out on, tied up
+  // beside the jetty; the warehouses along the east quay; Vermilion's long
+  // pier running out to the S.S. Anne.
+  map.plant(26, 20, 'shipPier');
+  // The working quay: posts along the edge to tie up to, and what came off
+  // the boats stacked outside the warehouses.
+  for (const x of [23, 35, 44]) {
+    map.plant(x, 21, 'mooringPost');
+  }
+  map.plant(46, 17, 'crateTower');
+  map.plant(33, 17, 'sack');
+  map.plant(34, 17, 'barrelPair');
+  // THE COVE, past the warehouses: a strip of beach under THE GREEN, with a
+  // jetty to fish off and rocks out in the water.
+  map.plant(54, 21, 'jetty');
+  map.plant(COVE_SIGN.x, COVE_SIGN.y, 'homeSign');
+  map.plant(PIER_SIGN.x, PIER_SIGN.y, 'homeSign');
+  map.plant(59, 23, 'wetRock');
+  map.plant(49, 24, 'wetRock');
+  for (const landmark of HARBOUR_LANDMARKS) {
+    for (const prop of landmark.props) {
+      map.plant(prop.x, prop.y, prop.name);
+    }
+  }
   map.plant(NOTICE_BOARD.x, NOTICE_BOARD.y, 'noticeBoard');
   map.plant(19, 17, 'barrelPair');
   map.plant(21, 17, 'mooringPost');

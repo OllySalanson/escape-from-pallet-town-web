@@ -12,6 +12,8 @@ import {
 } from './baseMap';
 import { BASE_DOORS } from './doors';
 import { BASE_FIXTURES, standingFixtures } from './fixtures';
+import { HARBOUR_LANDMARKS } from './landmarks';
+import { BASE_TILESET } from './baseTileset';
 import { DAY_CARE_KEEPER, PEN_HOME, nextPenTile, penTiles } from './dayCarePen';
 import { stepsFrom as walkFrom, stepsTo } from './baseWalks';
 
@@ -341,5 +343,60 @@ describe('what the base is built out of', () => {
       // Something has to appear, or the rung bought nothing you can see.
       expect([fixture.upgradeId, changed > 0]).toEqual([fixture.upgradeId, true]);
     }
+  });
+
+  /**
+   * The harbour's landmarks (`landmarks.ts`) are read the way a fixture is, so
+   * each `at` is solid with walkable ground beside it; none stands on a door
+   * or a fixture; and the sea under a ship is sea - the only water a player
+   * stands on is a pier or a jetty, and the long pier walks out to the S.S.
+   * Anne from the yard.
+   */
+  describe('its landmarks', () => {
+    it('can each be faced and read', () => {
+      const map = fullyBuilt();
+      for (const landmark of HARBOUR_LANDMARKS) {
+        expect([landmark.id, map.collision[landmark.at.y][landmark.at.x]]).toEqual([landmark.id, true]);
+        const beside = [
+          [0, -1],
+          [0, 1],
+          [-1, 0],
+          [1, 0],
+        ].filter(([dx, dy]) => map.collision[landmark.at.y + dy]?.[landmark.at.x + dx] === false);
+        expect([landmark.id, beside.length > 0]).toEqual([landmark.id, true]);
+      }
+    });
+
+    it('stands clear of every door and every fixture', () => {
+      const taken = new Set<string>();
+      for (const door of BASE_DOORS) {
+        for (const tile of door.tiles) taken.add(`${tile.x},${tile.y}`);
+      }
+      for (const fixture of BASE_FIXTURES) {
+        for (const prop of fixture.props) taken.add(`${prop.x},${prop.y}`);
+      }
+      for (const landmark of HARBOUR_LANDMARKS) {
+        for (const prop of landmark.props) {
+          expect([landmark.id, taken.has(`${prop.x},${prop.y}`)]).toEqual([landmark.id, false]);
+        }
+      }
+    });
+
+    it('keeps the sea under a ship solid, and walks out along the pier to the S.S. Anne', () => {
+      const map = fullyBuilt();
+      for (const landmark of HARBOUR_LANDMARKS.filter((each) => each.id !== 'warehouses')) {
+        for (const prop of landmark.props) {
+          const art = BASE_TILESET.props[prop.name];
+          for (let y = prop.y; y < prop.y + art.height; y += 1) {
+            for (let x = prop.x; x < prop.x + art.width; x += 1) {
+              expect([landmark.id, x, y, map.collision[y][x]]).toEqual([landmark.id, x, y, true]);
+            }
+          }
+        }
+      }
+      const ship = HARBOUR_LANDMARKS.find((each) => each.id === 'ss-anne')!;
+      const steps = stepsFrom(BASE_SPAWN);
+      expect(stepsTo(steps, ship.near ?? [ship.at])).toBeLessThan(Infinity);
+    });
   });
 });
