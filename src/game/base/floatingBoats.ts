@@ -48,6 +48,8 @@ export interface FloatingBoat {
 interface Afloat {
   readonly boat: FloatingBoat;
   readonly picture: Phaser.GameObjects.Container;
+  /** Anything else that rides with it - its lights at night (`harbourNight.ts`). */
+  readonly riders: Phaser.GameObjects.Container[];
   readonly x: number;
   readonly y: number;
 }
@@ -99,8 +101,19 @@ export class FloatingBoats {
           }
         }
       }
-      this.afloat.push({ boat, picture, x: picture.x, y: picture.y });
+      this.afloat.push({ boat, picture, riders: [], x: picture.x, y: picture.y });
     }
+    this.draw();
+  }
+
+  /** Each boat's picture, in the order the boats were given. */
+  public pictures(): readonly Phaser.GameObjects.Container[] {
+    return this.afloat.map((each) => each.picture);
+  }
+
+  /** Makes `rider` move with the `index`th boat, wherever the swell takes it. */
+  public carry(index: number, rider: Phaser.GameObjects.Container): void {
+    this.afloat[index]?.riders.push(rider);
     this.draw();
   }
 
@@ -114,9 +127,10 @@ export class FloatingBoats {
   }
 
   private draw(): void {
-    for (const { boat, picture, x, y } of this.afloat) {
+    for (const { boat, picture, riders, x, y } of this.afloat) {
       const coming = boat.bringsRaidsHome && this.arrivingMs !== null ? arrivalOffset(this.arrivingMs) : { x: 0, y: 0 };
       picture.setPosition(x + coming.x, y + coming.y + bobOffset(this.ms, boat.swellMs));
+      riders.forEach((rider) => rider.setPosition(picture.x, picture.y));
     }
   }
 }
