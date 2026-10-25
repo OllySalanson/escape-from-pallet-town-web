@@ -1103,6 +1103,18 @@ non-commercial fan game on 2026-09-19 - and is recorded here in those words.
   The source textures are not committed; the script fetches them from the
   pinned commit.
 
+### `harbour-pokemon/<species>.png` - the harbour's own Pokemon, from HeartGold/SoulSilver
+
+The same art, the same source, the same ruling and the same script as
+`followers/` above, cut for the Pokemon that live about THE HARBOUR
+(`src/game/base/harbourLife.ts`) rather than follow anybody. By
+`include/constants/mmodel.h` at the same pinned commit:
+`MMODEL_FOLLOWER_MON_PIDGEY` 313, `MEOWTH` 350, `PSYDUCK` 352, `GROWLITHE` 356,
+`MACHOP` 364, `TENTACOOL` 370, `SLOWPOKE` 377, `KRABBY` 396, `MAGIKARP` 427,
+`LAPRAS` 429. Fetched 2026-10-25. Not a pixel scaled, filtered, recoloured or
+moved; the game draws the swimmers sunk to the waterline by cropping, never by
+editing the sheet.
+
 ### `cries/<dexId>.wav` - every Pokemon's own cry, from FireRed/LeafGreen
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly.** Playtest 28 put

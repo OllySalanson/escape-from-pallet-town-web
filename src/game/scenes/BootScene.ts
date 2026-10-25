@@ -15,6 +15,7 @@ import {
   characterDesignTextureKey,
 } from '../world/characterDesigns';
 import { PARTNER_FRAME, PARTNER_SPECIES, partnerAssetPath, partnerTextureKey } from '../base/partner';
+import { HARBOUR_SPECIES, harbourPokemonAssetPath, harbourPokemonTextureKey } from '../base/harbourLife';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import {
   POKEMON_ICON_PATH,
@@ -77,6 +78,13 @@ export class BootScene extends Phaser.Scene {
     // in a raid and comes home a different sheet.
     for (const species of PARTNER_SPECIES) {
       this.load.spritesheet(partnerTextureKey(species), publicAssetUrl(partnerAssetPath(species)), {
+        frameWidth: PARTNER_FRAME,
+        frameHeight: PARTNER_FRAME,
+      });
+    }
+    // The harbour's own Pokemon (`base/harbourLife.ts`), cut the same way.
+    for (const species of HARBOUR_SPECIES) {
+      this.load.spritesheet(harbourPokemonTextureKey(species), publicAssetUrl(harbourPokemonAssetPath(species)), {
         frameWidth: PARTNER_FRAME,
         frameHeight: PARTNER_FRAME,
       });

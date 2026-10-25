@@ -79,6 +79,7 @@ import {
 } from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { HARBOUR_LANDMARKS } from '../base/landmarks';
+import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import {
   CABINET_UNITS,
   EMPTY_CABINET_LINE,
@@ -383,6 +384,8 @@ export class BaseScene extends Phaser.Scene {
   private namePrompt: MenuOverlay | null = null;
   /** Everybody else in the shared harbour, drawn where they walk (`harbour/`). */
   private harbourFigures: HarbourFigures | null = null;
+  /** The harbour's own townspeople and Pokemon (`base/harbourLife.ts`), outdoors only. */
+  private harbourLife: HarbourLifeFigures | null = null;
   /** Somebody else's house this player is looking round, let in at the door. */
   private visit: HouseVisit | null = null;
   /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
@@ -477,6 +480,7 @@ export class BaseScene extends Phaser.Scene {
     this.decor = null;
     this.namePrompt = null;
     this.harbourFigures = null;
+    this.harbourLife = null;
     this.knockScreen = null;
     this.knockPrompt = null;
     this.afterSaid = null;
@@ -628,6 +632,14 @@ export class BaseScene extends Phaser.Scene {
     this.updateWalking(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
+    // The harbour's people keep their beats, and stand still while anything
+    // is being read: somebody who walked off mid-sentence leaves their words
+    // hanging in the air.
+    this.harbourLife?.update(
+      deltaMs,
+      this.dialogBox.visible || this.leaving || this.namePrompt !== null || this.knockScreen !== null,
+      (tile) => this.someoneElseOn(tile),
+    );
     // Seated last, against this frame's figures: seated before the partner's
     // frame, a bubble it had just put up was a frame late into the seating and
     // a caption was drawn across it for that frame.
@@ -1069,6 +1081,11 @@ export class BaseScene extends Phaser.Scene {
   private createFigures(): void {
     if (!this.place.room) {
       this.createDayCare();
+      this.harbourLife = new HarbourLifeFigures(this);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        this.harbourLife?.destroy();
+        this.harbourLife = null;
+      });
       return;
     }
     const keeper = this.place.room.room.keeper;
@@ -1362,6 +1379,10 @@ export class BaseScene extends Phaser.Scene {
       if (!partner && sameTile(facing, DAY_CARE_KEEPER.position)) {
         return `[SPACE] ${DAY_CARE_KEEPER.name}`;
       }
+      const local = partner ? undefined : this.harbourLife?.at(facing);
+      if (local) {
+        return `[SPACE] ${local.name}`;
+      }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
@@ -1532,6 +1553,10 @@ export class BaseScene extends Phaser.Scene {
           ...(room?.keeper ? [figureRect(room.keeper.position)] : []),
           ...(room ? [] : [figureRect(DAY_CARE_KEEPER.position)]),
           ...(this.penPokemon ? [figureRect(this.penPokemon.tile)] : []),
+          // The harbour's people (`base/harbourLife.ts`), as the Day-Care man
+          // is: a caption seated across a person reads as their head stuck on
+          // a sign.
+          ...(this.harbourLife?.standing('person') ?? []).map((tile) => figureRect(tile)),
           // What the partner is saying: a door's name seated across its bubble hid
           // the heart it answers a word with, on the quay and at the Day-Care.
           ...(bubble ? [bubble] : []),
@@ -1548,7 +1573,12 @@ export class BaseScene extends Phaser.Scene {
         // player on THE BOLTHOLE's step - where everybody comes out - and took
         // the house's name away, with the trees over the roof and the workshop
         // beside it already taken.
-        follower: partner ? [partner.rect()] : [],
+        // The harbour's Pokemon are company the same way, and small enough
+        // that a name seated over one still reads.
+        follower: [
+          ...(partner ? [partner.rect()] : []),
+          ...(this.harbourLife?.standing('pokemon') ?? []).map((tile) => figureRect(tile)),
+        ],
       },
     );
     labels.forEach((label, index) => label.seat(placements[index]));
@@ -1714,7 +1744,22 @@ export class BaseScene extends Phaser.Scene {
     const keeper = this.place.room ? this.place.room.room.keeper?.position : DAY_CARE_KEEPER.position;
     return (
       (this.collision[tile.y]?.[tile.x] ?? true) ||
-      (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y)
+      (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y) ||
+      (this.harbourLife?.holds(tile) ?? false)
+    );
+  }
+
+  /**
+   * Whether the player, their partner or the Day-Care man has this tile, for a
+   * townsperson deciding where to drift: nobody steps into the player.
+   */
+  private someoneElseOn(tile: GridPosition): boolean {
+    const partnerTile = this.partner?.place.out ? this.partner.place.tile : null;
+    return (
+      sameTile(tile, this.currentTile) ||
+      (this.targetTile !== null && sameTile(tile, this.targetTile)) ||
+      (partnerTile !== null && sameTile(tile, partnerTile)) ||
+      sameTile(tile, DAY_CARE_KEEPER.position)
     );
   }
 
@@ -2059,6 +2104,17 @@ export class BaseScene extends Phaser.Scene {
     const door = doorAt(target);
     if (door) {
       this.enterRoom(door);
+      return;
+    }
+    const local = this.harbourLife?.at(target);
+    if (local) {
+      // Spoken to, a person turns to look back; a Pokemon cries first.
+      if (local.kind === 'person') {
+        this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      } else {
+        this.harbourLife?.cry(local);
+      }
+      this.say(local.lines, [target]);
       return;
     }
     if (sameTile(target, DAY_CARE_KEEPER.position)) {
