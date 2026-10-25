@@ -200,6 +200,13 @@ export const SOUND_EFFECTS = {
     // The step that enters the grass is often the step that finds something in it.
     yields: true,
   },
+  waveLap: {
+    channel: 'world',
+    moment: 'The sea lapping at the quay, heard now and then while the harbour is near',
+    // A low wash coming in and drawing back: two dull swells of noise, the
+    // second darker, so it reads as water rather than as a step or a hit.
+    tones: [sweep(noise(520, 0.28, 0.05), 900), sweep(noise(760, 0.26, 0.047, 0.24), 420)],
+  },
   ledgeHop: {
     channel: 'world',
     moment: 'Going over a ledge - the one route on a map the hunter cannot follow',
@@ -530,6 +537,18 @@ export const SOUND_EFFECTS = {
   },
 
   // --- fanfare: the raid keeps score -------------------------------------
+  shipHorn: {
+    channel: 'fanfare',
+    moment: 'The Seagallop sounds her horn as a raid comes home',
+    // Two long blasts of a ship's horn - a low fifth, sawtooth for the reed
+    // of it - the second a little shorter, the way a boat says it is in.
+    tones: [
+      saw(98, 0.4, 0.05),
+      saw(147, 0.4, 0.035),
+      saw(98, 0.34, 0.05, 0.52),
+      saw(147, 0.34, 0.035, 0.52),
+    ],
+  },
   levelUp: {
     channel: 'fanfare',
     moment: 'A Pokemon grows a level',

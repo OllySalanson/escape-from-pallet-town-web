@@ -844,6 +844,30 @@ Nintendo / Creatures / Game Freak, no licence from them.
   GBA's five bits a channel and written `x << 3`, and a piece is drawn from a
   metatile's bottom layer, its top layer or both, as the script names.
 
+### `frlg-tile-anims.png` - FireRed's moving sea, surf and flowers
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-areas.png` below: Pokemon FireRed/LeafGreen art, rights holders
+Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Source.** pret's FireRed disassembly, **pret/pokefirered**
+  (<https://github.com/pret/pokefirered>), at commit `037335f`, read
+  2026-10-25: the general tileset (`data/tilesets/primary/general` - its 4bpp
+  tile sheet, JASC palettes 0-6 and `metatiles.bin`) and its three tile
+  animations (`anim/water_current_landwatersedge`, `anim/sandwatersedge`,
+  `anim/flower`), timed as `src/tileset_anims.c`'s `TilesetAnim_General`
+  times them. Fetched file by file from `raw.githubusercontent.com`.
+- **Terms.** Nothing of the checkout is committed; what ships is a cut - one
+  row a cell of `frlg-tiles.png` or `frlg-kanto.png` that FireRed animates,
+  its frames left to right, frame 0 being the cell as already drawn.
+- **How it was cut.** `scripts/cut-frlg-tile-anims.mjs` is the whole method,
+  and writes `src/game/world/generated/tileAnimations.ts`: it renders every
+  general metatile that uses an animated tile, a frame per change of its
+  cycle, and matches each cell of the two ground sheets against those frames
+  pixel for pixel (within a ripped colour's rounding), so which cell is which
+  animated metatile is read off the pictures rather than chosen. A cell cut
+  with clear ground (Kanto's flowers) keeps its own outline in every frame.
+
 ### `frlg-hideout.png` - the Rocket Hideout and the Power Plant
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling

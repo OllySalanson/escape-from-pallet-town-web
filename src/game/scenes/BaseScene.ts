@@ -80,6 +80,8 @@ import {
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { HARBOUR_LANDMARKS } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
+import { TILE_ANIMATIONS_BY_TILE, animatedTileAt } from '../world/tileAnimation';
+import type { Material } from '../world/tileset/materials';
 import {
   CABINET_UNITS,
   EMPTY_CABINET_LINE,
@@ -233,6 +235,10 @@ function boxRect(boxes: readonly { x: number; y: number; right: number; bottom: 
 const WALL_MAP_TEXTURE = 'base-wall-map';
 
 const DOOR_TONE: WorldLabelTone = { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' };
+/** The least time between two waves heard lapping at the quay; the most is twice it. */
+const WAVE_EVERY_MS = 4200;
+/** How many steps off the sea can still be heard. */
+const WAVE_EARSHOT = 5;
 const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' };
 /** The harbour's own landmarks (`base/landmarks.ts`): white on the sea's own deep blue. */
 const LANDMARK_TONE: WorldLabelTone = { fill: 0x0e2a44, border: 0xf4efe2, ink: '#f4efe2' };
@@ -384,6 +390,17 @@ export class BaseScene extends Phaser.Scene {
   private namePrompt: MenuOverlay | null = null;
   /** Everybody else in the shared harbour, drawn where they walk (`harbour/`). */
   private harbourFigures: HarbourFigures | null = null;
+  /**
+   * Every tile on the map that FireRed animates (`world/tileAnimation.ts`) -
+   * the sea, the surf on the cove, the flowers - with the still tile it was
+   * laid as, and the clock they all move on.
+   */
+  private animatedTiles: { readonly tile: Phaser.Tilemaps.Tile; readonly still: number }[] = [];
+  private tileAnimationMs = 0;
+  /** What the yard's ground is made of, for hearing the sea from it; null in a room. */
+  private terrain: readonly (readonly Material[])[] | null = null;
+  /** Until the sea is next heard lapping at the quay. */
+  private untilWaveMs = WAVE_EVERY_MS;
   /** The harbour's own townspeople and Pokemon (`base/harbourLife.ts`), outdoors only. */
   private harbourLife: HarbourLifeFigures | null = null;
   /** Somebody else's house this player is looking round, let in at the door. */
@@ -511,6 +528,7 @@ export class BaseScene extends Phaser.Scene {
         room: built,
       };
       this.fixtures = [];
+      this.terrain = null;
       // In through the door, onto the mat, facing the keeper - or back where
       // they were standing, if a screen opened from inside the room is what
       // they have just backed out of - or on the stair mat they have just
@@ -534,6 +552,7 @@ export class BaseScene extends Phaser.Scene {
         room: null,
       };
       this.fixtures = standingFixtures(loaded.raidProgress.workshopUpgrades);
+      this.terrain = map.terrain;
       const returning = data.from === undefined ? undefined : doorNamed(data.from);
       // Backing out of the Day-Care's screen stands the player back where they
       // spoke to him, still facing him.
@@ -603,6 +622,10 @@ export class BaseScene extends Phaser.Scene {
     });
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
+    // Home from a raid, the boat says so.
+    if (data.arrival === 'raid' && !room) {
+      audioManager.play('shipHorn');
+    }
     if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
     }
@@ -630,6 +653,8 @@ export class BaseScene extends Phaser.Scene {
     }
     this.watchFrontDoor(time);
     this.updateWalking(deltaMs);
+    this.animateTiles(deltaMs);
+    this.listenToTheSea(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
     // The harbour's people keep their beats, and stand still while anything
@@ -758,6 +783,7 @@ export class BaseScene extends Phaser.Scene {
 
   private drawMap(): void {
     this.tilemap?.destroy();
+    this.animatedTiles = [];
     const map = this.make.tilemap({
       width: this.place.width,
       height: this.place.height,
@@ -835,7 +861,53 @@ export class BaseScene extends Phaser.Scene {
       if (layer.flips[tile.y]?.[tile.x]) {
         tile.flipX = true;
       }
+      if (TILE_ANIMATIONS_BY_TILE.has(tile.index)) {
+        this.animatedTiles.push({ tile, still: tile.index });
+      }
     });
+  }
+
+  /**
+   * Now and then, while there is sea within earshot of the player, the sound
+   * of it lapping at the quay. Never in a room, never while anything is being
+   * read, and never on a beat anybody could count.
+   */
+  private listenToTheSea(deltaMs: number): void {
+    const terrain = this.terrain;
+    if (!terrain || this.dialogBox.visible || this.leaving) {
+      return;
+    }
+    this.untilWaveMs -= deltaMs;
+    if (this.untilWaveMs > 0) {
+      return;
+    }
+    this.untilWaveMs = WAVE_EVERY_MS + Math.random() * WAVE_EVERY_MS;
+    const { x, y } = this.currentTile;
+    for (let dy = -WAVE_EARSHOT; dy <= WAVE_EARSHOT; dy += 1) {
+      for (let dx = -WAVE_EARSHOT; dx <= WAVE_EARSHOT; dx += 1) {
+        if (Math.abs(dx) + Math.abs(dy) <= WAVE_EARSHOT && terrain[y + dy]?.[x + dx] === 'water') {
+          audioManager.play('waveLap');
+          return;
+        }
+      }
+    }
+  }
+
+  /**
+   * FireRed's moving ground, a frame at a time: each animated tile shows the
+   * frame the one shared clock is on, set only when it changes.
+   */
+  private animateTiles(deltaMs: number): void {
+    if (this.animatedTiles.length === 0) {
+      return;
+    }
+    this.tileAnimationMs += deltaMs;
+    for (const animated of this.animatedTiles) {
+      const index = animatedTileAt(animated.still, this.tileAnimationMs);
+      if (animated.tile.index !== index) {
+        animated.tile.index = index;
+      }
+    }
   }
 
   /**
