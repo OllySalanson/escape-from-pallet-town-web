@@ -120,7 +120,19 @@ export function pineHollow(): MapcraftResult {
     ],
     extra: {
       landmarks: [{ x: 22, y: 12, name: 'Cold Spring', kind: 'spring' }],
-      berryTrees: [{ x: 31, y: 34, berry: 'oran' }],
+      berryTrees: [
+        { x: 31, y: 34, berry: 'oran' },
+        { x: 47, y: 9, berry: 'pecha' }, // in the north glade, past the charcoal burner
+      ],
+      // Who lives in the pines: a Beedrill nest in the south glade, a Pikachu
+      // in the east one, and Nidoran on the deer path.
+      pokemon: [
+        { x: 35, y: 53, species: 'beedrill', level: 10 },
+        { x: 37, y: 54, species: 'weedle' },
+        { x: 49, y: 35, species: 'pikachu', level: 8 },
+        { x: 12, y: 52, species: 'nidoran-m', level: 8 },
+        { x: 20, y: 42, species: 'caterpie' },
+      ],
       people: [
         {
           x: 9,

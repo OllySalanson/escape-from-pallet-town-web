@@ -84,9 +84,19 @@ export function theCrossing(): MapcraftResult {
       signs: [
         { x: 22, y: 29, lines: ['THE CROSSING', 'Over the bridge: Tanglewood. North: the peaks. South: the strand.'] },
         { x: 39, y: 33, lines: ['North: GREYSTONE PEAKS', 'South: GULL STRAND.'] },
+        { x: 2, y: 32, lines: ['THE CROSSING', 'West: Millbrook and the Mill Square.'] },
+        { x: 46, y: 58, lines: ['The road south', 'Down to Gull Strand and the sea.'] },
+      ],
+      // A Slowpoke dozing where the river comes out of the gorge, and a
+      // Psyduck on the Wide Water's bank.
+      pokemon: [
+        { x: 33, y: 8, species: 'slowpoke', level: 9 },
+        { x: 33, y: 43, species: 'psyduck', level: 8 },
+        { x: 36, y: 13, species: 'spearow', level: 8 },
       ],
       people: [
         { x: 26, y: 45, name: 'Angler', look: 'fisherman', facing: 'up', lines: ['The herons take the best of the Wide Water.', 'Down the bank there are stepping stones, if you keep your feet.'] },
+        { x: 52, y: 35, name: 'Peddler', look: 'heavy-man', facing: 'up', lines: ['East is Tanglewood. I go round it, myself.', 'Folk who leave that road come out a day later.'] },
       ],
       trainers: [
         { x: 31, y: 29, name: 'Netter Bryn', team: 'netter', look: 'fisherman', facing: 'down', sight: 0, lines: ['The bridge is my spot!', 'Let us see what you have caught.'] },

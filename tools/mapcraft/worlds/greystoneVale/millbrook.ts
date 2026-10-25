@@ -118,11 +118,22 @@ export function millbrook(): MapcraftResult {
         { x: 12, y: 29, lines: ['MILLBROOK', 'Where every road in the vale starts.'] },
         { x: 36, y: 29, lines: ['MILL SQUARE', 'West: the Westward Road. North: the moor. East: The Crossing. South: Reedmere.'] },
         { x: 42, y: 44, lines: ['South to REEDMERE', 'Down the lane, past the pool.'] },
+        { x: 32, y: 9, lines: ['North to HIGH MOOR', 'Up the drove road, past the Grey Stones.'] },
+      ],
+      // The village's own: a dog at the east gate and a cat by the mill pond,
+      // who say their names and nothing else.
+      pokemon: [
+        { x: 55, y: 28, species: 'growlithe' },
+        { x: 56, y: 14, species: 'meowth' },
       ],
       people: [
         { x: 46, y: 21, name: 'Miller', look: 'worker', facing: 'down', lines: ['The pond turns the wheel all year.', 'The brook runs under the village and comes out by the south meadow.'] },
         { x: 32, y: 34, name: 'Trader', look: 'woman', facing: 'left', lines: ['Fresh from the orchards over the river.', 'The road east takes you on to The Crossing.'] },
         { x: 28, y: 29, name: 'Ada', look: 'little-girl', facing: 'right', lines: ['There is a cave up in the peaks. Mum says it goes all the way to the sea.'] },
+        { x: 17, y: 48, name: 'Tom', look: 'youngster', facing: 'right', lines: ['The pool is full of Magikarp!', 'Nobody believes me.'] },
+        { x: 11, y: 10, name: 'Grandpa Ott', look: 'old-man', facing: 'down', lines: ['This is the oldest cottage in the vale.', 'When I was a boy there was snow on the peaks all summer.'] },
+        { x: 19, y: 38, name: 'Pip', look: 'little-boy', facing: 'up', lines: ['Race you to the square!'] },
+        { x: 47, y: 34, name: 'Gardener', look: 'woman', facing: 'left', lines: ['Every Pidgey in the vale nests in my roof.', 'East of the village the road goes over the bridge at The Crossing.'] },
       ],
       landmarks: [{ x: 24, y: 14, name: 'Tool Shed', kind: 'shed' }],
     },

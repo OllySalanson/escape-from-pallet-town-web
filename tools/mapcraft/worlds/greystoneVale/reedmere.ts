@@ -170,6 +170,17 @@ export function reedmere(): MapcraftResult {
     itemSpots: [{ x: 38, y: 31 }, { x: 54, y: 12, hidden: true }, { x: 22, y: 52 }],
     extra: {
       berryTrees: [{ x: 22, y: 11, berry: 'cheri' }],
+      // What the reeds are full of, standing where a raid wading them meets it:
+      // a Farfetch'd at the reed bed's foot, Poliwag by the water, Venonat and
+      // Oddish deep in the beds, Bellsprout on the east bank.
+      pokemon: [
+        { x: 31, y: 48, species: 'farfetchd', level: 9 },
+        { x: 24, y: 36, species: 'poliwag', level: 8 },
+        { x: 14, y: 20, species: 'poliwag' },
+        { x: 35, y: 19, species: 'venonat', level: 8 },
+        { x: 8, y: 14, species: 'oddish' },
+        { x: 55, y: 40, species: 'bellsprout', level: 8 },
+      ],
       landmarks: [
         { x: 39, y: 30, name: 'The Mere', kind: 'jetty' },
         { x: 13, y: 52, name: 'Duck Hide', kind: 'hide' },
@@ -185,6 +196,14 @@ export function reedmere(): MapcraftResult {
           look: 'old-woman',
           facing: 'left',
           lines: ['Hush. The ducks only come in when nobody wades the reeds.'],
+        },
+        {
+          x: 56,
+          y: 17,
+          name: 'Reed Cutter',
+          look: 'straw-hat',
+          facing: 'left',
+          lines: ['We cut the reeds for thatch.', 'Wade through them if you like. The boardwalk is longer, but you stay dry.'],
         },
       ],
       trainers: [
