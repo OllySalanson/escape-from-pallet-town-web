@@ -2119,6 +2119,77 @@
    ]
   },
   {
+   "area": "greystone-caves-1f",
+   "x": 28,
+   "y": 7,
+   "name": "Quarryman",
+   "look": "hiker",
+   "facing": "down",
+   "lines": [
+    "We broke into this from the quarry above.",
+    "Every ladder in here goes down. To cross the vale you go down and come up again."
+   ]
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 10,
+   "y": 32,
+   "name": "Camper Lin",
+   "look": "camper",
+   "facing": "right",
+   "lines": [
+    "I followed the bats down from the wood.",
+    "Now every passage looks like the last one."
+   ]
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 46,
+   "y": 21,
+   "name": "Lost Hiker",
+   "look": "hiker",
+   "facing": "left",
+   "lines": [
+    "This floor is two caves with a wall of rock between.",
+    "To get to the other side you go down a floor and back up. I have done it twice."
+   ]
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 8,
+   "y": 30,
+   "name": "Miner",
+   "look": "heavy-man",
+   "facing": "right",
+   "lines": [
+    "Listen. That rushing is the sea, three floors down."
+   ]
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 11,
+   "y": 31,
+   "name": "Old Miner",
+   "look": "old-man",
+   "facing": "right",
+   "lines": [
+    "We called it the Sleeper.",
+    "An Onix, in the east sand. It was lying there before the quarry was dug."
+   ]
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 42,
+   "y": 33,
+   "name": "Fisherman",
+   "look": "fisherman",
+   "facing": "up",
+   "lines": [
+    "The tide comes up the passage from the strand.",
+    "The Shellder ride in on it and stay."
+   ]
+  },
+  {
    "x": 79,
    "y": 243,
    "name": "Birder Tess",
@@ -2213,6 +2284,18 @@
    "lines": [
     "I came up for the view and the storm came with me.",
     "Something small and pink watches from the cairn."
+   ]
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 50,
+   "y": 38,
+   "name": "Spelunker",
+   "look": "scientist",
+   "facing": "left",
+   "lines": [
+    "I am mapping the deepest floor.",
+    "Up the far passage there is daylight, and a storm."
    ]
   },
   {
@@ -2373,6 +2456,24 @@
    ]
   },
   {
+   "area": "greystone-caves-1f",
+   "x": 41,
+   "y": 24,
+   "lines": [
+    "Chalked on the rock:",
+    "DOWN - THE WOOD, ONE FLOOR. DOWN - THE SEA, FOUR FLOORS."
+   ]
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 30,
+   "y": 10,
+   "lines": [
+    "Scratched on the rock by the hole:",
+    "COLD WIND FROM BELOW. NOBODY CAME BACK UP THIS WAY."
+   ]
+  },
+  {
    "x": 106,
    "y": 196,
    "lines": [
@@ -2496,6 +2597,15 @@
    ]
   },
   {
+   "area": "greystone-caves-b5f",
+   "x": 33,
+   "y": 9,
+   "lines": [
+    "Scratched deep in the rock:",
+    "NO WAY BACK BUT UP."
+   ]
+  },
+  {
    "x": 37,
    "y": 89,
    "lines": [
@@ -2598,6 +2708,27 @@
    "kind": "shrine"
   },
   {
+   "area": "greystone-caves-1f",
+   "x": 11,
+   "y": 28,
+   "name": "Lamp Store",
+   "kind": "kiln"
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 29,
+   "y": 21,
+   "name": "Drip Pool",
+   "kind": "spring"
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 14,
+   "y": 15,
+   "name": "Rope Store",
+   "kind": "jetty"
+  },
+  {
    "x": 103,
    "y": 222,
    "name": "The Mere",
@@ -2665,6 +2796,13 @@
    "y": 27,
    "name": "Storm Shelter",
    "kind": "spring"
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 51,
+   "y": 15,
+   "name": "Explorers Camp",
+   "kind": "shed"
   },
   {
    "area": "moor-chapel-crypt",
@@ -3008,6 +3146,58 @@
    ]
   },
   {
+   "area": "greystone-caves-b1f",
+   "x": 11,
+   "y": 10,
+   "name": "Hiker Gorse",
+   "team": "breaker",
+   "look": "hiker",
+   "facing": "right",
+   "sight": 3,
+   "lines": [
+    "Mind the sand. It sinks under you."
+   ]
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 12,
+   "y": 8,
+   "name": "Collier Wyn",
+   "team": "collier",
+   "look": "bald-man",
+   "facing": "down",
+   "sight": 2,
+   "lines": [
+    "There was coal down here once. Now there is only me."
+   ]
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 48,
+   "y": 34,
+   "name": "Collier Dunn",
+   "team": "collier",
+   "look": "bald-man",
+   "facing": "left",
+   "sight": 3,
+   "lines": [
+    "Do not wake the Sleeper. I have to work next to it."
+   ]
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 35,
+   "y": 17,
+   "name": "Smuggler Gill",
+   "team": "netter",
+   "look": "sailor",
+   "facing": "down",
+   "sight": 3,
+   "lines": [
+    "That rope is spoken for."
+   ]
+  },
+  {
    "x": 108,
    "y": 223,
    "name": "Netter Fen",
@@ -3156,6 +3346,19 @@
    ]
   },
   {
+   "area": "greystone-caves-b5f",
+   "x": 16,
+   "y": 20,
+   "name": "Hiker Rudd",
+   "team": "breaker",
+   "look": "hiker",
+   "facing": "right",
+   "sight": 3,
+   "lines": [
+    "Nobody comes this deep for the view."
+   ]
+  },
+  {
    "x": 372,
    "y": 96,
    "name": "Gardener Rowan",
@@ -3221,11 +3424,133 @@
  ],
  "pokemon": [
   {
+   "area": "greystone-caves-1f",
+   "x": 28,
+   "y": 28,
+   "species": "geodude",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 41,
+   "y": 11,
+   "species": "clefairy",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 45,
+   "y": 10,
+   "species": "clefairy"
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 28,
+   "y": 21,
+   "species": "paras",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 25,
+   "y": 7,
+   "species": "zubat",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 21,
+   "y": 6,
+   "species": "zubat"
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 28,
+   "y": 8,
+   "species": "zubat"
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 13,
+   "y": 36,
+   "species": "sandshrew",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b2f",
+   "x": 32,
+   "y": 36,
+   "species": "diglett",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 46,
+   "y": 23,
+   "species": "onix",
+   "level": 12
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 48,
+   "y": 14,
+   "species": "geodude",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b3f",
+   "x": 29,
+   "y": 37,
+   "species": "zubat",
+   "level": 10
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 45,
+   "y": 30,
+   "species": "shellder",
+   "level": 9
+  },
+  {
+   "area": "greystone-caves-b4f",
+   "x": 16,
+   "y": 28,
+   "species": "zubat",
+   "level": 10
+  },
+  {
    "x": 156,
    "y": 3,
    "species": "mew",
    "level": 50,
    "legendary": true
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 25,
+   "y": 33,
+   "species": "golbat",
+   "level": 14
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 22,
+   "y": 31,
+   "species": "zubat"
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 14,
+   "y": 44,
+   "species": "geodude",
+   "level": 11
+  },
+  {
+   "area": "greystone-caves-b5f",
+   "x": 38,
+   "y": 41,
+   "species": "zubat",
+   "level": 12
   },
   {
    "x": 349,

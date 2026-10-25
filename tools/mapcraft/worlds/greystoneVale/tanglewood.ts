@@ -19,6 +19,7 @@ import { caveMouthSpots, plantCaveMouth } from '../../caves';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { startDistrict } from '../../worldPlan';
+import { caveLife } from './caveLife';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { GREYSTONE_VALE } from './plan';
 
@@ -82,6 +83,8 @@ export function tanglewood(): MapcraftResult {
   // A worn path from the shrine to the mouth: the shrine's keepers went in.
   p.road([[44, 22], [46, 22], [46, 18], [mouth[0] - 1, 18]]);
   const cave = greystoneCaves();
+  // Who and what is down there, floor by floor (`caveLife.ts`).
+  const life = caveLife();
 
   const file = districtFile(GREYSTONE_VALE, 'tanglewood', p, {
     dropIns: [],
@@ -96,12 +99,15 @@ export function tanglewood(): MapcraftResult {
       ...cave.secrets,
     ],
     extra: {
-      landmarks: [{ x: 42, y: 27, name: 'Ruined Shrine', kind: 'shrine' }],
+      landmarks: [{ x: 42, y: 27, name: 'Ruined Shrine', kind: 'shrine' }, ...life.landmarks],
+      people: life.people,
+      pokemon: life.pokemon,
       berryTrees: [{ x: 16, y: 19, berry: 'pecha' }],
       areas: cave.areas,
       links: [caveMouthLink(cave, 'wood', mouth), ...caveLadders(cave)],
       signs: [
         { x: 17, y: 36, lines: ['TANGLEWOOD', 'East to the Eastern Track. Keep to the road.'] },
+        ...life.signs,
       ],
       trainers: [
         {
@@ -114,6 +120,7 @@ export function tanglewood(): MapcraftResult {
           sight: 3,
           lines: ['Everyone gets lost in here. That is how I catch them.'],
         },
+        ...life.trainers,
       ],
     },
   });

@@ -1980,9 +1980,10 @@ player's map is built by).
   and then a save is offered its front door once the authored chain is
   finished, the moment the standing board takes over: the chain teaches the
   four maps round the Floodplain, and the vale is the country past them.
-- **It is the thinnest map in the game.** `density.mts` measures 20.6 steps from
-  a walkable tile to the nearest authored thing, against 4.5-7.4 on the other
-  five; the caves are the thinnest of it. That is places still to add.
+- **It is the thinnest map in the game.** `density.mts` measured 20.6 steps
+  from a walkable tile to the nearest authored thing, against 4.5-7.4 on the
+  other five, and the caves were the thinnest of it; with the caves peopled
+  ([below](#the-greystone-caves-peopled)) it is 13.0. That is places still to add.
 - **Every structure and safety rule holds it** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
   walked tile - through `mapStructure.greystoneVale1-8.test.ts` and the rest of
@@ -2027,3 +2028,33 @@ seam (Reedmere to Gull Strand, Millbrook to Reedmere, Smugglers' Cove to the
 Sunken Quarter, Safari Marsh to The Wreck). They are left to the south
 half's walk, since a road that turns into a trail at a district's edge can be
 meant.
+
+## The Greystone Caves, peopled
+
+The six cave floors were rooms and passages and nothing else: every room looked
+like the last, and by `density.mts` they were the emptiest ground in the vale -
+fifty to seventy steps from a tile to anything authored on every floor, a
+hundred at worst on B3F. FireRed's Mt. Moon is what a cave is filled with:
+hikers and miners who know the way, the Pokémon that live there standing where
+you can meet them, a crater where a stone fell, chalk on the rock.
+`worlds/greystoneVale/caveLife.ts` gives each floor's emptiest rooms one thing
+each, chosen so the floor reads as a place:
+
+| Floor | What is there now |
+|---|---|
+| 1F, under the quarry | a quarryman who says every ladder goes down, the miners' Lamp Store, a Geodude in the spoil, the chalk marks |
+| B1F, under the wood | THE FALLEN STAR - Clefairy round the crater - Paras in the sand, Hiker Gorse, a camper lost following the bats |
+| B2F, the first sealed floor | the Echo Hall's Zubat roost, the Drip Pool, a lost hiker who says the floor is two caves, Collier Wyn |
+| B3F, the second | the Sleeper - an Onix asleep in the east sand - the old miner who named it, Collier Dunn |
+| B4F, the sea floor | the smugglers' Rope Store and Smuggler Gill, a fisherman by the tide pool and its Shellder, a scratch by the hole down |
+| B5F, the deepest | a spelunker mapping it, the Explorers Camp, a Golbat roost, Hiker Rudd, NO WAY BACK BUT UP |
+
+Every Pokémon with a level fights once a raid when spoken to and can be
+caught; the ones without stand and say their name. Everything stands in the
+open middle of a room, never in a passage, because a figure is a wall to a walk
+out. The whole vale went from 20.6 steps to 13.0, and the worst tile from 100
+steps to 58; no cave floor is above 10.5 now.
+
+![1F, the quarryman](caves-peopled/1f-after.png)
+![B1F, the Fallen Star](caves-peopled/b1f-after.png)
+![B3F, the Sleeper](caves-peopled/b3f-after.png)
