@@ -82,6 +82,7 @@ import { HARBOUR_LANDMARKS } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
+import { FloatingBoats } from '../base/floatingBoats';
 import { TILE_ANIMATIONS_BY_TILE, animatedTileAt } from '../world/tileAnimation';
 import type { Material } from '../world/tileset/materials';
 import {
@@ -403,6 +404,8 @@ export class BaseScene extends Phaser.Scene {
   private terrain: readonly (readonly Material[])[] | null = null;
   /** Until the sea is next heard lapping at the quay. */
   private untilWaveMs = WAVE_EVERY_MS;
+  /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
+  private boats: FloatingBoats | null = null;
   /** FireRed's map-name board (`base/placeNameSign.ts`), outdoors only. */
   private placeSign: PlaceNameSign | null = null;
   /** The part of the harbour the player was last in (`base/harbourPlaces.ts`). */
@@ -580,7 +583,19 @@ export class BaseScene extends Phaser.Scene {
     this.bounds = { width: this.place.width, height: this.place.height };
     this.collision = this.place.collision.map((row) => [...row]);
 
-    this.drawMap();
+    const detail = this.drawMap();
+    this.boats = null;
+    if (detail && !this.place.room) {
+      this.boats = new FloatingBoats(
+        this,
+        detail,
+        HARBOUR_LANDMARKS.flatMap((landmark) =>
+          landmark.floats ? [{ props: landmark.props, ...landmark.floats }] : [],
+        ),
+        detail.depth + 0.001,
+        data.arrival === 'raid',
+      );
+    }
     this.drawSprites();
     this.drawFurniture();
     this.drawOddities();
@@ -667,6 +682,7 @@ export class BaseScene extends Phaser.Scene {
     this.animateTiles(deltaMs);
     this.listenToTheSea(deltaMs);
     this.noticePlace(deltaMs);
+    this.boats?.update(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
     // The harbour's people keep their beats, and stand still while anything
@@ -793,7 +809,8 @@ export class BaseScene extends Phaser.Scene {
 
   // -- the map ---------------------------------------------------------------
 
-  private drawMap(): void {
+  /** Lays the map's tile layers, and hands back the detail layer landmarks are drawn on. */
+  private drawMap(): Phaser.Tilemaps.TilemapLayer | null {
     this.tilemap?.destroy();
     this.animatedTiles = [];
     const map = this.make.tilemap({
@@ -828,6 +845,7 @@ export class BaseScene extends Phaser.Scene {
       this.createTileLayer(map, sheets, name, layer, depth);
     }
     this.tilemap = map;
+    return map.getLayer('base-detail')?.tilemapLayer ?? null;
   }
 
   /**

@@ -29,6 +29,11 @@ export interface HarbourLandmark {
   readonly at: GridPosition;
   /** The tiles its caption speaks from (`captionReveal.ts`); `at` when absent. */
   readonly near?: readonly GridPosition[];
+  /**
+   * A boat rides the swell (`floatingBoats.ts`): how long one rise and fall
+   * takes under it, and whether it is the one a raid comes home on.
+   */
+  readonly floats?: { readonly swellMs: number; readonly bringsRaidsHome?: true };
 }
 
 export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
@@ -41,6 +46,7 @@ export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
     at: { x: 10, y: 21 },
     // Named from the jetty she is tied to, which is where a raid lands.
     near: [20, 21].flatMap((y) => [11, 12, 13, 14].map((x) => ({ x, y }))),
+    floats: { swellMs: 1_900, bringsRaidsHome: true },
   },
   {
     id: 'ss-anne',
@@ -51,6 +57,8 @@ export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
     at: { x: 31, y: 26 },
     // Named the length of the walkway she lies along.
     near: [24, 25, 26, 27].flatMap((y) => [28, 29, 30].map((x) => ({ x, y }))),
+    // A big ship rides a long, slow swell.
+    floats: { swellMs: 3_700 },
   },
   {
     id: 'warehouses',
