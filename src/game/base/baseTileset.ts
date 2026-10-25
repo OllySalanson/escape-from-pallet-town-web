@@ -38,7 +38,9 @@ export type BasePropName =
   | 'raidFerry'
   | 'ssAnne'
   | 'shipPier'
-  | 'warehouses';
+  | 'warehouses'
+  | 'roundFountain'
+  | 'townMap';
 
 /**
  * Bill's cottage: a little blue-roofed FireRed house, cut onto the base's own
@@ -184,5 +186,10 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     ),
     // 10x4. Fuchsia's brick terrace, which on a quay is a row of warehouses.
     warehouses: TOWN_PROPS.brickRow,
+    // 3x4. Celadon's round fountain, for THE GREEN, so it is not the same
+    // fountain as HARBOUR SQUARE's.
+    roundFountain: TOWN_PROPS.roundFountain,
+    // FireRed's town map board, which says where everything is.
+    townMap: TOWN_PROPS.townMap,
   },
 };

@@ -131,7 +131,26 @@ export const COVE_SIGN: BaseSign = {
   lines: ['THE COVE', 'Sand, rocks and a jetty to fish off.'],
 };
 
-export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN, GREEN_SIGN, ARENA_SIGN, PIER_SIGN, COVE_SIGN];
+/** FireRed's town map board, at the corner of HARBOUR SQUARE: where everything is. */
+export const SQUARE_MAP: BaseSign = {
+  x: 22,
+  y: 14,
+  lines: [
+    'HARBOUR SQUARE - a map of THE HARBOUR.',
+    'The RAID ARENA is west, on ARENA SQUARE. The keepers are along KEEPERS\u2019 ROW. THE QUAY and the SEAGALLOP are south.',
+    'East along the water: THE DOCKS, THE LONG PIER out to the S.S. ANNE, and THE COVE. THE GREEN is past THE BOLTHOLE.',
+  ],
+};
+
+export const BASE_SIGNS: readonly BaseSign[] = [
+  NOTICE_BOARD,
+  HOME_SIGN,
+  GREEN_SIGN,
+  ARENA_SIGN,
+  PIER_SIGN,
+  COVE_SIGN,
+  SQUARE_MAP,
+];
 
 /** FireRed's red flowers in the front garden, either side of the path. */
 const GARDEN_FLOWERS: readonly (readonly [number, number])[] = [39, 40, 41, 42].flatMap(
@@ -151,8 +170,9 @@ export interface BaseMapDefinition {
  * instructions that would build it.
  *
  * Five bands read from the top: the wood the harbour is cut out of, the grass
- * the buildings stand on, the trodden earth of the yard in front of them, the
- * stone quay, and the water - which is a harbour rather than a sea's edge
+ * the buildings stand on, the trodden path in front of them (KEEPERS' ROW,
+ * two tiles wide) with HARBOUR SQUARE's brick and its fountain below it
+ * opening onto the stone quay, and the water - which is a harbour rather than a sea's edge
  * because of what is on it (`landmarks.ts`): the ferry at the jetty, the
  * S.S. Anne at the end of the long pier, the warehouses on the deeper east
  * quay and THE COVE's beach past them. The three tiles of quay under the
@@ -201,9 +221,9 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TTTMMMMMMMMMMM................................F.....F........TTT',
     'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.F.....F........TTT',
     'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FFFFFFF........TTT',
-    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
-    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
-    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................TTT',
+    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................TTT',
+    'TtTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................TTT',
+    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................TTT',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMdddddddddddddTTT',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~TTT',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~TTT',
@@ -284,9 +304,15 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     map.plant(x, y, 'gardenFlowers');
   }
 
+  // HARBOUR SQUARE, in the middle of the yard: a paved square round a
+  // fountain, with the keepers' path running along the top of it and the
+  // quay along the bottom, so it is crossed on the way to everything.
+  map.plant(27, 14, 'stoneFountain');
+  map.plant(SQUARE_MAP.x, SQUARE_MAP.y, 'townMap');
+
   // THE GREEN, past the Day-Care: a fountain to meet at, a bench, flowers and
   // its sign.
-  map.plant(56, 9, 'stoneFountain');
+  map.plant(56, 9, 'roundFountain');
   map.plant(56, 13, 'bench');
   map.plant(GREEN_SIGN.x, GREEN_SIGN.y, 'homeSign');
   for (const [x, y] of [[54, 8], [60, 8], [54, 9], [60, 9]] as const) {

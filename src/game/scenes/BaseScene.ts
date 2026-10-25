@@ -59,7 +59,7 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap } from '../base/baseMap';
+import { BASE_LANDING, BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, getBaseMap } from '../base/baseMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
@@ -80,6 +80,8 @@ import {
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { HARBOUR_LANDMARKS } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
+import { harbourPlaceAt } from '../base/harbourPlaces';
+import { PlaceNameSign } from '../base/placeNameSign';
 import { TILE_ANIMATIONS_BY_TILE, animatedTileAt } from '../world/tileAnimation';
 import type { Material } from '../world/tileset/materials';
 import {
@@ -401,6 +403,10 @@ export class BaseScene extends Phaser.Scene {
   private terrain: readonly (readonly Material[])[] | null = null;
   /** Until the sea is next heard lapping at the quay. */
   private untilWaveMs = WAVE_EVERY_MS;
+  /** FireRed's map-name board (`base/placeNameSign.ts`), outdoors only. */
+  private placeSign: PlaceNameSign | null = null;
+  /** The part of the harbour the player was last in (`base/harbourPlaces.ts`). */
+  private placeId: string | null = null;
   /** The harbour's own townspeople and Pokemon (`base/harbourLife.ts`), outdoors only. */
   private harbourLife: HarbourLifeFigures | null = null;
   /** Somebody else's house this player is looking round, let in at the door. */
@@ -626,6 +632,11 @@ export class BaseScene extends Phaser.Scene {
     if (data.arrival === 'raid' && !room) {
       audioManager.play('shipHorn');
     }
+    // Arriving in the harbour - off the title or off the boat, not out of a
+    // door - it says its name, as a FireRed town does.
+    if (!room && data.from === undefined && data.at === undefined) {
+      this.placeSign?.show(BASE_PLACE_NAME.toUpperCase());
+    }
     if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
     }
@@ -655,6 +666,7 @@ export class BaseScene extends Phaser.Scene {
     this.updateWalking(deltaMs);
     this.animateTiles(deltaMs);
     this.listenToTheSea(deltaMs);
+    this.noticePlace(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
     // The harbour's people keep their beats, and stand still while anything
@@ -865,6 +877,22 @@ export class BaseScene extends Phaser.Scene {
         this.animatedTiles.push({ tile, still: tile.index });
       }
     });
+  }
+
+  /**
+   * Walking from one part of the harbour into another puts its name up
+   * (`base/harbourPlaces.ts`), the way a raid map names its districts.
+   */
+  private noticePlace(deltaMs: number): void {
+    if (!this.placeSign) {
+      return;
+    }
+    const here = harbourPlaceAt(this.currentTile);
+    if (here && here.id !== this.placeId) {
+      this.placeId = here.id;
+      this.placeSign.show(here.name);
+    }
+    this.placeSign.update(deltaMs);
   }
 
   /**
@@ -1154,9 +1182,13 @@ export class BaseScene extends Phaser.Scene {
     if (!this.place.room) {
       this.createDayCare();
       this.harbourLife = new HarbourLifeFigures(this);
+      this.placeSign = new PlaceNameSign(this);
+      this.placeId = harbourPlaceAt(this.currentTile)?.id ?? null;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         this.harbourLife?.destroy();
         this.harbourLife = null;
+        this.placeSign?.destroy();
+        this.placeSign = null;
       });
       return;
     }
@@ -1616,6 +1648,7 @@ export class BaseScene extends Phaser.Scene {
         // half under the box whenever anything here was spoken to.
         furniture: [
           ...(this.hintShown ? [this.hintRect(view)] : []),
+          ...this.placeSignIn(view),
           ...this.feedbackTabIn(view),
           ...(this.dialogBox.visible
             ? [{ x: this.dialogBox.x + view.left, y: this.dialogBox.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
@@ -1662,6 +1695,12 @@ export class BaseScene extends Phaser.Scene {
           partner.rect(),
         ),
     );
+  }
+
+  /** The place-name board while it is up, in world space: ground no caption may take. */
+  private placeSignIn(view: Phaser.Geom.Rectangle): Rect[] {
+    const sign = this.placeSign?.rect();
+    return sign ? [{ ...sign, x: sign.x + view.left, y: sign.y + view.top }] : [];
   }
 
   /** The FEEDBACK tab where it stands over the yard, in world space (`feedbackTabCover.ts`). */
