@@ -39,6 +39,8 @@ export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
     // Tied up against the west side of the jetty, with her stern to the quay.
     props: [{ name: 'raidFerry', x: 7, y: 20 }],
     at: { x: 10, y: 21 },
+    // Named from the jetty she is tied to, which is where a raid lands.
+    near: [20, 21].flatMap((y) => [11, 12, 13, 14].map((x) => ({ x, y }))),
   },
   {
     id: 'ss-anne',
@@ -47,13 +49,16 @@ export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
     // At the end of the long pier, her bow against the walkway.
     props: [{ name: 'ssAnne', x: 31, y: 24 }],
     at: { x: 31, y: 26 },
-    near: [{ x: 29, y: 26 }],
+    // Named the length of the walkway she lies along.
+    near: [24, 25, 26, 27].flatMap((y) => [28, 29, 30].map((x) => ({ x, y }))),
   },
   {
     id: 'warehouses',
     name: 'THE WAREHOUSES',
     note: 'What the boats bring in waits here',
     props: [{ name: 'warehouses', x: 36, y: 17 }],
-    at: { x: 39, y: 20 },
+    at: { x: 44, y: 20 },
+    // Named all along their front, which is where the quay is walked.
+    near: Array.from({ length: 10 }, (_, index) => ({ x: 36 + index, y: 21 })),
   },
 ];

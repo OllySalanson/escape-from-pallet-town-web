@@ -156,7 +156,11 @@ and say yes, you're let in to have a nose round. Five buildings, four of them ke
 And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty: every
 raid sails out on her and comes home on her. The **S.S. Anne** lies at the end of the long pier,
 the warehouses along the east quay hold what the boats bring in, and past them there's a little
-cove with a jetty to fish off.
+cove with a jetty to fish off. And it's busy: a sailor waits by the ferry, a Gym Guide hangs about
+outside the Raid Arena, the captain paces the pier, a dock worker and his Machop shift crates, an
+old angler grumbles about Magikarp, a policeman walks the yard with his Growlithe, and there's a
+Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
+bay. Talk to any of them.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
 When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else

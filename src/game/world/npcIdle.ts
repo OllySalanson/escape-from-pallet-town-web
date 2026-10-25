@@ -103,8 +103,14 @@ export interface AdvanceIdleOptions {
 const sameTile = (left: GridPosition, right: GridPosition): boolean =>
   left.x === right.x && left.y === right.y;
 
+/**
+ * What a figure needs to keep a beat: the raid maps' `WorldEntity` is one, and
+ * so is a harbour townsperson (`base/harbourLife.ts`), which is on no raid map.
+ */
+export type IdleSource = Pick<WorldEntity, 'id' | 'kind' | 'position' | 'facing' | 'idle'>;
+
 /** Every tile an authored figure may stand on: where it was placed, plus its roam. */
-export function idleBeatTiles(entity: WorldEntity): readonly GridPosition[] {
+export function idleBeatTiles(entity: IdleSource): readonly GridPosition[] {
   const roam = entity.idle?.roam ?? [];
   return [entity.position, ...roam.filter((tile) => !sameTile(tile, entity.position))];
 }
@@ -129,11 +135,11 @@ const pick = <T>(items: readonly T[], random: () => number): T | undefined =>
  * which is what a street of people all turning at once looks like.
  */
 export function createIdleFigures(
-  entities: readonly WorldEntity[],
+  entities: readonly IdleSource[],
   random: () => number,
 ): IdleFigure[] {
   return entities
-    .filter((entity): entity is WorldEntity & { idle: NpcIdle } =>
+    .filter((entity): entity is IdleSource & { idle: NpcIdle } =>
       entity.kind === 'npc' && entity.idle !== undefined,
     )
     .map((entity) => ({
