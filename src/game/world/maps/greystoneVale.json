@@ -116,12 +116,12 @@
   "TTTTTTTTTTTT...gggggggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC..TTTT..ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTggggggggTT..........TTTTTTTTTT..TTTT......TTTTTTTT.......dd.................o.........WWWWWWWWWWWWW.dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF...ggg...PP....gggg...F.gggg.....TTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC........ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTTgggggg.dd.............TTTTTTTTTT....WWWWWWWWWWWWW.dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........F..TTTTTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggg.ddd....WWWWWWWWWTTCCCCCCCCCCCCCCCCTTTTTTTTTTTTTT......ggggggggCCCCCCWWWWCCCC........ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTTgggggggdd.............TTTTTTTTTT......WWWWWWWWW...dd....TTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........F..TTTTTTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.ggggg.dd...........TTTTTTTTTTTTTT..ggggggggggg...dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........FTTTTTT....TTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.......dd...........TTTTTTTTTTTTTT.gggggggggggggg.dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTFFFFFFFFFFPPFFFFFFFFFFFFTTTTTT....TTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....gggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCggggggddddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd.ggggggggg..TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddgggggggg............TTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..f.ddd....ggg....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd............TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddggggggggggff........TTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd.......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggdd.gggggggggf..###..TTTTTTTTTTTT",
-  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd...f...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..........CCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggdd..................TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCFF.FFFFFFFCCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.ggggg.dd...........TTTTTTTTTTTTTT..ggggggggggg...dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTF.........PP...........FTTTTTT....TTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....WWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF........FCCCCWWWWCCCCCCggggggddddd...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTT..TTTTTTTTTTTTTT..TTTTTT..TTTTTTTTTT.......dd...........TTTTTTTTTTTTTT.gggggggggggggg.dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTFFFFFFFFFFPPFFFFFFFFFFFFTTTTTT....TTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddd....gggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF........FCCCCWWWWCCCCCCggggggddddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd.ggggggggg..TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddgggggggg............TTTTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..f.ddd....ggg....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF........FCCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggggTTTTTTTTTT..TTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTT.ddddddddddddddddddddddddddddd............TTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggddggggggggggff........TTTTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd.......TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF........FCCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggdd.gggggggggf..###..TTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd...f...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCF.FFFFFFFFCCCCWWWWCCCCCCgggggg..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggggggggTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggdd..................TTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ddddddddd....f..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..TTTTTTTTCCCCWWWWCCCC..........ddddTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddddddddddddddddddddddddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..dddddddddddd.......fTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT<========>ddd<=====>TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCC..TTTTTTTTCCCCWWWWCCCC..........ddddTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddddddddddddddddddddddddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..dddddddddddd......ffTTTTTTTTTTTT",
   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTggggggggg.dddgggggggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........TTTTTTTTCCCCWWWWCCCC..TTTTTT..ddddTTTTTTTTTTTTTTTTTTTTTTTTggggTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT....ggggggggdddddd..f.TTTTTTTTTTTT",
@@ -2097,6 +2097,16 @@
    ]
   },
   {
+   "x": 177,
+   "y": 109,
+   "name": "Mountain Ranger",
+   "look": "camper",
+   "facing": "left",
+   "lines": [
+    "Lost on the hill? The Goat Track leaves through the pasture, west of the gorge."
+   ]
+  },
+  {
    "x": 201,
    "y": 76,
    "name": "Old Wren",
@@ -2116,6 +2126,17 @@
    "lines": [
     "The herons take the best of the Wide Water.",
     "Down the bank there are stepping stones, if you keep your feet."
+   ]
+  },
+  {
+   "x": 242,
+   "y": 181,
+   "name": "Woodcutter",
+   "look": "bald-man",
+   "facing": "left",
+   "lines": [
+    "Lost? Every path in Tanglewood comes back to the road in the end.",
+    "The road is north of here. It always is."
    ]
   },
   {
@@ -2211,6 +2232,37 @@
    ]
   },
   {
+   "x": 145,
+   "y": 226,
+   "name": "Beachcomber",
+   "look": "old-woman",
+   "facing": "down",
+   "lines": [
+    "Everything the sea takes off the wreck ends up in this cove.",
+    "Mind the Krabby. They think it is theirs."
+   ]
+  },
+  {
+   "x": 153,
+   "y": 198,
+   "name": "Fisherman",
+   "look": "fisherman",
+   "facing": "right",
+   "lines": [
+    "The Magikarp come up from the sea this far, and no further."
+   ]
+  },
+  {
+   "x": 165,
+   "y": 220,
+   "name": "Kite Flyer",
+   "look": "little-girl",
+   "facing": "down",
+   "lines": [
+    "The wind off the sea takes my kite right over the cliffs!"
+   ]
+  },
+  {
    "x": 219,
    "y": 205,
    "name": "Farmer Hale",
@@ -2218,6 +2270,26 @@
    "facing": "down",
    "lines": [
     "Hop the terraces if you are in a hurry. Mind, you will not climb back."
+   ]
+  },
+  {
+   "x": 241,
+   "y": 200,
+   "name": "Picker",
+   "look": "picnicker",
+   "facing": "up",
+   "lines": [
+    "These are the old trees. The best apples are always the highest ones."
+   ]
+  },
+  {
+   "x": 250,
+   "y": 243,
+   "name": "Shell Digger",
+   "look": "tuber-girl",
+   "facing": "down",
+   "lines": [
+    "The tide leaves the best shells right at the far end of the sands!"
    ]
   },
   {
@@ -2432,6 +2504,22 @@
    ]
   },
   {
+   "x": 145,
+   "y": 111,
+   "lines": [
+    "THE HIGH PASTURE",
+    "Shut the gate behind you. The ponies wander."
+   ]
+  },
+  {
+   "x": 172,
+   "y": 121,
+   "lines": [
+    "THE PASS",
+    "Down: The Crossing. Up: the caves, the quarry and the tarn."
+   ]
+  },
+  {
    "x": 150,
    "y": 157,
    "lines": [
@@ -2490,6 +2578,14 @@
    ]
   },
   {
+   "x": 144,
+   "y": 207,
+   "lines": [
+    "GULL STRAND",
+    "West: Reedmere, over the stone bridge. The cliff path goes down to the cove."
+   ]
+  },
+  {
    "x": 216,
    "y": 240,
    "lines": [
@@ -2503,6 +2599,14 @@
    "lines": [
     "ORCHARD TERRACES",
     "The lane is east. The terraces are down, and the ledges are quicker."
+   ]
+  },
+  {
+   "x": 250,
+   "y": 224,
+   "lines": [
+    "THE LANE",
+    "East: The Wreck, on the cape. West and up: the farm."
    ]
   },
   {
@@ -3424,6 +3528,28 @@
  ],
  "pokemon": [
   {
+   "x": 147,
+   "y": 112,
+   "species": "ponyta",
+   "level": 10
+  },
+  {
+   "x": 149,
+   "y": 114,
+   "species": "ponyta"
+  },
+  {
+   "x": 165,
+   "y": 98,
+   "species": "mankey",
+   "level": 9
+  },
+  {
+   "x": 164,
+   "y": 108,
+   "species": "mankey"
+  },
+  {
    "area": "greystone-caves-1f",
    "x": 28,
    "y": 28,
@@ -3517,6 +3643,40 @@
    "y": 28,
    "species": "zubat",
    "level": 10
+  },
+  {
+   "x": 142,
+   "y": 217,
+   "species": "doduo",
+   "level": 9
+  },
+  {
+   "x": 162,
+   "y": 197,
+   "species": "psyduck",
+   "level": 8
+  },
+  {
+   "x": 131,
+   "y": 234,
+   "species": "krabby",
+   "level": 9
+  },
+  {
+   "x": 136,
+   "y": 228,
+   "species": "krabby"
+  },
+  {
+   "x": 240,
+   "y": 230,
+   "species": "tauros",
+   "level": 9
+  },
+  {
+   "x": 224,
+   "y": 238,
+   "species": "tauros"
   },
   {
    "x": 156,
@@ -5971,6 +6131,11 @@
  ],
  "berryTrees": [
   {
+   "x": 173,
+   "y": 69,
+   "berry": "oran"
+  },
+  {
    "x": 223,
    "y": 98,
    "berry": "oran"
@@ -5986,9 +6151,19 @@
    "berry": "cheri"
   },
   {
+   "x": 151,
+   "y": 220,
+   "berry": "rawst"
+  },
+  {
    "x": 203,
    "y": 200,
    "berry": "sitrus"
+  },
+  {
+   "x": 204,
+   "y": 220,
+   "berry": "cheri"
   },
   {
    "x": 346,

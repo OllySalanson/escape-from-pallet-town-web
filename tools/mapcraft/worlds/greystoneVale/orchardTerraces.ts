@@ -120,13 +120,25 @@ export function orchardTerraces(): MapcraftResult {
     itemSpots: [{ x: 49, y: 13, hidden: true }, { x: 9, y: 37 }, { x: 52, y: 48 }],
     extra: {
       landmarks: [{ x: 32, y: 14, name: 'Apple Store', kind: 'shed' }],
-      berryTrees: [{ x: 11, y: 8, berry: 'sitrus' }],
+      berryTrees: [
+        { x: 11, y: 8, berry: 'sitrus' },
+        { x: 12, y: 28, berry: 'cheri' }, // by the cowman's door
+      ],
+      // The farm's beasts: the Tauros the pasture is grazed by, one of them
+      // ready to argue about it.
+      pokemon: [
+        { x: 48, y: 38, species: 'tauros', level: 9 },
+        { x: 32, y: 46, species: 'tauros' },
+      ],
       signs: [
         { x: 24, y: 48, lines: ['THE SANDS', 'Along the sands west, the cockle path goes up through the wood.'] },
         { x: 15, y: 12, lines: ['ORCHARD TERRACES', 'The lane is east. The terraces are down, and the ledges are quicker.'] },
+        { x: 58, y: 32, lines: ['THE LANE', 'East: The Wreck, on the cape. West and up: the farm.'] },
       ],
       people: [
         { x: 27, y: 13, name: 'Farmer Hale', look: 'straw-hat', facing: 'down', lines: ['Hop the terraces if you are in a hurry. Mind, you will not climb back.'] },
+        { x: 49, y: 8, name: 'Picker', look: 'picnicker', facing: 'up', lines: ['These are the old trees. The best apples are always the highest ones.'] },
+        { x: 58, y: 51, name: 'Shell Digger', look: 'tuber-girl', facing: 'down', lines: ['The tide leaves the best shells right at the far end of the sands!'] },
       ],
       trainers: [
         { x: 39, y: 22, name: 'Orchardist Pip', team: 'orchardist', look: 'picnicker', facing: 'left', sight: 0, lines: ['Paws off my apples!'] },

@@ -100,7 +100,18 @@ export function tanglewood(): MapcraftResult {
     ],
     extra: {
       landmarks: [{ x: 42, y: 27, name: 'Ruined Shrine', kind: 'shrine' }, ...life.landmarks],
-      people: life.people,
+      people: [
+        // In the glade at the end of the south-east lanes, as far into the maze as it goes.
+        {
+          x: 50,
+          y: 53,
+          name: 'Woodcutter',
+          look: 'bald-man',
+          facing: 'left',
+          lines: ['Lost? Every path in Tanglewood comes back to the road in the end.', 'The road is north of here. It always is.'],
+        },
+        ...life.people,
+      ],
       pokemon: life.pokemon,
       berryTrees: [{ x: 16, y: 19, berry: 'pecha' }],
       areas: cave.areas,

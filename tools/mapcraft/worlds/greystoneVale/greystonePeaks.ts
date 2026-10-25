@@ -49,6 +49,10 @@ export function greystonePeaks(): MapcraftResult {
   p.bed(14, 40, 8, 6, { round: false });
   p.wood(16, 52, 8, 8);
   p.meadow(6, 56, 2, 2); // a nook in the wood, where the goat track goes over the hill
+  // THE HIGH PASTURE: the lawn under the outcrop fenced for the ponies that
+  // summer up here, a gate at each end, so the goat track's way up goes
+  // through it rather than round.
+  p.yard(14, 46, 10, 6, { gates: [[16, 46], [15, 51]], inner: '.' });
 
   // -- The cliff the caves open in, joined to the crag over the quarry ---------------
   p.rock(48, 4, 10, 6);
@@ -94,10 +98,30 @@ export function greystonePeaks(): MapcraftResult {
       signs: [
         { x: 13, y: 38, lines: ['GREYSTONE PEAKS', 'The pass climbs through the cutting and round the head of the tarn.'] },
         { x: 20, y: 6, lines: ['THE TARN', 'The river starts here, under the summit.'] },
+        { x: 17, y: 47, lines: ['THE HIGH PASTURE', 'Shut the gate behind you. The ponies wander.'] },
+        { x: 44, y: 57, lines: ['THE PASS', 'Down: The Crossing. Up: the caves, the quarry and the tarn.'] },
       ],
       people: [
         { x: 21, y: 16, name: 'Climber', look: 'hiker', facing: 'right', lines: ['The river is born in this tarn. Follow it down and you come to The Crossing.'] },
+        {
+          x: 49,
+          y: 45,
+          name: 'Mountain Ranger',
+          look: 'camper',
+          facing: 'left',
+          lines: ['Lost on the hill? The Goat Track leaves through the pasture, west of the gorge.'],
+        },
       ],
+      // The ponies in the pasture, and the Mankey troop that sits on the gorge's
+      // edge watching whoever comes down the pass.
+      pokemon: [
+        { x: 19, y: 48, species: 'ponyta', level: 10 },
+        { x: 21, y: 50, species: 'ponyta' },
+        { x: 37, y: 34, species: 'mankey', level: 9 },
+        { x: 36, y: 44, species: 'mankey' },
+      ],
+      // A rowan by the head of the pass.
+      berryTrees: [{ x: 45, y: 5, berry: 'oran' }],
       trainers: [
         { x: 56, y: 15, name: 'Breaker Finn', team: 'breaker', look: 'black-belt', facing: 'left', sight: 0, lines: ['This quarry is closed to visitors!', 'Unless you can break through me.'] },
       ],
