@@ -277,6 +277,12 @@ export function powerStation(): MapcraftResult {
         // Inside: a Magnemite on the dead turbine, and what the hideout below
         // left behind it - a Koffing and a Grimer on B2F, a Voltorb on B3F.
         { area: 'turbine-hall', x: 22, y: 4, species: 'magnemite' },
+        // Zapdos, where FireRed keeps it: the power station, drinking what is
+        // left of the current between the dead generators - and Mewtwo in the
+        // war room at the bottom of the Bunker, behind the Card Key, the
+        // spinner floor and the lift, as far from a landing as the vale goes.
+        { area: 'turbine-hall', x: 12, y: 6, species: 'zapdos', level: 50, legendary: true },
+        { area: 'bunker-b4f', x: 17, y: 11, species: 'mewtwo', level: 70, legendary: true },
         { area: 'bunker-b2f', x: 25, y: 18, species: 'koffing', level: 13 },
         { area: 'bunker-b2f', x: 24, y: 16, species: 'grimer' },
         { area: 'bunker-b3f', x: 30, y: 6, species: 'voltorb', level: 13 },

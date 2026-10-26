@@ -2126,3 +2126,19 @@ it would be a stop in the puzzle. The vale is 8.1, its worst tile 32 steps.
 
 ![The Moor Chapel's crypt](played/crypt-after.png)
 ![Tanglewood's north hollow](played/tanglewood-after.png)
+
+### The legends come home
+
+With the old maps put away, the only legend a save could meet was Mew. Kanto's
+four now stand in the vale too, each where FireRed keeps it, and each guarded by
+the getting there rather than by a keeper: **Zapdos** in the Power Station's
+turbine hall, among the dead generators (FireRed's Power Plant); **Moltres** in
+Ember Isle's crater, a boat on the tide and a lava tube away (Mt. Ember);
+**Articuno** on the sand at the far corner of Frostreef's frozen lagoon, past
+the ice (the Seafoam Islands); and **Mewtwo**, at FireRed's level 70, in the war
+room at the bottom of the Bunker, behind the Card Key, the spinner floor and the
+lift. They fight and are caught exactly as the old maps' four were
+(`legends.ts`): no ball until it is beaten, then one throw.
+
+![Zapdos in the turbine hall](legends/zapdos.png)
+![Mewtwo in the war room](legends/mewtwo.png)
