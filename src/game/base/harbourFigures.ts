@@ -1,5 +1,7 @@
 import type Phaser from 'phaser';
+import type { HarbourFigure } from '../harbour/harbourCrowd';
 import type { NamedFigure } from '../harbour/harbourLink';
+import type { Direction, GridPosition } from '../movement/gridMovement';
 import { CHARACTER_FEET_PIXEL_Y, CHARACTER_HEAD_PIXEL_Y, getIdleFrame, getWalkAnimationKey } from '../playerFrames';
 import { GAME_FONT } from '../ui/gameFont';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
@@ -7,6 +9,18 @@ import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import { CAPTION_BAND, FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
+import { FOLLOWER_ART } from './generated/followerArt';
+import {
+  PARTNER_FEET_PIXEL_Y,
+  arrivalPlace,
+  directionBetween,
+  partnerFrame,
+  partnerPose,
+  partnerTextureKey,
+  sameTile,
+  type PartnerSpeciesId,
+} from './partner';
+import { PARTNER_SPRITE_X_OFFSET, PARTNER_SPRITE_Y_OFFSET } from './partnerFigure';
 
 /**
  * Everybody else in THE HARBOUR, drawn: one figure a player, walking where
@@ -20,6 +34,14 @@ import { TILE_SIZE } from '../worldMap';
  * the partner is - because a figure is only ever where a message said, and a
  * message is never believed enough to block a step. Their names are drawn
  * beneath every figure, as every caption in the game is (`world/depths.ts`).
+ *
+ * Whoever has a partner walks with it at their heel, as this player does
+ * (`partner.ts`): it stands on the tile they last walked off and takes its
+ * step onto the one they are leaving in time with theirs, so somebody else's
+ * Bulbasaur trails them across the yard exactly as it does on their own
+ * screen. Like the player's own partner it is company, never collision, and
+ * a caption would sooner sit clear of it but goes over it rather than unseated
+ * (`heelRects`).
  */
 
 const SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
@@ -35,6 +57,41 @@ const SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
  */
 export const OTHER_PLAYERS_BEHIND = 0.0001;
 
+/** How far behind its player on the same row a partner is drawn: a hair, as this player's own is. */
+export const HEEL_BEHIND = 0.00005;
+
+/** Where another player's partner is this frame, in tiles, and which way it faces. */
+export interface HeelPlace {
+  readonly x: number;
+  readonly y: number;
+  readonly facing: Direction;
+  readonly moving: boolean;
+}
+
+/**
+ * Where the partner at a figure's heel stands this frame, given where it was
+ * standing (`rest`): the tile the figure last walked off, or where it arrived
+ * beside them. Walking, it steps from there onto the tile the figure is
+ * leaving, as far along as they are; standing, it waits there facing them.
+ * With nowhere to stand yet it is tucked away out of sight - and the moment
+ * they step it comes out onto the tile they left, as this player's own does.
+ */
+export function heelOf(figure: HarbourFigure<string>, rest: GridPosition | null): HeelPlace | null {
+  if (rest === null || sameTile(rest, figure.tile)) {
+    return figure.toward ? { ...figure.tile, facing: figure.facing, moving: false } : null;
+  }
+  const facing = directionBetween(rest, figure.tile) ?? figure.facing;
+  if (!figure.toward) {
+    return { ...rest, facing, moving: false };
+  }
+  return {
+    x: rest.x + (figure.tile.x - rest.x) * figure.progress,
+    y: rest.y + (figure.tile.y - rest.y) * figure.progress,
+    facing,
+    moving: true,
+  };
+}
+
 /** The name plate's words: ink, in the chip size, on the game's own cream window. */
 const NAME_STYLE = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK } as const;
 
@@ -44,26 +101,46 @@ const PLATE_PAD_X = 3;
 /** A figure to draw, and whether its plate is carrying something it is saying. */
 export type PlateFigure = NamedFigure<string> & { readonly speaking?: boolean };
 
+interface Heel {
+  readonly species: PartnerSpeciesId;
+  readonly sprite: Phaser.GameObjects.Sprite;
+  /** Where it stands while its player does, and the tile of theirs that was worked out for. */
+  rest: GridPosition | null;
+  restFor: GridPosition | null;
+  /** The pose its step started on, alternating step to step. */
+  walkPose: 0 | 1;
+}
+
 interface Drawn {
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly plate: Phaser.GameObjects.Graphics;
   readonly name: Phaser.GameObjects.Text;
   walking: string | null;
+  heel: Heel | null;
 }
 
 export class HarbourFigures {
   private readonly scene: Phaser.Scene;
   private readonly drawn = new Map<string, Drawn>();
   private readonly plateDepth: (row: number) => number;
+  private readonly canStand: ((tile: GridPosition) => boolean) | null;
 
   /**
    * @param plateDepth Where a name plate is drawn for a figure on this row:
    * beneath the figures, as every caption in the harbour is, unless a place
    * says otherwise - a raid's woods would hide a friend's name under a crown.
+   * @param canStand The place's word on where a partner may arrive beside
+   * somebody who has just come into view (`arrivalPlace`), as this player's own
+   * arrives. Without it a partner waits out of sight for its player's first step.
    */
-  public constructor(scene: Phaser.Scene, plateDepth: (row: number) => number = (row) => atRow(CAPTION_BAND, row)) {
+  public constructor(
+    scene: Phaser.Scene,
+    plateDepth: (row: number) => number = (row) => atRow(CAPTION_BAND, row),
+    canStand: ((tile: GridPosition) => boolean) | null = null,
+  ) {
     this.scene = scene;
     this.plateDepth = plateDepth;
+    this.canStand = canStand;
   }
 
   /**
@@ -120,7 +197,30 @@ export class HarbourFigures {
       const named = !underSelf || figure.speaking === true;
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
+      this.drawHeel(drawn, figure);
     }
+  }
+
+  /**
+   * Where every other player's partner is drawn, in world pixels: company a
+   * caption would rather sit clear of, as it would of this player's own
+   * (`CaptionSurroundings.follower`).
+   */
+  public heelRects(): { x: number; y: number; width: number; height: number }[] {
+    return [...this.drawn.values()].flatMap(({ heel }) => {
+      if (!heel?.sprite.visible) {
+        return [];
+      }
+      const top = FOLLOWER_ART[heel.species].topPixelY;
+      return [
+        {
+          x: heel.sprite.x - PARTNER_SPRITE_X_OFFSET,
+          y: heel.sprite.y + top,
+          width: TILE_SIZE,
+          height: PARTNER_FEET_PIXEL_Y - top + 1,
+        },
+      ];
+    });
   }
 
   /**
@@ -148,11 +248,55 @@ export class HarbourFigures {
     this.drawn.clear();
   }
 
+  /** The partner at a figure's heel, stood up, moved on, swapped or taken down as the figure says. */
+  private drawHeel(drawn: Drawn, figure: PlateFigure): void {
+    if (drawn.heel && drawn.heel.species !== figure.partner) {
+      drawn.heel.sprite.destroy();
+      drawn.heel = null;
+    }
+    if (!figure.partner) {
+      return;
+    }
+    const heel =
+      drawn.heel ??
+      (drawn.heel = {
+        species: figure.partner,
+        sprite: this.scene.add.sprite(0, 0, partnerTextureKey(figure.partner), 0).setOrigin(0, 0),
+        rest: null,
+        restFor: null,
+        walkPose: 0,
+      });
+    if (figure.behind) {
+      if (!heel.restFor || !sameTile(heel.restFor, figure.tile)) {
+        // A step taken: the next one starts on the other foot.
+        heel.walkPose = heel.walkPose === 0 ? 1 : 0;
+      }
+      heel.rest = figure.behind;
+      heel.restFor = figure.tile;
+    } else if (!heel.restFor || !sameTile(heel.restFor, figure.tile)) {
+      // Just come into view, or put somewhere new: it arrives beside them.
+      const arrived = this.canStand ? arrivalPlace(figure.tile, figure.facing, this.canStand) : null;
+      heel.rest = arrived?.out ? arrived.tile : null;
+      heel.restFor = figure.tile;
+    }
+    const at = heelOf(figure, heel.rest);
+    heel.sprite.setVisible(at !== null);
+    if (!at) {
+      return;
+    }
+    const pose = partnerPose({ moving: at.moving, progress: figure.progress, walkPose: heel.walkPose });
+    heel.sprite
+      .setFrame(partnerFrame(at.facing, pose))
+      .setPosition(at.x * TILE_SIZE + PARTNER_SPRITE_X_OFFSET, at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET)
+      // A hair behind its player, who is a hair behind this player's own figures.
+      .setDepth(atRow(FIGURE_BAND, at.y) - OTHER_PLAYERS_BEHIND - HEEL_BEHIND);
+  }
+
   private standUp(figure: PlateFigure): Drawn {
     const sprite = this.scene.add.sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);
-    const drawn: Drawn = { sprite, plate, name, walking: null };
+    const drawn: Drawn = { sprite, plate, name, walking: null, heel: null };
     drawPlate(drawn);
     this.drawn.set(figure.id, drawn);
     return drawn;
@@ -173,6 +317,7 @@ function drawPlate(drawn: Drawn): void {
 }
 
 function takeDown(drawn: Drawn): void {
+  drawn.heel?.sprite.destroy();
   drawn.sprite.destroy();
   drawn.plate.destroy();
   drawn.name.destroy();

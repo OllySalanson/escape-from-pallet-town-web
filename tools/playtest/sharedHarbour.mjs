@@ -12,7 +12,9 @@
 // Each must see the other standing in the yard with their name over them, OLLY
 // walks three tiles and AMY must see him arrive where he stopped, OLLY walks
 // into Oak's Lab and AMY must stop seeing him, and AMY follows him in and sees
-// him there. It fails loudly - a thrown error - when any of that does not
+// him there. Each walks with their partner at their heel on the other's
+// screen too: AMY must see OLLY's partner, by kind, standing on the tile he
+// last walked off. It fails loudly - a thrown error - when any of that does not
 // happen, and photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
@@ -28,7 +30,7 @@ const page = (base) => `${base}${base.includes('?') ? '&' : '?'}testmode=pixels&
 const BASE = `${GAME}.scene.getScene('base')`;
 const state = `(() => { const b = ${BASE}; const live = b && b.sys.isActive() && b.ready && !b.leaving;
   return { live: !!live, room: live && b.room ? b.room.id : null, tile: live ? b.currentTile : null,
-    seen: live ? b.harbourFiguresShown : [] }; })()`;
+    seen: live ? b.harbourFiguresShown : [], heels: live ? b.harbourHeelsShown : [] }; })()`;
 
 /** The first step of the shortest walk to a goal tile over the scene's own collision. */
 const firstStep = (goal) => `(() => { const b = ${BASE}; if (!b.sys.isActive() || !b.ready || b.leaving || b.targetTile) return null;
@@ -125,6 +127,15 @@ try {
     s.seen.some((f) => f.name === 'OLLY' && f.tile.x === goal.x && f.tile.y === goal.y),
   );
   console.log(`AMY saw OLLY walk to ${goal.x},${goal.y}`);
+  // His partner at his heel, on AMY's screen, on the tile he last walked off.
+  const heeled = await until(amy, "AMY seeing OLLY's partner at his heel", (s) => {
+    const him = s.seen.find((f) => f.name === 'OLLY');
+    return !!him?.partner && s.heels.some((r) => {
+      const x = Math.round(r.x / 16), y = Math.floor((r.y + r.height - 2) / 16);
+      return Math.abs(x - goal.x) + Math.abs(y - goal.y) === 1;
+    });
+  });
+  console.log(`AMY sees OLLY's ${heeled.seen.find((f) => f.name === 'OLLY').partner} at his heel: ${JSON.stringify(heeled.heels)}`);
   await amy.screenshot(`${out}/amy-sees-olly.png`);
   await olly.screenshot(`${out}/olly-sees-amy.png`);
 

@@ -194,7 +194,8 @@ back alive. Dolls go on the table. Nothing goes on the door mat.
 
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
-following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. It's that
+following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. Everybody
+else's trots behind them too, so a busy harbour is a parade. It's that
 Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
 
 <p align="center">

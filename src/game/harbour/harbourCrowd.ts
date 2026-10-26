@@ -1,5 +1,6 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
+import type { PartnerSpeciesId } from '../base/partner';
 import type { HarbourMove, HarbourPlace } from './harbourProtocol';
 
 /**
@@ -13,6 +14,11 @@ import type { HarbourMove, HarbourPlace } from './harbourProtocol';
  * couple of steps behind, so it never falls further behind than a message.
  * Anything that is not a step - a tile that is not next to the last, a long
  * backlog, a different place - is a jump: the figure is simply there.
+ *
+ * Each figure also remembers the last tile it walked off, which is where the
+ * partner at its heel stands (`base/partner.ts`: a partner only ever steps onto
+ * the tile its player has just left), so another player's Pokemon walks the
+ * same trail behind them on this screen as it does on theirs.
  *
  * Phaser-free, so it is tested on its own; `harbourFigures.ts` draws it.
  */
@@ -34,6 +40,10 @@ export interface HarbourFigure<P extends string = HarbourPlace> {
   /** How far along the step it is, 0 to 1. */
   readonly progress: number;
   readonly facing: Direction;
+  /** The kind of Pokemon at its heel, if it has one. */
+  readonly partner?: PartnerSpeciesId;
+  /** The tile it last walked off - where its partner stands - or null since it was last put somewhere. */
+  readonly behind: GridPosition | null;
 }
 
 interface Walker<P extends string> {
@@ -45,6 +55,8 @@ interface Walker<P extends string> {
   facing: Direction;
   /** The facing to turn to once the queue is walked. */
   endFacing: Direction;
+  partner?: PartnerSpeciesId;
+  behind: GridPosition | null;
 }
 
 const adjacent = (a: GridPosition, b: GridPosition): boolean => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
@@ -75,9 +87,12 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         progress: 0,
         facing: move.facing,
         endFacing: move.facing,
+        partner: move.partner,
+        behind: null,
       });
       return;
     }
+    walker.partner = move.partner;
     // The newest tile already queued (or stood on), which the path continues from.
     let end = walker.queue[walker.queue.length - 1] ?? walker.tile;
     for (const tile of move.path) {
@@ -92,12 +107,15 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         walker.progress = 0;
         walker.facing = move.facing;
         walker.endFacing = move.facing;
+        walker.behind = null;
         return;
       }
       walker.queue.push({ ...tile });
       end = tile;
     }
     if (walker.queue.length > JUMP_AFTER_STEPS) {
+      // On to the last tile said, with the one before it the tile it walked off.
+      walker.behind = walker.queue[walker.queue.length - 2] ?? null;
       walker.tile = walker.queue[walker.queue.length - 1]!;
       walker.queue = [];
       walker.progress = 0;
@@ -147,6 +165,7 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         const needed = ((1 - walker.progress) * STEP_DURATION_MS) / pace;
         if (left >= needed) {
           left -= needed;
+          walker.behind = walker.tile;
           walker.tile = next;
           walker.queue.shift();
           walker.progress = 0;
@@ -172,6 +191,8 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         toward: walker.queue[0] ? { ...walker.queue[0] } : null,
         progress: walker.queue[0] ? walker.progress : 0,
         facing: walker.facing,
+        ...(walker.partner ? { partner: walker.partner } : {}),
+        behind: walker.behind ? { ...walker.behind } : null,
       }));
   }
 }
