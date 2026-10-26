@@ -3,7 +3,10 @@
 // `src/game/harbour/harbourWire.ts`), so not one message reaches the live
 // project - a driven page cannot reach it anyway (`browser.mjs`).
 //
-//   node tools/playtest/sharedHarbour.mjs <url> <out dir> [--window=1200x768]
+//   node tools/playtest/sharedHarbour.mjs <url> <out dir> [--window=1200x768] [--port=N]
+//
+// `--port=` drives a browser already running on that CDP port (one the
+// machine's memory watchdog can see) instead of launching its own.
 //
 // OLLY starts a game and is named; AMY is the second tab, named by the test.
 // Each must see the other standing in the yard with their name over them, OLLY
@@ -12,7 +15,7 @@
 // him there. It fails loudly - a thrown error - when any of that does not
 // happen, and photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -42,7 +45,9 @@ const firstStep = (goal) => `(() => { const b = ${BASE}; if (!b.sys.isActive() |
   if (!found) return 'unreachable';
   let cur = found, key = null; for (;;) { const p = prev.get(idx(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return key; })()`;
 
-const browser = await launchBrowser({ window: { width, height } });
+const browser = option('port')
+  ? attachBrowser(Number(option('port')), { window: { width, height } })
+  : await launchBrowser({ window: { width, height } });
 try {
   const olly = await browser.openPage(page(url));
   // A tab behind another is slowed to a frame a second, so the one being

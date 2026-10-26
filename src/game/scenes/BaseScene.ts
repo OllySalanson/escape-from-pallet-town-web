@@ -87,6 +87,7 @@ import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
 import { anglerLines, harbourBite, reeledInLines } from '../base/harbourFishing';
 import { spyglassLines } from '../base/spyglass';
+import { seagallopLines } from '../base/seagallopLog';
 import { paintFloat } from '../world/fishingFloat';
 import { ALL_SPECIES } from '../pokemon/species';
 import {
@@ -262,6 +263,8 @@ const WAVE_EVERY_MS = 4200;
 const WAVE_EARSHOT = 5;
 /** The least time between two of the S.S. Anne's horns; the most is twice it. */
 const HORN_EVERY_MS = 95_000;
+/** The Seagallop's sailor by the jetty, who keeps her log (`base/seagallopLog.ts`). */
+const SAILOR_ID = 'seagallop-sailor';
 /** The S.S. Anne's captain on the long pier, who lends his spyglass (`base/spyglass.ts`). */
 const CAPTAIN_ID = 'ss-anne-captain';
 /** How many looks through the captain's glass this sitting: the sights go round in order. */
@@ -1896,6 +1899,8 @@ export class BaseScene extends Phaser.Scene {
           // is: a caption seated across a person reads as their head stuck on
           // a sign.
           ...(this.harbourLife?.standing('person') ?? []).map((tile) => figureRect(tile)),
+          // And the other players walking the shared harbour, name and all.
+          ...(this.harbourFigures?.rects() ?? []),
           // What the partner is saying: a door's name seated across its bubble hid
           // the heart it answers a word with, on the quay and at the Day-Care.
           ...(bubble ? [bubble] : []),
@@ -2452,6 +2457,11 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const local = this.harbourLife?.at(target);
+    if (local?.id === SAILOR_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      this.say(seagallopLines(this.savedGame.raidProgress.raidRecord), [target]);
+      return;
+    }
     if (local?.id === CAPTAIN_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       this.say(spyglassLines(windowLight(new Date()), spyglassLooks), [target]);

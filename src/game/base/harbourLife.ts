@@ -5,6 +5,7 @@ import type { WindowLight } from './homeClock';
 import { HARBOUR_POKEMON_ART } from './generated/harbourPokemonArt';
 import { anglerLines } from './harbourFishing';
 import { spyglassLines } from './spyglass';
+import { seagallopLines } from './seagallopLog';
 
 /**
  * Who lives in THE HARBOUR: the people who work it and the Pokemon about it.
@@ -88,10 +89,8 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     position: at(10, 19),
     facing: 'down',
     idle: { roam: [at(9, 19)], glances: ['left', 'right'], beatMs: 5300 },
-    lines: [
-      'Ahoy! The SEAGALLOP\'s fuelled and waiting.',
-      'Kit up at the RAID ARENA and she\'ll run you out. She always comes back for you, too. Mostly with you on her.',
-    ],
+    // Spoken to, he reads out the Seagallop's log (`seagallopLog.ts`).
+    lines: seagallopLines(undefined),
   },
   {
     id: 'gym-guide',
