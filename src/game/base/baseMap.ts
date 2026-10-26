@@ -278,7 +278,7 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   for (const x of [23, 35, 44]) {
     map.plant(x, 21, 'mooringPost');
   }
-  map.plant(46, 17, 'crateTower');
+  map.plant(46, 17, 'crateStack');
   map.plant(33, 17, 'sack');
   map.plant(34, 17, 'barrelPair');
   // THE COVE, past the warehouses: a strip of beach under THE GREEN, with a
@@ -297,6 +297,10 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(NOTICE_BOARD.x, NOTICE_BOARD.y, 'noticeBoard');
   map.plant(19, 17, 'barrelPair');
   map.plant(21, 17, 'mooringPost');
+
+  // Crates on the corner of the quay, off the boats and waiting for the
+  // warehouses (`harbourLife.ts` has the porter minding them).
+  map.plant(3, 16, 'crateStack');
 
   // THE RAID ARENA's forecourt: a pair of statues on the way up from the
   // quay, as every Gym in Kanto has, with the forecourt in front of the door

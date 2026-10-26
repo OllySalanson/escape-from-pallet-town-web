@@ -243,6 +243,8 @@ const DOOR_TONE: WorldLabelTone = { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef
 const WAVE_EVERY_MS = 4200;
 /** How many steps off the sea can still be heard. */
 const WAVE_EARSHOT = 5;
+/** The least time between two of the S.S. Anne's horns; the most is twice it. */
+const HORN_EVERY_MS = 95_000;
 const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' };
 /** The harbour's own landmarks (`base/landmarks.ts`): white on the sea's own deep blue. */
 const LANDMARK_TONE: WorldLabelTone = { fill: 0x0e2a44, border: 0xf4efe2, ink: '#f4efe2' };
@@ -405,6 +407,8 @@ export class BaseScene extends Phaser.Scene {
   private terrain: readonly (readonly Material[])[] | null = null;
   /** Until the sea is next heard lapping at the quay. */
   private untilWaveMs = WAVE_EVERY_MS;
+  /** Until the S.S. Anne next sounds her horn, out in the harbour. */
+  private untilHornMs = HORN_EVERY_MS;
   /** THE HARBOUR after dark (`base/harbourNight.ts`), outdoors only. */
   private night: HarbourNight | null = null;
   /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
@@ -954,13 +958,19 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * Now and then, while there is sea within earshot of the player, the sound
-   * of it lapping at the quay. Never in a room, never while anything is being
-   * read, and never on a beat anybody could count.
+   * of it lapping at the quay - and once in a long while, from anywhere in the
+   * harbour, the S.S. Anne's horn. Never in a room, never while anything is
+   * being read, and never on a beat anybody could count.
    */
   private listenToTheSea(deltaMs: number): void {
     const terrain = this.terrain;
     if (!terrain || this.dialogBox.visible || this.leaving) {
       return;
+    }
+    this.untilHornMs -= deltaMs;
+    if (this.untilHornMs <= 0) {
+      this.untilHornMs = HORN_EVERY_MS + Math.random() * HORN_EVERY_MS;
+      audioManager.play('distantHorn');
     }
     this.untilWaveMs -= deltaMs;
     if (this.untilWaveMs > 0) {
