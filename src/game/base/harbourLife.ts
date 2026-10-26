@@ -2,6 +2,7 @@ import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { NpcIdle } from '../world/npcIdle';
 import { HARBOUR_POKEMON_ART } from './generated/harbourPokemonArt';
+import { anglerLines } from './harbourFishing';
 
 /**
  * Who lives in THE HARBOUR: the people who work it and the Pokemon about it.
@@ -126,10 +127,8 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     position: at(55, 23),
     facing: 'down',
     idle: { glances: ['left', 'right'], beatMs: 7300 },
-    lines: [
-      'Nothing out here but MAGIKARP. Hundreds of them.',
-      'BILL trades rods, if you\'re after something better. Good luck with that.',
-    ],
+    // Spoken to, he lends his rod and keeps the tally (`harbourFishing.ts`).
+    lines: anglerLines(false, []),
   },
   {
     id: 'beach-girl',

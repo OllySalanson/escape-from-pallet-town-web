@@ -2504,3 +2504,24 @@ describe('errands (hub/errands.ts)', () => {
     expect(eevee?.pokemon.level).toBe(5);
   });
 });
+
+describe('the angler\'s tally of what has been reeled in off the harbour', () => {
+  it('keeps each kind once, survives a reload, and is absent on a save that never fished', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    expect(saves.load()?.raidProgress.harbourCatches).toBeUndefined();
+    expect(saves.recordHarbourCatch(129)).toBe(true);
+    expect(saves.recordHarbourCatch(129)).toBe(false);
+    expect(saves.recordHarbourCatch(116)).toBe(true);
+    expect(new SaveManager(storage).load()?.raidProgress.harbourCatches).toEqual([116, 129]);
+  });
+
+  it('reads a tally written wrong back as only the dex numbers in it', () => {
+    const storage = new MemoryStorage();
+    freshSave(storage);
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.harbourCatches = [129, 'krabby', 129, -4];
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    expect(new SaveManager(storage).load()?.raidProgress.harbourCatches).toEqual([129]);
+  });
+});

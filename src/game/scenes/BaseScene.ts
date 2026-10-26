@@ -83,6 +83,18 @@ import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
+import { anglerLines, harbourBite, reeledInLines } from '../base/harbourFishing';
+import { paintFloat } from '../world/fishingFloat';
+import { ALL_SPECIES } from '../pokemon/species';
+import {
+  NOT_EVEN_A_NIBBLE,
+  ON_THE_HOOK,
+  bestRod,
+  castDurationMs,
+  dotsShown,
+  planCast,
+  type CastPlan,
+} from '../world/fishing';
 import { HarbourNight } from '../base/harbourNight';
 import { HarbourBird } from '../base/harbourBird';
 import { windowLight } from '../base/homeClock';
@@ -247,6 +259,14 @@ const WAVE_EVERY_MS = 4200;
 const WAVE_EARSHOT = 5;
 /** The least time between two of the S.S. Anne's horns; the most is twice it. */
 const HORN_EVERY_MS = 95_000;
+/** The angler on the cove's jetty, who lends his rod (`base/harbourFishing.ts`). */
+const ANGLER_ID = 'cove-angler';
+/**
+ * Whether the angler has lent his rod this sitting. Kept for the page rather
+ * than the scene, which is started again through every door; a player who has
+ * caught anything has it for good (`hasHarbourRod`).
+ */
+let harbourRodLent = false;
 const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' };
 /** The harbour's own landmarks (`base/landmarks.ts`): white on the sea's own deep blue. */
 const LANDMARK_TONE: WorldLabelTone = { fill: 0x0e2a44, border: 0xf4efe2, ink: '#f4efe2' };
@@ -421,6 +441,18 @@ export class BaseScene extends Phaser.Scene {
   private placeSign: PlaceNameSign | null = null;
   /** The part of the harbour the player was last in (`base/harbourPlaces.ts`). */
   private placeId: string | null = null;
+  /**
+   * A line in the harbour's water, not yet answered (`base/harbourFishing.ts`):
+   * where it went in, the cast as FireRed plans one, the float, and how far in.
+   */
+  private fishing: {
+    readonly tile: GridPosition;
+    readonly plan: CastPlan;
+    readonly float: Phaser.GameObjects.Graphics;
+    readonly floatY: number;
+    elapsedMs: number;
+    dots: number;
+  } | null = null;
   /** The harbour's own townspeople and Pokemon (`base/harbourLife.ts`), outdoors only. */
   private harbourLife: HarbourLifeFigures | null = null;
   /** Somebody else's house this player is looking round, let in at the door. */
@@ -518,6 +550,7 @@ export class BaseScene extends Phaser.Scene {
     this.namePrompt = null;
     this.harbourFigures = null;
     this.harbourLife = null;
+    this.fishing = null;
     this.knockScreen = null;
     this.knockPrompt = null;
     this.afterSaid = null;
@@ -749,6 +782,11 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    if (this.fishing) {
+      this.advanceFishing(deltaMs);
+      return;
+    }
+
     if (this.dialogBox.visible) {
       this.showHint('');
       this.handleDialogInput();
@@ -943,6 +981,93 @@ export class BaseScene extends Phaser.Scene {
         this.animatedTiles.push({ tile, still: tile.index });
       }
     });
+  }
+
+  /**
+   * Whether a rod reaches `tile`: open sea in front of the player outdoors,
+   * with the angler's rod lent or one of the player's own in the vault.
+   */
+  private canFishAt(tile: GridPosition): boolean {
+    return (
+      this.terrain?.[tile.y]?.[tile.x] === 'water' &&
+      this.collision[tile.y]?.[tile.x] === true &&
+      (harbourRodLent || this.hasHarbourRod())
+    );
+  }
+
+  /** A rod of the player's own, or the angler's tally showing he has lent his. */
+  private hasHarbourRod(): boolean {
+    return (
+      (this.savedGame.raidProgress.harbourCatches?.length ?? 0) > 0 ||
+      bestRod((itemId) => this.savedGame.stash.itemCount(itemId)) !== null
+    );
+  }
+
+  /** The kinds in the angler's book, by name, in Pokédex order. */
+  private harbourCatchNames(): string[] {
+    return (this.savedGame.raidProgress.harbourCatches ?? []).flatMap((dexId) => {
+      const species = ALL_SPECIES.find((each) => each.dexId === dexId);
+      return species ? [species.name.toUpperCase()] : [];
+    });
+  }
+
+  /** Casts into `tile`: FireRed's cast, its dots, then the water's answer. */
+  private castInto(tile: GridPosition): void {
+    const float = paintFloat(this.add.graphics(), false)
+      .setPosition(tile.x * TILE_SIZE + TILE_SIZE / 2, tile.y * TILE_SIZE + TILE_SIZE / 2)
+      .setDepth(atRow(MARKER_BAND, tile.y));
+    this.fishing = { tile, plan: planCast(), float, floatY: float.y, elapsedMs: 0, dots: 0 };
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('rodCast');
+    this.say([], [tile]);
+    this.dialogBox.showProgress('');
+  }
+
+  /**
+   * One frame of a cast: the dots, then nothing - or a bite, reeled in and let
+   * go, and the angler's book the richer for a new kind.
+   */
+  private advanceFishing(deltaMs: number): void {
+    const cast = this.fishing;
+    if (!cast) {
+      return;
+    }
+    cast.elapsedMs += deltaMs;
+    const dots = dotsShown(cast.plan, cast.elapsedMs);
+    if (dots !== cast.dots) {
+      cast.dots = dots;
+      this.dialogBox.showProgress(Array.from({ length: dots }, () => '·').join(' '));
+    }
+    cast.float.setY(cast.floatY + (Math.floor(cast.elapsedMs / 400) % 2));
+    if (cast.elapsedMs < castDurationMs(cast.plan)) {
+      return;
+    }
+    this.fishing = null;
+    const bite = cast.plan.bites ? harbourBite(cast.tile) : null;
+    if (!bite) {
+      cast.float.destroy();
+      this.say([NOT_EVEN_A_NIBBLE], [cast.tile]);
+      return;
+    }
+    paintFloat(cast.float.clear(), true).setY(cast.floatY);
+    audioManager.play('fishBite');
+    this.cameras.main.shake(90, 0.003);
+    const fresh = this.saveManager.recordHarbourCatch(bite.dexId);
+    const caught = this.savedGame.raidProgress.harbourCatches ?? [];
+    if (fresh) {
+      this.savedGame = {
+        ...this.savedGame,
+        raidProgress: {
+          ...this.savedGame.raidProgress,
+          harbourCatches: [...caught, bite.dexId].sort((a, b) => a - b),
+        },
+      };
+    }
+    this.say([ON_THE_HOOK, ...reeledInLines(bite, fresh, caught.length + (fresh ? 1 : 0))], [cast.tile], () =>
+      cast.float.destroy(),
+    );
   }
 
   /**
@@ -1565,6 +1690,9 @@ export class BaseScene extends Phaser.Scene {
       const local = partner ? undefined : this.harbourLife?.at(facing);
       if (local) {
         return `[SPACE] ${local.name}`;
+      }
+      if (!partner && this.canFishAt(facing)) {
+        return '[SPACE] FISH';
       }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
@@ -2297,6 +2425,13 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const local = this.harbourLife?.at(target);
+    if (local?.id === ANGLER_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      const lines = anglerLines(harbourRodLent || this.hasHarbourRod(), this.harbourCatchNames());
+      harbourRodLent = true;
+      this.say(lines, [target]);
+      return;
+    }
     if (local) {
       // Spoken to, a person turns to look back; a Pokemon cries first.
       if (local.kind === 'person') {
@@ -2321,6 +2456,10 @@ export class BaseScene extends Phaser.Scene {
     const landmark = HARBOUR_LANDMARKS.find((each) => sameTile(each.at, target));
     if (landmark) {
       this.say([`${landmark.name} - ${landmark.note.toLowerCase()}.`], [target]);
+      return;
+    }
+    if (this.canFishAt(target)) {
+      this.castInto(target);
       return;
     }
     const sign = BASE_SIGNS.find((each) => each.x === target.x && each.y === target.y);
