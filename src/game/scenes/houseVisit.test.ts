@@ -22,7 +22,7 @@ vi.mock('../ui/KnockOverlay', () => ({
 }));
 const frontDoor = vi.hoisted((): { door: unknown } => ({ door: {} }));
 vi.mock('../harbour/harbour', () => ({
-  harbour: () => ({ seenAs: 'me', link: { nudge: () => undefined } }),
+  harbour: () => ({ seenAs: 'me', figuresHere: () => [], link: { nudge: () => undefined } }),
   harbourHouses: () => ({ service: {}, door: frontDoor.door }),
 }));
 
