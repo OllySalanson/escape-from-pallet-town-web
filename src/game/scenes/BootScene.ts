@@ -16,6 +16,7 @@ import {
 } from '../world/characterDesigns';
 import { PARTNER_FRAME, PARTNER_SPECIES, partnerAssetPath, partnerTextureKey } from '../base/partner';
 import { HARBOUR_SPECIES, harbourPokemonAssetPath, harbourPokemonTextureKey } from '../base/harbourLife';
+import { HARBOUR_BIRD_PATH, HARBOUR_BIRD_TEXTURE } from '../base/harbourBird';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import {
   POKEMON_ICON_PATH,
@@ -82,6 +83,8 @@ export class BootScene extends Phaser.Scene {
         frameHeight: PARTNER_FRAME,
       });
     }
+    // The bird that glides over the harbour (`base/harbourBird.ts`).
+    this.load.image(HARBOUR_BIRD_TEXTURE, publicAssetUrl(HARBOUR_BIRD_PATH));
     // The harbour's own Pokemon (`base/harbourLife.ts`), cut the same way.
     for (const species of HARBOUR_SPECIES) {
       this.load.spritesheet(harbourPokemonTextureKey(species), publicAssetUrl(harbourPokemonAssetPath(species)), {

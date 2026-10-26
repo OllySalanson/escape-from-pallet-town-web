@@ -1139,6 +1139,23 @@ The same art, the same source, the same ruling and the same script as
 moved; the game draws the swimmers sunk to the waterline by cropping, never by
 editing the sheet.
 
+### `harbour-bird.png` - the bird over the harbour: FireRed's Fly bird and its shadow
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-areas.png`: Pokemon FireRed/LeafGreen art, rights holders Nintendo /
+Creatures / Game Freak, no licence from them.
+
+- **Source.** pret/pokefirered at commit `037335f`, read 2026-10-26:
+  `graphics/field_effects/pics/bird.png` (the first of its five 64x64 frames,
+  the bird with nobody riding it - `sAnim_Bird_WithoutPlayer`),
+  `graphics/field_effects/pics/shadow_medium.png`, and the palette FireRed
+  draws the bird in, object palette 0 (`CreateFlyBirdSprite` in
+  `src/field_effect.c`), `graphics/object_events/palettes/player.pal`.
+  Fetched file by file from `raw.githubusercontent.com`.
+- **How it was cut.** `scripts/cut-frlg-fly-bird.mjs` is the whole method:
+  colour 0 clear, every other colour the palette's on the GBA's `<< 3`
+  footing, nothing scaled or moved. The game draws the shadow translucent.
+
 ### `cries/<dexId>.wav` - every Pokemon's own cry, from FireRed/LeafGreen
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly.** Playtest 28 put
