@@ -128,7 +128,7 @@ export const PIER_SIGN: BaseSign = {
 export const COVE_SIGN: BaseSign = {
   x: 49,
   y: 17,
-  lines: ['THE COVE', 'Sand, rocks and a jetty to fish off.'],
+  lines: ['THE COVE', 'Sand, rocks and a jetty to fish off. The ANGLER on the end of it lends his rod.'],
 };
 
 /** FireRed's town map board, at the corner of HARBOUR SQUARE: where everything is. */

@@ -151,6 +151,7 @@ import {
   type CastPlan,
   type RodItemId,
 } from '../world/fishing';
+import { paintFloat } from '../world/fishingFloat';
 import { rollShiny } from '../pokemon/shiny';
 import { encounterTableAt, stepRolls } from '../world/localEncounters';
 import { areaFrame } from '../world/areaFrame';
@@ -361,23 +362,6 @@ const CAMERA_ZOOM = 1;
 const DOOR_FADE_MS = 180;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 
-/**
- * A fishing float, centred on its own origin: red over white in the shared
- * outline, sitting on two flecks of ripple - or, taken under by a bite, only
- * its red tip showing in a wider ring of them.
- */
-function paintFloat(float: Phaser.GameObjects.Graphics, sunk: boolean): Phaser.GameObjects.Graphics {
-  const ripple = 0xa8d0f0;
-  if (sunk) {
-    float.fillStyle(0x241f2e, 1).fillRect(-2, 0, 4, 3);
-    float.fillStyle(0xe04848, 1).fillRect(-1, 1, 2, 2);
-    return float.fillStyle(ripple, 1).fillRect(-6, 3, 3, 1).fillRect(3, 3, 3, 1).fillRect(-4, 5, 8, 1);
-  }
-  float.fillStyle(0x241f2e, 1).fillRect(-3, -4, 6, 7);
-  float.fillStyle(0xe04848, 1).fillRect(-2, -3, 4, 3);
-  float.fillStyle(0xf8f8f0, 1).fillRect(-2, 0, 4, 2);
-  return float.fillStyle(ripple, 1).fillRect(-5, 3, 2, 1).fillRect(3, 3, 2, 1);
-}
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 const HUNTER_FIGURE_ID = 'rival-hunter';

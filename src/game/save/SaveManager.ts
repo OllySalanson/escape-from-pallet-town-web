@@ -245,6 +245,13 @@ export interface RaidProgress {
    */
   readonly keysLearned?: readonly string[];
   /**
+   * Every kind of Pokémon reeled in off THE HARBOUR's edges with the angler's
+   * rod, by dex number (`../base/harbourFishing`). Nothing is kept - a fish is
+   * let go - so this is only the angler's tally. Absent on older saves, which
+   * reads as nothing caught yet.
+   */
+  readonly harbourCatches?: readonly number[];
+  /**
    * Every kind of Pokémon this save has owned, by dex number (`../hub/pokedex`).
    * It is written, never asked to be kept up: every save adds whatever kinds
    * the vault holds (`serializeGame`), so a kind is registered by being banked,
@@ -844,6 +851,22 @@ export class SaveManager {
     }
     this.save({ ...game, raidProgress: { ...game.raidProgress, firstWordsHeard: [...heard, id] } });
     return true;
+  }
+
+  /**
+   * Adds a kind reeled in off the harbour to the angler's tally
+   * (`../base/harbourFishing`). Returns whether it was a new one for him.
+   */
+  public recordHarbourCatch(dexId: number): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const caught = game.raidProgress.harbourCatches ?? [];
+    if (caught.includes(dexId)) {
+      return false;
+    }
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, harbourCatches: [...caught, dexId] } });
   }
 
   /**
@@ -1724,6 +1747,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ? { keysLearned: uniqueStrings(value.keysLearned).filter(isLearnableKey) }
       : {}),
     ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
+    ...(Array.isArray(value.harbourCatches) ? { harbourCatches: tidyDexIds(value.harbourCatches) } : {}),
     ...(Array.isArray(value.errands) ? { errands: clampErrandRecords(value.errands) } : {}),
     ...(Array.isArray(value.pokedexRewards)
       ? {
