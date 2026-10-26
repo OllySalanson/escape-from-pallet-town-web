@@ -166,6 +166,38 @@ export function readHarbourNudge(payload: unknown): HarbourNudge | null {
   return isPlayerId(g) ? { from: u, to: t, gone: g } : { from: u, to: t };
 }
 
+/** The broadcast event a wave travels on. */
+export const HARBOUR_WAVE_EVENT = 'wave';
+
+/**
+ * A wave: one player waving at whoever they are facing, in the place they
+ * stand. Everybody there sees a hand go up over the waver; the one waved at
+ * (`to`) hears it too. It carries no words - a wave is the one thing it says -
+ * so all a false one can do is put a hand up over somebody.
+ */
+export interface HarbourWave<P extends string = HarbourPlace> {
+  readonly from: string;
+  readonly place: P;
+  readonly to?: string;
+}
+
+export function encodeHarbourWave(wave: HarbourWave): Record<string, unknown> {
+  return wave.to ? { u: wave.from, p: wave.place, t: wave.to } : { u: wave.from, p: wave.place };
+}
+
+/** A wave heard from another browser, or null if it is anything else. */
+export function readHarbourWave(payload: unknown): HarbourWave | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  const { u, p, t } = payload as Record<string, unknown>;
+  if (!isPlayerId(u) || !isHarbourPlace(p)) {
+    return null;
+  }
+  // Waved at nobody in particular is still a wave.
+  return isPlayerId(t) ? { from: u, place: p, to: t } : { from: u, place: p };
+}
+
 /** What a player says about themselves on joining: only where they are. */
 export function encodeHarbourPresence(place: HarbourPlace): Record<string, unknown> {
   return { p: place };

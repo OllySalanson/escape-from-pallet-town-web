@@ -14,7 +14,8 @@
 // into Oak's Lab and AMY must stop seeing him, and AMY follows him in and sees
 // him there. Each walks with their partner at their heel on the other's
 // screen too: AMY must see OLLY's partner, by kind, standing on the tile he
-// last walked off. It fails loudly - a thrown error - when any of that does not
+// last walked off. AMY then walks up beside OLLY and waves: her hand must go up
+// on her screen and on his. It fails loudly - a thrown error - when any of that does not
 // happen, and photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
@@ -30,7 +31,7 @@ const page = (base) => `${base}${base.includes('?') ? '&' : '?'}testmode=pixels&
 const BASE = `${GAME}.scene.getScene('base')`;
 const state = `(() => { const b = ${BASE}; const live = b && b.sys.isActive() && b.ready && !b.leaving;
   return { live: !!live, room: live && b.room ? b.room.id : null, tile: live ? b.currentTile : null,
-    seen: live ? b.harbourFiguresShown : [], heels: live ? b.harbourHeelsShown : [] }; })()`;
+    seen: live ? b.harbourFiguresShown : [], heels: live ? b.harbourHeelsShown : [], waving: live ? b.waving : false }; })()`;
 
 /** The first step of the shortest walk to a goal tile over the scene's own collision. */
 const firstStep = (goal) => `(() => { const b = ${BASE}; if (!b.sys.isActive() || !b.ready || b.leaving || b.targetTile) return null;
@@ -138,6 +139,19 @@ try {
   console.log(`AMY sees OLLY's ${heeled.seen.find((f) => f.name === 'OLLY').partner} at his heel: ${JSON.stringify(heeled.heels)}`);
   await amy.screenshot(`${out}/amy-sees-olly.png`);
   await olly.screenshot(`${out}/olly-sees-amy.png`);
+
+  // AMY walks up beside OLLY, facing him, and waves.
+  await walkTo(amy, { x: goal.x - 2, y: goal.y });
+  await press(amy, 'ArrowRight');
+  await until(amy, 'AMY beside OLLY, facing him', (s) => s.tile.x === goal.x - 1 && s.tile.y === goal.y);
+  await press(amy, 'Space');
+  await until(amy, "AMY's own hand up", (s) => s.waving, 1200);
+  await amy.screenshot(`${out}/amy-waves.png`);
+  await olly.send('Page.bringToFront');
+  front = olly;
+  await until(olly, "OLLY seeing AMY's hand up", (s) => s.seen.some((f) => f.name === 'AMY' && f.waving), 1200);
+  await olly.screenshot(`${out}/olly-sees-amy-wave.png`);
+  console.log('AMY waved at OLLY, and both saw her hand go up');
 
   // Into Oak's Lab: gone from the yard for AMY, and there when she follows.
   const lab = await olly.evaluate(`${BASE}.doors.find((d) => d.id === 'oaks-lab')`);

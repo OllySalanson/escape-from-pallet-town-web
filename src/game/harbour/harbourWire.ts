@@ -5,13 +5,16 @@ import {
   HARBOUR_MOVE_EVENT,
   HARBOUR_NUDGE_EVENT,
   HARBOUR_TOPIC,
+  HARBOUR_WAVE_EVENT,
   encodeHarbourMove,
   encodeHarbourNudge,
   encodeHarbourPresence,
+  encodeHarbourWave,
   isPlayerId,
   readHarbourMove,
   readHarbourNudge,
   readHarbourPresence,
+  readHarbourWave,
   type HarbourMove,
   type HarbourPlace,
 } from './harbourProtocol';
@@ -91,6 +94,12 @@ export function liveHarbourWire(): HarbourWire {
           heard.nudge(nudge);
         }
       });
+      joining.on('broadcast', { event: HARBOUR_WAVE_EVENT }, ({ payload }) => {
+        const wave = readHarbourWave(payload);
+        if (wave) {
+          heard.wave?.(wave);
+        }
+      });
       joining.on('presence', { event: 'sync' }, () => {
         heard.present(membersOf(joining.presenceState()));
       });
@@ -121,6 +130,9 @@ export function liveHarbourWire(): HarbourWire {
     },
     nudge(nudge) {
       void channel?.send({ type: 'broadcast', event: HARBOUR_NUDGE_EVENT, payload: encodeHarbourNudge(nudge) });
+    },
+    wave(wave) {
+      void channel?.send({ type: 'broadcast', event: HARBOUR_WAVE_EVENT, payload: encodeHarbourWave(wave) });
     },
     async names(ids) {
       const db = await supabase();
@@ -197,6 +209,11 @@ export function localHarbourWire(nameOf: () => string | null): HarbourWire {
       if (nudge) {
         heard?.nudge(nudge);
       }
+    } else if (data.kind === 'wave') {
+      const wave = readHarbourWave(data.payload);
+      if (wave) {
+        heard?.wave?.(wave);
+      }
     } else if (data.kind === 'here' && isPlayerId(data.id)) {
       const known = seen.has(data.id);
       seen.set(data.id, {
@@ -233,6 +250,9 @@ export function localHarbourWire(nameOf: () => string | null): HarbourWire {
     },
     nudge(nudge) {
       wire.postMessage({ kind: 'nudge', payload: encodeHarbourNudge(nudge) });
+    },
+    wave(wave) {
+      wire.postMessage({ kind: 'wave', payload: encodeHarbourWave(wave) });
     },
     names(ids) {
       return Promise.resolve(

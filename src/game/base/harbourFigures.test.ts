@@ -5,9 +5,9 @@ import type { Pokemon } from '../pokemon/Pokemon';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
-import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, heelOf } from './harbourFigures';
+import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfSelf, heelOf } from './harbourFigures';
 import { PARTNER_FEET_PIXEL_Y, partnerFrame, partnerTextureKey } from './partner';
-import { PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
+import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
 
 /**
  * Somebody else in the shared harbour standing on this player's partner, as
@@ -323,5 +323,75 @@ describe('another player\'s partner, walking at their heel', () => {
     expect(rect.width).toBe(TILE_SIZE);
     // Its feet where this player's own partner's are, standing on that tile.
     expect(rect.y + rect.height).toBe(9 * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + PARTNER_FEET_PIXEL_Y + 1);
+  });
+});
+
+describe('another player waving', () => {
+  function yard() {
+    const graphics: Drawn[] = [];
+    const scene = {
+      add: {
+        sprite: () => new Drawn(),
+        graphics: () => {
+          const drawn = new Drawn();
+          graphics.push(drawn);
+          return drawn;
+        },
+        text: (_x: number, _y: number, text: string) => new Drawn().setText(text),
+      },
+    } as unknown as Phaser.Scene;
+    return { others: new HarbourFigures(scene), graphics };
+  }
+  const amy = { id: 'amy', place: 'yard', tile: { x: 10, y: 10 }, toward: null, progress: 0, behind: null, facing: 'down' as const, name: 'AMY' };
+
+  it('puts a hand up over her name while she waves, and takes it down after', () => {
+    const { others, graphics } = yard();
+    others.update([{ ...amy, waving: true }]);
+    // The plate is the first drawing; the hand is the one after it.
+    const [plate, hand] = graphics;
+    expect(hand).toBeDefined();
+    expect(hand.y + BUBBLE_HEIGHT).toBe(plate.y);
+    // Centred over her head.
+    expect(hand.x).toBe(Math.round(10 * TILE_SIZE + TILE_SIZE / 2 - BUBBLE_WIDTH / 2));
+    others.update([amy]);
+    others.update([{ ...amy, waving: true }]);
+    expect(graphics).toHaveLength(3);
+  });
+
+  it('tells the scene where her name plate is, so a hand waved at her goes up over it rather than across it', () => {
+    const { others, graphics } = yard();
+    others.update([amy]);
+    const [plate] = others.plateRects();
+    expect(plate.x).toBe(graphics[0].x);
+    expect(plate.y).toBe(graphics[0].y);
+    expect(plate.width).toBeGreaterThan(TILE_SIZE);
+  });
+
+  it('tells the scene where the hand is, so no caption is seated across it', () => {
+    const { others } = yard();
+    others.update([amy]);
+    const [still] = others.rects();
+    others.update([{ ...amy, waving: true }]);
+    const [waving] = others.rects();
+    expect(waving.y).toBe(still.y - BUBBLE_HEIGHT);
+    expect(waving.y + waving.height).toBe(still.y + still.height);
+  });
+});
+
+describe("a name plate beside this player's own head", () => {
+  const me = { x: 10 * TILE_SIZE, y: 10 * TILE_SIZE };
+  const width = 40;
+  const centred = (tileX: number) => tileX * TILE_SIZE + TILE_SIZE / 2 - width / 2;
+
+  it('slides clear of this player\'s column when its owner stands next door on the same row', () => {
+    expect(clearOfSelf(centred(11), width, 11 * TILE_SIZE, me.y, me)).toBe(11 * TILE_SIZE);
+    expect(clearOfSelf(centred(9), width, 9 * TILE_SIZE, me.y, me)).toBe(10 * TILE_SIZE - width);
+  });
+
+  it('stays centred over somebody further off, on another row, or on this very tile', () => {
+    expect(clearOfSelf(centred(13), width, 13 * TILE_SIZE, me.y, me)).toBe(centred(13));
+    expect(clearOfSelf(centred(11), width, 11 * TILE_SIZE, me.y + TILE_SIZE, me)).toBe(centred(11));
+    expect(clearOfSelf(centred(10), width, 10 * TILE_SIZE, me.y, me)).toBe(centred(10));
+    expect(clearOfSelf(centred(11), width, 11 * TILE_SIZE, me.y, null)).toBe(centred(11));
   });
 });

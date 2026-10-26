@@ -301,8 +301,11 @@ export const HOP_MS = HOP_PIXELS.length * HOP_STEP_MS;
 
 // -- talking to it ---------------------------------------------------------
 
-/** What shows in the bubble over the partner's head. */
-export type PartnerEmote = 'heart' | 'note' | 'happy' | 'ellipsis' | 'sleepy' | 'exclaim';
+/**
+ * What shows in a bubble over somebody's head: the partner's, and a hand that
+ * goes up over a player who waves in the shared harbour (`wave`).
+ */
+export type PartnerEmote = 'heart' | 'note' | 'happy' | 'ellipsis' | 'sleepy' | 'exclaim' | 'wave';
 
 export interface PartnerReaction {
   readonly line: string;
@@ -481,6 +484,19 @@ export const EMOTE_ART: Record<PartnerEmote, readonly string[]> = {
     '.........',
     '.........',
   ],
+  wave: [
+    '.........',
+    '..k.k.k..',
+    '.ksksksk.',
+    '.ksksksk.',
+    '.ksksksk.',
+    'kksssssk.',
+    'kssssssk.',
+    '.ksssssk.',
+    '..ksssk..',
+    '...kkk...',
+    '.........',
+  ],
 };
 
 export const EMOTE_INKS: Record<string, number> = {
@@ -489,6 +505,7 @@ export const EMOTE_INKS: Record<string, number> = {
   k: 0x202020,
   z: 0x5870a8,
   r: 0xdc2626,
+  s: 0xf8c098,
 };
 
 export const EMOTE_BUBBLE_INK = 0x171717;
