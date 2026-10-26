@@ -1983,7 +1983,7 @@ player's map is built by).
 - **It is the thinnest map in the game.** `density.mts` measured 20.6 steps
   from a walkable tile to the nearest authored thing, against 4.5-7.4 on the
   other five, and the caves were the thinnest of it; with the caves peopled
-  every district and far place given its own people and Pokémon ([below](#the-greystone-caves-peopled)) it is 8.4. That is places still to add.
+  every district and far place given its own people and Pokémon ([below](#the-greystone-caves-peopled)) it is 8.1. That is places still to add.
 - **Every structure and safety rule holds it** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
   walked tile - through `mapStructure.greystoneVale1-8.test.ts` and the rest of
@@ -2103,3 +2103,26 @@ Cave and the Bunker everything is on stone floor no slide crosses. The vale is
 ![and after](far-places/garden-after.png)
 ![The Bunker's B2F](far-places/bunker-after.png)
 ![Safari Marsh's middle glade](far-places/safari-after.png)
+
+### Played as a new player
+
+A fresh save played through the drop-in screen and into a first raid turned up
+one fault the measures could not: **the standing board could deal a stop the
+player had no way to reach.** It measured the walk from the front door through
+Strength boulders and rock barriers as if they were floor, so a fresh save was
+offered a survey stake on Bunker B2F, behind the Card Key shutter, and stops
+in the Falls Cave behind its boulder puzzle. The board now walks a map
+empty-handed (`walkedEmptyHanded` in `standingBoard.ts`), and its test asks the
+same of every contract on every board it draws.
+
+The places still thinnest after the far places were filled got one more each:
+a lost picnicker in a hollow off Tanglewood's long north lane (the furthest the
+maze was from anything), a Machop and a Geodude in the Falls Cave's two halls
+and a scratch on its wall that says the boulders upstairs move, a Haunter at the
+head of the Moor Chapel's crypt and a Cubone among its west graves, and a guard
+and the hideout's rats and Koffing on the Bunker's lower floors. Berg Cave and
+the Frozen Lagoon are left as they are: they are ice, and anything standing on
+it would be a stop in the puzzle. The vale is 8.1, its worst tile 32 steps.
+
+![The Moor Chapel's crypt](played/crypt-after.png)
+![Tanglewood's north hollow](played/tanglewood-after.png)

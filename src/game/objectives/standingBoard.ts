@@ -294,7 +294,7 @@ function measureGround(
   if (!frontDoor) {
     return undefined;
   }
-  const map = getWorldMap(mapId, opened);
+  const map = walkedEmptyHanded(getWorldMap(mapId, opened));
   const steps = stepDistances(map.collision, frontDoor.position, undefined, map.links);
   const taken = takenTiles(map, defeatedBosses);
   const free = (tile: GridPosition): boolean => !taken.has(tileKey(tile));
@@ -327,7 +327,7 @@ function measureGround(
   const districts = gateBossIds(gates)
     .filter((bossId) => !defeatedBosses.includes(bossId) && canBeChallengedToday(bossId))
     .flatMap((bossId): SealedDistrict[] => {
-      const sealedOff = getWorldMap(mapId, [...opened, bossId]);
+      const sealedOff = walkedEmptyHanded(getWorldMap(mapId, [...opened, bossId]));
       const beyond = stepDistances(sealedOff.collision, frontDoor.position, undefined, sealedOff.links);
       const newlyWalkable = (tile: GridPosition): boolean => reached(beyond, tile) && !reached(steps, tile);
       const gate = gates.find(
@@ -358,6 +358,27 @@ function measureGround(
     exits: mapExits.filter((exit) => reached(steps, exit.position)),
     districts,
   };
+}
+
+/**
+ * The map as a raid that brought nothing walks it: a Strength boulder and a
+ * rock barrier stand where they are, as `checkMapFile` asks the way out. A
+ * contract is dealt to whoever is on the board, so it may never set a stop
+ * behind Greystone Vale's Card Key shutter or the Falls Cave's boulders - a
+ * fresh save was sent to a survey stake in the Bunker it had no way into.
+ */
+function walkedEmptyHanded(map: WorldMapDefinition): WorldMapDefinition {
+  const fixed = map.entities.filter((entity) => entity.boulder || entity.barrier);
+  if (fixed.length === 0) {
+    return map;
+  }
+  const collision = map.collision.map((row) => [...row]);
+  for (const { position } of fixed) {
+    if (collision[position.y]?.[position.x] !== undefined) {
+      collision[position.y][position.x] = true;
+    }
+  }
+  return { ...map, collision };
 }
 
 /**

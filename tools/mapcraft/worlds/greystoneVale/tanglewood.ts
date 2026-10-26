@@ -27,7 +27,7 @@ import { GREYSTONE_VALE } from './plan';
 const WOOD = [
   'TTTTTTTTTgTTTTTTTTTTTTTTTTTTTTTT',
   'TTTTTTTTTgTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTTTTTgTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTgTT...TTTTTTTTTTTTTTTTT',
   'TTTT.....ggggg......TTTTTTTTTTTT',
   'TTTT.TTTTTTTTTT.TTT.TTTTTTTTTTTT',
   'TTTTgTTTTTTTTTT.TTT.TTTTCCCCCCTT',
@@ -101,6 +101,16 @@ export function tanglewood(): MapcraftResult {
     extra: {
       landmarks: [{ x: 42, y: 27, name: 'Ruined Shrine', kind: 'shrine' }, ...life.landmarks],
       people: [
+        // In the hollow off the long north lane, the furthest the maze is from
+        // anything: somebody who took one turn too many.
+        {
+          x: 27,
+          y: 4,
+          name: 'Lost Picnicker',
+          look: 'picnicker',
+          facing: 'down',
+          lines: ['I took one turn off the road for a picnic spot.', 'That was this morning.'],
+        },
         // In the glade at the end of the south-east lanes, as far into the maze as it goes.
         {
           x: 50,
@@ -112,7 +122,7 @@ export function tanglewood(): MapcraftResult {
         },
         ...life.people,
       ],
-      pokemon: life.pokemon,
+      pokemon: [{ x: 25, y: 5, species: 'oddish' }, ...life.pokemon],
       berryTrees: [{ x: 16, y: 19, berry: 'pecha' }],
       areas: cave.areas,
       links: [caveMouthLink(cave, 'wood', mouth), ...caveLadders(cave)],

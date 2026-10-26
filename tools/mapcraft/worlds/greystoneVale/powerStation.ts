@@ -205,6 +205,7 @@ export function powerStation(): MapcraftResult {
         ...bunkerLandmarks(),
       ],
       signs: [
+        { area: 'falls-cave', x: 4, y: 15, lines: ['Scratched on the wall:', 'THE BOULDERS UPSTAIRS MOVE. IT TAKES SOMETHING STRONG.'] },
         { x: 23, y: 25, lines: ['GREYSTONE POWER STATION', 'Service gate locked. Card Key holders only.'] },
         { x: 8, y: 25, lines: ['PYLON ROAD', 'North: along the reservoir and out of the vale.'] },
         { x: 28, y: 49, lines: ['SAFARI ZONE', 'South: the marsh reserve.'] },
@@ -240,6 +241,15 @@ export function powerStation(): MapcraftResult {
           lines: ['There is a steel shutter on the floor below.', 'Only the Card Key opens it, and the card was lost in the pines.'],
         },
         {
+          area: 'bunker-b1f',
+          x: 22,
+          y: 18,
+          name: 'Guard',
+          look: 'rocket-grunt',
+          facing: 'up',
+          lines: ['The shutter takes the Card Key. The lift takes power.', 'Nobody gets down here by accident.'],
+        },
+        {
           area: 'bunker-b2f',
           x: 29,
           y: 12,
@@ -270,6 +280,12 @@ export function powerStation(): MapcraftResult {
         { area: 'bunker-b2f', x: 25, y: 18, species: 'koffing', level: 13 },
         { area: 'bunker-b2f', x: 24, y: 16, species: 'grimer' },
         { area: 'bunker-b3f', x: 30, y: 6, species: 'voltorb', level: 13 },
+        { area: 'bunker-b1f', x: 18, y: 5, species: 'rattata' },
+        { area: 'bunker-b2f', x: 9, y: 19, species: 'koffing' },
+        // In the Falls Cave's two halls, clear of the boulders: a Machop in the
+        // west one that has been shoving rocks about, a Geodude in the east.
+        { area: 'falls-cave', x: 8, y: 17, species: 'machop', level: 12 },
+        { area: 'falls-cave', x: 40, y: 16, species: 'geodude' },
       ],
       berryTrees: [{ x: 13, y: 40, berry: 'aspear' }],
       // The Falls Cave rides in both its districts' files, so each passes
