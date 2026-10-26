@@ -4058,6 +4058,22 @@
    "species": "magnemite"
   },
   {
+   "area": "turbine-hall",
+   "x": 12,
+   "y": 6,
+   "species": "zapdos",
+   "level": 50,
+   "legendary": true
+  },
+  {
+   "area": "bunker-b4f",
+   "x": 17,
+   "y": 11,
+   "species": "mewtwo",
+   "level": 70,
+   "legendary": true
+  },
+  {
    "area": "bunker-b2f",
    "x": 25,
    "y": 18,
@@ -4297,6 +4313,13 @@
    "level": 14
   },
   {
+   "x": 367,
+   "y": 364,
+   "species": "articuno",
+   "level": 50,
+   "legendary": true
+  },
+  {
    "area": "berg-cave-b1f",
    "x": 5,
    "y": 14,
@@ -4313,6 +4336,13 @@
    "y": 377,
    "species": "magmar",
    "level": 15
+  },
+  {
+   "x": 30,
+   "y": 357,
+   "species": "moltres",
+   "level": 50,
+   "legendary": true
   },
   {
    "x": 50,

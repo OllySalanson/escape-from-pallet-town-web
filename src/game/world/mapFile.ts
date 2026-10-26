@@ -227,7 +227,12 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxTrainers: 32,
   maxAreas: 32,
   maxLinks: 64,
-  maxLegends: 2,
+  // Mew on Stormcrown, and Kanto's four in their FireRed homes: Zapdos in the
+  // power station, Moltres on the volcano, Articuno on the ice, Mewtwo in the
+  // lab under the station (`powerStation.ts`, `emberIsle.ts`, `frostreef.ts`).
+  maxLegends: 5,
+  // FireRed's Mewtwo is level 70, as the shipped four's list has it (`legends.ts`).
+  maxPokemonLevel: 70,
   maxLockedLandmarks: 2,
   maxLandmarkExits: 2,
   maxBossDoors: 4,

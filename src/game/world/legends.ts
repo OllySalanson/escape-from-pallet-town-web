@@ -37,8 +37,12 @@ import type { FigureSpeciesId } from './pokemonFigures';
  * **A map the game draws as a file may stand a legend too** - a placed Pokemon
  * marked `legendary` (`MapFilePokemon`), of one of `LEGENDARY_KINDS`, and only
  * on a built-in map (`BUILT_IN_MAP_FILE_LIMITS.maxLegends`; a player's map may
- * hold none). Greystone Vale's is Mew on Stormcrown's summit, the bottom of a
- * six-floor cave and a climb away from any landing: the place is its keeper.
+ * hold none). Greystone Vale stands all five, each where FireRed keeps it and
+ * each with the place as its keeper: Mew on Stormcrown's summit, the bottom of
+ * a six-floor cave and a climb away; Zapdos in the power station's turbine
+ * hall; Moltres in Ember Isle's crater, a boat on the tide away; Articuno past
+ * the ice of Frostreef's frozen lagoon; and Mewtwo in the war room at the
+ * bottom of the Bunker, behind the Card Key, the spinner floor and the lift.
  * It fights, is caught and stands again exactly as the four do, because
  * everything that decides that is read off the figure (`legendary`) and the
  * Pokedex (`legendCaught`), never off this list.

@@ -254,6 +254,8 @@ export function emberIsle(): MapcraftResult {
         // A Magmar basking on the black sand, a Vulpix in the south grass and
         // a Ponyta on the west shore.
         { x: 40, y: 57, species: 'magmar', level: 15 },
+        // Moltres in the crater, as FireRed keeps it on Mt. Ember's summit.
+        { x: 30, y: 37, species: 'moltres', level: 50, legendary: true },
         { x: 50, y: 53, species: 'vulpix', level: 11 },
         { x: 10, y: 51, species: 'ponyta' },
         // In the Lava Tube: a Graveler in the warm north-east chamber and a

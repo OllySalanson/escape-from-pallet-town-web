@@ -168,6 +168,9 @@ export function frostreef(): MapcraftResult {
         // A Seel hauled out by the landing, and a Jynx at the foot of the berg.
         { x: 19, y: 18, species: 'seel', level: 12 },
         { x: 34, y: 28, species: 'jynx', level: 14 },
+        // Articuno in the far corner of the frozen lagoon, on the sand past the
+        // ice, as FireRed keeps it at the bottom of the Seafoam Islands.
+        { x: 47, y: 44, species: 'articuno', level: 50, legendary: true },
         // Under the berg, on the stone floors the ice runs off, where no slide
         // can meet it: a Cloyster at the foot of B1F.
         { area: 'berg-cave-b1f', x: 5, y: 14, species: 'cloyster' },
