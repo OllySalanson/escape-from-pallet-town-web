@@ -68,11 +68,22 @@ const GATE_STATES: readonly (readonly string[])[] = [[], ...EVERY_BOSS.map((boss
 const reaches = (grid: readonly Int32Array[], tile: { x: number; y: number }): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
 
 const walks = new Map<string, readonly Int32Array[]>();
+/**
+ * Walked by a raid that brought nothing: a Strength boulder and a rock barrier
+ * are walls, so a stop behind the vale's Card Key shutter or the Falls Cave's
+ * boulders is never one this walk reaches.
+ */
 const walkFromFrontDoor = (mapId: WorldMapId, defeatedBosses: readonly string[]): readonly Int32Array[] => {
   const key = `${mapId}|${defeatedBosses.join('+')}`;
   if (!walks.has(key)) {
     const map = getWorldMap(mapId, defeatedBosses);
-    walks.set(key, stepDistances(map.collision, frontDoorFor(mapId)!.position, undefined, map.links));
+    const fixed = new Set(
+      map.entities
+        .filter((entity) => entity.boulder || entity.barrier)
+        .map((entity) => `${entity.position.x},${entity.position.y}`),
+    );
+    const collision = map.collision.map((row, y) => row.map((solid, x) => solid || fixed.has(`${x},${y}`)));
+    walks.set(key, stepDistances(collision, frontDoorFor(mapId)!.position, undefined, map.links));
   }
   return walks.get(key)!;
 };
@@ -196,7 +207,7 @@ describe('every standing contract', () => {
     }
   });
 
-  it('can be walked: every stop from the front door, today unless it says it is behind a gate', () => {
+  it('can be walked empty-handed: every stop from the front door, today unless it says it is behind a gate', () => {
     for (const { contract, defeatedBosses } of everyBoard()) {
       const today = walkFromFrontDoor(contract.mapId, defeatedBosses);
       const everyDoorOpen = walkFromFrontDoor(contract.mapId, EVERY_BOSS);

@@ -253,7 +253,13 @@ export function moorChapel(): MapcraftResult {
       ],
       // Who keeps the churchyard by night: a Gastly at the fell's edge, and
       // the gravedigger who has stopped minding it.
-      pokemon: [{ x: 9, y: 20, species: 'gastly' }],
+      pokemon: [
+        { x: 9, y: 20, species: 'gastly' },
+        // Under the chapel: a Haunter at the head of the crypt, the one the
+        // channeler upstairs can feel, and a Cubone among the west graves.
+        { area: CRYPT.id, x: 14, y: 4, species: 'haunter', level: 14 },
+        { area: CRYPT.id, x: 3, y: 10, species: 'cubone' },
+      ],
       people: [
         {
           x: 22,
