@@ -123,6 +123,19 @@ export class HarbourFigures {
     }
   }
 
+  /**
+   * Where every other player is drawn, figure and name plate together, in
+   * world pixels: ground a caption must keep clear of, as it keeps clear of
+   * the harbour's own people (`BaseScene.containWorldLabels`) - a building's
+   * name seated across another player read as their head on a sign.
+   */
+  public rects(): { x: number; y: number; width: number; height: number }[] {
+    return [...this.drawn.values()].map(({ sprite, plate, name }) => {
+      const top = name.visible ? Math.min(plate.y, sprite.y + CHARACTER_HEAD_PIXEL_Y) : sprite.y + CHARACTER_HEAD_PIXEL_Y;
+      return { x: sprite.x, y: top, width: TILE_SIZE, height: sprite.y + CHARACTER_FEET_PIXEL_Y + 1 - top };
+    });
+  }
+
   /** How many are on screen, for a playtest to read. */
   public get count(): number {
     return this.drawn.size;

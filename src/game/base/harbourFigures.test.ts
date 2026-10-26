@@ -170,6 +170,21 @@ describe('another player arriving on this player\'s own tile', () => {
     expect(name.visible).toBe(false);
   });
 
+  it('tells the scene where she and her name stand, so no caption sits across either', () => {
+    const scene = {
+      add: { sprite: () => new Drawn(), graphics: () => new Drawn(), text: (_x: number, _y: number, text: string) => new Drawn().setText(text) },
+    } as unknown as Phaser.Scene;
+    const others = new HarbourFigures(scene);
+    const tile = { x: PLAYER.x + 3, y: PLAYER.y };
+    others.update([{ id: 'amy', place: 'yard', tile, toward: null, progress: 0, facing: 'down', name: 'AMY' }], drawnAt(PLAYER));
+    const [rect] = others.rects();
+    expect(rect.x).toBe(tile.x * TILE_SIZE);
+    expect(rect.width).toBe(TILE_SIZE);
+    // From the top of her name plate, above her head, down to her feet.
+    expect(rect.y).toBeLessThan(tile.y * TILE_SIZE);
+    expect(rect.y + rect.height).toBeGreaterThan(tile.y * TILE_SIZE + TILE_SIZE / 2);
+  });
+
   it('names her again once either of them has walked off', () => {
     const { amyOn } = amyAndHerPlate();
     amyOn(PLAYER, PLAYER);
