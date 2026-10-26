@@ -59,7 +59,8 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import { BASE_LANDING, BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, getBaseMap } from '../base/baseMap';
+import { BASE_LANDING, BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
+import { noticeFor } from '../base/harbourNotices';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
@@ -2500,7 +2501,10 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (sign) {
-      this.say(sign.lines, [target]);
+      // The harbour's board has today's notice pinned on top of its own words,
+      // so a player back from a raid reads what is new before what they know.
+      const lines = sign === NOTICE_BOARD ? [`TODAY'S NOTICE: ${noticeFor(new Date())}`, ...sign.lines] : sign.lines;
+      this.say(lines, [target]);
     }
   }
 
