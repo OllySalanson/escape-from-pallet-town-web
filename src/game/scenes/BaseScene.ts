@@ -84,6 +84,7 @@ import { harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
 import { anglerLines, harbourBite, reeledInLines } from '../base/harbourFishing';
+import { spyglassLines } from '../base/spyglass';
 import { paintFloat } from '../world/fishingFloat';
 import { ALL_SPECIES } from '../pokemon/species';
 import {
@@ -259,6 +260,10 @@ const WAVE_EVERY_MS = 4200;
 const WAVE_EARSHOT = 5;
 /** The least time between two of the S.S. Anne's horns; the most is twice it. */
 const HORN_EVERY_MS = 95_000;
+/** The S.S. Anne's captain on the long pier, who lends his spyglass (`base/spyglass.ts`). */
+const CAPTAIN_ID = 'ss-anne-captain';
+/** How many looks through the captain's glass this sitting: the sights go round in order. */
+let spyglassLooks = 0;
 /** The angler on the cove's jetty, who lends his rod (`base/harbourFishing.ts`). */
 const ANGLER_ID = 'cove-angler';
 /**
@@ -2425,6 +2430,12 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const local = this.harbourLife?.at(target);
+    if (local?.id === CAPTAIN_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      this.say(spyglassLines(windowLight(new Date()), spyglassLooks), [target]);
+      spyglassLooks += 1;
+      return;
+    }
     if (local?.id === ANGLER_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       const lines = anglerLines(harbourRodLent || this.hasHarbourRod(), this.harbourCatchNames());

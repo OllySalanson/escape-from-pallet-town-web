@@ -3,6 +3,7 @@ import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { NpcIdle } from '../world/npcIdle';
 import { HARBOUR_POKEMON_ART } from './generated/harbourPokemonArt';
 import { anglerLines } from './harbourFishing';
+import { spyglassLines } from './spyglass';
 
 /**
  * Who lives in THE HARBOUR: the people who work it and the Pokemon about it.
@@ -101,10 +102,8 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     position: at(28, 26),
     facing: 'right',
     idle: { roam: [at(28, 25)], glances: ['up', 'left'], beatMs: 6100 },
-    lines: [
-      'The S.S. ANNE. Finest ship in Kanto, and I\'m her captain.',
-      'She sails when the sea\'s kind. It hasn\'t been kind since the hunters came.',
-    ],
+    // Spoken to, he lends his spyglass (`spyglass.ts`).
+    lines: spyglassLines('day', 0),
   },
   {
     id: 'dock-worker',
