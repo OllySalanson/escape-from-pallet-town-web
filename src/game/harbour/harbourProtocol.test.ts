@@ -80,3 +80,24 @@ describe('what the harbour hears', () => {
     expect(readHarbourNudge({ u: gone.from, t: gone.to, g: 'not a knock' })).toEqual({ from: gone.from, to: gone.to });
   });
 });
+
+describe('the partner at a player\'s heel, as the harbour hears it', () => {
+  const withPartner: HarbourMove = { ...move, partner: 'bulbasaur' };
+
+  it('reads back the kind of Pokemon walking with them', () => {
+    expect(encodeHarbourMove(withPartner)).toMatchObject({ k: 'bulbasaur' });
+    expect(readHarbourMove(encodeHarbourMove(withPartner))).toEqual(withPartner);
+  });
+
+  it('says nothing about a partner a player does not have', () => {
+    expect('k' in encodeHarbourMove(move)).toBe(false);
+    expect(readHarbourMove(encodeHarbourMove(move))).toEqual(move);
+  });
+
+  it('believes only a partner the game has walking art for, and still believes the steps', () => {
+    const sent = encodeHarbourMove(move);
+    for (const k of ['mewtwo', 'constructor', 'toString', '__proto__', '<img src=x>', 'BULBASAUR', 42, null, ['bulbasaur'], {}]) {
+      expect(readHarbourMove({ ...sent, k })).toEqual(move);
+    }
+  });
+});

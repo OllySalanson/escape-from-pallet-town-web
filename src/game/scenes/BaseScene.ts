@@ -683,9 +683,10 @@ export class BaseScene extends Phaser.Scene {
     this.drawWallMap();
     this.createFigures();
     this.createPlayer();
-    this.harbourFigures = new HarbourFigures(this);
-    harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, houseName());
+    // Somebody else's partner arrives where this player's own could, and never on top of it.
+    this.harbourFigures = new HarbourFigures(this, undefined, (tile) => this.partnerCanStand(tile) && !this.partnerAt(tile));
     this.createPartner(data);
+    harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, houseName(), partnerOf(this.savedGame.stash)?.species ?? null);
     this.createCaptions();
     this.createDialogBox();
     this.createHint();
@@ -1933,6 +1934,8 @@ export class BaseScene extends Phaser.Scene {
         follower: [
           ...(partner ? [partner.rect()] : []),
           ...(this.harbourLife?.standing('pokemon') ?? []).map((tile) => figureRect(tile)),
+          // And the partners walking at other players' heels.
+          ...(this.harbourFigures?.heelRects() ?? []),
         ],
       },
     );
@@ -2646,7 +2649,7 @@ export class BaseScene extends Phaser.Scene {
       const { name } = end;
       nameThisSitting = name;
       // Named, the player can be seen in the harbour from now on.
-      harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, name);
+      harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, name, this.partner?.species ?? null);
       this.say(welcomeHomeLines(name), []);
     });
   }
@@ -2671,12 +2674,25 @@ export class BaseScene extends Phaser.Scene {
       : 'yard';
   }
 
-  /** The other players drawn here and the tiles they stand on, for a playtest to read. */
-  public get harbourFiguresShown(): readonly { readonly name: string; readonly tile: GridPosition }[] {
+  /** The other players drawn here, the tiles they stand on and the partner at their heel, for a playtest to read. */
+  public get harbourFiguresShown(): readonly {
+    readonly name: string;
+    readonly tile: GridPosition;
+    readonly partner: string | null;
+  }[] {
     if (!this.harbourFigures) {
       return [];
     }
-    return (harbour()?.figuresHere() ?? []).map((figure) => ({ name: figure.name, tile: { ...figure.tile } }));
+    return (harbour()?.figuresHere() ?? []).map((figure) => ({
+      name: figure.name,
+      tile: { ...figure.tile },
+      partner: figure.partner ?? null,
+    }));
+  }
+
+  /** Where the partners at other players' heels are drawn, for a playtest to read. */
+  public get harbourHeelsShown(): readonly Rect[] {
+    return this.harbourFigures?.heelRects() ?? [];
   }
 
   // -- knocking --------------------------------------------------------------

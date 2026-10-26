@@ -75,3 +75,52 @@ describe('everybody else in the harbour', () => {
     expect(crowd.ids()).toEqual([]);
   });
 });
+
+describe('the tile somebody last walked off, where their partner stands', () => {
+  it('is nowhere until they have taken a step', () => {
+    const crowd = new HarbourCrowd();
+    crowd.hear(walk([[10, 10]]));
+    expect(amy(crowd)?.behind).toBeNull();
+  });
+
+  it('is the tile each step left, step by step', () => {
+    const crowd = new HarbourCrowd();
+    crowd.hear(walk([[10, 10]]));
+    crowd.hear(walk([[11, 10], [12, 10]]));
+    crowd.advance(STEP_DURATION_MS / 2);
+    // Still on the way off the first tile: nothing has been left yet.
+    expect(amy(crowd)?.behind).toBeNull();
+    crowd.advance(STEP_DURATION_MS / 2);
+    expect(amy(crowd)?.behind).toEqual({ x: 10, y: 10 });
+    crowd.advance(STEP_DURATION_MS);
+    expect(amy(crowd)?.behind).toEqual({ x: 11, y: 10 });
+  });
+
+  it('is forgotten when they are put somewhere rather than walk there', () => {
+    const crowd = new HarbourCrowd();
+    crowd.hear(walk([[10, 10]]));
+    crowd.hear(walk([[11, 10]]));
+    crowd.advance(STEP_DURATION_MS);
+    crowd.hear(walk([[20, 4]], 'up'));
+    expect(amy(crowd)?.behind).toBeNull();
+  });
+
+  it('is the tile before the last when they are too far behind to walk it', () => {
+    const crowd = new HarbourCrowd();
+    crowd.hear(walk([[0, 1]]));
+    for (let x = 1; x <= JUMP_AFTER_STEPS + 1; x += 1) {
+      crowd.hear(walk([[x, 1]]));
+    }
+    expect(amy(crowd)?.behind).toEqual({ x: JUMP_AFTER_STEPS, y: 1 });
+  });
+
+  it('carries the partner they last said they walk with', () => {
+    const crowd = new HarbourCrowd();
+    crowd.hear({ ...walk([[10, 10]]), partner: 'squirtle' });
+    expect(amy(crowd)?.partner).toBe('squirtle');
+    crowd.hear({ ...walk([[11, 10]]), partner: 'wartortle' });
+    expect(amy(crowd)?.partner).toBe('wartortle');
+    crowd.hear(walk([[12, 10]]));
+    expect(amy(crowd)?.partner).toBeUndefined();
+  });
+});

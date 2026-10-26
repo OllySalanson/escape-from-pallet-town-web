@@ -1,4 +1,5 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
+import { isPartnerSpecies, type PartnerSpeciesId } from '../base/partner';
 
 /**
  * What the players in THE HARBOUR tell each other, and the one rule for reading
@@ -9,10 +10,15 @@ import type { Direction, GridPosition } from '../movement/gridMovement';
  * player's browser, so it is untrusted input: it is read through
  * `readHarbourMove` and `readHarbourPresence`, which take only the shapes the
  * game sends - a known place, a short path of whole tiles on a map no bigger
- * than the format allows, a facing - and drop anything else whole. A message
- * never carries a name: the name over a figure is the one on that player's
- * door, asked of the database by id (`harbour_names`), so the word filter the
- * database runs is the only one that decides what anybody reads.
+ * than the format allows, a facing - and drop anything else whole. The one
+ * thing a move carries beyond where its player walked is the kind of Pokemon
+ * at their heel, read only as one of the partners the game has walking art
+ * for (`base/partner.ts`), so all it can ever do is pick which of those
+ * pictures is drawn: a kind this browser has no art for is not drawn, and the
+ * steps are still believed. A message never carries a name: the name over a
+ * figure is the one on that player's door, asked of the database by id
+ * (`harbour_names`), so the word filter the database runs is the only one
+ * that decides what anybody reads.
  *
  * Phaser-free and network-free, so the rules are tested here; the channel is
  * `harbourLink.ts` and the figures `harbourFigures.ts`.
@@ -71,12 +77,16 @@ export function isHarbourPlace(value: unknown): value is HarbourPlace {
   return house !== null && isPlayerId(house[1]);
 }
 
-/** One message: who walked, where, along which tiles, facing which way at the end. */
+/**
+ * One message: who walked, where, along which tiles, facing which way at the
+ * end - and the partner walking at their heel, if they have one.
+ */
 export interface HarbourMove<P extends string = HarbourPlace> {
   readonly from: string;
   readonly place: P;
   readonly path: readonly GridPosition[];
   readonly facing: Direction;
+  readonly partner?: PartnerSpeciesId;
 }
 
 /** What goes on the wire for a move: short keys, whole numbers. */
@@ -86,6 +96,7 @@ export function encodeHarbourMove(move: HarbourMove): Record<string, unknown> {
     p: move.place,
     s: move.path.slice(-HARBOUR_PATH_MAX).map((tile) => [tile.x, tile.y]),
     f: move.facing,
+    ...(move.partner ? { k: move.partner } : {}),
   };
 }
 
@@ -100,7 +111,7 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
-  const { u, p, s, f } = payload as Record<string, unknown>;
+  const { u, p, s, f, k } = payload as Record<string, unknown>;
   if (!isPlayerId(u) || !isHarbourPlace(p) || typeof f !== 'string' || !FACINGS.includes(f as Direction)) {
     return null;
   }
@@ -114,7 +125,9 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
     }
     path.push({ x: step[0], y: step[1] });
   }
-  return { from: u, place: p, path, facing: f as Direction };
+  const move: HarbourMove = { from: u, place: p, path, facing: f as Direction };
+  // A partner is only ever one the game can draw; anything else leaves the player walking alone.
+  return typeof k === 'string' && isPartnerSpecies(k) ? { ...move, partner: k } : move;
 }
 
 /** The broadcast event a nudge travels on. */

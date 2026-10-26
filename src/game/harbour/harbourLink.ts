@@ -1,4 +1,5 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
+import type { PartnerSpeciesId } from '../base/partner';
 import { HarbourCrowd, type HarbourFigure } from './harbourCrowd';
 import {
   HARBOUR_PATH_MAX,
@@ -89,6 +90,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private place: P | null = null;
   private tile: GridPosition = { x: 0, y: 0 };
   private facing: Direction = 'down';
+  private partner: PartnerSpeciesId | null = null;
   private pending: GridPosition[] = [];
   private lastSentAt = Number.NEGATIVE_INFINITY;
   private lastGreetAt = Number.NEGATIVE_INFINITY;
@@ -133,6 +135,21 @@ export class HarbourLink<P extends string = HarbourPlace> {
       if (moved && this.anybodyElse()) {
         this.sendNow();
       }
+    }
+  }
+
+  /**
+   * The kind of Pokemon walking at this player's heel, or none. Said with
+   * every move from now on, and at once to anybody here if it changed - a
+   * partner swapped at the Pokemon Center comes out of the door as itself.
+   */
+  public carry(partner: PartnerSpeciesId | null): void {
+    if (partner === this.partner) {
+      return;
+    }
+    this.partner = partner;
+    if (this.seen() && this.anybodyElse()) {
+      this.sendNow();
     }
   }
 
@@ -283,7 +300,13 @@ export class HarbourLink<P extends string = HarbourPlace> {
       return;
     }
     const path = this.pending.length > 0 ? this.pending : [this.tile];
-    this.wire.send({ from: this.me!, place: this.place!, path: [...path], facing: this.facing });
+    this.wire.send({
+      from: this.me!,
+      place: this.place!,
+      path: [...path],
+      facing: this.facing,
+      ...(this.partner ? { partner: this.partner } : {}),
+    });
     this.pending = [];
     this.lastSentAt = this.now;
   }

@@ -205,3 +205,37 @@ describe("this browser's place in the shared harbour", () => {
     expect(wire.joinedAs).toEqual([null, ME]);
   });
 });
+
+describe('the partner at this player\'s heel, as the others are told', () => {
+  it('goes with every move once it is carried', async () => {
+    const { link, wire } = await joined();
+    link.carry('charmander');
+    wire.present([[ME, 'yard'], [AMY, 'yard']]);
+    link.tick(10_000, 16);
+    expect(wire.sent[0]).toEqual({ from: ME, place: 'yard', path: [{ x: 16, y: 13 }], facing: 'up', partner: 'charmander' });
+    link.stepped({ x: 16, y: 12 }, 'up');
+    link.tick(10_000 + HARBOUR_SEND_EVERY_MS, 16);
+    expect(wire.sent[1]?.partner).toBe('charmander');
+  });
+
+  it('is said at once to anybody here when it changes, and not when it does not', async () => {
+    const { link, wire } = await joined();
+    wire.present([[ME, 'yard'], [AMY, 'yard']]);
+    link.tick(10_000, 16);
+    const greeted = wire.sent.length;
+    link.carry('charmeleon');
+    expect(wire.sent).toHaveLength(greeted + 1);
+    expect(wire.sent[greeted]?.partner).toBe('charmeleon');
+    link.carry('charmeleon');
+    expect(wire.sent).toHaveLength(greeted + 1);
+    link.carry(null);
+    expect(wire.sent[greeted + 1]).not.toHaveProperty('partner');
+  });
+
+  it('is not said to an empty harbour', async () => {
+    const { link, wire } = await joined();
+    wire.present([[ME, 'yard']]);
+    link.carry('bulbasaur');
+    expect(wire.sent).toEqual([]);
+  });
+});

@@ -1,4 +1,5 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
+import type { PartnerSpeciesId } from '../base/partner';
 import { HarbourLink, type HarbourWire, type NamedFigure } from './harbourLink';
 import { housePlace, type HarbourPlace, type SHARED_HARBOUR_ROOMS } from './harbourProtocol';
 import { loadPlayerName } from '../console/playerName';
@@ -66,12 +67,22 @@ export class HarbourSession {
     this.identity = identity;
   }
 
-  /** The player is standing here, under this name (or none yet). */
-  public stand(where: HarbourWhere, tile: GridPosition, facing: Direction, name: string | null): void {
+  /**
+   * The player is standing here, under this name (or none yet), with this
+   * kind of Pokemon at their heel (or none) for everybody else to see.
+   */
+  public stand(
+    where: HarbourWhere,
+    tile: GridPosition,
+    facing: Direction,
+    name: string | null,
+    partner: PartnerSpeciesId | null = null,
+  ): void {
     this.where = where;
     this.tile = { ...tile };
     this.facing = facing;
     this.link.enter(this.me, placeFor(where, this.me), tile, facing);
+    this.link.carry(partner);
     if (name && name !== this.named) {
       this.named = name;
       void this.identity.seenAs(name).then((me) => {

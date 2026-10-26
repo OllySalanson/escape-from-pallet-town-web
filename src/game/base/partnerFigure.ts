@@ -51,11 +51,11 @@ export const PARTNER_APPEAR_DELAY_MS = 90;
 /** How faint the partner goes while a caption is seated under it, so the writing reads through it. */
 export const PARTNER_VEILED_ALPHA = 0.35;
 /** Left of the partner's frame relative to its tile: a 32-pixel frame centred on a 16-pixel tile. */
-const PARTNER_SPRITE_X_OFFSET = -8;
+export const PARTNER_SPRITE_X_OFFSET = -8;
 /** Top of the player's frame relative to its tile, as both scenes draw the player. */
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Top of the partner's frame relative to its tile, so its feet land where the player's soles do. */
-const PARTNER_SPRITE_Y_OFFSET = PLAYER_SPRITE_Y_OFFSET + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y;
+export const PARTNER_SPRITE_Y_OFFSET = PLAYER_SPRITE_Y_OFFSET + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 /** The bubble's drawn size, tail and all. */
 const BUBBLE_WIDTH = 11;
