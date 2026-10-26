@@ -76,15 +76,24 @@ export function theWreck(): MapcraftResult {
     extra: {
       signs: [
         { x: 22, y: 27, lines: ['THE WRECK', 'The liner went onto the reef in the last storm. The camp is below the cliff.'] },
+        { x: 28, y: 21, lines: ['THE CAPE', 'The wreck is out on the reef, past the camp. The pier is east.'] },
         { x: 54, y: 40, lines: ['THE ICE RUN', 'The launch runs out to Frostreef on the flood tide.', 'It sails from 2:00 until 4:00.'] },
       ],
       people: [
         { x: 12, y: 38, name: 'Beachcomber', look: 'fisherman', facing: 'right', lines: ['The bar to the wreck only shows at low water.', "Whatever the sea throws up on it is anybody's."] },
+        { x: 55, y: 27, name: 'Salvager\'s Wife', look: 'woman', facing: 'left', lines: ['Ned has been out on that wreck since the tide turned.', 'If you see him, tell him his tea is cold.'] },
       ],
       trainers: [
         { x: 37, y: 40, name: 'Salvager Ned', team: 'raider', look: 'worker', facing: 'left', sight: 0, lines: ['This camp has first pick of the wreck!', 'You want a share, you earn it.'] },
       ],
       landmarks: [{ x: 56, y: 39, name: 'Salvage Pier', kind: 'jetty' }],
+      // The cape's own: a Fearow over the north glade, a Bellsprout in the
+      // west one, a Staryu washed up on the bar by the wreck.
+      pokemon: [
+        { x: 40, y: 17, species: 'fearow', level: 13 },
+        { x: 11, y: 18, species: 'bellsprout' },
+        { x: 26, y: 46, species: 'staryu', level: 11 },
+      ],
     },
   });
   return { file, notes: p.notes };

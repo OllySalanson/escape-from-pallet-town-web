@@ -1983,7 +1983,7 @@ player's map is built by).
 - **It is the thinnest map in the game.** `density.mts` measured 20.6 steps
   from a walkable tile to the nearest authored thing, against 4.5-7.4 on the
   other five, and the caves were the thinnest of it; with the caves peopled
-  and every district given its own people and Pokémon ([below](#the-greystone-caves-peopled)) it is 10.7. That is places still to add.
+  every district and far place given its own people and Pokémon ([below](#the-greystone-caves-peopled)) it is 8.4. That is places still to add.
 - **Every structure and safety rule holds it** - every way out reachable in
   the clock, a sealed edge, the hunter's fair arrival and flee, no crown over a
   walked tile - through `mapStructure.greystoneVale1-8.test.ts` and the rest of
@@ -2077,3 +2077,29 @@ the place is:
 The whole vale is 10.7 now, and its worst tile 54 steps from anything.
 
 ![The High Pasture](caves-peopled/peaks-after.png)
+
+### The far places, peopled
+
+The second round went round the far places, where what stands is the reason to
+go: the rarest Pokémon in the vale stand there to be met, once a raid each.
+
+| Place | Before | After | What stands there now |
+|---|---|---|---|
+| The Lost Garden | 11.4 | 7.2 | a Scyther on the orchard lawn, an Exeggcute under the west wall, a Butterfree over the beds |
+| The Old Bloom | 35.0 | 5.9 | a Tangela at the foot of the glade, an Oddish in its flowers |
+| Safari Marsh | 12.6 | 8.3 | a Kangaskhan in the middle glade, a Chansey by the south pond, a Pinsir, Nidoran and Nidorino in the reeds |
+| Stormcrown | 17.2 | 7.4 | a Machop on the west shelf, an Electabuzz out in the lightning, a Rhyhorn, a cragsman |
+| Ember Isle | 15.5 | 7.4 | a Magmar on the black sand, a Vulpix, a Ponyta, a volcanologist, a sign on the sands; in the Lava Tube a Graveler, a Growlithe and the burners' lad |
+| The Wreck, the Power Station, the Sunken Quarter, Smugglers' Cove | 10.4-11.8 | 7.0-7.7 | a Fearow and a Staryu on the cape, the salvager's wife; Magnemite and a Voltorb at the station; a flood warden; the smugglers' ship's cat |
+| The Bunker and the Turbine Hall | 11.6-21.5 | 8.9-14.3 | a night watchman, a grunt who explains the arrows, a scientist waiting on the lift, a Koffing, a Grimer and a Voltorb |
+| Frostreef and Berg Cave | 10.7-40.4 | 6.3-15.8 | a Seel by the landing, a Jynx under the berg, an ice fisher and a Cloyster on the cave's stone floors |
+| The Moor Chapel | 9.5 | 7.0 | a Gastly at the fell's edge and the gravedigger |
+
+Nothing stands where an ice slide or a spinner arrow could meet it: on Berg
+Cave and the Bunker everything is on stone floor no slide crosses. The vale is
+8.4 now, and its worst tile 38 steps from anything.
+
+![The Lost Garden's orchard, before](far-places/garden-before.png)
+![and after](far-places/garden-after.png)
+![The Bunker's B2F](far-places/bunker-after.png)
+![Safari Marsh's middle glade](far-places/safari-after.png)

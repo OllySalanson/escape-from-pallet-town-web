@@ -179,6 +179,14 @@ export function stormcrown(): MapcraftResult {
           facing: 'right',
           lines: ['I came up for the view and the storm came with me.', 'Something small and pink watches from the cairn.'],
         },
+        {
+          x: 6,
+          y: 39,
+          name: 'Cragsman',
+          look: 'black-belt',
+          facing: 'right',
+          lines: ['The shelves go round the crags, one above the other.', 'The cairn is on the top. Mind the lightning.'],
+        },
         ...life.people,
       ],
       trainers: [
@@ -187,7 +195,15 @@ export function stormcrown(): MapcraftResult {
       ],
       landmarks: [{ x: 52, y: 27, name: 'Storm Shelter', kind: 'spring' }, ...life.landmarks],
       // Mew, behind the cairn on the very top: the vale's legend.
-      pokemon: [{ x: 28, y: 3, species: 'mew', level: 50, legendary: true }, ...life.pokemon],
+      pokemon: [
+        { x: 28, y: 3, species: 'mew', level: 50, legendary: true },
+        // What lives in the storm: a Machop on the west shelf, an Electabuzz
+        // out in the lightning, a Rhyhorn on the first shelf's east bay.
+        { x: 21, y: 28, species: 'machop', level: 13 },
+        { x: 30, y: 32, species: 'electabuzz', level: 14 },
+        { x: 52, y: 43, species: 'rhyhorn', level: 13 },
+        ...life.pokemon,
+      ],
       areas: [...cave.areas, deep.area],
       links: [chimneyLink(mouth), deep.hole, ...caveLadders(cave)],
     },
