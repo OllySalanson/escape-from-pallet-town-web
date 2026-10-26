@@ -1,7 +1,7 @@
 // Photographs THE HARBOUR as a player stands in it, a spot at a time, at the
 // game's real 3x window, and records a short walk along the waterfront:
 //
-//   node tools/playtest/harbourTour.mjs <test-mode build url> <out dir> [--built=all] [--clip] [--at=name:x:y,..] [--port=N] [--clock=day|dusk|night]
+//   node tools/playtest/harbourTour.mjs <test-mode build url> <out dir> [--built=all] [--clip] [--at=name:x:y,..] [--port=N] [--clock=day|dusk|night] [--window=WxH]
 //
 // A new game is started (so the harbour is what a newcomer walks into), then
 // the base scene is restarted standing on each spot - the spawn, the jetty a
@@ -31,6 +31,9 @@ const extraSpots = (option('at') ?? '')
     return { name, at: { x: Number(x), y: Number(y) } };
   });
 const FRAME_MS = 1000 / 60;
+// `--window=1600x1024` is the README's harbour picture (`docs/readme/README.md`); the default is the 3x window.
+const sized = /^(\d+)x(\d+)$/.exec(option('window') ?? '');
+const WINDOW = sized ? { width: Number(sized[1]), height: Number(sized[2]) } : PIXEL_WINDOW;
 // `--clock=day|dusk|night` puts the page in a time zone where it is that hour
 // now, for the harbour that follows the player's clock (`base/harbourLight.ts`).
 const clock = option('clock');
@@ -47,8 +50,8 @@ const fail = (why) => {
 };
 
 const browser = option('port')
-  ? attachBrowser(Number(option('port')), { window: PIXEL_WINDOW })
-  : await launchBrowser({ window: PIXEL_WINDOW });
+  ? attachBrowser(Number(option('port')), { window: WINDOW })
+  : await launchBrowser({ window: WINDOW });
 try {
   const page = await browser.openPage('about:blank');
   if (clock !== undefined) {
@@ -101,7 +104,9 @@ try {
   const standIn = async (data) => {
     await page.evaluate(`void ${GAME}.scene.getScene('base').scene.start('base', ${JSON.stringify(data)})`);
     await until(baseReady, 'the harbour again');
-    await wait(1200);
+    // Long enough for the Seagallop to come in to her berth (`ARRIVAL_MS`), and
+    // short enough that THE HARBOUR's name is still up.
+    await wait(1700);
   };
 
   const doors = await page.evaluate(`${GAME}.scene.getScene('base').doors.map((door) => ({ id: door.id, at: door.returnTo }))`);
@@ -125,7 +130,7 @@ try {
     const frames = [];
     const record = async () => {
       if ((await page.evaluate(`${GAME}.loop.frame`)) % 2 === 0) {
-        const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, ...PIXEL_WINDOW, scale: 0.5 } });
+        const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, ...WINDOW, scale: 0.5 } });
         frames.push(decodePng(Buffer.from(data, 'base64')));
       }
     };

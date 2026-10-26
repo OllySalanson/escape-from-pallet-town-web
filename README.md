@@ -194,7 +194,7 @@ following-Pokémon art. Turn round, press Space, and it'll tell you how it's doi
 Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
 
 <p align="center">
-  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: the Raid Arena, a Gym between purple banners on its stone forecourt with a statue either side of the way up; the Pokémon Center and Oak's Lab above a sandy yard; your Charmander at your heel; Bill's cottage and the barrels on the stone quay.">
+  <img src="docs/readme/harbour.png" width="800" alt="The Harbour, home from a raid: THE HARBOUR on its board at the top left, the Seagallop ferry tied up beside the jetty you have just stepped off, a sailor and a Slowpoke on the quay, the Raid Arena and the Pokémon Center up the yard, Bill's cottage with its name over it, and a policeman with his Growlithe by Harbour Square.">
 </p>
 
 <p align="center">
