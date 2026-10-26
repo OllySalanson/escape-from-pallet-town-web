@@ -15,7 +15,6 @@ import {
 import { TILE_SIZE } from '../worldMap';
 import { HARBOUR_POKEMON_ART } from './generated/harbourPokemonArt';
 import {
-  HARBOUR_LIFE,
   harbourPokemonTextureKey,
   onLand,
   type HarbourFigure,
@@ -44,17 +43,17 @@ export class HarbourLifeFigures {
 
   private readonly scene: Phaser.Scene;
 
-  public constructor(scene: Phaser.Scene) {
+  public constructor(scene: Phaser.Scene, life: readonly HarbourFigure[]) {
     this.scene = scene;
-    for (const figure of HARBOUR_LIFE) {
+    for (const figure of life) {
       this.byId.set(figure.id, figure);
     }
     this.figures = createIdleFigures(
-      HARBOUR_LIFE.map((figure) => ({ ...figure, kind: 'npc' as const })),
+      life.map((figure) => ({ ...figure, kind: 'npc' as const })),
       Math.random,
     );
     const dexIds: number[] = [];
-    for (const figure of HARBOUR_LIFE) {
+    for (const figure of life) {
       this.sprites.set(figure.id, this.createSprite(figure));
       if (figure.kind === 'pokemon') {
         const dexId = getSpeciesById(figure.species)?.dexId;

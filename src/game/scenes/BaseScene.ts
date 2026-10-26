@@ -80,6 +80,7 @@ import {
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { HARBOUR_LANDMARKS } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
+import { harbourLifeAt } from '../base/harbourLife';
 import { harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
@@ -750,6 +751,7 @@ export class BaseScene extends Phaser.Scene {
     this.listenToTheSea(deltaMs);
     this.noticePlace(deltaMs);
     this.boats?.update(deltaMs);
+    this.settleHeadMark();
     this.night?.update(deltaMs);
     this.bird?.update(deltaMs);
     this.partner?.update(deltaMs);
@@ -1076,6 +1078,25 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
+   * The player's head mark gives way to anybody standing in the tile above
+   * them, as it does on a raid (`headMarkCoversSomebody`): that is where a
+   * player stands to talk to someone, and the mark sat on their face for the
+   * whole conversation. The player is drawn in front of them there, so
+   * nothing is lost.
+   */
+  private settleHeadMark(): void {
+    const above = { x: this.currentTile.x, y: this.currentTile.y - 1 };
+    const keeper = this.place.room ? this.place.room.room.keeper?.position : DAY_CARE_KEEPER.position;
+    const covered =
+      this.targetTile === null &&
+      ((keeper !== undefined && sameTile(keeper, above)) ||
+        [...(this.harbourLife?.standing('person') ?? []), ...(this.harbourLife?.standing('pokemon') ?? [])].some(
+          (tile) => sameTile(tile, above),
+        ));
+    this.playerHeadMark.setVisible(!covered);
+  }
+
+  /**
    * Walking from one part of the harbour into another puts its name up
    * (`base/harbourPlaces.ts`), the way a raid map names its districts.
    */
@@ -1383,7 +1404,7 @@ export class BaseScene extends Phaser.Scene {
   private createFigures(): void {
     if (!this.place.room) {
       this.createDayCare();
-      this.harbourLife = new HarbourLifeFigures(this);
+      this.harbourLife = new HarbourLifeFigures(this, harbourLifeAt(windowLight(new Date())));
       this.placeSign = new PlaceNameSign(this);
       // Nothing flies over the harbour at night.
       this.bird =
