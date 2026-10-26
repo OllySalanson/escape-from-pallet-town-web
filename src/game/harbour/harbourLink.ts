@@ -7,6 +7,7 @@ import {
   type HarbourMove,
   type HarbourNudge,
   type HarbourPlace,
+  type HarbourWave,
 } from './harbourProtocol';
 
 /**
@@ -44,6 +45,8 @@ export interface HarbourWire<P extends string = HarbourPlace> {
   send(move: HarbourMove<P>): void;
   /** Tells one other player's browser to look now (`HarbourNudge`). */
   nudge(nudge: HarbourNudge): void;
+  /** Puts this player's hand up for everybody where they stand (`HarbourWave`); a place nobody waves in leaves it out. */
+  wave?(wave: HarbourWave<P>): void;
   /**
    * Something else a place shares beyond where people stand - a raid room's
    * hunter, say (`raidRoom/`). The wire carries it as it is and the place
@@ -58,16 +61,24 @@ export interface HarbourWire<P extends string = HarbourPlace> {
 export interface HarbourHeard<P extends string = HarbourPlace> {
   move(move: HarbourMove<P>): void;
   nudge(nudge: HarbourNudge): void;
+  wave?(wave: HarbourWave<P>): void;
   /** Everybody present now, and where each says they are. */
   present(members: ReadonlyMap<string, P>): void;
   /** A signal another browser sent (`HarbourWire.signal`), unread: whoever handles it reads it. */
   signal?(payload: unknown): void;
 }
 
-/** Another player as drawn: where, and the name on their door. */
+/** Another player as drawn: where, the name on their door, and whether their hand is up. */
 export interface NamedFigure<P extends string = HarbourPlace> extends HarbourFigure<P> {
   readonly name: string;
+  readonly waving?: boolean;
 }
+
+/** How long a hand stays up over somebody who waved. */
+export const WAVE_SHOWN_MS = 1_400;
+
+/** The least time between two waves from this player, so a held key is one wave, not a flicker. */
+export const WAVE_EVERY_MS = 1_500;
 
 /** How long the link waits, once its scene has gone, before saying the player is not here. */
 export const AWAY_GRACE_MS = 2_000;
@@ -99,6 +110,10 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private now = 0;
   private onNudge: ((from: string, gone?: string) => void) | null = null;
   private onSignal: ((payload: unknown) => void) | null = null;
+  private onWavedAt: ((from: string) => void) | null = null;
+  /** When each other player last waved, in this link's clock. */
+  private readonly wavedAt = new Map<string, number>();
+  private lastWaveAt = Number.NEGATIVE_INFINITY;
   /** Counts every `leave`, so a join still on its way when the link was left is let go of. */
   private generation = 0;
 
@@ -214,13 +229,36 @@ export class HarbourLink<P extends string = HarbourPlace> {
       .filter((figure) => figure.id !== this.me && this.members.has(figure.id))
       .flatMap((figure) => {
         const name = this.names.get(figure.id);
-        return name ? [{ ...figure, name }] : [];
+        if (!name) {
+          return [];
+        }
+        const waved = this.wavedAt.get(figure.id);
+        return [waved !== undefined && this.now - waved < WAVE_SHOWN_MS ? { ...figure, name, waving: true } : { ...figure, name }];
       });
   }
 
   /** What to do when another player's browser says to look now, or that its knock is gone. */
   public whenNudged(handler: ((from: string, gone?: string) => void) | null): void {
     this.onNudge = handler;
+  }
+
+  /**
+   * Puts this player's hand up for everybody where they stand, at `to` if they
+   * are facing somebody. Said only by a player who can be heard, with somebody
+   * there to see it, and not again for `WAVE_EVERY_MS`. Returns whether it went.
+   */
+  public wave(to?: string): boolean {
+    if (!this.seen() || !this.anybodyElse() || !this.wire.wave || this.now - this.lastWaveAt < WAVE_EVERY_MS) {
+      return false;
+    }
+    this.lastWaveAt = this.now;
+    this.wire.wave(to ? { from: this.me!, place: this.place!, to } : { from: this.me!, place: this.place! });
+    return true;
+  }
+
+  /** What to do when another player in this place waves at this one. */
+  public whenWavedAt(handler: ((from: string) => void) | null): void {
+    this.onWavedAt = handler;
   }
 
   /** What to do with a signal another browser sent (`HarbourWire.signal`). */
@@ -336,6 +374,15 @@ export class HarbourLink<P extends string = HarbourPlace> {
         signal: (payload) => {
           if (generation === this.generation) {
             this.onSignal?.(payload);
+          }
+        },
+        wave: (wave) => {
+          if (generation !== this.generation || wave.from === this.me || wave.place !== this.place) {
+            return;
+          }
+          this.wavedAt.set(wave.from, this.now);
+          if (wave.to === this.me && this.names.has(wave.from)) {
+            this.onWavedAt?.(wave.from);
           }
         },
       })

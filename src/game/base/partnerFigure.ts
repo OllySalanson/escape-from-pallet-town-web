@@ -58,8 +58,33 @@ const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 export const PARTNER_SPRITE_Y_OFFSET = PLAYER_SPRITE_Y_OFFSET + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 /** The bubble's drawn size, tail and all. */
-const BUBBLE_WIDTH = 11;
-const BUBBLE_HEIGHT = 15;
+export const BUBBLE_WIDTH = 11;
+export const BUBBLE_HEIGHT = 15;
+
+/**
+ * A bubble with `emote` in it, drawn at the world's origin over everything but
+ * the canopy's own bubble band: the raid's spotted mark, to the pixel - an ink
+ * rim, a cream inside, a tail. Its owner moves it over the head it belongs to.
+ */
+export function drawEmoteBubble(scene: Phaser.Scene, emote: PartnerEmote): Phaser.GameObjects.Graphics {
+  const bubble = scene.add.graphics();
+  const box = (colour: number, x: number, y: number, width: number, height: number): void => {
+    bubble.fillStyle(colour, 1).fillRect(x, y, width, height);
+  };
+  box(EMOTE_BUBBLE_INK, 0, 0, 11, 13);
+  box(EMOTE_BUBBLE_CREAM, 1, 1, 9, 11);
+  box(EMOTE_BUBBLE_INK, 4, 13, 3, 1);
+  box(EMOTE_BUBBLE_CREAM, 5, 13, 1, 1);
+  box(EMOTE_BUBBLE_INK, 5, 14, 1, 1);
+  EMOTE_ART[emote].forEach((row, y) =>
+    [...row].forEach((ink, x) => {
+      if (ink !== '.') {
+        box(EMOTE_INKS[ink], 1 + x, 1 + y, 1, 1);
+      }
+    }),
+  );
+  return bubble.setDepth(CANOPY_BAND + 0.15);
+}
 
 /** What the partner reads off the scene it walks in. */
 export interface PartnerHost {
@@ -243,24 +268,7 @@ export class PartnerFigure {
 
   public showBubble(emote: PartnerEmote): void {
     this.bubble?.destroy();
-    const bubble = this.scene.add.graphics();
-    const box = (colour: number, x: number, y: number, width: number, height: number): void => {
-      bubble.fillStyle(colour, 1).fillRect(x, y, width, height);
-    };
-    // The raid's spotted mark, to the pixel: an ink rim, a cream inside, a tail.
-    box(EMOTE_BUBBLE_INK, 0, 0, 11, 13);
-    box(EMOTE_BUBBLE_CREAM, 1, 1, 9, 11);
-    box(EMOTE_BUBBLE_INK, 4, 13, 3, 1);
-    box(EMOTE_BUBBLE_CREAM, 5, 13, 1, 1);
-    box(EMOTE_BUBBLE_INK, 5, 14, 1, 1);
-    EMOTE_ART[emote].forEach((row, y) =>
-      [...row].forEach((ink, x) => {
-        if (ink !== '.') {
-          box(EMOTE_INKS[ink], 1 + x, 1 + y, 1, 1);
-        }
-      }),
-    );
-    this.bubble = bubble.setDepth(CANOPY_BAND + 0.15);
+    this.bubble = drawEmoteBubble(this.scene, emote);
     this.bubbleMs = 0;
     // Seated now rather than on its next frame, so the captions seated this
     // frame keep clear of where it is rather than of the world's corner.

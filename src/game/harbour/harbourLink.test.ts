@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { AWAY_GRACE_MS, GREET_EVERY_MS, HarbourLink, LEAVE_AFTER_MS, type HarbourHeard, type HarbourWire } from './harbourLink';
-import { HARBOUR_SEND_EVERY_MS, type HarbourMove, type HarbourNudge, type HarbourPlace } from './harbourProtocol';
+import {
+  AWAY_GRACE_MS,
+  GREET_EVERY_MS,
+  HarbourLink,
+  LEAVE_AFTER_MS,
+  WAVE_EVERY_MS,
+  WAVE_SHOWN_MS,
+  type HarbourHeard,
+  type HarbourWire,
+} from './harbourLink';
+import {
+  HARBOUR_SEND_EVERY_MS,
+  type HarbourMove,
+  type HarbourNudge,
+  type HarbourPlace,
+  type HarbourWave,
+} from './harbourProtocol';
 
 const ME = '11111111-1111-4111-8111-111111111111';
 const AMY = '22222222-2222-4222-8222-222222222222';
@@ -11,6 +26,7 @@ class FakeWire implements HarbourWire {
   public joinedAs: (string | null)[] = [];
   public sent: HarbourMove[] = [];
   public nudged: HarbourNudge[] = [];
+  public waved: HarbourWave[] = [];
   public stood: (HarbourPlace | null)[] = [];
   public left = 0;
   public known = new Map<string, string>([[AMY, 'AMY']]);
@@ -29,6 +45,12 @@ class FakeWire implements HarbourWire {
   }
   public nudge(nudge: HarbourNudge): void {
     this.nudged.push(nudge);
+  }
+  public wave(wave: HarbourWave): void {
+    this.waved.push(wave);
+  }
+  public hearWave(wave: HarbourWave): void {
+    this.heard?.wave?.(wave);
   }
   public hearNudge(nudge: HarbourNudge): void {
     this.heard?.nudge(nudge);
@@ -237,5 +259,63 @@ describe('the partner at this player\'s heel, as the others are told', () => {
     wire.present([[ME, 'yard']]);
     link.carry('bulbasaur');
     expect(wire.sent).toEqual([]);
+  });
+});
+
+describe('waving in the shared harbour', () => {
+  async function withAmy() {
+    const { link, wire } = await joined();
+    wire.present([[ME, 'yard'], [AMY, 'yard']]);
+    await settle();
+    wire.move({ from: AMY, place: 'yard', path: [{ x: 16, y: 12 }], facing: 'down' });
+    link.tick(10_000, 16);
+    return { link, wire };
+  }
+
+  it('puts a hand up at whoever this player faces, and not again for a moment', async () => {
+    const { link, wire } = await withAmy();
+    expect(link.wave(AMY)).toBe(true);
+    expect(wire.waved).toEqual([{ from: ME, place: 'yard', to: AMY }]);
+    expect(link.wave(AMY)).toBe(false);
+    link.tick(10_000 + WAVE_EVERY_MS, 16);
+    expect(link.wave(AMY)).toBe(true);
+    expect(wire.waved).toHaveLength(2);
+  });
+
+  it('waves at nobody while nobody is there to see it, and never as somebody who cannot be heard', async () => {
+    const alone = await joined();
+    alone.wire.present([[ME, 'yard']]);
+    expect(alone.link.wave()).toBe(false);
+    const watching = await joined(null);
+    watching.wire.present([[AMY, 'yard']]);
+    expect(watching.link.wave()).toBe(false);
+    expect([...alone.wire.waved, ...watching.wire.waved]).toEqual([]);
+  });
+
+  it("puts AMY's hand up over her while she waves, then takes it down", async () => {
+    const { link, wire } = await withAmy();
+    wire.hearWave({ from: AMY, place: 'yard' });
+    expect(link.figuresIn('yard')[0]?.waving).toBe(true);
+    link.tick(10_000 + WAVE_SHOWN_MS, 16);
+    expect(link.figuresIn('yard')[0]?.waving).toBeUndefined();
+  });
+
+  it('tells this player only when the wave is at them, and only from somebody in the same place', async () => {
+    const { link, wire } = await withAmy();
+    const heard: string[] = [];
+    link.whenWavedAt((from) => heard.push(from));
+    wire.hearWave({ from: AMY, place: 'yard', to: NOBODY });
+    wire.hearWave({ from: AMY, place: 'oaks-lab', to: ME });
+    expect(heard).toEqual([]);
+    wire.hearWave({ from: AMY, place: 'yard', to: ME });
+    expect(heard).toEqual([AMY]);
+  });
+
+  it('pays no mind to its own wave said back to it', async () => {
+    const { link, wire } = await withAmy();
+    const heard: string[] = [];
+    link.whenWavedAt((from) => heard.push(from));
+    wire.hearWave({ from: ME, place: 'yard', to: ME });
+    expect(heard).toEqual([]);
   });
 });

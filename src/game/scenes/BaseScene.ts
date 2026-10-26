@@ -131,7 +131,14 @@ import {
   type PartnerEmote,
   type PartnerPlaceName,
 } from '../base/partner';
-import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
+import {
+  BUBBLE_HEIGHT,
+  BUBBLE_WIDTH,
+  PartnerFigure,
+  drawEmoteBubble,
+  type PartnerHost,
+} from '../base/partnerFigure';
+import { WAVE_SHOWN_MS } from '../harbour/harbourLink';
 import { DAY_CARE_KEEPER, PEN_HOME, nextPenTile } from '../base/dayCarePen';
 import { dayCareStatusLine, raidsCompleted } from '../hub/dayCare';
 import {
@@ -210,6 +217,9 @@ const CAMERA_ZOOM = 1;
 let harbourCounted = false;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
+
+/** How far above the player's head their own hand goes up when they wave: clear of the chevron over it. */
+const OWN_WAVE_LIFT = 6;
 const DIALOG_WIDTH = 232;
 const DIALOG_HEIGHT = 56;
 const DIALOG_MARGIN = 8;
@@ -428,6 +438,8 @@ export class BaseScene extends Phaser.Scene {
   private namePrompt: MenuOverlay | null = null;
   /** Everybody else in the shared harbour, drawn where they walk (`harbour/`). */
   private harbourFigures: HarbourFigures | null = null;
+  /** This player's own hand while it is up (`waveAt`). */
+  private ownWave: { readonly bubble: Phaser.GameObjects.Graphics; ms: number } | null = null;
   /**
    * Every tile on the map that FireRed animates (`world/tileAnimation.ts`) -
    * the sea, the surf on the cove, the flowers - with the still tile it was
@@ -566,6 +578,7 @@ export class BaseScene extends Phaser.Scene {
     this.decor = null;
     this.namePrompt = null;
     this.harbourFigures = null;
+    this.ownWave = null;
     this.harbourLife = null;
     this.fishing = null;
     this.knockScreen = null;
@@ -744,6 +757,8 @@ export class BaseScene extends Phaser.Scene {
     } else if (this.place.room?.home && houseNameNeeded(houseName())) {
       this.askHouseName();
     }
+    // Somebody waving at this player: a hand over them, and a "hi!" to say so.
+    harbour()?.link.whenWavedAt(() => audioManager.play('harbourWave'));
     // Another player's browser saying it knocked here: look at the door now.
     harbour()?.link.whenNudged((_from, gone) =>
       gone ? harbourHouses()?.door.withdrawn(gone) : harbourHouses()?.door.knocked(),
@@ -769,6 +784,7 @@ export class BaseScene extends Phaser.Scene {
       this.night?.update(deltaMs);
     }
     this.settleHeadMark();
+    this.settleOwnWave(deltaMs);
     this.bird?.update(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
@@ -1913,6 +1929,8 @@ export class BaseScene extends Phaser.Scene {
           ...(this.harbourLife?.standing('person') ?? []).map((tile) => figureRect(tile)),
           // And the other players walking the shared harbour, name and all.
           ...(this.harbourFigures?.rects() ?? []),
+          // This player's own hand while it is up.
+          ...(this.ownWave ? [{ x: this.ownWave.bubble.x, y: this.ownWave.bubble.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
           // What the partner is saying: a door's name seated across its bubble hid
           // the heart it answers a word with, on the quay and at the Day-Care.
           ...(bubble ? [bubble] : []),
@@ -2411,6 +2429,61 @@ export class BaseScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Waves at another player standing on `target` in the shared harbour: a hand
+   * goes up over this player, and over them on every screen in the place
+   * (`HarbourLink.wave`). Facing somebody, the key is for them, so it is spent
+   * even while the last wave is still up.
+   */
+  private waveAt(target: GridPosition): boolean {
+    const shared = harbour();
+    const other = shared?.figuresHere().find((figure) => sameTile(figure.toward ?? figure.tile, target));
+    if (!shared || !other) {
+      return false;
+    }
+    if (shared.wave(other.id)) {
+      this.ownWave?.bubble.destroy();
+      this.ownWave = { bubble: drawEmoteBubble(this, 'wave'), ms: 0 };
+      this.placeOwnWave();
+      audioManager.play('harbourWave');
+    }
+    return true;
+  }
+
+  /**
+   * This player's own hand, up over their head while it is up - and lifted
+   * over the name plate of whoever they are waving at, which stands over the
+   * tile next door and is wider than it: the hand covered the first letters
+   * of the name it was waving at.
+   */
+  private placeOwnWave(): void {
+    if (!this.ownWave) {
+      return;
+    }
+    const x = Math.round(this.player.x + TILE_SIZE / 2 - BUBBLE_WIDTH / 2);
+    let y = Math.round(this.player.y + CHARACTER_HEAD_PIXEL_Y - BUBBLE_HEIGHT - OWN_WAVE_LIFT);
+    for (const plate of this.harbourFigures?.plateRects() ?? []) {
+      const across = x < plate.x + plate.width && x + BUBBLE_WIDTH > plate.x;
+      if (across && y < plate.y + plate.height && y + BUBBLE_HEIGHT > plate.y) {
+        y = plate.y - BUBBLE_HEIGHT;
+      }
+    }
+    this.ownWave.bubble.setPosition(x, y);
+  }
+
+  private settleOwnWave(deltaMs: number): void {
+    if (!this.ownWave) {
+      return;
+    }
+    this.ownWave.ms += deltaMs;
+    if (this.ownWave.ms >= WAVE_SHOWN_MS) {
+      this.ownWave.bubble.destroy();
+      this.ownWave = null;
+      return;
+    }
+    this.placeOwnWave();
+  }
+
   private tryInteract(): void {
     const target = nextTileFromDirection(this.currentTile, this.facing);
     // The partner first, even on a room's mat: facing it takes a turn on
@@ -2423,6 +2496,9 @@ export class BaseScene extends Phaser.Scene {
     if (room) {
       if (room.screen && (this.onMat(room) || servesFrom(room, target))) {
         this.openScreen(room, room.screen);
+        return;
+      }
+      if (this.waveAt(target)) {
         return;
       }
       const thing = this.thingFaced(target);
@@ -2463,6 +2539,9 @@ export class BaseScene extends Phaser.Scene {
       if (thing) {
         this.say(thing.lines ?? [`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
       }
+      return;
+    }
+    if (this.waveAt(target)) {
       return;
     }
     const door = doorAt(target);
@@ -2679,6 +2758,7 @@ export class BaseScene extends Phaser.Scene {
     readonly name: string;
     readonly tile: GridPosition;
     readonly partner: string | null;
+    readonly waving: boolean;
   }[] {
     if (!this.harbourFigures) {
       return [];
@@ -2687,7 +2767,13 @@ export class BaseScene extends Phaser.Scene {
       name: figure.name,
       tile: { ...figure.tile },
       partner: figure.partner ?? null,
+      waving: figure.waving === true,
     }));
+  }
+
+  /** Whether this player's own hand is up, for a playtest to read. */
+  public get waving(): boolean {
+    return this.ownWave !== null;
   }
 
   /** Where the partners at other players' heels are drawn, for a playtest to read. */

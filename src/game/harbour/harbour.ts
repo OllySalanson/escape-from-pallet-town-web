@@ -109,6 +109,11 @@ export class HarbourSession {
     this.link.tick(nowMs, deltaMs);
   }
 
+  /** Puts the player's hand up, at the player they are facing if any; whether it went. */
+  public wave(to?: string): boolean {
+    return this.link.wave(to);
+  }
+
   /** Everybody else where the player is standing. */
   public figuresHere(): readonly NamedFigure[] {
     return this.link.figuresIn(placeFor(this.where, this.me));

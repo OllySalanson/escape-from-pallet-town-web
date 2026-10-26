@@ -20,7 +20,13 @@ import {
   sameTile,
   type PartnerSpeciesId,
 } from './partner';
-import { PARTNER_SPRITE_X_OFFSET, PARTNER_SPRITE_Y_OFFSET } from './partnerFigure';
+import {
+  BUBBLE_HEIGHT,
+  BUBBLE_WIDTH,
+  PARTNER_SPRITE_X_OFFSET,
+  PARTNER_SPRITE_Y_OFFSET,
+  drawEmoteBubble,
+} from './partnerFigure';
 
 /**
  * Everybody else in THE HARBOUR, drawn: one figure a player, walking where
@@ -117,6 +123,8 @@ interface Drawn {
   readonly name: Phaser.GameObjects.Text;
   walking: string | null;
   heel: Heel | null;
+  /** The hand up over their head while they wave. */
+  wave: Phaser.GameObjects.Graphics | null;
 }
 
 export class HarbourFigures {
@@ -189,14 +197,15 @@ export class HarbourFigures {
       }
       const plateWidth = plateWidthOf(drawn.name);
       const plateHeight = plateHeightOf(drawn.name);
-      const plateX = Math.round(x + TILE_SIZE / 2 - plateWidth / 2);
       const plateY = Math.round(y + CHARACTER_HEAD_PIXEL_Y - plateHeight - 1);
+      const plateX = clearOfSelf(Math.round(x + TILE_SIZE / 2 - plateWidth / 2), plateWidth, x, y, self);
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
       const underSelf = self !== null && Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2;
       const named = !underSelf || figure.speaking === true;
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
+      this.drawWave(drawn, figure, x, named ? plateY : y + CHARACTER_HEAD_PIXEL_Y - 1);
       this.drawHeel(drawn, figure);
     }
   }
@@ -230,10 +239,18 @@ export class HarbourFigures {
    * name seated across another player read as their head on a sign.
    */
   public rects(): { x: number; y: number; width: number; height: number }[] {
-    return [...this.drawn.values()].map(({ sprite, plate, name }) => {
-      const top = name.visible ? Math.min(plate.y, sprite.y + CHARACTER_HEAD_PIXEL_Y) : sprite.y + CHARACTER_HEAD_PIXEL_Y;
+    return [...this.drawn.values()].map(({ sprite, plate, name, wave }) => {
+      const head = name.visible ? Math.min(plate.y, sprite.y + CHARACTER_HEAD_PIXEL_Y) : sprite.y + CHARACTER_HEAD_PIXEL_Y;
+      const top = wave ? Math.min(head, wave.y) : head;
       return { x: sprite.x, y: top, width: TILE_SIZE, height: sprite.y + CHARACTER_FEET_PIXEL_Y + 1 - top };
     });
+  }
+
+  /** Every name plate being drawn, in world pixels: a hand going up beside one is lifted clear of it. */
+  public plateRects(): { x: number; y: number; width: number; height: number }[] {
+    return [...this.drawn.values()]
+      .filter(({ name }) => name.visible)
+      .map(({ plate, name }) => ({ x: plate.x, y: plate.y, width: plateWidthOf(name), height: plateHeightOf(name) }));
   }
 
   /** How many are on screen, for a playtest to read. */
@@ -246,6 +263,17 @@ export class HarbourFigures {
       takeDown(drawn);
     }
     this.drawn.clear();
+  }
+
+  /** A hand up over somebody while they wave, seated over the top of their name plate (or their head). */
+  private drawWave(drawn: Drawn, figure: PlateFigure, x: number, over: number): void {
+    if (!figure.waving) {
+      drawn.wave?.destroy();
+      drawn.wave = null;
+      return;
+    }
+    drawn.wave ??= drawEmoteBubble(this.scene, 'wave');
+    drawn.wave.setPosition(Math.round(x + TILE_SIZE / 2 - BUBBLE_WIDTH / 2), Math.round(over - BUBBLE_HEIGHT));
   }
 
   /** The partner at a figure's heel, stood up, moved on, swapped or taken down as the figure says. */
@@ -296,11 +324,32 @@ export class HarbourFigures {
     const sprite = this.scene.add.sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);
-    const drawn: Drawn = { sprite, plate, name, walking: null, heel: null };
+    const drawn: Drawn = { sprite, plate, name, walking: null, heel: null, wave: null };
     drawPlate(drawn);
     this.drawn.set(figure.id, drawn);
     return drawn;
   }
+}
+
+/**
+ * Where a name plate goes across, slid clear of this player's own column when
+ * its owner stands beside them on the same row. A plate is wider than a tile,
+ * so centred over somebody next door it reached over this player's head - and
+ * the chevron that marks them is drawn over everything, so it sat on the
+ * first letter of the name (playing two players side by side: "OLLY" read
+ * "-LLY"). Still over its owner's own head, only no further over this one's.
+ */
+export function clearOfSelf(
+  plateX: number,
+  plateWidth: number,
+  x: number,
+  y: number,
+  self: { readonly x: number; readonly y: number } | null,
+): number {
+  if (self === null || Math.abs(y - self.y) >= TILE_SIZE || Math.abs(x - self.x) < TILE_SIZE / 2) {
+    return plateX;
+  }
+  return x > self.x ? Math.max(plateX, self.x + TILE_SIZE) : Math.min(plateX, self.x - plateWidth);
 }
 
 const plateWidthOf = (name: Phaser.GameObjects.Text): number => Math.ceil(name.width) + PLATE_PAD_X * 2;
@@ -318,6 +367,7 @@ function drawPlate(drawn: Drawn): void {
 
 function takeDown(drawn: Drawn): void {
   drawn.heel?.sprite.destroy();
+  drawn.wave?.destroy();
   drawn.sprite.destroy();
   drawn.plate.destroy();
   drawn.name.destroy();

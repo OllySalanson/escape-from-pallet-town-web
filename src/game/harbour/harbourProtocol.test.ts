@@ -4,11 +4,13 @@ import {
   encodeHarbourMove,
   encodeHarbourNudge,
   encodeHarbourPresence,
+  encodeHarbourWave,
   housePlace,
   isHarbourPlace,
   readHarbourMove,
   readHarbourNudge,
   readHarbourPresence,
+  readHarbourWave,
   type HarbourMove,
 } from './harbourProtocol';
 
@@ -99,5 +101,26 @@ describe('the partner at a player\'s heel, as the harbour hears it', () => {
     for (const k of ['mewtwo', 'constructor', 'toString', '__proto__', '<img src=x>', 'BULBASAUR', 42, null, ['bulbasaur'], {}]) {
       expect(readHarbourMove({ ...sent, k })).toEqual(move);
     }
+  });
+});
+
+describe('a wave, as the harbour hears it', () => {
+  const OLLY = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+
+  it('reads back a wave at somebody, and a wave at nobody in particular', () => {
+    expect(readHarbourWave(encodeHarbourWave({ from: AMY, place: 'yard', to: OLLY }))).toEqual({ from: AMY, place: 'yard', to: OLLY });
+    expect(readHarbourWave(encodeHarbourWave({ from: AMY, place: 'oaks-lab' }))).toEqual({ from: AMY, place: 'oaks-lab' });
+  });
+
+  it('carries no words: anything said beside it is dropped', () => {
+    expect(Object.keys(encodeHarbourWave({ from: AMY, place: 'yard', to: OLLY })).sort()).toEqual(['p', 't', 'u']);
+    expect(readHarbourWave({ u: AMY, p: 'yard', name: 'SOMEBODY', words: 'hi' })).toEqual({ from: AMY, place: 'yard' });
+  });
+
+  it('drops a wave from nobody or from nowhere, and reads a target that is not a player as nobody', () => {
+    for (const bad of [null, 'wave', { u: 'OLLY', p: 'yard' }, { u: AMY, p: 'the moon' }, { u: AMY }]) {
+      expect(readHarbourWave(bad)).toBeNull();
+    }
+    expect(readHarbourWave({ u: AMY, p: 'yard', t: 'constructor' })).toEqual({ from: AMY, place: 'yard' });
   });
 });

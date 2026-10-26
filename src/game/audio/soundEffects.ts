@@ -251,6 +251,12 @@ export const SOUND_EFFECTS = {
     // enough to sound now and then in the yard without becoming a noise.
     tones: [sq(988, 0.05, 0.05), sq(1319, 0.05, 0.045, 0.06), sweep(sq(1175, 0.08, 0.04, 0.12), 1480)],
   },
+  harbourWave: {
+    channel: 'world',
+    moment: 'A wave in the shared harbour - this player waving, or somebody waving at them',
+    // A friendly two-note "hi!": down then up, softer than the partner's chirp.
+    tones: [tri(659, 0.07, 0.05), tri(880, 0.09, 0.05, 0.08)],
+  },
   lootPickup: {
     channel: 'world',
     moment: 'Loose loot picked up',
