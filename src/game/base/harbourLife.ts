@@ -155,6 +155,19 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     ],
   },
   {
+    id: 'quay-porter',
+    kind: 'person',
+    name: 'PORTER',
+    design: 'man',
+    position: at(5, 16),
+    facing: 'left',
+    idle: { roam: [at(5, 17)], glances: ['down', 'up'], beatMs: 6900 },
+    lines: [
+      'These crates came in on the SEAGALLOP and they won\'t carry themselves.',
+      'BILL had the pick of them before the sun was up. He always does.',
+    ],
+  },
+  {
     id: 'harbour-policeman',
     kind: 'person',
     name: 'POLICEMAN',

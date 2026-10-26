@@ -207,6 +207,13 @@ export const SOUND_EFFECTS = {
     // second darker, so it reads as water rather than as a step or a hit.
     tones: [sweep(noise(520, 0.28, 0.05), 900), sweep(noise(760, 0.26, 0.047, 0.24), 420)],
   },
+  distantHorn: {
+    channel: 'world',
+    moment: 'Now and then, out in the harbour, the S.S. Anne sounds her horn',
+    // One low blast, far off: quieter and shorter than the Seagallop's, and
+    // lower, so it reads as a bigger ship further away.
+    tones: [saw(82, 0.5, 0.05), saw(123, 0.5, 0.03)],
+  },
   ledgeHop: {
     channel: 'world',
     moment: 'Going over a ledge - the one route on a map the hunter cannot follow',
