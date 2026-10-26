@@ -158,7 +158,8 @@ raid sails out on her and comes home on her. The **S.S. Anne** lies at the end o
 the warehouses along the east quay hold what the boats bring in, and past them there's a little
 cove with a jetty to fish off, sheltered by a stone breakwater that runs out round the bay to the
 harbour mouth - where Brock will build you a harbour light. And it's busy: a sailor waits by the ferry, a porter minds the crates she brought in, a Gym Guide hangs about
-outside the Raid Arena, the captain paces the pier, a dock worker and his Machop shift crates, an
+outside the Raid Arena, the captain paces the pier (and lends you his spyglass - go back after dark and he'll show you
+the lights of the vale's hardest places to reach), a dock worker and his Machop shift crates, an
 old angler grumbles about Magikarp (and lends you his rod: fish off any quay, or out at the end
 of the long pier where the good ones bite - they all go back, but he keeps a tally), a policeman walks the yard with his Growlithe, and there's a
 Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
