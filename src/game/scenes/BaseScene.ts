@@ -441,6 +441,13 @@ export class BaseScene extends Phaser.Scene {
   private untilWaveMs = WAVE_EVERY_MS;
   /** Until the S.S. Anne next sounds her horn, out in the harbour. */
   private untilHornMs = HORN_EVERY_MS;
+  /**
+   * Whether the browser asks for reduced motion, as the title screen asks
+   * (`TitleScene.still`): the harbour's own movement - the sea, the boats on
+   * the swell, the bird, the harbour light's sweep - then holds still. The
+   * people still walk, because they are how the harbour is played.
+   */
+  private still = false;
   /** THE HARBOUR after dark (`base/harbourNight.ts`), outdoors only. */
   private night: HarbourNight | null = null;
   /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
@@ -637,6 +644,8 @@ export class BaseScene extends Phaser.Scene {
     this.bounds = { width: this.place.width, height: this.place.height };
     this.collision = this.place.collision.map((row) => [...row]);
 
+    this.still =
+      typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
     const detail = this.drawMap();
     this.boats = null;
     if (detail && !this.place.room) {
@@ -647,7 +656,7 @@ export class BaseScene extends Phaser.Scene {
           landmark.floats ? [{ props: landmark.props, ...landmark.floats }] : [],
         ),
         detail.depth + 0.001,
-        data.arrival === 'raid',
+        data.arrival === 'raid' && !this.still,
       );
     }
     this.night = null;
@@ -754,9 +763,11 @@ export class BaseScene extends Phaser.Scene {
     this.animateTiles(deltaMs);
     this.listenToTheSea(deltaMs);
     this.noticePlace(deltaMs);
-    this.boats?.update(deltaMs);
+    if (!this.still) {
+      this.boats?.update(deltaMs);
+      this.night?.update(deltaMs);
+    }
     this.settleHeadMark();
-    this.night?.update(deltaMs);
     this.bird?.update(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
@@ -1153,7 +1164,7 @@ export class BaseScene extends Phaser.Scene {
    * frame the one shared clock is on, set only when it changes.
    */
   private animateTiles(deltaMs: number): void {
-    if (this.animatedTiles.length === 0) {
+    if (this.animatedTiles.length === 0 || this.still) {
       return;
     }
     this.tileAnimationMs += deltaMs;
@@ -1412,7 +1423,7 @@ export class BaseScene extends Phaser.Scene {
       this.placeSign = new PlaceNameSign(this);
       // Nothing flies over the harbour at night.
       this.bird =
-        windowLight(new Date()) === 'night'
+        windowLight(new Date()) === 'night' || this.still
           ? null
           : new HarbourBird(this, { width: this.place.width * TILE_SIZE, height: this.place.height * TILE_SIZE });
       this.placeId = harbourPlaceAt(this.currentTile)?.id ?? null;
