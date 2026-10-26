@@ -84,6 +84,8 @@ import { harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
 import { HarbourNight } from '../base/harbourNight';
+import { HarbourBird } from '../base/harbourBird';
+import { windowLight } from '../base/homeClock';
 import { TILE_ANIMATIONS_BY_TILE, animatedTileAt } from '../world/tileAnimation';
 import type { Material } from '../world/tileset/materials';
 import {
@@ -413,6 +415,8 @@ export class BaseScene extends Phaser.Scene {
   private night: HarbourNight | null = null;
   /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
   private boats: FloatingBoats | null = null;
+  /** The bird that glides over the harbour now and then (`base/harbourBird.ts`), outdoors by day only. */
+  private bird: HarbourBird | null = null;
   /** FireRed's map-name board (`base/placeNameSign.ts`), outdoors only. */
   private placeSign: PlaceNameSign | null = null;
   /** The part of the harbour the player was last in (`base/harbourPlaces.ts`). */
@@ -709,6 +713,7 @@ export class BaseScene extends Phaser.Scene {
     this.noticePlace(deltaMs);
     this.boats?.update(deltaMs);
     this.night?.update(deltaMs);
+    this.bird?.update(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
     // The harbour's people keep their beats, and stand still while anything
@@ -1250,12 +1255,19 @@ export class BaseScene extends Phaser.Scene {
       this.createDayCare();
       this.harbourLife = new HarbourLifeFigures(this);
       this.placeSign = new PlaceNameSign(this);
+      // Nothing flies over the harbour at night.
+      this.bird =
+        windowLight(new Date()) === 'night'
+          ? null
+          : new HarbourBird(this, { width: this.place.width * TILE_SIZE, height: this.place.height * TILE_SIZE });
       this.placeId = harbourPlaceAt(this.currentTile)?.id ?? null;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         this.harbourLife?.destroy();
         this.harbourLife = null;
         this.placeSign?.destroy();
         this.placeSign = null;
+        this.bird?.destroy();
+        this.bird = null;
       });
       return;
     }

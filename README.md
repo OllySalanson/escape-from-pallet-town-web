@@ -161,7 +161,7 @@ harbour mouth - where Brock will build you a harbour light. And it's busy: a sai
 outside the Raid Arena, the captain paces the pier, a dock worker and his Machop shift crates, an
 old angler grumbles about Magikarp, a policeman walks the yard with his Growlithe, and there's a
 Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
-bay. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
+bay, and now and then a bird glides over. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
 Seagallop sounds her horn as she glides in to the jetty to bring you home, and the boats ride the
 swell while they're moored. And it keeps your clock: the harbour goes gold at dusk and blue at
 night, every window lights up, the S.S. Anne's portholes glow, and once Brock has built you the
