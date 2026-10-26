@@ -88,6 +88,17 @@ export function safariMarsh(): MapcraftResult {
     itemSpots: [{ x: 26, y: 56, hidden: true }, { x: 50, y: 24 }, { x: 8, y: 44 }],
     extra: {
       signs: [{ x: 13, y: 38, lines: ['SAFARI MARSH', "A warden's reserve. Keep to the paths; the reeds are full."] }],
+      // The reserve's own, standing where its paths go past them, as the
+      // Safari Zone's rarest are met: a Kangaskhan in the middle glade, a
+      // Chansey by the south pond, a Pinsir in the east beds, Nidoran and
+      // Nidorino in the reeds.
+      pokemon: [
+        { x: 49, y: 20, species: 'kangaskhan', level: 14 },
+        { x: 43, y: 52, species: 'chansey', level: 14 },
+        { x: 31, y: 47, species: 'pinsir', level: 14 },
+        { x: 18, y: 22, species: 'nidorino', level: 13 },
+        { x: 18, y: 57, species: 'nidoran-f', level: 10 },
+      ],
       people: [
         {
           x: 10,

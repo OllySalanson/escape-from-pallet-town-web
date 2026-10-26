@@ -180,6 +180,7 @@ export function emberIsle(): MapcraftResult {
       signs: [
         { x: 15, y: 39, lines: ['EMBER ISLE', 'The path climbs the south face to the Lava Tube. The crater is past it.'] },
         { x: 24, y: 47, lines: ['LAVA TUBE', 'The only way into the crater. Mind your step on the ash.'] },
+        { x: 20, y: 57, lines: ['THE BLACK SANDS', 'The island makes its own beach. The boat is at the jetty on the west shore.'] },
       ],
       people: [
         {
@@ -203,6 +204,23 @@ export function emberIsle(): MapcraftResult {
             'Our boat takes the charcoal off at twenty past three. There is room for one more.',
             'The crater is ash all the way down, and something lives in every step of it.',
           ],
+        },
+        {
+          x: 29,
+          y: 22,
+          name: 'Volcanologist',
+          look: 'scientist',
+          facing: 'down',
+          lines: ['The mountain breathes. Feel the ground? Warm.', 'It has not gone up in a hundred years. I am waiting.'],
+        },
+        {
+          area: 'lava-tube',
+          x: 15,
+          y: 12,
+          name: "Burners' Lad",
+          look: 'youngster',
+          facing: 'down',
+          lines: ['The tube runs on under the crater. Hot underfoot all the way.'],
         },
       ],
       landmarks: [
@@ -231,7 +249,18 @@ export function emberIsle(): MapcraftResult {
           lines: ['That hoard is the whole run. Hands off it!'],
         },
       ],
-      pokemon: [{ x: RAPIDASH[0], y: RAPIDASH[1], species: 'rapidash', level: 40 }],
+      pokemon: [
+        { x: RAPIDASH[0], y: RAPIDASH[1], species: 'rapidash', level: 40 },
+        // A Magmar basking on the black sand, a Vulpix in the south grass and
+        // a Ponyta on the west shore.
+        { x: 40, y: 57, species: 'magmar', level: 15 },
+        { x: 50, y: 53, species: 'vulpix', level: 11 },
+        { x: 10, y: 51, species: 'ponyta' },
+        // In the Lava Tube: a Graveler in the warm north-east chamber and a
+        // Growlithe asleep in the north-west one.
+        { area: 'lava-tube', x: 18, y: 4, species: 'graveler', level: 15 },
+        { area: 'lava-tube', x: 8, y: 6, species: 'growlithe' },
+      ],
     },
   });
   return { file, notes: p.notes };

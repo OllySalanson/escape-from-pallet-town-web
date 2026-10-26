@@ -152,9 +152,26 @@ export function frostreef(): MapcraftResult {
             'Our boat comes into the lagoon late, for anyone who got that far.',
           ],
         },
+        {
+          area: 'berg-cave-1f',
+          x: 16,
+          y: 18,
+          name: 'Ice Fisher',
+          look: 'fisherman',
+          facing: 'up',
+          lines: ['The hole down is in the far corner, past the ice.', 'Stop against the right boulder and you are there. Stop against the wrong one and you go round again.'],
+        },
       ],
       landmarks: [{ x: 31, y: 11, name: 'Ice Jetty', kind: 'jetty' }],
-      pokemon: [{ x: LAPRAS[0], y: LAPRAS[1], species: 'lapras', level: 10 }],
+      pokemon: [
+        { x: LAPRAS[0], y: LAPRAS[1], species: 'lapras', level: 10 },
+        // A Seel hauled out by the landing, and a Jynx at the foot of the berg.
+        { x: 19, y: 18, species: 'seel', level: 12 },
+        { x: 34, y: 28, species: 'jynx', level: 14 },
+        // Under the berg, on the stone floors the ice runs off, where no slide
+        // can meet it: a Cloyster at the foot of B1F.
+        { area: 'berg-cave-b1f', x: 5, y: 14, species: 'cloyster' },
+      ],
     },
   });
   return { file, notes: p.notes };

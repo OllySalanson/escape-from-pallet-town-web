@@ -149,6 +149,13 @@ export function smugglersCove(): MapcraftResult {
     itemSpots: [{ x: 17, y: 46, hidden: true }, { x: 44, y: 18 }, { x: 36, y: 44 }],
     extra: {
       landmarks: [{ x: 28, y: 40, name: "Smugglers' Jetty", kind: 'jetty' }],
+      // The smugglers' ship's cat on the bluff, a Poliwhirl in the lake reeds
+      // and a Staryu on the beach.
+      pokemon: [
+        { x: 46, y: 21, species: 'meowth' },
+        { x: 16, y: 11, species: 'poliwhirl', level: 12 },
+        { x: 34, y: 30, species: 'staryu' },
+      ],
       people: [
         {
           x: 9,

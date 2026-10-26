@@ -199,6 +199,19 @@ export function lostGarden(): MapcraftResult {
         },
       ],
       districts: [{ name: 'THE OLD BLOOM', x: 40, y: 47, width: 16, height: 12, wildlife: 'garden' }],
+      // What the garden grew while nobody was looking: a Tangela at the foot
+      // of the Old Bloom's glade and an Oddish in its flowers, an Exeggcute
+      // under the west wall, a Butterfree over the beds, and a Scyther on the
+      // orchard lawn, out of the grass so it can be seen - the rarest thing
+      // standing in the vale outside the safari marsh.
+      pokemon: [
+        { x: 41, y: 58, species: 'tangela', level: 12 },
+        { x: 50, y: 54, species: 'oddish' },
+        { x: 6, y: 39, species: 'exeggcute', level: 11 },
+        { x: 41, y: 45, species: 'butterfree' },
+        { x: 29, y: 12, species: 'scyther', level: 14 },
+        { x: 50, y: 21, species: 'pidgeotto' },
+      ],
       areas: [fallsCaveArea()],
       links: [fallsMouthLink('garden', GARDEN_MOUTH)],
     },

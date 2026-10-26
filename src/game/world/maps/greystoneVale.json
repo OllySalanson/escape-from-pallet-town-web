@@ -2369,6 +2369,53 @@
    ]
   },
   {
+   "x": 303,
+   "y": 88,
+   "name": "Linesman",
+   "look": "worker",
+   "facing": "down",
+   "lines": [
+    "The turbines have not turned since the flood.",
+    "The falls still try. Listen to them."
+   ]
+  },
+  {
+   "area": "turbine-hall",
+   "x": 1,
+   "y": 6,
+   "name": "Night Watchman",
+   "look": "old-man",
+   "facing": "right",
+   "lines": [
+    "There is a steel shutter on the floor below.",
+    "Only the Card Key opens it, and the card was lost in the pines."
+   ]
+  },
+  {
+   "area": "bunker-b2f",
+   "x": 29,
+   "y": 12,
+   "name": "Grunt",
+   "look": "rocket-grunt",
+   "facing": "left",
+   "lines": [
+    "Step on an arrow and the floor carries you till something stops you.",
+    "The generator is across all that. Took me a week."
+   ]
+  },
+  {
+   "area": "bunker-b3f",
+   "x": 5,
+   "y": 5,
+   "name": "Scientist",
+   "look": "scientist",
+   "facing": "down",
+   "lines": [
+    "The lift only runs once the generator on the floor above is back on.",
+    "Whoever did that, thank you. I was down here a long time."
+   ]
+  },
+  {
    "x": 266,
    "y": 170,
    "name": "Warden",
@@ -2388,6 +2435,28 @@
    "lines": [
     "The bar to the wreck only shows at low water.",
     "Whatever the sea throws up on it is anybody's."
+   ]
+  },
+  {
+   "x": 311,
+   "y": 219,
+   "name": "Salvager's Wife",
+   "look": "woman",
+   "facing": "left",
+   "lines": [
+    "Ned has been out on that wreck since the tide turned.",
+    "If you see him, tell him his tea is cold."
+   ]
+  },
+  {
+   "x": 152,
+   "y": 275,
+   "name": "Flood Warden",
+   "look": "sailor",
+   "facing": "down",
+   "lines": [
+    "The sea came over the wall and never went home.",
+    "The sandbags hold the lower streets. Most days."
    ]
   },
   {
@@ -2424,6 +2493,17 @@
    ]
   },
   {
+   "x": 134,
+   "y": 39,
+   "name": "Cragsman",
+   "look": "black-belt",
+   "facing": "right",
+   "lines": [
+    "The shelves go round the crags, one above the other.",
+    "The cairn is on the top. Mind the lightning."
+   ]
+  },
+  {
    "area": "greystone-caves-b5f",
    "x": 50,
    "y": 38,
@@ -2433,6 +2513,17 @@
    "lines": [
     "I am mapping the deepest floor.",
     "Up the far passage there is daylight, and a storm."
+   ]
+  },
+  {
+   "x": 22,
+   "y": 77,
+   "name": "Gravedigger",
+   "look": "old-man",
+   "facing": "down",
+   "lines": [
+    "You only find this place at night, by the sheep track.",
+    "The Gastly do no harm. Mostly."
    ]
   },
   {
@@ -2473,6 +2564,18 @@
    ]
   },
   {
+   "area": "berg-cave-1f",
+   "x": 16,
+   "y": 18,
+   "name": "Ice Fisher",
+   "look": "fisherman",
+   "facing": "up",
+   "lines": [
+    "The hole down is in the far corner, past the ice.",
+    "Stop against the right boulder and you are there. Stop against the wrong one and you go round again."
+   ]
+  },
+  {
    "x": 57,
    "y": 345,
    "name": "Lookout",
@@ -2492,6 +2595,28 @@
    "lines": [
     "Our boat takes the charcoal off at twenty past three. There is room for one more.",
     "The crater is ash all the way down, and something lives in every step of it."
+   ]
+  },
+  {
+   "x": 29,
+   "y": 342,
+   "name": "Volcanologist",
+   "look": "scientist",
+   "facing": "down",
+   "lines": [
+    "The mountain breathes. Feel the ground? Warm.",
+    "It has not gone up in a hundred years. I am waiting."
+   ]
+  },
+  {
+   "area": "lava-tube",
+   "x": 15,
+   "y": 12,
+   "name": "Burners' Lad",
+   "look": "youngster",
+   "facing": "down",
+   "lines": [
+    "The tube runs on under the crater. Hot underfoot all the way."
    ]
   }
  ],
@@ -2757,6 +2882,14 @@
    ]
   },
   {
+   "x": 284,
+   "y": 213,
+   "lines": [
+    "THE CAPE",
+    "The wreck is out on the reef, past the camp. The pier is east."
+   ]
+  },
+  {
    "x": 310,
    "y": 232,
    "lines": [
@@ -2860,6 +2993,14 @@
    "lines": [
     "LAVA TUBE",
     "The only way into the crater. Mind your step on the ash."
+   ]
+  },
+  {
+   "x": 20,
+   "y": 377,
+   "lines": [
+    "THE BLACK SANDS",
+    "The island makes its own beach. The boat is at the jetty on the west shore."
    ]
   }
  ],
@@ -3858,11 +3999,144 @@
    "species": "tauros"
   },
   {
+   "x": 261,
+   "y": 111,
+   "species": "magnemite",
+   "level": 12
+  },
+  {
+   "x": 304,
+   "y": 113,
+   "species": "magnemite"
+  },
+  {
+   "x": 269,
+   "y": 70,
+   "species": "voltorb"
+  },
+  {
+   "area": "turbine-hall",
+   "x": 22,
+   "y": 4,
+   "species": "magnemite"
+  },
+  {
+   "area": "bunker-b2f",
+   "x": 25,
+   "y": 18,
+   "species": "koffing",
+   "level": 13
+  },
+  {
+   "area": "bunker-b2f",
+   "x": 24,
+   "y": 16,
+   "species": "grimer"
+  },
+  {
+   "area": "bunker-b3f",
+   "x": 30,
+   "y": 6,
+   "species": "voltorb",
+   "level": 13
+  },
+  {
+   "x": 305,
+   "y": 148,
+   "species": "kangaskhan",
+   "level": 14
+  },
+  {
+   "x": 299,
+   "y": 180,
+   "species": "chansey",
+   "level": 14
+  },
+  {
+   "x": 287,
+   "y": 175,
+   "species": "pinsir",
+   "level": 14
+  },
+  {
+   "x": 274,
+   "y": 150,
+   "species": "nidorino",
+   "level": 13
+  },
+  {
+   "x": 274,
+   "y": 185,
+   "species": "nidoran-f",
+   "level": 10
+  },
+  {
+   "x": 296,
+   "y": 209,
+   "species": "fearow",
+   "level": 13
+  },
+  {
+   "x": 267,
+   "y": 210,
+   "species": "bellsprout"
+  },
+  {
+   "x": 282,
+   "y": 238,
+   "species": "staryu",
+   "level": 11
+  },
+  {
+   "x": 138,
+   "y": 276,
+   "species": "slowpoke"
+  },
+  {
+   "x": 181,
+   "y": 270,
+   "species": "krabby"
+  },
+  {
+   "x": 110,
+   "y": 277,
+   "species": "meowth"
+  },
+  {
+   "x": 80,
+   "y": 267,
+   "species": "poliwhirl",
+   "level": 12
+  },
+  {
+   "x": 98,
+   "y": 286,
+   "species": "staryu"
+  },
+  {
    "x": 156,
    "y": 3,
    "species": "mew",
    "level": 50,
    "legendary": true
+  },
+  {
+   "x": 149,
+   "y": 28,
+   "species": "machop",
+   "level": 13
+  },
+  {
+   "x": 158,
+   "y": 32,
+   "species": "electabuzz",
+   "level": 14
+  },
+  {
+   "x": 180,
+   "y": 43,
+   "species": "rhyhorn",
+   "level": 13
   },
   {
    "area": "greystone-caves-b5f",
@@ -3892,16 +4166,102 @@
    "level": 12
   },
   {
+   "x": 9,
+   "y": 84,
+   "species": "gastly"
+  },
+  {
+   "x": 361,
+   "y": 122,
+   "species": "tangela",
+   "level": 12
+  },
+  {
+   "x": 370,
+   "y": 118,
+   "species": "oddish"
+  },
+  {
+   "x": 326,
+   "y": 103,
+   "species": "exeggcute",
+   "level": 11
+  },
+  {
+   "x": 361,
+   "y": 109,
+   "species": "butterfree"
+  },
+  {
+   "x": 349,
+   "y": 76,
+   "species": "scyther",
+   "level": 14
+  },
+  {
+   "x": 370,
+   "y": 85,
+   "species": "pidgeotto"
+  },
+  {
    "x": 349,
    "y": 357,
    "species": "lapras",
    "level": 10
   },
   {
+   "x": 339,
+   "y": 338,
+   "species": "seel",
+   "level": 12
+  },
+  {
+   "x": 354,
+   "y": 348,
+   "species": "jynx",
+   "level": 14
+  },
+  {
+   "area": "berg-cave-b1f",
+   "x": 5,
+   "y": 14,
+   "species": "cloyster"
+  },
+  {
    "x": 25,
    "y": 358,
    "species": "rapidash",
    "level": 40
+  },
+  {
+   "x": 40,
+   "y": 377,
+   "species": "magmar",
+   "level": 15
+  },
+  {
+   "x": 50,
+   "y": 373,
+   "species": "vulpix",
+   "level": 11
+  },
+  {
+   "x": 10,
+   "y": 371,
+   "species": "ponyta"
+  },
+  {
+   "area": "lava-tube",
+   "x": 18,
+   "y": 4,
+   "species": "graveler",
+   "level": 15
+  },
+  {
+   "area": "lava-tube",
+   "x": 8,
+   "y": 6,
+   "species": "growlithe"
   }
  ],
  "areas": [
@@ -6348,6 +6708,11 @@
    "x": 204,
    "y": 220,
    "berry": "cheri"
+  },
+  {
+   "x": 269,
+   "y": 104,
+   "berry": "aspear"
   },
   {
    "x": 346,

@@ -154,7 +154,21 @@ export function sunkenQuarter(): MapcraftResult {
       // barricades rather than anywhere on the quay.
       districts: [{ name: 'THE DROWNED TOWN', x: 10, y: 31, width: 54, height: 33, wildlife: 'shore' }],
       signs: [{ x: 32, y: 26, lines: ['THE SUNKEN QUARTER', 'The old high street. Mind the tide.'] }],
+      // A Slowpoke asleep on the old west quay, and a Krabby at the east end
+      // of the high street where the sea comes in.
+      pokemon: [
+        { x: 10, y: 20, species: 'slowpoke' },
+        { x: 53, y: 14, species: 'krabby' },
+      ],
       people: [
+        {
+          x: 24,
+          y: 19,
+          name: 'Flood Warden',
+          look: 'sailor',
+          facing: 'down',
+          lines: ['The sea came over the wall and never went home.', 'The sandbags hold the lower streets. Most days.'],
+        },
         {
           x: 47,
           y: 23,

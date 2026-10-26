@@ -222,7 +222,56 @@ export function powerStation(): MapcraftResult {
             'Last I heard it was dropped in the pines, out west.',
           ],
         },
+        {
+          x: 47,
+          y: 24,
+          name: 'Linesman',
+          look: 'worker',
+          facing: 'down',
+          lines: ['The turbines have not turned since the flood.', 'The falls still try. Listen to them.'],
+        },
+        {
+          area: 'turbine-hall',
+          x: 1,
+          y: 6,
+          name: 'Night Watchman',
+          look: 'old-man',
+          facing: 'right',
+          lines: ['There is a steel shutter on the floor below.', 'Only the Card Key opens it, and the card was lost in the pines.'],
+        },
+        {
+          area: 'bunker-b2f',
+          x: 29,
+          y: 12,
+          name: 'Grunt',
+          look: 'rocket-grunt',
+          facing: 'left',
+          lines: ['Step on an arrow and the floor carries you till something stops you.', 'The generator is across all that. Took me a week.'],
+        },
+        {
+          area: 'bunker-b3f',
+          x: 5,
+          y: 5,
+          name: 'Scientist',
+          look: 'scientist',
+          facing: 'down',
+          lines: ['The lift only runs once the generator on the floor above is back on.', 'Whoever did that, thank you. I was down here a long time.'],
+        },
       ],
+      // What the dead station draws: Magnemite to its old lines, and a
+      // Voltorb on the lawn that every raid takes for a Poke Ball.
+      pokemon: [
+        { x: 5, y: 47, species: 'magnemite', level: 12 },
+        { x: 48, y: 49, species: 'magnemite' },
+        { x: 13, y: 6, species: 'voltorb' },
+        // Inside: a Magnemite on the dead turbine, and what the hideout below
+        // left behind it - a Koffing and a Grimer on B2F, a Voltorb on B3F.
+        { area: 'turbine-hall', x: 22, y: 4, species: 'magnemite' },
+        { area: 'bunker-b2f', x: 25, y: 18, species: 'koffing', level: 13 },
+        { area: 'bunker-b2f', x: 24, y: 16, species: 'grimer' },
+        { area: 'bunker-b3f', x: 30, y: 6, species: 'voltorb', level: 13 },
+      ],
+      berryTrees: [{ x: 13, y: 40, berry: 'aspear' }],
       // The Falls Cave rides in both its districts' files, so each passes
       // its checks alone, and the stitcher takes it once; what stands in it,
       // the Strength boulders, rides here, where the cave is entered.

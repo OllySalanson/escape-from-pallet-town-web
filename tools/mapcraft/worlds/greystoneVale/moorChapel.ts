@@ -251,7 +251,18 @@ export function moorChapel(): MapcraftResult {
         { x: 21, y: 32, lines: ['THE MOOR CHAPEL', 'Erected in the memory of the drovers and their POKéMON.'] },
         { x: 12, y: 42, lines: ['THE CORPSE ROAD', 'West, off the fell.'] },
       ],
+      // Who keeps the churchyard by night: a Gastly at the fell's edge, and
+      // the gravedigger who has stopped minding it.
+      pokemon: [{ x: 9, y: 20, species: 'gastly' }],
       people: [
+        {
+          x: 22,
+          y: 13,
+          name: 'Gravedigger',
+          look: 'old-man',
+          facing: 'down',
+          lines: ['You only find this place at night, by the sheep track.', 'The Gastly do no harm. Mostly.'],
+        },
         {
           area: NAVE.id,
           x: 18,
