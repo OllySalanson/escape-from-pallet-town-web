@@ -1,6 +1,7 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { NpcIdle } from '../world/npcIdle';
+import type { WindowLight } from './homeClock';
 import { HARBOUR_POKEMON_ART } from './generated/harbourPokemonArt';
 import { anglerLines } from './harbourFishing';
 import { spyglassLines } from './spyglass';
@@ -40,6 +41,18 @@ interface HarbourFigureBase {
   readonly position: GridPosition;
   readonly facing: Direction;
   readonly idle: NpcIdle;
+  /**
+   * The harbour keeps the player's hours (`homeClock.ts`): a figure that is
+   * only out by day goes home after dark, and one with a `night` stands
+   * somewhere else then, keeping another beat and saying something else.
+   */
+  readonly byDayOnly?: true;
+  readonly night?: {
+    readonly position: GridPosition;
+    readonly facing: Direction;
+    readonly idle: NpcIdle;
+    readonly lines: readonly string[];
+  };
 }
 
 export interface HarbourPerson extends HarbourFigureBase {
@@ -136,6 +149,7 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     design: 'little-girl',
     position: at(52, 19),
     facing: 'down',
+    byDayOnly: true,
     idle: { roam: [at(51, 19), at(53, 19), at(52, 18)], glances: ['left', 'right'], beatMs: 2900 },
     lines: ['The KRABBY pinched me! I\'m not crying. It\'s the sea in my eyes.'],
   },
@@ -146,6 +160,7 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     design: 'old-man',
     position: at(57, 15),
     facing: 'up',
+    byDayOnly: true,
     idle: { glances: ['left', 'down'], beatMs: 8200 },
     lines: [
       'Sixty years I\'ve watched the boats come in here.',
@@ -173,6 +188,15 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     position: at(21, 15),
     facing: 'down',
     idle: { roam: [at(22, 15), at(22, 16)], glances: ['left', 'right'], beatMs: 4300 },
+    night: {
+      position: at(21, 15),
+      facing: 'down',
+      idle: { roam: [at(22, 15), at(22, 16)], glances: ['left', 'right'], beatMs: 5100 },
+      lines: [
+        'Quiet night. Just me, GROWLITHE and the harbour light.',
+        'If you hear singing out by the breakwater, don\'t worry. That\'s only LAPRAS.',
+      ],
+    },
     lines: [
       'Officer on the beat. Nobody hunts anybody in THE HARBOUR - not on my watch.',
       'Out there, mind, you\'re on your own.',
@@ -198,6 +222,7 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     name: 'PIDGEY',
     position: at(52, 15),
     facing: 'left',
+    byDayOnly: true,
     idle: { roam: [at(53, 15), at(53, 16)], glances: ['right', 'down'], beatMs: 1900 },
     lines: ['PIDGEY is pecking at crumbs somebody dropped on the green.'],
   },
@@ -259,6 +284,17 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     position: at(19, 27),
     facing: 'right',
     idle: { roam: [at(20, 27), at(21, 27), at(20, 28), at(21, 28)], glances: ['left', 'down'], beatMs: 5900 },
+    // After dark it comes in along the breakwater and sings to the harbour
+    // light - the harbour's one secret that only the night keeps.
+    night: {
+      position: at(50, 29),
+      facing: 'down',
+      idle: { roam: [at(51, 29), at(52, 29)], glances: ['left', 'right'], beatMs: 6400 },
+      lines: [
+        'LAPRAS is singing softly to the harbour light.',
+        'Across the water, something out at sea sings back.',
+      ],
+    },
     lines: ['LAPRAS is swimming in the bay. It looks over at the SEAGALLOP as if it knows the way.'],
     swims: true,
   },
@@ -287,6 +323,28 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
 ];
 
 export const HARBOUR_LIFE: readonly HarbourFigure[] = [...HARBOUR_PEOPLE, ...HARBOUR_POKEMON];
+
+/**
+ * Who is out at this hour, and where: by day everybody as authored; after
+ * dark the day-only figures home, and the others with a `night` standing,
+ * beating and speaking as that says.
+ */
+export function harbourLifeAt(light: WindowLight): readonly HarbourFigure[] {
+  if (light !== 'night') {
+    return HARBOUR_LIFE;
+  }
+  return HARBOUR_LIFE.filter((figure) => !figure.byDayOnly).map((figure) =>
+    figure.night
+      ? {
+          ...figure,
+          position: figure.night.position,
+          facing: figure.night.facing,
+          idle: figure.night.idle,
+          lines: figure.night.lines,
+        }
+      : figure,
+  );
+}
 
 /** Whether a figure walks the land, where it can be in somebody's way. */
 export function onLand(figure: HarbourFigure): boolean {

@@ -10,7 +10,7 @@ import { DAY_CARE_KEEPER, penTiles } from './dayCarePen';
 import { BASE_DOORS } from './doors';
 import { BASE_FIXTURES } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
-import { HARBOUR_LIFE, HARBOUR_SPECIES, harbourBeatTiles, onLand } from './harbourLife';
+import { HARBOUR_LIFE, HARBOUR_SPECIES, harbourBeatTiles, harbourLifeAt, onLand, type HarbourFigure } from './harbourLife';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
@@ -22,10 +22,28 @@ const neighbours = (tile: GridPosition): GridPosition[] =>
     [1, 0],
   ].map(([dx, dy]) => ({ x: tile.x + dx, y: tile.y + dy }));
 
-/** Every tile anybody on land may ever stand on, all at once. */
-const landBeats = new Set(HARBOUR_LIFE.filter(onLand).flatMap((figure) => harbourBeatTiles(figure).map(key)));
+/** Every tile anybody on land may ever stand on at one hour, all at once. */
+const landBeatsOf = (life: readonly HarbourFigure[]): Set<string> =>
+  new Set(life.filter(onLand).flatMap((figure) => harbourBeatTiles(figure).map(key)));
 
-describe('the harbour\'s people and Pokemon', () => {
+describe('the harbour after dark', () => {
+  it('sends the day-only figures home and moves the night ones, and nobody else', () => {
+    const day = harbourLifeAt('day');
+    const night = harbourLifeAt('night');
+    expect(day).toBe(HARBOUR_LIFE);
+    expect(night.map((figure) => figure.id)).toEqual(
+      HARBOUR_LIFE.filter((figure) => !figure.byDayOnly).map((figure) => figure.id),
+    );
+    const lapras = night.find((figure) => figure.id === 'bay-lapras')!;
+    expect(lapras.lines.join(' ')).toContain('singing');
+    expect(harbourLifeAt('dusk')).toBe(HARBOUR_LIFE);
+  });
+});
+
+describe.each(['day', 'night'] as const)('the harbour\'s people and Pokemon by %s', (hour) => {
+  const HARBOUR_LIFE = harbourLifeAt(hour);
+  const landBeats = landBeatsOf(HARBOUR_LIFE);
+
   it('stand each on the ground they belong on: land for walkers, sea for swimmers', () => {
     for (const built of [[], EVERY_RUNG]) {
       const map = getBaseMap(built);

@@ -163,7 +163,8 @@ the lights of the vale's hardest places to reach), a dock worker and his Machop 
 old angler grumbles about Magikarp (and lends you his rod: fish off any quay, or out at the end
 of the long pier where the good ones bite - they all go back, but he keeps a tally), a policeman walks the yard with his Growlithe, and there's a
 Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
-bay, and now and then a bird glides over. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
+bay, and now and then a bird glides over. They keep your hours, too - after dark the children
+have gone home, and if you walk out along the breakwater you might hear Lapras singing. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
 Seagallop sounds her horn as she glides in to the jetty to bring you home, and the boats ride the
 swell while they're moored. And it keeps your clock: the harbour goes gold at dusk and blue at
 night, every window lights up, the S.S. Anne's portholes glow, and once Brock has built you the
