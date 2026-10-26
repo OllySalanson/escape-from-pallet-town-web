@@ -171,7 +171,7 @@ night, every window lights up, the S.S. Anne's portholes glow, and once Brock ha
 beacon, its beam sweeps the bay. Every part of the harbour has a name, and like a
 FireRed town it tells you on a little board at the top of the screen as you walk into it - Arena
 Square, Keepers' Row, Harbour Square with its fountain and its town map, the Quay, the Docks, the
-Long Pier, the Cove and the Green.
+Long Pier, the Cove and the Green. And the board on the quay has a new notice pinned up every day.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
 When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else
