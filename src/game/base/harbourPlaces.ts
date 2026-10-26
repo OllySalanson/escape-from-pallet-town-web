@@ -25,6 +25,14 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
     areas: [{ x: 28, y: 22, width: 3, height: 6 }],
   },
   {
+    id: 'breakwater',
+    name: 'THE BREAKWATER',
+    areas: [
+      { x: 59, y: 21, width: 2, height: 9 },
+      { x: 38, y: 30, width: 23, height: 2 },
+    ],
+  },
+  {
     id: 'cove',
     name: 'THE COVE',
     areas: [{ x: 48, y: 17, width: 13, height: 7 }],

@@ -67,10 +67,11 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     upgradeId: 'beacon',
     name: 'THE HARBOUR LIGHT',
     note: 'It burns for your landing',
-    // On the quay at the harbour mouth, which is where a light goes, and in
-    // full view of the jetty the player comes home to.
-    props: [{ name: 'roundhouse', x: 3, y: 15 }],
-    at: { x: 5, y: 17 },
+    // At the head of the breakwater, which is the harbour mouth and where a
+    // light goes: the Seagallop comes in past it, and at night its beam
+    // sweeps the bay (`harbourNight.ts`).
+    props: [{ name: 'roundhouse', x: 38, y: 27 }],
+    at: { x: 40, y: 31 },
   },
   {
     upgradeId: 'secure-locker-1',
