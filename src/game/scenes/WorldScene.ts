@@ -231,7 +231,7 @@ import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
 import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
-import { districtAt, weatherAt } from '../world/districts';
+import { districtAt, districtsForMap, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
 import {
@@ -369,12 +369,25 @@ import {
   DEFAULT_HUNTER_TUNING,
   HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP,
   HUNTER_SPAWN_MS,
+  HUNTER_SEARCH_MS,
   isHunterEligibleForFirstContract,
   isHunterContactingPlayer,
   type HunterState,
   hunterIntelFor,
 } from '../world/hunter';
 import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
+import {
+  HunterPack,
+  createHunterPack,
+  drawnAt,
+  huntingGrounds,
+  inGround,
+  isAbroad,
+  rivalsForGrounds,
+  type PackEvent,
+  type PackHunter,
+  type PackWorld,
+} from '../world/hunterPack';
 import { hunterForecastLine } from '../world/hunterForecast';
 import { withArticle } from '../ui/article';
 
@@ -386,6 +399,12 @@ const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 const HUNTER_FIGURE_ID = 'rival-hunter';
+/** Ground a hunter sees across though it cannot walk it: low, or flat. */
+const SEE_THROUGH: ReadonlySet<string> = new Set(['water', 'ford', 'fence', 'ice']);
+/** How far from the player a hunter of the pack is drawn at all - past a screen's half-width either way. */
+const PACK_DRAW_RANGE = 20;
+/** How long a hunter's "!" stays up over it. */
+const PACK_MARK_MS = 800;
 
 /** This raid's part in a room's one hunter (`WorldScene.huntRole`). */
 type HuntRole = 'solo' | 'keeper' | 'follower';
@@ -939,6 +958,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private friendFigures: HarbourFigures | null = null;
   /** This raid's part in the room's one hunter last frame (`huntRole`). */
   private huntRoleWas: HuntRole = 'solo';
+  /** The "!" over each hunter of the pack that has just seen the player, and when it went up. */
+  private packMarks = new Map<string, { readonly mark: Phaser.GameObjects.Graphics; readonly atMs: number }>();
+  /** The rival who last shouted, so the chip names the hunter that saw you. */
+  private packShouter: PackHunter | null = null;
+  /** When the pack came out on to the map, for the edges' arrival pulses; nobody is named. */
+  private packCameOutAtMs = Number.NEGATIVE_INFINITY;
+  /** The pack's view of the world, built once a frame. */
+  private packWorldCache: { readonly frame: number; readonly world: PackWorld } | null = null;
   /** When the room's word on the hunter was last taken (`HunterBoard.latest.at`). */
   private hunterHeardAt = -1;
   /** What this browser last said of the hunter, and when, so it says it again only when it changes. */
@@ -986,6 +1013,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    // The marks were destroyed with the scene; the hunters themselves ride the run session.
+    this.packMarks.clear();
+    this.packShouter = null;
+    this.packCameOutAtMs = Number.NEGATIVE_INFINITY;
+    this.packWorldCache = null;
     this.spin = null;
     // Phaser destroyed the plate with the scene; only the reference outlives it.
     this.windowPausePlate = null;
@@ -1155,7 +1187,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterState = data.hunterState ?? createHunterState();
     this.resumeThreatsAlreadyAnnounced();
     this.createMap();
+    this.ensureHunterPack();
     this.applyPendingHunterBreakaway();
+    this.settlePackAfterFight(data.returnLocation !== undefined);
     this.createEntities();
     this.liftBeatenWatches();
     this.resumeHunterProximity();
@@ -1333,6 +1367,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // room shares (`raidRoom/groupHunter.ts`).
     this.updateGroupHunter();
     this.updateRaid(deltaMs);
+    this.drawHunterPack();
     this.settleHeadMark();
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
@@ -4202,8 +4237,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         hunter: hunterChipView({
           who: this.hunterRival().name,
           shout: this.hunterShout(),
-          searching: isHunterSearching(this.hunterState),
-          searchRemainingMs: this.hunterState.searchRemainingMs,
+          searching: this.hunterBlindMs() !== null,
+          searchRemainingMs: this.hunterBlindMs() ?? undefined,
           distance: this.hunterStepsAway(),
           direction: this.hunterBearing(),
           offTheScent:
@@ -4230,7 +4265,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterGlow?.render(
       hunterWarningStrength({
         nowMs: this.time.now,
-        arrivedAtMs: this.hunterArrived?.atMs ?? null,
+        arrivedAtMs: Math.max(this.hunterArrived?.atMs ?? Number.NEGATIVE_INFINITY, this.packCameOutAtMs) > Number.NEGATIVE_INFINITY
+          ? Math.max(this.hunterArrived?.atMs ?? Number.NEGATIVE_INFINITY, this.packCameOutAtMs)
+          : null,
         stepsAway: this.hunterState.defeated ? null : this.hunterStepsAway(),
         lostYou:
           isHunterSearching(this.hunterState) ||
@@ -4252,8 +4289,40 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return arrived.returning ? 'back' : 'arrived';
   }
 
+  /**
+   * What is left of the window a fled hunter stays blind for, or null when no
+   * hunter is in it. On a raid alone it is the nearest hunter of the pack that
+   * was fled from, and only while no other is after the player.
+   */
+  private hunterBlindMs(): number | null {
+    const pack = this.hunterPackHere();
+    if (!pack) {
+      return isHunterSearching(this.hunterState) ? this.hunterState.searchRemainingMs ?? 0 : null;
+    }
+    if (pack.lead(this.currentTile)) {
+      return null;
+    }
+    const blind = pack.hunters.find(
+      (hunter) =>
+        hunter.mode === 'stunned' &&
+        Math.abs(hunter.position.x - this.currentTile.x) + Math.abs(hunter.position.y - this.currentTile.y) <= 24,
+    );
+    return blind ? blind.timerMs : null;
+  }
+
   /** Steps to the hunter, or null when it is not on this map. */
   private hunterStepsAway(): number | null {
+    const pack = this.hunterPackHere();
+    if (pack) {
+      // The pack measures its own: the walk the hunter after you is taking.
+      const lead = pack.lead(this.currentTile);
+      if (!lead) {
+        return null;
+      }
+      return lead.gap !== null
+        ? lead.gap + 1
+        : Math.abs(lead.position.x - this.currentTile.x) + Math.abs(lead.position.y - this.currentTile.y);
+    }
     if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return null;
     }
@@ -4264,7 +4333,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private hunterBearing(): string {
-    const hunter = this.hunterState.position;
+    const hunter = this.hunterPackHere()?.lead(this.currentTile)?.position ?? this.hunterState.position;
     return hunter ? this.headingTo(hunter) : 'HERE';
   }
 
@@ -5247,7 +5316,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ) ||
       (this.isHunterOnCurrentMap() &&
         this.hunterState.position!.x === tile.x &&
-        this.hunterState.position!.y === tile.y)
+        this.hunterState.position!.y === tile.y) ||
+      this.hunterPackHere()?.hunterAt(tile) !== undefined
     );
   }
 
@@ -5605,6 +5675,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.facing = warp.facing;
       this.targetTile = null;
       this.createMap();
+      this.ensureHunterPack();
       this.moveHunterToCurrentMap();
       this.createEntities();
       this.setPlayerPosition(
@@ -6849,6 +6920,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.advanceHunterSearch(clockMs);
     this.advanceHunterWhileStill(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
+    this.advanceHunterPack(clockMs, snapshot.elapsedMs);
     this.refreshExtractionMarkers();
     this.refreshBoats();
     this.refreshRunTimerHud(deltaMs);
@@ -7372,8 +7444,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * walking out of that pocket is what fixes it.
    */
   private placeHunterIfDue(elapsedMs: number): void {
-    // A room's hunter is brought in by its keeper, and only drawn here.
-    if (this.huntRoleWas === 'follower') {
+    // A room's hunter is brought in by its keeper, and only drawn here; a raid
+    // alone is hunted by the pack, which comes out by its own rule.
+    if (this.huntRoleWas === 'follower' || this.hunterPackHere()) {
       return;
     }
     if (
@@ -7429,6 +7502,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** Who is hunting this raid - a face and lines, never a fight (`hunters.ts`). */
   private hunterRival(): HunterRival {
+    // On a raid alone, whichever hunter is after you - or last saw you, or was
+    // last fled from - is the one the chip and the glow are about.
+    const pack = this.hunterPackHere();
+    if (pack) {
+      const who =
+        pack.lead(this.currentTile) ??
+        this.packShouter ??
+        pack.hunters.find((hunter) => hunter.mode === 'stunned');
+      return hunterRival(who?.rivalId ?? this.runSession?.plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL);
+    }
     // In a room the hunter is everybody's, so it is whoever the room first
     // heard hunting: one face, one set of lines, one lead (`groupHunter.ts`).
     const shared = this.huntRoleWas === 'solo' ? undefined : friendRoom()?.hunters.latest?.hunter.rivalId;
@@ -7582,7 +7665,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * built where the hunter now stands, never where the battle left it.
    */
   private applyPendingHunterBreakaway(): void {
-    if (!this.hunterState.pendingBreakaway || !this.hunterState.position) {
+    if (!this.hunterState.pendingBreakaway || !this.hunterState.position || this.hunterPackHere()) {
       return;
     }
     if (this.hunterState.mapId !== this.currentMap.id) {
@@ -7684,6 +7767,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private tryStartHunterBattle(): boolean {
+    const pack = this.hunterPackHere();
+    if (pack) {
+      const catcher = pack.catcher(this.currentTile);
+      if (!catcher) {
+        return false;
+      }
+      this.catchByPack(pack, catcher);
+      return true;
+    }
     if (
       this.hunterFightingSomebodyElse() ||
       !this.isHunterOnCurrentMap() ||
@@ -7723,6 +7815,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * ever be reached by a player pushing into a hunter that is holding still.
    */
   private tryWalkIntoHunter(facing: Direction): boolean {
+    const pack = this.hunterPackHere();
+    if (pack) {
+      const hunter = pack.hunterAt(nextTileFromDirection(this.currentTile, facing));
+      if (!hunter) {
+        return false;
+      }
+      this.facing = facing;
+      this.catchByPack(pack, hunter);
+      return true;
+    }
     if (this.hunterFightingSomebodyElse() || !this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return false;
     }
@@ -7738,6 +7840,318 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Whether a room's hunter is in a fight with another player, and so catches nobody else until it is over. */
   private hunterFightingSomebodyElse(): boolean {
     return this.huntRoleWas !== 'solo' && (friendRoom()?.hunters.hunterHeld ?? false);
+  }
+
+  // -- the pack: a hunter in every district -----------------------------------
+
+  /**
+   * This map's hunters on a raid alone (`world/hunterPack.ts`), or undefined:
+   * a room shares one hunter by its own rule (`raidRoom/groupHunter.ts`), and
+   * a world with no raid has none. Built by `ensureHunterPack`, never here, so
+   * asking costs nothing.
+   */
+  private hunterPackHere(): HunterPack | undefined {
+    if (friendRoom()?.room) {
+      return undefined;
+    }
+    return this.runSession?.hunterPacks?.get(this.currentMap.id);
+  }
+
+  /**
+   * Builds this map's pack the first time a raid alone is on it: a hunter to
+   * every big district, each the rival `rivalsForGrounds` gives it, the raid's
+   * own rival keeping the district the raid lands in.
+   */
+  private ensureHunterPack(): void {
+    const session = this.runSession;
+    const plan = session?.plan;
+    if (!session || !plan || friendRoom()?.room || session.hunterPacks?.has(this.currentMap.id)) {
+      return;
+    }
+    const map = this.currentMap;
+    const outdoors = map.areas?.find((area) => area.kind === 'outdoors')?.rect ?? {
+      x: 0,
+      y: 0,
+      width: map.width,
+      height: map.height,
+    };
+    const grounds = huntingGrounds({
+      width: map.width,
+      height: map.height,
+      collision: map.collision,
+      links: map.links,
+      outdoors,
+      districts: districtsForMap(map.id),
+      keepClear: [
+        ...insertionsOn(map.id).map((insertion) => insertion.position),
+        ...extractionPointsOn(map.id).map((point) => point.position),
+      ],
+    });
+    const landing = plan.insertion.mapId === map.id ? plan.insertion.position : this.currentTile;
+    session.hunterPacks ??= new Map();
+    session.hunterPacks.set(
+      map.id,
+      new HunterPack(createHunterPack(grounds, rivalsForGrounds(grounds, plan.hunter.rivalId, landing))),
+    );
+  }
+
+  /**
+   * What the pack reads of the world this frame: the ground and every figure
+   * standing on it, what can be seen through, and where the player is and is
+   * going. Built once a frame however many hunters ask.
+   */
+  private packWorld(): PackWorld {
+    const frame = this.game?.loop?.frame ?? -1;
+    if (this.packWorldCache && this.packWorldCache.frame === frame && frame >= 0) {
+      return this.packWorldCache.world;
+    }
+    const map = this.currentMap;
+    const width = map.width;
+    const collision = this.collisionData;
+    const standing = new Set<number>();
+    for (const entity of map.entities) {
+      for (const tile of this.entityHeldTiles(entity)) {
+        standing.add(tile.y * width + tile.x);
+      }
+    }
+    for (const trainer of this.trainersForCurrentMap()) {
+      standing.add(trainer.position.y * width + trainer.position.x);
+    }
+    for (const point of this.barredExitsHere()) {
+      if (!this.isExtractionOpen(point)) {
+        standing.add(point.position.y * width + point.position.x);
+      }
+    }
+    const areas = map.areas;
+    const placeOf = (tile: GridPosition): PlacedArea | null =>
+      areas ? placedAreaAt(areas, tile) ?? areas[0] : null;
+    const world: PackWorld = {
+      width,
+      height: map.height,
+      links: map.links,
+      blocked: (index) => collision[(index / width) | 0][index % width] || standing.has(index),
+      opaque: (index) => {
+        const y = (index / width) | 0;
+        const x = index % width;
+        return collision[y][x] && !SEE_THROUGH.has(map.terrain[y]?.[x] ?? '');
+      },
+      player: { ...this.currentTile },
+      heading: { ...(this.targetTile ?? this.currentTile) },
+      playerMoving: this.targetTile !== null,
+      playerInGrass: isTallGrassInMap(map, this.currentTile),
+      // Under a roof that hides you, or out on the water: nobody on the shore
+      // can follow a boat.
+      playerHidden: this.playerIsHidden() || this.runSession?.shoreLeftBehind?.mapId === map.id,
+      samePlace: (a, b) => placeOf(a) === placeOf(b),
+      enraged: this.runSession?.manager.isEnraged === true,
+    };
+    this.packWorldCache = { frame, world };
+    return world;
+  }
+
+  /**
+   * The pack's frame, on the raid clock: they come out once the raid's grace
+   * is up (the same rule the one hunter arrived by), turn on the player for
+   * the enrage, and walk, look and run for as long as the clock is charged -
+   * a fight, a cutscene and the briefing stop them with it.
+   */
+  private advanceHunterPack(clockMs: number, elapsedMs: number): void {
+    const pack = this.hunterPackHere();
+    const session = this.runSession;
+    if (!pack || !session || session.manager.phase !== RunPhase.InRun) {
+      return;
+    }
+    const world = this.packWorld();
+    if (
+      pack.waiting() &&
+      this.isHunterEligible() &&
+      hasPlayerSetOff(session.stepsTaken) &&
+      elapsedMs >= (session.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS) &&
+      pack.arrive(world) &&
+      !pack.cameOut
+    ) {
+      // Out on to their patches, none of them in sight of you: the sting and
+      // the edges say so, and nobody is named until one of them sees you.
+      pack.cameOut = true;
+      this.packCameOutAtMs = this.time.now;
+      audioManager.play('hunterArrival');
+    }
+    if (session.manager.isEnraged) {
+      pack.enrage(world);
+      this.bringKeeperBackForEnrage(pack, world);
+    }
+    if (clockMs <= 0) {
+      return;
+    }
+    for (const event of pack.advance(world, clockMs)) {
+      this.onPackEvent(event);
+    }
+    const lead = pack.lead(this.currentTile);
+    const proximity = nextHunterProximity(this.hunterNear, lead ? lead.gap : null);
+    this.hunterNear = proximity.near;
+    if (proximity.warn) {
+      audioManager.play('hunterNear');
+    }
+  }
+
+  /**
+   * What the pack did that the screen says: a hunter seeing you is FireRed's
+   * "!" and its sting, and the chip shouting who. A catch is not answered
+   * here - `update` asks for one the first moment nothing is being read, as
+   * it always has, so a fight never starts under a box.
+   */
+  private onPackEvent(event: PackEvent): void {
+    if (event.kind !== 'noticed') {
+      return;
+    }
+    const id = event.hunter.id;
+    this.packMarks.get(id)?.mark.destroy();
+    const mark = this.add.graphics();
+    this.paintSpottedMark(mark);
+    this.mapObjects.push(mark);
+    this.packMarks.set(id, { mark, atMs: this.time.now });
+    audioManager.play('trainerSpotted');
+    this.packShouter = event.hunter;
+    this.hunterArrived = { atMs: this.time.now, returning: false };
+  }
+
+  /**
+   * The enrage brings the keeper of the district the player is in back, once,
+   * if the player beat it: the one return a beaten hunter has, as the one
+   * hunter had (`hunterAtEnrage`), arriving the fair way.
+   */
+  private bringKeeperBackForEnrage(pack: HunterPack, world: PackWorld): void {
+    if (pack.enrageAnswered) {
+      return;
+    }
+    const keeper = pack.hunters.find((hunter) => inGround(hunter.ground, this.currentTile));
+    if (!keeper || keeper.mode !== 'beaten') {
+      pack.enrageAnswered = true;
+      return;
+    }
+    const tile = this.findHunterSpawnTile();
+    if (!tile) {
+      return;
+    }
+    pack.enrageAnswered = true;
+    pack.returnForEnrage(keeper, tile, world);
+    this.packShouter = keeper;
+    this.hunterArrived = { atMs: this.time.now, returning: true };
+    audioManager.play('hunterArrival');
+  }
+
+  /**
+   * The world back from a fight. The hunter the player fought is settled by
+   * how it ended - beaten is gone, fled from is thrown back behind them
+   * (`findHunterBreakawayTile`, with this raid's exits) and blind for the
+   * search window - and every other hunter that was after them heard it and
+   * comes on (`afterFight`), never into touching distance.
+   */
+  private settlePackAfterFight(fromBattle: boolean): void {
+    const pack = this.hunterPackHere();
+    if (!pack) {
+      return;
+    }
+    const outcome = this.hunterState;
+    const engaged = pack.hunters.find((hunter) => hunter.id === pack.engagedId);
+    pack.engagedId = null;
+    if (engaged && outcome.defeated) {
+      pack.beaten(engaged);
+    } else if (engaged && outcome.pendingBreakaway) {
+      const ground = this.hunterBlocker();
+      const fallback = findHunterBreakawayTile(
+        engaged.position,
+        this.currentTile,
+        this.bounds,
+        (tile) => {
+          const other = pack.hunterAt(tile);
+          return ground(tile) || (other !== undefined && other !== engaged);
+        },
+        HUNTER_BREAKAWAY_DISTANCE,
+        this.facing,
+        this.reachableExitPositions(),
+      );
+      pack.fledFrom(engaged, fallback, outcome.searchRemainingMs ?? HUNTER_SEARCH_MS);
+    }
+    // The pack is the record; the one hunter's state only carried the fight.
+    this.hunterState = createHunterState();
+    if (fromBattle) {
+      pack.afterFight(this.packWorld(), engaged);
+    }
+  }
+
+  /** Caught by a hunter of the pack: its fight, its lines, its catch beat. */
+  private catchByPack(pack: HunterPack, hunter: PackHunter): void {
+    // Caught mid-stride it stands where it was: the step it had not finished is not taken.
+    hunter.next = null;
+    hunter.stepMs = 0;
+    pack.engagedId = hunter.id;
+    this.packShouter = hunter;
+    const session = this.runSession!;
+    const rival = hunterRival(hunter.rivalId);
+    this.hunterState = {
+      spawned: true,
+      defeated: false,
+      mapId: this.currentMap.id,
+      position: { ...hunter.position },
+    };
+    this.pendingTrainerBattle = {
+      trainer: createHunterTrainer(
+        session.manager.snapshot().elapsedMs,
+        session.manager.isEnraged,
+        session.plan?.hunter && { ...session.plan.hunter, rivalId: rival.id },
+        this.party.pokemon,
+      ),
+      introLines: rival.caught,
+      isHunter: true,
+    };
+    this.drawHunterPack();
+    this.playCutscene(
+      hunterCatchCutscene(hunter.id, hunter.position, this.currentTile, this.facing, rival.caught),
+    );
+  }
+
+  /**
+   * The pack on screen: each hunter near enough to be seen, walking between
+   * tiles at its own pace, shaking on the spot through a snag, with its "!"
+   * up for a moment after it sees you. Those further off are hidden, and a
+   * figure is made the first time its hunter comes near.
+   */
+  private drawHunterPack(): void {
+    const pack = this.hunterPackHere();
+    // The catch beat owns its figure until the fight takes over.
+    if (!pack || this.cutscene) {
+      return;
+    }
+    for (const hunter of pack.hunters) {
+      const id = hunter.id;
+      const near =
+        isAbroad(hunter) &&
+        Math.abs(hunter.position.x - this.currentTile.x) <= PACK_DRAW_RANGE &&
+        Math.abs(hunter.position.y - this.currentTile.y) <= PACK_DRAW_RANGE;
+      if (!near) {
+        this.npcSprites.get(id)?.setVisible(false);
+        continue;
+      }
+      if (!this.npcSprites.has(id)) {
+        this.createFigure(id, hunter.position, hunter.facing, 'hunter', hunterRival(hunter.rivalId).design);
+      }
+      const at = drawnAt(hunter);
+      // A snag is a stumble: a pixel's shake on the spot, for the tile it costs.
+      const shake = hunter.snagged && hunter.timerMs > 0 ? ((Math.floor(this.time.now / 50) % 2) * 2 - 1) / TILE_SIZE : 0;
+      this.placeFigure(id, at.x + shake, at.y, hunter.facing, { striding: at.striding });
+      const marked = this.packMarks.get(id);
+      if (marked) {
+        const elapsed = this.time.now - marked.atMs;
+        if (elapsed >= PACK_MARK_MS) {
+          marked.mark.destroy();
+          this.packMarks.delete(id);
+        } else {
+          marked.mark.setDepth(atRow(CANOPY_BAND, at.y) + 0.1);
+          this.placeSpottedMark(marked.mark, at.x, at.y, elapsed);
+        }
+      }
+    }
   }
 
   /** The one catch: the fight is queued, and the beat that hands it over plays. */

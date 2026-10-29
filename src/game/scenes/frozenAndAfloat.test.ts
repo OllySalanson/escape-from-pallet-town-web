@@ -556,6 +556,9 @@ describe('a boat', () => {
     expect(driven.currentTile).toEqual(island);
     expect(driven.hunterState.spawned).toBe(false);
 
+    // The rule a room's one hunter keeps (a raid alone is hunted by the pack,
+    // which cannot see a boat: `packWorld`'s `playerHidden`).
+    driven.runSession.hunterPacks = undefined;
     driven.runSession.stepsTaken = 50;
     driven.placeHunterIfDue(10 * 60_000);
 

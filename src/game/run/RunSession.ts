@@ -9,6 +9,7 @@ import { createSeededRng, type SeededRng } from './rng';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import type { CacheSearchState } from '../world/cacheSearch';
+import type { HunterPack } from '../world/hunterPack';
 
 export interface RaidLocation {
   readonly mapId: WorldMapId;
@@ -93,6 +94,13 @@ export interface ActiveRunSession {
    * `world/hunterArrival.ts`.
    */
   stepsTaken?: number;
+  /**
+   * The raid's hunters, one to a district (`world/hunterPack.ts`), by the
+   * map they hunt: where each stands, what it is doing and who it has seen.
+   * Built the first time the world is made on a map, so a fight hands back
+   * the same hunters it took the player from.
+   */
+  hunterPacks?: Map<WorldMapId, HunterPack>;
   /**
    * Beaten trainers whose watch has already been seen to lift. The world is
    * rebuilt on every return from a fight, so the payoff for a win - the shading
