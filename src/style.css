@@ -4245,7 +4245,8 @@ button {
   max-height: 100%;
   min-height: 0;
 }
-:where(.pixel-ui) .boutique-mirror-window {
+/* Two classes deep, as the rule for both panes is, or the mirror is the row that gives way. */
+:where(.pixel-ui) .boutique-panes > .boutique-mirror-window {
   grid-template-rows: auto auto minmax(0, 1fr);
   width: calc(var(--u) * 120);
 }
@@ -4258,12 +4259,9 @@ button {
   padding: calc(var(--u) * 4) 0;
   background: var(--cream-lit);
 }
-:where(.pixel-ui) .boutique-worn {
-  overflow: hidden;
-}
 :where(.pixel-ui) .boutique-worn-row {
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: space-between;
   gap: calc(var(--u) * 2);
 }

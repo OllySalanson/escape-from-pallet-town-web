@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
-import { boutiqueMarkup, mirrorFigures, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
+import { boutiqueMarkup, mirrorFigures, wornRows, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from '../look/composeLook';
 import { lookKey, readLook, wearing, type PlayerLook } from '../look/look';
 import { wearablesAtlas } from '../look/lookTexture';
@@ -139,9 +139,15 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     if (target.dataset.wear) look = wearing(this.trying, target.dataset.wear);
     else if (target.dataset.whole) look = wholeLookById(target.dataset.whole)?.look;
     else if (target.hasAttribute('data-classic')) look = null;
+    const shown = look === undefined ? this.trying : look;
     const mirror = this.overlay?.root.querySelector<HTMLElement>('[data-mirror]');
     if (mirror) {
-      mirror.innerHTML = mirrorFigures(this.sheet(look === undefined ? this.trying : look));
+      mirror.innerHTML = mirrorFigures(this.sheet(shown));
+    }
+    // And what it is made of, so the list under the mirror is the figure in it.
+    const worn = this.overlay?.root.querySelector<HTMLElement>('[data-worn]');
+    if (worn) {
+      worn.innerHTML = wornRows({ trying: shown, owned: this.state().owned });
     }
   }
 

@@ -14,6 +14,7 @@ import type Phaser from 'phaser';
 import {
   CHARACTER_FRAME_HEIGHT,
   CHARACTER_FRAME_WIDTH,
+  CHARACTER_HEAD_PIXEL_Y,
   CHARACTER_SHEET_COLUMNS,
   getWalkAnimationKey,
   getWalkFrames,
@@ -54,14 +55,39 @@ export function lookTexture(scene: Phaser.Scene, look: PlayerLook): string {
     return SHARED_CHARACTER_TEXTURE;
   }
   const image = context.createImageData(PIECE_WIDTH, PIECE_HEIGHT);
-  image.data.set(composeLook(atlas, look));
+  const pixels = composeLook(atlas, look);
+  image.data.set(pixels);
   context.putImageData(image, 0, 0);
+  headRows.set(key, firstDrawnRow(pixels));
   textures.addSpriteSheet(key, canvas as unknown as HTMLImageElement, {
     frameWidth: CHARACTER_FRAME_WIDTH,
     frameHeight: CHARACTER_FRAME_HEIGHT,
   });
   registerWalk(scene, key);
   return key;
+}
+
+/** Where each composed look's head starts, by texture: a cap stands taller than a crop. */
+const headRows = new Map<string, number>();
+
+/** The first row the standing frame facing down draws anything on. */
+function firstDrawnRow(pixels: Uint8ClampedArray): number {
+  for (let y = 0; y < CHARACTER_FRAME_HEIGHT; y += 1) {
+    for (let x = 0; x < CHARACTER_FRAME_WIDTH; x += 1) {
+      if (pixels[(y * PIECE_WIDTH + x) * 4 + 3]) return y;
+    }
+  }
+  return CHARACTER_HEAD_PIXEL_Y;
+}
+
+/**
+ * How many pixels lower than the classic figure's a look's head starts: what
+ * anything placed over the player's head - the chevron that marks them, a
+ * name plate, a wave - is lowered by, so it sits on this head and not on air
+ * where a taller one would be. Nought for the classic figure.
+ */
+export function lookHeadDrop(texture: string): number {
+  return (headRows.get(texture) ?? CHARACTER_HEAD_PIXEL_Y) - CHARACTER_HEAD_PIXEL_Y;
 }
 
 /** The walk cycle's key for a figure drawn from `texture`, the classic one included. */

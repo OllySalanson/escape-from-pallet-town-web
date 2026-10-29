@@ -49,7 +49,7 @@ import {
   type ErrandGiver,
 } from '../hub/errands';
 import { lookKey, readLook } from '../look/look';
-import { lookTexture, lookWalkKey } from '../look/lookTexture';
+import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import type { BoutiqueSceneData } from './BoutiqueScene';
 import {
   HOME_KEY_LETTERS,
@@ -1662,7 +1662,8 @@ export class BaseScene extends Phaser.Scene {
     const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);
     this.player.setDepth(depth);
     this.playerGroundMark.setPosition(x, y).setDepth(depth);
-    this.playerHeadMark.setPosition(x, y);
+    // On the head this look has: a FireRed cap starts lower than the classic crop.
+    this.playerHeadMark.setPosition(x, y + lookHeadDrop(this.playerTexture));
   }
 
   /**
@@ -2624,7 +2625,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const x = Math.round(this.player.x + TILE_SIZE / 2 - BUBBLE_WIDTH / 2);
-    let y = Math.round(this.player.y + CHARACTER_HEAD_PIXEL_Y - BUBBLE_HEIGHT - OWN_WAVE_LIFT);
+    let y = Math.round(this.player.y + CHARACTER_HEAD_PIXEL_Y + lookHeadDrop(this.playerTexture) - BUBBLE_HEIGHT - OWN_WAVE_LIFT);
     for (const plate of this.harbourFigures?.plateRects() ?? []) {
       const across = x < plate.x + plate.width && x + BUBBLE_WIDTH > plate.x;
       if (across && y < plate.y + plate.height && y + BUBBLE_HEIGHT > plate.y) {
@@ -3423,6 +3424,7 @@ export class BaseScene extends Phaser.Scene {
     }
     this.playerTexture = texture;
     this.player.setTexture(texture, getIdleFrame(this.facing));
+    this.setPlayerPosition(this.player.x, this.player.y);
   }
 
   /**
