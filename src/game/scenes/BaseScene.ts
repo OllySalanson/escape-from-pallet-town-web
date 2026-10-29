@@ -2552,7 +2552,7 @@ export class BaseScene extends Phaser.Scene {
     if (!watcher || !regulars || !regular) {
       return false;
     }
-    const line = regulars.speakTo(regular, this.currentTile, watcher.place);
+    const line = regulars.speakTo(regular, this.currentTile, watcher.place, houseName());
     this.ownWave?.bubble.destroy();
     this.ownWave = { bubble: drawEmoteBubble(this, 'wave'), ms: 0 };
     this.placeOwnWave();

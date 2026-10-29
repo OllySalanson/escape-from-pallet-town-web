@@ -168,7 +168,7 @@ export class HarbourRegulars {
    * turn to the player, wave back, and say their next line - which is
    * returned, for the box. They stand there until `release`.
    */
-  public speakTo(bot: HarbourBot, from: GridPosition, place: RegularsPlace = 'yard'): string {
+  public speakTo(bot: HarbourBot, from: GridPosition, place: RegularsPlace = 'yard', playerName: string | null = null): string {
     const figure = this.crowd.figuresIn(place).find((each) => each.id === bot.id);
     const standing = figure ? (figure.toward ?? figure.tile) : from;
     const facing = directionBetween(standing, from) ?? 'down';
@@ -179,7 +179,7 @@ export class HarbourRegulars {
     this.wavedAt.set(bot.id, this.ms + WAVE_SHOWN_MS);
     const said = this.spoken.get(bot.id) ?? 0;
     this.spoken.set(bot.id, said + 1);
-    return bot.lines[said % bot.lines.length];
+    return greetedBy(bot.lines[said % bot.lines.length], playerName);
   }
 
   /** The box is read: whoever was spoken to goes back about their business. */
@@ -280,6 +280,14 @@ function roomWalk(
     path.unshift(at);
   }
   return path;
+}
+
+/** The hello a line opens with, if it opens with one: `Hi!`, `Oh, hello!`, `Hey there!`. */
+const HELLO = /^((?:Oh, )?(?:hi|hiya|hey|hello|yo)(?: there)?)!/i;
+
+/** A line said to a player with a name: its hello says it, as one player greets another they know. */
+export function greetedBy(line: string, playerName: string | null): string {
+  return playerName ? line.replace(HELLO, `$1, ${playerName}!`) : line;
 }
 
 const steps = (a: GridPosition, b: GridPosition): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);

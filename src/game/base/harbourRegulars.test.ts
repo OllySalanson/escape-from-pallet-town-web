@@ -4,7 +4,7 @@ import { STEP_DURATION_MS } from '../movement/stepClock';
 import { BOT_SLOT_MS, HARBOUR_BOTS, botAt, visitPlan, visitsAt } from './harbourBots';
 import { baseGame } from './baseGames.testkit';
 import { buildRoom, roomNamed } from './rooms';
-import { HarbourRegulars, REGULARS_CHAT_WITHIN, REGULAR_WAVES_WITHIN, callAt, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
+import { HarbourRegulars, REGULARS_CHAT_WITHIN, REGULAR_WAVES_WITHIN, callAt, greetedBy, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
 
 const FRAME = 100;
 
@@ -183,6 +183,21 @@ describe('a regular calling on a keeper', () => {
     expect(seen?.tile).toEqual(first.leg.spot.tile);
     expect(outside.figures('yard').some((figure) => figure.name === name)).toBe(false);
     expect(outside.figures(first.leg.room)).toEqual([]);
+  });
+});
+
+describe('a regular saying hello', () => {
+  it('says a named player\'s name, and leaves a line with no hello alone', () => {
+    expect(greetedBy('Oh, hi! Just back off the SEAGALLOP.', 'OLLY')).toBe('Oh, hi, OLLY! Just back off the SEAGALLOP.');
+    expect(greetedBy('Hey there! Just doing one more raid.', 'AMY')).toBe('Hey there, AMY! Just doing one more raid.');
+    expect(greetedBy('Hi! My best Pokémon rides home.', null)).toBe('Hi! My best Pokémon rides home.');
+    expect(greetedBy('CHARMELEON wants a rematch.', 'OLLY')).toBe('CHARMELEON wants a rematch.');
+  });
+
+  it('opens with a hello on every regular\'s first line', () => {
+    for (const bot of HARBOUR_BOTS) {
+      expect(greetedBy(bot.lines[0], 'OLLY')).toContain('OLLY!');
+    }
   });
 });
 
