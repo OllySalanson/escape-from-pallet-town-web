@@ -764,6 +764,30 @@ map maker as possible" (the palette board, 2026-10-10).
   thing in the game that knows where a piece sits on the sheet and which of its
   cells are drawn.
 
+### `raid-arena.png` - THE RAID ARENA's own front, its banners and its runner
+
+**Derived from two files already in this repository, nothing fetched.** The
+building is `frlg-towns.png`'s Saffron Gym (above, on that file's ruling: ripped
+FireRed/LeafGreen art, rights holders Nintendo / Creatures / Game Freak,
+accepted knowingly) and the banners are `Overworld.png`'s (ArMM1998, CC0, above);
+every pixel added to them was drawn here, for this game, on 2026-10-29, because
+the owner asked for the Arena to stop being a reused Gym ("where it says GYM it
+can say RAID and then have a badge on the other side saying ARENA").
+
+- **How it was made.** `scripts/draw-raid-arena.mjs` is the whole method and
+  reads both sources out of the committed files, so a re-cut of either moves the
+  Arena with it. On the Gym: the wall the town cut lifted as Saffron's paving is
+  made solid again in its own colours; the GYM plate is redrawn taller and reads
+  RAID; four small windows right of the door become a gold-rimmed badge reading
+  ARENA; the emblem over the door is dyed red and the door glass lit warm; a
+  lantern either side of the door, a flag at each end of the roof and a Poke Ball
+  painted on it are drawn in. The Gym statue (also `frlg-towns.png`) has a Poke
+  Ball on its plinth where it said GYM. The CC0 banner pair is dyed red with its
+  emblem in gold. The runner is drawn from nothing. Every colour added is a
+  15-bit value or one FireRed's own palette already uses.
+- **Terms.** As its sources: the building and statue sit on the owner's ruling
+  for `frlg-towns.png`, the banners stay CC0, and the rest is the owner's own.
+
 ### `pokemon-icons.png` - every Pokemon's party icon, for the map maker
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the same

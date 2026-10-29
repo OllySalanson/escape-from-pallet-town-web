@@ -141,8 +141,9 @@ than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks t
 with the name on their front door over their head, and they see yours. Read the sign in your front garden to knock on somebody else's door; if they're in
 and say yes, you're let in to have a nose round. Five buildings, four of them kept by people you'll recognise, and each one is a thing you can do:
 
-- **The Raid Arena**, a Gym on its own stone forecourt at the west end, by the jetty, is where every
-  raid starts: walk in and you're kitting up.
+- **The Raid Arena**, a Gym that has had a makeover - RAID on the plate, a gold ARENA badge, red
+  banners and a red runner up to the door - on its own stone forecourt at the west end, by the jetty,
+  is where every raid starts: walk in and you're kitting up.
 - **Professor Oak's Lab** keeps the contract board, and a wall map that lights up wherever you've
   walked.
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full, and she charges in
