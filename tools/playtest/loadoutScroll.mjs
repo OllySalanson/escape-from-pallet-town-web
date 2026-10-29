@@ -127,6 +127,35 @@ try {
   await press('Delete');
   await sleep(400);
   check((await packedBalls()) === beforeDel - 1, `DEL took one out (${beforeDel} -> ${await packedBalls()})`);
+  // Resting the pointer on a stash row, then on a pack square, says what the
+  // item does after well under a second; moving off takes it away.
+  const tipText = () => page.evaluate(`document.querySelector('.px-tip')?.innerText ?? ''`);
+  for (const [what, sel] of [['a stash row', '[data-describes="item:great-ball"].px-row strong'], ['a pack square', '[data-grid="pack"] [data-describes="item:potion"]']]) {
+    const at = JSON.parse(await page.evaluate(`JSON.stringify((() => { const r = document.querySelector('${sel}').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, top: r.top, bottom: r.bottom }; })())`));
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+    await sleep(300);
+    check((await tipText()) === '', `${what}: nothing yet after 0.3s`);
+    await sleep(700);
+    const text = await tipText();
+    check(/\w/.test(text), `${what}: says what it does ("${text.replace(/\n/g, ' / ')}")`);
+    const tip = JSON.parse(await page.evaluate(`JSON.stringify((() => { const r = document.querySelector('.px-tip').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; })())`));
+    check(tip.top >= at.bottom || tip.bottom <= at.top, `${what}: the box does not cover it`);
+    check(tip.left >= 0 && tip.right <= (await page.evaluate('innerWidth')), `${what}: the box is on screen`);
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+    await sleep(100);
+    check((await tipText()) === '', `${what}: gone once the pointer moves off`);
+  }
+  // The keyboard's twin: the cursor resting on a row shows the same box.
+  await page.evaluate(`document.querySelector('button[data-count-kind="item"][data-count-id="great-ball"][data-count-dir="1"]').focus()`);
+  await press('ArrowUp');
+  await sleep(1000);
+  check(/\w/.test(await tipText()), `the cursor resting on a row says what it does too ("${(await tipText()).replace(/\n/g, ' / ')}")`);
+  if (process.env.TIPSHOT) {
+    const at = JSON.parse(await page.evaluate(`JSON.stringify((() => { const r = document.querySelector('[data-grid="pack"] [data-describes="item:potion"]').getBoundingClientRect(); return { x: r.x + 8, y: r.y + 8 }; })())`));
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+    await sleep(1000);
+    await page.screenshot(process.env.TIPSHOT);
+  }
   await page.screenshot(`${process.env.SHOT ?? '/dev/null'}`).catch(() => undefined);
 } finally {
   await browser.close();

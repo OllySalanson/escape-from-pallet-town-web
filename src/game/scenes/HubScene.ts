@@ -90,6 +90,8 @@ import {
   type GridPieceRef,
 } from '../items';
 import { GridArranging } from '../ui/gridArranging';
+import { describeKey } from '../ui/hoverDescribe';
+import { ItemHoverHelp } from '../ui/itemHoverHelp';
 import { DEFAULT_SECURE_PREFERENCE } from '../hub/secureAutofill';
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import { PokemonParty, type PokemonBase } from '../pokemon';
@@ -324,6 +326,8 @@ export class HubScene extends Phaser.Scene {
    * `items/gridArrange.ts`; what is being carried lives here.
    */
   private arrangingValue: GridArranging | undefined;
+  /** What an item does, after the pointer or the cursor rests on it (`ui/itemHoverHelp.ts`). */
+  private hoverHelp: ItemHoverHelp | undefined;
   /** Whose summary is on screen, while the summary view is the one showing. */
   private reselectStarterId: StarterSpeciesId = 'bulbasaur';
   /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
@@ -482,6 +486,7 @@ export class HubScene extends Phaser.Scene {
   public create(): void {
     this.cameras.main.fadeIn?.(180, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'hub-menu pixel-ui', (event) => this.handleKey(event));
+    this.hoverHelp = new ItemHoverHelp(this.overlay.root);
     // A map picture is as big as the window it is in, which only the browser
     // can say once the screen is laid out (`ui/mapPicture.ts`).
     this.overlay.onMeasure = (unit) =>
@@ -1541,6 +1546,7 @@ export class HubScene extends Phaser.Scene {
       this.render();
     };
     this.arranging.attach(root);
+    this.hoverHelp?.redrawn();
     on('[data-tidy]', (button) => {
       if (button.dataset.tidy === 'secure') {
         this.flow.tidySecure();
@@ -2682,7 +2688,7 @@ export class HubScene extends Phaser.Scene {
         const facts = [size, `${held} at base`, ...(prepacked ? ['packed for you'] : [])]
           .map((fact) => fact.replace(/ /g, '&nbsp;'))
           .join(' · ');
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${facts}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${facts}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;
