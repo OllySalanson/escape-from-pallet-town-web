@@ -199,6 +199,14 @@ export function weatherChipLine(weather: WeatherId | null): string | null {
 /** Tiles between the player and the hunter at which the hunter chip appears. */
 export const HUNTER_ALERT_DISTANCE = 8;
 
+/**
+ * How long the chip shouts who has picked up the trail, once the hunter
+ * arrives. That shout is all that is left of the arrival's dialogue box, which
+ * stopped the player dead (`world/hunterWarning.ts`): the edge glow says that
+ * something is on the player's tail, the chip says who.
+ */
+export const HUNTER_SHOUT_MS = 3_000;
+
 export type HunterChipTone = 'lost-you' | 'closing' | 'intel';
 
 export interface HunterChipView {
@@ -216,6 +224,10 @@ export interface HunterChipIntel {
 }
 
 export interface HunterChipInput {
+  /** The rival hunting this raid, as their name is printed: `BLUE`. Absent reads `HUNTER`. */
+  readonly who?: string;
+  /** For `HUNTER_SHOUT_MS` after the hunter arrives: whether it has just arrived or come back for the enrage. */
+  readonly shout?: 'arrived' | 'back' | null;
   /** True while an escape is still holding the hunter off the trail. */
   readonly searching: boolean;
   readonly searchRemainingMs?: number;
@@ -274,7 +286,7 @@ export function hunterChipView(input: HunterChipInput): HunterChipView | null {
   return view
     ? { ...view, detail: `${hunterTeamLabel(input.intel)}, ${hunterIntelLine(input.intel)}` }
     : {
-      label: `HUNTER ${hunterTeamLabel(input.intel)}`,
+      label: `${input.who ?? 'HUNTER'} ${hunterTeamLabel(input.intel)}`,
       tone: 'intel',
       detail: hunterIntelLine(input.intel),
     };
@@ -286,18 +298,24 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
     // neither and read as a warning about where the player had wandered to, when
     // what it counts down is how long the thing chasing them stays blind.
     const seconds = Math.max(0, Math.ceil((input.searchRemainingMs ?? 0) / 1_000));
-    return { label: `HUNTER LOST YOU ${seconds}s`, tone: 'lost-you' };
+    return { label: `${input.who ?? 'HUNTER'} LOST YOU ${seconds}s`, tone: 'lost-you' };
   }
   if (input.offTheScent === true) {
     // Named for the hunter, as the line above it is: what the player wants to
     // know standing in the dark is not where they are, it is that the thing
     // outside is looking somewhere else.
-    return { label: 'HUNTER OFF THE SCENT', tone: 'lost-you' };
+    return { label: `${input.who ?? 'HUNTER'} OFF THE SCENT`, tone: 'lost-you' };
+  }
+  const who = input.who ?? 'HUNTER';
+  // The shout outranks the distance (the hunter arrives inside it) but not the
+  // two lines above, which are only true after it has been fled or lost.
+  if (input.shout) {
+    return { label: input.shout === 'back' ? `${who} IS BACK` : `${who} ON YOUR TAIL`, tone: 'closing' };
   }
   if (input.distance === null || input.distance > HUNTER_ALERT_DISTANCE) {
     return null;
   }
-  return { label: `HUNTER ${input.direction} ${input.distance}`, tone: 'closing' };
+  return { label: `${who} ${input.direction} ${input.distance}`, tone: 'closing' };
 }
 
 // ---------------------------------------------------------------------------

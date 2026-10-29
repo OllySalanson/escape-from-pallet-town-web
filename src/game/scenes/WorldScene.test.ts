@@ -280,10 +280,12 @@ describe('hunter disengagement wiring', () => {
       expect(directionKeys).toMatch(new RegExp(`\\b${key}\\b`));
     }
     expect(sceneSource).toContain('if (!this.isDialogAdvancePressed()) {');
-    // Every interruption the hunter causes goes through it, and a sign does not.
+    // The hunter's arrival is not one of them: it is an edge glow and the chip
+    // naming the rival, never a box that stops the player (`hunterWarning.ts`).
     // A beaten hunter back for the enrage arrives through the same call.
-    expect(sceneSource).toContain(
-      'this.interrupt([returning ? this.hunterRival().comeback : this.hunterRival().arrival], [position]);',
+    expect(sceneSource).toContain('this.hunterArrives(returning);');
+    expect(sceneSource.slice(sceneSource.indexOf('private hunterArrives('))).not.toMatch(
+      /^[^}]*this\.interrupt\(/,
     );
     // Being caught, and being seen by a watch, are both authored beats now, and
     // the line each of them ends on is still an interruption - raised once, by

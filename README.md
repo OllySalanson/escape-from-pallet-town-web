@@ -79,16 +79,17 @@ glinting, that is definitely worth the detour. Probably.
 
 ### 3. Somebody's coming
 
-Every raid, one of five rivals is sent after you, and you'll know about it. They bring one Pokémon
+Every raid, one of five rivals is sent after you, and you'll know about it: the edges of the screen
+flush red while they're on your tail, and nobody stops the game to tell you so. They bring one Pokémon
 for each of yours that can still fight, a few levels below it, led by their own favourite and
 evolving as they level, so a Charizard gets a Raticate, not a Rattata. Walking into them, or letting
-them walk into you, means a fight. They close in as you walk, and standing still won't hide you
+them walk into you, means a fight, and a speech about whose loot that is now. They close in as you walk, and standing still won't hide you
 either. Running away always works, but costs you a chunk of the clock, so a raid that runs from
 everything ends up running out of time instead. Beat them and they're gone for good. Well, until the
 clock runs out.
 
 <p align="center">
-  <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Millbrook: &quot;BLUE is on your trail! Whatever you found, loser, it's mine!&quot;">
+  <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Millbrook: the screen's edges flush red and the corner says BLUE ON YOUR TAIL, and you keep walking.">
 </p>
 
 ### 4. Fight like it's 2004

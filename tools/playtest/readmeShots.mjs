@@ -201,10 +201,14 @@ const main = async () => {
   // The hunter, brought in beside the player rather than waited for.
   await page.evaluate(`(() => { const w = ${world}; const s = w.runSession;
     s.plan = { ...s.plan, hunter: { ...s.plan.hunter, spawnDelayMs: 0 } }; s.stepsTaken = 99; })()`);
-  await until(`${world}.dialogBox.visible`, 'the hunter to arrive');
-  await wait(4000);
-  await shot('hunter');
-  for (let i = 0; i < 6 && (await page.evaluate(`${world}.dialogBox.visible`)); i += 1) { await press('Space'); await wait(250); }
+  // It arrives as a red glow at the screen's edge and the chip shouting who it
+  // is, never a box (`hunterWarning.ts`): photographed at the top of the
+  // arrival's first pulse.
+  await until(`${world}.hunterArrived !== null`, 'the hunter to arrive');
+  for (let i = 0; i < 40 && (await page.evaluate(`(${world}.hunterGlow?.drawn?.strength ?? 0) < 0.95`)); i += 1) await wait(25, 25);
+  // Taken at once rather than through `shot`, whose settling wait is a third of a pulse.
+  await page.screenshot(`${outDir}/hunter.png`);
+  console.log('shot hunter');
   await page.evaluate(`(() => { const w = ${world}; const t = w.currentTile;
     const beside = [[0,-1,'up'],[1,0,'right'],[-1,0,'left'],[0,1,'down']].find(([dx, dy]) => w.collisionData[t.y + dy]?.[t.x + dx] === false);
     const [dx, dy, facing] = beside; const p = { x: t.x + dx, y: t.y + dy };

@@ -11,7 +11,7 @@ import type { CastCharacterDesignId } from './characterDesigns';
  * all five must be Pokemon characters people remember - the rule the base's
  * four people were chosen by, a person everyone knows over a clever fit.
  *
- * So a hunter is a name, a figure, six lines and one Pokemon of their own.
+ * So a hunter is a name, a figure, four lines and one Pokemon of their own.
  * The levels, the arrival and the pursuit are the one ladder in `hunter.ts`,
  * and every rival fights on it. What a rival changes about a fight is only
  * its `signature`: the captain, 2026-10-11, answering playtest 33 - "each
@@ -89,28 +89,26 @@ export interface HunterRival {
    * (`hunterSpeciesAt` in `hunter.ts`).
    */
   readonly signature: string;
-  /** What they shout when they pick up the trail - the one box the arrival raises. */
-  readonly arrival: string;
-  /** Said as they catch you, before the fight: always two lines, like the beat it replaced. */
+  /**
+   * Said as they catch you, before the fight: always two lines, like the beat
+   * it replaced, and the first of them is about your loot. Nothing else a rival
+   * says is said out loud until then - the arrival is a red glow at the screen's
+   * edge and the chip naming them (`hunterWarning.ts`), never a box that stops
+   * the player - so the catch is where they get to gloat (the captain,
+   * 2026-10-29: "whatever you found, loser, it's mine").
+   */
   readonly caught: readonly [string, string];
   /** Shouted after you as you break away from them. */
   readonly getaway: string;
   /** What they say when their last Pokemon faints. */
   readonly defeat: string;
-  /**
-   * What they shout when they come back for the enrage. A beaten hunter is
-   * gone for the raid except for this one return, when the clock runs out
-   * (`hunterAtEnrage` in `hunter.ts`).
-   */
-  readonly comeback: string;
 }
 
 export type HunterRivalId = 'blue' | 'misty' | 'lt-surge' | 'koga' | 'sabrina';
 
 /**
  * The five, in the order they come round. Lines stay short enough for one
- * dialogue box each, because the arrival is billed to the raid clock like any
- * other dialogue, and each borrows the person's own voice from the game where
+ * dialogue box each, and each borrows the person's own voice from the game where
  * it can ("Smell ya later!", "Hey, kid!", "Fwahahaha!", "I had a vision").
  */
 export const HUNTER_RIVALS: readonly HunterRival[] = [
@@ -121,11 +119,9 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'Your rival. Cocky, always one step ahead in his own head, never lets you forget it.',
     temperament: 'ordinary',
     signature: 'eevee',
-    arrival: 'BLUE is on your trail! "Whatever you found, loser, it\'s mine!"',
-    caught: ['BLUE: "There you are! Did you really think you could hide?"', 'BLUE: "Hand it over. Smell ya later!"'],
+    caught: ['BLUE: "Whatever you found, loser, it\'s mine!"', 'BLUE: "Hand it over. Smell ya later!"'],
     getaway: 'BLUE: "Run, then! I\'ll catch you before the clock does!"',
     defeat: 'What?! I was just warming up... Smell ya later!',
-    comeback: 'BLUE is back! "Time\'s up, loser! Round two!"',
   },
   {
     id: 'misty',
@@ -134,11 +130,9 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'The tomboyish mermaid of Cerulean. Quick temper, all-out offence, hates being ignored.',
     temperament: 'ordinary',
     signature: 'psyduck',
-    arrival: 'MISTY is on your trail! "Don\'t you dare walk off with that!"',
-    caught: ['MISTY: "Got you! Nobody sneaks past me."', 'MISTY: "My policy is an all-out offensive!"'],
+    caught: ['MISTY: "Got you! Whatever\'s in that pack is mine now."', 'MISTY: "My policy is an all-out offensive!"'],
     getaway: 'MISTY: "Ugh! Get back here, you little shrimp!"',
     defeat: 'Wow, you\'re too much! ...Fine. Go on, get out of here.',
-    comeback: 'MISTY is back! "Out of time! Now you\'re all mine!"',
   },
   {
     id: 'lt-surge',
@@ -147,11 +141,9 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'The Lightning American. Loud, a soldier first, calls everyone kid, respects a fighter.',
     temperament: 'ordinary',
     signature: 'voltorb',
-    arrival: 'LT. SURGE is on your trail! "Hey, kid! Nowhere to hide in a war zone!"',
-    caught: ['LT. SURGE: "Hey, kid! Caught you red-handed!"', 'LT. SURGE: "You won\'t live long in combat!"'],
+    caught: ['LT. SURGE: "Caught you red-handed, kid! That loot\'s mine!"', 'LT. SURGE: "You won\'t live long in combat!"'],
     getaway: 'LT. SURGE: "Tactical retreat, huh? Smart move, soldier!"',
     defeat: 'Whoa! You\'re the real deal, kid! Dismissed!',
-    comeback: 'LT. SURGE is back! "Clock\'s out, kid! Second wave!"',
   },
   {
     id: 'koga',
@@ -160,11 +152,9 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'A ninja master of poison. Patient, theatrical, laughs before he strikes.',
     temperament: 'ordinary',
     signature: 'grimer',
-    arrival: 'KOGA is on your trail! "Fwahahaha! A ninja leaves no footprints."',
-    caught: ['KOGA: "Fwahahaha! Did you not feel my eyes on you?"', 'KOGA: "Despair to the creeping horror of poison!"'],
+    caught: ['KOGA: "Fwahahaha! All you have gathered, I shall take."', 'KOGA: "Despair to the creeping horror of poison!"'],
     getaway: 'KOGA: "Hmph. You slip away like smoke... for now."',
     defeat: 'Humph! You have proven your worth. Go, before I change my mind.',
-    comeback: 'KOGA is back! "Fwahahaha! The hour has come at last."',
   },
   {
     id: 'sabrina',
@@ -173,11 +163,9 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'The psychic of Saffron. Calm, eerie, already knows where you are going.',
     temperament: 'ordinary',
     signature: 'venonat',
-    arrival: 'SABRINA is on your trail! "I had a vision of your arrival."',
-    caught: ['SABRINA: "I knew you would come this way."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
+    caught: ['SABRINA: "I saw what you found. It was always mine."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
     getaway: 'SABRINA: "I did not foresee that. How interesting."',
     defeat: 'This loss shocks me... Yet somehow I saw it coming.',
-    comeback: 'SABRINA is back! "Your time has run out. I saw it."',
   },
 ];
 
