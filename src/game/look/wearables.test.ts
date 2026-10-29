@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { MATERIAL_IDS } from '../items/items';
+import { getItemById, isFoundOnly, ItemCategory, MATERIAL_IDS } from '../items/items';
+import { BUILT_IN_FILE_PRIZES } from '../world/filePrizes';
 import { decodePng } from '../testing/pngPixels';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from './composeLook';
 import { WEARABLE_PIECES } from './generated/wearablePieces';
 import { STARTER_LOOK, type DressedLook } from './look';
-import { BOUTIQUE_NAME, slotOf, STARTER_WEARABLES, WEARABLES, wearableById } from './wearables';
+import { BOUTIQUE_NAME, RAID_WEARABLES, slotOf, STARTER_WEARABLES, WEARABLES, wearableById } from './wearables';
 
 const sheet = decodePng(readFileSync(new URL('../../../public/assets/wearables.png', import.meta.url)));
 const data = new Uint8Array(sheet.width * sheet.height * 4);
@@ -132,6 +133,25 @@ describe("THE HARBOUR BOUTIQUE's catalogue", () => {
       // A good part of the piece changes colour - the whole cap, not a stray outline.
       const own = ownPixels(piece.piece);
       expect([piece.id, differ >= Math.max(own / 4, 16 * 6)]).toEqual([piece.id, true]);
+    }
+  });
+});
+
+describe("the boutique's raid finds", () => {
+  it('is each an item of its own id, found and never packed, laid in Greystone Vale as a prize', () => {
+    const laid = new Set((BUILT_IN_FILE_PRIZES['greystone-vale'] ?? []).map((prize) => prize.itemId as string));
+    expect(RAID_WEARABLES.length).toBeGreaterThanOrEqual(12);
+    for (const piece of RAID_WEARABLES) {
+      const item = getItemById(piece.id);
+      expect([piece.id, item?.category, item?.effect.type]).toEqual([piece.id, ItemCategory.Wearable, 'wearable']);
+      expect([piece.id, isFoundOnly(piece.id), laid.has(piece.id)]).toEqual([piece.id, true, true]);
+    }
+  });
+
+  it('is rarer than any find but the Bicycle', () => {
+    for (const prize of BUILT_IN_FILE_PRIZES['greystone-vale'] ?? []) {
+      if (!RAID_WEARABLES.some((piece) => piece.id === prize.itemId)) continue;
+      expect([prize.itemId, prize.chance > 0.05 && prize.chance <= 0.08]).toEqual([prize.itemId, true]);
     }
   });
 });

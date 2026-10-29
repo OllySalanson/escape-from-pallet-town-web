@@ -80,7 +80,7 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       mode: this.mode,
       trying: this.trying,
       wearing: this.wearingNow(),
-      owned: ownedWearables(this.game_?.raidProgress.wardrobe),
+      owned: ownedWearables(this.game_?.raidProgress.wardrobe, stash),
       held: (itemId) => stash?.itemCount(itemId) ?? 0,
       sheet: (look) => this.sheet(look),
       ...(this.status ? { status: this.status } : {}),

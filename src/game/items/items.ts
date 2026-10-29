@@ -27,6 +27,13 @@ export const ItemCategory = {
    * own because it is the one thing in the vault that is for looking at.
    */
   Furniture: 'furniture',
+  /**
+   * Something to wear (`../look/wearables`) that is never on a shelf: the
+   * boutique's legendary and shiny colours, found only on a raid. Once home in
+   * the vault it is in the wardrobe for good, and it is lost with the pack on
+   * a raid that goes down, like any find.
+   */
+  Wearable: 'wearable',
   Misc: 'misc',
 } as const;
 
@@ -39,6 +46,7 @@ export const ITEM_CATEGORY_LABELS: Readonly<Record<ItemCategory, string>> = {
   held: 'Gear',
   pack: 'Packs',
   furniture: 'Furniture',
+  wearable: 'Clothes',
   misc: 'Other',
 };
 
@@ -179,6 +187,11 @@ export type ItemEffect =
    * never packed for one, and lost with the pack on a wipe like any loot.
    */
   | { readonly type: 'furniture' }
+  /**
+   * A piece to wear, found on a raid (`../look/wearables`): owning one is having
+   * it in the vault, and it is worn from the wardrobe, never used.
+   */
+  | { readonly type: 'wearable' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -1030,6 +1043,107 @@ export const ITEMS = {
     description: 'Thirty squares of steel and strap. Carries a fortune home, and is a fortune to go down with.',
     effect: { type: 'pack', grid: { width: 6, height: 5 } },
   },
+
+  /* --- Clothes -------------------------------------------------------------
+     The boutique's raid finds (`../look/wearables`), each sharing its id with
+     the piece it is: never sold, found only on a raid, and in the wardrobe
+     once a raid brings one home. Folded, each is one square. */
+  'articuno-wave': {
+    id: 'articuno-wave',
+    displayName: 'Articuno crest',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'Ice-blue hair, like the legendary bird of Seafoam. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'zapdos-jacket': {
+    id: 'zapdos-jacket',
+    displayName: 'Zapdos jacket',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'A jacket gold as the legendary bird of the Power Plant. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'moltres-tee': {
+    id: 'moltres-tee',
+    displayName: 'Moltres tee',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'A flame-coloured tee, like the legendary bird of Mt. Ember. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'mewtwo-robe': {
+    id: 'mewtwo-robe',
+    displayName: 'Mewtwo robe',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'A robe in psychic violet, for the Pokémon made on Cinnabar. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'mew-dress': {
+    id: 'mew-dress',
+    displayName: 'Mew dress',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'A dress pink as the mythical Mew. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'shiny-charizard-jacket': {
+    id: 'shiny-charizard-jacket',
+    displayName: 'Shiny Charizard jacket',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'A jet-black jacket, like a one-in-a-thousand Charizard. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'shiny-gyarados-cap': {
+    id: 'shiny-gyarados-cap',
+    displayName: 'Shiny Gyarados cap',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'A cap red as the Gyarados nobody believes you saw. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'shiny-pikachu-crop': {
+    id: 'shiny-pikachu-crop',
+    displayName: 'Shiny Pikachu crop',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'Hair gold a shade deeper than any Pikachu. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'shiny-mew-hair': {
+    id: 'shiny-mew-hair',
+    displayName: 'Shiny Mew long hair',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'Long hair in sky blue, the rarest Mew of all. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'shiny-onix-trousers': {
+    id: 'shiny-onix-trousers',
+    displayName: 'Shiny Onix trousers',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'Gold trousers, like Crystal Onix of the Sevii rumours. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'legend-knit-hat': {
+    id: 'legend-knit-hat',
+    displayName: 'Legendary knit hat',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: 'An ice-blue knit hat nobody knows who knitted. Found only on a raid: bring it home and it is in YOUR WARDROBE.',
+    effect: { type: 'wearable' },
+  },
+  'shiny-rocket-tunic': {
+    id: 'shiny-rocket-tunic',
+    displayName: 'Gold Rocket tunic',
+    category: ItemCategory.Wearable,
+    footprint: { width: 1, height: 1 },
+    description: "Giovanni's own, they say, gold where it should be black. Found only on a raid: bring it home and it is in YOUR WARDROBE.",
+    effect: { type: 'wearable' },
+  },
 } as const satisfies Record<string, ItemDefinition>;
 
 export type ItemId = keyof typeof ITEMS;
@@ -1050,6 +1164,11 @@ export type HeldItemId = {
 
 export type PackItemId = {
   [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Pack ? K : never;
+}[ItemId];
+
+/** The clothes a raid can find (`../look/wearables`). */
+export type WearableItemId = {
+  [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Wearable ? K : never;
 }[ItemId];
 
 /** The furniture a raid can find (`../home/furniture`). */
@@ -1076,7 +1195,7 @@ export type ErrandItemId = {
  * stop being the thing the loop is about. Furniture is the same: a piece in the
  * house is worth looking at because a raid carried it home.
  */
-export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId | FurnitureItemId>;
+export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId | FurnitureItemId | WearableItemId>;
 
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = Object.values(ITEMS);
 
@@ -1143,7 +1262,7 @@ export function isPack(itemId: string): boolean {
  * beyond the wipe in advance would be a prize with no risk in carrying it home.
  */
 /** The kinds of thing found in a raid and never packed for one (`isFoundOnly`): defined before the list below, which asks it as the module loads. */
-const FOUND_ONLY_EFFECTS: ReadonlySet<ItemEffect['type']> = new Set(['material', 'currency', 'pack', 'errand', 'furniture']);
+const FOUND_ONLY_EFFECTS: ReadonlySet<ItemEffect['type']> = new Set(['material', 'currency', 'pack', 'errand', 'furniture', 'wearable']);
 
 export const FOUND_ONLY_IDS: readonly ItemId[] = ITEM_DEFINITIONS.filter((item) =>
   isFoundOnly(item.id),
@@ -1261,6 +1380,11 @@ export function isFoundOnly(itemId: string): boolean {
   return type !== undefined && FOUND_ONLY_EFFECTS.has(type);
 }
 
+/** A piece to wear, found on a raid (`../look/wearables`). */
+export function isWearableItem(itemId: string): boolean {
+  return getItemById(itemId)?.effect.type === 'wearable';
+}
+
 /** A piece of furniture for the house (`../home/furniture`). */
 export function isFurniture(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'furniture';
@@ -1376,6 +1500,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} is somebody's errand. Carry it home to them.` };
     case 'furniture':
       return { used: false, message: `${item.displayName} is for your house. Bring it home and put it down in THE BOLTHOLE.` };
+    case 'wearable':
+      return { used: false, message: `${item.displayName} is for wearing: it goes in YOUR WARDROBE.` };
     case 'machine':
       // A machine is never spent here. Teaching can need a move chosen to be
       // forgotten, which is a screen rather than a return value, so `./teaching`

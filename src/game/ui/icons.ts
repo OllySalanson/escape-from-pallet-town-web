@@ -92,6 +92,20 @@ export const ITEM_ICONS = {
   'never-melt-ice': 'never-melt-ice',
   charcoal: 'charcoal',
   'spell-tag': 'spell-tag',
+  // The boutique's raid finds, each a little person in it, drawn from the cut
+  // pieces by `scripts/draw-wearable-icons.mts`.
+  'articuno-wave': 'articuno-wave',
+  'zapdos-jacket': 'zapdos-jacket',
+  'moltres-tee': 'moltres-tee',
+  'mewtwo-robe': 'mewtwo-robe',
+  'mew-dress': 'mew-dress',
+  'shiny-charizard-jacket': 'shiny-charizard-jacket',
+  'shiny-gyarados-cap': 'shiny-gyarados-cap',
+  'shiny-pikachu-crop': 'shiny-pikachu-crop',
+  'shiny-mew-hair': 'shiny-mew-hair',
+  'shiny-onix-trousers': 'shiny-onix-trousers',
+  'legend-knit-hat': 'legend-knit-hat',
+  'shiny-rocket-tunic': 'shiny-rocket-tunic',
   // Furniture for the house, each its own Secret Base piece drawn at 16x16 -
   // shrunk by a whole factor where it is bigger than a tile
   // (`scripts/cut-home-furniture.mjs`), so a find reads as the thing it is.

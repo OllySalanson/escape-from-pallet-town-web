@@ -78,6 +78,7 @@ export {
   isFoundOnly,
   isErrandItem,
   isFurniture,
+  isWearableItem,
   itemNameFor,
   isMaterial,
   ItemCategory,

@@ -942,7 +942,7 @@ export class SaveManager {
       return undefined;
     }
     const worn = readLook(look);
-    if (!canWear(worn, ownedWearables(game.raidProgress.wardrobe))) {
+    if (!canWear(worn, ownedWearables(game.raidProgress.wardrobe, game.stash))) {
       return undefined;
     }
     const raidProgress: RaidProgress = { ...game.raidProgress };
@@ -966,7 +966,7 @@ export class SaveManager {
     if (!worn) {
       return { ok: false, message: 'That is not something anybody can wear.' };
     }
-    const owned = ownedWearables(game.raidProgress.wardrobe);
+    const owned = ownedWearables(game.raidProgress.wardrobe, game.stash);
     const pieces = unownedIn(worn, owned);
     const check = checkBill(billFor(pieces), game.stash);
     if (check.refusal !== undefined) {

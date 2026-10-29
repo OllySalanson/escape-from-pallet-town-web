@@ -15,11 +15,18 @@
 import { formatMoney, CURRENCY_ITEM_ID, itemAmountsFor } from '../items/items';
 import type { Stash } from '../stash/Stash';
 import { lookIds, type DressedLook, type PlayerLook } from './look';
-import { STARTER_WEARABLES, WEARABLES, wearableById, type Wearable } from './wearables';
+import { RAID_WEARABLES, STARTER_WEARABLES, WEARABLES, wearableById, type Wearable } from './wearables';
 
-/** Every piece a save may wear. */
-export function ownedWearables(wardrobe: readonly string[] | undefined): ReadonlySet<string> {
-  return new Set([...STARTER_WEARABLES, ...(wardrobe ?? []).filter((id) => wearableById(id) !== undefined)]);
+/**
+ * Every piece a save may wear: the starter pieces, what it bought, and every
+ * raid find the vault holds - a find is the piece itself, kept in the vault.
+ */
+export function ownedWearables(
+  wardrobe: readonly string[] | undefined,
+  vault?: Pick<Stash, 'itemCount'>,
+): ReadonlySet<string> {
+  const found = vault ? RAID_WEARABLES.filter((piece) => vault.itemCount(piece.id) > 0).map((piece) => piece.id) : [];
+  return new Set([...STARTER_WEARABLES, ...(wardrobe ?? []).filter((id) => wearableById(id) !== undefined), ...found]);
 }
 
 /** The pieces of a look this save does not own yet, each once. */

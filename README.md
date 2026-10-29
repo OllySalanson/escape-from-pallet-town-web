@@ -164,7 +164,11 @@ and say yes, you're let in to have a nose round. Six buildings, four of them kep
   a lab coat, a Team Rocket tunic, a Lass's dress in five colours - plus whole looks from Champion
   Red to Giovanni to a Pikachu in a yellow cap. Try anything on in the mirror first: it walks for
   you. Everyday things cost Pokédollars, and the famous people's own looks are barter only:
-  Pokédollars won't buy you Erika's bob, but a few linen rolls and some lamp oil will.
+  Pokédollars won't buy you Erika's bob, but a few linen rolls and some lamp oil will. And a
+  dozen things aren't for sale at all: the legendary colours and the shiny ones - an Articuno
+  crest, a jet-black Shiny Charizard jacket, a Mew dress - turn up only out in Greystone Vale,
+  each where its Pokémon would be, and only once in a long while. Carry one home and it's yours.
+  Everybody else in the harbour sees what you wear.
 
 And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty: every
 raid sails out on her and comes home on her. The **S.S. Anne** lies at the end of the long pier,
