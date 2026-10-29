@@ -26,6 +26,8 @@ export class MenuOverlay {
   private readonly resizeHandler: () => void;
   /** Which control the player was last on, so a re-render can put them back. */
   private lastFocusKey: string | null = null;
+  /** Scrolls the panes of the last `redraw` back, once the screen is laid out. */
+  private restoreScroll: (() => void) | undefined;
   /**
    * Whatever a screen has that can only be sized once it is laid out and must
    * be sized before its columns are counted - a map picture in a column as
@@ -177,7 +179,7 @@ export class MenuOverlay {
    * screen; a different screen should be drawn with plain `innerHTML`.
    */
   public redraw(markup: string): void {
-    redrawKeepingScroll(this.root, markup);
+    this.restoreScroll = redrawKeepingScroll(this.root, markup);
   }
 
   /** Starts the cursor on the first of these selectors the screen has. */
@@ -195,7 +197,13 @@ export class MenuOverlay {
     requestAnimationFrame(() => {
       const controls = this.cursorControls();
       const remembered = controls.find((control) => focusKeyOf(control) === this.lastFocusKey);
-      this.moveCursorTo(remembered ?? this.firstMatch(selectors));
+      // Put back where it was, the control is already as far in view as the
+      // player had it, and a piece taken out of the pack is gone, so the cursor
+      // starts again where it would: neither scrolls a list to find it, because
+      // the player is still looking where they were. A redraw keeps every
+      // pane's scroll (`redraw`), so only a new screen scrolls to its start.
+      const pieceGone = remembered === undefined && (this.lastFocusKey?.includes('gridPiece=') ?? false);
+      this.moveCursorTo(remembered ?? this.firstMatch(selectors), { keepScroll: remembered !== undefined || pieceGone });
     });
   }
 
@@ -395,10 +403,19 @@ export class MenuOverlay {
     });
   }
 
-  private moveCursorTo(control: HTMLElement | null): void {
+  private moveCursorTo(control: HTMLElement | null, { keepScroll = false } = {}): void {
     this.relayout();
-    control?.focus();
-    this.scrollPastTopCut(control);
+    if (this.restoreScroll) {
+      this.restoreScroll();
+      this.restoreScroll = undefined;
+      // Restoring a scroll the pane already had fires no scroll event, and the
+      // cues were measured while it was too short to scroll that far.
+      this.markScrollCues();
+    }
+    control?.focus({ preventScroll: keepScroll });
+    if (!keepScroll) {
+      this.scrollPastTopCut(control);
+    }
     // Focus that did not move fires no event, and the help bar was just rebuilt.
     this.showHelpFor(control);
   }
@@ -1111,7 +1128,7 @@ export interface RedrawnRoot {
  * many elements with the same classes came before it, which is stable across
  * two drawings of one screen.
  */
-export function redrawKeepingScroll(root: RedrawnRoot, markup: string): void {
+export function redrawKeepingScroll(root: RedrawnRoot, markup: string): () => void {
   const kept = new Map<string, number>();
   for (const [key, element] of keyedByClasses(root)) {
     if (element.scrollTop > 0) {
@@ -1119,12 +1136,19 @@ export function redrawKeepingScroll(root: RedrawnRoot, markup: string): void {
     }
   }
   root.innerHTML = markup;
-  for (const [key, element] of keyedByClasses(root)) {
-    const top = kept.get(key);
-    if (top !== undefined) {
-      element.scrollTop = top;
+  const restore = (): void => {
+    for (const [key, element] of keyedByClasses(root)) {
+      const top = kept.get(key);
+      if (top !== undefined) {
+        element.scrollTop = top;
+      }
     }
-  }
+  };
+  restore();
+  // A pane is laid out into columns only in the next frame (`layoutColumns`),
+  // and until then it may be too short to scroll as far: the caller restores
+  // again once it is laid out.
+  return restore;
 }
 
 function keyedByClasses(root: RedrawnRoot): Map<string, { scrollTop: number }> {

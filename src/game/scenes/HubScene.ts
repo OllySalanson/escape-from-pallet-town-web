@@ -87,6 +87,7 @@ import {
   type ItemDefinition,
   type ItemId,
   type PackItemId,
+  type GridPieceRef,
 } from '../items';
 import { GridArranging } from '../ui/gridArranging';
 import { DEFAULT_SECURE_PREFERENCE } from '../hub/secureAutofill';
@@ -231,8 +232,13 @@ import { withArticle } from '../ui/article';
  * rather than at the words, and it names the three keys that do anything:
  * taking, turning and putting down. The pointer needs no instructions.
  */
-const ARRANGE_HELP =
-  'ENTER picks this up and puts it down · arrows carry it · R turns it · ESC puts it back.';
+/**
+ * The same, on a container at base whose pieces go back to the vault with a
+ * right-click or DEL (`GridArrangingHost.remove`): one at a time, so a stack of
+ * Poké Balls is taken down a ball a click.
+ */
+const ARRANGE_AND_REMOVE_HELP =
+  'ENTER picks this up · arrows carry it · R turns it · RIGHT-CLICK or DEL takes one out.';
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
@@ -927,11 +933,46 @@ export class HubScene extends Phaser.Scene {
         this.render();
       },
       redraw: () => this.render(),
+      remove: (name, ref) => {
+        this.removeFromContainer(name, ref);
+        return true;
+      },
       say: (message) => this.setStatus(message),
       sound: (kind) =>
         audioManager.play(kind === 'refused' ? 'denied' : kind === 'take' ? 'menuOpen' : 'select'),
     });
     return this.arrangingValue;
+  }
+
+  /**
+   * One of a piece back to the vault, as its row's minus would: one of an item
+   * out of the pack, one square of it out of the secure container, a secured
+   * Pokémon out of the container whole.
+   */
+  private removeFromContainer(name: string, ref: GridPieceRef): void {
+    if (ref.kind === 'cargo') {
+      if (name === 'secure') {
+        this.answer(this.flow.toggleSecurePokemon(ref.cargoId), 'cancel');
+      }
+      return;
+    }
+    const itemId = ref.itemId as ItemId;
+    const item = this.itemName(itemId);
+    const left = this.flow.itemQuantity(itemId) - 1;
+    const refusal =
+      name === 'secure' ? this.flow.adjustSecureItem(itemId, -1) : this.flow.setItemQuantity(itemId, left);
+    if (refusal !== undefined) {
+      this.refuse(refusal);
+      return;
+    }
+    audioManager.play('cancel');
+    this.setStatus(
+      name === 'secure'
+        ? `Took a square of ${item} out of the container.`
+        : left > 0
+          ? `Took one ${item} out of the pack. ${left} still packed.`
+          : `Took ${item} out of the pack.`,
+    );
   }
 
   private setView(view: HubView): void {
@@ -2742,7 +2783,7 @@ export class HubScene extends Phaser.Scene {
     )}<div class="loadout-side">${pixelWindow(
       `<div class="pack-body px-scroll">${pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         label: `Pack, ${cells.used} of ${cells.total} squares full`,
-        arrange: { name: 'pack', ghost: this.arranging.ghostFor('pack'), help: ARRANGE_HELP },
+        arrange: { name: 'pack', ghost: this.arranging.ghostFor('pack'), help: ARRANGE_AND_REMOVE_HELP },
       })}${this.arrangeBar('pack')}${this.packRows()}</div>`,
       {
         className: 'pack-window',
@@ -3309,7 +3350,7 @@ export class HubScene extends Phaser.Scene {
       `<div class="secure-body">${pixelGrid(this.flow.secureLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         className: 'is-secure',
         label: `Secure container, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
-        arrange: { name: 'secure', ghost: this.arranging.ghostFor('secure'), help: ARRANGE_HELP },
+        arrange: { name: 'secure', ghost: this.arranging.ghostFor('secure'), help: ARRANGE_AND_REMOVE_HELP },
       })}${this.arrangeBar('secure')}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}<h3 class="px-subheading">Found goods</h3>` : ''}${materialRows}</div></div>`,
       {
         className: 'secure-group',

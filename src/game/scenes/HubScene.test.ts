@@ -466,6 +466,43 @@ function createWornHub(damage = (maxHp: number) => maxHp - 3): {
 }
 
 describe('hub deployment route', () => {
+  it('takes one of a piece out of the pack and back to the vault with a right-click or DEL (the captain, 2026-10-29)', () => {
+    const { hub } = createHub();
+    intoTheArena(hub);
+    const remove = (name: string, ref: unknown): void =>
+      (hub as unknown as { removeFromContainer(name: string, ref: unknown): void }).removeFromContainer(name, ref);
+    hub.flow.setItemQuantity('poke-ball', 3);
+    const vault = hub.stash.itemCount('poke-ball');
+
+    remove('pack', { kind: 'item', itemId: 'poke-ball', index: 0 });
+    expect(hub.flow.itemQuantity('poke-ball')).toBe(2);
+    expect(statusOf(hub)).toBe('Took one Poké Ball out of the pack. 2 still packed.');
+
+    remove('pack', { kind: 'item', itemId: 'poke-ball', index: 0 });
+    remove('pack', { kind: 'item', itemId: 'poke-ball', index: 0 });
+    expect(hub.flow.itemQuantity('poke-ball')).toBe(0);
+    expect(statusOf(hub)).toBe('Took Poké Ball out of the pack.');
+    // Back at base, never spent.
+    expect(hub.stash.itemCount('poke-ball')).toBe(vault);
+  });
+
+  it('takes a square back out of the secure container the same way', () => {
+    const { hub } = createHub();
+    intoTheArena(hub);
+    hub.flow.setItemQuantity('potion', 1);
+    hub.flow.setSecureSquares('potion', 1);
+    expect(hub.flow.secureQuantity('potion')).toBe(1);
+
+    (hub as unknown as { removeFromContainer(name: string, ref: unknown): void }).removeFromContainer('secure', {
+      kind: 'item',
+      itemId: 'potion',
+      index: 0,
+    });
+
+    expect(hub.flow.secureQuantity('potion')).toBe(0);
+    expect(hub.flow.itemQuantity('potion')).toBe(1);
+  });
+
   it('keeps the loadout list where it was when something is packed, and starts a new screen at the top (the captain, 2026-10-29)', () => {
     const { hub } = createHub();
     const overlay = (hub as unknown as { overlay: { redraw: (markup: string) => void } }).overlay;
