@@ -1822,9 +1822,13 @@ export class BaseScene extends Phaser.Scene {
       : '';
   }
 
-  /** Whether another player in the shared harbour stands (or is stepping) onto this tile: Space waves at them. */
+  /** Whether another player in the shared harbour - or a regular - stands (or is stepping) onto this tile: Space waves at them. */
   private otherPlayerAt(tile: GridPosition): boolean {
-    return harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false;
+    return (
+      (harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false) ||
+      // A regular is waved at as a player is, and answers (`speakToRegular`).
+      (this.place.room === null && (harbourRegulars()?.at(tile) ?? null) !== null)
+    );
   }
 
   private thingFaced(facing: GridPosition): RoomThing | undefined {
