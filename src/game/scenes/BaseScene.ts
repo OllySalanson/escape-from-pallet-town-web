@@ -1853,7 +1853,7 @@ export class BaseScene extends Phaser.Scene {
     return (
       (harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false) ||
       // A regular is waved at as a player is, and answers (`speakToRegular`).
-      (this.place.room === null && (harbourRegulars()?.at(tile) ?? null) !== null)
+      this.regularAt(tile)
     );
   }
 
@@ -2537,6 +2537,12 @@ export class BaseScene extends Phaser.Scene {
       player: this.currentTile,
       room: { collision: this.place.collision, mat: room.mat },
     };
+  }
+
+  /** Whether one of the harbour's regulars stands (or is stepping) onto this tile, here. */
+  private regularAt(tile: GridPosition): boolean {
+    const watcher = this.regularsWatcher();
+    return watcher !== null && (harbourRegulars()?.at(tile, watcher.place) ?? null) !== null;
   }
 
   /**
