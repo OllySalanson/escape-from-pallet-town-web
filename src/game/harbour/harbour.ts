@@ -1,6 +1,6 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
-import { HarbourLink, type HarbourWire, type NamedFigure } from './harbourLink';
+import { AWAY_GRACE_MS, HarbourLink, LEAVE_AFTER_MS, type HarbourWire, type NamedFigure } from './harbourLink';
 import { housePlace, type HarbourPlace, type SHARED_HARBOUR_ROOMS } from './harbourProtocol';
 import { loadPlayerName } from '../console/playerName';
 import { requestedTestMode } from '../dev/testMode';
@@ -53,11 +53,18 @@ export interface HarbourIdentity {
   seenAs(name: string): Promise<string | null>;
 }
 
+/** How often the link is ticked while no scene ticks it (`HarbourSession.away`). */
+export const AWAY_TICK_MS = 500;
+
 export class HarbourSession {
   public readonly link: HarbourLink;
   private readonly identity: HarbourIdentity;
   private me: string | null = null;
   private named: string | null = null;
+  /** The link's clock at the last frame a scene gave it, and the wall clock then. */
+  private clock = { link: 0, wall: 0 };
+  /** Keeps the link's clock going while no scene is (`away`). */
+  private awayTimer: ReturnType<typeof setInterval> | null = null;
   private where: HarbourWhere = 'yard';
   private tile: GridPosition = { x: 0, y: 0 };
   private facing: Direction = 'down';
@@ -78,6 +85,7 @@ export class HarbourSession {
     name: string | null,
     partner: PartnerSpeciesId | null = null,
   ): void {
+    this.stopAwayClock();
     this.where = where;
     this.tile = { ...tile };
     this.facing = facing;
@@ -100,13 +108,39 @@ export class HarbourSession {
     this.link.stepped(tile, facing);
   }
 
-  /** The player's scene has gone: a menu, a raid. */
+  /**
+   * The player's scene has gone: a menu, a raid. The link takes them off
+   * everybody else's screens after a grace, and leaves the channel a minute
+   * after that - but only on a tick, and the scene that ticked it is the one
+   * that has gone. So the session keeps the link's clock going itself until a
+   * scene stands the player somewhere again: without it a player choosing a
+   * loadout, or out on a raid, stood on the Raid Arena's doorstep for
+   * everybody else until they came back (playtest 49).
+   */
   public away(): void {
     this.link.away();
+    this.stopAwayClock();
+    const from = this.clock;
+    const until = from.link + AWAY_GRACE_MS + LEAVE_AFTER_MS;
+    this.awayTimer = setInterval(() => {
+      const now = from.link + (Date.now() - from.wall);
+      this.link.tick(now, AWAY_TICK_MS);
+      if (now >= until) {
+        this.stopAwayClock();
+      }
+    }, AWAY_TICK_MS);
   }
 
   public tick(nowMs: number, deltaMs: number): void {
+    this.clock = { link: nowMs, wall: Date.now() };
     this.link.tick(nowMs, deltaMs);
+  }
+
+  private stopAwayClock(): void {
+    if (this.awayTimer !== null) {
+      clearInterval(this.awayTimer);
+      this.awayTimer = null;
+    }
   }
 
   /** Puts the player's hand up, at the player they are facing if any; whether it went. */
