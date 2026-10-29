@@ -79,6 +79,7 @@ import { noticeFor } from '../base/harbourNotices';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
+import { gymGuideLines } from '../base/gymGuide';
 import { BASE_SHEET_SOURCE } from '../base/baseSheet';
 import { BASE_PIECES } from '../base/generated/basePieces';
 import {
@@ -308,6 +309,8 @@ const CAPTAIN_ID = 'ss-anne-captain';
 let spyglassLooks = 0;
 /** The angler on the cove's jetty, who lends his rod (`base/harbourFishing.ts`). */
 const ANGLER_ID = 'cove-angler';
+/** The Gym Guide at the Raid Arena's door, who says the day's work (`base/gymGuide.ts`). */
+const GYM_GUIDE_ID = 'gym-guide';
 /** The Safari Warden on the green, who can be understood once his GOLD TEETH are back (`hub/errands.ts`). */
 const WARDEN_ID = 'safari-warden';
 /**
@@ -2738,6 +2741,11 @@ export class BaseScene extends Phaser.Scene {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       this.say(spyglassLines(windowLight(new Date()), spyglassLooks), [target]);
       spyglassLooks += 1;
+      return;
+    }
+    if (local?.id === GYM_GUIDE_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      this.say(gymGuideLines(this.savedGame.raidProgress), [target]);
       return;
     }
     if (local?.id === WARDEN_ID) {
