@@ -2587,6 +2587,15 @@ describe('what the player wears, and the wardrobe they have bought', () => {
     expect(new SaveManager(storage).load()?.raidProgress.look).toBeUndefined();
   });
 
+  it('tells the title screen what the player wears, and nothing for the classic look', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    expect(saves.describe()).not.toHaveProperty('look');
+    const starter = { head: 'short-crop', top: 'plain-tee', legs: 'plain-trousers', body: null };
+    saves.wearLook(starter);
+    expect(new SaveManager(storage).describe()).toMatchObject({ kind: 'game', look: starter });
+  });
+
   it('buys what a try-on lacks out of the vault in one write, and wears it', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);

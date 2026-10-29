@@ -46,7 +46,8 @@ import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
 import { characterDesignTextureKey, getCharacterDesign } from '../world/characterDesigns';
-import { CHARACTER_FEET_PIXEL_Y, CHARACTER_FRAME_HEIGHT, getWalkAnimationKey } from '../playerFrames';
+import { CHARACTER_FEET_PIXEL_Y, CHARACTER_FRAME_HEIGHT } from '../playerFrames';
+import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { isPartnerSpecies, partnerFrame, partnerTextureKey, PARTNER_FEET_PIXEL_Y, type PartnerSpeciesId } from '../base/partner';
 
 /**
@@ -385,7 +386,9 @@ export class TitleScene extends Phaser.Scene {
     // A figure's frame is 16x32 with its soles on row 27; the follower's is
     // 32x32 with its feet on row 29. Both stand on the same line of the road.
     const frameBottom = height;
-    const trainerKey = characterDesignTextureKey('protagonist-red');
+    // The trainer is Red until the save has dressed them: then it is their own look.
+    const look = this.summary.kind === 'game' ? this.summary.look : undefined;
+    const trainerKey = look ? lookTexture(this, look) : characterDesignTextureKey('protagonist-red');
     const rivalKey = characterDesignTextureKey('blue');
     this.trainer = this.track(this.add.sprite(-100, frameBottom, trainerKey).setOrigin(0.5, 1).setDepth(7));
     this.rival = this.track(this.add.sprite(-100, frameBottom, rivalKey).setOrigin(0.5, 1).setDepth(7));
@@ -430,7 +433,7 @@ export class TitleScene extends Phaser.Scene {
       this.chaseHeading = chase.heading;
       const direction = chase.heading === 1 ? 'right' : 'left';
       for (const figure of [this.trainer, this.rival]) {
-        const key = getWalkAnimationKey(direction, figure.texture.key);
+        const key = lookWalkKey(figure.texture.key, direction);
         figure.play({ key, frameRate: 14, repeat: -1 });
       }
     }
