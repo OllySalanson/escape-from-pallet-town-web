@@ -697,7 +697,12 @@ export class BaseScene extends Phaser.Scene {
     this.createFigures();
     this.createPlayer();
     // Somebody else's partner arrives where this player's own could, and never on top of it.
-    this.harbourFigures = new HarbourFigures(this, undefined, (tile) => this.partnerCanStand(tile) && !this.partnerAt(tile));
+    this.harbourFigures = new HarbourFigures(
+      this,
+      undefined,
+      (tile) => this.partnerCanStand(tile) && !this.partnerAt(tile),
+      () => this.collision[0].length * TILE_SIZE,
+    );
     this.createPartner(data);
     harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, houseName(), partnerOf(this.savedGame.stash)?.species ?? null);
     this.createCaptions();

@@ -5,7 +5,7 @@ import type { Pokemon } from '../pokemon/Pokemon';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
-import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfSelf, heelOf } from './harbourFigures';
+import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfSelf, heelOf, withinPlace } from './harbourFigures';
 import { PARTNER_FEET_PIXEL_Y, partnerFrame, partnerTextureKey } from './partner';
 import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
 
@@ -395,3 +395,43 @@ describe("a name plate beside this player's own head", () => {
     expect(clearOfSelf(centred(11), width, 11 * TILE_SIZE, me.y, null)).toBe(centred(11));
   });
 });
+
+/**
+ * A room is framed on the dark (playtest 49): AMY on the upstairs stair mat
+ * of a fourteen-tile room, against its east wall, had her name plate - wider
+ * than her tile - hanging past the wall into the dark beside it.
+ */
+describe('a name plate against the edge of a room', () => {
+  const ROOM_WIDTH = 14 * TILE_SIZE;
+
+  it('slides along to stay over the room, and leaves a plate with room to spare where it is', () => {
+    expect(withinPlace(ROOM_WIDTH - 20, 30, ROOM_WIDTH)).toBe(ROOM_WIDTH - 30);
+    expect(withinPlace(-6, 30, ROOM_WIDTH)).toBe(0);
+    expect(withinPlace(100, 30, ROOM_WIDTH)).toBe(100);
+    // Nothing to keep it over, or a place narrower than the plate: as it was.
+    expect(withinPlace(-6, 30, null)).toBe(-6);
+    expect(withinPlace(-6, 30, 20)).toBe(-6);
+  });
+
+  it('draws a plate over the room for somebody standing against its east wall', () => {
+    const plates: Drawn[] = [];
+    const scene = {
+      add: {
+        sprite: () => new Drawn(),
+        graphics: () => {
+          const plate = new Drawn();
+          plates.push(plate);
+          return plate;
+        },
+        text: (_x: number, _y: number, text: string) => new Drawn().setText(text),
+      },
+    } as unknown as Phaser.Scene;
+    const others = new HarbourFigures(scene, undefined, null, () => ROOM_WIDTH);
+    const tile = { x: 13, y: 2 };
+    others.update([{ id: 'amy', place: 'yard', tile, toward: null, progress: 0, behind: null, facing: 'down', name: 'AMY' }], null);
+    const [plate] = others.plateRects();
+    expect(plate.x + plate.width).toBeLessThanOrEqual(ROOM_WIDTH);
+    expect(plates[0].x).toBe(plate.x);
+  });
+});
+
