@@ -1,4 +1,4 @@
-import { cellsFor, itemAmountFor, type ItemId } from '../items';
+import type { ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { fileMap } from './playerMaps';
@@ -27,53 +27,41 @@ export interface WorldPoi {
   readonly locked?: true;
 }
 
-export type PoiActivationResult = 'activated' | 'unavailable' | 'bag-full' | 'locked';
+export type PoiOpening = 'opened' | 'unavailable' | 'locked';
 
-/** The Lockpicks a raid is carrying, as `tryActivatePoi` asks about them. */
+/** The Lockpicks a raid is carrying, as `openPoi` asks about them. */
 export interface PoiLockpicks {
   readonly count: () => number;
-  /** Spends one, which happens only once the crate's whole cache is known to fit. */
+  /** Spends one: the pick snaps in the lock it turns. */
   readonly spend: () => void;
 }
 
 /**
- * Fixed landmarks belong to authored map content, not the seeded loot pool.
- * They can only be activated once during an active extraction raid.
+ * Opens a landmark, once a raid: a lock takes a Lockpick, and whatever the
+ * landmark does to the route (`effect`) is done now. What it holds is not
+ * handed over here. A cache is *searched* (`cacheSearch.ts`): its pieces come
+ * to light one at a time and the player takes what they want of them, so
+ * opening one costs the pick and starts the clock on the search, and nothing
+ * about the pack decides whether it opens. (It used to pay out whole or not at
+ * all, and a full pack kept the lock shut and the exit it opened sealed.)
  */
-export function tryActivatePoi(
+export function openPoi(
   poi: WorldPoi | undefined,
   isRunActive: boolean,
   activatedPoiIds: Set<string>,
-  collectRunItem: (itemId: ItemId, quantity: number) => boolean,
-  /** `freeing` is what opening it uses up - the Lockpick - whose squares are room too. */
-  hasRoomForAll: (reward: WorldPoi['reward'], freeing: readonly { readonly itemId: ItemId; readonly quantity: number }[]) => boolean,
   lockpicks: PoiLockpicks = { count: () => 0, spend: () => undefined },
-): PoiActivationResult {
+): PoiOpening {
   if (!poi || !isRunActive || activatedPoiIds.has(poi.id)) {
     return 'unavailable';
   }
-  if (poi.locked && lockpicks.count() === 0) {
-    return 'locked';
-  }
-
-  // Whole or not at all. Taken a piece at a time, two Poke Balls that fit and a
-  // Potion that does not left the balls in the pack with the landmark still
-  // unworked - so walking over it again paid the balls out a second time.
-  // The pick snaps in the lock, so its square is room for the cache: asked
-  // without it, a crate one square short was refused and the player told to
-  // put something down for good to make room the pick was about to make.
-  if (!hasRoomForAll(poi.reward, poi.locked ? [{ itemId: 'lockpick', quantity: 1 }] : [])) {
-    return 'bag-full';
-  }
-  // Spent only once the room is known, so a crate refused for room never costs
-  // one - and before the cache goes in, so the cache has the pick's square.
   if (poi.locked) {
+    if (lockpicks.count() === 0) {
+      return 'locked';
+    }
     lockpicks.spend();
   }
-  poi.reward.forEach((item) => collectRunItem(item.itemId, item.quantity));
-
   activatedPoiIds.add(poi.id);
-  return 'activated';
+  return 'opened';
 }
 
 export const WORLD_POIS: readonly WorldPoi[] = [
@@ -813,49 +801,4 @@ export function lockedCrateLines(poi: WorldPoi): readonly string[] {
     `${poi.label}: the crate is locked…`,
     'A Lockpick in the pack would open it. Bill trades them, and they turn up in the field.',
   ];
-}
-
-/**
- * What a cache paid, said where it went. A cache pays into the pack, which a
- * wipe takes, so the line says that and never "secured" - that is the secure
- * container's word, and a cache can never fill it (playtest 6, B9).
- */
-export function cachePayoutLine(poi: WorldPoi, opensAnExit: boolean): string {
-  const named = rewardAmounts(poi);
-  const one = poi.reward.length === 1 && poi.reward[0].quantity === 1;
-  const bank = `extract to bank ${one ? 'it' : 'them'}.`;
-  return opensAnExit
-    ? `${named} went into the PACK - ${bank}`
-    : `${poi.label}: ${named} went into the PACK. Lost if you wipe - ${bank}`;
-}
-
-/**
- * What a cache holds, as a sentence says it: "2 Potions and 1 Antidote". The
- * payout and the refusal both say it this way, as ground loot's refusal does,
- * so one pack is never counted "2× POTION" in one breath and "2 Potions" in
- * the next.
- */
-function rewardAmounts(poi: WorldPoi, write: (amount: string) => string = (amount) => amount): string {
-  const amounts = poi.reward.map(({ itemId, quantity }) => write(itemAmountFor(itemId, quantity)));
-  return amounts.length <= 1
-    ? amounts.join('')
-    : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
-}
-
-/**
- * What a landmark says when its cache will not go into the pack.
- *
- * It names the cache and the squares it needs, exactly as ground loot does:
- * "bag is full" on its own is a wall, and the grid's promise is that a refusal
- * hands the player the decision. Nothing is taken and nothing is worked, so
- * the answer is to put something down and step back on to it.
- */
-export function cacheRefusalLine(poi: WorldPoi): string {
-  const squares = poi.reward.reduce(
-    (total, { itemId, quantity }) => total + cellsFor(itemId, quantity),
-    0,
-  );
-  return `No room for ${rewardAmounts(poi, (amount) => amount.toUpperCase())} - the cache needs ${
-    squares === 1 ? '1 square' : `${squares} squares`
-  }.`;
 }

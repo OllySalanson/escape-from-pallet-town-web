@@ -250,7 +250,11 @@ preparation for the walk rather than part of it - `--read=hm01-cut --open=coppic
 --work=coppicer` is the whole of a field move, played. `--work=LABEL` (`--work=sluice-wheel`) works a landmark
 before leaving - stood on where it is ground, faced and worked with the interact
 key where it is not - which is the only way an exit a landmark opens is ever
-left by: `--insertion=town-square --work=sluice-wheel --exit=west-culvert`.
+left by: `--insertion=town-square --work=sluice-wheel --exit=west-culvert`. A
+landmark with a cache opens a search (`src/game/world/cacheSearch.ts`): the driver
+lets it run to the end, takes everything with the interact key and prints how much
+clock it took, and with `--shot` photographs it mid-search (`-searching.png`) and
+searched (`-searched.png`); `--work=heron-hide` on Greystone Vale is a two-piece one.
 `--via=x:y,x:y` walks through those tiles first, in order, for a walk that is not
 to anything - the way along a reveal, which an exit once stood in.
 `--grab=itemId,..` walks to every piece of that item **this** raid laid, read off

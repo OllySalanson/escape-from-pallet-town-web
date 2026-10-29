@@ -16,7 +16,8 @@ vi.mock('../audio/AudioManager', () => ({
   ),
 }));
 
-import { Bag, cellsFor, itemAmountFor, type ItemId } from '../items';
+import { Bag, type ItemId } from '../items';
+import { searchPieces } from '../world/cacheSearch';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunPhase } from '../run/RunManager';
 import { getWorldMap, type BuiltInMapId } from '../worldMap';
@@ -28,6 +29,9 @@ import { WorldScene } from './WorldScene';
 interface Driven {
   tryOpenBarredExitAt(tile: GridPosition): readonly string[] | null;
   tryActivatePoiAt(tile: GridPosition): readonly string[] | null;
+  advanceSearch(clockMs: number): void;
+  takeSearched(indices: readonly number[]): void;
+  search: { said: string | null } | null;
   isBlocked(tile: GridPosition): boolean;
   isExtractionOpen(point: ExtractionPoint): boolean;
   reachableExitPositions(): GridPosition[];
@@ -62,6 +66,7 @@ function inARaid(mapId: BuiltInMapId, pack: readonly ItemId[] = [], bag = new Ba
   const refreshExtractionMarkers = vi.fn();
   const runSession = {
     exitsOpened: [] as string[],
+    cachesSearched: undefined as Record<string, unknown> | undefined,
     manager: {
       phase: RunPhase.InRun,
       snapshot: () => ({ elapsedMs: 30_000 }),
@@ -89,6 +94,13 @@ function inARaid(mapId: BuiltInMapId, pack: readonly ItemId[] = [], bag = new Ba
     refreshExtractionMarkers,
   });
   return { scene: scene as unknown as Driven, bag, runSession, refreshExtractionMarkers };
+}
+
+/** Searches the open cache to the end and takes every piece the pack will hold. */
+function searchOut(raid: ReturnType<typeof inARaid>): void {
+  raid.scene.advanceSearch(60_000);
+  const pieces = raid.scene.search ? searchPieces((raid.scene.search as unknown as { poi: { reward: WorldPoi['reward'] } }).poi.reward) : [];
+  raid.scene.takeSearched(pieces.map((_piece, index) => index));
 }
 
 describe('a locked gate', () => {
@@ -181,93 +193,69 @@ describe('a locked crate', () => {
     expect(raid.scene.tryActivatePoiAt(crate.position)?.[0]).toBe('KILN STRONGBOX: the crate is locked…');
   });
 
-  it('opens to a Lockpick, which snaps in the lock, and pays the whole cache', () => {
+  it('opens to a Lockpick, which snaps in the lock, and is then searched for the whole cache', () => {
     const raid = inARaid('pallet-town', ['lockpick', 'lockpick']);
     const lines = raid.scene.tryActivatePoiAt(crate.position);
-    expect(lines?.[0]).toBe('The Lockpick turned the lock, and snapped in it.');
+    expect(lines).toEqual(['The Lockpick turned the lock, and snapped in it.']);
     expect(raid.bag.count('lockpick')).toBe(1);
+    // Opening hands nothing over: what is in it comes to light as it is searched.
+    for (const { itemId } of crate.reward) {
+      expect(raid.bag.count(itemId)).toBe(0);
+    }
+    searchOut(raid);
     for (const { itemId, quantity } of crate.reward) {
       expect(raid.bag.count(itemId)).toBe(quantity);
     }
-    // Opened once a raid, like every cache.
+    // Opened once a raid, like every cache, and spent once it is emptied.
     expect(raid.scene.tryActivatePoiAt(crate.position)).toBeNull();
     expect(raid.bag.count('lockpick')).toBe(1);
   });
 
-  it('keeps the pick when the pack has no room for the cache', () => {
-    // A Satchel's twelve squares, eleven of them full of Potions: the pick
-    // fits, the cache does not.
+  it('opens to a pick even when the pack is full, and keeps what will not go in for later', () => {
+    // A Satchel's twelve squares, eleven of them full of Potions.
     const raid = inARaid('pallet-town', [], new Bag({ potion: 11 }, { width: 4, height: 3 }));
     raid.bag.add('lockpick', 1);
-    const lines = raid.scene.tryActivatePoiAt(crate.position);
-    expect(lines?.[0]).toContain('No room for');
-    expect(raid.bag.count('lockpick')).toBe(1);
-    expect(raid.bag.count('super-potion')).toBe(0);
-  });
-
-  it('counts the square of the pick that snaps in the lock as room for the cache', () => {
-    // A Satchel with exactly the cache's squares free once the pick is gone,
-    // and one short while it is still in the pack. The pick snaps opening the
-    // crate, so its square is the cache's: refused, the player would be told
-    // to put something down for good to make room the pick was about to make.
-    const squares = crate.reward.reduce((total, { itemId, quantity }) => total + cellsFor(itemId, quantity), 0);
-    const raid = inARaid('pallet-town', [], new Bag({ potion: 12 - squares }, { width: 4, height: 3 }));
-    raid.bag.add('lockpick', 1);
-    expect(raid.bag.fitsAll(crate.reward)).toBe(false);
-    const lines = raid.scene.tryActivatePoiAt(crate.position);
-    expect(lines?.[0]).toBe('The Lockpick turned the lock, and snapped in it.');
+    expect(raid.scene.tryActivatePoiAt(crate.position)).toEqual(['The Lockpick turned the lock, and snapped in it.']);
     expect(raid.bag.count('lockpick')).toBe(0);
-    expect(raid.bag.count('potion')).toBe(12 - squares);
-    for (const { itemId, quantity } of crate.reward) {
-      expect(raid.bag.count(itemId)).toBe(quantity);
-    }
+    searchOut(raid);
+    expect(raid.scene.search?.said).toMatch(/^NO ROOM FOR /);
+    expect(played).toContain('denied');
+    // Walked back to, it carries on: no second pick, the same search.
+    raid.scene.search = null;
+    expect(raid.scene.tryActivatePoiAt(crate.position)).toEqual([]);
+    expect(raid.scene.search).not.toBeNull();
+    expect(raid.runSession.cachesSearched?.[crate.id]).toBeDefined();
   });
 
   it('is an ordinary cache to every crate without a lock', () => {
     const open = crateNamed('TOWN PUMP');
     const raid = inARaid('pallet-town', ['lockpick']);
     raid.scene.tryActivatePoiAt(open.position);
+    searchOut(raid);
     expect(raid.bag.count('lockpick')).toBe(1);
     expect(raid.bag.count('antidote')).toBe(1);
   });
 });
 
-describe('what a cache says it did', () => {
-  // Playtest 6, B9: "TOWN PUMP: 1× Antidote secured. Detour reward is LOST ON
-  // WIPE" - "secured" is the secure container's word, and a cache pays into
-  // the pack, which a wipe takes. The line says where it went and what that
-  // risks, and never calls it secured.
-  it('says the payout went into the pack, at risk, in plain amounts', () => {
+describe('what a cache says when it opens', () => {
+  // Opening a cache used to pay it out whole into a line of dialogue that
+  // stopped the player. It is searched now, in a panel that stops nothing, so
+  // opening one has nothing to say in a box.
+  it('raises no dialogue: the search panel speaks for it', () => {
     const open = crateNamed('TOWN PUMP');
     const raid = inARaid('pallet-town');
-    const lines = raid.scene.tryActivatePoiAt(open.position) ?? [];
-    expect(lines.join(' ')).not.toMatch(/secured/i);
-    expect(lines).toEqual(['TOWN PUMP: 2 Potions and 1 Antidote went into the PACK. Lost if you wipe - extract to bank them.']);
+    expect(raid.scene.tryActivatePoiAt(open.position)).toEqual([]);
+    expect(raid.scene.search).not.toBeNull();
+    expect(played).toContain('cacheOpen');
   });
 
-  it('names every piece of a cache that pays more than one thing', () => {
-    const crate = crateNamed('KILN STRONGBOX');
-    const raid = inARaid('pallet-town', ['lockpick']);
-    const lines = raid.scene.tryActivatePoiAt(crate.position) ?? [];
-    expect(lines.join(' ')).not.toMatch(/secured/i);
-    expect(lines[1]).toMatch(/^KILN STRONGBOX: .+ went into the PACK\. Lost if you wipe - extract to bank them\.$/);
-    for (const { itemId, quantity } of crate.reward) {
-      expect(lines[1]).toContain(itemAmountFor(itemId, quantity));
-    }
-  });
-
-  // A full pack at a cache said "No room for 2× POTION and 1× ANTIDOTE", while
-  // the same pack at a ground find says "No room for 3 POTIONS" and the cache
-  // itself, once taken, says "2 Potions and 1 Antidote". One pack, one way of
-  // counting what will not go in it.
-  it('names what will not fit in the same amounts as everything else', () => {
+  it('names what will not fit in capitals, and sends the player to the pack', () => {
     const open = crateNamed('TOWN PUMP');
     const raid = inARaid('pallet-town', [], new Bag({ potion: 18 }, { width: 6, height: 3 }));
-    const lines = raid.scene.tryActivatePoiAt(open.position) ?? [];
-    expect(lines[0]).toBe(
-      'No room for 2 POTIONS and 1 ANTIDOTE - the cache needs 3 squares. Drop something from the PACK and work it again.',
-    );
-    expect(lines.join(' ')).not.toContain('×');
+    raid.scene.tryActivatePoiAt(open.position);
+    searchOut(raid);
+    expect(raid.scene.search?.said).toBe('NO ROOM FOR POTION: [B] PACK');
+    expect(raid.bag.count('antidote')).toBe(0);
   });
 });
 

@@ -712,6 +712,33 @@ try {
     if (option('shot')) {
       await page.screenshot(option('shot').replace(/\.png$/, '-worked.png'));
     }
+    // A cache is searched, not paid out (`world/cacheSearch.ts`): its pieces
+    // come to light while the clock runs, and the interact key takes the lot.
+    const searching = `${GAME}.scene.getScene('world').search`;
+    if (!ended && (await page.evaluate(`${searching} !== null`))) {
+      const pieces = await page.evaluate(`${searching}.pieces.length`);
+      const left = () => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const s = w.search;
+        return s ? s.pieces.length - (w.runSession.cachesSearched?.[s.poi.id]?.taken.length ?? 0) : 0; })()`);
+      note(`searching ${poi.label}: ${pieces} piece(s)`);
+      if (option('shot')) {
+        await wait(900);
+        await page.screenshot(option('shot').replace(/\.png$/, '-searching.png'));
+      }
+      const before = clockMs;
+      // Long enough for the biggest cache in the game, a fifth of a second at a time.
+      for (let i = 0; i < 30 && (await page.evaluate(`${searching} !== null`)); i += 1) {
+        if (i === 25 && option('shot')) {
+          await page.screenshot(option('shot').replace(/\.png$/, '-searched.png'));
+        }
+        await wait(200);
+      }
+      if (await page.evaluate(`${searching} !== null`)) {
+        await press('Space');
+        await wait(300);
+      }
+      await state();
+      note(`search took ${Math.round((clockMs - before) / 100) / 10}s of clock; ${await left()} piece(s) left; pack ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').bag.toJSON()`))}`);
+    }
     // The exit it opens is open from now on, so the nearest-open rule may take it.
     plan.exits.forEach((e) => { e.open ||= worked && e.opens === poi.id; });
   }

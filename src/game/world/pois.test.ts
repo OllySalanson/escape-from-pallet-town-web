@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
 import { BUILT_IN_MAP_IDS, getWorldMap } from '../worldMap';
-import { WORLD_POIS, cachePayoutLine, poisForMap, cacheRefusalLine, lockedCrateLines, tryActivatePoi, type WorldPoi } from './pois';
+import { WORLD_POIS, poisForMap, lockedCrateLines, openPoi, type WorldPoi } from './pois';
+import { searchPieces } from './cacheSearch';
 
 const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
 
@@ -12,111 +13,42 @@ const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', impor
 const fieldStation = WORLD_POIS.find((poi) => poi.id === 'oak-field-station-relay')!;
 
 describe('world POIs', () => {
-  it('only activates a fixed POI once during an active run', () => {
+  it('only opens a fixed POI once during an active run, and hands nothing over by opening', () => {
     const activated = new Set<string>();
-    const grants: string[] = [];
-
-    expect(
-      tryActivatePoi(
-        fieldStation,
-        true,
-        activated,
-        (itemId, quantity) => {
-          grants.push(`${itemId}:${quantity}`);
-          return true;
-        },
-        () => true,
-      ),
-    ).toBe('activated');
+    expect(openPoi(fieldStation, true, activated)).toBe('opened');
     expect(activated).toEqual(new Set([fieldStation.id]));
-    expect(grants).toEqual(['poke-ball:2', 'potion:1']);
-    expect(tryActivatePoi(fieldStation, true, activated, () => true, () => true)).toBe('unavailable');
+    expect(openPoi(fieldStation, true, activated)).toBe('unavailable');
   });
 
-  it('remains consumed when battle return recreates the scene state', () => {
+  it('remains opened when battle return recreates the scene state', () => {
     const activatedBeforeBattle = new Set([fieldStation.id]);
     const activatedAfterBattle = new Set([...activatedBeforeBattle]);
 
-    expect(tryActivatePoi(fieldStation, true, activatedAfterBattle, () => true, () => true)).toBe('unavailable');
+    expect(openPoi(fieldStation, true, activatedAfterBattle)).toBe('unavailable');
     expect(activatedAfterBattle).toEqual(activatedBeforeBattle);
   });
 
-  it('cannot grant the cache outside a raid or when the bag rejects it', () => {
+  it('cannot be opened outside a raid', () => {
     const activated = new Set<string>();
-
-    expect(tryActivatePoi(fieldStation, false, activated, () => true, () => true)).toBe('unavailable');
-    expect(tryActivatePoi(fieldStation, true, activated, () => false, () => false)).toBe('bag-full');
+    expect(openPoi(fieldStation, false, activated)).toBe('unavailable');
     expect(activated).toEqual(new Set());
   });
 
   /**
-   * A refused cache is whole or it is nothing. Handed over a piece at a time,
-   * the two Poke Balls that fit stayed in the pack while the Potion that did
-   * not left the landmark unworked - so stepping on it again paid the balls out
-   * a second time, and the exit it opens was hostage to the pack.
+   * A cache is searched, a piece at a time (`cacheSearch.ts`), so what is in
+   * it reaches the run's ledger only as each piece is taken - and is at risk
+   * until extraction exactly as a ground find is.
    */
-  it('takes nothing at all when the whole cache will not fit', () => {
-    const grants: string[] = [];
-    const activated = new Set<string>();
-
-    const result = tryActivatePoi(
-      fieldStation,
-      true,
-      activated,
-      (itemId, quantity) => {
-        grants.push(`${itemId}:${quantity}`);
-        return true;
-      },
-      () => false,
-    );
-
-    expect(result).toBe('bag-full');
-    expect(grants).toEqual([]);
-    expect(activated).toEqual(new Set());
-  });
-
-  it('names the cache and its price in squares, the way ground loot does', () => {
-    // "Bag is full" is a wall; this is a decision, and the pack is one key
-    // away from where the player is standing.
-    expect(cacheRefusalLine(fieldStation)).toBe(
-      'No room for 2 POKÉ BALLS and 1 POTION - the cache needs 3 squares.',
-    );
-  });
-
-  /**
-   * Every landmark whose cache can be refused: what the refusal says has to
-   * name what would be taken, and on a landmark that also opens an exit it has
-   * to say that the exit did not open either - the one fact a player standing
-   * there cannot see.
-   */
-  it('has a refusal line for every landmark that pays out', () => {
-    const paying = WORLD_POIS.filter((poi) => poi.reward.length > 0);
-    expect(paying.length).toBeGreaterThan(0);
-    for (const poi of paying) {
-      expect(cacheRefusalLine(poi)).toMatch(/^No room for .+ - the cache needs \d+ squares?\.$/);
-    }
-    // Route 1's relay is both a cache and the STATION RELAY exit's switch, so
-    // a full pack there refuses an exit as well as a reward.
-    expect(
-      paying.some((poi) => poi.effect === 'unlock-extraction' && poi.unlockedExtractionLabel),
-    ).toBe(true);
-  });
-
-  it('keeps the marked cache temporary until extraction and loses it on wipe', () => {
+  it('keeps what is taken from a cache temporary until extraction and loses it on wipe', () => {
+    const takeEverything = (manager: RunManager) => {
+      expect(openPoi(fieldStation, true, new Set())).toBe('opened');
+      for (const piece of searchPieces(fieldStation.reward)) {
+        manager.registerFoundItem(piece.itemId, 1);
+      }
+    };
     const extracted = new RunManager();
     extracted.startRun({ party: [], items: [] }, { mapId: 'route-1', durationMs: 60_000 });
-    const extractedPoiIds = new Set<string>();
-    tryActivatePoi(
-      fieldStation,
-      true,
-      extractedPoiIds,
-      (itemId, quantity) => {
-        extracted.registerFoundItem(itemId, quantity);
-        return true;
-      },
-      () => true,
-    );
-
+    takeEverything(extracted);
     expect(extracted.resolveEscape().bankedItems).toEqual([
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'potion', quantity: 1 },
@@ -124,17 +56,7 @@ describe('world POIs', () => {
 
     const wiped = new RunManager();
     wiped.startRun({ party: [], items: [] }, { mapId: 'route-1', durationMs: 60_000 });
-    tryActivatePoi(
-      fieldStation,
-      true,
-      new Set(),
-      (itemId, quantity) => {
-        wiped.registerFoundItem(itemId, quantity);
-        return true;
-      },
-      () => true,
-    );
-
+    takeEverything(wiped);
     const wipeResult = wiped.resolveWipe();
     expect(wipeResult.bankedItems).toEqual([]);
     expect(wipeResult.lostItems).toEqual([
@@ -292,55 +214,25 @@ describe('a locked crate', () => {
     }
   });
 
-  it('refuses a raid with no Lockpick and pays nothing', () => {
+  it('refuses a raid with no Lockpick and opens nothing', () => {
     const [crate] = locked;
     const activated = new Set<string>();
-    const taken: string[] = [];
-    const result = tryActivatePoi(crate, true, activated, (itemId) => taken.push(itemId) > 0, () => true);
-    expect(result).toBe('locked');
-    expect(taken).toEqual([]);
+    expect(openPoi(crate, true, activated)).toBe('locked');
     expect(activated.has(crate.id)).toBe(false);
   });
 
-  it('spends one pick to pay the whole cache, once a raid', () => {
+  it('spends one pick to open it, once a raid', () => {
     const [crate] = locked;
     const activated = new Set<string>();
     const pack = picks(2);
-    expect(tryActivatePoi(crate, true, activated, () => true, () => true, pack)).toBe('activated');
+    expect(openPoi(crate, true, activated, pack)).toBe('opened');
     expect(pack.held()).toBe(1);
-    expect(tryActivatePoi(crate, true, activated, () => true, () => true, pack)).toBe('unavailable');
+    expect(openPoi(crate, true, activated, pack)).toBe('unavailable');
     expect(pack.held()).toBe(1);
-  });
-
-  it('keeps the pick when the cache will not fit, so the lock is still there to come back to', () => {
-    const [crate] = locked;
-    const activated = new Set<string>();
-    const pack = picks(1);
-    expect(tryActivatePoi(crate, true, activated, () => true, () => false, pack)).toBe('bag-full');
-    expect(pack.held()).toBe(1);
-    expect(activated.has(crate.id)).toBe(false);
   });
 
   it('says it is locked in FireRed\'s words, and what would open it', () => {
     expect(lockedCrateLines(locked[0])[0]).toBe(`${locked[0].label}: the crate is locked…`);
     expect(lockedCrateLines(locked[0])[1]).toContain('Lockpick');
-  });
-});
-
-describe('cachePayoutLine', () => {
-  const one = { ...WORLD_POIS[0], label: 'OLD WELL', reward: [{ itemId: 'potion' as const, quantity: 1 }] };
-
-  it('says a cache paid into the pack, and what a wipe would cost', () => {
-    expect(cachePayoutLine(one, false)).toBe('OLD WELL: 1 Potion went into the PACK. Lost if you wipe - extract to bank it.');
-  });
-
-  it('names a landmark\'s payout under the exit it opened, with no second label', () => {
-    expect(cachePayoutLine(one, true)).toBe('1 Potion went into the PACK - extract to bank it.');
-  });
-
-  it('never calls a payout secured, on any shipped landmark', () => {
-    for (const poi of WORLD_POIS.filter((candidate) => candidate.reward.length > 0)) {
-      expect(cachePayoutLine(poi, poi.effect === 'unlock-extraction')).not.toMatch(/secured|×/i);
-    }
   });
 });

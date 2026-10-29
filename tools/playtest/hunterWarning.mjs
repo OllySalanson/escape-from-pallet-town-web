@@ -2,7 +2,7 @@
 // at the screen's edge and the chip naming the rival, never a dialogue box
 // (`src/game/world/hunterWarning.ts`).
 //
-//   node tools/playtest/hunterWarning.mjs <url of a test-mode build> <out dir> [--reduced-motion] [--window=WxH]
+//   node tools/playtest/hunterWarning.mjs <url of a test-mode build> <out dir> [--reduced-motion] [--with-search] [--window=WxH]
 //
 // It deploys a fresh save, brings the hunter in beside the player, and prints
 // the glow's strength frame by frame through the arrival and the trail, with
@@ -10,6 +10,8 @@
 // photographs the top of the first pulse (`arrival.png`), the trail's beat
 // (`trail.png`) and the catch (`caught.png`). --reduced-motion asks the page
 // for reduced motion, which holds the border steady instead of pulsing.
+// --with-search opens a search of the map's first cache as the hunter comes,
+// because the warning has to be read over a search as well as over the map.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
@@ -17,6 +19,7 @@ import { GAME, deploy, sceneIs } from './deploy.mjs';
 const args = process.argv.slice(2);
 const [base, outDir] = args.filter((a) => !a.startsWith('--'));
 const reduced = args.includes('--reduced-motion');
+const withSearch = args.includes('--with-search');
 const url = new URL(base);
 url.searchParams.set('testmode', 'pixels');
 mkdirSync(outDir, { recursive: true });
@@ -52,6 +55,11 @@ const main = async () => {
   await wait(400);
   console.log('before the hunter: glow', await page.evaluate(glow));
 
+  if (withSearch) {
+    // Opened where the player stands rather than walked to: what is being
+    // photographed is the warning over the panel, not the walk.
+    await page.evaluate(`(() => { const w = ${world}; w.beginSearch(w.currentMap.pois.find((p) => p.reward.length > 1 && !p.locked)); })()`);
+  }
   await page.evaluate(`(() => { const w = ${world}; const s = w.runSession;
     s.plan = { ...s.plan, hunter: { ...s.plan.hunter, spawnDelayMs: 0 } }; s.stepsTaken = 99; })()`);
   await until(`${world}.hunterArrived !== null`, 'the hunter to arrive');
