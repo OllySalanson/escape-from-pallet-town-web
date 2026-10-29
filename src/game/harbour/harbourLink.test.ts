@@ -139,6 +139,32 @@ describe("this browser's place in the shared harbour", () => {
     expect(link.othersHere).toBe(1);
   });
 
+  it('asks for the name again of somebody who left and came back, who may have been renamed', async () => {
+    // Playtest 49: PIP changed his name to PIPPA at the console, and AMY saw
+    // PIP over his head until she reloaded, because a name is asked once.
+    const { link, wire } = await joined();
+    wire.present([[ME, 'yard'], [AMY, 'yard']]);
+    await settle();
+    wire.move({ from: AMY, place: 'yard', path: [{ x: 5, y: 9 }], facing: 'down' });
+    expect(link.figuresIn('yard').map((figure) => figure.name)).toEqual(['AMY']);
+    wire.known.set(AMY, 'AMELIA');
+    wire.present([[ME, 'yard']]);
+    wire.present([[ME, 'yard'], [AMY, 'yard']]);
+    await settle();
+    wire.move({ from: AMY, place: 'yard', path: [{ x: 5, y: 9 }], facing: 'down' });
+    expect(link.figuresIn('yard').map((figure) => figure.name)).toEqual(['AMELIA']);
+  });
+
+  it('leaves the channel and joins it again when this player is renamed, so the others ask again', async () => {
+    const { link, wire } = await joined();
+    expect(wire.joinedAs).toEqual([ME]);
+    link.renamed();
+    await settle();
+    await settle();
+    expect(wire.left).toBe(1);
+    expect(wire.joinedAs).toEqual([ME, ME]);
+  });
+
   it('stops drawing somebody once they have left', async () => {
     const { link, wire } = await joined();
     wire.present([[ME, 'yard'], [AMY, 'yard']]);
