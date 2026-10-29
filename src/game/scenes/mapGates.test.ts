@@ -260,7 +260,7 @@ interface Internals {
   defeatedBosses: readonly string[];
   openedGates: readonly string[];
   isBlocked(tile: { x: number; y: number }): boolean;
-  isBlockedForHunter(tile: { x: number; y: number }): boolean;
+  hunterBlocker(): (tile: { x: number; y: number }) => boolean;
   tryReachDropInAt(tile: { x: number; y: number }): string | null;
   tryFieldMoveAt(tile: { x: number; y: number }): readonly string[] | null;
   collisionData: readonly boolean[][];
@@ -335,10 +335,11 @@ describe('a boss-held gate in a live raid', () => {
     expect(BOSS_GATE_TILES).toContainEqual(GATE_TILE);
     for (const tile of BOSS_GATE_TILES) {
       expect(internalsOf(scene).isBlocked(tile)).toBe(true);
-      expect(internalsOf(scene).isBlockedForHunter(tile)).toBe(true);
+      expect(internalsOf(scene).hunterBlocker()(tile)).toBe(true);
     }
     // The boss is a body in the lane as well, like any trainer.
     expect(internalsOf(scene).isBlocked(BOSS.position)).toBe(true);
+    expect(internalsOf(scene).hunterBlocker()(BOSS.position)).toBe(true);
     expect(spoken).toEqual([]);
   });
 
@@ -353,7 +354,7 @@ describe('a boss-held gate in a live raid', () => {
 
     for (const tile of BOSS_GATE_TILES) {
       expect(internalsOf(scene).isBlocked(tile)).toBe(false);
-      expect(internalsOf(scene).isBlockedForHunter(tile)).toBe(false);
+      expect(internalsOf(scene).hunterBlocker()(tile)).toBe(false);
     }
     // The boss has gone: the tile they held is lane again.
     expect(internalsOf(scene).isBlocked(BOSS.position)).toBe(false);
@@ -691,7 +692,7 @@ describe('a field-move gate in a live raid', () => {
 
     expect(internalsOf(scene).isBlocked(RIDE_TILE)).toBe(false);
     expect(reachesCoppice(scene)).toBe(true);
-    expect(internalsOf(scene).isBlockedForHunter(RIDE_TILE)).toBe(false);
+    expect(internalsOf(scene).hunterBlocker()(RIDE_TILE)).toBe(false);
     expect(internalsOf(scene).tryFieldMoveAt(RIDE_TILE)).toBeNull();
   });
 });

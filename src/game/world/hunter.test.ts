@@ -265,6 +265,27 @@ describe('chooseHunterPursuitStep', () => {
     }
   });
 
+  it('searches only as far as the hunter is, never the whole map, on every step of a chase', () => {
+    // Greystone Vale's size. Flooded whole, the search behind every step of a
+    // chase there cost about a tenth of a second, and walking with the hunter
+    // on your tail went at half pace (the captain, 29 Oct: "lagging me out").
+    const bounds = { width: 384, height: 384 };
+    const asked = new Set<number>();
+    const isBlocked = (tile: { x: number; y: number }) => {
+      asked.add(tile.y * bounds.width + tile.x);
+      return false;
+    };
+    const player = { x: 192, y: 192 };
+    const hunter = { x: 192, y: 198 };
+
+    const path = findHunterPursuitPath(hunter, player, bounds, isBlocked);
+
+    // The same shortest route the whole map gives: straight up to beside the player.
+    expect(path).toEqual([193, 194, 195, 196, 197].reverse().map((y) => ({ x: 192, y })));
+    // Six steps out is a diamond of under a hundred tiles; the map is 147,456.
+    expect(asked.size).toBeLessThan(200);
+  });
+
   it('holds position instead of jittering when the player is walled off', () => {
     // A sealed room around the player: no legal route exists at all.
     const isBlocked = (tile: { x: number; y: number }) =>

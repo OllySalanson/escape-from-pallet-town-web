@@ -1057,9 +1057,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.hunterNear = false;
       return;
     }
-    const path = findHunterPursuitPath(hunter, this.currentTile, this.bounds, (tile) =>
-      this.isBlockedForHunter(tile),
-    );
+    const path = findHunterPursuitPath(hunter, this.currentTile, this.bounds, this.hunterBlocker());
     this.hunterNear =
       isHunterContactingPlayer(hunter, this.currentTile) ||
       (path.length > 0 && path.length <= HUNTER_NEAR_STEPS);
@@ -2985,19 +2983,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * has finished drawing.
    */
   private entityHolds(entity: WorldEntity, tile: GridPosition): boolean {
+    return this.entityHeldTiles(entity).some((stood) => stood.x === tile.x && stood.y === tile.y);
+  }
+
+  /** Every tile a figure stands on now: none once it is out of the way, two mid-step. */
+  private entityHeldTiles(entity: WorldEntity): readonly GridPosition[] {
     if (this.wasMet(entity)) {
-      return false;
+      return [];
     }
     if (entity.boulder) {
-      const stands = this.boulderAt(entity);
-      return stands.x === tile.x && stands.y === tile.y;
+      return [this.boulderAt(entity)];
     }
     if (entity.barrier && this.barrierIsOpen(entity.barrier.id)) {
-      return false;
+      return [];
     }
     const figure = this.idleFigures.find((standing) => standing.id === entity.id);
-    const held: readonly GridPosition[] = figure ? idleHeldTiles(figure) : [entity.position];
-    return held.some((stood) => stood.x === tile.x && stood.y === tile.y);
+    return figure ? idleHeldTiles(figure) : [entity.position];
   }
 
   /**
@@ -3477,21 +3478,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
   }
 
-  /**
-   * An exit still barred on this tile - under its rubble, or behind a gate its
-   * key has not opened: a wall until it is opened.
-   */
-  private barredExitAt(tile: GridPosition): ExtractionPoint | undefined {
-    // Asked of every tile the hunter's search touches, so the map's barred
-    // exits are read once per map rather than once per tile - and a map with
-    // none answers before anything else is looked at.
+  /** This map's barred exits, open or shut, read once per map. */
+  private barredExitsHere(): readonly ExtractionPoint[] {
     if (this.barredExits?.mapId !== this.currentMap.id) {
       this.barredExits = {
         mapId: this.currentMap.id,
         points: extractionPointsOn(this.currentMap.id).filter(isBarredExit),
       };
     }
-    return this.barredExits.points.find(
+    return this.barredExits.points;
+  }
+
+  /**
+   * An exit still barred on this tile - under its rubble, or behind a gate its
+   * key has not opened: a wall until it is opened.
+   */
+  private barredExitAt(tile: GridPosition): ExtractionPoint | undefined {
+    // The map's barred exits are read once per map rather than once per tile,
+    // and a map with none answers before anything else is looked at.
+    return this.barredExitsHere().find(
       (point) =>
         point.position.x === tile.x &&
         point.position.y === tile.y &&
@@ -7199,7 +7204,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // the shore they put out from, never beside them (`shoreLeftBehind`).
       this.hunterArrivesFrom(),
       this.bounds,
-      (tile) => this.isBlockedForHunter(tile),
+      this.hunterBlocker(),
       // Wrapped rather than passed by reference so the RNG keeps its own `this`.
       rng ? (candidates) => rng.pick(candidates) : undefined,
       HUNTER_SPAWN_DISTANCE,
@@ -7275,9 +7280,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const quarry = hunterQuarry(this.hunterState, this.currentTile, this.playerIsHidden());
     this.hunterState = quarry.state;
     // The player holds still for the whole tick, so one search covers every step it takes.
-    const path = findHunterPursuitPath(position, quarry.target, this.bounds, (tile) =>
-      this.isBlockedForHunter(tile),
-    );
+    const path = findHunterPursuitPath(position, quarry.target, this.bounds, this.hunterBlocker());
     for (let index = 0; index < steps && index < path.length; index += 1) {
       this.hunterFacing = bearingFrom(position, path[index]) ?? this.hunterFacing;
       position = path[index];
@@ -7310,7 +7313,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const steps = this.runSession?.manager.isEnraged
       ? Math.max(aggression, HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP)
       : aggression;
-    const path = findHunterPursuitPath(position, target, this.bounds, (tile) => this.isBlockedForHunter(tile));
+    const path = findHunterPursuitPath(position, target, this.bounds, this.hunterBlocker());
     for (let index = 0; index < steps && index < path.length; index += 1) {
       if (isHunterContactingPlayer(position, target)) {
         break;
@@ -7343,7 +7346,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.hunterState.position,
         this.currentTile,
         this.bounds,
-        (tile) => this.isBlockedForHunter(tile),
+        this.hunterBlocker(),
         HUNTER_BREAKAWAY_DISTANCE,
         // The way the player was walking when they were caught is the only read the
         // world has on where they are going, and it is enough to keep the hunter from
@@ -7406,15 +7409,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     audioManager.play('hunterResume');
   }
 
-  private isBlockedForHunter(tile: GridPosition): boolean {
-    return (
-      this.collisionData[tile.y][tile.x] ||
-      this.barredExitAt(tile) !== undefined ||
-      this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
-      this.trainersForCurrentMap().some(
-        (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
-      )
-    );
+  /**
+   * What stops the hunter, as one question a search can ask of every tile it
+   * reaches: the ground, and every barred exit, figure and trainer standing on
+   * it now, gathered once. Asked tile by tile instead - every figure on the
+   * map, every trainer, every barred exit, for every tile a search touched -
+   * one search of Greystone Vale cost a tenth of a second, and a chase pays
+   * one for every step the player takes (`hunterChase.test.ts`).
+   */
+  private hunterBlocker(): (tile: GridPosition) => boolean {
+    const collision = this.collisionData;
+    const width = this.bounds.width;
+    const standing = new Set<number>();
+    const stand = (tile: GridPosition): void => {
+      standing.add(tile.y * width + tile.x);
+    };
+    for (const entity of this.currentMap.entities) {
+      this.entityHeldTiles(entity).forEach(stand);
+    }
+    this.trainersForCurrentMap().forEach((trainer) => stand(trainer.position));
+    this.barredExitsHere()
+      .filter((point) => !this.isExtractionOpen(point))
+      .forEach((point) => stand(point.position));
+    return (tile) => collision[tile.y][tile.x] || standing.has(tile.y * width + tile.x);
   }
 
   private tryStartHunterBattle(): boolean {
