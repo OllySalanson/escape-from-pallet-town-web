@@ -5,7 +5,9 @@
 // The captain's report (2026-10-29): "after I add something to my pack it just
 // snaps back to the top of the list". A save with a long stash, the list
 // scrolled down, one item packed by its plus and one taken out by its minus;
-// the list's scroll and the focused row must be where they were.
+// the list's scroll and the focused row must be where they were. Then a
+// right-click on a packed piece and DEL on one, each taking one out with no
+// browser menu and the list left where it was.
 import { PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
 import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
@@ -99,6 +101,32 @@ try {
   const afterTake = JSON.parse(await page.evaluate(state));
   console.log('after take', afterTake);
   check(afterTake.top === beforeTake.top, 'taking out kept the list where it was');
+  // A right-click on a packed piece takes one out, with no browser menu, and
+  // the list stays where it was; DEL on the focused piece does the same.
+  const pieceSel = `[data-grid="pack"] [data-grid-piece^="item:0:poke-ball"]`;
+  const packedBalls = () => page.evaluate(`Number(document.querySelector('[data-count-kind="item"][data-count-id="poke-ball"]')?.closest('.px-count')?.dataset.countValue ?? -1)`);
+  for (let i = 0; i < 3; i += 1) {
+    await page.evaluate(`document.querySelector('button[data-count-kind="item"][data-count-id="poke-ball"][data-count-dir="1"]').click()`);
+    await sleep(200);
+  }
+  const balls = await packedBalls();
+  const listTop = JSON.parse(await page.evaluate(state)).top;
+  const piece = JSON.parse(await page.evaluate(`JSON.stringify((() => { const r = document.querySelector('${pieceSel}').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })())`));
+  await page.evaluate(`window.__menus = 0; document.addEventListener('contextmenu', (e) => { if (!e.defaultPrevented) window.__menus += 1; });`);
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', { type, x: piece.x, y: piece.y, button: 'right', buttons: type === 'mousePressed' ? 2 : 0, clickCount: 1 });
+  }
+  await sleep(500);
+  check((await packedBalls()) === balls - 1, `a right-click took one Poké Ball out (${balls} -> ${await packedBalls()})`);
+  check((await page.evaluate('window.__menus')) === 0, 'no browser menu over the pack');
+  const afterRight = JSON.parse(await page.evaluate(state));
+  check(afterRight.top === listTop, `the list kept its place (${listTop} -> ${afterRight.top}/${afterRight.max}, focus ${afterRight.focus})`);
+  check((await page.evaluate(`document.body.innerText.includes('RIGHT-CLICK or DEL')`)) || (await page.evaluate(`[...document.querySelectorAll('[data-help]')].some((b) => b.dataset.help.includes('RIGHT-CLICK or DEL'))`)), 'the help line says so');
+  await page.evaluate(`document.querySelector('${pieceSel}')?.focus()`);
+  const beforeDel = await packedBalls();
+  await press('Delete');
+  await sleep(400);
+  check((await packedBalls()) === beforeDel - 1, `DEL took one out (${beforeDel} -> ${await packedBalls()})`);
   await page.screenshot(`${process.env.SHOT ?? '/dev/null'}`).catch(() => undefined);
 } finally {
   await browser.close();

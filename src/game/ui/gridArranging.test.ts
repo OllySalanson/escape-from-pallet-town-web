@@ -37,4 +37,11 @@ describe('what a key means while a container is being arranged', () => {
       expect(arrangeIntentFor(press('ArrowLeft', { [modifier]: true }), true)).toBeNull();
     }
   });
+
+  it('takes the piece the cursor is on out with DEL or Backspace, the twin of a right-click (the captain, 2026-10-29)', () => {
+    expect(arrangeIntentFor(press('Delete'), false)).toEqual({ kind: 'remove' });
+    expect(arrangeIntentFor(press('Backspace'), false)).toEqual({ kind: 'remove' });
+    // A piece in the hand is put down or put back first.
+    expect(arrangeIntentFor(press('Delete'), true)).toBeNull();
+  });
 });

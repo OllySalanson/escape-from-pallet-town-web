@@ -47,7 +47,8 @@ export type ArrangeIntent =
   | { readonly kind: 'move'; readonly dx: number; readonly dy: number }
   | { readonly kind: 'turn' }
   | { readonly kind: 'drop' }
-  | { readonly kind: 'cancel' };
+  | { readonly kind: 'cancel' }
+  | { readonly kind: 'remove' };
 
 const STEPS: Readonly<Record<string, { readonly dx: number; readonly dy: number }>> = {
   ArrowLeft: { dx: -1, dy: 0 },
@@ -75,7 +76,8 @@ export function arrangeIntentFor(
     return { kind: 'turn' };
   }
   if (!holding) {
-    return null;
+    // The keyboard's twin of a right-click, on the piece the cursor is on.
+    return event.key === 'Delete' || event.key === 'Backspace' ? { kind: 'remove' } : null;
   }
   const step = STEPS[event.key];
   if (step) {
@@ -102,6 +104,15 @@ export interface GridArrangingHost {
   say(message: string): void;
   /** A sound for a deed that landed, and one for a deed that did not. */
   sound(name: 'take' | 'place' | 'refused'): void;
+  /**
+   * Takes one of a piece out of the container and back to the vault: a
+   * right-click on it, or Delete or Backspace with the cursor on it (the
+   * captain, 2026-10-29: "just be a quick way of removing things"). Answers
+   * whether that container takes things out this way at all; a screen without
+   * it - the raid's own pack, where taking out is dropping loot - leaves the
+   * gesture to the browser.
+   */
+  remove?(name: string, ref: GridPieceRef): boolean;
 }
 
 /** How far a pointer must travel before a press counts as a drag. */
@@ -170,6 +181,7 @@ export class GridArranging {
       grid.addEventListener('pointermove', (event) => this.onPointerMove(grid, event));
       grid.addEventListener('pointerup', () => this.onPointerUp());
       grid.addEventListener('click', (event) => this.onClick(grid, event));
+      grid.addEventListener('contextmenu', (event) => this.onContextMenu(grid, event));
     });
   }
 
@@ -182,6 +194,12 @@ export class GridArranging {
     }
     if (intent.kind === 'turn' && !held) {
       return this.turnFocused(focused);
+    }
+    if (intent.kind === 'remove') {
+      const button = focused instanceof HTMLElement ? focused.closest<HTMLElement>('[data-grid-piece]') : null;
+      const ref = parsePieceRef(button?.dataset.gridPiece);
+      const owner = button?.dataset.gridOwner;
+      return ref && owner ? this.host.remove?.(owner, ref) === true : false;
     }
     if (!held) {
       return false;
@@ -227,6 +245,34 @@ export class GridArranging {
     this.host.sound('place');
     this.host.commit(owner, turned.arrangement);
     return true;
+  }
+
+  /**
+   * A right-click takes the piece under the pointer out, and the browser's own
+   * menu is kept off the container only where it does; carrying a piece, it
+   * puts the piece back first, as ESC does, so nothing is half-done.
+   */
+  private onContextMenu(grid: HTMLElement, event: MouseEvent): void {
+    if (!this.host.remove) {
+      return;
+    }
+    event.preventDefault();
+    if (this.heldPiece) {
+      this.release();
+      this.host.redraw();
+      return;
+    }
+    const name = gridName(grid);
+    const button = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-grid-piece]');
+    let ref = parsePieceRef(button?.dataset.gridPiece);
+    if (!ref) {
+      const cell = cellAt(grid, event.clientX, event.clientY);
+      const packing = cell ? this.host.packing(name) : null;
+      ref = cell && packing ? pieceAt(packing, cell.x, cell.y) : null;
+    }
+    if (ref) {
+      this.host.remove(name, ref);
+    }
   }
 
   private onPointerDown(grid: HTMLElement, event: PointerEvent): void {
