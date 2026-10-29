@@ -3,7 +3,9 @@
 //
 //   git clone --filter=blob:none --no-checkout https://github.com/pret/pokefirered.git <dir>
 //   git -C <dir> checkout 037335f -- graphics/object_events/pics/people
-//   node scripts/cut-frlg-wearables.mjs <dir> [--preview=<out.png>]
+//   git clone --filter=blob:none --no-checkout https://github.com/pret/pokeemerald.git <emerald>
+//   git -C <emerald> checkout 731ad5b -- graphics/object_events/pics/people
+//   node scripts/cut-frlg-wearables.mjs <dir> --emerald=<emerald> [--preview=<out.png>]
 //
 // Why this works at all: FireRed draws most of its people on one shared body.
 // A youngster, a camper, Blue, a scientist and a Rocket grunt are the same
@@ -74,6 +76,8 @@ const CHIN_TO = 11;
 const args = process.argv.slice(2);
 const pret = args.find((argument) => !argument.startsWith('--'));
 const previewPath = args.find((argument) => argument.startsWith('--preview='))?.slice('--preview='.length);
+// pret/pokeemerald at 731ad5b, for the people FireRed does not have (`emerald:` donors).
+const emerald = args.find((argument) => argument.startsWith('--emerald='))?.slice('--emerald='.length);
 const previewOnly = args.find((argument) => argument.startsWith('--only='))?.slice('--only='.length).split(',');
 const previewZoom = Number(args.find((argument) => argument.startsWith('--zoom='))?.slice('--zoom='.length) ?? 3);
 if (!pret) {
@@ -202,7 +206,19 @@ const RAMPS = {
 };
 const RAMP_OF = new Map(Object.entries(RAMPS).flatMap(([ramp, shades]) => shades.map((shade) => [shade, ramp])));
 
-const person = (file) => readIndexed(join(pret, 'graphics/object_events/pics/people', `${file}.png`));
+/**
+ * A pret figure by its file, or an Emerald one by `emerald:<file>`: Emerald's
+ * people are drawn on the same sixteen-by-thirty-two body, eyes and chin on
+ * the same rows and a pixel's bob on a step, so a head of theirs sits on
+ * FireRed's shared body as FireRed's own do.
+ */
+function person(file) {
+  if (file.startsWith('emerald:')) {
+    if (!emerald) throw new Error(`${file} needs --emerald=<pret/pokeemerald checkout>`);
+    return readIndexed(join(emerald, 'graphics/object_events/pics/people', `${file.slice('emerald:'.length)}.png`));
+  }
+  return readIndexed(join(pret, 'graphics/object_events/pics/people', `${file}.png`));
+}
 const at = (image, frame, x, y) =>
   x < 0 || x >= FRAME || y < 0 || y >= image.height ? 0 : image.pixels[y * image.width + frame * FRAME + x];
 const isStep = (frame) => frame >= 3;

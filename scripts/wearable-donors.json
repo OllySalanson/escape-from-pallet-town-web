@@ -344,5 +344,83 @@
  },
  "union_room_receptionist": {
   "head": "head-receptionist"
+ },
+ "emerald:hex_maniac": {
+  "head": "head-e-hex-maniac"
+ },
+ "emerald:expert_m": {
+  "head": "head-e-expert-m"
+ },
+ "emerald:expert_f": {
+  "head": "head-e-expert-f"
+ },
+ "emerald:psychic_m": {
+  "head": "head-e-psychic-m"
+ },
+ "emerald:reporter_f": {
+  "head": "head-e-reporter-f"
+ },
+ "emerald:reporter_m": {
+  "head": "head-e-reporter-m"
+ },
+ "emerald:artist": {
+  "head": "head-e-artist"
+ },
+ "emerald:pokefan_m": {
+  "head": "head-e-pokefan-m"
+ },
+ "emerald:pokefan_f": {
+  "head": "head-e-pokefan-f"
+ },
+ "emerald:school_kid_m": {
+  "head": "head-e-school-kid-m"
+ },
+ "emerald:contest_judge": {
+  "head": "head-e-contest-judge"
+ },
+ "emerald:maniac": {
+  "head": "head-e-maniac"
+ },
+ "emerald:running_triathlete_f": {
+  "head": "head-e-running-triathlete-f"
+ },
+ "emerald:running_triathlete_m": {
+  "head": "head-e-running-triathlete-m"
+ },
+ "emerald:girl_1": {
+  "head": "head-e-girl-1"
+ },
+ "emerald:girl_2": {
+  "head": "head-e-girl-2"
+ },
+ "emerald:girl_3": {
+  "head": "head-e-girl-3"
+ },
+ "emerald:boy_1": {
+  "head": "head-e-boy-1"
+ },
+ "emerald:boy_2": {
+  "head": "head-e-boy-2"
+ },
+ "emerald:man_3": {
+  "head": "head-e-man-3"
+ },
+ "emerald:woman_4": {
+  "head": "head-e-woman-4"
+ },
+ "emerald:woman_5": {
+  "head": "head-e-woman-5"
+ },
+ "emerald:devon_employee": {
+  "head": "head-e-devon-employee"
+ },
+ "emerald:mart_employee": {
+  "head": "head-e-mart-employee"
+ },
+ "emerald:teala": {
+  "head": "head-e-teala"
+ },
+ "emerald:rooftop_sale_woman": {
+  "head": "head-e-rooftop-sale-woman"
  }
 }

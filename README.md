@@ -159,7 +159,7 @@ and say yes, you're let in to have a nose round. Six buildings, four of them kep
   HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found. Everything you trade him ends up on his
   shelves.
 - **The Harbour Boutique**, at the top of the Green, is where you stop looking like everybody else.
-  Every player starts in the same clothes; in here are 183 things to wear, all of them off
+  Every player starts in the same clothes; in here are 209 things to wear, all of them off
   somebody in Kanto - a Youngster's cap, a Hiker's hat and beard, Erika's bob, Misty's side tail,
   a lab coat, a Team Rocket tunic, a Lass's dress in five colours - plus whole looks from Champion
   Red to Giovanni to a Pikachu in a yellow cap. Try anything on in the mirror first: it walks for
