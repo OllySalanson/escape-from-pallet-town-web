@@ -124,3 +124,17 @@ describe('the tile somebody last walked off, where their partner stands', () => 
     expect(amy(crowd)?.partner).toBeUndefined();
   });
 });
+
+describe('somebody stopping', () => {
+  it('finishes the step they are on, drops the rest, and turns as asked', () => {
+    const crowd = new HarbourCrowd();
+    crowd.hear({ from: AMY, place: 'yard', path: [{ x: 1, y: 1 }], facing: 'right' });
+    crowd.hear({ from: AMY, place: 'yard', path: [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }], facing: 'right' });
+    // A quarter of a step: three queued is walked at twice the pace, so this is halfway into the first.
+    crowd.advance(STEP_DURATION_MS / 4);
+    crowd.halt(AMY, 'down');
+    crowd.advance(STEP_DURATION_MS * 4);
+    const [figure] = crowd.figuresIn('yard');
+    expect(figure).toMatchObject({ tile: { x: 2, y: 1 }, toward: null, facing: 'down' });
+  });
+});
