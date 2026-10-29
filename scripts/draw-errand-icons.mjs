@@ -7,7 +7,8 @@
 // Oak's parcel in brown paper and string, Joy's white bag with the Center's
 // red cross, Brock's crate in steel-banded wood with a grey stone on it, Bill's
 // amber with something dark inside, the Safari Warden's gold teeth on their
-// pink plate, and the captain's ship's log in navy with a gold anchor.
+// pink plate, and the captain's ship's log in navy with a gold anchor - and
+// the "!" bubble the favours list marks somebody who wants a word with.
 //
 // 16x16 RGBA, one shared outline (#241f2e) and a shade/base/light triple per
 // hue, the same rules as the rest of the set (see ASSET_PROVENANCE.md). Drawn
@@ -221,6 +222,30 @@ icons['ships-log'] = outline(
     '...NNAAAAANNNW..',
     '...vvvvvvvvvvW..',
     '....iiiiiiiiii..',
+    '................',
+    '................',
+  ]),
+);
+
+// Somebody wants a word: the "!" bubble that stands over a favour's giver in
+// the harbour (`BaseScene.markKeeper`), for the favours list's rows of people
+// who have not yet said what they want.
+icons['favour-ask'] = outline(
+  fromRows([
+    '................',
+    '................',
+    '.....WWWWWW.....',
+    '....WWWWWWWW....',
+    '....WWWrrWWW....',
+    '....WWWrrWWW....',
+    '....WWWrrWWW....',
+    '....WWWrrWWW....',
+    '....WWWWWWWW....',
+    '....WWWrrWWW....',
+    '....WWWWWWWW....',
+    '.....WWWWWW.....',
+    '.......WW.......',
+    '.......W........',
     '................',
     '................',
   ]),

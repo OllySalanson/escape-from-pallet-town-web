@@ -17,8 +17,8 @@ import { seagallopLines } from './seagallopLog';
  * sailor at the Seagallop's jetty, the Gym Guide at the Raid Arena's door as
  * every Gym in Kanto has one, the captain on the long pier, the dock worker
  * and his Machop at the warehouses, the angler on the cove's jetty, the
- * policeman and his Growlithe on the yard, and the Safari Warden visiting the
- * green. Two of them have a favour to ask (`hub/errands.ts`), said in the
+ * policeman and his Growlithe on the yard, and the Safari Warden visiting from
+ * the Safari Zone, above the cove. Two of them have a favour to ask (`hub/errands.ts`), said in the
  * dialogue box like anything else they say. And the Pokemon are the ones a
  * FireRed port has - a Slowpoke staring at the sea, Pidgey after crumbs on the green, a
  * Meowth by the crates, Krabby and Psyduck on the beach, and Lapras, Tentacool
@@ -195,9 +195,9 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     ],
   },
   {
-    // FireRed's Safari Zone Warden, off the boat and walking the green, with
-    // nothing in his mouth but gums: he asks the player to find his GOLD
-    // TEETH (`hub/errands.ts`), and until then nothing he says can be
+    // FireRed's Safari Zone Warden, off the boat and walking the grass above
+    // THE COVE with nothing in his mouth but gums: he asks the player to find
+    // his GOLD TEETH (`hub/errands.ts`), and until then nothing he says can be
     // understood - FireRed's own joke.
     id: 'safari-warden',
     kind: 'person',
