@@ -60,6 +60,13 @@ describe('the hunter chip', () => {
       hunterChipView({ ...FAR, who: 'BLUE', shout: 'arrived', searching: true, searchRemainingMs: 4_000 })?.label,
     ).toBe('BLUE LOST YOU 4s');
   });
+
+  it('says so when a hunter of the pack gives up on you, which is the getaway', () => {
+    expect(hunterChipView({ ...FAR, who: 'MISTY', shout: 'lost' })).toEqual({
+      label: 'MISTY LOST YOU',
+      tone: 'lost-you',
+    });
+  });
 });
 
 describe('the radio mast', () => {

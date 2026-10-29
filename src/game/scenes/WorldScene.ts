@@ -578,6 +578,8 @@ const WATCH_LIFT_FADE_MS = 520;
 const SPOTTED_INK = 0x171717;
 const SPOTTED_CREAM = 0xfdf6e3;
 const SPOTTED_MARK = 0xdc2626;
+/** The question in a hunter's "?" while it looks for you: the green the chip says LOST YOU in. */
+const SEARCH_MARK = 0x3f8f3a;
 /**
  * The dialogue frame keeps the authored size it was written for and is centred
  * on the bottom of whatever screen it is on. Stretching it to a wide window
@@ -962,6 +964,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private packMarks = new Map<string, { readonly mark: Phaser.GameObjects.Graphics; readonly atMs: number }>();
   /** The rival who last shouted, so the chip names the hunter that saw you. */
   private packShouter: PackHunter | null = null;
+  /** The hunter that last gave up on the player, and when, so the chip can say so. */
+  private packLost: { readonly hunter: PackHunter; readonly atMs: number } | null = null;
+  /** The "?" over each hunter of the pack looking about for the player where it lost them. */
+  private packSearchMarks = new Map<string, Phaser.GameObjects.Graphics>();
   /** When the pack came out on to the map, for the edges' arrival pulses; nobody is named. */
   private packCameOutAtMs = Number.NEGATIVE_INFINITY;
   /** The pack's view of the world, built once a frame. */
@@ -1015,7 +1021,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.lookMs = 0;
     // The marks were destroyed with the scene; the hunters themselves ride the run session.
     this.packMarks.clear();
+    this.packSearchMarks.clear();
     this.packShouter = null;
+    this.packLost = null;
     this.packCameOutAtMs = Number.NEGATIVE_INFINITY;
     this.packWorldCache = null;
     this.spin = null;
@@ -4285,7 +4293,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** What the hunter chip shouts for a moment after the hunter arrives, or null. */
-  private hunterShout(): 'arrived' | 'back' | null {
+  private hunterShout(): 'arrived' | 'back' | 'lost' | null {
+    const pack = this.hunterPackHere();
+    const lost = this.packLost;
+    if (
+      pack &&
+      lost &&
+      this.time.now - lost.atMs < HUNTER_SHOUT_MS &&
+      !pack.lead(this.currentTile) &&
+      (!this.hunterArrived || this.hunterArrived.atMs < lost.atMs)
+    ) {
+      return 'lost';
+    }
     const arrived = this.hunterArrived;
     if (!arrived || this.hunterState.defeated || this.time.now - arrived.atMs >= HUNTER_SHOUT_MS) {
       return null;
@@ -7510,8 +7529,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // last fled from - is the one the chip and the glow are about.
     const pack = this.hunterPackHere();
     if (pack) {
+      const lost = this.packLost && this.time.now - this.packLost.atMs < HUNTER_SHOUT_MS ? this.packLost.hunter : null;
       const who =
         pack.lead(this.currentTile) ??
+        lost ??
         this.packShouter ??
         pack.hunters.find((hunter) => hunter.mode === 'stunned');
       return hunterRival(who?.rivalId ?? this.runSession?.plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL);
@@ -8014,6 +8035,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * it always has, so a fight never starts under a box.
    */
   private onPackEvent(event: PackEvent): void {
+    if (event.kind === 'snagged') {
+      // The tile it lost, heard as well as seen: a scuff on the corner.
+      audioManager.play('hunterSnag');
+      return;
+    }
+    if (event.kind === 'gave-up') {
+      // Only a hunter that was after the player gives up, so this is always a getaway.
+      this.packLost = { hunter: event.hunter, atMs: this.time.now };
+      return;
+    }
     if (event.kind !== 'noticed') {
       return;
     }
@@ -8144,6 +8175,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         Math.abs(hunter.position.y - this.currentTile.y) <= PACK_DRAW_RANGE;
       if (!near) {
         this.npcSprites.get(id)?.setVisible(false);
+        this.packSearchMarks.get(id)?.setVisible(false);
         continue;
       }
       if (!this.npcSprites.has(id)) {
@@ -8153,6 +8185,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // A snag is a stumble: a pixel's shake on the spot, for the tile it costs.
       const shake = hunter.snagged && hunter.timerMs > 0 ? ((Math.floor(this.time.now / 50) % 2) * 2 - 1) / TILE_SIZE : 0;
       this.placeFigure(id, at.x + shake, at.y, hunter.facing, { striding: at.striding });
+      this.drawSearchMark(hunter, at);
       const marked = this.packMarks.get(id);
       if (marked) {
         const elapsed = this.time.now - marked.atMs;
@@ -8165,6 +8198,44 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         }
       }
     }
+  }
+
+  /**
+   * A "?" over a hunter while it stands where it lost the player, looking
+   * about: the chase has broken, and it is the moment to be somewhere else.
+   * Drawn the way the "!" is, in the same frame.
+   */
+  private drawSearchMark(hunter: PackHunter, at: { readonly x: number; readonly y: number }): void {
+    let mark = this.packSearchMarks.get(hunter.id);
+    if (hunter.mode !== 'search') {
+      mark?.setVisible(false);
+      return;
+    }
+    if (!mark) {
+      mark = this.add.graphics();
+      this.paintSearchMark(mark);
+      this.mapObjects.push(mark);
+      this.packSearchMarks.set(hunter.id, mark);
+    }
+    mark.setVisible(true).setDepth(atRow(CANOPY_BAND, at.y) + 0.1);
+    this.placeSpottedMark(mark, at.x, at.y, Number.POSITIVE_INFINITY);
+  }
+
+  /** The "!" bubble with a question in it, a pixel at a time. */
+  private paintSearchMark(mark: Phaser.GameObjects.Graphics): void {
+    const box = (color: number, x: number, y: number, w: number, h: number) =>
+      mark.fillStyle(color, 1).fillRect(x, y, w, h);
+    box(SPOTTED_INK, 0, 0, 11, 13);
+    box(SPOTTED_CREAM, 1, 1, 9, 11);
+    box(SPOTTED_INK, 4, 13, 3, 1);
+    box(SPOTTED_CREAM, 5, 13, 1, 1);
+    box(SPOTTED_INK, 5, 14, 1, 1);
+    box(SEARCH_MARK, 3, 2, 5, 1);
+    box(SEARCH_MARK, 2, 3, 2, 2);
+    box(SEARCH_MARK, 7, 3, 2, 2);
+    box(SEARCH_MARK, 6, 5, 2, 1);
+    box(SEARCH_MARK, 5, 6, 2, 2);
+    box(SEARCH_MARK, 5, 9, 2, 2);
   }
 
   /** The one catch: the fight is queued, and the beat that hands it over plays. */
