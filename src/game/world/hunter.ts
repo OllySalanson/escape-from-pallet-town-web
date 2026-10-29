@@ -108,11 +108,18 @@ const species = (id: string): PokemonBase => {
  * introduce one who's harder to beat and keep everyone else easy."
  *
  * So the ladder is a mirror. The hunter fields as many Pokemon as the player
- * can fight with at the moment it catches them, and pairs them off: its first
- * against your highest-level Pokemon, its second against your next, and so on,
- * each a rung's `levelOffset` below the one it is paired with. A lone starter
- * meets one Pokemon; a veteran with two weak escorts meets one strong Pokemon
- * and two weak ones, never three strong ones.
+ * can fight with at the moment it catches them, and pairs them off in the
+ * party's own order: its first against your lead, its second against your
+ * next, and so on, each a rung's `levelOffset` below the one it is paired
+ * with. A lone starter meets one Pokemon; a veteran with two weak escorts
+ * meets one strong Pokemon and two weak ones, never three strong ones.
+ *
+ * Paired highest level first, as it was until 29 Oct, a strong Pokemon kept
+ * in reserve set the level of the hunter's lead: the explorer run's Lv 99
+ * Charizard behind a Lv 50 Blastoise had Blue open with a Lv 95 Eevee
+ * against the Blastoise. In party order a high level only answers the
+ * Pokemon that brought it. Every party measured below is listed lead first
+ * and highest first, so the table did not move.
  *
  * The ladder it replaced grew the team instead - one Pokemon, then two, three
  * and four as the clock ran - and read only the strongest Pokemon deployed, so
@@ -344,8 +351,9 @@ export const hunterTierFor = (
 
 /**
  * The hunter's team on a rung, against whoever it is facing: one Pokemon for
- * each of theirs that can still fight, paired highest level first, the rival's
- * signature first, and each evolved as far as its level reaches. Only those
+ * each of theirs that can still fight, paired in the party's order - the
+ * rival's signature against their lead - and each evolved as far as its level
+ * reaches. Only those
  * that can fight, because a fainted Pokemon cannot be revived in the field and
  * so is nobody the hunter has to answer.
  */
@@ -358,7 +366,6 @@ export function hunterTeamFor(
   const levels = opponents
     .filter((pokemon) => !pokemon.isFainted)
     .map((pokemon) => pokemon.level)
-    .sort((a, b) => b - a)
     .slice(0, lineup.length);
   const paired = levels.length > 0 ? levels : [UNKNOWN_OPPONENT_LEVEL];
   return paired.map((opponentLevel, index) => {
