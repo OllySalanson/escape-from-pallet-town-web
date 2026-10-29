@@ -168,8 +168,8 @@ export function hash01(...parts: number[]): number {
 }
 
 /**
- * The chase. Every `CHASE_PERIOD_MS` a trainer in a red cap runs across the
- * foot of the screen, in a lane of its own under the menu (`CHASE_LANE`), their partner at their heel, and Blue after them with a
+ * The chase. Every `CHASE_PERIOD_MS` a trainer in a red cap - or in what the
+ * save wears, once it has been to the boutique - runs across the foot of the screen, in a lane of its own under the menu (`CHASE_LANE`), their partner at their heel, and Blue after them with a
  * "!" over his head - the banner's joke, played out. It runs left to right and
  * then right to left on the next lap, so it is never the same twice running.
  */

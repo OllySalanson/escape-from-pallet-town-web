@@ -31,3 +31,6 @@ window; the shop ones are `tools/playtest/boutique.mjs`, the two-player one
 - `shelf-jumps.png` - a chip for every shelf over the list; RAID FINDS has just
   taken the cursor to the first raid find, two hundred cards down. The smallest
   stage has no chips: its headings are the way.
+- `title-chase-in-a-look.png` - the title screen's chase once the save wears a
+  look: Professor Oak's coat legging it with a Squirtle, Blue after them.
+  A save in the classic look still runs Red.
