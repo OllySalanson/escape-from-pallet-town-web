@@ -312,6 +312,8 @@ export class HubScene extends Phaser.Scene {
   private flow!: DeploymentFlow;
   private overlay!: MenuOverlay;
   private view: HubView = 'home';
+  /** Which screen `render` last drew, so a redraw of it keeps its scroll. */
+  private drawnScreen: string | undefined;
   /** The base door this screen was walked in through, if any - see `leaveToBase`. */
   private enteredFrom: string | undefined;
   /** Where in that room the player stood to open it, when it was not the mat. */
@@ -1376,9 +1378,11 @@ export class HubScene extends Phaser.Scene {
     const max = Number(group.dataset.countMax);
     const target = clampCount(value + delta, min, max);
     if (target === value) {
+      const step = group.querySelector<HTMLElement>(`[data-count-dir="${delta > 0 ? 1 : -1}"]`);
       if (delta > 0) {
-        const plus = group.querySelector<HTMLElement>('[data-count-dir="1"]');
-        this.refuse(plus?.dataset.help ?? 'That is as many as there is room for.');
+        this.refuse(step?.dataset.help ?? 'That is as many as there is room for.');
+      } else if (delta < 0 && step?.dataset.help) {
+        this.refuse(step.dataset.help);
       }
       return;
     }
@@ -1445,7 +1449,13 @@ export class HubScene extends Phaser.Scene {
   private render(): void {
     const root = this.overlay.root;
     this.listenForFirstWords();
-    root.innerHTML = pixelScreen({
+    // A redraw of the screen already showing keeps its lists where they were
+    // scrolled (`MenuOverlay.redraw`); arriving at another screen starts it at
+    // the top.
+    const screen = `${this.view}:${this.flow.step}:${this.wallMapInspect ?? ''}`;
+    const sameScreen = screen === this.drawnScreen;
+    this.drawnScreen = screen;
+    const markup = pixelScreen({
       // Said once, on the screen the player arrives at. Every other view is
       // reached from it and carries its own way back, so repeating the town on
       // all five of them only spent the one line of the screen that is short of
@@ -1491,6 +1501,11 @@ export class HubScene extends Phaser.Scene {
       status: this.status || undefined,
       over: this.firstWordsBox(),
     });
+    if (sameScreen) {
+      this.overlay.redraw(markup);
+    } else {
+      root.innerHTML = markup;
+    }
     // While somebody is speaking the screen under the words is shown but not
     // worked: the one control is the one that says they have been read.
     if (this.speaking) {

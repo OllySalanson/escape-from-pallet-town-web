@@ -87,6 +87,9 @@ function walkIn(storage: MemoryStorage): HubInternals {
       root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] },
       focus: vi.fn(),
       refocus: vi.fn(),
+      redraw(markup: string) {
+        this.root.innerHTML = markup;
+      },
     },
   });
   hub.init();
