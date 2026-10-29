@@ -150,7 +150,7 @@ than the secure container you start with, so every raid you ride it is a raid yo
 
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
 than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
-with the name on their front door over their head, and they see yours. Read the sign in your front garden to knock on somebody else's door; if they're in
+with the name on their front door over their head, and they see yours. Press T to say hello, ask who fancies a raid or tell somebody their outfit's smashing - a dozen friendly phrases, picked from a list, so nobody can type anything nasty - and the regulars might even answer. Read the sign in your front garden to knock on somebody else's door; if they're in
 and say yes, you're let in to have a nose round. Six buildings, four of them kept by people you'll recognise, and each one is a thing you can do:
 
 - **The Raid Arena**, a Gym that has had a makeover - RAID on the plate, a gold ARENA badge, red

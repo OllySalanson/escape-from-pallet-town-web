@@ -16,7 +16,9 @@
 // screen too: AMY must see OLLY's partner, by kind, standing on the tile he
 // last walked off, and in his look from THE HARBOUR BOUTIQUE (a red cap, an
 // Ace Trainer's jacket and jeans). AMY then walks up beside OLLY and waves: her hand must go up
-// on her screen and on his. It fails loudly - a thrown error - when any of that does not
+// on her screen and on his. She says a quick phrase (T, then the list's arrows
+// and SPACE): its bubble must be over her on her screen and on his, and gone a
+// few seconds later; a second phrase said straight after must be refused. It fails loudly - a thrown error - when any of that does not
 // happen, and photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
@@ -162,6 +164,30 @@ try {
   await until(olly, "OLLY seeing AMY's hand up", (s) => s.seen.some((f) => f.name === 'AMY' && f.waving), 1200);
   await olly.screenshot(`${out}/olly-sees-amy-wave.png`);
   console.log('AMY waved at OLLY, and both saw her hand go up');
+
+  // AMY says a quick phrase: T opens the list, DOWN is WANT TO RAID?, SPACE says it.
+  const talking = (tab) => tab.evaluate(`${BASE}.talking`);
+  await sleep(2200);
+  await press(amy, 'KeyT');
+  if (!(await talking(amy)).listOpen) throw new Error('T did not open the phrase list');
+  await amy.screenshot(`${out}/amy-phrase-list.png`);
+  await press(amy, 'ArrowDown');
+  await press(amy, 'Space');
+  const said = await talking(amy);
+  if (said.listOpen || said.saying !== 'WANT TO RAID?') throw new Error(`AMY's phrase: ${JSON.stringify(said)}`);
+  await amy.screenshot(`${out}/amy-says.png`);
+  await olly.send('Page.bringToFront');
+  front = olly;
+  await until(olly, "OLLY seeing AMY's bubble", (s) => s.seen.some((f) => f.name === 'AMY' && f.saying === 'WANT TO RAID?'), 2000);
+  await olly.screenshot(`${out}/olly-sees-amy-say.png`);
+  // Straight after, a second phrase is too soon.
+  await press(amy, 'KeyT');
+  await press(amy, 'Space');
+  const again = await talking(amy);
+  if (again.saying !== 'WANT TO RAID?') throw new Error(`a phrase got through too soon: ${JSON.stringify(again)}`);
+  await press(amy, 'Escape');
+  await until(olly, "AMY's bubble coming down", (s) => s.seen.some((f) => f.name === 'AMY' && f.saying === null), 8000);
+  console.log('AMY said WANT TO RAID?, both saw it, a second phrase too soon was refused, and the bubble came down');
 
   // Into Oak's Lab: gone from the yard for AMY, and there when she follows.
   const lab = await olly.evaluate(`${BASE}.doors.find((d) => d.id === 'oaks-lab')`);

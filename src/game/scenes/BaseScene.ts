@@ -54,6 +54,7 @@ import type { BoutiqueSceneData } from './BoutiqueScene';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
+  ROOM_KEY_LETTERS,
   houseKeyHintLine,
   yardKeyHintLine,
   type LearnableKeyId,
@@ -201,7 +202,11 @@ import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { openFavourList } from '../ui/FavourListOverlay';
 import { favourEntries } from '../hub/favourList';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
-import { HarbourFigures } from '../base/harbourFigures';
+import { HarbourFigures, overlaps } from '../base/harbourFigures';
+import { OWN_SPEAKER, harbourTalk } from '../base/harbourTalk';
+import { SpeechBubble } from '../base/speechBubble';
+import { HARBOUR_PHRASES, type HarbourPhraseId } from '../harbour/harbourPhrases';
+import { PhrasePicker } from '../ui/PhrasePicker';
 import { harbourRegulars, regularsClock, type RegularsWatcher } from '../base/harbourRegulars';
 import { requestedTestMode } from '../dev/testMode';
 import type { MenuOverlay } from '../ui/MenuOverlay';
@@ -250,6 +255,9 @@ const OWN_WAVE_LIFT = 6;
 
 /** What the hint line says facing another player in the shared harbour. */
 const WAVE_HINT = '[SPACE] WAVE';
+
+/** What the hint line says while the quick-phrase list is open. */
+const PHRASE_LIST_HINT = `[ARROWS] CHOOSE   [SPACE] SAY   [${ROOM_KEY_LETTERS.talk}] CLOSE`;
 const DIALOG_WIDTH = 232;
 const DIALOG_HEIGHT = 56;
 const DIALOG_MARGIN = 8;
@@ -384,6 +392,8 @@ interface BaseControls {
   readonly boxBack: Phaser.Input.Keyboard.Key;
   readonly boxNext: Phaser.Input.Keyboard.Key;
   readonly putAway: Phaser.Input.Keyboard.Key;
+  /** T: the quick-phrase list (`harbour/harbourPhrases.ts`), on the key a raid room's is on. */
+  readonly talk: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -478,6 +488,12 @@ export class BaseScene extends Phaser.Scene {
   private harbourFigures: HarbourFigures | null = null;
   /** This player's own hand while it is up (`waveAt`). */
   private ownWave: { readonly bubble: Phaser.GameObjects.Graphics; ms: number } | null = null;
+  /** The quick-phrase list, while it is open (`ui/PhrasePicker.ts`). */
+  private phrasePicker: PhrasePicker | null = null;
+  /** What this player is saying, over their head while they say it. */
+  private ownBubble: SpeechBubble | null = null;
+  /** The game time of this frame, which the harbour's talk is paced by. */
+  private frameTime = 0;
   /**
    * Every tile on the map that FireRed animates (`world/tileAnimation.ts`) -
    * the sea, the surf on the cove, the flowers - with the still tile it was
@@ -625,6 +641,8 @@ export class BaseScene extends Phaser.Scene {
     this.namePrompt = null;
     this.harbourFigures = null;
     this.ownWave = null;
+    this.phrasePicker = null;
+    this.ownBubble = null;
     this.harbourLife = null;
     this.fishing = null;
     this.knockScreen = null;
@@ -837,16 +855,26 @@ export class BaseScene extends Phaser.Scene {
     if (!this.ready) {
       return;
     }
+    this.frameTime = time;
     const shared = harbour();
     shared?.tick(time, deltaMs);
+    const talk = harbourTalk();
+    talk.tick(time);
     // The harbour's regulars (`base/harbourBots.ts`) keep the clock wherever
-    // the player is, and are drawn beside the real players out in the yard.
+    // the player is, and are drawn beside the real players out in the yard,
+    // saying whatever they said back to this player (`base/harbourTalk.ts`).
     const regulars = harbourRegulars();
     const watcher = this.regularsWatcher();
     regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, watcher);
     if (shared || regulars) {
       this.harbourFigures?.update(
-        [...(shared?.figuresHere() ?? []), ...(watcher ? (regulars?.figures(watcher.place) ?? []) : [])],
+        [
+          ...(shared?.figuresHere() ?? []),
+          ...(watcher ? (regulars?.figures(watcher.place) ?? []) : []).map((figure) => {
+            const saying = talk.saying(figure.id, time);
+            return saying ? { ...figure, saying } : figure;
+          }),
+        ],
         this.player,
       );
     }
@@ -861,6 +889,7 @@ export class BaseScene extends Phaser.Scene {
     }
     this.settleHeadMark();
     this.settleOwnWave(deltaMs);
+    this.settleOwnBubble();
     this.bird?.update(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
@@ -895,7 +924,17 @@ export class BaseScene extends Phaser.Scene {
     this.dialogBox.update(deltaMs);
 
     if (this.leaving || this.resting || this.namePrompt || this.knockScreen || this.favoursScreen) {
+      this.closePhrases();
       return;
+    }
+
+    if (this.phrasePicker) {
+      if (this.dialogBox.visible || this.knockPrompt || this.favourPrompt || this.fishing || this.decor || this.targetTile) {
+        this.closePhrases();
+      } else {
+        this.handlePhraseInput();
+        return;
+      }
     }
 
     if (this.knockPrompt) {
@@ -959,6 +998,11 @@ export class BaseScene extends Phaser.Scene {
 
     if (this.keyPresses.justPressed(this.controls.favours)) {
       this.openFavours();
+      return;
+    }
+
+    if (this.keyPresses.justPressed(this.controls.talk)) {
+      this.openPhrases();
       return;
     }
 
@@ -2056,6 +2100,8 @@ export class BaseScene extends Phaser.Scene {
           ...(this.harbourFigures?.rects() ?? []),
           // This player's own hand while it is up.
           ...(this.ownWave ? [{ x: this.ownWave.bubble.x, y: this.ownWave.bubble.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
+          // And what they are saying.
+          ...(this.ownBubble?.box ? [{ ...this.ownBubble.box }] : []),
           // And the "!" over anybody with a favour on their mind.
           ...[...(this.keeperMark ? [this.keeperMark] : []), ...this.harbourMarks.values()].map((mark) => ({
             x: mark.x,
@@ -2189,6 +2235,7 @@ export class BaseScene extends Phaser.Scene {
       boxBack: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxBack], false),
       boxNext: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxNext], false),
       putAway: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.putAway], false),
+      talk: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ROOM_KEY_LETTERS.talk], false),
     };
     this.latchDirectionPresses();
     this.keyPresses.watch([
@@ -2202,6 +2249,7 @@ export class BaseScene extends Phaser.Scene {
       this.controls.boxBack,
       this.controls.boxNext,
       this.controls.putAway,
+      this.controls.talk,
     ]);
   }
 
@@ -2560,6 +2608,115 @@ export class BaseScene extends Phaser.Scene {
     const partnerTile = this.partner?.standingTile();
     if (this.partner && partnerTile && this.isBlocked(partnerTile)) {
       this.partner.standAt(arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile)));
+    }
+  }
+
+  /**
+   * Opens the quick-phrase list (`harbour/harbourPhrases.ts`): anywhere in the
+   * harbour, alone or not, because a regular may answer and so may anybody who
+   * walks up while the bubble is still there.
+   */
+  private openPhrases(): void {
+    this.learnKey('talk');
+    audioManager.play('select');
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.phrasePicker = new PhrasePicker(
+      this,
+      HARBOUR_PHRASES.map((phrase) => phrase.words),
+      (index) => this.sayPhrase(HARBOUR_PHRASES[index].id),
+    );
+    this.showHint(PHRASE_LIST_HINT);
+  }
+
+  private closePhrases(): void {
+    this.phrasePicker?.destroy();
+    this.phrasePicker = null;
+  }
+
+  /** The list open: the arrows walk it, SPACE or ENTER says, T or ESC shuts it. */
+  private handlePhraseInput(): void {
+    const picker = this.phrasePicker!;
+    this.showHint(PHRASE_LIST_HINT);
+    const pressed = (keys: readonly Phaser.Input.Keyboard.Key[]): boolean =>
+      keys.some((key) => this.keyPresses.justPressed(key));
+    if (pressed([this.controls.talk, this.controls.back])) {
+      this.closePhrases();
+      audioManager.play('select');
+      return;
+    }
+    if (pressed(this.controls.interact)) {
+      picker.say();
+      return;
+    }
+    const direction: Direction | null = pressed([this.controls.left, this.controls.a])
+      ? 'left'
+      : pressed([this.controls.right, this.controls.d])
+        ? 'right'
+        : pressed([this.controls.up, this.controls.w])
+          ? 'up'
+          : pressed([this.controls.down, this.controls.s])
+            ? 'down'
+            : null;
+    if (direction && picker.move(direction)) {
+      audioManager.play('select');
+    }
+  }
+
+  /**
+   * Says a phrase: up over this player at once, to everybody else in the place
+   * (`HarbourLink.say`), and maybe answered by the nearest regular. Too soon
+   * after the last and it is not said, and the list stays open to say so.
+   */
+  private sayPhrase(phrase: HarbourPhraseId): void {
+    const talk = harbourTalk();
+    if (!talk.say(phrase, this.frameTime)) {
+      audioManager.play('denied');
+      return;
+    }
+    harbour()?.say(phrase);
+    const watcher = this.regularsWatcher();
+    if (watcher) {
+      talk.answer(
+        phrase,
+        this.frameTime,
+        (harbourRegulars()?.figures(watcher.place) ?? []).map((figure) => ({
+          id: figure.id,
+          steps: Math.abs(figure.tile.x - this.currentTile.x) + Math.abs(figure.tile.y - this.currentTile.y),
+        })),
+        Math.random,
+      );
+    }
+    audioManager.play('confirm');
+    this.closePhrases();
+    this.showHint(this.hintHere());
+  }
+
+  /**
+   * This player's own phrase over their head while it is up: over their own
+   * hand if that is up too, and lifted clear of every name plate and bubble
+   * beside them, as their hand is (`placeOwnWave`).
+   */
+  private settleOwnBubble(): void {
+    const saying = harbourTalk().saying(OWN_SPEAKER, this.frameTime);
+    if (!saying) {
+      this.ownBubble?.destroy();
+      this.ownBubble = null;
+      return;
+    }
+    this.ownBubble ??= new SpeechBubble(this);
+    this.ownBubble.say(saying);
+    const centreX = this.player.x + TILE_SIZE / 2;
+    const head = this.player.y + CHARACTER_HEAD_PIXEL_Y + lookHeadDrop(this.playerTexture);
+    // Over the chevron that marks this player, as their hand is.
+    let tipY = Math.round(this.ownWave ? this.ownWave.bubble.y - 1 : head - OWN_WAVE_LIFT - 1);
+    const width = this.collision[0].length * TILE_SIZE;
+    let box = this.ownBubble.place(centreX, tipY, width);
+    for (const other of [...(this.harbourFigures?.plateRects() ?? []), ...(this.harbourFigures?.bubbleRects() ?? [])]) {
+      if (overlaps(box, other)) {
+        tipY = Math.min(tipY, other.y - 1);
+        box = this.ownBubble.place(centreX, tipY, width);
+      }
     }
   }
 
@@ -3022,6 +3179,8 @@ export class BaseScene extends Phaser.Scene {
     readonly waving: boolean;
     /** What they wear, as `lookKey` names it: `classic` for the figure everybody starts in. */
     readonly look: string;
+    /** The words in their speech bubble, if any (`harbour/harbourPhrases.ts`). */
+    readonly saying: string | null;
   }[] {
     if (!this.harbourFigures) {
       return [];
@@ -3032,6 +3191,7 @@ export class BaseScene extends Phaser.Scene {
       partner: figure.partner ?? null,
       waving: figure.waving === true,
       look: lookKey(figure.look ?? null),
+      saying: figure.saying ?? null,
     }));
   }
 
@@ -3041,6 +3201,8 @@ export class BaseScene extends Phaser.Scene {
     readonly tile: GridPosition;
     readonly partner: string | null;
     readonly waving: boolean;
+    /** What they said back to this player, if they are saying it now (`base/harbourTalk.ts`). */
+    readonly saying: string | null;
   }[] {
     const watcher = this.regularsWatcher();
     if (!this.harbourFigures || !watcher) {
@@ -3051,7 +3213,13 @@ export class BaseScene extends Phaser.Scene {
       tile: { ...figure.tile },
       partner: figure.partner ?? null,
       waving: figure.waving === true,
+      saying: harbourTalk().saying(figure.id, this.frameTime),
     }));
+  }
+
+  /** What this player is saying, and whether the phrase list is open, for a playtest to read. */
+  public get talking(): { readonly saying: string | null; readonly listOpen: boolean } {
+    return { saying: harbourTalk().saying(OWN_SPEAKER, this.frameTime), listOpen: this.phrasePicker !== null };
   }
 
   /** Whether this player's own hand is up, for a playtest to read. */

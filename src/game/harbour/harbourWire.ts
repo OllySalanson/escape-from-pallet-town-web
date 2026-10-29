@@ -4,16 +4,19 @@ import type { HarbourHeard, HarbourWire } from './harbourLink';
 import {
   HARBOUR_MOVE_EVENT,
   HARBOUR_NUDGE_EVENT,
+  HARBOUR_SAY_EVENT,
   HARBOUR_TOPIC,
   HARBOUR_WAVE_EVENT,
   encodeHarbourMove,
   encodeHarbourNudge,
   encodeHarbourPresence,
+  encodeHarbourSay,
   encodeHarbourWave,
   isPlayerId,
   readHarbourMove,
   readHarbourNudge,
   readHarbourPresence,
+  readHarbourSay,
   readHarbourWave,
   type HarbourMove,
   type HarbourPlace,
@@ -100,6 +103,12 @@ export function liveHarbourWire(): HarbourWire {
           heard.wave?.(wave);
         }
       });
+      joining.on('broadcast', { event: HARBOUR_SAY_EVENT }, ({ payload }) => {
+        const say = readHarbourSay(payload);
+        if (say) {
+          heard.say?.(say);
+        }
+      });
       joining.on('presence', { event: 'sync' }, () => {
         heard.present(membersOf(joining.presenceState()));
       });
@@ -133,6 +142,9 @@ export function liveHarbourWire(): HarbourWire {
     },
     wave(wave) {
       void channel?.send({ type: 'broadcast', event: HARBOUR_WAVE_EVENT, payload: encodeHarbourWave(wave) });
+    },
+    say(say) {
+      void channel?.send({ type: 'broadcast', event: HARBOUR_SAY_EVENT, payload: encodeHarbourSay(say) });
     },
     async names(ids) {
       const db = await supabase();
@@ -214,6 +226,11 @@ export function localHarbourWire(nameOf: () => string | null): HarbourWire {
       if (wave) {
         heard?.wave?.(wave);
       }
+    } else if (data.kind === 'say') {
+      const say = readHarbourSay(data.payload);
+      if (say) {
+        heard?.say?.(say);
+      }
     } else if (data.kind === 'here' && isPlayerId(data.id)) {
       const known = seen.has(data.id);
       seen.set(data.id, {
@@ -253,6 +270,9 @@ export function localHarbourWire(nameOf: () => string | null): HarbourWire {
     },
     wave(wave) {
       wire.postMessage({ kind: 'wave', payload: encodeHarbourWave(wave) });
+    },
+    say(say) {
+      wire.postMessage({ kind: 'say', payload: encodeHarbourSay(say) });
     },
     names(ids) {
       return Promise.resolve(

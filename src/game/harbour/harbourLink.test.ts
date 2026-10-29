@@ -14,8 +14,10 @@ import {
   type HarbourMove,
   type HarbourNudge,
   type HarbourPlace,
+  type HarbourSay,
   type HarbourWave,
 } from './harbourProtocol';
+import { PHRASE_SHOWN_MS, SAY_BURST, SAY_BURST_MS, SAY_EVERY_MS } from './harbourPhrases';
 
 const ME = '11111111-1111-4111-8111-111111111111';
 const AMY = '22222222-2222-4222-8222-222222222222';
@@ -27,6 +29,7 @@ class FakeWire implements HarbourWire {
   public sent: HarbourMove[] = [];
   public nudged: HarbourNudge[] = [];
   public waved: HarbourWave[] = [];
+  public said: HarbourSay[] = [];
   public stood: (HarbourPlace | null)[] = [];
   public left = 0;
   public known = new Map<string, string>([[AMY, 'AMY']]);
@@ -48,6 +51,12 @@ class FakeWire implements HarbourWire {
   }
   public wave(wave: HarbourWave): void {
     this.waved.push(wave);
+  }
+  public say(say: HarbourSay): void {
+    this.said.push(say);
+  }
+  public hearSay(say: HarbourSay): void {
+    this.heard?.say?.(say);
   }
   public hearWave(wave: HarbourWave): void {
     this.heard?.wave?.(wave);
@@ -343,5 +352,75 @@ describe('waving in the shared harbour', () => {
     link.whenWavedAt((from) => heard.push(from));
     wire.hearWave({ from: ME, place: 'yard', to: ME });
     expect(heard).toEqual([]);
+  });
+});
+
+describe('quick phrases in the shared harbour', () => {
+  async function withAmy(): Promise<{ link: HarbourLink; wire: FakeWire }> {
+    const { link, wire } = await joined();
+    wire.present([[ME, 'yard'], [AMY, 'yard']]);
+    await settle();
+    wire.move({ from: AMY, place: 'yard', path: [{ x: 16, y: 12 }], facing: 'down' });
+    link.tick(10_000, 16);
+    return { link, wire };
+  }
+
+  it('says a phrase to the place this player stands, and not again too soon', async () => {
+    const { link, wire } = await withAmy();
+    expect(link.say('hello')).toBe(true);
+    expect(wire.said).toEqual([{ from: ME, place: 'yard', phrase: 'hello' }]);
+    expect(link.say('raid')).toBe(false);
+    link.tick(10_000 + SAY_EVERY_MS, 16);
+    expect(link.say('raid')).toBe(true);
+    expect(wire.said).toHaveLength(2);
+  });
+
+  it('holds a player to a few phrases in a while, however patiently spaced', async () => {
+    const { link, wire } = await withAmy();
+    let now = 10_000;
+    for (let said = 0; said < SAY_BURST; said += 1) {
+      link.tick(now, 16);
+      expect(link.say('gg')).toBe(true);
+      now += SAY_EVERY_MS;
+    }
+    link.tick(now, 16);
+    expect(link.say('gg')).toBe(false);
+    link.tick(10_000 + SAY_BURST_MS, 16);
+    expect(link.say('gg')).toBe(true);
+    expect(wire.said).toHaveLength(SAY_BURST + 1);
+  });
+
+  it('says nothing while nobody is there to hear it, and never as somebody who cannot be heard', async () => {
+    const alone = await joined();
+    alone.wire.present([[ME, 'yard']]);
+    expect(alone.link.say('hello')).toBe(false);
+    const watching = await joined(null);
+    watching.wire.present([[AMY, 'yard']]);
+    expect(watching.link.say('hello')).toBe(false);
+    expect([...alone.wire.said, ...watching.wire.said]).toEqual([]);
+  });
+
+  it("puts what AMY says in a bubble over her, then takes it down", async () => {
+    const { link, wire } = await withAmy();
+    wire.hearSay({ from: AMY, place: 'yard', phrase: 'outfit' });
+    expect(link.figuresIn('yard')[0]?.saying).toBe('NICE OUTFIT!');
+    link.tick(10_000 + PHRASE_SHOWN_MS, 16);
+    expect(link.figuresIn('yard')[0]?.saying).toBeUndefined();
+  });
+
+  it('drops what AMY says faster than the harbour allows, and what is said somewhere else', async () => {
+    const { link, wire } = await withAmy();
+    wire.hearSay({ from: AMY, place: 'oaks-lab', phrase: 'bye' });
+    expect(link.figuresIn('yard')[0]?.saying).toBeUndefined();
+    wire.hearSay({ from: AMY, place: 'yard', phrase: 'hello' });
+    link.tick(10_001, 16);
+    wire.hearSay({ from: AMY, place: 'yard', phrase: 'bye' });
+    expect(link.figuresIn('yard')[0]?.saying).toBe('HELLO!');
+  });
+
+  it('pays no mind to its own phrase said back to it', async () => {
+    const { link, wire } = await withAmy();
+    wire.hearSay({ from: ME, place: 'yard', phrase: 'gg' });
+    expect(link.say('hello')).toBe(true);
   });
 });

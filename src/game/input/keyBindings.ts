@@ -35,16 +35,29 @@ export const RAID_KEY_WORDS: readonly (readonly [RaidKeyId, string])[] = [
 export const READING_KEYS: readonly RaidKeyId[] = ['objectives', 'look'];
 
 /**
- * What the yard teaches until it has been done: walking, the look, and the
- * favours list - on O, the key the raid's field guide is on, because it is the
- * same question asked at home: what am I out for (`hub/favourList.ts`).
+ * A raid room's keys (`raidRoom/roomTalk.ts`): T opens the list of phrases, the
+ * number keys say one, and G pings the tile stood on. `WorldScene.bindControls`
+ * binds these. THE HARBOUR's quick phrases are on the same T
+ * (`harbour/harbourPhrases.ts`, `BaseScene.bindControls`).
  */
-export type YardKeyId = 'walk' | 'look' | 'favours';
+export const ROOM_KEY_LETTERS = {
+  talk: 'T',
+  ping: 'G',
+} as const;
+
+/**
+ * What the yard teaches until it has been done: walking, the look, the
+ * favours list - on O, the key the raid's field guide is on, because it is the
+ * same question asked at home: what am I out for (`hub/favourList.ts`) - and
+ * the quick phrases, on T as in a raid room.
+ */
+export type YardKeyId = 'walk' | 'look' | 'favours' | 'talk';
 
 export const YARD_KEY_WORDS: readonly (readonly [YardKeyId, string, string])[] = [
   ['walk', 'ARROWS', 'WALK'],
   ['look', RAID_KEY_LETTERS.look, 'LOOK'],
   ['favours', RAID_KEY_LETTERS.objectives, 'FAVOURS'],
+  ['talk', ROOM_KEY_LETTERS.talk, 'SAY'],
 ];
 
 /**
@@ -58,16 +71,6 @@ export const HOME_KEY_LETTERS = {
   boxBack: 'Q',
   boxNext: 'E',
   putAway: 'X',
-} as const;
-
-/**
- * A raid room's keys (`raidRoom/roomTalk.ts`): T opens the list of phrases, the
- * number keys say one, and G pings the tile stood on. `WorldScene.bindControls`
- * binds these.
- */
-export const ROOM_KEY_LETTERS = {
-  talk: 'T',
-  ping: 'G',
 } as const;
 
 /**

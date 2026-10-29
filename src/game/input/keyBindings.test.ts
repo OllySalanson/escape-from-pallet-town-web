@@ -150,9 +150,11 @@ describe('the keys a HUD names', () => {
       ['ARROWS', 'WALK'],
       ['L', 'LOOK'],
       ['O', 'FAVOURS'],
+      ['T', 'SAY'],
     ]);
     expect((controls.look as BoundKey).keyCode).toBe(KEY_CODES.L);
     expect((controls.favours as BoundKey).keyCode).toBe(KEY_CODES.O);
+    expect((controls.talk as BoundKey).keyCode).toBe(KEY_CODES.T);
     for (const direction of ['up', 'down', 'left', 'right'] as const) {
       expect((controls[direction] as BoundKey).keyCode).toBe(KEY_CODES[direction.toUpperCase()]);
     }
@@ -211,9 +213,10 @@ describe('a key is named until it has been used once', () => {
   });
 
   it('empties the yard line as the yard is learned', () => {
-    expect(yardKeyHintLine(new Set(['walk']))).toBe('[L] LOOK   [O] FAVOURS');
-    expect(yardKeyHintLine(new Set(['walk', 'look']))).toBe('[O] FAVOURS');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours']))).toBe('');
+    expect(yardKeyHintLine(new Set(['walk']))).toBe('[L] LOOK   [O] FAVOURS   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look']))).toBe('[O] FAVOURS   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours']))).toBe('[T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'talk']))).toBe('');
   });
 
   it('is remembered by the save, once each', () => {
