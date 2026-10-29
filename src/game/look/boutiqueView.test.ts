@@ -56,3 +56,11 @@ describe("the boutique's screen", () => {
     expect(commitBar(state())).toMatch(/data-put-back aria-disabled="true"/);
   });
 });
+
+describe("the shelves' jump chips", () => {
+  it('gives every shelf the screen shows a chip, in shelf order', () => {
+    expect(cards(boutiqueMarkup(state()), 'data-jump')).toEqual(['looks', 'hat', 'hair', 'top', 'legs', 'outfit', 'raid']);
+    // The wardrobe shows only the shelves something owned stands on.
+    expect(cards(boutiqueMarkup(state({ mode: 'wardrobe' })), 'data-jump')).toEqual(['looks', 'hair', 'top', 'legs']);
+  });
+});

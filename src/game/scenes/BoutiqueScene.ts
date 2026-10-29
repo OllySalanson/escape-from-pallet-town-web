@@ -109,6 +109,9 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       button.onclick = () => whole && this.tryOn(whole.look, `[data-whole="${whole.id}"]`);
     });
     root.querySelector<HTMLButtonElement>('[data-classic]')!.onclick = () => this.tryOn(null, '[data-classic]');
+    root.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((button) => {
+      button.onclick = () => this.jumpTo(button.dataset.jump ?? '');
+    });
     this.wireAction(root, '[data-buy]', () => this.buy());
     this.wireAction(root, '[data-wear-it]', () => this.wearIt());
     this.wireAction(root, '[data-put-back]', () => this.tryOn(this.wearingNow(), undefined));
@@ -131,6 +134,19 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       }
       act();
     };
+  }
+
+  /** A jump chip: the shelf's heading to the top of the list, and the cursor on its first card. */
+  private jumpTo(shelf: string): void {
+    const root = this.overlay?.root;
+    const list = root?.querySelector<HTMLElement>('[data-shelves]');
+    const heading = list?.querySelector<HTMLElement>(`[data-shelf="${shelf}"]`);
+    if (!list || !heading) return;
+    let card = heading.nextElementSibling;
+    while (card && !(card instanceof HTMLButtonElement)) card = card.nextElementSibling;
+    audioManager.play('select');
+    list.scrollTop = heading.offsetTop - list.offsetTop;
+    if (card instanceof HTMLButtonElement) card.focus({ preventScroll: true });
   }
 
   private preview(target: EventTarget | null): void {

@@ -4270,6 +4270,24 @@ button {
 :where(.pixel-ui[data-room='tight']) .boutique-card .look-figure {
   --figure-scale: 1;
 }
+/* The shelves' own window: its heading, a row of jump chips, then the list. */
+:where(.pixel-ui) .boutique-panes > .boutique-shelves-window {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .boutique-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2);
+  padding-bottom: calc(var(--u) * 3);
+}
+/* At the smallest stage the chips would take two rows of a list that has few
+   to spare; the shelves' own headings still say where each one starts. */
+:where(.pixel-ui[data-room='tight']) .boutique-jumps {
+  display: none;
+}
+:where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-shelves-window {
+  grid-template-rows: auto minmax(0, 1fr);
+}
 /* The four facings two by two: down and left, up and right. */
 :where(.pixel-ui) .boutique-mirror {
   display: grid;
