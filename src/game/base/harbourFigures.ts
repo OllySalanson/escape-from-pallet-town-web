@@ -3,7 +3,7 @@ import type { HarbourFigure } from '../harbour/harbourCrowd';
 import type { NamedFigure } from '../harbour/harbourLink';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { CHARACTER_FEET_PIXEL_Y, CHARACTER_HEAD_PIXEL_Y, getIdleFrame } from '../playerFrames';
-import { lookTexture, lookWalkKey } from '../look/lookTexture';
+import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { GAME_FONT } from '../ui/gameFont';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
@@ -222,7 +222,7 @@ export class HarbourFigures {
         this.placeWidth?.() ?? null,
       );
       const plateY = clearOfHeel(
-        { x: plateX, y: Math.round(y + CHARACTER_HEAD_PIXEL_Y - plateHeight - 1), width: plateWidth, height: plateHeight },
+        { x: plateX, y: Math.round(y + headOf(drawn) - plateHeight - 1), width: plateWidth, height: plateHeight },
         heelArt(drawn.heel),
       );
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
@@ -231,7 +231,7 @@ export class HarbourFigures {
       const named = !underSelf || figure.speaking === true;
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
-      this.drawWave(drawn, figure, x, named ? plateY : y + CHARACTER_HEAD_PIXEL_Y - 1);
+      this.drawWave(drawn, figure, x, named ? plateY : y + headOf(drawn) - 1);
     }
   }
 
@@ -254,8 +254,9 @@ export class HarbourFigures {
    * name seated across another player read as their head on a sign.
    */
   public rects(): { x: number; y: number; width: number; height: number }[] {
-    return [...this.drawn.values()].map(({ sprite, plate, name, wave }) => {
-      const head = name.visible ? Math.min(plate.y, sprite.y + CHARACTER_HEAD_PIXEL_Y) : sprite.y + CHARACTER_HEAD_PIXEL_Y;
+    return [...this.drawn.values()].map((drawn) => {
+      const { sprite, plate, name, wave } = drawn;
+      const head = name.visible ? Math.min(plate.y, sprite.y + headOf(drawn)) : sprite.y + headOf(drawn);
       const top = wave ? Math.min(head, wave.y) : head;
       return { x: sprite.x, y: top, width: TILE_SIZE, height: sprite.y + CHARACTER_FEET_PIXEL_Y + 1 - top };
     });
@@ -414,6 +415,9 @@ function heelArt(heel: Heel | null): Box | null {
 
 const plateWidthOf = (name: Phaser.GameObjects.Text): number => Math.ceil(name.width) + PLATE_PAD_X * 2;
 const plateHeightOf = (name: Phaser.GameObjects.Text): number => Math.ceil(name.height) + 1;
+
+/** Where a figure's head starts in its frame: the classic one's, or lower for a look's (`look/lookTexture.ts`). */
+const headOf = (drawn: Drawn): number => CHARACTER_HEAD_PIXEL_Y + lookHeadDrop(drawn.texture);
 
 /** The plate behind a name: the game's own one-pixel framed window, sized to the name. */
 function drawPlate(drawn: Drawn): void {

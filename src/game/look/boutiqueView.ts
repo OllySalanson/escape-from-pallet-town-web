@@ -90,7 +90,7 @@ export function boutiqueMarkup(state: BoutiqueState): string {
 
 /** The mirror: the try-on walking in all four facings, and what it is made of. */
 export function mirror(state: BoutiqueState): string {
-  return pixelWindow(`<div class="boutique-mirror" data-mirror>${mirrorFigures(state.sheet(state.trying))}</div><div class="px-list boutique-worn" data-worn>${wornRows(state)}</div>`, {
+  return pixelWindow(`<div class="boutique-mirror" data-mirror>${mirrorFigures(state.sheet(state.trying))}</div><div class="px-list px-scroll boutique-worn" data-worn data-reads tabindex="-1">${wornRows(state)}</div>`, {
     heading: 'The mirror',
     note: sameLook(state.trying, state.wearing) ? 'what you have on' : 'trying on',
     className: 'boutique-mirror-window',
@@ -102,7 +102,8 @@ export function mirrorFigures(sheet: string): string {
   return MIRROR_ROWS.map((row) => lookFigure(sheet, { row, scale: 3, walking: true, label: 'You, in the mirror' })).join('');
 }
 
-function wornRows(state: BoutiqueState): string {
+/** What the mirror's look is made of, piece by piece, owned or priced. */
+export function wornRows(state: Pick<BoutiqueState, 'trying' | 'owned'>): string {
   const look = state.trying;
   if (!look) {
     return `<p class="px-empty px-wrap">The classic look: the clothes you came to the harbour in.</p>`;
@@ -112,8 +113,10 @@ function wornRows(state: BoutiqueState): string {
     .map((slot) => {
       const piece = wearableById(look[slot] ?? '');
       if (!piece) return '';
-      const tag = state.owned.has(piece.id) ? pixelTag('Yours', 'secure', true) : pixelTag(priceLine(piece), piece.rarity === 'raid' ? 'risk' : 'plain');
-      return `<div class="px-row boutique-worn-row"><span class="px-row-main"><small>${SLOT_WORDS[slot]}</small><strong class="px-name">${piece.name}</strong></span>${tag}</div>`;
+      // Owned is a tag; a price goes under the name, where a barter's goods have room to wrap.
+      const owned = state.owned.has(piece.id);
+      const price = owned ? '' : `<small class="px-wrap${piece.rarity === 'raid' ? ' px-warning' : ''}">${priceLine(piece)}</small>`;
+      return `<div class="px-row boutique-worn-row"><span class="px-row-main"><small>${SLOT_WORDS[slot]}</small><strong class="px-name">${piece.name}</strong>${price}</span>${owned ? pixelTag('Yours', 'secure', true) : ''}</div>`;
     })
     .join('');
 }

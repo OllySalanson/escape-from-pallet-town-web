@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { readLook } from '../look/look';
-import { lookTexture, lookWalkKey } from '../look/lookTexture';
+import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { recordAction } from '../feedback/actionLog';
@@ -3798,7 +3798,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);
     this.player.setDepth(depth);
     this.playerGroundMark.setPosition(x, y).setDepth(depth);
-    this.playerHeadMark.setPosition(x, y + (this.riding ? BIKE_HEAD_DROP : 0));
+    this.playerHeadMark.setPosition(x, y + this.headDrop());
   }
 
   /**
@@ -5519,6 +5519,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return lookTexture(this, readLook(this.runSession?.look));
   }
 
+  /** How far the chevron over the player sits below the classic head: the Bicycle's rider, or this look's head. */
+  private headDrop(): number {
+    return this.riding ? BIKE_HEAD_DROP : lookHeadDrop(this.walkingTexture());
+  }
+
   /** The player's standing frame, on foot or on the Bicycle. */
   private playerIdleFrame(facing: Direction): number {
     return this.riding ? getIdleFrame(facing, BIKE_SHEET_COLUMNS) : getIdleFrame(facing);
@@ -5559,7 +5564,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.player.setTexture(riding ? BIKE_TEXTURE : this.walkingTexture(), this.playerIdleFrame(this.facing));
     // The ridden frame is two tiles wide: a quarter in is the middle of the tile.
     this.player.setOrigin(riding ? BIKE_ORIGIN_X : 0, 0);
-    this.playerHeadMark.setY(this.player.y + (riding ? BIKE_HEAD_DROP : 0));
+    this.playerHeadMark.setY(this.player.y + this.headDrop());
     if (this.targetTile) {
       this.player.play(this.playerWalkKey(), true);
     }
