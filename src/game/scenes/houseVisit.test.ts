@@ -201,7 +201,7 @@ describe('the hint on the house mat', () => {
  * browser, or run out.
  */
 describe('a knock that is no longer at the door', () => {
-  async function askedAtHome() {
+  async function askedAtHome({ decorating = false } = {}) {
     let knocks: KnockAtTheDoor[] = [{ knockId: 'k-1', knockerName: 'AMY' }];
     const service = {
       atHome: () => Promise.resolve(),
@@ -227,7 +227,7 @@ describe('a knock that is no longer at the door', () => {
       knockPrompt: null,
       knockScreen: null,
       namePrompt: null,
-      decor: null,
+      decor: decorating ? { draw: () => undefined } : null,
       resting: false,
       leaving: false,
       targetTile: null,
@@ -289,5 +289,12 @@ describe('a knock that is no longer at the door', () => {
     home.frame(4);
     expect(home.prompts()).toEqual({ up: 1, down: 0 });
     expect(home.said).toEqual([]);
+  });
+
+  it('asks an owner who is decorating, rather than leaving the knocker to be told nobody came', async () => {
+    // Playtest 49: the question waited for the decorating to end, which can
+    // be minutes, and the knock ran out with the owner home and busy.
+    const home = await askedAtHome({ decorating: true });
+    expect(home.prompts()).toEqual({ up: 1, down: 0 });
   });
 });

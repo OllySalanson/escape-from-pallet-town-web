@@ -2817,7 +2817,9 @@ export class BaseScene extends Phaser.Scene {
       !this.knockPrompt &&
       !this.knockScreen &&
       !this.namePrompt &&
-      !this.decor &&
+      // Not held for decorating, which can go on for minutes: the knocker
+      // was told nobody came while the owner was home and busy (playtest 49).
+      // The question pauses the decorating, which carries on once it is answered.
       !this.resting &&
       !this.leaving &&
       !this.targetTile &&
@@ -2878,7 +2880,11 @@ export class BaseScene extends Phaser.Scene {
     this.spentPresses.spendHeld(this.directionKeys());
     void harbourHouses()?.door.answer(knock.knockId, letIn);
     audioManager.play(letIn ? 'confirm' : 'cancel');
-    this.say([letIn ? `You open the door to ${knock.knockerName}.` : `You leave ${knock.knockerName} on the step.`], []);
+    this.say(
+      [letIn ? `You open the door to ${knock.knockerName}.` : `You leave ${knock.knockerName} on the step.`],
+      [],
+      () => this.decor?.draw(),
+    );
   }
 
   private knockerWentAway(knock: KnockAtTheDoor): void {
@@ -2886,7 +2892,7 @@ export class BaseScene extends Phaser.Scene {
     this.knockPrompt = null;
     this.spentPresses.spendHeld(this.directionKeys());
     audioManager.play('cancel');
-    this.say([knockGoneLine(knock.knockerName)], []);
+    this.say([knockGoneLine(knock.knockerName)], [], () => this.decor?.draw());
   }
 
   /**
