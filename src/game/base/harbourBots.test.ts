@@ -9,6 +9,7 @@ import { baseGame } from './baseGames.testkit';
 import { buildRoom, roomNamed } from './rooms';
 import { BASE_DOORS } from './doors';
 import { isPartnerSpecies } from './partner';
+import { checkPlayerName } from '../console/playerName';
 import {
   BOTS_MAX_PRESENT,
   BOTS_MIN_PRESENT,
@@ -40,8 +41,8 @@ describe('the harbour\'s regulars', () => {
     expect(new Set(HARBOUR_BOTS.map((bot) => bot.name)).size).toBe(12);
     expect(new Set(HARBOUR_BOTS.map((bot) => bot.id)).size).toBe(12);
     for (const bot of HARBOUR_BOTS) {
-      // The console's name rule (`console/playerName.ts`): capitals, ten at most.
-      expect(bot.name).toMatch(/^[A-Z0-9.!?'-]{1,10}$/);
+      // The name rule every player is held to (`console/playerName.ts`), word filter and all.
+      expect(checkPlayerName(bot.name)).toEqual({ ok: true, name: bot.name });
       expect(isPartnerSpecies(bot.partner)).toBe(true);
       expect(bot.lines.length).toBeGreaterThan(0);
       for (const line of bot.lines) {
@@ -51,6 +52,14 @@ describe('the harbour\'s regulars', () => {
       // Never an id a player could have, so nothing that lists players mistakes one.
       expect(bot.id.startsWith('bot:')).toBe(true);
     }
+  });
+
+  it('go by the kind of name players type for themselves, not a register of first names', () => {
+    // The captain, 29 Oct: "names that are actually realistic of what people
+    // would put. Not just like Ivo and Rowan" - so most carry a number, a mark
+    // or a Pokémon, and no two are the same kind of plain word.
+    const decorated = HARBOUR_BOTS.filter((bot) => /[0-9.!?'-]/.test(bot.name) || /BULBA|KARP|DEX|TOISE|ZARD/.test(bot.name));
+    expect(decorated.length).toBeGreaterThanOrEqual(9);
   });
 
   it('come and go so that between two and six are about at every moment', () => {
