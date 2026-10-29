@@ -274,7 +274,9 @@ game.
   about the harbour - `ships-log` and `gold-teeth` - are the same script: a
   log in navy cloth (`#3d5d92`, `#283f68`, `#6489c2`) with a gold anchor and
   the pages' edge, and a plate of gold teeth on a pink gum (`#ef8fa4`,
-  `#c25c76`) open on a dark gap. Original to this repository; the names are
+  `#c25c76`) open on a dark gap - and `favour-ask`, the favours list's mark
+  for somebody who wants a word: the cream bubble with a red "!" the harbour
+  draws over them. Original to this repository; the names are
   FireRed's where FireRed has the thing (OAK'S PARCEL, OLD AMBER, GOLD TEETH),
   the drawings are not.
   The seven berries are `scripts/draw-berry-icons.mjs`: each redrawn by hand at

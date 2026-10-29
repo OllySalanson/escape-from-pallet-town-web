@@ -198,6 +198,8 @@ import {
 import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
+import { openFavourList } from '../ui/FavourListOverlay';
+import { favourEntries } from '../hub/favourList';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { HarbourFigures } from '../base/harbourFigures';
 import { harbourRegulars, regularsClock, type RegularsWatcher } from '../base/harbourRegulars';
@@ -311,7 +313,7 @@ let spyglassLooks = 0;
 const ANGLER_ID = 'cove-angler';
 /** The Gym Guide at the Raid Arena's door, who says the day's work (`base/gymGuide.ts`). */
 const GYM_GUIDE_ID = 'gym-guide';
-/** The Safari Warden on the green, who can be understood once his GOLD TEETH are back (`hub/errands.ts`). */
+/** The Safari Warden above THE COVE, who can be understood once his GOLD TEETH are back (`hub/errands.ts`). */
 const WARDEN_ID = 'safari-warden';
 /**
  * Whether the angler has lent his rod this sitting. Kept for the page rather
@@ -374,6 +376,8 @@ interface BaseControls {
   readonly run: Phaser.Input.Keyboard.Key;
   readonly interact: readonly Phaser.Input.Keyboard.Key[];
   readonly back: Phaser.Input.Keyboard.Key;
+  /** O: the favours list (`hub/favourList.ts`), on the key the raid's field guide is on. */
+  readonly favours: Phaser.Input.Keyboard.Key;
   /** THE BOLTHOLE's keys (`HOME_KEY_LETTERS`): decorating, and what it is done with. */
   readonly decorate: Phaser.Input.Keyboard.Key;
   readonly turn: Phaser.Input.Keyboard.Key;
@@ -522,6 +526,8 @@ export class BaseScene extends Phaser.Scene {
   private visit: HouseVisit | null = null;
   /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
   private knockScreen: MenuOverlay | null = null;
+  /** The favours list, while it is up (`ui/FavourListOverlay.ts`). */
+  private favoursScreen: MenuOverlay | null = null;
   /** Somebody knocking at this player's own door, being asked about. */
   private knockPrompt: { readonly prompt: ChoicePrompt; readonly knock: KnockAtTheDoor } | null = null;
   /** A keeper's favour, asked YES or NOT NOW at the foot of what they said (`speakToKeeper`). */
@@ -622,6 +628,7 @@ export class BaseScene extends Phaser.Scene {
     this.harbourLife = null;
     this.fishing = null;
     this.knockScreen = null;
+    this.favoursScreen = null;
     this.knockPrompt = null;
     this.favourPrompt = null;
     this.keeperMark = null;
@@ -790,6 +797,8 @@ export class BaseScene extends Phaser.Scene {
       }
       this.knockScreen?.destroy();
       this.knockScreen = null;
+      this.favoursScreen?.destroy();
+      this.favoursScreen = null;
       this.knockPrompt?.prompt.destroy();
       this.knockPrompt = null;
       this.favourPrompt?.prompt.destroy();
@@ -864,7 +873,8 @@ export class BaseScene extends Phaser.Scene {
         this.favourPrompt !== null ||
         this.leaving ||
         this.namePrompt !== null ||
-        this.knockScreen !== null,
+        this.knockScreen !== null ||
+        this.favoursScreen !== null,
       (tile) => this.someoneElseOn(tile),
     );
     this.placeHarbourMarks();
@@ -884,7 +894,7 @@ export class BaseScene extends Phaser.Scene {
     this.lookMs = advanceLookMs(this.lookMs, looked, deltaMs);
     this.dialogBox.update(deltaMs);
 
-    if (this.leaving || this.resting || this.namePrompt || this.knockScreen) {
+    if (this.leaving || this.resting || this.namePrompt || this.knockScreen || this.favoursScreen) {
       return;
     }
 
@@ -944,6 +954,11 @@ export class BaseScene extends Phaser.Scene {
 
     if (this.isInteractionPressed()) {
       this.tryInteract();
+      return;
+    }
+
+    if (this.keyPresses.justPressed(this.controls.favours)) {
+      this.openFavours();
       return;
     }
 
@@ -2167,6 +2182,7 @@ export class BaseScene extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
       ],
       back: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false),
+      favours: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives], false),
       decorate: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.decorate], false),
       turn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.turn], false),
       boxBack: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxBack], false),
@@ -2179,6 +2195,7 @@ export class BaseScene extends Phaser.Scene {
       ...this.controls.interact,
       this.controls.look,
       this.controls.back,
+      this.controls.favours,
       this.controls.decorate,
       this.controls.turn,
       this.controls.boxBack,
@@ -2852,6 +2869,37 @@ export class BaseScene extends Phaser.Scene {
     });
     this.dialogBox.setY(seat.y);
     this.dialogBox.showMessages([...lines], onLineShown);
+  }
+
+  /**
+   * The favours list (`hub/favourList.ts`), over a harbour that stands still
+   * while it is up: every favour, where it stands and the whole of it, read
+   * when the player wants it rather than said at them.
+   */
+  private openFavours(): void {
+    if (this.leaving || this.favoursScreen) {
+      return;
+    }
+    this.learnKey('favours');
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    const game = this.savedGame;
+    const entries = favourEntries(
+      game.raidProgress,
+      (itemId) => game.stash.itemCount(itemId),
+      raidsDeployed(game.raidProgress),
+    );
+    this.favoursScreen = openFavourList(this, entries, () => {
+      this.favoursScreen = null;
+      // The screen kept every key to itself, so a key the yard saw go down
+      // before it opened never came back up here.
+      this.input.keyboard?.resetKeys();
+      this.spentPresses.spendHeld(this.directionKeys());
+      audioManager.play('menuClose');
+      this.showHint(this.hintHere());
+    });
   }
 
   /** Through a door: the same scene, started again inside the room behind it. */

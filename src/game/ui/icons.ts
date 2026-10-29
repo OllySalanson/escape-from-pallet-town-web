@@ -135,6 +135,8 @@ export const WORLD_ICONS = {
   lockedGate: 'locked-gate',
   /** A cache with a lock on it, which a Lockpick opens (`WorldPoi.locked`). */
   lockedCrate: 'locked-crate',
+  /** Somebody with a favour to ask: the "!" over their head (`hub/favourList.ts`). */
+  favourAsk: 'favour-ask',
 } as const satisfies Record<string, string>;
 
 /** Every icon file that has to exist, in one list so a test can check them. */
