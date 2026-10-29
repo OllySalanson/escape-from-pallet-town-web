@@ -68,12 +68,22 @@ export interface Errand {
    * the place and a place is what a player can walk to.
    */
   readonly district: string;
-  /** Said the first time the giver's screen opens once the errand can be done. */
+  /**
+   * Said in the dialogue box when the giver is spoken to and the errand can be
+   * done: the scene, then what to fetch, where and how big it is - a box each,
+   * which is all a favour gets before it is answered (`errandTalk`).
+   */
   readonly asks: readonly string[];
+  /** The question the favour ends on, asked with YES and NOT NOW beneath it. */
+  readonly question: string;
+  /** Said to a YES. */
+  readonly accepted: string;
+  /** Said to a NOT NOW: it will be asked again after the next raid. */
+  readonly declined: string;
   /** Said when the thing is handed over, before the reward. */
   readonly thanks: readonly string[];
   /**
-   * Said the first time the giver's screen opens after the thing was found and
+   * Said the first time the giver is spoken to after the thing was found and
    * not brought home. Never that the pack went down: the same words follow a
    * raid that walked out after dropping the thing for room.
    */
@@ -101,18 +111,17 @@ export const ERRANDS: readonly Errand[] = [
     // FireRed's errand, in FireRed's place: the Poké Mart stands on the square.
     district: 'viridian-center-square',
     asks: [
-      'Oh, before you go! I have a parcel on order from the Poké Mart in Viridian City, and nobody has brought it out to me.',
-      'It will be somewhere about CENTER SQUARE, by the Mart. It takes 2 squares of your pack, mind.',
-      'Bring it here and I will make it worth your while.',
+      'Before you go! I have a parcel waiting at the Viridian Poké Mart.',
+      'It is about CENTER SQUARE. It takes 2 squares of your pack.',
     ],
-    // The first two lines are FireRed's own, when the parcel is delivered.
-    thanks: [
-      'Ah! It’s the custom Poké Ball! I had it on order. Thank you!',
-      'Now, these are for you. Throw one at a weakened wild Pokémon and it comes home with you.',
-    ],
+    question: 'Will you bring it to me?',
+    accepted: 'Splendid! Walk out with it, and I will make it worth your while.',
+    declined: 'Not to worry. I will ask again after your next raid.',
+    // The first line is FireRed's own, when the parcel is delivered.
+    thanks: ['Ah! It’s the custom Poké Ball! I had it on order. Thank you!', 'Now, these are for you.'],
     lost: [
-      'You found my parcel, and it never made it home? Well. You came home, and that matters more.',
-      'The Mart will send another. It will be about CENTER SQUARE again.',
+      'My parcel never made it home? Well, you did, and that matters more.',
+      'The Mart will send another to CENTER SQUARE.',
     ],
     // FireRed pays the parcel with the Pokédex and five Poké Balls. The
     // Pokédex is already in hand; the five are its own.
@@ -131,16 +140,19 @@ export const ERRANDS: readonly Errand[] = [
     mapId: 'route-1',
     district: 'route-1-steading',
     asks: [
-      'Could I ask a favour? We lent our spare medicine bag to THE STEADING on Route 1 when their Pokémon were poorly.',
-      'It never came back. It is only 2 squares of your pack, but we do need it.',
+      'Could I ask a favour? We lent our medicine bag to THE STEADING.',
+      'That is on Route 1, and it takes 2 squares of your pack.',
     ],
+    question: 'Will you bring it home for us?',
+    accepted: 'Thank you so much! Do come back safe.',
+    declined: 'Of course. I will ask again after your next raid.',
     thanks: [
-      'Our medicine bag! Thank you so much - and everything is still in it.',
-      'Please take these Leftovers. Give them to a Pokémon to hold, and it will recover a little HP at the end of every turn.',
+      'Our medicine bag! Thank you so much - everything is still in it.',
+      'Take these Leftovers. A Pokémon holding them heals every turn.',
     ],
     lost: [
       'Oh dear. You had the bag, and it never made it back?',
-      'As long as you came back safe. The steading keeps a spare, so there will be another at THE STEADING.',
+      'As long as you came back safe. There is a spare at THE STEADING.',
     ],
     // Not FireRed's - no Joy there gives anything - but it is the one piece of
     // gear that does her job: it heals, a little, every turn.
@@ -159,18 +171,20 @@ export const ERRANDS: readonly Errand[] = [
     mapId: 'pallet-town',
     district: 'pallet-quarry',
     asks: [
-      'Before you go - I left a crate of my tools at THE QUARRY in Pallet Town, and I could use them back.',
-      'It is heavy. 4 squares of your pack, which is 4 squares of loot you leave on the ground.',
-      'I know it is a lot to ask. I will make it worth your while.',
+      'I left a crate of my tools at THE QUARRY in Pallet Town.',
+      'It is heavy: 4 squares of your pack, and loot you leave behind.',
     ],
+    question: 'Will you bring it back for me?',
+    accepted: 'Thanks. I will make it worth your while.',
+    declined: 'Fair enough. I will ask again after your next raid.',
     // The second line is what FireRed's Brock says as he hands TM39 over.
     thanks: [
       'My crate! And not a bolt missing. I owe you one.',
-      'Wait! Take this with you. TM39 contains Rock Tomb. It hurls boulders at the foe and lowers its Speed.',
+      'Take this. TM39 is Rock Tomb: it hurls boulders and slows the foe.',
     ],
     lost: [
-      'You had my crate, and it never made it home? ... You came back. That is what counts.',
-      'There is another crate of mine at THE QUARRY. Have another go when you are ready.',
+      'My crate never made it home? You came back. That is what counts.',
+      'There is another crate of mine at THE QUARRY.',
     ],
     // FireRed's own: Brock hands TM39 to whoever beats him.
     reward: {
@@ -189,16 +203,19 @@ export const ERRANDS: readonly Errand[] = [
     // Amber is old tree resin, and this is the wood's sap pool.
     district: 'forest-sap-pool',
     asks: [
-      'Say, you are going out there anyway, right? There is a lump of OLD AMBER in Viridian Forest, down by the SAP POOL.',
-      'It is only 1 square of your pack, but it would be the best thing in my cabinet. Bring it back and you get something good for it.',
+      'There is a lump of OLD AMBER in Viridian Forest, by the SAP POOL.',
+      'It takes 1 square of your pack. It would make my cabinet!',
     ],
+    question: 'Will you fetch it for me?',
+    accepted: 'Great! Bring it back, and you get something good for it.',
+    declined: 'No problem. I will ask again after your next raid.',
     thanks: [
-      'That is it! Look - there is something inside it! It is going right here on my desk, where I can see it.',
-      'And a deal is a deal. This Eevee has been with me for years. It will do better out there with you.',
+      'That is it! There is something inside! It is going right on my desk.',
+      'A deal is a deal. This Eevee has been with me for years. Take it.',
     ],
     lost: [
       'Gone? You had it, and it never made it back? Aw, man...',
-      'Well, where there is one bit of amber there is another. The SAP POOL still drips.',
+      'There is more amber where that came from. The SAP POOL still drips.',
     ],
     // Not FireRed's, but Bill's all the same: in HeartGold and SoulSilver he
     // hands the player an Eevee, at level 5.
@@ -283,19 +300,19 @@ export function errandOpen(errand: Errand, progress: ErrandProgress): boolean {
   return door !== undefined && availableInsertionIds(progress).includes(door.id);
 }
 
-/** What a giver has to say as their screen opens, if anything. */
+/** What a giver has to say when spoken to, if anything. */
 export type ErrandBeat =
   | { readonly kind: 'ask'; readonly errand: Errand }
   | { readonly kind: 'thanks'; readonly errand: Errand }
   | { readonly kind: 'lost'; readonly errand: Errand };
 
 /**
- * The one thing a giver says as their screen opens, in the order it matters:
- * the thing is home, so they take it and pay; it was found and lost, so they
- * ask about it; or they have not asked yet and the errand can be done, so they
- * ask. An errand in hand and in progress says nothing - the drop-in screen and
- * the field guide carry it from there, and a giver who repeated the request
- * every visit would be a nag rather than a person.
+ * The one thing a giver says when spoken to, in the order it matters: the
+ * thing is home, so they take it and pay; it was found and lost, so they ask
+ * about it; or they have not asked yet and the errand can be done, so they
+ * ask. An errand in hand and in progress says nothing - Oak's board, the
+ * drop-in screen and the field guide carry it from there, and a giver who
+ * repeated the request every visit would be a nag rather than a person.
  */
 export function errandBeat(
   giver: BaseScreen,
@@ -317,6 +334,61 @@ export function errandBeat(
     return { kind: 'thanks', errand };
   }
   return record.found > record.lossesHeard ? { kind: 'lost', errand } : undefined;
+}
+
+/**
+ * A favour turned down is asked again after the next raid, and not before:
+ * the giver was just told no, and asking again from the same counter on the
+ * way back out of their screen would be a nag. Nothing is stored, in the
+ * manner of `pendingMoves.ts`'s "decide later": a turn-down is keyed by the
+ * raid count the save already keeps (`raidsDeployed`), so it lapses by itself
+ * once the save has deployed again, and a reload asks once more - the honest
+ * reading of a question nobody wrote down an answer to.
+ */
+const declinedAt = new Map<string, number>();
+
+/** NOT NOW to a favour: asked again once the save has deployed again. */
+export function declineErrand(id: string, raidsDeployed: number): void {
+  declinedAt.set(id, raidsDeployed);
+}
+
+/** Forgets every turn-down, as a reload does. For the suite. */
+export function forgetDeclinedErrands(): void {
+  declinedAt.clear();
+}
+
+/**
+ * What a giver says when spoken to (`errandBeat`), less a favour turned down
+ * since the last raid - which is the whole of what saying NOT NOW does.
+ */
+export function errandToSay(
+  giver: BaseScreen,
+  progress: ErrandProgress,
+  held: (itemId: ItemId) => number,
+  raidsDeployed: number,
+): ErrandBeat | undefined {
+  const beat = errandBeat(giver, progress, held);
+  return beat?.kind === 'ask' && declinedAt.get(beat.errand.id) === raidsDeployed ? undefined : beat;
+}
+
+/** The two answers to a favour, the one that takes it first, as FireRed's YES/NO box has. */
+export const FAVOUR_ANSWERS = ['YES', 'NOT NOW'] as const;
+
+/**
+ * A beat as it is said in the dialogue box, a box a line: the favour (its
+ * question follows with the answers under it), the hand-over with what came
+ * back for it, or the loss.
+ */
+export function errandLines(beat: ErrandBeat): readonly string[] {
+  const { errand } = beat;
+  switch (beat.kind) {
+    case 'ask':
+      return errand.asks;
+    case 'thanks':
+      return [`You handed over ${errandThing(errand)}.`, ...errand.thanks, errand.reward.received];
+    case 'lost':
+      return errand.lost;
+  }
 }
 
 /** Errands asked and not yet done, in catalogue order. */

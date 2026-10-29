@@ -10,8 +10,13 @@ import { stepDistances } from '../world/mapStructure';
 import { getWorldMap } from '../worldMap';
 import {
   clampErrandRecords,
+  declineErrand,
   ERRANDS,
   errandBeat,
+  errandLines,
+  errandToSay,
+  FAVOUR_ANSWERS,
+  forgetDeclinedErrands,
   errandForItem,
   errandLoot,
   errandOf,
@@ -86,6 +91,58 @@ describe('errands', () => {
       );
       expect(standing.length, `${errand.id} has nowhere to lie`).toBeGreaterThan(0);
     }
+  });
+
+  /**
+   * A favour is said in the dialogue box, one box a line, before it is
+   * answered: the captain's ask was that it be "a normal Pokémon chat", where
+   * the old overlay was two or three long sentences over a screen of numbers.
+   * The box holds two rows of about 38 characters; 68 leaves room for where
+   * the words happen to break.
+   */
+  it('is said in a few short lines and ends on a question, as a normal Pokémon chat is', () => {
+    for (const errand of ERRANDS) {
+      for (const lines of [errand.asks, errand.thanks, errand.lost]) {
+        expect(lines.length, errand.id).toBeGreaterThan(0);
+        expect(lines.length, errand.id).toBeLessThanOrEqual(2);
+      }
+      for (const line of [...errand.asks, errand.question, errand.accepted, errand.declined, ...errand.thanks, ...errand.lost]) {
+        expect(line.length, `${errand.id}: ${line}`).toBeLessThanOrEqual(68);
+      }
+      expect(errand.question, errand.id).toMatch(/\?$/);
+      // NOT NOW says when it will be asked again, which is the rule it keeps.
+      expect(errand.declined, errand.id).toContain('after your next raid');
+    }
+    expect(FAVOUR_ANSWERS).toEqual(['YES', 'NOT NOW']);
+  });
+
+  it('says the hand-over as what went across, the thanks and what came back', () => {
+    const brock = errandOf('workshop')!;
+    expect(errandLines({ kind: 'thanks', errand: brock })).toEqual([
+      "You handed over Brock's crate.",
+      ...brock.thanks,
+      'You received TM39 from Brock.',
+    ]);
+    expect(errandLines({ kind: 'ask', errand: brock })).toBe(brock.asks);
+    expect(errandLines({ kind: 'lost', errand: brock })).toBe(brock.lost);
+  });
+
+  it('asks again after the next raid when the favour is turned down, and only the favour', () => {
+    forgetDeclinedErrands();
+    const brock = errandOf('workshop')!;
+    expect(errandToSay('workshop', OPENED, nothing, 3)).toEqual({ kind: 'ask', errand: brock });
+    declineErrand(brock.id, 3);
+    expect(errandToSay('workshop', OPENED, nothing, 3)).toBeUndefined();
+    // The door still says there is a favour to ask: it is not withdrawn.
+    expect(errandBeat('workshop', OPENED, nothing)).toEqual({ kind: 'ask', errand: brock });
+    expect(errandToSay('workshop', OPENED, nothing, 4)).toEqual({ kind: 'ask', errand: brock });
+    // A turn-down holds nothing else back: a thing home is still taken.
+    const errands = withErrandFound(withErrandAsked(undefined, brock.id), brock.id);
+    const inVault = (itemId: ItemId): number => (itemId === brock.itemId ? 1 : 0);
+    expect(errandToSay('workshop', { ...OPENED, errands }, inVault, 3)).toEqual({ kind: 'thanks', errand: brock });
+    // Nor does it touch anybody else's favour.
+    expect(errandToSay('stash', OPENED, nothing, 3)).toEqual({ kind: 'ask', errand: errandOf('stash')! });
+    forgetDeclinedErrands();
   });
 
   it('pays something that exists, and says what it paid', () => {

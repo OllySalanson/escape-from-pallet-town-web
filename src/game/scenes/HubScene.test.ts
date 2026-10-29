@@ -1645,33 +1645,26 @@ describe('Brock', () => {
     return { hub: hub as WorkshopInternals, start, storage };
   }
 
-  it('asks his favour as the workshop is walked into, once, and pays for the crate when it is home', () => {
+  it('says nothing of his favour over the workshop: it is asked in the room, before the screen opens', () => {
     const { hub, storage } = createWorkshopHub();
-    const render = (): void => (hub as unknown as { render(): void }).render();
     hub.setView('workshop');
-    render();
-    expect(markupOf(hub)).toContain('I left a crate of my tools at THE QUARRY in Pallet Town');
-    expect(new SaveManager(storage).load()!.raidProgress.errands).toEqual([
-      { id: 'brocks-crate', status: 'started', found: 0, lossesHeard: 0 },
-    ]);
-    (hub as unknown as { doneListening(): void }).doneListening();
     expect(markupOf(hub)).not.toContain('THE QUARRY');
+    expect(markupOf(hub)).not.toContain('data-speech-done');
+    // Opening his screen takes nothing on: only a YES in the room does.
+    expect(new SaveManager(storage).load()!.raidProgress.errands ?? []).toEqual([]);
 
-    // The crate came home in a raid: walking in again hands it over.
+    // Nor is a crate that came home handed over by the screen.
     const saves = new SaveManager(storage);
     const game = saves.load()!;
     game.stash.addItem('brocks-crate', 1);
-    saves.save(game);
+    saves.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, errands: [{ id: 'brocks-crate', status: 'started', found: 1, lossesHeard: 0 }] },
+    });
     const again = createHub(DEFAULT_RAID_PROGRESS, storage).hub as WorkshopInternals;
     again.setView('workshop');
-    (again as unknown as { render(): void }).render();
-    expect(markupOf(again)).toContain("You handed over Brock's crate.");
-    expect(markupOf(again)).toContain('You received TM39 from Brock.');
-    // Still at Brock's counter: the hand-over reloads the game, not the room.
-    expect((again as unknown as { view: string }).view).toBe('workshop');
-    const after = new SaveManager(storage).load()!;
-    expect(after.stash.itemCount('brocks-crate')).toBe(0);
-    expect(after.stash.itemCount('tm39-rock-tomb')).toBe(1);
+    expect(markupOf(again)).not.toContain('You handed over');
+    expect(new SaveManager(storage).load()!.stash.itemCount('brocks-crate')).toBe(1);
   });
 
   it('is its own building, walked into rather than chosen off the lab screen', () => {
@@ -2242,8 +2235,6 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     armed.traderArmed = 'barter-quick-claw';
     hub.render();
-    // Bill has an errand to ask of a first visit; it is read before ESC is.
-    (hub as unknown as { doneListening(): void }).doneListening();
 
     vi.stubGlobal('document', { activeElement: null });
     try {

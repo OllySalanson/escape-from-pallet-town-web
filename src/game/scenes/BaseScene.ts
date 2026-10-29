@@ -29,13 +29,23 @@ import {
   worldCharacterIdleFrame,
   type MarkerLayer,
 } from '../world/characterPresentation';
+import { getCharacterDesign } from '../world/characterDesigns';
 import { TILE_SIZE, type TileLayer } from '../worldMap';
 import { DialogBox } from '../ui/DialogBox';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
-import { SaveManager, type RestoredGame } from '../save/SaveManager';
+import { SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
+import {
+  FAVOUR_ANSWERS,
+  declineErrand,
+  errandLines,
+  errandToSay,
+  withErrandAsked,
+  type Errand,
+  type ErrandBeat,
+} from '../hub/errands';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
@@ -493,6 +503,10 @@ export class BaseScene extends Phaser.Scene {
   private knockScreen: MenuOverlay | null = null;
   /** Somebody knocking at this player's own door, being asked about. */
   private knockPrompt: { readonly prompt: ChoicePrompt; readonly knock: KnockAtTheDoor } | null = null;
+  /** A keeper's favour, asked YES or NOT NOW at the foot of what they said (`speakToKeeper`). */
+  private favourPrompt: { readonly prompt: ChoicePrompt; readonly answer: (yes: boolean) => void } | null = null;
+  /** The "!" over a keeper who has something to say about their favour. */
+  private keeperMark: Phaser.GameObjects.Graphics | null = null;
   /** What to do once the dialogue box now up has been read to its end (`say`). */
   private afterSaid: (() => void) | null = null;
   /**
@@ -586,6 +600,8 @@ export class BaseScene extends Phaser.Scene {
     this.fishing = null;
     this.knockScreen = null;
     this.knockPrompt = null;
+    this.favourPrompt = null;
+    this.keeperMark = null;
     this.afterSaid = null;
     this.doorTold = false;
     this.doorLayout = undefined;
@@ -743,6 +759,8 @@ export class BaseScene extends Phaser.Scene {
       this.knockScreen = null;
       this.knockPrompt?.prompt.destroy();
       this.knockPrompt = null;
+      this.favourPrompt?.prompt.destroy();
+      this.favourPrompt = null;
     });
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
@@ -826,6 +844,13 @@ export class BaseScene extends Phaser.Scene {
 
     if (this.knockPrompt) {
       this.handleKnockPromptInput();
+      return;
+    }
+
+    if (this.favourPrompt) {
+      const { prompt, answer } = this.favourPrompt;
+      // ESC is NOT NOW, as B is NO on FireRed's YES/NO box.
+      this.steerPrompt(prompt, () => answer(false));
       return;
     }
 
@@ -1478,6 +1503,7 @@ export class BaseScene extends Phaser.Scene {
       .setTint(appearance.tint ?? NO_TINT)
       .setDepth(atRow(FIGURE_BAND, keeper.position.y));
     this.figures.set(keeper.id, sprite);
+    this.markKeeper(this.place.room.room);
   }
 
   private createDayCare(): void {
@@ -1954,6 +1980,8 @@ export class BaseScene extends Phaser.Scene {
           ...(this.harbourFigures?.rects() ?? []),
           // This player's own hand while it is up.
           ...(this.ownWave ? [{ x: this.ownWave.bubble.x, y: this.ownWave.bubble.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
+          // And the "!" over a keeper with a favour on their mind.
+          ...(this.keeperMark ? [{ x: this.keeperMark.x, y: this.keeperMark.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
           // What the partner is saying: a door's name seated across its bubble hid
           // the heart it answers a word with, on the quay and at the Day-Care.
           ...(bubble ? [bubble] : []),
@@ -2518,7 +2546,7 @@ export class BaseScene extends Phaser.Scene {
     const room = this.place.room?.room;
     if (room) {
       if (room.screen && (this.onMat(room) || servesFrom(room, target))) {
-        this.openScreen(room, room.screen);
+        this.speakToKeeper(room, room.screen);
         return;
       }
       if (this.waveAt(target)) {
@@ -2663,7 +2691,12 @@ export class BaseScene extends Phaser.Scene {
    * been read and the box is down - a sign that opens something after it has
    * spoken (the knock sign's list of players).
    */
-  private say(lines: readonly string[], about: readonly GridPosition[], then?: () => void): void {
+  private say(
+    lines: readonly string[],
+    about: readonly GridPosition[],
+    then?: () => void,
+    onLineShown?: (index: number) => void,
+  ): void {
     this.afterSaid = then ?? null;
     const view = this.cameras.main.worldView;
     const seat = placeDialog({
@@ -2676,7 +2709,7 @@ export class BaseScene extends Phaser.Scene {
       }),
     });
     this.dialogBox.setY(seat.y);
-    this.dialogBox.showMessages([...lines]);
+    this.dialogBox.showMessages([...lines], onLineShown);
   }
 
   /** Through a door: the same scene, started again inside the room behind it. */
@@ -2876,23 +2909,27 @@ export class BaseScene extends Phaser.Scene {
 
   private handleKnockPromptInput(): void {
     const asking = this.knockPrompt;
-    if (!asking) {
-      return;
+    if (asking) {
+      this.steerPrompt(asking.prompt, () => this.answerKnock(asking.knock, false));
     }
+  }
+
+  /** One frame of a question in the dialogue box: the cursor moves, the key answers, ESC says no. */
+  private steerPrompt(prompt: ChoicePrompt, no: () => void): void {
     const pressed = (keys: readonly Phaser.Input.Keyboard.Key[]): boolean =>
       keys.some((key) => this.keyPresses.justPressed(key));
     if (pressed([this.controls.left, this.controls.up, this.controls.a, this.controls.w])) {
-      if (asking.prompt.moveSelection(-1)) {
+      if (prompt.moveSelection(-1)) {
         audioManager.play('select');
       }
     } else if (pressed([this.controls.right, this.controls.down, this.controls.d, this.controls.s])) {
-      if (asking.prompt.moveSelection(1)) {
+      if (prompt.moveSelection(1)) {
         audioManager.play('select');
       }
     } else if (pressed(this.controls.interact)) {
-      asking.prompt.confirm();
+      prompt.confirm();
     } else if (pressed([this.controls.back])) {
-      this.answerKnock(asking.knock, false);
+      no();
     }
   }
 
@@ -3025,6 +3062,129 @@ export class BaseScene extends Phaser.Scene {
     });
     this.scene.pause();
     this.scene.launch('console', { pausedBase: true } satisfies ConsoleSceneData);
+  }
+
+  /** What the keeper of this screen has to say about their favour, if anything (`hub/errands.ts`). */
+  private favourHere(screen: BaseScreen): ErrandBeat | undefined {
+    const game = this.savedGame;
+    return errandToSay(
+      screen,
+      game.raidProgress,
+      (itemId) => game.stash.itemCount(itemId),
+      raidsDeployed(game.raidProgress),
+    );
+  }
+
+  /**
+   * Speaking to a keeper. Whatever they have to say about their favour comes
+   * first, in the dialogue box over the room, the way anybody in the yard is
+   * spoken to - a favour asked ends on its question with YES and NOT NOW under
+   * it - and then their screen opens, because that is what the key was pressed
+   * for. Nothing is said over the screen itself: the favour used to arrive as
+   * a box laid over a counter of numbers, taken before a word of it was read.
+   */
+  private speakToKeeper(room: BaseRoom, screen: BaseScreen): void {
+    const beat = this.favourHere(screen);
+    const openScreen = (): void => this.openScreen(room, screen);
+    if (!beat) {
+      openScreen();
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    const about = room.keeper ? [room.keeper.position] : [];
+    const { errand } = beat;
+    if (beat.kind === 'ask') {
+      this.say(errandLines(beat), about, () => this.askFavour(errand, about, openScreen));
+      return;
+    }
+    this.clearKeeperMark();
+    if (beat.kind === 'thanks') {
+      // Handed over and paid in one write before a word is said, so it is paid
+      // once however the room is left; the screen after it reads the save.
+      if (!this.saveManager.completeErrand(errand.id)) {
+        openScreen();
+        return;
+      }
+      this.savedGame = this.saveManager.load() ?? this.savedGame;
+      const lines = errandLines(beat);
+      this.say(lines, about, openScreen, (index) => {
+        if (index === lines.length - 1) {
+          audioManager.play('itemObtained');
+        }
+      });
+      return;
+    }
+    this.saveManager.hearErrandLoss(errand.id);
+    this.savedGame = this.saveManager.load() ?? this.savedGame;
+    this.say(errandLines(beat), about, openScreen);
+  }
+
+  /** The favour's question, in the dialogue box's own frame, with YES first. */
+  private askFavour(errand: Errand, about: readonly GridPosition[], then: () => void): void {
+    audioManager.play('menuOpen');
+    this.favourPrompt = {
+      answer: (yes) => this.answerFavour(errand, yes, about, then),
+      prompt: new ChoicePrompt(this, {
+        x: this.dialogBox.x,
+        y: this.dialogBox.y,
+        width: DIALOG_WIDTH,
+        height: DIALOG_HEIGHT,
+        padding: 10,
+        lines: [errand.question],
+        options: FAVOUR_ANSWERS,
+        selected: 0,
+        onChoose: (index) => this.answerFavour(errand, index === 0, about, then),
+      }),
+    };
+  }
+
+  /**
+   * YES takes the favour - recorded at once, so it is laid on the next raid
+   * however the room is left - and NOT NOW leaves it to be asked again after
+   * the next raid. Either way the keeper says one line about it.
+   */
+  private answerFavour(errand: Errand, yes: boolean, about: readonly GridPosition[], then: () => void): void {
+    this.favourPrompt?.prompt.destroy();
+    this.favourPrompt = null;
+    // The keys of the question were spent on it, not on a step.
+    this.spentPresses.spendHeld(this.directionKeys());
+    this.clearKeeperMark();
+    if (yes) {
+      const progress = this.savedGame.raidProgress;
+      this.savedGame = this.saveManager.askErrand(errand.id)
+        ? (this.saveManager.load() ?? this.savedGame)
+        : { ...this.savedGame, raidProgress: { ...progress, errands: withErrandAsked(progress.errands, errand.id) } };
+      audioManager.play('confirm');
+      this.say([errand.accepted], about, then);
+      return;
+    }
+    declineErrand(errand.id, raidsDeployed(this.savedGame.raidProgress));
+    audioManager.play('cancel');
+    this.say([errand.declined], about, then);
+  }
+
+  /**
+   * A "!" over the keeper while they have something to say about their favour,
+   * as a FireRed trainer's mark goes up over somebody who wants a word. It is
+   * the room's own say-so: the door's caption has already said it from the yard.
+   */
+  private markKeeper(room: BaseRoom): void {
+    const keeper = room.keeper;
+    if (!keeper || !room.screen || !this.favourHere(room.screen)) {
+      return;
+    }
+    const head = getCharacterDesign(keeper.design).headPixelY;
+    this.keeperMark = drawEmoteBubble(this, 'exclaim').setPosition(
+      Math.round(keeper.position.x * TILE_SIZE + TILE_SIZE / 2 - BUBBLE_WIDTH / 2),
+      keeper.position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET + head - BUBBLE_HEIGHT,
+    );
+  }
+
+  private clearKeeperMark(): void {
+    this.keeperMark?.destroy();
+    this.keeperMark = null;
   }
 
   /** The keeper's screen, which is what the room is the way to. */
