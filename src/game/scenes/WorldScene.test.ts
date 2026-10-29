@@ -307,7 +307,7 @@ describe('hunter disengagement wiring', () => {
     expect(
       hunterChipView({ searching: true, searchRemainingMs: 6_400, distance: 2, direction: 'N' }),
     ).toEqual({ label: 'HUNTER LOST YOU 7s', tone: 'lost-you' });
-    expect(sceneSource).toContain('searching: isHunterSearching(this.hunterState)');
+    expect(sceneSource).toContain('searching: this.hunterBlindMs() !== null');
   });
 
   it('shows a hunter that is actually near, and which way it is', () => {

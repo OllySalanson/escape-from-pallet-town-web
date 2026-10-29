@@ -101,6 +101,8 @@ import { generateRunPlan, type RunInsertionId, requireInsertion } from '../run/r
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { RAID_CARRIAGE_KEYS, type RaidCarriage } from '../run/raidCarriage';
 import { createHunterState, type HunterState } from '../world/hunter';
+import { isTouching } from '../world/hunterPack';
+import { stepDistances } from '../world/mapStructure';
 import { isTallGrassInMap, type WorldMapDefinition } from '../worldMap';
 import { BattleScene, type BattleSceneData } from './BattleScene';
 import { objectiveChipLines } from './raidHud';
@@ -641,6 +643,13 @@ describe('a raid carried through a battle and back', () => {
         position: { ...from },
       };
       internals.hunterState = hunter;
+      // And one of the pack after the player, six steps off: a fight it is
+      // not in lets it come on, never into touching distance.
+      const pack = runSession.hunterPacks!.get(internals.currentMap.id)!;
+      const chaser = pack.hunters[0];
+      const walk = stepDistances(internals.currentMap.collision, grass, undefined, internals.currentMap.links);
+      const sixAway = walk.flatMap((row, y) => [...row].flatMap((steps, x) => (steps === 6 ? [{ x, y }] : [])))[0];
+      Object.assign(chaser, { mode: 'chase', position: sixAway, next: null, lastSeen: { ...grass } });
       internals.defeatedTrainerIds.add('raider-maya');
       internals.collectedLootIds.add('a-potion-already-taken');
       internals.activatedPoiIds.add('a-landmark-already-worked');
@@ -703,7 +712,15 @@ describe('a raid carried through a battle and back', () => {
       // Back: the same raid, not a new one with the same clock.
       startsOf(world).mockClear();
       world.create(inbound);
-      expect(internals.hunterState).toEqual(hunter);
+      // The hunters ride the run session, so it is the same pack after the fight.
+      expect(runSession.hunterPacks!.get(internals.currentMap.id)).toBe(pack);
+      expect(chaser.mode).toBe('chase');
+      const after = stepDistances(internals.currentMap.collision, grass, undefined, internals.currentMap.links);
+      expect(after[chaser.position.y][chaser.position.x]).toBeLessThan(6);
+      expect(after[chaser.position.y][chaser.position.x]).toBeGreaterThanOrEqual(4);
+      expect(isTouching(chaser.position, internals.currentTile)).toBe(false);
+      // The one hunter's state only ever carried a fight it was in.
+      expect(internals.hunterState).toEqual(createHunterState());
       expect([...internals.defeatedTrainerIds]).toEqual(['raider-maya']);
       expect([...internals.collectedLootIds]).toEqual(['a-potion-already-taken']);
       expect([...internals.activatedPoiIds]).toEqual(['a-landmark-already-worked']);
