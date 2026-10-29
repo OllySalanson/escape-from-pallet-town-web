@@ -191,7 +191,6 @@ import { focusDirectionForKey } from '../ui/spatialFocus';
 import { FIRST_WORDS, firstWordsFor, hasHeard, spokenLines, type FirstWords, type FirstWordsId } from '../hub/firstWords';
 import { loadPlayerName } from '../console/playerName';
 import {
-  errandBeat,
   errandLoot,
   errandPlace,
   errandSquares,
@@ -199,10 +198,8 @@ import {
   errandsInHand,
   errandsToLay,
   errandForItem,
-  withErrandAsked,
-  withErrandLossesHeard,
 } from '../hub/errands';
-import { doorNamed, type BaseScreen } from '../base/doors';
+import { doorNamed } from '../base/doors';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
@@ -254,14 +251,6 @@ export interface HubSceneData {
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
 type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'friend';
-
-/** Which keeper's errand a screen is asked on: the four rooms with somebody behind the counter. */
-const ERRAND_GIVERS: Partial<Record<HubView, BaseScreen>> = {
-  home: 'lab',
-  stash: 'stash',
-  workshop: 'workshop',
-  trader: 'trader',
-};
 
 /**
  * Game pixels the drop-in screen's right-hand side takes beyond its column's
@@ -384,17 +373,11 @@ export class HubScene extends Phaser.Scene {
   private speaking:
     | {
         /** The screen whose first words these are, or `day-care` for what he says as he takes or gives back. */
-        readonly screen: FirstWordsId | 'day-care' | 'errand';
+        readonly screen: FirstWordsId | 'day-care';
         readonly words: FirstWords;
         readonly reward?: boolean;
       }
     | undefined;
-  /**
-   * The screen a keeper's errand was last looked for on. It is looked for once
-   * as a screen is walked into, never on a re-render: a screen catching up with
-   * another tab's save must not start asking favours over the refusal it shows.
-   */
-  private errandAskedOn: HubView | undefined;
   /** Whether the words just read were a Pokédex reward, so a second one carries on rather than greets again. */
   private afterReward = false;
   /** The one pending removal of the status line; see `setStatus()`. */
@@ -427,7 +410,6 @@ export class HubScene extends Phaser.Scene {
     // room this is, because that is the door the player just walked through and
     // storage knows nothing about it.
     this.view = data.view ?? 'home';
-    this.errandAskedOn = undefined;
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
     // Through the Raid Arena's door is preparation, from its first step.
@@ -941,9 +923,6 @@ export class HubScene extends Phaser.Scene {
       this.statusTimer?.remove();
       this.statusTimer = undefined;
       this.status = '';
-    }
-    if (view !== this.view) {
-      this.errandAskedOn = undefined;
     }
     this.view = view;
     this.swapArmed = false;
@@ -1637,8 +1616,8 @@ export class HubScene extends Phaser.Scene {
    */
   private listenForFirstWords(): void {
     // The Day-Care Man's words answer something just done, and stay up until
-    // they are read; so do an errand's, which are said once.
-    if (this.speaking?.screen === 'day-care' || this.speaking?.screen === 'errand') {
+    // they are read.
+    if (this.speaking?.screen === 'day-care') {
       return;
     }
     const here = firstWordsFor(this.view, this.flow.step);
@@ -1653,13 +1632,11 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     if (!here || hasHeard(progress.firstWordsHeard, here)) {
-      // Oak's own first words come before anything he has to give, and what he
-      // has to give comes before what he has to ask.
+      // Oak's own first words come before anything he has to give. A keeper's
+      // favour is not said here at all: it is asked in the room, in the
+      // dialogue box, before the screen opens (`BaseScene.speakToKeeper`).
       if (here === 'lab') {
         this.listenForPokedexReward();
-      }
-      if (!this.speaking) {
-        this.listenForErrand();
       }
       return;
     }
@@ -1697,66 +1674,6 @@ export class HubScene extends Phaser.Scene {
     this.applyLoadedGame(reloaded);
     this.speaking = { screen: 'lab', words: milestoneWords(given.milestone, given.owned, continuing), reward: true };
     audioManager.play('itemObtained');
-  }
-
-  /**
-   * What the keeper of this screen has to say about their errand, if anything
-   * (`hub/errands.ts`): the thing is home, so they take it and pay; it was found
-   * and lost, so they say so; or they have a favour to ask. Each is recorded the
-   * moment it is said, so it is said once, read or not.
-   */
-  private listenForErrand(): void {
-    const giver = ERRAND_GIVERS[this.view];
-    if (!giver || this.errandAskedOn === this.view) {
-      return;
-    }
-    this.errandAskedOn = this.view;
-    const beat = errandBeat(giver, this.savedGame.raidProgress, (itemId) => this.stash.itemCount(itemId));
-    if (!beat) {
-      return;
-    }
-    const { errand } = beat;
-    const words = (lines: readonly string[]): FirstWords => ({ speaker: errand.speaker, name: errand.name, lines });
-    if (beat.kind === 'thanks') {
-      const handed = this.saveManager.completeErrand(errand.id);
-      const reloaded = handed ? this.saveManager.load() : null;
-      if (!handed || !reloaded) {
-        return;
-      }
-      // The reward is in the vault in storage, so this screen's copy is read
-      // again rather than added to by hand, as Oak's Pokédex rewards are - and
-      // the player is still standing at this keeper's counter, not Oak's.
-      const view = this.view;
-      this.applyLoadedGame(reloaded);
-      this.view = view;
-      this.speaking = {
-        screen: 'errand',
-        words: words([`You handed over ${errandThing(errand)}.`, ...errand.thanks, errand.reward.received]),
-        reward: true,
-      };
-      audioManager.play('itemObtained');
-      return;
-    }
-    const recorded =
-      beat.kind === 'ask' ? this.saveManager.askErrand(errand.id) : this.saveManager.hearErrandLoss(errand.id);
-    if (!recorded) {
-      return;
-    }
-    // The hub keeps its own copy of the game and writes it whole, so the copy
-    // learns what was just recorded or the next write would forget it.
-    const progress = this.savedGame.raidProgress;
-    this.savedGame = {
-      ...this.savedGame,
-      raidProgress: {
-        ...progress,
-        errands:
-          beat.kind === 'ask'
-            ? withErrandAsked(progress.errands, errand.id)
-            : withErrandLossesHeard(progress.errands, errand.id),
-      },
-    };
-    this.saveStamp = this.saveManager.stamp();
-    this.speaking = { screen: 'errand', words: words(beat.kind === 'ask' ? errand.asks : errand.lost) };
   }
 
   private doneListening(): void {
@@ -2125,7 +2042,7 @@ export class HubScene extends Phaser.Scene {
         const insertion = this.insertionFor(errand.mapId);
         const shows = `data-shows="errand-${errand.id}"`;
         const wiring = home
-          ? `data-refused="${escapeAttribute(`${thing} is home. Walk in to ${errand.name} and it is handed over.`)}" ${shows} data-help="${escapeAttribute(`${thing} is in your stash. ${errand.name} takes it when you walk in.`)}"`
+          ? `data-refused="${escapeAttribute(`${thing} is home. Speak to ${errand.name} and it is handed over.`)}" ${shows} data-help="${escapeAttribute(`${thing} is in your stash. ${errand.name} takes it when you speak to them.`)}"`
           : insertion
             ? `data-refused="${escapeAttribute(`Drop in at ${insertion[1].label} for it. Raids start at the RAID ARENA, west of the yard.`)}" ${shows} data-help="${escapeAttribute(`Found by dropping in at ${insertion[1].label}, from the RAID ARENA.`)}"`
             : 'disabled';
@@ -2286,8 +2203,6 @@ export class HubScene extends Phaser.Scene {
       const view = this.view;
       this.applyLoadedGame(reloaded);
       this.view = view;
-      // Caught up, not walked in: nobody starts asking a favour over a refusal.
-      this.errandAskedOn = view;
     }
     this.refuse(STALE_SAVE_REFUSAL);
     return true;
@@ -3115,7 +3030,7 @@ export class HubScene extends Phaser.Scene {
                   : `for ${errand.name} · ${errandPlace(errand)} · ${squares} ${squares === 1 ? 'square' : 'squares'}`
               }</small></span>`,
               home
-                ? `${thing} is already in your stash. Walk into ${errand.name}'s building and it is handed over.`
+                ? `${thing} is already in your stash. Speak to ${errand.name} and it is handed over.`
                 : `${thing}: ${errand.name} asked for it. It lies in ${errandPlace(errand)}, takes ${squares} ${squares === 1 ? 'square' : 'squares'} of the pack, and is lost with the pack if you do not walk out. ${errand.name} pays ${errand.reward.summary.toLowerCase()} for it.`,
               ' px-tall',
             );
