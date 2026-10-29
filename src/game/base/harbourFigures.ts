@@ -2,11 +2,11 @@ import type Phaser from 'phaser';
 import type { HarbourFigure } from '../harbour/harbourCrowd';
 import type { NamedFigure } from '../harbour/harbourLink';
 import type { Direction, GridPosition } from '../movement/gridMovement';
-import { CHARACTER_FEET_PIXEL_Y, CHARACTER_HEAD_PIXEL_Y, getIdleFrame, getWalkAnimationKey } from '../playerFrames';
+import { CHARACTER_FEET_PIXEL_Y, CHARACTER_HEAD_PIXEL_Y, getIdleFrame } from '../playerFrames';
+import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { GAME_FONT } from '../ui/gameFont';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
-import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import { CAPTION_BAND, FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
 import { FOLLOWER_ART } from './generated/followerArt';
@@ -119,6 +119,8 @@ interface Heel {
 
 interface Drawn {
   readonly sprite: Phaser.GameObjects.Sprite;
+  /** The sheet the figure is drawn from: their look's, or the classic one. */
+  texture: string;
   readonly plate: Phaser.GameObjects.Graphics;
   readonly name: Phaser.GameObjects.Text;
   walking: string | null;
@@ -185,7 +187,15 @@ export class HarbourFigures {
       const row = figure.tile.y + (toward.y - figure.tile.y) * figure.progress;
       const y = row * TILE_SIZE + SPRITE_Y_OFFSET;
       drawn.sprite.setPosition(x, y).setDepth(atRow(FIGURE_BAND, row) - OTHER_PLAYERS_BEHIND);
-      const walking = figure.toward ? getWalkAnimationKey(figure.facing) : null;
+      const texture = lookTexture(this.scene, figure.look ?? null);
+      if (drawn.texture !== texture) {
+        // A look bought or changed: the figure is redrawn in it, standing.
+        drawn.texture = texture;
+        drawn.sprite.stop();
+        drawn.sprite.setTexture(texture, getIdleFrame(figure.facing));
+        drawn.walking = null;
+      }
+      const walking = figure.toward ? lookWalkKey(texture, figure.facing) : null;
       if (walking !== drawn.walking) {
         drawn.walking = walking;
         if (walking) {
@@ -326,10 +336,11 @@ export class HarbourFigures {
   }
 
   private standUp(figure: PlateFigure): Drawn {
-    const sprite = this.scene.add.sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(figure.facing)).setOrigin(0, 0);
+    const texture = lookTexture(this.scene, figure.look ?? null);
+    const sprite = this.scene.add.sprite(0, 0, texture, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);
-    const drawn: Drawn = { sprite, plate, name, walking: null, heel: null, wave: null };
+    const drawn: Drawn = { sprite, texture, plate, name, walking: null, heel: null, wave: null };
     drawPlate(drawn);
     this.drawn.set(figure.id, drawn);
     return drawn;

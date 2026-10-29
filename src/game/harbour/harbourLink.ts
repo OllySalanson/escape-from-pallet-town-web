@@ -1,5 +1,6 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
+import { lookKey, type DressedLook } from '../look/look';
 import { HarbourCrowd, type HarbourFigure } from './harbourCrowd';
 import {
   HARBOUR_PATH_MAX,
@@ -102,6 +103,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private tile: GridPosition = { x: 0, y: 0 };
   private facing: Direction = 'down';
   private partner: PartnerSpeciesId | null = null;
+  private look: DressedLook | null = null;
   private pending: GridPosition[] = [];
   private lastSentAt = Number.NEGATIVE_INFINITY;
   private lastGreetAt = Number.NEGATIVE_INFINITY;
@@ -163,6 +165,21 @@ export class HarbourLink<P extends string = HarbourPlace> {
       return;
     }
     this.partner = partner;
+    if (this.seen() && this.anybodyElse()) {
+      this.sendNow();
+    }
+  }
+
+  /**
+   * What this player wears (`../look/look`), or the classic look. Said with
+   * every move from now on, and at once to anybody here if it changed - a look
+   * bought at the boutique walks out of its door as itself.
+   */
+  public wear(look: DressedLook | null): void {
+    if (lookKey(look) === lookKey(this.look)) {
+      return;
+    }
+    this.look = look;
     if (this.seen() && this.anybodyElse()) {
       this.sendNow();
     }
@@ -356,6 +373,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
       path: [...path],
       facing: this.facing,
       ...(this.partner ? { partner: this.partner } : {}),
+      ...(this.look ? { look: this.look } : {}),
     });
     this.pending = [];
     this.lastSentAt = this.now;

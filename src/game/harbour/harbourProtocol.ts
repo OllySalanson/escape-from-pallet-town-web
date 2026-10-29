@@ -1,3 +1,4 @@
+import { readLook, type DressedLook } from '../look/look';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { isPartnerSpecies, type PartnerSpeciesId } from '../base/partner';
 
@@ -87,6 +88,34 @@ export interface HarbourMove<P extends string = HarbourPlace> {
   readonly path: readonly GridPosition[];
   readonly facing: Direction;
   readonly partner?: PartnerSpeciesId;
+  /** What they wear (`../look/look`), if it is not the classic look. */
+  readonly look?: DressedLook;
+}
+
+/** The most characters a piece's id is, with room to spare: a longer string is nobody's piece. */
+const LOOK_ID_MAX = 40;
+
+/** A look on the wire: its pieces' ids in slot order, the outfit last when there is one. */
+export function encodeLook(look: DressedLook): readonly string[] {
+  return [look.head, look.top, look.legs, ...(look.body ? [look.body] : [])];
+}
+
+/**
+ * A look heard from another browser, or none. It is untrusted: only an array of
+ * three or four short strings is looked at, and `readLook` believes only the
+ * catalogue's own ids, each in the slot it is worn in - anything else is the
+ * classic look, never half a figure.
+ */
+export function readWireLook(value: unknown): DressedLook | null {
+  if (!Array.isArray(value) || value.length < 3 || value.length > 4) {
+    return null;
+  }
+  const ids: unknown[] = value;
+  if (!ids.every((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= LOOK_ID_MAX)) {
+    return null;
+  }
+  const [head, top, legs, body] = ids;
+  return readLook({ head, top, legs, body: body ?? null });
 }
 
 /** What goes on the wire for a move: short keys, whole numbers. */
@@ -97,6 +126,7 @@ export function encodeHarbourMove(move: HarbourMove): Record<string, unknown> {
     s: move.path.slice(-HARBOUR_PATH_MAX).map((tile) => [tile.x, tile.y]),
     f: move.facing,
     ...(move.partner ? { k: move.partner } : {}),
+    ...(move.look ? { w: encodeLook(move.look) } : {}),
   };
 }
 
@@ -111,7 +141,7 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
-  const { u, p, s, f, k } = payload as Record<string, unknown>;
+  const { u, p, s, f, k, w } = payload as Record<string, unknown>;
   if (!isPlayerId(u) || !isHarbourPlace(p) || typeof f !== 'string' || !FACINGS.includes(f as Direction)) {
     return null;
   }
@@ -125,9 +155,18 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
     }
     path.push({ x: step[0], y: step[1] });
   }
-  const move: HarbourMove = { from: u, place: p, path, facing: f as Direction };
   // A partner is only ever one the game can draw; anything else leaves the player walking alone.
-  return typeof k === 'string' && isPartnerSpecies(k) ? { ...move, partner: k } : move;
+  const partner = typeof k === 'string' && isPartnerSpecies(k) ? k : undefined;
+  // A look is only ever the boutique's own pieces; anything else is drawn in the classic clothes.
+  const look = readWireLook(w);
+  return {
+    from: u,
+    place: p,
+    path,
+    facing: f as Direction,
+    ...(partner ? { partner } : {}),
+    ...(look ? { look } : {}),
+  };
 }
 
 /** The broadcast event a nudge travels on. */

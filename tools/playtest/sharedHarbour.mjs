@@ -14,7 +14,8 @@
 // into Oak's Lab and AMY must stop seeing him, and AMY follows him in and sees
 // him there. Each walks with their partner at their heel on the other's
 // screen too: AMY must see OLLY's partner, by kind, standing on the tile he
-// last walked off. AMY then walks up beside OLLY and waves: her hand must go up
+// last walked off, and in his look from THE HARBOUR BOUTIQUE (a red cap, an
+// Ace Trainer's jacket and jeans). AMY then walks up beside OLLY and waves: her hand must go up
 // on her screen and on his. It fails loudly - a thrown error - when any of that does not
 // happen, and photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
@@ -108,6 +109,11 @@ try {
   await olly.waitFor(sceneIs('base'));
   await olly.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   await until(olly, 'OLLY in the yard', (s) => s.room === null);
+  // Dressed from THE HARBOUR BOUTIQUE, so his look has to cross the wire.
+  const WORN = { head: 'youngster-cap-red', top: 'ace-jacket', legs: 'denim-jeans', body: null };
+  await olly.evaluate(`(() => { const s = JSON.parse(localStorage.getItem('${SAVE_KEY}')); s.raidProgress.look = ${JSON.stringify(WORN)}; s.raidProgress.wardrobe = ['youngster-cap-red', 'ace-jacket', 'denim-jeans']; localStorage.setItem('${SAVE_KEY}', JSON.stringify(s)); })()`);
+  await olly.evaluate(`void ${BASE}.scene.start('base', {})`);
+  await until(olly, 'OLLY in the yard, dressed', (s) => s.room === null);
 
   // AMY: the second tab, on the same save, under the name the test gives her.
   const amy = await browser.openPage(page(url), { init: `sessionStorage.setItem('eptw-harbour-local-name', 'AMY');` });
@@ -128,6 +134,10 @@ try {
     s.seen.some((f) => f.name === 'OLLY' && f.tile.x === goal.x && f.tile.y === goal.y),
   );
   console.log(`AMY saw OLLY walk to ${goal.x},${goal.y}`);
+  // In what he wears, believed from the wire.
+  const wornKey = `${WORN.head}+${WORN.top}+${WORN.legs}+-`;
+  await until(amy, 'AMY seeing OLLY in his look', (s) => s.seen.some((f) => f.name === 'OLLY' && f.look === wornKey));
+  console.log(`AMY sees OLLY wearing ${wornKey}`);
   // His partner at his heel, on AMY's screen, on the tile he last walked off.
   const heeled = await until(amy, "AMY seeing OLLY's partner at his heel", (s) => {
     const him = s.seen.find((f) => f.name === 'OLLY');

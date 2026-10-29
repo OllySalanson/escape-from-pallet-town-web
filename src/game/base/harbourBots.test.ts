@@ -1,3 +1,4 @@
+import { lookKey, readLook } from '../look/look';
 import { describe, expect, it } from 'vitest';
 import type { GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
@@ -297,5 +298,15 @@ describe('regulars calling on the keepers', () => {
         }
       }
     }
+  });
+});
+
+describe('what the regulars wear', () => {
+  it('dresses every regular from the boutique, each in a look of their own', () => {
+    for (const bot of HARBOUR_BOTS) {
+      // Only the boutique's own pieces, each in its slot: read as a stranger's look would be.
+      expect([bot.id, readLook(bot.look)]).toEqual([bot.id, bot.look]);
+    }
+    expect(new Set(HARBOUR_BOTS.map((bot) => lookKey(bot.look))).size).toBe(HARBOUR_BOTS.length);
   });
 });
