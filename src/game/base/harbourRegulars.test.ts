@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { WAVE_SHOWN_MS } from '../harbour/harbourLink';
-import { HARBOUR_BOTS, botAt, visitPlan, visitsAt } from './harbourBots';
-import { HarbourRegulars, REGULAR_WAVES_WITHIN, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
+import { STEP_DURATION_MS } from '../movement/stepClock';
+import { BOT_SLOT_MS, HARBOUR_BOTS, botAt, visitPlan, visitsAt } from './harbourBots';
+import { baseGame } from './baseGames.testkit';
+import { buildRoom, roomNamed } from './rooms';
+import { HarbourRegulars, REGULARS_CHAT_WITHIN, REGULAR_WAVES_WITHIN, callAt, greetedBy, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
 
 const FRAME = 100;
 
 /** Runs a fresh set of regulars on from a moment of the clock, a frame at a time. */
-function run(from: number, ms: number, regulars = new HarbourRegulars(), player = null): HarbourRegulars {
+function run(from: number, ms: number, regulars = new HarbourRegulars()): HarbourRegulars {
   for (let at = from; at < from + ms; at += FRAME) {
-    regulars.tick(at, FRAME, player);
+    regulars.tick(at, FRAME, { place: 'yard', player: { x: 0, y: 0 } });
   }
   return regulars;
 }
@@ -46,7 +49,7 @@ describe('the regulars as drawn', () => {
     // Somebody walking, so standing still is the hold and not a pause.
     let walker = regulars.figures().find((figure) => figure.toward);
     for (let tries = 0; !walker && tries < 600; tries += 1) {
-      regulars.tick(clock, FRAME, null);
+      regulars.tick(clock, FRAME, { place: 'yard', player: { x: 0, y: 0 } });
       clock += FRAME;
       walker = regulars.figures().find((figure) => figure.toward);
     }
@@ -59,19 +62,22 @@ describe('the regulars as drawn', () => {
     expect(bot.lines).toContain(line);
     expect(regulars.speakTo(bot, player)).toBe(bot.lines[1 % bot.lines.length]);
     for (let ms = 0; ms < 8_000; ms += FRAME) {
-      regulars.tick(clock, FRAME, player);
+      regulars.tick(clock, FRAME, { place: 'yard', player });
       clock += FRAME;
       const them = regulars.figures().find((figure) => figure.id === bot.id)!;
-      expect(them.tile).toEqual(standing);
-      expect(them.toward).toBeNull();
-      expect(them.facing).toBe('down');
+      // Once the step they were taking is finished: they stop on the tile they were stepping onto.
+      if (ms >= STEP_DURATION_MS) {
+        expect(them.tile).toEqual(standing);
+        expect(them.toward).toBeNull();
+        expect(them.facing).toBe('down');
+      }
       // The player's own hand is up first; theirs once it is down.
       expect(them.waving === true).toBe(ms + FRAME >= WAVE_SHOWN_MS && ms + FRAME < WAVE_SHOWN_MS * 2);
     }
     regulars.release();
     let moved = false;
     for (let ms = 0; ms < 120_000 && !moved; ms += FRAME) {
-      regulars.tick(clock, FRAME, null);
+      regulars.tick(clock, FRAME, { place: 'yard', player: { x: 0, y: 0 } });
       clock += FRAME;
       const them = regulars.figures().find((figure) => figure.id === bot.id);
       moved = !them || them.tile.x !== standing.x || them.tile.y !== standing.y;
@@ -84,21 +90,113 @@ describe('the regulars as drawn', () => {
     let clock = start + 5_000;
     let stander = null as ReturnType<HarbourRegulars['figures']>[number] | null;
     for (let tries = 0; !stander && tries < 600; tries += 1) {
-      regulars.tick(clock, FRAME, null);
+      regulars.tick(clock, FRAME, { place: 'yard', player: { x: 0, y: 0 } });
       clock += FRAME;
       stander = regulars.figures().find((figure) => !figure.toward && !figure.waving) ?? null;
     }
     const near = { x: stander!.tile.x, y: stander!.tile.y + REGULAR_WAVES_WITHIN };
-    regulars.tick(clock, FRAME, near);
+    regulars.tick(clock, FRAME, { place: 'yard', player: near });
     clock += FRAME;
     const them = regulars.figures().find((figure) => figure.id === stander!.id);
     if (them && !them.toward) {
       expect(them.waving).toBe(true);
       for (let ms = 0; ms < WAVE_SHOWN_MS + 500; ms += FRAME) {
-        regulars.tick(clock, FRAME, near);
+        regulars.tick(clock, FRAME, { place: 'yard', player: near });
         clock += FRAME;
       }
       expect(regulars.figures().find((figure) => figure.id === stander!.id)?.waving ?? false).toBe(false);
+    }
+  });
+});
+
+describe('two regulars meeting', () => {
+  it('turn to talk, and wave one after the other', () => {
+    const regulars = new HarbourRegulars();
+    const away = { place: 'yard' as const, player: { x: 0, y: 0 } };
+    const facing = (from: { x: number; y: number }, to: { x: number; y: number }) =>
+      Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) ? (to.x > from.x ? 'right' : 'left') : to.y > from.y ? 'down' : 'up';
+    let clock = TEST_CLOCK_ORIGIN_MS;
+    let pair: [string, string] | null = null;
+    // Run on until two are standing about together, and have been for a moment.
+    let together = 0;
+    for (let tick = 0; tick < 40 * 60 * 10 && together < 5; tick += 1) {
+      regulars.tick(clock, FRAME, away);
+      clock += FRAME;
+      const still = regulars.figures().filter((figure) => !figure.toward);
+      const meeting = still.flatMap((a) =>
+        still.filter((b) => a.id < b.id && Math.abs(a.tile.x - b.tile.x) + Math.abs(a.tile.y - b.tile.y) <= REGULARS_CHAT_WITHIN).map((b) => [a.id, b.id] as [string, string]),
+      )[0];
+      together = meeting && pair && meeting.join() === pair.join() ? together + 1 : 0;
+      pair = meeting ?? null;
+    }
+    expect(pair).not.toBeNull();
+    const [a, b] = pair!.map((id) => regulars.figures().find((figure) => figure.id === id)!);
+    expect(a.facing).toBe(facing(a.tile, b.tile));
+    expect(b.facing).toBe(facing(b.tile, a.tile));
+    // One hand up, then the other: never both at once.
+    const waved = new Set<string>();
+    for (let ms = 0; ms < WAVE_SHOWN_MS * 3; ms += FRAME) {
+      regulars.tick(clock, FRAME, away);
+      clock += FRAME;
+      const up = regulars.figures().filter((figure) => pair!.includes(figure.id) && figure.waving);
+      expect(up.length).toBeLessThanOrEqual(1);
+      up.forEach((figure) => waved.add(figure.id));
+    }
+    expect(waved.size).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('a regular calling on a keeper', () => {
+  /** The first call on a keeper after tonight, and the visit that makes it. */
+  const first = (() => {
+    for (let visit = Math.floor(TEST_CLOCK_ORIGIN_MS / BOT_SLOT_MS); ; visit += 1) {
+      const leg = visitPlan(visit).legs.find((each) => each.kind === 'inside');
+      if (leg?.kind === 'inside') return { visit, leg };
+    }
+  })();
+  const room = roomNamed(first.leg.room)!;
+  const built = buildRoom(room, baseGame());
+  const watcher = { place: first.leg.room, player: room.mat!, room: { collision: built.collision, mat: room.mat! } };
+
+  it('comes in off the mat, stands where they stand, and is on the mat again as the call ends', () => {
+    const walk = [room.mat!, { x: room.mat!.x, y: room.mat!.y - 1 }];
+    expect(callAt(first.leg, first.leg.from, walk)).toMatchObject({ tile: room.mat, walking: true });
+    expect(callAt(first.leg, (first.leg.from + first.leg.to) / 2, walk)).toMatchObject({
+      tile: first.leg.spot.tile,
+      facing: first.leg.spot.facing,
+      walking: false,
+    });
+    expect(callAt(first.leg, first.leg.to - 1, walk)).toMatchObject({ next: room.mat, walking: true });
+    expect(callAt(first.leg, first.leg.from, null)).toMatchObject({ tile: first.leg.spot.tile, walking: false });
+  });
+
+  it('is drawn in the room while the player is in it, and nowhere while the player is in the yard', () => {
+    const middle = Math.round((first.leg.from + first.leg.to) / 2);
+    const inside = new HarbourRegulars();
+    const outside = new HarbourRegulars();
+    for (let at = middle - 10_000; at < middle; at += FRAME) {
+      inside.tick(at, FRAME, watcher);
+      outside.tick(at, FRAME, { place: 'yard', player: { x: 0, y: 0 } });
+    }
+    const name = visitPlan(first.visit).bot.name;
+    const seen = inside.figures(first.leg.room).find((figure) => figure.name === name);
+    expect(seen?.tile).toEqual(first.leg.spot.tile);
+    expect(outside.figures('yard').some((figure) => figure.name === name)).toBe(false);
+    expect(outside.figures(first.leg.room)).toEqual([]);
+  });
+});
+
+describe('a regular saying hello', () => {
+  it('says a named player\'s name, and leaves a line with no hello alone', () => {
+    expect(greetedBy('Oh, hi! Just back off the SEAGALLOP.', 'OLLY')).toBe('Oh, hi, OLLY! Just back off the SEAGALLOP.');
+    expect(greetedBy('Hey there! Just doing one more raid.', 'AMY')).toBe('Hey there, AMY! Just doing one more raid.');
+    expect(greetedBy('Hi! My best Pokémon rides home.', null)).toBe('Hi! My best Pokémon rides home.');
+    expect(greetedBy('CHARMELEON wants a rematch.', 'OLLY')).toBe('CHARMELEON wants a rematch.');
+  });
+
+  it('opens with a hello on every regular\'s first line', () => {
+    for (const bot of HARBOUR_BOTS) {
+      expect(greetedBy(bot.lines[0], 'OLLY')).toContain('OLLY!');
     }
   });
 });

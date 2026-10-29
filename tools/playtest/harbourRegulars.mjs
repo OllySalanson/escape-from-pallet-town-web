@@ -5,7 +5,8 @@
 // walks up to one who is standing about and speaks to them: the box must open
 // with one of their lines, their hand must go up once the player's own has come
 // down, and they must stand still
-// facing the player until it is read - and walk on afterwards.
+// facing the player until it is read. Last, the player looks round the four
+// keepers' rooms until a regular is calling on one, and never two in one room.
 //
 //   node tools/playtest/harbourRegulars.mjs <test-mode build url> <out dir> [--port=N]
 //
@@ -131,6 +132,24 @@ try {
     await wait(200);
   }
   console.log(`spoke to ${spoken.name} at ${held.x},${held.y}; the box is read`);
+
+  // Somebody calling on a keeper: round the four rooms, a look in each, until one is in.
+  const ROOMS = ['oaks-lab', 'pokemon-centre', 'brocks-workshop', 'bills-cottage'];
+  let caller = null;
+  for (let look = 0; look < 240 && !caller; look += 1) {
+    const room = ROOMS[look % ROOMS.length];
+    await page.evaluate(`void ${BASE}.scene.start('base', { room: '${room}' })`);
+    await until(baseReady, `the ${room}`);
+    await page.evaluate(`${GAME}.stepFrames(10, 100)`);
+    const inside = await regulars();
+    if (inside.length > 1) fail(`${inside.length} regulars in ${room} at once`);
+    if (inside.length === 1) caller = { room, ...inside[0] };
+  }
+  if (!caller) fail('nobody called on a keeper in twenty minutes');
+  // Into the room and standing about.
+  await page.evaluate(`${GAME}.stepFrames(40, 100)`);
+  await page.screenshot(`${out}/calling-on-${caller.room}.png`);
+  console.log(`${caller.name} called in at ${caller.room}`);
 } finally {
   await browser.close();
 }

@@ -10,3 +10,6 @@ against a test-mode build, at the game's 3x window.
   (`clearOfHeel` in `base/harbourFigures.ts`, which real players get too).
 - `spoken-to.png` - FINN on the cove, spoken to: he stops, turns to the player, waves
   back once the player's own hand is down, and says his line.
+- `calling-on-oaks-lab.png` - ROWAN calling on Professor Oak, at the lab's shelves with
+  his Squirtle at heel. He walked in off the mat and will be back on it as his call ends;
+  only one regular calls on a room at a time, and only while the yard keeps two.

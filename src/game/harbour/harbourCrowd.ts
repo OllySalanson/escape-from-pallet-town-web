@@ -139,6 +139,22 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
     }
   }
 
+  /**
+   * Somebody stops where they are: the step they are on is finished, the rest
+   * of what was heard dropped, and they turn to face this way.
+   */
+  public halt(id: string, facing: Direction): void {
+    const walker = this.walkers.get(id);
+    if (!walker) {
+      return;
+    }
+    walker.queue = walker.queue.slice(0, 1);
+    walker.endFacing = facing;
+    if (walker.queue.length === 0) {
+      walker.facing = facing;
+    }
+  }
+
   /** Somebody left the harbour. */
   public forget(id: string): void {
     this.walkers.delete(id);

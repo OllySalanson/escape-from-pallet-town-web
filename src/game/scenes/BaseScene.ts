@@ -188,7 +188,7 @@ import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { HarbourFigures } from '../base/harbourFigures';
-import { harbourRegulars, regularsClock } from '../base/harbourRegulars';
+import { harbourRegulars, regularsClock, type RegularsWatcher } from '../base/harbourRegulars';
 import { requestedTestMode } from '../dev/testMode';
 import type { MenuOverlay } from '../ui/MenuOverlay';
 import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furnitureArt';
@@ -805,11 +805,11 @@ export class BaseScene extends Phaser.Scene {
     // The harbour's regulars (`base/harbourBots.ts`) keep the clock wherever
     // the player is, and are drawn beside the real players out in the yard.
     const regulars = harbourRegulars();
-    const outdoors = this.place.room === null && this.visit === null;
-    regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, outdoors ? this.currentTile : null);
+    const watcher = this.regularsWatcher();
+    regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, watcher);
     if (shared || regulars) {
       this.harbourFigures?.update(
-        [...(shared?.figuresHere() ?? []), ...(outdoors ? (regulars?.figures() ?? []) : [])],
+        [...(shared?.figuresHere() ?? []), ...(watcher ? (regulars?.figures(watcher.place) ?? []) : [])],
         this.player,
       );
     }
@@ -1854,7 +1854,7 @@ export class BaseScene extends Phaser.Scene {
     return (
       (harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false) ||
       // A regular is waved at as a player is, and answers (`speakToRegular`).
-      (this.place.room === null && (harbourRegulars()?.at(tile) ?? null) !== null)
+      this.regularAt(tile)
     );
   }
 
@@ -2519,18 +2519,47 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
+   * Where the harbour's regulars can be seen from: the yard, or a keeper's
+   * room they call in - never the player's own house, nor somebody else's.
+   */
+  private regularsWatcher(): RegularsWatcher | null {
+    const room = this.place.room?.room;
+    if (this.visit) {
+      return null;
+    }
+    if (!room) {
+      return { place: 'yard', player: this.currentTile };
+    }
+    if (!room.mat || !(SHARED_HARBOUR_ROOMS as readonly string[]).includes(room.id)) {
+      return null;
+    }
+    return {
+      place: room.id as RegularsWatcher['place'],
+      player: this.currentTile,
+      room: { collision: this.place.collision, mat: room.mat },
+    };
+  }
+
+  /** Whether one of the harbour's regulars stands (or is stepping) onto this tile, here. */
+  private regularAt(tile: GridPosition): boolean {
+    const watcher = this.regularsWatcher();
+    return watcher !== null && (harbourRegulars()?.at(tile, watcher.place) ?? null) !== null;
+  }
+
+  /**
    * Speaks to one of the harbour's regulars standing on `target`
    * (`base/harbourRegulars.ts`): the player's hand goes up, theirs goes up
    * back, and they stop and say a line - standing there, facing the player,
    * until it is read.
    */
   private speakToRegular(target: GridPosition): boolean {
-    const regulars = this.place.room === null ? harbourRegulars() : null;
-    const regular = regulars?.at(target);
-    if (!regulars || !regular) {
+    const watcher = this.regularsWatcher();
+    const regulars = watcher ? harbourRegulars() : null;
+    const regular = watcher ? regulars?.at(target, watcher.place) : null;
+    if (!watcher || !regulars || !regular) {
       return false;
     }
-    const line = regulars.speakTo(regular, this.currentTile);
+    const line = regulars.speakTo(regular, this.currentTile, watcher.place, houseName());
     this.ownWave?.bubble.destroy();
     this.ownWave = { bubble: drawEmoteBubble(this, 'wave'), ms: 0 };
     this.placeOwnWave();
@@ -2587,7 +2616,7 @@ export class BaseScene extends Phaser.Scene {
         this.speakToKeeper(room, room.screen);
         return;
       }
-      if (this.waveAt(target)) {
+      if (this.waveAt(target) || this.speakToRegular(target)) {
         return;
       }
       const thing = this.thingFaced(target);
@@ -2882,10 +2911,11 @@ export class BaseScene extends Phaser.Scene {
     readonly partner: string | null;
     readonly waving: boolean;
   }[] {
-    if (!this.harbourFigures || this.place.room !== null) {
+    const watcher = this.regularsWatcher();
+    if (!this.harbourFigures || !watcher) {
       return [];
     }
-    return (harbourRegulars()?.figures() ?? []).map((figure) => ({
+    return (harbourRegulars()?.figures(watcher.place) ?? []).map((figure) => ({
       name: figure.name,
       tile: { ...figure.tile },
       partner: figure.partner ?? null,

@@ -3,7 +3,9 @@ import type { GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from './baseMap';
-import { stepsFrom } from './baseWalks';
+import { servingTiles, stepsFrom } from './baseWalks';
+import { baseGame } from './baseGames.testkit';
+import { buildRoom, roomNamed } from './rooms';
 import { BASE_DOORS } from './doors';
 import { isPartnerSpecies } from './partner';
 import {
@@ -15,7 +17,10 @@ import {
   LOITER_CLEAR_OF_DOORS,
   botAt,
   botGround,
+  ROOM_CALLS,
+  ROOM_WINDOW_MS,
   presentWidth,
+  roomCaller,
   searchLoiterSpots,
   spotsOf,
   visitPlan,
@@ -169,6 +174,15 @@ describe('where the regulars stand', () => {
           clock = leg.to;
           continue;
         }
+        if (leg.kind === 'inside') {
+          // In by their room's own door, inside one window that is theirs.
+          expect(BASE_DOORS.find((door) => door.id === leg.room)?.tiles[0]).toEqual(leg.door);
+          const window = Math.floor(leg.from / ROOM_WINDOW_MS);
+          expect(Math.floor(leg.to / ROOM_WINDOW_MS)).toBe(window);
+          expect(roomCaller(ROOM_CALLS.findIndex((call) => call.room === leg.room), window)).toBe(plan.bot);
+          clock = leg.to;
+          continue;
+        }
         leg.path.forEach((tile, index) => {
           const ends = index === 0 || index === leg.path.length - 1;
           expect(walks[tile.y][tile.x] || (ends && gateTiles.has(key(tile)))).toBe(true);
@@ -190,12 +204,98 @@ describe('where the regulars stand', () => {
       for (let now = plan.from; now < plan.to; now += 250) {
         const at = botAt(plan, now)!;
         expect(at).not.toBeNull();
-        if (!at.walking) {
+        if (!at.walking && !at.inside) {
           expect(still.has(key(at.tile))).toBe(false);
         }
       }
       expect(botAt(plan, plan.to)).toBeNull();
       expect(botAt(plan, plan.from - 1)).toBeNull();
+    }
+  });
+});
+
+describe('regulars calling on the keepers', () => {
+  const games = [baseGame(), baseGame({ built: WORKSHOP_UPGRADES.map((upgrade) => upgrade.id), hurt: 6, traded: 400 })];
+
+  it('always leave at least two out in the yard', () => {
+    const events: { at: number; change: number }[] = [];
+    for (let visit = FIRST_SLOT - 10; visit < FIRST_SLOT + 2_000; visit += 1) {
+      const plan = visitPlan(visit);
+      events.push({ at: plan.from, change: 1 }, { at: plan.to, change: -1 });
+      for (const leg of plan.legs) {
+        if (leg.kind === 'inside') {
+          events.push({ at: leg.from, change: -1 }, { at: leg.to, change: 1 });
+        }
+      }
+    }
+    events.sort((a, b) => a.at - b.at || a.change - b.change);
+    let yard = 0;
+    const start = (FIRST_SLOT + 1) * BOT_SLOT_MS;
+    const end = (FIRST_SLOT + 1_990) * BOT_SLOT_MS;
+    for (const event of events) {
+      if (event.at >= start && event.at < end) {
+        expect(yard).toBeGreaterThanOrEqual(BOTS_MIN_PRESENT);
+      }
+      yard += event.change;
+    }
+  });
+
+  it('go in often, and never two at once in one room', () => {
+    const calls = new Map<string, { from: number; to: number; bot: string }[]>();
+    let visits = 0;
+    let calling = 0;
+    for (let visit = FIRST_SLOT; visit < FIRST_SLOT + 1_000; visit += 1) {
+      visits += 1;
+      const inside = visitPlan(visit).legs.filter((leg) => leg.kind === 'inside');
+      calling += inside.length > 0 ? 1 : 0;
+      for (const leg of inside) {
+        calls.set(leg.room, [...(calls.get(leg.room) ?? []), { from: leg.from, to: leg.to, bot: visitPlan(visit).bot.id }]);
+      }
+    }
+    expect(calling / visits).toBeGreaterThan(0.15);
+    expect([...calls.keys()].sort()).toEqual(ROOM_CALLS.map((call) => call.room).sort());
+    for (const list of calls.values()) {
+      const sorted = [...list].sort((a, b) => a.from - b.from);
+      sorted.slice(1).forEach((call, index) => expect(call.from).toBeGreaterThanOrEqual(sorted[index].to));
+    }
+  });
+
+  it('stand where nobody is in the way, with every rung of Brock\'s ladder built and none', () => {
+    for (const call of ROOM_CALLS) {
+      const room = roomNamed(call.room)!;
+      for (const game of games) {
+        const built = buildRoom(room, game);
+        const serving = servingTiles(room, built.collision).map(key);
+        const faced = new Set([
+          ...(room.mat ? [key(room.mat)] : []),
+          ...(room.keeper ? [key(room.keeper.position)] : []),
+          ...room.counter.map(key),
+          ...built.things.flatMap((thing) => thing.tiles.map(key)),
+        ]);
+        const taken = new Set(call.spots.map((spot) => key(spot.tile)));
+        for (const { tile } of call.spots) {
+          expect([call.room, tile, built.collision[tile.y][tile.x]]).toEqual([call.room, tile, false]);
+          expect(serving).not.toContain(key(tile));
+          for (const [dx, dy] of [
+            [0, -1],
+            [0, 1],
+            [-1, 0],
+            [1, 0],
+          ]) {
+            expect([call.room, tile, faced.has(key({ x: tile.x + dx, y: tile.y + dy }))]).toEqual([call.room, tile, false]);
+          }
+        }
+        // All of them stood at once, every other tile of the room is as far from the mat as it was.
+        const open = stepsFrom(built.collision, room.mat!);
+        const crowded = stepsFrom(built.collision, room.mat!, (tile) => taken.has(key(tile)));
+        for (let y = 0; y < room.height; y += 1) {
+          for (let x = 0; x < room.width; x += 1) {
+            if (!taken.has(key({ x, y }))) {
+              expect([call.room, x, y, crowded[y][x]]).toEqual([call.room, x, y, open[y][x]]);
+            }
+          }
+        }
+      }
     }
   });
 });

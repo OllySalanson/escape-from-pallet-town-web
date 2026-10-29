@@ -7,7 +7,8 @@ import { BASE_FIXTURES } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
 import { LOITER_SPOTS } from './generated/harbourBotSpots';
 import { DAY_CARE_KEEPER } from './dayCarePen';
-import { BASE_DOORS } from './doors';
+import { BASE_DOORS, doorNamed } from './doors';
+import type { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { harbourBeatTiles, harbourLifeAt, onLand } from './harbourLife';
 import type { PartnerSpeciesId } from './partner';
 
@@ -508,6 +509,106 @@ export function botPath(from: GridPosition, to: GridPosition): GridPosition[] | 
   return path;
 }
 
+// -- the keepers' rooms --------------------------------------------------------
+
+export type SharedRoomId = (typeof SHARED_HARBOUR_ROOMS)[number];
+
+/** Where a regular stands in a room, and which way they look: at a shelf, a table, a plant. */
+export interface RoomSpot {
+  readonly tile: GridPosition;
+  readonly facing: Direction;
+}
+
+/**
+ * Where a regular calling on a keeper stands about while they are in: never
+ * the mat, never where the keeper is spoken to, never beside anything a
+ * player walks up to, and never where a walk across the room would be longer
+ * round them (`harbourBots.test.ts`, with every rung of Brock's ladder built
+ * and none).
+ */
+export const ROOM_CALLS: readonly { readonly room: SharedRoomId; readonly spots: readonly RoomSpot[] }[] = [
+  {
+    room: 'oaks-lab',
+    spots: [
+      { tile: { x: 11, y: 3 }, facing: 'up' },
+      { tile: { x: 3, y: 10 }, facing: 'up' },
+      { tile: { x: 9, y: 10 }, facing: 'up' },
+    ],
+  },
+  {
+    room: 'pokemon-centre',
+    spots: [
+      { tile: { x: 10, y: 6 }, facing: 'right' },
+      { tile: { x: 12, y: 4 }, facing: 'up' },
+    ],
+  },
+  {
+    room: 'brocks-workshop',
+    spots: [
+      { tile: { x: 9, y: 3 }, facing: 'right' },
+      { tile: { x: 4, y: 10 }, facing: 'up' },
+    ],
+  },
+  {
+    room: 'bills-cottage',
+    spots: [
+      { tile: { x: 2, y: 11 }, facing: 'left' },
+      { tile: { x: 12, y: 11 }, facing: 'right' },
+    ],
+  },
+];
+
+/** How long a room is one regular's to call in (`roomCaller`). */
+export const ROOM_WINDOW_MS = 90_000;
+
+/** The shortest call worth going in for, and the longest. */
+const CALL_MS = [25_000, 60_000] as const;
+
+/**
+ * Who may call on a room in a window, if anybody: two of the four rooms take
+ * a caller a window, turn about, each someone different - so no two regulars
+ * are ever in one room, and never more than two are indoors at once.
+ */
+export function roomCaller(roomIndex: number, window: number): HarbourBot | null {
+  if ((roomIndex + window) % 2 !== 0) {
+    return null;
+  }
+  const count = HARBOUR_BOTS.length;
+  return HARBOUR_BOTS[(((window * 5 + roomIndex * 3) % count) + count) % count];
+}
+
+/**
+ * The fewest regulars about at any moment between two times. A regular calls
+ * on a keeper only while at least `CALL_WHILE_AT_LEAST` are about, so with
+ * two indoors at most, the yard always keeps `BOTS_MIN_PRESENT`.
+ */
+export function fewestPresent(from: number, to: number): number {
+  const changes: { at: number; change: number }[] = [];
+  let present = 0;
+  const firstSlot = Math.floor(from / BOT_SLOT_MS) - BOTS_MAX_PRESENT - 1;
+  for (let visit = firstSlot; visit <= Math.floor(to / BOT_SLOT_MS); visit += 1) {
+    const span = visitSpan(visit);
+    if (span.to <= from || span.from >= to) continue;
+    if (span.from <= from) {
+      present += 1;
+    } else {
+      changes.push({ at: span.from, change: 1 });
+    }
+    if (span.to < to) {
+      changes.push({ at: span.to, change: -1 });
+    }
+  }
+  let fewest = present;
+  for (const { change } of changes.sort((a, b) => a.at - b.at || a.change - b.change)) {
+    present += change;
+    fewest = Math.min(fewest, present);
+  }
+  return fewest;
+}
+
+/** How many must be about for one to go indoors: the yard's floor and the two rooms that may be taken. */
+export const CALL_WHILE_AT_LEAST = BOTS_MIN_PRESENT + 2;
+
 // -- a visit ------------------------------------------------------------------
 
 /** One part of a visit: a walk along tiles a step every `STEP_DURATION_MS`, or a pause looking about. */
@@ -520,6 +621,16 @@ export type VisitLeg =
       readonly tile: GridPosition;
       /** Which way they look, and from when. */
       readonly looks: readonly { readonly at: number; readonly facing: Direction }[];
+    }
+  | {
+      /** Through a keeper's door, and in their room until `to` (`ROOM_CALLS`). */
+      readonly kind: 'inside';
+      readonly from: number;
+      readonly to: number;
+      readonly room: SharedRoomId;
+      /** The doorway they went in by and come out of. */
+      readonly door: GridPosition;
+      readonly spot: RoomSpot;
     };
 
 export interface VisitPlan {
@@ -567,7 +678,44 @@ export function visitPlan(visit: number): VisitPlan {
   let at = enter.tile;
   let now = from;
   let last: GridPosition | null = null;
+  const pauseAt = (spot: GridPosition, there: readonly GridPosition[], pause: number): void => {
+    const looks: { at: number; facing: Direction }[] = [
+      { at: now, facing: there.length > 1 ? directionOf(there[there.length - 2], spot) : roll.pick(FACINGS) },
+    ];
+    for (let look = now + roll.int(1_500, 4_000); look < now + pause - 800; look += roll.int(1_500, 4_000)) {
+      looks.push({ at: look, facing: roll.pick(FACINGS) });
+    }
+    legs.push({ kind: 'pause', from: now, to: now + pause, tile: spot, looks });
+    now += pause;
+    at = spot;
+    last = spot;
+  };
+  let called = false;
   for (let tries = 0; tries < 12; tries += 1) {
+    // From a spot of their own, now and then, in through a keeper's door.
+    if (!called && last !== null && roll.chance(0.7)) {
+      const call = callIn(bot, at, now, to, leave, roll);
+      if (call) {
+        called = true;
+        if (call.wait > 0) {
+          const standing = legs[legs.length - 1];
+          if (standing.kind === 'pause') {
+            legs[legs.length - 1] = { ...standing, to: standing.to + call.wait };
+          }
+          now += call.wait;
+        }
+        legs.push({ kind: 'walk', from: now, path: call.there });
+        now += walkMs(call.there);
+        legs.push({ kind: 'inside', from: now, to: call.out, room: call.room, door: call.door, spot: call.spot });
+        now = call.out;
+        at = call.door;
+        // And out again to somewhere of their own, never standing in the doorway.
+        legs.push({ kind: 'walk', from: now, path: call.after });
+        now += walkMs(call.after);
+        pauseAt(call.after[call.after.length - 1], call.after, PAUSE_MS[0]);
+        continue;
+      }
+    }
     const choices = spots.filter((spot) => !last || spot.x !== last.x || spot.y !== last.y);
     const spot = roll.pick(choices);
     const there = botPath(at, spot);
@@ -579,16 +727,7 @@ export function visitPlan(visit: number): VisitPlan {
     }
     legs.push({ kind: 'walk', from: now, path: there });
     now += walkMs(there);
-    const looks: { at: number; facing: Direction }[] = [
-      { at: now, facing: there.length > 1 ? directionOf(there[there.length - 2], spot) : roll.pick(FACINGS) },
-    ];
-    for (let look = now + roll.int(1_500, 4_000); look < now + pause - 800; look += roll.int(1_500, 4_000)) {
-      looks.push({ at: look, facing: roll.pick(FACINGS) });
-    }
-    legs.push({ kind: 'pause', from: now, to: now + pause, tile: spot, looks });
-    now += pause;
-    at = spot;
-    last = spot;
+    pauseAt(spot, there, pause);
   }
   let gone = leave;
   if (legs.length === 0) {
@@ -626,13 +765,76 @@ export function visitPlan(visit: number): VisitPlan {
   return plan;
 }
 
+/**
+ * A call on a keeper from where a regular is standing, if one fits: a room
+ * that is theirs to call in for a window starting about now, the walk to its
+ * door, a call of `CALL_MS` inside the window, and time after it to walk to a
+ * spot of their own, pause, and still be out when the schedule says.
+ */
+function callIn(
+  bot: HarbourBot,
+  at: GridPosition,
+  now: number,
+  to: number,
+  leave: BotGate,
+  roll: SeededRng,
+): {
+  readonly room: SharedRoomId;
+  readonly door: GridPosition;
+  readonly spot: RoomSpot;
+  readonly wait: number;
+  readonly there: readonly GridPosition[];
+  readonly out: number;
+  readonly after: readonly GridPosition[];
+} | null {
+  for (const roomIndex of roll.shuffle(ROOM_CALLS.map((_, index) => index))) {
+    const call = ROOM_CALLS[roomIndex];
+    const door = doorNamed(call.room)?.tiles[0];
+    const there = door ? botPath(at, door) : null;
+    if (!door || !there) continue;
+    const arrival = now + walkMs(there);
+    for (const window of [Math.floor(arrival / ROOM_WINDOW_MS), Math.floor(arrival / ROOM_WINDOW_MS) + 1]) {
+      if (roomCaller(roomIndex, window) !== bot) continue;
+      const opens = window * ROOM_WINDOW_MS;
+      const inside = Math.max(arrival, opens);
+      const wait = inside - arrival;
+      const longest = Math.min(CALL_MS[1], opens + ROOM_WINDOW_MS - 3_000 - inside);
+      if (wait > 12_000 || longest < CALL_MS[0]) continue;
+      const out = inside + roll.int(CALL_MS[0], longest);
+      if (fewestPresent(inside, out) < CALL_WHILE_AT_LEAST) continue;
+      const after = spotsOf(bot)
+        .flatMap((spot) => {
+          const walk = botPath(door, spot);
+          const home = botPath(spot, leave.tile);
+          return walk && home && out + walkMs(walk) + PAUSE_MS[0] + walkMs(home) <= to ? [walk] : [];
+        })
+        .sort((a, b) => a.length - b.length)[0];
+      if (!after) continue;
+      return { room: call.room, door, spot: roll.pick(call.spots), wait, there, out, after };
+    }
+  }
+  return null;
+}
+
 function lastFacing(legs: readonly VisitLeg[]): Direction {
   const leg = legs[legs.length - 1];
+  if (leg.kind === 'inside') {
+    return 'down';
+  }
   if (leg.kind === 'pause') {
     return leg.looks[leg.looks.length - 1].facing;
   }
   const { path } = leg;
   return path.length > 1 ? directionOf(path[path.length - 2], path[path.length - 1]) : 'down';
+}
+
+/** Where a regular is at a moment, out in the yard - or, `inside`, calling on a keeper. */
+export interface BotWhere {
+  readonly tile: GridPosition;
+  readonly next: GridPosition | null;
+  readonly facing: Direction;
+  readonly walking: boolean;
+  readonly inside?: Extract<VisitLeg, { kind: 'inside' }>;
 }
 
 /**
@@ -643,13 +845,17 @@ function lastFacing(legs: readonly VisitLeg[]): Direction {
 export function botAt(
   plan: VisitPlan,
   nowMs: number,
-): { readonly tile: GridPosition; readonly next: GridPosition | null; readonly facing: Direction; readonly walking: boolean } | null {
+): BotWhere | null {
   if (nowMs < plan.from || nowMs >= plan.to) {
     return null;
   }
   for (let index = plan.legs.length - 1; index >= 0; index -= 1) {
     const leg = plan.legs[index];
     if (leg.from > nowMs) continue;
+    if (leg.kind === 'inside') {
+      if (nowMs >= leg.to) continue;
+      return { tile: leg.door, next: null, facing: 'up', walking: false, inside: leg };
+    }
     if (leg.kind === 'pause') {
       if (nowMs >= leg.to) continue;
       const look = [...leg.looks].reverse().find((each) => each.at <= nowMs) ?? leg.looks[0];
