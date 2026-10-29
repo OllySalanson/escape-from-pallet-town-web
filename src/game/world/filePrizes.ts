@@ -38,6 +38,22 @@ export const BUILT_IN_FILE_PRIZES: Readonly<Partial<Record<WorldMapId, readonly 
     // behind Boatswain Cragg's barricades, where only a raid that beat him goes.
     { itemId: 'raid-pack', quantity: 1, chance: 0.25, place: 'THE WRECK' },
     { itemId: 'ranger-pack', quantity: 1, chance: 0.2, place: 'THE DROWNED TOWN' },
+    // THE HARBOUR BOUTIQUE's raid finds (`look/wearables.ts`): the colours it
+    // keeps for the legends and the shinies, never on a shelf. A legend's is
+    // where that legend is in the vale, a shiny's where its Pokemon would be,
+    // and every one is rarer than any find but the Bicycle.
+    { itemId: 'articuno-wave', quantity: 1, chance: 0.06, place: 'THE FROZEN LAGOON' },
+    { itemId: 'zapdos-jacket', quantity: 1, chance: 0.06, place: 'THE POWER STATION' },
+    { itemId: 'moltres-tee', quantity: 1, chance: 0.06, place: 'THE CRATER' },
+    { itemId: 'mewtwo-robe', quantity: 1, chance: 0.06, place: 'THE POWER STATION' },
+    { itemId: 'mew-dress', quantity: 1, chance: 0.06, place: 'STORMCROWN' },
+    { itemId: 'legend-knit-hat', quantity: 1, chance: 0.06, place: 'THE CAIRN' },
+    { itemId: 'shiny-charizard-jacket', quantity: 1, chance: 0.08, place: 'THE CRATER' },
+    { itemId: 'shiny-gyarados-cap', quantity: 1, chance: 0.08, place: 'REEDMERE' },
+    { itemId: 'shiny-pikachu-crop', quantity: 1, chance: 0.08, place: 'PINE HOLLOW' },
+    { itemId: 'shiny-mew-hair', quantity: 1, chance: 0.08, place: 'THE OLD BLOOM' },
+    { itemId: 'shiny-onix-trousers', quantity: 1, chance: 0.08, place: 'GREYSTONE PEAKS' },
+    { itemId: 'shiny-rocket-tunic', quantity: 1, chance: 0.08, place: 'THE DROWNED TOWN' },
   ],
 };
 

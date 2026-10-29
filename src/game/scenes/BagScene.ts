@@ -62,6 +62,7 @@ const POCKETS = [
   ItemCategory.Held,
   ItemCategory.Pack,
   ItemCategory.Furniture,
+  ItemCategory.Wearable,
   ItemCategory.Misc,
 ] as const;
 
@@ -82,6 +83,7 @@ const USELESS_IN_THE_FIELD = new Set([
   'key',
   'errand',
   'furniture',
+  'wearable',
   'held',
 ]);
 
@@ -116,6 +118,8 @@ const useLabel = (item: ItemDefinition): string => {
       return 'Carry it home to whoever asked for it.';
     case 'furniture':
       return 'Carry it home and put it down in THE BOLTHOLE.';
+    case 'wearable':
+      return 'Carry it home and it is in YOUR WARDROBE, upstairs in THE BOLTHOLE.';
     case 'held':
       return 'Gear is given on the PARTY screen, where the Pokémon that would carry it is.';
     case 'machine':

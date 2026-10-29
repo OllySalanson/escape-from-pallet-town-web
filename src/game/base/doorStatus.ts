@@ -47,7 +47,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
     case 'boutique': {
       // What the shop has left to sell this save, said as what it has: the
       // dearest reason to walk to the top of the green.
-      const owned = ownedWearables(game.raidProgress.wardrobe).size;
+      const owned = ownedWearables(game.raidProgress.wardrobe, game.stash).size;
       return owned <= STARTER_WEARABLES.length ? `${WEARABLES.length} things to wear` : `${owned} of ${WEARABLES.length} pieces yours`;
     }
     case 'arena': {

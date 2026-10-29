@@ -1775,6 +1775,9 @@ export function slotOf(wearable: Wearable): 'head' | 'top' | 'legs' | 'body' {
   return WEARABLE_PIECES[wearable.piece].slot;
 }
 
+/** The pieces only a raid finds: each is an item of its own id (`../items/items.ts`). */
+export const RAID_WEARABLES: readonly Wearable[] = WEARABLES.filter((wearable) => wearable.rarity === 'raid');
+
 /** Every player owns these from the start, so any look can be made whole. */
 export const STARTER_WEARABLES: readonly string[] = WEARABLES.filter(
   (wearable) => wearable.rarity === 'starter',

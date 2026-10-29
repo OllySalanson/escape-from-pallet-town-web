@@ -52,3 +52,11 @@ describe('the wardrobe', () => {
     }
   });
 });
+
+describe('a find from a raid', () => {
+  it('is in the wardrobe while the vault holds it, and never on a shelf to buy', () => {
+    expect(ownedWearables([], vault({ 'zapdos-jacket': 1 })).has('zapdos-jacket')).toBe(true);
+    expect(ownedWearables([], vault({})).has('zapdos-jacket')).toBe(false);
+    expect(priceLine(wearableById('zapdos-jacket')!)).toBe('Found on raids');
+  });
+});

@@ -83,6 +83,7 @@ import {
   gridCells,
   isFoundOnly,
   isFurniture,
+  isWearableItem,
   itemAmountsFor,
   READ_IN_A_RAID,
   type ItemDefinition,
@@ -2530,10 +2531,11 @@ export class HubScene extends Phaser.Scene {
       // help bar when it is pointed at, which is why the row is a control.
       `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
     const materialRows = this.stashItems
-      .filter((item) => isFoundOnly(item.id) && !isFurniture(item.id))
+      .filter((item) => isFoundOnly(item.id) && !isFurniture(item.id) && !isWearableItem(item.id))
       .map(supplyRow)
       .join('');
     const furnitureRows = this.stashItems.filter((item) => isFurniture(item.id)).map(supplyRow).join('');
+    const clothesRows = this.stashItems.filter((item) => isWearableItem(item.id)).map(supplyRow).join('');
     const supplies = `${this.stashItems.filter((item) => !isFoundOnly(item.id)).map(supplyRow).join('')}${
       // Found goods are their own list: nothing in it can be packed or used,
       // and Brock and Bill are where all of it goes.
@@ -2541,6 +2543,9 @@ export class HubScene extends Phaser.Scene {
     }${
       // And furniture is its own again: it goes nowhere but THE BOLTHOLE.
       furnitureRows ? `<h3 class="px-subheading">Furniture</h3>${furnitureRows}` : ''
+    }${
+      // And clothes a raid found, which are worn from the wardrobe at home.
+      clothesRows ? `<h3 class="px-subheading">Clothes</h3>${clothesRows}` : ''
     }`;
     return `<main class="px-body stash-layout">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(true, this.boxManage())}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>${details}`,
@@ -3256,7 +3261,7 @@ export class HubScene extends Phaser.Scene {
     // Furniture is found-only too, and the one kind no room is kept for: a
     // trophy comes home in a pack that comes home (`items.ts`, FOUND_ONLY_IDS).
     const materialRows = FOUND_ONLY_IDS.filter(
-      (itemId) => !isFurniture(itemId) && (!isErrandItem(itemId) || wanted.includes(itemId)),
+      (itemId) => !isFurniture(itemId) && !isWearableItem(itemId) && (!isErrandItem(itemId) || wanted.includes(itemId)),
     ).map((itemId) =>
       secureRow(
         itemId,
