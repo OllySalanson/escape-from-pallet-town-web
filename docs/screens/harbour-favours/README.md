@@ -26,3 +26,6 @@ that is not what it promises.
 - `4-captain-mark.png` - the captain on the long pier.
 - `5-captain-question.png` - his question, with the S.S. Anne's caption kept clear of the box.
 - `6-captain-handover.png` - the log home: handed over and HM01 paid, on the pier.
+- `7-gym-guide.png` - the Gym Guide at the Raid Arena's door, saying the day's
+  work: the board's job, what it asks and pays, and every favour in hand
+  (`base/gymGuide.ts`). Nothing about the board changes; he only says it.

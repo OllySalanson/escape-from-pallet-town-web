@@ -1,8 +1,9 @@
 // The harbour's own favours (`src/game/hub/errands.ts`, `harbourGiver`), played
 // the way a player meets them: a "!" over somebody walking the yard, walk up to
 // them, the interact key, the favour in the dialogue box and YES or NOT NOW
-// (`BaseScene.speakForFavour`). Photographs each beat and fails loudly when one
-// is not what it promises.
+// (`BaseScene.speakForFavour`) - and the Gym Guide's word on the day's work
+// (`base/gymGuide.ts`). Photographs each beat and fails loudly when one is not
+// what it promises.
 //
 //   node tools/playtest/harbourFavours.mjs <url> <out dir> [--window=1200x768] [--port=N]
 //
@@ -162,6 +163,14 @@ try {
   const vault = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).stash.items`);
   if (vault['ships-log'] || vault['hm01-cut'] !== 1) throw new Error(`the vault holds ${JSON.stringify(vault)}`);
   console.log('HM01 is in the vault');
+
+  // The Gym Guide at the Raid Arena's door says the day's work (`base/gymGuide.ts`).
+  await walkUpTo('gym-guide');
+  await press('Space', 400);
+  await shotOfLine('7-gym-guide');
+  const guide = await readOn();
+  expectSaid(guide, "Yo, champ! Today's job:", 'the Gym Guide');
+  if (!guide.some((line) => line.startsWith('It pays '))) throw new Error('the Gym Guide never said what the job pays');
 } finally {
   await page.close();
   await browser.close();

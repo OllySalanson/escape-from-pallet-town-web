@@ -113,6 +113,8 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     position: at(6, 13),
     facing: 'right',
     idle: { roam: [at(5, 13)], glances: ['down', 'up'], beatMs: 4700 },
+    // Spoken to, he says the day's work: the board's job and the favours in
+    // hand (`gymGuide.ts`). These are his words with nothing to report.
     lines: [
       'Yo! Champ in the making!',
       'Every raid starts through that door. Pack Potions. Then pack more Potions.',
