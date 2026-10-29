@@ -160,7 +160,12 @@ tabs of one browser over the local stand-in (`?harbour=local`, never the live
 project), OLLY and AMY each seeing the other by name, AMY watching OLLY walk to
 a tile, OLLY leaving the yard for Oak's Lab and AMY finding him there -
 `docs/screens/shared-harbour/`. The tab being played is brought to the front,
-because the one behind is slowed to a frame a second.
+because the one behind is slowed to a frame a second - and left behind for long,
+throttled harder still: its game loop stops, so the last steps it walked are not
+sent until it is in front again, and its stand-in heartbeat lapses, so the other
+tab forgets where it stands until it steps. Keep a tab in front for a second
+after walking it, and step it once before asking what the other tab sees
+(playtest 49).
 `names.mjs <url> <dir>` plays names one each over the local stand-in with ASH
 taken: NEW GAME asks YOUR NAME?, *ash* is said to be taken and refused, MISTY
 is free and kept, CONTINUE does not ask again, CONTINUE with no name asks and
