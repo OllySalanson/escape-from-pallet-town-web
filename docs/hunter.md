@@ -63,7 +63,41 @@ you had won turns round.
 hunter has just seen, five steps off, walking away to somewhere 40-90 steps off
 at walking pace, every tall-grass step rolling a fight at 10%.
 
-(The table is filled in by the deep dive's last run - see the PR.)
+400 chases a row, 29 Oct 2026:
+
+| the player | caught | shook it off | of which by leaving its district | still chased on arrival | closest gap (steps) | snags a chase |
+| --- | --- | --- | --- | --- | --- | --- |
+| never stops, no grass fights | 0% | 64% (in 4.9 s) | 52% | 36% | 6.2 | 1.0 |
+| never stops, grass fights at 10% | 0% | 54% (4.9 s) | 50% | 46% | 5.2 | 1.0 |
+| never stops, grass fights at 20% | 0% | 46% (4.6 s) | 43% | 55% | 4.2 | 1.0 |
+| stops 0.5 s every 25 steps | 23% (in 8.2 s) | 40% | 34% | 37% | 3.0 | 0.9 |
+| stops 1 s every 25 steps | 55% (7.5 s) | 29% | 23% | 17% | 2.0 | 0.7 |
+| stops 2 s every 25 steps | 72% (4.8 s) | 28% | 21% | 1% | 2.2 | 0.7 |
+
+Read it as the captain's sentence. Same speed: a player who never stops is
+never caught, and nothing on open ground gains them a tile. The chances to get
+away are the snag (about one a chase), breaking sight, and the edge of its
+district (about half of all escapes). What gets you caught is everything you
+stop for - a box, a crate searched, a wall bumped - and a fight in the grass
+brings it two steps closer and back on your trail, which is why a grassy run
+leaves you still chased more often. The harness walks perfect shortest paths,
+so a real player, who bumps and hesitates, sits nearer the rows that stop.
+
+Frame cost, from `tools/playtest/hunterPack.mjs` on a test-mode build in
+headless Chromium (software WebGL, a machine at load 10-13), the same 100-step
+route walked with no hunters out and then with four hunters chasing:
+
+| | no hunters | four chasing |
+| --- | --- | --- |
+| the pack's own work a frame (mean / 95th / worst) | 0.03 / 0.1 / 0.9 ms | 0.17 / 0.6 / 2.7 ms |
+| the player's pace | 6.8 tiles/s | 6.7 tiles/s (a walked tile is 150 ms: 6.67) |
+
+The whole frame (update and draw) moved by about 2 ms of a headless frame that
+is 14-17 ms either way, of which the pack is 0.2; frame intervals in headless
+software rendering on a loaded machine swing by a third between identical runs,
+so they are not the measure. Hunters further than 40 tiles off hold still,
+the pack's searches reuse their arrays, a walk home or round its loop is
+searched once, and the world view it reads is built only when a hunter asks.
 
 ## Captain's calls left open
 
