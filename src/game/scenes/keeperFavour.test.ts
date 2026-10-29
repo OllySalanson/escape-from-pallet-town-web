@@ -91,7 +91,7 @@ function workshop(errands: readonly ErrandRecord[] = [], vault: Record<string, n
     raidProgress: {
       ...DEFAULT_RAID_PROGRESS,
       completedContracts: [FIRST_CONTRACT_ID],
-      unlockedInsertions: ['floodplain-relay', ...CONTRACT_REWARD_INSERTIONS],
+      unlockedInsertions: ['floodplain-relay', ...CONTRACT_REWARD_INSERTIONS, 'greystone-vale'],
       errands: [...errands],
       ...raidProgress,
     },

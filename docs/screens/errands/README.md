@@ -10,10 +10,16 @@ favour means leaving loot behind, and a wipe means telling Brock you lost it".
 
 | Who | Wants | Where | Squares | Pays |
 |---|---|---|---|---|
-| Professor Oak | Oak's Parcel (FireRed's own errand) | CENTER SQUARE, Viridian City | 2 | five Poké Balls (FireRed's own) |
-| Nurse Joy | her medicine bag | THE STEADING, Route 1 | 2 | Leftovers |
-| Brock | his crate of tools | THE QUARRY, Pallet Town | 4 | TM39 Rock Tomb (FireRed's own) |
-| Bill | Old Amber (FireRed's) | SAP POOL, Viridian Forest | 1 | an Eevee (Bill's gift in HeartGold/SoulSilver) |
+| Professor Oak | Oak's Parcel (FireRed's own errand) | MILLBROOK, Greystone Vale | 2 | five Poké Balls (FireRed's own) |
+| Nurse Joy | her medicine bag | ORCHARD TERRACES, Greystone Vale | 2 | Leftovers |
+| Brock | his crate of tools | GREYSTONE PEAKS, Greystone Vale | 4 | TM39 Rock Tomb (FireRed's own) |
+| Bill | Old Amber (FireRed's) | PINE HOLLOW, Greystone Vale | 1 | an Eevee (Bill's gift in HeartGold/SoulSilver) |
+
+They were first laid on Viridian City, Route 1, Pallet Town and Viridian
+Forest, and moved to Greystone Vale on 29 Oct when those maps had been retired
+and no new save could be asked any of them. The pictures below are from when
+they lay there, and from before a favour was asked face to face in the
+dialogue box - see `../favours-face-to-face/` for how one is asked now.
 
 Shot at 3x (1200x768) against a test-mode build. The raid half is
 `tools/playtest/raid.mjs --insertion=town-square --errands=brocks-crate

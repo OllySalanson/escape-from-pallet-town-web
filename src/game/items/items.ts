@@ -662,7 +662,7 @@ export const ITEMS = {
     displayName: "Oak's Parcel",
     category: ItemCategory.Misc,
     footprint: { width: 2, height: 1 },
-    description: "A parcel for Professor Oak, from Viridian City's Poké Mart. He has been waiting on it.",
+    description: "A parcel for Professor Oak, from Millbrook's Poké Mart. He has been waiting on it.",
     effect: { type: 'errand' },
   },
   'medicine-bag': {
@@ -670,7 +670,7 @@ export const ITEMS = {
     displayName: 'Medicine bag',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 2 },
-    description: "The Pokémon Center's spare medicine bag, lent to the steading on Route 1. Nurse Joy wants it back.",
+    description: "The Pokémon Center's spare medicine bag, lent to the farm at Orchard Terraces. Nurse Joy wants it back.",
     effect: { type: 'errand' },
   },
   'brocks-crate': {
@@ -678,7 +678,7 @@ export const ITEMS = {
     displayName: "Brock's crate",
     category: ItemCategory.Misc,
     footprint: { width: 2, height: 2 },
-    description: "Brock's own tools, in a crate stencilled PEWTER. He left it at Pallet Town's quarry.",
+    description: "Brock's own tools, in a crate stencilled PEWTER. He left it at the quarry in Greystone Peaks.",
     effect: { type: 'errand' },
   },
   'old-amber': {

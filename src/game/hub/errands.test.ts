@@ -5,7 +5,7 @@ import { getSpeciesById } from '../pokemon';
 import { availableInsertionIds, frontDoorFor, generateRunPlan } from '../run/runGeneration';
 import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import { CONTRACT_REWARD_INSERTIONS, DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
-import { districtsForMap } from '../world/districts';
+import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { stepDistances } from '../world/mapStructure';
 import { getWorldMap } from '../worldMap';
 import {
@@ -13,6 +13,7 @@ import {
   declineErrand,
   ERRANDS,
   errandBeat,
+  errandDistrict,
   errandLines,
   errandToSay,
   FAVOUR_ANSWERS,
@@ -32,10 +33,11 @@ import {
 } from './errands';
 
 const FRESH: ErrandProgress = DEFAULT_RAID_PROGRESS;
+/** A save that can drop into Greystone Vale, where every favour lies. */
 const OPENED: ErrandProgress = {
   ...DEFAULT_RAID_PROGRESS,
   completedContracts: [FIRST_CONTRACT_ID],
-  unlockedInsertions: ['floodplain-relay', ...CONTRACT_REWARD_INSERTIONS],
+  unlockedInsertions: ['floodplain-relay', ...CONTRACT_REWARD_INSERTIONS, 'greystone-vale'],
 };
 const nothing = (): number => 0;
 
@@ -79,8 +81,8 @@ describe('errands', () => {
     for (const errand of ERRANDS) {
       const map = getWorldMap(errand.mapId, []);
       const door = frontDoorFor(errand.mapId)!;
-      const steps = stepDistances(map.collision, door.position);
-      const areas = districtsForMap(errand.mapId).find((district) => district.id === errand.district)!.areas;
+      const steps = stepDistances(map.collision, door.position, new Set(), map.links);
+      const areas = errandDistrict(errand)!.areas;
       const standing = areas.flatMap((area) =>
         Array.from({ length: area.width * area.height }, (_, index) => ({
           x: area.x + (index % area.width),
@@ -168,6 +170,32 @@ describe('errands', () => {
     }
   });
 
+  /**
+   * Every favour was first laid on a map retired on 22 Oct, which left all
+   * four closed to a new save and a favour already taken with nowhere to be
+   * finished. With the roster as shipped, a new save is asked every one.
+   */
+  it('is asked of a new save with the shipped roster, on the one map in play', () => {
+    retireMapsForTests(RETIRED_MAPS);
+    try {
+      for (const errand of ERRANDS) {
+        expect(errand.mapId).toBe('greystone-vale');
+        expect(errandOpen(errand, FRESH), errand.id).toBe(true);
+        expect(errandBeat(errand.giver, FRESH, nothing)).toEqual({ kind: 'ask', errand });
+      }
+    } finally {
+      retireMapsForTests([]);
+    }
+  });
+
+  it('names a place its map has, and lays it in that place by its id', () => {
+    for (const errand of ERRANDS) {
+      const district = errandDistrict(errand);
+      expect(district?.name, errand.id).toBe(errand.place);
+      expect(errandLoot(errand).district).toBe(district!.id);
+    }
+  });
+
   it('asks, then waits, thanks when the thing is home, and asks after it when it was found and lost', () => {
     const brock = errandOf('workshop')!;
     expect(errandBeat('workshop', OPENED, nothing)).toEqual({ kind: 'ask', errand: brock });
@@ -205,13 +233,13 @@ describe('errands', () => {
 
   it('is laid by the raid in its own place, as a prize, without moving any other roll', () => {
     const brock = errandOf('workshop')!;
-    const without = generateRunPlan(7, undefined, 'town-square', undefined);
+    const without = generateRunPlan(7, undefined, 'greystone-vale', undefined);
     const withIt = generateRunPlan(
-      7, undefined, 'town-square', undefined, undefined, [], {}, [], [], false, [], [errandLoot(brock)],
+      7, undefined, 'greystone-vale', undefined, undefined, [], {}, [], [], false, [], [errandLoot(brock)],
     );
-    const laid = withIt.loot['pallet-town'].filter((piece) => piece.itemId === brock.itemId);
+    const laid = withIt.loot['greystone-vale'].filter((piece) => piece.itemId === brock.itemId);
     expect(laid).toHaveLength(1);
-    const areas = districtsForMap('pallet-town').find((district) => district.id === brock.district)!.areas;
+    const areas = errandDistrict(brock)!.areas;
     expect(
       areas.some(
         (area) =>
@@ -222,8 +250,8 @@ describe('errands', () => {
       ),
     ).toBe(true);
     expect(laid[0].chance).toBe(1);
-    expect(withIt.loot['pallet-town'].filter((piece) => piece.itemId !== brock.itemId)).toEqual(
-      without.loot['pallet-town'],
+    expect(withIt.loot['greystone-vale'].filter((piece) => piece.itemId !== brock.itemId)).toEqual(
+      without.loot['greystone-vale'],
     );
     expect(withIt.trainers).toEqual(without.trainers);
     expect(withIt.hunter).toEqual(without.hunter);
