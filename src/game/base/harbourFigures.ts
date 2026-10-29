@@ -132,6 +132,7 @@ export class HarbourFigures {
   private readonly drawn = new Map<string, Drawn>();
   private readonly plateDepth: (row: number) => number;
   private readonly canStand: ((tile: GridPosition) => boolean) | null;
+  private readonly placeWidth: (() => number) | null;
 
   /**
    * @param plateDepth Where a name plate is drawn for a figure on this row:
@@ -140,15 +141,20 @@ export class HarbourFigures {
    * @param canStand The place's word on where a partner may arrive beside
    * somebody who has just come into view (`arrivalPlace`), as this player's own
    * arrives. Without it a partner waits out of sight for its player's first step.
+   * @param placeWidth How wide the place is, in pixels, so a name plate stays
+   * over it: a room is framed on the dark, and a plate wider than the tile its
+   * owner stands on hung past the wall into the dark beside the stairs.
    */
   public constructor(
     scene: Phaser.Scene,
     plateDepth: (row: number) => number = (row) => atRow(CAPTION_BAND, row),
     canStand: ((tile: GridPosition) => boolean) | null = null,
+    placeWidth: (() => number) | null = null,
   ) {
     this.scene = scene;
     this.plateDepth = plateDepth;
     this.canStand = canStand;
+    this.placeWidth = placeWidth;
   }
 
   /**
@@ -198,7 +204,11 @@ export class HarbourFigures {
       const plateWidth = plateWidthOf(drawn.name);
       const plateHeight = plateHeightOf(drawn.name);
       const plateY = Math.round(y + CHARACTER_HEAD_PIXEL_Y - plateHeight - 1);
-      const plateX = clearOfSelf(Math.round(x + TILE_SIZE / 2 - plateWidth / 2), plateWidth, x, y, self);
+      const plateX = withinPlace(
+        clearOfSelf(Math.round(x + TILE_SIZE / 2 - plateWidth / 2), plateWidth, x, y, self),
+        plateWidth,
+        this.placeWidth?.() ?? null,
+      );
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
       const underSelf = self !== null && Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2;
@@ -350,6 +360,14 @@ export function clearOfSelf(
     return plateX;
   }
   return x > self.x ? Math.max(plateX, self.x + TILE_SIZE) : Math.min(plateX, self.x - plateWidth);
+}
+
+/** A plate's left edge, slid along so the whole plate is over the place, where the place is wide enough for it. */
+export function withinPlace(plateX: number, plateWidth: number, placeWidth: number | null): number {
+  if (placeWidth === null || plateWidth > placeWidth) {
+    return plateX;
+  }
+  return Math.min(Math.max(plateX, 0), placeWidth - plateWidth);
 }
 
 const plateWidthOf = (name: Phaser.GameObjects.Text): number => Math.ceil(name.width) + PLATE_PAD_X * 2;
