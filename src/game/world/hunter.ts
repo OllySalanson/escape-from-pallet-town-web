@@ -300,7 +300,7 @@ export interface HunterState {
    * (`hunterAtEnrage`), and one beaten after it stays beaten.
    */
   readonly enrageAnswered?: boolean;
-  /** Set on a beaten hunter re-armed for the enrage, so it arrives with its comeback line. */
+  /** Set on a beaten hunter re-armed for the enrage, so its arrival says it is back. */
   readonly returning?: boolean;
 }
 

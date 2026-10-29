@@ -24,7 +24,6 @@ import {
   HUNTER_SPAWN_DISTANCE,
   type HunterState,
 } from '../world/hunter';
-import { HUNTER_RIVALS } from '../world/hunters';
 import { WorldScene } from './WorldScene';
 
 /** The parts of the scene these tests drive, which are private to it. */
@@ -59,6 +58,8 @@ function standingStill(
   const hunter = findHunterSpawnTile(player, bounds, isBlocked, (tiles) => tiles[0])!;
 
   const interrupted: string[] = [];
+  /** Each arrival the hunter made, as `hunterArrives` was told it: back for the enrage, or not. */
+  const arrivals: ('arrived' | 'back')[] = [];
   const clock = { elapsedMs, isEnraged: enraged };
   const scene = Object.create(WorldScene.prototype) as WorldScene;
   Object.assign(scene as object, {
@@ -109,6 +110,7 @@ function standingStill(
     hunterBlocker: () => isBlocked,
     findHunterSpawnTile: () => findHunterSpawnTile(player, bounds, isBlocked, (tiles) => tiles[0]),
     interrupt: (lines: readonly string[]) => interrupted.push(...lines),
+    hunterArrives: (returning: boolean) => arrivals.push(returning ? 'back' : 'arrived'),
     refreshExtractionMarkers: vi.fn(),
     refreshRunTimerHud: vi.fn(),
   });
@@ -117,7 +119,7 @@ function standingStill(
   /** Walking steps from the hunter to the player: the pursuit stops beside them, one short. */
   const stepsBetween = (): number =>
     findHunterPursuitPath(driven.hunterState.position!, player, bounds, isBlocked).length + 1;
-  return { scene: driven, player, clock, interrupted, stepsBetween };
+  return { scene: driven, player, clock, interrupted, arrivals, stepsBetween };
 }
 
 describe('a player standing still with the hunter on the map', () => {
@@ -195,22 +197,25 @@ describe('a beaten hunter', () => {
   const beaten = { spawned: true, defeated: true, position: undefined } satisfies Partial<HunterState>;
 
   it('stays beaten while there is clock left', () => {
-    const { scene, interrupted } = standingStill({ hunter: beaten });
+    const { scene, interrupted, arrivals } = standingStill({ hunter: beaten });
 
     scene.advanceRunClock(100_000);
 
     expect(scene.hunterState.defeated).toBe(true);
     expect(interrupted).toEqual([]);
+    expect(arrivals).toEqual([]);
   });
 
   it('comes back when the clock runs out, saying so, and fights on the enraged rung', () => {
-    const { scene, interrupted } = standingStill({ elapsedMs: 300_000, enraged: true, hunter: beaten });
+    const { scene, interrupted, arrivals } = standingStill({ elapsedMs: 300_000, enraged: true, hunter: beaten });
 
     scene.advanceRunClock(16);
 
     expect(scene.hunterState).toMatchObject({ spawned: true, defeated: false, returning: false });
     expect(scene.hunterState.position).toBeDefined();
-    expect(interrupted).toEqual([HUNTER_RIVALS[0].comeback]);
+    // Said by the chip and the edge glow, never a box that stops the player.
+    expect(arrivals).toEqual(['back']);
+    expect(interrupted).toEqual([]);
 
     // Walked into, it is the enraged team: three levels above the player's.
     scene.advanceHunterWhileStill(HUNTER_IDLE_STEP_MS * 3);
@@ -219,26 +224,26 @@ describe('a beaten hunter', () => {
   });
 
   it('comes back once: beaten again in the enrage, it is gone for the raid', () => {
-    const { scene, interrupted } = standingStill({ elapsedMs: 300_000, enraged: true, hunter: beaten });
+    const { scene, arrivals } = standingStill({ elapsedMs: 300_000, enraged: true, hunter: beaten });
     scene.advanceRunClock(16);
     // What BattleScene hands back after the win.
     scene.hunterState = { ...scene.hunterState, defeated: true };
-    interrupted.length = 0;
+    arrivals.length = 0;
 
     scene.advanceRunClock(10_000);
 
     expect(scene.hunterState.defeated).toBe(true);
-    expect(interrupted).toEqual([]);
+    expect(arrivals).toEqual([]);
   });
 
   it('beaten for the first time in the enrage, never comes back at all', () => {
-    const { scene, interrupted } = standingStill({ elapsedMs: 300_000, enraged: true });
+    const { scene, arrivals } = standingStill({ elapsedMs: 300_000, enraged: true });
     scene.advanceRunClock(16);
     scene.hunterState = { ...scene.hunterState, defeated: true };
 
     scene.advanceRunClock(10_000);
 
     expect(scene.hunterState.defeated).toBe(true);
-    expect(interrupted).toEqual([]);
+    expect(arrivals).toEqual([]);
   });
 });

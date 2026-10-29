@@ -32,6 +32,34 @@ describe('the hunter chip', () => {
       tone: 'lost-you',
     });
   });
+
+  it('names the rival hunting the raid', () => {
+    expect(hunterChipView({ ...FAR, who: 'MISTY', distance: 5, direction: 'NW' })).toEqual({
+      label: 'MISTY NW 5',
+      tone: 'closing',
+    });
+    expect(hunterChipView({ ...FAR, who: 'MISTY', searching: true, searchRemainingMs: 8_200 })?.label).toBe(
+      'MISTY LOST YOU 9s',
+    );
+  });
+
+  /**
+   * The arrival used to be the rival's line in a dialogue box that stopped the
+   * player; now the edge glows and the chip shouts who it is for a moment.
+   */
+  it('shouts who has picked up the trail as the hunter arrives, wherever it is', () => {
+    expect(hunterChipView({ ...FAR, who: 'BLUE', shout: 'arrived' })).toEqual({
+      label: 'BLUE ON YOUR TAIL',
+      tone: 'closing',
+    });
+    expect(hunterChipView({ ...FAR, who: 'KOGA', shout: 'back', distance: 3, direction: 'E' })?.label).toBe(
+      'KOGA IS BACK',
+    );
+    // A hunter already fled from is not shouting.
+    expect(
+      hunterChipView({ ...FAR, who: 'BLUE', shout: 'arrived', searching: true, searchRemainingMs: 4_000 })?.label,
+    ).toBe('BLUE LOST YOU 4s');
+  });
 });
 
 describe('the radio mast', () => {

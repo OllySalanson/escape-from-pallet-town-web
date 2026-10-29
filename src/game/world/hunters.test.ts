@@ -40,16 +40,29 @@ describe('the five hunters', () => {
   });
 
   it('gives every rival their own words for every beat', () => {
-    for (const beat of ['arrival', 'getaway', 'defeat', 'personality'] as const) {
+    for (const beat of ['getaway', 'defeat', 'personality'] as const) {
       const lines = HUNTER_RIVALS.map((rival) => rival[beat]);
       expect(new Set(lines).size).toBe(HUNTER_RIVALS.length);
       lines.forEach((line) => expect(line.trim()).not.toBe(''));
     }
     for (const rival of HUNTER_RIVALS) {
       expect(rival.caught).toHaveLength(2);
-      // The arrival names who it is, because that box is the only place the
-      // player is told who is hunting them once the raid has started.
-      expect(rival.arrival.startsWith(rival.name)).toBe(true);
+      // Both lines are theirs, said in their own name.
+      rival.caught.forEach((line) => expect(line.startsWith(`${rival.name}: "`)).toBe(true));
+    }
+    expect(new Set(HUNTER_RIVALS.map((rival) => rival.caught[0])).size).toBe(HUNTER_RIVALS.length);
+  });
+
+  /**
+   * The captain, 2026-10-29: "when he catches you it should say whatever you
+   * found loser it's mine". The catch is the only time a rival speaks before
+   * the fight now that the arrival is a glow, so its first line gloats about
+   * the pack - in each rival's own voice, never one sentence five times.
+   */
+  it('gloats about your loot as they catch you', () => {
+    for (const rival of HUNTER_RIVALS) {
+      expect(rival.caught[0]).toMatch(/found|pack|loot|gathered/i);
+      expect(rival.caught[0]).toMatch(/mine|take/i);
     }
   });
 });

@@ -193,6 +193,9 @@ import {
 } from '../run/raidSettlement';
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
+import { HunterEdgeGlow } from '../ui/HunterEdgeGlow';
+import { prefersReducedMotion } from '../ui/reducedMotion';
+import { hunterWarningStrength } from '../world/hunterWarning';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { PRESS_ARROWS } from '../ui/pressArrows';
@@ -243,6 +246,7 @@ import {
   OBJECTIVE_DETAIL_MS,
   PLACE_PLATE_MS,
   openRaidCue,
+  HUNTER_SHOUT_MS,
   hunterChipView,
   objectiveChipLines,
   placePlateLine,
@@ -874,6 +878,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Whether the hunter's approach has already been announced. See `nextHunterProximity`. */
   private hunterNear = false;
   /**
+   * When the hunter last came on to this map, on the scene's clock, and whether
+   * it was coming back for the enrage: the edge glow's arrival pulses and the
+   * chip's shout are read off it (`hunterWarning.ts`). Null until it comes.
+   */
+  private hunterArrived: { readonly atMs: number; readonly returning: boolean } | null = null;
+  /** The red rim round the screen while the hunter is on the player's tail. */
+  private hunterGlow: HunterEdgeGlow | undefined;
+  /**
    * The way the hunter last walked. Scene state rather than hunter state: it
    * is how the figure is drawn, and after a battle it starts facing down again
    * like every other figure the rebuilt world stands up.
@@ -994,6 +1006,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
     this.hunterNear = false;
+    this.hunterArrived = null;
     this.hunterFacing = 'down';
     this.hunterStillMs = 0;
     // Phaser destroyed its sprite with the scene; this only stops pointing at it.
@@ -1452,8 +1465,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterFacing = hunter.facing;
     this.drawSharedHunter();
     if (arriving && hunter.position) {
-      audioManager.play('hunterArrival');
-      this.interrupt([this.hunterRival().arrival], [hunter.position]);
+      this.hunterArrives(false);
     }
   }
 
@@ -3886,6 +3898,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     this.raidHud = new RaidHud(this);
+    this.hunterGlow = new HunterEdgeGlow(this);
     this.objectiveCue = '';
     this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
     this.noteDistrict(this.arrivedFromBattle);
@@ -4130,6 +4143,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         prize: prizeChipView(this.prizeInMind()),
         friend: this.friendChip(),
         hunter: hunterChipView({
+          who: this.hunterRival().name,
+          shout: this.hunterShout(),
           searching: isHunterSearching(this.hunterState),
           searchRemainingMs: this.hunterState.searchRemainingMs,
           distance: this.hunterStepsAway(),
@@ -4155,6 +4170,28 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.time.now,
       dialogOver,
     );
+    this.hunterGlow?.render(
+      hunterWarningStrength({
+        nowMs: this.time.now,
+        arrivedAtMs: this.hunterArrived?.atMs ?? null,
+        stepsAway: this.hunterState.defeated ? null : this.hunterStepsAway(),
+        lostYou:
+          isHunterSearching(this.hunterState) ||
+          (this.playerIsHidden() && isHunterOffTheScent(this.hunterState, this.currentTile)),
+        reducedMotion: prefersReducedMotion(),
+      }),
+      this.scale.width,
+      this.scale.height,
+    );
+  }
+
+  /** What the hunter chip shouts for a moment after the hunter arrives, or null. */
+  private hunterShout(): 'arrived' | 'back' | null {
+    const arrived = this.hunterArrived;
+    if (!arrived || this.hunterState.defeated || this.time.now - arrived.atMs >= HUNTER_SHOUT_MS) {
+      return null;
+    }
+    return arrived.returning ? 'back' : 'arrived';
   }
 
   /** Steps to the hunter, or null when it is not on this map. */
@@ -4184,6 +4221,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private destroyRunTimerHud(): void {
     this.raidHud?.destroy();
     this.raidHud = undefined;
+    this.hunterGlow?.destroy();
+    this.hunterGlow = undefined;
   }
 
   private bindControls(): void {
@@ -7171,11 +7210,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     };
     this.createHunterSprite();
     if (awaitingSpawn) {
-      audioManager.play('hunterArrival');
       // A beaten hunter back for the enrage says so: it is the one return
       // there is (`hunterAtEnrage`).
-      this.interrupt([returning ? this.hunterRival().comeback : this.hunterRival().arrival], [position]);
+      this.hunterArrives(returning);
     }
+  }
+
+  /**
+   * The hunter coming on to the map, said without stopping anybody: the
+   * arrival sting, the edge glow's pulses and the chip shouting who it is
+   * (`hunterWarning.ts`). It used to be the rival's line in a dialogue box,
+   * which froze the player at the moment they most wanted to move.
+   */
+  private hunterArrives(returning: boolean): void {
+    audioManager.play('hunterArrival');
+    this.hunterArrived = { atMs: this.time.now, returning };
   }
 
   /** Who is hunting this raid - a face and lines, never a fight (`hunters.ts`). */
