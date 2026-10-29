@@ -105,12 +105,17 @@ export function countSelector(options: CountSelectorOptions): string {
   const min = options.min ?? 0;
   const max = Math.max(min, options.max);
   const value = clampCount(options.value, min, max);
+  // The minus at the floor is left reachable, like the plus at the ceiling, so
+  // the cursor stays on the row when its last one is taken out.
   const wiring = `data-count-kind="${options.kind}" data-count-id="${escapeAttribute(options.id)}"`;
   const label = escapeAttribute(options.label);
   const atCeiling = value >= max;
-  const minus = `<button class="px-window px-step" ${wiring} data-count-dir="-1" data-help="${escapeAttribute(options.help)}" aria-label="Fewer ${label}"${value > min ? '' : ' disabled'}>−</button>`;
+  const minus = `<button class="px-window px-step" ${wiring} data-count-dir="-1" data-help="${escapeAttribute(value > min ? options.help : MINUS_AT_FLOOR)}" aria-label="Fewer ${label}"${value > min ? '' : ' aria-disabled="true"'}>−</button>`;
   // Inert at the ceiling but still reachable: a control the cursor cannot land
   // on can never say why it will not move.
   const plus = `<button class="px-window px-step" ${wiring} data-count-dir="1" data-help="${escapeAttribute(atCeiling ? options.limit : options.help)}" aria-label="More ${label}"${atCeiling ? ' aria-disabled="true"' : ''}>+</button>`;
   return `<span class="px-stepper px-count" role="group" aria-label="${label}" data-count="${options.kind}:${escapeAttribute(options.id)}" data-count-value="${value}" data-count-min="${min}" data-count-max="${max}">${minus}<b role="spinbutton" aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${value}">${value}</b>${plus}</span>`;
 }
+
+/** What the minus says once there is nothing left to take away. */
+export const MINUS_AT_FLOOR = 'There are none to take away.';

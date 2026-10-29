@@ -49,7 +49,10 @@ describe('count selector', () => {
 
   it('shuts the minus at the floor and shows the running total', () => {
     const none = selector(0, 3);
-    expect(none).toContain('disabled');
+    // Shut, but still a cursor stop: `disabled` dropped the cursor to the top
+    // of the list when the last one was taken out.
+    expect(none).toContain('data-count-dir="-1" data-help="There are none to take away." aria-label="Fewer Potion" aria-disabled="true"');
+    expect(none).not.toMatch(/ disabled[ >]/);
     expect(none).toContain('aria-valuenow="0"');
     expect(selector(2, 3)).toContain('<b role="spinbutton" aria-valuemin="0" aria-valuemax="3" aria-valuenow="2">2</b>');
   });

@@ -74,6 +74,9 @@ function speakToHim(storage: MemoryStorage): DayCareHub {
       root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] },
       focus: vi.fn(),
       refocus: vi.fn(),
+      redraw(markup: string) {
+        this.root.innerHTML = markup;
+      },
     },
   });
   hub.init({ view: 'daycare', at: { x: 33, y: 11 } });

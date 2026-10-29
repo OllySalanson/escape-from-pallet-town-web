@@ -166,6 +166,20 @@ export class MenuOverlay {
     this.markScrollCues();
   }
 
+  /**
+   * Draws new markup for the same screen, keeping every pane scrolled where it
+   * was. Setting `innerHTML` puts each new pane back at its top, and the cursor
+   * is only put back a frame later - by which time a pointer resting on the
+   * list had moved it onto whatever row now sat under it, so packing a supply
+   * halfway down the loadout jumped the list to its top and the cursor with it
+   * (the captain, 2026-10-29). A pane is matched by its classes and its place
+   * among panes with the same classes, which is stable across redraws of one
+   * screen; a different screen should be drawn with plain `innerHTML`.
+   */
+  public redraw(markup: string): void {
+    redrawKeepingScroll(this.root, markup);
+  }
+
   /** Starts the cursor on the first of these selectors the screen has. */
   public focus(...selectors: string[]): void {
     requestAnimationFrame(() => this.moveCursorTo(this.firstMatch(selectors)));
@@ -1085,6 +1099,46 @@ const TEXT_SIZED_BOXES = '.px-name, .px-tag, .px-button, .px-chip, .px-back, .px
 export const COLUMN_GAP_UNITS = 4;
 
 /** A control is the same control across renders if it carries the same wiring. */
+/** What `redrawKeepingScroll` needs of a screen: its markup and its elements. */
+export interface RedrawnRoot {
+  innerHTML: string;
+  querySelectorAll(selector: '[class]'): Iterable<{ getAttribute(name: 'class'): string | null; scrollTop: number }>;
+}
+
+/**
+ * Puts new markup into a screen and scrolls each new element as far as the
+ * old element in its place was. An element's place is its classes and how
+ * many elements with the same classes came before it, which is stable across
+ * two drawings of one screen.
+ */
+export function redrawKeepingScroll(root: RedrawnRoot, markup: string): void {
+  const kept = new Map<string, number>();
+  for (const [key, element] of keyedByClasses(root)) {
+    if (element.scrollTop > 0) {
+      kept.set(key, element.scrollTop);
+    }
+  }
+  root.innerHTML = markup;
+  for (const [key, element] of keyedByClasses(root)) {
+    const top = kept.get(key);
+    if (top !== undefined) {
+      element.scrollTop = top;
+    }
+  }
+}
+
+function keyedByClasses(root: RedrawnRoot): Map<string, { scrollTop: number }> {
+  const seen = new Map<string, number>();
+  const keyed = new Map<string, { scrollTop: number }>();
+  for (const element of root.querySelectorAll('[class]')) {
+    const classes = element.getAttribute('class') ?? '';
+    const nth = seen.get(classes) ?? 0;
+    seen.set(classes, nth + 1);
+    keyed.set(`${classes}#${nth}`, element);
+  }
+  return keyed;
+}
+
 function focusKeyOf(control: HTMLElement): string | null {
   const entries = Object.entries(control.dataset).filter(([name]) => name !== 'help');
   return entries.length === 0

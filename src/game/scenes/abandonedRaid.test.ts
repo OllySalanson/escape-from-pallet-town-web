@@ -88,6 +88,9 @@ function openLab(storage: MemoryStorage): { hub: HubInternals; start: ReturnType
       root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] },
       focus: vi.fn(),
       refocus: vi.fn(),
+      redraw(markup: string) {
+        this.root.innerHTML = markup;
+      },
     },
   });
   hub.init();

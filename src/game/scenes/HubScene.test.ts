@@ -389,6 +389,9 @@ function createHub(
       },
       focus: vi.fn(),
       refocus: vi.fn(),
+      redraw(markup: string) {
+        this.root.innerHTML = markup;
+      },
     },
   });
   hub.init({
@@ -463,6 +466,26 @@ function createWornHub(damage = (maxHp: number) => maxHp - 3): {
 }
 
 describe('hub deployment route', () => {
+  it('keeps the loadout list where it was when something is packed, and starts a new screen at the top (the captain, 2026-10-29)', () => {
+    const { hub } = createHub();
+    const overlay = (hub as unknown as { overlay: { redraw: (markup: string) => void } }).overlay;
+    const redraw = vi.spyOn(overlay, 'redraw');
+    intoTheArena(hub);
+    expect(redraw).not.toHaveBeenCalled();
+
+    // Packing redraws the loadout itself, which keeps every pane's scroll.
+    (hub as unknown as { stepCount(group: unknown, delta: number): void }).stepCount(
+      { dataset: { count: 'item:poke-ball', countValue: '0', countMin: '0', countMax: '3' }, querySelector: () => null },
+      1,
+    );
+    expect(redraw).toHaveBeenCalledTimes(1);
+    expect(hub.flow.items.find((stack) => stack.itemId === 'poke-ball')?.quantity).toBe(1);
+
+    // Another screen is drawn fresh.
+    hub.setView('stash');
+    expect(redraw).toHaveBeenCalledTimes(1);
+  });
+
   // The hub shares one process-wide run manager, so a started raid has to be
   // resolved before the next test can deploy again.
   beforeEach(() => {
@@ -1885,7 +1908,7 @@ describe('taking a status line down', () => {
     };
     const timers: { callback: () => void; remove: ReturnType<typeof vi.fn> }[] = [];
     Object.assign(hub as unknown as Record<string, unknown>, {
-      overlay: { root, focus: vi.fn(), refocus: vi.fn() },
+      overlay: { root, focus: vi.fn(), refocus: vi.fn(), redraw: (markup: string) => { root.innerHTML = markup; } },
       time: {
         delayedCall: (_ms: number, callback: () => void) => {
           const timer = { callback, remove: vi.fn() };
