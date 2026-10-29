@@ -4,7 +4,7 @@ import { STEP_DURATION_MS } from '../movement/stepClock';
 import { BOT_SLOT_MS, HARBOUR_BOTS, botAt, visitPlan, visitsAt } from './harbourBots';
 import { baseGame } from './baseGames.testkit';
 import { buildRoom, roomNamed } from './rooms';
-import { HarbourRegulars, REGULAR_WAVES_WITHIN, callAt, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
+import { HarbourRegulars, REGULARS_CHAT_WITHIN, REGULAR_WAVES_WITHIN, callAt, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
 
 const FRAME = 100;
 
@@ -106,6 +106,43 @@ describe('the regulars as drawn', () => {
       }
       expect(regulars.figures().find((figure) => figure.id === stander!.id)?.waving ?? false).toBe(false);
     }
+  });
+});
+
+describe('two regulars meeting', () => {
+  it('turn to talk, and wave one after the other', () => {
+    const regulars = new HarbourRegulars();
+    const away = { place: 'yard' as const, player: { x: 0, y: 0 } };
+    const facing = (from: { x: number; y: number }, to: { x: number; y: number }) =>
+      Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) ? (to.x > from.x ? 'right' : 'left') : to.y > from.y ? 'down' : 'up';
+    let clock = TEST_CLOCK_ORIGIN_MS;
+    let pair: [string, string] | null = null;
+    // Run on until two are standing about together, and have been for a moment.
+    let together = 0;
+    for (let tick = 0; tick < 40 * 60 * 10 && together < 5; tick += 1) {
+      regulars.tick(clock, FRAME, away);
+      clock += FRAME;
+      const still = regulars.figures().filter((figure) => !figure.toward);
+      const meeting = still.flatMap((a) =>
+        still.filter((b) => a.id < b.id && Math.abs(a.tile.x - b.tile.x) + Math.abs(a.tile.y - b.tile.y) <= REGULARS_CHAT_WITHIN).map((b) => [a.id, b.id] as [string, string]),
+      )[0];
+      together = meeting && pair && meeting.join() === pair.join() ? together + 1 : 0;
+      pair = meeting ?? null;
+    }
+    expect(pair).not.toBeNull();
+    const [a, b] = pair!.map((id) => regulars.figures().find((figure) => figure.id === id)!);
+    expect(a.facing).toBe(facing(a.tile, b.tile));
+    expect(b.facing).toBe(facing(b.tile, a.tile));
+    // One hand up, then the other: never both at once.
+    const waved = new Set<string>();
+    for (let ms = 0; ms < WAVE_SHOWN_MS * 3; ms += FRAME) {
+      regulars.tick(clock, FRAME, away);
+      clock += FRAME;
+      const up = regulars.figures().filter((figure) => pair!.includes(figure.id) && figure.waving);
+      expect(up.length).toBeLessThanOrEqual(1);
+      up.forEach((figure) => waved.add(figure.id));
+    }
+    expect(waved.size).toBeGreaterThanOrEqual(1);
   });
 });
 

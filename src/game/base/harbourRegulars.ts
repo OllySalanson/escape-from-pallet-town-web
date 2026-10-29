@@ -11,12 +11,13 @@ import { directionBetween, sameTile } from './partner';
  * through the same `HarbourCrowd` another player's figure is walked through,
  * so a regular's steps, turns and partner at heel are exactly a player's.
  *
- * Only two things here are this browser's own rather than the clock's, and
- * both are how a regular answers the player in front of them: one spoken to
+ * What is this browser's own rather than the clock's is how a regular
+ * answers whoever is in front of them: one spoken to
  * stands still facing the player until the box is read (`speakTo`), and catches
  * up with the schedule after; and one the player walks up to while they are
  * standing about turns to look, and puts a hand up once a visit - as a player
- * who saw somebody coming would. Waved at or spoken to, they wave back.
+ * who saw somebody coming would. Waved at or spoken to, they wave back. Two
+ * standing about near each other turn to talk, and wave once on meeting.
  *
  * Phaser-free; `BaseScene` ticks it and hands its figures to `HarbourFigures`
  * beside the real players'.
@@ -27,6 +28,9 @@ export const REGULAR_NOTICES_WITHIN = 2;
 
 /** How near for one to wave at the player of their own accord, once a visit. */
 export const REGULAR_WAVES_WITHIN = 3;
+
+/** How near two regulars standing about have to be to turn and talk to each other. */
+export const REGULARS_CHAT_WITHIN = 3;
 
 /** Where the regulars are drawn: the yard, or a keeper's room they call in (`ROOM_CALLS`). */
 export type RegularsPlace = 'yard' | SharedRoomId;
@@ -44,6 +48,8 @@ export class HarbourRegulars {
   private readonly wavedAt = new Map<string, number>();
   /** The visits that have already waved at the player unasked. */
   private readonly greeted = new Set<number>();
+  /** Which visit has waved at which on meeting, so a meeting is one wave each. */
+  private readonly met = new Set<string>();
   private readonly spoken = new Map<string, number>();
   /** The walk from a room's mat to where a regular stands in it, by visit. */
   private readonly roomWalks = new Map<string, readonly GridPosition[] | null>();
@@ -60,6 +66,10 @@ export class HarbourRegulars {
    */
   public tick(clockMs: number, deltaMs: number, watcher: RegularsWatcher | null): void {
     this.ms += deltaMs;
+    if (this.met.size > 2_000) {
+      // A page left open all night: meetings that long ago are not waved at again anyway.
+      this.met.clear();
+    }
     const here = new Map<string, number>();
     for (const visit of visitsAt(clockMs)) {
       here.set(visitPlan(visit).bot.id, visit);
@@ -70,6 +80,7 @@ export class HarbourRegulars {
         this.visitOf.delete(id);
       }
     }
+    const placed: { id: string; visit: number; bot: HarbourBot; at: BotWhere & { readonly place: RegularsPlace } }[] = [];
     for (const [id, visit] of here) {
       const plan = visitPlan(visit);
       const where = botAt(plan, clockMs);
@@ -90,8 +101,27 @@ export class HarbourRegulars {
         this.crowd.forget(id);
         continue;
       }
+      placed.push({ id, visit, bot: plan.bot, at });
+    }
+    for (const { id, visit, bot, at } of placed) {
       const player = watcher?.place === at.place ? watcher.player : null;
       let facing = at.facing;
+      // Two standing about near each other turn to talk, and the first to
+      // arrive waves - the other back as the hand comes down - once a meeting.
+      const friend = at.walking
+        ? undefined
+        : placed.find(
+            (other) =>
+              other.id !== id && !other.at.walking && other.at.place === at.place && steps(other.at.tile, at.tile) <= REGULARS_CHAT_WITHIN,
+          );
+      if (friend) {
+        facing = directionBetween(at.tile, toward(at.tile, friend.at.tile)) ?? facing;
+        const meeting = [visit, friend.visit].sort((a, b) => a - b).join(':');
+        if (!this.met.has(`${meeting}:${visit}`)) {
+          this.met.add(`${meeting}:${visit}`);
+          this.wavedAt.set(id, this.ms + (visit < friend.visit ? 0 : WAVE_SHOWN_MS));
+        }
+      }
       if (!at.walking && player && steps(at.tile, player) <= REGULAR_NOTICES_WITHIN) {
         facing = directionBetween(at.tile, toward(at.tile, player)) ?? facing;
       }
@@ -100,7 +130,6 @@ export class HarbourRegulars {
         this.wavedAt.set(id, this.ms);
         facing = directionBetween(at.tile, toward(at.tile, player)) ?? facing;
       }
-      const bot = plan.bot;
       if (!this.crowd.ids().includes(id)) {
         this.crowd.hear({ from: id, place: at.place, path: [at.tile], facing, partner: bot.partner });
       }
