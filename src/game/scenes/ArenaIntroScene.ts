@@ -42,6 +42,8 @@ import { drawPixelWindow } from '../ui/pixelWindow';
 import { flashScreen } from '../ui/screenFlash';
 import { iconTextureKey, itemIconName, WORLD_ICONS } from '../ui/icons';
 import { stampedWord } from '../ui/stampedLettering';
+import { readLook } from '../look/look';
+import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import {
   CHARACTER_DESIGN_SHEET_COLUMNS,
@@ -129,8 +131,8 @@ const GREEN = { fill: ['#f0fff0', '#a8f080', '#58c840', '#2c9028'], rim: '#18501
 interface Walker {
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly kind: 'person' | 'partner';
-  /** The texture a person's walk cycle is cut from, or null where the design stands still. */
-  readonly walkSheet: string | null;
+  /** The key of a person's walk cycle for a facing, or null where the design stands still. */
+  readonly walk: ((facing: Direction) => string) | null;
   readonly columns: number;
   readonly species?: PartnerSpeciesId;
   readonly origin: { readonly x: number; readonly y: number };
@@ -207,6 +209,8 @@ export class ArenaIntroScene extends Phaser.Scene {
     const unseen = new SaveManager().watchArenaIntro();
     this.viewing = unseen ? arenaIntroViewing(data.savedGame.raidProgress) : 'again';
     this.cast = arenaIntroCast(data.savedGame, loadPlayerName());
+    // The player in what they wear, as the harbour draws them (`look/`).
+    this.playerTexture = lookTexture(this, readLook(data.savedGame.raidProgress.look));
     this.words = arenaIntroWords(this.cast);
     void audioManager.loadCries([
       this.cast.partner.dexId,
@@ -474,17 +478,22 @@ export class ArenaIntroScene extends Phaser.Scene {
   private person(texture: string, design: CharacterDesignId | null, origin: { x: number; y: number }, tile: GridPosition, facing: Direction): Walker {
     const columns = design ? CHARACTER_DESIGN_SHEET_COLUMNS : CHARACTER_SHEET_COLUMNS;
     const sprite = this.world(this.add.sprite(0, 0, texture, getIdleFrame(facing, columns)).setOrigin(0, 0));
-    // The shared sheet's cycle is registered under the player's own key; a
-    // design that stands still in FireRed has none, and slides a step instead.
-    const walkSheet = design ? (getCharacterDesign(design).walks ? texture : null) : 'player';
-    const walker: Walker = { sprite, kind: 'person', walkSheet, columns, origin, tile, facing };
+    // The player walks in whatever they wear (`look/lookTexture.ts`, whose
+    // sheets are laid out as `character.png` is); a design that stands still
+    // in FireRed has no cycle, and slides a step instead.
+    const walk = design
+      ? getCharacterDesign(design).walks
+        ? (way: Direction) => getWalkAnimationKey(way, texture)
+        : null
+      : (way: Direction) => lookWalkKey(texture, way);
+    const walker: Walker = { sprite, kind: 'person', walk, columns, origin, tile, facing };
     this.stand(walker, tile, facing);
     return walker;
   }
 
   private partner(species: PartnerSpeciesId, origin: { x: number; y: number }, tile: GridPosition, facing: Direction): Walker {
     const sprite = this.world(this.add.sprite(0, 0, partnerTextureKey(species), partnerFrame(facing, 0)).setOrigin(0, 0));
-    const walker: Walker = { sprite, kind: 'partner', walkSheet: null, columns: 2, species, origin, tile, facing };
+    const walker: Walker = { sprite, kind: 'partner', walk: null, columns: 2, species, origin, tile, facing };
     this.stand(walker, tile, facing);
     return walker;
   }
@@ -519,8 +528,8 @@ export class ArenaIntroScene extends Phaser.Scene {
     walker.tile = to;
     const { x, y } = this.spot(walker, to);
     if (walker.kind === 'person') {
-      if (walker.walkSheet) {
-        walker.sprite.anims.play(getWalkAnimationKey(facing, walker.walkSheet), true);
+      if (walker.walk) {
+        walker.sprite.anims.play(walker.walk(facing), true);
       } else {
         walker.sprite.setFrame(getIdleFrame(facing, walker.columns));
       }
@@ -719,6 +728,7 @@ export class ArenaIntroScene extends Phaser.Scene {
 
   // -- beats -----------------------------------------------------------------
 
+  private playerTexture: string = SHARED_CHARACTER_TEXTURE;
   private hero!: Walker;
   private buddy!: Walker;
   private torch: Phaser.GameObjects.Image | null = null;
@@ -730,7 +740,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     const start = beatStart('sneak');
     this.frameSet(FOREST_ORIGIN, ARENA_INTRO_FOREST_WIDTH, ARENA_INTRO_FOREST_HEIGHT);
     main.setZoom(1);
-    this.hero = this.person(SHARED_CHARACTER_TEXTURE, null, FOREST_ORIGIN, SNEAK_ROUTE[0], 'up');
+    this.hero = this.person(this.playerTexture, null, FOREST_ORIGIN, SNEAK_ROUTE[0], 'up');
     this.buddy = this.partner(this.cast.partner.id as PartnerSpeciesId, FOREST_ORIGIN, { x: SNEAK_ROUTE[0].x, y: SNEAK_ROUTE[0].y + 1 }, 'up');
     main.startFollow(this.hero.sprite, true, 0.15, 0.15, -8, -16);
     main.fadeIn(600, 0, 0, 0);
@@ -1126,7 +1136,7 @@ export class ArenaIntroScene extends Phaser.Scene {
       );
       const face = keep(
         this.add
-          .sprite(Math.round(split / 2) - 22, area.y + Math.round(area.height / 2) - 52, SHARED_CHARACTER_TEXTURE, getIdleFrame('down'))
+          .sprite(Math.round(split / 2) - 22, area.y + Math.round(area.height / 2) - 52, this.playerTexture, getIdleFrame('down'))
           .setOrigin(0, 0)
           .setScale(3)
           .setDepth(DEPTH.ui + 25),
@@ -1371,7 +1381,9 @@ export class ArenaIntroScene extends Phaser.Scene {
       return {
         sprite,
         kind: 'person',
-        walkSheet: getCharacterDesign(this.cast.rival.design).walks ? characterDesignTextureKey(this.cast.rival.design) : null,
+        walk: getCharacterDesign(this.cast.rival.design).walks
+          ? (way: Direction) => getWalkAnimationKey(way, characterDesignTextureKey(this.cast.rival.design))
+          : null,
         columns: CHARACTER_DESIGN_SHEET_COLUMNS,
         origin: FOREST_ORIGIN,
         tile: { x: 25, y: 13 },
@@ -1442,7 +1454,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     const start = beatStart('arena');
     const arenaSize = { width: this.arenaMap.width, height: this.arenaMap.height };
     const main = this.cameras.main;
-    const player = this.person(SHARED_CHARACTER_TEXTURE, null, ARENA_ORIGIN, ARENA_PLAYER, 'up');
+    const player = this.person(this.playerTexture, null, ARENA_ORIGIN, ARENA_PLAYER, 'up');
     this.partner(this.cast.partner.id as PartnerSpeciesId, ARENA_ORIGIN, ARENA_PARTNER, 'left');
     const host = this.person(characterDesignTextureKey('gym-guide'), 'gym-guide', ARENA_ORIGIN, ARENA_HOST, 'right');
     this.at(start, () => {

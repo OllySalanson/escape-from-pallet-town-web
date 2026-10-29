@@ -91,7 +91,18 @@ try {
   await step(200);
   await page.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Confirm'))?.click()`);
   await until(sceneIs('base'), 'the harbour');
+  // Dressed in the boutique's starter pieces rather than the classic figure,
+  // so the trailer can be seen to draw the player in what they wear.
+  await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1'));
+    save.raidProgress.look = { head: 'short-crop', top: 'plain-tee', legs: 'plain-trousers', body: null };
+    localStorage.setItem('escape-from-pallet-town.save.v1', JSON.stringify(save)); })()`);
+  await page.send('Page.navigate', { url });
+  await page.waitFor(sceneIs('title'), { what: 'the title' });
+  if (!live) await page.evaluate(`${GAME}.pauseLoop()`);
+  await press('Space');
+  await until(sceneIs('base'), 'the harbour, dressed');
   await step(1500);
+  const worn = await page.evaluate(`${GAME}.scene.getScene('base').playerTexture`);
 
   // Up to the Arena's door, stopping the moment the trailer starts.
   const intro = 'INTRO';
@@ -108,6 +119,8 @@ try {
   await until(sceneIs('arenaIntro'), 'the trailer');
   const seen = await page.evaluate(`JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress.arenaIntroSeen === true`);
   expect('the save records the trailer as seen once it starts', seen);
+  const drawn = await page.evaluate(`${GAME}.scene.getScene('arenaIntro').playerTexture`);
+  expect(`the trailer draws the player in what they wear (${drawn})`, drawn.startsWith('look:') && drawn === worn);
   const chip = await page.evaluate(`${GAME}.scene.getScene('arenaIntro').viewing`);
   expect(`the first viewing is the first (${chip})`, chip === 'first');
 

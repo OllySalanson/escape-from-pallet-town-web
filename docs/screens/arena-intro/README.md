@@ -27,6 +27,7 @@ ends it on the loadout.
 | `21-ready.png` | Back at the Arena's door: the Gym Guide asks. |
 | `22-loadout.png` | BOOK YOUR LOADOUT - any key, and it is the loadout. |
 | `23-again-skip.png` | Every visit after the first: SKIP, bottom right. |
+| `look-panel.png` | The comic panel for a player dressed at THE HARBOUR BOUTIQUE: the trailer draws them in what they wear. |
 
 All of them are `tools/playtest/arenaIntro.mjs` against a test-mode build at the real 3x window,
 which also checks that it is seen once, skipped after and ends on the loadout.
