@@ -226,8 +226,12 @@ export interface HunterChipIntel {
 export interface HunterChipInput {
   /** The rival hunting this raid, as their name is printed: `BLUE`. Absent reads `HUNTER`. */
   readonly who?: string;
-  /** For `HUNTER_SHOUT_MS` after the hunter arrives: whether it has just arrived or come back for the enrage. */
-  readonly shout?: 'arrived' | 'back' | null;
+  /**
+   * For `HUNTER_SHOUT_MS` after the hunter arrives: whether it has just arrived
+   * or come back for the enrage - or, after a hunter of the pack gives up on
+   * the player, that it has lost them.
+   */
+  readonly shout?: 'arrived' | 'back' | 'lost' | null;
   /** True while an escape is still holding the hunter off the trail. */
   readonly searching: boolean;
   readonly searchRemainingMs?: number;
@@ -307,6 +311,11 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
     return { label: `${input.who ?? 'HUNTER'} OFF THE SCENT`, tone: 'lost-you' };
   }
   const who = input.who ?? 'HUNTER';
+  // A getaway is said as plainly as an arrival: the chase is over, and which
+  // hunter gave up is what the player wants to read in the moment it does.
+  if (input.shout === 'lost') {
+    return { label: `${who} LOST YOU`, tone: 'lost-you' };
+  }
   // The shout outranks the distance (the hunter arrives inside it) but not the
   // two lines above, which are only true after it has been fled or lost.
   if (input.shout) {

@@ -83,14 +83,21 @@ glinting, that is definitely worth the detour. Probably.
 
 ### 3. Somebody's coming
 
-Every raid, one of five rivals is sent after you, and you'll know about it: the edges of the screen
-flush red while they're on your tail, and nobody stops the game to tell you so. They bring one Pokémon
-for each of yours that can still fight, a few levels below it, led by their own favourite and
-evolving as they level, so a Charizard gets a Raticate, not a Rattata. Walking into them, or letting
-them walk into you, means a fight, and a speech about whose loot that is now. They close in as you walk, and standing still won't hide you
-either. Running away always works, but costs you a chunk of the clock, so a raid that runs from
-everything ends up running out of time instead. Beat them and they're gone for good. Well, until the
-clock runs out.
+A minute in, the rivals come out, one to every district of the vale, each walking their own patch.
+Get seen and you'll know it: a "!" over their head, the edges of the screen flush red, and they
+run at you exactly as fast as you can run. Keep moving and they never gain a step. Stop for anything
+(a crate, a sign, a wall you walked into) and they do. Lead them flat out into a corner and they
+stumble for a step; break their line of sight long enough and they lose you, have a look round
+where they last saw you, and wander home. Tall grass hides you, but it's tall grass, and a wild
+Pokémon jumping out lets them catch up. And they only chase you out of their patch while they're
+right on your heels, which is lovely until you run straight into the next one.
+
+They bring one Pokémon for each of yours that can still fight, a few levels below it, led by their
+own favourite and evolving as they level, so a Charizard gets a Raticate, not a Rattata. Walking
+into them, or letting them walk into you, means a fight, and a speech about whose loot that is now.
+Running away always works, but costs you a chunk of the clock, so a raid that runs from everything
+ends up running out of time instead. Beat one and they're gone for good. Well, until the clock runs
+out.
 
 <p align="center">
   <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Millbrook: the screen's edges flush red and the corner says BLUE ON YOUR TAIL, and you keep walking.">
@@ -230,8 +237,9 @@ Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
   <img src="docs/readme/cast.png" width="800" alt="The cast. At home in the Harbour: Professor Oak sends you out, Nurse Joy patches you up, Brock builds things, Bill does deals. Out in the field, on your trail: Blue, Misty, Lt. Surge, Koga and Sabrina. One of them hunts you every raid.">
 </p>
 
-The five rivals take turns, one per raid, and each has their own voice for arriving, catching you,
-losing you and losing to you. None of them is subtle about it.
+The five rivals share the vale's districts between them, never the same face in two districts side
+by side, and who keeps the patch you land in changes every raid. Each has their own voice for
+catching you, losing you and losing to you. None of them is subtle about it.
 
 ## The world
 
@@ -290,7 +298,7 @@ sightseeing.
 | <kbd>Space</kbd> / <kbd>Enter</kbd> | Talk, read, work a landmark, choose | On a door mat: open that keeper's counter |
 | <kbd>B</kbd> | Open the pack | |
 | <kbd>P</kbd> | Open the party | |
-| <kbd>O</kbd> | Open the field guide | |
+| <kbd>O</kbd> | Open the field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
 | <kbd>K</kbd> | | In your house or on its step: knock on somebody else's door |
 | <kbd>Esc</kbd> | Close a screen | Back out of a screen |

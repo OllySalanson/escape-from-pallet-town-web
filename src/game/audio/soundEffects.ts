@@ -386,6 +386,11 @@ export const SOUND_EFFECTS = {
     moment: 'The hunter closes to within a few tiles',
     tones: [tri(82, 0.09, 0.09), tri(82, 0.12, 0.075, 0.14)],
   },
+  hunterSnag: {
+    channel: 'world',
+    moment: 'A hunter running flat out snags on a corner and loses a step',
+    tones: [noise(700, 0.05, 0.06), tri(98, 0.07, 0.05, 0.02)],
+  },
   hunterContact: {
     channel: 'alert',
     ducksMusic: true,

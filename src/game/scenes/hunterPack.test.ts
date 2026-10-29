@@ -72,6 +72,11 @@ function packBeside(mode: PackHunter['mode']) {
     activatedPoiIds: new Set<string>(),
     completedContracts: [],
     packMarks: new Map(),
+    packSearchMarks: new Map(),
+    packLost: null,
+    packShouter: null,
+    hunterArrived: null,
+    time: { now: 10_000 },
     bag: new Bag(),
     dialogBox,
     dialogRaised: false,
@@ -91,6 +96,10 @@ function packBeside(mode: PackHunter['mode']) {
       tryStartHunterBattle(): boolean;
       tryWalkIntoHunter(facing: string): boolean;
       settlePackAfterFight(fromBattle: boolean): void;
+      onPackEvent(event: { kind: string; hunter: PackHunter }): void;
+      hunterShout(): string | null;
+      hunterRival(): { name: string };
+      time: { now: number };
       hunterState: HunterState;
       cutscene: unknown;
       pendingTrainerBattle: { trainer: { name: string }; isHunter: boolean; introLines: readonly string[] } | undefined;
@@ -128,6 +137,16 @@ describe('the pack in the scene', () => {
       expect(scene.pendingTrainerBattle?.isHunter).toBe(true);
       expect(pack.engagedId).toBe(hunter.id);
     }
+  });
+
+  it('says which hunter lost you when one gives up, for a moment, while no other is after you', () => {
+    const { scene, hunter } = packBeside('chase');
+    hunter.mode = 'return';
+    scene.onPackEvent({ kind: 'gave-up', hunter });
+    expect(scene.hunterShout()).toBe('lost');
+    expect(scene.hunterRival().name).toBe(hunterRival('misty').name);
+    scene.time.now += 5_000;
+    expect(scene.hunterShout()).toBeNull();
   });
 
   it('puts a beaten hunter out of the raid', () => {

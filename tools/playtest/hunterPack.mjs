@@ -160,6 +160,91 @@ const main = async () => {
     return summary;
   };
 
+  if (args.includes('--flee')) {
+    // Caught by a hunter of the pack, run from the fight, and back: the hunter
+    // that was fought is thrown back and blind, and the rest come on.
+    await page.evaluate(`(() => { const w = ${world}; const s = w.runSession;
+      s.plan = { ...s.plan, hunter: { ...s.plan.hunter, spawnDelayMs: 0 } }; s.stepsTaken = 99; })()`);
+    await sleep(400);
+    const caughtBy = await page.evaluate(`(() => {
+      const w = ${world}; const pack = w.runSession.hunterPacks.get(w.currentMap.id);
+      const h = [...pack.hunters].sort((a, b) => Math.hypot(a.position.x - w.currentTile.x, a.position.y - w.currentTile.y) - Math.hypot(b.position.x - w.currentTile.x, b.position.y - w.currentTile.y))[0];
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const t = { x: w.currentTile.x + dx, y: w.currentTile.y + dy };
+        if (w.isBlocked(t)) continue;
+        Object.assign(h, { mode: 'chase', position: t, next: null, lastSeen: { ...w.currentTile } });
+        return h.id + ' ' + h.rivalId;
+      }
+      return null;
+    })()`);
+    console.log('caught by', caughtBy);
+    const battle = `${GAME}.scene.getScene('battle')`;
+    // The catch beat: both turn, a breath, then the rival's lines, read a press at a time.
+    for (let i = 0; i < 60 && !(await page.evaluate(sceneIs('battle'))); i += 1) {
+      await press('Space');
+      await sleep(400);
+    }
+    await until(sceneIs('battle'), 'the hunter fight');
+    console.log('in the fight with', await page.evaluate(`${battle}.trainer?.name`));
+    const seen = new Set();
+    for (let i = 0; i < 200 && (await page.evaluate(sceneIs('battle'))); i += 1) {
+      const b = await page.evaluate(`(() => { const b = ${battle}; return { mode: b.mode, commands: (b.commandTexts ?? []).map((t, i) => (i === b.selectedCommand ? '>' : '') + t.text) }; })()`);
+      if (b.mode === 'main') {
+        // Walk the menu as raid.mjs does: along the row, and down a row whenever it comes round again.
+        const selected = b.commands.find((c) => c.startsWith('>')) ?? '';
+        if (!selected.includes('FLEE') && !selected.includes('RUN')) {
+          await press(seen.has(selected) ? 'ArrowDown' : 'ArrowRight');
+          seen.add(selected);
+          await sleep(120);
+          continue;
+        }
+        seen.clear();
+      }
+      await press('Space');
+      await sleep(200);
+    }
+    await until(sceneIs('world'), 'the world back');
+    await sleep(800);
+    const after = await page.evaluate(`(() => { const w = ${world}; const pack = w.runSession.hunterPacks.get(w.currentMap.id);
+      const h = pack.hunters.find((x) => x.id === ${JSON.stringify((caughtBy ?? '').split(' ')[0])});
+      return { player: w.currentTile, hunter: h && { mode: h.mode, position: h.position, timerMs: Math.round(h.timerMs) },
+        chip: w.raidHud?.hunterChip?.text ?? null, engaged: pack.engagedId, legacy: w.hunterState }; })()`);
+    console.log('after fleeing', JSON.stringify(after));
+    await page.screenshot(`${outDir}/fled.png`);
+    return null;
+  }
+
+  if (args.includes('--marks')) {
+    // The marks, photographed: a hunter five tiles off sees the player ("!"),
+    // and then stands looking for them ("?").
+    await page.evaluate(`(() => { const w = ${world}; const s = w.runSession;
+      s.plan = { ...s.plan, hunter: { ...s.plan.hunter, spawnDelayMs: 0 } }; s.stepsTaken = 99; })()`);
+    await sleep(400);
+    const placed = await page.evaluate(`(() => {
+      const w = ${world}; const pack = w.runSession.hunterPacks.get(w.currentMap.id);
+      const h = [...pack.hunters].sort((a, b) => Math.hypot(a.position.x - w.currentTile.x, a.position.y - w.currentTile.y) - Math.hypot(b.position.x - w.currentTile.x, b.position.y - w.currentTile.y))[0];
+      for (let r = 3; r <= 6; r += 1) for (const [dx, dy, facing] of [[-r, 0, 'right'], [r, 0, 'left'], [0, -r, 'down'], [0, r, 'up']]) {
+        const t = { x: w.currentTile.x + dx, y: w.currentTile.y + dy };
+        if (w.isBlocked(t)) continue;
+        // Seen, as the pack says it: the "!" over it and the beat held long enough to photograph.
+        Object.assign(h, { mode: 'alerted', position: t, next: null, facing, timerMs: 5000, lastSeen: { ...w.currentTile } });
+        w.onPackEvent({ kind: 'noticed', hunter: h });
+        return h.id + '@' + t.x + ',' + t.y;
+      }
+      return 'nowhere';
+    })()`);
+    console.log('marks: hunter', placed);
+    await sleep(250);
+    await page.screenshot(`${outDir}/noticed.png`);
+    await page.evaluate(`(() => { const w = ${world}; const pack = w.runSession.hunterPacks.get(w.currentMap.id);
+      const h = pack.hunters.find((x) => x.mode === 'alerted' || x.mode === 'chase');
+      if (h) Object.assign(h, { mode: 'search', looks: 0, timerMs: 4000, next: null }); w.packMarks.forEach((m) => m.mark.destroy()); w.packMarks.clear(); })()`);
+    // Out of its sight while it looks: the player under nothing, so step it behind the camera's edge.
+    await sleep(300);
+    await page.screenshot(`${outDir}/searching.png`);
+    return null;
+  }
+
   // Both walks cover the same ground: the route is planned once, walked with
   // no hunters out, and walked again from the same tile with them chasing.
   const start = await page.evaluate(`JSON.stringify(${world}.currentTile)`);
