@@ -4185,3 +4185,24 @@ button {
 :where(.pixel-ui) .stats-bar.is-today {
   background: var(--gold);
 }
+
+/* --- Pixel UI: what an item does, once the pointer rests on it ----------- */
+/* `ui/itemHoverHelp.ts` stands it below the item, or above when there is no
+   room, inside the screen; it is never a target, so the pointer under it is
+   still on the item it is about. */
+.pixel-ui .px-tip {
+  position: absolute;
+  z-index: 20;
+  display: grid;
+  gap: calc(var(--u) * 1);
+  max-width: calc(var(--u) * 160);
+  padding: calc(var(--u) * 3) calc(var(--u) * 5);
+  pointer-events: none;
+}
+:where(.pixel-ui) .px-tip-name {
+  color: var(--ink);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .px-tip-what {
+  color: var(--ink-soft);
+}

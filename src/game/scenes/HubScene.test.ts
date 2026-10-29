@@ -1345,7 +1345,7 @@ describe('what the base screen leads with', () => {
   it('never breaks "packed for you" across two lines of a loadout row (playtest 47)', () => {
     const hub = createFreshHub();
     hub.setView('deploy');
-    const row = /<div class="px-row has-icon[^"]*">(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"/.exec(markupOf(hub))?.[0] ?? '';
+    const row = /<div class="px-row has-icon[^"]*"[^>]*>(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"/.exec(markupOf(hub))?.[0] ?? '';
     const facts = /<small>([^<]*)<\/small>/.exec(row)?.[1] ?? '';
 
     // Breaks fall between the facts, never inside one.
