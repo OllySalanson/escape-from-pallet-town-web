@@ -21,8 +21,9 @@ vi.mock('../ui/KnockOverlay', () => ({
   },
 }));
 const frontDoor = vi.hoisted((): { door: unknown } => ({ door: {} }));
+const others = vi.hoisted((): { here: { tile: { x: number; y: number }; toward: null }[] } => ({ here: [] }));
 vi.mock('../harbour/harbour', () => ({
-  harbour: () => ({ seenAs: 'me', figuresHere: () => [], link: { nudge: () => undefined } }),
+  harbour: () => ({ seenAs: 'me', figuresHere: () => others.here, link: { nudge: () => undefined } }),
   harbourHouses: () => ({ service: {}, door: frontDoor.door }),
 }));
 
@@ -166,13 +167,13 @@ describe('the knock sign in the garden', () => {
  * no knock key to name: knocking is the garden sign.
  */
 describe('the hint on the house mat', () => {
-  function hintOnMat(visit: boolean, keysLearned: string[] = []): string {
+  function hintOnMat(visit: boolean, keysLearned: string[] = [], facing = 'down'): string {
     const mat = { x: 4, y: 8 };
     const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
     Object.assign(scene, {
       place: { room: { room: { mat, keeper: null, things: [] }, home: {} } },
       currentTile: { ...mat },
-      facing: 'down',
+      facing,
       partner: null,
       visit: visit ? { ownerId: 'pip-id', ownerName: 'PIP', game: {} } : null,
       savedGame: { raidProgress: { keysLearned } },
@@ -190,6 +191,38 @@ describe('the hint on the house mat', () => {
 
   it("names none of them in somebody else's house", () => {
     expect(hintOnMat(true)).toBe('[DOWN] OUT');
+  });
+
+  it('says Space waves at another player standing in front of the mat', () => {
+    // Playtest 49: facing somebody said nothing, so waving was never found.
+    others.here = [{ tile: { x: 4, y: 7 }, toward: null }];
+    try {
+      expect(hintOnMat(true, [], 'up')).toBe('[SPACE] WAVE   [DOWN] OUT');
+      // Facing away from them, the mat says what it always said.
+      expect(hintOnMat(true, [], 'left')).toBe('[DOWN] OUT');
+    } finally {
+      others.here = [];
+    }
+  });
+});
+
+describe('the hint in the yard, facing another player', () => {
+  it('says Space waves at them', () => {
+    others.here = [{ tile: { x: 21, y: 12 }, toward: null }];
+    try {
+      const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+      Object.assign(scene, {
+        place: { room: undefined },
+        currentTile: { x: 20, y: 12 },
+        facing: 'right',
+        partner: null,
+        visit: null,
+        savedGame: { raidProgress: { keysLearned: ['look'] } },
+      });
+      expect((scene.hintHere as () => string).call(scene)).toBe('[SPACE] WAVE');
+    } finally {
+      others.here = [];
+    }
   });
 });
 

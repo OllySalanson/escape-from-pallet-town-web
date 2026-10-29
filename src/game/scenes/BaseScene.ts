@@ -220,6 +220,9 @@ const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 
 /** How far above the player's head their own hand goes up when they wave: clear of the chevron over it. */
 const OWN_WAVE_LIFT = 6;
+
+/** What the hint line says facing another player in the shared harbour. */
+const WAVE_HINT = '[SPACE] WAVE';
 const DIALOG_WIDTH = 232;
 const DIALOG_HEIGHT = 56;
 const DIALOG_MARGIN = 8;
@@ -1738,10 +1741,16 @@ export class BaseScene extends Phaser.Scene {
     // Facing the partner is the one thing the yard says a key does, because
     // turning to face it is the only way anybody would find out.
     const partner = this.partner && this.partnerAt(facing) ? `[SPACE] ${this.partner.name}` : undefined;
+    // Another player faced is waved at, and the same goes for them: facing
+    // somebody is the only way anybody would find that out (playtest 49).
+    const wave = !partner && this.otherPlayerAt(facing) ? WAVE_HINT : undefined;
     if (!room) {
       // Nothing else to say in the yard: the keys this save has not used yet
       // (`input/keyBindings.ts`). A newcomer arrives here first, and the first
       // control hint used to be inside Oak's Lab (playtest 43).
+      if (wave) {
+        return wave;
+      }
       if (!partner && sameTile(facing, DAY_CARE_KEEPER.position)) {
         return `[SPACE] ${DAY_CARE_KEEPER.name}`;
       }
@@ -1760,7 +1769,8 @@ export class BaseScene extends Phaser.Scene {
       // names its own keys there instead: the mat is where everybody arrives,
       // and the house's H and K went unsaid until they stepped off it
       // (playtest 48).
-      const speak = partner ?? (keeper || this.houseKeys());
+      // A keeper's screen is opened from the mat whoever is in front of it.
+      const speak = partner ?? (room.screen ? keeper : undefined) ?? wave ?? (keeper || this.houseKeys());
       return speak ? `${speak}   [DOWN] OUT` : '[DOWN] OUT';
     }
     if (partner) {
@@ -1768,6 +1778,9 @@ export class BaseScene extends Phaser.Scene {
     }
     if (servesFrom(room, facing)) {
       return keeper;
+    }
+    if (wave) {
+      return wave;
     }
     // Something in the room that opens a screen says so where it can be
     // opened from, exactly as the keeper does: a board on a wall that answers
@@ -1790,6 +1803,11 @@ export class BaseScene extends Phaser.Scene {
     return this.place.room?.home && !this.visit
       ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []))
       : '';
+  }
+
+  /** Whether another player in the shared harbour stands (or is stepping) onto this tile: Space waves at them. */
+  private otherPlayerAt(tile: GridPosition): boolean {
+    return harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false;
   }
 
   private thingFaced(facing: GridPosition): RoomThing | undefined {
