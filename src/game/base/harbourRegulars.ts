@@ -131,7 +131,7 @@ export class HarbourRegulars {
         facing = directionBetween(at.tile, toward(at.tile, player)) ?? facing;
       }
       if (!this.crowd.ids().includes(id)) {
-        this.crowd.hear({ from: id, place: at.place, path: [at.tile], facing, partner: bot.partner });
+        this.crowd.hear({ from: id, place: at.place, path: [at.tile], facing, partner: bot.partner, look: bot.look });
       }
       this.crowd.hear({
         from: id,
@@ -139,6 +139,7 @@ export class HarbourRegulars {
         path: at.next ? [at.tile, at.next] : [at.tile],
         facing,
         partner: bot.partner,
+        look: bot.look,
       });
     }
     this.crowd.advance(deltaMs);

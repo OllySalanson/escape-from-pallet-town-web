@@ -103,6 +103,10 @@ try {
       await page.evaluate(`void ${BASE}.scene.start('base', { at: ${JSON.stringify(approach.from)} })`);
       await until(baseReady, 'the harbour again');
       await wait(200);
+      // The partner arrives beside the player, and a tap towards it turns the
+      // player rather than stepping: from there Space would talk to the partner.
+      const mid = { x: (approach.from.x + regular.tile.x) / 2, y: (approach.from.y + regular.tile.y) / 2 };
+      if (await page.evaluate(`${BASE}.partnerAt(${JSON.stringify(mid)})`)) continue;
       await tap(approach.key);
       await wait(300);
       await tap('Space');

@@ -26,6 +26,7 @@ describe('what the harbour hears', () => {
   it('knows the yard, the keepers rooms and a player house, and nowhere else', () => {
     expect(isHarbourPlace('yard')).toBe(true);
     expect(isHarbourPlace('oaks-lab')).toBe(true);
+    expect(isHarbourPlace('boutique')).toBe(true);
     expect(isHarbourPlace(housePlace(AMY))).toBe(true);
     expect(isHarbourPlace(housePlace(AMY, true))).toBe(true);
     expect(isHarbourPlace('bolthole')).toBe(false);
@@ -122,5 +123,46 @@ describe('a wave, as the harbour hears it', () => {
       expect(readHarbourWave(bad)).toBeNull();
     }
     expect(readHarbourWave({ u: AMY, p: 'yard', t: 'constructor' })).toEqual({ from: AMY, place: 'yard' });
+  });
+});
+
+describe('what a player wears, as the harbour hears it', () => {
+  const red = { head: 'red-cap', top: 'red-vest', legs: 'denim-jeans', body: null };
+  const dressed: HarbourMove = { ...move, look: red };
+
+  it('reads back the look, its pieces in slot order and the outfit last', () => {
+    expect(encodeHarbourMove(dressed)).toMatchObject({ w: ['red-cap', 'red-vest', 'denim-jeans'] });
+    expect(readHarbourMove(encodeHarbourMove(dressed))).toEqual(dressed);
+    const gowned: HarbourMove = { ...move, look: { ...red, body: 'beauty-gown' } };
+    expect(encodeHarbourMove(gowned)).toMatchObject({ w: ['red-cap', 'red-vest', 'denim-jeans', 'beauty-gown'] });
+    expect(readHarbourMove(encodeHarbourMove(gowned))).toEqual(gowned);
+  });
+
+  it('says nothing for the classic look', () => {
+    expect('w' in encodeHarbourMove(move)).toBe(false);
+  });
+
+  it('believes only the boutique\'s own pieces, each in its slot, and still believes the steps', () => {
+    const sent = encodeHarbourMove(move);
+    for (const w of [
+      ['red-cap', 'red-vest'],
+      ['red-cap', 'red-vest', 'red-cap'],
+      ['a-crown', 'red-vest', 'denim-jeans'],
+      ['constructor', 'toString', '__proto__'],
+      ['red-cap', 'red-vest', 'denim-jeans', 'beauty-gown', 'extra'],
+      ['<img src=x>', 'red-vest', 'denim-jeans'],
+      ['red-cap'.repeat(20), 'red-vest', 'denim-jeans'],
+      'red-cap',
+      42,
+      null,
+      {},
+    ]) {
+      expect(readHarbourMove({ ...sent, w })).toEqual(move);
+    }
+  });
+
+  it('drops an outfit that is not one and keeps the rest of the look', () => {
+    const sent = encodeHarbourMove(dressed);
+    expect(readHarbourMove({ ...sent, w: ['red-cap', 'red-vest', 'denim-jeans', 'red-cap'] })).toEqual(dressed);
   });
 });

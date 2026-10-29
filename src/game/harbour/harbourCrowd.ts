@@ -1,6 +1,7 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import type { PartnerSpeciesId } from '../base/partner';
+import type { DressedLook } from '../look/look';
 import type { HarbourMove, HarbourPlace } from './harbourProtocol';
 
 /**
@@ -42,6 +43,8 @@ export interface HarbourFigure<P extends string = HarbourPlace> {
   readonly facing: Direction;
   /** The kind of Pokemon at its heel, if it has one. */
   readonly partner?: PartnerSpeciesId;
+  /** What it wears, if it is not the classic look. */
+  readonly look?: DressedLook;
   /** The tile it last walked off - where its partner stands - or null since it was last put somewhere. */
   readonly behind: GridPosition | null;
 }
@@ -56,6 +59,7 @@ interface Walker<P extends string> {
   /** The facing to turn to once the queue is walked. */
   endFacing: Direction;
   partner?: PartnerSpeciesId;
+  look?: DressedLook;
   behind: GridPosition | null;
 }
 
@@ -88,11 +92,13 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         facing: move.facing,
         endFacing: move.facing,
         partner: move.partner,
+        look: move.look,
         behind: null,
       });
       return;
     }
     walker.partner = move.partner;
+    walker.look = move.look;
     // The newest tile already queued (or stood on), which the path continues from.
     let end = walker.queue[walker.queue.length - 1] ?? walker.tile;
     for (const tile of move.path) {
@@ -208,6 +214,7 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         progress: walker.queue[0] ? walker.progress : 0,
         facing: walker.facing,
         ...(walker.partner ? { partner: walker.partner } : {}),
+        ...(walker.look ? { look: walker.look } : {}),
         behind: walker.behind ? { ...walker.behind } : null,
       }));
   }

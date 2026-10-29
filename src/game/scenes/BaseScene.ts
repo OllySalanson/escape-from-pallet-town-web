@@ -45,7 +45,7 @@ import {
   type Errand,
   type ErrandBeat,
 } from '../hub/errands';
-import { readLook } from '../look/look';
+import { lookKey, readLook } from '../look/look';
 import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import type { BoutiqueSceneData } from './BoutiqueScene';
 import {
@@ -730,7 +730,14 @@ export class BaseScene extends Phaser.Scene {
       () => this.collision[0].length * TILE_SIZE,
     );
     this.createPartner(data);
-    harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, houseName(), partnerOf(this.savedGame.stash)?.species ?? null);
+    harbour()?.stand(
+      this.harbourWhere(),
+      this.currentTile,
+      this.facing,
+      houseName(),
+      partnerOf(this.savedGame.stash)?.species ?? null,
+      readLook(this.savedGame.raidProgress.look),
+    );
     this.createCaptions();
     this.createDialogBox();
     this.createHint();
@@ -2876,7 +2883,14 @@ export class BaseScene extends Phaser.Scene {
       const { name } = end;
       nameThisSitting = name;
       // Named, the player can be seen in the harbour from now on.
-      harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, name, this.partner?.species ?? null);
+      harbour()?.stand(
+        this.harbourWhere(),
+        this.currentTile,
+        this.facing,
+        name,
+        this.partner?.species ?? null,
+        readLook(this.savedGame.raidProgress.look),
+      );
       this.say(welcomeHomeLines(name), []);
     });
   }
@@ -2907,6 +2921,8 @@ export class BaseScene extends Phaser.Scene {
     readonly tile: GridPosition;
     readonly partner: string | null;
     readonly waving: boolean;
+    /** What they wear, as `lookKey` names it: `classic` for the figure everybody starts in. */
+    readonly look: string;
   }[] {
     if (!this.harbourFigures) {
       return [];
@@ -2916,6 +2932,7 @@ export class BaseScene extends Phaser.Scene {
       tile: { ...figure.tile },
       partner: figure.partner ?? null,
       waving: figure.waving === true,
+      look: lookKey(figure.look ?? null),
     }));
   }
 

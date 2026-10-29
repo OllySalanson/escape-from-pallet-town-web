@@ -11,6 +11,7 @@ import { BASE_DOORS, doorNamed } from './doors';
 import type { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { harbourBeatTiles, harbourLifeAt, onLand } from './harbourLife';
 import type { PartnerSpeciesId } from './partner';
+import type { DressedLook } from '../look/look';
 
 /**
  * The harbour's regulars: twelve people who walk THE HARBOUR as players do,
@@ -56,6 +57,11 @@ export interface HarbourBot {
   /** The name on their plate, by the rule a player's name follows: capitals, ten at most. */
   readonly name: string;
   readonly partner: PartnerSpeciesId;
+  /**
+   * What they wear, from THE HARBOUR BOUTIQUE's own shelves (`../look/`), so a
+   * busy harbour shows what the boutique sells - every one a different look.
+   */
+  readonly look: DressedLook;
   /** What they say when spoken to, one line a time they are spoken to. */
   readonly lines: readonly string[];
 }
@@ -65,6 +71,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:marla',
     name: 'MARLA',
     partner: 'bulbasaur',
+    look: { head: 'lass-hair', top: 'plain-tee', legs: 'plain-trousers', body: 'sundress' },
     lines: [
       'Oh, hi! Just back off the SEAGALLOP. GREYSTONE VALE was all fog today.',
       'NURSE JOY patched us up again. BULBASAUR keeps eating the window boxes.',
@@ -74,6 +81,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:finn',
     name: 'FINN',
     partner: 'charmander',
+    look: { head: 'youngster-cap-red', top: 'casual-jacket', legs: 'cargo-trousers', body: null },
     lines: [
       'Hey! Seen the hunter tonight? Check the telly in your house before you go.',
       'CHARMANDER and me found a RANGER PACK last raid. Lost it the raid after!',
@@ -83,6 +91,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:tess',
     name: 'TESS',
     partner: 'squirtle',
+    look: { head: 'swimmer-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'swimsuit' },
     lines: [
       'Hi there! SQUIRTLE wants to swim out to the S.S. ANNE. I keep saying no.',
       'Pack POTIONS. Then pack more POTIONS. That\'s what the GYM GUIDE says!',
@@ -92,6 +101,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:oskar',
     name: 'OSKAR',
     partner: 'ivysaur',
+    look: { head: 'hiker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'hiker-gear' },
     lines: [
       'Hello! My IVYSAUR evolved on the last raid. Took me right by surprise!',
       'BROCK\'s workshop gets bigger every time I look. What\'s he building in there?',
@@ -101,6 +111,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:juno',
     name: 'JUNO',
     partner: 'wartortle',
+    look: { head: 'ace-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'ace-suit' },
     lines: [
       'Hiya! The ANGLER on the cove lent me his rod. Caught nothing but MAGIKARP.',
       'WARTORTLE likes the breakwater. Says the waves are the right size.',
@@ -110,6 +121,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:kit',
     name: 'KIT',
     partner: 'charmeleon',
+    look: { head: 'rocker-quiff', top: 'rocker-jacket', legs: 'denim-jeans', body: null },
     lines: [
       'Yo! Got out of the VALE with ten seconds on the clock. Never again!',
       'CHARMELEON wants a rematch with the hunter. I want a nap.',
@@ -119,6 +131,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:rowan',
     name: 'ROWAN',
     partner: 'squirtle',
+    look: { head: 'fisher-cap', top: 'fishing-vest', legs: 'sky-trousers', body: null },
     lines: [
       'Hi! Have you read the notice board on the quay? There\'s a new notice every day.',
       'PROF. OAK says every new kind in your Pokédex gets you closer to a reward.',
@@ -128,6 +141,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:bea',
     name: 'BEA',
     partner: 'bulbasaur',
+    look: { head: 'picnicker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'picnic-dungarees' },
     lines: [
       'Hi! My best Pokémon always rides home in the secure container. Learned the hard way.',
       'BULBASAUR naps on the green while I talk to BILL. Every single time.',
@@ -137,6 +151,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:ivo',
     name: 'IVO',
     partner: 'charmander',
+    look: { head: 'bowl-cut', top: 'office-shirt', legs: 'smart-shorts', body: null },
     lines: [
       'Hey there! Just doing one more raid. Then bed. Probably.',
       'If the hunter catches you, you can run. It costs you clock, though!',
@@ -146,6 +161,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:nell',
     name: 'NELL',
     partner: 'venusaur',
+    look: { head: 'golden-waves', top: 'plain-tee', legs: 'plain-trousers', body: 'long-skirt' },
     lines: [
       'Oh, hello! VENUSAUR and I have been coming here since the harbour was a jetty.',
       'The S.S. ANNE\'s CAPTAIN will lend you his spyglass if you ask nicely.',
@@ -155,6 +171,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:arlo',
     name: 'ARLO',
     partner: 'blastoise',
+    look: { head: 'sailor-cap', top: 'plain-tee', legs: 'plain-trousers', body: 'sailor-whites' },
     lines: [
       'Hey! BLASTOISE scared the PIDGEY off the green again. Sorry, PIDGEY.',
       'Wave at people! Half the harbour waves back.',
@@ -164,6 +181,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     id: 'bot:skye',
     name: 'SKYE',
     partner: 'charizard',
+    look: { head: 'ace-wave', top: 'ace-jacket', legs: 'ace-trousers', body: null },
     lines: [
       'Hi! CHARIZARD wants to fly us home, but the SEAGALLOP is faster with a full pack.',
       'Find anything good out there? I found a whole lot of nothing.',
