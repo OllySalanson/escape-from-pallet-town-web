@@ -853,6 +853,15 @@ FireRed's own colour ramps (`src/game/look/composeLook.ts`). Nothing from pret
 is committed. It is what the player wears (`src/game/look/`), the captain's ask
 of 2026-10-28.
 
+Twenty-six more heads were cut the same way on 2026-10-29 from
+**pret/pokeemerald** at commit `731ad5b` (the source `home-furniture.png` is
+cut from), `graphics/object_events/pics/people/*.png`, the `emerald:` donors in
+`scripts/wearable-donors.json`: Emerald's people are drawn on the same body,
+eyes and chin on the same rows and a pixel's bob on a step, so their heads sit
+on FireRed's as FireRed's own do. Their walks are their own and reach under the
+soles, so no Emerald outfit was cut. Same ruling, same rights holders; nothing
+from pret is committed.
+
 ### `frlg-ember.png` - a volcano's cave and its slopes' steps: FireRed's Mt. Ember
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
