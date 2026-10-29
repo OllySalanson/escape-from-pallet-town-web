@@ -230,6 +230,14 @@ export interface RaidProgress {
    */
   readonly battleLessonGiven?: boolean;
   /**
+   * Whether THE RAID ARENA's trailer has been seen (`../cutscene/arenaIntro`):
+   * it plays unasked the first time the Arena's door is walked through and is
+   * offered with a SKIP after that. Recorded the moment it starts, as the
+   * battle lesson is. Absent on every save written before it, which reads as
+   * not yet seen, so an older save sees it once.
+   */
+  readonly arenaIntroSeen?: boolean;
+  /**
    * The first words already said (`../hub/firstWords`): Professor Oak and Nurse
    * Joy speak a few lines the first time each of their screens opens, once per
    * save. Recorded at the moment they are shown, as the battle lesson is.
@@ -831,6 +839,24 @@ export class SaveManager {
       return false;
     }
     this.save({ ...game, raidProgress: { ...game.raidProgress, battleLessonGiven: true } });
+    return true;
+  }
+
+  /**
+   * Whether THE RAID ARENA's trailer is this save's first sight of it,
+   * recording that it now has been seen (`../cutscene/arenaIntro`). Asked as it
+   * starts, so skipping it or closing the tab does not buy it unasked again.
+   * With no save to remember it in, it is always the first.
+   */
+  public watchArenaIntro(): boolean {
+    const game = this.load();
+    if (!game) {
+      return true;
+    }
+    if (game.raidProgress.arenaIntroSeen === true) {
+      return false;
+    }
+    this.save({ ...game, raidProgress: { ...game.raidProgress, arenaIntroSeen: true } });
     return true;
   }
 
@@ -1740,6 +1766,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // Saves written before gifts existed have received none.
     giftsReceived: uniqueStrings(value.giftsReceived),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
+    ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
       : {}),

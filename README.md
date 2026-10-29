@@ -52,8 +52,11 @@ That's it. Go out, get greedy, come home. Or don't come home, and learn somethin
 
 ### 1. Kit up at the Raid Arena
 
-Walk into the Raid Arena at the west end of the harbour, and the loadout is the first thing you
-see. Pick who comes with you and what goes in the pack. Everything you take is at risk, which is the
+Walk into the Raid Arena at the west end of the harbour. The first time, it shows you what you're
+in for: a trailer of a raid, played in the game itself, with you in it. You sneak about with your
+partner picking things up, a fight goes your way, and then tonight's hunter turns up with their whole
+team. A Charizard has to come and save you. (Any key skips it, and after the first time there's a
+SKIP on screen.) Then the loadout. Pick who comes with you and what goes in the pack. Everything you take is at risk, which is the
 point: a Potion in the pack is a Potion you might lose, and a Potion left at home is a fight you
 might lose instead. The pack is a grid of squares, not a list, so a Super Potion and a crate of
 parts are fighting for the same space.

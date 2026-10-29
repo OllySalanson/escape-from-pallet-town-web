@@ -100,6 +100,7 @@ export function playtestRaidProgress(): RaidProgress {
     // Somebody exploring the maps is not a newcomer to the game: nobody speaks
     // first words on this save, and the HUDs teach no keys.
     firstWordsHeard: [...FIRST_WORDS_IDS],
+    arenaIntroSeen: true,
     keysLearned: [...LEARNABLE_KEYS],
     // Bill deals with whoever has turned money over his counter, so an
     // explorer run arrives as a partner rather than a stranger with an empty

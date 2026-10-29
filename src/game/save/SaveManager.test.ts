@@ -2131,6 +2131,45 @@ describe('SaveManager', () => {
   });
 
   /**
+   * THE RAID ARENA's trailer plays unasked once per save and is offered with a
+   * SKIP after (`../cutscene/arenaIntro`). Recorded as it starts, kept through
+   * every rewrite of the progress, and read as unseen on a save that predates it.
+   */
+  it('shows the Raid Arena trailer once per save, kept across a lost raid and a banked one', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(SQUIRTLE, 5), 'starter');
+    saves.save({ party: new PokemonParty([]), mapId: 'floodplain-relay', position: { x: 1, y: 1 }, stash, starterSpeciesId: 'squirtle' });
+    expect(saves.load()?.raidProgress.arenaIntroSeen).toBeUndefined();
+
+    expect(saves.watchArenaIntro()).toBe(true);
+    expect(saves.watchArenaIntro()).toBe(false);
+    expect(new SaveManager(storage).load()?.raidProgress.arenaIntroSeen).toBe(true);
+
+    expect(saves.applyWipeLoss(['starter'], [], {}, [])).toBe(true);
+    expect(saves.bankFirstContractRun({ pokemon: [], items: [] }).granted).toBe(true);
+    expect(new SaveManager(storage).watchArenaIntro()).toBe(false);
+  });
+
+  it('reads a save written before the trailer as one that has not seen it, and only a true as seen', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(SQUIRTLE, 5), 'starter');
+    saves.save({ party: new PokemonParty([]), mapId: 'floodplain-relay', position: { x: 1, y: 1 }, stash, starterSpeciesId: 'squirtle' });
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.arenaIntroSeen = 'yes';
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    expect(saves.load()?.raidProgress.arenaIntroSeen).toBeUndefined();
+    expect(saves.watchArenaIntro()).toBe(true);
+  });
+
+  it('plays the trailer when there is no save to remember it in', () => {
+    expect(new SaveManager(new MemoryStorage()).watchArenaIntro()).toBe(true);
+  });
+
+  /**
    * The secure container fills itself from what it held last raid. The field is
    * optional with a default, so every accepted version keeps loading - and the
    * default is the policy anyway, which is why there is no version bump.
