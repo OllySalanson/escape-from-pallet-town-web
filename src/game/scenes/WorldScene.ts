@@ -7908,20 +7908,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const map = this.currentMap;
     const width = map.width;
     const collision = this.collisionData;
-    const standing = new Set<number>();
-    for (const entity of map.entities) {
-      for (const tile of this.entityHeldTiles(entity)) {
-        standing.add(tile.y * width + tile.x);
+    // Who stands where is gathered the first time a hunter asks, which on
+    // most frames - every hunter far off, or none out yet - is never.
+    let standing: Set<number> | null = null;
+    const figures = (): Set<number> => {
+      if (standing) {
+        return standing;
       }
-    }
-    for (const trainer of this.trainersForCurrentMap()) {
-      standing.add(trainer.position.y * width + trainer.position.x);
-    }
-    for (const point of this.barredExitsHere()) {
-      if (!this.isExtractionOpen(point)) {
-        standing.add(point.position.y * width + point.position.x);
+      standing = new Set<number>();
+      for (const entity of map.entities) {
+        for (const tile of this.entityHeldTiles(entity)) {
+          standing.add(tile.y * width + tile.x);
+        }
       }
-    }
+      for (const trainer of this.trainersForCurrentMap()) {
+        standing.add(trainer.position.y * width + trainer.position.x);
+      }
+      for (const point of this.barredExitsHere()) {
+        if (!this.isExtractionOpen(point)) {
+          standing.add(point.position.y * width + point.position.x);
+        }
+      }
+      return standing;
+    };
     const areas = map.areas;
     const placeOf = (tile: GridPosition): PlacedArea | null =>
       areas ? placedAreaAt(areas, tile) ?? areas[0] : null;
@@ -7929,7 +7938,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       width,
       height: map.height,
       links: map.links,
-      blocked: (index) => collision[(index / width) | 0][index % width] || standing.has(index),
+      blocked: (index) => collision[(index / width) | 0][index % width] || figures().has(index),
       opaque: (index) => {
         const y = (index / width) | 0;
         const x = index % width;
@@ -8099,7 +8108,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       trainer: createHunterTrainer(
         session.manager.snapshot().elapsedMs,
         session.manager.isEnraged,
-        session.plan?.hunter && { ...session.plan.hunter, rivalId: rival.id },
+        { ...(session.plan?.hunter ?? DEFAULT_HUNTER_TUNING), rivalId: rival.id },
         this.party.pokemon,
       ),
       introLines: rival.caught,

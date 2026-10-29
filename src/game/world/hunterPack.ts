@@ -95,6 +95,12 @@ export const HUNTER_SNAG_COOLDOWN = 6;
 export const HUNTER_FIGHT_CATCH_UP_STEPS = 2;
 /** The furthest a chase is searched, in steps: further than this and it has lost you. */
 export const HUNTER_CHASE_LIMIT = 40;
+/**
+ * The longest walk a patrol or a walk home is searched for: a patch's loop
+ * fits in it, and a hunter that has strayed further than this from home has
+ * gone a long way round, out of sight, and is simply home.
+ */
+export const HUNTER_WALK_LIMIT = 160;
 /** How far from you a hunter is still walked at all; further off it holds where it is, out of sight. */
 export const HUNTER_AWAKE_RANGE = 40;
 /** How far from you a hunter may come on to the map, so it never arrives in sight. */
@@ -154,6 +160,11 @@ export interface PackHunter {
   lastSeen: GridPosition | null;
   /** Its loop: which corner it is walking to. */
   routeIndex: number;
+  /**
+   * The walk it is on to a corner of its loop or home, tile by tile, so a long
+   * walk is searched once rather than once a tile.
+   */
+  path: GridPosition[];
   /** Straight tiles at full pace, and tiles since the last snag. */
   straight: number;
   sinceSnag: number;
@@ -363,6 +374,7 @@ export function createHunterPack(grounds: readonly HunterGround[], rivals: reado
     timerMs: 0,
     lastSeen: null,
     routeIndex: 0,
+    path: [],
     straight: 0,
     sinceSnag: HUNTER_SNAG_COOLDOWN,
     snagged: false,
@@ -561,6 +573,48 @@ class PackSearch {
       }
     }
     return chosen === UNREACHED ? null : { step: { x: chosen % width, y: (chosen / width) | 0 }, length };
+  }
+
+  /**
+   * The whole of the shortest walk from `from` to `goal`, within `limit`
+   * steps, first step first; null when there is none.
+   */
+  route(
+    world: PackWorld,
+    blocked: (index: number) => boolean,
+    from: GridPosition,
+    goal: GridPosition,
+    limit: number,
+  ): GridPosition[] | null {
+    const first = this.firstStep(world, blocked, from, [goal], goal, limit);
+    if (!first) {
+      return null;
+    }
+    const { width } = world;
+    const walk: GridPosition[] = [];
+    let here = from.y * width + from.x;
+    for (let left = first.length; left > 0; left -= 1) {
+      let chosen = UNREACHED;
+      let chosenRank = Number.POSITIVE_INFINITY;
+      const at = { x: here % width, y: (here / width) | 0 };
+      for (let direction = 0; direction < 4; direction += 1) {
+        const index = this.stepFrom(world, here, direction);
+        if (index === UNREACHED || this.stamp[index] !== this.generation || this.distance[index] !== left - 1) {
+          continue;
+        }
+        const rank = preference(at, { x: index % width, y: (index / width) | 0 }, goal) * 4 + direction;
+        if (rank < chosenRank) {
+          chosen = index;
+          chosenRank = rank;
+        }
+      }
+      if (chosen === UNREACHED) {
+        return null;
+      }
+      walk.push({ x: chosen % width, y: (chosen / width) | 0 });
+      here = chosen;
+    }
+    return walk;
   }
 
   /**
@@ -994,19 +1048,21 @@ export class HunterPack {
       hunter.routeIndex = (hunter.routeIndex + 1) % route.length;
       hunter.facing = LOOK_ROUND[hunter.facing];
       hunter.timerMs = HUNTER_PATROL_PAUSE_MS;
+      hunter.path = [];
       return true;
     }
     const blocked = this.blockerFor(hunter, world);
-    const inPatch = (index: number): boolean =>
-      !blocked(index) && inGround(hunter.ground, { x: index % world.width, y: (index / world.width) | 0 });
-    const step = this.search.firstStep(world, (index) => !inPatch(index), hunter.position, [corner], corner, 4 * 64);
-    if (!step || !step.step) {
-      // Something stands on its way (another hunter, a boulder): try the next corner.
+    const step = this.walkOn(hunter, world, blocked, corner, (index) =>
+      inGround(hunter.ground, { x: index % world.width, y: (index / world.width) | 0 }),
+    );
+    if (!step) {
+      // Something stands in its way (another hunter, a boulder): the next corner.
       hunter.routeIndex = (hunter.routeIndex + 1) % route.length;
       hunter.timerMs = HUNTER_PATROL_PAUSE_MS;
+      hunter.path = [];
       return true;
     }
-    this.beginStep(hunter, step.step, HUNTER_PATROL_STEP_MS, directionOf(hunter.position, step.step));
+    this.beginStep(hunter, step, HUNTER_PATROL_STEP_MS, directionOf(hunter.position, step));
     return true;
   }
 
@@ -1014,6 +1070,7 @@ export class HunterPack {
     if (inGround(hunter.ground, hunter.position)) {
       hunter.mode = 'patrol';
       hunter.lastSeen = null;
+      hunter.path = [];
       // Back on its loop from the corner nearest where it got back to.
       const route = hunter.ground.route;
       let nearest = 0;
@@ -1029,19 +1086,49 @@ export class HunterPack {
       hunter.routeIndex = nearest;
       return this.patrolStep(hunter, world);
     }
-    const blocked = this.blockerFor(hunter, world);
-    const home = hunter.ground.post;
-    const step = this.search.firstStep(world, blocked, hunter.position, [home], home, 4 * 64);
-    if (!step || !step.step) {
+    const step = this.walkOn(hunter, world, this.blockerFor(hunter, world), hunter.ground.post, () => true);
+    if (!step) {
       // No walk home from here (a one-way ledge, a shut gate): it goes the
       // long way, out of sight, which is to say it is simply home.
-      hunter.position = { ...home };
+      hunter.position = { ...hunter.ground.post };
       hunter.mode = 'patrol';
+      hunter.path = [];
       hunter.timerMs = HUNTER_PATROL_PAUSE_MS;
       return true;
     }
-    this.beginStep(hunter, step.step, HUNTER_PATROL_STEP_MS, directionOf(hunter.position, step.step));
+    this.beginStep(hunter, step, HUNTER_PATROL_STEP_MS, directionOf(hunter.position, step));
     return true;
+  }
+
+  /**
+   * The next tile of a walk to `goal` over ground `allowed` says it may use:
+   * the walk already planned while its next tile is clear, else a new one.
+   */
+  private walkOn(
+    hunter: PackHunter,
+    world: PackWorld,
+    blocked: (index: number) => boolean,
+    goal: GridPosition,
+    allowed: (index: number) => boolean,
+  ): GridPosition | null {
+    const planned = hunter.path[0];
+    const last = hunter.path[hunter.path.length - 1];
+    if (
+      planned &&
+      last &&
+      same(last, goal) &&
+      isTouching(planned, hunter.position) &&
+      !blocked(planned.y * world.width + planned.x)
+    ) {
+      return hunter.path.shift() ?? null;
+    }
+    const walk = this.search.route(world, (index) => blocked(index) || !allowed(index), hunter.position, goal, HUNTER_WALK_LIMIT);
+    if (!walk || walk.length === 0) {
+      hunter.path = [];
+      return null;
+    }
+    hunter.path = walk;
+    return hunter.path.shift() ?? null;
   }
 
   private beginStep(hunter: PackHunter, tile: GridPosition, duration: number, direction: Direction | null): void {
