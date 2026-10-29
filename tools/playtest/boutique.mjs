@@ -93,6 +93,17 @@ try {
   } else {
     console.log('no jump chips at this size');
   }
+  // Page Down and Page Up go a shelf at a time, at every size: from the first
+  // card, Down lands on the first hat; Up from there goes back to the looks.
+  await page.evaluate(`document.querySelector('[data-classic]').focus()`);
+  await press('PageDown');
+  const paged = await page.evaluate(`document.activeElement?.dataset.wear ?? null`);
+  const firstHat = await page.evaluate(`(() => { let c = document.querySelector('[data-shelf="hat"]').nextElementSibling; while (c && c.tagName !== 'BUTTON') c = c.nextElementSibling; return c?.dataset.wear ?? null; })()`);
+  if (!paged || paged !== firstHat) fail(`Page Down from the classic look landed on ${paged}, not the first hat ${firstHat}`);
+  await shoot('01c-paged-to-hats');
+  await press('PageUp');
+  if (!(await page.evaluate(`document.activeElement?.hasAttribute('data-classic')`))) fail('Page Up from the first hat did not go back to the looks');
+  console.log(`Page Down lands on ${paged}, Page Up goes back to the looks`);
 
   // Point at the whole look - the mirror answers - then try it on and buy it.
   await page.evaluate(`document.querySelector('[data-whole="${lookId}"]').focus()`);

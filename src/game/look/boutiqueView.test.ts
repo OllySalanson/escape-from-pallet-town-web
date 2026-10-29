@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boutiqueMarkup, commitBar, type BoutiqueState } from './boutiqueView';
+import { boutiqueMarkup, commitBar, shelfStep, type BoutiqueState } from './boutiqueView';
 import { STARTER_LOOK, wearing } from './look';
 import { ownedWearables } from './wardrobe';
 import { BOUTIQUE_NAME, WEARABLES } from './wearables';
@@ -62,5 +62,14 @@ describe("the shelves' jump chips", () => {
     expect(cards(boutiqueMarkup(state()), 'data-jump')).toEqual(['looks', 'hat', 'hair', 'top', 'legs', 'outfit', 'raid']);
     // The wardrobe shows only the shelves something owned stands on.
     expect(cards(boutiqueMarkup(state({ mode: 'wardrobe' })), 'data-jump')).toEqual(['looks', 'hair', 'top', 'legs']);
+  });
+
+  it('steps a shelf at a time with Page Down and Page Up, held at both ends', () => {
+    expect(shelfStep(2, false, 7, 1)).toBe(3);
+    expect(shelfStep(6, true, 7, 1)).toBe(6);
+    // Up goes to the start of this shelf first, and only then to the one before.
+    expect(shelfStep(2, false, 7, -1)).toBe(2);
+    expect(shelfStep(2, true, 7, -1)).toBe(1);
+    expect(shelfStep(0, true, 7, -1)).toBe(0);
   });
 });
