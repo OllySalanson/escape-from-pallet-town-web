@@ -17,7 +17,9 @@ import { seagallopLines } from './seagallopLog';
  * sailor at the Seagallop's jetty, the Gym Guide at the Raid Arena's door as
  * every Gym in Kanto has one, the captain on the long pier, the dock worker
  * and his Machop at the warehouses, the angler on the cove's jetty, the
- * policeman and his Growlithe on the yard. And the Pokemon are the ones a
+ * policeman and his Growlithe on the yard, and the Safari Warden visiting the
+ * green. Two of them have a favour to ask (`hub/errands.ts`), said in the
+ * dialogue box like anything else they say. And the Pokemon are the ones a
  * FireRed port has - a Slowpoke staring at the sea, Pidgey after crumbs on the green, a
  * Meowth by the crates, Krabby and Psyduck on the beach, and Lapras, Tentacool
  * and Magikarp out in the water.
@@ -32,7 +34,7 @@ import { seagallopLines } from './seagallopLog';
  *
  * Nobody here is a trainer or a shop: the harbour has no clock and no fights,
  * and a townsperson's job is to make it a place and to say something true
- * about it.
+ * about it - or to want something fetched from out there.
  */
 
 export type HarbourSpecies = keyof typeof HARBOUR_POKEMON_ART;
@@ -79,6 +81,17 @@ export interface HarbourPokemon extends HarbourFigureBase {
 export type HarbourFigure = HarbourPerson | HarbourPokemon;
 
 const at = (x: number, y: number): GridPosition => ({ x, y });
+
+/**
+ * What the Safari Warden says when he has no favour to talk about: nothing
+ * anybody can make out until his GOLD TEETH are back in, and then what
+ * FireRed's warden is so glad to be able to say.
+ */
+export function wardenLines(hasHisTeeth: boolean): readonly string[] {
+  return hasHisTeeth
+    ? ['Ah, now I can talk! SAFARI MARSH is the place for a raid, I tell you.', 'Tall reeds, rare Pokémon, and not a dry boot to be had.']
+    : ['Hoh hoh! Hee hafahi ho hee haffy!', '(Not a word of it can be made out.)'];
+}
 
 export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
   {
@@ -178,6 +191,20 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
       'These crates came in on the SEAGALLOP and they won\'t carry themselves.',
       'BILL had the pick of them before the sun was up. He always does.',
     ],
+  },
+  {
+    // FireRed's Safari Zone Warden, off the boat and walking the green, with
+    // nothing in his mouth but gums: he asks the player to find his GOLD
+    // TEETH (`hub/errands.ts`), and until then nothing he says can be
+    // understood - FireRed's own joke.
+    id: 'safari-warden',
+    kind: 'person',
+    name: 'WARDEN',
+    design: 'hiker',
+    position: at(56, 17),
+    facing: 'up',
+    idle: { roam: [at(57, 17), at(57, 16), at(56, 16)], glances: ['left', 'up'], beatMs: 3500 },
+    lines: wardenLines(false),
   },
   {
     id: 'harbour-policeman',

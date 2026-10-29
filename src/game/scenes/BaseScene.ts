@@ -40,10 +40,13 @@ import {
   FAVOUR_ANSWERS,
   declineErrand,
   errandLines,
+  errandRecord,
   errandToSay,
+  harbourGiver,
   withErrandAsked,
   type Errand,
   type ErrandBeat,
+  type ErrandGiver,
 } from '../hub/errands';
 import { readLook } from '../look/look';
 import { lookTexture, lookWalkKey } from '../look/lookTexture';
@@ -93,7 +96,13 @@ import {
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { HARBOUR_LANDMARKS } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
-import { harbourLifeAt } from '../base/harbourLife';
+import {
+  HARBOUR_PEOPLE,
+  harbourLifeAt,
+  wardenLines,
+  type HarbourFigure,
+  type HarbourPerson,
+} from '../base/harbourLife';
 import { harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
@@ -299,6 +308,8 @@ const CAPTAIN_ID = 'ss-anne-captain';
 let spyglassLooks = 0;
 /** The angler on the cove's jetty, who lends his rod (`base/harbourFishing.ts`). */
 const ANGLER_ID = 'cove-angler';
+/** The Safari Warden on the green, who can be understood once his GOLD TEETH are back (`hub/errands.ts`). */
+const WARDEN_ID = 'safari-warden';
 /**
  * Whether the angler has lent his rod this sitting. Kept for the page rather
  * than the scene, which is started again through every door; a player who has
@@ -514,6 +525,8 @@ export class BaseScene extends Phaser.Scene {
   private favourPrompt: { readonly prompt: ChoicePrompt; readonly answer: (yes: boolean) => void } | null = null;
   /** The "!" over a keeper who has something to say about their favour. */
   private keeperMark: Phaser.GameObjects.Graphics | null = null;
+  /** The "!" over each person about the harbour with a favour to ask, by their id: it walks their beat with them. */
+  private harbourMarks = new Map<string, Phaser.GameObjects.Graphics>();
   /** What to do once the dialogue box now up has been read to its end (`say`). */
   private afterSaid: (() => void) | null = null;
   /**
@@ -609,6 +622,7 @@ export class BaseScene extends Phaser.Scene {
     this.knockPrompt = null;
     this.favourPrompt = null;
     this.keeperMark = null;
+    this.harbourMarks = new Map();
     this.afterSaid = null;
     this.doorTold = false;
     this.doorLayout = undefined;
@@ -836,9 +850,14 @@ export class BaseScene extends Phaser.Scene {
     // hanging in the air.
     this.harbourLife?.update(
       deltaMs,
-      this.dialogBox.visible || this.leaving || this.namePrompt !== null || this.knockScreen !== null,
+      this.dialogBox.visible ||
+        this.favourPrompt !== null ||
+        this.leaving ||
+        this.namePrompt !== null ||
+        this.knockScreen !== null,
       (tile) => this.someoneElseOn(tile),
     );
+    this.placeHarbourMarks();
     // Seated last, against this frame's figures: seated before the partner's
     // frame, a bubble it had just put up was a frame late into the seating and
     // a caption was drawn across it for that frame.
@@ -1486,7 +1505,9 @@ export class BaseScene extends Phaser.Scene {
   private createFigures(): void {
     if (!this.place.room) {
       this.createDayCare();
-      this.harbourLife = new HarbourLifeFigures(this, harbourLifeAt(windowLight(new Date())));
+      const life = harbourLifeAt(windowLight(new Date()));
+      this.harbourLife = new HarbourLifeFigures(this, life);
+      this.markHarbourGivers(life);
       this.placeSign = new PlaceNameSign(this);
       // Nothing flies over the harbour at night.
       this.bird =
@@ -1991,6 +2012,11 @@ export class BaseScene extends Phaser.Scene {
           ...(this.dialogBox.visible
             ? [{ x: this.dialogBox.x + view.left, y: this.dialogBox.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
             : []),
+          // And so is a question asked in its frame - a favour's YES or NOT
+          // NOW, or a knock at the door - which is up while the box is down.
+          ...[this.favourPrompt?.prompt, this.knockPrompt?.prompt]
+            .filter((prompt): prompt is ChoicePrompt => prompt !== undefined)
+            .map((prompt) => ({ x: prompt.x + view.left, y: prompt.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT })),
         ],
         keepClear: [
           ...(room?.keeper ? [figureRect(room.keeper.position)] : []),
@@ -2004,8 +2030,13 @@ export class BaseScene extends Phaser.Scene {
           ...(this.harbourFigures?.rects() ?? []),
           // This player's own hand while it is up.
           ...(this.ownWave ? [{ x: this.ownWave.bubble.x, y: this.ownWave.bubble.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
-          // And the "!" over a keeper with a favour on their mind.
-          ...(this.keeperMark ? [{ x: this.keeperMark.x, y: this.keeperMark.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
+          // And the "!" over anybody with a favour on their mind.
+          ...[...(this.keeperMark ? [this.keeperMark] : []), ...this.harbourMarks.values()].map((mark) => ({
+            x: mark.x,
+            y: mark.y,
+            width: BUBBLE_WIDTH,
+            height: BUBBLE_HEIGHT,
+          })),
           // What the partner is saying: a door's name seated across its bubble hid
           // the heart it answers a word with, on the quay and at the Day-Care.
           ...(bubble ? [bubble] : []),
@@ -2686,6 +2717,11 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const local = this.harbourLife?.at(target);
+    // A favour first: somebody who wants something fetched says so before
+    // anything else they have to say.
+    if (local?.kind === 'person' && this.speakForFavour(local, target)) {
+      return;
+    }
     if (local?.id === SAILOR_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       this.say(seagallopLines(this.savedGame.raidProgress.raidRecord), [target]);
@@ -2695,6 +2731,12 @@ export class BaseScene extends Phaser.Scene {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       this.say(spyglassLines(windowLight(new Date()), spyglassLooks), [target]);
       spyglassLooks += 1;
+      return;
+    }
+    if (local?.id === WARDEN_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      const teeth = errandRecord(this.savedGame.raidProgress.errands, 'gold-teeth')?.status === 'completed';
+      this.say(wardenLines(teeth), [target]);
       return;
     }
     if (local?.id === ANGLER_ID) {
@@ -3175,11 +3217,11 @@ export class BaseScene extends Phaser.Scene {
     this.scene.launch('console', { pausedBase: true } satisfies ConsoleSceneData);
   }
 
-  /** What the keeper of this screen has to say about their favour, if anything (`hub/errands.ts`). */
-  private favourHere(screen: BaseScreen): ErrandBeat | undefined {
+  /** What a keeper or somebody about the harbour has to say about their favour, if anything (`hub/errands.ts`). */
+  private favourHere(giver: ErrandGiver): ErrandBeat | undefined {
     const game = this.savedGame;
     return errandToSay(
-      screen,
+      giver,
       game.raidProgress,
       (itemId) => game.stash.itemCount(itemId),
       raidsDeployed(game.raidProgress),
@@ -3201,26 +3243,54 @@ export class BaseScene extends Phaser.Scene {
       openScreen();
       return;
     }
+    this.sayFavour(beat, room.keeper ? [room.keeper.position] : [], openScreen, () => this.clearKeeperMark());
+  }
+
+  /**
+   * Somebody about the harbour, spoken to: if they have a favour to ask, a
+   * thing to take or a loss to hear about, they turn and say it - the same
+   * conversation a keeper has, with nothing to open after it. Says whether
+   * they had anything to say about one.
+   */
+  private speakForFavour(person: HarbourPerson, at: GridPosition): boolean {
+    const beat = this.favourHere(harbourGiver(person.id));
+    if (!beat) {
+      return false;
+    }
+    this.harbourLife?.face(person.id, directionBetween(at, this.currentTile) ?? 'down');
+    this.sayFavour(beat, [at], () => undefined, () => this.clearHarbourMark(person.id));
+    return true;
+  }
+
+  /**
+   * A favour said in the dialogue box: asked, ending on its question; handed
+   * over and paid for in one write before a word is said, so it is paid once
+   * however the box is left; or a loss heard. `then` follows the last line,
+   * and `answered` takes the "!" down once there is nothing more to say.
+   */
+  private sayFavour(
+    beat: ErrandBeat,
+    about: readonly GridPosition[],
+    then: () => void,
+    answered: () => void,
+  ): void {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     this.showHint('');
-    const about = room.keeper ? [room.keeper.position] : [];
     const { errand } = beat;
     if (beat.kind === 'ask') {
-      this.say(errandLines(beat), about, () => this.askFavour(errand, about, openScreen));
+      this.say(errandLines(beat), about, () => this.askFavour(errand, about, then, answered));
       return;
     }
-    this.clearKeeperMark();
+    answered();
     if (beat.kind === 'thanks') {
-      // Handed over and paid in one write before a word is said, so it is paid
-      // once however the room is left; the screen after it reads the save.
       if (!this.saveManager.completeErrand(errand.id)) {
-        openScreen();
+        then();
         return;
       }
       this.savedGame = this.saveManager.load() ?? this.savedGame;
       const lines = errandLines(beat);
-      this.say(lines, about, openScreen, (index) => {
+      this.say(lines, about, then, (index) => {
         if (index === lines.length - 1) {
           audioManager.play('itemObtained');
         }
@@ -3229,14 +3299,15 @@ export class BaseScene extends Phaser.Scene {
     }
     this.saveManager.hearErrandLoss(errand.id);
     this.savedGame = this.saveManager.load() ?? this.savedGame;
-    this.say(errandLines(beat), about, openScreen);
+    this.say(errandLines(beat), about, then);
   }
 
   /** The favour's question, in the dialogue box's own frame, with YES first. */
-  private askFavour(errand: Errand, about: readonly GridPosition[], then: () => void): void {
+  private askFavour(errand: Errand, about: readonly GridPosition[], then: () => void, answered: () => void): void {
     audioManager.play('menuOpen');
+    const answer = (yes: boolean): void => this.answerFavour(errand, yes, about, then, answered);
     this.favourPrompt = {
-      answer: (yes) => this.answerFavour(errand, yes, about, then),
+      answer,
       prompt: new ChoicePrompt(this, {
         x: this.dialogBox.x,
         y: this.dialogBox.y,
@@ -3246,7 +3317,7 @@ export class BaseScene extends Phaser.Scene {
         lines: [errand.question],
         options: FAVOUR_ANSWERS,
         selected: 0,
-        onChoose: (index) => this.answerFavour(errand, index === 0, about, then),
+        onChoose: (index) => answer(index === 0),
       }),
     };
   }
@@ -3254,14 +3325,20 @@ export class BaseScene extends Phaser.Scene {
   /**
    * YES takes the favour - recorded at once, so it is laid on the next raid
    * however the room is left - and NOT NOW leaves it to be asked again after
-   * the next raid. Either way the keeper says one line about it.
+   * the next raid. Either way the giver says one line about it.
    */
-  private answerFavour(errand: Errand, yes: boolean, about: readonly GridPosition[], then: () => void): void {
+  private answerFavour(
+    errand: Errand,
+    yes: boolean,
+    about: readonly GridPosition[],
+    then: () => void,
+    answered: () => void,
+  ): void {
     this.favourPrompt?.prompt.destroy();
     this.favourPrompt = null;
     // The keys of the question were spent on it, not on a step.
     this.spentPresses.spendHeld(this.directionKeys());
-    this.clearKeeperMark();
+    answered();
     if (yes) {
       const progress = this.savedGame.raidProgress;
       this.savedGame = this.saveManager.askErrand(errand.id)
@@ -3329,6 +3406,39 @@ export class BaseScene extends Phaser.Scene {
     }
     this.playerTexture = texture;
     this.player.setTexture(texture, getIdleFrame(this.facing));
+  }
+
+  /**
+   * The same "!" over everybody out in the harbour with something to say
+   * about a favour, so a player walking the yard can see who wants a word
+   * from across it. It walks their beat with them (`placeHarbourMarks`).
+   */
+  private markHarbourGivers(life: readonly HarbourFigure[]): void {
+    for (const figure of life) {
+      if (figure.kind === 'person' && this.favourHere(harbourGiver(figure.id))) {
+        this.harbourMarks.set(figure.id, drawEmoteBubble(this, 'exclaim'));
+      }
+    }
+    this.placeHarbourMarks();
+  }
+
+  private placeHarbourMarks(): void {
+    for (const [id, mark] of this.harbourMarks) {
+      const at = this.harbourLife?.spriteAt(id);
+      const person = HARBOUR_PEOPLE.find((each) => each.id === id);
+      if (!at || !person) {
+        continue;
+      }
+      mark.setPosition(
+        Math.round(at.x + TILE_SIZE / 2 - BUBBLE_WIDTH / 2),
+        at.y + getCharacterDesign(person.design).headPixelY - BUBBLE_HEIGHT,
+      );
+    }
+  }
+
+  private clearHarbourMark(id: string): void {
+    this.harbourMarks.get(id)?.destroy();
+    this.harbourMarks.delete(id);
   }
 
   /** The keeper's screen, which is what the room is the way to. */

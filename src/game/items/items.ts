@@ -689,6 +689,24 @@ export const ITEMS = {
     description: 'A piece of amber with something very old inside. Bill wants it for his cabinet.',
     effect: { type: 'errand' },
   },
+  // Two for people out about THE HARBOUR, each FireRed's: the S.S. Anne
+  // captain's, and the Safari Zone Warden's GOLD TEETH.
+  'ships-log': {
+    id: 'ships-log',
+    displayName: "Ship's log",
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 2 },
+    description: "The log of the ship that is now THE WRECK, in Captain Hale's hand. He wants it home.",
+    effect: { type: 'errand' },
+  },
+  'gold-teeth': {
+    id: 'gold-teeth',
+    displayName: 'Gold Teeth',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: "The Safari Warden's gold teeth, lost in Safari Marsh. He cannot say a word without them.",
+    effect: { type: 'errand' },
+  },
   // The Bicycle: FireRed's own, which costs a million there and is a find or
   // Bill's dearest deal here. Three squares by two - the one thing in the
   // catalogue wider than two - so it is a third of a Raid pack, half a Satchel,

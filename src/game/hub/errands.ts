@@ -8,8 +8,8 @@ import type { WorldLoot } from '../world/loot';
 import { worldMapName, type BuiltInMapId } from '../worldMap';
 
 /**
- * Errands: a favour one of the four people at base asks of you, by name, in
- * their own building.
+ * Errands: a favour somebody at base asks of you, by name - one of the four
+ * keepers in their own building, or somebody out about THE HARBOUR.
  *
  * The contract board is work from nobody in particular. An errand is the
  * opposite on purpose - Professor Oak wants his parcel, Brock wants his crate
@@ -43,10 +43,23 @@ export interface ErrandReward {
   readonly summary: string;
 }
 
+/**
+ * Who asks a favour: a keeper, by the screen they keep (`base/doors.ts`), or
+ * somebody out about THE HARBOUR, by their id there (`base/harbourLife.ts`) -
+ * the captain's ask of 29 Oct, "people walking around ... and they can give
+ * you missions". Either is spoken to the same way, in the dialogue box.
+ */
+export type ErrandGiver = BaseScreen | `harbour:${string}`;
+
+/** The giver that is somebody about THE HARBOUR, by their id in `harbourLife.ts`. */
+export function harbourGiver(personId: string): ErrandGiver {
+  return `harbour:${personId}`;
+}
+
 export interface Errand {
   readonly id: string;
-  /** Whose building it is asked in: the keeper's screen, as `base/doors.ts` names it. */
-  readonly giver: BaseScreen;
+  /** Who asks it: a keeper's screen, or somebody about THE HARBOUR (`harbourGiver`). */
+  readonly giver: ErrandGiver;
   readonly speaker: CharacterDesignId;
   /** The giver's name, as their first words name them. */
   readonly name: string;
@@ -101,9 +114,12 @@ export interface Errand {
  * secure container - out of a quarry, and Bill's amber one out of the wood.
  * They lie on Greystone Vale, the map in play: they were first laid on the
  * maps retired on 22 Oct, which left every one closed to a new save and a
- * favour already taken with nowhere to be finished. Every line that names a
- * place or a size is held to the data by `errands.test.ts`, so the words
- * cannot drift from where the thing is.
+ * favour already taken with nowhere to be finished. Then two from people out
+ * about THE HARBOUR, each FireRed's own errand with FireRed's own reward: the
+ * captain's (the S.S. Anne's captain gives HM01) and the Safari Zone Warden's
+ * gold teeth (he gives HM04). Every line that names a place or a size is held
+ * to the data by `errands.test.ts`, so the words cannot drift from where the
+ * thing is.
  */
 export const ERRANDS: readonly Errand[] = [
   {
@@ -235,6 +251,66 @@ export const ERRANDS: readonly Errand[] = [
       summary: 'An Eevee',
     },
   },
+  {
+    id: 'ships-log',
+    giver: harbourGiver('ss-anne-captain'),
+    speaker: 'captain',
+    name: 'Captain Hale',
+    called: 'Captain',
+    itemId: 'ships-log',
+    mapId: 'greystone-vale',
+    // The wreck off the vale's coast, which a captain would have known afloat.
+    place: 'THE WRECK',
+    asks: [
+      'THE WRECK was my first ship. Her log went down with her.',
+      'It is still out at THE WRECK. It takes 2 squares of your pack.',
+    ],
+    question: 'Will you bring it home to me?',
+    accepted: 'Thank you. I would know her pages anywhere.',
+    declined: 'Aye, no hurry. I will ask again after your next raid.',
+    // FireRed's captain hands over HM01 once he is feeling better.
+    thanks: [
+      'Her log! Every voyage, in my own hand. Thank you, truly.',
+      'Take this. It cut me a way through anything once. HM01 is Cut.',
+    ],
+    lost: ['Lost to the sea twice over? Ah, well. You came back.', 'Her log is still out there, somewhere at THE WRECK.'],
+    reward: {
+      items: [{ itemId: 'hm01-cut', quantity: 1 }],
+      received: 'You received HM01 from Captain Hale.',
+      summary: 'HM01 Cut',
+    },
+  },
+  {
+    id: 'gold-teeth',
+    giver: harbourGiver('safari-warden'),
+    speaker: 'hiker',
+    name: 'Warden Fenwick',
+    called: 'Warden',
+    itemId: 'gold-teeth',
+    mapId: 'greystone-vale',
+    // FireRed's Safari Zone Warden lost his teeth in the Safari Zone, and the
+    // vale has its own.
+    place: 'SAFARI MARSH',
+    // His first line is FireRed's own, and so is not being understood.
+    asks: [
+      'Hif fuff hefifoo! Ha lof ha feef ee hafahi ho!',
+      '(His GOLD TEETH are lost in SAFARI MARSH. They take 1 square.)',
+    ],
+    question: 'Will you find his teeth for him?',
+    accepted: 'Hank hoo! Hank hoo!',
+    declined: 'Hoh... (He will ask again after your next raid.)',
+    // FireRed's own, as he gets his teeth back and gives HM04.
+    thanks: [
+      'Ah, now I can talk! Thanks! No one could understand a word I said.',
+      'Have this as a token of thanks. HM04 contains Strength.',
+    ],
+    lost: ['Hoh hoh! Hoo hoff hem? (You lost them?)', '(He sighs, and points to SAFARI MARSH again.)'],
+    reward: {
+      items: [{ itemId: 'hm04-strength', quantity: 1 }],
+      received: 'You received HM04 from Warden Fenwick.',
+      summary: 'HM04 Strength',
+    },
+  },
 ];
 
 /** What the save keeps about one errand: the tutorial's status, and the raid's losses. */
@@ -257,7 +333,7 @@ export function errandForItem(itemId: string): Errand | undefined {
 }
 
 /** The errand a keeper gives. One each, so far. */
-export function errandOf(giver: BaseScreen): Errand | undefined {
+export function errandOf(giver: ErrandGiver): Errand | undefined {
   return ERRANDS.find((errand) => errand.giver === giver);
 }
 
@@ -329,7 +405,7 @@ export type ErrandBeat =
  * repeated the request every visit would be a nag rather than a person.
  */
 export function errandBeat(
-  giver: BaseScreen,
+  giver: ErrandGiver,
   progress: ErrandProgress,
   held: (itemId: ItemId) => number,
 ): ErrandBeat | undefined {
@@ -376,7 +452,7 @@ export function forgetDeclinedErrands(): void {
  * since the last raid - which is the whole of what saying NOT NOW does.
  */
 export function errandToSay(
-  giver: BaseScreen,
+  giver: ErrandGiver,
   progress: ErrandProgress,
   held: (itemId: ItemId) => number,
   raidsDeployed: number,

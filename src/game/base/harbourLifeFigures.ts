@@ -89,6 +89,15 @@ export class HarbourLifeFigures {
       .map((frame) => ({ x: Math.round(frame.x), y: Math.round(frame.y) }));
   }
 
+  /**
+   * Where somebody's sprite is drawn this frame, its top-left in world pixels,
+   * for a mark hung over their head to follow them about their beat.
+   */
+  public spriteAt(id: string): { readonly x: number; readonly y: number } | undefined {
+    const sprite = this.sprites.get(id);
+    return sprite ? { x: sprite.x, y: sprite.y } : undefined;
+  }
+
   /** Turns somebody to face the way given: spoken to, a person looks back. */
   public face(id: string, facing: Direction): void {
     this.figures = this.figures.map((figure) => (figure.id === id ? { ...figure, facing } : figure));

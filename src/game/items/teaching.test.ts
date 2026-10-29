@@ -174,9 +174,12 @@ describe('where machines come from', () => {
     );
 
     // Every TM but Brock's, which he hands over for his crate as FireRed's
-    // Brock hands it over for his badge (`hub/errands.ts`) - once, and never laid.
+    // Brock hands it over for his badge (`hub/errands.ts`) - once, and never
+    // laid. The harbour's two favours pay HMs, FireRed's own rewards for them,
+    // and an HM is never laid either: it is the only disc that is never used up.
     const given = ERRANDS.flatMap((errand) => errand.reward.items.map(({ itemId }) => itemId as string));
-    expect(given.filter((id) => isMachine(id))).toEqual(['tm39-rock-tomb']);
+    expect(given.filter((id) => isMachine(id)).sort()).toEqual(['hm01-cut', 'hm04-strength', 'tm39-rock-tomb']);
+    expect(given.filter((id) => isMachine(id) && !machineForItemId(id)!.reusable)).toEqual(['tm39-rock-tomb']);
     expect(found.map(({ piece }) => piece.itemId).sort()).toEqual(
       MACHINE_ITEM_IDS.filter((id) => !machineForItemId(id)!.reusable && !given.includes(id)).sort(),
     );
