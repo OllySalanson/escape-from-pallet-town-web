@@ -398,16 +398,33 @@ describe('hunterTeamFor', () => {
     ).toHaveLength(3);
   });
 
-  it('pairs its team off highest level first, each a rung below the one it answers', () => {
+  it("pairs its team off in the party's own order, each a rung below the one it answers", () => {
     const team = hunterTeamFor(rung(2), [
       new Pokemon(PIDGEY, 7),
       new Pokemon(CHARMANDER, 12),
       new Pokemon(RATTATA, 9),
     ]);
-    expect(team.map((member) => member.level)).toEqual([10, 7, 5]);
+    expect(team.map((member) => member.level)).toEqual([5, 10, 7]);
     expect(team.map((member) => member.species.id)).toEqual(
       hunterLineupFor(FIRST_HUNTER_RIVAL).slice(0, 3).map((species) => species.id),
     );
+  });
+
+  /**
+   * The captain's explorer run, 29 Oct: a Lv 50 Blastoise leading and the
+   * run's Lv 99 Charizard in the party. Paired highest first, Blue's lead
+   * answered the Charizard and opened at 95 against the Blastoise.
+   */
+  it("leads against the player's lead, so a strong Pokemon in reserve sets only the level of its own answer", () => {
+    const blastoise = getSpeciesById('blastoise')!;
+    const charizard = getSpeciesById('charizard')!;
+    const team = hunterTeamFor(rung(0), [
+      new Pokemon(blastoise, 50),
+      new Pokemon(charizard, 99),
+      new Pokemon(blastoise, 50),
+    ]);
+    expect(team.map((member) => member.level)).toEqual([46, 95, 46]);
+    expect(team[0].species.id).toBe(hunterSpeciesAt(hunterLineupFor(FIRST_HUNTER_RIVAL)[0], 46).id);
   });
 
   it('answers only the Pokemon that can still fight, so a raid that lost two meets one', () => {

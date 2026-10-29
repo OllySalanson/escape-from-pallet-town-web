@@ -85,12 +85,8 @@ export function hunterThreatFor(
   contractPressure = 0,
   rival: HunterRivalId = FIRST_HUNTER_RIVAL,
 ): HunterThreat {
-  const strongest = party
-    .filter((pokemon) => !pokemon.isFainted)
-    .reduce<HunterThreatSubject | undefined>(
-      (best, pokemon) => (best === undefined || pokemon.level > best.level ? pokemon : best),
-      undefined,
-    );
+  // The hunter's lead answers the party's own lead: the first that can fight.
+  const lead = party.find((pokemon) => !pokemon.isFainted);
   const tierOffset = Math.min(HUNTER_TIERS.length - 1, Math.max(0, Math.floor(contractPressure)));
   const openingTier = HUNTER_TIERS[tierOffset];
   return {
@@ -99,9 +95,7 @@ export function hunterThreatFor(
     openingTier,
     openingTeam: hunterTeamFor(openingTier, party, rival),
     arrivesSoonerMs: tierOffset * HUNTER_ARRIVAL_LEAD_PER_TIER_MS,
-    ...(strongest === undefined
-      ? {}
-      : { matchedTo: { name: strongest.name, level: strongest.level } }),
+    ...(lead === undefined ? {} : { matchedTo: { name: lead.name, level: lead.level } }),
     contractTiers: tierOffset,
   };
 }
