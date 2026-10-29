@@ -61,7 +61,9 @@ export function lookFigure(sheet: string, options: { readonly row?: number; read
   const row = options.row ?? 0;
   const top = row * 32 + LOOK_FIGURE_TOP;
   const height = 27 + 2 - LOOK_FIGURE_TOP;
-  const style = `--figure-top:${top};--figure-height:${height};--figure-scale:${options.scale ?? 2};--figure-sheet:url('${sheet}')`;
+  // A figure with no scale of its own takes its box's (the mirror's, which the screen's room sets).
+  const scale = options.scale === undefined ? '' : `--figure-scale:${options.scale};`;
+  const style = `--figure-top:${top};--figure-height:${height};${scale}--figure-sheet:url('${sheet}')`;
   return `<span class="px-figure look-figure${options.walking ? ' is-walking' : ''}" role="img" aria-label="${escapeAttribute(options.label)}" style="${style}"></span>`;
 }
 
@@ -99,7 +101,7 @@ export function mirror(state: BoutiqueState): string {
 
 /** The four walking figures in the mirror, redrawn alone as the cursor moves. */
 export function mirrorFigures(sheet: string): string {
-  return MIRROR_ROWS.map((row) => lookFigure(sheet, { row, scale: 3, walking: true, label: 'You, in the mirror' })).join('');
+  return MIRROR_ROWS.map((row) => lookFigure(sheet, { row, walking: true, label: 'You, in the mirror' })).join('');
 }
 
 /** What the mirror's look is made of, piece by piece, owned or priced. */

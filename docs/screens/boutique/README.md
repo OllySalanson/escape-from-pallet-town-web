@@ -25,3 +25,6 @@ window; the shop ones are `tools/playtest/boutique.mjs`, the two-player one
   OLLY in a red cap, an Ace Trainer's jacket and jeans, his Bulbasaur at heel.
 - `regular-in-sailor-whites.png` - ARLO, one of the twelve regulars, dressed
   from the boutique's shelves, answering the player beside the boutique's door.
+- `smallest-screen.png` - the shop at the smallest stage (640x480): a narrower
+  mirror walking at two game pixels a pixel, and cards whose figures are the
+  game's own size, two across, each folding whole under the MORE strip.
