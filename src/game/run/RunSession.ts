@@ -7,6 +7,7 @@ import type { RunPlan } from './runGeneration';
 import { createSeededRng, type SeededRng } from './rng';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import type { CacheSearchState } from '../world/cacheSearch';
 
 export interface RaidLocation {
   readonly mapId: WorldMapId;
@@ -105,6 +106,13 @@ export interface ActiveRunSession {
    * every fight.
    */
   berriesPicked?: string[];
+  /**
+   * How far this raid has searched each cache it opened, and what it took out,
+   * by landmark id (`world/cacheSearch.ts`). A search walked away from or cut
+   * short by a fight carries on where it stopped, and the world is rebuilt
+   * after every fight, so it lives here rather than on the scene.
+   */
+  cachesSearched?: Record<string, CacheSearchState>;
   /**
    * Where this raid has pushed each Strength boulder it moved, by entity id.
    * A boulder stands where the map put it at the start of every raid, so this

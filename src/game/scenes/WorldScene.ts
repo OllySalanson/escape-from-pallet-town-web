@@ -318,7 +318,23 @@ import {
   tryCollectLoot,
   type WorldLoot,
 } from '../world/loot';
-import { cachePayoutLine, cacheRefusalLine, lockedCrateLines, tryActivatePoi } from '../world/pois';
+import { lockedCrateLines, openPoi, type WorldPoi } from '../world/pois';
+import {
+  FRESH_SEARCH,
+  SEARCH_RESEATED,
+  cacheEmptied,
+  piecesRevealed,
+  piecesToTake,
+  searchFooter,
+  searchOn,
+  searchPieces,
+  searchRefusal,
+  searchRows,
+  takePiece,
+  type CacheSearchState,
+  type SearchPiece,
+} from '../world/cacheSearch';
+import { SearchPanel } from '../ui/SearchPanel';
 import {
   isLandmarkWorked,
   withWorkedExitsOpen,
@@ -761,6 +777,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly prizeLabels = new Map<string, WorldLabel>();
   private readonly prizeGleams = new Map<string, Phaser.GameObjects.Graphics>();
   private readonly activatedPoiIds = new Set<string>();
+  /**
+   * The cache being searched, while one is (`world/cacheSearch.ts`). Where the
+   * search has got to is the raid's (`ActiveRunSession.cachesSearched`); this
+   * is only which cache the panel is open on, whether TAKE ALL was asked for,
+   * and the line the panel is saying, so it is dropped with the scene.
+   */
+  private search: {
+    readonly poi: WorldPoi;
+    readonly pieces: readonly SearchPiece[];
+    takingAll: boolean;
+    said: string | null;
+  } | null = null;
+  /** The search, drawn down the right of the screen. */
+  private searchPanel: SearchPanel | undefined;
   private readonly poiSprites = new Map<string, Phaser.GameObjects.Container>();
   private readonly poiLabels = new Map<string, WorldLabel>();
   /** One drawn stop per outstanding contract marker, keyed by marker id. */
@@ -1005,6 +1035,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.openedGates = [];
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
+    this.search = null;
     this.hunterNear = false;
     this.hunterArrived = null;
     this.hunterFacing = 'down';
@@ -1746,6 +1777,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // nothing on screen to read, and guarded by an empty list, which is what it
     // holds on every frame of almost every raid.
     if (this.unclaimedBossGear.length > 0 && this.tryClaimWaitingBossGear()) {
+      return;
+    }
+
+    // An open search has the number keys and the interact key; a direction
+    // closes it and walks on below.
+    if (this.handleSearchInput()) {
       return;
     }
 
@@ -2687,58 +2724,76 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     for (const poi of this.currentMap.pois) {
-      if (this.activatedPoiIds.has(poi.id)) {
+      // An opened cache stands until every piece of it is in somebody's pack:
+      // walked away from half searched, it is still there to come back to.
+      if (this.activatedPoiIds.has(poi.id) && this.piecesLeftIn(poi) === 0) {
         continue;
       }
-      // A landmark a banked contract finished with for good. It still stands -
-      // taking it off the map would leave the player nothing to read their own
-      // work off - but it is drawn done: the finished icon, the quiet tone, and
-      // a caption saying what it is now rather than what working it would open.
-      const worked = isLandmarkWorked(poi.id, this.completedContracts);
-      const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
-      const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
-      const station = this.add.container(x, y).setDepth(atRow(MARKER_BAND, poi.position.y));
-      // A landmark that opens an exit and a landmark that holds supplies are
-      // different objects, so they are drawn as different things rather than
-      // one shared box. Every map now has one of each.
-      station.add(
-        this.add.image(
-          0,
-          0,
-          iconTextureKey(
-            worked
-              ? WORLD_ICONS.landmarkWorked
-              : poi.effect === 'unlock-extraction'
-                ? WORLD_ICONS.radioMast
-                : poi.locked
-                  ? WORLD_ICONS.lockedCrate
-                  : WORLD_ICONS.supplyCache,
-          ),
+      this.createPoi(poi);
+    }
+  }
+
+  /** A landmark's figure and caption, as it stands now. */
+  private createPoi(poi: WorldPoi): void {
+    // A landmark a banked contract finished with for good. It still stands -
+    // taking it off the map would leave the player nothing to read their own
+    // work off - but it is drawn done: the finished icon, the quiet tone, and
+    // a caption saying what it is now rather than what working it would open.
+    const worked = isLandmarkWorked(poi.id, this.completedContracts);
+    const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
+    const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
+    const station = this.add.container(x, y).setDepth(atRow(MARKER_BAND, poi.position.y));
+    // A landmark that opens an exit and a landmark that holds supplies are
+    // different objects, so they are drawn as different things rather than
+    // one shared box. Every map now has one of each.
+    station.add(
+      this.add.image(
+        0,
+        0,
+        iconTextureKey(
+          worked
+            ? WORLD_ICONS.landmarkWorked
+            : poi.effect === 'unlock-extraction'
+              ? WORLD_ICONS.radioMast
+              : poi.locked
+                ? WORLD_ICONS.lockedCrate
+                : WORLD_ICONS.supplyCache,
         ),
-      );
-      const label = new WorldLabel(this, {
-        subject: tileRect(poi.position),
-        // Oak's Field Station is both a sealed exit and a cache, so the label
-        // has to say so - the mast art can only show one of the two.
-        text: worked
-          ? workedLandmarkCaption(poi, worked)
+      ),
+    );
+    const label = new WorldLabel(this, {
+      subject: tileRect(poi.position),
+      // Oak's Field Station is both a sealed exit and a cache, so the label
+      // has to say so - the mast art can only show one of the two.
+      text: worked
+        ? workedLandmarkCaption(poi, worked)
+        : this.activatedPoiIds.has(poi.id)
+          ? `${poi.label}\nSEARCHED: ${this.piecesLeftIn(poi)} LEFT`
           : `${poi.label}\n${poi.effect === 'unlock-extraction'
             ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
             : // A locked crate keeps what is in it to itself: the lock is the
-              // line, and the whole cache on a third one was a caption too wide
-              // to find a seat beside the crate.
+              // line. So does every cache now - what is in one is found by
+              // searching it (`cacheSearch.ts`) - but how many things it holds
+              // is known from the lid, as the search's own rows show it.
               poi.locked
               ? 'LOCKED: NEEDS A LOCKPICK'
-              : `CACHE: ${formatPoiReward(poi)}`}`,
-        tone: worked ? LABEL_TONES.worked : LABEL_TONES.station,
-        depth: atRow(CAPTION_BAND, poi.position.y),
-        speech: { voice: 'name', tiles: [poi.position] },
-      });
-      this.worldLabels.push(label);
-      this.poiLabels.set(poi.id, label);
-      this.poiSprites.set(poi.id, station);
-      this.mapObjects.push(station);
-    }
+              : `CACHE: ${this.piecesLeftIn(poi)} TO FIND`}`,
+      tone: worked ? LABEL_TONES.worked : LABEL_TONES.station,
+      depth: atRow(CAPTION_BAND, poi.position.y),
+      speech: { voice: 'name', tiles: [poi.position] },
+    });
+    this.worldLabels.push(label);
+    this.poiLabels.set(poi.id, label);
+    this.poiSprites.set(poi.id, station);
+    this.mapObjects.push(station);
+  }
+
+  /** Takes a landmark's figure and caption off the map. */
+  private removePoi(poiId: string): void {
+    this.poiSprites.get(poiId)?.destroy();
+    this.poiSprites.delete(poiId);
+    this.removeWorldLabel(this.poiLabels.get(poiId));
+    this.poiLabels.delete(poiId);
   }
 
   /**
@@ -3899,6 +3954,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     this.raidHud = new RaidHud(this);
     this.hunterGlow = new HunterEdgeGlow(this);
+    this.searchPanel = new SearchPanel(this);
     this.objectiveCue = '';
     this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
     this.noteDistrict(this.arrivedFromBattle);
@@ -4183,6 +4239,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.scale.width,
       this.scale.height,
     );
+    this.renderSearch();
   }
 
   /** What the hunter chip shouts for a moment after the hunter arrives, or null. */
@@ -4223,6 +4280,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raidHud = undefined;
     this.hunterGlow?.destroy();
     this.hunterGlow = undefined;
+    this.searchPanel?.destroy();
+    this.searchPanel = undefined;
   }
 
   private bindControls(): void {
@@ -4516,7 +4575,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const worked = this.tryActivatePoiAt(targetTile);
     if (worked !== null) {
-      this.dialogBox.showMessages([...worked]);
+      if (worked.length > 0) {
+        this.dialogBox.showMessages([...worked]);
+      }
       return;
     }
     const opened = this.tryFieldMoveAt(targetTile);
@@ -5335,6 +5396,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
       return;
     }
+    // A cache opened with nothing to say: the search panel speaks for it, and
+    // a watch over the cache is still a watch.
+    if (spoken !== null) {
+      this.tryTrainerChallengeAt(this.currentTile);
+      return;
+    }
 
     if (this.tryStartHunterBattle()) {
       return;
@@ -5762,7 +5829,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       : [];
     // The FEEDBACK tab stands over the right edge of the screen (`feedbackTabCover.ts`).
     const tab = feedbackTabOverGame(this.game?.canvas, this.scale?.gameSize);
-    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...dialog].map((chip) => ({
+    // An open search panel is screen furniture too.
+    const searching = this.searchPanel?.occupied ? [this.searchPanel.occupied] : [];
+    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...searching, ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,
@@ -6182,6 +6251,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * nothing to work. Lines rather than a boolean for the same reason
    * `tryCollectLootAt` does it: a landmark can stand on ground a trainer is
    * watching, and then both facts belong in one dialogue.
+   *
+   * A landmark with a cache is not paid out: it is opened and then searched
+   * (`world/cacheSearch.ts`), and the search panel is what speaks for it, so a
+   * cache opened with nothing else to say returns no lines at all. Coming back
+   * to one walked away from half searched carries on the search.
    */
   private tryActivatePoiAt(position: GridPosition): readonly string[] | null {
     const poi = this.currentMap.pois.find(
@@ -6193,25 +6267,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         // standing on it must not say either of those things again.
         !isLandmarkWorked(candidate.id, this.completedContracts),
     );
-    const result = tryActivatePoi(
+    if (poi && this.isLootAvailable() && this.activatedPoiIds.has(poi.id) && this.piecesLeftIn(poi) > 0) {
+      this.beginSearch(poi);
+      return [];
+    }
+    const result = openPoi(
       poi,
       this.isLootAvailable(),
       this.activatedPoiIds,
-      (itemId, quantity) => this.collectRunItem(itemId, quantity),
-      // Whole or not at all, and the pack will re-seat itself to take the
-      // whole of it: a cache refused for the way the pack happens to be packed
-      // would be a seal the player could not open from where they stand.
-      (reward, freeing) => {
-        if (this.bag.fitsAll(reward, freeing)) {
-          return true;
-        }
-        if (!this.bag.tidyWouldFitAll(reward, freeing)) {
-          return false;
-        }
-        this.bag.tidy();
-        this.packReseated = true;
-        return true;
-      },
       { count: () => this.bag.count('lockpick'), spend: () => this.bag.remove('lockpick', 1) },
     );
     if (result === 'unavailable') {
@@ -6221,44 +6284,165 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       audioManager.play('denied');
       return lockedCrateLines(poi!);
     }
-    if (result === 'bag-full') {
-      audioManager.play('denied');
-      // Nothing is taken and nothing is worked, so the landmark is still here:
-      // the pack is one key away, and the way forward is to put something down
-      // and walk back on to it. The message has to say all of that, including
-      // the part a player cannot see - that the exit this landmark opens has
-      // not opened either.
-      return [
-        `${cacheRefusalLine(poi!)} Drop something from the PACK and work it again.`,
-        ...(poi!.effect === 'unlock-extraction'
-          ? [
-              `${poi!.unlockedExtractionLabel ?? 'The exit it opens'} stays shut until the cache is taken.`,
-            ]
-          : []),
-      ];
-    }
 
-    this.poiSprites.get(poi!.id)?.destroy();
-    this.poiSprites.delete(poi!.id);
-    this.removeWorldLabel(this.poiLabels.get(poi!.id));
-    this.poiLabels.delete(poi!.id);
     flashScreen(this.cameras.main, 140, [56, 189, 248]);
-    // A cache pays out; a landmark is worked. They are different deeds on the
+    // A cache opens; a landmark is worked. They are different deeds on the
     // map and the field guide, so they are different sounds.
     audioManager.play(poi!.effect === 'unlock-extraction' ? 'landmarkWorked' : 'cacheOpen');
+    if (poi!.reward.length > 0) {
+      this.beginSearch(poi!);
+    } else {
+      this.removePoi(poi!.id);
+    }
     if (poi!.effect === 'unlock-extraction') {
       const exit = poi!.unlockedExtractionLabel ?? 'A NEW EXIT';
       this.refreshExtractionMarkers();
-      return [
-        `${poi!.label}: ${exit} is open.`,
-        this.rangerForecast(),
-        ...(poi!.reward.length > 0 ? [`${cachePayoutLine(poi!, true)}${this.reseatNote()}`] : []),
-      ];
+      return [`${poi!.label}: ${exit} is open.`, this.rangerForecast()];
     }
-    return [
-      ...(poi!.locked ? ['The Lockpick turned the lock, and snapped in it.'] : []),
-      `${cachePayoutLine(poi!, false)}${this.reseatNote()}`,
-    ];
+    return poi!.locked ? ['The Lockpick turned the lock, and snapped in it.'] : [];
+  }
+
+  /** Where this raid's search of a cache has got to (`ActiveRunSession.cachesSearched`). */
+  private searchStateOf(poi: WorldPoi): CacheSearchState {
+    return this.runSession?.cachesSearched?.[poi.id] ?? FRESH_SEARCH;
+  }
+
+  /** The pieces still in a cache this raid has opened, or all of them if it has not. */
+  private piecesLeftIn(poi: WorldPoi): number {
+    return searchPieces(poi.reward).length - this.searchStateOf(poi).taken.length;
+  }
+
+  /** Opens the search panel on a cache, carrying on from wherever this raid left it. */
+  private beginSearch(poi: WorldPoi): void {
+    this.search = { poi, pieces: searchPieces(poi.reward), takingAll: false, said: null };
+    this.refreshPoiCaption(poi);
+    this.renderSearch();
+  }
+
+  /**
+   * The search, `clockMs` further on: charged exactly as the raid clock is, so
+   * a fight's opening beat or a cutscene searches nothing, and everything else
+   * - reading a line, standing still with the hunter coming - is search time.
+   */
+  private advanceSearch(clockMs: number): void {
+    const search = this.search;
+    const session = this.runSession;
+    if (!search || !session || clockMs <= 0) {
+      return;
+    }
+    const was = this.searchStateOf(search.poi);
+    const now = searchOn(was, search.pieces, clockMs);
+    if (now === was) {
+      return;
+    }
+    (session.cachesSearched ??= {})[search.poi.id] = now;
+    if (piecesRevealed(search.pieces, now.searchedMs) > piecesRevealed(search.pieces, was.searchedMs)) {
+      audioManager.play('select');
+      // TAKE ALL takes what is left as it comes to light.
+      if (search.takingAll) {
+        this.takeSearched(piecesToTake(now, search.pieces));
+      }
+    }
+  }
+
+  /**
+   * Takes pieces out of the cache being searched into the pack, one at a
+   * time, until one will not go in. Each goes in as a find does
+   * (`collectRunItem`), so it is at risk until extraction like any other, and a
+   * cache whose last piece is taken is spent and leaves the map.
+   */
+  private takeSearched(indices: readonly number[]): void {
+    const search = this.search;
+    const session = this.runSession;
+    if (!search || !session) {
+      return;
+    }
+    for (const index of indices) {
+      const state = this.searchStateOf(search.poi);
+      const taken = takePiece(state, search.pieces, index);
+      if (!taken) {
+        continue;
+      }
+      const itemId = search.pieces[index].itemId;
+      if (!this.collectRunItem(itemId, 1)) {
+        audioManager.play('denied');
+        search.takingAll = false;
+        search.said = searchRefusal(itemId);
+        break;
+      }
+      (session.cachesSearched ??= {})[search.poi.id] = taken;
+      audioManager.play('lootPickup');
+      // Said in the panel rather than a line: the search is still open.
+      search.said = this.packReseated ? SEARCH_RESEATED : null;
+      this.packReseated = false;
+    }
+    const after = this.searchStateOf(search.poi);
+    if (cacheEmptied(after, search.pieces)) {
+      this.removePoi(search.poi.id);
+      this.closeSearch();
+      return;
+    }
+    this.refreshPoiCaption(search.poi);
+  }
+
+  /** Redraws a cache's caption to say how much is left in it - if it is drawn at all. */
+  private refreshPoiCaption(poi: WorldPoi): void {
+    if (!this.poiSprites.has(poi.id)) {
+      return;
+    }
+    this.removePoi(poi.id);
+    this.createPoi(poi);
+  }
+
+  /** Puts the search panel away; the cache keeps what was not taken. */
+  private closeSearch(): void {
+    this.search = null;
+    this.searchPanel?.hide();
+  }
+
+  /**
+   * What the keys do while a search is open, asked with nothing else on
+   * screen to read. A number takes that piece, the interact key takes every
+   * piece that has come to light and every one still to come, and any
+   * direction is walking away - the search closes and the step is taken, so
+   * leaving costs nothing but what was left behind. True when the key was the
+   * search's.
+   */
+  private handleSearchInput(): boolean {
+    const search = this.search;
+    if (!search) {
+      return false;
+    }
+    const numbered = this.controls.phrases.findIndex((key) => this.keyPresses.justPressed(key));
+    if (numbered >= 0 && this.talkOpenMs === 0) {
+      this.takeSearched([numbered]);
+      return true;
+    }
+    if (this.isInteractionPressed()) {
+      search.takingAll = true;
+      this.takeSearched(piecesToTake(this.searchStateOf(search.poi), search.pieces));
+      return true;
+    }
+    const input = this.readInput();
+    if (input.up || input.down || input.left || input.right) {
+      this.closeSearch();
+    }
+    return false;
+  }
+
+  /** Draws the search panel as the search now stands, or nothing while none is open. */
+  private renderSearch(): void {
+    const search = this.search;
+    if (!search) {
+      this.searchPanel?.hide();
+      return;
+    }
+    const state = this.searchStateOf(search.poi);
+    this.searchPanel?.render({
+      title: search.poi.label,
+      rows: searchRows(state, search.pieces),
+      footer: searchFooter(state, search.pieces, search.takingAll, search.said),
+    });
   }
 
   private restoreSavedGame(savedGame: RestoredGame | undefined): void {
@@ -6643,6 +6827,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ? 0
         : deltaMs;
     const snapshot = this.runSession.manager.tick(clockMs);
+    this.advanceSearch(clockMs);
     if (snapshot.isEnraged) {
       this.hunterState = hunterAtEnrage(this.hunterState);
     }
@@ -7616,8 +7801,3 @@ function directionTo(from: GridPosition, to: GridPosition): string {
   return compassBearing(from, to) ?? 'HERE';
 }
 
-function formatPoiReward(poi: { readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number }[] }): string {
-  return poi.reward
-    .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName.toUpperCase()}`)
-    .join(' + ');
-}

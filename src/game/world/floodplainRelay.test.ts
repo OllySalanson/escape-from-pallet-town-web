@@ -12,7 +12,8 @@ import {
 } from './extractionPoints';
 import { WORLD_GATES } from './gates';
 import { stepDistances, walkableTiles } from './mapStructure';
-import { tryActivatePoi, WORLD_POIS } from './pois';
+import { openPoi, WORLD_POIS } from './pois';
+import { searchPieces } from './cacheSearch';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters } from './trainers';
 
@@ -36,62 +37,33 @@ describe('Floodplain Relay', () => {
     expect(isExtractionAvailable(radioExit, 0, inactive)).toBe(true);
   });
 
-  it('activates the Ranger Station without granting a cache and retains its radio state', () => {
+  it('activates the Ranger Station, which holds nothing to search, and retains its radio state', () => {
     const activated = new Set<string>();
-    const grants: string[] = [];
-
-    expect(
-      tryActivatePoi(
-        rangerStation,
-        true,
-        activated,
-        (itemId, quantity) => {
-          grants.push(`${itemId}:${quantity}`);
-          return true;
-        },
-        () => true,
-      ),
-    ).toBe('activated');
-    expect(grants).toEqual([]);
+    expect(openPoi(rangerStation, true, activated)).toBe('opened');
+    expect(searchPieces(rangerStation.reward)).toEqual([]);
     expect(activated).toEqual(new Set([rangerStation.id]));
-    expect(tryActivatePoi(rangerStation, true, activated, () => true, () => true)).toBe('unavailable');
+    expect(openPoi(rangerStation, true, activated)).toBe('unavailable');
   });
 
-  it('only banks the Flooded Supply Vault reward after extraction', () => {
-    const extracted = new RunManager();
-    extracted.startRun({ party: [], items: [] }, { mapId: 'floodplain-relay', durationMs: 60_000 });
-    expect(
-      tryActivatePoi(
-        vault,
-        true,
-        new Set(),
-        (itemId, quantity) => {
-          extracted.registerFoundItem(itemId, quantity);
-          return true;
-        },
-        () => true,
-      ),
-    ).toBe('activated');
+  it('only banks what is taken out of the Flooded Supply Vault after extraction', () => {
     // Read off the landmark rather than typed out: what a cache pays is
     // authored judgement about the place (`pois.ts`), and pinning it here would
     // make every re-author of a payout a two-file change for no guarantee. What
     // this test is about is *when* it is banked.
+    const searchedOut = (manager: RunManager) => {
+      expect(openPoi(vault, true, new Set())).toBe('opened');
+      searchPieces(vault.reward).forEach((piece) => manager.registerFoundItem(piece.itemId, 1));
+    };
+    const extracted = new RunManager();
+    extracted.startRun({ party: [], items: [] }, { mapId: 'floodplain-relay', durationMs: 60_000 });
+    searchedOut(extracted);
     expect(extracted.resolveEscape().bankedItems).toEqual(
       vault.reward.map(({ itemId, quantity }) => ({ itemId, quantity })),
     );
 
     const wiped = new RunManager();
     wiped.startRun({ party: [], items: [] }, { mapId: 'floodplain-relay', durationMs: 60_000 });
-    tryActivatePoi(
-      vault,
-      true,
-      new Set(),
-      (itemId, quantity) => {
-        wiped.registerFoundItem(itemId, quantity);
-        return true;
-      },
-      () => true,
-    );
+    searchedOut(wiped);
     const wipeResult = wiped.resolveWipe();
     expect(wipeResult.bankedItems).toEqual([]);
     expect(wipeResult.lostItems).toEqual(
