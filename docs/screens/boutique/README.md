@@ -28,3 +28,6 @@ window; the shop ones are `tools/playtest/boutique.mjs`, the two-player one
 - `smallest-screen.png` - the shop at the smallest stage (640x480): a narrower
   mirror walking at two game pixels a pixel, and cards whose figures are the
   game's own size, two across, each folding whole under the MORE strip.
+- `shelf-jumps.png` - a chip for every shelf over the list; RAID FINDS has just
+  taken the cursor to the first raid find, two hundred cards down. The smallest
+  stage has no chips: its headings are the way.

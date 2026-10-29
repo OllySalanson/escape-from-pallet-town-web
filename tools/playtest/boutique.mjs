@@ -81,6 +81,19 @@ try {
   const shown = await page.evaluate(`document.querySelectorAll('.boutique-card').length`);
   console.log(`the shelves show ${shown} cards`);
 
+  // A jump chip takes the cursor to its shelf's first card, however far down
+  // (the smallest stage has no chips: its headings are the whole of the way).
+  if (await page.evaluate(`document.querySelector('[data-jump="raid"]')?.offsetParent != null`)) {
+    await page.evaluate(`document.querySelector('[data-jump="raid"]').click()`);
+    await wait(200);
+    const jumped = await page.evaluate(`document.activeElement?.dataset.wear ?? null`);
+    if (!jumped) fail('the Raid finds chip did not take the cursor to a card');
+    await shoot('01b-jumped-to-raid-finds');
+    console.log(`the Raid finds chip lands on ${jumped}`);
+  } else {
+    console.log('no jump chips at this size');
+  }
+
   // Point at the whole look - the mirror answers - then try it on and buy it.
   await page.evaluate(`document.querySelector('[data-whole="${lookId}"]').focus()`);
   await wait(200);

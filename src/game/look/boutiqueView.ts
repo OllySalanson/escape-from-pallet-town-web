@@ -70,9 +70,10 @@ export function lookFigure(sheet: string, options: { readonly row?: number; read
 export function boutiqueMarkup(state: BoutiqueState): string {
   const shop = state.mode === 'shop';
   const shelves = shop ? shopShelves(state) : wardrobeShelves(state);
+  const jumps = shelfJumps(shelves);
   const count = shop ? WEARABLES.length : WEARABLES.filter((piece) => state.owned.has(piece.id)).length;
   const body = `<main class="px-body boutique-layout"><div class="boutique-panes">${mirror(state)}${pixelWindow(
-    `<div class="px-list px-scroll boutique-shelves" ${pixelColumns(COLUMN_MEASURES.wearable)}>${shelves}</div>`,
+    `${jumps}<div class="px-list px-scroll boutique-shelves" data-shelves ${pixelColumns(COLUMN_MEASURES.wearable)}>${shelves}</div>`,
     {
       heading: shop ? 'The shelves' : 'Your clothes',
       note: shop ? `${count} pieces` : `${count} piece${count === 1 ? '' : 's'} of ${WEARABLES.length}`,
@@ -123,22 +124,51 @@ export function wornRows(state: Pick<BoutiqueState, 'trying' | 'owned'>): string
     .join('');
 }
 
+/** The short word each shelf's jump chip says, by the shelf it goes to. */
+export const SHELF_JUMPS: Readonly<Record<string, string>> = {
+  looks: 'Looks',
+  hat: 'Hats',
+  hair: 'Hair',
+  top: 'Tops',
+  legs: 'Bottoms',
+  outfit: 'Outfits',
+  raid: 'Raid finds',
+};
+
+/** A shelf's heading, marked so its jump chip can find it. */
+function shelfHeading(key: string, words: string): string {
+  return `<h3 class="px-subheading" data-shelf="${key}">${words}</h3>`;
+}
+
+/**
+ * A chip for every shelf the screen shows, over the shelves: ENTER on one takes
+ * the cursor to that shelf's first card, so the last shelf of two hundred
+ * pieces is one press away rather than a long walk down the list.
+ */
+function shelfJumps(shelves: string): string {
+  const keys = [...shelves.matchAll(/data-shelf="([a-z]+)"/g)].map((match) => match[1]);
+  const chips = keys
+    .map((key) => `<button class="px-window px-chip" data-jump="${key}" data-help="${escapeAttribute(`Go to ${SHELF_JUMPS[key]}.`)}">${SHELF_JUMPS[key]}</button>`)
+    .join('');
+  return `<div class="boutique-jumps">${chips}</div>`;
+}
+
 function shopShelves(state: BoutiqueState): string {
-  const looks = `<h3 class="px-subheading">Whole looks</h3>${classicCard(state)}${WHOLE_LOOKS.map((entry) => wholeCard(state, entry)).join('')}`;
+  const looks = `${shelfHeading('looks', 'Whole looks')}${classicCard(state)}${WHOLE_LOOKS.map((entry) => wholeCard(state, entry)).join('')}`;
   const shelves = SHELF_ORDER.map(
-    (kind) => `<h3 class="px-subheading">${SHELF_HEADINGS[kind]}</h3>${shelfPieces(kind, false).map((piece) => pieceCard(state, piece)).join('')}`,
+    (kind) => `${shelfHeading(kind, SHELF_HEADINGS[kind])}${shelfPieces(kind, false).map((piece) => pieceCard(state, piece)).join('')}`,
   ).join('');
   const raid = WEARABLES.filter((piece) => piece.rarity === 'raid');
-  const found = `<h3 class="px-subheading">Found on raids</h3><p class="px-note px-wrap">Never on a shelf: legendary colours and shiny ones turn up on raids. Try them on all the same.</p>${raid.map((piece) => pieceCard(state, piece)).join('')}`;
+  const found = `${shelfHeading('raid', 'Found on raids')}<p class="px-note px-wrap">Never on a shelf: legendary colours and shiny ones turn up on raids. Try them on all the same.</p>${raid.map((piece) => pieceCard(state, piece)).join('')}`;
   return `${looks}${shelves}${found}`;
 }
 
 function wardrobeShelves(state: BoutiqueState): string {
   const looks = WHOLE_LOOKS.filter((entry) => unownedIn(entry.look, state.owned).length === 0);
-  const head = `<h3 class="px-subheading">Whole looks</h3>${classicCard(state)}${looks.map((entry) => wholeCard(state, entry)).join('')}`;
+  const head = `${shelfHeading('looks', 'Whole looks')}${classicCard(state)}${looks.map((entry) => wholeCard(state, entry)).join('')}`;
   const shelves = SHELF_ORDER.map((kind) => {
     const pieces = WEARABLES.filter((piece) => piece.kind === kind && state.owned.has(piece.id));
-    return pieces.length === 0 ? '' : `<h3 class="px-subheading">${SHELF_HEADINGS[kind]}</h3>${pieces.map((piece) => pieceCard(state, piece)).join('')}`;
+    return pieces.length === 0 ? '' : `${shelfHeading(kind, SHELF_HEADINGS[kind])}${pieces.map((piece) => pieceCard(state, piece)).join('')}`;
   }).join('');
   const more = WEARABLES.length - WEARABLES.filter((piece) => state.owned.has(piece.id)).length;
   const tail = more > 0 ? `<p class="px-note px-wrap">${more} more on the shelves of ${BOUTIQUE_NAME}, at the top of THE GREEN, and a few that only turn up on raids.</p>` : '';
