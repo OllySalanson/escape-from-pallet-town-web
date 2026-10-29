@@ -51,6 +51,15 @@ describe('what two players in a room tell each other', () => {
     }
   });
 
+  it('carries what a friend wears, believing only the boutique\'s own pieces', () => {
+    const dressed: RaidMove = { ...move, look: { head: 'hiker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'hiker-gear' } };
+    expect(readRaidMove(encodeRaidMove(dressed))).toEqual(dressed);
+    expect('w' in encodeRaidMove(move)).toBe(false);
+    // A look that is not one is the classic figure, and the steps are still believed.
+    expect(readRaidMove({ ...encodeRaidMove(move), w: ['hiker-gear', 'plain-tee', 'hiker-hat'] })).toEqual(move);
+    expect(readRaidMove({ ...encodeRaidMove(move), w: 'hiker-hat' })).toEqual(move);
+  });
+
   it('knows a player at the lab from a player on a map, and nothing else', () => {
     expect(isRaidPlace('lab')).toBe(true);
     expect(isRaidPlace('map:floodplain-relay')).toBe(true);
