@@ -5,7 +5,7 @@ import type { Pokemon } from '../pokemon/Pokemon';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
-import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfSelf, heelOf, withinPlace } from './harbourFigures';
+import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, heelOf, withinPlace } from './harbourFigures';
 import { PARTNER_FEET_PIXEL_Y, partnerFrame, partnerTextureKey } from './partner';
 import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
 
@@ -435,3 +435,18 @@ describe('a name plate against the edge of a room', () => {
   });
 });
 
+describe('a name plate and the partner behind its owner', () => {
+  const plate = { x: 100, y: 40, width: 30, height: 14 };
+
+  it('is lifted to sit on top of a tall partner standing where it would go', () => {
+    // A Blastoise on the row above, walking behind its player down the yard.
+    const heel = { x: 104, y: 30, width: 16, height: 26 };
+    expect(clearOfHeel(plate, heel)).toBe(heel.y - plate.height);
+  });
+
+  it('stays over its owner\'s head when the partner is beside them or nowhere', () => {
+    expect(clearOfHeel(plate, null)).toBe(plate.y);
+    expect(clearOfHeel(plate, { x: 131, y: 30, width: 16, height: 26 })).toBe(plate.y);
+    expect(clearOfHeel(plate, { x: 104, y: 54, width: 16, height: 20 })).toBe(plate.y);
+  });
+});
