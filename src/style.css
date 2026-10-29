@@ -4250,6 +4250,26 @@ button {
   grid-template-rows: auto auto minmax(0, 1fr);
   width: calc(var(--u) * 120);
 }
+/* Three game pixels a pixel in the mirror, two at the smallest stage:
+   the mirror is the narrow side of the screen and the shelves need the rest. */
+:where(.pixel-ui) .boutique-mirror .look-figure {
+  --figure-scale: 3;
+}
+:where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-mirror-window {
+  width: calc(var(--u) * 88);
+}
+:where(.pixel-ui[data-room='tight']) .boutique-mirror .look-figure {
+  --figure-scale: 2;
+}
+/* A card's figure at two, and at the game's own size at the smallest stage,
+   so a card is short enough to fold whole under a MORE strip rather than be
+   cut through its words. */
+:where(.pixel-ui) .boutique-card .look-figure {
+  --figure-scale: 2;
+}
+:where(.pixel-ui[data-room='tight']) .boutique-card .look-figure {
+  --figure-scale: 1;
+}
 /* The four facings two by two: down and left, up and right. */
 :where(.pixel-ui) .boutique-mirror {
   display: grid;
