@@ -133,10 +133,16 @@ export class HarbourRegulars {
       if (!this.crowd.ids().includes(id)) {
         this.crowd.hear({ from: id, place: at.place, path: [at.tile], facing, partner: bot.partner, look: bot.look });
       }
+      // The crowd is told only steps it has not heard, as a player's browser
+      // sends them: told the step they are on again every frame, it queued
+      // the tile just left as a step back, and walked them to and fro at
+      // catch-up pace (the captain, 29 Oct: "one step forward and one step back").
+      const heading = this.crowd.headingTo(id);
+      const target = at.next ?? at.tile;
       this.crowd.hear({
         from: id,
         place: at.place,
-        path: at.next ? [at.tile, at.next] : [at.tile],
+        path: heading && sameTile(heading, target) ? [heading] : at.next ? [at.tile, at.next] : [at.tile],
         facing,
         partner: bot.partner,
         look: bot.look,

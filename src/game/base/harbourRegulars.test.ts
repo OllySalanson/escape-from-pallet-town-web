@@ -37,6 +37,38 @@ describe('the regulars as drawn', () => {
     }
   });
 
+  it('walk a step at a time at walking pace, never back and forth (the captain, 29 Oct: "one step forward and one step back")', () => {
+    // At a real frame rate, as a player watches: a figure never steps straight
+    // back onto the tile it has just left (turning back after standing about
+    // is a walk, not a judder), and never steps faster than a player walks.
+    const regulars = new HarbourRegulars();
+    const frame = 16;
+    const seen = new Map<string, { tile: { x: number; y: number }; behind: { x: number; y: number } | null; since: number }>();
+    const faults: string[] = [];
+    for (let at = start; at < start + 60_000; at += frame) {
+      regulars.tick(at, frame, { place: 'yard', player: { x: 0, y: 0 } });
+      for (const figure of regulars.figures()) {
+        const last = seen.get(figure.id);
+        if (last && (last.tile.x !== figure.tile.x || last.tile.y !== figure.tile.y)) {
+          const moved = Math.abs(last.tile.x - figure.tile.x) + Math.abs(last.tile.y - figure.tile.y);
+          if (moved === 1 && last.behind && last.behind.x === figure.tile.x && last.behind.y === figure.tile.y && at - last.since < 2 * STEP_DURATION_MS) {
+            faults.push(`${figure.name} stepped back at ${at - start}ms`);
+          }
+          if (moved === 1 && at - last.since < STEP_DURATION_MS - frame) {
+            faults.push(`${figure.name} took a step in ${at - last.since}ms at ${at - start}ms`);
+          }
+          seen.set(figure.id, { tile: figure.tile, behind: last.tile, since: at });
+        } else if (!last) {
+          seen.set(figure.id, { tile: figure.tile, behind: null, since: at });
+        }
+        if (figure.toward && figure.progress > 0 && Math.abs(figure.toward.x - figure.tile.x) + Math.abs(figure.toward.y - figure.tile.y) !== 1) {
+          faults.push(`${figure.name} walking to a tile that is not next to it`);
+        }
+      }
+    }
+    expect(faults.slice(0, 5)).toEqual([]);
+  });
+
   it('are the same every time the same clock is run', () => {
     const one = run(start, 30_000).figures();
     const two = run(start, 30_000).figures();

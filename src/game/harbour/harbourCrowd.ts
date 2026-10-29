@@ -171,6 +171,15 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
     this.walkers.clear();
   }
 
+  /** The tile somebody is walking to in the end - the last step heard - or null for somebody not heard of. */
+  public headingTo(id: string): GridPosition | null {
+    const walker = this.walkers.get(id);
+    if (!walker) {
+      return null;
+    }
+    return { ...(walker.queue[walker.queue.length - 1] ?? walker.tile) };
+  }
+
   /** Everybody this browser knows of, by id. */
   public ids(): readonly string[] {
     return [...this.walkers.keys()];

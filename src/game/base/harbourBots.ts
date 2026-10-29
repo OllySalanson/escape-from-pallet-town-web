@@ -69,8 +69,8 @@ export interface HarbourBot {
 
 export const HARBOUR_BOTS: readonly HarbourBot[] = [
   {
-    id: 'bot:marla',
-    name: 'MARLA',
+    id: 'bot:bulbaluv',
+    name: 'BULBALUV',
     partner: 'bulbasaur',
     look: { head: 'lass-hair', top: 'plain-tee', legs: 'plain-trousers', body: 'sundress' },
     lines: [
@@ -80,8 +80,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:finn',
-    name: 'FINN',
+    id: 'bot:finny2011',
+    name: 'FINNY2011',
     partner: 'charmander',
     look: { head: 'youngster-cap-red', top: 'casual-jacket', legs: 'cargo-trousers', body: null },
     lines: [
@@ -90,8 +90,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:tess',
-    name: 'TESS',
+    id: 'bot:tess-swims',
+    name: 'TESS-SWIMS',
     partner: 'squirtle',
     look: { head: 'swimmer-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'swimsuit' },
     lines: [
@@ -100,8 +100,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:oskar',
-    name: 'OSKAR',
+    id: 'bot:oz-hikes',
+    name: 'OZ-HIKES',
     partner: 'ivysaur',
     look: { head: 'hiker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'hiker-gear' },
     lines: [
@@ -110,18 +110,19 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:juno',
-    name: 'JUNO',
+    id: 'bot:karpking',
+    name: 'KARPKING',
     partner: 'wartortle',
     look: { head: 'ace-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'ace-suit' },
     lines: [
       'Hiya! The ANGLER on the cove lent me his rod. Caught nothing but MAGIKARP.',
+      'Yes, KARPKING is a joke. No, I have not caught anything else yet.',
       'WARTORTLE likes the breakwater. Says the waves are the right size.',
     ],
   },
   {
-    id: 'bot:kit',
-    name: 'KIT',
+    id: 'bot:xkitx',
+    name: 'XKITX',
     partner: 'charmeleon',
     look: { head: 'rocker-quiff', top: 'rocker-jacket', legs: 'denim-jeans', body: null },
     lines: [
@@ -131,8 +132,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:rowan',
-    name: 'ROWAN',
+    id: 'bot:dexhunter',
+    name: 'DEXHUNTER',
     partner: 'squirtle',
     look: { head: 'fisher-cap', top: 'fishing-vest', legs: 'sky-trousers', body: null },
     lines: [
@@ -141,8 +142,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:bea',
-    name: 'BEA',
+    id: 'bot:beebee22',
+    name: 'BEEBEE22',
     partner: 'bulbasaur',
     look: { head: 'picnicker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'picnic-dungarees' },
     lines: [
@@ -151,8 +152,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:ivo',
-    name: 'IVO',
+    id: 'bot:1moreraid',
+    name: '1MORERAID',
     partner: 'charmander',
     look: { head: 'bowl-cut', top: 'office-shirt', legs: 'smart-shorts', body: null },
     lines: [
@@ -161,8 +162,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:nell',
-    name: 'NELL',
+    id: 'bot:og-nell',
+    name: 'OG-NELL',
     partner: 'venusaur',
     look: { head: 'golden-waves', top: 'plain-tee', legs: 'plain-trousers', body: 'long-skirt' },
     lines: [
@@ -171,8 +172,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:arlo',
-    name: 'ARLO',
+    id: 'bot:toise4life',
+    name: 'TOISE4LIFE',
     partner: 'blastoise',
     look: { head: 'sailor-cap', top: 'plain-tee', legs: 'plain-trousers', body: 'sailor-whites' },
     lines: [
@@ -181,8 +182,8 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     ],
   },
   {
-    id: 'bot:skye',
-    name: 'SKYE',
+    id: 'bot:skyezard',
+    name: 'SKYEZARD',
     partner: 'charizard',
     look: { head: 'ace-wave', top: 'ace-jacket', legs: 'ace-trousers', body: null },
     lines: [
