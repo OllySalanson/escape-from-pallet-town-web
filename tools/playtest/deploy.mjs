@@ -41,6 +41,11 @@ export const takePokemon = (name = null) =>
  * presses. A driver already in the right room (backed out of its screen) just
  * presses it again; one in another room walks back out first.
  *
+ * A keeper with a favour says it first, in the dialogue box, and asks YES or
+ * NOT NOW (`BaseScene.speakToKeeper`): the presses read it, and the question is
+ * answered NOT NOW - a driver on its way to a screen takes nothing on - unless
+ * `acceptFavours` is set.
+ *
  * `wait` is how it lets the scene catch up between moves, and a driver that
  * steps a paused loop must hand over its own: a real-time sleep advances a
  * paused game by nothing, so the room a door opens onto never finished coming
@@ -66,6 +71,15 @@ export async function walkIntoBase(page, door, options = {}) {
     // its first half-second, so the press is made again until it takes.
     if (await page.evaluate(sceneIs('arenaIntro'))) {
       await press('Escape');
+      await settle(settleMs);
+      continue;
+    }
+    if (await page.evaluate(`Boolean(${GAME}.scene.getScene('base')?.favourPrompt)`)) {
+      if (!options.acceptFavours) {
+        await press('ArrowRight');
+        await settle(settleMs);
+      }
+      await press('Space');
       await settle(settleMs);
       continue;
     }

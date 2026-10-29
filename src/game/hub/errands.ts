@@ -3,7 +3,7 @@ import { getItemById, type ErrandItemId, type ItemId } from '../items';
 import type { ContractPokemon } from '../objectives/contracts';
 import { availableInsertionIds, frontDoorFor } from '../run/runGeneration';
 import type { CharacterDesignId } from '../world/characterDesigns';
-import { districtsForMap } from '../world/districts';
+import { districtsForMap, type MapDistrict } from '../world/districts';
 import type { WorldLoot } from '../world/loot';
 import { worldMapName, type BuiltInMapId } from '../worldMap';
 
@@ -63,15 +63,18 @@ export interface Errand {
   readonly itemId: ErrandItemId;
   readonly mapId: BuiltInMapId;
   /**
-   * The district it lies in (`world/districts.ts`). It is laid as a prize is,
-   * on a tile of that place that moves every raid, because the giver tells you
-   * the place and a place is what a player can walk to.
+   * The place it lies in, as its district's plate names it (`errandDistrict`).
+   * It is laid as a prize is, on a tile of that place that moves every raid,
+   * because the giver tells you the place and a place is what a player can walk
+   * to. Named rather than given by id because Greystone Vale is a stitched file
+   * whose district ids are only their order in it (`filePrizes.ts` names its
+   * places the same way).
    */
-  readonly district: string;
+  readonly place: string;
   /**
    * Said in the dialogue box when the giver is spoken to and the errand can be
    * done: the scene, then what to fetch, where and how big it is - a box each,
-   * which is all a favour gets before it is answered (`errandTalk`).
+   * which is all a favour gets before it is answered (`errandLines`).
    */
   readonly asks: readonly string[];
   /** The question the favour ends on, asked with YES and NOT NOW beneath it. */
@@ -94,10 +97,13 @@ export interface Errand {
 /**
  * The first four, one for each person at base, each in a different country
  * and each a different weight in the pack: Oak's parcel is two squares out of
- * the city, Joy's bag two off a farm, Brock's crate four - the whole base
+ * the village, Joy's bag two off a farm, Brock's crate four - the whole base
  * secure container - out of a quarry, and Bill's amber one out of the wood.
- * Every line that names a place or a size is held to the data by
- * `errands.test.ts`, so the words cannot drift from where the thing is.
+ * They lie on Greystone Vale, the map in play: they were first laid on the
+ * maps retired on 22 Oct, which left every one closed to a new save and a
+ * favour already taken with nowhere to be finished. Every line that names a
+ * place or a size is held to the data by `errands.test.ts`, so the words
+ * cannot drift from where the thing is.
  */
 export const ERRANDS: readonly Errand[] = [
   {
@@ -107,12 +113,13 @@ export const ERRANDS: readonly Errand[] = [
     name: 'Professor Oak',
     called: 'Prof. Oak',
     itemId: 'oaks-parcel',
-    mapId: 'viridian-city',
-    // FireRed's errand, in FireRed's place: the Poké Mart stands on the square.
-    district: 'viridian-center-square',
+    mapId: 'greystone-vale',
+    // FireRed's errand, in the vale's FireRed place for it: the village every
+    // road starts from, with a Poké Mart on its forecourt.
+    place: 'MILLBROOK',
     asks: [
-      'Before you go! I have a parcel waiting at the Viridian Poké Mart.',
-      'It is about CENTER SQUARE. It takes 2 squares of your pack.',
+      'Before you go! I have a parcel waiting at the Millbrook Poké Mart.',
+      'It is somewhere in MILLBROOK. It takes 2 squares of your pack.',
     ],
     question: 'Will you bring it to me?',
     accepted: 'Splendid! Walk out with it, and I will make it worth your while.',
@@ -121,7 +128,7 @@ export const ERRANDS: readonly Errand[] = [
     thanks: ['Ah! It’s the custom Poké Ball! I had it on order. Thank you!', 'Now, these are for you.'],
     lost: [
       'My parcel never made it home? Well, you did, and that matters more.',
-      'The Mart will send another to CENTER SQUARE.',
+      'The Mart will send another. It will be in MILLBROOK again.',
     ],
     // FireRed pays the parcel with the Pokédex and five Poké Balls. The
     // Pokédex is already in hand; the five are its own.
@@ -137,11 +144,12 @@ export const ERRANDS: readonly Errand[] = [
     speaker: 'nurse-joy',
     name: 'Nurse Joy',
     itemId: 'medicine-bag',
-    mapId: 'route-1',
-    district: 'route-1-steading',
+    mapId: 'greystone-vale',
+    // The vale's farm, down the terraces in the south-east.
+    place: 'ORCHARD TERRACES',
     asks: [
-      'Could I ask a favour? We lent our medicine bag to THE STEADING.',
-      'That is on Route 1, and it takes 2 squares of your pack.',
+      'Could I ask a favour? We lent our medicine bag to the farm.',
+      'It is at ORCHARD TERRACES, and it takes 2 squares of your pack.',
     ],
     question: 'Will you bring it home for us?',
     accepted: 'Thank you so much! Do come back safe.',
@@ -152,7 +160,7 @@ export const ERRANDS: readonly Errand[] = [
     ],
     lost: [
       'Oh dear. You had the bag, and it never made it back?',
-      'As long as you came back safe. There is a spare at THE STEADING.',
+      'As long as you are safe. The farm has a spare at ORCHARD TERRACES.',
     ],
     // Not FireRed's - no Joy there gives anything - but it is the one piece of
     // gear that does her job: it heals, a little, every turn.
@@ -168,10 +176,11 @@ export const ERRANDS: readonly Errand[] = [
     speaker: 'brock',
     name: 'Brock',
     itemId: 'brocks-crate',
-    mapId: 'pallet-town',
-    district: 'pallet-quarry',
+    mapId: 'greystone-vale',
+    // The pass climbs past quarry benches to the caves: Brock's kind of rock.
+    place: 'GREYSTONE PEAKS',
     asks: [
-      'I left a crate of my tools at THE QUARRY in Pallet Town.',
+      'I left a crate of my tools at the quarry up in GREYSTONE PEAKS.',
       'It is heavy: 4 squares of your pack, and loot you leave behind.',
     ],
     question: 'Will you bring it back for me?',
@@ -184,7 +193,7 @@ export const ERRANDS: readonly Errand[] = [
     ],
     lost: [
       'My crate never made it home? You came back. That is what counts.',
-      'There is another crate of mine at THE QUARRY.',
+      'There is another crate of mine up in GREYSTONE PEAKS.',
     ],
     // FireRed's own: Brock hands TM39 to whoever beats him.
     reward: {
@@ -199,11 +208,11 @@ export const ERRANDS: readonly Errand[] = [
     speaker: 'bill',
     name: 'Bill',
     itemId: 'old-amber',
-    mapId: 'viridian-forest',
-    // Amber is old tree resin, and this is the wood's sap pool.
-    district: 'forest-sap-pool',
+    mapId: 'greystone-vale',
+    // Amber is old tree resin, and this is the vale's pine wood.
+    place: 'PINE HOLLOW',
     asks: [
-      'There is a lump of OLD AMBER in Viridian Forest, by the SAP POOL.',
+      'There is a lump of OLD AMBER under the pines in PINE HOLLOW.',
       'It takes 1 square of your pack. It would make my cabinet!',
     ],
     question: 'Will you fetch it for me?',
@@ -215,7 +224,7 @@ export const ERRANDS: readonly Errand[] = [
     ],
     lost: [
       'Gone? You had it, and it never made it back? Aw, man...',
-      'There is more amber where that came from. The SAP POOL still drips.',
+      'There is more amber where that came from. PINE HOLLOW still weeps.',
     ],
     // Not FireRed's, but Bill's all the same: in HeartGold and SoulSilver he
     // hands the player an Eevee, at level 5.
@@ -259,12 +268,17 @@ export function errandRecord(
   return records?.find((record) => record.id === id);
 }
 
-/** The place an errand's thing lies, as a district plate names it. */
-export function errandPlace(errand: Errand): string {
-  return districtsForMap(errand.mapId).find((district) => district.id === errand.district)?.name ?? '';
+/** The district an errand's thing lies in, found on its map by name. */
+export function errandDistrict(errand: Errand): MapDistrict | undefined {
+  return districtsForMap(errand.mapId).find((district) => district.name === errand.place);
 }
 
-/** "THE QUARRY, Pallet Town". */
+/** The place an errand's thing lies, as a district plate names it, or nothing if its map has no such place. */
+export function errandPlace(errand: Errand): string {
+  return errandDistrict(errand)?.name ?? '';
+}
+
+/** "GREYSTONE PEAKS, Greystone Vale". */
 export function errandWhere(errand: Errand): string {
   return `${errandPlace(errand)}, ${worldMapName(errand.mapId)}`;
 }
@@ -420,7 +434,7 @@ export function errandLoot(errand: Errand): WorldLoot {
     // A prize (`world/loot.ts`): drawn with a light on it, named from across a
     // clearing and on the HUD once seen. It is always laid, so the odds are one.
     chance: 1,
-    district: errand.district,
+    district: errandDistrict(errand)?.id ?? errand.place,
   };
 }
 

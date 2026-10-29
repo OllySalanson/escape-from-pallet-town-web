@@ -1648,7 +1648,7 @@ describe('Brock', () => {
   it('says nothing of his favour over the workshop: it is asked in the room, before the screen opens', () => {
     const { hub, storage } = createWorkshopHub();
     hub.setView('workshop');
-    expect(markupOf(hub)).not.toContain('THE QUARRY');
+    expect(markupOf(hub)).not.toContain('GREYSTONE PEAKS');
     expect(markupOf(hub)).not.toContain('data-speech-done');
     // Opening his screen takes nothing on: only a YES in the room does.
     expect(new SaveManager(storage).load()!.raidProgress.errands ?? []).toEqual([]);

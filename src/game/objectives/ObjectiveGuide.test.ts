@@ -557,12 +557,12 @@ describe('a shiny in the field guide', () => {
 });
 
 describe('an errand in the field guide', () => {
-  /** A Pallet Town raid with Brock's crate laid in THE QUARRY. */
+  /** A Greystone Vale raid with Brock's crate laid in GREYSTONE PEAKS. */
   function createErrandSession() {
     const manager = new RunManager();
     manager.startRun(
       { party: [new Pokemon(BULBASAUR, 5)], items: [] },
-      { mapId: 'pallet-town', durationMs: 60_000 },
+      { mapId: 'greystone-vale', durationMs: 60_000 },
     );
     const brock = ERRANDS.find((errand) => errand.id === 'brocks-crate')!;
     return createActiveRunSession(
@@ -572,21 +572,21 @@ describe('an errand in the field guide', () => {
       [],
       [],
       [],
-      generateRunPlan(7, undefined, 'town-square', undefined, undefined, [], {}, [], [], false, [], [errandLoot(brock)]),
+      generateRunPlan(7, undefined, 'greystone-vale', undefined, undefined, [], {}, [], [], false, [], [errandLoot(brock)]),
     );
   }
 
   const errandHints = (session: ReturnType<typeof createErrandSession>, carried: number) =>
     buildObjectiveGuide(session, {
-      currentMapId: 'pallet-town',
-      currentPosition: { x: 7, y: 9 },
+      currentMapId: 'greystone-vale',
+      currentPosition: { x: 94, y: 160 },
       activatedPoiIds: new Set(),
       carried: (itemId) => (itemId === 'brocks-crate' ? carried : 0),
     }).hints.filter((hint) => hint.includes('crate'));
 
   it('says where the thing lies, then that it is being carried', () => {
     const session = createErrandSession();
-    expect(errandHints(session, 0)).toEqual([expect.stringMatching(/^Brock's errand: Brock's crate lies in THE QUARRY, /)]);
+    expect(errandHints(session, 0)).toEqual([expect.stringMatching(/^Brock's errand: Brock's crate lies in GREYSTONE PEAKS, /)]);
 
     session.manager.registerFoundItem('brocks-crate', 1);
     expect(errandHints(session, 1)).toEqual([

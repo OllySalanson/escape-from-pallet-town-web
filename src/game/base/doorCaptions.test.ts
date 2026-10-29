@@ -192,7 +192,7 @@ describe('the harbour door captions', () => {
     // once fitted neither, and the lab two steps away had no name on it.
     const opened = {
       completedContracts: [FIRST_CONTRACT_ID],
-      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'],
+      unlockedInsertions: ['floodplain-relay', 'greystone-vale'],
     };
     const game = baseGame({ progress: opened });
     const line = doorStatusLine(BASE_DOORS.find((door) => door.id === 'oaks-lab')!, game);
