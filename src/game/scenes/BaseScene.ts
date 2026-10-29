@@ -17,7 +17,6 @@ import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
   getIdleFrame,
-  getWalkAnimationKey,
 } from '../playerFrames';
 import {
   getWorldCharacterAppearance,
@@ -46,6 +45,9 @@ import {
   type Errand,
   type ErrandBeat,
 } from '../hub/errands';
+import { readLook } from '../look/look';
+import { lookTexture, lookWalkKey } from '../look/lookTexture';
+import type { BoutiqueSceneData } from './BoutiqueScene';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
@@ -390,6 +392,8 @@ interface Place {
 export class BaseScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
   private savedGame!: RestoredGame;
+  /** The sheet the player is drawn from: their look's, or the classic figure. */
+  private playerTexture: string = SHARED_CHARACTER_TEXTURE;
   private place!: Place;
   private bounds: GridBounds = { width: 0, height: 0 };
   private collision: boolean[][] = [];
@@ -1598,8 +1602,11 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private createPlayer(): void {
+    // The player is drawn in what they wear (`look/look.ts`); a save that has
+    // never been to the boutique wears the classic figure the game always drew.
+    this.playerTexture = lookTexture(this, readLook(this.savedGame.raidProgress.look));
     this.player = this.add
-      .sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(this.facing))
+      .sprite(0, 0, this.playerTexture, getIdleFrame(this.facing))
       .setOrigin(0, 0);
     this.playerGroundMark = this.paintPlayerMark(PLAYER_MARKER_GROUND_LAYERS);
     this.playerHeadMark = this.paintPlayerMark(PLAYER_MARKER_HEAD_LAYERS).setDepth(
@@ -2229,7 +2236,7 @@ export class BaseScene extends Phaser.Scene {
       this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
     );
     this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
-    this.player.play(getWalkAnimationKey(this.facing), true);
+    this.player.play(lookWalkKey(this.playerTexture, this.facing), true);
     this.partner?.follow(this.currentTile, targetTile);
     harbour()?.stepped(targetTile, this.facing);
   }
@@ -2642,7 +2649,11 @@ export class BaseScene extends Phaser.Scene {
         return;
       }
       // A visitor looks round and touches nothing that is the owner's to use.
-      if (this.visit && thing && (thing.does !== undefined || thing.opens === 'games' || thing.name.endsWith("'S PC"))) {
+      if (
+        this.visit &&
+        thing &&
+        (thing.does !== undefined || thing.opens === 'games' || thing.opens === 'wardrobe' || thing.name.endsWith("'S PC"))
+      ) {
         this.say([notYoursLine(this.visit.ownerName)], [target]);
         return;
       }
@@ -2652,6 +2663,10 @@ export class BaseScene extends Phaser.Scene {
       }
       if (thing?.opens === 'games') {
         this.openGames();
+        return;
+      }
+      if (thing?.opens === 'wardrobe') {
+        this.openBoutique('wardrobe');
         return;
       }
       if (thing) {
@@ -2790,7 +2805,7 @@ export class BaseScene extends Phaser.Scene {
     // loadout, and backing out of that puts the player on its step again. Its
     // trailer plays on the way (`cutscene/arenaIntro.ts`), unasked the first
     // time and with a SKIP after, and ends on that same loadout.
-    if (door.opens === 'screen' && door.screen) {
+    if (door.opens === 'screen' && door.screen && door.screen !== 'boutique') {
       const hub: HubSceneData = { savedGame: this.savedGame, view: SCREEN_VIEWS[door.screen], from: door.id };
       if (door.screen === 'arena') {
         this.openArenaIntro({ savedGame: this.savedGame, hub });
@@ -3283,8 +3298,45 @@ export class BaseScene extends Phaser.Scene {
     this.keeperMark = null;
   }
 
+  /**
+   * THE HARBOUR BOUTIQUE, or the wardrobe at home: a screen over the paused
+   * harbour (`scenes/BoutiqueScene.ts`). Coming back, the player is redrawn
+   * in whatever they walked out in.
+   */
+  private openBoutique(mode: BoutiqueSceneData['mode']): void {
+    if (this.leaving) {
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.input.keyboard?.resetKeys();
+      this.savedGame = this.saveManager.load() ?? this.savedGame;
+      this.dressPlayer();
+      this.showHint(this.hintHere());
+    });
+    this.scene.pause();
+    this.scene.launch('boutique', { mode, pausedBase: true } satisfies BoutiqueSceneData);
+  }
+
+  /** Draws the player in what the save says they wear. */
+  private dressPlayer(): void {
+    const texture = lookTexture(this, readLook(this.savedGame.raidProgress.look));
+    if (texture === this.playerTexture) {
+      return;
+    }
+    this.playerTexture = texture;
+    this.player.setTexture(texture, getIdleFrame(this.facing));
+  }
+
   /** The keeper's screen, which is what the room is the way to. */
   private openScreen(room: BaseRoom, screen: NonNullable<BaseRoom['screen']>): void {
+    if (screen === 'boutique') {
+      this.openBoutique('shop');
+      return;
+    }
     this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
   }
 
@@ -3346,4 +3398,4 @@ const SCREEN_VIEWS = {
   stash: 'stash',
   workshop: 'workshop',
   trader: 'trader',
-} as const satisfies Record<BaseScreen, NonNullable<HubSceneData['view']>>;
+} as const satisfies Record<Exclude<BaseScreen, 'boutique'>, NonNullable<HubSceneData['view']>>;

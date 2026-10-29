@@ -1067,6 +1067,18 @@ button {
   }
 }
 
+/* A look walking in the boutique's mirror (`look/boutiqueView.ts`): the four
+   frames of a facing, idle and step and idle and step, across its sheet. Kept
+   out of the Pixel UI block below because a keyframe's `from` is no selector. */
+@keyframes look-walk {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: calc(var(--u) * -64 * var(--figure-scale));
+  }
+}
+
 /* ==========================================================================
    Pixel UI: the DOM screens drawn in the game's own visual language.
 
@@ -4205,4 +4217,93 @@ button {
 }
 :where(.pixel-ui) .px-tip-what {
   color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------------
+   THE HARBOUR BOUTIQUE and the wardrobe (`look/boutiqueView.ts`): the mirror
+   down the left, the shelves across the rest of the window, the bar along
+   the foot. Every figure is a look composed whole-pixel (`look/composeLook.ts`)
+   and drawn at a whole number of game pixels a pixel.
+   ------------------------------------------------------------------------ */
+:where(.pixel-ui) .boutique-layout {
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-content: stretch;
+  height: 100%;
+}
+:where(.pixel-ui) .boutique-panes {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-auto-rows: minmax(0, 1fr);
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+}
+:where(.pixel-ui) .boutique-panes > .px-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  max-height: 100%;
+  min-height: 0;
+}
+:where(.pixel-ui) .boutique-mirror-window {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: calc(var(--u) * 120);
+}
+/* The four facings two by two: down and left, up and right. */
+:where(.pixel-ui) .boutique-mirror {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  justify-content: center;
+  gap: calc(var(--u) * 4) calc(var(--u) * 8);
+  padding: calc(var(--u) * 4) 0;
+  background: var(--cream-lit);
+}
+:where(.pixel-ui) .boutique-worn {
+  overflow: hidden;
+}
+:where(.pixel-ui) .boutique-worn-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .boutique-worn-row small {
+  color: var(--ink-soft);
+}
+/* A look's figure is the whole point of this screen, so unlike a keeper's it
+   stays at the smallest stage too. */
+.pixel-ui .px-figure.look-figure {
+  display: block;
+}
+/* Walking: the four frames of a facing, idle and step and idle and step, a
+   frame a tenth of a second as the overworld walks. */
+.pixel-ui .px-figure.look-figure.is-walking {
+  animation: look-walk 0.6s steps(4) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pixel-ui .px-figure.look-figure.is-walking {
+    animation: none;
+  }
+}
+.pixel-ui .boutique-card {
+  /* Stretched so a row of cards is one height, and given back its own floor:
+     a window's `min-height: 0` let the grid size every row to nothing. */
+  align-self: stretch;
+  min-height: auto;
+  justify-items: center;
+  align-content: start;
+  text-align: center;
+  row-gap: calc(var(--u) * 1);
+}
+.pixel-ui .boutique-card.is-selected {
+  --fill: var(--teal-wash);
+}
+.pixel-ui .boutique-card.is-selected:focus {
+  --fill: #d5f2e0;
+}
+.pixel-ui .boutique-card.is-raid {
+  --fill: var(--gold-wash);
+}
+.pixel-ui .boutique-card > strong {
+  text-transform: none;
 }

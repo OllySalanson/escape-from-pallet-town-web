@@ -55,8 +55,10 @@ export async function walkIntoBase(page, door, options = {}) {
     throw new Error(`walkIntoBase: the game loop is paused, so it only moves when stepped - hand over the driver's own \`wait\``);
   }
   await until(sceneIs('base'), 'the base');
+  // A keeper's screen is the hub; THE HARBOUR BOUTIQUE's is a screen of its own over the harbour.
+  const opened = `${sceneIs('hub')} || ${sceneIs('boutique')}`;
   for (let guard = 0; guard < 120; guard += 1) {
-    if (await page.evaluate(sceneIs('hub'))) {
+    if (await page.evaluate(opened)) {
       return;
     }
     // Through the Raid Arena's door its trailer plays first, and any key skips
@@ -105,7 +107,7 @@ export async function walkIntoBase(page, door, options = {}) {
     }
     await settle(settleMs);
   }
-  await until(sceneIs('hub'), `the ${door}`);
+  await until(opened, `the ${door}`);
 }
 
 /** `--insertion=id [--offered] --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,..`, out of a driver's arguments. */

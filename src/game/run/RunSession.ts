@@ -1,3 +1,4 @@
+import type { DressedLook } from '../look/look';
 import type { SecureSlot as StashSecureSlot } from '../stash';
 import type { RunObjective } from '../objectives';
 import type { SecureSlot, ItemStack } from './RunManager';
@@ -54,6 +55,12 @@ export interface ActiveRunSession {
    * the starter, because a caught lookalike is the same species.
    */
   readonly partner?: Pokemon;
+  /**
+   * What the player wears on this raid (`../look/look`), read once at the
+   * door so the figure is the same through every rebuild of the world. Absent
+   * is the classic figure.
+   */
+  readonly look?: DressedLook;
   readonly objectives: readonly RunObjective[];
   /** The deterministic world configuration generated when this raid begins. */
   readonly plan?: RunPlan;
@@ -171,6 +178,7 @@ export function createActiveRunSession(
   workshopUpgrades: readonly string[] = [],
   packItemId?: string,
   partner?: Pokemon,
+  look?: DressedLook,
 ): ActiveRunSession {
   return {
     workshopUpgrades: [...workshopUpgrades],
@@ -181,6 +189,7 @@ export function createActiveRunSession(
     broughtItems: [...broughtItems],
     ...(packItemId === undefined ? {} : { packItemId }),
     ...(partner === undefined ? {} : { partner }),
+    ...(look === undefined ? {} : { look }),
     objectives: [...objectives],
     ...(plan === undefined
       ? {}

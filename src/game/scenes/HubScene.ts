@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { readLook } from '../look/look';
 import { countPlay, mapDetail } from '../analytics/playCounter';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import { audioManager } from '../audio/AudioManager';
@@ -1248,6 +1249,7 @@ export class HubScene extends Phaser.Scene {
       this.builtUpgradeIds,
       deployment.packItemId,
       deployment.party.find((stored) => stored.id === this.savedGame.stash.partnerId())?.pokemon,
+      readLook(this.savedGame.raidProgress.look) ?? undefined,
     );
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {

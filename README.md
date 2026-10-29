@@ -144,7 +144,7 @@ than the secure container you start with, so every raid you ride it is a raid yo
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
 than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
 with the name on their front door over their head, and they see yours. Read the sign in your front garden to knock on somebody else's door; if they're in
-and say yes, you're let in to have a nose round. Five buildings, four of them kept by people you'll recognise, and each one is a thing you can do:
+and say yes, you're let in to have a nose round. Six buildings, four of them kept by people you'll recognise, and each one is a thing you can do:
 
 - **The Raid Arena**, a Gym that has had a makeover - RAID on the plate, a gold ARENA badge, red
   banners and a red runner up to the door - on its own stone forecourt at the west end, by the jetty,
@@ -158,6 +158,13 @@ and say yes, you're let in to have a nose round. Five buildings, four of them ke
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
   HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found. Everything you trade him ends up on his
   shelves.
+- **The Harbour Boutique**, at the top of the Green, is where you stop looking like everybody else.
+  Every player starts in the same clothes; in here are 183 things to wear, all of them off
+  somebody in Kanto - a Youngster's cap, a Hiker's hat and beard, Erika's bob, Misty's side tail,
+  a lab coat, a Team Rocket tunic, a Lass's dress in five colours - plus whole looks from Champion
+  Red to Giovanni to a Pikachu in a yellow cap. Try anything on in the mirror first: it walks for
+  you. Everyday things cost Pokédollars, and the famous people's own looks are barter only:
+  Pokédollars won't buy you Erika's bob, but a few linen rolls and some lamp oil will.
 
 And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty: every
 raid sails out on her and comes home on her. The **S.S. Anne** lies at the end of the long pier,
@@ -179,14 +186,14 @@ FireRed town it tells you on a little board at the top of the screen as you walk
 Square, Keepers' Row, Harbour Square with its fountain and its town map, the Quay, the Docks, the
 Long Pier, the Cove and the Green. And the board on the quay has a new notice pinned up every day.
 
-At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
+At the end of the row, behind the window boxes, is one more: **The Bolthole**, which is yours.
 When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else
 in Pallet Town can have yours. After that it's your name on the door, over your head in the
 harbour and on every board.
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:
 a badge case with a slot for every keeper in Kanto, lit as you beat them; a pennant on your
 bedroom wall for every place you've come home from; a telly whose Kanto Tonight tells you which
-rival is hunting you next; a raid log on your PC; a rug the colour of your starter; and, under
+rival is hunting you next; a raid log on your PC; a rug the colour of your starter; a wardrobe to change in; and, under
 the telly, a games console. It plays **Pallet Blocks**, a falling-blocks game of its own, full
 screen, and every game you finish goes up on a Pallet Town leaderboard under that name,
 so you can see who in town is better at it than you. It keeps

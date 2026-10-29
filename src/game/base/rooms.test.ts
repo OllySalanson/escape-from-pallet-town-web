@@ -154,7 +154,10 @@ describe('the rooms behind the base doors', () => {
     const limits: Record<string, number> = { 'the yard': 18, 'the quay (home from a raid)': 28 };
     for (const start of BASE_STARTS) {
       for (const walk of walksToKeepers(start.tile, game)) {
-        expect([start.name, walk.door.id, walk.yard <= limits[start.name]]).toEqual([
+        // THE HARBOUR BOUTIQUE is somewhere to go when a raid has paid, not a
+        // keeper a raid re-kits at: its own walk is held in `baseMap.test.ts`.
+        const limit = walk.door.id === 'boutique' ? Infinity : limits[start.name];
+        expect([start.name, walk.door.id, walk.yard <= limit]).toEqual([
           start.name,
           walk.door.id,
           true,

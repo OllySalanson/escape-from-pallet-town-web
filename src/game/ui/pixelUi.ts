@@ -67,6 +67,8 @@ export const COLUMN_MEASURES = {
   pupil: 280,
   /** A move to compare against another: its name, type, numbers and sentence. */
   move: 216,
+  /** Something to wear (`look/boutiqueView.ts`): a figure in it over its name and its price. */
+  wearable: 92,
 } as const;
 
 /**

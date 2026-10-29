@@ -1,3 +1,4 @@
+import { BOUTIQUE_NAME } from '../look/wearables';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { BasePropName } from './baseTileset';
@@ -31,7 +32,7 @@ import type { BasePropName } from './baseTileset';
  * away, and it is the only way into a raid. `lab` is Oak's room, where the
  * contract board and the wall map are read.
  */
-export type BaseScreen = 'lab' | 'arena' | 'stash' | 'workshop' | 'trader';
+export type BaseScreen = 'lab' | 'arena' | 'stash' | 'workshop' | 'trader' | 'boutique';
 
 export interface BaseKeeper {
   readonly id: string;
@@ -146,6 +147,19 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     tiles: [{ x: 37, y: 10 }],
     // The step between the window boxes.
     returnTo: { x: 37, y: 11 },
+    opens: 'room',
+  },
+  {
+    // THE HARBOUR BOUTIQUE (`look/wearables.ts`): Vermilion's Pokémon Fan
+    // Club, green awning and all, set into the trees at the top of THE GREEN.
+    // It is not on the way to a raid, so it is not held to the keepers' walk:
+    // it is somewhere to go when a raid has paid.
+    id: 'boutique',
+    screen: 'boutique',
+    name: BOUTIQUE_NAME,
+    building: { prop: 'boutique', x: 54, y: 4 },
+    tiles: [{ x: 55, y: 7 }],
+    returnTo: { x: 55, y: 8 },
     opens: 'room',
   },
 ];

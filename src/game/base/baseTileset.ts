@@ -46,6 +46,7 @@ export type BasePropName =
   | 'workshop'
   | 'billsCottage'
   | 'bolthole'
+  | 'boutique'
   | 'homeSign'
   | 'gardenFlowers'
   | 'raidFerry'
@@ -187,6 +188,9 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     // step, which is the one thing in the harbour that says somebody lives
     // there. Its door is at the west end, the end nearest the yard.
     bolthole: withDoorway(KANTO_TILESET.props.houseFlowers, [[1, 3]]),
+    // 5x4. THE HARBOUR BOUTIQUE: Vermilion's Pokémon Fan Club under its
+    // green awning, the one building in Kanto that reads as a shopfront.
+    boutique: withDoorway(TOWN_PROPS.fanClub, [[1, 3]]),
     // FireRed's own wooden sign, which says whose house a house is.
     homeSign: KANTO_TILESET.props.signTown,
     // FireRed's red flowers, walked through as FireRed's are.

@@ -14,6 +14,8 @@ import { formatMoney } from '../items';
 import type { BaseDoor, BaseScreen } from './doors';
 import { errandBeat, errandThing } from '../hub/errands';
 import { caseBadges, wonBadges } from './badgeCase';
+import { ownedWearables } from '../look/wardrobe';
+import { STARTER_WEARABLES, WEARABLES } from '../look/wearables';
 
 /**
  * What each door says about what is waiting inside it.
@@ -41,6 +43,12 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
       const whose = ownerName ? `${ownerName}'s house` : 'Your house';
       const won = wonBadges(game).length;
       return won === 0 ? whose : `${whose} · ${won} of ${caseBadges().length} badges`;
+    }
+    case 'boutique': {
+      // What the shop has left to sell this save, said as what it has: the
+      // dearest reason to walk to the top of the green.
+      const owned = ownedWearables(game.raidProgress.wardrobe).size;
+      return owned <= STARTER_WEARABLES.length ? `${WEARABLES.length} things to wear` : `${owned} of ${WEARABLES.length} pieces yours`;
     }
     case 'arena': {
       // The raid's own number: how long the next one runs, said only when the
