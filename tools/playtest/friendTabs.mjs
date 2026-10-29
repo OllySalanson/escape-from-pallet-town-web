@@ -16,6 +16,8 @@ import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs
 
 export const page = (base) => `${base}${base.includes('?') ? '&' : '?'}testmode=pixels&harbour=local`;
 export const WORLD = `${GAME}.scene.getScene('world')`;
+/** What the two friends wear on the raid: both, since the two tabs share one save. */
+export const FRIEND_LOOK = { head: 'hiker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'hiker-gear' };
 export const raid = `(() => { const w = ${WORLD}; const live = w && w.sys.isActive();
   return { live: !!live, map: live ? w.currentMap.id : null, tile: live ? w.currentTile : null,
     seen: live ? w.friendFiguresShown : [], chip: live ? (w.friendChip() ?? []).join(' / ') : null,
@@ -110,6 +112,8 @@ export async function twoInARoom(browser, url, out) {
   );
   await olly.waitFor(sceneIs('base'));
   await olly.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
+  // Dressed from THE HARBOUR BOUTIQUE, so each sees the other in it (\`look/\`).
+  await olly.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); save.raidProgress.look = ${JSON.stringify(FRIEND_LOOK)}; save.raidProgress.wardrobe = ['hiker-hat', 'hiker-gear']; localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
 
   // Into Oak's Lab, and a room on the one map a new save can drop into.
   await bring(olly);

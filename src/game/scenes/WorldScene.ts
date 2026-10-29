@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { readLook } from '../look/look';
+import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
@@ -1350,7 +1350,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.runSession || rooms?.room?.mapId !== this.currentMap.id) {
       return;
     }
-    rooms.inRaid(this.currentMap.id, this.currentTile, this.facing);
+    rooms.inRaid(this.currentMap.id, this.currentTile, this.facing, readLook(this.runSession?.look));
     this.friendFigures = new HarbourFigures(this, () => RAID_NAME_PLATE_DEPTH);
     // Anything the others took before this player dropped in, or while they
     // were in a fight, is already gone.
@@ -1601,11 +1601,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** The friend as drawn, for a playtest to read (`tools/playtest/friendRaid.mjs`). */
-  public get friendFiguresShown(): readonly { readonly name: string; readonly tile: GridPosition }[] {
+  public get friendFiguresShown(): readonly { readonly name: string; readonly tile: GridPosition; readonly look: string }[] {
     if (!this.friendFigures) {
       return [];
     }
-    return (friendRoom()?.figuresOn(this.currentMap.id) ?? []).map((figure) => ({ name: figure.name, tile: { ...figure.tile } }));
+    return (friendRoom()?.figuresOn(this.currentMap.id) ?? []).map((figure) => ({
+      name: figure.name,
+      tile: { ...figure.tile },
+      look: lookKey(figure.look ?? null),
+    }));
   }
 
   /** The friend chip's lines, while this raid is in a room (`friendChipLines`). */

@@ -1,5 +1,5 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
-import { HARBOUR_PATH_MAX, isPlayerId, type HarbourMove } from '../harbour/harbourProtocol';
+import { encodeLook, HARBOUR_PATH_MAX, isPlayerId, readWireLook, type HarbourMove } from '../harbour/harbourProtocol';
 
 /**
  * What two players in a raid room tell each other, and the one rule for
@@ -55,6 +55,8 @@ export function encodeRaidMove(move: RaidMove): Record<string, unknown> {
     p: move.place,
     s: move.path.slice(-HARBOUR_PATH_MAX).map((tile) => [tile.x, tile.y]),
     f: move.facing,
+    // What they wear, as the harbour says it (`harbour/harbourProtocol.ts`).
+    ...(move.look ? { w: encodeLook(move.look) } : {}),
   };
 }
 
@@ -63,7 +65,7 @@ export function readRaidMove(payload: unknown): RaidMove | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
-  const { u, p, s, f } = payload as Record<string, unknown>;
+  const { u, p, s, f, w } = payload as Record<string, unknown>;
   if (!isPlayerId(u) || !isRaidPlace(p) || typeof f !== 'string' || !FACINGS.includes(f as Direction)) {
     return null;
   }
@@ -77,7 +79,9 @@ export function readRaidMove(payload: unknown): RaidMove | null {
     }
     path.push({ x: step[0], y: step[1] });
   }
-  return { from: u, place: p, path, facing: f as Direction };
+  // A look is believed only as the boutique's own pieces; anything else is the classic figure.
+  const look = readWireLook(w);
+  return { from: u, place: p, path, facing: f as Direction, ...(look ? { look } : {}) };
 }
 
 /** What a player says about themselves on joining: only where they are. */

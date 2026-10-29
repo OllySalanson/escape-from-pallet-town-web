@@ -5,13 +5,14 @@
 //   node tools/playtest/friendRaid.mjs <url> <out dir> [--window=800x512]
 //
 // The two get into one room's raid (`friendTabs.mjs`) and must see each other
-// under their names; OLLY walks and AMY must see him arrive where he stopped,
+// under their names, in their looks from THE HARBOUR BOUTIQUE; OLLY walks and
+// AMY must see him arrive where he stopped,
 // and then OLLY's tab is closed - the friend disconnecting - and AMY must see
 // him gone, be told he left, and still be raiding. It fails loudly - a thrown
 // error - when any of that does not happen, and photographs both screens.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { WORLD, twoInARoom } from './friendTabs.mjs';
+import { FRIEND_LOOK, WORLD, twoInARoom } from './friendTabs.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -48,6 +49,10 @@ try {
   await bring(amy);
   await until(amy, 'AMY seeing OLLY arrive', (s) => s.seen.some((f) => f.name === 'OLLY' && f.tile.x === walked.tile.x && f.tile.y === walked.tile.y));
   console.log(`AMY saw OLLY walk to ${walked.tile.x},${walked.tile.y}`);
+  // In what he wears, as the room says it.
+  const worn = `${FRIEND_LOOK.head}+${FRIEND_LOOK.top}+${FRIEND_LOOK.legs}+${FRIEND_LOOK.body}`;
+  await until(amy, 'AMY seeing OLLY in his look', (s) => s.seen.some((f) => f.name === 'OLLY' && f.look === worn));
+  console.log(`AMY sees OLLY wearing ${worn}`);
   await sleep(400);
   await amy.screenshot(`${out}/4-amy-sees-olly.png`);
   await bring(olly);
