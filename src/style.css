@@ -4261,6 +4261,12 @@ button {
 :where(.pixel-ui[data-room='tight']) .boutique-mirror .look-figure {
   --figure-scale: 2;
 }
+/* At the smallest stage the four facings leave the list under the mirror less
+   room than one of its rows, so it could only ever show a row cut through:
+   it goes, and the bar along the foot still says what is new and its price. */
+:where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-mirror-window > .boutique-worn {
+  display: none;
+}
 /* A card's figure at two, and at the game's own size at the smallest stage,
    so a card is short enough to fold whole under a MORE strip rather than be
    cut through its words. */

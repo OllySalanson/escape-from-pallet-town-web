@@ -239,6 +239,10 @@ try {
   await walkIntoBase(page, 'bills-cottage');
   await shoot('bill');
   await leave();
+  // THE HARBOUR BOUTIQUE: its shelves are the longest list in the game.
+  await walkIntoBase(page, 'boutique');
+  await shoot('boutique');
+  await leave();
   await walkIntoBase(page, 'raid-arena');
   await shoot('lobby');
   await shoot('loadout');
