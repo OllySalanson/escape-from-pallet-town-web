@@ -75,12 +75,15 @@ export const ITEM_ICONS = {
   'raid-pack': 'raid-pack',
   'ranger-pack': 'ranger-pack',
   'hauler-frame': 'hauler-frame',
-  // The four errands' things (`scripts/draw-errand-icons.mjs`): Oak's parcel,
-  // Joy's bag, Brock's crate and Bill's amber, each read at 16px on the ground.
+  // The errands' things (`scripts/draw-errand-icons.mjs`): Oak's parcel,
+  // Joy's bag, Brock's crate, Bill's amber, the captain's log and the Warden's
+  // teeth, each read at 16px on the ground.
   'oaks-parcel': 'oaks-parcel',
   'medicine-bag': 'medicine-bag',
   'brocks-crate': 'brocks-crate',
   'old-amber': 'old-amber',
+  'ships-log': 'ships-log',
+  'gold-teeth': 'gold-teeth',
   leftovers: 'leftovers',
   'focus-band': 'focus-band',
   'life-orb': 'life-orb',

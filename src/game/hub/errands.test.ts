@@ -6,6 +6,7 @@ import { availableInsertionIds, frontDoorFor, generateRunPlan } from '../run/run
 import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import { CONTRACT_REWARD_INSERTIONS, DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
+import { HARBOUR_PEOPLE, harbourLifeAt } from '../base/harbourLife';
 import { stepDistances } from '../world/mapStructure';
 import { getWorldMap } from '../worldMap';
 import {
@@ -18,6 +19,7 @@ import {
   errandToSay,
   FAVOUR_ANSWERS,
   forgetDeclinedErrands,
+  harbourGiver,
   errandForItem,
   errandLoot,
   errandOf,
@@ -42,12 +44,33 @@ const OPENED: ErrandProgress = {
 const nothing = (): number => 0;
 
 describe('errands', () => {
-  it('gives one errand to each of the four people at base, and only theirs', () => {
-    expect(ERRANDS.map((errand) => errand.giver).sort()).toEqual(['lab', 'stash', 'trader', 'workshop']);
+  it('gives one errand to each of the four people at base, and some to people about the harbour', () => {
+    const keepers = ERRANDS.map((errand) => errand.giver).filter((giver) => !giver.startsWith('harbour:'));
+    expect(keepers.sort()).toEqual(['lab', 'stash', 'trader', 'workshop']);
     expect(new Set(ERRANDS.map((errand) => errand.id)).size).toBe(ERRANDS.length);
     for (const errand of ERRANDS) {
       expect(errandOf(errand.giver)).toBe(errand);
       expect(errandForItem(errand.itemId)).toBe(errand);
+    }
+  });
+
+  /**
+   * The captain's ask: "people walking around ... and they can give you
+   * missions". A harbour giver is a person who is out at every hour, so a
+   * favour can always be answered and its thing always handed over.
+   */
+  it('is asked by somebody about the harbour only if they are a person who is out day and night', () => {
+    const harbour = ERRANDS.filter((errand) => errand.giver.startsWith('harbour:'));
+    expect(harbour.map((errand) => errand.giver).sort()).toEqual([
+      harbourGiver('safari-warden'),
+      harbourGiver('ss-anne-captain'),
+    ]);
+    for (const errand of harbour) {
+      const person = HARBOUR_PEOPLE.find((each) => harbourGiver(each.id) === errand.giver);
+      expect(person, errand.giver).toBeDefined();
+      expect(person!.byDayOnly, errand.giver).toBeUndefined();
+      expect(harbourLifeAt('night').some((figure) => figure.id === person!.id), errand.giver).toBe(true);
+      expect(errand.speaker).toBe(person!.design);
     }
   });
 
@@ -63,7 +86,7 @@ describe('errands', () => {
       expect(item!.footprint.height).toBeLessThanOrEqual(satchel.height);
     }
     // Different weights, so each favour costs the pack something different.
-    expect(ERRANDS.map(errandSquares).sort()).toEqual([1, 2, 2, 4]);
+    expect(ERRANDS.map(errandSquares).sort()).toEqual([1, 1, 2, 2, 2, 4]);
   });
 
   it('says where the thing is and how big it is in the giver’s own words, and both are true', () => {
@@ -112,6 +135,9 @@ describe('errands', () => {
         expect(line.length, `${errand.id}: ${line}`).toBeLessThanOrEqual(68);
       }
       expect(errand.question, errand.id).toMatch(/\?$/);
+      // The question shares its box with YES and NOT NOW, on the row under it,
+      // so it is one row of the box (about 38 characters) or it runs into them.
+      expect(errand.question.length, `${errand.id}: ${errand.question}`).toBeLessThanOrEqual(34);
       // NOT NOW says when it will be asked again, which is the rule it keeps.
       expect(errand.declined, errand.id).toContain('after your next raid');
     }

@@ -38,6 +38,9 @@ vi.mock('../ui/ChoicePrompt', () => ({
   },
 }));
 
+// The shared harbour is nobody's here: nobody to wave at.
+vi.mock('../harbour/harbour', () => ({ harbour: () => null, harbourHouses: () => null }));
+
 import { BaseScene } from './BaseScene';
 import { Bag } from '../items';
 import { CHARMANDER, PokemonParty } from '../pokemon';
@@ -51,7 +54,8 @@ import {
   type StorageLike,
 } from '../save/SaveManager';
 import { roomNamed } from '../base/rooms';
-import { errandOf, forgetDeclinedErrands, type ErrandRecord } from '../hub/errands';
+import { errandOf, forgetDeclinedErrands, harbourGiver, type ErrandRecord } from '../hub/errands';
+import { HARBOUR_PEOPLE } from '../base/harbourLife';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -73,7 +77,12 @@ const BROCK = errandOf('workshop')!;
  * crate's map, these favours in hand and this much in the vault. Saying, the
  * question and opening the screen are caught rather than drawn.
  */
-function workshop(errands: readonly ErrandRecord[] = [], vault: Record<string, number> = {}, raidProgress: Partial<RaidProgress> = {}) {
+function workshop(
+  errands: readonly ErrandRecord[] = [],
+  vault: Record<string, number> = {},
+  raidProgress: Partial<RaidProgress> = {},
+  where: 'workshop' | 'pier' = 'workshop',
+) {
   questions.length = 0;
   const storage = new MemoryStorage();
   const saves = new SaveManager(storage);
@@ -97,6 +106,8 @@ function workshop(errands: readonly ErrandRecord[] = [], vault: Record<string, n
     },
   });
   const room = roomNamed('brocks-workshop')!;
+  const captain = HARBOUR_PEOPLE.find((person) => person.id === 'ss-anne-captain')!;
+  const faced: string[] = [];
   const said: string[][] = [];
   const screens: string[] = [];
   let afterSaid: (() => void) | null = null;
@@ -105,9 +116,20 @@ function workshop(errands: readonly ErrandRecord[] = [], vault: Record<string, n
   Object.assign(scene, {
     saveManager: saves,
     savedGame: saves.load()!,
-    place: { room: { room } },
-    currentTile: room.mat!,
-    facing: 'up',
+    ...(where === 'workshop'
+      ? { place: { room: { room } }, currentTile: room.mat!, facing: 'up' }
+      : {
+          // On the long pier, just south of the captain and facing him.
+          place: { room: undefined },
+          currentTile: { x: captain.position.x, y: captain.position.y + 1 },
+          facing: 'up',
+          harbourLife: {
+            at: (tile: { x: number; y: number }) =>
+              tile.x === captain.position.x && tile.y === captain.position.y ? captain : undefined,
+            face: (id: string) => faced.push(id),
+          },
+          harbourMarks: new Map(),
+        }),
     partnerAt: () => false,
     dialogBox: { x: 44, y: 176 },
     player: { stop: () => undefined, setFrame: () => undefined },
@@ -134,7 +156,7 @@ function workshop(errands: readonly ErrandRecord[] = [], vault: Record<string, n
     question.onChoose(question.options.indexOf(choice));
   };
   const stored = () => new SaveManager(storage).load()!;
-  return { scene, said, screens, talk, read, answer, stored, lineShown: () => lineShown };
+  return { scene, said, screens, faced, talk, read, answer, stored, lineShown: () => lineShown };
 }
 
 /**
@@ -229,5 +251,37 @@ describe("a keeper's favour, asked in the room", () => {
     brock.talk();
     expect(brock.said).toHaveLength(1);
     expect(brock.screens).toEqual(['workshop', 'workshop']);
+  });
+});
+
+/**
+ * The captain's ask was for people walking about who give you missions: the
+ * S.S. Anne's captain on the long pier asks his favour in the same box, and
+ * with no counter behind him there is nothing to open after it.
+ */
+describe('a favour asked by somebody about the harbour', () => {
+  beforeEach(() => forgetDeclinedErrands());
+  const LOG = errandOf(harbourGiver('ss-anne-captain'))!;
+
+  it('turns to the player, asks, and takes a YES with nothing opened after', () => {
+    const pier = workshop([], {}, {}, 'pier');
+    pier.talk();
+    expect(pier.faced).toEqual(['ss-anne-captain']);
+    expect(pier.said).toEqual([LOG.asks]);
+    pier.read();
+    expect(questions.at(-1)!.lines).toEqual([LOG.question]);
+    pier.answer('YES');
+    expect(pier.said.at(-1)).toEqual([LOG.accepted]);
+    expect(pier.stored().raidProgress.errands).toEqual([{ id: LOG.id, status: 'started', found: 0, lossesHeard: 0 }]);
+    pier.read();
+    expect(pier.screens).toEqual([]);
+  });
+
+  it('hands the log over on the pier and pays HM01', () => {
+    const pier = workshop([{ id: LOG.id, status: 'started', found: 1, lossesHeard: 0 }], { [LOG.itemId]: 1 }, {}, 'pier');
+    pier.talk();
+    expect(pier.said).toEqual([["You handed over Ship's log.", ...LOG.thanks, 'You received HM01 from Captain Hale.']]);
+    expect(pier.stored().stash.itemCount('hm01-cut')).toBe(1);
+    expect(pier.stored().stash.itemCount(LOG.itemId)).toBe(0);
   });
 });

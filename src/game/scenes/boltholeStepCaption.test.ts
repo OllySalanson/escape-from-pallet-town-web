@@ -119,6 +119,8 @@ function walkingOutOfTheBolthole() {
     place: { width: yard.width, height: yard.height, layers: yard.layers, room: null },
     hintShown: '',
     dialogBox: { visible: false },
+    // Nobody about the harbour with a favour on their mind.
+    harbourMarks: new Map(),
     penPokemon: null,
     partner,
   });

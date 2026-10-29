@@ -101,6 +101,8 @@ function yardAtTheFence(saying: boolean) {
     place: { room: null },
     hintShown: '',
     dialogBox: { visible: false },
+    // Nobody about the harbour with a favour on their mind.
+    harbourMarks: new Map(),
     penPokemon: null,
     partner,
     canopyInView: () => [],

@@ -534,7 +534,10 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
 
   it('stands every finished errand’s thing in its giver’s room, on furniture, and nowhere before', () => {
     const errands = ERRANDS.map((errand) => ({ id: errand.id, status: 'completed' as const, found: 1, lossesHeard: 1 }));
-    for (const errand of ERRANDS) {
+    // A keeper's thing stands in their room; somebody out in the harbour has no room.
+    const keepers = ERRANDS.filter((errand) => !errand.giver.startsWith('harbour:'));
+    expect(Object.keys(ERRAND_DISPLAY).sort()).toEqual(keepers.map((errand) => errand.id).sort());
+    for (const errand of keepers) {
       const display = ERRAND_DISPLAY[errand.id];
       const room = BASE_ROOMS.find((each) => each.id === display.room)!;
       expect(buildRoom(room, baseGame()).icons).toEqual([]);

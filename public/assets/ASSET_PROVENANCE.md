@@ -270,9 +270,13 @@ game.
   own outline in palettes of their own: brown paper and white string with a
   red-stamped label, a white doctor's bag with a red cross, steel-banded planks
   with a grey stone on their face, and a lump of amber (`#f6c45a`, `#e8962e`,
-  `#b5641b`) with something dark (`#4a2a14`) inside. Original to this
-  repository; the names are FireRed's where FireRed has the thing (OAK'S
-  PARCEL, OLD AMBER), the drawings are not.
+  `#b5641b`) with something dark (`#4a2a14`) inside. The two asked by people
+  about the harbour - `ships-log` and `gold-teeth` - are the same script: a
+  log in navy cloth (`#3d5d92`, `#283f68`, `#6489c2`) with a gold anchor and
+  the pages' edge, and a plate of gold teeth on a pink gum (`#ef8fa4`,
+  `#c25c76`) open on a dark gap. Original to this repository; the names are
+  FireRed's where FireRed has the thing (OAK'S PARCEL, OLD AMBER, GOLD TEETH),
+  the drawings are not.
   The seven berries are `scripts/draw-berry-icons.mjs`: each redrawn by hand at
   16x16 after FireRed's own 24x24 berry icon, because about twenty pixels of
   fruit will not go into sixteen without resampling, and coloured with that

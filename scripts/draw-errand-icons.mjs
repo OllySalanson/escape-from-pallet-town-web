@@ -1,12 +1,13 @@
-// Draws the four errand icons (`src/game/hub/errands.ts`) into public/assets/icons.
+// Draws the errand icons (`src/game/hub/errands.ts`) into public/assets/icons.
 //
 //   node scripts/draw-errand-icons.mjs
 //
-// Each is a thing one of the people at base is waiting on, drawn on the ground
-// as well as in the pack, so which one it is has to read at 16px across a
-// clearing: Oak's parcel in brown paper and string, Joy's white bag with the
-// Center's red cross, Brock's crate in steel-banded wood with a grey stone on
-// it, and Bill's amber with something dark inside.
+// Each is a thing somebody at base is waiting on, drawn on the ground as well
+// as in the pack, so which one it is has to read at 16px across a clearing:
+// Oak's parcel in brown paper and string, Joy's white bag with the Center's
+// red cross, Brock's crate in steel-banded wood with a grey stone on it, Bill's
+// amber with something dark inside, the Safari Warden's gold teeth on their
+// pink plate, and the captain's ship's log in navy with a gold anchor.
 //
 // 16x16 RGBA, one shared outline (#241f2e) and a shade/base/light triple per
 // hue, the same rules as the rest of the set (see ASSET_PROVENANCE.md). Drawn
@@ -32,8 +33,12 @@ const C = {
   W: hex('fbf8ef'), i: hex('d3cbb8'), r: hex('d94848'), R: hex('a83030'), k: hex('5a3b22'), B: hex('e2b65c'),
   // wood and steel
   T: hex('c08a4e'), t: hex('8f6131'), u: hex('5f3f1f'), s: hex('7d8794'), S: hex('b9c2cc'), g: hex('9aa1a8'), G: hex('5e656d'),
-  // amber
+  // amber, and gold
   a: hex('e8962e'), A: hex('f6c45a'), Y: hex('fde7a0'), m: hex('b5641b'), n: hex('4a2a14'),
+  // a denture's gum
+  q: hex('ef8fa4'), Q: hex('c25c76'),
+  // a ship's log's navy cloth
+  N: hex('3d5d92'), v: hex('283f68'), V: hex('6489c2'),
 };
 
 const blank = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -171,6 +176,51 @@ icons['old-amber'] = outline(
     '...maaaaaamm....',
     '....mmmmmmm.....',
     '................',
+    '................',
+    '................',
+  ]),
+);
+
+// The Safari Warden's gold teeth: FireRed's own lost property, a plate of
+// gold teeth on a pink gum, upper row over lower.
+icons['gold-teeth'] = outline(
+  fromRows([
+    '................',
+    '................',
+    '................',
+    '....qqqqqqqq....',
+    '..qqqqQqqQqqqq..',
+    '.qqYAmYAmYAmYqq.',
+    '.qYAmYAmYAmYAmq.',
+    '.qaamaamaamaamQ.',
+    '..nnnnnnnnnnnn..',
+    '..nYAmYAmYAmYn..',
+    '.qaamaamaamaamQ.',
+    '.qqqqQqqqqQqqqQ.',
+    '...qqqqqqqqqQ...',
+    '................',
+    '................',
+    '................',
+  ]),
+);
+
+// The captain's ship's log: navy cloth boards, a gold anchor, the pages' edge.
+icons['ships-log'] = outline(
+  fromRows([
+    '................',
+    '................',
+    '...VVVVVVVVVV...',
+    '...NNNNNNNNNNW..',
+    '...NNNNYNNNNNW..',
+    '...NNNYAYNNNNW..',
+    '...NNNNANNNNNW..',
+    '...NNAAAAANNNW..',
+    '...NNNNANNNNNW..',
+    '...NNNNANNNNNW..',
+    '...NANNANNANNW..',
+    '...NNAAAAANNNW..',
+    '...vvvvvvvvvvW..',
+    '....iiiiiiiiii..',
     '................',
     '................',
   ]),
