@@ -27,6 +27,7 @@ import {
   PARTNER_SPRITE_Y_OFFSET,
   drawEmoteBubble,
 } from './partnerFigure';
+import { SpeechBubble, type BubbleBox } from './speechBubble';
 
 /**
  * Everybody else in THE HARBOUR, drawn: one figure a player, walking where
@@ -127,6 +128,9 @@ interface Drawn {
   heel: Heel | null;
   /** The hand up over their head while they wave. */
   wave: Phaser.GameObjects.Graphics | null;
+  /** The quick phrase over them while they say one, and where it was seated this frame. */
+  bubble: SpeechBubble | null;
+  bubbleBox: BubbleBox | null;
 }
 
 export class HarbourFigures {
@@ -174,6 +178,7 @@ export class HarbourFigures {
    */
   public update(figures: readonly PlateFigure[], self: { readonly x: number; readonly y: number } | null = null): void {
     const here = new Set(figures.map((figure) => figure.id));
+    const bubbles: BubbleBox[] = [];
     for (const [id, drawn] of this.drawn) {
       if (!here.has(id)) {
         takeDown(drawn);
@@ -228,11 +233,43 @@ export class HarbourFigures {
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
       const underSelf = self !== null && Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2;
-      const named = !underSelf || figure.speaking === true;
+      // A phrase names its speaker too: the plate under the bubble says whose it is.
+      const named = !underSelf || figure.speaking === true || figure.saying !== undefined;
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
-      this.drawWave(drawn, figure, x, named ? plateY : y + headOf(drawn) - 1);
+      const over = named ? plateY : y + headOf(drawn) - 1;
+      this.drawWave(drawn, figure, x, over);
+      this.drawBubble(drawn, figure, x + TILE_SIZE / 2, (drawn.wave?.y ?? over) - 1, bubbles);
     }
+  }
+
+  /**
+   * What somebody is saying, in a bubble over their plate (and over their hand
+   * while it is up), so the plate under it still says whose it is. A bubble
+   * that would land on one already seated this frame is lifted over it.
+   */
+  private drawBubble(drawn: Drawn, figure: PlateFigure, centreX: number, tipY: number, seated: BubbleBox[]): void {
+    if (!figure.saying) {
+      drawn.bubble?.destroy();
+      drawn.bubble = null;
+      drawn.bubbleBox = null;
+      return;
+    }
+    drawn.bubble ??= new SpeechBubble(this.scene);
+    drawn.bubble.say(figure.saying);
+    let box = drawn.bubble.place(centreX, tipY, this.placeWidth?.() ?? null);
+    for (const other of seated) {
+      if (overlaps(box, other)) {
+        box = drawn.bubble.place(centreX, Math.min(tipY, other.y - 1), this.placeWidth?.() ?? null);
+      }
+    }
+    drawn.bubbleBox = box;
+    seated.push(box);
+  }
+
+  /** Every speech bubble seated this frame, in world pixels: this player's own is lifted clear of them. */
+  public bubbleRects(): BubbleBox[] {
+    return [...this.drawn.values()].flatMap(({ bubbleBox }) => (bubbleBox ? [bubbleBox] : []));
   }
 
   /**
@@ -248,17 +285,22 @@ export class HarbourFigures {
   }
 
   /**
-   * Where every other player is drawn, figure and name plate together, in
-   * world pixels: ground a caption must keep clear of, as it keeps clear of
-   * the harbour's own people (`BaseScene.containWorldLabels`) - a building's
-   * name seated across another player read as their head on a sign.
+   * Where every other player is drawn, figure and name plate together, and
+   * anything they are saying, in world pixels: ground a caption must keep
+   * clear of, as it keeps clear of the harbour's own people
+   * (`BaseScene.containWorldLabels`) - a building's name seated across another
+   * player read as their head on a sign.
    */
   public rects(): { x: number; y: number; width: number; height: number }[] {
-    return [...this.drawn.values()].map((drawn) => {
-      const { sprite, plate, name, wave } = drawn;
+    return [...this.drawn.values()].flatMap((drawn) => {
+      const { sprite, plate, name, wave, bubbleBox } = drawn;
       const head = name.visible ? Math.min(plate.y, sprite.y + headOf(drawn)) : sprite.y + headOf(drawn);
       const top = wave ? Math.min(head, wave.y) : head;
-      return { x: sprite.x, y: top, width: TILE_SIZE, height: sprite.y + CHARACTER_FEET_PIXEL_Y + 1 - top };
+      // What they are saying is theirs too: a caption seated over it would be read as said.
+      return [
+        { x: sprite.x, y: top, width: TILE_SIZE, height: sprite.y + CHARACTER_FEET_PIXEL_Y + 1 - top },
+        ...(bubbleBox ? [{ ...bubbleBox }] : []),
+      ];
     });
   }
 
@@ -341,7 +383,7 @@ export class HarbourFigures {
     const sprite = this.scene.add.sprite(0, 0, texture, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);
-    const drawn: Drawn = { sprite, texture, plate, name, walking: null, heel: null, wave: null };
+    const drawn: Drawn = { sprite, texture, plate, name, walking: null, heel: null, wave: null, bubble: null, bubbleBox: null };
     drawPlate(drawn);
     this.drawn.set(figure.id, drawn);
     return drawn;
@@ -399,6 +441,11 @@ export function clearOfHeel(plate: Box, heel: Box | null): number {
   return Math.min(plate.y, heel.y - plate.height);
 }
 
+/** Whether two boxes share a pixel. */
+export function overlaps(a: BubbleBox, b: BubbleBox): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
 /** The drawn art of a partner at heel, from the top of its head to its feet, while it is shown. */
 function heelArt(heel: Heel | null): Box | null {
   if (!heel?.sprite.visible) {
@@ -432,6 +479,7 @@ function drawPlate(drawn: Drawn): void {
 function takeDown(drawn: Drawn): void {
   drawn.heel?.sprite.destroy();
   drawn.wave?.destroy();
+  drawn.bubble?.destroy();
   drawn.sprite.destroy();
   drawn.plate.destroy();
   drawn.name.destroy();

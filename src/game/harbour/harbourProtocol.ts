@@ -1,6 +1,7 @@
 import { readLook, type DressedLook } from '../look/look';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { isPartnerSpecies, type PartnerSpeciesId } from '../base/partner';
+import { isHarbourPhraseId, type HarbourPhraseId } from './harbourPhrases';
 
 /**
  * What the players in THE HARBOUR tell each other, and the one rule for reading
@@ -235,6 +236,35 @@ export function readHarbourWave(payload: unknown): HarbourWave | null {
   }
   // Waved at nobody in particular is still a wave.
   return isPlayerId(t) ? { from: u, place: p, to: t } : { from: u, place: p };
+}
+
+/** The broadcast event a quick phrase travels on. */
+export const HARBOUR_SAY_EVENT = 'say';
+
+/**
+ * A quick phrase (`harbourPhrases.ts`): one player saying one of the game's own
+ * phrases in the place they stand, for a bubble over them on every screen
+ * there. It carries the phrase's id and never its words, so all a false one can
+ * do is put one of those phrases over somebody; an id this build does not know
+ * is not a phrase at all.
+ */
+export interface HarbourSay<P extends string = HarbourPlace> {
+  readonly from: string;
+  readonly place: P;
+  readonly phrase: HarbourPhraseId;
+}
+
+export function encodeHarbourSay(say: HarbourSay): Record<string, unknown> {
+  return { u: say.from, p: say.place, n: say.phrase };
+}
+
+/** A phrase heard from another browser, or null if it is anything else. */
+export function readHarbourSay(payload: unknown): HarbourSay | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  const { u, p, n } = payload as Record<string, unknown>;
+  return isPlayerId(u) && isHarbourPlace(p) && isHarbourPhraseId(n) ? { from: u, place: p, phrase: n } : null;
 }
 
 /** What a player says about themselves on joining: only where they are. */

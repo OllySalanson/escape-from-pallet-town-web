@@ -6,6 +6,7 @@ import { housePlace, type HarbourPlace, type SHARED_HARBOUR_ROOMS } from './harb
 import { loadPlayerName } from '../console/playerName';
 import { requestedTestMode } from '../dev/testMode';
 import { HouseDoor } from './houseDoor';
+import type { HarbourPhraseId } from './harbourPhrases';
 import { liveHouseService, localHouseService, type HouseService } from './houseService';
 import { harbourMode, liveHarbourWire, localHarbourWire, type HarbourMode } from './harbourWire';
 
@@ -158,6 +159,11 @@ export class HarbourSession {
   /** Puts the player's hand up, at the player they are facing if any; whether it went. */
   public wave(to?: string): boolean {
     return this.link.wave(to);
+  }
+
+  /** Says a quick phrase to everybody where the player stands; whether it went. */
+  public say(phrase: HarbourPhraseId): boolean {
+    return this.link.say(phrase);
   }
 
   /** Everybody else where the player is standing. */

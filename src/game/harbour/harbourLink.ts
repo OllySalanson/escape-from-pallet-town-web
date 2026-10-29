@@ -8,8 +8,10 @@ import {
   type HarbourMove,
   type HarbourNudge,
   type HarbourPlace,
+  type HarbourSay,
   type HarbourWave,
 } from './harbourProtocol';
+import { PhraseBoard, PhrasePace, type HarbourPhraseId } from './harbourPhrases';
 
 /**
  * This browser's place in THE HARBOUR: what it tells the others and what it
@@ -48,6 +50,8 @@ export interface HarbourWire<P extends string = HarbourPlace> {
   nudge(nudge: HarbourNudge): void;
   /** Puts this player's hand up for everybody where they stand (`HarbourWave`); a place nobody waves in leaves it out. */
   wave?(wave: HarbourWave<P>): void;
+  /** Says one of the game's quick phrases for everybody where this player stands (`HarbourSay`); a place nobody talks in leaves it out. */
+  say?(say: HarbourSay<P>): void;
   /**
    * Something else a place shares beyond where people stand - a raid room's
    * hunter, say (`raidRoom/`). The wire carries it as it is and the place
@@ -63,16 +67,19 @@ export interface HarbourHeard<P extends string = HarbourPlace> {
   move(move: HarbourMove<P>): void;
   nudge(nudge: HarbourNudge): void;
   wave?(wave: HarbourWave<P>): void;
+  say?(say: HarbourSay<P>): void;
   /** Everybody present now, and where each says they are. */
   present(members: ReadonlyMap<string, P>): void;
   /** A signal another browser sent (`HarbourWire.signal`), unread: whoever handles it reads it. */
   signal?(payload: unknown): void;
 }
 
-/** Another player as drawn: where, the name on their door, and whether their hand is up. */
+/** Another player as drawn: where, the name on their door, whether their hand is up, and what they are saying. */
 export interface NamedFigure<P extends string = HarbourPlace> extends HarbourFigure<P> {
   readonly name: string;
   readonly waving?: boolean;
+  /** The words of the quick phrase in their bubble now (`harbourPhrases.ts`). */
+  readonly saying?: string;
 }
 
 /** How long a hand stays up over somebody who waved. */
@@ -116,6 +123,10 @@ export class HarbourLink<P extends string = HarbourPlace> {
   /** When each other player last waved, in this link's clock. */
   private readonly wavedAt = new Map<string, number>();
   private lastWaveAt = Number.NEGATIVE_INFINITY;
+  /** What everybody else here is saying, paced as they are heard. */
+  private readonly phrases = new PhraseBoard();
+  /** This player's own pace, so a held key or a script cannot flood the channel. */
+  private readonly ownPace = new PhrasePace();
   /** Counts every `leave`, so a join still on its way when the link was left is let go of. */
   private generation = 0;
 
@@ -250,7 +261,15 @@ export class HarbourLink<P extends string = HarbourPlace> {
           return [];
         }
         const waved = this.wavedAt.get(figure.id);
-        return [waved !== undefined && this.now - waved < WAVE_SHOWN_MS ? { ...figure, name, waving: true } : { ...figure, name }];
+        const saying = this.phrases.saying(figure.id, this.now);
+        return [
+          {
+            ...figure,
+            name,
+            ...(waved !== undefined && this.now - waved < WAVE_SHOWN_MS ? { waving: true } : {}),
+            ...(saying ? { saying } : {}),
+          },
+        ];
       });
   }
 
@@ -270,6 +289,20 @@ export class HarbourLink<P extends string = HarbourPlace> {
     }
     this.lastWaveAt = this.now;
     this.wire.wave(to ? { from: this.me!, place: this.place!, to } : { from: this.me!, place: this.place! });
+    return true;
+  }
+
+  /**
+   * Says one of the game's quick phrases for everybody where this player
+   * stands. Said only by a player who can be heard, with somebody there to
+   * hear it, and no faster than the harbour's pace (`PhrasePace`). Returns
+   * whether it went.
+   */
+  public say(phrase: HarbourPhraseId): boolean {
+    if (!this.seen() || !this.anybodyElse() || !this.wire.say || !this.ownPace.allow(this.me!, this.now)) {
+      return false;
+    }
+    this.wire.say({ from: this.me!, place: this.place!, phrase });
     return true;
   }
 
@@ -406,6 +439,11 @@ export class HarbourLink<P extends string = HarbourPlace> {
             this.onSignal?.(payload);
           }
         },
+        say: (say) => {
+          if (generation === this.generation && say.from !== this.me && say.place === this.place) {
+            this.phrases.hear(say.from, say.phrase, this.now);
+          }
+        },
         wave: (wave) => {
           if (generation !== this.generation || wave.from === this.me || wave.place !== this.place) {
             return;
@@ -458,6 +496,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
     for (const id of this.members.keys()) {
       if (!members.has(id)) {
         this.crowd.forget(id);
+        this.phrases.forget(id);
         // Asked again if they come back: they may have come back renamed.
         this.asked.delete(id);
         this.names.delete(id);
