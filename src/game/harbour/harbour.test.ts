@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { HarbourSession, placeFor, type HarbourIdentity } from './harbour';
-import type { HarbourWire } from './harbourLink';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AWAY_TICK_MS, HarbourSession, placeFor, type HarbourIdentity } from './harbour';
+import { AWAY_GRACE_MS, LEAVE_AFTER_MS, type HarbourWire } from './harbourLink';
 import type { HarbourPlace } from './harbourProtocol';
 import { harbourMode, membersOf } from './harbourWire';
 
@@ -8,17 +8,22 @@ const ME = '11111111-1111-4111-8111-111111111111';
 
 class QuietWire implements HarbourWire {
   public joins: [string | null, HarbourPlace | null][] = [];
+  public stood: (HarbourPlace | null)[] = [];
+  public left = 0;
   public join(as: string | null, place: HarbourPlace | null): Promise<boolean> {
     this.joins.push([as, place]);
     return Promise.resolve(true);
   }
-  public standIn(): void {}
+  public standIn(place: HarbourPlace | null): void {
+    this.stood.push(place);
+  }
   public send(): void {}
   public nudge(): void {}
   public names(): Promise<ReadonlyMap<string, string>> {
     return Promise.resolve(new Map());
   }
   public leave(): Promise<void> {
+    this.left += 1;
     return Promise.resolve();
   }
 }
@@ -72,6 +77,52 @@ describe('where the shared harbour has the player', () => {
     await settle();
     expect(session.seenAs).toBeNull();
     expect(wire.joins).toEqual([[null, null]]);
+  });
+});
+
+describe('a player whose scene has gone', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('is taken off everybody else\'s screens, then off the channel, with no scene left to tick the link', async () => {
+    vi.useFakeTimers();
+    const wire = new QuietWire();
+    const session = new HarbourSession(wire, { seenAs: () => Promise.resolve(ME) });
+    session.stand('yard', { x: 16, y: 13 }, 'up', 'OLLY');
+    await vi.advanceTimersByTimeAsync(0);
+    session.tick(5_000, 16);
+    expect(wire.stood).not.toContain(null);
+    // Joined to watch, then again as the player once the name was written.
+    const left = wire.left;
+    // Into the Raid Arena's loadout: the base scene has gone, and nothing ticks the link but the session.
+    session.away();
+    await vi.advanceTimersByTimeAsync(AWAY_GRACE_MS - AWAY_TICK_MS);
+    expect(wire.stood).not.toContain(null);
+    await vi.advanceTimersByTimeAsync(AWAY_TICK_MS);
+    expect(wire.stood.at(-1)).toBeNull();
+    expect(wire.left).toBe(left);
+    await vi.advanceTimersByTimeAsync(LEAVE_AFTER_MS);
+    expect(wire.left).toBe(left + 1);
+    // Nothing more is ticked once it has left.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('stops keeping the clock once a scene stands the player somewhere again', async () => {
+    vi.useFakeTimers();
+    const wire = new QuietWire();
+    const session = new HarbourSession(wire, { seenAs: () => Promise.resolve(ME) });
+    session.stand('yard', { x: 16, y: 13 }, 'up', 'OLLY');
+    await vi.advanceTimersByTimeAsync(0);
+    session.tick(5_000, 16);
+    const left = wire.left;
+    // Through a door: the old scene goes, the new one stands the player in the room.
+    session.away();
+    session.stand('oaks-lab', { x: 6, y: 11 }, 'up', 'OLLY');
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(AWAY_GRACE_MS + LEAVE_AFTER_MS);
+    expect(wire.stood).not.toContain(null);
+    expect(wire.left).toBe(left);
   });
 });
 
