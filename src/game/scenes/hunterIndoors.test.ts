@@ -58,7 +58,7 @@ function inThePressHouse({ player, hunter }: { player: GridPosition; hunter: Gri
       plan: { hunter: { ...DEFAULT_HUNTER_TUNING, aggressionStepsPerPlayerStep: 1 } },
     },
     placeFigure: vi.fn(),
-    isBlockedForHunter: collisionBlocker(map.collision),
+    hunterBlocker: () => collisionBlocker(map.collision),
   });
   return { scene: scene as unknown as Driven, map };
 }

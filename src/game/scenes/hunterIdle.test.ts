@@ -106,7 +106,7 @@ function standingStill(
     placeFigure: vi.fn(),
     createHunterSprite: vi.fn(),
     playCutscene: vi.fn(),
-    isBlockedForHunter: isBlocked,
+    hunterBlocker: () => isBlocked,
     findHunterSpawnTile: () => findHunterSpawnTile(player, bounds, isBlocked, (tiles) => tiles[0]),
     interrupt: (lines: readonly string[]) => interrupted.push(...lines),
     refreshExtractionMarkers: vi.fn(),

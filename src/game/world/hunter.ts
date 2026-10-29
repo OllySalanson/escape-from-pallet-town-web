@@ -619,11 +619,19 @@ const positionOf = (index: number, width: number): GridPosition => ({
  * Steps from every tile to the nearest goal tile, or UNREACHED where no route exists.
  * Flooding outwards from the goal answers the whole map in one pass, so a pursuit tick
  * that moves the hunter several tiles still only searches once.
+ *
+ * `stopAt` ends the flood the moment that tile is reached. Every tile nearer the
+ * goals than it has its distance by then - a flood reaches tiles in order of
+ * distance - and a walk down the field from it only ever reads nearer tiles, so
+ * the route is exactly the one the whole field gives. It is what keeps a chase
+ * cheap: flooded whole on Greystone Vale, every step the player took cost a
+ * search of the whole map, and a chase walked at half pace.
  */
 const buildDistanceField = (
   goals: readonly GridPosition[],
   bounds: GridBounds,
   blocked: BlockedLookup,
+  stopAt?: GridPosition,
 ): Int32Array => {
   const size = bounds.width * bounds.height;
   const distances = new Int32Array(size).fill(UNREACHED);
@@ -642,6 +650,10 @@ const buildDistanceField = (
     tail += 1;
   }
 
+  const stop = stopAt && isInsideBounds(stopAt, bounds) ? tileIndex(stopAt, bounds) : UNREACHED;
+  if (stop !== UNREACHED && distances[stop] !== UNREACHED) {
+    return distances;
+  }
   for (let head = 0; head < tail; head += 1) {
     const here = queue[head];
     const nextDistance = distances[here] + 1;
@@ -651,6 +663,9 @@ const buildDistanceField = (
         continue;
       }
       distances[index] = nextDistance;
+      if (index === stop) {
+        return distances;
+      }
       queue[tail] = index;
       tail += 1;
     }
@@ -785,7 +800,7 @@ export const findHunterPursuitPath = (
     return [];
   }
   const blocked = blockedLookup(bounds, isBlocked);
-  const contactDistances = buildDistanceField(contactGoals(player), bounds, blocked);
+  const contactDistances = buildDistanceField(contactGoals(player), bounds, blocked, hunter);
   if (contactDistances[tileIndex(hunter, bounds)] !== UNREACHED) {
     return routeDownhill(hunter, player, contactDistances, bounds, blocked);
   }
@@ -797,7 +812,7 @@ export const findHunterPursuitPath = (
   return routeDownhill(
     hunter,
     approach,
-    buildDistanceField([approach], bounds, blocked),
+    buildDistanceField([approach], bounds, blocked, hunter),
     bounds,
     blocked,
   );
