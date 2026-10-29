@@ -135,6 +135,16 @@ export const SHELF_JUMPS: Readonly<Record<string, string>> = {
   raid: 'Raid finds',
 };
 
+/**
+ * Which shelf Page Down or Page Up goes to, from the shelf the cursor is in:
+ * Down is always the next one; Up is the start of this one, or the one before
+ * when the cursor is already at its start. Held at both ends.
+ */
+export function shelfStep(current: number, atStart: boolean, count: number, direction: 1 | -1): number {
+  if (direction === 1) return Math.min(count - 1, current + 1);
+  return atStart ? Math.max(0, current - 1) : current;
+}
+
 /** A shelf's heading, marked so its jump chip can find it. */
 function shelfHeading(key: string, words: string): string {
   return `<h3 class="px-subheading" data-shelf="${key}">${words}</h3>`;
@@ -148,7 +158,10 @@ function shelfHeading(key: string, words: string): string {
 function shelfJumps(shelves: string): string {
   const keys = [...shelves.matchAll(/data-shelf="([a-z]+)"/g)].map((match) => match[1]);
   const chips = keys
-    .map((key) => `<button class="px-window px-chip" data-jump="${key}" data-help="${escapeAttribute(`Go to ${SHELF_JUMPS[key]}.`)}">${SHELF_JUMPS[key]}</button>`)
+    .map(
+      (key) =>
+        `<button class="px-window px-chip" data-jump="${key}" data-help="${escapeAttribute(`Go to ${SHELF_JUMPS[key]}. Page Down and Page Up go a shelf at a time.`)}">${SHELF_JUMPS[key]}</button>`,
+    )
     .join('');
   return `<div class="boutique-jumps">${chips}</div>`;
 }

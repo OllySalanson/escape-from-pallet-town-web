@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
-import { boutiqueMarkup, mirrorFigures, wornRows, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
+import { boutiqueMarkup, mirrorFigures, shelfStep, wornRows, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from '../look/composeLook';
 import { lookKey, readLook, wearing, type PlayerLook } from '../look/look';
 import { wearablesAtlas } from '../look/lookTexture';
@@ -142,11 +142,10 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     const list = root?.querySelector<HTMLElement>('[data-shelves]');
     const heading = list?.querySelector<HTMLElement>(`[data-shelf="${shelf}"]`);
     if (!list || !heading) return;
-    let card = heading.nextElementSibling;
-    while (card && !(card instanceof HTMLButtonElement)) card = card.nextElementSibling;
+    const card = this.firstCardOf(heading);
     audioManager.play('select');
     list.scrollTop = heading.offsetTop - list.offsetTop;
-    if (card instanceof HTMLButtonElement) card.focus({ preventScroll: true });
+    card?.focus({ preventScroll: true });
   }
 
   private preview(target: EventTarget | null): void {
@@ -212,9 +211,36 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       this.close();
       return;
     }
+    if (event.key === 'PageDown' || event.key === 'PageUp') {
+      event.preventDefault();
+      this.stepShelf(event.key === 'PageDown' ? 1 : -1);
+      return;
+    }
     if (this.overlay?.moveCursor(event.key)) {
       event.preventDefault();
     }
+  }
+
+  /** Page Down and Page Up: a shelf at a time, from the one the cursor is in. */
+  private stepShelf(direction: 1 | -1): void {
+    const headings = [...(this.overlay?.root.querySelectorAll<HTMLElement>('[data-shelves] [data-shelf]') ?? [])];
+    if (headings.length === 0) return;
+    const at = document.activeElement;
+    const inside = at instanceof HTMLElement && at.closest('[data-shelves]') !== null;
+    // The shelf the cursor is in is the last heading before it; off the list, it is before the first.
+    const current = inside
+      ? headings.reduce((found, heading, index) => (heading.compareDocumentPosition(at) & Node.DOCUMENT_POSITION_FOLLOWING ? index : found), 0)
+      : -1;
+    const first = current < 0 ? undefined : this.firstCardOf(headings[current]);
+    const next = current < 0 ? (direction === 1 ? 0 : -1) : shelfStep(current, at === first, headings.length, direction);
+    if (next < 0) return;
+    this.jumpTo(headings[next].dataset.shelf ?? '');
+  }
+
+  private firstCardOf(heading: HTMLElement): HTMLButtonElement | undefined {
+    let card = heading.nextElementSibling;
+    while (card && !(card instanceof HTMLButtonElement)) card = card.nextElementSibling;
+    return card instanceof HTMLButtonElement ? card : undefined;
   }
 
   /** A look's sheet as a data URL, composed once a look for the life of the page. */

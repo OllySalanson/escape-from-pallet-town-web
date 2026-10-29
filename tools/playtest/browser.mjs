@@ -30,6 +30,7 @@ export function writeScreenshot(path, base64) {
 const KEYS = {
   ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39,
   Space: 32, Enter: 13, Escape: 27, Tab: 9, Delete: 46, Backspace: 8,
+  PageUp: 33, PageDown: 34, Home: 36, End: 35,
 };
 
 function keyDescription(code) {
