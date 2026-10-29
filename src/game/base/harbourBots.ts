@@ -12,6 +12,7 @@ import type { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { harbourBeatTiles, harbourLifeAt, onLand } from './harbourLife';
 import type { PartnerSpeciesId } from './partner';
 import type { DressedLook } from '../look/look';
+import { BOUTIQUE_NAME } from '../look/wearables';
 
 /**
  * The harbour's regulars: twelve people who walk THE HARBOUR as players do,
@@ -75,6 +76,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     lines: [
       'Oh, hi! Just back off the SEAGALLOP. GREYSTONE VALE was all fog today.',
       'NURSE JOY patched us up again. BULBASAUR keeps eating the window boxes.',
+      'Got this sundress on THE GREEN. The mirror there shows you from every side first.',
     ],
   },
   {
@@ -125,6 +127,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     lines: [
       'Yo! Got out of the VALE with ten seconds on the clock. Never again!',
       'CHARMELEON wants a rematch with the hunter. I want a nap.',
+      `Like the jacket? ${BOUTIQUE_NAME}, top of THE GREEN. Trying it on is free.`,
     ],
   },
   {
@@ -185,6 +188,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     lines: [
       'Hi! CHARIZARD wants to fly us home, but the SEAGALLOP is faster with a full pack.',
       'Find anything good out there? I found a whole lot of nothing.',
+      'Somebody found a shiny CHARIZARD jacket in the VALE. No shop sells those.',
     ],
   },
 ];

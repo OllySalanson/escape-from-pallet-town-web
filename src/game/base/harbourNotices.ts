@@ -1,3 +1,5 @@
+import { BOUTIQUE_NAME } from '../look/wearables';
+
 /**
  * Today's notice on THE HARBOUR's board (`baseMap.ts`'s `NOTICE_BOARD`): one
  * line pinned under the board's own words, a different one each day by the
@@ -21,6 +23,9 @@ export const HARBOUR_NOTICES: readonly string[] = [
   'Hold L to read the name of everything in view.',
   'Somebody else walking the harbour? Face them and press SPACE to wave.',
   'Everything BROCK builds stands in the harbour: the mast, the lockers, the light at the breakwater\'s head.',
+  `${BOUTIQUE_NAME} at the top of THE GREEN dresses you. Trying a look on in its mirror is free.`,
+  'Legendary and shiny colours are never on a shop\'s shelves. They turn up on raids in GREYSTONE VALE.',
+  'Change what you wear at home: YOUR WARDROBE is the drawers upstairs in THE BOLTHOLE.',
 ];
 
 /** The notice pinned up on `now`'s day, by the player's own clock. */
