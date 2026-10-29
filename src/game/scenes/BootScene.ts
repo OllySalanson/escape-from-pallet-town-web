@@ -44,6 +44,8 @@ import {
   BIKE_TEXTURE,
 } from '../world/bicycle';
 
+import { WEARABLES_ASSET_PATH, WEARABLES_TEXTURE } from '../look/lookTexture';
+
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
 
 export class BootScene extends Phaser.Scene {
@@ -105,6 +107,9 @@ export class BootScene extends Phaser.Scene {
     // The furniture a player arranges in their house: Emerald's Secret Base
     // decorations and the house's own plants and table (`home/furniture.ts`).
     this.load.image(FURNITURE_TEXTURE, publicAssetUrl(FURNITURE_PATH));
+    // Every piece the boutique sells, cut from FireRed's people
+    // (`look/generated/wearablePieces.ts`): a look is composed from it.
+    this.load.image(WEARABLES_TEXTURE, publicAssetUrl(WEARABLES_ASSET_PATH));
     // Every sheet a map might be drawn from. A catalogue is chosen per map and
     // may draw from more than one sheet at a time, so the loader takes the list
     // rather than naming any of them: `frlg-tiles.png` for the ground, and

@@ -74,9 +74,19 @@ describe('the base map', () => {
 
   it("keeps every keeper's door within a stroll of where the game opens", () => {
     const steps = stepsFrom(BASE_SPAWN);
-    for (const door of BASE_DOORS.filter((each) => each.screen !== null)) {
+    for (const door of BASE_DOORS.filter((each) => each.screen !== null && each.screen !== 'boutique')) {
       expect([door.id, stepsTo(steps, approachesTo(door.id)) <= 18]).toEqual([door.id, true]);
     }
+  });
+
+  /**
+   * THE HARBOUR BOUTIQUE is where a raid's money is spent rather than where a
+   * raid starts, so it stands at the top of THE GREEN, past THE BOLTHOLE:
+   * further than any keeper, and still a walk, not a trek.
+   */
+  it('keeps THE HARBOUR BOUTIQUE a walk up THE GREEN from both landings', () => {
+    expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('boutique'))).toBeLessThanOrEqual(50);
+    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('boutique'))).toBeLessThanOrEqual(58);
   });
 
   /**

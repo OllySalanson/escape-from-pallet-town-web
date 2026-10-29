@@ -44,10 +44,10 @@ export const HARBOUR_SEND_EVERY_MS = 300;
 const MAX_TILE = 255;
 
 /** The rooms of the harbour everybody shares, by `rooms.ts` id. */
-export const SHARED_HARBOUR_ROOMS = ['oaks-lab', 'pokemon-centre', 'brocks-workshop', 'bills-cottage'] as const;
+export const SHARED_HARBOUR_ROOMS = ['oaks-lab', 'pokemon-centre', 'brocks-workshop', 'bills-cottage', 'boutique'] as const;
 
 /**
- * Where in the harbour a figure stands. The yard and the four keepers' rooms are
+ * Where in the harbour a figure stands. The yard, the four keepers' rooms and the boutique are
  * one place for everybody; a player's own house is theirs, so it is named by
  * whose it is - two players each at home are in two different houses.
  */

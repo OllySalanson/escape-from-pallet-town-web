@@ -1,0 +1,348 @@
+{
+ "boy": {
+  "head": "hair-boy",
+  "top": "top-boy",
+  "legs": "legs-boy"
+ },
+ "youngster": {
+  "head": "head-youngster",
+  "top": "top-youngster",
+  "legs": "legs-youngster"
+ },
+ "bug_catcher": {
+  "head": "head-bug-catcher",
+  "top": "top-bug-catcher"
+ },
+ "camper": {
+  "head": "head-camper",
+  "top": "top-camper",
+  "legs": "legs-camper"
+ },
+ "red_normal": {
+  "head": "head-red",
+  "top": "top-red",
+  "legs": "legs-red"
+ },
+ "rs_brendan": {
+  "head": "head-brendan",
+  "top": "top-brendan",
+  "legs": "legs-brendan"
+ },
+ "blue": {
+  "head": "head-blue",
+  "top": "top-blue"
+ },
+ "cooltrainer_m": {
+  "head": "head-cooltrainer",
+  "top": "top-cooltrainer",
+  "legs": "legs-cooltrainer"
+ },
+ "rocker": {
+  "head": "head-rocker",
+  "top": "top-rocker"
+ },
+ "scientist": {
+  "head": "head-scientist",
+  "top": "top-scientist",
+  "legs": "legs-scientist"
+ },
+ "gym_guy": {
+  "head": "head-gym-guy",
+  "top": "top-gym-guy",
+  "legs": "legs-gym-guy"
+ },
+ "poke_maniac": {
+  "head": "head-poke-maniac",
+  "top": "top-poke-maniac"
+ },
+ "black_belt": {
+  "head": "head-black-belt",
+  "top": "top-black-belt",
+  "legs": "legs-black-belt"
+ },
+ "fisher": {
+  "head": "head-fisher",
+  "top": "top-fisher"
+ },
+ "policeman": {
+  "head": "head-policeman",
+  "top": "top-policeman",
+  "legs": "legs-policeman"
+ },
+ "worker_m": {
+  "head": "head-worker",
+  "top": "top-worker"
+ },
+ "rocket_m": {
+  "head": "head-rocket",
+  "top": "top-rocket"
+ },
+ "man": {
+  "head": "head-man",
+  "top": "top-man"
+ },
+ "swimmer_m_land": {
+  "head": "head-swimmer",
+  "top": "top-swimmer",
+  "legs": "legs-swimmer"
+ },
+ "gentleman": {
+  "head": "head-gentleman",
+  "top": "top-gentleman"
+ },
+ "prof_oak": {
+  "head": "head-oak",
+  "top": "top-oak"
+ },
+ "bill": {
+  "head": "head-bill",
+  "top": "top-bill"
+ },
+ "giovanni": {
+  "head": "head-giovanni",
+  "top": "top-giovanni"
+ },
+ "celio": {
+  "head": "head-celio",
+  "top": "top-celio"
+ },
+ "teachy_tv_host": {
+  "head": "head-teachy",
+  "top": "top-teachy",
+  "legs": "legs-teachy"
+ },
+ "balding_man": {
+  "head": "head-balding",
+  "top": "top-balding"
+ },
+ "clerk": {
+  "head": "head-clerk",
+  "top": "top-clerk",
+  "legs": "legs-clerk"
+ },
+ "rich_boy": {
+  "head": "head-rich-boy",
+  "legs": "legs-rich-boy"
+ },
+ "hiker": {
+  "head": "head-hiker",
+  "body": "body-hiker"
+ },
+ "sailor": {
+  "head": "head-sailor",
+  "body": "body-sailor"
+ },
+ "captain": {
+  "head": "head-captain",
+  "body": "body-captain"
+ },
+ "chef": {
+  "head": "head-chef",
+  "body": "body-chef"
+ },
+ "channeler": {
+  "head": "head-channeler",
+  "body": "body-channeler",
+  "hair": [
+   11,
+   12,
+   13
+  ]
+ },
+ "fat_man": {
+  "head": "head-fat-man",
+  "body": "body-fat-man"
+ },
+ "lass": {
+  "head": "head-lass",
+  "body": "body-lass",
+  "hair": [
+   6,
+   7,
+   13
+  ]
+ },
+ "picnicker": {
+  "head": "head-picnicker",
+  "body": "body-picnicker"
+ },
+ "cooltrainer_f": {
+  "head": "head-cooltrainer-f",
+  "body": "body-cooltrainer-f",
+  "hair": [
+   8,
+   9,
+   10
+  ]
+ },
+ "crush_girl": {
+  "head": "head-crush-girl",
+  "body": "body-crush-girl",
+  "hair": [
+   5,
+   6,
+   7
+  ]
+ },
+ "beauty": {
+  "head": "head-beauty",
+  "body": "body-beauty",
+  "hair": [
+   5,
+   6,
+   7
+  ]
+ },
+ "green_normal": {
+  "head": "head-leaf",
+  "body": "body-leaf",
+  "hair": [
+   1
+  ]
+ },
+ "rs_may": {
+  "head": "head-may",
+  "body": "body-may",
+  "hair": [
+   5,
+   6,
+   7
+  ]
+ },
+ "rocket_f": {
+  "head": "head-rocket-f",
+  "body": "body-rocket-f",
+  "hair": [
+   8,
+   9,
+   10
+  ]
+ },
+ "swimmer_f_land": {
+  "head": "head-swimmer-f",
+  "body": "body-swimmer-f"
+ },
+ "woman_1": {
+  "head": "head-woman-1",
+  "body": "body-woman-1"
+ },
+ "woman_2": {
+  "head": "head-woman-2",
+  "body": "body-woman-2",
+  "hair": [
+   5,
+   6,
+   7
+  ]
+ },
+ "woman_3": {
+  "head": "head-woman-3",
+  "body": "body-woman-3"
+ },
+ "worker_f": {
+  "head": "head-worker-f",
+  "body": "body-worker-f"
+ },
+ "daisy": {
+  "head": "head-daisy",
+  "body": "body-daisy",
+  "hair": [
+   5,
+   6,
+   7
+  ]
+ },
+ "lorelei": {
+  "head": "head-lorelei",
+  "body": "body-lorelei",
+  "hair": [
+   8,
+   9,
+   10
+  ]
+ },
+ "unused_woman": {
+  "head": "head-unused-woman"
+ },
+ "erika": {
+  "head": "head-erika",
+  "hair": [
+   9,
+   10
+  ]
+ },
+ "misty": {
+  "head": "head-misty",
+  "hair": [
+   5,
+   6,
+   7
+  ]
+ },
+ "sabrina": {
+  "head": "head-sabrina",
+  "hair": [
+   9,
+   10
+  ]
+ },
+ "brock": {
+  "head": "head-brock"
+ },
+ "lt_surge": {
+  "head": "head-surge"
+ },
+ "koga": {
+  "head": "head-koga"
+ },
+ "blaine": {
+  "head": "head-blaine"
+ },
+ "bruno": {
+  "head": "head-bruno"
+ },
+ "agatha": {
+  "head": "head-agatha",
+  "hair": [
+   11,
+   12,
+   13
+  ]
+ },
+ "lance": {
+  "head": "head-lance"
+ },
+ "mom": {
+  "head": "head-mom",
+  "hair": [
+   9,
+   10
+  ]
+ },
+ "nurse": {
+  "head": "head-nurse",
+  "hair": [
+   5,
+   6,
+   7
+  ]
+ },
+ "old_woman": {
+  "head": "head-old-woman"
+ },
+ "old_man_1": {
+  "head": "head-old-man"
+ },
+ "mr_fuji": {
+  "head": "head-fuji"
+ },
+ "mg_deliveryman": {
+  "head": "head-deliveryman"
+ },
+ "trainer_tower_dude": {
+  "head": "head-tower-dude"
+ },
+ "union_room_receptionist": {
+  "head": "head-receptionist"
+ }
+}

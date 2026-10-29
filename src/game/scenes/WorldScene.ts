@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { readLook } from '../look/look';
+import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { recordAction } from '../feedback/actionLog';
@@ -43,7 +45,6 @@ import {
   PLAYER_MARKER_DEPTH,
   PLAYER_MARKER_GROUND_LAYERS,
   PLAYER_MARKER_HEAD_LAYERS,
-  SHARED_CHARACTER_TEXTURE,
   worldCharacterIdleFrame,
   type MarkerLayer,
   type WorldCharacterAppearance,
@@ -3752,7 +3753,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private createPlayer(): void {
     this.player = this.add
-      .sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(this.facing))
+      .sprite(0, 0, this.walkingTexture(), getIdleFrame(this.facing))
       .setOrigin(0, 0);
     // Dressed on foot; `settleRiding` puts a rider back on straight after.
     this.riding = false;
@@ -5509,6 +5510,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   // -- the Bicycle -----------------------------------------------------------
 
+  /**
+   * The sheet the player walks in: what they wore out of the door
+   * (`look/look.ts`), or the classic figure. On the Bicycle the rider is
+   * FireRed's own (`world/bicycle.ts`).
+   */
+  private walkingTexture(): string {
+    return lookTexture(this, readLook(this.runSession?.look));
+  }
+
   /** The player's standing frame, on foot or on the Bicycle. */
   private playerIdleFrame(facing: Direction): number {
     return this.riding ? getIdleFrame(facing, BIKE_SHEET_COLUMNS) : getIdleFrame(facing);
@@ -5516,7 +5526,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** The player's walk - or pedal - cycle for the way they face. */
   private playerWalkKey(): string {
-    return this.riding ? getWalkAnimationKey(this.facing, BIKE_TEXTURE) : getWalkAnimationKey(this.facing);
+    return this.riding ? getWalkAnimationKey(this.facing, BIKE_TEXTURE) : lookWalkKey(this.walkingTexture(), this.facing);
   }
 
   /** Where riding stands, as `world/bicycle.ts` asks it. */
@@ -5546,7 +5556,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!changed || !this.player) {
       return;
     }
-    this.player.setTexture(riding ? BIKE_TEXTURE : SHARED_CHARACTER_TEXTURE, this.playerIdleFrame(this.facing));
+    this.player.setTexture(riding ? BIKE_TEXTURE : this.walkingTexture(), this.playerIdleFrame(this.facing));
     // The ridden frame is two tiles wide: a quarter in is the middle of the tile.
     this.player.setOrigin(riding ? BIKE_ORIGIN_X : 0, 0);
     this.playerHeadMark.setY(this.player.y + (riding ? BIKE_HEAD_DROP : 0));

@@ -2564,3 +2564,74 @@ describe('the angler\'s tally of what has been reeled in off the harbour', () =>
     expect(new SaveManager(storage).load()?.raidProgress.harbourCatches).toEqual([129]);
   });
 });
+
+describe('what the player wears, and the wardrobe they have bought', () => {
+  it('reads a save written before the boutique as the classic look, owning only the starter pieces', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const game = saves.load();
+    expect(game?.raidProgress.look).toBeUndefined();
+    expect(game?.raidProgress.wardrobe).toBeUndefined();
+  });
+
+  it('puts on a look the save owns, keeps it through a reload, and takes it off for the classic one', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const starter = { head: 'short-crop', top: 'plain-tee', legs: 'plain-trousers', body: null };
+    expect(saves.wearLook(starter)).toBeDefined();
+    expect(new SaveManager(storage).load()?.raidProgress.look).toEqual(starter);
+    // Nobody wears what they do not own.
+    expect(saves.wearLook({ ...starter, head: 'red-cap' })).toBeUndefined();
+    expect(new SaveManager(storage).load()?.raidProgress.look).toEqual(starter);
+    expect(saves.wearLook(null)).toBeDefined();
+    expect(new SaveManager(storage).load()?.raidProgress.look).toBeUndefined();
+  });
+
+  it('buys what a try-on lacks out of the vault in one write, and wears it', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addItem('money', 1000);
+    stash.addItem('linen-roll', 3);
+    stash.addItem('lamp-oil', 2);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
+    const look = { head: 'erika-bob', top: 'lab-coat', legs: 'plain-trousers', body: null };
+    const bought = saves.buyAndWear(look);
+    expect(bought.ok).toBe(true);
+    const game = new SaveManager(storage).load()!;
+    expect(game.stash.itemCount('money')).toBe(600);
+    expect(game.stash.itemCount('linen-roll')).toBe(0);
+    expect(game.stash.itemCount('lamp-oil')).toBe(0);
+    expect(game.raidProgress.wardrobe).toEqual(['erika-bob', 'lab-coat']);
+    expect(game.raidProgress.look).toEqual(look);
+    // Owned now: wearing it again costs nothing.
+    expect(saves.buyAndWear(look).ok).toBe(true);
+    expect(new SaveManager(storage).load()!.stash.itemCount('money')).toBe(600);
+  });
+
+  it('takes nothing for a try-on it cannot sell: a raid find, or a bill the vault cannot cover', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addItem('money', 399);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
+    expect(saves.buyAndWear({ head: 'short-crop', top: 'lab-coat', legs: 'plain-trousers', body: null }).ok).toBe(false);
+    expect(saves.buyAndWear({ head: 'short-crop', top: 'zapdos-jacket', legs: 'plain-trousers', body: null }).ok).toBe(false);
+    const game = new SaveManager(storage).load()!;
+    expect(game.stash.itemCount('money')).toBe(399);
+    expect(game.raidProgress.wardrobe).toBeUndefined();
+    expect(game.raidProgress.look).toBeUndefined();
+  });
+
+  it('reads back only the pieces the catalogue knows, and a half look as none', () => {
+    const storage = new MemoryStorage();
+    freshSave(storage);
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.wardrobe = ['red-cap', 'a-crown', 4, 'red-cap'];
+    written.raidProgress.look = { head: 'red-cap', top: 'nothing' };
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    const game = new SaveManager(storage).load()!;
+    expect(game.raidProgress.wardrobe).toEqual(['red-cap']);
+    expect(game.raidProgress.look).toBeUndefined();
+  });
+});

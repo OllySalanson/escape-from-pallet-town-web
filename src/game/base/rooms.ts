@@ -6,7 +6,11 @@ import type { Rect } from '../ui/labelPlacement';
 import { MapSketch } from '../world/mapGrid';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
 import type { PropDefinition } from '../world/tileset/catalogue';
-import { floorPiece, pieceProp, pieceTile, roomCatalogue, solidPiece } from './baseSheet';
+import { floorPiece, pieceProp, pieceSheet, pieceTile, roomCatalogue, solidPiece } from './baseSheet';
+import { AREA_PIECES, type AreaPieceName } from '../world/generated/areaPieces';
+import { AREA_SHEET_SOURCE } from '../world/tileset/areaSheet';
+import { INSIDE_PROPS } from '../world/tileset/insideTileset';
+import { BOUTIQUE_NAME } from '../look/wearables';
 import { HOME_SHEET_PIECES } from './homeSheet';
 import type { HomePieceName } from './generated/homePieces';
 import type { TileSource } from '../world/tileset/catalogue';
@@ -87,9 +91,11 @@ export type RoomId =
   | 'brocks-workshop'
   | 'bills-cottage'
   | 'bolthole'
-  | 'bolthole-upstairs';
+  | 'bolthole-upstairs'
+  | 'boutique';
 
 export type RoomPropName =
+  | BoutiquePropName
   | 'labComputers'
   | 'labWallShelves'
   | 'labMachine'
@@ -223,7 +229,44 @@ function HOME_PROPS(): Record<HomePropName, PropDefinition> {
   };
 }
 
+/**
+ * THE HARBOUR BOUTIQUE is FireRed's own Poké Mart room, dressed as a clothes
+ * shop: the wall shelves and racks are where the clothes hang, the glass case
+ * holds the dear things, and the clerk keeps the counter by the door. Its
+ * pieces are the Mart's, cut from pret's disassembly onto the areas sheet
+ * (`scripts/cut-frlg-areas.mjs`), the same art a player's Poké Mart is.
+ */
+type BoutiquePropName =
+  | 'martCounter'
+  | 'martCase'
+  | 'martRack'
+  | 'martRacks'
+  | 'martWallShelves'
+  | 'martPlant'
+  | 'martPoster'
+  | 'martWallWest'
+  | 'martWallEast'
+  | 'martCornerWest'
+  | 'martCornerEast'
+  | 'martMat';
+
+const BOUTIQUE_PROPS: Readonly<Record<BoutiquePropName, PropDefinition>> = {
+  martCounter: INSIDE_PROPS.martCounter,
+  martCase: INSIDE_PROPS.martCase,
+  martRack: INSIDE_PROPS.martRack,
+  martRacks: INSIDE_PROPS.martRacks,
+  martWallShelves: INSIDE_PROPS.martWallShelves,
+  martPlant: INSIDE_PROPS.martPlant,
+  martPoster: INSIDE_PROPS.martPoster,
+  martWallWest: INSIDE_PROPS.martWallWest,
+  martWallEast: INSIDE_PROPS.martWallEast,
+  martCornerWest: INSIDE_PROPS.martCornerWest,
+  martCornerEast: INSIDE_PROPS.martCornerEast,
+  martMat: INSIDE_PROPS.martMat,
+};
+
 const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
+  ...BOUTIQUE_PROPS,
   labComputers: solidPiece('lab.computers', 'computers'),
   labWallShelves: solidPiece('lab.wallShelves', 'bookshelves'),
   labMachine: pieceProp('lab.machine', 'machine', ['###', '###', '.##']),
@@ -310,6 +353,11 @@ const WAREHOUSE = roomCatalogue(
   },
   ROOM_PROPS,
 );
+const BOUTIQUE = roomCatalogue(
+  { floor: 'mart.floor', floorShade: 'mart.floorShade', wallUpper: 'mart.wallUpper', wallLower: 'mart.wallLower' },
+  ROOM_PROPS,
+  pieceSheet<AreaPieceName>(AREA_SHEET_SOURCE, AREA_PIECES),
+);
 const HOUSE = roomCatalogue(
   {
     floor: 'home.floor',
@@ -353,7 +401,7 @@ export interface RoomThing {
    * the wall map is read on a screen, drawn as big as the window allows, and
    * the console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`).
    */
-  readonly opens?: 'wall-map' | 'games';
+  readonly opens?: 'wall-map' | 'games' | 'wardrobe';
   /**
    * What it says when faced and spoken to, in place of its name and note: a
    * thing in the player's own house has more to say than what it is.
@@ -740,6 +788,25 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     counter: [],
     stairs: [],
   },
+  // THE HARBOUR BOUTIQUE (`look/wearables.ts`): a plain shopkeeper behind the
+  // counter by the door, and the shelves and racks of clothes beyond.
+  {
+    id: 'boutique',
+    screen: 'boutique',
+    name: BOUTIQUE_NAME,
+    width: 11,
+    height: 8,
+    mat: { x: 5, y: 7 },
+    keeper: {
+      id: 'shopkeeper',
+      name: 'SHOPKEEPER',
+      design: 'clerk',
+      position: { x: 3, y: 3 },
+      facing: 'down',
+    },
+    counter: [2, 3, 4].map((x) => ({ x, y: 4 })),
+    stairs: [],
+  },
   // THE BOLTHOLE: the player's own house, downstairs and up. Nobody keeps it
   // but the player, so it has no counter and opens no screen; what it is for
   // is what stands in it.
@@ -993,6 +1060,53 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   return { sketch, catalogue: COTTAGE, things, sprites: [], cabinet: { oddities, layout } };
 }
 
+// --- THE HARBOUR BOUTIQUE --------------------------------------------------------
+
+/**
+ * The Poké Mart's room, piece for piece where FireRed stands a Mart's (the
+ * map maker's Poké Mart template, `maker/areas.ts`), with the till and the
+ * fridges gone for a second run of wall shelves and the glass case moved to
+ * the window: a shop that sells clothes rather than Potions.
+ */
+function drawBoutique(room: BaseRoom): Drawn {
+  const sketch = shell(room);
+  sketch.plant(0, 0, 'martWallWest');
+  sketch.plant(10, 0, 'martWallEast');
+  sketch.plant(1, 1, 'martPlant');
+  sketch.plant(2, 0, 'martPoster');
+  sketch.plant(4, 0, 'martWallShelves');
+  sketch.plant(7, 0, 'martWallShelves');
+  sketch.plant(2, 3, 'martCounter');
+  sketch.plant(0, 5, 'martCase');
+  sketch.plant(7, 3, 'martRacks');
+  sketch.plant(10, 3, 'martRack');
+  sketch.plant(0, 7, 'martCornerWest');
+  sketch.plant(10, 7, 'martCornerEast');
+  sketch.plant(4, 7, 'martMat');
+  const things: RoomThing[] = [
+    {
+      name: 'THE RAILS',
+      note: 'Every piece in the shop',
+      tiles: [
+        { x: 7, y: 3 },
+        { x: 8, y: 3 },
+        { x: 10, y: 3 },
+      ],
+      lines: ['Caps, coats and dresses on every rail - the shopkeeper by the door sells them.'],
+    },
+    {
+      name: 'THE GLASS CASE',
+      note: 'The dear things',
+      tiles: [
+        { x: 0, y: 6 },
+        { x: 1, y: 6 },
+      ],
+      lines: ['A top hat and a captain’s cap under glass. Some things are only ever found out on a raid, the card says.'],
+    },
+  ];
+  return { sketch, catalogue: BOUTIQUE, things, sprites: [] };
+}
+
 // --- THE BOLTHOLE -----------------------------------------------------------
 
 /**
@@ -1178,6 +1292,12 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
       lines: pcLines(game),
     },
     {
+      name: 'YOUR WARDROBE',
+      note: 'What you wear',
+      tiles: [{ x: 2, y: 1 }],
+      opens: 'wardrobe',
+    },
+    {
       name: 'THE CONSOLE',
       note: 'One more go',
       tiles: [
@@ -1232,6 +1352,7 @@ const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame, now:
   'pokemon-centre': drawCenter,
   'brocks-workshop': drawWorkshop,
   'bills-cottage': drawCottage,
+  boutique: drawBoutique,
   bolthole: drawHome,
   'bolthole-upstairs': drawUpstairs,
 };

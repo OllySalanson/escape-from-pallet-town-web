@@ -1,3 +1,6 @@
+import { canWear, readLook, type DressedLook, type PlayerLook } from '../look/look';
+import { billFor, billLine, checkBill, ownedWearables, unownedIn } from '../look/wardrobe';
+import { isWearableId } from '../look/wearables';
 import { getWorkshopUpgrade, takePayment, type PaymentCheck } from '../hub/workshop';
 import { clampPendingRecoveryMs, clampWardTreatmentsUsed } from '../hub/recovery';
 import {
@@ -259,6 +262,21 @@ export interface RaidProgress {
    * reads as nothing caught yet.
    */
   readonly harbourCatches?: readonly number[];
+  /**
+   * What the player wears (`../look/look`): a head, a top and trousers, or a
+   * head over a whole outfit, by the boutique's own ids. Absent on every save
+   * written before THE HARBOUR BOUTIQUE opened, which reads as the classic look
+   * the game always drew - so nobody wakes up in somebody else's clothes, and
+   * no version bump.
+   */
+  readonly look?: DressedLook;
+  /**
+   * Every piece this save has bought or bartered for at the boutique, by id
+   * (`../look/wearables`). What it owns is these, the starter pieces everybody
+   * has, and any raid find in the vault (`../look/wardrobe`). Absent on older
+   * saves, which reads as nothing bought.
+   */
+  readonly wardrobe?: readonly string[];
   /**
    * Every kind of Pokémon this save has owned, by dex number (`../hub/pokedex`).
    * It is written, never asked to be kept up: every save adds whatever kinds
@@ -911,6 +929,65 @@ export class SaveManager {
     }
     const raidProgress: RaidProgress = { ...game.raidProgress, keysLearned: [...already, ...fresh] };
     return this.save({ ...game, raidProgress }) ? fresh : [];
+  }
+
+  /**
+   * Puts a look on (`../look/look`): only a look whose every piece this save
+   * owns (`../look/wardrobe`), and the classic look - `null` - always. Returns
+   * the game as written, or nothing when it could not be.
+   */
+  public wearLook(look: PlayerLook): RestoredGame | undefined {
+    const game = this.load();
+    if (!game) {
+      return undefined;
+    }
+    const worn = readLook(look);
+    if (!canWear(worn, ownedWearables(game.raidProgress.wardrobe))) {
+      return undefined;
+    }
+    const raidProgress: RaidProgress = { ...game.raidProgress };
+    delete (raidProgress as { look?: DressedLook }).look;
+    const next: RestoredGame = { ...game, raidProgress: worn ? { ...raidProgress, look: worn } : raidProgress };
+    return this.save(next) ? next : undefined;
+  }
+
+  /**
+   * Buys every piece of a try-on this save does not own yet, out of the vault:
+   * Pokédollars for the priced pieces, found goods for the barter ones, in one
+   * write, and then wears it. A raid-only piece is refused, and so is a bill
+   * the vault cannot cover - nothing is taken from a purchase that fails.
+   */
+  public buyAndWear(look: DressedLook): { readonly ok: boolean; readonly message: string; readonly game?: RestoredGame } {
+    const game = this.load();
+    if (!game) {
+      return { ok: false, message: 'There is no saved game to shop on.' };
+    }
+    const worn = readLook(look);
+    if (!worn) {
+      return { ok: false, message: 'That is not something anybody can wear.' };
+    }
+    const owned = ownedWearables(game.raidProgress.wardrobe);
+    const pieces = unownedIn(worn, owned);
+    const check = checkBill(billFor(pieces), game.stash);
+    if (check.refusal !== undefined) {
+      return { ok: false, message: check.why ?? 'Not today.' };
+    }
+    if (check.bill.money > 0) {
+      game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, check.bill.money);
+    }
+    for (const [itemId, quantity] of Object.entries(check.bill.goods)) {
+      game.stash.removeItem(itemId, quantity);
+    }
+    const wardrobe = [...new Set([...(game.raidProgress.wardrobe ?? []), ...pieces.map((piece) => piece.id)])];
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, wardrobe, look: worn } };
+    if (!this.save(next)) {
+      return { ok: false, message: 'The till jammed. Nothing was taken.' };
+    }
+    return {
+      ok: true,
+      message: pieces.length === 0 ? 'You change into it.' : `Paid ${billLine(check.bill)}. It suits you.`,
+      game: next,
+    };
   }
 
   /**
@@ -1775,6 +1852,8 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       : {}),
     ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
     ...(Array.isArray(value.harbourCatches) ? { harbourCatches: tidyDexIds(value.harbourCatches) } : {}),
+    ...(readLook(value.look) ? { look: readLook(value.look) as DressedLook } : {}),
+    ...(Array.isArray(value.wardrobe) ? { wardrobe: uniqueStrings(value.wardrobe).filter(isWearableId) } : {}),
     ...(Array.isArray(value.errands) ? { errands: clampErrandRecords(value.errands) } : {}),
     ...(Array.isArray(value.pokedexRewards)
       ? {

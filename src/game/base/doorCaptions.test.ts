@@ -29,6 +29,7 @@ const MEASURED_WIDTH: Record<string, number> = {
   'brocks-workshop': 110,
   'bills-cottage': 124,
   bolthole: 81,
+  boutique: 134,
 };
 const MEASURED_HEIGHT = 33;
 /**

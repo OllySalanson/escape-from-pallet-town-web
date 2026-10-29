@@ -821,6 +821,32 @@ raid (`src/game/world/bicycle.ts`), the captain's ask of 2026-10-12. The
 Bicycle's bag icon is not a cut: it is `icons/bicycle.png`, drawn here (see the
 pixel icons above).
 
+### `wearables.png` - every piece THE HARBOUR BOUTIQUE sells
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the same
+ruling and from the same source as `player-bike.png` above: pret/pokefirered at
+commit `037335f`, read 2026-10-29. Sixty-nine of its people
+(`graphics/object_events/pics/people/*.png`, every one listed by name in
+`scripts/wearable-donors.json`) are cut apart into the boutique's pieces: a
+head (hat or hair) from each, and from those drawn on FireRed's shared body a
+top and a pair of trousers, or from those with a walk of their own a whole
+outfit. A piece is cut by position against FireRed's own `boy`, whose colours
+say which pixel is skin, hair, shirt and trousers; the gym leaders and Elite
+Four, who are drawn standing, lend only their heads, worn a pixel lower on a
+step exactly as FireRed lowers a head. The right-hand facing is the left one
+mirrored, as the game draws it; every frame is lowered onto row 27, the sole
+line every walking figure stands on; colours are pret's palettes as written,
+except that the player's palette's warmer skin (`ffc594`) is drawn in the
+townspeople's (`f6bd94`), so a head from one figure meets the arms of another
+without a join. 130 pieces are laid on a new 16-column grid, a 64x128 block
+each, that matches nothing in the source. A piece that could not be made to
+look right in every frame - a stride that reaches under the soles, a camera
+held over the face - was left out. `scripts/cut-frlg-wearables.mjs` is the
+whole method; colour variants are not cut at all but dyed at run time from
+FireRed's own colour ramps (`src/game/look/composeLook.ts`). Nothing from pret
+is committed. It is what the player wears (`src/game/look/`), the captain's ask
+of 2026-10-28.
+
 ### `frlg-ember.png` - a volcano's cave and its slopes' steps: FireRed's Mt. Ember
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling

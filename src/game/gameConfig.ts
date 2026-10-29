@@ -5,6 +5,7 @@ import { BattleScene } from './scenes/BattleScene';
 import { BagScene } from './scenes/BagScene';
 import { BootScene } from './scenes/BootScene';
 import { ConsoleScene } from './scenes/ConsoleScene';
+import { BoutiqueScene } from './scenes/BoutiqueScene';
 import { ExtractionScene } from './scenes/ExtractionScene';
 import { FeedbackScene } from './scenes/FeedbackScene';
 import { HubScene } from './scenes/HubScene';
@@ -31,6 +32,7 @@ const BASE_SCENES = [
   BagScene,
   ObjectivesScene,
   ConsoleScene,
+  BoutiqueScene,
   ExtractionScene,
   MapMakerScene,
   StatsScene,
