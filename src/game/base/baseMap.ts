@@ -309,8 +309,13 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   // the grass behind it into its roof.
   map.plant(6, 15, 'gymStatue');
   map.plant(10, 15, 'gymStatue');
-  map.plant(3, 11, 'bannerPair');
-  map.plant(12, 11, 'bannerPair');
+  map.plant(3, 11, 'arenaBanners');
+  map.plant(12, 11, 'arenaBanners');
+  // The red runner from its door down between the statues to the quay.
+  map.plant(8, 13, 'arenaRunnerHead');
+  map.plant(8, 14, 'arenaRunner');
+  map.plant(8, 15, 'arenaRunner');
+  map.plant(8, 16, 'arenaRunnerFoot');
   map.plant(ARENA_SIGN.x, ARENA_SIGN.y, 'homeSign');
 
   // THE BOLTHOLE's front garden: its sign beside the path to the step, and

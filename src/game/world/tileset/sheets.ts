@@ -9,6 +9,7 @@ import { AREA_SHEET_SOURCE } from './areaSheet';
 import { ICE_SHEET_SOURCE } from './iceSheet';
 import { EMBER_SHEET_SOURCE } from './emberSheet';
 import { HIDEOUT_SHEET_SOURCE } from './hideoutSheet';
+import { RAID_ARENA_SHEET_SOURCE } from '../../base/raidArenaSheet';
 
 /**
  * The images the game draws maps from, and where each one's tiles sit in the
@@ -69,4 +70,6 @@ export const TILE_SOURCES: readonly TileSource[] = [
   // FireRed's own tile animations for the ground sheets' sea, surf and
   // flowers (`world/tileAnimation.ts`).
   TILE_ANIMATION_SOURCE.source,
+  // THE RAID ARENA's own front (`base/raidArenaSheet.ts`).
+  RAID_ARENA_SHEET_SOURCE.source,
 ];

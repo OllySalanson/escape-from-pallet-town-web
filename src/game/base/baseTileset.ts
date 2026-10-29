@@ -7,6 +7,15 @@ import {
 import { KANTO_TILESET } from '../world/tileset/kantoTileset';
 import { TOWN_PROPS, TOWN_SHEET_SOURCE } from '../world/tileset/townSheet';
 import { TILE_ANIMATION_SOURCE } from '../world/tileAnimation';
+import {
+  RAID_ARENA_BANNERS,
+  RAID_ARENA_BUILDING,
+  RAID_ARENA_RUNNER,
+  RAID_ARENA_RUNNER_FOOT,
+  RAID_ARENA_RUNNER_HEAD,
+  RAID_ARENA_SHEET_SOURCE,
+  RAID_ARENA_STATUE,
+} from './raidArenaSheet';
 
 /**
  * The base is drawn on the same sheet the four raid maps are, with its
@@ -27,6 +36,10 @@ import { TILE_ANIMATION_SOURCE } from '../world/tileAnimation';
 export type BasePropName =
   | FloodTownPropName
   | 'raidArena'
+  | 'arenaBanners'
+  | 'arenaRunnerHead'
+  | 'arenaRunner'
+  | 'arenaRunnerFoot'
   | 'gymStatue'
   | 'oakLab'
   | 'pokemonCentre'
@@ -134,17 +147,28 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     ...FLOOD_TOWN_TILESET.sources,
     BASE_SHEET_SOURCE.source,
     TOWN_SHEET_SOURCE.source,
+    // THE RAID ARENA's own front, its banners and its runner (`raidArenaSheet.ts`).
+    RAID_ARENA_SHEET_SOURCE.source,
     // The frames the harbour's sea, surf and flowers move through (`world/tileAnimation.ts`).
     TILE_ANIMATION_SOURCE.source,
   ],
   props: {
     ...FLOOD_TOWN_TILESET.props,
-    // 7x5. THE RAID ARENA: Saffron's Gym, cut from FireRed's own town by
-    // `scripts/cut-frlg-towns.mjs`, with its door open. A Gym is the one
-    // building Kanto puts up to fight in, which is what a raid is.
-    raidArena: withDoorway(TOWN_PROPS.saffronGym, [[3, 4]]),
-    // FireRed's own Gym statue, which stands either side of every Gym's door.
-    gymStatue: TOWN_PROPS.gymStatue,
+    // 7x5. THE RAID ARENA: Saffron's Gym from FireRed's own town - a Gym is
+    // the one building Kanto puts up to fight in, which is what a raid is -
+    // made its own by `scripts/draw-raid-arena.mjs`: RAID where the plate said
+    // GYM, a badge reading ARENA across the door, the door lit and flags on
+    // the roof. Its door is open where the Gym's was.
+    raidArena: RAID_ARENA_BUILDING,
+    // Its colours either side of the forecourt, and the red runner from its
+    // door down between the statues, which is walked on.
+    arenaBanners: RAID_ARENA_BANNERS,
+    arenaRunnerHead: RAID_ARENA_RUNNER_HEAD,
+    arenaRunner: RAID_ARENA_RUNNER,
+    arenaRunnerFoot: RAID_ARENA_RUNNER_FOOT,
+    // FireRed's own Gym statue, which stands either side of every Gym's door -
+    // with RAID on its plinth where it said GYM.
+    gymStatue: RAID_ARENA_STATUE,
     // 4x4. The shop front, which is the one building on the FireRed sheet and
     // the only one that reads as an institution rather than as somebody's home.
     oakLab: withDoorway(FLOOD_TOWN_TILESET.props.building, [
