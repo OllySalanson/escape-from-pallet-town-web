@@ -3001,6 +3001,9 @@ export class BaseScene extends Phaser.Scene {
       // house saw go down before it paused never came back up here.
       this.input.keyboard?.resetKeys();
       this.showHint(this.hintHere());
+      // The console can change the player's name: the harbour hears it now,
+      // not at the next door.
+      harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, houseName(), this.partner?.species ?? null);
     });
     this.scene.pause();
     this.scene.launch('console', { pausedBase: true } satisfies ConsoleSceneData);

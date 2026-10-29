@@ -325,6 +325,18 @@ export class HarbourLink<P extends string = HarbourPlace> {
     }
   }
 
+  /**
+   * This player has a new name. Everybody else asks the database for a
+   * player's name once, so the channel is left and joined again: they see
+   * the player go and come back (`hearPresent` forgets the name of whoever
+   * leaves) and ask for the name afresh.
+   */
+  public renamed(): void {
+    if (this.joined === 'yes' && this.me) {
+      this.rejoin();
+    }
+  }
+
   private seen(): boolean {
     return this.joined === 'yes' && this.me !== null && this.place !== null;
   }
@@ -428,6 +440,9 @@ export class HarbourLink<P extends string = HarbourPlace> {
     for (const id of this.members.keys()) {
       if (!members.has(id)) {
         this.crowd.forget(id);
+        // Asked again if they come back: they may have come back renamed.
+        this.asked.delete(id);
+        this.names.delete(id);
       }
     }
     for (const [id, place] of members) {

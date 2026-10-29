@@ -92,11 +92,20 @@ export class HarbourSession {
     this.link.enter(this.me, placeFor(where, this.me), tile, facing);
     this.link.carry(partner);
     if (name && name !== this.named) {
+      const renamed = this.named !== null;
       this.named = name;
       void this.identity.seenAs(name).then((me) => {
-        if (me !== this.me && this.named === name) {
+        if (this.named !== name) {
+          return;
+        }
+        if (me !== this.me) {
           this.me = me;
           this.link.enter(me, placeFor(this.where, me), this.tile, this.facing);
+        } else if (renamed && me) {
+          // The same player under a new name (the console's "Change name"):
+          // everybody else learns names by asking once per player, so the
+          // channel is joined again, and they ask again as it comes back.
+          this.link.renamed();
         }
       });
     }

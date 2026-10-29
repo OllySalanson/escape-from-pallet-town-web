@@ -70,6 +70,24 @@ describe('where the shared harbour has the player', () => {
     expect(asked).toEqual(['OLLY']);
   });
 
+  it('joins the channel again under a new name, so everybody else asks for it', async () => {
+    const wire = new QuietWire();
+    const session = new HarbourSession(wire, { seenAs: () => Promise.resolve(ME) });
+    session.stand('yard', { x: 16, y: 13 }, 'up', 'OLLY');
+    await settle();
+    const left = wire.left;
+    const joins = wire.joins.length;
+    // Out of the console's "Change name", back in the house.
+    session.stand('home-upstairs', { x: 8, y: 5 }, 'left', 'OLLIE');
+    await settle();
+    expect(wire.left).toBe(left + 1);
+    expect(wire.joins.slice(joins)).toEqual([[ME, `house:${ME}:up`]]);
+    // The same name again joins nothing.
+    session.stand('home-upstairs', { x: 8, y: 5 }, 'left', 'OLLIE');
+    await settle();
+    expect(wire.left).toBe(left + 1);
+  });
+
   it('stays watching when the database will not take the name', async () => {
     const wire = new QuietWire();
     const session = new HarbourSession(wire, { seenAs: () => Promise.resolve(null) });
