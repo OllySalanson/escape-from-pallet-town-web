@@ -3,6 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type SaveSummary } from '../save/SaveManager';
 import { getStarterSpecies } from '../stash';
 import { GAME_FONT } from '../ui/gameFont';
+import { letteringMask, stampMask, tintedMask } from '../ui/stampedLettering';
 import { drawMenuCursor, drawPixelWindow, WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
 import {
   eraseMenu,
@@ -446,88 +447,13 @@ export class TitleScene extends Phaser.Scene {
   // -- the name ------------------------------------------------------------------
 
   /**
-   * One word set by the game itself, as a mask: Orange Kid cut to whole pixels
-   * by `pixelText.ts`, every inked pixel opaque and every other clear, cropped
-   * to its ink.
-   */
-  private lettering(text: string, fontSize: string): HTMLCanvasElement {
-    const words = this.make.text({ x: 0, y: 0, text, style: { fontFamily: GAME_FONT, fontSize, color: '#ffffff' } }, false);
-    words.updateText();
-    const source = words.canvas;
-    const context = source.getContext('2d', { willReadFrequently: true })!;
-    const data = context.getImageData(0, 0, source.width, source.height);
-    let top = source.height;
-    let bottom = -1;
-    let left = source.width;
-    let right = -1;
-    for (let y = 0; y < source.height; y += 1) {
-      for (let x = 0; x < source.width; x += 1) {
-        const at = (y * source.width + x) * 4 + 3;
-        const on = data.data[at] >= 128;
-        data.data[at] = on ? 255 : 0;
-        if (on) {
-          top = Math.min(top, y);
-          bottom = Math.max(bottom, y);
-          left = Math.min(left, x);
-          right = Math.max(right, x);
-        }
-      }
-    }
-    const mask = document.createElement('canvas');
-    mask.width = Math.max(1, right - left + 1);
-    mask.height = Math.max(1, bottom - top + 1);
-    mask.getContext('2d')!.putImageData(data, -left, -top);
-    words.destroy();
-    return mask;
-  }
-
-  /** The mask in one colour. */
-  private static tinted(mask: HTMLCanvasElement, color: string): HTMLCanvasElement {
-    const tinted = document.createElement('canvas');
-    tinted.width = mask.width;
-    tinted.height = mask.height;
-    const context = tinted.getContext('2d')!;
-    context.drawImage(mask, 0, 0);
-    context.globalCompositeOperation = 'source-in';
-    context.fillStyle = color;
-    context.fillRect(0, 0, mask.width, mask.height);
-    return tinted;
-  }
-
-  /**
-   * Stamps `mask` at every offset within `reach` (a rounded square, its
-   * corners left off) and `drop` further down - which is how a one-colour
-   * outline and the depth under it are drawn out of the letters themselves.
-   */
-  private static stamp(
-    context: CanvasRenderingContext2D,
-    mask: HTMLCanvasElement,
-    color: string,
-    x: number,
-    y: number,
-    reach: number,
-    drop: number,
-  ): void {
-    const ink = TitleScene.tinted(mask, color);
-    for (let dy = -reach; dy <= reach + drop; dy += 1) {
-      for (let dx = -reach; dx <= reach; dx += 1) {
-        const cornerY = dy < -reach + 1 ? -reach : dy > reach + drop - 1 ? reach : 0;
-        if (reach > 0 && Math.abs(dx) === reach && Math.abs(cornerY) === reach) {
-          continue;
-        }
-        context.drawImage(ink, x + dx, y + dy);
-      }
-    }
-  }
-
-  /**
    * The logo: ESCAPE FROM in mint over PALLET TOWN in banded gold, each rimmed,
    * edged and stood up off the town by the depth under it. Built once a visit
    * into a canvas the shine can re-light without redrawing anything else.
    */
   private makeLogo(): Logo {
-    const name = this.lettering('PALLET TOWN', NAME_SIZE);
-    const overline = this.lettering('ESCAPE FROM', OVERLINE_SIZE);
+    const name = letteringMask(this, 'PALLET TOWN', NAME_SIZE);
+    const overline = letteringMask(this, 'ESCAPE FROM', OVERLINE_SIZE);
     const pad = 3;
     const width = Math.max(name.width, overline.width) + pad * 2;
     const overlineY = pad;
@@ -540,9 +466,9 @@ export class TitleScene extends Phaser.Scene {
     const context = canvas.getContext('2d', { willReadFrequently: true })!;
 
     // The name: an edge round everything, the rim inside it, the depth below.
-    TitleScene.stamp(context, name, NAME_EDGE, nameX, nameY, 2, NAME_DEPTH_PX);
-    TitleScene.stamp(context, name, NAME_DEPTH, nameX, nameY, 1, NAME_DEPTH_PX - 1);
-    TitleScene.stamp(context, name, NAME_RIM, nameX, nameY, 1, 0);
+    stampMask(context, name, NAME_EDGE, nameX, nameY, 2, NAME_DEPTH_PX);
+    stampMask(context, name, NAME_DEPTH, nameX, nameY, 1, NAME_DEPTH_PX - 1);
+    stampMask(context, name, NAME_RIM, nameX, nameY, 1, 0);
     // The fill, banded top to bottom.
     const fill = document.createElement('canvas');
     fill.width = name.width;
@@ -561,8 +487,8 @@ export class TitleScene extends Phaser.Scene {
 
     // ESCAPE FROM: mint, edged, and a pixel of depth.
     const overlineX = Math.round((width - overline.width) / 2);
-    TitleScene.stamp(context, overline, NAME_EDGE, overlineX, overlineY, 1, 1);
-    context.drawImage(TitleScene.tinted(overline, OVERLINE_FILL), overlineX, overlineY);
+    stampMask(context, overline, NAME_EDGE, overlineX, overlineY, 1, 1);
+    context.drawImage(tintedMask(overline, OVERLINE_FILL), overlineX, overlineY);
 
     const base = context.getImageData(0, 0, width, height);
     const nameMask = name.getContext('2d')!.getImageData(0, 0, name.width, name.height).data;

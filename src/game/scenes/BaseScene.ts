@@ -161,6 +161,7 @@ import {
 } from '../world/pokemonFigures';
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
+import type { ArenaIntroSceneData } from './ArenaIntroScene';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
@@ -2757,9 +2758,16 @@ export class BaseScene extends Phaser.Scene {
     // Through a door is the yard's lesson done: the room's own hint takes over.
     this.learnKey('walk');
     // The Raid Arena has no room to stand in: through its door is the raid's
-    // loadout, and backing out of that puts the player on its step again.
+    // loadout, and backing out of that puts the player on its step again. Its
+    // trailer plays on the way (`cutscene/arenaIntro.ts`), unasked the first
+    // time and with a SKIP after, and ends on that same loadout.
     if (door.opens === 'screen' && door.screen) {
-      this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[door.screen], from: door.id });
+      const hub: HubSceneData = { savedGame: this.savedGame, view: SCREEN_VIEWS[door.screen], from: door.id };
+      if (door.screen === 'arena') {
+        this.openArenaIntro({ savedGame: this.savedGame, hub });
+        return;
+      }
+      this.openHub(hub);
       return;
     }
     this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
@@ -3248,6 +3256,21 @@ export class BaseScene extends Phaser.Scene {
   /** The keeper's screen, which is what the room is the way to. */
   private openScreen(room: BaseRoom, screen: NonNullable<BaseRoom['screen']>): void {
     this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
+  }
+
+  /** Into THE RAID ARENA: its trailer, which hands over to the loadout. */
+  private openArenaIntro(payload: ArenaIntroSceneData): void {
+    if (this.leaving) {
+      return;
+    }
+    this.leaving = true;
+    this.player.stop();
+    this.showHint('');
+    audioManager.play('interiorEnter');
+    this.cameras.main.fadeOut(140, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
+      this.scene.start('arenaIntro', payload),
+    );
   }
 
   private openHub(payload: HubSceneData): void {

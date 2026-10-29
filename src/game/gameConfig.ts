@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ArenaIntroScene } from './scenes/ArenaIntroScene';
 import { BaseScene } from './scenes/BaseScene';
 import { BattleScene } from './scenes/BattleScene';
 import { BagScene } from './scenes/BagScene';
@@ -22,6 +23,7 @@ const BASE_SCENES = [
   TitleScene,
   StarterScene,
   BaseScene,
+  ArenaIntroScene,
   HubScene,
   WorldScene,
   BattleScene,

@@ -59,6 +59,14 @@ export async function walkIntoBase(page, door, options = {}) {
     if (await page.evaluate(sceneIs('hub'))) {
       return;
     }
+    // Through the Raid Arena's door its trailer plays first, and any key skips
+    // it to the loadout (`scenes/ArenaIntroScene.ts`). It ignores keys for
+    // its first half-second, so the press is made again until it takes.
+    if (await page.evaluate(sceneIs('arenaIntro'))) {
+      await press('Escape');
+      await settle(settleMs);
+      continue;
+    }
     const move = await page.evaluate(
       `(() => { const b = ${GAME}.scene.getScene('base'); if (!b || !b.sys.isActive() || !b.ready || b.leaving) return { wait: true };
         const room = b.room;
