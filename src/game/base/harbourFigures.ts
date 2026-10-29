@@ -201,13 +201,19 @@ export class HarbourFigures {
         drawn.name.setText(figure.name);
         drawPlate(drawn);
       }
+      // The partner first: a tall one walking behind its player stands
+      // where the plate would go, and the plate is lifted over it.
+      this.drawHeel(drawn, figure);
       const plateWidth = plateWidthOf(drawn.name);
       const plateHeight = plateHeightOf(drawn.name);
-      const plateY = Math.round(y + CHARACTER_HEAD_PIXEL_Y - plateHeight - 1);
       const plateX = withinPlace(
         clearOfSelf(Math.round(x + TILE_SIZE / 2 - plateWidth / 2), plateWidth, x, y, self),
         plateWidth,
         this.placeWidth?.() ?? null,
+      );
+      const plateY = clearOfHeel(
+        { x: plateX, y: Math.round(y + CHARACTER_HEAD_PIXEL_Y - plateHeight - 1), width: plateWidth, height: plateHeight },
+        heelArt(drawn.heel),
       );
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
@@ -216,7 +222,6 @@ export class HarbourFigures {
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
       this.drawWave(drawn, figure, x, named ? plateY : y + CHARACTER_HEAD_PIXEL_Y - 1);
-      this.drawHeel(drawn, figure);
     }
   }
 
@@ -227,18 +232,8 @@ export class HarbourFigures {
    */
   public heelRects(): { x: number; y: number; width: number; height: number }[] {
     return [...this.drawn.values()].flatMap(({ heel }) => {
-      if (!heel?.sprite.visible) {
-        return [];
-      }
-      const top = FOLLOWER_ART[heel.species].topPixelY;
-      return [
-        {
-          x: heel.sprite.x - PARTNER_SPRITE_X_OFFSET,
-          y: heel.sprite.y + top,
-          width: TILE_SIZE,
-          height: PARTNER_FEET_PIXEL_Y - top + 1,
-        },
-      ];
+      const art = heelArt(heel);
+      return art ? [{ ...art }] : [];
     });
   }
 
@@ -368,6 +363,42 @@ export function withinPlace(plateX: number, plateWidth: number, placeWidth: numb
     return plateX;
   }
   return Math.min(Math.max(plateX, 0), placeWidth - plateWidth);
+}
+
+type Box = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+
+/**
+ * Where a name plate goes up and down: over its owner's head, unless the
+ * partner at their heel is standing there - walking down the yard, a
+ * Blastoise behind its player is drawn over the plate (plates are beneath
+ * every figure, `world/depths.ts`) and the name read as nobody's. Then it is
+ * lifted to sit on top of the partner instead. Only ever lifted.
+ */
+export function clearOfHeel(plate: Box, heel: Box | null): number {
+  if (
+    heel === null ||
+    plate.x >= heel.x + heel.width ||
+    plate.x + plate.width <= heel.x ||
+    plate.y >= heel.y + heel.height ||
+    plate.y + plate.height <= heel.y
+  ) {
+    return plate.y;
+  }
+  return Math.min(plate.y, heel.y - plate.height);
+}
+
+/** The drawn art of a partner at heel, from the top of its head to its feet, while it is shown. */
+function heelArt(heel: Heel | null): Box | null {
+  if (!heel?.sprite.visible) {
+    return null;
+  }
+  const top = FOLLOWER_ART[heel.species].topPixelY;
+  return {
+    x: heel.sprite.x - PARTNER_SPRITE_X_OFFSET,
+    y: heel.sprite.y + top,
+    width: TILE_SIZE,
+    height: PARTNER_FEET_PIXEL_Y - top + 1,
+  };
 }
 
 const plateWidthOf = (name: Phaser.GameObjects.Text): number => Math.ceil(name.width) + PLATE_PAD_X * 2;

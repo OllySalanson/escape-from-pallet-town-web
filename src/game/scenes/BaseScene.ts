@@ -177,6 +177,8 @@ import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { HarbourFigures } from '../base/harbourFigures';
+import { harbourRegulars, regularsClock } from '../base/harbourRegulars';
+import { requestedTestMode } from '../dev/testMode';
 import type { MenuOverlay } from '../ui/MenuOverlay';
 import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furnitureArt';
 
@@ -732,6 +734,8 @@ export class BaseScene extends Phaser.Scene {
       // Through a door the harbour hears where the player is again in a moment;
       // to a menu or a raid, it says they are not standing anywhere.
       harbour()?.away();
+      // Nobody is left standing still for a box that has gone with the scene.
+      harbourRegulars()?.release();
       this.harbourFigures?.destroy();
       this.harbourFigures = null;
       // Out of the house - or only up or down its stairs, which the door
@@ -778,9 +782,17 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const shared = harbour();
-    if (shared) {
-      shared.tick(time, deltaMs);
-      this.harbourFigures?.update(shared.figuresHere(), this.player);
+    shared?.tick(time, deltaMs);
+    // The harbour's regulars (`base/harbourBots.ts`) keep the clock wherever
+    // the player is, and are drawn beside the real players out in the yard.
+    const regulars = harbourRegulars();
+    const outdoors = this.place.room === null && this.visit === null;
+    regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, outdoors ? this.currentTile : null);
+    if (shared || regulars) {
+      this.harbourFigures?.update(
+        [...(shared?.figuresHere() ?? []), ...(outdoors ? (regulars?.figures() ?? []) : [])],
+        this.player,
+      );
     }
     this.watchFrontDoor(time);
     this.updateWalking(deltaMs);
@@ -2474,6 +2486,27 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
+   * Speaks to one of the harbour's regulars standing on `target`
+   * (`base/harbourRegulars.ts`): the player's hand goes up, theirs goes up
+   * back, and they stop and say a line - standing there, facing the player,
+   * until it is read.
+   */
+  private speakToRegular(target: GridPosition): boolean {
+    const regulars = this.place.room === null ? harbourRegulars() : null;
+    const regular = regulars?.at(target);
+    if (!regulars || !regular) {
+      return false;
+    }
+    const line = regulars.speakTo(regular, this.currentTile);
+    this.ownWave?.bubble.destroy();
+    this.ownWave = { bubble: drawEmoteBubble(this, 'wave'), ms: 0 };
+    this.placeOwnWave();
+    audioManager.play('harbourWave');
+    this.say([line], [target], () => regulars.release());
+    return true;
+  }
+
+  /**
    * This player's own hand, up over their head while it is up - and lifted
    * over the name plate of whoever they are waving at, which stands over the
    * tile next door and is wider than it: the hand covered the first letters
@@ -2570,6 +2603,9 @@ export class BaseScene extends Phaser.Scene {
     const door = doorAt(target);
     if (door) {
       this.enterRoom(door);
+      return;
+    }
+    if (this.speakToRegular(target)) {
       return;
     }
     const local = this.harbourLife?.at(target);
@@ -2787,6 +2823,24 @@ export class BaseScene extends Phaser.Scene {
       return [];
     }
     return (harbour()?.figuresHere() ?? []).map((figure) => ({
+      name: figure.name,
+      tile: { ...figure.tile },
+      partner: figure.partner ?? null,
+      waving: figure.waving === true,
+    }));
+  }
+
+  /** The harbour's regulars drawn here (`base/harbourRegulars.ts`), for a playtest to read. */
+  public get harbourRegularsShown(): readonly {
+    readonly name: string;
+    readonly tile: GridPosition;
+    readonly partner: string | null;
+    readonly waving: boolean;
+  }[] {
+    if (!this.harbourFigures || this.place.room !== null) {
+      return [];
+    }
+    return (harbourRegulars()?.figures() ?? []).map((figure) => ({
       name: figure.name,
       tile: { ...figure.tile },
       partner: figure.partner ?? null,
