@@ -101,6 +101,12 @@ with nothing to open them, then with the Weir Key, a Lockpick and a Pickaxe:
 the crate picked, the ROCKFALL dug, the gate unlocked and walked out through,
 failing on any line, count or ending the lock rules do not promise.
 
+`starterHover.mjs <url> <dir> [--port=N]` plays the starter picker and the partner
+swap with real pointer paths, clicks and keys at a normal and a small window,
+failing if a card changes shape on any painted frame, the pointer changes the
+choice, or the save holds another Pokemon than the one chosen
+(`docs/screens/starter-card-hover/`).
+
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen

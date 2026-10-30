@@ -14,7 +14,7 @@
 
 ## Checklist
 
-- [ ] `npm run lint && npm run typecheck && npm run test && npm run build` all pass
+- [ ] The checks on this pull request are green (`npm run lint`, `typecheck`, `test` and `build`, on GitHub's machines)
 - [ ] If this adds a subsystem or contradicts a note in [AGENTS.md](../AGENTS.md), AGENTS.md is updated in the same change
 - [ ] If this makes something on the [README](../README.md) untrue, the README is updated too
 - [ ] Any new asset has its line in [ASSET_PROVENANCE.md](../public/assets/ASSET_PROVENANCE.md)
