@@ -100,7 +100,7 @@ ends up running out of time instead. Beat one and they're gone for good. Well, u
 out.
 
 <p align="center">
-  <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Millbrook: the screen's edges flush red and the corner says BLUE ON YOUR TAIL, and you keep walking.">
+  <img src="docs/readme/hunter.png" width="800" alt="The hunters come out, in Millbrook: the screen's edges flush red, and you keep walking past the allotments.">
 </p>
 
 ### 4. Fight like it's 2004

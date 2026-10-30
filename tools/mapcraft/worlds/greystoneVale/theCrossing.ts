@@ -108,6 +108,7 @@ export function theCrossing(): MapcraftResult {
       pokemon: [
         { x: 11, y: 37, species: 'ponyta', level: 8, beat: { everyMs: 2700, roam: [[0, -1]] } },
         { x: 5, y: 27, species: 'rattata', level: 5, beat: { everyMs: 1500, roam: [[0, -1]] } },
+        { x: 23, y: 26, species: 'poliwag', beat: { everyMs: 2100, roam: [[0, -1]] } },
         { x: 33, y: 8, species: 'slowpoke', level: 9 },
         { x: 33, y: 43, species: 'psyduck', level: 8 },
         { x: 36, y: 13, species: 'spearow', level: 8 },

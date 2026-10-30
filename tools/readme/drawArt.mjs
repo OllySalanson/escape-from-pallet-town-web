@@ -17,9 +17,9 @@
 // its own size and every game pixel is a crisp 2x2 square. See
 // docs/readme/README.md for the whole set and how to make it again.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { launchBrowser } from '../playtest/browser.mjs';
+import { attachBrowser, launchBrowser } from '../playtest/browser.mjs';
 
-const [mapPng, gameUrl] = process.argv.slice(2);
+const [mapPng, gameUrl, portArg] = process.argv.slice(2);
 if (!gameUrl) throw new Error('usage: drawArt.mjs <a 72x14-tile crop from renderMap.mts at zoom 1> <url of a test-mode build>');
 const root = new URL('../../', import.meta.url);
 const dataUrl = (path, type = 'image/png') => `data:${type};base64,${readFileSync(path).toString('base64')}`;
@@ -219,7 +219,8 @@ const DRAW = async ({ map, sheets }) => {
   return out;
 };
 
-const browser = await launchBrowser({ window: { width: 400, height: 300 } });
+const port = portArg?.startsWith('--port=') ? Number(portArg.slice('--port='.length)) : null;
+const browser = port ? attachBrowser(port, { window: { width: 400, height: 300 } }) : await launchBrowser({ window: { width: 400, height: 300 } });
 try {
   const url = new URL(gameUrl);
   url.searchParams.set('testmode', 'pixels');

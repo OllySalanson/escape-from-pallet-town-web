@@ -1,6 +1,6 @@
 // Photographs the game for the repository's front page (README.md, docs/readme/).
 //
-//   node tools/playtest/readmeShots.mjs <url of a test-mode build> <out dir> [--part=raid|base|maker|place] [--window=WxH]
+//   node tools/playtest/readmeShots.mjs <url of a test-mode build> <out dir> [--part=raid|base|maker|place] [--window=WxH] [--port=N]
 //
 //   raid (default)  the title, Oak's Lab, the loadout, drop-in and final check, a
 //                   raid in Greystone Vale (or --insertion=), the frames of a walk,
@@ -16,7 +16,7 @@
 // is the same view at 4x, shown at half size. `frames/` holds the walk, one PNG
 // per 15th of a second; ffmpeg turns it into the animation (docs/readme/README.md).
 import { mkdirSync, readFileSync } from 'node:fs';
-import { launchBrowser } from './browser.mjs';
+import { attachBrowser, launchBrowser } from './browser.mjs';
 import { GAME, SAVE_KEY, deploy, deployOptions, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -27,9 +27,15 @@ url.searchParams.set('testmode', 'pixels');
 mkdirSync(`${outDir}/frames`, { recursive: true });
 
 const sized = /^(\d+)x(\d+)$/.exec(args.find((a) => a.startsWith('--window='))?.slice(9) ?? '800x512');
-const browser = await launchBrowser({ window: { width: Number(sized[1]), height: Number(sized[2]) } });
+const port = args.find((a) => a.startsWith('--port='))?.slice(7);
+const size = { window: { width: Number(sized[1]), height: Number(sized[2]) } };
+const browser = port ? attachBrowser(Number(port), size) : await launchBrowser(size);
 const main = async () => {
   const page = await browser.openPage('about:blank');
+  // By day, whatever the hour here: a night raid says so on the clock chip.
+  let hours = (12 - new Date().getUTCHours() + 24) % 24;
+  if (hours > 14) hours -= 24;
+  await page.send('Emulation.setTimezoneOverride', { timezoneId: hours === 0 ? 'Etc/UTC' : `Etc/GMT${hours > 0 ? '-' : '+'}${Math.abs(hours)}` });
   await page.send('Page.navigate', { url: url.href });
   const wait = (ms, frameMs = 100) => page.evaluate(`${GAME}.stepFrames(${Math.max(1, Math.ceil(ms / frameMs))}, ${frameMs})`);
   const until = async (expression, what = expression) => {
@@ -204,11 +210,16 @@ const main = async () => {
   // It arrives as a red glow at the screen's edge and the chip shouting who it
   // is, never a box (`hunterWarning.ts`): photographed at the top of the
   // arrival's first pulse.
-  await until(`${world}.hunterArrived !== null`, 'the hunter to arrive');
+  await until(`${world}.hunterArrived !== null || ${world}.packCameOutAtMs > -Infinity`, 'the hunter to arrive');
   for (let i = 0; i < 40 && (await page.evaluate(`(${world}.hunterGlow?.drawn?.strength ?? 0) < 0.95`)); i += 1) await wait(25, 25);
   // Taken at once rather than through `shot`, whose settling wait is a third of a pulse.
   await page.screenshot(`${outDir}/hunter.png`);
   console.log('shot hunter');
+  // A raid alone is hunted by a pack (`world/hunterPack.ts`), which has no one
+  // hunter to stand beside the player: its fight is only photographed on request.
+  if (!flag('battle')) {
+    return;
+  }
   await page.evaluate(`(() => { const w = ${world}; const t = w.currentTile;
     const beside = [[0,-1,'up'],[1,0,'right'],[-1,0,'left'],[0,1,'down']].find(([dx, dy]) => w.collisionData[t.y + dy]?.[t.x + dx] === false);
     const [dx, dy, facing] = beside; const p = { x: t.x + dx, y: t.y + dy };

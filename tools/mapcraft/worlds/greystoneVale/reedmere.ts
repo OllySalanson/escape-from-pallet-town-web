@@ -210,6 +210,7 @@ export function reedmere(): MapcraftResult {
       people: [
         { x: 37, y: 8, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, roam: [[-1, 0], [-2, 0]], glances: ['left'] }, calls: ['Mind the bundles!'] },
         { x: 25, y: 12, name: 'Wildfowler', look: 'camper', facing: 'right', lines: ['Sit very still on this bank and the whole marsh comes to you.', 'Then a raider wades through and it all goes home again.'], beat: { everyMs: 3900, glances: ['down', 'left'] }, calls: ['Shh. Sit still.'] },
+        { x: 52, y: 11, name: 'Pond Boy', look: 'tuber-boy', facing: 'up', lines: ['This pond is not on the map. I checked. So it is mine.'], beat: { everyMs: 2500, roam: [[1, 0]], glances: ['left'] }, calls: ['My pond!'] },
         { x: 33, y: 23, name: 'Mere Fisher', look: 'fisherman', facing: 'down', lines: ['Still as a plate, this mere. I have fished it forty years.', 'Nothing yet.'] },
         {
           x: 15,
