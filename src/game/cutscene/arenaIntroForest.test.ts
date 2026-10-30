@@ -6,7 +6,9 @@ import {
   ESCAPE_ROUTE,
   EXIT_TILE,
   FIND_TILES,
+  FIRE_WALL,
   HERO_LANDING,
+  HUNTER_CHASE,
   HUNTER_ROUTE,
   PARTNER_STAND_TILE,
   SNEAK_ROUTE,
@@ -42,6 +44,7 @@ describe("THE RAID ARENA trailer's wood", () => {
     ['the sneak', SNEAK_ROUTE],
     ['the hunter', HUNTER_ROUTE],
     ['the escape', ESCAPE_ROUTE],
+    ['the chase', HUNTER_CHASE],
   ])('walks %s over open ground, a step at a time', (_name, route) => {
     const tiles = routeTiles(route);
     for (const tile of tiles) {
@@ -72,8 +75,20 @@ describe("THE RAID ARENA trailer's wood", () => {
     expect(same(ESCAPE_ROUTE.at(-1)!, EXIT_TILE)).toBe(true);
   });
 
+  it('shuts the road with the fire: hedge to hedge, behind the runners and in front of the hunter', () => {
+    const column = FIRE_WALL[0].x;
+    expect(FIRE_WALL.every((tile) => tile.x === column && open(tile))).toBe(true);
+    expect(open({ x: column, y: FIRE_WALL[0].y - 1 })).toBe(false);
+    expect(open({ x: column, y: FIRE_WALL.at(-1)!.y + 1 })).toBe(false);
+    const onTheWall = (tile: GridPosition) => FIRE_WALL.some((burning) => same(burning, tile));
+    expect(routeTiles(ESCAPE_ROUTE).some(onTheWall)).toBe(true);
+    expect(routeTiles(HUNTER_CHASE).some(onTheWall)).toBe(false);
+    expect(HUNTER_CHASE.at(-1)!.x).toBe(column - 1);
+    expect(EXIT_TILE.x).toBeGreaterThan(column);
+  });
+
   it('hangs no crown over a tile anybody is walked onto', () => {
-    const walked = [...routeTiles(SNEAK_ROUTE), ...routeTiles(ESCAPE_ROUTE), ...routeTiles(HUNTER_ROUTE), ...SWARM_RING];
+    const walked = [...routeTiles(SNEAK_ROUTE), ...routeTiles(ESCAPE_ROUTE), ...routeTiles(HUNTER_ROUTE), ...routeTiles(HUNTER_CHASE), ...SWARM_RING];
     for (const tile of walked) {
       expect(forest.layers.canopy.tiles[tile.y][tile.x], `${tile.x},${tile.y}`).toBeLessThan(0);
     }

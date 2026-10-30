@@ -22,7 +22,12 @@ ends it on the loadout.
 | `10-swarmed.png` | Tonight's hunter, and their whole team out of the trees. |
 | `13-panel-word.png` | The comic panel: the player looking up, and Charizard. |
 | `15-fire.png` | Flamethrower across the clearing; the swarm scatters. |
-| `17-escape.png` | The run for the exit, Charizard overhead, the clock red. |
+| `17a-hold.png` | Charizard stays behind and pins the hunter off the road while the two of them run past. |
+| `17b-takeoff.png` | The hunter breaks out, and Charizard takes off after them. |
+| `17c-chased.png` | The hunter on the road behind them, Charizard coming up over the trees. |
+| `17d-wall.png` | Fire across the road at their heels, hedge to hedge, with the hunter on the wrong side. |
+| `17e-overhead.png` | Charizard over their heads and away, its job done. |
+| `18-look-back.png` | At the way out they look back; the hunter shouts across the fire. |
 | `19-extracted.png` | EXTRACTED, and what came home. |
 | `21-ready.png` | Back at the Arena's door: the Gym Guide asks. |
 | `22-loadout.png` | BOOK YOUR LOADOUT - any key, and it is the loadout. |
@@ -31,3 +36,8 @@ ends it on the loadout.
 
 All of them are `tools/playtest/arenaIntro.mjs` against a test-mode build at the real 3x window,
 which also checks that it is seen once, skipped after and ends on the loadout.
+
+Charizard's part in the run was redrawn on the captain's note of 2026-10-30, that in the last quarter it
+"just follows you, flying behind you": it was pinned to the player at a fixed offset, doing nothing,
+while the hunter's chase ran through the player. Now the escape is something it buys. `--every=FROM:TO:STEP`
+on the driver photographs a stretch of the trailer at a step, which is how that was watched.
