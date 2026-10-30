@@ -26,6 +26,8 @@ export class MenuOverlay {
   private readonly resizeHandler: () => void;
   /** Which control the player was last on, so a re-render can put them back. */
   private lastFocusKey: string | null = null;
+  /** The frame the cursor is waiting on, while it is waiting on one. */
+  private cursorFrame: number | undefined;
   /** Scrolls the panes of the last `redraw` back, once the screen is laid out. */
   private restoreScroll: (() => void) | undefined;
   /**
@@ -143,6 +145,9 @@ export class MenuOverlay {
   }
 
   public destroy(): void {
+    if (this.cursorFrame !== undefined) {
+      cancelAnimationFrame(this.cursorFrame);
+    }
     this.releaseKeyboard();
     this.root.removeEventListener('error', this.artworkErrorHandler, true);
     this.root.removeEventListener('click', this.clickSoundHandler, true);
@@ -184,7 +189,23 @@ export class MenuOverlay {
 
   /** Starts the cursor on the first of these selectors the screen has. */
   public focus(...selectors: string[]): void {
-    requestAnimationFrame(() => this.moveCursorTo(this.firstMatch(selectors)));
+    this.placeCursorNextFrame(() => this.moveCursorTo(this.firstMatch(selectors)));
+  }
+
+  /**
+   * Only the newest request is honoured. Each one was asked for by the screen as
+   * it then stood, so an older one left waiting moves the cursor back to where
+   * the screen has since moved on from - which on a screen that answers the
+   * cursor by asking for it again is two requests taking turns for ever.
+   */
+  private placeCursorNextFrame(place: () => void): void {
+    if (this.cursorFrame !== undefined) {
+      cancelAnimationFrame(this.cursorFrame);
+    }
+    this.cursorFrame = requestAnimationFrame(() => {
+      this.cursorFrame = undefined;
+      place();
+    });
   }
 
   /**
@@ -194,7 +215,7 @@ export class MenuOverlay {
    * way out.
    */
   public refocus(...selectors: string[]): void {
-    requestAnimationFrame(() => {
+    this.placeCursorNextFrame(() => {
       const controls = this.cursorControls();
       const remembered = controls.find((control) => focusKeyOf(control) === this.lastFocusKey);
       // Put back where it was, the control is already as far in view as the

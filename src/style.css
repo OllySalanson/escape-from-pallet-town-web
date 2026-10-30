@@ -2720,6 +2720,21 @@ button {
   left: calc(var(--u) * 9);
   color: var(--ink-soft);
 }
+/* The card the pointer is over, which chooses nothing until it is clicked. The
+   general rule is one faint pixel laid over a card's frame, which on a card this
+   size reads as nothing at all; this is a dark teal ring inside the frame, with
+   the frame and its clear corners left alone. */
+.pixel-ui[data-pointer='previews'] .starter-card:hover:not(:focus) {
+  --fill: var(--cream-lit);
+  box-shadow: none;
+}
+.pixel-ui[data-pointer='previews'] .starter-card:hover:not(:focus)::after {
+  content: '';
+  position: absolute;
+  inset: var(--u);
+  border: var(--u) solid var(--teal-ink);
+  pointer-events: none;
+}
 .pixel-ui .starter-card .px-type {
   margin-left: calc(var(--u) * 2);
   margin-right: calc(var(--u) * 2);

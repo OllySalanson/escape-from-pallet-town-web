@@ -5,20 +5,58 @@ vi.mock('phaser', () => ({
 }));
 
 // The screen is DOM; what matters here is what it says and where its one
-// button goes, so the overlay is a root that keeps its markup and its clicks.
+// button goes, so the overlay is a root that keeps its markup and its clicks,
+// and one element per selector it was asked for, which keeps what is written.
 vi.mock('../ui/MenuOverlay', () => ({
   MenuOverlay: class {
     public readonly clicks = new Map<string, () => void>();
     public readonly listeners = new Map<string, (event: unknown) => void>();
+    public readonly elements = new Map<string, { textContent: string; dataset: Record<string, string> }>();
+    public readonly cards = ['bulbasaur', 'charmander', 'squirtle'].map((starter) => {
+      const classes = new Set<string>();
+      const attributes = new Map<string, string>();
+      return {
+        dataset: { starter },
+        classes,
+        attributes,
+        classList: { toggle: (name: string, on: boolean) => void (on ? classes.add(name) : classes.delete(name)) },
+        setAttribute: (name: string, value: string) => attributes.set(name, value),
+        focus: () => undefined,
+        onclick: null as (() => void) | null,
+      };
+    });
+    public drawn = 0;
+    public measured = 0;
+    public pointerRule = 'moves-cursor';
+    private markup = '';
     public readonly root = {
-      innerHTML: '',
-      querySelector: (selector: string) => ({
-        addEventListener: (_event: string, handler: () => void) => this.clicks.set(selector, handler),
-      }),
-      querySelectorAll: () => [],
+      owner: this,
+      get innerHTML(): string {
+        return this.owner.markup;
+      },
+      set innerHTML(markup: string) {
+        this.owner.markup = markup;
+        this.owner.drawn += 1;
+      },
+      querySelector: (selector: string) => {
+        const element = this.elements.get(selector) ?? { textContent: '', dataset: {} };
+        this.elements.set(selector, element);
+        return {
+          ...element,
+          dataset: element.dataset,
+          set textContent(words: string) {
+            element.textContent = words;
+          },
+          addEventListener: (_event: string, handler: () => void) => this.clicks.set(selector, handler),
+        };
+      },
+      querySelectorAll: () => this.cards,
       addEventListener: (event: string, handler: (event: unknown) => void) => this.listeners.set(event, handler),
     };
     public focus(): void {}
+    public layout(): void {
+      this.measured += 1;
+    }
     /** The real one moves the cursor on an arrow key; the test says where it lands. */
     public moveCursor(key: string): boolean {
       return key.startsWith('Arrow');
@@ -60,6 +98,11 @@ interface StarterInternals {
     root: { innerHTML: string };
     clicks: Map<string, () => void>;
     listeners: Map<string, (event: unknown) => void>;
+    elements: Map<string, { textContent: string; dataset: Record<string, string> }>;
+    cards: { dataset: Record<string, string>; classes: Set<string>; attributes: Map<string, string>; onclick: (() => void) | null }[];
+    drawn: number;
+    measured: number;
+    pointerRule: string;
   };
 }
 
@@ -140,8 +183,8 @@ describe('choosing a partner', () => {
 
     // The bar used to go on saying CONFIRM BULBASAUR until Enter was pressed
     // on Charmander's card.
-    expect(scene.overlay.root.innerHTML).toContain('Confirm Charmander');
-    expect(scene.overlay.root.innerHTML).not.toContain('Confirm Bulbasaur');
+    expect(scene.overlay.elements.get('[data-confirm]')?.textContent).toBe('Confirm Charmander');
+    expect(scene.overlay.elements.get('[data-chosen-name]')?.textContent).toBe('Charmander');
     // Moving the cursor commits nothing.
     expect(start).not.toHaveBeenCalled();
   });
@@ -159,7 +202,48 @@ describe('choosing a partner', () => {
       vi.unstubAllGlobals();
     }
 
-    expect(scene.overlay.root.innerHTML).toContain('Confirm Charmander');
+    expect(scene.overlay.elements.get('[data-confirm]')?.textContent).toBe('Confirm Charmander');
+  });
+
+  it('says the choice on the screen already drawn, never by drawing it again', () => {
+    // Drawn again inside the focus event, the card the cursor had just landed
+    // on was thrown away with the columns measured for it: the cards stood at
+    // their narrowest with no cursor, and two waiting cursor moves took turns
+    // choosing for ever (the captain, 30 Oct 2026).
+    const { scene } = openStarter(new MemoryStorage());
+    const drawn = scene.overlay.drawn;
+
+    cursorOn(scene, 'squirtle');
+
+    expect(scene.overlay.drawn).toBe(drawn);
+    // Measured again, because the CONFIRM button is as wide as its new words.
+    expect(scene.overlay.measured).toBe(1);
+    const [bulbasaur, , squirtle] = scene.overlay.cards;
+    expect(squirtle.classes.has('is-selected')).toBe(true);
+    expect(squirtle.attributes.get('aria-pressed')).toBe('true');
+    expect(squirtle.dataset.help).toBe('Chosen. Confirm below.');
+    expect(bulbasaur.classes.has('is-selected')).toBe(false);
+    expect(bulbasaur.attributes.get('aria-pressed')).toBe('false');
+    expect(bulbasaur.dataset.help).toBe('Choose this starter.');
+  });
+
+  it('leaves the choice alone while the pointer only crosses a card', () => {
+    // On the way from Bulbasaur to CONFIRM the mouse crosses Charmander.
+    const { scene } = openStarter(new MemoryStorage());
+
+    expect(scene.overlay.pointerRule).toBe('previews');
+  });
+
+  it('chooses the card clicked, and confirms that one', () => {
+    const storage = new MemoryStorage();
+    const { scene } = openStarter(storage);
+    const drawn = scene.overlay.drawn;
+
+    scene.overlay.cards[1].onclick!();
+
+    expect(scene.overlay.drawn).toBe(drawn);
+    scene.confirmStarter();
+    expect(new SaveManager(storage).load()?.starterSpeciesId).toBe('charmander');
   });
 
   it('confirms the starter the cursor last chose', () => {

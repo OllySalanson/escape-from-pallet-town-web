@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { countPlay } from '../analytics/playCounter';
 import { Bag } from '../items';
-import { PokemonParty } from '../pokemon';
+import { PokemonParty, type PokemonBase } from '../pokemon';
 import { SaveManager } from '../save/SaveManager';
 import {
   createStartingStash,
@@ -11,13 +11,16 @@ import {
 } from '../stash';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { pixelColumns, pixelCommitBar, pixelScreen, pixelWindow } from '../ui/pixelUi';
-import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
+import { starterCardHelp, starterCards, starterLoadoutSummary } from '../ui/starterPicker';
 
 export const CANNOT_SAVE_TITLE = 'This browser cannot save';
 
 /** What a browser that keeps nothing is told, in place of a new game. */
 export const CANNOT_SAVE_MESSAGE =
   'This browser is not letting the game save, so a new game cannot start. Allow this site to store data - or leave private browsing - then reload the page.';
+
+const confirmLabel = (species: PokemonBase): string => `Confirm ${species.name}`;
+const confirmHelp = (species: PokemonBase): string => `Locks in ${species.name} as your first Pokémon.`;
 
 export class StarterScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
@@ -36,11 +39,17 @@ export class StarterScene extends Phaser.Scene {
       this.renderCannotSave();
       return;
     }
-    // The choice follows the cursor: arrowing or pointing to Charmander used
-    // to leave the bar reading CONFIRM BULBASAUR until Enter was pressed on the
-    // card (playtest 47). Moving the cursor still commits nothing - CONFIRM is
-    // one deliberate step down.
-    this.overlay.root.addEventListener('focusin', (event) => this.followCursor(event.target));
+    // The pointer only previews, because this is a choice of who: moving the
+    // mouse from Bulbasaur to CONFIRM crosses Charmander's card on the way, and
+    // a pointer that moved the cursor changed the partner under it
+    // (`ui/pointerPreview.ts`). A click chooses, as the arrow keys do.
+    this.overlay.pointerRule = 'previews';
+    // The choice follows the cursor: arrowing to Charmander used to leave the
+    // bar reading CONFIRM BULBASAUR until Enter was pressed on the card
+    // (playtest 47). Moving the cursor still commits nothing - CONFIRM is one
+    // deliberate step down. On the way down, so the card's help line is already
+    // the chosen one when the overlay's own listener reads it out.
+    this.overlay.root.addEventListener('focusin', (event) => this.followCursor(event.target), true);
     this.render();
   }
 
@@ -52,10 +61,39 @@ export class StarterScene extends Phaser.Scene {
   private followCursor(target: EventTarget | null): void {
     const card = (target as Element | null)?.closest?.<HTMLElement>('[data-starter]');
     const starter = STARTER_SPECIES.find((species) => species.id === card?.dataset.starter)?.id;
-    if (starter && starter !== this.selectedStarterId) {
-      this.selectedStarterId = starter;
-      this.render();
+    if (starter) {
+      this.choose(starter);
     }
+  }
+
+  /**
+   * Says the choice on the screen already drawn. Choosing is never a redraw: a
+   * cursor that lands on a card is inside a focus event, so rebuilding the
+   * screen there threw away the control it had just landed on and the columns
+   * measured for it, and the cards stood at their unmeasured width with no
+   * cursor (the captain, 30 Oct 2026). Rebuilt from a click, the card under the
+   * mouse was gone before the button came up.
+   */
+  private choose(starter: StarterSpeciesId): void {
+    if (starter === this.selectedStarterId) {
+      return;
+    }
+    this.selectedStarterId = starter;
+    const { root } = this.overlay;
+    root.querySelectorAll<HTMLElement>('[data-starter]').forEach((card) => {
+      const chosen = card.dataset.starter === starter;
+      card.classList.toggle('is-selected', chosen);
+      card.setAttribute('aria-pressed', String(chosen));
+      card.dataset.help = starterCardHelp(card.dataset.starter ?? '', starter);
+    });
+    const selected = getStarterSpecies(starter);
+    root.querySelector<HTMLElement>('[data-chosen-name]')!.textContent = selected.name;
+    root.querySelector<HTMLElement>('[data-chosen-kit]')!.textContent = starterLoadoutSummary(selected);
+    const confirm = root.querySelector<HTMLElement>('[data-confirm]')!;
+    confirm.textContent = confirmLabel(selected);
+    confirm.dataset.help = confirmHelp(selected);
+    // The button is as wide as its words, and its width is snapped to the grid.
+    this.overlay.layout();
   }
 
   /**
@@ -96,17 +134,19 @@ export class StarterScene extends Phaser.Scene {
       title: 'Choose your partner',
       hints: 'ARROWS choose · ENTER on CONFIRM to begin',
       body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner enters the lost field kit raid with you. Choose carefully.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
-        title: selected.name,
+        title: `<span data-chosen-name>${selected.name}</span>`,
         // The bar's title is the name and the button confirms it by name, so
         // the line is only what the name does not say.
-        lines: [`<span class="px-wrap">${starterLoadoutSummary(selected)}</span>`],
-        actions: `<button class="px-window px-button is-primary" data-confirm data-sfx="confirm" data-help="Locks in ${selected.name} as your first Pokémon.">Confirm ${selected.name}</button>`,
+        lines: [`<span class="px-wrap" data-chosen-kit>${starterLoadoutSummary(selected)}</span>`],
+        actions: `<button class="px-window px-button is-primary" data-confirm data-sfx="confirm" data-help="${confirmHelp(selected)}">${confirmLabel(selected)}</button>`,
       })}</main>`,
     });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-starter]').forEach((button) => {
+      // Mostly the focus a press gave the button has chosen it already; Enter on
+      // a card, and a browser that gives a clicked button no focus, come here.
       button.onclick = () => {
-        this.selectedStarterId = button.dataset.starter as StarterSpeciesId;
-        this.render();
+        this.choose(button.dataset.starter as StarterSpeciesId);
+        button.focus();
       };
     });
     this.overlay.root.querySelector<HTMLButtonElement>('[data-confirm]')?.addEventListener('click', () => this.confirmStarter());
@@ -114,7 +154,7 @@ export class StarterScene extends Phaser.Scene {
     // first decision in the game, and a cursor on the commit button turned one
     // press of Enter into taking Bulbasaur unread. Choosing a card keeps the
     // cursor on it, so committing is always a deliberate step down to CONFIRM.
-    this.overlay.focus(`[data-starter="${this.selectedStarterId}"]`, '[data-confirm]');
+    this.overlay.focus('[data-starter][aria-pressed="true"]', '[data-confirm]');
   }
 
   private confirmStarter(): void {
