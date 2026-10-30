@@ -5,7 +5,7 @@ import type { Pokemon } from '../pokemon/Pokemon';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
-import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, heelOf, withinPlace } from './harbourFigures';
+import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, heelOf, spreadPlates, withinPlace } from './harbourFigures';
 import { PARTNER_FEET_PIXEL_Y, partnerFrame, partnerTextureKey } from './partner';
 import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
 
@@ -31,6 +31,10 @@ class Drawn {
   public setPosition(x: number, y: number): this {
     this.x = x;
     this.y = y;
+    return this;
+  }
+  public setX(x: number): this {
+    this.x = x;
     return this;
   }
   public setDepth(depth: number): this {
@@ -70,7 +74,9 @@ class Drawn {
   public fillRect(): this {
     return this;
   }
-  public destroy(): void {}
+  public gone = false;
+  public destroy(): void {
+    this.gone = true;}
 }
 
 function stage() {
@@ -224,6 +230,79 @@ describe('a friend in a raid room saying something on this player\'s own tile', 
     // Once she has finished saying it, her bare name goes back to being hidden.
     others.update([{ ...amy, name: 'AMY' }], self);
     expect(plates[0].visible).toBe(false);
+  });
+});
+
+describe('two names on one row', () => {
+  const plate = (x: number, y: number, headX: number) => ({ x, y, width: 44, height: 13, headX });
+
+  it('are slid apart so each can be read, each still over its own head', () => {
+    const [a, b] = spreadPlates([plate(100, 50, 122), plate(132, 50, 154)]);
+    expect(a + 44).toBeLessThanOrEqual(b);
+    expect(a).toBeLessThanOrEqual(122);
+    expect(a + 44).toBeGreaterThanOrEqual(122);
+    expect(b).toBeLessThanOrEqual(154);
+    expect(b + 44).toBeGreaterThanOrEqual(154);
+  });
+
+  it('are left alone on different rows, or with room between them', () => {
+    expect(spreadPlates([plate(100, 50, 122), plate(120, 70, 142)])).toEqual([100, 120]);
+    expect(spreadPlates([plate(100, 50, 122), plate(150, 50, 172)])).toEqual([100, 150]);
+  });
+
+  it('read apart with three in a row, two tiles between each', () => {
+    const xs = spreadPlates([plate(100, 50, 122), plate(132, 50, 154), plate(164, 50, 186)]);
+    expect(xs[0] + 44).toBeLessThanOrEqual(xs[1]);
+    expect(xs[1] + 44).toBeLessThanOrEqual(xs[2]);
+  });
+});
+
+describe('somebody in the harbour saying something', () => {
+  const standing = (id: string, x: number) => ({ id, name: id.toUpperCase(), place: 'yard', tile: { x, y: 10 }, toward: null, progress: 0, behind: null, facing: 'down' as const });
+  const figuresIn = (): { others: HarbourFigures; shown: () => string[]; bubbles: () => { x: number; y: number; width: number; height: number }[] } => {
+    const names: Drawn[] = [];
+    const scene = {
+      add: {
+        sprite: () => new Drawn(),
+        graphics: () => new Drawn(),
+        text: (_x: number, _y: number, text: string) => {
+          const name = new Drawn().setText(text);
+          names.push(name);
+          return name;
+        },
+      },
+    } as unknown as Phaser.Scene;
+    const others = new HarbourFigures(scene);
+    return { others, shown: () => names.filter((name) => name.visible && !name.gone).map((name) => name.text), bubbles: () => others.bubbleRects() };
+  };
+
+  it('has a bubble in place of their name, and the name back when it is said', () => {
+    const { others, shown, bubbles } = figuresIn();
+    others.update([{ ...standing('amy', 10), saying: 'HELLO!' }]);
+    expect(shown()).toEqual(['HELLO!']);
+    expect(bubbles()).toHaveLength(1);
+    others.update([standing('amy', 10)]);
+    expect(shown()).toEqual(['AMY']);
+    expect(bubbles()).toHaveLength(0);
+  });
+
+  it('never has a bubble over somebody else\'s name: the name gives way, and comes back', () => {
+    const { others, shown } = figuresIn();
+    // Long enough words to reach over the head next door.
+    others.update([{ ...standing('amy', 10), saying: 'WANT TO RAID?' }, standing('pip', 11)]);
+    // `Drawn` is twelve pixels wide, which is under a tile: make it wider by name.
+    expect(shown()).toContain('WANT TO RAID?');
+    others.update([standing('amy', 10), standing('pip', 11)]);
+    expect(shown()).toEqual(['AMY', 'PIP']);
+  });
+
+  it('clears a name from under this player\'s own bubble', () => {
+    const { others, shown } = figuresIn();
+    others.update([standing('amy', 10)]);
+    expect(shown()).toEqual(['AMY']);
+    const plate = others.plateRects()[0];
+    others.clearNamesUnder({ x: plate.x - 4, y: plate.y - 2, width: 30, height: 10 });
+    expect(shown()).toEqual([]);
   });
 });
 

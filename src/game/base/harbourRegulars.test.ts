@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { WAVE_SHOWN_MS } from '../harbour/harbourLink';
+import { HARBOUR_PHRASES } from '../harbour/harbourPhrases';
 import { STEP_DURATION_MS } from '../movement/stepClock';
-import { BOT_SLOT_MS, HARBOUR_BOTS, botAt, visitPlan, visitsAt } from './harbourBots';
+import { botAt, visitPlan } from './harbourActivities';
+import { BOT_SLOT_MS, HARBOUR_BOTS, visitsAt } from './harbourBots';
 import { baseGame } from './baseGames.testkit';
 import { buildRoom, roomNamed } from './rooms';
-import { HarbourRegulars, REGULARS_CHAT_WITHIN, REGULAR_WAVES_WITHIN, callAt, greetedBy, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
+import { HarbourRegulars, REGULAR_WAVES_WITHIN, callAt, TEST_CLOCK_ORIGIN_MS, harbourRegulars, regularsClock } from './harbourRegulars';
 
 const FRAME = 100;
 
@@ -75,48 +77,6 @@ describe('the regulars as drawn', () => {
     expect(two).toEqual(one);
   });
 
-  it('stand still facing the player while spoken to, wave back after the player, and walk on after', () => {
-    const regulars = run(start, 5_000);
-    let clock = start + 5_000;
-    // Somebody walking, so standing still is the hold and not a pause.
-    let walker = regulars.figures().find((figure) => figure.toward);
-    for (let tries = 0; !walker && tries < 600; tries += 1) {
-      regulars.tick(clock, FRAME, { place: 'yard', player: { x: 0, y: 0 } });
-      clock += FRAME;
-      walker = regulars.figures().find((figure) => figure.toward);
-    }
-    expect(walker).toBeDefined();
-    const bot = HARBOUR_BOTS.find((each) => each.id === walker!.id)!;
-    const standing = walker!.toward!;
-    const player = { x: standing.x, y: standing.y + 1 };
-    expect(regulars.at(standing)).toBe(bot);
-    const line = regulars.speakTo(bot, player);
-    expect(bot.lines).toContain(line);
-    expect(regulars.speakTo(bot, player)).toBe(bot.lines[1 % bot.lines.length]);
-    for (let ms = 0; ms < 8_000; ms += FRAME) {
-      regulars.tick(clock, FRAME, { place: 'yard', player });
-      clock += FRAME;
-      const them = regulars.figures().find((figure) => figure.id === bot.id)!;
-      // Once the step they were taking is finished: they stop on the tile they were stepping onto.
-      if (ms >= STEP_DURATION_MS) {
-        expect(them.tile).toEqual(standing);
-        expect(them.toward).toBeNull();
-        expect(them.facing).toBe('down');
-      }
-      // The player's own hand is up first; theirs once it is down.
-      expect(them.waving === true).toBe(ms + FRAME >= WAVE_SHOWN_MS && ms + FRAME < WAVE_SHOWN_MS * 2);
-    }
-    regulars.release();
-    let moved = false;
-    for (let ms = 0; ms < 120_000 && !moved; ms += FRAME) {
-      regulars.tick(clock, FRAME, { place: 'yard', player: { x: 0, y: 0 } });
-      clock += FRAME;
-      const them = regulars.figures().find((figure) => figure.id === bot.id);
-      moved = !them || them.tile.x !== standing.x || them.tile.y !== standing.y;
-    }
-    expect(moved).toBe(true);
-  });
-
   it('wave at a player who comes near while they stand about, once a visit', () => {
     const regulars = run(start, 5_000);
     let clock = start + 5_000;
@@ -141,43 +101,6 @@ describe('the regulars as drawn', () => {
   });
 });
 
-describe('two regulars meeting', () => {
-  it('turn to talk, and wave one after the other', () => {
-    const regulars = new HarbourRegulars();
-    const away = { place: 'yard' as const, player: { x: 0, y: 0 } };
-    const facing = (from: { x: number; y: number }, to: { x: number; y: number }) =>
-      Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) ? (to.x > from.x ? 'right' : 'left') : to.y > from.y ? 'down' : 'up';
-    let clock = TEST_CLOCK_ORIGIN_MS;
-    let pair: [string, string] | null = null;
-    // Run on until two are standing about together, and have been for a moment.
-    let together = 0;
-    for (let tick = 0; tick < 40 * 60 * 10 && together < 5; tick += 1) {
-      regulars.tick(clock, FRAME, away);
-      clock += FRAME;
-      const still = regulars.figures().filter((figure) => !figure.toward);
-      const meeting = still.flatMap((a) =>
-        still.filter((b) => a.id < b.id && Math.abs(a.tile.x - b.tile.x) + Math.abs(a.tile.y - b.tile.y) <= REGULARS_CHAT_WITHIN).map((b) => [a.id, b.id] as [string, string]),
-      )[0];
-      together = meeting && pair && meeting.join() === pair.join() ? together + 1 : 0;
-      pair = meeting ?? null;
-    }
-    expect(pair).not.toBeNull();
-    const [a, b] = pair!.map((id) => regulars.figures().find((figure) => figure.id === id)!);
-    expect(a.facing).toBe(facing(a.tile, b.tile));
-    expect(b.facing).toBe(facing(b.tile, a.tile));
-    // One hand up, then the other: never both at once.
-    const waved = new Set<string>();
-    for (let ms = 0; ms < WAVE_SHOWN_MS * 3; ms += FRAME) {
-      regulars.tick(clock, FRAME, away);
-      clock += FRAME;
-      const up = regulars.figures().filter((figure) => pair!.includes(figure.id) && figure.waving);
-      expect(up.length).toBeLessThanOrEqual(1);
-      up.forEach((figure) => waved.add(figure.id));
-    }
-    expect(waved.size).toBeGreaterThanOrEqual(1);
-  });
-});
-
 describe('a regular calling on a keeper', () => {
   /** The first call on a keeper after tonight, and the visit that makes it. */
   const first = (() => {
@@ -192,7 +115,7 @@ describe('a regular calling on a keeper', () => {
 
   it('comes in off the mat, stands where they stand, and is on the mat again as the call ends', () => {
     const walk = [room.mat!, { x: room.mat!.x, y: room.mat!.y - 1 }];
-    expect(callAt(first.leg, first.leg.from, walk)).toMatchObject({ tile: room.mat, walking: true });
+    expect(callAt(first.leg, first.leg.from, walk)).toMatchObject({ tile: room.mat, walking: true, fade: 0 });
     expect(callAt(first.leg, (first.leg.from + first.leg.to) / 2, walk)).toMatchObject({
       tile: first.leg.spot.tile,
       facing: first.leg.spot.facing,
@@ -218,17 +141,74 @@ describe('a regular calling on a keeper', () => {
   });
 });
 
-describe('a regular saying hello', () => {
-  it('says a named player\'s name, and leaves a line with no hello alone', () => {
-    expect(greetedBy('Oh, hi! Just back off the SEAGALLOP.', 'OLLY')).toBe('Oh, hi, OLLY! Just back off the SEAGALLOP.');
-    expect(greetedBy('Hey there! Just doing one more raid.', 'AMY')).toBe('Hey there, AMY! Just doing one more raid.');
-    expect(greetedBy('Hi! My best Pokémon rides home.', null)).toBe('Hi! My best Pokémon rides home.');
-    expect(greetedBy('CHARMELEON wants a rematch.', 'OLLY')).toBe('CHARMELEON wants a rematch.');
+describe('people in the way', () => {
+  const start = TEST_CLOCK_ORIGIN_MS;
+
+  it('never share a tile, drawn, however long they are watched', () => {
+    const regulars = new HarbourRegulars();
+    const away = { place: 'yard' as const, player: { x: 0, y: 0 } };
+    const clashes: string[] = [];
+    for (let at = start; at < start + 20 * 60_000; at += FRAME) {
+      regulars.tick(at, FRAME, away);
+      const taken = new Map<string, string>();
+      for (const figure of regulars.figures()) {
+        if ((figure.fade ?? 1) < 1) continue;
+        for (const tile of [figure.tile, ...(figure.toward ? [figure.toward] : [])]) {
+          const key = `${tile.x},${tile.y}`;
+          const other = taken.get(key);
+          if (other && other !== figure.id) clashes.push(`${figure.name} and ${other} on ${key} at ${at - start}ms`);
+          taken.set(key, figure.id);
+        }
+      }
+    }
+    expect(clashes.slice(0, 5)).toEqual([]);
   });
 
-  it('opens with a hello on every regular\'s first line', () => {
-    for (const bot of HARBOUR_BOTS) {
-      expect(greetedBy(bot.lines[0], 'OLLY')).toContain('OLLY!');
+  it('do not walk through a player standing in the road: they go round, and catch up with the plan', () => {
+    // Somebody's next walk, with the player standing on a tile of it.
+    let clock = start + 5_000;
+    const regulars = run(start, 5_000);
+    let walker = null as ReturnType<HarbourRegulars['figures']>[number] | null;
+    const away = { place: 'yard' as const, player: { x: 0, y: 0 } };
+    for (let tries = 0; !walker && tries < 2_000; tries += 1) {
+      regulars.tick(clock, FRAME, away);
+      clock += FRAME;
+      walker = regulars.figures().find((figure) => figure.toward && figure.activity !== 'leave') ?? null;
+    }
+    const visit = visitsAt(clock).find((each) => visitPlan(each).bot.id === walker!.id)!;
+    const plan = visitPlan(visit);
+    const leg = plan.legs.find((each) => each.kind === 'walk' && each.from <= clock && clock < each.from + (each.path.length - 1) * STEP_DURATION_MS);
+    expect(leg?.kind).toBe('walk');
+    const path = leg?.kind === 'walk' ? leg.path : [];
+    const standing = path[Math.min(path.length - 2, Math.floor((clock - (leg as { from: number }).from) / STEP_DURATION_MS) + 3)];
+    const here = { place: 'yard' as const, player: standing };
+    for (let ms = 0; ms < 6_000; ms += FRAME) {
+      regulars.tick(clock, FRAME, here);
+      clock += FRAME;
+      const them = regulars.figures().find((figure) => figure.id === walker!.id);
+      if (them) {
+        expect(them.tile).not.toEqual(standing);
+        expect(them.toward ?? them.tile).not.toEqual(standing);
+      }
+    }
+  });
+});
+
+describe('a regular saying something', () => {
+  it('says what the plan has them say, under their own name, and no more than a player may', () => {
+    const regulars = new HarbourRegulars();
+    const away = { place: 'yard' as const, player: { x: 0, y: 0 } };
+    const start = TEST_CLOCK_ORIGIN_MS;
+    const heard = new Set<string>();
+    for (let at = start; at < start + 30 * 60_000; at += 200) {
+      regulars.tick(at, 200, away);
+      for (const figure of regulars.figures()) {
+        if (figure.saying) heard.add(figure.saying);
+      }
+    }
+    expect(heard.size).toBeGreaterThan(2);
+    for (const words of heard) {
+      expect(HARBOUR_PHRASES.map((phrase) => phrase.words as string)).toContain(words);
     }
   });
 });

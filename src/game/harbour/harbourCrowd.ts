@@ -61,6 +61,8 @@ interface Walker<P extends string> {
   partner?: PartnerSpeciesId;
   look?: DressedLook;
   behind: GridPosition | null;
+  /** Refused its next step this frame (`advance`): standing still, not walking on the spot. */
+  waiting?: boolean;
 }
 
 const adjacent = (a: GridPosition, b: GridPosition): boolean => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
@@ -185,13 +187,21 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
     return [...this.walkers.keys()];
   }
 
-  /** Moves every figure on by a frame. */
-  public advance(deltaMs: number): void {
+  /**
+   * Moves every figure on by a frame. `mayStep`, for figures this browser walks
+   * itself, is asked before a figure sets foot on a new tile; one it refuses
+   * waits where it stands for the frame. Nobody's real steps are ever refused.
+   */
+  public advance(deltaMs: number, mayStep: ((id: string, tile: GridPosition) => boolean) | null = null): void {
     for (const walker of this.walkers.values()) {
       let left = deltaMs;
       while (left > 0 && walker.queue.length > 0) {
         const pace = walker.queue.length > CATCH_UP_AFTER_STEPS ? 2 : 1;
         const next = walker.queue[0];
+        walker.waiting = walker.progress === 0 && mayStep !== null && !mayStep(walker.id, next);
+        if (walker.waiting) {
+          break;
+        }
         walker.facing = directionOf(walker.tile, next) ?? walker.facing;
         const needed = ((1 - walker.progress) * STEP_DURATION_MS) / pace;
         if (left >= needed) {
@@ -219,8 +229,8 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         id: walker.id,
         place: walker.place,
         tile: { ...walker.tile },
-        toward: walker.queue[0] ? { ...walker.queue[0] } : null,
-        progress: walker.queue[0] ? walker.progress : 0,
+        toward: walker.queue[0] && !walker.waiting ? { ...walker.queue[0] } : null,
+        progress: walker.queue[0] && !walker.waiting ? walker.progress : 0,
         facing: walker.facing,
         ...(walker.partner ? { partner: walker.partner } : {}),
         ...(walker.look ? { look: walker.look } : {}),

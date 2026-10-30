@@ -27,7 +27,7 @@ import {
   PARTNER_SPRITE_Y_OFFSET,
   drawEmoteBubble,
 } from './partnerFigure';
-import { SpeechBubble, type BubbleBox } from './speechBubble';
+import { SpeechBubble, overlaps, type BubbleBox } from './speechBubble';
 
 /**
  * Everybody else in THE HARBOUR, drawn: one figure a player, walking where
@@ -105,8 +105,14 @@ const NAME_STYLE = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WIN
 /** Pixels of cream either side of the name, inside the frame. */
 const PLATE_PAD_X = 3;
 
-/** A figure to draw, and whether its plate is carrying something it is saying. */
-export type PlateFigure = NamedFigure<string> & { readonly speaking?: boolean };
+/** How far above this player's head their own mark reaches, which somebody else's bubble keeps clear of. */
+const HEAD_MARK_CLEARANCE = 8;
+
+/**
+ * A figure to draw, whether its plate is carrying something it is saying, and
+ * how far through a door it is, 0 (not there) to 1 - absent for everybody else.
+ */
+export type PlateFigure = NamedFigure<string> & { readonly speaking?: boolean; readonly fade?: number };
 
 interface Heel {
   readonly species: PartnerSpeciesId;
@@ -175,10 +181,20 @@ export class HarbourFigures {
    * once either has walked half a tile away - unless the plate is carrying
    * something its figure is saying (`speaking`, a raid room's quick phrase):
    * "AMY: OVER HERE!" names its speaker, and hiding it would lose what was said.
+   *
+   * A speech bubble takes the place of the name (the captain, 30 Oct: "a speech
+   * bubble pops up above their head and replaces their name"): the speaker's
+   * plate is not drawn while they say something, and comes back when they have
+   * said it. Nor is anybody else's plate under it - a name and a bubble never
+   * share a pixel, so the bubble's tail stays on its speaker's head.
    */
   public update(figures: readonly PlateFigure[], self: { readonly x: number; readonly y: number } | null = null): void {
     const here = new Set(figures.map((figure) => figure.id));
-    const bubbles: BubbleBox[] = [];
+    // The mark over this player's own head is drawn over everything, so a
+    // bubble beside it is seated clear of it.
+    const bubbles: BubbleBox[] = self
+      ? [{ x: self.x + 2, y: self.y + CHARACTER_HEAD_PIXEL_Y - HEAD_MARK_CLEARANCE, width: TILE_SIZE - 4, height: HEAD_MARK_CLEARANCE }]
+      : [];
     for (const [id, drawn] of this.drawn) {
       if (!here.has(id)) {
         takeDown(drawn);
@@ -233,20 +249,59 @@ export class HarbourFigures {
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
       const underSelf = self !== null && Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2;
-      // A phrase names its speaker too: the plate under the bubble says whose it is.
-      const named = !underSelf || figure.speaking === true || figure.saying !== undefined;
+      const named = figure.speaking === true || (!underSelf && figure.saying === undefined);
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
       const over = named ? plateY : y + headOf(drawn) - 1;
       this.drawWave(drawn, figure, x, over);
       this.drawBubble(drawn, figure, x + TILE_SIZE / 2, (drawn.wave?.y ?? over) - 1, bubbles);
+      const fade = figure.fade ?? 1;
+      for (const part of [drawn.sprite, drawn.plate, drawn.name, ...(drawn.heel ? [drawn.heel.sprite] : [])]) {
+        part.setAlpha(fade);
+      }
+    }
+    this.spreadNames();
+    // Every bubble is seated by now, and no name is drawn under one.
+    for (const { bubbleBox } of this.drawn.values()) {
+      if (bubbleBox) {
+        this.clearNamesUnder(bubbleBox);
+      }
+    }
+  }
+
+  /** Names side by side, slid apart along the row so each can be read: two people talking stand closer than a name is wide. */
+  private spreadNames(): void {
+    const shown = [...this.drawn.values()].filter(({ name }) => name.visible);
+    const spread = spreadPlates(
+      shown.map(({ plate, name, sprite }) => ({
+        x: plate.x,
+        y: plate.y,
+        width: plateWidthOf(name),
+        height: plateHeightOf(name),
+        headX: Math.round(sprite.x + TILE_SIZE / 2),
+      })),
+    );
+    shown.forEach(({ plate, name }, index) => {
+      const x = withinPlace(spread[index], plateWidthOf(name), this.placeWidth?.() ?? null);
+      plate.setX(x);
+      name.setX(x + PLATE_PAD_X);
+    });
+  }
+
+  /** No name is drawn under this bubble this frame: this player's own, seated after everybody else's. */
+  public clearNamesUnder(bubble: BubbleBox): void {
+    for (const { plate, name, bubbleBox } of this.drawn.values()) {
+      if (bubbleBox !== bubble && name.visible && overlaps(bubble, { x: plate.x, y: plate.y, width: plateWidthOf(name), height: plateHeightOf(name) })) {
+        plate.setVisible(false);
+        name.setVisible(false);
+      }
     }
   }
 
   /**
-   * What somebody is saying, in a bubble over their plate (and over their hand
-   * while it is up), so the plate under it still says whose it is. A bubble
-   * that would land on one already seated this frame is lifted over it.
+   * What somebody is saying, in a bubble over their head (and over their hand
+   * while it is up). A bubble that would land on one already seated this frame
+   * is seated beside it, or lifted over it if it cannot be.
    */
   private drawBubble(drawn: Drawn, figure: PlateFigure, centreX: number, tipY: number, seated: BubbleBox[]): void {
     if (!figure.saying) {
@@ -257,12 +312,7 @@ export class HarbourFigures {
     }
     drawn.bubble ??= new SpeechBubble(this.scene);
     drawn.bubble.say(figure.saying);
-    let box = drawn.bubble.place(centreX, tipY, this.placeWidth?.() ?? null);
-    for (const other of seated) {
-      if (overlaps(box, other)) {
-        box = drawn.bubble.place(centreX, Math.min(tipY, other.y - 1), this.placeWidth?.() ?? null);
-      }
-    }
+    const box = drawn.bubble.place(centreX, tipY, this.placeWidth?.() ?? null, seated);
     drawn.bubbleBox = box;
     seated.push(box);
   }
@@ -411,6 +461,32 @@ export function clearOfSelf(
   return x > self.x ? Math.max(plateX, self.x + TILE_SIZE) : Math.min(plateX, self.x - plateWidth);
 }
 
+/**
+ * Where each name plate goes across, slid apart from any it would overlap on its
+ * row, each still reaching over its owner's own head. Left to right, a pair at a
+ * time, each giving up half the overlap: a row of three settles within a pass or two.
+ */
+export function spreadPlates(plates: readonly (Box & { readonly headX: number })[]): number[] {
+  const xs = plates.map((plate) => plate.x);
+  const order = plates.map((_, index) => index).sort((a, b) => plates[a].headX - plates[b].headX || a - b);
+  for (let pass = 0; pass < 8; pass += 1) {
+    for (let left = 0; left < order.length; left += 1) {
+      for (let right = left + 1; right < order.length; right += 1) {
+        const a = plates[order[left]];
+        const b = plates[order[right]];
+        if (a.y >= b.y + b.height || b.y >= a.y + a.height) continue;
+        const over = xs[order[left]] + a.width - xs[order[right]];
+        if (over <= 0) continue;
+        const aMove = Math.ceil(over / 2);
+        // Never so far that a plate no longer reaches over its own owner's head.
+        xs[order[left]] = Math.max(xs[order[left]] - aMove, a.headX - a.width + 1);
+        xs[order[right]] = Math.min(xs[order[left]] + a.width, b.headX - 1);
+      }
+    }
+  }
+  return xs;
+}
+
 /** A plate's left edge, slid along so the whole plate is over the place, where the place is wide enough for it. */
 export function withinPlace(plateX: number, plateWidth: number, placeWidth: number | null): number {
   if (placeWidth === null || plateWidth > placeWidth) {
@@ -439,11 +515,6 @@ export function clearOfHeel(plate: Box, heel: Box | null): number {
     return plate.y;
   }
   return Math.min(plate.y, heel.y - plate.height);
-}
-
-/** Whether two boxes share a pixel. */
-export function overlaps(a: BubbleBox, b: BubbleBox): boolean {
-  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
 /** The drawn art of a partner at heel, from the top of its head to its feet, while it is shown. */

@@ -202,7 +202,7 @@ import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { openFavourList } from '../ui/FavourListOverlay';
 import { favourEntries } from '../hub/favourList';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
-import { HarbourFigures, overlaps } from '../base/harbourFigures';
+import { HarbourFigures } from '../base/harbourFigures';
 import { OWN_SPEAKER, harbourTalk } from '../base/harbourTalk';
 import { SpeechBubble } from '../base/speechBubble';
 import { HARBOUR_PHRASES, type HarbourPhraseId } from '../harbour/harbourPhrases';
@@ -804,8 +804,6 @@ export class BaseScene extends Phaser.Scene {
       // Through a door the harbour hears where the player is again in a moment;
       // to a menu or a raid, it says they are not standing anywhere.
       harbour()?.away();
-      // Nobody is left standing still for a box that has gone with the scene.
-      harbourRegulars()?.release();
       this.harbourFigures?.destroy();
       this.harbourFigures = null;
       // Out of the house - or only up or down its stairs, which the door
@@ -866,6 +864,10 @@ export class BaseScene extends Phaser.Scene {
     const regulars = harbourRegulars();
     const watcher = this.regularsWatcher();
     regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, watcher);
+    this.watchFrontDoor(time);
+    this.updateWalking(deltaMs);
+    // After the walk, so every figure and name is seated against where this
+    // player is this frame rather than where they were last frame.
     if (shared || regulars) {
       this.harbourFigures?.update(
         [
@@ -878,8 +880,6 @@ export class BaseScene extends Phaser.Scene {
         this.player,
       );
     }
-    this.watchFrontDoor(time);
-    this.updateWalking(deltaMs);
     this.animateTiles(deltaMs);
     this.listenToTheSea(deltaMs);
     this.noticePlace(deltaMs);
@@ -1947,13 +1947,9 @@ export class BaseScene extends Phaser.Scene {
       : '';
   }
 
-  /** Whether another player in the shared harbour - or a regular - stands (or is stepping) onto this tile: Space waves at them. */
+  /** Whether another player in the shared harbour stands (or is stepping) onto this tile: Space waves at them. */
   private otherPlayerAt(tile: GridPosition): boolean {
-    return (
-      (harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false) ||
-      // A regular is waved at as a player is, and answers (`speakToRegular`).
-      this.regularAt(tile)
-    );
+    return harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false;
   }
 
   private thingFaced(facing: GridPosition): RoomThing | undefined {
@@ -2709,15 +2705,11 @@ export class BaseScene extends Phaser.Scene {
     const centreX = this.player.x + TILE_SIZE / 2;
     const head = this.player.y + CHARACTER_HEAD_PIXEL_Y + lookHeadDrop(this.playerTexture);
     // Over the chevron that marks this player, as their hand is.
-    let tipY = Math.round(this.ownWave ? this.ownWave.bubble.y - 1 : head - OWN_WAVE_LIFT - 1);
+    const tipY = Math.round(this.ownWave ? this.ownWave.bubble.y - 1 : head - OWN_WAVE_LIFT - 1);
     const width = this.collision[0].length * TILE_SIZE;
-    let box = this.ownBubble.place(centreX, tipY, width);
-    for (const other of [...(this.harbourFigures?.plateRects() ?? []), ...(this.harbourFigures?.bubbleRects() ?? [])]) {
-      if (overlaps(box, other)) {
-        tipY = Math.min(tipY, other.y - 1);
-        box = this.ownBubble.place(centreX, tipY, width);
-      }
-    }
+    const box = this.ownBubble.place(centreX, tipY, width, this.harbourFigures?.bubbleRects() ?? []);
+    // And no name is drawn under it: their own bubble over anybody's plate is the plate's to give up.
+    this.harbourFigures?.clearNamesUnder(box);
   }
 
   /**
@@ -2761,34 +2753,6 @@ export class BaseScene extends Phaser.Scene {
       player: this.currentTile,
       room: { collision: this.place.collision, mat: room.mat },
     };
-  }
-
-  /** Whether one of the harbour's regulars stands (or is stepping) onto this tile, here. */
-  private regularAt(tile: GridPosition): boolean {
-    const watcher = this.regularsWatcher();
-    return watcher !== null && (harbourRegulars()?.at(tile, watcher.place) ?? null) !== null;
-  }
-
-  /**
-   * Speaks to one of the harbour's regulars standing on `target`
-   * (`base/harbourRegulars.ts`): the player's hand goes up, theirs goes up
-   * back, and they stop and say a line - standing there, facing the player,
-   * until it is read.
-   */
-  private speakToRegular(target: GridPosition): boolean {
-    const watcher = this.regularsWatcher();
-    const regulars = watcher ? harbourRegulars() : null;
-    const regular = watcher ? regulars?.at(target, watcher.place) : null;
-    if (!watcher || !regulars || !regular) {
-      return false;
-    }
-    const line = regulars.speakTo(regular, this.currentTile, watcher.place, houseName());
-    this.ownWave?.bubble.destroy();
-    this.ownWave = { bubble: drawEmoteBubble(this, 'wave'), ms: 0 };
-    this.placeOwnWave();
-    audioManager.play('harbourWave');
-    this.say([line], [target], () => regulars.release());
-    return true;
   }
 
   /**
@@ -2839,7 +2803,7 @@ export class BaseScene extends Phaser.Scene {
         this.speakToKeeper(room, room.screen);
         return;
       }
-      if (this.waveAt(target) || this.speakToRegular(target)) {
+      if (this.waveAt(target)) {
         return;
       }
       const thing = this.thingFaced(target);
@@ -2896,9 +2860,6 @@ export class BaseScene extends Phaser.Scene {
     const door = doorAt(target);
     if (door) {
       this.enterRoom(door);
-      return;
-    }
-    if (this.speakToRegular(target)) {
       return;
     }
     const local = this.harbourLife?.at(target);
@@ -3201,8 +3162,10 @@ export class BaseScene extends Phaser.Scene {
     readonly tile: GridPosition;
     readonly partner: string | null;
     readonly waving: boolean;
-    /** What they said back to this player, if they are saying it now (`base/harbourTalk.ts`). */
+    /** What they are saying now: to the harbour at large, or back to this player (`base/harbourTalk.ts`). */
     readonly saying: string | null;
+    /** What they are about (`base/harbourActivities.ts`). */
+    readonly activity: string;
   }[] {
     const watcher = this.regularsWatcher();
     if (!this.harbourFigures || !watcher) {
@@ -3213,7 +3176,8 @@ export class BaseScene extends Phaser.Scene {
       tile: { ...figure.tile },
       partner: figure.partner ?? null,
       waving: figure.waving === true,
-      saying: harbourTalk().saying(figure.id, this.frameTime),
+      saying: harbourTalk().saying(figure.id, this.frameTime) ?? figure.saying ?? null,
+      activity: figure.activity,
     }));
   }
 
