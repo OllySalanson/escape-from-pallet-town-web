@@ -1,13 +1,25 @@
 name: CI
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# A newer push to a pull request makes the run on the older commit pointless;
+# every commit on main keeps its own run.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build-and-test:
+  lint-typecheck-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,8 +41,41 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm run test
-
       - name: Build
         run: npm run build
+
+  # The suite is 22 minutes on one machine and nearly all of it is whole-map
+  # sweeps, so it runs split across four, side by side.
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests (shard ${{ matrix.shard }} of 4)
+        run: npm run test -- --shard=${{ matrix.shard }}/4
+
+  # The one check that says a pull request is fit to merge.
+  ci-passed:
+    if: always()
+    needs: [lint-typecheck-build, unit-tests]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Every check passed
+        run: test "${{ needs.lint-typecheck-build.result }}" = success && test "${{ needs.unit-tests.result }}" = success

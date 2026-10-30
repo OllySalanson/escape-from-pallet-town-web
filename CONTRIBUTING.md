@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-Before you open a pull request, run the four checks GitHub runs on `main` after every merge:
+GitHub runs four checks on every pull request and again on `main`, and a pull request merges only once they are green. You can run them yourself first (the tests take a while):
 
 ```bash
 npm run lint && npm run typecheck && npm run test && npm run build
