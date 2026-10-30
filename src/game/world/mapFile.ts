@@ -2047,11 +2047,12 @@ export function readMapFile(
       return;
     }
     const beat = raw as MapFileBeat;
-    const steps: readonly (readonly [number, number])[] = beat?.roam ?? [];
-    const walked: readonly (readonly [number, number])[] = [[0, 0], ...(Array.isArray(steps) ? steps : [])];
+    const roam: unknown = beat?.roam ?? [];
+    const steps = (Array.isArray(roam) ? roam : []) as readonly (readonly [number, number])[];
+    const walked: readonly (readonly [number, number])[] = [[0, 0], ...steps];
     if (
       limits.maxBeatTiles === 0 ||
-      !Array.isArray(steps) ||
+      !Array.isArray(roam) ||
       steps.length > limits.maxBeatTiles ||
       !isWholeNumber(beat?.everyMs) ||
       beat.everyMs < 500 ||

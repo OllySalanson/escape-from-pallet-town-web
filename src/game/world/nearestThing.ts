@@ -14,7 +14,7 @@ import { isBlockedAt, type CollisionGrid } from './mapStructure';
  */
 
 /** The game's own maps, low and high, as `density.mts` measures them; `shippedDensity.test.ts` holds it. */
-export const SHIPPED_DENSITY = { least: 4.5, most: 7.8 } as const;
+export const SHIPPED_DENSITY = { least: 4.5, most: 7.7 } as const;
 
 /**
  * Steps from each tile to the nearest of `things`, -1 where none can be walked
