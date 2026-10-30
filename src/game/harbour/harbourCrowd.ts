@@ -163,6 +163,19 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
     }
   }
 
+  /**
+   * Somebody this browser walks itself goes another way: what was queued is
+   * dropped for these steps from where they stand. Not between two tiles, where
+   * the step they are on has to finish first.
+   */
+  public reroute(id: string, path: readonly GridPosition[]): void {
+    const walker = this.walkers.get(id);
+    if (walker && walker.progress === 0) {
+      walker.queue = path.map((tile) => ({ ...tile }));
+      walker.waiting = false;
+    }
+  }
+
   /** Somebody left the harbour. */
   public forget(id: string): void {
     this.walkers.delete(id);

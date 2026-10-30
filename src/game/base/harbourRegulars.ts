@@ -33,7 +33,10 @@ export const REGULAR_NOTICES_WITHIN = 2;
 /** How near for one to wave at the player of their own accord, once a visit. */
 export const REGULAR_WAVES_WITHIN = 3;
 
-/** The longest a regular waits, drawn, for a tile to clear before walking on: more and they would lose the plan. */
+/** How long a regular waits, drawn, for a tile to clear before going round whoever is on it. */
+const GO_ROUND_AFTER_MS = 400;
+
+/** The longest they wait with no way round (a one-tile lane) before walking on: more and they would lose the plan. */
 const LONGEST_WAIT_MS = 1_400;
 
 /** Where the regulars are drawn: the yard, or a keeper's room they call in (`ROOM_CALLS`). */
@@ -165,7 +168,30 @@ export class HarbourRegulars {
       return true;
     }
     this.waiting.set(id, waited);
+    if (waited >= GO_ROUND_AFTER_MS) {
+      this.goRound(id, place, player, watcher);
+    }
     return false;
+  }
+
+  /** Somebody has waited long enough to see the tile is not clearing: round them, to where the plan has them by now. */
+  private goRound(id: string, place: RegularsPlace, player: GridPosition | null, watcher: RegularsWatcher | null): void {
+    const doing = this.now.get(id);
+    const figure = this.crowd.figuresIn(place).find((each) => each.id === id);
+    if (!doing || !figure || figure.toward) {
+      return;
+    }
+    const inTheWay = this.occupied(id, place, player);
+    const target = doing.at.next ?? doing.at.tile;
+    if (inTheWay.some((tile) => sameTile(tile, target)) || steps(figure.tile, target) > JUMP_AFTER_STEPS) {
+      return;
+    }
+    const room = place === 'yard' ? null : watcher?.room;
+    const round = room ? roomWalk(room.collision, figure.tile, target, inTheWay) : yardWalk(figure.tile, target, inTheWay);
+    if (round && round.length > 1 && round.length <= JUMP_AFTER_STEPS) {
+      this.crowd.reroute(id, round.slice(1));
+      this.waiting.delete(id);
+    }
   }
 
   /** The regulars to draw in a place, by the names on their plates. */
@@ -222,15 +248,18 @@ export class HarbourRegulars {
       // Back from a menu, or a page asleep: simply there.
       return [to];
     }
-    if (inTheWay.some((tile) => sameTile(tile, to))) {
-      return [from];
-    }
+    const taken = inTheWay.some((tile) => sameTile(tile, to));
     if (steps(from, to) === 1) {
-      return [from, to];
+      return taken ? [from] : [from, to];
     }
     const room = place === 'yard' ? null : watcher?.room;
-    const round = room ? roomWalk(room.collision, from, to, inTheWay) : yardWalk(from, to, inTheWay);
-    return round ?? [to];
+    const others = inTheWay.filter((tile) => !sameTile(tile, to));
+    const round = room ? roomWalk(room.collision, from, to, others) : yardWalk(from, to, others);
+    if (!round) {
+      return taken ? [from] : [to];
+    }
+    // Somebody is on the very tile the plan has them on: as far as the tile behind.
+    return taken ? round.slice(0, -1) : round;
   }
 
   /** Where a regular calling on a keeper is in the room, if the player is in it to see them. */

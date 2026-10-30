@@ -144,14 +144,24 @@ describe('a regular calling on a keeper', () => {
 describe('people in the way', () => {
   const start = TEST_CLOCK_ORIGIN_MS;
 
-  it('never share a tile, drawn, however long they are watched', () => {
+  it('never share a tile or jump, drawn, however long they are watched', () => {
     const regulars = new HarbourRegulars();
     const away = { place: 'yard' as const, player: { x: 0, y: 0 } };
     const clashes: string[] = [];
-    for (let at = start; at < start + 20 * 60_000; at += FRAME) {
+    const last = new Map<string, { x: number; y: number }>();
+    for (let at = start; at < start + 40 * 60_000; at += FRAME) {
       regulars.tick(at, FRAME, away);
       const taken = new Map<string, string>();
-      for (const figure of regulars.figures()) {
+      const here = regulars.figures();
+      for (const id of last.keys()) {
+        if (!here.some((figure) => figure.id === id)) last.delete(id);
+      }
+      for (const figure of here) {
+        const before = last.get(figure.id);
+        if (before && Math.abs(before.x - figure.tile.x) + Math.abs(before.y - figure.tile.y) > 2) {
+          clashes.push(`${figure.name} jumped to ${figure.tile.x},${figure.tile.y} at ${at - start}ms`);
+        }
+        last.set(figure.id, figure.tile);
         if ((figure.fade ?? 1) < 1) continue;
         for (const tile of [figure.tile, ...(figure.toward ? [figure.toward] : [])]) {
           const key = `${tile.x},${tile.y}`;
