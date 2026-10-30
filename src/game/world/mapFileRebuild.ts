@@ -2,6 +2,7 @@ import type {
   MapFile,
   MapFileArea,
   MapFileBarrier,
+  MapFileBeat,
   MapFileBerryTree,
   MapFileBoulder,
   MapFileBuilding,
@@ -66,13 +67,14 @@ const BUILDING = keysOf<MapFileBuilding>()(['x', 'y', 'area', 'kind']);
 const DROP_IN = keysOf<MapFileDropIn>()(['x', 'y', 'area', 'name', 'description', 'id']);
 const EXIT = keysOf<MapFileExit>()(['x', 'y', 'area', 'name', 'opens']);
 const ITEM_SPOT = keysOf<MapFileItemSpot>()(['x', 'y', 'area', 'hidden', 'key', 'prize']);
-const PERSON = keysOf<MapFilePerson>()(['x', 'y', 'area', 'name', 'look', 'facing', 'lines']);
+const PERSON = keysOf<MapFilePerson>()(['x', 'y', 'area', 'name', 'look', 'facing', 'lines', 'beat']);
+const BEAT = keysOf<MapFileBeat>()(['roam', 'glances', 'everyMs']);
 const SIGN = keysOf<MapFileSign>()(['x', 'y', 'area', 'lines']);
 const LANDMARK = keysOf<MapFileLandmark>()(['x', 'y', 'area', 'name', 'kind', 'locked']);
 const DISTRICT = keysOf<MapFileDistrict>()(['area', 'name', 'x', 'y', 'width', 'height', 'wildlife', 'rain', 'floorRolls']);
 const TRAINER = keysOf<MapFileTrainer>()(['x', 'y', 'area', 'name', 'team', 'look', 'facing', 'sight', 'lines']);
 const DOOR = keysOf<MapFileDoor>()(['kind', 'x', 'y', 'width', 'height', 'keeper', 'name']);
-const POKEMON = keysOf<MapFilePokemon>()(['x', 'y', 'area', 'species', 'level', 'legendary']);
+const POKEMON = keysOf<MapFilePokemon>()(['x', 'y', 'area', 'species', 'level', 'legendary', 'beat']);
 const AREA = keysOf<MapFileArea>()([
   'id', 'name', 'kind', 'style', 'width', 'height', 'ground', 'buildings', 'switches', 'barriers', 'lift',
 ]);
@@ -102,6 +104,12 @@ function pick<T>(value: T, keys: readonly (keyof T)[]): T {
 const each = <T>(list: readonly T[] | undefined, keys: readonly (keyof T)[]): T[] | undefined =>
   list?.map((item) => pick(item, keys));
 
+/** A figure's own fields, and only a beat's own inside its beat. */
+function withBeat<T extends { readonly beat?: MapFileBeat }>(figure: T, keys: readonly (keyof T)[]): T {
+  const kept = pick(figure, keys);
+  return figure.beat ? { ...kept, beat: pick(figure.beat, BEAT) } : kept;
+}
+
 /**
  * When an exit opens, whichever kind of opening it is. It used to turn every
  * kind but 'after' into 'always', which opened a buried exit the day 'dug'
@@ -123,13 +131,13 @@ export function onlyMapFileFields(file: MapFile): MapFile {
     dropIns: each(file.dropIns, DROP_IN),
     exits: file.exits.map((exit) => ({ ...pick(exit, EXIT), opens: opens(exit.opens) })),
     itemSpots: each(file.itemSpots, ITEM_SPOT),
-    people: each(file.people, PERSON),
+    people: file.people?.map((person) => withBeat(person, PERSON)),
     signs: each(file.signs, SIGN),
     landmarks: each(file.landmarks, LANDMARK),
     districts: each(file.districts, DISTRICT),
     trainers: each(file.trainers, TRAINER),
     doors: each(file.doors, DOOR),
-    pokemon: each(file.pokemon, POKEMON),
+    pokemon: file.pokemon?.map((standing) => withBeat(standing, POKEMON)),
     areas: file.areas?.map((area) => ({
       ...pick(area, AREA),
       buildings: each(area.buildings, BUILDING),

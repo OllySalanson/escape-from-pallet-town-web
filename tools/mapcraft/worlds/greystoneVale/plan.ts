@@ -318,7 +318,7 @@ export const GREYSTONE_VALE: WorldPlan = {
     { between: ['greystone-peaks', 'the-crossing'], at: 28, kind: 'river' },
     { between: ['greystone-peaks', 'the-crossing'], at: 46, kind: 'road', width: 4 },
     { between: ['pine-hollow', 'tanglewood'], at: 18, kind: 'trail', hidden: true },
-    { between: ['millbrook', 'reedmere'], at: 40, kind: 'trail' },
+    { between: ['millbrook', 'reedmere'], at: 40, kind: 'road' },
     { between: ['the-crossing', 'gull-strand'], at: 28, kind: 'river' },
     { between: ['the-crossing', 'gull-strand'], at: 46, kind: 'road' },
     { between: ['tanglewood', 'orchard-terraces'], at: 36, kind: 'trail' },

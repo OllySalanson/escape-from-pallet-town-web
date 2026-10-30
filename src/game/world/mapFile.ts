@@ -31,6 +31,7 @@ import { WeatherId } from '../pokemon/battle/weather';
 import { trainerChallengeLine } from '../pokemon/battle/battleFlow';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
+import type { NpcIdle } from './npcIdle';
 import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigures';
 import { isLegendaryKind } from './legends';
 import { BERRY_IDS, berryTreeLines, type BerryId } from './berries';
@@ -120,6 +121,7 @@ export const MAP_FILE_LIMITS = {
   maxPrizes: 0,
   /** The latest an exit may open: the raid clock is five minutes. */
   maxExitDelaySeconds: 240,
+  maxBuildings: 200,
   maxPeople: 30,
   maxSigns: 30,
   maxLandmarks: 16,
@@ -130,6 +132,12 @@ export const MAP_FILE_LIMITS = {
   maxBoulders: 40,
   /** The highest level a standing Pokemon may fight at: the top of the ladder the game's own trainers sit on. */
   maxPokemonLevel: 50,
+  /**
+   * How many tiles besides its own a person or Pokemon may walk (`MapFileBeat`):
+   * none on a player's map, whose figures stand where they are stood - the maker
+   * has no way to draw a beat - and a few on the game's own.
+   */
+  maxBeatTiles: 0,
   /**
    * Standing Pokemon marked legendary (`legends.ts`): none on a player's map,
    * where a legend would be a boss nobody measured. The game's own maps drawn as
@@ -214,25 +222,29 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxBytes: 1_000_000,
   maxDropIns: 16,
   maxExits: 32,
-  maxItemSpots: 96,
+  maxBuildings: 640,
+  maxItemSpots: 160,
   maxPrizes: 8,
-  maxPeople: 64,
-  maxSigns: 64,
-  maxLandmarks: 32,
-  maxDistricts: 32,
+  // Room for the vale to be filled a ring at a time out from Mill Square: it
+  // was the thinnest map in the game, and bigger has to mean more places.
+  maxPeople: 256,
+  maxSigns: 160,
+  maxLandmarks: 64,
+  maxDistricts: 64,
   // The vale's caves, hills and far places are where its Pokemon stand to be
   // met: a roost, a herd, the Sleeper (`caveLife.ts`), the safari's rarest.
-  maxPokemon: 128,
-  maxBerryTrees: 64,
-  maxTrainers: 32,
-  maxAreas: 32,
-  maxLinks: 64,
+  maxPokemon: 256,
+  maxBerryTrees: 96,
+  maxTrainers: 48,
+  maxAreas: 64,
+  maxLinks: 128,
   // Mew on Stormcrown, and Kanto's four in their FireRed homes: Zapdos in the
   // power station, Moltres on the volcano, Articuno on the ice, Mewtwo in the
   // lab under the station (`powerStation.ts`, `emberIsle.ts`, `frostreef.ts`).
   maxLegends: 5,
   // FireRed's Mewtwo is level 70, as the shipped four's list has it (`legends.ts`).
   maxPokemonLevel: 70,
+  maxBeatTiles: 8,
   maxLockedLandmarks: 2,
   maxLandmarkExits: 2,
   maxBossDoors: 4,
@@ -1355,11 +1367,42 @@ export function teamLine(team: MapFileTrainerTeam): string {
     .join(', ');
 }
 
+/**
+ * The small round somebody keeps instead of standing where they were stood
+ * (`npcIdle.ts`): a townsperson's, or a Pokemon's about its own patch. Every
+ * tile of it counts as a wall for what the checks ask, whichever one the figure
+ * is on, as `mapStructure.testkit.ts` holds the shipped maps' beats. Only on the
+ * game's own maps (`maxBeatTiles`).
+ */
+export interface MapFileBeat {
+  /** The tiles besides its own, as steps from it: [across, down]. */
+  readonly roam?: readonly (readonly [number, number])[];
+  /** The ways it looks while it stands, besides the way it faces. */
+  readonly glances?: readonly MapFileFacing[];
+  /** Milliseconds between beats, never one a neighbour shares. */
+  readonly everyMs: number;
+}
+
+/** Every tile a figure may stand on: its own, and its beat's. */
+export function beatSpots<T extends MapFileSpot & { readonly beat?: MapFileBeat }>(
+  figure: T,
+): readonly MapFileSpot[] {
+  return [
+    figure,
+    ...(figure.beat?.roam ?? []).map(([across, down]) => ({
+      ...(figure.area ? { area: figure.area } : {}),
+      x: figure.x + across,
+      y: figure.y + down,
+    })),
+  ];
+}
+
 export interface MapFilePerson extends MapFileSpot {
   readonly name: string;
   readonly look: MapFileLook;
   readonly facing: MapFileFacing;
   readonly lines: readonly string[];
+  readonly beat?: MapFileBeat;
 }
 
 /** A Pokemon standing in the world: any species the game has (`pokemonFigures.ts`). */
@@ -1376,6 +1419,7 @@ export interface MapFilePokemon extends MapFileSpot {
    * `LEGENDARY_KINDS`, and only on a map the game draws (`maxLegends`).
    */
   readonly legendary?: boolean;
+  readonly beat?: MapFileBeat;
 }
 
 /** A berry tree (`berries.ts`): picked once a raid for one berry. */
@@ -1847,7 +1891,7 @@ export function readMapFile(
     return raw;
   };
 
-  for (const [index, building] of list('buildings', 200).entries()) {
+  for (const [index, building] of list('buildings', limits.maxBuildings).entries()) {
     if (building.area !== undefined) {
       problems.push(`Building ${index + 1} is listed outdoors but says it is in an area.`);
     } else if (typeof building.kind !== 'string' || !isOutdoorBuilding(building.kind)) {
@@ -1992,12 +2036,40 @@ export function readMapFile(
   const optional = (field: string, max: number): Record<string, unknown>[] =>
     value[field] === undefined ? [] : list(field, max);
 
+  const beatOf = (what: string, raw: unknown): void => {
+    if (raw === undefined) {
+      return;
+    }
+    const beat = raw as MapFileBeat;
+    const steps = beat?.roam ?? [];
+    const walked = [[0, 0], ...(Array.isArray(steps) ? steps : [])];
+    if (
+      limits.maxBeatTiles === 0 ||
+      !Array.isArray(steps) ||
+      steps.length > limits.maxBeatTiles ||
+      !isWholeNumber(beat?.everyMs) ||
+      beat.everyMs < 500 ||
+      !steps.every((step) => Array.isArray(step) && step.length === 2 && isWholeNumber(step[0]) && isWholeNumber(step[1])) ||
+      // Each tile a step from the one before it, because a beat is walked.
+      !walked.every(
+        (step, index) =>
+          index === 0 ||
+          walked.slice(0, index).some((earlier) => Math.abs(earlier[0] - step[0]) + Math.abs(earlier[1] - step[1]) === 1),
+      )
+    ) {
+      problems.push(`${what} keeps a beat this map cannot keep.`);
+      return;
+    }
+    (beat.glances ?? []).forEach((way) => oneOf(`${what}'s glance`, way, MAP_FILE_FACINGS));
+  };
+
   optional('people', limits.maxPeople).forEach((person, index) => {
     const what = `Person ${index + 1}`;
     nameOf(what, person.name);
     oneOf(`${what}'s look`, person.look, MAP_FILE_LOOKS);
     oneOf(`${what}'s facing`, person.facing, MAP_FILE_FACINGS);
     linesOf(what, person.lines);
+    beatOf(what, person.beat);
   });
   optional('pokemon', limits.maxPokemon).forEach((standing, index) => {
     if (!isFigureSpecies(standing.species)) {
@@ -2020,6 +2092,7 @@ export function readMapFile(
         problems.push(`Pokémon ${index + 1} is legendary, which only a legend that fights may be.`);
       }
     }
+    beatOf(`Pokémon ${index + 1}`, standing.beat);
   });
   const legends = Array.isArray(value.pokemon)
     ? value.pokemon.filter((standing) => (standing as { legendary?: unknown })?.legendary === true).length
@@ -2745,6 +2818,24 @@ export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
   return sketch;
 }
 
+/**
+ * A file's beat as the schedule the world keeps (`npcIdle.ts`), its steps made
+ * tiles of wherever the place it stands in was laid out.
+ */
+function fileBeat(
+  figure: MapFileSpot & { readonly beat?: MapFileBeat },
+  at: (spot: MapFileSpot) => { readonly x: number; readonly y: number },
+): NpcIdle {
+  const beat = figure.beat as MapFileBeat;
+  return {
+    beatMs: beat.everyMs,
+    ...(beat.roam
+      ? { roam: beat.roam.map(([across, down]) => at({ ...figure, x: figure.x + across, y: figure.y + down })) }
+      : {}),
+    ...(beat.glances ? { glances: [...beat.glances] } : {}),
+  };
+}
+
 /** What a field-move door is called over it, and the move that opens it. */
 const DOOR_LOOKS: Readonly<
   Record<Exclude<MapFileDoorKind, 'night' | 'boss'>, { readonly label: string; readonly fieldMove: FieldMoveId }>
@@ -3014,6 +3105,7 @@ export function buildFileMap(
         facing: person.facing,
         dialogLines: person.lines.length > 0 ? [...person.lines] : [`${person.name} nods at you.`],
         design: person.look,
+        ...(person.beat ? { idle: fileBeat(person, at) } : {}),
       })),
       ...(file.pokemon ?? []).map((standing, index): WorldEntity => ({
         id: `${id}/pokemon-${index + 1}`,
@@ -3025,6 +3117,7 @@ export function buildFileMap(
         pokemon: standing.species,
         ...(standing.level !== undefined ? { wildLevel: standing.level } : {}),
         ...(standing.legendary ? { legendary: true } : {}),
+        ...(standing.beat ? { idle: fileBeat(standing, at) } : {}),
       })),
       ...(file.berryTrees ?? []).map((tree, index): WorldEntity => ({
         id: `${id}/berry-tree-${index + 1}`,

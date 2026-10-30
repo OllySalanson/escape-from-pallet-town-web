@@ -72,3 +72,66 @@ export function animatedTileAt(tile: number, elapsedMs: number): number {
   }
   return animation.frames[Math.floor(Math.max(0, elapsedMs) / animation.frameMs) % animation.frames.length];
 }
+
+/** A tile layer as far as the animator cares: the tile it drew at a place. */
+export interface AnimatedLayer {
+  readonly getTileAt: (x: number, y: number) => { index: number } | null;
+  /** The still tile a map's layers hold at each place. */
+  readonly still: readonly (readonly number[])[];
+}
+
+/** A rectangle of a map, in tiles. */
+export interface TileView {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The shortest time any cell shows one frame: nothing changes any sooner. */
+const SHORTEST_FRAME_MS = Math.min(...[...TILE_ANIMATIONS_BY_TILE.values()].map((animation) => animation.frameMs));
+
+/**
+ * Moves the ground of a map too big to walk over every frame. The harbour is 64
+ * wide and asks every tile it animates each frame; Greystone Vale holds fifty
+ * thousand tiles of sea and a player is shown four hundred tiles of anything, so
+ * this asks only the tiles in view, and only when a frame has turned over or
+ * the view has crossed a tile - a tile out of view catches up as it comes in.
+ */
+export class TileAnimator {
+  private elapsedMs = 0;
+  private lastStep = -1;
+  private lastView = '';
+
+  private readonly layers: readonly AnimatedLayer[];
+
+  public constructor(layers: readonly AnimatedLayer[]) {
+    this.layers = layers;
+  }
+
+  public advance(deltaMs: number, view: TileView): void {
+    this.elapsedMs += deltaMs;
+    const step = Math.floor(this.elapsedMs / SHORTEST_FRAME_MS);
+    const key = `${view.x},${view.y},${view.width},${view.height}`;
+    if (step === this.lastStep && key === this.lastView) {
+      return;
+    }
+    this.lastStep = step;
+    this.lastView = key;
+    for (const layer of this.layers) {
+      for (let y = view.y; y < view.y + view.height; y += 1) {
+        const row = layer.still[y];
+        if (!row) continue;
+        for (let x = view.x; x < view.x + view.width; x += 1) {
+          const still = row[x];
+          if (still === undefined || !TILE_ANIMATIONS_BY_TILE.has(still)) continue;
+          const tile = layer.getTileAt(x, y);
+          const index = animatedTileAt(still, this.elapsedMs);
+          if (tile && tile.index !== index) {
+            tile.index = index;
+          }
+        }
+      }
+    }
+  }
+}
