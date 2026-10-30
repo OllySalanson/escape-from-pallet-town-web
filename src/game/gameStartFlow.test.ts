@@ -328,7 +328,7 @@ describe('game start flow', () => {
       (starter as unknown as { render(): void }).render();
 
       expect(focus).toHaveBeenCalledTimes(1);
-      expect(focus.mock.calls[0][0]).toBe(`[data-starter="${starterSpeciesId}"]`);
+      expect(focus.mock.calls[0][0]).toBe('[data-starter][aria-pressed="true"]');
       const markup = (starter as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
       expect(markup).toContain(`data-starter="${starterSpeciesId}"`);
     },
