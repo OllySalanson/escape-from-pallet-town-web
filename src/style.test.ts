@@ -127,8 +127,9 @@ describe('the pixel-ui stylesheet', () => {
     expect(selectors.length).toBeGreaterThan(100);
     // The scope may carry a state - `:where(.pixel-ui[data-room='narrow'])` is
     // how the one rule that needs to know how much room the screen has asks -
-    // but it is still the screen's own class that it hangs from.
-    expect(selectors.filter((selector) => !/^(:where\(\.pixel-ui(\[[^\]]*\])?\)|\.pixel-ui|\.menu-overlay\.pixel-ui)[ .:]/.test(`${selector} `))).toEqual([]);
+    // but it is still the screen's own class that it hangs from, as it is in
+    // `.pixel-ui[data-pointer='previews']`, which has to outweigh a card's frame.
+    expect(selectors.filter((selector) => !/^(:where\(\.pixel-ui(\[[^\]]*\])?\)|\.pixel-ui(\[[^\]]*\])?|\.menu-overlay\.pixel-ui)[ .:]/.test(`${selector} `))).toEqual([]);
   });
 
   it('ranks a heading above its own body: the face has no bold cut and one size', () => {

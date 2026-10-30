@@ -15,9 +15,9 @@ After a merge to `main`, the live game is at:
 - Deployments are serialized (`concurrency.group: pages`) so two pushes do not race.
 - Production builds set Vite `base` to `/escape-from-pallet-town-web/` in `vite.config.ts`; local dev and tests keep `/`.
 
-## Verify locally before merging
+## Verify before merging
 
-Run the same gates CI uses:
+`.github/workflows/ci.yml` runs every gate on each pull request to `main` and on `main`; its `ci-passed` job is the one that says a pull request may merge. To run the same gates by hand:
 
 ```bash
 npm ci
