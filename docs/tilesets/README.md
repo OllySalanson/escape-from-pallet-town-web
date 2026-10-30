@@ -65,6 +65,13 @@ npx vite-node tools/tileset/density.mts -- route-1 --old=0,0,31,31
 ```
 
 ```sh
+# Is it sparse? What the screen round every standable tile holds, against the
+# harbour, by district - and with --rings the emptiest screens ring by ring out
+# from where a new game lands, which is the order the vale is being filled in.
+npx vite-node tools/tileset/screens.mts -- --rings
+```
+
+```sh
 # After cutting a map out of the forest: what to plant where the wood is only a
 # hedge thick, and which crowns then hang where one must not - over a road, over
 # ground somebody walks, or over the seat a caption needs.

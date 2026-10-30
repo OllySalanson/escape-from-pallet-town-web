@@ -249,7 +249,7 @@ twenty-eight ways out to find.
 
 | Part of it | What it is |
 |---|---|
-| **Millbrook** | The mill town every road in the vale starts from, round Mill Square and its fountain. |
+| **Millbrook** | The mill village every road in the vale starts from: Mill Square on market day, a brook running through it, an orchard, a woodcutter, and doors that open. |
 | **High Moor** and **Greystone Peaks** | A drove road over the moor past the Grey Stones, and the quarry under the peaks where the Greystone Caves open. |
 | **The Crossing**, **Reedmere** and **Safari Marsh** | The river, its stone bridge and stepping stones, a mere with a duck hide, and a marsh behind the Safari Zone gate. |
 | **Pine Hollow** and **Tanglewood** | Thick woods with clearings that are hard to find on purpose, and a ruined shrine. |
@@ -300,7 +300,7 @@ sightseeing.
 | <kbd>P</kbd> | Open the party | |
 | <kbd>O</kbd> | Open the field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
-| <kbd>K</kbd> | | In your house or on its step: knock on somebody else's door |
+| <kbd>T</kbd> | With a friend: say a quick phrase | Say a quick phrase to whoever is about |
 | <kbd>Esc</kbd> | Close a screen | Back out of a screen |
 
 Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or

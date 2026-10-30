@@ -433,7 +433,6 @@ function withInsides(file: MapFile): MapFile {
           { kind: 'boxes', x: 0, y: 2 },
           { kind: 'tall-box', x: 2, y: 2 },
           { kind: 'big-crate', x: 9, y: 2 },
-          { kind: 'boxes', x: 0, y: 5 },
           { kind: 'box', x: 11, y: 5 },
           { kind: 'stool', x: 9, y: 5 },
         ],

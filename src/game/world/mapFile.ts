@@ -2047,8 +2047,8 @@ export function readMapFile(
       return;
     }
     const beat = raw as MapFileBeat;
-    const steps = beat?.roam ?? [];
-    const walked = [[0, 0], ...(Array.isArray(steps) ? steps : [])];
+    const steps: readonly (readonly [number, number])[] = beat?.roam ?? [];
+    const walked: readonly (readonly [number, number])[] = [[0, 0], ...(Array.isArray(steps) ? steps : [])];
     if (
       limits.maxBeatTiles === 0 ||
       !Array.isArray(steps) ||
