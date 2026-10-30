@@ -33,6 +33,9 @@ export const REGULAR_NOTICES_WITHIN = 2;
 /** How near for one to wave at the player of their own accord, once a visit. */
 export const REGULAR_WAVES_WITHIN = 3;
 
+/** How many steps more than the straight walk a regular will go to get round somebody. */
+const LONGEST_WAY_ROUND = 4;
+
 /** How long a regular waits, drawn, for a tile to clear before going round whoever is on it. */
 const GO_ROUND_AFTER_MS = 400;
 
@@ -188,7 +191,7 @@ export class HarbourRegulars {
     }
     const room = place === 'yard' ? null : watcher?.room;
     const round = room ? roomWalk(room.collision, figure.tile, target, inTheWay) : yardWalk(figure.tile, target, inTheWay);
-    if (round && round.length > 1 && round.length <= JUMP_AFTER_STEPS) {
+    if (round && round.length > 1 && round.length - 1 <= steps(figure.tile, target) + LONGEST_WAY_ROUND) {
       this.crowd.reroute(id, round.slice(1));
       this.waiting.delete(id);
     }
@@ -255,8 +258,9 @@ export class HarbourRegulars {
     const room = place === 'yard' ? null : watcher?.room;
     const others = inTheWay.filter((tile) => !sameTile(tile, to));
     const round = room ? roomWalk(room.collision, from, to, others) : yardWalk(from, to, others);
-    if (!round) {
-      return taken ? [from] : [to];
+    if (!round || round.length - 1 > steps(from, to) + LONGEST_WAY_ROUND) {
+      // No way round worth the name: they wait, rather than setting off across the harbour.
+      return [from];
     }
     // Somebody is on the very tile the plan has them on: as far as the tile behind.
     return taken ? round.slice(0, -1) : round;

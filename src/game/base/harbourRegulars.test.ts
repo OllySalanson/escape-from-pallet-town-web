@@ -39,7 +39,7 @@ describe('the regulars as drawn', () => {
     }
   });
 
-  it('walk a step at a time at walking pace, never back and forth (the captain, 29 Oct: "one step forward and one step back")', () => {
+  it('walk a step at a time at walking pace unless catching up, never back and forth (the captain, 29 Oct: "one step forward and one step back")', () => {
     // At a real frame rate, as a player watches: a figure never steps straight
     // back onto the tile it has just left (turning back after standing about
     // is a walk, not a judder), and never steps faster than a player walks.
@@ -57,7 +57,12 @@ describe('the regulars as drawn', () => {
             faults.push(`${figure.name} stepped back at ${at - start}ms`);
           }
           if (moved === 1 && at - last.since < STEP_DURATION_MS - frame) {
-            faults.push(`${figure.name} took a step in ${at - last.since}ms at ${at - start}ms`);
+            // Catching the plan up after waiting for somebody is the only reason to hurry.
+            const visit = visitsAt(at).find((each) => visitPlan(each).bot.id === figure.id)!;
+            const meant = botAt(visitPlan(visit), at)!;
+            if (Math.abs(meant.tile.x - figure.tile.x) + Math.abs(meant.tile.y - figure.tile.y) === 0) {
+              faults.push(`${figure.name} took a step in ${at - last.since}ms at ${at - start}ms`);
+            }
           }
           seen.set(figure.id, { tile: figure.tile, behind: last.tile, since: at });
         } else if (!last) {
