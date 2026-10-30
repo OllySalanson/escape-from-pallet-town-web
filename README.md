@@ -300,7 +300,7 @@ sightseeing.
 | <kbd>P</kbd> | Open the party | |
 | <kbd>O</kbd> | Open the field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
-| <kbd>K</kbd> | | In your house or on its step: knock on somebody else's door |
+| <kbd>T</kbd> | Raiding with a friend: pick a quick phrase to say | Pick a quick phrase to say |
 | <kbd>Esc</kbd> | Close a screen | Back out of a screen |
 
 Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or
