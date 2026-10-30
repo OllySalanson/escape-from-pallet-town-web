@@ -113,9 +113,9 @@ export function theCrossing(): MapcraftResult {
         { x: 36, y: 13, species: 'spearow', level: 8 },
       ],
       people: [
-        { x: 9, y: 29, name: 'Carter', look: 'heavy-man', facing: 'down', lines: ['Everything Millbrook sells comes over that bridge, and I have carried all of it.', 'My back would like a word with the people who built a village on the wrong side of a river.'], beat: { everyMs: 3300, roam: [[1, 0], [2, 0]], glances: ['right'] } },
-        { x: 8, y: 37, name: 'Ostler', look: 'straw-hat', facing: 'right', lines: ['That Ponyta bites. No, it does not. It burns. I do not know why I said bites.'], beat: { everyMs: 3500, glances: ['up', 'down'] } },
-        { x: 14, y: 46, name: 'Withy Cutter', look: 'old-woman', facing: 'up', lines: ['Baskets, hurdles, the odd eel trap. It all comes out of this bed.', 'Your lane there runs down to the stones. Keep your feet.'], beat: { everyMs: 2900, glances: ['left'] } },
+        { x: 9, y: 29, name: 'Carter', look: 'heavy-man', facing: 'down', lines: ['Everything Millbrook sells comes over that bridge, and I have carried all of it.', 'My back would like a word with the people who built a village on the wrong side of a river.'], beat: { everyMs: 3300, roam: [[1, 0], [2, 0]], glances: ['right'] }, calls: ['Mind your backs!'] },
+        { x: 8, y: 37, name: 'Ostler', look: 'straw-hat', facing: 'right', lines: ['That Ponyta bites. No, it does not. It burns. I do not know why I said bites.'], beat: { everyMs: 3500, glances: ['up', 'down'] }, calls: ['Steady! Steady there!'] },
+        { x: 14, y: 46, name: 'Withy Cutter', look: 'old-woman', facing: 'up', lines: ['Baskets, hurdles, the odd eel trap. It all comes out of this bed.', 'Your lane there runs down to the stones. Keep your feet.'], beat: { everyMs: 2900, glances: ['left'] }, calls: ['Baskets! Good baskets!'] },
         { x: 26, y: 45, name: 'Angler', look: 'fisherman', facing: 'up', lines: ['The herons take the best of the Wide Water.', 'Down the bank there are stepping stones, if you keep your feet.'] },
         { x: 52, y: 35, name: 'Peddler', look: 'heavy-man', facing: 'up', lines: ['East is Tanglewood. I go round it, myself.', 'Folk who leave that road come out a day later.'] },
       ],

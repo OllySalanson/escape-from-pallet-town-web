@@ -1144,7 +1144,7 @@ export function checkMapFile(
       who: spot.name,
       numbered: `Person ${index + 1}`,
       at: spot,
-      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines)],
+      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines), ...lineFields(spot.calls ?? [])],
     })),
     ...signs.map((spot, index) => ({
       who: `Sign ${index + 1}`,

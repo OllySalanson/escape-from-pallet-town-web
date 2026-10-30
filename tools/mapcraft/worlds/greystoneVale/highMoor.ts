@@ -124,10 +124,10 @@ export function highMoor(): MapcraftResult {
         { x: 22, y: 50, species: 'spearow', beat: { everyMs: 1700, roam: [[1, 0], [1, -1]] } },
       ],
       people: [
-        { x: 35, y: 58, name: 'Drover Boy', look: 'youngster', facing: 'down', lines: ['Grandad says they know the way home.', 'They do. They go there. All the time. Without me.'], beat: { everyMs: 3100, roam: [[0, 1]], glances: ['right'] } },
-        { x: 24, y: 57, name: 'Lina', look: 'lass', facing: 'down', lines: ['I count them every time and get a different number.', 'I got six once. There were never six.'], beat: { everyMs: 3700, glances: ['left', 'right'] } },
+        { x: 35, y: 58, name: 'Drover Boy', look: 'youngster', facing: 'down', lines: ['Grandad says they know the way home.', 'They do. They go there. All the time. Without me.'], beat: { everyMs: 3100, roam: [[0, 1]], glances: ['right'] }, calls: ['Come back! Please!'] },
+        { x: 24, y: 57, name: 'Lina', look: 'lass', facing: 'down', lines: ['I count them every time and get a different number.', 'I got six once. There were never six.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['One, two, three... wait.'] },
         { x: 36, y: 49, name: 'Tarn Fisher', look: 'fisherman', facing: 'up', lines: ['Up on the moor the water has nothing in it but sky.', 'I come for the quiet. Well. I did.'] },
-        { x: 26, y: 47, name: 'Walker', look: 'hiker', facing: 'left', lines: ['Going up? You will not get down the way you came, not by the ledges. They only go one way.', 'Quick, mind. Very quick.'], beat: { everyMs: 3300, glances: ['up', 'down'] } },
+        { x: 26, y: 47, name: 'Walker', look: 'hiker', facing: 'left', lines: ['Going up? You will not get down the way you came, not by the ledges. They only go one way.', 'Quick, mind. Very quick.'], beat: { everyMs: 3300, glances: ['up', 'down'] }, calls: ['Mind the ledges!'] },
         { x: 15, y: 26, name: 'Shepherd', look: 'old-man', facing: 'right', lines: ['The tarn never freezes, whatever the winter.', 'There was a sheep track west, under it, to the old chapel.', 'By day the fog turns you back. Go after dark, if you go.'] },
       ],
       trainers: [

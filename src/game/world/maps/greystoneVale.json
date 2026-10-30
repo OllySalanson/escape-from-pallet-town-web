@@ -2219,6 +2219,12 @@
    "hidden": true
   },
   {
+   "x": 11,
+   "y": 7,
+   "hidden": true,
+   "area": "millbrook-the-mill"
+  },
+  {
    "x": 7,
    "y": 5,
    "area": "millbrook-the-woodshed"
@@ -2628,7 +2634,11 @@
      "down",
      "left"
     ]
-   }
+   },
+   "calls": [
+    "Fresh apples!",
+    "Best in the vale!"
+   ]
   },
   {
    "x": 92,
@@ -2655,7 +2665,11 @@
      "left",
      "up"
     ]
-   }
+   },
+   "calls": [
+    "Pip! Wait for me!",
+    "Not fair!"
+   ]
   },
   {
    "x": 90,
@@ -2682,7 +2696,11 @@
     "glances": [
      "up"
     ]
-   }
+   },
+   "calls": [
+    "Can’t catch me!",
+    "Race you!"
+   ]
   },
   {
    "x": 91,
@@ -2710,7 +2728,11 @@
      "up",
      "left"
     ]
-   }
+   },
+   "calls": [
+    "Daylight robbery.",
+    "How much for that?"
+   ]
   },
   {
    "x": 100,
@@ -2734,7 +2756,11 @@
      "left",
      "right"
     ]
-   }
+   },
+   "calls": [
+    "Lovely carrots!",
+    "Turnips! Get your turnips!"
+   ]
   },
   {
    "x": 111,
@@ -2758,7 +2784,11 @@
      "left",
      "up"
     ]
-   }
+   },
+   "calls": [
+    "Who left the sluice open?",
+    "Sacks for the Mart!"
+   ]
   },
   {
    "x": 109,
@@ -2769,11 +2799,15 @@
    "lines": [
     "Nothing in this pond but Magikarp and regret.",
     "Mind, if you have a rod, press at the water. It costs you nothing but time."
+   ],
+   "calls": [
+    "Shh. They can hear you.",
+    "Nearly had that one."
    ]
   },
   {
-   "x": 117,
-   "y": 149,
+   "x": 118,
+   "y": 148,
    "name": "Carter",
    "look": "heavy-man",
    "facing": "left",
@@ -2787,7 +2821,10 @@
      "up",
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Anyone seen my purse?"
+   ]
   },
   {
    "x": 75,
@@ -2810,7 +2847,11 @@
     "glances": [
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Snow! All summer!",
+    "In my day..."
+   ]
   },
   {
    "x": 86,
@@ -2834,7 +2875,11 @@
      "left",
      "right"
     ]
-   }
+   },
+   "calls": [
+    "Oi! Off my seedlings!",
+    "Go on, shoo!"
+   ]
   },
   {
    "x": 80,
@@ -2860,7 +2905,10 @@
     "glances": [
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Those are NOT beans."
+   ]
   },
   {
    "x": 87,
@@ -2883,7 +2931,10 @@
     "glances": [
      "up"
     ]
-   }
+   },
+   "calls": [
+    "Hazel’s garden, past the logs."
+   ]
   },
   {
    "x": 82,
@@ -2900,7 +2951,10 @@
     "glances": [
      "up"
     ]
-   }
+   },
+   "calls": [
+    "Sit down a minute, love."
+   ]
   },
   {
    "x": 77,
@@ -2923,7 +2977,10 @@
     "glances": [
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Tam always wins."
+   ]
   },
   {
    "x": 104,
@@ -2947,7 +3004,11 @@
      "down",
      "up"
     ]
-   }
+   },
+   "calls": [
+    "Get off my roof!",
+    "Shoo, Pidgey!"
+   ]
   },
   {
    "x": 101,
@@ -2970,7 +3031,11 @@
     "glances": [
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Come back here, you lump!",
+    "Whoa! Whoa there!"
+   ]
   },
   {
    "x": 120,
@@ -2994,7 +3059,10 @@
      "left",
      "right"
     ]
-   }
+   },
+   "calls": [
+    "Mind the gate. There is none."
+   ]
   },
   {
    "x": 70,
@@ -3011,7 +3079,10 @@
     "glances": [
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Long road out."
+   ]
   },
   {
    "x": 112,
@@ -3041,10 +3112,14 @@
     "glances": [
      "left"
     ]
-   }
+   },
+   "calls": [
+    "Berries! Help yourself!",
+    "They grow back, you know."
+   ]
   },
   {
-   "x": 92,
+   "x": 91,
    "y": 185,
    "name": "Woodcutter",
    "look": "black-belt",
@@ -3058,13 +3133,17 @@
     "roam": [
      [
       0,
-      1
+      -1
      ]
     ],
     "glances": [
      "right"
     ]
-   }
+   },
+   "calls": [
+    "Timber!",
+    "Mind your feet."
+   ]
   },
   {
    "x": 81,
@@ -3075,30 +3154,35 @@
    "lines": [
     "The pool is full of Magikarp!",
     "Nobody believes me. There is something on the island too. Mind the gaps."
+   ],
+   "calls": [
+    "Magikarp! Loads of them!",
+    "There IS something out there!"
    ]
   },
   {
-   "x": 3,
-   "y": 3,
+   "x": 8,
+   "y": 5,
    "name": "Miller’s Boy",
    "look": "youngster",
-   "facing": "down",
+   "facing": "left",
    "lines": [
-    "Mind the sacks. I have counted them. I am going to count them again."
+    "Mind the sacks. I have counted them. I am going to count them again.",
+    "The wheel has not stopped in eighty years. Nobody knows how to stop it."
    ],
    "area": "millbrook-the-mill"
   },
   {
-   "x": 7,
-   "y": 5,
+   "x": 4,
+   "y": 6,
    "name": "Nurse",
    "look": "beauty",
-   "facing": "down",
+   "facing": "right",
    "lines": [
     "The machines are spoken for, I am afraid. There is a raid on, you know.",
     "If you are hurt, the pump on the green has medicine by it. Nobody counts it."
    ],
-   "area": "millbrook-millbrook-centre"
+   "area": "millbrook-millbrook-center"
   },
   {
    "x": 2,
@@ -3145,7 +3229,10 @@
     "glances": [
      "right"
     ]
-   }
+   },
+   "calls": [
+    "Come back! Please!"
+   ]
   },
   {
    "x": 88,
@@ -3163,7 +3250,10 @@
      "left",
      "right"
     ]
-   }
+   },
+   "calls": [
+    "One, two, three... wait."
+   ]
   },
   {
    "x": 100,
@@ -3192,7 +3282,10 @@
      "up",
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Mind the ledges!"
+   ]
   },
   {
    "x": 79,
@@ -3262,7 +3355,10 @@
     "glances": [
      "right"
     ]
-   }
+   },
+   "calls": [
+    "Mind your backs!"
+   ]
   },
   {
    "x": 136,
@@ -3279,7 +3375,10 @@
      "up",
      "down"
     ]
-   }
+   },
+   "calls": [
+    "Steady! Steady there!"
+   ]
   },
   {
    "x": 142,
@@ -3296,7 +3395,10 @@
     "glances": [
      "left"
     ]
-   }
+   },
+   "calls": [
+    "Baskets! Good baskets!"
+   ]
   },
   {
    "x": 154,
@@ -3438,7 +3540,10 @@
     "glances": [
      "left"
     ]
-   }
+   },
+   "calls": [
+    "Mind the bundles!"
+   ]
   },
   {
    "x": 89,
@@ -3456,7 +3561,10 @@
      "down",
      "left"
     ]
-   }
+   },
+   "calls": [
+    "Shh. Sit still."
+   ]
   },
   {
    "x": 97,
@@ -5926,13 +6034,12 @@
    "id": "millbrook-the-mill",
    "name": "The Mill",
    "kind": "inside",
-   "style": "house",
+   "style": "warehouse",
    "width": 12,
-   "height": 9,
+   "height": 8,
    "ground": [
     "BBBBBBBBBBBB",
     "BBBBBBBBBBBB",
-    "PPPPPPPPPPPP",
     "PPPPPPPPPPPP",
     "PPPPPPPPPPPP",
     "PPPPPPPPPPPP",
@@ -5942,45 +6049,45 @@
    ],
    "buildings": [
     {
-     "kind": "kitchen-sink",
-     "x": 0,
-     "y": 1
-    },
-    {
-     "kind": "cupboard",
-     "x": 2,
-     "y": 0
-    },
-    {
-     "kind": "television",
-     "x": 5,
-     "y": 0
-    },
-    {
-     "kind": "window",
-     "x": 6,
-     "y": 0
-    },
-    {
-     "kind": "dining-table",
+     "kind": "generator",
      "x": 4,
-     "y": 4
+     "y": 0
     },
     {
-     "kind": "potted-plant",
+     "kind": "boxes",
      "x": 0,
-     "y": 6
+     "y": 2
     },
     {
-     "kind": "potted-plant",
+     "kind": "tall-box",
+     "x": 2,
+     "y": 2
+    },
+    {
+     "kind": "big-crate",
+     "x": 9,
+     "y": 2
+    },
+    {
+     "kind": "boxes",
+     "x": 0,
+     "y": 5
+    },
+    {
+     "kind": "box",
      "x": 11,
-     "y": 6
+     "y": 5
+    },
+    {
+     "kind": "stool",
+     "x": 9,
+     "y": 5
     }
    ]
   },
   {
-   "id": "millbrook-millbrook-centre",
-   "name": "Millbrook Centre",
+   "id": "millbrook-millbrook-center",
+   "name": "Millbrook Center",
    "kind": "inside",
    "style": "center",
    "width": 15,
@@ -8107,8 +8214,8 @@
     },
     {
      "area": "millbrook-the-mill",
-     "x": 3,
-     "y": 8,
+     "x": 6,
+     "y": 7,
      "toward": "down",
      "look": "mat"
     }
@@ -8123,7 +8230,7 @@
      "look": "door"
     },
     {
-     "area": "millbrook-millbrook-centre",
+     "area": "millbrook-millbrook-center",
      "x": 7,
      "y": 8,
      "toward": "down",

@@ -27,7 +27,7 @@
  * a figure is a wall to a walk out.
  */
 import { makeInside } from '../../../../src/game/maker/areas';
-import type { MapFile, MapFileBuilding, MapFileOutdoorBuildingKind } from '../../../../src/game/world/mapFile';
+import type { MapFile, MapFileArea, MapFileBuilding, MapFileOutdoorBuildingKind } from '../../../../src/game/world/mapFile';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { planLimits, startDistrict } from '../../worldPlan';
@@ -308,31 +308,31 @@ export function millbrook(): MapcraftResult {
       ],
       people: [
         // -- The square --------------------------------------------------------
-        { x: 32, y: 34, name: 'Trader', look: 'woman', facing: 'left', lines: ['Fresh from the orchards over the river. Well. Over the road.', 'The road east takes you on to The Crossing.'], beat: { everyMs: 3100, glances: ['down', 'left'] } },
-        { x: 28, y: 29, name: 'Ada', look: 'little-girl', facing: 'right', lines: ['There is a cave up in the peaks. Mum says it goes all the way to the sea.'], beat: { everyMs: 1700, roam: [[0, -1], [0, -2]], glances: ['left', 'up'] } },
-        { x: 26, y: 28, name: 'Pip', look: 'little-boy', facing: 'right', lines: ['Race you to the fountain!', 'I always win. Ada says that does not count because I start closer.'], beat: { everyMs: 1900, roam: [[0, 1], [-1, 1]], glances: ['up'] } },
-        { x: 27, y: 36, name: 'Old Peg', look: 'old-woman', facing: 'up', lines: ['Everything on that stall was cheaper before you got here.', 'Everything was cheaper before anybody got here.'], beat: { everyMs: 2900, roam: [[1, 0], [-1, 0]], glances: ['up', 'left'] } },
-        { x: 36, y: 36, name: 'Stallholder', look: 'straw-hat', facing: 'up', lines: ['Apples from the orchard, down the lane past the brook.', 'Or pick them yourself. Everybody else does.'], beat: { everyMs: 3700, roam: [[-1, 0]], glances: ['left', 'right'] } },
+        { x: 32, y: 34, name: 'Trader', look: 'woman', facing: 'left', lines: ['Fresh from the orchards over the river. Well. Over the road.', 'The road east takes you on to The Crossing.'], beat: { everyMs: 3100, glances: ['down', 'left'] }, calls: ['Fresh apples!', 'Best in the vale!'] },
+        { x: 28, y: 29, name: 'Ada', look: 'little-girl', facing: 'right', lines: ['There is a cave up in the peaks. Mum says it goes all the way to the sea.'], beat: { everyMs: 1700, roam: [[0, -1], [0, -2]], glances: ['left', 'up'] }, calls: ['Pip! Wait for me!', 'Not fair!'] },
+        { x: 26, y: 28, name: 'Pip', look: 'little-boy', facing: 'right', lines: ['Race you to the fountain!', 'I always win. Ada says that does not count because I start closer.'], beat: { everyMs: 1900, roam: [[0, 1], [-1, 1]], glances: ['up'] }, calls: ['Can\u2019t catch me!', 'Race you!'] },
+        { x: 27, y: 36, name: 'Old Peg', look: 'old-woman', facing: 'up', lines: ['Everything on that stall was cheaper before you got here.', 'Everything was cheaper before anybody got here.'], beat: { everyMs: 2900, roam: [[1, 0], [-1, 0]], glances: ['up', 'left'] }, calls: ['Daylight robbery.', 'How much for that?'] },
+        { x: 36, y: 36, name: 'Stallholder', look: 'straw-hat', facing: 'up', lines: ['Apples from the orchard, down the lane past the brook.', 'Or pick them yourself. Everybody else does.'], beat: { everyMs: 3700, roam: [[-1, 0]], glances: ['left', 'right'] }, calls: ['Lovely carrots!', 'Turnips! Get your turnips!'] },
         // -- The mill and the lane -----------------------------------------------
-        { x: 47, y: 21, name: 'Miller', look: 'worker', facing: 'down', lines: ['The pond turns the wheel all year. It would be nice if it paid as well.', 'The brook runs right through the village and comes out at Tom’s pool.'], beat: { everyMs: 2700, roam: [[-1, 0]], glances: ['left', 'up'] } },
-        { x: 45, y: 11, name: 'Old Wick', look: 'fisherman', facing: 'down', lines: ['Nothing in this pond but Magikarp and regret.', 'Mind, if you have a rod, press at the water. It costs you nothing but time.'] },
-        { x: 53, y: 21, name: 'Carter', look: 'heavy-man', facing: 'left', lines: ['I lost my purse somewhere round this yard. Do not tell the board.', 'It told everyone.'], beat: { everyMs: 3300, glances: ['up', 'down'] } },
+        { x: 47, y: 21, name: 'Miller', look: 'worker', facing: 'down', lines: ['The pond turns the wheel all year. It would be nice if it paid as well.', 'The brook runs right through the village and comes out at Tom’s pool.'], beat: { everyMs: 2700, roam: [[-1, 0]], glances: ['left', 'up'] }, calls: ['Who left the sluice open?', 'Sacks for the Mart!'] },
+        { x: 45, y: 11, name: 'Old Wick', look: 'fisherman', facing: 'down', lines: ['Nothing in this pond but Magikarp and regret.', 'Mind, if you have a rod, press at the water. It costs you nothing but time.'], calls: ['Shh. They can hear you.', 'Nearly had that one.'] },
+        { x: 54, y: 20, name: 'Carter', look: 'heavy-man', facing: 'left', lines: ['I lost my purse somewhere round this yard. Do not tell the board.', 'It told everyone.'], beat: { everyMs: 3300, glances: ['up', 'down'] }, calls: ['Anyone seen my purse?'] },
         // -- Old Row ---------------------------------------------------------------
-        { x: 11, y: 15, name: 'Grandpa Ott', look: 'old-man', facing: 'right', lines: ['This is the oldest cottage in the vale.', 'When I was a boy there was snow on the peaks all summer.'], beat: { everyMs: 4100, roam: [[0, -1]], glances: ['down'] } },
-        { x: 22, y: 12, name: 'Digger', look: 'hiker', facing: 'down', lines: ['Dig, plant, chase off the Oddish. Dig, plant, chase off the Oddish.', 'It is a living. It is not a good one.'], beat: { everyMs: 2300, roam: [[0, 1]], glances: ['left', 'right'] } },
-        { x: 16, y: 21, name: 'Mrs Marlow', look: 'woman', facing: 'left', lines: ['I grow beans. Ott says he grows beans. Those are not beans.'], beat: { everyMs: 3500, roam: [[-1, 0], [-2, 0]], glances: ['down'] } },
-        { x: 23, y: 22, name: 'Fern', look: 'lass', facing: 'left', lines: ['There is a garden behind the woodcutter’s, walled off by one small tree.', 'Old Hazel left it. Nobody with a Cut has been past in years.'], beat: { everyMs: 3900, roam: [[0, 1]], glances: ['up'] } },
+        { x: 11, y: 15, name: 'Grandpa Ott', look: 'old-man', facing: 'right', lines: ['This is the oldest cottage in the vale.', 'When I was a boy there was snow on the peaks all summer.'], beat: { everyMs: 4100, roam: [[0, -1]], glances: ['down'] }, calls: ['Snow! All summer!', 'In my day...'] },
+        { x: 22, y: 12, name: 'Digger', look: 'hiker', facing: 'down', lines: ['Dig, plant, chase off the Oddish. Dig, plant, chase off the Oddish.', 'It is a living. It is not a good one.'], beat: { everyMs: 2300, roam: [[0, 1]], glances: ['left', 'right'] }, calls: ['Oi! Off my seedlings!', 'Go on, shoo!'] },
+        { x: 16, y: 21, name: 'Mrs Marlow', look: 'woman', facing: 'left', lines: ['I grow beans. Ott says he grows beans. Those are not beans.'], beat: { everyMs: 3500, roam: [[-1, 0], [-2, 0]], glances: ['down'] }, calls: ['Those are NOT beans.'] },
+        { x: 23, y: 22, name: 'Fern', look: 'lass', facing: 'left', lines: ['There is a garden behind the woodcutter’s, walled off by one small tree.', 'Old Hazel left it. Nobody with a Cut has been past in years.'], beat: { everyMs: 3900, roam: [[0, 1]], glances: ['up'] }, calls: ['Hazel\u2019s garden, past the logs.'] },
         // -- The green and the south street -----------------------------------------
-        { x: 18, y: 35, name: 'Nan Birch', look: 'old-woman', facing: 'right', lines: ['Sit down, you look terrible.', 'Everybody who comes through here looks terrible. It is the raids.'], beat: { everyMs: 4300, glances: ['up'] } },
-        { x: 13, y: 41, name: 'Bram', look: 'boy', facing: 'right', lines: ['My mum says never to go down to the pool on your own.', 'Tom goes down there on his own. Tom is ten.'], beat: { everyMs: 2500, roam: [[-1, 0]], glances: ['down'] } },
-        { x: 40, y: 37, name: 'Gardener', look: 'woman', facing: 'left', lines: ['Every Pidgey in the vale nests in my roof.', 'East of the village the road goes over the bridge at The Crossing.'], beat: { everyMs: 3000, roam: [[1, 0]], glances: ['down', 'up'] } },
+        { x: 18, y: 35, name: 'Nan Birch', look: 'old-woman', facing: 'right', lines: ['Sit down, you look terrible.', 'Everybody who comes through here looks terrible. It is the raids.'], beat: { everyMs: 4300, glances: ['up'] }, calls: ['Sit down a minute, love.'] },
+        { x: 13, y: 41, name: 'Bram', look: 'boy', facing: 'right', lines: ['My mum says never to go down to the pool on your own.', 'Tom goes down there on his own. Tom is ten.'], beat: { everyMs: 2500, roam: [[-1, 0]], glances: ['down'] }, calls: ['Tam always wins.'] },
+        { x: 40, y: 37, name: 'Gardener', look: 'woman', facing: 'left', lines: ['Every Pidgey in the vale nests in my roof.', 'East of the village the road goes over the bridge at The Crossing.'], beat: { everyMs: 3000, roam: [[1, 0]], glances: ['down', 'up'] }, calls: ['Get off my roof!', 'Shoo, Pidgey!'] },
         // -- The ends of the village ---------------------------------------------------
-        { x: 37, y: 5 + 2, name: 'Drover', look: 'camper', facing: 'left', lines: ['That Tauros has walked off this moor and back four times this year.', 'Up the road, mind the ledges. They only go down.'], beat: { everyMs: 3400, roam: [[0, -1]], glances: ['down'] } },
-        { x: 56, y: 28, name: 'Gatekeeper', look: 'gentleman', facing: 'down', lines: ['I keep the gate. There is no gate. It is a very quiet job.', 'East: The Crossing, and the only bridge for miles.'], beat: { everyMs: 3600, roam: [[-1, 0]], glances: ['left', 'right'] } },
-        { x: 6, y: 28, name: 'Wayfarer', look: 'picnicker', facing: 'right', lines: ['The Westward Road goes out of the vale, if you need to go out in a hurry.', 'Most people who come through do.'], beat: { everyMs: 3800, glances: ['down'] } },
-        { x: 48, y: 51, name: 'Picker', look: 'picnicker', facing: 'up', lines: ['The berries grow back by the next raid. Do not ask me how. I just pick.'], beat: { everyMs: 2600, roam: [[1, 0], [2, 0], [3, 0]], glances: ['left'] } },
-        { x: 28, y: 57, name: 'Woodcutter', look: 'black-belt', facing: 'left', lines: ['A proper axe would clear that little tree by the garden in one go.', 'I have a blunt one and a bad back. You want a Pokemon that knows Cut.'], beat: { everyMs: 3200, roam: [[0, 1]], glances: ['right'] } },
-        { x: 17, y: 49, name: 'Tom', look: 'youngster', facing: 'right', lines: ['The pool is full of Magikarp!', 'Nobody believes me. There is something on the island too. Mind the gaps.'] },
+        { x: 37, y: 5 + 2, name: 'Drover', look: 'camper', facing: 'left', lines: ['That Tauros has walked off this moor and back four times this year.', 'Up the road, mind the ledges. They only go down.'], beat: { everyMs: 3400, roam: [[0, -1]], glances: ['down'] }, calls: ['Come back here, you lump!', 'Whoa! Whoa there!'] },
+        { x: 56, y: 28, name: 'Gatekeeper', look: 'gentleman', facing: 'down', lines: ['I keep the gate. There is no gate. It is a very quiet job.', 'East: The Crossing, and the only bridge for miles.'], beat: { everyMs: 3600, roam: [[-1, 0]], glances: ['left', 'right'] }, calls: ['Mind the gate. There is none.'] },
+        { x: 6, y: 28, name: 'Wayfarer', look: 'picnicker', facing: 'right', lines: ['The Westward Road goes out of the vale, if you need to go out in a hurry.', 'Most people who come through do.'], beat: { everyMs: 3800, glances: ['down'] }, calls: ['Long road out.'] },
+        { x: 48, y: 51, name: 'Picker', look: 'picnicker', facing: 'up', lines: ['The berries grow back by the next raid. Do not ask me how. I just pick.'], beat: { everyMs: 2600, roam: [[1, 0], [2, 0], [3, 0]], glances: ['left'] }, calls: ['Berries! Help yourself!', 'They grow back, you know.'] },
+        { x: 27, y: 57, name: 'Woodcutter', look: 'black-belt', facing: 'left', lines: ['A proper axe would clear that little tree by the garden in one go.', 'I have a blunt one and a bad back. You want a Pokemon that knows Cut.'], beat: { everyMs: 3200, roam: [[0, -1]], glances: ['right'] }, calls: ['Timber!', 'Mind your feet.'] },
+        { x: 17, y: 49, name: 'Tom', look: 'youngster', facing: 'right', lines: ['The pool is full of Magikarp!', 'Nobody believes me. There is something on the island too. Mind the gaps.'], calls: ['Magikarp! Loads of them!', 'There IS something out there!'] },
       ],
       pokemon: [
         // The square's Pidgey, after what the stalls drop.
@@ -385,7 +385,10 @@ function withInsides(file: MapFile): MapFile {
     y: number,
     name: string,
     people: NonNullable<MapFile['people']>,
-    more: Partial<Pick<MapFile, 'itemSpots' | 'pokemon' | 'landmarks'>> = {},
+    more: Partial<Pick<MapFile, 'itemSpots' | 'pokemon' | 'landmarks'>> & {
+      /** A different room from the one its building would open on. */
+      readonly room?: Pick<MapFileArea, 'style' | 'width' | 'height' | 'ground' | 'buildings'>;
+    } = {},
   ) => {
     const index = next.buildings.findIndex(
       (building: MapFileBuilding) => building.kind === kind && building.x === x && building.y === y,
@@ -396,10 +399,14 @@ function withInsides(file: MapFile): MapFile {
     const id = `millbrook-${name.toLowerCase().replace(/[^a-z]+/g, '-')}`.slice(0, 40);
     next = {
       ...made.file,
-      areas: (made.file.areas ?? []).map((one) => (one.id === area ? { ...one, id, name } : one)),
+      areas: (made.file.areas ?? []).map((one) => (one.id === area ? { ...one, ...more.room, id, name } : one)),
       links: (made.file.links ?? []).map((link) => ({
         ...link,
-        ends: link.ends.map((end) => (end.area === area ? { ...end, area: id } : end)) as unknown as typeof link.ends,
+        ends: link.ends.map((end) =>
+          end.area === area
+            ? { ...end, area: id, ...(more.room ? { x: Math.floor(more.room.width / 2), y: more.room.height - 1 } : {}) }
+            : end,
+        ) as unknown as typeof link.ends,
       })),
       people: [...(made.file.people ?? []), ...people.map((one) => ({ ...one, area: id }))],
       itemSpots: [...made.file.itemSpots, ...(more.itemSpots ?? []).map((one) => ({ ...one, area: id }))],
@@ -407,11 +414,35 @@ function withInsides(file: MapFile): MapFile {
       landmarks: [...(made.file.landmarks ?? []), ...(more.landmarks ?? []).map((one) => ({ ...one, area: id }))],
     };
   };
-  inside('warden-house', 42, 16, 'The Mill', [
-    { x: 3, y: 3, name: 'Miller’s Boy', look: 'youngster', facing: 'down', lines: ['Mind the sacks. I have counted them. I am going to count them again.'] },
-  ]);
-  inside('pokemon-center', 38, 25, 'Millbrook Centre', [
-    { x: 7, y: 5, name: 'Nurse', look: 'beauty', facing: 'down', lines: ['The machines are spoken for, I am afraid. There is a raid on, you know.', 'If you are hurt, the pump on the green has medicine by it. Nobody counts it.'] },
+  // The mill is a working floor, not a kitchen: FireRed's warehouse, with the
+  // machine the wheel drives at the back of it and the day's grain stacked up.
+  inside(
+    'warden-house',
+    42,
+    16,
+    'The Mill',
+    [{ x: 8, y: 5, name: 'Miller\u2019s Boy', look: 'youngster', facing: 'left', lines: ['Mind the sacks. I have counted them. I am going to count them again.', 'The wheel has not stopped in eighty years. Nobody knows how to stop it.'] }],
+    {
+      room: {
+        style: 'warehouse',
+        width: 12,
+        height: 8,
+        ground: ['BBBBBBBBBBBB', 'BBBBBBBBBBBB', ...Array<string>(6).fill('PPPPPPPPPPPP')],
+        buildings: [
+          { kind: 'generator', x: 4, y: 0 },
+          { kind: 'boxes', x: 0, y: 2 },
+          { kind: 'tall-box', x: 2, y: 2 },
+          { kind: 'big-crate', x: 9, y: 2 },
+          { kind: 'boxes', x: 0, y: 5 },
+          { kind: 'box', x: 11, y: 5 },
+          { kind: 'stool', x: 9, y: 5 },
+        ],
+      },
+      itemSpots: [{ x: 11, y: 7, hidden: true }],
+    },
+  );
+  inside('pokemon-center', 38, 25, 'Millbrook Center', [
+    { x: 4, y: 6, name: 'Nurse', look: 'beauty', facing: 'right', lines: ['The machines are spoken for, I am afraid. There is a raid on, you know.', 'If you are hurt, the pump on the green has medicine by it. Nobody counts it.'] },
   ]);
   inside('poke-mart', 44, 36, 'Millbrook Mart', [
     { x: 2, y: 3, name: 'Clerk', look: 'boy', facing: 'down', lines: ['Sorry, nothing on the shelves till the boat comes in.', 'Professor Oak’s parcel? We sent it out by the lane. It will be lying about somewhere.'] },

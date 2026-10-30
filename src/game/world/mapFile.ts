@@ -32,6 +32,7 @@ import { trainerChallengeLine } from '../pokemon/battle/battleFlow';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
 import type { NpcIdle } from './npcIdle';
+import { MAX_CALL_LENGTH } from './villageCalls';
 import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigures';
 import { isLegendaryKind } from './legends';
 import { BERRY_IDS, berryTreeLines, type BerryId } from './berries';
@@ -1403,6 +1404,11 @@ export interface MapFilePerson extends MapFileSpot {
   readonly facing: MapFileFacing;
   readonly lines: readonly string[];
   readonly beat?: MapFileBeat;
+  /**
+   * What they call out as a raid goes past, unasked (`villageCalls.ts`): a few
+   * words each. Only on the game's own maps, as a beat is.
+   */
+  readonly calls?: readonly string[];
 }
 
 /** A Pokemon standing in the world: any species the game has (`pokemonFigures.ts`). */
@@ -1739,7 +1745,7 @@ export function wordsOf(file: Partial<MapFile>): readonly string[] {
     file.maker ?? '',
     ...(file.dropIns ?? []).flatMap((spot) => [spot.name, spot.description ?? '']),
     ...(file.exits ?? []).map((spot) => spot.name),
-    ...(file.people ?? []).flatMap((person) => [person.name, ...person.lines]),
+    ...(file.people ?? []).flatMap((person) => [person.name, ...person.lines, ...(person.calls ?? [])]),
     ...(file.signs ?? []).flatMap((sign) => sign.lines),
     ...(file.landmarks ?? []).map((landmark) => landmark.name),
     ...(file.districts ?? []).map((district) => district.name),
@@ -2070,6 +2076,17 @@ export function readMapFile(
     oneOf(`${what}'s facing`, person.facing, MAP_FILE_FACINGS);
     linesOf(what, person.lines);
     beatOf(what, person.beat);
+    if (person.calls !== undefined) {
+      const calls = person.calls as unknown[];
+      if (
+        limits.maxBeatTiles === 0 ||
+        !Array.isArray(calls) ||
+        calls.length > limits.maxLines ||
+        !calls.every((call) => typeof call === 'string' && call.length > 0 && call.length <= MAX_CALL_LENGTH)
+      ) {
+        problems.push(`${what} may call out up to ${limits.maxLines} things of at most ${MAX_CALL_LENGTH} letters.`);
+      }
+    }
   });
   optional('pokemon', limits.maxPokemon).forEach((standing, index) => {
     if (!isFigureSpecies(standing.species)) {
@@ -3106,6 +3123,7 @@ export function buildFileMap(
         dialogLines: person.lines.length > 0 ? [...person.lines] : [`${person.name} nods at you.`],
         design: person.look,
         ...(person.beat ? { idle: fileBeat(person, at) } : {}),
+        ...(person.calls ? { calls: [...person.calls] } : {}),
       })),
       ...(file.pokemon ?? []).map((standing, index): WorldEntity => ({
         id: `${id}/pokemon-${index + 1}`,
