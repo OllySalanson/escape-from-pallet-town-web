@@ -190,6 +190,28 @@ function openOverlay(): { keys: string[]; root: unknown; destroy: () => void } {
   return { keys, root: overlay.root, destroy: () => overlay.destroy() };
 }
 
+describe('where a screen asks for the cursor', () => {
+  it('honours only the newest request, so an older one cannot move it back', () => {
+    const cancelled: number[] = [];
+    let frames = 0;
+    vi.stubGlobal('requestAnimationFrame', () => (frames += 1));
+    vi.stubGlobal('cancelAnimationFrame', (frame: number) => cancelled.push(frame));
+    const scene = { events: { once: () => {} } } as never;
+    const overlay = new MenuOverlay(scene, 'test-menu', () => {});
+    try {
+      overlay.focus('[data-a]');
+      overlay.refocus('[data-b]');
+      expect(cancelled).toEqual([1]);
+
+      // And nothing is left waiting on a screen that has gone.
+      overlay.destroy();
+      expect(cancelled).toEqual([1, 2]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe('an open overlay owns the keyboard', () => {
   it('is appended to the menu layer, not to the box the canvas is sized to', () => {
     // A screen laid out inside `#app` could only ever be as big as the world

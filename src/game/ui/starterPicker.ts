@@ -19,6 +19,18 @@ export interface StarterCardOptions {
   readonly selectHelp?: string;
 }
 
+/** What the help bar says of a card, which changes as the card is chosen. */
+export function starterCardHelp(
+  speciesId: string,
+  selectedId: StarterSpeciesId,
+  { heldSpeciesId, selectHelp = 'Choose this starter.' }: StarterCardOptions = {},
+): string {
+  if (speciesId === heldSpeciesId) {
+    return 'Your current partner.';
+  }
+  return speciesId === selectedId ? 'Chosen. Confirm below.' : selectHelp;
+}
+
 /**
  * The three starters as pixel-ui cards: the front sprite at its own size, then
  * the name, the types and the one-line note. Which card is chosen is the card's
@@ -26,12 +38,13 @@ export interface StarterCardOptions {
  */
 export function starterCards(
   selectedId: StarterSpeciesId,
-  { heldSpeciesId, selectHelp = 'Choose this starter.' }: StarterCardOptions = {},
+  options: StarterCardOptions = {},
 ): string {
+  const { heldSpeciesId } = options;
   return STARTER_SPECIES.map((species) => {
     const selected = species.id === selectedId;
     const held = species.id === heldSpeciesId;
-    const help = held ? 'Your current partner.' : selected ? 'Chosen. Confirm below.' : selectHelp;
+    const help = starterCardHelp(species.id, selectedId, options);
     return `<button class="px-window px-card starter-card${selected ? ' is-selected' : ''}" data-starter="${species.id}" data-help="${help}" aria-pressed="${selected}"><span class="starter-number">No. ${String(species.dexId).padStart(3, '0')}${held ? ' · yours' : ''}</span>${pixelPortrait(species.dexId, species.name)}<strong class="px-name">${species.name}</strong><span>${pixelTypeBadge(species.primaryType)}${species.secondaryType ? pixelTypeBadge(species.secondaryType) : ''}</span><small class="px-wrap">${STARTER_NOTES[species.id]}</small></button>`;
   }).join('');
 }
