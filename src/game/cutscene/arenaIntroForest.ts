@@ -211,7 +211,7 @@ export const HUNTER_CHASE: Route = [
   { x: 31, y: 6 },
 ];
 
-/** The fire that shuts the road behind them: hedge to hedge across the last straight. */
+/** The fire that shuts the road behind them: across the last straight, with no way round it. */
 export const FIRE_WALL: readonly GridPosition[] = [
   { x: 32, y: 5 },
   { x: 32, y: 6 },

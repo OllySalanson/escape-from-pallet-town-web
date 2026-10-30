@@ -75,16 +75,21 @@ describe("THE RAID ARENA trailer's wood", () => {
     expect(same(ESCAPE_ROUTE.at(-1)!, EXIT_TILE)).toBe(true);
   });
 
-  it('shuts the road with the fire: hedge to hedge, behind the runners and in front of the hunter', () => {
-    const column = FIRE_WALL[0].x;
-    expect(FIRE_WALL.every((tile) => tile.x === column && open(tile))).toBe(true);
-    expect(open({ x: column, y: FIRE_WALL[0].y - 1 })).toBe(false);
-    expect(open({ x: column, y: FIRE_WALL.at(-1)!.y + 1 })).toBe(false);
-    const onTheWall = (tile: GridPosition) => FIRE_WALL.some((burning) => same(burning, tile));
-    expect(routeTiles(ESCAPE_ROUTE).some(onTheWall)).toBe(true);
-    expect(routeTiles(HUNTER_CHASE).some(onTheWall)).toBe(false);
-    expect(HUNTER_CHASE.at(-1)!.x).toBe(column - 1);
-    expect(EXIT_TILE.x).toBeGreaterThan(column);
+  it('shuts the road with the fire: no way past it for the hunter, and the runners already through', () => {
+    const onFire = (tile: GridPosition) => FIRE_WALL.some((burning) => same(burning, tile));
+    const seen = new Set<string>();
+    const reach = [HUNTER_CHASE.at(-1)!];
+    while (reach.length > 0) {
+      const tile = reach.pop()!;
+      const key = `${tile.x},${tile.y}`;
+      if (seen.has(key) || !open(tile) || onFire(tile)) continue;
+      seen.add(key);
+      reach.push({ x: tile.x + 1, y: tile.y }, { x: tile.x - 1, y: tile.y }, { x: tile.x, y: tile.y + 1 }, { x: tile.x, y: tile.y - 1 });
+    }
+    expect(seen.has(`${HUNTER_CHASE[0].x},${HUNTER_CHASE[0].y}`)).toBe(true);
+    expect(seen.has(`${EXIT_TILE.x},${EXIT_TILE.y}`), 'the hunter can walk round the fire to the exit').toBe(false);
+    expect(routeTiles(ESCAPE_ROUTE).some(onFire)).toBe(true);
+    expect(routeTiles(HUNTER_CHASE).some(onFire)).toBe(false);
   });
 
   it('hangs no crown over a tile anybody is walked onto', () => {
