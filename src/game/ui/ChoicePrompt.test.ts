@@ -34,6 +34,11 @@ class FakeText {
   public setColor(): this {
     return this;
   }
+  public scrollFactor = 1;
+  public setScrollFactor(factor: number): this {
+    this.scrollFactor = factor;
+    return this;
+  }
   public setInteractive(): this {
     return this;
   }
@@ -69,6 +74,7 @@ function ask(options: readonly string[], selected: number) {
     onChoose: (index) => chosen.push(index),
   });
   return {
+    texts,
     prompt,
     chosen,
     highlighted: () =>
@@ -112,5 +118,12 @@ describe('a choice in the world', () => {
     expect(prompt.selected).toBe(3);
     for (let press = 0; press < 6; press += 1) prompt.moveSelection(-1);
     expect(prompt.selected).toBe(0);
+  });
+});
+
+describe('a question under a camera that has scrolled', () => {
+  it('has answers a pointer finds where they are drawn: a hit is tested against each one\'s own scroll factor', () => {
+    const { texts } = ask(['YES', 'NOT NOW'], 0);
+    expect(texts.slice(-2).map((text) => text.scrollFactor)).toEqual([0, 0]);
   });
 });

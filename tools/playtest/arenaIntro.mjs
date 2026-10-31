@@ -153,8 +153,7 @@ try {
   const view = await page.evaluate(`(() => { const h = ${GAME}.scene.getScene('hub'); return h.view + ':' + h.flow?.step; })()`);
   expect(`a key on the card lands on the loadout (${view})`, view === 'deploy:loadout');
 
-  // Back out, and in again: it plays with SKIP, and a key skips it. The
-  // loadout's first words are up the first time, and Escape puts them down first.
+  // Back out, and in again: it plays with SKIP, and a key skips it.
   for (let guard = 0; guard < 6 && !(await page.evaluate(sceneIs('base'))); guard += 1) {
     await press('Escape');
     await step(400);

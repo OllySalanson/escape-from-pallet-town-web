@@ -43,14 +43,7 @@ try {
     );
     await sleep(250);
   };
-  // A newcomer is told things once (`hub/firstWords.ts`): the box lies over
-  // the screen with everything under it inert, so it is put down first, as a
-  // player reads it and presses Got it.
-  const putDownFirstWords = () => page.evaluate(
-    `(() => { const b = document.querySelector('[data-speech-done]'); if (b) b.click(); return !!b; })()`,
-  );
   const focus = async (label) => {
-    while (await putDownFirstWords()) await sleep(250);
     return until(
       `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return false; b.focus(); return document.activeElement === b; })()`,
       `a button labelled ${label} to focus`,

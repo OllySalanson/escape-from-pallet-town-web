@@ -254,9 +254,9 @@ describe('the Pokémon Center, which shows who is being treated', () => {
   });
 
   it('says how many are waiting over the counter, and says nothing when nobody is', () => {
-    expect(buildRoom(center, baseGame()).things).toEqual([]);
+    expect(buildRoom(center, baseGame()).things.map((thing) => thing.name)).toEqual(["BILL'S PC"]);
     const waiting = buildRoom(center, baseGame({ hurt: 3 }));
-    expect(waiting.things.map((thing) => thing.name)).toEqual(['3 POKÉ BALLS']);
+    expect(waiting.things.map((thing) => thing.name)).toEqual(["BILL'S PC", '3 POKÉ BALLS']);
     expect(waiting.sprites.length).toBeGreaterThan(0);
   });
 
@@ -264,8 +264,27 @@ describe('the Pokémon Center, which shows who is being treated', () => {
     for (const display of CENTER_DISPLAY) {
       expect(EVERY_RUNG).toContain(display.upgradeId);
       const built = buildRoom(center, baseGame({ built: [display.upgradeId] }));
-      expect(built.things.map((thing) => thing.upgradeId)).toEqual([display.upgradeId]);
+      expect(built.things.flatMap((thing) => thing.upgradeId ?? [])).toEqual([display.upgradeId]);
     }
+  });
+
+  it("keeps BILL'S PC where it can be walked up to from the door, in front of the machine that is drawn there", () => {
+    const built = buildRoom(center, baseGame());
+    const pc = built.things.find((thing) => thing.opens === 'boxes')!;
+    const [tile] = pc.tiles;
+    expect(built.collision[tile.y][tile.x]).toBe(true);
+    const seen = new Set([`${center.mat!.x},${center.mat!.y}`]);
+    const walk = [center.mat!];
+    for (const at of walk) {
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const next = { x: at.x + dx, y: at.y + dy };
+        if (built.collision[next.y]?.[next.x] === false && !seen.has(`${next.x},${next.y}`)) {
+          seen.add(`${next.x},${next.y}`);
+          walk.push(next);
+        }
+      }
+    }
+    expect(seen.has(`${tile.x},${tile.y + 1}`)).toBe(true);
   });
 });
 
@@ -445,7 +464,8 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
   });
 
   it('hangs nothing on the walls of any other room', () => {
-    for (const each of BASE_ROOMS.filter((candidate) => !candidate.id.startsWith('bolthole'))) {
+    // But Oak's cork board, which hangs in his lab (`labBoard.test.ts`).
+    for (const each of BASE_ROOMS.filter((candidate) => !candidate.id.startsWith('bolthole') && candidate.id !== 'oaks-lab')) {
       expect([each.id, buildRoom(each, baseGame()).posters]).toEqual([each.id, []]);
     }
   });

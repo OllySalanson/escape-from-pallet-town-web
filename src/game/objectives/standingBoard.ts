@@ -551,7 +551,7 @@ function draftContract(
       ...(draft.sealedBehind ? { sealedBehind: draft.sealedBehind } : {}),
       reward: draftReward(rng, ground.map, pressure, draft, progress.workshopUpgrades),
       briefing: draft.briefing,
-      deploymentBriefing: `${draft.deploymentBriefing} Press O for the FIELD GUIDE.`,
+      deploymentBriefing: `${draft.deploymentBriefing} Press O to call Professor Oak.`,
     };
   }
   return undefined;

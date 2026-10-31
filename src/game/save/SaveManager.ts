@@ -2,7 +2,15 @@ import { canWear, readLook, type DressedLook, type PlayerLook } from '../look/lo
 import { billFor, billLine, checkBill, ownedWearables, unownedIn } from '../look/wardrobe';
 import { isWearableId } from '../look/wearables';
 import { getWorkshopUpgrade, takePayment, type PaymentCheck } from '../hub/workshop';
-import { clampPendingRecoveryMs, clampWardTreatmentsUsed } from '../hub/recovery';
+import {
+  applyRecovery,
+  clampPendingRecoveryMs,
+  clampWardTreatmentsUsed,
+  pokemonNeedingRecovery,
+  type RecoveryOutcome,
+} from '../hub/recovery';
+import { recoveryTermsFor } from '../hub/centerCounter';
+import { raidsCompleted, takeBack, type TakenBackFromDayCare } from '../hub/dayCare';
 import {
   DEFAULT_SECURE_PREFERENCE,
   readSecurePreference,
@@ -898,6 +906,59 @@ export class SaveManager {
     }
     this.save({ ...game, raidProgress: { ...game.raidProgress, firstWordsHeard: [...heard, id] } });
     return true;
+  }
+
+  /**
+   * Nurse Joy heals everyone at her counter (`../hub/centerCounter`): the whole
+   * team restored and the time booked to the next raid, in one write. Read from
+   * storage rather than handed a copy, so a tab behind the one that banked or
+   * lost a raid heals the game as it stands.
+   */
+  public healAtCenter(): RecoveryOutcome | undefined {
+    const game = this.load();
+    if (!game) {
+      return undefined;
+    }
+    const outcome = applyRecovery(
+      game.stash,
+      game.pendingRecoveryMs,
+      pokemonNeedingRecovery(game.stash).map((stored) => stored.id),
+      recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed),
+    );
+    if (outcome.recoveredIds.length === 0) {
+      return outcome;
+    }
+    return this.save({
+      ...game,
+      pendingRecoveryMs: outcome.pendingRecoveryMs,
+      wardTreatmentsUsed: game.wardTreatmentsUsed + outcome.wardTreatmentsUsed,
+    })
+      ? outcome
+      : undefined;
+  }
+
+  /**
+   * Takes the Day-Care's Pokémon back into the vault, grown by every raid it was
+   * away (`../hub/dayCare`), in one write. Undefined when nobody is in his care
+   * or it could not be saved, and then nothing has happened.
+   */
+  public takeBackFromDayCare(): TakenBackFromDayCare | undefined {
+    const game = this.load();
+    const levelBefore = game?.stash.dayCare()?.pokemon.level;
+    if (!game || levelBefore === undefined) {
+      return undefined;
+    }
+    const taken = takeBack(game.stash, raidsCompleted(game.raidProgress, game.raidInFlight));
+    if (!taken || !this.save(game)) {
+      return undefined;
+    }
+    return {
+      name: taken.pokemon.name,
+      levelBefore,
+      level: taken.pokemon.level,
+      learned: taken.grown.learnedMoves.map((move) => move.name),
+      noRoomFor: taken.grown.movesToChoose.map((move) => move.name),
+    };
   }
 
   /**

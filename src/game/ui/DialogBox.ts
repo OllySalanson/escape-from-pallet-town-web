@@ -113,7 +113,9 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.promptText = options.indicatorText ?? DEFAULT_INDICATOR_TEXT;
     this.indicatorObject = scene.add
       .text(
-        this.widthPx - this.paddingHorizontalPx,
+        // In the padding beside the text rather than at the end of it: a last
+        // row that fills the box ran into its own continue arrow.
+        this.widthPx - Math.min(this.paddingHorizontalPx, 3),
         this.heightPx - this.paddingPx,
         this.promptText,
         {
@@ -259,6 +261,17 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.setVisible(false);
     this.triggerCompletion();
     return false;
+  }
+
+  /** Takes the box down, whatever was still to be read: somebody skipped the talk. */
+  public dismiss(): void {
+    this.setVisible(false);
+    this.triggerCompletion();
+  }
+
+  /** How many boxes of this talk are still to be read, the one showing included. */
+  public get boxesLeft(): number {
+    return this.visible ? Math.max(0, this.lineOfBox.length - this.lineIndex) : 0;
   }
 
   public get isCurrentMessageComplete(): boolean {
