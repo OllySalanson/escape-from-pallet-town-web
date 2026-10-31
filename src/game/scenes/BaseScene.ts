@@ -2325,11 +2325,11 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Brock's and Bill's rooms answer a pointer as the hall does: a click on a
-   * bay, a thing on a shelf, what is on the wall or the keeper walks up to it and
-   * asks, and a click on the mat goes out. What they used to deal over was a
-   * screen a mouse could work, and the mouse must not lose it by the deal moving
-   * into the room.
+   * The keepers' rooms answer a pointer as the hall does: a click on a bay, a
+   * thing on a shelf, what is on the wall or the keeper walks up to it and asks,
+   * and a click on the mat goes out. What they used to deal over was a screen a
+   * mouse could work, and the mouse must not lose it by the deal moving into the
+   * room - Joy's heal and BILL'S PC included.
    */
   private listenForPointerInRoom(): void {
     const pressed = (pointer: Phaser.Input.Pointer): void => {
@@ -2378,7 +2378,10 @@ export class BaseScene extends Phaser.Scene {
       this.walkThen([mat], null, () => this.leaveRoom(room));
       return;
     }
-    const answering = this.thingFaced(clicked)?.tiles ?? [clicked];
+    // A keeper behind a counter is walked up to across it, as the key asks them.
+    const answering =
+      this.thingFaced(clicked)?.tiles ??
+      (servesFrom(room, clicked) && room.keeper ? [room.keeper.position, ...room.counter] : [clicked]);
     const fronts = answering.flatMap((tile) =>
       (['up', 'down', 'left', 'right'] as const).map((direction) => nextTileFromDirection(tile, direction)),
     );
@@ -5405,7 +5408,7 @@ export class BaseScene extends Phaser.Scene {
     this.savedGame = this.saveManager.load() ?? this.savedGame;
     const free = isPlaytestRun();
     const offer = centerOffer(this.savedGame, free);
-    const { question } = offer;
+    const { question, spendsForGood } = offer;
     if (question === undefined) {
       const swap = this.savedGame.stash.canSwapStarter() && raidsLost(this.savedGame.raidProgress) > 0;
       this.say([...offer.lines, ...(swap ? [SWAP_AT_THE_PC_LINE] : [])], about);
@@ -5430,11 +5433,12 @@ export class BaseScene extends Phaser.Scene {
             savedGame: this.saveManager.load() ?? this.savedGame,
             room,
             at: { ...this.currentTile },
+            facing: this.facing,
             said: [healedLine(outcome.chargedMs, outcome.pendingRecoveryMs, free)],
           },
           'heal',
         );
-      }),
+      }, spendsForGood ? { spendsForGood } : {}),
     );
   }
 
@@ -5565,7 +5569,9 @@ export class BaseScene extends Phaser.Scene {
         lines: [question],
         options: FAVOUR_ANSWERS,
         selected: spendsForGood ? 1 : 0,
-        clickArmingMs: spendsForGood ? RELEASE_ARMING_MS : 0,
+        // Every answer: the click that moved the box on to the question stands
+        // where YES may now be drawn.
+        clickArmingMs: RELEASE_ARMING_MS,
         onChoose: (index) => answered(index === 0),
       }),
     };
@@ -5783,4 +5789,10 @@ const SLEEP_FADE_MS = 450;
 const SLEEP_DARK_MS = 600;
 
 /** The rooms a click walks about in, besides the hall (`listenForPointerInRoom`). */
-const ROOMS_ANSWERING_A_POINTER: ReadonlySet<string> = new Set(['oaks-lab', 'brocks-workshop', 'bills-cottage']);
+const ROOMS_ANSWERING_A_POINTER: ReadonlySet<string> = new Set([
+  'oaks-lab',
+  'pokemon-centre',
+  'brocks-workshop',
+  'bills-cottage',
+  'boutique',
+]);

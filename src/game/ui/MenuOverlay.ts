@@ -272,7 +272,9 @@ export class MenuOverlay {
     const current = controls.indexOf(document.activeElement as HTMLElement);
     const panes: HTMLElement[] = [];
     const rects = controls.map((control) => {
-      const pane = scrollingAncestor(control, this.root);
+      // The squares of a pack and its TIDY are one place: beside a list, Down from a
+      // block went to the list's nearer row, and TIDY could be out of reach.
+      const pane = scrollingAncestor(control, this.root) ?? control.closest<HTMLElement>('.pack-window');
       if (pane && !panes.includes(pane)) {
         panes.push(pane);
       }

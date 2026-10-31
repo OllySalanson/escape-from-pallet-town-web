@@ -55,9 +55,10 @@ export function teamConditionLine(team: readonly TeamMember[]): string | null {
   const fainted = team.filter((member) => member.isFainted);
   const hurt = team.filter((member) => !member.isFainted && member.needsTreatment);
   if (team.length > 0 && fainted.length === team.length) {
-    return fainted.length === 1
-      ? `${fainted[0].name} has fainted, so nobody can raid`
-      : `All ${fainted.length} Pokémon have fainted, so nobody can raid`;
+    if (fainted.length === 1) {
+      return `${fainted[0].name} has fainted, so nobody can raid`;
+    }
+    return `${fainted.length === 2 ? 'Both' : `All ${fainted.length}`} Pokémon have fainted, so nobody can raid`;
   }
   // One Pokemon is named rather than counted: "1 Pokémon came home hurt" was
   // the line a newcomer with a lone partner read after every rough raid.
