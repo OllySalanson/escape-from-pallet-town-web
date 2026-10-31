@@ -22,7 +22,7 @@ import type { CharacterDesignId } from '../world/characterDesigns';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'check', 'center'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'check', 'center', 'workshop', 'cottage'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -91,6 +91,24 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       'I can heal anyone hurt or fainted. The time it takes comes off your next raid’s clock.',
       'A status like PAR or PSN stays on until it is treated, so do come and see me.',
       'Your boxes and everything you have banked are on BILL’S PC, over by the wall.',
+    ],
+  },
+  workshop: {
+    speaker: 'brock',
+    name: 'Brock',
+    lines: [
+      'I build things into this base, and they stay built.',
+      'Every bay with chalk in it is something I can put there.',
+      'Walk up to the chalk and ask. I take materials from raids, nothing else.',
+    ],
+  },
+  cottage: {
+    speaker: 'bill',
+    name: 'Bill',
+    lines: [
+      'Ah, a visitor! Everything on these shelves came off my boat.',
+      'Walk up to anything and ask, and I will name my price.',
+      'Under a sheet is what I keep back until I know you better.',
     ],
   },
 };

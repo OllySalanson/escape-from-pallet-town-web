@@ -52,6 +52,14 @@ describe('Millbrook, where a new game lands', () => {
     expect(onStreet).toEqual([]);
   });
 
+  it('has nobody walking on the pond: the jetty\u2019s right-hand plank stops a row short', () => {
+    const map = getWorldMap('greystone-vale');
+    expect(map.collision[138 + 1][109]).toBe(true);
+    expect(map.collision[138][109]).toBe(false);
+    const wick = file.people?.find((person) => person.name === 'Old Wick');
+    expect(map.collision[128 + (wick?.y ?? 0)][64 + (wick?.x ?? 0)]).toBe(false);
+  });
+
   it('opens doors: every building a player is told about has somebody or something inside', () => {
     const areas = file.areas ?? [];
     expect(areas.map((area) => area.name)).toEqual(

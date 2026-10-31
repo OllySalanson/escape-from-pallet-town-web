@@ -28,6 +28,12 @@ export interface ChoicePromptOptions {
    * on the panel's bottom line. One row of every option unless it says.
    */
   readonly columns?: number;
+  /**
+   * How long the answers take no click after they appear. For a question whose
+   * YES cannot be taken back: it is drawn under the pointer that clicked the last
+   * line away, and the second half of a double-click would answer it.
+   */
+  readonly clickArmingMs?: number;
   readonly onChoose: (index: number) => void;
 }
 
@@ -49,6 +55,8 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     const padding = options.padding ?? DEFAULT_PADDING;
     this.onChoose = options.onChoose;
     this.selectedIndex = options.selected ?? 0;
+    const clicksFrom = options.clickArmingMs ? scene.time.now + options.clickArmingMs : 0;
+    const armed = (): boolean => clicksFrom === 0 || scene.time.now >= clicksFrom;
 
     const frame = scene.add.graphics();
     drawPixelWindow(
@@ -94,8 +102,15 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
       text
         .setScrollFactor(0)
         .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => this.select(index))
+        .on('pointerover', () => {
+          if (armed()) {
+            this.select(index);
+          }
+        })
         .on('pointerdown', () => {
+          if (!armed()) {
+            return;
+          }
           this.select(index);
           this.confirm();
         });

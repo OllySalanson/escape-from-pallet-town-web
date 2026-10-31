@@ -102,6 +102,25 @@ export interface HunterRival {
   readonly getaway: string;
   /** What they say when their last Pokemon faints. */
   readonly defeat: string;
+  /** What they say on the far floor of the Raid Arena, where they wait for a bout for show (`base/arenaBouts.ts`). */
+  readonly hall: {
+    /** Before there has been a raid to talk about. */
+    readonly first: string;
+    /** About a raid that was lost. */
+    readonly afterLoss: string;
+    /** About a raid that got out. */
+    readonly afterOut: string;
+    /** What they ask, in their own words, before the box asks YES or NOT NOW. */
+    readonly offer: string;
+    /** To a NOT NOW. */
+    readonly later: string;
+    /** Their last Pokemon fainting, in a bout. */
+    readonly beaten: string;
+    /** Back on the floor, having won. */
+    readonly gloat: string;
+    /** Back on the floor, having lost. */
+    readonly sulk: string;
+  };
 }
 
 export type HunterRivalId = 'blue' | 'misty' | 'lt-surge' | 'koga' | 'sabrina';
@@ -122,6 +141,16 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     caught: ['BLUE: "Whatever you found, loser, it\'s mine!"', 'BLUE: "Hand it over. Smell ya later!"'],
     getaway: 'BLUE: "Run, then! I\'ll catch you before the clock does!"',
     defeat: 'What?! I was just warming up... Smell ya later!',
+    hall: {
+      first: 'BLUE: "First raid coming up? You\'ll be seeing me, loser."',
+      afterLoss: 'BLUE: "Heard you went down out there. Can\'t say I\'m surprised."',
+      afterOut: 'BLUE: "So you got out. That\'s luck, and luck runs out."',
+      offer: 'BLUE: "A bout, then? No stakes. Just you losing in front of people."',
+      later: 'BLUE: "Scared? Smart. Smell ya later."',
+      beaten: 'What?! I was only warming up, and they all saw it...',
+      gloat: 'BLUE: "And that\'s with nothing riding on it. Smell ya later!"',
+      sulk: 'BLUE: "That doesn\'t count. Wait till there\'s a clock on it."',
+    },
   },
   {
     id: 'misty',
@@ -133,6 +162,16 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     caught: ['MISTY: "Got you! Whatever\'s in that pack is mine now."', 'MISTY: "My policy is an all-out offensive!"'],
     getaway: 'MISTY: "Ugh! Get back here, you little shrimp!"',
     defeat: 'Wow, you\'re too much! ...Fine. Go on, get out of here.',
+    hall: {
+      first: 'MISTY: "So you\'re the new one. I\'ll be after you out there."',
+      afterLoss: 'MISTY: "You lost the lot, I heard. Honestly, what a shrimp."',
+      afterOut: 'MISTY: "You got out? Don\'t get cocky. I wasn\'t even trying."',
+      offer: 'MISTY: "Fight me, right here! All-out offensive, no stakes!"',
+      later: 'MISTY: "Ugh! Fine. Ignore me, see if I care."',
+      beaten: 'Wow, you\'re too much! ...In front of everybody, too.',
+      gloat: 'MISTY: "Ha! That\'s my policy for you. Next!"',
+      sulk: 'MISTY: "Ugh! You just got lucky. Do NOT tell anyone."',
+    },
   },
   {
     id: 'lt-surge',
@@ -144,6 +183,16 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     caught: ['LT. SURGE: "Caught you red-handed, kid! That loot\'s mine!"', 'LT. SURGE: "You won\'t live long in combat!"'],
     getaway: 'LT. SURGE: "Tactical retreat, huh? Smart move, soldier!"',
     defeat: 'Whoa! You\'re the real deal, kid! Dismissed!',
+    hall: {
+      first: 'LT. SURGE: "New recruit, huh? I\'ll be out there, kid."',
+      afterLoss: 'LT. SURGE: "Lost your whole squad, kid? That\'s combat."',
+      afterOut: 'LT. SURGE: "Made it out alive, huh? Not bad, soldier."',
+      offer: 'LT. SURGE: "Hey, kid! Live-fire drill, no casualties. You in?"',
+      later: 'LT. SURGE: "Fall back, then! Dismissed!"',
+      beaten: 'Whoa! You\'re the real deal, kid! Good drill!',
+      gloat: 'LT. SURGE: "You won\'t live long in combat, kid! Drill again!"',
+      sulk: 'LT. SURGE: "Ha! You\'ve got guts, soldier. Don\'t let it show."',
+    },
   },
   {
     id: 'koga',
@@ -155,6 +204,16 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     caught: ['KOGA: "Fwahahaha! All you have gathered, I shall take."', 'KOGA: "Despair to the creeping horror of poison!"'],
     getaway: 'KOGA: "Hmph. You slip away like smoke... for now."',
     defeat: 'Humph! You have proven your worth. Go, before I change my mind.',
+    hall: {
+      first: 'KOGA: "Fwahahaha! A new face. I shall remember it."',
+      afterLoss: 'KOGA: "Fwahahaha! It went badly for you. Poison is patient."',
+      afterOut: 'KOGA: "You left by the way you meant to. This time."',
+      offer: 'KOGA: "Shall we spar? Nothing is at stake but your pride."',
+      later: 'KOGA: "Hmph. The wise ninja also knows when to wait."',
+      beaten: 'Humph! You have proven your worth. The crowd saw it.',
+      gloat: 'KOGA: "Fwahahaha! You have much to learn of poison."',
+      sulk: 'KOGA: "Humph. In the field, I would not have stood so close."',
+    },
   },
   {
     id: 'sabrina',
@@ -166,6 +225,16 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     caught: ['SABRINA: "I saw what you found. It was always mine."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
     getaway: 'SABRINA: "I did not foresee that. How interesting."',
     defeat: 'This loss shocks me... Yet somehow I saw it coming.',
+    hall: {
+      first: 'SABRINA: "I knew you would come. I have seen your first raid."',
+      afterLoss: 'SABRINA: "You fell. I saw it. You will walk back to that place."',
+      afterOut: 'SABRINA: "You got out. I had seen that as well."',
+      offer: 'SABRINA: "A bout, for nothing. I already know how it ends."',
+      later: 'SABRINA: "You were always going to say that."',
+      beaten: 'This loss shocks me... Yet somehow I saw it coming.',
+      gloat: 'SABRINA: "As I foresaw. Next time, try surprising me."',
+      sulk: 'SABRINA: "How interesting. I shall look again."',
+    },
   },
 ];
 

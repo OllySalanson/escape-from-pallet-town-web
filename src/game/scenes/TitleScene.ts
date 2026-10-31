@@ -851,8 +851,10 @@ export class TitleScene extends Phaser.Scene {
     // (`names/`): at NEW GAME always, and at CONTINUE by anybody who has none
     // yet. Where there is nothing to check names against - a test that did not
     // ask for one - nobody is asked here, and THE BOLTHOLE asks instead.
+    // A browser that cannot keep a game is told so before it is asked anything,
+    // or the name was claimed for good for a game that never started.
     const service = nameService();
-    if (service && (mode === 'new' || (mode === 'continue' && loadPlayerName() === null))) {
+    if (service && ((mode === 'new' && this.saveManager.canSave()) || (mode === 'continue' && loadPlayerName() === null))) {
       this.askName(mode, service);
       return;
     }

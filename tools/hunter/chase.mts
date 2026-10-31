@@ -17,13 +17,10 @@
  * the table in the deep dive is its summary.
  */
 import { getWorldMap } from '../../src/game/worldMap';
-import { districtsForMap } from '../../src/game/world/districts';
-import { insertionsOn } from '../../src/game/run/runGeneration';
-import { extractionPointsOn } from '../../src/game/world/extractionPoints';
+import { huntingGroundsOn } from '../../src/game/world/mapHuntingGrounds';
 import {
   HunterPack,
   createHunterPack,
-  huntingGrounds,
   inGround,
   isTouching,
   type PackWorld,
@@ -48,19 +45,7 @@ const random = (): number => {
 const map = getWorldMap(MAP);
 const { width, height } = map;
 const outdoors = map.areas?.find((area) => area.kind === 'outdoors')?.rect ?? { x: 0, y: 0, width, height };
-const keepClear = [
-  ...insertionsOn(MAP).map((insertion) => insertion.position),
-  ...extractionPointsOn(MAP).map((point) => point.position),
-];
-const grounds = huntingGrounds({
-  width,
-  height,
-  collision: map.collision,
-  links: map.links,
-  outdoors,
-  districts: districtsForMap(MAP).map((district) => ({ id: district.id, name: district.name, areas: district.areas })),
-  keepClear,
-});
+const grounds = huntingGroundsOn(map);
 console.log(`${MAP}: ${grounds.length} patches`);
 for (const ground of grounds) {
   console.log(`  ${ground.name.padEnd(20)} post ${ground.post.x},${ground.post.y}  loop of ${ground.route.length}`);

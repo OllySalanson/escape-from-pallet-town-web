@@ -353,13 +353,13 @@ describe('the result screen on a defeat', () => {
     expect(root.html).toContain('The secure slot brought Bulbasaur home.');
     // A raid ends on the harbour's quay, beside Bill, not inside Oak's Lab, so
     // the one way out says where it puts the player down.
-    expect(root.html).toContain('data-continue>Back to the harbour</button>');
+    expect(root.html).toContain('data-continue>Back to the Arena</button>');
     expect(root.html).not.toContain('Back to the lab');
 
     advance(400);
     press('Enter');
 
-    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid', room: 'raid-arena' });
+    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid', room: 'raid-arena', raidMood: 'groan' });
   });
 });
 
@@ -572,7 +572,7 @@ describe('moving the defeat sequence on', () => {
     advance(1_000);
     press(' ');
 
-    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid', room: 'raid-arena' });
+    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid', room: 'raid-arena', raidMood: 'groan' });
   });
 });
 

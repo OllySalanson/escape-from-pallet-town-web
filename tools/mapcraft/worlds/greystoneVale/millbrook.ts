@@ -104,6 +104,11 @@ export function millbrook(): MapcraftResult {
   p.road([[30, 8], [30, 25]], { letter: ',' }); // ...and the north street to the square
   p.road([[38, 30], [57, 30]], { letter: ',' }); // the east street...
   p.road([[58, 30], [62, 30]]); // ...and the road on to The Crossing
+  // Where a street wears out into road it does so a tile at a time: a rule across a
+  // road is where somebody stopped drawing.
+  p.put(30, 8, 'd').put(31, 7, ',').put(31, 6, ',');
+  p.put(6, 30, 'd').put(7, 30, 'd').put(5, 31, ',');
+  p.put(58, 30, ',').put(59, 30, ',').put(57, 31, 'd');
   p.road([[10, 30], [10, 17], [29, 17]], { letter: ',' }); // Old Row, behind the cottages
   p.road([[32, 22], [52, 22], [52, 29]], { letter: ',' }); // Mill Lane, past the mill
   p.road([[34, 37], [34, 42], [14, 42]], { letter: ',' }); // the south street, to the purple house...
@@ -314,7 +319,7 @@ export function millbrook(): MapcraftResult {
         { x: 36, y: 36, name: 'Stallholder', look: 'straw-hat', facing: 'up', lines: ['Apples from the orchard, down the lane past the brook.', 'Or pick them yourself. Everybody else does.'], beat: { everyMs: 3700, roam: [[-1, 0]], glances: ['left', 'right'] }, calls: ['Lovely carrots!', 'Turnips! Get your turnips!'] },
         // -- The mill and the lane -----------------------------------------------
         { x: 47, y: 21, name: 'Miller', look: 'worker', facing: 'down', lines: ['The pond turns the wheel all year. It would be nice if it paid as well.', 'The brook runs right through the village and comes out at Tom’s pool.'], beat: { everyMs: 2700, roam: [[-1, 0]], glances: ['left', 'up'] }, calls: ['Who left the sluice open?', 'Sacks for the Mart!'] },
-        { x: 45, y: 11, name: 'Old Wick', look: 'fisherman', facing: 'down', lines: ['Nothing in this pond but Magikarp and regret.', 'Mind, if you have a rod, press at the water. It costs you nothing but time.'], calls: ['Shh. They can hear you.', 'Nearly had that one.'] },
+        { x: 45, y: 10, name: 'Old Wick', look: 'fisherman', facing: 'down', lines: ['Nothing in this pond but Magikarp and regret.', 'Mind, if you have a rod, press at the water. It costs you nothing but time.'], calls: ['Shh. They can hear you.', 'Nearly had that one.'] },
         { x: 54, y: 20, name: 'Carter', look: 'heavy-man', facing: 'left', lines: ['I lost my purse somewhere round this yard. Do not tell the board.', 'It told everyone.'], beat: { everyMs: 3300, glances: ['up', 'down'] }, calls: ['Anyone seen my purse?'] },
         // -- Old Row ---------------------------------------------------------------
         { x: 11, y: 15, name: 'Grandpa Ott', look: 'old-man', facing: 'right', lines: ['This is the oldest cottage in the vale.', 'When I was a boy there was snow on the peaks all summer.'], beat: { everyMs: 4100, roam: [[0, -1]], glances: ['down'] }, calls: ['Snow! All summer!', 'In my day...'] },

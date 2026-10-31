@@ -121,9 +121,10 @@ body {
 #screens:has(> .arena-panel:only-child) {
   box-shadow: none;
 }
-/* The feedback panel is a column over a game the player is meant to still see,
-   so the frame is not drawn round the whole layer for it alone. */
-#screens:has(> .feedback-panel:only-child) {
+/* A side panel is a column over a game the player is meant to still see, so the
+   frame is not drawn round the whole layer for one, nor for two of them. A
+   sheet is the whole screen and has it, as any other screen does. */
+#screens:not(:has(> :not(.side-panel[data-layout='side']))) {
   box-shadow: none;
 }
 
@@ -1073,6 +1074,24 @@ button {
     transform: none;
     border-left: 2px solid #171717;
     border-bottom: 0;
+  }
+}
+/* A window with no room on any edge (640x480): over a menu the tab stands in the
+   corner of the help bar, the one place on a menu screen with no words in it
+   (a right-hand strip here covered Squirtle's note and the name screen's lead). */
+@media (max-width: 671px) and (max-height: 511px) and (orientation: landscape) {
+  body:has(#screens > .pixel-ui) .feedback-tab {
+    top: auto;
+    bottom: 0;
+    width: 96px;
+    height: 24px;
+    line-height: 20px;
+    writing-mode: horizontal-tb;
+    transform: none;
+    border-left: 2px solid #171717;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: none;
   }
 }
 
@@ -2522,7 +2541,9 @@ button {
    on the left, the container on the right, cut to the pack's own width - six
    squares of sixteen pixels and its own frame. */
 :where(.pixel-ui) .loadout-layout {
-  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 112);
+  /* Wide enough for the biggest pack's six squares beside the pane's scrollbar,
+     and for a pack's name on one line with WEAR after it. */
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 132);
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -2573,13 +2594,34 @@ button {
 :where(.pixel-ui) .secure-layout {
   grid-template-rows: minmax(0, 1fr) auto;
 }
+/* The locker's list is about squares and its column is narrow: a bar beside a
+   short name and under a long one made rows of two heights, and the health is
+   on the line below in figures anyway. */
+:where(.pixel-ui) .secure-group .px-row-line > .px-hp {
+  display: none;
+}
 
 /* --- Choosing a starter: first run, and the lobby's swap ----------------- */
 :where(.pixel-ui) .starter-shell {
   height: 100%;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* What is being said stands together in the middle of the room there is, the
+     bar at the foot; on the smallest stage the two empty rows come to nothing. */
+  grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr) auto;
+  row-gap: 0;
+}
+:where(.pixel-ui) .starter-shell > :nth-child(1) {
+  grid-row: 2;
+}
+:where(.pixel-ui) .starter-shell > :nth-child(2) {
+  grid-row: 3;
+  margin-top: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .starter-shell > :nth-child(3) {
+  grid-row: 5;
+  margin-top: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .starter-brief {
+  justify-self: center;
   color: var(--bar-text);
   padding: 0 calc(var(--u) * 2);
 }
@@ -3877,20 +3919,31 @@ button {
   color: var(--ink);
 }
 
-/* --- The feedback panel (`feedback/feedbackPanel.ts`) --------------------
+/* --- Side panels (`ui/sidePanel.ts`) ---------------------------------------
    A column down the right of the window over the paused game, the shape of the
    review tool the owner reads his boards in; the whole screen when the window
-   is too narrow for a column beside anything (`FeedbackScene.fitToWindow`). */
-.menu-overlay.pixel-ui.feedback-panel {
+   is too narrow for a column beside anything (`fitSidePanel`). */
+.menu-overlay.pixel-ui.side-panel {
   inset: 0 0 0 auto;
   width: calc(var(--u) * 232);
   box-shadow: calc(var(--u) * -1) 0 0 var(--frame);
 }
-.menu-overlay.pixel-ui.feedback-panel[data-layout='sheet'] {
+.menu-overlay.pixel-ui.side-panel[data-layout='sheet'] {
   inset: 0;
   width: auto;
   box-shadow: none;
 }
+/* The pack in a column: what is carried over the squares it is carried in, and
+   only the list gives up room. */
+:where(.pixel-ui[data-layout='side']) .raid-bag-layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, auto) auto;
+  align-content: start;
+}
+:where(.pixel-ui[data-layout='side']) .pack-window > .px-grid {
+  margin-inline: auto;
+}
+/* --- The feedback panel (`feedback/feedbackPanel.ts`) ----------------------- */
 :where(.pixel-ui) .feedback-body {
   grid-template-rows: auto minmax(0, 1fr) auto;
   align-content: stretch;
@@ -3950,8 +4003,12 @@ button {
 }
 :where(.pixel-ui) .feedback-attached {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, auto) minmax(0, 1fr);
   min-height: 0;
+}
+/* The smallest stage cannot hold the message and its three rows whole. */
+:where(.pixel-ui[data-room='tight']) textarea.feedback-text.px-field {
+  height: calc(var(--u) * 36);
 }
 .pixel-ui .feedback-thumb {
   width: calc(var(--u) * 50);

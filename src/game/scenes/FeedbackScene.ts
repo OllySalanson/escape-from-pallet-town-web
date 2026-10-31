@@ -30,6 +30,7 @@ import { VoiceTape, tapeIsFull, tapeIsLow, tapeTime } from '../feedback/voiceTap
 import { canTryTheCheckAgain, outcomeAfterCheck, type FeedbackOutcome } from '../feedback/feedbackWords';
 import { signInAsPlayer } from '../maker/playerSignIn';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { fitSidePanel } from '../ui/sidePanel';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { PIXEL_STATUS_SELECTOR, takeDownPixelStatus } from '../ui/pixelUi';
 
@@ -48,9 +49,6 @@ export interface FeedbackSceneData {
 }
 
 type Phase = 'writing' | 'scrapping' | 'sending' | 'done';
-
-/** Below this many game pixels across, the panel is the whole screen rather than a column. */
-const SIDE_PANEL_MIN_LAYER_WIDTH = 440;
 
 /**
  * The feedback panel: a column down the right of the window, over a game that
@@ -104,7 +102,7 @@ export class FeedbackScene extends Phaser.Scene {
     this.playback = null;
     this.playbackUrls = [];
     this.talkPending = false;
-    this.overlay = new MenuOverlay(this, 'feedback-panel pixel-ui', (event) => this.onKey(event));
+    this.overlay = new MenuOverlay(this, 'feedback-panel side-panel pixel-ui', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Send feedback');
     this.fitToWindow();
     window.addEventListener('resize', this.onResize);
@@ -143,26 +141,8 @@ export class FeedbackScene extends Phaser.Scene {
     };
   }
 
-  /**
-   * A column down the right where there is room beside it, the whole screen
-   * where there is not - and never wider than the window. On a phone the menu
-   * layer is wider than the screen (it is never narrower than 320 game pixels
-   * at 2x), and a panel laid out against the layer put SEND off the edge.
-   */
   private fitToWindow(): void {
-    const root = this.overlay.root;
-    const layer = root.parentElement;
-    const unit = Number.parseFloat(layer?.style.getPropertyValue('--px') ?? '') || 2;
-    const box = layer?.getBoundingClientRect();
-    const across = (box?.width ?? 0) / unit;
-    const visible = Math.floor((window.innerWidth - (box?.left ?? 0)) / unit);
-    if (box && visible < across) {
-      root.dataset.layout = 'sheet';
-      root.style.width = `${visible * unit}px`;
-      return;
-    }
-    root.dataset.layout = across >= SIDE_PANEL_MIN_LAYER_WIDTH ? 'side' : 'sheet';
-    root.style.width = '';
+    fitSidePanel(this.overlay.root);
   }
 
   private renderWriting(): void {

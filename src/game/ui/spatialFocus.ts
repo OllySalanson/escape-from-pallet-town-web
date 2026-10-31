@@ -59,6 +59,13 @@ export function askedDealIndex(key: string, at: number, count: number): number {
   return Math.max(0, Math.min(count - 1, at + step));
 }
 
+/**
+ * How long a question that spends something for good takes no click after it
+ * appears: it is drawn under the pointer that clicked what came before it, and
+ * the second half of a double-click would answer it.
+ */
+export const RELEASE_ARMING_MS = 500;
+
 /** How far apart two spans are along one axis; zero when they overlap. */
 const gap = (aStart: number, aEnd: number, bStart: number, bEnd: number): number =>
   Math.max(0, bStart - aEnd, aStart - bEnd);

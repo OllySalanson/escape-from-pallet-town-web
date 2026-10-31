@@ -214,6 +214,61 @@ export const SOUND_EFFECTS = {
     // lower, so it reads as a bigger ship further away.
     tones: [saw(82, 0.5, 0.05), saw(123, 0.5, 0.03)],
   },
+  coinToss: {
+    channel: 'world',
+    moment: 'A coin flicked over the rail of the Raid Arena',
+    tones: [sq(1046, 0.04, 0.05), sq(1318, 0.05, 0.04, 0.03)],
+    yields: true,
+  },
+  coinPlink: {
+    channel: 'world',
+    moment: 'A very long way down, the coin lands. It is a small sound and not a question',
+    tones: [tri(1480, 0.07, 0.05), tri(1175, 0.1, 0.05, 0.13)],
+  },
+  pitGives: {
+    channel: 'world',
+    moment: 'Something comes up out of the pit of the Raid Arena, and it is not a thing that gets explained',
+    // The ground first, then air going past whatever it is.
+    tones: [sweep(tri(82, 0.3, 0.1), 110), sweep(noise(500, 0.45, 0.06, 0.08), 2600)],
+  },
+  crowdRoar: {
+    channel: 'world',
+    moment: 'The Raid Arena on its feet for a big haul, or a lap of honour: sounded a few times over, it swells',
+    // Two bands of filtered noise rising together, with no pitch to them at all:
+    // a lot of people, a long way up, rather than one thing happening.
+    tones: [sweep(noise(700, 0.52, 0.06), 1100), sweep(noise(1500, 0.5, 0.05, 0.03), 2200)],
+    yields: true,
+  },
+  crowdCheer: {
+    channel: 'world',
+    moment: "The Raid Arena's crowd pleased: a good raid home, a wave back, a runner coming past",
+    // The roar's top band alone, falling away: fewer people, less sure of it.
+    tones: [sweep(noise(1900, 0.42, 0.05), 1300)],
+    yields: true,
+  },
+  crowdClap: {
+    channel: 'world',
+    moment: "The Raid Arena's crowd being polite about a thin raid, and the end of any cheer",
+    // Hands, unevenly: short ticks of high noise that are nearly but not quite in time.
+    tones: [
+      noise(3400, 0.03, 0.05),
+      noise(2900, 0.03, 0.05, 0.08),
+      noise(3700, 0.03, 0.05, 0.13),
+      noise(3100, 0.03, 0.05, 0.22),
+      noise(3500, 0.03, 0.05, 0.29),
+      noise(2800, 0.03, 0.05, 0.38),
+      noise(3300, 0.03, 0.05, 0.43),
+    ],
+    yields: true,
+  },
+  crowdGroan: {
+    channel: 'world',
+    moment: 'A raid lost: the whole of the Raid Arena lets its breath out',
+    // Low and falling and the dullest noise there is, with a reed of sawtooth
+    // under it so that it is a voice rather than the wind.
+    tones: [sweep(noise(520, 0.54, 0.055), 260), sweep(saw(130, 0.5, 0.022), 90)],
+    yields: true,
+  },
   ledgeHop: {
     channel: 'world',
     moment: 'Going over a ledge - the one route on a map the hunter cannot follow',
@@ -351,6 +406,12 @@ export const SOUND_EFFECTS = {
     channel: 'world',
     moment: 'Landing in a raid out of the cloud',
     tones: [noise(320, 0.1, 0.09), sweep(tri(130, 0.14, 0.08), 82)],
+  },
+  landClean: {
+    channel: 'world',
+    moment: 'A landing stuck in a raid: the ring shut with the key pressed',
+    // The thud without its slump, and a short bright note on top of it.
+    tones: [noise(420, 0.07, 0.08), sq(523, 0.07, 0.04, 0.04), sq(784, 0.12, 0.04, 0.1)],
   },
   bikeBell: {
     channel: 'world',
@@ -566,6 +627,13 @@ export const SOUND_EFFECTS = {
   },
 
   // --- fanfare: the raid keeps score -------------------------------------
+  arenaHorn: {
+    channel: 'fanfare',
+    moment: 'Over the fence of the Raid Arena: the hall answers, with fire all the way round',
+    // A great low horn, one long note, the hall's rather than a ship's: under
+    // the Seagallop's by a tone, with a third at the end of it.
+    tones: [saw(82, 0.55, 0.055), saw(123, 0.55, 0.04), saw(82, 0.3, 0.05, 0.5), saw(104, 0.3, 0.035, 0.5)],
+  },
   shipHorn: {
     channel: 'fanfare',
     moment: 'The Seagallop sounds her horn as a raid comes home',

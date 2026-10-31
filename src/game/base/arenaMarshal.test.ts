@@ -27,4 +27,19 @@ describe("THE RAID ARENA's marshal", () => {
     flow.setItemQuantity('poke-ball', 0);
     expect(marshalLines(heard, flow).join(' ')).toMatch(/Poké Ball/);
   });
+
+  it('counts a run of clean landings, once nothing is wrong and it is worth saying', () => {
+    const game = baseGame();
+    const flow = flowForGame(game);
+    if (flow.party.length === 0) {
+      flow.togglePokemon(game.stash.listPokemon()[0].id);
+    }
+    flow.setItemQuantity('poke-ball', 1);
+    const heard = ['loadout'];
+    const ready = (streak: number): string => marshalLines(heard, flow, streak).join(' ');
+    expect(ready(0)).toMatch(/You look ready/);
+    expect(ready(2)).not.toMatch(/landings/);
+    expect(ready(4)).toMatch(/4 clean landings/);
+    expect(ready(999).length).toBeLessThanOrEqual(80);
+  });
 });

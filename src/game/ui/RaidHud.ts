@@ -140,12 +140,24 @@ export class RaidHud {
    * A chip it would cut through is not drawn at all rather than drawn sticking
    * out either side of it (`▸FIND LO`, `AID 4:55`), and every other chip keeps
    * its own seat, so nothing jumps when the box goes.
+   * @param covered How much of the screen's right a side panel is standing over
+   * (`ui/sidePanel.ts`). The right column moves over to stay beside it, because
+   * the clock and the hunter are what the panel is opened with an eye on.
    */
-  public render(state: RaidHudState, timeMs: number, under: Rect | null = null): void {
-    const stageWidth = this.scene.scale.width;
+  public render(state: RaidHudState, timeMs: number, under: Rect | null = null, covered = 0): void {
+    const stageWidth = this.scene.scale.width - covered;
     this.frames.clear();
     this.covered = [];
     this.under = under;
+
+    const objective = this.placeChip(
+      this.objectiveText,
+      state.objectiveLines,
+      { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+      1,
+      () => ({ x: EDGE_MARGIN, y: EDGE_MARGIN }),
+      true,
+    );
 
     const clockStyle = CLOCK_STYLES[state.clock.tone];
     const clockAlpha = state.clock.pulses
@@ -156,16 +168,12 @@ export class RaidHud {
       [state.clock.label],
       clockStyle,
       clockAlpha,
-      (width) => ({ x: stageWidth - EDGE_MARGIN - width, y: EDGE_MARGIN }),
-    );
-
-    const objective = this.placeChip(
-      this.objectiveText,
-      state.objectiveLines,
-      { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
-      1,
-      () => ({ x: EDGE_MARGIN, y: EDGE_MARGIN }),
-      true,
+      (width) => {
+        const x = stageWidth - EDGE_MARGIN - width;
+        // Beside a panel there may be no room for the two side by side.
+        const clear = objective.x + objective.width + CHIP_GAP <= x;
+        return { x, y: clear ? EDGE_MARGIN : objective.y + objective.height + CHIP_GAP };
+      },
     );
 
     // The left column is where the raid says where you are going, so it is

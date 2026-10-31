@@ -149,10 +149,13 @@ is how every driver reaches a base screen: it reads the scene's own collision
 and its own `doors` list, paths to the doorway and goes in, and inside the room
 (`src/game/base/rooms.ts`) presses the interact key on the door mat, which is
 the keeper's screen. A redrawn base moves the walk with it, which a table of
-tiles copied in here would not. Two keepers have no screen behind the mat: for
-`pokemon-centre` it walks on to BILL'S PC, which is the boxes, and for `oaks-lab`
-it stops on the mat with nothing said (`openFriendRoom` is Oak's question from
-there). `inRoomTalk.mjs` plays all of that talk, and the radio, as a player meets it.
+tiles copied in here would not. Most keepers have no screen behind the mat: for
+`pokemon-centre` it walks on to BILL'S PC, which is the boxes, for `brocks-workshop`
+to the tally on his wall, which is the whole ladder, for `bills-cottage` to his PC,
+which is the whole list, and for `oaks-lab` it stops on the mat with nothing said
+(`openFriendRoom` is Oak's question from there). `inRoomTalk.mjs` plays all of that
+talk, and the radio, as a player meets it; `workshopBill.mjs` plays Brock's chalk
+and Bill's shelves, by keys and by mouse.
 
     await walkIntoBase(page, 'pokemon-centre');   // brocks-workshop | bills-cottage | raid-arena
 
@@ -411,6 +414,16 @@ Enter on, to be taken to its tiles. `--before` only photographs, for a build of
 an older commit; `--attach` drives a browser somebody else started.
 `makerCollisionSheets.mjs <before dir> <after dir> <out dir>` puts each case's
 shots from the two builds into one picture: `docs/screens/maker-collisions/`.
+
+`phrasesPlayed.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH]` plays
+THE HARBOUR's T phrases where a player trips over them: tapped mid-step, a row clicked
+in the great hall, the partner's note beside the bubble, and every door's name from
+its own step with regulars about.
+
+`sidePanels.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH]` plays the
+raid's side panels (`src/game/ui/sidePanel.ts`): the pack, a disc, the move chooser and
+the party by key and mouse, what each leaves in sight, the map's east edge, FEEDBACK over
+the pack, and the clock and a chasing hunter standing still until the panel shuts.
 
 ## The stranger's memory test
 

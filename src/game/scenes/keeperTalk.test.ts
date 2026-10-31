@@ -22,6 +22,7 @@ import { CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
 import { ALL_SPECIES } from '../pokemon/species';
 import { Bag } from '../items';
 import { FIRST_WORDS } from '../hub/firstWords';
+import type { BillGood } from '../hub/billTalk';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RaidProgress, type StorageLike } from '../save/SaveManager';
 import { createStartingStash, type Stash } from '../stash';
 
@@ -94,6 +95,11 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
     oakGives: scene.oakGives,
     readTheBoard: scene.readTheBoard,
     joyOffers: scene.joyOffers,
+    freshGame: scene.freshGame,
+    brockQuotes: scene.brockQuotes,
+    billReadsYou: scene.billReadsYou,
+    billNames: scene.billNames,
+    billStrikes: scene.billStrikes,
   };
   const speak = (id: string, screen: string): void => {
     (scene.speakToKeeper as (this: typeof stand, entered: unknown, screen: string) => void).call(stand, roomNamed(id as never)!, screen);
@@ -267,6 +273,96 @@ describe('Nurse Joy, at her counter', () => {
     joy.speak('pokemon-centre', 'stash');
     expect(joy.asked).toEqual([]);
     expect(joy.said).toEqual(['Your Pokémon are all fit to raid.']);
+  });
+});
+
+describe('Brock, from the mat', () => {
+  const HEARD: Partial<RaidProgress> = { firstWordsHeard: ['workshop'] };
+  const stocked = (progress: Partial<RaidProgress> = HEARD): SaveManager =>
+    saved(progress, (stash) => stash.addItem('linen-roll', 4));
+
+  it('says what his chalk is once, then quotes what the vault can pay for: nothing opens', () => {
+    const manager = stocked({});
+    const brock = room(manager, [false]);
+    brock.speak('brocks-workshop', 'workshop');
+    expect(brock.said.slice(0, FIRST_WORDS.workshop.lines.length)).toEqual(FIRST_WORDS.workshop.lines);
+    expect(brock.said.join(' ')).toContain('Healing machine I.');
+    expect(brock.asked).toHaveLength(1);
+    expect(brock.opened).toEqual([]);
+
+    const again = room(manager, [false]);
+    again.speak('brocks-workshop', 'workshop');
+    expect(again.said).not.toContain(FIRST_WORDS.workshop.lines[0]);
+  });
+
+  it('spends nothing on NOT NOW', () => {
+    const manager = stocked();
+    const brock = room(manager, [false]);
+    brock.speak('brocks-workshop', 'workshop');
+    const after = manager.load()!;
+    expect(after.raidProgress.workshopUpgrades).toEqual([]);
+    expect(after.stash.itemCount('linen-roll')).toBe(4);
+    expect(brock.went).toEqual([]);
+  });
+
+  it('builds on YES, in one write, and draws the room again to say so where he stands', () => {
+    const manager = stocked();
+    const brock = room(manager, [true]);
+    brock.speak('brocks-workshop', 'workshop');
+    const after = manager.load()!;
+    expect(after.raidProgress.workshopUpgrades).toEqual(['recovery-bay-1']);
+    expect(after.stash.itemCount('linen-roll')).toBe(0);
+    expect(brock.went[0].said?.[0]).toBe('Healing machine I is in. It stands for good.');
+  });
+});
+
+describe('Bill, at his cottage', () => {
+  const HEARD: Partial<RaidProgress> = { firstWordsHeard: ['cottage'], traderMoneySpent: 5200 };
+  const names = (stand: ReturnType<typeof room>['stand'], good: BillGood): void => {
+    (BaseScene.prototype as unknown as { billNames: (this: unknown, good: BillGood, about: unknown) => void }).billNames.call(stand, good, []);
+  };
+
+  it('reads the player from the mat and offers the list, which is a screen only on YES', () => {
+    const bill = room(saved({ firstWordsHeard: ['cottage'] }), [false]);
+    bill.speak('bills-cottage', 'trader');
+    expect(bill.said[0]).toContain('I do not know you');
+    expect(bill.opened).toEqual([]);
+
+    const yes = room(saved({ firstWordsHeard: ['cottage'] }), [true]);
+    yes.speak('bills-cottage', 'trader');
+    expect(yes.opened[0]).toMatchObject({ view: 'trader', from: 'bills-cottage' });
+  });
+
+  it('sells a Potion on YES with no fade: he can sell another at once', () => {
+    const manager = saved(HEARD, (stash) => stash.addItem('money', 500));
+    const bill = room(manager, [true]);
+    names(bill.stand, { kind: 'stock', itemId: 'potion' });
+    const after = manager.load()!;
+    expect(after.stash.itemCount('money')).toBe(380);
+    expect(after.traderRationUsed).toBe(1);
+    expect(bill.went).toEqual([]);
+    expect(bill.said.at(-1)).toContain('in your vault');
+  });
+
+  it('strikes a barter on YES, and draws the room again with the thing off the shelf', () => {
+    const manager = saved(HEARD, (stash) => {
+      stash.addItem('parts-crate', 2);
+      stash.addItem('cable-coil', 1);
+    });
+    const bill = room(manager, [true]);
+    names(bill.stand, { kind: 'barter', barterId: 'barter-quick-claw' });
+    const after = manager.load()!;
+    expect(after.stash.itemCount('quick-claw')).toBe(1);
+    expect(after.raidProgress.traderBarters).toEqual(['barter-quick-claw']);
+    expect(bill.went).toHaveLength(1);
+  });
+
+  it('spends nothing on NOT NOW', () => {
+    const manager = saved(HEARD, (stash) => stash.addItem('money', 500));
+    const bill = room(manager, [false]);
+    names(bill.stand, { kind: 'berth' });
+    expect(manager.load()!.stash.itemCount('money')).toBe(500);
+    expect(manager.load()!.traderBerthPaid).toBe(false);
   });
 });
 

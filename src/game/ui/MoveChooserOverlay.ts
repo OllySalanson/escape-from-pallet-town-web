@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import { MenuOverlay } from './MenuOverlay';
 import { type MoveChoice, type MoveChooserView, moveChooserMarkup } from './moveChooser';
+import { fitSidePanel } from './sidePanel';
 
 /**
  * Presses that reach the chooser this soon after it opens are ignored. It opens
@@ -44,7 +45,7 @@ export function openMoveChooser(
     chosen = index;
     render(index === null ? `[data-forget="${was ?? 0}"]` : '[data-forget-confirm]');
   };
-  const overlay: MenuOverlay = new MenuOverlay(scene, 'move-chooser-menu pixel-ui', (event) => {
+  const overlay: MenuOverlay = new MenuOverlay(scene, `move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui`, (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       if (chosen !== null) {
@@ -60,6 +61,9 @@ export function openMoveChooser(
   });
   overlay.pointerRule = 'previews';
   overlay.root.setAttribute('aria-label', 'Learn a move');
+  if (view.beside) {
+    overlay.onMeasure = () => fitSidePanel(overlay.root);
+  }
   overlay.root.addEventListener('click', (event) => {
     const target = (event.target as Element).closest<HTMLElement>('button');
     if (!target) {

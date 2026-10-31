@@ -28,6 +28,10 @@ import type { HomePieceName } from './generated/homePieces';
 import type { TileSource } from '../world/tileset/catalogue';
 import type { BasePieceName } from './generated/basePieces';
 import type { BaseKeeper, BaseScreen } from './doors';
+import { bayArea } from './chalk';
+import { GOOD_LIFT, GOODS_ON_SHELVES, goodIcon, goodName, SHELF_RUNS, SHELF_TILES, shelfState } from './billGoods';
+import type { BillGood } from '../hub/billTalk';
+import { traderCounterFor } from '../save/SaveManager';
 import { cabinetOddities, type Oddity } from '../hub/traderCabinet';
 import { ERRANDS, errandRecord, errandThing } from '../hub/errands';
 import { TILE_SIZE } from '../worldMap';
@@ -87,9 +91,9 @@ import {
  * copies, and the shelves in Bill's cabinet.
  *
  * **The keeper is one key from the door.** A player re-kits many times an
- * hour, so standing on the door mat and pressing the interact key opens the
- * keeper's screen exactly as speaking to them across the room does - the room
- * is there to be looked at, never to be crossed. The mat is also the way out:
+ * hour, so standing on the door mat and pressing the interact key starts the
+ * keeper talking exactly as speaking to them across the room does - nothing has
+ * to be crossed to hear the price of a heal or the next thing Brock would build. The mat is also the way out:
  * pushing down off it leaves, which is how every FireRed room is left, and the
  * room's hint line says both while the player is standing on it.
  *
@@ -402,6 +406,13 @@ export interface RoomThing {
   /** The rung of Brock's ladder it shows, if it shows one. */
   readonly upgradeId?: string;
   /**
+   * The rung this bay is chalked out for, while it is still chalk: faced and
+   * asked, Brock quotes it (`hub/workshopTalk.ts`).
+   */
+  readonly chalked?: string;
+  /** What this is on Bill's shelves: faced and asked, he names the deal (`hub/billTalk.ts`). */
+  readonly good?: BillGood;
+  /**
    * Which unit of Bill's cabinet it is, if it is one: facing it and asking is
    * how the shelves are looked along, one thing at a time (`cabinet.ts`).
    */
@@ -411,10 +422,11 @@ export interface RoomThing {
   /**
    * A screen it opens when faced and spoken to, in place of saying its line:
    * the wall map is read on a screen, drawn as big as the window allows, the
-   * console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`), and the
-   * Center's PC opens the boxes.
+   * console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`), the
+   * Center's PC opens the boxes, and Brock's tally and Bill's PC open the whole
+   * ladder and the whole list, for reading them side by side and counting.
    */
-  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | ArenaStationId;
+  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | 'ladder' | 'list' | ArenaStationId;
   /**
    * It is read in the dialogue box, a notice a line, with what its notices are
    * worked out when it is read: Oak's cork board (`base/labBoard.ts`).
@@ -443,10 +455,14 @@ export interface RoomThing {
  * bare for it, as the wall map is in Oak's Lab: the badge case in the front
  * room of the player's house, and the pennants upstairs.
  */
-export interface RoomPoster {
-  readonly kind: 'badge-case' | 'pennants' | 'cork-board';
-  readonly area: Rect;
-}
+export type RoomPoster =
+  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf'; readonly area: Rect }
+  | {
+      /** A bay Brock has chalked out (`chalk.ts`), and the rung it is for. */
+      readonly kind: 'chalk-bay';
+      readonly area: Rect;
+      readonly upgradeId: string;
+    };
 
 /**
  * A little sprite set on the room rather than into it - the Poké Balls on
@@ -503,8 +519,12 @@ export interface RoomStair {
  */
 export interface RoomIcon {
   readonly itemId: string;
+  /** Which icon, where it is not the item's own: a berth on Bill's shelves is no item. */
+  readonly icon?: string;
   readonly x: number;
   readonly y: number;
+  /** The row of the furniture it stands on, when it stands up over the row behind it. */
+  readonly standsOnRow?: number;
 }
 
 /**
@@ -647,6 +667,15 @@ export const BOARD_TILES: readonly GridPosition[] = Array.from(
 
 /** The PC beside Joy's counter: its foot is the wall a player at (11, 3) faces. */
 export const CENTER_PC: GridPosition = { x: 11, y: 2 };
+
+/**
+ * Brock's tally of the ladder (`chalk.ts`), chalked on the back wall between the
+ * grille and the beacon's corner, with the floor in front of it open.
+ */
+export const LADDER_TALLY: Rect = { x: 8, y: 0, width: 3, height: 2 };
+
+/** The PC at the foot of the east separator: its foot is the wall a player at (12, 3) faces. */
+export const BILL_PC: GridPosition = { x: 12, y: 2 };
 
 // --- what Brock has built, in his workshop ---------------------------------
 
@@ -816,8 +845,8 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     screen: 'trader',
     name: 'BILL’S COTTAGE',
     width: 15,
-    height: 12,
-    mat: { x: 7, y: 11 },
+    height: 15,
+    mat: { x: 7, y: 14 },
     keeper: {
       id: 'bill',
       name: 'BILL',
@@ -980,6 +1009,10 @@ interface Drawn {
   readonly cabinet?: BuiltCabinet;
   readonly wallMap?: Rect;
   readonly posters?: readonly RoomPoster[];
+  /** What the room stands on its furniture. */
+  readonly icons?: readonly RoomIcon[];
+  /** Tiles nobody can walk on that are painted rather than planted: chalk, and Bill's shelves. */
+  readonly solid?: readonly GridPosition[];
   /**
    * Something the house puts out for the time of year, which stands only if
    * the player's furniture has left room for it: the house gives way to what
@@ -1063,8 +1096,9 @@ function drawCenter(room: BaseRoom, game: RestoredGame): Drawn {
  * Brock's workshop, which is a room of FireRed's Rocket Warehouse: walled both
  * sides, lit from the top left, with the telephone and the grille on its back
  * wall and Brock behind his steel bench in the middle of it. Everything the
- * ladder builds has a bay here, and the bays nobody has paid for are bare
- * floor - which is the point of standing in it.
+ * ladder builds has a bay here, and a bay nobody has paid for is chalked out on
+ * the floor, solid as the thing that will stand there (`chalk.ts`): the room
+ * walks the same however much of it is built, and it is how a rung is asked about.
  */
 function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
@@ -1088,7 +1122,40 @@ function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
       sketch.plant(prop.x, prop.y, prop.name);
     }
   }
-  return { sketch, catalogue: WAREHOUSE, things: thingsFor(displays), sprites: [] };
+  const chalk = WORKSHOP_DISPLAY.filter((display) => !built(game).includes(display.upgradeId)).map((display) => ({
+    display,
+    tiles: solidTiles(display.props),
+  }));
+  const tally: RoomThing = {
+    name: 'THE LADDER',
+    note: `${displays.length} of ${WORKSHOP_DISPLAY.length} built`,
+    tiles: wallTiles(LADDER_TALLY),
+    opens: 'ladder',
+  };
+  return {
+    sketch,
+    catalogue: WAREHOUSE,
+    things: [
+      ...thingsFor(displays),
+      ...chalk.map(({ display, tiles }) => ({
+        name: display.name,
+        note: display.note,
+        tiles,
+        chalked: display.upgradeId,
+      })),
+      tally,
+    ],
+    sprites: [],
+    solid: chalk.flatMap(({ tiles }) => tiles),
+    posters: [
+      ...chalk.map(({ display, tiles }) => ({
+        kind: 'chalk-bay' as const,
+        area: bayArea(tiles),
+        upgradeId: display.upgradeId,
+      })),
+      { kind: 'ladder-tally', area: LADDER_TALLY },
+    ],
+  };
 }
 
 /**
@@ -1096,7 +1163,9 @@ function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
  * tube between them - and his cabinet of oddities, which is everything the
  * player has ever bartered to him (`cabinet.ts`). Two units of empty shelving
  * stand either side of his desk from the start; the rows below them are left
- * bare for the second pair, which is carried in when the first is full.
+ * bare for the second pair, which is carried in when the first is full. Below
+ * those, either side of the aisle up from the door, is what he has to deal
+ * (`billGoods.ts`): a thing a tile, faced and asked.
  */
 function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
@@ -1128,10 +1197,35 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
       crated: true,
     });
   }
-  sketch.plant(1, 10, 'billPlant');
-  sketch.plant(13, 10, 'billPlant');
-  sketch.plant(6, 11, 'billMat');
-  return { sketch, catalogue: COTTAGE, things, sprites: [], cabinet: { oddities, layout } };
+  sketch.plant(1, 13, 'billPlant');
+  sketch.plant(13, 13, 'billPlant');
+  sketch.plant(6, 14, 'billMat');
+  things.push({ name: "BILL'S PC", note: 'His whole list, and how many of each', tiles: [BILL_PC], opens: 'list' });
+  const counter = traderCounterFor(game);
+  const icons: RoomIcon[] = [];
+  for (const { good, tile } of GOODS_ON_SHELVES) {
+    const state = shelfState(counter, good);
+    things.push({ name: state === 'sheeted' ? 'UNDER A SHEET' : goodName(good).toUpperCase(), note: '', tiles: [tile], good, quiet: true });
+    if (state === 'out') {
+      icons.push({
+        itemId: good.kind === 'stock' ? good.itemId : '',
+        icon: goodIcon(good),
+        x: tile.x * TILE_SIZE,
+        y: tile.y * TILE_SIZE - GOOD_LIFT,
+        standsOnRow: tile.y,
+      });
+    }
+  }
+  return {
+    sketch,
+    catalogue: COTTAGE,
+    things,
+    sprites: [],
+    cabinet: { oddities, layout },
+    icons,
+    solid: SHELF_TILES,
+    posters: SHELF_RUNS.map((area) => ({ kind: 'goods-shelf' as const, area })),
+  };
 }
 
 // --- THE HARBOUR BOUTIQUE --------------------------------------------------------
@@ -1446,14 +1540,18 @@ export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Da
   }
   const layers = buildMapLayers(drawn.sketch, drawn.catalogue);
   const shown = errandsOnShow(room, game);
+  const collision = layers.collision.map((row) => [...row]);
+  for (const tile of drawn.solid ?? []) {
+    collision[tile.y][tile.x] = true;
+  }
   return {
     room,
     sources: drawn.catalogue.sources,
     layers,
-    collision: layers.collision,
+    collision,
     things: [...drawn.things, ...shown.things],
     sprites: drawn.sprites,
-    icons: shown.icons,
+    icons: [...shown.icons, ...(drawn.icons ?? [])],
     ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
     wallMap: drawn.wallMap ?? null,
     posters: drawn.posters ?? [],

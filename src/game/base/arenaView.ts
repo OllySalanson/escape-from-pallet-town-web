@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import type { GridPosition } from '../movement/gridMovement';
+import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
 import type { RestoredGame } from '../save/SaveManager';
-import { CANOPY_BAND, TERRAIN_DEPTH } from '../world/depths';
+import { CANOPY_BAND, FIGURE_BAND, TERRAIN_DEPTH } from '../world/depths';
 import { districtAt } from '../world/districts';
+import { poisForMap } from '../world/pois';
 import type { Minimap, PaintedPicture } from '../world/minimap';
 import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow } from '../ui/pixelWindow';
-import { worldMapName, type WorldMapId } from '../worldMap';
 import {
   ARENA_TILE,
   ARENA_TORCHES,
@@ -19,6 +20,7 @@ import {
   PODIUM_PARALLAX,
   TIER_PARALLAX,
   dithered,
+  namePlatePlace,
   parallaxShift,
   pitFrameFor,
   pitLookPoint,
@@ -27,11 +29,13 @@ import {
   podiumHole,
   type PitFrame,
 } from './arenaHall';
+import { windowLight, type WindowLight } from './homeClock';
+import { TWINKLE_STEP_MS, isDimmed, townLights, type TownLight } from './pitClock';
+import { FLARE_FRAMES, FLARE_HEIGHT, FLARE_WIDTH, RING_OF_FIRE_MS, flareAt } from './ringOfFire';
 import { shareTheRim, showsThroughTheHole, type RimLanding, type RimShare } from './arenaRim';
 import {
   PIT_FLOOR_SIZE,
   RING_ORIGIN,
-  cloudSheet,
   isGroundKnown,
   paintMist,
   paintPitFloor,
@@ -39,7 +43,59 @@ import {
   paintTier,
 } from './arenaPit';
 
+import {
+  CROWD_STIRRING,
+  PERSON_WIDTH,
+  POSED_HEIGHT,
+  STANDS_ORIGIN,
+  nextStir,
+  paintBanners,
+  paintCrowdLayer,
+  paintCrowdPerson,
+  paintPosedPeople,
+  paintStands,
+  crowdSeats,
+  seatPoint,
+  seatedAt,
+  type CrowdStir,
+} from './arenaStands';
+import {
+  CrowdMotion,
+  LapWatch,
+  angleInHall,
+  crowdShare,
+  leaverTurn,
+  leaversFrom,
+  paperFlakes,
+  type CrowdMood,
+  type LapNews,
+} from './arenaCrowd';
+import {
+  EYES_HEIGHT,
+  EYES_MS,
+  EYES_WIDTH,
+  EYE_LOOKS,
+  SHADOW_HEIGHT,
+  SHADOW_PARALLAX,
+  SHADOW_WIDTH,
+  chooseEyeGate,
+  eyesAt,
+  facesTheViewer,
+  gateEyes,
+  nextEyesInMs,
+  nextShadowInMs,
+  paintEyes,
+  paintWingShadow,
+  shadowAt,
+  shadowPassFor,
+  stareAt,
+  STARE_MS,
+  type ShadowPass,
+} from './pitLife';
 import { wallMapPicture } from './wallMap';
+import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
+import { PLAYER_BANNER_AT, PLAYER_BANNER_SIZE, paintPlayerBanner } from './arenaBouts';
+import { COINS_TO_WAKE_THE_EYES, COIN_PLINK_MS, coinAt } from './pitCoins';
 
 /**
  * THE RAID ARENA's pit and its fires, as the scene draws them: everything in
@@ -56,15 +112,23 @@ import { wallMapPicture } from './wallMap';
 /** Below the ground layer, deepest first. */
 const FLOOR_DEPTH = TERRAIN_DEPTH - 0.9;
 const LIFTING_DEPTH = TERRAIN_DEPTH - 0.89;
+/** What crosses the floor goes under the marks on it: a way in is never hidden by it. */
+const SHADOW_DEPTH = TERRAIN_DEPTH - 0.885;
+const TOWN_LIGHT_DEPTH = TERRAIN_DEPTH - 0.884;
+const MEMORY_DEPTH = TERRAIN_DEPTH - 0.882;
 const LIGHT_DEPTH = TERRAIN_DEPTH - 0.88;
 const LOOK_DEPTH = TERRAIN_DEPTH - 0.87;
 const MIST_DEPTH = TERRAIN_DEPTH - 0.85;
 const PODIUM_DEPTH = TERRAIN_DEPTH - 0.8;
+const EYES_DEPTH = PODIUM_DEPTH + 0.01;
+/** Outside the wall, under the hall's own layers wherever the two could meet. */
+const STANDS_DEPTH = TERRAIN_DEPTH - 0.1;
+const CROWD_LAYER_DEPTH = TERRAIN_DEPTH - 0.095;
+const CROWD_DEPTH = TERRAIN_DEPTH - 0.09;
+const BANNERS_DEPTH = TERRAIN_DEPTH - 0.085;
 const tierDepth = (tier: number): number => TERRAIN_DEPTH - 0.7 + (PIT_TIERS - tier) * 0.05;
 /** Over the steps and under the hall's own floor, so a name in the pit never lies across the platform. */
 const NAME_DEPTH = TERRAIN_DEPTH - 0.3;
-/** The cloud a jump goes down through, over absolutely everything. */
-const CLOUD_DEPTH = CANOPY_BAND + 40;
 /**
  * A flame, its halo and the pool of light it throws burn over everything but the
  * screen's own words. A pool has to be over the pillars' upper tiles too, or it
@@ -74,17 +138,27 @@ const CLOUD_DEPTH = CANOPY_BAND + 40;
 const POOL_DEPTH = CANOPY_BAND + 0.03;
 const HALO_DEPTH = CANOPY_BAND + 0.04;
 const FLAME_DEPTH = CANOPY_BAND + 0.05;
+/** What the stands throw comes down over everything but the screen's own words. */
+const PAPER_DEPTH = CANOPY_BAND + 0.06;
 
 const floorTexture = (mapId: string): string => `arena-pit-floor-${mapId}`;
 const LIGHT_TEXTURE = 'arena-landing-light';
-const CLOUD_TEXTURE = 'arena-dive-cloud';
 const LIFTING_TEXTURE = 'arena-lifting-cloud';
 const PODIUM_TEXTURE = 'arena-podium';
 const MIST_TEXTURE = 'arena-mist';
 const FLAME_TEXTURE = 'arena-flame';
 const HALO_TEXTURE = 'arena-halo';
 const POOL_TEXTURE = 'arena-pool';
+const FLARE_TEXTURE = 'arena-flare';
+const BLAZE_TEXTURE = 'arena-blaze';
 const LOOK_TEXTURE = 'arena-look';
+const STANDS_TEXTURE = 'arena-stands';
+const CROWD_TEXTURE = 'arena-crowd-person';
+const CROWD_LAYER_TEXTURE = 'arena-crowd-layer';
+const POSED_TEXTURE = 'arena-crowd-posed';
+const BANNERS_TEXTURE = 'arena-banners';
+const SHADOW_TEXTURE = 'arena-pit-shadow';
+const EYES_TEXTURE = 'arena-pit-eyes';
 const tierTexture = (tier: number): string => `arena-tier-${tier}`;
 
 const FLAME_WIDTH = 11;
@@ -173,6 +247,8 @@ const FLAME_INKS: Readonly<Record<string, readonly [number, number, number]>> = 
 };
 
 const FLAME_STEP_MS = 95;
+/** How much more than its everyday glow a torch throws at each step of a flare. */
+const BLAZE_ALPHA = [0, 0.4, 0.7, 1] as const;
 
 /** How often the nearest fire can be heard, and how near it has to be, in pixels. */
 const CRACKLE_EVERY_MS = 2600;
@@ -181,9 +257,41 @@ const CRACKLE_REACH = 88;
 /** And how often something a long way down in the pit can. */
 const DEEP_SOUND_EVERY_MS = 38000;
 const DEEP_SOUND_SPREAD_MS = 40000;
+/** How soon eyes that could not be seen try again. */
+const EYES_NOT_SEEN_RETRY_MS = 4000;
+
+/** How far below a seat's top-left its person's bottom is: what a posed person stands on. */
+const PERSON_HEIGHT_ON_SEAT = 5;
 
 /** What each map's floor texture was last painted from. */
 const floorShows = new Map<string, string>();
+/** How full the house was when its layer was last painted. */
+let crowdLayerShows: number | null = null;
+/** The most of the crowd that can be seen on their feet at once: any more than this in view just stay sat. */
+const POSED_MOST = 320;
+
+const NAME_PLATE_HEIGHT = 13;
+
+/** The mist's two sheets: how thick each, and at each hour the colour of the air they catch the light of. */
+const MIST_ALPHAS = [0.2, 0.13] as const;
+const MIST_TINTS: Readonly<Record<WindowLight, number>> = { day: 0xffffff, dusk: 0xf0c8a0, night: 0x7888b8 };
+/** By day the same sheet again, dark, a long way down, as the shadows of cloud on the ground. */
+const CLOUD_SHADOW_ALPHA = 0.14;
+const CLOUD_SHADOW_TINT = 0x182838;
+
+const TOWN_LIGHT_WARM = 0xf8d070;
+const TOWN_LIGHT_PALE = 0xf8e8b8;
+const TOWN_LIGHT_GLOW = 0x806030;
+
+/** The last raid's walk, and how far a mark's ink has faded by how many raids ago it was. */
+const TRAIL_INK = 0xf0c454;
+const TRAIL_SHADE = 0x201808;
+const CROSS_INKS = [0xf04838, 0xc03830, 0x883028] as const;
+const FLAG_INKS = [0x78e8a0, 0x58b878, 0x408858] as const;
+const POLE_INK = 0xe8e0c8;
+const MARK_SHADE = 0x101018;
+const COIN_INK = 0xf8d870;
+const COIN_SHADE = 0x584010;
 
 /** How a landing's light beats, and how far a light is from the mark round the one being looked at. */
 const LIGHT_BEAT_MS = 520;
@@ -195,7 +303,7 @@ const LIGHT_BEAT_MS = 520;
 let lastSeenBelow: { readonly mapId: string; readonly picture: Minimap } | null = null;
 
 /** A picture in a texture of its own, kept for the next visit: the steps never change. */
-function ensureTexture(scene: Phaser.Scene, key: string, paint: () => PaintedPicture): void {
+export function ensureTexture(scene: Phaser.Scene, key: string, paint: () => PaintedPicture): void {
   if (scene.textures.exists(key)) {
     return;
   }
@@ -230,18 +338,17 @@ function paintGlow(radius: number, ink: readonly [number, number, number]): Pain
   return { width: size, height: size, data };
 }
 
-function paintFlames(): PaintedPicture {
-  const width = FLAME_WIDTH * FLAME_FRAMES.length;
-  const height = FLAME_HEIGHT;
+function paintFlameFrames(frames: readonly (readonly string[])[], frameWidth: number, height: number): PaintedPicture {
+  const width = frameWidth * frames.length;
   const data = new Uint8ClampedArray(width * height * 4);
-  FLAME_FRAMES.forEach((frame, index) =>
+  frames.forEach((frame, index) =>
     frame.forEach((row, y) => {
-      for (let x = 0; x < FLAME_WIDTH; x += 1) {
+      for (let x = 0; x < frameWidth; x += 1) {
         const ink = FLAME_INKS[row[x]];
         if (!ink) {
           continue;
         }
-        const at = (y * width + index * FLAME_WIDTH + x) * 4;
+        const at = (y * width + index * frameWidth + x) * 4;
         data[at] = ink[0];
         data[at + 1] = ink[1];
         data[at + 2] = ink[2];
@@ -252,9 +359,9 @@ function paintFlames(): PaintedPicture {
   return { width, height, data };
 }
 
-/** How many sheets of wispy cloud come up past the camera on the way down, and how far each is magnified by the time it has gone. */
-const WISP_SHEETS = 3;
-const WISP_SPREAD = 9;
+/** How far the floor comes up for how far the hall has gone past, and how far in the view is when the mist has gone. */
+const DIVE_FLOOR_REACH = 0.2;
+const DIVE_MIST_GONE = 6;
 
 /** A way in, seen from high up: a small steady gold light with a dark ring round it, so it reads on sea, wood and cloud. */
 function paintLandingLight(): PaintedPicture {
@@ -326,6 +433,10 @@ function paintLookMark(): PaintedPicture {
 }
 
 interface Fire {
+  readonly angle: number;
+  /** What it burns as in a flare, made only for a jump. */
+  flare: Phaser.GameObjects.Image | null;
+  blaze: Phaser.GameObjects.Image | null;
   readonly flame: Phaser.GameObjects.Image;
   readonly halo: Phaser.GameObjects.Image;
   readonly pool: Phaser.GameObjects.Image;
@@ -349,6 +460,14 @@ export class ArenaView {
   private nameShown = '';
   private lights: { readonly landing: RimLanding; readonly image: Phaser.GameObjects.Image }[] = [];
   private lightMs = 0;
+  /** What the pit remembers (`world/raidMemory.ts`), laid on the floor, and the plate that says what a mark was. */
+  private readonly memoryLayer: Phaser.GameObjects.Graphics;
+  private readonly newestMark: Phaser.GameObjects.Graphics;
+  private readonly markFrame: Phaser.GameObjects.Graphics;
+  private readonly markText: Phaser.GameObjects.Text;
+  private markShown: (RaidMark & { readonly age: number }) | null = null;
+  /** Whether somebody is stood at the rail, looking. */
+  private lookingAtRim = false;
   private picture: Minimap;
   private walkedShare: number;
   private mapIdValue: WorldMapId;
@@ -356,13 +475,36 @@ export class ArenaView {
   private shareValue: RimShare;
   private aimedId: string | null = null;
   private lastPlayer = { x: 0, y: 0 };
+  /** The fire running round the hall from a jump (`ringOfFire.ts`), while it is. */
+  private ringOfFire: { elapsedMs: number; readonly from: number } | null = null;
+  /** The hour this visit is at: the clock is read when the hall is walked into, as a room's is. */
+  private readonly light: WindowLight = windowLight(new Date());
+  private readonly townLightLayer: Phaser.GameObjects.Graphics;
+  private townLightsHere: readonly TownLight[] = [];
+  private twinkleMs = 0;
+  private twinkleBeat = 0;
+  private cloudShadow: Phaser.GameObjects.TileSprite | null = null;
+  /** The few of the crowd who are shifting in their seats just now: dim, and barely at all. */
+  private readonly stirring: { readonly image: Phaser.GameObjects.Image; stir: CrowdStir | null; leftMs: number }[] = [];
+  /** How full the house is, for this save: the people in it are this share of the seats. */
+  private readonly house: number;
+  /** What the crowd is doing (`arenaCrowd.ts`), and the people drawn on their feet doing it. */
+  private readonly crowd = new CrowdMotion();
+  private readonly lapWatch = new LapWatch();
+  private lapNews: LapNews = { running: false, way: 0, quarter: false, lapMs: null };
+  private readonly posed: Phaser.GameObjects.Image[] = [];
+  private posedUsed = 0;
+  private paper: Phaser.GameObjects.Graphics | null = null;
+  /** What lives in the pit (`pitLife.ts`): when each next shows, and whatever is showing. */
+  private shadowInMs = nextShadowInMs(Math.random(), true);
+  private eyesInMs = nextEyesInMs(Math.random(), true);
+  private shadow: { readonly image: Phaser.GameObjects.Image; readonly pass: ShadowPass; elapsedMs: number } | null = null;
+  private eyes: { readonly image: Phaser.GameObjects.Image; readonly gate: number; elapsedMs: number; staringMs: number | null } | null = null;
+  /** Coins in the air, and how long until each is heard (`pitCoins.ts`). */
+  private coins: { readonly from: { readonly x: number; readonly y: number }; ms: number; heard: boolean; readonly image: Phaser.GameObjects.Graphics }[] = [];
   private drift = 0;
   private crackleInMs = CRACKLE_EVERY_MS;
   private deepSoundInMs = DEEP_SOUND_EVERY_MS / 2;
-  /** The cloud a jump goes down through, while one is going down. */
-  private diveCloud: Phaser.GameObjects.TileSprite | null = null;
-  /** Sheets of thin cloud coming up past the camera on the way down. */
-  private diveWisps: Phaser.GameObjects.TileSprite[] = [];
   /** The old cloud over ground a raid has just walked, a little less of it each step (`liftFogFrom`). */
   private lifting: {
     readonly image: Phaser.GameObjects.Image;
@@ -390,15 +532,29 @@ export class ArenaView {
     const hole = podiumHole();
     const mistWidth = Math.ceil(hole.rx * 2) + 96;
     const mistHeight = Math.ceil(hole.ry * 2) + 96;
-    for (const [alpha, flipped] of [[0.2, false], [0.13, true]] as const) {
+    for (const [index, flipped] of [false, true].entries()) {
       const mist = scene.add
         .tileSprite(0, 0, mistWidth, mistHeight, MIST_TEXTURE)
         .setOrigin(0.5, 0.5)
         .setDepth(MIST_DEPTH)
-        .setAlpha(alpha)
+        .setAlpha(MIST_ALPHAS[index])
+        .setTint(MIST_TINTS[this.light])
         .setFlipX(flipped);
       this.mists.push((mist));
     }
+    if (this.light === 'day') {
+      this.cloudShadow = scene.add
+        .tileSprite(0, 0, mistWidth, mistHeight, MIST_TEXTURE)
+        .setOrigin(0.5, 0.5)
+        .setDepth(SHADOW_DEPTH - 0.001)
+        .setAlpha(CLOUD_SHADOW_ALPHA)
+        .setTint(CLOUD_SHADOW_TINT);
+    }
+    this.townLightLayer = scene.add.graphics().setDepth(TOWN_LIGHT_DEPTH);
+    this.placeTownLights();
+    this.memoryLayer = scene.add.graphics().setDepth(MEMORY_DEPTH);
+    this.newestMark = scene.add.graphics().setDepth(MEMORY_DEPTH + 0.0001);
+    this.drawMemory();
 
     ensureTexture(scene, PODIUM_TEXTURE, paintPodium);
     this.podium = (scene.add.image(0, 0, PODIUM_TEXTURE).setOrigin(0, 0).setDepth(PODIUM_DEPTH));
@@ -407,6 +563,34 @@ export class ArenaView {
       this.tiers.push(
         (scene.add.image(0, 0, tierTexture(tier)).setOrigin(0, 0).setDepth(tierDepth(tier))),
       );
+    }
+
+    ensureTexture(scene, STANDS_TEXTURE, paintStands);
+    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_TEXTURE).setOrigin(0, 0).setDepth(STANDS_DEPTH);
+    this.house = crowdShare(game.raidProgress.raidRecord);
+    if (crowdLayerShows !== this.house && scene.textures.exists(CROWD_LAYER_TEXTURE)) {
+      scene.textures.remove(CROWD_LAYER_TEXTURE);
+    }
+    crowdLayerShows = this.house;
+    ensureTexture(scene, CROWD_LAYER_TEXTURE, () => paintCrowdLayer(this.house));
+    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, CROWD_LAYER_TEXTURE).setOrigin(0, 0).setDepth(CROWD_LAYER_DEPTH);
+    ensureTexture(scene, BANNERS_TEXTURE, paintBanners);
+    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, BANNERS_TEXTURE).setOrigin(0, 0).setDepth(BANNERS_DEPTH);
+    if (!still) {
+      ensureTexture(scene, CROWD_TEXTURE, paintCrowdPerson);
+      const people = scene.textures.get(CROWD_TEXTURE);
+      if (!people.has('0')) {
+        for (let ink = 0; ink * PERSON_WIDTH < people.source[0].width; ink += 1) {
+          people.add(String(ink), 0, ink * PERSON_WIDTH, 0, PERSON_WIDTH, people.source[0].height);
+        }
+      }
+      for (let index = 0; index < CROWD_STIRRING; index += 1) {
+        this.stirring.push({
+          image: scene.add.image(0, 0, CROWD_TEXTURE, '0').setOrigin(0, 0).setDepth(CROWD_DEPTH).setVisible(false),
+          stir: null,
+          leftMs: Math.random() * 3000,
+        });
+      }
     }
 
     ensureTexture(scene, LOOK_TEXTURE, paintLookMark);
@@ -418,8 +602,13 @@ export class ArenaView {
       .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd' })
       .setDepth(NAME_DEPTH + 0.001)
       .setVisible(false);
+    this.markFrame = scene.add.graphics().setDepth(NAME_DEPTH).setVisible(false);
+    this.markText = scene.add
+      .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd' })
+      .setDepth(NAME_DEPTH + 0.001)
+      .setVisible(false);
 
-    ensureTexture(scene, FLAME_TEXTURE, paintFlames);
+    ensureTexture(scene, FLAME_TEXTURE, () => paintFlameFrames(FLAME_FRAMES, FLAME_WIDTH, FLAME_HEIGHT));
     ensureTexture(scene, HALO_TEXTURE, () => paintGlow(24, [96, 56, 16]));
     ensureTexture(scene, POOL_TEXTURE, () => paintGlow(52, [40, 24, 8]));
     const flames = scene.textures.get(FLAME_TEXTURE);
@@ -440,6 +629,9 @@ export class ArenaView {
         .setOrigin(0.5, 1)
         .setDepth(FLAME_DEPTH);
       this.fires.push({
+        angle: angleInHall(torch),
+        flare: null,
+        blaze: null,
         flame,
         halo,
         pool,
@@ -474,12 +666,12 @@ export class ArenaView {
     const key = floorTexture(mapId);
     // The floor is this save's, so it is painted again whenever what it shows
     // has changed - which a trip to the bench and back has not.
-    const shows = picture.rows.join('');
+    const shows = this.light + picture.rows.join('');
     if (floorShows.get(mapId) !== shows && this.scene.textures.exists(key)) {
       this.scene.textures.remove(key);
     }
     floorShows.set(mapId, shows);
-    ensureTexture(this.scene, key, () => paintPitFloor(picture));
+    ensureTexture(this.scene, key, () => paintPitFloor(picture, this.light));
     return key;
   }
 
@@ -499,7 +691,158 @@ export class ArenaView {
     this.shareValue = shareTheRim(landings, this.frameValue);
     this.floor.setTexture(this.paintFloorFor(mapId, this.picture));
     this.placeLights(landings);
+    this.placeTownLights();
+    this.drawMemory();
     this.aimedId = null;
+  }
+
+  /** A tile of the map on the floor's own picture. */
+  private floorPixelOf(tile: GridPosition): { readonly x: number; readonly y: number } {
+    const { scale, width, height } = this.frameValue;
+    return {
+      x: Math.floor((PIT_FLOOR_SIZE - width * scale) / 2 + (tile.x + 0.5) * scale),
+      y: Math.floor((PIT_FLOOR_SIZE - height * scale) / 2 + (tile.y + 0.5) * scale),
+    };
+  }
+
+  /** The last raid's walk and where the last dozen ended, on the floor. */
+  private drawMemory(): void {
+    const memory = this.game.raidProgress.raidMemory;
+    const layer = this.memoryLayer;
+    layer.clear();
+    this.newestMark.clear();
+    trailDots(memory, this.mapIdValue).forEach((tile, index) => {
+      const { x, y } = this.floorPixelOf(tile);
+      layer.fillStyle(TRAIL_SHADE, 1).fillRect(x, y + 1, 1, 1);
+      if (index % 2 === 0) {
+        layer.fillStyle(TRAIL_INK, 1).fillRect(x, y, 1, 1);
+      }
+    });
+    for (const mark of marksOn(memory, this.mapIdValue)) {
+      const { x, y } = this.floorPixelOf(mark);
+      const fade = mark.age < 2 ? 0 : mark.age < 7 ? 1 : 2;
+      const on = mark.age === 0 ? this.newestMark : layer;
+      if (mark.kind === 'fell') {
+        // A cross, ringed in ink so it reads on sea, wood and cloud.
+        on.fillStyle(MARK_SHADE, 1);
+        on.fillRect(x - 3, y - 3, 3, 3).fillRect(x + 1, y - 3, 3, 3).fillRect(x - 1, y - 1, 3, 3).fillRect(x - 3, y + 1, 3, 3).fillRect(x + 1, y + 1, 3, 3);
+        on.fillStyle(CROSS_INKS[fade], 1);
+        for (const at of [-2, -1, 0, 1, 2]) {
+          on.fillRect(x + at, y + at, 1, 1).fillRect(x - at, y + at, 1, 1);
+        }
+      } else {
+        // A pole with a pennant on it.
+        on.fillStyle(MARK_SHADE, 1).fillRect(x - 1, y - 6, 3, 9).fillRect(x + 1, y - 7, 5, 5);
+        on.fillStyle(POLE_INK, 1).fillRect(x, y - 5, 1, 7);
+        on.fillStyle(FLAG_INKS[fade], 1).fillRect(x + 1, y - 6, 4, 3);
+      }
+    }
+  }
+
+  /** The player's own banner on the far wall, for going through all five rivals in a row, with their name under it. */
+  public hangPlayerBanner(ladders: number, name: string): void {
+    const key = `arena-player-banner-${Math.min(5, ladders)}`;
+    ensureTexture(this.scene, key, () => paintPlayerBanner(ladders));
+    const { x, y } = PLAYER_BANNER_AT;
+    this.scene.add.image(x, y, key).setOrigin(0, 0).setDepth(FIGURE_BAND - 0.02);
+    const text = this.scene.add.text(0, 0, name, { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd' }).setDepth(FIGURE_BAND - 0.009);
+    const width = Math.ceil(text.width) + 8;
+    const left = Math.round(x + PLAYER_BANNER_SIZE.width / 2 - width / 2);
+    // Over the cloth, where nothing stands in front of it.
+    const top = y - NAME_PLATE_HEIGHT - 1;
+    const plate = this.scene.add.graphics({ x: left, y: top }).setDepth(FIGURE_BAND - 0.01);
+    drawPixelWindow(plate, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: 0xf0c454 });
+    text.setPosition(left + 4, top + 1);
+  }
+
+  /** Whether somebody is stood at the rail, looking: the rim says what a mark was. */
+  public atTheRail(looking: boolean): void {
+    this.lookingAtRim = looking;
+  }
+
+  /** The mark in view nearest somebody at the rail, on a plate of its own beside whatever else is named. */
+  private nameTheMark(player: { readonly x: number; readonly y: number }): void {
+    let best: (RaidMark & { readonly age: number }) | null = null;
+    let point = { x: 0, y: 0 };
+    if (this.lookingAtRim) {
+      const view = this.scene.cameras.main.worldView;
+      let nearest = Infinity;
+      for (const mark of marksOn(this.game.raidProgress.raidMemory, this.mapIdValue)) {
+        const at = pitPointOf(mark, player, this.frameValue);
+        const away = Math.hypot(at.x - player.x, at.y - player.y);
+        if (away < nearest && view.contains(at.x, at.y) && showsThroughTheHole(mark, player, this.frameValue)) {
+          nearest = away;
+          best = mark;
+          point = at;
+        }
+      }
+    }
+    if (best !== this.markShown && (best?.line !== this.markShown?.line || best?.kind !== this.markShown?.kind)) {
+      this.markText.setText(best?.line ?? '');
+      if (best) {
+        const width = Math.ceil(this.markText.width) + 8;
+        this.markFrame.clear();
+        drawPixelWindow(this.markFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: best.kind === 'fell' ? CROSS_INKS[0] : FLAG_INKS[0] });
+        this.markFrame.setData('width', width);
+      }
+    }
+    this.markShown = best;
+    const view = this.scene.cameras.main.worldView;
+    const plate =
+      best && view.width > 0
+        ? namePlatePlace(point, { width: this.markFrame.getData('width') as number, height: NAME_PLATE_HEIGHT }, view)
+        : null;
+    // The way in's own name comes first: a mark's plate never lies over it.
+    const clear =
+      plate !== null &&
+      !(
+        this.nameFrame.visible &&
+        Math.abs(plate.y - this.nameFrame.y) < NAME_PLATE_HEIGHT + 1 &&
+        plate.x < this.nameFrame.x + (this.nameFrame.getData('width') as number) &&
+        this.nameFrame.x < plate.x + (this.markFrame.getData('width') as number)
+      );
+    this.markFrame.setVisible(clear);
+    this.markText.setVisible(clear);
+    if (plate && clear) {
+      this.markFrame.setPosition(plate.x, plate.y);
+      this.markText.setPosition(plate.x + 4, plate.y + 1);
+    }
+  }
+
+  /** The little lights at the doors of the towns, on ground this save has walked. */
+  private placeTownLights(): void {
+    const map = getWorldMap(this.mapIdValue);
+    const doors = (map.warps ?? []).map((warp) => warp.source);
+    const pois = poisForMap(this.mapIdValue).map((poi) => poi.position);
+    this.townLightsHere = townLights(this.picture, [...doors, ...pois], isGroundKnown, PIT_FLOOR_SIZE, this.light);
+    this.drawTownLights();
+  }
+
+  private drawTownLights(): void {
+    const layer = this.townLightLayer;
+    layer.clear();
+    this.townLightsHere.forEach((light, index) => {
+      if (isDimmed(index, this.twinkleBeat)) {
+        layer.fillStyle(TOWN_LIGHT_GLOW, 1).fillRect(light.x, light.y, 1, 1);
+        return;
+      }
+      layer.fillStyle(TOWN_LIGHT_GLOW, 1);
+      layer.fillRect(light.x - 1, light.y, 3, 1);
+      layer.fillRect(light.x, light.y - 1, 1, 3);
+      layer.fillStyle(light.warm ? TOWN_LIGHT_WARM : TOWN_LIGHT_PALE, 1).fillRect(light.x, light.y, 1, 1);
+    });
+  }
+
+  private twinkle(deltaMs: number): void {
+    if (this.townLightsHere.length === 0) {
+      return;
+    }
+    this.twinkleMs += deltaMs;
+    if (this.twinkleMs >= TWINKLE_STEP_MS) {
+      this.twinkleMs = 0;
+      this.twinkleBeat += 1;
+      this.drawTownLights();
+    }
   }
 
   private placeLights(landings: readonly RimLanding[]): void {
@@ -515,7 +858,11 @@ export class ArenaView {
     this.lastPlayer = player;
     this.slide(player);
     this.placeTheLights(deltaMs, player);
+    this.nameTheMark(player);
+    this.flyCoins(deltaMs);
+    this.newestMark.setVisible(this.still || Math.floor(this.lightMs / LIGHT_BEAT_MS) % 4 !== 3);
     if (this.still) {
+      this.moveTheCrowd(deltaMs);
       return;
     }
     this.drift += deltaMs;
@@ -524,23 +871,361 @@ export class ArenaView {
     fast.setTilePosition(-Math.round(this.drift / 95), Math.round(this.drift / 300));
     this.burn(deltaMs);
     this.listen(deltaMs, player);
+    this.cloudShadow?.setTilePosition(Math.round(this.drift / 120), Math.round(this.drift / 260));
+    this.twinkle(deltaMs);
+    this.stir(deltaMs, player);
+    this.shift(deltaMs);
+    this.watchTheRunner(deltaMs, player);
+    this.moveTheCrowd(deltaMs);
+  }
+
+  // --- the crowd answering ------------------------------------------------------
+
+  /** The raid that has just come home, as the house takes it. */
+  public crowdReacts(mood: CrowdMood, player: { readonly x: number; readonly y: number }): void {
+    // A reduced-motion hall hears them and does not see them jump about.
+    this.crowd.react(mood, angleInHall(player));
+  }
+
+  /** Somebody has waved at the stands: whoever is nearest waves back. */
+  public crowdWaves(player: { readonly x: number; readonly y: number }): void {
+    this.crowd.waveFrom(angleInHall(player));
+  }
+
+  /** The whole house up: a lap, and paper if it was one of honour. */
+  public crowdCheersLap(player: { readonly x: number; readonly y: number }, honour: boolean): void {
+    this.crowd.react(honour ? 'roar' : 'cheer', angleInHall(player));
+  }
+
+  /** What the lap being run has come to this frame, for the scene to say. */
+  public get lap(): LapNews {
+    return this.lapNews;
+  }
+
+  /** Follows the player round the ring, and runs the band of people getting up beside them. */
+  private watchTheRunner(deltaMs: number, player: { readonly x: number; readonly y: number }): void {
+    const angle = angleInHall(player);
+    this.lapNews = this.lapWatch.note(angle, deltaMs);
+    if (this.lapNews.running) {
+      this.crowd.runBand(angle, this.lapNews.way);
+      if (this.lapNews.quarter) {
+        audioManager.play('crowdCheer');
+      }
+    } else {
+      this.crowd.stopBand();
+    }
+  }
+
+  private moveTheCrowd(deltaMs: number): void {
+    for (const sound of this.crowd.update(deltaMs)) {
+      audioManager.play(sound);
+    }
+    if (this.still) {
+      return;
+    }
+    this.drawPosed();
+    this.drawPaper();
+  }
+
+  private posedImage(): Phaser.GameObjects.Image | null {
+    if (this.posedUsed >= POSED_MOST) {
+      return null;
+    }
+    if (this.posedUsed === this.posed.length) {
+      ensureTexture(this.scene, POSED_TEXTURE, paintPosedPeople);
+      const sheet = this.scene.textures.get(POSED_TEXTURE);
+      if (!sheet.has('stand0')) {
+        const inks = sheet.source[0].width / PERSON_WIDTH;
+        for (let ink = 0; ink < inks; ink += 1) {
+          sheet.add(`stand${ink}`, 0, ink * PERSON_WIDTH, 0, PERSON_WIDTH, POSED_HEIGHT);
+          sheet.add(`up${ink}`, 0, ink * PERSON_WIDTH, POSED_HEIGHT, PERSON_WIDTH, POSED_HEIGHT);
+        }
+      }
+      this.posed.push(this.scene.add.image(0, 0, POSED_TEXTURE, 'stand0').setOrigin(0, 1).setDepth(CROWD_DEPTH));
+    }
+    const image = this.posed[this.posedUsed];
+    this.posedUsed += 1;
+    return image;
+  }
+
+  /** Everybody in view who is on their feet, drawn over where they sit. Nobody is drawn if nobody is up. */
+  private drawPosed(): void {
+    this.posedUsed = 0;
+    if (this.crowd.busy) {
+      const view = this.scene.cameras.main.worldView;
+      const left = view.left - PERSON_WIDTH;
+      const right = view.right + PERSON_WIDTH;
+      const top = view.top - POSED_HEIGHT;
+      const bottom = view.bottom + POSED_HEIGHT;
+      for (const seat of seatedAt(this.house)) {
+        if (seat.x < left || seat.x > right || seat.y < top || seat.y > bottom) {
+          continue;
+        }
+        const pose = this.crowd.pose(seat);
+        if (pose) {
+          const image = this.posedImage();
+          if (!image) {
+            break;
+          }
+          image
+            .setFrame(`${pose.pose}${seat.ink}`)
+            .setPosition(seat.x, seat.y + PERSON_HEIGHT_ON_SEAT - pose.lift)
+            .setVisible(true);
+        }
+      }
+      if (this.crowd.leaving) {
+        for (const seat of leaversFrom(crowdSeats(), this.house)) {
+          const turn = leaverTurn(seat, this.crowd.leavingMs);
+          if (turn === null) {
+            continue;
+          }
+          const at = seatPoint(seat.row, seat.north, seat.angle + turn);
+          if (at.x < left || at.x > right || at.y < top || at.y > bottom) {
+            continue;
+          }
+          const image = this.posedImage();
+          if (!image) {
+            break;
+          }
+          image.setFrame(`stand${seat.ink}`).setPosition(at.x, at.y + PERSON_HEIGHT_ON_SEAT).setVisible(true);
+        }
+      }
+    }
+    for (let index = this.posedUsed; index < this.posed.length; index += 1) {
+      this.posed[index].setVisible(false);
+    }
+  }
+
+  private drawPaper(): void {
+    const ms = this.crowd.paperMs;
+    if (ms === null) {
+      this.paper?.clear();
+      return;
+    }
+    const camera = this.scene.cameras.main;
+    this.paper ??= this.scene.add.graphics().setScrollFactor(0).setDepth(PAPER_DEPTH);
+    this.paper.clear();
+    for (const flake of paperFlakes(ms, camera.width, camera.height)) {
+      this.paper.fillStyle(flake.ink, 1);
+      this.paper.fillRect(flake.x, flake.y, flake.flat ? 2 : 1, flake.flat ? 1 : 2);
+    }
+  }
+
+  /** One or two of the crowd lean over or sit up, and settle back. That is all they do. */
+  private shift(deltaMs: number): void {
+    const view = this.scene.cameras.main.worldView;
+    for (const person of this.stirring) {
+      person.leftMs -= deltaMs;
+      if (person.leftMs > 0) {
+        continue;
+      }
+      if (person.stir) {
+        person.stir = null;
+        person.image.setVisible(false);
+        person.leftMs = 1500 + Math.random() * 6000;
+        continue;
+      }
+      const stir = nextStir([Math.random(), Math.random(), Math.random()], (seat) => view.contains(seat.x, seat.y), seatedAt(this.house));
+      if (!stir) {
+        person.leftMs = 1000;
+        continue;
+      }
+      person.stir = stir;
+      person.leftMs = stir.forMs;
+      person.image.setFrame(String(stir.seat.ink)).setPosition(stir.seat.x + stir.dx, stir.seat.y + stir.dy).setVisible(true);
+    }
+  }
+
+  /** Now and then, something in the pit: nobody is told, and it never happens twice at once. */
+  private stir(deltaMs: number, player: { readonly x: number; readonly y: number }): void {
+    this.shadowInMs -= deltaMs;
+    this.eyesInMs -= deltaMs;
+    const view = this.scene.cameras.main.worldView;
+    if (this.shadowInMs <= 0 && !this.shadow && !this.eyes) {
+      this.startShadow(view);
+    }
+    if (this.eyesInMs <= 0 && !this.shadow && !this.eyes) {
+      this.startEyes(view, player);
+    }
+    if (this.shadow) {
+      this.shadow.elapsedMs += deltaMs;
+      const at = shadowAt(this.shadow.pass, this.shadow.elapsedMs);
+      if (at) {
+        const shift = parallaxShift(SHADOW_PARALLAX, player);
+        this.shadow.image.setPosition(at.x + shift.x, at.y + shift.y).setFrame(String(at.frame));
+      } else {
+        this.shadow.image.destroy();
+        this.shadow = null;
+      }
+    }
+    if (this.eyes) {
+      this.eyes.elapsedMs += deltaMs;
+      if (this.eyes.staringMs !== null) {
+        this.eyes.staringMs += deltaMs;
+        // They hold it until they have looked long enough, then go on as they would have.
+        if (this.eyes.staringMs >= STARE_MS) {
+          this.eyes.staringMs = null;
+          this.eyes.elapsedMs = Math.max(this.eyes.elapsedMs, EYES_MS - 500);
+        }
+      }
+      const rest = gateEyes(this.eyes.gate);
+      const at = this.eyes.staringMs !== null ? stareAt(this.eyes.staringMs, Math.sign(player.x - rest.x)) : eyesAt(this.eyes.elapsedMs);
+      if (at) {
+        const shift = parallaxShift(PODIUM_PARALLAX, player);
+        this.eyes.image
+          .setPosition(rest.x + shift.x + at.shift, rest.y + shift.y)
+          .setFrame(at.look);
+      } else {
+        this.eyes.image.destroy();
+        this.eyes = null;
+      }
+    }
+  }
+
+  private startShadow(view: Phaser.Geom.Rectangle): void {
+    ensureTexture(this.scene, SHADOW_TEXTURE, paintWingShadow);
+    const sheet = this.scene.textures.get(SHADOW_TEXTURE);
+    if (!sheet.has('0')) {
+      [0, 1, 2].forEach((frame) => sheet.add(String(frame), 0, frame * SHADOW_WIDTH, 0, SHADOW_WIDTH, SHADOW_HEIGHT));
+    }
+    // Across the part of the hole on the screen, or a thing this rare is wasted.
+    const hole = podiumHole();
+    const seenTop = Math.max(view.top, hole.y - hole.ry);
+    const seenBottom = Math.min(view.bottom, hole.y + hole.ry);
+    const slid = parallaxShift(SHADOW_PARALLAX, this.lastPlayer);
+    const pass = shadowPassFor((seenTop + seenBottom) / 2 - slid.y, Math.random() < 0.5);
+    this.shadow = {
+      image: this.scene.add.image(0, 0, SHADOW_TEXTURE, '0').setDepth(SHADOW_DEPTH).setFlipX(!pass.east),
+      pass,
+      elapsedMs: 0,
+    };
+    this.shadowInMs = nextShadowInMs(Math.random(), false);
+  }
+
+  private startEyes(view: Phaser.Geom.Rectangle, player: { readonly x: number; readonly y: number }): void {
+    const shift = parallaxShift(PODIUM_PARALLAX, player);
+    const gate = chooseEyeGate(
+      Math.random(),
+      (point) => facesTheViewer(point) && view.contains(point.x + shift.x, point.y + shift.y),
+    );
+    if (gate === null) {
+      // Not from where they are standing: they might walk round in a moment.
+      this.eyesInMs = EYES_NOT_SEEN_RETRY_MS;
+      return;
+    }
+    ensureTexture(this.scene, EYES_TEXTURE, paintEyes);
+    const sheet = this.scene.textures.get(EYES_TEXTURE);
+    if (!sheet.has('open')) {
+      EYE_LOOKS.forEach((look, frame) => sheet.add(look, 0, frame * EYES_WIDTH, 0, EYES_WIDTH, EYES_HEIGHT));
+    }
+    this.eyes = { image: this.scene.add.image(0, 0, EYES_TEXTURE, 'slit').setDepth(EYES_DEPTH), gate, elapsedMs: 0, staringMs: null };
+    this.eyesInMs = EYES_MS + nextEyesInMs(Math.random(), false);
+  }
+
+  /** A coin over the rail. Whatever is looking up out of a gate looks at whoever threw it, and every so often something does. */
+  public tossCoin(from: { readonly x: number; readonly y: number }, fed: number): void {
+    audioManager.play('coinToss');
+    this.coins.push({
+      from,
+      ms: 0,
+      heard: false,
+      image: this.scene.add.graphics().setDepth(CANOPY_BAND + 0.02).setVisible(!this.still),
+    });
+    if (this.eyes) {
+      this.eyes.staringMs = 0;
+    } else if (fed % COINS_TO_WAKE_THE_EYES === 0) {
+      this.eyesInMs = Math.min(this.eyesInMs, COIN_PLINK_MS);
+    }
+  }
+
+  /** Coins going over, and the plink a long time after each is out of sight. */
+  private flyCoins(deltaMs: number): void {
+    for (const coin of this.coins) {
+      coin.ms += deltaMs;
+      coin.image.clear();
+      const at = coinAt(coin.ms, coin.from);
+      if (at) {
+        coin.image.fillStyle(COIN_SHADE, 1).fillRect(at.x, at.y + 1, at.flat ? at.size + 1 : 1, at.size);
+        coin.image.fillStyle(COIN_INK, 1).fillRect(at.x, at.y, at.flat ? at.size + 1 : 1, at.size);
+      }
+      if (!coin.heard && coin.ms >= COIN_PLINK_MS) {
+        coin.heard = true;
+        audioManager.play('coinPlink');
+        coin.image.destroy();
+      }
+    }
+    this.coins = this.coins.filter((coin) => !coin.heard);
+  }
+
+  /** Whatever is in the pit is gone: the camera is about to go in, and it was never going to be seen up close. */
+  private stillThePit(): void {
+    this.shadow?.image.destroy();
+    this.shadow = null;
+    this.eyes?.image.destroy();
+    this.eyes = null;
   }
 
   /** The hall's fires, which go on burning through everything, a jump included. */
   public burn(deltaMs: number): void {
-    for (const fire of this.fires) {
+    this.fires.forEach((fire, index) => {
       fire.clock += deltaMs;
       if (fire.clock < fire.every) {
-        continue;
+        return;
       }
       fire.clock -= fire.every;
       // Never the same frame twice in a row, and never in order: a flame licks.
       const next = (fire.frame + 1 + Math.floor(Math.random() * (FLAME_FRAMES.length - 1))) % FLAME_FRAMES.length;
       fire.frame = next;
       fire.flame.setFrame(String(next));
-      const strength = 0.7 + Math.random() * 0.3;
+      const strength = (0.7 + Math.random() * 0.3) * this.crowd.fireShare;
       fire.halo.setAlpha(strength);
       fire.pool.setAlpha(strength);
+      fire.flare?.setFrame(String((next + index) % FLARE_FRAMES.length));
+    });
+    this.runTheRingOfFire(deltaMs);
+  }
+
+  /**
+   * The hall answers a jump: from the place they went over, fire runs round both
+   * ways and meets at the far side. Asked for with a jump and never on the way home.
+   */
+  public sendOff(from: { readonly x: number; readonly y: number }): void {
+    ensureTexture(this.scene, FLARE_TEXTURE, () => paintFlameFrames(FLARE_FRAMES, FLARE_WIDTH, FLARE_HEIGHT));
+    ensureTexture(this.scene, BLAZE_TEXTURE, () => paintGlow(38, [168, 96, 32]));
+    const sheet = this.scene.textures.get(FLARE_TEXTURE);
+    if (!sheet.has('0')) {
+      FLARE_FRAMES.forEach((_frame, index) => sheet.add(String(index), 0, index * FLARE_WIDTH, 0, FLARE_WIDTH, FLARE_HEIGHT));
+    }
+    for (const fire of this.fires) {
+      fire.flare = this.scene.add
+        .image(fire.flame.x, fire.flame.y, FLARE_TEXTURE, '0')
+        .setOrigin(0.5, 1)
+        .setDepth(FLAME_DEPTH)
+        .setVisible(false);
+      fire.blaze = this.scene.add
+        .image(fire.halo.x, fire.halo.y, BLAZE_TEXTURE)
+        .setDepth(HALO_DEPTH)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setVisible(false);
+    }
+    this.ringOfFire = { elapsedMs: 0, from: angleInHall(from) };
+  }
+
+  private runTheRingOfFire(deltaMs: number): void {
+    const ring = this.ringOfFire;
+    if (!ring) {
+      return;
+    }
+    ring.elapsedMs += deltaMs;
+    const over = ring.elapsedMs >= RING_OF_FIRE_MS;
+    for (const fire of this.fires) {
+      const step = over ? 0 : flareAt(ring.elapsedMs, fire.angle, ring.from);
+      fire.flame.setVisible(step < 2);
+      fire.flare?.setVisible(step >= 2);
+      fire.blaze?.setVisible(step > 0).setAlpha(BLAZE_ALPHA[step]);
+    }
+    if (over) {
+      this.ringOfFire = null;
     }
   }
 
@@ -563,15 +1248,16 @@ export class ArenaView {
     if (aimed) {
       this.look.setPosition(Math.round(aimed.x), Math.round(aimed.y));
     }
-    const shown = aimed !== null && this.nameShown !== '';
-    this.nameFrame.setVisible(shown);
-    this.nameText.setVisible(shown);
-    if (aimed && shown) {
-      const width = this.nameFrame.getData('width') as number;
-      const x = Math.round(aimed.x - width / 2);
-      const y = Math.round(aimed.y) - 26;
-      this.nameFrame.setPosition(x, y);
-      this.nameText.setPosition(x + 4, y + 1);
+    const view = this.scene.cameras.main.worldView;
+    const plate =
+      aimed && this.nameShown !== '' && view.width > 0
+        ? namePlatePlace(aimed, { width: this.nameFrame.getData('width') as number, height: NAME_PLATE_HEIGHT }, view)
+        : null;
+    this.nameFrame.setVisible(plate !== null);
+    this.nameText.setVisible(plate !== null);
+    if (plate) {
+      this.nameFrame.setPosition(plate.x, plate.y);
+      this.nameText.setPosition(plate.x + 4, plate.y + 1);
     }
   }
 
@@ -584,9 +1270,8 @@ export class ArenaView {
     this.nameShown = name;
     this.nameText.setText(name);
     const width = Math.ceil(this.nameText.width) + 8;
-    const height = 13;
     this.nameFrame.clear();
-    drawPixelWindow(this.nameFrame, { x: 0, y: 0, width, height }, { fill: 0x0b1220, border: 0xf0c454 });
+    drawPixelWindow(this.nameFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: 0xf0c454 });
     this.nameFrame.setData('width', width);
   }
 
@@ -627,6 +1312,9 @@ export class ArenaView {
       Math.ceil(hole.rx * 2) + 4,
       Math.ceil(hole.ry * 2) + 4,
     );
+    this.townLightLayer.setPosition(this.floor.x, this.floor.y);
+    this.memoryLayer.setPosition(this.floor.x, this.floor.y);
+    this.newestMark.setPosition(this.floor.x, this.floor.y);
     if (this.lifting) {
       this.lifting.image.setPosition(this.floor.x + this.lifting.left, this.floor.y + this.lifting.top);
     }
@@ -634,6 +1322,7 @@ export class ArenaView {
     for (const each of this.mists) {
       each.setPosition(PIT_MAP_CENTRE.x + mist.x, PIT_MAP_CENTRE.y + mist.y);
     }
+    this.cloudShadow?.setPosition(this.floor.x + PIT_FLOOR_SIZE / 2, this.floor.y + PIT_FLOOR_SIZE / 2);
     const podium = parallaxShift(PODIUM_PARALLAX, player);
     this.podium.setPosition(RING_ORIGIN.x + podium.x, RING_ORIGIN.y + podium.y);
     this.tiers.forEach((image, tier) => {
@@ -662,80 +1351,43 @@ export class ArenaView {
   /** Writes down what the pit shows now, for the fog a raid lifts to lift out of. */
   public rememberBelow(): void {
     lastSeenBelow = { mapId: this.mapIdValue, picture: this.picture };
+    this.stillThePit();
   }
 
   /**
    * One frame of going down: the camera has gone in by `zoom` on `focus`, and the
-   * floor and the mist go in less far than the hall around them, because they
-   * are further away. `cloud` is how much of the screen the cloud has.
+   * floor and the mist go in far less than the hall around them, because they are
+   * so much further away. What falls and what goes past is `arenaDiveView.ts`.
    */
-  public diveFrame(zoom: number, focus: { readonly x: number; readonly y: number }, cloud: number, view: Phaser.Geom.Rectangle): void {
+  public diveFrame(zoom: number, focus: { readonly x: number; readonly y: number }): void {
     const layer = (image: { x: number; y: number; setScale(scale: number): unknown; setPosition(x: number, y: number): unknown }, reach: number, restX: number, restY: number): void => {
       const seen = (1 + (zoom - 1) * reach) / zoom;
       image.setScale(seen);
       image.setPosition(focus.x + (restX - focus.x) * seen, focus.y + (restY - focus.y) * seen);
     };
     const floorShift = parallaxShift(FLOOR_PARALLAX, this.lastPlayer);
-    layer(this.floor, 0.5, PIT_MAP_CENTRE.x - PIT_FLOOR_SIZE / 2 + floorShift.x, PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y);
+    const floorX = PIT_MAP_CENTRE.x - PIT_FLOOR_SIZE / 2 + floorShift.x;
+    const floorY = PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y;
+    layer(this.floor, DIVE_FLOOR_REACH, floorX, floorY);
+    layer(this.townLightLayer, DIVE_FLOOR_REACH, floorX, floorY);
+    layer(this.memoryLayer, DIVE_FLOOR_REACH, floorX, floorY);
+    layer(this.newestMark, DIVE_FLOOR_REACH, floorX, floorY);
+    this.markFrame.setVisible(false);
+    this.markText.setVisible(false);
+    this.cloudShadow?.setVisible(false);
     const mistShift = parallaxShift(MIST_PARALLAX, this.lastPlayer);
     for (const mist of this.mists) {
       layer(mist, 0.75, PIT_MAP_CENTRE.x + mistShift.x, PIT_MAP_CENTRE.y + mistShift.y);
     }
+    // The mist goes first: magnified, its dither is a board of squares.
+    const thin = 1 - Math.min(1, (Math.log(zoom) / Math.log(DIVE_MIST_GONE)) * 4);
+    this.mists.forEach((mist, index) => mist.setAlpha(MIST_ALPHAS[index] * (Math.ceil(thin * 4) / 4)));
     this.look.setVisible(false);
     this.nameFrame.setVisible(false);
     this.nameText.setVisible(false);
     for (const { image } of this.lights) {
       image.setVisible(false);
     }
-    this.rushPastWisps(zoom, view);
-    if (cloud > 0 && !this.diveCloud) {
-      ensureTexture(this.scene, CLOUD_TEXTURE, cloudSheet);
-      this.diveCloud = this.scene.add.tileSprite(0, 0, 8, 8, CLOUD_TEXTURE).setOrigin(0, 0).setDepth(CLOUD_DEPTH);
-    }
-    if (this.diveCloud) {
-      // In steps, as a GBA's blend registers go, rather than smoothly.
-      this.diveCloud.setAlpha(Math.min(1, Math.ceil(cloud * 6) / 6));
-      this.diveCloud.setPosition(view.x, view.y);
-      // Drawn a pixel to the pixel of the screen however far in the camera has
-      // gone: it is the same sheet the raid opens under.
-      this.diveCloud.setTileScale(1 / zoom, 1 / zoom);
-      this.diveCloud.setSize(view.width + 1, view.height + 1);
-      this.diveCloud.setDisplaySize(view.width + 1, view.height + 1);
-      this.drift += 16;
-      this.diveCloud.setTilePosition(Math.round(this.drift / 4), Math.round(this.drift / 2));
-    }
-  }
-
-  /**
-   * Thin sheets of cloud coming up past the camera, which is what falling through
-   * cloud looks like: each grows out from the middle of the screen, thickens, and
-   * is gone past the edges a moment later, the next already coming behind it.
-   */
-  private rushPastWisps(zoom: number, view: Phaser.Geom.Rectangle): void {
-    const depth = Math.log(zoom) / Math.log(6);
-    if (depth <= 0.1) {
-      return;
-    }
-    if (this.diveWisps.length === 0) {
-      for (let index = 0; index < WISP_SHEETS; index += 1) {
-        this.diveWisps.push(this.scene.add.tileSprite(0, 0, 8, 8, MIST_TEXTURE).setOrigin(0, 0).setDepth(CLOUD_DEPTH - 0.5));
-      }
-    }
-    const width = view.width + 1;
-    const height = view.height + 1;
-    this.diveWisps.forEach((sheet, index) => {
-      const age = (depth * 2 + index / WISP_SHEETS) % 1;
-      const scale = 1 + age * age * WISP_SPREAD;
-      const tileScale = scale / zoom;
-      sheet.setPosition(view.x, view.y);
-      sheet.setSize(width, height);
-      sheet.setDisplaySize(width, height);
-      sheet.setTileScale(tileScale, tileScale);
-      // Held still about the middle of the screen, so it grows out from there.
-      sheet.setTilePosition(128 + index * 83 - width / (2 * tileScale), 128 + index * 47 - height / (2 * tileScale));
-      // Thickest half way past, and in steps, as a GBA's blend registers go.
-      sheet.setAlpha(Math.round(Math.sin(age * Math.PI) * 5) / 8);
-    });
   }
 
   // --- home again ----------------------------------------------------------------
@@ -783,8 +1435,8 @@ export class ArenaView {
     const boxBottom = Math.min(size, Math.ceil(offsetY + (bottom + 1) * scale) + margin);
     const width = boxRight - boxLeft;
     const height = boxBottom - boxTop;
-    const old = paintPitFloor(before.picture);
-    const fresh = paintPitFloor(this.picture);
+    const old = paintPitFloor(before.picture, this.light);
+    const fresh = paintPitFloor(this.picture, this.light);
     const texture = this.scene.textures.createCanvas(LIFTING_TEXTURE, width, height);
     if (!texture) {
       return null;

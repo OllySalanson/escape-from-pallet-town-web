@@ -176,6 +176,13 @@ describe('contract pressure', () => {
 });
 
 describe('hunterThreatLine', () => {
+  it('counts nothing against an empty bench', () => {
+    expect(hunterThreatLine(hunterThreatFor([]))).toEqual({
+      heading: 'Hunter: BLUE',
+      detail: 'one Pokémon for each of yours',
+    });
+  });
+
   it('names who is coming, how many and how strong, against which of yours', () => {
     expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)]))).toEqual({
       heading: 'Hunter: BLUE',

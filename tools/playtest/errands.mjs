@@ -64,6 +64,15 @@ try {
     }
     return said;
   };
+  /** Past whatever is still being said or asked, saying NOT NOW to it. */
+  const pastTheTalk = async () => {
+    for (let guard = 0; guard < 12; guard += 1) {
+      const now = await scene();
+      if (now.prompt === null && !now.box) return;
+      await press(now.prompt !== null ? 'Escape' : 'Space', 300);
+    }
+    throw new Error('the talk never ended');
+  };
   /** Writes the save and reopens the game on it, standing in the yard. */
   const load = async (edit) => {
     await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); (${edit})(save);
@@ -111,7 +120,8 @@ try {
     await sleep(500);
   };
   const expectSaid = (lines, start, what) => {
-    if (!lines[0]?.startsWith(start)) throw new Error(`${what}: said ${JSON.stringify(lines)}`);
+    // First words come ahead of a favour, the first time in a room.
+    if (!lines.some((line) => line.startsWith(start))) throw new Error(`${what}: said ${JSON.stringify(lines)}`);
     console.log(`${what}: ${lines.join(' / ')}`);
   };
 
@@ -164,7 +174,7 @@ try {
   // Her talk ends in the room: no screen opens, and nothing more is asked.
   if (await page.evaluate(sceneIs('hub'))) throw new Error('Joy opened a screen');
   await press('Space', 600);
-  expectSaid(await readOn(), 'fit to raid', 'Joy with nothing to ask');
+  expectSaid(await readOn(), 'Your Pokémon are all fit to raid', 'Joy with nothing to ask');
   await press('ArrowDown', 900);
 
   // Bill asks, and a YES takes it on.
@@ -174,9 +184,9 @@ try {
   expectSaid(await readOn(), 'There is a lump of OLD AMBER', 'Bill asks');
   await press('Space', 300);
   expectSaid(await readOn(), 'Great!', 'Bill hears YES');
-  await page.waitFor(sceneIs('hub'), { what: "Bill's screen after the favour" });
   if ((await progress()).errands.find((e) => e.id === 'old-amber')?.status !== 'started') throw new Error('YES took nothing on');
-  await leave();
+  // He goes on to how he reads you and his list; ESC is NOT NOW to it.
+  await pastTheTalk();
   await press('ArrowDown', 900);
 
   // Brock takes the crate home, and pays, in the same box.
@@ -186,8 +196,9 @@ try {
   expectSaid(await readOn(), "You handed over Brock's crate.", 'Brock thanks');
   const after = await vault();
   if (after.items['brocks-crate'] || after.items['tm39-rock-tomb'] !== 1) throw new Error(`the vault holds ${JSON.stringify(after.items)}`);
-  await page.waitFor(sceneIs('hub'), { what: "Brock's screen after the hand-over" });
-  await leave();
+  // He goes on to the next thing he would build; nothing opens.
+  if (await page.evaluate(sceneIs('hub'))) throw new Error('Brock opened a screen');
+  await pastTheTalk();
   // And the crate stands on his bench: one step up off the mat to see it.
   await press('ArrowUp', 600);
   await page.screenshot(`${out}/brock-room.png`);
@@ -196,12 +207,12 @@ try {
   await load(`(save) => { save.raidProgress.errands = [...save.raidProgress.errands.filter((e) => e.id !== 'oaks-parcel'), { id: 'oaks-parcel', status: 'started', found: 1, lossesHeard: 0 }]; }`);
   await intoRoom('oaks-lab');
   await press('Space', 300);
-  expectSaid(await readOn(), 'My parcel never made it home?', 'Oak hears of the loss');
+  const oakSaid = await readOn();
+  expectSaid(oakSaid, 'My parcel never made it home?', 'Oak hears of the loss');
   const oak = (await progress()).errands.find((e) => e.id === 'oaks-parcel');
   if (oak.lossesHeard !== 1) throw new Error(`Oak's loss is recorded as ${JSON.stringify(oak)}`);
-  // Oak's board lists every errand in hand under his contracts, and he reads it out.
-  const board = await readOn();
-  if (!board.some((line) => /Oak's Parcel/i.test(line))) throw new Error(`the board has no errands: ${JSON.stringify(board).slice(0, 300)}`);
+  // Oak's board lists every errand in hand under his contracts, and he reads it out after the loss.
+  if (!oakSaid.some((line) => /parcel/i.test(line) && !line.startsWith('My parcel'))) throw new Error(`the board has no errands: ${JSON.stringify(oakSaid).slice(0, 300)}`);
   await page.screenshot(`${out}/lab-board.png`);
 
   // The rim's panel names the errands on the map being looked at. Raids start

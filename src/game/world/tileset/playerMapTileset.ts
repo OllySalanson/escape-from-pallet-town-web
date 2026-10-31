@@ -1,4 +1,5 @@
 import type { PropDefinition, TilesetCatalogue } from './catalogue';
+import type { Material } from './materials';
 import { FLOOD_TOWN_TILESET } from './floodTownTileset';
 import { KANTO_TILESET, type KantoPropName } from './kantoTileset';
 import { OVERWORLD } from './sheets';
@@ -145,6 +146,23 @@ export type PlayerMapPropName =
   | keyof typeof WATER_PLANTS
   | TownPieceName;
 
+const BEACH_MEETS: readonly Material[] = [
+  'grass',
+  'turf',
+  'tall-grass',
+  'earth',
+  'sand',
+  'gravel',
+  'paving',
+  'stone',
+  'hedge',
+  'tree',
+  'cliff',
+  'fence',
+  'wall',
+  'boards',
+];
+
 export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
   ...KANTO_TILESET,
   sources: [
@@ -161,10 +179,14 @@ export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
     ...KANTO_TILESET.materials,
     ice: { roles: { fill: iceTile('ice.sheet') } },
     boards: BOARDS,
+    // A beach draws its surf where it meets the sea and nowhere else, or the tide
+    // comes in against the cliff at the back of a cove and round every tree on the
+    // shore. FireRed draws a waterline in the sand, so the sea gives up its bank.
+    beach: { ...KANTO_TILESET.materials.beach, joins: BEACH_MEETS },
     // A deck stands over water with no bank under it: the bank is for land.
     water: {
       ...KANTO_TILESET.materials.water,
-      joins: [...(KANTO_TILESET.materials.water.joins ?? []), 'boards'],
+      joins: [...(KANTO_TILESET.materials.water.joins ?? []), 'boards', 'beach'],
     },
   },
   props: {

@@ -41,6 +41,8 @@ export interface CountSelectorOptions {
   readonly limit: string;
   /** Said otherwise: what the control does. */
   readonly help: string;
+  /** The screen's cursor starts on this selector's plus, which can only add. */
+  readonly cursorStart?: boolean;
 }
 
 export function clampCount(value: number, min: number, max: number): number {
@@ -113,7 +115,7 @@ export function countSelector(options: CountSelectorOptions): string {
   const minus = `<button class="px-window px-step" ${wiring} data-count-dir="-1" data-help="${escapeAttribute(value > min ? options.help : MINUS_AT_FLOOR)}" aria-label="Fewer ${label}"${value > min ? '' : ' aria-disabled="true"'}>−</button>`;
   // Inert at the ceiling but still reachable: a control the cursor cannot land
   // on can never say why it will not move.
-  const plus = `<button class="px-window px-step" ${wiring} data-count-dir="1" data-help="${escapeAttribute(atCeiling ? options.limit : options.help)}" aria-label="More ${label}"${atCeiling ? ' aria-disabled="true"' : ''}>+</button>`;
+  const plus = `<button class="px-window px-step" ${wiring} data-count-dir="1"${options.cursorStart ? ' data-cursor-start' : ''} data-help="${escapeAttribute(atCeiling ? options.limit : options.help)}" aria-label="More ${label}"${atCeiling ? ' aria-disabled="true"' : ''}>+</button>`;
   return `<span class="px-stepper px-count" role="group" aria-label="${label}" data-count="${options.kind}:${escapeAttribute(options.id)}" data-count-value="${value}" data-count-min="${min}" data-count-max="${max}">${minus}<b role="spinbutton" aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${value}">${value}</b>${plus}</span>`;
 }
 

@@ -2165,6 +2165,25 @@ describe('SaveManager', () => {
     expect(saves.watchArenaIntro()).toBe(true);
   });
 
+  it('counts clean landings running and the most there have been, and writes nothing for a miss with no run to end', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(SQUIRTLE, 5), 'starter');
+    saves.save({ party: new PokemonParty([]), mapId: 'floodplain-relay', position: { x: 1, y: 1 }, stash, starterSpeciesId: 'squirtle' });
+    expect(saves.recordLanding(false)).toBe(0);
+    expect(saves.load()?.raidProgress.landings).toBeUndefined();
+    expect(saves.recordLanding(true)).toBe(1);
+    expect(saves.recordLanding(true)).toBe(2);
+    expect(saves.recordLanding(false)).toBe(0);
+    expect(saves.recordLanding(true)).toBe(1);
+    expect(new SaveManager(storage).load()?.raidProgress.landings).toEqual({ streak: 1, best: 2 });
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.landings = { streak: 'lots', best: 2 };
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    expect(saves.load()?.raidProgress.landings).toBeUndefined();
+  });
+
   it('plays the trailer when there is no save to remember it in', () => {
     expect(new SaveManager(new MemoryStorage()).watchArenaIntro()).toBe(true);
   });

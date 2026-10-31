@@ -52,7 +52,9 @@ class Drawn {
   public setOrigin(): this {
     return this;
   }
-  public setAlpha(): this {
+  public alpha = 1;
+  public setAlpha(alpha: number = 1): this {
+    this.alpha = alpha;
     return this;
   }
   public setFrame(frame: number = 0): this {
@@ -294,6 +296,24 @@ describe('somebody in the harbour saying something', () => {
     expect(shown()).toContain('WANT TO RAID?');
     others.update([standing('amy', 10), standing('pip', 11)]);
     expect(shown()).toEqual(['AMY', 'PIP']);
+  });
+
+  it('reads a caption through whoever it is seated over, for that frame only', () => {
+    const { others, shown } = figuresIn();
+    const figure = standing('amy', 10);
+    others.update([figure]);
+    const [rect] = others.rects();
+    others.veilUnder([{ x: rect.x, y: rect.y + rect.height - 4, width: 4, height: 4 }]);
+    const drawn = (others as unknown as { drawn: Map<string, { sprite: Drawn }> }).drawn.get('amy')!;
+    expect(drawn.sprite.alpha).toBeLessThan(1);
+    others.update([figure]);
+    expect(drawn.sprite.alpha).toBe(1);
+    expect(shown()).toEqual(['AMY']);
+    // A caption across their name alone leaves them whole, and takes the name.
+    const plate = others.plateRects()[0];
+    others.veilUnder([{ x: plate.x, y: plate.y, width: plate.width, height: 2 }]);
+    expect(drawn.sprite.alpha).toBe(1);
+    expect(shown()).toEqual([]);
   });
 
   it('clears a name from under this player\'s own bubble', () => {

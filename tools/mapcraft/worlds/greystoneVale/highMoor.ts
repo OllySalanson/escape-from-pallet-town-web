@@ -85,8 +85,8 @@ export function highMoor(): MapcraftResult {
   // The drovers' heather on the east, right up to the road.
   p.block(29, 24, 11, 8, 'g');
   // The drovers' fold, under the tor, and their camp in the heather across the road.
-  p.yard(20, 26, 5, 6, { gates: [[24, 28]], inner: '.' });
-  stand('crate-pair', 21, 27);
+  p.yard(20, 27, 5, 5, { gates: [[24, 28]], inner: '.' });
+  stand('crate-pair', 21, 28);
   p.meadow(35, 24, 5, 4);
   stand('hut', 37, 24);
   stand('log', 35, 27);
@@ -94,7 +94,7 @@ export function highMoor(): MapcraftResult {
   p.flowers([39, 27]);
 
   // Moor Top, on the west, over a short step down; the trail east forks here.
-  p.rock(20, 34, 4, 2);
+  p.rock(20, 33, 4, 3);
   p.bushes([25, 37], [25, 38]);
   p.flowers([20, 39], [23, 39], [21, 40]);
   p.ledge(20, 23, 42);
@@ -219,7 +219,7 @@ export function highMoor(): MapcraftResult {
         { x: 35, y: 11, species: 'clefairy', beat: { everyMs: 2700, roam: [[0, 1]] } },
         { x: 38, y: 10, species: 'clefairy', level: 9 },
         // The fold, and the Lost Fold's old bull, who has been on his own a long time.
-        { x: 21, y: 29, species: 'tauros', beat: { everyMs: 2600, roam: [[1, 0]] } },
+        { x: 21, y: 30, species: 'tauros', beat: { everyMs: 2600, glances: ['right'] } },
         { x: 47, y: 13, species: 'tauros', level: 13, beat: { everyMs: 3100, roam: [[1, 0]] } },
         { x: 39, y: 25, species: 'rattata', beat: { everyMs: 1300, roam: [[0, -1]] } },
         // The toll's Pidgey, and the Geodude that gets counted with the Grey Stones.

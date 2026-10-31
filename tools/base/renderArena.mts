@@ -6,7 +6,7 @@
  *   npx vite-node tools/base/renderArena.mts -- out.png --at=32,62 --view=400x256 --scale=2 --survey=all
  *   npx vite-node tools/base/renderArena.mts -- out.png --whole --scale=1 --survey=none
  *
- * `--survey=none|all|some`: what this save has walked. `--whole` is the hall
+ * `--light=day|dusk|night`: the hour. `--survey=none|all|some`: what this save has walked. `--whole` is the hall
  * from above, which no player ever sees. Flames and mist are the scene's and
  * are not drawn here; the photographs under `docs/screens/arena-hall/` are.
  */
@@ -26,6 +26,8 @@ import {
   parallaxShift,
 } from '../../src/game/base/arenaHall';
 import { PIT_FLOOR_SIZE, RING_ORIGIN, paintPitFloor, paintPodium, paintTier } from '../../src/game/base/arenaPit';
+import type { WindowLight } from '../../src/game/base/homeClock';
+import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH, paintBanners, paintCrowdLayer, paintStands } from '../../src/game/base/arenaStands';
 import { buildMinimap, type Minimap } from '../../src/game/world/minimap';
 import { getWorldMap } from '../../src/game/worldMap';
 
@@ -38,17 +40,19 @@ const [atX, atY] = (option('at') ?? '32,62').split(',').map(Number);
 const [viewW, viewH] = (option('view') ?? '400x256').split('x').map(Number);
 const survey = option('survey') ?? 'some';
 
-const WIDTH = ARENA_HALL_WIDTH * ARENA_TILE;
-const HEIGHT = ARENA_HALL_HEIGHT * ARENA_TILE + ARENA_DARK_BELOW;
+// The canvas runs from the stands' own corner: everything else is laid `PAD` in from it.
+const PAD = { x: -STANDS_ORIGIN.x, y: -STANDS_ORIGIN.y };
+const WIDTH = STANDS_WIDTH;
+const HEIGHT = Math.max(STANDS_HEIGHT, ARENA_HALL_HEIGHT * ARENA_TILE + ARENA_DARK_BELOW + PAD.y);
 const canvas = Buffer.alloc(WIDTH * HEIGHT * 4);
 for (let at = 3; at < canvas.length; at += 4) canvas[at] = 255;
 
 const blit = (picture: { width: number; height: number; data: Uint8ClampedArray | Buffer }, left: number, top: number): void => {
   for (let y = 0; y < picture.height; y += 1) {
-    const hallY = y + top;
+    const hallY = y + top + PAD.y;
     if (hallY < 0 || hallY >= HEIGHT) continue;
     for (let x = 0; x < picture.width; x += 1) {
-      const hallX = x + left;
+      const hallX = x + left + PAD.x;
       if (hallX < 0 || hallX >= WIDTH) continue;
       const from = (y * picture.width + x) * 4;
       if (picture.data[from + 3] === 0) continue;
@@ -73,7 +77,7 @@ if (survey !== 'none') {
 }
 const full = buildMinimap({ map, surveyed: tiles });
 const picture: Minimap = { ...full, width: 384, height: 384, rows: full.rows.slice(0, 384).map((row) => row.slice(0, 384)) };
-const floor = paintPitFloor(picture);
+const floor = paintPitFloor(picture, (option('light') ?? 'day') as WindowLight);
 const shiftBy = (amount: number): { x: number; y: number } => parallaxShift(amount, player);
 const floorShift = shiftBy(FLOOR_PARALLAX);
 blit(
@@ -88,6 +92,10 @@ for (let tier = PIT_TIERS - 1; tier >= 0; tier -= 1) {
   blit(paintTier(tier), RING_ORIGIN.x + shift.x, RING_ORIGIN.y + shift.y);
 }
 
+blit(paintStands(), STANDS_ORIGIN.x, STANDS_ORIGIN.y);
+blit(paintCrowdLayer(Number(option('house') ?? 0.62)), STANDS_ORIGIN.x, STANDS_ORIGIN.y);
+blit(paintBanners(), STANDS_ORIGIN.x, STANDS_ORIGIN.y);
+
 const sheet = readPng(new URL('../../public/assets/arena-hall.png', import.meta.url).pathname);
 const layer = (encoded: string): void => {
   encoded.split('\n').forEach((row, tileY) => {
@@ -101,7 +109,7 @@ const layer = (encoded: string): void => {
         for (let x = 0; x < ARENA_TILE; x += 1) {
           const from = ((sheetRow * ARENA_TILE + y) * sheet.width + column * ARENA_TILE + x) * 4;
           if (sheet.data[from + 3] === 0) continue;
-          const to = ((tileY * ARENA_TILE + y) * WIDTH + tileX * ARENA_TILE + x) * 4;
+          const to = ((tileY * ARENA_TILE + y + PAD.y) * WIDTH + tileX * ARENA_TILE + x + PAD.x) * 4;
           canvas[to] = sheet.data[from];
           canvas[to + 1] = sheet.data[from + 1];
           canvas[to + 2] = sheet.data[from + 2];
@@ -121,8 +129,8 @@ if (!whole) {
   cropW = viewW;
   cropH = viewH;
   const lean = cameraLean(player, cropH);
-  left = Math.max(0, Math.min(WIDTH - cropW, player.x + lean.x - cropW / 2));
-  top = Math.max(0, Math.min(HEIGHT - cropH, player.y + lean.y - cropH / 2));
+  left = Math.max(0, Math.min(WIDTH - cropW, player.x + PAD.x + lean.x - cropW / 2));
+  top = Math.max(0, Math.min(HEIGHT - cropH, player.y + PAD.y + lean.y - cropH / 2));
 }
 const outW = cropW * scale;
 const outH = cropH * scale;
