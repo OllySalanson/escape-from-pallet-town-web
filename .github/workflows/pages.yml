@@ -1,9 +1,15 @@
 name: Deploy GitHub Pages
 
+# Publishes the newest commit on main whose CI passed, and only that: CI has
+# already run every check on it, so this builds and deploys and tests nothing.
+# Started by publish-after-ci.yml each time CI passes on main, or by hand.
+#
+# Which commit is decided when a run starts, never by what started it. CI runs
+# can finish out of order and a newer run replaces a waiting one, so whichever
+# run survives the queue still publishes everything that has passed, and an
+# older commit finishing late can never put the live game back.
+
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 # Only the deploy job may publish to Pages; the job that installs and runs the
@@ -16,11 +22,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  choose-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      sha: ${{ steps.newest.outputs.sha }}
+    steps:
+      - name: Find the newest commit on main that passed CI
+        id: newest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A pull request from a fork's own main also reads as branch main,
+          # hence the event and the repository.
+          sha=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&status=success&per_page=50" \
+            --jq "[.workflow_runs[]
+              | select(.event == \"push\" or .event == \"workflow_dispatch\")
+              | select(.head_repository.full_name == \"${GITHUB_REPOSITORY}\")][0].head_sha // empty")
+          if [ -z "$sha" ]; then
+            echo "::error::No commit on main has passed CI, so there is nothing to publish"
+            exit 1
+          fi
+          echo "Publishing $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: choose-commit
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out the commit that passed
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.choose-commit.outputs.sha }}
 
       - name: Use Node.js 22
         uses: actions/setup-node@v4
@@ -30,15 +64,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test
 
       - name: Build
         run: npm run build

@@ -10,9 +10,12 @@ After a merge to `main`, the live game is at:
 
 ## How it is published
 
-- `.github/workflows/pages.yml` runs on every push to `main` (and on manual dispatch).
-- The workflow lint-checks, typechecks, tests, builds, uploads `dist/`, and deploys through the official Pages actions.
-- Deployments are serialized (`concurrency.group: pages`) so two pushes do not race.
+- `.github/workflows/ci.yml` runs every check on each commit to `main`. When it passes, `publish-after-ci.yml` starts `pages.yml`.
+- `pages.yml` tests nothing again: it finds the newest commit on `main` that passed CI, checks that commit out, builds it, uploads `dist/`, and deploys through the official Pages actions. A commit whose CI failed is never published; the game stays on the last pass until a newer commit passes.
+- Starting **Deploy GitHub Pages** by hand does the same thing, so it publishes the newest pass rather than the tip of `main` if the tip has not passed yet.
+- Deployments are serialized (`concurrency.group: pages`). A newer publish may replace a waiting one and loses nothing, because the commit is chosen when a run starts, so the survivor publishes everything that has passed. CI runs finishing out of order cannot put the live game back.
+- `publish-after-ci.yml` is separate so that a failed CI run, which also fires `workflow_run`, never joins that queue and pushes out a waiting publish.
+- A map published by `publish-player-maps.yml` merges with the workflow's own token, which starts no workflow, so that job starts CI on the merge by hand and the usual path deploys it.
 - Production builds set Vite `base` to `/escape-from-pallet-town-web/` in `vite.config.ts`; local dev and tests keep `/`.
 
 ## Verify before merging
@@ -49,7 +52,7 @@ Check the browser console and network tab for 404s on JS, CSS, fonts, sprites, o
 
 ## Verify after merge
 
-1. Open the [Actions](https://github.com/OllySalanson/escape-from-pallet-town-web/actions/workflows/pages.yml) tab and confirm **Deploy GitHub Pages** succeeded on the merge commit.
+1. Open the [Actions](https://github.com/OllySalanson/escape-from-pallet-town-web/actions/workflows/pages.yml) tab and confirm **CI** passed on the merge commit and the **Deploy GitHub Pages** run after it succeeded, publishing that commit (its first job names it).
 2. Load the public URL above in a normal browser (not test mode).
 3. Start a new game and walk one tile to confirm assets and save behaviour.
 
