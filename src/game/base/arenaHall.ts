@@ -416,6 +416,44 @@ export function pitLookPoint(tile: GridPosition): { readonly x: number; readonly
 /** How far across the hole a player's eye lands: just past the foot of the steps. */
 const LOOK_PAST_FOOT = 0.92;
 
+/** How far above a way in's light its name plate is seated, and below it when there is no room above. */
+const PLATE_ABOVE = 26;
+const PLATE_BELOW = 10;
+/** Kept clear at the screen's right edge, where the page's FEEDBACK tab stands over the canvas. */
+const PLATE_RIGHT_CLEAR = 14;
+
+/**
+ * Where a way in's name plate sits for a view of the hall, or null if it would
+ * not be whole. A plate is about a mark, so with the mark off the screen there
+ * is nothing to name; with the mark on it, the plate slides along to stay on it
+ * rather than be cut by the screen's edge. It is drawn under the hall's floor,
+ * so it must also stand wholly over the pit or the stone would cut it instead.
+ */
+export function namePlatePlace(
+  mark: { readonly x: number; readonly y: number },
+  plate: { readonly width: number; readonly height: number },
+  view: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+): { readonly x: number; readonly y: number } | null {
+  const right = view.x + view.width - PLATE_RIGHT_CLEAR;
+  const bottom = view.y + view.height;
+  if (mark.x < view.x || mark.x >= right || mark.y < view.y || mark.y >= bottom) {
+    return null;
+  }
+  const x = Math.min(right - plate.width, Math.max(view.x, Math.round(mark.x - plate.width / 2)));
+  const above = Math.round(mark.y) - PLATE_ABOVE;
+  const y = above >= view.y ? above : Math.round(mark.y) + PLATE_BELOW;
+  const fits =
+    x >= view.x &&
+    y + plate.height <= bottom &&
+    [
+      [x, y],
+      [x + plate.width, y],
+      [x, y + plate.height],
+      [x + plate.width, y + plate.height],
+    ].every(([cornerX, cornerY]) => acrossOval(PIT_RIM, cornerX, cornerY) < 1);
+  return fits ? { x, y } : null;
+}
+
 /** How far the camera leans out over the pit from wherever the player stands, as a share of the way to the middle. */
 const CAMERA_LEAN = 0.2;
 /** What the most it leans has to leave at the foot of a screen: the player's own tile and the hint under it. */

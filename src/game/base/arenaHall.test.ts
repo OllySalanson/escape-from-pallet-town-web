@@ -26,6 +26,7 @@ import {
   arenaStationAt,
   cameraLean,
   isArenaFence,
+  namePlatePlace,
   parallaxShift,
   pitLookPoint,
   pitTileAt,
@@ -274,6 +275,23 @@ describe('the pit', () => {
     expect(mat.y).toBeLessThan(0);
     expect(Math.abs(mat.y)).toBeLessThanOrEqual(256 / 2 - 56);
     expect(Math.abs(cameraLean({ x: 520, y: 1000 }, 240).y)).toBeLessThanOrEqual(240 / 2 - 56);
+  });
+
+  it('draws a way in\'s name plate whole or not at all', () => {
+    const plate = { width: 90, height: 13 };
+    const view = { x: 300, y: 300, width: 400, height: 256 };
+    // In the middle of the view, over its mark.
+    expect(namePlatePlace({ x: 500, y: 420 }, plate, view)).toEqual({ x: 455, y: 394 });
+    // At either edge it slides along rather than being cut.
+    expect(namePlatePlace({ x: 305, y: 420 }, plate, view)?.x).toBe(300);
+    expect(namePlatePlace({ x: 684, y: 420 }, plate, view)?.x).toBe(596);
+    // Under the top of the screen it goes below its mark.
+    expect(namePlatePlace({ x: 500, y: 310 }, plate, view)?.y).toBe(320);
+    // A mark off the screen has nothing to be named, the walk round the rim's case.
+    expect(namePlatePlace({ x: 280, y: 420 }, plate, view)).toBeNull();
+    expect(namePlatePlace({ x: 696, y: 420 }, plate, view)).toBeNull();
+    // Nor is it ever cut by the stone round the pit: the hall's floor is drawn over it.
+    expect(namePlatePlace({ x: 520 + 370, y: 528 }, plate, { x: 600, y: 400, width: 400, height: 256 })).toBeNull();
   });
 
   /** A map the size the pit shows, all open grass, walked within `walked` of its top-left. */

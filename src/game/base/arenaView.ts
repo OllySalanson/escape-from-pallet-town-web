@@ -19,6 +19,7 @@ import {
   PODIUM_PARALLAX,
   TIER_PARALLAX,
   dithered,
+  namePlatePlace,
   parallaxShift,
   pitFrameFor,
   pitLookPoint,
@@ -184,6 +185,8 @@ const DEEP_SOUND_SPREAD_MS = 40000;
 
 /** What each map's floor texture was last painted from. */
 const floorShows = new Map<string, string>();
+
+const NAME_PLATE_HEIGHT = 13;
 
 /** How a landing's light beats, and how far a light is from the mark round the one being looked at. */
 const LIGHT_BEAT_MS = 520;
@@ -563,15 +566,16 @@ export class ArenaView {
     if (aimed) {
       this.look.setPosition(Math.round(aimed.x), Math.round(aimed.y));
     }
-    const shown = aimed !== null && this.nameShown !== '';
-    this.nameFrame.setVisible(shown);
-    this.nameText.setVisible(shown);
-    if (aimed && shown) {
-      const width = this.nameFrame.getData('width') as number;
-      const x = Math.round(aimed.x - width / 2);
-      const y = Math.round(aimed.y) - 26;
-      this.nameFrame.setPosition(x, y);
-      this.nameText.setPosition(x + 4, y + 1);
+    const view = this.scene.cameras.main.worldView;
+    const plate =
+      aimed && this.nameShown !== '' && view.width > 0
+        ? namePlatePlace(aimed, { width: this.nameFrame.getData('width') as number, height: NAME_PLATE_HEIGHT }, view)
+        : null;
+    this.nameFrame.setVisible(plate !== null);
+    this.nameText.setVisible(plate !== null);
+    if (plate) {
+      this.nameFrame.setPosition(plate.x, plate.y);
+      this.nameText.setPosition(plate.x + 4, plate.y + 1);
     }
   }
 
@@ -584,9 +588,8 @@ export class ArenaView {
     this.nameShown = name;
     this.nameText.setText(name);
     const width = Math.ceil(this.nameText.width) + 8;
-    const height = 13;
     this.nameFrame.clear();
-    drawPixelWindow(this.nameFrame, { x: 0, y: 0, width, height }, { fill: 0x0b1220, border: 0xf0c454 });
+    drawPixelWindow(this.nameFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: 0xf0c454 });
     this.nameFrame.setData('width', width);
   }
 
