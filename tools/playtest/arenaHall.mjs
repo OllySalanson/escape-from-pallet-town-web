@@ -215,12 +215,12 @@ try {
 
   // Looking down, with the marshal's words the first time.
   await press('Space');
+  await step(900);
+  expect('the marshal says what is down there, in the hall, before anything opens', (await base('b.dialogBox.visible')) && !(await page.evaluate(sceneIs('hub'))));
+  await shot('7-rim-words');
+  await press('Escape');
   await until(sceneIs('hub'), 'the rim');
   await step(900);
-  expect('the rim says what it is, once', await page.evaluate(`Boolean(document.querySelector('[data-speech-done]'))`));
-  await shot('7-rim-words');
-  await page.evaluate(`document.querySelector('[data-speech-done]').click()`);
-  await step(400);
   await shot('8-looking-down');
   expect('it is looking the plan over', (await hub('h.flow.step')) === 'confirm');
   expect('the cursor is on the jump', await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`));

@@ -85,6 +85,12 @@ const main = async () => {
         await press(code);
       };
       await walkIntoBase(page, door, { press: roomPress, until, wait });
+      // Oak has no screen: his lab is the picture.
+      if (!taken) {
+        await wait(800);
+        await shot(`room-${door}`);
+        continue;
+      }
       await shot(`screen-${door}`);
       await press('Escape');
       await wait(800);

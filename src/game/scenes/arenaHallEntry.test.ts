@@ -34,7 +34,7 @@ function speak(game: RestoredGame) {
     kit: { flow: flowForGame(game) },
     clearKeeperMark: () => undefined,
     standStill: () => undefined,
-    hearLoadoutWords: (BaseScene.prototype as unknown as { hearLoadoutWords: () => void }).hearLoadoutWords,
+    hearFirstWords: (BaseScene.prototype as unknown as { hearFirstWords: (id: string) => void }).hearFirstWords,
     say: (lines: readonly string[]) => said.push(lines),
   };
   (BaseScene.prototype as unknown as { speakToMarshal: (this: typeof room, entered: typeof hall) => void }).speakToMarshal.call(room, hall);

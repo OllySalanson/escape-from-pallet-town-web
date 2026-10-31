@@ -14,7 +14,7 @@
 // smallest one and look right at the biggest.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
-import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel, readFirstWords } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -65,7 +65,6 @@ try {
     await walkIntoBase(page, 'raid-arena');
     await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
     await openHallPanel(page, 'rim');
-    await readFirstWords(page);
   };
 
   await page.waitFor(sceneIs('title'));

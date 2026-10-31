@@ -101,13 +101,6 @@ export interface PixelScreenOptions {
   readonly hints: string;
   /** A message about what just happened. It takes the help bar while it lasts. */
   readonly status?: string;
-  /**
-   * A box laid over the foot of the body - somebody speaking, as the games this
-   * is dressed as put a text box over whatever screen it is said on. It takes no
-   * room from the body, so the screen under it is laid out exactly as it will be
-   * once the words are read.
-   */
-  readonly over?: string;
 }
 
 /**
@@ -160,7 +153,7 @@ export function pixelScreen(options: PixelScreenOptions): string {
     ? `<span class="px-status-line" role="status">${options.status}</span>`
     : '';
   const help = `<p class="px-help${status ? ' has-status' : ''}"><span data-help-text data-help-default="${escapeAttribute(options.hints)}">${options.hints}</span>${status}</p>`;
-  return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}</header>${options.body}${options.over ?? ''}${help}</div>`;
+  return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}</header>${options.body}${help}</div>`;
 }
 
 export interface PixelWindowOptions {

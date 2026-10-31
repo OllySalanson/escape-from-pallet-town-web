@@ -203,6 +203,8 @@ import { prefersReducedMotion } from '../ui/reducedMotion';
 import { hunterWarningStrength } from '../world/hunterWarning';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
+import { RadioChip } from '../ui/RadioChip';
+import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
 import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
@@ -601,6 +603,8 @@ const SEARCH_MARK = 0x3f8f3a;
  * turns four lines of narration into a billboard across half the map.
  */
 const DIALOG_WIDTH = BASE_STAGE_WIDTH - 16;
+/** The key that opens the whole field guide instead of Oak's two lines. */
+const RADIO_CHIP_WORDS = `[${RAID_KEY_LETTERS.objectives}] FULL LIST`;
 const DIALOG_HEIGHT = 80;
 const DIALOG_MARGIN = 8;
 
@@ -617,6 +621,7 @@ interface ControlKeys {
   bag: Phaser.Input.Keyboard.Key;
   save: Phaser.Input.Keyboard.Key;
   objectives: Phaser.Input.Keyboard.Key;
+  back: Phaser.Input.Keyboard.Key;
   /** The look: every name on the screen while it is held - see `captionReveal.ts`. */
   look: Phaser.Input.Keyboard.Key;
   /** A raid room's phrase list, the six phrase keys, and the ping (`raidRoom/roomTalk.ts`). */
@@ -926,6 +931,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private openingBriefingOpen = false;
   /**
+   * Professor Oak is on the radio (`callOak`). Free of the clock, as the screen
+   * it stands in for always was: asking what to do next has never cost a raid
+   * anything, and a chase is no time to start charging for it.
+   */
+  private onRadio = false;
+  /** O was pressed mid-step: he is called on the tile the step ends on. */
+  private radioDue = false;
+  private radioChip: RadioChip | undefined;
+  /** The pointer came down while a box was up: read as the key that moves it on. */
+  private boxClicked = false;
+  /**
    * Direction presses already spent on answering a dialogue, which movement
    * must not read again. See `spentPresses.ts` for the whole argument.
    */
@@ -1083,6 +1099,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // The box itself is rebuilt at the bottom by create(), so the note that it was moved goes too.
     this.dialogRaised = false;
     this.openingBriefingOpen = false;
+    this.onRadio = false;
+    this.radioDue = false;
+    // Destroyed with the scene.
+    this.radioChip = undefined;
+    this.boxClicked = false;
     this.spentPresses = new SpentPresses();
     // Phaser destroyed the object with the last raid's scene, so this only has
     // to stop pointing at it - and it does have to, or the first frame of the
@@ -1248,6 +1269,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Back on the Bicycle after a fight, if it is still in the pack.
     this.setRiding(stillRiding({ ...this.rideState(), riding: this.runSession?.riding === true }));
     this.createDialogBox();
+    // A click moves a box on as the key does. A question's answers take their own.
+    const clicked = (_pointer: Phaser.Input.Pointer, over: readonly Phaser.GameObjects.GameObject[]): void => {
+      this.boxClicked = this.dialogBox.visible && over.length === 0;
+    };
+    this.input.on?.('pointerdown', clicked);
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.input.off?.('pointerdown', clicked));
     // After the dialogue box, which the partner asks whether a line is being read.
     this.createPartner(!data.returnLocation);
     this.bindControls();
@@ -1819,7 +1846,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.containWorldLabels();
     if (this.keyPresses.justPressed(this.controls.objectives)) {
       this.learnKey('objectives');
-      this.openObjectives();
+      this.answerRadioKey();
       return;
     }
 
@@ -1865,7 +1892,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     if (this.dialogBox.visible) {
+      if (this.onRadio && this.keyPresses.justPressed(this.controls.back)) {
+        this.hangUp();
+        return;
+      }
       this.handleDialogInput();
+      this.settleRadio();
       return;
     }
 
@@ -1935,6 +1967,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // nothing on screen to read, and guarded by an empty list, which is what it
     // holds on every frame of almost every raid.
     if (this.unclaimedBossGear.length > 0 && this.tryClaimWaitingBossGear()) {
+      return;
+    }
+
+    // O pressed mid-step is answered here, on the tile the step ended on.
+    if (this.radioDue) {
+      this.radioDue = false;
+      this.callOak();
       return;
     }
 
@@ -4643,6 +4682,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag]),
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives]),
+      // Never captured: an overlay above the world must keep its own Escape.
+      back: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false),
       look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.look]),
       talk: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ROOM_KEY_LETTERS.talk]),
       phrases: (['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'] as const).map((digit) =>
@@ -4664,6 +4705,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.controls.bag,
       this.controls.save,
       this.controls.objectives,
+      this.controls.back,
       this.controls.talk,
       this.controls.ping,
       ...this.controls.phrases,
@@ -4800,7 +4842,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the game having frozen on them.
    */
   private isDialogAdvancePressed(): boolean {
-    if (this.isInteractionPressed()) {
+    const clicked = this.boxClicked;
+    this.boxClicked = false;
+    if (this.isInteractionPressed() || clicked) {
       return true;
     }
     return (
@@ -5130,6 +5174,98 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.runSession?.manager.registerDroppedItem(itemId as ItemId, quantity),
       bike: { riding: this.riding, toggle: () => this.toggleBike() },
     });
+  }
+
+  /**
+   * O in a raid: Professor Oak on the radio, two lines in the dialogue box and
+   * no screen (`buildObjectiveGuide`'s `radio`). Pressed while he is talking, or
+   * while something else is being read, it is the whole field guide instead.
+   */
+  private answerRadioKey(): void {
+    if (this.onRadio) {
+      this.hangUp();
+      this.openObjectives();
+      return;
+    }
+    if (this.radioBusy()) {
+      this.openObjectives();
+      return;
+    }
+    if (this.targetTile) {
+      this.radioDue = true;
+      return;
+    }
+    this.callOak();
+  }
+
+  /** Whether something on screen already owns the box or the frame. */
+  private radioBusy(): boolean {
+    return (
+      this.dialogBox.visible ||
+      this.trainerPrompt !== undefined ||
+      this.cutscene !== undefined ||
+      this.fishing !== undefined ||
+      this.isWarping ||
+      this.pendingVoyage !== undefined ||
+      this.voyaging !== undefined ||
+      this.pendingTrainerBattle !== undefined ||
+      this.pendingWildBattle !== undefined
+    );
+  }
+
+  private callOak(): void {
+    if (
+      !this.runSession ||
+      this.runSession.manager.phase !== RunPhase.InRun ||
+      this.pendingHubTransition ||
+      this.radioBusy()
+    ) {
+      return;
+    }
+    const guide = buildObjectiveGuide(this.runSession, {
+      currentMapId: this.currentMap.id,
+      currentPosition: this.currentTile,
+      towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
+      activatedPoiIds: new Set(this.activatedPoiIds),
+      carried: (itemId: string) => this.bag.count(itemId),
+      ...this.nearestOpenExitHere(),
+      stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, playerLinks(this.currentMap)),
+      defeatedTrainerIds: new Set(this.defeatedTrainerIds),
+    });
+    audioManager.play('menuOpen');
+    this.player.stop();
+    this.player.setFrame(this.playerIdleFrame(this.facing));
+    this.onRadio = true;
+    // Unasked for the purposes of the keys: a direction moves it on as it does
+    // any box in the way, because somebody who wants to walk has heard enough.
+    this.unsolicitedDialog = true;
+    this.seatDialog([this.currentTile]);
+    this.dialogBox.showMessages([...guide.radio]);
+    this.radioChip = new RadioChip(
+      this,
+      RADIO_CHIP_WORDS,
+      { x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT },
+      () => this.answerRadioKey(),
+    );
+  }
+
+  /** Takes the chip down once his lines have been read. */
+  private settleRadio(): void {
+    if (this.onRadio && !this.dialogBox.visible) {
+      this.onRadio = false;
+      this.radioChip?.destroy();
+      this.radioChip = undefined;
+    }
+  }
+
+  /** ESC, or on to the whole list: his lines go at once. */
+  private hangUp(): void {
+    this.spentPresses.spendHeld(this.directionKeys);
+    this.dialogBox.dismiss();
+    this.unsolicitedDialog = false;
+    this.seatDialog([]);
+    this.settleRadio();
+    audioManager.play('menuClose');
   }
 
   private openObjectives(): void {
@@ -7164,6 +7300,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.pendingTrainerBattle ||
       this.pendingWildBattle ||
       this.openingBriefingOpen ||
+      this.onRadio ||
       cutsceneRunning
         ? 0
         : deltaMs;
