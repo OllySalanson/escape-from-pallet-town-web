@@ -104,9 +104,9 @@ try {
     await sleep(40);
   }
   await press(olly, 'Enter');
-  await olly.waitFor(sceneIs('starter'));
+  await olly.waitFor(sceneIs('base'));
   await olly.waitFor(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );
   await olly.waitFor(sceneIs('base'));
   await olly.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);

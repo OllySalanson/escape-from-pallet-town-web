@@ -106,11 +106,17 @@ with nothing to open them, then with the Weir Key, a Lockpick and a Pickaxe:
 the crate picked, the ROCKFALL dug, the gate unlocked and walked out through,
 failing on any line, count or ending the lock rules do not promise.
 
-`starterHover.mjs <url> <dir> [--port=N]` plays the starter picker and the partner
-swap with real pointer paths, clicks and keys at a normal and a small window,
-failing if a card changes shape on any painted frame, the pointer changes the
-choice, or the save holds another Pokemon than the one chosen
-(`docs/screens/starter-card-hover/`).
+`starterBalls.mjs <url> <dir> [--port=N] [--window=normal|small]` plays Oak's table and the partner swap
+with real pointer paths, clicks and keys at a normal and a small window, failing
+if looking at a ball writes anything, a NOT NOW takes one, the door lets a new
+game out, the save holds another Pokemon than the one chosen, or a swap card
+changes shape on any painted frame (`docs/screens/starter-balls/`). A driver that
+is testing something else takes its partner with
+`scene.getScene('base').takeStarterForDriver(id)`, straight out into the yard.
+
+`haulQuay.mjs <url> <dir> [--port=N]` comes home from a raid as the result screen
+hands over and walks out to the quay: the haul stands there that one visit, a
+lost raid leaves none, and the hall is untouched.
 
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its
@@ -246,7 +252,7 @@ row in the loadout.
   and a double battle needs two: the engine refuses the second slot when the
   player has nobody for it, so a driver with one Pokemon plays WARDEN HOLT as a
   single battle and never sees the thing it was sent to look at.
-- `--starter=Charmander` - which of the picker's three cards is taken. Anything
+- `--starter=Charmander` - which of the three balls on Oak's table is taken. Anything
   measured per starter needs it; the default is Bulbasaur.
 - `--stash=itemId[:n],..` - a player who has banked supplies, written into the
   save's vault before the lobby opens. The loadout's stepper cannot pack more

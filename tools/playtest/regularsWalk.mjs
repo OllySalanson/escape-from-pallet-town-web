@@ -29,12 +29,8 @@ try {
   await page.waitFor(sceneIs('title'), { timeoutMs: 60_000 });
   await page.keyDown('Space');
   await page.keyUp('Space');
-  await page.waitFor(sceneIs('starter'), { timeoutMs: 60_000 });
-  await page.waitFor(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`, { timeoutMs: 60_000 });
-  await page.waitFor(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes('confirm') && !b.disabled); if (!b) return false; b.click(); return true; })()`,
-    { timeoutMs: 60_000 },
-  );
+  await page.waitFor(sceneIs('base'), { timeoutMs: 60_000 });
+  await page.waitFor(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, { timeoutMs: 60_000 });
   await page.waitFor(`${sceneIs('base')} && ${BASE}.ready`, { timeoutMs: 60_000 });
   // Ten seconds at sixty frames a second, stepped so a slow machine is not
   // read as a fault: each regular's sprite, where it is drawn, every frame.

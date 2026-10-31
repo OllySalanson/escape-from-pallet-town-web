@@ -96,13 +96,12 @@ try {
 
   // A new game, straight to the harbour.
   await press('Space');
-  await until(sceneIs('starter'), 'the starter picker');
+  await until(sceneIs('base'), 'the starter picker');
   await until(
-    `(() => { const b = document.querySelector('button[data-starter="squirtle"]'); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("squirtle") === true`,
     'the picker',
   );
   await step(200);
-  await page.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Confirm'))?.click()`);
   await until(sceneIs('base'), 'the harbour');
   // Dressed in the boutique's starter pieces rather than the classic figure,
   // so the trailer can be seen to draw the player in what they wear.

@@ -130,13 +130,9 @@ try {
 
   // A new game: the starter picked is the partner.
   await tap('Space');
-  await until(sceneIs('starter'));
-  await until(`(() => { const b = document.querySelector('button[data-starter="${starter}"]'); if (!b) return false; b.click(); return true; })()`);
+  await until(sceneIs('base'));
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("${starter}") === true`);
   await wait(300);
-  await until(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes('confirm') && !b.disabled); if (!b) return false; b.click(); return true; })()`,
-    'the confirm button',
-  );
   await until(`${sceneIs('base')} && ${GAME}.scene.getScene('base').ready`, 'the harbour');
   startClip('clip-arrive-and-walk');
   await frames(70);

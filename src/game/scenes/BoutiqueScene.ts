@@ -10,6 +10,7 @@ import { ownedWearables, wholeLookById } from '../look/wardrobe';
 import { BOUTIQUE_NAME } from '../look/wearables';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 
@@ -31,6 +32,16 @@ export interface BoutiqueSceneData {
  * until the bar along the foot buys or wears it. Leaving puts back whatever
  * was only being tried, so walking out of the shop is never a purchase.
  */
+/** What the bar along the foot does. */
+const BAR_ACTIONS = '[data-buy], [data-wear-it], [data-put-back]';
+
+/** The selector that finds this card again after a redraw, or null if it is not a card. */
+function cardSelector(target: HTMLElement): string | null {
+  if (target.dataset.wear) return `[data-wear="${target.dataset.wear}"]`;
+  if (target.dataset.whole) return `[data-whole="${target.dataset.whole}"]`;
+  return target.hasAttribute('data-classic') ? '[data-classic]' : null;
+}
+
 export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackContext {
   private overlay: MenuOverlay | undefined;
   private pausedBase = false;
@@ -38,6 +49,10 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
   private game_: RestoredGame | undefined;
   private trying: PlayerLook = null;
   private status: string | undefined;
+  /** The card the cursor last stood on, which is where it comes back to from the bar. */
+  private lastCard: string | null = null;
+  /** When the keyboard last tried something on and landed on the bar: see `buy`. */
+  private triedOnAt = Number.NEGATIVE_INFINITY;
   private readonly saveManager = new SaveManager();
 
   public constructor() {
@@ -49,6 +64,8 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     this.pausedBase = data.pausedBase;
     this.mode = data.mode;
     this.status = undefined;
+    this.lastCard = null;
+    this.triedOnAt = Number.NEGATIVE_INFINITY;
     this.game_ = this.saveManager.load() ?? undefined;
     this.trying = this.wearingNow();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -88,7 +105,11 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
   }
 
   private show(): void {
-    this.overlay ??= new MenuOverlay(this, 'boutique-screen pixel-ui', (event) => this.onKey(event));
+    if (!this.overlay) {
+      this.overlay = new MenuOverlay(this, 'boutique-screen pixel-ui', (event) => this.onKey(event));
+      // The mirror answers whatever the cursor is on, and commits nothing.
+      this.overlay.root.addEventListener('focusin', (event) => this.cursorOn(event.target));
+    }
     this.overlay.root.setAttribute('aria-label', this.mode === 'shop' ? BOUTIQUE_NAME : 'Wardrobe');
     this.render();
   }
@@ -99,24 +120,25 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       return;
     }
     const root = overlay.root;
-    root.innerHTML = boutiqueMarkup(this.state());
+    // Kept where it was: the shelves hold two hundred pieces, and the cursor can
+    // go down to the bar and come back to the card it left.
+    overlay.redraw(boutiqueMarkup(this.state()));
     root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     root.querySelectorAll<HTMLButtonElement>('[data-wear]').forEach((button) => {
-      button.onclick = () => this.tryOn(wearing(this.trying, button.dataset.wear ?? ''), `[data-wear="${button.dataset.wear}"]`);
+      button.onclick = (event) =>
+        this.tryOnCard(wearing(this.trying, button.dataset.wear ?? ''), `[data-wear="${button.dataset.wear}"]`, event);
     });
     root.querySelectorAll<HTMLButtonElement>('[data-whole]').forEach((button) => {
       const whole = wholeLookById(button.dataset.whole ?? '');
-      button.onclick = () => whole && this.tryOn(whole.look, `[data-whole="${whole.id}"]`);
+      button.onclick = (event) => whole && this.tryOnCard(whole.look, `[data-whole="${whole.id}"]`, event);
     });
-    root.querySelector<HTMLButtonElement>('[data-classic]')!.onclick = () => this.tryOn(null, '[data-classic]');
+    root.querySelector<HTMLButtonElement>('[data-classic]')!.onclick = (event) => this.tryOnCard(null, '[data-classic]', event);
     root.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((button) => {
       button.onclick = () => this.jumpTo(button.dataset.jump ?? '');
     });
     this.wireAction(root, '[data-buy]', () => this.buy());
     this.wireAction(root, '[data-wear-it]', () => this.wearIt());
     this.wireAction(root, '[data-put-back]', () => this.tryOn(this.wearingNow(), undefined));
-    // The mirror answers whatever the cursor is on, and commits nothing.
-    root.addEventListener('focusin', (event) => this.preview(event.target));
     if (focusOn) {
       overlay.refocus(focusOn, '[data-cursor-start]');
     } else {
@@ -148,8 +170,15 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     card?.focus({ preventScroll: true });
   }
 
-  private preview(target: EventTarget | null): void {
+  /** The cursor has landed somewhere: the mirror answers, and a card is remembered to come back to. */
+  private cursorOn(target: EventTarget | null): void {
     if (!(target instanceof HTMLElement)) return;
+    const card = cardSelector(target);
+    if (card) this.lastCard = card;
+    this.preview(target);
+  }
+
+  private preview(target: HTMLElement): void {
     let look: PlayerLook | undefined;
     if (target.dataset.wear) look = wearing(this.trying, target.dataset.wear);
     else if (target.dataset.whole) look = wholeLookById(target.dataset.whole)?.look;
@@ -166,6 +195,21 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     }
   }
 
+  /**
+   * A card tried on. By the keyboard the cursor goes to the bar, because that is
+   * what trying something on is for, and the bar was out of reach: Down walks the
+   * shelves, two hundred pieces of it, and a playtest gave up after fifteen presses
+   * with BUY still on the screen. The mirror has already shown it; Up comes back to
+   * this card. The mouse is left where it is: it can reach the bar for itself.
+   */
+  private tryOnCard(look: PlayerLook, card: string, event: MouseEvent): void {
+    this.tryOn(look, card);
+    // A key on a button is a click no pointer made.
+    if (event.detail !== 0) return;
+    this.overlay?.focus('[data-buy]', '[data-wear-it]:not([aria-disabled="true"])', card);
+    this.triedOnAt = performance.now();
+  }
+
   private tryOn(look: PlayerLook, focusOn: string | undefined): void {
     audioManager.play('select');
     this.trying = look;
@@ -174,6 +218,9 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
   }
 
   private buy(): void {
+    // ENTER tried it on and the cursor is now on BUY, so the second press of a
+    // double-tap must not be what spends the money.
+    if (performance.now() - this.triedOnAt < RELEASE_ARMING_MS) return;
     if (!this.trying) return;
     const result = this.saveManager.buyAndWear(this.trying);
     if (!result.ok || !result.game) {
@@ -216,9 +263,34 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       this.stepShelf(event.key === 'PageDown' ? 1 : -1);
       return;
     }
+    if (event.key === 'Tab' || event.key === 'ArrowUp') {
+      if (this.crossToOrFromBar(event.key)) {
+        event.preventDefault();
+        return;
+      }
+    }
     if (this.overlay?.moveCursor(event.key)) {
       event.preventDefault();
     }
+  }
+
+  /**
+   * Tab goes straight between the shelves and the bar, whichever the cursor is
+   * in, and Up from the bar goes back to the card it left rather than to whatever
+   * is nearest the button. Says whether it moved the cursor.
+   */
+  private crossToOrFromBar(key: string): boolean {
+    const root = this.overlay?.root;
+    const at = document.activeElement;
+    const onBar = at instanceof Element && at.matches(BAR_ACTIONS);
+    if (!root || (key === 'ArrowUp' && !onBar)) return false;
+    const target = onBar
+      ? ((this.lastCard ? root.querySelector<HTMLElement>(this.lastCard) : null) ?? root.querySelector<HTMLElement>('[data-cursor-start]'))
+      : root.querySelector<HTMLElement>(`[data-buy], [data-wear-it]:not([aria-disabled="true"]), [data-put-back]:not([aria-disabled="true"])`);
+    if (!target) return false;
+    audioManager.play('select');
+    target.focus();
+    return true;
   }
 
   /** Page Down and Page Up: a shelf at a time, from the one the cursor is in. */

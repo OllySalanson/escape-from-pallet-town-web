@@ -40,9 +40,8 @@ try {
   await page.waitFor(sceneIs('title'));
   await page.evaluate(`${GAME}.pauseLoop()`);
   await press('Space');
-  await until(sceneIs('starter'));
-  await until(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`);
-  await click('Confirm Bulbasaur');
+  await until(sceneIs('base'));
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`);
   await walkIntoBase(page, 'raid-arena', { press, until, wait });
   await until(takePokemon('Bulbasaur'));
   await openHallPanel(page, 'rack', { press, until, wait });

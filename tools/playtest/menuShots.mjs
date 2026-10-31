@@ -181,9 +181,9 @@ try {
 
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await page.waitFor(sceneIs('starter'));
+  await page.waitFor(sceneIs('base'));
   await shoot('starter');
-  await click('Confirm Bulbasaur');
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, 'the partner taken');
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   // A save with a real amount in it: four maps unlocked, two dozen Pokemon and

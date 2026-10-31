@@ -36,6 +36,19 @@ import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
 import { SaveManager, raidsDeployed, raidsLost, traderCounterFor, type RestoredGame } from '../save/SaveManager';
+import { startNewGame } from '../save/newGame';
+import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
+import {
+  ballAt,
+  CHOOSING_HINT,
+  OAK_DONT_GO,
+  OAK_GO_ON,
+  oakOpeningLines,
+  receivedLine,
+  starterQuestion,
+} from '../base/starterTable';
+import { StarterPreview } from '../ui/StarterPreview';
+import { HAUL_CAPTION, HAUL_SAILOR_LINE, haulLaidOut } from '../base/haulOnTheQuay';
 import {
   FAVOUR_ANSWERS,
   declineErrand,
@@ -342,6 +355,13 @@ const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 let lastJumpedFrom: GridPosition | null = null;
 /** Whether a raid has come home since the player was last out in the harbour: the Seagallop ties up when they get there. */
 let boatDueHome = false;
+/**
+ * A new game has not been told the harbour's name yet: it walks out of Oak's door
+ * rather than arriving off the title, so it is said the first time they do.
+ */
+let harbourToBeNamed = false;
+/** What the Seagallop is bringing home, for the next time the player is out in the yard. */
+let haulDueHome: readonly string[] = [];
 /** How fast the hall's camera comes round to what it is asked to look at: a share of the way, per millisecond. */
 const CAMERA_EASE_MS = 140;
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
@@ -494,6 +514,12 @@ export interface BaseSceneData {
    * itself (`said`, in `create`), so they are always in the room's own box.
    */
   readonly said?: readonly string[];
+  /** A new game, with nothing written yet: this is Oak's table with all three balls on it (`base/starterTable.ts`). */
+  readonly choosing?: boolean;
+  /** What a raid just brought out, to stand on the quay when the boat ties up (`base/haulOnTheQuay.ts`). */
+  readonly haul?: readonly string[];
+  /** The ball just taken off that table, so Oak hands it over and says what a raid is. */
+  readonly chose?: StarterSpeciesId;
 }
 
 interface BaseControls {
@@ -754,6 +780,15 @@ export class BaseScene extends Phaser.Scene {
   private boxClicked = false;
   /** The "!" over a keeper who has something to say about their favour. */
   private keeperMark: Phaser.GameObjects.Graphics | null = null;
+  /** There is a partner to choose on Oak's table, and no game in storage yet (`base/starterTable.ts`). */
+  private choosing = false;
+  /** What is standing on the quay this visit to the yard. */
+  private haulOnTheQuay: readonly string[] = [];
+  private starterPreview: StarterPreview | null = null;
+  /** The ball the pointer is resting on, which only asks what is in it. */
+  private pointedBall: StarterSpeciesId | null = null;
+  /** The ball the question in the box is about. */
+  private askedBall: StarterSpeciesId | null = null;
   /** The "!" over each person about the harbour with a favour to ask, by their id: it walks their beat with them. */
   private harbourMarks = new Map<string, Phaser.GameObjects.Graphics>();
   /** What to do once the dialogue box now up has been read to its end (`say`). */
@@ -880,15 +915,20 @@ export class BaseScene extends Phaser.Scene {
     this.fogLift = null;
     this.walkPlan = null;
     this.roomTickMs = 0;
+    this.pointedBall = null;
+    this.askedBall = null;
+    this.starterPreview = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
+    // Never over a game that exists: another tab may have started one since.
+    this.choosing = data.choosing === true && room?.id === 'oaks-lab' && this.saveManager.load() === null;
     // A visit is to somebody's house and nowhere else: their house is drawn
     // from their snapshot, read as any save is, and everything in it is
     // theirs by name.
     this.visit = room && data.visit && isHomeRoom(room.id) ? data.visit : null;
     if (room) {
       const visit = this.visit;
-      const drawn = buildRoom(room, visit ? visit.game : loaded);
+      const drawn = buildRoom(room, visit ? visit.game : loaded, undefined, { choosing: this.choosing });
       const built = visit
         ? {
             ...drawn,
@@ -959,8 +999,13 @@ export class BaseScene extends Phaser.Scene {
     const boatHome = !this.place.room && boatDueHome;
     if (data.arrival === 'raid') {
       boatDueHome = true;
+      haulDueHome = [...new Set([...haulDueHome, ...(data.haul ?? [])])];
     } else if (boatHome) {
       boatDueHome = false;
+    }
+    this.haulOnTheQuay = boatHome ? haulDueHome : [];
+    if (boatHome) {
+      haulDueHome = [];
     }
     this.boats = null;
     if (detail && !this.place.room) {
@@ -993,6 +1038,7 @@ export class BaseScene extends Phaser.Scene {
       });
     }
     this.drawSprites();
+    this.drawHaul();
     this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
@@ -1027,6 +1073,7 @@ export class BaseScene extends Phaser.Scene {
     this.createCaptions();
     this.createDialogBox();
     this.createHint();
+    this.starterPreview = this.choosing ? new StarterPreview(this) : null;
     this.bindControls();
     // A direction still held from the step that came through the door is not
     // a step in here: it has to be let go and pressed again. That is what
@@ -1064,6 +1111,8 @@ export class BaseScene extends Phaser.Scene {
       if (this.doorTold) {
         harbourHouses()?.door.out();
       }
+      this.starterPreview?.destroy();
+      this.starterPreview = null;
       this.knockScreen?.destroy();
       this.knockScreen = null;
       this.favoursScreen?.destroy();
@@ -1110,10 +1159,15 @@ export class BaseScene extends Phaser.Scene {
     }
     // Arriving in the harbour - off the title or off the boat, not out of a
     // door - it says its name, as a FireRed town does.
-    if (!room && data.from === undefined && data.at === undefined) {
+    if (!room && ((data.from === undefined && data.at === undefined) || harbourToBeNamed)) {
       this.placeSign?.show(BASE_PLACE_NAME.toUpperCase());
+      harbourToBeNamed = false;
     }
-    if (abandoned) {
+    if (this.choosing) {
+      this.say(oakOpeningLines(houseName()), room?.keeper ? [room.keeper.position] : []);
+    } else if (data.chose) {
+      this.handOverPartner(data.chose, room?.keeper ? [room.keeper.position] : []);
+    } else if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
     } else if (data.said?.length) {
       const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
@@ -1182,6 +1236,7 @@ export class BaseScene extends Phaser.Scene {
       this.boats?.update(deltaMs);
       this.night?.update(deltaMs);
     }
+    this.settleStarterPreview();
     this.settleHeadMark();
     this.settleOwnWave(deltaMs);
     this.settleOwnBubble();
@@ -2283,7 +2338,10 @@ export class BaseScene extends Phaser.Scene {
       }
     };
     const moved = (pointer: Phaser.Input.Pointer): void => {
-      this.game.canvas.style.cursor = this.canTakeAPointer() && this.answersAPointer(this.tileUnder(pointer)) ? 'pointer' : '';
+      const tile = this.tileUnder(pointer);
+      this.game.canvas.style.cursor = this.canTakeAPointer() && this.answersAPointer(tile) ? 'pointer' : '';
+      // Resting on a ball asks what is in it, and asking commits nothing.
+      this.pointedBall = this.choosing ? ballAt(tile) : null;
     };
     this.input.on(Phaser.Input.Events.POINTER_DOWN, pressed);
     this.input.on(Phaser.Input.Events.POINTER_MOVE, moved);
@@ -2759,6 +2817,16 @@ export class BaseScene extends Phaser.Scene {
     }
   }
 
+  /** What the raid brought home, on the quay beside the boat: pictures, walked over as ground loot is. */
+  private drawHaul(): void {
+    for (const { itemId, at } of haulLaidOut(this.haulOnTheQuay)) {
+      this.add
+        .image(at.x * TILE_SIZE, at.y * TILE_SIZE, iconTextureKey(itemIconName(itemId)))
+        .setOrigin(0, 0)
+        .setDepth(atRow(MARKER_BAND, at.y));
+    }
+  }
+
   /**
    * Everything on Bill's shelves, each as the miniature `base/cabinet.ts`
    * draws it (`oddityFrame`). Each answers the pointer: resting on one is
@@ -3175,6 +3243,18 @@ export class BaseScene extends Phaser.Scene {
         speech: { voice: 'name', tiles: [DAY_CARE_KEEPER.position] },
       }),
     );
+    const haul = haulLaidOut(this.haulOnTheQuay).map(({ at }) => at);
+    if (haul.length > 0) {
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: tilesRect(haul),
+          text: HAUL_CAPTION,
+          tone: LANDMARK_TONE,
+          depth: atRow(CAPTION_BAND, Math.max(...haul.map((tile) => tile.y))),
+          speech: { voice: 'name', tiles: haul },
+        }),
+      );
+    }
     for (const landmark of HARBOUR_LANDMARKS) {
       this.worldLabels.push(
         new WorldLabel(this, {
@@ -3204,7 +3284,7 @@ export class BaseScene extends Phaser.Scene {
     const { keeper } = room;
     if (keeper) {
       const door = doorNamed(room.id);
-      const status = door ? doorStatusLine(door, this.savedGame) : '';
+      const status = door && !this.choosing ? doorStatusLine(door, this.savedGame) : '';
       this.worldLabels.push(
         new WorldLabel(this, {
           subject: figureRect(keeper.position),
@@ -3273,6 +3353,13 @@ export class BaseScene extends Phaser.Scene {
   private hintHere(): string {
     const room = this.place.room?.room;
     const facing = nextTileFromDirection(this.currentTile, this.facing);
+    if (this.choosing) {
+      const ball = ballAt(facing);
+      if (ball) {
+        return `[SPACE] ${getStarterSpecies(ball).name.toUpperCase()}`;
+      }
+      return room?.keeper && servesFrom(room, facing) ? `[SPACE] ${room.keeper.name}` : CHOOSING_HINT;
+    }
     // Facing the partner is the one thing the yard says a key does, because
     // turning to face it is the only way anybody would find out.
     const partner = this.partner && this.partnerAt(facing) ? `[SPACE] ${this.partner.name}` : undefined;
@@ -3859,7 +3946,7 @@ export class BaseScene extends Phaser.Scene {
     }
     const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
     const greeting: PartnerEmote | null =
-      data.arrival === 'raid' || (data.from === undefined && data.room === undefined && data.at === undefined)
+      data.arrival === 'raid' || data.chose || (data.from === undefined && data.room === undefined && data.at === undefined)
         ? partner.pokemon.isFainted
           ? 'sleepy'
           : partner.pokemon.currentHp * 4 <= partner.pokemon.maxHp
@@ -4084,6 +4171,9 @@ export class BaseScene extends Phaser.Scene {
    * walks up while the bubble is still there.
    */
   private openPhrases(): void {
+    if (this.choosing) {
+      return;
+    }
     this.learnKey('talk');
     audioManager.play('select');
     this.player.stop();
@@ -4275,6 +4365,10 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const room = this.place.room?.room;
+    if (room && this.choosing) {
+      this.chooseAt(room, target);
+      return;
+    }
     if (room) {
       if (room.screen === 'arena') {
         // Nobody's screen opens from the mat in here: the room is the screen.
@@ -4397,7 +4491,8 @@ export class BaseScene extends Phaser.Scene {
     }
     if (local?.id === SAILOR_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
-      this.say(seagallopLines(this.savedGame.raidProgress.raidRecord), [target]);
+      const log = seagallopLines(this.savedGame.raidProgress.raidRecord);
+      this.say(this.haulOnTheQuay.length > 0 ? [HAUL_SAILOR_LINE, ...log] : log, [target]);
       return;
     }
     if (local?.id === CAPTAIN_ID) {
@@ -4539,7 +4634,7 @@ export class BaseScene extends Phaser.Scene {
    * when the player wants it rather than said at them.
    */
   private openFavours(): void {
-    if (this.leaving || this.favoursScreen) {
+    if (this.leaving || this.favoursScreen || this.choosing) {
       return;
     }
     this.learnKey('favours');
@@ -4913,6 +5008,10 @@ export class BaseScene extends Phaser.Scene {
 
   /** Down off the mat: back out into the yard, on the step outside. */
   private leaveRoom(room: BaseRoom): void {
+    if (this.choosing) {
+      this.say([OAK_DONT_GO], room.keeper ? [room.keeper.position] : []);
+      return;
+    }
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
   }
 
@@ -5026,6 +5125,88 @@ export class BaseScene extends Phaser.Scene {
     if (screen === 'boutique') {
       favourThen(() => this.openBoutique('shop'));
     }
+  }
+
+  /** A key pressed in Oak's lab while there is a partner to choose (`base/starterTable.ts`). */
+  private chooseAt(room: BaseRoom, target: GridPosition): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const thing = this.thingFaced(target);
+    if (thing?.starter) {
+      this.askForBall(thing.starter);
+    } else if (servesFrom(room, target) || this.onMat(room)) {
+      this.say([OAK_GO_ON], room.keeper ? [room.keeper.position] : []);
+    } else if (thing) {
+      this.say(thing.lines ?? [], [target]);
+    }
+  }
+
+  /** The picture goes up with the question, and the safe answer is the one under the cursor. */
+  private askForBall(starter: StarterSpeciesId): void {
+    this.askedBall = starter;
+    this.askInBox(
+      starterQuestion(getStarterSpecies(starter)),
+      (yes) => {
+        this.askedBall = null;
+        if (yes) {
+          this.takeBall(starter);
+        }
+      },
+      { spendsForGood: true },
+    );
+  }
+
+  /** YES: the game is written now and not before, and the room comes back with a partner in it. */
+  private takeBall(starter: StarterSpeciesId): void {
+    const savedGame = startNewGame(this.saveManager, starter);
+    if (!savedGame) {
+      this.leaving = true;
+      this.scene.start('starter', { refused: true });
+      return;
+    }
+    countPlay({ kind: 'starter', detail: starter });
+    harbourToBeNamed = true;
+    this.goTo({ savedGame, room: 'oaks-lab', at: { ...this.currentTile }, facing: this.facing, chose: starter }, 'confirm');
+  }
+
+  /**
+   * The ball handed over, with the fanfare and its first cry, and what a raid is:
+   * this is the first thing the game ever says about one, so it is said here
+   * rather than left for a newcomer to walk back and ask.
+   */
+  private handOverPartner(starter: StarterSpeciesId, about: readonly GridPosition[]): void {
+    const species = getStarterSpecies(starter);
+    void audioManager.loadCries([species.dexId]);
+    audioManager.play('itemObtained');
+    audioManager.play('cry', { species: species.dexId });
+    this.hearFirstWords('lab');
+    this.say([receivedLine(houseName(), species), ...FIRST_WORDS.lab.lines], about);
+  }
+
+  /** The picture of what is in the ball: the one asked about, else pointed at, else faced. */
+  private settleStarterPreview(): void {
+    if (!this.starterPreview) {
+      return;
+    }
+    const faced = this.dialogBox.visible || this.targetTile ? null : ballAt(nextTileFromDirection(this.currentTile, this.facing));
+    const looking = this.askedBall ?? (this.canTakeAPointer() ? (this.pointedBall ?? faced) : null);
+    this.starterPreview.show(looking ? getStarterSpecies(looking) : null);
+  }
+
+  /**
+   * For a playtest driver that is testing something else: takes this partner off
+   * the table and goes straight out into the yard, past Oak's handing it over.
+   * `tools/playtest/starterBalls.mjs` plays the real walk.
+   */
+  public takeStarterForDriver(starter: string): boolean {
+    const chosen = STARTER_SPECIES.find(({ id }) => id === starter)?.id;
+    const savedGame = this.ready && this.choosing && chosen ? startNewGame(this.saveManager, chosen) : null;
+    if (!savedGame) {
+      return false;
+    }
+    this.ready = false;
+    this.scene.start('base', { savedGame });
+    return true;
   }
 
   /** The save as it stands now, for anybody about to name a price: another tab may have moved it on. */
@@ -5429,6 +5610,10 @@ export class BaseScene extends Phaser.Scene {
    */
   private markKeeper(room: BaseRoom): void {
     const keeper = room.keeper;
+    // Nobody has a favour to ask of somebody with no partner yet.
+    if (this.choosing) {
+      return;
+    }
     // THE RAID ARENA's marshal has no favour to ask, only what the room is for.
     const wantsAWord =
       room.screen === 'arena'
@@ -5598,4 +5783,4 @@ const SLEEP_FADE_MS = 450;
 const SLEEP_DARK_MS = 600;
 
 /** The rooms a click walks about in, besides the hall (`listenForPointerInRoom`). */
-const ROOMS_ANSWERING_A_POINTER: ReadonlySet<string> = new Set(['brocks-workshop', 'bills-cottage']);
+const ROOMS_ANSWERING_A_POINTER: ReadonlySet<string> = new Set(['oaks-lab', 'brocks-workshop', 'bills-cottage']);

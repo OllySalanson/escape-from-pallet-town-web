@@ -103,12 +103,11 @@ try {
   // --- A save with supplies in the vault, opened on the loadout -------------
   await until(sceneIs('title'), 'the title screen');
   await press('Space');
-  await until(sceneIs('starter'), 'the starter picker');
+  await until(sceneIs('base'), 'the starter picker');
   await until(
-    `(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
     'the picker to offer Bulbasaur',
   );
-  await click('Confirm Bulbasaur');
   await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
   await page.evaluate(
     `(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));

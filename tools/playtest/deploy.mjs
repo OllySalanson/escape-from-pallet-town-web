@@ -295,18 +295,15 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
     // is Strength: a disc's id is its number and its move, `machines.ts`).
     return enterRaid(page, { press, click, until, wait, insertion, starter: 'Charizard', team: [], pack, secure: [] });
   }
-  await press('Space'); await until(sceneIs('starter'));
-  // The picker's three cards are the three starters, and which one is taken is
-  // a real variable for anything measured per starter: the Floodplain
-  // checkpoint costs a Charmander and a Bulbasaur different numbers of Potions.
-  // The card is chosen by its own `data-starter`, because the confirm button is
-  // lettered with whichever one is selected and so cannot be found by name
-  // before it is.
+  await press('Space'); await until(sceneIs('base'));
+  // Oak's table holds the three starters, and which one is taken is a real
+  // variable for anything measured per starter: the Floodplain checkpoint costs
+  // a Charmander and a Bulbasaur different numbers of Potions. A driver takes it
+  // straight off the table and out into the yard; `starterBalls.mjs` plays the walk.
   await until(
-    `(() => { const b = document.querySelector('button[data-starter=${JSON.stringify(starter.toLowerCase())}]'); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.(${JSON.stringify(starter.toLowerCase())}) === true`,
     `the picker to offer ${starter}`,
   );
-  await click(`Confirm ${starter}`);
   if (insertion || beaten.length > 0 || opened.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined || team.length > 0 || stash.length > 0 || errands.length > 0) {
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
     // Every other map's front door is what banking the first contract pays, and a

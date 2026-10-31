@@ -1,6 +1,6 @@
 # Choosing a starter with the mouse
 
-`tools/playtest/starterHover.mjs` takes these. Before the fix, pointing at a card
+`tools/playtest/starterHover.mjs` (now `starterBalls.mjs`, which still plays the swap's cards) took these. Before the fix, pointing at a card
 rebuilt the screen inside its own focus event: the cards fell back to their
 unmeasured width, the cursor was lost and two waiting cursor moves took turns
 choosing for ever. Now the pointer rings the card and chooses nothing, and a

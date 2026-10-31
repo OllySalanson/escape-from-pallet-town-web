@@ -9,7 +9,7 @@
 // It steps a paused loop, so it wants a test-mode build (`?testmode=pixels`
 // for pictures worth judging; `tools/playtest/README.md`, "Memory").
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
+import { attachBrowser, launchBrowser, PIXEL_WINDOW, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -25,7 +25,8 @@ const fail = (why) => {
   throw new Error(`boutique: ${why}`);
 };
 
-const browser = await launchBrowser({ window: WINDOW });
+const port = option('port');
+const browser = port ? attachBrowser(Number(port), { window: WINDOW }) : await launchBrowser({ window: WINDOW });
 try {
   const page = await browser.openPage('about:blank');
   await page.send('Page.navigate', { url });
@@ -55,13 +56,9 @@ try {
   const shoot = async (name) => page.screenshot(`${out}/${name}.png`);
 
   await press('Space');
-  await until(sceneIs('starter'), 'the starter picker');
-  await until(`(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`);
+  await until(sceneIs('base'), 'the starter picker');
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`);
   await wait(300);
-  await until(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes('confirm') && !b.disabled); if (!b) return false; b.click(); return true; })()`,
-    'the confirm button',
-  );
   await until(baseReady, 'the harbour');
   // What a good few raids bring home: money and the goods a barter piece asks for.
   await page.evaluate(`(() => {
@@ -105,6 +102,39 @@ try {
   if (!(await page.evaluate(`document.activeElement?.hasAttribute('data-classic')`))) fail('Page Up from the first hat did not go back to the looks');
   console.log(`Page Down lands on ${paged}, Page Up goes back to the looks`);
 
+  // The keys, all the way to BUY: a shelf down, ENTER tries it on and takes the
+  // cursor to the bar. A second ENTER straight after is not what spends the money,
+  // Up comes back to the card with the shelf where it was, and Tab goes across.
+  await press('PageDown');
+  const card = await page.evaluate(`document.activeElement?.dataset.wear ?? null`);
+  if (!card) fail('Page Down did not land on a card');
+  const scrolled = await page.evaluate(`document.querySelector('[data-shelves]').scrollTop`);
+  const moneyBefore = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.wardrobe?.length ?? 0`);
+  await press('Enter');
+  await sleep(120);
+  if (!(await page.evaluate(`document.activeElement?.hasAttribute('data-buy')`))) fail(`ENTER on ${card} did not take the cursor to BUY`);
+  await shoot('01d-cursor-on-buy');
+  await press('Enter');
+  await sleep(120);
+  if ((await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.wardrobe?.length ?? 0`)) !== moneyBefore) fail('the second ENTER of a double-tap bought it');
+  await press('ArrowUp');
+  await sleep(120);
+  if ((await page.evaluate(`document.activeElement?.dataset.wear`)) !== card) fail('Up from BUY did not come back to the card');
+  if ((await page.evaluate(`document.querySelector('[data-shelves]').scrollTop`)) !== scrolled) fail('the shelves moved under the cursor');
+  await press('Tab');
+  await sleep(120);
+  if (!(await page.evaluate(`document.activeElement?.hasAttribute('data-buy')`))) fail('Tab from the shelves did not reach BUY');
+  await press('Tab');
+  await sleep(120);
+  if ((await page.evaluate(`document.activeElement?.dataset.wear`)) !== card) fail('Tab from BUY did not come back to the card');
+  await press('Tab');
+  await sleep(700);
+  await press('Enter');
+  await wait(300);
+  if ((await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.wardrobe?.length ?? 0`)) <= moneyBefore) fail('ENTER on BUY bought nothing');
+  await shoot('01e-bought-by-keys');
+  console.log(`bought ${card} by the keys alone`);
+
   // Point at the whole look - the mirror answers - then try it on and buy it.
   await page.evaluate(`document.querySelector('[data-whole="${lookId}"]').focus()`);
   await wait(200);
@@ -112,6 +142,8 @@ try {
   await page.evaluate(`document.querySelector('[data-whole="${lookId}"]').click()`);
   await wait(200);
   await shoot('03-trying-on');
+  // A script's click is a click no pointer made, so it is held to the key's arming.
+  await sleep(700);
   const bar = await page.evaluate(`document.querySelector('.confirm-bar')?.innerText`);
   console.log(`the bar says: ${bar?.replace(/\s+/g, ' ')}`);
   await page.evaluate(`document.querySelector('[data-buy]').click()`);
