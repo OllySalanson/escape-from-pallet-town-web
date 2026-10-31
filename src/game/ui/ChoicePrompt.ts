@@ -55,7 +55,8 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     const padding = options.padding ?? DEFAULT_PADDING;
     this.onChoose = options.onChoose;
     this.selectedIndex = options.selected ?? 0;
-    const clicksFrom = scene.time.now + (options.clickArmingMs ?? 0);
+    const clicksFrom = options.clickArmingMs ? scene.time.now + options.clickArmingMs : 0;
+    const armed = (): boolean => clicksFrom === 0 || scene.time.now >= clicksFrom;
 
     const frame = scene.add.graphics();
     drawPixelWindow(
@@ -102,12 +103,12 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
         .setScrollFactor(0)
         .setInteractive({ useHandCursor: true })
         .on('pointerover', () => {
-          if (scene.time.now >= clicksFrom) {
+          if (armed()) {
             this.select(index);
           }
         })
         .on('pointerdown', () => {
-          if (scene.time.now < clicksFrom) {
+          if (!armed()) {
             return;
           }
           this.select(index);
