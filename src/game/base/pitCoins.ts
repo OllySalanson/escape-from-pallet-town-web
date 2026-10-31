@@ -18,6 +18,8 @@ import { ARENA_CENTRE, ARENA_MAT, ARENA_TILE } from './arenaHall';
 
 /** What a coin costs: little enough to toss before a raid for luck. */
 export const COIN_PRICE = 10;
+/** How long somebody stands at the rail before the key is named to them at all. */
+export const COIN_HINT_AFTER_MS = 10000;
 
 export type PitGift = { readonly kind: 'item' | 'wearable'; readonly id: string };
 

@@ -1518,8 +1518,8 @@ describe('what the base screen leads with', () => {
     readyToDeploy(hub);
     const rim = markupOf(hub);
     // The pack and three Potions go; the partner filled the locker.
-    expect(rim).toMatch(/<dt>Lost<\/dt><dd[^>]*>the Raid pack, Potion/);
-    expect(rim).toMatch(/<dt>Home<\/dt><dd[^>]*>Charmander/);
+    expect(rim).toMatch(/<dt>At risk<\/dt><dd[^>]*>the Raid pack, Potion/);
+    expect(rim).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander/);
   });
 });
 

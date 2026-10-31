@@ -276,5 +276,7 @@ export function facingTowards(from: GridPosition, to: GridPosition): Direction {
 export const FOG_APPROACH_MS = 500;
 export const FOG_LIFT_STEPS = 9;
 export const FOG_STEP_MS = 170;
-export const FOG_HOLD_MS = 900;
+export const FOG_HOLD_MS = 500;
 export const FOG_LIFT_MS = FOG_APPROACH_MS + FOG_LIFT_STEPS * FOG_STEP_MS + FOG_HOLD_MS;
+/** How much of a map, in whole percent, a raid must have walked for the view to go and watch the cloud lift. */
+export const FOG_LIFT_LEAST_GAIN = 1;

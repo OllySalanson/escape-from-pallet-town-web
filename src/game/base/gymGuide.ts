@@ -19,6 +19,9 @@ import type { StandingBoardProgress } from '../objectives/standingBoard';
  * Phaser-free, so `gymGuide.test.ts` holds the words to the board and the
  * favours they describe.
  */
+/** Asked after his day's work, of anybody who has seen the trailer he closes. */
+export const GYM_GUIDE_REEL_QUESTION = 'WATCH THE REEL AGAIN?';
+
 export function gymGuideLines(progress: StandingBoardProgress & ErrandProgress): readonly string[] {
   const board = buildContractBoard(progress);
   const [job] = board.rows;

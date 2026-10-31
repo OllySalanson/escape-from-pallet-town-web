@@ -2259,7 +2259,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /** What the pack and the party cannot do, which every panel on the way to the rim says the same way. */
-  private packWarning(): string {
+  private packWarning({ balls = true } = {}): string {
     const party = this.flow.party;
     const nobodyStanding = this.stashPokemon.length > 0 && this.stashPokemon.every((stored) => stored.pokemon.isFainted);
     const allFainted = party.length > 0 ? !this.flow.isDeployable : nobodyStanding;
@@ -2269,7 +2269,7 @@ export class HubScene extends Phaser.Scene {
     // The default packs medicine and never a ball, so a first raid could not
     // catch and nothing said so (playtests 7, 10, 13, 18 and 34). The pack is
     // still the player's to choose; the panel says what it cannot do.
-    if (party.length > 0 && !this.flow.packsABall) {
+    if (balls && party.length > 0 && !this.flow.packsABall) {
       return this.flow.ballAtBase
         ? 'No Poké Balls on the rack, so nothing can be caught this raid.'
         : 'No Poké Balls at base, so nothing can be caught this raid.';
@@ -2296,7 +2296,8 @@ export class HubScene extends Phaser.Scene {
     const summary = party.length === 0
       ? nobodyStanding ? 'Nobody fit to go.' : 'Nobody on the bench yet.'
       : party.map((stored) => stored.pokemon.name).join(', ');
-    const warning = this.packWarning();
+    // The rack and the rim say what is not packed; on the bench it is about nothing in view.
+    const warning = this.packWarning({ balls: false });
     const pokemonRows = this.findablePokemon
       .map((stored, index) => {
         const added = this.flow.includesPokemon(stored.id);
@@ -2568,7 +2569,7 @@ export class HubScene extends Phaser.Scene {
     const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
     const line = (label: string, body: string, warn = false): string =>
       `<div><dt>${label}</dt><dd class="px-wrap${warn ? ' px-warning' : ''}">${body}</dd></div>`;
-    return `<dl class="dropin-facts rim-stakes">${line('Lost', lost.length === 0 ? 'nothing else: all of it is in the locker' : lost.join(', '))}${line('Home', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
+    return `<dl class="dropin-facts rim-stakes">${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${line('Safe', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
       required.length === 0
         ? ''
         : line('Drop', short.length === 0 ? `${itemAmountsFor(required)} packed for ${contract!.name}` : `${contract!.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`, short.length > 0)

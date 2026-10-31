@@ -34,6 +34,9 @@ export function moodOfRaid(escaped: boolean, haul: HaulTier, closeCall = false):
   return haul === 'loaded' ? 'roar' : haul === 'solid' ? 'cheer' : 'clap';
 }
 
+/** Whether the view goes round to look: at a big raid or a lost one. The rest is heard, not watched. */
+export const crowdTakesTheView = (mood: CrowdMood): boolean => mood === 'roar' || mood === 'groan';
+
 /** How much of the house a new game plays to, and what a raid out adds to it. */
 const HOUSE_AT_FIRST = 1 / 3;
 const HOUSE_PER_RAID_OUT = 1 / 18;

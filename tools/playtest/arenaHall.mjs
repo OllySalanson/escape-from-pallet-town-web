@@ -255,7 +255,7 @@ try {
     await step(400);
   }
   await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const s = w.currentTile;
-    for (const [dx, dy] of [[12, 0], [24, 6], [34, 14], [40, 26], [46, 34]]) { w.currentTile = { x: s.x + dx, y: s.y + dy }; w.surveyGround(); }
+    for (let n = 0; n < 50; n += 1) { w.currentTile = { x: s.x + n, y: s.y + (n >> 1) }; w.surveyGround(); }
     w.currentTile = s;
     const way = w.runSession.plan.extractionPoints[0]; w.extractThrough(way); })()`);
   await step(800);

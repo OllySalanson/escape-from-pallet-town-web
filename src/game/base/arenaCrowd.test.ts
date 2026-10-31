@@ -9,6 +9,7 @@ import {
   lapLine,
   leaverTurn,
   leaversFrom,
+  crowdTakesTheView,
   moodOfRaid,
   paperFlakes,
   reactionPose,
@@ -50,6 +51,13 @@ describe('how full the house is', () => {
 });
 
 describe('what the house makes of a raid', () => {
+  it('takes the view only for a raid the house has an opinion of', () => {
+    expect(crowdTakesTheView('roar')).toBe(true);
+    expect(crowdTakesTheView('groan')).toBe(true);
+    expect(crowdTakesTheView('cheer')).toBe(false);
+    expect(crowdTakesTheView('clap')).toBe(false);
+  });
+
   it('goes by how it ended and what it brought', () => {
     expect(moodOfRaid(true, 'loaded')).toBe('roar');
     expect(moodOfRaid(true, 'solid')).toBe('cheer');

@@ -7,9 +7,10 @@ import { hunterLineupFor } from '../world/hunter';
 import { hunterRival, rivalForRaid, type HunterRival } from '../world/hunters';
 
 /**
- * THE RAID ARENA's trailer: what a raid is, played out once before the first
- * one and offered again, with a SKIP, every time the Arena's door is walked
- * through after that (the captain, 2026-10-29: "an epic cutscene of me in a raid
+ * THE RAID ARENA's trailer: what a raid is, played out once, the first time the
+ * Arena's door is walked through, and after that only for somebody who asks the
+ * Gym Guide to run the reel again, with a SKIP (the captain, 2026-10-29: "when I
+ * walk into the gym for the first time ... an epic cutscene of me in a raid
  * with my Charizard ... sneaking around finding pieces, then we get into a
  * battle and it looks like it's going to be OK but then all of a sudden we get
  * swarmed ... But then Charizard flies in, saves the day and we get out and we
@@ -29,7 +30,7 @@ import { hunterRival, rivalForRaid, type HunterRival } from '../world/hunters';
  * unasked, and a save from before it existed reads as never seen.
  */
 
-/** Whether this is the trailer the door plays unasked, or the one it offers again. */
+/** Whether this is the trailer the door plays unasked, or the one the Gym Guide runs again. */
 export type ArenaIntroViewing = 'first' | 'again';
 
 export function arenaIntroViewing(progress: Pick<RaidProgress, 'arenaIntroSeen'>): ArenaIntroViewing {
