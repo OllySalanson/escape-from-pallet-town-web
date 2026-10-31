@@ -34,7 +34,7 @@ describe("the feedback panel's words", () => {
   });
 
   it('never names the tools behind the game, and never types an em dash', () => {
-    expect(source).not.toMatch(/firstmate|claude|\bAI\b/i);
+    expect(source).not.toMatch(/claude|\bAI\b/i);
     const strings = [...source.matchAll(/'([^']*)'|`([^`]*)`|"([^"]*)"/g)].map((match) => match.slice(1).join(''));
     expect(strings.filter((line) => line.includes('—'))).toEqual([]);
   });

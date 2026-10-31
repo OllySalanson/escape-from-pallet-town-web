@@ -14,7 +14,7 @@
 // Each case is a draft opened in the maker, a piece chosen, the pointer rested
 // on the tile it is put on (the ghost, shot as `<case>-1-hover.png`), then the
 // click or the stroke (`<case>-2-done.png`). `--attach` drives a browser somebody
-// else started (`fm-browser.sh`), so the machine's watchdog can see it; without
+// else started, so the machine's watchdog can see it; without
 // it a browser is launched and closed. `--before` asks nothing of the rules, for
 // a build from before them: it photographs and prints what happened. Otherwise
 // each case says what the rules promise and prints PASS or FAIL, exiting
