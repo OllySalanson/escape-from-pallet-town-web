@@ -824,6 +824,9 @@ export const MAP_FILE_BUILDING_DOORS: Readonly<
   hut: [door(0, 2, 2)],
   // A cave mouth is all door.
   'cave-mouth': [door(0, 0)],
+  // The liner has no door FireRed draws on its side, but a ship has one you can
+  // walk up to from a stage alongside: The Wreck's hole, with a hold behind it.
+  'ss-anne': [door(2, 3)],
   // And every one of Kanto's town buildings FireRed lets you into.
   ...Object.fromEntries(
     (Object.entries(MAP_FILE_BUILDINGS) as [MapFileOutdoorBuildingKind, string][]).flatMap(
