@@ -381,7 +381,10 @@ export function layOutMapFile(file: MapFile): {
  * east of it, each column as tall as the outdoors (and never shorter than a
  * big room), so the grid stays close to square. `margin` is dark left round
  * the far side of the areas, so a room's floor never lies on the grid's own
- * edge - which a shipped map is held to (`mapStructure.testkit.ts`).
+ * edge - which a shipped map is held to (`mapStructure.testkit.ts`). A column
+ * always leaves a row of dark under its last room, margin or not: a shipped map
+ * drawn as a file has none, and the vale's rooms came to end exactly on the row
+ * below which there was no more grid.
  */
 export function layOutAreas(
   outdoors: { readonly name: string; readonly width: number; readonly height: number },
@@ -408,7 +411,7 @@ export function layOutAreas(
   let width = outdoors.width;
   let height = outdoors.height;
   for (const area of areas) {
-    if (y > margin && y + area.height + margin > columnLimit) {
+    if (y > margin && y + area.height + Math.max(margin, 1) > columnLimit) {
       columnX += columnWidth + GAP;
       columnWidth = 0;
       y = margin;
