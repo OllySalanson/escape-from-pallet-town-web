@@ -111,6 +111,9 @@ export function pineHollow(): MapcraftResult {
   p.block(51, 12, 3, 1, '#'); // thicket under its crown, so nobody stands hidden there
   // The path picks up again where the hollow is climbed out of, and runs on to the oak.
   p.road([[44, 32], [48, 32], [48, 18], [54, 18], [54, 26], [61, 26]]);
+  // Two nooks on the way out, each with somebody who would rather not be on the road.
+  p.meadow(32, 10, 4, 2);
+  p.meadow(56, 24, 6, 2);
   p.draw(49, 16, [' ddddd ', 'ddddddd']); // the ground worn bare under the oak
   p.bedRows([16, 44, 46], [17, 44, 47], [18, 44, 45], [19, 44, 45]);
   p.flowers([55, 13], [56, 14], [55, 15], [49, 10]);
@@ -248,6 +251,8 @@ export function pineHollow(): MapcraftResult {
         { x: 39, y: 50, name: 'Bee Warden', look: 'bug-catcher', facing: 'left', lines: ['Those are not bees. I keep saying that. They have got my hat.', 'It is a very big nest. Do not stand there. No. Do not stand there either.'], beat: { everyMs: 2400, glances: ['left', 'up'] }, calls: ['Slowly. Very slowly.'] },
         { x: 55, y: 45, name: 'Linesman', look: 'worker', facing: 'left', lines: ['I walk the cable from the station to the pass, and the Pikachu sit on it and drink.', 'I had a card for the Service Gate. I had it when I passed the oak. If you find it, you never saw me.'], beat: { everyMs: 3200, roam: [[0, 1]], glances: ['up', 'left'] }, calls: ['Off the line, you lot!'] },
         { x: 50, y: 16, name: 'Collier’s Mate', look: 'man', facing: 'right', lines: ['Bram does not talk. He has not said anything since the spring.', 'He said something to you? Sit down. Tell me everything.'], beat: { everyMs: 2700, glances: ['right', 'up'] }, calls: ['Who goes there?'] },
+        { x: 58, y: 25, name: 'Walked Off', look: 'worker', facing: 'down', lines: ['Nine years on that picket, and one morning I went for a walk. Do not tell them where I am.', 'I am not telling you where this road goes, either. You would only tell them.'], beat: { everyMs: 3300, glances: ['down', 'right', 'left'] } },
+        { x: 34, y: 11, name: 'Pot Carrier', look: 'youngster', facing: 'down', lines: ['Two pots for the tappers. They said I would find the camp. They said it the way people do here.', 'Nobody tells you anything in Pine Hollow, and then they ask why you are late.'], beat: { everyMs: 2800, glances: ['down', 'left'] } },
         { x: 13, y: 50, name: 'Deer Stalker', look: 'gentleman', facing: 'right', lines: ['Eleven years I have stalked the deer of Pine Hollow. I have seen the path, the prints, the droppings.', 'South out of the hollow, then on down. There is a very fine wood at the bottom of it, I am told.'], beat: { everyMs: 3900, glances: ['down', 'right'] }, calls: ['Shh! A deer! No.'] },
       ],
       trainers: [

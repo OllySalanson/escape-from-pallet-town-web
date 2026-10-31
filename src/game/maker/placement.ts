@@ -351,7 +351,12 @@ export function footprintOf(building: MapFileBuilding): PieceFootprint {
     claimed,
     crowns: shape.crowns.map(move),
     spans: shape.spans.map(move),
-    doorsteps: isFurniture(building.kind) ? [] : buildingDoorways(building).flatMap(doorwayTiles),
+    // A ship's door is on her water side: what stands at it is a stage somebody
+    // builds later, so her doorstep asks nothing of the water she is planted on.
+    doorsteps:
+      isFurniture(building.kind) || WATER_PIECES.has(building.kind)
+        ? []
+        : buildingDoorways(building).flatMap(doorwayTiles),
     brim: (plantedProp(building.kind).brim?.tiles ?? []).flatMap((tile, column) =>
       tile < 0 ? [] : [{ x: building.x + column, y: building.y - 1 }],
     ),
