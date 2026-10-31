@@ -119,12 +119,12 @@ export function highMoor(): MapcraftResult {
       // What grazes and hops about the foot of the moor. One of the Tauros has
       // had enough of walking and will say so.
       pokemon: [
-        { x: 36, y: 60, species: 'tauros', level: 7, beat: { everyMs: 2900, roam: [[1, 0], [2, 0]] } },
+        { x: 38, y: 60, species: 'tauros', level: 7 },
         { x: 22, y: 59, species: 'clefairy', beat: { everyMs: 2300, roam: [[0, 1]] } },
         { x: 22, y: 50, species: 'spearow', beat: { everyMs: 1700, roam: [[1, 0], [1, -1]] } },
       ],
       people: [
-        { x: 35, y: 58, name: 'Drover Boy', look: 'youngster', facing: 'down', lines: ['Grandad says they know the way home.', 'They do. They go there. All the time. Without me.'], beat: { everyMs: 3100, roam: [[0, 1]], glances: ['right'] }, calls: ['Come back! Please!'] },
+        { x: 35, y: 58, name: 'Drover Boy', look: 'youngster', facing: 'down', lines: ['Grandad says they know the way home.', 'They do. They go there. All the time. Without me.'], beat: { everyMs: 3100, glances: ['right', 'down'] }, calls: ['Come back! Please!'] },
         { x: 24, y: 57, name: 'Lina', look: 'lass', facing: 'down', lines: ['I count them every time and get a different number.', 'I got six once. There were never six.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['One, two, three... wait.'] },
         { x: 36, y: 49, name: 'Tarn Fisher', look: 'fisherman', facing: 'up', lines: ['Up on the moor the water has nothing in it but sky.', 'I come for the quiet. Well. I did.'] },
         { x: 37, y: 38, name: 'Peak Walker', look: 'hiker', facing: 'left', lines: ['East is the quarry, and the caves under it. Mind who you meet in there.', 'I have been meaning to go. I have been meaning to go for years.'], beat: { everyMs: 3500, glances: ['up', 'right'] }, calls: ['Lovely day for it.'] },

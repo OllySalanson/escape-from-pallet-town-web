@@ -106,7 +106,7 @@ export function theCrossing(): MapcraftResult {
       // A Slowpoke dozing where the river comes out of the gorge, and a
       // Psyduck on the Wide Water's bank.
       pokemon: [
-        { x: 11, y: 37, species: 'ponyta', level: 8, beat: { everyMs: 2700, roam: [[0, -1]] } },
+        { x: 12, y: 37, species: 'ponyta', level: 8, beat: { everyMs: 2700, roam: [[0, -1]] } },
         { x: 5, y: 27, species: 'rattata', level: 5, beat: { everyMs: 1500, roam: [[0, -1]] } },
         { x: 23, y: 26, species: 'poliwag', beat: { everyMs: 2100, roam: [[0, -1]] } },
         { x: 33, y: 8, species: 'slowpoke', level: 9 },

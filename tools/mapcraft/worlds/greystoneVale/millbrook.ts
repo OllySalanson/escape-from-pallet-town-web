@@ -199,7 +199,7 @@ export function millbrook(): MapcraftResult {
 
   // -- The east gate: the keeper's cottage, on the road to The Crossing -----------------
   p.building('grey-house', 54, 24);
-  p.flowers([59, 26], [59, 27]);
+  p.put(59, 24, 'o').put(59, 25, 'o').put(59, 26, 'o').put(59, 27, 'o');
   stand('fence-post', 54, 29);
   stand('fence-post', 57, 29);
   stand('fence-post', 54, 32);
@@ -319,8 +319,8 @@ export function millbrook(): MapcraftResult {
         // -- Old Row ---------------------------------------------------------------
         { x: 11, y: 15, name: 'Grandpa Ott', look: 'old-man', facing: 'right', lines: ['This is the oldest cottage in the vale.', 'When I was a boy there was snow on the peaks all summer.'], beat: { everyMs: 4100, roam: [[0, -1]], glances: ['down'] }, calls: ['Snow! All summer!', 'In my day...'] },
         { x: 22, y: 11, name: 'Digger', look: 'hiker', facing: 'down', lines: ['Dig, plant, chase off the Oddish. Dig, plant, chase off the Oddish.', 'It is a living. It is not a good one.'], beat: { everyMs: 2300, roam: [[0, 1]], glances: ['left', 'right'] }, calls: ['Oi! Off my seedlings!', 'Go on, shoo!'] },
-        { x: 16, y: 21, name: 'Mrs Marlow', look: 'woman', facing: 'left', lines: ['I grow beans. Ott says he grows beans. Those are not beans.'], beat: { everyMs: 3500, roam: [[-1, 0], [-2, 0]], glances: ['down'] }, calls: ['Those are NOT beans.'] },
-        { x: 23, y: 22, name: 'Fern', look: 'lass', facing: 'left', lines: ['There is a garden behind the woodcutter’s, walled off by one small tree.', 'Old Hazel left it. Nobody with a Cut has been past in years.'], beat: { everyMs: 3900, roam: [[0, 1]], glances: ['up'] }, calls: ['Hazel\u2019s garden, past the logs.'] },
+        { x: 14, y: 21, name: 'Mrs Marlow', look: 'woman', facing: 'left', lines: ['I grow beans. Ott says he grows beans. Those are not beans.'], beat: { everyMs: 3500, roam: [[0, 1]], glances: ['right'] }, calls: ['Those are NOT beans.'] },
+        { x: 23, y: 21, name: 'Fern', look: 'lass', facing: 'left', lines: ['There is a garden behind the woodcutter’s, walled off by one small tree.', 'Old Hazel left it. Nobody with a Cut has been past in years.'], beat: { everyMs: 3900, roam: [[0, 1]], glances: ['up'] }, calls: ['Hazel\u2019s garden, past the logs.'] },
         // -- The green and the south street -----------------------------------------
         { x: 18, y: 35, name: 'Nan Birch', look: 'old-woman', facing: 'right', lines: ['Sit down, you look terrible.', 'Everybody who comes through here looks terrible. It is the raids.'], beat: { everyMs: 4300, glances: ['up'] }, calls: ['Sit down a minute, love.'] },
         { x: 13, y: 41, name: 'Bram', look: 'boy', facing: 'right', lines: ['My mum says never to go down to the pool on your own.', 'Tom goes down there on his own. Tom is ten.'], beat: { everyMs: 2500, roam: [[-1, 0]], glances: ['down'] }, calls: ['Tam always wins.'] },
@@ -329,7 +329,7 @@ export function millbrook(): MapcraftResult {
         // -- The ends of the village ---------------------------------------------------
         { x: 38, y: 56, name: 'Lost Walker', look: 'hiker', facing: 'right', lines: ['Is this the way to the marsh? I have been going round this tree for some time.', 'South, you say. Down the lane. Yes. Obviously.'], beat: { everyMs: 2700, glances: ['down', 'left'] }, calls: ['Is this the marsh?'] },
         { x: 37, y: 5 + 2, name: 'Drover', look: 'camper', facing: 'left', lines: ['That Tauros has walked off this moor and back four times this year.', 'Up the road, mind the ledges. They only go down.'], beat: { everyMs: 3400, roam: [[0, -1]], glances: ['down'] }, calls: ['Come back here, you lump!', 'Whoa! Whoa there!'] },
-        { x: 56, y: 28, name: 'Gatekeeper', look: 'gentleman', facing: 'down', lines: ['I keep the gate. There is no gate. It is a very quiet job.', 'East: The Crossing, and the only bridge for miles.'], beat: { everyMs: 3600, roam: [[-1, 0]], glances: ['left', 'right'] }, calls: ['Mind the gate. There is none.'] },
+        { x: 55, y: 28, name: 'Gatekeeper', look: 'gentleman', facing: 'down', lines: ['I keep the gate. There is no gate. It is a very quiet job.', 'East: The Crossing, and the only bridge for miles.'], beat: { everyMs: 3600, glances: ['left', 'right'] }, calls: ['Mind the gate. There is none.'] },
         { x: 6, y: 28, name: 'Wayfarer', look: 'picnicker', facing: 'right', lines: ['The Westward Road goes out of the vale, if you need to go out in a hurry.', 'Most people who come through do.'], beat: { everyMs: 3800, glances: ['down'] }, calls: ['Long road out.'] },
         { x: 48, y: 51, name: 'Picker', look: 'picnicker', facing: 'up', lines: ['The berries grow back by the next raid. Do not ask me how. I just pick.'], beat: { everyMs: 2600, roam: [[1, 0], [2, 0], [3, 0]], glances: ['left'] }, calls: ['Berries! Help yourself!', 'They grow back, you know.'] },
         { x: 28, y: 58, name: 'Woodcutter', look: 'black-belt', facing: 'left', lines: ['A proper axe would clear that little tree by the garden in one go.', 'I have a blunt one and a bad back. You want a Pokemon that knows Cut.'], beat: { everyMs: 3200, roam: [[1, 0]], glances: ['up'] }, calls: ['Timber!', 'Mind your feet.'] },
@@ -340,11 +340,11 @@ export function millbrook(): MapcraftResult {
         { x: 25, y: 31, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0], [1, 1]] } },
         { x: 35, y: 31, species: 'pidgey', beat: { everyMs: 1300, roam: [[0, 1], [-1, 1]] } },
         // A dog at the east gate and a cat in the mill yard, who say their names and nothing else.
-        { x: 58, y: 28, species: 'growlithe', beat: { everyMs: 2100, roam: [[1, 0]] } },
+        { x: 59, y: 28, species: 'growlithe', beat: { everyMs: 2100, roam: [[-1, 0]] } },
         { x: 51, y: 21, species: 'meowth', level: 4, beat: { everyMs: 1800, roam: [[0, -1]] } },
         // What the signs complain about.
         { x: 26, y: 13, species: 'oddish', level: 4, beat: { everyMs: 2400, roam: [[0, 1], [-1, 1]] } },
-        { x: 26, y: 5, species: 'tauros', beat: { everyMs: 2800, roam: [[1, 0], [0, 1], [-1, 1]] } },
+        { x: 25, y: 4, species: 'tauros', beat: { everyMs: 2800, roam: [[1, 0]] } },
         { x: 37, y: 50, species: 'psyduck', beat: { everyMs: 2500, roam: [[0, -1]] } },
         { x: 57, y: 36, species: 'butterfree', beat: { everyMs: 1600, roam: [[0, 1], [0, 2]] } },
         { x: 55, y: 51, species: 'caterpie', level: 3, beat: { everyMs: 2200, roam: [[0, 1]] } },
@@ -447,7 +447,7 @@ function withInsides(file: MapFile): MapFile {
     { x: 4, y: 6, name: 'Nurse', look: 'beauty', facing: 'right', lines: ['The machines are spoken for, I am afraid. There is a raid on, you know.', 'If you are hurt, the pump on the green has medicine by it. Nobody counts it.'] },
   ]);
   inside('poke-mart', 44, 36, 'Millbrook Mart', [
-    { x: 2, y: 3, name: 'Clerk', look: 'boy', facing: 'down', lines: ['Sorry, nothing on the shelves till the boat comes in.', 'Professor Oak’s parcel? We sent it out by the lane. It will be lying about somewhere.'] },
+    { x: 2, y: 2, name: 'Clerk', look: 'boy', facing: 'down', lines: ['Sorry, nothing on the shelves till the boat comes in.', 'Professor Oak’s parcel? We sent it out by the lane. It will be lying about somewhere.'] },
   // The till comes out, so the back of the shop can be walked to and the clerk spoken to:
   // nobody here can talk across a counter, and shut off it is ground nobody can reach.
   ], { without: ['mart-till'] });
