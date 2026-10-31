@@ -28,6 +28,7 @@ describe('Nurse Joy at her counter', () => {
     const quote = quoteRecovery(game.stash, 0, [stored.id], recoveryTermsFor([], 0));
 
     expect(offer.question).toBe(`Shall I heal ${stored.pokemon.name}?`);
+    expect(offer.spendsForGood).toBe(true);
     expect(offer.lines[0]).toContain(`${stored.pokemon.name} came home hurt`);
     expect(offer.lines[0]).toContain(`It takes ${formatRecoveryClock(quote)} off your next raid`);
     // Saying it spends nothing.
@@ -48,6 +49,7 @@ describe('Nurse Joy at her counter', () => {
   it('charges an explorer run nothing, whose clock nothing can shorten', () => {
     const { game } = hurtGame();
     expect(centerOffer(game, true).lines[0]).toContain('It will not cost your next raid a second.');
+    expect(centerOffer(game, true).spendsForGood).toBe(false);
   });
 
   it('says the clock it left, only when it charged one', () => {

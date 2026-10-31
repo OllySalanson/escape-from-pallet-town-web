@@ -150,10 +150,9 @@ try {
   await sleep(600);
   await shot('12-joy-price');
   await press('Space', 500);
-  expect('she asks, YES first', (await base('b.boxQuestion?.prompt.selected')) === 0);
+  expect('a heal with a price asks on NOT NOW', (await base('b.boxQuestion?.prompt.selected')) === 1);
   await shot('13-joy-asks');
   const clockBefore = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).pendingRecoveryMs ?? 0`);
-  await press('ArrowRight', 200);
   await press('Space', 500);
   expect('NOT NOW spends nothing', (await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).pendingRecoveryMs ?? 0`)) === clockBefore);
   await press('Escape', 400);
@@ -161,6 +160,7 @@ try {
   await press('Space', 700);
   await press('Escape', 300);
   await until(`Boolean(${GAME}.scene.getScene('base').boxQuestion)`, 'her question');
+  await press('ArrowLeft', 200);
   await press('Space', 1500);
   await until(`${GAME}.scene.getScene('base').ready && ${GAME}.scene.getScene('base').dialogBox.visible`, 'her thanks');
   await sleep(700);

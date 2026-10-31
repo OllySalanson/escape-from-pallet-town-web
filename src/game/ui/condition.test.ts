@@ -107,7 +107,10 @@ describe('what the base says of the whole team', () => {
   it('says when nobody is left standing to raid with', () => {
     expect(teamConditionLine([member('Bulbasaur', fainted)])).toBe('Bulbasaur has fainted, so nobody can raid');
     expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey', fainted)])).toBe(
-      'All 2 Pokémon have fainted, so nobody can raid',
+      'Both Pokémon have fainted, so nobody can raid',
     );
+    expect(
+      teamConditionLine([member('Bulbasaur', fainted), member('Pidgey', fainted), member('Rattata', fainted)]),
+    ).toBe('All 3 Pokémon have fainted, so nobody can raid');
   });
 });
