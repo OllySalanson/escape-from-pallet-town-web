@@ -1211,7 +1211,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.currentMap = this.mapFor(this.runSession.plan.insertion.mapId);
       this.currentTile = { ...this.runSession.plan.insertion.position };
     }
-    this.cameras.main.fadeIn?.(180, 0, 0, 0);
+    // Dropping in, the raid opens under the cloud the jump came down through: a
+    // fade from black here would be a seam in the middle of it.
+    if (data.droppedIn !== true) {
+      this.cameras.main.fadeIn?.(180, 0, 0, 0);
+    }
     void audioManager.startTheme('overworld');
     if (data.party) {
       this.party = data.party;
@@ -1440,8 +1444,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!droppedIn || (typeof window !== 'undefined' && prefersReducedMotion())) {
       return;
     }
-    const sheet = cloudSheet();
     if (!this.textures.exists(ARRIVAL_CLOUD_TEXTURE)) {
+      const sheet = cloudSheet();
       const texture = this.textures.createCanvas(ARRIVAL_CLOUD_TEXTURE, sheet.width, sheet.height);
       texture?.context.putImageData(new ImageData(sheet.data, sheet.width, sheet.height), 0, 0);
       texture?.refresh();

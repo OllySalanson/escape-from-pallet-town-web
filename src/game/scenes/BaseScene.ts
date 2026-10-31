@@ -149,6 +149,7 @@ import {
   arrivalPlace,
   directionBetween,
   sameTile,
+  partnerFrame,
   partnerOf,
   partnerReaction,
   turnToPartner,
@@ -158,6 +159,7 @@ import {
 import {
   BUBBLE_HEIGHT,
   BUBBLE_WIDTH,
+  PARTNER_SPRITE_X_OFFSET,
   PartnerFigure,
   drawEmoteBubble,
   type PartnerHost,
@@ -181,17 +183,20 @@ import { ArenaView } from '../base/arenaView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
+import { ArenaDiveView } from '../base/arenaDiveView';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
   FOG_APPROACH_MS,
   FOG_LIFT_MS,
   FOG_LIFT_STEPS,
   FOG_STEP_MS,
+  FALL_MS,
   JUMP_MS,
   TURN_BACK_MS,
   HOP_MS,
   facingTowards,
   jumpPose,
+  partnerLeap,
   overTheFence,
 } from '../base/arenaDive';
 import { marshalLines } from '../base/arenaMarshal';
@@ -578,6 +583,10 @@ export class BaseScene extends Phaser.Scene {
     readonly viewAtFence: { readonly x: number; readonly y: number };
     hopped: boolean;
     leaving: boolean;
+    /** What falls and what goes past (`arenaDiveView.ts`). */
+    readonly dive: ArenaDiveView | null;
+    /** The partner on its way over the fence after the player, drawn here until it too is falling. */
+    leaper: { readonly image: Phaser.GameObjects.Image; readonly from: { readonly x: number; readonly y: number } } | null;
   } | null = null;
   /** The cloud lifting off ground a raid has just walked (`ArenaView.liftFogFromLastRaid`). */
   private fogLift: { elapsedMs: number; steps: number; readonly tile: GridPosition; readonly sign: PlaceNameSign } | null = null;
@@ -912,6 +921,7 @@ export class BaseScene extends Phaser.Scene {
       this.furniture?.destroy();
       this.furniture = null;
       this.arena?.destroy();
+      this.jump?.dive?.destroy();
       this.fogLift?.sign.destroy();
       this.fogLift = null;
       this.closeHallPanel();
@@ -1492,6 +1502,8 @@ export class BaseScene extends Phaser.Scene {
         viewAtFence: this.player,
         hopped: true,
         leaving: true,
+        dive: null,
+        leaper: null,
       };
       return;
     }
@@ -1513,6 +1525,8 @@ export class BaseScene extends Phaser.Scene {
       },
       hopped: false,
       leaving: false,
+      dive: new ArenaDiveView(this, this.playerTexture),
+      leaper: null,
     };
     camera.stopFollow();
     camera.removeBounds();
@@ -1530,17 +1544,44 @@ export class BaseScene extends Phaser.Scene {
       jump.hopped = true;
       this.playerGroundMark.setVisible(false);
       this.playerHeadMark.setVisible(false);
-      this.partner?.tuckIn();
+      const partner = this.partner?.leaveForJump();
+      if (partner) {
+        jump.leaper = {
+          image: this.add.image(partner.x, partner.y, partner.texture, partnerFrame(this.facing, 0)).setOrigin(0, 0).setDepth(CANOPY_BAND + 1),
+          from: partner,
+        };
+        jump.dive?.partnerIs(partner.texture);
+      }
       audioManager.play('ledgeHop');
     }
     if (before < TURN_BACK_MS + HOP_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS) {
       audioManager.play('diveRush');
     }
+    if (before < TURN_BACK_MS + HOP_MS + FALL_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS + FALL_MS) {
+      audioManager.play('diveRush');
+    }
     const pose = jumpPose(jump.elapsedMs, jump.over);
-    this.player.setPosition(jump.from.x + pose.figure.x, jump.from.y + pose.figure.y);
-    this.player.setScale(pose.figure.scale);
-    this.player.setVisible(pose.figure.seen);
-    this.player.setDepth(CANOPY_BAND + 1);
+    if (!pose.figure.falling) {
+      this.player.setPosition(jump.from.x + pose.figure.x, jump.from.y + pose.figure.y);
+      this.player.setDepth(CANOPY_BAND + 1);
+    } else if (this.player.visible) {
+      this.player.setVisible(false);
+      jump.dive?.playerFalls({ x: this.player.x - this.cameras.main.scrollX, y: this.player.y - this.cameras.main.scrollY });
+    }
+    if (jump.leaper) {
+      const overTheRail = jumpPose(TURN_BACK_MS + HOP_MS, jump.over).figure;
+      const leap = partnerLeap(jump.elapsedMs, jump.leaper.from, {
+        x: jump.from.x + overTheRail.x + PARTNER_SPRITE_X_OFFSET,
+        y: jump.from.y + overTheRail.y,
+      });
+      if (leap.falling) {
+        jump.dive?.partnerFalls({ x: leap.x - this.cameras.main.scrollX, y: leap.y - this.cameras.main.scrollY });
+        jump.leaper.image.destroy();
+        jump.leaper = null;
+      } else {
+        jump.leaper.image.setPosition(leap.x, leap.y);
+      }
+    }
     const camera = this.cameras.main;
     const fromX = jump.viewFrom.x + (jump.viewAtFence.x - jump.viewFrom.x) * pose.back;
     const fromY = jump.viewFrom.y + (jump.viewAtFence.y - jump.viewFrom.y) * pose.back;
@@ -1548,14 +1589,9 @@ export class BaseScene extends Phaser.Scene {
     const y = fromY + (jump.focus.y - fromY) * pose.swing;
     camera.setZoom(CAMERA_ZOOM * pose.zoom);
     camera.centerOn(x, y);
-    const view = new Phaser.Geom.Rectangle(
-      x - camera.width / (2 * camera.zoom),
-      y - camera.height / (2 * camera.zoom),
-      camera.width / camera.zoom,
-      camera.height / camera.zoom,
-    );
     arena.burn(deltaMs);
-    arena.diveFrame(pose.zoom, jump.focus, pose.cloud, view);
+    arena.diveFrame(pose.zoom, jump.focus);
+    jump.dive?.frame(jump.elapsedMs, pose, this.scale.width, this.scale.height);
     this.partner?.update(deltaMs);
     if (jump.elapsedMs >= JUMP_MS) {
       jump.leaving = true;

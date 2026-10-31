@@ -32,7 +32,6 @@ import { shareTheRim, showsThroughTheHole, type RimLanding, type RimShare } from
 import {
   PIT_FLOOR_SIZE,
   RING_ORIGIN,
-  cloudSheet,
   isGroundKnown,
   paintMist,
   paintPitFloor,
@@ -64,8 +63,6 @@ const PODIUM_DEPTH = TERRAIN_DEPTH - 0.8;
 const tierDepth = (tier: number): number => TERRAIN_DEPTH - 0.7 + (PIT_TIERS - tier) * 0.05;
 /** Over the steps and under the hall's own floor, so a name in the pit never lies across the platform. */
 const NAME_DEPTH = TERRAIN_DEPTH - 0.3;
-/** The cloud a jump goes down through, over absolutely everything. */
-const CLOUD_DEPTH = CANOPY_BAND + 40;
 /**
  * A flame, its halo and the pool of light it throws burn over everything but the
  * screen's own words. A pool has to be over the pillars' upper tiles too, or it
@@ -78,7 +75,6 @@ const FLAME_DEPTH = CANOPY_BAND + 0.05;
 
 const floorTexture = (mapId: string): string => `arena-pit-floor-${mapId}`;
 const LIGHT_TEXTURE = 'arena-landing-light';
-const CLOUD_TEXTURE = 'arena-dive-cloud';
 const LIFTING_TEXTURE = 'arena-lifting-cloud';
 const PODIUM_TEXTURE = 'arena-podium';
 const MIST_TEXTURE = 'arena-mist';
@@ -198,7 +194,7 @@ const LIGHT_BEAT_MS = 520;
 let lastSeenBelow: { readonly mapId: string; readonly picture: Minimap } | null = null;
 
 /** A picture in a texture of its own, kept for the next visit: the steps never change. */
-function ensureTexture(scene: Phaser.Scene, key: string, paint: () => PaintedPicture): void {
+export function ensureTexture(scene: Phaser.Scene, key: string, paint: () => PaintedPicture): void {
   if (scene.textures.exists(key)) {
     return;
   }
@@ -255,9 +251,9 @@ function paintFlames(): PaintedPicture {
   return { width, height, data };
 }
 
-/** How many sheets of wispy cloud come up past the camera on the way down, and how far each is magnified by the time it has gone. */
-const WISP_SHEETS = 3;
-const WISP_SPREAD = 9;
+/** How far the floor comes up for how far the hall has gone past, and how far in the view is when the mist has gone. */
+const DIVE_FLOOR_REACH = 0.2;
+const DIVE_MIST_GONE = 6;
 
 /** A way in, seen from high up: a small steady gold light with a dark ring round it, so it reads on sea, wood and cloud. */
 function paintLandingLight(): PaintedPicture {
@@ -362,10 +358,6 @@ export class ArenaView {
   private drift = 0;
   private crackleInMs = CRACKLE_EVERY_MS;
   private deepSoundInMs = DEEP_SOUND_EVERY_MS / 2;
-  /** The cloud a jump goes down through, while one is going down. */
-  private diveCloud: Phaser.GameObjects.TileSprite | null = null;
-  /** Sheets of thin cloud coming up past the camera on the way down. */
-  private diveWisps: Phaser.GameObjects.TileSprite[] = [];
   /** The old cloud over ground a raid has just walked, a little less of it each step (`liftFogFrom`). */
   private lifting: {
     readonly image: Phaser.GameObjects.Image;
@@ -669,76 +661,30 @@ export class ArenaView {
 
   /**
    * One frame of going down: the camera has gone in by `zoom` on `focus`, and the
-   * floor and the mist go in less far than the hall around them, because they
-   * are further away. `cloud` is how much of the screen the cloud has.
+   * floor and the mist go in far less than the hall around them, because they are
+   * so much further away. What falls and what goes past is `arenaDiveView.ts`.
    */
-  public diveFrame(zoom: number, focus: { readonly x: number; readonly y: number }, cloud: number, view: Phaser.Geom.Rectangle): void {
+  public diveFrame(zoom: number, focus: { readonly x: number; readonly y: number }): void {
     const layer = (image: { x: number; y: number; setScale(scale: number): unknown; setPosition(x: number, y: number): unknown }, reach: number, restX: number, restY: number): void => {
       const seen = (1 + (zoom - 1) * reach) / zoom;
       image.setScale(seen);
       image.setPosition(focus.x + (restX - focus.x) * seen, focus.y + (restY - focus.y) * seen);
     };
     const floorShift = parallaxShift(FLOOR_PARALLAX, this.lastPlayer);
-    layer(this.floor, 0.5, PIT_MAP_CENTRE.x - PIT_FLOOR_SIZE / 2 + floorShift.x, PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y);
+    layer(this.floor, DIVE_FLOOR_REACH, PIT_MAP_CENTRE.x - PIT_FLOOR_SIZE / 2 + floorShift.x, PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y);
     const mistShift = parallaxShift(MIST_PARALLAX, this.lastPlayer);
     for (const mist of this.mists) {
       layer(mist, 0.75, PIT_MAP_CENTRE.x + mistShift.x, PIT_MAP_CENTRE.y + mistShift.y);
     }
+    // The mist goes first: magnified, its dither is a board of squares.
+    const thin = 1 - Math.min(1, (Math.log(zoom) / Math.log(DIVE_MIST_GONE)) * 4);
+    this.mists.forEach((mist, index) => mist.setAlpha((index === 0 ? 0.2 : 0.13) * (Math.ceil(thin * 4) / 4)));
     this.look.setVisible(false);
     this.nameFrame.setVisible(false);
     this.nameText.setVisible(false);
     for (const { image } of this.lights) {
       image.setVisible(false);
     }
-    this.rushPastWisps(zoom, view);
-    if (cloud > 0 && !this.diveCloud) {
-      ensureTexture(this.scene, CLOUD_TEXTURE, cloudSheet);
-      this.diveCloud = this.scene.add.tileSprite(0, 0, 8, 8, CLOUD_TEXTURE).setOrigin(0, 0).setDepth(CLOUD_DEPTH);
-    }
-    if (this.diveCloud) {
-      // In steps, as a GBA's blend registers go, rather than smoothly.
-      this.diveCloud.setAlpha(Math.min(1, Math.ceil(cloud * 6) / 6));
-      this.diveCloud.setPosition(view.x, view.y);
-      // Drawn a pixel to the pixel of the screen however far in the camera has
-      // gone: it is the same sheet the raid opens under.
-      this.diveCloud.setTileScale(1 / zoom, 1 / zoom);
-      this.diveCloud.setSize(view.width + 1, view.height + 1);
-      this.diveCloud.setDisplaySize(view.width + 1, view.height + 1);
-      this.drift += 16;
-      this.diveCloud.setTilePosition(Math.round(this.drift / 4), Math.round(this.drift / 2));
-    }
-  }
-
-  /**
-   * Thin sheets of cloud coming up past the camera, which is what falling through
-   * cloud looks like: each grows out from the middle of the screen, thickens, and
-   * is gone past the edges a moment later, the next already coming behind it.
-   */
-  private rushPastWisps(zoom: number, view: Phaser.Geom.Rectangle): void {
-    const depth = Math.log(zoom) / Math.log(6);
-    if (depth <= 0.1) {
-      return;
-    }
-    if (this.diveWisps.length === 0) {
-      for (let index = 0; index < WISP_SHEETS; index += 1) {
-        this.diveWisps.push(this.scene.add.tileSprite(0, 0, 8, 8, MIST_TEXTURE).setOrigin(0, 0).setDepth(CLOUD_DEPTH - 0.5));
-      }
-    }
-    const width = view.width + 1;
-    const height = view.height + 1;
-    this.diveWisps.forEach((sheet, index) => {
-      const age = (depth * 2 + index / WISP_SHEETS) % 1;
-      const scale = 1 + age * age * WISP_SPREAD;
-      const tileScale = scale / zoom;
-      sheet.setPosition(view.x, view.y);
-      sheet.setSize(width, height);
-      sheet.setDisplaySize(width, height);
-      sheet.setTileScale(tileScale, tileScale);
-      // Held still about the middle of the screen, so it grows out from there.
-      sheet.setTilePosition(128 + index * 83 - width / (2 * tileScale), 128 + index * 47 - height / (2 * tileScale));
-      // Thickest half way past, and in steps, as a GBA's blend registers go.
-      sheet.setAlpha(Math.round(Math.sin(age * Math.PI) * 5) / 8);
-    });
   }
 
   // --- home again ----------------------------------------------------------------

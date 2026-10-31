@@ -231,6 +231,20 @@ export class PartnerFigure {
   }
 
   /**
+   * Goes after the player over the fence of THE RAID ARENA: it is gone from its
+   * place here, and the scene draws the jump from where it stood and what it is.
+   * Null if it is not out to go.
+   */
+  public leaveForJump(): { readonly x: number; readonly y: number; readonly texture: string; readonly species: PartnerSpeciesId } | null {
+    if (!this.placeValue.out || !this.sprite.visible) {
+      return null;
+    }
+    const at = { x: this.sprite.x, y: this.sprite.y };
+    this.hideAt(this.placeValue.tile);
+    return { ...at, texture: partnerTextureKey(this.species), species: this.species };
+  }
+
+  /**
    * Stands it somewhere at once - beside a player who has just come through a
    * door, say - with no walk between. Coming out from nowhere, it fades in.
    */
