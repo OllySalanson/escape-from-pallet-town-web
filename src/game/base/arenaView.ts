@@ -3,7 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import type { GridPosition } from '../movement/gridMovement';
 import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
 import type { RestoredGame } from '../save/SaveManager';
-import { CANOPY_BAND, TERRAIN_DEPTH } from '../world/depths';
+import { CANOPY_BAND, FIGURE_BAND, TERRAIN_DEPTH } from '../world/depths';
 import { districtAt } from '../world/districts';
 import { poisForMap } from '../world/pois';
 import type { Minimap, PaintedPicture } from '../world/minimap';
@@ -94,6 +94,7 @@ import {
 } from './pitLife';
 import { wallMapPicture } from './wallMap';
 import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
+import { PLAYER_BANNER_AT, PLAYER_BANNER_SIZE, paintPlayerBanner } from './arenaBouts';
 import { COINS_TO_WAKE_THE_EYES, COIN_PLINK_MS, coinAt } from './pitCoins';
 
 /**
@@ -736,6 +737,22 @@ export class ArenaView {
         on.fillStyle(FLAG_INKS[fade], 1).fillRect(x + 1, y - 6, 4, 3);
       }
     }
+  }
+
+  /** The player's own banner on the far wall, for going through all five rivals in a row, with their name under it. */
+  public hangPlayerBanner(ladders: number, name: string): void {
+    const key = `arena-player-banner-${Math.min(5, ladders)}`;
+    ensureTexture(this.scene, key, () => paintPlayerBanner(ladders));
+    const { x, y } = PLAYER_BANNER_AT;
+    this.scene.add.image(x, y, key).setOrigin(0, 0).setDepth(FIGURE_BAND - 0.02);
+    const text = this.scene.add.text(0, 0, name, { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd' }).setDepth(FIGURE_BAND - 0.009);
+    const width = Math.ceil(text.width) + 8;
+    const left = Math.round(x + PLAYER_BANNER_SIZE.width / 2 - width / 2);
+    // Over the cloth, where nothing stands in front of it.
+    const top = y - NAME_PLATE_HEIGHT - 1;
+    const plate = this.scene.add.graphics({ x: left, y: top }).setDepth(FIGURE_BAND - 0.01);
+    drawPixelWindow(plate, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: 0xf0c454 });
+    text.setPosition(left + 4, top + 1);
   }
 
   /** Whether somebody is stood at the rail, looking: the rim says what a mark was. */

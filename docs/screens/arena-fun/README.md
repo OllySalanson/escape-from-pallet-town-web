@@ -9,3 +9,5 @@ What it does for somebody coming back to it. Made by `tools/playtest/arenaFun.mj
 **The pit remembers** (`src/game/world/raidMemory.ts`). `memory-named` is the rim saying what a mark was, with the last raid's walk leading to it.
 
 **Feed the pit** (`src/game/base/pitCoins.ts`). `coin-over` is a coin going over, and `coin-gift-landed` what came back.
+
+**Bouts for show** (`src/game/base/arenaBouts.ts`). `bout-offer` is the next hunter on the far floor, with the view come up to the wall and the crowd. `bout-fight` is the real battle screen, on copies. `bout-won` and `bout-lost` are coming back, and `bout-ladder-done` and `bout-banner` all five in a row and the player's banner on the wall.

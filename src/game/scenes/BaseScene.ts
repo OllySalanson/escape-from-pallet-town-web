@@ -191,6 +191,22 @@ import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
 import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
 import { lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
+import {
+  RIVAL_TILE,
+  boutBag,
+  boutParty,
+  boutTrainer,
+  ladderLine,
+  rivalGreeting,
+  rivalUp,
+  BOUT_QUESTION,
+  nearTheRival,
+} from '../base/arenaBouts';
+import type { BoutRecord } from '../base/boutLadder';
+import type { BattleSceneData } from './BattleScene';
+import { PokemonParty } from '../pokemon';
+import type { DeploymentFlow } from '../hub/deploymentFlow';
+import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
 import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID } from '../items/items';
 import { COIN_EVERY_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
@@ -311,6 +327,8 @@ const CAMERA_EASE_MS = 140;
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
 const CROWD_LOOK_MS = 1700;
 const CROWD_LOOK_SHARE = 0.8;
+/** What had been got ready when the player went off to a bout, for when they come back. */
+let flowAcrossABout: DeploymentFlow | null = null;
 /** The quickest lap of the ring this page has seen. */
 let bestLapMs: number | null = null;
 /** How long after the plink, for what came back to come. */
@@ -430,6 +448,8 @@ export interface BaseSceneData {
   readonly arrival?: 'raid';
   /** What the crowd made of the raid that has just ended, handed over by the result screen. */
   readonly raidMood?: CrowdMood;
+  /** How a bout for show has just gone (`base/arenaBouts.ts`), handed back by the fight, which wrote nothing. */
+  readonly bout?: { readonly rival: HunterRivalId; readonly won: boolean };
   /**
    * Where in the room to stand, facing up, instead of on the mat: backing out
    * of a screen opened from something in the room - the wall map - puts the
@@ -652,6 +672,9 @@ export class BaseScene extends Phaser.Scene {
   private lastCrowdMood: CrowdMood | null = null;
   /** The board that says a lap's time. */
   private hallSign: PlaceNameSign | null = null;
+  /** The rival on the far floor, and who it is. */
+  private rivalFigure: Phaser.GameObjects.Sprite | null = null;
+  private rivalHere: HunterRival | null = null;
   /** How long until another coin can go over, and until something comes back for the last. */
   private pitCoinMs = 0;
   private pitGiftDueMs = 0;
@@ -765,6 +788,8 @@ export class BaseScene extends Phaser.Scene {
       harbourCounted = true;
       countPlay({ kind: 'harbour' });
     }
+    // How a bout went is the hall's to write down, and the one thing about it that is.
+    const boutWent = data.bout ? this.saveManager.recordBout(data.bout.rival, data.bout.won) : null;
     const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {
       // A browser with no storage that has also lost the payload: the title
@@ -939,6 +964,8 @@ export class BaseScene extends Phaser.Scene {
     this.drawOddities();
     this.drawWallMap();
     this.arena = this.place.room?.pit ? this.openTheHall(loaded) : null;
+    this.rivalFigure = null;
+    this.rivalHere = null;
     this.pitCoinMs = 0;
     this.pitGiftDueMs = 0;
     this.pitGiftImage = null;
@@ -1030,6 +1057,11 @@ export class BaseScene extends Phaser.Scene {
       audioManager.play('shipHorn');
     }
     this.layThePitGift();
+    this.standTheRival(data.bout ? hunterRival(data.bout.rival) : undefined);
+    this.hangTheBanner();
+    if (data.bout) {
+      this.tellTheBout(data.bout, boutWent);
+    }
     if (this.arena && data.arrival === 'raid') {
       this.crowdHeardFrom(data.raidMood);
       this.beginFogLift();
@@ -1322,7 +1354,8 @@ export class BaseScene extends Phaser.Scene {
    * pit shows the room's map and only its ways in, whatever else this save has.
    */
   private openTheHall(game: RestoredGame): ArenaView {
-    const flow = flowForGame(game);
+    const flow = flowAcrossABout ?? flowForGame(game);
+    flowAcrossABout = null;
     const held = heldRoomMapId();
     if (held) {
       const there = offeredInsertions(game.raidProgress).find((insertion) => insertion.mapId === held);
@@ -1475,7 +1508,7 @@ export class BaseScene extends Phaser.Scene {
       ? { ...this.arena.pointOfLanding({ id: '', tile: fogTile }) }
       : this.arenaPanel === 'rim' && this.aimed
         ? this.arena.pointOfLanding(this.aimed)
-        : this.crowdLookMs > 0 || this.runningForTheCrowd()
+        : this.crowdLookMs > 0 || this.runningForTheCrowd() || (this.rivalHere && nearTheRival(this.targetTile ?? this.currentTile))
           ? this.halfwayToTheStands(middle)
           : null;
     if (lookedAt) {
@@ -1586,7 +1619,12 @@ export class BaseScene extends Phaser.Scene {
     if (!keeper || !kit) {
       return;
     }
-    const lines = marshalLines(this.savedGame.raidProgress.firstWordsHeard, kit.flow, this.savedGame.raidProgress.landings?.streak ?? 0);
+    const lines = marshalLines(
+      this.savedGame.raidProgress.firstWordsHeard,
+      kit.flow,
+      this.savedGame.raidProgress.landings?.streak ?? 0,
+      this.savedGame.raidProgress.bouts ? undefined : this.rivalHere?.name,
+    );
     if (!hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
       this.hearFirstWords('loadout');
       this.clearKeeperMark();
@@ -1803,6 +1841,102 @@ export class BaseScene extends Phaser.Scene {
 
   private canTossACoin(): boolean {
     return this.savedGame.stash.itemCount(TRADER_CURRENCY_ITEM_ID) >= COIN_PRICE;
+  }
+
+  // -- bouts for show -----------------------------------------------------------
+
+  private rivalNow(): HunterRival {
+    return rivalUp(this.savedGame.raidProgress.bouts, raidsDeployed(this.savedGame.raidProgress));
+  }
+
+  /** Whoever is due stands on the far floor; handed one, it is whoever the player has just fought. */
+  private standTheRival(who?: HunterRival): void {
+    this.rivalFigure?.destroy();
+    this.rivalFigure = null;
+    this.rivalHere = null;
+    if (!this.arena || this.visit) {
+      return;
+    }
+    const rival = who ?? this.rivalNow();
+    const appearance = getWorldCharacterAppearance('npc', rival.design);
+    this.rivalHere = rival;
+    this.rivalFigure = this.add
+      .sprite(
+        RIVAL_TILE.x * TILE_SIZE,
+        RIVAL_TILE.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+        appearance.textureKey,
+        worldCharacterIdleFrame(appearance, 'down'),
+      )
+      .setOrigin(0, 0)
+      .setTint(appearance.tint ?? NO_TINT)
+      .setDepth(atRow(FIGURE_BAND, RIVAL_TILE.y));
+  }
+
+  private hangTheBanner(): void {
+    const ladders = this.savedGame.raidProgress.bouts?.ladders ?? 0;
+    if (this.arena && ladders > 0) {
+      this.arena.hangPlayerBanner(ladders, houseName() ?? 'CHAMPION');
+    }
+  }
+
+  /** Back from a bout: the crowd, the board, what the rival makes of it, and then whoever is next. */
+  private tellTheBout(bout: NonNullable<BaseSceneData['bout']>, went: { readonly record: BoutRecord; readonly ladderDone: boolean } | null): void {
+    if (!this.arena) {
+      return;
+    }
+    const rival = hunterRival(bout.rival);
+    this.arena.crowdReacts(bout.won ? (went?.ladderDone ? 'roar' : 'cheer') : 'clap', this.figureMiddle());
+    if (went) {
+      this.hallSign ??= new PlaceNameSign(this);
+      this.hallSign.show(ladderLine(went.record, went.ladderDone, bout.won));
+    }
+    this.say([bout.won ? rival.hall.sulk : rival.hall.gloat], [RIVAL_TILE], () => this.standTheRival());
+  }
+
+  /** The rival on the far floor: what they make of the last raid, and the question. */
+  private speakToRival(): void {
+    const kit = this.kit;
+    const rival = this.rivalHere;
+    if (!kit || !rival) {
+      return;
+    }
+    this.standStill();
+    if (kit.flow.party.length === 0) {
+      this.say([`${rival.name}: "Nobody on your bench? Come back with a team."`], [RIVAL_TILE]);
+      return;
+    }
+    const lastRaid = this.savedGame.raidProgress.raidMemory?.marks.at(-1)?.kind;
+    this.say([rivalGreeting(rival, lastRaid), rival.hall.offer], [RIVAL_TILE], () =>
+      this.askInBox(BOUT_QUESTION, (yes) => {
+        if (yes) {
+          this.startBout(rival);
+        } else {
+          this.say([rival.hall.later], [RIVAL_TILE]);
+        }
+      }),
+    );
+  }
+
+  /** On to the sand, on copies of the bench, with nothing riding on it. */
+  private startBout(rival: HunterRival): void {
+    const kit = this.kit;
+    if (!kit) {
+      return;
+    }
+    const party = boutParty(kit.flow.party.map((stored) => stored.pokemon));
+    const data: BattleSceneData = {
+      party: new PokemonParty(party),
+      bag: boutBag(kit.flow.packedContents),
+      trainer: boutTrainer(rival, party),
+      hunterBattle: true,
+      exhibition: { rival: rival.id, at: { ...this.currentTile } },
+    };
+    // What has been got ready is the same when the player comes back: nothing was spent.
+    flowAcrossABout = kit.flow;
+    this.leaving = true;
+    audioManager.play('battleStart');
+    this.cameras.main.fadeOut(220, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('battle', data));
   }
 
   /** A coin over the rail, and now and then, a long way on, something comes back. */
@@ -2302,6 +2436,7 @@ export class BaseScene extends Phaser.Scene {
     const covered =
       this.targetTile === null &&
       ((keeper !== undefined && sameTile(keeper, above)) ||
+        (this.rivalHere !== null && sameTile(RIVAL_TILE, above)) ||
         [...(this.harbourLife?.standing('person') ?? []), ...(this.harbourLife?.standing('pokemon') ?? [])].some(
           (tile) => sameTile(tile, above),
         ));
@@ -2989,6 +3124,9 @@ export class BaseScene extends Phaser.Scene {
     if (unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined) {
       return '[SPACE] LOOK CLOSER';
     }
+    if (this.rivalHere && sameTile(facing, RIVAL_TILE)) {
+      return `[SPACE] ${this.rivalHere.name}`;
+    }
     if (this.facesTheStands(facing)) {
       return '[SPACE] WAVE TO THE CROWD';
     }
@@ -3417,6 +3555,7 @@ export class BaseScene extends Phaser.Scene {
     const keeper = this.place.room ? this.place.room.room.keeper?.position : DAY_CARE_KEEPER.position;
     return (
       (this.collision[tile.y]?.[tile.x] ?? true) ||
+      (this.rivalHere !== null && sameTile(tile, RIVAL_TILE)) ||
       (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y) ||
       (this.harbourLife?.holds(tile) ?? false)
     );
@@ -3926,6 +4065,10 @@ export class BaseScene extends Phaser.Scene {
         }
       } else if (room.screen && (this.onMat(room) || servesFrom(room, target))) {
         this.speakToKeeper(room, room.screen);
+        return;
+      }
+      if (this.rivalHere && sameTile(target, RIVAL_TILE)) {
+        this.speakToRival();
         return;
       }
       if (this.waveAt(target)) {
