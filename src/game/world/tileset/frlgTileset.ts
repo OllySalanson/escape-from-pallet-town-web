@@ -278,8 +278,10 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
     // nothing else - scattered on safe grass as an accent it would make safe
     // ground look like ground that costs a fight.
     'tall-grass': { roles: { fill: index(FRLG_TILES.GRASS_PLANT) } },
-    earth: ground(FRLG_MATERIALS.DIRT),
-    sand: ground(FRLG_MATERIALS.SAND),
+    // A sand road runs on into an earth street, and a street onto a stone square
+    // or a stone slab over a brook, without a band of grass across it.
+    earth: ground(FRLG_MATERIALS.DIRT, { joins: ['sand', 'stone'] }),
+    sand: ground(FRLG_MATERIALS.SAND, { joins: ['earth'] }),
     // Beach is drawn against surf rather than grass, so it belongs at the
     // waterline and nowhere else: laid inland it is a shoreline with no shore.
     beach: ground(FRLG_MATERIALS.BEACH),

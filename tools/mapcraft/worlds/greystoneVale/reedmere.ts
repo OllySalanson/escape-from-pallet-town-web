@@ -15,7 +15,7 @@
 import type { MapProgram } from '../../program';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
-import { startDistrict } from '../../worldPlan';
+import { planLimits, startDistrict } from '../../worldPlan';
 import { GREYSTONE_VALE } from './plan';
 
 /** The basin, a letter a lattice cell: T the wood round it, g the reeds that are its floor. */
@@ -150,6 +150,22 @@ export function reedmere(): MapcraftResult {
 
   settleReeds(p);
 
+  // -- The reed yard, where the lane comes down from the village ----------------------
+  // What the marsh is for: the thatchers' store, the day's bundles stacked to dry
+  // and somebody tying more. The first screen south of Millbrook used to be a
+  // lane through nothing.
+  p.meadow(32, 4, 8, 6).meadow(42, 4, 4, 5);
+  p.building('shed', 33, 4);
+  p.building('crate-pair', 37, 4).building('sack', 39, 4).building('sack', 38, 6).building('sack', 39, 7);
+  p.building('barrel', 43, 5);
+  p.flowers([32, 8], [44, 7]);
+  // The hummock's own: a dry bank somebody has been coming back to for years.
+  p.building('tree-2', 30, 10);
+  p.block(30, 10, 3, 1, '#');
+  p.building('big-stump', 26, 13).building('log', 18, 13);
+  p.flowers([24, 11], [28, 10], [20, 12]);
+  p.building('bench', 27, 22);
+
   // -- The boardwalk: the dry way, and the long way, over the channels
   p.road([[40, 2], [40, 10], [46, 10], [46, 18], [61, 18]], { letter: ',' });
   p.road([[46, 18], [46, 34], [44, 34], [44, 44], [30, 44], [30, 46], [12, 46], [12, 26], [2, 26]], {
@@ -167,13 +183,15 @@ export function reedmere(): MapcraftResult {
 
   const file = districtFile(GREYSTONE_VALE, 'reedmere', p, {
     dropIns: [],
-    itemSpots: [{ x: 38, y: 31 }, { x: 54, y: 12, hidden: true }, { x: 22, y: 52 }],
+    itemSpots: [{ x: 38, y: 31 }, { x: 54, y: 12, hidden: true }, { x: 22, y: 52 }, { x: 35, y: 9, hidden: true }],
     extra: {
       berryTrees: [{ x: 22, y: 11, berry: 'cheri' }],
       // What the reeds are full of, standing where a raid wading them meets it:
       // a Farfetch'd at the reed bed's foot, Poliwag by the water, Venonat and
       // Oddish deep in the beds, Bellsprout on the east bank.
       pokemon: [
+        { x: 41, y: 7 + 1, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0]] } },
+        { x: 29, y: 13, species: 'psyduck', beat: { everyMs: 2700, roam: [[0, -1]] } },
         { x: 31, y: 48, species: 'farfetchd', level: 9 },
         { x: 24, y: 36, species: 'poliwag', level: 8 },
         { x: 14, y: 20, species: 'poliwag' },
@@ -187,8 +205,13 @@ export function reedmere(): MapcraftResult {
       ],
       signs: [
         { x: 42, y: 4, lines: ['REEDMERE', 'The boardwalk goes round. The reeds go through.'] },
+        { x: 21, y: 15, lines: ['THE HUMMOCK', 'The only dry ground for a mile. Please leave some of it for the next person.'] },
       ],
       people: [
+        { x: 37, y: 8, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, roam: [[-1, 0], [-2, 0]], glances: ['left'] }, calls: ['Mind the bundles!'] },
+        { x: 25, y: 12, name: 'Wildfowler', look: 'camper', facing: 'right', lines: ['Sit very still on this bank and the whole marsh comes to you.', 'Then a raider wades through and it all goes home again.'], beat: { everyMs: 3900, glances: ['down', 'left'] }, calls: ['Shh. Sit still.'] },
+        { x: 52, y: 11, name: 'Pond Boy', look: 'tuber-boy', facing: 'up', lines: ['This pond is not on the map. I checked. So it is mine.'], beat: { everyMs: 2500, roam: [[1, 0]], glances: ['left'] }, calls: ['My pond!'] },
+        { x: 33, y: 23, name: 'Mere Fisher', look: 'fisherman', facing: 'down', lines: ['Still as a plate, this mere. I have fished it forty years.', 'Nothing yet.'] },
         {
           x: 15,
           y: 51,
@@ -220,5 +243,5 @@ export function reedmere(): MapcraftResult {
       ],
     },
   });
-  return { file, notes: p.notes };
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
 }

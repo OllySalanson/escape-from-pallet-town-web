@@ -20,6 +20,7 @@ import {
   type ComposedMap,
 } from './mapAreas';
 import {
+  beatSpots,
   buildingDoorAt,
   doorFront,
   fileDoorGates,
@@ -460,6 +461,12 @@ export function checkMapFile(
       group: 'berry trees',
     })),
     ...boulders.map((spot, index) => ({ spot, what: `Boulder ${index + 1}`, group: 'boulders' })),
+    // A beat's other tiles stand on ground and share with nothing, as its first does.
+    ...[...people, ...pokemon].flatMap((figure) =>
+      beatSpots(figure)
+        .slice(1)
+        .map((spot) => ({ spot, what: 'A figure\u2019s beat', group: 'beats' })),
+    ),
     // A floor switch is floor a boulder is pushed onto, and a barrier is a
     // wall across a way that opens onto floor: both stand on walkable ground.
     ...plates.map(({ spot, area }, index) => ({
@@ -785,8 +792,9 @@ export function checkMapFile(
   // because an open exit takes whoever steps on it: a way out that is only
   // reached across another exit is not a way out, it is that exit.
   const exitTiles = new Set(file.exits.map((exit) => at(onGrid(exit))));
-  const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].map((spot) =>
-    at(onGrid(spot)),
+  // A figure that keeps a beat is a wall on every tile of it, whichever it is on.
+  const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].flatMap((spot) =>
+    beatSpots(spot).map((tile) => at(onGrid(tile))),
   );
   // A rock barrier is a wall for the way out, as a boulder is - nobody has to
   // solve a floor of switches to leave - and stands open for what is reached.
@@ -1136,7 +1144,7 @@ export function checkMapFile(
       who: spot.name,
       numbered: `Person ${index + 1}`,
       at: spot,
-      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines)],
+      fields: [{ field: 'their name', text: spot.name }, ...lineFields(spot.lines), ...lineFields(spot.calls ?? [])],
     })),
     ...signs.map((spot, index) => ({
       who: `Sign ${index + 1}`,

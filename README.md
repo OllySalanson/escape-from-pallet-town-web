@@ -100,7 +100,7 @@ ends up running out of time instead. Beat one and they're gone for good. Well, u
 out.
 
 <p align="center">
-  <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Millbrook: the screen's edges flush red and the corner says BLUE ON YOUR TAIL, and you keep walking.">
+  <img src="docs/readme/hunter.png" width="800" alt="The hunters come out, in Millbrook: the screen's edges flush red, and you keep walking past the allotments.">
 </p>
 
 ### 4. Fight like it's 2004
@@ -249,7 +249,7 @@ twenty-eight ways out to find.
 
 | Part of it | What it is |
 |---|---|
-| **Millbrook** | The mill town every road in the vale starts from, round Mill Square and its fountain. |
+| **Millbrook** | The mill village every road in the vale starts from: Mill Square on market day, a brook running through it, an orchard, a woodcutter, and doors that open. |
 | **High Moor** and **Greystone Peaks** | A drove road over the moor past the Grey Stones, and the quarry under the peaks where the Greystone Caves open. |
 | **The Crossing**, **Reedmere** and **Safari Marsh** | The river, its stone bridge and stepping stones, a mere with a duck hide, and a marsh behind the Safari Zone gate. |
 | **Pine Hollow** and **Tanglewood** | Thick woods with clearings that are hard to find on purpose, and a ruined shrine. |

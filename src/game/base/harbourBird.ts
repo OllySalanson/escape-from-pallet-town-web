@@ -27,11 +27,16 @@ const BIRD_SIZE = 64;
  * pixels: in from beyond the top right, out past the bottom left, the way its
  * art faces, rising and falling a little on the air. Null before and after.
  */
-export function birdAt(ms: number, width: number, height: number): { readonly x: number; readonly y: number } | null {
-  if (ms < 0 || ms > BIRD_CROSSING_MS) {
+export function birdAt(
+  ms: number,
+  width: number,
+  height: number,
+  crossingMs = BIRD_CROSSING_MS,
+): { readonly x: number; readonly y: number } | null {
+  if (ms < 0 || ms > crossingMs) {
     return null;
   }
-  const t = ms / BIRD_CROSSING_MS;
+  const t = ms / crossingMs;
   const from = { x: width + BIRD_SIZE, y: height * 0.12 };
   const to = { x: -BIRD_SIZE * 2, y: height * 0.78 };
   return {
@@ -47,9 +52,24 @@ export class HarbourBird {
   private untilNextMs: number;
 
   private readonly world: { readonly width: number; readonly height: number };
+  private readonly view: (() => { readonly x: number; readonly y: number }) | undefined;
+  private readonly crossingMs: number;
+  /** Where this crossing started from: the screen's corner on a map bigger than one. */
+  private origin = { x: 0, y: 0 };
 
-  public constructor(scene: Phaser.Scene, world: { readonly width: number; readonly height: number }) {
+  /**
+   * @param world what it crosses, in pixels: the whole of the harbour, or a
+   *   screen's width of a raid map, which `view` says the corner of as it sets off.
+   */
+  public constructor(
+    scene: Phaser.Scene,
+    world: { readonly width: number; readonly height: number },
+    view?: () => { readonly x: number; readonly y: number },
+    crossingMs = BIRD_CROSSING_MS,
+  ) {
     this.world = world;
+    this.view = view;
+    this.crossingMs = crossingMs;
     const texture = scene.textures.get(HARBOUR_BIRD_TEXTURE);
     if (!texture.has('bird')) {
       texture.add('bird', 0, 0, 0, BIRD_SIZE, BIRD_SIZE);
@@ -71,10 +91,11 @@ export class HarbourBird {
       this.untilNextMs -= deltaMs;
       if (this.untilNextMs > 0) return;
       this.flyingMs = 0;
+      this.origin = this.view?.() ?? this.origin;
     } else {
       this.flyingMs += deltaMs;
     }
-    const at = birdAt(this.flyingMs, this.world.width, this.world.height);
+    const at = birdAt(this.flyingMs, this.world.width, this.world.height, this.crossingMs);
     if (!at) {
       this.flyingMs = null;
       this.untilNextMs = BIRD_EVERY_MS + Math.random() * BIRD_EVERY_MS;
@@ -82,8 +103,8 @@ export class HarbourBird {
       this.shadow.setVisible(false);
       return;
     }
-    this.bird.setPosition(at.x, at.y).setVisible(true);
-    this.shadow.setPosition(at.x - 8, at.y + ALTITUDE).setVisible(true);
+    this.bird.setPosition(this.origin.x + at.x, this.origin.y + at.y).setVisible(true);
+    this.shadow.setPosition(this.origin.x + at.x - 8, this.origin.y + at.y + ALTITUDE).setVisible(true);
   }
 
   public destroy(): void {

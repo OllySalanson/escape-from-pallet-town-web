@@ -26,7 +26,7 @@
  */
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
-import { startDistrict } from '../../worldPlan';
+import { planLimits, startDistrict } from '../../worldPlan';
 import { GREYSTONE_VALE } from './plan';
 
 export function theCrossing(): MapcraftResult {
@@ -68,6 +68,21 @@ export function theCrossing(): MapcraftResult {
   p.flowers([33, 57], [38, 56], [39, 57]);
   p.wood(38, 58, 4, 2).wood(40, 50, 2, 6);
 
+  // -- The West Bank: the road in from Millbrook comes out of the trees to a place ---
+  // A carter's yard on the north of the road, a rest for the horses on the south,
+  // and a clearing on the lane down to the stones where somebody cuts the withies.
+  p.meadow(4, 24, 12, 6).meadow(4, 34, 10, 6);
+  p.wood(4, 24, 2, 2).wood(12, 38, 2, 2);
+  p.building('shed', 7, 24);
+  p.building('crate-stack', 12, 25).building('barrels', 12, 27).building('sack', 11, 28);
+  p.flowers([6, 28], [5, 29]);
+  p.building('log', 7, 35).building('stump', 6, 37);
+  p.fenceLine([[10, 35], [13, 35], [13, 37]]);
+  p.flowers([4, 36], [11, 38]);
+  p.meadow(10, 42, 6, 6);
+  p.bed(10, 44, 4, 4, { round: false });
+  p.building('big-stump', 14, 42);
+
   // -- Roads and paths, drawn last so nothing cuts them -------------------------------
   p.road([[46, 0], [46, 6], [38, 6], [38, 16], [34, 16], [34, 29]], { width: 3 }); // down from the peaks, round their rock
   p.road([[0, 30], [20, 30]], { width: 3 }); // in from Millbrook to the bridge...
@@ -79,30 +94,38 @@ export function theCrossing(): MapcraftResult {
 
   const file = districtFile(GREYSTONE_VALE, 'the-crossing', p, {
     dropIns: [{ x: 40, y: 56, name: 'Stepping Stones', description: 'By the heron hide at the foot of The Crossing, over the stepping stones from the west bank.' }],
-    itemSpots: [{ x: 34, y: 12 }, { x: 41, y: 38 }, { x: 24, y: 54, hidden: true }],
+    itemSpots: [{ x: 34, y: 12 }, { x: 41, y: 38 }, { x: 24, y: 54, hidden: true }, { x: 15, y: 45, hidden: true }],
     extra: {
       signs: [
         { x: 22, y: 29, lines: ['THE CROSSING', 'Over the bridge: Tanglewood. North: the peaks. South: the strand.'] },
         { x: 39, y: 33, lines: ['North: GREYSTONE PEAKS', 'South: GULL STRAND.'] },
         { x: 2, y: 32, lines: ['THE CROSSING', 'West: Millbrook and the Mill Square.'] },
+        { x: 15, y: 29, lines: ['THE WEST BANK', 'Bridge ahead. Carters give way to nobody. Do not stand behind the Ponyta.'] },
         { x: 46, y: 58, lines: ['The road south', 'Down to Gull Strand and the sea.'] },
       ],
       // A Slowpoke dozing where the river comes out of the gorge, and a
       // Psyduck on the Wide Water's bank.
       pokemon: [
+        { x: 12, y: 37, species: 'ponyta', level: 8, beat: { everyMs: 2700, roam: [[0, -1]] } },
+        { x: 5, y: 27, species: 'rattata', level: 5, beat: { everyMs: 1500, roam: [[0, -1]] } },
+        { x: 23, y: 26, species: 'poliwag', beat: { everyMs: 2100, roam: [[0, -1]] } },
         { x: 33, y: 8, species: 'slowpoke', level: 9 },
         { x: 33, y: 43, species: 'psyduck', level: 8 },
         { x: 36, y: 13, species: 'spearow', level: 8 },
       ],
       people: [
+        { x: 9, y: 29, name: 'Carter', look: 'heavy-man', facing: 'down', lines: ['Everything Millbrook sells comes over that bridge, and I have carried all of it.', 'My back would like a word with the people who built a village on the wrong side of a river.'], beat: { everyMs: 3300, roam: [[1, 0], [2, 0]], glances: ['right'] }, calls: ['Mind your backs!'] },
+        { x: 8, y: 37, name: 'Ostler', look: 'straw-hat', facing: 'right', lines: ['That Ponyta bites. No, it does not. It burns. I do not know why I said bites.'], beat: { everyMs: 3500, glances: ['up', 'down'] }, calls: ['Steady! Steady there!'] },
+        { x: 14, y: 46, name: 'Withy Cutter', look: 'old-woman', facing: 'up', lines: ['Baskets, hurdles, the odd eel trap. It all comes out of this bed.', 'Your lane there runs down to the stones. Keep your feet.'], beat: { everyMs: 2900, glances: ['left'] }, calls: ['Baskets! Good baskets!'] },
         { x: 26, y: 45, name: 'Angler', look: 'fisherman', facing: 'up', lines: ['The herons take the best of the Wide Water.', 'Down the bank there are stepping stones, if you keep your feet.'] },
         { x: 52, y: 35, name: 'Peddler', look: 'heavy-man', facing: 'up', lines: ['East is Tanglewood. I go round it, myself.', 'Folk who leave that road come out a day later.'] },
       ],
       trainers: [
         { x: 31, y: 29, name: 'Netter Bryn', team: 'netter', look: 'fisherman', facing: 'down', sight: 0, lines: ['The bridge is my spot!', 'Let us see what you have caught.'] },
       ],
+      berryTrees: [{ x: 5, y: 38, berry: 'pecha' }],
       landmarks: [{ x: 36, y: 58, name: 'Heron Hide', kind: 'hide' }],
     },
   });
-  return { file, notes: p.notes };
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
 }

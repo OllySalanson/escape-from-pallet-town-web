@@ -73,6 +73,14 @@ stepped loop and prints how far the player moved on each frame, failing if any
 frame of the walk is off the steady rate: a judder loses no game time, so a
 check on arrival times cannot see one.
 
+`millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
+meets it: landing on Mill Square, the village moving and calling out round a
+player who stands still, the brook's frames turning over, in at the mill and out
+by its mat, over the stones to the island, a berry picked, the Cut tree shut. It
+walks a tile a press on 60fps frames (`stepFrames(n, 1000 / 60)`), because a 100ms
+frame carries a step into the next and a driver that overshoots walks back over
+the same tile for ever.
+
 `fishing.mjs <url> <dir> [--rod=old-rod] [--insertion=id --district=NAME]`
 walks to the nearest bank, faces the water and presses the interact key, with no
 rod and then with one, casting until something bites, and fails if a cast is not

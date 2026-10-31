@@ -19,7 +19,7 @@
  */
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
-import { startDistrict } from '../../worldPlan';
+import { planLimits, startDistrict } from '../../worldPlan';
 import { GREYSTONE_VALE } from './plan';
 
 export function highMoor(): MapcraftResult {
@@ -65,6 +65,22 @@ export function highMoor(): MapcraftResult {
   p.bedRows([54, 20, 28], [55, 20, 27], [54, 33, 39], [55, 34, 38], [44, 20, 23], [45, 20, 22]);
   p.flowers([36, 51], [37, 52], [22, 49]);
 
+  // -- The Moor Foot, the first of the moor a walk up from the village meets ---------
+  // Where the drove road comes off the ledges: the waystones on the west, the
+  // fold the drovers rest the herd in on the east, and somebody at each.
+  p.meadow(20, 56, 10, 6).meadow(33, 56, 8, 6);
+  p.wood(20, 60, 2, 2).wood(40, 60, 2, 2);
+  p.building('strange-stone', 23, 58).building('strange-stone', 26, 59);
+  p.building('stump', 22, 57).building('stump', 28, 57);
+  p.flowers([25, 57], [28, 60]);
+  p.yard(34, 57, 6, 5, { gates: [[34, 59]], inner: '.' });
+  p.building('crate-pair', 37, 58);
+  // A place to get your breath back halfway up.
+  p.building('bench', 21, 46);
+  p.building('log', 28, 46);
+  p.building('stump', 27, 48);
+  p.flowers([28, 44], [21, 49]);
+
   // The road last, so nothing drawn round it cuts it.
   p.road(
     [[28, 2], [28, 10], [32, 10], [32, 22], [25, 22], [25, 32], [28, 32], [28, 40], [24, 40], [24, 50], [30, 50], [30, 62]],
@@ -91,15 +107,28 @@ export function highMoor(): MapcraftResult {
 
   const file = districtFile(GREYSTONE_VALE, 'high-moor', p, {
     dropIns: [{ x: 22, y: 37, name: 'Moor Top', description: 'A knoll above the drove road, with the whole moor ahead of it.' }],
-    itemSpots: [{ x: 8, y: 19 }, { x: 55, y: 38 }, { x: 34, y: 27, hidden: true }],
+    itemSpots: [{ x: 8, y: 19 }, { x: 55, y: 38 }, { x: 34, y: 27, hidden: true }, { x: 24, y: 60, hidden: true }],
     extra: {
       signs: [
         { x: 33, y: 56, lines: ['HIGH MOOR', 'The drove road climbs to Moor Top, then north over the moor.'] },
         { x: 32, y: 34, lines: ['East: GREYSTONE PEAKS', 'North: the Grey Stones and the Moor Gate.'] },
         { x: 30, y: 6, lines: ['THE MOOR GATE', 'The old toll road leaves the vale here.'] },
         { x: 30, y: 13, lines: ['THE GREY STONES', 'The tor the vale is named for. The drovers touch it for luck.'] },
+        { x: 29, y: 58, lines: ['THE WAYSTONES', 'They walked down from the tor one night. So the drovers say. Do not count them.'] },
+      ],
+      // What grazes and hops about the foot of the moor. One of the Tauros has
+      // had enough of walking and will say so.
+      pokemon: [
+        { x: 38, y: 60, species: 'tauros', level: 7 },
+        { x: 22, y: 59, species: 'clefairy', beat: { everyMs: 2300, roam: [[0, 1]] } },
+        { x: 22, y: 50, species: 'spearow', beat: { everyMs: 1700, roam: [[1, 0], [1, -1]] } },
       ],
       people: [
+        { x: 35, y: 58, name: 'Drover Boy', look: 'youngster', facing: 'down', lines: ['Grandad says they know the way home.', 'They do. They go there. All the time. Without me.'], beat: { everyMs: 3100, glances: ['right', 'down'] }, calls: ['Come back! Please!'] },
+        { x: 24, y: 57, name: 'Lina', look: 'lass', facing: 'down', lines: ['I count them every time and get a different number.', 'I got six once. There were never six.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['One, two, three... wait.'] },
+        { x: 36, y: 49, name: 'Tarn Fisher', look: 'fisherman', facing: 'up', lines: ['Up on the moor the water has nothing in it but sky.', 'I come for the quiet. Well. I did.'] },
+        { x: 37, y: 38, name: 'Peak Walker', look: 'hiker', facing: 'left', lines: ['East is the quarry, and the caves under it. Mind who you meet in there.', 'I have been meaning to go. I have been meaning to go for years.'], beat: { everyMs: 3500, glances: ['up', 'right'] }, calls: ['Lovely day for it.'] },
+        { x: 27, y: 47, name: 'Walker', look: 'hiker', facing: 'left', lines: ['Going up? You will not get down the way you came, not by the ledges. They only go one way.', 'Quick, mind. Very quick.'], beat: { everyMs: 3300, glances: ['up', 'down'] }, calls: ['Mind the ledges!'] },
         { x: 15, y: 26, name: 'Shepherd', look: 'old-man', facing: 'right', lines: ['The tarn never freezes, whatever the winter.', 'There was a sheep track west, under it, to the old chapel.', 'By day the fog turns you back. Go after dark, if you go.'] },
       ],
       trainers: [
@@ -108,5 +137,5 @@ export function highMoor(): MapcraftResult {
       landmarks: [{ x: 50, y: 37, name: 'Moor Spring', kind: 'spring' }],
     },
   });
-  return { file, notes: p.notes };
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
 }

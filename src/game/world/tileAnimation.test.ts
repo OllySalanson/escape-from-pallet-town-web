@@ -3,7 +3,7 @@ import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { getBaseMap } from '../base/baseMap';
 import { TILE_ANIMATIONS, TILE_ANIMATION_SHEET } from './generated/tileAnimations';
-import { TILE_ANIMATIONS_BY_TILE, TILE_ANIMATION_SOURCE, animatedTileAt } from './tileAnimation';
+import { TILE_ANIMATIONS_BY_TILE, TILE_ANIMATION_SOURCE, TileAnimator, animatedTileAt } from './tileAnimation';
 
 /** Decodes a non-interlaced 8-bit RGBA PNG, which is what all three sheets are. */
 function decodePng(path: string): { width: number; pixels: Buffer } {
@@ -114,5 +114,54 @@ describe('FireRed\'s moving ground', () => {
       .flatMap((layer) => layer.tiles.flat())
       .filter((tile) => TILE_ANIMATIONS_BY_TILE.has(tile)).length;
     expect(animated).toBeGreaterThan(500);
+  });
+});
+
+describe('moving the ground of a map too big to walk over', () => {
+  const [sea] = [...TILE_ANIMATIONS_BY_TILE.values()];
+  const layerOf = (width: number, height: number) => {
+    const tiles = Array.from({ length: height }, () => Array.from({ length: width }, () => ({ index: sea.still })));
+    const asked: string[] = [];
+    return {
+      tiles,
+      asked,
+      layer: {
+        still: tiles.map((row) => row.map(() => sea.still)),
+        getTileAt: (x: number, y: number) => {
+          asked.push(`${x},${y}`);
+          return tiles[y]?.[x] ?? null;
+        },
+      },
+    };
+  };
+
+  it('moves only what is in view, and what comes into view catches up', () => {
+    const { tiles, layer } = layerOf(8, 8);
+    const animator = new TileAnimator([layer]);
+    animator.advance(sea.frameMs + 1, { x: 0, y: 0, width: 2, height: 2 });
+    expect(tiles[0][0].index).toBe(sea.frames[1]);
+    expect(tiles[5][5].index).toBe(sea.still);
+    animator.advance(0, { x: 5, y: 5, width: 2, height: 2 });
+    expect(tiles[5][5].index).toBe(sea.frames[1]);
+  });
+
+  it('asks nothing between frames while the view stays put', () => {
+    const { asked, layer } = layerOf(4, 4);
+    const animator = new TileAnimator([layer]);
+    const view = { x: 0, y: 0, width: 4, height: 4 };
+    animator.advance(sea.frameMs + 1, view);
+    const once = asked.length;
+    expect(once).toBeGreaterThan(0);
+    animator.advance(1, view);
+    expect(asked.length).toBe(once);
+  });
+
+  it('is not fooled by a view running off the edge of the map, or by ground that stands still', () => {
+    const { tiles, layer } = layerOf(2, 2);
+    layer.still[0][0] = 1;
+    tiles[0][0].index = 1;
+    new TileAnimator([layer]).advance(sea.frameMs + 1, { x: -3, y: -3, width: 9, height: 9 });
+    expect(tiles[0][0].index).toBe(1);
+    expect(tiles[1][1].index).toBe(sea.frames[1]);
   });
 });

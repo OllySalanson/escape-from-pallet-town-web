@@ -30,27 +30,32 @@ Redraw them, and write the map the game ships, with
 
 ## Millbrook
 
-The mill village and the vale's front door: every road starts at Mill Square,
-and the village is drawn the way a FireRed town is.
+The mill village and the vale's front door, where a new game lands: every road
+starts at Mill Square, and the brook runs through all of it. It was redrawn on
+30 October 2026, when the captain found the vale sparse beside the harbour; the
+whole account, with before and after, is in [`../millbrook/`](../millbrook/README.md).
 
-- **The square:** you land under the fountain, with planters on either side and
-  the market stall below.
-- **The Pokémon Center** faces the square's east street.
-- **Streets:** a loop runs north-west past the cottages, the allotments and the
-  tool shed, and another north-east past the miller's house to the mill, a
-  thatched house on the bank of its pond. The south street leaves the square
-  and ends at the purple house one way and the Mart's forecourt the other.
-- **The foot of the village:** the brook's pool, with reeds round it, and the
-  lane south to the marsh runs past it.
-- **The frame:** a deep conifer wood closes every side, open only where the
-  plan's four roads leave.
+- **The square:** stone, on market day. You land under the fountain, with
+  planters on either side and the stalls below, and somebody is always calling
+  out what they have got.
+- **The brook:** out of the millpond past the mill, under Mill Lane and the east
+  street on stone slabs, along the foot of the south street and into Tom's pool.
+- **The places:** the mill and its yard, the dug allotments, Old Row and its
+  gardens, the green, Mrs Lark's flowers, the east gate.
+- **The roads out go through somewhere:** north past the pound with a Tauros in
+  it, west past a wayfarer's camp, south round the woodcutter's glade and past
+  the orchard.
+- **Inside:** the mill, the Center, the Mart, Ott's cottage and the woodshed.
+- **To find:** the island over the stones, the carter's purse, berry trees, and
+  Hazel's walled garden behind the Cut tree.
 
-It is drawn in FireRed's pieces only: Kanto's buildings, the town pieces cut
-from pret, and the FireRed sheet's fountain, stall, planters and signs.
+It is drawn in FireRed's pieces, the barrels, crates and logs the harbour stands,
+and no CC0 fountain, stall or timber mill: two blind judges named those as another
+game's props on FireRed ground in the first draw.
 
 ![Millbrook as first drawn](millbrook-first-draw.png)
 
-That is the first draw, which did not pass (below).
+That is the first draw of its first life, which did not pass (below).
 
 ## High Moor
 

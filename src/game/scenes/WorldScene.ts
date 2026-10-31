@@ -229,6 +229,10 @@ import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/grou
 import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
+import { HARBOUR_BIRD_TEXTURE, HarbourBird } from '../base/harbourBird';
+import { SpeechBubble } from '../base/speechBubble';
+import { advanceCalls, NO_CALL, type CallState } from '../world/villageCalls';
+import { TILE_ANIMATION_SOURCE, TileAnimator, type AnimatedLayer } from '../world/tileAnimation';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
 import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
 import { districtAt, districtsForMap, weatherAt } from '../world/districts';
@@ -394,6 +398,13 @@ import { withArticle } from '../ui/article';
 const CAMERA_ZOOM = 1;
 /** The dark a doorway is gone through in, each way: FireRed's own door is about this quick. */
 const DOOR_FADE_MS = 180;
+/** A bird takes this long over a screen of a raid map, a harbour's width being a longer glide. */
+const RAID_BIRD_CROSSING_MS = 6_000;
+/** How often water is heard from beside it at the least, and how far off, in steps. */
+const WATER_EVERY_MS = 7_000;
+const WATER_EARSHOT = 4;
+/** A figure's sheet has clear pixels over its head, which a bubble's tail reaches down past. */
+const CALL_BUBBLE_DROP = 6;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
@@ -657,6 +668,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly npcAppearances = new Map<string, WorldCharacterAppearance>();
   /** The townsfolk keeping a beat on this map, and where each of them stands now. */
   private idleFigures: IdleFigure[] = [];
+  /** Which figures are a Pokemon's icon, and how far under its tile its feet are drawn. */
+  private readonly pokemonSoles = new Map<string, number>();
+  /** Every tile layer of the map on screen, for FireRed's moving ground. */
+  private animatedLayers: AnimatedLayer[] = [];
+  private tileAnimator: TileAnimator | null = null;
+  private bird: HarbourBird | null = null;
+  private villageCall: CallState = NO_CALL;
+  private untilWaterMs = WATER_EVERY_MS;
+  private villageBubble: SpeechBubble | null = null;
+  private readonly reducedMotion = prefersReducedMotion();
   /**
    * What this step costs in game time. A walked tile is `STEP_DURATION_MS`; a
    * ledge hop covers three tiles and takes longer than one of them, which is
@@ -1149,6 +1170,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   public create(data: WorldSceneData = {}): void {
+    // A battle shut the scene down and took the bird's two images with it.
+    this.bird = null;
+    this.villageBubble = null;
+    this.villageCall = NO_CALL;
     this.resetStateFromPreviousRaid();
     this.runSession = data.runSession;
     // Trainers and who has been beaten come first: which gates are open is
@@ -1723,6 +1748,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Outside the clock and before the early returns: the townsfolk are the
     // world going on around the raid, and they cost the player nothing.
     this.advanceIdleFigures(deltaMs);
+    this.animateGroundInView(deltaMs);
+    this.updateBird(deltaMs);
+    this.advanceVillageCalls(deltaMs);
+    this.listenToTheWater(deltaMs);
     if (this.pendingHubTransition) {
       this.handleDialogInput();
       return;
@@ -1954,6 +1983,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private createMap(): void {
+    this.animatedLayers = [];
+    this.tileAnimator = null;
     this.collisionData = this.currentMap.collision.map((row) => [...row]);
     this.bounds = {
       width: this.currentMap.width,
@@ -1974,7 +2005,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // A map may draw its ground from one sheet and the things standing on it
     // from another, so every source is registered against the same tilemap with
     // its own first index and the layers carry one shared numbering.
-    const sheets = tileset.sources.map((source) => {
+    // FireRed's moving ground is drawn from a sheet of its own, whichever sheet
+    // the map's still ground came from (`world/tileAnimation.ts`).
+    const sheets = [...tileset.sources, ...(tileset.sources.includes(TILE_ANIMATION_SOURCE.source) ? [] : [TILE_ANIMATION_SOURCE.source])].map((source) => {
       const sheet = map.addTilesetImage(
         source.textureKey,
         source.textureKey,
@@ -2373,7 +2406,111 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
     });
     this.mapObjects.push(created);
+    this.animatedLayers.push({ getTileAt: (x, y) => created.getTileAt(x, y, true), still: layer.tiles });
     return created;
+  }
+
+  /**
+   * The sea, the surf and the flowers move as FireRed's do, on the one clock,
+   * and with the browser's reduced motion set they hold still, as the harbour's
+   * do. It costs the raid nothing: it is the world going on, like the townsfolk.
+   */
+  private animateGroundInView(deltaMs: number): void {
+    if (this.reducedMotion) {
+      return;
+    }
+    const view = this.cameras?.main?.worldView;
+    if (!view) {
+      return;
+    }
+    this.tileAnimator ??= new TileAnimator(this.animatedLayers);
+    this.tileAnimator.advance(deltaMs, {
+      x: Math.floor(view.x / TILE_SIZE) - 1,
+      y: Math.floor(view.y / TILE_SIZE) - 1,
+      width: Math.ceil(view.width / TILE_SIZE) + 3,
+      height: Math.ceil(view.height / TILE_SIZE) + 3,
+    });
+  }
+
+  /**
+   * Somebody calling out as the player goes past (`world/villageCalls.ts`),
+   * in the harbour's own bubble, over wherever they have got to on their beat.
+   */
+  private advanceVillageCalls(deltaMs: number): void {
+    const { x, y } = this.currentTile;
+    const callers = this.currentMap.entities
+      .filter((entity) => entity.calls && this.npcSprites.has(entity.id))
+      .map((entity) => {
+        const sprite = this.npcSprites.get(entity.id) as Phaser.GameObjects.Sprite;
+        const across = sprite.x / TILE_SIZE - x;
+        const down = sprite.y / TILE_SIZE - y;
+        return { id: entity.id, distance: Math.hypot(across, down), calls: entity.calls ?? [] };
+      });
+    this.villageCall = advanceCalls(this.villageCall, {
+      deltaMs,
+      frozen: this.isWarping || this.pendingHubTransition || this.trainerPrompt !== undefined || this.dialogBox.visible,
+      callers,
+      random: Math.random,
+    });
+    const saying = this.villageCall.saying;
+    const sprite = saying && this.npcSprites.get(saying.id);
+    if (!saying || !sprite) {
+      this.villageBubble?.destroy();
+      this.villageBubble = null;
+      return;
+    }
+    this.villageBubble ??= new SpeechBubble(this);
+    this.villageBubble.say(saying.words);
+    const bounds = sprite.getBounds();
+    this.villageBubble.place(bounds.centerX, Math.round(bounds.top) + CALL_BUBBLE_DROP, null);
+  }
+
+  /**
+   * Water lapping, within a few steps of it: the sound the harbour's quay has,
+   * less often, because a raid has other things to listen for.
+   */
+  private listenToTheWater(deltaMs: number): void {
+    if (this.dialogBox.visible || this.isWarping || !this.runSession) {
+      return;
+    }
+    this.untilWaterMs -= deltaMs;
+    if (this.untilWaterMs > 0) {
+      return;
+    }
+    this.untilWaterMs = WATER_EVERY_MS + Math.random() * WATER_EVERY_MS;
+    const { x, y } = this.currentTile;
+    const terrain = this.currentMap.terrain;
+    for (let dy = -WATER_EARSHOT; dy <= WATER_EARSHOT; dy += 1) {
+      for (let dx = -WATER_EARSHOT; dx <= WATER_EARSHOT; dx += 1) {
+        if (Math.abs(dx) + Math.abs(dy) <= WATER_EARSHOT && terrain[y + dy]?.[x + dx] === 'water') {
+          audioManager.play('waveLap');
+          return;
+        }
+      }
+    }
+  }
+
+  /**
+   * A bird over a raid map by day: the harbour's, FireRed's own Fly bird, across
+   * a screen of the country rather than across the map. Never in a place with a
+   * roof, on a night raid, or with reduced motion set.
+   */
+  private updateBird(deltaMs: number): void {
+    if (this.reducedMotion || !this.runSession || this.runSession.plan?.night) {
+      return;
+    }
+    // A scene under test has no textures, and a world seen with no raid has no bird.
+    if (!this.bird && this.textures?.exists?.(HARBOUR_BIRD_TEXTURE)) {
+      this.bird = new HarbourBird(
+        this,
+        { width: this.scale.width, height: this.scale.height },
+        () => ({ x: this.cameras.main.worldView.x, y: this.cameras.main.worldView.y }),
+        RAID_BIRD_CROSSING_MS,
+      );
+    }
+    if ((this.currentArea()?.kind ?? 'outdoors') === 'outdoors') {
+      this.bird?.update(deltaMs);
+    }
   }
 
   private createExtractionPoints(): void {
@@ -3175,6 +3312,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!sprite) {
       return;
     }
+    // A Pokemon keeping a beat is its icon, feet on the tile's last row and one
+    // facing, turned to the way it is going (`createPokemonFigure`).
+    const pokemonSole = this.pokemonSoles?.get(id);
+    if (pokemonSole !== undefined) {
+      if (facing === 'left' || facing === 'right') {
+        sprite.setFlipX(facing === 'right');
+      }
+      sprite
+        .setPosition(x * TILE_SIZE + TILE_SIZE / 2, (y + 1) * TILE_SIZE + pokemonSole)
+        .setDepth(atRow(FIGURE_BAND, y))
+        .setVisible(options.visible ?? true);
+      return;
+    }
     sprite
       .setPosition(x * TILE_SIZE, y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
       .setDepth(atRow(FIGURE_BAND, y))
@@ -3224,6 +3374,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .setDepth(atRow(FIGURE_BAND, position.y))
       .play(key);
     this.npcSprites.set(id, sprite);
+    this.pokemonSoles.set(id, pokemonSoleDrop(species));
     this.mapObjects.push(sprite);
     // Fetched as it is stood up, so the cry it gives when spoken to is its own
     // rather than the stand-in tone a sample still on its way sounds.

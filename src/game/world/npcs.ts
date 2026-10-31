@@ -67,6 +67,8 @@ export interface WorldEntity {
    * authored across a route - see `npcIdle.ts`.
    */
   idle?: NpcIdle;
+  /** What they call out as a raid goes past, unasked (`villageCalls.ts`). */
+  calls?: readonly string[];
 }
 
 /**
