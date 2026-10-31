@@ -38,5 +38,5 @@ export function marshalLines(
   if (boutRival) {
     return [`You look ready. ${boutRival} is on the far floor, if you want a bout first.`];
   }
-  return ['You look ready. Pick your spot on the rim and go over the fence.'];
+  return ['You look ready. Pick a spot on the rim. A telescope east and west shows it all.'];
 }

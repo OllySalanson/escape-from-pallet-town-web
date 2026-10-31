@@ -3,7 +3,7 @@
  * floor, the rings, the hall's tile layers and the over layer, slid for
  * somebody standing where you say, and cropped to what a window shows.
  *
- *   npx vite-node tools/base/renderArena.mts -- out.png --at=32,62 --view=400x256 --scale=2 --survey=all
+ *   npx vite-node tools/base/renderArena.mts -- out.png --at=35,62 --view=400x256 --scale=2 --survey=all
  *   npx vite-node tools/base/renderArena.mts -- out.png --whole --scale=1 --survey=none
  *
  * `--light=day|dusk|night`: the hour. `--survey=none|all|some`: what this save has walked. `--whole` is the hall
@@ -36,7 +36,7 @@ const out = args.find((arg) => !arg.startsWith('--')) ?? 'arena.png';
 const option = (name: string): string | undefined => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const whole = args.includes('--whole');
 const scale = Number(option('scale') ?? 1);
-const [atX, atY] = (option('at') ?? '32,62').split(',').map(Number);
+const [atX, atY] = (option('at') ?? '35,62').split(',').map(Number);
 const [viewW, viewH] = (option('view') ?? '400x256').split('x').map(Number);
 const survey = option('survey') ?? 'some';
 
@@ -128,7 +128,7 @@ let cropH = HEIGHT;
 if (!whole) {
   cropW = viewW;
   cropH = viewH;
-  const lean = cameraLean(player, cropH);
+  const lean = cameraLean(player, { width: cropW, height: cropH });
   left = Math.max(0, Math.min(WIDTH - cropW, player.x + PAD.x + lean.x - cropW / 2));
   top = Math.max(0, Math.min(HEIGHT - cropH, player.y + PAD.y + lean.y - cropH / 2));
 }

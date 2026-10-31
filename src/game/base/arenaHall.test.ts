@@ -13,6 +13,7 @@ import {
   ARENA_MAT,
   ARENA_PILLARS,
   ARENA_STATIONS,
+  ARENA_TELESCOPES,
   ARENA_TILE,
   ARENA_TORCHES,
   FLOOR_PARALLAX,
@@ -26,6 +27,8 @@ import {
   acrossOval,
   arenaCollision,
   arenaStationAt,
+  arenaTelescopeAt,
+  cameraEased,
   cameraLean,
   isArenaFence,
   namePlatePlace,
@@ -35,11 +38,12 @@ import {
   podiumHole,
 } from './arenaHall';
 import { ARENA_HALL_SOURCE } from './arenaHallSheet';
-import { PERSON_WIDTH, STANDS_ORIGIN, crowdSeats, nextStir, paintCrowdPerson, paintStands } from './arenaStands';
+import { PERSON_WIDTH, STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH, crowdSeats, nextStir, paintCrowdPerson, paintStands } from './arenaStands';
 import { PIT_FLOOR_SIZE, isGroundKnown, paintPitFloor, paintPodium, paintTier, RING_ORIGIN } from './arenaPit';
 import { baseGame } from './baseGames.testkit';
 import { ARENA_HALL_GROUND, ARENA_HALL_OVER, ARENA_HALL_SHEET } from './generated/arenaHallTiles';
 import { BASE_ROOMS, buildRoom, roomNamed } from './rooms';
+import { isAtRim } from './arenaRim';
 
 const solid = arenaCollision();
 const key = (x: number, y: number): string => `${x},${y}`;
@@ -169,9 +173,9 @@ describe("THE RAID ARENA's great hall", () => {
 
   it('makes the tile behind a pillar at the end of a station solid, and part of reaching that station', () => {
     expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([
-      ['22,58', '29,58'],
-      ['35,58'],
-      ['42,58'],
+      ['25,58', '31,58'],
+      ['39,58'],
+      ['45,58'],
     ]);
     for (const station of ARENA_STATIONS) {
       for (const tile of station.past) {
@@ -217,6 +221,58 @@ describe("THE RAID ARENA's great hall", () => {
     }
     expect(ARENA_TORCHES.filter((torch) => torch.on === 'pillar')).toHaveLength(ARENA_PILLARS.length);
     expect(ARENA_TORCHES.some((torch) => torch.on === 'wall')).toBe(true);
+  });
+
+  it('walks wider beside the pit than above and below it, and all of it is reached', () => {
+    const across = (from: number, way: number): number => {
+      let x = from;
+      let walked = 0;
+      while (solid[33][x] !== false) x += way;
+      while (solid[33][x] === false || arenaTelescopeAt({ x, y: 33 }) || ARENA_PILLARS.some((pillar) => pillar.x === x && pillar.y === 33)) {
+        x += way;
+        walked += 1;
+      }
+      return walked;
+    };
+    const downwards = (from: number, way: number): number => {
+      let y = from;
+      let walked = 0;
+      while (solid[y]?.[ARENA_MAT.x] !== false) y += way;
+      while (solid[y]?.[ARENA_MAT.x] === false) {
+        y += way;
+        walked += 1;
+      }
+      return walked;
+    };
+    // The telescope stands on the first of them, and the floor goes on past it.
+    expect(across(ARENA_MAT.x, 1)).toBeGreaterThanOrEqual(7);
+    expect(across(ARENA_MAT.x, -1)).toBeGreaterThanOrEqual(7);
+    expect(across(ARENA_MAT.x, 1)).toBeGreaterThan(downwards(33, -1));
+    // North and south are as they always were: the pit and the wall stand where they stood.
+    expect(PIT_RIM.ry).toBe(360);
+    expect(WALL_FOOT.ry).toBe(464);
+    expect(PIT_RIM.rx).toBe(376);
+  });
+
+  it('stands a telescope on the rail on the left and on the right, mirrored, each walked up to from the floor', () => {
+    expect(ARENA_TELESCOPES.map((telescope) => telescope.side)).toEqual(['west', 'east']);
+    const [west, east] = ARENA_TELESCOPES;
+    expect(ARENA_MAT.x * 2 - west.tile.x).toBe(east.tile.x);
+    expect(west.tile.y).toBe(east.tile.y);
+    const steps = stepsFromTheMat();
+    for (const telescope of ARENA_TELESCOPES) {
+      expect(solid[telescope.tile.y][telescope.tile.x], telescope.side).toBe(true);
+      expect(arenaTelescopeAt(telescope.tile)).toBe(telescope);
+      expect(isArenaFence(telescope.tile), telescope.side).toBe(false);
+      expect(steps.has(key(telescope.stance.x, telescope.stance.y)), telescope.side).toBe(true);
+      // Right on the rail, and the rail goes round it on both sides.
+      for (const rail of [telescope.tile.y - 1, telescope.tile.y + 1]) {
+        expect(steps.has(key(telescope.tile.x, rail)), `${telescope.side} ${rail}`).toBe(true);
+        expect(isAtRim({ x: telescope.tile.x, y: rail }), `${telescope.side} ${rail}`).toBe(true);
+      }
+      // Its plate is not on the rim: a press there is the telescope, not a jump.
+      expect(isAtRim(telescope.stance), telescope.side).toBe(false);
+    }
   });
 
   it('stands its keeper on floor, clear of the mat and the runner up the middle', () => {
@@ -269,20 +325,20 @@ describe("THE RAID ARENA's great hall", () => {
 
 describe('the pit', () => {
   it('slides each thing further the further down it is, and each towards whoever is looking', () => {
-    const player = { x: 900, y: 528 };
+    const player = { x: ARENA_CENTRE.x + 380, y: ARENA_CENTRE.y };
     const amounts = [...TIER_PARALLAX, PODIUM_PARALLAX, FLOOR_PARALLAX];
     const slid = amounts.map((amount) => parallaxShift(amount, player).x);
     expect(slid).toEqual([...slid].sort((a, b) => a - b));
     expect(slid[0]).toBeGreaterThan(0);
-    expect(parallaxShift(FLOOR_PARALLAX, { x: 520, y: 528 })).toEqual({ x: 0, y: 0 });
+    expect(parallaxShift(FLOOR_PARALLAX, ARENA_CENTRE)).toEqual({ x: 0, y: 0 });
   });
 
   it('says which tile of the map is at any point of it, for somebody standing anywhere', () => {
-    const middle = { x: 520, y: 528 };
+    const middle = ARENA_CENTRE;
     expect(pitTileAt(PIT_MAP_CENTRE, middle)).toEqual({ x: PIT_MAP_SIZE / 2, y: PIT_MAP_SIZE / 2 });
     expect(pitTileAt({ x: PIT_MAP_CENTRE.x - PIT_MAP_SIZE, y: PIT_MAP_CENTRE.y }, middle)).toBeNull();
     // Walking away slides the floor after you, so the same tile is further on.
-    const east = { x: 900, y: 528 };
+    const east = { x: ARENA_CENTRE.x + 380, y: ARENA_CENTRE.y };
     const seen = pitTileAt(PIT_MAP_CENTRE, east)!;
     expect(seen.x).toBeLessThan(PIT_MAP_SIZE / 2);
   });
@@ -300,40 +356,89 @@ describe('the pit', () => {
     }
   });
 
-  it('leans the camera out over the pit, never so far the player meets the hint below them', () => {
-    expect(cameraLean({ x: 520, y: 528 }, 256)).toEqual({ x: 0, y: 0 });
-    const mat = cameraLean({ x: (ARENA_MAT.x + 0.5) * ARENA_TILE, y: (ARENA_MAT.y + 0.5) * ARENA_TILE }, 256);
-    expect(mat.y).toBeLessThan(0);
-    expect(Math.abs(mat.y)).toBeLessThanOrEqual(256 / 2 - 56);
-    expect(Math.abs(cameraLean({ x: 520, y: 1000 }, 240).y)).toBeLessThanOrEqual(240 / 2 - 56);
-  });
+  describe('the camera', () => {
+    const VIEWS = [
+      { width: 400, height: 256 },
+      { width: 320, height: 240 },
+    ];
+    const FLOOR = solid.flatMap((row, y) => row.flatMap((blocked, x) => (blocked ? [] : [{ x, y }])));
+    const middleOf = (tile: { x: number; y: number }) => ({ x: (tile.x + 0.5) * ARENA_TILE, y: (tile.y + 0.5) * ARENA_TILE });
 
-  it('turns the view up to the stands at the far wall, and never away from the pit at the door', () => {
-    // At the north rail it still looks out over the pit.
-    expect(cameraLean({ x: 520, y: 528 - 400 }, 256).y).toBeGreaterThan(0);
-    // At the wall it looks up over the seats.
-    expect(cameraLean({ x: 520, y: 80 }, 256).y).toBeLessThan(0);
-    // East and west, the same.
-    expect(cameraLean({ x: 1000, y: 528 }, 256).x).toBeGreaterThan(0);
-    // By the door, unchanged: the stations row and the mat both still lean north.
-    expect(cameraLean({ x: 520, y: 960 }, 256).y).toBeLessThan(0);
+    it('leans out over the pit from anywhere, never so far the player meets the hint below them', () => {
+      expect(cameraLean(ARENA_CENTRE, VIEWS[0])).toEqual({ x: 0, y: 0 });
+      for (const view of VIEWS) {
+        for (const tile of FLOOR) {
+          const player = middleOf(tile);
+          const lean = cameraLean(player, view);
+          expect(Math.abs(lean.y), `${tile.x},${tile.y}`).toBeLessThanOrEqual(view.height / 2 - 56);
+          expect(Math.abs(lean.x), `${tile.x},${tile.y}`).toBeLessThanOrEqual(view.width / 2 - 56);
+          // Always towards the middle, which is what stops it swinging out into the dark.
+          expect(lean.x * (ARENA_CENTRE.x - player.x), `${tile.x},${tile.y}`).toBeGreaterThanOrEqual(0);
+          expect(lean.y * (ARENA_CENTRE.y - player.y), `${tile.x},${tile.y}`).toBeGreaterThanOrEqual(0);
+        }
+      }
+    });
+
+    it('moves by a share of a step for every step, so walking never swings the view', () => {
+      for (const view of VIEWS) {
+        for (const tile of FLOOR) {
+          const lean = cameraLean(middleOf(tile), view);
+          for (const [dx, dy] of [[1, 0], [0, 1]]) {
+            if (solid[tile.y + dy]?.[tile.x + dx] === false) {
+              const next = cameraLean(middleOf({ x: tile.x + dx, y: tile.y + dy }), view);
+              expect(Math.hypot(next.x - lean.x, next.y - lean.y), `${tile.x},${tile.y}`).toBeLessThanOrEqual(ARENA_TILE * 0.35);
+            }
+          }
+        }
+      }
+    });
+
+    it('never needs the edge of the bounds to stop it, wherever the player walks', () => {
+      for (const view of VIEWS) {
+        for (const tile of FLOOR) {
+          const player = middleOf(tile);
+          const lean = cameraLean(player, view);
+          const left = player.x + lean.x - view.width / 2;
+          // East and west it is the width that matters: what is seen stays in what the stands paint.
+          expect(left, `${tile.x},${tile.y}`).toBeGreaterThanOrEqual(STANDS_ORIGIN.x - 1);
+          expect(left + view.width, `${tile.x},${tile.y}`).toBeLessThanOrEqual(STANDS_ORIGIN.x + STANDS_WIDTH + 1);
+          expect(player.y + lean.y + view.height / 2, `${tile.x},${tile.y}`).toBeLessThanOrEqual(STANDS_ORIGIN.y + STANDS_HEIGHT + 1);
+        }
+      }
+    });
+
+    it('comes round to what it is asked to look at gently, and arrives', () => {
+      const goal = { x: 300, y: -120 };
+      let at = { x: 0, y: 0 };
+      let frames = 0;
+      while ((at.x !== goal.x || at.y !== goal.y) && frames < 600) {
+        const next = cameraEased(at, goal, 1000 / 60);
+        expect(Math.hypot(next.x - at.x, next.y - at.y)).toBeLessThanOrEqual(4.1);
+        at = { x: next.x, y: next.y };
+        frames += 1;
+      }
+      expect(at).toEqual(goal);
+      // Slow to start from a small move, and in under two seconds from a big one.
+      expect(frames).toBeLessThan(140);
+    });
   });
 
   it('draws a way in\'s name plate whole or not at all', () => {
     const plate = { width: 90, height: 13 };
-    const view = { x: 300, y: 300, width: 400, height: 256 };
+    const shift = ARENA_CENTRE.x - 520;
+    const view = { x: 300 + shift, y: 300, width: 400, height: 256 };
     // In the middle of the view, over its mark.
-    expect(namePlatePlace({ x: 500, y: 420 }, plate, view)).toEqual({ x: 455, y: 394 });
+    expect(namePlatePlace({ x: 500 + shift, y: 420 }, plate, view)).toEqual({ x: 455 + shift, y: 394 });
     // At either edge it slides along rather than being cut.
-    expect(namePlatePlace({ x: 305, y: 420 }, plate, view)?.x).toBe(300);
-    expect(namePlatePlace({ x: 684, y: 420 }, plate, view)?.x).toBe(596);
+    expect(namePlatePlace({ x: 305 + shift, y: 420 }, plate, view)?.x).toBe(300 + shift);
+    expect(namePlatePlace({ x: 684 + shift, y: 420 }, plate, view)?.x).toBe(596 + shift);
     // Under the top of the screen it goes below its mark.
-    expect(namePlatePlace({ x: 500, y: 310 }, plate, view)?.y).toBe(320);
+    expect(namePlatePlace({ x: 500 + shift, y: 310 }, plate, view)?.y).toBe(320);
     // A mark off the screen has nothing to be named, the walk round the rim's case.
-    expect(namePlatePlace({ x: 280, y: 420 }, plate, view)).toBeNull();
-    expect(namePlatePlace({ x: 696, y: 420 }, plate, view)).toBeNull();
+    expect(namePlatePlace({ x: 280 + shift, y: 420 }, plate, view)).toBeNull();
+    expect(namePlatePlace({ x: 696 + shift, y: 420 }, plate, view)).toBeNull();
     // Nor is it ever cut by the stone round the pit: the hall's floor is drawn over it.
-    expect(namePlatePlace({ x: 520 + 370, y: 528 }, plate, { x: 600, y: 400, width: 400, height: 256 })).toBeNull();
+    expect(namePlatePlace({ x: ARENA_CENTRE.x + 370, y: 528 }, plate, { x: ARENA_CENTRE.x + 80, y: 400, width: 400, height: 256 })).toBeNull();
   });
 
   /** A map the size the pit shows, all open grass, walked within `walked` of its top-left. */
@@ -428,6 +533,19 @@ describe('the stands round the hall', () => {
         }
       }),
     );
+  });
+
+  it('leave no gap anywhere the camera can go: a roof past the seats, and only the way out is open', () => {
+    const middle = (ARENA_MAT.x + 0.5) * ARENA_TILE;
+    for (let hallY = STANDS_ORIGIN.y; hallY < STANDS_ORIGIN.y + STANDS_HEIGHT; hallY += 3) {
+      for (let hallX = STANDS_ORIGIN.x; hallX < STANDS_ORIGIN.x + STANDS_WIDTH; hallX += 3) {
+        const inHall = hallX >= 0 && hallY >= 0 && hallX < ARENA_HALL_WIDTH * ARENA_TILE && hallY < ARENA_HALL_HEIGHT * ARENA_TILE && acrossOval(WALL_FOOT, hallX, hallY) <= 1;
+        if (!opaque(hallX, hallY) && !inHall && !(Math.abs(hallX - middle) < 40 && hallY > ARENA_CENTRE.y)) {
+          // Only the hall's own wall and its cap may lie outside the picture's ink.
+          expect(acrossOval({ ...WALL_FOOT, rx: WALL_FOOT.rx + 12, ry: WALL_FOOT.ry + 12, y: WALL_FOOT.y - 24 }, hallX, hallY), `${hallX},${hallY}`).toBeLessThanOrEqual(1.12);
+        }
+      }
+    }
   });
 
   it('leave the way out of the hall open', () => {

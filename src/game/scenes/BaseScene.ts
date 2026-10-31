@@ -68,6 +68,7 @@ import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
   ARENA_KEY_LETTERS,
+  TELESCOPE_KEY_LETTERS,
   ROOM_KEY_LETTERS,
   coinKeyHint,
   houseKeyHintLine,
@@ -201,7 +202,7 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
+import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
 import { crowdTakesTheView, lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import {
   RIVAL_TILE,
@@ -223,6 +224,7 @@ import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag 
 import { FALLBACK_PACK_ID, STARTING_PACK_ID, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
+import { ValeOverviewView } from '../base/valeOverviewView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
@@ -364,8 +366,6 @@ let boatDueHome = false;
 let harbourToBeNamed = false;
 /** What the Seagallop is bringing home, for the next time the player is out in the yard. */
 let haulDueHome: readonly string[] = [];
-/** How fast the hall's camera comes round to what it is asked to look at: a share of the way, per millisecond. */
-const CAMERA_EASE_MS = 140;
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
 const CROWD_LOOK_MS = 1700;
 /** Where the run's slate hangs, on the rail at the head of the runner: beside whoever has just come up it, and in the view turned to the crowd. */
@@ -551,6 +551,7 @@ interface BaseControls {
   readonly talk: Phaser.Input.Keyboard.Key;
   /** C: a coin over the rail of THE RAID ARENA (`base/pitCoins.ts`). */
   readonly coin: Phaser.Input.Keyboard.Key;
+  readonly closer: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -690,6 +691,8 @@ export class BaseScene extends Phaser.Scene {
   private furniture: ArenaFurniture | null = null;
   /** The panel open over the hall, if any: the hall burns on behind it and the player stands still. */
   private arenaPanel: ArenaPanel | null = null;
+  /** Somebody's eye to one of the hall's telescopes (`base/valeOverviewView.ts`). */
+  private telescope: ValeOverviewView | null = null;
   /** The way in the player is stood over, or has under the cursor. */
   private aimed: RimLanding | null = null;
   /** Where the hall's camera has got to, as a follow offset. */
@@ -916,6 +919,7 @@ export class BaseScene extends Phaser.Scene {
     this.kit = null;
     this.furniture = null;
     this.arenaPanel = null;
+    this.telescope = null;
     this.aimed = null;
     this.jump = null;
     this.fogLift = null;
@@ -1285,6 +1289,12 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    if (this.telescope) {
+      this.closePhrases();
+      this.advanceTelescope(deltaMs);
+      return;
+    }
+
     if (this.fogLift) {
       const cut = this.advanceFogLift(deltaMs);
       if (this.fogLift) {
@@ -1493,13 +1503,36 @@ export class BaseScene extends Phaser.Scene {
     this.furniture.show(flow, partnerOf(game.stash)?.id ?? null);
     // A pointer can walk the room too: the rest of the harbour is walked with the
     // keys, but everything a raid is got ready with should answer a click.
-    const pressed = (pointer: Phaser.Input.Pointer): void => this.pointAtHall(pointer);
-    const moved = (pointer: Phaser.Input.Pointer): void => this.hoverOverHall(pointer);
+    const pressed = (pointer: Phaser.Input.Pointer): void => {
+      if (this.telescope) {
+        this.telescope.pointerDown(pointer.x, pointer.y);
+      } else {
+        this.pointAtHall(pointer);
+      }
+    };
+    const moved = (pointer: Phaser.Input.Pointer): void => {
+      if (this.telescope) {
+        this.telescope.pointerMove(pointer.x, pointer.y, pointer.isDown);
+      } else {
+        this.hoverOverHall(pointer);
+      }
+    };
+    const released = (pointer: Phaser.Input.Pointer): void => this.telescope?.pointerUp(pointer.x, pointer.y);
+    const wheeled = (pointer: Phaser.Input.Pointer, _over: unknown, _dx: number, dy: number): void =>
+      this.telescope?.wheel(pointer.x, pointer.y, dy);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, pressed);
     this.input.on(Phaser.Input.Events.POINTER_MOVE, moved);
+    this.input.on(Phaser.Input.Events.POINTER_UP, released);
+    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, released);
+    this.input.on(Phaser.Input.Events.POINTER_WHEEL, wheeled);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.off(Phaser.Input.Events.POINTER_DOWN, pressed);
       this.input.off(Phaser.Input.Events.POINTER_MOVE, moved);
+      this.input.off(Phaser.Input.Events.POINTER_UP, released);
+      this.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, released);
+      this.input.off(Phaser.Input.Events.POINTER_WHEEL, wheeled);
+      this.telescope?.destroy();
+      this.telescope = null;
     });
     return view;
   }
@@ -1545,7 +1578,7 @@ export class BaseScene extends Phaser.Scene {
       x: this.player.x + TILE_SIZE / 2,
       y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
     };
-    this.arena.hush(Boolean(this.arenaPanel) || this.dialogBox.visible || Boolean(this.jump));
+    this.arena.hush(Boolean(this.arenaPanel) || Boolean(this.telescope) || this.dialogBox.visible || Boolean(this.jump));
     this.arena.update(deltaMs, middle, isAtRim(this.targetTile ?? this.currentTile));
     this.tellTheLap(middle);
     this.watchThePitGift(deltaMs);
@@ -1562,7 +1595,7 @@ export class BaseScene extends Phaser.Scene {
   private settleAim(): void {
     const arena = this.arena;
     const kit = this.kit;
-    if (!arena || !kit) {
+    if (!arena || !kit || this.telescope) {
       return;
     }
     if (this.arenaPanel === 'rim') {
@@ -1614,8 +1647,7 @@ export class BaseScene extends Phaser.Scene {
       y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
     };
     const cover = this.panelCover();
-    const seenHeight = this.scale.height - cover.bottom;
-    const lean = cameraLean(middle, seenHeight);
+    const lean = cameraLean(middle, { width: this.scale.width - cover.right, height: this.scale.height - cover.bottom });
     // Where the middle of what can be seen should look at, as the camera's own middle.
     let centre = {
       x: middle.x + lean.x + cover.right / 2,
@@ -1626,7 +1658,7 @@ export class BaseScene extends Phaser.Scene {
       ? { ...this.arena.pointOfLanding({ id: '', tile: fogTile }) }
       : this.arenaPanel === 'rim' && this.aimed
         ? this.arena.pointOfLanding(this.aimed)
-        : this.crowdLookMs > 0 || this.runningForTheCrowd() || (this.rivalHere && nearTheRival(this.targetTile ?? this.currentTile))
+        : this.crowdLookMs > 0 || (this.rivalHere && !this.targetTile && nearTheRival(this.currentTile))
           ? this.halfwayToTheStands(middle)
           : null;
     if (lookedAt) {
@@ -1634,12 +1666,7 @@ export class BaseScene extends Phaser.Scene {
     }
     // How far the camera's middle stands from the player.
     const goal = { x: this.player.x - centre.x, y: this.player.y - centre.y };
-    const share = snap || this.still ? 1 : Math.min(1, deltaMs / CAMERA_EASE_MS);
-    const moved = (from: number, to: number): number => {
-      const next = from + (to - from) * share;
-      return Math.abs(to - next) < 1 ? to : next;
-    };
-    this.cameraOffset = { x: moved(this.cameraOffset.x, goal.x), y: moved(this.cameraOffset.y, goal.y) };
+    this.cameraOffset = snap || this.still ? goal : cameraEased(this.cameraOffset, goal, deltaMs);
     // Both whole, each rounded alone, so walking moves the player on the screen
     // only as the lean changes: rounded together they each land a pixel either
     // side of the other from frame to frame, and the figure shakes as it walks.
@@ -1655,6 +1682,88 @@ export class BaseScene extends Phaser.Scene {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     this.showHint('');
+  }
+
+  /**
+   * The eye to the glass: the whole of the map at the bottom of the pit, and the
+   * only way to see it all at once. Nothing here starts a raid: the two presses
+   * that do are at the rail, and never come through this.
+   */
+  private lookThroughTelescope(): void {
+    const arena = this.arena;
+    if (!arena || this.telescope || !this.kit) {
+      return;
+    }
+    const telescope = ARENA_TELESCOPES.find((each) => sameTile(each.stance, this.currentTile) || this.adjacent(each.tile));
+    if (telescope) {
+      this.facing = facingTowards(this.currentTile, telescope.tile);
+    }
+    this.walkPlan = null;
+    this.standStill();
+    audioManager.play('select');
+    this.telescope = new ValeOverviewView(this, arena.overviewSource(), {
+      chosenId: this.kit.flow.insertionId,
+      nameOf: (landing) => this.landingName(landing),
+      still: this.still,
+      from: { x: this.player.x - this.cameras.main.scrollX, y: this.player.y - this.cameras.main.scrollY },
+    });
+  }
+
+  private adjacent(tile: GridPosition): boolean {
+    return Math.abs(tile.x - this.currentTile.x) + Math.abs(tile.y - this.currentTile.y) === 1;
+  }
+
+  /** The keys while somebody is looking, and what happens once they step back. */
+  private advanceTelescope(deltaMs: number): void {
+    const view = this.telescope;
+    if (!view) {
+      return;
+    }
+    const { controls } = this;
+    const pressed = (...keys: readonly Phaser.Input.Keyboard.Key[]): boolean => keys.some((key) => this.keyPresses.justPressed(key));
+    const [space, enter] = controls.interact;
+    view.update(deltaMs, {
+      held: {
+        x: Number(controls.right.isDown || controls.d.isDown) - Number(controls.left.isDown || controls.a.isDown),
+        y: Number(controls.down.isDown || controls.s.isDown) - Number(controls.up.isDown || controls.w.isDown),
+      },
+      stepBack: pressed(space, controls.back),
+      go: pressed(enter),
+      wayBack: pressed(controls.boxBack),
+      wayNext: pressed(controls.boxNext),
+      closer: pressed(controls.closer),
+    });
+    const ended = view.finished;
+    if (!ended) {
+      return;
+    }
+    view.destroy();
+    this.telescope = null;
+    audioManager.play('menuClose');
+    this.spentPresses.spendHeld(this.directionKeys());
+    if (ended.kind === 'go') {
+      // Round to the rail beside the telescope, which is where a raid is looked over and started from.
+      const here = ARENA_TELESCOPES.find((each) => sameTile(each.stance, this.currentTile) || this.adjacent(each.tile));
+      const rail = here
+        ? [
+            { x: here.tile.x, y: here.tile.y - 1 },
+            { x: here.tile.x, y: here.tile.y + 1 },
+          ]
+        : [this.currentTile];
+      this.walkThen(rail, null, () => {
+        this.kit?.flow.chooseInsertion(ended.landing.id as RunInsertionId);
+        this.lookDown();
+      });
+    }
+  }
+
+  /** Whether the player is stood at a telescope, on its plate or facing it from beside it. */
+  private atTelescope(facing: GridPosition): boolean {
+    return (
+      !this.visit &&
+      this.arena !== null &&
+      (arenaTelescopeAt(facing) !== undefined || ARENA_TELESCOPES.some((each) => sameTile(each.stance, this.currentTile)))
+    );
   }
 
   /** A panel of the hall: the hall stays on screen beside it and the player stands where they are. */
@@ -1794,7 +1903,7 @@ export class BaseScene extends Phaser.Scene {
     }
     const camera = this.cameras.main;
     const middle = { x: this.player.x + TILE_SIZE / 2, y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2 };
-    const lean = cameraLean(middle, this.scale.height);
+    const lean = cameraLean(middle, this.scale);
     const focusLanding = this.aimed ?? arena.share.landings[0];
     const focus = focusLanding ? arena.pointOfLanding(focusLanding) : this.player;
     this.jump = {
@@ -2020,15 +2129,6 @@ export class BaseScene extends Phaser.Scene {
       x: middle.x + (stands.x - middle.x) * CROWD_LOOK_SHARE,
       y: this.crowdLookMs > 0 ? Math.min(y, this.cameras.main.getBounds().bottom - this.scale.height / 2 - CROWD_LOOK_STOPS_SHORT) : y,
     };
-  }
-
-  /**
-   * A run round the outer floor has the view on the people getting up for it. Round
-   * the rim it stays on the pit: walking that is choosing a way in, with the map
-   * going by underneath.
-   */
-  private runningForTheCrowd(): boolean {
-    return Boolean(this.arena?.lap.running) && !isAtRim(this.targetTile ?? this.currentTile);
   }
 
   private canTossACoin(): boolean {
@@ -2308,7 +2408,7 @@ export class BaseScene extends Phaser.Scene {
   // -- walking the hall with the pointer ---------------------------------------
 
   /** What a pointer is over in the hall: a station, or the way in nearest it in the pit. */
-  private hallThingAt(pointer: Phaser.Input.Pointer): { readonly station?: ArenaStationId; readonly landing?: RimLanding } | null {
+  private hallThingAt(pointer: Phaser.Input.Pointer): { readonly station?: ArenaStationId; readonly telescope?: boolean; readonly landing?: RimLanding } | null {
     const arena = this.arena;
     if (!arena) {
       return null;
@@ -2317,6 +2417,10 @@ export class BaseScene extends Phaser.Scene {
     const station = arenaStationAt(tile) ?? arenaStationAt({ x: tile.x, y: tile.y + 1 });
     if (station) {
       return { station: station.id };
+    }
+    // Its tube and its plate as well as the tile it stands on: it is a big thing to miss.
+    if (this.telescopeUnder(pointer)) {
+      return { telescope: true };
     }
     // Everything past the fence is the pit.
     if (this.collision[tile.y]?.[tile.x] !== true || !insideThePit(pointer.worldX, pointer.worldY)) {
@@ -2331,8 +2435,19 @@ export class BaseScene extends Phaser.Scene {
     return near ? { landing: near.landing } : null;
   }
 
+  /** The telescope a point of the hall is on, its tube and its plate as well as the tile it stands on. */
+  private telescopeUnder(pointer: Phaser.Input.Pointer): (typeof ARENA_TELESCOPES)[number] | undefined {
+    return ARENA_TELESCOPES.find((telescope) => {
+      const left = Math.min(telescope.tile.x, telescope.stance.x) * TILE_SIZE - TILE_SIZE;
+      const right = (Math.max(telescope.tile.x, telescope.stance.x) + 2) * TILE_SIZE;
+      const bottom = (telescope.tile.y + 1) * TILE_SIZE;
+      return pointer.worldX >= left && pointer.worldX < right && pointer.worldY >= bottom - TILE_SIZE * 3 && pointer.worldY < bottom;
+    });
+  }
+
   private canTakeAPointer(): boolean {
     return (
+      !this.telescope &&
       !this.arenaPanel &&
       !this.jump &&
       !this.fogLift &&
@@ -2445,6 +2560,13 @@ export class BaseScene extends Phaser.Scene {
       const tiles = this.place.room?.things.find((thing) => thing.opens === id)?.tiles ?? [];
       const fronts = tiles.map((tile) => ({ x: tile.x, y: tile.y + 1 }));
       this.walkThen(fronts, 'up', () => this.openHallPanel(id));
+      return;
+    }
+    if (over?.telescope) {
+      const telescope = this.telescopeUnder(pointer);
+      if (telescope) {
+        this.walkThen([telescope.stance], null, () => this.lookThroughTelescope());
+      }
       return;
     }
     const arena = this.arena;
@@ -3323,14 +3445,15 @@ export class BaseScene extends Phaser.Scene {
     this.stationLabels.clear();
     for (const thing of built.things.filter((each) => !each.quiet)) {
       const station = thing.opens && thing.opens in ARENA_STATION_NAMES ? (thing.opens as ArenaStationId) : null;
+      const standsUp = station !== null || thing.opens === 'telescope';
       const label = new WorldLabel(this, {
-        subject: station ? { ...tilesRect(thing.tiles), y: tilesRect(thing.tiles).y - STATION_RISE, height: TILE_SIZE + STATION_RISE } : tilesRect(thing.tiles),
+        subject: standsUp ? { ...tilesRect(thing.tiles), y: tilesRect(thing.tiles).y - STATION_RISE, height: TILE_SIZE + STATION_RISE } : tilesRect(thing.tiles),
         text: `${thing.name}\n${station ? this.stationNote(station) : thing.note}`,
-        tone: station ? DOOR_TONE : FIXTURE_TONE,
+        tone: standsUp ? DOOR_TONE : FIXTURE_TONE,
         depth: atRow(CAPTION_BAND, Math.max(...thing.tiles.map((tile) => tile.y))),
         // The hall's furniture names itself as it is walked up to, from further
         // off than a thing in a room does, because the hall is that much bigger.
-        speech: { voice: 'name', tiles: thing.tiles, near: station ? STATION_NAMED_WITHIN : 1 },
+        speech: { voice: 'name', tiles: thing.tiles, near: standsUp ? STATION_NAMED_WITHIN : 1 },
       });
       this.worldLabels.push(label);
       if (station) {
@@ -3432,6 +3555,9 @@ export class BaseScene extends Phaser.Scene {
     // Something in the room that opens a screen says so where it can be
     // opened from, exactly as the keeper does: a board on a wall that answers
     // a key nobody was told about is a board nobody reads.
+    if (this.atTelescope(facing)) {
+      return '[SPACE] LOOK THROUGH THE TELESCOPE';
+    }
     const faced = this.thingFaced(facing);
     if (faced?.opens || faced?.reads || faced?.chalked || faced?.good) {
       return `[SPACE] ${faced.name}`;
@@ -3600,7 +3726,7 @@ export class BaseScene extends Phaser.Scene {
     }
     // Decorating is looking at the room itself: no caption over it. Nor over the
     // hall with a panel up: the panel is saying it.
-    if (this.decor || this.arenaPanel) {
+    if (this.decor || this.arenaPanel || this.telescope) {
       this.worldLabels.forEach((label) => label.hide());
       this.partner?.setVeiled(false);
       return;
@@ -3811,6 +3937,7 @@ export class BaseScene extends Phaser.Scene {
       putAway: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.putAway], false),
       talk: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ROOM_KEY_LETTERS.talk], false),
       coin: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ARENA_KEY_LETTERS.coin], false),
+      closer: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[TELESCOPE_KEY_LETTERS.closer], false),
     };
     this.latchDirectionPresses();
     this.keyPresses.watch([
@@ -3821,6 +3948,7 @@ export class BaseScene extends Phaser.Scene {
       this.controls.favours,
       this.controls.decorate,
       this.controls.coin,
+      this.controls.closer,
       this.controls.turn,
       this.controls.boxBack,
       this.controls.boxNext,
@@ -4417,6 +4545,10 @@ export class BaseScene extends Phaser.Scene {
       }
       if (this.facesTheStands(target)) {
         this.waveAtTheStands();
+        return;
+      }
+      if (this.atTelescope(target)) {
+        this.lookThroughTelescope();
         return;
       }
       const thing = this.thingFaced(target);

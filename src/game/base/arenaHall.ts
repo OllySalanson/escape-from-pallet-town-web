@@ -24,14 +24,20 @@ import type { GridPosition } from '../movement/gridMovement';
 
 export const ARENA_TILE = 16;
 
-/** The hall in tiles: an odd width, so a tile stands on its centre line. */
-export const ARENA_HALL_WIDTH = 65;
+/**
+ * The hall in tiles: an odd width, so a tile stands on its centre line. It is
+ * wider than it is tall because the walks east and west of the pit are wider than
+ * those north and south of it: at 65 a player had five tiles of floor there and
+ * felt it (the captain, 31 Oct 2026), so the wall stands further out on those two
+ * sides and the pit has not changed at all.
+ */
+export const ARENA_HALL_WIDTH = 71;
 export const ARENA_HALL_HEIGHT = 63;
 /** How far past the hall's foot the camera may go, so the player on the mat is not at the very bottom of the screen. */
 export const ARENA_DARK_BELOW = 64;
 
 /** The middle of the hall, in pixels. */
-export const ARENA_CENTRE = { x: 520, y: 528 } as const;
+export const ARENA_CENTRE = { x: 568, y: 528 } as const;
 
 export interface Oval {
   readonly x: number;
@@ -41,7 +47,7 @@ export interface Oval {
 }
 
 /** The foot of the outer wall. */
-export const WALL_FOOT: Oval = { ...ARENA_CENTRE, rx: 488, ry: 464 };
+export const WALL_FOOT: Oval = { ...ARENA_CENTRE, rx: 536, ry: 464 };
 /** How tall the outer wall's face is drawn on the north side, in pixels. */
 export const WALL_FACE_HEIGHT = 48;
 /** The inside edge of the fence's kerb: everything inside this is the pit. */
@@ -83,7 +89,7 @@ const tileCorners = (tile: GridPosition): readonly (readonly [number, number])[]
 };
 
 /** The door mat's middle tile: in through the south wall, on the hall's centre line. */
-export const ARENA_MAT: GridPosition = { x: 32, y: 62 };
+export const ARENA_MAT: GridPosition = { x: 35, y: 62 };
 
 /** The mat is three tiles of red across the porch, and all three of them are the way out. */
 export const ARENA_MAT_REACH = 1;
@@ -190,14 +196,58 @@ const STATION_ROW = 58;
  * as a pillar does, so the walk round the back of it is a walk behind it.
  */
 export const ARENA_STATIONS: readonly ArenaStation[] = [
-  station('bench', 23, 6),
-  station('rack', 36, 3),
-  station('locker', 40, 2),
+  station('bench', ARENA_MAT.x - 9, 5),
+  station('rack', ARENA_MAT.x + 5, 3),
+  station('locker', ARENA_MAT.x + 8, 2),
 ];
 
 /** The station on this tile, if there is one. */
 export function arenaStationAt(tile: GridPosition): ArenaStation | undefined {
   return ARENA_STATIONS.find((station) => station.tiles.some((each) => sameTile(each, tile)));
+}
+
+/**
+ * The brass telescopes, one on the rail either side of the pit, where the walk is
+ * wide enough to go round them: the only place the whole of the map below can be
+ * seen at once (`valeOverview.ts`). A way out to the side of the pit, and not by
+ * the door, because the two presses that start a raid never pass through it.
+ */
+export interface ArenaTelescope {
+  readonly side: 'west' | 'east';
+  /** What it stands on: the first tile of platform out from the fence, on the hall's own middle row. */
+  readonly tile: GridPosition;
+  /** Where a player puts their eye to it, the far side from the pit, with a brass plate let into the floor. */
+  readonly stance: GridPosition;
+}
+
+const TELESCOPE_ROW = Math.floor(ARENA_CENTRE.y / ARENA_TILE);
+
+const telescopeOn = (side: ArenaTelescope['side']): ArenaTelescope => {
+  const way = side === 'east' ? 1 : -1;
+  let x = ARENA_MAT.x;
+  while (!isPlatform({ x, y: TELESCOPE_ROW })) {
+    x += way;
+  }
+  return { side, tile: { x, y: TELESCOPE_ROW }, stance: { x: x + way, y: TELESCOPE_ROW } };
+};
+
+export const ARENA_TELESCOPES: readonly ArenaTelescope[] = [telescopeOn('west'), telescopeOn('east')];
+
+/** How the tube is painted: how long, how far of it is on the player's side of the middle, and how high it stands over the tile's foot. */
+export const TELESCOPE_TUBE = { length: 42, fromMiddle: 18, standsUp: 31, slope: 0.3, bigEndHalf: 7 } as const;
+
+/** Where its big end catches the light, in hall pixels: the top of the brass, over the rail. */
+export function telescopeGlintPoint({ tile, side }: ArenaTelescope): { readonly x: number; readonly y: number } {
+  const beyond = TELESCOPE_TUBE.length - TELESCOPE_TUBE.fromMiddle - 2;
+  return {
+    x: tile.x * ARENA_TILE + 8 + (side === 'east' ? -beyond : beyond),
+    y: tile.y * ARENA_TILE + ARENA_TILE - 1 - TELESCOPE_TUBE.standsUp + Math.round(beyond * TELESCOPE_TUBE.slope) - TELESCOPE_TUBE.bigEndHalf,
+  };
+}
+
+/** The telescope on this tile, if there is one. */
+export function arenaTelescopeAt(tile: GridPosition): ArenaTelescope | undefined {
+  return ARENA_TELESCOPES.find((telescope) => sameTile(telescope.tile, tile));
 }
 
 /** What cannot be walked on, by tile. The keeper is a figure, and solid as figures are. */
@@ -209,6 +259,7 @@ export function arenaCollision(): boolean[][] {
         !isPlatform(tile) ||
         ARENA_PILLARS.some((pillar) => sameTile(pillar, tile)) ||
         arenaStationAt(tile) !== undefined ||
+        arenaTelescopeAt(tile) !== undefined ||
         ARENA_STATIONS.some((station) => station.past.some((each) => sameTile(each, tile)))
       );
     }),
@@ -222,7 +273,7 @@ export const ARENA_FENCE: readonly GridPosition[] = (() => {
   const rim = grownOval(PIT_RIM, KERB_WIDTH);
   solid.forEach((row, y) =>
     row.forEach((blocked, x) => {
-      if (!blocked) {
+      if (!blocked || arenaTelescopeAt({ x, y }) !== undefined) {
         return;
       }
       const centreX = (x + 0.5) * ARENA_TILE;
@@ -486,41 +537,55 @@ export function namePlatePlace(
   return fits ? { x, y } : null;
 }
 
-/** How far across the wall's oval the lean starts to turn: the pillars, well clear of anywhere a way in is chosen from. */
-const LEAN_TURNS_PAST = 0.88;
-
 /** How far the camera leans out over the pit from wherever the player stands, as a share of the way to the middle. */
 const CAMERA_LEAN = 0.2;
-/** What the most it leans has to leave at the foot of a screen: the player's own tile and the hint under it. */
+/** What the most it leans has to leave at the edge of a screen: the player's own tile and the hint under it. */
 const CAMERA_LEAN_CLEAR = 56;
-/** How far past nothing the lean goes at the wall, on the side the stands can be seen from: it looks up at them. */
-const LEAN_TURNS_AT_WALL = 2.2;
-/** From how far south of the middle of the hall the view starts to turn outward at the wall at all. */
-const LEAN_TURNS_FROM = 200;
 
 /**
  * How far the camera stands from the player, towards the pit. The hall is far
- * bigger than a screen and the pit is what it is for, so whichever way round
- * the ring somebody walks the screen shows more of the hole than of the wall -
- * and from the north rail, where the steps are at their deepest, shows the
- * floor past them. Walking away from the rail towards the wall on the far side
- * turns the view round to look up at the stands. Never to the south: the door and
- * the stations are the first screen anybody sees, and the lean is what shows them
- * the pit. A pure function of where they stand, so it needs no easing.
+ * bigger than a screen and the pit is what it is for, so whichever way round the
+ * ring somebody walks the screen shows more of the hole than of the wall - and
+ * from the north rail, where the steps are at their deepest, shows the floor past
+ * them. It only ever leans in, and by a share of how far they stand from the
+ * middle, so a step moves it by a share of a step and it never turns round: it
+ * used to look out at the stands from the last few tiles by the wall, which was a
+ * swing of two hundred pixels across three tiles, into the dark beyond the seats.
  */
 export function cameraLean(
   player: { readonly x: number; readonly y: number },
-  viewHeight: number,
+  view: { readonly width: number; readonly height: number },
 ): { readonly x: number; readonly y: number } {
-  const outward = Math.max(0, Math.min(1, (acrossOval(WALL_FOOT, player.x, player.y) - LEAN_TURNS_PAST) / (1 - LEAN_TURNS_PAST)));
-  const farSide = Math.max(0, Math.min(1, (ARENA_CENTRE.y + LEAN_TURNS_FROM - player.y) / LEAN_TURNS_FROM));
-  const turn = 1 - outward * farSide * LEAN_TURNS_AT_WALL;
-  const dx = (ARENA_CENTRE.x - player.x) * CAMERA_LEAN * turn;
-  const dy = (ARENA_CENTRE.y - player.y) * CAMERA_LEAN * turn;
-  const length = Math.hypot(dx, dy);
-  const most = viewHeight / 2 - CAMERA_LEAN_CLEAR;
-  const scale = length > most ? most / length : 1;
+  const dx = (ARENA_CENTRE.x - player.x) * CAMERA_LEAN;
+  const dy = (ARENA_CENTRE.y - player.y) * CAMERA_LEAN;
+  const across = dx / Math.max(1, view.width / 2 - CAMERA_LEAN_CLEAR);
+  const down = dy / Math.max(1, view.height / 2 - CAMERA_LEAN_CLEAR);
+  const scale = 1 / Math.max(1, Math.hypot(across, down));
   return { x: Math.round(dx * scale), y: Math.round(dy * scale) };
+}
+
+/** How long the camera takes to come most of the way to where it is going, and the fastest it ever goes. */
+const CAMERA_EASE_MS = 240;
+const CAMERA_MOST_PER_MS = 0.24;
+
+/**
+ * The camera on its way to where it should be: gently, and never faster than a
+ * person turns to look at something. Walking moves the goal by a share of a step,
+ * so this is only ever felt when something asks it to look somewhere else.
+ */
+export function cameraEased(
+  from: { readonly x: number; readonly y: number },
+  to: { readonly x: number; readonly y: number },
+  deltaMs: number,
+): { readonly x: number; readonly y: number } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const away = Math.hypot(dx, dy);
+  if (away < 1) {
+    return to;
+  }
+  const moved = Math.min(away * (1 - Math.exp(-deltaMs / CAMERA_EASE_MS)), CAMERA_MOST_PER_MS * deltaMs);
+  return { x: from.x + (dx / away) * moved, y: from.y + (dy / away) * moved };
 }
 
 // --- stone -------------------------------------------------------------------

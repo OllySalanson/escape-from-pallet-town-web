@@ -26,11 +26,13 @@ import {
   ARENA_MAT,
   ARENA_PILLARS,
   ARENA_STATIONS,
+  ARENA_TELESCOPES,
   ARENA_TILE,
   ARENA_TORCHES,
   KERB_WIDTH,
   PIT_RIM,
   STONE_RAMP,
+  TELESCOPE_TUBE,
   WALL_FACE_HEIGHT,
   WALL_FOOT,
   acrossOval,
@@ -39,6 +41,7 @@ import {
   ovalPoint,
   scatter,
   stoneAt,
+  type ArenaTelescope,
   type ArenaTorch,
 } from '../src/game/base/arenaHall';
 
@@ -678,6 +681,105 @@ function paintLocker(): void {
   }
 }
 
+const BRASS_LIGHT: Rgb = [248, 232, 136];
+const BRASS_DARK: Rgb = [136, 88, 32];
+const BRASS_SHADE: Rgb = [88, 56, 24];
+const TELESCOPE_OUTLINE: Rgb = [32, 24, 24];
+
+/** The brass plate let into the floor where a player stands to look: a bright ring, flat metal, and a boss in the middle. */
+function paintTelescopePlate({ stance }: ArenaTelescope): void {
+  const midX = stance.x * ARENA_TILE + 8;
+  const midY = stance.y * ARENA_TILE + 9;
+  for (let y = midY - 7; y <= midY + 7; y += 1) {
+    for (let x = midX - 8; x <= midX + 8; x += 1) {
+      const away = Math.hypot((x + 0.5 - midX) / 8, (y + 0.5 - midY) / 6.5);
+      if (away > 1) {
+        continue;
+      }
+      // The light from the top left, moved along the brass a step at a time.
+      const lit = x - midX + (y - midY) < -1;
+      if (away > 0.84) {
+        ground.set(x, y, TELESCOPE_OUTLINE);
+      } else if (away > 0.62) {
+        ground.set(x, y, lit ? BRASS_LIGHT : GOLD_DARK);
+      } else if (away > 0.2) {
+        ground.set(x, y, lit ? BRASS_DARK : BRASS_SHADE);
+      } else {
+        ground.set(x, y, GOLD);
+      }
+    }
+  }
+}
+
+/**
+ * A brass telescope on a wooden tripod, its big end down over the pit and the
+ * eyepiece up on the side a player stands. It is the brightest thing on the
+ * platform that is not on fire, which is the point: it has to read from along the
+ * rail as something to walk up to. Drawn in columns, because the tube is a shallow
+ * slope, each column its outline, its lit top, its body and its shaded underside.
+ */
+function paintTelescope(telescope: ArenaTelescope): void {
+  const { tile, side } = telescope;
+  paintTelescopePlate(telescope);
+  const top = tile.y * ARENA_TILE;
+  const foot = top + ARENA_TILE - 1;
+  const midX = tile.x * ARENA_TILE + 8;
+  const put = stationPut(top);
+  stationShadow(midX - 8, midX + 9, foot);
+  // The tripod: three legs from the head, the light from the top left.
+  const headY = foot - 27;
+  const leg = (toX: number, toY: number): void => {
+    const steps = toY - headY;
+    for (let step = 0; step <= steps; step += 1) {
+      const x = Math.round(midX + ((toX - midX) * step) / steps);
+      const y = headY + step;
+      put(x - 1, y, TELESCOPE_OUTLINE);
+      put(x, y, WOOD_LIGHT);
+      put(x + 1, y, WOOD);
+      put(x + 2, y, TELESCOPE_OUTLINE);
+    }
+    put(toX, toY, IRON);
+    put(toX + 1, toY, IRON);
+  };
+  leg(midX - 10, foot - 1);
+  leg(midX + 9, foot - 1);
+  leg(midX, foot);
+  // The tube, from the eyepiece on the player's side down to the big end over the pit.
+  const towardsPit = side === 'east' ? -1 : 1;
+  const { length: LENGTH, fromMiddle: FROM_MIDDLE, standsUp, slope, bigEndHalf } = TELESCOPE_TUBE;
+  const tubeY = foot - standsUp;
+  for (let along = 0; along <= LENGTH; along += 1) {
+    const x = midX + towardsPit * (along - FROM_MIDDLE);
+    const y = tubeY + Math.round((along - FROM_MIDDLE) * slope);
+    const big = along >= LENGTH - 7;
+    const eyepiece = along <= 5;
+    const half = big ? bigEndHalf : eyepiece ? 3 : 4;
+    const band = along === 6 || along === 7 || along === LENGTH - 8 || along === LENGTH - 9 || along === 20 || along === 21;
+    const end = along === 0 || along === LENGTH;
+    for (let dy = -half - 1; dy <= half + 1; dy += 1) {
+      const outline = end || Math.abs(dy) === half + 1;
+      let ink: Rgb;
+      if (outline) {
+        ink = TELESCOPE_OUTLINE;
+      } else if (eyepiece) {
+        ink = dy < 0 ? IRON_LIGHT : IRON;
+      } else if (band) {
+        ink = dy <= -half + 1 ? GOLD : BRASS_DARK;
+      } else {
+        const share = (dy + half) / (half * 2);
+        ink = share < 0.2 ? BRASS_LIGHT : share < 0.6 ? GOLD : share < 0.85 ? GOLD_DARK : BRASS_SHADE;
+      }
+      put(x, y + dy, ink);
+    }
+  }
+  // The bracket that holds the tube on the head.
+  for (let dy = 0; dy < 5; dy += 1) {
+    for (let dx = -2; dx <= 2; dx += 1) {
+      put(midX + dx, tubeY + 5 + dy, Math.abs(dx) === 2 ? TELESCOPE_OUTLINE : dx < 0 ? IRON_LIGHT : IRON);
+    }
+  }
+}
+
 paintFloor();
 paintWall();
 paintBanners();
@@ -694,6 +796,9 @@ for (const torch of ARENA_TORCHES) {
 paintBench();
 paintRack();
 paintLocker();
+for (const telescope of ARENA_TELESCOPES) {
+  paintTelescope(telescope);
+}
 
 // --- into tiles --------------------------------------------------------------
 

@@ -27,6 +27,7 @@ import {
   ARENA_KEEPER_TILE,
   ARENA_MAT,
   ARENA_STATIONS,
+  ARENA_TELESCOPES,
   arenaCollision,
   type ArenaStationId,
 } from './arenaHall';
@@ -440,7 +441,7 @@ export interface RoomThing {
    * Center's PC opens the boxes, and Brock's tally and Bill's PC open the whole
    * ladder and the whole list, for reading them side by side and counting.
    */
-  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | 'ladder' | 'list' | ArenaStationId;
+  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | 'ladder' | 'list' | 'telescope' | ArenaStationId;
   /**
    * It is read in the dialogue box, a notice a line, with what its notices are
    * worked out when it is read: Oak's cork board (`base/labBoard.ts`).
@@ -1623,6 +1624,8 @@ export function buildRoom(
 }
 
 /** What the hall's furniture is called, on its caption and in the hint at its foot. */
+export const ARENA_TELESCOPE_NAME = 'THE TELESCOPE';
+
 export const ARENA_STATION_NAMES: Readonly<Record<ArenaStationId, string>> = {
   bench: 'THE BENCH',
   rack: 'THE ARMOURY RACK',
@@ -1678,6 +1681,12 @@ function buildArenaHall(room: BaseRoom, game: RestoredGame): BuiltRoom {
         tiles: station.tiles,
         alsoFaced: station.past,
         opens: station.id,
+      })),
+      ...ARENA_TELESCOPES.map((telescope) => ({
+        name: ARENA_TELESCOPE_NAME,
+        note: 'The whole of it, all at once',
+        tiles: [telescope.tile],
+        opens: 'telescope' as const,
       })),
       ...shown.things,
     ],

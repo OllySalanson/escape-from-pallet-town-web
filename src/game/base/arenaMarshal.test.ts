@@ -41,5 +41,7 @@ describe("THE RAID ARENA's marshal", () => {
     expect(ready(2)).not.toMatch(/landings/);
     expect(ready(4)).toMatch(/4 clean landings/);
     expect(ready(999).length).toBeLessThanOrEqual(80);
+    expect(ready(0).length).toBeLessThanOrEqual(80);
+    expect(ready(0)).toMatch(/telescope/);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ARENA_CENTRE } from './arenaHall';
 import { WEARABLES } from '../look/wearables';
 import { ITEMS } from '../items/items';
 import { BUILT_IN_FILE_PRIZES } from '../world/filePrizes';
@@ -87,7 +88,7 @@ describe('a coin in the air', () => {
   });
 
   it('comes up out of the middle of the pit and lands on its tile', () => {
-    expect(giftAt(0)).toEqual({ x: 520, y: 528 });
+    expect(giftAt(0)).toEqual(ARENA_CENTRE);
     const landed = giftAt(100000);
     expect(Math.floor(landed.x / 16)).toBe(PIT_GIFT_TILE.x);
     expect(Math.floor(landed.y / 16)).toBe(PIT_GIFT_TILE.y);
