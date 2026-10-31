@@ -129,6 +129,8 @@ export class PartnerFigure {
   /** Time left looking away from the player. */
   private glanceMs = 0;
   private hopMs: number | null = null;
+  /** How far above its tile it is drawn while it comes down out of the cloud with a raid's landing. */
+  private droppingFrom = 0;
   /** Time since it began to come into view, or null once it is in view. */
   private appearMs: number | null;
   private bubble: Phaser.GameObjects.Graphics | null = null;
@@ -228,6 +230,11 @@ export class PartnerFigure {
     this.placeValue = { ...this.placeValue, facing };
     this.tuck = { from, to: { ...player }, elapsedMs: 0 };
     this.walkPose = this.walkPose === 0 ? 1 : 0;
+  }
+
+  /** How high above its tile it is, while a landing has it in the air. */
+  public setDropHeight(height: number): void {
+    this.droppingFrom = height;
   }
 
   /**
@@ -442,7 +449,7 @@ export class PartnerFigure {
     const pose = partnerPose({ moving, progress, walkPose: this.walkPose });
     const lift = this.hopMs === null ? 0 : hopLift(this.hopMs);
     const x = at.x * TILE_SIZE + PARTNER_SPRITE_X_OFFSET;
-    const y = at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET - lift;
+    const y = at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET - lift - this.droppingFrom;
     const depth = atRow(FIGURE_BAND, at.y) - 0.00005;
     this.sprite
       .setFrame(partnerFrame(this.placeValue.facing, pose))

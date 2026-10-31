@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARRIVAL_MS, arrivalPose } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_FROM_MS, ARRIVAL_FALL_MS, ARRIVAL_MS, DUST_MS, arrivalPose, dustAt } from '../world/raidArrival';
 import {
   DIVE_MS,
   FALL_MS,
@@ -135,5 +135,45 @@ describe('landing in the raid', () => {
     expect(end.cloud).toBe(0);
     expect(end.landed).toBe(true);
     expect(ARRIVAL_MS).toBeLessThan(2000);
+  });
+
+  it('clears the cloud before the figure is down, so the fall can be watched', () => {
+    expect(arrivalPose(ARRIVAL_CLOUD_MS).cloud).toBe(0);
+    expect(arrivalPose(ARRIVAL_CLOUD_MS).height).toBeGreaterThan(50);
+    expect(ARRIVAL_CLOUD_MS).toBeLessThan(ARRIVAL_FALL_FROM_MS + ARRIVAL_FALL_MS);
+  });
+
+  it('takes the impact in the knees, whole pixels, and stands up', () => {
+    const down = ARRIVAL_FALL_FROM_MS + ARRIVAL_FALL_MS;
+    expect(arrivalPose(down - 1).crouch).toBe(0);
+    expect(arrivalPose(down).crouch).toBe(2);
+    expect(arrivalPose(down + 130).crouch).toBe(1);
+    expect(arrivalPose(down + 300).crouch).toBe(0);
+  });
+
+  it('brings the partner down a moment after, with a bounce, and it is down by the end', () => {
+    const down = ARRIVAL_FALL_FROM_MS + ARRIVAL_FALL_MS;
+    expect(arrivalPose(down).partnerLanded).toBe(false);
+    expect(arrivalPose(down).partnerHeight).toBeGreaterThan(0);
+    let bounced = false;
+    for (let ms = down + 131; ms < ARRIVAL_MS; ms += 10) {
+      bounced ||= arrivalPose(ms).partnerHeight > 0;
+      expect(arrivalPose(ms).partnerHeight).toBeLessThanOrEqual(7);
+    }
+    expect(bounced).toBe(true);
+    expect(arrivalPose(ARRIVAL_MS).partnerHeight).toBe(0);
+    expect(arrivalPose(ARRIVAL_MS).partnerLanded).toBe(true);
+  });
+
+  it('throws out a ring of dust that thins and settles while the player waits', () => {
+    const early = dustAt(10);
+    const late = dustAt(DUST_MS - 10);
+    expect(early.length).toBeGreaterThan(8);
+    expect(early[0].size).toBeGreaterThan(late[0].size);
+    expect(Math.max(...late.map((puff) => Math.abs(puff.x)))).toBeGreaterThan(Math.max(...early.map((puff) => Math.abs(puff.x))));
+    // Flattened by the slant of the view: wider than it is tall.
+    expect(Math.max(...late.map((puff) => Math.abs(puff.x)))).toBeGreaterThan(Math.max(...late.map((puff) => Math.abs(puff.y))));
+    expect(dustAt(DUST_MS)).toEqual([]);
+    expect(DUST_MS).toBeLessThanOrEqual(ARRIVAL_MS - ARRIVAL_FALL_FROM_MS - ARRIVAL_FALL_MS);
   });
 });

@@ -3,8 +3,9 @@ import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
+import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, dustAt } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -648,6 +649,9 @@ type BattleEncounter =
 
 /** The cloud a raid opens under, after a jump. */
 const ARRIVAL_CLOUD_TEXTURE = 'raid-arrival-cloud';
+const ARRIVAL_CLOUD_DEPTH = 100000;
+const DUST_LIGHT_INK = 0xb8a880;
+const DUST_DARK_INK = 0x806848;
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
   up: 'down',
@@ -668,8 +672,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     elapsedMs: number;
     readonly cloud: Phaser.GameObjects.TileSprite;
     readonly shadow: Phaser.GameObjects.Ellipse;
+    readonly dust: Phaser.GameObjects.Graphics;
     landed: boolean;
+    partnerLanded: boolean;
     readonly restY: number;
+    /** Where the figure touches down, for the dust to go out from. */
+    readonly ground: { readonly x: number; readonly y: number };
   } | null = null;
   private player!: Phaser.GameObjects.Sprite;
   /** Travel with the player so which figure is yours never has to be guessed. */
@@ -1252,7 +1260,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.setRiding(stillRiding({ ...this.rideState(), riding: this.runSession?.riding === true }));
     this.createDialogBox();
     // After the dialogue box, which the partner asks whether a line is being read.
-    this.createPartner(!data.returnLocation);
+    this.createPartner(!data.returnLocation && data.droppedIn !== true);
     this.bindControls();
     this.configureCamera();
     this.createRunTimerHud();
@@ -1454,10 +1462,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .tileSprite(0, 0, this.scale.width, this.scale.height, ARRIVAL_CLOUD_TEXTURE)
       .setOrigin(0, 0)
       .setScrollFactor(0)
-      .setDepth(CANOPY_BAND + 50);
+      // Over the raid's own chips too: the first thing seen is not a clock.
+      .setDepth(ARRIVAL_CLOUD_DEPTH);
     // Its shadow on the ground, closing in as it comes down.
     const shadow = this.add.ellipse(this.player.x + TILE_SIZE / 2, this.player.y + this.player.height - 2, 14, 6, 0x101018, 0.45).setDepth(atRow(FIGURE_BAND, this.currentTile.y) - 0.0005);
-    this.arrival = { elapsedMs: 0, cloud, shadow, landed: false, restY: this.player.y };
+    const dust = this.add.graphics().setDepth(atRow(FIGURE_BAND, this.currentTile.y) + 0.0005);
+    this.arrival = {
+      elapsedMs: 0,
+      cloud,
+      shadow,
+      dust,
+      landed: false,
+      partnerLanded: false,
+      restY: this.player.y,
+      ground: { x: this.player.x + TILE_SIZE / 2, y: this.player.y + this.player.height - 2 },
+    };
     this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
     this.advanceArrival(0);
@@ -1471,9 +1490,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     arrival.elapsedMs += deltaMs;
     const pose = arrivalPose(arrival.elapsedMs);
-    this.player.setY(arrival.restY - pose.height);
+    this.player.setY(arrival.restY - pose.height + pose.crouch);
+    // The camera is already where it is going to be: the figure falls into the
+    // picture, rather than the picture being dragged after the figure.
+    this.cameras.main.setFollowOffset(0, pose.crouch - pose.height);
+    // Still turning over as it comes down, and facing the right way the moment it lands.
+    this.player.setFrame(getIdleFrame(pose.landed ? this.facing : fallFacing(arrival.elapsedMs)));
     arrival.shadow.setScale(1 - (pose.height / ARRIVAL_FALL_HEIGHT) * 0.75);
     arrival.cloud.setAlpha(pose.cloud);
+    arrival.cloud.setVisible(pose.cloud > 0);
+    arrival.dust.clear();
+    if (pose.sinceLanding !== null) {
+      for (const puff of dustAt(pose.sinceLanding)) {
+        arrival.dust.fillStyle(puff.light ? DUST_LIGHT_INK : DUST_DARK_INK, 1);
+        arrival.dust.fillRect(arrival.ground.x + puff.x, arrival.ground.y + puff.y, puff.size, puff.size);
+      }
+    }
+    // Drawn here because nothing else in the world runs yet.
+    this.partner?.setDropHeight(pose.partnerHeight);
+    this.partner?.update(deltaMs);
+    if (pose.partnerLanded && !arrival.partnerLanded) {
+      arrival.partnerLanded = true;
+      audioManager.play('ledgeHop');
+    }
     arrival.cloud.setTilePosition(Math.round(arrival.elapsedMs / 4), Math.round(arrival.elapsedMs / 2));
     if (pose.landed && !arrival.landed) {
       arrival.landed = true;
@@ -1483,6 +1522,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (arrival.elapsedMs >= Math.max(ARRIVAL_MS, ARRIVAL_CLOUD_MS)) {
       arrival.cloud.destroy();
       arrival.shadow.destroy();
+      arrival.dust.destroy();
+      this.partner?.setDropHeight(0);
+      this.cameras.main.setFollowOffset(0, 0);
       this.player.setY(arrival.restY);
       this.playerGroundMark.setVisible(true);
       this.playerHeadMark.setVisible(true);
