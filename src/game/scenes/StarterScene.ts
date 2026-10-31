@@ -19,6 +19,9 @@ export const CANNOT_SAVE_TITLE = 'This browser cannot save';
 export const CANNOT_SAVE_MESSAGE =
   'This browser is not letting the game save, so a new game cannot start. Allow this site to store data - or leave private browsing - then reload the page.';
 
+/** Every key that would put a cursor somewhere, or press what it is on. */
+const CURSOR_KEYS: ReadonlySet<string> = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', ' ']);
+
 const confirmLabel = (species: PokemonBase): string => `Confirm ${species.name}`;
 const confirmHelp = (species: PokemonBase): string => `Locks in ${species.name} as your first Pokémon.`;
 
@@ -50,6 +53,13 @@ export class StarterScene extends Phaser.Scene {
     // deliberate step down. On the way down, so the card's help line is already
     // the chosen one when the overlay's own listener reads it out.
     this.overlay.root.addEventListener('focusin', (event) => this.followCursor(event.target), true);
+    // A click on the backdrop takes nothing away: the cursor is the choice, and
+    // with no cursor the next arrow key started again from the first card.
+    this.overlay.root.addEventListener('mousedown', (event) => {
+      if (!(event.target as Element).closest('button')) {
+        event.preventDefault();
+      }
+    });
     this.render();
   }
 
@@ -121,19 +131,43 @@ export class StarterScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    if (this.backToChosenCard(event.key)) {
+      event.preventDefault();
+      return;
+    }
     if (this.overlay.moveCursor(event.key)) {
       event.preventDefault();
       this.followCursor(document.activeElement);
     }
   }
 
+  /**
+   * The cursor goes back to the card it came down from, because the card it
+   * lands on is the choice: Up from CONFIRM, which stands on the right of the
+   * bar, used to land on Squirtle and quietly swap the partner just confirmed
+   * by name. And a cursor that was lost somewhere comes back on the choice,
+   * never on the first card.
+   */
+  private backToChosenCard(key: string): boolean {
+    const { root } = this.overlay;
+    const card = root.querySelector<HTMLElement>(`[data-starter="${this.selectedStarterId}"]`);
+    const active = document.activeElement;
+    const leavingConfirm = Boolean(active?.matches('[data-confirm]')) && (key === 'ArrowUp' || key === 'ArrowLeft');
+    const lost = !root.contains(active);
+    if (!card || !(leavingConfirm || (lost && CURSOR_KEYS.has(key)))) {
+      return false;
+    }
+    card.focus();
+    return true;
+  }
+
   private render(): void {
     const selected = getStarterSpecies(this.selectedStarterId);
     this.overlay.root.innerHTML = pixelScreen({
-      place: 'First raid briefing',
+      place: 'New game',
       title: 'Choose your partner',
       hints: 'ARROWS choose · ENTER on CONFIRM to begin',
-      body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner enters the lost field kit raid with you. Choose carefully.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
+      body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner goes into every raid with you. Choose carefully.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
         title: `<span data-chosen-name>${selected.name}</span>`,
         // The bar's title is the name and the button confirms it by name, so
         // the line is only what the name does not say.

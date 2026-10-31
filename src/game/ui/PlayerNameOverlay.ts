@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { checkPlayerName, savePlayerName, typedPlayerName } from '../console/playerName';
+import { checkPlayerName, loadPlayerName, savePlayerName, typedPlayerName } from '../console/playerName';
 import { nameClaimLine, nameCountLine, nameProblemLine, nameScreenMarkup, type NameScreenWhere } from '../names/nameScreen';
 import type { NameCheck, NameService } from '../names/nameService';
 import { MenuOverlay } from './MenuOverlay';
@@ -124,7 +124,9 @@ export function openNameScreen(
     }
   });
   overlay.root.setAttribute('aria-label', 'Your name');
-  overlay.root.innerHTML = nameScreenMarkup({ where, value: '' });
+  // A NEW GAME asks everybody, and somebody with a name already keeps it with one press.
+  const known = loadPlayerName() ?? '';
+  overlay.root.innerHTML = nameScreenMarkup({ where, value: known });
   const form = overlay.root.querySelector<HTMLFormElement>('[data-name-form]');
   const field = overlay.root.querySelector<HTMLInputElement>('[data-name-field]');
   const count = overlay.root.querySelector<HTMLElement>('[data-name-count]');
@@ -167,5 +169,7 @@ export function openNameScreen(
     }
   });
   overlay.focus('[data-name-field]');
+  field?.setSelectionRange(known.length, known.length);
+  askAbout(known);
   return overlay;
 }

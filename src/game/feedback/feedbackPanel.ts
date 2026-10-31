@@ -75,7 +75,7 @@ export function panelMarkup(view: PanelView): string {
     { heading: 'Your message', note: `<span data-count>${countLine(0)}</span>`, className: 'feedback-message' },
   );
   const attached = pixelWindow(
-    `<div class="px-list feedback-attached-list">${pictureRow(view)}${saveRow(view)}${seeAllRow(view)}</div>${allLines(view)}`,
+    `<div class="px-list px-scroll feedback-attached-list">${pictureRow(view)}${saveRow(view)}${seeAllRow(view)}</div>${allLines(view)}`,
     { heading: 'Sent with it', className: 'feedback-attached' },
   );
   const body = `<main class="px-body feedback-body">${message}${attached}<div data-commit>${commitBar('writing')}</div></main>`;
