@@ -40,6 +40,7 @@ import {
   type CabinetLayout,
 } from './cabinet';
 import { wallMapNote } from './wallMap';
+import { boardNote } from './labBoard';
 import { badgeCaseLines, badgeCaseNote } from './badgeCase';
 import { pennantLines, pennantsNote } from './pennants';
 import {
@@ -110,7 +111,6 @@ export type RoomId =
 export type RoomPropName =
   | BoutiquePropName
   | 'labComputers'
-  | 'labWallShelves'
   | 'labMachine'
   | 'labTable'
   | 'labShelvesWest'
@@ -281,7 +281,6 @@ const BOUTIQUE_PROPS: Readonly<Record<BoutiquePropName, PropDefinition>> = {
 const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
   ...BOUTIQUE_PROPS,
   labComputers: solidPiece('lab.computers', 'computers'),
-  labWallShelves: solidPiece('lab.wallShelves', 'bookshelves'),
   labMachine: pieceProp('lab.machine', 'machine', ['###', '###', '.##']),
   labTable: solidPiece('lab.table', 'table'),
   labShelvesWest: solidPiece('lab.shelvesWest', 'bookshelves'),
@@ -411,10 +410,16 @@ export interface RoomThing {
   readonly crated?: boolean;
   /**
    * A screen it opens when faced and spoken to, in place of saying its line:
-   * the wall map is read on a screen, drawn as big as the window allows, and
-   * the console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`).
+   * the wall map is read on a screen, drawn as big as the window allows, the
+   * console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`), and the
+   * Center's PC opens the boxes.
    */
-  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | ArenaStationId;
+  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | ArenaStationId;
+  /**
+   * It is read in the dialogue box, a notice a line, with what its notices are
+   * worked out when it is read: Oak's cork board (`base/labBoard.ts`).
+   */
+  readonly reads?: 'board';
   /**
    * What it says when faced and spoken to, in place of its name and note: a
    * thing in the player's own house has more to say than what it is.
@@ -439,7 +444,7 @@ export interface RoomThing {
  * room of the player's house, and the pennants upstairs.
  */
 export interface RoomPoster {
-  readonly kind: 'badge-case' | 'pennants';
+  readonly kind: 'badge-case' | 'pennants' | 'cork-board';
   readonly area: Rect;
 }
 
@@ -622,6 +627,26 @@ export const WALL_MAP_TILES: readonly GridPosition[] = Array.from(
     y: OAK_WALL_MAP.y + Math.floor(index / OAK_WALL_MAP.width),
   }),
 );
+
+/**
+ * Oak's cork board, on the wall east of the map: four tiles where FireRed has
+ * his bookcases, with the floor in front of it open so it can be walked up to.
+ * What is pinned to it is a picture of the save (`base/labBoard.ts`), hung as
+ * the wall map is.
+ */
+export const OAK_BOARD: Rect = { x: 9, y: 0, width: 4, height: 2 };
+
+/** Every tile of the cork board: what is faced to read it, and what its caption is seated against. */
+export const BOARD_TILES: readonly GridPosition[] = Array.from(
+  { length: OAK_BOARD.width * OAK_BOARD.height },
+  (_tile, index) => ({
+    x: OAK_BOARD.x + (index % OAK_BOARD.width),
+    y: OAK_BOARD.y + Math.floor(index / OAK_BOARD.width),
+  }),
+);
+
+/** The PC beside Joy's counter: its foot is the wall a player at (11, 3) faces. */
+export const CENTER_PC: GridPosition = { x: 11, y: 2 };
 
 // --- what Brock has built, in his workshop ---------------------------------
 
@@ -972,7 +997,6 @@ interface Drawn {
 function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
   sketch.plant(0, 1, 'labComputers');
-  sketch.plant(9, 1, 'labWallShelves');
   sketch.plant(0, 3, 'labMachine');
   sketch.plant(8, 4, 'labTable');
   sketch.plant(0, 8, 'labShelvesWest');
@@ -986,7 +1010,20 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
     tiles: WALL_MAP_TILES,
     opens: 'wall-map',
   };
-  return { sketch, catalogue: LAB, things: [wallMap], sprites: [], wallMap: OAK_WALL_MAP };
+  const board: RoomThing = {
+    name: 'THE BOARD',
+    note: boardNote(game),
+    tiles: BOARD_TILES,
+    reads: 'board',
+  };
+  return {
+    sketch,
+    catalogue: LAB,
+    things: [wallMap, board],
+    sprites: [],
+    wallMap: OAK_WALL_MAP,
+    posters: [{ kind: 'cork-board', area: OAK_BOARD }],
+  };
 }
 
 /**
@@ -1007,7 +1044,10 @@ function drawCenter(room: BaseRoom, game: RestoredGame): Drawn {
     for (const prop of display.props) sketch.plant(prop.x, prop.y, prop.name);
   }
   const waiting = pokemonNeedingRecovery(game.stash).length;
-  const things = thingsFor(displays);
+  const things: RoomThing[] = [
+    { name: "BILL'S PC", note: 'Your boxes and your banked goods', tiles: [CENTER_PC], opens: 'boxes' },
+    ...thingsFor(displays),
+  ];
   const sprites = [...restingBalls(waiting)];
   if (waiting > 0) {
     things.push({

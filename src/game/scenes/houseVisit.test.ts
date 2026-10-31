@@ -111,6 +111,8 @@ describe('the knock sign in the garden', () => {
       spentPresses: { spendHeld: () => undefined },
       directionKeys: () => [],
       isInteractionPressed: () => pressed,
+      keyPresses: { justPressed: () => false },
+      controls: { back: {} },
       showHint: () => undefined,
       player: { stop: () => undefined, setFrame: () => undefined },
     });

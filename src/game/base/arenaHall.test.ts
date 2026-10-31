@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { firstWordsFor, FIRST_WORDS } from '../hub/firstWords';
+import { FIRST_WORDS } from '../hub/firstWords';
 import { buildMinimap } from '../world/minimap';
 import type { Material } from '../world/tileset/materials';
 import { TILE_SOURCES } from '../world/tileset/sheets';
@@ -362,14 +362,14 @@ describe('the pit', () => {
   });
 });
 
+/** Two rows of the box at most, so a line of hers never pages. */
+const LONGEST_MARSHAL_LINE = 100;
+
 describe('what is said on the way to a raid', () => {
-  it('says nothing over the bench, the rack or the locker: the marshal says it in the hall, and it is not Oak', () => {
-    for (const panel of ['bench', 'rack', 'locker']) {
-      expect(firstWordsFor(panel)).toBeUndefined();
-    }
+  it('says it in the hall and nowhere past it: the marshal, not Oak', () => {
     expect(FIRST_WORDS.loadout.speaker).not.toBe('prof-oak');
     for (const line of FIRST_WORDS.loadout.lines) {
-      expect(line.length).toBeLessThanOrEqual(68);
+      expect(line.length).toBeLessThanOrEqual(LONGEST_MARSHAL_LINE);
     }
   });
 });

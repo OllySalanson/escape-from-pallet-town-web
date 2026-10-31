@@ -1,6 +1,6 @@
 import { experienceForLevel, type ExperienceResult, type Pokemon } from '../pokemon/Pokemon';
 import type { RaidInFlight } from '../run/raidInFlight';
-import { copyPokemon, raidsDeployed, type RaidProgress } from '../save/SaveManager';
+import { raidsDeployed, type RaidProgress } from '../save/SaveManager';
 import type { DayCareStay, Stash } from '../stash/Stash';
 
 /**
@@ -127,17 +127,6 @@ export function dayCareReport(stay: DayCareStay, raidsNow: number): DayCareRepor
 }
 
 /**
- * The Pokémon as it would come back today: a copy, grown by every raid in the
- * report, so a screen can show its level, stats and moves without anything
- * being taken back.
- */
-export function grownToday(report: DayCareReport): Pokemon {
-  const copy = copyPokemon(report.stay.pokemon);
-  copy.gainExperience(report.experience, { evolve: false });
-  return copy;
-}
-
-/**
  * His refusal of a fainted Pokémon, which is this game's own rule. FireRed
  * takes one (it asks only that somebody else in the party can still battle)
  * and its `BoxMonToMon` hands it back at full HP with its status cleared, so
@@ -190,9 +179,50 @@ export function checkOnLines(report: DayCareReport): readonly string[] {
   ];
 }
 
+/** What he says to somebody with nobody in his care, before they choose who. */
+export const DAY_CARE_OFFER_LINES: readonly string[] = [
+  'I run the DAY-CARE service. Would you like me to raise one of your Pokémon?',
+  'It’s safe here from any wipe, and it grows half a level with every raid you go on.',
+];
+
+/** What he asks once he has said how it has grown. */
+export function takeBackQuestion(name: string): string {
+  return `Do you want ${name} back?`;
+}
+
+/** What he says to NOT NOW. */
+export const NOT_TAKEN_BACK_LINE = 'Right you are. It’ll be here when you want it.';
+
 /** FireRed's lines for taking one back. */
 export function takenBackLines(name: string): readonly string[] {
   return ['Thank you! Here’s your Pokémon.', `You got ${name} back from the DAY-CARE MAN.`];
+}
+
+/** Names in a sentence: `Tackle`, `Tackle and Growl`, `Tackle, Growl and Ember`. */
+function formatNames(names: readonly string[]): string {
+  return names.length <= 1
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/** What came back from the Day-Care, for him to say. */
+export interface TakenBackFromDayCare {
+  readonly name: string;
+  readonly levelBefore: number;
+  readonly level: number;
+  readonly learned: readonly string[];
+  /** Moves it reached with no room for: the next screen asks (`hub/pendingMoves.ts`). */
+  readonly noRoomFor: readonly string[];
+}
+
+/** All he says as he hands one back: FireRed's lines, then what it came back as. */
+export function takenBackReport(taken: TakenBackFromDayCare): readonly string[] {
+  return [
+    ...takenBackLines(taken.name),
+    ...(taken.level > taken.levelBefore ? [`${taken.name} is Lv ${taken.level} now.`] : []),
+    ...(taken.learned.length ? [`It learned ${formatNames(taken.learned)}.`] : []),
+    ...(taken.noRoomFor.length ? [`It wants to learn ${formatNames(taken.noRoomFor)}, but it has no room.`] : []),
+  ];
 }
 
 /**

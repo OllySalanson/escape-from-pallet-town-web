@@ -16,7 +16,7 @@
 // vault. Photographs each beat and fails loudly when one is not what it promises.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel, readFirstWords } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -47,7 +47,7 @@ try {
   const progress = () => page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`);
   const vault = () => page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).stash`);
   const scene = () =>
-    page.evaluate(`(() => { const b = ${base}; return { hub: ${sceneIs('hub')}, box: !!b?.dialogBox?.visible, done: !!b?.dialogBox?.isCurrentMessageComplete, prompt: b?.favourPrompt ? b.favourPrompt.prompt.selected : null, mark: !!b?.keeperMark }; })()`);
+    page.evaluate(`(() => { const b = ${base}; return { hub: ${sceneIs('hub')}, box: !!b?.dialogBox?.visible, done: !!b?.dialogBox?.isCurrentMessageComplete, prompt: b?.boxQuestion ? b.boxQuestion.prompt.selected : null, mark: !!b?.keeperMark }; })()`);
   /** The text in the dialogue box once it has finished typing. */
   const boxText = async () => {
     await page.waitFor(`${base}.dialogBox.isCurrentMessageComplete`, { what: 'the line to finish typing', timeoutMs: SLOW_MS });
@@ -160,13 +160,12 @@ try {
   await press('ArrowRight', 300);
   await press('Space', 300);
   expectSaid(await readOn(), 'Of course.', 'Joy hears NOT NOW');
-  await page.waitFor(sceneIs('hub'), { what: "Joy's screen after the favour" });
   if ((await progress()).errands.some((e) => e.id === 'medicine-bag')) throw new Error('NOT NOW took the favour on');
-  await leave();
-  // Spoken to again before a raid: straight to her screen, nothing asked.
+  // Her talk ends in the room: no screen opens, and nothing more is asked.
+  if (await page.evaluate(sceneIs('hub'))) throw new Error('Joy opened a screen');
   await press('Space', 600);
-  await page.waitFor(sceneIs('hub'), { what: "Joy's screen with nothing said" });
-  await leave();
+  expectSaid(await readOn(), 'fit to raid', 'Joy with nothing to ask');
+  await press('ArrowDown', 900);
 
   // Bill asks, and a YES takes it on.
   await press('ArrowDown', 900);
@@ -198,23 +197,20 @@ try {
   await intoRoom('oaks-lab');
   await press('Space', 300);
   expectSaid(await readOn(), 'My parcel never made it home?', 'Oak hears of the loss');
-  await page.waitFor(sceneIs('hub'), { what: "Oak's lab after the loss" });
   const oak = (await progress()).errands.find((e) => e.id === 'oaks-parcel');
   if (oak.lossesHeard !== 1) throw new Error(`Oak's loss is recorded as ${JSON.stringify(oak)}`);
-  // Oak's board lists every errand in hand under his contracts.
-  await sleep(400);
-  const board = await page.evaluate(`document.querySelector('.objectives-panel')?.innerText ?? ''`);
-  if (!/ERRANDS/i.test(board) || !/Oak's Parcel/i.test(board)) throw new Error(`the lab's board has no errands: ${board.slice(0, 300)}`);
+  // Oak's board lists every errand in hand under his contracts, and he reads it out.
+  const board = await readOn();
+  if (!board.some((line) => /Oak's Parcel/i.test(line))) throw new Error(`the board has no errands: ${JSON.stringify(board).slice(0, 300)}`);
   await page.screenshot(`${out}/lab-board.png`);
 
   // The rim's panel names the errands on the map being looked at. Raids start
   // at the Raid Arena, so out of the lab and across the yard to it.
   await press('Escape');
-  await page.waitFor(sceneIs('base'));
+  await press('ArrowDown', 900);
   await walkIntoBase(page, 'raid-arena');
   await page.waitFor(takePokemon(), { what: 'a Pokémon for the raid' });
   await openHallPanel(page, 'rim');
-  await readFirstWords(page);
   await sleep(600);
   const pane = await page.evaluate(`document.querySelector('.rim-layout, .px-body')?.innerText ?? ''`);
   if (!/OLD AMBER/i.test(pane) || !/PINE HOLLOW/.test(pane)) throw new Error(`the rim's panel does not name Bill's amber: ${pane.slice(0, 400)}`);

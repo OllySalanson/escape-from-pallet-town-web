@@ -12,7 +12,7 @@
 // (`run/raidInFlight.ts`) so it may deploy at all, which is the one thing these
 // drivers do that no player ever could.
 import { sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openFriendRoom, jumpIn } from './deploy.mjs';
 
 export const page = (base) => `${base}${base.includes('?') ? '&' : '?'}testmode=pixels&harbour=local`;
 export const WORLD = `${GAME}.scene.getScene('world')`;
@@ -118,7 +118,7 @@ export async function twoInARoom(browser, url, out) {
   // Into Oak's Lab, and a room on the one map a new save can drop into.
   await bring(olly);
   await walkIntoBase(olly, 'oaks-lab', { press: (code) => press(olly, code) });
-  await click(olly, 'Raid with a friend');
+  await openFriendRoom(olly, { press: (code) => press(olly, code) });
   await olly.screenshot(`${out}/1-olly-make-a-room.png`);
   await bring(olly);
   await olly.waitFor(`(() => { const b = document.querySelector('[data-room-map]'); if (!b) return false; b.click(); return true; })()`, { what: 'a map to make a room on' });
@@ -139,7 +139,7 @@ export async function twoInARoom(browser, url, out) {
   await amy.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); delete save.raidInFlight; localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await bring(amy);
   await walkIntoBase(amy, 'oaks-lab', { press: (code) => press(amy, code) });
-  await click(amy, 'Raid with a friend');
+  await openFriendRoom(amy, { press: (code) => press(amy, code) });
   await bring(amy);
   await amy.evaluate(`document.querySelector('[data-room-form] .px-field').focus()`);
   await keyboardType(amy, code.toLowerCase());

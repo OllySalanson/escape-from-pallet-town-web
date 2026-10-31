@@ -53,13 +53,6 @@ export function friendStatusLine(
 }
 
 /** The lab's card for it: what a press there opens. */
-export function friendRoomCard(room: { readonly code: string; readonly mapName: string } | null): string {
-  // One short line, because at the smallest stage a third card is room the
-  // contract board under it gives up.
-  const line = room ? `Room ${room.code}, on ${room.mapName}.` : 'Make a room, or type a friend’s code.';
-  return `<button class="px-window px-card hub-friend" data-view="friend" data-help="Up to four players on one map, each with their own team, pack and clock."><strong>Raid with a friend</strong><p>${line}</p></button>`;
-}
-
 export function friendRoomView(screen: FriendRoomScreen): string {
   if (!screen.name) {
     return `<main class="px-body friend-layout">${pixelWindow(

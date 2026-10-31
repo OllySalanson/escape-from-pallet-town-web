@@ -10,7 +10,7 @@
 // does instead of cutting is on record.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
-import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel, readFirstWords } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -39,12 +39,7 @@ try {
     await page.waitFor(`(() => { const b = document.querySelector(${JSON.stringify(selector)}); if (!b) return false; b.click(); return true; })()`, { what: selector });
     await sleep(250);
   };
-  // A keeper with something to ask (an errand) puts a box over the room on
-  // the way in; Escape puts the box down first, so leaving takes one more.
-  const leave = async () => {
-    if (await page.evaluate(`document.querySelector('[data-speech-done]') !== null`)) await press('Escape');
-    await press('Escape');
-  };
+  const leave = () => press('Escape');
   let bad = 0;
   const shoot = async (name) => {
     await sleep(500);
@@ -63,8 +58,7 @@ try {
   await click('Confirm Bulbasaur');
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
-  // First words heard: their box sits over the foot of the screen and would
-  // take the Escape that leaves each room.
+  // First words heard, so nobody stops to say them on the way to a screen.
   await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'], firstWordsHeard: ['lab', 'loadout', 'check', 'center'] }); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
@@ -90,7 +84,6 @@ try {
   await openHallPanel(page, 'locker');
   await shoot('locker');
   await openHallPanel(page, 'rim');
-  await readFirstWords(page);
   await shoot('rim');
   console.log(bad ? `${bad} heading(s) CUT` : 'no heading cut');
   if (bad) process.exitCode = 1;
