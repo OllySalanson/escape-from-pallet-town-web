@@ -31,7 +31,7 @@ plays it with a SKIP. Any key or click ends it in the hall.
 | `18-look-back.png` | At the way out they look back; the hunter shouts across the fire. |
 | `19-extracted.png` | EXTRACTED, and what came home. |
 | `21-ready.png` | Back at the Arena's door: the Gym Guide asks. |
-| `22-loadout.png` | KIT UP TO JUMP IN - any key, and it is the hall. |
+| `22-loadout.png` | PACK YOUR LOADOUT - any key, and it is the hall. |
 | `23-again-skip.png` | Asked for from the Gym Guide: SKIP, bottom right. |
 | `look-panel.png` | The comic panel for a player dressed at THE HARBOUR BOUTIQUE: the trailer draws them in what they wear. |
 
