@@ -56,7 +56,11 @@ Walk into the Raid Arena at the west end of the harbour. The first time, it show
 in for: a trailer of a raid, played in the game itself, with you in it. You sneak about with your
 partner picking things up, a fight goes your way, and then tonight's hunter turns up with their whole
 team. A Charizard has to come and save you. (Any key skips it, and after the first time there's a
-SKIP on screen.) Then the loadout. Pick who comes with you and what goes in the pack. Everything you take is at risk, which is the
+SKIP on screen.) Then you're inside, and it's enormous: a great round hall four times the width of anything else in the
+harbour, a stone platform all the way round with pillars and burning torches, and in the middle a colosseum of steps going
+down to a pit. Lean on the fence and look. That's Greystone Vale at the bottom, from a very long way up - only the parts
+you've walked, with cloud over everything else. Press SPACE on the mat and the marshal gets you ready: the loadout.
+Pick who comes with you and what goes in the pack. Everything you take is at risk, which is the
 point: a Potion in the pack is a Potion you might lose, and a Potion left at home is a fight you
 might lose instead. The pack is a grid of squares, not a list, so a Super Potion and a crate of
 parts are fighting for the same space.
@@ -155,7 +159,7 @@ and say yes, you're let in to have a nose round. Six buildings, four of them kep
 
 - **The Raid Arena**, a Gym that has had a makeover - RAID on the plate, a gold ARENA badge, red
   banners and a red runner up to the door - on its own stone forecourt at the west end, by the jetty,
-  is where every raid starts: walk in and you're kitting up.
+  is where every raid starts, in a hall so big the pit in its floor has the whole of Greystone Vale at the bottom.
 - **Professor Oak's Lab** keeps the contract board, and a wall map that lights up wherever you've
   walked.
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full, and she charges in

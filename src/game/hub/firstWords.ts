@@ -36,6 +36,10 @@ export interface FirstWords {
   readonly greeting?: string;
 }
 
+/** Who keeps THE RAID ARENA's great hall (`base/rooms.ts`). */
+export const ARENA_KEEPER_DESIGN = 'cooltrainer-woman' satisfies CharacterDesignId;
+export const ARENA_KEEPER_NAME = 'THE MARSHAL';
+
 export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
   lab: {
     speaker: 'prof-oak',
@@ -48,13 +52,16 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       'Every raid starts at the RAID ARENA, west across the yard.',
     ],
   },
+  // Said in the great hall by its own keeper, when spoken to, in the room's
+  // dialogue box (`BaseScene.speakToKeeper`): the captain did not want Oak's
+  // voice along the foot of the screen on arriving at the Arena.
   loadout: {
-    speaker: 'prof-oak',
-    name: 'Professor Oak',
+    speaker: ARENA_KEEPER_DESIGN,
+    name: ARENA_KEEPER_NAME,
     lines: [
-      'This is the RAID ARENA. Choose who comes with you, and what goes in the pack.',
-      'Pack Poké Balls: throw one at a weakened wild Pokémon to bring it home.',
-      'Leave room, though. A caught Pokémon takes 4 squares of the pack, or more.',
+      'Next raid? Choose who comes with you, and what goes in the pack.',
+      'Pack Poké Balls: throw one at a weakened wild Pokémon to keep it.',
+      'Leave room! A caught Pokémon takes 4 squares of the pack, or more.',
     ],
   },
   dropin: {
@@ -85,19 +92,20 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
   },
 };
 
-/** The base screens, as `HubScene` names them, that have first words. */
+/** The base screens, as `HubScene` names them, that have first words of their own. */
 export type FirstWordsView = 'home' | 'stash' | 'deploy' | (string & {});
 
 /**
  * Which first words belong to the screen the player is looking at: the lab, a
- * step of preparation, or the Pokemon Center. The secure slot is a detour off
- * the loadout rather than a screen of its own, so it says nothing.
+ * later step of preparation, or the Pokemon Center. The loadout says nothing
+ * over itself, because its words have been said in the hall on the way to it,
+ * and the secure slot is a detour off the loadout rather than a screen of its
+ * own, so neither does that.
  */
 export function firstWordsFor(view: FirstWordsView, step: DeploymentStep): FirstWordsId | undefined {
   if (view === 'home') return 'lab';
   if (view === 'stash') return 'center';
   if (view !== 'deploy') return undefined;
-  if (step === 'loadout') return 'loadout';
   if (step === 'dropin') return 'dropin';
   if (step === 'confirm') return 'check';
   return undefined;

@@ -16,10 +16,10 @@ vi.mock('phaser', () => ({
 
 import { BaseScene } from './BaseScene';
 import { ArenaIntroScene, type ArenaIntroSceneData } from './ArenaIntroScene';
-import type { HubSceneData } from './HubScene';
+import type { BaseSceneData } from './BaseScene';
 import { BASE_DOORS } from '../base/doors';
 import { baseGame } from '../base/baseGames.testkit';
-import { ARENA_INTRO_ARMING_MS, ARENA_INTRO_ENDS_ON } from '../cutscene/arenaIntro';
+import { ARENA_INTRO_ARMING_MS } from '../cutscene/arenaIntro';
 
 const game = baseGame();
 
@@ -39,13 +39,13 @@ function through(doorId: string): unknown[][] {
 }
 
 /** The trailer, stood up just far enough to be pressed at and to leave. */
-function trailer(startedAt: number, hub: HubSceneData) {
+function trailer(startedAt: number, hall: BaseSceneData) {
   const scene = new ArenaIntroScene();
   const started: unknown[][] = [];
   const faded: (() => void)[] = [];
   const clock = { now: startedAt, removeAllEvents: () => undefined };
   Object.assign(scene, {
-    hub,
+    hall,
     startedAt,
     time: clock,
     uiCamera: { fadeOut: () => undefined },
@@ -59,12 +59,9 @@ function trailer(startedAt: number, hub: HubSceneData) {
 }
 
 describe("THE RAID ARENA's door", () => {
-  it('plays the trailer on the way to the loadout, which is where it went before', () => {
+  it('plays the trailer on the way into the great hall', () => {
     expect(through('raid-arena')).toEqual([
-      [
-        'arenaIntro',
-        { savedGame: game, hub: { savedGame: game, view: ARENA_INTRO_ENDS_ON, from: 'raid-arena' } } satisfies ArenaIntroSceneData,
-      ],
+      ['arenaIntro', { savedGame: game, hall: { savedGame: game, room: 'raid-arena' } } satisfies ArenaIntroSceneData],
     ]);
   });
 
@@ -76,10 +73,10 @@ describe("THE RAID ARENA's door", () => {
 });
 
 describe("THE RAID ARENA's trailer", () => {
-  const hub: HubSceneData = { savedGame: game, view: 'deploy', from: 'raid-arena' };
+  const hall: BaseSceneData = { savedGame: game, room: 'raid-arena' };
 
   it('does not count the key that walked the player into the door', () => {
-    const { clock, started, press, finishFade } = trailer(1000, hub);
+    const { clock, started, press, finishFade } = trailer(1000, hall);
     clock.now = 1000 + ARENA_INTRO_ARMING_MS - 1;
     press('ArrowUp');
     finishFade();
@@ -87,7 +84,7 @@ describe("THE RAID ARENA's trailer", () => {
   });
 
   it('is skipped by any key after that, straight to the loadout', () => {
-    const { clock, started, press, finishFade } = trailer(1000, hub);
+    const { clock, started, press, finishFade } = trailer(1000, hall);
     clock.now = 1000 + ARENA_INTRO_ARMING_MS + 400;
     press('ArrowUp', true);
     press('f');
@@ -96,14 +93,14 @@ describe("THE RAID ARENA's trailer", () => {
     press('KeyZ');
     press('Escape');
     finishFade();
-    expect(started).toEqual([['hub', hub]]);
+    expect(started).toEqual([['base', hall]]);
   });
 
   it('is skipped by a click, too', () => {
-    const { scene, clock, started, finishFade } = trailer(0, hub);
+    const { scene, clock, started, finishFade } = trailer(0, hall);
     clock.now = 20_000;
     (scene as unknown as { tryLeave: () => void }).tryLeave();
     finishFade();
-    expect(started).toEqual([['hub', hub]]);
+    expect(started).toEqual([['base', hall]]);
   });
 });

@@ -195,7 +195,7 @@ export const SOUND_EFFECTS = {
   },
   grassRustle: {
     channel: 'world',
-    moment: 'A step enters tall grass - the only footstep, because it is the only ground with a risk on it',
+    moment: 'A step enters tall grass - the only footstep, because it is the only ground with a risk on it - and, now and then, a torch crackling beside the player in the Raid Arena',
     tones: [noise(2600, 0.05, 0.045), noise(1800, 0.06, 0.035, 0.045)],
     // The step that enters the grass is often the step that finds something in it.
     yields: true,
@@ -209,7 +209,7 @@ export const SOUND_EFFECTS = {
   },
   distantHorn: {
     channel: 'world',
-    moment: 'Now and then, out in the harbour, the S.S. Anne sounds her horn',
+    moment: 'Now and then, out in the harbour, the S.S. Anne sounds her horn; heard in the Raid Arena, it comes up out of the pit',
     // One low blast, far off: quieter and shorter than the Seagallop's, and
     // lower, so it reads as a bigger ship further away.
     tones: [saw(82, 0.5, 0.05), saw(123, 0.5, 0.03)],

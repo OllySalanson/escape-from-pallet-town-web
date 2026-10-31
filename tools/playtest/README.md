@@ -154,6 +154,8 @@ first. `baseRooms.mjs <url> <dir> [--built=all|none|id,..] [--hurt=N]` walks
 into all four rooms, photographs each, and fails if the mat's key does not open
 the keeper's screen, backing out does not land in the room, or down off the mat
 does not leave it - `docs/screens/base-rooms/` is what it photographs.
+`arenaHall.mjs <url> <dir> [--tour] [--survey=] [--window=] [--still]` walks THE RAID ARENA's great hall as a player, new save or explored, and photographs it.
+
 `raidArena.mjs <url> <dir>` plays the one way into a raid: a fresh save walks to
 the Raid Arena at the harbour's west end, whose door opens the loadout, backs out
 onto its step, checks Oak's Lab starts no raid, and deploys from the Arena -

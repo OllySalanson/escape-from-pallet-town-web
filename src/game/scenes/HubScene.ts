@@ -204,7 +204,6 @@ import {
   errandsToLay,
   errandForItem,
 } from '../hub/errands';
-import { doorNamed } from '../base/doors';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
@@ -1105,12 +1104,10 @@ export class HubScene extends Phaser.Scene {
    */
   private leaveToBase(): void {
     this.flow.restart();
-    // Out of a keeper's screen is back into their room; out of the Raid
-    // Arena, which has no room, is back onto its step in the yard.
-    const door = this.enteredFrom === undefined ? undefined : doorNamed(this.enteredFrom);
+    // Out of a keeper's screen is back into their room.
     this.scene.start('base', {
       savedGame: this.savedGame,
-      ...(this.enteredFrom === undefined ? {} : door?.opens === 'screen' ? { from: this.enteredFrom } : { room: this.enteredFrom }),
+      ...(this.enteredFrom === undefined ? {} : { room: this.enteredFrom }),
       ...(this.enteredAt === undefined ? {} : { at: this.enteredAt }),
     });
   }
@@ -1466,7 +1463,7 @@ export class HubScene extends Phaser.Scene {
     if (this.flow.step === 'secure') {
       return this.flow.secureReturnStep === 'confirm' ? 'Final check' : 'Loadout';
     }
-    return 'Yard';
+    return 'Hall';
   }
 
   /** What the keys do, said once along the bottom of every screen. */
@@ -1821,8 +1818,8 @@ export class HubScene extends Phaser.Scene {
   /**
    * Oak's Lab: the board of work on offer, and the wall map.
    *
-   * Raids are prepared at the Raid Arena now (the captain, 2026-10-23), which
-   * opens straight onto the loadout; the lab keeps the board, the team's
+   * Raids are prepared at the Raid Arena now (the captain, 2026-10-23), from its
+   * great hall; the lab keeps the board, the team's
    * condition and the friend's room, and its card says where the Arena is.
    *
    * This used to be the lobby - the raid card, the stash, the Outfitter and the

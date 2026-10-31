@@ -3,9 +3,9 @@
 //   node tools/playtest/raidArena.mjs <url> <out-dir>
 //
 // A fresh save walks out into the harbour, across to the Raid Arena at its
-// west end, and through its door, which opens straight onto the loadout (the
-// captain, 2026-10-23: "you go into it and then that's when the loadout screen
-// goes"). Backing out of the loadout stands the player on the Arena's step.
+// west end, and through its door into the great hall, where one key on the mat
+// opens the loadout. Backing out of the loadout stands the player on that mat,
+// and down off it is the Arena's step.
 // Oak's Lab is then opened to check it starts no raid of its own, and the
 // player walks back to the Arena and deploys. Each stop is photographed into
 // <out-dir>; exit code 1 is anything not where it should be.
@@ -57,16 +57,20 @@ try {
   await walkIntoBase(page, 'raid-arena', { press, until });
   await until(`${GAME}.scene.getScene('hub')?.sys.isActive()`, 'the hub');
   await sleep(600);
-  expect('the Arena door opens the loadout', (await hub(`h.view + ':' + h.flow.step`)) === 'deploy:loadout');
+  expect('one key on the hall mat opens the loadout', (await hub(`h.view + ':' + h.flow.step`)) === 'deploy:loadout');
   await putDownFirstWords();
   await page.screenshot(`${out}/2-arena-loadout.png`);
 
   await press('Escape');
-  await until(sceneIs('base'), 'back in the harbour');
+  await until(sceneIs('base'), 'back in the hall');
+  await sleep(1000);
+  const onMat = await base(`b.room?.id === 'raid-arena' && b.currentTile.x === b.room.mat.x && b.currentTile.y === b.room.mat.y`);
+  expect('backing out stands the player on the hall mat', onMat);
+  await page.screenshot(`${out}/3-arena-hall.png`);
+  await press('ArrowDown');
   await sleep(1000);
   const standing = await base(`JSON.stringify({ room: b.room?.id ?? null, tile: b.currentTile })`);
-  expect(`backing out stands the player on the Arena's step (${standing})`, standing === JSON.stringify({ room: null, tile: { x: 8, y: 13 } }));
-  await page.screenshot(`${out}/3-arena-step.png`);
+  expect(`down off the mat is the Arena's step (${standing})`, standing === JSON.stringify({ room: null, tile: { x: 8, y: 13 } }));
 
   await walkIntoBase(page, 'oaks-lab', { press, until });
   await sleep(600);

@@ -27,8 +27,8 @@ describe('THE RAID ARENA trailer', () => {
     expect(arenaIntroOffersSkip('again')).toBe(true);
   });
 
-  it('ends on the loadout, where the Arena door went before there was a trailer', () => {
-    expect(ARENA_INTRO_ENDS_ON).toBe('deploy');
+  it('ends in the great hall, which is where the Arena door goes', () => {
+    expect(ARENA_INTRO_ENDS_ON).toBe('raid-arena');
   });
 
   it('runs its beats in order, the closing card last, inside a minute', () => {
