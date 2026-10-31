@@ -15,7 +15,7 @@ player can stand on.
 |---|---:|---:|---:|---:|---:|
 | The harbour | 114 | 4.9 | 4.9 | | 3% |
 | 130-200 steps out, before | 52 | 1.7 | 1.9 | 0.7 | 29% |
-| **130-200 steps out, after** | **66** | **5.3** | **4.6** | **1.3** | **1%** |
+| **130-200 steps out, after** | **65** | **5.3** | **4.6** | **1.3** | **1%** |
 
 The tool's list at 200-300 is where the next ring starts from.
 
