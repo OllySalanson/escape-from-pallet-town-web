@@ -156,6 +156,12 @@ export function pixelScreen(options: PixelScreenOptions): string {
   return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}</header>${options.body}${help}</div>`;
 }
 
+/**
+ * What the title bar of a panel over a raid says: the clock chip is in plain
+ * sight beside it now, standing still, and this is why.
+ */
+export const CLOCK_STOPPED = 'Clock stopped';
+
 export interface PixelWindowOptions {
   /** Extra classes: a tone (`px-tone-good`, `px-tone-risk`...) or a layout hook. */
   readonly className?: string;

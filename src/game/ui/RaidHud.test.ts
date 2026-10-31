@@ -117,6 +117,42 @@ describe('RaidHud under a raised dialogue box', () => {
   });
 });
 
+describe('RaidHud beside a side panel', () => {
+  it('moves the right column over, so the clock and the hunter stay in sight', () => {
+    const { scene } = stubScene(400);
+    const hud = new RaidHud(scene);
+    hud.render(STATE, 0, null, 155);
+
+    expect(hud.occupied).toHaveLength(5);
+    for (const chip of hud.occupied) {
+      expect(chip.x + chip.width).toBeLessThanOrEqual(245);
+    }
+  });
+
+  it('stands the clock under the objective when there is no room for the two side by side', () => {
+    const { scene } = stubScene(400);
+    const hud = new RaidHud(scene);
+    const state = { ...STATE, objectiveLines: ['THE LONGEST CUE A RAID EVER SAID'] };
+    hud.render(state, 0, null, 155);
+
+    const chips = hud.occupied;
+    for (const [index, chip] of chips.entries()) {
+      expect(chips.slice(index + 1).filter((other) => overlaps(chip, other))).toEqual([]);
+    }
+  });
+
+  it('puts the clock back in its corner once the panel has gone', () => {
+    const { scene } = stubScene(400);
+    const hud = new RaidHud(scene);
+    hud.render(STATE, 0);
+    const before = [...hud.occupied];
+    hud.render(STATE, 0, null, 155);
+    hud.render(STATE, 0);
+
+    expect(hud.occupied).toEqual(before);
+  });
+});
+
 describe('RaidHud clock in the last minute', () => {
   // Playtest 40 #5: the caution clock was the calm clock in a yellower fill, so
   // in greyscale the last minute looked exactly like the first four. It has to
@@ -139,8 +175,9 @@ describe('RaidHud clock in the last minute', () => {
     const cautionHud = new RaidHud(caution.scene);
     cautionHud.render({ ...STATE, clock: { label: 'RAID 0:55', tone: 'caution', pulses: false } }, 0);
 
-    const calmClock = calmHud.occupied[0];
-    const cautionClock = cautionHud.occupied[0];
+    // Second: the objective is seated first, so the clock can stand clear of it.
+    const calmClock = calmHud.occupied[1];
+    const cautionClock = cautionHud.occupied[1];
     expect(calmClock.width).toBe(cautionClock.width);
     expect(ruleCount(calm.fills, calmClock)).toBe(2);
     expect(ruleCount(caution.fills, cautionClock)).toBe(4);

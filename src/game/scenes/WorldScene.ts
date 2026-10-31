@@ -199,6 +199,7 @@ import {
 } from '../run/raidSettlement';
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
+import { PanelLean, type SidePanelView } from '../ui/sidePanel';
 import { HunterEdgeGlow } from '../ui/HunterEdgeGlow';
 import { prefersReducedMotion } from '../ui/reducedMotion';
 import { hunterWarningStrength } from '../world/hunterWarning';
@@ -803,6 +804,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Ground a trainer is watching: shaded to be read, so no caption may sit on it. */
   private watchedGround: Rect[] = [];
   private raidHud: RaidHud | undefined;
+  private panelLeanValue: PanelLean | undefined;
+  /** The view came to rest beside a panel last frame, so its captions can be seated this one. */
+  private panelCaptionsDue = false;
   /** The plate the raid stands under while the window is not in use (`world/windowPause.ts`). */
   private windowPausePlate: PausePlate | null = null;
   /** The cue the objective chip is currently showing, so a change can be noticed. */
@@ -1051,6 +1055,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private friendSurveyed = new Map<string, number>();
   /** The pings on the map, drawn, by who sent each. */
   private pingMarks = new Map<string, { readonly tile: string; readonly mark: Phaser.GameObjects.Graphics }>();
+
+  /** The camera moved over for a side panel: the pack or the party (`ui/sidePanel.ts`). */
+  private get panelLean(): PanelLean {
+    this.panelLeanValue ??= new PanelLean(() => this.cameras.main);
+    return this.panelLeanValue;
+  }
 
   public constructor() {
     super('world');
@@ -1459,6 +1469,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.advanceArrival(deltaMs);
       return;
     }
+    this.settlePanelLean(deltaMs);
     // Before the raid's own frame, which steps and catches with the hunter the
     // room shares (`raidRoom/groupHunter.ts`).
     this.updateGroupHunter();
@@ -2628,7 +2639,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.villageBubble ??= new SpeechBubble(this);
     this.villageBubble.say(saying.words);
     const bounds = sprite.getBounds();
-    this.villageBubble.place(bounds.centerX, Math.round(bounds.top) + CALL_BUBBLE_DROP, null);
+    // Slid clear of the player: writing never covers a person, least of all the one being called to.
+    this.villageBubble.place(bounds.centerX, Math.round(bounds.top) + CALL_BUBBLE_DROP, null, this.captionPlayer());
   }
 
   /**
@@ -4553,7 +4565,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           isPlaytestRun(),
           this.runSession?.plan?.night,
         ),
-        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned),
+        // Beside a side panel the cue alone: the keys it teaches are the raid's, and the panel has its own.
+        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned).slice(
+          0,
+          this.panelLean.covering > 0 ? 1 : undefined,
+        ),
         place: placePlateLine(this.placeName, this.placePlateMs),
         // Read off the tile rather than remembered with the district name: the
         // chip and the fight that is about to start have to be reading the same
@@ -4590,6 +4606,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       },
       this.time.now,
       dialogOver,
+      this.panelLean.covering,
     );
     this.hunterGlow?.render(
       hunterWarningStrength({
@@ -4603,7 +4620,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           (this.playerIsHidden() && isHunterOffTheScent(this.hunterState, this.currentTile)),
         reducedMotion: prefersReducedMotion(),
       }),
-      this.scale.width,
+      // Round what can be seen: beside a side panel the rim's east side would be under it.
+      this.scale.width - this.panelLean.covering,
       this.scale.height,
     );
     this.renderSearch();
@@ -4767,6 +4785,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const worldHeight = this.currentMap.height * TILE_SIZE;
       this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     }
+    this.panelLean.boundsWereSet();
     this.cameras.main.setZoom(CAMERA_ZOOM);
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.startFollow(this.player, true);
@@ -4797,6 +4816,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const { bounds, slabs } = areaFrame(area.rect, view, area.kind === 'outdoors');
     camera.setBackgroundColor(0x000000);
     camera.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
+    this.panelLean.boundsWereSet();
     // Four slabs of dark round the place, each reaching a screen past it, so
     // nothing of the grid beyond it is drawn whatever the camera does.
     this.areaDark.forEach((slab) => slab.destroy());
@@ -5202,7 +5222,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private openParty(): void {
     audioManager.play('menuOpen');
     this.scene.pause();
-    this.scene.launch('party', { party: this.party, bag: this.bag });
+    this.scene.launch('party', { party: this.party, bag: this.bag, view: this.besidePanel });
   }
 
   private openBag(): void {
@@ -5219,7 +5239,33 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       onItemDropped: (itemId: string, quantity: number) =>
         this.runSession?.manager.registerDroppedItem(itemId as ItemId, quantity),
       bike: { riding: this.riding, toggle: () => this.toggleBike() },
+      view: this.besidePanel,
     });
+  }
+
+  /**
+   * What the pack and the party tell the world beside them. The world is paused
+   * and still drawn, so all of this is one more picture of the same moment: the
+   * clock chip reads what it read and the hunter stands where it stood.
+   */
+  private get besidePanel(): SidePanelView {
+    return {
+      covers: (gamePixels) => {
+        this.panelLean.setCover(gamePixels);
+        this.refreshRunTimerHud();
+      },
+      frame: (deltaMs) => this.settlePanelLean(deltaMs),
+    };
+  }
+
+  /** Moves the view over for a side panel, or back, and seats the captions once it is there. */
+  private settlePanelLean(deltaMs: number): void {
+    // A frame late, because the camera's view is only worked out as it draws.
+    if (this.panelCaptionsDue) {
+      this.panelCaptionsDue = false;
+      this.containWorldLabels();
+    }
+    this.panelCaptionsDue = this.panelLean.settle(deltaMs);
   }
 
   /**
@@ -6354,7 +6400,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const tab = feedbackTabOverGame(this.game?.canvas, this.scale?.gameSize);
     // An open search panel is screen furniture too.
     const searching = this.searchPanel?.occupied ? [this.searchPanel.occupied] : [];
-    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...searching, ...dialog].map((chip) => ({
+    // So is a side panel: a caption half under it is half a caption.
+    const covered = this.panelLean.covering;
+    const panel = covered > 0 ? [{ x: this.scale.width - covered, y: 0, width: covered, height: this.scale.height }] : [];
+    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...searching, ...panel, ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,

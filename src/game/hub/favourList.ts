@@ -18,8 +18,8 @@ import {
 } from './errands';
 
 /**
- * Every favour on one quiet screen, opened with O anywhere at base - the key
- * the raid's field guide is on.
+ * Every favour in one notebook, a side panel opened with O anywhere at base -
+ * the key the raid's field guide is on.
  *
  * A favour is asked face to face, a box a line (`BaseScene.speakToKeeper`), and
  * the detail that used to be laid over a keeper's screen is here instead, for

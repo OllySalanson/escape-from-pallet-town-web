@@ -3,10 +3,12 @@ import { audioManager } from '../audio/AudioManager';
 import { Bag, HELD_ITEM_DEFINITIONS, getHeldItem, type ItemDefinition } from '../items';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import {
+  CLOCK_STOPPED,
   COLUMN_MEASURES,
   escapeAttribute,
   pixelColumns,
@@ -27,6 +29,8 @@ interface PartySceneData {
    * decision.
    */
   bag?: Bag;
+  /** The world beside the panel, told what the panel covers. */
+  view?: SidePanelView;
 }
 
 /**
@@ -53,6 +57,7 @@ export class PartyScene extends Phaser.Scene {
   /** The member picked up for a swap, by its position when it was picked up. */
   private movingIndex?: number;
   private status?: string;
+  private view?: SidePanelView;
   private menuOverlay?: MenuOverlay;
 
   public constructor() {
@@ -64,14 +69,21 @@ export class PartyScene extends Phaser.Scene {
     // Phaser reuses this scene, so a pack from an earlier raid would otherwise
     // still be the one this screen gives out of.
     this.bag = data.bag ?? new Bag();
+    this.view = data.view;
     this.movingIndex = undefined;
     this.status = undefined;
   }
 
   public create(): void {
-    this.menuOverlay = new MenuOverlay(this, 'party-menu pixel-ui', (event) => this.handleKey(event));
+    this.menuOverlay = new MenuOverlay(this, 'party-menu side-panel pixel-ui', (event) => this.handleKey(event));
     this.menuOverlay.root.setAttribute('aria-label', 'Raid party');
+    dockSidePanel(this, this.menuOverlay, this.view);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.view?.covers(0));
     this.render();
+  }
+
+  public update(_time: number, deltaMs: number): void {
+    this.view?.frame(deltaMs);
   }
 
   private handleKey(event: KeyboardEvent): void {
@@ -99,8 +111,7 @@ export class PartyScene extends Phaser.Scene {
     root.innerHTML = pixelScreen({
       title: 'Party',
       back: { label: 'Raid', attribute: 'data-close' },
-      // No aside: the window's own lid says how many are standing, and saying
-      // it twice on one screen is one of the two going stale.
+      aside: CLOCK_STOPPED,
       body: this.body(),
       // A lone Pokemon has nobody to swap with, so the screen does not offer
       // to pick it up only to refuse when ENTER is pressed.

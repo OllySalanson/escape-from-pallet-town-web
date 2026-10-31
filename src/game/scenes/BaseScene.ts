@@ -245,6 +245,7 @@ import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { openFavourList } from '../ui/FavourListOverlay';
+import { PanelLean } from '../ui/sidePanel';
 import { favourEntries } from '../hub/favourList';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { HarbourFigures } from '../base/harbourFigures';
@@ -648,6 +649,7 @@ export class BaseScene extends Phaser.Scene {
   private knockScreen: MenuOverlay | null = null;
   /** The favours list, while it is up (`ui/FavourListOverlay.ts`). */
   private favoursScreen: MenuOverlay | null = null;
+  private panelLeanValue: PanelLean | undefined;
   /** Somebody knocking at this player's own door, being asked about. */
   private knockPrompt: { readonly prompt: ChoicePrompt; readonly knock: KnockAtTheDoor } | null = null;
   /** A question asked YES or NOT NOW at the foot of what somebody said (`askInBox`): a favour, or a heal. */
@@ -681,6 +683,12 @@ export class BaseScene extends Phaser.Scene {
   public readonly rooms = BASE_ROOMS;
   public readonly arenaStations = ARENA_STATIONS;
   public readonly arenaRim = ARENA_RIM;
+
+  /** The camera moved over for the favours' side panel (`ui/sidePanel.ts`). The hall's is `settleHallCamera`. */
+  private get panelLean(): PanelLean {
+    this.panelLeanValue ??= new PanelLean(() => this.cameras.main);
+    return this.panelLeanValue;
+  }
 
   public constructor() {
     super('base');
@@ -953,6 +961,7 @@ export class BaseScene extends Phaser.Scene {
       this.knockScreen = null;
       this.favoursScreen?.destroy();
       this.favoursScreen = null;
+      this.panelLean.setCover(0);
       this.knockPrompt?.prompt.destroy();
       this.knockPrompt = null;
       this.boxQuestion?.prompt.destroy();
@@ -1024,6 +1033,9 @@ export class BaseScene extends Phaser.Scene {
       this.advanceJump(deltaMs);
       this.animateTiles(deltaMs);
       return;
+    }
+    if (!this.place.room?.pit) {
+      this.panelLean.settle(deltaMs);
     }
     this.updateWalking(deltaMs);
     // After the walk, so every figure and name is seated against where this
@@ -1361,10 +1373,13 @@ export class BaseScene extends Phaser.Scene {
 
   /** How much of the canvas a panel over the hall covers, in game pixels from the right and from the foot. */
   private panelCover(): { readonly right: number; readonly bottom: number } {
-    if (!this.arenaPanel || typeof document === 'undefined') {
+    if ((!this.arenaPanel && !this.favoursScreen) || typeof document === 'undefined') {
       return { right: 0, bottom: 0 };
     }
-    const panel = document.querySelector('#screens .arena-panel')?.getBoundingClientRect();
+    if (this.favoursScreen && this.panelLean.covering === 0) {
+      return { right: 0, bottom: 0 };
+    }
+    const panel = document.querySelector('#screens .arena-panel, #screens .favour-menu')?.getBoundingClientRect();
     const canvas = this.game.canvas.getBoundingClientRect();
     if (!panel || canvas.width === 0) {
       return { right: 0, bottom: 0 };
@@ -2850,6 +2865,7 @@ export class BaseScene extends Phaser.Scene {
     } else {
       camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height + below, viewHeight));
     }
+    this.panelLean.boundsWereSet();
     camera.setZoom(CAMERA_ZOOM);
     camera.setRoundPixels(true);
     // The hall's camera is placed by hand, a whole pixel from a whole pixel
@@ -2901,6 +2917,10 @@ export class BaseScene extends Phaser.Scene {
           ...(this.hintShown ? [this.hintRect(view)] : []),
           ...this.placeSignIn(view),
           ...this.feedbackTabIn(view),
+          // The favours' side panel, so a caption is never half under it.
+          ...(this.panelLean.covering > 0
+            ? [{ x: view.right - this.panelLean.covering, y: view.top, width: this.panelLean.covering, height: view.height }]
+            : []),
           ...(this.dialogBox.visible
             ? [{ x: this.dialogBox.x + view.left, y: this.dialogBox.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
             : []),
@@ -3895,15 +3915,21 @@ export class BaseScene extends Phaser.Scene {
       (itemId) => game.stash.itemCount(itemId),
       raidsDeployed(game.raidProgress),
     );
-    this.favoursScreen = openFavourList(this, entries, () => {
-      this.favoursScreen = null;
-      // The screen kept every key to itself, so a key the yard saw go down
-      // before it opened never came back up here.
-      this.input.keyboard?.resetKeys();
-      this.spentPresses.spendHeld(this.directionKeys());
-      audioManager.play('menuClose');
-      this.showHint(this.hintHere());
-    });
+    this.favoursScreen = openFavourList(
+      this,
+      entries,
+      () => {
+        this.favoursScreen = null;
+        // The screen kept every key to itself, so a key the yard saw go down
+        // before it opened never came back up here.
+        this.input.keyboard?.resetKeys();
+        this.spentPresses.spendHeld(this.directionKeys());
+        audioManager.play('menuClose');
+        this.showHint(this.hintHere());
+      },
+      // This scene goes on running under it, so its own frame moves the view.
+      { covers: (gamePixels) => this.panelLean.setCover(gamePixels), frame: () => undefined },
+    );
   }
 
   /** Through a door: the same scene, started again inside the room behind it. */
