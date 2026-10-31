@@ -7,6 +7,7 @@ import { getWorldCharacterAppearance, worldCharacterIdleFrame } from '../world/c
 import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
 import { partnerFrame } from './partner';
+import { FIRE_LETTERING, stampedWord } from '../ui/stampedLettering';
 
 /**
  * What falls and what goes past on the way down from THE RAID ARENA's rail: the
@@ -37,6 +38,17 @@ const WIND_DIM_INK = 0x90a0b0;
 /** How many pieces of cloud can be in sight at once, from `puffsAt`. */
 const PUFF_POOL = 10;
 
+/** What is going over, stamped over the pit: as big as the screen can hold them all at, from the top down. */
+const STAKE_DEPTH = CLOUD_DEPTH + 1;
+const STAKE_FONTS = ['30px', '20px'] as const;
+/** Three of the big ones fit above the player on the smallest screen, and six of the small. */
+const STAKE_BIG_MOST = 3;
+const STAKE_TOP = 12;
+const STAKE_GAP = 1;
+const STAKE_SIDE_ROOM = 16;
+/** How long a word stands at twice its size as it lands. */
+const STAKE_POP_MS = 70;
+
 /** Where the player falls on the screen, from its middle, and their partner beside them. Top-left of a frame. */
 const PLAYER_PLACE = { x: -8, y: -28 };
 const PARTNER_PLACE = { x: 12, y: -8 };
@@ -66,6 +78,8 @@ export class ArenaDiveView {
   private partner: Faller | null = null;
   /** The raid's hunter, once it has come over the rail after them. */
   private pursuer: { readonly rival: HunterRival; image: Phaser.GameObjects.Image | null } | null = null;
+  /** What is going over the fence with them, for as long as they are on the rail. */
+  private stakes: Phaser.GameObjects.Image[] = [];
 
   public constructor(scene: Phaser.Scene, playerTexture: string) {
     this.scene = scene;
@@ -123,6 +137,50 @@ export class ArenaDiveView {
         partnerFrame(fallFacing(ms, 2), Math.floor(ms / 95) % 2 === 0 ? 0 : 1),
       );
     }
+  }
+
+  /** Stamps what is at risk, out of sight until it is called for. */
+  public stakesAre(words: readonly string[]): void {
+    const { width } = this.scene.scale;
+    const stamp = (font: string) =>
+      words.map((word, index) => stampedWord(this.scene, `arena-stake-${index}`, word, { fontSize: font, depthPx: 3, ...FIRE_LETTERING }));
+    let sizes = stamp(words.length <= STAKE_BIG_MOST ? STAKE_FONTS[0] : STAKE_FONTS[1]);
+    if (words.length <= STAKE_BIG_MOST && sizes.some((size) => size.width > width - STAKE_SIDE_ROOM)) {
+      sizes = stamp(STAKE_FONTS[1]);
+    }
+    let top = STAKE_TOP;
+    this.stakes = sizes.map((size, index) => {
+      const image = this.keep(
+        this.scene.add
+          .image(Math.floor((width - size.width) / 2), top, `arena-stake-${index}`)
+          .setOrigin(0, 0)
+          .setDepth(STAKE_DEPTH)
+          .setVisible(false),
+      );
+      top += size.height + STAKE_GAP;
+      return image;
+    });
+  }
+
+  /** So many of the words are up. The newest lands from twice its size, a whole step at a time. */
+  public stakesUp(count: number, newestMs: number): void {
+    this.stakes.forEach((image, index) => {
+      const pops = index === count - 1 && newestMs < STAKE_POP_MS;
+      const homeX = Math.floor((this.scene.scale.width - image.width) / 2);
+      image
+        .setVisible(index < count)
+        .setScale(pops ? 2 : 1)
+        .setX(pops ? Math.floor((this.scene.scale.width - image.width * 2) / 2) : homeX);
+    });
+  }
+
+  public stakesGone(): void {
+    this.stakes.forEach((image) => image.destroy());
+    this.stakes = [];
+  }
+
+  public get isPursued(): boolean {
+    return this.pursuer !== null;
   }
 
   /** Who comes over the rail after them. */

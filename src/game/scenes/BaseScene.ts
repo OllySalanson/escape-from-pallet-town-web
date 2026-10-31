@@ -205,13 +205,15 @@ import type { BattleSceneData } from './BattleScene';
 import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
 import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
-import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID } from '../items/items';
+import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag } from '../items/items';
+import { FALLBACK_PACK_ID } from '../items/packs';
 import { COIN_EVERY_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
 import { ArenaDiveView } from '../base/arenaDiveView';
+import { BREATH_LISTENS_AFTER_MS, breathMs, climbAt, stakeWords, wordsUpAt } from '../base/heldBreath';
 import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
@@ -672,6 +674,10 @@ export class BaseScene extends Phaser.Scene {
     leaper: { readonly image: Phaser.GameObjects.Image; readonly from: { readonly x: number; readonly y: number } } | null;
     /** How far the arrow keys have drifted whoever is falling. */
     steer: { readonly x: number; readonly y: number };
+    /** On the rail, before the hop, with the hall holding its breath (`base/heldBreath.ts`). */
+    breath: { elapsedMs: number; readonly ms: number; readonly words: number; cut: boolean } | null;
+    /** Where the climb got them, which the hop goes on from. */
+    climb: { readonly x: number; readonly y: number };
   } | null = null;
   /** The cloud lifting off ground a raid has just walked (`ArenaView.liftFogFromLastRaid`). */
   private fogLift: {
@@ -1693,6 +1699,8 @@ export class BaseScene extends Phaser.Scene {
         dive: null,
         leaper: null,
         steer: { x: 0, y: 0 },
+        breath: null,
+        climb: { x: 0, y: 0 },
       };
       return;
     }
@@ -1717,14 +1725,71 @@ export class BaseScene extends Phaser.Scene {
       dive: new ArenaDiveView(this, this.playerTexture),
       leaper: null,
       steer: { x: 0, y: 0 },
+      breath: null,
+      climb: { x: 0, y: 0 },
     };
     const hunter = world.runSession?.plan?.hunter;
     if (hunter) {
       this.jump.dive?.pursuedBy(hunterRival(hunter.rivalId));
     }
+    const words = this.stakesGoingOver();
+    this.jump.dive?.stakesAre(words);
+    this.jump.breath = { elapsedMs: 0, ms: breathMs(words.length), words: words.length, cut: false };
+    arena.holdBreath(true);
+    this.playerGroundMark.setVisible(false);
+    this.playerHeadMark.setVisible(false);
+    this.player.setDepth(CANOPY_BAND + 1);
     camera.stopFollow();
     camera.removeBounds();
-    audioManager.play('arenaHorn');
+  }
+
+  /** What is going over the fence and would not come back, as the rail says it. */
+  private stakesGoingOver(): readonly string[] {
+    const flow = this.kit?.flow;
+    if (!flow) {
+      return [];
+    }
+    const packId = flow.packItemId;
+    return stakeWords(
+      {
+        pokemon: flow.riskedPokemon.map(({ pokemon }) => ({ name: pokemon.name, level: pokemon.level })),
+        // Nobody is ever left without a Satchel, so it is no stake.
+        pack: packId === undefined || packId === FALLBACK_PACK_ID ? null : flow.packName,
+        items: flow.riskedItems.map(({ itemId, quantity }) => `${getItemById(itemId)?.displayName ?? itemId} ${itemCountTag(itemId, quantity)}`),
+      },
+      new SaveManager().load()?.raidProgress.benchRaids ?? 1,
+    );
+  }
+
+  /** Any of the keys a person would press to get on with it. */
+  private anyKeyPressed(): boolean {
+    return (
+      this.isInteractionPressed() ||
+      this.keyPresses.justPressed(this.controls.back) ||
+      this.keyPresses.justPressed(this.controls.up) ||
+      this.keyPresses.justPressed(this.controls.down) ||
+      this.keyPresses.justPressed(this.controls.left) ||
+      this.keyPresses.justPressed(this.controls.right)
+    );
+  }
+
+  /** On the rail: the words go up, and the hop waits until they are read or a key says to get on with it. */
+  private holdTheBreath(jump: NonNullable<BaseScene['jump']>, deltaMs: number): void {
+    const breath = jump.breath;
+    if (!breath) {
+      return;
+    }
+    breath.elapsedMs += deltaMs;
+    jump.climb = climbAt(breath.elapsedMs, jump.over);
+    const up = wordsUpAt(breath.elapsedMs, breath.words);
+    jump.dive?.stakesUp(up.count, up.newestMs);
+    const pressed = this.anyKeyPressed();
+    if (breath.cut || breath.elapsedMs >= breath.ms || (pressed && breath.elapsedMs > BREATH_LISTENS_AFTER_MS)) {
+      jump.breath = null;
+      jump.dive?.stakesGone();
+      this.arena?.holdBreath(false);
+      this.spentPresses.spendHeld(this.directionKeys());
+    }
   }
 
   private advanceJump(deltaMs: number): void {
@@ -1734,12 +1799,13 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const before = jump.elapsedMs;
-    jump.elapsedMs += deltaMs;
-    if (!jump.hopped && jump.elapsedMs >= TURN_BACK_MS) {
+    this.holdTheBreath(jump, deltaMs);
+    // The view comes back whatever the breath is doing, and then the hop waits for it.
+    jump.elapsedMs = jump.breath ? Math.min(TURN_BACK_MS, jump.elapsedMs + deltaMs) : jump.elapsedMs + deltaMs;
+    if (!jump.hopped && !jump.breath && jump.elapsedMs >= TURN_BACK_MS) {
       jump.hopped = true;
+      audioManager.play('arenaHorn');
       arena.sendOff({ x: this.player.x, y: this.player.y });
-      this.playerGroundMark.setVisible(false);
-      this.playerHeadMark.setVisible(false);
       const partner = this.partner?.leaveForJump();
       if (partner) {
         jump.leaper = {
@@ -1758,7 +1824,12 @@ export class BaseScene extends Phaser.Scene {
     }
     const pose = jumpPose(jump.elapsedMs, jump.over);
     if (!pose.figure.falling) {
-      this.player.setPosition(jump.from.x + pose.figure.x, jump.from.y + pose.figure.y);
+      // The hop goes on from the top of the rail, not from the floor beside it.
+      const still = 1 - Math.max(0, Math.min(1, (jump.elapsedMs - TURN_BACK_MS) / HOP_MS));
+      this.player.setPosition(
+        jump.from.x + pose.figure.x + Math.round(jump.climb.x * still),
+        jump.from.y + pose.figure.y + Math.round(jump.climb.y * still),
+      );
       this.player.setDepth(CANOPY_BAND + 1);
     } else if (this.player.visible) {
       this.player.setVisible(false);
@@ -1785,6 +1856,10 @@ export class BaseScene extends Phaser.Scene {
     const y = fromY + (jump.focus.y - fromY) * pose.swing;
     camera.setZoom(CAMERA_ZOOM * pose.zoom);
     camera.centerOn(x, y);
+    // By now the view has swung away from the far floor, and whoever stood there has gone.
+    if (pose.swing >= 1 && jump.dive?.isPursued) {
+      this.rivalFigure?.setVisible(false);
+    }
     arena.burn(deltaMs);
     arena.diveFrame(pose.zoom, jump.focus);
     const held = {
@@ -2112,14 +2187,7 @@ export class BaseScene extends Phaser.Scene {
     }
     // The key that left the result screen is still on its way up as this starts,
     // and is not a request to skip what it has just opened on.
-    const anyKey =
-      lift.heldMs > FOG_LISTENS_AFTER_MS &&
-      (this.isInteractionPressed() ||
-        this.keyPresses.justPressed(this.controls.back) ||
-        this.keyPresses.justPressed(this.controls.up) ||
-        this.keyPresses.justPressed(this.controls.down) ||
-        this.keyPresses.justPressed(this.controls.left) ||
-        this.keyPresses.justPressed(this.controls.right));
+    const anyKey = lift.heldMs > FOG_LISTENS_AFTER_MS && this.anyKeyPressed();
     if (lift.elapsedMs >= FOG_LIFT_MS || anyKey) {
       this.arena?.endFog();
       lift.sign.destroy();
@@ -2250,6 +2318,10 @@ export class BaseScene extends Phaser.Scene {
    * rim over the way in nearest the click.
    */
   private pointAtHall(pointer: Phaser.Input.Pointer): void {
+    if (this.jump?.breath) {
+      this.jump.breath.cut = true;
+      return;
+    }
     if (!this.canTakeAPointer()) {
       return;
     }

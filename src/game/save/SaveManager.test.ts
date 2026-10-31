@@ -2269,6 +2269,18 @@ describe('SaveManager', () => {
 
       expect(new SaveManager(storage).load()?.raidProgress.lastBench).toEqual(['charmander-1', 'pidgey-2']);
     });
+
+    it('counts the raids that same team has gone down, whatever order it sat in', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      const raids = () => new SaveManager(storage).load()?.raidProgress.benchRaids;
+      saves.recordBench(['charmander-1', 'pidgey-2']);
+      expect(raids()).toBe(1);
+      saves.recordBench(['pidgey-2', 'charmander-1']);
+      expect(raids()).toBe(2);
+      saves.recordBench(['pidgey-2']);
+      expect(raids()).toBe(1);
+    });
   });
 
   /**

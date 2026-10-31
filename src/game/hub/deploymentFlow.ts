@@ -503,6 +503,23 @@ export class DeploymentFlow {
     return this.party.filter((stored) => this.securedPokemonIds.includes(stored.id));
   }
 
+  /** Who a wipe would take: the party, less whoever is in the container. */
+  public get riskedPokemon(): readonly StashedPokemon[] {
+    const secured = this.securedPokemon;
+    return this.party.filter((stored) => !secured.includes(stored));
+  }
+
+  /** What a wipe would take of the pack's contents: what was packed, less what is in the container. */
+  public get riskedItems(): readonly ItemStack[] {
+    const secured = this.securedItems;
+    return this.items
+      .map(({ itemId, quantity }) => ({
+        itemId,
+        quantity: quantity - (secured.find((held) => held.itemId === itemId)?.quantity ?? 0),
+      }))
+      .filter((item) => item.quantity > 0);
+  }
+
   /**
    * What is in the secure container: loadout supplies the player put in it, and
    * room set aside for the found goods they expect to bring back - materials,

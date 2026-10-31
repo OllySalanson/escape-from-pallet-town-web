@@ -382,6 +382,8 @@ export interface RaidProgress {
    * as a bench nobody has sat on - so no version bump.
    */
   readonly lastBench?: readonly string[];
+  /** How many raids in a row that same team has gone down: the rail says less to a team it knows (`base/heldBreath.ts`). */
+  readonly benchRaids?: number;
   /**
    * How the player last laid the two containers out, as lists of seats
    * (`items/itemGrid.ts`). A pack somebody arranged by hand comes back the way
@@ -1507,7 +1509,10 @@ export class SaveManager {
     if (!game) {
       return false;
     }
-    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastBench: [...pokemonIds] } });
+    const before = new Set(game.raidProgress.lastBench ?? []);
+    const sameTeam = before.size === pokemonIds.length && pokemonIds.every((id) => before.has(id));
+    const benchRaids = sameTeam ? (game.raidProgress.benchRaids ?? 0) + 1 : 1;
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastBench: [...pokemonIds], benchRaids } });
   }
 
   /**
@@ -2061,6 +2066,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),
     ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
+    ...(Number.isInteger(value.benchRaids) && (value.benchRaids as number) > 0 ? { benchRaids: value.benchRaids as number } : {}),
     packArrangement: readArrangement(value.packArrangement),
     secureArrangement: readArrangement(value.secureArrangement),
     ...(Array.isArray(value.homeLayout) ? { homeLayout: readHomeLayout(value.homeLayout) } : {}),

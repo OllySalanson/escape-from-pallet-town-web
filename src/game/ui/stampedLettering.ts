@@ -84,6 +84,9 @@ export function stampMask(
   }
 }
 
+/** Alarm red, for what can be lost. */
+export const FIRE_LETTERING = { fill: ['#fff8c8', '#ffd048', '#f88828', '#d83818'], rim: '#701010', depth: '#380808', edge: '#0a0a14' };
+
 export interface StampedWordStyle {
   readonly fontSize: string;
   /** The fill, top to bottom, in equal bands. */
