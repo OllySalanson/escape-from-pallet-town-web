@@ -315,7 +315,7 @@ export interface PartnerReaction {
 }
 
 /** Where in the harbour the player is: the yard, or the room behind a door. */
-export type PartnerPlaceName = 'yard' | 'oaks-lab' | 'pokemon-centre' | 'brocks-workshop' | 'bills-cottage';
+export type PartnerPlaceName = 'yard' | 'oaks-lab' | 'pokemon-centre' | 'brocks-workshop' | 'bills-cottage' | 'raid-arena';
 
 /**
  * What the partner does when the player faces it and presses the interact
@@ -390,6 +390,7 @@ const PLACE_LINES: Record<PartnerPlaceName, readonly Said[]> = {
   'pokemon-centre': [{ line: (name) => `${name} looks very relaxed in here.`, emote: 'happy' }],
   'brocks-workshop': [{ line: (name) => `${name} is poking its nose into BROCK's toolbox.`, emote: 'exclaim' }],
   'bills-cottage': [{ line: (name) => `${name} is staring at BILL's shelves of oddities.`, emote: 'exclaim' }],
+  'raid-arena': [{ line: (name) => `${name} is peering down through the fence, a long way down.`, emote: 'exclaim' }],
 };
 
 // -- the bubble ------------------------------------------------------------

@@ -63,14 +63,14 @@ import {
 } from '../world/pokemonFigures';
 import type { MapLayers, TileLayer } from '../world/tiles';
 import type { TileSource } from '../world/tileset/catalogue';
-import type { HubSceneData } from './HubScene';
+import type { BaseSceneData } from './BaseScene';
 
 /**
  * THE RAID ARENA's trailer (`cutscene/arenaIntro.ts` is the script): a raid
  * in forty-odd seconds, played in the engine with the game's own art so it is
  * the player's own - their figure, their name, their partner in the fight and
  * the hunter who is after them next, with that hunter's own team - and then
- * the Arena's door and the loadout it opens.
+ * the Arena's door and the great hall behind it.
  *
  * It is a film rather than a map, so it borrows the world's parts and none of
  * its rules: the forest and the harbour are laid by the same `buildMapLayers`
@@ -80,14 +80,14 @@ import type { HubSceneData } from './HubScene';
  * would draw some pixels wider than others), and one for everything laid over
  * the picture - the letterbox, the words, the comic panel.
  *
- * Any key or a click ends it at any moment and lands on the loadout, which is
- * where the door went before there was a trailer; the key that walked the
+ * Any key or a click ends it at any moment and lands in the hall, which is
+ * where the door goes; the key that walked the
  * player into the door is not counted (`ARENA_INTRO_ARMING_MS`).
  */
 export interface ArenaIntroSceneData {
   readonly savedGame: RestoredGame;
-  /** Where the Arena's door goes: the loadout, and the step to come back out onto. */
-  readonly hub: HubSceneData;
+  /** Where the Arena's door goes: into its great hall. */
+  readonly hall: BaseSceneData;
 }
 
 const TILE = 16;
@@ -178,7 +178,7 @@ interface Motion {
 }
 
 export class ArenaIntroScene extends Phaser.Scene {
-  private hub!: HubSceneData;
+  private hall!: BaseSceneData;
   private leaving = false;
   private startedAt = 0;
   private uiCamera!: Phaser.Cameras.Scene2D.Camera;
@@ -198,7 +198,7 @@ export class ArenaIntroScene extends Phaser.Scene {
   }
 
   public create(data: ArenaIntroSceneData): void {
-    this.hub = data.hub;
+    this.hall = data.hall;
     this.leaving = false;
     this.worldObjects = [];
     this.uiObjects = [];
@@ -293,7 +293,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     this.leave();
   }
 
-  /** Out to the loadout, whether the trailer ended or was skipped. */
+  /** Into the hall, whether the trailer ended or was skipped. */
   public leave(): void {
     if (this.leaving) {
       return;
@@ -306,7 +306,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     camera.fadeOut(160, 0, 0, 0);
     camera.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.motions = [];
-      this.scene.start('hub', this.hub);
+      this.scene.start('base', this.hall);
     });
   }
 

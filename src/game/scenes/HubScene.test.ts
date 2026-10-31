@@ -122,7 +122,7 @@ describe('the lobby as a screen of the game', () => {
     expect(lab).toContain('Raids start at the RAID ARENA');
     intoTheArena(hub);
 
-    // Through the Arena's door is the loadout, with nobody packed for you.
+    // The hall's marshal opens the loadout, with nobody packed for you.
     expect(hub.flow.step).toBe('loadout');
     expect(hub.flow.party).toEqual([]);
   });
@@ -2559,9 +2559,8 @@ describe('first words: Oak and Joy speak once per save', () => {
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
     expect(speechOn(screenOf(hub))).toBeUndefined();
 
+    // The loadout says nothing over itself: the hall's marshal has said it.
     intoTheArena(hub);
-    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.loadout.lines[2]);
-    putDown(hub, 'button');
     expect(speechOn(screenOf(hub))).toBeUndefined();
     hub.flow.togglePokemon('charmander-1');
 
@@ -2584,7 +2583,7 @@ describe('first words: Oak and Joy speak once per save', () => {
     expect(speechOn(screenOf(hub))).toBeUndefined();
     readyToDeploy(hub);
     expect(speechOn(screenOf(hub))).toBeUndefined();
-    expect(heardIn(storage)).toEqual(['lab', 'loadout', 'dropin', 'check']);
+    expect(heardIn(storage)).toEqual(['lab', 'dropin', 'check']);
   });
 
   it('keeps the screen under the words, and gives the cursor to them alone', () => {

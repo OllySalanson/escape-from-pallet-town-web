@@ -770,6 +770,17 @@ map maker as possible" (the palette board, 2026-10-10).
   thing in the game that knows where a piece sits on the sheet and which of its
   cells are drawn.
 
+### `arena-hall.png` - THE RAID ARENA's great hall
+
+- **What it is.** The tiles of the round hall behind the Arena's door: its stone
+  floor, outer wall, banners, runner, fence, pillars and the sticks of its torches.
+- **Who made it.** Drawn for this game by `scripts/draw-arena-hall.mts`, a pixel
+  at a time, in FireRed's 15-bit colours and its conventions (one shading ramp,
+  ordered dither, hard outlines, light from the top left). Nothing is taken from
+  any other source; FireRed has no round room to cut one from.
+- **Licence.** This project's own work. What is in the pit (the steps, the cloud,
+  the vale from the air) and the flames are painted at run time and are no file.
+
 ### `raid-arena.png` - THE RAID ARENA's own front, its banners and its runner
 
 **Derived from two files already in this repository, nothing fetched.** The

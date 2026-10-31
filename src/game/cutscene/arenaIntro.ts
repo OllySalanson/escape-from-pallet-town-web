@@ -23,7 +23,7 @@ import { hunterRival, rivalForRaid, type HunterRival } from '../world/hunters';
  *
  * Two rules the scene is held to by this module's tests. **It is never in the
  * way**: any key or click ends it, on any viewing, and an ending is the
- * loadout - the same place the door went before there was a trailer. And **it
+ * great hall - the same place the door goes. And **it
  * is the player's once**: the save records that it has been seen the moment
  * it starts (`SaveManager.watchArenaIntro`), so a reload does not buy it twice
  * unasked, and a save from before it existed reads as never seen.
@@ -54,8 +54,8 @@ export function arenaIntroOffersSkip(viewing: ArenaIntroViewing): boolean {
  */
 export const ARENA_INTRO_HOST = 'GYM GUIDE';
 
-/** The screen the trailer ends on, as `HubScene` names it: the loadout. */
-export const ARENA_INTRO_ENDS_ON = 'deploy';
+/** The room the trailer ends in: the Arena's great hall (`base/rooms.ts`). */
+export const ARENA_INTRO_ENDS_ON = 'raid-arena';
 
 /** The name the trailer calls the player by when the house has none yet. */
 export const ARENA_INTRO_NAMELESS = 'TRAINER';

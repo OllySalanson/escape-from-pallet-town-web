@@ -58,10 +58,7 @@ const STATES = [
 
 describe('the rooms behind the base doors', () => {
   it('puts one room behind every door that opens onto one, under the same name, opening the same screen', () => {
-    // The Raid Arena's door opens straight onto the raid's loadout, so there
-    // is no room behind it to name (`RoomId` has no such id).
-    expect(BASE_DOORS.filter((door) => door.opens === 'screen').map((door) => door.id)).toEqual(['raid-arena']);
-    for (const door of BASE_DOORS.filter((each) => each.opens === 'room')) {
+    for (const door of BASE_DOORS) {
       const inside = room(door.id);
       expect([door.id, inside.name, inside.screen]).toEqual([door.id, door.name, door.screen]);
     }
@@ -91,7 +88,8 @@ describe('the rooms behind the base doors', () => {
    * would scroll, and would not look like the room it is dressed as.
    */
   it('fits every room on the smallest stage', () => {
-    for (const each of BASE_ROOMS) {
+    // The great hall is the one room walked with the camera following, as the yard is.
+    for (const each of BASE_ROOMS.filter((candidate) => candidate.id !== 'raid-arena')) {
       expect([each.id, each.width * TILE_SIZE <= BASE_STAGE_WIDTH]).toEqual([each.id, true]);
       expect([each.id, each.height * TILE_SIZE <= BASE_STAGE_HEIGHT]).toEqual([each.id, true]);
     }

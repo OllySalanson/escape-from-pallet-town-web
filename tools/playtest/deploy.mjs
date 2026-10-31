@@ -35,8 +35,7 @@ export const takePokemon = (name = null) =>
  * redrawn base moves the walk with it.
  *
  * `door` is a `BASE_DOORS` id: `raid-arena`, `oaks-lab`, `pokemon-centre`,
- * `brocks-workshop` or `bills-cottage`. The Raid Arena has no room: its door
- * opens the loadout. Inside the others, the interact key on the door mat is the keeper's
+ * `brocks-workshop` or `bills-cottage`. Inside each, the interact key on the door mat is the keeper's
  * screen - the one-key way in a player re-kitting takes - so that is what this
  * presses. A driver already in the right room (backed out of its screen) just
  * presses it again; one in another room walks back out first.
@@ -67,7 +66,7 @@ export async function walkIntoBase(page, door, options = {}) {
       return;
     }
     // Through the Raid Arena's door its trailer plays first, and any key skips
-    // it to the loadout (`scenes/ArenaIntroScene.ts`). It ignores keys for
+    // it to the hall (`scenes/ArenaIntroScene.ts`). It ignores keys for
     // its first half-second, so the press is made again until it takes.
     if (await page.evaluate(sceneIs('arenaIntro'))) {
       await press('Escape');

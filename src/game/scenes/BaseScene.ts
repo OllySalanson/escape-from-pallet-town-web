@@ -175,6 +175,9 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
+import { ARENA_DARK_BELOW, cameraLean, isArenaFence } from '../base/arenaHall';
+import { ArenaView } from '../base/arenaView';
+import { FIRST_WORDS, hasHeard } from '../hub/firstWords';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
@@ -518,6 +521,7 @@ export class BaseScene extends Phaser.Scene {
   private night: HarbourNight | null = null;
   /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
   private boats: FloatingBoats | null = null;
+  private arena: ArenaView | null = null;
   /** The bird that glides over the harbour now and then (`base/harbourBird.ts`), outdoors by day only. */
   private bird: HarbourBird | null = null;
   /** FireRed's map-name board (`base/placeNameSign.ts`), outdoors only. */
@@ -762,6 +766,7 @@ export class BaseScene extends Phaser.Scene {
     this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
+    this.arena = this.place.room?.pit ? new ArenaView(this, loaded, this.still) : null;
     this.createFigures();
     this.createPlayer();
     // Somebody else's partner arrives where this player's own could, and never on top of it.
@@ -883,6 +888,7 @@ export class BaseScene extends Phaser.Scene {
     this.animateTiles(deltaMs);
     this.listenToTheSea(deltaMs);
     this.noticePlace(deltaMs);
+    this.watchThePit(deltaMs);
     if (!this.still) {
       this.boats?.update(deltaMs);
       this.night?.update(deltaMs);
@@ -1070,6 +1076,27 @@ export class BaseScene extends Phaser.Scene {
       }),
     );
     return boxes;
+  }
+
+  /**
+   * THE RAID ARENA's pit, for this frame: its layers slid for where the player
+   * stands (`arenaView.ts`), and its mark on what they are looking at while they
+   * stand facing the fence with nothing else on screen to read.
+   */
+  private watchThePit(deltaMs: number): void {
+    if (!this.arena) {
+      return;
+    }
+    const middle = {
+      x: this.player.x + TILE_SIZE / 2,
+      y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
+    };
+    this.arena.update(deltaMs, middle);
+    // A camera's follow offset is taken away from what it follows.
+    const lean = cameraLean(middle, this.scale.height / CAMERA_ZOOM);
+    this.cameras.main.setFollowOffset(-lean.x, -lean.y);
+    const atTheFence = !this.targetTile && isArenaFence(nextTileFromDirection(this.currentTile, this.facing));
+    this.arena.lookFrom(atTheFence ? this.currentTile : null);
   }
 
   /** Lays the map's tile layers, and hands back the detail layer landmarks are drawn on. */
@@ -1905,7 +1932,7 @@ export class BaseScene extends Phaser.Scene {
       }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
-    const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
+    const keeper = room.screen === 'arena' ? ARENA_KEEPER_HINT : room.keeper ? `[SPACE] ${room.keeper.name}` : '';
     if (this.onMat(room)) {
       // The player's own house has nobody to speak to from the mat, so it
       // names its own keys there instead: the mat is where everybody arrives,
@@ -1923,6 +1950,9 @@ export class BaseScene extends Phaser.Scene {
     }
     if (wave) {
       return wave;
+    }
+    if (this.arena && isArenaFence(facing)) {
+      return '[SPACE] LOOK DOWN';
     }
     // Something in the room that opens a screen says so where it can be
     // opened from, exactly as the keeper does: a board on a wall that answers
@@ -2028,7 +2058,8 @@ export class BaseScene extends Phaser.Scene {
     const left = width < viewWidth ? Math.floor((width - viewWidth) / 2) : 0;
     const top = height < viewHeight ? Math.floor((height - viewHeight) / 2) : 0;
     camera.setBackgroundColor(0x000000);
-    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height, viewHeight));
+    const below = this.place.room?.pit ? ARENA_DARK_BELOW : 0;
+    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height + below, viewHeight));
     camera.setZoom(CAMERA_ZOOM);
     camera.setRoundPixels(true);
     camera.startFollow(this.player, true);
@@ -2806,6 +2837,10 @@ export class BaseScene extends Phaser.Scene {
       if (this.waveAt(target)) {
         return;
       }
+      if (this.arena && isArenaFence(target)) {
+        this.say(this.arena.lookLines(this.currentTile), []);
+        return;
+      }
       const thing = this.thingFaced(target);
       const cabinet = this.place.room?.cabinet;
       if (thing?.opens === 'wall-map') {
@@ -3025,17 +3060,10 @@ export class BaseScene extends Phaser.Scene {
   private enterRoom(door: BaseDoor): void {
     // Through a door is the yard's lesson done: the room's own hint takes over.
     this.learnKey('walk');
-    // The Raid Arena has no room to stand in: through its door is the raid's
-    // loadout, and backing out of that puts the player on its step again. Its
-    // trailer plays on the way (`cutscene/arenaIntro.ts`), unasked the first
-    // time and with a SKIP after, and ends on that same loadout.
-    if (door.opens === 'screen' && door.screen && door.screen !== 'boutique') {
-      const hub: HubSceneData = { savedGame: this.savedGame, view: SCREEN_VIEWS[door.screen], from: door.id };
-      if (door.screen === 'arena') {
-        this.openArenaIntro({ savedGame: this.savedGame, hub });
-        return;
-      }
-      this.openHub(hub);
+    // THE RAID ARENA's trailer plays on the way in (`cutscene/arenaIntro.ts`),
+    // unasked the first time and with a SKIP after, and ends in its great hall.
+    if (door.screen === 'arena') {
+      this.openArenaIntro({ savedGame: this.savedGame, hall: { savedGame: this.savedGame, room: door.id } });
       return;
     }
     this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
@@ -3445,6 +3473,14 @@ export class BaseScene extends Phaser.Scene {
   private speakToKeeper(room: BaseRoom, screen: BaseScreen): void {
     const beat = this.favourHere(screen);
     const openScreen = (): void => this.openScreen(room, screen);
+    // The marshal tells a newcomer what the raid's first screen is for, once,
+    // in this room's own box and only because they were asked: arriving at the
+    // Arena says nothing (`hub/firstWords.ts`).
+    if (screen === 'arena' && !hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
+      this.hearLoadoutWords();
+      this.say(FIRST_WORDS.loadout.lines, room.keeper ? [room.keeper.position] : [], openScreen);
+      return;
+    }
     if (!beat) {
       openScreen();
       return;
@@ -3657,7 +3693,17 @@ export class BaseScene extends Phaser.Scene {
     this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
   }
 
-  /** Into THE RAID ARENA: its trailer, which hands over to the loadout. */
+  /** Writes down that the marshal's words have been said, here and in this scene's copy of the game. */
+  private hearLoadoutWords(): void {
+    this.saveManager.hearFirstWords('loadout');
+    const { raidProgress } = this.savedGame;
+    this.savedGame = {
+      ...this.savedGame,
+      raidProgress: { ...raidProgress, firstWordsHeard: [...(raidProgress.firstWordsHeard ?? []), 'loadout'] },
+    };
+  }
+
+  /** Into THE RAID ARENA: its trailer, which hands over to the great hall. */
   private openArenaIntro(payload: ArenaIntroSceneData): void {
     if (this.leaving) {
       return;
@@ -3686,6 +3732,9 @@ export class BaseScene extends Phaser.Scene {
     );
   }
 }
+
+/** What the key does in the Arena's hall, on the mat or facing its marshal. */
+const ARENA_KEEPER_HINT = '[SPACE] GET READY';
 
 /**
  * The name given at THE BOLTHOLE's door, for this sitting. It is kept on the
