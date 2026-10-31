@@ -4,6 +4,7 @@ import { Pokemon } from '../pokemon';
 import { copyPokemon } from '../save/SaveManager';
 import { HUNTER_TIERS, hunterTeamFor } from '../world/hunter';
 import { HUNTER_RIVALS, hunterRival, rivalForRaid, type HunterRival } from '../world/hunters';
+import { ARENA_CENTRE, ARENA_MAT } from './arenaHall';
 import type { BoutRecord } from './boutLadder';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { PaintedPicture } from '../world/minimap';
@@ -30,11 +31,15 @@ import type { PaintedPicture } from '../world/minimap';
  */
 
 /** Where the rival waits: on the far floor, under the hall's own banner. */
-export const RIVAL_TILE: GridPosition = { x: 32, y: 6 };
+export const RIVAL_TILE: GridPosition = { x: ARENA_MAT.x, y: 6 };
 
-/** Walked up to, the view leaves the pit and comes up to the wall, the banners and the people watching. */
+/**
+ * Stood right up to them, the view leaves the pit and comes up to the wall, the
+ * banners and the people watching. Not for walking past: a lap of the outer floor
+ * is no reason to swing the camera up and back (`BaseScene.settleHallCamera`).
+ */
 export function nearTheRival(tile: GridPosition): boolean {
-  return Math.abs(tile.x - RIVAL_TILE.x) <= 3 && tile.y <= RIVAL_TILE.y + 2;
+  return Math.abs(tile.x - RIVAL_TILE.x) <= 2 && tile.y <= RIVAL_TILE.y + 2;
 }
 
 /** The box's question, short enough to leave its answers a line of their own. */
@@ -101,7 +106,7 @@ export function rivalGreeting(rival: HunterRival, lastRaid: 'fell' | 'out' | und
 // --- the banner -----------------------------------------------------------------
 
 /** Where the player's banner hangs on the far wall, between a wall torch and the pillar in front of the hall's own. */
-export const PLAYER_BANNER_AT = { x: 432, y: 30 } as const;
+export const PLAYER_BANNER_AT = { x: ARENA_CENTRE.x - 88, y: 30 } as const;
 
 const BANNER_WIDTH = 15;
 const BANNER_HEIGHT = 38;

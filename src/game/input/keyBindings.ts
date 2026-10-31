@@ -78,6 +78,17 @@ export const ARENA_KEY_LETTERS = {
   coin: 'C',
 } as const;
 
+/**
+ * The telescope's own letters (`base/valeOverview.ts`), bound with the rest by
+ * `BaseScene.bindControls`. Q and E are the house's already, which walk a list
+ * there too. The arrows and W, A, S and D pan it, as they walk everywhere else.
+ */
+export const TELESCOPE_KEY_LETTERS = {
+  wayBack: 'Q',
+  wayNext: 'E',
+  closer: 'Z',
+} as const;
+
 /** What the rail says about it until it has been done once, and only to somebody with a coin to toss. */
 export function coinKeyHint(learned: ReadonlySet<string>): string {
   return learned.has('coin') ? '' : keyHint(ARENA_KEY_LETTERS.coin, 'TOSS A COIN');

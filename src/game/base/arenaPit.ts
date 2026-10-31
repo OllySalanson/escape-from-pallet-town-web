@@ -32,7 +32,7 @@ import { PIT_GATES } from './pitLife';
  */
 
 /** How big the floor is painted: enough to fill the hole from anywhere the floor can slide to. */
-export const PIT_FLOOR_SIZE = 984;
+export const PIT_FLOOR_SIZE = 1024;
 
 /** How wide a ring's picture is painted, enough to run under the fence as it slides. */
 const RING_MARGIN = 28;
@@ -354,6 +354,53 @@ const isKnown = isGroundKnown;
  * that stands up - a wood, a crag, a wall - throws a pixel of shadow to the
  * south-east, which is what makes it ground seen from above rather than a chart.
  */
+/**
+ * The map's square of the floor, drawn smaller: what a telescope shows when the
+ * whole of it has to fit on the screen (`valeOverview.ts`). Every pixel is the
+ * mean of the floor pixels it covers, snapped back to the 15-bit steps this
+ * hardware draws in, and is a whole game pixel like any other. Sampling instead
+ * of taking the mean loses a one-tile road at some columns and keeps it at others.
+ */
+export function condensedFloor(
+  floor: { readonly data: Uint8ClampedArray; readonly width: number },
+  square: { readonly left: number; readonly top: number; readonly width: number; readonly height: number },
+  size: { readonly width: number; readonly height: number },
+): PaintedPicture {
+  const data = new Uint8ClampedArray(size.width * size.height * 4);
+  const spanX = square.width / size.width;
+  const spanY = square.height / size.height;
+  const snap = (value: number): number => Math.min(248, Math.round(value / 8) * 8);
+  for (let y = 0; y < size.height; y += 1) {
+    const fromY = square.top + y * spanY;
+    const toY = fromY + spanY;
+    for (let x = 0; x < size.width; x += 1) {
+      const fromX = square.left + x * spanX;
+      const toX = fromX + spanX;
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let weight = 0;
+      for (let row = Math.floor(fromY); row < Math.ceil(toY); row += 1) {
+        const tall = Math.min(toY, row + 1) - Math.max(fromY, row);
+        for (let column = Math.floor(fromX); column < Math.ceil(toX); column += 1) {
+          const share = tall * (Math.min(toX, column + 1) - Math.max(fromX, column));
+          const at = (row * floor.width + column) * 4;
+          red += floor.data[at] * share;
+          green += floor.data[at + 1] * share;
+          blue += floor.data[at + 2] * share;
+          weight += share;
+        }
+      }
+      const to = (y * size.width + x) * 4;
+      data[to] = snap(red / weight);
+      data[to + 1] = snap(green / weight);
+      data[to + 2] = snap(blue / weight);
+      data[to + 3] = 255;
+    }
+  }
+  return { width: size.width, height: size.height, data };
+}
+
 export function paintPitFloor(picture: Minimap, light: WindowLight = 'day'): PaintedPicture {
   const size = PIT_FLOOR_SIZE;
   const data = new Uint8ClampedArray(size * size * 4);

@@ -21,6 +21,7 @@ export const HARBOUR_NOTICES: readonly string[] = [
   'Read the town map at HARBOUR SQUARE for where everything is.',
   'PROFESSOR OAK has something for every Pokédex milestone. The first is at 10 kinds.',
   'Hold L to read the name of everything in view.',
+  'Two brass telescopes stand on the rail in THE RAID ARENA: all of GREYSTONE VALE, in one look.',
   'Somebody else walking the harbour? Face them and press SPACE to wave.',
   'Everything BROCK builds stands in the harbour: the mast, the lockers, the light at the breakwater\'s head.',
   `${BOUTIQUE_NAME} at the top of THE GREEN dresses you. Trying a look on in its mirror is free.`,

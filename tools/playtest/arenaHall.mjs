@@ -202,7 +202,7 @@ try {
   expect(`the rim says where it is over (${hint})`, hint.startsWith('[SPACE] JUMP IN AT '));
 
   if (args.includes('--tour')) {
-    for (const [name, x, y] of [['east', 53, 33], ['north', 32, 9], ['west', 12, 33]]) {
+    for (const [name, x, y] of [['east', 59, 33], ['north', 35, 9], ['west', 11, 33]]) {
       const nearest = await base(`(() => { let best = null, away = 1e9; for (const t of b.arenaRim) { const d = Math.abs(t.x - ${x}) + Math.abs(t.y - ${y}); if (d < away) { away = d; best = t; } } return best; })()`);
       await walkTo(nearest);
       await step(300);

@@ -1,5 +1,8 @@
 import type { PaintedPicture } from '../world/minimap';
 import {
+  ARENA_DARK_BELOW,
+  ARENA_HALL_HEIGHT,
+  ARENA_HALL_WIDTH,
   ARENA_MAT,
   ARENA_TILE,
   WALL_FACE_HEIGHT,
@@ -39,8 +42,9 @@ const ARCADE_CAP = 8;
 
 /** The hall's pixel the top-left of the picture stands on, and how big it is. */
 export const STANDS_ORIGIN = { x: -48, y: -136 } as const;
-export const STANDS_WIDTH = 1136;
-export const STANDS_HEIGHT = 1200;
+export const STANDS_WIDTH = ARENA_HALL_WIDTH * ARENA_TILE - STANDS_ORIGIN.x * 2;
+/** Down past the hall's own foot, as far as the camera may go (`ARENA_DARK_BELOW`). */
+export const STANDS_HEIGHT = ARENA_HALL_HEIGHT * ARENA_TILE + ARENA_DARK_BELOW - STANDS_ORIGIN.y;
 
 /** Half the width of the way out, in pixels, and where it starts: the porch's own walls go on south. */
 const WAY_OUT_HALF = 34;
@@ -302,7 +306,24 @@ function paintArcadeBanners(data: Uint8ClampedArray): void {
   }
 }
 
-/** The stands, with nobody in them: the seats and the arcade. */
+/** How deep a course of the roof is, and how far out it takes to go as dark as it goes. */
+const ROOF_COURSE = 7;
+const ROOF_FADES_OVER = 110;
+
+/**
+ * Past the arcade's cap, out to the edge of everything the camera can reach: the
+ * colosseum's own roof, going down into the shade in courses. There is no black
+ * past the seats, which is what a camera near the wall used to show.
+ */
+function roofLevel(depth: number, hallX: number, x: number, y: number): readonly [number, number, number] {
+  const course = Math.floor(depth / ROOF_COURSE);
+  const joint = Math.floor(depth) % ROOF_COURSE === 0;
+  const fade = Math.min(1, depth / ROOF_FADES_OVER);
+  const level = joint ? 0.9 : 2.1 - fade * 0.8 + 0.25 * scatter(course, Math.floor(hallX / 24));
+  return stoneAt(level, x, y);
+}
+
+/** The stands, with nobody in them: the seats, the arcade, and the roof round all of it. */
 export function paintStands(): PaintedPicture {
   const width = STANDS_WIDTH;
   const height = STANDS_HEIGHT;
@@ -326,10 +347,13 @@ export function paintStands(): PaintedPicture {
         continue;
       }
       const at = (y * width + x) * 4;
-      if (acrossRing(north ? capNorth : capSouth, px, py, north) > 1) {
+      if (inWayOut(hallX, hallY)) {
         continue;
       }
-      if (inWayOut(hallX, hallY)) {
+      const pastCap = acrossRing(north ? capNorth : capSouth, px, py, north);
+      if (pastCap > 1) {
+        const cap = north ? capNorth : capSouth;
+        setPixel(data, at, roofLevel((pastCap - 1) * cap.rx, hallX, x, y));
         continue;
       }
       let row = -1;

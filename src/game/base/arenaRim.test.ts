@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { insertionsOn } from '../run/runGeneration';
-import { ARENA_FENCE, arenaCollision, cameraLean, pitFrameFor, pitPointOf, pitTileAt } from './arenaHall';
+import { ARENA_FENCE, ARENA_MAT, arenaCollision, cameraLean, pitFrameFor, pitPointOf, pitTileAt } from './arenaHall';
 import {
   ARENA_RIM,
   fenceBeside,
@@ -28,7 +28,7 @@ describe('the rim of the pit', () => {
       expect(isAtRim(tile)).toBe(true);
       expect(ARENA_FENCE).toContainEqual(fenceBeside(tile));
     }
-    expect(isAtRim({ x: 32, y: 62 })).toBe(false);
+    expect(isAtRim(ARENA_MAT)).toBe(false);
   });
 
   it('gives every way in a stretch of fence of its own, the ones in the middle of the map too', () => {
@@ -76,7 +76,7 @@ describe('the rim of the pit', () => {
       const stretch = ARENA_RIM.filter((tile) => landingBelow(tile, share)?.id === landing.id);
       const seen = stretch.filter((tile) => {
         const middle = tileMiddle(tile);
-        const lean = cameraLean(middle, 256);
+        const lean = cameraLean(middle, { width: 400, height: 256 });
         const point = pitPointOf(landing.tile, middle, VALE);
         return (
           showsThroughTheHole(landing.tile, middle, VALE) &&
@@ -90,7 +90,7 @@ describe('the rim of the pit', () => {
 
   it('finds the nearest tile over a way in for a pointer to walk to', () => {
     const share = shareTheRim(valeLandings, VALE);
-    const from = { x: 32, y: 59 };
+    const from = { x: ARENA_MAT.x, y: 59 };
     const tile = rimTileOver('greystone-vale-the-quarry', share, from)!;
     expect(landingBelow(tile, share)?.id).toBe('greystone-vale-the-quarry');
     expect(rimTileOver('nowhere', share, from)).toBeNull();

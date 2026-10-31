@@ -111,7 +111,7 @@ try {
   await step(500);
 
   /** Writes the raids on the record, and comes home to the rim from a raid that ended as told. */
-  const comeHome = async (mood, record, tile = { x: 32, y: 56 }) => {
+  const comeHome = async (mood, record, tile = { x: 35, y: 56 }) => {
     await page.evaluate(`(() => { const s = JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)})); s.raidProgress.raidRecord = { 'greystone-vale': ${JSON.stringify(record)} }; localStorage.setItem(${JSON.stringify(SAVE)}, JSON.stringify(s)); })()`);
     await base(`(() => { b.currentTile = ${JSON.stringify(tile)}; b.scene.start('base', { arrival: 'raid', room: 'raid-arena', raidMood: ${JSON.stringify(mood)}, at: ${JSON.stringify(tile)} }); return 1; })()`);
     await step(200);
@@ -182,7 +182,7 @@ try {
     await step(2600);
 
     // A lap of the ring, on the rim.
-    const centre = { x: 32.5, y: 33 };
+    const centre = { x: 35.5, y: 33 };
     const rim = (await base(`b.arenaRim.map((t) => ({ x: t.x, y: t.y }))`)).sort(
       (a, b) => Math.atan2(a.y - centre.y, a.x - centre.x) - Math.atan2(b.y - centre.y, b.x - centre.x),
     );
@@ -214,7 +214,7 @@ try {
   // --- the landing -------------------------------------------------------------
   /** Over the fence, stepping the fall; `pressAt` is when in the landing to press the key, or null. */
   const jumpIn = async (pressAt, name) => {
-    await walkTo({ x: 32, y: 56 });
+    await walkTo({ x: 35, y: 56 });
     await press('ArrowUp', 200);
     await press('Space', 700);
     for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
@@ -274,7 +274,7 @@ try {
     const world = (expression) => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return ${expression}; })()`);
     /** A raid walked along a line of the map, ending as told: a real walk's record, with the steps stepped by hand. */
     const raid = async (fromX, fromY, dx, dy, ending) => {
-      await walkTo({ x: 32, y: 56 });
+      await walkTo({ x: 35, y: 56 });
       await press('ArrowUp', 200);
       await press('Space', 700);
       for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
@@ -320,7 +320,7 @@ try {
     expect('a raid lost to the clock leaves a cross saying so', memory?.marks.at(-1)?.line === 'THE CLOCK RAN OUT HERE');
     await shot('memory-cross');
     // Round the rim until it names one.
-    const centre = { x: 32.5, y: 33 };
+    const centre = { x: 35.5, y: 33 };
     const rim = (await base(`b.arenaRim.map((t) => ({ x: t.x, y: t.y }))`)).sort(
       (a, b) => Math.atan2(a.y - centre.y, a.x - centre.x) - Math.atan2(b.y - centre.y, b.x - centre.x),
     );
@@ -343,10 +343,10 @@ try {
     const money = async () => (await saved()).stash.items?.money ?? (await saved()).stash.supplies?.money ?? 0;
     // Money, as found on raids, and one coin short of the first thing coming back.
     await page.evaluate(`(() => { const k = ${JSON.stringify(SAVE)}; const s = JSON.parse(localStorage.getItem(k)); const held = s.stash.items ? s.stash.items : s.stash.supplies; held.money = 400; s.raidProgress.pit = { fed: 14, taken: 0 }; localStorage.setItem(k, JSON.stringify(s)); })()`);
-    await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 32, y: 56 } }); return 1; })()`);
+    await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 35, y: 56 } }); return 1; })()`);
     await step(300);
     await until(inHall, 'the hall again');
-    await walkTo({ x: 32, y: 56 });
+    await walkTo({ x: 35, y: 56 });
     await press('ArrowUp', 300);
     expect('nothing advertises the coin to somebody just arriving at the rail', !(await base('b.hintShown')).includes('[C]'));
     await step(10500);
@@ -396,7 +396,7 @@ try {
     const setLevel = (level) =>
       page.evaluate(`(() => { const k = ${JSON.stringify(SAVE)}; const s = JSON.parse(localStorage.getItem(k)); const p = s.stash.pokemon[0].pokemon; p.level = ${level}; p.xp = Math.pow(${level}, 3); p.currentHp = 9999; localStorage.setItem(k, JSON.stringify(s)); })()`);
     const backToHall = async () => {
-      await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 32, y: 7 } }); return 1; })()`);
+      await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 35, y: 7 } }); return 1; })()`);
       await step(300);
       await until(inHall, 'the hall again');
       // The level above was written by hand: read back and written once, as the game writes a save, so that
@@ -423,7 +423,7 @@ try {
     };
     await setLevel(70);
     await backToHall();
-    await walkTo({ x: 32, y: 7 });
+    await walkTo({ x: 35, y: 7 });
     await press('ArrowUp', 400);
     await shot('bout-rival');
     const hint = await base('b.hintShown');
@@ -491,7 +491,7 @@ try {
     // Losing outright, down to the last Pokemon.
     await setLevel(5);
     await backToHall();
-    await walkTo({ x: 32, y: 7 });
+    await walkTo({ x: 35, y: 7 });
     await press('ArrowUp', 300);
     const lost = await allButBouts();
     await challenge(null);
@@ -508,7 +508,7 @@ try {
     // All five in a row, and the banner.
     await setLevel(70);
     await backToHall();
-    await walkTo({ x: 32, y: 7 });
+    await walkTo({ x: 35, y: 7 });
     await press('ArrowUp', 300);
     for (let round = 0; round < 5; round += 1) {
       await challenge(null);

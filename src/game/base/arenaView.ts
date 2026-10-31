@@ -11,6 +11,7 @@ import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import {
+  ARENA_TELESCOPES,
   ARENA_TILE,
   ARENA_TORCHES,
   FLOOR_PARALLAX,
@@ -27,6 +28,7 @@ import {
   pitPointOf,
   pitTileAt,
   podiumHole,
+  telescopeGlintPoint,
   type PitFrame,
 } from './arenaHall';
 import { windowLight, type WindowLight } from './homeClock';
@@ -94,6 +96,7 @@ import {
   type ShadowPass,
 } from './pitLife';
 import { wallMapPicture } from './wallMap';
+import type { OverviewSource } from './valeOverviewView';
 import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
 import { PLAYER_BANNER_AT, PLAYER_BANNER_SIZE, paintPlayerBanner } from './arenaBouts';
 import { COINS_TO_WAKE_THE_EYES, COIN_PLINK_MS, coinAt } from './pitCoins';
@@ -275,6 +278,11 @@ const POSED_MOST = 320;
 
 const NAME_PLATE_HEIGHT = 13;
 
+/** How often the telescopes' brass catches the light, and the little star it makes: a pixel wider a step, then gone. */
+const TELESCOPE_GLINT_EVERY_MS = 2800;
+const TELESCOPE_GLINT_STEP_MS = 70;
+const TELESCOPE_GLINT_REACH = [0, 1, 2, 3, 2, 1] as const;
+
 /** The mist's two sheets: how thick each, and at each hour the colour of the air they catch the light of. */
 const MIST_ALPHAS = [0.2, 0.13] as const;
 const MIST_TINTS: Readonly<Record<WindowLight, number>> = { day: 0xffffff, dusk: 0xf0c8a0, night: 0x7888b8 };
@@ -360,6 +368,25 @@ function paintFlameFrames(frames: readonly (readonly string[])[], frameWidth: nu
     }),
   );
   return { width, height, data };
+}
+
+/** A mark on the floor of the pit: where a raid fell or where it got out. */
+function drawRaidMark(on: Phaser.GameObjects.Graphics, mark: RaidMark & { readonly age: number }, x: number, y: number): void {
+  const fade = mark.age < 2 ? 0 : mark.age < 7 ? 1 : 2;
+  if (mark.kind === 'fell') {
+    // A cross, ringed in ink so it reads on sea, wood and cloud.
+    on.fillStyle(MARK_SHADE, 1);
+    on.fillRect(x - 3, y - 3, 3, 3).fillRect(x + 1, y - 3, 3, 3).fillRect(x - 1, y - 1, 3, 3).fillRect(x - 3, y + 1, 3, 3).fillRect(x + 1, y + 1, 3, 3);
+    on.fillStyle(CROSS_INKS[fade], 1);
+    for (const at of [-2, -1, 0, 1, 2]) {
+      on.fillRect(x + at, y + at, 1, 1).fillRect(x - at, y + at, 1, 1);
+    }
+  } else {
+    // A pole with a pennant on it.
+    on.fillStyle(MARK_SHADE, 1).fillRect(x - 1, y - 6, 3, 9).fillRect(x + 1, y - 7, 5, 5);
+    on.fillStyle(POLE_INK, 1).fillRect(x, y - 5, 1, 7);
+    on.fillStyle(FLAG_INKS[fade], 1).fillRect(x + 1, y - 6, 4, 3);
+  }
 }
 
 /** How far the floor comes up for how far the hall has gone past, and how far in the view is when the mist has gone. */
@@ -457,6 +484,8 @@ export class ArenaView {
   private readonly tiers: Phaser.GameObjects.Blitter[] = [];
   private readonly mists: Phaser.GameObjects.TileSprite[] = [];
   private readonly look: Phaser.GameObjects.Image;
+  private readonly glints: Phaser.GameObjects.Graphics;
+  private glintMs = 0;
   private readonly fires: Fire[] = [];
   private breathHeld = false;
   private readonly nameFrame: Phaser.GameObjects.Graphics;
@@ -596,6 +625,7 @@ export class ArenaView {
       }
     }
 
+    this.glints = scene.add.graphics().setDepth(PAPER_DEPTH);
     ensureTexture(scene, LOOK_TEXTURE, paintLookMark);
     this.look = (scene.add.image(0, 0, LOOK_TEXTURE).setDepth(LOOK_DEPTH).setVisible(false));
     ensureTexture(scene, LIGHT_TEXTURE, paintLandingLight);
@@ -723,22 +753,61 @@ export class ArenaView {
     });
     for (const mark of marksOn(memory, this.mapIdValue)) {
       const { x, y } = this.floorPixelOf(mark);
-      const fade = mark.age < 2 ? 0 : mark.age < 7 ? 1 : 2;
-      const on = mark.age === 0 ? this.newestMark : layer;
-      if (mark.kind === 'fell') {
-        // A cross, ringed in ink so it reads on sea, wood and cloud.
-        on.fillStyle(MARK_SHADE, 1);
-        on.fillRect(x - 3, y - 3, 3, 3).fillRect(x + 1, y - 3, 3, 3).fillRect(x - 1, y - 1, 3, 3).fillRect(x - 3, y + 1, 3, 3).fillRect(x + 1, y + 1, 3, 3);
-        on.fillStyle(CROSS_INKS[fade], 1);
-        for (const at of [-2, -1, 0, 1, 2]) {
-          on.fillRect(x + at, y + at, 1, 1).fillRect(x - at, y + at, 1, 1);
-        }
-      } else {
-        // A pole with a pennant on it.
-        on.fillStyle(MARK_SHADE, 1).fillRect(x - 1, y - 6, 3, 9).fillRect(x + 1, y - 7, 5, 5);
-        on.fillStyle(POLE_INK, 1).fillRect(x, y - 5, 1, 7);
-        on.fillStyle(FLAG_INKS[fade], 1).fillRect(x + 1, y - 6, 4, 3);
-      }
+      drawRaidMark(mark.age === 0 ? this.newestMark : layer, mark, x, y);
+    }
+  }
+
+  /** What a telescope shows (`valeOverviewView.ts`): the floor's own picture and everything laid on it. */
+  public overviewSource(): OverviewSource {
+    const { width, height, scale } = this.frameValue;
+    ensureTexture(this.scene, SHADOW_TEXTURE, paintWingShadow);
+    this.addShadowFrames();
+    const memory = this.game.raidProgress.raidMemory;
+    return {
+      floorTexture: floorTexture(this.mapIdValue),
+      mapFloor: {
+        left: (PIT_FLOOR_SIZE - width * scale) / 2,
+        top: (PIT_FLOOR_SIZE - height * scale) / 2,
+        width: width * scale,
+        height: height * scale,
+      },
+      scale,
+      mapName: worldMapName(this.mapIdValue),
+      walkedPercent: Math.round(this.walkedShare * 100),
+      landings: this.shareValue.landings,
+      townLights: this.townLightsHere,
+      marks: marksOn(memory, this.mapIdValue),
+      trail: trailDots(memory, this.mapIdValue),
+      drawMark: drawRaidMark,
+      textures: { light: LIGHT_TEXTURE, look: LOOK_TEXTURE, mist: MIST_TEXTURE, shadow: SHADOW_TEXTURE },
+      mistAlphas: MIST_ALPHAS,
+      mistTint: MIST_TINTS[this.light],
+      cloudShadow: this.light === 'day' ? { alpha: CLOUD_SHADOW_ALPHA, tint: CLOUD_SHADOW_TINT } : null,
+      trailInk: TRAIL_INK,
+      trailShade: TRAIL_SHADE,
+    };
+  }
+
+  private addShadowFrames(): void {
+    const sheet = this.scene.textures.get(SHADOW_TEXTURE);
+    if (!sheet.has('0')) {
+      [0, 1, 2].forEach((frame) => sheet.add(String(frame), 0, frame * SHADOW_WIDTH, 0, SHADOW_WIDTH, SHADOW_HEIGHT));
+    }
+  }
+
+  /** Lets the brass catch the light now and then, so a telescope is seen from along the rail. */
+  private glintTheTelescopes(deltaMs: number): void {
+    this.glintMs = (this.glintMs + deltaMs) % TELESCOPE_GLINT_EVERY_MS;
+    const on = this.glints;
+    on.clear();
+    const step = Math.floor(this.glintMs / TELESCOPE_GLINT_STEP_MS);
+    const reach = TELESCOPE_GLINT_REACH[step];
+    if (reach === undefined) {
+      return;
+    }
+    on.fillStyle(0xfff8d0, 1);
+    for (const { x, y } of ARENA_TELESCOPES.map(telescopeGlintPoint)) {
+      on.fillRect(x - reach, y, reach * 2 + 1, 1).fillRect(x, y - reach, 1, reach * 2 + 1);
     }
   }
 
@@ -878,6 +947,7 @@ export class ArenaView {
     slow.setTilePosition(Math.round(this.drift / 170), Math.round(this.drift / 420));
     fast.setTilePosition(-Math.round(this.drift / 95), Math.round(this.drift / 300));
     this.burn(deltaMs);
+    this.glintTheTelescopes(deltaMs);
     this.listen(deltaMs, player);
     this.cloudShadow?.setTilePosition(Math.round(this.drift / 120), Math.round(this.drift / 260));
     this.twinkle(deltaMs);
@@ -1096,10 +1166,7 @@ export class ArenaView {
 
   private startShadow(view: Phaser.Geom.Rectangle): void {
     ensureTexture(this.scene, SHADOW_TEXTURE, paintWingShadow);
-    const sheet = this.scene.textures.get(SHADOW_TEXTURE);
-    if (!sheet.has('0')) {
-      [0, 1, 2].forEach((frame) => sheet.add(String(frame), 0, frame * SHADOW_WIDTH, 0, SHADOW_WIDTH, SHADOW_HEIGHT));
-    }
+    this.addShadowFrames();
     // Across the part of the hole on the screen, or a thing this rare is wasted.
     const hole = podiumHole();
     const seenTop = Math.max(view.top, hole.y - hole.ry);

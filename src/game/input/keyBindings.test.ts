@@ -37,6 +37,7 @@ import { createStartingStash } from '../stash';
 import { lootRefusalLine } from '../world/loot';
 import {
   HOME_KEY_LETTERS,
+  TELESCOPE_KEY_LETTERS,
   decorateKeyHintLine,
   houseKeyHintLine,
   phraseListLines,
@@ -188,6 +189,13 @@ describe('the keys the house names', () => {
     const box = /\[([A-Z])\]\[([A-Z])\] BOX/.exec(decorateKeyHintLine('holding', true))!;
     expect((controls.boxBack as BoundKey).keyCode).toBe(KEY_CODES[box[1]]);
     expect((controls.boxNext as BoundKey).keyCode).toBe(KEY_CODES[box[2]]);
+  });
+
+  it('binds the keys the telescope names along its foot', () => {
+    const controls = controlsOf(new BaseScene());
+    expect((controls.boxBack as BoundKey).keyCode).toBe(KEY_CODES[TELESCOPE_KEY_LETTERS.wayBack]);
+    expect((controls.boxNext as BoundKey).keyCode).toBe(KEY_CODES[TELESCOPE_KEY_LETTERS.wayNext]);
+    expect((controls.closer as BoundKey).keyCode).toBe(KEY_CODES[TELESCOPE_KEY_LETTERS.closer]);
   });
 
   it('stops offering to decorate once it has been done, and never names a knock key', () => {
