@@ -140,7 +140,7 @@ export const ARENA_INTRO_BEATS = [
   { id: 'extracted', at: 36700 },
   /** Back at the Arena's door, where the host asks. */
   { id: 'arena', at: 40300 },
-  /** BOOK YOUR LOADOUT, held until a key is pressed. */
+  /** KIT UP, held until a key is pressed. */
   { id: 'loadout', at: 48500 },
 ] as const;
 
@@ -179,7 +179,7 @@ export function arenaIntroWords(cast: ArenaIntroCast) {
       `${ARENA_INTRO_HOST}: That's a raid, ${cast.playerName}. Sneak in, grab what you can, and get out before the hunter gets you.`,
       `${ARENA_INTRO_HOST}: So, champ in the making... are you ready to take on the challenge?`,
     ],
-    loadout: 'BOOK YOUR LOADOUT TO START THE RAID',
+    loadout: 'KIT UP TO JUMP IN',
     press: 'PRESS ANY KEY',
     skip: 'SKIP',
   };

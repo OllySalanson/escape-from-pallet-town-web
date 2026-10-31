@@ -413,6 +413,8 @@ export interface RoomThing {
   readonly note: string;
   /** The tiles the caption is seated against and speaks from. */
   readonly tiles: readonly GridPosition[];
+  /** Tiles beside it that answer for it when faced, though nothing of it is drawn there. */
+  readonly alsoFaced?: readonly GridPosition[];
   /** The rung of Brock's ladder it shows, if it shows one. */
   readonly upgradeId?: string;
   /**
@@ -1674,6 +1676,7 @@ function buildArenaHall(room: BaseRoom, game: RestoredGame): BuiltRoom {
         name: ARENA_STATION_NAMES[station.id],
         note: '',
         tiles: station.tiles,
+        alsoFaced: station.past,
         opens: station.id,
       })),
       ...shown.things,

@@ -88,6 +88,6 @@ describe('THE RAID ARENA trailer', () => {
     expect(words.host.every((line) => line.startsWith(`${ARENA_INTRO_HOST}: `))).toBe(true);
     expect(words.host.join(' ')).toContain('ASH');
     expect(words.host.at(-1)).toContain('ready to take on the challenge?');
-    expect(words.loadout).toBe('BOOK YOUR LOADOUT TO START THE RAID');
+    expect(words.loadout).toBe('KIT UP TO JUMP IN');
   });
 });

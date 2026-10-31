@@ -85,6 +85,9 @@ const tileCorners = (tile: GridPosition): readonly (readonly [number, number])[]
 /** The door mat's middle tile: in through the south wall, on the hall's centre line. */
 export const ARENA_MAT: GridPosition = { x: 32, y: 62 };
 
+/** The mat is three tiles of red across the porch, and all three of them are the way out. */
+export const ARENA_MAT_REACH = 1;
+
 /** The porch the mat stands in, cut through the south wall. */
 const inPorch = (tile: GridPosition): boolean =>
   Math.abs(tile.x - ARENA_MAT.x) <= 1 && tile.y >= ARENA_MAT.y - 2 && tile.y <= ARENA_MAT.y;
@@ -153,7 +156,26 @@ export interface ArenaStation {
   readonly id: ArenaStationId;
   /** The tiles it stands on: one row, walked up to from the floor in front of it. */
   readonly tiles: readonly GridPosition[];
+  /**
+   * The tile at an end of its row with a pillar's shaft rising over it. A player
+   * walking along the row stopped there to use the station, out of sight behind
+   * the pillar with only a chevron over a torch. So it is solid, and answers for
+   * the station: walking along the row, the player stops short of the pillar, in
+   * full view, and pressing on towards it still reaches what they came for.
+   */
+  readonly past: readonly GridPosition[];
 }
+
+/** A pillar's shaft rises over this many tiles behind its foot, and whoever stands there is behind it. */
+const PILLAR_HIDES_TILES = 2;
+
+const station = (id: ArenaStationId, left: number, width: number): ArenaStation => ({
+  id,
+  tiles: stationRow(left, width),
+  past: [left - 1, left + width]
+    .filter((x) => ARENA_PILLARS.some((pillar) => pillar.x === x && pillar.y > STATION_ROW && pillar.y - STATION_ROW <= PILLAR_HIDES_TILES))
+    .map((x) => ({ x, y: STATION_ROW })),
+});
 
 const stationRow = (left: number, width: number): readonly GridPosition[] =>
   Array.from({ length: width }, (_tile, index) => ({ x: left + index, y: STATION_ROW }));
@@ -168,9 +190,9 @@ const STATION_ROW = 58;
  * as a pillar does, so the walk round the back of it is a walk behind it.
  */
 export const ARENA_STATIONS: readonly ArenaStation[] = [
-  { id: 'bench', tiles: stationRow(23, 6) },
-  { id: 'rack', tiles: stationRow(36, 3) },
-  { id: 'locker', tiles: stationRow(40, 2) },
+  station('bench', 23, 6),
+  station('rack', 36, 3),
+  station('locker', 40, 2),
 ];
 
 /** The station on this tile, if there is one. */
@@ -186,7 +208,8 @@ export function arenaCollision(): boolean[][] {
       return (
         !isPlatform(tile) ||
         ARENA_PILLARS.some((pillar) => sameTile(pillar, tile)) ||
-        arenaStationAt(tile) !== undefined
+        arenaStationAt(tile) !== undefined ||
+        ARENA_STATIONS.some((station) => station.past.some((each) => sameTile(each, tile)))
       );
     }),
   );
