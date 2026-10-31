@@ -318,6 +318,9 @@ game.
   `#9aa4b2`), over one shared strap and buckle brown. Which pack you are wearing
   is the decision the loadout screen exists to ask, so the four have to be
   legible against each other at 16px and without reading the word beside them.
+  The same four **on a figure's back** are no file at all: `src/game/look/wornPack.ts`
+  draws them as rows of pixels in those colours and lays them into the player's
+  sheet at run time. Original to this repository.
   `landmark-worked` is `scripts/draw-worked-landmark-icon.mjs`: the same mast
   `radio-mast` draws, with the one difference a player has to read at 16px and
   at a glance - the beacon lit green (`#9be27a`, the colour a door you opened is

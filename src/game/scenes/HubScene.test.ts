@@ -420,6 +420,7 @@ describe('a panel over the hall', () => {
       game,
       flow: flowForGame(game),
       close: () => calls.push('close'),
+      dress: () => calls.push('dress'),
       jump: (data) => {
         world = data as WorldSceneData;
         calls.push('jump');

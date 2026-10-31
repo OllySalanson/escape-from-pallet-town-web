@@ -93,6 +93,7 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
     sayFirstWords: scene.sayFirstWords,
     hearFirstWords: scene.hearFirstWords,
     oakGives: scene.oakGives,
+    dressPlayer: () => undefined,
     readTheBoard: scene.readTheBoard,
     joyOffers: scene.joyOffers,
     freshGame: scene.freshGame,

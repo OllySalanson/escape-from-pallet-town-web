@@ -1,4 +1,5 @@
 import { activeSaveSlot, isPlaytestRun } from '../dev/playtestMode';
+import type { PackItemId } from '../items/items';
 import type { DressedLook } from '../look/look';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { HarbourLink, type HarbourWire, type NamedFigure } from '../harbour/harbourLink';
@@ -56,6 +57,7 @@ export class FriendRoom {
   private tile: GridPosition = { x: 0, y: 0 };
   /** What this player wears into the raid, for the room to see them in. */
   private look: DressedLook | null = null;
+  private pack: PackItemId | null = null;
   private known = new Map<string, string>();
   private lastNews: FriendNews | null = null;
   private now = 0;
@@ -140,9 +142,16 @@ export class FriendRoom {
    * they wear (`look/look.ts`, null for the classic figure), which the room
    * sees them in as the harbour does.
    */
-  public inRaid(mapId: string, tile: GridPosition, facing: Direction, look: DressedLook | null = null): void {
+  public inRaid(
+    mapId: string,
+    tile: GridPosition,
+    facing: Direction,
+    look: DressedLook | null = null,
+    pack: PackItemId | null = null,
+  ): void {
     if (this.held?.mapId === mapId) {
       this.look = look;
+      this.pack = pack;
       this.stand(mapPlace(mapId), tile, facing);
     }
   }
@@ -328,7 +337,7 @@ export class FriendRoom {
       });
     }
     this.link.enter(held.me, place, tile, facing);
-    this.link.wear(this.look);
+    this.link.wear(this.look, this.pack);
   }
 
   private hold(room: HeldRoom): void {

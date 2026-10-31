@@ -131,7 +131,7 @@ export class HarbourRegulars {
         facing = directionBetween(at.tile, toward(at.tile, player)) ?? facing;
       }
       if (!this.crowd.ids().includes(id)) {
-        this.crowd.hear({ from: id, place: at.place, path: [at.tile], facing, partner: bot.partner, look: bot.look });
+        this.crowd.hear({ from: id, place: at.place, path: [at.tile], facing, partner: bot.partner, look: bot.look, pack: bot.pack });
       }
       // The crowd is told only steps it has not heard, as a player's browser
       // sends them: told the step they are on again every frame, it queued
@@ -149,6 +149,7 @@ export class HarbourRegulars {
         facing: path.length === 1 && !sameTile(heading, target) ? directionOf(heading, target) : facing,
         partner: bot.partner,
         look: bot.look,
+        pack: bot.pack,
       });
     }
     this.crowd.advance(deltaMs, (id, tile) => this.mayStepOnto(id, tile, deltaMs, placed.find((each) => each.id === id)?.at.place ?? 'yard', watcher));

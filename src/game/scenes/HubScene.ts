@@ -1601,7 +1601,10 @@ export class HubScene extends Phaser.Scene {
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
     });
     on('[data-pokemon]', (button) => this.answer(this.flow.togglePokemon(button.dataset.pokemon!), 'select'));
-    on('[data-pack]', (button) => this.answer(this.flow.choosePack(button.dataset.pack! as PackItemId), 'select'));
+    on('[data-pack]', (button) => {
+      this.answer(this.flow.choosePack(button.dataset.pack! as PackItemId), 'select');
+      this.kit?.dress();
+    });
     on('[data-treat-item]', (button) => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!));
     on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
     on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));

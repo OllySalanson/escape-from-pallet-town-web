@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
+import { isPackId } from '../items/packs';
 import { lookKey, readLook } from '../look/look';
-import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
+import { bikeTexture, lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
@@ -28,7 +29,6 @@ import {
   BIKE_HEAD_DROP,
   BIKE_ORIGIN_X,
   BIKE_SHEET_COLUMNS,
-  BIKE_TEXTURE,
   stepDurationFor,
   stillRiding,
   toggleBike,
@@ -1665,7 +1665,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.runSession || rooms?.room?.mapId !== this.currentMap.id) {
       return;
     }
-    rooms.inRaid(this.currentMap.id, this.currentTile, this.facing, readLook(this.runSession?.look));
+    const pack = this.runSession?.packItemId;
+    rooms.inRaid(this.currentMap.id, this.currentTile, this.facing, readLook(this.runSession?.look), isPackId(pack) ? pack : null);
     this.friendFigures = new HarbourFigures(this, () => RAID_NAME_PLATE_DEPTH);
     // Anything the others took before this player dropped in, or while they
     // were in a fight, is already gone.
@@ -6187,11 +6188,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /**
    * The sheet the player walks in: what they wore out of the door
-   * (`look/look.ts`), or the classic figure. On the Bicycle the rider is
-   * FireRed's own (`world/bicycle.ts`).
+   * (`look/look.ts`), or the classic figure, with the raid's pack on their back
+   * (`look/wornPack.ts`). On the Bicycle the rider is FireRed's own
+   * (`world/bicycle.ts`), and the pack rides with them.
    */
   private walkingTexture(): string {
-    return lookTexture(this, readLook(this.runSession?.look));
+    return lookTexture(this, readLook(this.runSession?.look), this.runSession?.packItemId);
+  }
+
+  private ridingTexture(): string {
+    return bikeTexture(this, this.runSession?.packItemId);
   }
 
   /** How far the chevron over the player sits below the classic head: the Bicycle's rider, or this look's head. */
@@ -6206,7 +6212,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** The player's walk - or pedal - cycle for the way they face. */
   private playerWalkKey(): string {
-    return this.riding ? getWalkAnimationKey(this.facing, BIKE_TEXTURE) : lookWalkKey(this.walkingTexture(), this.facing);
+    return this.riding ? getWalkAnimationKey(this.facing, this.ridingTexture()) : lookWalkKey(this.walkingTexture(), this.facing);
   }
 
   /** Where riding stands, as `world/bicycle.ts` asks it. */
@@ -6236,7 +6242,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!changed || !this.player) {
       return;
     }
-    this.player.setTexture(riding ? BIKE_TEXTURE : this.walkingTexture(), this.playerIdleFrame(this.facing));
+    this.player.setTexture(riding ? this.ridingTexture() : this.walkingTexture(), this.playerIdleFrame(this.facing));
     // The ridden frame is two tiles wide: a quarter in is the middle of the tile.
     this.player.setOrigin(riding ? BIKE_ORIGIN_X : 0, 0);
     this.playerHeadMark.setY(this.player.y + this.headDrop());

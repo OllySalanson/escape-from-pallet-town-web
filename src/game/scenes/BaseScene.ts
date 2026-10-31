@@ -220,8 +220,8 @@ import type { BattleSceneData } from './BattleScene';
 import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
 import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
-import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag } from '../items/items';
-import { FALLBACK_PACK_ID, STARTING_PACK_ID, packSquares } from '../items/packs';
+import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag, type PackItemId } from '../items/items';
+import { FALLBACK_PACK_ID, STARTING_PACK_ID, bestPackIn, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
 import { ValeOverviewView } from '../base/valeOverviewView';
@@ -1080,6 +1080,7 @@ export class BaseScene extends Phaser.Scene {
       houseName(),
       partnerOf(this.savedGame.stash)?.species ?? null,
       readLook(this.savedGame.raidProgress.look),
+      this.wornPack(),
     );
     this.createCaptions();
     this.createDialogBox();
@@ -1493,6 +1494,7 @@ export class BaseScene extends Phaser.Scene {
       game,
       flow,
       close: () => this.closeHallPanel(),
+      dress: () => this.dressPlayer(),
       jump: (world) => this.beginJump(world),
       aim: (id) => this.aimAtInsertion(id),
       below: () => this.arena?.lookLines(this.currentTile) ?? [],
@@ -1795,6 +1797,7 @@ export class BaseScene extends Phaser.Scene {
     this.spentPresses.spendHeld(this.directionKeys());
     this.savedGame = this.saveManager.load() ?? this.kit.game;
     this.furniture?.show(this.kit.flow, partnerOf(this.savedGame.stash)?.id ?? null);
+    this.dressPlayer();
     this.sayStationNotes();
     audioManager.play('menuClose');
   }
@@ -3293,7 +3296,7 @@ export class BaseScene extends Phaser.Scene {
   private createPlayer(): void {
     // The player is drawn in what they wear (`look/look.ts`); a save that has
     // never been to the boutique wears the classic figure the game always drew.
-    this.playerTexture = lookTexture(this, readLook(this.savedGame.raidProgress.look));
+    this.playerTexture = lookTexture(this, readLook(this.savedGame.raidProgress.look), this.wornPack());
     this.player = this.add
       .sprite(0, 0, this.playerTexture, getIdleFrame(this.facing))
       .setOrigin(0, 0);
@@ -4905,6 +4908,7 @@ export class BaseScene extends Phaser.Scene {
         name,
         this.partner?.species ?? null,
         readLook(this.savedGame.raidProgress.look),
+        this.wornPack(),
       );
       this.say(welcomeHomeLines(name), []);
     });
@@ -5219,7 +5223,15 @@ export class BaseScene extends Phaser.Scene {
       this.showHint(this.hintHere());
       // The console can change the player's name: the harbour hears it now,
       // not at the next door.
-      harbour()?.stand(this.harbourWhere(), this.currentTile, this.facing, houseName(), this.partner?.species ?? null);
+      harbour()?.stand(
+        this.harbourWhere(),
+        this.currentTile,
+        this.facing,
+        houseName(),
+        this.partner?.species ?? null,
+        readLook(this.savedGame.raidProgress.look),
+        this.wornPack(),
+      );
     });
     this.scene.pause();
     this.scene.launch('console', { pausedBase: true } satisfies ConsoleSceneData);
@@ -5528,6 +5540,8 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     this.savedGame = this.saveManager.load() ?? this.savedGame;
+    // Oak's last reward is the Hauler frame: it goes straight on.
+    this.dressPlayer();
     audioManager.play('itemObtained');
     this.say(milestoneWords(given.milestone, given.owned, continuing).lines, about, () =>
       this.oakGives(about, then, true),
@@ -5831,9 +5845,25 @@ export class BaseScene extends Phaser.Scene {
     this.scene.launch('boutique', { mode, pausedBase: true } satisfies BoutiqueSceneData);
   }
 
-  /** Draws the player in what the save says they wear. */
+  /**
+   * The pack on the player's back about the base: the one the rack has out while
+   * they are in the hall, and otherwise the one it would open on, which is the
+   * best the vault holds. Nothing until a game has begun, and nothing if the
+   * vault holds no pack at all.
+   */
+  private wornPack(): PackItemId | null {
+    if (this.choosing) {
+      return null;
+    }
+    return (this.kit ? this.kit.flow.packItemId : bestPackIn(this.savedGame.stash.listItems())) ?? null;
+  }
+
+  /** Draws the player in what the save says they wear, with the pack they have on, and tells the harbour. */
   private dressPlayer(): void {
-    const texture = lookTexture(this, readLook(this.savedGame.raidProgress.look));
+    const look = readLook(this.savedGame.raidProgress.look);
+    const pack = this.wornPack();
+    harbour()?.link.wear(look, pack);
+    const texture = lookTexture(this, look, pack);
     if (texture === this.playerTexture) {
       return;
     }
