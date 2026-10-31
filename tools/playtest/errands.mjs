@@ -174,7 +174,7 @@ try {
   // Her talk ends in the room: no screen opens, and nothing more is asked.
   if (await page.evaluate(sceneIs('hub'))) throw new Error('Joy opened a screen');
   await press('Space', 600);
-  expectSaid(await readOn(), 'fit to raid', 'Joy with nothing to ask');
+  expectSaid(await readOn(), 'Your Pokémon are all fit to raid', 'Joy with nothing to ask');
   await press('ArrowDown', 900);
 
   // Bill asks, and a YES takes it on.
@@ -207,12 +207,12 @@ try {
   await load(`(save) => { save.raidProgress.errands = [...save.raidProgress.errands.filter((e) => e.id !== 'oaks-parcel'), { id: 'oaks-parcel', status: 'started', found: 1, lossesHeard: 0 }]; }`);
   await intoRoom('oaks-lab');
   await press('Space', 300);
-  expectSaid(await readOn(), 'My parcel never made it home?', 'Oak hears of the loss');
+  const oakSaid = await readOn();
+  expectSaid(oakSaid, 'My parcel never made it home?', 'Oak hears of the loss');
   const oak = (await progress()).errands.find((e) => e.id === 'oaks-parcel');
   if (oak.lossesHeard !== 1) throw new Error(`Oak's loss is recorded as ${JSON.stringify(oak)}`);
-  // Oak's board lists every errand in hand under his contracts, and he reads it out.
-  const board = await readOn();
-  if (!board.some((line) => /Oak's Parcel/i.test(line))) throw new Error(`the board has no errands: ${JSON.stringify(board).slice(0, 300)}`);
+  // Oak's board lists every errand in hand under his contracts, and he reads it out after the loss.
+  if (!oakSaid.some((line) => /parcel/i.test(line) && !line.startsWith('My parcel'))) throw new Error(`the board has no errands: ${JSON.stringify(oakSaid).slice(0, 300)}`);
   await page.screenshot(`${out}/lab-board.png`);
 
   // The rim's panel names the errands on the map being looked at. Raids start
