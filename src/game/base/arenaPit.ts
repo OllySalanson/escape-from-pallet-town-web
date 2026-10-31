@@ -13,6 +13,9 @@ import {
   tierHole,
   type Oval,
 } from './arenaHall';
+import type { WindowLight } from './homeClock';
+import { inkAtHour } from './pitClock';
+import { PIT_GATES } from './pitLife';
 
 /**
  * What is painted into THE RAID ARENA's pit when the player walks in, a game
@@ -108,8 +111,8 @@ export function paintTier(tier: number): PaintedPicture {
   return { width, height, data };
 }
 
-/** Where the gates stand round the podium wall. */
-const GATES = 18;
+/** Where the gates stand round the podium wall (`PIT_GATES`). */
+const GATES = PIT_GATES;
 
 /**
  * The sheer wall at the foot of the steps: dark stone, a line of barred gates
@@ -351,9 +354,12 @@ const isKnown = isGroundKnown;
  * that stands up - a wood, a crag, a wall - throws a pixel of shadow to the
  * south-east, which is what makes it ground seen from above rather than a chart.
  */
-export function paintPitFloor(picture: Minimap): PaintedPicture {
+export function paintPitFloor(picture: Minimap, light: WindowLight = 'day'): PaintedPicture {
   const size = PIT_FLOOR_SIZE;
   const data = new Uint8ClampedArray(size * size * 4);
+  // Marks stay as they are: a way in is a light at any hour.
+  const putCloud = (at: number, ink: Rgb): void => setPixel(data, at, inkAtHour(ink, CLOUD_INKS.includes(ink) ? 'cloud' : 'under', light));
+  const putGround = (at: number, ink: Rgb): void => setPixel(data, at, inkAtHour(ink, 'ground', light));
   const frame = pitFrameFor(picture.width, picture.height);
   const offsetX = (size - frame.width * frame.scale) / 2;
   const offsetY = (size - frame.height * frame.scale) / 2;
@@ -381,7 +387,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       if (!isKnown(char)) {
         // What shows through thins to nothing towards the map's edge, or the
         // cloud would draw the map's own square.
-        setPixel(data, at, unknownInk(x, y, char, fromEdge));
+        putCloud(at, unknownInk(x, y, char, fromEdge));
         continue;
       }
       const mark = MARK_INKS[char as string];
@@ -396,7 +402,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       if ((char === 'T' || char === 'W') && fromEdge < MAP_EDGE_BANK) {
         const reach = 8 + cloudField(x, y, 34, 53) * (MAP_EDGE_BANK - 8);
         if (fromEdge < reach && dithered((reach - fromEdge) / 7, x, y)) {
-          setPixel(data, at, cloudInk(x, y, 0.2));
+          putCloud(at, cloudInk(x, y, 0.2));
           continue;
         }
       }
@@ -413,7 +419,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
         }
       }
       if (nearest < 4 && dithered((4 - nearest) / 5, x, y)) {
-        setPixel(data, at, cloudInk(x, y, 0.1));
+        putCloud(at, cloudInk(x, y, 0.1));
         continue;
       }
       const inks = AIR_INKS[char as string];
@@ -421,7 +427,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       const standsUp = (other: string | undefined): boolean => other === 'T' || other === 'C' || other === 'B';
       const shaded = standsUp(charAt(mapX - 1, mapY - 1)) && !standsUp(char);
       const lit: Rgb = shaded ? [Math.round(ink[0] * 0.62), Math.round(ink[1] * 0.66), Math.round(ink[2] * 0.76)] : ink;
-      setPixel(data, at, hazed(lit, x, y));
+      putGround(at, hazed(lit, x, y));
     }
   }
   return { width: size, height: size, data };
@@ -431,9 +437,10 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
  * The cloud a jump goes down through, a sheet of it that repeats: the brightest
  * of what lies over the vale, with the same dark in its hollows, so going through
  * it reads as going through what was on the floor. The raid opens under this same
- * sheet (`world/raidArrival.ts`), which is what hides the join.
+ * sheet (`world/raidArrival.ts`), which is what hides the join. It repeats no
+ * oftener than a screen's height, so nobody sees it as a pattern.
  */
-export function cloudSheet(size = 128): PaintedPicture {
+export function cloudSheet(size = 256): PaintedPicture {
   const data = new Uint8ClampedArray(size * size * 4);
   const scale = size / 4;
   const field = (x: number, y: number, each: number, seed: number): number => {
@@ -450,8 +457,41 @@ export function cloudSheet(size = 128): PaintedPicture {
   };
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
-      const amount = Math.min(0.999, Math.max(0, (field(x, y, scale, 3) * 0.6 + field(x, y, scale / 2, 19) * 0.4 - 0.2) * 1.6));
+      const lumps = field(x, y, scale, 3) * 0.5 + field(x, y, scale / 2, 19) * 0.32 + field(x, y, scale / 4, 41) * 0.18;
+      const amount = Math.min(0.999, Math.max(0, (lumps - 0.2) * 1.6));
       const position = 3 + amount * (CLOUD_INKS.length - 4);
+      const whole = Math.floor(position);
+      const index = dithered(position - whole, x, y) ? whole + 1 : whole;
+      setPixel(data, (y * size + x) * 4, CLOUD_INKS[Math.min(CLOUD_INKS.length - 1, index)]);
+    }
+  }
+  return { width: size, height: size, data };
+}
+
+/**
+ * A piece of cloud torn off, going past on the way down: a lump of the same inks
+ * that thins to nothing on a dither at its edge. The same shape at any size, and
+ * painted at that size, so a piece coming nearer is still a game pixel to the pixel.
+ */
+export function paintCloudPiece(radius: number, seed: number): PaintedPicture {
+  const size = radius * 2;
+  const data = new Uint8ClampedArray(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const u = (x + 0.5 - radius) / radius;
+      const v = (y + 0.5 - radius) / radius;
+      const away = Math.hypot(u, v);
+      if (away >= 1) {
+        continue;
+      }
+      const lumps = cloudField((u + 2) * 3, (v + 2) * 3, 1, seed) * 0.55 + cloudField((u + 2) * 7, (v + 2) * 7, 1, seed + 17) * 0.3 + cloudField((u + 2) * 15, (v + 2) * 15, 1, seed + 31) * 0.15;
+      // Nothing at its edge whatever the lumps say, so it is never a square, and
+      // it is torn: a thin place near the middle is as thin as the edge.
+      const body = (1 - away) * (0.45 + lumps * 1.5) - 0.16;
+      if (body <= 0 || !dithered(body * 4.5, x, y)) {
+        continue;
+      }
+      const position = 2 + Math.min(1, body * 1.7) * (CLOUD_INKS.length - 3);
       const whole = Math.floor(position);
       const index = dithered(position - whole, x, y) ? whole + 1 : whole;
       setPixel(data, (y * size + x) * 4, CLOUD_INKS[Math.min(CLOUD_INKS.length - 1, index)]);

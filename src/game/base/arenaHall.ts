@@ -416,24 +416,75 @@ export function pitLookPoint(tile: GridPosition): { readonly x: number; readonly
 /** How far across the hole a player's eye lands: just past the foot of the steps. */
 const LOOK_PAST_FOOT = 0.92;
 
+/** How far above a way in's light its name plate is seated, and below it when there is no room above. */
+const PLATE_ABOVE = 26;
+const PLATE_BELOW = 10;
+/** Kept clear at the screen's right edge, where the page's FEEDBACK tab stands over the canvas. */
+const PLATE_RIGHT_CLEAR = 14;
+
+/**
+ * Where a way in's name plate sits for a view of the hall, or null if it would
+ * not be whole. A plate is about a mark, so with the mark off the screen there
+ * is nothing to name; with the mark on it, the plate slides along to stay on it
+ * rather than be cut by the screen's edge. It is drawn under the hall's floor,
+ * so it must also stand wholly over the pit or the stone would cut it instead.
+ */
+export function namePlatePlace(
+  mark: { readonly x: number; readonly y: number },
+  plate: { readonly width: number; readonly height: number },
+  view: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+): { readonly x: number; readonly y: number } | null {
+  const right = view.x + view.width - PLATE_RIGHT_CLEAR;
+  const bottom = view.y + view.height;
+  if (mark.x < view.x || mark.x >= right || mark.y < view.y || mark.y >= bottom) {
+    return null;
+  }
+  const x = Math.min(right - plate.width, Math.max(view.x, Math.round(mark.x - plate.width / 2)));
+  const above = Math.round(mark.y) - PLATE_ABOVE;
+  const y = above >= view.y ? above : Math.round(mark.y) + PLATE_BELOW;
+  const fits =
+    x >= view.x &&
+    y + plate.height <= bottom &&
+    [
+      [x, y],
+      [x + plate.width, y],
+      [x, y + plate.height],
+      [x + plate.width, y + plate.height],
+    ].every(([cornerX, cornerY]) => acrossOval(PIT_RIM, cornerX, cornerY) < 1);
+  return fits ? { x, y } : null;
+}
+
+/** How far across the wall's oval the lean starts to turn: the pillars, well clear of anywhere a way in is chosen from. */
+const LEAN_TURNS_PAST = 0.88;
+
 /** How far the camera leans out over the pit from wherever the player stands, as a share of the way to the middle. */
 const CAMERA_LEAN = 0.2;
 /** What the most it leans has to leave at the foot of a screen: the player's own tile and the hint under it. */
 const CAMERA_LEAN_CLEAR = 56;
+/** How far past nothing the lean goes at the wall, on the side the stands can be seen from: it looks up at them. */
+const LEAN_TURNS_AT_WALL = 2.2;
+/** From how far south of the middle of the hall the view starts to turn outward at the wall at all. */
+const LEAN_TURNS_FROM = 200;
 
 /**
  * How far the camera stands from the player, towards the pit. The hall is far
  * bigger than a screen and the pit is what it is for, so whichever way round
  * the ring somebody walks the screen shows more of the hole than of the wall -
  * and from the north rail, where the steps are at their deepest, shows the
- * floor past them. A pure function of where they stand, so it needs no easing.
+ * floor past them. Walking away from the rail towards the wall on the far side
+ * turns the view round to look up at the stands. Never to the south: the door and
+ * the stations are the first screen anybody sees, and the lean is what shows them
+ * the pit. A pure function of where they stand, so it needs no easing.
  */
 export function cameraLean(
   player: { readonly x: number; readonly y: number },
   viewHeight: number,
 ): { readonly x: number; readonly y: number } {
-  const dx = (ARENA_CENTRE.x - player.x) * CAMERA_LEAN;
-  const dy = (ARENA_CENTRE.y - player.y) * CAMERA_LEAN;
+  const outward = Math.max(0, Math.min(1, (acrossOval(WALL_FOOT, player.x, player.y) - LEAN_TURNS_PAST) / (1 - LEAN_TURNS_PAST)));
+  const farSide = Math.max(0, Math.min(1, (ARENA_CENTRE.y + LEAN_TURNS_FROM - player.y) / LEAN_TURNS_FROM));
+  const turn = 1 - outward * farSide * LEAN_TURNS_AT_WALL;
+  const dx = (ARENA_CENTRE.x - player.x) * CAMERA_LEAN * turn;
+  const dy = (ARENA_CENTRE.y - player.y) * CAMERA_LEAN * turn;
   const length = Math.hypot(dx, dy);
   const most = viewHeight / 2 - CAMERA_LEAN_CLEAR;
   const scale = length > most ? most / length : 1;
