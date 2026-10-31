@@ -83,7 +83,7 @@ icons['raid-pack'] = fromRows([
   '................',
   '......oooo......',
   '.....oBmmBo.....',
-  '....ooooooooo...',
+  '....oooooooo....',
   '...oGGGGGGGGo...',
   '...oGGGGGGGGo...',
   '...oggggggggo...',
@@ -104,7 +104,7 @@ icons['ranger-pack'] = fromRows([
   '................',
   '......oooo......',
   '.....oBmmBo.....',
-  '....ooooooooo...',
+  '....oooooooo....',
   '...oJJJJJJJJo...',
   '...oJJJJJJJJo...',
   '...ojjjjjjjjo...',
@@ -120,24 +120,26 @@ icons['ranger-pack'] = fromRows([
 ]);
 
 // The Hauler frame: thirty squares on a steel frame that stands proud of the
-// body at the top and the foot. Nothing else in the set is this tall.
+// body at the top and the foot. Nothing else in the set is this tall or this
+// wide. Two rails and two bars, closed all the way round: drawn as bare posts it
+// grew horns and legs, which is a creature rather than a thing you carry.
 icons['hauler-frame'] = fromRows([
-  '....o......o....',
-  '....oo....oo....',
-  '....otooooto....',
-  '...oSSSSSSSSo...',
-  '...oSSSSSSSSo...',
-  '...ossssssso....',
-  '...obBbbbBbso...',
-  '...osssssssso...',
-  '...osssssssso...',
-  '...obBbbbBbso...',
-  '...osssssssso...',
-  '...osstssssso...',
-  '...osstssssso...',
-  '...ottttttto....',
-  '....ot....to....',
-  '....o......o....',
+  '......oooo......',
+  '.....oBmmBo.....',
+  '...oooooooooo...',
+  '..oSSSSSSSSSSo..',
+  '...oSssssssSo...',
+  '...oSssssssSo...',
+  '...obBbbbbBbo...',
+  '...oSssssssSo...',
+  '...oSssssssSo...',
+  '...obBbbbbBbo...',
+  '...oSssssssSo...',
+  '...oSsstsstSo...',
+  '...oSsstsstSo...',
+  '..oSSSSSSSSSSo..',
+  '..otttttttttto..',
+  '...oooooooooo...',
 ]);
 
 // PNG, written by hand so the script needs no dependency.
