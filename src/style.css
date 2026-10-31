@@ -116,7 +116,7 @@ body {
   top: auto;
   bottom: 0;
   width: 100%;
-  height: calc(var(--u) * var(--dock, 150));
+  height: auto;
 }
 #screens:has(> .arena-panel:only-child) {
   box-shadow: none;
@@ -4324,25 +4324,28 @@ button {
 :where(.pixel-ui) .bench-layout {
   grid-template-columns: minmax(0, 1fr);
 }
-/* The rim: which way in beside what is known of it, and one bar under both. */
+/* The rim: one card at the foot of the window, as tall as what it says, with the
+   pit it is about above it. It has no title bar or help bar: the card is the screen. */
 :where(.pixel-ui) .rim-layout {
-  display: grid;
-  grid-template-columns: calc(var(--u) * 112) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  height: 100%;
+  display: block;
 }
-:where(.pixel-ui) .rim-layout.is-one-way {
-  grid-template-columns: minmax(0, 1fr);
+#screens .arena-panel.is-rim .px-title,
+#screens .arena-panel.is-rim .px-help {
+  display: none;
 }
-:where(.pixel-ui) .rim-layout > .px-window {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: start;
-  min-height: 0;
+#screens .arena-panel.is-rim .px-screen {
+  display: block;
+  height: auto;
 }
-:where(.pixel-ui) .rim-layout .confirm-bar {
-  grid-column: 1 / -1;
+/* With no help bar under it, in the smallest window the FEEDBACK tab would stand on it. */
+#screens .arena-panel.is-rim[data-room='tight'] {
+  bottom: calc(var(--u) * 12);
+}
+:where(.pixel-ui) .rim-ways {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 6);
 }
 /* What a raid has at stake: a line each, the label in its own column. */
 :where(.pixel-ui) .rim-stakes {

@@ -202,7 +202,7 @@ export async function jumpIn(page, { insertion, press, until, wait } = {}) {
   await openHallPanel(page, 'rim', { press, until, wait });
   if (insertion) {
     await until(
-      `(() => { if (${GAME}.scene.getScene('hub').flow.insertionId === ${JSON.stringify(insertion)}) return true; const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`,
+      `(() => { const hub = ${GAME}.scene.getScene('hub'); const id = ${JSON.stringify(insertion)}; if (hub.flow.insertionId === id) return true; if (!hub.offeredWays.some(([way]) => way === id)) return false; hub.pointAtLanding(id); return true; })()`,
       `the rim to offer "${insertion}"`,
     );
   }

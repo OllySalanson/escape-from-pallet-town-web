@@ -89,10 +89,6 @@ try {
   });
   await toDropIn();
   await shoot('dropin-explored');
-  // And the same screen with what the place holds scrolled into view: the
-  // doors, who has them, and what lives in the places that have been walked.
-  await page.evaluate(`(() => { const p = document.querySelector('.dropin-brief'); p.scrollTop = p.scrollHeight; })()`);
-  await shoot('dropin-holds');
 } finally {
   await browser.close();
 }

@@ -4,8 +4,6 @@ import {
   doorHolder,
   doorPromise,
   entryGround,
-  gradeLine,
-  shutDoorLine,
   stillToFind,
   PLACE_GRADE_LEVELS,
   placePicture,
@@ -228,7 +226,6 @@ describe('what the drop-in screen says about a place', () => {
     const shut = buildDropInBriefing('route-1', contextFor('route-1')).doors
       .find((door) => door.label === 'THORN GATE')!;
     expect(doorHolder(shut)).toBe('needs CUT');
-    expect(shutDoorLine(shut)).toBe('THORN GATE needs CUT.');
     expect(doorPromise(shut)).toContain('a Pokémon that knows CUT');
     expect(doorPromise(shut)).not.toContain('Beat them');
 
@@ -240,7 +237,6 @@ describe('what the drop-in screen says about a place', () => {
     const keeper = buildDropInBriefing('route-1', contextFor('route-1')).doors
       .find((door) => door.label === 'OVERLOOK GATE')!;
     expect(doorHolder(keeper)).toBe('held by WARDEN WREN');
-    expect(shutDoorLine(keeper)).toBe('OVERLOOK GATE is held by WARDEN WREN.');
   });
 
   /**
@@ -351,16 +347,13 @@ describe('what the drop-in screen says about a place', () => {
     expect(briefing.record.surveyed).toBeLessThan(1);
   });
 
-  it('compares the place to the party rather than calling it hard', () => {
+  it('knows the strongest of the party it is worked out against', () => {
     const grade = buildDropInBriefing(
       'floodplain-relay',
       contextFor('floodplain-relay', { partyLevels: [5, 4] }),
     ).grade;
 
     expect(grade.yourBest).toBe(5);
-    expect(gradeLine(grade)).toContain('Lv 5');
-    expect(gradeLine({ ...grade, yourBest: 0 })).toContain('pick a party');
-    expect(gradeLine({ ...grade, yourBest: 40 })).toContain('under your Lv 40');
   });
 });
 

@@ -25,13 +25,10 @@ import {
   spendableSupply,
   buildDropInBriefing,
   doorHolder,
-  doorPromise,
-  gradeLine,
   largestMapSize,
-  shutDoorLine,
+  doorPromise,
   stillToFind,
   type DropInBriefing,
-  type DropInContext,
   TRADER_BERTH_PRICE,
   traderBarterLimit,
   traderBarterOffers,
@@ -107,8 +104,6 @@ import {
   generateRunPlan,
   generateRoomLoot,
   withRoomLoot,
-  insertionDescription,
-  isDropInPoint,
   type RunInsertion,
   type RunInsertionId,
   requireInsertion,
@@ -144,10 +139,9 @@ import {
 import { iconMarkup, itemIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
 import { rivalForRaid } from '../world/hunters';
-import { openedDoors } from '../world/gates';
 import { isNightRaid } from '../world/nightRaids';
 import type { GridPosition } from '../movement/gridMovement';
-import { getWorldMap, type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
+import { type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
 import { fitMapPictures, mapPictureFrame, pictureRowAttributes } from '../ui/mapPicture';
 import { wallMapContext, wallMapOrder, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
@@ -198,7 +192,8 @@ import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
-import { RAID_KEY_LETTERS } from '../input/keyBindings';
+import { keyHint, RAID_KEY_LETTERS } from '../input/keyBindings';
+import { wayInToward } from '../base/valeOverview';
 import { withArticle } from '../ui/article';
 
 /**
@@ -259,11 +254,13 @@ type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wall
  */
 const PANEL_MIN_WIDTH = 320;
 const PANEL_SHARE = 0.56;
-const RIM_PANEL_MIN_HEIGHT = 150;
-const RIM_PANEL_SHARE = 0.5;
-/** In a window this short the rim's panel takes more of it, or it has room for one line about the place. */
-const RIM_PANEL_SHORT_WINDOW = 250;
-const RIM_PANEL_SHORT_HEIGHT = 172;
+/** Which way on the map each arrow key points, on the rim. */
+const RIM_ARROWS: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+};
 
 /**
  * Game pixels a card on the wall map takes beyond its picture: its window's
@@ -475,14 +472,6 @@ export class HubScene extends Phaser.Scene {
       this.dockPanel(unit);
       fitMapPictures(this.overlay.root, unit, (key, step) => this.drawPicture(key, step));
     };
-    // A way in under the cursor is answered in place: the pane and the pit
-    // change, and the screen is never redrawn from a focus event.
-    this.overlay.root.addEventListener('focusin', (event) => {
-      const row = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-insertion]');
-      if (row?.dataset.insertion) {
-        this.pointAtLanding(row.dataset.insertion as RunInsertionId);
-      }
-    });
     this.render();
     this.offerPendingMoves();
     // A held room stays on its channel while the player gets ready, saying
@@ -629,11 +618,8 @@ export class HubScene extends Phaser.Scene {
     }
     const layer = this.overlay.root.parentElement;
     const wide = Math.floor((layer?.clientWidth ?? 0) / unit);
-    const high = Math.floor((layer?.clientHeight ?? 0) / unit);
-    if (this.view === 'rim') {
-      const tall = high < RIM_PANEL_SHORT_WINDOW ? RIM_PANEL_SHORT_HEIGHT : Math.max(RIM_PANEL_MIN_HEIGHT, Math.floor(high * RIM_PANEL_SHARE));
-      this.overlay.root.style.setProperty('--dock', String(Math.min(high, tall)));
-    } else {
+    // The rim's is as tall as what it says (`.arena-panel.is-rim`).
+    if (this.view !== 'rim') {
       this.overlay.root.style.setProperty('--dock', String(Math.min(wide, Math.max(PANEL_MIN_WIDTH, Math.floor(wide * PANEL_SHARE)))));
     }
   }
@@ -1326,13 +1312,12 @@ export class HubScene extends Phaser.Scene {
         return;
       }
     }
-    // Up from the bar along the rim's foot is back to the way in being looked at,
-    // wherever the list of them stands beside it.
-    if (event.key === 'ArrowUp' && this.view === 'rim' && (document.activeElement as HTMLElement | null)?.closest('.confirm-bar')) {
-      const row = this.overlay.root.querySelector<HTMLElement>('[data-insertion].is-selected');
-      if (row) {
+    // On the rim the arrows point at the map, and the cursor stays on JUMP IN.
+    if (this.view === 'rim') {
+      const way = RIM_ARROWS[event.key];
+      if (way) {
         event.preventDefault();
-        row.focus();
+        this.stepToWayIn(way);
         return;
       }
     }
@@ -1616,11 +1601,9 @@ export class HubScene extends Phaser.Scene {
       }
       rerender(() => undefined);
     });
-    // A way in is already chosen by having the cursor on it, so pressing it
-    // takes the cursor to the one thing left to do about it.
+    // Another map to look down on.
     on('[data-insertion]', (button) => {
       this.pointAtLanding(button.dataset.insertion as RunInsertionId);
-      root.querySelector<HTMLElement>('[data-start]')?.focus();
     });
     on('[data-wall-map]', (button) =>
       rerender(() => {
@@ -2445,103 +2428,80 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * What the drop-in screen is looking at: the map in the gate state this save
-   * has earned, its record, and the ground it has walked. Asked once per render
-   * and handed to every part of the screen, so the picture, the grade and the
-   * lists cannot describe two different saves.
-   */
-  private dropInContext(insertionId: RunInsertionId): DropInContext {
-    const progress = this.savedGame.raidProgress;
-    return {
-      // The map as this raid would actually find it: a door the player has
-      // opened is open here, which is what makes a beaten boss visible at base.
-      map: getWorldMap(requireInsertion(insertionId).mapId, openedDoors(progress)),
-      defeatedBosses: progress.defeatedBosses,
-      // What this save has finished with out there: a landmark worked for good
-      // holds its exit open, and this screen has to say so or the exits it
-      // lists disagree with the raid it is about to send the player on.
-      completedContracts: progress.completedContracts,
-      openedGates: progress.openedGates ?? [],
-      raidRecord: progress.raidRecord,
-      surveyed: progress.surveyed,
-      insertionIds: this.unlockedInsertions.map(([id]) => id),
-      partyLevels: this.flow.party.map((stored) => stored.pokemon.level),
-      contract: this.contractFor(insertionId),
-      night: isNightRaid(new Date()),
-    };
-  }
-
-  /**
-   * THE RIM: looking down over the fence. The pit behind the panel is the map,
-   * so this is only what the map cannot say - which way in, what is known of it,
-   * what the raid has at stake - and the one button that goes.
+   * THE RIM: looking down over the fence, and the last thing before a jump. The pit
+   * behind it is the map, with every way in lit on it, so this says only what the
+   * map cannot - what going has at stake - and has the one button that goes.
    *
-   * A way in is chosen by having the cursor on it (`pointAtLanding`), so moving
-   * down the list swings the view over the pit and commits nothing: the only
-   * press that does anything is JUMP IN, and a player who walked up to the place
-   * they wanted presses straight through.
+   * Nothing here is a list. Another way in is pointed at on the map: the arrow keys
+   * go to whichever lies that way (`stepToWayIn`), a click on a light chooses it, and
+   * the pit swings round to it. A player who walked up to the place they wanted
+   * presses straight through. What a whole map holds is on Oak's wall map.
    */
   private rimView(): string {
-    // While a room is held the raid is on its map, so only its ways in are offered.
-    const room = this.heldRoom;
-    const offered = this.unlockedInsertions.filter(([, insertion]) => !room || insertion.mapId === room.mapId);
     const chosen = this.flow.insertionId;
-    // The maps players made come after the game's own, under a heading of
-    // their own, each front door crediting who drew it.
-    const firstPlayerMap = offered.find(([, insertion]) => worldMapMaker(insertion.mapId) !== undefined)?.[0];
-    // A drop-in point says which map it is on, when there is more than the one in the pit.
-    const manyMaps = new Set(offered.map(([, insertion]) => insertion.mapId)).size > 1;
-    const rows = offered
-      .map(([id, insertion]) => {
-        const contract = this.contractFor(id);
-        // One line unless the row has something to add, so the pane shows five
-        // ways in rather than two: a place with a contract on it names the
-        // contract. "No contract" is not news, and who drew a map is on the
-        // help line, because this column is too narrow to say both.
-        const note = isDropInPoint(insertion)
-          ? (manyMaps ? `DROP-IN · ${worldMapName(insertion.mapId)}` : '')
-          : contract
-            ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}`
-            : '';
-        const heading = id === firstPlayerMap ? `<p class="px-subheading">Player maps</p>` : '';
-        return `${heading}<button class="px-row${chosen === id ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertionDescription(insertion, this.savedGame.raidProgress.defeatedBosses))}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${chosen === id ? pixelTag('', 'good', true) : ''}</button>`;
-      })
-      .join('');
     const refusal = this.flow.notReady;
     const warning = refusal ?? this.packWarning();
-    const list = offered.length > 1
-      ? pixelWindow(`<div class="px-list px-scroll">${rows}${this.firstContractActive ? '<p class="px-note px-wrap">More ways in open up when you bring this contract home.</p>' : ''}</div>`, {
-          className: 'rim-list',
-          heading: this.firstContractActive ? 'Contract area' : 'Ways in',
-          note: this.firstContractActive ? '' : `${offered.length} known`,
-        })
-      : '';
-    return `<main class="px-body rim-layout${offered.length > 1 ? '' : ' is-one-way'}">${list}${pixelWindow(
-      `<div class="px-list px-scroll dropin-brief" data-rim-about>${this.rimAbout(chosen)}</div>`,
-      { className: 'dropin-about', heading: 'Down there' },
-    )}${pixelCommitBar({
+    const ways = this.waysFromHere().length;
+    const nextMap = this.nextMapWayIn();
+    return `<main class="px-body rim-layout">${pixelCommitBar({
       title: `<span data-rim-title>${this.rimTitle(chosen)}</span>`,
       lines: [
+        `<div data-rim-about>${this.rimStakes(chosen)}</div>`,
         this.roomNote(),
+        ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this contract home.</small>'] : []),
         ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
+        ...(ways > 1 || nextMap
+          ? [
+              `<div class="rim-ways">${ways > 1 ? `<small>${keyHint('ARROWS', 'OR CLICK A LIGHT: ANOTHER WAY IN')}</small>` : ''}${
+                nextMap
+                  ? `<button class="px-window px-button" data-insertion="${nextMap.id}" data-help="${escapeAttribute(`Look down on ${worldMapName(nextMap.mapId)} instead${worldMapMaker(nextMap.mapId) ? `, a map by ${worldMapMaker(nextMap.mapId)}` : ''}.`)}">${worldMapName(nextMap.mapId)}</button>`
+                  : ''
+              }</div>`,
+            ]
+          : []),
       ].filter((line) => line !== ''),
       actions: `<button class="px-window px-button" data-back data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start data-cursor-start${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
     })}</main>`;
   }
 
-  private rimTitle(insertionId: RunInsertionId): string {
-    return `Jump in at ${requireInsertion(insertionId).label}`;
+  /** Every way in on offer, while a room is held only those on its map. */
+  private get offeredWays(): readonly (readonly [RunInsertionId, RunInsertion])[] {
+    const room = this.heldRoom;
+    return this.unlockedInsertions.filter(([, insertion]) => !room || insertion.mapId === room.mapId);
   }
 
-  /**
-   * What is known of a way in and what going there has at stake. The stakes come
-   * first, because they are what cannot be taken back; everything about the
-   * place scrolls under them.
-   */
-  private rimAbout(insertionId: RunInsertionId): string {
-    const briefing = buildDropInBriefing(insertionId, this.dropInContext(insertionId));
-    const below = (this.kit?.below() ?? []).map((line) => `<p class="px-note px-wrap">${line}</p>`).join('');
-    return `${this.rimStakes(insertionId)}${this.placeFacts(briefing)}${below}${this.placeBrief(briefing)}`;
+  /** The ways in on the map in the pit. */
+  private waysFromHere(): readonly { readonly id: RunInsertionId; readonly tile: { readonly x: number; readonly y: number } }[] {
+    const { mapId } = requireInsertion(this.flow.insertionId);
+    return this.offeredWays
+      .filter(([, insertion]) => insertion.mapId === mapId)
+      .map(([id, insertion]) => ({ id, tile: insertion.position }));
+  }
+
+  /** The first way in on the next map round, when there is another map to look down on. */
+  private nextMapWayIn(): RunInsertion | null {
+    const { mapId } = requireInsertion(this.flow.insertionId);
+    const maps = [...new Set(this.offeredWays.map(([, insertion]) => insertion.mapId))];
+    if (maps.length < 2) {
+      return null;
+    }
+    const next = maps[(maps.indexOf(mapId) + 1) % maps.length];
+    return this.offeredWays.find(([, insertion]) => insertion.mapId === next)?.[1] ?? null;
+  }
+
+  /** An arrow key on the rim: to the way in that lies that way on the map, if one does. */
+  private stepToWayIn(way: { readonly x: number; readonly y: number }): void {
+    const next = wayInToward(this.waysFromHere(), this.flow.insertionId, way);
+    if (next) {
+      audioManager.play('select');
+      this.pointAtLanding(next.id);
+    } else {
+      audioManager.play('bump');
+    }
+  }
+
+  private rimTitle(insertionId: RunInsertionId): string {
+    return `Jump in at ${requireInsertion(insertionId).label}`;
   }
 
   /**
@@ -2582,36 +2542,16 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * A way in has come under the cursor: it is chosen, the pane and the bar say so
-   * in place, and the pit behind the panel swings round to it. In place, because
-   * this is answering a focus event and the row it is answering is under the
-   * player's hand (`ui/MenuOverlay.ts`).
+   * Another way in has been pointed at, by a key or a click on the pit: it is chosen,
+   * the panel says so, and the pit behind it swings round to it. It commits nothing.
    */
-  private pointAtLanding(insertionId: RunInsertionId): void {
+  public pointAtLanding(insertionId: RunInsertionId): void {
     if (this.flow.insertionId === insertionId) {
       return;
     }
     this.flow.chooseInsertion(insertionId);
     this.kit?.aim(insertionId);
-    const root = this.overlay.root;
-    root.querySelectorAll<HTMLElement>('[data-insertion]').forEach((row) => {
-      const chosen = row.dataset.insertion === insertionId;
-      row.classList.toggle('is-selected', chosen);
-      row.querySelector('.px-tag')?.remove();
-      if (chosen) {
-        row.insertAdjacentHTML('beforeend', pixelTag('', 'good', true));
-      }
-    });
-    const about = root.querySelector<HTMLElement>('[data-rim-about]');
-    if (about) {
-      about.innerHTML = this.rimAbout(insertionId);
-      about.scrollTop = 0;
-    }
-    const title = root.querySelector<HTMLElement>('[data-rim-title]');
-    if (title) {
-      title.textContent = this.rimTitle(insertionId);
-    }
-    this.overlay.remeasure();
+    this.render();
   }
 
   /**
@@ -2712,7 +2652,7 @@ export class HubScene extends Phaser.Scene {
           .map((line) =>
             told(
               `${this.pip(line.open ? 'O' : 'H')}<span class="px-row-main"><strong>${line.label}</strong><small>${line.open ? 'open' : doorHolder(line)}</small></span>`,
-              line.open ? `${line.label} stands open on every raid.` : shutDoorLine(line),
+              doorPromise(line),
               ' has-pip',
             ),
           )
@@ -2750,7 +2690,7 @@ export class HubScene extends Phaser.Scene {
         note: entry.walked ? `${known}% known` : 'Never walked',
       },
     )}${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${maps}${signs}${doors}${exits}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${maps}${briefing ? this.placeFacts(briefing) : ''}${signs}${briefing ? this.placeWorth(briefing) : ''}${doors}${exits}${briefing ? this.placeWildlife(briefing) : ''}</div>`,
       { className: 'wallmap-about', heading: 'On the wall', note: `${entry.districtsKnown}/${entry.districts} places` },
     )}</main>`;
   }
@@ -2783,31 +2723,16 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * What is in there, under the picture: the contract, the ways out, the doors
-   * and who holds them, and what lives in each place you have walked.
-   *
-   * Wildlife is listed only for places the survey has reached. What lives
-   * somewhere you have never been is not something base could tell you, and
-   * printing it would hand over the answer the dark is there to ask. The count
-   * of places still unknown is said instead, which is the invitation.
+   * What a map is worth going to, on Oak's wall: what somebody at base is waiting on
+   * from it and its rare finds, and where they lie. It keeps the dark: a place nobody
+   * has walked keeps what is in it, so it reads as an invitation on a fresh map and
+   * as a plan on a walked one.
    */
-  private placeBrief(briefing: DropInBriefing): string {
-    const { grade } = briefing;
-    // Every row of this pane is a control the cursor can land on, even though
-    // none of them does anything: a pane with no controls in it cannot be
-    // scrolled with the arrow keys, and what a place holds would have been
-    // mouse-only on a keyboard-first screen. `aria-disabled` rather than
-    // `disabled` for the same reason it is everywhere else here - the cursor
-    // has to be able to reach a row for the help bar to speak for it.
+  private placeWorth(briefing: DropInBriefing): string {
+    // Every row is a control the cursor can land on, even though none of them does
+    // anything: a pane with no controls in it cannot be scrolled with the arrow keys.
     const told = (body: string, help: string, className = ''): string =>
       `<button class="px-row${className}" aria-disabled="true" data-help="${escapeAttribute(help)}">${body}</button>`;
-    const contract = briefing.contract
-      ? `<h3 class="px-subheading">Contract</h3>${told(
-          `<span class="px-row-main"><strong>${briefing.contract.name}</strong><small class="px-wrap">${briefing.contract.description}</small></span>`,
-          `${briefing.contract.name}: ${briefing.contract.description}`,
-          ' px-tall',
-        )}`
-      : '';
     // What somebody at base is waiting on from this map, said under the
     // contract because it is the other reason to come here: where it lies, who
     // it is for and what it costs the pack. The giver named the place, so it is
@@ -2833,43 +2758,6 @@ export class HubScene extends Phaser.Scene {
             );
           })
           .join('')}`;
-    // An exit a banked contract holds open for good is said apart from one that
-    // was always open: it is the player's own work, and this screen is where
-    // they come to look at what the world kept.
-    // Only the ways out and doors the player has found are named; the rest
-    // are counted. Every one of a map nobody has walked, by name, was the
-    // answer the dark picture is there to keep (playtest 6, D2).
-    const foundExits = briefing.exits.filter((exit) => exit.known);
-    const foundDoors = briefing.doors.filter((door) => door.known);
-    const exits = `<h3 class="px-subheading">Ways out</h3>${foundExits
-      .map((exit) =>
-        told(
-          `${this.pip(exit.worked ? 'K' : 'X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.worked ? 'open for good - you finished the landmark' : exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
-          exit.worked
-            ? `${exit.label} is open from the first second of every raid from now on, because you finished the landmark that used to seal it.`
-            : `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of the raid' : exit.opens.toLowerCase()}. Stepping on any open exit ends the raid.`,
-          ' has-pip' + (exit.worked ? ' is-selected' : ''),
-        ),
-      )
-      .join('')}${this.toFind(briefing.exits.length - foundExits.length, foundExits.length, 'way out')}`;
-    const doors = briefing.doors.length === 0
-      ? ''
-      : `<h3 class="px-subheading">Doors</h3>${foundDoors
-          .map((door) =>
-            told(
-              `${this.pip(door.open ? 'O' : 'H')}<span class="px-row-main"><strong>${door.label}</strong><small>${door.open ? 'you opened this' : doorHolder(door)}</small></span>`,
-              doorPromise(door),
-              ' has-pip' + (door.open ? ' is-selected' : ''),
-            ),
-          )
-          .join('')}${this.toFind(briefing.doors.length - foundDoors.length, foundDoors.length, 'door')}`;
-    // What this map is worth going to, and where on it - directly under the
-    // contract, above the ways out and the doors. Those two are safety: how
-    // this raid can end, and what is shut. This is the *reason*, and a pane
-    // that answers "what am I going out for today" is no use eleven exits
-    // below the fold. It keeps the same dark the wildlife pane does - a place
-    // nobody has walked keeps what is in it - so it reads as an invitation on
-    // a fresh map and as a plan on a walked one.
     const foundPrizes = briefing.prizes.filter((prize) => prize.known);
     const hiddenPrizes = briefing.prizes.length - foundPrizes.length;
     const prizes = briefing.prizes.length === 0
@@ -2889,6 +2777,17 @@ export class HubScene extends Phaser.Scene {
               ? ''
               : `<p class="px-note px-wrap">${hiddenPrizes} more, in places nobody here has walked.</p>`
         }`;
+    return `${errands}${prizes}`;
+  }
+
+  /**
+   * What lives in each place walked, on Oak's wall. Only places the survey has
+   * reached: what lives somewhere nobody has been is not something base could tell
+   * you. The count of places still unknown is said instead, which is the invitation.
+   */
+  private placeWildlife(briefing: DropInBriefing): string {
+    const told = (body: string, help: string, className = ''): string =>
+      `<button class="px-row${className}" aria-disabled="true" data-help="${escapeAttribute(help)}">${body}</button>`;
     const seen = briefing.wildlife.filter((place) => place.known);
     const unseen = briefing.wildlife.length - seen.length;
     const wildlife = briefing.wildlife.length === 0
@@ -2913,11 +2812,7 @@ export class HubScene extends Phaser.Scene {
               ? ''
               : `<p class="px-note px-wrap">${unseen} more place${unseen === 1 ? '' : 's'} on this map nobody here has walked.</p>`
         }`;
-    // How the place compares to the party is the one fact the strip of facts
-    // above cannot state, because it is about the loadout rather than about
-    // the place. Everything else the strip already counts, and a screen this
-    // size cannot afford to say a number twice.
-    return `<p class="px-wrap dropin-blurb">${briefing.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${errands}${prizes}${exits}${doors}${wildlife}`;
+    return wildlife;
   }
 
   /** THE LOCKER: what comes home whatever happens to the raid. */
