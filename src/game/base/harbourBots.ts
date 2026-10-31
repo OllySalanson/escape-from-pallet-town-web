@@ -536,8 +536,8 @@ export const ROOM_CALLS: readonly { readonly room: SharedRoomId; readonly spots:
   {
     room: 'bills-cottage',
     spots: [
-      { tile: { x: 2, y: 11 }, facing: 'left' },
-      { tile: { x: 12, y: 11 }, facing: 'right' },
+      { tile: { x: 2, y: 14 }, facing: 'up' },
+      { tile: { x: 12, y: 14 }, facing: 'up' },
     ],
   },
   {

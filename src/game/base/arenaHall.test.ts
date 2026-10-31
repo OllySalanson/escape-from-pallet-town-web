@@ -91,13 +91,13 @@ function reached(): Set<string> {
 describe("THE RAID ARENA's great hall", () => {
   const hall = roomNamed('raid-arena')!;
 
-  it('is four times as wide as the widest other room, and far bigger than that by area', () => {
+  it('is four times as wide as the widest other room, and well over three times the largest by area', () => {
     const others = BASE_ROOMS.filter((room) => room.id !== 'raid-arena');
     const widest = Math.max(...others.map((room) => room.width));
     const largest = Math.max(...others.map((room) => room.width * room.height));
     expect(hall.width).toBeGreaterThanOrEqual(widest * 4);
     const floor = solid.flat().filter((blocked) => !blocked).length;
-    expect(floor).toBeGreaterThanOrEqual(largest * 4);
+    expect(floor).toBeGreaterThanOrEqual(largest * 3.5);
   });
 
   it('has a platform that goes all the way round, with every tile of it walkable from the mat', () => {

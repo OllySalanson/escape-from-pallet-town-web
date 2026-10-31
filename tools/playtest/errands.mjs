@@ -64,6 +64,15 @@ try {
     }
     return said;
   };
+  /** Past whatever is still being said or asked, saying NOT NOW to it. */
+  const pastTheTalk = async () => {
+    for (let guard = 0; guard < 12; guard += 1) {
+      const now = await scene();
+      if (now.prompt === null && !now.box) return;
+      await press(now.prompt !== null ? 'Escape' : 'Space', 300);
+    }
+    throw new Error('the talk never ended');
+  };
   /** Writes the save and reopens the game on it, standing in the yard. */
   const load = async (edit) => {
     await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); (${edit})(save);
@@ -111,7 +120,8 @@ try {
     await sleep(500);
   };
   const expectSaid = (lines, start, what) => {
-    if (!lines[0]?.startsWith(start)) throw new Error(`${what}: said ${JSON.stringify(lines)}`);
+    // First words come ahead of a favour, the first time in a room.
+    if (!lines.some((line) => line.startsWith(start))) throw new Error(`${what}: said ${JSON.stringify(lines)}`);
     console.log(`${what}: ${lines.join(' / ')}`);
   };
 
@@ -174,9 +184,9 @@ try {
   expectSaid(await readOn(), 'There is a lump of OLD AMBER', 'Bill asks');
   await press('Space', 300);
   expectSaid(await readOn(), 'Great!', 'Bill hears YES');
-  await page.waitFor(sceneIs('hub'), { what: "Bill's screen after the favour" });
   if ((await progress()).errands.find((e) => e.id === 'old-amber')?.status !== 'started') throw new Error('YES took nothing on');
-  await leave();
+  // He goes on to how he reads you and his list; ESC is NOT NOW to it.
+  await pastTheTalk();
   await press('ArrowDown', 900);
 
   // Brock takes the crate home, and pays, in the same box.
@@ -186,8 +196,9 @@ try {
   expectSaid(await readOn(), "You handed over Brock's crate.", 'Brock thanks');
   const after = await vault();
   if (after.items['brocks-crate'] || after.items['tm39-rock-tomb'] !== 1) throw new Error(`the vault holds ${JSON.stringify(after.items)}`);
-  await page.waitFor(sceneIs('hub'), { what: "Brock's screen after the hand-over" });
-  await leave();
+  // He goes on to the next thing he would build; nothing opens.
+  if (await page.evaluate(sceneIs('hub'))) throw new Error('Brock opened a screen');
+  await pastTheTalk();
   // And the crate stands on his bench: one step up off the mat to see it.
   await press('ArrowUp', 600);
   await page.screenshot(`${out}/brock-room.png`);
