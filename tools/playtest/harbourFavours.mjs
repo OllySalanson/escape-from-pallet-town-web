@@ -32,7 +32,7 @@ try {
   };
   const progress = () => page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`);
   const scene = () =>
-    page.evaluate(`(() => { const b = ${base}; return { box: !!b?.dialogBox?.visible, prompt: b?.favourPrompt ? b.favourPrompt.prompt.selected : null, marks: [...(b?.harbourMarks?.keys() ?? [])] }; })()`);
+    page.evaluate(`(() => { const b = ${base}; return { box: !!b?.dialogBox?.visible, prompt: b?.boxQuestion ? b.boxQuestion.prompt.selected : null, marks: [...(b?.harbourMarks?.keys() ?? [])] }; })()`);
   const boxText = async () => {
     await page.waitFor(`${base}.dialogBox.isCurrentMessageComplete`, { what: 'the line to finish typing', timeoutMs: SLOW_MS });
     return page.evaluate(`${base}.dialogBox.textObject.text.replace(/\\s+/g, ' ').trim()`);

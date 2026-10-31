@@ -33,15 +33,6 @@ try {
     );
     await sleep(300);
   };
-  // A newcomer is told things once (`hub/firstWords.ts`); the box is put down
-  // as a player reads it and presses Got it.
-  const putDownFirstWords = async () => {
-    for (let guard = 0; guard < 8; guard += 1) {
-      const put = await page.evaluate(`(() => { const b = document.querySelector('[data-speech-done]'); if (b) b.click(); return !!b; })()`);
-      if (!put) return;
-      await sleep(300);
-    }
-  };
   const base = (expression) => page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); return ${expression}; })()`);
   const hub = (expression) => page.evaluate(`(() => { const h = ${GAME}.scene.getScene('hub'); return ${expression}; })()`);
 
@@ -58,7 +49,6 @@ try {
   await until(`${GAME}.scene.getScene('hub')?.sys.isActive()`, 'the hub');
   await sleep(600);
   expect('the hall\'s bench opens the party', (await hub(`h.view`)) === 'bench');
-  await putDownFirstWords();
   await page.screenshot(`${out}/2-arena-bench.png`);
 
   await press('Escape');
@@ -80,17 +70,11 @@ try {
 
   await walkIntoBase(page, 'oaks-lab', { press, until });
   await sleep(600);
-  await putDownFirstWords();
-  const lab = await page.evaluate(`document.querySelector('.pixel-ui')?.innerHTML ?? ''`);
-  expect('Oak’s Lab starts no raid', !lab.includes('data-deploy-flow') && !lab.includes('data-contract=') && !lab.includes('Start a raid'));
-  expect('Oak’s Lab says where raids start', lab.includes('The Raid Arena'));
+  expect('Oak’s Lab opens no screen', !(await page.evaluate(sceneIs('hub'))));
   await page.screenshot(`${out}/4-oaks-lab.png`);
 
-  await press('Escape');
-  await until(sceneIs('base'), 'back in the lab');
   await walkIntoBase(page, 'raid-arena', { press, until });
   await sleep(600);
-  await putDownFirstWords();
   await until(takePokemon('Charmander'), 'Charmander in the raid party');
   await jumpIn(page, { press, until });
   await sleep(1500);

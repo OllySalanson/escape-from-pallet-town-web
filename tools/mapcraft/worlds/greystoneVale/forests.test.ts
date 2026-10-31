@@ -14,7 +14,8 @@ describe("Greystone Vale's woods and caves", () => {
     ['Pine Hollow', pineHollow],
     ['Tanglewood', tanglewood],
   ])('%s passes every hard check on its own', (_name, draw) => {
-    const checks = hardChecks(draw().file);
+    const { file, limits } = draw();
+    const checks = hardChecks(file, { limits });
     expect(checks.filter((check) => !check.passed)).toEqual([]);
     expect(allPassed(checks)).toBe(true);
   });

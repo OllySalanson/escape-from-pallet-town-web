@@ -135,6 +135,7 @@ function facingMaya() {
         const rendered = {
           text,
           handlers: {} as Record<string, () => void>,
+          setScrollFactor: vi.fn().mockReturnThis(),
           setInteractive: vi.fn(function (this: RenderedText) {
             return this;
           }),

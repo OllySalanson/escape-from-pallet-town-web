@@ -23,7 +23,7 @@ export type RaidKeyId = keyof typeof RAID_KEY_LETTERS;
 
 /** What each raid key is called on the HUD, in the order the hint row lists them. */
 export const RAID_KEY_WORDS: readonly (readonly [RaidKeyId, string])[] = [
-  ['objectives', 'GUIDE'],
+  ['objectives', 'OAK'],
   ['look', 'LOOK'],
   // PACK, never BAG: the screen B opens is headed PACK, and every refusal for
   // room sends the player to "drop something from the PACK" (`world/loot.ts`).

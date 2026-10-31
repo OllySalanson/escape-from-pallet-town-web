@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('phaser', () => ({
   default: {
@@ -8,20 +8,12 @@ vi.mock('phaser', () => ({
   },
 }));
 
-// A move with no room is asked about on the move chooser, a DOM screen; what
-// matters here is that it is asked, and about what.
-const chooser = vi.hoisted(() => ({ offers: [] as { name: string; move: string }[] }));
-vi.mock('../ui/MoveChooserOverlay', () => ({
-  openMoveChooser: (_scene: unknown, offer: { pokemon: { base: { name: string } }; incoming: { name: string } }) => {
-    chooser.offers.push({ name: offer.pokemon.base.name, move: offer.incoming.name });
-  },
-}));
-
 import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty, getSpeciesById } from '../pokemon';
 import { createStartingStash } from '../stash';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { HubScene } from './HubScene';
+import { checkOnLines, dayCareReport, raidsCompleted, takenBackReport } from '../hub/dayCare';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -39,10 +31,8 @@ class MemoryStorage implements StorageLike {
 interface DayCareHub {
   init(data?: unknown): void;
   overlay: { root: { innerHTML: string } };
-  speaking: { readonly words: { readonly lines: readonly string[] } } | undefined;
+  scene: { start: ReturnType<typeof vi.fn> };
   leaveAtDayCare(pokemonId: string): void;
-  takeBackFromDayCare(): void;
-  doneListening(): void;
   render(): void;
 }
 
@@ -85,10 +75,6 @@ function speakToHim(storage: MemoryStorage): DayCareHub {
 }
 
 describe('the Day-Care screen', () => {
-  beforeEach(() => {
-    chooser.offers.length = 0;
-  });
-
   it('asks which Pokémon to raise, and leaving one takes it out of the vault', () => {
     const storage = new MemoryStorage();
     const ids = seedSave(storage);
@@ -97,13 +83,17 @@ describe('the Day-Care screen', () => {
 
     hub.leaveAtDayCare(ids.charmander);
 
-    expect(hub.speaking?.words.lines[0]).toBe('Fine, I’ll look after your Charmander for a while.');
+    // He says so in the yard, back where the player spoke to him.
+    expect(hub.scene.start).toHaveBeenCalledWith(
+      'base',
+      expect.objectContaining({ at: { x: 33, y: 11 }, said: expect.arrayContaining(['Fine, I’ll look after your Charmander for a while.']) as unknown }),
+    );
     const saved = new SaveManager(storage).load()!;
     expect(saved.stash.dayCare()?.id).toBe(ids.charmander);
     expect(saved.stash.listPokemon().map((stored) => stored.id)).not.toContain(ids.charmander);
   });
 
-  it('shows how it has grown, and gives it back grown, asking about a move with no room', () => {
+  it('gives it back grown, saying so, and the next screen asks about a move with no room', () => {
     const storage = new MemoryStorage();
     const ids = seedSave(storage);
     speakToHim(storage).leaveAtDayCare(ids.charmander);
@@ -112,15 +102,15 @@ describe('the Day-Care screen', () => {
     new SaveManager(storage).recordDeployment('pallet-town');
     new SaveManager(storage).recordDeployment('pallet-town');
 
-    const hub = speakToHim(storage);
-    expect(hub.overlay.root.innerHTML).toContain('Left at Lv 18 · 2 raids ago');
-    expect(hub.overlay.root.innerHTML).toContain('Grown 1 level');
-    // The pane shows it as it would come back today; nothing is taken back yet.
-    expect(hub.overlay.root.innerHTML).toContain('Lv 19');
-    expect(new SaveManager(storage).load()!.stash.dayCare()?.pokemon.level).toBe(18);
-    expect(hub.overlay.root.innerHTML).toContain('By level, it’s grown by 1.');
+    const saved = new SaveManager(storage).load()!;
+    const report = dayCareReport(saved.stash.dayCare()!, raidsCompleted(saved.raidProgress, saved.raidInFlight));
+    expect(checkOnLines(report).join(' ')).toContain('By level, it’s grown by 1.');
+    // Saying so takes nothing back.
+    expect(saved.stash.dayCare()?.pokemon.level).toBe(18);
 
-    hub.takeBackFromDayCare();
+    const taken = new SaveManager(storage).takeBackFromDayCare()!;
+    expect(takenBackReport(taken)).toContain('Charmander is Lv 19 now.');
+    expect(takenBackReport(taken)).toContain('It wants to learn Smokescreen, but it has no room.');
 
     const back = new SaveManager(storage)
       .load()!
@@ -130,12 +120,6 @@ describe('the Day-Care screen', () => {
     expect(back.pokemon.base.id).toBe('charmander');
     expect(back.pokemon.pendingMoves.map((move) => move.name)).toEqual(['Smokescreen']);
     expect(new SaveManager(storage).load()!.stash.dayCare()).toBeNull();
-    expect(hub.speaking?.words.lines).toContain('Charmander is Lv 19 now.');
-
-    // His words first, then the move it reached with no room for it.
-    expect(chooser.offers).toEqual([]);
-    hub.doneListening();
-    expect(chooser.offers).toEqual([{ name: 'Charmander', move: 'Smokescreen' }]);
   });
 
   it('refuses the only Pokémon at base without writing anything', () => {
@@ -153,7 +137,7 @@ describe('the Day-Care screen', () => {
 
     hub.leaveAtDayCare(stash.partnerId()!);
 
-    expect(hub.speaking).toBeUndefined();
+    expect(hub.scene.start).not.toHaveBeenCalled();
     expect(hub.overlay.root.innerHTML).toContain('Oh? You only have one Pokémon.');
     expect(storage.getItem([...(storage as unknown as { values: Map<string, string> }).values.keys()][0])).toBe(before);
   });

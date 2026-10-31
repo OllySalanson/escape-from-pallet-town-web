@@ -73,6 +73,11 @@ stepped loop and prints how far the player moved on each frame, failing if any
 frame of the walk is off the steady rate: a judder loses no game time, so a
 check on arrival times cannot see one.
 
+`secondRing.mjs <url> <dir> [--port=N]` walks the vale's second ring on foot from
+Mill Square: the boardwalks, the punt out to Duck Island and back, in and out of the
+inns, the strand, Bridge End and the moor, photographing each. It takes about three
+minutes against a test-mode build.
+
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a
 player who stands still, the brook's frames turning over, in at the mill and out
@@ -144,9 +149,12 @@ is how every driver reaches a base screen: it reads the scene's own collision
 and its own `doors` list, paths to the doorway and goes in, and inside the room
 (`src/game/base/rooms.ts`) presses the interact key on the door mat, which is
 the keeper's screen. A redrawn base moves the walk with it, which a table of
-tiles copied in here would not.
+tiles copied in here would not. Two keepers have no screen behind the mat: for
+`pokemon-centre` it walks on to BILL'S PC, which is the boxes, and for `oaks-lab`
+it stops on the mat with nothing said (`openFriendRoom` is Oak's question from
+there). `inRoomTalk.mjs` plays all of that talk, and the radio, as a player meets it.
 
-    await walkIntoBase(page, 'pokemon-centre');   // oaks-lab | brocks-workshop | bills-cottage
+    await walkIntoBase(page, 'pokemon-centre');   // brocks-workshop | bills-cottage | raid-arena
 
 Backing out of a screen lands the player back in its room, on the mat; the
 same call from there presses the key again, and from another room walks out

@@ -85,7 +85,7 @@ function namedKeys(line: string): readonly (readonly [string, string])[] {
 
 /** What each word on a hint promises the key does: the control it must be bound to. */
 const RAID_WORD_CONTROLS: Readonly<Record<string, string>> = {
-  GUIDE: 'objectives',
+  OAK: 'objectives',
   LOOK: 'look',
   PACK: 'bag',
   TEAM: 'party',
@@ -97,7 +97,7 @@ describe('the keys a HUD names', () => {
     const line = objectiveChipLines('LOST KIT: SW', false, false, new Set())[1];
     const named = namedKeys(line);
 
-    expect(named.map(([, word]) => word)).toEqual(['GUIDE', 'LOOK', 'PACK', 'TEAM']);
+    expect(named.map(([, word]) => word)).toEqual(['OAK', 'LOOK', 'PACK', 'TEAM']);
     for (const [key, word] of named) {
       const control = controls[RAID_WORD_CONTROLS[word]] as BoundKey;
       expect(control.keyCode, `${word} is named as [${key}]`).toBe(KEY_CODES[key]);
@@ -201,15 +201,15 @@ describe('the keys the house names', () => {
 describe('a key is named until it has been used once', () => {
   it('drops each key from the chip as it is learned, and the chip is one line once all are', () => {
     const learned = new Set<string>();
-    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] GUIDE  [L] LOOK  [B] PACK  [P] TEAM');
+    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [B] PACK  [P] TEAM');
 
     learned.add('bag');
-    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] GUIDE  [L] LOOK  [P] TEAM');
+    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [P] TEAM');
 
     learned.add('party').add('look').add('objectives');
     expect(objectiveChipLines('KIT: S', false, false, learned)).toEqual(['KIT: S']);
     // A new objective still names the two keys the raid is read with.
-    expect(objectiveChipLines('KIT: S', true, false, learned)).toEqual(['KIT: S', '[O] GUIDE  [L] LOOK']);
+    expect(objectiveChipLines('KIT: S', true, false, learned)).toEqual(['KIT: S', '[O] OAK  [L] LOOK']);
   });
 
   it('empties the yard line as the yard is learned', () => {

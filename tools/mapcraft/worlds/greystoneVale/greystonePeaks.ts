@@ -22,7 +22,7 @@
 import { caveMouthSpots, plantCaveMouth } from '../../caves';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
-import { startDistrict } from '../../worldPlan';
+import { planLimits, startDistrict } from '../../worldPlan';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { GREYSTONE_VALE } from './plan';
 
@@ -69,7 +69,6 @@ export function greystonePeaks(): MapcraftResult {
   p.bed(38, 26, 6, 8, { round: false });
   p.rock(48, 26, 10, 18); // the peaks' east cliff
   p.wood(38, 38, 4, 6);
-  p.bed(38, 46, 6, 6, { round: false });
   p.wood(38, 54, 6, 6).wood(48, 48, 4, 12);
 
   // -- The pass, drawn last so nothing cuts it ---------------------------------------
@@ -80,6 +79,20 @@ export function greystonePeaks(): MapcraftResult {
   p.road([[48, 12], [48, 21]]); // up onto the upper bench
   p.road([[44, 25], [44, 46], [46, 46], [46, 62]], { width: 3 }); // on down to The Crossing
   p.trail([[52, 22], [62, 22]]); // the unsigned path east into the pines
+
+  // -- The navvies' camp, at the foot of the cutting, where the pass was driven through ----
+  p.building('hut', 9, 39);
+  p.building('crate-stack', 12, 39);
+  p.building('barrels', 8, 42);
+  p.building('log', 11, 43);
+  p.building('big-stump', 12, 41);
+  p.flowers([9, 35], [14, 34]);
+
+  // -- The ranger's post, on the lower pass, in what used to be a bed of grass ----------
+  p.building('shed', 39, 46);
+  p.building('barrel', 43, 47);
+  p.building('sack', 38, 51);
+  p.flowers([43, 50], [38, 45]);
 
   // -- The way underground: the Greystone Caves open at the foot of the cliff -------
   const mouth = caveMouthSpots(p, { x: 40, y: 18, width: 8, height: 6 }).find(([x]) => x === 42);
@@ -101,22 +114,35 @@ export function greystonePeaks(): MapcraftResult {
         { x: 20, y: 6, lines: ['THE TARN', 'The river starts here, under the summit.'] },
         { x: 17, y: 47, lines: ['THE HIGH PASTURE', 'Shut the gate behind you. The ponies wander.'] },
         { x: 44, y: 57, lines: ['THE PASS', 'Down: The Crossing. Up: the caves, the quarry and the tarn.'] },
+        { x: 11, y: 37 + 1, lines: ['THE CUTTING', 'Driven through by hand. Do not ask whose. Falling rock: yes.'] },
+        { x: 42, y: 51, lines: ['RANGER POST', 'Lost? Stay where you are. Somebody will be along. That somebody is also lost.'] },
       ],
       people: [
+        { x: 15, y: 26, name: 'Rock Picker', look: 'hiker', facing: 'right', lines: ['It is all the same rock. People pay for it anyway. I do not tell them.', 'Further up it is the same rock again, and colder.'], beat: { everyMs: 3400, glances: ['up', 'down'] }, calls: ['Same rock. Same rock.'] },
         { x: 21, y: 16, name: 'Climber', look: 'hiker', facing: 'right', lines: ['The river is born in this tarn. Follow it down and you come to The Crossing.'] },
+        { x: 10, y: 37, name: 'Ganger', look: 'heavy-man', facing: 'down', lines: ['Thirty years we have been widening this cutting. It is getting narrower.', 'Nobody can tell me why. I have stopped asking the rock.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['right', 'down'] }, calls: ['Put your backs into it!'] },
+        { x: 13, y: 44, name: 'Navvy', look: 'worker', facing: 'up', lines: ['Dig, carry, tip. Dig, carry, tip. The Machop does the carrying.', 'I have asked what I am for. They said digging. The Machop digs too.'], beat: { everyMs: 2600, glances: ['left', 'up'] }, calls: ['Tipping!'] },
+        { x: 20, y: 47, name: 'Pony Girl', look: 'lass', facing: 'down', lines: ['They come up here for the summer. I come up here because they will not come down.', 'Shut the gate when you go. That one knows how to open it, but it likes to be asked.'], beat: { everyMs: 3100, glances: ['left'] }, calls: ['Easy, easy now.'] },
         {
           x: 49,
           y: 45,
           name: 'Mountain Ranger',
           look: 'camper',
           facing: 'left',
-          lines: ['Lost on the hill? The Goat Track leaves through the pasture, west of the gorge.'],
+          lines: ['Lost on the hill? The Goat Track leaves through the pasture, west of the gorge.', 'Everybody who comes down that pass is sure they know the way. I have a very good chair.'],
+          beat: { everyMs: 3700, glances: ['up', 'down'] },
+          calls: ['All right up there?'],
         },
       ],
       // The ponies in the pasture, and the Mankey troop that sits on the gorge's
       // edge watching whoever comes down the pass.
       pokemon: [
         { x: 19, y: 48, species: 'ponyta', level: 10 },
+        { x: 45, y: 58, species: 'geodude', level: 8 },
+        { x: 9, y: 37 + 8, species: 'machop', beat: { everyMs: 1500, roam: [[1, 0]] } },
+        { x: 15, y: 38, species: 'geodude' },
+        { x: 42, y: 45, species: 'spearow', beat: { everyMs: 1300, roam: [[0, -1]] } },
+        { x: 40, y: 52, species: 'rattata', level: 8, beat: { everyMs: 1500, roam: [[1, 0]] } },
         { x: 21, y: 49, species: 'ponyta' },
         { x: 37, y: 34, species: 'mankey', level: 9 },
         { x: 36, y: 44, species: 'mankey' },
@@ -133,5 +159,5 @@ export function greystonePeaks(): MapcraftResult {
       links: [caveMouthLink(cave, 'peaks', mouth), ...caveLadders(cave)],
     },
   });
-  return { file, notes: p.notes };
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
 }

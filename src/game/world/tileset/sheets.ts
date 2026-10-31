@@ -8,6 +8,7 @@ import { TOWN_SHEET_SOURCE } from './townSheet';
 import { AREA_SHEET_SOURCE } from './areaSheet';
 import { ICE_SHEET_SOURCE } from './iceSheet';
 import { EMBER_SHEET_SOURCE } from './emberSheet';
+import { BOARDS_SHEET_SOURCE } from './boardsSheet';
 import { HIDEOUT_SHEET_SOURCE } from './hideoutSheet';
 import { RAID_ARENA_SHEET_SOURCE } from '../../base/raidArenaSheet';
 import { ARENA_HALL_SOURCE } from '../../base/arenaHallSheet';
@@ -66,6 +67,8 @@ export const TILE_SOURCES: readonly TileSource[] = [
   ICE_SHEET_SOURCE.source,
   // A cave dressed as a volcano: FireRed's Mt. Ember (`emberSheet.ts`).
   EMBER_SHEET_SOURCE.source,
+  // A boardwalk: FireRed's plank decking (`boardsSheet.ts`).
+  BOARDS_SHEET_SOURCE.source,
   // A room dressed as the Rocket Hideout or the Power Plant (`hideoutSheet.ts`).
   HIDEOUT_SHEET_SOURCE.source,
   // FireRed's own tile animations for the ground sheets' sea, surf and

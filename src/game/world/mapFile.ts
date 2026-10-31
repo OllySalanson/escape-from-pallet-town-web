@@ -231,7 +231,7 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxPeople: 256,
   maxSigns: 160,
   maxLandmarks: 64,
-  maxDistricts: 64,
+  maxDistricts: 128,
   // The vale's caves, hills and far places are where its Pokemon stand to be
   // met: a roost, a herd, the Sleeper (`caveLife.ts`), the safari's rarest.
   maxPokemon: 256,
@@ -435,6 +435,8 @@ export const MAP_FILE_BUILDINGS = {
   log: 'log',
   lilies: 'lilies',
   'lilies-wide': 'liliesWide',
+  // Lilies nobody can walk on: the water under them is still water.
+  'water-lily': 'waterLily',
   fountain: 'fountain',
   'stone-fountain': 'stoneFountain',
   'plaza-steps': 'plazaSteps',
@@ -1630,6 +1632,11 @@ export interface MapFileLink {
 export interface MapFileSailing {
   /** What the boat is called, on its caption and in its lines. */
   readonly name: string;
+  /**
+   * What sails: the Seagallop unless it says, or a punt on inland water, small
+   * enough that whoever is aboard is seen standing in it.
+   */
+  readonly craft?: 'punt';
   readonly from: number;
   readonly until: number;
   /**
@@ -2606,6 +2613,9 @@ function readLinks(
     }
     if (typeof sails.name !== 'string' || sails.name.length === 0 || sails.name.length > limits.maxPlaceNameLength) {
       problems.push(`${what} needs a name of at most ${limits.maxPlaceNameLength} letters.`);
+    }
+    if (sails.craft !== undefined && sails.craft !== 'punt') {
+      problems.push(`${what} is a ferry or a punt.`);
     }
     const raidSeconds = RAID_DURATION_MS / 1_000;
     if (

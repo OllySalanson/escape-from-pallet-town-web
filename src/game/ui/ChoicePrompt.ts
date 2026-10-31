@@ -88,7 +88,11 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
       ),
     );
     this.optionTexts.forEach((text, index) => {
+      // On the answer itself as well as on the box: a pointer is tested against
+      // an object's own scroll factor, so an answer left at the default was only
+      // where it is drawn on a screen whose camera had not scrolled.
       text
+        .setScrollFactor(0)
         .setInteractive({ useHandCursor: true })
         .on('pointerover', () => this.select(index))
         .on('pointerdown', () => {

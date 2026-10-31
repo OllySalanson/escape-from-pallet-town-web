@@ -8,6 +8,7 @@ import { AREA_SHEET_SOURCE, areaProp } from './areaSheet';
 import type { TownPieceName } from '../generated/townPieces';
 import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
 import { EMBER_SHEET_SOURCE, emberProp } from './emberSheet';
+import { BOARDS, BOARDS_SHEET_SOURCE } from './boardsSheet';
 
 /**
  * What a player's map is drawn with: the Kanto catalogue Viridian City is
@@ -89,6 +90,17 @@ const cc0 = Object.fromEntries(
 ) as Record<Cc0ObjectName, PropDefinition>;
 
 /**
+ * A lily pad is a stepping stone, walked over wherever it is planted; this is the
+ * same pad as a thing floating on deep water, which stays deep water.
+ */
+const WATER_PLANTS = {
+  waterLily: {
+    ...FLOOD_TOWN_TILESET.props.lilies,
+    cells: FLOOD_TOWN_TILESET.props.lilies.cells.map((cell) => ({ ...cell, solid: true })),
+  },
+} as const satisfies Record<string, PropDefinition>;
+
+/**
  * Ice, out of doors: Icefall Cave's sheet of it, which FireRed only ever lays
  * underground, laid where a map freezes over - a frozen lagoon, an ice shelf -
  * with the snowy boulders that stand on it, which are what a slide across it
@@ -130,6 +142,7 @@ export type PlayerMapPropName =
   | keyof typeof ICE
   | keyof typeof MOUNTAIN
   | keyof typeof TOWER_STONES
+  | keyof typeof WATER_PLANTS
   | TownPieceName;
 
 export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
@@ -142,15 +155,23 @@ export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
     ICE_SHEET_SOURCE.source,
     EMBER_SHEET_SOURCE.source,
     AREA_SHEET_SOURCE.source,
+    BOARDS_SHEET_SOURCE.source,
   ],
   materials: {
     ...KANTO_TILESET.materials,
     ice: { roles: { fill: iceTile('ice.sheet') } },
+    boards: BOARDS,
+    // A deck stands over water with no bank under it: the bank is for land.
+    water: {
+      ...KANTO_TILESET.materials.water,
+      joins: [...(KANTO_TILESET.materials.water.joins ?? []), 'boards'],
+    },
   },
   props: {
     ...cc0,
     ...BASE_BUILDINGS,
     ...TOWER_STONES,
+    ...WATER_PLANTS,
     ...TOWN_PROPS,
     ...ICE,
     ...MOUNTAIN,

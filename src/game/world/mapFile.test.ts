@@ -356,6 +356,8 @@ describe('a map from a file is a map like any other', () => {
       'assets/frlg-ember.png',
       // The Pokemon Tower's graves stand out of doors too.
       'assets/frlg-areas.png',
+      // The Sevii Islands' planks, a boardwalk's.
+      'assets/frlg-boards.png',
     ]);
     // Tall grass is the file's `g`, so it costs encounters exactly where it is drawn.
     expect(map.tallGrass[4][6]).toBe(true);
