@@ -5340,6 +5340,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private openBag(): void {
     audioManager.play('menuOpen');
+    // The pack is what a search's "no room" sent them to: asked again if it still holds.
+    if (this.search) {
+      this.search.said = null;
+    }
     this.scene.pause();
     this.scene.launch('bag', {
       bag: this.bag,
@@ -5366,6 +5370,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       covers: (gamePixels) => {
         this.panelLean.setCover(gamePixels);
         this.refreshRunTimerHud();
+        this.renderSearch();
       },
       frame: (deltaMs) => this.settlePanelLean(deltaMs),
     };
@@ -5387,6 +5392,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * while something else is being read, it is the whole field guide instead.
    */
   private answerRadioKey(): void {
+    // The screen is already going dark for a fight or a door: nothing to open over it.
+    if (this.isWarping) {
+      return;
+    }
     if (this.onRadio) {
       this.hangUp();
       this.openObjectives();
@@ -7118,7 +7127,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Draws the search panel as the search now stands, or nothing while none is open. */
   private renderSearch(): void {
     const search = this.search;
-    if (!search) {
+    // A side panel stands over the same corner: a sliver of the search showing
+    // beside the pack says nothing, and it comes back as the panel goes.
+    if (!search || this.panelLean.covering > 0) {
       this.searchPanel?.hide();
       return;
     }

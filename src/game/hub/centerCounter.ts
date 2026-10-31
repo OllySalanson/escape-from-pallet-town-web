@@ -37,6 +37,12 @@ export interface CenterOffer {
   readonly lines: readonly string[];
   /** What she asks, with YES and NOT NOW under it. Absent when there is nobody to heal. */
   readonly question?: string;
+  /**
+   * Whether YES takes clock off the next raid, up to half of it. A free heal opens
+   * on YES as FireRed's does; one with a price opens on NOT NOW, because the key
+   * mashed through her lines is still under the player's finger.
+   */
+  readonly spendsForGood?: boolean;
 }
 
 /** How she says the clock the next raid would start on. */
@@ -69,7 +75,7 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
         hurt.map((stored) => stored.id),
         recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed),
       );
-  const them = hurt.length === 1 ? (hurt[0].pokemon.name) : `all ${hurt.length} of them`;
+  const them = hurt.length === 1 ? hurt[0].pokemon.name : hurt.length === 2 ? 'both of them' : `all ${hurt.length} of them`;
   const price =
     quoteMs === 0
       ? 'It will not cost your next raid a second.'
@@ -77,6 +83,7 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
   return {
     lines: [`${teamCondition(game.stash) ?? 'Somebody needs me'}. ${price}`],
     question: `Shall I heal ${them}?`,
+    spendsForGood: quoteMs > 0,
   };
 }
 
