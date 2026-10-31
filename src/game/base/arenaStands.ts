@@ -12,8 +12,10 @@ import {
 
 /**
  * The colosseum round THE RAID ARENA's hall: everything outside its wall. Rows of
- * stone seats climbing away from the top of the wall, a dim crowd on them, and
- * behind them an arcade of dark arches with banners along its top.
+ * stone seats climbing away from the top of the wall, and behind them an arcade of
+ * dark arches with banners along its top. The people on the seats are a layer of
+ * their own (`paintCrowdLayer`), because how full the house is belongs to the save
+ * and a save changes; what the crowd does is `arenaCrowd.ts`.
  *
  * It is drawn as the pit is, rings of one oval stepped outward and lifted, which
  * is what shows a riser on the north side and hides it elsewhere: this game's view
@@ -118,22 +120,30 @@ const CROWD_INKS: readonly { readonly s: Rgb; readonly h: Rgb }[] = [
   { s: [16, 16, 24], h: [32, 32, 40] },
 ];
 
-/** About one person to every this many pixels along a row, and how many of the places are taken. */
+/** About one place to every this many pixels along a row. */
 const SEAT_SPACING = 9;
-const SEATS_TAKEN = 0.62;
 
 export interface CrowdSeat {
   /** The top-left of the person, in hall pixels. */
   readonly x: number;
   readonly y: number;
   readonly ink: number;
+  /** How full the house has to be before somebody sits here, in [0, 1). */
+  readonly fill: number;
+  /** This person's own number in [0, 1), so no two of them keep time. */
+  readonly roll: number;
+  /** Where round the hall they sit, as `ovalPoint` turns. */
+  readonly angle: number;
+  readonly row: number;
+  readonly north: boolean;
 }
 
 let seatsCache: readonly CrowdSeat[] | null = null;
 
 /**
- * Everybody in the crowd. A person's place stays their place, so a save, a visit
- * and a screen all show the same crowd, and only a few of them ever shift.
+ * Every place in the stands. A person's place stays their place, so a save, a
+ * visit and a screen all show the same crowd, and a fuller house is the same
+ * people with more beside them (`seatedAt`).
  */
 export function crowdSeats(): readonly CrowdSeat[] {
   if (seatsCache) {
@@ -145,26 +155,73 @@ export function crowdSeats(): readonly CrowdSeat[] {
       const inner = rowEdge(row, north);
       const places = Math.round((Math.PI * (inner.rx + inner.ry)) / SEAT_SPACING);
       for (let place = 0; place < places; place += 1) {
-        if (scatter(place + (north ? 0 : 5000), row + 17) > SEATS_TAKEN) {
-          continue;
-        }
         const angle = (place / places) * Math.PI * 2;
         const sin = Math.sin(angle);
         if (north !== sin < 0) {
           continue;
         }
-        // Sat on the tread, which to the north is up past the riser in front of it.
-        const reach = SEAT_TREAD * 0.5;
-        const x = Math.round(inner.x + Math.cos(angle) * (inner.rx + reach)) - 2;
-        const y = Math.round(inner.y - (north ? SEAT_RISE : 0) + sin * (inner.ry + reach)) - PERSON_HEIGHT + 2;
+        const { x, y } = seatPoint(row, north, angle);
         if (!inWayOut(x + 2, y)) {
-          seats.push({ x, y, ink: Math.floor(scatter(place, row + 3) * CROWD_INKS.length) });
+          seats.push({
+            x,
+            y,
+            ink: Math.floor(scatter(place, row + 3) * CROWD_INKS.length),
+            fill: scatter(place + (north ? 0 : 5000), row + 17),
+            roll: scatter(place + 900, row + 41),
+            angle,
+            row,
+            north,
+          });
         }
       }
     }
   }
   seatsCache = seats;
   return seats;
+}
+
+/** Where a person sits on a row at a turn round the hall: on the tread, which to the north is up past the riser in front of it. */
+export function seatPoint(row: number, north: boolean, angle: number): { readonly x: number; readonly y: number } {
+  const inner = rowEdge(row, north);
+  const reach = SEAT_TREAD * 0.5;
+  return {
+    x: Math.round(inner.x + Math.cos(angle) * (inner.rx + reach)) - 2,
+    y: Math.round(inner.y - (north ? SEAT_RISE : 0) + Math.sin(angle) * (inner.ry + reach)) - PERSON_HEIGHT + 2,
+  };
+}
+
+let seatedCache: { readonly share: number; readonly seats: readonly CrowdSeat[] } | null = null;
+
+/** Who is in when the house is this full. */
+export function seatedAt(share: number): readonly CrowdSeat[] {
+  if (seatedCache?.share !== share) {
+    seatedCache = { share, seats: crowdSeats().filter((seat) => seat.fill < share) };
+  }
+  return seatedCache.seats;
+}
+
+/** A person on their feet, and with their arms up: bottoms on the row a seated person's bottom is on. */
+const STANDING = ['.....', '.....', '.....', '.hhh.', '.hhh.', 'sssss', '.sss.', '.sss.'] as const;
+const ARMS_UP = ['h...h', 's...s', 's.h.s', 'shhhs', 'shhhs', 'sssss', '.sss.', '.sss.'] as const;
+export type CrowdPose = 'stand' | 'up';
+export const POSED_HEIGHT = STANDING.length;
+
+/** The poses, each a row of one frame an ink: what `arenaCrowd.ts` draws over the seated. */
+export function paintPosedPeople(): PaintedPicture {
+  const width = PERSON_WIDTH * CROWD_INKS.length;
+  const data = new Uint8ClampedArray(width * POSED_HEIGHT * 2 * 4);
+  [STANDING, ARMS_UP].forEach((figure, poseIndex) => {
+    CROWD_INKS.forEach((inks, ink) => {
+      figure.forEach((row, y) => {
+        [...row].forEach((char, x) => {
+          if (char !== '.') {
+            setPixel(data, ((poseIndex * POSED_HEIGHT + y) * width + ink * PERSON_WIDTH + x) * 4, char === 'h' ? inks.h : inks.s);
+          }
+        });
+      });
+    });
+  });
+  return { width, height: POSED_HEIGHT * 2, data };
 }
 
 /** One person, as the sheet the few who shift are drawn from: one frame an ink. */
@@ -245,7 +302,7 @@ function paintArcadeBanners(data: Uint8ClampedArray): void {
   }
 }
 
-/** The stands, all of it but the few people who shift: the seats, the crowd, the arcade and the banners. */
+/** The stands, with nobody in them: the seats and the arcade. */
 export function paintStands(): PaintedPicture {
   const width = STANDS_WIDTH;
   const height = STANDS_HEIGHT;
@@ -312,9 +369,25 @@ export function paintStands(): PaintedPicture {
       setPixel(data, at, stoneAt(acrossRing(north ? capNorth : capSouth, px, py, north) > 0.992 ? 2.8 : 1.3, x, y));
     }
   }
-  for (const seat of crowdSeats()) {
+  return { width, height, data };
+}
+
+/** Whoever is in when the house is this full, on the stands' own frame. */
+export function paintCrowdLayer(share: number): PaintedPicture {
+  const width = STANDS_WIDTH;
+  const height = STANDS_HEIGHT;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (const seat of seatedAt(share)) {
     stampPerson(data, width, seat.x - STANDS_ORIGIN.x, seat.y - STANDS_ORIGIN.y, seat.ink);
   }
+  return { width, height, data };
+}
+
+/** The banners, on the stands' own frame: over everybody, on their feet or not, because a nearer pole stands over the people behind it. */
+export function paintBanners(): PaintedPicture {
+  const width = STANDS_WIDTH;
+  const height = STANDS_HEIGHT;
+  const data = new Uint8ClampedArray(width * height * 4);
   paintArcadeBanners(data);
   return { width, height, data };
 }
@@ -338,8 +411,8 @@ export interface CrowdStir {
 export function nextStir(
   rolls: readonly [number, number, number],
   isInView: (seat: CrowdSeat) => boolean,
+  seats: readonly CrowdSeat[],
 ): CrowdStir | null {
-  const seats = crowdSeats();
   // A handful of tries is plenty: mostly they are in view, and if not nobody is watching.
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const seat = seats[Math.floor(((rolls[0] + attempt * 0.0731) % 1) * seats.length)];

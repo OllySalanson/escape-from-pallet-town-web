@@ -1,3 +1,4 @@
+import type { CrowdMood } from '../base/arenaCrowd';
 import { activeSaveSlot } from '../dev/playtestMode';
 import { createPlaytestGame, createPlaytestStash } from '../dev/playtestSave';
 import { Pokemon } from '../pokemon';
@@ -91,15 +92,15 @@ export function recordWalkedOut(attempt: TryingMap): void {
  * Where a raid's ending goes: back to the map maker from a try, to the base
  * from anything else. One answer for the three scenes a raid can end in.
  */
-export function homeAfterRaid():
+export function homeAfterRaid(raidMood?: CrowdMood):
   | { readonly key: 'mapmaker'; readonly data: { readonly tried: true } }
   | {
       readonly key: 'base';
-      readonly data: { readonly arrival: 'raid'; readonly room: 'raid-arena' };
+      readonly data: { readonly arrival: 'raid'; readonly room: 'raid-arena'; readonly raidMood?: CrowdMood };
     } {
   return currentTry()
     ? { key: 'mapmaker', data: { tried: true } }
-    : { key: 'base', data: { arrival: 'raid', room: 'raid-arena' } };
+    : { key: 'base', data: { arrival: 'raid', room: 'raid-arena', ...(raidMood ? { raidMood } : {}) } };
 }
 
 /**

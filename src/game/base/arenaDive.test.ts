@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_FROM_MS, ARRIVAL_FALL_MS, ARRIVAL_MS, DUST_MS, arrivalPose, dustAt } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_FROM_MS, ARRIVAL_FALL_MS, ARRIVAL_MS, DUST_MS, TOUCH_DOWN_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing } from '../world/raidArrival';
 import {
   DIVE_MS,
   FALL_MS,
@@ -16,6 +16,7 @@ import {
   partnerLeap,
   puffsAt,
   windAt,
+  steered,
 } from './arenaDive';
 
 const over = { x: 0, y: -1 };
@@ -175,5 +176,62 @@ describe('landing in the raid', () => {
     expect(Math.max(...late.map((puff) => Math.abs(puff.x)))).toBeGreaterThan(Math.max(...late.map((puff) => Math.abs(puff.y))));
     expect(dustAt(DUST_MS)).toEqual([]);
     expect(DUST_MS).toBeLessThanOrEqual(ARRIVAL_MS - ARRIVAL_FALL_FROM_MS - ARRIVAL_FALL_MS);
+  });
+});
+
+describe('sticking the landing', () => {
+  it('is pressed as the ring shuts, and the ring is ripe exactly then', () => {
+    expect(isCleanLanding(TOUCH_DOWN_MS)).toBe(true);
+    expect(isCleanLanding(TOUCH_DOWN_MS - 100)).toBe(true);
+    expect(isCleanLanding(TOUCH_DOWN_MS + 80)).toBe(true);
+    expect(isCleanLanding(TOUCH_DOWN_MS - 300)).toBe(false);
+    expect(isCleanLanding(TOUCH_DOWN_MS + 200)).toBe(false);
+    for (let ms = 0; ms <= TOUCH_DOWN_MS; ms += 10) {
+      const ring = landingRing(ms);
+      if (ring) {
+        expect(ring.ripe).toBe(isCleanLanding(ms));
+      }
+    }
+  });
+
+  it('closes on the tile, on whole pixels, and is gone by touch down', () => {
+    const early = landingRing(200)!;
+    const late = landingRing(TOUCH_DOWN_MS - 20)!;
+    expect(late.across).toBeLessThan(early.across);
+    expect(Number.isInteger(early.across)).toBe(true);
+    expect(landingRing(TOUCH_DOWN_MS + 1)).toBeNull();
+    expect(landingRing(0)).toBeNull();
+  });
+
+  it('takes no longer than any other landing, and a miss is exactly any other landing', () => {
+    expect(arrivalPose(ARRIVAL_MS, false).landed).toBe(arrivalPose(ARRIVAL_MS, true).landed);
+    for (let ms = 0; ms <= TOUCH_DOWN_MS - 1; ms += 40) {
+      expect(arrivalPose(ms, true).height).toBe(arrivalPose(ms, false).height);
+    }
+    expect(arrivalPose(TOUCH_DOWN_MS + 20).crouch).toBeGreaterThan(0);
+    expect(arrivalPose(TOUCH_DOWN_MS + 20, true).crouch).toBe(0);
+    const wide = (clean: boolean): number => Math.max(...dustAt(200, clean).map((puff) => Math.abs(puff.x)));
+    expect(wide(true)).toBeGreaterThan(wide(false));
+    expect(dustAt(200)).toEqual(dustAt(200, false));
+  });
+
+  it('says how many are running, once there is a run', () => {
+    expect(cleanLandingLine(1)).toBe('CLEAN LANDING');
+    expect(cleanLandingLine(4)).toBe('CLEAN LANDING x4');
+  });
+});
+
+describe('steering the fall', () => {
+  it('drifts towards the keys held, and comes back when they are let go', () => {
+    let steer = { x: 0, y: 0 };
+    for (let frame = 0; frame < 30; frame += 1) {
+      steer = steered(steer, { x: 1, y: -1 }, 16);
+    }
+    expect(steer.x).toBeGreaterThan(20);
+    expect(steer.y).toBeLessThan(-10);
+    for (let frame = 0; frame < 60; frame += 1) {
+      steer = steered(steer, { x: 0, y: 0 }, 16);
+    }
+    expect(Math.abs(steer.x)).toBeLessThan(1);
   });
 });

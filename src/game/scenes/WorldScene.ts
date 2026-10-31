@@ -5,7 +5,8 @@ import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, dustAt } from '../world/raidArrival';
+import { clockLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -215,7 +216,7 @@ import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
 import { raidFollower, sameFollower, type RaidFollower } from '../world/raidFollower';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
-import { DIALOG_FONT_SIZE } from '../ui/screenType';
+import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { PausePlate } from '../ui/PausePlate';
 import { WINDOW_PAUSE_LINES, WINDOW_PAUSE_TITLE, type PausesForWindow } from '../world/windowPause';
 import {
@@ -254,7 +255,7 @@ import {
 } from '../world/interiors';
 import type { WeatherId } from '../pokemon/battle/weather';
 import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
-import { WINDOW_CREAM } from '../ui/pixelWindow';
+import { WINDOW_CREAM, drawPixelWindow } from '../ui/pixelWindow';
 import {
   OBJECTIVE_DETAIL_MS,
   PLACE_PLATE_MS,
@@ -656,6 +657,11 @@ type BattleEncounter =
 
 /** The cloud a raid opens under, after a jump. */
 const ARRIVAL_CLOUD_TEXTURE = 'raid-arrival-cloud';
+const LANDING_RING_INK = 0xf8f0d8;
+const LANDING_RING_RIPE_INK = 0xf0c454;
+const LANDING_RING_SHADE = 0x101018;
+/** How long the board says a clean landing is one, while the raid gets going. */
+const LANDING_PLATE_MS = 1500;
 const ARRIVAL_CLOUD_DEPTH = 100000;
 const DUST_LIGHT_INK = 0xb8a880;
 const DUST_DARK_INK = 0x806848;
@@ -680,6 +686,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     readonly cloud: Phaser.GameObjects.TileSprite;
     readonly shadow: Phaser.GameObjects.Ellipse;
     readonly dust: Phaser.GameObjects.Graphics;
+    readonly ring: Phaser.GameObjects.Graphics;
+    /** Told to somebody who has never stuck one what the ring is for. */
+    readonly ringHint: Phaser.GameObjects.Text | null;
+    /** When the key was pressed, for the one press a landing gets. */
+    pressedAtMs: number | null;
     landed: boolean;
     partnerLanded: boolean;
     readonly restY: number;
@@ -1506,15 +1517,28 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Its shadow on the ground, closing in as it comes down.
     const shadow = this.add.ellipse(this.player.x + TILE_SIZE / 2, this.player.y + this.player.height - 2, 14, 6, 0x101018, 0.45).setDepth(atRow(FIGURE_BAND, this.currentTile.y) - 0.0005);
     const dust = this.add.graphics().setDepth(atRow(FIGURE_BAND, this.currentTile.y) + 0.0005);
+    const ground = { x: this.player.x + TILE_SIZE / 2, y: this.player.y + this.player.height - 2 };
+    const ring = this.add.graphics().setDepth(ARRIVAL_CLOUD_DEPTH + 1);
+    const everStuckOne = (new SaveManager().load()?.raidProgress.landings?.best ?? 0) > 0;
+    const ringHint = everStuckOne
+      ? null
+      : this.add
+          .text(ground.x, ground.y - 42, '[SPACE]', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd', backgroundColor: '#0b1220', padding: { x: 3, y: 1 } })
+          .setOrigin(0.5, 1)
+          .setDepth(ARRIVAL_CLOUD_DEPTH + 1)
+          .setVisible(false);
     this.arrival = {
       elapsedMs: 0,
       cloud,
       shadow,
       dust,
+      ring,
+      ringHint,
+      pressedAtMs: null,
       landed: false,
       partnerLanded: false,
       restY: this.player.y,
-      ground: { x: this.player.x + TILE_SIZE / 2, y: this.player.y + this.player.height - 2 },
+      ground,
     };
     this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
@@ -1528,7 +1552,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     arrival.elapsedMs += deltaMs;
-    const pose = arrivalPose(arrival.elapsedMs);
+    if (arrival.pressedAtMs === null && this.isInteractionPressed()) {
+      arrival.pressedAtMs = arrival.elapsedMs;
+    }
+    const clean = arrival.pressedAtMs !== null && isCleanLanding(arrival.pressedAtMs);
+    const pose = arrivalPose(arrival.elapsedMs, clean);
     this.player.setY(arrival.restY - pose.height + pose.crouch);
     // The camera is already where it is going to be: the figure falls into the
     // picture, rather than the picture being dragged after the figure.
@@ -1538,9 +1566,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     arrival.shadow.setScale(1 - (pose.height / ARRIVAL_FALL_HEIGHT) * 0.75);
     arrival.cloud.setAlpha(pose.cloud);
     arrival.cloud.setVisible(pose.cloud > 0);
+    this.drawLandingRing(arrival);
     arrival.dust.clear();
     if (pose.sinceLanding !== null) {
-      for (const puff of dustAt(pose.sinceLanding)) {
+      for (const puff of dustAt(pose.sinceLanding, clean)) {
         arrival.dust.fillStyle(puff.light ? DUST_LIGHT_INK : DUST_DARK_INK, 1);
         arrival.dust.fillRect(arrival.ground.x + puff.x, arrival.ground.y + puff.y, puff.size, puff.size);
       }
@@ -1555,13 +1584,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     arrival.cloud.setTilePosition(Math.round(arrival.elapsedMs / 4), Math.round(arrival.elapsedMs / 2));
     if (pose.landed && !arrival.landed) {
       arrival.landed = true;
-      audioManager.play('landThud');
+      audioManager.play(clean ? 'landClean' : 'landThud');
       this.cameras.main.shake(120, 2 / this.scale.height);
     }
     if (arrival.elapsedMs >= Math.max(ARRIVAL_MS, ARRIVAL_CLOUD_MS)) {
       arrival.cloud.destroy();
       arrival.shadow.destroy();
       arrival.dust.destroy();
+      arrival.ring.destroy();
+      arrival.ringHint?.destroy();
+      this.settleLanding(clean);
       this.partner?.setDropHeight(0);
       this.cameras.main.setFollowOffset(0, 0);
       this.player.setY(arrival.restY);
@@ -1570,6 +1602,51 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.arrival = null;
       this.showFirstDeploymentBriefing();
     }
+  }
+
+  /** The ring closing on the tile as the ground comes up: over the cloud, or it could not be timed. */
+  private drawLandingRing(arrival: NonNullable<WorldScene['arrival']>): void {
+    arrival.ring.clear();
+    const ring = landingRing(arrival.elapsedMs);
+    arrival.ringHint?.setVisible(ring !== null);
+    if (!ring) {
+      return;
+    }
+    const ink = ring.ripe ? LANDING_RING_RIPE_INK : LANDING_RING_INK;
+    // In whole pixels, a dash at a time: flattened by the view's slant, as the dust is.
+    const steps = Math.max(16, ring.across * 2);
+    arrival.ring.fillStyle(LANDING_RING_SHADE, 1);
+    for (let step = 0; step < steps; step += 1) {
+      const angle = (step / steps) * Math.PI * 2;
+      arrival.ring.fillRect(arrival.ground.x + Math.round(Math.cos(angle) * ring.across), arrival.ground.y + 1 + Math.round(Math.sin(angle) * ring.across * 0.45), 1, 1);
+    }
+    arrival.ring.fillStyle(ink, 1);
+    for (let step = 0; step < steps; step += 1) {
+      const angle = (step / steps) * Math.PI * 2;
+      arrival.ring.fillRect(arrival.ground.x + Math.round(Math.cos(angle) * ring.across), arrival.ground.y + Math.round(Math.sin(angle) * ring.across * 0.45), 1, 1);
+    }
+  }
+
+  /** Written down once the landing is over, and a clean one says so over their head while the raid gets going. */
+  private settleLanding(clean: boolean): void {
+    const streak = new SaveManager().recordLanding(clean);
+    if (!clean) {
+      return;
+    }
+    const line = cleanLandingLine(streak);
+    const text = this.add
+      .text(0, 0, line, { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd' })
+      .setDepth(CANOPY_BAND + 0.2);
+    const width = Math.ceil(text.width) + 8;
+    const left = Math.round(this.player.x + TILE_SIZE / 2 - width / 2);
+    const top = Math.round(this.player.y - 16);
+    const plate = this.add.graphics({ x: left, y: top }).setDepth(CANOPY_BAND + 0.19);
+    drawPixelWindow(plate, { x: 0, y: 0, width, height: 13 }, { fill: 0x0b1220, border: 0xf0c454 });
+    text.setPosition(left + 4, top + 1);
+    this.time.delayedCall(LANDING_PLATE_MS, () => {
+      plate.destroy();
+      text.destroy();
+    });
   }
 
   /**
@@ -4446,6 +4523,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.surveyedFrom = index;
     this.surveyAround(this.currentTile);
+    this.noteTheWalk();
+  }
+
+  /** A step for the pit to remember: only outdoors, because an inside is not on its picture. */
+  private noteTheWalk(): void {
+    const session = this.runSession;
+    const areas = this.currentMap.areas;
+    if (!session || (areas && placedAreaAt(areas, this.currentTile) !== areas[0])) {
+      return;
+    }
+    session.walk ??= newWalk();
+    noteWalked(session.walk, this.currentTile);
   }
 
   /** The survey's disc round one tile, kept to the place of the map that tile is in. */
@@ -4484,12 +4573,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * ground it walked. Called from every ending, because a raid lost on the last
    * step surveyed exactly as much ground as one that got home.
    */
-  private recordRaid(outcome: 'extracted' | 'wiped'): void {
+  private recordRaid(outcome: 'extracted' | 'wiped', exitLabel?: string): void {
     this.surveyGround();
-    new SaveManager().recordRaidEnded(this.currentMap.id, outcome, {
-      width: this.currentMap.width,
-      walked: this.runSession?.surveyed ?? [],
-    });
+    new SaveManager().recordRaidEnded(
+      this.currentMap.id,
+      outcome,
+      {
+        width: this.currentMap.width,
+        walked: this.runSession?.surveyed ?? [],
+      },
+      {
+        walk: this.runSession?.walk,
+        ending: outcome === 'extracted' ? { kind: 'out', line: outLine(exitLabel ?? 'the way out') } : { kind: 'fell', line: clockLine() },
+      },
+    );
     // The pack is laid out in the field as much as at base - a find is seated
     // in the room that is left and moved where the player wants it - so the
     // layout comes home with the raid, however the raid ended. It is seats and
@@ -7272,7 +7369,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Written before the banking, which reloads the save it writes back: the
     // record and the survey are part of what this raid did, and banking must
     // carry them out rather than overwrite them.
-    this.recordRaid('extracted');
+    this.recordRaid('extracted', point.label);
     const contractResult = banksContract
       ? new SaveManager().bankContract(contract, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };

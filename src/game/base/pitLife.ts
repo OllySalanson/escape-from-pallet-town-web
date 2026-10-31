@@ -221,6 +221,15 @@ export function eyesAt(elapsedMs: number): { readonly look: EyesLook; readonly s
   return { look: 'slit', shift: -1 };
 }
 
+/** What eyes do about a coin: a blink, and then they look at whoever threw it, for this long. */
+export const STARE_MS = 1700;
+export function stareAt(sinceCoinMs: number, towards: number): { readonly look: EyesLook; readonly shift: number } {
+  if (sinceCoinMs < 110) {
+    return { look: 'shut', shift: 0 };
+  }
+  return { look: 'open', shift: towards };
+}
+
 const EYE_ROWS: Readonly<Record<EyesLook, readonly string[]>> = {
   open: ['yy.yy', 'rr.rr'],
   slit: ['.....', 'dd.dd'],
