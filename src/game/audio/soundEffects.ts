@@ -390,6 +390,12 @@ export const SOUND_EFFECTS = {
     moment: 'Landing in a raid out of the cloud',
     tones: [noise(320, 0.1, 0.09), sweep(tri(130, 0.14, 0.08), 82)],
   },
+  landClean: {
+    channel: 'world',
+    moment: 'A landing stuck in a raid: the ring shut with the key pressed',
+    // The thud without its slump, and a short bright note on top of it.
+    tones: [noise(420, 0.07, 0.08), sq(523, 0.07, 0.04, 0.04), sq(784, 0.12, 0.04, 0.1)],
+  },
   bikeBell: {
     channel: 'world',
     moment: 'Getting on the Bicycle - its bell, as FireRed rings it',

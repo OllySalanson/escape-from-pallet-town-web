@@ -36,6 +36,9 @@ const PUFF_POOL = 10;
 const PLAYER_PLACE = { x: -8, y: -28 };
 const PARTNER_PLACE = { x: 12, y: -8 };
 
+/** The partner goes where the player goes, a little less far. */
+const PARTNER_DRIFT = 0.7;
+
 interface Faller {
   readonly image: Phaser.GameObjects.Image;
   readonly from: { readonly x: number; readonly y: number };
@@ -126,22 +129,23 @@ export class ArenaDiveView {
     return { image, from, place, seed, frameFor, startedAtMs: null };
   }
 
-  private fall(faller: Faller | null, elapsedMs: number, seen: boolean): void {
+  private fall(faller: Faller | null, elapsedMs: number, seen: boolean, steer: { readonly x: number; readonly y: number }): void {
     if (!faller) {
       return;
     }
     faller.startedAtMs ??= elapsedMs;
     const fallingMs = elapsedMs - faller.startedAtMs;
     const at = fallerAt(fallingMs, faller.from, faller.place, faller.seed);
-    faller.image.setPosition(at.x, at.y).setFrame(faller.frameFor(fallingMs)).setVisible(seen);
+    faller.image.setPosition(at.x + Math.round(steer.x), at.y + Math.round(steer.y)).setFrame(faller.frameFor(fallingMs)).setVisible(seen);
   }
 
-  public frame(elapsedMs: number, pose: JumpPose, width: number, height: number): void {
+  /** `steer` is how far the arrow keys have drifted whoever is falling, in pixels. */
+  public frame(elapsedMs: number, pose: JumpPose, width: number, height: number, steer: { readonly x: number; readonly y: number }): void {
     this.seeOnlyOurOwn();
     const middleX = Math.floor(width / 2);
     const middleY = Math.floor(height / 2);
-    this.fall(this.player, elapsedMs, pose.figure.seen);
-    this.fall(this.partner, elapsedMs, pose.figure.seen);
+    this.fall(this.player, elapsedMs, pose.figure.seen, steer);
+    this.fall(this.partner, elapsedMs, pose.figure.seen, { x: steer.x * PARTNER_DRIFT, y: steer.y * PARTNER_DRIFT });
 
     this.wind.clear();
     for (const streak of windAt(elapsedMs, pose.wind, width, height)) {

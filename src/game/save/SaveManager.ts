@@ -249,6 +249,12 @@ export interface RaidProgress {
    */
   readonly arenaIntroSeen?: boolean;
   /**
+   * Landings stuck out of THE RAID ARENA's pit (`world/raidArrival.ts`): how many
+   * running, and the most there have ever been. Pride, and nothing else reads it
+   * for anything. Absent on a save that has never stuck one.
+   */
+  readonly landings?: LandingRecord;
+  /**
    * The first words already said (`../hub/firstWords`): Professor Oak and Nurse
    * Joy speak a few lines the first time each of their screens opens, once per
    * save. Recorded at the moment they are shown, as the battle lesson is.
@@ -409,6 +415,11 @@ export interface RaidProgress {
 }
 
 /** One map's raid history. Every other number on the drop-in screen is derived. */
+export interface LandingRecord {
+  readonly streak: number;
+  readonly best: number;
+}
+
 export interface MapRaidRecord {
   readonly deployed: number;
   readonly extracted: number;
@@ -877,6 +888,27 @@ export class SaveManager {
    * starts, so skipping it or closing the tab does not buy it unasked again.
    * With no save to remember it in, it is always the first.
    */
+  /**
+   * A landing out of the pit: one more on the streak if it was stuck, and the
+   * streak over if not. Hands back how many are running.
+   */
+  public recordLanding(clean: boolean): number {
+    const game = this.load();
+    if (!game) {
+      return clean ? 1 : 0;
+    }
+    const held = game.raidProgress.landings;
+    const streak = clean ? (held?.streak ?? 0) + 1 : 0;
+    if (!clean && !held?.streak) {
+      return 0;
+    }
+    this.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, landings: { streak, best: Math.max(streak, held?.best ?? 0) } },
+    });
+    return streak;
+  }
+
   public watchArenaIntro(): boolean {
     const game = this.load();
     if (!game) {
@@ -1908,6 +1940,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     giftsReceived: uniqueStrings(value.giftsReceived),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
+    ...(readLandings(value.landings) ?? {}),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
       : {}),
@@ -1960,6 +1993,16 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ]),
     ],
   };
+}
+
+/** A landing record, or nothing if what is stored is not one. */
+function readLandings(value: unknown): { readonly landings: LandingRecord } | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  const { streak, best } = value as Record<string, unknown>;
+  const whole = (count: unknown): count is number => Number.isInteger(count) && (count as number) >= 0;
+  return whole(streak) && whole(best) ? { landings: { streak, best: Math.max(streak, best) } } : null;
 }
 
 /** Only whole, non-negative counts, on maps that still exist. */

@@ -200,6 +200,7 @@ import {
   FOG_APPROACH_MS,
   FOG_LIFT_MS,
   FOG_LIFT_STEPS,
+  steered,
   FOG_STEP_MS,
   FALL_MS,
   JUMP_MS,
@@ -210,7 +211,7 @@ import {
   partnerLeap,
   overTheFence,
 } from '../base/arenaDive';
-import { marshalLines } from '../base/arenaMarshal';
+import { STREAK_WORTH_SAYING, marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
 import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
@@ -623,6 +624,8 @@ export class BaseScene extends Phaser.Scene {
     readonly dive: ArenaDiveView | null;
     /** The partner on its way over the fence after the player, drawn here until it too is falling. */
     leaper: { readonly image: Phaser.GameObjects.Image; readonly from: { readonly x: number; readonly y: number } } | null;
+    /** How far the arrow keys have drifted whoever is falling. */
+    steer: { readonly x: number; readonly y: number };
   } | null = null;
   /** The cloud lifting off ground a raid has just walked (`ArenaView.liftFogFromLastRaid`). */
   private fogLift: {
@@ -1558,7 +1561,7 @@ export class BaseScene extends Phaser.Scene {
     if (!keeper || !kit) {
       return;
     }
-    const lines = marshalLines(this.savedGame.raidProgress.firstWordsHeard, kit.flow);
+    const lines = marshalLines(this.savedGame.raidProgress.firstWordsHeard, kit.flow, this.savedGame.raidProgress.landings?.streak ?? 0);
     if (!hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
       this.hearFirstWords('loadout');
       this.clearKeeperMark();
@@ -1602,6 +1605,7 @@ export class BaseScene extends Phaser.Scene {
         leaving: true,
         dive: null,
         leaper: null,
+        steer: { x: 0, y: 0 },
       };
       return;
     }
@@ -1625,6 +1629,7 @@ export class BaseScene extends Phaser.Scene {
       leaving: false,
       dive: new ArenaDiveView(this, this.playerTexture),
       leaper: null,
+      steer: { x: 0, y: 0 },
     };
     camera.stopFollow();
     camera.removeBounds();
@@ -1691,7 +1696,12 @@ export class BaseScene extends Phaser.Scene {
     camera.centerOn(x, y);
     arena.burn(deltaMs);
     arena.diveFrame(pose.zoom, jump.focus);
-    jump.dive?.frame(jump.elapsedMs, pose, this.scale.width, this.scale.height);
+    const held = {
+      x: Number(this.controls.right.isDown) - Number(this.controls.left.isDown),
+      y: Number(this.controls.down.isDown) - Number(this.controls.up.isDown),
+    };
+    jump.steer = steered(jump.steer, held, deltaMs);
+    jump.dive?.frame(jump.elapsedMs, pose, this.scale.width, this.scale.height, jump.steer);
     this.partner?.update(deltaMs);
     if (jump.elapsedMs >= JUMP_MS) {
       jump.leaving = true;
@@ -1733,8 +1743,11 @@ export class BaseScene extends Phaser.Scene {
     if (!mood || !this.arena) {
       return;
     }
-    this.lastCrowdMood = mood;
-    this.arena.crowdReacts(mood, this.figureMiddle());
+    // A run of stuck landings has them on the look-out for this player.
+    const streak = this.savedGame.raidProgress.landings?.streak ?? 0;
+    const taken = mood === 'clap' && streak >= STREAK_WORTH_SAYING ? 'cheer' : mood;
+    this.lastCrowdMood = taken;
+    this.arena.crowdReacts(taken, this.figureMiddle());
     this.crowdLookMs = this.still ? 0 : CROWD_LOOK_MS;
   }
 

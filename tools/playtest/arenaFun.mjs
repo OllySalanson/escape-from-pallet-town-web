@@ -1,11 +1,11 @@
 // Plays what THE RAID ARENA does for somebody who has come back to it.
 //
-//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd]
+//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd|landing]
 //
 // A save is written as it would stand after that many raids, the raid's ending is
 // handed to the hall as the result screen hands it, and everything is played with
-// the real keys: the crowd's answer to each kind of raid, a wave at the stands and
-// a lap of the ring. Exit code 1 is anything not where it should be. It also holds
+// the real keys: the crowd's answer to each kind of raid, a wave at the stands, a
+// lap of the ring and sticking the landing. Exit code 1 is anything not where it should be. It also holds
 // the one promise the whole of this rests on: home on the rim, SPACE and ENTER are
 // still all that a raid asks.
 import { mkdirSync } from 'node:fs';
@@ -208,6 +208,63 @@ try {
     expect('the band runs with a runner', bandSeen);
     expect('and a whole lap is called', lapSign);
     console.log('sign:', await base(`b.hallSign?.text?.text`));
+  }
+
+  // --- the landing -------------------------------------------------------------
+  /** Over the fence, stepping the fall; `pressAt` is when in the landing to press the key, or null. */
+  const jumpIn = async (pressAt, name) => {
+    await walkTo({ x: 32, y: 56 });
+    await press('ArrowUp', 200);
+    await press('Space', 700);
+    for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
+      await press('Space', 500);
+    }
+    await until(sceneIs('hub'), 'the rim');
+    await step(500);
+    await press('Enter', 100);
+    for (let frame = 0; frame < 80 && !(await page.evaluate(sceneIs('world'))); frame += 1) {
+      await page.keyDown('ArrowLeft');
+      await step(100);
+      if (name && frame === 20) await shot(`${name}-steering`);
+    }
+    await page.keyUp('ArrowLeft');
+    const world = (expression) => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return ${expression}; })()`);
+    let pressed = pressAt === null;
+    for (let frame = 0; frame < 40 && (await world('Boolean(w.arrival)')); frame += 1) {
+      const elapsed = await world('w.arrival.elapsedMs');
+      if (name && frame === 4) await shot(`${name}-ring`);
+      if (!pressed && elapsed >= pressAt) {
+        pressed = true;
+        await page.tap('Space', 0);
+      }
+      await step(50);
+    }
+    await step(150);
+    if (name) await shot(`${name}-landed`);
+    const record = await page.evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)})).raidProgress.landings ?? null`);
+    for (let guard = 0; guard < 6 && (await world('w.dialogBox.visible')); guard += 1) {
+      await press('Space', 400);
+    }
+    await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.extractThrough(w.runSession.plan.extractionPoints[0]); })()`);
+    await step(800);
+    await until(sceneIs('extraction'), 'the result screen');
+    await step(1500);
+    await press('Enter', 200);
+    await until(sceneIs('base'), 'home');
+    for (let guard = 0; guard < 60 && (await base('Boolean(b.fogLift)')); guard += 1) {
+      await step(100);
+    }
+    await step(200);
+    return record;
+  };
+  if (!only || only === 'landing') {
+    const landed = (record) => record?.streak ?? 0;
+    expect('a press as the ring shuts sticks it', landed(await jumpIn(530, 'landing-clean')) === 1);
+    expect('and again makes two', landed(await jumpIn(530, 'landing-second')) === 2);
+    expect('a press too early is a landing like any other', landed(await jumpIn(150, 'landing-early')) === 0);
+    expect('and so is no press at all', landed(await jumpIn(null, null)) === 0);
+    const record = await jumpIn(530, null);
+    expect(`the most there have been is kept (${JSON.stringify(record)})`, record?.best === 2 && record?.streak === 1);
   }
 } finally {
   await browser.close();
