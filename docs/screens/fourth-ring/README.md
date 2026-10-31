@@ -15,9 +15,9 @@ player can stand on.
 |---|---:|---:|---:|---:|---:|
 | The harbour | 114 | 4.9 | 4.9 | | 3% |
 | 200-300 steps out, before | 53 | 2.8 | 2.5 | 0.7 | 16% |
-| **200-300 steps out, after** | **67** | **6.2** | **5.0** | **1.1** | **0%** |
+| **200-300 steps out, after** | **66** | **6.2** | **5.0** | **1.1** | **0%** |
 | The Power Station, before | 52 | 0.7 | 1.5 | 0.7 | 36% |
-| **The Power Station, after** | **76** | **6.4** | **6.1** | **1.4** | **0%** |
+| **The Power Station, after** | **75** | **6.4** | **6.1** | **1.4** | **0%** |
 | Safari Marsh, before | 48 | 2.0 | 2.0 | 0.5 | 17% |
 | **Safari Marsh, after** | **70** | **8.2** | **6.2** | **1.1** | **0%** |
 | The Wreck, before | 47 | 0.9 | 1.5 | 0.4 | 28% |
