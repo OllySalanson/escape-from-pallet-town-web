@@ -412,6 +412,11 @@ an older commit; `--attach` drives a browser somebody else started.
 `makerCollisionSheets.mjs <before dir> <after dir> <out dir>` puts each case's
 shots from the two builds into one picture: `docs/screens/maker-collisions/`.
 
+`phrasesPlayed.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH]` plays
+THE HARBOUR's T phrases where a player trips over them: tapped mid-step, a row clicked
+in the great hall, the partner's note beside the bubble, and every door's name from
+its own step with regulars about.
+
 ## The stranger's memory test
 
 Whether a map reads as places is not something its author can judge: they know

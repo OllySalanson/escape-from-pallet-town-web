@@ -548,6 +548,12 @@ export class BaseScene extends Phaser.Scene {
   private ownWave: { readonly bubble: Phaser.GameObjects.Graphics; ms: number } | null = null;
   /** The quick-phrase list, while it is open (`ui/PhrasePicker.ts`). */
   private phrasePicker: PhrasePicker | null = null;
+  /**
+   * A list asked for with a step under way, opened when the step ends. A step
+   * is 150ms and these keys were only read between steps, so a tap walking
+   * along was lost nearly every time and nothing said why.
+   */
+  private listAskedMidStep: 'favours' | 'talk' | null = null;
   /** What this player is saying, over their head while they say it. */
   private ownBubble: SpeechBubble | null = null;
   /** The game time of this frame, which the harbour's talk is paced by. */
@@ -735,6 +741,7 @@ export class BaseScene extends Phaser.Scene {
     this.harbourFigures = null;
     this.ownWave = null;
     this.phrasePicker = null;
+    this.listAskedMidStep = null;
     this.ownBubble = null;
     this.harbourLife = null;
     this.fishing = null;
@@ -1103,6 +1110,8 @@ export class BaseScene extends Phaser.Scene {
     }
 
     if (this.dialogBox.visible) {
+      // What the step ended on is being read, and that is not what the key asked for.
+      this.listAskedMidStep = null;
       this.showTalkHint();
       this.handleDialogInput();
       return;
@@ -1123,6 +1132,11 @@ export class BaseScene extends Phaser.Scene {
     let frameLeftMs = deltaMs;
     let carriedMs = stepCarryMs;
     if (this.targetTile) {
+      if (this.keyPresses.justPressed(this.controls.favours)) {
+        this.listAskedMidStep = 'favours';
+      } else if (this.keyPresses.justPressed(this.controls.talk)) {
+        this.listAskedMidStep = 'talk';
+      }
       this.advanceStep(deltaMs);
       // A step that ends part-way through a frame walks straight on into the
       // next one in the same frame, as `WorldScene` does and for the same
@@ -1144,12 +1158,14 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
-    if (this.keyPresses.justPressed(this.controls.favours)) {
+    const asked = this.listAskedMidStep;
+    this.listAskedMidStep = null;
+    if (this.keyPresses.justPressed(this.controls.favours) || asked === 'favours') {
       this.openFavours();
       return;
     }
 
-    if (this.keyPresses.justPressed(this.controls.talk)) {
+    if (this.keyPresses.justPressed(this.controls.talk) || asked === 'talk') {
       this.openPhrases();
       return;
     }
@@ -1677,10 +1693,14 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private canTakeAPointer(): boolean {
-    return !this.arenaPanel && !this.jump && !this.fogLift && !this.leaving && !this.dialogBox.visible;
+    return !this.arenaPanel && !this.jump && !this.fogLift && !this.leaving && !this.dialogBox.visible && !this.phrasePicker;
   }
 
   private hoverOverHall(pointer: Phaser.Input.Pointer): void {
+    if (this.phrasePicker) {
+      // The list's own rows say what the pointer may do.
+      return;
+    }
     this.game.canvas.style.cursor = this.canTakeAPointer() && this.hallThingAt(pointer) ? 'pointer' : '';
   }
 
@@ -2854,8 +2874,8 @@ export class BaseScene extends Phaser.Scene {
           // is: a caption seated across a person reads as their head stuck on
           // a sign.
           ...(this.harbourLife?.standing('person') ?? []).map((tile) => figureRect(tile)),
-          // And the other players walking the shared harbour, name and all.
-          ...(this.harbourFigures?.rects() ?? []),
+          // What the other players are saying: a caption seated over it would be read as said.
+          ...(this.harbourFigures?.bubbleRects() ?? []),
           // This player's own hand while it is up.
           ...(this.ownWave ? [{ x: this.ownWave.bubble.x, y: this.ownWave.bubble.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
           // And what they are saying.
@@ -2890,10 +2910,23 @@ export class BaseScene extends Phaser.Scene {
           ...(this.harbourLife?.standing('pokemon') ?? []).map((tile) => figureRect(tile)),
           // And the partners walking at other players' heels.
           ...(this.harbourFigures?.heelRects() ?? []),
+          // And the other players themselves, and the regulars: somebody
+          // standing about beside a door never takes its name away. A regular
+          // knocking at the Pokémon Center had the only seat its name has from
+          // the doorstep, and the favour on it went unread for as long as they
+          // stood there. A name that has to sit across them is read through
+          // them (`HarbourFigures.veilUnder`).
+          ...(this.harbourFigures?.rects() ?? []),
         ],
       },
     );
     labels.forEach((label, index) => label.seat(placements[index]));
+    this.harbourFigures?.veilUnder(
+      placements.flatMap((placement, index) => {
+        const { width, height } = labels[index].request();
+        return placement.visible ? [{ x: placement.x, y: placement.y, width, height }] : [];
+      }),
+    );
     this.partner?.setVeiled(
       partner !== null &&
         seatedOver(
@@ -3379,6 +3412,10 @@ export class BaseScene extends Phaser.Scene {
     audioManager.play('select');
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
+    // An arrow still held from the walk is not a press on the list: unread,
+    // it moved the cursor the moment the list opened.
+    const { up, down, left, right, w, a, s, d } = this.controls;
+    [up, down, left, right, w, a, s, d].forEach((key) => this.keyPresses.justPressed(key));
     this.phrasePicker = new PhrasePicker(
       this,
       HARBOUR_PHRASES.map((phrase) => phrase.words),
@@ -3469,7 +3506,9 @@ export class BaseScene extends Phaser.Scene {
     // Over the chevron that marks this player, as their hand is.
     const tipY = Math.round(this.ownWave ? this.ownWave.bubble.y - 1 : head - OWN_WAVE_LIFT - 1);
     const width = this.collision[0].length * TILE_SIZE;
-    const box = this.ownBubble.place(centreX, tipY, width, this.harbourFigures?.bubbleRects() ?? []);
+    // And clear of the note or heart over a partner standing beside them.
+    const emote = this.partner?.bubbleRect();
+    const box = this.ownBubble.place(centreX, tipY, width, [...(this.harbourFigures?.bubbleRects() ?? []), ...(emote ? [emote] : [])]);
     // And no name is drawn under it: their own bubble over anybody's plate is the plate's to give up.
     this.harbourFigures?.clearNamesUnder(box);
   }
