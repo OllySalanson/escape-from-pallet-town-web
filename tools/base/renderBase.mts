@@ -20,7 +20,9 @@
  * its keeper standing in it; `--hurt=N` puts that many Pokémon in the Center's
  * care, and `--traded=N` puts at least that many things on Bill's shelves
  * (`tradedBook` in `baseGames.testkit.ts`), with `--inspect=I` framing the
- * Ith of them the way looking at it in the game does. `--beaten=bossId,..`
+ * Ith of them the way looking at it in the game does, and `--spent=N` is that
+ * many Pokédollars across his counter, which is what takes the sheets off his
+ * goods (5200 is every tier). `--beaten=bossId,..`
  * and `--survey=path.json` (a save's `raidProgress.surveyed`) are what the
  * wall map in Oak's Lab draws: the keepers' signs, and the ground a raid has
  * walked. `--marks` names the doors, the mat, the keeper and every fixture,
@@ -44,9 +46,7 @@ import { BASE_FIXTURES, standingFixtures } from '../../src/game/base/fixtures';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMap';
 import { BASE_ROOMS, buildRoom, roomNamed } from '../../src/game/base/rooms';
 import { wallMapPoster } from '../../src/game/base/wallMap';
-import { boardPoster } from '../../src/game/base/labBoard';
-import { badgeCasePoster } from '../../src/game/base/badgeCase';
-import { pennantsPoster } from '../../src/game/base/pennants';
+import { roomPosterPicture } from '../../src/game/base/roomPosters';
 import { BASE_STARTS, walkHome, walksToKeepers } from '../../src/game/base/baseWalks';
 import { baseGame } from '../../src/game/base/baseGames.testkit';
 import { ODDITY_INK, oddityArt } from '../../src/game/base/cabinet';
@@ -68,6 +68,7 @@ const builtFlag = option('built');
 const roomFlag = option('room');
 const hurt = Number(option('hurt') ?? '0');
 const traded = Number(option('traded') ?? '0');
+const spent = Number(option('spent') ?? '0');
 const inspected = option('inspect') === undefined ? undefined : Number(option('inspect'));
 const [target = 'base.png', zoomArgument = '3'] = args.filter((value) => !value.startsWith('--'));
 const zoom = Number(zoomArgument);
@@ -91,6 +92,7 @@ const baseSave = baseGame({
   hurt,
   traded,
   progress: {
+    traderMoneySpent: spent,
     defeatedBosses: (option('beaten') ?? '').split(',').filter(Boolean),
     // `--errands=all` or `--errands=oaks-parcel,old-amber`: errands done, whose
     // things stand in their givers' rooms (`ERRAND_DISPLAY`).
@@ -221,10 +223,13 @@ if (room && drawnRoom) {
     );
   }
   // Finished errands' things, each its own 16px icon on the furniture.
-  for (const icon of drawnRoom.icons) {
-    const art = readPng(new URL(`../../public/assets/icons/${itemIconName(icon.itemId)}.png`, import.meta.url));
-    blit(image, art, 0, 0, 16, 16, icon.x, icon.y);
-  }
+  const drawIcons = (standing: boolean): void => {
+    for (const icon of drawnRoom.icons.filter((each) => (each.standsOnRow !== undefined) === standing)) {
+      const art = readPng(new URL(`../../public/assets/icons/${icon.icon ?? itemIconName(icon.itemId)}.png`, import.meta.url));
+      blit(image, art, 0, 0, 16, 16, icon.x, icon.y);
+    }
+  };
+  drawIcons(false);
   // Bill's oddities, each painted from its pixel table as the scene paints it.
   for (const placed of drawnRoom.cabinet?.layout.placed ?? []) {
     oddityArt(placed.oddity.itemId).forEach((row, y) =>
@@ -253,14 +258,11 @@ if (room && drawnRoom) {
   }
   // And THE BOLTHOLE's badge case and pennants, the same way.
   for (const poster of drawnRoom.posters) {
-    const picture =
-      poster.kind === 'badge-case'
-        ? badgeCasePoster(game, poster.area)
-        : poster.kind === 'cork-board'
-          ? boardPoster(game, poster.area)
-          : pennantsPoster(game, poster.area);
+    const picture = roomPosterPicture(game, poster);
     blit(image, picture, 0, 0, picture.width, picture.height, poster.area.x * TILE_SIZE, poster.area.y * TILE_SIZE);
   }
+  // Bill's goods stand on the shelves just painted.
+  drawIcons(true);
   // The player's furniture, in the order the scene draws it: rugs first, then
   // everything that stands, back to front (`base/furnitureArt.ts`).
   const placed = drawnRoom.home?.placed ?? [];

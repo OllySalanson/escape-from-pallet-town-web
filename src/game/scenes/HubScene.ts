@@ -179,7 +179,7 @@ import {
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
-import { askedDealIndex, focusDirectionForKey } from '../ui/spatialFocus';
+import { askedDealIndex, focusDirectionForKey, RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
 import {
   errandLoot,
@@ -286,7 +286,7 @@ const ROOM_TICK_MS = 250;
  * double-click that armed it. Half a second is the double-click interval
  * Windows ships with, the longest of the common defaults.
  */
-export const RELEASE_ARMING_MS = 500;
+export { RELEASE_ARMING_MS };
 
 /** What a screen left open says when the game moved on in another tab. */
 export const STALE_SAVE_REFUSAL =

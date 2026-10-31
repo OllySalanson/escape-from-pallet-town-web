@@ -10,6 +10,7 @@ import {
   ERRAND_DISPLAY,
   COUNTER_BALLS,
   OAK_WALL_MAP,
+  LADDER_TALLY,
   WORKSHOP_DISPLAY,
   buildRoom,
   propTiles,
@@ -29,6 +30,7 @@ import { stepsFrom, stepsTo, servingTiles, walksToKeepers, BASE_STARTS } from '.
 import { baseGame } from './baseGames.testkit';
 import { ERRANDS } from '../hub/errands';
 import { CABINET_UNITS, CABINET_UNITS_AT_START, CABINET_UNIT_SIZE, unitTiles } from './cabinet';
+import { GOODS_ON_SHELVES } from './billGoods';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 const room = (id: string): BaseRoom => roomNamed(id)!;
@@ -160,7 +162,10 @@ describe('the rooms behind the base doors', () => {
           walk.door.id,
           true,
         ]);
-        expect([walk.door.id, walk.acrossTheRoom <= 4]).toEqual([walk.door.id, true]);
+        // Bill's goods stand between him and the door. Nobody has to cross them
+        // to hear him: the key on the mat speaks to him all the same.
+        const across = walk.door.id === 'bills-cottage' ? 7 : 4;
+        expect([walk.door.id, walk.acrossTheRoom <= across]).toEqual([walk.door.id, true]);
       }
     }
   });
@@ -221,7 +226,7 @@ describe("Brock's workshop, where the whole ladder can be seen", () => {
   it('stands something new in the room for every rung built, and nothing before', () => {
     const workshop = room('brocks-workshop');
     const empty = buildRoom(workshop, baseGame());
-    expect(empty.things).toEqual([]);
+    expect(empty.things.filter((thing) => thing.upgradeId)).toEqual([]);
     for (const upgrade of WORKSHOP_UPGRADES) {
       const built = buildRoom(workshop, baseGame({ built: [upgrade.id] }));
       let changed = 0;
@@ -231,7 +236,40 @@ describe("Brock's workshop, where the whole ladder can be seen", () => {
         }
       }
       expect([upgrade.id, changed > 0]).toEqual([upgrade.id, true]);
-      expect(built.things.map((thing) => thing.upgradeId)).toEqual([upgrade.id]);
+      expect(built.things.flatMap((thing) => thing.upgradeId ?? [])).toEqual([upgrade.id]);
+    }
+  });
+
+  it('chalks out every rung not yet built, on the tiles the thing will stand on', () => {
+    const workshop = room('brocks-workshop');
+    for (const display of WORKSHOP_DISPLAY) {
+      const without = buildRoom(workshop, baseGame({ built: EVERY_RUNG.filter((id) => id !== display.upgradeId) }));
+      const chalked = without.things.filter((thing) => thing.chalked);
+      expect(chalked.map((thing) => thing.chalked)).toEqual([display.upgradeId]);
+      const built = buildRoom(workshop, baseGame({ built: EVERY_RUNG }));
+      expect(built.things.find((thing) => thing.upgradeId === display.upgradeId)?.tiles).toEqual(chalked[0].tiles);
+      expect(without.posters.filter((poster) => poster.kind === 'chalk-bay')).toHaveLength(1);
+    }
+  });
+
+  /** So the walks `baseMap.test.ts` holds are held however little is built, and a bay is walked into and faced. */
+  it('walks the same whatever is built: chalk is as solid as the thing', () => {
+    const workshop = room('brocks-workshop');
+    const none = buildRoom(workshop, baseGame());
+    const all = buildRoom(workshop, baseGame({ built: EVERY_RUNG }));
+    expect(none.collision).toEqual(all.collision);
+  });
+
+  it('keeps the tally on bare wall, with the floor in front of it open', () => {
+    const workshop = room('brocks-workshop');
+    const all = buildRoom(workshop, baseGame({ built: EVERY_RUNG }));
+    const taken = new Set(WORKSHOP_DISPLAY.flatMap((display) => propTiles(display.props)).map(key));
+    const walks = stepsFrom(all.collision, matOf(workshop));
+    for (let dx = 0; dx < LADDER_TALLY.width; dx += 1) {
+      for (let dy = 0; dy < LADDER_TALLY.height; dy += 1) {
+        expect(taken.has(key({ x: LADDER_TALLY.x + dx, y: LADDER_TALLY.y + dy }))).toBe(false);
+      }
+      expect(Number.isFinite(walks[LADDER_TALLY.y + LADDER_TALLY.height][LADDER_TALLY.x + dx])).toBe(true);
     }
   });
 });
@@ -329,6 +367,21 @@ describe('the hooks the rooms leave for what comes next', () => {
       expect(board.tiles.some((tile) => tile.x === x && tile.y === foot)).toBe(true);
       expect([x, built.collision[foot + 1][x]]).toEqual([x, false]);
       expect(Number.isFinite(stepsFrom(built.collision, matOf(lab))[foot + 1][x])).toBe(true);
+    }
+  });
+
+  it("stands every deal he has on a shelf a player can walk up to, however full the cabinet", () => {
+    const cottage = room('bills-cottage');
+    // Every shelf seat and every crate taken: nothing in the room gets in the way of the goods.
+    const full = buildRoom(cottage, baseGame({ traded: 500 }));
+    const walks = stepsFrom(full.collision, matOf(cottage));
+    for (const { tile } of GOODS_ON_SHELVES) {
+      expect([key(tile), full.collision[tile.y][tile.x]]).toEqual([key(tile), true]);
+      const fronts = [
+        { x: tile.x, y: tile.y - 1 },
+        { x: tile.x, y: tile.y + 1 },
+      ];
+      expect([key(tile), fronts.some((front) => Number.isFinite(walks[front.y][front.x]))]).toEqual([key(tile), true]);
     }
   });
 
@@ -464,8 +517,10 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
   });
 
   it('hangs nothing on the walls of any other room', () => {
-    // But Oak's cork board, which hangs in his lab (`labBoard.test.ts`).
-    for (const each of BASE_ROOMS.filter((candidate) => !candidate.id.startsWith('bolthole') && candidate.id !== 'oaks-lab')) {
+    // But Oak's cork board, which hangs in his lab (`labBoard.test.ts`), and
+    // what Brock chalks and Bill puts out, which are held above.
+    const hung = ['oaks-lab', 'brocks-workshop', 'bills-cottage'];
+    for (const each of BASE_ROOMS.filter((candidate) => !candidate.id.startsWith('bolthole') && !hung.includes(candidate.id))) {
       expect([each.id, buildRoom(each, baseGame()).posters]).toEqual([each.id, []]);
     }
   });

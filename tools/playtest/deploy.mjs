@@ -40,10 +40,12 @@ export const takePokemon = (name = null) =>
  * presses. A driver already in the right room (backed out of its screen) just
  * presses it again; one in another room walks back out first. THE RAID ARENA has
  * no keeper's screen: everything is on its floor, so a walk into it goes on to
- * the bench and opens that (`openHallPanel`). Nor have two others, whose keepers
+ * the bench and opens that (`openHallPanel`). Nor have the others, whose keepers
  * talk rather than open anything (`BaseScene.speakToKeeper`): in `pokemon-centre`
- * this walks on to BILL'S PC, which is the boxes, and in `oaks-lab` it stops on
- * the mat with nothing said, for the driver to speak to Oak or walk up to the board.
+ * this walks on to BILL'S PC, which is the boxes, in `brocks-workshop` to the tally
+ * on his wall, which is the whole ladder, in `bills-cottage` to his PC, which is the
+ * whole list, and in `oaks-lab` it stops on the mat with nothing said, for the
+ * driver to speak to Oak or walk up to the board.
  *
  * A keeper with a favour says it first, in the dialogue box, and asks YES or
  * NOT NOW: the presses read it, and the question is
@@ -99,8 +101,10 @@ export async function walkIntoBase(page, door, options = {}) {
           if (room.id !== ${JSON.stringify(door)}) {
             const on = room.mat && b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
             if (on) return { key: 'ArrowDown' };
-          } else if (room.id === 'pokemon-centre') {
-            const pc = b.place.room.things.find((thing) => thing.opens === 'boxes').tiles[0];
+          } else if (room.id === 'pokemon-centre' || room.id === 'brocks-workshop' || room.id === 'bills-cottage') {
+            const opens = { 'pokemon-centre': 'boxes', 'brocks-workshop': 'ladder', 'bills-cottage': 'list' }[room.id];
+            const tiles = b.place.room.things.find((thing) => thing.opens === opens).tiles;
+            const pc = tiles.reduce((low, tile) => (tile.y > low.y ? tile : low));
             var goals = [{ x: pc.x, y: pc.y + 1 }];
             if (b.currentTile.x === pc.x && b.currentTile.y === pc.y + 1) return { key: b.facing === 'up' ? 'Space' : 'ArrowUp' };
           } else {

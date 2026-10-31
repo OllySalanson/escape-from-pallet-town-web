@@ -35,7 +35,7 @@ import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
-import { SaveManager, raidsDeployed, raidsLost, type RestoredGame } from '../save/SaveManager';
+import { SaveManager, raidsDeployed, raidsLost, traderCounterFor, type RestoredGame } from '../save/SaveManager';
 import {
   FAVOUR_ANSWERS,
   declineErrand,
@@ -144,8 +144,6 @@ import {
 } from '../base/cabinet';
 import { oddityLabel } from '../hub/traderCabinet';
 import { wallMapPoster } from '../base/wallMap';
-import { badgeCasePoster } from '../base/badgeCase';
-import { pennantsPoster } from '../base/pennants';
 import type { PaintedPicture } from '../world/minimap';
 import {
   arrivalPlace,
@@ -239,8 +237,26 @@ import type { WorldSceneData } from './WorldScene';
 import { worldMapName, type WorldMapId } from '../worldMap';
 import { FIRST_WORDS, hasHeard, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { centerOffer, healedLine, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
+import {
+  BUILD_NOT_SAVED_LINE,
+  brockFromTheMat,
+  brockQuoteFor,
+  builtLine,
+  NOT_BUILT_LINE,
+  type BrockQuote,
+} from '../hub/workshopTalk';
+import {
+  billFromTheMat,
+  billQuote,
+  DEAL_NOT_SAVED_LINE,
+  dealtLine,
+  NOT_DEALT_LINE,
+  type BillGood,
+} from '../hub/billTalk';
+import { roomPosterPicture } from '../base/roomPosters';
+import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
-import { boardLines, boardPoster, oakNews } from '../base/labBoard';
+import { boardLines, oakNews } from '../base/labBoard';
 import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
@@ -308,7 +324,7 @@ import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furniture
  *
  * Walking is never a toll, because the base is crossed many times an hour: a
  * doorway opens the moment it is stepped on, and inside, the interact key on
- * the door mat opens the keeper's screen without crossing the room. Nothing
+ * the door mat starts the keeper talking without crossing the room. Nothing
  * spends a line of dialogue on the way in.
  */
 
@@ -456,6 +472,8 @@ export interface BaseSceneData {
    * player back in front of it rather than at the door.
    */
   readonly at?: GridPosition;
+  /** Which way to face there, when it is not up: a bay is asked about from any side. */
+  readonly facing?: Direction;
   /**
    * The room the player has just come up or down the stairs from: they are put
    * down on this room's stair mat that leads back there, facing away from it.
@@ -886,7 +904,7 @@ export class BaseScene extends Phaser.Scene {
           : (fromTheRaid ?? climbedTo ?? room.mat ?? room.stairs[0]?.tile ?? { x: 0, y: room.height - 1 });
       this.currentTile = { ...standing };
       const fence = fromTheRaid ? fenceBeside(fromTheRaid) : null;
-      this.facing = fence ? facingTowards(standing, fence) : climbedTo ? 'down' : 'up';
+      this.facing = fence ? facingTowards(standing, fence) : climbedTo ? 'down' : (data.facing ?? 'up');
     } else {
       const map = getBaseMap(loaded.raidProgress.workshopUpgrades);
       this.place = {
@@ -964,6 +982,9 @@ export class BaseScene extends Phaser.Scene {
     this.drawOddities();
     this.drawWallMap();
     this.arena = this.place.room?.pit ? this.openTheHall(loaded) : null;
+    if (this.place.room && ROOMS_ANSWERING_A_POINTER.has(this.place.room.room.id)) {
+      this.listenForPointerInRoom();
+    }
     this.rivalFigure = null;
     this.rivalHere = null;
     this.pitCoinMs = 0;
@@ -1300,7 +1321,10 @@ export class BaseScene extends Phaser.Scene {
       bounds: this.bounds,
       isBlocked: (tile) => this.isBlocked(tile),
     });
-    if (this.turnsToFacePartner(decision.target, decision.facing, carriedMs === null, deltaMs)) {
+    // A walk the pointer asked for goes through the partner as a step would: a
+    // turn here would spend a step of the plan on going nowhere, and every step
+    // after it would walk the wrong way.
+    if (this.turnsToFacePartner(decision.target, decision.facing, carriedMs === null && !this.walkPlan, deltaMs)) {
       this.facing = decision.facing;
       this.pushingAgainst = null;
       this.player.stop();
@@ -2128,7 +2152,84 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private canTakeAPointer(): boolean {
-    return !this.arenaPanel && !this.jump && !this.fogLift && !this.leaving && !this.dialogBox.visible && !this.phrasePicker;
+    return (
+      !this.arenaPanel &&
+      !this.jump &&
+      !this.fogLift &&
+      !this.leaving &&
+      !this.dialogBox.visible &&
+      !this.boxQuestion &&
+      !this.phrasePicker
+    );
+  }
+
+  /**
+   * Brock's and Bill's rooms answer a pointer as the hall does: a click on a
+   * bay, a thing on a shelf, what is on the wall or the keeper walks up to it and
+   * asks, and a click on the mat goes out. What they used to deal over was a
+   * screen a mouse could work, and the mouse must not lose it by the deal moving
+   * into the room.
+   */
+  private listenForPointerInRoom(): void {
+    const pressed = (pointer: Phaser.Input.Pointer): void => {
+      if (this.canTakeAPointer()) {
+        this.pointInRoom(this.tileUnder(pointer));
+      }
+    };
+    const moved = (pointer: Phaser.Input.Pointer): void => {
+      this.game.canvas.style.cursor = this.canTakeAPointer() && this.answersAPointer(this.tileUnder(pointer)) ? 'pointer' : '';
+    };
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, pressed);
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, moved);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off(Phaser.Input.Events.POINTER_DOWN, pressed);
+      this.input.off(Phaser.Input.Events.POINTER_MOVE, moved);
+      this.game.canvas.style.cursor = '';
+    });
+  }
+
+  private tileUnder(pointer: Phaser.Input.Pointer): GridPosition {
+    return { x: Math.floor(pointer.worldX / TILE_SIZE), y: Math.floor(pointer.worldY / TILE_SIZE) };
+  }
+
+  /** Whether a click on this tile would do anything but walk. */
+  private answersAPointer(tile: GridPosition): boolean {
+    const room = this.place.room?.room;
+    return (
+      room !== undefined &&
+      (this.thingFaced(tile) !== undefined ||
+        servesFrom(room, tile) ||
+        (room.mat !== null && Math.abs(tile.x - room.mat.x) <= 1 && tile.y === room.mat.y))
+    );
+  }
+
+  /** Walks up to what was clicked and asks it, by the same key press a player would make. */
+  private pointInRoom(clicked: GridPosition): void {
+    const room = this.place.room?.room;
+    if (!room || !this.answersAPointer(clicked)) {
+      return;
+    }
+    const { mat } = room;
+    if (mat && !this.thingFaced(clicked) && !servesFrom(room, clicked)) {
+      this.walkThen([mat], null, () => this.leaveRoom(room));
+      return;
+    }
+    const answering = this.thingFaced(clicked)?.tiles ?? [clicked];
+    const fronts = answering.flatMap((tile) =>
+      (['up', 'down', 'left', 'right'] as const).map((direction) => nextTileFromDirection(tile, direction)),
+    );
+    this.walkThen(
+      fronts.filter((tile) => !this.isBlocked(tile)),
+      null,
+      () => {
+        const beside = answering.find((tile) => Math.abs(tile.x - this.currentTile.x) + Math.abs(tile.y - this.currentTile.y) === 1);
+        if (beside) {
+          this.facing = facingTowards(this.currentTile, beside);
+          this.player.setFrame(getIdleFrame(this.facing));
+          this.tryInteract();
+        }
+      },
+    );
   }
 
   private hoverOverHall(pointer: Phaser.Input.Pointer): void {
@@ -2516,10 +2617,13 @@ export class BaseScene extends Phaser.Scene {
   private drawSprites(): void {
     // A finished errand's thing, as its own icon on the giver's furniture.
     for (const icon of this.place.room?.icons ?? []) {
+      // A thing stood on a piece of furniture is drawn on top of it, whose
+      // own row is the one its feet are on (half a row on, past the furniture).
+      const row = icon.standsOnRow === undefined ? Math.floor(icon.y / TILE_SIZE) : icon.standsOnRow + 0.5;
       this.add
-        .image(icon.x, icon.y, iconTextureKey(itemIconName(icon.itemId)))
+        .image(icon.x, icon.y, iconTextureKey(icon.icon ?? itemIconName(icon.itemId)))
         .setOrigin(0, 0)
-        .setDepth(atRow(MARKER_BAND, Math.floor(icon.y / TILE_SIZE)));
+        .setDepth(atRow(MARKER_BAND, row));
     }
     const sprites: readonly RoomSprite[] = this.place.room?.sprites ?? [];
     if (sprites.length === 0) {
@@ -2717,15 +2821,9 @@ export class BaseScene extends Phaser.Scene {
     // The other pictures of the save a room keeps wall for: Oak's cork board,
     // and THE BOLTHOLE's badge case and its pennants, painted fresh on every
     // visit for the same reason the wall map is.
-    for (const poster of this.place.room?.posters ?? []) {
-      const picture =
-        poster.kind === 'badge-case'
-          ? badgeCasePoster(this.savedGame, poster.area)
-          : poster.kind === 'cork-board'
-            ? boardPoster(this.savedGame, poster.area)
-            : pennantsPoster(this.savedGame, poster.area);
-      this.hangPicture(`base-poster-${poster.kind}`, picture, poster.area);
-    }
+    (this.place.room?.posters ?? []).forEach((poster, index) => {
+      this.hangPicture(`base-poster-${index}-${poster.kind}`, roomPosterPicture(this.savedGame, poster), poster.area);
+    });
   }
 
   /** A picture of the save, painted into a texture of its own and hung on its stretch of wall. */
@@ -3099,7 +3197,7 @@ export class BaseScene extends Phaser.Scene {
       // names its own keys there instead: the mat is where everybody arrives,
       // and the house's H and K went unsaid until they stepped off it
       // (playtest 48).
-      // A keeper's screen is opened from the mat whoever is in front of it.
+      // A keeper is spoken to from the mat whoever is in front of them.
       const speak = partner ?? (room.screen ? keeper : undefined) ?? wave ?? (keeper || this.houseKeys());
       return speak ? `${speak}   [DOWN] OUT` : '[DOWN] OUT';
     }
@@ -3116,7 +3214,7 @@ export class BaseScene extends Phaser.Scene {
     // opened from, exactly as the keeper does: a board on a wall that answers
     // a key nobody was told about is a board nobody reads.
     const faced = this.thingFaced(facing);
-    if (faced?.opens || faced?.reads) {
+    if (faced?.opens || faced?.reads || faced?.chalked || faced?.good) {
       return `[SPACE] ${faced.name}`;
     }
     // The cabinet is looked into rather than read off, so it says it can be.
@@ -3213,9 +3311,20 @@ export class BaseScene extends Phaser.Scene {
     const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
     const x = seat ? seat.right - width : Math.round((this.scale.width - width) / 2);
-    const y = seat ? seat.y : this.scale.height - height - HINT_MARGIN;
+    const y = seat ? seat.y : this.hintY(height);
     drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
     this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
+  }
+
+  /**
+   * Where the hint stands: along the foot of the screen, unless the player is
+   * down there. A room as tall as the screen has its door mat under the foot, and
+   * the hint put up on arriving was drawn over whoever had just arrived.
+   */
+  private hintY(height: number): number {
+    const foot = this.scale.height - height - HINT_MARGIN;
+    const under = (this.currentTile.y + 1) * TILE_SIZE - this.cameras.main.scrollY > foot;
+    return under ? HINT_MARGIN : foot;
   }
 
   private layoutForStage(): void {
@@ -3407,7 +3516,7 @@ export class BaseScene extends Phaser.Scene {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
     return {
       x: view.left,
-      y: view.top + this.scale.height - height - HINT_MARGIN,
+      y: view.top + this.hintY(height),
       width: view.width,
       height: height + HINT_MARGIN,
     };
@@ -4102,6 +4211,24 @@ export class BaseScene extends Phaser.Scene {
         this.readTheBoard(room, [target]);
         return;
       }
+      if (thing?.opens === 'ladder' || thing?.opens === 'list') {
+        audioManager.play('select');
+        this.openHub({
+          savedGame: this.savedGame,
+          view: thing.opens === 'ladder' ? 'workshop' : 'trader',
+          from: room.id,
+          at: { ...this.currentTile },
+        });
+        return;
+      }
+      if (thing?.chalked) {
+        this.brockQuotes(brockQuoteFor({ stash: this.freshGame().stash }, this.savedGame.raidProgress.workshopUpgrades, thing.chalked), [target]);
+        return;
+      }
+      if (thing?.good) {
+        this.billNames(thing.good, [target]);
+        return;
+      }
       if (thing?.cabinetUnit !== undefined) {
         const index = this.oddityToStartAt(target, thing.cabinetUnit);
         if (index === undefined) {
@@ -4679,7 +4806,7 @@ export class BaseScene extends Phaser.Scene {
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
   }
 
-  private goTo(data: BaseSceneData, sound: 'interiorEnter' | 'interiorLeave' | 'heal'): void {
+  private goTo(data: BaseSceneData, sound: 'interiorEnter' | 'interiorLeave' | 'heal' | 'confirm'): void {
     if (this.leaving) {
       return;
     }
@@ -4772,10 +4899,151 @@ export class BaseScene extends Phaser.Scene {
       this.sayFirstWords('center', about, () => favourThen(() => this.joyOffers(about)));
       return;
     }
-    // The hall's marshal is `speakToMarshal`: everything in it is on the floor.
-    if (screen !== 'arena') {
-      favourThen(() => this.openScreen(room, screen));
+    if (screen === 'workshop') {
+      this.sayFirstWords('workshop', about, () =>
+        favourThen(() => {
+          const { stash, raidProgress } = this.freshGame();
+          this.brockQuotes(brockFromTheMat({ stash }, raidProgress.workshopUpgrades), about);
+        }),
+      );
+      return;
     }
+    if (screen === 'trader') {
+      this.sayFirstWords('cottage', about, () => favourThen(() => this.billReadsYou(room, about)));
+      return;
+    }
+    // The hall's marshal is `speakToMarshal`: everything in it is on the floor.
+    if (screen === 'boutique') {
+      favourThen(() => this.openBoutique('shop'));
+    }
+  }
+
+  /** The save as it stands now, for anybody about to name a price: another tab may have moved it on. */
+  private freshGame(): RestoredGame {
+    this.savedGame = this.saveManager.load() ?? this.savedGame;
+    return this.savedGame;
+  }
+
+  /**
+   * Brock on a rung (`hub/workshopTalk.ts`): what it does and takes, and YES or
+   * NOT NOW if it can be paid for. Built on YES, the room is drawn again with the
+   * thing standing where the chalk was, and the player is left where they asked.
+   */
+  private brockQuotes(quote: BrockQuote, about: readonly GridPosition[]): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const { question, upgradeId } = quote;
+    if (question === undefined || upgradeId === undefined) {
+      this.say(quote.lines, about);
+      return;
+    }
+    this.say(quote.lines, about, () =>
+      this.askInBox(
+        question,
+        (yes) => {
+          if (!yes) {
+            audioManager.play('cancel');
+            this.say([NOT_BUILT_LINE], about);
+            return;
+          }
+          const built = this.saveManager.buildWorkshopUpgrade(upgradeId);
+          if (!built.ok) {
+            this.say([built.message], about);
+            return;
+          }
+          if (!built.saved) {
+            this.say([BUILD_NOT_SAVED_LINE], about);
+            return;
+          }
+          this.goTo(
+            {
+              savedGame: this.saveManager.load() ?? this.savedGame,
+              room: this.place.room?.room.id,
+              at: { ...this.currentTile },
+              facing: this.facing,
+              said: [builtLine(built.upgrade.name)],
+            },
+            'confirm',
+          );
+        },
+        { spendsForGood: true },
+      ),
+    );
+  }
+
+  /**
+   * Bill on the mat: how he reads the player, and whether they want his whole
+   * list. Everything on it is on his shelves too, a walk away.
+   */
+  private billReadsYou(room: BaseRoom, about: readonly GridPosition[]): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const { lines, question } = billFromTheMat(traderCounterFor(this.freshGame()));
+    const at = { ...this.currentTile };
+    this.say(lines, about, () =>
+      this.askInBox(question ?? '', (yes) => {
+        if (yes) {
+          this.openHub({ savedGame: this.savedGame, view: 'trader', from: room.id, at });
+        }
+      }),
+    );
+  }
+
+  /**
+   * Bill on a thing on his shelves (`hub/billTalk.ts`): the deal in his own words,
+   * and YES or NOT NOW if it can be struck. A barter takes the thing off the shelf
+   * and puts what it cost on the cabinet, so the room is drawn again for it; a
+   * purchase changes nothing to look at, and he can sell another at once.
+   */
+  private billNames(good: BillGood, about: readonly GridPosition[]): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const { lines, question, spendsForGood } = billQuote(traderCounterFor(this.freshGame()), good);
+    if (question === undefined) {
+      this.say(lines, about);
+      return;
+    }
+    this.say(lines, about, () =>
+      this.askInBox(question, (yes) => this.billStrikes(good, yes, about), spendsForGood ? { spendsForGood } : {}),
+    );
+  }
+
+  private billStrikes(good: BillGood, yes: boolean, about: readonly GridPosition[]): void {
+    if (!yes) {
+      audioManager.play('cancel');
+      this.say([NOT_DEALT_LINE], about);
+      return;
+    }
+    const struck =
+      good.kind === 'stock'
+        ? this.saveManager.buyTraderStock(good.itemId)
+        : good.kind === 'barter'
+          ? this.saveManager.takeTraderBarter(good.barterId)
+          : this.saveManager.buyTraderBerth();
+    if (!struck.ok) {
+      this.say([struck.message], about);
+      return;
+    }
+    if (!struck.saved) {
+      this.say([DEAL_NOT_SAVED_LINE], about);
+      return;
+    }
+    if (good.kind === 'barter') {
+      this.goTo(
+        {
+          savedGame: this.saveManager.load() ?? this.savedGame,
+          room: this.place.room?.room.id,
+          at: { ...this.currentTile },
+          facing: this.facing,
+          said: [dealtLine(good)],
+        },
+        'confirm',
+      );
+      return;
+    }
+    this.freshGame();
+    audioManager.play('confirm');
+    this.say([dealtLine(good)], about);
   }
 
   /** What this person tells a newcomer, the first time and never again; recorded as it is said. */
@@ -4979,8 +5247,13 @@ export class BaseScene extends Phaser.Scene {
     this.say(errandLines(beat), about, then);
   }
 
-  /** A question in the dialogue box's own frame, with YES first as FireRed's box is; ESC is NOT NOW. */
-  private askInBox(question: string, answer: (yes: boolean) => void): void {
+  /**
+   * A question in the dialogue box's own frame, with YES first as FireRed's box
+   * is; ESC is NOT NOW. One whose YES cannot be taken back opens on NOT NOW and
+   * ignores clicks for a moment, because the key or the click that finished the
+   * last line is still in the player's hand (`HubScene.armedDeal`'s rule).
+   */
+  private askInBox(question: string, answer: (yes: boolean) => void, { spendsForGood = false } = {}): void {
     audioManager.play('menuOpen');
     this.showHint('');
     const answered = (yes: boolean): void => {
@@ -5000,7 +5273,8 @@ export class BaseScene extends Phaser.Scene {
         padding: 10,
         lines: [question],
         options: FAVOUR_ANSWERS,
-        selected: 0,
+        selected: spendsForGood ? 1 : 0,
+        clickArmingMs: spendsForGood ? RELEASE_ARMING_MS : 0,
         onChoose: (index) => answered(index === 0),
       }),
     };
@@ -5133,14 +5407,6 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** The keeper's screen, which is what the room is the way to. */
-  private openScreen(room: BaseRoom, screen: ScreenOpened | 'boutique'): void {
-    if (screen === 'boutique') {
-      this.openBoutique('shop');
-      return;
-    }
-    this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
-  }
-
   /** Writes down that these first words have been said, in storage and in this scene's copy of the game. */
   private hearFirstWords(id: FirstWordsId): void {
     this.saveManager.hearFirstWords(id);
@@ -5221,11 +5487,5 @@ const PEN_STEP_SPREAD_MS = 2400;
 const SLEEP_FADE_MS = 450;
 const SLEEP_DARK_MS = 600;
 
-/** The keepers who deal over a screen. Oak and Joy say what they have in the room's own box. */
-type ScreenOpened = Exclude<BaseScreen, 'boutique' | 'arena' | 'lab' | 'stash'>;
-
-/** Which screen those doors open, as `HubScene` names its views. */
-const SCREEN_VIEWS = {
-  workshop: 'workshop',
-  trader: 'trader',
-} as const satisfies Record<ScreenOpened, NonNullable<HubSceneData['view']>>;
+/** The rooms a click walks about in, besides the hall (`listenForPointerInRoom`). */
+const ROOMS_ANSWERING_A_POINTER: ReadonlySet<string> = new Set(['brocks-workshop', 'bills-cottage']);

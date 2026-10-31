@@ -2500,7 +2500,7 @@ export interface TraderPurchaseResult {
  * so it is always read off the save that is about to be written, never off a
  * snapshot the lobby happens to be holding.
  */
-function traderCounterFor(game: RestoredGame): TraderCounter {
+export function traderCounterFor(game: RestoredGame): TraderCounter {
   return {
     stash: game.stash,
     progress: traderProgressOf(game.raidProgress),

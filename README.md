@@ -176,11 +176,13 @@ and say yes, you're let in to have a nose round. Six buildings, four of them kep
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full at her counter, and she
   charges in time: she names what comes off your next raid's clock before you say yes. Your boxes
   are on the PC beside her.
-- **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home, and
+- **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home. Each
+  empty bay has what goes there chalked on the floor: walk up, he quotes it, you say yes. And
   every one of them turns up on the map: a radio mast, a beacon, cellar doors in the quay wall.
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
-  HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found. Everything you trade him ends up on his
-  shelves.
+  HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found.
+  It's all out on his shelves, under a dust sheet until he knows you: walk up to one and he names
+  his price. Everything you trade him ends up on his shelves too.
 - **The Harbour Boutique**, at the top of the Green, is where you stop looking like everybody else.
   Every player starts in the same clothes; in here are 209 things to wear, all of them off
   somebody in Kanto - a Youngster's cap, a Hiker's hat and beard, Erika's bob, Misty's side tail,
