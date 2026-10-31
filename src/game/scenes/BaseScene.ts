@@ -184,6 +184,7 @@ import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
 import { ArenaDiveView } from '../base/arenaDiveView';
+import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
   FOG_APPROACH_MS,
@@ -2763,7 +2764,12 @@ export class BaseScene extends Phaser.Scene {
     const top = height < viewHeight ? Math.floor((height - viewHeight) / 2) : 0;
     camera.setBackgroundColor(0x000000);
     const below = this.place.room?.pit ? ARENA_DARK_BELOW : 0;
-    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height + below, viewHeight));
+    if (this.place.room?.pit) {
+      // The hall's stands stand outside its own grid (`arenaStands.ts`).
+      camera.setBounds(STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_WIDTH, Math.max(STANDS_HEIGHT, height + below - STANDS_ORIGIN.y));
+    } else {
+      camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height + below, viewHeight));
+    }
     camera.setZoom(CAMERA_ZOOM);
     camera.setRoundPixels(true);
     // The hall's camera is placed by hand, a whole pixel from a whole pixel

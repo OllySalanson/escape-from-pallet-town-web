@@ -40,6 +40,15 @@ import {
 } from './arenaPit';
 
 import {
+  CROWD_STIRRING,
+  PERSON_WIDTH,
+  STANDS_ORIGIN,
+  nextStir,
+  paintCrowdPerson,
+  paintStands,
+  type CrowdStir,
+} from './arenaStands';
+import {
   EYES_HEIGHT,
   EYES_MS,
   EYES_WIDTH,
@@ -83,6 +92,9 @@ const LOOK_DEPTH = TERRAIN_DEPTH - 0.87;
 const MIST_DEPTH = TERRAIN_DEPTH - 0.85;
 const PODIUM_DEPTH = TERRAIN_DEPTH - 0.8;
 const EYES_DEPTH = PODIUM_DEPTH + 0.01;
+/** Outside the wall, under the hall's own layers wherever the two could meet. */
+const STANDS_DEPTH = TERRAIN_DEPTH - 0.1;
+const CROWD_DEPTH = TERRAIN_DEPTH - 0.09;
 const tierDepth = (tier: number): number => TERRAIN_DEPTH - 0.7 + (PIT_TIERS - tier) * 0.05;
 /** Over the steps and under the hall's own floor, so a name in the pit never lies across the platform. */
 const NAME_DEPTH = TERRAIN_DEPTH - 0.3;
@@ -105,6 +117,8 @@ const FLAME_TEXTURE = 'arena-flame';
 const HALO_TEXTURE = 'arena-halo';
 const POOL_TEXTURE = 'arena-pool';
 const LOOK_TEXTURE = 'arena-look';
+const STANDS_TEXTURE = 'arena-stands';
+const CROWD_TEXTURE = 'arena-crowd-person';
 const SHADOW_TEXTURE = 'arena-pit-shadow';
 const EYES_TEXTURE = 'arena-pit-eyes';
 const tierTexture = (tier: number): string => `arena-tier-${tier}`;
@@ -382,6 +396,8 @@ export class ArenaView {
   private shareValue: RimShare;
   private aimedId: string | null = null;
   private lastPlayer = { x: 0, y: 0 };
+  /** The few of the crowd who are shifting in their seats just now: dim, and barely at all. */
+  private readonly stirring: { readonly image: Phaser.GameObjects.Image; stir: CrowdStir | null; leftMs: number }[] = [];
   /** What lives in the pit (`pitLife.ts`): when each next shows, and whatever is showing. */
   private shadowInMs = nextShadowInMs(Math.random(), true);
   private eyesInMs = nextEyesInMs(Math.random(), true);
@@ -434,6 +450,25 @@ export class ArenaView {
       this.tiers.push(
         (scene.add.image(0, 0, tierTexture(tier)).setOrigin(0, 0).setDepth(tierDepth(tier))),
       );
+    }
+
+    ensureTexture(scene, STANDS_TEXTURE, paintStands);
+    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_TEXTURE).setOrigin(0, 0).setDepth(STANDS_DEPTH);
+    if (!still) {
+      ensureTexture(scene, CROWD_TEXTURE, paintCrowdPerson);
+      const people = scene.textures.get(CROWD_TEXTURE);
+      if (!people.has('0')) {
+        for (let ink = 0; ink * PERSON_WIDTH < people.source[0].width; ink += 1) {
+          people.add(String(ink), 0, ink * PERSON_WIDTH, 0, PERSON_WIDTH, people.source[0].height);
+        }
+      }
+      for (let index = 0; index < CROWD_STIRRING; index += 1) {
+        this.stirring.push({
+          image: scene.add.image(0, 0, CROWD_TEXTURE, '0').setOrigin(0, 0).setDepth(CROWD_DEPTH).setVisible(false),
+          stir: null,
+          leftMs: Math.random() * 3000,
+        });
+      }
     }
 
     ensureTexture(scene, LOOK_TEXTURE, paintLookMark);
@@ -552,6 +587,32 @@ export class ArenaView {
     this.burn(deltaMs);
     this.listen(deltaMs, player);
     this.stir(deltaMs, player);
+    this.shift(deltaMs);
+  }
+
+  /** One or two of the crowd lean over or sit up, and settle back. That is all they do. */
+  private shift(deltaMs: number): void {
+    const view = this.scene.cameras.main.worldView;
+    for (const person of this.stirring) {
+      person.leftMs -= deltaMs;
+      if (person.leftMs > 0) {
+        continue;
+      }
+      if (person.stir) {
+        person.stir = null;
+        person.image.setVisible(false);
+        person.leftMs = 1500 + Math.random() * 6000;
+        continue;
+      }
+      const stir = nextStir([Math.random(), Math.random(), Math.random()], (seat) => view.contains(seat.x, seat.y));
+      if (!stir) {
+        person.leftMs = 1000;
+        continue;
+      }
+      person.stir = stir;
+      person.leftMs = stir.forMs;
+      person.image.setFrame(String(stir.seat.ink)).setPosition(stir.seat.x + stir.dx, stir.seat.y + stir.dy).setVisible(true);
+    }
   }
 
   /** Now and then, something in the pit: nobody is told, and it never happens twice at once. */
