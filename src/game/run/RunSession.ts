@@ -1,3 +1,4 @@
+import type { RaidWalk } from '../world/raidMemory';
 import type { DressedLook } from '../look/look';
 import type { SecureSlot as StashSecureSlot } from '../stash';
 import type { RunObjective } from '../objectives';
@@ -170,6 +171,8 @@ export interface ActiveRunSession {
    * whole game serialised, and a write per step is a write per 150ms.
    */
   surveyed?: Set<number>;
+  /** Where this raid has walked, for the pit to remember (`world/raidMemory.ts`). On the session for the same reason. */
+  walk?: RaidWalk;
 }
 
 /** Mixed into a raid's seed for its shiny stream, so the two streams never meet. */

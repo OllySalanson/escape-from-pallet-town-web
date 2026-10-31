@@ -27,7 +27,7 @@ import {
 } from '../../src/game/base/arenaHall';
 import { PIT_FLOOR_SIZE, RING_ORIGIN, paintPitFloor, paintPodium, paintTier } from '../../src/game/base/arenaPit';
 import type { WindowLight } from '../../src/game/base/homeClock';
-import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH, paintStands } from '../../src/game/base/arenaStands';
+import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH, paintBanners, paintCrowdLayer, paintStands } from '../../src/game/base/arenaStands';
 import { buildMinimap, type Minimap } from '../../src/game/world/minimap';
 import { getWorldMap } from '../../src/game/worldMap';
 
@@ -93,6 +93,8 @@ for (let tier = PIT_TIERS - 1; tier >= 0; tier -= 1) {
 }
 
 blit(paintStands(), STANDS_ORIGIN.x, STANDS_ORIGIN.y);
+blit(paintCrowdLayer(Number(option('house') ?? 0.62)), STANDS_ORIGIN.x, STANDS_ORIGIN.y);
+blit(paintBanners(), STANDS_ORIGIN.x, STANDS_ORIGIN.y);
 
 const sheet = readPng(new URL('../../public/assets/arena-hall.png', import.meta.url).pathname);
 const layer = (encoded: string): void => {

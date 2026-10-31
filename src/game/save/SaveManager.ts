@@ -1,3 +1,7 @@
+import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
+import type { HunterRivalId } from '../world/hunters';
+import { COIN_PRICE, giftWaiting, type PitGift, type PitRecord } from '../base/pitCoins';
+import { readRaidMemory, remembering, type RaidMarkKind, type RaidMemory, type RaidWalk } from '../world/raidMemory';
 import { canWear, readLook, type DressedLook, type PlayerLook } from '../look/look';
 import { billFor, billLine, checkBill, ownedWearables, unownedIn } from '../look/wardrobe';
 import { isWearableId } from '../look/wearables';
@@ -249,6 +253,18 @@ export interface RaidProgress {
    */
   readonly arenaIntroSeen?: boolean;
   /**
+   * Landings stuck out of THE RAID ARENA's pit (`world/raidArrival.ts`): how many
+   * running, and the most there have ever been. Pride, and nothing else reads it
+   * for anything. Absent on a save that has never stuck one.
+   */
+  readonly landings?: LandingRecord;
+  /** Bouts for show in THE RAID ARENA: who has been beaten in a row (`base/arenaBouts.ts`). */
+  readonly bouts?: BoutRecord;
+  /** Coins over the rail and what has been picked up for them (`base/pitCoins.ts`). Absent on a save that has tossed none. */
+  readonly pit?: PitRecord;
+  /** What the pit remembers of the raids that went down into it (`world/raidMemory.ts`). */
+  readonly raidMemory?: RaidMemory;
+  /**
    * The first words already said (`../hub/firstWords`): Professor Oak and Nurse
    * Joy speak a few lines the first time each of their screens opens, once per
    * save. Recorded at the moment they are shown, as the battle lesson is.
@@ -409,6 +425,11 @@ export interface RaidProgress {
 }
 
 /** One map's raid history. Every other number on the drop-in screen is derived. */
+export interface LandingRecord {
+  readonly streak: number;
+  readonly best: number;
+}
+
 export interface MapRaidRecord {
   readonly deployed: number;
   readonly extracted: number;
@@ -877,6 +898,79 @@ export class SaveManager {
    * starts, so skipping it or closing the tab does not buy it unasked again.
    * With no save to remember it in, it is always the first.
    */
+  /**
+   * How a bout for show went, written by the hall as the player comes back to it
+   * and nothing else: the fight itself writes nothing (`base/arenaBouts.ts`), and
+   * this is the one field a bout can move.
+   */
+  public recordBout(rival: HunterRivalId, won: boolean): { readonly game: RestoredGame; readonly record: BoutRecord; readonly ladderDone: boolean } | null {
+    const game = this.load();
+    if (!game) {
+      return null;
+    }
+    const { record, ladderDone } = afterBout(game.raidProgress.bouts, rival, won);
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, bouts: record } };
+    return this.save(next) ? { game: next, record, ladderDone } : null;
+  }
+
+  /**
+   * A coin over the rail of THE RAID ARENA, in one write: money out of the vault
+   * and one more on the count. Hands back the game, or null if it could not be paid for.
+   */
+  public tossCoin(): RestoredGame | null {
+    const game = this.load();
+    if (!game || game.stash.itemCount(TRADER_CURRENCY_ITEM_ID) < COIN_PRICE) {
+      return null;
+    }
+    game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, COIN_PRICE);
+    const pit = game.raidProgress.pit;
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, pit: { fed: (pit?.fed ?? 0) + 1, taken: pit?.taken ?? 0 } } };
+    return this.save(next) ? next : null;
+  }
+
+  /** What the pit gave back, picked up off the floor: a piece of furniture in the vault or a hat in the wardrobe. */
+  public takePitGift(): { readonly game: RestoredGame; readonly gift: PitGift } | null {
+    const game = this.load();
+    const gift = giftWaiting(game?.raidProgress.pit);
+    if (!game || !gift) {
+      return null;
+    }
+    if (gift.kind === 'item') {
+      game.stash.addItem(gift.id, 1);
+    }
+    const wardrobe = game.raidProgress.wardrobe ?? [];
+    const next: RestoredGame = {
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        pit: { fed: game.raidProgress.pit?.fed ?? 0, taken: (game.raidProgress.pit?.taken ?? 0) + 1 },
+        ...(gift.kind === 'wearable' ? { wardrobe: [...new Set([...wardrobe, gift.id])] } : {}),
+      },
+    };
+    return this.save(next) ? { game: next, gift } : null;
+  }
+
+  /**
+   * A landing out of the pit: one more on the streak if it was stuck, and the
+   * streak over if not. Hands back how many are running.
+   */
+  public recordLanding(clean: boolean): number {
+    const game = this.load();
+    if (!game) {
+      return clean ? 1 : 0;
+    }
+    const held = game.raidProgress.landings;
+    const streak = clean ? (held?.streak ?? 0) + 1 : 0;
+    if (!clean && !held?.streak) {
+      return 0;
+    }
+    this.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, landings: { streak, best: Math.max(streak, held?.best ?? 0) } },
+    });
+    return streak;
+  }
+
   public watchArenaIntro(): boolean {
     const game = this.load();
     if (!game) {
@@ -1357,12 +1451,16 @@ export class SaveManager {
     mapId: string,
     outcome: 'extracted' | 'wiped',
     survey: { readonly width: number; readonly walked: Iterable<number> } | undefined = undefined,
+    memory: { readonly walk: RaidWalk | undefined; readonly ending: { readonly kind: RaidMarkKind; readonly line: string } } | undefined = undefined,
   ): boolean {
     const game = this.load();
     if (!game) {
       return false;
     }
     let raidProgress = bumpRaid(game.raidProgress, mapId, outcome);
+    if (memory) {
+      raidProgress = { ...raidProgress, raidMemory: remembering(raidProgress.raidMemory, mapId, memory.walk, memory.ending) };
+    }
     if (survey && survey.width > 0) {
       raidProgress = {
         ...raidProgress,
@@ -1908,6 +2006,10 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     giftsReceived: uniqueStrings(value.giftsReceived),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
+    ...(readLandings(value.landings) ?? {}),
+    ...(readPit(value.pit) ?? {}),
+    ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
+    ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
       : {}),
@@ -1960,6 +2062,27 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ]),
     ],
   };
+}
+
+/** What has gone over the rail, or nothing if what is stored is not that. */
+function readPit(value: unknown): { readonly pit: PitRecord } | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  const { fed, taken } = value as Record<string, unknown>;
+  return Number.isInteger(fed) && (fed as number) >= 0 && Number.isInteger(taken) && (taken as number) >= 0
+    ? { pit: { fed: fed as number, taken: taken as number } }
+    : null;
+}
+
+/** A landing record, or nothing if what is stored is not one. */
+function readLandings(value: unknown): { readonly landings: LandingRecord } | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  const { streak, best } = value as Record<string, unknown>;
+  const whole = (count: unknown): count is number => Number.isInteger(count) && (count as number) >= 0;
+  return whole(streak) && whole(best) ? { landings: { streak, best: Math.max(streak, best) } } : null;
 }
 
 /** Only whole, non-negative counts, on maps that still exist. */

@@ -421,10 +421,10 @@ describe('the stands round the hall', () => {
   });
 
   it('lets only somebody in view shift, by one pixel, and not for long', () => {
-    const stir = nextStir([0.3, 0.1, 0.5], () => true)!;
+    const stir = nextStir([0.3, 0.1, 0.5], () => true, crowdSeats())!;
     expect(Math.abs(stir.dx) + Math.abs(stir.dy)).toBe(1);
     expect(stir.forMs).toBeLessThan(3000);
-    expect(nextStir([0.3, 0.1, 0.5], () => false)).toBeNull();
+    expect(nextStir([0.3, 0.1, 0.5], () => false, crowdSeats())).toBeNull();
     expect(paintCrowdPerson().width % PERSON_WIDTH).toBe(0);
   });
 });

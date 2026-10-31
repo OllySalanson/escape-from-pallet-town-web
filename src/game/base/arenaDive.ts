@@ -129,6 +129,24 @@ export function fallerAt(
   };
 }
 
+/** How far the arrow keys can drift whoever is falling, and how quickly: for the feel of it, and nothing depends on it. */
+const STEER_ACROSS = 34;
+const STEER_DOWN = 20;
+const STEER_EASE_MS = 170;
+
+/** Whoever is falling, drifted on by a frame of the keys held: -1, 0 or 1 each way. */
+export function steered(
+  steer: { readonly x: number; readonly y: number },
+  held: { readonly x: number; readonly y: number },
+  deltaMs: number,
+): { readonly x: number; readonly y: number } {
+  const share = Math.min(1, deltaMs / STEER_EASE_MS);
+  return {
+    x: steer.x + (held.x * STEER_ACROSS - steer.x) * share,
+    y: steer.y + (held.y * STEER_DOWN - steer.y) * share,
+  };
+}
+
 /** How many pieces of cloud tear past on the way down. */
 const PUFFS = 16;
 /** How much of the dive a piece takes to go from the middle of the screen past its edge. */

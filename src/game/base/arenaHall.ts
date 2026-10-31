@@ -102,6 +102,15 @@ function isPlatform(tile: GridPosition): boolean {
   );
 }
 
+/** Whether a tile is the hall's outer wall, with the stands behind it: not the porch's own sides, and not the fence. */
+export function isOuterWall(tile: GridPosition): boolean {
+  const inOrBesidePorch = Math.abs(tile.x - ARENA_MAT.x) <= 2 && tile.y >= ARENA_MAT.y - 3;
+  if (inOrBesidePorch || isPlatform(tile)) {
+    return false;
+  }
+  return tileCorners(tile).some(([x, y]) => acrossOval(WALL_FOOT, x, y) > 1);
+}
+
 const PILLAR_COUNT = 28;
 /** How far across the platform the pillars stand, from fence to wall. */
 const PILLAR_REACH = 0.8;
