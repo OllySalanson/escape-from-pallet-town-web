@@ -37,8 +37,9 @@ const MEASURED_HEIGHT = 33;
  * that line under the door's name, in the real yard at 1200x768.
  */
 const MEASURED_LINE_WIDTH: Record<string, number> = {
-  'Professor Oak has a favour to ask': 181,
-  'Prof. Oak has a favour to ask': 155,
+  'Professor Oak wants a favour': 161,
+  'Prof. Oak wants a favour': 135,
+  'Nurse Joy wants a favour': 138,
 };
 /** `WorldLabel`'s own padding, which its window adds round the text. */
 const PADDING_X = 3;
@@ -185,7 +186,7 @@ describe('the harbour door captions', () => {
     },
   );
 
-  it('names OAK’S LAB from its doorstep while Professor Oak has a favour to ask', () => {
+  it('names OAK’S LAB from its doorstep while Professor Oak wants a favour', () => {
     // The lab sits a row below its neighbours, so a caption over it has only
     // the gap between the Pokémon Center's roof and the workshop's, and on its
     // doorstep the player stands under it. "Professor Oak has a favour to ask"

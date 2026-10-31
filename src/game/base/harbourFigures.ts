@@ -24,6 +24,7 @@ import {
   BUBBLE_HEIGHT,
   BUBBLE_WIDTH,
   PARTNER_SPRITE_X_OFFSET,
+  PARTNER_VEILED_ALPHA,
   PARTNER_SPRITE_Y_OFFSET,
   drawEmoteBubble,
 } from './partnerFigure';
@@ -335,23 +336,37 @@ export class HarbourFigures {
   }
 
   /**
-   * Where every other player is drawn, figure and name plate together, and
-   * anything they are saying, in world pixels: ground a caption must keep
-   * clear of, as it keeps clear of the harbour's own people
-   * (`BaseScene.containWorldLabels`) - a building's name seated across another
-   * player read as their head on a sign.
+   * Where every other player is drawn, figure and name plate together, in
+   * world pixels: ground a caption would sooner keep clear of, because a
+   * building's name seated across another player read as their head on a sign -
+   * but never goes unseated for (`BaseScene.containWorldLabels`, `veilUnder`).
    */
   public rects(): { x: number; y: number; width: number; height: number }[] {
-    return [...this.drawn.values()].flatMap((drawn) => {
-      const { sprite, plate, name, wave, bubbleBox } = drawn;
+    return [...this.drawn.values()].map((drawn) => {
+      const { sprite, plate, name, wave } = drawn;
       const head = name.visible ? Math.min(plate.y, sprite.y + headOf(drawn)) : sprite.y + headOf(drawn);
       const top = wave ? Math.min(head, wave.y) : head;
-      // What they are saying is theirs too: a caption seated over it would be read as said.
-      return [
-        { x: sprite.x, y: top, width: TILE_SIZE, height: sprite.y + CHARACTER_FEET_PIXEL_Y + 1 - top },
-        ...(bubbleBox ? [{ ...bubbleBox }] : []),
-      ];
+      return { x: sprite.x, y: top, width: TILE_SIZE, height: sprite.y + CHARACTER_FEET_PIXEL_Y + 1 - top };
     });
+  }
+
+  /**
+   * This frame only, the seated captions read through whoever they are over,
+   * as a caption reads through this player's own partner
+   * (`PartnerFigure.setVeiled`): they go faint and their name makes way. The
+   * next `update` draws them whole again.
+   */
+  public veilUnder(captions: readonly BubbleBox[]): void {
+    for (const caption of captions) {
+      for (const drawn of this.drawn.values()) {
+        const { sprite, heel } = drawn;
+        if (overlaps(caption, { x: sprite.x, y: sprite.y + headOf(drawn), width: TILE_SIZE, height: CHARACTER_FEET_PIXEL_Y + 1 - headOf(drawn) })) {
+          sprite.setAlpha(Math.min(sprite.alpha, PARTNER_VEILED_ALPHA));
+          heel?.sprite.setAlpha(Math.min(heel.sprite.alpha, PARTNER_VEILED_ALPHA));
+        }
+      }
+      this.clearNamesUnder(caption);
+    }
   }
 
   /** Every name plate being drawn, in world pixels: a hand going up beside one is lifted clear of it. */

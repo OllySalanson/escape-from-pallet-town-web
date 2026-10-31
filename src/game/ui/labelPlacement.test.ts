@@ -234,6 +234,35 @@ describe('where a map caption is allowed to sit', () => {
     expect(seat({ subject: tile(900, 112) }).visible).toBe(false);
   });
 
+  it('slides along a row past a crown or a player on the doorstep, when that is all the room it has left', () => {
+    // The Pokémon Center from its own step: trees over the roof, the player under the door.
+    const building: Rect = { x: 120, y: 60, width: 80, height: 80 };
+    const player: Rect = { x: 152, y: 136, width: 16, height: 20 };
+    const [placed] = placeCaptions(
+      [request({ subject: building, width: 120, height: 33 })],
+      around({
+        canopy: [{ x: 60, y: 20, width: 200, height: 12 }],
+        keepClear: [
+          { x: 40, y: 60, width: 70, height: 80 },
+          { x: 210, y: 60, width: 70, height: 80 },
+          { x: 100, y: 170, width: 70, height: 40 },
+        ],
+        player: [player],
+      }),
+    );
+    expect(placed.visible).toBe(true);
+    expect(placed.x).toBe(player.x + player.width + SUBJECT_GAP);
+    expect(placed.y).toBe(building.y + building.height + SUBJECT_GAP);
+    // With a crown only part of the way along the roof, over the roof beside it comes first.
+    const [overRoof] = placeCaptions(
+      [request({ subject: building, width: 120, height: 33 })],
+      around({ canopy: [{ x: 60, y: 20, width: 100, height: 12 }], keepClear: [{ x: 40, y: 60, width: 70, height: 80 }, { x: 210, y: 60, width: 70, height: 80 }, { x: 100, y: 170, width: 70, height: 40 }], player: [player] }),
+    );
+    expect(overRoof.visible).toBe(true);
+    expect(overRoof.x).toBe(160 + SUBJECT_GAP);
+    expect(overRoof.y).toBe(building.y - SUBJECT_GAP - 33);
+  });
+
   it('is not drawn at all when nowhere around its subject is clear', () => {
     const wall: Rect = { x: 0, y: 0, width: 320, height: 240 };
 
