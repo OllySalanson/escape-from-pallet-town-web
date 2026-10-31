@@ -21,8 +21,8 @@ const rowsTall = (icon: PngPixels): number => {
 };
 
 /**
- * A pack's icon is the only picture of it there is: nothing is drawn on the
- * figure wearing one. Its rows are typed by hand and the script only checks that
+ * A pack's icon is the picture of it on every screen (what it looks like on a
+ * figure's back is `look/wornPack.ts`). Its rows are typed by hand and the script only checks that
  * each is sixteen long, which a row a pixel short and padded with a dot passes.
  * That is how the Hauler frame shipped with a right side that stepped in and out
  * twice and two bare posts at each end, which read as a creature with horns and

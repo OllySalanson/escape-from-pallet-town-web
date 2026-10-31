@@ -10,6 +10,7 @@ import { BASE_DOORS } from './doors';
 import type { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { harbourBeatTiles, harbourLifeAt, onLand } from './harbourLife';
 import type { PartnerSpeciesId } from './partner';
+import type { PackItemId } from '../items/items';
 import type { DressedLook } from '../look/look';
 
 /**
@@ -60,6 +61,8 @@ export interface HarbourBot {
    * busy harbour shows what the boutique sells - every one a different look.
    */
   readonly look: DressedLook;
+  /** What is on their back, if anything: most people about a raiding port have a pack, and not all. */
+  readonly pack?: PackItemId;
 }
 
 export const HARBOUR_BOTS: readonly HarbourBot[] = [
@@ -68,12 +71,14 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     name: 'BULBALUV',
     partner: 'bulbasaur',
     look: { head: 'lass-hair', top: 'plain-tee', legs: 'plain-trousers', body: 'sundress' },
+    pack: 'satchel',
   },
   {
     id: 'bot:finny2011',
     name: 'FINNY2011',
     partner: 'charmander',
     look: { head: 'youngster-cap-red', top: 'casual-jacket', legs: 'cargo-trousers', body: null },
+    pack: 'raid-pack',
   },
   {
     id: 'bot:tess-swims',
@@ -86,24 +91,28 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     name: 'OZ-HIKES',
     partner: 'ivysaur',
     look: { head: 'hiker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'hiker-gear' },
+    pack: 'ranger-pack',
   },
   {
     id: 'bot:karpking',
     name: 'KARPKING',
     partner: 'wartortle',
     look: { head: 'ace-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'ace-suit' },
+    pack: 'raid-pack',
   },
   {
     id: 'bot:xkitx',
     name: 'XKITX',
     partner: 'charmeleon',
     look: { head: 'rocker-quiff', top: 'rocker-jacket', legs: 'denim-jeans', body: null },
+    pack: 'hauler-frame',
   },
   {
     id: 'bot:dexhunter',
     name: 'DEXHUNTER',
     partner: 'squirtle',
     look: { head: 'fisher-cap', top: 'fishing-vest', legs: 'sky-trousers', body: null },
+    pack: 'satchel',
   },
   {
     id: 'bot:beebee22',
@@ -116,12 +125,14 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     name: '1MORERAID',
     partner: 'charmander',
     look: { head: 'bowl-cut', top: 'office-shirt', legs: 'smart-shorts', body: null },
+    pack: 'raid-pack',
   },
   {
     id: 'bot:og-nell',
     name: 'OG-NELL',
     partner: 'venusaur',
     look: { head: 'golden-waves', top: 'plain-tee', legs: 'plain-trousers', body: 'long-skirt' },
+    pack: 'ranger-pack',
   },
   {
     id: 'bot:toise4life',
@@ -134,6 +145,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     name: 'SKYEZARD',
     partner: 'charizard',
     look: { head: 'ace-wave', top: 'ace-jacket', legs: 'ace-trousers', body: null },
+    pack: 'raid-pack',
   },
 ];
 

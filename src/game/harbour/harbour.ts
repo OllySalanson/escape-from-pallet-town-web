@@ -1,5 +1,6 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
+import type { PackItemId } from '../items/items';
 import type { DressedLook } from '../look/look';
 import { AWAY_GRACE_MS, HarbourLink, LEAVE_AFTER_MS, type HarbourWire, type NamedFigure } from './harbourLink';
 import { housePlace, type HarbourPlace, type SHARED_HARBOUR_ROOMS } from './harbourProtocol';
@@ -87,6 +88,7 @@ export class HarbourSession {
     name: string | null,
     partner: PartnerSpeciesId | null = null,
     look: DressedLook | null = null,
+    pack: PackItemId | null = null,
   ): void {
     this.stopAwayClock();
     this.where = where;
@@ -94,7 +96,7 @@ export class HarbourSession {
     this.facing = facing;
     this.link.enter(this.me, placeFor(where, this.me), tile, facing);
     this.link.carry(partner);
-    this.link.wear(look);
+    this.link.wear(look, pack);
     if (name && name !== this.named) {
       const renamed = this.named !== null;
       this.named = name;

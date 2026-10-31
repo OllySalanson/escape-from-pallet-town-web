@@ -1,3 +1,5 @@
+import type { PackItemId } from '../items/items';
+import { isPackId } from '../items/packs';
 import { readLook, type DressedLook } from '../look/look';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { isPartnerSpecies, type PartnerSpeciesId } from '../base/partner';
@@ -91,6 +93,8 @@ export interface HarbourMove<P extends string = HarbourPlace> {
   readonly partner?: PartnerSpeciesId;
   /** What they wear (`../look/look`), if it is not the classic look. */
   readonly look?: DressedLook;
+  /** The pack on their back (`../look/wornPack`), if they have one. */
+  readonly pack?: PackItemId;
 }
 
 /** The most characters a piece's id is, with room to spare: a longer string is nobody's piece. */
@@ -128,6 +132,7 @@ export function encodeHarbourMove(move: HarbourMove): Record<string, unknown> {
     f: move.facing,
     ...(move.partner ? { k: move.partner } : {}),
     ...(move.look ? { w: encodeLook(move.look) } : {}),
+    ...(move.pack ? { b: move.pack } : {}),
   };
 }
 
@@ -142,7 +147,7 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
-  const { u, p, s, f, k, w } = payload as Record<string, unknown>;
+  const { u, p, s, f, k, w, b } = payload as Record<string, unknown>;
   if (!isPlayerId(u) || !isHarbourPlace(p) || typeof f !== 'string' || !FACINGS.includes(f as Direction)) {
     return null;
   }
@@ -160,6 +165,8 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
   const partner = typeof k === 'string' && isPartnerSpecies(k) ? k : undefined;
   // A look is only ever the boutique's own pieces; anything else is drawn in the classic clothes.
   const look = readWireLook(w);
+  // A pack is only ever one the catalogue has; anything else is a player with nothing on their back.
+  const pack = isPackId(b as string) ? (b as PackItemId) : undefined;
   return {
     from: u,
     place: p,
@@ -167,6 +174,7 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
     facing: f as Direction,
     ...(partner ? { partner } : {}),
     ...(look ? { look } : {}),
+    ...(pack ? { pack } : {}),
   };
 }
 

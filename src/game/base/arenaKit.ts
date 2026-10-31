@@ -26,6 +26,8 @@ export interface ArenaKit {
   close(): void;
   /** Over the fence: the raid is committed to, and this is what it starts with. */
   jump(world: WorldSceneData): void;
+  /** Another pack was chosen at the rack: it is on the player's back at once. */
+  dress(): void;
   /** A way in has come under the cursor: the pit shows it. */
   aim(insertionId: RunInsertionId): void;
 }

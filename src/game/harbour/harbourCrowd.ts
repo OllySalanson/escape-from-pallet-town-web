@@ -1,6 +1,7 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import type { PartnerSpeciesId } from '../base/partner';
+import type { PackItemId } from '../items/items';
 import type { DressedLook } from '../look/look';
 import type { HarbourMove, HarbourPlace } from './harbourProtocol';
 
@@ -45,6 +46,8 @@ export interface HarbourFigure<P extends string = HarbourPlace> {
   readonly partner?: PartnerSpeciesId;
   /** What it wears, if it is not the classic look. */
   readonly look?: DressedLook;
+  /** The pack on its back, if it has one. */
+  readonly pack?: PackItemId;
   /** The tile it last walked off - where its partner stands - or null since it was last put somewhere. */
   readonly behind: GridPosition | null;
 }
@@ -60,6 +63,7 @@ interface Walker<P extends string> {
   endFacing: Direction;
   partner?: PartnerSpeciesId;
   look?: DressedLook;
+  pack?: PackItemId;
   behind: GridPosition | null;
   /** Refused its next step this frame (`advance`): standing still, not walking on the spot. */
   waiting?: boolean;
@@ -95,12 +99,14 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         endFacing: move.facing,
         partner: move.partner,
         look: move.look,
+        pack: move.pack,
         behind: null,
       });
       return;
     }
     walker.partner = move.partner;
     walker.look = move.look;
+    walker.pack = move.pack;
     // The newest tile already queued (or stood on), which the path continues from.
     let end = walker.queue[walker.queue.length - 1] ?? walker.tile;
     for (const tile of move.path) {
@@ -247,6 +253,7 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         facing: walker.facing,
         ...(walker.partner ? { partner: walker.partner } : {}),
         ...(walker.look ? { look: walker.look } : {}),
+        ...(walker.pack ? { pack: walker.pack } : {}),
         behind: walker.behind ? { ...walker.behind } : null,
       }));
   }

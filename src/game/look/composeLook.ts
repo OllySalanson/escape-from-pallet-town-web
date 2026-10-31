@@ -37,12 +37,22 @@ export function dyeMap(dye: WearableDye | undefined): ReadonlyMap<number, number
   return new Map(from.map((shade, i) => [shade, to[i]]));
 }
 
+/** A look's pixels with its head apart from the rest, for a pack to go between them (`wornPack.ts`). */
+export interface LookLayers {
+  readonly under: Uint8ClampedArray;
+  readonly head: Uint8ClampedArray;
+}
+
 /** The look's pixels, RGBA, 64 wide and 128 tall. The classic look has none: it is its own sheet. */
-export function composeLook(atlas: Pixels, look: PlayerLook): Uint8ClampedArray {
-  const out = new Uint8ClampedArray(PIECE_WIDTH * PIECE_HEIGHT * 4);
+export function composeLook(atlas: Pixels, look: PlayerLook): Uint8ClampedArray;
+export function composeLook(atlas: Pixels, look: PlayerLook, split: 'layers'): LookLayers;
+export function composeLook(atlas: Pixels, look: PlayerLook, split?: 'layers'): Uint8ClampedArray | LookLayers {
+  const under = new Uint8ClampedArray(PIECE_WIDTH * PIECE_HEIGHT * 4);
+  const head = split ? new Uint8ClampedArray(PIECE_WIDTH * PIECE_HEIGHT * 4) : under;
   for (const id of wornIds(look)) {
     const wearable = wearableById(id);
     if (!wearable) continue;
+    const out = look && id === look.head ? head : under;
     const { cell } = WEARABLE_PIECES[wearable.piece];
     const left = (cell % WEARABLE_ATLAS_COLUMNS) * PIECE_WIDTH;
     const top = Math.floor(cell / WEARABLE_ATLAS_COLUMNS) * PIECE_HEIGHT;
@@ -61,5 +71,5 @@ export function composeLook(atlas: Pixels, look: PlayerLook): Uint8ClampedArray 
       }
     }
   }
-  return out;
+  return split ? { under, head } : under;
 }

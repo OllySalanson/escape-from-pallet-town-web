@@ -46,6 +46,7 @@ import { flashScreen } from '../ui/screenFlash';
 import { iconTextureKey, itemIconName, WORLD_ICONS } from '../ui/icons';
 import { FIRE_LETTERING, stampedWord } from '../ui/stampedLettering';
 import { readLook } from '../look/look';
+import { bestPackIn } from '../items/packs';
 import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import {
@@ -214,7 +215,12 @@ export class ArenaIntroScene extends Phaser.Scene {
     this.viewing = unseen ? arenaIntroViewing(data.savedGame.raidProgress) : 'again';
     this.cast = arenaIntroCast(data.savedGame, loadPlayerName());
     // The player in what they wear, as the harbour draws them (`look/`).
-    this.playerTexture = lookTexture(this, readLook(data.savedGame.raidProgress.look));
+    // On their back, the pack the rack would open on: the reel is of them.
+    this.playerTexture = lookTexture(
+      this,
+      readLook(data.savedGame.raidProgress.look),
+      bestPackIn(data.savedGame.stash.listItems()),
+    );
     this.words = arenaIntroWords(this.cast);
     void audioManager.loadCries([
       this.cast.partner.dexId,

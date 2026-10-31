@@ -73,6 +73,11 @@ stepped loop and prints how far the player moved on each frame, failing if any
 frame of the walk is off the steady rate: a judder loses no game time, so a
 check on arrival times cannot see one.
 
+`wornPacks.mjs <test-mode build url> <dir>` plays the pack on the player's back
+(`src/game/look/wornPack.ts`): every pack in every facing on the classic figure and
+a dressed one, a walk, empty-handed, a change at the rack, the dive, the raid and
+the Bicycle, failing if the figure is ever drawn from the wrong sheet.
+
 `secondRing.mjs <url> <dir> [--port=N]` walks the vale's second ring on foot from
 Mill Square: the boardwalks, the punt out to Duck Island and back, in and out of the
 inns, the strand, Bridge End and the moor, photographing each. It takes about three

@@ -1,5 +1,6 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
+import type { PackItemId } from '../items/items';
 import { lookKey, type DressedLook } from '../look/look';
 import { HarbourCrowd, type HarbourFigure } from './harbourCrowd';
 import {
@@ -111,6 +112,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private facing: Direction = 'down';
   private partner: PartnerSpeciesId | null = null;
   private look: DressedLook | null = null;
+  private pack: PackItemId | null = null;
   private pending: GridPosition[] = [];
   private lastSentAt = Number.NEGATIVE_INFINITY;
   private lastGreetAt = Number.NEGATIVE_INFINITY;
@@ -182,15 +184,17 @@ export class HarbourLink<P extends string = HarbourPlace> {
   }
 
   /**
-   * What this player wears (`../look/look`), or the classic look. Said with
-   * every move from now on, and at once to anybody here if it changed - a look
-   * bought at the boutique walks out of its door as itself.
+   * What this player wears (`../look/look`), or the classic look, and the pack
+   * on their back, if any. Said with every move from now on, and at once to
+   * anybody here if it changed - a look bought at the boutique walks out of its
+   * door as itself, and a pack chosen at the rack is on their back at once.
    */
-  public wear(look: DressedLook | null): void {
-    if (lookKey(look) === lookKey(this.look)) {
+  public wear(look: DressedLook | null, pack: PackItemId | null = null): void {
+    if (lookKey(look) === lookKey(this.look) && pack === this.pack) {
       return;
     }
     this.look = look;
+    this.pack = pack;
     if (this.seen() && this.anybodyElse()) {
       this.sendNow();
     }
@@ -407,6 +411,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
       facing: this.facing,
       ...(this.partner ? { partner: this.partner } : {}),
       ...(this.look ? { look: this.look } : {}),
+      ...(this.pack ? { pack: this.pack } : {}),
     });
     this.pending = [];
     this.lastSentAt = this.now;
