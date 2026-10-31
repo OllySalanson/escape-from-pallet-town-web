@@ -7,6 +7,7 @@ import {
   JUMP_MS,
   PARTNER_LAG_MS,
   PUFF_RADII,
+  PURSUER_FROM_MS,
   TURN_BACK_MS,
   fallFacing,
   fallerAt,
@@ -15,11 +16,58 @@ import {
   overTheFence,
   partnerLeap,
   puffsAt,
+  pursuerAt,
   windAt,
   steered,
 } from './arenaDive';
 
 const over = { x: 0, y: -1 };
+
+describe('the hunter comes over the rail after them', () => {
+  const screens = [[320, 240], [400, 256]] as const;
+  /** How long a figure is falling before the cloud starts to come in. */
+  const clearOfTheCloud = FALL_MS + DIVE_MS * 0.74;
+
+  it('is not there until the two of them have settled, and comes in from over the top of the screen', () => {
+    expect(pursuerAt(PURSUER_FROM_MS - 1, 320, 240)).toBeNull();
+    expect(pursuerAt(PURSUER_FROM_MS, 320, 240)!.y).toBeLessThan(-16);
+  });
+
+  it('is seen on every screen, hanging clear of them both, and is gone before the cloud shuts', () => {
+    for (const [width, height] of screens) {
+      const seen: { x: number; y: number }[] = [];
+      for (let ms = 0; ms < FALL_MS + DIVE_MS; ms += 20) {
+        const at = pursuerAt(ms, width, height);
+        if (at) {
+          expect(ms).toBeLessThan(clearOfTheCloud);
+          seen.push(at);
+        }
+      }
+      const inView = seen.filter((at) => at.y > 0 && at.y < height && at.x > 0 && at.x < width);
+      expect(inView.length * 20).toBeGreaterThan(450);
+      // Over the player's shoulder when it hangs, not on top of them.
+      const hanging = pursuerAt(PURSUER_FROM_MS + 500, width, height)!;
+      expect(hanging.y + 32).toBeLessThan(height / 2 - 12);
+      expect(hanging.x + 32).toBeLessThan(width);
+    }
+  });
+
+  it('goes on down past them, off the bottom of the screen', () => {
+    for (const [width, height] of screens) {
+      const last = [...Array(200).keys()].map((step) => pursuerAt(step * 20, width, height)).filter(Boolean).at(-1)!;
+      expect(last.y).toBeGreaterThan(height - 20);
+    }
+  });
+
+  it('moves in whole pixels', () => {
+    for (let ms = PURSUER_FROM_MS; ms < FALL_MS + DIVE_MS; ms += 13) {
+      const at = pursuerAt(ms, 320, 240);
+      if (at) {
+        expect(Number.isInteger(at.x) && Number.isInteger(at.y)).toBe(true);
+      }
+    }
+  });
+});
 
 describe('over the fence and down', () => {
   it('starts with the view on its way back to the figure, which has not moved', () => {

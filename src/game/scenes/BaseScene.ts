@@ -1718,6 +1718,10 @@ export class BaseScene extends Phaser.Scene {
       leaper: null,
       steer: { x: 0, y: 0 },
     };
+    const hunter = world.runSession?.plan?.hunter;
+    if (hunter) {
+      this.jump.dive?.pursuedBy(hunterRival(hunter.rivalId));
+    }
     camera.stopFollow();
     camera.removeBounds();
     audioManager.play('arenaHorn');

@@ -1,7 +1,10 @@
 import type Phaser from 'phaser';
 import { getIdleFrame } from '../playerFrames';
 import { cloudSheet, paintCloudPiece } from './arenaPit';
-import { PUFF_RADII, fallFacing, fallerAt, puffsAt, windAt, JUMP_MS, type JumpPose } from './arenaDive';
+import { PUFF_RADII, PURSUER_FROM_MS, fallFacing, fallerAt, pursuerAt, puffsAt, windAt, JUMP_MS, type JumpPose } from './arenaDive';
+import { audioManager } from '../audio/AudioManager';
+import { getWorldCharacterAppearance, worldCharacterIdleFrame } from '../world/characterPresentation';
+import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
 import { partnerFrame } from './partner';
 
@@ -25,6 +28,8 @@ const WIND_DEPTH = 1001;
 const FALLER_DEPTH = 1002;
 const NEAR_PUFF_DEPTH = 1003;
 const CLOUD_DEPTH = 1004;
+/** Behind whoever is falling: it is above them and going past. */
+const PURSUER_DEPTH = FALLER_DEPTH - 0.5;
 
 const WIND_INK = 0xd8e0e8;
 const WIND_DIM_INK = 0x90a0b0;
@@ -59,6 +64,8 @@ export class ArenaDiveView {
   private partnerTexture: string | null = null;
   private player: Faller | null = null;
   private partner: Faller | null = null;
+  /** The raid's hunter, once it has come over the rail after them. */
+  private pursuer: { readonly rival: HunterRival; image: Phaser.GameObjects.Image | null } | null = null;
 
   public constructor(scene: Phaser.Scene, playerTexture: string) {
     this.scene = scene;
@@ -118,6 +125,30 @@ export class ArenaDiveView {
     }
   }
 
+  /** Who comes over the rail after them. */
+  public pursuedBy(rival: HunterRival): void {
+    this.pursuer = { rival, image: null };
+  }
+
+  /** The hunter, a time into the fall. Its own sprite and no words; the sting is the one it arrives to in the raid. */
+  private chase(fallingMs: number): void {
+    const pursuer = this.pursuer;
+    if (!pursuer || fallingMs < PURSUER_FROM_MS) {
+      return;
+    }
+    const appearance = getWorldCharacterAppearance('npc', pursuer.rival.design);
+    const frame = worldCharacterIdleFrame(appearance, fallFacing(fallingMs, 1));
+    if (!pursuer.image) {
+      pursuer.image = this.keep(this.scene.add.image(0, 0, appearance.textureKey, frame).setOrigin(0, 0).setDepth(PURSUER_DEPTH));
+      audioManager.play('hunterArrival');
+    }
+    const at = pursuerAt(fallingMs, this.scene.scale.width, this.scene.scale.height);
+    pursuer.image.setVisible(at !== null).setFrame(frame);
+    if (at) {
+      pursuer.image.setPosition(at.x, at.y);
+    }
+  }
+
   private faller(
     texture: string,
     from: { readonly x: number; readonly y: number },
@@ -146,6 +177,9 @@ export class ArenaDiveView {
     const middleY = Math.floor(height / 2);
     this.fall(this.player, elapsedMs, pose.figure.seen, steer);
     this.fall(this.partner, elapsedMs, pose.figure.seen, { x: steer.x * PARTNER_DRIFT, y: steer.y * PARTNER_DRIFT });
+    if (this.player?.startedAtMs !== null && this.player?.startedAtMs !== undefined) {
+      this.chase(elapsedMs - this.player.startedAtMs);
+    }
 
     this.wind.clear();
     for (const streak of windAt(elapsedMs, pose.wind, width, height)) {
