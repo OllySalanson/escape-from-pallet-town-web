@@ -10,7 +10,13 @@ export const STREAK_WORTH_SAYING = 3;
  * wrong with the raid being got ready, if anything is, because she can see the
  * bench and the rack from where she stands.
  */
-export function marshalLines(heard: readonly string[] | undefined, flow: DeploymentFlow, cleanLandings = 0): readonly string[] {
+export function marshalLines(
+  heard: readonly string[] | undefined,
+  flow: DeploymentFlow,
+  cleanLandings = 0,
+  /** Who is on the far floor, until this save has been across to them. */
+  boutRival?: string,
+): readonly string[] {
   if (!hasHeard(heard, 'loadout')) {
     return FIRST_WORDS.loadout.lines;
   }
@@ -28,6 +34,9 @@ export function marshalLines(heard: readonly string[] | undefined, flow: Deploym
   }
   if (cleanLandings >= STREAK_WORTH_SAYING) {
     return [`You look ready. ${cleanLandings} clean landings running, and the stands are counting.`];
+  }
+  if (boutRival) {
+    return [`You look ready. ${boutRival} is on the far floor, if you want a bout first.`];
   }
   return ['You look ready. Pick your spot on the rim and go over the fence.'];
 }

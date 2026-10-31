@@ -1,3 +1,5 @@
+import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
+import type { HunterRivalId } from '../world/hunters';
 import { COIN_PRICE, giftWaiting, type PitGift, type PitRecord } from '../base/pitCoins';
 import { readRaidMemory, remembering, type RaidMarkKind, type RaidMemory, type RaidWalk } from '../world/raidMemory';
 import { canWear, readLook, type DressedLook, type PlayerLook } from '../look/look';
@@ -256,6 +258,8 @@ export interface RaidProgress {
    * for anything. Absent on a save that has never stuck one.
    */
   readonly landings?: LandingRecord;
+  /** Bouts for show in THE RAID ARENA: who has been beaten in a row (`base/arenaBouts.ts`). */
+  readonly bouts?: BoutRecord;
   /** Coins over the rail and what has been picked up for them (`base/pitCoins.ts`). Absent on a save that has tossed none. */
   readonly pit?: PitRecord;
   /** What the pit remembers of the raids that went down into it (`world/raidMemory.ts`). */
@@ -894,6 +898,21 @@ export class SaveManager {
    * starts, so skipping it or closing the tab does not buy it unasked again.
    * With no save to remember it in, it is always the first.
    */
+  /**
+   * How a bout for show went, written by the hall as the player comes back to it
+   * and nothing else: the fight itself writes nothing (`base/arenaBouts.ts`), and
+   * this is the one field a bout can move.
+   */
+  public recordBout(rival: HunterRivalId, won: boolean): { readonly game: RestoredGame; readonly record: BoutRecord; readonly ladderDone: boolean } | null {
+    const game = this.load();
+    if (!game) {
+      return null;
+    }
+    const { record, ladderDone } = afterBout(game.raidProgress.bouts, rival, won);
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, bouts: record } };
+    return this.save(next) ? { game: next, record, ladderDone } : null;
+  }
+
   /**
    * A coin over the rail of THE RAID ARENA, in one write: money out of the vault
    * and one more on the count. Hands back the game, or null if it could not be paid for.
@@ -1989,6 +2008,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),
     ...(readPit(value.pit) ?? {}),
+    ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }

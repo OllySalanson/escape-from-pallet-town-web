@@ -1,11 +1,13 @@
 // Plays what THE RAID ARENA does for somebody who has come back to it.
 //
-//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd|landing|memory|coin]
+//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd|landing|memory|coin|bout]
 //
 // A save is written as it would stand after that many raids, the raid's ending is
 // handed to the hall as the result screen hands it, and everything is played with
 // the real keys: the crowd's answer to each kind of raid, a wave at the stands, a
-// lap of the ring and sticking the landing. Exit code 1 is anything not where it should be. It also holds
+// lap of the ring, sticking the landing, what the pit remembers, a coin over the rail
+// and a bout for show, whose one promise it checks byte for byte: the save is the
+// same after any bout but for the one field the hall writes about it. Exit code 1 is anything not where it should be. It also holds
 // the one promise the whole of this rests on: home on the rim, SPACE and ENTER are
 // still all that a raid asks.
 import { mkdirSync } from 'node:fs';
@@ -160,8 +162,8 @@ try {
     await press('Escape', 500);
     await step(9000);
 
-    // A wave at the stands from the outer floor.
-    await walkTo({ x: 32, y: 6 });
+    // A wave at the stands from the outer floor, beside whoever waits for a bout.
+    await walkTo({ x: 31, y: 5 });
     await press('ArrowUp', 300);
     await step(2600);
     expect(`the far wall offers a wave (${await base('b.hintShown')})`, (await base('b.hintShown')) === '[SPACE] WAVE TO THE CROWD');
@@ -378,6 +380,149 @@ try {
     const stash = (await saved()).stash;
     expect('and it is in the vault', ((stash.items ?? stash.supplies)['pika-cushion'] ?? 0) === 1);
     await walkTo(on);
+  }
+
+  // --- bouts for show --------------------------------------------------------------
+  if (!only || only === 'bout') {
+    const raw = () => page.evaluate(`localStorage.getItem(${JSON.stringify(SAVE)})`);
+    /** The whole save but the one field the hall writes about a bout. */
+    const allButBouts = async () => {
+      const save = JSON.parse(await raw());
+      delete save.raidProgress.bouts;
+      return JSON.stringify(save);
+    };
+    const battle = (expression) => page.evaluate(`(() => { const s = ${GAME}.scene.getScene('battle'); return ${expression}; })()`);
+    const setLevel = (level) =>
+      page.evaluate(`(() => { const k = ${JSON.stringify(SAVE)}; const s = JSON.parse(localStorage.getItem(k)); const p = s.stash.pokemon[0].pokemon; p.level = ${level}; p.xp = Math.pow(${level}, 3); p.currentHp = 9999; localStorage.setItem(k, JSON.stringify(s)); })()`);
+    const backToHall = async () => {
+      await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 32, y: 7 } }); return 1; })()`);
+      await step(300);
+      await until(inHall, 'the hall again');
+      // The level above was written by hand: read back and written once, as the game writes a save, so that
+      // nothing but the bout is left to change it.
+      await base('(b.saveManager.save(b.saveManager.load()), 1)');
+    };
+    /** Names what differs between two saves, for a fault to say. */
+    const differs = (before, after) => {
+      const a = JSON.parse(before);
+      const b = JSON.parse(after);
+      const out = [];
+      for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+        if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) {
+          if (key === 'raidProgress') {
+            for (const inner of new Set([...Object.keys(a[key]), ...Object.keys(b[key])])) {
+              if (JSON.stringify(a[key][inner]) !== JSON.stringify(b[key][inner])) out.push(`raidProgress.${inner}`);
+            }
+          } else {
+            out.push(key);
+          }
+        }
+      }
+      return out.join(',') || 'nothing';
+    };
+    await setLevel(70);
+    await backToHall();
+    await walkTo({ x: 32, y: 7 });
+    await press('ArrowUp', 400);
+    await shot('bout-rival');
+    const hint = await base('b.hintShown');
+    const first = await base('b.rivalHere.name');
+    expect(`the next hunter stands on the far floor (${hint})`, hint === `[SPACE] ${first}`);
+    /** Speaks to the rival, says yes, and hands back once the fight is up. */
+    const challenge = async (name) => {
+      await press('Space', 700);
+      if (name) await shot(`${name}-greeting`);
+      for (let guard = 0; guard < 10 && (await base('!b.boxQuestion')); guard += 1) {
+        await press('Space', 500);
+      }
+      if (name) await shot(`${name}-offer`);
+      await press('Space', 400);
+      await until(sceneIs('battle'), 'the bout');
+      await step(1500);
+    };
+    /**
+     * Fights until the hall is back, pressing the key as a player leaning on it would. A mirror
+     * match can go either way, so a driver that means to win leaves the foe a hit from the floor
+     * with nothing to throw: one that knows no move stands still (`battleEngine.ts`).
+     */
+    const fightOn = async (name, win = false) => {
+      let shots = 0;
+      for (let guard = 0; guard < 600 && !(await page.evaluate(sceneIs('base'))); guard += 1) {
+        if (win) {
+          await battle(`(() => { if (s.state?.enemy && s.state.enemy.currentHp > 0) { s.state.enemy.currentHp = 1; s.state.enemy.moves = []; } return 1; })()`);
+        }
+        await page.tap('Space', 0);
+        await step(300);
+        if (name && guard === 6 && shots === 0) {
+          shots = 1;
+          await shot(`${name}-fight`);
+        }
+      }
+      await until(inHall, 'the hall after the bout');
+      await step(400);
+    };
+    const saveBefore = await allButBouts();
+    await challenge('bout');
+    expect('it is the real battle screen, with no raid on it', await battle('Boolean(s.exhibition) && !s.runSession'));
+    expect('the team is that rival\'s, against the bench', await battle('s.trainer.party.length >= 1 && s.trainer.party[0].level === 69'));
+    await fightOn('bout', true);
+    const afterWin = await allButBouts();
+    expect(`winning writes nothing but who has been beaten (differs: ${differs(saveBefore, afterWin)})`, afterWin === saveBefore);
+    expect('the hall has written who has been beaten', JSON.parse(await raw()).raidProgress.bouts?.beaten.length === 1);
+    await shot('bout-won');
+    for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {
+      await press('Space', 500);
+    }
+    const second = await base('b.rivalHere.name');
+    expect(`whoever is next steps up (${second})`, second !== first);
+
+    // A yield is a loss, and starts the run again.
+    await challenge(null);
+    const before = await allButBouts();
+    await battle(`(() => { s.flee(); return 1; })()`);
+    await fightOn(null);
+    expect('yielding writes nothing but the run being over', (await allButBouts()) === before);
+    expect('and it is over', JSON.parse(await raw()).raidProgress.bouts?.beaten.length === 0);
+    for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {
+      await press('Space', 500);
+    }
+
+    // Losing outright, down to the last Pokemon.
+    await setLevel(5);
+    await backToHall();
+    await walkTo({ x: 32, y: 7 });
+    await press('ArrowUp', 300);
+    const lost = await allButBouts();
+    await challenge(null);
+    await battle(`(() => { s.state.player.currentHp = 1; s.party.pokemon[0].currentHp = 1; return 1; })()`);
+    await fightOn(null);
+    const afterLoss = await allButBouts();
+    expect(`losing writes nothing either (differs: ${differs(lost, afterLoss)})`, afterLoss === lost);
+    console.log('after the loss:', JSON.stringify(JSON.parse(await raw()).raidProgress.bouts));
+    await shot('bout-lost');
+    for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {
+      await press('Space', 500);
+    }
+
+    // All five in a row, and the banner.
+    await setLevel(70);
+    await backToHall();
+    await walkTo({ x: 32, y: 7 });
+    await press('ArrowUp', 300);
+    for (let round = 0; round < 5; round += 1) {
+      await challenge(null);
+      await fightOn(null, true);
+      console.log(`bout ${round + 1}:`, JSON.stringify(JSON.parse(await raw()).raidProgress.bouts));
+      if (round === 4) await shot('bout-ladder-done');
+      for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {
+        await press('Space', 500);
+      }
+    }
+    const ladder = JSON.parse(await raw()).raidProgress.bouts;
+    expect('all five in a row counts', ladder.ladders === 1 && ladder.beaten.length === 0);
+    await backToHall();
+    await step(300);
+    await shot('bout-banner');
   }
 } finally {
   await browser.close();

@@ -1,3 +1,5 @@
+import type { GridPosition } from '../movement/gridMovement';
+import type { HunterRivalId } from '../world/hunters';
 import { fellLine } from '../world/raidMemory';
 import Phaser from 'phaser';
 import { recordAction } from '../feedback/actionLog';
@@ -320,12 +322,23 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
   /** A development route can return to its launcher after a complete battle. */
   returnScene?: string;
   /**
+   * A bout for show in THE RAID ARENA (`base/arenaBouts.ts`): fought on copies,
+   * earning nothing, with no run session, so nothing in it can reach a save. All
+   * that goes home is which way it went, and to where the player stood.
+   */
+  exhibition?: { readonly rival: HunterRivalId; readonly at: GridPosition };
+  /**
    * The weather of the place the fight started in - the district the player was
    * standing in when it began. It is not part of `RaidCarriage` because it is
    * not the raid's state to carry: the world reads it off the tile every time.
    */
   weather?: WeatherId | null;
 }
+
+/** What a bout for show says in place of the raid's words for the same things. */
+const BOUT_LOST_LINE = 'You lost the bout.';
+const BOUT_YIELD_COMMAND = 'YIELD';
+const BOUT_YIELD_LINE = 'You yielded the bout.';
 
 /**
  * A command whose stack has run out - BALL x0, ITEM x0. It is still shown and
@@ -516,6 +529,7 @@ export class BattleScene extends Phaser.Scene {
   private readonly activatedPoiIds = new Set<string>();
   private returnLocation: BattleSceneData['returnLocation'];
   private returnScene: BattleSceneData['returnScene'];
+  private exhibition: BattleSceneData['exhibition'];
   /** Which Pokemon each slot's plate is currently drawn for. */
   private displayed = new Map<string, PokemonInstance>();
   /**
@@ -654,6 +668,10 @@ export class BattleScene extends Phaser.Scene {
     this.hunterState = data.hunterState;
     this.returnLocation = data.returnLocation;
     this.returnScene = data.returnScene;
+    this.exhibition = data.exhibition;
+    if (data.exhibition && data.runSession) {
+      throw new Error('A bout for show cannot be fought on a raid.');
+    }
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.unclaimedBossGear = data.unclaimedBossGear ?? [];
@@ -2216,6 +2234,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private hunterFleeLabel(): string {
+    if (this.exhibition) {
+      return BOUT_YIELD_COMMAND;
+    }
     const manager = this.runSession?.manager;
     const snapshot = manager?.snapshot();
     return formatHunterFleeCommand(
@@ -2250,6 +2271,14 @@ export class BattleScene extends Phaser.Scene {
    * is raid time instead, charged up front and stated on the command.
    */
   private fleeFromHunter(): void {
+    if (this.exhibition) {
+      this.pendingBattleExit = true;
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      audioManager.play('flee');
+      this.dialog.showMessages([BOUT_YIELD_LINE]);
+      return;
+    }
     const penaltyMs = this.runSession?.manager.registerHunterFlee().penaltyMs;
     if (this.hunterState) {
       this.hunterState = beginHunterDisengage(this.hunterState);
@@ -3417,7 +3446,7 @@ export class BattleScene extends Phaser.Scene {
       this.returnToWorld();
       return;
     }
-    this.dialog.showMessage('You blacked out!');
+    this.dialog.showMessage(this.exhibition ? BOUT_LOST_LINE : 'You blacked out!');
   }
 
   /**
@@ -3590,6 +3619,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {
+    // A bout pays nothing: no experience, so no level, no move and no evolving.
+    if (this.exhibition) {
+      return [];
+    }
     // Whoever faced it and is still standing shares it, as FireRed shares it;
     // a Pokemon that fainted earns nothing for the foe it fell to.
     const participants = [...(this.foesFacedBy.get(defeatedPokemon) ?? [])].filter(
@@ -3951,6 +3984,15 @@ export class BattleScene extends Phaser.Scene {
     // A lost raid is already on its way to the result screen. The faint
     // narration completing behind it must not race the hub in first and skip it.
     if (this.pendingResultScreen) {
+      return;
+    }
+
+    if (this.exhibition) {
+      this.scene.start('base', {
+        room: 'raid-arena',
+        at: this.exhibition.at,
+        bout: { rival: this.exhibition.rival, won: this.state.outcome === 'victory' },
+      });
       return;
     }
 
