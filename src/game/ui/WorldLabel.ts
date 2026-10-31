@@ -124,6 +124,11 @@ export class WorldLabel {
   }
 
   public setText(text: string, tone: WorldLabelTone): void {
+    // Asked every frame of a raid for every exit on the map, and Phaser paints
+    // and uploads a text's whole texture on any `setColor`, changed or not.
+    if (text === this.label.text && tone === this.tone) {
+      return;
+    }
     this.label.setText(text);
     this.tone = tone;
     this.label.setColor(tone.ink);

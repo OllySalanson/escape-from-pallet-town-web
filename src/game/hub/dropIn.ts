@@ -17,7 +17,7 @@ import { builtInFileMap } from '../world/playerMaps';
 import { extractionPointsOn, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
-import { encounterTableAt, stepRolls } from '../world/localEncounters';
+import { districtEncounterTables, encounterTableAt, stepRolls } from '../world/localEncounters';
 import { stepDistances } from '../world/mapStructure';
 import { trainersOn } from '../world/mapTrainers';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
@@ -494,6 +494,7 @@ export function entryGround(mapId: WorldMapId): EntryGround {
   const steps = door ? stepDistances(map.collision, door.position, undefined, map.links) : [];
   const reachedAt = (x: number, y: number): boolean => (steps[y]?.[x] ?? -1) >= 0;
   const tables = new Set<WildEncounterTable>();
+  const localTables = districtEncounterTables(mapId);
   let reached = 0;
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
@@ -502,7 +503,7 @@ export function entryGround(mapId: WorldMapId): EntryGround {
       }
       reached += 1;
       const tile = { x, y };
-      const table = stepRolls(map, tile) ? encounterTableAt(mapId, tile, map.encounters) : undefined;
+      const table = stepRolls(map, tile) ? encounterTableAt(mapId, tile, map.encounters, localTables) : undefined;
       if (table) {
         tables.add(table);
       }

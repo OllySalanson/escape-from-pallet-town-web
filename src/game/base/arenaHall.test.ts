@@ -167,6 +167,34 @@ describe("THE RAID ARENA's great hall", () => {
     }
   });
 
+  it('makes the tile behind a pillar at the end of a station solid, and part of reaching that station', () => {
+    expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([
+      ['22,58', '29,58'],
+      ['35,58'],
+      ['42,58'],
+    ]);
+    for (const station of ARENA_STATIONS) {
+      for (const tile of station.past) {
+        expect(solid[tile.y][tile.x], `${tile.x},${tile.y}`).toBe(true);
+      }
+    }
+  });
+
+  it('never has a player use a station from behind a pillar, where only their chevron shows', () => {
+    const faced = ARENA_STATIONS.flatMap((station) =>
+      station.tiles.flatMap((tile) => [
+        { x: tile.x - 1, y: tile.y },
+        { x: tile.x + 1, y: tile.y },
+        { x: tile.x, y: tile.y - 1 },
+        { x: tile.x, y: tile.y + 1 },
+      ]),
+    ).filter((tile) => !solid[tile.y][tile.x]);
+    for (const tile of faced) {
+      const behind = ARENA_PILLARS.some((pillar) => pillar.x === tile.x && pillar.y > tile.y && pillar.y - tile.y <= 2);
+      expect(behind, `${tile.x},${tile.y}`).toBe(false);
+    }
+  });
+
   it('never lets its furniture shut the walk round the rim', () => {
     const walkable = stepsFromTheMat();
     solid.forEach((row, y) =>

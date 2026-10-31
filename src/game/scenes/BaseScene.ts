@@ -201,7 +201,7 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
+import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
 import { crowdTakesTheView, lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import {
   RIVAL_TILE,
@@ -3472,7 +3472,7 @@ export class BaseScene extends Phaser.Scene {
 
   private thingFaced(facing: GridPosition): RoomThing | undefined {
     return this.place.room?.things.find((candidate: RoomThing) =>
-      candidate.tiles.some((tile) => tile.x === facing.x && tile.y === facing.y),
+      [...candidate.tiles, ...(candidate.alsoFaced ?? [])].some((tile) => tile.x === facing.x && tile.y === facing.y),
     );
   }
 
@@ -3905,7 +3905,10 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private onMat(room: BaseRoom): boolean {
-    return room.mat !== null && this.currentTile.x === room.mat.x && this.currentTile.y === room.mat.y;
+    if (room.mat === null || this.currentTile.y !== room.mat.y) {
+      return false;
+    }
+    return Math.abs(this.currentTile.x - room.mat.x) <= (room.screen === 'arena' ? ARENA_MAT_REACH : 0);
   }
 
   private beginStep(targetTile: GridPosition): void {
@@ -5413,11 +5416,17 @@ export class BaseScene extends Phaser.Scene {
       }
       const held = friendRoom()?.room;
       const at = { ...this.currentTile };
-      this.askInBox(held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?', (yes) => {
-        if (yes) {
-          this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
-        }
-      });
+      // On NOT NOW unless a room is waiting: this ends everything Oak has to say,
+      // so the key that was reading his lines is usually still being pressed.
+      this.askInBox(
+        held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?',
+        (yes) => {
+          if (yes) {
+            this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
+          }
+        },
+        { startOnNotNow: !held },
+      );
     });
   }
 
@@ -5571,7 +5580,11 @@ export class BaseScene extends Phaser.Scene {
    * ignores clicks for a moment, because the key or the click that finished the
    * last line is still in the player's hand (`HubScene.armedDeal`'s rule).
    */
-  private askInBox(question: string, answer: (yes: boolean) => void, { spendsForGood = false } = {}): void {
+  private askInBox(
+    question: string,
+    answer: (yes: boolean) => void,
+    { spendsForGood = false, startOnNotNow = false } = {},
+  ): void {
     audioManager.play('menuOpen');
     this.showHint('');
     const answered = (yes: boolean): void => {
@@ -5591,7 +5604,7 @@ export class BaseScene extends Phaser.Scene {
         padding: 10,
         lines: [question],
         options: FAVOUR_ANSWERS,
-        selected: spendsForGood ? 1 : 0,
+        selected: spendsForGood || startOnNotNow ? 1 : 0,
         // Every answer: the click that moved the box on to the question stands
         // where YES may now be drawn.
         clickArmingMs: RELEASE_ARMING_MS,

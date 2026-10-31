@@ -30,6 +30,7 @@ import {
   type PitFrame,
 } from './arenaHall';
 import { windowLight, type WindowLight } from './homeClock';
+import { addSparsePicture } from './sparsePicture';
 import { TWINKLE_STEP_MS, isDimmed, townLights, type TownLight } from './pitClock';
 import { FLARE_FRAMES, FLARE_HEIGHT, FLARE_WIDTH, RING_OF_FIRE_MS, flareAt } from './ringOfFire';
 import { shareTheRim, showsThroughTheHole, type RimLanding, type RimShare } from './arenaRim';
@@ -452,8 +453,8 @@ export class ArenaView {
   private readonly scene: Phaser.Scene;
   private readonly game: RestoredGame;
   private floor: Phaser.GameObjects.Image;
-  private readonly podium: Phaser.GameObjects.Image;
-  private readonly tiers: Phaser.GameObjects.Image[] = [];
+  private readonly podium: Phaser.GameObjects.Blitter;
+  private readonly tiers: Phaser.GameObjects.Blitter[] = [];
   private readonly mists: Phaser.GameObjects.TileSprite[] = [];
   private readonly look: Phaser.GameObjects.Image;
   private readonly fires: Fire[] = [];
@@ -561,25 +562,23 @@ export class ArenaView {
     this.drawMemory();
 
     ensureTexture(scene, PODIUM_TEXTURE, paintPodium);
-    this.podium = (scene.add.image(0, 0, PODIUM_TEXTURE).setOrigin(0, 0).setDepth(PODIUM_DEPTH));
+    this.podium = addSparsePicture(scene, PODIUM_TEXTURE, 0, 0, PODIUM_DEPTH);
     for (let tier = 0; tier < PIT_TIERS; tier += 1) {
       ensureTexture(scene, tierTexture(tier), () => paintTier(tier));
-      this.tiers.push(
-        (scene.add.image(0, 0, tierTexture(tier)).setOrigin(0, 0).setDepth(tierDepth(tier))),
-      );
+      this.tiers.push(addSparsePicture(scene, tierTexture(tier), 0, 0, tierDepth(tier)));
     }
 
     ensureTexture(scene, STANDS_TEXTURE, paintStands);
-    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_TEXTURE).setOrigin(0, 0).setDepth(STANDS_DEPTH);
+    addSparsePicture(scene, STANDS_TEXTURE, STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_DEPTH);
     this.house = crowdShare(game.raidProgress.raidRecord);
     if (crowdLayerShows !== this.house && scene.textures.exists(CROWD_LAYER_TEXTURE)) {
       scene.textures.remove(CROWD_LAYER_TEXTURE);
     }
     crowdLayerShows = this.house;
     ensureTexture(scene, CROWD_LAYER_TEXTURE, () => paintCrowdLayer(this.house));
-    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, CROWD_LAYER_TEXTURE).setOrigin(0, 0).setDepth(CROWD_LAYER_DEPTH);
+    addSparsePicture(scene, CROWD_LAYER_TEXTURE, STANDS_ORIGIN.x, STANDS_ORIGIN.y, CROWD_LAYER_DEPTH);
     ensureTexture(scene, BANNERS_TEXTURE, paintBanners);
-    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, BANNERS_TEXTURE).setOrigin(0, 0).setDepth(BANNERS_DEPTH);
+    addSparsePicture(scene, BANNERS_TEXTURE, STANDS_ORIGIN.x, STANDS_ORIGIN.y, BANNERS_DEPTH);
     if (!still) {
       ensureTexture(scene, CROWD_TEXTURE, paintCrowdPerson);
       const people = scene.textures.get(CROWD_TEXTURE);

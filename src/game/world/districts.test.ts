@@ -68,6 +68,27 @@ describe('the weather a place has', () => {
   });
 });
 
+describe('which district a tile is in', () => {
+  it('answers as the first listed rectangle holding it would, on every map and just off every edge', () => {
+    const mapIds = [...new Set(MAP_DISTRICTS.map((district) => district.mapId))];
+    for (const mapId of [...mapIds, 'greystone-vale' as WorldMapId]) {
+      const districts = districtsForMap(mapId);
+      const right = Math.max(...districts.flatMap((district) => district.areas.map((area) => area.x + area.width)));
+      const bottom = Math.max(...districts.flatMap((district) => district.areas.map((area) => area.y + area.height)));
+      for (let y = -1; y <= bottom; y += 1) {
+        for (let x = -1; x <= right; x += 1) {
+          const first = districts.find((district) =>
+            district.areas.some((area) => x >= area.x && x < area.x + area.width && y >= area.y && y < area.y + area.height),
+          );
+          if (districtAt(mapId, { x, y }) !== first) {
+            expect(districtAt(mapId, { x, y })?.id, `${mapId} ${x},${y}`).toBe(first?.id);
+          }
+        }
+      }
+    }
+  });
+});
+
 describe('the named districts of a map', () => {
   it.each(DISTRICTED_MAPS)('%s leaves no ground a player can stand on nameless', (mapId) => {
     const { collision } = openMap(mapId);
