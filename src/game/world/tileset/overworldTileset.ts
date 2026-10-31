@@ -334,9 +334,9 @@ const PROPS = {
   trapdoor: block('cellar trapdoor', 33, 3, 2, 2),
   /** The same trapdoor thrown open on the dark under it. */
   trapdoorOpen: block('open trapdoor', 35, 3, 2, 2),
-  /** A plank jetty, walked out along. */
+  /** A plank jetty, walked out along. Its right-hand plank stops a row short: past it is the water. */
   jetty: block('jetty', 26, 5, 2, 3, {
-    walkable: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]],
+    walkable: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]],
   }),
   /** A market stall under a striped awning, open at the front. */
   marketStall: block('market stall', 18, 22, 5, 4, {

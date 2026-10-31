@@ -119,12 +119,12 @@ function groundUnder(
     tally.set(neighbour, (tally.get(neighbour) ?? 0) + 1);
   }
   let best: Material = 'grass';
-  let bestCount = 0;
+  let bestCount = tally.get('grass') ?? 0;
   for (const [material, count] of tally) {
-    // Ties go to the built surface: a fence laid across a lane belongs on the
-    // lane rather than on the grass it separates, and grass is the fallback
-    // already, so preferring it twice would be preferring it always.
-    const wins = count > bestCount || (count === bestCount && best === 'grass' && material !== 'grass');
+    // A fence laid across a lane has the lane on both sides, so it belongs on the
+    // lane even with grass on the other two. With the lane on one side it only
+    // runs alongside, and on the lane's ground a yard stood in a stripe of sand.
+    const wins = count > bestCount || (count === bestCount && count >= 2 && best === 'grass' && material !== 'grass');
     if (wins) {
       best = material;
       bestCount = count;

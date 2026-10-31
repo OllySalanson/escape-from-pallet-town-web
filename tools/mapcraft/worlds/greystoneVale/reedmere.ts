@@ -369,7 +369,7 @@ export function reedmere(): MapcraftResult {
       ],
       berryTrees: [
         { x: 22, y: 11, berry: 'cheri' },
-        { x: 26, y: 31, berry: 'sitrus' },
+        { x: 27, y: 32, berry: 'sitrus' },
         { x: 11, y: 41, berry: 'chesto' },
       ],
       pokemon: [
