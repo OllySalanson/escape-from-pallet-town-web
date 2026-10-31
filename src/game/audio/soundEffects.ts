@@ -214,6 +214,44 @@ export const SOUND_EFFECTS = {
     // lower, so it reads as a bigger ship further away.
     tones: [saw(82, 0.5, 0.05), saw(123, 0.5, 0.03)],
   },
+  crowdRoar: {
+    channel: 'world',
+    moment: 'The Raid Arena on its feet for a big haul, or a lap of honour: sounded a few times over, it swells',
+    // Two bands of filtered noise rising together, with no pitch to them at all:
+    // a lot of people, a long way up, rather than one thing happening.
+    tones: [sweep(noise(700, 0.52, 0.06), 1100), sweep(noise(1500, 0.5, 0.05, 0.03), 2200)],
+    yields: true,
+  },
+  crowdCheer: {
+    channel: 'world',
+    moment: "The Raid Arena's crowd pleased: a good raid home, a wave back, a runner coming past",
+    // The roar's top band alone, falling away: fewer people, less sure of it.
+    tones: [sweep(noise(1900, 0.42, 0.05), 1300)],
+    yields: true,
+  },
+  crowdClap: {
+    channel: 'world',
+    moment: "The Raid Arena's crowd being polite about a thin raid, and the end of any cheer",
+    // Hands, unevenly: short ticks of high noise that are nearly but not quite in time.
+    tones: [
+      noise(3400, 0.03, 0.05),
+      noise(2900, 0.03, 0.05, 0.08),
+      noise(3700, 0.03, 0.05, 0.13),
+      noise(3100, 0.03, 0.05, 0.22),
+      noise(3500, 0.03, 0.05, 0.29),
+      noise(2800, 0.03, 0.05, 0.38),
+      noise(3300, 0.03, 0.05, 0.43),
+    ],
+    yields: true,
+  },
+  crowdGroan: {
+    channel: 'world',
+    moment: 'A raid lost: the whole of the Raid Arena lets its breath out',
+    // Low and falling and the dullest noise there is, with a reed of sawtooth
+    // under it so that it is a voice rather than the wind.
+    tones: [sweep(noise(520, 0.54, 0.055), 260), sweep(saw(130, 0.5, 0.022), 90)],
+    yields: true,
+  },
   ledgeHop: {
     channel: 'world',
     moment: 'Going over a ledge - the one route on a map the hunter cannot follow',

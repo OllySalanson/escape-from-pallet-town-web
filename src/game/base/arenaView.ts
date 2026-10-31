@@ -11,7 +11,6 @@ import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import {
-  ARENA_CENTRE,
   ARENA_TILE,
   ARENA_TORCHES,
   FLOOR_PARALLAX,
@@ -20,7 +19,6 @@ import {
   PIT_TIERS,
   PODIUM_PARALLAX,
   TIER_PARALLAX,
-  WALL_FOOT,
   dithered,
   namePlatePlace,
   parallaxShift,
@@ -48,12 +46,30 @@ import {
 import {
   CROWD_STIRRING,
   PERSON_WIDTH,
+  POSED_HEIGHT,
   STANDS_ORIGIN,
   nextStir,
+  paintBanners,
+  paintCrowdLayer,
   paintCrowdPerson,
+  paintPosedPeople,
   paintStands,
+  crowdSeats,
+  seatPoint,
+  seatedAt,
   type CrowdStir,
 } from './arenaStands';
+import {
+  CrowdMotion,
+  LapWatch,
+  angleInHall,
+  crowdShare,
+  leaverTurn,
+  leaversFrom,
+  paperFlakes,
+  type CrowdMood,
+  type LapNews,
+} from './arenaCrowd';
 import {
   EYES_HEIGHT,
   EYES_MS,
@@ -101,7 +117,9 @@ const PODIUM_DEPTH = TERRAIN_DEPTH - 0.8;
 const EYES_DEPTH = PODIUM_DEPTH + 0.01;
 /** Outside the wall, under the hall's own layers wherever the two could meet. */
 const STANDS_DEPTH = TERRAIN_DEPTH - 0.1;
+const CROWD_LAYER_DEPTH = TERRAIN_DEPTH - 0.095;
 const CROWD_DEPTH = TERRAIN_DEPTH - 0.09;
+const BANNERS_DEPTH = TERRAIN_DEPTH - 0.085;
 const tierDepth = (tier: number): number => TERRAIN_DEPTH - 0.7 + (PIT_TIERS - tier) * 0.05;
 /** Over the steps and under the hall's own floor, so a name in the pit never lies across the platform. */
 const NAME_DEPTH = TERRAIN_DEPTH - 0.3;
@@ -114,6 +132,8 @@ const NAME_DEPTH = TERRAIN_DEPTH - 0.3;
 const POOL_DEPTH = CANOPY_BAND + 0.03;
 const HALO_DEPTH = CANOPY_BAND + 0.04;
 const FLAME_DEPTH = CANOPY_BAND + 0.05;
+/** What the stands throw comes down over everything but the screen's own words. */
+const PAPER_DEPTH = CANOPY_BAND + 0.06;
 
 const floorTexture = (mapId: string): string => `arena-pit-floor-${mapId}`;
 const LIGHT_TEXTURE = 'arena-landing-light';
@@ -128,6 +148,9 @@ const BLAZE_TEXTURE = 'arena-blaze';
 const LOOK_TEXTURE = 'arena-look';
 const STANDS_TEXTURE = 'arena-stands';
 const CROWD_TEXTURE = 'arena-crowd-person';
+const CROWD_LAYER_TEXTURE = 'arena-crowd-layer';
+const POSED_TEXTURE = 'arena-crowd-posed';
+const BANNERS_TEXTURE = 'arena-banners';
 const SHADOW_TEXTURE = 'arena-pit-shadow';
 const EYES_TEXTURE = 'arena-pit-eyes';
 const tierTexture = (tier: number): string => `arena-tier-${tier}`;
@@ -231,8 +254,15 @@ const DEEP_SOUND_SPREAD_MS = 40000;
 /** How soon eyes that could not be seen try again. */
 const EYES_NOT_SEEN_RETRY_MS = 4000;
 
+/** How far below a seat's top-left its person's bottom is: what a posed person stands on. */
+const PERSON_HEIGHT_ON_SEAT = 5;
+
 /** What each map's floor texture was last painted from. */
 const floorShows = new Map<string, string>();
+/** How full the house was when its layer was last painted. */
+let crowdLayerShows: number | null = null;
+/** The most of the crowd that can be seen on their feet at once: any more than this in view just stay sat. */
+const POSED_MOST = 320;
 
 const NAME_PLATE_HEIGHT = 13;
 
@@ -386,10 +416,6 @@ function paintLookMark(): PaintedPicture {
   return { width: size, height: size, data };
 }
 
-/** Where a point stands round the hall, as `ovalPoint` turns. */
-const angleInHall = (point: { readonly x: number; readonly y: number }): number =>
-  Math.atan2((point.y - ARENA_CENTRE.y) / WALL_FOOT.ry, (point.x - ARENA_CENTRE.x) / WALL_FOOT.rx);
-
 interface Fire {
   readonly angle: number;
   /** What it burns as in a flare, made only for a jump. */
@@ -436,6 +462,15 @@ export class ArenaView {
   private cloudShadow: Phaser.GameObjects.TileSprite | null = null;
   /** The few of the crowd who are shifting in their seats just now: dim, and barely at all. */
   private readonly stirring: { readonly image: Phaser.GameObjects.Image; stir: CrowdStir | null; leftMs: number }[] = [];
+  /** How full the house is, for this save: the people in it are this share of the seats. */
+  private readonly house: number;
+  /** What the crowd is doing (`arenaCrowd.ts`), and the people drawn on their feet doing it. */
+  private readonly crowd = new CrowdMotion();
+  private readonly lapWatch = new LapWatch();
+  private lapNews: LapNews = { running: false, way: 0, quarter: false, lapMs: null };
+  private readonly posed: Phaser.GameObjects.Image[] = [];
+  private posedUsed = 0;
+  private paper: Phaser.GameObjects.Graphics | null = null;
   /** What lives in the pit (`pitLife.ts`): when each next shows, and whatever is showing. */
   private shadowInMs = nextShadowInMs(Math.random(), true);
   private eyesInMs = nextEyesInMs(Math.random(), true);
@@ -503,6 +538,15 @@ export class ArenaView {
 
     ensureTexture(scene, STANDS_TEXTURE, paintStands);
     scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_TEXTURE).setOrigin(0, 0).setDepth(STANDS_DEPTH);
+    this.house = crowdShare(game.raidProgress.raidRecord);
+    if (crowdLayerShows !== this.house && scene.textures.exists(CROWD_LAYER_TEXTURE)) {
+      scene.textures.remove(CROWD_LAYER_TEXTURE);
+    }
+    crowdLayerShows = this.house;
+    ensureTexture(scene, CROWD_LAYER_TEXTURE, () => paintCrowdLayer(this.house));
+    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, CROWD_LAYER_TEXTURE).setOrigin(0, 0).setDepth(CROWD_LAYER_DEPTH);
+    ensureTexture(scene, BANNERS_TEXTURE, paintBanners);
+    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, BANNERS_TEXTURE).setOrigin(0, 0).setDepth(BANNERS_DEPTH);
     if (!still) {
       ensureTexture(scene, CROWD_TEXTURE, paintCrowdPerson);
       const people = scene.textures.get(CROWD_TEXTURE);
@@ -667,6 +711,7 @@ export class ArenaView {
     this.slide(player);
     this.placeTheLights(deltaMs, player);
     if (this.still) {
+      this.moveTheCrowd(deltaMs);
       return;
     }
     this.drift += deltaMs;
@@ -679,6 +724,140 @@ export class ArenaView {
     this.twinkle(deltaMs);
     this.stir(deltaMs, player);
     this.shift(deltaMs);
+    this.watchTheRunner(deltaMs, player);
+    this.moveTheCrowd(deltaMs);
+  }
+
+  // --- the crowd answering ------------------------------------------------------
+
+  /** The raid that has just come home, as the house takes it. */
+  public crowdReacts(mood: CrowdMood, player: { readonly x: number; readonly y: number }): void {
+    // A reduced-motion hall hears them and does not see them jump about.
+    this.crowd.react(mood, angleInHall(player));
+  }
+
+  /** Somebody has waved at the stands: whoever is nearest waves back. */
+  public crowdWaves(player: { readonly x: number; readonly y: number }): void {
+    this.crowd.waveFrom(angleInHall(player));
+  }
+
+  /** The whole house up: a lap, and paper if it was one of honour. */
+  public crowdCheersLap(player: { readonly x: number; readonly y: number }, honour: boolean): void {
+    this.crowd.react(honour ? 'roar' : 'cheer', angleInHall(player));
+  }
+
+  /** What the lap being run has come to this frame, for the scene to say. */
+  public get lap(): LapNews {
+    return this.lapNews;
+  }
+
+  /** Follows the player round the ring, and runs the band of people getting up beside them. */
+  private watchTheRunner(deltaMs: number, player: { readonly x: number; readonly y: number }): void {
+    const angle = angleInHall(player);
+    this.lapNews = this.lapWatch.note(angle, deltaMs);
+    if (this.lapNews.running) {
+      this.crowd.runBand(angle, this.lapNews.way);
+      if (this.lapNews.quarter) {
+        audioManager.play('crowdCheer');
+      }
+    } else {
+      this.crowd.stopBand();
+    }
+  }
+
+  private moveTheCrowd(deltaMs: number): void {
+    for (const sound of this.crowd.update(deltaMs)) {
+      audioManager.play(sound);
+    }
+    if (this.still) {
+      return;
+    }
+    this.drawPosed();
+    this.drawPaper();
+  }
+
+  private posedImage(): Phaser.GameObjects.Image | null {
+    if (this.posedUsed >= POSED_MOST) {
+      return null;
+    }
+    if (this.posedUsed === this.posed.length) {
+      ensureTexture(this.scene, POSED_TEXTURE, paintPosedPeople);
+      const sheet = this.scene.textures.get(POSED_TEXTURE);
+      if (!sheet.has('stand0')) {
+        const inks = sheet.source[0].width / PERSON_WIDTH;
+        for (let ink = 0; ink < inks; ink += 1) {
+          sheet.add(`stand${ink}`, 0, ink * PERSON_WIDTH, 0, PERSON_WIDTH, POSED_HEIGHT);
+          sheet.add(`up${ink}`, 0, ink * PERSON_WIDTH, POSED_HEIGHT, PERSON_WIDTH, POSED_HEIGHT);
+        }
+      }
+      this.posed.push(this.scene.add.image(0, 0, POSED_TEXTURE, 'stand0').setOrigin(0, 1).setDepth(CROWD_DEPTH));
+    }
+    const image = this.posed[this.posedUsed];
+    this.posedUsed += 1;
+    return image;
+  }
+
+  /** Everybody in view who is on their feet, drawn over where they sit. Nobody is drawn if nobody is up. */
+  private drawPosed(): void {
+    this.posedUsed = 0;
+    if (this.crowd.busy) {
+      const view = this.scene.cameras.main.worldView;
+      const left = view.left - PERSON_WIDTH;
+      const right = view.right + PERSON_WIDTH;
+      const top = view.top - POSED_HEIGHT;
+      const bottom = view.bottom + POSED_HEIGHT;
+      for (const seat of seatedAt(this.house)) {
+        if (seat.x < left || seat.x > right || seat.y < top || seat.y > bottom) {
+          continue;
+        }
+        const pose = this.crowd.pose(seat);
+        if (pose) {
+          const image = this.posedImage();
+          if (!image) {
+            break;
+          }
+          image
+            .setFrame(`${pose.pose}${seat.ink}`)
+            .setPosition(seat.x, seat.y + PERSON_HEIGHT_ON_SEAT - pose.lift)
+            .setVisible(true);
+        }
+      }
+      if (this.crowd.leaving) {
+        for (const seat of leaversFrom(crowdSeats(), this.house)) {
+          const turn = leaverTurn(seat, this.crowd.leavingMs);
+          if (turn === null) {
+            continue;
+          }
+          const at = seatPoint(seat.row, seat.north, seat.angle + turn);
+          if (at.x < left || at.x > right || at.y < top || at.y > bottom) {
+            continue;
+          }
+          const image = this.posedImage();
+          if (!image) {
+            break;
+          }
+          image.setFrame(`stand${seat.ink}`).setPosition(at.x, at.y + PERSON_HEIGHT_ON_SEAT).setVisible(true);
+        }
+      }
+    }
+    for (let index = this.posedUsed; index < this.posed.length; index += 1) {
+      this.posed[index].setVisible(false);
+    }
+  }
+
+  private drawPaper(): void {
+    const ms = this.crowd.paperMs;
+    if (ms === null) {
+      this.paper?.clear();
+      return;
+    }
+    const camera = this.scene.cameras.main;
+    this.paper ??= this.scene.add.graphics().setScrollFactor(0).setDepth(PAPER_DEPTH);
+    this.paper.clear();
+    for (const flake of paperFlakes(ms, camera.width, camera.height)) {
+      this.paper.fillStyle(flake.ink, 1);
+      this.paper.fillRect(flake.x, flake.y, flake.flat ? 2 : 1, flake.flat ? 1 : 2);
+    }
   }
 
   /** One or two of the crowd lean over or sit up, and settle back. That is all they do. */
@@ -695,7 +874,7 @@ export class ArenaView {
         person.leftMs = 1500 + Math.random() * 6000;
         continue;
       }
-      const stir = nextStir([Math.random(), Math.random(), Math.random()], (seat) => view.contains(seat.x, seat.y));
+      const stir = nextStir([Math.random(), Math.random(), Math.random()], (seat) => view.contains(seat.x, seat.y), seatedAt(this.house));
       if (!stir) {
         person.leftMs = 1000;
         continue;
@@ -804,7 +983,7 @@ export class ArenaView {
       const next = (fire.frame + 1 + Math.floor(Math.random() * (FLAME_FRAMES.length - 1))) % FLAME_FRAMES.length;
       fire.frame = next;
       fire.flame.setFrame(String(next));
-      const strength = 0.7 + Math.random() * 0.3;
+      const strength = (0.7 + Math.random() * 0.3) * this.crowd.fireShare;
       fire.halo.setAlpha(strength);
       fire.pool.setAlpha(strength);
       fire.flare?.setFrame(String((next + index) % FLARE_FRAMES.length));

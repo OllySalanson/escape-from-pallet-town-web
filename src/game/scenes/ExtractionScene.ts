@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { moodOfRaid } from '../base/arenaCrowd';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
 import { countPlay, raidEnding } from '../analytics/playCounter';
 import { friendRoom } from '../raidRoom/friendRoom';
@@ -324,7 +325,12 @@ export class ExtractionScene extends Phaser.Scene {
     const reachable = this.scene.manager.keys[home.key];
     this.cameras.main.fadeOut(200, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
-      reachable ? this.scene.start(home.key, home.data) : this.scene.start('title'),
+      reachable
+        ? this.scene.start(home.key, {
+            ...home.data,
+            ...(home.key === 'base' ? { raidMood: moodOfRaid(this.report.outcome === 'ESCAPED', this.report.haulTier) } : {}),
+          })
+        : this.scene.start('title'),
     );
   }
 

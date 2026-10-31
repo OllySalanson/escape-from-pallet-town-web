@@ -187,7 +187,8 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, type ArenaStationId } from '../base/arenaHall';
+import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
+import { lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import { ArenaView } from '../base/arenaView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
@@ -302,6 +303,11 @@ let lastJumpedFrom: GridPosition | null = null;
 let boatDueHome = false;
 /** How fast the hall's camera comes round to what it is asked to look at: a share of the way, per millisecond. */
 const CAMERA_EASE_MS = 140;
+/** How long the view looks round at the crowd on coming home, and how far towards them. */
+const CROWD_LOOK_MS = 1700;
+const CROWD_LOOK_SHARE = 0.8;
+/** The quickest lap of the ring this page has seen. */
+let bestLapMs: number | null = null;
 /** How long a raid's fog lifts before a key can cut it short. */
 const FOG_LISTENS_AFTER_MS = 500;
 /** How often a held raid room is told this player is getting ready, and asked who else is. */
@@ -415,6 +421,8 @@ export interface BaseSceneData {
   readonly room?: string;
   /** Set by the result screen: a raid puts the player back on THE RAID ARENA's rim. */
   readonly arrival?: 'raid';
+  /** What the crowd made of the raid that has just ended, handed over by the result screen. */
+  readonly raidMood?: CrowdMood;
   /**
    * Where in the room to stand, facing up, instead of on the mat: backing out
    * of a screen opened from something in the room - the wall map - puts the
@@ -617,7 +625,22 @@ export class BaseScene extends Phaser.Scene {
     leaper: { readonly image: Phaser.GameObjects.Image; readonly from: { readonly x: number; readonly y: number } } | null;
   } | null = null;
   /** The cloud lifting off ground a raid has just walked (`ArenaView.liftFogFromLastRaid`). */
-  private fogLift: { elapsedMs: number; steps: number; readonly tile: GridPosition; readonly sign: PlaceNameSign } | null = null;
+  private fogLift: {
+    /** From when the cloud starts to go: below nothing for as long as the view is turned to the crowd. */
+    elapsedMs: number;
+    /** Since coming home at all. */
+    heldMs: number;
+    steps: number;
+    readonly tile: GridPosition;
+    readonly sign: PlaceNameSign;
+    readonly line: string;
+  } | null = null;
+  /** How much longer the view stays turned to the crowd, on coming home. A key takes it back at once. */
+  private crowdLookMs = 0;
+  /** What the crowd last made of a raid, until a lap has been run for it. */
+  private lastCrowdMood: CrowdMood | null = null;
+  /** The board that says a lap's time. */
+  private hallSign: PlaceNameSign | null = null;
   /** Walking somewhere the pointer asked for: the steps left, and what to do on getting there. */
   private walkPlan: { readonly steps: Direction[]; readonly then: () => void } | null = null;
   private roomTickMs = 0;
@@ -972,6 +995,8 @@ export class BaseScene extends Phaser.Scene {
       this.jump?.dive?.destroy();
       this.fogLift?.sign.destroy();
       this.fogLift = null;
+      this.hallSign?.destroy();
+      this.hallSign = null;
       this.closeHallPanel();
       if (typeof document !== 'undefined') {
         this.game.canvas.style.cursor = '';
@@ -984,6 +1009,7 @@ export class BaseScene extends Phaser.Scene {
       audioManager.play('shipHorn');
     }
     if (this.arena && data.arrival === 'raid') {
+      this.crowdHeardFrom(data.raidMood);
       this.beginFogLift();
     }
     // Arriving in the harbour - off the title or off the boat, not out of a
@@ -1346,6 +1372,10 @@ export class BaseScene extends Phaser.Scene {
       y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
     };
     this.arena.update(deltaMs, middle);
+    this.tellTheLap(middle);
+    this.hallSign?.update(deltaMs);
+    // Walking off, or anything else asked of the view, takes it back from the crowd.
+    this.crowdLookMs = this.targetTile || this.arenaPanel || this.dialogBox.visible ? 0 : Math.max(0, this.crowdLookMs - deltaMs);
     this.settleAim();
     this.settleHallCamera(deltaMs, false);
   }
@@ -1412,12 +1442,14 @@ export class BaseScene extends Phaser.Scene {
       x: middle.x + lean.x + cover.right / 2,
       y: middle.y + lean.y + cover.bottom / 2,
     };
-    const fogTile = this.fogLift?.tile;
+    const fogTile = this.fogLift && this.fogLift.elapsedMs >= 0 ? this.fogLift.tile : undefined;
     const lookedAt = fogTile
       ? { ...this.arena.pointOfLanding({ id: '', tile: fogTile }) }
       : this.arenaPanel === 'rim' && this.aimed
         ? this.arena.pointOfLanding(this.aimed)
-        : null;
+        : this.crowdLookMs > 0 || this.runningForTheCrowd()
+          ? this.halfwayToTheStands(middle)
+          : null;
     if (lookedAt) {
       centre = { x: lookedAt.x + cover.right / 2, y: lookedAt.y + cover.bottom / 2 };
     }
@@ -1681,13 +1713,87 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const sign = new PlaceNameSign(this);
-    sign.show(
-      lifted.gained > 0
-        ? `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`
-        : worldMapName(this.arena!.mapId).toUpperCase(),
-    );
     this.standStill();
-    this.fogLift = { elapsedMs: 0, steps: 0, tile: lifted.tile, sign };
+    // After the look round at the crowd, if there is one to look at.
+    this.fogLift = {
+      elapsedMs: -this.crowdLookMs,
+      steps: 0,
+      tile: lifted.tile,
+      sign,
+      heldMs: 0,
+      line:
+        lifted.gained > 0
+          ? `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`
+          : worldMapName(this.arena!.mapId).toUpperCase(),
+    };
+  }
+
+  /** The crowd takes the raid that has just come home, with the view gone round to look at them. */
+  private crowdHeardFrom(mood: CrowdMood | undefined): void {
+    if (!mood || !this.arena) {
+      return;
+    }
+    this.lastCrowdMood = mood;
+    this.arena.crowdReacts(mood, this.figureMiddle());
+    this.crowdLookMs = this.still ? 0 : CROWD_LOOK_MS;
+  }
+
+  private figureMiddle(): { readonly x: number; readonly y: number } {
+    return {
+      x: this.player.x + TILE_SIZE / 2,
+      y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
+    };
+  }
+
+  /** Far enough towards the nearest seats to see them, and not so far as to lose the player. */
+  private halfwayToTheStands(middle: { readonly x: number; readonly y: number }): { readonly x: number; readonly y: number } {
+    const stands = standsBehind(middle);
+    return {
+      x: middle.x + (stands.x - middle.x) * CROWD_LOOK_SHARE,
+      y: middle.y + (stands.y - middle.y) * CROWD_LOOK_SHARE,
+    };
+  }
+
+  /**
+   * A run round the outer floor has the view on the people getting up for it. Round
+   * the rim it stays on the pit: walking that is choosing a way in, with the map
+   * going by underneath.
+   */
+  private runningForTheCrowd(): boolean {
+    return Boolean(this.arena?.lap.running) && !isAtRim(this.targetTile ?? this.currentTile);
+  }
+
+  /** Whether the tile faced is the hall's outer wall, with the stands behind it. */
+  private facesTheStands(facing: GridPosition): boolean {
+    if (!this.arena || this.visit) {
+      return false;
+    }
+    return isOuterWall(facing) && !this.thingFaced(facing);
+  }
+
+  /** A hand up to the stands, and whoever is nearest waves back. */
+  private waveAtTheStands(): void {
+    this.ownWave?.bubble.destroy();
+    this.ownWave = { bubble: drawEmoteBubble(this, 'wave'), ms: 0 };
+    this.placeOwnWave();
+    audioManager.play('harbourWave');
+    this.arena?.crowdWaves(this.figureMiddle());
+    audioManager.play('crowdCheer');
+  }
+
+  /** Round the ring and back to where they started: the house gets up, and the board says how long it took. */
+  private tellTheLap(middle: { readonly x: number; readonly y: number }): void {
+    const lapMs = this.arena?.lap.lapMs ?? null;
+    if (lapMs === null) {
+      return;
+    }
+    const honour = this.lastCrowdMood === 'roar' || this.lastCrowdMood === 'cheer';
+    const best = bestLapMs === null || lapMs < bestLapMs;
+    bestLapMs = best ? lapMs : bestLapMs;
+    this.lastCrowdMood = null;
+    this.arena?.crowdCheersLap(middle, honour);
+    this.hallSign ??= new PlaceNameSign(this);
+    this.hallSign.show(lapLine(lapMs, honour, best));
   }
 
   private advanceFogLift(deltaMs: number): void {
@@ -1695,7 +1801,12 @@ export class BaseScene extends Phaser.Scene {
     if (!lift) {
       return;
     }
+    const before = lift.elapsedMs;
     lift.elapsedMs += deltaMs;
+    lift.heldMs += deltaMs;
+    if (before <= 0 && lift.elapsedMs > 0) {
+      lift.sign.show(lift.line);
+    }
     lift.sign.update(deltaMs);
     const due = Math.min(FOG_LIFT_STEPS, Math.max(0, Math.floor((lift.elapsedMs - FOG_APPROACH_MS) / FOG_STEP_MS)));
     while (lift.steps < due) {
@@ -1705,7 +1816,7 @@ export class BaseScene extends Phaser.Scene {
     // The key that left the result screen is still on its way up as this starts,
     // and is not a request to skip what it has just opened on.
     const anyKey =
-      lift.elapsedMs > FOG_LISTENS_AFTER_MS &&
+      lift.heldMs > FOG_LISTENS_AFTER_MS &&
       (this.isInteractionPressed() ||
         this.keyPresses.justPressed(this.controls.back) ||
         this.keyPresses.justPressed(this.controls.up) ||
@@ -1716,6 +1827,7 @@ export class BaseScene extends Phaser.Scene {
       this.arena?.endFog();
       lift.sign.destroy();
       this.fogLift = null;
+      this.crowdLookMs = 0;
       this.spentPresses.spendHeld(this.directionKeys());
     }
   }
@@ -2742,6 +2854,9 @@ export class BaseScene extends Phaser.Scene {
     if (unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined) {
       return '[SPACE] LOOK CLOSER';
     }
+    if (this.facesTheStands(facing)) {
+      return '[SPACE] WAVE TO THE CROWD';
+    }
     // Anywhere on the rim is over a way in, and the hint says which.
     if (this.arena && isAtRim(this.currentTile)) {
       return this.aimed && !this.kit?.flow.notReady ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
@@ -3675,6 +3790,10 @@ export class BaseScene extends Phaser.Scene {
         return;
       }
       if (this.waveAt(target)) {
+        return;
+      }
+      if (this.facesTheStands(target)) {
+        this.waveAtTheStands();
         return;
       }
       const thing = this.thingFaced(target);
