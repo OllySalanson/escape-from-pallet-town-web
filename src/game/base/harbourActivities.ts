@@ -82,7 +82,7 @@ const stand = (x: number, y: number, facing: Direction): RoomSpot => ({ tile: { 
 /** The water's edge, each facing the water. */
 export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(4, 19, 'down'),
-  stand(14, 21, 'right'),
+  stand(13, 21, 'right'),
   stand(11, 20, 'left'),
   stand(25, 22, 'down'),
   stand(34, 22, 'down'),

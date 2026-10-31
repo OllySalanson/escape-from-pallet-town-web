@@ -150,7 +150,7 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'ANGLER',
     design: 'fisherman',
-    position: at(55, 23),
+    position: at(55, 22),
     facing: 'down',
     idle: { glances: ['left', 'right'], beatMs: 7300 },
     // Spoken to, he lends his rod and keeps the tally (`harbourFishing.ts`).

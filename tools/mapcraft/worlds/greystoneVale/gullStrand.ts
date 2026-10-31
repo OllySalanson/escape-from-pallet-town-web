@@ -283,7 +283,7 @@ export function gullStrand(): MapcraftResult {
       links: [caveMouthLink(cave, 'sea', mouth), ...caveLadders(cave)],
       signs: [
         { x: 48, y: 12, lines: ['GULL STRAND', 'East: the orchards. South: the strand and the jetty.'] },
-        { x: 16, y: 15 + 1 - 1 + 5, lines: ['GULL STRAND', 'West: Reedmere, over the stone bridge. The cliff path goes down to the cove.'] },
+        { x: 16, y: 15 + 1 - 1 + 5, lines: ['GULL STRAND', 'West: Reedmere. East: the stone bridge. The cliff path goes down to the cove.'] },
         { x: 18, y: 16, lines: ['THE OLD LIGHT', 'Not lit since the boats got radios. Trimmed daily. Nobody has told Bertie.'] },
         { x: 40, y: 8, lines: ['THE ROPE WALK', 'Walk backwards. Keep walking. That is the whole of the trade.'] },
         { x: 48, y: 8, lines: ['THE SAILORS’ REST', 'They went out from the jetty. Some of them came back as far as this.'] },

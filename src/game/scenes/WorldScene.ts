@@ -244,7 +244,7 @@ import { advanceCalls, NO_CALL, type CallState } from '../world/villageCalls';
 import { TILE_ANIMATION_SOURCE, TileAnimator, type AnimatedLayer } from '../world/tileAnimation';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
 import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
-import { districtAt, districtsForMap, weatherAt } from '../world/districts';
+import { districtAt, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
 import {
@@ -393,7 +393,6 @@ import {
   HunterPack,
   createHunterPack,
   drawnAt,
-  huntingGrounds,
   inGround,
   isAbroad,
   rivalsForGrounds,
@@ -401,6 +400,7 @@ import {
   type PackHunter,
   type PackWorld,
 } from '../world/hunterPack';
+import { huntingGroundsOn } from '../world/mapHuntingGrounds';
 import { hunterForecastLine } from '../world/hunterForecast';
 import { withArticle } from '../ui/article';
 
@@ -8468,24 +8468,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const map = this.currentMap;
-    const outdoors = map.areas?.find((area) => area.kind === 'outdoors')?.rect ?? {
-      x: 0,
-      y: 0,
-      width: map.width,
-      height: map.height,
-    };
-    const grounds = huntingGrounds({
-      width: map.width,
-      height: map.height,
-      collision: map.collision,
-      links: map.links,
-      outdoors,
-      districts: districtsForMap(map.id),
-      keepClear: [
-        ...insertionsOn(map.id).map((insertion) => insertion.position),
-        ...extractionPointsOn(map.id).map((point) => point.position),
-      ],
-    });
+    const grounds = huntingGroundsOn(map);
     const landing = plan.insertion.mapId === map.id ? plan.insertion.position : this.currentTile;
     session.hunterPacks ??= new Map();
     session.hunterPacks.set(

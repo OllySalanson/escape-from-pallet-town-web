@@ -84,7 +84,8 @@ describe("a file map's item spots", () => {
     // on, and every map draws from one stream of rolls. And once more: the
     // Bicycle is a prize on two maps (`world/bicycle.ts`), two more rows rolled.
     // And again: furniture for the house (`home/furniture.ts`) joined every
-    // map's pool.
-    expect(shippedLootFingerprint()).toBe('605db258');
+    // map's pool. And again: the jetty's short plank stopped being ground to
+    // stand on, one tile fewer on each map that plants one.
+    expect(shippedLootFingerprint()).toBe('a8c925a0');
   });
 });

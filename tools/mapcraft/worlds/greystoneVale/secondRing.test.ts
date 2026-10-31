@@ -68,6 +68,11 @@ describe('the second ring out from Mill Square', () => {
     expect(onRoad).toEqual([]);
   });
 
+  it.each(Object.entries(districts))('grows nothing out of the boards of %s', (_name, { file }) => {
+    const onBoards = (file.berryTrees ?? []).filter((tree) => OUTDOORS(tree) && file.ground[tree.y][tree.x] === '_');
+    expect(onBoards).toEqual([]);
+  });
+
   it('opens the doors a place tells you about, with somebody or something behind each', () => {
     for (const { file } of Object.values(districts)) {
       for (const area of (file.areas ?? []).filter((one) => one.kind !== 'cave' && one.kind !== 'tower')) {

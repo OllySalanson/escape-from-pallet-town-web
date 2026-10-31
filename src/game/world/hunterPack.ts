@@ -240,6 +240,12 @@ export function huntingGrounds(input: {
   readonly districts: readonly { readonly id: string; readonly name: string; readonly areas: readonly GroundRect[] }[];
   /** Tiles a hunter should never stop on: landings and ways out. */
   readonly keepClear: readonly GridPosition[];
+  /**
+   * Whoever stands on the map for good, every tile of their beat: never a corner
+   * of a loop, and what they stand in front of - a boulder in a lane - is not a
+   * part of the one walk a loop has to be.
+   */
+  readonly standing?: readonly GridPosition[];
 }): readonly HunterGround[] {
   const contains = (outer: GroundRect, inner: GroundRect): boolean =>
     inner.x >= outer.x &&
@@ -277,7 +283,10 @@ function planGround(
   rects: readonly GroundRect[],
   input: Parameters<typeof huntingGrounds>[0],
 ): HunterGround | null {
-  const { width, collision } = input;
+  const { width } = input;
+  const stoodOn = new Set((input.standing ?? []).map((tile) => tile.y * width + tile.x));
+  const open = (x: number, y: number): boolean =>
+    input.collision[y]?.[x] === false && !stoodOn.has(y * width + x);
   const inside = (x: number, y: number): boolean =>
     rects.some((rect) => x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height);
   const clear = new Set(input.keepClear.map((tile) => tile.y * width + tile.x));
@@ -290,7 +299,7 @@ function planGround(
     for (let y = rect.y; y < rect.y + rect.height; y += 1) {
       for (let x = rect.x; x < rect.x + rect.width; x += 1) {
         const start = y * width + x;
-        if (collision[y]?.[x] !== false || component.has(start)) {
+        if (!open(x, y) || component.has(start)) {
           continue;
         }
         const piece = [start];
@@ -303,7 +312,7 @@ function planGround(
             const nx = hx + DIRECTION_DELTAS[direction].x;
             const ny = hy + DIRECTION_DELTAS[direction].y;
             const index = ny * width + nx;
-            if (!inside(nx, ny) || collision[ny]?.[nx] !== false || component.has(index)) {
+            if (!inside(nx, ny) || !open(nx, ny) || component.has(index)) {
               continue;
             }
             component.set(index, start);
@@ -319,8 +328,8 @@ function planGround(
   if (best.length === 0) {
     return null;
   }
-  const open = best.filter((index) => !clear.has(index) && !nearClear(index % width, (index / width) | 0));
-  const pool = open.length > 0 ? open : best;
+  const clearOfEverything = best.filter((index) => !clear.has(index) && !nearClear(index % width, (index / width) | 0));
+  const pool = clearOfEverything.length > 0 ? clearOfEverything : best;
   const nearest = (tx: number, ty: number): GridPosition => {
     let found = pool[0];
     let foundDistance = Number.POSITIVE_INFINITY;

@@ -17,6 +17,14 @@ function sketch(rows: readonly string[]) {
 }
 
 describe('building a map from a sketch and a catalogue', () => {
+  it('stands a fence on the lane it crosses, and on the grass beside a lane it runs along', () => {
+    const across = buildMapLayers(sketch(['..d..', '.FFF.', '..d..']), PLAYER_MAP_TILESET);
+    const along = buildMapLayers(sketch(['ddddd', '.FFF.', '.....']), PLAYER_MAP_TILESET);
+    const plain = buildMapLayers(sketch(['.....', '.FFF.', '.....']), PLAYER_MAP_TILESET);
+    expect(across.ground.tiles[1][2]).not.toBe(plain.ground.tiles[1][2]);
+    expect(along.ground.tiles[1][2]).toBe(plain.ground.tiles[1][2]);
+  });
+
   it('reads collision and encounters off the materials, not off the art', () => {
     const layers = buildMapLayers(
       sketch([
