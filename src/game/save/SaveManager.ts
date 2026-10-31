@@ -382,6 +382,12 @@ export interface RaidProgress {
    * as a bench nobody has sat on - so no version bump.
    */
   readonly lastBench?: readonly string[];
+  /**
+   * How many raids in a row have got out, and the run the last lost raid ended
+   * (`base/runSlate.ts`). Kept with the record of raids and asked of nothing else.
+   * Absent reads as no run yet, so no version bump.
+   */
+  readonly outRun?: OutRun;
   /** How many raids in a row that same team has gone down: the rail says less to a team it knows (`base/heldBreath.ts`). */
   readonly benchRaids?: number;
   /**
@@ -436,6 +442,12 @@ export interface RaidProgress {
 export interface LandingRecord {
   readonly streak: number;
   readonly best: number;
+}
+
+/** How many raids in a row have got out, and what the last lost raid ended. */
+export interface OutRun {
+  readonly now: number;
+  readonly broke: number;
 }
 
 export interface MapRaidRecord {
@@ -1435,7 +1447,8 @@ export class SaveManager {
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
     );
     game.stash.restockMinimumSupplies();
-    if (!this.save({ ...game, ...RAID_RESOLVED })) {
+    // Walking away from a raid is losing it, or a run could be saved by closing the tab.
+    if (!this.save({ ...game, raidProgress: extendRun(game.raidProgress, 'wiped'), ...RAID_RESOLVED })) {
       return null;
     }
     return {
@@ -1465,7 +1478,7 @@ export class SaveManager {
     if (!game) {
       return false;
     }
-    let raidProgress = bumpRaid(game.raidProgress, mapId, outcome);
+    let raidProgress = extendRun(bumpRaid(game.raidProgress, mapId, outcome), outcome);
     if (memory) {
       raidProgress = { ...raidProgress, raidMemory: remembering(raidProgress.raidMemory, mapId, memory.walk, memory.ending) };
     }
@@ -1822,6 +1835,12 @@ function bumpRaid(
   };
 }
 
+/** A raid out adds to the run, and anything else ends it. */
+function extendRun(progress: RaidProgress, outcome: 'extracted' | 'wiped'): RaidProgress {
+  const now = progress.outRun?.now ?? 0;
+  return { ...progress, outRun: outcome === 'extracted' ? { now: now + 1, broke: 0 } : { now: 0, broke: now } };
+}
+
 /** Settles the raid's own cost before anything it earned is added. */
 function applySettlement(stash: Stash, settlement: RaidSettlement | undefined): void {
   if (!settlement) {
@@ -2030,6 +2049,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),
+    ...(readOutRun(value.outRun) ?? {}),
     ...(readPit(value.pit) ?? {}),
     ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
@@ -2101,6 +2121,14 @@ function readPit(value: unknown): { readonly pit: PitRecord } | null {
 }
 
 /** A landing record, or nothing if what is stored is not one. */
+function readOutRun(value: unknown): { readonly outRun: OutRun } | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const count = (entry: unknown): number => (Number.isInteger(entry) && (entry as number) > 0 ? (entry as number) : 0);
+  return { outRun: { now: count(value.now), broke: count(value.broke) } };
+}
+
 function readLandings(value: unknown): { readonly landings: LandingRecord } | null {
   if (typeof value !== 'object' || value === null) {
     return null;

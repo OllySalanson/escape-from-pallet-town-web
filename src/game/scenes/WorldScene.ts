@@ -5,7 +5,7 @@ import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
-import { clockLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
+import { clockLine, closeCallLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
 import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
@@ -190,6 +190,7 @@ import {
   type StandingBoardProgress,
 } from '../objectives';
 import { RunPhase } from '../run/RunManager';
+import { formatRaidClock } from '../run/raidClock';
 import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import { clearPackRoomForPokemon, packFullForPokemonLine, syncPackCargo } from '../run/raidCargo';
@@ -394,6 +395,7 @@ import {
   createHunterPack,
   drawnAt,
   inGround,
+  HUNTER_TAIL_STEPS,
   isAbroad,
   rivalsForGrounds,
   type PackEvent,
@@ -4568,12 +4570,23 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
+  /** The name of a hunter right behind the player as they get out, if there is one. */
+  private hunterOnTail(): string | null {
+    const here = this.currentTile;
+    const tail = this.hunterPackHere()?.hunters.find(
+      (hunter) =>
+        (hunter.mode === 'chase' || hunter.enraged) &&
+        Math.abs(hunter.position.x - here.x) + Math.abs(hunter.position.y - here.y) <= HUNTER_TAIL_STEPS,
+    );
+    return tail ? hunterRival(tail.rivalId).name : null;
+  }
+
   /**
    * Closes this raid's entry in the record kept at base: how it ended, and the
    * ground it walked. Called from every ending, because a raid lost on the last
    * step surveyed exactly as much ground as one that got home.
    */
-  private recordRaid(outcome: 'extracted' | 'wiped', exitLabel?: string): void {
+  private recordRaid(outcome: 'extracted' | 'wiped', exitLabel?: string, closeCall: string | null = null): void {
     this.surveyGround();
     new SaveManager().recordRaidEnded(
       this.currentMap.id,
@@ -4584,7 +4597,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       },
       {
         walk: this.runSession?.walk,
-        ending: outcome === 'extracted' ? { kind: 'out', line: outLine(exitLabel ?? 'the way out') } : { kind: 'fell', line: clockLine() },
+        ending: outcome === 'extracted' ? { kind: 'out', line: closeCall ?? outLine(exitLabel ?? 'the way out') } : { kind: 'fell', line: clockLine() },
       },
     );
     // The pack is laid out in the field as much as at base - a find is seated
@@ -7369,7 +7382,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Written before the banking, which reloads the save it writes back: the
     // record and the survey are part of what this raid did, and banking must
     // carry them out rather than overwrite them.
-    this.recordRaid('extracted', point.label);
+    // The clock it read, which past the raid's end is the enrage's own.
+    const clockLeftMs = snapshot.remainingMs > 0 ? snapshot.remainingMs : snapshot.enrageGraceRemainingMs;
+    const closeCall = closeCallLine({ ms: clockLeftMs, reads: formatRaidClock(clockLeftMs) }, this.hunterOnTail());
+    this.recordRaid('extracted', point.label, closeCall);
     const contractResult = banksContract
       ? new SaveManager().bankContract(contract, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
@@ -7383,6 +7399,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         snapshot,
         durationMs: snapshot.durationMs,
         exitLabel: point.label,
+        ...(closeCall ? { closeCall } : {}),
         leftBehind: this.prizesLeftBehindNow(),
         // The contract's payout is granted by the save rather than by the run,
         // so the report is handed exactly what the stash received. Field loot

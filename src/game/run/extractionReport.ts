@@ -144,6 +144,8 @@ export interface ExtractionReport {
   readonly headline: string;
   /** One sentence naming what actually happened to this player's stuff. */
   readonly summary: string;
+  /** How close it was, when it was, for the crowd and the board. */
+  readonly closeCall?: string;
   readonly haulTier: HaulTier;
   readonly clockLabel: string;
   readonly elapsedMs: number;
@@ -230,6 +232,8 @@ export interface ExtractionReportInput {
   readonly durationMs: number;
   /** The exit that was used, when the raid was survived. */
   readonly exitLabel?: string;
+  /** How close it was, when it was: the mark's own line (`world/raidMemory.ts`). */
+  readonly closeCall?: string;
   /**
    * Exactly what the caller wrote to the stash. Passing it rather than deriving
    * it keeps the screen from ever reporting a reward that was not banked.
@@ -356,6 +360,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   return {
     outcome,
     ...(input.cause ? { cause: input.cause } : {}),
+    ...(input.closeCall ? { closeCall: input.closeCall } : {}),
     eyebrow: escaped
       ? `Extracted${input.exitLabel ? ` · ${input.exitLabel}` : ''}`
       : 'Raid lost',

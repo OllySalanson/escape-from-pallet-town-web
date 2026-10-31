@@ -7,8 +7,8 @@ import type { CrowdPose, CrowdSeat } from './arenaStands';
  * What THE RAID ARENA's crowd does, which is answer the player. The room used to
  * be the same whether a raid had brought Charizard home or lost it for good.
  *
- * It answers three things. **The raid just ended**: on its feet for a big haul, a
- * polite hand for a thin one, a long groan and some of them leaving for a wipe.
+ * It answers three things. **The raid just ended**: on its feet for a big haul or
+ * a close call, a polite hand for a thin one, a long groan and some of them leaving for a wipe.
  * **Somebody waving at it**: the nearest section waves back. **Somebody running
  * round the ring**: the people they are passing get up as they pass, and a whole
  * lap brings the house up. And how full the house is at all is the record: a new
@@ -22,9 +22,14 @@ import type { CrowdPose, CrowdSeat } from './arenaStands';
 export type CrowdMood = 'roar' | 'cheer' | 'clap' | 'groan';
 
 /** What the house makes of how a raid ended. */
-export function moodOfRaid(escaped: boolean, haul: HaulTier): CrowdMood {
+export function moodOfRaid(escaped: boolean, haul: HaulTier, closeCall = false): CrowdMood {
   if (!escaped) {
     return 'groan';
+  }
+  // The house came for nerve as much as for the haul: cutting it fine has them
+  // on their feet, whatever came out with it.
+  if (closeCall) {
+    return 'roar';
   }
   return haul === 'loaded' ? 'roar' : haul === 'solid' ? 'cheer' : 'clap';
 }

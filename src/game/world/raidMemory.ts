@@ -64,6 +64,20 @@ export const fellLine = (name: string): string => `${name.toUpperCase()} FELL HE
 export const clockLine = (): string => 'THE CLOCK RAN OUT HERE';
 export const outLine = (exit: string): string => `OUT BY ${exit.toUpperCase()}`.slice(0, LINE_LONGEST);
 
+/** How little of the clock counts as cutting it close: as much as has gone red on the raid's own chip. */
+export const CLOSE_CALL_CLOCK_MS = 30_000;
+
+/**
+ * What a raid out said of how close it was, if it was: the clock nearly gone, or
+ * a hunter on its tail, whichever it was. In capitals, as a mark's line is.
+ */
+export function closeCallLine(clockLeft: { readonly ms: number; readonly reads: string }, onTail: string | null): string | null {
+  if (clockLeft.ms <= CLOSE_CALL_CLOCK_MS) {
+    return `OUT WITH ${clockLeft.reads} LEFT`;
+  }
+  return onTail === null ? null : `OUT WITH ${onTail.toUpperCase()} ON YOUR TAIL`.slice(0, LINE_LONGEST);
+}
+
 /** What a raid that has just ended leaves behind it. A raid that never set foot outdoors leaves nothing. */
 export function remembering(
   memory: RaidMemory | undefined,

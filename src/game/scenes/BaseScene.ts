@@ -213,6 +213,8 @@ import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
 import { ArenaDiveView } from '../base/arenaDiveView';
+import { worthChalking } from '../base/runSlate';
+import { RunSlate } from '../base/runSlateView';
 import { BREATH_LISTENS_AFTER_MS, breathMs, climbAt, stakeWords, wordsUpAt } from '../base/heldBreath';
 import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
@@ -344,6 +346,9 @@ let boatDueHome = false;
 const CAMERA_EASE_MS = 140;
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
 const CROWD_LOOK_MS = 1700;
+/** Where the run's slate hangs, on the rail at the head of the runner: beside whoever has just come up it, and in the view turned to the crowd. */
+const RUN_SLATE_ROW = 56;
+const RUN_SLATE_AT = { x: 34 * TILE_SIZE + 6, y: 54 * TILE_SIZE + 12 };
 const CROWD_LOOK_SHARE = 0.8;
 /** What had been got ready when the player went off to a bout, for when they come back. */
 let flowAcrossABout: DeploymentFlow | null = null;
@@ -466,6 +471,8 @@ export interface BaseSceneData {
   readonly arrival?: 'raid';
   /** What the crowd made of the raid that has just ended, handed over by the result screen. */
   readonly raidMood?: CrowdMood;
+  /** How close a raid out was, when it was, said on the board in front of the crowd. */
+  readonly closeCall?: string;
   /** How a bout for show has just gone (`base/arenaBouts.ts`), handed back by the fight, which wrote nothing. */
   readonly bout?: { readonly rival: HunterRivalId; readonly won: boolean };
   /**
@@ -696,6 +703,8 @@ export class BaseScene extends Phaser.Scene {
   private lastCrowdMood: CrowdMood | null = null;
   /** The board that says a lap's time. */
   private hallSign: PlaceNameSign | null = null;
+  /** How many raids in a row have got out, on the rail by the runner. */
+  private runSlate: RunSlate | null = null;
   /** The rival on the far floor, and who it is. */
   private rivalFigure: Phaser.GameObjects.Sprite | null = null;
   private rivalHere: HunterRival | null = null;
@@ -1072,6 +1081,7 @@ export class BaseScene extends Phaser.Scene {
       this.fogLift = null;
       this.hallSign?.destroy();
       this.hallSign = null;
+      this.runSlate = null;
       this.closeHallPanel();
       if (typeof document !== 'undefined') {
         this.game.canvas.style.cursor = '';
@@ -1084,6 +1094,7 @@ export class BaseScene extends Phaser.Scene {
       audioManager.play('shipHorn');
     }
     this.layThePitGift();
+    this.chalkTheRun(data.raidMood === 'groan');
     this.standTheRival(data.bout ? hunterRival(data.bout.rival) : undefined);
     this.hangTheBanner();
     if (data.bout) {
@@ -1091,6 +1102,10 @@ export class BaseScene extends Phaser.Scene {
     }
     if (this.arena && data.arrival === 'raid') {
       this.crowdHeardFrom(data.raidMood);
+      if (data.closeCall) {
+        this.hallSign ??= new PlaceNameSign(this);
+        this.hallSign.show(data.closeCall);
+      }
       this.beginFogLift();
     }
     // Arriving in the harbour - off the title or off the boat, not out of a
@@ -1464,6 +1479,7 @@ export class BaseScene extends Phaser.Scene {
     this.tellTheLap(middle);
     this.watchThePitGift(deltaMs);
     this.hallSign?.update(deltaMs);
+    this.runSlate?.update(deltaMs);
     // Walking off, or anything else asked of the view, takes it back from the crowd.
     this.crowdLookMs = this.targetTile || this.arenaPanel || this.dialogBox.visible ? 0 : Math.max(0, this.crowdLookMs - deltaMs);
     this.settleAim();
@@ -1975,6 +1991,21 @@ export class BaseScene extends Phaser.Scene {
       .setDepth(atRow(FIGURE_BAND, RIVAL_TILE.y));
   }
 
+  /** The slate by the runner: the run so far, or the one a lost raid has just ended, struck through. */
+  private chalkTheRun(justLost: boolean): void {
+    this.runSlate?.destroy();
+    this.runSlate = null;
+    if (!this.arena || this.visit) {
+      return;
+    }
+    const run = this.savedGame.raidProgress.outRun;
+    const struck = justLost && worthChalking(run?.broke ?? 0);
+    const count = struck ? run?.broke ?? 0 : run?.now ?? 0;
+    if (struck || worthChalking(count)) {
+      this.runSlate = new RunSlate(this, RUN_SLATE_AT, atRow(FIGURE_BAND, RUN_SLATE_ROW), count, struck);
+    }
+  }
+
   private hangTheBanner(): void {
     const ladders = this.savedGame.raidProgress.bouts?.ladders ?? 0;
     if (this.arena && ladders > 0) {
@@ -2177,6 +2208,9 @@ export class BaseScene extends Phaser.Scene {
     lift.elapsedMs += deltaMs;
     lift.heldMs += deltaMs;
     if (before <= 0 && lift.elapsedMs > 0) {
+      // One board at a time: whatever the crowd was shown has had its moment.
+      this.hallSign?.destroy();
+      this.hallSign = null;
       lift.sign.show(lift.line);
     }
     lift.sign.update(deltaMs);

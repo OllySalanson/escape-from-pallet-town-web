@@ -46,6 +46,23 @@ function startedRun(options: {
   return manager;
 }
 
+describe('how close a raid out was', () => {
+  const manager = (): RunManager => {
+    const run = new RunManager();
+    run.startRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: RAID_DURATION_MS });
+    run.resolveEscape();
+    return run;
+  };
+
+  it('is carried for the crowd and the board, and is absent from a raid with time in hand', () => {
+    const snapshot = manager().snapshot();
+    const report = (closeCall?: string) =>
+      buildExtractionReport({ outcome: 'ESCAPED', snapshot, durationMs: snapshot.durationMs, saved: true, ...(closeCall ? { closeCall } : {}) });
+    expect(report('OUT WITH 0:05 LEFT').closeCall).toBe('OUT WITH 0:05 LEFT');
+    expect(report().closeCall).toBeUndefined();
+  });
+});
+
 describe('extraction report after a survived raid', () => {
   it('says a raid that got out with half a second on the clock took 4:59, as the HUD left 0:01', () => {
     const starter = new Pokemon(BULBASAUR, 5);

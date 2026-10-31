@@ -1,3 +1,4 @@
+import { createRaidInFlight } from '../run/raidInFlight';
 import { describe, expect, it } from 'vitest';
 import {
   Pokemon,
@@ -2256,6 +2257,33 @@ describe('SaveManager', () => {
         pokemon: false,
         items: [{ itemId: 'super-potion', quantity: 1 }],
       });
+    });
+  });
+
+  describe('a run of raids out', () => {
+    it('counts raids out in a row, a lost one ends it and says what it ended, and a save without one has none', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      const run = () => new SaveManager(storage).load()?.raidProgress.outRun;
+      expect(run()).toBeUndefined();
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      expect(run()).toEqual({ now: 3, broke: 0 });
+      saves.recordRaidEnded('greystone-vale', 'wiped');
+      expect(run()).toEqual({ now: 0, broke: 3 });
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      expect(run()).toEqual({ now: 1, broke: 0 });
+    });
+
+    it('cannot be saved by closing the tab: an abandoned raid ends it too', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidInFlight(createRaidInFlight('greystone-vale', [], [], undefined));
+      expect(saves.settleAbandonedRaid()).not.toBeNull();
+      expect(new SaveManager(storage).load()?.raidProgress.outRun).toEqual({ now: 0, broke: 2 });
     });
   });
 

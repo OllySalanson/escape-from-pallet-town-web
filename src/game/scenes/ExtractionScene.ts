@@ -321,7 +321,8 @@ export class ExtractionScene extends Phaser.Scene {
     // title screen stays the fallback it is everywhere else in the game. A raid
     // that is over puts the player back on the rim they jumped from, looking
     // down at what they have just walked (`BaseScene`).
-    const home = homeAfterRaid(moodOfRaid(this.report.outcome === 'ESCAPED', this.report.haulTier));
+    const closeCall = this.report.closeCall;
+    const home = homeAfterRaid(moodOfRaid(this.report.outcome === 'ESCAPED', this.report.haulTier, closeCall !== undefined), closeCall);
     const reachable = this.scene.manager.keys[home.key];
     this.cameras.main.fadeOut(200, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
@@ -349,7 +350,7 @@ export class ExtractionScene extends Phaser.Scene {
       // what becomes of the result.
       hints: escapeHtml(this.footerNote()),
       body: `<main class="px-body extraction-layout ${escaped ? 'extraction-won' : 'extraction-lost'}">${pixelWindow(
-        `<strong class="px-name">${escapeHtml(report.headline)}</strong><span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>`,
+        `<strong class="px-name">${escapeHtml(report.headline)}</strong>${report.closeCall ? `<strong class="px-name">${escapeHtml(report.closeCall)}</strong>` : ''}<span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>`,
         { className: `extraction-verdict ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
       )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
         title: escapeHtml(this.footerTitle()),
