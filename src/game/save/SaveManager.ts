@@ -1,3 +1,4 @@
+import { readRaidMemory, remembering, type RaidMarkKind, type RaidMemory, type RaidWalk } from '../world/raidMemory';
 import { canWear, readLook, type DressedLook, type PlayerLook } from '../look/look';
 import { billFor, billLine, checkBill, ownedWearables, unownedIn } from '../look/wardrobe';
 import { isWearableId } from '../look/wearables';
@@ -254,6 +255,8 @@ export interface RaidProgress {
    * for anything. Absent on a save that has never stuck one.
    */
   readonly landings?: LandingRecord;
+  /** What the pit remembers of the raids that went down into it (`world/raidMemory.ts`). */
+  readonly raidMemory?: RaidMemory;
   /**
    * The first words already said (`../hub/firstWords`): Professor Oak and Nurse
    * Joy speak a few lines the first time each of their screens opens, once per
@@ -1389,12 +1392,16 @@ export class SaveManager {
     mapId: string,
     outcome: 'extracted' | 'wiped',
     survey: { readonly width: number; readonly walked: Iterable<number> } | undefined = undefined,
+    memory: { readonly walk: RaidWalk | undefined; readonly ending: { readonly kind: RaidMarkKind; readonly line: string } } | undefined = undefined,
   ): boolean {
     const game = this.load();
     if (!game) {
       return false;
     }
     let raidProgress = bumpRaid(game.raidProgress, mapId, outcome);
+    if (memory) {
+      raidProgress = { ...raidProgress, raidMemory: remembering(raidProgress.raidMemory, mapId, memory.walk, memory.ending) };
+    }
     if (survey && survey.width > 0) {
       raidProgress = {
         ...raidProgress,
@@ -1941,6 +1948,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),
+    ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
       : {}),

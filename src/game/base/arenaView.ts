@@ -91,6 +91,7 @@ import {
   type ShadowPass,
 } from './pitLife';
 import { wallMapPicture } from './wallMap';
+import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
 
 /**
  * THE RAID ARENA's pit and its fires, as the scene draws them: everything in
@@ -110,6 +111,7 @@ const LIFTING_DEPTH = TERRAIN_DEPTH - 0.89;
 /** What crosses the floor goes under the marks on it: a way in is never hidden by it. */
 const SHADOW_DEPTH = TERRAIN_DEPTH - 0.885;
 const TOWN_LIGHT_DEPTH = TERRAIN_DEPTH - 0.884;
+const MEMORY_DEPTH = TERRAIN_DEPTH - 0.882;
 const LIGHT_DEPTH = TERRAIN_DEPTH - 0.88;
 const LOOK_DEPTH = TERRAIN_DEPTH - 0.87;
 const MIST_DEPTH = TERRAIN_DEPTH - 0.85;
@@ -276,6 +278,14 @@ const CLOUD_SHADOW_TINT = 0x182838;
 const TOWN_LIGHT_WARM = 0xf8d070;
 const TOWN_LIGHT_PALE = 0xf8e8b8;
 const TOWN_LIGHT_GLOW = 0x806030;
+
+/** The last raid's walk, and how far a mark's ink has faded by how many raids ago it was. */
+const TRAIL_INK = 0xf0c454;
+const TRAIL_SHADE = 0x201808;
+const CROSS_INKS = [0xf04838, 0xc03830, 0x883028] as const;
+const FLAG_INKS = [0x78e8a0, 0x58b878, 0x408858] as const;
+const POLE_INK = 0xe8e0c8;
+const MARK_SHADE = 0x101018;
 
 /** How a landing's light beats, and how far a light is from the mark round the one being looked at. */
 const LIGHT_BEAT_MS = 520;
@@ -444,6 +454,14 @@ export class ArenaView {
   private nameShown = '';
   private lights: { readonly landing: RimLanding; readonly image: Phaser.GameObjects.Image }[] = [];
   private lightMs = 0;
+  /** What the pit remembers (`world/raidMemory.ts`), laid on the floor, and the plate that says what a mark was. */
+  private readonly memoryLayer: Phaser.GameObjects.Graphics;
+  private readonly newestMark: Phaser.GameObjects.Graphics;
+  private readonly markFrame: Phaser.GameObjects.Graphics;
+  private readonly markText: Phaser.GameObjects.Text;
+  private markShown: (RaidMark & { readonly age: number }) | null = null;
+  /** Whether somebody is stood at the rail, looking. */
+  private lookingAtRim = false;
   private picture: Minimap;
   private walkedShare: number;
   private mapIdValue: WorldMapId;
@@ -526,6 +544,9 @@ export class ArenaView {
     }
     this.townLightLayer = scene.add.graphics().setDepth(TOWN_LIGHT_DEPTH);
     this.placeTownLights();
+    this.memoryLayer = scene.add.graphics().setDepth(MEMORY_DEPTH);
+    this.newestMark = scene.add.graphics().setDepth(MEMORY_DEPTH + 0.0001);
+    this.drawMemory();
 
     ensureTexture(scene, PODIUM_TEXTURE, paintPodium);
     this.podium = (scene.add.image(0, 0, PODIUM_TEXTURE).setOrigin(0, 0).setDepth(PODIUM_DEPTH));
@@ -570,6 +591,11 @@ export class ArenaView {
     this.placeLights(landings);
     this.nameFrame = scene.add.graphics().setDepth(NAME_DEPTH).setVisible(false);
     this.nameText = scene.add
+      .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd' })
+      .setDepth(NAME_DEPTH + 0.001)
+      .setVisible(false);
+    this.markFrame = scene.add.graphics().setDepth(NAME_DEPTH).setVisible(false);
+    this.markText = scene.add
       .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd' })
       .setDepth(NAME_DEPTH + 0.001)
       .setVisible(false);
@@ -658,7 +684,105 @@ export class ArenaView {
     this.floor.setTexture(this.paintFloorFor(mapId, this.picture));
     this.placeLights(landings);
     this.placeTownLights();
+    this.drawMemory();
     this.aimedId = null;
+  }
+
+  /** A tile of the map on the floor's own picture. */
+  private floorPixelOf(tile: GridPosition): { readonly x: number; readonly y: number } {
+    const { scale, width, height } = this.frameValue;
+    return {
+      x: Math.floor((PIT_FLOOR_SIZE - width * scale) / 2 + (tile.x + 0.5) * scale),
+      y: Math.floor((PIT_FLOOR_SIZE - height * scale) / 2 + (tile.y + 0.5) * scale),
+    };
+  }
+
+  /** The last raid's walk and where the last dozen ended, on the floor. */
+  private drawMemory(): void {
+    const memory = this.game.raidProgress.raidMemory;
+    const layer = this.memoryLayer;
+    layer.clear();
+    this.newestMark.clear();
+    trailDots(memory, this.mapIdValue).forEach((tile, index) => {
+      const { x, y } = this.floorPixelOf(tile);
+      layer.fillStyle(TRAIL_SHADE, 1).fillRect(x, y + 1, 1, 1);
+      if (index % 2 === 0) {
+        layer.fillStyle(TRAIL_INK, 1).fillRect(x, y, 1, 1);
+      }
+    });
+    for (const mark of marksOn(memory, this.mapIdValue)) {
+      const { x, y } = this.floorPixelOf(mark);
+      const fade = mark.age < 2 ? 0 : mark.age < 7 ? 1 : 2;
+      const on = mark.age === 0 ? this.newestMark : layer;
+      if (mark.kind === 'fell') {
+        // A cross, ringed in ink so it reads on sea, wood and cloud.
+        on.fillStyle(MARK_SHADE, 1);
+        on.fillRect(x - 3, y - 3, 3, 3).fillRect(x + 1, y - 3, 3, 3).fillRect(x - 1, y - 1, 3, 3).fillRect(x - 3, y + 1, 3, 3).fillRect(x + 1, y + 1, 3, 3);
+        on.fillStyle(CROSS_INKS[fade], 1);
+        for (const at of [-2, -1, 0, 1, 2]) {
+          on.fillRect(x + at, y + at, 1, 1).fillRect(x - at, y + at, 1, 1);
+        }
+      } else {
+        // A pole with a pennant on it.
+        on.fillStyle(MARK_SHADE, 1).fillRect(x - 1, y - 6, 3, 9).fillRect(x + 1, y - 7, 5, 5);
+        on.fillStyle(POLE_INK, 1).fillRect(x, y - 5, 1, 7);
+        on.fillStyle(FLAG_INKS[fade], 1).fillRect(x + 1, y - 6, 4, 3);
+      }
+    }
+  }
+
+  /** Whether somebody is stood at the rail, looking: the rim says what a mark was. */
+  public atTheRail(looking: boolean): void {
+    this.lookingAtRim = looking;
+  }
+
+  /** The mark in view nearest somebody at the rail, on a plate of its own beside whatever else is named. */
+  private nameTheMark(player: { readonly x: number; readonly y: number }): void {
+    let best: (RaidMark & { readonly age: number }) | null = null;
+    let point = { x: 0, y: 0 };
+    if (this.lookingAtRim) {
+      const view = this.scene.cameras.main.worldView;
+      let nearest = Infinity;
+      for (const mark of marksOn(this.game.raidProgress.raidMemory, this.mapIdValue)) {
+        const at = pitPointOf(mark, player, this.frameValue);
+        const away = Math.hypot(at.x - player.x, at.y - player.y);
+        if (away < nearest && view.contains(at.x, at.y) && showsThroughTheHole(mark, player, this.frameValue)) {
+          nearest = away;
+          best = mark;
+          point = at;
+        }
+      }
+    }
+    if (best !== this.markShown && (best?.line !== this.markShown?.line || best?.kind !== this.markShown?.kind)) {
+      this.markText.setText(best?.line ?? '');
+      if (best) {
+        const width = Math.ceil(this.markText.width) + 8;
+        this.markFrame.clear();
+        drawPixelWindow(this.markFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: best.kind === 'fell' ? CROSS_INKS[0] : FLAG_INKS[0] });
+        this.markFrame.setData('width', width);
+      }
+    }
+    this.markShown = best;
+    const view = this.scene.cameras.main.worldView;
+    const plate =
+      best && view.width > 0
+        ? namePlatePlace(point, { width: this.markFrame.getData('width') as number, height: NAME_PLATE_HEIGHT }, view)
+        : null;
+    // The way in's own name comes first: a mark's plate never lies over it.
+    const clear =
+      plate !== null &&
+      !(
+        this.nameFrame.visible &&
+        Math.abs(plate.y - this.nameFrame.y) < NAME_PLATE_HEIGHT + 1 &&
+        plate.x < this.nameFrame.x + (this.nameFrame.getData('width') as number) &&
+        this.nameFrame.x < plate.x + (this.markFrame.getData('width') as number)
+      );
+    this.markFrame.setVisible(clear);
+    this.markText.setVisible(clear);
+    if (plate && clear) {
+      this.markFrame.setPosition(plate.x, plate.y);
+      this.markText.setPosition(plate.x + 4, plate.y + 1);
+    }
   }
 
   /** The little lights at the doors of the towns, on ground this save has walked. */
@@ -710,6 +834,8 @@ export class ArenaView {
     this.lastPlayer = player;
     this.slide(player);
     this.placeTheLights(deltaMs, player);
+    this.nameTheMark(player);
+    this.newestMark.setVisible(this.still || Math.floor(this.lightMs / LIGHT_BEAT_MS) % 4 !== 3);
     if (this.still) {
       this.moveTheCrowd(deltaMs);
       return;
@@ -1119,6 +1245,8 @@ export class ArenaView {
       Math.ceil(hole.ry * 2) + 4,
     );
     this.townLightLayer.setPosition(this.floor.x, this.floor.y);
+    this.memoryLayer.setPosition(this.floor.x, this.floor.y);
+    this.newestMark.setPosition(this.floor.x, this.floor.y);
     if (this.lifting) {
       this.lifting.image.setPosition(this.floor.x + this.lifting.left, this.floor.y + this.lifting.top);
     }
@@ -1174,6 +1302,10 @@ export class ArenaView {
     const floorY = PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y;
     layer(this.floor, DIVE_FLOOR_REACH, floorX, floorY);
     layer(this.townLightLayer, DIVE_FLOOR_REACH, floorX, floorY);
+    layer(this.memoryLayer, DIVE_FLOOR_REACH, floorX, floorY);
+    layer(this.newestMark, DIVE_FLOOR_REACH, floorX, floorY);
+    this.markFrame.setVisible(false);
+    this.markText.setVisible(false);
     this.cloudShadow?.setVisible(false);
     const mistShift = parallaxShift(MIST_PARALLAX, this.lastPlayer);
     for (const mist of this.mists) {

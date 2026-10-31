@@ -5,6 +5,7 @@ import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
+import { clockLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
 import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
@@ -4522,6 +4523,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.surveyedFrom = index;
     this.surveyAround(this.currentTile);
+    this.noteTheWalk();
+  }
+
+  /** A step for the pit to remember: only outdoors, because an inside is not on its picture. */
+  private noteTheWalk(): void {
+    const session = this.runSession;
+    const areas = this.currentMap.areas;
+    if (!session || (areas && placedAreaAt(areas, this.currentTile) !== areas[0])) {
+      return;
+    }
+    session.walk ??= newWalk();
+    noteWalked(session.walk, this.currentTile);
   }
 
   /** The survey's disc round one tile, kept to the place of the map that tile is in. */
@@ -4560,12 +4573,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * ground it walked. Called from every ending, because a raid lost on the last
    * step surveyed exactly as much ground as one that got home.
    */
-  private recordRaid(outcome: 'extracted' | 'wiped'): void {
+  private recordRaid(outcome: 'extracted' | 'wiped', exitLabel?: string): void {
     this.surveyGround();
-    new SaveManager().recordRaidEnded(this.currentMap.id, outcome, {
-      width: this.currentMap.width,
-      walked: this.runSession?.surveyed ?? [],
-    });
+    new SaveManager().recordRaidEnded(
+      this.currentMap.id,
+      outcome,
+      {
+        width: this.currentMap.width,
+        walked: this.runSession?.surveyed ?? [],
+      },
+      {
+        walk: this.runSession?.walk,
+        ending: outcome === 'extracted' ? { kind: 'out', line: outLine(exitLabel ?? 'the way out') } : { kind: 'fell', line: clockLine() },
+      },
+    );
     // The pack is laid out in the field as much as at base - a find is seated
     // in the room that is left and moved where the player wants it - so the
     // layout comes home with the raid, however the raid ended. It is seats and
@@ -7348,7 +7369,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Written before the banking, which reloads the save it writes back: the
     // record and the survey are part of what this raid did, and banking must
     // carry them out rather than overwrite them.
-    this.recordRaid('extracted');
+    this.recordRaid('extracted', point.label);
     const contractResult = banksContract
       ? new SaveManager().bankContract(contract, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };

@@ -1,3 +1,4 @@
+import { fellLine } from '../world/raidMemory';
 import Phaser from 'phaser';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -4024,10 +4025,15 @@ export class BattleScene extends Phaser.Scene {
     // against is the raid's own, which the plan names.
     const raidMapId = this.runSession.plan?.insertion.mapId;
     if (raidMapId) {
-      new SaveManager().recordRaidEnded(raidMapId, 'wiped', {
-        width: getWorldMap(raidMapId).width,
-        walked: this.runSession.surveyed ?? [],
-      });
+      new SaveManager().recordRaidEnded(
+        raidMapId,
+        'wiped',
+        {
+          width: getWorldMap(raidMapId).width,
+          walked: this.runSession.surveyed ?? [],
+        },
+        { walk: this.runSession.walk, ending: { kind: 'fell', line: fellLine(this.state.player.pokemon.name) } },
+      );
     }
     // And how the pack was laid out, for the same reason and in the same
     // breath: a raid lost in a fight arranged its pack exactly as much as one

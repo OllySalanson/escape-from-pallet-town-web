@@ -1,6 +1,6 @@
 // Plays what THE RAID ARENA does for somebody who has come back to it.
 //
-//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd|landing]
+//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd|landing|memory]
 //
 // A save is written as it would stand after that many raids, the raid's ending is
 // handed to the hall as the result screen hands it, and everything is played with
@@ -265,6 +265,75 @@ try {
     expect('and so is no press at all', landed(await jumpIn(null, null)) === 0);
     const record = await jumpIn(530, null);
     expect(`the most there have been is kept (${JSON.stringify(record)})`, record?.best === 2 && record?.streak === 1);
+  }
+
+  // --- what the pit remembers ----------------------------------------------------
+  if (!only || only === 'memory') {
+    const held = () => page.evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)})).raidProgress.raidMemory ?? null`);
+    const world = (expression) => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return ${expression}; })()`);
+    /** A raid walked along a line of the map, ending as told: a real walk's record, with the steps stepped by hand. */
+    const raid = async (fromX, fromY, dx, dy, ending) => {
+      await walkTo({ x: 32, y: 56 });
+      await press('ArrowUp', 200);
+      await press('Space', 700);
+      for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
+        await press('Space', 500);
+      }
+      await until(sceneIs('hub'), 'the rim');
+      await step(500);
+      await press('Enter', 100);
+      await until(sceneIs('world'), 'the raid');
+      for (let guard = 0; guard < 40 && (await world('Boolean(w.arrival)')); guard += 1) {
+        await step(100);
+      }
+      for (let guard = 0; guard < 6 && (await world('w.dialogBox.visible')); guard += 1) {
+        await press('Space', 400);
+      }
+      await world(`(() => { const s = w.currentTile; for (let n = 0; n < 60; n += 1) { w.currentTile = { x: ${fromX} + n * ${dx}, y: ${fromY} + n * ${dy} }; w.surveyGround(); } return 1; })()`);
+      if (ending === 'out') {
+        await world(`(() => { w.extractThrough(w.runSession.plan.extractionPoints[0]); return 1; })()`);
+      } else {
+        await world(`(() => { const r = w.runSession.manager; r.elapsedMsValue = r.durationMs - 300; return 1; })()`);
+        await step(1000);
+        for (let guard = 0; guard < 8 && (await world('w.dialogBox.visible')); guard += 1) {
+          await press('Space', 400);
+        }
+      }
+      await step(1500);
+      await until(sceneIs('extraction'), 'the result screen');
+      await step(1500);
+      await press('Enter', 200);
+      await until(sceneIs('base'), 'home');
+      for (let guard = 0; guard < 80 && (await base('Boolean(b.fogLift)')); guard += 1) {
+        await step(100);
+      }
+      await step(300);
+    };
+    await raid(150, 190, 1, 0, 'out');
+    let memory = await held();
+    expect('a raid out leaves a flag where it got out', memory?.marks.at(-1)?.kind === 'out' && memory.marks.at(-1).line.startsWith('OUT BY '));
+    expect('and its walk', (memory?.trail?.points.length ?? 0) > 20);
+    await shot('memory-flag');
+    await raid(200, 150, 0, 1, 'clock');
+    memory = await held();
+    expect('a raid lost to the clock leaves a cross saying so', memory?.marks.at(-1)?.line === 'THE CLOCK RAN OUT HERE');
+    await shot('memory-cross');
+    // Round the rim until it names one.
+    const centre = { x: 32.5, y: 33 };
+    const rim = (await base(`b.arenaRim.map((t) => ({ x: t.x, y: t.y }))`)).sort(
+      (a, b) => Math.atan2(a.y - centre.y, a.x - centre.x) - Math.atan2(b.y - centre.y, b.x - centre.x),
+    );
+    let named = null;
+    for (let index = 0; index < rim.length && !named; index += 3) {
+      await walkTo(rim[index]);
+      await step(200);
+      if (await base('b.arena.markText.visible')) {
+        named = await base('b.arena.markText.text');
+        await shot('memory-named');
+      }
+    }
+    console.log('the rim names:', named);
+    expect('walking the rim, it says what a mark was', named !== null);
   }
 } finally {
   await browser.close();

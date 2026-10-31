@@ -1402,6 +1402,7 @@ export class BaseScene extends Phaser.Scene {
       this.aimed = null;
     }
     arena.aimAt(this.aimed, this.aimed ? this.landingName(this.aimed) : '');
+    arena.atTheRail(!this.arenaPanel && !this.fogLift && isAtRim(this.currentTile));
   }
 
   /** How much of the canvas a panel over the hall covers, in game pixels from the right and from the foot. */
