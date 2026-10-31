@@ -77,6 +77,7 @@ import {
   shoreLeftBehind,
   voyage,
   type MapSailing,
+  PUNT_TEXTURE,
 } from '../world/sailing';
 import { carriedOn, spinsOn } from '../world/slidingFloor';
 import { MAP_FILE_EXIT_KEY } from '../world/mapFile';
@@ -7120,7 +7121,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** The Seagallop, FireRed's own ferry, off the town sheet: drawn as a figure because it moves. */
-  private boatSprite(at: GridPosition, moored?: Direction): Phaser.GameObjects.Image {
+  private boatSprite(at: GridPosition, moored?: Direction, craft?: MapSailing['craft']): Phaser.GameObjects.Image {
+    if (craft === 'punt') {
+      const punt = this.add.image(0, 0, PUNT_TEXTURE);
+      this.placeBoat(punt, at.x, at.y, moored, craft);
+      return punt;
+    }
     const texture = this.textures.get(TOWN_SHEET_SOURCE.source.textureKey);
     if (!texture.has(BOAT_FRAME)) {
       const piece = TOWN_PIECES.seagallop;
@@ -7137,7 +7143,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * boat off a jetty lies below the boards rather than over them, and its bow
    * and stern out either side.
    */
-  private placeBoat(sprite: Phaser.GameObjects.Image, x: number, y: number, moored?: Direction): void {
+  private placeBoat(sprite: Phaser.GameObjects.Image, x: number, y: number, moored?: Direction, craft?: MapSailing['craft']): void {
     // Moored, the boat lies out from its jetty, its side to the boards rather
     // than across them: off a jetty's west side it lies west of the tile it is
     // boarded at, off its east side east, and off its head or its foot it is
@@ -7145,6 +7151,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const half = sprite.width / 2;
     const across = moored === 'left' ? TILE_SIZE - half : moored === 'right' ? half : TILE_SIZE / 2;
     const down = moored === 'up' ? TILE_SIZE - sprite.height / 2 + BOAT_RIDE_Y : sprite.height / 2 - BOAT_RIDE_Y;
+    if (craft === 'punt') {
+      // Under whoever stands in it, its deck about their feet.
+      sprite.setPosition(x * TILE_SIZE + across, y * TILE_SIZE + PUNT_DECK_Y).setDepth(atRow(FIGURE_BAND, y - 1));
+      return;
+    }
     sprite
       .setPosition(x * TILE_SIZE + across, y * TILE_SIZE + down)
       .setDepth(atRow(FIGURE_BAND, moored === 'up' ? y : y + 2));
@@ -7157,7 +7168,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     for (const sailing of this.currentMap.sailings ?? []) {
       for (const end of [0, 1] as const) {
         const jetty = sailing.ends[end];
-        const sprite = this.boatSprite(jetty.boat, jetty.toward);
+        const sprite = this.boatSprite(jetty.boat, jetty.toward, sailing.craft);
         const label = new WorldLabel(this, {
           subject: tileRect(jetty.landing),
           text: sailing.name.toUpperCase(),
@@ -7385,7 +7396,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const tiles = voyage(voyageNow.sailing, voyageNow.from);
-    const boat = this.boatSprite(tiles[0]);
+    const boat = this.boatSprite(tiles[0], undefined, voyageNow.sailing.craft);
     this.mapObjects.push(boat);
     // The shore the player was already across the water from, if any, and
     // otherwise the one they are putting out from: afloat, that is where the
@@ -7400,8 +7411,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.voyaging = { ...voyageNow, tiles, index: 0, progress: 0, boat, shoreBefore };
     this.partner?.tuckIn();
-    this.player.setVisible(false);
-    this.playerGroundMark.setVisible(false);
+    // Aboard the ferry nobody is on deck; in a punt there is nowhere else to be.
+    if (voyageNow.sailing.craft !== 'punt') {
+      this.player.setVisible(false);
+      this.playerGroundMark.setVisible(false);
+    }
     this.playerHeadMark.setVisible(false);
     this.currentTile = { ...tiles[0] };
     this.setPlayerPosition(tiles[0].x * TILE_SIZE, tiles[0].y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
@@ -7440,7 +7454,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (trip.index < last - 1) {
       // Afloat: the boat carries the player, its bow the way it goes.
       const t = Math.min(1, trip.progress);
-      this.placeBoat(trip.boat, from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+      this.placeBoat(trip.boat, from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, undefined, trip.sailing.craft);
       if (heading === 'left' || heading === 'right') {
         trip.boat.setFlipX(heading === 'right');
       }
@@ -8451,6 +8465,8 @@ const BARRIER_FOOT_FRAME = 'rock-barrier-foot';
 const BOAT_FRAME = 'seagallop-boat';
 /** How far the Seagallop's deck rises above the top of the tile it lies on. */
 const BOAT_RIDE_Y = 4;
+/** How far down its tile a punt's middle lies, which stands whoever is in it on its deck. */
+const PUNT_DECK_Y = 12;
 
 /**
  * What the result screen says about the contract, including the case the whole

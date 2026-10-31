@@ -137,6 +137,7 @@ const GROUND: Readonly<Record<Material, MinimapChar>> = {
   fence: 'C',
   wall: 'B',
   ice: 'P',
+  boards: ',',
   'spin-up': 'P',
   'spin-down': 'P',
   'spin-left': 'P',

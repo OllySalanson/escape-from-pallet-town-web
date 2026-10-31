@@ -909,6 +909,31 @@ Nintendo / Creatures / Game Freak, no licence from them.
   GBA's five bits a channel and written `x << 3`, and a piece is drawn from a
   metatile's bottom layer, its top layer or both, as the script names.
 
+### `punt.png` - the Mere Punt
+
+Drawn here for this game by `scripts/draw-punt.mjs`, in the colours of FireRed's
+plank decking (`frlg-boards.png`). Nothing is copied from anywhere: FireRed has no
+small boat.
+
+### `frlg-boards.png` - a boardwalk: FireRed's plank decking
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-areas.png` below: Pokemon FireRed/LeafGreen art, rights holders
+Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Source.** pret's FireRed disassembly, **pret/pokefirered**
+  (<https://github.com/pret/pokefirered>), at commit
+  `037335f4c725d7c9aecdac87066f2002b4bd7e14`, read 2026-10-31: metatiles 445-447,
+  453-455 and 461-463 of the general tileset (`data/tilesets/primary/general`),
+  the deck FireRed lays on the Sevii Islands' jetties and in its Safari Zone.
+- **Terms.** As for `frlg-areas.png`: nothing of the checkout is committed;
+  what ships is a cut - nine cells on a new 3x3 grid.
+- **How it was cut.** `scripts/cut-frlg-boards.mjs` is the whole method, and
+  writes `src/game/world/generated/boardPieces.ts`. Colours are read back to the
+  GBA's five bits a channel and written `x << 3`. The south edge is two metatiles
+  made one: FireRed draws a deck's shadow into the water tile below it, and here
+  its five rows are drawn on the deck's own last rows, so it stands on anything.
+
 ### `frlg-tile-anims.png` - FireRed's moving sea, surf and flowers
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling

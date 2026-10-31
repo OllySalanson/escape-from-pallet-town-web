@@ -26,11 +26,11 @@
  * open ground and walk a small beat, never in a street two tiles wide, because
  * a figure is a wall to a walk out.
  */
-import { makeInside } from '../../../../src/game/maker/areas';
-import type { MapFile, MapFileArea, MapFileBuilding, MapFileOutdoorBuildingKind } from '../../../../src/game/world/mapFile';
+import type { MapFile, MapFileOutdoorBuildingKind } from '../../../../src/game/world/mapFile';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { planLimits, startDistrict } from '../../worldPlan';
+import { withInside, type InsideExtras } from './insides';
 import { GREYSTONE_VALE } from './plan';
 
 /**
@@ -386,36 +386,9 @@ function withInsides(file: MapFile): MapFile {
     y: number,
     name: string,
     people: NonNullable<MapFile['people']>,
-    more: Partial<Pick<MapFile, 'itemSpots' | 'pokemon' | 'landmarks'>> & {
-      /** A different room from the one its building would open on. */
-      readonly room?: Pick<MapFileArea, 'style' | 'width' | 'height' | 'ground' | 'buildings'>;
-      /** Furniture to take out of the room its building opens on. */
-      readonly without?: readonly string[];
-    } = {},
+    more: InsideExtras = {},
   ) => {
-    const index = next.buildings.findIndex(
-      (building: MapFileBuilding) => building.kind === kind && building.x === x && building.y === y,
-    );
-    const made = makeInside(next, index);
-    if (!made.made) throw new Error(`${name}: ${made.reason}`);
-    const area = made.area;
-    const id = `millbrook-${name.toLowerCase().replace(/[^a-z]+/g, '-')}`.slice(0, 40);
-    next = {
-      ...made.file,
-      areas: (made.file.areas ?? []).map((one) => (one.id === area ? { ...one, ...more.room, buildings: (more.room?.buildings ?? one.buildings).filter((piece) => !more.without?.includes(piece.kind)), id, name } : one)),
-      links: (made.file.links ?? []).map((link) => ({
-        ...link,
-        ends: link.ends.map((end) =>
-          end.area === area
-            ? { ...end, area: id, ...(more.room ? { x: Math.floor(more.room.width / 2), y: more.room.height - 1 } : {}) }
-            : end,
-        ) as unknown as typeof link.ends,
-      })),
-      people: [...(made.file.people ?? []), ...people.map((one) => ({ ...one, area: id }))],
-      itemSpots: [...made.file.itemSpots, ...(more.itemSpots ?? []).map((one) => ({ ...one, area: id }))],
-      pokemon: [...(made.file.pokemon ?? []), ...(more.pokemon ?? []).map((one) => ({ ...one, area: id }))],
-      landmarks: [...(made.file.landmarks ?? []), ...(more.landmarks ?? []).map((one) => ({ ...one, area: id }))],
-    };
+    next = withInside(next, 'millbrook', kind, x, y, name, people, more);
   };
   // The mill is a working floor, not a kitchen: FireRed's warehouse, with the
   // machine the wheel drives at the back of it and the day's grain stacked up.

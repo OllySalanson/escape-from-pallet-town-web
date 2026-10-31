@@ -1,3 +1,4 @@
+import { PUNT_PATH, PUNT_TEXTURE } from '../world/sailing';
 import Phaser from 'phaser';
 import { SHINY_SPARKLE_TEXTURE } from '../ui/shinySparkle';
 import type { Direction } from '../movement/gridMovement';
@@ -87,6 +88,7 @@ export class BootScene extends Phaser.Scene {
     }
     // The bird that glides over the harbour (`base/harbourBird.ts`).
     this.load.image(HARBOUR_BIRD_TEXTURE, publicAssetUrl(HARBOUR_BIRD_PATH));
+    this.load.image(PUNT_TEXTURE, publicAssetUrl(PUNT_PATH));
     // The harbour's own Pokemon (`base/harbourLife.ts`), cut the same way.
     for (const species of HARBOUR_SPECIES) {
       this.load.spritesheet(harbourPokemonTextureKey(species), publicAssetUrl(harbourPokemonAssetPath(species)), {
