@@ -417,6 +417,11 @@ THE HARBOUR's T phrases where a player trips over them: tapped mid-step, a row c
 in the great hall, the partner's note beside the bubble, and every door's name from
 its own step with regulars about.
 
+`sidePanels.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH]` plays the
+raid's side panels (`src/game/ui/sidePanel.ts`): the pack, a disc, the move chooser and
+the party by key and mouse, what each leaves in sight, the map's east edge, FEEDBACK over
+the pack, and the clock and a chasing hunter standing still until the panel shuts.
+
 ## The stranger's memory test
 
 Whether a map reads as places is not something its author can judge: they know

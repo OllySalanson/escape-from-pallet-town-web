@@ -36,6 +36,8 @@ export interface MoveChooserView {
   readonly source?: string;
   /** Whether that source is used up once the move is learned - a TM is, an HM is not. */
   readonly spendsSource?: boolean;
+  /** Whether it is asked in a side panel, over one (`ui/sidePanel.ts`). */
+  readonly beside?: boolean;
 }
 
 const escapeHtml = (value: string): string =>

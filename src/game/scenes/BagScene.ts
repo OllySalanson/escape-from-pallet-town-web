@@ -24,12 +24,14 @@ import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { itemIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { GridArranging } from '../ui/gridArranging';
+import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { conditionLine } from '../ui/condition';
 import { describeKey, splitDescribeKey } from '../ui/hoverDescribe';
 import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
 import {
+  CLOCK_STOPPED,
   COLUMN_MEASURES,
   escapeAttribute,
   pixelColumns,
@@ -163,6 +165,8 @@ interface BagSceneData {
   readonly onItemDropped?: (itemId: string, quantity: number) => void;
   /** Absent where nothing can be ridden - the bag is only ever opened in a raid today. */
   readonly bike?: BagBike;
+  /** The world beside the panel, told what the panel covers. */
+  readonly view?: SidePanelView;
 }
 
 /**
@@ -170,9 +174,11 @@ interface BagSceneData {
  *
  * The screen a player opens under the clock with the hunter somewhere on the
  * map, so it is the one shape every other screen in the game already is (see
- * the `Pixel UI` block of `src/style.css`) and is read in one look: every
- * pocket at once on the left, filling the width it has, and the squares the
- * pack actually is on the right, with the pointed-at item's own blocks lit.
+ * the `Pixel UI` block of `src/style.css`) and is read in one look, in a side
+ * panel with the map still there beside it (`ui/sidePanel.ts`): every pocket at
+ * once, and under them the squares the pack actually is, with the pointed-at
+ * item's own blocks lit. Where the window is too narrow for a column it is the
+ * whole screen, with the squares beside the pockets.
  *
  * The cursor is the selection, as it is everywhere else here - there is no
  * second highlighted row - so the whole of using a Potion is four presses:
@@ -184,6 +190,7 @@ export class BagScene extends Phaser.Scene {
   private onItemUsed!: () => void;
   private onItemDropped?: (itemId: string, quantity: number) => void;
   private bike?: BagBike;
+  private view?: SidePanelView;
   /** The item whose recipient list is open, if one is. */
   private usingItemId?: string;
   /**
@@ -231,6 +238,7 @@ export class BagScene extends Phaser.Scene {
     this.onItemUsed = data.onItemUsed;
     this.onItemDropped = data.onItemDropped;
     this.bike = data.bike;
+    this.view = data.view;
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
     this.status = undefined;
@@ -238,8 +246,10 @@ export class BagScene extends Phaser.Scene {
   }
 
   public create(): void {
-    this.menuOverlay = new MenuOverlay(this, 'bag-menu pixel-ui', (event) => this.handleKey(event));
+    this.menuOverlay = new MenuOverlay(this, 'bag-menu side-panel pixel-ui', (event) => this.handleKey(event));
     this.menuOverlay.root.setAttribute('aria-label', 'Raid pack');
+    dockSidePanel(this, this.menuOverlay, this.view);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.view?.covers(0));
     // Every Enter on this screen gives something to somebody, so the pointer
     // only previews: resting it on a Pokemon must never make that Pokemon the
     // one the Potion or the disc is about to go to (`ui/pointerPreview.ts`).
@@ -261,6 +271,10 @@ export class BagScene extends Phaser.Scene {
     // it is on the help line and lights its own blocks.
     this.menuOverlay.root.addEventListener('mouseover', (event) => this.pointAtPack(event));
     this.render();
+  }
+
+  public update(_time: number, deltaMs: number): void {
+    this.view?.frame(deltaMs);
   }
 
   private handleKey(event: KeyboardEvent): void {
@@ -307,6 +321,7 @@ export class BagScene extends Phaser.Scene {
         ? {
             title: 'Teach a move',
             back: { label: 'Pack', attribute: 'data-teach-back' },
+            aside: CLOCK_STOPPED,
             body: teachBody({
               item: using,
               machine,
@@ -323,8 +338,7 @@ export class BagScene extends Phaser.Scene {
         : {
             title: 'Pack',
             back: { label: 'Raid', attribute: 'data-close' },
-            // No aside: the one number this screen turns on is the squares, and the
-            // container itself carries it on the lid over the picture of them.
+            aside: CLOCK_STOPPED,
             body: using ? this.recipientBody(using) : this.pocketBody(),
             hints: using
               ? 'ARROWS move · ENTER give it · ESC back to the pack'
@@ -681,7 +695,7 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     const source = `${outcome.machine.number} ${outcome.move.name}`;
-    openMoveChooser(this, { pokemon: target, incoming: outcome.move, canDefer: false, source, spendsSource: !outcome.machine.reusable }, (choice) => {
+    openMoveChooser(this, { pokemon: target, incoming: outcome.move, canDefer: false, source, spendsSource: !outcome.machine.reusable, beside: true }, (choice) => {
       const result = target.resolvePendingMove(
         outcome.move,
         choice.kind === 'forget' ? choice.index : null,

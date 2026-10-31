@@ -121,9 +121,10 @@ body {
 #screens:has(> .arena-panel:only-child) {
   box-shadow: none;
 }
-/* The feedback panel is a column over a game the player is meant to still see,
-   so the frame is not drawn round the whole layer for it alone. */
-#screens:has(> .feedback-panel:only-child) {
+/* A side panel is a column over a game the player is meant to still see, so the
+   frame is not drawn round the whole layer for one, nor for two of them. A
+   sheet is the whole screen and has it, as any other screen does. */
+#screens:not(:has(> :not(.side-panel[data-layout='side']))) {
   box-shadow: none;
 }
 
@@ -3910,20 +3911,31 @@ button {
   color: var(--ink);
 }
 
-/* --- The feedback panel (`feedback/feedbackPanel.ts`) --------------------
+/* --- Side panels (`ui/sidePanel.ts`) ---------------------------------------
    A column down the right of the window over the paused game, the shape of the
    review tool the owner reads his boards in; the whole screen when the window
-   is too narrow for a column beside anything (`FeedbackScene.fitToWindow`). */
-.menu-overlay.pixel-ui.feedback-panel {
+   is too narrow for a column beside anything (`fitSidePanel`). */
+.menu-overlay.pixel-ui.side-panel {
   inset: 0 0 0 auto;
   width: calc(var(--u) * 232);
   box-shadow: calc(var(--u) * -1) 0 0 var(--frame);
 }
-.menu-overlay.pixel-ui.feedback-panel[data-layout='sheet'] {
+.menu-overlay.pixel-ui.side-panel[data-layout='sheet'] {
   inset: 0;
   width: auto;
   box-shadow: none;
 }
+/* The pack in a column: what is carried over the squares it is carried in, and
+   only the list gives up room. */
+:where(.pixel-ui[data-layout='side']) .raid-bag-layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, auto) auto;
+  align-content: start;
+}
+:where(.pixel-ui[data-layout='side']) .pack-window > .px-grid {
+  margin-inline: auto;
+}
+/* --- The feedback panel (`feedback/feedbackPanel.ts`) ----------------------- */
 :where(.pixel-ui) .feedback-body {
   grid-template-rows: auto minmax(0, 1fr) auto;
   align-content: stretch;

@@ -71,7 +71,7 @@ export function installFeedbackDesk(game: Phaser.Game, courier: FeedbackCourier 
     // A menu screen is drawn in the page, over the canvas, so a picture of the
     // canvas is the game behind it - usually black. None is better than one
     // that shows nothing; the screen is named under SEE IT ALL either way.
-    const onAMenu = document.querySelector('#screens > .menu-overlay:not(.feedback-panel)') !== null;
+    const onAMenu = document.querySelector('#screens > .menu-overlay:not(.side-panel)') !== null;
     const picture = onAMenu ? Promise.resolve(null) : takePicture(game);
     const present = game.scene
       .getScenes(false)
