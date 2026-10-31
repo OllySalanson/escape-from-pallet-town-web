@@ -15,13 +15,13 @@ name: Publish player maps
 # - verify: holds no secret and may only read the repository; the one job that
 #   installs dependencies. Runs the game's checks, lint, the suite and the build.
 # - publish: may write to the repository; installs nothing. Commits only map
-#   files whose names are map ids, merges, and asks for the Pages deploy.
+#   files whose names are map ids, merges, and asks for CI on the merge.
 # - mark: holds the service-role key; installs nothing. Records what was
 #   published and sends back what failed - only for submissions fetch read.
 #
 # A change pushed or merged with this workflow's own token starts no other
 # workflow, so verify runs the suite itself before anything merges, and publish
-# asks for the Pages deploy by hand afterwards.
+# asks for CI on main by hand afterwards: the game deploys what passed CI.
 
 on:
   schedule:
@@ -176,10 +176,10 @@ jobs:
             --body "Approved in the game's review list, checked by the game's own rules and the whole test suite in this run (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
           gh pr merge "$branch" --squash --delete-branch
 
-      - name: Deploy the game
+      - name: Check the merge, which deploys the game
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run pages.yml --ref main
+        run: gh workflow run ci.yml --ref main
 
   mark:
     needs: [fetch, verify, publish]

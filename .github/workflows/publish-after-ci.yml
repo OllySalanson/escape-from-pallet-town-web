@@ -1,0 +1,30 @@
+name: Publish after CI
+
+# A workflow of its own because a workflow_run starts on every CI ending, failed
+# ones included, and only its job can look at how CI ended. In pages.yml that
+# start would already have joined the concurrency queue and pushed out a waiting
+# publish, leaving main unpublished; here only a pass reaches that queue.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ask-for-the-deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Deploy the game
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
