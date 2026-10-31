@@ -1487,9 +1487,9 @@ export class BaseScene extends Phaser.Scene {
     this.facing = facingTowards(this.currentTile, fence);
     this.standStill();
     this.dialogBox.setVisible(false);
-    audioManager.play('deploy');
     // Nobody can be asked to sit through it who asked for less movement.
     if (this.still) {
+      audioManager.play('deploy');
       this.leaving = true;
       this.cameras.main.fadeOut(180, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('world', world));
@@ -1531,6 +1531,7 @@ export class BaseScene extends Phaser.Scene {
     };
     camera.stopFollow();
     camera.removeBounds();
+    audioManager.play('arenaHorn');
   }
 
   private advanceJump(deltaMs: number): void {
@@ -1543,6 +1544,7 @@ export class BaseScene extends Phaser.Scene {
     jump.elapsedMs += deltaMs;
     if (!jump.hopped && jump.elapsedMs >= TURN_BACK_MS) {
       jump.hopped = true;
+      arena.sendOff({ x: this.player.x, y: this.player.y });
       this.playerGroundMark.setVisible(false);
       this.playerHeadMark.setVisible(false);
       const partner = this.partner?.leaveForJump();

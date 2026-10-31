@@ -11,6 +11,7 @@ import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import {
+  ARENA_CENTRE,
   ARENA_TILE,
   ARENA_TORCHES,
   FLOOR_PARALLAX,
@@ -19,6 +20,7 @@ import {
   PIT_TIERS,
   PODIUM_PARALLAX,
   TIER_PARALLAX,
+  WALL_FOOT,
   dithered,
   namePlatePlace,
   parallaxShift,
@@ -31,6 +33,7 @@ import {
 } from './arenaHall';
 import { windowLight, type WindowLight } from './homeClock';
 import { TWINKLE_STEP_MS, isDimmed, townLights, type TownLight } from './pitClock';
+import { FLARE_FRAMES, FLARE_HEIGHT, FLARE_WIDTH, RING_OF_FIRE_MS, flareAt } from './ringOfFire';
 import { shareTheRim, showsThroughTheHole, type RimLanding, type RimShare } from './arenaRim';
 import {
   PIT_FLOOR_SIZE,
@@ -120,6 +123,8 @@ const MIST_TEXTURE = 'arena-mist';
 const FLAME_TEXTURE = 'arena-flame';
 const HALO_TEXTURE = 'arena-halo';
 const POOL_TEXTURE = 'arena-pool';
+const FLARE_TEXTURE = 'arena-flare';
+const BLAZE_TEXTURE = 'arena-blaze';
 const LOOK_TEXTURE = 'arena-look';
 const STANDS_TEXTURE = 'arena-stands';
 const CROWD_TEXTURE = 'arena-crowd-person';
@@ -213,6 +218,8 @@ const FLAME_INKS: Readonly<Record<string, readonly [number, number, number]>> = 
 };
 
 const FLAME_STEP_MS = 95;
+/** How much more than its everyday glow a torch throws at each step of a flare. */
+const BLAZE_ALPHA = [0, 0.4, 0.7, 1] as const;
 
 /** How often the nearest fire can be heard, and how near it has to be, in pixels. */
 const CRACKLE_EVERY_MS = 2600;
@@ -285,18 +292,17 @@ function paintGlow(radius: number, ink: readonly [number, number, number]): Pain
   return { width: size, height: size, data };
 }
 
-function paintFlames(): PaintedPicture {
-  const width = FLAME_WIDTH * FLAME_FRAMES.length;
-  const height = FLAME_HEIGHT;
+function paintFlameFrames(frames: readonly (readonly string[])[], frameWidth: number, height: number): PaintedPicture {
+  const width = frameWidth * frames.length;
   const data = new Uint8ClampedArray(width * height * 4);
-  FLAME_FRAMES.forEach((frame, index) =>
+  frames.forEach((frame, index) =>
     frame.forEach((row, y) => {
-      for (let x = 0; x < FLAME_WIDTH; x += 1) {
+      for (let x = 0; x < frameWidth; x += 1) {
         const ink = FLAME_INKS[row[x]];
         if (!ink) {
           continue;
         }
-        const at = (y * width + index * FLAME_WIDTH + x) * 4;
+        const at = (y * width + index * frameWidth + x) * 4;
         data[at] = ink[0];
         data[at + 1] = ink[1];
         data[at + 2] = ink[2];
@@ -380,7 +386,15 @@ function paintLookMark(): PaintedPicture {
   return { width: size, height: size, data };
 }
 
+/** Where a point stands round the hall, as `ovalPoint` turns. */
+const angleInHall = (point: { readonly x: number; readonly y: number }): number =>
+  Math.atan2((point.y - ARENA_CENTRE.y) / WALL_FOOT.ry, (point.x - ARENA_CENTRE.x) / WALL_FOOT.rx);
+
 interface Fire {
+  readonly angle: number;
+  /** What it burns as in a flare, made only for a jump. */
+  flare: Phaser.GameObjects.Image | null;
+  blaze: Phaser.GameObjects.Image | null;
   readonly flame: Phaser.GameObjects.Image;
   readonly halo: Phaser.GameObjects.Image;
   readonly pool: Phaser.GameObjects.Image;
@@ -411,6 +425,8 @@ export class ArenaView {
   private shareValue: RimShare;
   private aimedId: string | null = null;
   private lastPlayer = { x: 0, y: 0 };
+  /** The fire running round the hall from a jump (`ringOfFire.ts`), while it is. */
+  private ringOfFire: { elapsedMs: number; readonly from: number } | null = null;
   /** The hour this visit is at: the clock is read when the hall is walked into, as a room's is. */
   private readonly light: WindowLight = windowLight(new Date());
   private readonly townLightLayer: Phaser.GameObjects.Graphics;
@@ -514,7 +530,7 @@ export class ArenaView {
       .setDepth(NAME_DEPTH + 0.001)
       .setVisible(false);
 
-    ensureTexture(scene, FLAME_TEXTURE, paintFlames);
+    ensureTexture(scene, FLAME_TEXTURE, () => paintFlameFrames(FLAME_FRAMES, FLAME_WIDTH, FLAME_HEIGHT));
     ensureTexture(scene, HALO_TEXTURE, () => paintGlow(24, [96, 56, 16]));
     ensureTexture(scene, POOL_TEXTURE, () => paintGlow(52, [40, 24, 8]));
     const flames = scene.textures.get(FLAME_TEXTURE);
@@ -535,6 +551,9 @@ export class ArenaView {
         .setOrigin(0.5, 1)
         .setDepth(FLAME_DEPTH);
       this.fires.push({
+        angle: angleInHall(torch),
+        flare: null,
+        blaze: null,
         flame,
         halo,
         pool,
@@ -775,10 +794,10 @@ export class ArenaView {
 
   /** The hall's fires, which go on burning through everything, a jump included. */
   public burn(deltaMs: number): void {
-    for (const fire of this.fires) {
+    this.fires.forEach((fire, index) => {
       fire.clock += deltaMs;
       if (fire.clock < fire.every) {
-        continue;
+        return;
       }
       fire.clock -= fire.every;
       // Never the same frame twice in a row, and never in order: a flame licks.
@@ -788,6 +807,52 @@ export class ArenaView {
       const strength = 0.7 + Math.random() * 0.3;
       fire.halo.setAlpha(strength);
       fire.pool.setAlpha(strength);
+      fire.flare?.setFrame(String((next + index) % FLARE_FRAMES.length));
+    });
+    this.runTheRingOfFire(deltaMs);
+  }
+
+  /**
+   * The hall answers a jump: from the place they went over, fire runs round both
+   * ways and meets at the far side. Asked for with a jump and never on the way home.
+   */
+  public sendOff(from: { readonly x: number; readonly y: number }): void {
+    ensureTexture(this.scene, FLARE_TEXTURE, () => paintFlameFrames(FLARE_FRAMES, FLARE_WIDTH, FLARE_HEIGHT));
+    ensureTexture(this.scene, BLAZE_TEXTURE, () => paintGlow(38, [168, 96, 32]));
+    const sheet = this.scene.textures.get(FLARE_TEXTURE);
+    if (!sheet.has('0')) {
+      FLARE_FRAMES.forEach((_frame, index) => sheet.add(String(index), 0, index * FLARE_WIDTH, 0, FLARE_WIDTH, FLARE_HEIGHT));
+    }
+    for (const fire of this.fires) {
+      fire.flare = this.scene.add
+        .image(fire.flame.x, fire.flame.y, FLARE_TEXTURE, '0')
+        .setOrigin(0.5, 1)
+        .setDepth(FLAME_DEPTH)
+        .setVisible(false);
+      fire.blaze = this.scene.add
+        .image(fire.halo.x, fire.halo.y, BLAZE_TEXTURE)
+        .setDepth(HALO_DEPTH)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setVisible(false);
+    }
+    this.ringOfFire = { elapsedMs: 0, from: angleInHall(from) };
+  }
+
+  private runTheRingOfFire(deltaMs: number): void {
+    const ring = this.ringOfFire;
+    if (!ring) {
+      return;
+    }
+    ring.elapsedMs += deltaMs;
+    const over = ring.elapsedMs >= RING_OF_FIRE_MS;
+    for (const fire of this.fires) {
+      const step = over ? 0 : flareAt(ring.elapsedMs, fire.angle, ring.from);
+      fire.flame.setVisible(step < 2);
+      fire.flare?.setVisible(step >= 2);
+      fire.blaze?.setVisible(step > 0).setAlpha(BLAZE_ALPHA[step]);
+    }
+    if (over) {
+      this.ringOfFire = null;
     }
   }
 

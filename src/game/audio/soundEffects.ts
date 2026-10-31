@@ -566,6 +566,13 @@ export const SOUND_EFFECTS = {
   },
 
   // --- fanfare: the raid keeps score -------------------------------------
+  arenaHorn: {
+    channel: 'fanfare',
+    moment: 'Over the fence of the Raid Arena: the hall answers, with fire all the way round',
+    // A great low horn, one long note, the hall's rather than a ship's: under
+    // the Seagallop's by a tone, with a third at the end of it.
+    tones: [saw(82, 0.55, 0.055), saw(123, 0.55, 0.04), saw(82, 0.3, 0.05, 0.5), saw(104, 0.3, 0.035, 0.5)],
+  },
   shipHorn: {
     channel: 'fanfare',
     moment: 'The Seagallop sounds her horn as a raid comes home',
