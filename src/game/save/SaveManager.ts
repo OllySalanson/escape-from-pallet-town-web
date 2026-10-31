@@ -377,6 +377,12 @@ export interface RaidProgress {
    */
   readonly securePreference?: SecurePreference;
   /**
+   * Who went down last raid, by stash id, so the bench comes back as it was
+   * left (`DeploymentFlow`). Absent on every save written before it, which reads
+   * as a bench nobody has sat on - so no version bump.
+   */
+  readonly lastBench?: readonly string[];
+  /**
    * How the player last laid the two containers out, as lists of seats
    * (`items/itemGrid.ts`). A pack somebody arranged by hand comes back the way
    * they left it - across screens, across a save and across a raid - because an
@@ -1493,6 +1499,18 @@ export class SaveManager {
   }
 
   /**
+   * Remembers who went down, at the moment a raid deploys, for the same reason
+   * as the secure preference: a raid that wipes chose them too.
+   */
+  public recordBench(pokemonIds: readonly string[]): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastBench: [...pokemonIds] } });
+  }
+
+  /**
    * Remembers how the two containers were laid out.
    *
    * Written on the way out of the lobby, as the secure preference is, and again
@@ -2042,6 +2060,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // A save written before the container filled itself has no preference, and
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),
+    ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
     packArrangement: readArrangement(value.packArrangement),
     secureArrangement: readArrangement(value.secureArrangement),
     ...(Array.isArray(value.homeLayout) ? { homeLayout: readHomeLayout(value.homeLayout) } : {}),

@@ -466,6 +466,18 @@ describe('a panel over the hall', () => {
     expect(world()?.party.pokemon.map((pokemon) => pokemon.base.id)).toEqual(['charmander']);
   });
 
+  it('comes home to the same bench: home, SPACE and ENTER are all going again asks', () => {
+    const { hub, kit } = panelOn('bench');
+    kit.flow.togglePokemon('charmander-1');
+    hub.init({ view: 'rim', kit });
+    const remembered = vi.spyOn(SaveManager.prototype, 'recordBench');
+    hub.startRun();
+    expect(remembered).toHaveBeenCalledWith(['charmander-1']);
+    remembered.mockRestore();
+    const home = { ...kit.game, raidProgress: { ...kit.game.raidProgress, lastBench: ['charmander-1'] } };
+    expect(flowForGame(home).party.map(({ id }) => id)).toEqual(['charmander-1']);
+  });
+
   it('will not jump with nobody on the bench, and says so', () => {
     const { hub, kit, calls } = panelOn('rim');
     expect(hub.flow.step).toBe('loadout');

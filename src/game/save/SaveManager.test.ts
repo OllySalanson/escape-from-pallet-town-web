@@ -2259,6 +2259,18 @@ describe('SaveManager', () => {
     });
   });
 
+  describe('who went down last raid', () => {
+    it('is remembered at the door, and a save that has never been down has nobody', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      expect(new SaveManager(storage).load()?.raidProgress.lastBench).toBeUndefined();
+
+      expect(saves.recordBench(['charmander-1', 'pidgey-2'])).toBe(true);
+
+      expect(new SaveManager(storage).load()?.raidProgress.lastBench).toEqual(['charmander-1', 'pidgey-2']);
+    });
+  });
+
   /**
    * A pack the player laid out comes back the way they left it - across
    * screens, across a save and across a raid. It is seats rather than a grid,
