@@ -1575,7 +1575,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     this.at(start + 4400, () => this.say(this.words.host[1]));
   }
 
-  /** BOOK YOUR LOADOUT, held until a key is pressed. */
+  /** PACK YOUR LOADOUT, held until a key is pressed. */
   private loadoutCard(): void {
     const start = beatStart('loadout');
     this.at(start, () => {
@@ -1710,7 +1710,7 @@ function hexRgb(colour: number): string {
   return `${(colour >> 16) & 0xff}, ${(colour >> 8) & 0xff}, ${colour & 0xff}`;
 }
 
-/** BOOK YOUR LOADOUT / TO START THE RAID: the card's two lines. */
+/** PACK YOUR LOADOUT / TO START THE RAID: the card's two lines. */
 function splitCard(line: string): [string, string] {
   const at = line.indexOf(' TO ');
   return at < 0 ? [line, ''] : [line.slice(0, at), line.slice(at + 1)];
