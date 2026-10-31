@@ -90,10 +90,9 @@ try {
 
   // A new game, across the harbour, past the trailer and into the hall.
   await press('Space');
-  await until(sceneIs('starter'), 'the starter picker');
-  await until(`(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`, 'the picker');
+  await until(sceneIs('base'), 'the starter picker');
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`, 'the picker');
   await step(200);
-  await page.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Confirm'))?.click()`);
   await until(sceneIs('base'), 'the harbour');
   await step(1000);
   const inHall = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.room?.id === 'raid-arena'; })()`;

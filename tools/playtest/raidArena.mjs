@@ -38,9 +38,8 @@ try {
 
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await until(sceneIs('starter'));
-  await until(`(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`, 'the picker');
-  await click('Confirm Charmander');
+  await until(sceneIs('base'));
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`, 'the picker');
   await until(sceneIs('base'));
   await sleep(1200);
   await page.screenshot(`${out}/1-harbour-spawn.png`);

@@ -51,9 +51,8 @@ try {
   };
 
   await page.waitFor(sceneIs('title'));
-  await press('Space'); await until(sceneIs('starter'));
-  await until(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`, 'the picker');
-  await click('Confirm Bulbasaur');
+  await press('Space'); await until(sceneIs('base'));
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, 'the picker');
   await until(sceneIs('base'));
   await walkIntoBase(page, 'raid-arena', { press, until });
   await until(takePokemon('Bulbasaur'), 'Bulbasaur in the raid party');

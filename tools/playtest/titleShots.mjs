@@ -54,9 +54,8 @@ for (const window of windows) {
     }
     // A game in progress: the shortest honest way to one is to start it.
     await page.tap('Space');
-    await page.waitFor(`${GAME}.scene.isActive('starter')`);
-    await page.waitFor(`(() => { const b = document.querySelector('button[data-starter=charmander]'); if (!b) return false; b.click(); return true; })()`);
-    await page.waitFor(`(() => { const b = [...document.querySelectorAll('button')].find((x) => /Confirm/.test(x.textContent)); if (!b) return false; b.click(); return true; })()`);
+    await page.waitFor(`${GAME}.scene.isActive('base')`);
+    await page.waitFor(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`);
     await page.waitFor(`localStorage.getItem('escape-from-pallet-town.save.v1') !== null`);
     const loaded = new Promise((resolve) => page.on('Page.loadEventFired', resolve));
     await page.send('Page.navigate', { url });

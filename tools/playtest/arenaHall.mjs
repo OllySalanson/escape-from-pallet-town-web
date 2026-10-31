@@ -66,13 +66,12 @@ try {
 
   // A new game, straight to the harbour.
   await press('Space');
-  await until(sceneIs('starter'), 'the starter picker');
+  await until(sceneIs('base'), 'the starter picker');
   await until(
-    `(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`,
     'the picker',
   );
   await step(200);
-  await page.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Confirm'))?.click()`);
   await until(sceneIs('base'), 'the harbour');
   await step(1000);
 

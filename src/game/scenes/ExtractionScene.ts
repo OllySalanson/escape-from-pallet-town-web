@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { moodOfRaid } from '../base/arenaCrowd';
+import { haulFromReport } from '../base/haulOnTheQuay';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
 import { countPlay, raidEnding } from '../analytics/playCounter';
 import { friendRoom } from '../raidRoom/friendRoom';
@@ -322,7 +323,11 @@ export class ExtractionScene extends Phaser.Scene {
     // that is over puts the player back on the rim they jumped from, looking
     // down at what they have just walked (`BaseScene`).
     const closeCall = this.report.closeCall;
-    const home = homeAfterRaid(moodOfRaid(this.report.outcome === 'ESCAPED', this.report.haulTier, closeCall !== undefined), closeCall);
+    const home = homeAfterRaid(
+      moodOfRaid(this.report.outcome === 'ESCAPED', this.report.haulTier, closeCall !== undefined),
+      closeCall,
+      haulFromReport(this.report),
+    );
     const reachable = this.scene.manager.keys[home.key];
     this.cameras.main.fadeOut(200, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>

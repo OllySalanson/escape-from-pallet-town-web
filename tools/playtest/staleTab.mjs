@@ -34,9 +34,8 @@ try {
   const tabB = await browser.openPage(url.href);
   await tabB.waitFor(sceneIs('title'));
   await tabB.tap('Space', 60);
-  await tabB.waitFor(sceneIs('starter'));
-  await tabB.waitFor(`(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`);
-  await clicker(tabB)('Confirm Charmander');
+  await tabB.waitFor(sceneIs('base'));
+  await tabB.waitFor(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`);
   await tabB.waitFor(sceneIs('base'));
   await walkIntoBase(tabB, 'pokemon-centre');
   console.log(`tab B is in the Pokemon Center; raids deployed in the save: ${await deployed(tabB)}`);

@@ -84,10 +84,9 @@ try {
   await until(sceneIs('title'), 'the title again');
   await sleep(600);
   await press('Space', 700);
-  await until(sceneIs('starter'), 'the starter');
-  await until(`(() => { const b = document.querySelector('button[data-starter=bulbasaur]'); if (!b) return false; b.click(); return true; })()`, 'Bulbasaur');
+  await until(sceneIs('base'), 'the starter');
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, 'Bulbasaur');
   await sleep(300);
-  await until(`(() => { const b = [...document.querySelectorAll('button')].find((each) => each.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`, 'the confirm');
   await until(sceneIs('base'), 'the yard');
   await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'a save');
   await sleep(800);

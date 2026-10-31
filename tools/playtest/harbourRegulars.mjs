@@ -57,13 +57,9 @@ try {
   const regulars = () => page.evaluate(`${BASE}.harbourRegularsShown`);
 
   await tap('Space');
-  await until(sceneIs('starter'));
-  await until(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`);
+  await until(sceneIs('base'));
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`);
   await wait(300);
-  await until(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes('confirm') && !b.disabled); if (!b) return false; b.click(); return true; })()`,
-    'the confirm button',
-  );
   await until(baseReady, 'the harbour');
   await wait(1500);
 
