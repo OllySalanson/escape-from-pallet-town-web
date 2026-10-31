@@ -1,6 +1,6 @@
 # Fishing off the harbour
 
-Round 11 of the badass harbour. Firstmate's brief for it: play the whole harbour as a brand-new
+Round 11 of the badass harbour. The brief for it: play the whole harbour as a brand-new
 player, then build the next most player-delighting thing - something to do on the quay, a reason
 to walk the long pier.
 

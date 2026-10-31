@@ -4,7 +4,7 @@ One short entry per iteration: what a player met, how it was reproduced, what ch
 
 ## Report findings checked (so later iterations do not re-check)
 
-Checked against the code on 2026-10-20 (branch fm/eptw-gnhf-night-7, base 95c45b13).
+Checked against the code on 2026-10-20 (base 95c45b13).
 
 ### Playtest 48 (map maker and shared harbour)
 - F1 maker undo lost on maps with an inside: fixed (#347).
