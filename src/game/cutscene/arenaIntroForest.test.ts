@@ -6,7 +6,9 @@ import {
   ESCAPE_ROUTE,
   EXIT_TILE,
   FIND_TILES,
+  FIRE_WALL,
   HERO_LANDING,
+  HUNTER_CHASE,
   HUNTER_ROUTE,
   PARTNER_STAND_TILE,
   SNEAK_ROUTE,
@@ -42,6 +44,7 @@ describe("THE RAID ARENA trailer's wood", () => {
     ['the sneak', SNEAK_ROUTE],
     ['the hunter', HUNTER_ROUTE],
     ['the escape', ESCAPE_ROUTE],
+    ['the chase', HUNTER_CHASE],
   ])('walks %s over open ground, a step at a time', (_name, route) => {
     const tiles = routeTiles(route);
     for (const tile of tiles) {
@@ -72,8 +75,25 @@ describe("THE RAID ARENA trailer's wood", () => {
     expect(same(ESCAPE_ROUTE.at(-1)!, EXIT_TILE)).toBe(true);
   });
 
+  it('shuts the road with the fire: no way past it for the hunter, and the runners already through', () => {
+    const onFire = (tile: GridPosition) => FIRE_WALL.some((burning) => same(burning, tile));
+    const seen = new Set<string>();
+    const reach = [HUNTER_CHASE.at(-1)!];
+    while (reach.length > 0) {
+      const tile = reach.pop()!;
+      const key = `${tile.x},${tile.y}`;
+      if (seen.has(key) || !open(tile) || onFire(tile)) continue;
+      seen.add(key);
+      reach.push({ x: tile.x + 1, y: tile.y }, { x: tile.x - 1, y: tile.y }, { x: tile.x, y: tile.y + 1 }, { x: tile.x, y: tile.y - 1 });
+    }
+    expect(seen.has(`${HUNTER_CHASE[0].x},${HUNTER_CHASE[0].y}`)).toBe(true);
+    expect(seen.has(`${EXIT_TILE.x},${EXIT_TILE.y}`), 'the hunter can walk round the fire to the exit').toBe(false);
+    expect(routeTiles(ESCAPE_ROUTE).some(onFire)).toBe(true);
+    expect(routeTiles(HUNTER_CHASE).some(onFire)).toBe(false);
+  });
+
   it('hangs no crown over a tile anybody is walked onto', () => {
-    const walked = [...routeTiles(SNEAK_ROUTE), ...routeTiles(ESCAPE_ROUTE), ...routeTiles(HUNTER_ROUTE), ...SWARM_RING];
+    const walked = [...routeTiles(SNEAK_ROUTE), ...routeTiles(ESCAPE_ROUTE), ...routeTiles(HUNTER_ROUTE), ...routeTiles(HUNTER_CHASE), ...SWARM_RING];
     for (const tile of walked) {
       expect(forest.layers.canopy.tiles[tile.y][tile.x], `${tile.x},${tile.y}`).toBeLessThan(0);
     }

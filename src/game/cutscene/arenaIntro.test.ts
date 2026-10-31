@@ -79,6 +79,7 @@ describe('THE RAID ARENA trailer', () => {
       const words = arenaIntroWords(arenaIntroCast(game, 'ash'));
       expect(words.shout.startsWith(`${rival.name}: "`)).toBe(true);
       expect(words.shout).toBe(rival.caught[0]);
+      expect(words.getaway).toBe(rival.getaway);
     }
   });
 

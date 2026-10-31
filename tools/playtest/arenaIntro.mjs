@@ -1,6 +1,6 @@
 // Plays THE RAID ARENA's trailer end to end and photographs it, a beat at a time:
 //
-//   node tools/playtest/arenaIntro.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH] [--live]
+//   node tools/playtest/arenaIntro.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH] [--live] [--every=FROM:TO:STEP]
 //
 // A new game walks into the Arena's door, and the trailer plays unasked
 // (`scenes/ArenaIntroScene.ts`); every beat is photographed at the moment
@@ -11,7 +11,9 @@
 // test-mode build (`?testmode=pixels` for a picture worth judging;
 // `tools/playtest/README.md`, "Memory"). `--live` leaves the loop running and
 // waits in real time instead - the one pass at real speed a change is owed -
-// so its pictures land near their moments rather than on them.
+// so its pictures land near their moments rather than on them. `--every=` takes
+// a picture every STEP ms between two moments in place of the beats, which is
+// how a beat's motion is watched.
 import { mkdirSync } from 'node:fs';
 import { attachBrowser, launchBrowser, PIXEL_WINDOW, sleep } from './browser.mjs';
 import { GAME, sceneIs, walkIntoBase } from './deploy.mjs';
@@ -26,7 +28,8 @@ const live = args.includes('--live');
 mkdirSync(out, { recursive: true });
 
 /** The moments photographed, in milliseconds from the trailer's first frame. */
-const SHOTS = [
+const every = /^(\d+):(\d+):(\d+)$/.exec(option('every') ?? '');
+const BEATS = [
   ['01-sneak', 1500],
   ['02-find', 4100],
   ['03-prize', 7500],
@@ -43,13 +46,23 @@ const SHOTS = [
   ['14-landing', 26900],
   ['15-fire', 27900],
   ['16-run', 29700],
-  ['17-escape', 32200],
-  ['18-exit', 34300],
-  ['19-extracted', 37200],
-  ['20-host', 42500],
-  ['21-ready', 46500],
-  ['22-loadout', 48200],
+  ['17a-hold', 31300],
+  ['17b-takeoff', 32800],
+  ['17c-chased', 33400],
+  ['17d-wall', 34050],
+  ['17e-overhead', 34400],
+  ['18-look-back', 36000],
+  ['19-extracted', 38700],
+  ['20-host', 44000],
+  ['21-ready', 48000],
+  ['22-loadout', 49700],
 ];
+const SHOTS = every
+  ? Array.from({ length: Math.floor((Number(every[2]) - Number(every[1])) / Number(every[3])) + 1 }, (_shot, index) => {
+      const at = Number(every[1]) + index * Number(every[3]);
+      return [`t${String(at).padStart(5, '0')}`, at];
+    })
+  : BEATS;
 
 const failures = [];
 const expect = (what, ok) => {

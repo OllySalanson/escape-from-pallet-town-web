@@ -196,5 +196,28 @@ export const ESCAPE_ROUTE: Route = [
   { x: 40, y: 4 },
 ];
 
+/**
+ * Where the hero's fire drives the hunter, off the road, while the two of them
+ * run past: the first tile of the chase.
+ */
+export const HUNTER_DRIVEN_TO: GridPosition = { x: 28, y: 13 };
+
+/** The hunter breaks out behind them: onto the road and up it, to the fire. */
+export const HUNTER_CHASE: Route = [
+  HUNTER_DRIVEN_TO,
+  { x: 28, y: 11 },
+  { x: 30, y: 11 },
+  { x: 30, y: 6 },
+  { x: 31, y: 6 },
+];
+
+/** The fire that shuts the road behind them: across the last straight, with no way round it. */
+export const FIRE_WALL: readonly GridPosition[] = [
+  { x: 32, y: 5 },
+  { x: 32, y: 6 },
+  { x: 32, y: 7 },
+  { x: 32, y: 8 },
+];
+
 /** The way out, at the end of the escape. */
 export const EXIT_TILE: GridPosition = { x: 40, y: 4 };

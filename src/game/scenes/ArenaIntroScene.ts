@@ -22,7 +22,10 @@ import {
   ESCAPE_ROUTE,
   EXIT_TILE,
   FIND_TILES,
+  FIRE_WALL,
   HERO_LANDING,
+  HUNTER_CHASE,
+  HUNTER_DRIVEN_TO,
   HUNTER_ROUTE,
   PARTNER_STAND_TILE,
   RUSTLE_TILE,
@@ -203,6 +206,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     this.typing = null;
     this.motions = [];
     this.torch = null;
+    this.flight = null;
     this.startedAt = this.time.now;
 
     // The save is told first, so a reload mid-way is not the first time again.
@@ -348,6 +352,13 @@ export class ArenaIntroScene extends Phaser.Scene {
       this.advance(motion, now);
     }
     this.motions = this.motions.filter((motion) => !motion.done);
+    // In the air, the hero is its place on the ground lifted by its height,
+    // and its shadow stays on the ground: the gap between them is what reads as flying.
+    if (this.flight && this.heroSprite && this.heroShadow) {
+      const { x, y, altitude } = this.flight;
+      this.heroSprite.setPosition(Math.round(x), Math.round(y - altitude));
+      this.heroShadow.setPosition(Math.round(x), Math.round(y - 2));
+    }
   }
 
   private advance(motion: Motion, now: number): void {
@@ -731,6 +742,7 @@ export class ArenaIntroScene extends Phaser.Scene {
   private playerTexture: string = SHARED_CHARACTER_TEXTURE;
   private hero!: Walker;
   private buddy!: Walker;
+  private rival!: Walker;
   private torch: Phaser.GameObjects.Image | null = null;
   private arenaMap!: BaseMapDefinition;
 
@@ -975,6 +987,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     const rival = this.cast.rival;
     const hunter = this.person(characterDesignTextureKey(rival.design), rival.design, FOREST_ORIGIN, HUNTER_ROUTE[0], 'left');
     hunter.sprite.setVisible(false);
+    this.rival = hunter;
     const red = this.ui(this.add.image(0, 0, 'arena-intro-vignette-red').setOrigin(0, 0).setDepth(DEPTH.ui + 1).setAlpha(0));
     const dark = this.ui(this.add.image(0, 0, 'arena-intro-vignette').setOrigin(0, 0).setDepth(DEPTH.ui));
     this.time.delayedCall(beatStart('arena'), () => dark.destroy());
@@ -1170,7 +1183,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     );
     hero.preFX?.addGlow(0xffa040, 2, 0, false, 0.1, 6);
     const shadow = this.world(this.add.ellipse(0, 0, 28, 8, 0x000000, 0.35).setDepth(DEPTH.figure - 0.5).setVisible(false));
-    const landing = { x: HERO_LANDING.x * TILE + 8, y: HERO_LANDING.y * TILE + TILE + 2 };
+    const landing = heroGround();
     let flap = 0;
     this.time.addEvent({
       delay: 140,
@@ -1226,8 +1239,7 @@ export class ArenaIntroScene extends Phaser.Scene {
       });
     });
     this.at(start + 3000, () => {
-      const hunter = this.hunterSprite();
-      if (!hunter) return;
+      const hunter = this.rival.sprite;
       this.flame(this.turnToBreathe(hero, hunter.x + 8), { x: hunter.x + 8, y: hunter.y + 16 });
       this.time.delayedCall(160, () => {
         this.fire.explode(30, hunter.x + 8, hunter.y + 22);
@@ -1250,6 +1262,8 @@ export class ArenaIntroScene extends Phaser.Scene {
 
   private heroSprite: Phaser.GameObjects.Sprite | null = null;
   private heroShadow: Phaser.GameObjects.Ellipse | null = null;
+  /** Where the hero is over the ground and how high, while it is in the air (`update`). */
+  private flight: { x: number; y: number; altitude: number } | null = null;
 
   private swarmIcon(index: number): Phaser.GameObjects.Sprite | undefined {
     const icons = this.worldObjects.filter(
@@ -1257,14 +1271,6 @@ export class ArenaIntroScene extends Phaser.Scene {
         object instanceof Phaser.GameObjects.Sprite && object.texture.key === POKEMON_ICON_TEXTURE,
     );
     return icons[index];
-  }
-
-  private hunterSprite(): Phaser.GameObjects.Sprite | undefined {
-    const key = characterDesignTextureKey(this.cast.rival.design);
-    return this.worldObjects.find(
-      (object): object is Phaser.GameObjects.Sprite =>
-        object instanceof Phaser.GameObjects.Sprite && object.texture.key === key,
-    );
   }
 
   /** A ring of dust thrown out along the ground where something heavy lands. */
@@ -1302,11 +1308,19 @@ export class ArenaIntroScene extends Phaser.Scene {
     }
   }
 
-  /** The run for the way out, the hero overhead and the hunter falling behind. */
+  /**
+   * The run for the way out, and what the hero is there to do about it: it
+   * stays behind and pins the hunter off the road while the two of them run
+   * past, and when the hunter breaks out and comes up the road behind them it
+   * takes off, shuts the road with fire at their heels and goes over their
+   * heads into the night. Nobody is carried out: they get to the exit on their
+   * own feet, and look back at the hunter on the wrong side of the fire.
+   */
   private escape(): void {
     const start = beatStart('escape');
     const main = this.cameras.main;
-    const exit = this.world(this.add.graphics().setDepth(DEPTH.fx - 1).setVisible(false));
+    // Behind the figures: drawn over them, it hid the player for the last of the run.
+    const exit = this.world(this.add.graphics().setDepth(DEPTH.figure - 1).setVisible(false));
     const exitIcon = this.world(
       this.add.image(EXIT_TILE.x * TILE, EXIT_TILE.y * TILE, iconTextureKey(WORLD_ICONS.extractionOpen)).setOrigin(0, 0).setDepth(DEPTH.item).setVisible(false),
     );
@@ -1342,7 +1356,7 @@ export class ArenaIntroScene extends Phaser.Scene {
       clock.setVisible(true).setText(`0:0${seconds}`);
       audioManager.play('clockUrgent');
     });
-    for (let tick = 1; tick <= 4; tick += 1) {
+    for (let tick = 1; tick <= 5; tick += 1) {
       this.at(start + tick * 1000, () => {
         seconds -= 1;
         clock.setText(`0:0${seconds}`);
@@ -1352,62 +1366,151 @@ export class ArenaIntroScene extends Phaser.Scene {
     this.at(beatStart('extracted'), () => clock.destroy());
 
     const route = routeTiles(ESCAPE_ROUTE);
-    const stepMs = 140;
-    const end = this.walk(this.hero, route, start + 200, stepMs, this.buddy);
-    // The hero flies over them, all the way.
-    this.at(start + 200, () => {
-      const hero = this.heroSprite;
-      const shadow = this.heroShadow;
-      if (!hero || !shadow) return;
-      hero.setFlipX(true);
-      // Just behind the runner, so the way out ahead is never under a wing.
-      const follow = () => {
-        hero.setPosition(Math.round(this.hero.sprite.x - 22), Math.round(this.hero.sprite.y + 2));
-        shadow.setPosition(hero.x, this.hero.sprite.y + 36);
-      };
-      const ticker = this.time.addEvent({ delay: 16, loop: true, callback: follow });
-      this.time.delayedCall(end - start, () => ticker.remove());
+    const end = this.walk(this.hero, route, start + 200, RUN_STEP_MS, this.buddy);
+    this.holdTheHunter(start);
+    this.hunterBreaksOut(start + BREAK_OUT_MS);
+    this.heroTakesOff(start + BREAK_OUT_MS - 40);
+
+    // At the way out, they look back: the fire, and who is behind it.
+    this.at(end + 150, () => {
+      this.face(this.hero, 'left');
+      this.face(this.buddy, 'left');
     });
-    // The hunter gives chase and gives up.
-    const hunterChase = routeTiles([{ x: 25, y: 13 }, { x: 25, y: 11 }, { x: 30, y: 11 }]);
-    this.at(start + 900, () => {
-      const hunter = this.hunterSprite();
-      if (!hunter) return;
-      hunter.setPosition(25 * TILE, 13 * TILE + PERSON_Y);
-    });
-    const hunterWalker = (): Walker | null => {
-      const sprite = this.hunterSprite();
-      if (!sprite) return null;
-      return {
-        sprite,
-        kind: 'person',
-        walk: getCharacterDesign(this.cast.rival.design).walks
-          ? (way: Direction) => getWalkAnimationKey(way, characterDesignTextureKey(this.cast.rival.design))
-          : null,
-        columns: CHARACTER_DESIGN_SHEET_COLUMNS,
-        origin: FOREST_ORIGIN,
-        tile: { x: 25, y: 13 },
-        facing: 'up',
-      };
-    };
-    let chaser: Walker | null = null;
-    this.at(start + 950, () => {
-      chaser = hunterWalker();
-    });
-    hunterChase.slice(1).forEach((tile, index) => {
-      this.at(start + 1000 + index * 190, () => {
-        if (chaser) this.step(chaser, tile, 190);
-      });
-    });
-    this.at(end - 300, () => {
-      if (chaser) {
-        this.face(chaser, 'right');
-        this.alert(chaser.sprite, 700);
-      }
-    });
-    this.at(end + 80, () => {
+    this.at(end + 1250, () => {
+      this.closeBox();
       audioManager.play('extract');
       flashScreen(main, 400, [255, 255, 255]);
+    });
+  }
+
+  /** The hunter goes for the road; the hero, still on the ground, drives them off it and keeps them off. */
+  private holdTheHunter(start: number): void {
+    const hero = this.heroSprite!;
+    this.at(start, () => {
+      const sprite = this.rival.sprite;
+      this.rival.tile = { x: sprite.x / TILE, y: Math.round((sprite.y - PERSON_Y) / TILE) };
+    });
+    this.at(start + 350, () => {
+      this.step(this.rival, { x: this.rival.tile.x, y: this.rival.tile.y - 1 }, 180);
+      hero.setFlipX(true);
+    });
+    this.at(start + 530, () => this.face(this.rival, 'left'));
+    // Flamethrower, breath after breath, for as long as the two of them are passing.
+    for (let breath = 0; breath < 5; breath += 1) {
+      this.at(start + 700 + breath * 200, () => {
+        const sprite = this.rival.sprite;
+        const target = { x: sprite.x + 8, y: sprite.y + 16 };
+        this.flame(this.turnToBreathe(hero, target.x), target);
+        this.time.delayedCall(160, () => {
+          this.fire.explode(14, target.x, target.y);
+          this.smoke.explode(3, target.x, target.y + 4);
+        });
+      });
+    }
+    this.at(start + 860, () => {
+      audioManager.play('hitSpecial');
+      this.cameras.main.shake(140, 0.008);
+      this.rival.tile = HUNTER_DRIVEN_TO;
+      const { x, y } = this.spot(this.rival, HUNTER_DRIVEN_TO);
+      this.move({ targets: this.rival.sprite, x, y, duration: 260, ease: 'Quad.Out' });
+    });
+    this.at(start + 1120, () => this.alert(this.rival.sprite, 600));
+  }
+
+  /** The fire stops, and the hunter is on the road behind them, and gaining; the hero's fire stops them dead. */
+  private hunterBreaksOut(at: number): void {
+    const chase = routeTiles(HUNTER_CHASE);
+    // The mark first, and only then the run: a figure runs out from under its mark.
+    this.at(at - 300, () => {
+      this.alert(this.rival.sprite, 300);
+      audioManager.play('hunterNear');
+    });
+    const reached = this.walk(this.rival, chase, at, HUNTER_STEP_MS);
+    this.at(reached + 60, () => this.step(this.rival, { x: chase.at(-1)!.x - 1, y: chase.at(-1)!.y }, 200));
+    this.at(reached + 260, () => {
+      this.face(this.rival, 'right');
+      this.alert(this.rival.sprite, 800);
+    });
+    this.at(reached + 500, () => this.say(this.words.getaway));
+  }
+
+  /**
+   * Off the ground, across the clearing and up the road after the hunter, with
+   * the fire laid at the runners' heels on the way past; then over their heads
+   * and out of the picture, its job done.
+   */
+  private heroTakesOff(at: number): void {
+    const hero = this.heroSprite!;
+    const shadow = this.heroShadow!;
+    const landing = heroGround();
+    // Just short of the fire, so the breath from its mouth lands on the tiles.
+    const overFire = { x: (FIRE_WALL[0].x - 1.5) * TILE, y: (FIRE_WALL.at(-1)!.y + 1) * TILE };
+    // Along the road, so its shadow runs down the road and it is seen to pass over them.
+    const away = { x: (ARENA_INTRO_FOREST_WIDTH + 4) * TILE, y: overFire.y - TILE };
+    const pass = HUNTER_FIRE_MS;
+    this.at(at, () => {
+      hero.setFlipX(true);
+      audioManager.play('cry', { species: this.cast.hero.dexId });
+      this.smoke.explode(10, landing.x, landing.y - 2);
+      this.shockwave(landing.x, landing.y - 2);
+      const flight = { x: landing.x, y: landing.y, altitude: 0 };
+      this.flight = flight;
+      this.move({ targets: flight, x: overFire.x, y: overFire.y, duration: pass, ease: 'Sine.InOut' });
+      this.move({ targets: flight, altitude: 44, duration: pass, ease: 'Quad.Out' });
+    });
+    this.at(at + pass - 200, () => {
+      const middle = FIRE_WALL[Math.floor(FIRE_WALL.length / 2)];
+      this.flame({ x: hero.x + 22, y: hero.y - 40 }, { x: middle.x * TILE + 8, y: middle.y * TILE + 8 });
+    });
+    this.at(at + pass - 40, () => this.lightFireWall());
+    this.at(at + pass, () => {
+      const flight = this.flight!;
+      audioManager.play('cry', { species: this.cast.hero.dexId });
+      this.move({ targets: flight, x: away.x, y: away.y, duration: 900, ease: 'Quad.In' });
+      this.move({
+        targets: flight,
+        altitude: 72,
+        duration: 900,
+        ease: 'Quad.Out',
+        onComplete: () => {
+          this.flight = null;
+          hero.setVisible(false);
+          shadow.setVisible(false);
+        },
+      });
+    });
+  }
+
+  /** The road shut, hedge to hedge, and burning until the picture cuts away. */
+  private lightFireWall(): void {
+    this.cameras.main.shake(300, 0.014);
+    audioManager.play('hitSpecial');
+    audioManager.play('criticalHit');
+    const spots = FIRE_WALL.map((tile) => ({ x: tile.x * TILE + 8, y: tile.y * TILE + 12 }));
+    for (const spot of spots) {
+      this.fire.explode(30, spot.x, spot.y);
+      this.smoke.explode(4, spot.x, spot.y);
+    }
+    const middle = spots[Math.floor(spots.length / 2)];
+    const glow = this.world(this.add.image(middle.x, middle.y, 'arena-intro-light').setDepth(DEPTH.light).setBlendMode(Phaser.BlendModes.ADD));
+    this.move({ targets: glow, alpha: { from: 0.4, to: 0.22 }, duration: 180, yoyo: true, repeat: -1 });
+    let turn = 0;
+    const burning = this.time.addEvent({
+      delay: 50,
+      loop: true,
+      callback: () => {
+        turn += 1;
+        for (const spot of spots) {
+          this.fire.explode(3, spot.x, spot.y);
+        }
+        if (turn % 6 === 0) {
+          this.smoke.explode(2, spots[turn % spots.length].x, spots[turn % spots.length].y - 6);
+        }
+      },
+    });
+    this.at(beatStart('arena'), () => {
+      burning.remove();
+      glow.destroy();
     });
   }
 
@@ -1458,8 +1561,6 @@ export class ArenaIntroScene extends Phaser.Scene {
     this.partner(this.cast.partner.id as PartnerSpeciesId, ARENA_ORIGIN, ARENA_PARTNER, 'left');
     const host = this.person(characterDesignTextureKey('gym-guide'), 'gym-guide', ARENA_ORIGIN, ARENA_HOST, 'right');
     this.at(start, () => {
-      this.heroSprite?.setVisible(false);
-      this.heroShadow?.setVisible(false);
       main.stopFollow();
       main.setZoom(1);
       this.frameSet(ARENA_ORIGIN, arenaSize.width, arenaSize.height);
@@ -1588,6 +1689,18 @@ export class ArenaIntroScene extends Phaser.Scene {
       canvas.refresh();
     }
   }
+}
+
+/** The run: a step's time, a shade slower than the hunter's once the hunter is on the road. */
+const RUN_STEP_MS = 150;
+const HUNTER_STEP_MS = 140;
+/** When, into the escape, the hunter breaks out; and how long the hero then takes to reach the fire. */
+const BREAK_OUT_MS = 2240;
+const HUNTER_FIRE_MS = 1480;
+
+/** The hero's place on the ground where it lands. */
+function heroGround(): { x: number; y: number } {
+  return { x: HERO_LANDING.x * TILE + 8, y: HERO_LANDING.y * TILE + TILE + 2 };
 }
 
 /** Which find is the prize, and gleams. */

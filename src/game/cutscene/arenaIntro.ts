@@ -133,14 +133,14 @@ export const ARENA_INTRO_BEATS = [
   { id: 'hero', at: 23200 },
   /** Fire across the clearing; the swarm scatters. */
   { id: 'rescue', at: 25600 },
-  /** The run for the exit. */
+  /** The run for the exit, bought by the hero: it holds the hunter, then shuts the road on them. */
   { id: 'escape', at: 30200 },
   /** EXTRACTED, and what came home. */
-  { id: 'extracted', at: 35200 },
+  { id: 'extracted', at: 36700 },
   /** Back at the Arena's door, where the host asks. */
-  { id: 'arena', at: 38800 },
+  { id: 'arena', at: 40300 },
   /** BOOK YOUR LOADOUT, held until a key is pressed. */
-  { id: 'loadout', at: 47000 },
+  { id: 'loadout', at: 48500 },
 ] as const;
 
 export type ArenaIntroBeat = (typeof ARENA_INTRO_BEATS)[number]['id'];
@@ -171,6 +171,8 @@ export function arenaIntroWords(cast: ArenaIntroCast) {
     trapped: `${cast.partner.name} can't hold them!`,
     roar: `${cast.hero.name}!`,
     run: 'RUN!',
+    // Shouted over the fire, at somebody who has got away.
+    getaway: cast.rival.getaway,
     extracted: 'EXTRACTED!',
     host: [
       `${ARENA_INTRO_HOST}: That's a raid, ${cast.playerName}. Sneak in, grab what you can, and get out before the hunter gets you.`,
