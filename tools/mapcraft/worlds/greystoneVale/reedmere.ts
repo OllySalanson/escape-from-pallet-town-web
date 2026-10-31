@@ -333,6 +333,10 @@ export function reedmere(): MapcraftResult {
   const file = districtFile(GREYSTONE_VALE, 'reedmere', p, {
     dropIns: [],
     itemSpots: [
+      // First, and out in the open reeds: a place's first spot is where a prize
+      // named for it falls back to (`filePrizes.ts`), and the rest of the marsh's
+      // spots stand in places of their own.
+      { x: 30, y: 19 },
       { x: 42, y: 30 + 1 },
       { x: 54, y: 13, hidden: true },
       { x: 24, y: 56, hidden: true },
