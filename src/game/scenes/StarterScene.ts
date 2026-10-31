@@ -154,7 +154,7 @@ export class StarterScene extends Phaser.Scene {
     // first decision in the game, and a cursor on the commit button turned one
     // press of Enter into taking Bulbasaur unread. Choosing a card keeps the
     // cursor on it, so committing is always a deliberate step down to CONFIRM.
-    this.overlay.focus('[data-starter][aria-pressed="true"]', '[data-confirm]');
+    this.overlay.focus(`[data-starter="${this.selectedStarterId}"]`, '[data-confirm]');
   }
 
   private confirmStarter(): void {

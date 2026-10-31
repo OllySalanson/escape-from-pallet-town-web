@@ -2724,11 +2724,11 @@ button {
    general rule is one faint pixel laid over a card's frame, which on a card this
    size reads as nothing at all; this is a dark teal ring inside the frame, with
    the frame and its clear corners left alone. */
-.pixel-ui[data-pointer='previews'] .starter-card:hover:not(:focus) {
+:where(.pixel-ui[data-pointer='previews']) .starter-card:hover:not(:focus) {
   --fill: var(--cream-lit);
   box-shadow: none;
 }
-.pixel-ui[data-pointer='previews'] .starter-card:hover:not(:focus)::after {
+:where(.pixel-ui[data-pointer='previews']) .starter-card:hover:not(:focus)::after {
   content: '';
   position: absolute;
   inset: var(--u);

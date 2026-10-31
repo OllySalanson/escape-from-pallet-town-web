@@ -27,6 +27,54 @@ export interface BubbleBox {
   readonly height: number;
 }
 
+/** Whether two boxes share a pixel. */
+export function overlaps(a: BubbleBox, b: BubbleBox): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+/** How far in from a window's ends its tail may be drawn. */
+const TAIL_INSET = 2;
+
+/**
+ * Where a bubble `width` wide goes, its tail's tip on `tipY` over `centreX`:
+ * centred, slid along to stay over the place, and clear of whatever is seated
+ * already. Sideways first, as far as keeps the tail on the window and so on
+ * the speaker, because a bubble lifted off its speaker's head is a bubble over
+ * somebody else's; lifted only when there is no room either side.
+ */
+export function bubbleSeat(
+  centreX: number,
+  tipY: number,
+  width: number,
+  height: number,
+  placeWidth: number | null,
+  seated: readonly BubbleBox[],
+): { readonly x: number; readonly tipY: number } {
+  const within = (x: number): number =>
+    placeWidth !== null && width <= placeWidth ? Math.min(Math.max(x, 0), placeWidth - width) : x;
+  const centred = within(Math.round(centreX - width / 2));
+  const fullHeight = height + SPEECH_TAIL;
+  let tip = tipY;
+  for (let lifts = 0; lifts <= seated.length; lifts += 1) {
+    const y = Math.round(tip - SPEECH_TAIL - height + 1);
+    const clearAt = (x: number): boolean => !seated.some((other) => overlaps({ x, y, width, height: fullHeight }, other));
+    if (clearAt(centred)) {
+      return { x: centred, tipY: tip };
+    }
+    const tail = Math.round(centreX);
+    const sideways = seated
+      .filter((other) => overlaps({ x: centred, y, width, height: fullHeight }, other))
+      .flatMap((other) => [within(other.x - width), within(other.x + other.width)])
+      .filter((x) => tail - x >= TAIL_INSET && tail - x <= width - 1 - TAIL_INSET && clearAt(x))
+      .sort((a, b) => Math.abs(a - centred) - Math.abs(b - centred) || a - b);
+    if (sideways.length > 0) {
+      return { x: sideways[0], tipY: tip };
+    }
+    tip = Math.min(...seated.filter((other) => overlaps({ x: centred, y, width, height: fullHeight }, other)).map((other) => other.y - 1));
+  }
+  return { x: centred, tipY: tip };
+}
+
 export class SpeechBubble {
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly text: Phaser.GameObjects.Text;
@@ -62,16 +110,15 @@ export class SpeechBubble {
   /**
    * Seats the bubble with its tail's tip on `tipY`, centred on `centreX` and
    * slid along to stay over a place `placeWidth` wide (a room is framed on the
-   * dark), the tail staying over the speaker. Returns the window, tail and all.
+   * dark) and clear of whatever is `seated` already (`bubbleSeat`), the tail
+   * staying over the speaker. Returns the window, tail and all.
    */
-  public place(centreX: number, tipY: number, placeWidth: number | null): BubbleBox {
+  public place(centreX: number, tipY: number, placeWidth: number | null, seated: readonly BubbleBox[] = []): BubbleBox {
     const width = this.width;
     const height = this.height;
-    let x = Math.round(centreX - width / 2);
-    if (placeWidth !== null && width <= placeWidth) {
-      x = Math.min(Math.max(x, 0), placeWidth - width);
-    }
-    const y = Math.round(tipY - SPEECH_TAIL - height + 1);
+    const seat = bubbleSeat(centreX, tipY, width, height, placeWidth, seated);
+    const x = seat.x;
+    const y = Math.round(seat.tipY - SPEECH_TAIL - height + 1);
     this.frame.setPosition(x, y);
     this.text.setPosition(x + PAD_X, y);
     // The tail is drawn where the speaker is, wherever the window was slid to.
@@ -101,7 +148,7 @@ export class SpeechBubble {
   private redraw(tail = this.tailAt): void {
     const width = this.width;
     const height = this.height;
-    this.tailAt = Math.min(Math.max(tail, 2), width - 3);
+    this.tailAt = Math.min(Math.max(tail, TAIL_INSET), width - 1 - TAIL_INSET);
     const t = this.tailAt;
     const box = (colour: number, x: number, y: number, w: number, h: number): void => {
       this.frame.fillStyle(colour, 1).fillRect(x, y, w, h);

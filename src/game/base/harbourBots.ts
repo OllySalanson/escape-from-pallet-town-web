@@ -1,5 +1,4 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
-import { STEP_DURATION_MS } from '../movement/stepClock';
 import { createSeededRng, type SeededRng } from '../run/rng';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap } from './baseMap';
@@ -7,12 +6,11 @@ import { BASE_FIXTURES } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
 import { LOITER_SPOTS } from './generated/harbourBotSpots';
 import { DAY_CARE_KEEPER } from './dayCarePen';
-import { BASE_DOORS, doorNamed } from './doors';
+import { BASE_DOORS } from './doors';
 import type { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { harbourBeatTiles, harbourLifeAt, onLand } from './harbourLife';
 import type { PartnerSpeciesId } from './partner';
 import type { DressedLook } from '../look/look';
-import { BOUTIQUE_NAME } from '../look/wearables';
 
 /**
  * The harbour's regulars: twelve people who walk THE HARBOUR as players do,
@@ -42,15 +40,14 @@ import { BOUTIQUE_NAME } from '../look/wearables';
  * keep the count inside its bounds (`slotEvents`), so nobody ever sees seven
  * regulars, or one.
  *
- * **Where they walk.** Each visit comes in somewhere a player would - off the
- * Seagallop at the jetty or out of one of the buildings - pauses at a few
- * `LOITER_SPOTS`, and leaves the same ways, timed to be gone at the moment
- * the schedule says (`visitPlan`). A loiter spot is open ground with nothing
- * solid round it and nothing a player comes to the yard for near it, so a
- * regular is never standing in a lane, a doorway, on a mat, on the spawn, by a
- * sign or by somebody the player wants to talk to - and the walks between
- * them keep off the doorways, the spawn and the landing too. Regulars are not
- * collision, as players are not, so even passing they block nothing.
+ * **What they do.** Each visit comes in somewhere a player would - off a boat
+ * or out of one of the buildings - picks something to do, then something else
+ * when that is done, and leaves the same ways, timed to be gone at the moment
+ * the schedule says: `harbourActivities.ts` is the list and the plan. A loiter
+ * spot is open ground with nothing solid round it and nothing a player comes to
+ * the yard for near it, and the walks keep off the doorways, the spawn and the
+ * landing. Regulars are not collision, as players are not, so even passing
+ * they block nothing.
  */
 
 export interface HarbourBot {
@@ -63,8 +60,6 @@ export interface HarbourBot {
    * busy harbour shows what the boutique sells - every one a different look.
    */
   readonly look: DressedLook;
-  /** What they say when spoken to, one line a time they are spoken to. */
-  readonly lines: readonly string[];
 }
 
 export const HARBOUR_BOTS: readonly HarbourBot[] = [
@@ -73,124 +68,72 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     name: 'BULBALUV',
     partner: 'bulbasaur',
     look: { head: 'lass-hair', top: 'plain-tee', legs: 'plain-trousers', body: 'sundress' },
-    lines: [
-      'Oh, hi! Just back off the SEAGALLOP. GREYSTONE VALE was all fog today.',
-      'NURSE JOY patched us up again. BULBASAUR keeps eating the window boxes.',
-      'Got this sundress on THE GREEN. The mirror there shows you from every side first.',
-    ],
   },
   {
     id: 'bot:finny2011',
     name: 'FINNY2011',
     partner: 'charmander',
     look: { head: 'youngster-cap-red', top: 'casual-jacket', legs: 'cargo-trousers', body: null },
-    lines: [
-      'Hey! Seen the hunter tonight? Check the telly in your house before you go.',
-      'CHARMANDER and me found a RANGER PACK last raid. Lost it the raid after!',
-    ],
   },
   {
     id: 'bot:tess-swims',
     name: 'TESS-SWIMS',
     partner: 'squirtle',
     look: { head: 'swimmer-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'swimsuit' },
-    lines: [
-      'Hi there! SQUIRTLE wants to swim out to the S.S. ANNE. I keep saying no.',
-      'Pack POTIONS. Then pack more POTIONS. That\'s what the GYM GUIDE says!',
-    ],
   },
   {
     id: 'bot:oz-hikes',
     name: 'OZ-HIKES',
     partner: 'ivysaur',
     look: { head: 'hiker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'hiker-gear' },
-    lines: [
-      'Hello! My IVYSAUR evolved on the last raid. Took me right by surprise!',
-      'BROCK\'s workshop gets bigger every time I look. What\'s he building in there?',
-    ],
   },
   {
     id: 'bot:karpking',
     name: 'KARPKING',
     partner: 'wartortle',
     look: { head: 'ace-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'ace-suit' },
-    lines: [
-      'Hiya! The ANGLER on the cove lent me his rod. Caught nothing but MAGIKARP.',
-      'Yes, KARPKING is a joke. No, I have not caught anything else yet.',
-      'WARTORTLE likes the breakwater. Says the waves are the right size.',
-    ],
   },
   {
     id: 'bot:xkitx',
     name: 'XKITX',
     partner: 'charmeleon',
     look: { head: 'rocker-quiff', top: 'rocker-jacket', legs: 'denim-jeans', body: null },
-    lines: [
-      'Yo! Got out of the VALE with ten seconds on the clock. Never again!',
-      'CHARMELEON wants a rematch with the hunter. I want a nap.',
-      `Like the jacket? ${BOUTIQUE_NAME}, top of THE GREEN. Trying it on is free.`,
-    ],
   },
   {
     id: 'bot:dexhunter',
     name: 'DEXHUNTER',
     partner: 'squirtle',
     look: { head: 'fisher-cap', top: 'fishing-vest', legs: 'sky-trousers', body: null },
-    lines: [
-      'Hi! Have you read the notice board on the quay? There\'s a new notice every day.',
-      'PROF. OAK says every new kind in your Pokédex gets you closer to a reward.',
-    ],
   },
   {
     id: 'bot:beebee22',
     name: 'BEEBEE22',
     partner: 'bulbasaur',
     look: { head: 'picnicker-hat', top: 'plain-tee', legs: 'plain-trousers', body: 'picnic-dungarees' },
-    lines: [
-      'Hi! My best Pokémon always rides home in the secure container. Learned the hard way.',
-      'BULBASAUR naps on the green while I talk to BILL. Every single time.',
-    ],
   },
   {
     id: 'bot:1moreraid',
     name: '1MORERAID',
     partner: 'charmander',
     look: { head: 'bowl-cut', top: 'office-shirt', legs: 'smart-shorts', body: null },
-    lines: [
-      'Hey there! Just doing one more raid. Then bed. Probably.',
-      'If the hunter catches you, you can run. It costs you clock, though!',
-    ],
   },
   {
     id: 'bot:og-nell',
     name: 'OG-NELL',
     partner: 'venusaur',
     look: { head: 'golden-waves', top: 'plain-tee', legs: 'plain-trousers', body: 'long-skirt' },
-    lines: [
-      'Oh, hello! VENUSAUR and I have been coming here since the harbour was a jetty.',
-      'The S.S. ANNE\'s CAPTAIN will lend you his spyglass if you ask nicely.',
-    ],
   },
   {
     id: 'bot:toise4life',
     name: 'TOISE4LIFE',
     partner: 'blastoise',
     look: { head: 'sailor-cap', top: 'plain-tee', legs: 'plain-trousers', body: 'sailor-whites' },
-    lines: [
-      'Hey! BLASTOISE scared the PIDGEY off the green again. Sorry, PIDGEY.',
-      'Wave at people! Half the harbour waves back.',
-    ],
   },
   {
     id: 'bot:skyezard',
     name: 'SKYEZARD',
     partner: 'charizard',
     look: { head: 'ace-wave', top: 'ace-jacket', legs: 'ace-trousers', body: null },
-    lines: [
-      'Hi! CHARIZARD wants to fly us home, but the SEAGALLOP is faster with a full pack.',
-      'Find anything good out there? I found a whole lot of nothing.',
-      'Somebody found a shiny CHARIZARD jacket in the VALE. No shop sells those.',
-    ],
   },
 ];
 
@@ -206,7 +149,7 @@ export const BOTS_MAX_PRESENT = 6;
 /** Ties every roll here to this file, so no other seeded roll moves with it. */
 const SALT = 0x4a7b0c11;
 
-function rngFor(...parts: readonly number[]): SeededRng {
+export function rngFor(...parts: readonly number[]): SeededRng {
   let seed = SALT;
   for (const part of parts) {
     seed = Math.imul(seed ^ (part | 0), 0x9e3779b1) ^ (seed >>> 15);
@@ -326,13 +269,17 @@ export interface BotGate {
 }
 
 /**
- * The ways a regular comes and goes: off the Seagallop at the jetty's foot,
- * and out of (or into) every building in the yard - the Raid Arena's door is
- * somebody off on a raid.
+ * The ways a regular comes and goes: over the side of a boat - the jetty tile
+ * beside the Seagallop's stern, the pier tile beside the S.S. Anne's bow - and
+ * through the door of every building the whole harbour shares; the Raid
+ * Arena's is somebody off on a raid. Never THE BOLTHOLE's: that door is each
+ * player's own home, and a stranger coming out of it would be a stranger in
+ * their house.
  */
 export const BOT_GATES: readonly BotGate[] = [
-  { id: 'seagallop', tile: { x: 12, y: 21 } },
-  ...BASE_DOORS.map((door) => ({ id: door.id, tile: door.tiles[0] })),
+  { id: 'seagallop', tile: { x: 11, y: 21 } },
+  { id: 'ss-anne', tile: { x: 30, y: 26 } },
+  ...BASE_DOORS.filter((door) => door.id !== 'bolthole').map((door) => ({ id: door.id, tile: door.tiles[0] })),
 ];
 
 interface BotGround {
@@ -496,38 +443,52 @@ function walkChecker(collision: readonly (readonly boolean[])[]): (taken: Readon
     });
 }
 
-/** The loiter spots a regular uses: their own share, so no two regulars ever pause on one tile. */
-export function spotsOf(bot: HarbourBot): readonly GridPosition[] {
-  const index = HARBOUR_BOTS.indexOf(bot);
-  return botGround().spots.filter((_, at) => at % HARBOUR_BOTS.length === index);
-}
+/** A tile's place in a flat array of the yard. */
+export const tileIndex = (tile: GridPosition): number => tile.y * botGround().width + tile.x;
 
-/** The shortest walk between two tiles over the regulars' ground, a gate allowed at either end. */
-export function botPath(from: GridPosition, to: GridPosition): GridPosition[] | null {
+/** Filled by `botPath`, a call at a time: a plan asks for many, and a page plans many at once. */
+let cameFrom: Int32Array | null = null;
+let queue: Int32Array | null = null;
+
+/**
+ * The shortest walk between two tiles over the regulars' ground, a way in or
+ * out allowed at either end, going round any tile `avoid` marks.
+ */
+export function botPath(from: GridPosition, to: GridPosition, avoid: Uint8Array | null = null): GridPosition[] | null {
   const { walks, width, height } = botGround();
-  const can = (x: number, y: number): boolean =>
-    x >= 0 && y >= 0 && x < width && y < height && (walks[y][x] || (x === to.x && y === to.y));
-  const cameFrom = new Map<string, GridPosition | null>([[key(from), null]]);
-  let frontier: GridPosition[] = [from];
-  while (frontier.length > 0 && !cameFrom.has(key(to))) {
-    const next: GridPosition[] = [];
-    for (const tile of frontier) {
-      for (const [dx, dy] of NEIGHBOURS) {
-        const step = { x: tile.x + dx, y: tile.y + dy };
-        if (can(step.x, step.y) && !cameFrom.has(key(step))) {
-          cameFrom.set(key(step), tile);
-          next.push(step);
-        }
-      }
+  const cells = width * height;
+  cameFrom ??= new Int32Array(cells);
+  queue ??= new Int32Array(cells);
+  const trail = cameFrom;
+  const line = queue;
+  trail.fill(-1);
+  const start = from.y * width + from.x;
+  const goal = to.y * width + to.x;
+  trail[start] = start;
+  let head = 0;
+  let tail = 0;
+  line[tail++] = start;
+  while (head < tail && trail[goal] < 0) {
+    const at = line[head++];
+    const x = at % width;
+    const y = (at - x) / width;
+    for (const [dx, dy] of NEIGHBOURS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const step = ny * width + nx;
+      if (trail[step] >= 0 || (step !== goal && (!walks[ny][nx] || avoid?.[step]))) continue;
+      trail[step] = at;
+      line[tail++] = step;
     }
-    frontier = next;
   }
-  if (!cameFrom.has(key(to))) {
+  if (trail[goal] < 0) {
     return null;
   }
   const path: GridPosition[] = [];
-  for (let at: GridPosition | null = to; at; at = cameFrom.get(key(at)) ?? null) {
-    path.unshift(at);
+  for (let at = goal; ; at = trail[at]) {
+    path.unshift({ x: at % width, y: Math.floor(at / width) });
+    if (at === start) break;
   }
   return path;
 }
@@ -579,25 +540,65 @@ export const ROOM_CALLS: readonly { readonly room: SharedRoomId; readonly spots:
       { tile: { x: 12, y: 11 }, facing: 'right' },
     ],
   },
+  {
+    // Going through the rails.
+    room: 'boutique',
+    spots: [
+      { tile: { x: 6, y: 5 }, facing: 'right' },
+      { tile: { x: 6, y: 6 }, facing: 'right' },
+    ],
+  },
 ];
 
 /** How long a room is one regular's to call in (`roomCaller`). */
 export const ROOM_WINDOW_MS = 90_000;
 
 /** The shortest call worth going in for, and the longest. */
-const CALL_MS = [25_000, 60_000] as const;
+export const CALL_MS = [25_000, 60_000] as const;
+
+/** How many windows' callers are remembered: a window is asked about every frame somebody plans in it. */
+const callers = new Map<number, readonly number[]>();
+
+/** The regulars in for all of a window, in the order that window offers them a room, so no two rooms offer one person. */
+function callersIn(window: number): readonly number[] {
+  const known = callers.get(window);
+  if (known) {
+    return known;
+  }
+  const opens = window * ROOM_WINDOW_MS;
+  const closes = opens + ROOM_WINDOW_MS;
+  const firstVisit = Math.floor(opens / BOT_SLOT_MS) - BOTS_MAX_PRESENT - 1;
+  const here: number[] = [];
+  for (let visit = firstVisit; visit <= Math.floor(closes / BOT_SLOT_MS); visit += 1) {
+    const { from, to } = visitSpan(visit);
+    // Time to walk to the door, and time after the call to go.
+    if (from + CALL_MARGIN_MS <= closes && to - CALL_MARGIN_MS >= opens) {
+      here.push(visit);
+    }
+  }
+  const order = rngFor(8, window).shuffle(here);
+  callers.set(window, order);
+  if (callers.size > 200) {
+    callers.delete(callers.keys().next().value as number);
+  }
+  return order;
+}
+
+/** How far inside a visit a call has to fall. */
+const CALL_MARGIN_MS = 45_000;
 
 /**
- * Who may call on a room in a window, if anybody: two of the four rooms take
- * a caller a window, turn about, each someone different - so no two regulars
- * are ever in one room, and never more than two are indoors at once.
+ * Who may call on a room in a window, if anybody: at most two of the five
+ * rooms take a caller a window, turn about, each someone different - so no two
+ * regulars are ever in one room, and never more than two are indoors at once.
+ * Whoever is in at the time, so a call is a thing a good few visits make.
  */
 export function roomCaller(roomIndex: number, window: number): HarbourBot | null {
-  if ((roomIndex + window) % 2 !== 0) {
+  if ((((roomIndex + window) % 3) + 3) % 3 !== 0 || !rngFor(9, window, roomIndex).chance(0.7)) {
     return null;
   }
-  const count = HARBOUR_BOTS.length;
-  return HARBOUR_BOTS[(((window * 5 + roomIndex * 3) % count) + count) % count];
+  const visit = callersIn(window)[roomIndex];
+  return visit === undefined ? null : visitBot(visit);
 }
 
 /**
@@ -631,264 +632,3 @@ export function fewestPresent(from: number, to: number): number {
 
 /** How many must be about for one to go indoors: the yard's floor and the two rooms that may be taken. */
 export const CALL_WHILE_AT_LEAST = BOTS_MIN_PRESENT + 2;
-
-// -- a visit ------------------------------------------------------------------
-
-/** One part of a visit: a walk along tiles a step every `STEP_DURATION_MS`, or a pause looking about. */
-export type VisitLeg =
-  | { readonly kind: 'walk'; readonly from: number; readonly path: readonly GridPosition[] }
-  | {
-      readonly kind: 'pause';
-      readonly from: number;
-      readonly to: number;
-      readonly tile: GridPosition;
-      /** Which way they look, and from when. */
-      readonly looks: readonly { readonly at: number; readonly facing: Direction }[];
-    }
-  | {
-      /** Through a keeper's door, and in their room until `to` (`ROOM_CALLS`). */
-      readonly kind: 'inside';
-      readonly from: number;
-      readonly to: number;
-      readonly room: SharedRoomId;
-      /** The doorway they went in by and come out of. */
-      readonly door: GridPosition;
-      readonly spot: RoomSpot;
-    };
-
-export interface VisitPlan {
-  readonly visit: number;
-  readonly bot: HarbourBot;
-  readonly from: number;
-  readonly to: number;
-  readonly enter: BotGate;
-  readonly leave: BotGate;
-  readonly legs: readonly VisitLeg[];
-}
-
-/** The shortest pause worth stopping for, and the longest. */
-const PAUSE_MS = [3_000, 14_000] as const;
-
-const FACINGS: readonly Direction[] = ['up', 'down', 'left', 'right'];
-
-function directionOf(from: GridPosition, to: GridPosition): Direction {
-  if (to.x > from.x) return 'right';
-  if (to.x < from.x) return 'left';
-  return to.y > from.y ? 'down' : 'up';
-}
-
-const walkMs = (path: readonly GridPosition[]): number => (path.length - 1) * STEP_DURATION_MS;
-
-const plans = new Map<number, VisitPlan>();
-
-/**
- * Everything one visit does, from the tile they appear on to the tile they go
- * from: walk to a loiter spot of their own, look about a while, walk on - as
- * long as the walk out still fits before the schedule says they are gone.
- */
-export function visitPlan(visit: number): VisitPlan {
-  const cached = plans.get(visit);
-  if (cached) {
-    return cached;
-  }
-  const bot = visitBot(visit);
-  const { from, to } = visitSpan(visit);
-  const roll = rngFor(4, visit);
-  const enter = roll.pick(BOT_GATES);
-  const leave = roll.pick(BOT_GATES);
-  const spots = spotsOf(bot);
-  const legs: VisitLeg[] = [];
-  let at = enter.tile;
-  let now = from;
-  let last: GridPosition | null = null;
-  const pauseAt = (spot: GridPosition, there: readonly GridPosition[], pause: number): void => {
-    const looks: { at: number; facing: Direction }[] = [
-      { at: now, facing: there.length > 1 ? directionOf(there[there.length - 2], spot) : roll.pick(FACINGS) },
-    ];
-    for (let look = now + roll.int(1_500, 4_000); look < now + pause - 800; look += roll.int(1_500, 4_000)) {
-      looks.push({ at: look, facing: roll.pick(FACINGS) });
-    }
-    legs.push({ kind: 'pause', from: now, to: now + pause, tile: spot, looks });
-    now += pause;
-    at = spot;
-    last = spot;
-  };
-  let called = false;
-  for (let tries = 0; tries < 12; tries += 1) {
-    // From a spot of their own, now and then, in through a keeper's door.
-    if (!called && last !== null && roll.chance(0.7)) {
-      const call = callIn(bot, at, now, to, leave, roll);
-      if (call) {
-        called = true;
-        if (call.wait > 0) {
-          const standing = legs[legs.length - 1];
-          if (standing.kind === 'pause') {
-            legs[legs.length - 1] = { ...standing, to: standing.to + call.wait };
-          }
-          now += call.wait;
-        }
-        legs.push({ kind: 'walk', from: now, path: call.there });
-        now += walkMs(call.there);
-        legs.push({ kind: 'inside', from: now, to: call.out, room: call.room, door: call.door, spot: call.spot });
-        now = call.out;
-        at = call.door;
-        // And out again to somewhere of their own, never standing in the doorway.
-        legs.push({ kind: 'walk', from: now, path: call.after });
-        now += walkMs(call.after);
-        pauseAt(call.after[call.after.length - 1], call.after, PAUSE_MS[0]);
-        continue;
-      }
-    }
-    const choices = spots.filter((spot) => !last || spot.x !== last.x || spot.y !== last.y);
-    const spot = roll.pick(choices);
-    const there = botPath(at, spot);
-    const out = botPath(spot, leave.tile);
-    if (!there || !out) continue;
-    const pause = roll.int(PAUSE_MS[0], PAUSE_MS[1]);
-    if (now + walkMs(there) + pause + walkMs(out) > to) {
-      continue;
-    }
-    legs.push({ kind: 'walk', from: now, path: there });
-    now += walkMs(there);
-    pauseAt(spot, there, pause);
-  }
-  let gone = leave;
-  if (legs.length === 0) {
-    // Too short a visit for a pause anywhere of their own choosing: the spot
-    // nearest the way in, for whatever time there is - out the way they came
-    // if the other way out is too far. Never a pause on a doorway.
-    const fits = [leave, enter].flatMap((way) =>
-      spots.flatMap((spot) => {
-        const there = botPath(enter.tile, spot);
-        const out = botPath(spot, way.tile);
-        return there && out && from + walkMs(there) + walkMs(out) <= to ? [{ way, spot, there, cost: walkMs(there) + walkMs(out) }] : [];
-      }),
-    );
-    const best = fits.sort((a, b) => a.cost - b.cost)[0];
-    if (best) {
-      gone = best.way;
-      legs.push({ kind: 'walk', from: now, path: best.there });
-      now += walkMs(best.there);
-      at = best.spot;
-    }
-  }
-  // Out, timed to be on the way-out tile as the schedule says they go.
-  const out = botPath(at, gone.tile) ?? [at];
-  const leaveAt = Math.max(now, to - walkMs(out));
-  if (leaveAt > now) {
-    legs.push({ kind: 'pause', from: now, to: leaveAt, tile: at, looks: [{ at: now, facing: legs.length > 0 ? lastFacing(legs) : 'down' }] });
-  }
-  legs.push({ kind: 'walk', from: leaveAt, path: out });
-  const plan: VisitPlan = { visit, bot, from, to, enter, leave: gone, legs };
-  plans.set(visit, plan);
-  // Visits long gone are not asked about again.
-  for (const old of plans.keys()) {
-    if (old < visit - 40) plans.delete(old);
-  }
-  return plan;
-}
-
-/**
- * A call on a keeper from where a regular is standing, if one fits: a room
- * that is theirs to call in for a window starting about now, the walk to its
- * door, a call of `CALL_MS` inside the window, and time after it to walk to a
- * spot of their own, pause, and still be out when the schedule says.
- */
-function callIn(
-  bot: HarbourBot,
-  at: GridPosition,
-  now: number,
-  to: number,
-  leave: BotGate,
-  roll: SeededRng,
-): {
-  readonly room: SharedRoomId;
-  readonly door: GridPosition;
-  readonly spot: RoomSpot;
-  readonly wait: number;
-  readonly there: readonly GridPosition[];
-  readonly out: number;
-  readonly after: readonly GridPosition[];
-} | null {
-  for (const roomIndex of roll.shuffle(ROOM_CALLS.map((_, index) => index))) {
-    const call = ROOM_CALLS[roomIndex];
-    const door = doorNamed(call.room)?.tiles[0];
-    const there = door ? botPath(at, door) : null;
-    if (!door || !there) continue;
-    const arrival = now + walkMs(there);
-    for (const window of [Math.floor(arrival / ROOM_WINDOW_MS), Math.floor(arrival / ROOM_WINDOW_MS) + 1]) {
-      if (roomCaller(roomIndex, window) !== bot) continue;
-      const opens = window * ROOM_WINDOW_MS;
-      const inside = Math.max(arrival, opens);
-      const wait = inside - arrival;
-      const longest = Math.min(CALL_MS[1], opens + ROOM_WINDOW_MS - 3_000 - inside);
-      if (wait > 12_000 || longest < CALL_MS[0]) continue;
-      const out = inside + roll.int(CALL_MS[0], longest);
-      if (fewestPresent(inside, out) < CALL_WHILE_AT_LEAST) continue;
-      const after = spotsOf(bot)
-        .flatMap((spot) => {
-          const walk = botPath(door, spot);
-          const home = botPath(spot, leave.tile);
-          return walk && home && out + walkMs(walk) + PAUSE_MS[0] + walkMs(home) <= to ? [walk] : [];
-        })
-        .sort((a, b) => a.length - b.length)[0];
-      if (!after) continue;
-      return { room: call.room, door, spot: roll.pick(call.spots), wait, there, out, after };
-    }
-  }
-  return null;
-}
-
-function lastFacing(legs: readonly VisitLeg[]): Direction {
-  const leg = legs[legs.length - 1];
-  if (leg.kind === 'inside') {
-    return 'down';
-  }
-  if (leg.kind === 'pause') {
-    return leg.looks[leg.looks.length - 1].facing;
-  }
-  const { path } = leg;
-  return path.length > 1 ? directionOf(path[path.length - 2], path[path.length - 1]) : 'down';
-}
-
-/** Where a regular is at a moment, out in the yard - or, `inside`, calling on a keeper. */
-export interface BotWhere {
-  readonly tile: GridPosition;
-  readonly next: GridPosition | null;
-  readonly facing: Direction;
-  readonly walking: boolean;
-  readonly inside?: Extract<VisitLeg, { kind: 'inside' }>;
-}
-
-/**
- * Where a visit's regular is at a moment: the tile they are on (or have just
- * stepped onto, `next` while they are walking towards it) and which way they
- * face - or null before they arrive and once they have gone.
- */
-export function botAt(
-  plan: VisitPlan,
-  nowMs: number,
-): BotWhere | null {
-  if (nowMs < plan.from || nowMs >= plan.to) {
-    return null;
-  }
-  for (let index = plan.legs.length - 1; index >= 0; index -= 1) {
-    const leg = plan.legs[index];
-    if (leg.from > nowMs) continue;
-    if (leg.kind === 'inside') {
-      if (nowMs >= leg.to) continue;
-      return { tile: leg.door, next: null, facing: 'up', walking: false, inside: leg };
-    }
-    if (leg.kind === 'pause') {
-      if (nowMs >= leg.to) continue;
-      const look = [...leg.looks].reverse().find((each) => each.at <= nowMs) ?? leg.looks[0];
-      return { tile: leg.tile, next: null, facing: look.facing, walking: false };
-    }
-    const step = Math.min(leg.path.length - 1, Math.floor((nowMs - leg.from) / STEP_DURATION_MS));
-    const tile = leg.path[step];
-    const next = leg.path[step + 1] ?? null;
-    const facing = next ? directionOf(tile, next) : step > 0 ? directionOf(leg.path[step - 1], tile) : 'down';
-    return { tile, next, facing, walking: next !== null };
-  }
-  return null;
-}
