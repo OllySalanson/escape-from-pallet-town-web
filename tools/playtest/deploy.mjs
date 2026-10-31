@@ -77,7 +77,7 @@ export async function walkIntoBase(page, door, options = {}) {
       await openHallPanel(page, 'bench', { ...options, press, until, wait: settle });
       return;
     }
-    // Through the Raid Arena's door its trailer plays first, and any key skips
+    // The first time through the Raid Arena's door its trailer plays, and any key skips
     // it to the hall (`scenes/ArenaIntroScene.ts`). It ignores keys for
     // its first half-second, so the press is made again until it takes.
     if (await page.evaluate(sceneIs('arenaIntro'))) {

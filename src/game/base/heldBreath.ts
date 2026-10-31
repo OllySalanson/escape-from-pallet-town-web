@@ -9,8 +9,10 @@ import { ARENA_TILE } from './arenaHall';
  *
  * It asks no third press and any key cuts it short, because the two presses from
  * home to the fall are what going again costs. And it says everything only for a
- * team's first raids: at raid two hundred it says the one thing that would hurt
- * most, or it would drag. Phaser-free, so all of it can be asked of a number.
+ * team's first raids: after that it stops for one thing, a Pokémon that would not
+ * come back or a pack that would be missed, and with neither there is no hold at
+ * all, so when it does stop it means something. Phaser-free, so all of it can be
+ * asked of a number.
  */
 
 /** How many raids in a row a team has everything named. */
@@ -38,6 +40,8 @@ export interface AtRisk {
   readonly pokemon: readonly { readonly name: string; readonly level: number }[];
   /** The pack worn, unless it is the Satchel nobody is ever left without. */
   readonly pack: string | null;
+  /** Whether that pack is more than the one a new save is issued, and would be missed. */
+  readonly packIsBetter: boolean;
   /** Already worded, biggest stack first. */
   readonly items: readonly string[];
 }
@@ -46,16 +50,17 @@ const NOTHING_TO_LOSE = 'NOTHING TO LOSE';
 
 /**
  * What the screen says. On a team's first raids everything at risk, up to what
- * the screen holds; after that only the biggest thing, which is whoever is most
- * at stake, else the pack, else the biggest stack.
+ * the screen holds; after that whoever is most at stake, else a pack worth more
+ * than the one everybody is issued, else nothing, and nothing is no hold.
  */
 export function stakeWords(risk: AtRisk, raidsWithThisTeam: number): readonly string[] {
   const pokemon = [...risk.pokemon].sort((one, other) => other.level - one.level).map(({ name }) => name);
-  const all = [...pokemon, ...(risk.pack ? [risk.pack] : []), ...risk.items].map((word) => word.toUpperCase());
-  if (all.length === 0) {
-    return [NOTHING_TO_LOSE];
+  if (raidsWithThisTeam <= RAIDS_NAMED_IN_FULL) {
+    const all = [...pokemon, ...(risk.pack ? [risk.pack] : []), ...risk.items].map((word) => word.toUpperCase());
+    return all.length === 0 ? [NOTHING_TO_LOSE] : all.slice(0, MOST_WORDS);
   }
-  return raidsWithThisTeam <= RAIDS_NAMED_IN_FULL ? all.slice(0, MOST_WORDS) : all.slice(0, 1);
+  const hurts = [...pokemon, ...(risk.pack && risk.packIsBetter ? [risk.pack] : [])];
+  return hurts.slice(0, 1).map((word) => word.toUpperCase());
 }
 
 /** How long the breath is held, for so many words. */

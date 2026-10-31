@@ -2,7 +2,6 @@ import type Phaser from 'phaser';
 import { getIdleFrame } from '../playerFrames';
 import { cloudSheet, paintCloudPiece } from './arenaPit';
 import { PUFF_RADII, PURSUER_FROM_MS, fallFacing, fallerAt, pursuerAt, puffsAt, windAt, JUMP_MS, type JumpPose } from './arenaDive';
-import { audioManager } from '../audio/AudioManager';
 import { getWorldCharacterAppearance, worldCharacterIdleFrame } from '../world/characterPresentation';
 import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
@@ -197,8 +196,9 @@ export class ArenaDiveView {
     const appearance = getWorldCharacterAppearance('npc', pursuer.rival.design);
     const frame = worldCharacterIdleFrame(appearance, fallFacing(fallingMs, 1));
     if (!pursuer.image) {
+      // Seen and not heard: that sting is the one word for a hunter entering the
+      // raid, and on every jump it taught players to ignore it.
       pursuer.image = this.keep(this.scene.add.image(0, 0, appearance.textureKey, frame).setOrigin(0, 0).setDepth(PURSUER_DEPTH));
-      audioManager.play('hunterArrival');
     }
     const at = pursuerAt(fallingMs, this.scene.scale.width, this.scene.scale.height);
     pursuer.image.setVisible(at !== null).setFrame(frame);

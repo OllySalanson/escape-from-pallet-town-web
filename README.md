@@ -55,8 +55,8 @@ That's it. Go out, get greedy, come home. Or don't come home, and learn somethin
 Walk into the Raid Arena at the west end of the harbour. The first time, it shows you what you're
 in for: a trailer of a raid, played in the game itself, with you in it. You sneak about with your
 partner picking things up, a fight goes your way, and then tonight's hunter turns up with their whole
-team. A Charizard has to come and save you. (Any key skips it, and after the first time there's a
-SKIP on screen.) Then you're inside, and it's enormous: a great round hall four times the width of anything else in the
+team. A Charizard has to come and save you. (Any key skips it, and the Gym Guide by the door will
+run the reel again if you ask.) Then you're inside, and it's enormous: a great round hall four times the width of anything else in the
 harbour, a stone platform all the way round with pillars and burning torches, and in the middle a colosseum of steps going
 down to a pit. Lean on the fence and look. That's Greystone Vale at the bottom, from a very long way up - only the parts
 you've walked, with cloud over everything else. Everything you do before a raid, you do right here on the floor.

@@ -6,7 +6,7 @@ import { homeAfterRaid } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
 import { clockLine, closeCallLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -174,7 +174,7 @@ import {
   nextBump,
   nextHunterProximity,
 } from '../audio/worldSounds';
-import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
+import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemId } from '../items';
 import {
   areContractStopsComplete,
@@ -1521,14 +1521,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const dust = this.add.graphics().setDepth(atRow(FIGURE_BAND, this.currentTile.y) + 0.0005);
     const ground = { x: this.player.x + TILE_SIZE / 2, y: this.player.y + this.player.height - 2 };
     const ring = this.add.graphics().setDepth(ARRIVAL_CLOUD_DEPTH + 1);
-    const everStuckOne = (new SaveManager().load()?.raidProgress.landings?.best ?? 0) > 0;
-    const ringHint = everStuckOne
+    const held = new SaveManager().load()?.raidProgress;
+    const ringHint = !ringNamesItsKey(held ? raidsDeployed(held) : 0, held?.landings?.best ?? 0)
       ? null
       : this.add
           .text(ground.x, ground.y - 42, '[SPACE]', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd', backgroundColor: '#0b1220', padding: { x: 3, y: 1 } })
           .setOrigin(0.5, 1)
           .setDepth(ARRIVAL_CLOUD_DEPTH + 1)
           .setVisible(false);
+    // Nothing is seated until the raid is the player's, and a caption never seated
+    // stands where it was made: under the FEEDBACK tab, or over whoever is passing.
+    this.worldLabels.forEach((label) => label.hide());
     this.arrival = {
       elapsedMs: 0,
       cloud,

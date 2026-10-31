@@ -16,8 +16,11 @@
  * one cuts whatever that channel was still saying - which is how the hardware
  * this is modelled on kept a busy moment from stacking into noise, and it is
  * the only mixing rule the game has. See `AudioManager.play()`.
+ *
+ * `hall` is THE RAID ARENA's own big noises, the crowd and the wind of a fall: on
+ * `world` a partner's chirp cut a raid's groan off a tenth of a second in.
  */
-export type SoundChannel = 'ui' | 'world' | 'battle' | 'alert' | 'fanfare' | 'cry';
+export type SoundChannel = 'ui' | 'world' | 'hall' | 'battle' | 'alert' | 'fanfare' | 'cry';
 
 export type SoundWave = 'square' | 'triangle' | 'sawtooth' | 'noise';
 
@@ -195,7 +198,7 @@ export const SOUND_EFFECTS = {
   },
   grassRustle: {
     channel: 'world',
-    moment: 'A step enters tall grass - the only footstep, because it is the only ground with a risk on it - and, now and then, a torch crackling beside the player in the Raid Arena',
+    moment: 'A step enters tall grass - the only footstep, because it is the only ground with a risk on it',
     tones: [noise(2600, 0.05, 0.045), noise(1800, 0.06, 0.035, 0.045)],
     // The step that enters the grass is often the step that finds something in it.
     yields: true,
@@ -231,8 +234,15 @@ export const SOUND_EFFECTS = {
     // The ground first, then air going past whatever it is.
     tones: [sweep(tri(82, 0.3, 0.1), 110), sweep(noise(500, 0.45, 0.06, 0.08), 2600)],
   },
+  torchCrackle: {
+    channel: 'hall',
+    moment: 'Once in a while, a torch beside the player in the Raid Arena',
+    // A few dry ticks with nothing under them, because tall grass has the rustle.
+    tones: [noise(3800, 0.018, 0.03), noise(2600, 0.024, 0.024, 0.06), noise(4200, 0.014, 0.018, 0.13)],
+    yields: true,
+  },
   crowdRoar: {
-    channel: 'world',
+    channel: 'hall',
     moment: 'The Raid Arena on its feet for a big haul, or a lap of honour: sounded a few times over, it swells',
     // Two bands of filtered noise rising together, with no pitch to them at all:
     // a lot of people, a long way up, rather than one thing happening.
@@ -240,14 +250,14 @@ export const SOUND_EFFECTS = {
     yields: true,
   },
   crowdCheer: {
-    channel: 'world',
+    channel: 'hall',
     moment: "The Raid Arena's crowd pleased: a good raid home, a wave back, a runner coming past",
     // The roar's top band alone, falling away: fewer people, less sure of it.
     tones: [sweep(noise(1900, 0.42, 0.05), 1300)],
     yields: true,
   },
   crowdClap: {
-    channel: 'world',
+    channel: 'hall',
     moment: "The Raid Arena's crowd being polite about a thin raid, and the end of any cheer",
     // Hands, unevenly: short ticks of high noise that are nearly but not quite in time.
     tones: [
@@ -262,7 +272,7 @@ export const SOUND_EFFECTS = {
     yields: true,
   },
   crowdGroan: {
-    channel: 'world',
+    channel: 'hall',
     moment: 'A raid lost: the whole of the Raid Arena lets its breath out',
     // Low and falling and the dullest noise there is, with a reed of sawtooth
     // under it so that it is a voice rather than the wind.
@@ -398,9 +408,15 @@ export const SOUND_EFFECTS = {
   },
   diveRush: {
     channel: 'world',
-    moment: 'Going down through the air into a raid, over the fence of the Raid Arena and out of the cloud',
+    moment: 'Coming down out of the cloud on to a raid, from the Raid Arena',
     // The wind going past: noise, opening as the fall gathers.
     tones: [sweep(noise(500, 0.5, 0.05), 2600)],
+  },
+  diveWind: {
+    channel: 'hall',
+    moment: 'Going down through the air, over the fence of the Raid Arena: the whole of the drop to the cloud',
+    // The rush's own noise, drawn out for as long as the drop lasts and opening all the way.
+    tones: [sweep(noise(420, 1.6, 0.05), 3000)],
   },
   landThud: {
     channel: 'world',
@@ -450,7 +466,7 @@ export const SOUND_EFFECTS = {
   hunterArrival: {
     channel: 'alert',
     ducksMusic: true,
-    moment: 'The rival hunter enters the raid, and comes over the Raid Arena\'s rail after whoever has just jumped',
+    moment: 'The rival hunter enters the raid',
     tones: [saw(147, 0.16, 0.07), saw(139, 0.16, 0.07, 0.16), sq(110, 0.3, 0.065, 0.32)],
   },
   hunterNear: {

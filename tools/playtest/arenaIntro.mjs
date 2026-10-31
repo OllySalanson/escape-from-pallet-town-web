@@ -5,8 +5,9 @@
 // A new game walks into the Arena's door, and the trailer plays unasked
 // (`scenes/ArenaIntroScene.ts`); every beat is photographed at the moment
 // named below, then a key on the closing card has to land in the great hall.
-// Backing out and walking in again, it has to play again with SKIP on screen,
-// and one key has to skip it to the hall. The loop is paused and stepped at
+// Backing out and walking in again goes straight to the hall, and the Gym Guide
+// at the door runs it again when asked, with SKIP on screen, and one key has to
+// skip it to the hall. The loop is paused and stepped at
 // 60fps frames throughout, so the pictures are of exact moments - use a
 // test-mode build (`?testmode=pixels` for a picture worth judging;
 // `tools/playtest/README.md`, "Memory"). `--live` leaves the loop running and
@@ -152,23 +153,52 @@ try {
   await step(400);
   expect('a key on the card lands on the mat of the great hall', await page.evaluate(onTheMat));
 
-  // Out of the door, and in again: it plays with SKIP, and a key skips it.
+  // Out of the door and in again: it is a door like any other now.
   await press('ArrowDown');
   await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && !b.room; })()`, 'back in the harbour');
   await step(800);
-  await walkIntoBase(page, 'raid-arena', {
-    press: async (code) => {
-      if (await page.evaluate(sceneIs('arenaIntro'))) throw new Error(intro);
-      await page.tap(code, 0);
-    },
-    until,
-    wait: step,
-  }).catch((error) => {
-    if (error.message !== intro) throw error;
-  });
-  await until(sceneIs('arenaIntro'), 'the trailer, again');
+  await press('ArrowUp');
+  await step(800);
+  expect('the door goes straight to the hall the second time', !(await page.evaluate(sceneIs('arenaIntro'))));
+  await until(onTheMat, 'the great hall, straight through the door');
+  await press('ArrowDown');
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && !b.room; })()`, 'back in the harbour again');
+  await step(800);
+
+  // The Gym Guide, who closes the trailer, runs it again for anybody who asks.
+  const toTheGuide = () =>
+    page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); if (!b.ready || b.targetTile) return null;
+      const at = b.harbourLife.spriteAt('gym-guide'); const g = { x: Math.round(at.x / 16), y: Math.round((at.y + 8) / 16) };
+      const s = b.currentTile; const near = (x, y) => Math.abs(x - g.x) + Math.abs(y - g.y) === 1;
+      if (near(s.x, s.y)) return { face: g.x > s.x ? 'ArrowRight' : g.x < s.x ? 'ArrowLeft' : g.y > s.y ? 'ArrowDown' : 'ArrowUp' };
+      const c = b.collision, W = c[0].length, H = c.length, id = (x, y) => y * W + x, prev = new Map([[id(s.x, s.y), null]]), queue = [[s.x, s.y]]; let found = null;
+      while (queue.length) { const [x, y] = queue.shift(); if (near(x, y)) { found = [x, y]; break; }
+        for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || b.isBlocked({ x: nx, y: ny }) || b.doors.some((d) => d.tiles.some((t) => t.x === nx && t.y === ny))) continue;
+          prev.set(id(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
+      if (!found) return null; let cur = found, key = null; for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return { key }; })()`);
+  for (let guard = 0; guard < 40; guard += 1) {
+    const move = await toTheGuide();
+    if (move?.face) {
+      await press(move.face);
+      break;
+    }
+    if (move?.key) await press(move.key);
+    await step(240);
+  }
+  await press('Space');
+  for (let guard = 0; guard < 16 && !(await page.evaluate(`Boolean(${GAME}.scene.getScene('base').boxQuestion)`)); guard += 1) {
+    await press('Space');
+    await step(400);
+  }
+  expect('he asks once he has said the day\'s work', await page.evaluate(`Boolean(${GAME}.scene.getScene('base').boxQuestion)`));
+  await page.screenshot(`${out}/22a-reel-question.png`);
+  expect('the cursor starts on NOT NOW', await page.evaluate(`${GAME}.scene.getScene('base').boxQuestion.prompt.selected === 1`));
+  await press('ArrowLeft');
+  await press('Space');
+  await until(sceneIs('arenaIntro'), 'the trailer, asked for');
   const again = await page.evaluate(`${GAME}.scene.getScene('arenaIntro').viewing`);
-  expect(`the second viewing offers SKIP (${again})`, again === 'again');
+  expect(`asked for, it offers SKIP (${again})`, again === 'again');
   await step(2400);
   await page.screenshot(`${out}/23-again-skip.png`);
   await press('KeyZ');

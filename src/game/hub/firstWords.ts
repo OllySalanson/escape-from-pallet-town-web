@@ -65,10 +65,8 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     lines: [
       'Everything for a raid is in this room. Walk up to it and press.',
       'The BENCH is who comes with you. The RACK is what you carry.',
-      'Pack Poké Balls: throw one at a weakened wild Pokémon to keep it.',
-      'A caught Pokémon takes 4 squares of the pack or more, so leave room!',
-      'The LOCKER holds what comes home even if you lose everything else.',
-      'When you are ready, walk round the rim and jump in over the fence.',
+      'Pack Poké Balls, and leave room: a catch takes 4 squares or more.',
+      'The LOCKER comes home whatever happens. Ready? Over the fence.',
     ],
   },
   // Said the first time a player looks down from the rim, over the panel that
@@ -78,9 +76,8 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     name: ARENA_KEEPER_NAME,
     lines: [
       'That is Greystone Vale. The cloud is whatever you have not walked yet.',
-      'Each light down there is a way in. Walk the rim, or pick one here.',
       'What is not in your locker is lost if your team faints or the clock runs out.',
-      'And a rival hunter comes looking once you set off. If they catch you, you fight.',
+      'And a rival hunter comes looking. If they catch you, you fight.',
     ],
   },
   center: {

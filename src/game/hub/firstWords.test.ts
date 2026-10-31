@@ -16,4 +16,9 @@ describe("Oak's first words", () => {
   it('leave words with no greeting as they are written', () => {
     expect(spokenLines(FIRST_WORDS.center, 'ROWAN')).toEqual(FIRST_WORDS.center.lines);
   });
+
+  it('says the hall and the rim in few enough boxes to be read', () => {
+    expect(FIRST_WORDS.loadout.lines.length).toBeLessThanOrEqual(4);
+    expect(FIRST_WORDS.check.lines.length).toBeLessThanOrEqual(3);
+  });
 });

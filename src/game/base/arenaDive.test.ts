@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_FROM_MS, ARRIVAL_FALL_MS, ARRIVAL_MS, DUST_MS, TOUCH_DOWN_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_FROM_MS, ARRIVAL_FALL_MS, ARRIVAL_MS, DUST_MS, TOUCH_DOWN_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey } from '../world/raidArrival';
 import {
   DIVE_MS,
   FALL_MS,
@@ -171,6 +171,13 @@ describe('falling', () => {
 });
 
 describe('landing in the raid', () => {
+  it('names the ring\'s key to a newcomer who has not stuck one, and not for ever', () => {
+    expect(ringNamesItsKey(1, 0)).toBe(true);
+    expect(ringNamesItsKey(5, 0)).toBe(true);
+    expect(ringNamesItsKey(6, 0)).toBe(false);
+    expect(ringNamesItsKey(2, 1)).toBe(false);
+  });
+
   it('opens under nothing but cloud, with the figure out of sight above its tile', () => {
     const start = arrivalPose(0);
     expect(start.cloud).toBe(1);

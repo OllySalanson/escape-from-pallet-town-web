@@ -95,7 +95,8 @@ import { noticeFor } from '../base/harbourNotices';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
-import { gymGuideLines } from '../base/gymGuide';
+import { GYM_GUIDE_REEL_QUESTION, gymGuideLines } from '../base/gymGuide';
+import { ARENA_INTRO_ENDS_ON, arenaIntroViewing } from '../cutscene/arenaIntro';
 import { BASE_SHEET_SOURCE } from '../base/baseSheet';
 import { BASE_PIECES } from '../base/generated/basePieces';
 import {
@@ -201,7 +202,7 @@ import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
 import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
-import { lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
+import { crowdTakesTheView, lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import {
   RIVAL_TILE,
   boutBag,
@@ -219,8 +220,8 @@ import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
 import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
 import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag } from '../items/items';
-import { FALLBACK_PACK_ID } from '../items/packs';
-import { COIN_EVERY_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
+import { FALLBACK_PACK_ID, STARTING_PACK_ID, packSquares } from '../items/packs';
+import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
@@ -233,6 +234,7 @@ import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands'
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
   FOG_APPROACH_MS,
+  FOG_LIFT_LEAST_GAIN,
   FOG_LIFT_MS,
   FOG_LIFT_STEPS,
   steered,
@@ -246,7 +248,7 @@ import {
   partnerLeap,
   overTheFence,
 } from '../base/arenaDive';
-import { STREAK_WORTH_SAYING, marshalLines } from '../base/arenaMarshal';
+import { marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
 import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
@@ -370,6 +372,8 @@ const CROWD_LOOK_MS = 1700;
 const RUN_SLATE_ROW = 56;
 const RUN_SLATE_AT = { x: 34 * TILE_SIZE + 6, y: 54 * TILE_SIZE + 12 };
 const CROWD_LOOK_SHARE = 0.8;
+/** How far short of the bottom of the dark under the stands the look on coming home stops: the seats are in view by then. */
+const CROWD_LOOK_STOPS_SHORT = 28;
 /** What had been got ready when the player went off to a bout, for when they come back. */
 let flowAcrossABout: DeploymentFlow | null = null;
 /** The quickest lap of the ring this page has seen. */
@@ -377,7 +381,7 @@ let bestLapMs: number | null = null;
 /** How long after the plink, for what came back to come. */
 const PIT_GIFT_WAIT_MS = 1200;
 /** How long a raid's fog lifts before a key can cut it short. */
-const FOG_LISTENS_AFTER_MS = 500;
+const FOG_LISTENS_AFTER_MS = 200;
 /** How often a held raid room is told this player is getting ready, and asked who else is. */
 const HALL_ROOM_TICK_MS = 250;
 
@@ -725,6 +729,8 @@ export class BaseScene extends Phaser.Scene {
   } | null = null;
   /** How much longer the view stays turned to the crowd, on coming home. A key takes it back at once. */
   private crowdLookMs = 0;
+  /** How long the player has stood at the rail with nothing else going on. */
+  private railStandMs = 0;
   /** What the crowd last made of a raid, until a lap has been run for it. */
   private lastCrowdMood: CrowdMood | null = null;
   /** The board that says a lap's time. */
@@ -1049,6 +1055,7 @@ export class BaseScene extends Phaser.Scene {
     this.rivalFigure = null;
     this.rivalHere = null;
     this.pitCoinMs = 0;
+    this.railStandMs = 0;
     this.pitGiftDueMs = 0;
     this.pitGiftImage = null;
     this.pitGiftFlight = null;
@@ -1279,8 +1286,16 @@ export class BaseScene extends Phaser.Scene {
     }
 
     if (this.fogLift) {
-      this.advanceFogLift(deltaMs);
-      return;
+      const cut = this.advanceFogLift(deltaMs);
+      if (this.fogLift) {
+        return;
+      }
+      // The press that took the view back is also what it was pressed for: home,
+      // SPACE, ENTER is the whole cost of going again, new ground or not.
+      if (cut === 'interact') {
+        this.tryInteract();
+        return;
+      }
     }
 
     if (this.phrasePicker) {
@@ -1530,13 +1545,15 @@ export class BaseScene extends Phaser.Scene {
       x: this.player.x + TILE_SIZE / 2,
       y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
     };
-    this.arena.update(deltaMs, middle);
+    this.arena.hush(Boolean(this.arenaPanel) || this.dialogBox.visible || Boolean(this.jump));
+    this.arena.update(deltaMs, middle, isAtRim(this.targetTile ?? this.currentTile));
     this.tellTheLap(middle);
     this.watchThePitGift(deltaMs);
     this.hallSign?.update(deltaMs);
     this.runSlate?.update(deltaMs);
     // Walking off, or anything else asked of the view, takes it back from the crowd.
     this.crowdLookMs = this.targetTile || this.arenaPanel || this.dialogBox.visible ? 0 : Math.max(0, this.crowdLookMs - deltaMs);
+    this.railStandMs = this.targetTile || this.arenaPanel || this.dialogBox.visible || !isAtRim(this.currentTile) ? 0 : this.railStandMs + deltaMs;
     this.settleAim();
     this.settleHallCamera(deltaMs, false);
   }
@@ -1805,8 +1822,10 @@ export class BaseScene extends Phaser.Scene {
     }
     const words = this.stakesGoingOver();
     this.jump.dive?.stakesAre(words);
-    this.jump.breath = { elapsedMs: 0, ms: breathMs(words.length), words: words.length, cut: false };
-    arena.holdBreath(true);
+    if (words.length > 0) {
+      this.jump.breath = { elapsedMs: 0, ms: breathMs(words.length), words: words.length, cut: false };
+      arena.holdBreath(true);
+    }
     this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
     this.player.setDepth(CANOPY_BAND + 1);
@@ -1826,6 +1845,7 @@ export class BaseScene extends Phaser.Scene {
         pokemon: flow.riskedPokemon.map(({ pokemon }) => ({ name: pokemon.name, level: pokemon.level })),
         // Nobody is ever left without a Satchel, so it is no stake.
         pack: packId === undefined || packId === FALLBACK_PACK_ID ? null : flow.packName,
+        packIsBetter: packId !== undefined && packSquares(packId) > packSquares(STARTING_PACK_ID),
         items: flow.riskedItems.map(({ itemId, quantity }) => `${getItemById(itemId)?.displayName ?? itemId} ${itemCountTag(itemId, quantity)}`),
       },
       new SaveManager().load()?.raidProgress.benchRaids ?? 1,
@@ -1887,11 +1907,8 @@ export class BaseScene extends Phaser.Scene {
       }
       audioManager.play('ledgeHop');
     }
-    if (before < TURN_BACK_MS + HOP_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS) {
-      audioManager.play('diveRush');
-    }
     if (before < TURN_BACK_MS + HOP_MS + FALL_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS + FALL_MS) {
-      audioManager.play('diveRush');
+      audioManager.play('diveWind');
     }
     const pose = jumpPose(jump.elapsedMs, jump.over);
     if (!pose.figure.falling) {
@@ -1959,6 +1976,11 @@ export class BaseScene extends Phaser.Scene {
     if (!lifted) {
       return;
     }
+    // A corner of new ground is not worth the view: it clears, and the rim is there.
+    if (lifted.gained < FOG_LIFT_LEAST_GAIN) {
+      this.arena?.endFog();
+      return;
+    }
     const sign = new PlaceNameSign(this);
     this.standStill();
     // After the look round at the crowd, if there is one to look at.
@@ -1968,10 +1990,7 @@ export class BaseScene extends Phaser.Scene {
       tile: lifted.tile,
       sign,
       heldMs: 0,
-      line:
-        lifted.gained > 0
-          ? `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`
-          : worldMapName(this.arena!.mapId).toUpperCase(),
+      line: `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`,
     };
   }
 
@@ -1980,12 +1999,10 @@ export class BaseScene extends Phaser.Scene {
     if (!mood || !this.arena) {
       return;
     }
-    // A run of stuck landings has them on the look-out for this player.
-    const streak = this.savedGame.raidProgress.landings?.streak ?? 0;
-    const taken = mood === 'clap' && streak >= STREAK_WORTH_SAYING ? 'cheer' : mood;
-    this.lastCrowdMood = taken;
-    this.arena.crowdReacts(taken, this.figureMiddle());
-    this.crowdLookMs = this.still ? 0 : CROWD_LOOK_MS;
+    this.lastCrowdMood = mood;
+    this.arena.crowdReacts(mood, this.figureMiddle());
+    // Heard every time; only a raid the house really has an opinion of takes the view.
+    this.crowdLookMs = this.still || !crowdTakesTheView(mood) ? 0 : CROWD_LOOK_MS;
   }
 
   private figureMiddle(): { readonly x: number; readonly y: number } {
@@ -1998,9 +2015,10 @@ export class BaseScene extends Phaser.Scene {
   /** Far enough towards the nearest seats to see them, and not so far as to lose the player. */
   private halfwayToTheStands(middle: { readonly x: number; readonly y: number }): { readonly x: number; readonly y: number } {
     const stands = standsBehind(middle);
+    const y = middle.y + (stands.y - middle.y) * CROWD_LOOK_SHARE;
     return {
       x: middle.x + (stands.x - middle.x) * CROWD_LOOK_SHARE,
-      y: middle.y + (stands.y - middle.y) * CROWD_LOOK_SHARE,
+      y: this.crowdLookMs > 0 ? Math.min(y, this.cameras.main.getBounds().bottom - this.scale.height / 2 - CROWD_LOOK_STOPS_SHORT) : y,
     };
   }
 
@@ -2254,10 +2272,10 @@ export class BaseScene extends Phaser.Scene {
     this.hallSign.show(lapLine(lapMs, honour, best));
   }
 
-  private advanceFogLift(deltaMs: number): void {
+  private advanceFogLift(deltaMs: number): 'interact' | 'other' | null {
     const lift = this.fogLift;
     if (!lift) {
-      return;
+      return null;
     }
     const before = lift.elapsedMs;
     lift.elapsedMs += deltaMs;
@@ -2276,14 +2294,15 @@ export class BaseScene extends Phaser.Scene {
     }
     // The key that left the result screen is still on its way up as this starts,
     // and is not a request to skip what it has just opened on.
-    const anyKey = lift.heldMs > FOG_LISTENS_AFTER_MS && this.anyKeyPressed();
-    if (lift.elapsedMs >= FOG_LIFT_MS || anyKey) {
+    const listening = lift.heldMs > FOG_LISTENS_AFTER_MS;
+    const cut = !listening ? null : this.isInteractionPressed() ? 'interact' : this.anyKeyPressed() ? 'other' : null;
+    if (lift.elapsedMs >= FOG_LIFT_MS || cut) {
       this.arena?.endFog();
       lift.sign.destroy();
       this.fogLift = null;
       this.crowdLookMs = 0;
-      this.spentPresses.spendHeld(this.directionKeys());
     }
+    return cut;
   }
 
   // -- walking the hall with the pointer ---------------------------------------
@@ -3427,7 +3446,8 @@ export class BaseScene extends Phaser.Scene {
     }
     // Anywhere on the rim is over a way in, and the hint says which.
     if (this.arena && isAtRim(this.currentTile)) {
-      const coin = this.canTossACoin() ? coinKeyHint(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
+      // Found by somebody stood looking over the rail, rather than advertised beside the way in.
+      const coin = this.canTossACoin() && this.railStandMs >= COIN_HINT_AFTER_MS ? coinKeyHint(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
       const line = this.aimed && !this.kit?.flow.notReady ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
       return coin ? `${line}   ${coin}` : line;
     }
@@ -3945,17 +3965,19 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
+    const fromARaid = data.arrival === 'raid';
     const greeting: PartnerEmote | null =
-      data.arrival === 'raid' || data.chose || (data.from === undefined && data.room === undefined && data.at === undefined)
+      fromARaid || data.chose || (data.from === undefined && data.room === undefined && data.at === undefined)
         ? partner.pokemon.isFainted
           ? 'sleepy'
-          : partner.pokemon.currentHp * 4 <= partner.pokemon.maxHp
+          : partner.pokemon.currentHp * 4 <= partner.pokemon.maxHp || data.raidMood === 'groan'
             ? 'ellipsis'
-            : data.arrival === 'raid'
+            : fromARaid
               ? 'heart'
               : 'happy'
         : null;
-    this.partner = new PartnerFigure(this, this.partnerHost(), partner, place, { greeting });
+    // Home from a raid the house has the floor, and the chirp would talk over it.
+    this.partner = new PartnerFigure(this, this.partnerHost(), partner, place, { greeting, quietGreeting: fromARaid });
   }
 
   /** The player, as the partner reads them (`PartnerHost`). */
@@ -4503,7 +4525,7 @@ export class BaseScene extends Phaser.Scene {
     }
     if (local?.id === GYM_GUIDE_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
-      this.say(gymGuideLines(this.savedGame.raidProgress), [target]);
+      this.say(gymGuideLines(this.savedGame.raidProgress), [target], () => this.offerTheReel());
       return;
     }
     if (local?.id === WARDEN_ID) {
@@ -4669,9 +4691,10 @@ export class BaseScene extends Phaser.Scene {
   private enterRoom(door: BaseDoor): void {
     // Through a door is the yard's lesson done: the room's own hint takes over.
     this.learnKey('walk');
-    // THE RAID ARENA's trailer plays on the way in (`cutscene/arenaIntro.ts`),
-    // unasked the first time and with a SKIP after, and ends in its great hall.
-    if (door.screen === 'arena') {
+    // THE RAID ARENA's trailer plays on the way in the first time, and ends in
+    // its great hall (`cutscene/arenaIntro.ts`). After that this is a door like any
+    // other, and the Gym Guide beside it will run the reel again for anybody who asks.
+    if (door.screen === 'arena' && arenaIntroViewing(this.savedGame.raidProgress) === 'first') {
       this.openArenaIntro({ savedGame: this.savedGame, hall: { savedGame: this.savedGame, room: door.id } });
       return;
     }
@@ -5710,6 +5733,22 @@ export class BaseScene extends Phaser.Scene {
       ...this.savedGame,
       raidProgress: { ...raidProgress, firstWordsHeard: [...(raidProgress.firstWordsHeard ?? []), id] },
     };
+  }
+
+  /** The Gym Guide closes the trailer, so he is who runs it again, once it has been seen. */
+  private offerTheReel(): void {
+    if (arenaIntroViewing(this.savedGame.raidProgress) === 'first') {
+      return;
+    }
+    this.askInBox(
+      GYM_GUIDE_REEL_QUESTION,
+      (yes) => {
+        if (yes) {
+          this.openArenaIntro({ savedGame: this.savedGame, hall: { savedGame: this.savedGame, room: ARENA_INTRO_ENDS_ON } });
+        }
+      },
+      { spendsForGood: true },
+    );
   }
 
   /** Into THE RAID ARENA: its trailer, which hands over to the great hall. */
