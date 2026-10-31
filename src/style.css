@@ -1075,6 +1075,24 @@ button {
     border-bottom: 0;
   }
 }
+/* A window with no room on any edge (640x480): over a menu the tab stands in the
+   corner of the help bar, the one place on a menu screen with no words in it
+   (a right-hand strip here covered Squirtle's note and the name screen's lead). */
+@media (max-width: 671px) and (max-height: 511px) and (orientation: landscape) {
+  body:has(#screens > .pixel-ui) .feedback-tab {
+    top: auto;
+    bottom: 0;
+    width: 96px;
+    height: 24px;
+    line-height: 20px;
+    writing-mode: horizontal-tb;
+    transform: none;
+    border-left: 2px solid #171717;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: none;
+  }
+}
 
 /* The feedback panel's ON AIR dot (`feedback/feedbackPanel.ts`). Kept out of
    the pixel-ui block, whose every selector is a screen's: a keyframe is not. */
@@ -2627,9 +2645,24 @@ button {
 /* --- Choosing a starter: first run, and the lobby's swap ----------------- */
 :where(.pixel-ui) .starter-shell {
   height: 100%;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* What is being said stands together in the middle of the room there is, the
+     bar at the foot; on the smallest stage the two empty rows come to nothing. */
+  grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr) auto;
+  row-gap: 0;
+}
+:where(.pixel-ui) .starter-shell > :nth-child(1) {
+  grid-row: 2;
+}
+:where(.pixel-ui) .starter-shell > :nth-child(2) {
+  grid-row: 3;
+  margin-top: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .starter-shell > :nth-child(3) {
+  grid-row: 5;
+  margin-top: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .starter-brief {
+  justify-self: center;
   color: var(--bar-text);
   padding: 0 calc(var(--u) * 2);
 }
@@ -4000,8 +4033,12 @@ button {
 }
 :where(.pixel-ui) .feedback-attached {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, auto) minmax(0, 1fr);
   min-height: 0;
+}
+/* The smallest stage cannot hold the message and its three rows whole. */
+:where(.pixel-ui[data-room='tight']) textarea.feedback-text.px-field {
+  height: calc(var(--u) * 36);
 }
 .pixel-ui .feedback-thumb {
   width: calc(var(--u) * 50);

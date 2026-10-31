@@ -125,6 +125,25 @@ try {
     expectThat(at.chosen === 'bulbasaur', `${window.name}: left again reaches Bulbasaur (${JSON.stringify(at)})`);
     await page.screenshot(join(out, `${window.name}-keyboard.png`));
 
+    // Charmander, down to CONFIRM and back up: the cursor goes back to the card
+    // chosen, not the one nearest the button. Then a click on the backdrop
+    // leaves the cursor where it was.
+    await page.tap('ArrowRight');
+    await sleep(100);
+    await page.tap('ArrowDown');
+    await sleep(100);
+    await page.tap('ArrowUp');
+    await sleep(150);
+    at = await state(page);
+    expectThat(at.chosen === 'charmander' && at.cursor === 'charmander', `${window.name}: up from CONFIRM returns to the card chosen (${JSON.stringify(at)})`);
+    const brief = await page.evaluate(`(() => { const box = document.querySelector('.starter-brief').getBoundingClientRect(); return { x: box.x + 4, y: box.y + 2 }; })()`);
+    await moveTo(page, brief);
+    await press(page);
+    at = await state(page);
+    expectThat(at.chosen === 'charmander' && at.cursor === 'charmander', `${window.name}: a click off the cards keeps the cursor (${JSON.stringify(at)})`);
+    await page.tap('ArrowLeft');
+    await sleep(150);
+
     // And the whole way through: Bulbasaur chosen, then straight to CONFIRM
     // across Charmander's card, which must not change what is confirmed.
     await page.tap('ArrowRight');

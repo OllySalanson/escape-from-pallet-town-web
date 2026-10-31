@@ -25,6 +25,8 @@ vi.mock('../ui/MenuOverlay', () => ({
         onclick: null as (() => void) | null,
       };
     });
+    public readonly focused: string[] = [];
+    public cursorInside = true;
     public drawn = 0;
     public measured = 0;
     public pointerRule = 'moves-cursor';
@@ -48,9 +50,11 @@ vi.mock('../ui/MenuOverlay', () => ({
             element.textContent = words;
           },
           addEventListener: (_event: string, handler: () => void) => this.clicks.set(selector, handler),
+          focus: () => this.focused.push(selector),
         };
       },
       querySelectorAll: () => this.cards,
+      contains: () => this.cursorInside,
       addEventListener: (event: string, handler: (event: unknown) => void) => this.listeners.set(event, handler),
     };
     public focus(): void {}
@@ -100,6 +104,8 @@ interface StarterInternals {
     listeners: Map<string, (event: unknown) => void>;
     elements: Map<string, { textContent: string; dataset: Record<string, string> }>;
     cards: { dataset: Record<string, string>; classes: Set<string>; attributes: Map<string, string>; onclick: (() => void) | null }[];
+    focused: string[];
+    cursorInside: boolean;
     drawn: number;
     measured: number;
     pointerRule: string;
@@ -194,7 +200,10 @@ describe('choosing a partner', () => {
     // how the browser check of this fix first saw CONFIRM BULBASAUR again.
     const { scene } = openStarter(new MemoryStorage());
     vi.stubGlobal('document', {
-      activeElement: { closest: (selector: string) => (selector === '[data-starter]' ? { dataset: { starter: 'charmander' } } : null) },
+      activeElement: {
+        matches: () => false,
+        closest: (selector: string) => (selector === '[data-starter]' ? { dataset: { starter: 'charmander' } } : null),
+      },
     });
     try {
       scene.handleKey({ key: 'ArrowRight', preventDefault: () => undefined } as KeyboardEvent);
@@ -203,6 +212,44 @@ describe('choosing a partner', () => {
     }
 
     expect(scene.overlay.elements.get('[data-confirm]')?.textContent).toBe('Confirm Charmander');
+  });
+
+  /** A key pressed with the cursor on `active`, saying whether the scene took it itself. */
+  const press = (scene: StarterInternals, key: string, active: unknown): boolean => {
+    const preventDefault = vi.fn();
+    vi.stubGlobal('document', { activeElement: active });
+    try {
+      scene.handleKey({ key, preventDefault } as unknown as KeyboardEvent);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    return preventDefault.mock.calls.length > 0;
+  };
+  const onConfirm = { matches: (selector: string) => selector === '[data-confirm]', closest: () => null };
+
+  it('goes back up from CONFIRM to the card chosen, never the card above the button', () => {
+    // CONFIRM stands at the right of the bar, so the card nearest it is Squirtle:
+    // Charmander chosen, Down, Up used to swap the partner for a Squirtle.
+    const { scene } = openStarter(new MemoryStorage());
+    cursorOn(scene, 'charmander');
+
+    for (const key of ['ArrowUp', 'ArrowLeft']) {
+      scene.overlay.focused.length = 0;
+      expect(press(scene, key, onConfirm)).toBe(true);
+      expect(scene.overlay.focused).toEqual(['[data-starter="charmander"]']);
+    }
+    expect(scene.overlay.elements.get('[data-confirm]')?.textContent).toBe('Confirm Charmander');
+  });
+
+  it('brings a lost cursor back on the choice, rather than starting again at the first card', () => {
+    const { scene } = openStarter(new MemoryStorage());
+    cursorOn(scene, 'squirtle');
+    scene.overlay.cursorInside = false;
+
+    expect(press(scene, 'ArrowLeft', { matches: () => false, closest: () => null })).toBe(true);
+
+    expect(scene.overlay.focused).toEqual(['[data-starter="squirtle"]']);
+    expect(scene.overlay.elements.get('[data-confirm]')?.textContent).toBe('Confirm Squirtle');
   });
 
   it('says the choice on the screen already drawn, never by drawing it again', () => {
