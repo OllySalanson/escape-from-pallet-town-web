@@ -14,7 +14,7 @@
 // words, not the pursuit.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
-import { GAME, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, sceneIs, takePokemon, walkIntoBase, jumpIn, openHallPanel } from './deploy.mjs';
 
 const [base, outDir] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 mkdirSync(outDir, { recursive: true });
@@ -45,14 +45,13 @@ try {
   await click('Confirm Bulbasaur');
   await walkIntoBase(page, 'raid-arena', { press, until, wait });
   await until(takePokemon('Bulbasaur'));
+  await openHallPanel(page, 'rack', { press, until, wait });
   // Point at the Potion row so its help line says why it is packed.
   await page.evaluate(`document.querySelector('button[data-count-kind="item"][data-count-id="potion"][data-count-dir="-1"]')?.focus()`);
   await shot('01-loadout-medicine-packed');
-  await click('Choose drop-in');
-  await click('Review & deploy');
-  await shot('02-final-check-hunter');
-  await click('Enter the raid');
-  await until(sceneIs('world'));
+  await openHallPanel(page, 'rim', { press, until, wait });
+  await shot('02-rim-hunter');
+  await jumpIn(page, { press, until, wait });
   await wait(600);
   for (let i = 0; i < 12; i += 1) { await press('Space'); await wait(200); }
 

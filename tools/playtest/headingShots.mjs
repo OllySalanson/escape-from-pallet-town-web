@@ -10,7 +10,7 @@
 // does instead of cutting is on record.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
-import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel, readFirstWords } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -65,7 +65,7 @@ try {
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   // First words heard: their box sits over the foot of the screen and would
   // take the Escape that leaves each room.
-  await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'], firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'] }); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
+  await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'], firstWordsHeard: ['lab', 'loadout', 'check', 'center'] }); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
   await press('Space');
@@ -83,12 +83,15 @@ try {
   await shoot('workshop');
   await leave();
   await walkIntoBase(page, 'raid-arena');
-  await shoot('loadout');
+  await shoot('bench');
   await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
-  await click('Choose drop-in');
-  await shoot('dropin');
-  await click('Review & deploy');
-  await shoot('final-check');
+  await openHallPanel(page, 'rack');
+  await shoot('rack');
+  await openHallPanel(page, 'locker');
+  await shoot('locker');
+  await openHallPanel(page, 'rim');
+  await readFirstWords(page);
+  await shoot('rim');
   console.log(bad ? `${bad} heading(s) CUT` : 'no heading cut');
   if (bad) process.exitCode = 1;
 } finally {

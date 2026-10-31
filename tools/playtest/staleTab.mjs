@@ -9,7 +9,7 @@
 // raid, which records it. Tab B then presses NEW BOX. The raid tab A recorded
 // must still be in the save afterwards, and tab B must say what happened.
 import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn } from './deploy.mjs';
 
 const base = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
 if (!base) {
@@ -49,7 +49,7 @@ try {
   const clickA = clicker(tabA);
   // The lone Pokemon is packed by default; clicking its row would take it out.
   await tabA.waitFor(takePokemon('Charmander'), { what: 'Charmander in the raid party' });
-  for (const label of ['Choose drop-in', 'Review & deploy', 'Enter the raid']) await clickA(label);
+  await jumpIn(tabA, { until: (expression, what) => tabA.waitFor(expression, { what }) });
   await tabA.waitFor(sceneIs('world'));
   const afterA = await deployed(tabA);
   console.log(`tab A deployed a raid; raids deployed in the save: ${afterA}`);

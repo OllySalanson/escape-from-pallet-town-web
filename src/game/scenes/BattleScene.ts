@@ -4088,7 +4088,7 @@ export class BattleScene extends Phaser.Scene {
       }
       this.scene.start(
         this.scene.manager.keys.base ? 'base' : 'title',
-        this.scene.manager.keys.base ? { arrival: 'raid' } : undefined,
+        this.scene.manager.keys.base ? { arrival: 'raid', room: 'raid-arena' } : undefined,
       );
     });
   }

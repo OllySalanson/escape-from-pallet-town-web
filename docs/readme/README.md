@@ -17,9 +17,10 @@ number of screen pixels to the game pixel and stays sharp on a high-density disp
 | `walk.webp` | A walk out of Mill Square in Millbrook, fifteen frames a second of game time, a straight run at a time | `tools/playtest/readmeShots.mjs`, then ffmpeg |
 | `quarry.png` | The Quarry in Greystone Peaks, a moment into a raid (1600x1024) | `readmeShots.mjs --part=place --insertion=greystone-vale-the-quarry --window=1600x1024` |
 | `hunter.png`, `battle.png` | The hunters coming out in Millbrook, and a fight with Blue (1600x1024) | `readmeShots.mjs --window=1600x1024`; `battle.png` was taken with the one hunter a raid had before the pack, and `--battle` is what would ask for it again |
-| `harbour.png` | The harbour, home from a raid, every one of Brock's upgrades built, by day (1600x1024) | `harbourTour.mjs --built=all --clock=day --window=1600x1024`, its `home-from-a-raid.png` |
+| `harbour.png` | The harbour with every one of Brock's upgrades built, by day (1600x1024) | `harbourTour.mjs --built=all --clock=day --window=1600x1024`, taken off the quay |
 | `brocks-workshop.png` | Inside Brock's Workshop, every bay built (800x512) | `readmeShots.mjs --part=base --rooms=brocks-workshop` |
-| `loadout.png`, `pack.png` | Kitting up in Oak's Lab (taken before the lab's first words were added, which now cover it on a fresh save), and the pack opened mid-raid with a few finds put in the raid's own bag first: a crate, a roll of linen, a valve, a Super Potion, a Thunder Stone and ₽40 (800x512) | `readmeShots.mjs` |
+| `the-bench.png`, `the-rim.png` | Getting ready on the floor of the Raid Arena: the bench over the hall, and looking down from the rim (800x512) | `arenaHall.mjs --window=800x512`, its `3-bench.png` and `8-looking-down.png` |
+| `pack.png` | The pack opened mid-raid with a few finds put in the raid's own bag first: a crate, a roll of linen, a valve, a Super Potion, a Thunder Stone and ₽40 (800x512) | `readmeShots.mjs` |
 | `map-maker.png` | The map maker with the sample map open at 1X (1600x1000) | `readmeShots.mjs --part=maker --window=1600x1000` |
 | `extracted.png`, `raid-lost.png` | The two ways a raid ends (800x512) | `tools/playtest/raid.mjs --pixels --stepped --window=800x512 --shot=...` (both `--insertion=greystone-vale --seed=3 --level=12`: `--grab=mooring-rope,super-potion` walked out, `--grab=money,parts-crate,linen-roll,super-potion,mooring-rope` went down) |
 

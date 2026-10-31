@@ -122,20 +122,14 @@ const main = async () => {
 
   await shot('title');
 
-  // deploy() takes the starter, walks into Oak's Lab and drops in; the lobby
-  // shots are taken on the way by a second, slower pass below.
+  // deploy() takes the starter, walks into the Raid Arena and jumps in. The
+  // pictures of the hall are `arenaHall.mjs`'s.
   const options = deployOptions(args);
   const hooks = {
     press,
     until,
     wait,
-    click: async (text) => {
-      if (/start a raid/i.test(text)) await shot('oaks-lab');
-      if (/choose drop-in/i.test(text)) await shot('loadout');
-      if (/review & deploy/i.test(text)) await shot('drop-in');
-      if (/enter the raid/i.test(text)) await shot('final-check');
-      await click(text);
-    },
+    click,
   };
   await deploy(page, url.href, { ...hooks, paused: true, ...options, insertion: options.insertion ?? 'greystone-vale' });
   await until(sceneIs('world'));

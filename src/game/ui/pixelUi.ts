@@ -270,20 +270,6 @@ export function pixelTag(
   return `<span class="px-tag px-tag-${tone}${ticked ? ' has-tick' : ''}">${label}</span>`;
 }
 
-/**
- * The route through preparation, for the title bar. `current` is one-based;
- * steps before it are done, steps after it are still to come.
- */
-export function pixelRail(labels: readonly string[], current: number): string {
-  return `<ol class="px-rail">${labels
-    .map((label, index) => {
-      const position = index + 1;
-      const state = position < current ? 'done' : position === current ? 'current' : 'upcoming';
-      return `<li class="${state}"${state === 'current' ? ' aria-current="step"' : ''}>${label}</li>`;
-    })
-    .join('')}</ol>`;
-}
-
 export interface CommitBarOptions {
   /** What this bar commits, in caps, on the same line as the actions. */
   readonly title: string;

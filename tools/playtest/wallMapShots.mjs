@@ -14,7 +14,7 @@
 // out stands the player where they read it from rather than at the door.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -88,7 +88,7 @@ try {
     surveyed: survey,
     // A save this far in has heard Oak out, and his first words would take
     // the Escape that leaves the lab (`hub/firstWords.ts`).
-    firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'],
+    firstWordsHeard: ['lab', 'loadout', 'check', 'center'],
     // And has been asked every errand, whose ask would take the same Escape.
     errands: ['oaks-parcel', 'medicine-bag', 'brocks-crate', 'old-amber'].map((id) => ({ id, status: 'started', found: 0, lossesHeard: 0 })),
   })}); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
@@ -161,17 +161,11 @@ try {
   await walkIntoBase(page, 'raid-arena');
   // A lone Pokemon is packed for the raid already (`packLonePokemon`), and
   // clicking its row again would take it back out: `takePokemon` never does.
-  const clickLabelled = (label) =>
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return false; b.click(); return true; })()`;
-  for (const [step, what] of [
-    [takePokemon('Bulbasaur'), 'Bulbasaur in the raid party'],
-    [clickLabelled('Choose drop-in'), 'Choose drop-in'],
-  ]) {
-    await page.waitFor(step, { what });
-    await sleep(250);
-  }
-  await page.waitFor(`document.querySelector('canvas[data-picture][data-painted]') !== null`, { what: 'the drop-in picture' });
-  await shoot('drop-in');
+  await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
+  await sleep(250);
+  await openHallPanel(page, 'rim');
+  await sleep(600);
+  await shoot('the-rim');
 } finally {
   await browser.close();
 }

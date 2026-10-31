@@ -75,7 +75,7 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import { BASE_LANDING, BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
+import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
@@ -86,6 +86,7 @@ import { BASE_PIECES } from '../base/generated/basePieces';
 import {
   BASE_ROOMS,
   buildRoom,
+  ARENA_STATION_NAMES,
   roomNamed,
   servesFrom,
   stairArrival,
@@ -175,9 +176,32 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, cameraLean, isArenaFence } from '../base/arenaHall';
+import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, type ArenaStationId } from '../base/arenaHall';
 import { ArenaView } from '../base/arenaView';
-import { FIRST_WORDS, hasHeard } from '../hub/firstWords';
+import { ArenaFurniture } from '../base/arenaFurniture';
+import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
+import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
+import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
+import {
+  FOG_APPROACH_MS,
+  FOG_LIFT_MS,
+  FOG_LIFT_STEPS,
+  FOG_STEP_MS,
+  JUMP_MS,
+  TURN_BACK_MS,
+  HOP_MS,
+  facingTowards,
+  jumpPose,
+  overTheFence,
+} from '../base/arenaDive';
+import { marshalLines } from '../base/arenaMarshal';
+import { wallMapPicture } from '../base/wallMap';
+import { friendRoom } from '../raidRoom/friendRoom';
+import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
+import type { ArenaPanel } from './HubScene';
+import type { WorldSceneData } from './WorldScene';
+import { worldMapName, type WorldMapId } from '../worldMap';
+import { hasHeard } from '../hub/firstWords';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
@@ -252,6 +276,17 @@ const CAMERA_ZOOM = 1;
 let harbourCounted = false;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
+
+/** The rim tile this page last jumped from: where a raid's ending puts the player back. */
+let lastJumpedFrom: GridPosition | null = null;
+/** Whether a raid has come home since the player was last out in the harbour: the Seagallop ties up when they get there. */
+let boatDueHome = false;
+/** How fast the hall's camera comes round to what it is asked to look at: a share of the way, per millisecond. */
+const CAMERA_EASE_MS = 140;
+/** How long a raid's fog lifts before a key can cut it short. */
+const FOG_LISTENS_AFTER_MS = 500;
+/** How often a held raid room is told this player is getting ready, and asked who else is. */
+const HALL_ROOM_TICK_MS = 250;
 
 /** How far above the player's head their own hand goes up when they wave: clear of the chevron over it. */
 const OWN_WAVE_LIFT = 6;
@@ -359,7 +394,7 @@ export interface BaseSceneData {
   readonly from?: string;
   /** The room the player is in: walked into, or backed out of a screen into. */
   readonly room?: string;
-  /** Set by the result screen: a raid puts the player down on the quay. */
+  /** Set by the result screen: a raid puts the player back on THE RAID ARENA's rim. */
   readonly arrival?: 'raid';
   /**
    * Where in the room to stand, facing up, instead of on the mat: backing out
@@ -522,6 +557,35 @@ export class BaseScene extends Phaser.Scene {
   /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
   private boats: FloatingBoats | null = null;
   private arena: ArenaView | null = null;
+  /** What the player is getting ready with in THE RAID ARENA's hall (`base/arenaKit.ts`). */
+  private kit: ArenaKit | null = null;
+  /** Who is on the bench and what is on the rack, where they can be seen. */
+  private furniture: ArenaFurniture | null = null;
+  /** The panel open over the hall, if any: the hall burns on behind it and the player stands still. */
+  private arenaPanel: ArenaPanel | null = null;
+  /** The way in the player is stood over, or has under the cursor. */
+  private aimed: RimLanding | null = null;
+  /** Where the hall's camera has got to, as a follow offset. */
+  private cameraOffset = { x: 0, y: 0 };
+  /** A jump over the fence, while one is going on. */
+  private jump: {
+    elapsedMs: number;
+    readonly world: WorldSceneData;
+    readonly from: { readonly x: number; readonly y: number };
+    readonly over: { readonly x: number; readonly y: number };
+    readonly focus: { readonly x: number; readonly y: number };
+    readonly viewFrom: { readonly x: number; readonly y: number };
+    readonly viewAtFence: { readonly x: number; readonly y: number };
+    hopped: boolean;
+    leaving: boolean;
+  } | null = null;
+  /** The cloud lifting off ground a raid has just walked (`ArenaView.liftFogFromLastRaid`). */
+  private fogLift: { elapsedMs: number; steps: number; readonly tile: GridPosition; readonly sign: PlaceNameSign } | null = null;
+  /** Walking somewhere the pointer asked for: the steps left, and what to do on getting there. */
+  private walkPlan: { readonly steps: Direction[]; readonly then: () => void } | null = null;
+  private roomTickMs = 0;
+  /** The hall's furniture and its caption, to say again when a panel closes. */
+  private readonly stationLabels = new Map<RoomThing, WorldLabel>();
   /** The bird that glides over the harbour now and then (`base/harbourBird.ts`), outdoors by day only. */
   private bird: HarbourBird | null = null;
   /** FireRed's map-name board (`base/placeNameSign.ts`), outdoors only. */
@@ -577,6 +641,8 @@ export class BaseScene extends Phaser.Scene {
    */
   public readonly doors = BASE_DOORS;
   public readonly rooms = BASE_ROOMS;
+  public readonly arenaStations = ARENA_STATIONS;
+  public readonly arenaRim = ARENA_RIM;
 
   public constructor() {
     super('base');
@@ -659,6 +725,14 @@ export class BaseScene extends Phaser.Scene {
     this.doorTold = false;
     this.doorLayout = undefined;
     this.visit = null;
+    this.kit = null;
+    this.furniture = null;
+    this.arenaPanel = null;
+    this.aimed = null;
+    this.jump = null;
+    this.fogLift = null;
+    this.walkPlan = null;
+    this.roomTickMs = 0;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
     // A visit is to somebody's house and nowhere else: their house is drawn
@@ -690,12 +764,15 @@ export class BaseScene extends Phaser.Scene {
       // climbed to, facing away from the stairs.
       const climbedTo =
         data.stairsFrom === undefined ? undefined : stairArrival(data.stairsFrom as BaseRoom['id'], room);
+      // Home from a raid is back on the rim, where it left from.
+      const fromTheRaid = data.arrival === 'raid' ? (lastJumpedFrom ?? rimAboveTheDoor()) : undefined;
       const standing =
         data.at !== undefined && built.collision[data.at.y]?.[data.at.x] === false
           ? data.at
-          : (climbedTo ?? room.mat ?? room.stairs[0]?.tile ?? { x: 0, y: room.height - 1 });
+          : (fromTheRaid ?? climbedTo ?? room.mat ?? room.stairs[0]?.tile ?? { x: 0, y: room.height - 1 });
       this.currentTile = { ...standing };
-      this.facing = climbedTo ? 'down' : 'up';
+      const fence = fromTheRaid ? fenceBeside(fromTheRaid) : null;
+      this.facing = fence ? facingTowards(standing, fence) : climbedTo ? 'down' : 'up';
     } else {
       const map = getBaseMap(loaded.raidProgress.workshopUpgrades);
       this.place = {
@@ -717,9 +794,7 @@ export class BaseScene extends Phaser.Scene {
         ? { ...standing }
         : returning
           ? { ...returning.returnTo }
-          : data.arrival === 'raid'
-            ? { ...BASE_LANDING }
-            : { ...BASE_SPAWN };
+          : { ...BASE_SPAWN };
       this.facing = standing
         ? (directionBetween(standing, DAY_CARE_KEEPER.position) ?? 'up')
         : returning
@@ -732,6 +807,14 @@ export class BaseScene extends Phaser.Scene {
     this.still =
       typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
     const detail = this.drawMap();
+    // Out in the harbour for the first time since a raid, the boat that brought
+    // it all home ties up and says so.
+    const boatHome = !this.place.room && boatDueHome;
+    if (data.arrival === 'raid') {
+      boatDueHome = true;
+    } else if (boatHome) {
+      boatDueHome = false;
+    }
     this.boats = null;
     if (detail && !this.place.room) {
       this.boats = new FloatingBoats(
@@ -741,7 +824,7 @@ export class BaseScene extends Phaser.Scene {
           landmark.floats ? [{ props: landmark.props, ...landmark.floats }] : [],
         ),
         detail.depth + 0.001,
-        data.arrival === 'raid' && !this.still,
+        boatHome && !this.still,
       );
     }
     this.night = null;
@@ -766,7 +849,7 @@ export class BaseScene extends Phaser.Scene {
     this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
-    this.arena = this.place.room?.pit ? new ArenaView(this, loaded, this.still) : null;
+    this.arena = this.place.room?.pit ? this.openTheHall(loaded) : null;
     this.createFigures();
     this.createPlayer();
     // Somebody else's partner arrives where this player's own could, and never on top of it.
@@ -794,6 +877,8 @@ export class BaseScene extends Phaser.Scene {
     // stops the key that walked in off the mat walking straight back out.
     this.spentPresses.spendHeld(this.directionKeys());
     this.configureCamera();
+    this.cameraOffset = { x: 0, y: 0 };
+    this.settleHallCamera(0, true);
     // The dialogue box and the hint are anchored to the screen, and the camera
     // centres a small room in it, so a resized window re-does both.
     const relayout = (): void => this.layoutForStage();
@@ -824,12 +909,24 @@ export class BaseScene extends Phaser.Scene {
       this.knockPrompt = null;
       this.favourPrompt?.prompt.destroy();
       this.favourPrompt = null;
+      this.furniture?.destroy();
+      this.furniture = null;
+      this.arena?.destroy();
+      this.fogLift?.sign.destroy();
+      this.fogLift = null;
+      this.closeHallPanel();
+      if (typeof document !== 'undefined') {
+        this.game.canvas.style.cursor = '';
+      }
     });
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
     // Home from a raid, the boat says so.
-    if (data.arrival === 'raid' && !room) {
+    if (boatHome) {
       audioManager.play('shipHorn');
+    }
+    if (this.arena && data.arrival === 'raid') {
+      this.beginFogLift();
     }
     // Arriving in the harbour - off the title or off the boat, not out of a
     // door - it says its name, as a FireRed town does.
@@ -870,6 +967,12 @@ export class BaseScene extends Phaser.Scene {
     const watcher = this.regularsWatcher();
     regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, watcher);
     this.watchFrontDoor(time);
+    this.tickHeldRoom(time, deltaMs);
+    if (this.jump) {
+      this.advanceJump(deltaMs);
+      this.animateTiles(deltaMs);
+      return;
+    }
     this.updateWalking(deltaMs);
     // After the walk, so every figure and name is seated against where this
     // player is this frame rather than where they were last frame.
@@ -929,8 +1032,13 @@ export class BaseScene extends Phaser.Scene {
     this.lookMs = advanceLookMs(this.lookMs, looked, deltaMs);
     this.dialogBox.update(deltaMs);
 
-    if (this.leaving || this.resting || this.namePrompt || this.knockScreen || this.favoursScreen) {
+    if (this.leaving || this.resting || this.namePrompt || this.knockScreen || this.favoursScreen || this.arenaPanel) {
       this.closePhrases();
+      return;
+    }
+
+    if (this.fogLift) {
+      this.advanceFogLift(deltaMs);
       return;
     }
 
@@ -1017,7 +1125,10 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
-    const input = this.readInput();
+    const input = this.followWalkPlan(this.readInput());
+    if (input === null) {
+      return;
+    }
     const room = this.place.room?.room;
     // The way out of a room is the way out of every FireRed room: down off
     // the mat, into the dark the door is in.
@@ -1078,10 +1189,80 @@ export class BaseScene extends Phaser.Scene {
     return boxes;
   }
 
+  // -- THE RAID ARENA ----------------------------------------------------------
+
+  /**
+   * Into the hall: what the player gets ready with, for as long as they are in
+   * it, and the pit with the ways in they may take. While a raid room is held the
+   * pit shows the room's map and only its ways in, whatever else this save has.
+   */
+  private openTheHall(game: RestoredGame): ArenaView {
+    const flow = flowForGame(game);
+    const held = heldRoomMapId();
+    if (held) {
+      const there = offeredInsertions(game.raidProgress).find((insertion) => insertion.mapId === held);
+      if (there) {
+        flow.chooseInsertion(there.id);
+      }
+      friendRoom()?.atLab();
+    }
+    this.kit = {
+      game,
+      flow,
+      close: () => this.closeHallPanel(),
+      jump: (world) => this.beginJump(world),
+      aim: (id) => this.aimAtInsertion(id),
+      below: () => this.arena?.lookLines(this.currentTile) ?? [],
+    };
+    const mapId = requireInsertion(flow.insertionId).mapId;
+    const view = new ArenaView(this, game, this.still, mapId, this.landingsOn(mapId, game));
+    this.furniture = new ArenaFurniture(this);
+    this.furniture.show(flow, partnerOf(game.stash)?.id ?? null);
+    // A pointer can walk the room too: the rest of the harbour is walked with the
+    // keys, but everything a raid is got ready with should answer a click.
+    const pressed = (pointer: Phaser.Input.Pointer): void => this.pointAtHall(pointer);
+    const moved = (pointer: Phaser.Input.Pointer): void => this.hoverOverHall(pointer);
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, pressed);
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, moved);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off(Phaser.Input.Events.POINTER_DOWN, pressed);
+      this.input.off(Phaser.Input.Events.POINTER_MOVE, moved);
+    });
+    return view;
+  }
+
+  /** The ways in on a map this save can take, as the rim knows them: those out of doors. */
+  private landingsOn(mapId: WorldMapId, game: RestoredGame = this.savedGame): readonly RimLanding[] {
+    const { width, height } = wallMapPicture(game, mapId);
+    return offeredInsertions(game.raidProgress)
+      .filter(
+        (insertion) =>
+          insertion.mapId === mapId && insertion.position.x < width && insertion.position.y < height,
+      )
+      .map((insertion) => ({ id: insertion.id, tile: insertion.position }));
+  }
+
+  /** A held room says it is here, and asks who else is. */
+  private tickHeldRoom(time: number, deltaMs: number): void {
+    if (!this.arena || !heldRoomMapId()) {
+      return;
+    }
+    this.roomTickMs += deltaMs;
+    if (this.roomTickMs >= HALL_ROOM_TICK_MS) {
+      friendRoom()?.tick(time, this.roomTickMs);
+      this.roomTickMs = 0;
+    }
+  }
+
+  /** What the way in under this player is called on screen. */
+  private landingName(landing: RimLanding): string {
+    return (runInsertion(landing.id)?.label ?? '').toUpperCase();
+  }
+
   /**
    * THE RAID ARENA's pit, for this frame: its layers slid for where the player
-   * stands (`arenaView.ts`), and its mark on what they are looking at while they
-   * stand facing the fence with nothing else on screen to read.
+   * stands (`arenaView.ts`), the way in they are stood over marked in it, and the
+   * camera come round to whatever there is to look at.
    */
   private watchThePit(deltaMs: number): void {
     if (!this.arena) {
@@ -1092,11 +1273,488 @@ export class BaseScene extends Phaser.Scene {
       y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
     };
     this.arena.update(deltaMs, middle);
-    // A camera's follow offset is taken away from what it follows.
-    const lean = cameraLean(middle, this.scale.height / CAMERA_ZOOM);
-    this.cameras.main.setFollowOffset(-lean.x, -lean.y);
-    const atTheFence = !this.targetTile && isArenaFence(nextTileFromDirection(this.currentTile, this.facing));
-    this.arena.lookFrom(atTheFence ? this.currentTile : null);
+    this.settleAim();
+    this.settleHallCamera(deltaMs, false);
+  }
+
+  /** Which way in is under the player, and with the rim's panel up, whichever is under its cursor. */
+  private settleAim(): void {
+    const arena = this.arena;
+    const kit = this.kit;
+    if (!arena || !kit) {
+      return;
+    }
+    if (this.arenaPanel === 'rim') {
+      this.aimed = arena.share.landings.find((landing) => landing.id === kit.flow.insertionId) ?? null;
+    } else if (!this.targetTile && isAtRim(this.currentTile) && !this.fogLift) {
+      const below = landingBelow(this.currentTile, arena.share);
+      if (below && below.id !== this.aimed?.id) {
+        kit.flow.chooseInsertion(below.id as RunInsertionId);
+      }
+      this.aimed = below;
+    } else if (!isAtRim(this.targetTile ?? this.currentTile)) {
+      this.aimed = null;
+    }
+    arena.aimAt(this.aimed, this.aimed ? this.landingName(this.aimed) : '');
+  }
+
+  /** How much of the canvas a panel over the hall covers, in game pixels from the right and from the foot. */
+  private panelCover(): { readonly right: number; readonly bottom: number } {
+    if (!this.arenaPanel || typeof document === 'undefined') {
+      return { right: 0, bottom: 0 };
+    }
+    const panel = document.querySelector('#screens .arena-panel')?.getBoundingClientRect();
+    const canvas = this.game.canvas.getBoundingClientRect();
+    if (!panel || canvas.width === 0) {
+      return { right: 0, bottom: 0 };
+    }
+    const scale = canvas.width / this.scale.width;
+    return this.arenaPanel === 'rim'
+      ? { right: 0, bottom: Math.max(0, (canvas.bottom - panel.top) / scale) }
+      : { right: Math.max(0, (canvas.right - panel.left) / scale), bottom: 0 };
+  }
+
+  /**
+   * The hall's camera. It leans out over the pit from wherever the player stands
+   * (`cameraLean`), keeps them in what a panel leaves of the screen, and with the
+   * rim's panel up comes right round to the way in being looked at. Eased, because
+   * it is a person looking somewhere and not a cut.
+   */
+  private settleHallCamera(deltaMs: number, snap: boolean): void {
+    if (!this.arena || this.jump) {
+      return;
+    }
+    const middle = {
+      x: this.player.x + TILE_SIZE / 2,
+      y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
+    };
+    const cover = this.panelCover();
+    const seenHeight = this.scale.height - cover.bottom;
+    const lean = cameraLean(middle, seenHeight);
+    // Where the middle of what can be seen should look at, as the camera's own middle.
+    let centre = {
+      x: middle.x + lean.x + cover.right / 2,
+      y: middle.y + lean.y + cover.bottom / 2,
+    };
+    const fogTile = this.fogLift?.tile;
+    const lookedAt = fogTile
+      ? { ...this.arena.pointOfLanding({ id: '', tile: fogTile }) }
+      : this.arenaPanel === 'rim' && this.aimed
+        ? this.arena.pointOfLanding(this.aimed)
+        : null;
+    if (lookedAt) {
+      centre = { x: lookedAt.x + cover.right / 2, y: lookedAt.y + cover.bottom / 2 };
+    }
+    // How far the camera's middle stands from the player.
+    const goal = { x: this.player.x - centre.x, y: this.player.y - centre.y };
+    const share = snap || this.still ? 1 : Math.min(1, deltaMs / CAMERA_EASE_MS);
+    const moved = (from: number, to: number): number => {
+      const next = from + (to - from) * share;
+      return Math.abs(to - next) < 1 ? to : next;
+    };
+    this.cameraOffset = { x: moved(this.cameraOffset.x, goal.x), y: moved(this.cameraOffset.y, goal.y) };
+    // Both whole, each rounded alone, so walking moves the player on the screen
+    // only as the lean changes: rounded together they each land a pixel either
+    // side of the other from frame to frame, and the figure shakes as it walks.
+    const camera = this.cameras.main;
+    camera.setScroll(
+      Math.round(this.player.x) - Math.round(this.cameraOffset.x) - Math.floor(camera.width / 2),
+      Math.round(this.player.y) - Math.round(this.cameraOffset.y) - Math.floor(camera.height / 2),
+    );
+  }
+
+  /** Stands the player still, facing the way they are facing, for something that has taken over. */
+  private standStill(): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+  }
+
+  /** A panel of the hall: the hall stays on screen beside it and the player stands where they are. */
+  private openHallPanel(view: ArenaPanel): void {
+    const kit = this.kit;
+    if (!kit || this.arenaPanel || this.leaving) {
+      return;
+    }
+    this.walkPlan = null;
+    this.arenaPanel = view;
+    this.standStill();
+    audioManager.play('menuOpen');
+    this.scene.launch('hub', { view, kit, from: this.place.room?.room.id } satisfies HubSceneData);
+  }
+
+  /** Back from a panel: what was chosen in it now stands in the room. */
+  private closeHallPanel(): void {
+    if (!this.arenaPanel) {
+      return;
+    }
+    this.arenaPanel = null;
+    this.scene.stop('hub');
+    if (!this.kit) {
+      return;
+    }
+    // The panel kept every key to itself, so one the hall saw go down before it
+    // opened never came back up here.
+    this.input.keyboard?.resetKeys();
+    this.spentPresses.spendHeld(this.directionKeys());
+    this.savedGame = this.saveManager.load() ?? this.kit.game;
+    this.furniture?.show(this.kit.flow, partnerOf(this.savedGame.stash)?.id ?? null);
+    this.sayStationNotes();
+    audioManager.play('menuClose');
+  }
+
+  /** The cursor on the rim's panel has come to another way in: the pit swings round to it. */
+  private aimAtInsertion(insertionId: RunInsertionId): void {
+    const arena = this.arena;
+    if (!arena) {
+      return;
+    }
+    const { mapId } = requireInsertion(insertionId);
+    arena.showMap(mapId, this.landingsOn(mapId));
+  }
+
+  /**
+   * What each station's caption says under its name: the state of it, so the
+   * loadout can be read from across the room.
+   */
+  private stationNote(id: ArenaStationId): string {
+    const flow = this.kit?.flow;
+    if (!flow) {
+      return '';
+    }
+    if (id === 'bench') {
+      const [only] = flow.party;
+      if (!only) {
+        return 'Nobody yet';
+      }
+      return flow.party.length === 1 ? `${only.pokemon.name.toUpperCase()} is coming` : `${flow.party.length} of ${MAX_RUN_PARTY} coming`;
+    }
+    if (id === 'rack') {
+      return `${flow.packName} · ${flow.bagCells.used}/${flow.bagCells.total} squares`;
+    }
+    return `${flow.secureCells.used}/${flow.secureCells.total} squares safe`;
+  }
+
+  private sayStationNotes(): void {
+    for (const [thing, label] of this.stationLabels) {
+      if (thing.opens && thing.opens in ARENA_STATION_NAMES) {
+        label.setText(`${thing.name}\n${this.stationNote(thing.opens as ArenaStationId)}`, DOOR_TONE);
+      }
+    }
+  }
+
+  /** Marks THE MARSHAL with a "!" until a newcomer has heard what the room is for. */
+  private speakToMarshal(room: BaseRoom): void {
+    const keeper = room.keeper;
+    const kit = this.kit;
+    if (!keeper || !kit) {
+      return;
+    }
+    const lines = marshalLines(this.savedGame.raidProgress.firstWordsHeard, kit.flow);
+    if (!hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
+      this.hearLoadoutWords();
+      this.clearKeeperMark();
+    }
+    this.standStill();
+    this.say(lines, [keeper.position]);
+  }
+
+  // -- over the fence ----------------------------------------------------------
+
+  /** Over the fence: the raid is committed to, and what remains is getting there. */
+  private beginJump(world: WorldSceneData): void {
+    const arena = this.arena;
+    if (!arena || this.jump) {
+      return;
+    }
+    this.arenaPanel = null;
+    this.scene.stop('hub');
+    this.walkPlan = null;
+    arena.rememberBelow();
+    lastJumpedFrom = { ...this.currentTile };
+    const fence = fenceBeside(this.currentTile) ?? nextTileFromDirection(this.currentTile, this.facing);
+    this.facing = facingTowards(this.currentTile, fence);
+    this.standStill();
+    this.dialogBox.setVisible(false);
+    audioManager.play('deploy');
+    // Nobody can be asked to sit through it who asked for less movement.
+    if (this.still) {
+      this.leaving = true;
+      this.cameras.main.fadeOut(180, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('world', world));
+      this.jump = {
+        elapsedMs: 0,
+        world,
+        from: this.player,
+        over: { x: 0, y: 0 },
+        focus: this.player,
+        viewFrom: this.player,
+        viewAtFence: this.player,
+        hopped: true,
+        leaving: true,
+      };
+      return;
+    }
+    const camera = this.cameras.main;
+    const middle = { x: this.player.x + TILE_SIZE / 2, y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2 };
+    const lean = cameraLean(middle, this.scale.height);
+    const focusLanding = this.aimed ?? arena.share.landings[0];
+    const focus = focusLanding ? arena.pointOfLanding(focusLanding) : this.player;
+    this.jump = {
+      elapsedMs: 0,
+      world,
+      from: { x: this.player.x, y: this.player.y },
+      over: overTheFence(this.currentTile, fence),
+      focus: { x: focus.x, y: focus.y },
+      viewFrom: { x: camera.scrollX + camera.width / 2, y: camera.scrollY + camera.height / 2 },
+      viewAtFence: {
+        x: middle.x + lean.x,
+        y: middle.y + lean.y,
+      },
+      hopped: false,
+      leaving: false,
+    };
+    camera.stopFollow();
+    camera.removeBounds();
+  }
+
+  private advanceJump(deltaMs: number): void {
+    const jump = this.jump;
+    const arena = this.arena;
+    if (!jump || jump.leaving || !arena) {
+      return;
+    }
+    const before = jump.elapsedMs;
+    jump.elapsedMs += deltaMs;
+    if (!jump.hopped && jump.elapsedMs >= TURN_BACK_MS) {
+      jump.hopped = true;
+      this.playerGroundMark.setVisible(false);
+      this.playerHeadMark.setVisible(false);
+      this.partner?.tuckIn();
+      audioManager.play('ledgeHop');
+    }
+    if (before < TURN_BACK_MS + HOP_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS) {
+      audioManager.play('diveRush');
+    }
+    const pose = jumpPose(jump.elapsedMs, jump.over);
+    this.player.setPosition(jump.from.x + pose.figure.x, jump.from.y + pose.figure.y);
+    this.player.setScale(pose.figure.scale);
+    this.player.setVisible(pose.figure.seen);
+    this.player.setDepth(CANOPY_BAND + 1);
+    const camera = this.cameras.main;
+    const fromX = jump.viewFrom.x + (jump.viewAtFence.x - jump.viewFrom.x) * pose.back;
+    const fromY = jump.viewFrom.y + (jump.viewAtFence.y - jump.viewFrom.y) * pose.back;
+    const x = fromX + (jump.focus.x - fromX) * pose.swing;
+    const y = fromY + (jump.focus.y - fromY) * pose.swing;
+    camera.setZoom(CAMERA_ZOOM * pose.zoom);
+    camera.centerOn(x, y);
+    const view = new Phaser.Geom.Rectangle(
+      x - camera.width / (2 * camera.zoom),
+      y - camera.height / (2 * camera.zoom),
+      camera.width / camera.zoom,
+      camera.height / camera.zoom,
+    );
+    arena.burn(deltaMs);
+    arena.diveFrame(pose.zoom, jump.focus, pose.cloud, view);
+    this.partner?.update(deltaMs);
+    if (jump.elapsedMs >= JUMP_MS) {
+      jump.leaving = true;
+      this.leaving = true;
+      this.scene.start('world', { ...jump.world, droppedIn: true });
+    }
+  }
+
+  // -- home again --------------------------------------------------------------
+
+  /**
+   * Home from a raid: the cloud that was over whatever it walked is laid back
+   * over it and taken away, with the view gone round to look. Any key cuts it
+   * short, and with nothing new to lift it is simply the hall.
+   */
+  private beginFogLift(): void {
+    const lifted = this.arena?.liftFogFromLastRaid();
+    if (!lifted) {
+      return;
+    }
+    const sign = new PlaceNameSign(this);
+    sign.show(
+      lifted.gained > 0
+        ? `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`
+        : worldMapName(this.arena!.mapId).toUpperCase(),
+    );
+    this.standStill();
+    this.fogLift = { elapsedMs: 0, steps: 0, tile: lifted.tile, sign };
+  }
+
+  private advanceFogLift(deltaMs: number): void {
+    const lift = this.fogLift;
+    if (!lift) {
+      return;
+    }
+    lift.elapsedMs += deltaMs;
+    lift.sign.update(deltaMs);
+    const due = Math.min(FOG_LIFT_STEPS, Math.max(0, Math.floor((lift.elapsedMs - FOG_APPROACH_MS) / FOG_STEP_MS)));
+    while (lift.steps < due) {
+      lift.steps += 1;
+      this.arena?.thinTheFog(FOG_LIFT_STEPS);
+    }
+    // The key that left the result screen is still on its way up as this starts,
+    // and is not a request to skip what it has just opened on.
+    const anyKey =
+      lift.elapsedMs > FOG_LISTENS_AFTER_MS &&
+      (this.isInteractionPressed() ||
+        this.keyPresses.justPressed(this.controls.back) ||
+        this.keyPresses.justPressed(this.controls.up) ||
+        this.keyPresses.justPressed(this.controls.down) ||
+        this.keyPresses.justPressed(this.controls.left) ||
+        this.keyPresses.justPressed(this.controls.right));
+    if (lift.elapsedMs >= FOG_LIFT_MS || anyKey) {
+      this.arena?.endFog();
+      lift.sign.destroy();
+      this.fogLift = null;
+      this.spentPresses.spendHeld(this.directionKeys());
+    }
+  }
+
+  // -- walking the hall with the pointer ---------------------------------------
+
+  /** What a pointer is over in the hall: a station, or the way in nearest it in the pit. */
+  private hallThingAt(pointer: Phaser.Input.Pointer): { readonly station?: ArenaStationId; readonly landing?: RimLanding } | null {
+    const arena = this.arena;
+    if (!arena) {
+      return null;
+    }
+    const tile = { x: Math.floor(pointer.worldX / TILE_SIZE), y: Math.floor(pointer.worldY / TILE_SIZE) };
+    const station = arenaStationAt(tile) ?? arenaStationAt({ x: tile.x, y: tile.y + 1 });
+    if (station) {
+      return { station: station.id };
+    }
+    // Everything past the fence is the pit.
+    if (this.collision[tile.y]?.[tile.x] !== true || !insideThePit(pointer.worldX, pointer.worldY)) {
+      return null;
+    }
+    const near = arena.share.landings
+      .map((landing) => {
+        const point = arena.pointOfLanding(landing);
+        return { landing, away: Math.hypot(point.x - pointer.worldX, point.y - pointer.worldY) };
+      })
+      .sort((a, b) => a.away - b.away)[0];
+    return near ? { landing: near.landing } : null;
+  }
+
+  private canTakeAPointer(): boolean {
+    return !this.arenaPanel && !this.jump && !this.fogLift && !this.leaving && !this.dialogBox.visible;
+  }
+
+  private hoverOverHall(pointer: Phaser.Input.Pointer): void {
+    this.game.canvas.style.cursor = this.canTakeAPointer() && this.hallThingAt(pointer) ? 'pointer' : '';
+  }
+
+  /**
+   * A click in the hall walks the player to what it was on, and opens it when
+   * they get there: a station from its front, the pit from the nearest stretch of
+   * rim over the way in nearest the click.
+   */
+  private pointAtHall(pointer: Phaser.Input.Pointer): void {
+    if (!this.canTakeAPointer()) {
+      return;
+    }
+    const over = this.hallThingAt(pointer);
+    if (over?.station) {
+      const id = over.station;
+      const tiles = this.place.room?.things.find((thing) => thing.opens === id)?.tiles ?? [];
+      const fronts = tiles.map((tile) => ({ x: tile.x, y: tile.y + 1 }));
+      this.walkThen(fronts, 'up', () => this.openHallPanel(id));
+      return;
+    }
+    const arena = this.arena;
+    if (over?.landing && arena) {
+      const { landing } = over;
+      const standing = rimTileOver(landing.id, arena.share, this.currentTile);
+      if (standing) {
+        this.walkThen([standing], null, () => {
+          this.kit?.flow.chooseInsertion(landing.id as RunInsertionId);
+          this.lookDown();
+        });
+      }
+    }
+  }
+
+  /** Plans the walk to the nearest of these tiles, then does this; the keys take over the moment one is pressed. */
+  private walkThen(goals: readonly GridPosition[], facing: Direction | null, then: () => void): void {
+    const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
+    const wanted = new Set(goals.map(key));
+    const came = new Map<string, { readonly from: GridPosition; readonly step: Direction } | null>([[key(this.currentTile), null]]);
+    const queue: GridPosition[] = [this.currentTile];
+    const directions: readonly Direction[] = ['up', 'down', 'left', 'right'];
+    let reached: GridPosition | null = wanted.has(key(this.currentTile)) ? this.currentTile : null;
+    while (queue.length > 0 && !reached) {
+      const at = queue.shift()!;
+      for (const step of directions) {
+        const next = nextTileFromDirection(at, step);
+        if (came.has(key(next)) || this.isBlocked(next)) {
+          continue;
+        }
+        came.set(key(next), { from: at, step });
+        if (wanted.has(key(next))) {
+          reached = next;
+          break;
+        }
+        queue.push(next);
+      }
+    }
+    if (!reached) {
+      audioManager.play('denied');
+      return;
+    }
+    const steps: Direction[] = [];
+    for (let link = came.get(key(reached)); link; link = came.get(key(link.from))) {
+      steps.unshift(link.step);
+    }
+    this.walkPlan = {
+      steps,
+      then: () => {
+        if (facing) {
+          this.facing = facing;
+          this.player.setFrame(getIdleFrame(facing));
+        }
+        then();
+      },
+    };
+  }
+
+  /**
+   * The next step of a walk the pointer asked for, as the keys would have asked
+   * for it; or the keys themselves, the moment one is held. Null when the walk
+   * has just ended in opening something, which takes the frame.
+   */
+  private followWalkPlan(input: GridInputState): GridInputState | null {
+    const plan = this.walkPlan;
+    if (!plan) {
+      return input;
+    }
+    if (input.up || input.down || input.left || input.right) {
+      this.walkPlan = null;
+      return input;
+    }
+    const step = plan.steps.shift();
+    if (!step) {
+      this.walkPlan = null;
+      plan.then();
+      return null;
+    }
+    return { up: step === 'up', down: step === 'down', left: step === 'left', right: step === 'right' };
+  }
+
+  /** Looking down from the rim, facing the fence: the panel that starts the raid. */
+  private lookDown(): void {
+    const fence = fenceBeside(this.currentTile);
+    if (fence) {
+      this.facing = facingTowards(this.currentTile, fence);
+      this.player.setFrame(getIdleFrame(this.facing));
+    }
+    audioManager.play('select');
+    this.openHallPanel('rim');
   }
 
   /** Lays the map's tile layers, and hands back the detail layer landmarks are drawn on. */
@@ -1858,16 +2516,22 @@ export class BaseScene extends Phaser.Scene {
         }),
       );
     }
+    this.stationLabels.clear();
     for (const thing of built.things.filter((each) => !each.quiet)) {
-      this.worldLabels.push(
-        new WorldLabel(this, {
-          subject: tilesRect(thing.tiles),
-          text: `${thing.name}\n${thing.note}`,
-          tone: FIXTURE_TONE,
-          depth: atRow(CAPTION_BAND, Math.max(...thing.tiles.map((tile) => tile.y))),
-          speech: { voice: 'name', tiles: thing.tiles, near: 1 },
-        }),
-      );
+      const station = thing.opens && thing.opens in ARENA_STATION_NAMES ? (thing.opens as ArenaStationId) : null;
+      const label = new WorldLabel(this, {
+        subject: station ? { ...tilesRect(thing.tiles), y: tilesRect(thing.tiles).y - STATION_RISE, height: TILE_SIZE + STATION_RISE } : tilesRect(thing.tiles),
+        text: `${thing.name}\n${station ? this.stationNote(station) : thing.note}`,
+        tone: station ? DOOR_TONE : FIXTURE_TONE,
+        depth: atRow(CAPTION_BAND, Math.max(...thing.tiles.map((tile) => tile.y))),
+        // The hall's furniture names itself as it is walked up to, from further
+        // off than a thing in a room does, because the hall is that much bigger.
+        speech: { voice: 'name', tiles: thing.tiles, near: station ? STATION_NAMED_WITHIN : 1 },
+      });
+      this.worldLabels.push(label);
+      if (station) {
+        this.stationLabels.set(thing, label);
+      }
     }
   }
 
@@ -1932,7 +2596,10 @@ export class BaseScene extends Phaser.Scene {
       }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
-    const keeper = room.screen === 'arena' ? ARENA_KEEPER_HINT : room.keeper ? `[SPACE] ${room.keeper.name}` : '';
+    const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
+    if (this.onMat(room) && room.screen === 'arena') {
+      return partner ? `${partner}   [DOWN] OUT` : '[DOWN] OUT';
+    }
     if (this.onMat(room)) {
       // The player's own house has nobody to speak to from the mat, so it
       // names its own keys there instead: the mat is where everybody arrives,
@@ -1951,9 +2618,6 @@ export class BaseScene extends Phaser.Scene {
     if (wave) {
       return wave;
     }
-    if (this.arena && isArenaFence(facing)) {
-      return '[SPACE] LOOK DOWN';
-    }
     // Something in the room that opens a screen says so where it can be
     // opened from, exactly as the keeper does: a board on a wall that answers
     // a key nobody was told about is a board nobody reads.
@@ -1965,6 +2629,10 @@ export class BaseScene extends Phaser.Scene {
     const unit = faced?.cabinetUnit;
     if (unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined) {
       return '[SPACE] LOOK CLOSER';
+    }
+    // Anywhere on the rim is over a way in, and the hint says which.
+    if (this.arena && isAtRim(this.currentTile)) {
+      return this.aimed && !this.kit?.flow.notReady ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
     }
     // The player's own house says it can be decorated, until it has been.
     return this.houseKeys();
@@ -2062,15 +2730,20 @@ export class BaseScene extends Phaser.Scene {
     camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height + below, viewHeight));
     camera.setZoom(CAMERA_ZOOM);
     camera.setRoundPixels(true);
-    camera.startFollow(this.player, true);
+    // The hall's camera is placed by hand, a whole pixel from a whole pixel
+    // (`settleHallCamera`), because it leans as well as follows.
+    if (!this.place.room?.pit) {
+      camera.startFollow(this.player, true);
+    }
   }
 
   private containWorldLabels(): void {
     if (this.worldLabels.length === 0) {
       return;
     }
-    // Decorating is looking at the room itself: no caption over it.
-    if (this.decor) {
+    // Decorating is looking at the room itself: no caption over it. Nor over the
+    // hall with a panel up: the panel is saying it.
+    if (this.decor || this.arenaPanel) {
       this.worldLabels.forEach((label) => label.hide());
       this.partner?.setVeiled(false);
       return;
@@ -2830,18 +3503,30 @@ export class BaseScene extends Phaser.Scene {
     }
     const room = this.place.room?.room;
     if (room) {
-      if (room.screen && (this.onMat(room) || servesFrom(room, target))) {
+      if (room.screen === 'arena') {
+        // Nobody's screen opens from the mat in here: the room is the screen.
+        if (servesFrom(room, target)) {
+          this.speakToMarshal(room);
+          return;
+        }
+      } else if (room.screen && (this.onMat(room) || servesFrom(room, target))) {
         this.speakToKeeper(room, room.screen);
         return;
       }
       if (this.waveAt(target)) {
         return;
       }
-      if (this.arena && isArenaFence(target)) {
-        this.say(this.arena.lookLines(this.currentTile), []);
+      const thing = this.thingFaced(target);
+      if (thing?.opens === 'bench' || thing?.opens === 'rack' || thing?.opens === 'locker') {
+        this.openHallPanel(thing.opens);
         return;
       }
-      const thing = this.thingFaced(target);
+      // Anywhere on the rim, whichever way along it the player happens to be
+      // facing: they turn to the fence and look over.
+      if (this.arena && isAtRim(this.currentTile)) {
+        this.lookDown();
+        return;
+      }
       const cabinet = this.place.room?.cabinet;
       if (thing?.opens === 'wall-map') {
         this.openWallMap(room);
@@ -3473,14 +4158,6 @@ export class BaseScene extends Phaser.Scene {
   private speakToKeeper(room: BaseRoom, screen: BaseScreen): void {
     const beat = this.favourHere(screen);
     const openScreen = (): void => this.openScreen(room, screen);
-    // The marshal tells a newcomer what the raid's first screen is for, once,
-    // in this room's own box and only because they were asked: arriving at the
-    // Arena says nothing (`hub/firstWords.ts`).
-    if (screen === 'arena' && !hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
-      this.hearLoadoutWords();
-      this.say(FIRST_WORDS.loadout.lines, room.keeper ? [room.keeper.position] : [], openScreen);
-      return;
-    }
     if (!beat) {
       openScreen();
       return;
@@ -3602,7 +4279,12 @@ export class BaseScene extends Phaser.Scene {
    */
   private markKeeper(room: BaseRoom): void {
     const keeper = room.keeper;
-    if (!keeper || !room.screen || !this.favourHere(room.screen)) {
+    // THE RAID ARENA's marshal has no favour to ask, only what the room is for.
+    const wantsAWord =
+      room.screen === 'arena'
+        ? !hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')
+        : room.screen !== null && this.favourHere(room.screen) !== undefined;
+    if (!keeper || !wantsAWord) {
       return;
     }
     const head = getCharacterDesign(keeper.design).headPixelY;
@@ -3690,6 +4372,10 @@ export class BaseScene extends Phaser.Scene {
       this.openBoutique('shop');
       return;
     }
+    // The hall has no screen of its own: everything in it is on the floor.
+    if (screen === 'arena') {
+      return;
+    }
     this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
   }
 
@@ -3733,8 +4419,21 @@ export class BaseScene extends Phaser.Scene {
   }
 }
 
-/** What the key does in the Arena's hall, on the mat or facing its marshal. */
-const ARENA_KEEPER_HINT = '[SPACE] GET READY';
+/** How far a station's art rises above its own row: where its caption has to clear. */
+const STATION_RISE = 16;
+/** How many steps off a station still names itself. */
+const STATION_NAMED_WITHIN = 3;
+
+/** The stretch of rim straight in from the door, for a raid come home that this page did not see leave. */
+function rimAboveTheDoor(): GridPosition {
+  const straightUp = ARENA_RIM.filter((tile) => tile.x === ARENA_MAT.x);
+  return straightUp.reduce((nearest, tile) => (tile.y > nearest.y ? tile : nearest), straightUp[0]);
+}
+
+/** Whether a point of the hall is inside the fence. */
+function insideThePit(x: number, y: number): boolean {
+  return acrossOval(PIT_RIM, x, y) < 1;
+}
 
 /**
  * The name given at THE BOLTHOLE's door, for this sitting. It is kept on the
@@ -3760,8 +4459,7 @@ const SLEEP_DARK_MS = 600;
 /** Which screen each door opens, as `HubScene` names its views. */
 const SCREEN_VIEWS = {
   lab: 'home',
-  arena: 'deploy',
   stash: 'stash',
   workshop: 'workshop',
   trader: 'trader',
-} as const satisfies Record<Exclude<BaseScreen, 'boutique'>, NonNullable<HubSceneData['view']>>;
+} as const satisfies Record<Exclude<BaseScreen, 'boutique' | 'arena'>, NonNullable<HubSceneData['view']>>;

@@ -1,12 +1,12 @@
 import type { Minimap, PaintedPicture } from '../world/minimap';
 import {
-  PIT_MAP_SIZE,
   PIT_RIM,
   PIT_TREAD,
   STONE_RAMP,
   acrossOval,
   dithered,
   grownOval,
+  pitFrameFor,
   podiumHole,
   scatter,
   stoneAt,
@@ -28,8 +28,8 @@ import {
  * `tools/base/renderArena.mts` draws the same pixels without a browser.
  */
 
-/** How big the floor is painted: enough to show past every edge the rings can slide to. */
-export const PIT_FLOOR_SIZE = 720;
+/** How big the floor is painted: enough to fill the hole from anywhere the floor can slide to. */
+export const PIT_FLOOR_SIZE = 984;
 
 /** How wide a ring's picture is painted, enough to run under the fence as it slides. */
 const RING_MARGIN = 28;
@@ -354,24 +354,34 @@ const isKnown = isGroundKnown;
 export function paintPitFloor(picture: Minimap): PaintedPicture {
   const size = PIT_FLOOR_SIZE;
   const data = new Uint8ClampedArray(size * size * 4);
-  const offset = (size - PIT_MAP_SIZE) / 2;
+  const frame = pitFrameFor(picture.width, picture.height);
+  const offsetX = (size - frame.width * frame.scale) / 2;
+  const offsetY = (size - frame.height * frame.scale) / 2;
   const rows = picture.rows;
   const charAt = (mapX: number, mapY: number): string | undefined => rows[mapY]?.[mapX];
   for (let y = 0; y < size; y += 1) {
-    const mapY = y - offset;
+    const mapY = Math.floor((y - offsetY) / frame.scale);
     for (let x = 0; x < size; x += 1) {
       // Round, as far as the hole can ever slide to show: past that the corners
       // of a square picture would stand outside the hall.
       if (Math.hypot(x - size / 2, y - size / 2) > size / 2) {
         continue;
       }
-      const mapX = x - offset;
-      const char = mapX >= 0 && mapY >= 0 && mapX < PIT_MAP_SIZE && mapY < PIT_MAP_SIZE ? charAt(mapX, mapY) : undefined;
+      const mapX = Math.floor((x - offsetX) / frame.scale);
+      const inside = mapX >= 0 && mapY >= 0 && mapX < frame.width && mapY < frame.height;
+      const char = inside ? charAt(mapX, mapY) : undefined;
       const at = (y * size + x) * 4;
+      // How far in from the map's own edge this pixel is, in pixels of the floor.
+      const fromEdge = Math.min(
+        x - offsetX,
+        y - offsetY,
+        offsetX + frame.width * frame.scale - 1 - x,
+        offsetY + frame.height * frame.scale - 1 - y,
+      );
       if (!isKnown(char)) {
         // What shows through thins to nothing towards the map's edge, or the
         // cloud would draw the map's own square.
-        setPixel(data, at, unknownInk(x, y, char, Math.min(mapX, mapY, PIT_MAP_SIZE - 1 - mapX, PIT_MAP_SIZE - 1 - mapY)));
+        setPixel(data, at, unknownInk(x, y, char, fromEdge));
         continue;
       }
       const mark = MARK_INKS[char as string];
@@ -383,7 +393,6 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       // or a save that has walked to it would see the picture's square.
       // Only over what fills a map's margin, wood and open sea: a place out near
       // the edge, the islands above all, stays clear of it.
-      const fromEdge = Math.min(mapX, mapY, PIT_MAP_SIZE - 1 - mapX, PIT_MAP_SIZE - 1 - mapY);
       if ((char === 'T' || char === 'W') && fromEdge < MAP_EDGE_BANK) {
         const reach = 8 + cloudField(x, y, 34, 53) * (MAP_EDGE_BANK - 8);
         if (fromEdge < reach && dithered((reach - fromEdge) / 7, x, y)) {
@@ -413,6 +422,39 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       const shaded = standsUp(charAt(mapX - 1, mapY - 1)) && !standsUp(char);
       const lit: Rgb = shaded ? [Math.round(ink[0] * 0.62), Math.round(ink[1] * 0.66), Math.round(ink[2] * 0.76)] : ink;
       setPixel(data, at, hazed(lit, x, y));
+    }
+  }
+  return { width: size, height: size, data };
+}
+
+/**
+ * The cloud a jump goes down through, a sheet of it that repeats: the brightest
+ * of what lies over the vale, with the same dark in its hollows, so going through
+ * it reads as going through what was on the floor. The raid opens under this same
+ * sheet (`world/raidArrival.ts`), which is what hides the join.
+ */
+export function cloudSheet(size = 128): PaintedPicture {
+  const data = new Uint8ClampedArray(size * size * 4);
+  const scale = size / 4;
+  const field = (x: number, y: number, each: number, seed: number): number => {
+    const cellX = Math.floor(x / each);
+    const cellY = Math.floor(y / each);
+    const u = x / each - cellX;
+    const v = y / each - cellY;
+    const ease = (t: number): number => t * t * (3 - 2 * t);
+    const wrap = size / each;
+    const at = (cx: number, cy: number): number => scatter((cx % wrap) + seed, cy % wrap);
+    const top = at(cellX, cellY) + (at(cellX + 1, cellY) - at(cellX, cellY)) * ease(u);
+    const bottom = at(cellX, cellY + 1) + (at(cellX + 1, cellY + 1) - at(cellX, cellY + 1)) * ease(u);
+    return top + (bottom - top) * ease(v);
+  };
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const amount = Math.min(0.999, Math.max(0, (field(x, y, scale, 3) * 0.6 + field(x, y, scale / 2, 19) * 0.4 - 0.2) * 1.6));
+      const position = 3 + amount * (CLOUD_INKS.length - 4);
+      const whole = Math.floor(position);
+      const index = dithered(position - whole, x, y) ? whole + 1 : whole;
+      setPixel(data, (y * size + x) * 4, CLOUD_INKS[Math.min(CLOUD_INKS.length - 1, index)]);
     }
   }
   return { width: size, height: size, data };

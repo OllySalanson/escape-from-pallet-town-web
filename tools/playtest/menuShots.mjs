@@ -22,7 +22,7 @@
 // selector lands on the next one, because Left and Right belong to the count.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn, openHallPanel, readFirstWords } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -194,7 +194,7 @@ try {
     Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       // Heard already, so no first-words box stands over a screen being
       // photographed - and Escape leaves the screen instead of putting one down.
-      firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'],
+      firstWordsHeard: ['lab', 'loadout', 'check', 'center'],
       // Every keeper's errand already asked, for the same reason: walking in
       // otherwise opens on the keeper asking, and Escape puts that down.
       errands: ['oaks-parcel', 'medicine-bag', 'brocks-crate', 'old-amber'].map((id) => ({ id, status: 'started', found: 0, lossesHeard: 0 })) });
@@ -250,18 +250,20 @@ try {
   // Pack something, so the final check is photographed with a loadout on it
   // rather than as two empty windows: what those screens look like full is the
   // question, and an empty one answers it for nobody.
+  await openHallPanel(page, 'rack');
   for (const itemId of ['potion', 'poke-ball', 'super-potion']) {
     await clickSel(`[data-count-id="${itemId}"][data-count-dir="1"]`);
     await clickSel(`[data-count-id="${itemId}"][data-count-dir="1"]`);
   }
-  await click('Choose drop-in');
-  await shoot('dropin');
-  await click('Review & deploy');
-  await shoot('final-check');
+  await shoot('rack');
+  await openHallPanel(page, 'locker');
+  await shoot('locker');
+  await openHallPanel(page, 'rim');
+  await readFirstWords(page);
+  await shoot('rim');
 
   if (raid) {
-    await click('Enter the raid');
-    await page.waitFor(sceneIs('world'));
+    await jumpIn(page, { until: (expression, what) => page.waitFor(expression, { what }) });
     await sleep(900);
     await press('Space');
     await sleep(400);

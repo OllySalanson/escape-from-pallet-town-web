@@ -4,17 +4,17 @@
 //
 // A held key sends one keydown and then a stream of keydowns marked `repeat`,
 // and Chromium works the focused button on every one of them. Two screens
-// were run through by it (playtest 26 #7): the drop-in step's `Review & deploy`
-// re-rendered into the final check with the cursor on `Enter the raid`, and the
+// were run through by it (playtest 26 #7): a button re-rendering into another
+// with the cursor on what starts the raid, and the
 // next repeat started the raid; and the raid pack's Potion opened its
 // recipient list and the repeats gave the Potion away, then the next one.
 //
-// It deploys a fresh save, holds Enter on `Review & deploy` and reports which
+// It takes a fresh save to the rim, holds Enter on `Not yet` and reports which
 // screen it ended on; then, in the raid, holds Enter on a Potion and reports
 // how many were drunk, then taps Enter once more and expects exactly one.
 // Exit code 1 is the bug.
 import { launchBrowser, sleep } from './browser.mjs';
-import { GAME, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, sceneIs, takePokemon, walkIntoBase, openHallPanel } from './deploy.mjs';
 
 const [url = 'http://localhost:5173/'] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 
@@ -64,17 +64,19 @@ try {
   await until(sceneIs('base'));
   await walkIntoBase(page, 'raid-arena', { press, until });
   await until(takePokemon('Bulbasaur'), 'Bulbasaur in the raid party');
-  await click('Choose drop-in');
-
-  await focus('Review & deploy');
+  await openHallPanel(page, 'rim', { press, until });
+  // Nothing has read the first words yet: read, and then Enter held on the
+  // button that jumps goes once at most, and only because it was pressed.
+  await page.evaluate(`document.querySelector('[data-speech-done]')?.click()`);
+  await sleep(300);
+  await focus('Not yet');
   await holdEnter(page, 12);
   const inRaid = await page.evaluate(sceneIs('world'));
-  console.log(`held Enter on Review & deploy: ${inRaid ? 'RAN INTO THE RAID' : 'stopped at the final check'}`);
+  console.log(`held Enter on Not yet: ${inRaid ? 'RAN INTO THE RAID' : 'stayed in the hall'}`);
   failed ||= inRaid;
 
-  if (!inRaid) {
-    await click('Enter the raid');
-  }
+  await openHallPanel(page, 'rim', { press, until });
+  await page.evaluate(`document.querySelector('[data-start]')?.click()`);
   await until(sceneIs('world'));
   // Whatever the raid opens on is read before the bag is opened.
   await page.waitFor(`!${GAME}.scene.getScene('world').dialogBox?.isOpen?.()`, { timeoutMs: 3000 }).catch(() => undefined);

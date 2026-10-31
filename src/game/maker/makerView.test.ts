@@ -321,7 +321,7 @@ describe('TRY IT', () => {
   });
 
   it('sends a raid that ends back to the map maker during a try, and to the base otherwise', () => {
-    expect(homeAfterRaid()).toEqual({ key: 'base', data: { arrival: 'raid' } });
+    expect(homeAfterRaid()).toEqual({ key: 'base', data: { arrival: 'raid', room: 'raid-arena' } });
     beginTry('draft-a', SAMPLE, 'raid');
     // A try only counts while its save is the one in play.
     expect(homeAfterRaid().key).toBe('base');

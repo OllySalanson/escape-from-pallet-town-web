@@ -11,6 +11,7 @@ import {
   ARENA_KEEPER_TILE,
   ARENA_MAT,
   ARENA_PILLARS,
+  ARENA_STATIONS,
   ARENA_TILE,
   ARENA_TORCHES,
   FLOOR_PARALLAX,
@@ -22,6 +23,7 @@ import {
   TIER_PARALLAX,
   acrossOval,
   arenaCollision,
+  arenaStationAt,
   cameraLean,
   isArenaFence,
   parallaxShift,
@@ -37,6 +39,28 @@ import { BASE_ROOMS, buildRoom, roomNamed } from './rooms';
 
 const solid = arenaCollision();
 const key = (x: number, y: number): string => `${x},${y}`;
+
+/** How many steps every tile that can be walked to is from the mat. */
+function stepsFromTheMat(): Map<string, number> {
+  const steps = new Map([[key(ARENA_MAT.x, ARENA_MAT.y), 0]]);
+  const queue = [ARENA_MAT];
+  while (queue.length > 0) {
+    const { x, y } = queue.shift()!;
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const next = { x: x + dx, y: y + dy };
+      if (solid[next.y]?.[next.x] === false && !steps.has(key(next.x, next.y))) {
+        steps.set(key(next.x, next.y), steps.get(key(x, y))! + 1);
+        queue.push(next);
+      }
+    }
+  }
+  return steps;
+}
 
 /** Every tile that can be walked to from the mat. */
 function reached(): Set<string> {
@@ -102,7 +126,7 @@ describe("THE RAID ARENA's great hall", () => {
     );
   });
 
-  it('keeps a fence all round that can be stood at from anywhere on the ring, which a jump will want', () => {
+  it('keeps a fence all round that can be stood at from anywhere on the ring, for a jump', () => {
     expect(ARENA_FENCE.length).toBeGreaterThan(100);
     for (const tile of ARENA_FENCE) {
       expect(isArenaFence(tile)).toBe(true);
@@ -116,12 +140,40 @@ describe("THE RAID ARENA's great hall", () => {
     }
   });
 
-  it('keeps open floor between the fence and the pillars, which benches will want', () => {
+  it('keeps open floor between the fence and the pillars, so the walk round the rim is never shut', () => {
     for (const pillar of ARENA_PILLARS) {
       const nearest = Math.min(
         ...ARENA_FENCE.map((tile) => Math.abs(tile.x - pillar.x) + Math.abs(tile.y - pillar.y)),
       );
       expect(nearest, `${pillar.x},${pillar.y}`).toBeGreaterThan(PLATFORM_CLEAR);
+    }
+  });
+
+  it('stands its furniture on solid tiles, each with floor in front of it a step or two from the mat', () => {
+    expect(ARENA_STATIONS.map((station) => station.id)).toEqual(['bench', 'rack', 'locker']);
+    const steps = stepsFromTheMat();
+    for (const station of ARENA_STATIONS) {
+      for (const tile of station.tiles) {
+        expect(solid[tile.y][tile.x], `${station.id} ${tile.x},${tile.y}`).toBe(true);
+        expect(arenaStationAt(tile)?.id).toBe(station.id);
+      }
+      const front = station.tiles.map((tile) => steps.get(key(tile.x, tile.y + 1)));
+      expect(front.every((walk) => walk !== undefined), station.id).toBe(true);
+      expect(Math.min(...(front as number[])), station.id).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('never lets its furniture shut the walk round the rim', () => {
+    const walkable = stepsFromTheMat();
+    solid.forEach((row, y) =>
+      row.forEach((blocked, x) => {
+        if (!blocked) {
+          expect(walkable.has(key(x, y)), `${x},${y}`).toBe(true);
+        }
+      }),
+    );
+    for (const tile of ARENA_FENCE) {
+      expect(arenaStationAt(tile)).toBeUndefined();
     }
   });
 
@@ -279,8 +331,10 @@ describe('the pit', () => {
 });
 
 describe('what is said on the way to a raid', () => {
-  it('says nothing over the loadout: the marshal says it in the hall, and it is not Oak', () => {
-    expect(firstWordsFor('deploy', 'loadout')).toBeUndefined();
+  it('says nothing over the bench, the rack or the locker: the marshal says it in the hall, and it is not Oak', () => {
+    for (const panel of ['bench', 'rack', 'locker']) {
+      expect(firstWordsFor(panel)).toBeUndefined();
+    }
     expect(FIRST_WORDS.loadout.speaker).not.toBe('prof-oak');
     for (const line of FIRST_WORDS.loadout.lines) {
       expect(line.length).toBeLessThanOrEqual(68);

@@ -16,7 +16,7 @@
 // vault. Photographs each beat and fails loudly when one is not what it promises.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel, readFirstWords } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -134,7 +134,7 @@ try {
     const raid = ${JSON.stringify(raidSave)};
     if (raid) Object.assign(save, raid);
     const p = save.raidProgress;
-    p.firstWordsHeard = ['lab', 'loadout', 'dropin', 'check', 'center'];
+    p.firstWordsHeard = ['lab', 'loadout', 'check', 'center'];
     p.keysLearned = ['walk', 'look'];
     if (!raid) {
       p.errands = [{ id: 'brocks-crate', status: 'started', found: 1, lossesHeard: 0 }];
@@ -207,19 +207,19 @@ try {
   if (!/ERRANDS/i.test(board) || !/Oak's Parcel/i.test(board)) throw new Error(`the lab's board has no errands: ${board.slice(0, 300)}`);
   await page.screenshot(`${out}/lab-board.png`);
 
-  // The drop-in screen names the errands on the map being looked at. Raids
-  // start at the Raid Arena, so out of the lab and across the yard to it.
+  // The rim's panel names the errands on the map being looked at. Raids start
+  // at the Raid Arena, so out of the lab and across the yard to it.
   await press('Escape');
   await page.waitFor(sceneIs('base'));
   await walkIntoBase(page, 'raid-arena');
   await page.waitFor(takePokemon(), { what: 'a Pokémon for the raid' });
-  await click('[data-advance]', 'on to the drop-in');
-  await click('button[data-insertion="greystone-vale"]', 'Greystone Vale');
+  await openHallPanel(page, 'rim');
+  await readFirstWords(page);
   await sleep(600);
-  const pane = await page.evaluate(`document.querySelector('.dropin-layout, .px-body')?.innerText ?? ''`);
-  if (!/OLD AMBER/i.test(pane) || !/PINE HOLLOW/.test(pane)) throw new Error(`the drop-in pane does not name Bill's amber: ${pane.slice(0, 400)}`);
+  const pane = await page.evaluate(`document.querySelector('.rim-layout, .px-body')?.innerText ?? ''`);
+  if (!/OLD AMBER/i.test(pane) || !/PINE HOLLOW/.test(pane)) throw new Error(`the rim's panel does not name Bill's amber: ${pane.slice(0, 400)}`);
   await page.screenshot(`${out}/dropin-errand.png`);
-  console.log('drop-in: names the Old Amber in PINE HOLLOW');
+  console.log('rim: names the Old Amber in PINE HOLLOW');
 } finally {
   await page.close();
   await browser.close();

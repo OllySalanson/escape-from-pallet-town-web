@@ -341,6 +341,17 @@ export const SOUND_EFFECTS = {
     moment: 'The final check is confirmed and the raid drops in',
     tones: [saw(131, 0.1, 0.06), saw(196, 0.1, 0.06, 0.09), sq(262, 0.1, 0.06, 0.18), sq(392, 0.22, 0.065, 0.27)],
   },
+  diveRush: {
+    channel: 'world',
+    moment: 'Going down through the air into a raid, over the fence of the Raid Arena and out of the cloud',
+    // The wind going past: noise, opening as the fall gathers.
+    tones: [sweep(noise(500, 0.5, 0.05), 2600)],
+  },
+  landThud: {
+    channel: 'world',
+    moment: 'Landing in a raid out of the cloud',
+    tones: [noise(320, 0.1, 0.09), sweep(tri(130, 0.14, 0.08), 82)],
+  },
   bikeBell: {
     channel: 'world',
     moment: 'Getting on the Bicycle - its bell, as FireRed rings it',

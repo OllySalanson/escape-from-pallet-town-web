@@ -25,6 +25,7 @@ import {
   ARENA_HALL_WIDTH,
   ARENA_MAT,
   ARENA_PILLARS,
+  ARENA_STATIONS,
   ARENA_TILE,
   ARENA_TORCHES,
   KERB_WIDTH,
@@ -474,6 +475,169 @@ function paintPorch(): void {
   ground.fill(left, bottom - 2, right - left, 2, STONE_RAMP[2]);
 }
 
+// --- where a player gets ready ------------------------------------------------
+
+/** The tiles a station stands on, as pixels: left, one past its right, and its foot. */
+function stationBox(id: string): { readonly left: number; readonly right: number; readonly top: number; readonly foot: number } {
+  const { tiles } = ARENA_STATIONS.find((station) => station.id === id)!;
+  return {
+    left: tiles[0].x * ARENA_TILE,
+    right: (tiles[tiles.length - 1].x + 1) * ARENA_TILE,
+    top: tiles[0].y * ARENA_TILE,
+    foot: (tiles[0].y + 1) * ARENA_TILE - 1,
+  };
+}
+
+/** Anything that stands up: the part below its own row is what figures stand beside, the rest they pass behind. */
+function stationPut(top: number): (x: number, y: number, ink: Rgb) => void {
+  return (x, y, ink) => (y >= top ? ground : over).set(x, y, ink);
+}
+
+/** Its shadow on the floor, thrown down and to the right, as a pillar's is. */
+function stationShadow(left: number, right: number, foot: number): void {
+  for (let dy = 1; dy <= 5; dy += 1) {
+    for (let x = left + dy; x < right + dy; x += 1) {
+      if (ground.has(x, foot + dy) && dithered(0.75, x, foot + dy)) {
+        ground.set(x, foot + dy, STONE_RAMP[2]);
+      }
+    }
+  }
+}
+
+/**
+ * The bench: one long slab on three plinths, the hall's own stone. Whoever is
+ * in the raid party sits along it (`BaseScene.seatTheBench`), a Pokemon a tile.
+ */
+function paintBench(): void {
+  const { left: tileLeft, right: tileRight, foot } = stationBox('bench');
+  // Pulled in clear of the two pillars either end of it.
+  const left = tileLeft + 4;
+  const right = tileRight - 3;
+  const light = torchLight((left + right) / 2, foot - 4, ARENA_TORCHES);
+  const seatTop = foot - 11;
+  const seatFront = foot - 6;
+  stationShadow(left, right, foot);
+  for (let y = seatTop; y <= foot; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      const fromLeft = x - left;
+      const fromRight = right - 1 - x;
+      const rounded = y === seatTop && (fromLeft === 0 || fromRight === 0);
+      if (rounded) {
+        continue;
+      }
+      if (y <= seatFront) {
+        const edge = y === seatTop || fromLeft === 0 || fromRight === 0 || y === seatFront;
+        // The top of the slab catches the light; its front does not.
+        const level = y < seatFront - 1 ? 6.6 : 4.2;
+        ground.set(x, y, edge ? STONE_RAMP[1] : stoneAt(level + light * 1.6 + 0.4 * (scatter(Math.floor(x / 14), 3) - 0.5), x, y));
+        continue;
+      }
+      // Three plinths under it.
+      const plinth = [left + 6, Math.round((left + right) / 2), right - 7].find((mid) => Math.abs(x - mid) <= 5);
+      if (plinth !== undefined) {
+        const off = x - plinth;
+        const outline = Math.abs(off) === 5 || y === foot;
+        ground.set(x, y, outline ? STONE_RAMP[1] : stoneAt(off < 0 ? 4.4 + light : 3.2 + light, x, y));
+      } else if (dithered(0.6, x, y)) {
+        ground.set(x, y, STONE_RAMP[2]);
+      }
+    }
+  }
+}
+
+/**
+ * The armoury rack: a wooden frame with iron at its joints and one long shelf.
+ * What this raid carries stands on the shelf (`BaseScene.dressTheRack`).
+ */
+function paintRack(): void {
+  const { left: tileLeft, right: tileRight, top, foot } = stationBox('rack');
+  const put = stationPut(top);
+  // Pulled in clear of the pillar beside it.
+  const left = tileLeft + 4;
+  const right = tileRight;
+  const head = foot - 33;
+  const shelf = foot - 8;
+  stationShadow(left, right, foot);
+  // The dark behind the shelf: boards, seen through the frame.
+  for (let y = head + 2; y < shelf; y += 1) {
+    for (let x = left + 3; x < right - 3; x += 1) {
+      put(x, y, Math.floor((x - left) / 7) % 2 === 0 ? STONE_RAMP[2] : STONE_RAMP[1]);
+    }
+  }
+  const wood = (x: number, y: number, lit: boolean): void => put(x, y, lit ? WOOD_LIGHT : WOOD);
+  // The head rail, and the shelf with its lit front edge.
+  for (let x = left; x < right; x += 1) {
+    for (let y = head; y < head + 3; y += 1) {
+      wood(x, y, y === head);
+    }
+    put(x, head + 3, STONE_RAMP[1]);
+    for (let y = shelf; y < shelf + 3; y += 1) {
+      wood(x, y, y === shelf);
+    }
+    put(x, shelf + 3, STONE_RAMP[1]);
+  }
+  // The two posts, down to the floor.
+  for (const post of [left, right - 3]) {
+    for (let y = head; y <= foot; y += 1) {
+      put(post, y, STONE_RAMP[1]);
+      put(post + 1, y, WOOD_LIGHT);
+      put(post + 2, y, y >= foot - 1 ? STONE_RAMP[1] : WOOD);
+    }
+    // Iron at the joints.
+    for (const joint of [head + 1, shelf + 1]) {
+      put(post + 1, joint, IRON_LIGHT);
+      put(post + 2, joint, IRON);
+    }
+  }
+  // Pegs along the head rail, for a coil of rope or a strap.
+  for (let x = left + 8; x < right - 6; x += 9) {
+    put(x, head + 3, IRON_LIGHT);
+    put(x, head + 4, IRON);
+  }
+}
+
+/**
+ * The locker: an iron-bound box as tall as a person, with a brass lock. What is
+ * in it comes home whatever happens, and it looks like it would.
+ */
+function paintLocker(): void {
+  const { left: tileLeft, right: tileRight, top, foot } = stationBox('locker');
+  const put = stationPut(top);
+  const left = tileLeft + 2;
+  const right = tileRight - 2;
+  const head = foot - 31;
+  const middle = Math.floor((left + right) / 2);
+  stationShadow(left, right, foot);
+  for (let y = head; y <= foot; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      const outline = x === left || x === right - 1 || y === head || y === foot;
+      if (outline) {
+        put(x, y, IRON);
+        continue;
+      }
+      // The two doors, the light from the top left, and a band of iron at each hinge.
+      const banded = y === head + 6 || y === head + 7 || y === foot - 7 || y === foot - 6;
+      const seam = x === middle;
+      if (seam) {
+        put(x, y, IRON);
+      } else if (banded) {
+        put(x, y, x % 5 === 2 ? STONE_RAMP[7] : IRON_LIGHT);
+      } else {
+        const level = 2.4 + (x - left < 3 ? 1.1 : 0) + (y - head < 3 ? 0.9 : 0) - (x === middle - 1 ? 0.6 : 0);
+        put(x, y, stoneAt(level, x, y));
+      }
+    }
+  }
+  // The lock, in the seam at hand height.
+  const lockTop = head + 14;
+  for (let y = lockTop; y < lockTop + 6; y += 1) {
+    for (let x = middle - 2; x <= middle + 2; x += 1) {
+      const rim = y === lockTop || y === lockTop + 5 || x === middle - 2 || x === middle + 2;
+      put(x, y, rim ? GOLD_DARK : y === lockTop + 2 && x === middle ? IRON : GOLD);
+    }
+  }
+}
+
 paintFloor();
 paintWall();
 paintBanners();
@@ -487,6 +651,9 @@ for (const pillar of [...ARENA_PILLARS].sort((a, b) => a.y - b.y)) {
 for (const torch of ARENA_TORCHES) {
   paintTorch(torch);
 }
+paintBench();
+paintRack();
+paintLocker();
 
 // --- into tiles --------------------------------------------------------------
 

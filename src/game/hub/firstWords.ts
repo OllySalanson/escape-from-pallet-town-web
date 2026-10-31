@@ -1,5 +1,4 @@
 import type { CharacterDesignId } from '../world/characterDesigns';
-import type { DeploymentStep } from './deploymentFlow';
 
 /**
  * What Professor Oak and Nurse Joy say the first time each of their screens
@@ -19,7 +18,7 @@ import type { DeploymentStep } from './deploymentFlow';
  * so leaving the screen without reading it does not buy a second hearing - and
  * the save keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'dropin', 'check', 'center'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'check', 'center'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -53,31 +52,29 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     ],
   },
   // Said in the great hall by its own keeper, when spoken to, in the room's
-  // dialogue box (`BaseScene.speakToKeeper`): the captain did not want Oak's
+  // dialogue box (`BaseScene.speakToMarshal`): the captain did not want Oak's
   // voice along the foot of the screen on arriving at the Arena.
   loadout: {
     speaker: ARENA_KEEPER_DESIGN,
     name: ARENA_KEEPER_NAME,
     lines: [
-      'Next raid? Choose who comes with you, and what goes in the pack.',
+      'Everything for a raid is in this room. Walk up to it and press.',
+      'The BENCH is who comes with you. The RACK is what you carry.',
       'Pack Poké Balls: throw one at a weakened wild Pokémon to keep it.',
-      'Leave room! A caught Pokémon takes 4 squares of the pack, or more.',
+      'A caught Pokémon takes 4 squares of the pack or more, so leave room!',
+      'The LOCKER holds what comes home even if you lose everything else.',
+      'When you are ready, walk round the rim and jump in over the fence.',
     ],
   },
-  dropin: {
-    speaker: 'prof-oak',
-    name: 'Professor Oak',
-    lines: [
-      'Now, where to drop in. A map stays dark until you have walked it.',
-      'The higher the grade, the stronger the Pokémon there. Grade 1 is the gentlest.',
-    ],
-  },
+  // Said the first time a player looks down from the rim, over the panel that
+  // starts the raid: the last thing a newcomer reads before it does.
   check: {
-    speaker: 'prof-oak',
-    name: 'Professor Oak',
+    speaker: ARENA_KEEPER_DESIGN,
+    name: ARENA_KEEPER_NAME,
     lines: [
-      'LOST IF YOU WIPE is what goes if your team faints or the clock runs out - Pokémon from base too.',
-      'Only what COMES HOME is safe. That is your secure slot.',
+      'That is Greystone Vale. The cloud is whatever you have not walked yet.',
+      'Each light down there is a way in. Walk the rim, or pick one here.',
+      'What is not in your locker is lost if your team faints or the clock runs out.',
       'And a rival hunter comes looking once you set off. If they catch you, you fight.',
     ],
   },
@@ -93,21 +90,18 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
 };
 
 /** The base screens, as `HubScene` names them, that have first words of their own. */
-export type FirstWordsView = 'home' | 'stash' | 'deploy' | (string & {});
+export type FirstWordsView = 'home' | 'stash' | 'rim' | (string & {});
 
 /**
- * Which first words belong to the screen the player is looking at: the lab, a
- * later step of preparation, or the Pokemon Center. The loadout says nothing
- * over itself, because its words have been said in the hall on the way to it,
- * and the secure slot is a detour off the loadout rather than a screen of its
- * own, so neither does that.
+ * Which first words belong to the screen the player is looking at: the lab, the
+ * rim of THE RAID ARENA's pit, or the Pokemon Center. The bench, the rack and
+ * the locker say nothing over themselves, because the marshal who stands beside
+ * them says what they are for, in the hall.
  */
-export function firstWordsFor(view: FirstWordsView, step: DeploymentStep): FirstWordsId | undefined {
+export function firstWordsFor(view: FirstWordsView): FirstWordsId | undefined {
   if (view === 'home') return 'lab';
   if (view === 'stash') return 'center';
-  if (view !== 'deploy') return undefined;
-  if (step === 'dropin') return 'dropin';
-  if (step === 'confirm') return 'check';
+  if (view === 'rim') return 'check';
   return undefined;
 }
 

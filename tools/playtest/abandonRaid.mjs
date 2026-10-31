@@ -10,7 +10,7 @@
 //    settled, and the raid is still recorded as under way.
 // And a reload at base, outside a raid, changes nothing in the save.
 import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn } from './deploy.mjs';
 
 const base = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
 if (!base) {
@@ -68,7 +68,7 @@ async function deployFrom(page) {
   await walkIntoBase(page, 'raid-arena');
   const click = clicker(page);
   await page.waitFor(takePokemon('Charmander'), { what: 'Charmander in the raid party' });
-  for (const label of ['Choose drop-in', 'Review & deploy', 'Enter the raid']) await click(label);
+  await jumpIn(page, { until: (expression, what) => page.waitFor(expression, { what }) });
   await page.waitFor(sceneIs('world'));
 }
 

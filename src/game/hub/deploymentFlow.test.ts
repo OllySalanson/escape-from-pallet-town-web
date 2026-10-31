@@ -194,17 +194,8 @@ describe('deployment flow', () => {
     expect(flow.step).toBe('loadout');
 
     flow.togglePokemon('bulbasaur-1');
-    flow.openSecureSlot();
-    expect(flow.step).toBe('secure');
     expect(() => flow.deploy()).toThrow(/confirmed loadout/);
 
-    expect(flow.advance()).toBeUndefined();
-    expect(flow.step).toBe('loadout');
-    expect(flow.advance()).toBeUndefined();
-    // Where to drop in is its own step now, and it stands between the loadout
-    // and the confirmation: a raid can no more start from it than from the kit.
-    expect(flow.step).toBe('dropin');
-    expect(() => flow.deploy()).toThrow(/confirmed loadout/);
     expect(flow.advance()).toBeUndefined();
     expect(flow.step).toBe('confirm');
     expect(() => flow.deploy()).not.toThrow();
@@ -226,7 +217,7 @@ describe('deployment flow', () => {
     expect(flow.togglePokemon('charmander-1')).toBeUndefined();
     expect(flow.isDeployable).toBe(true);
     expect(flow.advance()).toBeUndefined();
-    expect(flow.step).toBe('dropin');
+    expect(flow.step).toBe('confirm');
   });
 
   it('never packs a fainted Pokemon, which could only be lost, even beside one that can fight', () => {
@@ -261,7 +252,6 @@ describe('deployment flow', () => {
     flow.adjustItem('potion', 2);
     flow.adjustItem('poke-ball', 1);
     flow.chooseInsertion('viridian-forest');
-    flow.openSecureSlot();
     flow.adjustSecureItem('potion', 2);
     // Out of the secure detour, on to the drop-in, then to the confirmation.
     flow.advance();
@@ -479,7 +469,6 @@ describe('deployment flow', () => {
 
     flow.adjustItem('potion', 3);
     flow.adjustItem('poke-ball', 5);
-    flow.openSecureSlot();
     flow.toggleSecurePokemon(ids[0]);
     flow.toggleSecurePokemon(ids[1]);
     expect(flow.securedPokemon.map(({ id }) => id)).toEqual([ids[1]]);
@@ -497,7 +486,6 @@ describe('deployment flow', () => {
   it('reserves a whole square of a stacked kind, not one of it', () => {
     const { flow } = seedFlow();
     flow.togglePokemon('charmander-1');
-    flow.openSecureSlot();
     // The container filled itself with the Charmander; this test is about the
     // squares a stacked kind takes, so the player takes it back out first.
     flow.toggleSecurePokemon('charmander-1');
@@ -530,7 +518,6 @@ describe('deployment flow', () => {
     emptied(flow);
     flow.togglePokemon('charmander-1');
     flow.adjustItem('potion', 2);
-    flow.openSecureSlot();
     flow.adjustSecureItem('potion', 1);
     flow.advance();
 
@@ -557,22 +544,24 @@ describe('deployment flow', () => {
     expect(flow.party.map(({ id }) => id)).toEqual(['bulbasaur-1']);
   });
 
-  it('walks back through the route it came in by, one step at a time', () => {
+  it('carries what has been chosen over to the vault as storage now has it', () => {
     const { flow } = seedFlow();
-
     flow.togglePokemon('bulbasaur-1');
-    flow.advance();
-    flow.advance();
-    flow.openSecureSlot();
+    flow.setItemQuantity('potion', 2);
+    const later = createStartingStash();
+    later.removeItem('potion', later.itemCount('potion') - 1);
 
-    expect(flow.secureReturnStep).toBe('confirm');
-    expect(flow.retreat()).toBe(true);
-    expect(flow.step).toBe('confirm');
-    expect(flow.retreat()).toBe(true);
-    expect(flow.step).toBe('dropin');
-    expect(flow.retreat()).toBe(true);
-    expect(flow.step).toBe('loadout');
-    expect(flow.retreat()).toBe(false);
+    flow.rebase(later);
+
+    expect(flow.party.map(({ id }) => id)).toEqual(['bulbasaur-1']);
+    expect(flow.itemQuantity('potion')).toBe(1);
+  });
+
+  it('says why nobody can go, in the words a player can act on', () => {
+    const { flow } = seedFlow();
+    expect(flow.notReady).toMatch(/Nobody is on the bench/);
+    flow.togglePokemon('bulbasaur-1');
+    expect(flow.notReady).toBeUndefined();
   });
 
   it('caps supplies at the quantity held in the stash', () => {

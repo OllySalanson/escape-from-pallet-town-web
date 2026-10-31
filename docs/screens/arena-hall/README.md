@@ -1,5 +1,7 @@
 # THE RAID ARENA's great hall
 
+These are the hall as it first shipped, before raids started from it: `docs/screens/arena-raid-start/` is what it does now.
+
 What is behind the Arena's door once its trailer has played. Photographed by
 `tools/playtest/arenaHall.mjs` (`--tour`, `--survey=`, `--window=`) against a test-mode
 build; `whole-hall-from-above.png` is `tools/base/renderArena.mts --whole`, a view no

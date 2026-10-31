@@ -95,11 +95,11 @@ export function homeAfterRaid():
   | { readonly key: 'mapmaker'; readonly data: { readonly tried: true } }
   | {
       readonly key: 'base';
-      readonly data: { readonly arrival: 'raid' };
+      readonly data: { readonly arrival: 'raid'; readonly room: 'raid-arena' };
     } {
   return currentTry()
     ? { key: 'mapmaker', data: { tried: true } }
-    : { key: 'base', data: { arrival: 'raid' } };
+    : { key: 'base', data: { arrival: 'raid', room: 'raid-arena' } };
 }
 
 /**

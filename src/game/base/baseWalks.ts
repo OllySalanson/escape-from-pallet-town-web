@@ -138,5 +138,5 @@ export function walkHome(from: GridPosition, game: RestoredGame): number {
 /** The two places a player starts a visit to the base from. */
 export const BASE_STARTS = [
   { name: 'the yard', tile: BASE_SPAWN },
-  { name: 'the quay (home from a raid)', tile: BASE_LANDING },
+  { name: 'the quay', tile: BASE_LANDING },
 ] as const;
