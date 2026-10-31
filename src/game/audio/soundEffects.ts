@@ -214,6 +214,23 @@ export const SOUND_EFFECTS = {
     // lower, so it reads as a bigger ship further away.
     tones: [saw(82, 0.5, 0.05), saw(123, 0.5, 0.03)],
   },
+  coinToss: {
+    channel: 'world',
+    moment: 'A coin flicked over the rail of the Raid Arena',
+    tones: [sq(1046, 0.04, 0.05), sq(1318, 0.05, 0.04, 0.03)],
+    yields: true,
+  },
+  coinPlink: {
+    channel: 'world',
+    moment: 'A very long way down, the coin lands. It is a small sound and not a question',
+    tones: [tri(1480, 0.07, 0.05), tri(1175, 0.1, 0.05, 0.13)],
+  },
+  pitGives: {
+    channel: 'world',
+    moment: 'Something comes up out of the pit of the Raid Arena, and it is not a thing that gets explained',
+    // The ground first, then air going past whatever it is.
+    tones: [sweep(tri(82, 0.3, 0.1), 110), sweep(noise(500, 0.45, 0.06, 0.08), 2600)],
+  },
   crowdRoar: {
     channel: 'world',
     moment: 'The Raid Arena on its feet for a big haul, or a lap of honour: sounded a few times over, it swells',

@@ -1,6 +1,6 @@
 // Plays what THE RAID ARENA does for somebody who has come back to it.
 //
-//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd|landing|memory]
+//   node tools/playtest/arenaFun.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--only=crowd|landing|memory|coin]
 //
 // A save is written as it would stand after that many raids, the raid's ending is
 // handed to the hall as the result screen hands it, and everything is played with
@@ -334,6 +334,50 @@ try {
     }
     console.log('the rim names:', named);
     expect('walking the rim, it says what a mark was', named !== null);
+  }
+
+  // --- a coin over the rail --------------------------------------------------------
+  if (!only || only === 'coin') {
+    const saved = () => page.evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)}))`);
+    const money = async () => (await saved()).stash.items?.money ?? (await saved()).stash.supplies?.money ?? 0;
+    // Money, as found on raids, and one coin short of the first thing coming back.
+    await page.evaluate(`(() => { const k = ${JSON.stringify(SAVE)}; const s = JSON.parse(localStorage.getItem(k)); const held = s.stash.items ? s.stash.items : s.stash.supplies; held.money = 400; s.raidProgress.pit = { fed: 14, taken: 0 }; localStorage.setItem(k, JSON.stringify(s)); })()`);
+    await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 32, y: 56 } }); return 1; })()`);
+    await step(300);
+    await until(inHall, 'the hall again');
+    await walkTo({ x: 32, y: 56 });
+    await press('ArrowUp', 300);
+    await shot('coin-hint');
+    expect(`the rail says a coin can go over (${await base('b.hintShown')})`, (await base('b.hintShown')).includes('[C] TOSS A COIN'));
+    const before = await money();
+    await page.tap('KeyC', 0);
+    await step(300);
+    await shot('coin-over');
+    expect('it costs a coin', before - (await money()) === 10);
+    await page.tap('KeyC', 0);
+    await step(100);
+    expect('and only one can be in the air', before - (await money()) === 10);
+    expect('the hint has gone once it has been done', !(await base('b.hintShown')).includes('[C]'));
+    await step(3600);
+    expect('something comes back', await base('Boolean(b.pitGiftImage)'));
+    await shot('coin-gift-flying');
+    await step(1400);
+    await shot('coin-gift-landed');
+    const on = await base('b.currentTile');
+    await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: ${JSON.stringify(on)} }); return 1; })()`);
+    await step(300);
+    await until(inHall, 'the hall again');
+    expect('and it is still there on the next visit, until it is picked up', await base('Boolean(b.pitGiftImage)'));
+    await walkTo({ x: 30, y: 57 });
+    await step(300);
+    expect('walking on to it picks it up', (await saved()).raidProgress.pit.taken === 1);
+    await shot('coin-gift-taken');
+    for (let guard = 0; guard < 6 && (await base('b.dialogBox.visible')); guard += 1) {
+      await press('Space', 400);
+    }
+    const stash = (await saved()).stash;
+    expect('and it is in the vault', ((stash.items ?? stash.supplies)['pika-cushion'] ?? 0) === 1);
+    await walkTo(on);
   }
 } finally {
   await browser.close();

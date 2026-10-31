@@ -1,3 +1,4 @@
+import { COIN_PRICE, giftWaiting, type PitGift, type PitRecord } from '../base/pitCoins';
 import { readRaidMemory, remembering, type RaidMarkKind, type RaidMemory, type RaidWalk } from '../world/raidMemory';
 import { canWear, readLook, type DressedLook, type PlayerLook } from '../look/look';
 import { billFor, billLine, checkBill, ownedWearables, unownedIn } from '../look/wardrobe';
@@ -255,6 +256,8 @@ export interface RaidProgress {
    * for anything. Absent on a save that has never stuck one.
    */
   readonly landings?: LandingRecord;
+  /** Coins over the rail and what has been picked up for them (`base/pitCoins.ts`). Absent on a save that has tossed none. */
+  readonly pit?: PitRecord;
   /** What the pit remembers of the raids that went down into it (`world/raidMemory.ts`). */
   readonly raidMemory?: RaidMemory;
   /**
@@ -891,6 +894,43 @@ export class SaveManager {
    * starts, so skipping it or closing the tab does not buy it unasked again.
    * With no save to remember it in, it is always the first.
    */
+  /**
+   * A coin over the rail of THE RAID ARENA, in one write: money out of the vault
+   * and one more on the count. Hands back the game, or null if it could not be paid for.
+   */
+  public tossCoin(): RestoredGame | null {
+    const game = this.load();
+    if (!game || game.stash.itemCount(TRADER_CURRENCY_ITEM_ID) < COIN_PRICE) {
+      return null;
+    }
+    game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, COIN_PRICE);
+    const pit = game.raidProgress.pit;
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, pit: { fed: (pit?.fed ?? 0) + 1, taken: pit?.taken ?? 0 } } };
+    return this.save(next) ? next : null;
+  }
+
+  /** What the pit gave back, picked up off the floor: a piece of furniture in the vault or a hat in the wardrobe. */
+  public takePitGift(): { readonly game: RestoredGame; readonly gift: PitGift } | null {
+    const game = this.load();
+    const gift = giftWaiting(game?.raidProgress.pit);
+    if (!game || !gift) {
+      return null;
+    }
+    if (gift.kind === 'item') {
+      game.stash.addItem(gift.id, 1);
+    }
+    const wardrobe = game.raidProgress.wardrobe ?? [];
+    const next: RestoredGame = {
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        pit: { fed: game.raidProgress.pit?.fed ?? 0, taken: (game.raidProgress.pit?.taken ?? 0) + 1 },
+        ...(gift.kind === 'wearable' ? { wardrobe: [...new Set([...wardrobe, gift.id])] } : {}),
+      },
+    };
+    return this.save(next) ? { game: next, gift } : null;
+  }
+
   /**
    * A landing out of the pit: one more on the streak if it was stuck, and the
    * streak over if not. Hands back how many are running.
@@ -1948,6 +1988,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),
+    ...(readPit(value.pit) ?? {}),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
@@ -2001,6 +2042,17 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ]),
     ],
   };
+}
+
+/** What has gone over the rail, or nothing if what is stored is not that. */
+function readPit(value: unknown): { readonly pit: PitRecord } | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  const { fed, taken } = value as Record<string, unknown>;
+  return Number.isInteger(fed) && (fed as number) >= 0 && Number.isInteger(taken) && (taken as number) >= 0
+    ? { pit: { fed: fed as number, taken: taken as number } }
+    : null;
 }
 
 /** A landing record, or nothing if what is stored is not one. */

@@ -31,7 +31,7 @@ import {
 import { getCharacterDesign } from '../world/characterDesigns';
 import { TILE_SIZE, type TileLayer } from '../worldMap';
 import { DialogBox } from '../ui/DialogBox';
-import { iconTextureKey, itemIconName } from '../ui/icons';
+import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
@@ -54,7 +54,9 @@ import type { BoutiqueSceneData } from './BoutiqueScene';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
+  ARENA_KEY_LETTERS,
   ROOM_KEY_LETTERS,
+  coinKeyHint,
   houseKeyHintLine,
   yardKeyHintLine,
   type LearnableKeyId,
@@ -189,6 +191,8 @@ import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
 import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
 import { lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
+import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID } from '../items/items';
+import { COIN_EVERY_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
@@ -309,6 +313,8 @@ const CROWD_LOOK_MS = 1700;
 const CROWD_LOOK_SHARE = 0.8;
 /** The quickest lap of the ring this page has seen. */
 let bestLapMs: number | null = null;
+/** How long after the plink, for what came back to come. */
+const PIT_GIFT_WAIT_MS = 1200;
 /** How long a raid's fog lifts before a key can cut it short. */
 const FOG_LISTENS_AFTER_MS = 500;
 /** How often a held raid room is told this player is getting ready, and asked who else is. */
@@ -466,6 +472,8 @@ interface BaseControls {
   readonly putAway: Phaser.Input.Keyboard.Key;
   /** T: the quick-phrase list (`harbour/harbourPhrases.ts`), on the key a raid room's is on. */
   readonly talk: Phaser.Input.Keyboard.Key;
+  /** C: a coin over the rail of THE RAID ARENA (`base/pitCoins.ts`). */
+  readonly coin: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -644,6 +652,12 @@ export class BaseScene extends Phaser.Scene {
   private lastCrowdMood: CrowdMood | null = null;
   /** The board that says a lap's time. */
   private hallSign: PlaceNameSign | null = null;
+  /** How long until another coin can go over, and until something comes back for the last. */
+  private pitCoinMs = 0;
+  private pitGiftDueMs = 0;
+  /** What has come back, on its way or lying by the runner. */
+  private pitGiftImage: Phaser.GameObjects.Image | null = null;
+  private pitGiftFlight: { ms: number } | null = null;
   /** Walking somewhere the pointer asked for: the steps left, and what to do on getting there. */
   private walkPlan: { readonly steps: Direction[]; readonly then: () => void } | null = null;
   private roomTickMs = 0;
@@ -925,6 +939,10 @@ export class BaseScene extends Phaser.Scene {
     this.drawOddities();
     this.drawWallMap();
     this.arena = this.place.room?.pit ? this.openTheHall(loaded) : null;
+    this.pitCoinMs = 0;
+    this.pitGiftDueMs = 0;
+    this.pitGiftImage = null;
+    this.pitGiftFlight = null;
     this.createFigures();
     this.createPlayer();
     // Somebody else's partner arrives where this player's own could, and never on top of it.
@@ -1011,6 +1029,7 @@ export class BaseScene extends Phaser.Scene {
     if (boatHome) {
       audioManager.play('shipHorn');
     }
+    this.layThePitGift();
     if (this.arena && data.arrival === 'raid') {
       this.crowdHeardFrom(data.raidMood);
       this.beginFogLift();
@@ -1227,6 +1246,10 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    if (this.keyPresses.justPressed(this.controls.coin) && this.arena) {
+      this.tossACoin();
+    }
+
     const input = this.followWalkPlan(this.readInput());
     if (input === null) {
       return;
@@ -1376,6 +1399,7 @@ export class BaseScene extends Phaser.Scene {
     };
     this.arena.update(deltaMs, middle);
     this.tellTheLap(middle);
+    this.watchThePitGift(deltaMs);
     this.hallSign?.update(deltaMs);
     // Walking off, or anything else asked of the view, takes it back from the crowd.
     this.crowdLookMs = this.targetTile || this.arenaPanel || this.dialogBox.visible ? 0 : Math.max(0, this.crowdLookMs - deltaMs);
@@ -1775,6 +1799,103 @@ export class BaseScene extends Phaser.Scene {
    */
   private runningForTheCrowd(): boolean {
     return Boolean(this.arena?.lap.running) && !isAtRim(this.targetTile ?? this.currentTile);
+  }
+
+  private canTossACoin(): boolean {
+    return this.savedGame.stash.itemCount(TRADER_CURRENCY_ITEM_ID) >= COIN_PRICE;
+  }
+
+  /** A coin over the rail, and now and then, a long way on, something comes back. */
+  private tossACoin(): void {
+    if (!isAtRim(this.currentTile) || this.pitCoinMs > 0 || this.visit) {
+      return;
+    }
+    const before = giftWaiting(this.savedGame.raidProgress.pit);
+    const game = this.saveManager.tossCoin();
+    if (!game) {
+      return;
+    }
+    this.savedGame = game;
+    this.pitCoinMs = COIN_EVERY_MS;
+    this.learnKey('coin');
+    this.arena?.tossCoin(this.figureMiddle(), game.raidProgress.pit?.fed ?? 0);
+    if (!before && giftWaiting(game.raidProgress.pit)) {
+      this.pitGiftDueMs = COIN_PLINK_MS + PIT_GIFT_WAIT_MS;
+    }
+    this.showHint(this.hintHere());
+  }
+
+  /** The thing that has come back, on its way up or lying by the runner, and picking it up. */
+  private watchThePitGift(deltaMs: number): void {
+    this.pitCoinMs = Math.max(0, this.pitCoinMs - deltaMs);
+    if (this.pitGiftDueMs > 0) {
+      this.pitGiftDueMs -= deltaMs;
+      if (this.pitGiftDueMs <= 0) {
+        this.sendThePitGift();
+      }
+      return;
+    }
+    const flight = this.pitGiftFlight;
+    if (flight && this.pitGiftImage) {
+      flight.ms += deltaMs;
+      const at = giftAt(flight.ms);
+      this.pitGiftImage.setPosition(at.x, at.y);
+      if (flight.ms >= GIFT_FLIGHT_MS) {
+        this.pitGiftFlight = null;
+        this.pitGiftImage.setDepth(atRow(FIGURE_BAND, PIT_GIFT_TILE.y) - 0.001);
+        audioManager.play('landThud');
+      }
+      return;
+    }
+    if (
+      this.pitGiftImage &&
+      !this.targetTile &&
+      !this.dialogBox.visible &&
+      this.currentTile.x === PIT_GIFT_TILE.x &&
+      this.currentTile.y === PIT_GIFT_TILE.y
+    ) {
+      const taken = this.saveManager.takePitGift();
+      this.pitGiftImage.destroy();
+      this.pitGiftImage = null;
+      if (taken) {
+        this.savedGame = taken.game;
+        audioManager.play('confirm');
+        this.say(giftLines(taken.gift), []);
+      }
+    }
+  }
+
+  /** A gift's picture: what it is, or a bundle if it is something to wear. */
+  private pitGiftPicture(gift: PitGift): Phaser.GameObjects.Image {
+    return this.add.image(0, 0, iconTextureKey(gift.kind === 'item' ? itemIconName(gift.id) : WORLD_ICONS.supplyCrate));
+  }
+
+  /** Up out of the pit and over to the floor by the runner. Somebody who asked for less movement finds it there. */
+  private sendThePitGift(): void {
+    const gift = giftWaiting(this.savedGame.raidProgress.pit);
+    if (!gift || this.pitGiftImage) {
+      return;
+    }
+    audioManager.play('pitGives');
+    this.pitGiftImage = this.pitGiftPicture(gift).setDepth(CANOPY_BAND + 0.02);
+    const start = giftAt(this.still ? GIFT_FLIGHT_MS : 0);
+    this.pitGiftImage.setPosition(start.x, start.y);
+    if (this.still) {
+      this.pitGiftImage.setDepth(atRow(FIGURE_BAND, PIT_GIFT_TILE.y) - 0.001);
+    } else {
+      this.pitGiftFlight = { ms: 0 };
+    }
+    this.hallSign ??= new PlaceNameSign(this);
+    this.hallSign.show('SOMETHING CAME UP OUT OF THE PIT');
+  }
+
+  /** Whatever came back and has not been picked up is still lying there, on any visit. */
+  private layThePitGift(): void {
+    const gift = giftWaiting(this.savedGame.raidProgress.pit);
+    if (gift && this.arena) {
+      const at = giftAt(GIFT_FLIGHT_MS);
+      this.pitGiftImage = this.pitGiftPicture(gift).setPosition(at.x, at.y).setDepth(atRow(FIGURE_BAND, PIT_GIFT_TILE.y) - 0.001);
+    }
   }
 
   /** Whether the tile faced is the hall's outer wall, with the stands behind it. */
@@ -2873,7 +2994,9 @@ export class BaseScene extends Phaser.Scene {
     }
     // Anywhere on the rim is over a way in, and the hint says which.
     if (this.arena && isAtRim(this.currentTile)) {
-      return this.aimed && !this.kit?.flow.notReady ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
+      const coin = this.canTossACoin() ? coinKeyHint(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
+      const line = this.aimed && !this.kit?.flow.notReady ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
+      return coin ? `${line}   ${coin}` : line;
     }
     // The player's own house says it can be decorated, until it has been.
     return this.houseKeys();
@@ -3220,6 +3343,7 @@ export class BaseScene extends Phaser.Scene {
       boxNext: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxNext], false),
       putAway: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.putAway], false),
       talk: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ROOM_KEY_LETTERS.talk], false),
+      coin: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ARENA_KEY_LETTERS.coin], false),
     };
     this.latchDirectionPresses();
     this.keyPresses.watch([
@@ -3229,6 +3353,7 @@ export class BaseScene extends Phaser.Scene {
       this.controls.back,
       this.controls.favours,
       this.controls.decorate,
+      this.controls.coin,
       this.controls.turn,
       this.controls.boxBack,
       this.controls.boxNext,

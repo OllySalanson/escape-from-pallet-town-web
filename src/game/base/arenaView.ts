@@ -88,10 +88,13 @@ import {
   paintWingShadow,
   shadowAt,
   shadowPassFor,
+  stareAt,
+  STARE_MS,
   type ShadowPass,
 } from './pitLife';
 import { wallMapPicture } from './wallMap';
 import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
+import { COINS_TO_WAKE_THE_EYES, COIN_PLINK_MS, coinAt } from './pitCoins';
 
 /**
  * THE RAID ARENA's pit and its fires, as the scene draws them: everything in
@@ -286,6 +289,8 @@ const CROSS_INKS = [0xf04838, 0xc03830, 0x883028] as const;
 const FLAG_INKS = [0x78e8a0, 0x58b878, 0x408858] as const;
 const POLE_INK = 0xe8e0c8;
 const MARK_SHADE = 0x101018;
+const COIN_INK = 0xf8d870;
+const COIN_SHADE = 0x584010;
 
 /** How a landing's light beats, and how far a light is from the mark round the one being looked at. */
 const LIGHT_BEAT_MS = 520;
@@ -493,7 +498,9 @@ export class ArenaView {
   private shadowInMs = nextShadowInMs(Math.random(), true);
   private eyesInMs = nextEyesInMs(Math.random(), true);
   private shadow: { readonly image: Phaser.GameObjects.Image; readonly pass: ShadowPass; elapsedMs: number } | null = null;
-  private eyes: { readonly image: Phaser.GameObjects.Image; readonly gate: number; elapsedMs: number } | null = null;
+  private eyes: { readonly image: Phaser.GameObjects.Image; readonly gate: number; elapsedMs: number; staringMs: number | null } | null = null;
+  /** Coins in the air, and how long until each is heard (`pitCoins.ts`). */
+  private coins: { readonly from: { readonly x: number; readonly y: number }; ms: number; heard: boolean; readonly image: Phaser.GameObjects.Graphics }[] = [];
   private drift = 0;
   private crackleInMs = CRACKLE_EVERY_MS;
   private deepSoundInMs = DEEP_SOUND_EVERY_MS / 2;
@@ -835,6 +842,7 @@ export class ArenaView {
     this.slide(player);
     this.placeTheLights(deltaMs, player);
     this.nameTheMark(player);
+    this.flyCoins(deltaMs);
     this.newestMark.setVisible(this.still || Math.floor(this.lightMs / LIGHT_BEAT_MS) % 4 !== 3);
     if (this.still) {
       this.moveTheCrowd(deltaMs);
@@ -1035,9 +1043,17 @@ export class ArenaView {
     }
     if (this.eyes) {
       this.eyes.elapsedMs += deltaMs;
-      const at = eyesAt(this.eyes.elapsedMs);
+      if (this.eyes.staringMs !== null) {
+        this.eyes.staringMs += deltaMs;
+        // They hold it until they have looked long enough, then go on as they would have.
+        if (this.eyes.staringMs >= STARE_MS) {
+          this.eyes.staringMs = null;
+          this.eyes.elapsedMs = Math.max(this.eyes.elapsedMs, EYES_MS - 500);
+        }
+      }
+      const rest = gateEyes(this.eyes.gate);
+      const at = this.eyes.staringMs !== null ? stareAt(this.eyes.staringMs, Math.sign(player.x - rest.x)) : eyesAt(this.eyes.elapsedMs);
       if (at) {
-        const rest = gateEyes(this.eyes.gate);
         const shift = parallaxShift(PODIUM_PARALLAX, player);
         this.eyes.image
           .setPosition(rest.x + shift.x + at.shift, rest.y + shift.y)
@@ -1085,8 +1101,43 @@ export class ArenaView {
     if (!sheet.has('open')) {
       EYE_LOOKS.forEach((look, frame) => sheet.add(look, 0, frame * EYES_WIDTH, 0, EYES_WIDTH, EYES_HEIGHT));
     }
-    this.eyes = { image: this.scene.add.image(0, 0, EYES_TEXTURE, 'slit').setDepth(EYES_DEPTH), gate, elapsedMs: 0 };
+    this.eyes = { image: this.scene.add.image(0, 0, EYES_TEXTURE, 'slit').setDepth(EYES_DEPTH), gate, elapsedMs: 0, staringMs: null };
     this.eyesInMs = EYES_MS + nextEyesInMs(Math.random(), false);
+  }
+
+  /** A coin over the rail. Whatever is looking up out of a gate looks at whoever threw it, and every so often something does. */
+  public tossCoin(from: { readonly x: number; readonly y: number }, fed: number): void {
+    audioManager.play('coinToss');
+    this.coins.push({
+      from,
+      ms: 0,
+      heard: false,
+      image: this.scene.add.graphics().setDepth(CANOPY_BAND + 0.02).setVisible(!this.still),
+    });
+    if (this.eyes) {
+      this.eyes.staringMs = 0;
+    } else if (fed % COINS_TO_WAKE_THE_EYES === 0) {
+      this.eyesInMs = Math.min(this.eyesInMs, COIN_PLINK_MS);
+    }
+  }
+
+  /** Coins going over, and the plink a long time after each is out of sight. */
+  private flyCoins(deltaMs: number): void {
+    for (const coin of this.coins) {
+      coin.ms += deltaMs;
+      coin.image.clear();
+      const at = coinAt(coin.ms, coin.from);
+      if (at) {
+        coin.image.fillStyle(COIN_SHADE, 1).fillRect(at.x, at.y + 1, at.flat ? at.size + 1 : 1, at.size);
+        coin.image.fillStyle(COIN_INK, 1).fillRect(at.x, at.y, at.flat ? at.size + 1 : 1, at.size);
+      }
+      if (!coin.heard && coin.ms >= COIN_PLINK_MS) {
+        coin.heard = true;
+        audioManager.play('coinPlink');
+        coin.image.destroy();
+      }
+    }
+    this.coins = this.coins.filter((coin) => !coin.heard);
   }
 
   /** Whatever is in the pit is gone: the camera is about to go in, and it was never going to be seen up close. */

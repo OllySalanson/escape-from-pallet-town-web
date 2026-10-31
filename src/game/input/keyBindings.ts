@@ -73,6 +73,16 @@ export const HOME_KEY_LETTERS = {
   putAway: 'X',
 } as const;
 
+/** THE RAID ARENA's one letter: a coin over the rail (`base/pitCoins.ts`). `BaseScene.bindControls` binds it. */
+export const ARENA_KEY_LETTERS = {
+  coin: 'C',
+} as const;
+
+/** What the rail says about it until it has been done once, and only to somebody with a coin to toss. */
+export function coinKeyHint(learned: ReadonlySet<string>): string {
+  return learned.has('coin') ? '' : keyHint(ARENA_KEY_LETTERS.coin, 'TOSS A COIN');
+}
+
 /**
  * The phrase list as a raid room's chip shows it while T holds it open: each
  * phrase beside the number key that says it, bracketed as every other key the
@@ -94,7 +104,7 @@ export function roomKeyHintLine(learned: ReadonlySet<string>): string {
 }
 
 /** Every key the save can have learned, in one list (`raidProgress.keysLearned`). */
-export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping', 'favours'] as const;
+export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping', 'favours', 'coin'] as const;
 export type LearnableKeyId = (typeof LEARNABLE_KEYS)[number];
 
 export function isLearnableKey(value: unknown): value is LearnableKeyId {
