@@ -13,6 +13,7 @@ import {
   tierHole,
   type Oval,
 } from './arenaHall';
+import { PIT_GATES } from './pitLife';
 
 /**
  * What is painted into THE RAID ARENA's pit when the player walks in, a game
@@ -108,8 +109,8 @@ export function paintTier(tier: number): PaintedPicture {
   return { width, height, data };
 }
 
-/** Where the gates stand round the podium wall. */
-const GATES = 18;
+/** Where the gates stand round the podium wall (`PIT_GATES`). */
+const GATES = PIT_GATES;
 
 /**
  * The sheer wall at the foot of the steps: dark stone, a line of barred gates

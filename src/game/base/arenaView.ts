@@ -39,6 +39,26 @@ import {
   paintTier,
 } from './arenaPit';
 
+import {
+  EYES_HEIGHT,
+  EYES_MS,
+  EYES_WIDTH,
+  EYE_LOOKS,
+  SHADOW_HEIGHT,
+  SHADOW_PARALLAX,
+  SHADOW_WIDTH,
+  chooseEyeGate,
+  eyesAt,
+  facesTheViewer,
+  gateEyes,
+  nextEyesInMs,
+  nextShadowInMs,
+  paintEyes,
+  paintWingShadow,
+  shadowAt,
+  shadowPassFor,
+  type ShadowPass,
+} from './pitLife';
 import { wallMapPicture } from './wallMap';
 
 /**
@@ -56,10 +76,13 @@ import { wallMapPicture } from './wallMap';
 /** Below the ground layer, deepest first. */
 const FLOOR_DEPTH = TERRAIN_DEPTH - 0.9;
 const LIFTING_DEPTH = TERRAIN_DEPTH - 0.89;
+/** What crosses the floor goes under the marks on it: a way in is never hidden by it. */
+const SHADOW_DEPTH = TERRAIN_DEPTH - 0.885;
 const LIGHT_DEPTH = TERRAIN_DEPTH - 0.88;
 const LOOK_DEPTH = TERRAIN_DEPTH - 0.87;
 const MIST_DEPTH = TERRAIN_DEPTH - 0.85;
 const PODIUM_DEPTH = TERRAIN_DEPTH - 0.8;
+const EYES_DEPTH = PODIUM_DEPTH + 0.01;
 const tierDepth = (tier: number): number => TERRAIN_DEPTH - 0.7 + (PIT_TIERS - tier) * 0.05;
 /** Over the steps and under the hall's own floor, so a name in the pit never lies across the platform. */
 const NAME_DEPTH = TERRAIN_DEPTH - 0.3;
@@ -82,6 +105,8 @@ const FLAME_TEXTURE = 'arena-flame';
 const HALO_TEXTURE = 'arena-halo';
 const POOL_TEXTURE = 'arena-pool';
 const LOOK_TEXTURE = 'arena-look';
+const SHADOW_TEXTURE = 'arena-pit-shadow';
+const EYES_TEXTURE = 'arena-pit-eyes';
 const tierTexture = (tier: number): string => `arena-tier-${tier}`;
 
 const FLAME_WIDTH = 11;
@@ -178,6 +203,8 @@ const CRACKLE_REACH = 88;
 /** And how often something a long way down in the pit can. */
 const DEEP_SOUND_EVERY_MS = 38000;
 const DEEP_SOUND_SPREAD_MS = 40000;
+/** How soon eyes that could not be seen try again. */
+const EYES_NOT_SEEN_RETRY_MS = 4000;
 
 /** What each map's floor texture was last painted from. */
 const floorShows = new Map<string, string>();
@@ -355,6 +382,11 @@ export class ArenaView {
   private shareValue: RimShare;
   private aimedId: string | null = null;
   private lastPlayer = { x: 0, y: 0 };
+  /** What lives in the pit (`pitLife.ts`): when each next shows, and whatever is showing. */
+  private shadowInMs = nextShadowInMs(Math.random(), true);
+  private eyesInMs = nextEyesInMs(Math.random(), true);
+  private shadow: { readonly image: Phaser.GameObjects.Image; readonly pass: ShadowPass; elapsedMs: number } | null = null;
+  private eyes: { readonly image: Phaser.GameObjects.Image; readonly gate: number; elapsedMs: number } | null = null;
   private drift = 0;
   private crackleInMs = CRACKLE_EVERY_MS;
   private deepSoundInMs = DEEP_SOUND_EVERY_MS / 2;
@@ -519,6 +551,93 @@ export class ArenaView {
     fast.setTilePosition(-Math.round(this.drift / 95), Math.round(this.drift / 300));
     this.burn(deltaMs);
     this.listen(deltaMs, player);
+    this.stir(deltaMs, player);
+  }
+
+  /** Now and then, something in the pit: nobody is told, and it never happens twice at once. */
+  private stir(deltaMs: number, player: { readonly x: number; readonly y: number }): void {
+    this.shadowInMs -= deltaMs;
+    this.eyesInMs -= deltaMs;
+    const view = this.scene.cameras.main.worldView;
+    if (this.shadowInMs <= 0 && !this.shadow && !this.eyes) {
+      this.startShadow(view);
+    }
+    if (this.eyesInMs <= 0 && !this.shadow && !this.eyes) {
+      this.startEyes(view, player);
+    }
+    if (this.shadow) {
+      this.shadow.elapsedMs += deltaMs;
+      const at = shadowAt(this.shadow.pass, this.shadow.elapsedMs);
+      if (at) {
+        const shift = parallaxShift(SHADOW_PARALLAX, player);
+        this.shadow.image.setPosition(at.x + shift.x, at.y + shift.y).setFrame(String(at.frame));
+      } else {
+        this.shadow.image.destroy();
+        this.shadow = null;
+      }
+    }
+    if (this.eyes) {
+      this.eyes.elapsedMs += deltaMs;
+      const at = eyesAt(this.eyes.elapsedMs);
+      if (at) {
+        const rest = gateEyes(this.eyes.gate);
+        const shift = parallaxShift(PODIUM_PARALLAX, player);
+        this.eyes.image
+          .setPosition(rest.x + shift.x + at.shift, rest.y + shift.y)
+          .setFrame(at.look);
+      } else {
+        this.eyes.image.destroy();
+        this.eyes = null;
+      }
+    }
+  }
+
+  private startShadow(view: Phaser.Geom.Rectangle): void {
+    ensureTexture(this.scene, SHADOW_TEXTURE, paintWingShadow);
+    const sheet = this.scene.textures.get(SHADOW_TEXTURE);
+    if (!sheet.has('0')) {
+      [0, 1, 2].forEach((frame) => sheet.add(String(frame), 0, frame * SHADOW_WIDTH, 0, SHADOW_WIDTH, SHADOW_HEIGHT));
+    }
+    // Across the part of the hole on the screen, or a thing this rare is wasted.
+    const hole = podiumHole();
+    const seenTop = Math.max(view.top, hole.y - hole.ry);
+    const seenBottom = Math.min(view.bottom, hole.y + hole.ry);
+    const slid = parallaxShift(SHADOW_PARALLAX, this.lastPlayer);
+    const pass = shadowPassFor((seenTop + seenBottom) / 2 - slid.y, Math.random() < 0.5);
+    this.shadow = {
+      image: this.scene.add.image(0, 0, SHADOW_TEXTURE, '0').setDepth(SHADOW_DEPTH).setFlipX(!pass.east),
+      pass,
+      elapsedMs: 0,
+    };
+    this.shadowInMs = nextShadowInMs(Math.random(), false);
+  }
+
+  private startEyes(view: Phaser.Geom.Rectangle, player: { readonly x: number; readonly y: number }): void {
+    const shift = parallaxShift(PODIUM_PARALLAX, player);
+    const gate = chooseEyeGate(
+      Math.random(),
+      (point) => facesTheViewer(point) && view.contains(point.x + shift.x, point.y + shift.y),
+    );
+    if (gate === null) {
+      // Not from where they are standing: they might walk round in a moment.
+      this.eyesInMs = EYES_NOT_SEEN_RETRY_MS;
+      return;
+    }
+    ensureTexture(this.scene, EYES_TEXTURE, paintEyes);
+    const sheet = this.scene.textures.get(EYES_TEXTURE);
+    if (!sheet.has('open')) {
+      EYE_LOOKS.forEach((look, frame) => sheet.add(look, 0, frame * EYES_WIDTH, 0, EYES_WIDTH, EYES_HEIGHT));
+    }
+    this.eyes = { image: this.scene.add.image(0, 0, EYES_TEXTURE, 'slit').setDepth(EYES_DEPTH), gate, elapsedMs: 0 };
+    this.eyesInMs = EYES_MS + nextEyesInMs(Math.random(), false);
+  }
+
+  /** Whatever is in the pit is gone: the camera is about to go in, and it was never going to be seen up close. */
+  private stillThePit(): void {
+    this.shadow?.image.destroy();
+    this.shadow = null;
+    this.eyes?.image.destroy();
+    this.eyes = null;
   }
 
   /** The hall's fires, which go on burning through everything, a jump included. */
@@ -657,6 +776,7 @@ export class ArenaView {
   /** Writes down what the pit shows now, for the fog a raid lifts to lift out of. */
   public rememberBelow(): void {
     lastSeenBelow = { mapId: this.mapIdValue, picture: this.picture };
+    this.stillThePit();
   }
 
   /**
