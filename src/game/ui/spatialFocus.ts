@@ -46,6 +46,19 @@ export function focusDirectionForKey(key: string): FocusDirection | undefined {
   return DIRECTION_BY_KEY[key];
 }
 
+/**
+ * Where an arrow key takes the cursor on a deal being asked again: a YES/NO box
+ * does not wrap and nothing else can be reached from it, FireRed's
+ * `Menu_ProcessInputNoWrap`. Left from KEEP THEM found the screen's back button,
+ * the nearest thing that way, with BUILD IT sitting on the right (playtest of
+ * 31 Oct).
+ */
+export function askedDealIndex(key: string, at: number, count: number): number {
+  const direction = focusDirectionForKey(key);
+  const step = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+  return Math.max(0, Math.min(count - 1, at + step));
+}
+
 /** How far apart two spans are along one axis; zero when they overlap. */
 const gap = (aStart: number, aEnd: number, bStart: number, bEnd: number): number =>
   Math.max(0, bStart - aEnd, aStart - bEnd);

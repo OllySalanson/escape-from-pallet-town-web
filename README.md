@@ -171,10 +171,11 @@ and say yes, you're let in to have a nose round. Six buildings, four of them kep
 - **The Raid Arena**, a Gym that has had a makeover - RAID on the plate, a gold ARENA badge, red
   banners and a red runner up to the door - on its own stone forecourt at the west end, by the jetty,
   is where every raid starts, in a hall so big the pit in its floor has the whole of Greystone Vale at the bottom.
-- **Professor Oak's Lab** keeps the contract board, and a wall map that lights up wherever you've
-  walked.
-- **Nurse Joy's Pokémon Center** looks after the team. She heals in full, and she charges in
-  time: what she spends comes off your next raid's clock.
+- **Professor Oak's Lab** has the day's work pinned to a cork board on the wall, and a wall map that
+  lights up wherever you've walked.
+- **Nurse Joy's Pokémon Center** looks after the team. She heals in full at her counter, and she
+  charges in time: she names what comes off your next raid's clock before you say yes. Your boxes
+  are on the PC beside her.
 - **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home, and
   every one of them turns up on the map: a radio mast, a beacon, cellar doors in the quay wall.
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
@@ -310,13 +311,13 @@ sightseeing.
 | Key | In a raid | At home |
 |---|---|---|
 | <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Walk | Walk |
-| <kbd>Space</kbd> / <kbd>Enter</kbd> | Talk, read, work a landmark, choose | On a door mat: open that keeper's counter |
+| <kbd>Space</kbd> / <kbd>Enter</kbd> | Talk, read, work a landmark, choose | On a door mat: speak to that keeper |
 | <kbd>B</kbd> | Open the pack | |
 | <kbd>P</kbd> | Open the party | |
-| <kbd>O</kbd> | Open the field guide | Every favour you have been asked, on one screen |
+| <kbd>O</kbd> | Professor Oak on the radio; again for the whole field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
 | <kbd>T</kbd> | Raiding with a friend: pick a quick phrase to say | Pick a quick phrase to say |
-| <kbd>Esc</kbd> | Close a screen | Back out of a screen |
+| <kbd>Esc</kbd> | Close a screen, or hang up on Oak | Back out of a screen, or skip somebody's talk |
 
 Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or
 a trackpad, and the keys just pick your tool.

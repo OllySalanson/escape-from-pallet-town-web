@@ -28,6 +28,9 @@ Redraw them, and write the map the game ships, with
 
     npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/worlds/greystoneVale/index.ts out/greystone-vale --shrink=3 --write=src/game/world/maps/greystoneVale.json
 
+The rings out from Mill Square, filled a ring at a time to the harbour's standard, are
+[Millbrook](../millbrook/README.md) and [the second ring](../second-ring/README.md).
+
 ## Millbrook
 
 The mill village and the vale's front door, where a new game lands: every road

@@ -29,7 +29,7 @@ function pausedBase() {
     leaving: false,
     room: null,
     currentTile: { x: 2, y: 3 },
-    doors: [{ id: 'oaks-lab', tiles: [{ x: 2, y: 1 }] }],
+    doors: [{ id: 'brocks-workshop', tiles: [{ x: 2, y: 1 }] }],
     // A yard five tiles square with a wall along the top but for the door.
     collision: Array.from({ length: 5 }, (_, y) => Array.from({ length: 5 }, (_, x) => y === 0 || (y === 1 && x !== 2))),
     isBlocked(tile) {
@@ -41,7 +41,7 @@ function pausedBase() {
     if (roomAt !== null && clock.ms >= roomAt) {
       roomAt = null;
       base.leaving = false;
-      base.room = { id: 'oaks-lab', mat: { x: 2, y: 4 } };
+      base.room = { id: 'brocks-workshop', mat: { x: 2, y: 4 } };
       base.currentTile = { ...base.room.mat };
     }
     if (hubAt !== null && clock.ms >= hubAt) {
@@ -110,14 +110,14 @@ describe('walking into the base under a paused loop', () => {
   it("reaches the keeper's screen when the driver's own wait steps the game", async () => {
     const { game, page, press, until, wait } = pausedBase();
     globalThis.window.__escapeFromPalletTownGame__ = game;
-    await walkIntoBase(page, 'oaks-lab', { press, until, wait, settleMs: 0 });
+    await walkIntoBase(page, 'brocks-workshop', { press, until, wait, settleMs: 0 });
     expect(game.scene.getScenes(true).map((s) => s.scene.key)).toEqual(['hub']);
   });
 
   it('refuses a paused loop it was not handed a wait for', async () => {
     const { game, page, press, until } = pausedBase();
     globalThis.window.__escapeFromPalletTownGame__ = game;
-    await expect(walkIntoBase(page, 'oaks-lab', { press, until, settleMs: 0 })).rejects.toThrow(/paused/);
+    await expect(walkIntoBase(page, 'brocks-workshop', { press, until, settleMs: 0 })).rejects.toThrow(/paused/);
   });
 });
 

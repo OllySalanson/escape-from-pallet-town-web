@@ -5,8 +5,7 @@ import {
   leavingPaneIndex,
   nextFocusIndex,
   type DetailRef,
-  type FocusRect,
-} from './spatialFocus';
+  type FocusRect, askedDealIndex } from './spatialFocus';
 
 const rect = (left: number, top: number, width: number, height: number): FocusRect => ({
   left,
@@ -161,5 +160,16 @@ describe('a row and the pane it shows', () => {
   it('leaves the key alone where there is no pane to step into', () => {
     expect(detailStepIndex([{ actionable: true }], 0)).toBeUndefined();
     expect(detailStepIndex([{ shows: 'potion', actionable: true }], 0)).toBeUndefined();
+  });
+});
+
+describe('a deal being asked again', () => {
+  it('keeps the cursor between its two answers, and never wraps', () => {
+    expect(askedDealIndex('ArrowLeft', 0, 2)).toBe(0);
+    expect(askedDealIndex('ArrowRight', 0, 2)).toBe(1);
+    expect(askedDealIndex('ArrowRight', 1, 2)).toBe(1);
+    expect(askedDealIndex('ArrowLeft', 1, 2)).toBe(0);
+    expect(askedDealIndex('ArrowUp', 1, 2)).toBe(1);
+    expect(askedDealIndex('ArrowDown', 0, 2)).toBe(0);
   });
 });

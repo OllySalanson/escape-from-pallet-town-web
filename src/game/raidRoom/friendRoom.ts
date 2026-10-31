@@ -1,3 +1,4 @@
+import { activeSaveSlot, isPlaytestRun } from '../dev/playtestMode';
 import type { DressedLook } from '../look/look';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { HarbourLink, type HarbourWire, type NamedFigure } from '../harbour/harbourLink';
@@ -387,6 +388,15 @@ export function friendRoom(): FriendRoom | null {
     session = null;
   }
   return session;
+}
+
+/**
+ * Whether raiding with a friend is offered here at all: only in the ordinary
+ * game, never the explorer run or a map maker's TRY IT, and only where there is
+ * a room service to ask - the live project, or a test's tab-to-tab stand-in.
+ */
+export function friendRoomsOffered(): boolean {
+  return friendRoom() !== null && activeSaveSlot() === 'normal' && !isPlaytestRun();
 }
 
 /** The name a player raids under: the device's, or a test tab's own. */

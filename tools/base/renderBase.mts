@@ -44,6 +44,7 @@ import { BASE_FIXTURES, standingFixtures } from '../../src/game/base/fixtures';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMap';
 import { BASE_ROOMS, buildRoom, roomNamed } from '../../src/game/base/rooms';
 import { wallMapPoster } from '../../src/game/base/wallMap';
+import { boardPoster } from '../../src/game/base/labBoard';
 import { badgeCasePoster } from '../../src/game/base/badgeCase';
 import { pennantsPoster } from '../../src/game/base/pennants';
 import { BASE_STARTS, walkHome, walksToKeepers } from '../../src/game/base/baseWalks';
@@ -253,7 +254,11 @@ if (room && drawnRoom) {
   // And THE BOLTHOLE's badge case and pennants, the same way.
   for (const poster of drawnRoom.posters) {
     const picture =
-      poster.kind === 'badge-case' ? badgeCasePoster(game, poster.area) : pennantsPoster(game, poster.area);
+      poster.kind === 'badge-case'
+        ? badgeCasePoster(game, poster.area)
+        : poster.kind === 'cork-board'
+          ? boardPoster(game, poster.area)
+          : pennantsPoster(game, poster.area);
     blit(image, picture, 0, 0, picture.width, picture.height, poster.area.x * TILE_SIZE, poster.area.y * TILE_SIZE);
   }
   // The player's furniture, in the order the scene draws it: rugs first, then

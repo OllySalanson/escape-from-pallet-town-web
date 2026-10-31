@@ -9,6 +9,7 @@ import {
 import type { MapFileLink } from './mapFile';
 import { liftLinks, type MapLift } from './lifts';
 import { stepDistances } from './mapStructure';
+import { RAID_DURATION_MS } from '../run/raidClock';
 
 /**
  * A boat between two jetties: the one way onto a place the sea cuts off.
@@ -30,6 +31,8 @@ import { stepDistances } from './mapStructure';
 export interface MapSailing {
   /** What the boat is called, on its caption and in its lines. */
   readonly name: string;
+  /** A small boat on inland water, whoever is aboard seen standing in it; absent is the ferry. */
+  readonly craft?: 'punt';
   /** Its two jetties, in the order the file lists them. */
   readonly ends: readonly [SailingEnd, SailingEnd];
   /**
@@ -50,6 +53,10 @@ export interface SailingEnd {
   /** Where the boat lies, the water tile in front of the jetty. */
   readonly boat: GridPosition;
 }
+
+/** The punt's picture, drawn by `scripts/draw-punt.mjs`. */
+export const PUNT_TEXTURE = 'punt';
+export const PUNT_PATH = 'assets/punt.png';
 
 /** Whether a boat is sailing at this point in a raid. */
 export type SailingState = 'not-yet' | 'sailing' | 'gone';
@@ -78,6 +85,7 @@ export function sailingOf(
   const turns = sails.course.map((turn) => toGrid(turn));
   return {
     name: sails.name,
+    ...(sails.craft ? { craft: sails.craft } : {}),
     ends,
     course: coursePath([ends[0].boat, ...turns, ends[1].boat]),
     runsFromMs: sails.from * 1_000,
@@ -251,6 +259,10 @@ export function boatAwayLines(
 /** The second line of a boat's caption: whether it can be boarded, and when. */
 export function boatCaption(sailing: MapSailing, state: SailingState, elapsedMs: number): string {
   if (state === 'sailing') {
+    // A boat that runs for the whole of a raid has no tide to count down.
+    if (sailing.runsFromMs === 0 && sailing.runsUntilMs >= RAID_DURATION_MS) {
+      return 'SAILING';
+    }
     const left = Math.max(0, Math.ceil((sailing.runsUntilMs - elapsedMs) / 1_000));
     return `SAILING ${left}s`;
   }

@@ -35,15 +35,18 @@ export const takePokemon = (name = null) =>
  * redrawn base moves the walk with it.
  *
  * `door` is a `BASE_DOORS` id: `raid-arena`, `oaks-lab`, `pokemon-centre`,
- * `brocks-workshop` or `bills-cottage`. Inside each, the interact key on the door mat is the keeper's
+ * `brocks-workshop` or `bills-cottage`. Inside most, the interact key on the door mat is the keeper's
  * screen - the one-key way in a player re-kitting takes - so that is what this
  * presses. A driver already in the right room (backed out of its screen) just
  * presses it again; one in another room walks back out first. THE RAID ARENA has
  * no keeper's screen: everything is on its floor, so a walk into it goes on to
- * the bench and opens that (`openHallPanel`).
+ * the bench and opens that (`openHallPanel`). Nor have two others, whose keepers
+ * talk rather than open anything (`BaseScene.speakToKeeper`): in `pokemon-centre`
+ * this walks on to BILL'S PC, which is the boxes, and in `oaks-lab` it stops on
+ * the mat with nothing said, for the driver to speak to Oak or walk up to the board.
  *
  * A keeper with a favour says it first, in the dialogue box, and asks YES or
- * NOT NOW (`BaseScene.speakToKeeper`): the presses read it, and the question is
+ * NOT NOW: the presses read it, and the question is
  * answered NOT NOW - a driver on its way to a screen takes nothing on - unless
  * `acceptFavours` is set.
  *
@@ -80,7 +83,7 @@ export async function walkIntoBase(page, door, options = {}) {
       await settle(settleMs);
       continue;
     }
-    if (await page.evaluate(`Boolean(${GAME}.scene.getScene('base')?.favourPrompt)`)) {
+    if (await page.evaluate(`Boolean(${GAME}.scene.getScene('base')?.boxQuestion)`)) {
       if (!options.acceptFavours) {
         await press('ArrowRight');
         await settle(settleMs);
@@ -96,8 +99,13 @@ export async function walkIntoBase(page, door, options = {}) {
           if (room.id !== ${JSON.stringify(door)}) {
             const on = room.mat && b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
             if (on) return { key: 'ArrowDown' };
+          } else if (room.id === 'pokemon-centre') {
+            const pc = b.place.room.things.find((thing) => thing.opens === 'boxes').tiles[0];
+            var goals = [{ x: pc.x, y: pc.y + 1 }];
+            if (b.currentTile.x === pc.x && b.currentTile.y === pc.y + 1) return { key: b.facing === 'up' ? 'Space' : 'ArrowUp' };
           } else {
             const on = b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
+            if (on && room.id === 'oaks-lab') return { arrived: true };
             if (on) return { key: 'Space' };
           }
         } else {
@@ -106,7 +114,7 @@ export async function walkIntoBase(page, door, options = {}) {
           var goals = d.tiles;
         }
         // A floor with no door mat (upstairs in the player's house) is left by its stairs.
-        if (room) var goals = room.mat ? [room.mat] : room.stairs.map((stair) => stair.tile);
+        if (room && !goals) var goals = room.mat ? [room.mat] : room.stairs.map((stair) => stair.tile);
         const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
         const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
         const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
@@ -122,6 +130,7 @@ export async function walkIntoBase(page, door, options = {}) {
         return { key }; })()`,
     );
     if (move?.unreachable) throw new Error(`nothing walks to the ${door}`);
+    if (move?.arrived) return;
     if (move?.key) {
       await press(move.key);
     }
@@ -180,25 +189,13 @@ export async function openHallPanel(page, panel, options = {}) {
   await until(showing, `the ${panel}`);
 }
 
-/** Puts whatever the rim's first words are down, if they are up: they hold the panel until read. */
-export async function readFirstWords(page, { until, settle = sleep } = {}) {
-  void until;
-  for (let guard = 0; guard < 4; guard += 1) {
-    const read = await page.evaluate(`(() => { const b = document.querySelector('[data-speech-done]'); if (!b) return false; b.click(); return true; })()`);
-    if (!read) return;
-    await settle(150);
-  }
-}
-
 /**
  * From the hall into a raid: to the rim, the way in `insertion` chosen if it is
  * named (the row is only there when there is more than one to choose from), and
  * over the fence. Waits for the raid.
  */
 export async function jumpIn(page, { insertion, press, until, wait } = {}) {
-  const settle = wait ?? sleep;
   await openHallPanel(page, 'rim', { press, until, wait });
-  await readFirstWords(page, { settle });
   if (insertion) {
     await until(
       `(() => { if (${GAME}.scene.getScene('hub').flow.insertionId === ${JSON.stringify(insertion)}) return true; const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`,
@@ -213,6 +210,21 @@ export async function jumpIn(page, { insertion, press, until, wait } = {}) {
   // The raid opens with the player falling out of the cloud, and nothing can be
   // pressed or read until they land (`world/raidArrival.ts`).
   await until(`!${GAME}.scene.getScene('world').arrival`, 'the landing');
+}
+
+/**
+ * From the lab's mat, on to the friend's room: Oak reads the board, and the last
+ * thing he asks is whether there is a friend coming (`BaseScene.readTheBoard`).
+ * ESC is past what he has to say, and YES is where the cursor starts.
+ */
+export async function openFriendRoom(page, { press, settle = sleep, settleMs = 180 }) {
+  await press('Space');
+  for (let guard = 0; guard < 40 && !(await page.evaluate(sceneIs('hub'))); guard += 1) {
+    const asking = await page.evaluate(`Boolean(${GAME}.scene.getScene('base')?.boxQuestion)`);
+    await press(asking ? 'Space' : 'Escape');
+    await settle(settleMs);
+  }
+  await page.waitFor(sceneIs('hub'), { what: "the friend's room" });
 }
 
 /** `--insertion=id [--offered] --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,..`, out of a driver's arguments. */
