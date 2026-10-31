@@ -16,6 +16,8 @@ const LONGEST: Record<Exclude<SoundChannel, 'cry'>, number> = {
   // The cursor is heard hundreds of times a session.
   ui: 0.25,
   world: 0.55,
+  // The crowd stays to the world's length; this is for the wind of a whole drop.
+  hall: 1.8,
   battle: 0.6,
   alert: 0.7,
   // A fanfare is the last word on something, and still has to be over before
@@ -109,6 +111,13 @@ describe('the sound-effect vocabulary', () => {
     }
   });
 
+  it('gives the Raid Arena its own channel, so a chirp or a step never cuts the crowd off', () => {
+    for (const name of ['crowdRoar', 'crowdCheer', 'crowdClap', 'crowdGroan', 'diveWind', 'torchCrackle'] as const) {
+      expect(SOUND_EFFECTS[name].channel, name).toBe('hall');
+    }
+    expect(SOUND_EFFECTS.partnerHappy.channel).not.toBe('hall');
+  });
+
   it('describes every effect for the sound board', () => {
     for (const [, effect] of effects) {
       expect(effect.moment.length).toBeGreaterThan(8);
@@ -145,7 +154,7 @@ describe('the sound-effect vocabulary', () => {
       if (effect.channel === 'fanfare') {
         expect(ducking, name).toContain(name);
       }
-      if (effect.channel === 'ui' || effect.channel === 'world' || effect.channel === 'battle') {
+      if (effect.channel === 'ui' || effect.channel === 'world' || effect.channel === 'hall' || effect.channel === 'battle') {
         expect(ducking, `${name} would duck the music on every step`).not.toContain(name);
       }
     }

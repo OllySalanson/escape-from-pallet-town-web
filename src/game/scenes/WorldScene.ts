@@ -6,7 +6,7 @@ import { homeAfterRaid } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
 import { clockLine, closeCallLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -174,7 +174,7 @@ import {
   nextBump,
   nextHunterProximity,
 } from '../audio/worldSounds';
-import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
+import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemId } from '../items';
 import {
   areContractStopsComplete,
@@ -1521,14 +1521,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const dust = this.add.graphics().setDepth(atRow(FIGURE_BAND, this.currentTile.y) + 0.0005);
     const ground = { x: this.player.x + TILE_SIZE / 2, y: this.player.y + this.player.height - 2 };
     const ring = this.add.graphics().setDepth(ARRIVAL_CLOUD_DEPTH + 1);
-    const everStuckOne = (new SaveManager().load()?.raidProgress.landings?.best ?? 0) > 0;
-    const ringHint = everStuckOne
+    const held = new SaveManager().load()?.raidProgress;
+    const ringHint = !ringNamesItsKey(held ? raidsDeployed(held) : 0, held?.landings?.best ?? 0)
       ? null
       : this.add
           .text(ground.x, ground.y - 42, '[SPACE]', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd', backgroundColor: '#0b1220', padding: { x: 3, y: 1 } })
           .setOrigin(0.5, 1)
           .setDepth(ARRIVAL_CLOUD_DEPTH + 1)
           .setVisible(false);
+    // Nothing is seated until the raid is the player's, and a caption never seated
+    // stands where it was made: under the FEEDBACK tab, or over whoever is passing.
+    this.worldLabels.forEach((label) => label.hide());
     this.arrival = {
       elapsedMs: 0,
       cloud,
@@ -5337,6 +5340,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private openBag(): void {
     audioManager.play('menuOpen');
+    // The pack is what a search's "no room" sent them to: asked again if it still holds.
+    if (this.search) {
+      this.search.said = null;
+    }
     this.scene.pause();
     this.scene.launch('bag', {
       bag: this.bag,
@@ -5363,6 +5370,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       covers: (gamePixels) => {
         this.panelLean.setCover(gamePixels);
         this.refreshRunTimerHud();
+        this.renderSearch();
       },
       frame: (deltaMs) => this.settlePanelLean(deltaMs),
     };
@@ -5384,6 +5392,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * while something else is being read, it is the whole field guide instead.
    */
   private answerRadioKey(): void {
+    // The screen is already going dark for a fight or a door: nothing to open over it.
+    if (this.isWarping) {
+      return;
+    }
     if (this.onRadio) {
       this.hangUp();
       this.openObjectives();
@@ -7115,7 +7127,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Draws the search panel as the search now stands, or nothing while none is open. */
   private renderSearch(): void {
     const search = this.search;
-    if (!search) {
+    // A side panel stands over the same corner: a sliver of the search showing
+    // beside the pack says nothing, and it comes back as the panel goes.
+    if (!search || this.panelLean.covering > 0) {
       this.searchPanel?.hide();
       return;
     }

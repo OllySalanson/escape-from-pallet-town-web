@@ -48,6 +48,7 @@ import { HubScene } from './scenes/HubScene';
 import { StarterScene } from './scenes/StarterScene';
 import { TitleScene } from './scenes/TitleScene';
 import { SaveManager } from './save/SaveManager';
+import { startNewGame } from './save/newGame';
 import { createStartingStash, Stash } from './stash';
 import { WorldScene } from './scenes/WorldScene';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from './display/stage';
@@ -295,42 +296,14 @@ describe('game start flow', () => {
         setItem: (key, value) => values.set(key, value),
         removeItem: (key) => values.delete(key),
       });
-      const start = vi.fn();
-      const starter = Object.create(StarterScene.prototype) as StarterScene;
-      Object.assign(starter as unknown as Record<string, unknown>, {
-        saveManager: saves,
-        selectedStarterId: starterSpeciesId,
-        scene: { start },
-      });
 
-      (starter as unknown as { confirmStarter(): void }).confirmStarter();
+      const started = startNewGame(saves, starterSpeciesId);
 
+      expect(started?.starterSpeciesId).toBe(starterSpeciesId);
       expect(saves.load()?.starterSpeciesId).toBe(starterSpeciesId);
       expect(saves.load()?.stash.listPokemon()).toMatchObject([
         { pokemon: { base: { id: starterSpeciesId }, level: 5 } },
       ]);
-      expect(start).toHaveBeenCalledTimes(1);
-    },
-  );
-
-  it.each(['bulbasaur', 'charmander', 'squirtle'] as const)(
-    'starts the cursor on the chosen %s card, never on CONFIRM',
-    (starterSpeciesId) => {
-      // The first decision in the game: a cursor on the commit button made one
-      // Enter take Bulbasaur before a card had been read (playtest 38, row 34).
-      const focus = vi.fn();
-      const starter = Object.create(StarterScene.prototype) as StarterScene;
-      Object.assign(starter as unknown as Record<string, unknown>, {
-        selectedStarterId: starterSpeciesId,
-        overlay: { root: { innerHTML: '', querySelectorAll: () => [], querySelector: () => null }, focus },
-      });
-
-      (starter as unknown as { render(): void }).render();
-
-      expect(focus).toHaveBeenCalledTimes(1);
-      expect(focus.mock.calls[0][0]).toBe(`[data-starter="${starterSpeciesId}"]`);
-      const markup = (starter as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-      expect(markup).toContain(`data-starter="${starterSpeciesId}"`);
     },
   );
 

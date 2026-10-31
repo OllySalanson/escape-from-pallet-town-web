@@ -130,15 +130,12 @@ try {
   // asking is one of the things this plays.
   await page.evaluate(`localStorage.removeItem('escape-from-pallet-town.player.name')`);
   await press('Space');
-  await page.waitFor(sceneIs('starter'));
+  await page.waitFor(sceneIs('base'));
   const starter = option('starter');
   if (starter) {
-    await page.waitFor(`(() => { const b = document.querySelector('button[data-starter=${JSON.stringify(starter)}]'); if (!b) return false; b.click(); return true; })()`);
+    await page.waitFor(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.(${JSON.stringify(starter)}) === true`);
     await sleep(300);
   }
-  await page.waitFor(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`,
-  );
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   if (built.length > 0 || beaten.length > 0 || Object.keys(raidRecord).length > 0) {

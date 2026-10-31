@@ -43,6 +43,8 @@ const firstStep = (goals) => `(() => { const b = ${BASE}; if (!b.sys.isActive() 
   if (!found) return 'unreachable';
   let cur = found, key = null; for (;;) { const p = prev.get(idx(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return key; })()`;
 
+// The man's own tile (`DAY_CARE_KEEPER`, `base/dayCarePen.ts`): he is faced from the west.
+const DAY_CARE_KEEPER_X = 45;
 const browser = port ? attachBrowser(Number(port), { window: { width, height } }) : await launchBrowser({ window: { width, height } });
 const page = await browser.openPage(`${url}?testmode=pixels`);
 try {
@@ -87,7 +89,7 @@ try {
   const speakToHim = async () => {
     const man = await page.evaluate(`${BASE}.figures.has('day-care-man')`);
     if (!man) throw new Error('nobody is standing at the Day-Care');
-    await walkTo([{ x: 33, y: 11 }]);
+    await walkTo([{ x: DAY_CARE_KEEPER_X - 1, y: 11 }]);
     await press('ArrowRight');
     const facing = await page.evaluate(state());
     if (facing.hint !== '[SPACE] DAY-CARE MAN') throw new Error(`facing him, the hint says "${facing.hint}"`);
@@ -102,9 +104,9 @@ try {
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await page.waitFor(sceneIs('starter'));
+  await page.waitFor(sceneIs('base'));
   await page.waitFor(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
@@ -142,7 +144,7 @@ try {
   await press('Escape');
   await sleep(2500);
   const back = await page.evaluate(state());
-  if (back.tile.x !== 33 || back.tile.y !== 11 || back.facing !== 'right') {
+  if (back.tile.x !== DAY_CARE_KEEPER_X - 1 || back.tile.y !== 11 || back.facing !== 'right') {
     throw new Error(`he left the player on ${JSON.stringify(back.tile)} facing ${back.facing}`);
   }
   if (back.pen?.species !== 'pidgey') throw new Error(`the pen holds ${JSON.stringify(back.pen)}`);

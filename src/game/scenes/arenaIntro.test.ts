@@ -24,11 +24,11 @@ import { ARENA_INTRO_ARMING_MS } from '../cutscene/arenaIntro';
 const game = baseGame();
 
 /** Walks through a base door on a stand-in of the yard, and says where it went. */
-function through(doorId: string): unknown[][] {
+function through(doorId: string, savedGame = game): unknown[][] {
   const door = BASE_DOORS.find((each) => each.id === doorId)!;
   const went: unknown[][] = [];
   const yard = {
-    savedGame: game,
+    savedGame,
     learnKey: () => undefined,
     openArenaIntro: (payload: unknown) => went.push(['arenaIntro', payload]),
     openHub: (payload: unknown) => went.push(['hub', payload]),
@@ -59,13 +59,18 @@ function trailer(startedAt: number, hall: BaseSceneData) {
 }
 
 describe("THE RAID ARENA's door", () => {
-  it('plays the trailer on the way into the great hall', () => {
+  it('plays the trailer the first time, on the way into the great hall', () => {
     expect(through('raid-arena')).toEqual([
       ['arenaIntro', { savedGame: game, hall: { savedGame: game, room: 'raid-arena' } } satisfies ArenaIntroSceneData],
     ]);
   });
 
-  it('is the only door that does: every other is a room', () => {
+  it('is a door like any other once it has been seen', () => {
+    const seen = { ...game, raidProgress: { ...game.raidProgress, arenaIntroSeen: true } };
+    expect(through('raid-arena', seen)).toEqual([['room', { savedGame: seen, room: 'raid-arena' }]]);
+  });
+
+  it('is the only door that plays anything: every other is a room', () => {
     for (const door of BASE_DOORS.filter((each) => each.id !== 'raid-arena')) {
       expect(through(door.id).map(([where]) => where)).toEqual(['room']);
     }

@@ -11,6 +11,16 @@ import { AREA_PIECES, type AreaPieceName } from '../world/generated/areaPieces';
 import { AREA_SHEET_SOURCE } from '../world/tileset/areaSheet';
 import { INSIDE_PROPS } from '../world/tileset/insideTileset';
 import { BOUTIQUE_NAME } from '../look/wearables';
+import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
+import {
+  BALL_LEFT_LINE,
+  BALL_LEFT_NOTE,
+  ballsLeftFor,
+  ballTile,
+  ballTiles,
+  OAK_THAT_CAN_WAIT,
+  typeWords,
+} from './starterTable';
 import {
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
@@ -403,6 +413,8 @@ export interface RoomThing {
   readonly note: string;
   /** The tiles the caption is seated against and speaks from. */
   readonly tiles: readonly GridPosition[];
+  /** Tiles beside it that answer for it when faced, though nothing of it is drawn there. */
+  readonly alsoFaced?: readonly GridPosition[];
   /** The rung of Brock's ladder it shows, if it shows one. */
   readonly upgradeId?: string;
   /**
@@ -412,6 +424,8 @@ export interface RoomThing {
   readonly chalked?: string;
   /** What this is on Bill's shelves: faced and asked, he names the deal (`hub/billTalk.ts`). */
   readonly good?: BillGood;
+  /** Which of the three Poké Balls on Oak's table this is, while a new game chooses (`starterTable.ts`). */
+  readonly starter?: StarterSpeciesId;
   /**
    * Which unit of Bill's cabinet it is, if it is one: facing it and asking is
    * how the shelves are looked along, one thing at a time (`cabinet.ts`).
@@ -1028,15 +1042,7 @@ interface Drawn {
  * shelving either side of the aisle he stands in.
  */
 function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
-  const sketch = shell(room);
-  sketch.plant(0, 1, 'labComputers');
-  sketch.plant(0, 3, 'labMachine');
-  sketch.plant(8, 4, 'labTable');
-  sketch.plant(0, 8, 'labShelvesWest');
-  sketch.plant(8, 8, 'labShelvesEast');
-  sketch.plant(0, 10, 'labPlant');
-  sketch.plant(12, 10, 'labPlantEast');
-  sketch.plant(5, 11, 'labMat');
+  const sketch = labRoom(room);
   const wallMap: RoomThing = {
     name: 'THE WALL MAP',
     note: wallMapNote(game),
@@ -1049,14 +1055,67 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
     tiles: BOARD_TILES,
     reads: 'board',
   };
+  // The balls nobody took are still on the table. They are derived from who the
+  // partner is, so a swap puts the old one back.
+  const left = ballsLeftFor(game.starterSpeciesId);
+  const balls = left.map((starter): RoomThing => ({
+    name: 'A POKÉ BALL',
+    note: BALL_LEFT_NOTE,
+    tiles: ballTiles(starter),
+    lines: [BALL_LEFT_LINE],
+  }));
   return {
     sketch,
     catalogue: LAB,
-    things: [wallMap, board],
-    sprites: [],
+    things: [wallMap, board, ...balls],
+    sprites: left.map(ballSprite),
     wallMap: OAK_WALL_MAP,
     posters: [{ kind: 'cork-board', area: OAK_BOARD }],
   };
+}
+
+/**
+ * The lab as a new game walks into it (`starterTable.ts`): all three balls out,
+ * each saying what is in it, and everything else in the room asked to wait,
+ * because there is no game yet for it to open onto.
+ */
+function drawLabChoosing(room: BaseRoom, game: RestoredGame): Drawn {
+  const balls = STARTER_SPECIES.map(({ id }): RoomThing => {
+    const species = getStarterSpecies(id);
+    // Quiet, because what it would say is what the preview says as it is looked at.
+    return { name: species.name.toUpperCase(), note: typeWords(species), tiles: ballTiles(id), starter: id, quiet: true };
+  });
+  const waiting = (name: string, note: string, tiles: readonly GridPosition[]): RoomThing => ({
+    name,
+    note,
+    tiles,
+    lines: [OAK_THAT_CAN_WAIT],
+  });
+  return {
+    sketch: labRoom(room),
+    catalogue: LAB,
+    things: [waiting('THE WALL MAP', wallMapNote(game), WALL_MAP_TILES), waiting('THE BOARD', boardNote(game), BOARD_TILES), ...balls],
+    sprites: STARTER_SPECIES.map(({ id }) => ballSprite(id)),
+    wallMap: OAK_WALL_MAP,
+    posters: [{ kind: 'cork-board', area: OAK_BOARD }],
+  };
+}
+
+function labRoom(room: BaseRoom): MapSketch<RoomPropName> {
+  const sketch = shell(room);
+  sketch.plant(0, 1, 'labComputers');
+  sketch.plant(0, 3, 'labMachine');
+  sketch.plant(8, 4, 'labTable');
+  sketch.plant(0, 8, 'labShelvesWest');
+  sketch.plant(8, 8, 'labShelvesEast');
+  sketch.plant(0, 10, 'labPlant');
+  sketch.plant(12, 10, 'labPlantEast');
+  sketch.plant(5, 11, 'labMat');
+  return sketch;
+}
+
+function ballSprite(starter: StarterSpeciesId): RoomSprite {
+  return { piece: 'ball.one', ...ballTile(starter) };
 }
 
 /**
@@ -1530,11 +1589,16 @@ const DRAWERS: Readonly<Record<Exclude<RoomId, 'raid-arena'>, (room: BaseRoom, g
  * room is small. `now` is only read by the player's own house, whose window and
  * whose decorations follow the player's clock (`homeClock.ts`).
  */
-export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Date()): BuiltRoom {
+export function buildRoom(
+  room: BaseRoom,
+  game: RestoredGame,
+  now: Date = new Date(),
+  { choosing = false }: { readonly choosing?: boolean } = {},
+): BuiltRoom {
   if (room.id === 'raid-arena') {
     return buildArenaHall(room, game);
   }
-  const drawn = DRAWERS[room.id](room, game, now);
+  const drawn = choosing && room.id === 'oaks-lab' ? drawLabChoosing(room, game) : DRAWERS[room.id](room, game, now);
   if (isHomeRoom(room.id)) {
     return buildHome(room, room.id, drawn, game, now);
   }
@@ -1612,6 +1676,7 @@ function buildArenaHall(room: BaseRoom, game: RestoredGame): BuiltRoom {
         name: ARENA_STATION_NAMES[station.id],
         note: '',
         tiles: station.tiles,
+        alsoFaced: station.past,
         opens: station.id,
       })),
       ...shown.things,

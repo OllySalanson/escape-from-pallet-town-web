@@ -36,6 +36,19 @@ import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
 import { SaveManager, raidsDeployed, raidsLost, traderCounterFor, type RestoredGame } from '../save/SaveManager';
+import { startNewGame } from '../save/newGame';
+import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
+import {
+  ballAt,
+  CHOOSING_HINT,
+  OAK_DONT_GO,
+  OAK_GO_ON,
+  oakOpeningLines,
+  receivedLine,
+  starterQuestion,
+} from '../base/starterTable';
+import { StarterPreview } from '../ui/StarterPreview';
+import { HAUL_CAPTION, HAUL_SAILOR_LINE, haulLaidOut } from '../base/haulOnTheQuay';
 import {
   FAVOUR_ANSWERS,
   declineErrand,
@@ -82,7 +95,8 @@ import { noticeFor } from '../base/harbourNotices';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
-import { gymGuideLines } from '../base/gymGuide';
+import { GYM_GUIDE_REEL_QUESTION, gymGuideLines } from '../base/gymGuide';
+import { ARENA_INTRO_ENDS_ON, arenaIntroViewing } from '../cutscene/arenaIntro';
 import { BASE_SHEET_SOURCE } from '../base/baseSheet';
 import { BASE_PIECES } from '../base/generated/basePieces';
 import {
@@ -187,8 +201,8 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
-import { lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
+import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, PIT_RIM, acrossOval, arenaStationAt, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
+import { crowdTakesTheView, lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import {
   RIVAL_TILE,
   boutBag,
@@ -206,8 +220,8 @@ import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
 import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
 import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag } from '../items/items';
-import { FALLBACK_PACK_ID } from '../items/packs';
-import { COIN_EVERY_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
+import { FALLBACK_PACK_ID, STARTING_PACK_ID, packSquares } from '../items/packs';
+import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
@@ -220,6 +234,7 @@ import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands'
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
   FOG_APPROACH_MS,
+  FOG_LIFT_LEAST_GAIN,
   FOG_LIFT_MS,
   FOG_LIFT_STEPS,
   steered,
@@ -233,7 +248,7 @@ import {
   partnerLeap,
   overTheFence,
 } from '../base/arenaDive';
-import { STREAK_WORTH_SAYING, marshalLines } from '../base/arenaMarshal';
+import { marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
 import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
@@ -342,6 +357,13 @@ const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 let lastJumpedFrom: GridPosition | null = null;
 /** Whether a raid has come home since the player was last out in the harbour: the Seagallop ties up when they get there. */
 let boatDueHome = false;
+/**
+ * A new game has not been told the harbour's name yet: it walks out of Oak's door
+ * rather than arriving off the title, so it is said the first time they do.
+ */
+let harbourToBeNamed = false;
+/** What the Seagallop is bringing home, for the next time the player is out in the yard. */
+let haulDueHome: readonly string[] = [];
 /** How fast the hall's camera comes round to what it is asked to look at: a share of the way, per millisecond. */
 const CAMERA_EASE_MS = 140;
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
@@ -350,6 +372,8 @@ const CROWD_LOOK_MS = 1700;
 const RUN_SLATE_ROW = 56;
 const RUN_SLATE_AT = { x: 34 * TILE_SIZE + 6, y: 54 * TILE_SIZE + 12 };
 const CROWD_LOOK_SHARE = 0.8;
+/** How far short of the bottom of the dark under the stands the look on coming home stops: the seats are in view by then. */
+const CROWD_LOOK_STOPS_SHORT = 28;
 /** What had been got ready when the player went off to a bout, for when they come back. */
 let flowAcrossABout: DeploymentFlow | null = null;
 /** The quickest lap of the ring this page has seen. */
@@ -357,7 +381,7 @@ let bestLapMs: number | null = null;
 /** How long after the plink, for what came back to come. */
 const PIT_GIFT_WAIT_MS = 1200;
 /** How long a raid's fog lifts before a key can cut it short. */
-const FOG_LISTENS_AFTER_MS = 500;
+const FOG_LISTENS_AFTER_MS = 200;
 /** How often a held raid room is told this player is getting ready, and asked who else is. */
 const HALL_ROOM_TICK_MS = 250;
 
@@ -494,6 +518,12 @@ export interface BaseSceneData {
    * itself (`said`, in `create`), so they are always in the room's own box.
    */
   readonly said?: readonly string[];
+  /** A new game, with nothing written yet: this is Oak's table with all three balls on it (`base/starterTable.ts`). */
+  readonly choosing?: boolean;
+  /** What a raid just brought out, to stand on the quay when the boat ties up (`base/haulOnTheQuay.ts`). */
+  readonly haul?: readonly string[];
+  /** The ball just taken off that table, so Oak hands it over and says what a raid is. */
+  readonly chose?: StarterSpeciesId;
 }
 
 interface BaseControls {
@@ -699,6 +729,8 @@ export class BaseScene extends Phaser.Scene {
   } | null = null;
   /** How much longer the view stays turned to the crowd, on coming home. A key takes it back at once. */
   private crowdLookMs = 0;
+  /** How long the player has stood at the rail with nothing else going on. */
+  private railStandMs = 0;
   /** What the crowd last made of a raid, until a lap has been run for it. */
   private lastCrowdMood: CrowdMood | null = null;
   /** The board that says a lap's time. */
@@ -754,6 +786,15 @@ export class BaseScene extends Phaser.Scene {
   private boxClicked = false;
   /** The "!" over a keeper who has something to say about their favour. */
   private keeperMark: Phaser.GameObjects.Graphics | null = null;
+  /** There is a partner to choose on Oak's table, and no game in storage yet (`base/starterTable.ts`). */
+  private choosing = false;
+  /** What is standing on the quay this visit to the yard. */
+  private haulOnTheQuay: readonly string[] = [];
+  private starterPreview: StarterPreview | null = null;
+  /** The ball the pointer is resting on, which only asks what is in it. */
+  private pointedBall: StarterSpeciesId | null = null;
+  /** The ball the question in the box is about. */
+  private askedBall: StarterSpeciesId | null = null;
   /** The "!" over each person about the harbour with a favour to ask, by their id: it walks their beat with them. */
   private harbourMarks = new Map<string, Phaser.GameObjects.Graphics>();
   /** What to do once the dialogue box now up has been read to its end (`say`). */
@@ -880,15 +921,20 @@ export class BaseScene extends Phaser.Scene {
     this.fogLift = null;
     this.walkPlan = null;
     this.roomTickMs = 0;
+    this.pointedBall = null;
+    this.askedBall = null;
+    this.starterPreview = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
+    // Never over a game that exists: another tab may have started one since.
+    this.choosing = data.choosing === true && room?.id === 'oaks-lab' && this.saveManager.load() === null;
     // A visit is to somebody's house and nowhere else: their house is drawn
     // from their snapshot, read as any save is, and everything in it is
     // theirs by name.
     this.visit = room && data.visit && isHomeRoom(room.id) ? data.visit : null;
     if (room) {
       const visit = this.visit;
-      const drawn = buildRoom(room, visit ? visit.game : loaded);
+      const drawn = buildRoom(room, visit ? visit.game : loaded, undefined, { choosing: this.choosing });
       const built = visit
         ? {
             ...drawn,
@@ -959,8 +1005,13 @@ export class BaseScene extends Phaser.Scene {
     const boatHome = !this.place.room && boatDueHome;
     if (data.arrival === 'raid') {
       boatDueHome = true;
+      haulDueHome = [...new Set([...haulDueHome, ...(data.haul ?? [])])];
     } else if (boatHome) {
       boatDueHome = false;
+    }
+    this.haulOnTheQuay = boatHome ? haulDueHome : [];
+    if (boatHome) {
+      haulDueHome = [];
     }
     this.boats = null;
     if (detail && !this.place.room) {
@@ -993,6 +1044,7 @@ export class BaseScene extends Phaser.Scene {
       });
     }
     this.drawSprites();
+    this.drawHaul();
     this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
@@ -1003,6 +1055,7 @@ export class BaseScene extends Phaser.Scene {
     this.rivalFigure = null;
     this.rivalHere = null;
     this.pitCoinMs = 0;
+    this.railStandMs = 0;
     this.pitGiftDueMs = 0;
     this.pitGiftImage = null;
     this.pitGiftFlight = null;
@@ -1027,6 +1080,7 @@ export class BaseScene extends Phaser.Scene {
     this.createCaptions();
     this.createDialogBox();
     this.createHint();
+    this.starterPreview = this.choosing ? new StarterPreview(this) : null;
     this.bindControls();
     // A direction still held from the step that came through the door is not
     // a step in here: it has to be let go and pressed again. That is what
@@ -1064,6 +1118,8 @@ export class BaseScene extends Phaser.Scene {
       if (this.doorTold) {
         harbourHouses()?.door.out();
       }
+      this.starterPreview?.destroy();
+      this.starterPreview = null;
       this.knockScreen?.destroy();
       this.knockScreen = null;
       this.favoursScreen?.destroy();
@@ -1110,10 +1166,15 @@ export class BaseScene extends Phaser.Scene {
     }
     // Arriving in the harbour - off the title or off the boat, not out of a
     // door - it says its name, as a FireRed town does.
-    if (!room && data.from === undefined && data.at === undefined) {
+    if (!room && ((data.from === undefined && data.at === undefined) || harbourToBeNamed)) {
       this.placeSign?.show(BASE_PLACE_NAME.toUpperCase());
+      harbourToBeNamed = false;
     }
-    if (abandoned) {
+    if (this.choosing) {
+      this.say(oakOpeningLines(houseName()), room?.keeper ? [room.keeper.position] : []);
+    } else if (data.chose) {
+      this.handOverPartner(data.chose, room?.keeper ? [room.keeper.position] : []);
+    } else if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
     } else if (data.said?.length) {
       const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
@@ -1182,6 +1243,7 @@ export class BaseScene extends Phaser.Scene {
       this.boats?.update(deltaMs);
       this.night?.update(deltaMs);
     }
+    this.settleStarterPreview();
     this.settleHeadMark();
     this.settleOwnWave(deltaMs);
     this.settleOwnBubble();
@@ -1224,8 +1286,16 @@ export class BaseScene extends Phaser.Scene {
     }
 
     if (this.fogLift) {
-      this.advanceFogLift(deltaMs);
-      return;
+      const cut = this.advanceFogLift(deltaMs);
+      if (this.fogLift) {
+        return;
+      }
+      // The press that took the view back is also what it was pressed for: home,
+      // SPACE, ENTER is the whole cost of going again, new ground or not.
+      if (cut === 'interact') {
+        this.tryInteract();
+        return;
+      }
     }
 
     if (this.phrasePicker) {
@@ -1475,13 +1545,15 @@ export class BaseScene extends Phaser.Scene {
       x: this.player.x + TILE_SIZE / 2,
       y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
     };
-    this.arena.update(deltaMs, middle);
+    this.arena.hush(Boolean(this.arenaPanel) || this.dialogBox.visible || Boolean(this.jump));
+    this.arena.update(deltaMs, middle, isAtRim(this.targetTile ?? this.currentTile));
     this.tellTheLap(middle);
     this.watchThePitGift(deltaMs);
     this.hallSign?.update(deltaMs);
     this.runSlate?.update(deltaMs);
     // Walking off, or anything else asked of the view, takes it back from the crowd.
     this.crowdLookMs = this.targetTile || this.arenaPanel || this.dialogBox.visible ? 0 : Math.max(0, this.crowdLookMs - deltaMs);
+    this.railStandMs = this.targetTile || this.arenaPanel || this.dialogBox.visible || !isAtRim(this.currentTile) ? 0 : this.railStandMs + deltaMs;
     this.settleAim();
     this.settleHallCamera(deltaMs, false);
   }
@@ -1750,8 +1822,10 @@ export class BaseScene extends Phaser.Scene {
     }
     const words = this.stakesGoingOver();
     this.jump.dive?.stakesAre(words);
-    this.jump.breath = { elapsedMs: 0, ms: breathMs(words.length), words: words.length, cut: false };
-    arena.holdBreath(true);
+    if (words.length > 0) {
+      this.jump.breath = { elapsedMs: 0, ms: breathMs(words.length), words: words.length, cut: false };
+      arena.holdBreath(true);
+    }
     this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
     this.player.setDepth(CANOPY_BAND + 1);
@@ -1771,6 +1845,7 @@ export class BaseScene extends Phaser.Scene {
         pokemon: flow.riskedPokemon.map(({ pokemon }) => ({ name: pokemon.name, level: pokemon.level })),
         // Nobody is ever left without a Satchel, so it is no stake.
         pack: packId === undefined || packId === FALLBACK_PACK_ID ? null : flow.packName,
+        packIsBetter: packId !== undefined && packSquares(packId) > packSquares(STARTING_PACK_ID),
         items: flow.riskedItems.map(({ itemId, quantity }) => `${getItemById(itemId)?.displayName ?? itemId} ${itemCountTag(itemId, quantity)}`),
       },
       new SaveManager().load()?.raidProgress.benchRaids ?? 1,
@@ -1832,11 +1907,8 @@ export class BaseScene extends Phaser.Scene {
       }
       audioManager.play('ledgeHop');
     }
-    if (before < TURN_BACK_MS + HOP_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS) {
-      audioManager.play('diveRush');
-    }
     if (before < TURN_BACK_MS + HOP_MS + FALL_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS + FALL_MS) {
-      audioManager.play('diveRush');
+      audioManager.play('diveWind');
     }
     const pose = jumpPose(jump.elapsedMs, jump.over);
     if (!pose.figure.falling) {
@@ -1904,6 +1976,11 @@ export class BaseScene extends Phaser.Scene {
     if (!lifted) {
       return;
     }
+    // A corner of new ground is not worth the view: it clears, and the rim is there.
+    if (lifted.gained < FOG_LIFT_LEAST_GAIN) {
+      this.arena?.endFog();
+      return;
+    }
     const sign = new PlaceNameSign(this);
     this.standStill();
     // After the look round at the crowd, if there is one to look at.
@@ -1913,10 +1990,7 @@ export class BaseScene extends Phaser.Scene {
       tile: lifted.tile,
       sign,
       heldMs: 0,
-      line:
-        lifted.gained > 0
-          ? `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`
-          : worldMapName(this.arena!.mapId).toUpperCase(),
+      line: `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`,
     };
   }
 
@@ -1925,12 +1999,10 @@ export class BaseScene extends Phaser.Scene {
     if (!mood || !this.arena) {
       return;
     }
-    // A run of stuck landings has them on the look-out for this player.
-    const streak = this.savedGame.raidProgress.landings?.streak ?? 0;
-    const taken = mood === 'clap' && streak >= STREAK_WORTH_SAYING ? 'cheer' : mood;
-    this.lastCrowdMood = taken;
-    this.arena.crowdReacts(taken, this.figureMiddle());
-    this.crowdLookMs = this.still ? 0 : CROWD_LOOK_MS;
+    this.lastCrowdMood = mood;
+    this.arena.crowdReacts(mood, this.figureMiddle());
+    // Heard every time; only a raid the house really has an opinion of takes the view.
+    this.crowdLookMs = this.still || !crowdTakesTheView(mood) ? 0 : CROWD_LOOK_MS;
   }
 
   private figureMiddle(): { readonly x: number; readonly y: number } {
@@ -1943,9 +2015,10 @@ export class BaseScene extends Phaser.Scene {
   /** Far enough towards the nearest seats to see them, and not so far as to lose the player. */
   private halfwayToTheStands(middle: { readonly x: number; readonly y: number }): { readonly x: number; readonly y: number } {
     const stands = standsBehind(middle);
+    const y = middle.y + (stands.y - middle.y) * CROWD_LOOK_SHARE;
     return {
       x: middle.x + (stands.x - middle.x) * CROWD_LOOK_SHARE,
-      y: middle.y + (stands.y - middle.y) * CROWD_LOOK_SHARE,
+      y: this.crowdLookMs > 0 ? Math.min(y, this.cameras.main.getBounds().bottom - this.scale.height / 2 - CROWD_LOOK_STOPS_SHORT) : y,
     };
   }
 
@@ -2199,10 +2272,10 @@ export class BaseScene extends Phaser.Scene {
     this.hallSign.show(lapLine(lapMs, honour, best));
   }
 
-  private advanceFogLift(deltaMs: number): void {
+  private advanceFogLift(deltaMs: number): 'interact' | 'other' | null {
     const lift = this.fogLift;
     if (!lift) {
-      return;
+      return null;
     }
     const before = lift.elapsedMs;
     lift.elapsedMs += deltaMs;
@@ -2221,14 +2294,15 @@ export class BaseScene extends Phaser.Scene {
     }
     // The key that left the result screen is still on its way up as this starts,
     // and is not a request to skip what it has just opened on.
-    const anyKey = lift.heldMs > FOG_LISTENS_AFTER_MS && this.anyKeyPressed();
-    if (lift.elapsedMs >= FOG_LIFT_MS || anyKey) {
+    const listening = lift.heldMs > FOG_LISTENS_AFTER_MS;
+    const cut = !listening ? null : this.isInteractionPressed() ? 'interact' : this.anyKeyPressed() ? 'other' : null;
+    if (lift.elapsedMs >= FOG_LIFT_MS || cut) {
       this.arena?.endFog();
       lift.sign.destroy();
       this.fogLift = null;
       this.crowdLookMs = 0;
-      this.spentPresses.spendHeld(this.directionKeys());
     }
+    return cut;
   }
 
   // -- walking the hall with the pointer ---------------------------------------
@@ -2270,11 +2344,11 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Brock's and Bill's rooms answer a pointer as the hall does: a click on a
-   * bay, a thing on a shelf, what is on the wall or the keeper walks up to it and
-   * asks, and a click on the mat goes out. What they used to deal over was a
-   * screen a mouse could work, and the mouse must not lose it by the deal moving
-   * into the room.
+   * The keepers' rooms answer a pointer as the hall does: a click on a bay, a
+   * thing on a shelf, what is on the wall or the keeper walks up to it and asks,
+   * and a click on the mat goes out. What they used to deal over was a screen a
+   * mouse could work, and the mouse must not lose it by the deal moving into the
+   * room - Joy's heal and BILL'S PC included.
    */
   private listenForPointerInRoom(): void {
     const pressed = (pointer: Phaser.Input.Pointer): void => {
@@ -2283,7 +2357,10 @@ export class BaseScene extends Phaser.Scene {
       }
     };
     const moved = (pointer: Phaser.Input.Pointer): void => {
-      this.game.canvas.style.cursor = this.canTakeAPointer() && this.answersAPointer(this.tileUnder(pointer)) ? 'pointer' : '';
+      const tile = this.tileUnder(pointer);
+      this.game.canvas.style.cursor = this.canTakeAPointer() && this.answersAPointer(tile) ? 'pointer' : '';
+      // Resting on a ball asks what is in it, and asking commits nothing.
+      this.pointedBall = this.choosing ? ballAt(tile) : null;
     };
     this.input.on(Phaser.Input.Events.POINTER_DOWN, pressed);
     this.input.on(Phaser.Input.Events.POINTER_MOVE, moved);
@@ -2320,7 +2397,10 @@ export class BaseScene extends Phaser.Scene {
       this.walkThen([mat], null, () => this.leaveRoom(room));
       return;
     }
-    const answering = this.thingFaced(clicked)?.tiles ?? [clicked];
+    // A keeper behind a counter is walked up to across it, as the key asks them.
+    const answering =
+      this.thingFaced(clicked)?.tiles ??
+      (servesFrom(room, clicked) && room.keeper ? [room.keeper.position, ...room.counter] : [clicked]);
     const fronts = answering.flatMap((tile) =>
       (['up', 'down', 'left', 'right'] as const).map((direction) => nextTileFromDirection(tile, direction)),
     );
@@ -2759,6 +2839,16 @@ export class BaseScene extends Phaser.Scene {
     }
   }
 
+  /** What the raid brought home, on the quay beside the boat: pictures, walked over as ground loot is. */
+  private drawHaul(): void {
+    for (const { itemId, at } of haulLaidOut(this.haulOnTheQuay)) {
+      this.add
+        .image(at.x * TILE_SIZE, at.y * TILE_SIZE, iconTextureKey(itemIconName(itemId)))
+        .setOrigin(0, 0)
+        .setDepth(atRow(MARKER_BAND, at.y));
+    }
+  }
+
   /**
    * Everything on Bill's shelves, each as the miniature `base/cabinet.ts`
    * draws it (`oddityFrame`). Each answers the pointer: resting on one is
@@ -3175,6 +3265,18 @@ export class BaseScene extends Phaser.Scene {
         speech: { voice: 'name', tiles: [DAY_CARE_KEEPER.position] },
       }),
     );
+    const haul = haulLaidOut(this.haulOnTheQuay).map(({ at }) => at);
+    if (haul.length > 0) {
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: tilesRect(haul),
+          text: HAUL_CAPTION,
+          tone: LANDMARK_TONE,
+          depth: atRow(CAPTION_BAND, Math.max(...haul.map((tile) => tile.y))),
+          speech: { voice: 'name', tiles: haul },
+        }),
+      );
+    }
     for (const landmark of HARBOUR_LANDMARKS) {
       this.worldLabels.push(
         new WorldLabel(this, {
@@ -3204,7 +3306,7 @@ export class BaseScene extends Phaser.Scene {
     const { keeper } = room;
     if (keeper) {
       const door = doorNamed(room.id);
-      const status = door ? doorStatusLine(door, this.savedGame) : '';
+      const status = door && !this.choosing ? doorStatusLine(door, this.savedGame) : '';
       this.worldLabels.push(
         new WorldLabel(this, {
           subject: figureRect(keeper.position),
@@ -3273,6 +3375,13 @@ export class BaseScene extends Phaser.Scene {
   private hintHere(): string {
     const room = this.place.room?.room;
     const facing = nextTileFromDirection(this.currentTile, this.facing);
+    if (this.choosing) {
+      const ball = ballAt(facing);
+      if (ball) {
+        return `[SPACE] ${getStarterSpecies(ball).name.toUpperCase()}`;
+      }
+      return room?.keeper && servesFrom(room, facing) ? `[SPACE] ${room.keeper.name}` : CHOOSING_HINT;
+    }
     // Facing the partner is the one thing the yard says a key does, because
     // turning to face it is the only way anybody would find out.
     const partner = this.partner && this.partnerAt(facing) ? `[SPACE] ${this.partner.name}` : undefined;
@@ -3340,7 +3449,8 @@ export class BaseScene extends Phaser.Scene {
     }
     // Anywhere on the rim is over a way in, and the hint says which.
     if (this.arena && isAtRim(this.currentTile)) {
-      const coin = this.canTossACoin() ? coinKeyHint(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
+      // Found by somebody stood looking over the rail, rather than advertised beside the way in.
+      const coin = this.canTossACoin() && this.railStandMs >= COIN_HINT_AFTER_MS ? coinKeyHint(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
       const line = this.aimed && !this.kit?.flow.notReady ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
       return coin ? `${line}   ${coin}` : line;
     }
@@ -3362,7 +3472,7 @@ export class BaseScene extends Phaser.Scene {
 
   private thingFaced(facing: GridPosition): RoomThing | undefined {
     return this.place.room?.things.find((candidate: RoomThing) =>
-      candidate.tiles.some((tile) => tile.x === facing.x && tile.y === facing.y),
+      [...candidate.tiles, ...(candidate.alsoFaced ?? [])].some((tile) => tile.x === facing.x && tile.y === facing.y),
     );
   }
 
@@ -3795,7 +3905,10 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private onMat(room: BaseRoom): boolean {
-    return room.mat !== null && this.currentTile.x === room.mat.x && this.currentTile.y === room.mat.y;
+    if (room.mat === null || this.currentTile.y !== room.mat.y) {
+      return false;
+    }
+    return Math.abs(this.currentTile.x - room.mat.x) <= (room.screen === 'arena' ? ARENA_MAT_REACH : 0);
   }
 
   private beginStep(targetTile: GridPosition): void {
@@ -3858,17 +3971,19 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
+    const fromARaid = data.arrival === 'raid';
     const greeting: PartnerEmote | null =
-      data.arrival === 'raid' || (data.from === undefined && data.room === undefined && data.at === undefined)
+      fromARaid || data.chose || (data.from === undefined && data.room === undefined && data.at === undefined)
         ? partner.pokemon.isFainted
           ? 'sleepy'
-          : partner.pokemon.currentHp * 4 <= partner.pokemon.maxHp
+          : partner.pokemon.currentHp * 4 <= partner.pokemon.maxHp || data.raidMood === 'groan'
             ? 'ellipsis'
-            : data.arrival === 'raid'
+            : fromARaid
               ? 'heart'
               : 'happy'
         : null;
-    this.partner = new PartnerFigure(this, this.partnerHost(), partner, place, { greeting });
+    // Home from a raid the house has the floor, and the chirp would talk over it.
+    this.partner = new PartnerFigure(this, this.partnerHost(), partner, place, { greeting, quietGreeting: fromARaid });
   }
 
   /** The player, as the partner reads them (`PartnerHost`). */
@@ -4084,6 +4199,9 @@ export class BaseScene extends Phaser.Scene {
    * walks up while the bubble is still there.
    */
   private openPhrases(): void {
+    if (this.choosing) {
+      return;
+    }
     this.learnKey('talk');
     audioManager.play('select');
     this.player.stop();
@@ -4275,6 +4393,10 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const room = this.place.room?.room;
+    if (room && this.choosing) {
+      this.chooseAt(room, target);
+      return;
+    }
     if (room) {
       if (room.screen === 'arena') {
         // Nobody's screen opens from the mat in here: the room is the screen.
@@ -4397,7 +4519,8 @@ export class BaseScene extends Phaser.Scene {
     }
     if (local?.id === SAILOR_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
-      this.say(seagallopLines(this.savedGame.raidProgress.raidRecord), [target]);
+      const log = seagallopLines(this.savedGame.raidProgress.raidRecord);
+      this.say(this.haulOnTheQuay.length > 0 ? [HAUL_SAILOR_LINE, ...log] : log, [target]);
       return;
     }
     if (local?.id === CAPTAIN_ID) {
@@ -4408,7 +4531,7 @@ export class BaseScene extends Phaser.Scene {
     }
     if (local?.id === GYM_GUIDE_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
-      this.say(gymGuideLines(this.savedGame.raidProgress), [target]);
+      this.say(gymGuideLines(this.savedGame.raidProgress), [target], () => this.offerTheReel());
       return;
     }
     if (local?.id === WARDEN_ID) {
@@ -4539,7 +4662,7 @@ export class BaseScene extends Phaser.Scene {
    * when the player wants it rather than said at them.
    */
   private openFavours(): void {
-    if (this.leaving || this.favoursScreen) {
+    if (this.leaving || this.favoursScreen || this.choosing) {
       return;
     }
     this.learnKey('favours');
@@ -4574,9 +4697,10 @@ export class BaseScene extends Phaser.Scene {
   private enterRoom(door: BaseDoor): void {
     // Through a door is the yard's lesson done: the room's own hint takes over.
     this.learnKey('walk');
-    // THE RAID ARENA's trailer plays on the way in (`cutscene/arenaIntro.ts`),
-    // unasked the first time and with a SKIP after, and ends in its great hall.
-    if (door.screen === 'arena') {
+    // THE RAID ARENA's trailer plays on the way in the first time, and ends in
+    // its great hall (`cutscene/arenaIntro.ts`). After that this is a door like any
+    // other, and the Gym Guide beside it will run the reel again for anybody who asks.
+    if (door.screen === 'arena' && arenaIntroViewing(this.savedGame.raidProgress) === 'first') {
       this.openArenaIntro({ savedGame: this.savedGame, hall: { savedGame: this.savedGame, room: door.id } });
       return;
     }
@@ -4913,6 +5037,10 @@ export class BaseScene extends Phaser.Scene {
 
   /** Down off the mat: back out into the yard, on the step outside. */
   private leaveRoom(room: BaseRoom): void {
+    if (this.choosing) {
+      this.say([OAK_DONT_GO], room.keeper ? [room.keeper.position] : []);
+      return;
+    }
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
   }
 
@@ -5026,6 +5154,88 @@ export class BaseScene extends Phaser.Scene {
     if (screen === 'boutique') {
       favourThen(() => this.openBoutique('shop'));
     }
+  }
+
+  /** A key pressed in Oak's lab while there is a partner to choose (`base/starterTable.ts`). */
+  private chooseAt(room: BaseRoom, target: GridPosition): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const thing = this.thingFaced(target);
+    if (thing?.starter) {
+      this.askForBall(thing.starter);
+    } else if (servesFrom(room, target) || this.onMat(room)) {
+      this.say([OAK_GO_ON], room.keeper ? [room.keeper.position] : []);
+    } else if (thing) {
+      this.say(thing.lines ?? [], [target]);
+    }
+  }
+
+  /** The picture goes up with the question, and the safe answer is the one under the cursor. */
+  private askForBall(starter: StarterSpeciesId): void {
+    this.askedBall = starter;
+    this.askInBox(
+      starterQuestion(getStarterSpecies(starter)),
+      (yes) => {
+        this.askedBall = null;
+        if (yes) {
+          this.takeBall(starter);
+        }
+      },
+      { spendsForGood: true },
+    );
+  }
+
+  /** YES: the game is written now and not before, and the room comes back with a partner in it. */
+  private takeBall(starter: StarterSpeciesId): void {
+    const savedGame = startNewGame(this.saveManager, starter);
+    if (!savedGame) {
+      this.leaving = true;
+      this.scene.start('starter', { refused: true });
+      return;
+    }
+    countPlay({ kind: 'starter', detail: starter });
+    harbourToBeNamed = true;
+    this.goTo({ savedGame, room: 'oaks-lab', at: { ...this.currentTile }, facing: this.facing, chose: starter }, 'confirm');
+  }
+
+  /**
+   * The ball handed over, with the fanfare and its first cry, and what a raid is:
+   * this is the first thing the game ever says about one, so it is said here
+   * rather than left for a newcomer to walk back and ask.
+   */
+  private handOverPartner(starter: StarterSpeciesId, about: readonly GridPosition[]): void {
+    const species = getStarterSpecies(starter);
+    void audioManager.loadCries([species.dexId]);
+    audioManager.play('itemObtained');
+    audioManager.play('cry', { species: species.dexId });
+    this.hearFirstWords('lab');
+    this.say([receivedLine(houseName(), species), ...FIRST_WORDS.lab.lines], about);
+  }
+
+  /** The picture of what is in the ball: the one asked about, else pointed at, else faced. */
+  private settleStarterPreview(): void {
+    if (!this.starterPreview) {
+      return;
+    }
+    const faced = this.dialogBox.visible || this.targetTile ? null : ballAt(nextTileFromDirection(this.currentTile, this.facing));
+    const looking = this.askedBall ?? (this.canTakeAPointer() ? (this.pointedBall ?? faced) : null);
+    this.starterPreview.show(looking ? getStarterSpecies(looking) : null);
+  }
+
+  /**
+   * For a playtest driver that is testing something else: takes this partner off
+   * the table and goes straight out into the yard, past Oak's handing it over.
+   * `tools/playtest/starterBalls.mjs` plays the real walk.
+   */
+  public takeStarterForDriver(starter: string): boolean {
+    const chosen = STARTER_SPECIES.find(({ id }) => id === starter)?.id;
+    const savedGame = this.ready && this.choosing && chosen ? startNewGame(this.saveManager, chosen) : null;
+    if (!savedGame) {
+      return false;
+    }
+    this.ready = false;
+    this.scene.start('base', { savedGame });
+    return true;
   }
 
   /** The save as it stands now, for anybody about to name a price: another tab may have moved it on. */
@@ -5206,11 +5416,17 @@ export class BaseScene extends Phaser.Scene {
       }
       const held = friendRoom()?.room;
       const at = { ...this.currentTile };
-      this.askInBox(held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?', (yes) => {
-        if (yes) {
-          this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
-        }
-      });
+      // On NOT NOW unless a room is waiting: this ends everything Oak has to say,
+      // so the key that was reading his lines is usually still being pressed.
+      this.askInBox(
+        held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?',
+        (yes) => {
+          if (yes) {
+            this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
+          }
+        },
+        { startOnNotNow: !held },
+      );
     });
   }
 
@@ -5224,7 +5440,7 @@ export class BaseScene extends Phaser.Scene {
     this.savedGame = this.saveManager.load() ?? this.savedGame;
     const free = isPlaytestRun();
     const offer = centerOffer(this.savedGame, free);
-    const { question } = offer;
+    const { question, spendsForGood } = offer;
     if (question === undefined) {
       const swap = this.savedGame.stash.canSwapStarter() && raidsLost(this.savedGame.raidProgress) > 0;
       this.say([...offer.lines, ...(swap ? [SWAP_AT_THE_PC_LINE] : [])], about);
@@ -5249,11 +5465,12 @@ export class BaseScene extends Phaser.Scene {
             savedGame: this.saveManager.load() ?? this.savedGame,
             room,
             at: { ...this.currentTile },
+            facing: this.facing,
             said: [healedLine(outcome.chargedMs, outcome.pendingRecoveryMs, free)],
           },
           'heal',
         );
-      }),
+      }, spendsForGood ? { spendsForGood } : {}),
     );
   }
 
@@ -5363,7 +5580,11 @@ export class BaseScene extends Phaser.Scene {
    * ignores clicks for a moment, because the key or the click that finished the
    * last line is still in the player's hand (`HubScene.armedDeal`'s rule).
    */
-  private askInBox(question: string, answer: (yes: boolean) => void, { spendsForGood = false } = {}): void {
+  private askInBox(
+    question: string,
+    answer: (yes: boolean) => void,
+    { spendsForGood = false, startOnNotNow = false } = {},
+  ): void {
     audioManager.play('menuOpen');
     this.showHint('');
     const answered = (yes: boolean): void => {
@@ -5383,8 +5604,10 @@ export class BaseScene extends Phaser.Scene {
         padding: 10,
         lines: [question],
         options: FAVOUR_ANSWERS,
-        selected: spendsForGood ? 1 : 0,
-        clickArmingMs: spendsForGood ? RELEASE_ARMING_MS : 0,
+        selected: spendsForGood || startOnNotNow ? 1 : 0,
+        // Every answer: the click that moved the box on to the question stands
+        // where YES may now be drawn.
+        clickArmingMs: RELEASE_ARMING_MS,
         onChoose: (index) => answered(index === 0),
       }),
     };
@@ -5429,6 +5652,10 @@ export class BaseScene extends Phaser.Scene {
    */
   private markKeeper(room: BaseRoom): void {
     const keeper = room.keeper;
+    // Nobody has a favour to ask of somebody with no partner yet.
+    if (this.choosing) {
+      return;
+    }
     // THE RAID ARENA's marshal has no favour to ask, only what the room is for.
     const wantsAWord =
       room.screen === 'arena'
@@ -5527,6 +5754,22 @@ export class BaseScene extends Phaser.Scene {
     };
   }
 
+  /** The Gym Guide closes the trailer, so he is who runs it again, once it has been seen. */
+  private offerTheReel(): void {
+    if (arenaIntroViewing(this.savedGame.raidProgress) === 'first') {
+      return;
+    }
+    this.askInBox(
+      GYM_GUIDE_REEL_QUESTION,
+      (yes) => {
+        if (yes) {
+          this.openArenaIntro({ savedGame: this.savedGame, hall: { savedGame: this.savedGame, room: ARENA_INTRO_ENDS_ON } });
+        }
+      },
+      { spendsForGood: true },
+    );
+  }
+
   /** Into THE RAID ARENA: its trailer, which hands over to the great hall. */
   private openArenaIntro(payload: ArenaIntroSceneData): void {
     if (this.leaving) {
@@ -5598,4 +5841,10 @@ const SLEEP_FADE_MS = 450;
 const SLEEP_DARK_MS = 600;
 
 /** The rooms a click walks about in, besides the hall (`listenForPointerInRoom`). */
-const ROOMS_ANSWERING_A_POINTER: ReadonlySet<string> = new Set(['brocks-workshop', 'bills-cottage']);
+const ROOMS_ANSWERING_A_POINTER: ReadonlySet<string> = new Set([
+  'oaks-lab',
+  'pokemon-centre',
+  'brocks-workshop',
+  'bills-cottage',
+  'boutique',
+]);

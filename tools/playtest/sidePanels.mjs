@@ -128,6 +128,13 @@ try {
     walked.add(await page.evaluate(stop));
     await press('ArrowUp', 120);
   }
+  // Where the pack stands beside the list (a sheet, at a small window) Right crosses to it.
+  await press('ArrowRight', 120);
+  for (let step = 0; step < 4; step += 1) {
+    walked.add(await page.evaluate(stop));
+    await press('ArrowDown', 120);
+  }
+  await page.evaluate(`document.querySelector('[data-item="potion"]').focus()`);
   console.log(`the arrows reached: ${[...walked].join(', ')}`);
   for (const want of ['item:potion', 'item:super-potion', 'item:quick-claw', 'item:tm40-aerial-ace', 'block', 'tidy', 'close']) {
     expect(walked.has(want), `the arrows reach ${want}`);

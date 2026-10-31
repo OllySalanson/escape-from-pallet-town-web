@@ -57,6 +57,14 @@ export function landingRing(elapsedMs: number): LandingRing | null {
   };
 }
 
+/** How many raids the ring's key is named for, to somebody who has never stuck a landing. */
+const RING_KEY_NAMED_FOR_RAIDS = 5;
+
+/** Whether the ring says which key it wants: it is pride, not a chore to be nagged about for ever. */
+export function ringNamesItsKey(raidsDeployed: number, bestLandingRun: number): boolean {
+  return bestLandingRun === 0 && raidsDeployed <= RING_KEY_NAMED_FOR_RAIDS;
+}
+
 /** What the board says of a clean landing. */
 export function cleanLandingLine(streak: number): string {
   return streak >= 2 ? `CLEAN LANDING x${streak}` : 'CLEAN LANDING';

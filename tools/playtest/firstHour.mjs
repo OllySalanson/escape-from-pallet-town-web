@@ -3,7 +3,7 @@
 //
 //   node tools/playtest/firstHour.mjs <dev server url> [out-dir]
 //
-// - where the starter screen's cursor starts (it must be a card, never CONFIRM);
+// - that a new game opens in Oak's Lab with no game written yet;
 // - a trainer fight in the rain against a Swift Swim Magikarp that Splashes,
 //   led by a Cloud Nine Psyduck, then the trainer's second Pokemon: every
 //   ability line should be said once a battle, Splash should say "But nothing
@@ -22,13 +22,13 @@ try {
   const page = await browser.openPage(`${url}?testmode=pixels`);
   await page.waitFor(`${GAME}?.scene?.isActive('title')`, { timeoutMs: 60_000 });
 
-  // 1. A fresh browser: the key that wakes the title goes straight to the picker.
+  // 1. A fresh browser: the key that wakes the title goes straight to Oak's table.
   await page.tap('Space');
-  await page.waitFor(`${GAME}.scene.isActive('starter')`);
+  await page.waitFor(`${GAME}.scene.isActive('base')`);
   await sleep(500);
-  const focused = await page.evaluate(`document.activeElement?.textContent?.trim()`);
-  console.log(`starter cursor starts on: ${JSON.stringify(focused)}`);
-  if (outDir) await page.screenshot(`${outDir}/starter-cursor.png`);
+  const room = await page.evaluate(`({ room: ${GAME}.scene.getScene('base').room?.id, saved: localStorage.getItem('escape-from-pallet-town.save.v1') !== null })`);
+  console.log(`a new game opens in: ${JSON.stringify(room)}`);
+  if (outDir) await page.screenshot(`${outDir}/oaks-table.png`);
 
   // 2. The battles: Cloud Nine holding the rain off, then Swift Swim racing it.
   for (const leadId of ['psyduck', 'squirtle']) {

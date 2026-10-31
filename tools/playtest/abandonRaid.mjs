@@ -58,9 +58,8 @@ async function newGame(page) {
   await page.send('Page.reload', {}); await sleep(1500);
   await page.waitFor(sceneIs('title'));
   await page.tap('Space', 60);
-  await page.waitFor(sceneIs('starter'));
-  await page.waitFor(`(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`);
-  await clicker(page)('Confirm Charmander');
+  await page.waitFor(sceneIs('base'));
+  await page.waitFor(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`);
   await page.waitFor(sceneIs('base'));
 }
 

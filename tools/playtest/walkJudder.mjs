@@ -51,9 +51,8 @@ try {
   } else {
     await page.waitFor(sceneIs('title'));
     await page.evaluate(`${GAME}.pauseLoop()`);
-    await press('Space'); await until(sceneIs('starter'));
-    await until(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`, 'the picker');
-    await click('Confirm Bulbasaur');
+    await press('Space'); await until(sceneIs('base'));
+    await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, 'the picker');
     await until(`${sceneIs('base')} && ${GAME}.scene.getScene('base').ready`, 'the base');
     await wait(600);
   }

@@ -30,6 +30,7 @@ import {
   type PitFrame,
 } from './arenaHall';
 import { windowLight, type WindowLight } from './homeClock';
+import { addSparsePicture } from './sparsePicture';
 import { TWINKLE_STEP_MS, isDimmed, townLights, type TownLight } from './pitClock';
 import { FLARE_FRAMES, FLARE_HEIGHT, FLARE_WIDTH, RING_OF_FIRE_MS, flareAt } from './ringOfFire';
 import { shareTheRim, showsThroughTheHole, type RimLanding, type RimShare } from './arenaRim';
@@ -253,8 +254,8 @@ const FLAME_STEP_MS = 95;
 const BLAZE_ALPHA = [0, 0.4, 0.7, 1] as const;
 
 /** How often the nearest fire can be heard, and how near it has to be, in pixels. */
-const CRACKLE_EVERY_MS = 2600;
-const CRACKLE_SPREAD_MS = 4200;
+const CRACKLE_EVERY_MS = 15000;
+const CRACKLE_SPREAD_MS = 25000;
 const CRACKLE_REACH = 88;
 /** And how often something a long way down in the pit can. */
 const DEEP_SOUND_EVERY_MS = 38000;
@@ -452,8 +453,8 @@ export class ArenaView {
   private readonly scene: Phaser.Scene;
   private readonly game: RestoredGame;
   private floor: Phaser.GameObjects.Image;
-  private readonly podium: Phaser.GameObjects.Image;
-  private readonly tiers: Phaser.GameObjects.Image[] = [];
+  private readonly podium: Phaser.GameObjects.Blitter;
+  private readonly tiers: Phaser.GameObjects.Blitter[] = [];
   private readonly mists: Phaser.GameObjects.TileSprite[] = [];
   private readonly look: Phaser.GameObjects.Image;
   private readonly fires: Fire[] = [];
@@ -507,6 +508,7 @@ export class ArenaView {
   private coins: { readonly from: { readonly x: number; readonly y: number }; ms: number; heard: boolean; readonly image: Phaser.GameObjects.Graphics }[] = [];
   private drift = 0;
   private crackleInMs = CRACKLE_EVERY_MS;
+  private hushed = false;
   private deepSoundInMs = DEEP_SOUND_EVERY_MS / 2;
   /** The old cloud over ground a raid has just walked, a little less of it each step (`liftFogFrom`). */
   private lifting: {
@@ -560,25 +562,23 @@ export class ArenaView {
     this.drawMemory();
 
     ensureTexture(scene, PODIUM_TEXTURE, paintPodium);
-    this.podium = (scene.add.image(0, 0, PODIUM_TEXTURE).setOrigin(0, 0).setDepth(PODIUM_DEPTH));
+    this.podium = addSparsePicture(scene, PODIUM_TEXTURE, 0, 0, PODIUM_DEPTH);
     for (let tier = 0; tier < PIT_TIERS; tier += 1) {
       ensureTexture(scene, tierTexture(tier), () => paintTier(tier));
-      this.tiers.push(
-        (scene.add.image(0, 0, tierTexture(tier)).setOrigin(0, 0).setDepth(tierDepth(tier))),
-      );
+      this.tiers.push(addSparsePicture(scene, tierTexture(tier), 0, 0, tierDepth(tier)));
     }
 
     ensureTexture(scene, STANDS_TEXTURE, paintStands);
-    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_TEXTURE).setOrigin(0, 0).setDepth(STANDS_DEPTH);
+    addSparsePicture(scene, STANDS_TEXTURE, STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_DEPTH);
     this.house = crowdShare(game.raidProgress.raidRecord);
     if (crowdLayerShows !== this.house && scene.textures.exists(CROWD_LAYER_TEXTURE)) {
       scene.textures.remove(CROWD_LAYER_TEXTURE);
     }
     crowdLayerShows = this.house;
     ensureTexture(scene, CROWD_LAYER_TEXTURE, () => paintCrowdLayer(this.house));
-    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, CROWD_LAYER_TEXTURE).setOrigin(0, 0).setDepth(CROWD_LAYER_DEPTH);
+    addSparsePicture(scene, CROWD_LAYER_TEXTURE, STANDS_ORIGIN.x, STANDS_ORIGIN.y, CROWD_LAYER_DEPTH);
     ensureTexture(scene, BANNERS_TEXTURE, paintBanners);
-    scene.add.image(STANDS_ORIGIN.x, STANDS_ORIGIN.y, BANNERS_TEXTURE).setOrigin(0, 0).setDepth(BANNERS_DEPTH);
+    addSparsePicture(scene, BANNERS_TEXTURE, STANDS_ORIGIN.x, STANDS_ORIGIN.y, BANNERS_DEPTH);
     if (!still) {
       ensureTexture(scene, CROWD_TEXTURE, paintCrowdPerson);
       const people = scene.textures.get(CROWD_TEXTURE);
@@ -763,6 +763,11 @@ export class ArenaView {
     this.lookingAtRim = looking;
   }
 
+  /** Something is being read or chosen, and no torch crackles over it. */
+  public hush(hushed: boolean): void {
+    this.hushed = hushed;
+  }
+
   /** The mark in view nearest somebody at the rail, on a plate of its own beside whatever else is named. */
   private nameTheMark(player: { readonly x: number; readonly y: number }): void {
     let best: (RaidMark & { readonly age: number }) | null = null;
@@ -857,7 +862,7 @@ export class ArenaView {
   }
 
   /** A frame of the hall, for somebody standing at `player` (their figure's middle, in hall pixels). */
-  public update(deltaMs: number, player: { readonly x: number; readonly y: number }): void {
+  public update(deltaMs: number, player: { readonly x: number; readonly y: number }, onTheRim = false): void {
     this.lastPlayer = player;
     this.slide(player);
     this.placeTheLights(deltaMs, player);
@@ -878,7 +883,7 @@ export class ArenaView {
     this.twinkle(deltaMs);
     this.stir(deltaMs, player);
     this.shift(deltaMs);
-    this.watchTheRunner(deltaMs, player);
+    this.watchTheRunner(deltaMs, player, onTheRim);
     this.moveTheCrowd(deltaMs);
   }
 
@@ -905,11 +910,15 @@ export class ArenaView {
     return this.lapNews;
   }
 
-  /** Follows the player round the ring, and runs the band of people getting up beside them. */
-  private watchTheRunner(deltaMs: number, player: { readonly x: number; readonly y: number }): void {
+  /**
+   * Follows the player round the ring, and runs the band of people getting up
+   * beside them on the outer floor. On the rim it only keeps the count: walking
+   * that is choosing a way in, and nobody cheers somebody for choosing.
+   */
+  private watchTheRunner(deltaMs: number, player: { readonly x: number; readonly y: number }, onTheRim: boolean): void {
     const angle = angleInHall(player);
     this.lapNews = this.lapWatch.note(angle, deltaMs);
-    if (this.lapNews.running) {
+    if (this.lapNews.running && !onTheRim) {
       this.crowd.runBand(angle, this.lapNews.way);
       if (this.lapNews.quarter) {
         audioManager.play('crowdCheer');
@@ -1296,8 +1305,9 @@ export class ArenaView {
     this.crackleInMs -= deltaMs;
     if (this.crackleInMs <= 0) {
       this.crackleInMs = CRACKLE_EVERY_MS + Math.random() * CRACKLE_SPREAD_MS;
-      if (ARENA_TORCHES.some((torch) => Math.hypot(torch.x - player.x, torch.y - player.y) < CRACKLE_REACH)) {
-        audioManager.play('grassRustle');
+      const heard = !this.hushed && !this.crowd.busy;
+      if (heard && ARENA_TORCHES.some((torch) => Math.hypot(torch.x - player.x, torch.y - player.y) < CRACKLE_REACH)) {
+        audioManager.play('torchCrackle');
       }
     }
     this.deepSoundInMs -= deltaMs;

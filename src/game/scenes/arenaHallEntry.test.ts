@@ -56,3 +56,31 @@ describe("THE RAID ARENA's marshal", () => {
     expect(hall.screen).toBe('arena');
   });
 });
+
+describe('coming home to the cloud lifting', () => {
+  /** A lift under way on a stand-in of the hall, with the keys pressed as told. */
+  function lifting(pressed: { interact?: boolean; other?: boolean }, heldMs = 1000) {
+    const hall = {
+      fogLift: { elapsedMs: 100, steps: 0, tile: { x: 1, y: 1 }, sign: { show: () => undefined, update: () => undefined, destroy: () => undefined }, heldMs, line: '+1%' } as object | null,
+      crowdLookMs: 0,
+      arena: { endFog: () => undefined, thinTheFog: () => undefined },
+      isInteractionPressed: () => pressed.interact === true,
+      anyKeyPressed: () => pressed.other === true,
+    };
+    const answer = (BaseScene.prototype as unknown as { advanceFogLift: (this: typeof hall, deltaMs: number) => unknown }).advanceFogLift.call(hall, 16);
+    return { answer, lifted: hall.fogLift === null };
+  }
+
+  it('says which key cut it short, so that the same press goes on to do its job', () => {
+    expect(lifting({ interact: true })).toEqual({ answer: 'interact', lifted: true });
+    expect(lifting({ other: true })).toEqual({ answer: 'other', lifted: true });
+  });
+
+  it('runs on with nothing pressed', () => {
+    expect(lifting({})).toEqual({ answer: null, lifted: false });
+  });
+
+  it('does not count a key still on its way up from the result screen', () => {
+    expect(lifting({ interact: true }, 100)).toEqual({ answer: null, lifted: false });
+  });
+});

@@ -39,9 +39,8 @@ try {
   };
   await until(sceneIs('title'), 'the title screen');
   await press('Space');
-  await until(sceneIs('starter'), 'the starter picker');
-  await until(`(() => { const b = document.querySelector('button[data-starter="bulbasaur"]'); if (!b) return false; b.click(); return true; })()`);
-  await until(`(() => { const b = [...document.querySelectorAll('button')].find((b) => /confirm bulbasaur/i.test(b.innerText)); if (!b) return false; b.click(); return true; })()`);
+  await until(sceneIs('base'), 'the starter picker');
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`);
   await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the save');
   await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
     save.stash.items = { ...save.stash.items, potion: 6, 'super-potion': 4, 'poke-ball': 6, 'great-ball': 3, 'oran-berry': 2, 'sitrus-berry': 2, 'pecha-berry': 2,

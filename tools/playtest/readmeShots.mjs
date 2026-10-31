@@ -59,9 +59,8 @@ const main = async () => {
     // A save that has built every rung, so the harbour and its rooms show
     // what a player's base becomes.
     await press('Space');
-    await until(sceneIs('starter'));
-    await until(`(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`);
-    await click('Confirm Charmander');
+    await until(sceneIs('base'));
+    await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`);
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`);
     await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
       save.raidProgress.workshopUpgrades = ${JSON.stringify(['radio-mast', 'beacon', 'secure-locker-1', 'secure-locker-2', 'recovery-bay-1', 'recovery-bay-2', 'quarantine-ward'])};

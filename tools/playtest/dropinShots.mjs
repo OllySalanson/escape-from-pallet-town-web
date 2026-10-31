@@ -69,8 +69,8 @@ try {
 
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await page.waitFor(sceneIs('starter'));
-  await click('Confirm Bulbasaur');
+  await page.waitFor(sceneIs('base'));
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, 'the partner taken');
   await page.waitFor(sceneIs('base'));
 
   await toDropIn();

@@ -137,6 +137,8 @@ export class PartnerFigure {
   private bubbleMs = 0;
   /** The bubble it greets the player with once it is in view. */
   private greeting: PartnerEmote | null;
+  /** Whether it greets with the hop and without the chirp. */
+  private readonly quietGreeting: boolean;
   private veiled = false;
   private readonly scene: Phaser.Scene;
   private readonly host: PartnerHost;
@@ -146,7 +148,7 @@ export class PartnerFigure {
     host: PartnerHost,
     who: PartnerIdentity,
     place: PartnerPlace,
-    options: { readonly greeting?: PartnerEmote | null; readonly fadeIn?: boolean } = {},
+    options: { readonly greeting?: PartnerEmote | null; readonly quietGreeting?: boolean; readonly fadeIn?: boolean } = {},
   ) {
     this.scene = scene;
     this.host = host;
@@ -155,6 +157,7 @@ export class PartnerFigure {
     this.name = who.pokemon.name.toUpperCase();
     this.placeValue = place;
     this.greeting = options.greeting ?? null;
+    this.quietGreeting = options.quietGreeting === true;
     this.appearMs = place.out && options.fadeIn !== false ? 0 : null;
     this.nextBeatMs = nextBeatDelay();
     this.sprite = scene.add
@@ -325,7 +328,11 @@ export class PartnerFigure {
         this.appearMs = null;
         if (this.greeting) {
           if (this.greeting === 'heart' || this.greeting === 'happy') {
-            this.hop();
+            if (this.quietGreeting) {
+              this.hopMs = 0;
+            } else {
+              this.hop();
+            }
           }
           this.showBubble(this.greeting);
           this.greeting = null;

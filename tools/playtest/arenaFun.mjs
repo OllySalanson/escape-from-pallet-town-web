@@ -90,10 +90,9 @@ try {
 
   // A new game, across the harbour, past the trailer and into the hall.
   await press('Space');
-  await until(sceneIs('starter'), 'the starter picker');
-  await until(`(() => { const b = document.querySelector('button[data-starter="charmander"]'); if (!b) return false; b.click(); return true; })()`, 'the picker');
+  await until(sceneIs('base'), 'the starter picker');
+  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("charmander") === true`, 'the picker');
   await step(200);
-  await page.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Confirm'))?.click()`);
   await until(sceneIs('base'), 'the harbour');
   await step(1000);
   const inHall = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.room?.id === 'raid-arena'; })()`;
@@ -197,17 +196,17 @@ try {
       }
     });
     await walkTo(rim[start]);
-    let bandSeen = false;
+    let bandOnTheRim = false;
     let lapSign = false;
     for (let index = 1; index <= rim.length + 2; index += 1) {
       await walkTo(rim[(start + index) % rim.length]);
-      bandSeen ||= await base('b.arena.crowd.band !== null');
+      bandOnTheRim ||= await base('b.arena.crowd.band !== null');
       if (index === Math.round(rim.length * 0.3) || index === Math.round(rim.length * 0.5)) await shot(`crowd-lap-${index}`);
       lapSign ||= await base('Boolean(b.hallSign)');
     }
     await step(400);
     await shot('crowd-lap-done');
-    expect('the band runs with a runner', bandSeen);
+    expect('nobody gets up for somebody walking the rim to choose a way in', !bandOnTheRim);
     expect('and a whole lap is called', lapSign);
     console.log('sign:', await base(`b.hallSign?.text?.text`));
   }
@@ -349,6 +348,8 @@ try {
     await until(inHall, 'the hall again');
     await walkTo({ x: 32, y: 56 });
     await press('ArrowUp', 300);
+    expect('nothing advertises the coin to somebody just arriving at the rail', !(await base('b.hintShown')).includes('[C]'));
+    await step(10500);
     await shot('coin-hint');
     expect(`the rail says a coin can go over (${await base('b.hintShown')})`, (await base('b.hintShown')).includes('[C] TOSS A COIN'));
     const before = await money();

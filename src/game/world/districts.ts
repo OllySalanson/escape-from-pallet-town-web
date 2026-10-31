@@ -1074,20 +1074,30 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
   },
 ];
 
-const holds = (area: DistrictArea, tile: GridPosition): boolean =>
-  tile.x >= area.x &&
-  tile.x < area.x + area.width &&
-  tile.y >= area.y &&
-  tile.y < area.y + area.height;
-
 /** The districts a map declares, in the order that settles an overlap. */
 export function districtsForMap(mapId: WorldMapId): readonly MapDistrict[] {
-  return [
+  // Asked for tile after tile by whatever walks a map, so it is remembered: by
+  // the file, because a player's draft registered again is a new one.
+  const file = fileMap(mapId);
+  const known = file ? districtsOfFile.get(file) : districtsOfShippedMap.get(mapId);
+  if (known) {
+    return known;
+  }
+  const districts = [
     ...MAP_DISTRICTS.filter((district) => district.mapId === mapId),
     ...insideDistricts(mapId),
-    ...(fileMap(mapId)?.districts ?? []),
+    ...(file?.districts ?? []),
   ];
+  if (file) {
+    districtsOfFile.set(file, districts);
+  } else {
+    districtsOfShippedMap.set(mapId, districts);
+  }
+  return districts;
 }
+
+const districtsOfFile = new WeakMap<object, readonly MapDistrict[]>();
+const districtsOfShippedMap = new Map<WorldMapId, readonly MapDistrict[]>();
 
 /**
  * Each room of a shipped map is a place of its own, named on the plate as you
@@ -1104,7 +1114,45 @@ function insideDistricts(mapId: WorldMapId): readonly MapDistrict[] {
 
 /** The district a tile is in, or undefined on a map that names none. */
 export function districtAt(mapId: WorldMapId, tile: GridPosition): MapDistrict | undefined {
-  return districtsForMap(mapId).find((district) => district.areas.some((area) => holds(area, tile)));
+  const districts = districtsForMap(mapId);
+  const grid = districtGrid(districts);
+  const x = Math.floor(tile.x);
+  const y = Math.floor(tile.y);
+  if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) {
+    return undefined;
+  }
+  return districts[grid.cells[y * grid.width + x]];
+}
+
+/** Which district each tile is in, as an index: a whole map's survey asks about every tile of it. */
+interface DistrictGrid {
+  readonly width: number;
+  readonly height: number;
+  readonly cells: Int16Array;
+}
+
+const districtGrids = new WeakMap<readonly MapDistrict[], DistrictGrid>();
+
+function districtGrid(districts: readonly MapDistrict[]): DistrictGrid {
+  const known = districtGrids.get(districts);
+  if (known) {
+    return known;
+  }
+  const areas = districts.flatMap((district) => district.areas);
+  const width = Math.max(0, ...areas.map((area) => area.x + area.width));
+  const height = Math.max(0, ...areas.map((area) => area.y + area.height));
+  const cells = new Int16Array(width * height).fill(-1);
+  // Backwards, so the first listed is the last written: the first listed wins an overlap.
+  for (let index = districts.length - 1; index >= 0; index -= 1) {
+    for (const area of districts[index].areas) {
+      for (let y = area.y; y < area.y + area.height; y += 1) {
+        cells.fill(index, y * width + area.x, y * width + area.x + area.width);
+      }
+    }
+  }
+  const grid = { width, height, cells };
+  districtGrids.set(districts, grid);
+  return grid;
 }
 
 /**

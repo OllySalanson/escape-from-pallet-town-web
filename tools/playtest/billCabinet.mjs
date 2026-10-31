@@ -70,9 +70,9 @@ try {
   };
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await page.waitFor(sceneIs('starter'));
+  await page.waitFor(sceneIs('base'));
   await page.waitFor(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);

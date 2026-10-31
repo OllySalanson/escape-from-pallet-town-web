@@ -76,10 +76,10 @@ try {
   await page.screenshot(`${out}/name-free.png`);
   console.log(`misty: ${free.count}`);
   await press('Enter');
-  await page.waitFor(sceneIs('starter'), { what: 'the starter screen after the name' });
+  await page.waitFor(sceneIs('base'), { what: 'the starter screen after the name' });
   if ((await page.evaluate(`localStorage.getItem('${NAME_KEY}')`)) !== 'MISTY') throw new Error('MISTY was not kept');
   await page.waitFor(
-    `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`,
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);

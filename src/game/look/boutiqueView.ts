@@ -2,8 +2,9 @@
  * THE HARBOUR BOUTIQUE and the wardrobe at home, as one screen: the mirror
  * down one side, walking in whatever is being tried on, and the shelves across
  * the rest of the window, every piece on a card of its own worn on the player.
- * Pointing at a card shows it in the mirror; ENTER tries it on; the bar along
- * the foot says what the try-on costs and buys it, or puts it on.
+ * Pointing at a card shows it in the mirror; ENTER tries it on and takes the
+ * cursor to the bar along the foot, which says what the try-on costs and buys it,
+ * or puts it on.
  *
  * The shop sells; the wardrobe only changes into what is owned. Both are the
  * same markup so a piece looks the same in either, and so a player learns one
@@ -48,8 +49,8 @@ const SLOT_WORDS: Readonly<Record<LookSlot, string>> = {
   body: 'Outfit',
 };
 
-export const BOUTIQUE_HINTS = 'ARROWS look along the shelves · ENTER try it on · ESC leave';
-export const WARDROBE_HINTS = 'ARROWS look through your clothes · ENTER put it on · ESC close the wardrobe';
+export const BOUTIQUE_HINTS = 'ARROWS look along the shelves · ENTER try it on, then ENTER buys · TAB shelves or bar · ESC leave';
+export const WARDROBE_HINTS = 'ARROWS look through your clothes · ENTER try it on, then ENTER wears it · TAB clothes or bar · ESC close';
 
 /** The rows of the figure's sheet the mirror shows, one facing each: down, left, up, right. */
 const MIRROR_ROWS = [0, 3, 2, 1] as const;
