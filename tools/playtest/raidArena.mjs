@@ -11,7 +11,7 @@
 // <out-dir>; exit code 1 is anything not where it should be.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, sceneIs, takePokemon, walkIntoBase, jumpIn, openHallPanel } from './deploy.mjs';
 
 const [url = 'http://localhost:5173/', out = 'raid-arena-shots'] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 mkdirSync(out, { recursive: true });
@@ -57,18 +57,24 @@ try {
   await walkIntoBase(page, 'raid-arena', { press, until });
   await until(`${GAME}.scene.getScene('hub')?.sys.isActive()`, 'the hub');
   await sleep(600);
-  expect('one key on the hall mat opens the loadout', (await hub(`h.view + ':' + h.flow.step`)) === 'deploy:loadout');
+  expect('the hall\'s bench opens the party', (await hub(`h.view`)) === 'bench');
   await putDownFirstWords();
-  await page.screenshot(`${out}/2-arena-loadout.png`);
+  await page.screenshot(`${out}/2-arena-bench.png`);
 
   await press('Escape');
   await until(sceneIs('base'), 'back in the hall');
   await sleep(1000);
-  const onMat = await base(`b.room?.id === 'raid-arena' && b.currentTile.x === b.room.mat.x && b.currentTile.y === b.room.mat.y`);
-  expect('backing out stands the player on the hall mat', onMat);
+  const atBench = await base(`b.room?.id === 'raid-arena' && b.arenaStations[0].tiles.some((tile) => tile.x === b.currentTile.x && tile.y + 1 === b.currentTile.y)`);
+  expect('backing out stands the player where they stood, at the bench', atBench);
   await page.screenshot(`${out}/3-arena-hall.png`);
-  await press('ArrowDown');
-  await sleep(1000);
+  const walkIntoMat = async () => {
+    const key = await base(`(() => { const s = b.currentTile, m = b.room.mat; if (s.x === m.x && s.y === m.y) return 'ArrowDown'; if (s.y < 59 || s.x !== m.x) return s.y < 59 ? 'ArrowDown' : (s.x < m.x ? 'ArrowRight' : 'ArrowLeft'); return 'ArrowDown'; })()`);
+    await press(key);
+    await sleep(250);
+  };
+  for (let guard = 0; guard < 60 && (await base('Boolean(b.room)')); guard += 1) {
+    await walkIntoMat();
+  }
   const standing = await base(`JSON.stringify({ room: b.room?.id ?? null, tile: b.currentTile })`);
   expect(`down off the mat is the Arena's step (${standing})`, standing === JSON.stringify({ room: null, tile: { x: 8, y: 13 } }));
 
@@ -86,12 +92,7 @@ try {
   await sleep(600);
   await putDownFirstWords();
   await until(takePokemon('Charmander'), 'Charmander in the raid party');
-  await click('Choose drop-in');
-  await putDownFirstWords();
-  await click('Review & deploy');
-  await putDownFirstWords();
-  await click('Enter the raid');
-  await until(sceneIs('world'), 'the raid');
+  await jumpIn(page, { press, until });
   await sleep(1500);
   expect('the raid starts from the Arena', await page.evaluate(sceneIs('world')));
   await page.screenshot(`${out}/5-raid.png`);

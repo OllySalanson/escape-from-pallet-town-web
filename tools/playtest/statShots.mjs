@@ -42,7 +42,7 @@ try {
     save.stash.pokemon = [...extra, seed];
     save.stash.boxes = [{ name: 'Box 1', pokemonIds: [...extra.map((p) => p.id), seed.id] }];
     // Heard already, so Nurse Joy's first words do not stand over the stats.
-    save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'dropin', 'check', 'center'];
+    save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'check', 'center'];
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
   })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });

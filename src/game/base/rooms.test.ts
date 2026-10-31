@@ -149,7 +149,7 @@ describe('the rooms behind the base doors', () => {
     // A stroll from where the game opens (`baseMap.test.ts`), and from the
     // quay the length of the widened yard: the Raid Arena and Bill are what a
     // raid comes home to, and they stand beside the jetty.
-    const limits: Record<string, number> = { 'the yard': 18, 'the quay (home from a raid)': 28 };
+    const limits: Record<string, number> = { 'the yard': 18, 'the quay': 28 };
     for (const start of BASE_STARTS) {
       for (const walk of walksToKeepers(start.tile, game)) {
         // THE HARBOUR BOUTIQUE is somewhere to go when a raid has paid, not a

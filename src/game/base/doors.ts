@@ -28,7 +28,7 @@ import type { BasePropName } from './baseTileset';
 
 /**
  * Which screen a door leads to. `HubScene` is the one place these are rendered.
- * `arena` is the raid itself: the hall's keeper opens preparation, and it is the
+ * `arena` is the raid itself: everything before one is done on its floor, and it is the
  * only way into a raid. `lab` is Oak's room, where the contract board and the
  * wall map are read.
  */

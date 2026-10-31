@@ -4,16 +4,18 @@ import { countPlay, mapDetail } from '../analytics/playCounter';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import { audioManager } from '../audio/AudioManager';
 import type { SoundEffectName } from '../audio/soundEffects';
+import type {
+  DeploymentFlow} from '../hub';
 import {
   applyRecovery,
   beaconUnlockAtMs,
   checkBerth,
-  DeploymentFlow,
   faintedRefusal,
   FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
   getWorkshopUpgrade,
   hasBeacon,
+  MAX_RUN_PARTY,
   needsRecovery,
   WORKSHOP_UPGRADES,
   workshopOffers,
@@ -29,8 +31,6 @@ import {
   doorPromise,
   gradeLine,
   largestMapSize,
-  pictureSize,
-  placePicture,
   shutDoorLine,
   stillToFind,
   type DropInBriefing,
@@ -68,7 +68,6 @@ import {
 import {
   Bag,
   CURRENCY_ITEM_ID,
-  EMPTY_ARRANGEMENT,
   formatMoney,
   itemCountTag,
   HELD_ITEM_DEFINITIONS,
@@ -94,7 +93,7 @@ import {
 import { GridArranging } from '../ui/gridArranging';
 import { describeKey } from '../ui/hoverDescribe';
 import { ItemHoverHelp } from '../ui/itemHoverHelp';
-import { DEFAULT_SECURE_PREFERENCE } from '../hub/secureAutofill';
+import { flowForGame, offeredInsertions, type ArenaKit } from '../base/arenaKit';
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
@@ -108,7 +107,6 @@ import {
 } from '../dev/playtestMode';
 import { createActiveRunSession } from '../run/RunSession';
 import {
-  availableInsertionIds,
   FIRST_CONTRACT,
   frontDoorFor,
   generateRunPlan,
@@ -116,11 +114,9 @@ import {
   withRoomLoot,
   insertionDescription,
   isDropInPoint,
-  isRunInsertionId,
   type RunInsertion,
   type RunInsertionId,
   requireInsertion,
-  runInsertions,
 } from '../run/runGeneration';
 import {
   availableContracts,
@@ -129,8 +125,6 @@ import {
   formatStacks,
   missingCarryIn,
   objectivesForContract,
-  secureGrid,
-  securePokemonLimit,
   type RaidContract,
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
@@ -158,7 +152,7 @@ import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
 import { isNightRaid } from '../world/nightRaids';
 import type { GridPosition } from '../movement/gridMovement';
-import { getWorldMap, isBuiltInMapId, type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
+import { getWorldMap, type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
 import { fitMapPictures, mapPictureFrame, pictureRowAttributes } from '../ui/mapPicture';
 import { wallMapContext, wallMapOrder, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
@@ -174,7 +168,6 @@ import {
   pixelCommitBar,
   pixelFigure,
   pixelHpBar,
-  pixelRail,
   pixelScreen,
   pixelGrid,
   pixelTag,
@@ -256,18 +249,38 @@ export interface HubSceneData {
    * player back there.
    */
   readonly at?: GridPosition;
+  /**
+   * What the player is getting ready with, when this is a panel over THE RAID
+   * ARENA's hall rather than a screen of its own: the hall owns it, stays on
+   * screen beside the panel, and is told when the panel is done with.
+   */
+  readonly kit?: ArenaKit;
 }
 
-/** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'friend';
+/**
+ * What the hall's panels show: who comes (`bench`), what they carry (`rack`),
+ * what comes home whatever happens (`locker`), and where they would land (`rim`).
+ */
+export type ArenaPanel = 'bench' | 'rack' | 'locker' | 'rim';
+
+const ARENA_PANELS: readonly string[] = ['bench', 'rack', 'locker', 'rim'] satisfies readonly ArenaPanel[];
+
+/** Every base screen, and the hall's panels. */
+type HubView = 'home' | 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'friend';
 
 /**
- * Game pixels the drop-in screen's right-hand side takes beyond its column's
- * measure: the gap between the two sides, the body's padding and the two
- * windows' frames. Only its picture needs to know, because only the picture's
- * column is as wide as what is in it.
+ * How much of the menu layer a panel over the hall may take, in game pixels: as
+ * little as the smallest screen every screen is authored against, or a little
+ * over half of a big window, so the hall is always there beside it. The rim's
+ * lies along the foot of the window, because what it is looking at is the pit.
  */
-const DROPIN_SIDE_ALLOWANCE = 20;
+const PANEL_MIN_WIDTH = 320;
+const PANEL_SHARE = 0.56;
+const RIM_PANEL_MIN_HEIGHT = 150;
+const RIM_PANEL_SHARE = 0.5;
+/** In a window this short the rim's panel takes more of it, or it has room for one line about the place. */
+const RIM_PANEL_SHORT_WINDOW = 250;
+const RIM_PANEL_SHORT_HEIGHT = 172;
 
 /**
  * Game pixels a card on the wall map takes beyond its picture: its window's
@@ -308,6 +321,8 @@ export class HubScene extends Phaser.Scene {
    */
   private saveStamp: string | null = null;
   private flow!: DeploymentFlow;
+  /** What the hall handed over, when this is one of its panels. */
+  private kit: ArenaKit | undefined;
   private overlay!: MenuOverlay;
   private view: HubView = 'home';
   /** Which screen `render` last drew, so a redraw of it keeps its scroll. */
@@ -413,11 +428,13 @@ export class HubScene extends Phaser.Scene {
   }
 
   public init(data: HubSceneData = {}): void {
-    const loaded = this.saveManager.load() ?? data.savedGame;
+    const loaded = this.saveManager.load() ?? data.kit?.game ?? data.savedGame;
     if (!loaded) {
       throw new Error('HubScene requires a saved game.');
     }
 
+    this.kit = data.kit;
+    this.drawnScreen = undefined;
     this.applyLoadedGame(loaded);
     // The save wins over the payload for the *game*; the payload wins for which
     // room this is, because that is the door the player just walked through and
@@ -425,9 +442,10 @@ export class HubScene extends Phaser.Scene {
     this.view = data.view ?? 'home';
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
-    // Through the Raid Arena's door is preparation, from its first step.
-    if (this.view === 'deploy') {
+    // Looking down from the rim is looking the plan over, as far as it can be.
+    if (this.view === 'rim') {
       this.pointAtHeldRoom();
+      this.flow.advance();
     }
   }
 
@@ -444,26 +462,16 @@ export class HubScene extends Phaser.Scene {
         this.stash.recoverPokemon(stored.id);
       }
     }
-    // Nothing is pre-selected: the raid party is always something the player picked.
-    this.flow = new DeploymentFlow(this.stash, this.unlockedInsertions[0]?.[0], {
-      pokemon: securePokemonLimit(loaded.raidProgress.workshopUpgrades),
-      secureGrid: secureGrid(
-        loaded.raidProgress.completedContracts,
-        loaded.raidProgress.workshopUpgrades,
-        loaded.traderBerthPaid,
-      ),
-    },
-    // The container fills itself from what it held last raid, so a player
-    // deploying again and again is not re-picking from scratch.
-    loaded.raidProgress.securePreference ?? DEFAULT_SECURE_PREFERENCE,
-    // The pack comes back laid out the way it was left, at base and in the
-    // field alike; an empty pair is a save that has never arranged one.
-    {
-      bag: loaded.raidProgress.packArrangement ?? EMPTY_ARRANGEMENT,
-      secure: loaded.raidProgress.secureArrangement ?? EMPTY_ARRANGEMENT,
-    },
-    // The partner wins a level tie for the container's protection.
-    loaded.starterSpeciesId);
+    // Nothing is pre-selected: the raid party is always something the player
+    // picked. A panel carries on with what the hall is holding, against the
+    // vault as it now stands.
+    if (this.kit) {
+      this.kit.game = loaded;
+      this.kit.flow.rebase(loaded.stash);
+      this.flow = this.kit.flow;
+    } else {
+      this.flow = flowForGame(loaded);
+    }
     this.arranging.release();
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
@@ -485,13 +493,31 @@ export class HubScene extends Phaser.Scene {
   }
 
   public create(): void {
-    this.cameras.main.fadeIn?.(180, 0, 0, 0);
-    this.overlay = new MenuOverlay(this, 'hub-menu pixel-ui', (event) => this.handleKey(event));
+    // A panel opens over the hall, which goes on burning behind it: a camera
+    // fading in here would black the whole canvas out first.
+    if (!this.isPanel) {
+      this.cameras.main.fadeIn?.(180, 0, 0, 0);
+    }
+    this.overlay = new MenuOverlay(
+      this,
+      `hub-menu pixel-ui${this.isPanel ? ` arena-panel is-${this.view}` : ''}`,
+      (event) => this.handleKey(event),
+    );
     this.hoverHelp = new ItemHoverHelp(this.overlay.root);
     // A map picture is as big as the window it is in, which only the browser
     // can say once the screen is laid out (`ui/mapPicture.ts`).
-    this.overlay.onMeasure = (unit) =>
+    this.overlay.onMeasure = (unit) => {
+      this.dockPanel(unit);
       fitMapPictures(this.overlay.root, unit, (key, step) => this.drawPicture(key, step));
+    };
+    // A way in under the cursor is answered in place: the pane and the pit
+    // change, and the screen is never redrawn from a focus event.
+    this.overlay.root.addEventListener('focusin', (event) => {
+      const row = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-insertion]');
+      if (row?.dataset.insertion) {
+        this.pointAtLanding(row.dataset.insertion as RunInsertionId);
+      }
+    });
     this.render();
     this.offerPendingMoves();
     // A held room stays on its channel while the player gets ready, saying
@@ -614,45 +640,37 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * What the chosen contract asks you to pack, checked against what is actually
-   * in the loadout. A delivery is decided here or not at all: the drop refuses
-   * a player who arrives without the supplies, and the raid is spent by then.
-   */
-  private carryInNote(): string {
-    const contract = this.contractFor(this.flow.insertionId);
-    const required = contract ? contractCarryIn(contract) : [];
-    if (required.length === 0) {
-      return '';
-    }
-    const short = this.carryInShort();
-    return short.length === 0
-      ? `<p class="px-note px-wrap carry-note">${contract!.name}: ${itemAmountsFor(required)} packed for the drop. They are spent when you hand them over.</p>`
-      : `<p class="px-warning px-wrap carry-note">${contract!.name} needs ${itemAmountsFor(required)} in your pack. Still short: ${itemAmountsFor(short)}.</p>`;
-  }
-
-  /** What the chosen contract's drop asks for that the loadout does not hold. */
-  private carryInShort(): ReturnType<typeof missingCarryIn> {
-    const contract = this.contractFor(this.flow.insertionId);
-    const required = contract ? contractCarryIn(contract) : [];
-    return required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
-  }
-
-  /**
    * Unlocked entries, narrowed to the active contract's own area while one is
    * running, so a first raid can never be deployed somewhere its objective is
    * unreachable. Every unlocked insertion returns the moment it is banked.
    */
   private get unlockedInsertions(): readonly [RunInsertionId, RunInsertion][] {
-    const entries = runInsertions().map((insertion) => [insertion.id, insertion] as [RunInsertionId, RunInsertion]);
-    // Unlocked by a contract or reached on foot: `availableInsertionIds` is the
-    // one rule, so a drop-in point the player has stood on is offered here the
-    // moment they are back at base.
-    const available = availableInsertionIds(this.savedGame.raidProgress);
-    return entries.filter(
-      ([id, insertion]) =>
-        available.includes(id) &&
-        (!this.firstContractActive || insertion.mapId === FIRST_CONTRACT.mapId),
-    );
+    return offeredInsertions(this.savedGame.raidProgress).map((insertion) => [insertion.id, insertion]);
+  }
+
+  /** Whether this is a panel over THE RAID ARENA's hall rather than a screen of its own. */
+  private get isPanel(): boolean {
+    return this.kit !== undefined && ARENA_PANELS.includes(this.view);
+  }
+
+  /**
+   * Sizes a panel to whole game pixels, which only the browser can do once it
+   * knows how many game pixels the window is: the bench, the rack and the locker
+   * stand down the right of the window and the rim lies along its foot.
+   */
+  private dockPanel(unit: number): void {
+    if (!this.isPanel) {
+      return;
+    }
+    const layer = this.overlay.root.parentElement;
+    const wide = Math.floor((layer?.clientWidth ?? 0) / unit);
+    const high = Math.floor((layer?.clientHeight ?? 0) / unit);
+    if (this.view === 'rim') {
+      const tall = high < RIM_PANEL_SHORT_WINDOW ? RIM_PANEL_SHORT_HEIGHT : Math.max(RIM_PANEL_MIN_HEIGHT, Math.floor(high * RIM_PANEL_SHARE));
+      this.overlay.root.style.setProperty('--dock', String(Math.min(high, tall)));
+    } else {
+      this.overlay.root.style.setProperty('--dock', String(Math.min(wide, Math.max(PANEL_MIN_WIDTH, Math.floor(wide * PANEL_SHARE)))));
+    }
   }
 
   /** Everyone at base who a recovery would actually change. */
@@ -1104,6 +1122,11 @@ export class HubScene extends Phaser.Scene {
    */
   private leaveToBase(): void {
     this.flow.restart();
+    // Out of a panel is back on the tile it was opened from, in the same hall.
+    if (this.kit) {
+      this.kit.close();
+      return;
+    }
     // Out of a keeper's screen is back into their room.
     this.scene.start('base', {
       savedGame: this.savedGame,
@@ -1145,7 +1168,7 @@ export class HubScene extends Phaser.Scene {
     try {
       deployment = this.flow.deploy();
     } catch {
-      this.refuse('Confirm your loadout before deploying.');
+      this.refuse(this.flow.notReady ?? 'Look down from the rim before you jump.');
       return;
     }
 
@@ -1249,27 +1272,29 @@ export class HubScene extends Phaser.Scene {
       deployment.party.find((stored) => stored.id === this.savedGame.stash.partnerId())?.pokemon,
       readLook(this.savedGame.raidProgress.look) ?? undefined,
     );
+    const world = {
+      party: new PokemonParty(deployment.party.map((stored) => stored.pokemon)),
+      // The pack goes into the raid at the size the loadout was packed
+      // against, so what the grid refused at base it refuses in the field.
+      bag: new Bag(
+        Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])),
+        this.flow.bagGrid,
+        deployment.bagArrangement,
+      ),
+      runSession,
+    };
+    // From the rim it is the player who goes: over the fence and down.
+    if (this.kit) {
+      this.kit.jump(world);
+      return;
+    }
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('world', {
-        party: new PokemonParty(deployment.party.map((stored) => stored.pokemon)),
-        // The pack goes into the raid at the size the loadout was packed
-        // against, so what the grid refused at base it refuses in the field.
-        bag: new Bag(
-          Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])),
-          this.flow.bagGrid,
-          deployment.bagArrangement,
-        ),
-        runSession,
-      });
+      this.scene.start('world', world);
     });
   }
 
   private goBack(): void {
-    if (this.view === 'deploy' && this.flow.retreat()) {
-      this.render();
-      return;
-    }
     // The swap is reached from the stash, so backing out of it returns there
     // rather than dropping the player two screens out to the base.
     if (this.view === 'reselect') {
@@ -1295,7 +1320,6 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    // Preparation's first step backs out of the Raid Arena into the yard.
     this.leaveToBase();
   }
 
@@ -1356,6 +1380,16 @@ export class HubScene extends Phaser.Scene {
       }
       if (this.stepToNeighbourCount(group, event.key)) {
         event.preventDefault();
+        return;
+      }
+    }
+    // Up from the bar along the rim's foot is back to the way in being looked at,
+    // wherever the list of them stands beside it.
+    if (event.key === 'ArrowUp' && this.view === 'rim' && (document.activeElement as HTMLElement | null)?.closest('.confirm-bar')) {
+      const row = this.overlay.root.querySelector<HTMLElement>('[data-insertion].is-selected');
+      if (row) {
+        event.preventDefault();
+        row.focus();
         return;
       }
     }
@@ -1441,9 +1475,10 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'wallmap') return this.wallMapInspect ? worldMapName(this.wallMapInspect) : 'The wall map';
     if (this.view === 'daycare') return 'Day-Care';
     if (this.view === 'friend') return 'Raid with a friend';
-    if (this.flow.step === 'loadout') return 'Build your loadout';
-    if (this.flow.step === 'dropin') return 'Choose your drop-in';
-    return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
+    if (this.view === 'bench') return 'The bench';
+    if (this.view === 'rack') return 'The armoury rack';
+    if (this.view === 'locker') return 'The locker';
+    return 'The rim';
   }
 
   private get backLabel(): string {
@@ -1458,11 +1493,6 @@ export class HubScene extends Phaser.Scene {
     // He stands in the yard, so out of his screen is out into it.
     if (this.view === 'daycare') return 'Yard';
     if (this.view === 'friend') return 'Lab';
-    if (this.flow.step === 'confirm') return 'Drop-in';
-    if (this.flow.step === 'dropin') return 'Loadout';
-    if (this.flow.step === 'secure') {
-      return this.flow.secureReturnStep === 'confirm' ? 'Final check' : 'Loadout';
-    }
     return 'Hall';
   }
 
@@ -1477,7 +1507,7 @@ export class HubScene extends Phaser.Scene {
     // A redraw of the screen already showing keeps its lists where they were
     // scrolled (`MenuOverlay.redraw`); arriving at another screen starts it at
     // the top.
-    const screen = `${this.view}:${this.flow.step}:${this.wallMapInspect ?? ''}`;
+    const screen = `${this.view}:${this.wallMapInspect ?? ''}`;
     const sameScreen = screen === this.drawnScreen;
     this.drawnScreen = screen;
     const markup = pixelScreen({
@@ -1498,8 +1528,8 @@ export class HubScene extends Phaser.Scene {
       // player walked into rather than the screen everything else hangs off.
       back: { label: this.backLabel, attribute: 'data-back' },
       aside:
-        this.view === 'deploy'
-          ? this.progressRail()
+        this.isPanel || ARENA_PANELS.includes(this.view)
+          ? this.panelAside()
           : this.view === 'reselect'
             ? undefined
             : // On the stash the counts are the two lists on screen, so the
@@ -1647,16 +1677,17 @@ export class HubScene extends Phaser.Scene {
       }
       rerender(() => undefined);
     });
-    on('[data-insertion]', (button) =>
-      rerender(() => this.flow.chooseInsertion(button.dataset.insertion as RunInsertionId)),
-    );
-    on('[data-secure-slot]', () => rerender(() => this.flow.openSecureSlot()));
+    // A way in is already chosen by having the cursor on it, so pressing it
+    // takes the cursor to the one thing left to do about it.
+    on('[data-insertion]', (button) => {
+      this.pointAtLanding(button.dataset.insertion as RunInsertionId);
+      root.querySelector<HTMLElement>('[data-start]')?.focus();
+    });
     on('[data-wall-map]', (button) =>
       rerender(() => {
         this.wallMapInspect = button.dataset.wallMap as WorldMapId;
       }),
     );
-    on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
     on('[data-room-map]', (button) => this.makeRoom(button.dataset.roomMap!));
     on('[data-room-leave]', () => this.leaveRoom());
@@ -1667,6 +1698,8 @@ export class HubScene extends Phaser.Scene {
       this.overlay.focus('[data-speech-done]');
       return;
     }
+    // The way in the player is stood over is in view in its list, whichever it is.
+    root.querySelector<HTMLElement>('[data-insertion].is-selected')?.scrollIntoView?.({ block: 'nearest' });
     // The cursor starts on what the screen is for, never on the way out of it.
     this.overlay.refocus('.px-field', '[data-cursor-start]', '.px-body button:not([disabled])', 'button');
   }
@@ -1682,7 +1715,7 @@ export class HubScene extends Phaser.Scene {
     if (this.speaking?.screen === 'day-care') {
       return;
     }
-    const here = firstWordsFor(this.view, this.flow.step);
+    const here = firstWordsFor(this.view);
     if (here !== undefined && here === this.speaking?.screen) {
       return;
     }
@@ -1774,31 +1807,22 @@ export class HubScene extends Phaser.Scene {
 
   /**
    * The picture a canvas on this screen asks for, at the step the overlay
-   * fitted it to (`ui/mapPicture.ts`). The key says which: a way in on the
-   * drop-in step, or a map on Oak's wall.
+   * fitted it to (`ui/mapPicture.ts`): a map on Oak's wall.
    */
   private drawPicture(key: string, step: number): Minimap | undefined {
     const [kind, id] = key.split(':');
-    if (kind === 'dropin' && isRunInsertionId(id)) {
-      return placePicture(id, this.dropInContext(id), step);
-    }
     if (kind === 'wall' && (wallMapOrder(this.savedGame) as readonly string[]).includes(id)) {
       return wallMapPicture(this.savedGame, id as WorldMapId, step);
     }
     return undefined;
   }
 
-  /**
-   * Shows preparation as a route with a raid at the end of it. The secure slot
-   * is a detour rather than a step, so it keeps the rail on the step it was
-   * opened from.
-   */
-  private progressRail(): string {
-    const at = this.flow.step === 'secure' ? this.flow.secureReturnStep : this.flow.step;
-    return pixelRail(
-      ['Kit', 'Drop-in', 'Check', 'Raid'],
-      at === 'confirm' ? 3 : at === 'dropin' ? 2 : 1,
-    );
+  /** What a panel's title bar says at a glance: the number that panel is about. */
+  private panelAside(): string {
+    if (this.view === 'bench') return `${this.flow.party.length}/${MAX_RUN_PARTY} Pokémon`;
+    if (this.view === 'rack') return `${this.flow.bagCells.used}/${this.flow.bagCells.total} squares`;
+    if (this.view === 'locker') return `${this.flow.secureCells.used}/${this.flow.secureCells.total} squares`;
+    return isPlaytestRun() ? '' : formatRecoveryClock(this.raidClockMs);
   }
 
   private content(): string {
@@ -1810,16 +1834,17 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'wallmap') return this.wallMapView();
     if (this.view === 'daycare') return this.dayCareView();
     if (this.view === 'friend') return this.friendView();
-    if (this.flow.step === 'loadout') return this.loadoutView();
-    if (this.flow.step === 'dropin') return this.dropInView();
-    return this.flow.step === 'secure' ? this.secureView() : this.confirmView();
+    if (this.view === 'bench') return this.benchView();
+    if (this.view === 'rack') return this.rackView();
+    if (this.view === 'locker') return this.lockerView();
+    return this.rimView();
   }
 
   /**
    * Oak's Lab: the board of work on offer, and the wall map.
    *
-   * Raids are prepared at the Raid Arena now (the captain, 2026-10-23), from its
-   * great hall; the lab keeps the board, the team's
+   * Raids are prepared in the Raid Arena's great hall (the captain, 2026-10-23
+   * and 2026-10-30); the lab keeps the board, the team's
    * condition and the friend's room, and its card says where the Arena is.
    *
    * This used to be the lobby - the raid card, the stash, the Outfitter and the
@@ -1847,7 +1872,7 @@ export class HubScene extends Phaser.Scene {
         : '';
     // Raids start at the Raid Arena now (`base/doors.ts`), so the card that
     // used to open preparation here says where to go instead.
-    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-refused="Raids start at the RAID ARENA, west of the yard. Walk in, and the loadout is the first thing you see." data-cursor-start data-help="Every raid starts at the RAID ARENA, west of the yard."><strong>The Raid Arena</strong><p>Walk west across the yard to kit up and drop in.</p>${shortened}${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
+    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-refused="Raids start at the RAID ARENA, west of the yard. Walk in: the bench, the rack and the pit are all in the one room." data-cursor-start data-help="Every raid starts at the RAID ARENA, west of the yard."><strong>The Raid Arena</strong><p>Walk west across the yard to kit up and drop in.</p>${shortened}${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
     const condition = said
       ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
       : '<p>Everyone is fit to deploy.</p>';
@@ -2590,28 +2615,34 @@ export class HubScene extends Phaser.Scene {
     );
   }
 
-  /**
-   * Two windows and a bar. The two columns are what you choose from - the stash
-   * on the left, where you are dropping in on the right - and everything that
-   * commits you sits in a full-width bar that stays on screen, because the
-   * three-panel column layout this replaced ran the right column past the fold
-   * at 1280x800 and put `Review & deploy` somewhere a new player never saw it,
-   * with an empty half-column beside it. The bar is the same one the final
-   * check screen already ends on, so the route reads as one route.
-   */
-  private loadoutView(): string {
+  /** What the pack and the party cannot do, which every panel on the way to the rim says the same way. */
+  private packWarning(): string {
     const party = this.flow.party;
-    // Things, not kinds: four Potions in the container is four protected, and
-    // "1 protected" beside a full container was a number nobody could place.
-    const securedCount =
-      this.flow.securedPokemon.length +
-      this.flow.securedItems.reduce((total, item) => total + item.quantity, 0);
-    const single = this.stashPokemon.length === 1;
-    const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
-    // With nobody packed yet the question is whether anyone in the stash could
-    // be: a wiped lone partner was told to add a Pokemon from the stash.
     const nobodyStanding = this.stashPokemon.length > 0 && this.stashPokemon.every((stored) => stored.pokemon.isFainted);
     const allFainted = party.length > 0 ? !this.flow.isDeployable : nobodyStanding;
+    if (allFainted) {
+      return 'Every Pokémon here has fainted. Nurse Joy can revive them, out of the door and across the yard.';
+    }
+    // The default packs medicine and never a ball, so a first raid could not
+    // catch and nothing said so (playtests 7, 10, 13, 18 and 34). The pack is
+    // still the player's to choose; the panel says what it cannot do.
+    if (party.length > 0 && !this.flow.packsABall) {
+      return this.flow.ballAtBase
+        ? 'No Poké Balls on the rack, so nothing can be caught this raid.'
+        : 'No Poké Balls at base, so nothing can be caught this raid.';
+    }
+    return '';
+  }
+
+  /**
+   * THE BENCH: who comes. Everything at base, the row under the cursor answered
+   * by its dossier, which is also where a hurt Pokémon is treated and gear is
+   * given or taken. Whoever is ticked here sits on the stone in the hall.
+   */
+  private benchView(): string {
+    const party = this.flow.party;
+    const single = this.stashPokemon.length === 1;
+    const nobodyStanding = this.stashPokemon.length > 0 && this.stashPokemon.every((stored) => stored.pokemon.isFainted);
     // A faint is not a hurt: medicine cannot revive, so "treat them first"
     // over a fainted partner pointed at Potion chips that refuse it.
     const faintedCount = this.injuredPokemon.filter((stored) => stored.pokemon.isFainted).length;
@@ -2619,16 +2650,10 @@ export class HubScene extends Phaser.Scene {
     const stashNote = faintedCount === 0
       ? hurtCount ? `${hurtCount} hurt · treat them first` : ''
       : hurtCount ? `${faintedCount} fainted · ${hurtCount} hurt` : `${faintedCount} fainted · see Nurse Joy`;
-    // The default packs medicine and never a ball, so a first raid could not
-    // catch and nothing said so (playtests 7, 10, 13, 18 and 34). The pack is
-    // still the player's to choose; the bar says what it cannot do.
-    const noBall = party.length > 0 && !this.flow.packsABall;
-    // The bar is where the loadout is read back, so it names what is in it
-    // rather than counting it; the final check screen is where the full at-risk
-    // breakdown belongs.
     const summary = party.length === 0
-      ? nobodyStanding ? 'Nothing selected yet.' : 'Nothing selected yet. Add a Pokémon from your stash.'
-      : `${party.map((stored) => stored.pokemon.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
+      ? nobodyStanding ? 'Nobody fit to go.' : 'Nobody on the bench yet.'
+      : party.map((stored) => stored.pokemon.name).join(', ');
+    const warning = this.packWarning();
     const pokemonRows = this.findablePokemon
       .map((stored, index) => {
         const added = this.flow.includesPokemon(stored.id);
@@ -2638,7 +2663,7 @@ export class HubScene extends Phaser.Scene {
         // A fainted Pokemon is refused by the flow (`togglePokemon`), so its row
         // is a cursor stop that says why rather than an ADD that does nothing.
         const fainted = !added && stored.pokemon.isFainted;
-        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}${fainted ? ' aria-disabled="true"' : ''} data-help="${added ? `Take ${name} back out of the raid.` : fainted ? faintedRefusal(name, single) : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
+        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}${fainted ? ' aria-disabled="true"' : ''} data-help="${added ? `Take ${name} back off the bench.` : fainted ? faintedRefusal(name, single) : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench. Lost on a wipe unless it is in the locker.`}">${this.pokemonRowBody(
           stored,
           // A tick, as every chosen row on these screens is marked: a ten-letter
           // name and its health bar leave no room for a word beside them.
@@ -2654,6 +2679,25 @@ export class HubScene extends Phaser.Scene {
         }),
       )
       .join('');
+    return `<main class="px-body loadout-layout bench-layout">${pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
+      { className: 'loadout-stash', heading: 'At base', note: stashNote },
+    )}${pixelCommitBar({
+      title: `${party.length}/${MAX_RUN_PARTY} on the bench`,
+      lines: [
+        `<span class="px-wrap">${summary}</span>`,
+        ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
+      ],
+      actions: `<button class="px-window px-button is-primary" data-back data-help="Back to the hall.">Done</button>`,
+    })}</main>`;
+  }
+
+  /**
+   * THE ARMOURY RACK: what this raid carries. What goes in the pack, how it is
+   * laid out, and which pack it is, because a pack is gear the player chooses
+   * and loses rather than a size the game gives them.
+   */
+  private rackView(): string {
     const supplyRows = this.stashItems
       .filter((item) => !isFoundOnly(item.id))
       .map((item) => {
@@ -2696,15 +2740,12 @@ export class HubScene extends Phaser.Scene {
       })
       .join('');
     const cells = this.flow.bagCells;
-    // The stash list is the tall one - every Pokemon and every supply at base -
-    // so it keeps the first column whole and the pack stands beside it, where
-    // its own lid counts the squares. What is wrong with a Pokemon, and the two
-    // ways to fix it, are the pane under the list rather than a strip under
-    // every hurt row: twenty-four rows of different heights is a list nobody
-    // can scan, and the treatment is about the one Pokemon being looked at.
+    const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
+    const warning = this.packWarning();
+    const firstCount = supplyRows.indexOf('data-count-dir');
     return `<main class="px-body loadout-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>${details}`,
-      { className: 'loadout-stash', heading: 'Stash', note: stashNote },
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${firstCount < 0 ? '<p class="px-empty">No supplies at base.</p>' : supplyRows}</div>`,
+      { className: 'loadout-stash', heading: 'Supplies' },
     )}<div class="loadout-side">${pixelWindow(
       `<div class="pack-body px-scroll">${pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         label: `Pack, ${cells.used} of ${cells.total} squares full`,
@@ -2716,12 +2757,11 @@ export class HubScene extends Phaser.Scene {
         note: `${cells.used}/${cells.total} squares`,
       },
     )}</div>${pixelCommitBar({
-      title: `${party.length}/6 Pokémon packed`,
+      title: this.flow.packName,
       lines: [
-        `<span class="px-wrap">${summary}</span>`,
-        `<small class="px-wrap${allFainted || noBall ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Revive one at the Pokémon Center before you deploy.' : noBall ? (this.flow.ballAtBase ? 'No Poké Balls packed, so nothing can be caught this raid. Add one under Supplies.' : 'No Poké Balls at base, so nothing can be caught this raid.') : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
+        `<small class="px-wrap${warning ? ' px-warning' : ''}">${warning || `${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed. Lost on a wipe unless they are in the locker, and the ${this.flow.packName} goes either way.`}</small>`,
       ],
-      actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Choose where this raid drops in." ${this.flow.isDeployable ? '' : 'disabled'}>Choose drop-in</button>`,
+      actions: `<button class="px-window px-button is-primary" data-back data-cursor-start data-help="Back to the hall.">Done</button>`,
     })}</main>`;
   }
 
@@ -2787,100 +2827,153 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Choosing where to drop in, as its own step.
+   * THE RIM: looking down over the fence. The pit behind the panel is the map,
+   * so this is only what the map cannot say - which way in, what is known of it,
+   * what the raid has at stake - and the one button that goes.
    *
-   * The map is the screen: a window down the whole left of it with the place
-   * drawn as big as the window will take (`ui/mapPicture.ts`), dark everywhere
-   * nobody has walked. That dark is the point: the vast maps are built so you
-   * drop in, see a piece and leave wondering, and a full bird's-eye view would
-   * hand that answer over for nothing. What fills in is what you walked, plus
-   * your own landings and the doors you have opened - so opening a gate changes
-   * something you can come back to base and look at.
-   *
-   * It was a hundred-pixel banner, which drew the Floodplain at two tiles to
-   * the pixel in a 64-pixel square in the corner of a screen with most of the
-   * window to spare - the captain's rule for menus is that they use the whole
-   * window, and a picture is the thing on this screen that most wants it. The
-   * choice of way in and what the place holds share the right-hand side; the
-   * picture's frame is the size the biggest map fits at, so nothing on the
-   * screen moves when the cursor changes the place.
+   * A way in is chosen by having the cursor on it (`pointAtLanding`), so moving
+   * down the list swings the view over the pit and commits nothing: the only
+   * press that does anything is JUMP IN, and a player who walked up to the place
+   * they wanted presses straight through.
    */
-  private dropInView(): string {
-    const chosen = this.flow.insertionId;
-    const context = this.dropInContext(chosen);
-    const briefing = buildDropInBriefing(chosen, context);
-    // The maps players made come after the game's own, under a heading of
-    // their own, each front door crediting who drew it.
-    const firstPlayerMap = this.unlockedInsertions.find(([, insertion]) => worldMapMaker(insertion.mapId) !== undefined)?.[0];
+  private rimView(): string {
     // While a room is held the raid is on its map, so only its ways in are offered.
     const room = this.heldRoom;
-    const rows = this.unlockedInsertions
-      .filter(([, insertion]) => !room || insertion.mapId === room.mapId)
+    const offered = this.unlockedInsertions.filter(([, insertion]) => !room || insertion.mapId === room.mapId);
+    const chosen = this.flow.insertionId;
+    // The maps players made come after the game's own, under a heading of
+    // their own, each front door crediting who drew it.
+    const firstPlayerMap = offered.find(([, insertion]) => worldMapMaker(insertion.mapId) !== undefined)?.[0];
+    // A drop-in point says which map it is on, when there is more than the one in the pit.
+    const manyMaps = new Set(offered.map(([, insertion]) => insertion.mapId)).size > 1;
+    const rows = offered
       .map(([id, insertion]) => {
         const contract = this.contractFor(id);
-        const isChosen = chosen === id;
-        const maker = worldMapMaker(insertion.mapId);
         // One line unless the row has something to add, so the pane shows five
-        // ways in rather than two: a drop-in point says which map it is on,
-        // because unlike a front door its name is not the map's, and a place
-        // with a contract on it names the contract. "No contract" is not news.
+        // ways in rather than two: a place with a contract on it names the
+        // contract. "No contract" is not news, and who drew a map is on the
+        // help line, because this column is too narrow to say both.
         const note = isDropInPoint(insertion)
-          ? `DROP-IN · ${worldMapName(insertion.mapId)}${contract ? ` · ${contract.name}` : ''}`
-          : [
-              ...(maker ? [`DRAWN BY ${maker}`] : []),
-              ...(contract
-                ? [`${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}`]
-                : []),
-            ].join(' · ');
+          ? (manyMaps ? `DROP-IN · ${worldMapName(insertion.mapId)}` : '')
+          : contract
+            ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}`
+            : '';
         const heading = id === firstPlayerMap ? `<p class="px-subheading">Player maps</p>` : '';
-        return `${heading}<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertionDescription(insertion, this.savedGame.raidProgress.defeatedBosses))}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
+        return `${heading}<button class="px-row${chosen === id ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertionDescription(insertion, this.savedGame.raidProgress.defeatedBosses))}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${chosen === id ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
-    const walked = Math.round(briefing.record.surveyed * 100);
-
-    return `<main class="px-body dropin-layout">${pixelWindow(
-      mapPictureFrame({
-        key: `dropin:${chosen}`,
-        label: `${briefing.mapName}, ${walked}% walked`,
-        size: pictureSize(context.map),
-        // Sized for the biggest of the game's own maps on offer, so the frame
-        // holds still as the cursor moves and a save that cannot go to the
-        // vale keeps its pictures as big as they were (`largestMapSize`).
-        reference: largestMapSize(this.unlockedInsertions.map(([, insertion]) => insertion.mapId).filter(isBuiltInMapId)),
-        mode: 'own',
-        // What the right-hand side needs to stay a column of one-line rows:
-        // its measure, the gap and the body's own padding.
-        leave: COLUMN_MEASURES.line + DROPIN_SIDE_ALLOWANCE,
-        className: 'dropin-picture',
-      }),
-      {
-        className: 'dropin-place',
-        heading: briefing.insertion.label,
-        note: `Grade ${briefing.grade.rung}/${briefing.grade.rungs}`,
-      },
-    )}${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${rows}${this.firstContractActive ? '<p class="px-note px-wrap">Four more insertions unlock when you extract this contract.</p>' : ''}</div>`,
-      {
-        className: 'dropin-list',
-        heading: this.firstContractActive ? 'Contract area' : 'Drop in at',
-        note: this.firstContractActive ? '' : `${this.unlockedInsertions.length} known`,
-      },
-    )}${pixelWindow(
-      `<div class="px-list px-scroll dropin-brief" ${pixelColumns(COLUMN_MEASURES.line)}>${this.placeFacts(briefing)}${this.placeBrief(briefing)}</div>`,
-      { className: 'dropin-about', heading: 'What is in there' },
+    const refusal = this.flow.notReady;
+    const warning = refusal ?? this.packWarning();
+    const list = offered.length > 1
+      ? pixelWindow(`<div class="px-list px-scroll">${rows}${this.firstContractActive ? '<p class="px-note px-wrap">More ways in open up when you bring this contract home.</p>' : ''}</div>`, {
+          className: 'rim-list',
+          heading: this.firstContractActive ? 'Contract area' : 'Ways in',
+          note: this.firstContractActive ? '' : `${offered.length} known`,
+        })
+      : '';
+    return `<main class="px-body rim-layout${offered.length > 1 ? '' : ' is-one-way'}">${list}${pixelWindow(
+      `<div class="px-list px-scroll dropin-brief" data-rim-about>${this.rimAbout(chosen)}</div>`,
+      { className: 'dropin-about', heading: 'Down there' },
     )}${pixelCommitBar({
-      title: `Drop in at ${briefing.insertion.label}`,
-      // One line, because the facts above already state the place's levels,
-      // its doors and what it has cost you. A second row of the bar is 12
-      // pixels off what the place holds, at the stage every screen is authored
-      // against.
+      title: `<span data-rim-title>${this.rimTitle(chosen)}</span>`,
       lines: [
-        `<span class="px-wrap">${briefing.contract ? `${briefing.contract.name}${briefing.contract.hunterPressure ? ` · hunter +${briefing.contract.hunterPressure}` : ''}` : 'No contract on this raid'}</span>`,
-        this.carryInNote(),
         this.roomNote(),
+        ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
       ].filter((line) => line !== ''),
-      actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-advance data-cursor-start data-help="Read back what this raid risks before you commit to it.">Review &amp; deploy</button>`,
+      actions: `<button class="px-window px-button" data-back data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start data-cursor-start${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
     })}</main>`;
+  }
+
+  private rimTitle(insertionId: RunInsertionId): string {
+    return `Jump in at ${requireInsertion(insertionId).label}`;
+  }
+
+  /**
+   * What is known of a way in and what going there has at stake. The stakes come
+   * first, because they are what cannot be taken back; everything about the
+   * place scrolls under them.
+   */
+  private rimAbout(insertionId: RunInsertionId): string {
+    const briefing = buildDropInBriefing(insertionId, this.dropInContext(insertionId));
+    const below = (this.kit?.below() ?? []).map((line) => `<p class="px-note px-wrap">${line}</p>`).join('');
+    return `${this.rimStakes(insertionId)}${this.placeFacts(briefing)}${below}${this.placeBrief(briefing)}`;
+  }
+
+  /**
+   * What a raid from here risks and keeps, and the hunter it draws: each a line,
+   * because this pane has perhaps five of them before it has to scroll and these
+   * are what cannot be taken back.
+   */
+  private rimStakes(insertionId: RunInsertionId): string {
+    const securedPokemon = this.flow.securedPokemon;
+    const securedItems = this.flow.securedItems;
+    const riskedPokemon = this.flow.party.filter((stored) => !securedPokemon.includes(stored));
+    const riskedItems = this.flow.items
+      .map((item) => ({
+        itemId: item.itemId,
+        quantity: item.quantity - (securedItems.find((secured) => secured.itemId === item.itemId)?.quantity ?? 0),
+      }))
+      .filter((item) => item.quantity > 0);
+    const stack = (item: { readonly itemId: ItemId; readonly quantity: number }): string =>
+      `${this.itemName(item.itemId)} ${itemCountTag(item.itemId, item.quantity)}`;
+    // The pack leads, because it is the biggest single thing a wipe takes and
+    // the one nothing in the locker beside it can protect.
+    const lost = [
+      ...(this.flow.packItemId === undefined ? [] : [`the ${this.flow.packName}`]),
+      ...riskedPokemon.map((stored) => stored.pokemon.name),
+      ...riskedItems.map(stack),
+    ];
+    const kept = [...securedPokemon.map((stored) => stored.pokemon.name), ...securedItems.map(stack)];
+    const threat = this.hunterThreatAt(insertionId, this.flow.party);
+    const hunter = hunterThreatLine(threat);
+    const contract = this.contractFor(insertionId);
+    const required = contract ? contractCarryIn(contract) : [];
+    const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
+    const line = (label: string, body: string, warn = false): string =>
+      `<div><dt>${label}</dt><dd class="px-wrap${warn ? ' px-warning' : ''}">${body}</dd></div>`;
+    return `<dl class="dropin-facts rim-stakes">${line('Lost', lost.length === 0 ? 'nothing else: all of it is in the locker' : lost.join(', '))}${line('Home', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
+      required.length === 0
+        ? ''
+        : line('Drop', short.length === 0 ? `${itemAmountsFor(required)} packed for ${contract!.name}` : `${contract!.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`, short.length > 0)
+    }${line('Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunter: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
+  }
+
+  /** Whether the clock is worth a line: it is on the title bar, and only a night or a shortened one has more to say. */
+  private get clockIsNews(): boolean {
+    return this.pendingRecoveryMs > 0 || isPlaytestRun() || isNightRaid(new Date());
+  }
+
+  /**
+   * A way in has come under the cursor: it is chosen, the pane and the bar say so
+   * in place, and the pit behind the panel swings round to it. In place, because
+   * this is answering a focus event and the row it is answering is under the
+   * player's hand (`ui/MenuOverlay.ts`).
+   */
+  private pointAtLanding(insertionId: RunInsertionId): void {
+    if (this.flow.insertionId === insertionId) {
+      return;
+    }
+    this.flow.chooseInsertion(insertionId);
+    this.kit?.aim(insertionId);
+    const root = this.overlay.root;
+    root.querySelectorAll<HTMLElement>('[data-insertion]').forEach((row) => {
+      const chosen = row.dataset.insertion === insertionId;
+      row.classList.toggle('is-selected', chosen);
+      row.querySelector('.px-tag')?.remove();
+      if (chosen) {
+        row.insertAdjacentHTML('beforeend', pixelTag('', 'good', true));
+      }
+    });
+    const about = root.querySelector<HTMLElement>('[data-rim-about]');
+    if (about) {
+      about.innerHTML = this.rimAbout(insertionId);
+      about.scrollTop = 0;
+    }
+    const title = root.querySelector<HTMLElement>('[data-rim-title]');
+    if (title) {
+      title.textContent = this.rimTitle(insertionId);
+    }
+    this.overlay.remeasure();
   }
 
   /**
@@ -3189,9 +3282,9 @@ export class HubScene extends Phaser.Scene {
     return `<p class="px-wrap dropin-blurb">${briefing.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${errands}${prizes}${exits}${doors}${wildlife}`;
   }
 
-  private secureView(): string {
+  /** THE LOCKER: what comes home whatever happens to the raid. */
+  private lockerView(): string {
     const party = this.flow.party;
-    const returnLabel = this.flow.secureReturnStep === 'confirm' ? 'final check' : 'loadout';
     const slots = this.flow.securePokemonSlots;
     // A Pokemon costs squares of the same container its supplies do, four, six
     // or nine by how far along its line it is, so the row says the price before
@@ -3267,7 +3360,7 @@ export class HubScene extends Phaser.Scene {
     ).join('');
     const cells = this.flow.secureCells;
     return `<main class="px-body secure-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pokemonRows || '<p class="px-empty">Add a Pokémon to your loadout first.</p>'}</div>${this.secureRoomNote()}`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pokemonRows || '<p class="px-empty">Nobody is on the bench yet.</p>'}</div>${this.secureRoomNote()}`,
       { className: 'secure-group', heading: 'Pokémon', note: `${this.flow.securedPokemon.length}/${slots} ${slots === 1 ? 'slot' : 'slots'}` },
     )}${pixelWindow(
       // The squares and the list are one child of the window, or the window's
@@ -3284,13 +3377,13 @@ export class HubScene extends Phaser.Scene {
       },
     )}${pixelCommitBar({
       className: 'px-tone-secure secure-intro',
-      title: 'Protected on a wipe',
+      title: 'Comes home whatever happens',
       lines: [
         // The two lids above already count the squares and what fills them, so
         // this line says only what the counting does not: the rest is gone.
-        '<span class="px-wrap">Everything else in your loadout is lost on a wipe.</span>',
+        '<span class="px-wrap">Everything else you take is lost on a wipe.</span>',
       ],
-      actions: `<button class="px-window px-button is-primary" data-advance data-help="Keep these choices and go back to the ${returnLabel}.">Back to ${returnLabel}</button>`,
+      actions: `<button class="px-window px-button is-primary" data-back data-help="Back to the hall.">Done</button>`,
     })}</main>`;
   }
 
@@ -3314,7 +3407,7 @@ export class HubScene extends Phaser.Scene {
         .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
         .sort((a, b) => a - b)[0];
       return smallest !== undefined && smallest > free
-        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(smallest)}. Grow it at Brock's Workshop’s Workshop, or bank a cordon ledger.</p>`
+        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(smallest)}. Grow it at Brock's Workshop, or bank a cordon ledger.</p>`
         : '';
     }
     const names = cargo.map((piece) => piece.name.toUpperCase()).join(' and ');
@@ -3324,7 +3417,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The final check's word on the clock, as the raid's clock chip will put it.
+   * The rim's word on the clock, as the raid's clock chip will put it.
    *
    * An explorer run's clock is eight hours and its chip never counts them, so
    * the screen says what that means rather than printing it as `480:00`, and
@@ -3336,80 +3429,6 @@ export class HubScene extends Phaser.Scene {
       return `${night ? 'night raid' : 'raid'} with no clock to beat: an explorer run lasts ${PLAYTEST_RAID_DURATION_MS / 3_600_000} hours`;
     }
     return `${night ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}`;
-  }
-
-  private confirmView(): string {
-    const insertion = requireInsertion(this.flow.insertionId);
-    const contract = this.contractFor(this.flow.insertionId);
-    const securedPokemon = this.flow.securedPokemon;
-    const securedItems = this.flow.securedItems;
-    const riskedPokemon = this.flow.party.filter((stored) => !securedPokemon.includes(stored));
-    const riskedItems = this.flow.items
-      .map((item) => ({
-        itemId: item.itemId,
-        quantity: item.quantity - (securedItems.find((secured) => secured.itemId === item.itemId)?.quantity ?? 0),
-      }))
-      .filter((item) => item.quantity > 0);
-    const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
-    // Counted the way the result screen counts its ledger - a row each - so
-    // the note is the number of lines drawn under it: three Potions are one
-    // entry, and "4 ENTRIES" over the pack and a Potion x3 read as a miscount.
-    const riskedCount =
-      (this.flow.packItemId === undefined ? 0 : 1) + riskedPokemon.length + riskedItems.length;
-    // The price of the party, on screen before the player commits to it - the
-    // rule the trainer watch and the flee cost already follow. It sits in the
-    // full-width bar beside the button that pays it.
-    const threat = this.hunterThreatAt(this.flow.insertionId, this.flow.party);
-    const hunter = hunterThreatLine(threat);
-    const carryShort = this.carryInShort();
-    // The window a row stands in is what says whether it is lost or comes home,
-    // so the rows do not each say it again.
-    const itemRow = (item: { readonly itemId: ItemId; readonly quantity: number }, secured: boolean): string =>
-      `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ${itemCountTag(item.itemId, item.quantity)}</strong>${isFoundOnly(item.itemId) ? '<small>room kept for what you find</small>' : ''}</span></div>`;
-    // The pack leads the list, because it is the biggest single thing a wipe
-    // takes and the one nothing in the container beside it can protect: the
-    // container is something the pack is carried past, not something it is in.
-    const packItemId = this.flow.packItemId;
-    const packRow = packItemId === undefined
-      ? ''
-      : `<div class="px-row has-icon">${itemIcon(packItemId, this.flow.packName)}<span class="px-row-main"><strong>${this.flow.packName}</strong><small>the pack itself · ${gridCells(this.flow.bagGrid)} squares</small></span></div>`;
-    const risked = `${packRow}${riskedPokemon
-      .map((stored) => `<div class="px-row">${this.pokemonRowBody(stored, '')}</div>`)
-      .join('')}${riskedItems.map((item) => itemRow(item, false)).join('')}`;
-    const secured = `${securedPokemon
-      .map((stored) => `<div class="px-row is-secured">${this.pokemonRowBody(stored, '')}</div>`)
-      .join('')}${securedItems.map((item) => itemRow(item, true)).join('')}`;
-    return `<main class="px-body confirm-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${risked || '<p class="px-empty">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div>`,
-      {
-        className: 'confirm-risk px-tone-risk',
-        heading: 'Lost if you wipe',
-        note: `${riskedCount} ${riskedCount === 1 ? 'entry' : 'entries'}`,
-      },
-    )}${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${secured || '<p class="px-empty px-warning">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div>`,
-      {
-        className: 'confirm-secure px-tone-secure',
-        heading: 'Comes home',
-        // The squares are the number a player who has just bought a berth is
-        // here for, so they are the whole note: the rows under it are the count.
-        note: `${this.flow.secureCells.used}/${this.flow.secureCells.total} squares`,
-      },
-    )}${pixelCommitBar({
-      title: `Deploy to ${insertion.label}`,
-      lines: [
-        this.roomNote(),
-        // A night raid is named here as its clock chip will name it, so the
-        // last screen before the raid says what the drop-in pane's wildlife did.
-        // A drop that will refuse you is said again here, on the last screen
-        // before the raid: the drop-in pane said it a step back, and a raid
-        // that opens on the refusal is a raid already spent (playtest 47).
-        `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'}${carryShort.length === 0 ? '' : ` · <span class="px-warning carry-short">Still short: ${itemAmountsFor(carryShort)}</span>`} · ${this.clockNote()}</span>`,
-        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
-        `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
-      ],
-      actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-cursor-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,
-    })}</main>`;
   }
 
   /**

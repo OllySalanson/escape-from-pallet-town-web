@@ -112,7 +112,6 @@ try {
   const doors = await page.evaluate(`${GAME}.scene.getScene('base').doors.map((door) => ({ id: door.id, at: door.returnTo }))`);
   const spots = [
     { name: 'spawn', data: {} },
-    { name: 'home-from-a-raid', data: { arrival: 'raid' } },
     ...doors.map((door) => ({ name: `outside-${door.id}`, data: { from: door.id } })),
     ...extraSpots.map((spot) => ({ name: spot.name, data: { at: spot.at } })),
   ];
@@ -126,7 +125,7 @@ try {
   if (clip) {
     // Off the boat and up the yard, east along the front of the keepers' row:
     // the walk a raid that has just come home takes.
-    await standIn({ arrival: 'raid' });
+    await standIn({});
     const frames = [];
     const record = async () => {
       if ((await page.evaluate(`${GAME}.loop.frame`)) % 2 === 0) {

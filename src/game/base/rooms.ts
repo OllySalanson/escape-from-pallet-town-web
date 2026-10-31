@@ -11,7 +11,15 @@ import { AREA_PIECES, type AreaPieceName } from '../world/generated/areaPieces';
 import { AREA_SHEET_SOURCE } from '../world/tileset/areaSheet';
 import { INSIDE_PROPS } from '../world/tileset/insideTileset';
 import { BOUTIQUE_NAME } from '../look/wearables';
-import { ARENA_HALL_HEIGHT, ARENA_HALL_WIDTH, ARENA_KEEPER_TILE, ARENA_MAT, arenaCollision } from './arenaHall';
+import {
+  ARENA_HALL_HEIGHT,
+  ARENA_HALL_WIDTH,
+  ARENA_KEEPER_TILE,
+  ARENA_MAT,
+  ARENA_STATIONS,
+  arenaCollision,
+  type ArenaStationId,
+} from './arenaHall';
 import { ARENA_HALL_SOURCE } from './arenaHallSheet';
 import { ARENA_HALL_GROUND, ARENA_HALL_OVER } from './generated/arenaHallTiles';
 import { ARENA_KEEPER_DESIGN, ARENA_KEEPER_NAME } from '../hub/firstWords';
@@ -406,7 +414,7 @@ export interface RoomThing {
    * the wall map is read on a screen, drawn as big as the window allows, and
    * the console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`).
    */
-  readonly opens?: 'wall-map' | 'games' | 'wardrobe';
+  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | ArenaStationId;
   /**
    * What it says when faced and spoken to, in place of its name and note: a
    * thing in the player's own house has more to say than what it is.
@@ -815,7 +823,7 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     stairs: [],
   },
   // THE RAID ARENA's great hall (`arenaHall.ts`): the marshal stands by the way
-  // in, and the raid is one key from the mat, as every keeper's screen is.
+  // in, and everything a raid wants is on the floor around her.
   {
     id: 'raid-arena',
     screen: 'arena',
@@ -1412,6 +1420,13 @@ export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Da
   };
 }
 
+/** What the hall's furniture is called, on its caption and in the hint at its foot. */
+export const ARENA_STATION_NAMES: Readonly<Record<ArenaStationId, string>> = {
+  bench: 'THE BENCH',
+  rack: 'THE ARMOURY RACK',
+  locker: 'THE LOCKER',
+};
+
 /**
  * THE RAID ARENA's great hall. A curve cannot be planted out of a room's
  * square pieces, so the whole hall is a sheet painted in one go
@@ -1454,7 +1469,15 @@ function buildArenaHall(room: BaseRoom, game: RestoredGame): BuiltRoom {
       crowned: none(),
     },
     collision,
-    things: [...shown.things],
+    things: [
+      ...ARENA_STATIONS.map((station) => ({
+        name: ARENA_STATION_NAMES[station.id],
+        note: '',
+        tiles: station.tiles,
+        opens: station.id,
+      })),
+      ...shown.things,
+    ],
     sprites: [],
     icons: shown.icons,
     wallMap: null,

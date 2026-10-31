@@ -11,14 +11,15 @@ import type { GridPosition } from '../movement/gridMovement';
  * pillars and torches, and what a player at the fence is looking at. Nothing
  * here knows Phaser or the save.
  *
- * Two promises are made here for what comes next. **The platform is deep
- * enough to furnish**: `PLATFORM_CLEAR` tiles of open floor stand between the
- * fence and the pillars all the way round, so places to get ready can stand on
- * it. And **the fence is one low run nobody but the player needs to get past**:
- * it is solid, one tile thick, and every tile of it (`ARENA_FENCE`) has a tile
- * of platform to stand on beside it, so going over it is one authored hop from
- * anywhere on the ring. `pitTileAt` already says which tile of the map any
- * point in the pit is showing.
+ * Everything a player does before a raid is done on this platform
+ * (`arenaRim.ts`, `BaseScene`). **The stations stand just inside the door**: the
+ * bench, the armoury rack and the locker (`ARENA_STATIONS`), each with floor all
+ * along its front, none of them between the fence and the walk round it. And
+ * **the fence is one low run nobody but the player needs to get past**: it is
+ * solid, one tile thick, and every tile of it (`ARENA_FENCE`) has a tile of
+ * platform to stand on beside it, so going over it is one authored hop from
+ * anywhere on the ring. `pitTileAt` says which tile of the map any point in the
+ * pit is showing, and `pitPointOf` where on the floor any tile of the map lies.
  */
 
 export const ARENA_TILE = 16;
@@ -136,12 +137,48 @@ export const ARENA_KEEPER_TILE: GridPosition = { x: ARENA_MAT.x - 2, y: ARENA_MA
 
 const sameTile = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
 
+/** Where a player gets ready for a raid: who comes, what they carry, what comes home whatever happens. */
+export type ArenaStationId = 'bench' | 'rack' | 'locker';
+
+export interface ArenaStation {
+  readonly id: ArenaStationId;
+  /** The tiles it stands on: one row, walked up to from the floor in front of it. */
+  readonly tiles: readonly GridPosition[];
+}
+
+const stationRow = (left: number, width: number): readonly GridPosition[] =>
+  Array.from({ length: width }, (_tile, index) => ({ x: left + index, y: STATION_ROW }));
+
+/** The row the stations stand on: two tiles of walk between them and the fence, one of floor in front. */
+const STATION_ROW = 58;
+
+/**
+ * The stations, either side of the runner, where the first screen of the hall
+ * shows all three: the bench to the west, the rack and the locker to the east.
+ * Each is one row of solid tiles; anything taller rises over the row behind it,
+ * as a pillar does, so the walk round the back of it is a walk behind it.
+ */
+export const ARENA_STATIONS: readonly ArenaStation[] = [
+  { id: 'bench', tiles: stationRow(23, 6) },
+  { id: 'rack', tiles: stationRow(36, 3) },
+  { id: 'locker', tiles: stationRow(40, 2) },
+];
+
+/** The station on this tile, if there is one. */
+export function arenaStationAt(tile: GridPosition): ArenaStation | undefined {
+  return ARENA_STATIONS.find((station) => station.tiles.some((each) => sameTile(each, tile)));
+}
+
 /** What cannot be walked on, by tile. The keeper is a figure, and solid as figures are. */
 export function arenaCollision(): boolean[][] {
   return Array.from({ length: ARENA_HALL_HEIGHT }, (_row, y) =>
     Array.from({ length: ARENA_HALL_WIDTH }, (_cell, x) => {
       const tile = { x, y };
-      return !isPlatform(tile) || ARENA_PILLARS.some((pillar) => sameTile(pillar, tile));
+      return (
+        !isPlatform(tile) ||
+        ARENA_PILLARS.some((pillar) => sameTile(pillar, tile)) ||
+        arenaStationAt(tile) !== undefined
+      );
     }),
   );
 }
@@ -233,8 +270,27 @@ export const ARENA_TORCHES: readonly ArenaTorch[] = (() => {
 
 // --- the pit -----------------------------------------------------------------
 
-/** The map at the bottom of the pit, a game pixel to the tile, by its size in tiles. */
+/** The most the map at the bottom of the pit is across, in game pixels: Greystone Vale, a pixel to the tile. */
 export const PIT_MAP_SIZE = 384;
+
+/**
+ * How a map sits on the pit's floor. Greystone Vale is a pixel to the tile; a
+ * smaller map is drawn at the largest whole number of pixels to the tile that
+ * still fits, so a player's 64x64 is not a postage stamp a long way down.
+ */
+export interface PitFrame {
+  /** The map's size, in tiles. */
+  readonly width: number;
+  readonly height: number;
+  /** Game pixels to the tile. */
+  readonly scale: number;
+}
+
+export function pitFrameFor(width: number, height: number): PitFrame {
+  return { width, height, scale: Math.max(1, Math.floor(PIT_MAP_SIZE / Math.max(width, height, 1))) };
+}
+
+const VALE_FRAME: PitFrame = pitFrameFor(PIT_MAP_SIZE, PIT_MAP_SIZE);
 
 /**
  * The stepped rings down from the fence to the floor: how wide each tread is,
@@ -252,8 +308,15 @@ export const PIT_PODIUM_DROP = 14;
 /** How much less each thing moves than the platform as the player walks: depth. */
 export const TIER_PARALLAX = [0.016, 0.032, 0.048, 0.064] as const;
 export const PODIUM_PARALLAX = 0.08;
-export const MIST_PARALLAX = 0.09;
-export const FLOOR_PARALLAX = 0.11;
+export const MIST_PARALLAX = 0.28;
+/**
+ * The floor slides half as far as the player walks. It is a very long way down,
+ * and the further away a thing is the more nearly it stays under whoever is
+ * looking at it - which is what makes walking round the rim a walk over the
+ * country: from the west rail the west of the vale is under you, and the middle
+ * of it comes on to the screen from either side.
+ */
+export const FLOOR_PARALLAX = 0.5;
 
 /** The rest position of one ring's hole: the rim's own oval, stepped in and down. */
 export function tierHole(tier: number): Oval {
@@ -309,11 +372,25 @@ export function parallaxShift(
 export function pitTileAt(
   point: { readonly x: number; readonly y: number },
   player: { readonly x: number; readonly y: number },
+  frame: PitFrame = VALE_FRAME,
 ): GridPosition | null {
   const shift = parallaxShift(FLOOR_PARALLAX, player);
-  const x = Math.floor(point.x - shift.x - PIT_MAP_CENTRE.x + PIT_MAP_SIZE / 2);
-  const y = Math.floor(point.y - shift.y - PIT_MAP_CENTRE.y + PIT_MAP_SIZE / 2);
-  return x < 0 || y < 0 || x >= PIT_MAP_SIZE || y >= PIT_MAP_SIZE ? null : { x, y };
+  const x = Math.floor((point.x - shift.x - PIT_MAP_CENTRE.x + (frame.width * frame.scale) / 2) / frame.scale);
+  const y = Math.floor((point.y - shift.y - PIT_MAP_CENTRE.y + (frame.height * frame.scale) / 2) / frame.scale);
+  return x < 0 || y < 0 || x >= frame.width || y >= frame.height ? null : { x, y };
+}
+
+/** The other way about: where the middle of a tile of the map lies in the hall, for somebody standing at `player`. */
+export function pitPointOf(
+  tile: GridPosition,
+  player: { readonly x: number; readonly y: number },
+  frame: PitFrame = VALE_FRAME,
+): { readonly x: number; readonly y: number } {
+  const shift = parallaxShift(FLOOR_PARALLAX, player);
+  return {
+    x: PIT_MAP_CENTRE.x + shift.x + (tile.x + 0.5) * frame.scale - (frame.width * frame.scale) / 2,
+    y: PIT_MAP_CENTRE.y + shift.y + (tile.y + 0.5) * frame.scale - (frame.height * frame.scale) / 2,
+  };
 }
 
 /**

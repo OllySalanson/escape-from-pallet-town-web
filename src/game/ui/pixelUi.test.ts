@@ -5,7 +5,6 @@ import {
   escapeAttribute,
   pixelCommitBar,
   pixelHpBar,
-  pixelRail,
   pixelScreen,
   pixelTag,
   pixelWindow,
@@ -106,14 +105,6 @@ describe('pixelCommitBar', () => {
 });
 
 describe('the small parts', () => {
-  it('marks where the route is, what is behind it and what is ahead', () => {
-    const rail = pixelRail(['Loadout', 'Final check', 'Raid'], 2);
-
-    expect(rail).toContain('<li class="done">Loadout</li>');
-    expect(rail).toContain('<li class="current" aria-current="step">Final check</li>');
-    expect(rail).toContain('<li class="upcoming">Raid</li>');
-  });
-
   it('draws the tick rather than typing one', () => {
     expect(pixelTag('Added', 'good', true)).toBe('<span class="px-tag px-tag-good has-tick">Added</span>');
     expect(pixelTag('Add')).toBe('<span class="px-tag px-tag-plain">Add</span>');

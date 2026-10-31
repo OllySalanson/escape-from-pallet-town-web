@@ -1,18 +1,21 @@
-// Walks THE RAID ARENA's great hall as a player and photographs it.
+// Gets ready for a raid in THE RAID ARENA's great hall as a player does, and
+// goes over the fence.
 //
-//   node tools/playtest/arenaHall.mjs <url> <out-dir> [--window=1200x768] [--survey=save-surveyed.json] [--port=N] [--tour] [--still]
+//   node tools/playtest/arenaHall.mjs <url> <out-dir> [--window=1200x768] [--port=N] [--tour] [--still]
 //
 // A new game walks across the harbour and through the Arena's door, skips the
 // trailer and lands on the hall's mat, and from there it asks what the captain
-// asked for: nobody speaks on arrival; the platform runs all the way round; the
-// fence can be looked over and says what is down there; the marshal opens the
-// loadout from the mat with a newcomer's words said first and only once; and
-// backing out of the loadout is back on the mat. `--tour` also stops at the
-// compass points of the ring. `--survey=` is a `raidProgress.surveyed` record
-// (`tools/tileset/sampleSurvey.mts`) for an explored save. `--port=` drives a
-// browser already running, and `--still` asks for reduced motion and checks the
-// fires hold still under it. Exit code 1 is anything not where it should be.
-import { mkdirSync, readFileSync } from 'node:fs';
+// asked for: nobody speaks on arrival; the marshal says what the room is once,
+// when spoken to, and opens no screen; the bench, the rack and the locker each
+// open a panel over the room and backing out of one stands the player where they
+// were; what was chosen stands on the furniture; the rim says which way in it is
+// over and looks down at it; a jump goes over the fence, down through the cloud
+// and lands in the raid; a raid's ending comes home to the rim with the cloud
+// lifting off what it walked. `--tour` also stops at the compass points of the
+// ring, `--port=` drives a browser already running, and `--still` asks for
+// reduced motion: no dive, and the fires hold still. Exit code 1 is anything not
+// where it should be.
+import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, attachBrowser, launchBrowser } from './browser.mjs';
 import { GAME, sceneIs } from './deploy.mjs';
 
@@ -24,8 +27,7 @@ const [windowWidth, windowHeight] = (option('window') ?? `${PIXEL_WINDOW.width}x
 const window = { width: windowWidth, height: windowHeight };
 const SAVE = 'escape-from-pallet-town.save.v1';
 const FRAME_MS = 100;
-const tour = args.includes('--tour');
-const survey = option('survey') ? JSON.parse(readFileSync(option('survey'), 'utf8')) : null;
+const still = args.includes('--still');
 const address = `${url}?testmode=pixels`;
 
 const faults = [];
@@ -37,7 +39,7 @@ const expect = (what, ok) => {
 const browser = option('port') ? attachBrowser(Number(option('port')), { window }) : await launchBrowser({ window });
 try {
   const page = await browser.openPage('about:blank');
-  if (args.includes('--still')) {
+  if (still) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   }
   await page.send('Page.navigate', { url: address });
@@ -45,8 +47,7 @@ try {
   await page.evaluate(`localStorage.removeItem(${JSON.stringify(SAVE)})`);
   await page.send('Page.navigate', { url: address });
   await page.waitFor(sceneIs('title'), { what: 'the title' });
-  const pause = () => page.evaluate(`${GAME}.pauseLoop()`);
-  await pause();
+  await page.evaluate(`${GAME}.pauseLoop()`);
   const step = (ms) => page.evaluate(`${GAME}.stepFrames(${Math.max(1, Math.round(ms / FRAME_MS))}, ${FRAME_MS})`);
   const until = async (expression, what) => {
     for (let guard = 0; guard < 400; guard += 1) {
@@ -60,6 +61,8 @@ try {
     await step(FRAME_MS * 2);
   };
   const base = (expression) => page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); return ${expression}; })()`);
+  const hub = (expression) => page.evaluate(`(() => { const h = ${GAME}.scene.getScene('hub'); return ${expression}; })()`);
+  const shot = (name) => page.screenshot(`${out}/${name}.png`);
 
   // A new game, straight to the harbour.
   await press('Space');
@@ -71,31 +74,15 @@ try {
   await step(200);
   await page.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Confirm'))?.click()`);
   await until(sceneIs('base'), 'the harbour');
-  if (survey) {
-    await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)}));
-      save.raidProgress.surveyed = ${JSON.stringify(survey)};
-      localStorage.setItem(${JSON.stringify(SAVE)}, JSON.stringify(save)); })()`);
-    await page.send('Page.navigate', { url: address });
-    await page.waitFor(sceneIs('title'), { what: 'the title' });
-    await pause();
-    await press('Space');
-    await until(sceneIs('base'), 'the harbour, explored');
-  }
   await step(1000);
 
-  // To the Arena's door, stopping once the hall is up rather than on the loadout.
-  const inHall = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.room?.id === 'raid-arena'; })()`;
-  for (let guard = 0; guard < 80 && !(await page.evaluate(inHall)); guard += 1) {
-    if (await page.evaluate(sceneIs('arenaIntro'))) {
-      await step(700);
-      await press('Escape');
-      await step(400);
-      continue;
-    }
-    const key = await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); if (!b.sys.isActive() || !b.ready || b.leaving) return null;
-      const goals = b.doors.find((each) => each.id === 'raid-arena').tiles;
+  /** A step's worth of the way to some tiles, as a key, over the scene's own collision. */
+  const keyTowards = (goals) =>
+    page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); if (!b.sys.isActive() || !b.ready || b.leaving) return null;
+      const goals = ${JSON.stringify(goals)} ?? b.doors.find((each) => each.id === 'raid-arena').tiles;
       const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
       const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
+      if (at(s.x, s.y)) return 'there';
       const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
       while (queue.length) { const [x, y] = queue.shift(); if (at(x, y)) { found = [x, y]; break; }
         for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
@@ -105,138 +92,191 @@ try {
       if (!found) return null; let cur = found, key = null;
       for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; }
       return key; })()`);
-    if (key) await press(key);
+
+  // To the Arena's door, and past the trailer.
+  const inHall = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.room?.id === 'raid-arena'; })()`;
+  for (let guard = 0; guard < 80 && !(await page.evaluate(inHall)); guard += 1) {
+    if (await page.evaluate(sceneIs('arenaIntro'))) {
+      await step(700);
+      await press('Escape');
+      await step(400);
+      continue;
+    }
+    const key = await keyTowards(null);
+    if (key && key !== 'there') await press(key);
     await step(200);
   }
   await until(inHall, 'the great hall');
   await step(500);
-  await page.screenshot(`${out}/1-arrival.png`);
+  await shot('1-arrival');
 
-  // Nobody speaks on arrival: no first words, no dialogue box.
+  // Nobody speaks on arrival, and the marshal wants a word.
   expect('no box from anybody on arriving', !(await base('b.dialogBox.visible')));
-  expect('no first-words box on the page', !(await page.evaluate(`Boolean(document.querySelector('[data-speech-done]'))`)));
   expect('stood on the mat', await base(`b.currentTile.x === b.room.mat.x && b.currentTile.y === b.room.mat.y`));
-  console.log(`hint: ${await base('b.hintShown')}`);
-  // A flame licks, unless the browser has been asked for stillness.
+  expect('the marshal has something to say to a newcomer', await base('Boolean(b.keeperMark)'));
+  expect('the hint on the mat says the way out', (await base('b.hintShown')) === '[DOWN] OUT');
+  expect('the key on the mat opens nothing', await (async () => {
+    await press('Space');
+    await step(300);
+    return !(await page.evaluate(sceneIs('hub'))) && !(await base('b.dialogBox.visible'));
+  })());
   const fires = () => base(`JSON.stringify(b.arena.fires.map((fire) => fire.frame))`);
   const before = await fires();
   await step(600);
   const after = await fires();
-  expect(args.includes('--still') ? 'the fires hold still' : 'the fires burn', args.includes('--still') ? before === after : before !== after);
+  expect(still ? 'the fires hold still' : 'the fires burn', still ? before === after : before !== after);
 
   /** Walks the player to a tile, a step at a time, as keys. */
-  const walkTo = async (goal, what) => {
+  const walkTo = async (goal) => {
     for (let guard = 0; guard < 240; guard += 1) {
-      const key = await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); const goal = ${JSON.stringify(goal)};
-        const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
-        if (s.x === goal.x && s.y === goal.y) return 'there';
-        const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
-        while (queue.length) { const [x, y] = queue.shift(); if (x === goal.x && y === goal.y) { found = [x, y]; break; }
-          for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
-            // Round the partner: a tap towards it is a turn to face it, not a step.
-            if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || b.isBlocked({ x: nx, y: ny }) || b.partnerAt({ x: nx, y: ny })) continue;
-            prev.set(id(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
-        if (!found) return b.partnerAt(goal) ? 'partner' : null;
-        let cur = found, key = null;
-        for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; }
-        return key; })()`);
+      const key = await keyTowards([goal]);
       if (key === 'there') return true;
-      if (key === 'partner') {
-        // The partner stands on it. A stop on the ring is near enough; the mat
-        // has to be stood on, so walk on up the runner, it follows, and come back.
-        if (goal.y < 62) return true;
-        await walkTo({ x: goal.x, y: goal.y - 3 }, `${what}, clearing it`);
-        continue;
-      }
       if (key === null) {
-        expect(`${what}: can be walked to`, false);
-        return false;
+        await step(100);
+        continue;
       }
       await page.tap(key, 0);
       await step(170);
-      // One step at a time: a tap made mid-step is kept, and a second one down
-      // onto the mat would be a step off it.
       for (let settling = 0; settling < 6 && (await base('Boolean(b.targetTile)')); settling += 1) {
         await step(100);
       }
     }
-    expect(`${what}: got there (stuck at ${await base('JSON.stringify([b.currentTile, b.facing, b.partner?.tile, b.dialogBox.visible, b.leaving])')}, heading for ${JSON.stringify(goal)})`, false);
+    expect(`got to ${JSON.stringify(goal)}`, false);
     return false;
   };
+  const face = async (code) => {
+    await press(code);
+    await step(120);
+  };
+  const front = (id, along = 0) => base(`(() => { const t = b.arenaStations.find((each) => each.id === ${JSON.stringify(id)}).tiles[${along}]; return { x: t.x, y: t.y + 1 }; })()`);
 
-  // Up the runner to the fence, and look over it.
-  const mat = await base('({ ...b.room.mat })');
-  const fenceFront = await base(`(() => { let y = b.currentTile.y; while (!b.isBlocked({ x: b.currentTile.x, y: y - 1 })) y -= 1; return { x: b.currentTile.x, y }; })()`);
-  await walkTo(fenceFront, 'the fence');
-  await press('ArrowUp');
-  await step(300);
-  await page.screenshot(`${out}/2-south-fence.png`);
-  console.log(`hint: ${await base('b.hintShown')}`);
-  expect('the fence says it can be looked over', (await base('b.hintShown')) === '[SPACE] LOOK DOWN');
+  // The marshal: a newcomer's words, once, and no screen.
+  const keeper = await base('({ ...b.room.keeper.position })');
+  await walkTo({ x: keeper.x + 1, y: keeper.y });
+  await face('ArrowLeft');
+  expect('the hint names her', (await base('b.hintShown')) === '[SPACE] THE MARSHAL');
   await press('Space');
   await step(900);
-  expect('looking over it says what is there', await base('b.dialogBox.visible'));
-  await page.screenshot(`${out}/3-looking-down.png`);
-  for (let guard = 0; guard < 6 && (await base('b.dialogBox.visible')); guard += 1) {
-    await press('Space');
-    await step(600);
-  }
-
-  if (tour) {
-    // Stops at the fence round the ring, found by walking out from the pit's
-    // middle to the first tile that can be stood on, and on along the platform.
-    const stop = (dx, dy, on = 0) =>
-      base(`(() => { let x = 32, y = 33; while (b.isBlocked({ x, y })) { x += ${dx}; y += ${dy}; } return { x: x + ${dx} * ${on}, y: y + ${dy} * ${on} }; })()`);
-    for (const [name, dx, dy, on, facing] of [
-      ['4-east-fence', 1, 0, 0, 'ArrowLeft'],
-      ['5-north-east', 1, -1, 2, null],
-      ['6-north-fence', 0, -1, 0, 'ArrowDown'],
-      ['7-north-wall', 0, -1, 4, null],
-      ['8-west-fence', -1, 0, 0, 'ArrowRight'],
-      ['8b-south-east', 1, 1, 1, null],
-    ]) {
-      if (await walkTo(await stop(dx, dy, on), name)) {
-        if (facing) await press(facing);
-        await step(500);
-        await page.screenshot(`${out}/${name}.png`);
-        if (facing) console.log(`${name}: ${await base('b.hintShown')}`);
-      }
-    }
-    await walkTo(mat, 'the mat again');
-  } else {
-    await walkTo(mat, 'the mat again');
-  }
-  await step(300);
-
-  // One key from the mat: the marshal's words, once, then the loadout.
-  await press('Space');
-  await step(900);
-  expect('the marshal tells a newcomer what is next', await base('b.dialogBox.visible'));
-  await page.screenshot(`${out}/9-marshal.png`);
-  for (let guard = 0; guard < 12 && !(await page.evaluate(sceneIs('hub'))); guard += 1) {
+  expect('she tells a newcomer what the room is', await base('b.dialogBox.visible'));
+  await shot('2-marshal');
+  for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
     await press('Space');
     await step(500);
   }
-  await until(sceneIs('hub'), 'the loadout');
-  await step(800);
-  await page.screenshot(`${out}/10-loadout.png`);
-  expect('the loadout opens with nothing said over it', !(await page.evaluate(`Boolean(document.querySelector('[data-speech-done]'))`)));
-  expect('it is the raid loadout', (await page.evaluate(`(() => { const h = ${GAME}.scene.getScene('hub'); return h.view + ':' + h.flow.step; })()`)) === 'deploy:loadout');
-  await press('Escape');
-  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready; })()`, 'back in the hall');
-  await step(500);
-  expect('backing out is back on the hall mat', await base(`b.room?.id === 'raid-arena' && b.currentTile.x === b.room.mat.x && b.currentTile.y === b.room.mat.y`));
+  expect('and opens no screen', !(await page.evaluate(sceneIs('hub'))));
+  expect('and the mark comes down', !(await base('Boolean(b.keeperMark)')));
+
+  // The three panels, each opened where it stands, each backing out to the same tile.
+  for (const [station, along, heading, name] of [
+    ['bench', 3, 'The bench', '3-bench'],
+    ['rack', 1, 'The armoury rack', '4-rack'],
+    ['locker', 0, 'The locker', '5-locker'],
+  ]) {
+    const tile = await front(station, along);
+    await walkTo(tile);
+    await face('ArrowUp');
+    await step(200);
+    await shot(`${name}-front`);
+    await press('Space');
+    await until(sceneIs('hub'), `the ${station}`);
+    await step(600);
+    await shot(name);
+    expect(`the ${station} opens over the room`, (await hub('h.view')) === station && (await page.evaluate(sceneIs('base'))));
+    expect(`it is headed ${heading}`, (await page.evaluate(`document.querySelector('.px-title h1')?.textContent`)) === heading);
+    if (station === 'rack') {
+      // A ball, for something to read on the rack from across the room.
+      await page.evaluate(`document.querySelector('button[data-count-kind="item"][data-count-id="poke-ball"][data-count-dir="1"]')?.click()`);
+      await step(300);
+    }
+    await press('Escape');
+    await step(400);
+    expect(`backing out of the ${station} stands the player where they were`, await base(`b.currentTile.x === ${tile.x} && b.currentTile.y === ${tile.y} && !b.arenaPanel`));
+  }
+
+  // To the rim, up the runner.
+  const mat = await base('({ ...b.room.mat })');
+  await walkTo({ x: mat.x, y: 56 });
+  await face('ArrowUp');
+  await step(300);
+  await shot('6-rim');
+  const hint = await base('b.hintShown');
+  expect(`the rim says where it is over (${hint})`, hint.startsWith('[SPACE] JUMP IN AT '));
+
+  if (args.includes('--tour')) {
+    for (const [name, x, y] of [['east', 53, 33], ['north', 32, 9], ['west', 12, 33]]) {
+      const nearest = await base(`(() => { let best = null, away = 1e9; for (const t of b.arenaRim) { const d = Math.abs(t.x - ${x}) + Math.abs(t.y - ${y}); if (d < away) { away = d; best = t; } } return best; })()`);
+      await walkTo(nearest);
+      await step(300);
+      await shot(`6-rim-${name}`);
+      console.log(`${name}: ${await base('b.hintShown')}`);
+    }
+    await walkTo({ x: mat.x, y: 56 });
+  }
+
+  // Looking down, with the marshal's words the first time.
   await press('Space');
-  await step(600);
-  expect('the words are said once: the loadout opens at once', await page.evaluate(sceneIs('hub')));
-  await until(sceneIs('hub'), 'the loadout again');
-  await press('Escape');
-  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready; })()`, 'the hall again');
+  await until(sceneIs('hub'), 'the rim');
+  await step(900);
+  expect('the rim says what it is, once', await page.evaluate(`Boolean(document.querySelector('[data-speech-done]'))`));
+  await shot('7-rim-words');
+  await page.evaluate(`document.querySelector('[data-speech-done]').click()`);
   await step(400);
-  await press('ArrowDown');
-  await step(600);
-  expect('down off the mat is the yard, on the Arena step', await base(`b.room === null && b.currentTile.x === b.doors.find((d) => d.id === 'raid-arena').returnTo.x`));
-  await page.screenshot(`${out}/11-out.png`);
+  await shot('8-looking-down');
+  expect('it is looking the plan over', (await hub('h.flow.step')) === 'confirm');
+  expect('the cursor is on the jump', await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`));
+  await press('Escape');
+  await step(500);
+  expect('NOT YET is back on the rim', await base(`b.currentTile.x === ${mat.x} && b.currentTile.y === 56 && !b.arenaPanel`));
+  await press('Space');
+  await until(sceneIs('hub'), 'the rim again');
+  await step(500);
+
+  // Over the fence.
+  await press('Enter');
+  if (still) {
+    await until(sceneIs('world'), 'the raid');
+    expect('with reduced motion it is a plain fade into the raid', !(await page.evaluate(`Boolean(${GAME}.scene.getScene('world').arrival)`)));
+  } else {
+    for (let frame = 0; frame < 60 && (await page.evaluate(`!(${sceneIs('world')})`)); frame += 1) {
+      await step(200);
+      if (frame % 2 === 0) await shot(`9-jump-${String(frame).padStart(2, '0')}`);
+    }
+    for (let frame = 0; frame < 30 && (await page.evaluate(`Boolean(${GAME}.scene.getScene('world').arrival)`)); frame += 1) {
+      await shot(`10-landing-${frame}`);
+      await step(160);
+    }
+  }
+  await step(300);
+  await shot('11-landed');
+  expect('and lands on the way in', await page.evaluate(sceneIs('world')));
+
+  // Home again: back on the rim, with the cloud lifting off what the raid walked.
+  for (let guard = 0; guard < 4 && (await page.evaluate(`${GAME}.scene.getScene('world').dialogBox.visible`)); guard += 1) {
+    await press('Space');
+    await step(400);
+  }
+  await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const s = w.currentTile;
+    for (const [dx, dy] of [[12, 0], [24, 6], [34, 14], [40, 26], [46, 34]]) { w.currentTile = { x: s.x + dx, y: s.y + dy }; w.surveyGround(); }
+    w.currentTile = s;
+    const way = w.runSession.plan.extractionPoints[0]; w.extractThrough(way); })()`);
+  await step(800);
+  await until(sceneIs('extraction'), 'the result screen');
+  await step(1500);
+  await press('Enter');
+  await until(sceneIs('base'), 'home');
+  expect('home is the hall, on the rim it left from', await base(`b.room?.id === 'raid-arena' && b.currentTile.x === ${mat.x} && b.currentTile.y === 56`));
+  if (!still) {
+    expect('the cloud lifts off what the raid walked', await base('Boolean(b.fogLift)'));
+    await step(900);
+    await shot('12-fog-lifting');
+    await step(1100);
+    await shot('13-fog-lifted');
+  }
+  for (let guard = 0; guard < 40 && (await base('Boolean(b.fogLift)')); guard += 1) {
+    await step(200);
+  }
+  await step(300);
+  await shot('14-home');
 } finally {
   await browser.close();
 }
