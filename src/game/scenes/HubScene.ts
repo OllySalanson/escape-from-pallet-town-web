@@ -2700,7 +2700,7 @@ export class HubScene extends Phaser.Scene {
   private rackView(): string {
     const supplyRows = this.stashItems
       .filter((item) => !isFoundOnly(item.id))
-      .map((item) => {
+      .map((item, index) => {
         const packed = this.flow.itemQuantity(item.id as ItemId);
         const held = this.stash.itemCount(item.id);
         const footprint = footprintOf(item.id);
@@ -2736,7 +2736,7 @@ export class HubScene extends Phaser.Scene {
         const facts = [size, `${held} at base`, ...(prepacked ? ['packed for you'] : [])]
           .map((fact) => fact.replace(/ /g, '&nbsp;'))
           .join(' · ');
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${facts}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${facts}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason, cursorStart: index === 0 })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;
@@ -2761,7 +2761,8 @@ export class HubScene extends Phaser.Scene {
       lines: [
         `<small class="px-wrap${warning ? ' px-warning' : ''}">${warning || `${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed. Lost on a wipe unless they are in the locker, and the ${this.flow.packName} goes either way.`}</small>`,
       ],
-      actions: `<button class="px-window px-button is-primary" data-back data-cursor-start data-help="Back to the hall.">Done</button>`,
+      // The cursor starts on what the rack is for, never on the way out.
+      actions: `<button class="px-window px-button is-primary" data-back${firstCount < 0 ? ' data-cursor-start' : ''} data-help="Back to the hall.">Done</button>`,
     })}</main>`;
   }
 
@@ -3299,7 +3300,7 @@ export class HubScene extends Phaser.Scene {
         // The price is on the row whether or not it is paid: a secured Pokemon
         // still says what it is taking, because the next question the screen is
         // asked is what would fit if it came out.
-        return `<button class="px-row${secured ? ' is-secured' : ''}" data-secure-pokemon="${stored.id}" data-shows="${stored.id}" data-help="${escapeAttribute(help)}">${this.pokemonRowBody(stored, `${pixelTag(squares.toUpperCase(), 'plain')}${secured ? pixelTag('', 'secure', true) : ''}`)}</button>`;
+        return `<button class="px-row${secured ? ' is-secured' : ''}" data-secure-pokemon="${stored.id}" data-shows="${stored.id}" data-help="${escapeAttribute(help)}">${this.pokemonRowBody(stored, secured ? pixelTag(squares.toUpperCase(), 'secure', true) : pixelTag(squares.toUpperCase(), 'plain'))}</button>`;
       })
       .join('');
     // One stepper a kind, exactly as the loadout packs: the container is squares

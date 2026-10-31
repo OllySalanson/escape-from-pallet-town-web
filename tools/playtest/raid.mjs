@@ -816,7 +816,7 @@ try {
     // And home, which is where a second raid starts from: a raid puts the
     // player down on the base's own quay, so `base` is the scene and Oak's Lab
     // is a walk away.
-    await click('Back to the harbour');
+    await click('Back to the Arena');
     await until(sceneIs('base'), 'the base');
     await wait(400);
     note(`home at ${await page.evaluate(`JSON.stringify(${GAME}.scene.getScene('base').currentTile)`)}`);

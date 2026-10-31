@@ -4,9 +4,9 @@
 //
 // A new game walks into the Arena's door, and the trailer plays unasked
 // (`scenes/ArenaIntroScene.ts`); every beat is photographed at the moment
-// named below, then a key on the closing card has to land on the loadout.
+// named below, then a key on the closing card has to land in the great hall.
 // Backing out and walking in again, it has to play again with SKIP on screen,
-// and one key has to skip it to the loadout. The loop is paused and stepped at
+// and one key has to skip it to the hall. The loop is paused and stepped at
 // 60fps frames throughout, so the pictures are of exact moments - use a
 // test-mode build (`?testmode=pixels` for a picture worth judging;
 // `tools/playtest/README.md`, "Memory"). `--live` leaves the loop running and
@@ -55,7 +55,7 @@ const BEATS = [
   ['19-extracted', 38700],
   ['20-host', 44000],
   ['21-ready', 48000],
-  ['22-loadout', 49700],
+  ['22-closing-card', 49700],
 ];
 const SHOTS = every
   ? Array.from({ length: Math.floor((Number(every[2]) - Number(every[1])) / Number(every[3])) + 1 }, (_shot, index) => {
@@ -148,18 +148,14 @@ try {
   await step(4000);
   expect('and still waits, with nothing pressed', await page.evaluate(sceneIs('arenaIntro')));
   await press('Space');
-  await until(sceneIs('hub'), 'the loadout');
+  const onTheMat = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.room?.id === 'raid-arena' && b.currentTile.x === b.room.mat.x && b.currentTile.y === b.room.mat.y; })()`;
+  await until(onTheMat, 'the great hall');
   await step(400);
-  const view = await page.evaluate(`(() => { const h = ${GAME}.scene.getScene('hub'); return h.view + ':' + h.flow?.step; })()`);
-  expect(`a key on the card lands on the loadout (${view})`, view === 'deploy:loadout');
+  expect('a key on the card lands on the mat of the great hall', await page.evaluate(onTheMat));
 
-  // Back out, and in again: it plays with SKIP, and a key skips it. The
-  // loadout's first words are up the first time, and Escape puts them down first.
-  for (let guard = 0; guard < 6 && !(await page.evaluate(sceneIs('base'))); guard += 1) {
-    await press('Escape');
-    await step(400);
-  }
-  await until(sceneIs('base'), 'back in the harbour');
+  // Out of the door, and in again: it plays with SKIP, and a key skips it.
+  await press('ArrowDown');
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && !b.room; })()`, 'back in the harbour');
   await step(800);
   await walkIntoBase(page, 'raid-arena', {
     press: async (code) => {
@@ -177,11 +173,10 @@ try {
   await step(2400);
   await page.screenshot(`${out}/23-again-skip.png`);
   await press('KeyZ');
-  await until(sceneIs('hub'), 'the loadout, skipped to');
+  await until(onTheMat, 'the great hall, skipped to');
   await step(400);
-  const skipped = await page.evaluate(`(() => { const h = ${GAME}.scene.getScene('hub'); return h.view + ':' + h.flow?.step; })()`);
-  expect(`a key skips it to the loadout (${skipped})`, skipped === 'deploy:loadout');
-  await page.screenshot(`${out}/24-skipped-to-loadout.png`);
+  expect('a key skips it to the mat of the great hall', await page.evaluate(onTheMat));
+  await page.screenshot(`${out}/24-skipped-to-hall.png`);
 } finally {
   await browser.close();
 }

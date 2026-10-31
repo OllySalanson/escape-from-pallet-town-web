@@ -1585,6 +1585,26 @@ describe('what the base screen leads with', () => {
     expect(rim.slice(0, rim.indexOf('confirm-bar'))).not.toContain('data-start');
   });
 
+  it('opens the rack on its supplies, not on the way out', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('rack');
+    const starts = markupOf(hub).match(/<button[^>]*data-cursor-start[^>]*>/g) ?? [];
+    expect(starts).toHaveLength(1);
+    expect(starts[0]).toContain('data-count-dir="1"');
+  });
+
+  it('prices a Pokemon in the locker with one tag, ticked once it is secured', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('locker');
+    const row = /<button class="px-row is-secured"[^]*?<\/button>/.exec(markupOf(hub))?.[0] ?? '';
+    // A third child of the row's two columns stood its tick on a line of its own.
+    expect(row.match(/class="px-tag /g)).toHaveLength(1);
+    expect(row).toContain('px-tag-secure has-tick');
+    expect(row).toContain('4 SQUARES');
+  });
+
   it('says on the bench who is coming, and on the rack what is packed', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');

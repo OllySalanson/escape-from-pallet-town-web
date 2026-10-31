@@ -125,19 +125,18 @@ export function applyHunterThreat(tuning: HunterTuning, threat: HunterThreat): H
 export function hunterThreatLine(threat: HunterThreat): { readonly heading: string; readonly detail: string } {
   const { openingTeam, matchedTo, contractTiers } = threat;
   const lead = openingTeam[0];
-  const count = `${openingTeam.length} Pokémon to your ${openingTeam.length}`;
+  // With nobody on the bench yet there is no count to give: the hunter fields one for each of yours.
+  const count = matchedTo ? `${openingTeam.length} Pokémon to your ${openingTeam.length}` : 'one Pokémon for each of yours';
   const against = matchedTo && lead
     ? lead.level < matchedTo.level
       ? `lead Lv ${lead.level} to your Lv ${matchedTo.level} ${matchedTo.name}`
       : `lead Lv ${lead.level}, level with your ${matchedTo.name}`
-    : lead
-      ? `lead Lv ${lead.level}`
-      : '';
+    : '';
   const contract = contractTiers > 0
     ? `, +${contractTiers} contract, ${Math.round(threat.arrivesSoonerMs / 1_000)}s sooner`
     : '';
   return {
     heading: `Hunter: ${hunterRival(threat.rival).name}`,
-    detail: `${count} · ${against}${contract}`,
+    detail: `${[count, against].filter(Boolean).join(' · ')}${contract}`,
   };
 }

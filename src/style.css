@@ -2572,7 +2572,9 @@ button {
    on the left, the container on the right, cut to the pack's own width - six
    squares of sixteen pixels and its own frame. */
 :where(.pixel-ui) .loadout-layout {
-  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 112);
+  /* Wide enough for the biggest pack's six squares beside the pane's scrollbar,
+     and for a pack's name on one line with WEAR after it. */
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 132);
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -2622,6 +2624,12 @@ button {
 }
 :where(.pixel-ui) .secure-layout {
   grid-template-rows: minmax(0, 1fr) auto;
+}
+/* The locker's list is about squares and its column is narrow: a bar beside a
+   short name and under a long one made rows of two heights, and the health is
+   on the line below in figures anyway. */
+:where(.pixel-ui) .secure-group .px-row-line > .px-hp {
+  display: none;
 }
 
 /* --- Choosing a starter: first run, and the lobby's swap ----------------- */
