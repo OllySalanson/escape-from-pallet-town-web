@@ -17,7 +17,8 @@
  */
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
-import { startDistrict } from '../../worldPlan';
+import { planLimits, startDistrict } from '../../worldPlan';
+import { withInside } from './insides';
 import { GREYSTONE_VALE } from './plan';
 
 /**
@@ -79,15 +80,28 @@ export function safariMarsh(): MapcraftResult {
   p.building('bench', 31, 31, { lot: '.' });
   p.bushes([27, 32], [30, 33]); // shrubs in the rest house's yard
 
+  // -- The gate's forecourt, the third ring out from Mill Square: the only part of the
+  // reserve with a queue. The ticket hut, the family that came for the day, and the
+  // Warden's boards telling you what you are about to be told.
+  p.building('hut', 11, 34);
+  p.building('produce', 2, 43);
+  p.building('bench', 7, 44);
+  p.flowers([2, 42], [13, 44], [6, 46]);
+
   const file = districtFile(GREYSTONE_VALE, 'safari-marsh', p, {
     // The power station's far side is past the hunter's blind window from
     // every other way out now its stand-in into the marsh is gone
     // (`hunterFlee.test.ts`): the wardens' stile by the north road covers it.
     exits: [{ x: 29, y: 4, name: "Wardens' Stile", opens: { when: 'always' } }],
     dropIns: [{ x: 30, y: 32, name: 'Rest House', description: "The rest house in the middle of the reserve, the dry ground a raid stops at." }],
-    itemSpots: [{ x: 26, y: 56, hidden: true }, { x: 50, y: 24 }, { x: 8, y: 44 }],
+    itemSpots: [{ x: 26, y: 56, hidden: true }, { x: 50, y: 24 }, { x: 11, y: 44 }],
     extra: {
-      signs: [{ x: 13, y: 38, lines: ['SAFARI MARSH', "A warden's reserve. Keep to the paths; the reeds are full."] }],
+      districts: [{ name: 'THE SAFARI GATE', x: 2, y: 34, width: 12, height: 14, wildlife: 'safari' }],
+      signs: [
+        { x: 13, y: 38, lines: ['SAFARI MARSH', "A warden's reserve. Keep to the paths; the reeds are full."] },
+        { x: 13, y: 42, lines: ['TICKETS', 'Free. There used to be a charge. There used to be a lot of things.'] },
+        { x: 26, y: 33, lines: ['REST HOUSE', 'Tea. Dry socks. No catching on the furniture.'] },
+      ],
       // The reserve's own, standing where its paths go past them, as the
       // Safari Zone's rarest are met: a Kangaskhan in the middle glade, a
       // Chansey by the south pond, a Pinsir in the east beds, Nidoran and
@@ -98,6 +112,9 @@ export function safariMarsh(): MapcraftResult {
         { x: 31, y: 47, species: 'pinsir', level: 14 },
         { x: 18, y: 22, species: 'nidorino', level: 13 },
         { x: 18, y: 57, species: 'nidoran-f', level: 10 },
+        { x: 4, y: 46, species: 'rattata', beat: { everyMs: 1400, roam: [[1, 0]] } },
+        { x: 12, y: 43, species: 'venonat', level: 11 },
+        { x: 33, y: 34, species: 'doduo', beat: { everyMs: 1500, roam: [[1, 0]] } },
       ],
       people: [
         {
@@ -107,7 +124,13 @@ export function safariMarsh(): MapcraftResult {
           look: 'gentleman',
           facing: 'left',
           lines: ['Welcome to the reserve.', 'Pokemon live in these reeds that you will not find anywhere else in the vale.'],
+          beat: { everyMs: 3500, glances: ['left', 'right'] },
+          calls: ['Keep to the paths!'],
         },
+        { x: 10, y: 37, name: 'Ticket Man', look: 'clerk', facing: 'down', lines: ['One ticket, free of charge. Do not lose it. There is no way of checking it, but do not lose it.', 'The real gate? That was the real gate. It is just mostly a hut now.'], beat: { everyMs: 3000, glances: ['down', 'right'] }, calls: ['Tickets! Free tickets!'] },
+        { x: 2, y: 45, name: 'Day Tripper', look: 'woman', facing: 'right', lines: ['We came all the way from Millbrook to see something rare.', 'We have seen a Rattata. Tom thinks it is a very rare Rattata.'], beat: { everyMs: 2900, glances: ['right', 'up'] }, calls: ['Tom! Do not feed that!'] },
+        { x: 6, y: 42, name: 'Tom', look: 'little-boy', facing: 'down', lines: ['That Rattata is very rare. I can tell. It looked at me.'], beat: { everyMs: 1700, glances: ['down', 'left'] }, calls: ['It looked at me!'] },
+        { x: 32, y: 33, name: 'Reserve Warden', look: 'camper', facing: 'left', lines: ['The rest house is the only dry ground for a good way. We lose the odd visitor between huts.', 'The Kangaskhan by the east pond has been told not to. It is very firm about it.'], beat: { everyMs: 3300, glances: ['left', 'down'] }, calls: ['Dry socks inside.'] },
       ],
       trainers: [
         {
@@ -123,5 +146,12 @@ export function safariMarsh(): MapcraftResult {
       ],
     },
   });
-  return { file, notes: p.notes };
+  return {
+    file: withInside(file, 'safari', 'warden-house', 27, 26, 'The Rest House', [
+      { x: 4, y: 2, name: 'Warden’s Wife', look: 'woman', facing: 'down', lines: ['Tea? Everybody comes in here wet and tells me about the one that got away.', 'Nobody has ever told me about one that stayed.'] },
+      { x: 7, y: 7, name: 'Wet Birder', look: 'cameraman', facing: 'left', lines: ['Three weeks I have been here, and I have a very good picture of some reeds.'] },
+    ]),
+    notes: p.notes,
+    limits: planLimits(GREYSTONE_VALE),
+  };
 }

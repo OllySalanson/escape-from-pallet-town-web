@@ -223,18 +223,18 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxBytes: 1_000_000,
   maxDropIns: 16,
   maxExits: 32,
-  maxBuildings: 640,
-  maxItemSpots: 160,
+  maxBuildings: 1024,
+  maxItemSpots: 200,
   maxPrizes: 8,
   // Room for the vale to be filled a ring at a time out from Mill Square: it
   // was the thinnest map in the game, and bigger has to mean more places.
-  maxPeople: 256,
-  maxSigns: 160,
+  maxPeople: 384,
+  maxSigns: 256,
   maxLandmarks: 64,
-  maxDistricts: 128,
+  maxDistricts: 160,
   // The vale's caves, hills and far places are where its Pokemon stand to be
   // met: a roost, a herd, the Sleeper (`caveLife.ts`), the safari's rarest.
-  maxPokemon: 256,
+  maxPokemon: 384,
   maxBerryTrees: 96,
   maxTrainers: 48,
   maxAreas: 64,

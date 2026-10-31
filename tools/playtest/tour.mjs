@@ -22,14 +22,17 @@
 // it. Both go the way a player does - see deploy.mjs - so the doors are open
 // because the raid was built with them open.
 //
+// --port=N drives a browser already running, as raid.mjs --attach does.
+//
 // A stop that is not ground (a roof, a trainer's own tile) is moved to the
 // nearest tile that is, and the log says where.
-import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
+import { attachBrowser, launchBrowser, PIXEL_WINDOW } from './browser.mjs';
 import { GAME, deploy, deployOptions } from './deploy.mjs';
 const args = process.argv.slice(2);
 const [base, outDir, ...stops] = args.filter((a) => !a.startsWith('--'));
 const url = new URL(base); url.searchParams.set('testmode', 'pixels');
-const browser = await launchBrowser({ window: PIXEL_WINDOW });
+const port = args.find((a) => a.startsWith('--port='))?.slice('--port='.length);
+const browser = port ? attachBrowser(Number(port), { window: PIXEL_WINDOW }) : await launchBrowser({ window: PIXEL_WINDOW });
 try {
   const page = await browser.openPage('about:blank');
   await page.send('Page.navigate', { url: url.href });

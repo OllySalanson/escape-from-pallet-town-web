@@ -23,9 +23,11 @@ describe("Greystone Vale's woods and caves", () => {
   it('carries the five cave floors and every ladder in Tanglewood, with the wood mouth', () => {
     const cave = greystoneCaves();
     const file = tanglewood().file;
-    expect(file.areas?.map((area) => area.id)).toEqual(cave.areas.map((area) => area.id));
+    // The floors, then the wood's own doors (Mislaid's pub and the rest).
+    expect(file.areas?.slice(0, cave.areas.length).map((area) => area.id)).toEqual(cave.areas.map((area) => area.id));
     expect(cave.areas).toHaveLength(5);
-    expect(file.links).toHaveLength(caveLadders(cave).length + 1);
+    const roofs = (file.areas?.length ?? 0) - cave.areas.length;
+    expect(file.links).toHaveLength(caveLadders(cave).length + 1 + roofs);
     expect(file.buildings.filter((building) => building.kind === 'cave-mouth')).toHaveLength(1);
   });
 

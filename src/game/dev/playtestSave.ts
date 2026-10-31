@@ -15,7 +15,7 @@ import type { PokemonBase } from '../pokemon/PokemonBase';
 import { runInsertions } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, type RaidProgress, type SaveGameState } from '../save/SaveManager';
 import { Stash } from '../stash/Stash';
-import { gateKey, WORLD_GATES } from '../world/gates';
+import { gateKey, gatesForMap } from '../world/gates';
 import { encodeSurvey, type SurveyRecord } from '../world/survey';
 import { getWorldMap, worldMapIds } from '../worldMap';
 import { FIRST_WORDS_IDS } from '../hub/firstWords';
@@ -95,7 +95,8 @@ export function playtestRaidProgress(): RaidProgress {
     reachedInsertions: runInsertions().map((insertion) => insertion.id),
     // Doors, not wins: see the note at the top of this file.
     defeatedBosses: [],
-    openedGates: [...new Set(WORLD_GATES.map((gate) => gateKey(gate)))],
+    // Asked per map: `WORLD_GATES` does not list the doors of a map drawn as a file.
+    openedGates: [...new Set(worldMapIds().flatMap((id) => gatesForMap(id)).map((gate) => gateKey(gate)))],
     battleLessonGiven: true,
     // Somebody exploring the maps is not a newcomer to the game: nobody speaks
     // first words on this save, and the HUDs teach no keys.
