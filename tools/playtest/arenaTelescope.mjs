@@ -1,7 +1,7 @@
 // Walks THE RAID ARENA's wide east and west floors watching the camera, then plays
 // a brass telescope as a player does, by keys and by mouse.
 //
-//   node tools/playtest/arenaTelescope.mjs <dev-url> <out-dir> [--window=1200x768] [--port=N] [--new] [--still]
+//   node tools/playtest/arenaTelescope.mjs <dev-url> <out-dir> [--window=1200x768] [--port=N] [--new] [--still] [--clock=day|dusk|night]
 //
 // `--new` plays a save that has walked nothing, with the one way in a new game has;
 // otherwise the save holds every way in on the vale, some walked ground and a few
@@ -37,6 +37,12 @@ try {
   const page = await browser.openPage('about:blank');
   if (still) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  }
+  // The player's own clock, by the time zone that makes it that hour now.
+  if (option('clock')) {
+    const wanted = { night: 23, dusk: 19, day: 12 }[option('clock')];
+    const shift = ((wanted - new Date().getUTCHours() + 36) % 24) - 12;
+    await page.send('Emulation.setTimezoneOverride', { timezoneId: `Etc/GMT${shift >= 0 ? '-' : '+'}${Math.abs(shift)}` });
   }
   await page.send('Page.navigate', { url: address });
   await page.waitFor(sceneIs('title'), { what: 'the title', timeoutMs: 90000 });
@@ -212,7 +218,16 @@ try {
   };
   const state = () =>
     base(`(() => { const t = b.telescope; if (!t) return null; const r = t.rules;
-      return { open: t.isOpen, zoom: r.zoom, level: r.level, canPan: r.canPan, rect: r.mapRect(), way: t.wayIn?.id ?? null, wings: t.wingsCrossing }; })()`);
+      return { open: t.isOpen, zoom: r.zoom, level: r.level, canPan: r.canPan, rect: r.mapRect(), cursor: r.cursor, way: t.wayIn?.id ?? null, wings: t.wingsCrossing, card: t.cardShown, bar: t.barEnds }; })()`);
+  const size = await base('({ width: b.scale.width, height: b.scale.height })');
+  const wholeCard = (seen) =>
+    !seen.card || (seen.card.x >= 0 && seen.card.y >= 0 && seen.card.x + seen.card.width <= size.width && seen.card.y + seen.card.height <= size.height - 16);
+  const held = async (key, ms) => {
+    await page.keyDown(key);
+    await step(ms);
+    await page.keyUp(key);
+    await step(100);
+  };
   await walk({ x: east.x + 1, y: east.y });
   await step(400);
   await shot('at-the-telescope');
@@ -224,18 +239,42 @@ try {
   await step(200);
   await shot('whole-vale');
   const whole = await state();
-  const size = await base('({ width: b.scale.width, height: b.scale.height })');
-  expect('it opens on the whole map, all of it on the screen', whole.level === 0 && whole.rect.left >= 0 && whole.rect.right <= size.width && whole.rect.top >= 0 && whole.rect.bottom <= size.height - 18);
-  expect('with nothing to pan to yet', !whole.canPan);
+  expect('it opens on the whole map, all of it on the screen', whole.level === 0 && whole.rect.left >= 0 && whole.rect.right <= size.width && whole.rect.top >= 0 && whole.rect.bottom <= size.height - 16);
+  expect('the cursor starts on the way in they are stood over, saying what it is', whole.way !== null && whole.card?.title.length > 0 && wholeCard(whole));
+  expect('none of the keys along the foot is cut off', whole.bar <= size.width - 4);
+  // The foot of the screen is the keys and the rest of it is map: nothing black beside it.
+  const pictureBlack = await blackShare('whole-vale-black');
+  expect(`the map fills the screen: no black bars (${(pictureBlack * 100).toFixed(2)}%)`, pictureBlack < 0.002);
   if (still) {
     await step(3000);
     expect('nothing crosses it with reduced motion', !(await state()).wings);
   } else {
-    for (let guard = 0; guard < 80 && !(await state()).wings; guard += 1) await step(200);
+    for (let guard = 0; guard < 100 && !(await state()).wings; guard += 1) await step(200);
     // It comes out from behind the frame a few seconds into a crossing.
     await step(7000);
     expect('the wings cross it', (await state()).wings);
     await shot('whole-vale-wings');
+  }
+
+  // The keys: from the first press something moves, on the whole map as closer up.
+  const landings = await base(`b.arena.share.landings.length`);
+  const before = await state();
+  await held('ArrowUp', 400);
+  const moved = await state();
+  expect('an arrow moves the cursor on the whole map', moved.cursor.y < before.cursor.y);
+  expect('with the map holding still', moved.rect.top === before.rect.top);
+  expect('and off the way in the card goes or names the ground', moved.way === null && wholeCard(moved));
+  await shot('cursor-off-a-way-in');
+  await page.tap('Enter', 0);
+  await step(200);
+  const refused = await state();
+  expect('ENTER out over the country says there is no way in here', refused.card?.title === 'NO WAY IN HERE' && refused.open);
+  await shot('no-way-in-here');
+  await step(1300);
+  for (const [key, axis, sign] of [['KeyD', 'x', 1], ['KeyA', 'x', -1], ['KeyS', 'y', 1], ['KeyW', 'y', -1]]) {
+    const from = (await state()).cursor[axis];
+    await held(key, 300);
+    expect(`${key} moves it`, Math.sign((await state()).cursor[axis] - from) === sign);
   }
 
   await press('KeyZ');
@@ -247,30 +286,14 @@ try {
   const closest = await state();
   expect('and closer again', closest.level === 2 && closest.zoom === 2);
   await shot('closest');
-  for (const [key, axis, sign] of [
-    ['KeyD', 'left', -1],
-    ['ArrowLeft', 'left', 1],
-    ['KeyS', 'top', -1],
-    ['ArrowUp', 'top', 1],
-  ]) {
-    const before = (await state()).rect[axis];
-    await page.keyDown(key);
-    await step(500);
-    await page.keyUp(key);
-    await step(400);
-    const after = (await state()).rect[axis];
-    expect(`${key} pans it`, Math.sign(after - before) === sign);
-  }
-  // Held against the edge, it stops there.
-  await page.keyDown('KeyA');
-  await step(6000);
-  await page.keyUp('KeyA');
+  await held('ArrowLeft', 9000);
   await step(400);
   const atEdge = await state();
-  expect('panning stops at the edge of the map', atEdge.rect.left === 0);
+  expect('closer up the view goes with the cursor', atEdge.rect.left > closest.rect.left || closest.rect.left === 0);
+  expect('and stops at the west edge of the map', atEdge.rect.left === 0 && atEdge.cursor.x <= 10);
   await shot('stopped-at-the-west-edge');
 
-  // By mouse: a drag pans, the wheel goes out and in.
+  // By mouse: a drag pans, the wheel goes out and in, and the pointer is the cursor.
   const canvasScale = await page.evaluate(`(() => { const c = ${GAME}.canvas.getBoundingClientRect(); const b = ${GAME}.scene.getScene('base'); return { x: c.left, y: c.top, scale: c.width / b.scale.width }; })()`);
   const mouse = (type, x, y, extra = {}) =>
     page.send('Input.dispatchMouseEvent', { type, x: canvasScale.x + x * canvasScale.scale, y: canvasScale.y + y * canvasScale.scale, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1, ...extra });
@@ -295,44 +318,57 @@ try {
   await step(300);
   const dragTo = (await state()).rect;
   expect('a drag pans it', dragTo.left < dragFrom.left && dragTo.top < dragFrom.top);
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: canvasScale.x + 200 * canvasScale.scale, y: canvasScale.y + 100 * canvasScale.scale, deltaX: 0, deltaY: 120, button: 'none' });
-  await step(700);
+  const wheel = async () => {
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: canvasScale.x + 200 * canvasScale.scale, y: canvasScale.y + 100 * canvasScale.scale, deltaX: 0, deltaY: 120, button: 'none' });
+    await step(700);
+  };
+  await wheel();
   expect('the wheel goes further out', (await state()).level === 1);
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: canvasScale.x + 200 * canvasScale.scale, y: canvasScale.y + 100 * canvasScale.scale, deltaX: 0, deltaY: 120, button: 'none' });
-  await step(700);
+  await wheel();
   const backOut = await state();
   expect('and out to the whole map', backOut.level === 0 && backOut.rect.left >= 0);
 
-  // Choosing a way in, by key and by mouse, and neither moved by panning.
-  const landings = await base(`b.arena.share.landings.length`);
+  // Way in by way in: Q and E, and the card whole beside every one at this level and closer.
+  const lightOf = (id) => base(`(() => { const t = b.telescope; const l = b.arena.share.landings.find((each) => each.id === ${JSON.stringify(id)}); return t.rules.screenOf({ x: l.tile.x + 0.5, y: l.tile.y + 0.5 }); })()`);
   if (landings > 1) {
+    const seen = new Set();
+    let tidy = true;
+    for (let turn = 0; turn < landings; turn += 1) {
+      await press('KeyE');
+      await step(300);
+      const now = await state();
+      seen.add(now.way);
+      tidy &&= wholeCard(now);
+    }
+    expect('E walks every way in, each with its card whole on the screen', seen.size === landings && tidy);
+    await shot('next-way-in');
     const first = (await state()).way;
     await press('KeyE');
-    await step(300);
-    const second = (await state()).way;
-    expect('E walks on to the next way in', second !== first);
-    await shot('next-way-in');
+    await step(200);
     await press('KeyQ');
-    await step(300);
+    await step(200);
     expect('Q walks back', (await state()).way === first);
     await press('KeyZ');
     await step(600);
-    await page.keyDown('KeyS');
-    await step(800);
-    await page.keyUp('KeyS');
-    await step(300);
-    expect('panning does not change the choice', (await state()).way === first);
-    await shot('chosen-out-of-sight');
+    for (let turn = 0; turn < landings; turn += 1) {
+      await press('KeyE');
+      await step(400);
+      expect(`closer up, the card is whole by way in ${turn}`, wholeCard(await state()));
+    }
     await press('KeyZ');
-    await step(300);
+    await step(600);
     await press('KeyZ');
     await step(700);
-    // A click on another light chooses it.
-    const other = await base(`(() => { const t = b.telescope; const l = b.arena.share.landings.find((each) => each.id !== t.wayIn.id && Math.abs(each.tile.x - 192) < 150); const at = t.rules.screenOf({ x: l.tile.x + 0.5, y: l.tile.y + 0.5 }); return { id: l.id, ...at }; })()`);
-    await click(other.x, other.y);
-    await step(300);
-    expect('a click on a light chooses it', (await state()).way === other.id);
-    await shot('clicked-a-way-in');
+    // Holding a key cannot go over a way in: it stops there.
+    const other = await base(`(() => { const t = b.telescope; const l = b.arena.share.landings.find((each) => each.id !== t.wayIn?.id); const at = t.rules.screenOf({ x: l.tile.x + 0.5, y: l.tile.y + 0.5 }); return { id: l.id, ...at }; })()`);
+    await hover(other.x + 3, other.y + 3);
+    await step(100);
+    expect('the pointer on a light is the cursor on it', (await state()).way === other.id);
+    await shot('pointing-at-a-way-in');
+    const empty = { x: 8, y: 150 };
+    await hover(empty.x, empty.y);
+    await step(100);
+    expect('and off it the card goes with it', (await state()).way === null);
   }
 
   await page.tap('Escape', 0);
@@ -348,7 +384,7 @@ try {
   await step(800);
   expect('the interact key steps back too', (await state()) === null);
 
-  // ENTER goes round to the rail and looks that way in over: there the panel says what it risks.
+  // ENTER on a way in goes round to the rail and opens the rim's card on it, and there is no list on it.
   await press('Space');
   await until(`${GAME}.scene.getScene('base').telescope?.isOpen === true`, 'the glass again');
   await step(200);
@@ -361,10 +397,49 @@ try {
       await step(300);
     }
   }
-  expect('ENTER opens the rim panel on the way in chosen', (await page.evaluate(sceneIs('hub'))) && (await base('b.kit.flow.insertionId')) === going);
+  expect('ENTER opens the rim on the way in pointed at', (await page.evaluate(sceneIs('hub'))) && (await base('b.kit.flow.insertionId')) === going);
   await step(800);
-  await shot('looked-over-from-the-glass');
+  await shot('rim-card');
+  const rimCard = await page.evaluate(`(() => {
+    const root = document.querySelector('#screens .arena-panel.is-rim');
+    const box = root.getBoundingClientRect();
+    const canvas = ${GAME}.canvas.getBoundingClientRect();
+    return {
+      top: box.top, bottom: box.bottom, windowHeight: window.innerHeight,
+      lists: root.querySelectorAll('.px-scroll, .px-list, .px-row, [data-more]').length,
+      overflow: root.scrollHeight > root.clientHeight + 1,
+      pitLeft: box.top - canvas.top,
+      focused: document.activeElement?.hasAttribute('data-start') === true,
+    };
+  })()`);
+  expect('the rim is one card: no list and nothing to scroll', rimCard.lists === 0 && !rimCard.overflow);
+  expect('whole on the screen, with the pit above it', rimCard.bottom <= rimCard.windowHeight && rimCard.pitLeft > 80);
+  expect('and the cursor on JUMP IN, for the second press', rimCard.focused);
   expect('with the player round at the rail', await base(`b.arenaRim.some((tile) => tile.x === b.currentTile.x && tile.y === b.currentTile.y)`));
+  if (landings > 1) {
+    const way = () => base('b.kit.flow.insertionId');
+    const from = await way();
+    const seen = new Set([from]);
+    for (const key of ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft']) {
+      await page.tap(key, 0);
+      await step(300);
+      seen.add(await way());
+    }
+    expect('the arrows point at other ways in on the map', seen.size > 1);
+    await step(1200);
+    await shot('rim-another-way-in');
+    const stillOnJump = await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`);
+    expect('and leave the cursor on JUMP IN', stillOnJump);
+    // A click on a light in the pit points at it too.
+    const light = await base(`(() => { const a = b.arena; const flow = b.kit.flow; const c = b.cameras.main; const seen = a.share.landings.filter((l) => l.id !== flow.insertionId).map((l) => { const p = a.pointOfLanding(l); return { id: l.id, x: p.x - c.scrollX, y: p.y - c.scrollY }; }).filter((p) => p.x > 8 && p.x < b.scale.width - 8 && p.y > 8 && p.y < ${Math.floor((rimCard.top - (await page.evaluate(`${GAME}.canvas.getBoundingClientRect().top`))) / canvasScale.scale) - 8}); return seen[0] ?? null; })()`);
+    if (light) {
+      await click(light.x, light.y);
+      await step(300);
+      expect('a click on a light in the pit points at it', (await way()) === light.id);
+      await step(1200);
+      await shot('rim-clicked-a-light');
+    }
+  }
   await page.tap('Escape', 0);
   await step(500);
 
@@ -391,6 +466,10 @@ try {
   }
   await until(sceneIs('hub'), 'the rim');
   expect('the two presses at the rail never touch the telescope', !(await base('Boolean(b.telescope)')));
+  await step(400);
+  await page.tap('Enter', 0);
+  await until(sceneIs('world'), 'the raid');
+  expect('and the second press jumps', true);
 } finally {
   await browser.close();
 }

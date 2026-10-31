@@ -200,7 +200,7 @@ import {
   type FigureSpeciesId,
 } from '../world/pokemonFigures';
 import type { ConsoleSceneData } from './ConsoleScene';
-import type { HubSceneData } from './HubScene';
+import type { HubScene, HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
 import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
 import { crowdTakesTheView, lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
@@ -225,6 +225,9 @@ import { FALLBACK_PACK_ID, STARTING_PACK_ID, packSquares } from '../items/packs'
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
 import { ValeOverviewView } from '../base/valeOverviewView';
+import { wayInCards } from '../base/wayInCard';
+import { WAY_IN_CLICK_REACH } from '../base/valeOverview';
+import { isNightRaid } from '../world/nightRaids';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
@@ -353,6 +356,8 @@ const CAMERA_ZOOM = 1;
 /** Whether this page has counted a walk into the harbour yet (`analytics/playCounter.ts`). */
 let harbourCounted = false;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
+/** How many rows of the figure are its head, for the telescope's map to show whose it is. */
+const TOWN_MAP_HEAD_ROWS = 11;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 
 /** The rim tile this page last jumped from: where a raid's ending puts the player back. */
@@ -1495,7 +1500,6 @@ export class BaseScene extends Phaser.Scene {
       close: () => this.closeHallPanel(),
       jump: (world) => this.beginJump(world),
       aim: (id) => this.aimAtInsertion(id),
-      below: () => this.arena?.lookLines(this.currentTile) ?? [],
     };
     const mapId = requireInsertion(flow.insertionId).mapId;
     const view = new ArenaView(this, game, this.still, mapId, this.landingsOn(mapId, game));
@@ -1703,9 +1707,15 @@ export class BaseScene extends Phaser.Scene {
     audioManager.play('select');
     this.telescope = new ValeOverviewView(this, arena.overviewSource(), {
       chosenId: this.kit.flow.insertionId,
-      nameOf: (landing) => this.landingName(landing),
+      cardFor: wayInCards(this.savedGame.raidProgress, isNightRaid(new Date())),
       still: this.still,
       from: { x: this.player.x - this.cameras.main.scrollX, y: this.player.y - this.cameras.main.scrollY },
+      figure: {
+        texture: this.playerTexture,
+        frame: getIdleFrame('down'),
+        headTop: CHARACTER_HEAD_PIXEL_Y + lookHeadDrop(this.playerTexture),
+        headRows: TOWN_MAP_HEAD_ROWS,
+      },
     });
   }
 
@@ -2551,6 +2561,10 @@ export class BaseScene extends Phaser.Scene {
       this.jump.breath.cut = true;
       return;
     }
+    if (this.arenaPanel === 'rim') {
+      this.pointAtLightFromTheRim(pointer);
+      return;
+    }
     if (!this.canTakeAPointer()) {
       return;
     }
@@ -2579,6 +2593,24 @@ export class BaseScene extends Phaser.Scene {
           this.lookDown();
         });
       }
+    }
+  }
+
+  /** With the rim's panel up the pit is still there above it, and a click on a light in it chooses that way in. */
+  private pointAtLightFromTheRim(pointer: Phaser.Input.Pointer): void {
+    const arena = this.arena;
+    if (!arena) {
+      return;
+    }
+    const near = arena.share.landings
+      .map((landing) => {
+        const point = arena.pointOfLanding(landing);
+        return { landing, away: Math.hypot(point.x - pointer.worldX, point.y - pointer.worldY) };
+      })
+      .sort((a, b) => a.away - b.away)[0];
+    if (near && near.away <= WAY_IN_CLICK_REACH) {
+      (this.scene.get('hub') as HubScene).pointAtLanding(near.landing.id as RunInsertionId);
+      audioManager.play('select');
     }
   }
 

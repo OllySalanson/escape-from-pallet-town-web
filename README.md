@@ -80,7 +80,9 @@ everywhere you've just been.)
 
 Want the whole lot at once? There's a big brass telescope on the rail to the left and another to the right.
 Put your eye to one and you get all of Greystone Vale on one screen, cloud, way-in lights and whatever that is
-flying over it. Z or the wheel takes you closer, arrows, WASD or a drag move you about, and Q and E pick a way in.
+flying over it. It works like the Town Map: arrows, WASD or the mouse move a cursor, point it at a light and it
+tells you about that one, and ENTER takes you round to the rail to jump there. Z or the wheel takes you closer,
+and a drag moves you about.
 
 <p align="center">
   <img src="docs/readme/the-rim.png" width="800" alt="Looking down from the rim: Greystone Vale through the pit with a gold light on the way in, its name over it, and a panel along the foot saying what the raid has at stake with a JUMP IN button.">

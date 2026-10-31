@@ -23,7 +23,7 @@ import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { flowForGame, type ArenaKit } from '../base/arenaKit';
 import type { RestoredGame } from '../save/SaveManager';
-import { frontDoorFor } from '../run/runGeneration';
+import { frontDoorFor, RUN_INSERTIONS } from '../run/runGeneration';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
@@ -425,7 +425,6 @@ describe('a panel over the hall', () => {
         calls.push('jump');
       },
       aim: (id) => calls.push(`aim:${id}`),
-      below: () => ['A long way down, only cloud.'],
     };
     return { kit, calls, world: () => world };
   }
@@ -489,11 +488,56 @@ describe('a panel over the hall', () => {
     expect(kit.flow.party).toEqual([]);
   });
 
-  it('says what is under the player where they stand', () => {
-    const { hub } = panelOn('rim');
-    expect((hub as unknown as { content(): string }).content()).toContain('A long way down, only cloud.');
+  it('is one small card: no list, nothing to scroll, no hidden count', () => {
+    const { hub, kit } = panelOn('bench');
+    kit.flow.togglePokemon('charmander-1');
+    hub.init({ view: 'rim', kit });
+    const markup = (hub as unknown as { content(): string }).content();
+    expect(markup).not.toContain('px-scroll');
+    expect(markup).not.toContain('px-list');
+    expect(markup).not.toContain('px-row');
+    expect(markup).not.toContain('px-subheading');
+    expect(markup).toContain('data-start');
+    expect(markup).toContain('data-cursor-start');
+  });
+
+  it('points at another way in with the arrows: the pit swings round and nothing is committed', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+      defeatedBosses: ['overlook-warden'],
+      reachedInsertions: ['route-1-overlook'],
+    });
+    const aimed: string[] = [];
+    (hub as unknown as { kit: Partial<ArenaKit> }).kit = { aim: (id) => aimed.push(id) };
+    hub.setView('rim');
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.chooseInsertion('route-1');
+    const press = (key: string): void =>
+      (hub as unknown as { stepToWayIn(way: { x: number; y: number }): void }).stepToWayIn({ x: key === 'ArrowRight' ? 1 : -1, y: 0 });
+    const overlook = RUN_INSERTIONS['route-1-overlook'].position;
+    const door = RUN_INSERTIONS['route-1'].position;
+    press(overlook.x > door.x ? 'ArrowRight' : 'ArrowLeft');
+    expect(hub.flow.insertionId).toBe('route-1-overlook');
+    expect(aimed).toEqual(['route-1-overlook']);
+    // Nothing lies past it that way on this map, so it stays.
+    press(overlook.x > door.x ? 'ArrowRight' : 'ArrowLeft');
+    expect(hub.flow.insertionId).toBe('route-1-overlook');
+    expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
   });
 });
+
+/** The ways in the rim will point at, in the order they are offered. */
+const offeredIds = (hub: HubInternals): readonly string[] =>
+  (hub as unknown as { offeredWays: readonly (readonly [string, unknown])[] }).offeredWays.map(([id]) => id);
+
+/** What is on the screen now, drawn fresh. */
+const wallMapMarkup = (hub: HubInternals): string => {
+  hub.render();
+  return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+};
 
 describe('hub deployment route', () => {
   it('takes one of a piece out of the pack and back to the vault with a right-click or DEL (the captain, 2026-10-29)', () => {
@@ -848,9 +892,14 @@ describe('hub deployment route', () => {
       readyToDeploy(hub);
       hub.render();
       const rim = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-      expect(rim).toContain(heading);
-      // The rim names it too, as the raid's clock chip will.
+      // The rim names it, as the raid's clock chip will.
       expect(rim.includes('night raid clock 5:00')).toBe(night);
+      // And Oak's wall says what is out at that hour.
+      hub.setView('wallmap');
+      hub.wallMapInspect = 'floodplain-relay';
+      expect(wallMapMarkup(hub)).toContain(heading);
+      hub.setView('rim');
+      readyToDeploy(hub);
       deploy(hub, start);
       const { runSession } = start.mock.calls[0][1] as WorldSceneData;
       expect(runSession.plan?.night).toBe(night);
@@ -925,13 +974,7 @@ describe('hub deployment route', () => {
     });
 
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('rim');
-    hub.flow.advance();
-    hub.render();
-    const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root
-      .innerHTML;
-    expect(markup).toContain('data-insertion="route-1-overlook"');
-    expect(markup).toContain('DROP-IN · Route 1');
+    expect(offeredIds(hub)).toContain('route-1-overlook');
 
     hub.flow.chooseInsertion('route-1-overlook');
     readyToDeploy(hub);
@@ -955,6 +998,13 @@ describe('hub deployment route', () => {
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   };
 
+  /** One map from Oak's wall, close up: where everything known of it is read. */
+  const onTheWall = (hub: HubInternals, mapId: WorldMapId = 'floodplain-relay'): string => {
+    hub.setView('wallmap');
+    hub.wallMapInspect = mapId;
+    return markupOf(hub);
+  };
+
   it('leaves the choice of place to the rim: the bench and the rack only get a raid ready', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
@@ -972,13 +1022,9 @@ describe('hub deployment route', () => {
     expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
   });
 
-  it('says what is known of a place, and counts what is not', () => {
+  it('says on Oak\'s wall what is known of a place, and counts what is not', () => {
     const { hub } = createHub();
-    hub.flow.togglePokemon('charmander-1');
-    hub.setView('rim');
-    hub.flow.advance();
-
-    const markup = markupOf(hub);
+    const markup = onTheWall(hub);
     // A map nobody has walked names none of its ways out, doors or wildlife:
     // it counts them (playtest 6, D2).
     expect(markup).not.toContain('TOLL BRIDGE');
@@ -990,14 +1036,11 @@ describe('hub deployment route', () => {
 
   it("measures the place's facts as lines, so the fold never cuts one through", () => {
     const { hub } = createHub();
-    hub.flow.togglePokemon('charmander-1');
-    hub.setView('rim');
-    hub.flow.advance();
 
     // Each fact is a `dt` and a `dd` in a `div`, with nothing else in it for the
     // fold to find, so at 640x480 the pane's MORE strip came to rest across the
     // middle of `Doors 5 held`.
-    expect(markupOf(hub)).toMatch(/<dl class="dropin-facts"><div><dt>Wild<\/dt><dd>[^<]+<\/dd><\/div>/);
+    expect(onTheWall(hub)).toMatch(/<dl class="dropin-facts"><div><dt>Wild<\/dt><dd>[^<]+<\/dd><\/div>/);
     expect(SCROLL_ROWS.split(', ')).toContain('.dropin-facts > div');
   });
 
@@ -1006,11 +1049,7 @@ describe('hub deployment route', () => {
       ...DEFAULT_RAID_PROGRESS,
       surveyed: walkedOnto('floodplain-relay', ['TOLL BRIDGE', 'SOUTH GATE']),
     });
-    hub.flow.togglePokemon('charmander-1');
-    hub.setView('rim');
-    hub.flow.advance();
-
-    const markup = markupOf(hub);
+    const markup = onTheWall(hub);
     expect(markup).toContain('TOLL BRIDGE');
     expect(markup).toContain('held by TOLLMAN BRIGGS');
     expect(markup).toContain('SOUTH GATE');
@@ -1025,12 +1064,8 @@ describe('hub deployment route', () => {
       ...DEFAULT_RAID_PROGRESS,
       defeatedBosses: ['floodplain-toll-keeper'],
     });
-    hub.flow.togglePokemon('charmander-1');
-    hub.setView('rim');
-    hub.flow.advance();
-
-    const markup = markupOf(hub);
-    expect(markup).toContain('you opened this');
+    const markup = onTheWall(hub);
+    expect(markup).toContain('TOLL BRIDGE');
     expect(markup).not.toContain('held by TOLLMAN BRIGGS');
   });
 
@@ -1042,14 +1077,8 @@ describe('hub deployment route', () => {
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
 
-    hub.setView('rim');
-    hub.flow.togglePokemon('charmander-1');
-    hub.flow.advance();
-    hub.render();
-    const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root
-      .innerHTML;
-    expect(markup).toContain('data-insertion="route-1"');
-    expect(markup).not.toContain('route-1-overlook');
+    expect(offeredIds(hub)).toContain('route-1');
+    expect(offeredIds(hub)).not.toContain('route-1-overlook');
   });
 
   it('re-reads the stored save, so a banked contract is not hidden by a stale start payload', () => {

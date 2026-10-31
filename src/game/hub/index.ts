@@ -2,12 +2,10 @@ export {
   buildDropInBriefing,
   doorHolder,
   doorPromise,
-  gradeLine,
   largestMapSize,
   pictureSize,
   mapPicture,
   placePicture,
-  shutDoorLine,
   stillToFind,
 
   type DropInBriefing,

@@ -45,7 +45,7 @@ export const RING_ORIGIN = { x: PIT_RIM.x - RING_WIDTH / 2, y: PIT_RIM.y - (PIT_
 /** The outside of a ring's stone: under the fence's kerb, and never past the hall's floor. */
 const ringEdge = grownOval(PIT_RIM, RING_MARGIN);
 
-type Rgb = readonly [number, number, number];
+export type Rgb = readonly [number, number, number];
 
 const setPixel = (data: Uint8ClampedArray, at: number, ink: Rgb, alpha = 255): void => {
   data[at] = ink[0];
@@ -399,6 +399,91 @@ export function condensedFloor(
     }
   }
   return { width: size.width, height: size.height, data };
+}
+
+/** The grey-blue everything under the cloud is drawn towards through a telescope, at an hour. */
+export function calmCloudInk(light: WindowLight): Rgb {
+  return inkAtHour([68, 80, 100], 'cloud', light);
+}
+
+/** How much brighter walked ground is drawn through a telescope: by night it would otherwise be darker than the cloud. */
+const WALKED_LIFT: Readonly<Record<WindowLight, number>> = { day: 1, dusk: 1, night: 1.7 };
+
+/** How much of the cloud's own light and dark is left in it through a telescope. */
+const CALMED_CLOUD = 0.42;
+
+/**
+ * The pit's floor as a telescope shows it: everything nobody has walked drawn down
+ * towards one quiet grey-blue, so the cloud is still cloud, with the shape of the
+ * country dimly under it, and what has been walked is the only bright thing there.
+ * The pit wants its cloud bright and alive; a map being read does not.
+ */
+export function calmedFloor(
+  floor: { readonly data: Uint8ClampedArray; readonly width: number; readonly height: number },
+  mapFloor: { readonly left: number; readonly top: number },
+  scale: number,
+  isWalked: (tile: { readonly x: number; readonly y: number }) => boolean,
+  ink: Rgb,
+  light: WindowLight,
+): PaintedPicture {
+  const data = new Uint8ClampedArray(floor.data);
+  const step = (value: number): number => Math.min(248, Math.round(value / 8) * 8);
+  const lift = WALKED_LIFT[light];
+  // The edge of what has been walked is half cloud on a dither, and goes with it.
+  const key = (at: number): number => (data[at] << 16) | (data[at + 1] << 8) | data[at + 2];
+  const cloudInks = new Set(CLOUD_INKS.map((each) => inkAtHour(each, 'cloud', light)).map(([r, g, b]) => (r << 16) | (g << 8) | b));
+  for (let y = 0; y < floor.height; y += 1) {
+    const tileY = Math.floor((y - mapFloor.top) / scale);
+    for (let x = 0; x < floor.width; x += 1) {
+      const at = (y * floor.width + x) * 4;
+      if (data[at + 3] === 0) {
+        continue;
+      }
+      if (cloudInks.has(key(at)) || !isWalked({ x: Math.floor((x - mapFloor.left) / scale), y: tileY })) {
+        data[at] = step(ink[0] + (data[at] - ink[0]) * CALMED_CLOUD);
+        data[at + 1] = step(ink[1] + (data[at + 1] - ink[1]) * CALMED_CLOUD);
+        data[at + 2] = step(ink[2] + (data[at + 2] - ink[2]) * CALMED_CLOUD);
+      } else if (lift !== 1) {
+        data[at] = step(data[at] * lift);
+        data[at + 1] = step(data[at + 1] * lift);
+        data[at + 2] = step(data[at + 2] * lift);
+      }
+    }
+  }
+  return { width: floor.width, height: floor.height, data };
+}
+
+/** The steps of grey-blue the cloud is drawn in once it has been drawn smaller, as shares of `calmCloudInk`. */
+const CLOUD_STEPS = [0.66, 0.84, 1.02, 1.24] as const;
+
+/**
+ * Cloud drawn smaller has been averaged into a smooth airbrushed grey, which nothing
+ * else on a GBA screen is. This puts what is not `isGround` back into a few hard
+ * steps of ink on a dither, keeping how light or dark each pixel was.
+ */
+export function steppedCloud(
+  picture: PaintedPicture,
+  isGround: (x: number, y: number) => boolean,
+  ink: Rgb,
+): PaintedPicture {
+  const { width, height } = picture;
+  const data = new Uint8ClampedArray(picture.data);
+  const step = (value: number): number => Math.min(248, Math.round(value / 8) * 8);
+  const steps = CLOUD_STEPS.map((share): Rgb => [step(ink[0] * share), step(ink[1] * share), step(ink[2] * share)]);
+  const low = ink[0] + ink[1] + ink[2];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (isGround(x, y)) {
+        continue;
+      }
+      const at = (y * width + x) * 4;
+      const share = (data[at] + data[at + 1] + data[at + 2]) / low;
+      const place = Math.max(0, Math.min(steps.length - 1.001, ((share - CLOUD_STEPS[0]) / (CLOUD_STEPS[steps.length - 1] - CLOUD_STEPS[0])) * (steps.length - 1)));
+      const whole = Math.floor(place);
+      setPixel(data, at, steps[dithered(place - whole, x, y) ? whole + 1 : whole]);
+    }
+  }
+  return { width, height, data };
 }
 
 export function paintPitFloor(picture: Minimap, light: WindowLight = 'day'): PaintedPicture {

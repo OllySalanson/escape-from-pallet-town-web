@@ -39,7 +39,8 @@ import {
 } from './arenaHall';
 import { ARENA_HALL_SOURCE } from './arenaHallSheet';
 import { PERSON_WIDTH, STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH, crowdSeats, nextStir, paintCrowdPerson, paintStands } from './arenaStands';
-import { PIT_FLOOR_SIZE, isGroundKnown, paintPitFloor, paintPodium, paintTier, RING_ORIGIN } from './arenaPit';
+import { inkAtHour } from './pitClock';
+import { PIT_FLOOR_SIZE, calmCloudInk, calmedFloor, isGroundKnown, paintPitFloor, paintPodium, paintTier, RING_ORIGIN, steppedCloud } from './arenaPit';
 import { baseGame } from './baseGames.testkit';
 import { ARENA_HALL_GROUND, ARENA_HALL_OVER, ARENA_HALL_SHEET } from './generated/arenaHallTiles';
 import { BASE_ROOMS, buildRoom, roomNamed } from './rooms';
@@ -572,5 +573,60 @@ describe('the stands round the hall', () => {
     expect(stir.forMs).toBeLessThan(3000);
     expect(nextStir([0.3, 0.1, 0.5], () => false, crowdSeats())).toBeNull();
     expect(paintCrowdPerson().width % PERSON_WIDTH).toBe(0);
+  });
+});
+
+describe('the floor through a telescope', () => {
+  /** Two pixels of bright cloud over nothing walked, and two of ground. */
+  const floor = () => ({
+    width: 4,
+    height: 1,
+    data: new Uint8ClampedArray([248, 248, 248, 255, 24, 24, 24, 255, 72, 136, 56, 255, 72, 136, 56, 0]),
+  });
+  const walked = (tile: { readonly x: number }): boolean => tile.x >= 2;
+  const ink = calmCloudInk('day');
+  const pixel = (data: Uint8ClampedArray, at: number): readonly number[] => [...data.slice(at * 4, at * 4 + 4)];
+
+  it('draws what nobody has walked down towards one quiet ink, and leaves walked ground exactly as it is', () => {
+    const { data } = calmedFloor(floor(), { left: 0, top: 0 }, 1, walked, ink, 'day');
+    expect(pixel(data, 2)).toEqual([72, 136, 56, 255]);
+    const [bright, dark] = [pixel(data, 0), pixel(data, 1)];
+    expect(bright[0] - dark[0]).toBeLessThan((248 - 24) / 2);
+    expect(bright[0]).toBeLessThan(248);
+    expect(dark[0]).toBeGreaterThan(24);
+  });
+
+  it('leaves what is outside the painted round alone', () => {
+    const { data } = calmedFloor(floor(), { left: 0, top: 0 }, 1, () => false, ink, 'day');
+    expect(pixel(data, 3)).toEqual([72, 136, 56, 0]);
+  });
+
+  it('lifts walked ground by night, so it is not darker than the cloud', () => {
+    const { data } = calmedFloor(floor(), { left: 0, top: 0 }, 1, walked, calmCloudInk('night'), 'night');
+    expect(pixel(data, 2)[1]).toBeGreaterThan(136);
+  });
+
+  it('calms the half-cloud on the edge of walked ground as well', () => {
+    // The pit's brightest cloud at this hour, on a tile that has been walked.
+    const [red, green, blue] = inkAtHour([176, 184, 200], 'cloud', 'day');
+    const edge = { width: 1, height: 1, data: new Uint8ClampedArray([red, green, blue, 255]) };
+    expect(pixel(calmedFloor(edge, { left: 0, top: 0 }, 1, () => true, ink, 'day').data, 0)[0]).toBeLessThan(red);
+  });
+
+  it('puts smoothed cloud back into hard steps, and never touches the ground', () => {
+    const size = 8;
+    const data = new Uint8ClampedArray(size * size * 4);
+    for (let at = 0; at < size * size; at += 1) {
+      data.set([ink[0], ink[1], ink[2], 255], at * 4);
+    }
+    data.set([1, 2, 3, 255], 0);
+    const stepped = steppedCloud({ width: size, height: size, data }, (x, y) => x === 0 && y === 0, ink);
+    expect(pixel(stepped.data, 0)).toEqual([1, 2, 3, 255]);
+    const inks = new Set<string>();
+    for (let at = 1; at < size * size; at += 1) {
+      inks.add(pixel(stepped.data, at).join());
+    }
+    expect(inks.size).toBeLessThanOrEqual(4);
+    expect(pixel(stepped.data, 1).every((value, index) => index === 3 || value % 8 === 0)).toBe(true);
   });
 });

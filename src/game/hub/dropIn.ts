@@ -119,11 +119,6 @@ export function doorHolder(door: DoorLine): string {
   return door.heldBy === 'move' ? `needs ${door.bossName}` : `held by ${door.bossName}`;
 }
 
-/** A shut door, said as a sentence. */
-export function shutDoorLine(door: DoorLine): string {
-  return `${door.label} ${door.heldBy === 'move' ? 'needs' : 'is held by'} ${door.bossName}.`;
-}
-
 /**
  * What a list of ways out or doors says about the ones not found yet: how many,
  * and nothing else (playtest 6, D2 - the captain's "and 17 more to find").
@@ -532,34 +527,6 @@ export function entryGround(mapId: WorldMapId): EntryGround {
   const ground = { opposition: Math.max(wild, trainer), reached };
   entryGrounds.set(map, ground);
   return ground;
-}
-
-/**
- * How a place's grade reads in one sentence, against the party in the loadout.
- *
- * It names the two levels rather than a word like "hard", because the levels
- * are the fact and a word would be an opinion about a party this screen already
- * knows the strength of.
- */
-export function gradeLine(grade: PlaceGrade): string {
-  // The wildlife, because every step in tall grass rolls on it and a trainer is
-  // a toll on one route. Stated as levels rather than as a word like "hard":
-  // the levels are facts, and a word would be an opinion about a party this
-  // screen already knows the strength of. What the trainers field is a fact of
-  // the place and is listed beside the picture rather than said again here.
-  if (grade.wild.max === 0) {
-    return 'Nothing wild lives here';
-  }
-  const band = `Wild Lv ${grade.wild.min}-${grade.wild.max}`;
-  if (grade.yourBest === 0) {
-    return `${band} - pick a party to compare`;
-  }
-  const gap = grade.yourBest - grade.wild.max;
-  return gap >= 2
-    ? `${band}, under your Lv ${grade.yourBest}`
-    : gap >= -1
-      ? `${band}, an even match for your Lv ${grade.yourBest}`
-      : `${band}, over your Lv ${grade.yourBest} by ${-gap}`;
 }
 
 /**

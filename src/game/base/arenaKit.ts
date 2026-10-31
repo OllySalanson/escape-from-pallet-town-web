@@ -28,8 +28,6 @@ export interface ArenaKit {
   jump(world: WorldSceneData): void;
   /** A way in has come under the cursor: the pit shows it. */
   aim(insertionId: RunInsertionId): void;
-  /** What is under the player where they stand at the fence, said at the top of the rim's panel. */
-  below(): readonly string[];
 }
 
 /**

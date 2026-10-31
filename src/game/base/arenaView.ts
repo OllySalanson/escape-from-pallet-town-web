@@ -12,7 +12,6 @@ import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import {
   ARENA_TELESCOPES,
-  ARENA_TILE,
   ARENA_TORCHES,
   FLOOR_PARALLAX,
   MIST_PARALLAX,
@@ -24,9 +23,7 @@ import {
   namePlatePlace,
   parallaxShift,
   pitFrameFor,
-  pitLookPoint,
   pitPointOf,
-  pitTileAt,
   podiumHole,
   telescopeGlintPoint,
   type PitFrame,
@@ -41,6 +38,7 @@ import {
   RING_ORIGIN,
   isGroundKnown,
   paintMist,
+  calmCloudInk,
   paintPitFloor,
   paintPodium,
   paintTier,
@@ -97,6 +95,7 @@ import {
 } from './pitLife';
 import { wallMapPicture } from './wallMap';
 import type { OverviewSource } from './valeOverviewView';
+import { townsOf } from './valeOverview';
 import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
 import { PLAYER_BANNER_AT, PLAYER_BANNER_SIZE, paintPlayerBanner } from './arenaBouts';
 import { COINS_TO_WAKE_THE_EYES, COIN_PLINK_MS, coinAt } from './pitCoins';
@@ -775,17 +774,31 @@ export class ArenaView {
       mapName: worldMapName(this.mapIdValue),
       walkedPercent: Math.round(this.walkedShare * 100),
       landings: this.shareValue.landings,
+      towns: this.townsWalked(),
       townLights: this.townLightsHere,
       marks: marksOn(memory, this.mapIdValue),
       trail: trailDots(memory, this.mapIdValue),
       drawMark: drawRaidMark,
-      textures: { light: LIGHT_TEXTURE, look: LOOK_TEXTURE, mist: MIST_TEXTURE, shadow: SHADOW_TEXTURE },
-      mistAlphas: MIST_ALPHAS,
-      mistTint: MIST_TINTS[this.light],
-      cloudShadow: this.light === 'day' ? { alpha: CLOUD_SHADOW_ALPHA, tint: CLOUD_SHADOW_TINT } : null,
+      placeAt: (tile) => (this.isWalked(tile) ? (districtAt(this.mapIdValue, tile)?.name ?? null) : null),
+      isWalked: (tile) => this.isWalked(tile),
+      cloudInk: calmCloudInk(this.light),
+      light: this.light,
+      textures: { light: LIGHT_TEXTURE, shadow: SHADOW_TEXTURE },
       trailInk: TRAIL_INK,
       trailShade: TRAIL_SHADE,
     };
+  }
+
+  private isWalked(tile: GridPosition): boolean {
+    return isGroundKnown(this.picture.rows[tile.y]?.[tile.x]);
+  }
+
+  /** The towns a telescope marks: doors standing together, on ground this save has walked. */
+  private townsWalked(): readonly GridPosition[] {
+    const doors = getWorldMap(this.mapIdValue)
+      .warps.map((warp) => warp.source)
+      .filter((door) => door.x < this.picture.width && door.y < this.picture.height);
+    return townsOf(doors, (door) => this.isWalked(door));
   }
 
   private addShadowFrames(): void {
@@ -1417,21 +1430,6 @@ export class ArenaView {
       const shift = parallaxShift(TIER_PARALLAX[tier], player);
       image.setPosition(RING_ORIGIN.x + shift.x, RING_ORIGIN.y + shift.y);
     });
-  }
-
-  /** What somebody standing on `tile` at the fence is told is under them. */
-  public lookLines(tile: GridPosition): readonly string[] {
-    const middle = { x: tile.x * ARENA_TILE + 8, y: tile.y * ARENA_TILE + 8 };
-    const looked = pitTileAt(pitLookPoint(tile), middle, this.frameValue);
-    const known = looked !== null && isGroundKnown(this.picture.rows[looked.y]?.[looked.x]);
-    const place = known && looked ? districtAt(this.mapIdValue, looked)?.name : undefined;
-    const percent = Math.round(this.walkedShare * 100);
-    const name = worldMapName(this.mapIdValue);
-    const walked =
-      percent === 0
-        ? `${name} lies under the cloud. You have walked none of it.`
-        : `You have walked ${percent}% of ${name}. The cloud hides the rest.`;
-    return [known ? `A long way down: ${place ?? 'open country'}.` : 'A long way down, only cloud.', walked];
   }
 
   // --- a jump ------------------------------------------------------------------
