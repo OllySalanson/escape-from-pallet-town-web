@@ -13,6 +13,8 @@ import {
   tierHole,
   type Oval,
 } from './arenaHall';
+import type { WindowLight } from './homeClock';
+import { inkAtHour } from './pitClock';
 import { PIT_GATES } from './pitLife';
 
 /**
@@ -352,9 +354,12 @@ const isKnown = isGroundKnown;
  * that stands up - a wood, a crag, a wall - throws a pixel of shadow to the
  * south-east, which is what makes it ground seen from above rather than a chart.
  */
-export function paintPitFloor(picture: Minimap): PaintedPicture {
+export function paintPitFloor(picture: Minimap, light: WindowLight = 'day'): PaintedPicture {
   const size = PIT_FLOOR_SIZE;
   const data = new Uint8ClampedArray(size * size * 4);
+  // Marks stay as they are: a way in is a light at any hour.
+  const putCloud = (at: number, ink: Rgb): void => setPixel(data, at, inkAtHour(ink, CLOUD_INKS.includes(ink) ? 'cloud' : 'under', light));
+  const putGround = (at: number, ink: Rgb): void => setPixel(data, at, inkAtHour(ink, 'ground', light));
   const frame = pitFrameFor(picture.width, picture.height);
   const offsetX = (size - frame.width * frame.scale) / 2;
   const offsetY = (size - frame.height * frame.scale) / 2;
@@ -382,7 +387,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       if (!isKnown(char)) {
         // What shows through thins to nothing towards the map's edge, or the
         // cloud would draw the map's own square.
-        setPixel(data, at, unknownInk(x, y, char, fromEdge));
+        putCloud(at, unknownInk(x, y, char, fromEdge));
         continue;
       }
       const mark = MARK_INKS[char as string];
@@ -397,7 +402,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       if ((char === 'T' || char === 'W') && fromEdge < MAP_EDGE_BANK) {
         const reach = 8 + cloudField(x, y, 34, 53) * (MAP_EDGE_BANK - 8);
         if (fromEdge < reach && dithered((reach - fromEdge) / 7, x, y)) {
-          setPixel(data, at, cloudInk(x, y, 0.2));
+          putCloud(at, cloudInk(x, y, 0.2));
           continue;
         }
       }
@@ -414,7 +419,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
         }
       }
       if (nearest < 4 && dithered((4 - nearest) / 5, x, y)) {
-        setPixel(data, at, cloudInk(x, y, 0.1));
+        putCloud(at, cloudInk(x, y, 0.1));
         continue;
       }
       const inks = AIR_INKS[char as string];
@@ -422,7 +427,7 @@ export function paintPitFloor(picture: Minimap): PaintedPicture {
       const standsUp = (other: string | undefined): boolean => other === 'T' || other === 'C' || other === 'B';
       const shaded = standsUp(charAt(mapX - 1, mapY - 1)) && !standsUp(char);
       const lit: Rgb = shaded ? [Math.round(ink[0] * 0.62), Math.round(ink[1] * 0.66), Math.round(ink[2] * 0.76)] : ink;
-      setPixel(data, at, hazed(lit, x, y));
+      putGround(at, hazed(lit, x, y));
     }
   }
   return { width: size, height: size, data };

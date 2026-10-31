@@ -6,7 +6,7 @@
  *   npx vite-node tools/base/renderArena.mts -- out.png --at=32,62 --view=400x256 --scale=2 --survey=all
  *   npx vite-node tools/base/renderArena.mts -- out.png --whole --scale=1 --survey=none
  *
- * `--survey=none|all|some`: what this save has walked. `--whole` is the hall
+ * `--light=day|dusk|night`: the hour. `--survey=none|all|some`: what this save has walked. `--whole` is the hall
  * from above, which no player ever sees. Flames and mist are the scene's and
  * are not drawn here; the photographs under `docs/screens/arena-hall/` are.
  */
@@ -26,6 +26,7 @@ import {
   parallaxShift,
 } from '../../src/game/base/arenaHall';
 import { PIT_FLOOR_SIZE, RING_ORIGIN, paintPitFloor, paintPodium, paintTier } from '../../src/game/base/arenaPit';
+import type { WindowLight } from '../../src/game/base/homeClock';
 import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH, paintStands } from '../../src/game/base/arenaStands';
 import { buildMinimap, type Minimap } from '../../src/game/world/minimap';
 import { getWorldMap } from '../../src/game/worldMap';
@@ -76,7 +77,7 @@ if (survey !== 'none') {
 }
 const full = buildMinimap({ map, surveyed: tiles });
 const picture: Minimap = { ...full, width: 384, height: 384, rows: full.rows.slice(0, 384).map((row) => row.slice(0, 384)) };
-const floor = paintPitFloor(picture);
+const floor = paintPitFloor(picture, (option('light') ?? 'day') as WindowLight);
 const shiftBy = (amount: number): { x: number; y: number } => parallaxShift(amount, player);
 const floorShift = shiftBy(FLOOR_PARALLAX);
 blit(

@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import type { GridPosition } from '../movement/gridMovement';
+import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
 import type { RestoredGame } from '../save/SaveManager';
 import { CANOPY_BAND, TERRAIN_DEPTH } from '../world/depths';
 import { districtAt } from '../world/districts';
+import { poisForMap } from '../world/pois';
 import type { Minimap, PaintedPicture } from '../world/minimap';
 import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow } from '../ui/pixelWindow';
-import { worldMapName, type WorldMapId } from '../worldMap';
 import {
   ARENA_TILE,
   ARENA_TORCHES,
@@ -28,6 +29,8 @@ import {
   podiumHole,
   type PitFrame,
 } from './arenaHall';
+import { windowLight, type WindowLight } from './homeClock';
+import { TWINKLE_STEP_MS, isDimmed, townLights, type TownLight } from './pitClock';
 import { shareTheRim, showsThroughTheHole, type RimLanding, type RimShare } from './arenaRim';
 import {
   PIT_FLOOR_SIZE,
@@ -87,6 +90,7 @@ const FLOOR_DEPTH = TERRAIN_DEPTH - 0.9;
 const LIFTING_DEPTH = TERRAIN_DEPTH - 0.89;
 /** What crosses the floor goes under the marks on it: a way in is never hidden by it. */
 const SHADOW_DEPTH = TERRAIN_DEPTH - 0.885;
+const TOWN_LIGHT_DEPTH = TERRAIN_DEPTH - 0.884;
 const LIGHT_DEPTH = TERRAIN_DEPTH - 0.88;
 const LOOK_DEPTH = TERRAIN_DEPTH - 0.87;
 const MIST_DEPTH = TERRAIN_DEPTH - 0.85;
@@ -224,6 +228,17 @@ const EYES_NOT_SEEN_RETRY_MS = 4000;
 const floorShows = new Map<string, string>();
 
 const NAME_PLATE_HEIGHT = 13;
+
+/** The mist's two sheets: how thick each, and at each hour the colour of the air they catch the light of. */
+const MIST_ALPHAS = [0.2, 0.13] as const;
+const MIST_TINTS: Readonly<Record<WindowLight, number>> = { day: 0xffffff, dusk: 0xf0c8a0, night: 0x7888b8 };
+/** By day the same sheet again, dark, a long way down, as the shadows of cloud on the ground. */
+const CLOUD_SHADOW_ALPHA = 0.14;
+const CLOUD_SHADOW_TINT = 0x182838;
+
+const TOWN_LIGHT_WARM = 0xf8d070;
+const TOWN_LIGHT_PALE = 0xf8e8b8;
+const TOWN_LIGHT_GLOW = 0x806030;
 
 /** How a landing's light beats, and how far a light is from the mark round the one being looked at. */
 const LIGHT_BEAT_MS = 520;
@@ -396,6 +411,13 @@ export class ArenaView {
   private shareValue: RimShare;
   private aimedId: string | null = null;
   private lastPlayer = { x: 0, y: 0 };
+  /** The hour this visit is at: the clock is read when the hall is walked into, as a room's is. */
+  private readonly light: WindowLight = windowLight(new Date());
+  private readonly townLightLayer: Phaser.GameObjects.Graphics;
+  private townLightsHere: readonly TownLight[] = [];
+  private twinkleMs = 0;
+  private twinkleBeat = 0;
+  private cloudShadow: Phaser.GameObjects.TileSprite | null = null;
   /** The few of the crowd who are shifting in their seats just now: dim, and barely at all. */
   private readonly stirring: { readonly image: Phaser.GameObjects.Image; stir: CrowdStir | null; leftMs: number }[] = [];
   /** What lives in the pit (`pitLife.ts`): when each next shows, and whatever is showing. */
@@ -433,15 +455,26 @@ export class ArenaView {
     const hole = podiumHole();
     const mistWidth = Math.ceil(hole.rx * 2) + 96;
     const mistHeight = Math.ceil(hole.ry * 2) + 96;
-    for (const [alpha, flipped] of [[0.2, false], [0.13, true]] as const) {
+    for (const [index, flipped] of [false, true].entries()) {
       const mist = scene.add
         .tileSprite(0, 0, mistWidth, mistHeight, MIST_TEXTURE)
         .setOrigin(0.5, 0.5)
         .setDepth(MIST_DEPTH)
-        .setAlpha(alpha)
+        .setAlpha(MIST_ALPHAS[index])
+        .setTint(MIST_TINTS[this.light])
         .setFlipX(flipped);
       this.mists.push((mist));
     }
+    if (this.light === 'day') {
+      this.cloudShadow = scene.add
+        .tileSprite(0, 0, mistWidth, mistHeight, MIST_TEXTURE)
+        .setOrigin(0.5, 0.5)
+        .setDepth(SHADOW_DEPTH - 0.001)
+        .setAlpha(CLOUD_SHADOW_ALPHA)
+        .setTint(CLOUD_SHADOW_TINT);
+    }
+    this.townLightLayer = scene.add.graphics().setDepth(TOWN_LIGHT_DEPTH);
+    this.placeTownLights();
 
     ensureTexture(scene, PODIUM_TEXTURE, paintPodium);
     this.podium = (scene.add.image(0, 0, PODIUM_TEXTURE).setOrigin(0, 0).setDepth(PODIUM_DEPTH));
@@ -536,12 +569,12 @@ export class ArenaView {
     const key = floorTexture(mapId);
     // The floor is this save's, so it is painted again whenever what it shows
     // has changed - which a trip to the bench and back has not.
-    const shows = picture.rows.join('');
+    const shows = this.light + picture.rows.join('');
     if (floorShows.get(mapId) !== shows && this.scene.textures.exists(key)) {
       this.scene.textures.remove(key);
     }
     floorShows.set(mapId, shows);
-    ensureTexture(this.scene, key, () => paintPitFloor(picture));
+    ensureTexture(this.scene, key, () => paintPitFloor(picture, this.light));
     return key;
   }
 
@@ -561,7 +594,44 @@ export class ArenaView {
     this.shareValue = shareTheRim(landings, this.frameValue);
     this.floor.setTexture(this.paintFloorFor(mapId, this.picture));
     this.placeLights(landings);
+    this.placeTownLights();
     this.aimedId = null;
+  }
+
+  /** The little lights at the doors of the towns, on ground this save has walked. */
+  private placeTownLights(): void {
+    const map = getWorldMap(this.mapIdValue);
+    const doors = (map.warps ?? []).map((warp) => warp.source);
+    const pois = poisForMap(this.mapIdValue).map((poi) => poi.position);
+    this.townLightsHere = townLights(this.picture, [...doors, ...pois], isGroundKnown, PIT_FLOOR_SIZE, this.light);
+    this.drawTownLights();
+  }
+
+  private drawTownLights(): void {
+    const layer = this.townLightLayer;
+    layer.clear();
+    this.townLightsHere.forEach((light, index) => {
+      if (isDimmed(index, this.twinkleBeat)) {
+        layer.fillStyle(TOWN_LIGHT_GLOW, 1).fillRect(light.x, light.y, 1, 1);
+        return;
+      }
+      layer.fillStyle(TOWN_LIGHT_GLOW, 1);
+      layer.fillRect(light.x - 1, light.y, 3, 1);
+      layer.fillRect(light.x, light.y - 1, 1, 3);
+      layer.fillStyle(light.warm ? TOWN_LIGHT_WARM : TOWN_LIGHT_PALE, 1).fillRect(light.x, light.y, 1, 1);
+    });
+  }
+
+  private twinkle(deltaMs: number): void {
+    if (this.townLightsHere.length === 0) {
+      return;
+    }
+    this.twinkleMs += deltaMs;
+    if (this.twinkleMs >= TWINKLE_STEP_MS) {
+      this.twinkleMs = 0;
+      this.twinkleBeat += 1;
+      this.drawTownLights();
+    }
   }
 
   private placeLights(landings: readonly RimLanding[]): void {
@@ -586,6 +656,8 @@ export class ArenaView {
     fast.setTilePosition(-Math.round(this.drift / 95), Math.round(this.drift / 300));
     this.burn(deltaMs);
     this.listen(deltaMs, player);
+    this.cloudShadow?.setTilePosition(Math.round(this.drift / 120), Math.round(this.drift / 260));
+    this.twinkle(deltaMs);
     this.stir(deltaMs, player);
     this.shift(deltaMs);
   }
@@ -802,6 +874,7 @@ export class ArenaView {
       Math.ceil(hole.rx * 2) + 4,
       Math.ceil(hole.ry * 2) + 4,
     );
+    this.townLightLayer.setPosition(this.floor.x, this.floor.y);
     if (this.lifting) {
       this.lifting.image.setPosition(this.floor.x + this.lifting.left, this.floor.y + this.lifting.top);
     }
@@ -809,6 +882,7 @@ export class ArenaView {
     for (const each of this.mists) {
       each.setPosition(PIT_MAP_CENTRE.x + mist.x, PIT_MAP_CENTRE.y + mist.y);
     }
+    this.cloudShadow?.setPosition(this.floor.x + PIT_FLOOR_SIZE / 2, this.floor.y + PIT_FLOOR_SIZE / 2);
     const podium = parallaxShift(PODIUM_PARALLAX, player);
     this.podium.setPosition(RING_ORIGIN.x + podium.x, RING_ORIGIN.y + podium.y);
     this.tiers.forEach((image, tier) => {
@@ -852,14 +926,18 @@ export class ArenaView {
       image.setPosition(focus.x + (restX - focus.x) * seen, focus.y + (restY - focus.y) * seen);
     };
     const floorShift = parallaxShift(FLOOR_PARALLAX, this.lastPlayer);
-    layer(this.floor, DIVE_FLOOR_REACH, PIT_MAP_CENTRE.x - PIT_FLOOR_SIZE / 2 + floorShift.x, PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y);
+    const floorX = PIT_MAP_CENTRE.x - PIT_FLOOR_SIZE / 2 + floorShift.x;
+    const floorY = PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y;
+    layer(this.floor, DIVE_FLOOR_REACH, floorX, floorY);
+    layer(this.townLightLayer, DIVE_FLOOR_REACH, floorX, floorY);
+    this.cloudShadow?.setVisible(false);
     const mistShift = parallaxShift(MIST_PARALLAX, this.lastPlayer);
     for (const mist of this.mists) {
       layer(mist, 0.75, PIT_MAP_CENTRE.x + mistShift.x, PIT_MAP_CENTRE.y + mistShift.y);
     }
     // The mist goes first: magnified, its dither is a board of squares.
     const thin = 1 - Math.min(1, (Math.log(zoom) / Math.log(DIVE_MIST_GONE)) * 4);
-    this.mists.forEach((mist, index) => mist.setAlpha((index === 0 ? 0.2 : 0.13) * (Math.ceil(thin * 4) / 4)));
+    this.mists.forEach((mist, index) => mist.setAlpha(MIST_ALPHAS[index] * (Math.ceil(thin * 4) / 4)));
     this.look.setVisible(false);
     this.nameFrame.setVisible(false);
     this.nameText.setVisible(false);
@@ -913,8 +991,8 @@ export class ArenaView {
     const boxBottom = Math.min(size, Math.ceil(offsetY + (bottom + 1) * scale) + margin);
     const width = boxRight - boxLeft;
     const height = boxBottom - boxTop;
-    const old = paintPitFloor(before.picture);
-    const fresh = paintPitFloor(this.picture);
+    const old = paintPitFloor(before.picture, this.light);
+    const fresh = paintPitFloor(this.picture, this.light);
     const texture = this.scene.textures.createCanvas(LIFTING_TEXTURE, width, height);
     if (!texture) {
       return null;
