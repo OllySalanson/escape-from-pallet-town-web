@@ -208,8 +208,11 @@ export function powerStation(): MapcraftResult {
   stand('crate-pair', 22, 40, 'v');
 
   // -- The workers' row, down the valley on the far side of the road
-  p.building('grey-house', 6, 31).building('house', 12, 31);
-  p.building('terrace', 16, 30);
+  // The way down the yard's west fence stays open: it is the short way south from
+  // the forecourt, and with it shut the yard's far corners are past the hunter's
+  // blind window from every way out (`hunterFlee.test.ts`).
+  p.building('grey-house', 4, 31).building('house', 11, 31);
+  stand('hut', 16, 32);
   p.road([[9, 28], [9, 35]]);
   p.road([[5, 35], [16, 35]]); // the lane along their doors, the garden across it
   p.yard(5, 38, 14, 5, { gates: [[9, 38], [10, 38], [11, 42], [12, 42]], inner: '.' }); // their garden, a strip of grass off the lane
@@ -223,7 +226,7 @@ export function powerStation(): MapcraftResult {
   stand('red-crop', 16, 39);
   stand('seedlings', 14, 41);
   stand('pot-plant', 17, 39);
-  p.flowers([14, 37], [5, 37], [19, 36]);
+  p.flowers([14, 37], [4, 37]);
   // and out of its back gate, down to the pond, where they fished off shift
   p.road([[11, 43], [11, 48], [38, 48]]);
   // The south road, through the wood to the Safari Zone's gate
@@ -553,7 +556,7 @@ function withInsides(file: MapFile): MapFile {
     { x: 4, y: 2, name: 'Dinner Lady', look: 'chef', facing: 'down', lines: ['Pie. It was going to be pie on the Thursday, and the Thursday has not properly finished.', 'Eat up. You look like the night shift.'] },
     { x: 6, y: 7, name: 'Night Shift', look: 'man', facing: 'left', lines: ['We are not on strike. We were asleep when they called it, and nobody has told us officially.'] },
   ], { room: INN_ROOM, pokemon: [{ x: 5, y: 4, species: 'meowth' }] });
-  next = withInside(next, 'station', 'grey-house', 6, 31, 'The Union Hall', [
+  next = withInside(next, 'station', 'grey-house', 4, 31, 'The Union Hall', [
     { x: 7, y: 6, name: 'Branch Secretary', look: 'woman', facing: 'down', lines: ['All in favour of carrying on? Carried. It has been carried every month for nine years.', 'That card you are after, by the way. The Card Key. It went in the pines, with the last man who cared.'] },
   ], { itemSpots: [{ x: 10, y: 7, hidden: true }] });
   return next;
