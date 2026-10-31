@@ -10,6 +10,7 @@ import { buildRoom, roomNamed } from './rooms';
 import { BASE_DOORS } from './doors';
 import { isPartnerSpecies } from './partner';
 import { checkPlayerName } from '../console/playerName';
+import { botAt, visitPlan } from './harbourActivities';
 import {
   BOTS_MAX_PRESENT,
   BOTS_MIN_PRESENT,
@@ -17,15 +18,12 @@ import {
   BOT_SLOT_MS,
   HARBOUR_BOTS,
   LOITER_CLEAR_OF_DOORS,
-  botAt,
   botGround,
   ROOM_CALLS,
   ROOM_WINDOW_MS,
   presentWidth,
   roomCaller,
   searchLoiterSpots,
-  spotsOf,
-  visitPlan,
   visitSpan,
   visitsAt,
 } from './harbourBots';
@@ -36,7 +34,7 @@ const FIRST_SLOT = Math.floor(Date.UTC(2026, 9, 29) / BOT_SLOT_MS);
 const SLOTS = 8_000;
 
 describe('the harbour\'s regulars', () => {
-  it('are twelve, each with a name a player could have, a partner and something to say', () => {
+  it('are twelve, each with a name a player could have and a partner', () => {
     expect(HARBOUR_BOTS).toHaveLength(12);
     expect(new Set(HARBOUR_BOTS.map((bot) => bot.name)).size).toBe(12);
     expect(new Set(HARBOUR_BOTS.map((bot) => bot.id)).size).toBe(12);
@@ -44,11 +42,6 @@ describe('the harbour\'s regulars', () => {
       // The name rule every player is held to (`console/playerName.ts`), word filter and all.
       expect(checkPlayerName(bot.name)).toEqual({ ok: true, name: bot.name });
       expect(isPartnerSpecies(bot.partner)).toBe(true);
-      expect(bot.lines.length).toBeGreaterThan(0);
-      for (const line of bot.lines) {
-        expect(line).not.toMatch(/[<>&"]/);
-        expect(line.length).toBeLessThanOrEqual(90);
-      }
       // Never an id a player could have, so nothing that lists players mistakes one.
       expect(bot.id.startsWith('bot:')).toBe(true);
     }
@@ -129,9 +122,6 @@ describe('where the regulars stand', () => {
 
   it('pause only on open ground well away from every door, mat, the spawn and the landing', () => {
     expect(spots.length).toBeGreaterThanOrEqual(HARBOUR_BOTS.length * 4);
-    for (const bot of HARBOUR_BOTS) {
-      expect(spotsOf(bot).length).toBeGreaterThanOrEqual(3);
-    }
     for (const spot of spots) {
       for (const tile of kept) {
         expect(Math.max(Math.abs(tile.x - spot.x), Math.abs(tile.y - spot.y))).toBeGreaterThan(LOITER_CLEAR_OF_DOORS);
@@ -163,23 +153,26 @@ describe('where the regulars stand', () => {
     }
   });
 
-  it('walk a step at a time over their own ground, pause only on their spots, and are gone on time', () => {
+  it('walk a step at a time over their own ground, and are gone on time', () => {
+    const held: number[] = [];
     for (let visit = FIRST_SLOT; visit < FIRST_SLOT + 600; visit += 1) {
       const plan = visitPlan(visit);
-      const own = new Set(spotsOf(plan.bot).map(key));
-      expect(plan.legs[0]).toMatchObject({ kind: 'walk', from: plan.from });
-      expect(plan.legs[0].kind === 'walk' && plan.legs[0].path[0]).toEqual(plan.enter.tile);
+      const first = plan.legs[0];
+      // In by a way through: later than the schedule only while that door is busy.
+      expect(first.kind).toBe('walk');
+      expect(first.from - plan.from).toBeLessThanOrEqual(12_000);
+      held.push(first.from - plan.from);
+      expect(first.kind === 'walk' && first.path[0]).toEqual(plan.enter.tile);
       const last = plan.legs[plan.legs.length - 1];
       expect(last.kind).toBe('walk');
       if (last.kind === 'walk') {
         expect(last.path[last.path.length - 1]).toEqual(plan.leave.tile);
         expect(last.from + (last.path.length - 1) * STEP_DURATION_MS).toBe(plan.to);
       }
-      let clock = plan.from;
+      let clock = first.from;
       for (const leg of plan.legs) {
         expect(leg.from).toBe(clock);
         if (leg.kind === 'pause') {
-          expect(own.has(key(leg.tile))).toBe(true);
           expect(doorTiles.has(key(leg.tile))).toBe(false);
           clock = leg.to;
           continue;
@@ -205,13 +198,16 @@ describe('where the regulars stand', () => {
       }
       expect(clock).toBe(plan.to);
     }
+    // A door busy at the moment somebody means to come out of it is rare, and short.
+    expect(held.filter((ms) => ms > 1_000).length / held.length).toBeLessThan(0.03);
   });
 
   it('never stand still on a doorway, the spawn or the landing at any moment', () => {
     const still = new Set([...doorTiles, key(BASE_SPAWN), key(BASE_LANDING)]);
     for (let visit = FIRST_SLOT; visit < FIRST_SLOT + 200; visit += 1) {
       const plan = visitPlan(visit);
-      for (let now = plan.from; now < plan.to; now += 250) {
+      const arrives = plan.legs[0].from;
+      for (let now = arrives; now < plan.to; now += 250) {
         const at = botAt(plan, now)!;
         expect(at).not.toBeNull();
         if (!at.walking && !at.inside) {
@@ -219,7 +215,7 @@ describe('where the regulars stand', () => {
         }
       }
       expect(botAt(plan, plan.to)).toBeNull();
-      expect(botAt(plan, plan.from - 1)).toBeNull();
+      expect(botAt(plan, arrives - 1)).toBeNull();
     }
   });
 });
