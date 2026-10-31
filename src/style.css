@@ -118,6 +118,20 @@ body {
   width: 100%;
   height: auto;
 }
+/* The rim's is as tall as what it says, with the pit it is about above it. It has
+   no title bar or help bar: the card is the screen. */
+#screens .arena-panel.is-rim .px-title,
+#screens .arena-panel.is-rim .px-help {
+  display: none;
+}
+#screens .arena-panel.is-rim .px-screen {
+  display: block;
+  height: auto;
+}
+/* With no help bar under it, in the smallest window the FEEDBACK tab would stand on it. */
+#screens .arena-panel.is-rim[data-room='tight'] {
+  bottom: calc(var(--u) * 12);
+}
 #screens:has(> .arena-panel:only-child) {
   box-shadow: none;
 }
@@ -4324,22 +4338,9 @@ button {
 :where(.pixel-ui) .bench-layout {
   grid-template-columns: minmax(0, 1fr);
 }
-/* The rim: one card at the foot of the window, as tall as what it says, with the
-   pit it is about above it. It has no title bar or help bar: the card is the screen. */
+/* The rim: one card at the foot of the window (`.arena-panel.is-rim`, with the panels). */
 :where(.pixel-ui) .rim-layout {
   display: block;
-}
-#screens .arena-panel.is-rim .px-title,
-#screens .arena-panel.is-rim .px-help {
-  display: none;
-}
-#screens .arena-panel.is-rim .px-screen {
-  display: block;
-  height: auto;
-}
-/* With no help bar under it, in the smallest window the FEEDBACK tab would stand on it. */
-#screens .arena-panel.is-rim[data-room='tight'] {
-  bottom: calc(var(--u) * 12);
 }
 :where(.pixel-ui) .rim-ways {
   display: flex;
