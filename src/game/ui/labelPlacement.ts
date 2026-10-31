@@ -249,6 +249,7 @@ function candidatesFor(
   request: CaptionRequest,
   bounds: Rect,
   player: readonly Rect[] = [],
+  canopy: readonly Rect[] = [],
 ): Candidate[] {
   const { subject, width, height, preferred } = request;
   const minimumX = bounds.x + VIEW_INSET;
@@ -297,6 +298,21 @@ function candidatesFor(
     return columns.map((x) => ({ x: slideX(x), y: Math.round(y), seat }));
   };
 
+  // And after those, the row itself slid along past a tree crown or whoever is
+  // standing in it, while it is still over or under what it names. On the
+  // Pokémon Center's doorstep the trees over its roof had the row above and the
+  // player had the row below, at all three of its places along the front, and a
+  // door with a favour behind it went unnamed to the one person on its step.
+  const slidPast = (seat: CaptionSide): Candidate[] => {
+    const [ordinary] = row(seat);
+    const inRow = [...canopy, ...player].filter((one) => overlap(one, { ...reach, y: ordinary.y, height }) > 0);
+    return inRow.flatMap((one) =>
+      [one.x + one.width + SUBJECT_GAP, one.x - SUBJECT_GAP - width]
+        .filter((x) => x < subject.x + subject.width && x + width > subject.x)
+        .map((x) => ({ x: slideX(x), y: ordinary.y, seat })),
+    );
+  };
+
   return [
     ...row(preferred),
     ...row(preferred === 'above' ? 'below' : 'above'),
@@ -304,6 +320,8 @@ function candidatesFor(
     ...column('left'),
     ...clearOfPlayer(preferred),
     ...clearOfPlayer(preferred === 'above' ? 'below' : 'above'),
+    ...slidPast(preferred),
+    ...slidPast(preferred === 'above' ? 'below' : 'above'),
   ];
 }
 
@@ -356,7 +374,7 @@ export function explainSeats(
   const view = inflate(surroundings.bounds, -VIEW_INSET);
   const against = (rect: Rect, others: readonly Rect[], gap: number): number =>
     others.reduce((total, one) => total + overlap(rect, inflate(one, gap)), 0);
-  return candidatesFor(request, surroundings.bounds, surroundings.player).map((candidate) => {
+  return candidatesFor(request, surroundings.bounds, surroundings.player, surroundings.canopy).map((candidate) => {
     const rect: Rect = { x: candidate.x, y: candidate.y, width: request.width, height: request.height };
     return {
       seat: candidate.seat,
@@ -462,7 +480,7 @@ export function placeCaptions(
   const silent: CaptionPlacement = { x: 0, y: 0, seat: 'above', candidate: 0, visible: false };
 
   const place = (request: CaptionRequest, held: number | undefined): CaptionPlacement => {
-    const candidates = candidatesFor(request, surroundings.bounds, surroundings.player);
+    const candidates = candidatesFor(request, surroundings.bounds, surroundings.player, surroundings.canopy);
     const rectOf = (candidate: Candidate): Rect => ({
       x: candidate.x,
       y: candidate.y,

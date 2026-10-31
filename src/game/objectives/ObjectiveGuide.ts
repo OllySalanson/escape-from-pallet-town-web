@@ -54,6 +54,12 @@ export interface ObjectiveGuideModel {
   readonly contractLabel: string;
   readonly objectives: readonly ObjectiveGuideObjective[];
   readonly hints: readonly string[];
+  /**
+   * What Professor Oak says on the radio: where to go next, and how to get out.
+   * The two things a raid asks of the key, in the box; `hints` is everything,
+   * for the full list.
+   */
+  readonly radio: readonly [string, string];
 }
 
 /**
@@ -76,6 +82,9 @@ export function buildObjectiveGuide(
   const safeExit = session.plan?.extractionPoints.find(
     (point) => point.mapId === session.plan?.insertion.mapId,
   );
+  const route = contract
+    ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
+    : laterRunHints(session, context, currentExit?.label);
 
   return {
     isFirstContract,
@@ -83,16 +92,32 @@ export function buildObjectiveGuide(
     // a heading that repeats the line above it is a rank of nothing.
     contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
     objectives,
+    radio: radioLines(contract !== undefined, route, session, context),
     hints: [
-      ...(contract
-        ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
-        : laterRunHints(session, context, currentExit?.label)),
+      ...route,
       ...barredExitHints(session, context),
       ...lockedCacheHints(session, context),
       ...errandHints(session, context, snapshot.foundItems),
       ...shinyHints(snapshot.caughtPokemon),
     ],
   };
+}
+
+/**
+ * Two lines over the radio, from the route the guide already works out: the
+ * first thing it says and the last, which on every kind of raid is what to do
+ * next and how to bank it. With no contract the first is the nearest landmark,
+ * without the sentence about what it is: that is the full list's.
+ */
+function radioLines(
+  hasContract: boolean,
+  route: readonly string[],
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+): readonly [string, string] {
+  const landmark = hasContract ? undefined : nearestLandmarkToWork(session, context);
+  const next = landmark ? landmarkWhere(landmark, context) : route[0];
+  return [`Oak here! ${next}`, route[route.length - 1]];
 }
 
 /**
@@ -372,8 +397,12 @@ function nearestExitHint(context: ObjectiveGuideContext): string | undefined {
   return `${exit.label}, ${directionTo(context.currentPosition, context.towards?.(exit.position) ?? exit.position)}`;
 }
 
+function landmarkWhere(landmark: WorldPoi, context: ObjectiveGuideContext): string {
+  return `The nearest landmark still to work is ${landmark.label}, ${directionTo(context.currentPosition, context.towards?.(landmark.position) ?? landmark.position)}.`;
+}
+
 function landmarkHint(landmark: WorldPoi, context: ObjectiveGuideContext): string {
-  return `The nearest landmark still to work is ${landmark.label}, ${directionTo(context.currentPosition, context.towards?.(landmark.position) ?? landmark.position)}. ${landmark.description}`;
+  return `${landmarkWhere(landmark, context)} ${landmark.description}`;
 }
 
 /**

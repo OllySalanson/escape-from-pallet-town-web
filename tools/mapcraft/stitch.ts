@@ -280,7 +280,12 @@ export function stitch(plan: WorldPlan, built: Readonly<Record<string, MapFile>>
       merged.areas.push(area);
     }
     for (const link of file.links ?? []) {
-      const moved: MapFileLink = { ends: [move(link.ends[0]), move(link.ends[1])] };
+      // A boat a district keeps to itself (a punt on its own water) sails on with it.
+      const sails = link.sails && {
+        ...link.sails,
+        course: link.sails.course.map((turn) => ({ x: turn.x + rect.x, y: turn.y + rect.y })),
+      };
+      const moved: MapFileLink = { ends: [move(link.ends[0]), move(link.ends[1])], ...(sails ? { sails } : {}) };
       const shared = link.ends.every((end) => end.area !== undefined);
       if (shared && merged.links.some((other) => JSON.stringify(other) === JSON.stringify(moved)))
         continue;

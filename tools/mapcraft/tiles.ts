@@ -33,6 +33,7 @@ const KIND_OF_LETTER: Readonly<Record<string, TileKind>> = {
   d: 'road',
   P: 'road',
   ',': 'road',
+  _: 'road',
   v: 'road',
   M: 'road',
   w: 'ford',

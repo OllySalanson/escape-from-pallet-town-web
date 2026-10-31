@@ -18,7 +18,7 @@
 import { caveMouthSpots, plantCaveMouth } from '../../caves';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
-import { startDistrict } from '../../worldPlan';
+import { planLimits, startDistrict } from '../../worldPlan';
 import { caveLife } from './caveLife';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { GREYSTONE_VALE } from './plan';
@@ -42,8 +42,8 @@ const WOOD = [
   'TTTT.TTT.TTT....T........TTTgTTT',
   'TTT..TTT.TTT.TTTTT.....TTTTTgTTT',
   'ddddddTT.TTT.TTTTTTTdTTTTTTTgTTT',
-  'TTTTTdTT.TTTddddddddddTTTTTTgTTT',
-  'TTTTTdTT.TTTdTTT.TTTTdTTTTTT.TTT',
+  'T....dTT.TTTddddddddddTTTTTTgTTT',
+  'T....dTT.TTTdTTT.TTTTdTTTTTT.TTT',
   'TTTTTddddddddTTT.TTTTdTTTTTT.TTT',
   'TTTTTTTTT.TTTTTT.TTTTddddddddddd',
   'TTTTTTTTT.TTTTTT.TTTTTTTT.TTTTTT',
@@ -76,6 +76,16 @@ export function tanglewood(): MapcraftResult {
   // -- Where three lanes meet in the north-west: a pool, and a berry tree by it
   p.draw(11, 19, ['  WWW ', ' WWWWW', 'WWWWWW', ' WWWW ']);
 
+  // -- The woodmen's stand, where the road comes in: the wood's edge is worked ------------
+  p.building('big-stump', 2, 36);
+  p.building('log', 5, 34);
+  p.building('crate-pair', 8, 36 - 2);
+  p.building('stump', 2, 34 + 1);
+  p.flowers([8, 37]);
+  // -- The picnic ground, on the west glade: as far in as most people mean to come --------
+  p.building('bench', 14, 23);
+  p.flowers([9, 24], [12, 22], [16, 23]);
+
   // -- The way underground: the Greystone Caves open at the outcrop's foot -----
   const mouth = caveMouthSpots(p, { x: 50, y: 14, width: 8, height: 6 })[0];
   if (!mouth) throw new Error('the outcrop has no foot for a cave mouth');
@@ -103,6 +113,11 @@ export function tanglewood(): MapcraftResult {
       people: [
         // In the hollow off the long north lane, the furthest the maze is from
         // anything: somebody who took one turn too many.
+        { x: 5, y: 37, name: 'Woodman', look: 'black-belt', facing: 'up', lines: ['We only cut the edge. Nobody who went in to cut the middle has sent any wood back.', 'Keep to the road. I know everybody says it. Keep to it anyway.'], beat: { everyMs: 3200, roam: [[1, 0]], glances: ['up', 'right'] }, calls: ['Timber! Sort of.'] },
+        { x: 9, y: 37, name: 'Young Woodman', look: 'boy', facing: 'left', lines: ['There was a deer path here somewhere, just off the road. It comes out at a gap.', 'If you ever need to leave in a hurry. Which you will. People do.'], beat: { everyMs: 2500, glances: ['up', 'down'] }, calls: ['Mind your head!'] },
+        { x: 13, y: 23, name: 'Picnic Mum', look: 'woman', facing: 'right', lines: ['We said we would just go in as far as the pond.', 'This is as far as the pond. Nobody is to go any further. Tim. TIM.'], beat: { everyMs: 3000, glances: ['down', 'up'] }, calls: ['Tim! Come back here!'] },
+        { x: 9, y: 19, name: 'Tim', look: 'little-boy', facing: 'up', lines: ['There is a lane behind that tree that goes all the way to a statue. I saw it.', 'I saw it from a very long way away. I am not allowed.'], beat: { everyMs: 1700, roam: [[0, 1]], glances: ['up', 'left'] }, calls: ['I can see a statue!'] },
+        { x: 9, y: 10, name: 'Mushroom Woman', look: 'old-woman', facing: 'down', lines: ['Every lane in this wood is the same lane. I have been picking along it for sixty years.', 'I go in by the road and I come out by the road. In between I stop thinking about it.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['Not that one. Not that one.'] },
         {
           x: 27,
           y: 4,
@@ -122,12 +137,20 @@ export function tanglewood(): MapcraftResult {
         },
         ...life.people,
       ],
-      pokemon: [{ x: 25, y: 5, species: 'oddish' }, ...life.pokemon],
+      pokemon: [
+        { x: 25, y: 5, species: 'oddish' },
+        { x: 7, y: 35, species: 'pidgey', beat: { everyMs: 1500, roam: [[-1, 0]] } },
+        { x: 9, y: 22, species: 'caterpie', beat: { everyMs: 2300, roam: [[1, 0]] } },
+        { x: 10, y: 19, species: 'paras', level: 8 },
+        ...life.pokemon,
+      ],
       berryTrees: [{ x: 16, y: 19, berry: 'pecha' }],
       areas: cave.areas,
       links: [caveMouthLink(cave, 'wood', mouth), ...caveLadders(cave)],
       signs: [
         { x: 17, y: 36, lines: ['TANGLEWOOD', 'East to the Eastern Track. Keep to the road.'] },
+        { x: 7, y: 36, lines: ['WOODMEN’S STAND', 'Wood for The Crossing and the vale. Mind the logs. The logs do not mind you.'] },
+        { x: 8, y: 24, lines: ['THE PICNIC GROUND', 'As far as the pond. No further. We mean it. We have told you now.'] },
         ...life.signs,
       ],
       trainers: [
@@ -145,5 +168,5 @@ export function tanglewood(): MapcraftResult {
       ],
     },
   });
-  return { file, notes: p.notes };
+  return { file, notes: p.notes, limits: planLimits(GREYSTONE_VALE) };
 }

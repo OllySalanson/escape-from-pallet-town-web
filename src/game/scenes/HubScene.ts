@@ -20,11 +20,8 @@ import {
   WORKSHOP_UPGRADES,
   workshopOffers,
   pokemonNeedingRecovery,
-  teamCondition,
-  quoteRecovery,
   raidClockAfterRecovery,
   recoveryCostMs,
-  recoveryPriceShare,
   spendableSupply,
   buildDropInBriefing,
   doorHolder,
@@ -53,7 +50,6 @@ import {
   STANDING_PER_CONTRACT,
   POKEDOLLARS_PER_STANDING,
   wardBedIds,
-  wardTreatmentsPerRaid,
   berthSquares,
   type Deployment,
   type TraderBarterOffer,
@@ -97,7 +93,6 @@ import { flowForGame, offeredInsertions, type ArenaKit } from '../base/arenaKit'
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
-import { buildContractBoard } from '../hub/contractBoard';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import {
   activeSaveSlot,
@@ -146,7 +141,7 @@ import {
   type Stash,
   type StashedPokemon,
 } from '../stash';
-import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
+import { iconMarkup, itemIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
 import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
@@ -184,10 +179,8 @@ import {
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
+import { askedDealIndex, focusDirectionForKey } from '../ui/spatialFocus';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
-import { focusDirectionForKey } from '../ui/spatialFocus';
-import { FIRST_WORDS, firstWordsFor, hasHeard, spokenLines, type FirstWords, type FirstWordsId } from '../hub/firstWords';
-import { loadPlayerName } from '../console/playerName';
 import {
   errandLoot,
   errandPlace,
@@ -197,24 +190,14 @@ import {
   errandsToLay,
   errandForItem,
 } from '../hub/errands';
-import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
+import { pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
-import {
-  DAY_CARE_MAN,
-  checkOnLines,
-  dayCareRefusal,
-  dayCareReport,
-  grownToday,
-  leftLines,
-  raidsCompleted,
-  takeBack,
-  takenBackLines,
-} from '../hub/dayCare';
-import { DAY_CARE_KEEPER } from '../base/dayCarePen';
-import { friendRoom, raidName } from '../raidRoom/friendRoom';
+import { recoveryTermsFor } from '../hub/centerCounter';
+import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
+import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
-import { friendRoomCard, friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
+import { friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
 import { RAID_KEY_LETTERS } from '../input/keyBindings';
 import { withArticle } from '../ui/article';
 
@@ -266,7 +249,7 @@ export type ArenaPanel = 'bench' | 'rack' | 'locker' | 'rim';
 const ARENA_PANELS: readonly string[] = ['bench', 'rack', 'locker', 'rim'] satisfies readonly ArenaPanel[];
 
 /** Every base screen, and the hall's panels. */
-type HubView = 'home' | 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'friend';
+type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'friend';
 
 /**
  * How much of the menu layer a panel over the hall may take, in game pixels: as
@@ -324,7 +307,7 @@ export class HubScene extends Phaser.Scene {
   /** What the hall handed over, when this is one of its panels. */
   private kit: ArenaKit | undefined;
   private overlay!: MenuOverlay;
-  private view: HubView = 'home';
+  private view: HubView = 'stash';
   /** Which screen `render` last drew, so a redraw of it keeps its scroll. */
   private drawnScreen: string | undefined;
   /** The base door this screen was walked in through, if any - see `leaveToBase`. */
@@ -391,23 +374,6 @@ export class HubScene extends Phaser.Scene {
   /** The Pokemon picked up to be put in another box, by stash id. */
   private boxMoving: string | undefined;
   private status = '';
-  /**
-   * The words being said over this screen, if any, and which screen they are
-   * said over: first words (`hub/firstWords.ts`), or Professor Oak handing over
-   * a Pokédex reward in his lab (`hub/pokedex.ts`). Both are recorded the moment
-   * they appear, so this only keeps them up until they are read or the screen
-   * changes.
-   */
-  private speaking:
-    | {
-        /** The screen whose first words these are, or `day-care` for what he says as he takes or gives back. */
-        readonly screen: FirstWordsId | 'day-care';
-        readonly words: FirstWords;
-        readonly reward?: boolean;
-      }
-    | undefined;
-  /** Whether the words just read were a Pokédex reward, so a second one carries on rather than greets again. */
-  private afterReward = false;
   /** The one pending removal of the status line; see `setStatus()`. */
   private statusTimer: Phaser.Time.TimerEvent | undefined;
 
@@ -439,7 +405,7 @@ export class HubScene extends Phaser.Scene {
     // The save wins over the payload for the *game*; the payload wins for which
     // room this is, because that is the door the player just walked through and
     // storage knows nothing about it.
-    this.view = data.view ?? 'home';
+    this.view = data.view ?? 'stash';
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
     // Looking down from the rim is looking the plan over, as far as it can be.
@@ -473,7 +439,7 @@ export class HubScene extends Phaser.Scene {
       this.flow = flowForGame(loaded);
     }
     this.arranging.release();
-    this.view = 'home';
+    this.view = 'stash';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
     this.workshopArmed = undefined;
@@ -487,7 +453,6 @@ export class HubScene extends Phaser.Scene {
     this.boxEditing = undefined;
     this.boxMoving = undefined;
     this.status = '';
-    this.speaking = undefined;
     // The clock that owned it died with the last hub, so only the pointer is left.
     this.statusTimer = undefined;
   }
@@ -707,13 +672,7 @@ export class HubScene extends Phaser.Scene {
    * treatment does not charge.
    */
   private get recoveryTerms(): RecoveryTerms {
-    return {
-      priceShare: recoveryPriceShare(this.builtUpgradeIds),
-      wardTreatments: Math.max(
-        0,
-        wardTreatmentsPerRaid(this.builtUpgradeIds) - this.savedGame.wardTreatmentsUsed,
-      ),
-    };
+    return recoveryTermsFor(this.builtUpgradeIds, this.savedGame.wardTreatmentsUsed);
   }
 
   /** Whether the ward's free bed would go to this Pokemon if it were treated now. */
@@ -1008,7 +967,7 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     if (!this.saveManager.reselectStarter(this.reselectStarterId)) {
-      this.setView('home');
+      this.setView('stash');
       this.refuse('That swap could not be saved.');
       return;
     }
@@ -1314,27 +1273,10 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    // The friend's room is opened from Oak's Lab, so it backs out to the lab.
-    if (this.view === 'friend') {
-      this.setView('home');
-      this.render();
-      return;
-    }
     this.leaveToBase();
   }
 
   private handleKey(event: KeyboardEvent): void {
-    // Words being said hold the screen, as a text box does: ESC reads on as
-    // ENTER does, and the cursor has nowhere else to go until they are read.
-    if (this.speaking) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        this.doneListening();
-      } else if (focusDirectionForKey(event.key) || event.key === 'Tab') {
-        event.preventDefault();
-      }
-      return;
-    }
     // A piece in the player's hand owns the arrow keys, R, ENTER and ESC, so it
     // is asked before the cursor is: carrying something and pressing Left has
     // exactly one meaning, and it is not "move to the pane on the left".
@@ -1392,6 +1334,13 @@ export class HubScene extends Phaser.Scene {
         row.focus();
         return;
       }
+    }
+    // A deal being asked again is a YES/NO box, and the arrows stay in it.
+    const answers = [...this.overlay.root.querySelectorAll<HTMLElement>('.px-arming .px-bar-actions button')];
+    if (answers.length > 0 && focusDirectionForKey(event.key)) {
+      event.preventDefault();
+      answers[askedDealIndex(event.key, answers.indexOf(document.activeElement as HTMLElement), answers.length)]?.focus();
+      return;
     }
     if (this.overlay.moveCursor(event.key)) {
       event.preventDefault();
@@ -1467,8 +1416,7 @@ export class HubScene extends Phaser.Scene {
    * Ferryman's counters - is unchanged everywhere it is said inside.
    */
   private get heading(): string {
-    if (this.view === 'home') return 'Oak’s Lab';
-    if (this.view === 'stash') return 'Pokémon Center';
+    if (this.view === 'stash') return 'Bill’s PC';
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'workshop') return 'Brock’s Workshop';
     if (this.view === 'trader') return 'Bill’s Cottage';
@@ -1485,7 +1433,6 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'reselect') return 'Center';
     // Out of a screen is back into the room it is kept in (`base/rooms.ts`),
     // so the label names the room that puts you in.
-    if (this.view === 'home') return 'Lab';
     if (this.view === 'stash') return 'Center';
     if (this.view === 'workshop') return 'Workshop';
     if (this.view === 'trader') return 'Cottage';
@@ -1503,7 +1450,6 @@ export class HubScene extends Phaser.Scene {
 
   private render(): void {
     const root = this.overlay.root;
-    this.listenForFirstWords();
     // A redraw of the screen already showing keeps its lists where they were
     // scrolled (`MenuOverlay.redraw`); arriving at another screen starts it at
     // the top.
@@ -1554,17 +1500,11 @@ export class HubScene extends Phaser.Scene {
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
-      over: this.firstWordsBox(),
     });
     if (sameScreen) {
       this.overlay.redraw(markup);
     } else {
       root.innerHTML = markup;
-    }
-    // While somebody is speaking the screen under the words is shown but not
-    // worked: the one control is the one that says they have been read.
-    if (this.speaking) {
-      root.querySelector('.px-body')?.setAttribute('inert', '');
     }
     const on = (selector: string, handler: (button: HTMLButtonElement, event: MouseEvent) => void): void => {
       root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
@@ -1588,7 +1528,6 @@ export class HubScene extends Phaser.Scene {
       this.render();
     });
     on('[data-back]', () => this.goBack());
-    on('[data-speech-done]', () => this.doneListening());
     on('[data-view]', (button) => rerender(() => this.setView(button.dataset.view as HubView)));
     on('[data-starter]', (button) =>
       rerender(() => {
@@ -1655,7 +1594,6 @@ export class HubScene extends Phaser.Scene {
     });
     on('[data-refused]', (button) => this.setStatus(button.dataset.refused));
     on('[data-recover]', (button) => this.recover([button.dataset.recover!]));
-    on('[data-recover-all]', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
     on('[data-supply]', (button) => this.setStatus(button.dataset.help));
     on('[data-fit]', (button) => {
       const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.name;
@@ -1693,116 +1631,10 @@ export class HubScene extends Phaser.Scene {
     on('[data-room-leave]', () => this.leaveRoom());
     this.wireRoomForm(root);
     on('[data-day-care-leave]', (button) => this.leaveAtDayCare(button.dataset.dayCareLeave!));
-    on('[data-day-care-take]', () => this.takeBackFromDayCare());
-    if (this.speaking) {
-      this.overlay.focus('[data-speech-done]');
-      return;
-    }
     // The way in the player is stood over is in view in its list, whichever it is.
     root.querySelector<HTMLElement>('[data-insertion].is-selected')?.scrollIntoView?.({ block: 'nearest' });
     // The cursor starts on what the screen is for, never on the way out of it.
     this.overlay.refocus('.px-field', '[data-cursor-start]', '.px-body button:not([disabled])', 'button');
-  }
-
-  /**
-   * Whether this screen has first words this save has not heard, and if so
-   * starts saying them - recording them as heard at once, so they are said
-   * once per save and never again, read or not (`hub/firstWords.ts`).
-   */
-  private listenForFirstWords(): void {
-    // The Day-Care Man's words answer something just done, and stay up until
-    // they are read.
-    if (this.speaking?.screen === 'day-care') {
-      return;
-    }
-    const here = firstWordsFor(this.view);
-    if (here !== undefined && here === this.speaking?.screen) {
-      return;
-    }
-    this.speaking = undefined;
-    const progress = this.savedGame.raidProgress;
-    // Another tab has written since this screen read the save; the next thing
-    // done here catches up with it (`movedOnElsewhere`), and says nothing new.
-    if (this.saveManager.stamp() !== this.saveStamp) {
-      return;
-    }
-    if (!here || hasHeard(progress.firstWordsHeard, here)) {
-      // Oak's own first words come before anything he has to give. A keeper's
-      // favour is not said here at all: it is asked in the room, in the
-      // dialogue box, before the screen opens (`BaseScene.speakToKeeper`).
-      if (here === 'lab') {
-        this.listenForPokedexReward();
-      }
-      return;
-    }
-    this.saveManager.hearFirstWords(here);
-    // The hub keeps its own copy of the game and writes it whole, so the copy
-    // learns what was just recorded or the next write would forget it.
-    this.savedGame = {
-      ...this.savedGame,
-      raidProgress: { ...progress, firstWordsHeard: [...(progress.firstWordsHeard ?? []), here] },
-    };
-    this.saveStamp = this.saveManager.stamp();
-    this.speaking = { screen: here, words: FIRST_WORDS[here] };
-  }
-
-  /**
-   * Professor Oak looks at the Pokédex and hands over the next milestone's
-   * reward, if one is due (`hub/pokedex.ts`). The reward is written into the
-   * vault and recorded in one save, so it is given once however the lab is left;
-   * two milestones crossed at once are said one after the other, as each is read.
-   */
-  private listenForPokedexReward(): void {
-    const progress = this.savedGame.raidProgress;
-    if (!dueMilestone(pokedexOwned(progress.pokedexOwned, this.stash).length, progress.pokedexRewards)) {
-      return;
-    }
-    const continuing = this.afterReward;
-    const given = this.saveManager.claimPokedexReward();
-    const reloaded = given ? this.saveManager.load() : null;
-    if (!given || !reloaded) {
-      return;
-    }
-    // The reward is in the vault in storage, so this screen's copy is read
-    // again rather than added to by hand - a second copy of the sum is a second
-    // answer. Nothing on the lab screen is lost by it: it is the room's front.
-    this.applyLoadedGame(reloaded);
-    this.speaking = { screen: 'lab', words: milestoneWords(given.milestone, given.owned, continuing), reward: true };
-    audioManager.play('itemObtained');
-  }
-
-  private doneListening(): void {
-    if (!this.speaking) {
-      return;
-    }
-    // Already recorded as heard, so the re-render does not start them again.
-    this.afterReward = this.speaking.reward === true;
-    const fromTheDayCare = this.speaking.screen === 'day-care';
-    this.speaking = undefined;
-    audioManager.play('select');
-    this.render();
-    this.afterReward = false;
-    // A Pokemon taken back may have reached a move with no room for it, and
-    // this is the player's first moment to be asked.
-    if (fromTheDayCare) {
-      this.offerPendingMoves();
-    }
-  }
-
-  /** The words being said, as the box laid over the foot of the screen. */
-  private firstWordsBox(): string | undefined {
-    if (!this.speaking) {
-      return undefined;
-    }
-    const { words } = this.speaking;
-    // The person, then what they say, then the one way on: a text box with a
-    // face beside it, as the room's own dialogue box would be.
-    return pixelWindow(
-      `<div class="px-lead">${pixelFigure(words.speaker, words.name)}<div class="px-speech-words"><strong>${words.name}</strong>${spokenLines(words, loadPlayerName())
-        .map((line) => `<p class="px-wrap px-speech-line">${line}</p>`)
-        .join('')}</div><button class="px-window px-button is-primary" data-speech-done data-help="Read it? ENTER, and the screen is yours.">Got it</button></div>`,
-      { className: 'px-speech', tag: 'div' },
-    );
   }
 
   /**
@@ -1826,7 +1658,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   private content(): string {
-    if (this.view === 'home') return this.homeView();
     if (this.view === 'stash') return this.stashView();
     if (this.view === 'reselect') return this.reselectView();
     if (this.view === 'workshop') return this.workshopView();
@@ -1840,53 +1671,8 @@ export class HubScene extends Phaser.Scene {
     return this.rimView();
   }
 
-  /**
-   * Oak's Lab: the board of work on offer, and the wall map.
-   *
-   * Raids are prepared in the Raid Arena's great hall (the captain, 2026-10-23
-   * and 2026-10-30); the lab keeps the board, the team's
-   * condition and the friend's room, and its card says where the Arena is.
-   *
-   * This used to be the lobby - the raid card, the stash, the Outfitter and the
-   * Ferryman side by side, with the contract board under them. Three of those
-   * four are buildings of their own now (`base/doors.ts`), so what is left here
-   * is the two things that belong in a lab: the board of work on offer, and the
-   * door out to it. Nothing about the board or preparation changed; what went
-   * is the navigation, which is the yard outside.
-   *
-   * The Pokémon line stays because it is the one fact that decides whether to
-   * deploy at all, and the Center is a walk away rather than a click.
-   */
-  private homeView(): string {
-    const said = teamCondition(this.stash);
-    // Oak sends you out, and he is on the card that does it: the same art the
-    // overworld draws him from, at the same scale. The other three people are
-    // in their own buildings now (`base/doors.ts`), so the only other face here
-    // is Nurse Joy's, on the line that says somebody needs her.
-    // A clock the Pokémon Center has shortened is said on the card that starts
-    // the raid it shortens: after a wipe and a revive nothing here said the next
-    // raid was 3:20 until the final check (playtest 47).
-    const shortened =
-      this.pendingRecoveryMs > 0 && !isPlaytestRun()
-        ? `<p class="px-warning">Next raid ${formatRecoveryClock(this.raidClockMs)}: ${formatRecoveryClock(this.pendingRecoveryMs)} went on recovery.</p>`
-        : '';
-    // Raids start at the Raid Arena now (`base/doors.ts`), so the card that
-    // used to open preparation here says where to go instead.
-    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-refused="Raids start at the RAID ARENA, west of the yard. Walk in: the bench, the rack and the pit are all in the one room." data-cursor-start data-help="Every raid starts at the RAID ARENA, west of the yard."><strong>The Raid Arena</strong><p>Walk west across the yard to kit up and drop in.</p>${shortened}${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
-    const condition = said
-      ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
-      : '<p>Everyone is fit to deploy.</p>';
-    const team = `<button class="px-window px-card has-figure" data-refused="The Pokémon Center is the building west of the lab." data-help="Your team's condition. Nurse Joy treats them, across the yard."><strong>Your team</strong>${condition}${pixelFigure('nurse-joy', 'Nurse Joy')}</button>`;
-    return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${team}${this.friendCard()}</section>${this.contractBoard()}</main>`;
-  }
-
-  /**
-   * Raiding with a friend (`raidRoom/`): offered only in the ordinary game,
-   * never the explorer run or a map maker's TRY IT, and only where there is a
-   * room service to ask - the live project, or a test's tab-to-tab stand-in.
-   */
   private get roomsOffered(): boolean {
-    return friendRoom() !== null && activeSaveSlot() === 'normal' && !isPlaytestRun();
+    return friendRoomsOffered();
   }
 
   /** The room this browser holds, if raiding with a friend is offered here at all. */
@@ -1906,14 +1692,6 @@ export class HubScene extends Phaser.Scene {
     return room
       ? `<small class="px-wrap room-note">${room.hostName ? `${room.hostName}’s room` : 'Your room'} ${room.code} · you each raid ${worldMapName(room.mapId)} on your own clock</small>`
       : '';
-  }
-
-  private friendCard(): string {
-    if (!this.roomsOffered) {
-      return '';
-    }
-    const room = this.heldRoom;
-    return friendRoomCard(room ? { code: room.code, mapName: worldMapName(room.mapId) } : null);
   }
 
   /** The maps a room can be made on: every map this save can drop into, once each. */
@@ -2061,147 +1839,11 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * The contract board: every contract on offer, what it asks and what it pays.
-   *
-   * Each row names its insertion because taking a contract is choosing where to
-   * drop in, which is done at the Raid Arena's drop-in step. It also names what has to be packed, because a delivery
-   * decided at the loadout screen is decided too late once the raid has started.
-   */
-  private contractBoard(): string {
-    // Worded in `contractBoard.ts`, so the authored chain and the standing board
-    // that follows it are one list in one voice, testable without the lobby.
-    const board = buildContractBoard(this.savedGame.raidProgress);
-    const errands = this.errandRows(board.rows.length === 0);
-    if (board.rows.length === 0 && errands.rows === '') {
-      return pixelWindow(
-        '<p class="px-empty">Raids from here are for supplies, Pokémon and whatever the maps still hold.</p>',
-        { className: 'objectives-panel', heading: 'Contract board', note: 'Every contract is banked' },
-      );
-    }
-    const rows = board.rows
-      .map((row) => {
-        const insertion = this.insertionFor(row.mapId);
-        const place = insertion?.[1].label ?? worldMapName(row.mapId);
-        const wiring = insertion
-          ? `data-refused="${escapeAttribute(`Drop in at ${place} to take it. Raids start at the RAID ARENA, west of the yard.`)}" data-shows="${row.contractId}" data-help="${escapeAttribute(`Taken by dropping in at ${place}, from the RAID ARENA.`)}"`
-          : 'disabled';
-        // A raised contract says so on the row itself: the detail under the list
-        // only shows the row in hand, and the hunter is what is being chosen between.
-        const raised = row.hunterPressure > 0 ? pixelTag(`Hunter +${row.hunterPressure}`, 'risk') : '';
-        return `<button class="px-row has-icon px-tall px-contract" ${wiring}${row.hunterPressure > 0 ? ` data-hunter-pressure="${row.hunterPressure}"` : ''}>${objectiveIcon('Contract')}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${row.name}</strong><small>${place}</small></span><span class="px-wrap">${row.description}.</span></span>${raised}</button>`;
-      })
-      .join('');
-    // A pane names what it is the reward for: until a row is pointed at it shows
-    // the first contract's, under the errands' rows, where it read as theirs.
-    const details = board.rows
-      .map(
-        (row, index) =>
-          `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward for</small> ${row.name}: ${row.reward}</span></div>`,
-      )
-      .join('');
-    return pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}${errands.rows}</div>${details}${errands.details}`,
-      {
-        className: 'objectives-panel',
-        heading: board.heading,
-        note: board.note,
-      },
-    );
-  }
-
-  /**
-   * The errands in hand (`hub/errands.ts`), under the contracts on the same
-   * board: what each person is waiting on, where it lies and what it costs the
-   * pack. A row is the choice of where to drop in, as a contract's is; one whose
-   * thing is already home says who to take it to instead.
-   */
-  private errandRows(firstShown: boolean): { readonly rows: string; readonly details: string } {
-    const inHand = errandsInHand(this.savedGame.raidProgress);
-    if (inHand.length === 0) {
-      return { rows: '', details: '' };
-    }
-    const rows = inHand
-      .map((errand) => {
-        const thing = errandThing(errand);
-        const squares = errandSquares(errand);
-        const home = this.stash.itemCount(errand.itemId) > 0;
-        const insertion = this.insertionFor(errand.mapId);
-        const shows = `data-shows="errand-${errand.id}"`;
-        const wiring = home
-          ? `data-refused="${escapeAttribute(`${thing} is home. Speak to ${errand.name} and it is handed over.`)}" ${shows} data-help="${escapeAttribute(`${thing} is in your stash. ${errand.name} takes it when you speak to them.`)}"`
-          : insertion
-            ? `data-refused="${escapeAttribute(`Drop in at ${insertion[1].label} for it. Raids start at the RAID ARENA, west of the yard.`)}" ${shows} data-help="${escapeAttribute(`Found by dropping in at ${insertion[1].label}, from the RAID ARENA.`)}"`
-            : 'disabled';
-        const line = home
-          ? `Home. Take it to ${errand.name}.`
-          : `In ${errandPlace(errand)}, ${worldMapName(errand.mapId)}. ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`;
-        return `<button class="px-row has-icon px-tall px-contract" ${wiring}>${itemIcon(errand.itemId, thing)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${thing}</strong><small>for ${errand.name}</small></span><span class="px-wrap">${line}</span></span></button>`;
-      })
-      .join('');
-    const details = inHand
-      .map(
-        (errand, index) =>
-          `<div class="px-detail" data-shown-by="errand-${errand.id}"${firstShown && index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>Reward for</small> ${errandThing(errand)}: ${errand.reward.summary}, from ${errand.name}. Lost with the pack if you wipe.</span></div>`,
-      )
-      .join('');
-    return { rows: `<h3 class="px-subheading">Errands</h3>${rows}`, details };
-  }
-
   /** The unlocked insertion a contract is taken from, if the player can reach it yet. */
   private insertionFor(
     mapId: WorldMapId,
   ): readonly [RunInsertionId, RunInsertion] | undefined {
     return this.unlockedInsertions.find(([, insertion]) => insertion.mapId === mapId);
-  }
-
-  /**
-   * The Pokemon Center's bill, along the bottom of the stash. It only appears when
-   * there is something to say - somebody hurt, or time already booked - so a fit
-   * player's stash is exactly the stash they had before. It carries the clock
-   * the next raid will start with and the one action that settles everyone at
-   * once; treating one Pokemon is that Pokemon's own row, above it.
-   */
-  private recoveryPanel(): string {
-    const injured = this.injuredPokemon;
-    const pending = this.pendingRecoveryMs;
-    if (injured.length === 0 && pending === 0) {
-      return '';
-    }
-    const quotedMs = quoteRecovery(this.stash, pending, injured.map((stored) => stored.id), this.recoveryTerms);
-    // The cap can make treating everyone cheaper than the rows add up to, so say so.
-    const listedMs = injured.reduce((total, stored) => total + this.recoveryPriceMs(stored), 0);
-    // A faint is said apart from a scratch, as everywhere else at base
-    // (`teamConditionLine`): the bill read "1 hurt" over a partner who had
-    // fainted and could not deploy until this very button was pressed.
-    const fainted = injured.filter((stored) => stored.pokemon.isFainted).length;
-    const hurt = injured.length - fainted;
-    const lead =
-      injured.length === 0
-        ? 'everyone is fit'
-        : [fainted > 0 ? `${fainted} fainted` : '', hurt > 0 ? `${hurt} hurt` : ''].filter(Boolean).join(' · ');
-    // The title bar carries the clock the next raid starts with. This line is
-    // only for what that number does not show - the time already booked out of
-    // it - so a fit, unbooked stash repeats nothing.
-    const clock =
-      pending === 0
-        ? ''
-        : `${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(pending)} already booked`;
-    const cap =
-      listedMs > quotedMs
-        ? `<small class="px-wrap">Capped: everyone for ${formatRecoveryClock(quotedMs)}, not the ${formatRecoveryClock(listedMs)} they list for one by one.</small>`
-        : '';
-    const action =
-      injured.length === 0
-        ? ''
-        : `<button class="px-window px-button is-primary" data-recover-all data-help="${fainted > 0 ? 'Revived, f' : 'F'}ull HP, status cleared. Paid in raid time, never supplies.">Recover ${injured.length === 1 ? 'them' : `all ${injured.length}`} · ${quotedMs === 0 ? 'free' : `−${formatRecoveryClock(quotedMs)}`}</button>`;
-    return pixelCommitBar({
-      className: 'px-tone-care recovery-panel',
-      lead: pixelFigure('nurse-joy', 'Nurse Joy'),
-      title: `Pokémon Center · ${lead}`,
-      lines: [clock ? `<small class="px-wrap">${clock}</small>` : '', cap],
-      actions: action,
-    });
   }
 
   /** One line of condition, so "fainted" is never hidden behind an HP number. */
@@ -2575,7 +2217,7 @@ export class HubScene extends Phaser.Scene {
     )}<div class="stash-side">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
       { heading: 'Supplies', note: `${this.stashItems.length} ${this.stashItems.length === 1 ? 'kind' : 'kinds'}` },
-    )}</div>${this.recoveryPanel()}</main>`;
+    )}</div></main>`;
   }
 
   /**
@@ -3973,53 +3615,12 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * THE DAY-CARE (`hub/dayCare.ts`): the man at his pen, and either the
-   * Pokémon he is raising - how it has grown, and the press that takes it back
-   * - or the Pokémon at base to choose one from, each saying whether he would
+   * THE DAY-CARE's pick list (`hub/dayCare.ts`). The man has said his piece in
+   * the yard before it opens (`BaseScene.speakToDayCareMan`) and says the rest
+   * there when it closes: every Pokémon at base, each saying whether he would
    * take it and, when not, why.
    */
   private dayCareView(): string {
-    const stay = this.stash.dayCare();
-    const report = stay ? dayCareReport(stay, this.raidsEnded) : undefined;
-    const said = report
-      ? checkOnLines(report)
-      : ['I run the DAY-CARE service. Would you like me to raise one of your Pokémon?'];
-    const lead = pixelWindow(
-      `<div class="px-lead">${pixelFigure(DAY_CARE_KEEPER.design, DAY_CARE_MAN)}<div>${said
-        .map((line) => `<p class="px-wrap">${line}</p>`)
-        .join('')}</div></div>`,
-      {
-        className: 'trader-standing',
-        heading: DAY_CARE_MAN,
-        note: 'Half a level a raid',
-      },
-    );
-    if (report) {
-      // As it would come back today, grown by every raid it has been away for.
-      const pokemon = grownToday(report);
-      const grown = report.levelNow - report.levelLeft;
-      const raids = `${report.raids} ${report.raids === 1 ? 'raid' : 'raids'}`;
-      const take = (attributes: string): string =>
-        this.chip(`data-day-care-take ${attributes}`, `${pokemon.name} goes back into storage at base.`, 'Take it back');
-      const raising = pixelWindow(
-        pokemonDossier({
-          pokemon,
-          id: report.stay.id,
-          first: true,
-          holding: getHeldItem(pokemon.heldItemId) ? `Holding ${getHeldItem(pokemon.heldItemId)!.displayName}` : 'Holding nothing',
-          deeds: { label: 'Day-Care', chips: take },
-        }),
-        { className: 'stash-roster', heading: 'Raising', note: `Left at Lv ${report.levelLeft} · ${raids} ago` },
-      );
-      const bar = pixelCommitBar({
-        title: grown > 0 ? `Grown ${grown} ${grown === 1 ? 'level' : 'levels'}` : 'Not grown yet',
-        lines: [
-          `<small class="px-wrap">Safe here from any wipe. Half a level for every raid you go on, learning its moves as it grows; it comes back as hurt as it was left.</small>`,
-        ],
-        actions: `<button class="px-window px-button is-primary" data-day-care-take data-cursor-start data-help="${escapeAttribute(`${pokemon.name} goes back into storage at base.`)}">Take ${pokemon.name} back</button>`,
-      });
-      return `<main class="px-body daycare-layout">${lead}${raising}${bar}</main>`;
-    }
     const shown = this.findablePokemon;
     const rows = shown
       .map((stored, index) => {
@@ -4048,7 +3649,7 @@ export class HubScene extends Phaser.Scene {
         }),
       )
       .join('');
-    return `<main class="px-body daycare-layout">${lead}${pixelWindow(
+    return `<main class="px-body daycare-layout">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
       { className: 'stash-roster', heading: 'Which Pokémon should I raise?', note: `${this.stashPokemon.length} at base` },
     )}</main>`;
@@ -4070,42 +3671,13 @@ export class HubScene extends Phaser.Scene {
       this.reloadAfterFailedWrite('He could not take it: the game could not be saved.');
       return;
     }
-    this.readTheGameAgain();
-    this.sayForTheDayCare(leftLines(name));
-  }
-
-  /** Takes the Day-Care's Pokémon back into the vault, grown by every raid it was away. */
-  private takeBackFromDayCare(): void {
-    if (this.movedOnElsewhere()) {
-      return;
-    }
-    const levelBefore = this.stash.dayCare()?.pokemon.level;
-    const taken = takeBack(this.stash, this.raidsEnded);
-    if (!taken || levelBefore === undefined) {
-      this.refuse('He is not raising anything for you.');
-      return;
-    }
-    if (!this.writeGame()) {
-      this.reloadAfterFailedWrite('It could not be taken back: the game could not be saved.');
-      return;
-    }
-    this.readTheGameAgain();
-    const learned = taken.grown.learnedMoves.map((move) => move.name);
-    this.sayForTheDayCare([
-      ...takenBackLines(taken.pokemon.name),
-      ...(taken.pokemon.level > levelBefore ? [`${taken.pokemon.name} is Lv ${taken.pokemon.level} now.`] : []),
-      ...(learned.length ? [`It learned ${formatNames(learned)}.`] : []),
-    ]);
-  }
-
-  /** His words over his screen, until they are read. */
-  private sayForTheDayCare(lines: readonly string[]): void {
+    // He says so in the yard, where he and the pen it is walking about in are.
     audioManager.play('confirm');
-    this.speaking = {
-      screen: 'day-care',
-      words: { speaker: DAY_CARE_KEEPER.design, name: DAY_CARE_MAN, lines },
-    };
-    this.render();
+    this.scene.start('base', {
+      savedGame: this.saveManager.load() ?? this.savedGame,
+      ...(this.enteredAt === undefined ? {} : { at: this.enteredAt }),
+      said: leftLines(name),
+    });
   }
 
   /**
@@ -4199,9 +3771,3 @@ function usedInARaid(item: ItemDefinition): string {
   }
 }
 
-/** Names in a sentence: `Tackle`, `Tackle and Growl`, `Tackle, Growl and Ember`. */
-function formatNames(names: readonly string[]): string {
-  return names.length <= 1
-    ? (names[0] ?? '')
-    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}

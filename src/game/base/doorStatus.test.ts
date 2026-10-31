@@ -183,7 +183,7 @@ describe("what each of the base's doors says", () => {
   it('says when a keeper has a favour to ask, a thing to take, or a loss to hear about', () => {
     const opened = { completedContracts: [FIRST_CONTRACT_ID], unlockedInsertions: ['floodplain-relay', 'greystone-vale'] };
     const workshop = doorNamed('brocks-workshop');
-    expect(doorStatusLine(workshop, baseGame({ progress: opened }))).toBe('Brock has a favour to ask');
+    expect(doorStatusLine(workshop, baseGame({ progress: opened }))).toBe('Brock wants a favour');
     const asked = { ...opened, errands: [{ id: 'brocks-crate', status: 'started' as const, found: 0, lossesHeard: 0 }] };
     // In hand and not found: the room's usual line.
     expect(doorStatusLine(workshop, baseGame({ progress: asked }))).toMatch(/built/);

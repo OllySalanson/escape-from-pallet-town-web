@@ -63,7 +63,7 @@ planted buildings. Strokes overwrite earlier strokes except on `lock`ed tiles.
 | Brush | What it does |
 |---|---|
 | `meadow`, `wood`, `rock`, `block`, `draw`, `put` | ground by rectangle, by rows of letters, by tile |
-| `road`, `trail`, `river` | straight legs, two wide (a one-tile lane draws with a cut edge on this sheet) |
+| `road`, `trail`, `river` | straight legs, two wide (a one-tile lane draws with a cut edge on this sheet); `road` with `letter: '_'` is a plank boardwalk, over water as well as land |
 | `bed`, `bedRows`, `pond`, `blob` | tall grass and water; `bedRows` draws ragged edges row by row |
 | `ledge`, `terraces` | a ledge hops south and cannot be climbed; terraces are short stacked pieces |
 | `fenceLine`, `yard`, `bushes`, `flowers` | fences as structure, a fenced yard with gates, single tiles |

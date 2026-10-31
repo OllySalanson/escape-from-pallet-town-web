@@ -827,7 +827,6 @@ try {
         follower: p && p.place.out && p.sprite.visible ? { id: stash.partner()?.id ?? null, species: p.pokemon?.base.id, tile: p.place.tile, facing: p.place.facing } : null }); })()`)}`);
     await walkIntoBase(page, 'oaks-lab', { press, until, wait });
     await wait(400);
-    note(`lobby: ${await page.evaluate(`document.querySelector('.menu-overlay')?.innerText.replace(/\\n+/g, ' | ').slice(0, 160)`)}`);
     // What the raid left in the record at base: the count, and the ground it
     // walked. `--progress=path.json` writes it out, which is how a screenshot
     // of the drop-in screen is taken against a survey a raid actually made.

@@ -3,8 +3,9 @@ import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
+import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, dustAt } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -80,6 +81,7 @@ import {
   shoreLeftBehind,
   voyage,
   type MapSailing,
+  PUNT_TEXTURE,
 } from '../world/sailing';
 import { carriedOn, spinsOn } from '../world/slidingFloor';
 import { MAP_FILE_EXIT_KEY } from '../world/mapFile';
@@ -202,6 +204,8 @@ import { prefersReducedMotion } from '../ui/reducedMotion';
 import { hunterWarningStrength } from '../world/hunterWarning';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
+import { RadioChip } from '../ui/RadioChip';
+import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
 import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
@@ -600,6 +604,8 @@ const SEARCH_MARK = 0x3f8f3a;
  * turns four lines of narration into a billboard across half the map.
  */
 const DIALOG_WIDTH = BASE_STAGE_WIDTH - 16;
+/** The key that opens the whole field guide instead of Oak's two lines. */
+const RADIO_CHIP_WORDS = `[${RAID_KEY_LETTERS.objectives}] FULL LIST`;
 const DIALOG_HEIGHT = 80;
 const DIALOG_MARGIN = 8;
 
@@ -616,6 +622,7 @@ interface ControlKeys {
   bag: Phaser.Input.Keyboard.Key;
   save: Phaser.Input.Keyboard.Key;
   objectives: Phaser.Input.Keyboard.Key;
+  back: Phaser.Input.Keyboard.Key;
   /** The look: every name on the screen while it is held - see `captionReveal.ts`. */
   look: Phaser.Input.Keyboard.Key;
   /** A raid room's phrase list, the six phrase keys, and the ping (`raidRoom/roomTalk.ts`). */
@@ -648,6 +655,9 @@ type BattleEncounter =
 
 /** The cloud a raid opens under, after a jump. */
 const ARRIVAL_CLOUD_TEXTURE = 'raid-arrival-cloud';
+const ARRIVAL_CLOUD_DEPTH = 100000;
+const DUST_LIGHT_INK = 0xb8a880;
+const DUST_DARK_INK = 0x806848;
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
   up: 'down',
@@ -668,8 +678,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     elapsedMs: number;
     readonly cloud: Phaser.GameObjects.TileSprite;
     readonly shadow: Phaser.GameObjects.Ellipse;
+    readonly dust: Phaser.GameObjects.Graphics;
     landed: boolean;
+    partnerLanded: boolean;
     readonly restY: number;
+    /** Where the figure touches down, for the dust to go out from. */
+    readonly ground: { readonly x: number; readonly y: number };
   } | null = null;
   private player!: Phaser.GameObjects.Sprite;
   /** Travel with the player so which figure is yours never has to be guessed. */
@@ -925,6 +939,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private openingBriefingOpen = false;
   /**
+   * Professor Oak is on the radio (`callOak`). Free of the clock, as the screen
+   * it stands in for always was: asking what to do next has never cost a raid
+   * anything, and a chase is no time to start charging for it.
+   */
+  private onRadio = false;
+  /** O was pressed mid-step: he is called on the tile the step ends on. */
+  private radioDue = false;
+  private radioChip: RadioChip | undefined;
+  /** The pointer came down while a box was up: read as the key that moves it on. */
+  private boxClicked = false;
+  /**
    * Direction presses already spent on answering a dialogue, which movement
    * must not read again. See `spentPresses.ts` for the whole argument.
    */
@@ -1082,6 +1107,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // The box itself is rebuilt at the bottom by create(), so the note that it was moved goes too.
     this.dialogRaised = false;
     this.openingBriefingOpen = false;
+    this.onRadio = false;
+    this.radioDue = false;
+    // Destroyed with the scene.
+    this.radioChip = undefined;
+    this.boxClicked = false;
     this.spentPresses = new SpentPresses();
     // Phaser destroyed the object with the last raid's scene, so this only has
     // to stop pointing at it - and it does have to, or the first frame of the
@@ -1211,7 +1241,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.currentMap = this.mapFor(this.runSession.plan.insertion.mapId);
       this.currentTile = { ...this.runSession.plan.insertion.position };
     }
-    this.cameras.main.fadeIn?.(180, 0, 0, 0);
+    // Dropping in, the raid opens under the cloud the jump came down through: a
+    // fade from black here would be a seam in the middle of it.
+    if (data.droppedIn !== true) {
+      this.cameras.main.fadeIn?.(180, 0, 0, 0);
+    }
     void audioManager.startTheme('overworld');
     if (data.party) {
       this.party = data.party;
@@ -1247,8 +1281,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Back on the Bicycle after a fight, if it is still in the pack.
     this.setRiding(stillRiding({ ...this.rideState(), riding: this.runSession?.riding === true }));
     this.createDialogBox();
+    // A click moves a box on as the key does. A question's answers take their own.
+    const clicked = (_pointer: Phaser.Input.Pointer, over: readonly Phaser.GameObjects.GameObject[]): void => {
+      this.boxClicked = this.dialogBox.visible && over.length === 0;
+    };
+    this.input.on?.('pointerdown', clicked);
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.input.off?.('pointerdown', clicked));
     // After the dialogue box, which the partner asks whether a line is being read.
-    this.createPartner(!data.returnLocation);
+    this.createPartner(!data.returnLocation && data.droppedIn !== true);
     this.bindControls();
     this.configureCamera();
     this.createRunTimerHud();
@@ -1440,8 +1480,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!droppedIn || (typeof window !== 'undefined' && prefersReducedMotion())) {
       return;
     }
-    const sheet = cloudSheet();
     if (!this.textures.exists(ARRIVAL_CLOUD_TEXTURE)) {
+      const sheet = cloudSheet();
       const texture = this.textures.createCanvas(ARRIVAL_CLOUD_TEXTURE, sheet.width, sheet.height);
       texture?.context.putImageData(new ImageData(sheet.data, sheet.width, sheet.height), 0, 0);
       texture?.refresh();
@@ -1450,10 +1490,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .tileSprite(0, 0, this.scale.width, this.scale.height, ARRIVAL_CLOUD_TEXTURE)
       .setOrigin(0, 0)
       .setScrollFactor(0)
-      .setDepth(CANOPY_BAND + 50);
+      // Over the raid's own chips too: the first thing seen is not a clock.
+      .setDepth(ARRIVAL_CLOUD_DEPTH);
     // Its shadow on the ground, closing in as it comes down.
     const shadow = this.add.ellipse(this.player.x + TILE_SIZE / 2, this.player.y + this.player.height - 2, 14, 6, 0x101018, 0.45).setDepth(atRow(FIGURE_BAND, this.currentTile.y) - 0.0005);
-    this.arrival = { elapsedMs: 0, cloud, shadow, landed: false, restY: this.player.y };
+    const dust = this.add.graphics().setDepth(atRow(FIGURE_BAND, this.currentTile.y) + 0.0005);
+    this.arrival = {
+      elapsedMs: 0,
+      cloud,
+      shadow,
+      dust,
+      landed: false,
+      partnerLanded: false,
+      restY: this.player.y,
+      ground: { x: this.player.x + TILE_SIZE / 2, y: this.player.y + this.player.height - 2 },
+    };
     this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
     this.advanceArrival(0);
@@ -1467,9 +1518,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     arrival.elapsedMs += deltaMs;
     const pose = arrivalPose(arrival.elapsedMs);
-    this.player.setY(arrival.restY - pose.height);
+    this.player.setY(arrival.restY - pose.height + pose.crouch);
+    // The camera is already where it is going to be: the figure falls into the
+    // picture, rather than the picture being dragged after the figure.
+    this.cameras.main.setFollowOffset(0, pose.crouch - pose.height);
+    // Still turning over as it comes down, and facing the right way the moment it lands.
+    this.player.setFrame(getIdleFrame(pose.landed ? this.facing : fallFacing(arrival.elapsedMs)));
     arrival.shadow.setScale(1 - (pose.height / ARRIVAL_FALL_HEIGHT) * 0.75);
     arrival.cloud.setAlpha(pose.cloud);
+    arrival.cloud.setVisible(pose.cloud > 0);
+    arrival.dust.clear();
+    if (pose.sinceLanding !== null) {
+      for (const puff of dustAt(pose.sinceLanding)) {
+        arrival.dust.fillStyle(puff.light ? DUST_LIGHT_INK : DUST_DARK_INK, 1);
+        arrival.dust.fillRect(arrival.ground.x + puff.x, arrival.ground.y + puff.y, puff.size, puff.size);
+      }
+    }
+    // Drawn here because nothing else in the world runs yet.
+    this.partner?.setDropHeight(pose.partnerHeight);
+    this.partner?.update(deltaMs);
+    if (pose.partnerLanded && !arrival.partnerLanded) {
+      arrival.partnerLanded = true;
+      audioManager.play('ledgeHop');
+    }
     arrival.cloud.setTilePosition(Math.round(arrival.elapsedMs / 4), Math.round(arrival.elapsedMs / 2));
     if (pose.landed && !arrival.landed) {
       arrival.landed = true;
@@ -1479,6 +1550,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (arrival.elapsedMs >= Math.max(ARRIVAL_MS, ARRIVAL_CLOUD_MS)) {
       arrival.cloud.destroy();
       arrival.shadow.destroy();
+      arrival.dust.destroy();
+      this.partner?.setDropHeight(0);
+      this.cameras.main.setFollowOffset(0, 0);
       this.player.setY(arrival.restY);
       this.playerGroundMark.setVisible(true);
       this.playerHeadMark.setVisible(true);
@@ -1818,7 +1892,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.containWorldLabels();
     if (this.keyPresses.justPressed(this.controls.objectives)) {
       this.learnKey('objectives');
-      this.openObjectives();
+      this.answerRadioKey();
       return;
     }
 
@@ -1864,7 +1938,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     if (this.dialogBox.visible) {
+      if (this.onRadio && this.keyPresses.justPressed(this.controls.back)) {
+        this.hangUp();
+        return;
+      }
       this.handleDialogInput();
+      this.settleRadio();
       return;
     }
 
@@ -1934,6 +2013,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // nothing on screen to read, and guarded by an empty list, which is what it
     // holds on every frame of almost every raid.
     if (this.unclaimedBossGear.length > 0 && this.tryClaimWaitingBossGear()) {
+      return;
+    }
+
+    // O pressed mid-step is answered here, on the tile the step ended on.
+    if (this.radioDue) {
+      this.radioDue = false;
+      this.callOak();
       return;
     }
 
@@ -4642,6 +4728,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag]),
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives]),
+      // Never captured: an overlay above the world must keep its own Escape.
+      back: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false),
       look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.look]),
       talk: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[ROOM_KEY_LETTERS.talk]),
       phrases: (['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'] as const).map((digit) =>
@@ -4663,6 +4751,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.controls.bag,
       this.controls.save,
       this.controls.objectives,
+      this.controls.back,
       this.controls.talk,
       this.controls.ping,
       ...this.controls.phrases,
@@ -4799,7 +4888,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the game having frozen on them.
    */
   private isDialogAdvancePressed(): boolean {
-    if (this.isInteractionPressed()) {
+    const clicked = this.boxClicked;
+    this.boxClicked = false;
+    if (this.isInteractionPressed() || clicked) {
       return true;
     }
     return (
@@ -5129,6 +5220,98 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.runSession?.manager.registerDroppedItem(itemId as ItemId, quantity),
       bike: { riding: this.riding, toggle: () => this.toggleBike() },
     });
+  }
+
+  /**
+   * O in a raid: Professor Oak on the radio, two lines in the dialogue box and
+   * no screen (`buildObjectiveGuide`'s `radio`). Pressed while he is talking, or
+   * while something else is being read, it is the whole field guide instead.
+   */
+  private answerRadioKey(): void {
+    if (this.onRadio) {
+      this.hangUp();
+      this.openObjectives();
+      return;
+    }
+    if (this.radioBusy()) {
+      this.openObjectives();
+      return;
+    }
+    if (this.targetTile) {
+      this.radioDue = true;
+      return;
+    }
+    this.callOak();
+  }
+
+  /** Whether something on screen already owns the box or the frame. */
+  private radioBusy(): boolean {
+    return (
+      this.dialogBox.visible ||
+      this.trainerPrompt !== undefined ||
+      this.cutscene !== undefined ||
+      this.fishing !== undefined ||
+      this.isWarping ||
+      this.pendingVoyage !== undefined ||
+      this.voyaging !== undefined ||
+      this.pendingTrainerBattle !== undefined ||
+      this.pendingWildBattle !== undefined
+    );
+  }
+
+  private callOak(): void {
+    if (
+      !this.runSession ||
+      this.runSession.manager.phase !== RunPhase.InRun ||
+      this.pendingHubTransition ||
+      this.radioBusy()
+    ) {
+      return;
+    }
+    const guide = buildObjectiveGuide(this.runSession, {
+      currentMapId: this.currentMap.id,
+      currentPosition: this.currentTile,
+      towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
+      activatedPoiIds: new Set(this.activatedPoiIds),
+      carried: (itemId: string) => this.bag.count(itemId),
+      ...this.nearestOpenExitHere(),
+      stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, playerLinks(this.currentMap)),
+      defeatedTrainerIds: new Set(this.defeatedTrainerIds),
+    });
+    audioManager.play('menuOpen');
+    this.player.stop();
+    this.player.setFrame(this.playerIdleFrame(this.facing));
+    this.onRadio = true;
+    // Unasked for the purposes of the keys: a direction moves it on as it does
+    // any box in the way, because somebody who wants to walk has heard enough.
+    this.unsolicitedDialog = true;
+    this.seatDialog([this.currentTile]);
+    this.dialogBox.showMessages([...guide.radio]);
+    this.radioChip = new RadioChip(
+      this,
+      RADIO_CHIP_WORDS,
+      { x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT },
+      () => this.answerRadioKey(),
+    );
+  }
+
+  /** Takes the chip down once his lines have been read. */
+  private settleRadio(): void {
+    if (this.onRadio && !this.dialogBox.visible) {
+      this.onRadio = false;
+      this.radioChip?.destroy();
+      this.radioChip = undefined;
+    }
+  }
+
+  /** ESC, or on to the whole list: his lines go at once. */
+  private hangUp(): void {
+    this.spentPresses.spendHeld(this.directionKeys);
+    this.dialogBox.dismiss();
+    this.unsolicitedDialog = false;
+    this.seatDialog([]);
+    this.settleRadio();
+    audioManager.play('menuClose');
   }
 
   private openObjectives(): void {
@@ -7163,6 +7346,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.pendingTrainerBattle ||
       this.pendingWildBattle ||
       this.openingBriefingOpen ||
+      this.onRadio ||
       cutsceneRunning
         ? 0
         : deltaMs;
@@ -7200,7 +7384,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** The Seagallop, FireRed's own ferry, off the town sheet: drawn as a figure because it moves. */
-  private boatSprite(at: GridPosition, moored?: Direction): Phaser.GameObjects.Image {
+  private boatSprite(at: GridPosition, moored?: Direction, craft?: MapSailing['craft']): Phaser.GameObjects.Image {
+    if (craft === 'punt') {
+      const punt = this.add.image(0, 0, PUNT_TEXTURE);
+      this.placeBoat(punt, at.x, at.y, moored, craft);
+      return punt;
+    }
     const texture = this.textures.get(TOWN_SHEET_SOURCE.source.textureKey);
     if (!texture.has(BOAT_FRAME)) {
       const piece = TOWN_PIECES.seagallop;
@@ -7217,7 +7406,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * boat off a jetty lies below the boards rather than over them, and its bow
    * and stern out either side.
    */
-  private placeBoat(sprite: Phaser.GameObjects.Image, x: number, y: number, moored?: Direction): void {
+  private placeBoat(sprite: Phaser.GameObjects.Image, x: number, y: number, moored?: Direction, craft?: MapSailing['craft']): void {
     // Moored, the boat lies out from its jetty, its side to the boards rather
     // than across them: off a jetty's west side it lies west of the tile it is
     // boarded at, off its east side east, and off its head or its foot it is
@@ -7225,6 +7414,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const half = sprite.width / 2;
     const across = moored === 'left' ? TILE_SIZE - half : moored === 'right' ? half : TILE_SIZE / 2;
     const down = moored === 'up' ? TILE_SIZE - sprite.height / 2 + BOAT_RIDE_Y : sprite.height / 2 - BOAT_RIDE_Y;
+    if (craft === 'punt') {
+      // Under whoever stands in it, its deck about their feet.
+      sprite.setPosition(x * TILE_SIZE + across, y * TILE_SIZE + PUNT_DECK_Y).setDepth(atRow(FIGURE_BAND, y - 1));
+      return;
+    }
     sprite
       .setPosition(x * TILE_SIZE + across, y * TILE_SIZE + down)
       .setDepth(atRow(FIGURE_BAND, moored === 'up' ? y : y + 2));
@@ -7237,7 +7431,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     for (const sailing of this.currentMap.sailings ?? []) {
       for (const end of [0, 1] as const) {
         const jetty = sailing.ends[end];
-        const sprite = this.boatSprite(jetty.boat, jetty.toward);
+        const sprite = this.boatSprite(jetty.boat, jetty.toward, sailing.craft);
         const label = new WorldLabel(this, {
           subject: tileRect(jetty.landing),
           text: sailing.name.toUpperCase(),
@@ -7465,7 +7659,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const tiles = voyage(voyageNow.sailing, voyageNow.from);
-    const boat = this.boatSprite(tiles[0]);
+    const boat = this.boatSprite(tiles[0], undefined, voyageNow.sailing.craft);
     this.mapObjects.push(boat);
     // The shore the player was already across the water from, if any, and
     // otherwise the one they are putting out from: afloat, that is where the
@@ -7480,8 +7674,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.voyaging = { ...voyageNow, tiles, index: 0, progress: 0, boat, shoreBefore };
     this.partner?.tuckIn();
-    this.player.setVisible(false);
-    this.playerGroundMark.setVisible(false);
+    // Aboard the ferry nobody is on deck; in a punt there is nowhere else to be.
+    if (voyageNow.sailing.craft !== 'punt') {
+      this.player.setVisible(false);
+      this.playerGroundMark.setVisible(false);
+    }
     this.playerHeadMark.setVisible(false);
     this.currentTile = { ...tiles[0] };
     this.setPlayerPosition(tiles[0].x * TILE_SIZE, tiles[0].y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
@@ -7520,7 +7717,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (trip.index < last - 1) {
       // Afloat: the boat carries the player, its bow the way it goes.
       const t = Math.min(1, trip.progress);
-      this.placeBoat(trip.boat, from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+      this.placeBoat(trip.boat, from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, undefined, trip.sailing.craft);
       if (heading === 'left' || heading === 'right') {
         trip.boat.setFlipX(heading === 'right');
       }
@@ -8531,6 +8728,8 @@ const BARRIER_FOOT_FRAME = 'rock-barrier-foot';
 const BOAT_FRAME = 'seagallop-boat';
 /** How far the Seagallop's deck rises above the top of the tile it lies on. */
 const BOAT_RIDE_Y = 4;
+/** How far down its tile a punt's middle lies, which stands whoever is in it on its deck. */
+const PUNT_DECK_Y = 12;
 
 /**
  * What the result screen says about the contract, including the case the whole

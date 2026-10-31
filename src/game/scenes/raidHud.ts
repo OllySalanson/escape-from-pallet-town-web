@@ -92,7 +92,7 @@ export function raidClockAlertTier(remainingMs: number): 'normal' | 'urgent' {
  */
 export const OBJECTIVE_DETAIL_MS = 4_500;
 
-export const FIELD_GUIDE_HINT = keyHint(RAID_KEY_LETTERS.objectives, 'GUIDE');
+export const FIELD_GUIDE_HINT = keyHint(RAID_KEY_LETTERS.objectives, 'OAK');
 /**
  * The look: every name on the screen while it is held. The map does not caption
  * itself any more (`ui/captionReveal.ts`), so this is the key that answers

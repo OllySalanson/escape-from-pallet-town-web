@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { friendChipLines, friendChipPing, type FriendChipFriend } from '../scenes/raidHud';
 import { getWorldMap } from '../worldMap';
-import { friendRoomCard, friendRoomView, friendStatusLine } from '../hub/friendRoomView';
+import { friendRoomView, friendStatusLine } from '../hub/friendRoomView';
 
 describe('the friend chip', () => {
   const ash: FriendChipFriend = { name: 'ASH', atLab: false, heading: 'NE', distance: 14, elsewhere: null };
@@ -79,7 +79,6 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).toContain('The loot goes to whoever steps on it first');
     expect(html).toContain('one hunter chases you all');
     expect(html).toContain('opens his doors for everyone');
-    expect(friendRoomCard(null)).toContain('Up to four players on one map');
   });
 
   it('asks for a name before anything else', () => {
@@ -102,9 +101,7 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).toContain('data-room-leave');
   });
 
-  it('says on the lab’s card which room is held', () => {
-    expect(friendRoomCard(null)).toContain('data-view="friend"');
-    expect(friendRoomCard({ code: 'BHRK', mapName: 'Route 1' })).toContain('Room BHRK, on Route 1.');
+  it('says who else is in the room held', () => {
     expect(friendStatusLine([], 'BHRK', 'Route 1')).toContain('type BHRK');
     expect(friendStatusLine([{ name: 'ASH', place: 'map:route-1' }], 'BHRK', 'Route 1')).toBe('ASH is already on Route 1.');
     const three = ['ASH', 'BEA', 'CY'].map((name) => ({ name, place: 'lab' as const }));

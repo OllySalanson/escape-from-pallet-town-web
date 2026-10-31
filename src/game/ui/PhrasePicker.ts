@@ -46,10 +46,15 @@ export class PhrasePicker {
         .setDepth(depth + 0.0001)
         .setInteractive({ useHandCursor: true })
         .on('pointerover', () => this.select(index))
-        .on('pointerdown', () => {
-          this.select(index);
-          this.say();
-        }),
+        .on(
+          'pointerdown',
+          (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: { stopPropagation(): void }) => {
+            // The press is the list's: in the great hall a press on the floor walks.
+            event.stopPropagation();
+            this.select(index);
+            this.say();
+          },
+        ),
     );
     this.cursor = scene.add.text(0, 0, CURSOR, style).setScrollFactor(0).setDepth(depth + 0.0001);
     const columns = Math.ceil(phrases.length / ROWS);

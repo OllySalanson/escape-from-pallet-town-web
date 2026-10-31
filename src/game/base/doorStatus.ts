@@ -145,5 +145,5 @@ function errandLine(giver: BaseScreen, game: RestoredGame): string | undefined {
     return `${errandThing(errand)} to hand over`;
   }
   const called = errand.called ?? errand.name;
-  return beat.kind === 'ask' ? `${called} has a favour to ask` : `${called} wants a word`;
+  return beat.kind === 'ask' ? `${called} wants a favour` : `${called} wants a word`;
 }

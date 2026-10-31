@@ -21,7 +21,6 @@ import {
 import { FIRST_CONTRACT_ID, RAID_CONTRACTS, standingBoard, type RaidContract } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
-import { deployableMapIds } from '../objectives/standingBoard';
 import { flowForGame, type ArenaKit } from '../base/arenaKit';
 import type { RestoredGame } from '../save/SaveManager';
 import { frontDoorFor } from '../run/runGeneration';
@@ -52,10 +51,7 @@ import { gatesForMap } from '../world/gates';
 import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
-import { FIRST_WORDS } from '../hub/firstWords';
-import { PLAYER_NAME_STORAGE_KEY } from '../console/playerName';
 import { setActiveSaveSlot } from '../dev/playtestMode';
-import { ALL_SPECIES } from '../pokemon/species';
 import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
@@ -110,17 +106,13 @@ describe('the lobby as a screen of the game', () => {
     }
   });
 
-  it('sends a contract row to the Raid Arena rather than starting a raid from the lab', () => {
+  it('leaves the lab no screen: the board is read in the room, and preparation packs nobody', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       completedContracts: [FIRST_CONTRACT_ID],
     });
-
-    const lab = markupOf(hub);
-    expect(lab).not.toContain('data-contract=');
-    expect(lab).toContain('Raids start at the RAID ARENA');
     intoTheArena(hub);
 
     // The hall's marshal opens the loadout, with nobody packed for you.
@@ -156,51 +148,15 @@ describe('the lobby as a screen of the game', () => {
     expect(helpOf(stash, 'data-supply', 'potion')).not.toContain('in a raid');
   });
 
-  it('says on the base screen that someone is hurt, and bills it in the stash', () => {
+  it('prices each hurt Pokémon on its own row of the boxes, with no bill along the foot of them', () => {
     const { hub } = createWornHub();
-
-    const home = markupOf(hub);
-    expect(home).toContain('Charmander came home hurt');
-    expect(home).not.toContain('recovery-panel');
 
     hub.setView('stash');
     const stash = markupOf(hub);
-    expect(stash).toContain('recovery-panel');
-    expect(stash).toContain('data-recover-all');
+    // Everyone at once is Nurse Joy's, at her counter (`hub/centerCounter.ts`).
+    expect(stash).not.toContain('recovery-panel');
+    expect(stash).not.toContain('data-recover-all');
     expect(stash).toContain('data-recover="charmander-1"');
-  });
-
-  it('tells a team with nobody standing that it cannot raid, rather than that it is hurt', () => {
-    const { hub } = createWornHub((maxHp) => maxHp);
-    // The starting stash's own partner is fit, so the team can still go.
-    expect(markupOf(hub)).toContain('Charmander fainted. NURSE JOY is across the yard.');
-
-    for (const stored of hub.stash.listPokemon()) {
-      stored.pokemon.takeDamage(stored.pokemon.maxHp);
-    }
-    hub.setView('home');
-    const home = markupOf(hub);
-    expect(home).toContain('All 2 Pokémon have fainted, so nobody can raid. NURSE JOY is across the yard.');
-    expect(home).not.toContain('came home hurt');
-  });
-
-  it("bills a fainted Pokemon at the Pokémon Center as fainted, never as hurt", () => {
-    const { hub } = createWornHub();
-    hub.setView('stash');
-    expect(markupOf(hub)).toContain('Pokémon Center · 1 hurt');
-
-    const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
-    partner.pokemon.takeDamage(partner.pokemon.maxHp);
-    hub.setView('stash');
-    const mixed = markupOf(hub);
-    expect(mixed).toContain('Pokémon Center · 1 fainted · 1 hurt');
-    expect(mixed).toContain('Revived, full HP, status cleared.');
-
-    hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon.takeDamage(999);
-    hub.setView('stash');
-    const wiped = markupOf(hub);
-    expect(wiped).toContain('Pokémon Center · 2 fainted');
-    expect(wiped).not.toContain('2 fainted · ');
   });
 
   it('never tells the loadout to treat a fainted Pokemon a Potion cannot revive', () => {
@@ -307,7 +263,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'home' | 'stash' | 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
+  setView(view: 'stash' | 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
   goBack(): void;
   wallMapInspect: string | undefined;
   startRun(): void;
@@ -1237,52 +1193,6 @@ describe('the standing board in the lobby', () => {
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   };
 
-  it('replaces "Every contract is banked" once the chain is banked, one row per map', () => {
-    const progress = chainBanked(2);
-    const { hub } = createHub(progress);
-    const home = markupOf(hub);
-    expect(home).not.toContain('Every contract is banked');
-    expect(home).toContain('Standing board');
-    // One row per map the save can deploy to, approved player maps included.
-    expect(home).toContain(`${deployableMapIds(progress).length} open · 2 banked`);
-    for (const contract of standingBoard(progress)) {
-      expect(home).toContain(contract.description);
-      expect(home).toContain(`data-shows="${contract.id}"`);
-      expect(home).toContain(`data-shown-by="${contract.id}"`);
-    }
-  });
-
-  it('names what a reward is for, so the pane under the errands is not read as theirs', () => {
-    // The pane under the board shows the first contract's reward until a row is
-    // pointed at, and the errands are listed between that contract and the pane:
-    // "Reward The Cordon Ledger..." sat straight under OAK'S PARCEL.
-    const progress: RaidProgress = {
-      ...chainBanked(2),
-      errands: [{ id: 'oaks-parcel', status: 'started', found: 0, lossesHeard: 0 }],
-    };
-    const home = markupOf(createHub(progress).hub);
-    const panes = [...home.matchAll(/<div class="px-detail" data-shown-by="([^"]+)"( hidden(?:="")?)?>(.*?)<\/div>/g)];
-    const shown = panes.filter((pane) => pane[2] === undefined);
-    expect(shown).toHaveLength(1);
-    const first = standingBoard(progress).find((contract) => contract.id === shown[0][1])!;
-    expect(shown[0][3]).toContain(`<small>Reward for</small> ${first.name}:`);
-    const parcel = panes.find((pane) => pane[1] === 'errand-oaks-parcel')!;
-    expect(parcel[3]).toContain("<small>Reward for</small> Oak's Parcel:");
-  });
-
-  it('says what a contract costs before it is taken: the row names its own insertion and the hunter is on it', () => {
-    const progress = chainBanked(2);
-    const raised = standingBoard(progress).find((contract) => contract.hunterPressure === 1)!;
-    const home = markupOf(createHub(progress).hub);
-    const insertion = frontDoorFor(raised.mapId)!;
-    expect(home).toContain(`Drop in at ${insertion.label} to take it.`);
-    expect(home).toContain(`data-shows="${raised.id}"`);
-    expect(home).toContain('data-hunter-pressure="1"');
-    expect(home).toContain('Hunter +1 tier');
-    // The raised contract leads the board.
-    expect(home.indexOf(`data-shows="${raised.id}"`)).toBe(home.indexOf('data-shows="'));
-  });
-
   it.each([
     ['a raised contract', (contract: RaidContract) => contract.hunterPressure === 1],
     ['a contract with no pressure on it', (contract: RaidContract) => contract.hunterPressure === undefined],
@@ -1330,20 +1240,7 @@ describe('what the base screen leads with', () => {
     return hub;
   }
 
-  it('opens on the raid, not on an offer to trade the partner just chosen', () => {
-    const hub = createFreshHub();
-
-    const home = markupOf(hub);
-
-    // Three seconds into a first game the loudest panel on the screen said
-    // "DOWN TO ONE POKEMON". It also pushed the contract board past the frame.
-    expect(home).not.toContain('Down to one Pokémon');
-    expect(home).not.toContain('swap-panel');
-    expect(home.indexOf('The Raid Arena')).toBeLessThan(home.indexOf('Contract board'));
-    expect(home).toContain('Contract board');
-  });
-
-  it('counts the stash in the title bar the way the Pokémon Center counts it: kinds, not items', () => {
+  it('counts the stash in the title bar the way the boxes count it: kinds, not items', () => {
     const hub = createFreshHub();
     const kinds = ITEM_DEFINITIONS.filter((item) => hub.stash.itemCount(item.id) > 0).length;
     const units = ITEM_DEFINITIONS.reduce((sum, item) => sum + hub.stash.itemCount(item.id), 0);
@@ -1351,11 +1248,9 @@ describe('what the base screen leads with', () => {
     expect(units).toBeGreaterThan(kinds);
     const aside = (markup: string) => /class="px-title-aside">([^<]*)</.exec(markup)?.[1];
 
-    // Oak's Lab, and Brock's Workshop, which shares the line.
-    expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
     hub.setView('workshop');
     expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
-    // The Pokémon Center's own pane says the same number in the same word.
+    // The boxes' own pane says the same number in the same word.
     hub.setView('stash');
     expect(markupOf(hub)).toContain(`${kinds} kinds`);
   });
@@ -1374,17 +1269,6 @@ describe('what the base screen leads with', () => {
     expect(stash).toContain('swap-panel');
     expect(stash).toContain('Down to one Pokémon');
     expect(stash).toContain('data-view="reselect"');
-  });
-
-  it('says on the raid card when the next raid starts on a shortened clock (playtest 47)', () => {
-    const hub = createFreshHub();
-    expect(markupOf(hub)).not.toContain('Next raid');
-
-    // A revive after a lost raid: a third of the next raid gone to Joy.
-    (hub as unknown as { savedGame: { pendingRecoveryMs: number } }).savedGame.pendingRecoveryMs = 100_000;
-    const card = /<button[^>]*px-tone-primary[^>]*>[\s\S]*?<\/button>/.exec(markupOf(hub))?.[0] ?? '';
-
-    expect(card).toContain('Next raid 3:20: 1:40 went on recovery.');
   });
 
   it('never breaks "packed for you" across two lines of a loadout row (playtest 47)', () => {
@@ -1430,14 +1314,6 @@ describe('what the base screen leads with', () => {
    * holds is said on its own door (`base/doorStatus.ts`), and the swap offer
    * with it.
    */
-  it('is a room rather than a lobby, and links to no other screen', () => {
-    const hub = createFreshHub();
-
-    const lab = markupOf(hub);
-    expect(lab).toContain('The Raid Arena');
-    expect(lab).not.toContain('data-view=');
-  });
-
   /** Playtest 3, D1: home from an extraction at 1 HP with no Potions and four Poke Balls. */
   function createSpentHub(): { hub: HubInternals; storage: MemoryStorage } {
     const storage = new MemoryStorage();
@@ -2266,7 +2142,7 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     armed.traderArmed = 'barter-quick-claw';
 
-    hub.setView('home');
+    hub.setView('stash');
     hub.setView('trader');
 
     expect(armed.traderArmed).toBeUndefined();
@@ -2518,247 +2394,6 @@ describe('the wall map in Oak’s Lab', () => {
       );
       expect({ mapId, step: plan.fit.step }).toEqual({ mapId, step: 1 });
     }
-  });
-});
-
-describe('first words: Oak and Joy speak once per save', () => {
-  function seededStorage(raidProgress: RaidProgress = DEFAULT_RAID_PROGRESS): MemoryStorage {
-    const storage = new MemoryStorage();
-    const stash = createStartingStash();
-    stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
-    new SaveManager(storage).save({
-      party: new PokemonParty(),
-      mapId: 'pallet-town',
-      position: { x: 6, y: 8 },
-      bag: new Bag(),
-      stash,
-      raidProgress,
-    });
-    return storage;
-  }
-
-  function screenOf(hub: HubInternals): string {
-    hub.render();
-    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-  }
-
-  function speechOn(markup: string): string | undefined {
-    return /<div class="px-window px-speech"[\s\S]*?(?=<p class="px-help)/.exec(markup)?.[0];
-  }
-
-  const heardIn = (storage: MemoryStorage): readonly string[] =>
-    new SaveManager(storage).load()?.raidProgress.firstWordsHeard ?? [];
-
-  function putDown(hub: HubInternals, by: 'button' | 'escape'): void {
-    if (by === 'button') {
-      (hub as unknown as { doneListening(): void }).doneListening();
-      return;
-    }
-    (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({
-      key: 'Escape',
-      preventDefault: () => undefined,
-    } as KeyboardEvent);
-  }
-
-  it('has Oak explain the raid the first time his lab opens, and records it at once', () => {
-    const storage = seededStorage();
-    const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
-
-    const speech = speechOn(screenOf(hub));
-    expect(speech).toContain('Professor Oak');
-    for (const line of FIRST_WORDS.lab.lines) {
-      expect(speech).toContain(line);
-    }
-    // Heard the moment it is shown, so walking out unread does not buy it again.
-    expect(heardIn(storage)).toEqual(['lab']);
-
-    // Escape reads on, as a text box does, rather than leaving the lab.
-    putDown(hub, 'escape');
-    expect(start).not.toHaveBeenCalled();
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-  });
-
-  it("has Oak greet the player by the name given at NEW GAME (playtest 47)", () => {
-    const names = new MemoryStorage();
-    names.setItem(PLAYER_NAME_STORAGE_KEY, 'ROWAN');
-    vi.stubGlobal('window', { localStorage: names });
-    try {
-      const { hub } = createHub(DEFAULT_RAID_PROGRESS, seededStorage());
-      expect(speechOn(screenOf(hub))).toContain('Ah, ROWAN, there you are!');
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it('never says the same words twice to one save, read or not', () => {
-    const storage = seededStorage();
-    const first = createHub(DEFAULT_RAID_PROGRESS, storage).hub;
-    expect(speechOn(screenOf(first))).toBeDefined();
-    // Not read: the player turned straight round and came back in.
-    const again = createHub(DEFAULT_RAID_PROGRESS, storage).hub;
-    expect(speechOn(screenOf(again))).toBeUndefined();
-    // And a later visit to a different screen still has its own words.
-    again.setView('stash');
-    expect(speechOn(screenOf(again))).toContain('Nurse Joy');
-    expect(heardIn(storage)).toEqual(['lab', 'center']);
-  });
-
-  it('gives the rim its own words, once, and nothing to the bench, the rack or the locker', () => {
-    const storage = seededStorage({ ...DEFAULT_RAID_PROGRESS, firstWordsHeard: ['lab'] });
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-
-    // The bench says nothing over itself: the hall's marshal has said it.
-    intoTheArena(hub);
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-    hub.flow.togglePokemon('charmander-1');
-
-    hub.setView('locker');
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-    hub.setView('rack');
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-
-    // The rim says what it is the first time it is looked over from.
-    hub.setView('rim');
-    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.check.lines[0]);
-
-    // Away and back again: it has been heard.
-    hub.setView('bench');
-    screenOf(hub);
-    hub.setView('rim');
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-    expect(heardIn(storage)).toEqual(['lab', 'check']);
-  });
-
-  it('keeps the screen under the words, and gives the cursor to them alone', () => {
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, seededStorage());
-    const focus = (hub as unknown as { overlay: { focus: ReturnType<typeof vi.fn> } }).overlay.focus;
-    const markup = screenOf(hub);
-    // The lab is drawn whole underneath, so nothing moves when the box goes.
-    expect(markup).toContain('The Raid Arena');
-    expect(focus).toHaveBeenLastCalledWith('[data-speech-done]');
-  });
-
-  it('is never kept by a hub copy that writes the game over it', () => {
-    // The hub writes its own whole copy of the game; one that had not learned
-    // the words were heard would erase the record with its next write.
-    const storage = seededStorage();
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
-    screenOf(hub);
-    hub.setView('stash');
-    screenOf(hub);
-    expect((hub as unknown as { writeGame(): boolean }).writeGame()).toBe(true);
-    expect(heardIn(storage)).toEqual(['lab', 'center']);
-  });
-});
-
-describe('the Pokédex: Professor Oak rewards each milestone in his lab, once', () => {
-  /** A save whose vault holds one Pokemon of each of the first `kinds` species. */
-  function storageWithKinds(kinds: number, raidProgress: RaidProgress = DEFAULT_RAID_PROGRESS): MemoryStorage {
-    const storage = new MemoryStorage();
-    const stash = createStartingStash();
-    stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
-    for (const species of ALL_SPECIES.slice(0, kinds)) {
-      stash.addPokemon(new Pokemon(species, 5));
-    }
-    new SaveManager(storage).save({
-      party: new PokemonParty(),
-      mapId: 'pallet-town',
-      position: { x: 6, y: 8 },
-      bag: new Bag(),
-      stash,
-      raidProgress,
-    });
-    return storage;
-  }
-
-  const heardTheLab: RaidProgress = { ...DEFAULT_RAID_PROGRESS, firstWordsHeard: ['lab'] };
-
-  function screenOf(hub: HubInternals): string {
-    hub.render();
-    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-  }
-
-  function speechOn(markup: string): string | undefined {
-    return /<div class="px-window px-speech"[\s\S]*?(?=<p class="px-help)/.exec(markup)?.[0];
-  }
-
-  function readOn(hub: HubInternals): void {
-    (hub as unknown as { doneListening(): void }).doneListening();
-  }
-
-  const saved = (storage: MemoryStorage) => new SaveManager(storage).load()!;
-
-  it('hands over the reward for ten kinds when the lab opens, in his own words, into the vault', () => {
-    const storage = storageWithKinds(10, heardTheLab);
-    const ballsBefore = saved(storage).stash.itemCount('great-ball');
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
-
-    const speech = speechOn(screenOf(hub));
-    expect(speech).toContain('Professor Oak');
-    expect(speech).toContain('kinds of Pokémon caught!');
-    expect(speech).toContain('It looks as if you’re getting on the right track!');
-    expect(speech).toContain('Here, take 5 Great Balls.');
-    expect(speech).toContain('When you have 25 kinds of Pokémon, come back and see me.');
-    // In the vault the moment he says so, and in the screen's own copy too, so
-    // the next thing this screen writes cannot take it back.
-    expect(saved(storage).stash.itemCount('great-ball')).toBe(ballsBefore + 5);
-    expect(hub.stash.itemCount('great-ball')).toBe(ballsBefore + 5);
-    expect(saved(storage).raidProgress.pokedexRewards).toEqual([10]);
-    expect((hub as unknown as { writeGame(): boolean }).writeGame()).toBe(true);
-    expect(saved(storage).stash.itemCount('great-ball')).toBe(ballsBefore + 5);
-  });
-
-  it('never gives the same milestone twice, read or not', () => {
-    const storage = storageWithKinds(10, heardTheLab);
-    expect(speechOn(screenOf(createHub(DEFAULT_RAID_PROGRESS, storage).hub))).toBeDefined();
-    const balls = saved(storage).stash.itemCount('great-ball');
-
-    // Walked straight out unread and back in.
-    expect(speechOn(screenOf(createHub(DEFAULT_RAID_PROGRESS, storage).hub))).toBeUndefined();
-    expect(saved(storage).stash.itemCount('great-ball')).toBe(balls);
-  });
-
-  it('says nothing short of a milestone, and nothing on any other screen', () => {
-    const short = storageWithKinds(8, heardTheLab);
-    expect(speechOn(screenOf(createHub(DEFAULT_RAID_PROGRESS, short).hub))).toBeUndefined();
-    expect(saved(short).raidProgress.pokedexRewards).toBeUndefined();
-
-    const due = storageWithKinds(10, { ...heardTheLab, firstWordsHeard: ['lab', 'center'] });
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, due);
-    hub.setView('stash');
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-    expect(saved(due).raidProgress.pokedexRewards).toBeUndefined();
-  });
-
-  it('lets Oak finish his first words before he hands anything over', () => {
-    const storage = storageWithKinds(10);
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
-    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.lab.lines[0]);
-    expect(saved(storage).raidProgress.pokedexRewards).toBeUndefined();
-
-    readOn(hub);
-    expect(speechOn(screenOf(hub))).toContain('Here, take 5 Great Balls.');
-    expect(saved(storage).raidProgress.pokedexRewards).toEqual([10]);
-  });
-
-  it('gives two milestones crossed at once one after the other, as each is read', () => {
-    const storage = storageWithKinds(26, heardTheLab);
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
-    const first = speechOn(screenOf(hub));
-    expect(first).toContain('right track');
-    expect(first).toContain('And that’s not all!');
-
-    readOn(hub);
-    const second = speechOn(screenOf(hub));
-    expect(second).not.toContain('Good to see you');
-    expect(second).toContain('When you have 50 kinds of Pokémon, come back and see me.');
-    expect(second).toContain('Your Pokédex could use a bit more volume still!');
-    expect(second).toContain('5 Super Potions and 5 Great Balls');
-    expect(saved(storage).raidProgress.pokedexRewards).toEqual([10, 25]);
-
-    readOn(hub);
-    expect(speechOn(screenOf(hub))).toBeUndefined();
   });
 });
 

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { firstWordsFor, FIRST_WORDS } from '../hub/firstWords';
+import { FIRST_WORDS } from '../hub/firstWords';
 import { buildMinimap } from '../world/minimap';
 import type { Material } from '../world/tileset/materials';
 import { TILE_SOURCES } from '../world/tileset/sheets';
 import {
+  ARENA_CENTRE,
   ARENA_FENCE,
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
@@ -21,17 +22,20 @@ import {
   PLATFORM_CLEAR,
   PODIUM_PARALLAX,
   TIER_PARALLAX,
+  WALL_FOOT,
   acrossOval,
   arenaCollision,
   arenaStationAt,
   cameraLean,
   isArenaFence,
+  namePlatePlace,
   parallaxShift,
   pitLookPoint,
   pitTileAt,
   podiumHole,
 } from './arenaHall';
 import { ARENA_HALL_SOURCE } from './arenaHallSheet';
+import { PERSON_WIDTH, STANDS_ORIGIN, crowdSeats, nextStir, paintCrowdPerson, paintStands } from './arenaStands';
 import { PIT_FLOOR_SIZE, isGroundKnown, paintPitFloor, paintPodium, paintTier, RING_ORIGIN } from './arenaPit';
 import { baseGame } from './baseGames.testkit';
 import { ARENA_HALL_GROUND, ARENA_HALL_OVER, ARENA_HALL_SHEET } from './generated/arenaHallTiles';
@@ -276,6 +280,34 @@ describe('the pit', () => {
     expect(Math.abs(cameraLean({ x: 520, y: 1000 }, 240).y)).toBeLessThanOrEqual(240 / 2 - 56);
   });
 
+  it('turns the view up to the stands at the far wall, and never away from the pit at the door', () => {
+    // At the north rail it still looks out over the pit.
+    expect(cameraLean({ x: 520, y: 528 - 400 }, 256).y).toBeGreaterThan(0);
+    // At the wall it looks up over the seats.
+    expect(cameraLean({ x: 520, y: 80 }, 256).y).toBeLessThan(0);
+    // East and west, the same.
+    expect(cameraLean({ x: 1000, y: 528 }, 256).x).toBeGreaterThan(0);
+    // By the door, unchanged: the stations row and the mat both still lean north.
+    expect(cameraLean({ x: 520, y: 960 }, 256).y).toBeLessThan(0);
+  });
+
+  it('draws a way in\'s name plate whole or not at all', () => {
+    const plate = { width: 90, height: 13 };
+    const view = { x: 300, y: 300, width: 400, height: 256 };
+    // In the middle of the view, over its mark.
+    expect(namePlatePlace({ x: 500, y: 420 }, plate, view)).toEqual({ x: 455, y: 394 });
+    // At either edge it slides along rather than being cut.
+    expect(namePlatePlace({ x: 305, y: 420 }, plate, view)?.x).toBe(300);
+    expect(namePlatePlace({ x: 684, y: 420 }, plate, view)?.x).toBe(596);
+    // Under the top of the screen it goes below its mark.
+    expect(namePlatePlace({ x: 500, y: 310 }, plate, view)?.y).toBe(320);
+    // A mark off the screen has nothing to be named, the walk round the rim's case.
+    expect(namePlatePlace({ x: 280, y: 420 }, plate, view)).toBeNull();
+    expect(namePlatePlace({ x: 696, y: 420 }, plate, view)).toBeNull();
+    // Nor is it ever cut by the stone round the pit: the hall's floor is drawn over it.
+    expect(namePlatePlace({ x: 520 + 370, y: 528 }, plate, { x: 600, y: 400, width: 400, height: 256 })).toBeNull();
+  });
+
   /** A map the size the pit shows, all open grass, walked within `walked` of its top-left. */
   function picture(walked: number) {
     const size = PIT_MAP_SIZE;
@@ -330,14 +362,69 @@ describe('the pit', () => {
   });
 });
 
+/** Two rows of the box at most, so a line of hers never pages. */
+const LONGEST_MARSHAL_LINE = 100;
+
 describe('what is said on the way to a raid', () => {
-  it('says nothing over the bench, the rack or the locker: the marshal says it in the hall, and it is not Oak', () => {
-    for (const panel of ['bench', 'rack', 'locker']) {
-      expect(firstWordsFor(panel)).toBeUndefined();
-    }
+  it('says it in the hall and nowhere past it: the marshal, not Oak', () => {
     expect(FIRST_WORDS.loadout.speaker).not.toBe('prof-oak');
     for (const line of FIRST_WORDS.loadout.lines) {
-      expect(line.length).toBeLessThanOrEqual(68);
+      expect(line.length).toBeLessThanOrEqual(LONGEST_MARSHAL_LINE);
     }
+  });
+});
+
+describe('the stands round the hall', () => {
+  const painted = paintStands();
+  const opaque = (hallX: number, hallY: number): boolean =>
+    painted.data[((hallY - STANDS_ORIGIN.y) * painted.width + hallX - STANDS_ORIGIN.x) * 4 + 3] > 0;
+
+  it('stand all the way round the wall, and never over any ground that can be walked', () => {
+    for (let index = 0; index < 180; index += 1) {
+      const angle = (index / 180) * Math.PI * 2;
+      const point = {
+        x: Math.round(ARENA_CENTRE.x + Math.cos(angle) * (WALL_FOOT.rx + 30)),
+        y: Math.round(ARENA_CENTRE.y + Math.sin(angle) * (WALL_FOOT.ry + 30)),
+      };
+      const onTheWayOut = Math.abs(point.x - (ARENA_MAT.x + 0.5) * ARENA_TILE) < 40 && point.y > ARENA_CENTRE.y;
+      if (!onTheWayOut && Math.sin(angle) >= 0) {
+        expect(opaque(point.x, point.y)).toBe(true);
+      }
+    }
+    solid.forEach((row, y) =>
+      row.forEach((blocked, x) => {
+        if (!blocked) {
+          for (const [px, py] of [[x * ARENA_TILE, y * ARENA_TILE], [x * ARENA_TILE + 15, y * ARENA_TILE + 15]]) {
+            expect(opaque(px, py), `${x},${y}`).toBe(false);
+          }
+        }
+      }),
+    );
+  });
+
+  it('leave the way out of the hall open', () => {
+    const middle = (ARENA_MAT.x + 0.5) * ARENA_TILE;
+    for (let y = (ARENA_MAT.y + 1) * ARENA_TILE; y < 1050; y += 1) {
+      expect(opaque(Math.round(middle), y)).toBe(false);
+    }
+  });
+
+  it('seat a crowd on them, inside the picture, the same crowd every time', () => {
+    const seats = crowdSeats();
+    expect(seats.length).toBeGreaterThan(400);
+    expect(crowdSeats()).toBe(seats);
+    for (const seat of seats) {
+      expect(seat.x).toBeGreaterThanOrEqual(STANDS_ORIGIN.x);
+      expect(seat.y).toBeGreaterThanOrEqual(STANDS_ORIGIN.y);
+      expect(opaque(seat.x + 2, seat.y)).toBe(true);
+    }
+  });
+
+  it('lets only somebody in view shift, by one pixel, and not for long', () => {
+    const stir = nextStir([0.3, 0.1, 0.5], () => true)!;
+    expect(Math.abs(stir.dx) + Math.abs(stir.dy)).toBe(1);
+    expect(stir.forMs).toBeLessThan(3000);
+    expect(nextStir([0.3, 0.1, 0.5], () => false)).toBeNull();
+    expect(paintCrowdPerson().width % PERSON_WIDTH).toBe(0);
   });
 });

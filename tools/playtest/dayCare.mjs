@@ -79,7 +79,11 @@ try {
     await page.waitFor(`${state()}.live`, { what: 'the yard' });
     await sleep(400);
   };
-  /** Up the lawn to the man, facing him, and the interact key: his screen. */
+  const boxText = async () => {
+    await page.waitFor(`${BASE}.dialogBox.isCurrentMessageComplete`, { what: 'his line to finish typing' });
+    return page.evaluate(`${BASE}.dialogBox.textObject.text.replace(/\\s+/g, ' ').trim()`);
+  };
+  /** Up the lawn to the man, facing him, and the interact key: his words, in the yard. */
   const speakToHim = async () => {
     const man = await page.evaluate(`${BASE}.figures.has('day-care-man')`);
     if (!man) throw new Error('nobody is standing at the Day-Care');
@@ -88,8 +92,8 @@ try {
     const facing = await page.evaluate(state());
     if (facing.hint !== '[SPACE] DAY-CARE MAN') throw new Error(`facing him, the hint says "${facing.hint}"`);
     await press('Space');
-    await page.waitFor(sceneIs('hub'), { what: 'his screen' });
-    await sleep(600);
+    await page.waitFor(`${BASE}.dialogBox.visible`, { what: 'his words' });
+    return boxText();
   };
 
   // A new game, whatever a browser driven before left in its storage.
@@ -111,10 +115,13 @@ try {
     save.raidProgress.keysLearned = ['walk', 'look'];
   }`);
 
-  await speakToHim();
+  const offer = await speakToHim();
+  if (!offer.includes('I run the DAY-CARE service')) throw new Error(`he opens with ${JSON.stringify(offer)}`);
+  await page.screenshot(`${out}/offer.png`);
+  await press('Escape');
+  await page.waitFor(sceneIs('hub'), { what: 'his list' });
   await sleep(1500);
   await page.screenshot(`${out}/choose.png`);
-  console.log(`bar: ${JSON.stringify(await page.evaluate(`(() => { const l = document.querySelector('.stash-roster .px-scroll'); const b = document.querySelector('.box-bar'); return { top: l.scrollTop, above: l.dataset.above, more: l.dataset.more, cover: getComputedStyle(l).getPropertyValue('--above-cover'), bar: b.getBoundingClientRect().top, list: l.getBoundingClientRect().top, attrs: [...l.attributes].map((a) => a.name + '=' + a.value).join(' ') }; })()`))}`);
   const heading = await text('.px-heading h2');
   if (!heading.includes('Which Pokémon should I raise?')) throw new Error(`his screen is headed ${JSON.stringify(heading)}`);
   // A fainted one is sent to the Pokémon Center: he heals nothing, so it would be raised fainted.
@@ -126,19 +133,17 @@ try {
   }
   console.log(`fainted: ${fainted.help}`);
   await click('button[data-day-care-leave="pidgey-1"]', 'the Pidgey');
-  const left = await text('.px-speech-line');
-  if (!left[0]?.startsWith('Fine, I’ll look after your Pidgey')) throw new Error(`he says ${JSON.stringify(left)}`);
-  await page.screenshot(`${out}/left.png`);
-  console.log(`left: ${left.join(' / ')}`);
-  await click('[data-speech-done]', 'Got it');
-  await page.screenshot(`${out}/raising.png`);
-  await click('[data-back]', 'back to the yard');
   await page.waitFor(sceneIs('base'));
-  await page.waitFor(`${state()}.live`, { what: 'the yard again' });
+  await page.waitFor(`${state()}.live && ${BASE}.dialogBox.visible`, { what: 'his answer, back in the yard' });
+  const left = await boxText();
+  if (!left.startsWith('Fine, I’ll look after your Pidgey')) throw new Error(`he says ${JSON.stringify(left)}`);
+  await page.screenshot(`${out}/left.png`);
+  console.log(`left: ${left}`);
+  await press('Escape');
   await sleep(2500);
   const back = await page.evaluate(state());
   if (back.tile.x !== 33 || back.tile.y !== 11 || back.facing !== 'right') {
-    throw new Error(`backing out put the player on ${JSON.stringify(back.tile)} facing ${back.facing}`);
+    throw new Error(`he left the player on ${JSON.stringify(back.tile)} facing ${back.facing}`);
   }
   if (back.pen?.species !== 'pidgey') throw new Error(`the pen holds ${JSON.stringify(back.pen)}`);
   await page.screenshot(`${out}/pen.png`);
@@ -146,13 +151,16 @@ try {
 
   // Raids go out and come home without it.
   await editSave(`(save) => { save.raidProgress.raidRecord = { 'floodplain-relay': { deployed: ${raids}, extracted: ${raids}, wiped: 0 } }; }`);
-  await speakToHim();
+  console.log(`grown: ${await speakToHim()}`);
   await page.screenshot(`${out}/grown.png`);
-  console.log(`grown: ${(await text('.daycare-layout .px-lead .px-wrap, .daycare-layout .px-heading, .confirm-bar strong')).join(' / ')}`);
-  await click('[data-day-care-take]', 'Take it back');
-  const taken = await text('.px-speech-line');
+  await press('Escape');
+  await page.waitFor(`Boolean(${BASE}.boxQuestion)`, { what: 'his question' });
+  await page.screenshot(`${out}/asks.png`);
+  await press('Space');
+  await page.waitFor(`${state()}.live && ${BASE}.dialogBox.visible`, { what: 'him handing it back' });
+  const taken = await boxText();
   await page.screenshot(`${out}/taken.png`);
-  console.log(`taken: ${taken.join(' / ')}`);
+  console.log(`taken: ${taken}`);
   const level = await page.evaluate(
     `JSON.parse(localStorage.getItem('${SAVE_KEY}')).stash.pokemon.find((p) => p.id === 'pidgey-1')?.pokemon.level`,
   );

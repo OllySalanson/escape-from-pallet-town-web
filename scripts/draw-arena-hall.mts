@@ -189,6 +189,10 @@ function paintWall(): void {
   const capWidth = 9;
   const capNorth = grownOval(raised, capWidth);
   const capSouth = grownOval(WALL_FOOT, capWidth);
+  // From where the lifted cap is widest down to the hall's middle, its side runs
+  // straight down to meet the south half, with no notch at the join.
+  const acrossCapNorth = (px: number, py: number): number =>
+    py > capNorth.y ? Math.abs(px - capNorth.x) / capNorth.rx : acrossOval(capNorth, px, py);
   for (let y = 0; y < HEIGHT; y += 1) {
     for (let x = 0; x < WIDTH; x += 1) {
       const px = x + 0.5;
@@ -205,9 +209,9 @@ function paintWall(): void {
         const foot = WALL_FOOT.y - rise;
         const faceTop = foot - WALL_FACE_HEIGHT;
         ground.set(x, y, stoneAt(wallLevel(x, y, faceTop, foot), x, y));
-      } else if (north ? acrossOval(capNorth, px, py) <= 1 : acrossOval(capSouth, px, py) <= 1) {
+      } else if (north ? acrossCapNorth(px, py) <= 1 : acrossOval(capSouth, px, py) <= 1) {
         // The top of the wall, looked down on, with its outer edge lit.
-        const outer = north ? acrossOval(capNorth, px, py) : acrossOval(capSouth, px, py);
+        const outer = north ? acrossCapNorth(px, py) : acrossOval(capSouth, px, py);
         ground.set(x, y, outer > 0.992 ? STONE_RAMP[3] : CAP);
       }
     }
@@ -322,6 +326,9 @@ function paintFence(): void {
   }
   const POST_HEIGHT = 11;
   const RAIL_RISE = 8;
+  /** Every so many posts, a great one: taller and wider, with iron horns on its cap. */
+  const GREAT_POST_EVERY = 5;
+  const GREAT_POST_HEIGHT = 16;
   const pictureFor = (y: number): Picture => (y < ARENA_CENTRE.y ? over : ground);
   // The rails first, then the posts over them.
   for (let step = 0; step < steps; step += 1) {
@@ -329,16 +336,49 @@ function paintFence(): void {
     const x = Math.round(point.x);
     const y = Math.round(point.y);
     const picture = pictureFor(y);
-    picture.set(x, y - RAIL_RISE, IRON_LIGHT);
+    // Two runs of heavy chain, a link at a time rather than a line.
+    const link = Math.floor(step / 7) % 2 === 0;
+    picture.set(x, y - RAIL_RISE, link ? IRON_LIGHT : IRON);
     picture.set(x, y - RAIL_RISE + 1, IRON);
+    picture.set(x, y - RAIL_RISE + 4, link ? IRON : IRON_LIGHT);
+    picture.set(x, y - RAIL_RISE + 5, IRON);
   }
   // Rails first, nearer posts last.
+  const great = new Set(points.filter((_point, index) => index % GREAT_POST_EVERY === 0));
   for (const point of [...points].sort((a, b) => a.y - b.y)) {
     const picture = pictureFor(point.y);
     const light = torchLight(point.x, point.y, ARENA_TORCHES);
     const face = stoneAt(5.2 + light * 3, point.x, point.y);
     const lit = stoneAt(6.8 + light * 2.6, point.x, point.y);
     const dark = STONE_RAMP[2];
+    if (great.has(point)) {
+      for (let dy = 0; dy < GREAT_POST_HEIGHT; dy += 1) {
+        const y = point.y - dy;
+        for (let dx = -4; dx <= 4; dx += 1) {
+          const edge = dx === -4 || dx === 4;
+          picture.set(point.x + dx, y, edge ? STONE_RAMP[1] : dx < -1 ? lit : face);
+        }
+        // A band of iron round it, where the chain is made fast.
+        if (dy === RAIL_RISE || dy === RAIL_RISE - 4) {
+          for (let dx = -3; dx <= 3; dx += 1) {
+            picture.set(point.x + dx, y, IRON);
+          }
+        }
+      }
+      const capY = point.y - GREAT_POST_HEIGHT;
+      for (let dx = -5; dx <= 5; dx += 1) {
+        picture.set(point.x + dx, capY, STONE_RAMP[2]);
+        picture.set(point.x + dx, capY + 1, dx < -1 ? lit : face);
+      }
+      // Two iron horns on the cap, curling out, as a pit like this would have.
+      for (const side of [-1, 1]) {
+        picture.set(point.x + side * 4, capY - 1, IRON);
+        picture.set(point.x + side * 4, capY - 2, IRON_LIGHT);
+        picture.set(point.x + side * 5, capY - 3, IRON_LIGHT);
+        picture.set(point.x + side * 6, capY - 4, IRON);
+      }
+      continue;
+    }
     for (let dy = 0; dy < POST_HEIGHT; dy += 1) {
       const y = point.y - dy;
       picture.set(point.x - 2, y, dark);

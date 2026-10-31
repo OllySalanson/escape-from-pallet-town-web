@@ -1075,6 +1075,24 @@ button {
     border-bottom: 0;
   }
 }
+/* A window with no room on any edge (640x480): over a menu the tab stands in the
+   corner of the help bar, the one place on a menu screen with no words in it
+   (a right-hand strip here covered Squirtle's note and the name screen's lead). */
+@media (max-width: 671px) and (max-height: 511px) and (orientation: landscape) {
+  body:has(#screens > .pixel-ui) .feedback-tab {
+    top: auto;
+    bottom: 0;
+    width: 96px;
+    height: 24px;
+    line-height: 20px;
+    writing-mode: horizontal-tb;
+    transform: none;
+    border-left: 2px solid #171717;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: none;
+  }
+}
 
 /* The feedback panel's ON AIR dot (`feedback/feedbackPanel.ts`). Kept out of
    the pixel-ui block, whose every selector is a screen's: a keyframe is not. */
@@ -1214,8 +1232,6 @@ button {
 /* --- The screen: title bar, body, help bar ------------------------------ */
 :where(.pixel-ui) .px-screen {
   height: 100%;
-  /* What a box laid over the body (`.px-speech`) is placed against. */
-  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   /* One column that may be narrower than what it holds. An `auto` column takes
@@ -1993,34 +2009,6 @@ button {
 }
 
 /* --- Somebody speaking: first words over the foot of a screen ------------ */
-/* Professor Oak or Nurse Joy, the first time one of their screens opens
-   (`hub/firstWords.ts`). It is the games' own text box: laid over the bottom of
-   the body, just above the help bar, so the screen under it is already the
-   screen it will be once the words are read and nothing moves when it goes. */
-:where(.pixel-ui) .px-speech {
-  position: absolute;
-  left: calc(var(--u) * 4);
-  right: calc(var(--u) * 4);
-  bottom: calc(var(--u) * 30);
-  z-index: 3;
-}
-:where(.pixel-ui) .px-speech > .px-lead {
-  align-items: end;
-}
-:where(.pixel-ui) .px-speech-words {
-  flex: 1;
-  min-width: 0;
-}
-:where(.pixel-ui) .px-speech-words > strong {
-  display: block;
-  margin-bottom: calc(var(--u) * 2);
-  text-transform: uppercase;
-}
-:where(.pixel-ui) .px-speech-line + .px-speech-line {
-  margin-top: var(--u);
-}
-/* The screen behind the words is the one being explained, so it stays in view,
-   quieter, until they are read. */
 :where(.pixel-ui) .px-body[inert] {
   opacity: 0.55;
 }
@@ -2232,25 +2220,6 @@ button {
 /* Every lobby layout is one fixed column beside one that takes what is left.
    Two `fr` columns split an odd width into half game pixels, and a window
    standing on half a pixel is a soft edge at every odd zoom. */
-:where(.pixel-ui) .hub-home {
-  height: 100%;
-  grid-template-rows: auto minmax(0, 1fr);
-}
-:where(.pixel-ui) .hub-actions {
-  display: grid;
-  /* One column, because there are two things here and both are one line: the
-     raid this lab sends you on, and whether the team is fit to go on it. The
-     other three cards this row used to hold are the Pokemon Center, Brock's
-     Workshop and Bill's quay, which are buildings in the yard outside now
-     (`src/game/base/doors.ts`), and two cards sharing the three-column grid
-     that held four left one of them a third of the screen wide with a single
-     line in it. */
-  grid-template-columns: minmax(0, 1fr);
-  gap: calc(var(--u) * 4);
-}
-:where(.pixel-ui) .hub-actions > .px-tone-primary {
-  grid-column: 1 / -1;
-}
 :where(.pixel-ui) .objectives-panel,
 :where(.pixel-ui) .stash-layout > .px-window,
 :where(.pixel-ui) .stash-side > .px-window,
@@ -2362,12 +2331,11 @@ button {
      rows Bill's counter stands in, so the two shops read as one kind of place. */
   grid-template-rows: auto minmax(0, 1fr);
 }
-/* The Day-Care: the man across the top, then who he is raising or the list
-   to choose from taking what is left, then - while he is raising one - the bar
-   that takes it back. */
+/* The Day-Care's pick list: he has said his piece in the yard, so the list
+   takes all of it. */
 :where(.pixel-ui) .daycare-layout {
   height: 100%;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
 }
 /* Raiding with a friend (`src/game/hub/friendRoomView.ts`): the maps to make
    a room on take what room there is, and joining is one line under them. With
@@ -2565,7 +2533,7 @@ button {
    of eight things that never needed half a screen. */
 :where(.pixel-ui) .stash-layout {
   grid-template-columns: minmax(0, 1fr) calc(var(--u) * 140);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
 }
 /* Building a loadout, and Brock's payment screen: what to choose from
@@ -2635,9 +2603,24 @@ button {
 /* --- Choosing a starter: first run, and the lobby's swap ----------------- */
 :where(.pixel-ui) .starter-shell {
   height: 100%;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* What is being said stands together in the middle of the room there is, the
+     bar at the foot; on the smallest stage the two empty rows come to nothing. */
+  grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr) auto;
+  row-gap: 0;
+}
+:where(.pixel-ui) .starter-shell > :nth-child(1) {
+  grid-row: 2;
+}
+:where(.pixel-ui) .starter-shell > :nth-child(2) {
+  grid-row: 3;
+  margin-top: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .starter-shell > :nth-child(3) {
+  grid-row: 5;
+  margin-top: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .starter-brief {
+  justify-self: center;
   color: var(--bar-text);
   padding: 0 calc(var(--u) * 2);
 }
@@ -4008,8 +3991,12 @@ button {
 }
 :where(.pixel-ui) .feedback-attached {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, auto) minmax(0, 1fr);
   min-height: 0;
+}
+/* The smallest stage cannot hold the message and its three rows whole. */
+:where(.pixel-ui[data-room='tight']) textarea.feedback-text.px-field {
+  height: calc(var(--u) * 36);
 }
 .pixel-ui .feedback-thumb {
   width: calc(var(--u) * 50);

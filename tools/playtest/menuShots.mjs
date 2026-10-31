@@ -22,7 +22,7 @@
 // selector lands on the next one, because Left and Right belong to the count.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn, openHallPanel, readFirstWords } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn, openHallPanel } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -259,7 +259,6 @@ try {
   await openHallPanel(page, 'locker');
   await shoot('locker');
   await openHallPanel(page, 'rim');
-  await readFirstWords(page);
   await shoot('rim');
 
   if (raid) {

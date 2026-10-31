@@ -35,7 +35,7 @@ import { iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
-import { SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
+import { SaveManager, raidsDeployed, raidsLost, type RestoredGame } from '../save/SaveManager';
 import {
   FAVOUR_ANSWERS,
   declineErrand,
@@ -149,6 +149,7 @@ import {
   arrivalPlace,
   directionBetween,
   sameTile,
+  partnerFrame,
   partnerOf,
   partnerReaction,
   turnToPartner,
@@ -158,13 +159,23 @@ import {
 import {
   BUBBLE_HEIGHT,
   BUBBLE_WIDTH,
+  PARTNER_SPRITE_X_OFFSET,
   PartnerFigure,
   drawEmoteBubble,
   type PartnerHost,
 } from '../base/partnerFigure';
 import { WAVE_SHOWN_MS } from '../harbour/harbourLink';
 import { DAY_CARE_KEEPER, PEN_HOME, nextPenTile } from '../base/dayCarePen';
-import { dayCareStatusLine, raidsCompleted } from '../hub/dayCare';
+import {
+  checkOnLines,
+  DAY_CARE_OFFER_LINES,
+  dayCareReport,
+  dayCareStatusLine,
+  NOT_TAKEN_BACK_LINE,
+  raidsCompleted,
+  takeBackQuestion,
+  takenBackReport,
+} from '../hub/dayCare';
 import {
   POKEMON_ICON_FRAME_MS,
   POKEMON_ICON_TEXTURE,
@@ -181,27 +192,34 @@ import { ArenaView } from '../base/arenaView';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
+import { ArenaDiveView } from '../base/arenaDiveView';
+import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
   FOG_APPROACH_MS,
   FOG_LIFT_MS,
   FOG_LIFT_STEPS,
   FOG_STEP_MS,
+  FALL_MS,
   JUMP_MS,
   TURN_BACK_MS,
   HOP_MS,
   facingTowards,
   jumpPose,
+  partnerLeap,
   overTheFence,
 } from '../base/arenaDive';
 import { marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
-import { friendRoom } from '../raidRoom/friendRoom';
 import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
 import { worldMapName, type WorldMapId } from '../worldMap';
-import { hasHeard } from '../hub/firstWords';
+import { FIRST_WORDS, hasHeard, spokenLines, type FirstWordsId } from '../hub/firstWords';
+import { centerOffer, healedLine, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
+import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
+import { boardLines, boardPoster, oakNews } from '../base/labBoard';
+import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
@@ -407,6 +425,12 @@ export interface BaseSceneData {
    * down on this room's stair mat that leads back there, facing away from it.
    */
   readonly stairsFrom?: string;
+  /**
+   * What whoever the player has just dealt with says as they come back: a
+   * screen, or a heal, hands the words to the room rather than saying them over
+   * itself (`said`, in `create`), so they are always in the room's own box.
+   */
+  readonly said?: readonly string[];
 }
 
 interface BaseControls {
@@ -470,6 +494,8 @@ export class BaseScene extends Phaser.Scene {
   private hintFrame!: Phaser.GameObjects.Graphics;
   private hintText!: Phaser.GameObjects.Text;
   private hintShown = '';
+  /** Where the hint stands when not along the foot of the screen (`showTalkHint`). */
+  private hintSeat: { readonly right: number; readonly y: number } | undefined;
   private controls!: BaseControls;
   private readonly keyPresses = new KeyPresses(() => this.currentFrame());
   private readonly directionPresses = new PressLatch<Direction>();
@@ -528,6 +554,12 @@ export class BaseScene extends Phaser.Scene {
   private ownWave: { readonly bubble: Phaser.GameObjects.Graphics; ms: number } | null = null;
   /** The quick-phrase list, while it is open (`ui/PhrasePicker.ts`). */
   private phrasePicker: PhrasePicker | null = null;
+  /**
+   * A list asked for with a step under way, opened when the step ends. A step
+   * is 150ms and these keys were only read between steps, so a tap walking
+   * along was lost nearly every time and nothing said why.
+   */
+  private listAskedMidStep: 'favours' | 'talk' | null = null;
   /** What this player is saying, over their head while they say it. */
   private ownBubble: SpeechBubble | null = null;
   /** The game time of this frame, which the harbour's talk is paced by. */
@@ -578,6 +610,10 @@ export class BaseScene extends Phaser.Scene {
     readonly viewAtFence: { readonly x: number; readonly y: number };
     hopped: boolean;
     leaving: boolean;
+    /** What falls and what goes past (`arenaDiveView.ts`). */
+    readonly dive: ArenaDiveView | null;
+    /** The partner on its way over the fence after the player, drawn here until it too is falling. */
+    leaper: { readonly image: Phaser.GameObjects.Image; readonly from: { readonly x: number; readonly y: number } } | null;
   } | null = null;
   /** The cloud lifting off ground a raid has just walked (`ArenaView.liftFogFromLastRaid`). */
   private fogLift: { elapsedMs: number; steps: number; readonly tile: GridPosition; readonly sign: PlaceNameSign } | null = null;
@@ -614,8 +650,10 @@ export class BaseScene extends Phaser.Scene {
   private favoursScreen: MenuOverlay | null = null;
   /** Somebody knocking at this player's own door, being asked about. */
   private knockPrompt: { readonly prompt: ChoicePrompt; readonly knock: KnockAtTheDoor } | null = null;
-  /** A keeper's favour, asked YES or NOT NOW at the foot of what they said (`speakToKeeper`). */
-  private favourPrompt: { readonly prompt: ChoicePrompt; readonly answer: (yes: boolean) => void } | null = null;
+  /** A question asked YES or NOT NOW at the foot of what somebody said (`askInBox`): a favour, or a heal. */
+  private boxQuestion: { readonly prompt: ChoicePrompt; readonly answer: (yes: boolean) => void } | null = null;
+  /** The pointer came down while a box was up: read as the key that moves it on. */
+  private boxClicked = false;
   /** The "!" over a keeper who has something to say about their favour. */
   private keeperMark: Phaser.GameObjects.Graphics | null = null;
   /** The "!" over each person about the harbour with a favour to ask, by their id: it walks their beat with them. */
@@ -697,6 +735,7 @@ export class BaseScene extends Phaser.Scene {
     this.pushingAgainst = null;
     this.lookMs = 0;
     this.hintShown = '';
+    this.hintSeat = undefined;
     this.figures.clear();
     this.worldLabels = [];
     this.inspecting = null;
@@ -712,16 +751,18 @@ export class BaseScene extends Phaser.Scene {
     this.harbourFigures = null;
     this.ownWave = null;
     this.phrasePicker = null;
+    this.listAskedMidStep = null;
     this.ownBubble = null;
     this.harbourLife = null;
     this.fishing = null;
     this.knockScreen = null;
     this.favoursScreen = null;
     this.knockPrompt = null;
-    this.favourPrompt = null;
+    this.boxQuestion = null;
     this.keeperMark = null;
     this.harbourMarks = new Map();
     this.afterSaid = null;
+    this.boxClicked = false;
     this.doorTold = false;
     this.doorLayout = undefined;
     this.visit = null;
@@ -883,7 +924,14 @@ export class BaseScene extends Phaser.Scene {
     // centres a small room in it, so a resized window re-does both.
     const relayout = (): void => this.layoutForStage();
     this.scale.on(Phaser.Scale.Events.RESIZE, relayout);
+    // A click moves a box on as the key does, so nobody who got here is ever
+    // stranded on a line. A question's answers take their own clicks.
+    const clicked = (_pointer: Phaser.Input.Pointer, over: readonly Phaser.GameObjects.GameObject[]): void => {
+      this.boxClicked = this.dialogBox.visible && over.length === 0;
+    };
+    this.input.on('pointerdown', clicked);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off('pointerdown', clicked);
       this.scale.off(Phaser.Scale.Events.RESIZE, relayout);
       // Decorating listens on the canvas itself, which outlives the scene.
       this.decor?.release();
@@ -907,11 +955,12 @@ export class BaseScene extends Phaser.Scene {
       this.favoursScreen = null;
       this.knockPrompt?.prompt.destroy();
       this.knockPrompt = null;
-      this.favourPrompt?.prompt.destroy();
-      this.favourPrompt = null;
+      this.boxQuestion?.prompt.destroy();
+      this.boxQuestion = null;
       this.furniture?.destroy();
       this.furniture = null;
       this.arena?.destroy();
+      this.jump?.dive?.destroy();
       this.fogLift?.sign.destroy();
       this.fogLift = null;
       this.closeHallPanel();
@@ -935,6 +984,9 @@ export class BaseScene extends Phaser.Scene {
     }
     if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
+    } else if (data.said?.length) {
+      const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
+      this.say(data.said, speaker ? [speaker] : []);
     }
     if (this.visit) {
       if (data.stairsFrom === undefined) {
@@ -1008,7 +1060,7 @@ export class BaseScene extends Phaser.Scene {
     this.harbourLife?.update(
       deltaMs,
       this.dialogBox.visible ||
-        this.favourPrompt !== null ||
+        this.boxQuestion !== null ||
         this.leaving ||
         this.namePrompt !== null ||
         this.knockScreen !== null ||
@@ -1043,7 +1095,7 @@ export class BaseScene extends Phaser.Scene {
     }
 
     if (this.phrasePicker) {
-      if (this.dialogBox.visible || this.knockPrompt || this.favourPrompt || this.fishing || this.decor || this.targetTile) {
+      if (this.dialogBox.visible || this.knockPrompt || this.boxQuestion || this.fishing || this.decor || this.targetTile) {
         this.closePhrases();
       } else {
         this.handlePhraseInput();
@@ -1056,8 +1108,8 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
-    if (this.favourPrompt) {
-      const { prompt, answer } = this.favourPrompt;
+    if (this.boxQuestion) {
+      const { prompt, answer } = this.boxQuestion;
       // ESC is NOT NOW, as B is NO on FireRed's YES/NO box.
       this.steerPrompt(prompt, () => answer(false));
       return;
@@ -1069,7 +1121,9 @@ export class BaseScene extends Phaser.Scene {
     }
 
     if (this.dialogBox.visible) {
-      this.showHint('');
+      // What the step ended on is being read, and that is not what the key asked for.
+      this.listAskedMidStep = null;
+      this.showTalkHint();
       this.handleDialogInput();
       return;
     }
@@ -1089,6 +1143,11 @@ export class BaseScene extends Phaser.Scene {
     let frameLeftMs = deltaMs;
     let carriedMs = stepCarryMs;
     if (this.targetTile) {
+      if (this.keyPresses.justPressed(this.controls.favours)) {
+        this.listAskedMidStep = 'favours';
+      } else if (this.keyPresses.justPressed(this.controls.talk)) {
+        this.listAskedMidStep = 'talk';
+      }
       this.advanceStep(deltaMs);
       // A step that ends part-way through a frame walks straight on into the
       // next one in the same frame, as `WorldScene` does and for the same
@@ -1110,12 +1169,14 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
-    if (this.keyPresses.justPressed(this.controls.favours)) {
+    const asked = this.listAskedMidStep;
+    this.listAskedMidStep = null;
+    if (this.keyPresses.justPressed(this.controls.favours) || asked === 'favours') {
       this.openFavours();
       return;
     }
 
-    if (this.keyPresses.justPressed(this.controls.talk)) {
+    if (this.keyPresses.justPressed(this.controls.talk) || asked === 'talk') {
       this.openPhrases();
       return;
     }
@@ -1452,7 +1513,7 @@ export class BaseScene extends Phaser.Scene {
     }
     const lines = marshalLines(this.savedGame.raidProgress.firstWordsHeard, kit.flow);
     if (!hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
-      this.hearLoadoutWords();
+      this.hearFirstWords('loadout');
       this.clearKeeperMark();
     }
     this.standStill();
@@ -1476,9 +1537,9 @@ export class BaseScene extends Phaser.Scene {
     this.facing = facingTowards(this.currentTile, fence);
     this.standStill();
     this.dialogBox.setVisible(false);
-    audioManager.play('deploy');
     // Nobody can be asked to sit through it who asked for less movement.
     if (this.still) {
+      audioManager.play('deploy');
       this.leaving = true;
       this.cameras.main.fadeOut(180, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('world', world));
@@ -1492,6 +1553,8 @@ export class BaseScene extends Phaser.Scene {
         viewAtFence: this.player,
         hopped: true,
         leaving: true,
+        dive: null,
+        leaper: null,
       };
       return;
     }
@@ -1513,9 +1576,12 @@ export class BaseScene extends Phaser.Scene {
       },
       hopped: false,
       leaving: false,
+      dive: new ArenaDiveView(this, this.playerTexture),
+      leaper: null,
     };
     camera.stopFollow();
     camera.removeBounds();
+    audioManager.play('arenaHorn');
   }
 
   private advanceJump(deltaMs: number): void {
@@ -1528,19 +1594,47 @@ export class BaseScene extends Phaser.Scene {
     jump.elapsedMs += deltaMs;
     if (!jump.hopped && jump.elapsedMs >= TURN_BACK_MS) {
       jump.hopped = true;
+      arena.sendOff({ x: this.player.x, y: this.player.y });
       this.playerGroundMark.setVisible(false);
       this.playerHeadMark.setVisible(false);
-      this.partner?.tuckIn();
+      const partner = this.partner?.leaveForJump();
+      if (partner) {
+        jump.leaper = {
+          image: this.add.image(partner.x, partner.y, partner.texture, partnerFrame(this.facing, 0)).setOrigin(0, 0).setDepth(CANOPY_BAND + 1),
+          from: partner,
+        };
+        jump.dive?.partnerIs(partner.texture);
+      }
       audioManager.play('ledgeHop');
     }
     if (before < TURN_BACK_MS + HOP_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS) {
       audioManager.play('diveRush');
     }
+    if (before < TURN_BACK_MS + HOP_MS + FALL_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS + FALL_MS) {
+      audioManager.play('diveRush');
+    }
     const pose = jumpPose(jump.elapsedMs, jump.over);
-    this.player.setPosition(jump.from.x + pose.figure.x, jump.from.y + pose.figure.y);
-    this.player.setScale(pose.figure.scale);
-    this.player.setVisible(pose.figure.seen);
-    this.player.setDepth(CANOPY_BAND + 1);
+    if (!pose.figure.falling) {
+      this.player.setPosition(jump.from.x + pose.figure.x, jump.from.y + pose.figure.y);
+      this.player.setDepth(CANOPY_BAND + 1);
+    } else if (this.player.visible) {
+      this.player.setVisible(false);
+      jump.dive?.playerFalls({ x: this.player.x - this.cameras.main.scrollX, y: this.player.y - this.cameras.main.scrollY });
+    }
+    if (jump.leaper) {
+      const overTheRail = jumpPose(TURN_BACK_MS + HOP_MS, jump.over).figure;
+      const leap = partnerLeap(jump.elapsedMs, jump.leaper.from, {
+        x: jump.from.x + overTheRail.x + PARTNER_SPRITE_X_OFFSET,
+        y: jump.from.y + overTheRail.y,
+      });
+      if (leap.falling) {
+        jump.dive?.partnerFalls({ x: leap.x - this.cameras.main.scrollX, y: leap.y - this.cameras.main.scrollY });
+        jump.leaper.image.destroy();
+        jump.leaper = null;
+      } else {
+        jump.leaper.image.setPosition(leap.x, leap.y);
+      }
+    }
     const camera = this.cameras.main;
     const fromX = jump.viewFrom.x + (jump.viewAtFence.x - jump.viewFrom.x) * pose.back;
     const fromY = jump.viewFrom.y + (jump.viewAtFence.y - jump.viewFrom.y) * pose.back;
@@ -1548,14 +1642,9 @@ export class BaseScene extends Phaser.Scene {
     const y = fromY + (jump.focus.y - fromY) * pose.swing;
     camera.setZoom(CAMERA_ZOOM * pose.zoom);
     camera.centerOn(x, y);
-    const view = new Phaser.Geom.Rectangle(
-      x - camera.width / (2 * camera.zoom),
-      y - camera.height / (2 * camera.zoom),
-      camera.width / camera.zoom,
-      camera.height / camera.zoom,
-    );
     arena.burn(deltaMs);
-    arena.diveFrame(pose.zoom, jump.focus, pose.cloud, view);
+    arena.diveFrame(pose.zoom, jump.focus);
+    jump.dive?.frame(jump.elapsedMs, pose, this.scale.width, this.scale.height);
     this.partner?.update(deltaMs);
     if (jump.elapsedMs >= JUMP_MS) {
       jump.leaving = true;
@@ -1643,10 +1732,14 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private canTakeAPointer(): boolean {
-    return !this.arenaPanel && !this.jump && !this.fogLift && !this.leaving && !this.dialogBox.visible;
+    return !this.arenaPanel && !this.jump && !this.fogLift && !this.leaving && !this.dialogBox.visible && !this.phrasePicker;
   }
 
   private hoverOverHall(pointer: Phaser.Input.Pointer): void {
+    if (this.phrasePicker) {
+      // The list's own rows say what the pointer may do.
+      return;
+    }
     this.game.canvas.style.cursor = this.canTakeAPointer() && this.hallThingAt(pointer) ? 'pointer' : '';
   }
 
@@ -1754,7 +1847,9 @@ export class BaseScene extends Phaser.Scene {
       this.player.setFrame(getIdleFrame(this.facing));
     }
     audioManager.play('select');
-    this.openHallPanel('rim');
+    // The first time, the marshal says what is down there before it opens.
+    const marshal = this.place.room?.room.keeper?.position;
+    this.sayFirstWords('check', marshal ? [marshal] : [], () => this.openHallPanel('rim'));
   }
 
   /** Lays the map's tile layers, and hands back the detail layer landmarks are drawn on. */
@@ -2222,14 +2317,16 @@ export class BaseScene extends Phaser.Scene {
     if (area) {
       this.hangPicture(WALL_MAP_TEXTURE, wallMapPoster(this.savedGame, area), area);
     }
-    // The other pictures of the save a room keeps wall for: THE BOLTHOLE's
-    // badge case and its pennants, painted fresh on every visit for the same
-    // reason the wall map is.
+    // The other pictures of the save a room keeps wall for: Oak's cork board,
+    // and THE BOLTHOLE's badge case and its pennants, painted fresh on every
+    // visit for the same reason the wall map is.
     for (const poster of this.place.room?.posters ?? []) {
       const picture =
         poster.kind === 'badge-case'
           ? badgeCasePoster(this.savedGame, poster.area)
-          : pennantsPoster(this.savedGame, poster.area);
+          : poster.kind === 'cork-board'
+            ? boardPoster(this.savedGame, poster.area)
+            : pennantsPoster(this.savedGame, poster.area);
       this.hangPicture(`base-poster-${poster.kind}`, picture, poster.area);
     }
   }
@@ -2622,7 +2719,7 @@ export class BaseScene extends Phaser.Scene {
     // opened from, exactly as the keeper does: a board on a wall that answers
     // a key nobody was told about is a board nobody reads.
     const faced = this.thingFaced(facing);
-    if (faced?.opens) {
+    if (faced?.opens || faced?.reads) {
       return `[SPACE] ${faced.name}`;
     }
     // The cabinet is looked into rather than read off, so it says it can be.
@@ -2678,11 +2775,31 @@ export class BaseScene extends Phaser.Scene {
     };
   }
 
-  private showHint(text: string): void {
-    if (text === this.hintShown) {
+  /**
+   * While somebody is talking and there is more to come, the one key that gets
+   * past all of it is named just clear of the box: favours run to eight presses
+   * for a player who only came for the keeper's screen.
+   */
+  private showTalkHint(): void {
+    if (this.dialogBox.boxesLeft <= 1 && !this.afterSaid) {
+      this.showHint('');
+      return;
+    }
+    const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
+    const above = this.dialogBox.y - height - HINT_MARGIN;
+    this.showHint(TALK_SKIP_HINT, {
+      right: this.dialogBox.x + DIALOG_WIDTH,
+      y: above >= 0 ? above : this.dialogBox.y + DIALOG_HEIGHT + HINT_MARGIN,
+    });
+  }
+
+  /** The hint centred along the foot of the screen, or at `seat` - the corner of a box - when that is in use. */
+  private showHint(text: string, seat?: { readonly right: number; readonly y: number }): void {
+    if (text === this.hintShown && seat?.y === this.hintSeat?.y && seat?.right === this.hintSeat?.right) {
       return;
     }
     this.hintShown = text;
+    this.hintSeat = seat;
     this.hintFrame.clear();
     this.hintText.setText(text).setVisible(text !== '');
     if (text === '') {
@@ -2690,8 +2807,8 @@ export class BaseScene extends Phaser.Scene {
     }
     const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
-    const x = Math.round((this.scale.width - width) / 2);
-    const y = this.scale.height - height - HINT_MARGIN;
+    const x = seat ? seat.right - width : Math.round((this.scale.width - width) / 2);
+    const y = seat ? seat.y : this.scale.height - height - HINT_MARGIN;
     drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
     this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
   }
@@ -2706,7 +2823,7 @@ export class BaseScene extends Phaser.Scene {
     );
     const hint = this.hintShown;
     this.hintShown = '\u0000';
-    this.showHint(hint);
+    this.showHint(hint, this.hintSeat);
     this.configureCamera();
   }
 
@@ -2727,7 +2844,12 @@ export class BaseScene extends Phaser.Scene {
     const top = height < viewHeight ? Math.floor((height - viewHeight) / 2) : 0;
     camera.setBackgroundColor(0x000000);
     const below = this.place.room?.pit ? ARENA_DARK_BELOW : 0;
-    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height + below, viewHeight));
+    if (this.place.room?.pit) {
+      // The hall's stands stand outside its own grid (`arenaStands.ts`).
+      camera.setBounds(STANDS_ORIGIN.x, STANDS_ORIGIN.y, STANDS_WIDTH, Math.max(STANDS_HEIGHT, height + below - STANDS_ORIGIN.y));
+    } else {
+      camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height + below, viewHeight));
+    }
     camera.setZoom(CAMERA_ZOOM);
     camera.setRoundPixels(true);
     // The hall's camera is placed by hand, a whole pixel from a whole pixel
@@ -2784,7 +2906,7 @@ export class BaseScene extends Phaser.Scene {
             : []),
           // And so is a question asked in its frame - a favour's YES or NOT
           // NOW, or a knock at the door - which is up while the box is down.
-          ...[this.favourPrompt?.prompt, this.knockPrompt?.prompt]
+          ...[this.boxQuestion?.prompt, this.knockPrompt?.prompt]
             .filter((prompt): prompt is ChoicePrompt => prompt !== undefined)
             .map((prompt) => ({ x: prompt.x + view.left, y: prompt.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT })),
         ],
@@ -2796,8 +2918,8 @@ export class BaseScene extends Phaser.Scene {
           // is: a caption seated across a person reads as their head stuck on
           // a sign.
           ...(this.harbourLife?.standing('person') ?? []).map((tile) => figureRect(tile)),
-          // And the other players walking the shared harbour, name and all.
-          ...(this.harbourFigures?.rects() ?? []),
+          // What the other players are saying: a caption seated over it would be read as said.
+          ...(this.harbourFigures?.bubbleRects() ?? []),
           // This player's own hand while it is up.
           ...(this.ownWave ? [{ x: this.ownWave.bubble.x, y: this.ownWave.bubble.y, width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT }] : []),
           // And what they are saying.
@@ -2832,10 +2954,23 @@ export class BaseScene extends Phaser.Scene {
           ...(this.harbourLife?.standing('pokemon') ?? []).map((tile) => figureRect(tile)),
           // And the partners walking at other players' heels.
           ...(this.harbourFigures?.heelRects() ?? []),
+          // And the other players themselves, and the regulars: somebody
+          // standing about beside a door never takes its name away. A regular
+          // knocking at the Pokémon Center had the only seat its name has from
+          // the doorstep, and the favour on it went unread for as long as they
+          // stood there. A name that has to sit across them is read through
+          // them (`HarbourFigures.veilUnder`).
+          ...(this.harbourFigures?.rects() ?? []),
         ],
       },
     );
     labels.forEach((label, index) => label.seat(placements[index]));
+    this.harbourFigures?.veilUnder(
+      placements.flatMap((placement, index) => {
+        const { width, height } = labels[index].request();
+        return placement.visible ? [{ x: placement.x, y: placement.y, width, height }] : [];
+      }),
+    );
     this.partner?.setVeiled(
       partner !== null &&
         seatedOver(
@@ -3321,6 +3456,10 @@ export class BaseScene extends Phaser.Scene {
     audioManager.play('select');
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
+    // An arrow still held from the walk is not a press on the list: unread,
+    // it moved the cursor the moment the list opened.
+    const { up, down, left, right, w, a, s, d } = this.controls;
+    [up, down, left, right, w, a, s, d].forEach((key) => this.keyPresses.justPressed(key));
     this.phrasePicker = new PhrasePicker(
       this,
       HARBOUR_PHRASES.map((phrase) => phrase.words),
@@ -3411,7 +3550,9 @@ export class BaseScene extends Phaser.Scene {
     // Over the chevron that marks this player, as their hand is.
     const tipY = Math.round(this.ownWave ? this.ownWave.bubble.y - 1 : head - OWN_WAVE_LIFT - 1);
     const width = this.collision[0].length * TILE_SIZE;
-    const box = this.ownBubble.place(centreX, tipY, width, this.harbourFigures?.bubbleRects() ?? []);
+    // And clear of the note or heart over a partner standing beside them.
+    const emote = this.partner?.bubbleRect();
+    const box = this.ownBubble.place(centreX, tipY, width, [...(this.harbourFigures?.bubbleRects() ?? []), ...(emote ? [emote] : [])]);
     // And no name is drawn under it: their own bubble over anybody's plate is the plate's to give up.
     this.harbourFigures?.clearNamesUnder(box);
   }
@@ -3532,6 +3673,14 @@ export class BaseScene extends Phaser.Scene {
         this.openWallMap(room);
         return;
       }
+      if (thing?.opens === 'boxes') {
+        this.openHub({ savedGame: this.savedGame, view: 'stash', from: room.id, at: { ...this.currentTile } });
+        return;
+      }
+      if (thing?.reads === 'board') {
+        this.readTheBoard(room, [target]);
+        return;
+      }
       if (thing?.cabinetUnit !== undefined) {
         const index = this.oddityToStartAt(target, thing.cabinetUnit);
         if (index === undefined) {
@@ -3628,7 +3777,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (sameTile(target, DAY_CARE_KEEPER.position)) {
-      this.openHub({ savedGame: this.savedGame, view: 'daycare', at: { ...this.currentTile } });
+      this.speakToDayCareMan(target);
       return;
     }
     const fixture = this.fixtures.find(
@@ -3667,7 +3816,13 @@ export class BaseScene extends Phaser.Scene {
    * not also walk a tile.
    */
   private handleDialogInput(): void {
-    if (!this.isInteractionPressed()) {
+    if (this.keyPresses.justPressed(this.controls.back)) {
+      this.skipTalk();
+      return;
+    }
+    const clicked = this.boxClicked;
+    this.boxClicked = false;
+    if (!this.isInteractionPressed() && !clicked) {
       return;
     }
     this.spentPresses.spendHeld(this.directionKeys());
@@ -3682,6 +3837,16 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     this.dialogBox.skip();
+  }
+
+  /** ESC, past everything still to be said: on to whatever the talk was on its way to. */
+  private skipTalk(): void {
+    this.spentPresses.spendHeld(this.directionKeys());
+    audioManager.play('textAdvance');
+    this.dialogBox.dismiss();
+    const then = this.afterSaid;
+    this.afterSaid = null;
+    then?.();
   }
 
   /**
@@ -4087,7 +4252,7 @@ export class BaseScene extends Phaser.Scene {
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
   }
 
-  private goTo(data: BaseSceneData, sound: 'interiorEnter' | 'interiorLeave'): void {
+  private goTo(data: BaseSceneData, sound: 'interiorEnter' | 'interiorLeave' | 'heal'): void {
     if (this.leaving) {
       return;
     }
@@ -4148,21 +4313,187 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Speaking to a keeper. Whatever they have to say about their favour comes
-   * first, in the dialogue box over the room, the way anybody in the yard is
-   * spoken to - a favour asked ends on its question with YES and NOT NOW under
-   * it - and then their screen opens, because that is what the key was pressed
-   * for. Nothing is said over the screen itself: the favour used to arrive as
-   * a box laid over a counter of numbers, taken before a word of it was read.
+   * Speaking to a keeper, which is what the key on the door mat does: the talk
+   * starts there, in the dialogue box over the room, the way anybody in the yard
+   * is spoken to. Whatever they tell a newcomer first, then their favour - a
+   * favour asked ends on its question with YES and NOT NOW under it - and then
+   * what the key was pressed for: the board read out, the price of a heal, or
+   * the screen of somebody who deals over a counter of numbers. ESC is past the
+   * lot (`skipTalk`). Nothing is ever said over a screen.
    */
   private speakToKeeper(room: BaseRoom, screen: BaseScreen): void {
+    const about = room.keeper ? [room.keeper.position] : [];
     const beat = this.favourHere(screen);
-    const openScreen = (): void => this.openScreen(room, screen);
-    if (!beat) {
-      openScreen();
+    const favourThen = (then: () => void): void => {
+      if (beat) {
+        this.sayFavour(beat, about, then, () => this.clearKeeperMark());
+      } else {
+        then();
+      }
+    };
+    if (screen === 'lab') {
+      this.sayFirstWords('lab', about, () =>
+        favourThen(() =>
+          this.oakGives(about, () => {
+            this.readTheBoard(room, about, oakNews(this.savedGame, isPlaytestRun()));
+          }),
+        ),
+      );
       return;
     }
-    this.sayFavour(beat, room.keeper ? [room.keeper.position] : [], openScreen, () => this.clearKeeperMark());
+    if (screen === 'stash') {
+      this.sayFirstWords('center', about, () => favourThen(() => this.joyOffers(about)));
+      return;
+    }
+    // The hall's marshal is `speakToMarshal`: everything in it is on the floor.
+    if (screen !== 'arena') {
+      favourThen(() => this.openScreen(room, screen));
+    }
+  }
+
+  /** What this person tells a newcomer, the first time and never again; recorded as it is said. */
+  private sayFirstWords(id: FirstWordsId, about: readonly GridPosition[], then: () => void): void {
+    if (hasHeard(this.savedGame.raidProgress.firstWordsHeard, id)) {
+      then();
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.hearFirstWords(id);
+    this.say(spokenLines(FIRST_WORDS[id], houseName()), about, then);
+  }
+
+  /**
+   * Professor Oak looks at the Pokédex and hands over the next milestone's
+   * reward, if one is due (`hub/pokedex.ts`). Written into the vault and recorded
+   * in one save before he says a word, so it is given once however the room is
+   * left; two crossed at once are said one after the other.
+   */
+  private oakGives(about: readonly GridPosition[], then: () => void, continuing = false): void {
+    const progress = this.savedGame.raidProgress;
+    if (!dueMilestone(pokedexOwned(progress.pokedexOwned, this.savedGame.stash).length, progress.pokedexRewards)) {
+      then();
+      return;
+    }
+    const given = this.saveManager.claimPokedexReward();
+    if (!given) {
+      then();
+      return;
+    }
+    this.savedGame = this.saveManager.load() ?? this.savedGame;
+    audioManager.play('itemObtained');
+    this.say(milestoneWords(given.milestone, given.owned, continuing).lines, about, () =>
+      this.oakGives(about, then, true),
+    );
+  }
+
+  /**
+   * The cork board, a notice a line (`base/labBoard.ts`): read off the wall, or
+   * read out by Oak from the mat with whatever news he has first. Raiding with a
+   * friend is the last thing pinned to it.
+   */
+  private readTheBoard(room: BaseRoom, about: readonly GridPosition[], news: readonly string[] = []): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.say([...news, ...boardLines(this.savedGame)], about, () => {
+      if (!friendRoomsOffered()) {
+        return;
+      }
+      const held = friendRoom()?.room;
+      const at = { ...this.currentTile };
+      this.askInBox(held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?', (yes) => {
+        if (yes) {
+          this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
+        }
+      });
+    });
+  }
+
+  /**
+   * Nurse Joy at her counter (`hub/centerCounter.ts`): the price, and YES or NOT
+   * NOW. Boxes are the PC's, over by the wall.
+   */
+  private joyOffers(about: readonly GridPosition[]): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.savedGame = this.saveManager.load() ?? this.savedGame;
+    const free = isPlaytestRun();
+    const offer = centerOffer(this.savedGame, free);
+    const { question } = offer;
+    if (question === undefined) {
+      const swap = this.savedGame.stash.canSwapStarter() && raidsLost(this.savedGame.raidProgress) > 0;
+      this.say([...offer.lines, ...(swap ? [SWAP_AT_THE_PC_LINE] : [])], about);
+      return;
+    }
+    this.say(offer.lines, about, () =>
+      this.askInBox(question, (yes) => {
+        if (!yes) {
+          audioManager.play('cancel');
+          this.say([NOT_HEALED_LINE], about);
+          return;
+        }
+        const outcome = this.saveManager.healAtCenter();
+        const room = this.place.room?.room.id;
+        if (!outcome || !room) {
+          this.say(['I’m so sorry. Your game could not be saved, so nobody has been treated.'], about);
+          return;
+        }
+        // The room is drawn again, without the Poké Balls waiting on her counter.
+        this.goTo(
+          {
+            savedGame: this.saveManager.load() ?? this.savedGame,
+            room,
+            at: { ...this.currentTile },
+            said: [healedLine(outcome.chargedMs, outcome.pendingRecoveryMs, free)],
+          },
+          'heal',
+        );
+      }),
+    );
+  }
+
+  /**
+   * The Day-Care Man at his fence (`hub/dayCare.ts`): somebody with nobody in
+   * his care is asked in his own words and then chooses who from a short list;
+   * somebody he is raising a Pokémon for is told how it has grown, and asked.
+   */
+  private speakToDayCareMan(at: GridPosition): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const game = this.savedGame;
+    const stay = game.stash.dayCare();
+    if (!stay) {
+      this.say(DAY_CARE_OFFER_LINES, [at], () =>
+        this.openHub({ savedGame: this.savedGame, view: 'daycare', at: { ...this.currentTile } }),
+      );
+      return;
+    }
+    const report = dayCareReport(stay, raidsCompleted(game.raidProgress, game.raidInFlight));
+    this.say(checkOnLines(report), [at], () =>
+      this.askInBox(takeBackQuestion(stay.pokemon.name), (yes) => {
+        if (!yes) {
+          audioManager.play('cancel');
+          this.say([NOT_TAKEN_BACK_LINE], [at]);
+          return;
+        }
+        const taken = this.saveManager.takeBackFromDayCare();
+        if (!taken) {
+          this.say(['It could not be taken back: the game could not be saved.'], [at]);
+          return;
+        }
+        audioManager.play('confirm');
+        // The yard is drawn again, with nobody in the pen. A move it has no room
+        // for is asked the next time a screen opens (`hub/pendingMoves.ts`).
+        this.goTo(
+          {
+            savedGame: this.saveManager.load() ?? this.savedGame,
+            at: { ...this.currentTile },
+            said: takenBackReport(taken),
+          },
+          'interiorLeave',
+        );
+      }),
+    );
   }
 
   /**
@@ -4221,24 +4552,36 @@ export class BaseScene extends Phaser.Scene {
     this.say(errandLines(beat), about, then);
   }
 
-  /** The favour's question, in the dialogue box's own frame, with YES first. */
-  private askFavour(errand: Errand, about: readonly GridPosition[], then: () => void, answered: () => void): void {
+  /** A question in the dialogue box's own frame, with YES first as FireRed's box is; ESC is NOT NOW. */
+  private askInBox(question: string, answer: (yes: boolean) => void): void {
     audioManager.play('menuOpen');
-    const answer = (yes: boolean): void => this.answerFavour(errand, yes, about, then, answered);
-    this.favourPrompt = {
-      answer,
+    this.showHint('');
+    const answered = (yes: boolean): void => {
+      this.boxQuestion?.prompt.destroy();
+      this.boxQuestion = null;
+      // The keys of the question were spent on it, not on a step.
+      this.spentPresses.spendHeld(this.directionKeys());
+      answer(yes);
+    };
+    this.boxQuestion = {
+      answer: answered,
       prompt: new ChoicePrompt(this, {
         x: this.dialogBox.x,
         y: this.dialogBox.y,
         width: DIALOG_WIDTH,
         height: DIALOG_HEIGHT,
         padding: 10,
-        lines: [errand.question],
+        lines: [question],
         options: FAVOUR_ANSWERS,
         selected: 0,
-        onChoose: (index) => answer(index === 0),
+        onChoose: (index) => answered(index === 0),
       }),
     };
+  }
+
+  /** The favour's question, once what they had to say about it is read. */
+  private askFavour(errand: Errand, about: readonly GridPosition[], then: () => void, answered: () => void): void {
+    this.askInBox(errand.question, (yes) => this.answerFavour(errand, yes, about, then, answered));
   }
 
   /**
@@ -4253,10 +4596,6 @@ export class BaseScene extends Phaser.Scene {
     then: () => void,
     answered: () => void,
   ): void {
-    this.favourPrompt?.prompt.destroy();
-    this.favourPrompt = null;
-    // The keys of the question were spent on it, not on a step.
-    this.spentPresses.spendHeld(this.directionKeys());
     answered();
     if (yes) {
       const progress = this.savedGame.raidProgress;
@@ -4367,25 +4706,21 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** The keeper's screen, which is what the room is the way to. */
-  private openScreen(room: BaseRoom, screen: NonNullable<BaseRoom['screen']>): void {
+  private openScreen(room: BaseRoom, screen: ScreenOpened | 'boutique'): void {
     if (screen === 'boutique') {
       this.openBoutique('shop');
-      return;
-    }
-    // The hall has no screen of its own: everything in it is on the floor.
-    if (screen === 'arena') {
       return;
     }
     this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
   }
 
-  /** Writes down that the marshal's words have been said, here and in this scene's copy of the game. */
-  private hearLoadoutWords(): void {
-    this.saveManager.hearFirstWords('loadout');
+  /** Writes down that these first words have been said, in storage and in this scene's copy of the game. */
+  private hearFirstWords(id: FirstWordsId): void {
+    this.saveManager.hearFirstWords(id);
     const { raidProgress } = this.savedGame;
     this.savedGame = {
       ...this.savedGame,
-      raidProgress: { ...raidProgress, firstWordsHeard: [...(raidProgress.firstWordsHeard ?? []), 'loadout'] },
+      raidProgress: { ...raidProgress, firstWordsHeard: [...(raidProgress.firstWordsHeard ?? []), id] },
     };
   }
 
@@ -4435,6 +4770,9 @@ function insideThePit(x: number, y: number): boolean {
   return acrossOval(PIT_RIM, x, y) < 1;
 }
 
+/** Named clear of a box with more to come. */
+const TALK_SKIP_HINT = '[ESC] SKIP';
+
 /**
  * The name given at THE BOLTHOLE's door, for this sitting. It is kept on the
  * device (`console/playerName.ts`), and this is only what a browser that
@@ -4456,10 +4794,11 @@ const PEN_STEP_SPREAD_MS = 2400;
 const SLEEP_FADE_MS = 450;
 const SLEEP_DARK_MS = 600;
 
-/** Which screen each door opens, as `HubScene` names its views. */
+/** The keepers who deal over a screen. Oak and Joy say what they have in the room's own box. */
+type ScreenOpened = Exclude<BaseScreen, 'boutique' | 'arena' | 'lab' | 'stash'>;
+
+/** Which screen those doors open, as `HubScene` names its views. */
 const SCREEN_VIEWS = {
-  lab: 'home',
-  stash: 'stash',
   workshop: 'workshop',
   trader: 'trader',
-} as const satisfies Record<Exclude<BaseScreen, 'boutique' | 'arena'>, NonNullable<HubSceneData['view']>>;
+} as const satisfies Record<ScreenOpened, NonNullable<HubSceneData['view']>>;

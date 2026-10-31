@@ -52,6 +52,11 @@ export type Material =
    */
   | 'ice'
   /**
+   * Plank decking, the Sevii Islands' jetties: walked on over water or reeds
+   * alike, and what makes a walk across a marsh a boardwalk (`boardsSheet.ts`).
+   */
+  | 'boards'
+  /**
    * The Rocket Hideout's spinner floor (`METATILE_SilphCo_Arrow_*`): a step
    * onto an arrow spins the player on the way it points, over plain floor,
    * until a stop plate or something in the way stops them (`slidingFloor.ts`).
@@ -101,6 +106,7 @@ export const MATERIALS: Readonly<Record<Material, MaterialTraits>> = {
   fence: wall,
   wall,
   ice: { solid: false, encounters: false, ground: true, slides: true },
+  boards: walkable,
   'spin-up': { solid: false, encounters: false, ground: true, spins: 'up' },
   'spin-down': { solid: false, encounters: false, ground: true, spins: 'down' },
   'spin-left': { solid: false, encounters: false, ground: true, spins: 'left' },
@@ -143,6 +149,7 @@ export const MATERIAL_CHARS: Readonly<Record<Material, string>> = {
   fence: 'F',
   wall: 'B',
   ice: 'i',
+  boards: '_',
   'spin-up': 'U',
   'spin-down': 'D',
   'spin-left': 'K',

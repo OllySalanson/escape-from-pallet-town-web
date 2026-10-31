@@ -669,3 +669,26 @@ describe('a locked cache', () => {
     expect(hints.some((hint) => hint.includes("PACKER'S CHEST"))).toBe(false);
   });
 });
+
+describe('Professor Oak on the radio', () => {
+  const here = { currentMapId: 'floodplain-relay' as WorldMapId, currentPosition: { x: 10, y: 10 }, activatedPoiIds: new Set<string>() };
+
+  it('says what to do next and how to bank it, in two lines, and leaves the rest to the full list', () => {
+    const guide = buildObjectiveGuide(createFirstContractSession(), here);
+
+    expect(guide.radio).toHaveLength(2);
+    expect(guide.radio[0].startsWith('Oak here! You are in')).toBe(true);
+    expect(guide.radio[0]).toContain('next stop');
+    expect(guide.radio[1]).toBe(guide.hints.find((hint) => hint === guide.radio[1]));
+    expect(guide.hints.length).toBeGreaterThan(guide.radio.length);
+  });
+
+  it('names the nearest landmark on a raid with no contract, without the sentence about what it is', () => {
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      ...here,
+      currentMapId: 'pallet-town',
+    });
+    expect(guide.radio[0]).toMatch(/^Oak here! The nearest landmark still to work is [^.]+\.$/);
+    expect(guide.radio[1]).toMatch(/exit|gate/i);
+  });
+});
