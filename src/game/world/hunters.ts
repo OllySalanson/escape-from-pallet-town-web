@@ -52,7 +52,7 @@ import type { CastCharacterDesignId } from './characterDesigns';
  * Squirtle has nothing of its own but Bubble before 13 and a Bulbasaur nothing
  * typed before Vine Whip at 10. Each now leads with the first stage of
  * another Pokemon from that leader's own FireRed team, and all three clear the
- * floor against every lone starter (firstmate's decision, the same day). The
+ * floor against every lone starter (decided the same day). The
  * Venonat refused above was refused against the old kits, when a Bulbasaur's
  * Vine Whip was its whole answer; with Leech Seed it is one answer of two.
  *
