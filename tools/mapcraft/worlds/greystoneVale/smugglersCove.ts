@@ -184,7 +184,6 @@ export function smugglersCove(): MapcraftResult {
   stand('big-stump', 36, 37, '~');
   p.building('shed', 30, 44, { lot: '~' });
   stand('crate-pair', 34, 47, '~');
-  stand('fence-post', 28, 39, '~');
   // The landing stage, on piles, for whatever comes in the small boats by night.
   p.road([[22, 33], [28, 33]], { letter: '_' });
   stand('mooring-post', 22, 31, 'W');
