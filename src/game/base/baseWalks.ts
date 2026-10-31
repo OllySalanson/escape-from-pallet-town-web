@@ -109,10 +109,6 @@ export function walksToKeepers(from: GridPosition, game: RestoredGame): readonly
   const yard = getBaseMap(game.raidProgress.workshopUpgrades);
   const steps = stepsFrom(yard.collision, from);
   return BASE_DOORS.flatMap((door) => {
-    // A door that opens straight onto its screen has no room to cross.
-    if (door.opens === 'screen') {
-      return { door, yard: stepsTo(steps, door.tiles), acrossTheRoom: 0 };
-    }
     const room = roomNamed(door.id);
     if (!room) throw new Error(`no room behind ${door.id}`);
     if (!room.keeper || !room.mat) return [];
@@ -142,5 +138,5 @@ export function walkHome(from: GridPosition, game: RestoredGame): number {
 /** The two places a player starts a visit to the base from. */
 export const BASE_STARTS = [
   { name: 'the yard', tile: BASE_SPAWN },
-  { name: 'the quay (home from a raid)', tile: BASE_LANDING },
+  { name: 'the quay', tile: BASE_LANDING },
 ] as const;

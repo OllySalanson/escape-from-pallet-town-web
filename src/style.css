@@ -93,6 +93,34 @@ body {
 #screens .menu-overlay {
   pointer-events: auto;
 }
+/* A panel over THE RAID ARENA's hall: the bench, the rack and the locker stand
+   down the right of the window and the rim lies along its foot, a whole number
+   of game pixels (`HubScene.dockPanel`), so the hall goes on burning beside it.
+   The dark screen behind every other menu would hide the one thing that makes
+   this a room rather than a screen. */
+#screens .arena-panel {
+  position: absolute;
+  background: none;
+}
+#screens .arena-panel:not(.is-rim) {
+  left: auto;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--u) * var(--dock, 320));
+  height: 100%;
+}
+#screens .arena-panel.is-rim {
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: 0;
+  width: 100%;
+  height: calc(var(--u) * var(--dock, 150));
+}
+#screens:has(> .arena-panel:only-child) {
+  box-shadow: none;
+}
 /* The feedback panel is a column over a game the player is meant to still see,
    so the frame is not drawn round the whole layer for it alone. */
 #screens:has(> .feedback-panel:only-child) {
@@ -1260,47 +1288,6 @@ button {
   color: var(--bar);
   background: var(--teal);
 }
-:where(.pixel-ui) .px-rail {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--u) * 5);
-  color: var(--bar-muted);
-}
-:where(.pixel-ui) .px-rail li {
-  position: relative;
-}
-:where(.pixel-ui) .px-rail li + li {
-  padding-left: calc(var(--u) * 8);
-}
-:where(.pixel-ui) .px-rail li + li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: calc(50% - var(--u) * 3);
-  width: calc(var(--u) * 3);
-  height: calc(var(--u) * 5);
-  background: currentColor;
-  mask: var(--px-cursor) center / 100% 100% no-repeat;
-  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
-}
-:where(.pixel-ui) .px-rail .done {
-  color: var(--teal);
-}
-/* Done is said by a shape as well as by teal, which a red-green or no-colour
-   eye reads as the same grey as a step to come (playtest 40 #7). */
-:where(.pixel-ui) .px-rail .done::after {
-  content: '';
-  display: inline-block;
-  width: calc(var(--u) * 7);
-  height: calc(var(--u) * 5);
-  margin-left: calc(var(--u) * 3);
-  background: currentColor;
-  mask: var(--px-tick) center / 100% 100% no-repeat;
-  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
-}
-:where(.pixel-ui) .px-rail .current {
-  color: var(--bar-text);
-}
 :where(.pixel-ui) .px-body {
   min-height: 0;
   padding: calc(var(--u) * 4);
@@ -2039,33 +2026,6 @@ button {
 }
 
 /* --- Choosing where to drop in ------------------------------------------ */
-/* The picture of the place down the whole left of the screen, as tall as the
-   body is, and the two things said about it - which way in, and what the place
-   holds - stacked on the right. The left column is as wide as the picture's
-   frame, which `ui/mapPicture.ts` sizes from the room the window has; the rows
-   are fixed by the body rather than by what is in them, so the frame's height
-   is the room the picture has and nothing moves when the cursor changes the
-   place. The list of ways in takes what it needs up to two fifths of the
-   height, because it is the choice this screen exists for and a long one
-   scrolls. */
-:where(.pixel-ui) .dropin-layout {
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: fit-content(40%) minmax(0, 1fr) auto;
-  height: 100%;
-}
-:where(.pixel-ui) .dropin-layout > .px-window {
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: start;
-}
-:where(.pixel-ui) .dropin-place {
-  grid-row: 1 / 3;
-}
-:where(.pixel-ui) .dropin-layout .confirm-bar {
-  grid-column: 1 / -1;
-}
 /* A map picture in its frame. The frame's size is the room it has - never the
    picture's - so the picture is placed in it rather than laid out by it, on
    whole game pixels, by `fitMapPictures`. Until that has run the canvas is not
@@ -2300,7 +2260,6 @@ button {
 :where(.pixel-ui) .daycare-layout > .px-window,
 :where(.pixel-ui) .friend-layout > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
-:where(.pixel-ui) .confirm-layout > .px-window,
 :where(.pixel-ui) .raid-bag-layout > .px-window,
 :where(.pixel-ui) .raid-bag-side > .px-window,
 :where(.pixel-ui) .raid-party-layout > .px-window,
@@ -2329,7 +2288,6 @@ button {
 :where(.pixel-ui) .daycare-layout > .px-window,
 :where(.pixel-ui) .friend-layout > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
-:where(.pixel-ui) .confirm-layout > .px-window,
 :where(.pixel-ui) .raid-bag-layout > .px-window,
 :where(.pixel-ui) .raid-bag-side > .px-window,
 :where(.pixel-ui) .raid-party-layout > .px-window,
@@ -2638,18 +2596,12 @@ button {
 .pixel-ui .run-loadout {
   display: block;
 }
-:where(.pixel-ui) .carry-note {
-  margin-top: calc(var(--u) * 3);
-  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
-}
 :where(.pixel-ui) .run-loadout > .px-note {
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
 }
 :where(.pixel-ui) .stash-layout .confirm-bar,
 :where(.pixel-ui) .loadout-layout .confirm-bar,
-:where(.pixel-ui) .secure-layout .confirm-bar,
-:where(.pixel-ui) .confirm-layout .confirm-bar {
+:where(.pixel-ui) .secure-layout .confirm-bar {
   grid-column: 1 / -1;
 }
 /* The two ways to fix a hurt Pokemon sit under its row, indented to its name. */
@@ -2664,15 +2616,11 @@ button {
   align-items: center;
   gap: calc(var(--u) * 2);
 }
-:where(.pixel-ui) .secure-layout,
-:where(.pixel-ui) .confirm-layout {
+:where(.pixel-ui) .secure-layout {
   grid-template-columns: minmax(0, 1fr) calc(var(--u) * 150);
   height: 100%;
 }
 :where(.pixel-ui) .secure-layout {
-  grid-template-rows: minmax(0, 1fr) auto;
-}
-:where(.pixel-ui) .confirm-layout {
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
@@ -4363,4 +4311,41 @@ button {
 }
 .pixel-ui .boutique-card > strong {
   text-transform: none;
+}
+
+/* The bench is one list, the whole width of its panel. */
+:where(.pixel-ui) .bench-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* The rim: which way in beside what is known of it, and one bar under both. */
+:where(.pixel-ui) .rim-layout {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 112) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+:where(.pixel-ui) .rim-layout.is-one-way {
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.pixel-ui) .rim-layout > .px-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  min-height: 0;
+}
+:where(.pixel-ui) .rim-layout .confirm-bar {
+  grid-column: 1 / -1;
+}
+/* What a raid has at stake: a line each, the label in its own column. */
+:where(.pixel-ui) .rim-stakes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.pixel-ui) .rim-stakes > div {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 36) minmax(0, 1fr);
+}
+:where(.pixel-ui) .rim-stakes dd {
+  white-space: normal;
 }

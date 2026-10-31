@@ -14,7 +14,7 @@
 // nothing could be turned on its side.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn, openHallPanel } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -115,16 +115,17 @@ try {
       save.stash.items = { ...save.stash.items, potion: 6, 'super-potion': 4, 'poke-ball': 6 };
       // Oak's first words lie over the loadout and make it inert, so a block
       // could not take the focus (\`hub/firstWords.ts\`): this save has heard them.
-      save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'dropin', 'check', 'center'];
+      save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'check', 'center'];
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`,
   );
   await page.send('Page.navigate', { url: url.href });
   await until(sceneIs('title'), 'the title screen again');
   await press('Space');
   await until(sceneIs('base'), 'the base');
-  // The lobby is a town now, and preparation is done inside Oak's Lab.
+  // The lobby is a town now, and preparation is done on the Raid Arena's floor.
   await walkIntoBase(page, 'raid-arena', { press, until });
   await until(takePokemon('Bulbasaur'), 'Bulbasaur in the raid party');
+  await openHallPanel(page, 'rack', { press, until });
   // The stash's medicine is packed for you (`DeploymentFlow.packMedicine`), so
   // the pack is emptied first and filled with exactly the case below.
   for (const itemId of ['super-potion', 'potion', 'poke-ball']) {
@@ -217,12 +218,12 @@ try {
   check(dragged !== before, 'letting go puts it down where the pointer was');
 
   // --- The secure container is a container too ------------------------------
-  await click('Secure slot');
+  await openHallPanel(page, 'locker', { press, until });
   await sleep(300);
   const secureBefore = await page.evaluate(layoutOf('secure'));
   check(secureBefore !== null, 'the secure container draws blocks the cursor can reach as well');
   await page.screenshot(`${outDir}/secure.png`);
-  await click('Back to loadout');
+  await openHallPanel(page, 'rack', { press, until });
   await sleep(300);
 
   // --- Adding something must not re-shuffle what was arranged ---------------
@@ -237,10 +238,7 @@ try {
   );
 
   // --- Into the raid, and the pack opens laid out the same way --------------
-  await click('Choose drop-in');
-  await click('Review & deploy');
-  await click('Enter the raid');
-  await until(sceneIs('world'), 'the raid');
+  await jumpIn(page, { press, until });
   await sleep(900);
   // The raid opens on its briefing, and the world reads no other key until the
   // box is gone: the bag is only one key away once there is nothing to read.

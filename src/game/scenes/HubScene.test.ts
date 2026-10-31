@@ -22,6 +22,8 @@ import { FIRST_CONTRACT_ID, RAID_CONTRACTS, standingBoard, type RaidContract } f
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { deployableMapIds } from '../objectives/standingBoard';
+import { flowForGame, type ArenaKit } from '../base/arenaKit';
+import type { RestoredGame } from '../save/SaveManager';
 import { frontDoorFor } from '../run/runGeneration';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
@@ -74,12 +76,11 @@ describe('the lobby as a screen of the game', () => {
     hub.flow.togglePokemon('charmander-1');
     hub.flow.adjustItem('potion', 1);
     screens.push(markupOf(hub));
-    hub.flow.openSecureSlot();
+    hub.setView('rack');
     screens.push(markupOf(hub));
-    hub.flow.advance();
-    hub.flow.advance();
-    // The drop-in screen, then the final check behind it.
+    hub.setView('locker');
     screens.push(markupOf(hub));
+    hub.setView('rim');
     readyToDeploy(hub);
     screens.push(markupOf(hub));
     // The wall map in Oak's Lab, at a glance and close up.
@@ -122,7 +123,7 @@ describe('the lobby as a screen of the game', () => {
     expect(lab).toContain('Raids start at the RAID ARENA');
     intoTheArena(hub);
 
-    // Through the Arena's door is the loadout, with nobody packed for you.
+    // The hall's marshal opens the loadout, with nobody packed for you.
     expect(hub.flow.step).toBe('loadout');
     expect(hub.flow.party).toEqual([]);
   });
@@ -209,7 +210,7 @@ describe('the lobby as a screen of the game', () => {
 
     const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
     partner.pokemon.takeDamage(partner.pokemon.maxHp);
-    hub.setView('deploy');
+    hub.setView('bench');
     const mixed = markupOf(hub);
     expect(mixed).toContain('1 fainted · 1 hurt');
     expect(mixed).not.toContain('treat them first');
@@ -217,7 +218,7 @@ describe('the lobby as a screen of the game', () => {
 
     const worn = hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
     worn.pokemon.takeDamage(worn.pokemon.maxHp);
-    hub.setView('deploy');
+    hub.setView('bench');
     const wiped = markupOf(hub);
     expect(wiped).toContain('2 fainted · see Nurse Joy');
     expect(wiped).not.toContain('treat them first');
@@ -226,8 +227,7 @@ describe('the lobby as a screen of the game', () => {
     expect(wiped).toContain(`data-pokemon="${partner.id}" data-shows="${partner.id}" data-cursor-start aria-disabled="true"`);
     expect(wiped).not.toContain('px-tag-plain">Add<');
     // Nothing is packed yet, and the bar says why nothing can be.
-    expect(wiped).not.toContain('Add a Pokémon from your stash');
-    expect(wiped).toContain('Every Pokémon here has fainted. Revive one at the Pokémon Center before you deploy.');
+    expect(wiped).toContain('Every Pokémon here has fainted. Nurse Joy can revive them, out of the door and across the yard.');
   });
 
   it('lists one box at a time, and every box when the loadout is chosen from', () => {
@@ -261,7 +261,6 @@ describe('the lobby as a screen of the game', () => {
     const starts = markup.match(/<button[^>]*data-cursor-start[^>]*>/g) ?? [];
     expect(starts).toHaveLength(1);
     expect(starts[0]).toContain('data-pokemon=');
-    expect(markup.indexOf('data-cursor-start')).toBeLessThan(markup.indexOf('data-advance'));
   });
 
   it('offers only the boxes that have room while a Pokemon is picked up, and puts it down', () => {
@@ -308,7 +307,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
+  setView(view: 'home' | 'stash' | 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
   goBack(): void;
   wallMapInspect: string | undefined;
   startRun(): void;
@@ -327,7 +326,7 @@ interface HubInternals {
 /** Preparation as the Raid Arena's door opens it: a fresh loadout. */
 function intoTheArena(hub: HubInternals): void {
   hub.flow.restart();
-  hub.setView('deploy');
+  hub.setView('bench');
 }
 
 class MemoryStorage implements StorageLike {
@@ -422,18 +421,9 @@ function statusOf(hub: HubInternals): string {
   return (hub as unknown as { status: string }).status;
 }
 
-/**
- * Walks preparation from wherever it is to the confirmation, which is the only
- * step a raid can start from. It is a loop rather than a count of `advance()`
- * calls so a step added between the loadout and the final check - the drop-in
- * screen was one - does not have to be counted again in twenty tests.
- */
+/** Looks the plan over from the rim, which is the only place a raid can start from. */
 function readyToDeploy(hub: HubInternals): void {
-  for (let step = 0; step < 8 && hub.flow.step !== 'confirm'; step += 1) {
-    if (hub.flow.advance() !== undefined) {
-      return;
-    }
-  }
+  hub.flow.advance();
 }
 
 function deploy(hub: HubInternals, start: ReturnType<typeof vi.fn>): void {
@@ -464,6 +454,78 @@ function createWornHub(damage = (maxHp: number) => maxHp - 3): {
   const worn = hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
   return { hub, start, storage, worn };
 }
+
+describe('a panel over the hall', () => {
+  /** The hall as a panel knows it: what it was handed, and what it asked for. */
+  function hallKit(game: RestoredGame) {
+    const calls: string[] = [];
+    let world: WorldSceneData | undefined;
+    const kit: ArenaKit = {
+      game,
+      flow: flowForGame(game),
+      close: () => calls.push('close'),
+      jump: (data) => {
+        world = data as WorldSceneData;
+        calls.push('jump');
+      },
+      aim: (id) => calls.push(`aim:${id}`),
+      below: () => ['A long way down, only cloud.'],
+    };
+    return { kit, calls, world: () => world };
+  }
+
+  function panelOn(view: 'bench' | 'rack' | 'locker' | 'rim') {
+    const { hub, start } = createHub();
+    const game = (hub as unknown as { savedGame: RestoredGame }).savedGame;
+    const held = hallKit(game);
+    hub.init({ view, kit: held.kit });
+    return { hub, start, ...held };
+  }
+
+  beforeEach(() => {
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+  });
+
+  it('carries on with what the hall is holding, and leaves back into the hall', () => {
+    const { hub, kit, calls, start } = panelOn('bench');
+    expect(hub.flow).toBe(kit.flow);
+    hub.flow.togglePokemon('charmander-1');
+    hub.goBack();
+    expect(calls).toEqual(['close']);
+    expect(start).not.toHaveBeenCalled();
+    // What was chosen on one panel is still chosen on the next.
+    expect(kit.flow.includesPokemon('charmander-1')).toBe(true);
+  });
+
+  it('looks the plan over from the rim, and hands the raid to the hall to jump into', () => {
+    const { hub, kit, calls, world, start } = panelOn('bench');
+    kit.flow.togglePokemon('charmander-1');
+    hub.init({ view: 'rim', kit });
+    expect(hub.flow.step).toBe('confirm');
+    hub.startRun();
+    expect(calls).toEqual(['jump']);
+    expect(start).not.toHaveBeenCalled();
+    expect(world()?.party.pokemon.map((pokemon) => pokemon.base.id)).toEqual(['charmander']);
+  });
+
+  it('will not jump with nobody on the bench, and says so', () => {
+    const { hub, kit, calls } = panelOn('rim');
+    expect(hub.flow.step).toBe('loadout');
+    const markup = (hub as unknown as { content(): string }).content();
+    expect(markup).toContain('Nobody is on the bench');
+    hub.startRun();
+    expect(calls).toEqual([]);
+    expect(statusOf(hub)).toBe('Nobody is on the bench. Choose at least one Pokémon to take into the raid.');
+    expect(kit.flow.party).toEqual([]);
+  });
+
+  it('says what is under the player where they stand', () => {
+    const { hub } = panelOn('rim');
+    expect((hub as unknown as { content(): string }).content()).toContain('A long way down, only cloud.');
+  });
+});
 
 describe('hub deployment route', () => {
   it('takes one of a piece out of the pack and back to the vault with a right-click or DEL (the captain, 2026-10-29)', () => {
@@ -714,7 +776,7 @@ describe('hub deployment route', () => {
     // could not catch anything and nothing on the way said so.
     const { hub } = createHub();
     const loadout = () => {
-      hub.setView('deploy');
+      hub.setView('rack');
       hub.render();
       return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
     };
@@ -722,7 +784,7 @@ describe('hub deployment route', () => {
     hub.flow.togglePokemon('charmander-1');
 
     expect(hub.flow.itemQuantity('poke-ball')).toBe(0);
-    expect(loadout()).toContain('No Poké Balls packed, so nothing can be caught this raid.');
+    expect(loadout()).toContain('No Poké Balls on the rack, so nothing can be caught this raid.');
 
     // Packing one is the answer, and the warning goes.
     hub.flow.adjustItem('poke-ball', 1);
@@ -739,12 +801,12 @@ describe('hub deployment route', () => {
 
     deploy(hub, start);
     expect(start).not.toHaveBeenCalled();
-    expect(statusOf(hub)).toBe('Confirm your loadout before deploying.');
+    expect(statusOf(hub)).toBe('Nobody is on the bench. Choose at least one Pokémon to take into the raid.');
 
     hub.flow.togglePokemon('charmander-1');
     deploy(hub, start);
     expect(start).not.toHaveBeenCalled();
-    expect(statusOf(hub)).toBe('Confirm your loadout before deploying.');
+    expect(statusOf(hub)).toBe('Look down from the rim before you jump.');
 
     readyToDeploy(hub);
     deploy(hub, start);
@@ -789,14 +851,14 @@ describe('hub deployment route', () => {
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
+    hub.setView('rim');
     hub.flow.chooseInsertion('viridian-forest');
     hub.flow.setItemQuantity('potion', 1);
     readyToDeploy(hub);
     expect(hub.flow.step).toBe('confirm');
     hub.render();
     const check = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-    expect(check).toContain('<span class="px-warning carry-short">Still short: 1 Potion</span>');
+    expect(check).toContain('Still short: 1 Potion');
 
     hub.flow.setItemQuantity('potion', 2);
     hub.render();
@@ -814,20 +876,13 @@ describe('hub deployment route', () => {
     try {
       const { hub, start } = createHub();
       hub.flow.togglePokemon('charmander-1');
-      hub.setView('deploy');
-      hub.flow.advance();
-      expect(hub.flow.step).toBe('dropin');
-      hub.render();
-      expect((hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML).toContain(
-        heading,
-      );
-
+      hub.setView('rim');
       readyToDeploy(hub);
       hub.render();
-      // The final check names it too, as the raid's clock chip will.
-      expect((hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML).toContain(
-        night ? '· night raid clock 5:00' : '· raid clock 5:00',
-      );
+      const rim = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+      expect(rim).toContain(heading);
+      // The rim names it too, as the raid's clock chip will.
+      expect(rim.includes('night raid clock 5:00')).toBe(night);
       deploy(hub, start);
       const { runSession } = start.mock.calls[0][1] as WorldSceneData;
       expect(runSession.plan?.night).toBe(night);
@@ -843,7 +898,7 @@ describe('hub deployment route', () => {
    */
   it.each([
     { hour: 23, line: 'night raid with no clock to beat: an explorer run lasts 8 hours' },
-    { hour: 12, line: '· raid with no clock to beat: an explorer run lasts 8 hours' },
+    { hour: 12, line: 'raid with no clock to beat: an explorer run lasts 8 hours' },
   ])('says an explorer run at $hour:00 has no clock to beat rather than counting eight hours', ({ hour, line }) => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 9, 13, hour, 0));
@@ -851,7 +906,7 @@ describe('hub deployment route', () => {
     try {
       const { hub } = createHub();
       hub.flow.togglePokemon('charmander-1');
-      hub.setView('deploy');
+      hub.setView('rim');
       readyToDeploy(hub);
       expect(hub.flow.step).toBe('confirm');
       hub.render();
@@ -902,7 +957,7 @@ describe('hub deployment route', () => {
     });
 
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
+    hub.setView('rim');
     hub.flow.advance();
     hub.render();
     const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root
@@ -932,38 +987,30 @@ describe('hub deployment route', () => {
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   };
 
-  it('leaves the choice of place out of the loadout and puts it on its own step', () => {
+  it('leaves the choice of place to the rim: the bench and the rack only get a raid ready', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
 
-    const loadout = markupOf(hub);
-    expect(loadout).toContain('Choose drop-in');
-    expect(loadout).not.toContain('data-insertion');
-    // And the pack, which is what the loadout is for, is still on it.
-    expect(loadout).toContain('squares');
+    hub.setView('bench');
+    expect(markupOf(hub)).not.toContain('data-insertion');
+    hub.setView('rack');
+    const rack = markupOf(hub);
+    expect(rack).not.toContain('data-insertion');
+    // And the pack, which is what the rack is for, is on it.
+    expect(rack).toContain('squares');
 
-    hub.flow.advance();
-    const dropIn = markupOf(hub);
-    expect(hub.flow.step).toBe('dropin');
-    expect(dropIn).toContain('data-insertion="floodplain-relay"');
+    hub.setView('rim');
+    expect(markupOf(hub)).toContain('Jump in at Floodplain Relay');
     expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
   });
 
-  it('draws the place as a picture of the real map, dark where nobody has walked', () => {
+  it('says what is known of a place, and counts what is not', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
+    hub.setView('rim');
     hub.flow.advance();
 
     const markup = markupOf(hub);
-    // The canvas says which map and how big it is in tiles; how many pixels a
-    // tile is drawn at is the window's to say, once it is laid out
-    // (`ui/mapPicture.ts`). The frame is sized for the biggest map there is, so
-    // the screen does not move when the cursor changes the place.
-    expect(markup).toContain('data-fit="own" data-fit-width="128" data-fit-height="128"');
-    expect(markup).toContain('data-picture="dropin:floodplain-relay" data-picture-width="128" data-picture-height="128"');
-    expect(markup).toContain('0% walked');
     // A map nobody has walked names none of its ways out, doors or wildlife:
     // it counts them (playtest 6, D2).
     expect(markup).not.toContain('TOLL BRIDGE');
@@ -976,7 +1023,7 @@ describe('hub deployment route', () => {
   it("measures the place's facts as lines, so the fold never cuts one through", () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
+    hub.setView('rim');
     hub.flow.advance();
 
     // Each fact is a `dt` and a `dd` in a `div`, with nothing else in it for the
@@ -992,7 +1039,7 @@ describe('hub deployment route', () => {
       surveyed: walkedOnto('floodplain-relay', ['TOLL BRIDGE', 'SOUTH GATE']),
     });
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
+    hub.setView('rim');
     hub.flow.advance();
 
     const markup = markupOf(hub);
@@ -1011,7 +1058,7 @@ describe('hub deployment route', () => {
       defeatedBosses: ['floodplain-toll-keeper'],
     });
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
+    hub.setView('rim');
     hub.flow.advance();
 
     const markup = markupOf(hub);
@@ -1027,8 +1074,7 @@ describe('hub deployment route', () => {
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
 
-    hub.setView('deploy');
-    // Where to drop in is its own step, so the list lives past the loadout.
+    hub.setView('rim');
     hub.flow.togglePokemon('charmander-1');
     hub.flow.advance();
     hub.render();
@@ -1096,7 +1142,6 @@ describe('hub deployment route', () => {
 
     hub.flow.togglePokemon('charmander-1');
     hub.flow.setItemQuantity('potion', 2);
-    hub.flow.openSecureSlot();
     readyToDeploy(hub);
     deploy(hub, start);
 
@@ -1120,7 +1165,7 @@ describe('the hunter a loadout draws', () => {
   });
 
   function finalCheckOf(hub: HubInternals): string {
-    hub.setView('deploy');
+    hub.setView('rim');
     readyToDeploy(hub);
     hub.render();
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
@@ -1139,7 +1184,7 @@ describe('the hunter a loadout draws', () => {
 
     const finalCheck = finalCheckOf(hub);
     expect(finalCheck).toContain('data-hunter-tier="1"');
-    expect(finalCheck).toContain('<b>Hunter: BLUE</b>');
+    expect(finalCheck).toContain('BLUE: ');
     expect(finalCheck).toContain('1 Pokémon to your 1 · lead Lv 12 to your Lv 16 Charmander');
 
     deploy(hub, start);
@@ -1169,7 +1214,7 @@ describe('the hunter a loadout draws', () => {
     });
     hub.flow.togglePokemon('bulbasaur-1');
 
-    expect(finalCheckOf(hub)).toContain('<b>Hunter: MISTY</b>');
+    expect(finalCheckOf(hub)).toContain('MISTY: ');
   });
 });
 
@@ -1253,8 +1298,8 @@ describe('the standing board in the lobby', () => {
       const { hub, start } = createHub(progress);
       hub.flow.togglePokemon('bulbasaur-1');
       hub.flow.chooseInsertion(insertion.id);
-      hub.setView('deploy');
-    readyToDeploy(hub);
+      hub.setView('rim');
+      readyToDeploy(hub);
 
       const finalCheck = markupOf(hub);
       expect(finalCheck).toContain(`data-hunter-tier="${tier}"`);
@@ -1344,7 +1389,7 @@ describe('what the base screen leads with', () => {
 
   it('never breaks "packed for you" across two lines of a loadout row (playtest 47)', () => {
     const hub = createFreshHub();
-    hub.setView('deploy');
+    hub.setView('rack');
     const row = /<div class="px-row has-icon[^"]*"[^>]*>(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"/.exec(markupOf(hub))?.[0] ?? '';
     const facts = /<small>([^<]*)<\/small>/.exec(row)?.[1] ?? '';
 
@@ -1361,8 +1406,8 @@ describe('what the base screen leads with', () => {
 
     expect(row).toContain('Teaches Aerial Ace');
     expect(row).toContain('read it from your pack (B) in a raid');
-    // And on the loadout, where it is packed.
-    hub.setView('deploy');
+    // And on the rack, where it is packed.
+    hub.setView('rack');
     expect(markupOf(hub)).toContain('read it from your pack (B) in a raid');
   });
 
@@ -1526,64 +1571,47 @@ describe('what the base screen leads with', () => {
     expect(markupOf(hub)).not.toContain('swap-panel');
   });
 
-  it('puts both loadout actions in one bar rather than at the bottom of a column', () => {
+  it('lets each panel of the hall be left from a bar at its foot, never from the bottom of a column', () => {
     const { hub } = createHub();
-
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
-    const loadout = markupOf(hub);
-    const bar = loadout.slice(loadout.indexOf('confirm-bar'));
-
-    // The primary action was entirely below the fold at 1280x800 because it sat
-    // at the end of the right-hand column. It is in the full-width bar now, and
-    // the secure-slot detour with it.
-    expect(bar).toContain('data-advance');
-    expect(bar).toContain('data-secure-slot');
-    expect(loadout.slice(0, loadout.indexOf('confirm-bar'))).not.toContain('data-advance');
+    for (const panel of ['bench', 'rack', 'locker'] as const) {
+      hub.setView(panel);
+      const markup = markupOf(hub);
+      expect(markup.slice(markup.indexOf('confirm-bar'))).toContain('>Done<');
+    }
+    hub.setView('rim');
+    const rim = markupOf(hub);
+    expect(rim.slice(rim.indexOf('confirm-bar'))).toContain('data-start');
+    expect(rim.slice(0, rim.indexOf('confirm-bar'))).not.toContain('data-start');
   });
 
-  it('says in the bar what is packed, so the summary is beside the button that commits it', () => {
+  it('says on the bench who is coming, and on the rack what is packed', () => {
     const { hub } = createHub();
-
     hub.flow.togglePokemon('charmander-1');
-    hub.flow.setItemQuantity('potion', 2);
-    hub.setView('deploy');
-    const loadout = markupOf(hub);
-    const bar = loadout.slice(loadout.indexOf('confirm-bar'));
+    hub.flow.setItemQuantity('potion', 0);
+    hub.flow.setItemQuantity('poke-ball', 1);
 
-    expect(bar).toContain('1/6 Pokémon packed');
-    // The bar's own title says "packed", so the summary under it does not.
-    // The container filled itself with the one Pokemon in the loadout.
-    expect(bar).toContain('Charmander · 2 supplies · 1 protected');
+    hub.setView('bench');
+    const bench = markupOf(hub);
+    const bar = bench.slice(bench.indexOf('confirm-bar'));
+    expect(bar).toContain('1/6 on the bench');
+    expect(bar).toContain('Charmander');
+
+    hub.setView('rack');
+    expect(markupOf(hub)).toContain('1 supply packed.');
+    expect(markupOf(hub)).not.toContain('1 supplies');
   });
 
-  it('counts one packed supply as one supply on the final check, as the loadout bar does', () => {
+  it('says at the rim what a wipe would take and what comes home', () => {
     const { hub } = createHub();
-
-    hub.flow.togglePokemon('charmander-1');
-    hub.flow.setItemQuantity('potion', 1);
-    hub.setView('deploy');
-    expect(markupOf(hub)).toContain('Charmander · 1 supply · 1 protected');
-
-    readyToDeploy(hub);
-    hub.setView('deploy');
-    const check = markupOf(hub);
-    expect(hub.flow.step).toBe('confirm');
-    expect(check).toContain('1 Pokémon · 1 supply · ');
-    expect(check).not.toContain('1 supplies');
-  });
-
-  it('counts what a wipe would take a row at a time, as the result screen counts its ledger', () => {
-    const { hub } = createHub();
-
     hub.flow.togglePokemon('charmander-1');
     hub.flow.setItemQuantity('potion', 3);
+    hub.setView('rim');
     readyToDeploy(hub);
-    hub.setView('deploy');
-    const check = markupOf(hub);
-    expect(hub.flow.step).toBe('confirm');
-    // The pack and one row of three Potions: two lines under the heading.
-    expect(check).toContain('<h2>Lost if you wipe</h2><small>2 entries</small>');
+    const rim = markupOf(hub);
+    // The pack and three Potions go; the partner filled the locker.
+    expect(rim).toMatch(/<dt>Lost<\/dt><dd[^>]*>the Raid pack, Potion/);
+    expect(rim).toMatch(/<dt>Home<\/dt><dd[^>]*>Charmander/);
   });
 });
 
@@ -1864,9 +1892,10 @@ describe('Brock', () => {
     }
     hub.flow.toggleSecurePokemon('charmander-1');
     hub.flow.toggleSecurePokemon('pidgey-2');
-    hub.setView('deploy');
-    readyToDeploy(hub);
+    hub.setView('locker');
     expect(markupOf(hub)).toContain('8/8 squares');
+    hub.setView('rim');
+    readyToDeploy(hub);
 
     deploy(hub, start);
 
@@ -1882,7 +1911,7 @@ describe('Brock', () => {
   it('deploys from a base with nothing built exactly as before', () => {
     const { hub, start } = createWorkshopHub();
     hub.flow.togglePokemon('charmander-1');
-    hub.setView('deploy');
+    hub.setView('rim');
     readyToDeploy(hub);
 
     deploy(hub, start);
@@ -2554,37 +2583,31 @@ describe('first words: Oak and Joy speak once per save', () => {
     expect(heardIn(storage)).toEqual(['lab', 'center']);
   });
 
-  it('gives each step of preparation its own words, once, and nothing to the secure detour', () => {
+  it('gives the rim its own words, once, and nothing to the bench, the rack or the locker', () => {
     const storage = seededStorage({ ...DEFAULT_RAID_PROGRESS, firstWordsHeard: ['lab'] });
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
     expect(speechOn(screenOf(hub))).toBeUndefined();
 
+    // The bench says nothing over itself: the hall's marshal has said it.
     intoTheArena(hub);
-    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.loadout.lines[2]);
-    putDown(hub, 'button');
     expect(speechOn(screenOf(hub))).toBeUndefined();
     hub.flow.togglePokemon('charmander-1');
 
-    hub.flow.openSecureSlot();
+    hub.setView('locker');
     expect(speechOn(screenOf(hub))).toBeUndefined();
-    hub.flow.advance();
-    expect(hub.flow.step).toBe('loadout');
+    hub.setView('rack');
     expect(speechOn(screenOf(hub))).toBeUndefined();
 
-    hub.flow.advance();
-    expect(hub.flow.step).toBe('dropin');
-    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.dropin.lines[1]);
-
-    readyToDeploy(hub);
-    expect(hub.flow.step).toBe('confirm');
+    // The rim says what it is the first time it is looked over from.
+    hub.setView('rim');
     expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.check.lines[0]);
 
-    // Back a step and forward again: every one of them has been heard.
-    hub.goBack();
+    // Away and back again: it has been heard.
+    hub.setView('bench');
+    screenOf(hub);
+    hub.setView('rim');
     expect(speechOn(screenOf(hub))).toBeUndefined();
-    readyToDeploy(hub);
-    expect(speechOn(screenOf(hub))).toBeUndefined();
-    expect(heardIn(storage)).toEqual(['lab', 'loadout', 'dropin', 'check']);
+    expect(heardIn(storage)).toEqual(['lab', 'check']);
   });
 
   it('keeps the screen under the words, and gives the cursor to them alone', () => {

@@ -3,6 +3,9 @@ import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { homeAfterRaid } from '../maker/tryIt';
+import { cloudSheet } from '../base/arenaPit';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose } from '../world/raidArrival';
+
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import {
@@ -635,12 +638,17 @@ interface ControlKeys {
  */
 export interface WorldSceneData extends Partial<RaidCarriage> {
   readonly savedGame?: RestoredGame;
+  /** The raid is starting with the player falling out of the cloud over its first tile (`world/raidArrival.ts`). */
+  readonly droppedIn?: boolean;
 }
 
 /** The fight itself - the only part of a battle payload a call site writes. */
 type BattleEncounter =
   | Required<Pick<BattleSceneData, 'wild' | 'teachingBattle'>>
   | Required<Pick<BattleSceneData, 'trainer' | 'hunterBattle'>>;
+
+/** The cloud a raid opens under, after a jump. */
+const ARRIVAL_CLOUD_TEXTURE = 'raid-arrival-cloud';
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
   up: 'down',
@@ -656,6 +664,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly stepStart = new Phaser.Math.Vector2();
   private readonly stepEnd = new Phaser.Math.Vector2();
 
+  /** Dropping into the raid out of the cloud, while that is going on (`world/raidArrival.ts`). */
+  private arrival: {
+    elapsedMs: number;
+    readonly cloud: Phaser.GameObjects.TileSprite;
+    readonly shadow: Phaser.GameObjects.Ellipse;
+    landed: boolean;
+    readonly restY: number;
+  } | null = null;
   private player!: Phaser.GameObjects.Sprite;
   /** Travel with the player so which figure is yours never has to be guessed. */
   private playerGroundMark!: Phaser.GameObjects.Graphics;
@@ -1246,7 +1262,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.scale.off?.(Phaser.Scale.Events.RESIZE, relayout),
     );
     this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.clearMap());
-    this.showFirstDeploymentBriefing();
+    this.beginArrival(data.droppedIn === true);
+    if (!this.arrival) {
+      this.showFirstDeploymentBriefing();
+    }
     if (openedGates.length > 0) {
       // Said on the return from the fight that won it, and raised as an
       // interruption so the key already held walks the player at the door.
@@ -1397,6 +1416,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   public update(_time: number, deltaMs: number): void {
+    if (this.arrival) {
+      this.advanceArrival(deltaMs);
+      return;
+    }
     // Before the raid's own frame, which steps and catches with the hunter the
     // room shares (`raidRoom/groupHunter.ts`).
     this.updateGroupHunter();
@@ -1406,6 +1429,63 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
     this.updateFriend(deltaMs);
+  }
+
+  /**
+   * Falling out of the cloud on to the raid's first tile, after the jump that
+   * started it (`base/arenaDive.ts`). It spends no clock - nothing runs but this -
+   * and moves nobody: the player's tile is the landing from the first frame.
+   */
+  private beginArrival(droppedIn: boolean): void {
+    this.arrival = null;
+    if (!droppedIn || (typeof window !== 'undefined' && prefersReducedMotion())) {
+      return;
+    }
+    const sheet = cloudSheet();
+    if (!this.textures.exists(ARRIVAL_CLOUD_TEXTURE)) {
+      const texture = this.textures.createCanvas(ARRIVAL_CLOUD_TEXTURE, sheet.width, sheet.height);
+      texture?.context.putImageData(new ImageData(sheet.data, sheet.width, sheet.height), 0, 0);
+      texture?.refresh();
+    }
+    const cloud = this.add
+      .tileSprite(0, 0, this.scale.width, this.scale.height, ARRIVAL_CLOUD_TEXTURE)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(CANOPY_BAND + 50);
+    // Its shadow on the ground, closing in as it comes down.
+    const shadow = this.add.ellipse(this.player.x + TILE_SIZE / 2, this.player.y + this.player.height - 2, 14, 6, 0x101018, 0.45).setDepth(atRow(FIGURE_BAND, this.currentTile.y) - 0.0005);
+    this.arrival = { elapsedMs: 0, cloud, shadow, landed: false, restY: this.player.y };
+    this.playerGroundMark.setVisible(false);
+    this.playerHeadMark.setVisible(false);
+    this.advanceArrival(0);
+    audioManager.play('diveRush');
+  }
+
+  private advanceArrival(deltaMs: number): void {
+    const arrival = this.arrival;
+    if (!arrival) {
+      return;
+    }
+    arrival.elapsedMs += deltaMs;
+    const pose = arrivalPose(arrival.elapsedMs);
+    this.player.setY(arrival.restY - pose.height);
+    arrival.shadow.setScale(1 - (pose.height / ARRIVAL_FALL_HEIGHT) * 0.75);
+    arrival.cloud.setAlpha(pose.cloud);
+    arrival.cloud.setTilePosition(Math.round(arrival.elapsedMs / 4), Math.round(arrival.elapsedMs / 2));
+    if (pose.landed && !arrival.landed) {
+      arrival.landed = true;
+      audioManager.play('landThud');
+      this.cameras.main.shake(120, 2 / this.scale.height);
+    }
+    if (arrival.elapsedMs >= Math.max(ARRIVAL_MS, ARRIVAL_CLOUD_MS)) {
+      arrival.cloud.destroy();
+      arrival.shadow.destroy();
+      this.player.setY(arrival.restY);
+      this.playerGroundMark.setVisible(true);
+      this.playerHeadMark.setVisible(true);
+      this.arrival = null;
+      this.showFirstDeploymentBriefing();
+    }
   }
 
   /**
@@ -7049,7 +7129,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
       this.scene.start(
         this.scene.manager.keys.base ? 'base' : 'title',
-        this.scene.manager.keys.base ? { arrival: 'raid' } : undefined,
+        this.scene.manager.keys.base ? { arrival: 'raid', room: 'raid-arena' } : undefined,
       );
     });
   }

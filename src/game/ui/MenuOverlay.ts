@@ -187,6 +187,14 @@ export class MenuOverlay {
     this.restoreScroll = redrawKeepingScroll(this.root, markup);
   }
 
+  /**
+   * Asks for the measured pass again after a pane has been written in place -
+   * which is how a screen answers the cursor without redrawing itself.
+   */
+  public remeasure(): void {
+    this.relayout();
+  }
+
   /** Starts the cursor on the first of these selectors the screen has. */
   public focus(...selectors: string[]): void {
     this.placeCursorNextFrame(() => this.moveCursorTo(this.firstMatch(selectors)));
@@ -217,7 +225,10 @@ export class MenuOverlay {
   public refocus(...selectors: string[]): void {
     this.placeCursorNextFrame(() => {
       const controls = this.cursorControls();
-      const remembered = controls.find((control) => focusKeyOf(control) === this.lastFocusKey);
+      // Nothing to put back on a screen just opened: a control with no key of its
+      // own would otherwise answer to having no memory at all.
+      const remembered =
+        this.lastFocusKey === null ? undefined : controls.find((control) => focusKeyOf(control) === this.lastFocusKey);
       // Put back where it was, the control is already as far in view as the
       // player had it, and a piece taken out of the pack is gone, so the cursor
       // starts again where it would: neither scrolls a list to find it, because

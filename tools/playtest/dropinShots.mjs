@@ -14,7 +14,7 @@
 // smallest one and look right at the biggest.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
-import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel, readFirstWords } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -60,11 +60,12 @@ try {
     await page.waitFor(sceneIs('base'));
   };
 
-  // The lobby is a town now, and a raid is prepared inside Oak's Lab.
+  // The lobby is a town now, and a raid is prepared in the Raid Arena's hall.
   const toDropIn = async () => {
     await walkIntoBase(page, 'raid-arena');
     await page.waitFor(takePokemon('Bulbasaur'), { what: 'Bulbasaur in the raid party' });
-    await click('Choose drop-in');
+    await openHallPanel(page, 'rim');
+    await readFirstWords(page);
   };
 
   await page.waitFor(sceneIs('title'));
@@ -75,8 +76,6 @@ try {
 
   await toDropIn();
   await shoot('dropin-fresh');
-  await press('Escape');
-  await shoot('loadout');
 
   await reload({
     firstContractExtracted: true,
@@ -95,8 +94,6 @@ try {
   // doors, who has them, and what lives in the places that have been walked.
   await page.evaluate(`(() => { const p = document.querySelector('.dropin-brief'); p.scrollTop = p.scrollHeight; })()`);
   await shoot('dropin-holds');
-  await click('Review & deploy');
-  await shoot('confirm');
 } finally {
   await browser.close();
 }

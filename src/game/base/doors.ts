@@ -15,8 +15,8 @@ import type { BasePropName } from './baseTileset';
  * - a door names its room by sharing its id - and the scene only has to ask
  * which door a tile belongs to.
  *
- * One door has no room behind it: the Raid Arena's opens straight onto the
- * raid's loadout, and it is the only way into a raid.
+ * THE RAID ARENA's opens on the great hall (`arenaHall.ts`), which is the only
+ * way into a raid: its trailer plays on the way (`cutscene/arenaIntro.ts`).
  *
  * Nobody stands in the yard any more. The four keepers used to wait outside
  * their own doors because there was nowhere else for them to be; they are
@@ -28,9 +28,9 @@ import type { BasePropName } from './baseTileset';
 
 /**
  * Which screen a door leads to. `HubScene` is the one place these are rendered.
- * `arena` is the raid itself: the Raid Arena's door opens preparation straight
- * away, and it is the only way into a raid. `lab` is Oak's room, where the
- * contract board and the wall map are read.
+ * `arena` is the raid itself: everything before one is done on its floor, and it is the
+ * only way into a raid. `lab` is Oak's room, where the contract board and the
+ * wall map are read.
  */
 export type BaseScreen = 'lab' | 'arena' | 'stash' | 'workshop' | 'trader' | 'boutique';
 
@@ -70,14 +70,6 @@ export interface BaseDoor {
   readonly tiles: readonly GridPosition[];
   /** Where the player is put down when they come back out. */
   readonly returnTo: GridPosition;
-  /**
-   * Whether the door opens onto a room with somebody in it (`rooms.ts`), or
-   * straight onto its screen. The Raid Arena is the one that opens straight
-   * onto its screen (the captain, 2026-10-23: "you go into it and then that's
-   * when the loadout screen goes"), because a raid is the thing a player
-   * walks over to it for, every time.
-   */
-  readonly opens: 'room' | 'screen';
 }
 
 export const BASE_DOORS: readonly BaseDoor[] = [
@@ -92,7 +84,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     building: { prop: 'raidArena', x: 5, y: 8 },
     tiles: [{ x: 8, y: 12 }],
     returnTo: { x: 8, y: 13 },
-    opens: 'screen',
   },
   {
     id: 'pokemon-centre',
@@ -101,7 +92,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     building: { prop: 'pokemonCentre', x: 17, y: 7 },
     tiles: [{ x: 19, y: 11 }],
     returnTo: { x: 19, y: 12 },
-    opens: 'room',
   },
   {
     id: 'oaks-lab',
@@ -113,7 +103,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
       { x: 26, y: 11 },
     ],
     returnTo: { x: 25, y: 12 },
-    opens: 'room',
   },
   {
     id: 'brocks-workshop',
@@ -122,7 +111,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     building: { prop: 'workshop', x: 30, y: 8 },
     tiles: [{ x: 31, y: 11 }],
     returnTo: { x: 31, y: 12 },
-    opens: 'room',
   },
   {
     id: 'bills-cottage',
@@ -133,7 +121,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     building: { prop: 'billsCottage', x: 13, y: 15 },
     tiles: [{ x: 14, y: 17 }],
     returnTo: { x: 14, y: 18 },
-    opens: 'room',
   },
   {
     // The player's own house, at the end of the row the keepers stand in, with
@@ -147,7 +134,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     tiles: [{ x: 37, y: 10 }],
     // The step between the window boxes.
     returnTo: { x: 37, y: 11 },
-    opens: 'room',
   },
   {
     // THE HARBOUR BOUTIQUE (`look/wearables.ts`): Vermilion's Pokémon Fan
@@ -160,7 +146,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     building: { prop: 'boutique', x: 54, y: 4 },
     tiles: [{ x: 55, y: 7 }],
     returnTo: { x: 55, y: 8 },
-    opens: 'room',
   },
 ];
 

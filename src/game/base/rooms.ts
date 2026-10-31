@@ -4,13 +4,25 @@ import { pokemonNeedingRecovery } from '../hub/recovery';
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import { MapSketch } from '../world/mapGrid';
-import { buildMapLayers, type MapLayers } from '../world/tiles';
+import { buildMapLayers, type MapLayers, type TileLayer } from '../world/tiles';
 import type { PropDefinition } from '../world/tileset/catalogue';
 import { floorPiece, pieceProp, pieceSheet, pieceTile, roomCatalogue, solidPiece } from './baseSheet';
 import { AREA_PIECES, type AreaPieceName } from '../world/generated/areaPieces';
 import { AREA_SHEET_SOURCE } from '../world/tileset/areaSheet';
 import { INSIDE_PROPS } from '../world/tileset/insideTileset';
 import { BOUTIQUE_NAME } from '../look/wearables';
+import {
+  ARENA_HALL_HEIGHT,
+  ARENA_HALL_WIDTH,
+  ARENA_KEEPER_TILE,
+  ARENA_MAT,
+  ARENA_STATIONS,
+  arenaCollision,
+  type ArenaStationId,
+} from './arenaHall';
+import { ARENA_HALL_SOURCE } from './arenaHallSheet';
+import { ARENA_HALL_GROUND, ARENA_HALL_OVER } from './generated/arenaHallTiles';
+import { ARENA_KEEPER_DESIGN, ARENA_KEEPER_NAME } from '../hub/firstWords';
 import { HOME_SHEET_PIECES } from './homeSheet';
 import type { HomePieceName } from './generated/homePieces';
 import type { TileSource } from '../world/tileset/catalogue';
@@ -55,7 +67,7 @@ import {
 } from '../home/arrangement';
 
 /**
- * The four rooms behind the base's four doors.
+ * The rooms behind the base's doors.
  *
  * The walkable base (`baseMap.ts`) made the lobby a place; this makes each of
  * its buildings one. Walking onto a doorway takes the player inside, where the
@@ -92,7 +104,8 @@ export type RoomId =
   | 'bills-cottage'
   | 'bolthole'
   | 'bolthole-upstairs'
-  | 'boutique';
+  | 'boutique'
+  | 'raid-arena';
 
 export type RoomPropName =
   | BoutiquePropName
@@ -401,7 +414,7 @@ export interface RoomThing {
    * the wall map is read on a screen, drawn as big as the window allows, and
    * the console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`).
    */
-  readonly opens?: 'wall-map' | 'games' | 'wardrobe';
+  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | ArenaStationId;
   /**
    * What it says when faced and spoken to, in place of its name and note: a
    * thing in the player's own house has more to say than what it is.
@@ -568,6 +581,8 @@ export interface BuiltRoom {
   readonly posters: readonly RoomPoster[];
   /** In the player's own house: the floor furniture goes on, and what stands on it. */
   readonly home?: BuiltHome;
+  /** In THE RAID ARENA's hall: there is a pit under this room's floor (`arenaView.ts`). */
+  readonly pit?: boolean;
 }
 
 /**
@@ -805,6 +820,25 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
       facing: 'down',
     },
     counter: [2, 3, 4].map((x) => ({ x, y: 4 })),
+    stairs: [],
+  },
+  // THE RAID ARENA's great hall (`arenaHall.ts`): the marshal stands by the way
+  // in, and everything a raid wants is on the floor around her.
+  {
+    id: 'raid-arena',
+    screen: 'arena',
+    name: 'RAID ARENA',
+    width: ARENA_HALL_WIDTH,
+    height: ARENA_HALL_HEIGHT,
+    mat: ARENA_MAT,
+    keeper: {
+      id: 'marshal',
+      name: ARENA_KEEPER_NAME,
+      design: ARENA_KEEPER_DESIGN,
+      position: ARENA_KEEPER_TILE,
+      facing: 'right',
+    },
+    counter: [],
     stairs: [],
   },
   // THE BOLTHOLE: the player's own house, downstairs and up. Nobody keeps it
@@ -1347,7 +1381,7 @@ function shell(room: BaseRoom): MapSketch<RoomPropName> {
   return sketch;
 }
 
-const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame, now: Date) => Drawn>> = {
+const DRAWERS: Readonly<Record<Exclude<RoomId, 'raid-arena'>, (room: BaseRoom, game: RestoredGame, now: Date) => Drawn>> = {
   'oaks-lab': drawLab,
   'pokemon-centre': drawCenter,
   'brocks-workshop': drawWorkshop,
@@ -1363,6 +1397,9 @@ const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame, now:
  * whose decorations follow the player's clock (`homeClock.ts`).
  */
 export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Date()): BuiltRoom {
+  if (room.id === 'raid-arena') {
+    return buildArenaHall(room, game);
+  }
   const drawn = DRAWERS[room.id](room, game, now);
   if (isHomeRoom(room.id)) {
     return buildHome(room, room.id, drawn, game, now);
@@ -1380,6 +1417,72 @@ export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Da
     ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
     wallMap: drawn.wallMap ?? null,
     posters: drawn.posters ?? [],
+  };
+}
+
+/** What the hall's furniture is called, on its caption and in the hint at its foot. */
+export const ARENA_STATION_NAMES: Readonly<Record<ArenaStationId, string>> = {
+  bench: 'THE BENCH',
+  rack: 'THE ARMOURY RACK',
+  locker: 'THE LOCKER',
+};
+
+/**
+ * THE RAID ARENA's great hall. A curve cannot be planted out of a room's
+ * square pieces, so the whole hall is a sheet painted in one go
+ * (`scripts/draw-arena-hall.mts`) and laid here as two ready layers; what it
+ * has to agree with is worked out from the same two ovals (`arenaHall.ts`).
+ */
+function buildArenaHall(room: BaseRoom, game: RestoredGame): BuiltRoom {
+  const { width, height } = room;
+  const blank = (): TileLayer => ({
+    tiles: Array.from({ length: height }, () => Array<number>(width).fill(-1)),
+    tints: Array.from({ length: height }, () => Array<number>(width).fill(-1)),
+    flips: Array.from({ length: height }, () => Array<boolean>(width).fill(false)),
+  });
+  const laid = (encoded: string): TileLayer => ({
+    ...blank(),
+    tiles: encoded.split('\n').map((row) =>
+      Array.from({ length: width }, (_cell, x) => {
+        const code = row.slice(x * 3, x * 3 + 3);
+        return code === '---' ? -1 : ARENA_HALL_SOURCE.at(0, 0) + Number.parseInt(code, 36);
+      }),
+    ),
+  });
+  const collision = arenaCollision();
+  const none = (): boolean[][] => Array.from({ length: height }, () => Array<boolean>(width).fill(false));
+  const shown = errandsOnShow(room, game);
+  return {
+    room,
+    sources: [ARENA_HALL_SOURCE.source],
+    layers: {
+      ground: laid(ARENA_HALL_GROUND),
+      overlay: blank(),
+      detail: blank(),
+      canopy: laid(ARENA_HALL_OVER),
+      brim: blank(),
+      brimDepth: Array.from({ length: height }, () => Array<number>(width).fill(0)),
+      roofGround: blank(),
+      roof: blank(),
+      collision,
+      tallGrass: none(),
+      crowned: none(),
+    },
+    collision,
+    things: [
+      ...ARENA_STATIONS.map((station) => ({
+        name: ARENA_STATION_NAMES[station.id],
+        note: '',
+        tiles: station.tiles,
+        opens: station.id,
+      })),
+      ...shown.things,
+    ],
+    sprites: [],
+    icons: shown.icons,
+    wallMap: null,
+    posters: [],
+    pit: true,
   };
 }
 

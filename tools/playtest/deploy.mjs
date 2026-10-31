@@ -35,11 +35,12 @@ export const takePokemon = (name = null) =>
  * redrawn base moves the walk with it.
  *
  * `door` is a `BASE_DOORS` id: `raid-arena`, `oaks-lab`, `pokemon-centre`,
- * `brocks-workshop` or `bills-cottage`. The Raid Arena has no room: its door
- * opens the loadout. Inside the others, the interact key on the door mat is the keeper's
+ * `brocks-workshop` or `bills-cottage`. Inside each, the interact key on the door mat is the keeper's
  * screen - the one-key way in a player re-kitting takes - so that is what this
  * presses. A driver already in the right room (backed out of its screen) just
- * presses it again; one in another room walks back out first.
+ * presses it again; one in another room walks back out first. THE RAID ARENA has
+ * no keeper's screen: everything is on its floor, so a walk into it goes on to
+ * the bench and opens that (`openHallPanel`).
  *
  * A keeper with a favour says it first, in the dialogue box, and asks YES or
  * NOT NOW (`BaseScene.speakToKeeper`): the presses read it, and the question is
@@ -62,12 +63,17 @@ export async function walkIntoBase(page, door, options = {}) {
   await until(sceneIs('base'), 'the base');
   // A keeper's screen is the hub; THE HARBOUR BOUTIQUE's is a screen of its own over the harbour.
   const opened = `${sceneIs('hub')} || ${sceneIs('boutique')}`;
+  const inHall = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && !b.leaving && b.room?.id === 'raid-arena'; })()`;
   for (let guard = 0; guard < 120; guard += 1) {
     if (await page.evaluate(opened)) {
       return;
     }
+    if (door === 'raid-arena' && (await page.evaluate(inHall))) {
+      await openHallPanel(page, 'bench', { ...options, press, until, wait: settle });
+      return;
+    }
     // Through the Raid Arena's door its trailer plays first, and any key skips
-    // it to the loadout (`scenes/ArenaIntroScene.ts`). It ignores keys for
+    // it to the hall (`scenes/ArenaIntroScene.ts`). It ignores keys for
     // its first half-second, so the press is made again until it takes.
     if (await page.evaluate(sceneIs('arenaIntro'))) {
       await press('Escape');
@@ -124,6 +130,91 @@ export async function walkIntoBase(page, door, options = {}) {
   await until(opened, `the ${door}`);
 }
 
+/**
+ * In THE RAID ARENA's hall, a walk to one of its panels and the key that opens
+ * it: `bench`, `rack` or `locker` from the floor in front of it, `rim` from the
+ * nearest tile with the fence beside it. Everything it reads off the scene, so a
+ * refurnished hall moves the walk with it. A panel already up is closed first.
+ */
+export async function openHallPanel(page, panel, options = {}) {
+  const press = options.press ?? ((code) => page.tap(code, 60));
+  const until = options.until ?? ((expression, what) => page.waitFor(expression, { what }));
+  const settle = options.wait ?? sleep;
+  const settleMs = options.settleMs ?? 180;
+  const showing = `${sceneIs('hub')} && ${GAME}.scene.getScene('hub').view === ${JSON.stringify(panel)}`;
+  for (let guard = 0; guard < 160; guard += 1) {
+    if (await page.evaluate(showing)) {
+      return;
+    }
+    if (await page.evaluate(sceneIs('hub'))) {
+      await press('Escape');
+      await settle(settleMs);
+      continue;
+    }
+    const move = await page.evaluate(
+      `(() => { const b = ${GAME}.scene.getScene('base'); if (!b.sys.isActive() || !b.ready || b.leaving || b.targetTile) return { wait: true };
+        if (b.dialogBox.visible) return { key: 'Space' };
+        const panel = ${JSON.stringify(panel)};
+        const station = b.arenaStations.find((each) => each.id === panel);
+        const goals = station ? station.tiles.map((tile) => ({ x: tile.x, y: tile.y + 1 })) : b.arenaRim;
+        const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
+        const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
+        if (at(s.x, s.y)) { if (station && b.facing !== 'up') return { key: 'ArrowUp' }; return { key: 'Space' }; }
+        const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
+        while (queue.length) { const [x, y] = queue.shift();
+          if (at(x, y)) { found = [x, y]; break; }
+          for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || b.isBlocked({ x: nx, y: ny })) continue;
+            prev.set(id(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
+        if (!found) return { unreachable: true };
+        let cur = found, key = null;
+        for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; }
+        return { key }; })()`,
+    );
+    if (move?.unreachable) throw new Error(`nothing walks to the ${panel}`);
+    if (move?.key) {
+      await press(move.key);
+    }
+    await settle(settleMs);
+  }
+  await until(showing, `the ${panel}`);
+}
+
+/** Puts whatever the rim's first words are down, if they are up: they hold the panel until read. */
+export async function readFirstWords(page, { until, settle = sleep } = {}) {
+  void until;
+  for (let guard = 0; guard < 4; guard += 1) {
+    const read = await page.evaluate(`(() => { const b = document.querySelector('[data-speech-done]'); if (!b) return false; b.click(); return true; })()`);
+    if (!read) return;
+    await settle(150);
+  }
+}
+
+/**
+ * From the hall into a raid: to the rim, the way in `insertion` chosen if it is
+ * named (the row is only there when there is more than one to choose from), and
+ * over the fence. Waits for the raid.
+ */
+export async function jumpIn(page, { insertion, press, until, wait } = {}) {
+  const settle = wait ?? sleep;
+  await openHallPanel(page, 'rim', { press, until, wait });
+  await readFirstWords(page, { settle });
+  if (insertion) {
+    await until(
+      `(() => { if (${GAME}.scene.getScene('hub').flow.insertionId === ${JSON.stringify(insertion)}) return true; const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`,
+      `the rim to offer "${insertion}"`,
+    );
+  }
+  await until(
+    `(() => { const b = document.querySelector('button[data-start]'); if (!b) return false; b.click(); return true; })()`,
+    'the button that jumps',
+  );
+  await until(sceneIs('world'), 'the raid');
+  // The raid opens with the player falling out of the cloud, and nothing can be
+  // pressed or read until they land (`world/raidArrival.ts`).
+  await until(`!${GAME}.scene.getScene('world').arrival`, 'the landing');
+}
+
 /** `--insertion=id [--offered] --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -169,7 +260,7 @@ export async function startExplorerRun(page, { press, until }) {
 }
 
 /**
- * Title, starter, lobby, loadout, final check, raid. `press`, `click`, `until`
+ * Title, starter, harbour, the Raid Arena's hall, raid. `press`, `click`, `until`
  * and `wait` are the driver's own, because only it knows whether the game is
  * being stepped; `paused` puts the loop to sleep on every load, for a driver
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
@@ -259,10 +350,10 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
   return enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure });
 }
 
-/** From the harbour into a raid: the Raid Arena, the party, the pack, the drop-in. */
+/** From the harbour into a raid: the Raid Arena, the bench, the rack, the locker, the rim. */
 async function enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure }) {
-  // The lobby is a town now, and the Raid Arena's door opens straight onto
-  // the loadout.
+  // The lobby is a town now, and everything before a raid is on the floor of
+  // the Raid Arena: this walks through its door and up to the bench.
   await walkIntoBase(page, 'raid-arena', { press, until, wait });
   await until(takePokemon(starter), `${starter} in the raid party`);
   // Everybody else the vault holds, so a `--team` deploys as a team. The rows
@@ -277,7 +368,8 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
     }
     await sleep(150);
   }
-  // --pack=itemId[:n],.. packs exactly n of a supply by the loadout row's own
+  await openHallPanel(page, 'rack', { press, until, wait });
+  // --pack=itemId[:n],.. packs exactly n of a supply by the rack row's own
   // count selector - the minus down to none, then the plus once per unit, so
   // the driver is stopped by exactly what stops a player (`ui/countSelector.ts`).
   // The stash's medicine is packed by default (`DeploymentFlow.packMedicine`),
@@ -310,7 +402,7 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
   for (const entry of secure) {
     const [itemId, count = '1'] = entry.split(':');
     if (entry === secure[0]) {
-      await click('Secure slot');
+      await openHallPanel(page, 'locker', { press, until, wait });
       // The container fills itself with the party's best Pokemon, and a
       // first-stage one is four squares of the four a save starts with - so a
       // driver asking for gear has to take the Pokemon out first, exactly as a
@@ -333,15 +425,7 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
       await sleep(250);
     }
   }
-  if (secure.length > 0) {
-    await click('Back to loadout');
-  }
-  // Where to drop in is its own step, after the loadout: the row is clicked on
-  // that screen, by the id it carries, because two rows can share a map's name.
-  await click('Choose drop-in');
-  if (insertion) {
-    await until(`(() => { const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`, `the lobby to offer insertion "${insertion}"`);
-  }
-  for (const label of ['Review & deploy', 'Enter the raid']) await click(label);
-  await until(sceneIs('world'));
+  // Where to drop in is chosen at the rim, by the id a row carries, because two
+  // rows can share a map's name - and from there it is over the fence.
+  await jumpIn(page, { insertion, press, until, wait });
 }

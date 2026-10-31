@@ -578,25 +578,6 @@ describe('the map maker check marks', () => {
   });
 });
 
-describe('the deploy progress rail', () => {
-  // Playtest 40 #7: a step already done was teal and a step to come grey-blue,
-  // the same grey to anybody who cannot tell those two apart. A done step
-  // carries the drawn tick, as a fact on a tag does.
-  const bodyOf = (selector: string): string =>
-    [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)]
-      .filter(([, selectors]) => selectors.split(',').some((one) => one.trim() === selector))
-      .map(([, , rule]) => rule)
-      .join(';');
-
-  it('draws a tick after a done step and nothing after a step to come', () => {
-    const done = bodyOf(':where(.pixel-ui) .px-rail .done::after');
-    expect(done).toMatch(/mask:\s*var\(--px-tick\)/);
-    expect(done).toMatch(/content:\s*''/);
-    expect(bodyOf(':where(.pixel-ui) .px-rail .upcoming::after')).toBe('');
-    expect(bodyOf(':where(.pixel-ui) .px-rail .current::after')).toBe('');
-  });
-});
-
 describe('the map maker chosen tool, brush, place and zoom', () => {
   // Playtest 40 #8: which tool, brush, place and zoom were chosen was a pale
   // teal wash and nothing else, the same as cream to an eye that sees no

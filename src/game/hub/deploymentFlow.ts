@@ -94,19 +94,13 @@ export interface PackChoice {
 }
 
 /**
- * Preparation is a route, not a screen: a player picks what to risk, chooses
- * where to drop in, may detour into the secure slot, and only then reaches the
- * confirmation that starts the raid. `deploy()` refuses to hand anything back
- * from an earlier step, so a raid can never begin with a loadout the player did
- * not look at and confirm.
- *
- * What to take and where to go used to be one screen, with the insertions a
- * third pane beside the pack. They are two different decisions - one is about
- * your vault, the other about a place - and the second had no room to say
- * anything about the place at all. It is its own step now, and the loadout is
- * otherwise unchanged.
+ * Preparation is a set of choices with one way out of it. A player walks about
+ * THE RAID ARENA's hall choosing what to risk, in any order and as often as they
+ * like (`base/arenaKit.ts`), and only when they look down from the rim is the
+ * plan `confirm`ed. `deploy()` refuses to hand anything back before that, so a
+ * raid can never begin with a loadout the player did not look at.
  */
-export type DeploymentStep = 'loadout' | 'dropin' | 'secure' | 'confirm';
+export type DeploymentStep = 'loadout' | 'confirm';
 
 /** Everything a confirmed plan hands to the run manager and the raid scene. */
 export interface Deployment {
@@ -139,7 +133,7 @@ export const EMPTY_LOADOUT_ARRANGEMENTS: LoadoutArrangements = {
 };
 
 export class DeploymentFlow {
-  private readonly stash: Stash;
+  private stash: Stash;
   private selectedPokemonIds: string[] = [];
   private readonly selectedItems = new Map<ItemId, number>();
   private securedPokemonIds: string[] = [];
@@ -147,7 +141,6 @@ export class DeploymentFlow {
   private readonly securedItemCounts = new Map<ItemId, number>();
   private insertion: RunInsertionId;
   private currentStep: DeploymentStep = 'loadout';
-  private secureReturn: Exclude<DeploymentStep, 'secure'> = 'loadout';
   /** The squares the secure container has. */
   public readonly secureGrid: GridSize;
   /**
@@ -447,9 +440,15 @@ export class DeploymentFlow {
     return this.currentStep;
   }
 
-  /** Where leaving the secure slot returns to, so the back control can name it. */
-  public get secureReturnStep(): Exclude<DeploymentStep, 'secure'> {
-    return this.secureReturn;
+  /**
+   * Carries these choices over to the vault as storage now has it: a panel
+   * opened from the hall reads the save again, and another tab may have spent
+   * something. Everything chosen is resolved against the live stash on every
+   * read, so a Pokemon or a supply it no longer holds simply drops out.
+   */
+  public rebase(stash: Stash): void {
+    this.stash = stash;
+    this.packItemIdValue = this.packItemId;
   }
 
   public get insertionId(): RunInsertionId {
@@ -912,66 +911,40 @@ export class DeploymentFlow {
     this.insertion = insertionId;
   }
 
-  /** Opens the secure slot as a detour from the current step. */
-  public openSecureSlot(): void {
-    if (this.currentStep === 'secure') {
-      return;
+  /**
+   * Why nobody can jump yet, in the marshal's own terms, or undefined when
+   * somebody can. A fainted Pokemon cannot fight and nothing in a raid revives
+   * one, and a bench with nobody on it is not a raid party.
+   */
+  public get notReady(): string | undefined {
+    if (this.isDeployable) {
+      return undefined;
     }
-    this.secureReturn = this.currentStep;
-    this.currentStep = 'secure';
+    const standing = this.stash.listPokemon().some((stored) => !stored.pokemon.isFainted);
+    if (!standing) {
+      return 'Everyone you have has fainted. Nurse Joy can revive them, out of the door and across the yard.';
+    }
+    return this.party.length === 0
+      ? 'Nobody is on the bench. Choose at least one Pokémon to take into the raid.'
+      : 'Everybody on the bench has fainted. Choose somebody who can fight, or see Nurse Joy.';
   }
 
   /**
-   * Moves one step towards the raid.
+   * Looks the plan over: the player is at the rim and the raid is one press away.
    *
-   * @returns A message when the step is not ready yet, otherwise undefined.
+   * @returns A message when nobody can go yet, otherwise undefined.
    */
   public advance(): string | undefined {
-    if (this.currentStep === 'secure') {
-      this.currentStep = this.secureReturn;
-      return undefined;
-    }
-    if (this.currentStep === 'loadout') {
-      if (!this.isDeployable) {
-        return this.party.length === 0
-          ? 'Choose at least one Pokémon to take into the raid.'
-          : 'Every Pokémon in this loadout has fainted. Recover one at base first.';
-      }
-      this.currentStep = 'dropin';
-      return undefined;
-    }
-    if (this.currentStep === 'dropin') {
+    const refusal = this.notReady;
+    if (refusal === undefined) {
       this.currentStep = 'confirm';
     }
-    return undefined;
+    return refusal;
   }
 
-  /**
-   * Steps back through preparation.
-   *
-   * @returns False when the player is already at the first step and should be
-   *   returned to the base screen instead.
-   */
-  public retreat(): boolean {
-    if (this.currentStep === 'secure') {
-      this.currentStep = this.secureReturn;
-      return true;
-    }
-    if (this.currentStep === 'confirm') {
-      this.currentStep = 'dropin';
-      return true;
-    }
-    if (this.currentStep === 'dropin') {
-      this.currentStep = 'loadout';
-      return true;
-    }
-    return false;
-  }
-
-  /** Returns preparation to its first step, keeping what the player picked. */
+  /** Steps back from the rim, keeping what the player picked. */
   public restart(): void {
     this.currentStep = 'loadout';
-    this.secureReturn = 'loadout';
   }
 
   /**

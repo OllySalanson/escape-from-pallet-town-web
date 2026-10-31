@@ -9,7 +9,7 @@
 // right-click on a packed piece and DEL on one, each taking one out with no
 // browser menu and the list left where it was.
 import { PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel } from './deploy.mjs';
 
 const [base] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const url = new URL(base);
@@ -46,7 +46,7 @@ try {
   await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
     save.stash.items = { ...save.stash.items, potion: 6, 'super-potion': 4, 'poke-ball': 6, 'great-ball': 3, 'oran-berry': 2, 'sitrus-berry': 2, 'pecha-berry': 2,
       antidote: 3, 'cheri-berry': 2, 'rawst-berry': 2, 'chesto-berry': 2, 'aspear-berry': 2, pickaxe: 1, lockpick: 1, 'tm40-aerial-ace': 1 };
-    save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'dropin', 'check', 'center'];
+    save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'check', 'center'];
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url: url.href });
   await until(sceneIs('title'), 'the title again');
@@ -54,6 +54,7 @@ try {
   await until(sceneIs('base'), 'the base');
   await walkIntoBase(page, 'raid-arena', { press, until });
   await until(takePokemon('Bulbasaur'), 'Bulbasaur in the party');
+  await openHallPanel(page, 'rack', { press, until });
   await sleep(400);
 
   const pluses = `[...document.querySelectorAll('button[data-count-kind="item"][data-count-dir="1"]')]`;

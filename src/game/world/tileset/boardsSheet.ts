@@ -6,7 +6,7 @@ import { tileReader, type MaterialTiles } from './catalogue';
  * disassembly by `scripts/cut-frlg-boards.mjs`, three cells by three as a deck is
  * laid.
  *
- * Numbered from 20000, clear of every other sheet the loader fetches
+ * Numbered from 22000, clear of every other sheet the loader fetches
  * (`catalogue.test.ts` holds the whole list apart).
  */
 export const BOARDS_SHEET_SOURCE = tileReader(
@@ -16,7 +16,7 @@ export const BOARDS_SHEET_SOURCE = tileReader(
     columns: BOARDS_SHEET.columns,
     rows: BOARDS_SHEET.rows,
   },
-  20000,
+  22000,
 );
 
 const cell = (x: number, y: number): number => BOARDS_SHEET_SOURCE.at(x, y);

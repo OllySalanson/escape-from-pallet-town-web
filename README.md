@@ -56,16 +56,31 @@ Walk into the Raid Arena at the west end of the harbour. The first time, it show
 in for: a trailer of a raid, played in the game itself, with you in it. You sneak about with your
 partner picking things up, a fight goes your way, and then tonight's hunter turns up with their whole
 team. A Charizard has to come and save you. (Any key skips it, and after the first time there's a
-SKIP on screen.) Then the loadout. Pick who comes with you and what goes in the pack. Everything you take is at risk, which is the
+SKIP on screen.) Then you're inside, and it's enormous: a great round hall four times the width of anything else in the
+harbour, a stone platform all the way round with pillars and burning torches, and in the middle a colosseum of steps going
+down to a pit. Lean on the fence and look. That's Greystone Vale at the bottom, from a very long way up - only the parts
+you've walked, with cloud over everything else. Everything you do before a raid, you do right here on the floor.
+Walk up to the stone bench and pick who comes with you; they'll sit there waiting. Walk up to the armoury rack and
+pick what goes in the pack, and which pack. Everything you take is at risk, which is the
 point: a Potion in the pack is a Potion you might lose, and a Potion left at home is a fight you
 might lose instead. The pack is a grid of squares, not a list, so a Super Potion and a crate of
-parts are fighting for the same space.
+parts are fighting for the same space. Whatever you can't bear to lose goes in the locker, if it fits.
 
 <p align="center">
-  <img src="docs/readme/loadout.png" width="800" alt="The loadout screen: the stash on the left, the pack's grid of squares on the right, three Potions packed.">
+  <img src="docs/readme/the-bench.png" width="800" alt="The player standing at a stone bench in the great hall, with a panel beside them listing who can come on the raid.">
 </p>
 
-### 2. Drop in, and the clock starts
+### 2. Jump in, and the clock starts
+
+Then walk round the rim and look down. Every little gold light in the pit is a way in you know about, and the
+one you're standing over is the one you'll get. Press SPACE, read what you've got at stake, and go over the
+fence: down past the steps, through the cloud, and out of the sky into the raid. (You land on your feet.
+Walk out alive and you'll come back to that same spot on the rim, and watch the cloud lift off
+everywhere you've just been.)
+
+<p align="center">
+  <img src="docs/readme/the-rim.png" width="800" alt="Looking down from the rim: Greystone Vale through the pit with a gold light on the way in, its name over it, and a panel along the foot saying what the raid has at stake with a JUMP IN button.">
+</p>
 
 One map, Greystone Vale, drawn tile by tile and far bigger than one raid can cover, so there is
 always somewhere you didn't get to. Tall grass rolls wild encounters, and whatever lives in the water
@@ -155,7 +170,7 @@ and say yes, you're let in to have a nose round. Six buildings, four of them kep
 
 - **The Raid Arena**, a Gym that has had a makeover - RAID on the plate, a gold ARENA badge, red
   banners and a red runner up to the door - on its own stone forecourt at the west end, by the jetty,
-  is where every raid starts: walk in and you're kitting up.
+  is where every raid starts, in a hall so big the pit in its floor has the whole of Greystone Vale at the bottom.
 - **Professor Oak's Lab** keeps the contract board, and a wall map that lights up wherever you've
   walked.
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full, and she charges in
@@ -224,7 +239,7 @@ face them and press Space to wave. It's that
 Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
 
 <p align="center">
-  <img src="docs/readme/harbour.png" width="800" alt="The Harbour, home from a raid: THE HARBOUR on its board at the top left, the Seagallop ferry tied up beside the jetty you have just stepped off, a sailor and a Slowpoke on the quay, the Raid Arena and the Pokémon Center up the yard, Bill's cottage with its name over it, and a policeman with his Growlithe by Harbour Square.">
+  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: THE HARBOUR on its board at the top left, the Seagallop ferry tied up beside the jetty, a sailor and a Slowpoke on the quay, the Raid Arena and the Pokémon Center up the yard, Bill's cottage with its name over it, and a policeman with his Growlithe by Harbour Square.">
 </p>
 
 <p align="center">
@@ -262,7 +277,7 @@ A few things worth knowing before you go:
 - **The vale has a boss, and the boss holds two doors.** Win, and they stay open for good.
 - **Some ways need a move, not a fight.** Teach a Pokémon Strength and the boulders in your way start to shift.
 - **Prizes gleam.** A few places in the vale hold something only they have, and on a raid where one turns up you can see it shining from a long way off. Is it worth the detour with forty seconds on the clock? Yes. No. Maybe.
-- **The drop-in map is dark where you haven't been.** Walk it, come home, and watch the dark pull back.
+- **The pit is cloud where you haven't been.** Walk it, come home, and watch the cloud lift.
 - **Contracts change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost.
 
 ## Draw your own map

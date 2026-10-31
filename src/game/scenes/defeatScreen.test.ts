@@ -359,7 +359,7 @@ describe('the result screen on a defeat', () => {
     advance(400);
     press('Enter');
 
-    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid' });
+    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid', room: 'raid-arena' });
   });
 });
 
@@ -572,7 +572,7 @@ describe('moving the defeat sequence on', () => {
     advance(1_000);
     press(' ');
 
-    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid' });
+    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid', room: 'raid-arena' });
   });
 });
 

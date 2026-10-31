@@ -11,6 +11,7 @@ import { EMBER_SHEET_SOURCE } from './emberSheet';
 import { BOARDS_SHEET_SOURCE } from './boardsSheet';
 import { HIDEOUT_SHEET_SOURCE } from './hideoutSheet';
 import { RAID_ARENA_SHEET_SOURCE } from '../../base/raidArenaSheet';
+import { ARENA_HALL_SOURCE } from '../../base/arenaHallSheet';
 
 /**
  * The images the game draws maps from, and where each one's tiles sit in the
@@ -75,4 +76,5 @@ export const TILE_SOURCES: readonly TileSource[] = [
   TILE_ANIMATION_SOURCE.source,
   // THE RAID ARENA's own front (`base/raidArenaSheet.ts`).
   RAID_ARENA_SHEET_SOURCE.source,
+  ARENA_HALL_SOURCE.source,
 ];

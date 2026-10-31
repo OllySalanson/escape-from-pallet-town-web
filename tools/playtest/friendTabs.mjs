@@ -12,7 +12,7 @@
 // (`run/raidInFlight.ts`) so it may deploy at all, which is the one thing these
 // drivers do that no player ever could.
 import { sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn } from './deploy.mjs';
 
 export const page = (base) => `${base}${base.includes('?') ? '&' : '?'}testmode=pixels&harbour=local`;
 export const WORLD = `${GAME}.scene.getScene('world')`;
@@ -84,7 +84,7 @@ export async function twoInARoom(browser, url, out) {
     await bring(tab);
     await tab.waitFor(takePokemon(), { what: 'a Pokémon to take' });
     await sleep(300);
-    for (const label of ['Choose drop-in', 'Review & deploy', 'Enter the raid']) await click(tab, label);
+    await jumpIn(tab, { until: (expression, what) => tab.waitFor(expression, { what }) });
     await tab.waitFor(sceneIs('world'), { what: 'the raid' });
     await readOn(tab);
   };

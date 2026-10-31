@@ -318,8 +318,8 @@ export class ExtractionScene extends Phaser.Scene {
     audioManager.play('confirm');
     // Storage-less browsers never reached a base in the first place, so the
     // title screen stays the fallback it is everywhere else in the game. A raid
-    // that is over puts the player down on the quay, beside the man who buys
-    // what they came home with.
+    // that is over puts the player back on the rim they jumped from, looking
+    // down at what they have just walked (`BaseScene`).
     const home = homeAfterRaid();
     const reachable = this.scene.manager.keys[home.key];
     this.cameras.main.fadeOut(200, 0, 0, 0);
