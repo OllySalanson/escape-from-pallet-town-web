@@ -290,6 +290,8 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
     // draw it (`insideTileset.ts`, `playerMapTileset.ts`), and a map drawn
     // on this one is never frozen, so this is only a stray tile's fallback.
     ice: ground(FRLG_MATERIALS.PAVING),
+    // Nor planks: the Sevii Islands' are laid by the catalogues that cut them.
+    boards: ground(FRLG_MATERIALS.SAND),
     // Nor a spinner floor, which is the Rocket Hideout's (`insideTileset.ts`).
     ...spinnerFallback(ground(FRLG_MATERIALS.PAVING)),
     stone: ground(FRLG_MATERIALS.STONE_BRICK),

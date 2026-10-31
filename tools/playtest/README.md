@@ -73,6 +73,11 @@ stepped loop and prints how far the player moved on each frame, failing if any
 frame of the walk is off the steady rate: a judder loses no game time, so a
 check on arrival times cannot see one.
 
+`secondRing.mjs <url> <dir> [--port=N]` walks the vale's second ring on foot from
+Mill Square: the boardwalks, the punt out to Duck Island and back, in and out of the
+inns, the strand, Bridge End and the moor, photographing each. It takes about three
+minutes against a test-mode build.
+
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a
 player who stands still, the brook's frames turning over, in at the mill and out
