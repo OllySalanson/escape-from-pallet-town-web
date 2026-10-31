@@ -1173,6 +1173,7 @@ export class HubScene extends Phaser.Scene {
     // Remembered on the way out rather than on the way home, because it is what
     // the player chose and a raid that goes badly chose it too.
     new SaveManager().recordSecurePreference(deployment.securePreference);
+    new SaveManager().recordBench(deployment.party.map((stored) => stored.id));
     // The same moment, for the same reason: it is what the player chose, and a
     // raid that goes badly chose it too.
     new SaveManager().recordContainerArrangements(
@@ -2550,21 +2551,14 @@ export class HubScene extends Phaser.Scene {
   private rimStakes(insertionId: RunInsertionId): string {
     const securedPokemon = this.flow.securedPokemon;
     const securedItems = this.flow.securedItems;
-    const riskedPokemon = this.flow.party.filter((stored) => !securedPokemon.includes(stored));
-    const riskedItems = this.flow.items
-      .map((item) => ({
-        itemId: item.itemId,
-        quantity: item.quantity - (securedItems.find((secured) => secured.itemId === item.itemId)?.quantity ?? 0),
-      }))
-      .filter((item) => item.quantity > 0);
     const stack = (item: { readonly itemId: ItemId; readonly quantity: number }): string =>
       `${this.itemName(item.itemId)} ${itemCountTag(item.itemId, item.quantity)}`;
     // The pack leads, because it is the biggest single thing a wipe takes and
     // the one nothing in the locker beside it can protect.
     const lost = [
       ...(this.flow.packItemId === undefined ? [] : [`the ${this.flow.packName}`]),
-      ...riskedPokemon.map((stored) => stored.pokemon.name),
-      ...riskedItems.map(stack),
+      ...this.flow.riskedPokemon.map((stored) => stored.pokemon.name),
+      ...this.flow.riskedItems.map(stack),
     ];
     const kept = [...securedPokemon.map((stored) => stored.pokemon.name), ...securedItems.map(stack)];
     const threat = this.hunterThreatAt(insertionId, this.flow.party);

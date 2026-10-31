@@ -72,5 +72,7 @@ export function flowForGame(game: RestoredGame): DeploymentFlow {
     },
     // The partner wins a level tie for the container's protection.
     game.starterSpeciesId,
+    // Whoever went down last raid is back on the bench.
+    game.raidProgress.lastBench,
   );
 }

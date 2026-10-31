@@ -55,6 +55,9 @@ describe('what the house makes of a raid', () => {
     expect(moodOfRaid(true, 'solid')).toBe('cheer');
     expect(moodOfRaid(true, 'thin')).toBe('clap');
     expect(moodOfRaid(true, 'empty')).toBe('clap');
+    // Cutting it fine has them on their feet, whatever came out with it.
+    expect(moodOfRaid(true, 'empty', true)).toBe('roar');
+    expect(moodOfRaid(false, 'empty', true)).toBe('groan');
     expect(moodOfRaid(false, 'loaded')).toBe('groan');
   });
 

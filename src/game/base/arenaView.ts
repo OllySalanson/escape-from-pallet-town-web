@@ -112,6 +112,8 @@ import { COINS_TO_WAKE_THE_EYES, COIN_PLINK_MS, coinAt } from './pitCoins';
 /** Below the ground layer, deepest first. */
 const FLOOR_DEPTH = TERRAIN_DEPTH - 0.9;
 const LIFTING_DEPTH = TERRAIN_DEPTH - 0.89;
+/** How low the fires burn with somebody on the rail. */
+const BREATH_FIRES = 0.28;
 /** What crosses the floor goes under the marks on it: a way in is never hidden by it. */
 const SHADOW_DEPTH = TERRAIN_DEPTH - 0.885;
 const TOWN_LIGHT_DEPTH = TERRAIN_DEPTH - 0.884;
@@ -455,6 +457,7 @@ export class ArenaView {
   private readonly mists: Phaser.GameObjects.TileSprite[] = [];
   private readonly look: Phaser.GameObjects.Image;
   private readonly fires: Fire[] = [];
+  private breathHeld = false;
   private readonly nameFrame: Phaser.GameObjects.Graphics;
   private readonly nameText: Phaser.GameObjects.Text;
   private nameShown = '';
@@ -1177,12 +1180,20 @@ export class ArenaView {
       const next = (fire.frame + 1 + Math.floor(Math.random() * (FLAME_FRAMES.length - 1))) % FLAME_FRAMES.length;
       fire.frame = next;
       fire.flame.setFrame(String(next));
-      const strength = (0.7 + Math.random() * 0.3) * this.crowd.fireShare;
+      const strength = (0.7 + Math.random() * 0.3) * this.crowd.fireShare * (this.breathHeld ? BREATH_FIRES : 1);
       fire.halo.setAlpha(strength);
       fire.pool.setAlpha(strength);
       fire.flare?.setFrame(String((next + index) % FLARE_FRAMES.length));
     });
     this.runTheRingOfFire(deltaMs);
+  }
+
+  /** The whole hall holds its breath with somebody on the rail: the fires drop, whatever they were doing. */
+  public holdBreath(held: boolean): void {
+    this.breathHeld = held;
+    for (const fire of this.fires) {
+      fire.clock = fire.every;
+    }
   }
 
   /**

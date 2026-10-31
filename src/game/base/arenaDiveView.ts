@@ -1,9 +1,13 @@
 import type Phaser from 'phaser';
 import { getIdleFrame } from '../playerFrames';
 import { cloudSheet, paintCloudPiece } from './arenaPit';
-import { PUFF_RADII, fallFacing, fallerAt, puffsAt, windAt, JUMP_MS, type JumpPose } from './arenaDive';
+import { PUFF_RADII, PURSUER_FROM_MS, fallFacing, fallerAt, pursuerAt, puffsAt, windAt, JUMP_MS, type JumpPose } from './arenaDive';
+import { audioManager } from '../audio/AudioManager';
+import { getWorldCharacterAppearance, worldCharacterIdleFrame } from '../world/characterPresentation';
+import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
 import { partnerFrame } from './partner';
+import { FIRE_LETTERING, stampedWord } from '../ui/stampedLettering';
 
 /**
  * What falls and what goes past on the way down from THE RAID ARENA's rail: the
@@ -25,12 +29,25 @@ const WIND_DEPTH = 1001;
 const FALLER_DEPTH = 1002;
 const NEAR_PUFF_DEPTH = 1003;
 const CLOUD_DEPTH = 1004;
+/** Behind whoever is falling: it is above them and going past. */
+const PURSUER_DEPTH = FALLER_DEPTH - 0.5;
 
 const WIND_INK = 0xd8e0e8;
 const WIND_DIM_INK = 0x90a0b0;
 
 /** How many pieces of cloud can be in sight at once, from `puffsAt`. */
 const PUFF_POOL = 10;
+
+/** What is going over, stamped over the pit: as big as the screen can hold them all at, from the top down. */
+const STAKE_DEPTH = CLOUD_DEPTH + 1;
+const STAKE_FONTS = ['30px', '20px'] as const;
+/** Three of the big ones fit above the player on the smallest screen, and six of the small. */
+const STAKE_BIG_MOST = 3;
+const STAKE_TOP = 12;
+const STAKE_GAP = 1;
+const STAKE_SIDE_ROOM = 16;
+/** How long a word stands at twice its size as it lands. */
+const STAKE_POP_MS = 70;
 
 /** Where the player falls on the screen, from its middle, and their partner beside them. Top-left of a frame. */
 const PLAYER_PLACE = { x: -8, y: -28 };
@@ -59,6 +76,10 @@ export class ArenaDiveView {
   private partnerTexture: string | null = null;
   private player: Faller | null = null;
   private partner: Faller | null = null;
+  /** The raid's hunter, once it has come over the rail after them. */
+  private pursuer: { readonly rival: HunterRival; image: Phaser.GameObjects.Image | null } | null = null;
+  /** What is going over the fence with them, for as long as they are on the rail. */
+  private stakes: Phaser.GameObjects.Image[] = [];
 
   public constructor(scene: Phaser.Scene, playerTexture: string) {
     this.scene = scene;
@@ -118,6 +139,74 @@ export class ArenaDiveView {
     }
   }
 
+  /** Stamps what is at risk, out of sight until it is called for. */
+  public stakesAre(words: readonly string[]): void {
+    const { width } = this.scene.scale;
+    const stamp = (font: string) =>
+      words.map((word, index) => stampedWord(this.scene, `arena-stake-${index}`, word, { fontSize: font, depthPx: 3, ...FIRE_LETTERING }));
+    let sizes = stamp(words.length <= STAKE_BIG_MOST ? STAKE_FONTS[0] : STAKE_FONTS[1]);
+    if (words.length <= STAKE_BIG_MOST && sizes.some((size) => size.width > width - STAKE_SIDE_ROOM)) {
+      sizes = stamp(STAKE_FONTS[1]);
+    }
+    let top = STAKE_TOP;
+    this.stakes = sizes.map((size, index) => {
+      const image = this.keep(
+        this.scene.add
+          .image(Math.floor((width - size.width) / 2), top, `arena-stake-${index}`)
+          .setOrigin(0, 0)
+          .setDepth(STAKE_DEPTH)
+          .setVisible(false),
+      );
+      top += size.height + STAKE_GAP;
+      return image;
+    });
+  }
+
+  /** So many of the words are up. The newest lands from twice its size, a whole step at a time. */
+  public stakesUp(count: number, newestMs: number): void {
+    this.stakes.forEach((image, index) => {
+      const pops = index === count - 1 && newestMs < STAKE_POP_MS;
+      const homeX = Math.floor((this.scene.scale.width - image.width) / 2);
+      image
+        .setVisible(index < count)
+        .setScale(pops ? 2 : 1)
+        .setX(pops ? Math.floor((this.scene.scale.width - image.width * 2) / 2) : homeX);
+    });
+  }
+
+  public stakesGone(): void {
+    this.stakes.forEach((image) => image.destroy());
+    this.stakes = [];
+  }
+
+  public get isPursued(): boolean {
+    return this.pursuer !== null;
+  }
+
+  /** Who comes over the rail after them. */
+  public pursuedBy(rival: HunterRival): void {
+    this.pursuer = { rival, image: null };
+  }
+
+  /** The hunter, a time into the fall. Its own sprite and no words; the sting is the one it arrives to in the raid. */
+  private chase(fallingMs: number): void {
+    const pursuer = this.pursuer;
+    if (!pursuer || fallingMs < PURSUER_FROM_MS) {
+      return;
+    }
+    const appearance = getWorldCharacterAppearance('npc', pursuer.rival.design);
+    const frame = worldCharacterIdleFrame(appearance, fallFacing(fallingMs, 1));
+    if (!pursuer.image) {
+      pursuer.image = this.keep(this.scene.add.image(0, 0, appearance.textureKey, frame).setOrigin(0, 0).setDepth(PURSUER_DEPTH));
+      audioManager.play('hunterArrival');
+    }
+    const at = pursuerAt(fallingMs, this.scene.scale.width, this.scene.scale.height);
+    pursuer.image.setVisible(at !== null).setFrame(frame);
+    if (at) {
+      pursuer.image.setPosition(at.x, at.y);
+    }
+  }
+
   private faller(
     texture: string,
     from: { readonly x: number; readonly y: number },
@@ -146,6 +235,9 @@ export class ArenaDiveView {
     const middleY = Math.floor(height / 2);
     this.fall(this.player, elapsedMs, pose.figure.seen, steer);
     this.fall(this.partner, elapsedMs, pose.figure.seen, { x: steer.x * PARTNER_DRIFT, y: steer.y * PARTNER_DRIFT });
+    if (this.player?.startedAtMs !== null && this.player?.startedAtMs !== undefined) {
+      this.chase(elapsedMs - this.player.startedAtMs);
+    }
 
     this.wind.clear();
     for (const streak of windAt(elapsedMs, pose.wind, width, height)) {

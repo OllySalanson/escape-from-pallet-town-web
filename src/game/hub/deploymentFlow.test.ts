@@ -151,6 +151,49 @@ describe('deployment flow', () => {
     expect(flow.party).toEqual([]);
   });
 
+  describe('the bench as it was left', () => {
+    const benchOf = (stash: Stash, lastBench: readonly string[]): readonly string[] =>
+      new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, lastBench).party.map(({ id }) => id);
+    const teamOfThree = (): { stash: Stash; ids: readonly string[] } => {
+      const stash = createStartingStash();
+      stash.addPokemon(new Pokemon(SQUIRTLE, 5));
+      stash.addPokemon(new Pokemon(IVYSAUR, 16));
+      return { stash, ids: stash.listPokemon().map(({ id }) => id) };
+    };
+
+    it('puts a team back in the order it went down, so home, SPACE and ENTER is all going again asks', () => {
+      const { stash, ids } = teamOfThree();
+      expect(benchOf(stash, [ids[2], ids[0]])).toEqual([ids[2], ids[0]]);
+    });
+
+    it('fills the container from it, as a team put there by hand fills it', () => {
+      const { stash, ids } = teamOfThree();
+      const flow = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, ids);
+      expect(flow.isDeployable).toBe(true);
+      expect(flow.securedPokemon.length).toBeGreaterThan(0);
+    });
+
+    it('leaves out anybody lost or fainted: they are simply not there', () => {
+      const { stash, ids } = teamOfThree();
+      stash.listPokemon()[1].pokemon.currentHp = 0;
+      expect(benchOf(stash, [ids[0], ids[1], 'gone-for-good'])).toEqual([ids[0]]);
+    });
+
+    it('leaves the bench empty when nobody who went down can go again', () => {
+      const { stash, ids } = teamOfThree();
+      stash.listPokemon()[0].pokemon.currentHp = 0;
+      expect(benchOf(stash, [ids[0]])).toEqual([]);
+    });
+
+    it('asks nothing of a player who has never been down, and is a default, never a cage', () => {
+      const { stash, ids } = teamOfThree();
+      expect(benchOf(stash, [])).toEqual([]);
+      const flow = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, ids);
+      flow.togglePokemon(ids[0]);
+      expect(flow.party.map(({ id }) => id)).toEqual(ids.slice(1));
+    });
+  });
+
   it('leaves a lone Pokemon that cannot fight out of the party', () => {
     const stash = createStartingStash();
     stash.listPokemon()[0].pokemon.currentHp = 0;

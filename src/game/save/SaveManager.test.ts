@@ -1,3 +1,4 @@
+import { createRaidInFlight } from '../run/raidInFlight';
 import { describe, expect, it } from 'vitest';
 import {
   Pokemon,
@@ -2256,6 +2257,57 @@ describe('SaveManager', () => {
         pokemon: false,
         items: [{ itemId: 'super-potion', quantity: 1 }],
       });
+    });
+  });
+
+  describe('a run of raids out', () => {
+    it('counts raids out in a row, a lost one ends it and says what it ended, and a save without one has none', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      const run = () => new SaveManager(storage).load()?.raidProgress.outRun;
+      expect(run()).toBeUndefined();
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      expect(run()).toEqual({ now: 3, broke: 0 });
+      saves.recordRaidEnded('greystone-vale', 'wiped');
+      expect(run()).toEqual({ now: 0, broke: 3 });
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      expect(run()).toEqual({ now: 1, broke: 0 });
+    });
+
+    it('cannot be saved by closing the tab: an abandoned raid ends it too', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidEnded('greystone-vale', 'extracted');
+      saves.recordRaidInFlight(createRaidInFlight('greystone-vale', [], [], undefined));
+      expect(saves.settleAbandonedRaid()).not.toBeNull();
+      expect(new SaveManager(storage).load()?.raidProgress.outRun).toEqual({ now: 0, broke: 2 });
+    });
+  });
+
+  describe('who went down last raid', () => {
+    it('is remembered at the door, and a save that has never been down has nobody', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      expect(new SaveManager(storage).load()?.raidProgress.lastBench).toBeUndefined();
+
+      expect(saves.recordBench(['charmander-1', 'pidgey-2'])).toBe(true);
+
+      expect(new SaveManager(storage).load()?.raidProgress.lastBench).toEqual(['charmander-1', 'pidgey-2']);
+    });
+
+    it('counts the raids that same team has gone down, whatever order it sat in', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      const raids = () => new SaveManager(storage).load()?.raidProgress.benchRaids;
+      saves.recordBench(['charmander-1', 'pidgey-2']);
+      expect(raids()).toBe(1);
+      saves.recordBench(['pidgey-2', 'charmander-1']);
+      expect(raids()).toBe(2);
+      saves.recordBench(['pidgey-2']);
+      expect(raids()).toBe(1);
     });
   });
 

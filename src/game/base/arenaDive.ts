@@ -129,6 +129,43 @@ export function fallerAt(
   };
 }
 
+/**
+ * The raid's hunter comes over the rail after them. It says what the hunter's
+ * arrival is, with no words: the one on the far floor has jumped too, and goes past
+ * them, so it is down there first. It comes in at the top of the screen once the
+ * two are settled, hangs a moment over them to be seen, and is off the bottom
+ * before the cloud comes in.
+ */
+export const PURSUER_FROM_MS = 480;
+const PURSUER_COMES_MS = 420;
+const PURSUER_HANGS_MS = 260;
+const PURSUER_GOES_MS = 420;
+/** Where it hangs, from the middle of the screen: over the player's shoulder, clear of them both. */
+const PURSUER_PLACE = { x: 34, y: -78 };
+/** How far beyond the screen's edges it starts and ends, and how far it drifts out from them on its way past. */
+const PURSUER_OFF_SCREEN = 40;
+const PURSUER_PASSES_WIDE = 18;
+
+/** Where the hunter is on the screen a time into the fall (top-left of a frame), or null if it is not. */
+export function pursuerAt(
+  fallingMs: number,
+  viewWidth: number,
+  viewHeight: number,
+): { readonly x: number; readonly y: number } | null {
+  const ms = fallingMs - PURSUER_FROM_MS;
+  const comes = unit(ms / PURSUER_COMES_MS);
+  const goes = unit((ms - PURSUER_COMES_MS - PURSUER_HANGS_MS) / PURSUER_GOES_MS);
+  if (ms < 0 || goes >= 1) {
+    return null;
+  }
+  const hangX = viewWidth / 2 + PURSUER_PLACE.x;
+  const hangY = viewHeight / 2 + PURSUER_PLACE.y;
+  const buffet = Math.sin(fallingMs / 71) * 2;
+  // Slowing into its place; then, as anything falling past is, all at once.
+  const y = -PURSUER_OFF_SCREEN + (hangY + PURSUER_OFF_SCREEN) * ease(comes) + (viewHeight + PURSUER_OFF_SCREEN - hangY) * goes * goes;
+  return { x: Math.round(hangX + PURSUER_PASSES_WIDE * goes * goes + buffet), y: Math.round(y) };
+}
+
 /** How far the arrow keys can drift whoever is falling, and how quickly: for the feel of it, and nothing depends on it. */
 const STEER_ACROSS = 34;
 const STEER_DOWN = 20;

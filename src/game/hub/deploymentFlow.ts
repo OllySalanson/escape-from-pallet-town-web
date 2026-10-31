@@ -197,6 +197,7 @@ export class DeploymentFlow {
     preference: SecurePreference = DEFAULT_SECURE_PREFERENCE,
     arrangements: LoadoutArrangements = EMPTY_LOADOUT_ARRANGEMENTS,
     partnerSpeciesId: string | null = null,
+    lastBench: readonly string[] = [],
   ) {
     this.stash = stash;
     this.partnerSpecies = new Set(
@@ -214,6 +215,25 @@ export class DeploymentFlow {
       arrangements.secure.items.length > 0 || arrangements.secure.cargo.length > 0;
     this.packMedicine();
     this.packLonePokemon();
+    this.packLastBench(lastBench);
+  }
+
+  /**
+   * Puts back who went down last raid, as a default and never a cage, the way
+   * the medicine is packed: home from a raid, SPACE at the rim and ENTER are all
+   * going again should ask, and a team of two or more was otherwise on the bench
+   * for one raid only and walked back to it every time (the third Arena sweep).
+   * Anybody lost is simply not in the vault, and anybody fainted cannot fight, so
+   * neither is there; nobody left says so at the rim as an empty bench always has.
+   */
+  private packLastBench(lastBench: readonly string[]): void {
+    const held = this.stash.listPokemon();
+    for (const id of lastBench) {
+      const stored = held.find((each) => each.id === id);
+      if (stored && !stored.pokemon.isFainted && !this.selectedPokemonIds.includes(id)) {
+        this.togglePokemon(id);
+      }
+    }
   }
 
   /**
@@ -221,7 +241,8 @@ export class DeploymentFlow {
    * cage, the way the medicine is packed: a player with one Pokemon has one
    * party to send, and was made to ADD it again on every raid under "0/6
    * POKEMON PACKED" (playtest 47). One that cannot fight is left out, because a
-   * party of one fainted Pokemon is no party; a team is still chosen by hand.
+   * party of one fainted Pokemon is no party; a team comes back as `packLastBench`
+   * puts it.
    */
   /**
    * A lone Pokemon revived while the loadout is open goes into the party as it
@@ -480,6 +501,23 @@ export class DeploymentFlow {
   /** The protected Pokemon, in party order, resolved against the live party. */
   public get securedPokemon(): readonly StashedPokemon[] {
     return this.party.filter((stored) => this.securedPokemonIds.includes(stored.id));
+  }
+
+  /** Who a wipe would take: the party, less whoever is in the container. */
+  public get riskedPokemon(): readonly StashedPokemon[] {
+    const secured = this.securedPokemon;
+    return this.party.filter((stored) => !secured.includes(stored));
+  }
+
+  /** What a wipe would take of the pack's contents: what was packed, less what is in the container. */
+  public get riskedItems(): readonly ItemStack[] {
+    const secured = this.securedItems;
+    return this.items
+      .map(({ itemId, quantity }) => ({
+        itemId,
+        quantity: quantity - (secured.find((held) => held.itemId === itemId)?.quantity ?? 0),
+      }))
+      .filter((item) => item.quantity > 0);
   }
 
   /**

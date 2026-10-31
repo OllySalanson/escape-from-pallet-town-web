@@ -377,6 +377,20 @@ export interface RaidProgress {
    */
   readonly securePreference?: SecurePreference;
   /**
+   * Who went down last raid, by stash id, so the bench comes back as it was
+   * left (`DeploymentFlow`). Absent on every save written before it, which reads
+   * as a bench nobody has sat on - so no version bump.
+   */
+  readonly lastBench?: readonly string[];
+  /**
+   * How many raids in a row have got out, and the run the last lost raid ended
+   * (`base/runSlate.ts`). Kept with the record of raids and asked of nothing else.
+   * Absent reads as no run yet, so no version bump.
+   */
+  readonly outRun?: OutRun;
+  /** How many raids in a row that same team has gone down: the rail says less to a team it knows (`base/heldBreath.ts`). */
+  readonly benchRaids?: number;
+  /**
    * How the player last laid the two containers out, as lists of seats
    * (`items/itemGrid.ts`). A pack somebody arranged by hand comes back the way
    * they left it - across screens, across a save and across a raid - because an
@@ -428,6 +442,12 @@ export interface RaidProgress {
 export interface LandingRecord {
   readonly streak: number;
   readonly best: number;
+}
+
+/** How many raids in a row have got out, and what the last lost raid ended. */
+export interface OutRun {
+  readonly now: number;
+  readonly broke: number;
 }
 
 export interface MapRaidRecord {
@@ -1427,7 +1447,8 @@ export class SaveManager {
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
     );
     game.stash.restockMinimumSupplies();
-    if (!this.save({ ...game, ...RAID_RESOLVED })) {
+    // Walking away from a raid is losing it, or a run could be saved by closing the tab.
+    if (!this.save({ ...game, raidProgress: extendRun(game.raidProgress, 'wiped'), ...RAID_RESOLVED })) {
       return null;
     }
     return {
@@ -1457,7 +1478,7 @@ export class SaveManager {
     if (!game) {
       return false;
     }
-    let raidProgress = bumpRaid(game.raidProgress, mapId, outcome);
+    let raidProgress = extendRun(bumpRaid(game.raidProgress, mapId, outcome), outcome);
     if (memory) {
       raidProgress = { ...raidProgress, raidMemory: remembering(raidProgress.raidMemory, mapId, memory.walk, memory.ending) };
     }
@@ -1490,6 +1511,21 @@ export class SaveManager {
     }
     const raidProgress: RaidProgress = { ...game.raidProgress, securePreference: preference };
     return this.save({ ...game, raidProgress });
+  }
+
+  /**
+   * Remembers who went down, at the moment a raid deploys, for the same reason
+   * as the secure preference: a raid that wipes chose them too.
+   */
+  public recordBench(pokemonIds: readonly string[]): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const before = new Set(game.raidProgress.lastBench ?? []);
+    const sameTeam = before.size === pokemonIds.length && pokemonIds.every((id) => before.has(id));
+    const benchRaids = sameTeam ? (game.raidProgress.benchRaids ?? 0) + 1 : 1;
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastBench: [...pokemonIds], benchRaids } });
   }
 
   /**
@@ -1799,6 +1835,12 @@ function bumpRaid(
   };
 }
 
+/** A raid out adds to the run, and anything else ends it. */
+function extendRun(progress: RaidProgress, outcome: 'extracted' | 'wiped'): RaidProgress {
+  const now = progress.outRun?.now ?? 0;
+  return { ...progress, outRun: outcome === 'extracted' ? { now: now + 1, broke: 0 } : { now: 0, broke: now } };
+}
+
 /** Settles the raid's own cost before anything it earned is added. */
 function applySettlement(stash: Stash, settlement: RaidSettlement | undefined): void {
   if (!settlement) {
@@ -2007,6 +2049,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),
+    ...(readOutRun(value.outRun) ?? {}),
     ...(readPit(value.pit) ?? {}),
     ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
@@ -2042,6 +2085,8 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // A save written before the container filled itself has no preference, and
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),
+    ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
+    ...(Number.isInteger(value.benchRaids) && (value.benchRaids as number) > 0 ? { benchRaids: value.benchRaids as number } : {}),
     packArrangement: readArrangement(value.packArrangement),
     secureArrangement: readArrangement(value.secureArrangement),
     ...(Array.isArray(value.homeLayout) ? { homeLayout: readHomeLayout(value.homeLayout) } : {}),
@@ -2076,6 +2121,14 @@ function readPit(value: unknown): { readonly pit: PitRecord } | null {
 }
 
 /** A landing record, or nothing if what is stored is not one. */
+function readOutRun(value: unknown): { readonly outRun: OutRun } | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const count = (entry: unknown): number => (Number.isInteger(entry) && (entry as number) > 0 ? (entry as number) : 0);
+  return { outRun: { now: count(value.now), broke: count(value.broke) } };
+}
+
 function readLandings(value: unknown): { readonly landings: LandingRecord } | null {
   if (typeof value !== 'object' || value === null) {
     return null;

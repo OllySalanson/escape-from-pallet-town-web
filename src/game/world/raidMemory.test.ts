@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CLOSE_CALL_CLOCK_MS,
+  closeCallLine,
   MARKS_KEPT,
   clockLine,
   fellLine,
@@ -19,6 +21,24 @@ const walked = (steps: number) => {
   }
   return walk;
 };
+
+describe('how close a raid out was', () => {
+  const left = (ms: number, reads: string) => ({ ms, reads });
+
+  it('says nothing of a raid with time in hand and nobody behind it', () => {
+    expect(closeCallLine(left(CLOSE_CALL_CLOCK_MS + 1, '0:31'), null)).toBeNull();
+  });
+
+  it('names the clock once it has gone red, and that before anybody on its tail', () => {
+    expect(closeCallLine(left(8000, '0:08'), null)).toBe('OUT WITH 0:08 LEFT');
+    expect(closeCallLine(left(CLOSE_CALL_CLOCK_MS, '0:30'), 'Blue')).toBe('OUT WITH 0:30 LEFT');
+  });
+
+  it('names whoever was on its tail, and fits a mark', () => {
+    expect(closeCallLine(left(200_000, '3:20'), 'LT. SURGE')).toBe('OUT WITH LT. SURGE ON YOUR TAIL');
+    expect(closeCallLine(left(200_000, '3:20'), 'LT. SURGE')!.length).toBeLessThanOrEqual(40);
+  });
+});
 
 describe("the pit's memory of a raid", () => {
   it('leaves a mark where it ended, whatever was last walked, and the walk of the raid just gone', () => {

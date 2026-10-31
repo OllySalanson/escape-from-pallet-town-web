@@ -44,7 +44,7 @@ import { GAME_FONT } from '../ui/gameFont';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import { flashScreen } from '../ui/screenFlash';
 import { iconTextureKey, itemIconName, WORLD_ICONS } from '../ui/icons';
-import { stampedWord } from '../ui/stampedLettering';
+import { FIRE_LETTERING, stampedWord } from '../ui/stampedLettering';
 import { readLook } from '../look/look';
 import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
@@ -128,7 +128,7 @@ const BACKDROP_ART = { x: 0, y: 1, width: 255, height: 143 } as const;
 /** The stamped words' palettes: the title's gold, an alarm red, and an exit green. */
 const GOLD = { fill: ['#fffbe6', '#ffe58a', '#ffd04a', '#f4a933'], rim: '#a84a10', depth: '#5a2008', edge: '#0a1428' };
 const MINT = { fill: ['#e8fff4', '#9be8c8'], rim: '#2c5aa0', depth: '#1c3768', edge: '#0a1428' };
-const FIRE = { fill: ['#fff8c8', '#ffd048', '#f88828', '#d83818'], rim: '#701010', depth: '#380808', edge: '#0a0a14' };
+const FIRE = FIRE_LETTERING;
 const GREEN = { fill: ['#f0fff0', '#a8f080', '#58c840', '#2c9028'], rim: '#185018', depth: '#0c2c0c', edge: '#0a1428' };
 
 interface Walker {

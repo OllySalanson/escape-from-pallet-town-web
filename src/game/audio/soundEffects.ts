@@ -450,7 +450,7 @@ export const SOUND_EFFECTS = {
   hunterArrival: {
     channel: 'alert',
     ducksMusic: true,
-    moment: 'The rival hunter enters the raid',
+    moment: 'The rival hunter enters the raid, and comes over the Raid Arena\'s rail after whoever has just jumped',
     tones: [saw(147, 0.16, 0.07), saw(139, 0.16, 0.07, 0.16), sq(110, 0.3, 0.065, 0.32)],
   },
   hunterNear: {
