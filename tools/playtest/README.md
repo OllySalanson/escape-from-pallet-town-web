@@ -35,6 +35,11 @@ port and two workers cannot share one - a fixed port is how a driver once
 attached to another worker's tab. `browser.close()` kills the whole process
 group; call it in a `finally`.
 
+`veteranLoop.mjs` plays raid after raid on one new save by a policy (the loop that
+pays least now, going after the stake, or pottering until somebody comes) and prints what
+each paid and ran into; `tools/raids/veteranLoop.mts` is the same question asked of
+the generator over many seeds with no browser.
+
 ## Test mode
 
 | URL | renderer | loop | for |

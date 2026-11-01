@@ -115,7 +115,7 @@ import {
   carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
-import { Bag, ITEMS, heldItemName, type ItemDefinition, type ItemId } from '../items';
+import { Bag, heldItemName, type ItemDefinition, type ItemId } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
@@ -4116,7 +4116,7 @@ export class BattleScene extends Phaser.Scene {
         this.runSession?.plan?.loot ?? {},
         this.seenPrizeIds,
         this.collectedLootIds,
-      ).map((itemId) => ITEMS[itemId].displayName),
+      ),
       lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
       carriedOut,
       // The one that was out when the party ran out. The result screen's defeat

@@ -97,6 +97,11 @@ function packBeside(mode: PackHunter['mode']) {
       tryWalkIntoHunter(facing: string): boolean;
       settlePackAfterFight(fromBattle: boolean): void;
       onPackEvent(event: { kind: string; hunter: PackHunter }): void;
+      sendHunterForPlayer(): boolean;
+      advanceHunterPack(clockMs: number, elapsedMs: number): void;
+      packShouter: PackHunter | null;
+      currentTile: GridPosition;
+      runSession: { plan: unknown; stagedChaseCome?: boolean; stepsTaken?: number };
       hunterShout(): string | null;
       hunterRival(): { name: string };
       time: { now: number };
@@ -109,6 +114,40 @@ function packBeside(mode: PackHunter['mode']) {
     player,
   };
 }
+
+describe('a hunter coming for the player', () => {
+  /** The Floodplain's front door, with ground all round to come from. */
+  const THE_LANDING = { x: 13, y: 9 };
+
+  it('brings the keeper from out of sight and says who, with nobody else to wait for', () => {
+    const { scene, pack, hunter } = packBeside('waiting');
+    const player = THE_LANDING;
+    scene.currentTile = player;
+    expect(scene.sendHunterForPlayer()).toBe(true);
+    expect(pack.cameOut).toBe(true);
+    expect(hunter.mode).toBe('alerted');
+    expect(Math.hypot(hunter.position.x - player.x, hunter.position.y - player.y)).toBeGreaterThanOrEqual(12);
+    expect(scene.packShouter).toBe(hunter);
+  });
+
+  it('stages the first chase at its time, once, and not before the player has set off', () => {
+    const { scene, hunter } = packBeside('waiting');
+    scene.currentTile = THE_LANDING;
+    scene.runSession.plan = { stagedChase: true, hunter: { spawnDelayMs: 40_000 }, insertion: { mapId: 'floodplain-relay', position: { x: 1, y: 1 } } };
+    scene.advanceHunterPack(0, 39_999);
+    expect(hunter.mode).toBe('waiting');
+    scene.runSession.stepsTaken = 0;
+    scene.advanceHunterPack(0, 40_000);
+    expect(hunter.mode).toBe('waiting');
+    scene.runSession.stepsTaken = 20;
+    scene.advanceHunterPack(0, 40_000);
+    expect(hunter.mode).toBe('alerted');
+    expect(scene.runSession.stagedChaseCome).toBe(true);
+    Object.assign(hunter, { mode: 'patrol' });
+    scene.advanceHunterPack(0, 41_000);
+    expect(hunter.mode).toBe('patrol');
+  });
+});
 
 describe('the pack in the scene', () => {
   it('stands solid where its hunters stand', () => {

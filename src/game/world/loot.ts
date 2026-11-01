@@ -61,6 +61,20 @@ export function isPrize(loot: WorldLoot): boolean {
   return loot.chance !== undefined;
 }
 
+/** A raid's stake (`raidStake.ts`): the piece whose taking is heard. */
+export const isStake = (loot: Pick<WorldLoot, 'id'>): boolean => loot.id.endsWith('/stake');
+/** The little money on the way to a stake. A prize to see and not one to rue. */
+export const isStakeMoney = (loot: Pick<WorldLoot, 'id'>): boolean => loot.id.includes('/stake-money-');
+/** The stake or the money on the way to it. */
+export const isStakeTrail = (loot: Pick<WorldLoot, 'id'>): boolean => isStake(loot) || isStakeMoney(loot);
+
+/** What a prize is called on the map, the chip and the result screen: a sum as a sum, several as several. */
+export function prizeWords(loot: Pick<WorldLoot, 'itemId' | 'quantity'>): string {
+  return loot.quantity > 1 || isCurrency(loot.itemId)
+    ? itemAmountFor(loot.itemId, loot.quantity)
+    : ITEMS[loot.itemId].displayName;
+}
+
 export type LootPickupResult = 'collected' | 'bag-full' | 'unavailable';
 
 /**
@@ -136,12 +150,12 @@ export function prizesLeftBehind(
   lootByMap: Readonly<Record<string, readonly WorldLoot[]>>,
   seenPrizeIds: ReadonlySet<string>,
   collectedLootIds: ReadonlySet<string>,
-): readonly ItemId[] {
+): readonly string[] {
   return Object.values(lootByMap)
     .flat()
     .filter(
       (loot) =>
-        isPrize(loot) && seenPrizeIds.has(loot.id) && !collectedLootIds.has(loot.id),
+        isPrize(loot) && !isStakeMoney(loot) && seenPrizeIds.has(loot.id) && !collectedLootIds.has(loot.id),
     )
-    .map((loot) => loot.itemId);
+    .map(prizeWords);
 }

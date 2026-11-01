@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, breathMs, climbAt, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
+import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, betOf, breathMs, climbAt, railStamps, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
 
 const team: AtRisk = {
   pokemon: [
@@ -40,6 +40,54 @@ describe('the held breath', () => {
   it('never asks the screen to hold more than it can', () => {
     const items = Array.from({ length: 12 }, (_each, index) => `Thing ${index}`);
     expect(stakeWords({ ...team, items }, 1)).toHaveLength(MOST_WORDS);
+  });
+
+  it('says what the words are: AT RISK over them, and what is SAFE under them', () => {
+    expect(railStamps({ ...team, safe: ['Pidgey', 'Rattata', 'Oddish'] }, 1)).toEqual([
+      { text: 'AT RISK', kind: 'risk' },
+      { text: 'CHARMELEON', kind: 'risk' },
+      { text: 'PIDGEOTTO', kind: 'risk' },
+      { text: 'RANGER PACK', kind: 'risk' },
+      { text: 'POTION ×2', kind: 'risk' },
+      { text: 'SAFE: PIDGEY, RATTATA', kind: 'safe' },
+    ]);
+    expect(railStamps({ pokemon: [], pack: null, packIsBetter: false, items: [], safe: ['Pidgey'] }, 1)).toEqual([
+      { text: 'NOTHING TO LOSE', kind: 'risk' },
+      { text: 'SAFE: PIDGEY', kind: 'safe' },
+    ]);
+  });
+
+  it('never asks more of the screen with a heading and a SAFE line than it did without', () => {
+    const items = Array.from({ length: 12 }, (_each, index) => `Thing ${index}`);
+    expect(railStamps({ ...team, items, safe: ['Pidgey'] }, 1)).toHaveLength(MOST_WORDS);
+  });
+
+  it('stops for nothing when nothing is worth stopping for, heading and all', () => {
+    expect(railStamps({ pokemon: [], pack: 'Raid pack', packIsBetter: false, items: ['Potion ×3'], safe: ['Pidgey'] }, 200)).toEqual([]);
+  });
+
+  it('names a partner at risk, first, whoever else is going over', () => {
+    const risked: AtRisk = {
+      pokemon: [
+        { name: 'Pidgeotto', level: 30 },
+        { name: 'Charmander', level: 9, partner: true },
+      ],
+      pack: null,
+      packIsBetter: false,
+      items: [],
+    };
+    expect(stakeWords(risked, 1)[1]).toBe('YOUR PARTNER CHARMANDER');
+    expect(stakeWords(risked, 200)).toEqual(['AT RISK', 'YOUR PARTNER CHARMANDER']);
+  });
+
+  it('tells the house how big a bet it is', () => {
+    const none: AtRisk = { pokemon: [], pack: null, packIsBetter: false, items: [] };
+    expect(betOf(none)).toBe('nothing');
+    expect(betOf({ ...none, pack: 'Raid pack', items: ['Potion ×3'] })).toBe('some');
+    expect(betOf({ ...none, pokemon: [{ name: 'Pidgey', level: 3 }] })).toBe('some');
+    expect(betOf({ ...none, pokemon: [{ name: 'Bulbasaur', level: 5, partner: true }] })).toBe('big');
+    expect(betOf({ ...none, pack: 'Ranger pack', packIsBetter: true })).toBe('big');
+    expect(betOf({ ...none, pokemon: [{ name: 'Pidgey', level: 3 }, { name: 'Rattata', level: 3 }] })).toBe('big');
   });
 
   it('holds about a beat at raid two hundred, a little more for a new team, and every word gets its time', () => {

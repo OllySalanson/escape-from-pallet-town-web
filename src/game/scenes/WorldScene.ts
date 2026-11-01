@@ -245,6 +245,9 @@ import { advanceCalls, NO_CALL, type CallState } from '../world/villageCalls';
 import { TILE_ANIMATION_SOURCE, TileAnimator, type AnimatedLayer } from '../world/tileAnimation';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
 import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
+import { RaidWayMark } from '../base/wayMark';
+import { aheadOnWalk } from '../world/raidStake';
+import { stepDistances } from '../world/mapStructure';
 import { districtAt, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
@@ -328,7 +331,10 @@ import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
   isPrize,
+  isStake,
+  isStakeTrail,
   lootRefusalLine,
+  prizeWords,
   prizesLeftBehind,
   tryCollectLoot,
   type WorldLoot,
@@ -473,6 +479,11 @@ const CHEVRON_HEIGHT = 6;
  * clear of the gleam rather than through the middle of it - the same rule the
  * player's own chevron gets from `landingRect` below.
  */
+/** The way mark stands over the map and every figure, and under the chips. */
+const WAY_MARK_DEPTH = 90;
+/** How many walks to a tile the way mark keeps at once: the stake, the money, a way out or two. */
+const WAY_FIELDS_KEPT = 6;
+
 const prizeRect = (tile: GridPosition): Rect => {
   const rect = tileRect(tile);
   return { ...rect, y: rect.y - PRIZE_GLEAM_REACH, height: rect.height + PRIZE_GLEAM_REACH };
@@ -829,8 +840,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** The cue the objective chip is currently showing, so a change can be noticed. */
   private objectiveCue = '';
   /** The nearest open exit the chip names, and what it was asked for (`nearestExitCue`). */
-  private exitCue: { readonly label: string; readonly heading: string } | undefined;
+  private exitCue: { readonly label: string; readonly heading: string; readonly position: GridPosition } | undefined;
   private exitCueKey = '';
+  /** What shows the way (`settleWayMark`), and what it has worked out so far. */
+  private raidWayMark: RaidWayMark | undefined;
+  private wayMarkMs = 0;
+  private wayCache: { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null = null;
+  private wayCacheKey = '';
+  private wayFieldsGrid: readonly (readonly boolean[])[] | undefined;
+  private readonly wayFields = new Map<string, readonly Int32Array[]>();
   /** The collision the cue was walked over: a door opened mid-raid rebuilds it. */
   private exitCueGrid: readonly (readonly boolean[])[] | undefined;
   /** Counts down the window in which a changed objective shows its extra line. */
@@ -1130,6 +1148,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.fishing = undefined;
     this.endCutscene();
     this.unsolicitedDialog = false;
+    this.wayCache = null;
+    this.wayCacheKey = '';
+    this.wayFields.clear();
+    this.wayFieldsGrid = undefined;
     this.packReseated = false;
     // The box itself is rebuilt at the bottom by create(), so the note that it was moved goes too.
     this.dialogRaised = false;
@@ -1493,6 +1515,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.updateRaid(deltaMs);
     this.drawHunterPack();
     this.settleHeadMark();
+    this.settleWayMark(deltaMs);
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
     this.updateFriend(deltaMs);
@@ -3100,7 +3123,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     const label = new WorldLabel(this, {
       subject: prizeRect(loot.position),
-      text: ITEMS[loot.itemId].displayName.toUpperCase(),
+      text: prizeWords(loot).toUpperCase(),
       tone: LABEL_TONES.prize,
       depth: atRow(CAPTION_BAND, loot.position.y),
       speech: { voice: 'prize', tiles: [loot.position] },
@@ -3131,6 +3154,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (!isPrize(loot) || this.seenPrizeIds.has(loot.id)) {
         continue;
       }
+      // The raid's stake is known from the first frame: it is what the raid is for.
+      if (isStake(loot)) {
+        this.seenPrizeIds.add(loot.id);
+        continue;
+      }
       const x = loot.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = loot.position.y * TILE_SIZE + TILE_SIZE / 2;
       if (x >= view.left && x <= view.right && y >= view.top && y <= view.bottom) {
@@ -3151,7 +3179,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       plan?.loot ?? { [this.currentMap.id]: this.currentMap.loot },
       this.seenPrizeIds,
       this.collectedLootIds,
-    ).map((itemId) => ITEMS[itemId].displayName);
+    );
   }
 
   /**
@@ -3175,7 +3203,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return nearest === null
       ? null
       : {
-        name: ITEMS[nearest.loot.itemId].displayName,
+        name: prizeWords(nearest.loot),
         direction: this.headingTo(nearest.loot.position),
         distance: nearest.steps,
       };
@@ -4432,6 +4460,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raidHud = new RaidHud(this);
     this.hunterGlow = new HunterEdgeGlow(this);
     this.searchPanel = new SearchPanel(this);
+    // A scene under test has no textures to paint it with, and nothing to look at it.
+    this.raidWayMark = typeof this.textures?.createCanvas === 'function' ? new RaidWayMark(this, WAY_MARK_DEPTH, prefersReducedMotion()) : undefined;
     this.objectiveCue = '';
     this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
     this.noteDistrict(this.arrivedFromBattle);
@@ -4840,6 +4870,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raidHud = undefined;
     this.hunterGlow?.destroy();
     this.hunterGlow = undefined;
+    this.raidWayMark?.destroy();
+    this.raidWayMark = undefined;
     this.searchPanel?.destroy();
     this.searchPanel = undefined;
   }
@@ -5482,6 +5514,85 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
   }
 
+  /**
+   * The way, with no words (`base/wayMark.ts`): gold along the walk to the stake
+   * and the money on the way to it, and green to the nearest way out once the
+   * stake is taken or somebody is after the player. Hidden while anything is being
+   * read. Worked out once a step, because a tile is all that changes it.
+   */
+  private settleWayMark(deltaMs: number): void {
+    const mark = this.raidWayMark;
+    if (!mark) {
+      return;
+    }
+    this.wayMarkMs += deltaMs;
+    const hidden =
+      this.dialogBox.visible || this.cutscene !== undefined || this.isWarping || this.panelLean.covering > 0 || this.runSession?.manager.phase !== RunPhase.InRun;
+    const way = hidden ? null : this.wayToShow();
+    mark.frame(way, { x: this.player.x + TILE_SIZE / 2, y: this.player.y + TILE_SIZE / 2 }, this.wayMarkMs);
+  }
+
+  private wayToShow(): { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null {
+    const hunted = this.hunterPackHere()?.lead(this.currentTile) !== undefined;
+    const key = `${this.currentMap.id}:${this.currentTile.x},${this.currentTile.y}:${hunted}:${this.collectedLootIds.size}:${this.exitCue?.label}`;
+    if (key === this.wayCacheKey && this.wayFieldsGrid === this.collisionData) {
+      return this.wayCache;
+    }
+    if (this.wayFieldsGrid !== this.collisionData) {
+      this.wayFieldsGrid = this.collisionData;
+      this.wayFields.clear();
+    }
+    this.wayCacheKey = key;
+    const worldTile = (tile: GridPosition): GridPosition => ({
+      x: tile.x * TILE_SIZE + TILE_SIZE / 2,
+      y: tile.y * TILE_SIZE + TILE_SIZE / 2,
+    });
+    const trail = this.lootForCurrentMap().filter((loot) => isStakeTrail(loot));
+    const left = trail.filter((loot) => !this.collectedLootIds.has(loot.id));
+    const stake = left.find((loot) => isStake(loot));
+    let tile: GridPosition | undefined;
+    let out = false;
+    if (stake && !hunted) {
+      const field = this.wayField(stake.position);
+      const here = field[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+      // The next piece still ahead: never back for money walked past.
+      const ahead = left
+        .filter((loot) => !isStake(loot) && (field[loot.position.y]?.[loot.position.x] ?? -1) >= 0 && (here < 0 || field[loot.position.y][loot.position.x] < here))
+        .sort((one, other) => field[other.position.y][other.position.x] - field[one.position.y][one.position.x]);
+      tile = ahead[0]?.position ?? stake.position;
+    } else if (hunted || (trail.length > 0 && !stake)) {
+      tile = this.nearestExitCue()?.position;
+      out = true;
+    }
+    if (!tile || (tile.x === this.currentTile.x && tile.y === this.currentTile.y)) {
+      this.wayCache = null;
+      return null;
+    }
+    // From a room or a cave, the door that leads to it.
+    const towards = wayTowards(this.currentMap, this.currentTile, tile);
+    this.wayCache = {
+      target: worldTile(tile),
+      aim: worldTile(aheadOnWalk(this.wayField(towards), this.currentTile, towards)),
+      out,
+    };
+    return this.wayCache;
+  }
+
+  /** Walking steps to a tile from anywhere in its place, kept for the raid's handful of targets. */
+  private wayField(tile: GridPosition): readonly Int32Array[] {
+    const key = `${tile.x},${tile.y}`;
+    const known = this.wayFields.get(key);
+    if (known) {
+      return known;
+    }
+    const field = stepDistances(this.collisionData, tile);
+    if (this.wayFields.size >= WAY_FIELDS_KEPT) {
+      this.wayFields.clear();
+    }
+    this.wayFields.set(key, field);
+    return field;
+  }
+
   /** Takes the chip down once his lines have been read. */
   private settleRadio(): void {
     if (this.onRadio && !this.dialogBox.visible) {
@@ -5529,7 +5640,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * whole map, so it is asked again only when the player's tile, the map or
    * which exits are open has changed.
    */
-  private nearestExitCue(): { readonly label: string; readonly heading: string } | undefined {
+  private nearestExitCue(): { readonly label: string; readonly heading: string; readonly position: GridPosition } | undefined {
     const exits = (this.runSession?.plan?.extractionPoints ?? []).filter((point) => point.mapId === this.currentMap.id);
     const open = exits.filter((point) => this.isExtractionOpen(point)).map((point) => point.label).join('|');
     const key = `${this.currentMap.id}:${this.currentTile.x},${this.currentTile.y}:${open}`;
@@ -5537,7 +5648,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.exitCueKey = key;
       this.exitCueGrid = this.collisionData;
       const exit = this.nearestOpenExitHere().nearestOpenExit;
-      this.exitCue = exit ? { label: exit.label, heading: this.headingTo(exit.position) } : undefined;
+      this.exitCue = exit ? { label: exit.label, heading: this.headingTo(exit.position), position: exit.position } : undefined;
     }
     return this.exitCue;
   }
@@ -6948,6 +7059,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     flashScreen(this.cameras.main, 100, [250, 204, 21]);
     audioManager.play('lootPickup');
     this.takeLootMarksOff(loot!.id);
+    // Somebody heard that, and whoever is coming does not wait for a box to be read.
+    if (isStake(loot!)) {
+      this.unsolicitedDialog = true;
+      this.sendHunterForPlayer();
+    }
     const item = ITEMS[loot!.itemId];
     // Somebody at base is waiting on this one (`hub/errands.ts`). That it was
     // picked up is written now, as a beaten boss is, so the giver knows to ask
@@ -8622,6 +8738,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.packCameOutAtMs = this.time.now;
       audioManager.play('hunterArrival');
     }
+    // A new save's first raid is chased, once, wherever the patrols happen to be.
+    if (
+      session.plan?.stagedChase &&
+      !session.stagedChaseCome &&
+      elapsedMs >= session.plan.hunter.spawnDelayMs &&
+      hasPlayerSetOff(session.stepsTaken) &&
+      this.ridePlace() === 'outdoors'
+    ) {
+      session.stagedChaseCome = this.sendHunterForPlayer();
+    }
     if (session.manager.isEnraged) {
       pack.enrage(world);
       this.bringKeeperBackForEnrage(pack, world);
@@ -8638,6 +8764,30 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (proximity.warn) {
       audioManager.play('hunterNear');
     }
+  }
+
+  /**
+   * A hunter comes for the player now (`HunterPack.comeFor`), whoever else is
+   * still to come out coming with it. Answers whether that is settled: false only
+   * when there is nowhere for it to come from yet, so it is asked again.
+   */
+  private sendHunterForPlayer(): boolean {
+    const pack = this.hunterPackHere();
+    if (!pack || !this.isHunterEligible()) {
+      return true;
+    }
+    const world = this.packWorld();
+    if (pack.waiting() && pack.arrive(world) && !pack.cameOut) {
+      pack.cameOut = true;
+      this.packCameOutAtMs = this.time.now;
+      audioManager.play('hunterArrival');
+    }
+    if (pack.lead(this.currentTile)) {
+      return true;
+    }
+    const events = pack.comeFor(this.packWorld(), this.nearestExitCue()?.position);
+    events.forEach((event) => this.onPackEvent(event));
+    return events.length > 0;
   }
 
   /**

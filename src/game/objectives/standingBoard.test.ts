@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isMaterial } from '../items';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from '../hub/workshop';
+import { BALLS_PREPACKED } from '../hub/deploymentFlow';
+import { placedAreaAt } from '../world/mapAreas';
 import { evolutionFamily } from '../pokemon';
 import { STARTER_SPECIES } from '../stash/Stash';
 import { generateRunPlan, frontDoorFor, insertionsOn } from '../run/runGeneration';
@@ -25,6 +27,9 @@ import {
   standingBoard,
   standingBoardSeed,
   standingOffers,
+  NEAR_JOBS,
+  NEAR_JOB_LEAST_WALK,
+  NEAR_JOB_MOST_WALK,
   standingRoundOf,
   standingTopPressure,
   type StandingBoardProgress,
@@ -114,6 +119,38 @@ describe('when the standing board opens', () => {
   });
 });
 
+describe("a save's first jobs", () => {
+  it('asks nothing out of the pack the first time, and is a short walk on open ground for the first few', () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      for (const contract of standingOffers(seed, progressWith()).filter((each) => !each.sealedBehind)) {
+        expect(contract.name, contract.id).toBe('Line survey');
+        expect(contract.markers.every((marker) => (marker.carriedIn ?? []).length === 0)).toBe(true);
+      }
+      for (const banked of [0, NEAR_JOBS - 1]) {
+        // A player's map may be too small to have a walk that long; the job then sets it where it can.
+        for (const contract of standingOffers(seed, progressWith({ standingContractsBanked: banked })).filter((each) => !each.sealedBehind && !isPublishedMap(each.mapId))) {
+          const steps = walkFromFrontDoor(contract.mapId, []);
+          const map = getWorldMap(contract.mapId);
+          for (const marker of contract.markers) {
+            expect(steps[marker.position.y][marker.position.x], contract.id).toBeLessThanOrEqual(NEAR_JOB_MOST_WALK);
+            expect(steps[marker.position.y][marker.position.x], contract.id).toBeGreaterThanOrEqual(NEAR_JOB_LEAST_WALK);
+            expect(map.areas ? placedAreaAt(map.areas, marker.position)?.id : undefined, contract.id).toBeUndefined();
+          }
+        }
+      }
+    }
+  });
+
+  it('never asks for every ball a raid packs by default', () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      for (const contract of standingOffers(seed, progressWith({ standingContractsBanked: NEAR_JOBS }))) {
+        const balls = contract.markers.flatMap((marker) => marker.carriedIn ?? []).filter(({ itemId }) => itemId === 'poke-ball');
+        expect(balls.every(({ quantity }) => quantity < BALLS_PREPACKED)).toBe(true);
+      }
+    }
+  });
+});
+
 describe('a drawn board', () => {
   it('is the same board for the same seed and progress, redrawn rather than recalled', () => {
     for (const seed of SEEDS.slice(0, 40)) {
@@ -184,7 +221,7 @@ describe('a drawn board', () => {
 
   it('does not offer four of the same contract', () => {
     for (const seed of SEEDS) {
-      const names = new Set(standingOffers(seed, progressWith()).map((contract) => contract.name));
+      const names = new Set(standingOffers(seed, progressWith({ standingContractsBanked: NEAR_JOBS })).map((contract) => contract.name));
       expect(names.size).toBeGreaterThan(1);
     }
   });
@@ -292,7 +329,7 @@ describe('every standing contract', () => {
     // read once per walk rather than once per contract drawn on it.
     const longestOf = new Map<readonly Int32Array[], number>();
     for (const { contract, defeatedBosses } of everyBoard()) {
-      if (contract.sealedBehind) {
+      if (contract.sealedBehind || (standingRoundOf(contract.id) ?? 0) < NEAR_JOBS) {
         continue;
       }
       const steps = walkFromFrontDoor(contract.mapId, defeatedBosses);
@@ -461,14 +498,14 @@ describe('escalation', () => {
   it('pays more for more hunter: a share larger per tier, and a Pokemon on top', () => {
     const paid = (contract: RaidContract): number => contract.reward.items[0].quantity;
     for (const seed of SEEDS.slice(0, 60)) {
-      const calm = standingOffers(seed, progressWith({ standingContractsBanked: 0 }));
+      const lower = standingOffers(seed, progressWith({ standingContractsBanked: STANDING_BANKS_PER_PRESSURE }));
       for (const banked of [STANDING_BANKS_PER_PRESSURE, STANDING_BANKS_PER_PRESSURE * 2]) {
         const raised = standingOffers(seed, progressWith({ standingContractsBanked: banked }));
         raised.forEach((contract, index) => {
           const pressure = contract.hunterPressure ?? 0;
           // Same seed, same stream: the contract is the same one, priced higher.
-          expect(contract.markers.map((m) => m.position)).toEqual(calm[index].markers.map((m) => m.position));
-          expect(paid(contract)).toBe(paid(calm[index]) + pressure);
+          expect(contract.markers.map((m) => m.position)).toEqual(lower[index].markers.map((m) => m.position));
+          expect(paid(contract) - pressure).toBe(paid(lower[index]) - (lower[index].hunterPressure ?? 0));
           if (pressure > 0) {
             expect(rewardPokemon(contract.reward)).toHaveLength(1);
           }

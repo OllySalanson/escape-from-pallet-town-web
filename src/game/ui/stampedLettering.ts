@@ -85,6 +85,8 @@ export function stampMask(
 }
 
 /** Alarm red, for what can be lost. */
+/** What is safe, stamped in the green a way out is drawn in. */
+export const SAFE_LETTERING = { fill: ['#f0fff0', '#a8f0b8', '#58c878', '#289050'], rim: '#0c4024', depth: '#062014', edge: '#0a0a14' };
 export const FIRE_LETTERING = { fill: ['#fff8c8', '#ffd048', '#f88828', '#d83818'], rim: '#701010', depth: '#380808', edge: '#0a0a14' };
 
 export interface StampedWordStyle {

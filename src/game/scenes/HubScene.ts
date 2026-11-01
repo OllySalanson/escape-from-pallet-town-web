@@ -189,6 +189,8 @@ import { pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
 import { isFirstRaid } from '../hub/firstRaid';
+import { hasRaidStake } from '../world/raidStake';
+import { rewardLine } from '../objectives/standingBoard';
 import { recoveryTermsFor } from '../hub/centerCounter';
 import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
@@ -1209,6 +1211,10 @@ export class HubScene extends Phaser.Scene {
       {
         raidClockMs: this.raidClockMs,
         ...(hasBeacon(this.builtUpgradeIds) ? { beaconUnlockAtMs: beaconUnlockAtMs(this.raidClockMs) } : {}),
+        // Read before this raid is counted. The explorer's walk and a maker's try are not a first raid.
+        ...(isFirstRaid(this.savedGame.raidProgress) && !isPlaytestRun() && hasRaidStake(requireInsertion(deployment.insertionId).mapId)
+          ? { firstRaid: true }
+          : {}),
       },
       // Which landmarks the world keeps worked, and whose exits therefore
       // stand open from the first second - the same list the lobby's map read.
@@ -2582,10 +2588,14 @@ export class HubScene extends Phaser.Scene {
     const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
     const line = (label: string, body: string, warn = false): string =>
       `<div><dt>${label}</dt><dd class="px-wrap${warn ? ' px-warning' : ''}">${body}</dd></div>`;
+    // What the job on the board asks and pays, because a job nobody reads the price of is a job imposed.
+    const job = contract
+      ? short.length > 0
+        ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
+        : `${contract.name}: ${required.length > 0 ? `hand over ${itemAmountsFor(required)}, ` : ''}pays ${rewardLine(contract.reward)}`
+      : undefined;
     return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${line('Safe', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
-      required.length === 0
-        ? ''
-        : line('Drop', short.length === 0 ? `${itemAmountsFor(required)} packed for ${contract!.name}` : `${contract!.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`, short.length > 0)
+      job === undefined ? '' : line('Job', job, short.length > 0)
     }${line('Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunter: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
   }
 

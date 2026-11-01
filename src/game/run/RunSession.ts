@@ -102,6 +102,8 @@ export interface ActiveRunSession {
    * the same hunters it took the player from.
    */
   hunterPacks?: Map<WorldMapId, HunterPack>;
+  /** A new save's first chase has come (`RunPlan.stagedChase`), so a fight does not bring it twice. */
+  stagedChaseCome?: boolean;
   /**
    * Beaten trainers whose watch has already been seen to lift. The world is
    * rebuilt on every return from a fight, so the payoff for a win - the shading

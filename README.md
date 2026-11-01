@@ -107,6 +107,7 @@ glinting, that is definitely worth the detour. Probably.
 ### 3. Somebody's coming
 
 A minute in, the rivals come out, one to every district of the vale, each walking their own patch.
+Sooner, if you just picked up something that made a noise.
 Get seen and you'll know it: a "!" over their head, the edges of the screen flush red, and they
 run at you exactly as fast as you can run. Keep moving and they never gain a step. Stop for anything
 (a crate, a sign, a wall you walked into) and they do. Lead them flat out into a corner and they
@@ -287,6 +288,7 @@ A few things worth knowing before you go:
 
 - **The vale has a boss, and the boss holds two doors.** Win, and they stay open for good.
 - **Some ways need a move, not a fight.** Teach a Pokémon Strength and the boulders in your way start to shift.
+- **Every raid has something worth staying for.** A little money in sight of where you land, a little more on the way, and a proper find a good walk off and a bit too far from any exit. Walk straight out and you'll have ₽10 to show for it. Pick up the big one and somebody hears.
 - **Prizes gleam.** A few places in the vale hold something only they have, and on a raid where one turns up you can see it shining from a long way off. Is it worth the detour with forty seconds on the clock? Yes. No. Maybe.
 - **The pit is cloud where you haven't been.** Walk it, come home, and watch the cloud lift.
 - **Contracts change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost.

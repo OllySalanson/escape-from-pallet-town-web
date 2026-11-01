@@ -171,7 +171,8 @@ export function openRaidCue(
   exit?: { readonly label: string; readonly heading: string },
 ): string {
   if (carried.items + carried.pokemon === 0) {
-    return 'FIND LOOT, THEN EXTRACT';
+    // The way out from the first frame: nothing else says where a raid ends.
+    return exit ? `FIND LOOT, OUT BY ${exit.label.toUpperCase()}: ${exit.heading}` : 'FIND LOOT, THEN EXTRACT';
   }
   return exit ? `EXTRACT VIA ${exit.label.toUpperCase()}: ${exit.heading}` : 'EXTRACT WITH YOUR HAUL';
 }

@@ -2,6 +2,7 @@ import type { HaulTier } from '../run/extractionReport';
 import type { MapRaidRecord } from '../save/SaveManager';
 import { scatter, ARENA_CENTRE, WALL_FOOT, ovalPoint } from './arenaHall';
 import type { CrowdPose, CrowdSeat } from './arenaStands';
+import type { RailBet } from './heldBreath';
 
 /**
  * What THE RAID ARENA's crowd does, which is answer the player. The room used to
@@ -19,7 +20,7 @@ import type { CrowdPose, CrowdSeat } from './arenaStands';
  * all of it can be asked of a number; `arenaView.ts` draws it.
  */
 
-export type CrowdMood = 'roar' | 'cheer' | 'clap' | 'groan';
+export type CrowdMood = 'roar' | 'cheer' | 'clap' | 'groan' | 'hush' | 'hushed-rise';
 
 /** What the house makes of how a raid ended. */
 export function moodOfRaid(escaped: boolean, haul: HaulTier, closeCall = false): CrowdMood {
@@ -95,7 +96,20 @@ const MOODS: Readonly<
     sounds: [[0, 'crowdClap'], [620, 'crowdClap']],
   },
   groan: { rising: 0, forMs: 0, sounds: [[120, 'crowdGroan']] },
+  // Held breath on the rail (`heldBreath.ts`): getting to their feet with nothing said.
+  hush: { rising: 0.22, forMs: 2400, sounds: [] },
+  'hushed-rise': { rising: 0.72, forMs: 2400, sounds: [] },
 };
+
+/** What the house does while somebody stands on the rail: the bigger the bet the more of them get up. */
+export function moodOnTheRail(bet: RailBet): CrowdMood | null {
+  return bet === 'big' ? 'hushed-rise' : bet === 'some' ? 'hush' : null;
+}
+
+/** What the house does as they go over. */
+export function moodAsTheyGo(bet: RailBet): CrowdMood {
+  return bet === 'big' ? 'roar' : bet === 'some' ? 'cheer' : 'clap';
+}
 
 export type CrowdSound = 'crowdRoar' | 'crowdCheer' | 'crowdClap' | 'crowdGroan';
 

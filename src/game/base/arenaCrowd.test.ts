@@ -10,7 +10,9 @@ import {
   leaverTurn,
   leaversFrom,
   crowdTakesTheView,
+  moodAsTheyGo,
   moodOfRaid,
+  moodOnTheRail,
   paperFlakes,
   reactionPose,
   standsBehind,
@@ -240,5 +242,21 @@ describe('the wall the stands are behind', () => {
       expect(Math.hypot(stands.x - ARENA_CENTRE.x, stands.y - ARENA_CENTRE.y)).toBeGreaterThan(Math.hypot(player.x - ARENA_CENTRE.x, player.y - ARENA_CENTRE.y));
       expect(Math.abs(turnBetween(angleInHall(player), angleInHall(stands)))).toBeLessThan(0.1);
     }
+  });
+});
+
+describe('the house and the bet on the rail', () => {
+  it('gets to its feet in silence as far as the bet deserves, then lets them have it', () => {
+    expect(moodOnTheRail('nothing')).toBeNull();
+    expect(moodOnTheRail('some')).toBe('hush');
+    expect(moodOnTheRail('big')).toBe('hushed-rise');
+    expect(moodAsTheyGo('nothing')).toBe('clap');
+    expect(moodAsTheyGo('some')).toBe('cheer');
+    expect(moodAsTheyGo('big')).toBe('roar');
+  });
+
+  it('never takes the view off the rail for it', () => {
+    expect(crowdTakesTheView('hush')).toBe(false);
+    expect(crowdTakesTheView('hushed-rise')).toBe(false);
   });
 });

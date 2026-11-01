@@ -3,6 +3,7 @@ import { isExtractionAvailable, type ExtractionPoint } from '../world/extraction
 import { gateBossIds, gateKeys, gatesForMap, NIGHT_KEY, WORLD_GATES, type BossGate } from '../world/gates';
 import { BUILT_IN_MAP_IDS, getWorldMap, WORLD_MAP_NAMES, WORLD_MAPS, type BuiltInMapId, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
+import { isStakeTrail } from '../world/loot';
 import { RunManager } from './RunManager';
 import { RAID_DURATION_MS } from './raidClock';
 import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
@@ -205,7 +206,8 @@ describe('run generation', () => {
       // and the bookkeeping of that many was most of what this test cost.
       const faults: string[] = [];
       for (let seed = 0; seed < SAMPLED_RUNS; seed += 1) {
-        const loot = generateRunPlan(seed, undefined, insertionId).loot[mapId];
+        // The raid's own stake is no part of the map's pool (`world/raidStake.ts`).
+        const loot = generateRunPlan(seed, undefined, insertionId).loot[mapId].filter((item) => !isStakeTrail(item));
         loot
           .filter((item) => rareIds.has(item.id))
           .forEach((item) => rareSeen.set(item.id, (rareSeen.get(item.id) ?? 0) + 1));

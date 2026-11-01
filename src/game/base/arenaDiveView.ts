@@ -6,7 +6,8 @@ import { getWorldCharacterAppearance, worldCharacterIdleFrame } from '../world/c
 import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
 import { partnerFrame } from './partner';
-import { FIRE_LETTERING, stampedWord } from '../ui/stampedLettering';
+import { FIRE_LETTERING, SAFE_LETTERING, stampedWord } from '../ui/stampedLettering';
+import type { RailStamp } from './heldBreath';
 
 /**
  * What falls and what goes past on the way down from THE RAID ARENA's rail: the
@@ -139,12 +140,14 @@ export class ArenaDiveView {
   }
 
   /** Stamps what is at risk, out of sight until it is called for. */
-  public stakesAre(words: readonly string[]): void {
+  public stakesAre(stamps: readonly RailStamp[]): void {
     const { width } = this.scene.scale;
     const stamp = (font: string) =>
-      words.map((word, index) => stampedWord(this.scene, `arena-stake-${index}`, word, { fontSize: font, depthPx: 3, ...FIRE_LETTERING }));
-    let sizes = stamp(words.length <= STAKE_BIG_MOST ? STAKE_FONTS[0] : STAKE_FONTS[1]);
-    if (words.length <= STAKE_BIG_MOST && sizes.some((size) => size.width > width - STAKE_SIDE_ROOM)) {
+      stamps.map(({ text, kind }, index) =>
+        stampedWord(this.scene, `arena-stake-${index}`, text, { fontSize: font, depthPx: 3, ...(kind === 'safe' ? SAFE_LETTERING : FIRE_LETTERING) }),
+      );
+    let sizes = stamp(stamps.length <= STAKE_BIG_MOST ? STAKE_FONTS[0] : STAKE_FONTS[1]);
+    if (stamps.length <= STAKE_BIG_MOST && sizes.some((size) => size.width > width - STAKE_SIDE_ROOM)) {
       sizes = stamp(STAKE_FONTS[1]);
     }
     let top = STAKE_TOP;

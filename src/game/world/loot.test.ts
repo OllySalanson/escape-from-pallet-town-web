@@ -132,9 +132,7 @@ describe('what a raid left on the ground', () => {
   };
 
   it('is only what was seen, and only what was not picked up', () => {
-    expect(prizesLeftBehind(laid, new Set(['stone', 'pack']), new Set(['pack']))).toEqual([
-      'fire-stone',
-    ]);
+    expect(prizesLeftBehind(laid, new Set(['stone', 'pack']), new Set(['pack']))).toEqual(['Fire Stone']);
   });
 
   it('never names an ordinary supply, however much of it was walked past', () => {

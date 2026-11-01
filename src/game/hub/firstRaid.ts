@@ -6,7 +6,8 @@
  * nothing stands between the title and the fall that the fall does not need. No
  * name asked for, no trailer, no favours, no job on the board, no words at the
  * rail and no card to read. All of that is one raid later, when somebody knows
- * what it is about.
+ * what it is about. What it does add is a fright: its stake is money, and a hunter
+ * comes for it at forty seconds (`RunPlan.stagedChase`).
  *
  * It is read off what the save has done rather than kept, so a save written before
  * any of this, which has raids behind it or a contract banked, is simply past it.
