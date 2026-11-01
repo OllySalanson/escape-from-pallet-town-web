@@ -155,8 +155,6 @@ function newRaidId(): string {
 
 /** Where a live raid's pulse is kept: beside the save, never inside it. */
 export const RAID_PULSE_KEY = 'escape-from-pallet-town.raid-pulse';
-/** Where this tab's own name is kept. Session storage survives a reload, which is the point. */
-export const TAB_ID_KEY = 'escape-from-pallet-town.tab';
 /** How often a live raid says so. */
 export const RAID_PULSE_EVERY_MS = 5_000;
 /**
@@ -184,10 +182,11 @@ interface PulseStorage {
  * thing that must stop the base settling it: two tabs share one save, and a
  * second tab opened on the title must not end the raid the first is in.
  *
- * Only a fresh pulse from a *different* tab counts. A reload keeps its tab's
- * name (session storage outlives a reload), so the raid it reloaded out of is
- * always settled at once; a tab closed says so on its way out (`pagehide`);
- * and a crash leaves a pulse that goes stale.
+ * Only a fresh pulse from a *different* page counts. A reload or a closed tab
+ * says so on its way out (`pagehide`), so the raid it left is settled at once,
+ * and a crash leaves a pulse that goes stale. A page is named for its own life
+ * and never in session storage: a duplicated tab inherits that, and took the
+ * raid still being played in the tab it was copied from for its own reload.
  */
 export function raidLiveElsewhere(
   pulse: RaidPulse | null,
@@ -214,42 +213,17 @@ export class RaidHeartbeat {
   private tabId: string | null = null;
   private listening = false;
   private readonly local: () => PulseStorage | null;
-  private readonly session: () => PulseStorage | null;
   private readonly now: () => number;
 
-  public constructor(
-    local: () => PulseStorage | null,
-    session: () => PulseStorage | null,
-    now: () => number = () => Date.now(),
-  ) {
+  public constructor(local: () => PulseStorage | null, now: () => number = () => Date.now()) {
     this.local = local;
-    this.session = session;
     this.now = now;
   }
 
-  /** This tab's name, made once and kept for the life of the tab. */
+  /** This page's name, made once and kept for the life of the page. */
   public tab(): string {
-    if (this.tabId !== null) {
-      return this.tabId;
-    }
-    let id: string | null;
-    try {
-      id = this.session()?.getItem(TAB_ID_KEY) ?? null;
-    } catch {
-      id = null;
-    }
-    if (!id) {
-      id = newRaidId();
-      try {
-        this.session()?.setItem(TAB_ID_KEY, id);
-      } catch {
-        // A tab that cannot remember its name is a new tab on every load,
-        // which only ever makes a reload look like another tab for the
-        // stale window - never makes a live raid look abandoned.
-      }
-    }
-    this.tabId = id;
-    return id;
+    this.tabId ??= newRaidId();
+    return this.tabId;
   }
 
   public start(raidId: string): void {
@@ -325,16 +299,13 @@ export class RaidHeartbeat {
   }
 }
 
-function browserStorage(kind: 'localStorage' | 'sessionStorage'): PulseStorage | null {
+function browserStorage(): PulseStorage | null {
   try {
-    return typeof window === 'undefined' ? null : window[kind];
+    return typeof window === 'undefined' ? null : window.localStorage;
   } catch {
     return null;
   }
 }
 
 /** The one heartbeat a page has. */
-export const raidHeartbeat = new RaidHeartbeat(
-  () => browserStorage('localStorage'),
-  () => browserStorage('sessionStorage'),
-);
+export const raidHeartbeat = new RaidHeartbeat(browserStorage);

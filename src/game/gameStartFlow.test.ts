@@ -49,6 +49,7 @@ import { StarterScene } from './scenes/StarterScene';
 import { TitleScene } from './scenes/TitleScene';
 import { SaveManager } from './save/SaveManager';
 import { startNewGame } from './save/newGame';
+import { titleMenu } from './ui/titleMenu';
 import { createStartingStash, Stash } from './stash';
 import { WorldScene } from './scenes/WorldScene';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from './display/stage';
@@ -306,6 +307,43 @@ describe('game start flow', () => {
       ]);
     },
   );
+
+  it('never erases a game started in another tab while the title stood open', () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    };
+    const saves = new SaveManager(storage);
+    const menu = titleMenu({ kind: 'none' });
+    const start = vi.fn();
+    const title = Object.create(TitleScene.prototype) as TitleScene;
+    const stand = title as unknown as { choice: string; menu: { initial: string }; chooseSelected(): void };
+    Object.assign(title as unknown as Record<string, unknown>, {
+      saveManager: saves,
+      playtestSaveManager: new SaveManager(storage, 'playtest'),
+      summary: { kind: 'none' },
+      playtestSummary: { kind: 'none' },
+      menu,
+      choice: 'new',
+      hasStarted: false,
+      redraw: vi.fn(),
+      prompt: [{ setText: vi.fn() }],
+      cameras: { main: { fadeOut: vi.fn() } },
+      scene: { start },
+      time: { delayedCall: (_delay: number, callback: () => void) => callback() },
+      playStartAudio: vi.fn(),
+    });
+
+    // The menu above was drawn on an empty browser, and then a game was played.
+    startNewGame(saves, 'charmander');
+    stand.chooseSelected();
+
+    expect(saves.load()?.starterSpeciesId).toBe('charmander');
+    expect(start).not.toHaveBeenCalled();
+    expect(stand.choice).toBe('continue');
+  });
 
   it('returns a browser reload to the base instead of resuming an active raid location', () => {
     const values = new Map<string, string>();

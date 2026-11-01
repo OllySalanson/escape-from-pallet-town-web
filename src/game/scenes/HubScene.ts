@@ -1092,6 +1092,10 @@ export class HubScene extends Phaser.Scene {
     if (underWay) {
       if (raidHeartbeat.liveElsewhere(underWay.id)) {
         this.refuse('A raid is already under way in another window. Finish it there first.');
+      } else if (this.kit) {
+        // Closing a panel stays in the same hall, which settles nothing, and
+        // JUMP IN would only ever close the panel again.
+        this.scene.start('base', { room: 'raid-arena' });
       } else {
         this.leaveToBase();
       }

@@ -794,6 +794,8 @@ export class TitleScene extends Phaser.Scene {
       dismissKeyboardNotice();
       void audioManager.playWaking('confirm');
       this.leaveKeyboardNotice();
+    } else if (this.menuWentStale()) {
+      return;
     } else if (this.choice === 'continue') {
       this.startGame('continue');
     } else if (this.choice === 'new') {
@@ -823,6 +825,25 @@ export class TitleScene extends Phaser.Scene {
     } else {
       this.startGame('new');
     }
+  }
+
+  /**
+   * Whether a save has come or gone since this menu was drawn, and if so draws
+   * it again instead of doing what was pressed. A title can sit open in a tab
+   * for as long as it likes while a game is played in another, and NEW GAME on
+   * a menu drawn before there was a game erased that game without asking.
+   */
+  private menuWentStale(): boolean {
+    const summary = this.saveManager.describe();
+    const playtestSummary = this.playtestSaveManager.describe();
+    const stale = summary.kind !== this.summary.kind || playtestSummary.kind !== this.playtestSummary.kind;
+    this.summary = summary;
+    this.playtestSummary = playtestSummary;
+    if (stale) {
+      const menu = titleMenu(summary);
+      this.showMenu(menu, menu.initial);
+    }
+    return stale;
   }
 
   /**
