@@ -43,6 +43,22 @@ export interface OverviewLight {
 
 /** The row along the screen's foot that names the keys. The map never goes under it. */
 export const OVERVIEW_BAR_HEIGHT = 16;
+/** Where the foot's words stand in it, so their capitals have as much room above as below. */
+export const OVERVIEW_BAR_WORDS_Y = 1;
+
+/**
+ * Where a line of the game's small words puts its ink, in rows of its text box, read
+ * off the screen: capitals start well below the box's top, tails hang well below the
+ * baseline, and lines stand further apart than they are tall. A frame is drawn round
+ * the ink, never the box, or the words stand on the frame.
+ */
+export const WORD_INK = { top: 3, capitals: 8, tails: 4, lineStep: 14 } as const;
+/** A one-line plate, and the head of the card over its rule. Its words stand at the plate's own top. */
+export const NAME_PLATE_HEIGHT = 13;
+/** How much of the map has been walked, under the compass: two lines of capitals. */
+export const WALKED = { x: 2, y: 49, width: 46, height: 26, wordsY: -1 } as const;
+/** How tall the card about what is under the cursor is, for words that tall under its name. */
+export const cardHeight = (wordsHeight: number): number => NAME_PLATE_HEIGHT + wordsHeight + 3;
 /** How far above the bar and off the screen's top the whole map is kept when it is fitted. */
 const FIT_MARGIN = 1;
 

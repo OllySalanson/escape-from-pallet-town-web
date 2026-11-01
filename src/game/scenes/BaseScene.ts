@@ -704,6 +704,8 @@ export class BaseScene extends Phaser.Scene {
   private telescope: ValeOverviewView | null = null;
   /** The way in the player is stood over, or has under the cursor. */
   private aimed: RimLanding | null = null;
+  /** The rail tile whose way in has had its say: a way in chosen from here stays chosen until a step is taken. */
+  private railTileRead: GridPosition | null = null;
   /** Where the hall's camera has got to, as a follow offset. */
   private cameraOffset = { x: 0, y: 0 };
   /** A jump over the fence, while one is going on. */
@@ -932,6 +934,7 @@ export class BaseScene extends Phaser.Scene {
     this.arenaPanel = null;
     this.telescope = null;
     this.aimed = null;
+    this.railTileRead = null;
     this.jump = null;
     this.fogLift = null;
     this.walkPlan = null;
@@ -1364,6 +1367,8 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    this.dropWalkPlanOnBack();
+
     // What is left of this frame for walking, and the game time a step that
     // finished part-way through a frame hands to the step that follows it.
     let frameLeftMs = deltaMs;
@@ -1648,8 +1653,16 @@ export class BaseScene extends Phaser.Scene {
     if (!arena || !kit || this.telescope) {
       return;
     }
+    if (this.targetTile) {
+      this.railTileRead = null;
+    }
     if (this.arenaPanel === 'rim') {
       this.aimed = arena.share.landings.find((landing) => landing.id === kit.flow.insertionId) ?? null;
+      this.railTileRead = this.currentTile;
+    } else if (this.dialogBox.visible) {
+      // Being spoken to on the way to the rim's panel: a way in chosen on the way here is still the one chosen.
+    } else if (this.railTileRead) {
+      // Back from the rim's panel without a step: NOT YET keeps the way in it was on.
     } else if (!this.targetTile && isAtRim(this.currentTile) && !this.fogLift) {
       const below = landingBelow(this.currentTile, arena.share);
       if (below && below.id !== this.aimed?.id) {
@@ -2697,6 +2710,13 @@ export class BaseScene extends Phaser.Scene {
         then();
       },
     };
+  }
+
+  /** ESC calls off a walk the pointer asked for, and what it was on its way to open. The step under way finishes. */
+  private dropWalkPlanOnBack(): void {
+    if (this.walkPlan && this.keyPresses.justPressed(this.controls.back)) {
+      this.walkPlan = null;
+    }
   }
 
   /**
@@ -3934,6 +3954,11 @@ export class BaseScene extends Phaser.Scene {
 
   private hintRect(view: Phaser.Geom.Rectangle): Rect {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
+    if (this.hintSeat) {
+      // At the corner of a box it is only as wide as its words, and not at the foot at all.
+      const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
+      return { x: view.left + this.hintSeat.right - width, y: view.top + this.hintSeat.y, width, height };
+    }
     return {
       x: view.left,
       y: view.top + this.hintY(height),

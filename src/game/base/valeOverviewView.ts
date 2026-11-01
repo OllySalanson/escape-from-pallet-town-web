@@ -16,7 +16,11 @@ import type { WindowLight } from './homeClock';
 import type { TownLight } from './pitClock';
 import {
   IRIS_MS,
+  NAME_PLATE_HEIGHT,
   OVERVIEW_BAR_HEIGHT,
+  OVERVIEW_BAR_WORDS_Y,
+  WALKED,
+  cardHeight,
   OverviewView,
   cardPlace,
   irisOpen,
@@ -109,7 +113,6 @@ const BRIGHT_WORDS = '#f8f7dd';
 /** How wide the card about a way in is, and what stands inside its frame. */
 const CARD_WIDTH = 150;
 const CARD_PADDING = 4;
-const NAME_PLATE_HEIGHT = 13;
 /** A drag starts once the pointer has moved this far, so a shaky click is still a click. */
 const DRAG_FROM = 3;
 /** How long the map's name stays up on opening, if nothing is done first. */
@@ -127,7 +130,6 @@ const BEAT_MS = 420;
 const YOU_ABOVE_LIGHT = 10;
 
 const COMPASS = { x: 2, y: 2, size: 46, arm: 16 } as const;
-const WALKED = { x: 2, y: 49, width: 46, height: 25 } as const;
 const LOCATOR = { size: 46, inset: 3 } as const;
 
 type Phase = 'to-the-glass' | 'opening' | 'open' | 'closing' | 'back-in-the-hall' | 'done';
@@ -362,7 +364,7 @@ export class ValeOverviewView {
     this.walkedFrame.clear();
     drawPixelWindow(this.walkedFrame, { x: 0, y: 0, width: WALKED.width, height: WALKED.height }, { fill: PLATE_FILL, border: BRASS_DARK });
     this.walkedFrame.setPosition(WALKED.x, WALKED.y);
-    this.walkedText.setPosition(WALKED.x + Math.round((WALKED.width - this.walkedText.width) / 2), WALKED.y + 1);
+    this.walkedText.setPosition(WALKED.x + Math.round((WALKED.width - this.walkedText.width) / 2), WALKED.y + WALKED.wordsY);
   }
 
   /** How it ended, once the hall is back on the screen. */
@@ -839,7 +841,7 @@ export class ValeOverviewView {
       this.cardBody.setText(said.lines.join('\n'));
       const titled = Math.ceil(this.cardTitle.width) + CARD_PADDING * 2;
       const width = said.lines.length === 0 ? Math.max(titled, 16) : Math.max(CARD_WIDTH, titled);
-      const height = NAME_PLATE_HEIGHT + (said.lines.length === 0 ? 0 : Math.ceil(this.cardBody.height) + 2);
+      const height = said.lines.length === 0 ? NAME_PLATE_HEIGHT : cardHeight(Math.ceil(this.cardBody.height));
       this.cardSize = { width, height };
       const on = this.cardFrame.clear();
       drawPixelWindow(on, { x: 0, y: 0, width, height }, { fill: CREAM, border: INK });
@@ -851,7 +853,7 @@ export class ValeOverviewView {
     const others = this.lights.filter(({ landing }) => landing.id !== this.view.wayIn).map(({ image }) => ({ x: image.x, y: image.y }));
     const place = cardPlace(landingAt, this.cardSize, this.screen, this.furniture(), others);
     this.cardFrame.setPosition(place.x, place.y);
-    this.cardTitle.setPosition(place.x + CARD_PADDING, place.y + 1);
+    this.cardTitle.setPosition(place.x + CARD_PADDING, place.y);
     this.cardBody.setPosition(place.x + CARD_PADDING, place.y + NAME_PLATE_HEIGHT);
   }
 
@@ -882,7 +884,7 @@ export class ValeOverviewView {
       const width = this.titleFrame.getData('width') as number;
       const x = Math.round((this.screen.width - width) / 2);
       this.titleFrame.setPosition(x, 3);
-      this.titleText.setPosition(x + 4, 4);
+      this.titleText.setPosition(x + 4, 3);
     }
   }
 
@@ -1001,7 +1003,7 @@ export class ValeOverviewView {
     for (const chip of this.chips.filter((each) => each.text.visible)) {
       chip.x = x;
       chip.width = Math.ceil(chip.text.width);
-      chip.text.setPosition(x, top + 2);
+      chip.text.setPosition(x, top + OVERVIEW_BAR_WORDS_Y);
       if (chip.id === this.litChip) {
         on.fillStyle(BRASS_DARK, 1).fillRect(x - 2, top + 1, chip.width + 4, OVERVIEW_BAR_HEIGHT - 2);
       }

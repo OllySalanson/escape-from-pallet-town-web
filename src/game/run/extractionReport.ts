@@ -437,10 +437,11 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   };
 }
 
+/** True of any wipe: the restock adds only what the kit is short of, so a stocked vault is given nothing. */
 function wipedBaseNote(fitToRaid: boolean): string {
   return fitToRaid
-    ? 'Your base has been topped back up to a loadout you can deploy with.'
-    : 'Your supplies have been topped back up, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.';
+    ? 'You still have what you need to deploy again.'
+    : 'You have the supplies to deploy again, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.';
 }
 
 /**

@@ -263,7 +263,13 @@ try {
   const moved = await state();
   expect('an arrow moves the cursor on the whole map', moved.cursor.y < before.cursor.y);
   expect('with the map holding still', moved.rect.top === before.rect.top);
-  expect('and off the way in the card goes or names the ground', moved.way === null && wholeCard(moved));
+  // Where the telescope stands decides what lies on the way: go on until no way in has the cursor.
+  let offAWayIn = moved;
+  for (let guard = 0; guard < 12 && offAWayIn.way !== null; guard += 1) {
+    await held('ArrowUp', 400);
+    offAWayIn = await state();
+  }
+  expect('and off the way in the card goes or names the ground', offAWayIn.way === null && wholeCard(offAWayIn));
   await shot('cursor-off-a-way-in');
   await page.tap('Enter', 0);
   await step(200);

@@ -162,7 +162,7 @@ try {
     await step(9000);
 
     // A wave at the stands from the outer floor, beside whoever waits for a bout.
-    await walkTo({ x: 31, y: 5 });
+    await walkTo({ x: 30, y: 5 });
     await press('ArrowUp', 300);
     await step(2600);
     expect(`the far wall offers a wave (${await base('b.hintShown')})`, (await base('b.hintShown')) === '[SPACE] WAVE TO THE CROWD');
@@ -174,7 +174,7 @@ try {
     expect('and sits down again', (await posedUp()) === 0);
 
     // A run round the outer floor has the view on the people getting up for it.
-    for (const [name, x, y] of [['ne', 47, 11], ['e', 60, 33], ['se', 47, 55]]) {
+    for (const [name, x, y] of [['ne', 47, 11], ['e', 62, 33], ['se', 47, 55]]) {
       await walkTo({ x, y });
       await shot(`crowd-run-${name}`);
     }

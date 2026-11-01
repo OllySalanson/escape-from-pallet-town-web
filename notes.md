@@ -668,3 +668,38 @@ Checked against the code on 2026-10-20 (base 95c45b13).
 - How reproduced: `src/game/hub/deploymentFlow.test.ts` "brings back the medicine a smaller pack had no room for when a bigger one is worn again" failed before the fix, and the same steps were replayed on the rack in the browser: 12/1/1, then 9 on the Raid pack, then 12/1/1 again after it.
 - What changed: `DeploymentFlow` remembers medicine the default left out only because the worn pack had no share for it (`squeezedOut`), so a bigger pack brings it back; setting a count of that kind by hand ends that, tested by "leaves out for good a kind the player took out".
 - How to use it: at the rack, wear a smaller pack and go back to the bigger one - the same medicine is packed as before.
+
+### 92. Escape did not call off a click-to-walk in the hall
+- Steps: new game at 1200x768, walk into the hall, click the armoury rack, press Escape partway.
+- Saw: the player walked on and the rack's panel opened on arrival.
+- Should: stop at the end of the step under way with nothing opened. `BaseScene.dropWalkPlanOnBack` does, and `arenaWalkPlan.test.ts` plays the press mid-step and between steps.
+
+### 93. The telescope's words stood on their frames
+- Steps: veteran save at 1200x768, press SPACE at a telescope.
+- Saw: WALKED on its frame's bottom border, the card's title on its rule, a tail on the card's border, the map's name on its plate's border and the foot's keys off centre.
+- Should: at least one clear row round the ink. The plate geometry is in `valeOverview.ts`, held by its 'words in their frames' tests; those check the numbers, and a dump of the screenshot checked the drawing at 1200x768 only.
+
+### 94. A lost raid's footer claimed a top-up that never came
+- Steps: veteran save with a full vault, jump in, let the clock run out, read the result screen.
+- Saw: 'Your base has been topped back up', with the save's counts showing nothing added.
+- Should: claim no top-up. `wipedBaseNote` no longer does (`extractionReport.test.ts`). `arenaFun.mjs`'s three failing tiles were the driver's, not the game's, and are corrected.
+
+### 95. A way in chosen on the way to the rim was lost under the marshal's first words
+- Steps: veteran save that has not heard the rim's first words, click a telescope, click a way in on the glass, click through the marshal's words.
+- Saw: the card and the raid were on the way in under the rail, not the one clicked.
+- Should: the way in clicked. `BaseScene.settleAim` leaves the aim alone while a box is up (`arenaWalkPlan.test.ts`).
+
+### 96. NOT YET on the rim's card lost the way in chosen
+- Steps: stand at the rail, SPACE, pick another way in by arrow or click, NOT YET or Escape, SPACE.
+- Saw: the card back on the way in under the rail, though the button says everything chosen stays as it is.
+- Should: the way in chosen, until a step is taken. `BaseScene.railTileRead` holds it (`arenaWalkPlan.test.ts`).
+
+### 97. A caption stood cut off under the talk box's [ESC] SKIP chip
+- Steps: veteran save that has not heard the rim's first words, at a telescope SPACE, E, ENTER, so the marshal speaks at the rail.
+- Saw: THE TELESCOPE under the chip with its second line cut off.
+- Should: no caption under the chip. `BaseScene.hintRect` gives the seating the chip's own rectangle (`baseHintChip.test.ts`). While the box is up that name has no clear seat there and is hidden.
+
+### 98. A phone's window squashed the game and put DONE out of reach
+- Steps: 390x844 touch view, new game, walk into the hall, open the bench.
+- Saw: the canvas squeezed from 640 wide to 390 and the panel still 640 wide, with DONE off screen.
+- Should: the whole game in the window, undistorted. A window that cannot hold 640x480 now gets 1x canvas and menus (`stage.ts`, `menuStage.ts`). Touch-only play is unchanged: the title still says there are no touch controls.

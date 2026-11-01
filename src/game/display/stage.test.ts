@@ -67,11 +67,14 @@ describe('fitting the game screen to a window', () => {
     }
   });
 
-  it('keeps a window too small for 2x readable rather than sub-pixel', () => {
-    const stage = computeStage(480, 320);
-    expect(stage.zoom).toBe(MIN_STAGE_ZOOM);
-    expect(stage.width).toBe(BASE_STAGE_WIDTH);
-    expect(stage.height).toBe(BASE_STAGE_HEIGHT);
+  it('fits a window too small for 2x whole, at 1x, so nothing has to squeeze the canvas', () => {
+    for (const [width, height] of [[390, 844], [844, 390], [480, 320], [639, 480], [640, 479]]) {
+      const stage = computeStage(width, height);
+      expect(stage.zoom, `${width}x${height}`).toBe(MIN_STAGE_ZOOM);
+      expect(stage.width * stage.zoom, `${width}x${height} width`).toBeLessThanOrEqual(width);
+      expect(stage.height * stage.zoom, `${width}x${height} height`).toBeLessThanOrEqual(height);
+    }
+    expect(computeStage(640, 480)).toEqual({ width: BASE_STAGE_WIDTH, height: BASE_STAGE_HEIGHT, zoom: 2 });
   });
 
   it('centres the authored composition on whole pixels', () => {

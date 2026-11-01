@@ -51,9 +51,24 @@ describe('applyStage', () => {
   it('pins a window too small for the game to its corner rather than off the screen', () => {
     const parent = fakeParent();
 
-    applyStage(game(), parent as unknown as HTMLElement, 500, 300);
+    applyStage(game(), parent as unknown as HTMLElement, 300, 200);
 
     expect(parent.style.left).toBe('0px');
     expect(parent.style.top).toBe('0px');
+  });
+
+  it('gives a phone the box the canvas really draws, so the page has nothing to squash or scroll', () => {
+    for (const [width, height] of [[390, 844], [844, 390]]) {
+      const parent = fakeParent();
+      const scaled = game();
+
+      const stage = applyStage(scaled, parent as unknown as HTMLElement, width, height);
+
+      expect(scaled.scale.setZoom).toHaveBeenCalledWith(1);
+      expect(parent.style.width).toBe(`${stage.width}px`);
+      expect(parent.style.height).toBe(`${stage.height}px`);
+      expect(stage.width, `${width}x${height}`).toBeLessThanOrEqual(width);
+      expect(stage.height, `${width}x${height}`).toBeLessThanOrEqual(height);
+    }
   });
 });
