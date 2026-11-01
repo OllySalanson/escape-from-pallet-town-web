@@ -11,7 +11,7 @@ import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import {
-  ARENA_TELESCOPES,
+  ARENA_GLINTS,
   ARENA_TORCHES,
   FLOOR_PARALLAX,
   MIST_PARALLAX,
@@ -25,7 +25,6 @@ import {
   pitFrameFor,
   pitPointOf,
   podiumHole,
-  telescopeGlintPoint,
   type PitFrame,
 } from './arenaHall';
 import { windowLight, type WindowLight } from './homeClock';
@@ -808,7 +807,7 @@ export class ArenaView {
     }
   }
 
-  /** Lets the brass catch the light now and then, so a telescope is seen from along the rail. */
+  /** Lets the brass catch the light now and then, so what a player has come for is seen from across the hall. */
   private glintTheTelescopes(deltaMs: number): void {
     this.glintMs = (this.glintMs + deltaMs) % TELESCOPE_GLINT_EVERY_MS;
     const on = this.glints;
@@ -819,7 +818,7 @@ export class ArenaView {
       return;
     }
     on.fillStyle(0xfff8d0, 1);
-    for (const { x, y } of ARENA_TELESCOPES.map(telescopeGlintPoint)) {
+    for (const { x, y } of ARENA_GLINTS) {
       on.fillRect(x - reach, y, reach * 2 + 1, 1).fillRect(x, y - reach, 1, reach * 2 + 1);
     }
   }

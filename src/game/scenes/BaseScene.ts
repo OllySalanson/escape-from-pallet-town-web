@@ -7,6 +7,7 @@ import {
   type GridBounds,
   type GridInputState,
   type GridPosition,
+  type GridStepDecision,
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
 import { PressLatch } from '../input/pressLatch';
@@ -202,7 +203,7 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubScene, HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, type ArenaStationId } from '../base/arenaHall';
+import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, railBeside, type ArenaStationId } from '../base/arenaHall';
 import { crowdTakesTheView, lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import {
   RIVAL_TILE,
@@ -224,6 +225,7 @@ import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag,
 import { FALLBACK_PACK_ID, STARTING_PACK_ID, bestPackIn, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
+import { SLIDE_AFTER_MS, slideRound } from '../base/arenaWalk';
 import { ValeOverviewView } from '../base/valeOverviewView';
 import { wayInCards } from '../base/wayInCard';
 import { WAY_IN_CLICK_REACH } from '../base/valeOverview';
@@ -638,6 +640,8 @@ export class BaseScene extends Phaser.Scene {
   } | null = null;
   /** Counts down while a tap towards the partner is turning the player rather than walking them. */
   private turnToPartnerMs: number | null = null;
+  /** How long a key has been pressed against a stair of the hall's curve from standing (`roundTheStair`). */
+  private pressedAtStairMs = 0;
   /** The place's tiles, kept so a room can be drawn again where it stands - a piece of furniture moved. */
   private tilemap: Phaser.Tilemaps.Tilemap | null = null;
   /** The player's furniture standing in this room (`home/furniture.ts`). */
@@ -827,6 +831,7 @@ export class BaseScene extends Phaser.Scene {
   public readonly doors = BASE_DOORS;
   public readonly rooms = BASE_ROOMS;
   public readonly arenaStations = ARENA_STATIONS;
+  public readonly arenaTelescopes = ARENA_TELESCOPES;
   public readonly arenaRim = ARENA_RIM;
 
   /** The camera moved over for the favours' side panel (`ui/sidePanel.ts`). The hall's is `settleHallCamera`. */
@@ -899,6 +904,7 @@ export class BaseScene extends Phaser.Scene {
     this.partner = null;
     this.penPokemon = null;
     this.turnToPartnerMs = null;
+    this.pressedAtStairMs = 0;
     this.tilemap = null;
     this.furnitureImages = [];
     this.decor = null;
@@ -1421,13 +1427,17 @@ export class BaseScene extends Phaser.Scene {
       this.leaveRoom(room);
       return;
     }
-    const decision = planNextGridStep({
+    const planned = planNextGridStep({
       position: this.currentTile,
       facing: this.facing,
       input,
       bounds: this.bounds,
       isBlocked: (tile) => this.isBlocked(tile),
     });
+    const round = this.roundTheStair(planned, input, carriedMs !== null, deltaMs);
+    const decision = round.side
+      ? { facing: round.side, target: nextTileFromDirection(this.currentTile, round.side) }
+      : planned;
     // A walk the pointer asked for goes through the partner as a step would: a
     // turn here would spend a step of the plan on going nowhere, and every step
     // after it would walk the wrong way.
@@ -1439,7 +1449,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const pushing = input.up || input.down || input.left || input.right;
-    const bump = nextBump(this.pushingAgainst, !decision.target && pushing ? decision.facing : null);
+    const bump = nextBump(this.pushingAgainst, !decision.target && pushing && !round.waiting ? decision.facing : null);
     this.pushingAgainst = bump.pushingAgainst;
     if (bump.thud) {
       audioManager.play('bump');
@@ -1456,6 +1466,40 @@ export class BaseScene extends Phaser.Scene {
 
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
+  }
+
+  /**
+   * In the hall, a key held against a stair of its curve goes on round it
+   * (`base/arenaWalk.ts`). Walking on from the last step goes straight round; from
+   * standing it waits a moment, so a tap only turns the player. `waiting` is that
+   * moment, which is no bump: the player is not stopped against anything.
+   */
+  private roundTheStair(
+    planned: GridStepDecision,
+    input: GridInputState,
+    walkingOn: boolean,
+    deltaMs: number,
+  ): { readonly side: Direction | null; readonly waiting: boolean } {
+    const pressed = input.up || input.down || input.left || input.right;
+    const side =
+      this.arena && pressed && !planned.target && !this.walkPlan
+        ? slideRound(this.currentTile, planned.facing, (tile) => this.isBlocked(tile), (tile) => this.personOn(tile))
+        : null;
+    if (!side) {
+      this.pressedAtStairMs = 0;
+      return { side: null, waiting: false };
+    }
+    this.pressedAtStairMs += deltaMs;
+    if (walkingOn || this.pressedAtStairMs >= SLIDE_AFTER_MS) {
+      return { side, waiting: false };
+    }
+    return { side: null, waiting: true };
+  }
+
+  /** Whether somebody the player would press into to speak to stands on a tile of the hall. */
+  private personOn(tile: GridPosition): boolean {
+    const keeper = this.place.room?.room.keeper?.position;
+    return (keeper !== undefined && sameTile(keeper, tile)) || (this.rivalHere !== null && sameTile(tile, RIVAL_TILE));
   }
 
   // -- the map ---------------------------------------------------------------
@@ -1756,12 +1800,7 @@ export class BaseScene extends Phaser.Scene {
     if (ended.kind === 'go') {
       // Round to the rail beside the telescope, which is where a raid is looked over and started from.
       const here = ARENA_TELESCOPES.find((each) => sameTile(each.stance, this.currentTile) || this.adjacent(each.tile));
-      const rail = here
-        ? [
-            { x: here.tile.x, y: here.tile.y - 1 },
-            { x: here.tile.x, y: here.tile.y + 1 },
-          ]
-        : [this.currentTile];
+      const rail = here ? railBeside(here) : [this.currentTile];
       this.walkThen(rail, null, () => {
         this.kit?.flow.chooseInsertion(ended.landing.id as RunInsertionId);
         this.lookDown();
@@ -2453,8 +2492,8 @@ export class BaseScene extends Phaser.Scene {
     return ARENA_TELESCOPES.find((telescope) => {
       const left = Math.min(telescope.tile.x, telescope.stance.x) * TILE_SIZE - TILE_SIZE;
       const right = (Math.max(telescope.tile.x, telescope.stance.x) + 2) * TILE_SIZE;
-      const bottom = (telescope.tile.y + 1) * TILE_SIZE;
-      return pointer.worldX >= left && pointer.worldX < right && pointer.worldY >= bottom - TILE_SIZE * 3 && pointer.worldY < bottom;
+      const bottom = (Math.max(telescope.tile.y, telescope.stance.y) + 1) * TILE_SIZE;
+      return pointer.worldX >= left && pointer.worldX < right && pointer.worldY >= (telescope.tile.y - 2) * TILE_SIZE && pointer.worldY < bottom;
     });
   }
 

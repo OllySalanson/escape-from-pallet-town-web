@@ -25,13 +25,13 @@ import { ARENA_STATIONS } from './arenaHall';
 /** How many fit on the bench's slab. */
 const BENCH_SEATS = 6;
 /** The bench's slab, in from the ends of its tiles (`scripts/draw-arena-hall.mts`). */
-const BENCH_INSET_LEFT = 4;
-const BENCH_INSET_RIGHT = 3;
+const BENCH_INSET_LEFT = 2;
+const BENCH_INSET_RIGHT = 2;
 /** How far up from the foot of its row a Pokemon's feet rest on the slab. */
 const SEAT_RISE = 7;
 /** The rack's shelf: how far up from the foot of its row, and how far things stand along it. */
 const SHELF_RISE = 8;
-const RACK_INSET_LEFT = 4;
+const RACK_INSET_LEFT = 1;
 const SHELF_SLOTS = 3;
 
 const tilesOf = (id: string) => ARENA_STATIONS.find((station) => station.id === id)!.tiles;
