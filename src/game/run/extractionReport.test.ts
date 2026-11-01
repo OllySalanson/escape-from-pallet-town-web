@@ -518,10 +518,10 @@ describe('extraction report after a lost raid', () => {
     };
 
     expect(report(false).baseNote).toBe(
-      'Your supplies have been topped back up, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.',
+      'You have the supplies to deploy again, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.',
     );
     expect(report(true).baseNote).toBe(
-      'Your base has been topped back up to a loadout you can deploy with.',
+      'You still have what you need to deploy again.',
     );
 
     // Read off the stash the wipe wrote: a fainted partner is nobody fit, and
@@ -533,6 +533,33 @@ describe('extraction report after a lost raid', () => {
     stash.addPokemon(new Pokemon(PIDGEY, 3));
     expect(anyoneFitToRaid(stash)).toBe(true);
     expect(anyoneFitToRaid(undefined)).toBeUndefined();
+  });
+
+  /**
+   * The wipe restock adds only what the kit is short of, so a stocked vault is
+   * given nothing, and the note was telling a veteran it had been topped up.
+   */
+  it('does not claim a top-up the wipe never gave a stocked vault', () => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(BULBASAUR, 5));
+    for (const [itemId, quantity] of Object.entries({ 'super-potion': 4, antidote: 2, 'poke-ball': 10, 'raid-pack': 1 })) {
+      stash.addItem(itemId, quantity);
+    }
+    expect(stash.restockMinimumSupplies()).toBe(false);
+
+    const partner = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({ party: [partner], items: [], secure: { pokemon: [partner] } });
+    const result = manager.resolveWipe();
+    const note = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: result.lostPokemon, items: result.lostItems },
+      fitToRaid: anyoneFitToRaid(stash),
+      saved: true,
+    }).baseNote;
+    expect(note).not.toMatch(/topped/i);
   });
 
   it('says nothing about the base after a survived raid', () => {
