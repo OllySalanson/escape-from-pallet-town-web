@@ -172,12 +172,8 @@ describe("THE RAID ARENA's great hall", () => {
     }
   });
 
-  it('makes the tile behind a pillar at the end of a station solid, and part of reaching that station', () => {
-    expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([
-      ['25,58', '31,58'],
-      ['39,58'],
-      ['45,58'],
-    ]);
+  it('lets a standing torch at the end of a station answer for it', () => {
+    expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([['32,59'], ['38,59'], []]);
     for (const station of ARENA_STATIONS) {
       for (const tile of station.past) {
         expect(solid[tile.y][tile.x], `${tile.x},${tile.y}`).toBe(true);
@@ -185,19 +181,33 @@ describe("THE RAID ARENA's great hall", () => {
     }
   });
 
-  it('never has a player use a station from behind a pillar, where only their chevron shows', () => {
-    const faced = ARENA_STATIONS.flatMap((station) =>
-      station.tiles.flatMap((tile) => [
-        { x: tile.x - 1, y: tile.y },
-        { x: tile.x + 1, y: tile.y },
-        { x: tile.x, y: tile.y - 1 },
-        { x: tile.x, y: tile.y + 1 },
-      ]),
-    ).filter((tile) => !solid[tile.y][tile.x]);
-    for (const tile of faced) {
-      const behind = ARENA_PILLARS.some((pillar) => pillar.x === tile.x && pillar.y > tile.y && pillar.y - tile.y <= 2);
-      expect(behind, `${tile.x},${tile.y}`).toBe(false);
-    }
+  it('leaves no floor a figure could stand on out of sight, behind a pillar or anything else as tall', () => {
+    const hidden = solid.flatMap((row, y) =>
+      row.flatMap((blocked, x) => {
+        const behindPillar = ARENA_PILLARS.some((pillar) => pillar.x === x && pillar.y > y && pillar.y - y <= 2);
+        const behindFurniture = ARENA_STATIONS.some((station) => station.rises.some((tile) => tile.x === x && tile.y === y));
+        return !blocked && (behindPillar || behindFurniture) ? [key(x, y)] : [];
+      }),
+    );
+    expect(hidden).toEqual([]);
+  });
+
+  it('has no floor with one way in, but in front of what it is for', () => {
+    const fronts = new Set(
+      ARENA_STATIONS.flatMap((station) => [...station.tiles, ...station.past]).map((tile) => key(tile.x, tile.y + 1)),
+    );
+    const deadEnds = solid.flatMap((row, y) =>
+      row.flatMap((blocked, x) => {
+        const ways = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ].filter(([dx, dy]) => solid[y + dy]?.[x + dx] === false);
+        return !blocked && ways.length <= 1 && !fronts.has(key(x, y)) ? [key(x, y)] : [];
+      }),
+    );
+    expect(deadEnds).toEqual([]);
   });
 
   it('never lets its furniture shut the walk round the rim', () => {
@@ -222,6 +232,7 @@ describe("THE RAID ARENA's great hall", () => {
     }
     expect(ARENA_TORCHES.filter((torch) => torch.on === 'pillar')).toHaveLength(ARENA_PILLARS.length);
     expect(ARENA_TORCHES.some((torch) => torch.on === 'wall')).toBe(true);
+    expect(ARENA_TORCHES.filter((torch) => torch.on === 'stand')).toHaveLength(2);
   });
 
   it('walks wider beside the pit than above and below it, and all of it is reached', () => {
@@ -245,7 +256,6 @@ describe("THE RAID ARENA's great hall", () => {
       }
       return walked;
     };
-    // The telescope stands on the first of them, and the floor goes on past it.
     expect(across(ARENA_MAT.x, 1)).toBeGreaterThanOrEqual(7);
     expect(across(ARENA_MAT.x, -1)).toBeGreaterThanOrEqual(7);
     expect(across(ARENA_MAT.x, 1)).toBeGreaterThan(downwards(33, -1));
@@ -255,7 +265,7 @@ describe("THE RAID ARENA's great hall", () => {
     expect(PIT_RIM.rx).toBe(376);
   });
 
-  it('stands a telescope on the rail on the left and on the right, mirrored, each walked up to from the floor', () => {
+  it('stands a telescope on the rail on the left and on the right, mirrored, in sight of the door and each walked up to from the floor', () => {
     expect(ARENA_TELESCOPES.map((telescope) => telescope.side)).toEqual(['west', 'east']);
     const [west, east] = ARENA_TELESCOPES;
     expect(ARENA_MAT.x * 2 - west.tile.x).toBe(east.tile.x);
@@ -266,11 +276,12 @@ describe("THE RAID ARENA's great hall", () => {
       expect(arenaTelescopeAt(telescope.tile)).toBe(telescope);
       expect(isArenaFence(telescope.tile), telescope.side).toBe(false);
       expect(steps.has(key(telescope.stance.x, telescope.stance.y)), telescope.side).toBe(true);
-      // Right on the rail, and the rail goes round it on both sides.
-      for (const rail of [telescope.tile.y - 1, telescope.tile.y + 1]) {
-        expect(steps.has(key(telescope.tile.x, rail)), `${telescope.side} ${rail}`).toBe(true);
-        expect(isAtRim({ x: telescope.tile.x, y: rail }), `${telescope.side} ${rail}`).toBe(true);
-      }
+      // At the end of the fence's straight, with its plate on the rail's own row
+      // and the rail going on past it on the far side.
+      const way = telescope.side === 'east' ? 1 : -1;
+      expect(isArenaFence({ x: telescope.tile.x - way, y: telescope.tile.y }), telescope.side).toBe(true);
+      expect(telescope.stance, telescope.side).toEqual({ x: telescope.tile.x, y: telescope.tile.y + 1 });
+      expect(isAtRim({ x: telescope.tile.x + way, y: telescope.tile.y }), telescope.side).toBe(true);
       // Its plate is not on the rim: a press there is the telescope, not a jump.
       expect(isAtRim(telescope.stance), telescope.side).toBe(false);
     }
@@ -279,6 +290,8 @@ describe("THE RAID ARENA's great hall", () => {
   it('stands its keeper on floor, clear of the mat and the runner up the middle', () => {
     expect(solid[ARENA_KEEPER_TILE.y][ARENA_KEEPER_TILE.x]).toBe(false);
     expect(Math.abs(ARENA_KEEPER_TILE.x - ARENA_MAT.x)).toBeGreaterThan(1);
+    // Nor on the row the stations are walked along, or a held key would stop at her.
+    expect(ARENA_KEEPER_TILE.y).not.toBe(ARENA_STATIONS[0].tiles[0].y + 1);
   });
 
   it('builds as an ordinary room, drawn from a sheet the loader fetches', () => {

@@ -371,7 +371,7 @@ try {
     await step(300);
     await until(inHall, 'the hall again');
     expect('and it is still there on the next visit, until it is picked up', await base('Boolean(b.pitGiftImage)'));
-    await walkTo({ x: 30, y: 57 });
+    await walkTo({ x: 33, y: 57 });
     await step(300);
     expect('walking on to it picks it up', (await saved()).raidProgress.pit.taken === 1);
     await shot('coin-gift-taken');

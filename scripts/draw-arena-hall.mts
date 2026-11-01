@@ -25,6 +25,7 @@ import {
   ARENA_HALL_WIDTH,
   ARENA_MAT,
   ARENA_PILLARS,
+  ARENA_STAND_TORCHES,
   ARENA_STATIONS,
   ARENA_TELESCOPES,
   ARENA_TILE,
@@ -285,6 +286,40 @@ function paintRunner(): void {
   }
 }
 
+/**
+ * The runner's two arms, along the row in front of the stations: the same red and
+ * the same gold as the runner, so whoever comes through the door has only to follow
+ * the carpet to whatever they came for. Nothing is written on it.
+ */
+function paintRunnerArms(): void {
+  const row = ARENA_MAT.y - 2;
+  const midY = row * ARENA_TILE + 8;
+  const halfDepth = 6;
+  const first = ARENA_STATIONS[0].tiles[0].x * ARENA_TILE + 2;
+  const last = (ARENA_STATIONS[2].tiles[1].x + 1) * ARENA_TILE - 3;
+  const midX = (ARENA_MAT.x + 0.5) * ARENA_TILE;
+  for (let x = first; x <= last; x += 1) {
+    // The runner itself runs over the middle.
+    if (Math.abs(x + 0.5 - midX) < 13) {
+      continue;
+    }
+    for (let py = -halfDepth; py < halfDepth; py += 1) {
+      const y = midY + py;
+      const light = torchLight(x, y, ARENA_TORCHES);
+      const share = 0.45 + light * 0.75;
+      const fromEdge = Math.min(py + halfDepth, halfDepth - 1 - py, x - first, last - x);
+      if (fromEdge <= 0) {
+        ground.set(x, y, dithered(share, x, y) ? GOLD_DARK : WOOD);
+      } else if (fromEdge === 1) {
+        ground.set(x, y, dithered(share, x, y) ? GOLD : GOLD_DARK);
+      } else {
+        const nap = (y >> 1) % 2 === 0 ? 0.08 : 0;
+        ground.set(x, y, dithered(share + nap, x, y) ? RED : RED_DARK);
+      }
+    }
+  }
+}
+
 // --- the fence ---------------------------------------------------------------
 
 /**
@@ -457,11 +492,34 @@ function paintPillar(tileX: number, tileY: number): void {
   shadeFoot(10, footY - PILLAR_RISE, 3);
 }
 
+/** Where the row a standing torch stands on begins: below this it is the floor, above it the air over whoever is behind it. */
+const STAND_FOOT_TOP = ARENA_STAND_TORCHES[0].y * ARENA_TILE;
+
+/** The iron a torch stands in where there is no pillar to hold it: a pole and three feet. */
+function paintTorchStand(torch: ArenaTorch, put: (x: number, y: number, ink: Rgb) => void): void {
+  const foot = (ARENA_STAND_TORCHES[0].y + 1) * ARENA_TILE - 2;
+  for (let y = torch.y + 17; y <= foot; y += 1) {
+    put(torch.x - 1, y, IRON);
+    put(torch.x, y, IRON_LIGHT);
+    put(torch.x + 1, y, IRON);
+  }
+  for (let dx = -5; dx <= 5; dx += 1) {
+    put(torch.x + dx, foot, IRON);
+    put(torch.x + dx, foot + 1, STONE_RAMP[1]);
+  }
+  for (let dx = -3; dx <= 3; dx += 1) {
+    put(torch.x + dx, foot - 1, IRON_LIGHT);
+  }
+}
+
 /** A torch's stick, and the bracket holding it; the flame is the scene's (`arenaView.ts`). */
 function paintTorch(torch: ArenaTorch): void {
   const put = (x: number, y: number, ink: Rgb): void => {
-    (torch.on === 'pillar' ? over : ground).set(x, y, ink);
+    (torch.on === 'pillar' || (torch.on === 'stand' && y < STAND_FOOT_TOP) ? over : ground).set(x, y, ink);
   };
+  if (torch.on === 'stand') {
+    paintTorchStand(torch, put);
+  }
   // A stick you could pull off the wall: a wooden shaft three pixels wide with
   // pitch-black wrapping at its head, held out by an iron bracket.
   for (let dy = 0; dy < 16; dy += 1) {
@@ -553,9 +611,8 @@ function stationShadow(left: number, right: number, foot: number): void {
  */
 function paintBench(): void {
   const { left: tileLeft, right: tileRight, foot } = stationBox('bench');
-  // Pulled in clear of the two pillars either end of it.
-  const left = tileLeft + 4;
-  const right = tileRight - 3;
+  const left = tileLeft + 2;
+  const right = tileRight - 2;
   const light = torchLight((left + right) / 2, foot - 4, ARENA_TORCHES);
   const seatTop = foot - 11;
   const seatFront = foot - 6;
@@ -570,9 +627,17 @@ function paintBench(): void {
       }
       if (y <= seatFront) {
         const edge = y === seatTop || fromLeft === 0 || fromRight === 0 || y === seatFront;
-        // The top of the slab catches the light; its front does not.
-        const level = y < seatFront - 1 ? 6.6 : 4.2;
-        ground.set(x, y, edge ? STONE_RAMP[1] : stoneAt(level + light * 1.6 + 0.4 * (scatter(Math.floor(x / 14), 3) - 0.5), x, y));
+        // The cushion along its top is the carpet's own red, with gold at its front;
+        // the slab's front under it is pale stone that catches the light.
+        if (edge) {
+          ground.set(x, y, STONE_RAMP[1]);
+        } else if (y < seatFront - 2) {
+          ground.set(x, y, dithered(0.6 + light * 0.6, x, y) ? RED_LIGHT : RED);
+        } else if (y === seatFront - 2) {
+          ground.set(x, y, GOLD);
+        } else {
+          ground.set(x, y, stoneAt(7.2 + light * 1.2, x, y));
+        }
         continue;
       }
       // Three plinths under it.
@@ -595,8 +660,7 @@ function paintBench(): void {
 function paintRack(): void {
   const { left: tileLeft, right: tileRight, top, foot } = stationBox('rack');
   const put = stationPut(top);
-  // Pulled in clear of the pillar beside it.
-  const left = tileLeft + 4;
+  const left = tileLeft + 1;
   const right = tileRight;
   const head = foot - 33;
   const shelf = foot - 8;
@@ -604,7 +668,7 @@ function paintRack(): void {
   // The dark behind the shelf: boards, seen through the frame.
   for (let y = head + 2; y < shelf; y += 1) {
     for (let x = left + 3; x < right - 3; x += 1) {
-      put(x, y, Math.floor((x - left) / 7) % 2 === 0 ? STONE_RAMP[2] : STONE_RAMP[1]);
+      put(x, y, Math.floor((x - left) / 7) % 2 === 0 ? WOOD_LIGHT : WOOD);
     }
   }
   const wood = (x: number, y: number, lit: boolean): void => put(x, y, lit ? WOOD_LIGHT : WOOD);
@@ -664,7 +728,7 @@ function paintLocker(): void {
       if (seam) {
         put(x, y, IRON);
       } else if (banded) {
-        put(x, y, x % 5 === 2 ? STONE_RAMP[7] : IRON_LIGHT);
+        put(x, y, x % 5 === 2 ? BRASS_LIGHT : GOLD_DARK);
       } else {
         const level = 2.4 + (x - left < 3 ? 1.1 : 0) + (y - head < 3 ? 0.9 : 0) - (x === middle - 1 ? 0.6 : 0);
         put(x, y, stoneAt(level, x, y));
@@ -784,6 +848,7 @@ paintFloor();
 paintWall();
 paintBanners();
 paintRunner();
+paintRunnerArms();
 paintPorch();
 paintFence();
 // Back to front, because a nearer pillar's capital stands over a further one's foot.

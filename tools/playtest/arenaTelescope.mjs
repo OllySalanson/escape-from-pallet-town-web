@@ -228,7 +228,7 @@ try {
     await page.keyUp(key);
     await step(100);
   };
-  await walk({ x: east.x + 1, y: east.y });
+  await walk(await base(`({ ...b.arenaTelescopes[1].stance })`));
   await step(400);
   await shot('at-the-telescope');
   expect('the hint names it', (await base('b.hintShown')) === '[SPACE] LOOK THROUGH THE TELESCOPE');
@@ -375,7 +375,7 @@ try {
   await step(800);
   expect('ESC steps back', (await state()) === null);
   const backOn = await base('({ ...b.currentTile })');
-  expect('stood where they looked from', backOn.x === east.x + 1 && backOn.y === east.y);
+  expect('stood where they looked from', backOn.x === east.x && backOn.y === east.y + 1);
   await shot('stepped-back');
   await press('Space');
   await until(`${GAME}.scene.getScene('base').telescope?.isOpen === true`, 'the glass again');

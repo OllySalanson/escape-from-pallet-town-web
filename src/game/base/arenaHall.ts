@@ -13,8 +13,11 @@ import type { GridPosition } from '../movement/gridMovement';
  *
  * Everything a player does before a raid is done on this platform
  * (`arenaRim.ts`, `BaseScene`). **The stations stand just inside the door**: the
- * bench, the armoury rack and the locker (`ARENA_STATIONS`), each with floor all
- * along its front, none of them between the fence and the walk round it. And
+ * bench, the armoury rack and the locker (`ARENA_STATIONS`), either side of the
+ * runner along the row a held key walks from the mat, none of them between the
+ * fence and the walk round it. **Nobody stands behind anything**: what rises over
+ * the floor is solid under the part of it that would hide a figure, and no tile is
+ * left that goes nowhere (`arenaWalk.ts` is the walking this leaves room for). And
  * **the fence is one low run nobody but the player needs to get past**: it is
  * solid, one tile thick, and every tile of it (`ARENA_FENCE`) has a tile of
  * platform to stand on beside it, so going over it is one authored hop from
@@ -114,24 +117,29 @@ function isPlatform(tile: GridPosition): boolean {
 /** Whether a tile is the hall's outer wall, with the stands behind it: not the porch's own sides, and not the fence. */
 export function isOuterWall(tile: GridPosition): boolean {
   const inOrBesidePorch = Math.abs(tile.x - ARENA_MAT.x) <= 2 && tile.y >= ARENA_MAT.y - 3;
-  if (inOrBesidePorch || isPlatform(tile)) {
+  if (inOrBesidePorch) {
     return false;
+  }
+  if (isPlatform(tile)) {
+    return WALLED_OFF.has(`${tile.x},${tile.y}`);
   }
   return tileCorners(tile).some(([x, y]) => acrossOval(WALL_FOOT, x, y) > 1);
 }
 
 const PILLAR_COUNT = 28;
-/** How far across the platform the pillars stand, from fence to wall. */
-const PILLAR_REACH = 0.8;
+/** How far across the platform the pillars stand, from fence to wall: back against the wall, with no walk behind them. */
+const PILLAR_REACH = 0.97;
 
 /**
- * The pillars, as the tile each stands on, evenly round the platform close to
- * the wall and mirrored about the hall's centre line. The ring is turned half
- * a step, so the two nearest the door stand either side of the runner.
+ * The pillars, as the tile each stands on, evenly round the platform against the
+ * wall and mirrored about the hall's centre line. The ring is turned half a step
+ * and has a gap at the door: the two that would stand either side of the runner
+ * stood between a newcomer and everything they had come in for, and the walk to
+ * the bench or the rack went behind them.
  */
 export const ARENA_PILLARS: readonly GridPosition[] = (() => {
   const pillars: GridPosition[] = [];
-  for (let index = 0; index < PILLAR_COUNT; index += 1) {
+  for (let index = 1; index < PILLAR_COUNT - 1; index += 1) {
     const angle = ((index + 0.5) * Math.PI * 2) / PILLAR_COUNT + Math.PI / 2;
     const at = (radius: (oval: Oval) => number, axis: 'x' | 'y'): number => {
       const start = radius(PIT_RIM);
@@ -150,8 +158,8 @@ export const ARENA_PILLARS: readonly GridPosition[] = (() => {
   return pillars;
 })();
 
-/** Where the hall's keeper stands: beside the runner, a step off the mat's line. */
-export const ARENA_KEEPER_TILE: GridPosition = { x: ARENA_MAT.x - 2, y: ARENA_MAT.y - 2 };
+/** Where the hall's keeper stands: beside the runner, in full view of the door, a row up from where the stations are walked along. */
+export const ARENA_KEEPER_TILE: GridPosition = { x: ARENA_MAT.x - 2, y: ARENA_MAT.y - 3 };
 
 const sameTile = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
 
@@ -162,43 +170,41 @@ export interface ArenaStation {
   readonly id: ArenaStationId;
   /** The tiles it stands on: one row, walked up to from the floor in front of it. */
   readonly tiles: readonly GridPosition[];
-  /**
-   * The tile at an end of its row with a pillar's shaft rising over it. A player
-   * walking along the row stopped there to use the station, out of sight behind
-   * the pillar with only a chevron over a torch. So it is solid, and answers for
-   * the station: walking along the row, the player stops short of the pillar, in
-   * full view, and pressing on towards it still reaches what they came for.
-   */
+  /** The torch at the end of its row, which answers for it: walking along the row and pressing on towards the flame still reaches what they came for. */
   readonly past: readonly GridPosition[];
+  /** The row behind it, when it stands taller than a person: whoever walked there would be out of sight, so nobody can. */
+  readonly rises: readonly GridPosition[];
 }
 
-/** A pillar's shaft rises over this many tiles behind its foot, and whoever stands there is behind it. */
-const PILLAR_HIDES_TILES = 2;
+const stationRow = (left: number, width: number, y: number): readonly GridPosition[] =>
+  Array.from({ length: width }, (_tile, index) => ({ x: left + index, y }));
 
-const station = (id: ArenaStationId, left: number, width: number): ArenaStation => ({
+/** The row the stations stand on: the last before the south wall, so the row a held key walks from the mat is the floor in front of every one of them. */
+const STATION_ROW = 59;
+
+const station = (id: ArenaStationId, left: number, width: number, past: readonly GridPosition[], tall: boolean): ArenaStation => ({
   id,
-  tiles: stationRow(left, width),
-  past: [left - 1, left + width]
-    .filter((x) => ARENA_PILLARS.some((pillar) => pillar.x === x && pillar.y > STATION_ROW && pillar.y - STATION_ROW <= PILLAR_HIDES_TILES))
-    .map((x) => ({ x, y: STATION_ROW })),
+  tiles: stationRow(left, width, STATION_ROW),
+  past,
+  rises: tall ? stationRow(left, width, STATION_ROW - 1) : [],
 });
 
-const stationRow = (left: number, width: number): readonly GridPosition[] =>
-  Array.from({ length: width }, (_tile, index) => ({ x: left + index, y: STATION_ROW }));
-
-/** The row the stations stand on: two tiles of walk between them and the fence, one of floor in front. */
-const STATION_ROW = 58;
+/** The standing torches either side of the way up from the door, where the first two pillars would be: the light the bench and the rack are read by. */
+export const ARENA_STAND_TORCHES: readonly GridPosition[] = [
+  { x: ARENA_MAT.x - 3, y: STATION_ROW },
+  { x: ARENA_MAT.x + 3, y: STATION_ROW },
+];
 
 /**
  * The stations, either side of the runner, where the first screen of the hall
  * shows all three: the bench to the west, the rack and the locker to the east.
  * Each is one row of solid tiles; anything taller rises over the row behind it,
- * as a pillar does, so the walk round the back of it is a walk behind it.
+ * and that row is solid too, so nobody walks out of sight behind it.
  */
 export const ARENA_STATIONS: readonly ArenaStation[] = [
-  station('bench', ARENA_MAT.x - 9, 5),
-  station('rack', ARENA_MAT.x + 5, 3),
-  station('locker', ARENA_MAT.x + 8, 2),
+  station('bench', ARENA_MAT.x - 8, 5, [ARENA_STAND_TORCHES[0]], false),
+  station('rack', ARENA_MAT.x + 4, 3, [ARENA_STAND_TORCHES[1]], true),
+  station('locker', ARENA_MAT.x + 7, 2, [], true),
 ];
 
 /** The station on this tile, if there is one. */
@@ -207,20 +213,23 @@ export function arenaStationAt(tile: GridPosition): ArenaStation | undefined {
 }
 
 /**
- * The brass telescopes, one on the rail either side of the pit, where the walk is
- * wide enough to go round them: the only place the whole of the map below can be
- * seen at once (`valeOverview.ts`). A way out to the side of the pit, and not by
- * the door, because the two presses that start a raid never pass through it.
+ * The brass telescopes, one each side of the runner where the straight of the
+ * fence ends: the only place the whole of the map below can be seen at once
+ * (`valeOverview.ts`). They stood half a lap away at the pit's sides, out of sight
+ * from anywhere a newcomer had been, and it took the captain ages to find one. Here
+ * both are on the first screen of the hall, and the rail's own row runs over the
+ * plate of each.
  */
 export interface ArenaTelescope {
   readonly side: 'west' | 'east';
-  /** What it stands on: the first tile of platform out from the fence, on the hall's own middle row. */
+  /** What it stands on: the first tile of platform past the fence's straight run. */
   readonly tile: GridPosition;
-  /** Where a player puts their eye to it, the far side from the pit, with a brass plate let into the floor. */
+  /** Where a player puts their eye to it, the near side from the pit, with a brass plate let into the floor. */
   readonly stance: GridPosition;
 }
 
-const TELESCOPE_ROW = Math.floor(ARENA_CENTRE.y / ARENA_TILE);
+/** The fence's straight run along the south of the pit. */
+const TELESCOPE_ROW = STATION_ROW - 4;
 
 const telescopeOn = (side: ArenaTelescope['side']): ArenaTelescope => {
   const way = side === 'east' ? 1 : -1;
@@ -228,13 +237,13 @@ const telescopeOn = (side: ArenaTelescope['side']): ArenaTelescope => {
   while (!isPlatform({ x, y: TELESCOPE_ROW })) {
     x += way;
   }
-  return { side, tile: { x, y: TELESCOPE_ROW }, stance: { x: x + way, y: TELESCOPE_ROW } };
+  return { side, tile: { x, y: TELESCOPE_ROW }, stance: { x, y: TELESCOPE_ROW + 1 } };
 };
 
 export const ARENA_TELESCOPES: readonly ArenaTelescope[] = [telescopeOn('west'), telescopeOn('east')];
 
 /** How the tube is painted: how long, how far of it is on the player's side of the middle, and how high it stands over the tile's foot. */
-export const TELESCOPE_TUBE = { length: 42, fromMiddle: 18, standsUp: 31, slope: 0.3, bigEndHalf: 7 } as const;
+export const TELESCOPE_TUBE = { length: 42, fromMiddle: 18, standsUp: 31, slope: -0.3, bigEndHalf: 7 } as const;
 
 /** Where its big end catches the light, in hall pixels: the top of the brass, over the rail. */
 export function telescopeGlintPoint({ tile, side }: ArenaTelescope): { readonly x: number; readonly y: number } {
@@ -245,23 +254,84 @@ export function telescopeGlintPoint({ tile, side }: ArenaTelescope): { readonly 
   };
 }
 
+/**
+ * Where a little of the hall catches the light now and then, in hall pixels, so
+ * it is seen from across the room: the telescopes' brass, the locker's lock and
+ * the gold along the bench's cushion. Nothing else in the hall sparkles.
+ */
+export const ARENA_GLINTS: readonly { readonly x: number; readonly y: number }[] = [
+  ...ARENA_TELESCOPES.map(telescopeGlintPoint),
+  { x: (ARENA_STATIONS[2].tiles[0].x + 1) * ARENA_TILE - 1, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 16 },
+  { x: (ARENA_STATIONS[0].tiles[4].x + 1) * ARENA_TILE - 7, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 9 },
+];
+
+/** The tiles of the rail either side of a telescope: where somebody looking through it goes round to, to look down for themselves. */
+export function railBeside({ tile, stance, side }: ArenaTelescope): readonly GridPosition[] {
+  const way = side === 'east' ? 1 : -1;
+  return [
+    { x: tile.x - way, y: stance.y },
+    { x: tile.x + way, y: tile.y },
+  ];
+}
+
 /** The telescope on this tile, if there is one. */
 export function arenaTelescopeAt(tile: GridPosition): ArenaTelescope | undefined {
   return ARENA_TELESCOPES.find((telescope) => sameTile(telescope.tile, tile));
 }
+
+/** A pillar's shaft rises over this many tiles behind its foot, and whoever stood there would be behind it. */
+const PILLAR_HIDES_TILES = 2;
+
+/** Whether a tile has something standing on it, or rising over it far enough to hide whoever stood there. */
+const standsOn = (tile: GridPosition): boolean =>
+  // Past the ends of the stations their row goes nowhere.
+  (tile.y === STATION_ROW && (tile.x < ARENA_STATIONS[0].tiles[0].x || tile.x > ARENA_STATIONS[2].tiles[1].x)) ||
+  ARENA_PILLARS.some((pillar) => pillar.x === tile.x && pillar.y >= tile.y && pillar.y - tile.y <= PILLAR_HIDES_TILES) ||
+  arenaStationAt(tile) !== undefined ||
+  arenaTelescopeAt(tile) !== undefined ||
+  ARENA_STATIONS.some((station) => [...station.past, ...station.rises].some((each) => sameTile(each, tile)));
+
+const SIDES = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
+
+/** The floor in front of a station goes nowhere else, and is what it is for. */
+const frontsAStation = (tile: GridPosition): boolean =>
+  ARENA_STATIONS.some((station) => [...station.tiles, ...station.past].some((each) => each.x === tile.x && each.y + 1 === tile.y));
+
+/**
+ * The floor nobody walks on: what the pillars rise over, and then whatever that
+ * leaves with one way in. A tile with one way in is only a place to stop against
+ * something, so it is taken away, and the tile that led to it asked again.
+ */
+const WALLED_OFF: ReadonlySet<string> = (() => {
+  const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
+  const walled = new Set<string>();
+  const open = (tile: GridPosition): boolean => isPlatform(tile) && !standsOn(tile) && !walled.has(key(tile));
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let y = 0; y < ARENA_HALL_HEIGHT; y += 1) {
+      for (let x = 0; x < ARENA_HALL_WIDTH; x += 1) {
+        const tile = { x, y };
+        if (open(tile) && !inPorch(tile) && !frontsAStation(tile) && SIDES.filter(([dx, dy]) => open({ x: x + dx, y: y + dy })).length <= 1) {
+          walled.add(key(tile));
+          changed = true;
+        }
+      }
+    }
+  }
+  return walled;
+})();
 
 /** What cannot be walked on, by tile. The keeper is a figure, and solid as figures are. */
 export function arenaCollision(): boolean[][] {
   return Array.from({ length: ARENA_HALL_HEIGHT }, (_row, y) =>
     Array.from({ length: ARENA_HALL_WIDTH }, (_cell, x) => {
       const tile = { x, y };
-      return (
-        !isPlatform(tile) ||
-        ARENA_PILLARS.some((pillar) => sameTile(pillar, tile)) ||
-        arenaStationAt(tile) !== undefined ||
-        arenaTelescopeAt(tile) !== undefined ||
-        ARENA_STATIONS.some((station) => station.past.some((each) => sameTile(each, tile)))
-      );
+      return !isPlatform(tile) || standsOn(tile) || WALLED_OFF.has(`${x},${y}`);
     }),
   );
 }
@@ -308,11 +378,13 @@ export interface ArenaTorch {
   readonly x: number;
   readonly y: number;
   /** What it is fixed to, which decides how its stick is drawn. */
-  readonly on: 'pillar' | 'wall';
+  readonly on: 'pillar' | 'wall' | 'stand';
 }
 
 /** How far above its tile's top a pillar's torch burns, in pixels. */
 const PILLAR_TORCH_RISE = 25;
+/** How far above its tile's top a standing torch burns, in pixels. */
+const STAND_TORCH_RISE = 14;
 
 /** One gap between two pillars, as a turn of the hall: where the wall is bare. */
 const PILLAR_GAP = (Math.PI * 2) / PILLAR_COUNT;
@@ -335,8 +407,9 @@ export const ARENA_BANNERS: readonly { readonly x: number; readonly y: number }[
 });
 
 /**
- * Every torch in the hall: one on each pillar, and one on the bare wall in
- * every other gap along the north side, where the wall's face can be seen.
+ * Every torch in the hall: one on each pillar, one on the bare wall in every
+ * other gap along the north side, where the wall's face can be seen, and the two
+ * standing either side of the way up from the door.
  */
 export const ARENA_TORCHES: readonly ArenaTorch[] = (() => {
   const torches: ArenaTorch[] = ARENA_PILLARS.map((pillar) => ({
@@ -347,6 +420,9 @@ export const ARENA_TORCHES: readonly ArenaTorch[] = (() => {
   for (const gap of WALL_GAPS.filter((each) => each % 2 !== 0)) {
     const foot = ovalPoint(WALL_FOOT, NORTH + gap * PILLAR_GAP);
     torches.push({ x: Math.round(foot.x), y: Math.round(foot.y) - 32, on: 'wall' });
+  }
+  for (const stand of ARENA_STAND_TORCHES) {
+    torches.push({ x: stand.x * ARENA_TILE + 8, y: stand.y * ARENA_TILE - STAND_TORCH_RISE, on: 'stand' });
   }
   return torches;
 })();

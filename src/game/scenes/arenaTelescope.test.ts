@@ -14,7 +14,7 @@ vi.mock('phaser', () => ({
   },
 }));
 
-import { ARENA_MAT, ARENA_TELESCOPES } from '../base/arenaHall';
+import { ARENA_MAT, ARENA_TELESCOPES, railBeside } from '../base/arenaHall';
 import { isAtRim } from '../base/arenaRim';
 import { nextTileFromDirection, type GridPosition } from '../movement/gridMovement';
 import { buildRoom, roomNamed } from '../base/rooms';
@@ -39,17 +39,25 @@ describe("THE RAID ARENA's telescopes", () => {
   });
 
   it('answer somebody who has walked up the rail and turned to them', () => {
-    const beside = { x: east.tile.x, y: east.tile.y - 1 };
+    const beside = { x: east.tile.x + 1, y: east.tile.y };
     expect(isAtRim(beside)).toBe(true);
     expect(atTelescope(beside, east.tile)).toBe(true);
   });
 
   it('leave somebody at the rail looking the other way to the rail: the two presses to a raid never go through one', () => {
-    const beside = { x: west.tile.x, y: west.tile.y - 1 };
+    const beside = { x: west.tile.x - 1, y: west.tile.y };
     expect(atTelescope(beside, { x: beside.x, y: beside.y - 1 })).toBe(false);
     const head = { x: ARENA_MAT.x, y: 56 };
     expect(isAtRim(head)).toBe(true);
     expect(atTelescope(head, { x: head.x, y: head.y - 1 })).toBe(false);
+  });
+
+  it('have the rail either side of them, for going round to from the glass', () => {
+    for (const telescope of ARENA_TELESCOPES) {
+      for (const tile of railBeside(telescope)) {
+        expect(isAtRim(tile), `${tile.x},${tile.y}`).toBe(true);
+      }
+    }
   });
 
   it('are nothing to look through in somebody else\'s house', () => {
