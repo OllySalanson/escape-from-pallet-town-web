@@ -1,4 +1,5 @@
 import {
+  CURRENCY_ITEM_ID,
   ITEM_DEFINITIONS,
   heldItemName,
   isFoundOnly,
@@ -823,6 +824,16 @@ function progressSummary(progress: readonly ReportProgress[]): string | null {
   return `Nobody levelled. ${closest.name} came out ${closest.experienceToNextLevel} experience short of level ${closest.toLevel + 1}.`;
 }
 
+/**
+ * Money is counted in single Pokedollars and everything else in things, so one
+ * pile on the ground must not outweigh a Pokemon: a pile is one find.
+ */
+const POKEDOLLARS_TO_A_FIND = 40;
+
+function haulPoints(item: ReportItem): number {
+  return item.itemId === CURRENCY_ITEM_ID ? Math.ceil(item.quantity / POKEDOLLARS_TO_A_FIND) : item.quantity;
+}
+
 function gradeHaul(
   ledger: ReportGroup,
   contractComplete: boolean,
@@ -843,7 +854,7 @@ function gradeHaul(
   const carriedGear = gear.filter((piece) => piece.fate === 'found').length;
   const score =
     ledger.pokemon.length * 3 +
-    ledger.items.reduce((total, item) => total + item.quantity, 0) +
+    ledger.items.reduce((total, item) => total + haulPoints(item), 0) +
     (contractComplete ? 4 : 0) +
     levelsGained * 2 +
     carriedGear * 4 +
