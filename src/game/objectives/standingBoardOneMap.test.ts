@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { getWorldMap } from '../worldMap';
 import { frontDoorFor } from '../run/runGeneration';
+import { encounterTableAt } from '../world/localEncounters';
 import { stepDistances } from '../world/mapStructure';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { unregisterPlayerMap } from '../world/playerMaps';
@@ -45,5 +46,26 @@ describe('a board of one map', () => {
         expect(fromTheDoor[position.y][position.x], `round ${round}`).toBeGreaterThanOrEqual(0);
       }
     }
+  });
+
+  it('pays a Pokemon of the place the job went to, not the same four whatever the place', () => {
+    retireMapsForTests(RETIRED_MAPS);
+    unregisterPlayerMap(PUBLISHED_FIXTURE_MAP_ID);
+
+    const paid = new Set<string>();
+    for (let round = 2; round < 26; round += 1) {
+      const [contract] = boardContracts(progressAt(round));
+      const [pokemon] = contract.reward.pokemon ?? [];
+      expect(pokemon, `round ${round}`).toBeDefined();
+      const lives = encounterTableAt('greystone-vale', contract.markers[0].position, undefined);
+      if (lives) {
+        expect(
+          lives.entries.filter(({ speciesId, minLevel }) => speciesId === pokemon.speciesId && minLevel === pokemon.level),
+          `round ${round}: ${pokemon.speciesId} at ${pokemon.level}`,
+        ).not.toHaveLength(0);
+      }
+      paid.add(pokemon.speciesId);
+    }
+    expect(paid.size).toBeGreaterThan(4);
   });
 });

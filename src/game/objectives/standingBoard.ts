@@ -2,6 +2,7 @@ import { workshopMaterialKinds } from '../hub/workshop';
 import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { evolutionFamily, Pokemon } from '../pokemon';
+import type { WildEncounterEntry } from '../pokemon/encounters';
 import { getSpeciesById } from '../pokemon/species';
 import { STARTER_SPECIES } from '../stash/Stash';
 import { createSeededRng, type SeededRng } from '../run/rng';
@@ -17,6 +18,7 @@ import {
   type MapGate,
 } from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
+import { encounterTableAt } from '../world/localEncounters';
 import { placedAreaAt } from '../world/mapAreas';
 import { stepDistances } from '../world/mapStructure';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
@@ -810,18 +812,32 @@ function draftReward(
   const items: ContractStack[] = [
     { itemId: kind, quantity: MATERIAL_SHARE[kind] + pressure + (draft.paysIn ? 1 : 0) },
   ];
-  const entries = (map.encounters?.entries ?? []).filter(
-    (entry) => !STARTER_LINES.has(entry.speciesId),
-  );
+  const paysAPokemon = pressure > 0 || draft.template === 'sealed';
+  const met = paysAPokemon ? wildlifeMetOn(map, draft.markers[0].position) : [];
   const pokemon: ContractPokemon[] =
-    (pressure > 0 || draft.template === 'sealed') && entries.length > 0
-      ? [rng.pick(entries)].map((entry) => ({ speciesId: entry.speciesId, level: entry.minLevel }))
+    met.length > 0
+      ? [rng.pick(met)].map((entry) => ({ speciesId: entry.speciesId, level: entry.minLevel }))
       : [];
   return {
     summary: `${rewardLine({ items, pokemon })}, waiting at base.`,
     items,
     ...(pokemon.length > 0 ? { pokemon } : {}),
   };
+}
+
+/**
+ * What a contract's Pokemon is drawn from: the wildlife of the place the job
+ * goes to, as often as that place's grass rolls each - so a rarity is as rare
+ * here as it is there. A stop with nothing of its own, or nothing the board may
+ * pay, falls back on the map's table.
+ */
+function wildlifeMetOn(map: WorldMapDefinition, stop: GridPosition): readonly WildEncounterEntry[] {
+  const payable = (entries: readonly WildEncounterEntry[] = []): readonly WildEncounterEntry[] =>
+    entries
+      .filter((entry) => !STARTER_LINES.has(entry.speciesId))
+      .flatMap((entry) => Array<WildEncounterEntry>(entry.weight).fill(entry));
+  const here = payable(encounterTableAt(map.id, stop, map.encounters)?.entries);
+  return here.length > 0 ? here : payable(map.encounters?.entries);
 }
 
 // ---------------------------------------------------------------------------
