@@ -4620,6 +4620,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         walk: this.runSession?.walk,
         ending: outcome === 'extracted' ? { kind: 'out', line: closeCall ?? outLine(exitLabel ?? 'the way out') } : { kind: 'fell', line: clockLine() },
       },
+      this.runSession?.manager.snapshot().elapsedMs,
     );
     // The pack is laid out in the field as much as at base - a find is seated
     // in the room that is left and moved where the player wants it - so the

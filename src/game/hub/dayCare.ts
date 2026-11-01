@@ -52,6 +52,14 @@ import type { DayCareStay, Stash } from '../stash/Stash';
 /** The share of a level each ended raid pays a Pokémon in the Day-Care. */
 export const DAY_CARE_SHARE_OF_A_LEVEL = 1 / 2;
 
+/**
+ * Out again before the first hunter could have come (the least of
+ * `RUN_GENERATION_BOUNDS`' arrivals), or walked away from, is not a raid gone
+ * on: nothing was risked, and a Pokémon would otherwise level on the walk from
+ * the landing to the nearest exit and back.
+ */
+export const DAY_CARE_LEAST_RAID_MS = 55_000;
+
 const MAX_LEVEL = 100;
 
 /** What he says, from FireRed's Route 5 Day-Care. */
@@ -60,11 +68,11 @@ export const DAY_CARE_NAME = 'DAY-CARE';
 
 /**
  * How many raids this save has seen end: every raid deployed, less the one
- * still being played if there is one. A raid that is abandoned is settled as
- * lost (`run/raidInFlight.ts`), so every raid deployed is one that ends.
+ * still being played if there is one, and less those too short to count
+ * (`DAY_CARE_LEAST_RAID_MS`).
  */
 export function raidsCompleted(progress: RaidProgress, raidInFlight?: RaidInFlight | null): number {
-  return Math.max(0, raidsDeployed(progress) - (raidInFlight ? 1 : 0));
+  return Math.max(0, raidsDeployed(progress) - (raidInFlight ? 1 : 0) - (progress.shortRaids ?? 0));
 }
 
 /** The level a total of experience reaches on a growth curve. */

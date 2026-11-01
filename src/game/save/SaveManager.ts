@@ -14,7 +14,7 @@ import {
   type RecoveryOutcome,
 } from '../hub/recovery';
 import { recoveryTermsFor } from '../hub/centerCounter';
-import { raidsCompleted, takeBack, type TakenBackFromDayCare } from '../hub/dayCare';
+import { DAY_CARE_LEAST_RAID_MS, raidsCompleted, takeBack, type TakenBackFromDayCare } from '../hub/dayCare';
 import {
   DEFAULT_SECURE_PREFERENCE,
   readSecurePreference,
@@ -390,6 +390,8 @@ export interface RaidProgress {
   readonly outRun?: OutRun;
   /** How many raids in a row that same team has gone down: the rail says less to a team it knows (`base/heldBreath.ts`). */
   readonly benchRaids?: number;
+  /** Raids that ended with no time on the clock to speak of, or abandoned: the Day-Care does not count them (`hub/dayCare.ts`). */
+  readonly shortRaids?: number;
   /**
    * How the player last laid the two containers out, as lists of seats
    * (`items/itemGrid.ts`). A pack somebody arranged by hand comes back the way
@@ -1448,7 +1450,8 @@ export class SaveManager {
     );
     game.stash.restockMinimumSupplies();
     // Walking away from a raid is losing it, or a run could be saved by closing the tab.
-    if (!this.save({ ...game, raidProgress: extendRun(game.raidProgress, 'wiped'), ...RAID_RESOLVED })) {
+    const raidProgress = countShortRaid(extendRun(game.raidProgress, 'wiped'));
+    if (!this.save({ ...game, raidProgress, ...RAID_RESOLVED })) {
       return null;
     }
     return {
@@ -1473,12 +1476,16 @@ export class SaveManager {
     outcome: 'extracted' | 'wiped',
     survey: { readonly width: number; readonly walked: Iterable<number> } | undefined = undefined,
     memory: { readonly walk: RaidWalk | undefined; readonly ending: { readonly kind: RaidMarkKind; readonly line: string } } | undefined = undefined,
+    clockMs: number | undefined = undefined,
   ): boolean {
     const game = this.load();
     if (!game) {
       return false;
     }
     let raidProgress = extendRun(bumpRaid(game.raidProgress, mapId, outcome), outcome);
+    if (clockMs !== undefined && clockMs < DAY_CARE_LEAST_RAID_MS) {
+      raidProgress = countShortRaid(raidProgress);
+    }
     if (memory) {
       raidProgress = { ...raidProgress, raidMemory: remembering(raidProgress.raidMemory, mapId, memory.walk, memory.ending) };
     }
@@ -1814,6 +1821,10 @@ export function raidsDeployed(progress: RaidProgress): number {
   return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0);
 }
 
+function countShortRaid(progress: RaidProgress): RaidProgress {
+  return { ...progress, shortRaids: (progress.shortRaids ?? 0) + 1 };
+}
+
 /** Every raid this save has lost, on every map, however it was lost. */
 export function raidsLost(progress: RaidProgress): number {
   return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.wiped, 0);
@@ -2087,6 +2098,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     securePreference: readSecurePreference(value.securePreference),
     ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
     ...(Number.isInteger(value.benchRaids) && (value.benchRaids as number) > 0 ? { benchRaids: value.benchRaids as number } : {}),
+    ...(Number.isInteger(value.shortRaids) && (value.shortRaids as number) > 0 ? { shortRaids: value.shortRaids as number } : {}),
     packArrangement: readArrangement(value.packArrangement),
     secureArrangement: readArrangement(value.secureArrangement),
     ...(Array.isArray(value.homeLayout) ? { homeLayout: readHomeLayout(value.homeLayout) } : {}),

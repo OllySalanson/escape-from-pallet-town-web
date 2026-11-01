@@ -10,7 +10,10 @@ import {
 } from '../save/SaveManager';
 import { partnerOf } from '../base/partner';
 import { Stash, createStartingStash } from '../stash/Stash';
+import { createRaidInFlight } from '../run/raidInFlight';
+import { RUN_GENERATION_BOUNDS } from '../run/runGeneration';
 import {
+  DAY_CARE_LEAST_RAID_MS,
   DAY_CARE_SHARE_OF_A_LEVEL,
   checkOnLines,
   dayCareExperience,
@@ -260,6 +263,57 @@ describe('taking it back', () => {
     expect(taken.pokemon.level).toBe(11);
     expect(taken.pokemon.currentHp).toBeLessThan(taken.pokemon.maxHp);
     expect(taken.pokemon.primaryStatus).toBe('poison');
+  });
+});
+
+describe('a raid too short to count', () => {
+  function raiding(): { saves: SaveManager; storage: MemoryStorage; pays: () => number; deploy: () => boolean } {
+    const storage = new MemoryStorage();
+    const { stash, pidgey } = vault();
+    stash.leaveAtDayCare(pidgey, 0);
+    const saves = new SaveManager(storage);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 0, y: 0 }, bag: new Bag(), stash });
+    const deploy = () => saves.recordDeployment('greystone-vale');
+    const pays = () => {
+      const game = new SaveManager(storage).load()!;
+      return raidsCompleted(game.raidProgress, game.raidInFlight);
+    };
+    return { saves, storage, pays, deploy };
+  }
+
+  it('pays nothing when the player was out again before any hunter could come', () => {
+    const { saves, pays, deploy } = raiding();
+    deploy();
+    saves.recordRaidEnded('greystone-vale', 'extracted', undefined, undefined, 9_000);
+    expect(pays()).toBe(0);
+    deploy();
+    saves.recordRaidEnded('greystone-vale', 'extracted', undefined, undefined, DAY_CARE_LEAST_RAID_MS - 1);
+    expect(pays()).toBe(0);
+  });
+
+  it('pays for a raid that stayed out, however it ended', () => {
+    const { saves, pays, deploy } = raiding();
+    deploy();
+    saves.recordRaidEnded('greystone-vale', 'extracted', undefined, undefined, DAY_CARE_LEAST_RAID_MS);
+    expect(pays()).toBe(1);
+    deploy();
+    saves.recordRaidEnded('greystone-vale', 'wiped', undefined, undefined, 200_000);
+    expect(pays()).toBe(2);
+  });
+
+  it('pays nothing for a raid walked away from, and takes nothing back from what was earned', () => {
+    const { saves, pays, deploy } = raiding();
+    deploy();
+    saves.recordRaidEnded('greystone-vale', 'extracted', undefined, undefined, 120_000);
+    deploy();
+    saves.recordRaidInFlight(createRaidInFlight('greystone-vale', [], [], undefined));
+    expect(pays()).toBe(1);
+    expect(saves.settleAbandonedRaid()).not.toBeNull();
+    expect(pays()).toBe(1);
+  });
+
+  it('waits for the first hunter, whatever the raid is', () => {
+    expect(DAY_CARE_LEAST_RAID_MS).toBe(RUN_GENERATION_BOUNDS.hunterSpawnDelayMinimumMs);
   });
 });
 
