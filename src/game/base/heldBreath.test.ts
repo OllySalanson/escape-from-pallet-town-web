@@ -14,19 +14,19 @@ const team: AtRisk = {
 describe('the held breath', () => {
   it('names everything at risk on a team\'s first raids, whoever is most at stake first', () => {
     for (let raids = 1; raids <= RAIDS_NAMED_IN_FULL; raids += 1) {
-      expect(stakeWords(team, raids)).toEqual(['CHARMELEON', 'PIDGEOTTO', 'RANGER PACK', 'POTION ×2', 'SUPER POTION ×2']);
+      expect(stakeWords(team, raids)).toEqual(['AT RISK', 'CHARMELEON', 'PIDGEOTTO', 'RANGER PACK', 'POTION ×2', 'SUPER POTION ×2']);
     }
   });
 
   it('after that says only what would hurt, so it never drags at raid two hundred', () => {
-    expect(stakeWords(team, RAIDS_NAMED_IN_FULL + 1)).toEqual(['CHARMELEON']);
-    expect(stakeWords(team, 200)).toEqual(['CHARMELEON']);
-    expect(stakeWords({ ...team, pokemon: [] }, 200)).toEqual(['RANGER PACK']);
+    expect(stakeWords(team, RAIDS_NAMED_IN_FULL + 1)).toEqual(['AT RISK', 'CHARMELEON']);
+    expect(stakeWords(team, 200)).toEqual(['AT RISK', 'CHARMELEON']);
+    expect(stakeWords({ ...team, pokemon: [] }, 200)).toEqual(['AT RISK', 'RANGER PACK']);
   });
 
   it('after that has nothing to say of the pack everybody is issued, or of a stack of Potions', () => {
     const everyday: AtRisk = { pokemon: [], pack: 'Raid pack', packIsBetter: false, items: ['Potion ×3'] };
-    expect(stakeWords(everyday, RAIDS_NAMED_IN_FULL)).toEqual(['RAID PACK', 'POTION ×3']);
+    expect(stakeWords(everyday, RAIDS_NAMED_IN_FULL)).toEqual(['AT RISK', 'RAID PACK', 'POTION ×3']);
     expect(stakeWords(everyday, RAIDS_NAMED_IN_FULL + 1)).toEqual([]);
     expect(stakeWords(everyday, 200)).toEqual([]);
   });

@@ -23,13 +23,24 @@ const PADDING_Y = 5;
 /** Between the title and the two lines under it. */
 const TITLE_GAP = 3;
 
+/**
+ * How far down the screen the plate stands: a third of the way from the edge the
+ * player is furthest from. It used to be dead centre, which is where a walking
+ * camera keeps the player.
+ */
+export function pausePlateTop(screenHeight: number, plateHeight: number, playerScreenY: number): number {
+  const room = Math.max(0, Math.floor((screenHeight / 2 - plateHeight) / 2));
+  return playerScreenY >= screenHeight / 2 ? room : screenHeight - plateHeight - room;
+}
+
 export class PausePlate {
   private readonly dim: Phaser.GameObjects.Rectangle;
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly title: Phaser.GameObjects.Text;
   private readonly body: Phaser.GameObjects.Text;
 
-  public constructor(scene: Phaser.Scene, title: string, lines: readonly string[]) {
+  /** @param playerScreenY Where the player stands on the screen: the plate goes in the half they are not in, so they can see where they are before going on. */
+  public constructor(scene: Phaser.Scene, title: string, lines: readonly string[], playerScreenY: number = 0) {
     const { width, height } = scene.scale;
     this.dim = scene.add
       .rectangle(0, 0, width, height, 0x000000, DIM_ALPHA)
@@ -55,7 +66,7 @@ export class PausePlate {
     const plateWidth = inner + PADDING_X * 2;
     const plateHeight = Math.ceil(this.title.height) + TITLE_GAP + Math.ceil(this.body.height) + PADDING_Y * 2;
     const x = Math.round((width - plateWidth) / 2);
-    const y = Math.round((height - plateHeight) / 2);
+    const y = pausePlateTop(height, plateHeight, playerScreenY);
     drawPixelWindow(this.frame, { x, y, width: plateWidth, height: plateHeight }, { fill: WINDOW_CREAM });
     this.title.setPosition(x + PADDING_X + Math.floor((inner - titleWidth) / 2), y + PADDING_Y);
     this.body.setPosition(

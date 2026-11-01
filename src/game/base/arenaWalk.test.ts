@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { DIRECTION_DELTAS, type Direction, type GridPosition } from '../movement/gridMovement';
 import { ARENA_KEEPER_TILE, ARENA_MAT, ARENA_STATIONS, ARENA_TELESCOPES, arenaCollision } from './arenaHall';
 import { RIVAL_TILE } from './arenaBouts';
-import { SLIDE_REACH, slideRound } from './arenaWalk';
+import { getBaseMap } from './baseMap';
+import { BASE_DOORS } from './doors';
+import { roundTheYardStair, SLIDE_REACH, slideRound, YARD_STAIR } from './arenaWalk';
 
 const SOLID = arenaCollision();
 const same = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
@@ -167,5 +169,29 @@ describe("walking THE RAID ARENA's great hall on a held key", () => {
       }),
     );
     expect(faults).toEqual([]);
+  });
+});
+
+describe('the first walk across the yard', () => {
+  const { collision } = getBaseMap([]);
+  const shut = (tile: GridPosition): boolean => collision[tile.y]?.[tile.x] ?? true;
+  const door = BASE_DOORS.find((each) => each.id === 'raid-arena')!;
+
+  it('holds one key west from either row of the keepers\' path to under the Arena\'s door', () => {
+    for (const row of [12, 13]) {
+      let at: GridPosition = { x: 20, y: row };
+      for (let steps = 0; steps < 40 && at.x > door.returnTo.x; steps += 1) {
+        const ahead = step(at, 'left');
+        const way = shut(ahead) ? roundTheYardStair(at, 'left', shut) : 'left';
+        expect(way, `stopped at ${at.x},${at.y}`).not.toBeNull();
+        at = step(at, way!);
+      }
+      expect(at).toEqual(door.returnTo);
+    }
+  });
+
+  it('is the only tile that goes round anything, and only for that key', () => {
+    expect(roundTheYardStair({ x: YARD_STAIR.x, y: YARD_STAIR.y }, 'up', shut)).toBeNull();
+    expect(roundTheYardStair({ x: YARD_STAIR.x + 1, y: YARD_STAIR.y }, 'left', shut)).toBeNull();
   });
 });

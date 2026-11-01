@@ -150,7 +150,7 @@ describe('the defeat sequence a lost raid opens on', () => {
       expect.objectContaining({ kind: 'item', label: 'Potion', quantity: 2, itemId: 'potion' }),
     ]);
     expect(sequence?.beats[1].headline).toBe('THEY STRIPPED YOU.');
-    expect(sequence?.beats[1].detail).toBe('Charmander and 2 Potions lifted off you and gone from your stash.');
+    expect(sequence?.beats[1].detail).toBe('Charmander and 2 Potions lifted off you and gone for good.');
     expect(sequence?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
     expect(sequence?.beats[2].detail).toContain('Squirtle and 1 Potion came home with you.');
   });
@@ -184,7 +184,7 @@ describe('the defeat sequence a lost raid opens on', () => {
 
     const taken = sequence?.beats[1];
     expect(taken?.headline).toBe('YOUR PACK IS LOST.');
-    expect(taken?.detail).toBe('Charmander and 2 Potions went down with you, gone from your stash for good.');
+    expect(taken?.detail).toBe('Charmander and 2 Potions went down with you, gone for good.');
     expect(`${taken?.headline} ${taken?.detail}`).not.toMatch(/\bthey\b|stripped|lifted/i);
   });
 
@@ -331,7 +331,7 @@ describe('the pack in the line-up', () => {
     );
 
     expect(sequence?.beats[1].headline).toBe('THEY STRIPPED YOU.');
-    expect(sequence?.beats[1].detail).toBe('Your Raid pack lifted off you and gone from your stash.');
+    expect(sequence?.beats[1].detail).toBe('Your Raid pack lifted off you and gone for good.');
     expect(sequence?.figures).toContainEqual(
       expect.objectContaining({ kind: 'item', itemId: 'raid-pack', label: 'Raid pack', fate: 'taken' }),
     );

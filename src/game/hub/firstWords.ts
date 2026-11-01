@@ -1,4 +1,5 @@
 import type { CharacterDesignId } from '../world/characterDesigns';
+import { isMapRetired } from '../world/mapRoster';
 
 /**
  * What Professor Oak, Nurse Joy and the Raid Arena's marshal say the first time
@@ -22,7 +23,7 @@ import type { CharacterDesignId } from '../world/characterDesigns';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -97,7 +98,30 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       'Under a sheet is what I keep back until I know you better.',
     ],
   },
+  // Said in the yard, once, to somebody back from before the old maps were put
+  // away: cloud over one map and nothing to say why read as a lost save.
+  moved: {
+    speaker: 'prof-oak',
+    name: 'Professor Oak',
+    lines: [
+      'Oak on the radio: welcome back! A lot has moved while you were gone.',
+      'The Floodplain, Route 1 and the rest are shut for now.',
+      'Every raid goes into GREYSTONE VALE, from the RAID ARENA as ever.',
+      'Your team and everything you banked are all still here.',
+    ],
+  },
 };
+
+/** Whether this save raided the maps since put away (`world/mapRoster.ts`) and has not yet been told. */
+export function mapsMovedNews(progress: {
+  readonly firstWordsHeard?: readonly string[];
+  readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>>;
+}): boolean {
+  return (
+    !hasHeard(progress.firstWordsHeard, 'moved') &&
+    Object.entries(progress.raidRecord ?? {}).some(([mapId, record]) => isMapRetired(mapId) && record.deployed > 0)
+  );
+}
 
 /** The lines as said to this player: the greeting by name, else without one. */
 export function spokenLines(words: FirstWords, playerName: string | null): readonly string[] {

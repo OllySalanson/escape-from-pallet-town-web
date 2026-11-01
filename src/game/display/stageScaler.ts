@@ -25,8 +25,12 @@ export function applyStage(
   viewportHeight: number,
 ): StageSize {
   const stage = computeStage(viewportWidth, viewportHeight);
-  game.scale.setZoom(stage.zoom);
+  // In this order: Phaser writes the canvas's CSS size only when told the zoom
+  // afterwards. `resize` tells it for itself at any zoom but 1, so a window that
+  // stayed at 1x (a phone) kept the canvas at the size it last was and drew the
+  // art at a fractional scale.
   game.scale.resize(stage.width, stage.height);
+  game.scale.setZoom(stage.zoom);
   if (parent) {
     const width = stage.width * stage.zoom;
     const height = stage.height * stage.zoom;

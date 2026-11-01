@@ -566,13 +566,13 @@ export class ExtractionScene extends Phaser.Scene {
 
   private footerTitle(): string {
     if (!this.report.saved) {
-      return 'Stash save unavailable';
+      return 'Could not save';
     }
     if (this.report.outcome === 'WIPED') {
       return 'Losses applied';
     }
     if (this.report.haulTier !== 'empty') {
-      return 'Stash secured';
+      return 'Banked';
     }
     return this.spentSupplies ? 'You came home lighter' : 'You came home whole';
   }
@@ -595,7 +595,7 @@ export class ExtractionScene extends Phaser.Scene {
     // this screen could lie about a result the player can see for themselves -
     // and so is calling a raid that levelled a Pokemon "nothing new to bank".
     if (this.report.haulTier !== 'empty') {
-      return 'Everything above is in your stash and ready for the next deployment.';
+      return 'Everything above is on BILL’S PC, ready for your next raid.';
     }
     if (this.report.progress.length > 0) {
       return 'No gear banked, but what your party learned is banked with them.';

@@ -176,7 +176,7 @@ function strippedByTrainer(takenNames: string | null): DefeatBeat {
     detail:
       takenNames === null
         ? 'Everything you carried out was already protected. They went through your bag for nothing.'
-        : `${capitalise(takenNames)} lifted off you and gone from your stash.`,
+        : `${capitalise(takenNames)} lifted off you and gone for good.`,
     prompt: ADVANCE_PROMPT,
   };
 }
@@ -192,7 +192,7 @@ function lostToTheWild(takenNames: string | null): DefeatBeat {
     detail:
       takenNames === null
         ? 'Everything you carried out was already protected.'
-        : `${capitalise(takenNames)} went down with you, gone from your stash for good.`,
+        : `${capitalise(takenNames)} went down with you, gone for good.`,
     prompt: ADVANCE_PROMPT,
   };
 }

@@ -19,7 +19,7 @@ import type { SignInTrouble } from '../maker/playerSignIn';
 export const FEEDBACK_TAB_LABEL = 'Feedback';
 
 /** The panel's name, in its title bar. */
-export const PANEL_TITLE = "Radio Oak's Lab";
+export const PANEL_TITLE = "Call Oak's Lab";
 
 /** Said once, small, beside the title: the game behind the panel is stopped. */
 export const PANEL_PAUSED = 'Game paused';

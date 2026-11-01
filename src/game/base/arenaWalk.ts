@@ -34,6 +34,23 @@ const SIDES_OF: Readonly<Record<Direction, readonly [Direction, Direction]>> = {
   right: ['up', 'down'],
 };
 
+/**
+ * The one stair in the yard. Keepers' Row is two tiles wide and everybody comes out
+ * of a door on to its top row, which runs straight into the foot of the Arena's east
+ * banner with the door in sight beyond it. So a key held west at that one tile goes
+ * on along the row below: it is the walk every new player makes first, and it stopped
+ * dead. Asked of the yard alone, and held to its map in `arenaWalk.test.ts`.
+ */
+export const YARD_STAIR = { x: 14, y: 12, pressed: 'left', steps: 'down' } as const;
+
+/** Which way a key held at the yard's stair goes on, or null anywhere else. */
+export function roundTheYardStair(from: GridPosition, direction: Direction, isBlocked: (tile: GridPosition) => boolean): Direction | null {
+  if (from.x !== YARD_STAIR.x || from.y !== YARD_STAIR.y || direction !== YARD_STAIR.pressed) {
+    return null;
+  }
+  return isBlocked(nextTileFromDirection(from, YARD_STAIR.steps)) ? null : YARD_STAIR.steps;
+}
+
 /** Whether a tile is one a player presses into on purpose. */
 function answersAKey(tile: GridPosition): boolean {
   return (

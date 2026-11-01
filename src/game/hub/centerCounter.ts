@@ -83,8 +83,16 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
   return {
     lines: [`${teamCondition(game.stash) ?? 'Somebody needs me'}. ${price}`],
     question: `Shall I heal ${them}?`,
-    spendsForGood: quoteMs > 0,
+    // With nobody able to raid, the only useful answer is yes: a question opening
+    // on NOT NOW sent a newcomer pressing SPACE round her counter for ever.
+    spendsForGood: quoteMs > 0 && !nobodyCanRaid(game),
   };
+}
+
+/** Whether everyone at base has fainted, so that she comes first of anything said in her room. */
+export function nobodyCanRaid(game: Pick<RestoredGame, 'stash'>): boolean {
+  const team = game.stash.listPokemon();
+  return team.length > 0 && team.every((stored) => stored.pokemon.isFainted);
 }
 
 /** What she says with the team back on its feet. */

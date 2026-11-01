@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { FIRST_WORDS, spokenLines } from './firstWords';
+import { afterEach, describe, expect, it } from 'vitest';
+import { FIRST_WORDS, mapsMovedNews, spokenLines } from './firstWords';
+import { retireMapsForTests } from '../world/mapRoster';
 
 describe("Oak's first words", () => {
   it('greet the player by the name they have just given (playtest 47)', () => {
@@ -23,5 +24,23 @@ describe("Oak's first words", () => {
     expect(FIRST_WORDS.lab.lines.join(' ')).toMatch(/pack is lost/);
     expect(FIRST_WORDS.lab.lines.join(' ')).toMatch(/RAID ARENA/);
     expect(FIRST_WORDS.loadout.lines.length).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('telling a returning player the old maps are shut', () => {
+  const record = { 'route-1': { deployed: 3 } };
+  afterEach(() => retireMapsForTests([]));
+
+  it('tells only somebody who raided a retired map, and only once', () => {
+    retireMapsForTests(['route-1']);
+    expect(mapsMovedNews({ raidRecord: record })).toBe(true);
+    expect(mapsMovedNews({ raidRecord: record, firstWordsHeard: ['moved'] })).toBe(false);
+    expect(mapsMovedNews({ raidRecord: { 'greystone-vale': { deployed: 3 } } })).toBe(false);
+    expect(mapsMovedNews({})).toBe(false);
+  });
+
+  it('has nothing to tell while the map is in play', () => {
+    retireMapsForTests([]);
+    expect(mapsMovedNews({ raidRecord: record })).toBe(false);
   });
 });

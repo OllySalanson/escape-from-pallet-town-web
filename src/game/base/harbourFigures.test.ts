@@ -5,7 +5,7 @@ import type { Pokemon } from '../pokemon/Pokemon';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
-import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, heelOf, spreadPlates, withinPlace } from './harbourFigures';
+import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, heelOf, spreadPlates, stackPlates, withinPlace } from './harbourFigures';
 import { PARTNER_FEET_PIXEL_Y, partnerFrame, partnerTextureKey } from './partner';
 import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
 
@@ -547,5 +547,14 @@ describe('a name plate and the partner behind its owner', () => {
     expect(clearOfHeel(plate, null)).toBe(plate.y);
     expect(clearOfHeel(plate, { x: 131, y: 30, width: 16, height: 26 })).toBe(plate.y);
     expect(clearOfHeel(plate, { x: 104, y: 54, width: 16, height: 20 })).toBe(plate.y);
+  });
+});
+
+describe('names that still lie on each other', () => {
+  it('lifts one clear, so a name is never printed on a name', () => {
+    const box = (x: number, y: number) => ({ x, y, width: 40, height: 12 });
+    expect(stackPlates([box(100, 50), box(120, 50)])).toEqual([50, 37]);
+    expect(stackPlates([box(100, 50), box(120, 50), box(110, 37)])).toEqual([50, 37, 24]);
+    expect(stackPlates([box(100, 50), box(150, 50)])).toEqual([50, 50]);
   });
 });

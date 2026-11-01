@@ -47,6 +47,11 @@ export interface AtRisk {
 }
 
 const NOTHING_TO_LOSE = 'NOTHING TO LOSE';
+/**
+ * What heads the words, or RAID PACK / POTION x3 / POKE BALL x3 reads as an
+ * inventory rather than as what is about to be bet. It is the rim's own word.
+ */
+const AT_RISK = 'AT RISK';
 
 /**
  * What the screen says. On a team's first raids everything at risk, up to what
@@ -57,10 +62,10 @@ export function stakeWords(risk: AtRisk, raidsWithThisTeam: number): readonly st
   const pokemon = [...risk.pokemon].sort((one, other) => other.level - one.level).map(({ name }) => name);
   if (raidsWithThisTeam <= RAIDS_NAMED_IN_FULL) {
     const all = [...pokemon, ...(risk.pack ? [risk.pack] : []), ...risk.items].map((word) => word.toUpperCase());
-    return all.length === 0 ? [NOTHING_TO_LOSE] : all.slice(0, MOST_WORDS);
+    return all.length === 0 ? [NOTHING_TO_LOSE] : [AT_RISK, ...all.slice(0, MOST_WORDS - 1)];
   }
   const hurts = [...pokemon, ...(risk.pack && risk.packIsBetter ? [risk.pack] : [])];
-  return hurts.slice(0, 1).map((word) => word.toUpperCase());
+  return hurts.length === 0 ? [] : [AT_RISK, hurts[0].toUpperCase()];
 }
 
 /** How long the breath is held, for so many words. */
