@@ -639,6 +639,20 @@ const RAID_RESOLVED = {
   raidInFlight: null,
 } as const;
 
+/**
+ * What a raid got home from clears. Out again before the first hunter could
+ * have come, it has paid for nothing (`DAY_CARE_LEAST_RAID_MS`), so the healing
+ * it owed, the ward's bed and Bill's ration stand for the raid that does: at
+ * 30 steps from the landing to an open exit, a dash would otherwise make every
+ * heal free. Only the trip's own berth and the in-flight mark are done with.
+ */
+function resolvedBy(elapsedMs: number | undefined): Partial<typeof RAID_RESOLVED> {
+  if (elapsedMs === undefined || elapsedMs >= DAY_CARE_LEAST_RAID_MS) {
+    return RAID_RESOLVED;
+  }
+  return { traderBerthPaid: false, raidInFlight: null };
+}
+
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -808,7 +822,7 @@ export class SaveManager {
    * callers with nothing to settle (tests, and any future reward-only banking)
    * stay honest rather than passing an invented one.
    */
-  public bankRun(result: RunResult, settlement?: RaidSettlement): boolean {
+  public bankRun(result: RunResult, settlement?: RaidSettlement, elapsedMs?: number): boolean {
     const loaded = this.load();
     if (!loaded) {
       return false;
@@ -820,7 +834,7 @@ export class SaveManager {
     // The raid this debt paid for has now resolved, so it is settled. Charging
     // on resolution rather than on deployment is what stops a player healing,
     // deploying into the shortened raid and reloading the page to shed the bill.
-    return this.save({ ...game, ...RAID_RESOLVED });
+    return this.save({ ...game, ...resolvedBy(elapsedMs) });
   }
 
   /**
@@ -839,6 +853,7 @@ export class SaveManager {
     carried: string | RaidContract,
     result: RunResult,
     settlement?: RaidSettlement,
+    elapsedMs?: number,
   ): { readonly saved: boolean; readonly granted: boolean } {
     const loaded = this.load();
     if (!loaded) {
@@ -854,7 +869,7 @@ export class SaveManager {
         !isStandingBoardOpen(game.raidProgress.completedContracts) ||
         standingRoundOf(contractId) !== game.raidProgress.standingContractsBanked
       ) {
-        return { saved: this.save({ ...game, ...RAID_RESOLVED }), granted: false };
+        return { saved: this.save({ ...game, ...resolvedBy(elapsedMs) }), granted: false };
       }
       for (const { itemId, quantity } of carried.reward.items) {
         game.stash.addItem(itemId, quantity);
@@ -866,12 +881,12 @@ export class SaveManager {
         ...game.raidProgress,
         standingContractsBanked: game.raidProgress.standingContractsBanked + 1,
       };
-      return { saved: this.save({ ...game, raidProgress, ...RAID_RESOLVED }), granted: true };
+      return { saved: this.save({ ...game, raidProgress, ...resolvedBy(elapsedMs) }), granted: true };
     }
 
     const contract = getContract(contractId);
     if (!contract || game.raidProgress.completedContracts.includes(contractId)) {
-      return { saved: this.save({ ...game, ...RAID_RESOLVED }), granted: false };
+      return { saved: this.save({ ...game, ...resolvedBy(elapsedMs) }), granted: false };
     }
 
     const completedContracts = [...game.raidProgress.completedContracts, contractId];
@@ -891,7 +906,7 @@ export class SaveManager {
       game.stash.addItem(itemId, quantity);
     }
     return {
-      saved: this.save({ ...game, raidProgress, ...RAID_RESOLVED }),
+      saved: this.save({ ...game, raidProgress, ...resolvedBy(elapsedMs) }),
       granted: true,
     };
   }

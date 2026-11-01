@@ -7425,8 +7425,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const closeCall = closeCallLine({ ms: clockLeftMs, reads: formatRaidClock(clockLeftMs) }, this.hunterOnTail());
     this.recordRaid('extracted', point.label, closeCall);
     const contractResult = banksContract
-      ? new SaveManager().bankContract(contract, runResult, settlement)
-      : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
+      ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs)
+      : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs), granted: false };
     this.pendingHubTransition = true;
     const contractPaid = contractResult.granted
       ? { pokemon: rewardPokemon(contract!.reward), items: contract!.reward.items }

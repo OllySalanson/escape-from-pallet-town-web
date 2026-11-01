@@ -14,6 +14,8 @@ import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag, STARTING_PACK_ID } from '../items';
 import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from './SaveManager';
 import { applyRecovery, MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
+import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
+import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import { createStartingStash, Stash } from '../stash';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { WORLD_MAPS } from '../worldMap';
@@ -1004,6 +1006,53 @@ describe('SaveManager', () => {
 
     expect(saves.bankRun({ pokemon: [], items: [{ itemId: 'potion', quantity: 1 }] })).toBe(true);
     expect(saves.load()?.pendingRecoveryMs).toBe(0);
+  });
+
+  describe('a dash home', () => {
+    const owing = (): SaveManager => {
+      const saves = new SaveManager(new MemoryStorage());
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+      saves.save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+        pendingRecoveryMs: MAX_PENDING_RECOVERY_MS,
+        wardTreatmentsUsed: 1,
+        traderRationUsed: 2,
+        traderBerthPaid: true,
+      });
+      return saves;
+    };
+    const nothing = { pokemon: [], items: [] };
+
+    it('leaves the heal, the bed and the ration owed when it beat the first hunter out', () => {
+      const saves = owing();
+      expect(saves.bankRun(nothing, undefined, DAY_CARE_LEAST_RAID_MS - 1)).toBe(true);
+      const game = saves.load();
+      expect(game?.pendingRecoveryMs).toBe(MAX_PENDING_RECOVERY_MS);
+      expect(game?.wardTreatmentsUsed).toBe(1);
+      expect(game?.traderRationUsed).toBe(2);
+      expect(game?.traderBerthPaid).toBe(false);
+    });
+
+    it('settles them once a raid has stayed out', () => {
+      const saves = owing();
+      expect(saves.bankRun(nothing, undefined, DAY_CARE_LEAST_RAID_MS)).toBe(true);
+      const game = saves.load();
+      expect(game?.pendingRecoveryMs).toBe(0);
+      expect(game?.wardTreatmentsUsed).toBe(0);
+      expect(game?.traderRationUsed).toBe(0);
+    });
+
+    it('leaves them owed on a contract banked by a dash too', () => {
+      const saves = owing();
+      saves.bankContract(FIRST_CONTRACT_ID, nothing, undefined, 9_000);
+      expect(saves.load()?.pendingRecoveryMs).toBe(MAX_PENDING_RECOVERY_MS);
+      expect(saves.load()?.traderRationUsed).toBe(2);
+    });
   });
 
   it('settles booked recovery time on a wipe as well, so the loss is not billed twice', () => {
