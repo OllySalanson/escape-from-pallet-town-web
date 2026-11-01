@@ -214,6 +214,22 @@ describe('choosing, from the room', () => {
     expect(new SaveManager(storage).load()?.starterSpeciesId).toBe('charmander');
   });
 
+  it('never writes over a game started in another tab while the table stood open', () => {
+    const storage = new MemoryStorage();
+    const { stand, scene, went } = room(storage);
+    const played = startNewGame(new SaveManager(storage), 'squirtle')!;
+    played.stash.addItem('money', 555);
+    new SaveManager(storage).save(played);
+
+    (scene.takeBall as (this: typeof stand, starter: string) => void).call(stand, 'charmander');
+
+    const game = new SaveManager(storage).load()!;
+    expect(game.starterSpeciesId).toBe('squirtle');
+    expect(game.stash.itemCount('money')).toBe(555);
+    expect(went[0]).not.toHaveProperty('chose');
+    expect(went[0].room).toBe('oaks-lab');
+  });
+
   it('hands the ball over and says what a raid is, once', () => {
     const storage = new MemoryStorage();
     const manager = new SaveManager(storage);

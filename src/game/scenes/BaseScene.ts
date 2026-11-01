@@ -5402,6 +5402,13 @@ export class BaseScene extends Phaser.Scene {
 
   /** YES: the game is written now and not before, and the room comes back with a partner in it. */
   private takeBall(starter: StarterSpeciesId): void {
+    // A game started in another tab while this table stood open is the game now.
+    // Written over, everything played in it was gone.
+    const madeElsewhere = this.saveManager.load();
+    if (madeElsewhere) {
+      this.goTo({ savedGame: madeElsewhere, room: 'oaks-lab', at: { ...this.currentTile }, facing: this.facing }, 'confirm');
+      return;
+    }
     const savedGame = startNewGame(this.saveManager, starter);
     if (!savedGame) {
       this.leaving = true;

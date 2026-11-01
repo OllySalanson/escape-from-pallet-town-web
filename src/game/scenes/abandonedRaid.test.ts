@@ -118,13 +118,11 @@ function tabs(local: MemoryStorage, clock: { now: number }): {
   reloaded: RaidHeartbeat;
   another: RaidHeartbeat;
 } {
-  const playingSession = new MemoryStorage();
   const now = () => clock.now;
   return {
-    playing: new RaidHeartbeat(() => local, () => playingSession, now),
-    // A reload keeps its tab's session storage, and so its name.
-    reloaded: new RaidHeartbeat(() => local, () => playingSession, now),
-    another: new RaidHeartbeat(() => local, () => new MemoryStorage(), now),
+    playing: new RaidHeartbeat(() => local, now),
+    reloaded: new RaidHeartbeat(() => local, now),
+    another: new RaidHeartbeat(() => local, now),
   };
 }
 
@@ -169,10 +167,10 @@ describe('a raid abandoned by closing the game', () => {
     const { playing, reloaded } = tabs(pulses, clock);
     playing.start(raidId(storage));
 
-    // The page reloads: same tab, a moment later, its pulse still fresh.
+    // The page reloads: going, it takes its pulse with it (`pagehide`).
+    playing.stop();
     clock.now += 1_000;
     const settled = new SaveManager(storage).settleAbandonedRaid((id) => reloaded.liveElsewhere(id));
-    playing.stop();
 
     expect(settled).toEqual<AbandonedRaid>({
       mapId: 'floodplain-relay',
@@ -271,6 +269,21 @@ describe('a raid abandoned by closing the game', () => {
     playing.stop();
   });
 
+  it('a copy of the tab is another page: it leaves the raid being played alone', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    deployFrom(storage);
+    const { playing, another: duplicated } = tabs(new MemoryStorage(), clock);
+    playing.start(raidId(storage));
+    clock.now += 1_000;
+
+    // A duplicated tab starts with the first tab's session storage, so nothing
+    // kept there can tell it from a reload of that tab.
+    expect(new SaveManager(storage).settleAbandonedRaid((id) => duplicated.liveElsewhere(id))).toBeNull();
+    expect(new SaveManager(storage).load()?.stash.itemCount('raid-pack')).toBe(1);
+    playing.stop();
+  });
+
   it('the secure container brings home what was packed into it, and invents nothing found', () => {
     const storage = new MemoryStorage();
     seedSave(storage);
@@ -349,6 +362,22 @@ describe('a raid abandoned by closing the game', () => {
     const { hub, start } = openLab(storage);
     hub.startRun();
     expect(start).toHaveBeenCalledWith('base', expect.anything());
+  });
+
+  it('from the rim too, where closing the panel would settle nothing', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    deployFrom(storage);
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+
+    const { hub, start } = openLab(storage);
+    const close = vi.fn();
+    Object.assign(hub as unknown as Record<string, unknown>, { kit: { close } });
+    hub.startRun();
+    expect(start).toHaveBeenCalledWith('base', { room: 'raid-arena' });
+    expect(close).not.toHaveBeenCalled();
   });
 
   it('is told plainly, in the order it happened', () => {
