@@ -17,6 +17,9 @@ import { favourEntries, favourGiverWhere, favourListMarkup } from './favourList'
 
 const nothing = (): number => 0;
 
+/** A raid behind it, which is when anybody first asks a favour. */
+const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
+
 /**
  * The quiet place a favour's detail is read: every favour, where it stands,
  * grouped, with the whole of the one the cursor is on - opened with O at base
@@ -34,7 +37,7 @@ describe('the favours list', () => {
   });
 
   it('lists every favour a new save can be asked, by who asks it and where they are found', () => {
-    const entries = favourEntries(DEFAULT_RAID_PROGRESS, nothing, 0);
+    const entries = favourEntries(BEEN_OUT, nothing, 0);
     expect(entries.map((entry) => entry.errand.id).sort()).toEqual(ERRANDS.map((errand) => errand.id).sort());
     expect(entries.every((entry) => entry.standing === 'ask')).toBe(true);
     expect(favourGiverWhere(errandOf('lab')!)).toBe('OAK’S LAB');
@@ -44,7 +47,7 @@ describe('the favours list', () => {
   });
 
   it('never names a favour nobody has asked yet: the giver says what it is', () => {
-    const markup = favourListMarkup(favourEntries(DEFAULT_RAID_PROGRESS, nothing, 0));
+    const markup = favourListMarkup(favourEntries(BEEN_OUT, nothing, 0));
     for (const errand of ERRANDS) {
       expect(markup, errand.id).toContain(errand.name);
       expect(markup, errand.id).not.toContain(errandThing(errand));
@@ -57,7 +60,7 @@ describe('the favours list', () => {
     let errands = withErrandAsked(withErrandAsked(withErrandAsked(undefined, oak.id), joy.id), brock.id);
     errands = withErrandCompleted(errands, brock.id);
     declineErrand(bill.id, 0);
-    const progress: ErrandProgress = { ...DEFAULT_RAID_PROGRESS, errands };
+    const progress: ErrandProgress = { ...BEEN_OUT, errands };
     const joyHome = (itemId: ItemId): number => (itemId === joy.itemId ? 1 : 0);
     const entries = favourEntries(progress, joyHome, 0);
     const standing = Object.fromEntries(entries.map((entry) => [entry.errand.id, entry.standing]));
@@ -84,7 +87,7 @@ describe('the favours list', () => {
       (records, errand) => withErrandCompleted(withErrandAsked(records, errand.id), errand.id),
       withErrandAsked(undefined, ERRANDS[0].id),
     );
-    expect(favourEntries({ ...DEFAULT_RAID_PROGRESS, errands: everyDone }, nothing, 0).every((entry) => entry.standing === 'done')).toBe(true);
+    expect(favourEntries({ ...BEEN_OUT, errands: everyDone }, nothing, 0).every((entry) => entry.standing === 'done')).toBe(true);
     expect(favourListMarkup([])).toContain('Nobody has a favour to ask yet.');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_FROM_MS, ARRIVAL_FALL_MS, ARRIVAL_MS, DUST_MS, TOUCH_DOWN_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_FROM_MS, ARRIVAL_FALL_MS, ARRIVAL_MS, DUST_MS, SHOCK_MS, TOUCH_DOWN_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey, shockwaveAt } from '../world/raidArrival';
 import {
   DIVE_MS,
   FALL_MS,
@@ -172,10 +172,21 @@ describe('falling', () => {
 
 describe('landing in the raid', () => {
   it('names the ring\'s key to a newcomer who has not stuck one, and not for ever', () => {
-    expect(ringNamesItsKey(1, 0)).toBe(true);
+    // The first landing has nothing to read on it at all.
+    expect(ringNamesItsKey(1, 0)).toBe(false);
+    expect(ringNamesItsKey(2, 0)).toBe(true);
     expect(ringNamesItsKey(5, 0)).toBe(true);
     expect(ringNamesItsKey(6, 0)).toBe(false);
     expect(ringNamesItsKey(2, 1)).toBe(false);
+  });
+
+  it('sends a shock out over the ground as they land, in whole pixels, and it is gone', () => {
+    expect(shockwaveAt(-1)).toBeNull();
+    expect(shockwaveAt(SHOCK_MS)).toBeNull();
+    const early = shockwaveAt(10)!;
+    const late = shockwaveAt(SHOCK_MS - 10)!;
+    expect(late.across).toBeGreaterThan(early.across);
+    expect(Number.isInteger(late.across) && Number.isInteger(late.up)).toBe(true);
   });
 
   it('opens under nothing but cloud, with the figure out of sight above its tile', () => {

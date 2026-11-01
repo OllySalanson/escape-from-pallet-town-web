@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { blocksFor, BASE_SECURE_GRID, gridCells, packGridFor, RAID_BAG_GRID, stackSizeOf } from '../items';
 import { CHARMANDER, CHARMELEON, IVYSAUR, Pokemon, SPECIES_BY_ID, SQUIRTLE } from '../pokemon';
 import { createStartingStash, Stash } from '../stash';
-import { DeploymentFlow, MEDICINE_PREPACK_SHARE } from './deploymentFlow';
+import { DeploymentFlow, MEDICINE_PREPACK_SHARE, BALLS_PREPACKED } from './deploymentFlow';
 
 function seedFlow(): { flow: DeploymentFlow; stash: Stash } {
   const stash = createStartingStash();
@@ -58,7 +58,8 @@ describe('the pack a raid is worn into', () => {
 
     expect(flow.choosePack('satchel')).toBeUndefined();
     expect(flow.bagCells.total).toBe(12);
-    expect(flow.packLimit('potion')).toBe(12);
+    // Twelve squares, less the Poké Balls the default packs.
+    expect(flow.packLimit('potion')).toBe(12 - BALLS_PREPACKED);
 
     expect(flow.choosePack('ranger-pack')).toBeUndefined();
     expect(flow.bagCells.total).toBe(24);
@@ -72,6 +73,7 @@ describe('the pack a raid is worn into', () => {
     const stash = packedVault();
     stash.addItem('potion', 20);
     const flow = new DeploymentFlow(stash);
+    flow.setItemQuantity('poke-ball', 0);
     flow.setItemQuantity('potion', 20);
 
     expect(flow.bagCells.used).toBe(20);
@@ -131,9 +133,15 @@ describe('deployment flow', () => {
 
     expect(flow.step).toBe('loadout');
     expect(flow.party).toEqual([]);
-    // Medicine is the one thing packed for the player (see below); a Pokemon
-    // and everything else is still theirs to choose.
-    expect(flow.items).toEqual([{ itemId: 'potion', quantity: 3 }]);
+    // Medicine and a few Poké Balls are packed for the player (see below); a
+    // Pokemon and everything else is still theirs to choose.
+    expect(flow.items).toEqual(
+      expect.arrayContaining([
+        { itemId: 'potion', quantity: 3 },
+        { itemId: 'poke-ball', quantity: BALLS_PREPACKED },
+      ]),
+    );
+    expect(flow.items).toHaveLength(2);
     expect(flow.isDeployable).toBe(false);
   });
 
@@ -614,7 +622,7 @@ describe('deployment flow', () => {
     expect(flow.itemQuantity('potion')).toBe(3);
     flow.adjustItem('potion', -9);
     expect(flow.itemQuantity('potion')).toBe(0);
-    expect(flow.items).toEqual([]);
+    expect(flow.items).toEqual([{ itemId: 'poke-ball', quantity: BALLS_PREPACKED }]);
   });
 
   it('moves a single protected slot, and holds two once the second locker is built', () => {
@@ -795,8 +803,17 @@ describe('medicine packed by default', () => {
 
     expect(flow.itemQuantity('potion')).toBe(3);
     expect(flow.isPrepacked('potion')).toBe(true);
-    // Only medicine: a Poke Ball is a choice about what the raid is for.
+  });
+
+  it('packs a few Poké Balls beside it, so a first raid can catch something, and they are the player\'s to take out', () => {
+    const { flow } = seedFlow();
+
+    expect(flow.itemQuantity('poke-ball')).toBe(BALLS_PREPACKED);
+    expect(flow.isPrepacked('poke-ball')).toBe(true);
+    expect(flow.packsABall).toBe(true);
+    expect(flow.setItemQuantity('poke-ball', 0)).toBeUndefined();
     expect(flow.itemQuantity('poke-ball')).toBe(0);
+    expect(flow.isPrepacked('poke-ball')).toBe(false);
   });
 
   it('packs no more than half the pack, so a full vault still leaves room for a find', () => {
@@ -805,7 +822,7 @@ describe('medicine packed by default', () => {
     stash.addItem('super-potion', 10);
     const flow = new DeploymentFlow(stash);
 
-    expect(flow.bagCells.used).toBeLessThanOrEqual(gridCells(flow.bagGrid) * MEDICINE_PREPACK_SHARE);
+    expect(flow.bagCells.used).toBeLessThanOrEqual(gridCells(flow.bagGrid) * MEDICINE_PREPACK_SHARE + BALLS_PREPACKED);
     expect(flow.bagCells.used).toBeGreaterThan(0);
   });
 
@@ -815,7 +832,7 @@ describe('medicine packed by default', () => {
     expect(flow.setItemQuantity('potion', 1)).toBeUndefined();
     expect(flow.isPrepacked('potion')).toBe(false);
     expect(flow.setItemQuantity('potion', 0)).toBeUndefined();
-    expect(flow.items).toEqual([]);
+    expect(flow.items).toEqual([{ itemId: 'poke-ball', quantity: BALLS_PREPACKED }]);
   });
 
   /**

@@ -52,15 +52,17 @@ That's it. Go out, get greedy, come home. Or don't come home, and learn somethin
 
 ### 1. Kit up at the Raid Arena
 
-Walk into the Raid Arena at the west end of the harbour. The first time, it shows you what you're
-in for: a trailer of a raid, played in the game itself, with you in it. You sneak about with your
-partner picking things up, a fight goes your way, and then tonight's hunter turns up with their whole
-team. A Charizard has to come and save you. (Any key skips it, and the Gym Guide by the door will
-run the reel again if you ask.) Then you're inside, and it's enormous: a great round hall four times the width of anything else in the
-harbour, a stone platform all the way round with pillars and burning torches, and in the middle a colosseum of steps going
+Walk into the Raid Arena at the west end of the harbour, follow the carpet up to the fence and press
+SPACE. That's it: your first raid is packed for you, and you're over the rail and falling before you've
+finished wondering what that hall was. Come home and it's all still there. It's enormous: a great round hall four times the width of anything else in the
+harbour, a wide stone platform all the way round with pillars and burning torches, and in the middle a colosseum of steps going
 down to a pit. Lean on the fence and look. That's Greystone Vale at the bottom, from a very long way up - only the parts
 you've walked, with cloud over everything else. Everything you do before a raid, you do right here on the floor.
-Walk up to the stone bench and pick who comes with you; they'll sit there waiting. Walk up to the armoury rack and
+The next time through the door it shows you what you're in for: a trailer of a raid, played in the game itself, with you in it.
+You sneak about with your partner picking things up, a fight goes your way, and then tonight's hunter turns up with their whole
+team. A Charizard has to come and save you. (Any key skips it, and the Gym Guide by the door will
+run the reel again if you ask.)
+The door opens into a bright square room with a corner either side of you. Walk up to the red bench and pick who comes with you; they'll sit there waiting. Walk up to the armoury rack and
 pick what goes in the pack, and which pack. Everything you take is at risk, which is the
 point: a Potion in the pack is a Potion you might lose, and a Potion left at home is a fight you
 might lose instead. The pack is a grid of squares, not a list, so a Super Potion and a crate of
@@ -222,7 +224,7 @@ Square, Keepers' Row, Harbour Square with its fountain and its town map, the Qua
 Long Pier, the Cove and the Green. And the board on the quay has a new notice pinned up every day.
 
 At the end of the row, behind the window boxes, is one more: **The Bolthole**, which is yours.
-When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else
+Home from your first raid it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else
 in Pallet Town can have yours. After that it's your name on the door, over your head in the
 harbour and on every board.
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:

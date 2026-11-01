@@ -33,7 +33,7 @@ describe('YOUR NAME?', () => {
   });
 
   it("asks in FireRed's words, with one line of ten letters and OK, wherever it is asked", () => {
-    for (const where of ['new-game', 'continue', 'house'] as const) {
+    for (const where of ['first-raid', 'continue', 'house'] as const) {
       const markup = nameScreenMarkup({ where, value: '' });
       expect(markup).toContain(YOUR_NAME_TITLE);
       expect(markup).toContain(`maxlength="${PLAYER_NAME_MAX_LENGTH}"`);
@@ -44,13 +44,10 @@ describe('YOUR NAME?', () => {
     }
   });
 
-  it('lets a NEW GAME go back to the title or start without a name, CONTINUE put it off, and the house be left', () => {
-    const newGame = nameScreenMarkup({ where: 'new-game', value: '' });
-    expect(newGame).toContain('data-name-later');
-    expect(newGame).toContain('>Back<');
+  it('lets the first homecoming and CONTINUE put it off, and the house be left', () => {
+    expect(nameScreenMarkup({ where: 'first-raid', value: '' })).toContain('>Later<');
     expect(nameScreenMarkup({ where: 'continue', value: '' })).toContain('>Later<');
     expect(nameScreenMarkup({ where: 'house', value: '' })).toContain('>Back outside<');
-    expect(nameScreenMarkup({ where: 'house', value: '' })).not.toContain('data-name-later');
   });
 
   it('says under the line whether anybody else has the name, once there is a name to ask about', () => {
@@ -63,7 +60,7 @@ describe('YOUR NAME?', () => {
   });
 
   it('says plainly why a name could not be had', () => {
-    expect(nameClaimLine('taken', 'new-game')).toBe('Somebody already has that name. Pick another.');
+    expect(nameClaimLine('taken', 'first-raid')).toBe('Somebody already has that name. Pick another.');
     expect(nameClaimLine('refused', 'house')).toBe(nameProblemLine('unkind'));
     expect(nameClaimLine('offline', 'continue')).toMatch(/LATER/);
     expect(nameClaimLine('offline', 'house')).not.toMatch(/LATER/);

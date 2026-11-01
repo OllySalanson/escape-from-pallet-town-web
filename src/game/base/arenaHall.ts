@@ -12,12 +12,13 @@ import type { GridPosition } from '../movement/gridMovement';
  * here knows Phaser or the save.
  *
  * Everything a player does before a raid is done on this platform
- * (`arenaRim.ts`, `BaseScene`). **The stations stand just inside the door**: the
- * bench, the armoury rack and the locker (`ARENA_STATIONS`), either side of the
- * runner along the row a held key walks from the mat, none of them between the
- * fence and the walk round it. **Nobody stands behind anything**: what rises over
- * the floor is solid under the part of it that would hide a figure, and no tile is
- * left that goes nowhere (`arenaWalk.ts` is the walking this leaves room for). And
+ * (`arenaRim.ts`, `BaseScene`). **The door opens into a squared-off room**: bright
+ * flags under a dark wall (`ARENA_ENTRY`), with the bench in one corner and the
+ * armoury rack and the locker in the other (`ARENA_STATIONS`), along the row a held
+ * key walks from the mat, none of them on any way to the fence or round the ring.
+ * **Nobody stands behind anything**: what rises over the floor is solid under the
+ * part of it that would hide a figure, and no tile is left that goes nowhere
+ * (`arenaWalk.ts` is the walking this leaves room for). And
  * **the fence is one low run nobody but the player needs to get past**: it is
  * solid, one tile thick, and every tile of it (`ARENA_FENCE`) has a tile of
  * platform to stand on beside it, so going over it is one authored hop from
@@ -30,9 +31,10 @@ export const ARENA_TILE = 16;
 /**
  * The hall in tiles: an odd width, so a tile stands on its centre line. It is
  * wider than it is tall because the walks east and west of the pit are wider than
- * those north and south of it: at 65 a player had five tiles of floor there and
- * felt it (the captain, 31 Oct 2026), so the wall stands further out on those two
- * sides and the pit has not changed at all.
+ * those north and south of it. The ring is where a player spends their time, so
+ * the ring has the room: thirteen tiles of floor east and west and nine or ten
+ * north and south, four tiles more than it had, out of a pit four tiles smaller all
+ * round with narrower steps, so the map below it gives up little.
  */
 export const ARENA_HALL_WIDTH = 71;
 export const ARENA_HALL_HEIGHT = 63;
@@ -54,7 +56,7 @@ export const WALL_FOOT: Oval = { ...ARENA_CENTRE, rx: 536, ry: 464 };
 /** How tall the outer wall's face is drawn on the north side, in pixels. */
 export const WALL_FACE_HEIGHT = 48;
 /** The inside edge of the fence's kerb: everything inside this is the pit. */
-export const PIT_RIM: Oval = { ...ARENA_CENTRE, rx: 376, ry: 360 };
+export const PIT_RIM: Oval = { ...ARENA_CENTRE, rx: 312, ry: 304 };
 /** How wide the fence's kerb is, in pixels. */
 export const KERB_WIDTH = 7;
 
@@ -101,10 +103,41 @@ export const ARENA_MAT_REACH = 1;
 const inPorch = (tile: GridPosition): boolean =>
   Math.abs(tile.x - ARENA_MAT.x) <= 1 && tile.y >= ARENA_MAT.y - 2 && tile.y <= ARENA_MAT.y;
 
+/** The row the stations stand on: the back of the room the door opens into. */
+const STATION_ROW = ARENA_MAT.y - 2;
+
+/**
+ * The room the door opens into, with its corners square where the oval's are not.
+ * Inclusive: one row of stations along its back, and the row a held key walks in
+ * front of them. Its back wall stands to the north of that with a gate in the
+ * middle, which the runner goes through and everything else goes round.
+ */
+export const ARENA_ENTRY = { left: ARENA_MAT.x - 9, right: ARENA_MAT.x + 9, top: STATION_ROW, bottom: ARENA_MAT.y - 1 } as const;
+/** How many rows of wall stand behind the stations, cap and face: tall enough to frame what stands against it. */
+export const ENTRY_WALL_ROWS = 3;
+/** How deep the wall along the room's south side is drawn, in pixels. */
+export const ENTRY_WALL_FOOT = 10;
+/** How far either side of the middle the gate through the back wall reaches. */
+const ENTRY_GATE_REACH = 2;
+
+const inEntry = (tile: GridPosition): boolean =>
+  tile.x >= ARENA_ENTRY.left && tile.x <= ARENA_ENTRY.right && tile.y >= ARENA_ENTRY.top && tile.y <= ARENA_ENTRY.bottom;
+
+/** The walls of that room: along the back but for its gate, and down each side. */
+export function isEntryWall(tile: GridPosition): boolean {
+  const across = tile.x >= ARENA_ENTRY.left - 1 && tile.x <= ARENA_ENTRY.right + 1;
+  const behind = tile.y >= ARENA_ENTRY.top - ENTRY_WALL_ROWS && tile.y < ARENA_ENTRY.top;
+  const beside = tile.y >= ARENA_ENTRY.top && tile.y <= ARENA_ENTRY.bottom && (tile.x === ARENA_ENTRY.left - 1 || tile.x === ARENA_ENTRY.right + 1);
+  return across && ((behind && Math.abs(tile.x - ARENA_MAT.x) > ENTRY_GATE_REACH) || beside);
+}
+
 /** Every tile of the platform before anything stands on it. */
 function isPlatform(tile: GridPosition): boolean {
-  if (inPorch(tile)) {
+  if (inPorch(tile) || inEntry(tile)) {
     return true;
+  }
+  if (isEntryWall(tile)) {
+    return false;
   }
   const corners = tileCorners(tile);
   const rim = grownOval(PIT_RIM, KERB_WIDTH);
@@ -133,13 +166,11 @@ const PILLAR_REACH = 0.97;
 /**
  * The pillars, as the tile each stands on, evenly round the platform against the
  * wall and mirrored about the hall's centre line. The ring is turned half a step
- * and has a gap at the door: the two that would stand either side of the runner
- * stood between a newcomer and everything they had come in for, and the walk to
- * the bench or the rack went behind them.
+ * and has a gap round the door, where the room it opens into stands.
  */
 export const ARENA_PILLARS: readonly GridPosition[] = (() => {
   const pillars: GridPosition[] = [];
-  for (let index = 1; index < PILLAR_COUNT - 1; index += 1) {
+  for (let index = 2; index < PILLAR_COUNT - 2; index += 1) {
     const angle = ((index + 0.5) * Math.PI * 2) / PILLAR_COUNT + Math.PI / 2;
     const at = (radius: (oval: Oval) => number, axis: 'x' | 'y'): number => {
       const start = radius(PIT_RIM);
@@ -158,8 +189,8 @@ export const ARENA_PILLARS: readonly GridPosition[] = (() => {
   return pillars;
 })();
 
-/** Where the hall's keeper stands: beside the runner, in full view of the door, a row up from where the stations are walked along. */
-export const ARENA_KEEPER_TILE: GridPosition = { x: ARENA_MAT.x - 2, y: ARENA_MAT.y - 3 };
+/** Where the hall's keeper stands: through the gate from the door, beside the runner. */
+export const ARENA_KEEPER_TILE: GridPosition = { x: ARENA_MAT.x - 2, y: ARENA_ENTRY.top - ENTRY_WALL_ROWS - 2 };
 
 const sameTile = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
 
@@ -179,9 +210,6 @@ export interface ArenaStation {
 const stationRow = (left: number, width: number, y: number): readonly GridPosition[] =>
   Array.from({ length: width }, (_tile, index) => ({ x: left + index, y }));
 
-/** The row the stations stand on: the last before the south wall, so the row a held key walks from the mat is the floor in front of every one of them. */
-const STATION_ROW = 59;
-
 const station = (id: ArenaStationId, left: number, width: number, past: readonly GridPosition[], tall: boolean): ArenaStation => ({
   id,
   tiles: stationRow(left, width, STATION_ROW),
@@ -196,15 +224,16 @@ export const ARENA_STAND_TORCHES: readonly GridPosition[] = [
 ];
 
 /**
- * The stations, either side of the runner, where the first screen of the hall
- * shows all three: the bench to the west, the rack and the locker to the east.
- * Each is one row of solid tiles; anything taller rises over the row behind it,
- * and that row is solid too, so nobody walks out of sight behind it.
+ * The stations, in the two corners of the room the door opens into, where the first
+ * screen of the hall shows all three and no way anywhere goes past them: the bench to
+ * the west, the rack and the locker to the east. Each is one row of solid tiles
+ * against the back wall, so whatever rises over it hides nobody. The torch at one end
+ * of a corner and the wall at the other answer for what stands between them.
  */
 export const ARENA_STATIONS: readonly ArenaStation[] = [
-  station('bench', ARENA_MAT.x - 8, 5, [ARENA_STAND_TORCHES[0]], false),
-  station('rack', ARENA_MAT.x + 4, 3, [ARENA_STAND_TORCHES[1]], true),
-  station('locker', ARENA_MAT.x + 7, 2, [], true),
+  station('bench', ARENA_ENTRY.left, 6, [ARENA_STAND_TORCHES[0], { x: ARENA_ENTRY.left - 1, y: ARENA_ENTRY.bottom }], false),
+  station('rack', ARENA_MAT.x + 4, 3, [ARENA_STAND_TORCHES[1]], false),
+  station('locker', ARENA_MAT.x + 7, 3, [{ x: ARENA_ENTRY.right + 1, y: ARENA_ENTRY.bottom }], false),
 ];
 
 /** The station on this tile, if there is one. */
@@ -228,8 +257,8 @@ export interface ArenaTelescope {
   readonly stance: GridPosition;
 }
 
-/** The fence's straight run along the south of the pit. */
-const TELESCOPE_ROW = STATION_ROW - 4;
+/** The fence's straight run along the south of the pit: the row its southernmost stretch stands on. */
+const TELESCOPE_ROW = Math.floor((ARENA_CENTRE.y + PIT_RIM.ry + KERB_WIDTH) / ARENA_TILE);
 
 const telescopeOn = (side: ArenaTelescope['side']): ArenaTelescope => {
   const way = side === 'east' ? 1 : -1;
@@ -261,8 +290,8 @@ export function telescopeGlintPoint({ tile, side }: ArenaTelescope): { readonly 
  */
 export const ARENA_GLINTS: readonly { readonly x: number; readonly y: number }[] = [
   ...ARENA_TELESCOPES.map(telescopeGlintPoint),
-  { x: (ARENA_STATIONS[2].tiles[0].x + 1) * ARENA_TILE - 1, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 16 },
-  { x: (ARENA_STATIONS[0].tiles[4].x + 1) * ARENA_TILE - 7, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 9 },
+  { x: ARENA_STATIONS[2].tiles[1].x * ARENA_TILE + ARENA_TILE / 2, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 20 },
+  { x: (ARENA_STATIONS[0].tiles[5].x + 1) * ARENA_TILE - 7, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 26 },
 ];
 
 /** The tiles of the rail either side of a telescope: where somebody looking through it goes round to, to look down for themselves. */
@@ -284,8 +313,6 @@ const PILLAR_HIDES_TILES = 2;
 
 /** Whether a tile has something standing on it, or rising over it far enough to hide whoever stood there. */
 const standsOn = (tile: GridPosition): boolean =>
-  // Past the ends of the stations their row goes nowhere.
-  (tile.y === STATION_ROW && (tile.x < ARENA_STATIONS[0].tiles[0].x || tile.x > ARENA_STATIONS[2].tiles[1].x)) ||
   ARENA_PILLARS.some((pillar) => pillar.x === tile.x && pillar.y >= tile.y && pillar.y - tile.y <= PILLAR_HIDES_TILES) ||
   arenaStationAt(tile) !== undefined ||
   arenaTelescopeAt(tile) !== undefined ||
@@ -458,10 +485,10 @@ const VALE_FRAME: PitFrame = pitFrameFor(PIT_MAP_SIZE, PIT_MAP_SIZE);
  * down into anything does in this game's view.
  */
 export const PIT_TIERS = 4;
-export const PIT_TREAD = 16;
+export const PIT_TREAD = 12;
 export const PIT_TIER_DROP = 3;
 /** The sheer wall at the foot of the steps, with its gates in it. */
-export const PIT_PODIUM_WIDTH = 24;
+export const PIT_PODIUM_WIDTH = 20;
 export const PIT_PODIUM_DROP = 14;
 
 /** How much less each thing moves than the platform as the player walks: depth. */
@@ -469,13 +496,13 @@ export const TIER_PARALLAX = [0.016, 0.032, 0.048, 0.064] as const;
 export const PODIUM_PARALLAX = 0.08;
 export const MIST_PARALLAX = 0.28;
 /**
- * The floor slides half as far as the player walks. It is a very long way down,
+ * The floor slides a little under half as far as the player walks. It is a very long way down,
  * and the further away a thing is the more nearly it stays under whoever is
  * looking at it - which is what makes walking round the rim a walk over the
  * country: from the west rail the west of the vale is under you, and the middle
  * of it comes on to the screen from either side.
  */
-export const FLOOR_PARALLAX = 0.5;
+export const FLOOR_PARALLAX = 0.42;
 
 /** The rest position of one ring's hole: the rim's own oval, stepped in and down. */
 export function tierHole(tier: number): Oval {
@@ -617,6 +644,8 @@ export function namePlatePlace(
 const CAMERA_LEAN = 0.2;
 /** What the most it leans has to leave at the edge of a screen: the player's own tile and the hint under it. */
 const CAMERA_LEAN_CLEAR = 56;
+/** From the south side it may lean further, which is what keeps the fence and both telescopes on the first screen from the door. */
+const CAMERA_LEAN_CLEAR_SOUTH = 44;
 
 /**
  * How far the camera stands from the player, towards the pit. The hall is far
@@ -635,7 +664,7 @@ export function cameraLean(
   const dx = (ARENA_CENTRE.x - player.x) * CAMERA_LEAN;
   const dy = (ARENA_CENTRE.y - player.y) * CAMERA_LEAN;
   const across = dx / Math.max(1, view.width / 2 - CAMERA_LEAN_CLEAR);
-  const down = dy / Math.max(1, view.height / 2 - CAMERA_LEAN_CLEAR);
+  const down = dy / Math.max(1, view.height / 2 - (dy < 0 ? CAMERA_LEAN_CLEAR_SOUTH : CAMERA_LEAN_CLEAR));
   const scale = 1 / Math.max(1, Math.hypot(across, down));
   return { x: Math.round(dx * scale), y: Math.round(dy * scale) };
 }

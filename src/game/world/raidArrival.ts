@@ -62,7 +62,7 @@ const RING_KEY_NAMED_FOR_RAIDS = 5;
 
 /** Whether the ring says which key it wants: it is pride, not a chore to be nagged about for ever. */
 export function ringNamesItsKey(raidsDeployed: number, bestLandingRun: number): boolean {
-  return bestLandingRun === 0 && raidsDeployed <= RING_KEY_NAMED_FOR_RAIDS;
+  return bestLandingRun === 0 && raidsDeployed > 1 && raidsDeployed <= RING_KEY_NAMED_FOR_RAIDS;
 }
 
 /** What the board says of a clean landing. */
@@ -124,6 +124,19 @@ export function arrivalPose(elapsedMs: number, clean = false): ArrivalPose {
     partnerLanded: partnerFall >= 1,
     sinceLanding,
   };
+}
+
+/** The shock of landing: a ring of dashes running out over the ground, flattened as the dust is. Null once it has gone. */
+export const SHOCK_MS = 210;
+const SHOCK_FROM = 8;
+const SHOCK_TO = 58;
+export function shockwaveAt(sinceLanding: number): { readonly across: number; readonly up: number } | null {
+  if (sinceLanding < 0 || sinceLanding >= SHOCK_MS) {
+    return null;
+  }
+  const share = 1 - (1 - sinceLanding / SHOCK_MS) ** 2;
+  const across = Math.round(SHOCK_FROM + (SHOCK_TO - SHOCK_FROM) * share);
+  return { across, up: Math.round(across * 0.45) };
 }
 
 /** How long the dust from a landing hangs, how many puffs, and how far they go. */

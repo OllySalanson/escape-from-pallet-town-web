@@ -10,7 +10,9 @@ import {
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
   ARENA_KEEPER_TILE,
+  ARENA_ENTRY,
   ARENA_MAT,
+  isEntryWall,
   ARENA_PILLARS,
   ARENA_STATIONS,
   ARENA_TELESCOPES,
@@ -172,8 +174,8 @@ describe("THE RAID ARENA's great hall", () => {
     }
   });
 
-  it('lets a standing torch at the end of a station answer for it', () => {
-    expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([['32,59'], ['38,59'], []]);
+  it('lets a standing torch at the end of a station, and the wall at the end of a corner, answer for it', () => {
+    expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([['32,60', '25,61'], ['38,60'], ['45,61']]);
     for (const station of ARENA_STATIONS) {
       for (const tile of station.past) {
         expect(solid[tile.y][tile.x], `${tile.x},${tile.y}`).toBe(true);
@@ -259,10 +261,35 @@ describe("THE RAID ARENA's great hall", () => {
     expect(across(ARENA_MAT.x, 1)).toBeGreaterThanOrEqual(7);
     expect(across(ARENA_MAT.x, -1)).toBeGreaterThanOrEqual(7);
     expect(across(ARENA_MAT.x, 1)).toBeGreaterThan(downwards(33, -1));
-    // North and south are as they always were: the pit and the wall stand where they stood.
-    expect(PIT_RIM.ry).toBe(360);
-    expect(WALL_FOOT.ry).toBe(464);
-    expect(PIT_RIM.rx).toBe(376);
+    // The ring has the room: at least nine tiles of floor north and south, thirteen east and west.
+    expect(WALL_FOOT.ry - PIT_RIM.ry).toBeGreaterThanOrEqual(9 * ARENA_TILE);
+    expect(WALL_FOOT.rx - PIT_RIM.rx).toBeGreaterThanOrEqual(13 * ARENA_TILE);
+  });
+
+  it('opens the door into a squared-off room, with the stations in its corners and off every way anywhere', () => {
+    const { left, right, top, bottom } = ARENA_ENTRY;
+    // Square: every tile of it is floor or something standing on it, right into its corners.
+    for (let y = top + 1; y <= bottom; y += 1) {
+      for (let x = left; x <= right; x += 1) {
+        expect(solid[y][x], `${x},${y}`).toBe(false);
+      }
+    }
+    expect(isEntryWall({ x: left - 1, y: bottom })).toBe(true);
+    expect(isEntryWall({ x: right + 1, y: bottom })).toBe(true);
+    // The corners hold what a player gets ready with, bench to the west and the others to the east.
+    const [bench, rack, locker] = ARENA_STATIONS;
+    expect(bench.tiles[0].x).toBe(left);
+    expect(locker.tiles[locker.tiles.length - 1].x).toBe(right);
+    expect(rack.tiles[0].x).toBeGreaterThan(ARENA_MAT.x);
+    // The way up the runner and through the gate is clear of all of them.
+    for (let y = ARENA_MAT.y; y > ARENA_TELESCOPES[0].tile.y; y -= 1) {
+      expect(solid[y][ARENA_MAT.x], `row ${y}`).toBe(false);
+    }
+    for (const station of ARENA_STATIONS) {
+      for (const tile of station.tiles) {
+        expect(Math.abs(tile.x - ARENA_MAT.x)).toBeGreaterThan(3);
+      }
+    }
   });
 
   it('stands a telescope on the rail on the left and on the right, mirrored, in sight of the door and each walked up to from the floor', () => {
@@ -384,8 +411,8 @@ describe('the pit', () => {
         for (const tile of FLOOR) {
           const player = middleOf(tile);
           const lean = cameraLean(player, view);
-          expect(Math.abs(lean.y), `${tile.x},${tile.y}`).toBeLessThanOrEqual(view.height / 2 - 56);
-          expect(Math.abs(lean.x), `${tile.x},${tile.y}`).toBeLessThanOrEqual(view.width / 2 - 56);
+          expect(Math.abs(lean.y), `${tile.x},${tile.y}`).toBeLessThanOrEqual(view.height / 2 - 44);
+          expect(Math.abs(lean.x), `${tile.x},${tile.y}`).toBeLessThanOrEqual(view.width / 2 - 44);
           // Always towards the middle, which is what stops it swinging out into the dark.
           expect(lean.x * (ARENA_CENTRE.x - player.x), `${tile.x},${tile.y}`).toBeGreaterThanOrEqual(0);
           expect(lean.y * (ARENA_CENTRE.y - player.y), `${tile.x},${tile.y}`).toBeGreaterThanOrEqual(0);

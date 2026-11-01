@@ -133,13 +133,13 @@ describe('the three balls on Oak’s table', () => {
 });
 
 describe('choosing, from the room', () => {
-  it('asks about the ball faced, on the safe answer, and writes nothing for a NOT NOW', () => {
+  it('asks about the ball faced, on YES as FireRed does, and writes nothing for a NOT NOW', () => {
     const storage = new MemoryStorage();
     const { asked, went, stand, pressAt } = room(storage, [false]);
 
     pressAt(9, 5);
 
-    expect(asked).toEqual([{ question: starterQuestion(getStarterSpecies('charmander')), spendsForGood: true }]);
+    expect(asked).toEqual([{ question: starterQuestion(getStarterSpecies('charmander')), spendsForGood: false }]);
     expect(stand.askedAtAnswer).toBe('charmander');
     expect(stand.askedBall).toBeNull();
     expect(went).toEqual([]);

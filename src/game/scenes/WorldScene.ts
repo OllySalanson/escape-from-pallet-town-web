@@ -7,7 +7,7 @@ import { homeAfterRaid } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
 import { clockLine, closeCallLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
-import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey } from '../world/raidArrival';
+import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey, shockwaveAt } from '../world/raidArrival';
 
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -666,6 +666,10 @@ const LANDING_RING_SHADE = 0x101018;
 const LANDING_PLATE_MS = 1500;
 const ARRIVAL_CLOUD_DEPTH = 100000;
 const DUST_LIGHT_INK = 0xb8a880;
+/** The ground taking the landing: how long it shakes, how hard, and how many dashes make the ring. */
+const LANDING_SHAKE_MS = 170;
+const LANDING_SHAKE_PX = 4;
+const SHOCK_DASHES = 30;
 const DUST_DARK_INK = 0x806848;
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -1578,6 +1582,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         arrival.dust.fillStyle(puff.light ? DUST_LIGHT_INK : DUST_DARK_INK, 1);
         arrival.dust.fillRect(arrival.ground.x + puff.x, arrival.ground.y + puff.y, puff.size, puff.size);
       }
+      const shock = shockwaveAt(pose.sinceLanding);
+      if (shock) {
+        arrival.dust.fillStyle(DUST_LIGHT_INK, 1);
+        for (let step = 0; step < SHOCK_DASHES; step += 1) {
+          const angle = (step / SHOCK_DASHES) * Math.PI * 2;
+          arrival.dust.fillRect(
+            arrival.ground.x + Math.round(Math.cos(angle) * shock.across),
+            arrival.ground.y + Math.round(Math.sin(angle) * shock.up),
+            2,
+            1,
+          );
+        }
+      }
     }
     // Drawn here because nothing else in the world runs yet.
     this.partner?.setDropHeight(pose.partnerHeight);
@@ -1590,7 +1607,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (pose.landed && !arrival.landed) {
       arrival.landed = true;
       audioManager.play(clean ? 'landClean' : 'landThud');
-      this.cameras.main.shake(120, 2 / this.scale.height);
+      this.cameras.main.shake(LANDING_SHAKE_MS, LANDING_SHAKE_PX / this.scale.height);
     }
     if (arrival.elapsedMs >= Math.max(ARRIVAL_MS, ARRIVAL_CLOUD_MS)) {
       arrival.cloud.destroy();

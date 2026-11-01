@@ -194,7 +194,7 @@ try {
 
   // To the rim, up the runner.
   const mat = await base('({ ...b.room.mat })');
-  await walkTo({ x: mat.x, y: 56 });
+  await walkTo({ x: mat.x, y: 53 });
   await face('ArrowUp');
   await step(300);
   await shot('6-rim');
@@ -209,7 +209,7 @@ try {
       await shot(`6-rim-${name}`);
       console.log(`${name}: ${await base('b.hintShown')}`);
     }
-    await walkTo({ x: mat.x, y: 56 });
+    await walkTo({ x: mat.x, y: 53 });
   }
 
   // Looking down, with the marshal's words the first time.

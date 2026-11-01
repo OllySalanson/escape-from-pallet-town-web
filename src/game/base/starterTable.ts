@@ -15,9 +15,10 @@ import { STARTER_NOTES } from '../ui/starterPicker';
  * - **Looking commits nothing.** Facing a ball, or resting the pointer on one,
  *   only shows what is in it, so a mouse crossing the table on its way somewhere
  *   changes nothing.
- * - **The first answer is the safe one.** The question opens on NOT NOW and takes
- *   no click for a moment, because the press that asked it, or the second half of
- *   a double-click, must never be what picks the partner.
+ * - **The press that asked is not the answer.** The question takes no click for a
+ *   moment, because the second half of a double-click must not pick the partner. It
+ *   opens on YES, as FireRed's does: on NOT NOW, somebody pressing on through it
+ *   went round and round the same question.
  * - **Nothing is written until YES.** Until then the room stands on a game that is
  *   not in storage (`save/newGame.ts`), so walking away from the question, or
  *   closing the tab, leaves nothing behind.
@@ -77,10 +78,7 @@ export function ballPreviewLines(species: PokemonBase): readonly string[] {
 
 /** Oak, as the player comes in. FireRed's own speech, cut to the two boxes a raid game has time for. */
 export function oakOpeningLines(playerName: string | null): readonly string[] {
-  return [
-    `There you are${playerName ? `, ${playerName}` : ''}! My last three Pokémon are on that table.`,
-    'You can have one. It goes into every raid with you, so choose well.',
-  ];
+  return [`There you are${playerName ? `, ${playerName}` : ''}! Take a partner off that table.`];
 }
 
 /** Oak, spoken to before anything has been chosen. */

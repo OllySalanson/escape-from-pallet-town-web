@@ -64,7 +64,7 @@ try {
       const save = JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)}));
       const progress = save.raidProgress;
       progress.arenaIntroSeen = true;
-      progress.firstWordsHeard = ['lab', 'loadout', 'check', 'center', 'workshop', 'cottage'];
+      progress.firstWordsHeard = ['lab', 'loadout', 'center', 'workshop', 'cottage'];
       progress.raidRecord = { 'greystone-vale': { deployed: 40, extracted: 30, wiped: 10 } };
       localStorage.setItem(${JSON.stringify(SAVE_KEY)}, JSON.stringify(save));
     })()`);
@@ -168,7 +168,7 @@ try {
       // The longer way first; the key already held for as long as it still helps.
       if (Math.abs(down) > Math.abs(across)) wanted.reverse();
       // They can see what stands by the door: anything past it is up the runner first.
-      if (at.y >= 58 && goal.y < 58 && !wanted[0].includes('up') && wanted.includes('up')) wanted.reverse();
+      if (at.y >= 56 && goal.y < 56 && !wanted[0].includes('up') && wanted.includes('up')) wanted.reverse();
       if (held && wanted.includes(held)) wanted.unshift(held);
       const open = (direction) => base(`!b.isBlocked({ x: ${at.x + DELTA[direction][0]}, y: ${at.y + DELTA[direction][1]} })`);
       let next = wanted[0];
@@ -199,6 +199,7 @@ try {
     stations: b.arenaStations.map((station) => ({ id: station.id, tiles: station.tiles })),
     things: b.place.room.things.filter((thing) => thing.opens === 'telescope').map((thing) => thing.tiles[0]),
     plates: (b.arenaTelescopes ?? []).map((telescope) => telescope.stance),
+    rail: b.arenaRim.filter((tile) => tile.x === b.room.mat.x).reduce((a, c) => (a.y > c.y ? a : c)),
   })`);
   const stanceOf = (tile) =>
     facts.plates.find((plate) => Math.abs(plate.x - tile.x) + Math.abs(plate.y - tile.y) === 1) ?? { x: tile.x + (tile.x < facts.mat.x ? -1 : 1), y: tile.y };
@@ -206,7 +207,7 @@ try {
   const places = [
     ...facts.stations.map((station) => [station.id, { x: middle(station.tiles).x, y: middle(station.tiles).y + 1 }]),
     ...facts.things.map((telescope) => [`telescope ${telescope.x < 35 ? 'west' : 'east'}`, stanceOf(telescope)]),
-    ['rail, in front of the door', { x: facts.mat.x, y: facts.mat.y - 6 }],
+    ['rail, in front of the door', facts.rail],
   ];
   const results = [];
   if (args.includes('--holds')) {

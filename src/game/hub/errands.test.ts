@@ -35,6 +35,8 @@ import {
 } from './errands';
 
 const FRESH: ErrandProgress = DEFAULT_RAID_PROGRESS;
+/** A new save with one raid behind it, which is when anybody first asks a favour. */
+const BEEN_OUT: ErrandProgress = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 0, wiped: 1 } } };
 /** A save that can drop into Greystone Vale, where every favour lies. */
 const OPENED: ErrandProgress = {
   ...DEFAULT_RAID_PROGRESS,
@@ -206,8 +208,10 @@ describe('errands', () => {
     try {
       for (const errand of ERRANDS) {
         expect(errand.mapId).toBe('greystone-vale');
-        expect(errandOpen(errand, FRESH), errand.id).toBe(true);
-        expect(errandBeat(errand.giver, FRESH, nothing)).toEqual({ kind: 'ask', errand });
+        expect(errandOpen(errand, BEEN_OUT), errand.id).toBe(true);
+        expect(errandBeat(errand.giver, BEEN_OUT, nothing)).toEqual({ kind: 'ask', errand });
+        // Nobody asks a favour of somebody on their way to their first raid.
+        expect(errandOpen(errand, FRESH), errand.id).toBe(false);
       }
     } finally {
       retireMapsForTests([]);

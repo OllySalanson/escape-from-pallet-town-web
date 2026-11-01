@@ -2,7 +2,7 @@
 //
 //   node tools/playtest/arenaIntro.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH] [--live] [--every=FROM:TO:STEP]
 //
-// A new game walks into the Arena's door, and the trailer plays unasked
+// A save with one raid behind it walks into the Arena's door, and the trailer plays unasked
 // (`scenes/ArenaIntroScene.ts`); every beat is photographed at the moment
 // named below, then a key on the closing card has to land in the great hall.
 // Backing out and walking in again goes straight to the hall, and the Gym Guide
@@ -108,6 +108,8 @@ try {
   // so the trailer can be seen to draw the player in what they wear.
   await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1'));
     save.raidProgress.look = { head: 'short-crop', top: 'plain-tee', legs: 'plain-trousers', body: null };
+    // The trailer waits until a raid has been gone on (\`hub/firstRaid.ts\`).
+    save.raidProgress.raidRecord = { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } };
     localStorage.setItem('escape-from-pallet-town.save.v1', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url });
   await page.waitFor(sceneIs('title'), { what: 'the title' });

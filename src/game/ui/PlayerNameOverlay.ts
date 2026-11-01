@@ -47,7 +47,7 @@ export function openNameScreen(
     overlay.destroy();
     onDone(end);
   };
-  const awayEnd = (): NameScreenEnd => (where === 'continue' ? 'later' : 'away');
+  const awayEnd = (): NameScreenEnd => (where === 'house' ? 'away' : 'later');
   const say = (text: string): void => {
     putUpPixelStatus(overlay.root, text);
     field?.focus();
@@ -162,8 +162,6 @@ export function openNameScreen(
     const target = (event.target as Element).closest<HTMLElement>('button');
     if (target?.dataset.nameOk !== undefined) {
       submit(field?.value ?? '');
-    } else if (target?.dataset.nameLater !== undefined) {
-      settle('later');
     } else if (target?.dataset.nameAway !== undefined) {
       settle(awayEnd());
     }

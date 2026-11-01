@@ -1,10 +1,10 @@
 /**
  * THE BOLTHOLE and the player's name.
  *
- * A name is chosen when a game starts (`names/`), and is one each in all of
- * Pallet Town. The house is where a name belongs - it goes on the door - so
- * it is also the fallback: anybody who walks in without one (put off at NEW
- * GAME, or no answer from the harbour then) is asked here, and does not walk
+ * A name is one each in all of Pallet Town (`names/`), asked as the first raid
+ * comes home. The house is where a name belongs - it goes on the door - so it
+ * is also the fallback: anybody who walks in without one (put off then, or no
+ * answer from the harbour) is asked here, and does not walk
  * about inside until they have answered or gone back out (`BaseScene.askHouseName`).
  * It is the console's name and the console's rule (`console/playerName.ts`):
  * one per device, kept under its own key, so the console never asks anybody

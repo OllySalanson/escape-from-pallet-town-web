@@ -1,7 +1,9 @@
 import type { BaseScreen } from '../base/doors';
 import { getItemById, type ErrandItemId, type ItemId } from '../items';
+import { isFirstRaid } from './firstRaid';
 import type { ContractPokemon } from '../objectives/contracts';
 import { availableInsertionIds, frontDoorFor } from '../run/runGeneration';
+import type { RaidProgress } from '../save/SaveManager';
 import type { CharacterDesignId } from '../world/characterDesigns';
 import { districtsForMap, type MapDistrict } from '../world/districts';
 import type { WorldLoot } from '../world/loot';
@@ -376,6 +378,9 @@ export interface ErrandProgress {
   readonly reachedInsertions: readonly string[];
   readonly completedContracts: readonly string[];
   readonly errands?: readonly ErrandRecord[];
+  /** Nobody asks a favour of somebody who has yet to go on a raid (`hub/firstRaid.ts`). */
+  readonly raidRecord?: RaidProgress['raidRecord'];
+  readonly standingContractsBanked?: number;
 }
 
 /**
@@ -386,6 +391,9 @@ export interface ErrandProgress {
  * from that door with every gate still shut).
  */
 export function errandOpen(errand: Errand, progress: ErrandProgress): boolean {
+  if (isFirstRaid(progress)) {
+    return false;
+  }
   const door = frontDoorFor(errand.mapId);
   return door !== undefined && availableInsertionIds(progress).includes(door.id);
 }

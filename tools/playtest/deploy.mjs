@@ -12,6 +12,8 @@ import { sleep } from './browser.mjs';
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
+/** True from the moment a jump over the fence has begun until the raid is under way. */
+const GOING_OVER = `(() => { const scenes = ${GAME}.scene.getScenes(true).map((s) => s.scene.key); return scenes.includes('world') || Boolean(${GAME}.scene.getScene('base')?.jump); })()`;
 
 /**
  * An expression that puts a Pokemon in the raid party on the loadout and is
@@ -159,6 +161,10 @@ export async function openHallPanel(page, panel, options = {}) {
     if (await page.evaluate(showing)) {
       return;
     }
+    // A first raid goes over at the rail with no card (\`hub/firstRaid.ts\`).
+    if (panel === 'rim' && (await page.evaluate(GOING_OVER))) {
+      return;
+    }
     if (await page.evaluate(sceneIs('hub'))) {
       await press('Escape');
       await settle(settleMs);
@@ -200,6 +206,11 @@ export async function openHallPanel(page, panel, options = {}) {
  */
 export async function jumpIn(page, { insertion, press, until, wait } = {}) {
   await openHallPanel(page, 'rim', { press, until, wait });
+  if (await page.evaluate(GOING_OVER)) {
+    await until(sceneIs('world'), 'the raid');
+    await until(`!${GAME}.scene.getScene('world').arrival`, 'the landing');
+    return;
+  }
   if (insertion) {
     await until(
       `(() => { const hub = ${GAME}.scene.getScene('hub'); const id = ${JSON.stringify(insertion)}; if (hub.flow.insertionId === id) return true; if (!hub.offeredWays.some(([way]) => way === id)) return false; hub.pointAtLanding(id); return true; })()`,

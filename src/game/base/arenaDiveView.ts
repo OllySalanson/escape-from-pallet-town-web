@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { getIdleFrame } from '../playerFrames';
 import { cloudSheet, paintCloudPiece } from './arenaPit';
-import { PUFF_RADII, PURSUER_FROM_MS, fallFacing, fallerAt, pursuerAt, puffsAt, windAt, JUMP_MS, type JumpPose } from './arenaDive';
+import { PUFF_RADII, PURSUER_FROM_MS, fallFacing, fallerAt, fallerScale, pursuerAt, puffsAt, windAt, JUMP_MS, type JumpPose } from './arenaDive';
 import { getWorldCharacterAppearance, worldCharacterIdleFrame } from '../world/characterPresentation';
 import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
@@ -49,8 +49,8 @@ const STAKE_SIDE_ROOM = 16;
 const STAKE_POP_MS = 70;
 
 /** Where the player falls on the screen, from its middle, and their partner beside them. Top-left of a frame. */
-const PLAYER_PLACE = { x: -8, y: -28 };
-const PARTNER_PLACE = { x: 12, y: -8 };
+const PLAYER_PLACE = { x: -22, y: -46 };
+const PARTNER_PLACE = { x: 6, y: -14 };
 
 /** The partner goes where the player goes, a little less far. */
 const PARTNER_DRIFT = 0.7;
@@ -198,7 +198,7 @@ export class ArenaDiveView {
     if (!pursuer.image) {
       // Seen and not heard: that sting is the one word for a hunter entering the
       // raid, and on every jump it taught players to ignore it.
-      pursuer.image = this.keep(this.scene.add.image(0, 0, appearance.textureKey, frame).setOrigin(0, 0).setDepth(PURSUER_DEPTH));
+      pursuer.image = this.keep(this.scene.add.image(0, 0, appearance.textureKey, frame).setOrigin(0, 0).setScale(2).setDepth(PURSUER_DEPTH));
     }
     const at = pursuerAt(fallingMs, this.scene.scale.width, this.scene.scale.height);
     pursuer.image.setVisible(at !== null).setFrame(frame);
@@ -225,7 +225,11 @@ export class ArenaDiveView {
     faller.startedAtMs ??= elapsedMs;
     const fallingMs = elapsedMs - faller.startedAtMs;
     const at = fallerAt(fallingMs, faller.from, faller.place, faller.seed);
-    faller.image.setPosition(at.x + Math.round(steer.x), at.y + Math.round(steer.y)).setFrame(faller.frameFor(fallingMs)).setVisible(seen);
+    faller.image
+      .setPosition(at.x + Math.round(steer.x), at.y + Math.round(steer.y))
+      .setScale(fallerScale(fallingMs))
+      .setFrame(faller.frameFor(fallingMs))
+      .setVisible(seen);
   }
 
   /** `steer` is how far the arrow keys have drifted whoever is falling, in pixels. */

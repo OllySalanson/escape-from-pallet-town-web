@@ -87,7 +87,7 @@ export function isHumbleGift(gift: PitGift, longOdds: ReadonlySet<string>): bool
 }
 
 /** Where what comes back lands: beside the runner, a step short of the rail, where a partner at the heel does not stand on it. */
-export const PIT_GIFT_TILE: GridPosition = { x: ARENA_MAT.x - 2, y: 57 };
+export const PIT_GIFT_TILE: GridPosition = { x: ARENA_MAT.x + 2, y: 55 };
 
 // --- a coin in the air ---------------------------------------------------------
 

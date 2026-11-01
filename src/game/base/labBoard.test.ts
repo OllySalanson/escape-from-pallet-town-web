@@ -6,10 +6,12 @@ import { buildContractBoard } from '../hub/contractBoard';
 import { getErrand, withErrandAsked } from '../hub/errands';
 
 const lab = roomNamed('oaks-lab')!;
+/** A raid behind it: nothing is pinned up for anybody yet to go on one. */
+const BEEN_OUT = { raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
 
 describe("Oak's cork board", () => {
   it('reads one notice a line, saying what the board always said about a contract', () => {
-    const game = baseGame();
+    const game = baseGame({ progress: BEEN_OUT });
     const [row] = buildContractBoard(game.raidProgress).rows;
     const lines = boardLines(game);
 
@@ -46,7 +48,7 @@ describe("Oak's cork board", () => {
   });
 
   it('counts its notices on its caption', () => {
-    const game = baseGame();
+    const game = baseGame({ progress: BEEN_OUT });
     const count = boardNotices(game).length;
     expect(boardNote(game)).toBe(`${count} ${count === 1 ? 'notice' : 'notices'} pinned up`);
   });

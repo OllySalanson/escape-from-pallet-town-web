@@ -90,6 +90,8 @@ export interface StandingBoardProgress {
   readonly workshopUpgrades: readonly string[];
   readonly unlockedInsertions: readonly string[];
   readonly reachedInsertions: readonly string[];
+  /** Every raid gone on: a save with none has no job yet (`hub/firstRaid.ts`, `hub/contractBoard.ts`). */
+  readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>>;
 }
 
 /** How many standing contracts are banked before the board's top offer rises a hunter tier. */

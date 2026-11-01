@@ -13,6 +13,7 @@ import {
 import { formatMoney } from '../items';
 import type { BaseDoor, BaseScreen } from './doors';
 import { errandBeat, errandThing } from '../hub/errands';
+import { isFirstRaid } from '../hub/firstRaid';
 import { caseBadges, wonBadges } from './badgeCase';
 import { ownedWearables } from '../look/wardrobe';
 import { STARTER_WEARABLES, WEARABLES } from '../look/wearables';
@@ -34,6 +35,11 @@ import { STARTER_WEARABLES, WEARABLES } from '../look/wearables';
  * the same way the card that used to carry it derived it.
  */
 export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: string | null = null): string {
+  // On the way to a first raid a door has its name and nothing else to read:
+  // the one door anybody needs says why (`hub/firstRaid.ts`).
+  if (isFirstRaid(game.raidProgress) && door.screen !== 'arena') {
+    return '';
+  }
   const errand = door.screen === null ? undefined : errandLine(door.screen, game);
   switch (door.screen) {
     case null: {
@@ -63,7 +69,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
       }
       const open = buildContractBoard(game.raidProgress).rows.length;
       return open === 0
-        ? 'No contracts; raid for what the maps hold'
+        ? 'No contracts: raid for what maps hold'
         : `${open} contract${open === 1 ? '' : 's'} on the board`;
     }
     case 'stash': {

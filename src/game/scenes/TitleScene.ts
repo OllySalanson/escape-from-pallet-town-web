@@ -868,24 +868,23 @@ export class TitleScene extends Phaser.Scene {
     if (this.hasStarted || this.naming) {
       return;
     }
-    // A name is one each in Pallet Town, and is chosen as a game starts
-    // (`names/`): at NEW GAME always, and at CONTINUE by anybody who has none
-    // yet. Where there is nothing to check names against - a test that did not
-    // ask for one - nobody is asked here, and THE BOLTHOLE asks instead.
-    // A browser that cannot keep a game is told so before it is asked anything,
-    // or the name was claimed for good for a game that never started.
+    // A name is one each in Pallet Town (`names/`), and a new game is not asked
+    // for one on its way in: the hall asks as the first raid comes home, and
+    // CONTINUE and THE BOLTHOLE ask anybody who still has none. Where there is
+    // nothing to check names against - a test that did not ask for one - nobody
+    // is asked here.
     const service = nameService();
-    if (service && ((mode === 'new' && this.saveManager.canSave()) || (mode === 'continue' && loadPlayerName() === null))) {
-      this.askName(mode, service);
+    if (service && mode === 'continue' && loadPlayerName() === null) {
+      this.askName(service);
       return;
     }
     this.beginGame(mode);
   }
 
   /** YOUR NAME? over the title (`ui/PlayerNameOverlay.ts`), then the game - or back to the menu. */
-  private askName(mode: 'continue' | 'new', service: NameService): void {
+  private askName(service: NameService): void {
     void audioManager.playWaking('confirm');
-    this.naming = openNameScreen(this, { where: mode === 'new' ? 'new-game' : 'continue', service }, (end) => {
+    this.naming = openNameScreen(this, { where: 'continue', service }, (end) => {
       this.naming = null;
       // The screen kept every key to itself, so a key the title saw go down
       // before it opened never came back up here.
@@ -894,7 +893,7 @@ export class TitleScene extends Phaser.Scene {
         void audioManager.playWaking('cancel');
         return;
       }
-      this.beginGame(mode);
+      this.beginGame('continue');
     });
   }
 

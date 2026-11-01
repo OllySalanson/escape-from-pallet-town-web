@@ -111,7 +111,7 @@ try {
   await step(500);
 
   /** Writes the raids on the record, and comes home to the rim from a raid that ended as told. */
-  const comeHome = async (mood, record, tile = { x: 35, y: 56 }) => {
+  const comeHome = async (mood, record, tile = { x: 35, y: 53 }) => {
     await page.evaluate(`(() => { const s = JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)})); s.raidProgress.raidRecord = { 'greystone-vale': ${JSON.stringify(record)} }; localStorage.setItem(${JSON.stringify(SAVE)}, JSON.stringify(s)); })()`);
     await base(`(() => { b.currentTile = ${JSON.stringify(tile)}; b.scene.start('base', { arrival: 'raid', room: 'raid-arena', raidMood: ${JSON.stringify(mood)}, at: ${JSON.stringify(tile)} }); return 1; })()`);
     await step(200);
@@ -214,7 +214,7 @@ try {
   // --- the landing -------------------------------------------------------------
   /** Over the fence, stepping the fall; `pressAt` is when in the landing to press the key, or null. */
   const jumpIn = async (pressAt, name) => {
-    await walkTo({ x: 35, y: 56 });
+    await walkTo({ x: 35, y: 53 });
     await press('ArrowUp', 200);
     await press('Space', 700);
     for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
@@ -274,7 +274,7 @@ try {
     const world = (expression) => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return ${expression}; })()`);
     /** A raid walked along a line of the map, ending as told: a real walk's record, with the steps stepped by hand. */
     const raid = async (fromX, fromY, dx, dy, ending) => {
-      await walkTo({ x: 35, y: 56 });
+      await walkTo({ x: 35, y: 53 });
       await press('ArrowUp', 200);
       await press('Space', 700);
       for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
@@ -343,10 +343,10 @@ try {
     const money = async () => (await saved()).stash.items?.money ?? (await saved()).stash.supplies?.money ?? 0;
     // Money, as found on raids, and one coin short of the first thing coming back.
     await page.evaluate(`(() => { const k = ${JSON.stringify(SAVE)}; const s = JSON.parse(localStorage.getItem(k)); const held = s.stash.items ? s.stash.items : s.stash.supplies; held.money = 400; s.raidProgress.pit = { fed: 14, taken: 0 }; localStorage.setItem(k, JSON.stringify(s)); })()`);
-    await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 35, y: 56 } }); return 1; })()`);
+    await base(`(() => { b.scene.start('base', { room: 'raid-arena', at: { x: 35, y: 53 } }); return 1; })()`);
     await step(300);
     await until(inHall, 'the hall again');
-    await walkTo({ x: 35, y: 56 });
+    await walkTo({ x: 35, y: 53 });
     await press('ArrowUp', 300);
     expect('nothing advertises the coin to somebody just arriving at the rail', !(await base('b.hintShown')).includes('[C]'));
     await step(10500);
@@ -371,7 +371,7 @@ try {
     await step(300);
     await until(inHall, 'the hall again');
     expect('and it is still there on the next visit, until it is picked up', await base('Boolean(b.pitGiftImage)'));
-    await walkTo({ x: 33, y: 57 });
+    await walkTo({ x: 37, y: 55 });
     await step(300);
     expect('walking on to it picks it up', (await saved()).raidProgress.pit.taken === 1);
     await shot('coin-gift-taken');

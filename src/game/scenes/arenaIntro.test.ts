@@ -59,9 +59,14 @@ function trailer(startedAt: number, hall: BaseSceneData) {
 }
 
 describe("THE RAID ARENA's door", () => {
-  it('plays the trailer the first time, on the way into the great hall', () => {
-    expect(through('raid-arena')).toEqual([
-      ['arenaIntro', { savedGame: game, hall: { savedGame: game, room: 'raid-arena' } } satisfies ArenaIntroSceneData],
+  it('stands between nobody and their first raid: a new save goes straight in', () => {
+    expect(through('raid-arena')).toEqual([['room', { savedGame: game, room: 'raid-arena' }]]);
+  });
+
+  it('plays the trailer the first time through once a raid has been gone on, on the way into the great hall', () => {
+    const beenOut = { ...game, raidProgress: { ...game.raidProgress, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } } };
+    expect(through('raid-arena', beenOut)).toEqual([
+      ['arenaIntro', { savedGame: beenOut, hall: { savedGame: beenOut, room: 'raid-arena' } } satisfies ArenaIntroSceneData],
     ]);
   });
 

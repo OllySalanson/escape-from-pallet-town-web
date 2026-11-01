@@ -57,6 +57,14 @@ export const MAX_RUN_PARTY = 6;
  */
 export const MEDICINE_PREPACK_SHARE = 0.5;
 
+/**
+ * How many Poké Balls the default packs, on the same terms as the medicine. A
+ * first raid with none could catch nothing and was told so in red at the rail; three
+ * squares of eighteen leave room for a catch and a find, and a Pokémon is what most
+ * of the people playing this game came for.
+ */
+export const BALLS_PREPACKED = 3;
+
 /** Why a fainted Pokemon stays out of the raid party: the row's help line and the refusal of a press on it. */
 export const faintedRefusal = (name: string, only = false): string =>
   `${name} has fainted and cannot fight. Only the Pokémon Center can revive ${only ? 'your only Pokémon' : 'it'}.`;
@@ -220,6 +228,7 @@ export class DeploymentFlow {
     this.secureArranged =
       arrangements.secure.items.length > 0 || arrangements.secure.cargo.length > 0;
     this.packMedicine();
+    this.packBalls();
     this.packLonePokemon();
     this.packLastBench(lastBench);
   }
@@ -298,6 +307,20 @@ export class DeploymentFlow {
       } else {
         this.squeezedOut.add(itemId);
       }
+    }
+  }
+
+  /** A few of the plainest ball the stash holds, unless the player has packed one of their own. */
+  private packBalls(only?: readonly ItemId[]): void {
+    const ball = Object.keys(this.stash.listItems()).find((itemId) => isBallItem(itemId) && this.stash.itemCount(itemId) > 0) as ItemId | undefined;
+    if (!ball || this.packsABall || (only !== undefined && !only.includes(ball))) {
+      return;
+    }
+    const room = gridCells(this.bagGrid) - this.bagCells.used;
+    const wanted = Math.min(BALLS_PREPACKED, this.stash.itemCount(ball), room);
+    if (wanted > 0) {
+      this.setItemQuantity(ball, wanted);
+      this.prepacked.set(ball, this.itemQuantity(ball));
     }
   }
 
@@ -447,6 +470,7 @@ export class DeploymentFlow {
     this.packItemIdValue = itemId;
     if (repack.length > 0) {
       this.packMedicine(repack);
+      this.packBalls(repack);
     }
     this.refillSecureSlot();
     this.holdLayouts();

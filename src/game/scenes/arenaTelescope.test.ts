@@ -47,7 +47,7 @@ describe("THE RAID ARENA's telescopes", () => {
   it('leave somebody at the rail looking the other way to the rail: the two presses to a raid never go through one', () => {
     const beside = { x: west.tile.x - 1, y: west.tile.y };
     expect(atTelescope(beside, { x: beside.x, y: beside.y - 1 })).toBe(false);
-    const head = { x: ARENA_MAT.x, y: 56 };
+    const head = { x: ARENA_MAT.x, y: west.stance.y };
     expect(isAtRim(head)).toBe(true);
     expect(atTelescope(head, { x: head.x, y: head.y - 1 })).toBe(false);
   });

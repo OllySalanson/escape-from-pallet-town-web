@@ -68,6 +68,10 @@ Enter works a focused DOM control, so a driver can play the lobby's screens the
 way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 `text`, which is what makes Chromium run a key's default action.
 
+`firstRaid.mjs <test-mode build url> <dir> [--shots]` plays a brand new save from
+the title until the first raid is the player's, as somebody who does not read, and
+prints every barrier in order with its presses and seconds.
+
 `walkJudder.mjs <url> [--scene=base|world] [--fps=N]` holds a direction on a
 stepped loop and prints how far the player moved on each frame, failing if any
 frame of the walk is off the steady rate: a judder loses no game time, so a

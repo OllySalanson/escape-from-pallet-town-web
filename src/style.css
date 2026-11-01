@@ -118,6 +118,25 @@ body {
   width: 100%;
   height: auto;
 }
+/* They come in from the edge they stand on, a game pixel a step, rather than appearing over the hall. */
+@keyframes arena-panel-from-right {
+  from {
+    transform: translateX(calc(var(--u) * 28));
+    opacity: 0;
+  }
+}
+@keyframes arena-panel-from-foot {
+  from {
+    transform: translateY(calc(var(--u) * 20));
+    opacity: 0;
+  }
+}
+#screens .arena-panel:not(.is-rim) {
+  animation: arena-panel-from-right 120ms steps(4);
+}
+#screens .arena-panel.is-rim {
+  animation: arena-panel-from-foot 120ms steps(4);
+}
 /* The rim's is as tall as what it says, with the pit it is about above it. It has
    no title bar or help bar: the card is the screen. */
 #screens .arena-panel.is-rim .px-title,
@@ -1137,6 +1156,12 @@ button {
   }
   to {
     background-position-x: calc(var(--u) * -64 * var(--figure-scale));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #screens .arena-panel {
+    animation: none;
   }
 }
 
