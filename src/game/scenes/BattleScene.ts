@@ -4075,6 +4075,7 @@ export class BattleScene extends Phaser.Scene {
           walked: this.runSession.surveyed ?? [],
         },
         { walk: this.runSession.walk, ending: { kind: 'fell', line: fellLine(this.state.player.pokemon.name) } },
+        this.runSession.manager.snapshot().elapsedMs,
       );
     }
     // And how the pack was laid out, for the same reason and in the same

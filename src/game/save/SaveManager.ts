@@ -14,7 +14,7 @@ import {
   type RecoveryOutcome,
 } from '../hub/recovery';
 import { recoveryTermsFor } from '../hub/centerCounter';
-import { raidsCompleted, takeBack, type TakenBackFromDayCare } from '../hub/dayCare';
+import { DAY_CARE_LEAST_RAID_MS, raidsCompleted, takeBack, type TakenBackFromDayCare } from '../hub/dayCare';
 import {
   DEFAULT_SECURE_PREFERENCE,
   readSecurePreference,
@@ -390,6 +390,8 @@ export interface RaidProgress {
   readonly outRun?: OutRun;
   /** How many raids in a row that same team has gone down: the rail says less to a team it knows (`base/heldBreath.ts`). */
   readonly benchRaids?: number;
+  /** Raids that ended with no time on the clock to speak of, or abandoned: the Day-Care does not count them (`hub/dayCare.ts`). */
+  readonly shortRaids?: number;
   /**
    * How the player last laid the two containers out, as lists of seats
    * (`items/itemGrid.ts`). A pack somebody arranged by hand comes back the way
@@ -637,6 +639,20 @@ const RAID_RESOLVED = {
   raidInFlight: null,
 } as const;
 
+/**
+ * What a raid got home from clears. Out again before the first hunter could
+ * have come, it has paid for nothing (`DAY_CARE_LEAST_RAID_MS`), so the healing
+ * it owed, the ward's bed and Bill's ration stand for the raid that does: at
+ * 30 steps from the landing to an open exit, a dash would otherwise make every
+ * heal free. Only the trip's own berth and the in-flight mark are done with.
+ */
+function resolvedBy(elapsedMs: number | undefined): Partial<typeof RAID_RESOLVED> {
+  if (elapsedMs === undefined || elapsedMs >= DAY_CARE_LEAST_RAID_MS) {
+    return RAID_RESOLVED;
+  }
+  return { traderBerthPaid: false, raidInFlight: null };
+}
+
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -806,7 +822,7 @@ export class SaveManager {
    * callers with nothing to settle (tests, and any future reward-only banking)
    * stay honest rather than passing an invented one.
    */
-  public bankRun(result: RunResult, settlement?: RaidSettlement): boolean {
+  public bankRun(result: RunResult, settlement?: RaidSettlement, elapsedMs?: number): boolean {
     const loaded = this.load();
     if (!loaded) {
       return false;
@@ -818,7 +834,7 @@ export class SaveManager {
     // The raid this debt paid for has now resolved, so it is settled. Charging
     // on resolution rather than on deployment is what stops a player healing,
     // deploying into the shortened raid and reloading the page to shed the bill.
-    return this.save({ ...game, ...RAID_RESOLVED });
+    return this.save({ ...game, ...resolvedBy(elapsedMs) });
   }
 
   /**
@@ -837,6 +853,7 @@ export class SaveManager {
     carried: string | RaidContract,
     result: RunResult,
     settlement?: RaidSettlement,
+    elapsedMs?: number,
   ): { readonly saved: boolean; readonly granted: boolean } {
     const loaded = this.load();
     if (!loaded) {
@@ -852,7 +869,7 @@ export class SaveManager {
         !isStandingBoardOpen(game.raidProgress.completedContracts) ||
         standingRoundOf(contractId) !== game.raidProgress.standingContractsBanked
       ) {
-        return { saved: this.save({ ...game, ...RAID_RESOLVED }), granted: false };
+        return { saved: this.save({ ...game, ...resolvedBy(elapsedMs) }), granted: false };
       }
       for (const { itemId, quantity } of carried.reward.items) {
         game.stash.addItem(itemId, quantity);
@@ -864,12 +881,12 @@ export class SaveManager {
         ...game.raidProgress,
         standingContractsBanked: game.raidProgress.standingContractsBanked + 1,
       };
-      return { saved: this.save({ ...game, raidProgress, ...RAID_RESOLVED }), granted: true };
+      return { saved: this.save({ ...game, raidProgress, ...resolvedBy(elapsedMs) }), granted: true };
     }
 
     const contract = getContract(contractId);
     if (!contract || game.raidProgress.completedContracts.includes(contractId)) {
-      return { saved: this.save({ ...game, ...RAID_RESOLVED }), granted: false };
+      return { saved: this.save({ ...game, ...resolvedBy(elapsedMs) }), granted: false };
     }
 
     const completedContracts = [...game.raidProgress.completedContracts, contractId];
@@ -889,7 +906,7 @@ export class SaveManager {
       game.stash.addItem(itemId, quantity);
     }
     return {
-      saved: this.save({ ...game, raidProgress, ...RAID_RESOLVED }),
+      saved: this.save({ ...game, raidProgress, ...resolvedBy(elapsedMs) }),
       granted: true,
     };
   }
@@ -1448,7 +1465,8 @@ export class SaveManager {
     );
     game.stash.restockMinimumSupplies();
     // Walking away from a raid is losing it, or a run could be saved by closing the tab.
-    if (!this.save({ ...game, raidProgress: extendRun(game.raidProgress, 'wiped'), ...RAID_RESOLVED })) {
+    const raidProgress = countShortRaid(extendRun(game.raidProgress, 'wiped'));
+    if (!this.save({ ...game, raidProgress, ...RAID_RESOLVED })) {
       return null;
     }
     return {
@@ -1473,12 +1491,16 @@ export class SaveManager {
     outcome: 'extracted' | 'wiped',
     survey: { readonly width: number; readonly walked: Iterable<number> } | undefined = undefined,
     memory: { readonly walk: RaidWalk | undefined; readonly ending: { readonly kind: RaidMarkKind; readonly line: string } } | undefined = undefined,
+    clockMs: number | undefined = undefined,
   ): boolean {
     const game = this.load();
     if (!game) {
       return false;
     }
     let raidProgress = extendRun(bumpRaid(game.raidProgress, mapId, outcome), outcome);
+    if (clockMs !== undefined && clockMs < DAY_CARE_LEAST_RAID_MS) {
+      raidProgress = countShortRaid(raidProgress);
+    }
     if (memory) {
       raidProgress = { ...raidProgress, raidMemory: remembering(raidProgress.raidMemory, mapId, memory.walk, memory.ending) };
     }
@@ -1814,6 +1836,10 @@ export function raidsDeployed(progress: RaidProgress): number {
   return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0);
 }
 
+function countShortRaid(progress: RaidProgress): RaidProgress {
+  return { ...progress, shortRaids: (progress.shortRaids ?? 0) + 1 };
+}
+
 /** Every raid this save has lost, on every map, however it was lost. */
 export function raidsLost(progress: RaidProgress): number {
   return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.wiped, 0);
@@ -2087,6 +2113,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     securePreference: readSecurePreference(value.securePreference),
     ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
     ...(Number.isInteger(value.benchRaids) && (value.benchRaids as number) > 0 ? { benchRaids: value.benchRaids as number } : {}),
+    ...(Number.isInteger(value.shortRaids) && (value.shortRaids as number) > 0 ? { shortRaids: value.shortRaids as number } : {}),
     packArrangement: readArrangement(value.packArrangement),
     secureArrangement: readArrangement(value.secureArrangement),
     ...(Array.isArray(value.homeLayout) ? { homeLayout: readHomeLayout(value.homeLayout) } : {}),

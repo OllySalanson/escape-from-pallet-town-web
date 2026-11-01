@@ -371,6 +371,29 @@ describe('extraction report after a survived raid', () => {
     expect(contractOnly.summary).not.toContain('Great Ball');
   });
 
+  it('grades a pile of money as one find, not as forty', () => {
+    const haulOf = (quantity: number) => {
+      const manager = new RunManager();
+      manager.startRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: RAID_DURATION_MS });
+      manager.registerFoundItem('money', quantity);
+      manager.resolveEscape();
+      return buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        exitLabel: 'WESTWARD ROAD',
+        banked: { pokemon: [], items: [{ itemId: 'money', quantity }] },
+        carriedOut: { money: quantity },
+        saved: true,
+      });
+    };
+
+    expect(haulOf(40).haulTier).toBe('thin');
+    expect(haulOf(40).headline).toBe('You scraped out.');
+    expect(haulOf(120).haulTier).toBe('solid');
+    expect(haulOf(400).haulTier).toBe('loaded');
+  });
+
   it('reads differently after a marginal raid than after a good one', () => {
     const starter = new Pokemon(CHARMANDER, 5);
     const manager = startedRun({ party: [starter], items: [{ itemId: 'potion', quantity: 3 }] });

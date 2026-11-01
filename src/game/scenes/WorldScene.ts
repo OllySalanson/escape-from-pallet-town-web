@@ -4620,6 +4620,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         walk: this.runSession?.walk,
         ending: outcome === 'extracted' ? { kind: 'out', line: closeCall ?? outLine(exitLabel ?? 'the way out') } : { kind: 'fell', line: clockLine() },
       },
+      this.runSession?.manager.snapshot().elapsedMs,
     );
     // The pack is laid out in the field as much as at base - a find is seated
     // in the room that is left and moved where the player wants it - so the
@@ -7424,8 +7425,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const closeCall = closeCallLine({ ms: clockLeftMs, reads: formatRaidClock(clockLeftMs) }, this.hunterOnTail());
     this.recordRaid('extracted', point.label, closeCall);
     const contractResult = banksContract
-      ? new SaveManager().bankContract(contract, runResult, settlement)
-      : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
+      ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs)
+      : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs), granted: false };
     this.pendingHubTransition = true;
     const contractPaid = contractResult.granted
       ? { pokemon: rewardPokemon(contract!.reward), items: contract!.reward.items }
