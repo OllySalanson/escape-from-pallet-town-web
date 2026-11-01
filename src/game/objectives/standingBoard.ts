@@ -184,7 +184,7 @@ export function standingOffers(seed: number, progress: StandingBoardProgress): r
     // A map's contract is drawn from its own stream, so what another map is
     // offered never changes what this one asks.
     const rng = createSeededRng((seed ^ hashText(mapId)) >>> 0);
-    const contract = draftContract(rng, mapId, round, pressure, templates, progress);
+    const contract = draftContract(rng, mapId, round, pressure, templates, progress, mapIds.length > 1);
     return contract ? [contract] : [];
   });
   boards.set(key, offers);
@@ -525,6 +525,7 @@ function draftContract(
   pressure: number,
   templates: readonly StandingTemplate[],
   progress: StandingBoardProgress,
+  anotherMapOnTheBoard: boolean,
 ): RaidContract | undefined {
   const ground = surveyGround(mapId, progress.defeatedBosses, openedDoors(progress));
   if (!ground) {
@@ -534,8 +535,11 @@ function draftContract(
   // still gets a contract. A map with a door still shut leads with what is
   // behind it on a share of boards rather than all of them: the tease must not
   // be the only contract that map ever offers a player who cannot beat the boss.
-  const preferred: readonly StandingTemplate[] =
-    ground.districts.length > 0 && rng.chance(SEALED_SHARE) ? ['sealed', ...templates] : templates;
+  // A board stands until one of its contracts is banked, so a door is never
+  // dealt on a board with nothing else on it: that player's contracts would
+  // stop dead until they could win the fight.
+  const leadsWithTheDoor = ground.districts.length > 0 && rng.chance(SEALED_SHARE) && anotherMapOnTheBoard;
+  const preferred: readonly StandingTemplate[] = leadsWithTheDoor ? ['sealed', ...templates] : templates;
   for (const template of preferred) {
     const draft = DRAFTERS[template](rng, ground);
     if (!draft) {

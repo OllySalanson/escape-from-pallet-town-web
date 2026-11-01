@@ -257,6 +257,7 @@ export function deployOptions(args) {
     opened: list('opened'),
     stash: list('stash'),
     completed: list('completed'),
+    banked: option('banked'),
     hp: option('hp'),
     level: option('level'),
     starter: option('starter'),
@@ -293,7 +294,7 @@ export async function startExplorerRun(page, { press, until }) {
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
  * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
@@ -315,7 +316,7 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
     `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.(${JSON.stringify(starter.toLowerCase())}) === true`,
     `the picker to offer ${starter}`,
   );
-  if (insertion || beaten.length > 0 || opened.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined || team.length > 0 || stash.length > 0 || errands.length > 0) {
+  if (insertion || beaten.length > 0 || opened.length > 0 || completed.length > 0 || banked !== undefined || hp !== undefined || level !== undefined || team.length > 0 || stash.length > 0 || errands.length > 0) {
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
     // Every other map's front door is what banking the first contract pays, and a
     // drop-in point is offered to whoever has stood on it. The tool cannot tell
@@ -328,6 +329,8 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       // on a raid deployed with nothing that could have cut it.
       p.openedGates = [...new Set([...(p.openedGates ?? []), ...${JSON.stringify(opened)}])];
       p.completedContracts = [...new Set([...p.completedContracts, ...${JSON.stringify(completed)}])];
+      // --banked=N is a save N contracts down the standing board, which deals on that count alone.
+      if (${banked !== undefined}) p.standingContractsBanked = ${Number(banked)};
       // --errands=id,.. - those errands asked (\`hub/errands.ts\`), so the raid
       // lays their things: \`--errands=brocks-crate --grab=brocks-crate\`.
       for (const id of ${JSON.stringify(errands)}) { p.errands = [...(p.errands ?? []).filter((e) => e.id !== id), { id, status: 'started', found: 0, lossesHeard: 0 }]; }
