@@ -840,6 +840,41 @@ describe('medicine packed by default', () => {
     expect(flow.itemQuantity('potion')).toBe(15);
   });
 
+  it('brings back the medicine a smaller pack had no room for when a bigger one is worn again', () => {
+    const { stash } = seedFlow();
+    stash.addItem('hauler-frame', 1);
+    stash.addItem('raid-pack', 1);
+    stash.addItem('potion', 9);
+    stash.addItem('super-potion', 5);
+    stash.addItem('antidote', 3);
+    const flow = new DeploymentFlow(stash);
+    const opened = { ...flow.packedContents };
+    expect(opened['super-potion']).toBe(1);
+    expect(opened.antidote).toBe(1);
+
+    expect(flow.choosePack('raid-pack')).toBeUndefined();
+    expect(flow.itemQuantity('super-potion')).toBe(0);
+    expect(flow.choosePack('hauler-frame')).toBeUndefined();
+
+    expect(flow.packedContents).toEqual(opened);
+    expect(flow.isPrepacked('super-potion')).toBe(true);
+  });
+
+  it('leaves out for good a kind the player took out themselves', () => {
+    const { stash } = seedFlow();
+    stash.addItem('hauler-frame', 1);
+    stash.addItem('raid-pack', 1);
+    stash.addItem('potion', 9);
+    stash.addItem('antidote', 3);
+    const flow = new DeploymentFlow(stash);
+    flow.setItemQuantity('antidote', 0);
+
+    expect(flow.choosePack('raid-pack')).toBeUndefined();
+    expect(flow.choosePack('hauler-frame')).toBeUndefined();
+
+    expect(flow.itemQuantity('antidote')).toBe(0);
+  });
+
   it('never re-packs over a count the player chose', () => {
     const { stash } = seedFlow();
     stash.addItem('hauler-frame', 1);
