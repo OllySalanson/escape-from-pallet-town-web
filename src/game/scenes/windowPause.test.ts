@@ -38,6 +38,8 @@ function aRaidBeingWalked({ phase = RunPhase.InRun }: { phase?: RunPhase } = {})
   const scene = Object.create(WorldScene.prototype) as WorldScene;
   Object.assign(scene as object, {
     windowPausePlate: null,
+    player: { y: 0 },
+    cameras: { main: { worldView: { y: 0 } } },
     pendingHubTransition: false,
     sys: {
       isActive: () => state.running && !state.paused,

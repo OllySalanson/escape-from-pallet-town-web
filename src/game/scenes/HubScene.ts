@@ -118,6 +118,7 @@ import {
   type RaidContract,
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
+import { railWarning, type RailWarning } from '../hub/railWarning';
 import { raidsDeployed, raidsLost, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
@@ -2469,6 +2470,7 @@ export class HubScene extends Phaser.Scene {
     const chosen = this.flow.insertionId;
     const refusal = this.flow.notReady;
     const warning = refusal ?? this.packWarning();
+    const hurt = this.railHurt();
     const ways = this.waysFromHere().length;
     const nextMap = this.nextMapWayIn();
     return `<main class="px-body rim-layout">${pixelCommitBar({
@@ -2488,8 +2490,25 @@ export class HubScene extends Phaser.Scene {
             ]
           : []),
       ].filter((line) => line !== ''),
-      actions: `<button class="px-window px-button" data-back data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start data-cursor-start${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
+      // With nobody able to go, or a team about to be finished by the first thing
+      // it meets, the cursor is on the way back and SPACE does not spend the raid.
+      actions: `<button class="px-window px-button" data-back${refusal || hurt?.stops ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${refusal || hurt?.stops ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
     })}</main>`;
+  }
+
+  /** What the rail says of a hurt team (`hub/railWarning.ts`). A team that cannot lose has nothing to be told. */
+  private railHurt(): RailWarning | null {
+    return isPlaytestRun()
+      ? null
+      : railWarning(
+          this.flow.party.map(({ pokemon }) => ({
+            name: pokemon.name,
+            currentHp: pokemon.currentHp,
+            maxHp: pokemon.maxHp,
+            primaryStatus: pokemon.primaryStatus,
+          })),
+          this.flow.packsMedicine,
+        );
   }
 
   /** Every way in on offer, while a room is held only those on its map. */
@@ -2546,9 +2565,15 @@ export class HubScene extends Phaser.Scene {
     // the one nothing in the locker beside it can protect.
     const lost = [
       ...(this.flow.packItemId === undefined ? [] : [`the ${this.flow.packName}`]),
-      ...this.flow.riskedPokemon.map((stored) => stored.pokemon.name),
       ...this.flow.riskedItems.map(stack),
     ];
+    // Said apart and said plainly, because "at risk" never told a FireRed player
+    // that a Pokémon lost here is not coming back.
+    const partnerId = this.stash.partnerId();
+    const goneForGood = this.flow.riskedPokemon.map((stored) =>
+      stored.id === partnerId ? `${stored.pokemon.name} (your partner)` : stored.pokemon.name,
+    );
+    const hurt = this.railHurt();
     const kept = [...securedPokemon.map((stored) => stored.pokemon.name), ...securedItems.map(stack)];
     const threat = this.hunterThreatAt(insertionId, this.flow.party);
     const hunter = hunterThreatLine(threat);
@@ -2557,7 +2582,7 @@ export class HubScene extends Phaser.Scene {
     const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
     const line = (label: string, body: string, warn = false): string =>
       `<div><dt>${label}</dt><dd class="px-wrap${warn ? ' px-warning' : ''}">${body}</dd></div>`;
-    return `<dl class="dropin-facts rim-stakes">${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${line('Safe', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
+    return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${line('Safe', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
       required.length === 0
         ? ''
         : line('Drop', short.length === 0 ? `${itemAmountsFor(required)} packed for ${contract!.name}` : `${contract!.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`, short.length > 0)
@@ -2780,7 +2805,7 @@ export class HubScene extends Phaser.Scene {
                   : `for ${errand.name} · ${errandPlace(errand)} · ${squares} ${squares === 1 ? 'square' : 'squares'}`
               }</small></span>`,
               home
-                ? `${thing} is already in your stash. Speak to ${errand.name} and it is handed over.`
+                ? `${thing} is already on BILL’S PC. Speak to ${errand.name} and it is handed over.`
                 : `${thing}: ${errand.name} asked for it. It lies in ${errandPlace(errand)}, takes ${squares} ${squares === 1 ? 'square' : 'squares'} of the pack, and is lost with the pack if you do not walk out. ${errand.name} pays ${errand.reward.summary.toLowerCase()} for it.`,
               ' px-tall',
             );

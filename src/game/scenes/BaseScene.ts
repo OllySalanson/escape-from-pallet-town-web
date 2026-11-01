@@ -225,7 +225,7 @@ import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag,
 import { FALLBACK_PACK_ID, STARTING_PACK_ID, bestPackIn, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
-import { SLIDE_AFTER_MS, slideRound } from '../base/arenaWalk';
+import { roundTheYardStair, SLIDE_AFTER_MS, slideRound } from '../base/arenaWalk';
 import { ValeOverviewView } from '../base/valeOverviewView';
 import { wayInCards } from '../base/wayInCard';
 import { WAY_IN_CLICK_REACH } from '../base/valeOverview';
@@ -263,9 +263,9 @@ import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runG
 import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
 import { worldMapName, type WorldMapId } from '../worldMap';
-import { FIRST_WORDS, hasHeard, spokenLines, type FirstWordsId } from '../hub/firstWords';
+import { FIRST_WORDS, hasHeard, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { goesStraightOver, isFirstRaid } from '../hub/firstRaid';
-import { centerOffer, healedLine, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
+import { centerOffer, healedLine, nobodyCanRaid, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
 import {
   BUILD_NOT_SAVED_LINE,
   brockFromTheMat,
@@ -1214,6 +1214,9 @@ export class BaseScene extends Phaser.Scene {
     } else if (data.said?.length) {
       const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
       this.say(data.said, speaker ? [speaker] : []);
+    } else if (!room && !this.visit && mapsMovedNews(this.savedGame.raidProgress)) {
+      this.hearFirstWords('moved');
+      this.say(FIRST_WORDS.moved.lines, []);
     }
     if (this.visit) {
       if (data.stairsFrom === undefined) {
@@ -1504,10 +1507,15 @@ export class BaseScene extends Phaser.Scene {
     deltaMs: number,
   ): { readonly side: Direction | null; readonly waiting: boolean } {
     const pressed = input.up || input.down || input.left || input.right;
-    const side =
-      this.arena && pressed && !planned.target && !this.walkPlan
-        ? slideRound(this.currentTile, planned.facing, (tile) => this.isBlocked(tile), (tile) => this.personOn(tile))
-        : null;
+    const free = pressed && !planned.target && !this.walkPlan;
+    const blocked = (tile: GridPosition): boolean => this.isBlocked(tile);
+    const side = !free
+      ? null
+      : this.arena
+        ? slideRound(this.currentTile, planned.facing, blocked, (tile) => this.personOn(tile))
+        : this.place.room
+          ? null
+          : roundTheYardStair(this.currentTile, planned.facing, blocked);
     if (!side) {
       this.pressedAtStairMs = 0;
       return { side: null, waiting: false };
@@ -1554,6 +1562,7 @@ export class BaseScene extends Phaser.Scene {
   private openTheHall(game: RestoredGame): ArenaView {
     const flow = flowAcrossABout ?? flowForGame(game);
     flowAcrossABout = null;
+    flow.packSomebodyIfBenchEmpty();
     const held = heldRoomMapId();
     if (held) {
       const there = offeredInsertions(game.raidProgress).find((insertion) => insertion.mapId === held);
@@ -5475,6 +5484,13 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (screen === 'stash') {
+      // Somebody with nobody left to raid with came for one thing, and her first
+      // words and a favour asked before it read as five boxes of being ignored.
+      // Both keep until the next time she is spoken to.
+      if (nobodyCanRaid(this.saveManager.load() ?? this.savedGame)) {
+        this.joyOffers(about);
+        return;
+      }
       this.sayFirstWords('center', about, () => favourThen(() => this.joyOffers(about)));
       return;
     }

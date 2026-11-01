@@ -282,10 +282,16 @@ export class HarbourFigures {
         headX: Math.round(sprite.x + TILE_SIZE / 2),
       })),
     );
+    const seated = shown.map(({ plate, name }, index) => ({
+      x: withinPlace(spread[index], plateWidthOf(name), this.placeWidth?.() ?? null),
+      y: plate.y,
+      width: plateWidthOf(name),
+      height: plateHeightOf(name),
+    }));
+    const ys = stackPlates(seated);
     shown.forEach(({ plate, name }, index) => {
-      const x = withinPlace(spread[index], plateWidthOf(name), this.placeWidth?.() ?? null);
-      plate.setX(x);
-      name.setX(x + PLATE_PAD_X);
+      plate.setPosition(seated[index].x, ys[index]);
+      name.setPosition(seated[index].x + PLATE_PAD_X, ys[index]);
     });
   }
 
@@ -500,6 +506,31 @@ export function spreadPlates(plates: readonly (Box & { readonly headX: number })
     }
   }
   return xs;
+}
+
+/**
+ * Where plates go up and down once `spreadPlates` has done what it can: two people
+ * a tile apart have names wider than the gap, and a plate may only slide so far from
+ * its owner's head. Whatever still lies on another is lifted clear of it, so a name
+ * is never printed on a name.
+ */
+export function stackPlates(plates: readonly Box[]): number[] {
+  const ys = plates.map((plate) => plate.y);
+  const settled: Box[] = [];
+  const order = plates.map((_, index) => index).sort((a, b) => plates[b].y - plates[a].y || a - b);
+  for (const index of order) {
+    let box = { ...plates[index], y: ys[index] };
+    for (let again = true; again; ) {
+      const under = settled.find((other) => overlaps(box, other));
+      again = under !== undefined;
+      if (under) {
+        box = { ...box, y: under.y - box.height - 1 };
+      }
+    }
+    ys[index] = box.y;
+    settled.push(box);
+  }
+  return ys;
 }
 
 /** A plate's left edge, slid along so the whole plate is over the place, where the place is wide enough for it. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from '../base/baseGames.testkit';
-import { centerOffer, healedLine, recoveryTermsFor } from './centerCounter';
+import { centerOffer, healedLine, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
 import { formatRecoveryClock, quoteRecovery } from './recovery';
 
 function hurtGame() {
@@ -20,6 +20,16 @@ describe('Nurse Joy at her counter', () => {
   it('says what the clock already lost, when a fit team has a bill', () => {
     const game = { ...baseGame(), pendingRecoveryMs: 30_000 };
     expect(centerOffer(game).lines[1]).toBe('Your next raid runs 4:30: 0:30 went on recovery.');
+  });
+
+  it('opens on YES when everybody has fainted, because no other answer helps', () => {
+    const { game } = hurtGame();
+    for (const { pokemon } of game.stash.listPokemon()) {
+      pokemon.takeDamage(pokemon.currentHp);
+    }
+    expect(nobodyCanRaid(game)).toBe(true);
+    expect(centerOffer(game).spendsForGood).toBe(false);
+    expect(centerOffer(game).lines[0]).toContain('It takes');
   });
 
   it('names the price before anything is spent, and it is the price the Center charges', () => {

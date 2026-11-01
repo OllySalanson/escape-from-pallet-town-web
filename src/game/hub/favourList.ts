@@ -109,7 +109,7 @@ function detail(entry: FavourEntry): string {
   const thing = errandThing(errand);
   switch (entry.standing) {
     case 'home':
-      return `${thing} is in your stash. Speak to ${errand.name} at ${favourGiverWhere(errand)} and it is handed over. Reward: ${errand.reward.summary}.`;
+      return `${thing} is on BILL’S PC. Speak to ${errand.name} at ${favourGiverWhere(errand)} and it is handed over. Reward: ${errand.reward.summary}.`;
     case 'in-hand':
       return `${errand.name} asked you for ${thing}. It lies in ${errandWhere(errand)}, laid there every raid until it comes home. Walk out with it and speak to ${errand.name}. Reward: ${errand.reward.summary}. Lost with the pack if you wipe.`;
     case 'ask':

@@ -811,14 +811,24 @@ button {
 }
 .defeat-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 0 5px;
   /* "x12" and "Lv 12" are one reading each: never a count on one line and its
      number on the next. */
   white-space: nowrap;
   color: #a78a86;
 }
-/* The level and the count are a `<small>`, which is a size down by default. */
+/* The level and the count are a `<small>`, which is a size down by default. The
+   plate breaks anywhere, which let a flex row squeeze both of these under their
+   own width and print LV 5 over HELD on a narrow column: each keeps its width
+   and the verdict takes the next line. */
+.defeat-meta small,
+.defeat-tag {
+  flex: none;
+  overflow-wrap: normal;
+}
 .defeat-meta small {
   font-size: inherit;
 }
@@ -1122,6 +1132,27 @@ button {
     writing-mode: horizontal-tb;
     transform: none;
     border-left: 2px solid #171717;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: none;
+  }
+}
+/* A window the size of the smallest screen at 1x: any tab of the usual size stands
+   on something (the rack's DONE, the rim card's last line, a battle plate), so here it
+   is one line of the face in the very corner, and the F key is there as ever. */
+@media (max-width: 480px) and (max-height: 360px) {
+  .feedback-tab,
+  body:has(#screens > .pixel-ui) .feedback-tab {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: 50px;
+    height: 14px;
+    font-size: 12.5px;
+    line-height: 12px;
+    writing-mode: horizontal-tb;
+    transform: none;
+    border: 1px solid #171717;
     border-right: 0;
     border-bottom: 0;
     box-shadow: none;

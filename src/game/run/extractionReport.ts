@@ -536,7 +536,7 @@ function wipeSummary(
       ? 'The extraction window closed on you.'
       : 'The raid ended where you fell.';
   if (gone === null) {
-    return `${opening} Nothing was taken from your stash.`;
+    return `${opening} Nothing was taken from you.`;
   }
   const kept = describeGroup(secured);
   return `${opening} You lost ${gone}.${kept === null ? ' Nothing was protected.' : ` The secure slot held ${kept}.`}`;

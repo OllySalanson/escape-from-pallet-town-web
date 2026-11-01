@@ -4478,7 +4478,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * scene is still drawn.
    */
   public pauseForWindow(): void {
-    this.windowPausePlate = new PausePlate(this, WINDOW_PAUSE_TITLE, WINDOW_PAUSE_LINES);
+    this.windowPausePlate = new PausePlate(this, WINDOW_PAUSE_TITLE, WINDOW_PAUSE_LINES, this.player.y - this.cameras.main.worldView.y);
     recordAction('Paused: the window lost focus');
     // At once, not through `this.scene.pause()`: that is queued for the next
     // frame, and a window that has gone to the back may not draw one until it

@@ -26,6 +26,18 @@ describe('applyStage', () => {
     expect(parent.style.height).toBe('768px');
   });
 
+  it('tells Phaser the zoom after the size, or a window staying at 1x keeps the canvas as it was', () => {
+    // Phaser's `resize` writes the canvas's CSS size only at a zoom other than 1;
+    // `setZoom` always has it written, so it has to come second.
+    const calls: string[] = [];
+    const scale = {
+      setZoom: () => calls.push('zoom'),
+      resize: () => calls.push('resize'),
+    };
+    applyStage({ scale }, fakeParent() as unknown as HTMLElement, 320, 240);
+    expect(calls).toEqual(['resize', 'zoom']);
+  });
+
   it('hands the canvas box one game pixel, as a length and as a bare number', () => {
     const parent = fakeParent();
 

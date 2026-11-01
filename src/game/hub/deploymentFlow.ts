@@ -270,6 +270,28 @@ export class DeploymentFlow {
     }
   }
 
+  /**
+   * Somebody on the bench when nobody was left there: the partner if they can
+   * fight, else whoever is strongest. A save from before the bench remembered
+   * anybody, or one whose last team has gone, got to the rail with Pokémon at
+   * base and was sent seventeen tiles back to fetch one. One, because the rest
+   * of a team is a choice, and a default that risks them is not a default.
+   */
+  public packSomebodyIfBenchEmpty(): void {
+    if (this.selectedPokemonIds.length > 0) {
+      return;
+    }
+    const fit = this.stash.listPokemon().filter((stored) => !stored.pokemon.isFainted);
+    const partner = this.stash.partner();
+    const first =
+      partner && !partner.pokemon.isFainted
+        ? partner
+        : [...fit].sort((one, other) => other.pokemon.level - one.pokemon.level)[0];
+    if (first) {
+      this.togglePokemon(first.id);
+    }
+  }
+
   private packLonePokemon(): void {
     const [only, ...others] = this.stash.listPokemon();
     if (only && others.length === 0 && !only.pokemon.isFainted) {
@@ -622,6 +644,10 @@ export class DeploymentFlow {
    */
   public get packsABall(): boolean {
     return this.items.some(({ itemId }) => isBallItem(itemId));
+  }
+
+  public get packsMedicine(): boolean {
+    return this.packedMedicine.length > 0;
   }
 
   public get ballAtBase(): boolean {

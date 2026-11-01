@@ -114,7 +114,7 @@ describe('the Pokédex milestones', () => {
     expect(words.lines.join(' ')).toContain('12 kinds of Pokémon caught');
     expect(words.lines).toContain('It looks as if you’re getting on the right track!');
     expect(words.lines.join(' ')).toContain(
-      'Here, take 5 Great Balls. I’ve put them in your stash.',
+      'Here, take 5 Great Balls. I’ve put them on BILL’S PC.',
     );
     expect(words.lines.join(' ')).toContain(
       'When you have 25 kinds of Pokémon, come back and see me.',

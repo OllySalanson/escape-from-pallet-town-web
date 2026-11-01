@@ -1582,6 +1582,46 @@ describe('what the base screen leads with', () => {
     expect(rim).toMatch(/<dt>At risk<\/dt><dd[^>]*>the Raid pack, Potion/);
     expect(rim).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander/);
   });
+
+  it('says at the rim who a wipe would lose for good, and whether that is the partner', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    expect(markupOf(hub)).not.toContain('lost for good');
+    hub.flow.toggleSecurePokemon('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    expect(markupOf(hub)).toMatch(/<dt>A wipe<\/dt><dd[^>]*>Charmander: lost for good/);
+    (hub as unknown as { stash: { adoptPartner(id: string): void } }).stash.adoptPartner('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    expect(markupOf(hub)).toMatch(/<dt>A wipe<\/dt><dd[^>]*>Charmander \(your partner\): lost for good/);
+  });
+
+  it('warns on the card of a badly hurt team, with the cursor on NOT YET', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    const { pokemon } = hub.flow.party[0];
+    pokemon.takeDamage(pokemon.currentHp - 1);
+    pokemon.primaryStatus = 'burn';
+    hub.setView('rim');
+    readyToDeploy(hub);
+    const rim = markupOf(hub);
+    expect(rim).toMatch(/<dt>Hurt<\/dt><dd[^>]*>.* is at 1\/\d+ and burned/);
+    expect(rim).toMatch(/data-back data-cursor-start/);
+    expect(rim).not.toMatch(/data-start data-cursor-start/);
+  });
+
+  it('keeps the cursor on JUMP IN for a team that is fit', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    const rim = markupOf(hub);
+    expect(rim).not.toContain('<dt>Hurt</dt>');
+    expect(rim).toMatch(/data-start data-cursor-start/);
+  });
 });
 
 describe('Brock', () => {

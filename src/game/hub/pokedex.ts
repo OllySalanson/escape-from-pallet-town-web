@@ -200,7 +200,7 @@ export function milestoneWords(
             `Good to see you! Let me take a look at your Pokédex… ${owned} kinds of Pokémon caught!`,
           ]),
       milestone.rating.join(' '),
-      `Here, take ${rewardList(milestone.reward)}. I’ve put ${one ? 'it' : 'them'} in your stash.`,
+      `Here, take ${rewardList(milestone.reward)}. I’ve put ${one ? 'it' : 'them'} on BILL’S PC.`,
       ...closing,
     ],
   };

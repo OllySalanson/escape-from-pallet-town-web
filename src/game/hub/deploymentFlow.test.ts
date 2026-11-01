@@ -193,6 +193,25 @@ describe('deployment flow', () => {
       expect(benchOf(stash, [ids[0]])).toEqual([]);
     });
 
+    it('fills an empty bench, on being asked at the hall, with the partner first and only one', () => {
+      const { stash, ids } = teamOfThree();
+      const flow = new DeploymentFlow(stash);
+      flow.packSomebodyIfBenchEmpty();
+      expect(flow.party.map(({ id }) => id)).toEqual([stash.partnerId()]);
+      expect(flow.party.length).toBeLessThan(ids.length);
+    });
+
+    it('fills an empty bench with the strongest when the partner cannot fight, and leaves a bench with somebody on it', () => {
+      const { stash, ids } = teamOfThree();
+      stash.partner()!.pokemon.currentHp = 0;
+      const flow = new DeploymentFlow(stash);
+      flow.packSomebodyIfBenchEmpty();
+      expect(flow.party.map(({ id }) => id)).toEqual([ids[2]]);
+      const chosen = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, [ids[1]]);
+      chosen.packSomebodyIfBenchEmpty();
+      expect(chosen.party.map(({ id }) => id)).toEqual([ids[1]]);
+    });
+
     it('asks nothing of a player who has never been down, and is a default, never a cage', () => {
       const { stash, ids } = teamOfThree();
       expect(benchOf(stash, [])).toEqual([]);
