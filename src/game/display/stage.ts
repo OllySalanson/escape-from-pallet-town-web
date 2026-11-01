@@ -26,11 +26,11 @@ export const MAX_STAGE_WIDTH = 400;
 export const MAX_STAGE_HEIGHT = 256;
 
 /**
- * Below 2x the art is too small to read, so a window that cannot fit 2x is
- * given 2x anyway and the canvas is allowed to overflow its parent - a case
- * only reachable in a window smaller than 640x480.
+ * A window that cannot hold the screen at 2x - in practice a phone, whose pixels
+ * are small - gets 1x and the whole of the game. Handed 2x, the canvas was
+ * squeezed to the window one axis at a time, which drew every figure thin.
  */
-export const MIN_STAGE_ZOOM = 2;
+export const MIN_STAGE_ZOOM = 1;
 export const MAX_STAGE_ZOOM = 6;
 
 export interface StageSize {

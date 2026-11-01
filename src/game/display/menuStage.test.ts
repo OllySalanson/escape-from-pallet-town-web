@@ -13,6 +13,7 @@ import {
   MENU_MIN_HEIGHT,
   MENU_MIN_WIDTH,
   MIN_MENU_SCALE,
+  SMALL_WINDOW_MENU_SCALE,
   menuLayer,
 } from './menuStage';
 import { computeStage } from './stage';
@@ -116,13 +117,22 @@ describe('the menu screens are laid out against the window', () => {
       // this is the ceiling on how far a pane at one edge can be from the pane
       // at the other, not on the measure of a line.
       expect(stage.width).toBeLessThanOrEqual(MENU_MAX_WIDTH);
-      // The box fits the window, except in one smaller than the game's own
-      // floor - where the canvas overflows too rather than shrink below 2x.
-      if (width >= 640 && height >= 480) {
-        expect(stage.width * stage.scale, `${width}x${height} width`).toBeLessThanOrEqual(width);
-        expect(stage.height * stage.scale, `${width}x${height} height`).toBeLessThanOrEqual(height);
-      }
+      expect(stage.width * stage.scale, `${width}x${height} width`).toBeLessThanOrEqual(width);
+      expect(stage.height * stage.scale, `${width}x${height} height`).toBeLessThanOrEqual(height);
     }
+  });
+
+  it('keeps a phone inside its window, so a panel and its DONE button are on the screen', () => {
+    for (const [width, height] of [[390, 844], [844, 390], [360, 640], [640, 360]]) {
+      const stage = computeMenuStage(width, height);
+      const layer = fakeLayer();
+      applyMenuStage(layer as unknown as HTMLElement, width, height);
+      expect(stage.scale, `${width}x${height}`).toBe(SMALL_WINDOW_MENU_SCALE);
+      expect(Number.parseFloat(layer.style.left) + stage.width, `${width}x${height} across`).toBeLessThanOrEqual(width);
+      expect(Number.parseFloat(layer.style.top) + stage.height, `${width}x${height} down`).toBeLessThanOrEqual(height);
+    }
+    // The smallest window that holds the smallest screen is drawn as it always was.
+    expect(computeMenuStage(640, 480)).toEqual({ width: MENU_MIN_WIDTH, height: MENU_MIN_HEIGHT, scale: MIN_MENU_SCALE });
   });
 
   it('keeps every window bigger than the last from losing room', () => {

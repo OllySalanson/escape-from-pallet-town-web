@@ -48,8 +48,14 @@ export const MENU_STEP_HEIGHT = 360;
 /** CSS pixels of window kept clear on every side, for the frame and its margin. */
 export const MENU_INSET = 8;
 
-/** Below 2x the face is unreadable, exactly as it is on the canvas. */
+/** Below 2x a desktop's pixels make the face hard to read. */
 export const MIN_MENU_SCALE = 2;
+/**
+ * What a window gets that cannot hold the smallest screen at `MIN_MENU_SCALE`,
+ * as the canvas does: in practice a phone, whose pixels are small. At 2x a panel
+ * ran off its edge and took its DONE button with it.
+ */
+export const SMALL_WINDOW_MENU_SCALE = 1;
 /** Above 4x a menu is magnified rather than roomier - see the note above. */
 export const MAX_MENU_SCALE = 4;
 
@@ -122,14 +128,18 @@ export function computeMenuStage(viewportWidth: number, viewportHeight: number):
   const room = menuRoom(viewportWidth, viewportHeight);
   const usableWidth = Math.max(1, room.width - MENU_INSET * 2);
   const usableHeight = Math.max(1, room.height - MENU_INSET * 2);
-  const scale = clamp(
-    Math.min(
-      Math.floor(usableWidth / MENU_STEP_WIDTH),
-      Math.floor(usableHeight / MENU_STEP_HEIGHT),
-    ),
-    MIN_MENU_SCALE,
-    MAX_MENU_SCALE,
-  );
+  const holdsSmallestScreen =
+    viewportWidth >= MENU_MIN_WIDTH * MIN_MENU_SCALE && viewportHeight >= MENU_MIN_HEIGHT * MIN_MENU_SCALE;
+  const scale = holdsSmallestScreen
+    ? clamp(
+        Math.min(
+          Math.floor(usableWidth / MENU_STEP_WIDTH),
+          Math.floor(usableHeight / MENU_STEP_HEIGHT),
+        ),
+        MIN_MENU_SCALE,
+        MAX_MENU_SCALE,
+      )
+    : SMALL_WINDOW_MENU_SCALE;
 
   return {
     width: clamp(toEven(usableWidth / scale), MENU_MIN_WIDTH, MENU_MAX_WIDTH),
