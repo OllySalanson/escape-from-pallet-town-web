@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   CURSOR_WAITS_MS,
+  NAME_PLATE_HEIGHT,
   OVERVIEW_BAR_HEIGHT,
+  OVERVIEW_BAR_WORDS_Y,
   OverviewView,
+  WALKED,
+  WORD_INK,
+  cardHeight,
   cardPlace,
   mapPointOfTile,
   nextWayIn,
@@ -496,5 +501,36 @@ describe('the towns on the map', () => {
     expect(townsOf(street, () => false)).toEqual([]);
     expect(townsOf(street, (door) => door.x < 12)).toEqual([]);
     expect(townsOf(street, (door) => door.x < 19)).toHaveLength(1);
+  });
+});
+
+describe('words in their frames', () => {
+  /** The rows of a frame a line's capitals stand on, for a text box that far down it. */
+  const capitals = (wordsY: number, line = 0): { first: number; last: number } => {
+    const first = wordsY + WORD_INK.top + line * WORD_INK.lineStep;
+    return { first, last: first + WORD_INK.capitals - 1 };
+  };
+
+  it('stands the name on a plate clear of its frame and of the rule under it', () => {
+    const { first, last } = capitals(0);
+    expect(first).toBeGreaterThan(0);
+    expect(last).toBeLessThan(NAME_PLATE_HEIGHT - 1);
+  });
+
+  it('keeps the tails of a card\'s last line off its bottom border', () => {
+    for (const lines of [1, 2, 3, 4]) {
+      const { last } = capitals(NAME_PLATE_HEIGHT, lines - 1);
+      expect(last + WORD_INK.tails).toBeLessThan(cardHeight(lines * WORD_INK.lineStep) - 1);
+    }
+  });
+
+  it('keeps both lines of how much is walked inside their frame', () => {
+    expect(capitals(WALKED.wordsY).first).toBeGreaterThan(0);
+    expect(capitals(WALKED.wordsY, 1).last).toBeLessThan(WALKED.height - 1);
+  });
+
+  it('centres the keys along the foot', () => {
+    const { first, last } = capitals(OVERVIEW_BAR_WORDS_Y);
+    expect(first).toBe(OVERVIEW_BAR_HEIGHT - 1 - last);
   });
 });
