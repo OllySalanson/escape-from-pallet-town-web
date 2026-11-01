@@ -1364,6 +1364,8 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    this.dropWalkPlanOnBack();
+
     // What is left of this frame for walking, and the game time a step that
     // finished part-way through a frame hands to the step that follows it.
     let frameLeftMs = deltaMs;
@@ -2697,6 +2699,13 @@ export class BaseScene extends Phaser.Scene {
         then();
       },
     };
+  }
+
+  /** ESC calls off a walk the pointer asked for, and what it was on its way to open. The step under way finishes. */
+  private dropWalkPlanOnBack(): void {
+    if (this.walkPlan && this.keyPresses.justPressed(this.controls.back)) {
+      this.walkPlan = null;
+    }
   }
 
   /**
