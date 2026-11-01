@@ -3954,6 +3954,11 @@ export class BaseScene extends Phaser.Scene {
 
   private hintRect(view: Phaser.Geom.Rectangle): Rect {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
+    if (this.hintSeat) {
+      // At the corner of a box it is only as wide as its words, and not at the foot at all.
+      const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
+      return { x: view.left + this.hintSeat.right - width, y: view.top + this.hintSeat.y, width, height };
+    }
     return {
       x: view.left,
       y: view.top + this.hintY(height),
