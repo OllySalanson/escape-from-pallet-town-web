@@ -14,6 +14,9 @@ vi.mock('phaser', () => ({
   },
 }));
 
+import { pitFrameFor } from '../base/arenaHall';
+import { ARENA_RIM, landingBelow, shareTheRim } from '../base/arenaRim';
+import { insertionsOn } from '../run/runGeneration';
 import { BaseScene } from './BaseScene';
 
 const BACK = { name: 'back' };
@@ -111,5 +114,56 @@ describe('calling off a walk the pointer asked for', () => {
     }
     expect(walk.begun).toEqual([]);
     expect(walk.opened).toEqual([]);
+  });
+});
+
+describe('a way in chosen before the rim has been explained', () => {
+  const share = shareTheRim(
+    insertionsOn('greystone-vale').map((insertion) => ({ id: insertion.id, tile: insertion.position })),
+    pitFrameFor(384, 384),
+  );
+  const rail = ARENA_RIM[0];
+  const under = landingBelow(rail, share)!;
+  const elsewhere = share.landings.find((landing) => landing.id !== under.id)!;
+
+  function atTheRail(boxUp: boolean) {
+    const flow = {
+      insertionId: elsewhere.id,
+      chooseInsertion(id: string) {
+        flow.insertionId = id;
+      },
+    };
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    Object.assign(scene, {
+      arena: { share, aimAt: () => undefined, atTheRail: () => undefined },
+      kit: { flow },
+      telescope: null,
+      arenaPanel: null,
+      fogLift: null,
+      targetTile: null,
+      aimed: null,
+      currentTile: rail,
+      dialogBox: { visible: boxUp },
+    });
+    const frame = () => (scene.settleAim as () => void).call(scene);
+    return { scene, flow, frame };
+  }
+
+  it('is still chosen while the marshal explains it, and when the panel opens', () => {
+    const { scene, flow, frame } = atTheRail(true);
+    frame();
+    frame();
+    expect(flow.insertionId).toBe(elsewhere.id);
+    (scene.dialogBox as { visible: boolean }).visible = false;
+    scene.arenaPanel = 'rim';
+    frame();
+    expect(flow.insertionId).toBe(elsewhere.id);
+    expect(scene.aimed).toBe(elsewhere);
+  });
+
+  it('gives way to what is below once the player is simply standing at the rail', () => {
+    const { flow, frame } = atTheRail(false);
+    frame();
+    expect(flow.insertionId).toBe(under.id);
   });
 });

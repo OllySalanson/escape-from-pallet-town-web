@@ -1652,6 +1652,8 @@ export class BaseScene extends Phaser.Scene {
     }
     if (this.arenaPanel === 'rim') {
       this.aimed = arena.share.landings.find((landing) => landing.id === kit.flow.insertionId) ?? null;
+    } else if (this.dialogBox.visible) {
+      // Being spoken to on the way to the rim's panel: a way in chosen on the way here is still the one chosen.
     } else if (!this.targetTile && isAtRim(this.currentTile) && !this.fogLift) {
       const below = landingBelow(this.currentTile, arena.share);
       if (below && below.id !== this.aimed?.id) {
