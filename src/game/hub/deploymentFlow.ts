@@ -189,6 +189,12 @@ export class DeploymentFlow {
    * it is stored: the next loadout packs it again, as the pack is chosen again.
    */
   private readonly prepacked = new Map<ItemId, number>();
+  /**
+   * Medicine the default left out only because the pack worn had no share for
+   * it: still the default's to pack, so a bigger pack brings it back, until the
+   * player sets a count of that kind themselves.
+   */
+  private readonly squeezedOut = new Set<ItemId>();
 
   public constructor(
     stash: Stash,
@@ -282,14 +288,15 @@ export class DeploymentFlow {
     for (const itemId of medicine.filter((candidate) => only === undefined || only.includes(candidate))) {
       const { width, height } = footprintOf(itemId);
       const wanted = Math.min(this.stash.itemCount(itemId), Math.floor(budget / (width * height)));
-      if (wanted <= 0) {
-        continue;
+      if (wanted > 0) {
+        this.setItemQuantity(itemId, wanted);
       }
-      this.setItemQuantity(itemId, wanted);
       const packed = this.itemQuantity(itemId);
       if (packed > 0) {
         this.prepacked.set(itemId, packed);
         budget -= packed * width * height;
+      } else {
+        this.squeezedOut.add(itemId);
       }
     }
   }
@@ -427,7 +434,11 @@ export class DeploymentFlow {
     // The medicine the default packed is not the player's choice yet, so it
     // is packed again for the pack now being worn rather than standing in the
     // way of it: a smaller pack takes less of it, a bigger one more.
-    const repack = [...this.prepacked.keys()].filter((prepacked) => this.isPrepacked(prepacked));
+    const repack = [
+      ...[...this.prepacked.keys()].filter((prepacked) => this.isPrepacked(prepacked)),
+      ...this.squeezedOut,
+    ];
+    this.squeezedOut.clear();
     for (const prepacked of repack) {
       this.selectedItems.delete(prepacked);
       this.securedItemCounts.delete(prepacked);
@@ -732,6 +743,7 @@ export class DeploymentFlow {
     if (isFoundOnly(itemId)) {
       return undefined;
     }
+    this.squeezedOut.delete(itemId);
     const current = this.itemQuantity(itemId);
     const next = Math.max(0, Math.min(this.packLimit(itemId), target));
     if (next === current) {
