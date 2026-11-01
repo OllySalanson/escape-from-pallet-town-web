@@ -155,7 +155,7 @@ describe('the cue with no objective left', () => {
     );
     // An empty pack is still told to find something first.
     expect(openRaidCue({ items: 0, pokemon: 0 }, { label: 'Radio Exit', heading: 'SW' })).toBe(
-      'FIND LOOT, THEN EXTRACT',
+      'FIND LOOT, OUT BY RADIO EXIT: SW',
     );
   });
 });

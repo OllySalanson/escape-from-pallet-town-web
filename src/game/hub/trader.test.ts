@@ -1,3 +1,4 @@
+import { MOST_TRAIL_MONEY } from '../world/raidStake';
 import { describe, expect, it } from 'vitest';
 import {
   CURRENCY_ITEM_ID,
@@ -512,6 +513,11 @@ describe('the berth', () => {
       ),
     );
     expect(TRADER_BERTH_PRICE).toBeGreaterThan(richest);
+    // A raid's stake and the money on the way to it (`world/raidStake.ts`) are
+    // what reaches a new save, and alone they do not pay for one either. Far money
+    // on top is a raid that stayed for it: the richest pool is the Ember Isle
+    // hoard, a boat on the tide away.
+    expect(TRADER_BERTH_PRICE).toBeGreaterThan(MOST_TRAIL_MONEY);
   });
 
   it('is refused to a stranger, to the broke and to anyone who has one', () => {

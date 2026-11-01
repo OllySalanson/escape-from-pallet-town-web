@@ -364,6 +364,15 @@ function measureGround(
   };
 }
 
+/** The ground a save's first jobs are set on: outdoors and a short walk off. All of it, on a map too small to have any. */
+function nearGround(ground: Ground): Ground {
+  const open = ground.open.filter((tile) => {
+    const walkTo = ground.steps[tile.y][tile.x];
+    return walkTo >= NEAR_JOB_LEAST_WALK && walkTo <= NEAR_JOB_MOST_WALK && insidePlace(ground.map, tile) === undefined;
+  });
+  return open.length === 0 ? ground : { ...ground, open, longestWalk: NEAR_JOB_MOST_WALK };
+}
+
 /**
  * The map as a raid that brought nothing walks it: a Strength boulder and a
  * rock barrier stand where they are, as `checkMapFile` asks the way out. A
@@ -412,6 +421,20 @@ function takenTiles(map: WorldMapDefinition, defeatedBosses: readonly string[]):
 // Templates
 // ---------------------------------------------------------------------------
 
+/**
+ * The jobs a save is dealt first are near (the character tests: raid two's job
+ * was 237 steps away in a cave, took every Poké Ball the save had and went on the
+ * chip whether anybody wanted it or not). Until this many standing contracts are
+ * banked its stops are on open ground a short walk from the landing, in the same
+ * stretch of the map the raid's stake is; after that they are as far as they like.
+ */
+export const NEAR_JOBS = 2;
+export const NEAR_JOB_LEAST_WALK = 40;
+export const NEAR_JOB_MOST_WALK = 130;
+
+/** The very first asks for nothing out of the pack: it is the one a save learns what a job is from. */
+const FIRST_JOB_TEMPLATES: readonly StandingTemplate[] = ['survey'];
+
 /** A stop is "far" when it is at least this share of the map's longest walk from the landing. */
 const FAR_SHARE = 0.45;
 /** Survey stakes start this share of the longest walk apart, relaxed only if the map cannot hold it. */
@@ -425,7 +448,8 @@ const OPEN_GROUND_TEMPLATES: readonly StandingTemplate[] = ['survey', 'dispatch'
 /** What a delivery asks for, and the grade up it is paid back in. */
 const DELIVERIES: readonly { readonly asks: ContractStack; readonly paysIn: SupplyItemId }[] = [
   { asks: { itemId: 'potion', quantity: 2 }, paysIn: 'super-potion' },
-  { asks: { itemId: 'poke-ball', quantity: 3 }, paysIn: 'great-ball' },
+  // Fewer than a raid packs by default, so it never takes the last ball.
+  { asks: { itemId: 'poke-ball', quantity: 2 }, paysIn: 'great-ball' },
 ];
 
 /**
@@ -529,10 +553,11 @@ function draftContract(
   progress: StandingBoardProgress,
   anotherMapOnTheBoard: boolean,
 ): RaidContract | undefined {
-  const ground = surveyGround(mapId, progress.defeatedBosses, openedDoors(progress));
-  if (!ground) {
+  const wholeGround = surveyGround(mapId, progress.defeatedBosses, openedDoors(progress));
+  if (!wholeGround) {
     return undefined;
   }
+  const ground = round < NEAR_JOBS ? nearGround(wholeGround) : wholeGround;
   // The first template the ground can hold is taken, so a map too small for one
   // still gets a contract. A map with a door still shut leads with what is
   // behind it on a share of boards rather than all of them: the tease must not
@@ -541,7 +566,11 @@ function draftContract(
   // dealt on a board with nothing else on it: that player's contracts would
   // stop dead until they could win the fight.
   const leadsWithTheDoor = ground.districts.length > 0 && rng.chance(SEALED_SHARE) && anotherMapOnTheBoard;
-  const preferred: readonly StandingTemplate[] = leadsWithTheDoor ? ['sealed', ...templates] : templates;
+  const preferred: readonly StandingTemplate[] = leadsWithTheDoor
+    ? ['sealed', ...templates]
+    : round === 0
+      ? [...FIRST_JOB_TEMPLATES, ...templates]
+      : templates;
   for (const template of preferred) {
     const draft = DRAFTERS[template](rng, ground);
     if (!draft) {

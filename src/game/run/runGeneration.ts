@@ -20,6 +20,7 @@ import { districtsForMap, type DistrictArea } from '../world/districts';
 import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
 import { withWorkedExitsOpen } from '../world/workedLandmarks';
 import type { WorldLoot } from '../world/loot';
+import { hasRaidStake, layStakeTrail, stakeGround, type StakeGround } from '../world/raidStake';
 import {
   createRunTrainerEncounters,
   trainersForContract,
@@ -498,6 +499,13 @@ export const RUN_GENERATION_BOUNDS = {
   hunterTeamTierMaximum: 0,
 } as const;
 
+/**
+ * When a new save's first raid is chased (the staged chase, `HunterPack.comeFor`):
+ * forty seconds in, because the first five minutes of the game should hold a
+ * fright and a YOU GOT OUT, and left to the patrols most first raids held neither.
+ */
+export const FIRST_RAID_CHASE_MS = 40_000;
+
 export interface HunterTuning {
   readonly spawnDelayMs: number;
   readonly aggressionStepsPerPlayerStep: number;
@@ -561,6 +569,11 @@ export interface RunPlan {
   readonly extractionPoints: readonly ExtractionPoint[];
   readonly hunter: HunterTuning;
   /**
+   * A new save's first raid: at `hunter.spawnDelayMs` a hunter comes for the
+   * player rather than out on to its patch, once. Absent on every other raid.
+   */
+  readonly stagedChase?: boolean;
+  /**
    * How much shorter than `RAID_DURATION_MS` this raid deployed
    * (`clockShortfallMs`): every authored time comes that much sooner. The
    * timed exits in `extractionPoints` already have it taken off; a boat's tide
@@ -581,6 +594,8 @@ export interface RunOutfitting {
    * comes as much sooner as the clock is short (`authoredTimeIn`).
    */
   readonly raidClockMs?: number;
+  /** This is the save's first raid (`hub/firstRaid.ts`): it is staged, and its stake is money. */
+  readonly firstRaid?: boolean;
 }
 
 export const BEACON_EXIT_LABEL = 'BEACON';
@@ -751,14 +766,45 @@ export function generateRunPlan(
     generateTrainers(content.trainers, content.maps, reservedTiles, rng, isReachable),
     carriedContract?.id,
   );
+  // What this raid is for (`world/raidStake.ts`). The ground it thins moves no
+  // roll: the same pieces are laid, on the same stream, somewhere else.
+  const stakes = hasRaidStake(insertion.mapId)
+    ? stakeGround(
+        insertionMap,
+        insertion.position,
+        extractionPoints
+          .filter(
+            (point) =>
+              point.mapId === insertion.mapId &&
+              (point.requirement?.kind === 'always' || (point.requirement === undefined && point.unlockAtMs === 0)),
+          )
+          .map((point) => point.position),
+        trainers.filter((trainer) => trainer.mapId === insertion.mapId),
+        standingGround(insertionMap),
+      )
+    : undefined;
   const loot = layErrands(
-    generateLoot(content.maps, reservedTiles, rng, isReachable),
+    generateLoot(content.maps, reservedTiles, rng, isReachable, stakes && { mapId: insertion.mapId, ground: stakes }),
     errands,
     content.maps,
     reservedTiles,
     createSeededRng((seed ^ ERRAND_STREAM) >>> 0),
     isReachable,
   );
+  if (stakes) {
+    const reserved = reservedTiles.get(insertion.mapId) ?? new Set<string>();
+    loot[insertion.mapId] = [
+      ...(loot[insertion.mapId] ?? []),
+      ...layStakeTrail(
+        insertion.mapId,
+        insertionMap.width,
+        stakes,
+        reserved,
+        createSeededRng((seed ^ STAKE_STREAM) >>> 0),
+        outfitting.firstRaid === true,
+      ),
+    ];
+  }
 
   return {
     seed: seed >>> 0,
@@ -775,11 +821,13 @@ export function generateRunPlan(
     trainers,
     extractionPoints,
     ...(shortfallMs > 0 ? { clockShortfallMs: shortfallMs } : {}),
+    ...(outfitting.firstRaid ? { stagedChase: true } : {}),
     hunter: applyHunterThreat(
       {
-        spawnDelayMs: rng.int(
-          RUN_GENERATION_BOUNDS.hunterSpawnDelayMinimumMs,
-          RUN_GENERATION_BOUNDS.hunterSpawnDelayMaximumMs,
+        // Rolled whatever it is replaced with, so a seed spends the same either way.
+        spawnDelayMs: firstRaidDelay(
+          rng.int(RUN_GENERATION_BOUNDS.hunterSpawnDelayMinimumMs, RUN_GENERATION_BOUNDS.hunterSpawnDelayMaximumMs),
+          outfitting.firstRaid === true,
         ),
         aggressionStepsPerPlayerStep: rng.int(
           RUN_GENERATION_BOUNDS.hunterAggressionMinimum,
@@ -872,6 +920,9 @@ const ROOM_LOOT_STREAM = 0xc2b2ae35;
 
 const DISTRICT_ENCOUNTER_STREAM = 0x9e3779b9;
 const ERRAND_STREAM = 0x85ebca6b;
+const STAKE_STREAM = 0x27d4eb2f;
+
+const firstRaidDelay = (rolledMs: number, firstRaid: boolean): number => (firstRaid ? FIRST_RAID_CHASE_MS : rolledMs);
 
 function varyEncounterTable(
   table: WildEncounterTable,
@@ -1073,6 +1124,9 @@ function generateLoot(
   reservedTiles: Map<WorldMapId, Set<string>>,
   rng: ReturnType<typeof createSeededRng>,
   isReachable: Reachability,
+  // The raid's own ground a walk straight out could call in on: nothing ordinary
+  // is seated there. A piece that names a district still lies in its district.
+  stakes?: { readonly mapId: WorldMapId; readonly ground: StakeGround },
 ): Record<WorldMapId, readonly WorldLoot[]> {
   const generatedByMap = {} as Record<WorldMapId, readonly WorldLoot[]>;
   for (const map of Object.values(maps)) {
@@ -1105,6 +1159,7 @@ function generateLoot(
     // in `runGeneration.test.ts`.
     const taken = new Set<string>();
     let next = 0;
+    const walkOut = stakes?.mapId === map.id ? stakes.ground.walkOut : undefined;
     const generated: WorldLoot[] = [];
     for (const item of items) {
       // A piece that names a district is seated in that district and nowhere
@@ -1126,7 +1181,10 @@ function generateLoot(
         }
         position = seatOn(seat);
       } else {
-        while (next < candidates.length && taken.has(candidates[next].key)) {
+        while (
+          next < candidates.length &&
+          (taken.has(candidates[next].key) || walkOut?.[candidates[next].index] === 1)
+        ) {
           next += 1;
         }
         const seat = candidates[next];

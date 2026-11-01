@@ -204,7 +204,7 @@ import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubScene, HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
 import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, railBeside, type ArenaStationId } from '../base/arenaHall';
-import { crowdTakesTheView, lapLine, standsBehind, type CrowdMood } from '../base/arenaCrowd';
+import { crowdTakesTheView, lapLine, moodAsTheyGo, moodOnTheRail, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import {
   RIVAL_TILE,
   boutBag,
@@ -221,7 +221,7 @@ import type { BattleSceneData } from './BattleScene';
 import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
 import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
-import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, itemCountTag, type PackItemId } from '../items/items';
+import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, isFoundOnly, itemCountTag, type ItemId, type PackItemId } from '../items/items';
 import { FALLBACK_PACK_ID, STARTING_PACK_ID, bestPackIn, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
 import { ArenaView } from '../base/arenaView';
@@ -238,7 +238,7 @@ import { RunnerWayMarks, YardWayMark } from '../base/wayMark';
 import { flashScreen } from '../ui/screenFlash';
 import { worthChalking } from '../base/runSlate';
 import { RunSlate } from '../base/runSlateView';
-import { BREATH_LISTENS_AFTER_MS, breathMs, climbAt, stakeWords, wordsUpAt } from '../base/heldBreath';
+import { BREATH_LISTENS_AFTER_MS, betOf, breathMs, climbAt, railStamps, wordsUpAt, type AtRisk, type RailBet } from '../base/heldBreath';
 import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
@@ -732,6 +732,8 @@ export class BaseScene extends Phaser.Scene {
     breath: { elapsedMs: number; readonly ms: number; readonly words: number; cut: boolean } | null;
     /** Where the climb got them, which the hop goes on from. */
     climb: { readonly x: number; readonly y: number };
+    /** How big a bet the house takes this for. */
+    bet: RailBet;
   } | null = null;
   /** The cloud lifting off ground a raid has just walked (`ArenaView.liftFogFromLastRaid`). */
   private fogLift: {
@@ -1992,6 +1994,7 @@ export class BaseScene extends Phaser.Scene {
         steer: { x: 0, y: 0 },
         breath: null,
         climb: { x: 0, y: 0 },
+        bet: 'nothing',
       };
       return;
     }
@@ -2018,16 +2021,23 @@ export class BaseScene extends Phaser.Scene {
       steer: { x: 0, y: 0 },
       breath: null,
       climb: { x: 0, y: 0 },
+      bet: 'nothing',
     };
     const hunter = world.runSession?.plan?.hunter;
     if (hunter) {
       this.jump.dive?.pursuedBy(hunterRival(hunter.rivalId));
     }
-    const words = this.stakesGoingOver();
+    const risk = this.stakesGoingOver();
+    const words = risk ? railStamps(risk, new SaveManager().load()?.raidProgress.benchRaids ?? 1) : [];
+    this.jump.bet = risk ? betOf(risk) : 'nothing';
     this.jump.dive?.stakesAre(words);
     if (words.length > 0) {
       this.jump.breath = { elapsedMs: 0, ms: breathMs(words.length), words: words.length, cut: false };
       arena.holdBreath(true);
+      const rising = moodOnTheRail(this.jump.bet);
+      if (rising) {
+        arena.crowdReacts(rising, this.figureMiddle());
+      }
     }
     this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
@@ -2036,23 +2046,27 @@ export class BaseScene extends Phaser.Scene {
     camera.removeBounds();
   }
 
-  /** What is going over the fence and would not come back, as the rail says it. */
-  private stakesGoingOver(): readonly string[] {
+  /** What is going over the fence and would not come back, and what would. */
+  private stakesGoingOver(): AtRisk | null {
     const flow = this.kit?.flow;
     if (!flow) {
-      return [];
+      return null;
     }
     const packId = flow.packItemId;
-    return stakeWords(
-      {
-        pokemon: flow.riskedPokemon.map(({ pokemon }) => ({ name: pokemon.name, level: pokemon.level })),
-        // Nobody is ever left without a Satchel, so it is no stake.
-        pack: packId === undefined || packId === FALLBACK_PACK_ID ? null : flow.packName,
-        packIsBetter: packId !== undefined && packSquares(packId) > packSquares(STARTING_PACK_ID),
-        items: flow.riskedItems.map(({ itemId, quantity }) => `${getItemById(itemId)?.displayName ?? itemId} ${itemCountTag(itemId, quantity)}`),
-      },
-      new SaveManager().load()?.raidProgress.benchRaids ?? 1,
-    );
+    const partnerId = this.savedGame.stash.partner()?.id;
+    const stack = ({ itemId, quantity }: { readonly itemId: ItemId; readonly quantity: number }): string => `${getItemById(itemId)?.displayName ?? itemId} ${itemCountTag(itemId, quantity)}`;
+    return {
+      pokemon: flow.riskedPokemon.map(({ id, pokemon }) => ({ name: pokemon.name, level: pokemon.level, partner: id === partnerId })),
+      // Nobody is ever left without a Satchel, so it is no stake.
+      pack: packId === undefined || packId === FALLBACK_PACK_ID ? null : flow.packName,
+      packIsBetter: packId !== undefined && packSquares(packId) > packSquares(STARTING_PACK_ID),
+      items: flow.riskedItems.map(stack),
+      // Room kept for what might be found is not a thing that is safe yet.
+      safe: [
+        ...flow.securedPokemon.map(({ pokemon }) => pokemon.name),
+        ...flow.securedItems.filter(({ itemId }) => !isFoundOnly(itemId)).map(stack),
+      ],
+    };
   }
 
   /** Any of the keys a person would press to get on with it. */
@@ -2100,8 +2114,8 @@ export class BaseScene extends Phaser.Scene {
       jump.hopped = true;
       audioManager.play('arenaHorn');
       arena.sendOff({ x: this.player.x, y: this.player.y });
-      // The house goes up as they go over, and the hall shakes with it.
-      arena.crowdReacts('roar', this.figureMiddle());
+      // The house goes up as they go over, as far as the bet deserves, and the hall shakes with it.
+      arena.crowdReacts(moodAsTheyGo(jump.bet), this.figureMiddle());
       flashScreen(this.cameras.main, LEAP_FLASH_MS, [255, 236, 176]);
       this.cameras.main.shake(LEAP_SHAKE_MS, LEAP_SHAKE_PX / this.scale.height);
       const partner = this.partner?.leaveForJump();

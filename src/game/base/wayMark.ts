@@ -27,26 +27,32 @@ const GOLD: Readonly<Record<string, readonly [number, number, number]>> = {
   D: [96, 56, 16],
 };
 
+const GREEN: Readonly<Record<string, readonly [number, number, number]>> = {
+  G: [120, 232, 144],
+  D: [16, 72, 40],
+};
+
 const TEXTURE = 'way-mark-chevron';
+const GREEN_TEXTURE = 'way-mark-chevron-out';
 
 /** The chevron's picture, once a game. Canvas, so no art file stands behind so small a thing. */
-function ensureChevron(scene: Phaser.Scene): void {
-  if (scene.textures.exists(TEXTURE)) {
+function ensureChevron(scene: Phaser.Scene, key = TEXTURE, inks = GOLD): void {
+  if (scene.textures.exists(key)) {
     return;
   }
-  const picture = paintChevron();
-  const texture = scene.textures.createCanvas(TEXTURE, picture.width, picture.height);
+  const picture = paintChevron(inks);
+  const texture = scene.textures.createCanvas(key, picture.width, picture.height);
   texture?.context.putImageData(new ImageData(picture.data, picture.width, picture.height), 0, 0);
   texture?.refresh();
 }
 
-function paintChevron(): PaintedPicture {
+function paintChevron(inks: Readonly<Record<string, readonly [number, number, number]>>): PaintedPicture {
   const width = CHEVRON[0].length;
   const height = CHEVRON.length;
   const data = new Uint8ClampedArray(width * height * 4);
   CHEVRON.forEach((row, y) =>
     [...row].forEach((cell, x) => {
-      const ink = GOLD[cell];
+      const ink = inks[cell];
       if (ink) {
         data.set([...ink, 255], (y * width + x) * 4);
       }
@@ -69,6 +75,9 @@ const BOB_MS = 170;
 /** The chevron over a door stands clear of the door's top. */
 const OVER_THE_DOOR = 14;
 
+const isOnScreen = (target: { readonly x: number; readonly y: number }, view: ScreenRect): boolean =>
+  target.x >= view.left && target.x < view.left + view.width && target.y - OVER_THE_DOOR >= view.top && target.y < view.top + view.height;
+
 /**
  * Where the chevron stands on the screen for a target in the world, and which way
  * it points: over the target while that is on the screen, else at the screen's edge
@@ -81,9 +90,7 @@ export function chevronTowards(
   elapsedMs: number,
 ): { readonly x: number; readonly y: number; readonly angle: number } {
   const bob = Math.round(Math.sin(elapsedMs / BOB_MS) * BOB_PX);
-  const onScreen =
-    target.x >= view.left && target.x < view.left + view.width && target.y - OVER_THE_DOOR >= view.top && target.y < view.top + view.height;
-  if (onScreen) {
+  if (isOnScreen(target, view)) {
     return { x: Math.round(target.x - view.left), y: Math.round(target.y - view.top - OVER_THE_DOOR + bob), angle: 180 };
   }
   const dx = target.x - player.x;
@@ -100,6 +107,36 @@ export function chevronTowards(
     x: Math.round(Math.max(EDGE_CLEAR, Math.min(view.width - EDGE_CLEAR, player.x - view.left))),
     y: dy < 0 ? EDGE_CLEAR + bob : view.height - EDGE_CLEAR - bob,
     angle: dy < 0 ? 0 : 180,
+  };
+}
+
+/** How far from the middle of the figure the raid's chevron stands: clear of its head mark and of every chip. */
+const ROUND_THE_FIGURE = 30;
+
+/**
+ * Where the raid's chevron stands: over the thing once it is on the screen, and
+ * until then just off the figure on the side the walk sets off, a quarter-turn at
+ * a time, where the player is looking anyway and no chip stands.
+ */
+export function chevronRoundFigure(
+  target: { readonly x: number; readonly y: number },
+  aim: { readonly x: number; readonly y: number },
+  view: ScreenRect,
+  figure: { readonly x: number; readonly y: number },
+  elapsedMs: number,
+): { readonly x: number; readonly y: number; readonly angle: number } {
+  if (isOnScreen(target, view)) {
+    return chevronTowards(target, view, figure, elapsedMs);
+  }
+  const bob = Math.round(Math.sin(elapsedMs / BOB_MS) * BOB_PX);
+  const dx = aim.x - figure.x;
+  const dy = aim.y - figure.y;
+  const across = Math.abs(dx) >= Math.abs(dy);
+  const reach = ROUND_THE_FIGURE + bob;
+  return {
+    x: Math.round(figure.x - view.left + (across ? Math.sign(dx) * reach : 0)),
+    y: Math.round(figure.y - view.top + (across ? 0 : Math.sign(dy) * reach)),
+    angle: across ? (dx < 0 ? 270 : 90) : dy < 0 ? 0 : 180,
   };
 }
 
@@ -145,6 +182,49 @@ export class YardWayMark {
     const view = this.scene.cameras.main.worldView;
     const at = chevronTowards(this.target, { left: view.left, top: view.top, width: view.width, height: view.height }, player, this.still ? 0 : elapsedMs);
     this.image.setVisible(!hidden).setPosition(at.x, at.y).setAngle(at.angle);
+  }
+
+  public destroy(): void {
+    this.image.destroy();
+  }
+}
+
+/**
+ * What a raid shows the way to, with no words (`WorldScene.settleWayMark`): gold
+ * to what the raid is for, green to the way out. Over the thing once it is on the
+ * screen, and before that beside the figure, pointing where the walk goes.
+ */
+export class RaidWayMark {
+  private readonly scene: Phaser.Scene;
+  private readonly still: boolean;
+  private readonly image: Phaser.GameObjects.Image;
+
+  public constructor(scene: Phaser.Scene, depth: number, still: boolean) {
+    this.scene = scene;
+    this.still = still;
+    ensureChevron(scene);
+    ensureChevron(scene, GREEN_TEXTURE, GREEN);
+    this.image = scene.add.image(0, 0, TEXTURE).setScrollFactor(0).setScale(2).setDepth(depth).setVisible(false);
+  }
+
+  public frame(
+    way: { readonly target: { readonly x: number; readonly y: number }; readonly aim: { readonly x: number; readonly y: number }; readonly out: boolean } | null,
+    player: { readonly x: number; readonly y: number },
+    elapsedMs: number,
+  ): void {
+    if (!way) {
+      this.image.setVisible(false);
+      return;
+    }
+    const view = this.scene.cameras.main.worldView;
+    const at = chevronRoundFigure(
+      way.target,
+      way.aim,
+      { left: view.left, top: view.top, width: view.width, height: view.height },
+      player,
+      this.still ? 0 : elapsedMs,
+    );
+    this.image.setTexture(way.out ? GREEN_TEXTURE : TEXTURE).setVisible(true).setPosition(at.x, at.y).setAngle(at.angle);
   }
 
   public destroy(): void {

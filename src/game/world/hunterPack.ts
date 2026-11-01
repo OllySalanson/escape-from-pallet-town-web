@@ -105,6 +105,15 @@ export const HUNTER_WALK_LIMIT = 160;
 export const HUNTER_AWAKE_RANGE = 40;
 /** How far from you a hunter may come on to the map, so it never arrives in sight. */
 export const HUNTER_ARRIVAL_CLEARANCE = 12;
+/**
+ * How long a hunter that has come for you (`comeFor`) knows where you are, round
+ * corners and out of its patch: a hundred and twenty of your steps. After that it
+ * hunts by eye like any other, so it can be shaken.
+ */
+export const HUNTER_COME_FOR_MS = 18_000;
+/** How far off, in your steps, a hunter comes from when it comes for you: on the way, and not yet in sight. */
+const COME_FOR_LEAST_STEPS = 14;
+const COME_FOR_MOST_STEPS = 22;
 /** The smallest district that is a hunter's patch, in tiles across and down. */
 export const HUNTER_GROUND_MIN_SIDE = 32;
 
@@ -182,6 +191,8 @@ export interface PackHunter {
   looks: number;
   /** Whether it is out for the enrage (twice your pace, never gives up). */
   enraged: boolean;
+  /** The pack's clock until which it knows where you are, having come for you (`comeFor`). */
+  comingUntilMs?: number;
 }
 
 export type PackEvent =
@@ -765,6 +776,95 @@ export class HunterPack {
     return came;
   }
 
+  /**
+   * One hunter comes for the player: the staged first chase, and the noise of
+   * taking a raid's stake (`raidStake.ts`). It is the keeper of the patch they
+   * stand in if it is about, else the nearest on the map, and it comes on foot
+   * from `COME_FOR_LEAST_STEPS` off or more, out of sight, on the far side of the
+   * player from `away` (the way out they would run for), so the run is away from
+   * it and never through it. Nothing happens if one is already after them or none
+   * is left to come. Answers what the screen should say.
+   */
+  comeFor(world: PackWorld, away: GridPosition | undefined): PackEvent[] {
+    if (this.hunters.some((hunter) => isAbroad(hunter) && isAfterYou(hunter))) {
+      return [];
+    }
+    const distanceTo = (hunter: PackHunter): number =>
+      Math.abs(hunter.position.x - world.player.x) + Math.abs(hunter.position.y - world.player.y);
+    // One still to come counts: the arrival leaves a keeper home when its whole loop is close by.
+    const free = this.hunters.filter((hunter) => hunter.mode !== 'beaten' && hunter.mode !== 'stunned');
+    const hunter =
+      free.find((candidate) => inGround(candidate.ground, world.player)) ??
+      [...free].sort((one, other) => distanceTo(one) - distanceTo(other))[0];
+    if (!hunter) {
+      return [];
+    }
+    const tile = this.comingFrom(world, away);
+    if (!tile) {
+      return [];
+    }
+    Object.assign(hunter, {
+      mode: 'alerted',
+      position: tile,
+      next: null,
+      stepMs: 0,
+      timerMs: HUNTER_ALERT_MS,
+      lastSeen: { ...world.player },
+      seenAtMs: this.clockMs,
+      comingUntilMs: this.clockMs + HUNTER_COME_FOR_MS,
+      sees: true,
+      snagged: false,
+      straight: 0,
+      looks: 0,
+      gap: null,
+      path: [],
+      facing: directionTowards(tile, world.player, hunter.facing),
+    });
+    return [{ kind: 'noticed', hunter }];
+  }
+
+  /**
+   * The tile it comes from: the walk out from the player to the ring, keeping to
+   * their own place and off every figure, and of what is out of sight the furthest
+   * from `away`. Null where the player is too hemmed in to have one yet.
+   */
+  private comingFrom(world: PackWorld, away: GridPosition | undefined): GridPosition | null {
+    const start = world.player.y * world.width + world.player.x;
+    const seen = new Set<number>([start]);
+    let frontier = [start];
+    let found: GridPosition | null = null;
+    let foundFar = Number.NEGATIVE_INFINITY;
+    for (let steps = 1; steps <= COME_FOR_MOST_STEPS && frontier.length > 0; steps += 1) {
+      const next: number[] = [];
+      for (const index of frontier) {
+        const x = index % world.width;
+        const y = (index / world.width) | 0;
+        for (const { x: dx, y: dy } of Object.values(DIRECTION_DELTAS)) {
+          const tile = { x: x + dx, y: y + dy };
+          if (tile.x < 0 || tile.y < 0 || tile.x >= world.width || tile.y >= world.height) {
+            continue;
+          }
+          const neighbour = tile.y * world.width + tile.x;
+          if (seen.has(neighbour) || world.blocked(neighbour) || this.hunterAt(tile) || !world.samePlace(world.player, tile)) {
+            continue;
+          }
+          seen.add(neighbour);
+          next.push(neighbour);
+          if (steps < COME_FOR_LEAST_STEPS || Math.hypot(tile.x - world.player.x, tile.y - world.player.y) < HUNTER_ARRIVAL_CLEARANCE) {
+            continue;
+          }
+          const far = away ? Math.hypot(tile.x - away.x, tile.y - away.y) : steps;
+          if (far > foundFar) {
+            found = tile;
+            foundFar = far;
+          }
+        }
+      }
+      frontier = next;
+    }
+    return found;
+  }
+
   private clearSpot(hunter: PackHunter, world: PackWorld): { readonly tile: GridPosition; readonly index: number } | null {
     let found: { tile: GridPosition; index: number; far: number } | null = null;
     hunter.ground.route.forEach((tile, index) => {
@@ -906,6 +1006,13 @@ export class HunterPack {
       return;
     }
     const chasing = hunter.mode === 'chase' || hunter.mode === 'alerted';
+    // It came for you: it knows where you are for a while yet, unless you are under a roof.
+    if (chasing && this.isComing(hunter) && !world.playerHidden) {
+      hunter.sees = true;
+      hunter.seenAtMs = this.clockMs;
+      hunter.lastSeen = { ...world.player };
+      return;
+    }
     // Where it lost you it is looking hard, all round.
     const seen = canSee(hunter.position, hunter.facing, world.player, world, chasing || hunter.mode === 'search');
     if (seen) {
@@ -972,6 +1079,10 @@ export class HunterPack {
     }
   }
 
+  private isComing(hunter: PackHunter): boolean {
+    return this.clockMs < (hunter.comingUntilMs ?? 0);
+  }
+
   private chaseStep(hunter: PackHunter, world: PackWorld, events: PackEvent[]): boolean {
     // Where you are, never where you are stepping: a hunter behind you in a
     // lane can only ever reach the tile you are leaving.
@@ -986,7 +1097,7 @@ export class HunterPack {
       // Out of its patch, and you are not right on its nose: it lets you go.
       if (
         !route ||
-        (seesYou && outOfPatch && route.length > HUNTER_TAIL_STEPS) ||
+        (seesYou && outOfPatch && route.length > HUNTER_TAIL_STEPS && !this.isComing(hunter)) ||
         (!seesYou && hunterOut)
       ) {
         this.giveUp(hunter, events, !seesYou && !hunterOut && route !== null);

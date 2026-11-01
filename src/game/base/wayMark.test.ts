@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { chevronTowards, runnerChevrons } from './wayMark';
+import { chevronRoundFigure, chevronTowards, runnerChevrons } from './wayMark';
 
 const VIEW = { left: 100, top: 200, width: 400, height: 256 };
+
+describe('the way shown in a raid', () => {
+  const figure = { x: 300, y: 330 };
+
+  it('stands over the thing once it is on the screen', () => {
+    expect(chevronRoundFigure({ x: 300, y: 320 }, { x: 300, y: 320 }, VIEW, figure, 0).angle).toBe(180);
+  });
+
+  it('points where the walk sets off, beside the figure, wherever the thing itself lies', () => {
+    const away = { x: 5000, y: 330 };
+    const north = chevronRoundFigure(away, { x: 300, y: 200 }, VIEW, figure, 0);
+    expect(north.angle).toBe(0);
+    expect(north.x).toBe(figure.x - VIEW.left);
+    expect(north.y).toBeLessThan(figure.y - VIEW.top);
+    const east = chevronRoundFigure(away, { x: 420, y: 330 }, VIEW, figure, 0);
+    expect(east.angle).toBe(90);
+    expect(east.x).toBeGreaterThan(figure.x - VIEW.left);
+  });
+});
 
 describe('the way shown to a first raid', () => {
   it('stands over what it points at while that is on the screen, pointing down at it', () => {
