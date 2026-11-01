@@ -166,4 +166,23 @@ describe('a way in chosen before the rim has been explained', () => {
     frame();
     expect(flow.insertionId).toBe(under.id);
   });
+
+  it('is still chosen after NOT YET, until the player takes a step', () => {
+    const { scene, flow, frame } = atTheRail(false);
+    scene.arenaPanel = 'rim';
+    frame();
+    scene.arenaPanel = null;
+    frame();
+    frame();
+    expect(flow.insertionId).toBe(elsewhere.id);
+    expect(scene.aimed).toBe(elsewhere);
+
+    // Stepping off and back onto the very same tile counts as walking the rim.
+    scene.targetTile = { x: rail.x + 1, y: rail.y };
+    frame();
+    scene.targetTile = null;
+    frame();
+    expect(flow.insertionId).toBe(under.id);
+    expect(scene.aimed).toBe(under);
+  });
 });
