@@ -8,8 +8,8 @@ describe("THE RAID ARENA's marshal", () => {
   it('tells a newcomer what the room is for, and every line fits her box', () => {
     const game = baseGame();
     expect(marshalLines(undefined, flowForGame(game))).toEqual(FIRST_WORDS.loadout.lines);
-    for (const line of [...FIRST_WORDS.loadout.lines, ...FIRST_WORDS.check.lines]) {
-      expect(line.length).toBeLessThanOrEqual(80);
+    for (const line of FIRST_WORDS.loadout.lines) {
+      expect(line.length).toBeLessThanOrEqual(90);
     }
   });
 

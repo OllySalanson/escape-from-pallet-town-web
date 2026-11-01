@@ -4,7 +4,8 @@
 //
 //   node tools/playtest/names.mjs <url> <out dir> [--window=1200x768]
 //
-// NEW GAME asks YOUR NAME? before anything else. "ash" is typed, the line under
+// NEW GAME asks nothing, and the first CONTINUE asks YOUR NAME? (the hall asks as a first
+// raid comes home, which needs a raid). "ash" is typed, the line under
 // it says it is taken, and OK is refused; MISTY is free and is kept. CONTINUE
 // does not ask again. A player with no name is asked at CONTINUE, and can put
 // it off. MAKE A MAP starts a map with one of the world's names, and REROLL
@@ -56,11 +57,20 @@ try {
   };
   const clearField = () => page.evaluate(`(() => { const f = document.querySelector('[data-name-field]'); f.value = ''; f.dispatchEvent(new Event('input')); f.focus(); })()`);
 
-  // NEW GAME: asked first.
+  // NEW GAME: nobody is stopped to be asked. The first CONTINUE asks.
   await page.waitFor(sceneIs('title'));
   await page.evaluate(`localStorage.removeItem('${NAME_KEY}')`);
   await press('Space');
-  await until('YOUR NAME? at NEW GAME', (s) => s.up);
+  await page.waitFor(sceneIs('base'), { what: 'the lab with no name asked' });
+  if ((await page.evaluate(screen)).up) throw new Error('NEW GAME asked for a name');
+  await page.waitFor(
+    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
+  );
+  await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
+  await page.send('Page.navigate', { url: address });
+  await page.waitFor(sceneIs('title'));
+  await press('Space');
+  await until('YOUR NAME? at the first CONTINUE', (s) => s.up);
   await sleep(450);
   await page.evaluate(`document.querySelector('[data-name-field]').focus()`);
   await type(page, 'ash');
@@ -76,14 +86,9 @@ try {
   await page.screenshot(`${out}/name-free.png`);
   console.log(`misty: ${free.count}`);
   await press('Enter');
-  await page.waitFor(sceneIs('base'), { what: 'the starter screen after the name' });
+  await page.waitFor(sceneIs('base'), { what: 'the harbour after the name' });
   if ((await page.evaluate(`localStorage.getItem('${NAME_KEY}')`)) !== 'MISTY') throw new Error('MISTY was not kept');
-  await page.waitFor(
-    `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
-  );
-  await page.waitFor(sceneIs('base'));
-  await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
-  console.log('NEW GAME: named MISTY, then the starter, then the harbour');
+  console.log('NEW GAME asked nothing; the first CONTINUE: named MISTY, then the harbour');
 
   // CONTINUE with a name: straight in.
   await page.send('Page.navigate', { url: address });

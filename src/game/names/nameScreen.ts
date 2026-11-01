@@ -15,7 +15,7 @@ import type { NameCheck, NameClaim } from './nameService';
 export const YOUR_NAME_TITLE = 'YOUR NAME?';
 
 /** Where the name is being asked. */
-export type NameScreenWhere = 'new-game' | 'continue' | 'house';
+export type NameScreenWhere = 'first-raid' | 'continue' | 'house';
 
 interface NameScreenWords {
   readonly place: string;
@@ -24,20 +24,17 @@ interface NameScreenWords {
   readonly hints: string;
   /** The button that is not OK: back to the title, later, or back out of the door. */
   readonly away: { readonly label: string; readonly help: string };
-  /** A NEW GAME may also be started without a name, to be asked next time. */
-  readonly later?: { readonly label: string; readonly help: string };
 }
 
 const EVERYWHERE = 'on your door, over your head in the harbour and on every Pallet Town board';
 
 const WORDS: Readonly<Record<NameScreenWhere, NameScreenWords>> = {
-  'new-game': {
-    place: 'NEW GAME',
-    lead: `First things first: what do people call you? It goes ${EVERYWHERE}, and nobody else can have it.`,
+  'first-raid': {
+    place: 'THE RAID ARENA',
+    lead: `The stands want a name to shout. It goes ${EVERYWHERE}, and nobody else can have it.`,
     bar: 'One name each',
-    hints: 'TYPE your name · ENTER OK · ESC back',
-    away: { label: 'Back', help: 'Back to the title.' },
-    later: { label: 'Later', help: 'Play now without a name; you are asked again next time.' },
+    hints: 'TYPE your name · ENTER OK · ESC later',
+    away: { label: 'Later', help: 'Play on without a name; you are asked again next time.' },
   },
   continue: {
     place: 'PALLET TOWN',
@@ -114,7 +111,6 @@ export function nameScreenMarkup(view: NameScreenView): string {
     className: 'naming-actions',
     actions:
       button('data-name-away', words.away.label, words.away.help) +
-      (words.later ? button('data-name-later', words.later.label, words.later.help) : '') +
       button('data-name-ok', 'OK', 'This is my name.', true),
   });
   const body = `<main class="px-body naming-screen">${pixelWindow(entry, {

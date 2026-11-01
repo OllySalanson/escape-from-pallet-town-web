@@ -694,13 +694,13 @@ describe('hub deployment route', () => {
     // of four: the Potions are protected in its place.
     hub.flow.toggleSecurePokemon('charmander-1');
     hub.flow.adjustSecureItem('potion', 3);
-    expect(hub.flow.items).toEqual([{ itemId: 'potion', quantity: 3 }]);
+    expect(hub.flow.items).toEqual(expect.arrayContaining([{ itemId: 'potion', quantity: 3 }]));
 
     // One of those three Potions is drunk at base, so only two can be packed.
     hub.treat('charmander-1', 'potion');
 
     expect(hub.stash.itemCount('potion')).toBe(2);
-    expect(hub.flow.items).toEqual([{ itemId: 'potion', quantity: 2 }]);
+    expect(hub.flow.items).toEqual(expect.arrayContaining([{ itemId: 'potion', quantity: 2 }]));
     expect(hub.flow.securedItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
 
     readyToDeploy(hub);
@@ -784,9 +784,7 @@ describe('hub deployment route', () => {
     expect(staleStart).toHaveBeenCalledTimes(1);
   });
 
-  it('says on the loadout when no Poké Ball is packed, and packs none unasked', () => {
-    // A fresh save's default packs its Potions and no ball, so a first raid
-    // could not catch anything and nothing on the way said so.
+  it('says on the loadout when no Poké Ball is packed, once the default has been taken out', () => {
     const { hub } = createHub();
     const loadout = () => {
       hub.setView('rack');
@@ -796,7 +794,10 @@ describe('hub deployment route', () => {
     expect(hub.stash.itemCount('poke-ball')).toBeGreaterThan(0);
     hub.flow.togglePokemon('charmander-1');
 
-    expect(hub.flow.itemQuantity('poke-ball')).toBe(0);
+    // A fresh save's default packs its Potions and a few balls, so a first raid can catch something.
+    expect(hub.flow.itemQuantity('poke-ball')).toBeGreaterThan(0);
+    expect(loadout()).not.toContain('nothing can be caught');
+    hub.flow.setItemQuantity('poke-ball', 0);
     expect(loadout()).toContain('No Poké Balls on the rack, so nothing can be caught this raid.');
 
     // Packing one is the answer, and the warning goes.
@@ -827,8 +828,38 @@ describe('hub deployment route', () => {
     expect(start.mock.calls[0][0]).toBe('world');
   });
 
-  it('sends a brand new save into Floodplain Relay carrying a contract that lives there', () => {
+  it('sends a brand new save into Floodplain Relay carrying no contract: the first raid is for finding out what a raid is', () => {
     const { hub, start } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    readyToDeploy(hub);
+    deploy(hub, start);
+
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.insertion.id).toBe('floodplain-relay');
+    expect(runSession.plan?.contract).toBeUndefined();
+    expect(runSession.objectives).toEqual([]);
+    expect(activeRunManager.snapshot().mapId).toBe('floodplain-relay');
+  });
+
+  it('goes over the fence as soon as it opens when there is nothing on the card to decide, and draws no card', () => {
+    const jump = vi.fn();
+    const { hub, start } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    readyToDeploy(hub);
+    const render = vi.spyOn(hub as unknown as { render: () => void }, 'render');
+    const scene = hub as unknown as { kit: unknown; straightOver: boolean; startRun: () => void; deploying: boolean };
+    scene.kit = { jump, flow: hub.flow };
+    scene.straightOver = true;
+    // What `create` does with it, past the overlay a test has no page for.
+    (HubScene.prototype as unknown as { goOverIfThereIsNothingToRead: () => boolean }).goOverIfThereIsNothingToRead.call(hub);
+    expect(jump).toHaveBeenCalledOnce();
+    expect(render).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('sends a save with a raid behind it into Floodplain Relay carrying a contract that lives there', () => {
+    const { hub, start } = createHub({ ...DEFAULT_RAID_PROGRESS, raidRecord: { 'floodplain-relay': { deployed: 1, extracted: 0, wiped: 1 } } });
 
     hub.flow.togglePokemon('charmander-1');
     readyToDeploy(hub);
@@ -1145,9 +1176,9 @@ describe('hub deployment route', () => {
 
     const data = start.mock.calls[0][1] as WorldSceneData;
     expect(data.party.pokemon.map((pokemon) => pokemon.base.id)).toEqual(['charmander']);
-    expect(data.bag.toJSON()).toEqual({ potion: 2 });
+    expect(data.bag.toJSON()).toEqual({ potion: 2, 'poke-ball': 3 });
     expect(data.runSession.broughtPokemonIds).toEqual(['charmander-1']);
-    expect(data.runSession.broughtItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
+    expect(data.runSession.broughtItems).toEqual(expect.arrayContaining([{ itemId: 'potion', quantity: 2 }]));
     expect(data.runSession.stashSecureSlot).toEqual({ pokemonIds: ['charmander-1'], items: [] });
     expect(activeRunManager.snapshot().loadout?.party.map((pokemon) => pokemon.base.id)).toEqual([
       'charmander',
@@ -2448,8 +2479,8 @@ describe('the lab with only Greystone Vale in play', () => {
   beforeEach(() => retireMapsForTests(RETIRED_MAPS));
   afterEach(() => retireMapsForTests([]));
 
-  it('sends a brand new save into Greystone Vale on a contract that lives there', () => {
-    const { hub, start } = createHub();
+  it('sends a save with a raid behind it into Greystone Vale on a contract that lives there', () => {
+    const { hub, start } = createHub({ ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 0, wiped: 1 } } });
 
     expect(hub.flow.insertionId).toBe('greystone-vale');
     hub.flow.togglePokemon('charmander-1');

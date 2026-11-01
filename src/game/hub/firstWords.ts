@@ -22,7 +22,7 @@ import type { CharacterDesignId } from '../world/characterDesigns';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'check', 'center', 'workshop', 'cottage'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -49,34 +49,23 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     name: 'Professor Oak',
     greeting: 'there you are!',
     lines: [
-      'Out there are maps full of loot and wild Pokémon.',
-      'A raid is a few minutes on one. Grab what you can, then walk out through an exit.',
-      'Walk out and you keep it all. If your team faints or the clock runs out, the pack is lost.',
+      'On a raid, grab what you can and walk out through an exit.',
+      'Faint, or run out of clock, and the pack is lost.',
       'Every raid starts at the RAID ARENA, west across the yard.',
     ],
   },
   // Said in the great hall by its own keeper, when spoken to, in the room's
-  // dialogue box: the captain did not want Oak's voice along the foot of the
-  // screen on arriving at the Arena. All of getting ready is said here, the
-  // drop-in and the final check with it, because past this door it is screens.
+  // dialogue box. She has it to say from the first raid's coming home: nothing
+  // here is needed to go over the fence the first time, and all of it means
+  // something once somebody has been.
   loadout: {
     speaker: ARENA_KEEPER_DESIGN,
     name: ARENA_KEEPER_NAME,
     lines: [
       'Everything for a raid is in this room. Walk up to it and press.',
       'The BENCH is who comes with you. The RACK is what you carry.',
-      'Pack Poké Balls, and leave room: a catch takes 4 squares or more.',
-      'The LOCKER comes home whatever happens. Ready? Over the fence.',
-    ],
-  },
-  // Said the first time a player looks down from the rim, over the panel that
-  // starts the raid: the last thing a newcomer reads before it does.
-  check: {
-    speaker: ARENA_KEEPER_DESIGN,
-    name: ARENA_KEEPER_NAME,
-    lines: [
-      'That is Greystone Vale. The cloud is whatever you have not walked yet.',
-      'What is not in your locker is lost if your team faints or the clock runs out.',
+      'The LOCKER comes home whatever happens. A catch takes 4 squares or more, so leave room.',
+      'The cloud in the pit is whatever you have not walked yet.',
       'And a rival hunter comes looking. If they catch you, you fight.',
     ],
   },

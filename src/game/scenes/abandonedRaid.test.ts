@@ -101,6 +101,7 @@ function openLab(storage: MemoryStorage): { hub: HubInternals; start: ReturnType
 function deployFrom(storage: MemoryStorage): HubInternals {
   const { hub } = openLab(storage);
   hub.flow.togglePokemon('charmander-1');
+  hub.flow.setItemQuantity('poke-ball', 0);
   hub.flow.setItemQuantity('potion', 4);
   hub.flow.setItemQuantity('super-potion', 2);
   for (let step = 0; step < 8 && hub.flow.step !== 'confirm'; step += 1) {

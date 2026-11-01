@@ -164,7 +164,8 @@ describe('the rooms behind the base doors', () => {
         ]);
         // Bill's goods stand between him and the door. Nobody has to cross them
         // to hear him: the key on the mat speaks to him all the same.
-        const across = walk.door.id === 'bills-cottage' ? 7 : 4;
+        // The marshal stands through the gate from the Arena's door: nobody has to go to her.
+        const across = walk.door.id === 'bills-cottage' ? 7 : walk.door.id === 'raid-arena' ? 8 : 4;
         expect([walk.door.id, walk.acrossTheRoom <= across]).toEqual([walk.door.id, true]);
       }
     }

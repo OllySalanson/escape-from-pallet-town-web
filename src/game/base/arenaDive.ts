@@ -32,7 +32,7 @@ const DIVE_ZOOM = 6;
 /** How much of the dive has gone before the cloud itself comes in. */
 const CLOUD_FROM = 0.74;
 /** How high the hop goes, in pixels. */
-const HOP_RISE = 16;
+const HOP_RISE = 26;
 /** How far over the fence the hop lands, in tiles. */
 const HOP_REACH = 2;
 /** How long a falling figure takes to come to its place on the screen. */
@@ -127,6 +127,16 @@ export function fallerAt(
     x: Math.round(start.x + (place.x - start.x) * share + buffet(83, 0) * share),
     y: Math.round(start.y + (place.y - start.y) * share + buffet(61, 1.7) * share),
   };
+}
+
+/**
+ * How many times over a falling figure is drawn: as it was on the rail until it has
+ * dropped clear, then twice that, in one step, because this is the moment the whole
+ * walk here was for and a figure the size of a thumbnail cannot carry it. Whole
+ * pixels still, as FireRed stands a Pokémon at twice its size in a battle's intro.
+ */
+export function fallerScale(fallingMs: number): 1 | 2 {
+  return fallingMs < FALLER_SETTLE_MS / 2 ? 1 : 2;
 }
 
 /**

@@ -147,11 +147,11 @@ try {
     // The press that asks is never the press that answers.
     await tap(page, 'Space');
     at = await lab(page);
-    expectThat(at.asked === 'bulbasaur' && at.answer === 1 && !at.saved, `${window.name}: the question opens on NOT NOW (${JSON.stringify(at)})`);
+    expectThat(at.asked === 'bulbasaur' && at.answer === 0 && !at.saved, `${window.name}: the question opens on YES, as FireRed's does (${JSON.stringify(at)})`);
     await page.screenshot(join(out, `${window.name}-04-the-question.png`));
     await tap(page, 'ArrowRight');
     at = await lab(page);
-    expectThat(at.answer === 1, `${window.name}: right on NOT NOW stays on NOT NOW (${JSON.stringify(at)})`);
+    expectThat(at.answer === 1, `${window.name}: right goes to NOT NOW (${JSON.stringify(at)})`);
     await tap(page, 'Space');
     at = await lab(page);
     expectThat(at.asked === null && !at.saved && at.choosing, `${window.name}: NOT NOW takes nothing (${JSON.stringify(at)})`);
@@ -217,7 +217,7 @@ try {
     await page.waitFor(`${GAME}.scene.getScene('base').askedBall === 'squirtle'`, { timeoutMs: 20_000, what: 'the walk up to Squirtle' });
     await click(page);
     at = await lab(page);
-    expectThat(at.asked === 'squirtle' && at.answer === 1 && !at.saved, `${window.name}: a click on a ball walks up and asks, on NOT NOW (${JSON.stringify(at)})`);
+    expectThat(at.asked === 'squirtle' && at.answer === 0 && !at.saved, `${window.name}: a click on a ball walks up and asks (${JSON.stringify(at)})`);
     await page.screenshot(join(out, `${window.name}-08-asked-by-mouse.png`));
     // On the way to YES the pointer crosses nothing that counts.
     await sleep(600);
@@ -249,16 +249,10 @@ try {
     await readThrough(page);
     const keyed = await page.evaluate(`JSON.parse(${SAVE}).starterSpeciesId`);
     expectThat(keyed === 'charmander', `${window.name}: YES by the keys takes the ball faced (${keyed})`);
-    // A ball left on the table has its line.
-    await tap(page, 'ArrowRight');
-    await tap(page, 'ArrowUp');
-    await tap(page, 'Space');
-    await page.screenshot(join(out, `${window.name}-11-ball-left.png`));
-    await readThrough(page);
-    await walkTo(page, 6, 11);
-    await tap(page, 'ArrowDown', 900);
+    // Oak's last word sends them out of the door, with nothing left to do in the lab.
+    await page.waitFor(`${GAME}.scene.getScene('base').ready && !${GAME}.scene.getScene('base').room`, { timeoutMs: 30_000, what: 'the harbour' });
     at = await lab(page);
-    expectThat(at.room === null, `${window.name}: with a partner, the door lets them out (${JSON.stringify(at)})`);
+    expectThat(at.room === null, `${window.name}: once Oak has said his piece they are out in the yard (${JSON.stringify(at)})`);
     await page.screenshot(join(out, `${window.name}-12-the-harbour.png`));
 
     // The swap in the Pokémon Center is the same three cards on another screen:

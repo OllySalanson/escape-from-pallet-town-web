@@ -147,8 +147,8 @@ export function raidKeyHintLine(keys: readonly RaidKeyId[]): string {
 }
 
 /** What the yard says while nothing else is to be said: the keys not yet used. */
-export function yardKeyHintLine(learned: ReadonlySet<string>): string {
-  return YARD_KEY_WORDS.filter(([id]) => !learned.has(id))
+export function yardKeyHintLine(learned: ReadonlySet<string>, walkingOnly = false): string {
+  return YARD_KEY_WORDS.filter(([id]) => !learned.has(id) && (!walkingOnly || id === 'walk'))
     .map(([, key, word]) => keyHint(key, word))
     .join('   ');
 }

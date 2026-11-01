@@ -150,13 +150,13 @@ describe('Professor Oak, from the mat', () => {
     // His parcel lies on Greystone Vale, which is the map a save is offered.
     retireMapsForTests(RETIRED_MAPS);
     try {
-      const manager = saved();
+      const manager = saved({ raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } });
       const oak = room(manager, [true]);
       oak.speak('oaks-lab', 'lab');
 
       expect(oak.asked).toHaveLength(1);
       const favour = oak.said.findIndex((line) => line.includes('Before you go!'));
-      expect(favour).toBeGreaterThan(oak.said.indexOf(FIRST_WORDS.lab.lines[3]));
+      expect(favour).toBeGreaterThan(oak.said.indexOf(FIRST_WORDS.lab.lines[2]));
       expect(favour).toBeLessThan(oak.said.indexOf(boardLines(manager.load()!)[0]));
     } finally {
       retireMapsForTests([]);
@@ -411,10 +411,10 @@ describe('the Day-Care Man, at his fence', () => {
   });
 });
 
-describe('the marshal, at the rim of the pit', () => {
-  const lookDown = (manager: SaveManager) => {
+describe('at the rail', () => {
+  const lookDown = (manager: SaveManager, notReady?: string) => {
     const said: (readonly string[])[] = [];
-    const opened: string[] = [];
+    const opened: unknown[][] = [];
     const scene = BaseScene.prototype as unknown as Record<string, unknown>;
     const stand = {
       saveManager: manager,
@@ -423,28 +423,29 @@ describe('the marshal, at the rim of the pit', () => {
       facing: 'up',
       player: { stop: () => undefined, setFrame: () => undefined },
       place: { room: { room: { keeper: { position: { x: 30, y: 30 } } } } },
-      sayFirstWords: scene.sayFirstWords,
-      hearFirstWords: scene.hearFirstWords,
-      say: (lines: readonly string[], _about: unknown, then: () => void) => {
-        said.push(lines);
-        then();
-      },
-      openHallPanel: (panel: string) => opened.push(panel),
+      kit: { flow: { notReady } },
+      say: (lines: readonly string[]) => said.push(lines),
+      openHallPanel: (...panel: unknown[]) => opened.push(panel),
     };
     (scene.lookDown as (this: typeof stand) => void).call(stand);
     return { said, opened };
   };
 
-  it('says what is down there once, in the hall, before the panel opens over it', () => {
-    const manager = saved(NOTHING_NEW);
-    const first = lookDown(manager);
-    expect(first.said).toEqual([FIRST_WORDS.check.lines]);
-    expect(first.opened).toEqual(['rim']);
-    expect(manager.load()!.raidProgress.firstWordsHeard).toContain('check');
+  it('goes straight over on a first raid, with nothing to read and no card', () => {
+    const { said, opened } = lookDown(saved(NOTHING_NEW));
+    expect(said).toEqual([]);
+    expect(opened).toEqual([['rim', true]]);
+  });
 
-    const again = lookDown(manager);
-    expect(again.said).toEqual([]);
-    expect(again.opened).toEqual(['rim']);
+  it('shows the card when something is wrong with the raid being got ready', () => {
+    const { opened } = lookDown(saved(NOTHING_NEW), 'Nobody is coming.');
+    expect(opened).toEqual([['rim']]);
+  });
+
+  it('shows the card from the second raid on, and still says nothing over it', () => {
+    const { said, opened } = lookDown(saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } }));
+    expect(said).toEqual([]);
+    expect(opened).toEqual([['rim']]);
   });
 });
 

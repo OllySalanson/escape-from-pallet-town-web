@@ -12,7 +12,7 @@ import {
 import { FIRST_CONTRACT_ID } from '../objectives';
 import { BASE_DOORS } from './doors';
 import { doorStatusLine } from './doorStatus';
-import { baseGame } from './baseGames.testkit';
+import { baseGame as newGame } from './baseGames.testkit';
 import { BADGES, caseBadges } from './badgeCase';
 
 class MemoryStorage implements StorageLike {
@@ -28,6 +28,10 @@ class MemoryStorage implements StorageLike {
   }
 }
 
+/** A game with a raid behind it, unless a test says otherwise: a new save's doors say nothing but their names. */
+const baseGame = (options: Parameters<typeof newGame>[0] = {}) =>
+  newGame({ ...options, progress: { raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } }, ...options.progress } });
+
 function restore(
   stash: Stash,
   raidProgress: Partial<RaidProgress> = {},
@@ -41,7 +45,7 @@ function restore(
     bag: new Bag(),
     stash,
     starterSpeciesId: 'charmander',
-    raidProgress: { ...DEFAULT_RAID_PROGRESS, ...raidProgress },
+    raidProgress: { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } }, ...raidProgress },
   });
   return manager.load()!;
 }
@@ -145,6 +149,13 @@ describe("what each of the base's doors says", () => {
       }),
     );
     expect(line).toContain('₽1000');
+  });
+
+  it('says nothing but the way to the raid on a new save', () => {
+    const game = restore(createStartingStash(CHARMANDER), { raidRecord: {} });
+    for (const door of BASE_DOORS) {
+      expect([door.id, doorStatusLine(door, game).length > 0]).toEqual([door.id, door.screen === 'arena']);
+    }
   });
 
   it('answers for every door there is', () => {

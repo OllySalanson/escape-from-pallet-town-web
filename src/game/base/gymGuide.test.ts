@@ -5,6 +5,9 @@ import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { gymGuideLines } from './gymGuide';
 
+/** A save with a raid behind it: the board has nothing for anybody yet to go on one. */
+const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
+
 /**
  * The Gym Guide at the Raid Arena's door says the day's work in the dialogue
  * box: what the board has, what it pays, and whose favours are in hand - the
@@ -16,8 +19,8 @@ describe("the Gym Guide's word on the day's work", () => {
   it("says the board's job, what it asks and what it pays, as the board itself words them", () => {
     // The roster as shipped: the standing board deals on Greystone Vale.
     retireMapsForTests(RETIRED_MAPS);
-    const [job] = buildContractBoard(DEFAULT_RAID_PROGRESS).rows;
-    const lines = gymGuideLines(DEFAULT_RAID_PROGRESS);
+    const [job] = buildContractBoard(BEEN_OUT).rows;
+    const lines = gymGuideLines(BEEN_OUT);
     expect(lines[0]).toBe(`Yo, champ! Today's job: ${job.name.toUpperCase()}.`);
     expect(lines).toContain(`${job.description}.`);
     expect(lines.some((line) => line.startsWith('It pays ') && line.includes(job.reward.replace(/\.$/, '')))).toBe(true);

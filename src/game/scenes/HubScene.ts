@@ -187,6 +187,7 @@ import {
 import { pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
+import { isFirstRaid } from '../hub/firstRaid';
 import { recoveryTermsFor } from '../hub/centerCounter';
 import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
@@ -233,6 +234,8 @@ export interface HubSceneData {
    * screen beside the panel, and is told when the panel is done with.
    */
   readonly kit?: ArenaKit;
+  /** Over the fence at once, with the card never drawn: there is nothing on it to decide (`hub/firstRaid.ts`). */
+  readonly straightOver?: boolean;
 }
 
 /**
@@ -352,6 +355,7 @@ export class HubScene extends Phaser.Scene {
    * cursor on `Enter the raid` for the length of the fade, so a second press of
    * the key that started the raid used to start it again and throw.
    */
+  private straightOver = false;
   private deploying = false;
   /** Whether the raid room's database is being asked something (`raidRoom/`). */
   private roomBusy = false;
@@ -405,6 +409,7 @@ export class HubScene extends Phaser.Scene {
     this.view = data.view ?? 'stash';
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
+    this.straightOver = data.straightOver === true;
     // Looking down from the rim is looking the plan over, as far as it can be.
     if (this.view === 'rim') {
       this.pointAtHeldRoom();
@@ -472,6 +477,9 @@ export class HubScene extends Phaser.Scene {
       this.dockPanel(unit);
       fitMapPictures(this.overlay.root, unit, (key, step) => this.drawPicture(key, step));
     };
+    if (this.goOverIfThereIsNothingToRead()) {
+      return;
+    }
     this.render();
     this.offerPendingMoves();
     // A held room stays on its channel while the player gets ready, saying
@@ -489,6 +497,15 @@ export class HubScene extends Phaser.Scene {
         },
       });
     }
+  }
+
+  /** Nothing to read and nothing to choose: over the fence, unless something refuses, and then the card is there to say what. */
+  private goOverIfThereIsNothingToRead(): boolean {
+    if (!this.straightOver) {
+      return false;
+    }
+    this.startRun();
+    return this.deploying;
   }
 
   /**
@@ -575,6 +592,10 @@ export class HubScene extends Phaser.Scene {
    * fall out of step with it.
    */
   private contractFor(insertionId: RunInsertionId): RaidContract | undefined {
+    // The first raid is for finding out what a raid is (`hub/firstRaid.ts`).
+    if (isFirstRaid(this.savedGame.raidProgress)) {
+      return undefined;
+    }
     return boardContractForMap(requireInsertion(insertionId).mapId, this.savedGame.raidProgress);
   }
 

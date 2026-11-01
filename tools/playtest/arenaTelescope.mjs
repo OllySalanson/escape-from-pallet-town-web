@@ -463,7 +463,7 @@ try {
 
   // The fast route never passes through it: up the runner, SPACE, ENTER.
   const mat = await base('({ ...b.room.mat })');
-  await walk({ x: mat.x, y: 56 });
+  await walk({ x: mat.x, y: 53 });
   await step(300);
   await press('Space');
   for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {

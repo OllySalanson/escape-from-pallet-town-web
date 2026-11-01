@@ -1,3 +1,4 @@
+import { isFirstRaid } from './firstRaid';
 import { contractCarryIn, type RaidContract } from '../objectives/contracts';
 import { formatStacks } from '../objectives/RunObjectives';
 import {
@@ -36,7 +37,8 @@ export interface ContractBoardModel {
 }
 
 export function buildContractBoard(progress: StandingBoardProgress): ContractBoardModel {
-  const contracts = boardContracts(progress);
+  // The first raid is for finding out what a raid is, so nothing is on offer for it.
+  const contracts = isFirstRaid(progress) ? [] : boardContracts(progress);
   const standing = isStandingBoardOpen(progress.completedContracts);
   return {
     heading: standing ? 'Standing board' : 'Contract board',

@@ -47,7 +47,7 @@ const passes = (from: GridPosition, direction: Direction, tile: GridPosition): b
 const stationNamed = (id: string) => ARENA_STATIONS.find((station) => station.id === id)!;
 const fronts = (id: string): readonly GridPosition[] => stationNamed(id).tiles.map((tile) => ({ x: tile.x, y: tile.y + 1 }));
 const [west, east] = ARENA_TELESCOPES;
-const RAIL = { x: ARENA_MAT.x, y: 56 };
+const RAIL = { x: ARENA_MAT.x, y: west.stance.y };
 
 describe("walking THE RAID ARENA's great hall on a held key", () => {
   it('goes from the mat to the bench on one key, and stops in front of it', () => {
