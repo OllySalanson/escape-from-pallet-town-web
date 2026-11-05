@@ -107,6 +107,10 @@ const ROOMS = {
   tower: { layout: 'PokemonTower_1F', primary: 'building', secondary: 'pokemon_tower' },
   towerGraves: { layout: 'PokemonTower_3F', primary: 'building', secondary: 'pokemon_tower' },
   towerTop: { layout: 'PokemonTower_7F', primary: 'building', secondary: 'pokemon_tower' },
+  // Celadon's Game Corner and the prize room across the street from it: THE
+  // HARBOUR's GAME CORNER is dressed in both (`src/game/base/gameCornerSheet.ts`).
+  gameCorner: { layout: 'CeladonCity_GameCorner', primary: 'building', secondary: 'game_corner' },
+  prizeRoom: { layout: 'CeladonCity_GameCorner_PrizeRoom', primary: 'building', secondary: 'game_corner' },
 };
 
 /**
@@ -295,6 +299,28 @@ const PIECES = [
   { name: 'tower.grave', room: 'towerGraves', at: [5, 4], size: [1, 1], layers: 'top' },
   { name: 'tower.goldGrave', room: 'towerTop', at: [16, 5], size: [1, 1], layers: 'top' },
   { name: 'tower.statue', room: 'towerTop', at: [9, 2], size: [1, 3], layers: 'top' },
+
+  // --- the Game Corner (its own sheet: `frlg-game-corner.png`) ----------------
+  // Cut onto a sheet of its own so the pieces above never move when it grows:
+  // the shelf packing sorts by height, and one tall counter would reshuffle
+  // every player map's insides.
+  // Its shell: the wave-papered wall with its salmon skirting, and the diamond floor.
+  { name: 'corner.wallUpper', room: 'gameCorner', at: [13, 0], size: [1, 1], layers: 'bottom', sheet: 'corner' },
+  { name: 'corner.wallLower', room: 'gameCorner', at: [13, 1], size: [1, 1], layers: 'bottom', sheet: 'corner' },
+  { name: 'corner.floor', room: 'gameCorner', at: [12, 12], size: [1, 1], layers: 'bottom', sheet: 'corner' },
+  { name: 'corner.floorShade', room: 'gameCorner', at: [12, 2], size: [1, 1], layers: 'bottom', sheet: 'corner' },
+  // The coin counter in its green L, the prize shelves behind it and the
+  // Porygon emblem on the wall over it: the GAME CORNER's ticket counter.
+  { name: 'corner.counter', room: 'gameCorner', at: [1, 0], size: [9, 4], layers: 'both', sheet: 'corner' },
+  { name: 'corner.plant', room: 'gameCorner', at: [0, 1], size: [1, 2], layers: 'top', sheet: 'corner' },
+  // A column of slot machines, back to back, and one of the blue stools.
+  { name: 'corner.slots', room: 'gameCorner', at: [5, 5], size: [2, 6], layers: 'both', sheet: 'corner' },
+  { name: 'corner.stool', room: 'gameCorner', at: [4, 6], size: [1, 1], layers: 'top', sheet: 'corner' },
+  { name: 'corner.mat', room: 'gameCorner', at: [8, 13], size: [3, 2], layers: 'top', fit: [3, 1], sheet: 'corner' },
+  // The prize room: its counter across the back, and the glass cases either side.
+  { name: 'prize.counter', room: 'prizeRoom', at: [0, 0], size: [9, 4], layers: 'both', sheet: 'corner' },
+  { name: 'prize.case', room: 'prizeRoom', at: [0, 5], size: [2, 3], layers: 'both', sheet: 'corner' },
+  { name: 'prize.mat', room: 'prizeRoom', at: [3, 8], size: [3, 2], layers: 'top', fit: [3, 1], sheet: 'corner' },
 ];
 
 /**
@@ -666,44 +692,53 @@ function weaveOf(weave) {
 }
 
 const weaves = WEAVES.map(weaveOf);
-const cut = [...PIECES, ...weaves.flatMap((weave) => weave.pieces)].map((piece) => ({
+const cut = [...PIECES.filter((piece) => !piece.sheet), ...weaves.flatMap((weave) => weave.pieces)].map((piece) => ({
+  name: piece.name,
+  image: cutPiece(piece),
+}));
+const cornerCut = PIECES.filter((piece) => piece.sheet === 'corner').map((piece) => ({
   name: piece.name,
   image: cutPiece(piece),
 }));
 
 // Shelf packing: tallest first, left to right, a new shelf when a row is full.
-const order = [...cut].sort(
-  (a, b) => b.image.height - a.image.height || b.image.width - a.image.width,
-);
-const placed = new Map();
-let column = 0;
-let row = 0;
-let shelfHeight = 0;
-for (const piece of order) {
-  const width = piece.image.width / TILE;
-  const height = piece.image.height / TILE;
-  if (column + width > SHEET_COLUMNS) {
-    column = 0;
-    row += shelfHeight;
-    shelfHeight = 0;
+function pack(pieces) {
+  const order = [...pieces].sort(
+    (a, b) => b.image.height - a.image.height || b.image.width - a.image.width,
+  );
+  const placed = new Map();
+  let column = 0;
+  let row = 0;
+  let shelfHeight = 0;
+  for (const piece of order) {
+    const width = piece.image.width / TILE;
+    const height = piece.image.height / TILE;
+    if (column + width > SHEET_COLUMNS) {
+      column = 0;
+      row += shelfHeight;
+      shelfHeight = 0;
+    }
+    placed.set(piece.name, { column, row, width, height });
+    column += width;
+    shelfHeight = Math.max(shelfHeight, height);
   }
-  placed.set(piece.name, { column, row, width, height });
-  column += width;
-  shelfHeight = Math.max(shelfHeight, height);
-}
-const rows = row + shelfHeight;
-const sheet = blank(SHEET_COLUMNS * TILE, rows * TILE);
-for (const piece of cut) {
-  const at = placed.get(piece.name);
-  for (let y = 0; y < piece.image.height; y += 1) {
-    piece.image.data.copy(
-      sheet.data,
-      ((at.row * TILE + y) * sheet.width + at.column * TILE) * 4,
-      y * piece.image.width * 4,
-      (y + 1) * piece.image.width * 4,
-    );
+  const rows = row + shelfHeight;
+  const sheet = blank(SHEET_COLUMNS * TILE, rows * TILE);
+  for (const piece of pieces) {
+    const at = placed.get(piece.name);
+    for (let y = 0; y < piece.image.height; y += 1) {
+      piece.image.data.copy(
+        sheet.data,
+        ((at.row * TILE + y) * sheet.width + at.column * TILE) * 4,
+        y * piece.image.width * 4,
+        (y + 1) * piece.image.width * 4,
+      );
+    }
   }
+  return { placed, rows, sheet };
 }
+
+const { placed, rows, sheet } = pack(cut);
 writePng('public/assets/frlg-areas.png', sheet);
 
 mkdirSync('src/game/world/generated', { recursive: true });
@@ -752,3 +787,34 @@ ${weaves
 `,
 );
 console.log(`public/assets/frlg-areas.png  ${SHEET_COLUMNS}x${rows} tiles, ${cut.length} pieces`);
+
+// The Game Corner's own sheet and where each piece of it landed.
+const corner = pack(cornerCut);
+writePng('public/assets/frlg-game-corner.png', corner.sheet);
+mkdirSync('src/game/base/generated', { recursive: true });
+writeFileSync(
+  'src/game/base/generated/gameCornerPieces.ts',
+  `// Generated by scripts/cut-frlg-areas.mjs from pret/pokefirered at ${PRET_COMMIT}.
+// Do not edit: re-run the script.
+
+/** The sheet THE GAME CORNER's two rooms are drawn from: Celadon's Game Corner and its prize room. */
+export const GAME_CORNER_SHEET = {
+  imagePath: 'assets/frlg-game-corner.png',
+  columns: ${SHEET_COLUMNS},
+  rows: ${corner.rows},
+} as const;
+
+/** Where each named piece sits on the sheet, in tiles. */
+export const GAME_CORNER_PIECES = {
+${cornerCut
+  .map((piece) => {
+    const at = corner.placed.get(piece.name);
+    return `  '${piece.name}': { column: ${at.column}, row: ${at.row}, width: ${at.width}, height: ${at.height} },`;
+  })
+  .join('\n')}
+} as const;
+
+export type GameCornerPieceName = keyof typeof GAME_CORNER_PIECES;
+`,
+);
+console.log(`public/assets/frlg-game-corner.png  ${SHEET_COLUMNS}x${corner.rows} tiles, ${cornerCut.length} pieces`);

@@ -808,6 +808,47 @@ can say RAID and then have a badge on the other side saying ARENA").
 - **Terms.** As its sources: the building and statue sit on the owner's ruling
   for `frlg-towns.png`, the banners stay CC0, and the rest is the owner's own.
 
+### `promenade.png` - THE PROMENADE's things and THE GAME CORNER's front
+
+**Derived from one file already in this repository, the rest drawn here.**
+THE GAME CORNER is `frlg-towns.png`'s Celadon Game Corner (above, on that
+file's ruling: ripped FireRed/LeafGreen art, rights holders Nintendo /
+Creatures / Game Freak, accepted knowingly); every pixel added to it, and every
+other piece on the sheet, was drawn here, for this game, on 2026-11-05, because
+the owner asked for the new buildings to say what they are, as THE RAID ARENA
+does, and for the promenade to be varied rather than samey.
+
+- **How it was made.** `scripts/draw-promenade.mjs` is the whole method and
+  reads the Game Corner out of the committed `frlg-towns.png`, so a re-cut moves
+  it with it. On the building: the outline the town cut lifted as Celadon's
+  ground is made solid again in its own colours; a marquee board reading GAME
+  CORNER in lit letters inside a ring of bulbs is drawn over its upper windows;
+  a gold ticket reading PRIZES over the prize window; both doors' glass lit warm.
+  Drawn from nothing: a seaside lamp post, a lifebuoy, pennants, parasols,
+  deckchairs, beach huts, a promenade railing, flower troughs, an ice-cream cart
+  and the POKéMON JUMP cabinet. Every colour is a 15-bit value or one FireRed's
+  own palette already uses.
+- **Terms.** As its source: the building sits on the owner's ruling for
+  `frlg-towns.png`, and the rest is the owner's own.
+
+### `frlg-game-corner.png` - THE GAME CORNER's two rooms: Celadon's Game Corner and its prize room
+
+Pokemon FireRed/LeafGreen art, rights holders Nintendo / Creatures / Game Freak,
+no licence from them, as `frlg-areas.png` below.
+
+- **Source.** pret's FireRed disassembly, **pret/pokefirered**
+  (<https://github.com/pret/pokefirered>), at commit
+  `037335f4c725d7c9aecdac87066f2002b4bd7e14` (whose `data/tilesets` and
+  `data/layouts` are `c75f352`'s, which the cutter is pinned to), read
+  2026-11-05: the layouts `CeladonCity_GameCorner` and
+  `CeladonCity_GameCorner_PrizeRoom`, drawn with `gTileset_Building` and
+  `gTileset_GameCorner`.
+- **Terms.** As for `frlg-areas.png`: nothing of the checkout is committed;
+  what ships is a cut - 12 named pieces on a new 20x9 grid.
+- **How it was cut.** `scripts/cut-frlg-areas.mjs` is the whole method (its
+  `sheet: 'corner'` pieces, packed apart so the area sheet never moves), and
+  writes `src/game/base/generated/gameCornerPieces.ts`.
+
 ### `pokemon-icons.png` - every Pokemon's party icon, for the map maker
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the same

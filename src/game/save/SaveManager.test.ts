@@ -2685,6 +2685,62 @@ describe('the angler\'s tally of what has been reeled in off the harbour', () =>
   });
 });
 
+describe("THE GAME CORNER's tickets, kept at home", () => {
+  const NOON = new Date(2026, 10, 5, 12);
+  const NEXT_DAY = new Date(2026, 10, 6, 12);
+
+  it('is absent on a save that never played, and reads as no tickets', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    expect(saves.load()?.raidProgress.gameCorner).toBeUndefined();
+  });
+
+  it('pays a POKéMON JUMP score once a day in tickets and berries, and keeps it through a reload', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const first = saves.playJump(6200, NOON, () => 0);
+    expect(first?.payout.tickets).toBe(30);
+    expect(first?.berries).toEqual(['oran-berry']);
+    // The same score again pays nothing more today.
+    expect(saves.playJump(6200, NOON)?.payout.tickets).toBe(0);
+    const reloaded = new SaveManager(storage).load();
+    expect(reloaded?.raidProgress.gameCorner?.tickets).toBe(30);
+    expect(reloaded?.stash.itemCount('oran-berry')).toBe(1);
+    // A new day pays again.
+    expect(saves.playJump(300, NEXT_DAY)?.payout.tickets).toBe(10);
+    expect(new SaveManager(storage).load()?.raidProgress.gameCorner?.tickets).toBe(40);
+  });
+
+  it('spends tickets on a prize in one write, and refuses what they cannot buy', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    expect(saves.buyTicketPrize('sitrus-berry', NOON)).toBeNull();
+    saves.playJump(6200, NOON);
+    const bought = saves.buyTicketPrize('sitrus-berry', NOON);
+    expect(bought?.raidProgress.gameCorner?.tickets).toBe(10);
+    expect(bought?.stash.itemCount('sitrus-berry')).toBeGreaterThanOrEqual(1);
+    // Never anything that is not on the window.
+    expect(saves.buyTicketPrize('potion', NOON)).toBeNull();
+  });
+
+  it('reads a record written wrong back as only what it can believe', () => {
+    const storage = new MemoryStorage();
+    freshSave(storage);
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.gameCorner = {
+      tickets: -5,
+      best: { 'pokemon-jump': 900, slots: 77 },
+      day: { day: 'today', paid: {}, bought: { potion: 3 } },
+    };
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    expect(new SaveManager(storage).load()?.raidProgress.gameCorner).toEqual({
+      tickets: 0,
+      best: { 'pokemon-jump': 900 },
+      day: null,
+    });
+  });
+});
+
 describe('what the player wears, and the wardrobe they have bought', () => {
   it('reads a save written before the boutique as the classic look, owning only the starter pieces', () => {
     const storage = new MemoryStorage();

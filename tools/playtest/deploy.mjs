@@ -68,8 +68,8 @@ export async function walkIntoBase(page, door, options = {}) {
     throw new Error(`walkIntoBase: the game loop is paused, so it only moves when stepped - hand over the driver's own \`wait\``);
   }
   await until(sceneIs('base'), 'the base');
-  // A keeper's screen is the hub; THE HARBOUR BOUTIQUE's is a screen of its own over the harbour.
-  const opened = `${sceneIs('hub')} || ${sceneIs('boutique')}`;
+  // A keeper's screen is the hub; THE HARBOUR BOUTIQUE's and THE GAME CORNER's are screens of their own over the harbour.
+  const opened = `${sceneIs('hub')} || ${sceneIs('boutique')} || ${sceneIs('game-corner')}`;
   const inHall = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && !b.leaving && b.room?.id === 'raid-arena'; })()`;
   for (let guard = 0; guard < 120; guard += 1) {
     if (await page.evaluate(opened)) {
@@ -103,8 +103,8 @@ export async function walkIntoBase(page, door, options = {}) {
           if (room.id !== ${JSON.stringify(door)}) {
             const on = room.mat && b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
             if (on) return { key: 'ArrowDown' };
-          } else if (room.id === 'pokemon-centre' || room.id === 'brocks-workshop' || room.id === 'bills-cottage') {
-            const opens = { 'pokemon-centre': 'boxes', 'brocks-workshop': 'ladder', 'bills-cottage': 'list' }[room.id];
+          } else if (room.id === 'pokemon-centre' || room.id === 'brocks-workshop' || room.id === 'bills-cottage' || room.id === 'game-corner') {
+            const opens = { 'pokemon-centre': 'boxes', 'brocks-workshop': 'ladder', 'bills-cottage': 'list', 'game-corner': 'pokemon-jump' }[room.id];
             const tiles = b.place.room.things.find((thing) => thing.opens === opens).tiles;
             const pc = tiles.reduce((low, tile) => (tile.y > low.y ? tile : low));
             var goals = [{ x: pc.x, y: pc.y + 1 }];

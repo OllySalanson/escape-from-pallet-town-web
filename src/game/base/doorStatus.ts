@@ -17,6 +17,7 @@ import { isFirstRaid } from '../hub/firstRaid';
 import { caseBadges, wonBadges } from './badgeCase';
 import { ownedWearables } from '../look/wardrobe';
 import { STARTER_WEARABLES, WEARABLES } from '../look/wearables';
+import { NO_GAME_CORNER } from '../minigames/tickets';
 
 /**
  * What each door says about what is waiting inside it.
@@ -112,6 +113,15 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
       ).filter((offer) => offer.affordable).length;
       const standing = `${built} of ${WORKSHOP_UPGRADES.length} built`;
       return ready === 0 ? standing : `${standing} · ${ready} ready`;
+    }
+    case 'game-corner': {
+      // What the arcade has on today: the one cabinet, and how it has gone.
+      const best = (game.raidProgress.gameCorner ?? NO_GAME_CORNER).best['pokemon-jump'] ?? 0;
+      return best === 0 ? 'POKéMON JUMP · win TICKETS' : `POKéMON JUMP · best ${best.toLocaleString('en-GB')}`;
+    }
+    case 'prizes': {
+      const tickets = (game.raidProgress.gameCorner ?? NO_GAME_CORNER).tickets;
+      return tickets === 0 ? 'Berries and furniture for TICKETS' : `${tickets.toLocaleString('en-GB')} tickets to spend`;
     }
     case 'trader': {
       if (errand) {

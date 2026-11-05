@@ -4169,6 +4169,21 @@ button {
   flex: 0 1 calc(var(--u) * 80);
   text-transform: uppercase;
 }
+/* --- THE GAME CORNER (`minigames/gameCornerView.ts`) --------------------- */
+/* The cabinet's list and the prize window: one pane that scrolls inside the
+   screen over the bar along its foot, as the console's GAMES menu does. */
+:where(.pixel-ui) .game-corner-layout {
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-content: stretch;
+  height: 100%;
+}
+:where(.pixel-ui) .game-corner-layout > .px-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  min-height: 0;
+}
 /* --- Play stats (`analytics/statsView.ts`) ------------------------------ */
 /* The owner's page: a sheet of windows that scrolls as one, side by side
    while there is room and stacked when there is not. */

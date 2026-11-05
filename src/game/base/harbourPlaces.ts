@@ -20,6 +20,24 @@ export interface HarbourPlace {
 
 export const HARBOUR_PLACES: readonly HarbourPlace[] = [
   {
+    id: 'pleasure-pier',
+    name: 'THE PLEASURE PIER',
+    areas: [
+      { x: 79, y: 17, width: 3, height: 11 },
+      { x: 76, y: 28, width: 9, height: 3 },
+    ],
+  },
+  {
+    id: 'beach',
+    name: 'THE BEACH',
+    areas: [{ x: 61, y: 17, width: 26, height: 6 }],
+  },
+  {
+    id: 'promenade',
+    name: 'THE PROMENADE',
+    areas: [{ x: 61, y: 4, width: 26, height: 13 }],
+  },
+  {
     id: 'long-pier',
     name: 'THE LONG PIER',
     areas: [{ x: 28, y: 22, width: 3, height: 6 }],

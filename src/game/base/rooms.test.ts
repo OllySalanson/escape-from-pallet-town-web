@@ -3,7 +3,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { TILE_SIZE } from '../worldMap';
-import { BASE_DOORS } from './doors';
+import { BASE_DOORS, PLACES_TO_GO } from './doors';
 import {
   BASE_ROOMS,
   CENTER_DISPLAY,
@@ -154,9 +154,9 @@ describe('the rooms behind the base doors', () => {
     const limits: Record<string, number> = { 'the yard': 18, 'the quay': 28 };
     for (const start of BASE_STARTS) {
       for (const walk of walksToKeepers(start.tile, game)) {
-        // THE HARBOUR BOUTIQUE is somewhere to go when a raid has paid, not a
-        // keeper a raid re-kits at: its own walk is held in `baseMap.test.ts`.
-        const limit = walk.door.id === 'boutique' ? Infinity : limits[start.name];
+        // THE HARBOUR BOUTIQUE and THE GAME CORNER are somewhere to go, not a
+        // keeper a raid re-kits at: their own walks are held in `baseMap.test.ts`.
+        const limit = PLACES_TO_GO.includes(walk.door.id) ? Infinity : limits[start.name];
         expect([start.name, walk.door.id, walk.yard <= limit]).toEqual([
           start.name,
           walk.door.id,
@@ -165,7 +165,10 @@ describe('the rooms behind the base doors', () => {
         // Bill's goods stand between him and the door. Nobody has to cross them
         // to hear him: the key on the mat speaks to him all the same.
         // The marshal stands through the gate from the Arena's door: nobody has to go to her.
-        const across = walk.door.id === 'bills-cottage' ? 7 : walk.door.id === 'raid-arena' ? 8 : 4;
+        // THE GAME CORNER's attendant is across the arcade, behind the coin
+        // counter on its back wall, and the prize clerk across the prize room:
+        // the key on the mat speaks to them too.
+        const across = { 'bills-cottage': 7, 'raid-arena': 8, 'game-corner': 9, 'prize-window': 6 }[walk.door.id] ?? 4;
         expect([walk.door.id, walk.acrossTheRoom <= across]).toEqual([walk.door.id, true]);
       }
     }

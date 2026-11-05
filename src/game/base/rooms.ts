@@ -11,6 +11,9 @@ import { AREA_PIECES, type AreaPieceName } from '../world/generated/areaPieces';
 import { AREA_SHEET_SOURCE } from '../world/tileset/areaSheet';
 import { INSIDE_PROPS } from '../world/tileset/insideTileset';
 import { BOUTIQUE_NAME } from '../look/wearables';
+import { GAME_CORNER_SHEET_PIECES } from './gameCornerSheet';
+import { PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
+import { jumpCabinetLines, jumpCabinetNote } from '../minigames/gameCornerTalk';
 import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
 import {
   BALL_LEFT_LINE,
@@ -121,10 +124,13 @@ export type RoomId =
   | 'bolthole'
   | 'bolthole-upstairs'
   | 'boutique'
+  | 'game-corner'
+  | 'prize-window'
   | 'raid-arena';
 
 export type RoomPropName =
   | BoutiquePropName
+  | GameCornerPropName
   | 'labComputers'
   | 'labMachine'
   | 'labTable'
@@ -293,8 +299,39 @@ const BOUTIQUE_PROPS: Readonly<Record<BoutiquePropName, PropDefinition>> = {
   martMat: INSIDE_PROPS.martMat,
 };
 
+/**
+ * THE GAME CORNER's two rooms, in Celadon's own (`gameCornerSheet.ts`): the
+ * coin counter in its green L, a column of slot machines and their stools,
+ * the prize room's counter and glass cases, and the POKéMON JUMP cabinet
+ * drawn for it (`promenadeSheet.ts`). Behind a counter is solid but the one
+ * tile its clerk stands on, as Joy's is.
+ */
+type GameCornerPropName =
+  | 'cornerCounter'
+  | 'cornerPlant'
+  | 'cornerSlots'
+  | 'cornerStool'
+  | 'cornerMat'
+  | 'prizeCounter'
+  | 'prizeCase'
+  | 'prizeMat'
+  | 'jumpCabinet';
+
+const GAME_CORNER_PROPS: Readonly<Record<GameCornerPropName, PropDefinition>> = {
+  cornerCounter: GAME_CORNER_SHEET_PIECES.prop('corner.counter', 'counter', ['#########', '#########', '####.####', '#########']),
+  cornerPlant: GAME_CORNER_SHEET_PIECES.solid('corner.plant', 'plant'),
+  cornerSlots: GAME_CORNER_SHEET_PIECES.solid('corner.slots', 'slot machines'),
+  cornerStool: GAME_CORNER_SHEET_PIECES.solid('corner.stool', 'stool'),
+  cornerMat: GAME_CORNER_SHEET_PIECES.floor('corner.mat', 'door mat'),
+  prizeCounter: GAME_CORNER_SHEET_PIECES.prop('prize.counter', 'counter', ['#########', '#########', '####.####', '#########']),
+  prizeCase: GAME_CORNER_SHEET_PIECES.solid('prize.case', 'prize case'),
+  prizeMat: GAME_CORNER_SHEET_PIECES.floor('prize.mat', 'door mat'),
+  jumpCabinet: promenadeProp('jumpCabinet', 'POKéMON JUMP cabinet'),
+};
+
 const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
   ...BOUTIQUE_PROPS,
+  ...GAME_CORNER_PROPS,
   labComputers: solidPiece('lab.computers', 'computers'),
   labMachine: pieceProp('lab.machine', 'machine', ['###', '###', '.##']),
   labTable: solidPiece('lab.table', 'table'),
@@ -385,6 +422,17 @@ const BOUTIQUE = roomCatalogue(
   ROOM_PROPS,
   pieceSheet<AreaPieceName>(AREA_SHEET_SOURCE, AREA_PIECES),
 );
+const GAME_CORNER_CATALOGUE = roomCatalogue(
+  {
+    floor: 'corner.floor',
+    floorShade: 'corner.floorShade',
+    wallUpper: 'corner.wallUpper',
+    wallLower: 'corner.wallLower',
+  },
+  ROOM_PROPS,
+  GAME_CORNER_SHEET_PIECES,
+);
+const GAME_CORNER = { ...GAME_CORNER_CATALOGUE, sources: [...GAME_CORNER_CATALOGUE.sources, PROMENADE_SHEET_SOURCE.source] };
 const HOUSE = roomCatalogue(
   {
     floor: 'home.floor',
@@ -441,7 +489,7 @@ export interface RoomThing {
    * Center's PC opens the boxes, and Brock's tally and Bill's PC open the whole
    * ladder and the whole list, for reading them side by side and counting.
    */
-  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | 'ladder' | 'list' | 'telescope' | ArenaStationId;
+  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | 'ladder' | 'list' | 'telescope' | 'pokemon-jump' | ArenaStationId;
   /**
    * It is read in the dialogue box, a notice a line, with what its notices are
    * worked out when it is read: Oak's cork board (`base/labBoard.ts`).
@@ -891,6 +939,44 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     counter: [2, 3, 4].map((x) => ({ x, y: 4 })),
     stairs: [],
   },
+  // THE GAME CORNER (`../minigames/`): the hall is the arcade, with its
+  // attendant inside the coin counter's L, the POKéMON JUMP cabinet against
+  // the back wall and the old slot machines down each side; the prize window
+  // is its own little room next door, with a clerk behind the counter.
+  {
+    id: 'game-corner',
+    screen: 'game-corner',
+    name: 'GAME CORNER',
+    width: 15,
+    height: 12,
+    mat: { x: 7, y: 11 },
+    keeper: {
+      id: 'attendant',
+      name: 'ATTENDANT',
+      design: 'beauty',
+      position: { x: 5, y: 2 },
+      facing: 'down',
+    },
+    counter: [3, 4, 5, 6, 7].map((x) => ({ x, y: 3 })),
+    stairs: [],
+  },
+  {
+    id: 'prize-window',
+    screen: 'prizes',
+    name: 'PRIZE WINDOW',
+    width: 9,
+    height: 10,
+    mat: { x: 4, y: 9 },
+    keeper: {
+      id: 'prize-clerk',
+      name: 'PRIZE CLERK',
+      design: 'clerk',
+      position: { x: 4, y: 2 },
+      facing: 'down',
+    },
+    counter: [2, 3, 4, 5, 6].map((x) => ({ x, y: 3 })),
+    stairs: [],
+  },
   // THE RAID ARENA's great hall (`arenaHall.ts`): the marshal stands by the way
   // in, and everything a raid wants is on the floor around her.
   {
@@ -1335,6 +1421,63 @@ function drawBoutique(room: BaseRoom): Drawn {
   return { sketch, catalogue: BOUTIQUE, things, sprites: [] };
 }
 
+// --- THE GAME CORNER ----------------------------------------------------------
+
+/**
+ * Celadon's Game Corner, cut down to a seaside arcade: the coin counter in its
+ * green L along the back wall with the attendant inside it, the POKéMON JUMP
+ * cabinet beside it, and FireRed's slot machines in a column down each side,
+ * a stool at each.
+ */
+function drawGameCorner(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
+  const sketch = shell(room);
+  sketch.plant(1, 0, 'cornerCounter');
+  sketch.plant(0, 2, 'cornerPlant');
+  sketch.plant(14, 2, 'cornerPlant');
+  sketch.plant(11, 1, 'jumpCabinet');
+  sketch.plant(1, 5, 'cornerSlots');
+  sketch.plant(12, 5, 'cornerSlots');
+  for (let y = 6; y <= 9; y += 1) {
+    sketch.plant(3, y, 'cornerStool');
+    sketch.plant(11, y, 'cornerStool');
+  }
+  sketch.plant(6, 11, 'cornerMat');
+  const things: RoomThing[] = [
+    {
+      name: 'POKéMON JUMP',
+      note: jumpCabinetNote(game.raidProgress, now),
+      tiles: [1, 2, 3].flatMap((y) => [11, 12].map((x) => ({ x, y }))),
+      opens: 'pokemon-jump',
+      lines: jumpCabinetLines(),
+    },
+    {
+      name: 'THE SLOTS',
+      note: 'Old one-armed bandits',
+      tiles: [1, 2, 12, 13].flatMap((x) => [5, 6, 7, 8, 9, 10].map((y) => ({ x, y }))),
+      lines: ['FireRed’s slot machines, kept for the look of the place. They take coins, and this harbour has none: the cabinets pay in TICKETS.'],
+    },
+  ];
+  return { sketch, catalogue: GAME_CORNER, things, sprites: [] };
+}
+
+/** Celadon's prize room as it stands: the counter across the back, a glass case either side. */
+function drawPrizeWindow(room: BaseRoom): Drawn {
+  const sketch = shell(room);
+  sketch.plant(0, 0, 'prizeCounter');
+  sketch.plant(0, 5, 'prizeCase');
+  sketch.plant(7, 5, 'prizeCase');
+  sketch.plant(3, 9, 'prizeMat');
+  const things: RoomThing[] = [
+    {
+      name: 'THE CASES',
+      note: 'What tickets buy',
+      tiles: [0, 1, 7, 8].flatMap((x) => [5, 6, 7].map((y) => ({ x, y }))),
+      lines: ['Berries in jars, cushions, plants and mats for the house. Nothing in the cases goes on a raid but a berry.'],
+    },
+  ];
+  return { sketch, catalogue: GAME_CORNER, things, sprites: [] };
+}
+
 // --- THE BOLTHOLE -----------------------------------------------------------
 
 /**
@@ -1581,6 +1724,8 @@ const DRAWERS: Readonly<Record<Exclude<RoomId, 'raid-arena'>, (room: BaseRoom, g
   'brocks-workshop': drawWorkshop,
   'bills-cottage': drawCottage,
   boutique: drawBoutique,
+  'game-corner': drawGameCorner,
+  'prize-window': drawPrizeWindow,
   bolthole: drawHome,
   'bolthole-upstairs': drawUpstairs,
 };

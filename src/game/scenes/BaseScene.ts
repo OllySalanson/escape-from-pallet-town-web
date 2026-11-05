@@ -65,6 +65,8 @@ import {
 import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import type { BoutiqueSceneData } from './BoutiqueScene';
+import type { GameCornerSceneData } from './GameCornerScene';
+import { attendantLines, prizeClerkLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
@@ -4791,6 +4793,10 @@ export class BaseScene extends Phaser.Scene {
         this.openBoutique('wardrobe');
         return;
       }
+      if (thing?.opens === 'pokemon-jump') {
+        this.openGameCorner('jump');
+        return;
+      }
       if (thing) {
         this.say(thing.lines ?? [`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
       }
@@ -5524,6 +5530,16 @@ export class BaseScene extends Phaser.Scene {
     // The hall's marshal is `speakToMarshal`: everything in it is on the floor.
     if (screen === 'boutique') {
       favourThen(() => this.openBoutique('shop'));
+      return;
+    }
+    // THE GAME CORNER's attendant says how the place works; the prize clerk
+    // says what is in hand and opens the window (`minigames/gameCornerTalk.ts`).
+    if (screen === 'game-corner') {
+      this.say(attendantLines(this.freshGame().raidProgress), about);
+      return;
+    }
+    if (screen === 'prizes') {
+      this.say(prizeClerkLines(this.freshGame().raidProgress), about, () => this.openGameCorner('prizes'));
     }
   }
 
@@ -6059,6 +6075,29 @@ export class BaseScene extends Phaser.Scene {
   private clearKeeperMark(): void {
     this.keeperMark?.destroy();
     this.keeperMark = null;
+  }
+
+  /**
+   * THE GAME CORNER's POKéMON JUMP cabinet or its prize window: a screen over
+   * the paused harbour (`scenes/GameCornerScene.ts`). Coming back, the room is
+   * drawn again, so the cabinet's caption says the new best.
+   */
+  private openGameCorner(mode: GameCornerSceneData['mode']): void {
+    if (this.leaving) {
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.input.keyboard?.resetKeys();
+      this.savedGame = this.saveManager.load() ?? this.savedGame;
+      this.redrawRoom(this.savedGame);
+      this.showHint(this.hintHere());
+    });
+    this.scene.pause();
+    this.scene.launch('game-corner', { mode, pausedBase: true } satisfies GameCornerSceneData);
   }
 
   /**

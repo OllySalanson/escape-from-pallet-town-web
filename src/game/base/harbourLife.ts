@@ -230,6 +230,36 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
       'Out there, mind, you\'re on your own.',
     ],
   },
+  // THE PROMENADE's people: the woman with the ice-cream cart on the beach,
+  // and a boy outside THE GAME CORNER counting what his tickets will buy.
+  {
+    id: 'ice-cream-seller',
+    kind: 'person',
+    name: 'ICE CREAM SELLER',
+    design: 'woman',
+    position: at(85, 19),
+    facing: 'left',
+    byDayOnly: true,
+    idle: { glances: ['down', 'left'], beatMs: 6700 },
+    lines: [
+      'Ice cream! Lava Cookie swirl, Moomoo vanilla! ...Sold out, sorry, love.',
+      'The lad with the cart before me went out on a raid and never came back for it.',
+    ],
+  },
+  {
+    id: 'arcade-boy',
+    kind: 'person',
+    name: 'YOUNGSTER',
+    design: 'youngster',
+    position: at(84, 12),
+    facing: 'left',
+    byDayOnly: true,
+    idle: { glances: ['up', 'left'], beatMs: 4300 },
+    lines: [
+      'My RATTATA jumps that vine like it\'s nothing! Small and quick, that\'s the trick.',
+      'I\'m saving my TICKETS for the CUTE TV. Ninety-eight more games to go.',
+    ],
+  },
 ];
 
 export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
@@ -347,6 +377,26 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     idle: { roam: [at(15, 29), at(15, 30), at(14, 30)], glances: ['left', 'right'], beatMs: 4900 },
     lines: ['TENTACOOL is drifting with the tide.'],
     swims: true,
+  },
+  {
+    id: 'beach-krabby',
+    kind: 'pokemon',
+    species: 'krabby',
+    name: 'KRABBY',
+    position: at(73, 21),
+    facing: 'down',
+    idle: { roam: [at(72, 21), at(72, 22), at(73, 22)], glances: ['left', 'right'], beatMs: 2300 },
+    lines: ['KRABBY is digging in the sand. It does not want to be watched.'],
+  },
+  {
+    id: 'pier-psyduck',
+    kind: 'pokemon',
+    species: 'psyduck',
+    name: 'PSYDUCK',
+    position: at(82, 29),
+    facing: 'down',
+    idle: { glances: ['left', 'down'], beatMs: 9100 },
+    lines: ['PSYDUCK is looking out to sea from the end of the pier, holding its head.'],
   },
 ];
 
