@@ -2,16 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { TILE_SIZE } from '../worldMap';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { areaFrame } from './areaFrame';
-import { PLAYER_MARKER_GROUND_LAYERS } from './characterPresentation';
 import { layOutAreas } from './mapAreas';
 
-/** The lowest world pixel row drawn for a player standing on a tile row: soles and ground ring. */
+/** The lowest world pixel row drawn for a player standing on a tile row: their soles. */
 function lowestDrawnRow(tileY: number): number {
   const frameTop = tileY * TILE_SIZE + TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
-  const ringFoot = Math.max(
-    ...PLAYER_MARKER_GROUND_LAYERS.flatMap((layer) => layer.rects.map((rect) => rect.y + rect.height - 1)),
-  );
-  return frameTop + Math.max(CHARACTER_FEET_PIXEL_Y, ringFoot);
+  return frameTop + CHARACTER_FEET_PIXEL_Y;
 }
 
 const VIEW = { width: 400, height: 256 };
@@ -19,8 +15,8 @@ const VIEW = { width: 400, height: 256 };
 describe('the dark round a place', () => {
   // Every room's door mat is on its last row, so this is where a player
   // arriving in any building stands: the slab under the room cut their
-  // shoes and ground ring off.
-  it('leaves a player standing on a room’s last row whole, feet and ring', () => {
+  // shoes off.
+  it('leaves a player standing on a room’s last row whole, feet and all', () => {
     const room = { x: 70, y: 1, width: 12, height: 9 };
     const { slabs, bounds } = areaFrame(room, VIEW);
     const below = slabs.find((slab) => slab.y > room.y * TILE_SIZE);

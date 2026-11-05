@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { WORLD_MAPS } from '../worldMap';
 import {
-  CHARACTER_FEET_PIXEL_Y,
   CHARACTER_FRAME_WIDTH,
   CHARACTER_HEAD_PIXEL_Y,
 } from '../playerFrames';
@@ -20,7 +19,6 @@ import {
   outlineRects,
   PLAYER_MARKER_COLOUR,
   PLAYER_MARKER_DEPTH,
-  PLAYER_MARKER_GROUND_LAYERS,
   PLAYER_MARKER_HEAD_LAYERS,
   SHARED_CHARACTER_TEXTURE,
   worldCharacterIdleFrame,
@@ -34,7 +32,7 @@ const OTHER_ROLES = WORLD_CHARACTER_ROLES.filter(
   (role): role is Exclude<WorldCharacterRole, 'player'> => role !== 'player',
 );
 
-const ALL_LAYERS = [...PLAYER_MARKER_GROUND_LAYERS, ...PLAYER_MARKER_HEAD_LAYERS];
+const ALL_LAYERS = PLAYER_MARKER_HEAD_LAYERS;
 
 function pixels(rects: readonly MarkerRect[]): { x: number; y: number }[] {
   return rects.flatMap((rect) =>
@@ -181,9 +179,13 @@ describe('a figure that names a design of its own', () => {
 });
 
 describe('the player marker', () => {
-  it('marks the player from both ends, so covering one mark cannot hide them', () => {
-    expect(PLAYER_MARKER_GROUND_LAYERS.length).toBeGreaterThan(0);
+  it('marks the player over the head and never over their own sprite', () => {
+    // A teal ring painted over the boots cut the player's feet off and read as
+    // "a blue circle under you" (the captain, 2026-11-05). The chevron is the
+    // one mark, and nothing of it reaches the figure below the hair.
     expect(PLAYER_MARKER_HEAD_LAYERS.length).toBeGreaterThan(0);
+    const drawn = pixels(ALL_LAYERS.flatMap((layer) => [...layer.rects]));
+    expect(Math.max(...drawn.map((pixel) => pixel.y))).toBeLessThan(CHARACTER_HEAD_PIXEL_Y);
   });
 
   it('reads while standing still: nothing about it depends on the player moving', () => {
@@ -194,10 +196,10 @@ describe('the player marker', () => {
     }
   });
 
-  it('uses the interface accent for both marks', () => {
+  it('uses the interface accent for the mark', () => {
     const accents = ALL_LAYERS.filter((layer) => layer.alpha === 1).map((layer) => layer.colour);
 
-    expect(accents).toEqual([PLAYER_MARKER_COLOUR, PLAYER_MARKER_COLOUR]);
+    expect(accents).toEqual([PLAYER_MARKER_COLOUR]);
   });
 
   it('takes the accent from --menu-accent in the stylesheet rather than inventing one', async () => {
@@ -207,23 +209,14 @@ describe('the player marker', () => {
     expect(stylesheet).toContain(`--menu-accent: ${accent};`);
   });
 
-  it('rests the ground mark on the sole line and never up the legs', () => {
-    const ground = pixels(PLAYER_MARKER_GROUND_LAYERS.flatMap((layer) => [...layer.rects]));
-    const top = Math.min(...ground.map((pixel) => pixel.y));
-    const bottom = Math.max(...ground.map((pixel) => pixel.y));
-
-    expect(top).toBe(CHARACTER_FEET_PIXEL_Y - 2);
-    expect(bottom).toBe(CHARACTER_FEET_PIXEL_Y + 1);
-  });
-
   it('holds the head mark clear of the hair', () => {
     const head = pixels(PLAYER_MARKER_HEAD_LAYERS.flatMap((layer) => [...layer.rects]));
 
     expect(Math.max(...head.map((pixel) => pixel.y))).toBeLessThan(CHARACTER_HEAD_PIXEL_Y);
   });
 
-  it('centres both marks on the figure and keeps them inside the frame width', () => {
-    for (const layers of [PLAYER_MARKER_GROUND_LAYERS, PLAYER_MARKER_HEAD_LAYERS]) {
+  it('centres the mark on the figure and keeps it inside the frame width', () => {
+    for (const layers of [PLAYER_MARKER_HEAD_LAYERS]) {
       const drawn = pixels(layers.flatMap((layer) => [...layer.rects]));
       const left = Math.min(...drawn.map((pixel) => pixel.x));
       const right = Math.max(...drawn.map((pixel) => pixel.x));
@@ -234,7 +227,7 @@ describe('the player marker', () => {
     }
   });
 
-  it('lands on whole pixels, so neither mark blurs against the sprite art', () => {
+  it('lands on whole pixels, so the mark never blurs against the sprite art', () => {
     for (const layer of ALL_LAYERS) {
       for (const rect of layer.rects) {
         expect(Number.isInteger(rect.x)).toBe(true);
@@ -246,7 +239,7 @@ describe('the player marker', () => {
   });
 
   it('backs every accent shape with a darker outline, so it holds on any ground', () => {
-    for (const layers of [PLAYER_MARKER_GROUND_LAYERS, PLAYER_MARKER_HEAD_LAYERS]) {
+    for (const layers of [PLAYER_MARKER_HEAD_LAYERS]) {
       const shade = layers.filter((layer) => layer.colour !== PLAYER_MARKER_COLOUR);
       const accent = layers.filter((layer) => layer.colour === PLAYER_MARKER_COLOUR);
 
@@ -303,17 +296,18 @@ describe('the world scene draws what this module describes', () => {
     expect(scene).not.toContain("'character'");
     // The player sprite is never tinted, and no figure but the player is marked.
     expect(scene).not.toContain("createFigure('player'");
-    expect(scene.match(/paintPlayerMark\(/g)).toHaveLength(3);
+    expect(scene.match(/paintPlayerMark\(/g)).toHaveLength(2);
+    // And nothing is painted at the player's feet.
+    expect(scene).not.toContain('playerGroundMark');
   });
 
-  it('moves both marks wherever the player sprite moves', async () => {
+  it('moves the mark wherever the player sprite moves', async () => {
     const scene = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
     const setter = scene.slice(scene.indexOf('private setPlayerPosition('));
 
     // `setPlayerPosition` is the only place the player sprite is repositioned,
-    // so a mark can never be left behind on the tile the player walked off.
+    // so the mark can never be left behind on the tile the player walked off.
     expect(scene.match(/this\.player\.setPosition\(/g)).toHaveLength(1);
-    expect(setter).toContain('this.playerGroundMark.setPosition(x, y)');
     // The head mark drops a little onto a rider's head (`world/bicycle.ts`).
     expect(setter).toContain('this.playerHeadMark.setPosition(x, y');
   });
@@ -328,6 +322,5 @@ describe('the world scene draws what this module describes', () => {
       'const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);',
     );
     expect(setter).toContain('this.player.setDepth(depth);');
-    expect(setter).toContain('this.playerGroundMark.setPosition(x, y).setDepth(depth);');
   });
 });

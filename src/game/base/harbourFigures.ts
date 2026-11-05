@@ -37,7 +37,7 @@ import { SpeechBubble, overlaps, type BubbleBox } from './speechBubble';
  *
  * They are drawn from the same sheet as the player and in its true colours,
  * because every one of them is a player too; what tells this player which one
- * is them is the ground ring and chevron only they wear. They are not
+ * is them is the chevron only they wear. They are not
  * collision - walking into another player is walking past them, as walking into
  * the partner is - because a figure is only ever where a message said, and a
  * message is never believed enough to block a step. Their names are drawn

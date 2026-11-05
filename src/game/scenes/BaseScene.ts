@@ -23,7 +23,6 @@ import {
   getWorldCharacterAppearance,
   NO_TINT,
   PLAYER_MARKER_DEPTH,
-  PLAYER_MARKER_GROUND_LAYERS,
   PLAYER_MARKER_HEAD_LAYERS,
   SHARED_CHARACTER_TEXTURE,
   worldCharacterIdleFrame,
@@ -594,7 +593,6 @@ export class BaseScene extends Phaser.Scene {
   private bounds: GridBounds = { width: 0, height: 0 };
   private collision: boolean[][] = [];
   private player!: Phaser.GameObjects.Sprite;
-  private playerGroundMark!: Phaser.GameObjects.Graphics;
   private playerHeadMark!: Phaser.GameObjects.Graphics;
   private dialogBox!: DialogBox;
   private hintFrame!: Phaser.GameObjects.Graphics;
@@ -2039,7 +2037,6 @@ export class BaseScene extends Phaser.Scene {
         arena.crowdReacts(rising, this.figureMiddle());
       }
     }
-    this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
     this.player.setDepth(CANOPY_BAND + 1);
     camera.stopFollow();
@@ -3449,7 +3446,6 @@ export class BaseScene extends Phaser.Scene {
     this.player = this.add
       .sprite(0, 0, this.playerTexture, getIdleFrame(this.facing))
       .setOrigin(0, 0);
-    this.playerGroundMark = this.paintPlayerMark(PLAYER_MARKER_GROUND_LAYERS);
     this.playerHeadMark = this.paintPlayerMark(PLAYER_MARKER_HEAD_LAYERS).setDepth(
       PLAYER_MARKER_DEPTH,
     );
@@ -3474,7 +3470,6 @@ export class BaseScene extends Phaser.Scene {
     this.player.setPosition(x, y);
     const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);
     this.player.setDepth(depth);
-    this.playerGroundMark.setPosition(x, y).setDepth(depth);
     // On the head this look has: a FireRed cap starts lower than the classic crop.
     this.playerHeadMark.setPosition(x, y + lookHeadDrop(this.playerTexture));
   }
