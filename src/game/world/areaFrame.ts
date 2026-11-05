@@ -1,18 +1,14 @@
 import { TILE_SIZE } from '../worldMap';
-import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
-import { PLAYER_MARKER_GROUND_LAYERS } from './characterPresentation';
 
 /**
  * How far below the tile it stands on a figure is drawn, in game pixels: the
  * player's soles rest on the first row of the tile below (`CHARACTER_FEET_PIXEL_Y`
  * is a frame's row 27, and the frame stands 27 rows above that tile's top), and
- * the ground ring's outline is a row under the soles. Read off the marker
- * itself, so a redrawn ring moves the frame with it.
+ * a row of room is kept under them. That row was read off the player's ground
+ * ring once, whose outline sat in it; the ring is gone and the frame kept the
+ * room rather than moving every inside's dark by a pixel.
  */
-export const FIGURE_OVERHANG_PX = Math.max(
-  1,
-  ...PLAYER_MARKER_GROUND_LAYERS.flatMap((layer) => layer.rects.map((rect) => rect.y + rect.height)),
-) - CHARACTER_FEET_PIXEL_Y;
+export const FIGURE_OVERHANG_PX = 2;
 
 /** A rectangle in world pixels. */
 export interface PixelRect {
@@ -36,7 +32,7 @@ export interface AreaFrame {
  * The dark is drawn over every figure, so its bottom edge stands
  * `FIGURE_OVERHANG_PX` below the place's last row: somebody standing on that
  * row - a room's door mat is always there - is drawn a little into the tile
- * below, and a slab laid at the row's own edge cut their feet and ring off.
+ * below, and a slab laid at the row's own edge cut their feet off.
  * Places are laid at least a tile apart (`layOutAreas`), so those pixels never
  * show anything of the place beyond. An inside taller than the view lets the
  * camera down onto them too; the outdoors does not, because nobody stands on

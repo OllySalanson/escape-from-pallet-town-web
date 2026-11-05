@@ -48,7 +48,6 @@ import {
   headMarkCoversSomebody,
   NO_TINT,
   PLAYER_MARKER_DEPTH,
-  PLAYER_MARKER_GROUND_LAYERS,
   PLAYER_MARKER_HEAD_LAYERS,
   worldCharacterIdleFrame,
   type MarkerLayer,
@@ -720,7 +719,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   } | null = null;
   private player!: Phaser.GameObjects.Sprite;
   /** Travel with the player so which figure is yours never has to be guessed. */
-  private playerGroundMark!: Phaser.GameObjects.Graphics;
   private playerHeadMark!: Phaser.GameObjects.Graphics;
   private dialogBox!: DialogBox;
   private controls!: ControlKeys;
@@ -1589,7 +1587,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       restY: this.player.y,
       ground,
     };
-    this.playerGroundMark.setVisible(false);
     this.playerHeadMark.setVisible(false);
     this.advanceArrival(0);
     audioManager.play('diveRush');
@@ -1659,7 +1656,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.partner?.setDropHeight(0);
       this.cameras.main.setFollowOffset(0, 0);
       this.player.setY(arrival.restY);
-      this.playerGroundMark.setVisible(true);
       this.playerHeadMark.setVisible(true);
       this.arrival = null;
       this.showFirstDeploymentBriefing();
@@ -4289,9 +4285,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .setOrigin(0, 0);
     // Dressed on foot; `settleRiding` puts a rider back on straight after.
     this.riding = false;
-    // Painted after the sprite so the ring covers the player's own feet while
-    // still sorting behind anything standing in front of them.
-    this.playerGroundMark = this.paintPlayerMark(PLAYER_MARKER_GROUND_LAYERS);
     this.playerHeadMark =
       this.paintPlayerMark(PLAYER_MARKER_HEAD_LAYERS).setDepth(PLAYER_MARKER_DEPTH);
     this.setPlayerPosition(
@@ -4319,8 +4312,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * The one place the player moves. Both marks are positioned with the sprite
-   * rather than chased in `update`, so neither can lag a step behind.
+   * The one place the player moves. The head mark is positioned with the sprite
+   * rather than chased in `update`, so it can never lag a step behind.
    */
   private setPlayerPosition(x: number, y: number): void {
     this.player.setPosition(x, y);
@@ -4329,7 +4322,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // behind. A flat depth left the player behind every NPC on the map.
     const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);
     this.player.setDepth(depth);
-    this.playerGroundMark.setPosition(x, y).setDepth(depth);
     this.playerHeadMark.setPosition(x, y + this.headDrop());
   }
 
@@ -7546,7 +7538,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Its name has said what it had to; it goes with the ride.
     marker.label.destroy();
     this.worldLabels = this.worldLabels.filter((label) => label !== marker.label);
-    this.playerGroundMark?.setVisible(false);
     this.playerHeadMark?.setVisible(false);
     this.partner?.destroy();
     this.partner = null;
@@ -8048,7 +8039,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Aboard the ferry nobody is on deck; in a punt there is nowhere else to be.
     if (voyageNow.sailing.craft !== 'punt') {
       this.player.setVisible(false);
-      this.playerGroundMark.setVisible(false);
     }
     this.playerHeadMark.setVisible(false);
     this.currentTile = { ...tiles[0] };
@@ -8101,7 +8091,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // The last step is ashore: the boat lies at the far jetty and the
       // player walks off it onto the boards.
       this.player.setVisible(true);
-      this.playerGroundMark.setVisible(true);
       this.playerHeadMark.setVisible(true);
       this.facing = heading;
       this.player.play(this.playerWalkKey(), true);
@@ -8131,7 +8120,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.facing = OPPOSITE_DIRECTION[ashore.toward];
     this.player.setVisible(true);
-    this.playerGroundMark.setVisible(true);
     this.playerHeadMark.setVisible(true);
     this.setPlayerPosition(this.currentTile.x * TILE_SIZE, this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
     this.showIdlePose();

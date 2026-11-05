@@ -18,7 +18,7 @@ import { cabinetDayLabel, type Oddity } from '../hub/traderCabinet';
  *   and a FireRed book is two pixels by four. A 16px item icon on that shelf
  *   would be a crate the size of the cabinet, so every oddity has a miniature
  *   of its own, four pixels tall, drawn here as a pixel table (the way the
- *   player's ground ring is, `../world/characterPresentation.ts`) and told
+ *   player's head chevron is, `../world/characterPresentation.ts`) and told
  *   apart by silhouette and by the colours its full-size icon already uses.
  * - **Nothing moves once it is on a shelf.** The nth thing ever traded stands
  *   in the nth seat for good, so the first rope you gave him is where it was

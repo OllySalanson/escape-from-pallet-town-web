@@ -1,6 +1,5 @@
 import type { Direction } from '../movement/gridMovement';
 import {
-  CHARACTER_FEET_PIXEL_Y,
   CHARACTER_FRAME_WIDTH,
   CHARACTER_HEAD_PIXEL_Y,
   CHARACTER_SHEET_COLUMNS,
@@ -122,17 +121,15 @@ export function worldCharacterTint(role: WorldCharacterRole): number {
  */
 export const PLAYER_MARKER_COLOUR = 0x55d6be;
 
-/** Behind the accent, so both marks hold on sand, grass and water alike. */
+/** Behind the accent, so the mark holds on sand, grass and water alike. */
 export const PLAYER_MARKER_SHADE_COLOUR = 0x0d2b2c;
 
 /**
  * Figures sort at `2 + tile y / 1000` and world markers at `3 + tile y / 1000`,
  * so the head mark sits just under 3: above every figure any map can hold, and
  * below every marker, so it can neither be buried by a neighbour nor hide an
- * objective. The ground mark instead rides the player's own depth - it is light
- * on the ground the player is standing on, so a figure standing in front of the
- * player should cover it, and the head mark is what keeps the player findable
- * when one does.
+ * objective - which is what keeps the player findable when a figure stands in
+ * front of them.
  */
 export const PLAYER_MARKER_DEPTH = 2.999;
 
@@ -150,28 +147,18 @@ export interface MarkerLayer {
 }
 
 /**
- * The marker is centred on the tile, not on the figure: the sprite's own
+ * The head mark is centred on the tile, not on the figure: the sprite's own
  * centre shifts by a pixel between facings, and it is the tile the player is
- * standing on that the ring is describing. Every row is therefore an even
- * width, so both marks stay symmetric about the seam at the tile's middle.
+ * standing on that the mark is pointing at. Every row is therefore an even
+ * width, so the chevron stays symmetric about the seam at the tile's middle.
  */
 const CENTRE_X = CHARACTER_FRAME_WIDTH / 2;
-/** The ring is laid flat on the sole line, so it reads as ground, not water. */
-const RING_BASE_Y = CHARACTER_FEET_PIXEL_Y;
 /** Clear of the hair by its own outline, close enough to belong to the figure. */
 const CHEVRON_TIP_Y = CHARACTER_HEAD_PIXEL_Y - 3;
 const CHEVRON_TOP_WIDTH = 8;
 
 function row(y: number, width: number): MarkerRect {
   return { x: CENTRE_X - width / 2, y, width, height: 1 };
-}
-
-/**
- * A shallow pixel ellipse under the boots. Kept two rows tall so its outline
- * hugs the sole line rather than rising up the character's legs.
- */
-function ringShadowRows(): MarkerRect[] {
-  return [row(RING_BASE_Y - 1, 6), row(RING_BASE_Y, 8)];
 }
 
 /** Rows shrinking by two, so the chevron narrows to a blunt point at the tip. */
@@ -185,9 +172,9 @@ function chevronRows(): MarkerRect[] {
 
 /**
  * The one-pixel halo around a pixel shape: every four-neighbour of a filled
- * pixel that is not itself filled. Drawing the ring as the outline of the
- * shadow, and the chevron's edge as the outline of the chevron, keeps both
- * marks crisp at any zoom without hand-authoring a second set of rows.
+ * pixel that is not itself filled. Drawing the chevron's edge as the outline of
+ * the chevron keeps the mark crisp at any zoom without hand-authoring a second
+ * set of rows.
  */
 export function outlineRects(rects: readonly MarkerRect[]): MarkerRect[] {
   const filled = new Set<string>();
@@ -224,19 +211,18 @@ export function outlineRects(rects: readonly MarkerRect[]): MarkerRect[] {
 /**
  * The marker, in sprite-frame pixels: x from the left edge of the 16x32 frame,
  * y from its top, so it is drawn by offsetting from the player sprite's own
- * position. Each group is painted in order, back to front.
+ * position. Each layer is painted in order, back to front.
  *
- * Two marks rather than one, because either can be covered on its own: a
- * figure standing one tile south overlaps the ring, and the HUD and route
- * labels sit over the chevron. Neither is animated - the marker travels with
- * the player, so it needs no motion of its own to be found, and a pulse under
- * a closing hunter would only add noise.
+ * One mark, over the head, and nothing at the feet. There used to be a teal
+ * ring under the boots as well (#73, when every figure was the one shared
+ * sheet), painted over the sprite so it cut the player's feet off; once the
+ * player wore a look of their own and stood among designed figures, all it
+ * said was "a blue circle under you", which FireRed never draws (the captain,
+ * 2026-11-05). The chevron is drawn over every figure, so it is the mark that
+ * still finds the player when somebody stands in front of them. It is not
+ * animated: it travels with the player, so it needs no motion of its own to be
+ * found, and a pulse under a closing hunter would only add noise.
  */
-export const PLAYER_MARKER_GROUND_LAYERS: readonly MarkerLayer[] = [
-  { colour: PLAYER_MARKER_SHADE_COLOUR, alpha: 0.35, rects: ringShadowRows() },
-  { colour: PLAYER_MARKER_COLOUR, alpha: 1, rects: outlineRects(ringShadowRows()) },
-];
-
 export const PLAYER_MARKER_HEAD_LAYERS: readonly MarkerLayer[] = [
   { colour: PLAYER_MARKER_SHADE_COLOUR, alpha: 0.85, rects: outlineRects(chevronRows()) },
   { colour: PLAYER_MARKER_COLOUR, alpha: 1, rects: chevronRows() },
