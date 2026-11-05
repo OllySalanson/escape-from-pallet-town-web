@@ -683,18 +683,28 @@ describe('the move flags a double battle does not change', () => {
 });
 
 describe('where the one authored double battle is', () => {
-  it('is Warden Holt, and nobody else asks for two', () => {
+  it('is Warden Holt and the gyms, and nobody on a road asks for two', () => {
     const doubles = createRunTrainerEncounters().filter(
       (encounter) => (encounter.trainer.unitCount ?? 1) > 1,
     );
 
-    // One, deliberately. A double battle is two decisions a turn, and the only
-    // fight in a five-minute raid that can charge that is a boss holding the
-    // last door - see the note beside her in `trainers.ts`.
+    // Deliberately few. A double battle is two decisions a turn, and the only
+    // fights in a five-minute raid that can charge that are a boss holding the
+    // last door - see the note beside Holt in `trainers.ts` - and a gym, whose
+    // leader fights two on two because setter and payoff are what the gym is
+    // (the captain, 5 Nov 2026), and whose own trainers show that combo off
+    // the walk to her, so nobody has to fight them.
     expect(doubles.map((encounter) => encounter.trainer.id)).toEqual([
       'floodplain-orchard-warden-holt',
+      'vale-gym-misty',
+      'vale-gym-misty-diana',
+      'vale-gym-misty-luis',
     ]);
-    expect(doubles[0].bossId).toBeDefined();
+    for (const double of doubles) {
+      expect(`${double.trainer.id} ${double.bossId !== undefined || double.trainer.ai === 'gym'}`).toBe(
+        `${double.trainer.id} true`,
+      );
+    }
   });
 
   it('costs a player who brought one Pokemon nothing at all', () => {

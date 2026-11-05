@@ -1,5 +1,6 @@
 import type { CharacterDesignId } from '../world/characterDesigns';
 import { isMapRetired } from '../world/mapRoster';
+import { landingsHeldBack } from '../world/valeQuarters';
 
 /**
  * What Professor Oak, Nurse Joy and the Raid Arena's marshal say the first time
@@ -23,7 +24,7 @@ import { isMapRetired } from '../world/mapRoster';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -110,6 +111,16 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       'Your team and everything you banked are all still here.',
     ],
   },
+  // Said in the yard, once, to somebody who walked to the Old Quay or the Cove
+  // Steps before Misty's gym held the Coast: the landing went off the rim, and
+  // one line says why and what brings it back (`world/valeQuarters.ts`).
+  coast: {
+    speaker: 'prof-oak',
+    name: 'Professor Oak',
+    lines: [
+      'Oak on the radio: Misty holds the Coast from her gym on Gull Strand now. Beat her, and the Old Quay and the Cove Steps are yours again.',
+    ],
+  },
 };
 
 /** Whether this save raided the maps since put away (`world/mapRoster.ts`) and has not yet been told. */
@@ -121,6 +132,20 @@ export function mapsMovedNews(progress: {
     !hasHeard(progress.firstWordsHeard, 'moved') &&
     Object.entries(progress.raidRecord ?? {}).some(([mapId, record]) => isMapRetired(mapId) && record.deployed > 0)
   );
+}
+
+/**
+ * Whether this save reached a landing its badges do not open - walked to before
+ * the gym held the quarter - and has not yet been told why it went.
+ */
+export function heldLandingNews(progress: {
+  readonly firstWordsHeard?: readonly string[];
+  readonly reachedInsertions: readonly string[];
+  readonly unlockedInsertions?: readonly string[];
+  readonly defeatedBosses: readonly string[];
+  readonly openedGates?: readonly string[];
+}): boolean {
+  return !hasHeard(progress.firstWordsHeard, 'coast') && landingsHeldBack(progress).length > 0;
 }
 
 /** The lines as said to this player: the greeting by name, else without one. */

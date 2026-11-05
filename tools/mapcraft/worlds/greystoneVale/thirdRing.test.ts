@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { beatSpots } from '../../../../src/game/world/mapFile';
 import { stepDistances } from '../../../../src/game/world/mapStructure';
 import { getWorldMap } from '../../../../src/game/worldMap';
+import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { greystonePeaks } from './greystonePeaks';
 import { orchardTerraces } from './orchardTerraces';
 import { pineHollow } from './pineHollow';
@@ -94,10 +95,16 @@ describe('the third ring out from Mill Square', () => {
     expect(districts['pine hollow'].signs ?? []).toEqual([]);
     // The pub is called The Way Out, and it is not.
     expect(districts.tanglewood.areas?.map((area) => area.name)).toContain('The Way Out');
-    // The keeper still holds the Quarter's two doors, and only those.
+    // The keeper still holds the Quarter's two doors, and only those; the
+    // third is Misty's, the jetty into the Coast her gym holds.
     const doors = (districts['the sunken quarter'].doors ?? []).filter((door) => door.kind === 'boss');
-    expect(doors.map((door) => door.name)).toEqual(['Street Barricade', 'Shingle Barricade']);
-    expect(doors.every((door) => door.keeper === KEEPER)).toBe(true);
+    expect(doors.filter((door) => door.keeper === KEEPER).map((door) => door.name)).toEqual([
+      'Street Barricade',
+      'Shingle Barricade',
+    ]);
+    expect(doors.filter((door) => door.keeper !== KEEPER).map((door) => `${door.name} ${door.keeper}`)).toEqual([
+      `Coast Jetty ${MISTY_BOSS_ID}`,
+    ]);
     // The tarn and the dew pond are not rectangles any more.
     const water = (file: typeof districts.tanglewood, y: number) => file.ground[y].split('').filter((letter) => letter === 'W').length;
     expect(water(districts['greystone peaks'], 7)).toBeLessThan(water(districts['greystone peaks'], 9));
@@ -110,11 +117,13 @@ describe('the third ring, walked in the stitched vale', () => {
   const farm = inCell(2, 2);
   const cove = inCell(0, 3);
   const quarter = inCell(1, 3);
-  const map = getWorldMap('greystone-vale');
+  // Every gate shut but Misty's: the Coast is hers to open (`valeQuarters.ts`),
+  // and everything else in the ring is reached without a fight.
+  const map = getWorldMap('greystone-vale', [MISTY_BOSS_ID]);
   const fromSquare = stepDistances(map.collision, { x: 64 + 30, y: 128 + 32 }, undefined, map.links);
   const steps = ({ x, y }: { x: number; y: number }) => fromSquare[y][x];
 
-  it('reaches every new place on foot from Mill Square with every gate shut', () => {
+  it('reaches every new place on foot from Mill Square with every gate shut but the gym’s', () => {
     const places = {
       Mislaid: wood(38, 13),
       'the mushroom ring': wood(8, 8),

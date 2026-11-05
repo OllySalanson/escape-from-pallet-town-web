@@ -85,7 +85,8 @@ function reachable(mapId: WorldMapId, defeatedBosses: readonly string[], from: G
       .filter((trainer) => trainer.mapId === mapId)
       .map((trainer) => key(trainer.position)),
   ]);
-  const distances = stepDistances(map.collision, from, blocked);
+  // Through the map's doors as well: a gym's leader stands in her hall.
+  const distances = stepDistances(map.collision, from, blocked, map.links);
   return (tile: GridPosition): boolean => (distances[tile.y]?.[tile.x] ?? -1) >= 0;
 }
 

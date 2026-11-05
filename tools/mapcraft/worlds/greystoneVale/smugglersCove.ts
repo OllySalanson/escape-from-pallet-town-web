@@ -18,6 +18,10 @@
  * fish, the coopers' fish barrels, the boat shed and the landing stage, and in the
  * cleft the Cut, where the good stuff waits for a cart.
  *
+ * Since 5 November 2026 it is half of THE COAST: the deer path down from
+ * Reedmere is Misty's second door, sandbagged until her gym on Gull Strand is
+ * beaten, and the cleft east to the Sunken Quarter is inside the quarter.
+ *
  * Stone laid over water is the jetty, as at Gull Strand; the sea runs out to
  * the map's west edge, which needs no wood to seal it.
  */
@@ -26,6 +30,7 @@ import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { openingsOf, openingTiles, planLimits, startDistrict } from '../../worldPlan';
 import { withInside } from './insides';
+import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { GREYSTONE_VALE } from './plan';
 
 /** The wood above the cliffs, a letter a lattice cell: T the wood, g the reeds, W the pool and its brook. */
@@ -278,6 +283,10 @@ export function smugglersCove(): MapcraftResult {
         // -- The Cut ---------------------------------------------------------------------------------------------------
         { x: 49, y: 39, name: 'Tallyman', look: 'clerk', facing: 'down', lines: ['Forty tubs in, thirty-eight tubs out, and I shall write down forty.', 'Nobody has ever checked. Nobody knows there is a book.'], beat: { everyMs: 3400, glances: ['left', 'right'] }, calls: ['Thirty-nine. Forty. Forty.'] },
       ],
+      // Misty's second door: the deer path down from Reedmere, sandbagged
+      // where it comes in over the cove's edge, above the eel pool
+      // (`world/valeQuarters.ts`).
+      doors: [{ kind: 'boss', keeper: MISTY_BOSS_ID, name: 'Reed Trail', x: 20, y: 2, width: 2, height: 1 }],
       trainers: [
         { x: 15, y: 45, name: 'Grunt', team: 'raider', look: 'rocket-grunt', facing: 'up', sight: 2, lines: ['Hey! That cargo is spoken for!'] },
         { x: 56, y: 43, name: 'Carter Mags', team: 'drover', look: 'rocket-grunt-woman', facing: 'up', sight: 0, lines: ['You never saw this cart. You never saw me. You are about to not see my Pokémon!'] },

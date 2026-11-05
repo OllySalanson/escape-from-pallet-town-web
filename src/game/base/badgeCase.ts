@@ -2,6 +2,7 @@ import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
+import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { isMapOffered, TILE_SIZE } from '../worldMap';
 
 /**
@@ -137,6 +138,16 @@ export const BADGES: readonly Badge[] = [
     ink: { o: RIM, a: '#30b0a8', b: '#b0f0e8', c: '#18706c', g: '#30b0a8' },
   },
   {
+    // FireRed's own Cascade Badge, Misty's: a drop of blue water. Before
+    // Cragg's, because his quay is inside the Coast she holds.
+    bossId: MISTY_BOSS_ID,
+    name: 'CASCADE BADGE',
+    keeper: 'Misty',
+    held: 'the jetty and the reed trail into the Coast',
+    art: ['...oo...', '..obao..', '..obao..', '.obaaao.', 'obbaaaco', 'obaaaaco', '.oaaaco.', '..oooo..'],
+    ink: { o: RIM, a: '#58b8f0', b: '#e0f6ff', c: '#2878c0', g: '#58b8f0' },
+  },
+  {
     bossId: 'vale-quay-keeper',
     name: 'ANCHOR BADGE',
     keeper: 'Boatswain Cragg',
@@ -214,21 +225,28 @@ const CASE = {
 
 /**
  * The case on its stretch of wall: a wooden frame round a velvet back, two rows
- * of slots - six over five, so eleven fill it - centred in the frame.
+ * of slots - six over six, a pixel between them - centred in the frame. A case
+ * with more than twelve slots takes seven a row with the badges' rims
+ * touching, which is all the velvet a wall two tiles high has: a save is only
+ * ever shown the badges of maps it can go to (`caseBadges`), which is two
+ * today, and the thirteen are every map at once, as the suite asks it.
  */
 export function badgeSeats(area: Rect): { readonly frame: Rect; readonly seats: readonly BadgeSeat[] } {
   const width = area.width * TILE_SIZE;
   const height = area.height * TILE_SIZE;
   const frame = { x: 2, y: 4, width: width - 4, height: height - 8 };
-  const rows = [caseBadges().slice(0, 6), caseBadges().slice(6)];
+  const badges = caseBadges();
+  const perRow = Math.max(6, Math.ceil(badges.length / 2));
+  const gap = perRow > 6 ? 0 : 1;
+  const rows = [badges.slice(0, perRow), badges.slice(perRow)];
   const rowHeight = BADGE_SIZE + 1;
   const top = frame.y + Math.floor((frame.height - (rows.length * rowHeight - 1)) / 2);
   const seats = rows.flatMap((row, rowIndex) => {
-    const rowWidth = row.length * (BADGE_SIZE + 1) - 1;
+    const rowWidth = row.length * (BADGE_SIZE + gap) - gap;
     const left = frame.x + Math.floor((frame.width - rowWidth) / 2);
     return row.map((badge, index) => ({
       badge,
-      x: left + index * (BADGE_SIZE + 1),
+      x: left + index * (BADGE_SIZE + gap),
       y: top + rowIndex * rowHeight,
     }));
   });

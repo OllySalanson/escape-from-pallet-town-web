@@ -37,6 +37,7 @@
  * also carries its `reach`: how a raid gets in, why that is hard, what is found
  * only there, and what the game still has to learn to build it.
  */
+import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import type { WorldPlan } from '../../worldPlan';
 
 export const GREYSTONE_VALE: WorldPlan = {
@@ -325,9 +326,10 @@ export const GREYSTONE_VALE: WorldPlan = {
     { between: ['power-station', 'safari-marsh'], at: 30, kind: 'road' },
     { between: ['safari-marsh', 'the-wreck'], at: 20, kind: 'trail' },
     // The jetty runs on from the strand to the drowned quarter, and a way nobody
-    // signs goes down through the reeds to the cove.
-    { between: ['gull-strand', 'sunken-quarter'], at: 44, kind: 'road' },
-    { between: ['reedmere', 'smugglers-cove'], at: 20, kind: 'trail', hidden: true },
+    // signs goes down through the reeds to the cove: the two ways into THE COAST,
+    // which Misty's gym on the strand holds (`src/game/world/valeQuarters.ts`).
+    { between: ['gull-strand', 'sunken-quarter'], at: 44, kind: 'road', held: MISTY_BOSS_ID },
+    { between: ['reedmere', 'smugglers-cove'], at: 20, kind: 'trail', hidden: true, held: MISTY_BOSS_ID },
     // The one far place a raid walks into, and only after dark: the sheep track
     // west from the shepherd's clearing into the fog.
     { between: ['moor-chapel', 'high-moor'], at: 18, kind: 'trail', hidden: true, opens: 'night' },

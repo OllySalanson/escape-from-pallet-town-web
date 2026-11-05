@@ -149,11 +149,16 @@ export function gullStrand(): MapcraftResult {
   p.road([[6, 20], [6, 28]]);
 
   // -- The heath: grass in beds, flowers on the dry ground ---------------------
-  p.bedRows([22, 8, 16], [23, 7, 17], [24, 9, 15], [24, 50, 56], [25, 49, 57], [26, 50, 55]);
+  p.bedRows([22, 8, 16], [23, 7, 17], [24, 9, 15], [25, 52, 55], [26, 52, 55], [27, 53, 55]);
   p.flowers([36, 24], [37, 25], [39, 24]);
   p.bedRows([11, 34, 41], [12, 33, 42], [13, 34, 40]);
   p.bedRows([21, 32, 40], [22, 31, 41], [23, 32, 41], [24, 33, 39], [26, 8, 20], [27, 9, 21], [28, 10, 18]);
-  p.wood(54, 18, 8, 10).wood(50, 20, 4, 4); // the wood comes down the east side of the heath
+  p.wood(56, 18, 6, 10); // the wood comes down the east side of the heath
+
+  // -- Cerulean Gym, on the heath beside the road down to the strand: Misty's,
+  // who holds the jetty and the reed trail into the Coast (`world/valeQuarters.ts`).
+  p.building('cerulean-gym', 48, 19);
+  p.road([[48, 24], [51, 24]], { letter: ',' }); // from the road to the gym's door
 
   // -- The Old Light, on the headland: not lit since the boats had radios, and trimmed daily
   stand('tower', 8, 8);
@@ -252,7 +257,13 @@ export function gullStrand(): MapcraftResult {
   const cave = greystoneCaves();
 
   const file = districtFile(GREYSTONE_VALE, 'gull-strand', p, {
-    exits: [{ x: 4, y: 8, name: "Smugglers' Path", opens: { when: 'always' } }],
+    exits: [
+      { x: 4, y: 8, name: "Smugglers' Path", opens: { when: 'always' } },
+      // The boats that put in at the stage off the jetty. The Fishers' Boat at
+      // the jetty's elbow is past Misty's door now, and without one the cove
+      // under the cliffs is past the hunter's blind window (`hunterFlee.test.ts`).
+      { x: 40, y: 52, name: 'Stage Boat', opens: { when: 'always' } },
+    ],
     dropIns: [{ x: 41, y: 45, name: 'The Strand', description: 'The strand where the road comes down to the sea.' }],
     itemSpots: [
       { x: 3, y: 36, hidden: true },
@@ -289,6 +300,7 @@ export function gullStrand(): MapcraftResult {
         { x: 48, y: 8, lines: ['THE SAILORS’ REST', 'They went out from the jetty. Some of them came back as far as this.'] },
         { x: 42, y: 29 - 1, lines: ['THE SALT PANS', 'Keep off the pans. Wade if you must. Do not lick anything.'] },
         { x: 53, y: 41, lines: ['THE QUAY', 'Fish off the boats by noon. After noon, ask the cat.'] },
+        { x: 53, y: 24, lines: ['CERULEAN GYM', 'Leader: MISTY. The tomboyish mermaid!', 'Beat her for the CASCADE BADGE and the jetty to the Coast.'] },
         { x: 25, y: 39, lines: ['WRACKERS’ SAND', 'What the sea leaves is yours. What the sea wants back, it takes. Check the tide.'] },
       ],
       // The heath's own: a pair of Doduo on the dry ground, a Psyduck up the
@@ -355,6 +367,7 @@ export function gullStrand(): MapcraftResult {
         { x: 38, y: 19, name: 'Salt Carter', look: 'man', facing: 'down', lines: ['Salt to the boats, fish to the salt, boats to the fish. I have been up and down this hill all my life.', 'I got to The Crossing once. It was all right.'], beat: { everyMs: 3000, glances: ['left', 'right'] }, calls: ['Salt! Mind your backs!'] },
         { x: 13, y: 37, name: 'Wracker', look: 'hiker', facing: 'right', lines: ['Three crates this week, and one of them full of dolls. What is it with that ship and dolls?', 'Something is under the sand by that log. I keep meaning to dig, but it might be somebody’s.'], beat: { everyMs: 3000, roam: [[0, 1]], glances: ['left', 'right'] }, calls: ['Finders keepers!'] },
         { x: 21, y: 39, name: 'Wracker’s Girl', look: 'tuber-girl', facing: 'left', lines: ['I found a boot. Then I found another boot. They are not the same boot.', 'I am going to keep looking until I find somebody with one of each.'], beat: { everyMs: 2200, glances: ['down'] }, calls: ['Found one!'] },
+        { x: 49, y: 26, name: 'Gym Fan', look: 'lass', facing: 'up', lines: ['Misty sandbagged the jetty herself. Nobody goes out to the Coast till they have beaten her.', 'I have watched every fight from here. Fire never wins in there. It rains indoors. I do not know how.'], beat: { everyMs: 2700, glances: ['up', 'left'] }, calls: ['Go on, go in!'] },
         { x: 20, y: 28 + 1 - 1 - 4, name: 'Courting Couple', look: 'crush-girl', facing: 'left', lines: ['You can see the whole coast from up here. Yes. That is why we come. The coast.'] },
       ],
       trainers: [
@@ -376,7 +389,26 @@ export function gullStrand(): MapcraftResult {
 
 /** The doors along the shore. */
 function withInsides(file: MapFile): MapFile {
-  let next = withInside(file, 'strand', 'cottage', 13, 11, 'Bertie’s', [
+  // Cerulean Gym's hall. Misty and her two trainers are authored in
+  // `src/game/world/trainers.ts`, where a gym's parties are measured
+  // (`quarterPuzzle.test.ts`), and stand in this room's tiles as
+  // `MISTY_GYM_SPOTS` says; the Gym Guide by the mat is the file's own.
+  let next = withInside(file, 'strand', 'cerulean-gym', 48, 19, 'Cerulean Gym', [
+    {
+      x: 8,
+      y: 10,
+      name: 'Gym Guide',
+      look: 'gym-guide',
+      facing: 'left',
+      lines: [
+        'Yo! Champ in the making! MISTY holds the jetty and the reed trail, the two ways into the Coast.',
+        'She makes it rain, and in the rain her Horsea moves first. Water hits harder and Fire goes soft.',
+        'Bring Electric or Grass. And a Psyduck: while one is out, the weather goes still.',
+        'Beat her and both ways open for good, and the CASCADE BADGE is yours.',
+      ],
+    },
+  ]);
+  next = withInside(next, 'strand', 'cottage', 13, 11, 'Bertie’s', [
     { x: 3, y: 4, name: 'Bertie’s Niece', look: 'lass', facing: 'down', lines: ['We have told him. We have told him in writing. He uses it to light the lamp.'] },
   ]);
   next = withInside(next, 'strand', 'cottage', 50, 30, 'Skipper’s Loft', [

@@ -1,12 +1,16 @@
 import type { HeldItemId } from '../items';
 import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import { Pokemon } from '../pokemon';
+import { Move } from '../pokemon/Move';
+import { MOVE_CATALOGUE } from '../pokemon/moveCatalogue';
 import { BUTTERFREE, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from './characterDesigns';
 import type { TrainerWatch } from './trainerSight';
 import type { WorldMapId } from '../worldMap';
+import { builtInSpot } from './builtInSpots';
+import { MISTY_BOSS_ID } from './valeQuarters';
 
 /**
  * The few of the 151 a trainer names that are not one of the seventeen
@@ -191,9 +195,49 @@ export const TOLL_BAND = {
   spread: 0.35,
   potions: 3,
   levelOn: (mapId: WorldMapId): number => (mapId === 'viridian-forest' ? 10 : 8),
-  /** The tolls held to numbers of their own rather than to the band. */
-  heldElsewhere: ['floodplain-checkpoint-maya'] as readonly string[],
+  /**
+   * The tolls held to numbers of their own rather than to the band: Maya on the
+   * first road, and a gym's own trainers, who show its leader's combo at a lower
+   * level and are held to the gym's reference teams (`quarterPuzzle.test.ts`) -
+   * they stand off the walk to the leader, so nobody has to pay them.
+   */
+  heldElsewhere: ['floodplain-checkpoint-maya', 'vale-gym-misty-diana', 'vale-gym-misty-luis'] as readonly string[],
 } as const;
+
+/** A move of the catalogue by the name a party says it in. */
+const moveNamed = (name: string): Move => {
+  const base = Object.values(MOVE_CATALOGUE).find((move) => move.name === name);
+  if (!base) {
+    throw new Error(`no move called '${name}'`);
+  }
+  return new Move(base);
+};
+
+/**
+ * A gym Pokemon, knowing the moves its leader taught it rather than the four
+ * its level leaves it. A gym is a designed fight - setter and payoff - and the
+ * setter's move is often a FireRed machine its leader would have used on it:
+ * Rain Dance is TM18, which FireRed lets every Water type here learn
+ * (`tools/moves/frlg-machines.json`), but which the game does not ship as a
+ * disc, so `restoreMoveset` would refuse it. Every move named is FireRed's own.
+ */
+const gymPokemon = (speciesId: string, level: number, moves: readonly string[]): Pokemon => {
+  const pokemon = new Pokemon(getSpeciesById(speciesId)!, level);
+  pokemon.moves = moves.map(moveNamed);
+  return pokemon;
+};
+
+/** Misty's gym hall in the vale's file (`gullStrand.ts`), and where she and her trainers stand in it. */
+export const MISTY_GYM_HALL = 'strand-cerulean-gym';
+export const MISTY_GYM_SPOTS = {
+  misty: { x: 6, y: 2 },
+  diana: { x: 3, y: 5 },
+  luis: { x: 9, y: 7 },
+} as const;
+
+/** A spot in Misty's hall, as a tile of the vale's played grid. */
+const inMistysHall = (spot: { readonly x: number; readonly y: number }) =>
+  builtInSpot('greystone-vale', { area: MISTY_GYM_HALL, ...spot });
 
 /**
  * These encounters are created for each WorldScene so defeated trainers and
@@ -1095,5 +1139,105 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       ],
       'The barricades are down, the high street and the shingle both. The old town is yours.',
     ),
+  },
+
+  // -- Cerulean Gym, Gull Strand: Misty holds THE COAST --------------------------------
+  {
+    // The leader of Cerulean Gym on Gull Strand, who holds the two ways into
+    // THE COAST - the jetty to the Sunken Quarter and the reed trail down to
+    // Smugglers' Cove, both sandbagged (`maps/greystoneVale.json`, her `boss`
+    // doors; `world/valeQuarters.ts`). She stands at the head of her hall, the
+    // mat at its foot; beaten, both doors come down and the CASCADE BADGE goes
+    // in the case. No watch: a leader is walked up to.
+    mapId: 'greystone-vale',
+    position: inMistysHall(MISTY_GYM_SPOTS.misty),
+    facing: 'down',
+    fixedPosition: true,
+    bossId: MISTY_BOSS_ID,
+    design: 'misty',
+    introLines: [
+      'MISTY, CERULEAN GYM LEADER.',
+      'My policy is an all-out offensive with Water types! Out here the tide fights for me.',
+    ],
+    trainer: {
+      ...createTrainer(
+        'vale-gym-misty',
+        'MISTY',
+        // Two on two, and her combo played on purpose (`ai: 'gym'`): the
+        // Staryu sets the rain on turn one - Rain Dance, FireRed's TM18 - and
+        // has no Water move of its own, because the setter's turn is the rain;
+        // the Horsea swims at twice its Speed in it, with Smokescreen and a
+        // Bubble the rain lifts; the Starmie is her last, Swift to hit and
+        // Recover to outlast. Measured over the real engine
+        // (`quarterPuzzle.test.ts`, three Potions packed), against parties at
+        // her lead's level: the reference team - a Psyduck whose Cloud Nine
+        // stills the rain, a Pikachu opening with Thunder Wave, a Bellsprout
+        // and a Poliwag - wins 100%; a Fire-and-Rock team (Charmeleon and
+        // Sandshrew leading, Geodude behind) three levels up 36%, eight up
+        // 100%; each starter with a Pikachu and a Psyduck or Bellsprout 65% or
+        // better (Charmander the 65). Played at random, as every other trainer
+        // is, the Fire-and-Rock team wins most fights three levels up: the AI
+        // is the gym. Two things it took: FireRed's Staryu and Starmie both
+        // know Water Gun, and with it the Fire-and-Rock team was a wall at
+        // every level measured, a Geodude in the rain taking Water four times
+        // over every turn; and a Geodude led into her is a loss at any level
+        // measured, which is the lesson the gym teaches.
+        [
+          gymPokemon('staryu', 15, ['Rain Dance', 'Tackle', 'Rapid Spin']),
+          gymPokemon('horsea', 14, ['Bubble', 'Smokescreen']),
+          gymPokemon('starmie', 13, ['Swift', 'Rapid Spin', 'Recover']),
+        ],
+        'Wow! You are too much. Here is the CASCADE BADGE. The jetty and the reed trail are open - go and see the Coast.',
+        2,
+      ),
+      ai: 'gym',
+    },
+  },
+  {
+    // A gym trainer: the rain-and-swimmer half of Misty's combo, three levels
+    // under her. She stands off the walk up the middle of the hall to Misty and
+    // watches nothing, so a fight with her is asked for, by speaking to her.
+    mapId: 'greystone-vale',
+    position: inMistysHall(MISTY_GYM_SPOTS.diana),
+    facing: 'right',
+    fixedPosition: true,
+    design: 'picnicker',
+    introLines: ['Misty taught me this one. Rain first, then we swim!'],
+    trainer: {
+      ...createTrainer(
+        'vale-gym-misty-diana',
+        'PICNICKER DIANA',
+        [
+          gymPokemon('staryu', 12, ['Rain Dance', 'Tackle', 'Rapid Spin']),
+          gymPokemon('goldeen', 12, ['Peck', 'Tail Whip', 'Super Sonic']),
+        ],
+        'Rain and a swimmer. Remember that when you get to Misty!',
+        2,
+      ),
+      ai: 'gym',
+    },
+  },
+  {
+    // The other half: sleep, and the hit on the sleeper - Poliwag's Hypnosis
+    // beside a Horsea, the Smokescreen that comes with Misty's.
+    mapId: 'greystone-vale',
+    position: inMistysHall(MISTY_GYM_SPOTS.luis),
+    facing: 'left',
+    fixedPosition: true,
+    design: 'swimmer',
+    introLines: ['Splash! Sweet dreams first, then the soaking!'],
+    trainer: {
+      ...createTrainer(
+        'vale-gym-misty-luis',
+        'SWIMMER LUIS',
+        [
+          gymPokemon('poliwag', 12, ['Hypnosis', 'Bubble']),
+          gymPokemon('horsea', 12, ['Bubble', 'Smokescreen']),
+        ],
+        'Asleep or not, you got me. Misty is tougher, mind.',
+        2,
+      ),
+      ai: 'gym',
+    },
   },
 ];

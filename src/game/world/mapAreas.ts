@@ -5,6 +5,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import type { Rect } from './interiors';
+import { layOutAreas, type PlacedArea } from './areaLayout';
 import type { WorldMapId } from '../worldMap';
 import { liftsOf, type MapLift } from './lifts';
 import { applyGates } from './gates';
@@ -18,7 +19,6 @@ import {
   sketchMapFile,
   type MapFile,
   type MapFileArea,
-  type MapFileAreaKind,
   type MapFileAreaStyle,
   type MapFileLink,
   type MapFileLinkEnd,
@@ -42,6 +42,7 @@ import {
 import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
 import { MATERIAL_CHARS, type Material } from './tileset/materials';
 
+export { layOutAreas, type PlacedArea } from './areaLayout';
 /**
  * A player's map with its areas in it, laid out as the one grid it is played on.
  *
@@ -61,25 +62,6 @@ import { MATERIAL_CHARS, type Material } from './tileset/materials';
  * `buildingInsides.ts`).
  */
 
-/** One place of a composed map: the outdoors, or one of the file's areas. */
-export interface PlacedArea {
-  /** The area's id in the file; undefined is the outdoors. */
-  readonly id: string | undefined;
-  /** What it is called on the plate that rises when you walk in. */
-  readonly name: string;
-  readonly kind: 'outdoors' | MapFileAreaKind;
-  /** How it is dressed (`MapFileArea.style`); the outdoors has none. */
-  readonly style?: MapFileAreaStyle;
-  /** Where it lies in the composed grid. */
-  readonly rect: Rect;
-  /**
-   * Whether whoever is in it is out of sight of a hunter outside it. A place
-   * hides you only when it has two doors out of it onto the outdoors, so no
-   * hunter waiting on the doorstep it last saw you on can shut you in
-   * (`buildingInsides.ts`); anywhere else the hunter follows you in.
-   */
-  readonly hides?: boolean;
-}
 
 /**
  * Whether a hunter cannot see the player: the player is in a place that hides
@@ -151,9 +133,6 @@ export interface ComposedMap {
 
 /** The solid dark between areas, as the ground under it is reported. */
 const VOID: Material = 'wall';
-
-/** Tiles of dark between one area and the next. */
-const GAP = 1;
 
 const OPPOSITE: Readonly<Record<Direction, Direction>> = {
   up: 'down',
@@ -376,60 +355,6 @@ export function layOutMapFile(file: MapFile): {
   return layOutAreas({ name: file.name, width: file.width, height: file.height }, file.areas ?? []);
 }
 
-/**
- * Where each area lies beside an outdoors of a given size: columns of areas
- * east of it, each column as tall as the outdoors (and never shorter than a
- * big room), so the grid stays close to square. `margin` is dark left round
- * the far side of the areas, so a room's floor never lies on the grid's own
- * edge - which a shipped map is held to (`mapStructure.testkit.ts`). A column
- * always leaves a row of dark under its last room, margin or not: a shipped map
- * drawn as a file has none, and the vale's rooms came to end exactly on the row
- * below which there was no more grid.
- */
-export function layOutAreas(
-  outdoors: { readonly name: string; readonly width: number; readonly height: number },
-  areas: readonly (Pick<MapFileArea, 'id' | 'name' | 'kind' | 'width' | 'height'> &
-    Partial<Pick<MapFileArea, 'style'>>)[],
-  margin = 0,
-): {
-  readonly width: number;
-  readonly height: number;
-  readonly areas: readonly PlacedArea[];
-} {
-  const placed: PlacedArea[] = [
-    {
-      id: undefined,
-      name: outdoors.name,
-      kind: 'outdoors',
-      rect: { x: 0, y: 0, width: outdoors.width, height: outdoors.height },
-    },
-  ];
-  const columnLimit = Math.max(outdoors.height, 32);
-  let columnX = outdoors.width + GAP;
-  let columnWidth = 0;
-  let y = margin;
-  let width = outdoors.width;
-  let height = outdoors.height;
-  for (const area of areas) {
-    if (y > margin && y + area.height + Math.max(margin, 1) > columnLimit) {
-      columnX += columnWidth + GAP;
-      columnWidth = 0;
-      y = margin;
-    }
-    placed.push({
-      id: area.id,
-      name: area.name,
-      kind: area.kind,
-      ...(area.style ? { style: area.style } : {}),
-      rect: { x: columnX, y, width: area.width, height: area.height },
-    });
-    columnWidth = Math.max(columnWidth, area.width);
-    width = Math.max(width, columnX + area.width + margin);
-    height = Math.max(height, y + area.height + margin);
-    y += area.height + GAP;
-  }
-  return { width, height, areas: placed };
-}
 
 function blank(width: number, height: number): TileLayer {
   return {

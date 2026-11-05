@@ -4,6 +4,10 @@ import { gateBossIds, gateKeys, gatesForMap, NIGHT_KEY, WORLD_GATES, type BossGa
 import { BUILT_IN_MAP_IDS, getWorldMap, WORLD_MAP_NAMES, WORLD_MAPS, type BuiltInMapId, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { isStakeTrail } from '../world/loot';
+import { stepDistances } from '../world/mapStructure';
+import { playerLinks } from '../world/sailing';
+import { districtsForMap } from '../world/districts';
+import { isPlayerMapId } from '../world/mapFile';
 import { RunManager } from './RunManager';
 import { RAID_DURATION_MS } from './raidClock';
 import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
@@ -190,11 +194,24 @@ describe('run generation', () => {
    */
   it.each(insertionIds)('never lays the same loot on the same tiles raid after raid: %s', (insertionId) => {
     {
-      const mapId = requireInsertion(insertionId).mapId;
-      // Only the ordinary pool: a piece with its own `chance` is rolled
-      // separately and so is neither part of the half-the-pool floor nor able
-      // to crowd a supply out of it.
-      const pool = getWorldMap(mapId).loot.filter((item) => item.chance === undefined);
+      const insertion = requireInsertion(insertionId);
+      const mapId = insertion.mapId;
+      // Only the ordinary pool this landing can reach: a piece with its own
+      // `chance` is rolled separately and so is neither part of the
+      // half-the-pool floor nor able to crowd a supply out of it, and a piece
+      // in a place behind a shut door - Ember Isle's hoard, past Misty - is not
+      // laid from here at all.
+      const shut = getWorldMap(mapId);
+      const walk = stepDistances(shut.collision, insertion.position, undefined, playerLinks(shut));
+      const reached = (district: string): boolean =>
+        (districtsForMap(mapId).find((one) => one.id === district)?.areas ?? []).some((area) =>
+          Array.from({ length: area.width * area.height }).some(
+            (_, cell) => (walk[area.y + Math.floor(cell / area.width)]?.[area.x + (cell % area.width)] ?? -1) >= 0,
+          ),
+        );
+      const pool = shut.loot.filter(
+        (item) => item.chance === undefined && (isPlayerMapId(mapId) || item.district === undefined || reached(item.district)),
+      );
       const rare = getWorldMap(mapId).loot.filter((item) => item.chance !== undefined);
       const rareSeen = new Map<string, number>();
       const layouts = new Map<string, number>();

@@ -726,6 +726,10 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     }
     const where = mapPhrase(ground.map.id);
     const gate = district.gate.label;
+    // A stop indoors is named by its room here too: past the door is not where
+    // it is, only what is in the way.
+    const rooms = [...new Set(stops.map((stop) => insidePlace(ground.map, stop)).filter((room) => room !== undefined))];
+    const inRooms = rooms.length > 0 ? `, in ${rooms.join(' and ')}` : '';
     return {
       template: 'sealed',
       name: `Past the ${titleCase(gate)}`,
@@ -748,7 +752,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
           ? `Only ${exit.label} banks it - the way out on the far side of the gate.`
           : 'Both caches are past the gate. Any exit banks it, once both are recovered.',
       ],
-      deploymentBriefing: `The cache is past the ${gate}. ${district.bossName} holds it - beat them and it opens.`,
+      deploymentBriefing: `The cache is past the ${gate}${inRooms}. ${district.bossName} holds it - beat them and it opens.`,
     };
   },
 };
