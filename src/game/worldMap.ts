@@ -826,6 +826,18 @@ export function getWorldMap(
   let built = builtMaps.get(key);
   if (!built) {
     built = createMap(id, MAP_CONTENT[id], defeatedBosses);
+    // A vast map keeps only its newest arrangement of doors: one build of the
+    // vale is about 86 MB of heap, and a session that wins a gym would
+    // otherwise hold the map from before the win as well as after it. A
+    // caller that holds on to an older build still has it; asking again for
+    // an older state builds it again.
+    if (isLazyMap(id)) {
+      for (const other of [...builtMaps.keys()]) {
+        if (other.startsWith(`${id}|`)) {
+          builtMaps.delete(other);
+        }
+      }
+    }
     builtMaps.set(key, built);
   }
   return built;

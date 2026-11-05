@@ -20,6 +20,7 @@ import {
   type WildEncounterTable,
 } from '../pokemon/encounters';
 import { Pokemon } from '../pokemon';
+import { Move } from '../pokemon/Move';
 import type { Direction } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from './characterDesigns';
 import type { MapDistrict } from './districts';
@@ -248,7 +249,10 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxBeatTiles: 8,
   maxLockedLandmarks: 2,
   maxLandmarkExits: 2,
-  maxBossDoors: 4,
+  // Two doors for every keeper: Boatswain Cragg's barricades, and two for each
+  // gym leader that holds a quarter of the vale - Misty's Coast first, then
+  // Koga's Marsh and Lt. Surge's Station (`valeQuarters.ts`).
+  maxBossDoors: 10,
 };
 
 /** Every file map's id is its own id with this in front, so none can collide with a shipped map. */
@@ -3290,9 +3294,12 @@ export function buildFileMap(
           trainer: {
             id: `${id}/trainer-${index + 1}`,
             name,
-            party: template.trainer.party.map(
-              (pokemon) => new Pokemon(pokemon.base, pokemon.level),
-            ),
+            // The measured team as measured: its own moves, not its level's.
+            party: template.trainer.party.map((pokemon) => {
+              const fresh = new Pokemon(pokemon.base, pokemon.level);
+              fresh.moves = pokemon.moves.map((move) => new Move(move.base));
+              return fresh;
+            }),
             defeatText: 'You win. The way is yours.',
             unitCount: template.trainer.unitCount,
           },

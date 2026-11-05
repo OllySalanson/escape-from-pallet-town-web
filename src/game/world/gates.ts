@@ -4,6 +4,7 @@ import { FIELD_MOVES, SMALL_TREE_OBSTACLE, type FieldMoveId } from './fieldMoves
 import type { MapSketch, PlantedProp } from './mapGrid';
 import { MATERIAL_CHARS, type Material } from './tileset/materials';
 import { fileMap } from './playerMaps';
+import { gymInFrontOf, quarterHeldBy } from './valeQuarters';
 
 /**
  * How a gate looks in one of its two states, in the same two words a map is
@@ -676,13 +677,25 @@ export function gateKeys(gates: readonly MapGate[]): readonly string[] {
  * A field-move door is a state here exactly as a boss is, which is the whole
  * reason the two are one type: every rule a map is held to is asked again with
  * the wood cut and the reach swum, and again with neither.
+ *
+ * A keeper whose doors stand inside a gym's quarter (`valeQuarters.ts`,
+ * `keepersInside`) is not asked alone: with the gym's doors shut nobody can
+ * walk to his, so his opening changes nothing a raid can reach, and the state
+ * that matters - his doors and the gym's both open - is the every-door-open
+ * one. That is what keeps a map's count of states level as gyms are added in
+ * front of keepers who were already there (the vale's sweeps ask every state
+ * across eight files, `mapStructure.testkit.ts`).
  */
 export function gateStatesToVerify(gates: readonly MapGate[]): readonly (readonly string[])[] {
   const keys = gateKeys(gates);
   if (keys.length === 0) {
     return [[]];
   }
-  const states: (readonly string[])[] = [[], ...keys.map((key) => [key])];
+  const behindAGym = (key: string): boolean => {
+    const gym = gymInFrontOf(key);
+    return gym !== undefined && keys.includes(gym);
+  };
+  const states: (readonly string[])[] = [[], ...keys.filter((key) => !behindAGym(key)).map((key) => [key])];
   if (keys.length > 1) {
     states.push(keys);
   }
@@ -702,7 +715,20 @@ export function gateCaption(gate: MapGate, open: boolean, bossName: string | und
   if (gate.fieldMove) {
     return `${gate.label}\n${FIELD_MOVES[gate.fieldMove].doorNote}`;
   }
-  return bossName ? `${gate.label}\nHELD BY ${bossName}` : `${gate.label}\nSHUT`;
+  return `${gate.label}\n${heldNote(gate.bossId, bossName)}`;
+}
+
+/**
+ * What a shut keeper's door says it wants: a gym's door the badge that opens it,
+ * as FireRed's Route 23 gates ask for one, and any other keeper's door the
+ * keeper who holds it.
+ */
+function heldNote(bossId: string | undefined, bossName: string | undefined): string {
+  const badge = bossId === undefined ? undefined : quarterHeldBy(bossId)?.gym?.badge;
+  if (badge) {
+    return badge;
+  }
+  return bossName ? `HELD BY ${bossName}` : 'SHUT';
 }
 
 /**
@@ -750,7 +776,7 @@ export function jointGateCaption(
   if (open) {
     return `${label}\nOPEN`;
   }
-  return bossName ? `${label}\nHELD BY ${bossName}` : `${label}\nSHUT`;
+  return `${label}\n${heldNote(gates[0]?.bossId, bossName)}`;
 }
 
 /** The line spoken once, on the return from the fight that opened these gates. */

@@ -105,13 +105,13 @@ export function districtFile(
  */
 /**
  * The opening a district's stand-in landing is just inside: its first that is
- * not a river - and not a night track either, if it has another, because a
- * night track is shut whenever a district is checked alone and a landing just
- * inside one is a landing in a pocket.
+ * not a river - and not a night track or a way a keeper holds either, if it
+ * has another, because both are shut whenever a district is checked alone and
+ * a landing just inside one is a landing in a pocket.
  */
 function standInOpening(plan: WorldPlan, id: string): Opening | undefined {
   const ways = openingsOf(plan, id).filter((candidate) => candidate.kind !== 'river');
-  return ways.find((candidate) => candidate.opens === undefined) ?? ways[0];
+  return ways.find((candidate) => candidate.opens === undefined && candidate.held === undefined) ?? ways[0];
 }
 
 function standInDropIn(plan: WorldPlan, id: string): MapFileDropIn {

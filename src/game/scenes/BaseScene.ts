@@ -264,7 +264,7 @@ import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runG
 import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
 import { worldMapName, type WorldMapId } from '../worldMap';
-import { FIRST_WORDS, hasHeard, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
+import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { centerOffer, healedLine, nobodyCanRaid, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
 import {
@@ -1219,6 +1219,9 @@ export class BaseScene extends Phaser.Scene {
     } else if (!room && !this.visit && mapsMovedNews(this.savedGame.raidProgress)) {
       this.hearFirstWords('moved');
       this.say(FIRST_WORDS.moved.lines, []);
+    } else if (!room && !this.visit && heldLandingNews(this.savedGame.raidProgress)) {
+      this.hearFirstWords('coast');
+      this.say(FIRST_WORDS.coast.lines, []);
     }
     if (this.visit) {
       if (data.stairsFrom === undefined) {

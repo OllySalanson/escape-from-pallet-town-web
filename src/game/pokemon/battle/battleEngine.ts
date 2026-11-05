@@ -48,6 +48,7 @@ import {
   typeRefusesStatus,
 } from './status';
 import { getTypeEffectiveness } from './typeChart';
+import { chooseTrainerMove, type TrainerAi, type TrainerMoveChoice } from './trainerAi';
 import { WEATHER_MOVE_TURNS, WeatherId, weatherChipDamage } from './weather';
 import {
   applyStatBoost,
@@ -209,6 +210,13 @@ export interface TrainerBattle {
    * this game's authored fights are priced on the party that walks up to them.
    */
   readonly unitCount?: number;
+  /**
+   * How this trainer chooses its moves. Absent is at random from whatever it has
+   * PP for, which is every wild Pokemon, every hunter and every trainer this
+   * game shipped before its gyms; `gym` is FireRed's own trainer AI, as much of
+   * it as a designed combo needs (`trainerAi.ts`).
+   */
+  readonly ai?: TrainerAi;
 }
 
 /**
@@ -284,6 +292,13 @@ export interface BattleState {
    * knocked the player's Pokemon out was never charged its own end of turn (N5).
    */
   readonly playerParty?: readonly Pokemon[];
+  /**
+   * How many turns have been played out, which is FireRed's
+   * `gBattleResults.battleTurnCounter`: a trainer's AI sets up on turn one
+   * (`AI_SetupFirstTurn`). Absent is none yet. Counted at the end of
+   * `resolveTurn` and `resolveEnemyTurn`, the two places a turn ends.
+   */
+  readonly turnsPlayed?: number;
 }
 
 /** Who gave a status by their ability rather than by a move. */
@@ -989,10 +1004,22 @@ const enemyAction = (
   ref: SlotRef,
   combatant: BattleCombatant,
   random: RandomSource,
-): number | null =>
-  lockedMove(state, 'enemy', ref.slot) ??
-  chooseEnemyMove(combatant, random) ??
-  (mustStruggle(combatant) ? STRUGGLE_MOVE_INDEX : null);
+): TrainerMoveChoice | null => {
+  const locked = lockedMove(state, 'enemy', ref.slot);
+  if (locked !== null) {
+    return { moveIndex: locked };
+  }
+  // A trainer that plays its combo chooses the move and the foe together; every
+  // other enemy chooses a move here and is aimed by `chooseTarget`, as always.
+  const chosen =
+    state.trainer?.ai === 'gym'
+      ? chooseTrainerMove(state, ref, random)
+      : (() => {
+          const moveIndex = chooseEnemyMove(combatant, random);
+          return moveIndex === null ? null : { moveIndex };
+        })();
+  return chosen ?? (mustStruggle(combatant) ? { moveIndex: STRUGGLE_MOVE_INDEX } : null);
+};
 
 /** The move an action names: a slot of the moveset, or Struggle. */
 const moveAt = (combatant: BattleCombatant, moveIndex: number): BattleMove | undefined =>
@@ -1117,11 +1144,15 @@ export const resolveTurn = (
     if (!combatant) {
       continue;
     }
-    const moveIndex = enemyAction(state, ref, combatant, random);
-    if (moveIndex === null) {
+    const action = enemyAction(state, ref, combatant, random);
+    if (action === null) {
       continue;
     }
-    enemyActions.push({ ref, moveIndex, target: chooseTarget(state, 'player', random) });
+    enemyActions.push({
+      ref,
+      moveIndex: action.moveIndex,
+      target: action.target ?? chooseTarget(state, 'player', random),
+    });
   }
 
   // Quick Claw is rolled before the order is decided, once for each holder, so
@@ -1215,7 +1246,7 @@ export const resolveTurn = (
   );
   const refilled = sendOutReplacements(ended.state);
   return {
-    state: refilled.state,
+    state: { ...refilled.state, turnsPlayed: (state.turnsPlayed ?? 0) + 1 },
     events: [...events, ...weathered.events, ...ended.events, ...refilled.events],
   };
 };
@@ -1393,12 +1424,12 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
     if (!combatant) {
       continue;
     }
-    const moveIndex = enemyAction(nextState, ref, combatant, random);
-    if (moveIndex === null) {
+    const action = enemyAction(nextState, ref, combatant, random);
+    if (action === null) {
       continue;
     }
-    const target = chooseTarget(nextState, 'player', random);
-    const acted = applyMove(nextState, ref, moveIndex, random, target);
+    const target = action.target ?? chooseTarget(nextState, 'player', random);
+    const acted = applyMove(nextState, ref, action.moveIndex, random, target);
     nextState = acted.state;
     events.push(...acted.events);
   }
@@ -1406,7 +1437,7 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
   const ended = applyEndOfTurn(weathered.state, endOfTurnOrder(weathered.state, []), random);
   const refilled = sendOutReplacements(ended.state);
   return {
-    state: refilled.state,
+    state: { ...refilled.state, turnsPlayed: (state.turnsPlayed ?? 0) + 1 },
     events: [...events, ...weathered.events, ...ended.events, ...refilled.events],
   };
 };

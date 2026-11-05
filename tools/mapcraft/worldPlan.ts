@@ -88,6 +88,13 @@ export interface Crossing {
    * cuts it like any crossing, and the district behind it draws the door.
    */
   readonly opens?: 'night';
+  /**
+   * A way a keeper holds: the boss id (`trainers.ts`) whose `boss` doors bar
+   * it until they are beaten - a gym leader's quarter (`world/valeQuarters.ts`).
+   * The stitcher cuts it like any crossing, and the district behind it draws
+   * the door, as it draws a night track's.
+   */
+  readonly held?: string;
 }
 
 /** A way out of the whole map, on the plan's outer edge. */
@@ -224,6 +231,8 @@ export interface Opening {
   readonly hidden?: boolean;
   /** A crossing open only on a night raid (`Crossing.opens`). */
   readonly opens?: 'night';
+  /** A crossing a keeper holds shut (`Crossing.held`). */
+  readonly held?: string;
 }
 
 /** How deep a district's sealed border is: one lattice cell, so its trees are whole. */
@@ -318,6 +327,7 @@ export function openingsOf(plan: WorldPlan, id: string): Opening[] {
       leadsTo: { district: other.id },
       hidden: crossing.hidden,
       ...(crossing.opens ? { opens: crossing.opens } : {}),
+      ...(crossing.held ? { held: crossing.held } : {}),
     });
   }
   for (const exit of plan.exits) {

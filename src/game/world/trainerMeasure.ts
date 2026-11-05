@@ -2,6 +2,7 @@ import { Pokemon } from '../pokemon';
 import {
   createTrainerBattleState,
   engagedSlots,
+  opposing,
   playerCombatants,
   replacePlayerPokemon,
   resolveEnemyTurn,
@@ -14,6 +15,7 @@ import {
 } from '../pokemon/battle/battleEngine';
 import { getSpeciesById } from '../pokemon/species';
 import type { WeatherId } from '../pokemon/battle/weather';
+import { isUselessMove } from '../pokemon/battle/trainerAi';
 import { createSeededRng } from '../run/rng';
 import { bestPlayFor } from './bestPlay';
 
@@ -39,12 +41,62 @@ import { bestPlayFor } from './bestPlay';
 export interface MeasuredParty {
   readonly name: string;
   readonly build: () => readonly Pokemon[];
+  /**
+   * How the party means to play, member by member in `build`'s order: the move
+   * each one opens with (`PartyPlan`). Absent, every member just hits.
+   */
+  readonly plan?: PartyPlan;
 }
 
-export const partyOf = (name: string, ...members: readonly [string, number][]): MeasuredParty => ({
-  name,
-  build: () => members.map(([speciesId, level]) => new Pokemon(getSpeciesById(speciesId)!, level)),
-});
+/**
+ * A plan for a measured party: the one thing a player with a synergy team does
+ * that the generous best-hit player never would. Each member may name an
+ * **opening move** - Thunder Wave, Hypnosis, Rain Dance - which it uses once,
+ * the first turn it is out and the move would do something (`isUselessMove`:
+ * not on a foe already paralysed, not into a Ground type, not rain into rain),
+ * aimed at the fastest foe it would land on; after that, and whenever it would
+ * not land, it throws its best hit as every measured Pokemon does.
+ *
+ * Without it the harness cannot measure a team whose point is a setter and a
+ * payoff, because a measured Pikachu never paralyses anything.
+ */
+export interface PartyPlan {
+  readonly openers: readonly (string | undefined)[];
+}
+
+/**
+ * How one member of a measured party comes: the moves the player kept, if not
+ * the ones its level hands it (a Pikachu at 12 has walked Thunder Shock off the
+ * end of its moveset, which no player lets happen), and the move it opens with.
+ */
+export interface MeasuredMember {
+  readonly moves?: readonly string[];
+  readonly opens?: string;
+}
+
+export const partyOf = (
+  name: string,
+  ...members: readonly (readonly [string, number] | readonly [string, number, MeasuredMember])[]
+): MeasuredParty => {
+  const openers = members.map((member) => member[2]?.opens);
+  return {
+    name,
+    build: () =>
+      members.map(([speciesId, level, how]) => {
+        const pokemon = new Pokemon(getSpeciesById(speciesId)!, level);
+        if (how?.moves) {
+          const before = pokemon.moves.map((move) => move.base.name);
+          pokemon.restoreMoveset(how.moves, []);
+          const kept = pokemon.moves.map((move) => move.base.name);
+          if (how.moves.some((move) => !kept.includes(move))) {
+            throw new Error(`${speciesId} cannot know ${how.moves.join(', ')} (it knows ${before.join(', ')})`);
+          }
+        }
+        return pokemon;
+      }),
+    ...(openers.some((opener) => opener !== undefined) ? { plan: { openers } } : {}),
+  };
+};
 
 /**
  * A Potion, as the catalogue has it. The number is repeated rather than read
@@ -94,8 +146,9 @@ export function playTrainerBattle(
   /** The weather of the place the fight is in, as a raid would supply it. */
   weather: WeatherId | null = null,
   potions = 0,
+  plan?: PartyPlan,
 ): TrainerBattleResult {
-  return playOut(party, trainer, seed, weather, potions).result;
+  return playOut(party, trainer, seed, weather, potions, plan).result;
 }
 
 /**
@@ -141,6 +194,7 @@ function playOut(
   seed: number,
   weather: WeatherId | null,
   potions: number,
+  plan?: PartyPlan,
 ): {
   readonly result: TrainerBattleResult;
   readonly state: BattleState;
@@ -199,6 +253,37 @@ function playOut(
     return worst;
   };
 
+  // The plan's opening moves, by the Pokemon that opens with each, and who has
+  // used theirs: a move a member opens with is used once.
+  const openers = new Map<Pokemon, string>();
+  party.forEach((pokemon, index) => {
+    const opener = plan?.openers[index];
+    if (opener !== undefined) {
+      openers.set(pokemon, opener);
+    }
+  });
+  const opened = new Set<Pokemon>();
+  const openingPlay = (current: BattleState, ref: SlotRef): { moveIndex: number; target?: SlotRef } | null => {
+    const combatant = unitAt(current, ref);
+    const opener = combatant ? openers.get(combatant.pokemon) : undefined;
+    if (!combatant || opener === undefined || opened.has(combatant.pokemon)) {
+      return null;
+    }
+    const moveIndex = combatant.moves.findIndex((move) => move.base.name === opener && move.pp > 0);
+    if (moveIndex < 0) {
+      return null;
+    }
+    const move = combatant.moves[moveIndex].base;
+    const landsOn = engagedSlots(current, opposing(ref.side))
+      .filter((foe) => !isUselessMove(current, ref, move, foe))
+      .sort((left, right) => (unitAt(current, right)?.pokemon.stats.speed ?? 0) - (unitAt(current, left)?.pokemon.stats.speed ?? 0));
+    if (landsOn.length === 0) {
+      return null;
+    }
+    opened.add(combatant.pokemon);
+    return { moveIndex, target: landsOn[0] };
+  };
+
   for (let turn = 0; turn < 400 && state.outcome === 'active'; turn += 1) {
     const before = state;
     const thirsty = left > 0 ? drinker() : null;
@@ -211,7 +296,7 @@ function playOut(
     } else {
       const choices = engagedSlots(state, 'player').map((ref) => ({
         slot: ref.slot,
-        ...bestPlayFor(state, ref),
+        ...(openingPlay(state, ref) ?? bestPlayFor(state, ref)),
       }));
       state = resolveTurn(state, choices, random).state;
     }
@@ -287,6 +372,7 @@ export function trainerMeasure(
       seed + trial * 7919,
       weather,
       potions,
+      party.plan,
     );
     if (result.won) {
       wins += 1;

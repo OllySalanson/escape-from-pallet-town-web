@@ -83,7 +83,7 @@ describe('THE BADGE CASE', () => {
     expect(full).toHaveLength(caseBadges().length + 1);
   });
 
-  /** Twelve badges a pixel apart in a case four tiles wide: none may touch the frame or another. */
+  /** Every badge in a case four tiles wide: none may touch the frame or overlap another. */
   it('seats every badge inside the velvet, clear of the frame and of every other badge', () => {
     const { frame, seats } = badgeSeats(BADGE_CASE_WALL);
     expect(seats).toHaveLength(caseBadges().length);

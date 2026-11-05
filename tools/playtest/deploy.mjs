@@ -261,6 +261,8 @@ export function deployOptions(args) {
     debt: option('debt'),
     hp: option('hp'),
     level: option('level'),
+    // --moves=Vine Whip|Tackle,.. - the moves the starter kept, with --level.
+    moves: (option('moves') ?? '').split('|').filter(Boolean),
     starter: option('starter'),
     team: list('team'),
     stash: list('stash'),
@@ -295,7 +297,7 @@ export async function startExplorerRun(page, { press, until }) {
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
  * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, debt, hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, debt, hp, level, moves = [], starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
@@ -353,7 +355,7 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       // falls back to the learnset when a save names no moves.
       if (${level !== undefined}) for (const stored of save.stash.pokemon) {
         stored.pokemon.level = ${Number(level)};
-        stored.pokemon.moves = [];
+        stored.pokemon.moves = ${JSON.stringify(moves)};
         stored.pokemon.experience = 0;
         // --hp still holds: a raid lost at a level is --level with --hp=1.
         stored.pokemon.currentHp = ${hp !== undefined ? Number(hp) : 9999};
@@ -364,11 +366,15 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       // the engine refuses the second slot when the player has nobody for it,
       // so a driver with one Pokemon plays Holt as a single battle and never
       // sees the thing it was sent to look at. They are appended after the
-      // level pass so each keeps the level it was asked for.
+      // level pass so each keeps the level it was asked for. A third part names
+      // the moves a player kept, |-separated (\`pikachu:15:Thunder Shock|Thunder
+      // Wave\`): left to its level a Pikachu at 15 has walked Thunder Shock off
+      // the end of its moveset, which nobody playing lets happen.
       ${JSON.stringify(team)}.forEach((entry, index) => {
-        const [speciesId, memberLevel = '10'] = entry.split(':');
+        const [speciesId, memberLevel = '10', kept = ''] = entry.split(':');
         const id = 'playtest-team-' + index;
-        save.stash.pokemon.push({ id, pokemon: { speciesId, level: Number(memberLevel), currentHp: 9999, xp: 0, moves: [], pendingMoves: [], primaryStatus: null, heldItemId: null } });
+        const moves = kept ? kept.split('|') : [];
+        save.stash.pokemon.push({ id, pokemon: { speciesId, level: Number(memberLevel), currentHp: 9999, xp: 0, moves, pendingMoves: [], primaryStatus: null, heldItemId: null } });
         if (Array.isArray(save.stash.boxes) && save.stash.boxes[0]) { save.stash.boxes[0].pokemonIds.push(id); }
       });
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);

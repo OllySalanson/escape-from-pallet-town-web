@@ -16,6 +16,10 @@
  * Stone laid over water is a drowned street, as the jetty is at Gull Strand;
  * the sea runs to the map's edges, which needs no wood to seal it.
  *
+ * Since 5 November 2026 it is half of THE COAST, the quarter Misty's gym on
+ * Gull Strand holds: the jetty in is her front door, sandbagged until she is
+ * beaten, and the reed trail into Smugglers' Cove is her second.
+ *
  * And it is the vale's one keeper's ground. Boatswain Cragg holds the old
  * high street where it leaves the lower street for the drowned town,
  * sandbagged across, and the only other way into the drowned town - the
@@ -38,6 +42,7 @@ import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { openingsOf, openingTiles, planLimits, startDistrict } from '../../worldPlan';
 import { withInside } from './insides';
+import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { GREYSTONE_VALE } from './plan';
 
 export function sunkenQuarter(): MapcraftResult {
@@ -270,6 +275,11 @@ export function sunkenQuarter(): MapcraftResult {
       // lower street, the boatswain standing on the town's side of his
       // sandbags; and across the drowned street where it leaves the shingle.
       doors: [
+        // Misty's front door: the jetty in from Gull Strand, sandbagged across
+        // where it comes in over the quarter's edge, so the Old Quay, the
+        // Fishers' Boat and everything past them are the Coast
+        // (`world/valeQuarters.ts`).
+        { kind: 'boss', keeper: MISTY_BOSS_ID, name: 'Coast Jetty', x: 44, y: 2, width: 2, height: 1 },
         { kind: 'boss', keeper: KEEPER, name: 'Street Barricade', x: 30, y: 30, width: 2, height: 1 },
         { kind: 'boss', keeper: KEEPER, name: 'Shingle Barricade', x: 11, y: 46, width: 1, height: 2 },
       ],

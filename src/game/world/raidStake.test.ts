@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { FIRST_RAID_CHASE_MS, generateRunPlan, insertionsOn } from '../run/runGeneration';
+import { FIRST_RAID_CHASE_MS, generateRunPlan, insertionsOn, type RunInsertionId } from '../run/runGeneration';
+import { hunterThreatFor } from './hunterThreat';
 import { getWorldMap } from '../worldMap';
 import { isStake, isStakeMoney, isStakeTrail, prizesLeftBehind, prizeWords } from './loot';
 import { stepDistances } from './mapStructure';
@@ -12,10 +13,22 @@ import {
   aheadOnWalk,
   hasRaidStake,
 } from './raidStake';
+import { quarterOfLanding } from './valeQuarters';
 
 const MAP_ID = 'greystone-vale';
 const SEEDS = [1, 2, 3, 7, 11, 19, 31, 53, 89, 144];
 const landings = insertionsOn(MAP_ID);
+
+/**
+ * What a save that can land here has beaten: a landing inside a gym's quarter is
+ * only offered once its leader is (`valeQuarters.ts`), so that is the raid it starts.
+ */
+const beatenFor = (id: string): readonly string[] => {
+  const gym = quarterOfLanding(id)?.gym;
+  return gym ? [gym.bossId] : [];
+};
+const planFrom = (seed: number, id: RunInsertionId) =>
+  generateRunPlan(seed, undefined, id, undefined, hunterThreatFor([]), beatenFor(id));
 
 const openExitsOf = (plan: ReturnType<typeof generateRunPlan>) =>
   plan.extractionPoints.filter(
@@ -23,7 +36,6 @@ const openExitsOf = (plan: ReturnType<typeof generateRunPlan>) =>
   );
 
 describe('what a raid on the vale is for', () => {
-  const map = getWorldMap(MAP_ID, []);
 
   it('is on the only map a save is offered, and not on a player map', () => {
     expect(hasRaidStake(MAP_ID)).toBe(true);
@@ -32,10 +44,11 @@ describe('what a raid on the vale is for', () => {
 
   it.each(landings.map((landing) => landing.id))('lays a stake a good walk from %s and a little too far from any way out', (id) => {
     const insertion = landings.find((landing) => landing.id === id)!;
+    const map = getWorldMap(MAP_ID, beatenFor(id));
     const steps = stepDistances(map.collision, insertion.position);
     const faults: string[] = [];
     for (const seed of SEEDS) {
-      const plan = generateRunPlan(seed, undefined, id);
+      const plan = planFrom(seed, id);
       const stake = plan.loot[MAP_ID].find((loot) => isStake(loot));
       if (!stake) {
         faults.push(`seed ${seed} has no stake`);
@@ -57,7 +70,7 @@ describe('what a raid on the vale is for', () => {
   it('puts the first money in sight of the landing, and every piece of the trail on its own tile', () => {
     for (const landing of landings) {
       for (const seed of SEEDS.slice(0, 4)) {
-        const plan = generateRunPlan(seed, undefined, landing.id);
+        const plan = planFrom(seed, landing.id);
         const loot = plan.loot[MAP_ID];
         const first = loot.find((piece) => piece.id.endsWith('/stake-money-1'));
         expect(first, `${landing.id} ${seed}`).toBeDefined();
@@ -71,6 +84,7 @@ describe('what a raid on the vale is for', () => {
 
   it('lays nothing ordinary on the ground a walk straight out could call in on', () => {
     const insertion = landings[0];
+    const map = getWorldMap(MAP_ID, []);
     const steps = stepDistances(map.collision, insertion.position);
     for (const seed of SEEDS) {
       const plan = generateRunPlan(seed, undefined, insertion.id);

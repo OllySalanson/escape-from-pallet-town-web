@@ -1,5 +1,6 @@
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { Pokemon } from '../pokemon';
+import { Move } from '../pokemon/Move';
 import {
   BUILT_IN_MAP_IDS,
   getWorldMap,
@@ -19,6 +20,7 @@ import { districtEncounterTables } from '../world/localEncounters';
 import { districtsForMap, type DistrictArea } from '../world/districts';
 import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
 import { withWorkedExitsOpen } from '../world/workedLandmarks';
+import { isLandingOpen } from '../world/valeQuarters';
 import type { WorldLoot } from '../world/loot';
 import { hasRaidStake, layStakeTrail, stakeGround, type StakeGround } from '../world/raidStake';
 import {
@@ -459,6 +461,14 @@ export function availableInsertionIds(progress: {
   readonly unlockedInsertions: readonly string[];
   readonly reachedInsertions: readonly string[];
   readonly completedContracts?: readonly string[];
+  /**
+   * The keepers this save has beaten. A landing inside a gym's quarter
+   * (`world/valeQuarters.ts`) is not offered until that gym's leader is one of
+   * them, however it was reached; it stays reached, and comes back with the badge.
+   */
+  readonly defeatedBosses?: readonly string[];
+  /** The doors opened another way, which is how the explorer run opens every gym's. */
+  readonly openedGates?: readonly string[];
 }): readonly RunInsertionId[] {
   // A map no contract opens is offered once the chain is finished. The chain
   // reads as finished from the first raid while its maps are retired
@@ -470,8 +480,10 @@ export function availableInsertionIds(progress: {
   // drop-in points are reached on foot, as any map's are.
   const playerMapsOpen = chainFinished || progress.completedContracts?.includes(FIRST_CONTRACT_ID) === true;
   const frontDoor = (insertion: RunInsertion): boolean => frontDoorFor(insertion.mapId)?.id === insertion.id;
+  const opened = openedDoors({ defeatedBosses: progress.defeatedBosses ?? [], openedGates: progress.openedGates });
   return runInsertions()
     .filter((insertion) => isMapOffered(insertion.mapId))
+    .filter((insertion) => isLandingOpen(insertion.id, opened))
     .filter(
       (insertion) =>
         progress.unlockedInsertions.includes(insertion.id) ||
@@ -1087,6 +1099,19 @@ function mapsReachableFrom(
   return reachable;
 }
 
+/**
+ * A trainer's Pokemon fresh for this raid - full health, full PP, nothing it
+ * learned last time - knowing the moves its trainer authored for it. Rebuilt
+ * from species and level alone it walked its learnset again, which dropped
+ * every moveset a trainer was given on purpose: Misty's Staryu forgot the Rain
+ * Dance her gym is built on, and the quarry Machop its Rock Smash.
+ */
+function freshTrainerPokemon(pokemon: Pokemon): Pokemon {
+  const fresh = new Pokemon(pokemon.base, pokemon.level);
+  fresh.moves = pokemon.moves.map((move) => new Move(move.base));
+  return fresh;
+}
+
 function generateTrainers(
   trainers: readonly RunTrainerEncounter[],
   maps: Readonly<Record<WorldMapId, WorldMapDefinition>>,
@@ -1101,7 +1126,7 @@ function generateTrainers(
         ...trainer,
         trainer: {
           ...trainer.trainer,
-          party: trainer.trainer.party.map((pokemon) => new Pokemon(pokemon.base, pokemon.level)),
+          party: trainer.trainer.party.map(freshTrainerPokemon),
         },
       };
     }
@@ -1113,7 +1138,7 @@ function generateTrainers(
       position,
       trainer: {
         ...trainer.trainer,
-        party: trainer.trainer.party.map((pokemon) => new Pokemon(pokemon.base, pokemon.level)),
+        party: trainer.trainer.party.map(freshTrainerPokemon),
       },
     };
   });
@@ -1134,7 +1159,15 @@ function generateLoot(
     // pool the floor below is measured against. Both halves are drawn from the
     // same seeded stream in the same order every time, so a seed still plays
     // the same raid.
-    const pool = map.loot.filter((item) => item.chance === undefined);
+    // The pool is what this raid can reach: a piece that lies in a place behind
+    // a door this save has not opened - Ember Isle's hoard, reached only from
+    // inside the Coast Misty holds - cannot be laid, so it is no part of the
+    // floor below either, or half the pool would quietly be less than half.
+    const pool = map.loot.filter(
+      (item) =>
+        item.chance === undefined &&
+        (isPlayerMapId(map.id) || item.district === undefined || districtReached(map.id, item.district, isReachable)),
+    );
     const rare = map.loot.filter(
       (item) => item.chance !== undefined && rng.int(1, 1_000) <= Math.round(item.chance * 1_000),
     );
@@ -1276,6 +1309,21 @@ interface Reachability {
    */
   readonly mapId: WorldMapId;
   readonly steps: readonly Int32Array[];
+}
+
+/** Whether this raid can walk to any tile of a district. */
+function districtReached(mapId: WorldMapId, districtId: string, isReachable: Reachability): boolean {
+  const areas = districtsForMap(mapId).find((candidate) => candidate.id === districtId)?.areas ?? [];
+  return areas.some((area) => {
+    for (let y = area.y; y < area.y + area.height; y += 1) {
+      for (let x = area.x; x < area.x + area.width; x += 1) {
+        if (isReachable.reaches(mapId, { x, y })) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
 }
 
 /** Whether a tile falls inside any of a district's rectangles. */
