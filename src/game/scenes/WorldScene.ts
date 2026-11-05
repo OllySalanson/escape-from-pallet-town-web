@@ -206,6 +206,8 @@ import { HunterEdgeGlow } from '../ui/HunterEdgeGlow';
 import { prefersReducedMotion } from '../ui/reducedMotion';
 import { hunterWarningStrength } from '../world/hunterWarning';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
+import { ExitVehicleSprite } from '../ui/ExitVehicleSprite';
+import { rideOnMap } from '../world/exitVehicles';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { RadioChip } from '../ui/RadioChip';
 import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
@@ -471,6 +473,8 @@ const figureRect = (tile: GridPosition): Rect => ({
 });
 /** Long enough for the extraction flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
+/** How long the player takes to get on an exit's ride: inside the flash. */
+const BOARDING_MS = 160;
 /** The player's chevron stands this far above their hair. */
 const CHEVRON_HEIGHT = 6;
 
@@ -804,9 +808,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         readonly shoreBefore: GridPosition | undefined;
       }
     | undefined;
+  /**
+   * Every exit on this map: the ride standing on it (`world/exitVehicles.ts`),
+   * the rubble or locked gate standing in front of it while it is barred, and
+   * its caption.
+   */
   private extractionMarkers: Array<{
     readonly point: ExtractionPoint;
-    readonly marker: Phaser.GameObjects.Image;
+    readonly ride: ExitVehicleSprite;
+    barrier: Phaser.GameObjects.Image | undefined;
     readonly label: WorldLabel;
   }> = [];
   /** Every map caption, so each one can be asked whether it speaks and seated each frame. */
@@ -1513,6 +1523,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // room shares (`raidRoom/groupHunter.ts`).
     this.updateGroupHunter();
     this.updateRaid(deltaMs);
+    this.animateExitRides();
     this.drawHunterPack();
     this.settleHeadMark();
     this.settleWayMark(deltaMs);
@@ -2821,17 +2832,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     for (const point of this.extractionPointsForCurrentMap()) {
       const isOpen = this.isExtractionOpen(point);
-      const x = point.position.x * TILE_SIZE + TILE_SIZE / 2;
-      const y = point.position.y * TILE_SIZE + TILE_SIZE / 2;
-      const marker = this.add
-        .image(x, y, extractionIconKey(point, isOpen))
-        .setDepth(atRow(MARKER_BAND, point.position.y));
+      // The ride is drawn on the row of whatever it stands on - a boat on its
+      // water - so a figure on the row in front is drawn over it.
+      const rideOn = rideOnMap(this.currentMap, point.position);
+      const ride = new ExitVehicleSprite(this, rideOn, {
+        open: isOpen,
+        depth: atRow(MARKER_BAND, Math.max(rideOn.at.y, point.position.y)),
+      });
+      const barrier = this.exitBarrier(point, isOpen);
+      ride.setVisible(barrier === undefined);
       // The beacon stands on the landing, which is the one exit the player is
       // guaranteed to be standing on when it is first drawn, so its caption is
       // seated around a marked figure instead of lying across their head and chevron.
+      // Any other is seated round its ride as well as its tile: a boat lies out
+      // on the water, and a caption over the tile alone would sit on the hull.
       const label = new WorldLabel(this, {
         subject:
-          point.label === BEACON_EXIT_LABEL ? landingRect(point.position) : tileRect(point.position),
+          point.label === BEACON_EXIT_LABEL
+            ? landingRect(point.position)
+            : unionRect(tileRect(point.position), ride.rect),
         text: extractionCaption(point, isOpen, this.runSession.manager.snapshot().elapsedMs),
         tone: isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
         depth: atRow(CAPTION_BAND, point.position.y),
@@ -2839,9 +2858,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         // and only while it is open and the clock has gone red.
         speech: { voice: 'exit', tiles: [point.position], open: isOpen },
       });
-      this.mapObjects.push(marker);
+      this.mapObjects.push(...ride.objects, ...(barrier ? [barrier] : []));
       this.worldLabels.push(label);
-      this.extractionMarkers.push({ point, marker, label });
+      this.extractionMarkers.push({ point, ride, barrier, label });
     }
   }
 
@@ -7499,12 +7518,33 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return true;
   }
 
+  /**
+   * The player gets on the exit's ride and it leaves with them, in the beat the
+   * world stands before the result screen: they and their partner step out of
+   * sight under the flash, and the ride goes the way it faces.
+   */
+  private boardRide(point: ExtractionPoint): void {
+    const marker = this.extractionMarkers.find((candidate) => candidate.point.label === point.label);
+    if (!marker) {
+      return;
+    }
+    marker.ride.setVisible(true);
+    marker.ride.depart(this.time.now);
+    marker.label.hide();
+    this.playerGroundMark?.setVisible(false);
+    this.playerHeadMark?.setVisible(false);
+    this.partner?.destroy();
+    this.partner = null;
+    this.tweens.add({ targets: this.player, alpha: 0, duration: BOARDING_MS });
+  }
+
   private extractThrough(point: ExtractionPoint): void {
     if (!this.runSession) {
       return;
     }
     this.runSession.manager.resolveEscape();
     this.destroyRunTimerHud();
+    this.boardRide(point);
     flashScreen(this.cameras.main, 240, [134, 239, 172]);
     this.cameras.main.shake(120, 0.004);
     audioManager.play('extract');
@@ -8096,10 +8136,53 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return districtAt(this.currentMap.id, tile)?.name;
   }
 
+  /** The rubble or locked gate standing in front of a barred exit that is still shut. */
+  private exitBarrier(point: ExtractionPoint, isOpen: boolean): Phaser.GameObjects.Image | undefined {
+    const key = isOpen ? undefined : barrierIconKey(point);
+    if (!key) {
+      return undefined;
+    }
+    return this.add
+      .image(point.position.x * TILE_SIZE + TILE_SIZE / 2, point.position.y * TILE_SIZE + TILE_SIZE / 2, key)
+      .setDepth(atRow(MARKER_BAND, point.position.y));
+  }
+
+  /** Poses every ride in view for this frame: rocking, beating its wings, coming in or leaving. */
+  private animateExitRides(): void {
+    if (this.extractionMarkers.length === 0) {
+      return;
+    }
+    const now = this.time.now;
+    const view = this.cameras.main.worldView;
+    const margin = 3 * TILE_SIZE;
+    for (const { ride } of this.extractionMarkers) {
+      const at = ride.rect;
+      if (
+        !ride.leaving &&
+        (at.x > view.right + margin ||
+          at.x + at.width < view.x - margin ||
+          at.y > view.bottom + margin ||
+          at.y + at.height < view.y - margin)
+      ) {
+        continue;
+      }
+      ride.update(now);
+    }
+  }
+
   private refreshExtractionMarkers(): void {
-    for (const { point, marker, label } of this.extractionMarkers) {
+    const now = this.time?.now ?? 0;
+    for (const marker of this.extractionMarkers) {
+      const { point, ride, label } = marker;
       const isOpen = this.isExtractionOpen(point);
-      marker.setTexture(extractionIconKey(point, isOpen));
+      // Rubble dug out or a gate unlocked gives way to the ride behind it,
+      // which comes in as any ride does when its exit opens.
+      if (marker.barrier && isOpen) {
+        marker.barrier.destroy();
+        marker.barrier = undefined;
+        ride.setVisible(true);
+      }
+      ride.setOpen(isOpen, now);
       label.setText(
         extractionCaption(point, isOpen, this.runSession?.manager.snapshot().elapsedMs ?? 0),
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
@@ -9030,21 +9113,30 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 }
 
 /**
- * An exit is one object in two states, so the open and the locked pad are the
- * same silhouette in two colours rather than two different marks.
+ * What stands in front of a barred exit's ride: the rubble it is buried under,
+ * or the padlocked gate a key opens. Both are walls, so neither is drawn as a
+ * ride waiting to be boarded - a ride would read as somewhere to stand and wait.
  */
-function extractionIconKey(point: ExtractionPoint, isOpen: boolean): string {
-  // A buried exit is drawn as the rubble it is under, which is also a wall:
-  // a locked pad would read as somewhere to stand and wait. A keyed exit is the
-  // padlocked gate it is, for the same reason.
-  if (!isOpen && isDugExit(point)) {
+function barrierIconKey(point: ExtractionPoint): string | undefined {
+  if (isDugExit(point)) {
     return iconTextureKey(WORLD_ICONS.rubble);
   }
-  if (!isOpen && point.requirement?.kind === 'key') {
+  if (point.requirement?.kind === 'key') {
     return iconTextureKey(WORLD_ICONS.lockedGate);
   }
-  return iconTextureKey(isOpen ? WORLD_ICONS.extractionOpen : WORLD_ICONS.extractionLocked);
+  return undefined;
 }
+
+const unionRect = (a: Rect, b: Rect): Rect => {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
+};
 
 /** The frame name the Strength boulder is cut as on the town sheet's texture. */
 const BOULDER_FRAME = 'strength-boulder';

@@ -221,7 +221,13 @@ export function markBoxes(
   };
   (file.districts ?? []).forEach((district, index) => add('district', index, district, district));
   file.dropIns.forEach((spot, index) => add('drop-in', index, spot, tile(spot.x, spot.y)));
-  file.exits.forEach((spot, index) => add('exit', index, spot, tile(spot.x, spot.y)));
+  // An exit's ride (`world/exitVehicles.ts`) can lie out on the water beside it
+  // or hover over it, as much as two tiles off its own: a ride is read off the
+  // ground within four tiles, which `PATCH_REACH` already redraws round any
+  // ground that changed.
+  file.exits.forEach((spot, index) =>
+    add('exit', index, spot, { x: spot.x - 2, y: spot.y - 2, width: 5, height: 5 }),
+  );
   file.itemSpots.forEach((spot, index) => add('item', index, spot, tile(spot.x, spot.y)));
   (file.landmarks ?? []).forEach((spot, index) =>
     add('landmark', index, spot, tile(spot.x, spot.y)),

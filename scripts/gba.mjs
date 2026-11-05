@@ -113,7 +113,8 @@ export function tilesetPair({ primaryTiles, secondaryTiles, primaryMetatiles, se
    * One metatile, as the GBA draws it: the bottom layer, then the top over it,
    * colour 0 clear. `keep` can leave tiles out by their index - the ground a
    * piece of furniture was drawn standing on, say - and is told each tile's
-   * palette, so a cut can refuse one drawn in a palette that varies by room.
+   * palette, so a cut can refuse one drawn in a palette that varies by room,
+   * and its layer (0 the bottom, 1 the top), so a cut can take the top alone.
    */
   const drawMetatile = (image, id, left, top, keep = () => true) => {
     const table = id < split.metatiles ? tables[0] : tables[1];
@@ -126,7 +127,7 @@ export function tilesetPair({ primaryTiles, secondaryTiles, primaryMetatiles, se
         const flipX = (entry >> 10) & 1;
         const flipY = (entry >> 11) & 1;
         const palette = entry >> 12;
-        if (!keep(tile, palette)) continue;
+        if (!keep(tile, palette, layer)) continue;
         for (let y = 0; y < 8; y += 1) {
           for (let x = 0; x < 8; x += 1) {
             const index = tilePixel(tile, flipX ? 7 - x : x, flipY ? 7 - y : y);

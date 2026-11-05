@@ -43,7 +43,8 @@ import { DIALOG_FONT_SIZE, CHIP_FONT_SIZE } from '../ui/screenType';
 import { GAME_FONT } from '../ui/gameFont';
 import { drawPixelWindow } from '../ui/pixelWindow';
 import { flashScreen } from '../ui/screenFlash';
-import { iconTextureKey, itemIconName, WORLD_ICONS } from '../ui/icons';
+import { iconTextureKey, itemIconName } from '../ui/icons';
+import { ridePicture } from '../world/exitVehicles';
 import { FIRE_LETTERING, stampedWord } from '../ui/stampedLettering';
 import { readLook } from '../look/look';
 import { bestPackIn } from '../items/packs';
@@ -1327,8 +1328,15 @@ export class ArenaIntroScene extends Phaser.Scene {
     const main = this.cameras.main;
     // Behind the figures: drawn over them, it hid the player for the last of the run.
     const exit = this.world(this.add.graphics().setDepth(DEPTH.figure - 1).setVisible(false));
+    // The way out is a ride, as every raid's is (`world/exitVehicles.ts`): in a
+    // wood with no water or cliff by it, a bicycle.
+    const ride = ridePicture({ vehicle: 'bike', facing: 'left', at: EXIT_TILE });
     const exitIcon = this.world(
-      this.add.image(EXIT_TILE.x * TILE, EXIT_TILE.y * TILE, iconTextureKey(WORLD_ICONS.extractionOpen)).setOrigin(0, 0).setDepth(DEPTH.item).setVisible(false),
+      this.add
+        .image(EXIT_TILE.x * TILE + ride.centre.x, EXIT_TILE.y * TILE + ride.centre.y, ride.texture, ride.frame)
+        .setFlipX(ride.flipX)
+        .setDepth(DEPTH.item)
+        .setVisible(false),
     );
     const drawExit = (pulse: number) => {
       exit.clear();
