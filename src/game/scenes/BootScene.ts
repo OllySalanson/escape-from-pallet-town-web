@@ -1,5 +1,12 @@
 import { PUNT_PATH, PUNT_TEXTURE } from '../world/sailing';
 import Phaser from 'phaser';
+import {
+  EXIT_VEHICLE_PATH,
+  EXIT_VEHICLE_TEXTURE,
+  PIDGEOT_RIDE_PATH,
+  PIDGEOT_RIDE_TEXTURE,
+  RIDE_FRAME,
+} from '../world/exitVehicles';
 import { SHINY_SPARKLE_TEXTURE } from '../ui/shinySparkle';
 import type { Direction } from '../movement/gridMovement';
 import {
@@ -89,6 +96,16 @@ export class BootScene extends Phaser.Scene {
     // The bird that glides over the harbour (`base/harbourBird.ts`).
     this.load.image(HARBOUR_BIRD_TEXTURE, publicAssetUrl(HARBOUR_BIRD_PATH));
     this.load.image(PUNT_TEXTURE, publicAssetUrl(PUNT_PATH));
+    // The rides that stand on a raid's ways out (`world/exitVehicles.ts`): the
+    // boat, the bicycle and the minecart on one strip, and Pidgeot on its own.
+    this.load.spritesheet(EXIT_VEHICLE_TEXTURE, publicAssetUrl(EXIT_VEHICLE_PATH), {
+      frameWidth: RIDE_FRAME,
+      frameHeight: RIDE_FRAME,
+    });
+    this.load.spritesheet(PIDGEOT_RIDE_TEXTURE, publicAssetUrl(PIDGEOT_RIDE_PATH), {
+      frameWidth: RIDE_FRAME,
+      frameHeight: RIDE_FRAME,
+    });
     // The harbour's own Pokemon (`base/harbourLife.ts`), cut the same way.
     for (const species of HARBOUR_SPECIES) {
       this.load.spritesheet(harbourPokemonTextureKey(species), publicAssetUrl(harbourPokemonAssetPath(species)), {

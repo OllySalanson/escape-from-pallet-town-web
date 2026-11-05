@@ -26,6 +26,8 @@ import {
   berryTreeFrames,
   type BerryId,
 } from '../world/berries';
+import { EXIT_VEHICLE_PATH, PIDGEOT_RIDE_PATH, RIDE_FRAME, ridePicture } from '../world/exitVehicles';
+import { rideOfExit } from './exitRides';
 import { iconUrl, WORLD_ICONS } from '../ui/icons';
 import { TILE_SIZE } from '../worldMap';
 import type { MapFile, MapFileArea, MapFileLink, MapFileLinkEnd } from '../world/mapFile';
@@ -88,6 +90,8 @@ export function loadMakerSheets(): Promise<void> {
     ...MAP_FILE_LOOKS.map((look) => loadImage(characterDesignAssetPath(look))),
     loadImage(POKEMON_ICON_PATH),
     loadImage(BERRY_TREE_PATH),
+    loadImage(EXIT_VEHICLE_PATH),
+    loadImage(PIDGEOT_RIDE_PATH),
     loadRubble(),
   ]).then(() => undefined);
 }
@@ -105,6 +109,54 @@ function loadRubble(): Promise<void> {
     rubble.onerror = () => resolve();
     rubble.src = iconUrl(WORLD_ICONS.rubble);
   });
+}
+
+/**
+ * An exit's ride, drawn where the raid draws it (`world/exitVehicles.ts`):
+ * picked from the ground round the exit, so the maker sees the boat a quay
+ * gets and the bicycle a lane gets as they draw them. False if its sheet has
+ * not loaded, so the caller can mark the exit some other way.
+ */
+function drawRide(context: CanvasRenderingContext2D, file: MapFile, spot: GridPoint): boolean {
+  const ride = rideOfExit(file, spot);
+  const picture = ridePicture(ride);
+  const image = sheets.get(picture.path);
+  if (!image?.complete || image.naturalWidth === 0) {
+    return false;
+  }
+  const columns = image.naturalWidth / RIDE_FRAME;
+  const left = ride.at.x * TILE_SIZE + picture.centre.x - RIDE_FRAME / 2;
+  const top = ride.at.y * TILE_SIZE + picture.centre.y - RIDE_FRAME / 2;
+  if (picture.shadow) {
+    context.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    context.beginPath();
+    context.ellipse(
+      ride.at.x * TILE_SIZE + picture.shadow.x,
+      ride.at.y * TILE_SIZE + picture.shadow.y,
+      picture.shadow.width / 2,
+      2,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
+  }
+  context.save();
+  context.translate(picture.flipX ? left + RIDE_FRAME : left, top);
+  context.scale(picture.flipX ? -1 : 1, 1);
+  context.drawImage(
+    image,
+    (picture.frame % columns) * RIDE_FRAME,
+    Math.floor(picture.frame / columns) * RIDE_FRAME,
+    RIDE_FRAME,
+    RIDE_FRAME,
+    0,
+    0,
+    RIDE_FRAME,
+    RIDE_FRAME,
+  );
+  context.restore();
+  return true;
 }
 
 /** A berry tree on a tile, drawn as the game draws it: ripe, feet on the tile's last row, crown in the row above. */
@@ -580,7 +632,21 @@ export function drawMap(
   // a Pickaxe meets it.
   file.exits.forEach((spot, index) => {
     if (spot.opens.when !== 'dug') {
-      mark('exit', spot, index);
+      // The ride the raid will draw there, on a ring in the exit's colour so it
+      // is still picked out as a placed thing; the arrow is the stand-in while
+      // the sheets load.
+      ring(
+        context,
+        spot.x * TILE_SIZE,
+        spot.y * TILE_SIZE,
+        TILE_SIZE,
+        TILE_SIZE,
+        MARK_COLOURS.exit,
+        selected?.kind === 'exit' && selected.index === index,
+      );
+      if (!drawRide(context, file, spot)) {
+        mark('exit', spot, index);
+      }
       return;
     }
     if (rubble?.complete && rubble.naturalWidth > 0) {

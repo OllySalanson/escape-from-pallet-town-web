@@ -143,6 +143,10 @@ at its next level.
 
 ### 5. Get out (or don't)
 
+Every exit is a ride out, and the ground decides which: a boat moored off a jetty, Pidgeot waiting
+on the high ground, a minecart under the rock, and a Bicycle anywhere else. A ride that isn't due yet
+stands faded until its exit opens, then turns up. Hop on and it's off.
+
 Make it to an exit and everything you carried is banked for good. Go down instead and the pack is
 gone, along with every Pokémon you brought that wasn't tucked into the secure container. The
 result screen is very polite about it either way.

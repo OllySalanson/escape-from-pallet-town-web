@@ -45,6 +45,7 @@ import type { QueuedMap } from './review';
 import { summariseMapFile, summaryLine, summaryLines } from '../world/mapFileSummary';
 import { canTryAgain, STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import { isPluralName, withArticle } from '../ui/article';
+import { rideLine, rideOfExit } from './exitRides';
 import {
   BUILDING_CHOICES,
   plantsAlong,
@@ -225,7 +226,11 @@ export interface MakerViewState {
 /** The Places list: what a maker can stand on the map besides ground and buildings. */
 const PLACE_ROWS = [
   ['drop-in', 'Drop-in', 'Where a raid on the map starts. The first is the front door.'],
-  ['exit', 'Exit', 'A way out. Stepping on it ends the raid with what you carry.'],
+  [
+    'exit',
+    'Exit',
+    'A way out: a ride that takes whoever steps on it, with what they carry. The ground picks the ride - a boat by deep water, Pidgeot near a cliff, a bicycle anywhere else.',
+  ],
   ['item', 'Item spot', 'Somewhere to find something. The game decides what.'],
   [
     'landmark',
@@ -683,6 +688,9 @@ function selectedPane(
           : spot.opens.when === 'key'
             ? `${name(spot.name)}${lies}<p class="px-note px-wrap">A locked gate until somebody carries the Card Key to it, then a way out for that raid. The card lies on an item spot set to hold it, one raid in five. Every drop-in still needs a way out without it.</p>`
             : `${name(spot.name)}${lies}<label class="maker-field" data-help="How long into a raid before it takes anybody out. Up and Down change it by five seconds."><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
+      if (spot.opens.when !== 'dug') {
+        body += `<p class="px-note px-wrap">${rideLine(rideOfExit(file, spot))}</p>`;
+      }
       break;
     }
     case 'item': {

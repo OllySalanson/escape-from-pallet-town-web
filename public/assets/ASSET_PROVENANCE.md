@@ -213,7 +213,7 @@ game.
   palette is what keeps the set looking like a set.
 - **Contents.** `potion`, `super-potion`, `antidote`, `poke-ball`, `great-ball`,
   `field-kit`, `supply-crate`, `supply-cache`, `radio-mast`, `sign-post`,
-  `extraction-open`, `extraction-locked`, `landmark-worked`, the four packs
+  `extraction-open` (the beacon rung's, since a raid's exits are rides), `landmark-worked`, the four packs
   `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame`, plus the six
   Brock materials
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
@@ -1242,6 +1242,48 @@ The same art, the same source, the same ruling and the same script as
 `LAPRAS` 429. Fetched 2026-10-25. Not a pixel scaled, filtered, recoloured or
 moved; the game draws the swimmers sunk to the waterline by cropping, never by
 editing the sheet.
+
+### `rides/pidgeot.png` - Pidgeot, the ride out from high ground, from HeartGold/SoulSilver
+
+The same art, the same source, the same ruling and the same script as
+`followers/` above, cut for the Pokemon a raid's way out can be
+(`src/game/world/exitVehicles.ts`: Pidgeot hovers over an exit near a cliff
+and flies the player out). By `include/constants/mmodel.h` at the same pinned
+commit: `MMODEL_FOLLOWER_MON_PIDGEOT` 315. Fetched 2026-11-05. Not a pixel
+scaled, filtered, recoloured or moved.
+
+### `exit-vehicles.png` - the boat, the bicycle and the minecart a raid leaves by
+
+One strip of five 32x32 cells - Briney's boat facing down, up and left, the
+bicycle, the minecart - standing on a raid's ways out
+(`src/game/world/exitVehicles.ts` picks which). Two of the three are
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the ruling
+every rip here sits on (the owner, 2026-09-19: a personal, non-commercial fan
+game); rights holders Nintendo / Creatures / Game Freak, no licence from them.
+
+- **The boat** is Mr. Briney's, from Pokemon Emerald: pret/pokeemerald
+  (<https://github.com/pret/pokeemerald>) at commit `731ad5b`, the same commit
+  `berry-trees.png` is cut from, read 2026-11-05 -
+  `graphics/object_events/pics/misc/mr_brineys_boat.png` (three 32x32 frames,
+  `sPicTable_MrBrineysBoat`) in `graphics/object_events/palettes/npc_3.pal`,
+  the palette `gObjectEventGraphicsInfo_MrBrineysBoat` names
+  (`OBJ_EVENT_PAL_TAG_NPC_3`). FireRed has no small boat, only ships.
+- **The bicycle** is FireRed's own, from the Cerulean Bike Shop's floor:
+  pret/pokefirered at commit `037335f`, read 2026-11-05 - metatiles 643 and 644
+  of `data/tilesets/secondary/bike_shop` (the red bicycle), the top layer only,
+  over the `building` primary tileset's tiles and the two tilesets' palettes as
+  FireRed loads them.
+- **The minecart** is drawn here for this game, on a grid in the script below,
+  in GBA colours: no generation III game has one. Nothing is copied from
+  anywhere.
+- **pret's terms.** As for `frlg-towns.png`: nothing in either repository makes
+  the extracted graphics anyone's but the rights holders', so this sits on the
+  owner's ruling alone, and **nothing from pret is committed**.
+- **How it was cut.** `scripts/cut-exit-vehicles.mjs` is the whole method, and
+  writes `src/game/world/generated/exitVehicleArt.ts` (where each cell's art
+  is). Colour 0 is clear and every colour is the palette's as written; nothing
+  is scaled, filtered or moved. The right-hand facings are the left ones
+  mirrored at run time, as the games draw them.
 
 ### `harbour-bird.png` - the bird over the harbour: FireRed's Fly bird and its shadow
 
