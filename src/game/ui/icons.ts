@@ -142,7 +142,6 @@ export const WORLD_ICONS = {
   landmarkWorked: 'landmark-worked',
   signPost: 'sign-post',
   extractionOpen: 'extraction-open',
-  extractionLocked: 'extraction-locked',
   /** A map maker's exit buried until a Pickaxe digs it out (`MapFileOpens`). */
   rubble: 'rubble',
   /** An exit behind a gate only its own key opens (`ExtractionRequirement` `key`). */

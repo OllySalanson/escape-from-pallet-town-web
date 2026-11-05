@@ -1067,6 +1067,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the clock - it only ever goes where the player has been.
    */
   private partner: PartnerFigure | null = null;
+  /**
+   * When the player got on the ride out, or null: from then until the result
+   * screen they and their partner are aboard, and nobody is drawn walking.
+   */
+  private boardedAtMs: number | null = null;
   /** The other player in a raid room, drawn where they walk (`raidRoom/`). */
   private friendFigures: HarbourFigures | null = null;
   /** This raid's part in the room's one hunter last frame (`huntRole`). */
@@ -1136,6 +1141,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    this.boardedAtMs = null;
     // The marks were destroyed with the scene; the hunters themselves ride the run session.
     this.packMarks.clear();
     this.packSearchMarks.clear();
@@ -2832,12 +2838,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     for (const point of this.extractionPointsForCurrentMap()) {
       const isOpen = this.isExtractionOpen(point);
-      // The ride is drawn on the row of whatever it stands on - a boat on its
-      // water - so a figure on the row in front is drawn over it.
+      // A ride waiting for its exit to open is on the ground with the other
+      // marks, under everybody. Once open it is drawn where a prize's gleam is,
+      // over the canopy: exits stand in pockets of wood, and a tree's tip
+      // hanging over the way out hid the ride that says it is one.
       const rideOn = rideOnMap(this.currentMap, point.position);
+      const row = Math.max(rideOn.at.y, point.position.y);
       const ride = new ExitVehicleSprite(this, rideOn, {
         open: isOpen,
-        depth: atRow(MARKER_BAND, Math.max(rideOn.at.y, point.position.y)),
+        depth: { waiting: atRow(MARKER_BAND, row), open: atRow(CANOPY_BAND, row) },
       });
       const barrier = this.exitBarrier(point, isOpen);
       ride.setVisible(barrier === undefined);
@@ -4409,6 +4418,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * townsperson keeping their beat - by going after the player into theirs.
    */
   private updatePartner(deltaMs: number): void {
+    if (this.boardedAtMs !== null) {
+      return;
+    }
     const who = this.followerNow();
     const current = this.partner;
     if (!sameFollower(who, current && { pokemon: current.pokemon, species: current.species })) {
@@ -7528,14 +7540,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!marker) {
       return;
     }
+    this.boardedAtMs = this.time.now;
     marker.ride.setVisible(true);
-    marker.ride.depart(this.time.now);
-    marker.label.hide();
+    marker.ride.depart(this.boardedAtMs);
+    // Its name has said what it had to; it goes with the ride.
+    marker.label.destroy();
+    this.worldLabels = this.worldLabels.filter((label) => label !== marker.label);
     this.playerGroundMark?.setVisible(false);
     this.playerHeadMark?.setVisible(false);
     this.partner?.destroy();
     this.partner = null;
-    this.tweens.add({ targets: this.player, alpha: 0, duration: BOARDING_MS });
   }
 
   private extractThrough(point: ExtractionPoint): void {
@@ -8153,6 +8167,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const now = this.time.now;
+    // On the scene's clock rather than a tween's, which keeps the wall clock.
+    if (this.boardedAtMs !== null) {
+      this.player.setAlpha(Math.max(0, 1 - (now - this.boardedAtMs) / BOARDING_MS));
+    }
     const view = this.cameras.main.worldView;
     const margin = 3 * TILE_SIZE;
     for (const { ride } of this.extractionMarkers) {

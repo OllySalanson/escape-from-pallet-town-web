@@ -17,7 +17,7 @@ import {
   type ExitRide,
 } from './exitVehicles';
 import { extractionPointsOn } from './extractionPoints';
-import { materialForChar, type Material } from './tileset/materials';
+import { materialForChar } from './tileset/materials';
 import { getWorldMap } from '../worldMap';
 
 /** A patch of ground drawn in the map files' own letters, the exit at `*`. */
@@ -27,7 +27,7 @@ function ground(rows: readonly string[], underground = false): { ground: ExitGro
     [...row].map((char, x) => {
       if (char === '*') {
         exit = { x, y };
-        return 'grass' as Material;
+        return 'grass';
       }
       const material = materialForChar(char);
       if (!material) throw new Error(`no material ${char}`);

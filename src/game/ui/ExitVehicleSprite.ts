@@ -32,15 +32,21 @@ export class ExitVehicleSprite {
   private open: boolean;
   private arrivedAt: number | undefined;
   private departedAt: number | undefined;
+  private readonly depths: { readonly waiting: number; readonly open: number };
 
   public constructor(
     scene: Phaser.Scene,
     ride: ExitRide,
-    options: { readonly open: boolean; readonly depth: number },
+    options: {
+      readonly open: boolean;
+      /** Where it is drawn while it waits for its exit to open, and once it has. */
+      readonly depth: { readonly waiting: number; readonly open: number };
+    },
   ) {
     this.ride = ride;
     this.picture = ridePicture(ride);
     this.open = options.open;
+    this.depths = options.depth;
     this.restX = ride.at.x * TILE + this.picture.centre.x;
     this.restY = ride.at.y * TILE + this.picture.centre.y;
     const shadow = this.picture.shadow;
@@ -48,13 +54,12 @@ export class ExitVehicleSprite {
       this.shadow = scene.add
         .graphics()
         .fillStyle(0x000000, 1)
-        .fillEllipse(ride.at.x * TILE + shadow.x, ride.at.y * TILE + shadow.y, shadow.width, SHADOW_HEIGHT)
-        .setDepth(options.depth);
+        .fillEllipse(ride.at.x * TILE + shadow.x, ride.at.y * TILE + shadow.y, shadow.width, SHADOW_HEIGHT);
     }
     this.image = scene.add
       .image(this.restX, this.restY, this.picture.texture, this.picture.frame)
-      .setFlipX(this.picture.flipX)
-      .setDepth(options.depth);
+      .setFlipX(this.picture.flipX);
+    this.settleDepth();
     this.pose(this.open ? rideIdle(ride.vehicle, 0) : this.lockedPose());
   }
 
@@ -83,12 +88,14 @@ export class ExitVehicleSprite {
     }
     this.open = open;
     this.arrivedAt = open ? nowMs : undefined;
+    this.settleDepth();
   }
 
   /** Leaves with the player. */
   public depart(nowMs: number): void {
     this.open = true;
     this.departedAt ??= nowMs;
+    this.settleDepth();
   }
 
   public setVisible(visible: boolean): void {
@@ -115,6 +122,12 @@ export class ExitVehicleSprite {
   public destroy(): void {
     this.image.destroy();
     this.shadow?.destroy();
+  }
+
+  private settleDepth(): void {
+    const depth = this.open ? this.depths.open : this.depths.waiting;
+    this.image.setDepth(depth);
+    this.shadow?.setDepth(depth - 0.0001);
   }
 
   private lockedPose(): RidePose {

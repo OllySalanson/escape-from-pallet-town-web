@@ -115,7 +115,9 @@ export function exitRideFor(ground: ExitGround, exit: GridPosition): ExitRide {
 
   // The water with the most open water beyond it, so a boat on a quay faces
   // the sea rather than the harbour wall beside it.
-  let water: { facing: Direction; reach: number } | undefined;
+  // Between two as open, the one straight on from the way the exit is walked
+  // onto: a boat at the end of a jetty lies off its end, not alongside it.
+  let water: { facing: Direction; score: number } | undefined;
   for (const facing of ['down', 'right', 'left', 'up'] as const) {
     if (along(facing, 1) !== 'water') {
       continue;
@@ -124,8 +126,10 @@ export function exitRideFor(ground: ExitGround, exit: GridPosition): ExitRide {
     while (reach < LOOK_STEPS && along(facing, reach + 1) === 'water') {
       reach += 1;
     }
-    if (!water || reach > water.reach) {
-      water = { facing, reach };
+    const behind = ground.materialAt(exit.x - STEPS[facing].x, exit.y - STEPS[facing].y);
+    const score = reach * 2 + (isGround(behind) ? 1 : 0);
+    if (!water || score > water.score) {
+      water = { facing, score };
     }
   }
   if (water) {
@@ -200,6 +204,22 @@ function cellBounds(cell: VehicleCell, flipX: boolean): { left: number; top: num
  * hovers over the exit with its shadow under it.
  */
 export function ridePicture(ride: ExitRide): RidePicture {
+  const picture = unclampedPicture(ride);
+  // Nothing is drawn above a map's top edge, where the camera never goes: a
+  // ride on the top row stands lower instead of losing its head.
+  const over = -(ride.at.y * TILE + picture.bounds.y);
+  if (over <= 0) {
+    return picture;
+  }
+  return {
+    ...picture,
+    centre: { ...picture.centre, y: picture.centre.y + over },
+    bounds: { ...picture.bounds, y: picture.bounds.y + over },
+    ...(picture.shadow ? { shadow: { ...picture.shadow, y: Math.max(picture.shadow.y, picture.bounds.y + over + picture.bounds.height + 2) } } : {}),
+  };
+}
+
+function unclampedPicture(ride: ExitRide): RidePicture {
   if (ride.vehicle === 'bird') {
     const art = RIDE_ART.pidgeot;
     // The art's foot row stands BIRD_HOVER over the tile's last row.
@@ -311,7 +331,9 @@ export function rideArrival(ride: ExitRide, elapsedMs: number): RidePose {
 /** Leaving with the player: away the way it faces, gathering speed, gone by the end. */
 export function rideDeparture(ride: ExitRide, elapsedMs: number): RidePose {
   const t = clamp01(elapsedMs / RIDE_DEPARTURE_MS);
-  const travelled = Math.round(DEPARTURE_PIXELS * t * t);
+  // Off at once and gathering speed: a pure ease-in stood still for the first
+  // third of the beat, which read as a ride that would not go.
+  const travelled = Math.round(DEPARTURE_PIXELS * t * (0.35 + 0.65 * t));
   const alpha = clamp01((1 - t) / 0.4);
   if (ride.vehicle === 'bird') {
     // Up and away, wings going hard.

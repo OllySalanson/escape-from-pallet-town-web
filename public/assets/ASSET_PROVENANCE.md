@@ -213,7 +213,7 @@ game.
   palette is what keeps the set looking like a set.
 - **Contents.** `potion`, `super-potion`, `antidote`, `poke-ball`, `great-ball`,
   `field-kit`, `supply-crate`, `supply-cache`, `radio-mast`, `sign-post`,
-  `extraction-open`, `extraction-locked`, `landmark-worked`, the four packs
+  `extraction-open` (the beacon rung's, since a raid's exits are rides), `landmark-worked`, the four packs
   `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame`, plus the six
   Brock materials
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
