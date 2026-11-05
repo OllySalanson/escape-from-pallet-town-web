@@ -16,6 +16,8 @@ import {
   RAID_ARENA_SHEET_SOURCE,
   RAID_ARENA_STATUE,
 } from './raidArenaSheet';
+import { GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
+import { BOARDS, BOARDS_SHEET_SOURCE } from '../world/tileset/boardsSheet';
 
 /**
  * The base is drawn on the same sheet the four raid maps are, with its
@@ -54,7 +56,74 @@ export type BasePropName =
   | 'shipPier'
   | 'warehouses'
   | 'roundFountain'
-  | 'townMap';
+  | 'townMap'
+  | PromenadePropName;
+
+/**
+ * THE PROMENADE's things (`promenadeSheet.ts`, drawn by
+ * `scripts/draw-promenade.mjs`): THE GAME CORNER, and what a seaside front
+ * has standing about on it. Everything stands solid but the railing's
+ * neighbours: a railing is solid too, as an edge to the sand is.
+ */
+export type PromenadePropName =
+  | 'gameCorner'
+  | 'prizeWindow'
+  | 'promenadeLamp'
+  | 'lifebuoy'
+  | 'pennantRed'
+  | 'pennantBlue'
+  | 'pennantYellow'
+  | 'pennantGreen'
+  | 'parasolRed'
+  | 'parasolBlue'
+  | 'parasolYellow'
+  | 'iceCart'
+  | 'railing'
+  | 'deckchairRed'
+  | 'deckchairBlue'
+  | 'deckchairYellow'
+  | 'hutRed'
+  | 'hutBlue'
+  | 'hutYellow'
+  | 'hutGreen'
+  | 'hutPink'
+  | 'hutTeal'
+  | 'troughPink'
+  | 'troughYellow'
+  | 'troughRed'
+  | 'troughBlue';
+
+const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
+  // 7x6. THE GAME CORNER: Celadon's own, with GAME CORNER lit across its
+  // front and its door open under the arch; and 3x4, the prize window beside
+  // it under its gold PRIZES ticket, its own door open.
+  gameCorner: GAME_CORNER_HALL,
+  prizeWindow: PRIZE_WINDOW_BUILDING,
+  promenadeLamp: promenadeProp('lamp', 'lamp'),
+  lifebuoy: promenadeProp('lifebuoy', 'lifebuoy'),
+  pennantRed: promenadeProp('pennantRed', 'pennant'),
+  pennantBlue: promenadeProp('pennantBlue', 'pennant'),
+  pennantYellow: promenadeProp('pennantYellow', 'pennant'),
+  pennantGreen: promenadeProp('pennantGreen', 'pennant'),
+  parasolRed: promenadeProp('parasolRed', 'parasol'),
+  parasolBlue: promenadeProp('parasolBlue', 'parasol'),
+  parasolYellow: promenadeProp('parasolYellow', 'parasol'),
+  iceCart: promenadeProp('iceCart', 'ice-cream cart'),
+  railing: promenadeProp('railing', 'railing'),
+  deckchairRed: promenadeProp('deckchairRed', 'deckchair'),
+  deckchairBlue: promenadeProp('deckchairBlue', 'deckchair'),
+  deckchairYellow: promenadeProp('deckchairYellow', 'deckchair'),
+  hutRed: promenadeProp('hutRed', 'beach hut'),
+  hutBlue: promenadeProp('hutBlue', 'beach hut'),
+  hutYellow: promenadeProp('hutYellow', 'beach hut'),
+  hutGreen: promenadeProp('hutGreen', 'beach hut'),
+  hutPink: promenadeProp('hutPink', 'beach hut'),
+  hutTeal: promenadeProp('hutTeal', 'beach hut'),
+  troughPink: promenadeProp('troughPink', 'flower trough'),
+  troughYellow: promenadeProp('troughYellow', 'flower trough'),
+  troughRed: promenadeProp('troughRed', 'flower trough'),
+  troughBlue: promenadeProp('troughBlue', 'flower trough'),
+};
 
 /**
  * Bill's cottage: a little blue-roofed FireRed house, cut onto the base's own
@@ -141,8 +210,11 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     beach: { ...FLOOD_TOWN_TILESET.materials.beach, joins: ['grass', 'turf', 'stone', 'sand', 'earth', 'paving', 'tree', 'hedge'] },
     water: {
       ...FLOOD_TOWN_TILESET.materials.water,
-      joins: [...(FLOOD_TOWN_TILESET.materials.water.joins ?? []), 'beach'],
+      joins: [...(FLOOD_TOWN_TILESET.materials.water.joins ?? []), 'beach', 'boards'],
     },
+    // FireRed's plank deck: THE PROMENADE's boardwalk and its pier, laid
+    // straight over the sand and the sea (`world/tileset/boardsSheet.ts`).
+    boards: BOARDS,
   },
   sources: [
     ...FLOOD_TOWN_TILESET.sources,
@@ -150,6 +222,9 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     TOWN_SHEET_SOURCE.source,
     // THE RAID ARENA's own front, its banners and its runner (`raidArenaSheet.ts`).
     RAID_ARENA_SHEET_SOURCE.source,
+    // THE PROMENADE's own art and THE GAME CORNER's front (`promenadeSheet.ts`).
+    PROMENADE_SHEET_SOURCE.source,
+    BOARDS_SHEET_SOURCE.source,
     // The frames the harbour's sea, surf and flowers move through (`world/tileAnimation.ts`).
     TILE_ANIMATION_SOURCE.source,
   ],
@@ -219,5 +294,6 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     roundFountain: TOWN_PROPS.roundFountain,
     // FireRed's town map board, which says where everything is.
     townMap: TOWN_PROPS.townMap,
+    ...PROMENADE_PROPS,
   },
 };

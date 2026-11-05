@@ -12,6 +12,8 @@ import { BOARDS_SHEET_SOURCE } from './boardsSheet';
 import { HIDEOUT_SHEET_SOURCE } from './hideoutSheet';
 import { RAID_ARENA_SHEET_SOURCE } from '../../base/raidArenaSheet';
 import { ARENA_HALL_SOURCE } from '../../base/arenaHallSheet';
+import { PROMENADE_SHEET_SOURCE } from '../../base/promenadeSheet';
+import { GAME_CORNER_SHEET_SOURCE } from '../../base/gameCornerSheet';
 
 /**
  * The images the game draws maps from, and where each one's tiles sit in the
@@ -76,5 +78,9 @@ export const TILE_SOURCES: readonly TileSource[] = [
   TILE_ANIMATION_SOURCE.source,
   // THE RAID ARENA's own front (`base/raidArenaSheet.ts`).
   RAID_ARENA_SHEET_SOURCE.source,
+  // THE PROMENADE's own art and THE GAME CORNER's front (`base/promenadeSheet.ts`),
+  // and the Game Corner's two rooms (`base/gameCornerSheet.ts`).
+  PROMENADE_SHEET_SOURCE.source,
+  GAME_CORNER_SHEET_SOURCE.source,
   ARENA_HALL_SOURCE.source,
 ];

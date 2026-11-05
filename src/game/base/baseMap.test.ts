@@ -10,7 +10,7 @@ import {
   NOTICE_BOARD,
   getBaseMap,
 } from './baseMap';
-import { BASE_DOORS } from './doors';
+import { BASE_DOORS, PLACES_TO_GO } from './doors';
 import { BASE_FIXTURES, standingFixtures } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
 import { BASE_TILESET } from './baseTileset';
@@ -74,7 +74,7 @@ describe('the base map', () => {
 
   it("keeps every keeper's door within a stroll of where the game opens", () => {
     const steps = stepsFrom(BASE_SPAWN);
-    for (const door of BASE_DOORS.filter((each) => each.screen !== null && each.screen !== 'boutique')) {
+    for (const door of BASE_DOORS.filter((each) => each.screen !== null && !PLACES_TO_GO.includes(each.id))) {
       expect([door.id, stepsTo(steps, approachesTo(door.id)) <= 18]).toEqual([door.id, true]);
     }
   });
@@ -87,6 +87,19 @@ describe('the base map', () => {
   it('keeps THE HARBOUR BOUTIQUE a walk up THE GREEN from both landings', () => {
     expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('boutique'))).toBeLessThanOrEqual(50);
     expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('boutique'))).toBeLessThanOrEqual(58);
+  });
+
+  /**
+   * THE GAME CORNER is out along THE PROMENADE, past THE GREEN: somewhere to
+   * go, as the arenas plan has it (about 69 steps measured on its sketch), and
+   * held so that it stays a walk along the front rather than a trek. Both its
+   * doors - the arcade and the prize window beside it.
+   */
+  it('keeps THE GAME CORNER a walk along THE PROMENADE from both landings', () => {
+    for (const door of ['game-corner', 'prize-window']) {
+      expect([door, stepsTo(stepsFrom(BASE_SPAWN), approachesTo(door)) <= 72]).toEqual([door, true]);
+      expect([door, stepsTo(stepsFrom(BASE_LANDING), approachesTo(door)) <= 80]).toEqual([door, true]);
+    }
   });
 
   /**

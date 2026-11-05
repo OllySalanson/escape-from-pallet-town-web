@@ -101,27 +101,26 @@ export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(55, 31, 'down'),
 ];
 
-/** Something to look at for a while: a fountain, the bench, the arena's statues, the pen, the S.S. Anne. */
+/** Something to look at for a while: a fountain, the bench, the arena's statues, the promenade's garden, the S.S. Anne. */
 export const HANG_OUTS: readonly RoomSpot[] = [
   stand(26, 15, 'right'),
   stand(26, 14, 'right'),
   stand(30, 15, 'left'),
   stand(30, 16, 'left'),
-  stand(55, 11, 'right'),
   stand(59, 11, 'left'),
   stand(55, 14, 'right'),
   stand(59, 14, 'left'),
   stand(53, 10, 'left'),
   stand(53, 11, 'left'),
-  stand(49, 14, 'up'),
-  stand(51, 14, 'up'),
+  stand(66, 11, 'up'),
+  stand(67, 11, 'up'),
   stand(6, 17, 'up'),
   stand(10, 17, 'up'),
   stand(30, 24, 'right'),
 ];
 
-/** THE HARBOUR BOUTIQUE's front, either side of its step. */
-export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(54, 8, 'up'), stand(56, 8, 'up'), stand(57, 8, 'up')];
+/** THE HARBOUR BOUTIQUE's front, and THE GAME CORNER's prize window either side of its step. */
+export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(54, 8, 'up'), stand(80, 10, 'up'), stand(82, 10, 'up')];
 
 /** In front of a sign. Never THE BOLTHOLE's, which is somebody's front garden. */
 export const NOTICE_BOARDS: readonly RoomSpot[] = [

@@ -1,0 +1,288 @@
+{
+  "source": "pret/pokefirered 037335f4c725d7c9aecdac87066f2002b4bd7e14 src/pokemon_jump.c",
+  "jumpPeak": -30,
+  "maxScore": 99990,
+  "mons": [
+    {
+      "species": "bulbasaur",
+      "type": "slow"
+    },
+    {
+      "species": "charmander",
+      "type": "fast"
+    },
+    {
+      "species": "squirtle",
+      "type": "normal"
+    },
+    {
+      "species": "caterpie",
+      "type": "fast"
+    },
+    {
+      "species": "metapod",
+      "type": "fast"
+    },
+    {
+      "species": "weedle",
+      "type": "fast"
+    },
+    {
+      "species": "kakuna",
+      "type": "fast"
+    },
+    {
+      "species": "rattata",
+      "type": "fast"
+    },
+    {
+      "species": "raticate",
+      "type": "fast"
+    },
+    {
+      "species": "pikachu",
+      "type": "normal"
+    },
+    {
+      "species": "sandshrew",
+      "type": "normal"
+    },
+    {
+      "species": "nidoran-f",
+      "type": "normal"
+    },
+    {
+      "species": "nidoran-m",
+      "type": "normal"
+    },
+    {
+      "species": "clefairy",
+      "type": "normal"
+    },
+    {
+      "species": "vulpix",
+      "type": "normal"
+    },
+    {
+      "species": "jigglypuff",
+      "type": "slow"
+    },
+    {
+      "species": "oddish",
+      "type": "slow"
+    },
+    {
+      "species": "paras",
+      "type": "fast"
+    },
+    {
+      "species": "meowth",
+      "type": "normal"
+    },
+    {
+      "species": "psyduck",
+      "type": "slow"
+    },
+    {
+      "species": "mankey",
+      "type": "fast"
+    },
+    {
+      "species": "growlithe",
+      "type": "fast"
+    },
+    {
+      "species": "poliwag",
+      "type": "slow"
+    },
+    {
+      "species": "bellsprout",
+      "type": "slow"
+    },
+    {
+      "species": "shellder",
+      "type": "fast"
+    },
+    {
+      "species": "krabby",
+      "type": "fast"
+    },
+    {
+      "species": "exeggcute",
+      "type": "slow"
+    },
+    {
+      "species": "cubone",
+      "type": "normal"
+    },
+    {
+      "species": "ditto",
+      "type": "slow"
+    },
+    {
+      "species": "eevee",
+      "type": "normal"
+    },
+    {
+      "species": "omanyte",
+      "type": "fast"
+    },
+    {
+      "species": "kabuto",
+      "type": "fast"
+    }
+  ],
+  "arcs": {
+    "normal": [
+      -3,
+      -6,
+      -8,
+      -10,
+      -13,
+      -15,
+      -17,
+      -19,
+      -21,
+      -23,
+      -25,
+      -27,
+      -28,
+      -29,
+      -30,
+      -30,
+      -30,
+      -28,
+      -27,
+      -26,
+      -25,
+      -23,
+      -22,
+      -20,
+      -18,
+      -17,
+      -15,
+      -13,
+      -11,
+      -8,
+      -6,
+      -4,
+      -1
+    ],
+    "fast": [
+      -3,
+      -6,
+      -9,
+      -11,
+      -14,
+      -16,
+      -18,
+      -20,
+      -22,
+      -24,
+      -26,
+      -28,
+      -29,
+      -30,
+      -30,
+      -28,
+      -26,
+      -24,
+      -22,
+      -20,
+      -18,
+      -16,
+      -14,
+      -11,
+      -9,
+      -6,
+      -4,
+      -1
+    ],
+    "slow": [
+      -3,
+      -6,
+      -9,
+      -11,
+      -13,
+      -15,
+      -17,
+      -19,
+      -21,
+      -23,
+      -25,
+      -27,
+      -28,
+      -29,
+      -30,
+      -30,
+      -30,
+      -30,
+      -29,
+      -29,
+      -28,
+      -28,
+      -27,
+      -27,
+      -26,
+      -25,
+      -24,
+      -22,
+      -20,
+      -18,
+      -16,
+      -14,
+      -12,
+      -11,
+      -9,
+      -6,
+      -4,
+      -1
+    ]
+  },
+  "vineBaseSpeeds": [
+    26,
+    31,
+    36,
+    41,
+    46,
+    51,
+    56,
+    61
+  ],
+  "vineSpeedDelays": [
+    0,
+    1,
+    1,
+    2
+  ],
+  "scoreBonuses": [
+    0,
+    0,
+    50,
+    100,
+    200,
+    500
+  ],
+  "prizes": [
+    {
+      "score": 5000,
+      "quantity": 1
+    },
+    {
+      "score": 8000,
+      "quantity": 2
+    },
+    {
+      "score": 12000,
+      "quantity": 3
+    },
+    {
+      "score": 16000,
+      "quantity": 4
+    },
+    {
+      "score": 20000,
+      "quantity": 5
+    }
+  ]
+}

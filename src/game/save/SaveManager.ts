@@ -1,4 +1,14 @@
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
+import {
+  buyPrize,
+  NO_GAME_CORNER,
+  payJump,
+  readGameCorner,
+  TICKET_PRIZES,
+  type GameCornerRecord,
+  type GamePayout,
+} from '../minigames/tickets';
+import { JUMP_PRIZE_BERRIES } from '../minigames/gameCornerTalk';
 import type { HunterRivalId } from '../world/hunters';
 import { COIN_PRICE, giftWaiting, type PitGift, type PitRecord } from '../base/pitCoins';
 import { readRaidMemory, remembering, type RaidMarkKind, type RaidMemory, type RaidWalk } from '../world/raidMemory';
@@ -286,6 +296,13 @@ export interface RaidProgress {
    * reads as nothing caught yet.
    */
   readonly harbourCatches?: readonly number[];
+  /**
+   * THE GAME CORNER (`../minigames/tickets`): the tickets in hand, today's
+   * ledger for the daily caps, and the best score at each cabinet. Absent on
+   * every save that has never played, which reads as no tickets and no
+   * scores - so no version bump.
+   */
+  readonly gameCorner?: GameCornerRecord;
   /**
    * What the player wears (`../look/look`): a head, a top and trousers, or a
    * head over a whole outfit, by the boutique's own ids. Absent on every save
@@ -1090,6 +1107,53 @@ export class SaveManager {
       learned: taken.grown.learnedMoves.map((move) => move.name),
       noRoomFor: taken.grown.movesToChoose.map((move) => move.name),
     };
+  }
+
+  /**
+   * A game of POKéMON JUMP played at THE GAME CORNER, in one write: the score
+   * on the cabinet's record, and whatever the day's best is newly worth in
+   * tickets and berries (`../minigames/tickets`). The berries go to the vault,
+   * one of the seven at random each, as FireRed's cabinet hands one of its
+   * own. Null if there is no game to write to.
+   */
+  public playJump(
+    score: number,
+    now: Date = new Date(),
+    random: () => number = Math.random,
+  ): { readonly game: RestoredGame; readonly payout: GamePayout; readonly berries: readonly string[] } | null {
+    const game = this.load();
+    if (!game) {
+      return null;
+    }
+    const payout = payJump(game.raidProgress.gameCorner ?? NO_GAME_CORNER, score, now);
+    const berries = Array.from(
+      { length: payout.berries },
+      () => JUMP_PRIZE_BERRIES[Math.min(JUMP_PRIZE_BERRIES.length - 1, Math.floor(random() * JUMP_PRIZE_BERRIES.length))],
+    );
+    for (const berry of berries) {
+      game.stash.addItem(berry, 1);
+    }
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, gameCorner: payout.record } };
+    return this.save(next) ? { game: next, payout, berries } : null;
+  }
+
+  /**
+   * A prize bought at THE GAME CORNER's prize window with tickets, in one
+   * write: the tickets spent and the thing in the vault. Null if it could not
+   * be had (`prizeRefusal` says why).
+   */
+  public buyTicketPrize(itemId: string, now: Date = new Date()): RestoredGame | null {
+    const game = this.load();
+    if (!game || !TICKET_PRIZES.some((prize) => prize.itemId === itemId)) {
+      return null;
+    }
+    const record = buyPrize(game.raidProgress.gameCorner ?? NO_GAME_CORNER, itemId, now);
+    if (!record) {
+      return null;
+    }
+    game.stash.addItem(itemId, 1);
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, gameCorner: record } };
+    return this.save(next) ? next : null;
   }
 
   /**
@@ -2087,6 +2151,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       : {}),
     ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
     ...(Array.isArray(value.harbourCatches) ? { harbourCatches: tidyDexIds(value.harbourCatches) } : {}),
+    ...(readGameCorner(value.gameCorner) ? { gameCorner: readGameCorner(value.gameCorner) } : {}),
     ...(readLook(value.look) ? { look: readLook(value.look) as DressedLook } : {}),
     ...(Array.isArray(value.wardrobe) ? { wardrobe: uniqueStrings(value.wardrobe).filter(isWearableId) } : {}),
     ...(Array.isArray(value.errands) ? { errands: clampErrandRecords(value.errands) } : {}),

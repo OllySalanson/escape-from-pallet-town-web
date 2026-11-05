@@ -39,7 +39,7 @@ import { HARBOUR_LANDMARKS } from './landmarks';
  * that name would have the player dropping into Pallet Town from Pallet Town.
  */
 
-export const BASE_MAP_WIDTH = 64;
+export const BASE_MAP_WIDTH = 90;
 export const BASE_MAP_HEIGHT = 34;
 
 /** What the screens call this place, on the way out of every one of them. */
@@ -84,6 +84,7 @@ export const NOTICE_BOARD: BaseSign = {
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
     'THE SEAGALLOP at the jetty takes every raid out and brings it home. Every raid starts at the RAID ARENA, west of the yard. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
     'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
+    'Past THE GREEN, THE PROMENADE: the GAME CORNER pays TICKETS for POKéMON JUMP, and its PRIZE WINDOW takes them.',
   ],
 };
 
@@ -139,6 +140,7 @@ export const SQUARE_MAP: BaseSign = {
     'HARBOUR SQUARE - a map of THE HARBOUR.',
     'The RAID ARENA is west, on ARENA SQUARE. The keepers are along KEEPERS\u2019 ROW. THE QUAY and the SEAGALLOP are south.',
     'East along the water: THE DOCKS, THE LONG PIER out to the S.S. ANNE, and THE COVE. THE GREEN is past THE BOLTHOLE.',
+    'Past THE GREEN, THE PROMENADE runs along the beach to the GAME CORNER and the PLEASURE PIER.',
   ],
 };
 
@@ -152,7 +154,45 @@ export const BREAKWATER_SIGN: BaseSign = {
   ],
 };
 
+/** At the west end of THE PROMENADE, where it leaves THE GREEN. */
+export const PROMENADE_SIGN: BaseSign = {
+  x: 61,
+  y: 11,
+  lines: [
+    'THE PROMENADE',
+    'The front: the GAME CORNER, the beach, the huts and the PLEASURE PIER. Walk it at dusk when the lamps come on.',
+  ],
+};
+
+/** Beside THE GAME CORNER's door. */
+export const GAME_CORNER_SIGN: BaseSign = {
+  x: 72,
+  y: 11,
+  lines: [
+    'THE GAME CORNER',
+    'POKéMON JUMP inside - bring your best jumpers. TICKETS are kept at home and spent at the PRIZE WINDOW next door.',
+  ],
+};
+
+/** At the head of the pleasure pier, on the boardwalk. */
+export const PLEASURE_PIER_SIGN: BaseSign = {
+  x: 78,
+  y: 16,
+  lines: ['THE PLEASURE PIER', 'Out over the sea. Mind the gulls.'],
+};
+
+/**
+ * Where THE BATTLE ARENA stands once it is built (the arenas plan's next step):
+ * FireRed's Fighting Dojo, 6x5, its door at the foot of its middle and its
+ * name sign drawn onto its front by `scripts/draw-promenade.mjs`, as THE GAME
+ * CORNER's is. Until then the plot is the promenade's garden.
+ */
+export const BATTLE_ARENA_LOT = { x: 64, y: 8, width: 6, height: 5, door: { x: 67, y: 12 } } as const;
+
 export const BASE_SIGNS: readonly BaseSign[] = [
+  PROMENADE_SIGN,
+  GAME_CORNER_SIGN,
+  PLEASURE_PIER_SIGN,
   BREAKWATER_SIGN,
   NOTICE_BOARD,
   HOME_SIGN,
@@ -218,40 +258,40 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   });
 
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT.....TTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT.....TTTTT',
-    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTT....TTTTtTTTT.....TtTTT',
-    'TTT..........................................................TTT',
-    'TTT...........................................FFFFFFF........TTT',
-    'TtTMMMMMMMMMMM................................F.....F........TTT',
-    'TTTMMMMMMMMMMM................................F.....F........TTT',
-    'TTTMMMMMMMMMMM................................F.....F........TTT',
-    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.F.....F........TTT',
-    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FFFFFFF........TTT',
-    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................TTT',
-    'TtTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................TTT',
-    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMdddddddddddddTTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~TTT',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~WWW',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTT....TTTTtTTTT.....TtTTTTTtTTTTtT..........TTTtTTT',
+    'TTT....................................................................................TTT',
+    'TTT...........................................FFFFFFF..................................TTT',
+    'TtTMMMMMMMMMMM................................F.....F..................................TtT',
+    'TTTMMMMMMMMMMM................................F.....F..................................TTT',
+    'TTTMMMMMMMMMMM................................F.....F..................................TTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.F.....F..................................TtT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FFFFFFF........MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
+    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
+    'TtTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................__________________________TTT',
+    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................__________________________TtT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddddddddddddddddddddddddddd___dddddTTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TtT',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWW_________WWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWW_________WWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWW_________WWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
   // The four buildings, each with its own doorway cut into it by the base's
@@ -333,12 +373,16 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
 
   // THE GREEN, past the Day-Care: a fountain to meet at, a bench, flowers and
   // its sign.
-  map.plant(56, 9, 'roundFountain');
+  // A row up from where it first stood, so the lawn under it is a straight way
+  // on to THE PROMENADE whoever is sitting about on the bench.
+  map.plant(56, 8, 'roundFountain');
   map.plant(56, 13, 'bench');
   map.plant(GREEN_SIGN.x, GREEN_SIGN.y, 'homeSign');
   for (const [x, y] of [[54, 8], [60, 8], [54, 9], [60, 9]] as const) {
     map.plant(x, y, 'gardenFlowers');
   }
+
+  plantPromenade(map);
 
   // And what the player has built. Planted last, so a fixture is the last word
   // on its own tiles exactly as a landmark is on a raid map.
@@ -349,6 +393,72 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   }
 
   return map;
+}
+
+/**
+ * THE PROMENADE, past THE GREEN: a seaside front read from the top down - the
+ * garden where THE BATTLE ARENA will stand and THE GAME CORNER under its lit
+ * marquee; the stone walk; the boardwalk with
+ * its lamps and railings, broken where steps go down to the sand; the beach
+ * with its row of painted huts, parasols and deckchairs; and the pleasure pier
+ * out over the sea. Its things are drawn for it (`promenadeSheet.ts`), so a
+ * front of the same stone for twenty-five tiles reads as a place with
+ * somewhere to sit, something to buy and somewhere to go.
+ */
+function plantPromenade(map: MapSketch<BasePropName>): void {
+  // The garden on THE BATTLE ARENA's plot: a fountain in a bed of flowers.
+  map.plant(66, 9, 'fountain');
+  for (const [x, y] of [[64, 9], [65, 9], [68, 9], [69, 9], [64, 10], [69, 10], [65, 12], [68, 12]] as const) {
+    map.plant(x, y, 'gardenFlowers');
+  }
+  map.plant(64, 7, 'pennantRed');
+  map.plant(69, 7, 'pennantBlue');
+  // A bench where the walk leaves THE GREEN, under the first lamp.
+  map.plant(PROMENADE_SIGN.x, PROMENADE_SIGN.y, 'homeSign');
+  map.plant(GAME_CORNER_SIGN.x, GAME_CORNER_SIGN.y, 'homeSign');
+  map.plant(PLEASURE_PIER_SIGN.x, PLEASURE_PIER_SIGN.y, 'homeSign');
+  // Flower troughs either side of the arcade's plaza, and a stall past it.
+  map.plant(70, 11, 'troughPink');
+  map.plant(83, 11, 'troughYellow');
+  map.plant(84, 7, 'marketStall');
+  map.plant(85, 11, 'pennantYellow');
+  // The boardwalk's seaward edge: railings, a lamp every six tiles, and gaps
+  // where steps go down to the sand.
+  const lamps = [63, 69, 75, 84];
+  const steps = [66, 67, 72, 73, 78, 79, 80, 81, 82];
+  for (let x = 61; x <= 86; x += 1) {
+    if (lamps.includes(x)) {
+      map.plant(x, 15, 'promenadeLamp');
+    } else if (!steps.includes(x)) {
+      map.plant(x, 16, 'railing');
+    }
+  }
+  // The beach huts, a row of them along the back of the sand, two by two
+  // with the steps between.
+  map.plant(61, 17, 'hutRed');
+  map.plant(63, 17, 'hutYellow');
+  map.plant(68, 17, 'hutBlue');
+  map.plant(70, 17, 'hutGreen');
+  map.plant(74, 17, 'hutPink');
+  map.plant(76, 17, 'hutTeal');
+  // Parasols and deckchairs out on the sand, and an ice-cream cart.
+  map.plant(62, 20, 'parasolRed');
+  map.plant(64, 21, 'deckchairRed');
+  map.plant(65, 21, 'deckchairBlue');
+  map.plant(69, 20, 'parasolBlue');
+  map.plant(71, 21, 'deckchairYellow');
+  map.plant(74, 20, 'parasolYellow');
+  map.plant(83, 19, 'iceCart');
+  map.plant(85, 21, 'wetRock');
+  map.plant(70, 25, 'wetRock');
+  // THE PLEASURE PIER's head: pennants at its corners, a lifebuoy and a lamp.
+  map.plant(76, 28, 'pennantGreen');
+  map.plant(84, 28, 'pennantRed');
+  map.plant(77, 28, 'lifebuoy');
+  map.plant(83, 28, 'promenadeLamp');
+  for (const x of [76, 77, 78, 82, 83, 84]) {
+    map.plant(x, 30, 'railing');
+  }
 }
 
 const built = new Map<string, BaseMapDefinition>();

@@ -32,7 +32,7 @@ import type { BasePropName } from './baseTileset';
  * only way into a raid. `lab` is Oak's room, where the contract board and the
  * wall map are read.
  */
-export type BaseScreen = 'lab' | 'arena' | 'stash' | 'workshop' | 'trader' | 'boutique';
+export type BaseScreen = 'lab' | 'arena' | 'stash' | 'workshop' | 'trader' | 'boutique' | 'game-corner' | 'prizes';
 
 export interface BaseKeeper {
   readonly id: string;
@@ -147,7 +147,36 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     tiles: [{ x: 55, y: 7 }],
     returnTo: { x: 55, y: 8 },
   },
+  {
+    // THE GAME CORNER (`gameCorner.ts`), out along THE PROMENADE: Celadon's own,
+    // its front lit GAME CORNER. The hall under the purple arch is the arcade,
+    // where the cabinets are; the little building beside it is the prize
+    // window, which has its own door, as Celadon's prize room is across the
+    // street from the Game Corner. Like the boutique it is somewhere to go,
+    // not a re-kit stop, so it is held to a walk of its own.
+    id: 'game-corner',
+    screen: 'game-corner',
+    name: 'GAME CORNER',
+    building: { prop: 'gameCorner', x: 73, y: 6 },
+    tiles: [{ x: 76, y: 10 }],
+    returnTo: { x: 76, y: 11 },
+  },
+  {
+    id: 'prize-window',
+    screen: 'prizes',
+    name: 'PRIZE WINDOW',
+    building: { prop: 'prizeWindow', x: 80, y: 6 },
+    tiles: [{ x: 81, y: 9 }],
+    returnTo: { x: 81, y: 10 },
+  },
 ];
+
+/**
+ * The doors that are somewhere to go rather than somewhere a raid re-kits:
+ * the boutique and THE GAME CORNER's two. They are held to walks of their own
+ * (`baseMap.test.ts`), not the keepers' short stroll.
+ */
+export const PLACES_TO_GO: readonly string[] = ['boutique', 'game-corner', 'prize-window'];
 
 export function doorAt(tile: GridPosition): BaseDoor | undefined {
   return BASE_DOORS.find((door) =>
