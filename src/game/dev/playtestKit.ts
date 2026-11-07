@@ -3,6 +3,9 @@ import { getSpeciesById } from '../pokemon/species';
 import type { RaidProgress } from '../save/SaveManager';
 import type { Stash } from '../stash/Stash';
 import { canJump } from '../minigames/pokemonJump';
+import { canPickBerries } from '../minigames/berryPicking';
+import { courseMovesOf } from '../minigames/fieldCourse';
+import { valeGyms } from '../world/valeQuarters';
 import { NO_GAME_CORNER } from '../minigames/tickets';
 import { bestLines, lineMs, routeOf } from '../minigames/derby';
 import { digsAPlus } from '../minigames/dig';
@@ -16,7 +19,6 @@ function racerTime(speciesId: string): number | undefined {
   const lines = bestLines(racer, false);
   return lineMs(racer, routeOf(lines.first, lines.second), false);
 }
-import type { GameCornerSceneData } from '../scenes/GameCornerScene';
 
 /**
  * What the explorer run carries so that every new thing in the harbour can be
@@ -57,12 +59,28 @@ export interface PlaytestKitBox {
   readonly species: readonly string[];
 }
 
+/**
+ * Every screen the board can open: the Game Corner's two, the two games that
+ * are scenes of their own, and the promenade's three outdoor games.
+ */
+export type PlaytestGameScreen =
+  | 'jump'
+  | 'prizes'
+  | 'berry-picking'
+  | 'field-course'
+  | 'derby'
+  | 'dig'
+  | 'fishing-derby';
+
 /** A harbour game the PLAYTEST BOARD opens straight away. */
 export interface PlaytestGame {
   readonly id: string;
   readonly name: string;
-  /** What the board opens: one of THE GAME CORNER's screens, or one of the promenade's outdoor games. */
-  readonly opens: GameCornerSceneData['mode'] | 'derby' | 'dig' | 'fishing-derby';
+  /**
+   * What the board opens: one of THE GAME CORNER's two screens (`jump`,
+   * `prizes`), a game that is a scene of its own, or one of the promenade's outdoor games.
+   */
+  readonly opens: PlaytestGameScreen;
   /** Which kinds play it; absent for a screen nobody plays with a Pokémon. */
   readonly suits?: (speciesId: string) => boolean;
 }
@@ -147,11 +165,34 @@ export const PLAYTEST_TICKETS = 5_000;
  */
 export const PLAYTEST_GAMES: readonly PlaytestGame[] = [
   { id: 'pokemon-jump', name: 'POKéMON JUMP', opens: 'jump', suits: (speciesId) => canJump(speciesId) },
+  { id: 'berry-picking', name: 'BERRY PICKING', opens: 'berry-picking', suits: (speciesId) => canPickBerries(speciesId) },
+  {
+    id: 'field-course',
+    name: 'THE FIELD-MOVE COURSE',
+    opens: 'field-course',
+    // A runner suits the course if it can do any of its four moves; one that
+    // can do none of them walks the long way round every time.
+    suits: (speciesId) => courseMovesOf(speciesId).length > 0,
+  },
   { id: 'prize-window', name: 'THE PRIZE WINDOW', opens: 'prizes' },
   { id: 'derby', name: 'PROMENADE DERBY', opens: 'derby', suits: (speciesId) => (racerTime(speciesId) ?? Infinity) <= 15_000 },
   { id: 'dig', name: 'THE DIG', opens: 'dig', suits: (speciesId) => Boolean(traitsOf(speciesId) && digsAPlus(traitsOf(speciesId)!)) },
   { id: 'fishing-derby', name: 'FISHING DERBY', opens: 'fishing-derby', suits: (speciesId) => (traitsOf(speciesId) ? biteChance(traitsOf(speciesId)!) >= 1 : false) },
 ];
+
+/**
+ * Every gym leader marked met, so each one waits on THE RAID ARENA's far floor
+ * for a practice bout (`base/gymPractice.ts`) without a raid to their gym
+ * first. Met, never beaten: a beaten leader's doors open and the leader is
+ * taken off the map, and the explorer run keeps every keeper standing.
+ */
+export function withEveryLeaderMet(progress: RaidProgress): RaidProgress {
+  const met = progress.gymsMet ?? [];
+  const missing = valeGyms()
+    .map((gym) => gym.bossId)
+    .filter((id) => !met.includes(id));
+  return missing.length === 0 ? progress : { ...progress, gymsMet: [...met, ...missing] };
+}
 
 /**
  * Puts every kit box's Pokémon into a vault that does not hold that kind yet,

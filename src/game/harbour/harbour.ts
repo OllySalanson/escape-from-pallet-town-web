@@ -1,3 +1,4 @@
+import type { DojoClassId } from '../arena/dojoRecord';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
 import type { PackItemId } from '../items/items';
@@ -89,6 +90,7 @@ export class HarbourSession {
     partner: PartnerSpeciesId | null = null,
     look: DressedLook | null = null,
     pack: PackItemId | null = null,
+    dojoClass: DojoClassId | null = null,
   ): void {
     this.stopAwayClock();
     this.where = where;
@@ -97,6 +99,7 @@ export class HarbourSession {
     this.link.enter(this.me, placeFor(where, this.me), tile, facing);
     this.link.carry(partner);
     this.link.wear(look, pack);
+    this.link.rank(dojoClass);
     if (name && name !== this.named) {
       const renamed = this.named !== null;
       this.named = name;

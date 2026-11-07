@@ -1,5 +1,6 @@
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
-import { afterDojoBout, readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
+import { readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
+import { settleDojoBout, type DojoSettlement } from '../arena/classes';
 import { gymOf } from '../world/valeQuarters';
 import {
   buyPrize,
@@ -991,13 +992,15 @@ export class SaveManager {
    * back to its counter: the fight itself writes nothing (`arena/boutRules.ts`),
    * and this is the one field a bout there can move.
    */
-  public recordDojoBout(opponent: string, won: boolean): DojoRecord | null {
+  public recordDojoBout(opponent: string, won: boolean, now: Date = new Date()): DojoSettlement | null {
     const game = this.load();
     if (!game) {
       return null;
     }
-    const record = afterDojoBout(game.raidProgress.dojo, opponent, won);
-    return this.save({ ...game, raidProgress: { ...game.raidProgress, dojo: record } }) ? record : null;
+    // The tally, the class ladder and the tickets, in one write (`arena/classes.ts`).
+    const settled = settleDojoBout(game.raidProgress.dojo, game.raidProgress.gameCorner ?? NO_GAME_CORNER, opponent, won, now);
+    const next = { ...game, raidProgress: { ...game.raidProgress, dojo: settled.record, gameCorner: settled.gameCorner } };
+    return this.save(next) ? settled : null;
   }
 
   /**

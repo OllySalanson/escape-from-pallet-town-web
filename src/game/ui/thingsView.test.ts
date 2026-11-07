@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getItemById, ITEMS, packContents } from '../items';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import {
+  pocketJump,
   ableCount,
   homeUseOf,
   pocketOf,
@@ -68,5 +69,30 @@ describe('the body', () => {
     expect(html).toContain('2/18 squares');
     expect(html).toContain('1 of yours it would evolve');
     expect(html).not.toMatch(/data-drop|Drop one/);
+  });
+});
+
+describe('a pocket at a time', () => {
+  const pockets = ['medicine', 'medicine', 'medicine', 'balls', 'discs', 'discs', 'clothes'];
+
+  it('goes to the next pocket and the one before', () => {
+    expect(pocketJump(pockets, 0, 1)).toBe(3);
+    expect(pocketJump(pockets, 3, 1)).toBe(4);
+    expect(pocketJump(pockets, 5, 1)).toBe(6);
+    expect(pocketJump(pockets, 6, -1)).toBe(4);
+    expect(pocketJump(pockets, 4, -1)).toBe(3);
+  });
+
+  it('goes back to the top of its own pocket before the one above', () => {
+    expect(pocketJump(pockets, 2, -1)).toBe(0);
+    expect(pocketJump(pockets, 5, -1)).toBe(4);
+  });
+
+  it('stops at the ends, and Home and End go there', () => {
+    expect(pocketJump(pockets, 6, 1)).toBe(6);
+    expect(pocketJump(pockets, 0, -1)).toBe(0);
+    expect(pocketJump(pockets, 4, 'first')).toBe(0);
+    expect(pocketJump(pockets, 1, 'last')).toBe(6);
+    expect(pocketJump([], 0, 1)).toBe(0);
   });
 });

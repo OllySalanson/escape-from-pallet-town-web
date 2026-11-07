@@ -80,7 +80,9 @@ export function teamBody(state: TeamViewState): string {
       ? boxes.map((entry, index) => row(entry, false, index, team.length === 0 && index === 0)).join('')
       : '<p class="px-empty px-wrap">Everybody you have is going.</p>';
   const list = `${pickerFindField()}<h3 class="px-subheading">Next raid</h3>${going}<h3 class="px-subheading">In your boxes</h3>${home}`;
-  return `<main class="px-body">${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${list}</div>`, {
+  // The raid party's layout: one list as tall as the panel and no taller, so
+  // its foot scrolls inside the window rather than running under the help bar.
+  return `<main class="px-body raid-party-layout">${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${list}</div>`, {
     heading: 'Who is going?',
     note: `${size} of ${MAX_RUN_PARTY}`,
   })}</main>`;

@@ -25,10 +25,18 @@ import { winsPrizeBerry } from './berryPicking';
  */
 
 /**
- * A source of tickets, each capped by the day: the cabinets, the course, and
- * the promenade's three outdoor games - the race, the dig and the fishing derby.
+ * A source of tickets, each capped by the day: the cabinets, the course, bouts
+ * won in THE BATTLE ARENA, and the promenade's three outdoor games - the race,
+ * the dig and the fishing derby.
  */
-export type TicketSource = 'pokemon-jump' | 'berry-picking' | 'field-course' | 'derby' | 'dig' | 'fishing-derby';
+export type TicketSource =
+  | 'pokemon-jump'
+  | 'berry-picking'
+  | 'field-course'
+  | 'battle-arena'
+  | 'derby'
+  | 'dig'
+  | 'fishing-derby';
 
 /** The most every source together pays in a day (the plan's daily ceiling). */
 export const DAILY_TICKET_CEILING = 285;
@@ -123,6 +131,20 @@ export const digTickets = (score: number): number => tierTickets(DIG_TICKET_TIER
 export const fishingDerbyTickets = (score: number): number => tierTickets(FISHING_DERBY_TICKET_TIERS, score);
 
 /**
+ * THE BATTLE ARENA pays for the day's first wins (the harbour arenas plan,
+ * section 2.10): ten tickets a win for the first five, so its "score" is the
+ * number of bouts won today and a sixth win pays nothing. Moving up a class
+ * pays apart from the day (`arena/classes.ts`).
+ */
+export const DOJO_WIN_TICKETS = 10;
+export const DOJO_PAID_WINS_A_DAY = 5;
+
+/** The tickets a day's bout wins are worth. */
+export function dojoWinTickets(winsToday: number): number {
+  return Math.max(0, Math.min(DOJO_PAID_WINS_A_DAY, winsToday)) * DOJO_WIN_TICKETS;
+}
+
+/**
  * How each source is scored: which of two results is better (a score up, a
  * time down; nothing played is 0 for both), and what a day's best is worth.
  */
@@ -132,6 +154,7 @@ const SOURCE_RULES: Readonly<
   'pokemon-jump': { better: (a, b) => a > b, tickets: jumpTickets, berries: berriesForScore },
   'berry-picking': { better: (a, b) => a > b, tickets: berryTickets, berries: (best) => (winsPrizeBerry(best) ? 1 : 0) },
   'field-course': { better: (a, b) => a > 0 && (b <= 0 || a < b), tickets: courseTickets, berries: () => 0 },
+  'battle-arena': { better: (a, b) => a > b, tickets: dojoWinTickets, berries: () => 0 },
   // The dig's berries are what it turns up, sent home through `digBerriesAllowed`, not paid by score.
   derby: { better: (a, b) => a > b, tickets: derbyTickets, berries: () => 0 },
   dig: { better: (a, b) => a > b, tickets: digTickets, berries: () => 0 },
@@ -362,7 +385,15 @@ export function prizeName(prize: TicketPrize): string {
 
 // --- reading a save -------------------------------------------------------------
 
-const SOURCES: readonly TicketSource[] = ['pokemon-jump', 'berry-picking', 'field-course', 'derby', 'dig', 'fishing-derby'];
+const SOURCES: readonly TicketSource[] = [
+  'pokemon-jump',
+  'berry-picking',
+  'field-course',
+  'battle-arena',
+  'derby',
+  'dig',
+  'fishing-derby',
+];
 
 function wholeCount(value: unknown, most = Number.MAX_SAFE_INTEGER): number {
   return Number.isInteger(value) && (value as number) >= 0 ? Math.min(value as number, most) : 0;
