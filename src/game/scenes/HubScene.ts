@@ -1,4 +1,5 @@
 import { raidConditions } from '../world/secrets';
+import { chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
 import Phaser from 'phaser';
 import { readLook } from '../look/look';
 import { countPlay, mapDetail } from '../analytics/playCounter';
@@ -1241,6 +1242,7 @@ export class HubScene extends Phaser.Scene {
           new Date(),
           deployment.party.map((stored) => stored.pokemon),
           items,
+          chartWhole(this.savedGame.raidProgress.treasureHunt ?? NO_TREASURE_HUNT),
         ),
         known: {
           secretsFound: this.savedGame.raidProgress.secretsFound ?? [],

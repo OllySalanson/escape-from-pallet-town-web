@@ -5,6 +5,7 @@ import type { Pokemon } from '../pokemon';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { fieldMoveUser, type FieldMoveId } from './fieldMoves';
 import type { PokemonGift } from './gifts';
+import { CHEST_ITEM_ID, TREASURE_PLACE, TREASURE_SECRET_ID } from '../treasure/treasureMap';
 
 /**
  * Secrets: small hidden nooks in Greystone Vale, each with a clue beside it,
@@ -52,6 +53,12 @@ export interface RaidConditions {
   readonly fieldMoves: readonly FieldMoveId[];
   /** What was packed: every item id with at least one in the pack. */
   readonly carried: readonly string[];
+  /**
+   * Whether the treasure map is whole on THE CHART ROOM's wall
+   * (`../treasure/treasureMap.ts`): the one condition the harbour sets rather
+   * than the raid.
+   */
+  readonly chartWhole: boolean;
 }
 
 /** Read as the raid deploys. A party with nobody in it leads with no type. */
@@ -59,6 +66,7 @@ export function raidConditions(
   now: Date,
   party: readonly Pokemon[],
   packed: readonly { readonly itemId: string; readonly quantity: number }[],
+  chartWhole: boolean,
 ): RaidConditions {
   return {
     hour: windowLight(now),
@@ -69,6 +77,7 @@ export function raidConditions(
       (move) => fieldMoveUser(party, move) !== undefined,
     ),
     carried: packed.filter((stack) => stack.quantity > 0).map((stack) => stack.itemId),
+    chartWhole,
   };
 }
 
@@ -80,6 +89,8 @@ export type SecretCondition =
   | { readonly kind: 'field-move'; readonly move: FieldMoveId }
   /** Any one of these items in the pack. */
   | { readonly kind: 'carried'; readonly items: readonly ItemId[] }
+  /** The treasure map whole on THE CHART ROOM's wall (`../treasure/treasureMap.ts`). */
+  | { readonly kind: 'whole-chart' }
   /** Any one of these. */
   | { readonly kind: 'either'; readonly of: readonly SecretCondition[] };
 
@@ -95,6 +106,8 @@ export function conditionHolds(condition: SecretCondition, raid: RaidConditions)
       return raid.fieldMoves.includes(condition.move);
     case 'carried':
       return condition.items.some((item) => raid.carried.includes(item));
+    case 'whole-chart':
+      return raid.chartWhole;
     case 'either':
       return condition.of.some((each) => conditionHolds(each, raid));
   }
@@ -137,8 +150,11 @@ export interface Secret {
   readonly rewards: readonly SecretReward[];
   /** What is said as it is found, before the item or the fight. */
   readonly foundLine: string;
-  /** Which wave of the plan it shipped in: the first needs no badge. */
-  readonly wave: 1;
+  /**
+   * Which wave of the plan it shipped in: the first needs no badge, the second
+   * is the treasure map's end, behind MISTY's sandbags in THE COAST.
+   */
+  readonly wave: 1 | 2;
 }
 
 /**
@@ -261,6 +277,19 @@ export const SECRETS: readonly Secret[] = [
     rewards: [{ kind: 'gift', gift: NAVVIES_MACHAMP }],
     foundLine: 'The foreman looks your fighter up and down, and spits on his hand.',
     wave: 1,
+  },
+  {
+    // The end of the treasure map (`../treasure/treasureMap.ts`): with the
+    // whole chart on THE CHART ROOM's wall, the X at the foot of the cove's
+    // cliff gives up the smugglers' chest. Behind MISTY, in THE COAST.
+    id: TREASURE_SECRET_ID,
+    name: 'X MARKS THE SPOT',
+    place: TREASURE_PLACE,
+    nook: 'spot',
+    when: [{ kind: 'whole-chart' }],
+    rewards: [{ kind: 'item', itemId: CHEST_ITEM_ID }],
+    foundLine: 'Where the sand runs out under the cliff, the spade hits wood. An iron-bound chest, right under the X!',
+    wave: 2,
   },
 ];
 

@@ -700,6 +700,90 @@ function desk(x, y) {
   hline(x + 1, y + 30, 46, INK.woodDeep);
 }
 
+/**
+ * The end bookcase swung open on its hinge, 2x2: the case turned edge-on
+ * against the wall on the right, and where it stood a dark arch into THE CHART
+ * ROOM, a worn step and a lamp glow beyond. The bottom-left cell is walked
+ * into (`rooms.ts`), so its floor is the passage's own.
+ */
+function secretCaseOpen(x, y) {
+  // The wall behind, panelled like the rest of the back wall.
+  fill(x, y, 32, 32, INK.woodShade);
+  hline(x, y, 32, INK.outline);
+  fill(x + 1, y + 1, 30, 2, INK.woodLight);
+  hline(x + 1, y + 3, 30, INK.wood);
+  // The arch: dark, with the lamp-lit room glowing at its far end.
+  fill(x + 2, y + 6, 18, 26, INK.dark);
+  fill(x + 4, y + 4, 14, 2, INK.dark);
+  set(x + 3, y + 5, INK.dark);
+  set(x + 18, y + 5, INK.dark);
+  // Stone round the arch, lit from the top left.
+  hline(x + 4, y + 3, 14, INK.stoneLight);
+  vline(x + 1, y + 6, 26, INK.stoneLight);
+  set(x + 2, y + 5, INK.stoneLight);
+  set(x + 3, y + 4, INK.stoneLight);
+  vline(x + 20, y + 6, 26, INK.stoneShade);
+  set(x + 19, y + 5, INK.stoneShade);
+  set(x + 18, y + 4, INK.stoneShade);
+  // The glow of the lamp in the room beyond, and its light spilling down.
+  fill(x + 7, y + 10, 8, 10, INK.glassShade);
+  fill(x + 8, y + 11, 6, 8, INK.glassDeep);
+  fill(x + 9, y + 12, 4, 5, INK.glass);
+  // The floor of the passage: worn planks, lit by the room beyond.
+  fill(x + 2, y + 22, 18, 10, INK.plankShade);
+  for (let row = 24; row < 32; row += 3) hline(x + 2, y + row, 18, INK.plankLine);
+  hline(x + 2, y + 22, 18, INK.glassShade);
+  fill(x + 6, y + 23, 10, 2, INK.plank);
+  // The bookcase, swung back against the wall on its hinge, seen edge-on.
+  box(x + 21, y + 2, 10, 30, INK.woodDeep);
+  fill(x + 22, y + 3, 3, 28, INK.wood);
+  vline(x + 22, y + 3, 28, INK.woodLight);
+  for (const shelf of [5, 13, 21]) {
+    fill(x + 25, y + shelf, 5, 7, INK.woodBlack);
+    for (let book = 0; book < 5; book += 1) {
+      vline(x + 25 + book, y + shelf + 1 + (book % 2), 6 - (book % 2), SPINES[(book + shelf) % SPINES.length]);
+    }
+    hline(x + 25, y + shelf + 7, 5, INK.woodLight);
+  }
+  hline(x, y + 31, 2, INK.outline);
+}
+
+/**
+ * The smugglers' chest, opened, 2x2: the domed lid thrown back against the
+ * wall, iron bands and a brass lock, and inside nothing but a few coins
+ * nobody wanted and the straw it was packed in.
+ */
+function seaChestOpen(x, y) {
+  // The lid, thrown back: its inside face, planked, banded in iron.
+  box(x + 3, y + 2, 26, 13, INK.woodShade, INK.outline);
+  for (let row = 5; row < 14; row += 3) hline(x + 4, y + row, 24, INK.woodDeep);
+  fill(x + 8, y + 3, 2, 11, '#585868');
+  fill(x + 22, y + 3, 2, 11, '#585868');
+  hline(x + 4, y + 3, 24, INK.wood);
+  // The body: the rim, the dark inside and its straw, then the front.
+  box(x + 2, y + 14, 28, 6, INK.dark, INK.outline);
+  fill(x + 3, y + 16, 26, 3, '#b89848');
+  for (let i = 0; i < 26; i += 3) set(x + 3 + i, y + 16 + (i % 2), '#e0c868');
+  set(x + 12, y + 17, INK.gold);
+  set(x + 13, y + 17, INK.goldShade);
+  set(x + 19, y + 16, INK.gold);
+  box(x + 2, y + 19, 28, 12, INK.wood, INK.outline);
+  hline(x + 3, y + 20, 26, INK.woodLight);
+  for (let row = 23; row < 30; row += 3) hline(x + 3, y + row, 26, INK.woodShade);
+  fill(x + 8, y + 19, 2, 12, '#585868');
+  fill(x + 22, y + 19, 2, 12, '#585868');
+  vline(x + 8, y + 20, 10, '#8888a0');
+  vline(x + 22, y + 20, 10, '#8888a0');
+  // The lock, hanging open.
+  box(x + 13, y + 20, 6, 6, INK.gold, INK.goldDeep);
+  set(x + 15, y + 22, INK.goldDeep);
+  set(x + 16, y + 22, INK.goldDeep);
+  set(x + 15, y + 23, INK.goldDeep);
+  set(x + 14, y + 21, '#f8f0a0');
+  // Its shadow on the boards.
+  hline(x + 3, y + 31, 26, INK.plankLine);
+}
+
 // --- the sheet ----------------------------------------------------------------------
 
 building(0, 0);
@@ -718,6 +802,8 @@ Object.values(COVERS).forEach((cover, index) => lectern(index * TILE, 4 * TILE, 
 desk(6 * TILE, 4 * TILE);
 goldenPlinth(9 * TILE, 4 * TILE, false);
 goldenPlinth(10 * TILE, 4 * TILE, true);
+secretCaseOpen(13 * TILE, TILE);
+seaChestOpen(11 * TILE, 4 * TILE);
 
 writePng(new URL('public/assets/great-library.png', ROOT), sheet);
 console.log(`great-library.png ${sheet.width}x${sheet.height}`);

@@ -1,5 +1,8 @@
 // Draws the vale's secret finds into public/assets/icons: the three pieces of
-// the torn chart and FireRed's two fossils (`src/game/world/secrets.ts`).
+// the torn chart and FireRed's two fossils (`src/game/world/secrets.ts`), and
+// the treasure map's own two (`src/game/treasure/treasureMap.ts`): the chart's
+// first piece, rolled up in a bottle the sea left on THE BEACH, and the
+// smugglers' chest the whole chart leads to.
 //
 //   node scripts/draw-relic-icons.mjs
 //
@@ -27,6 +30,10 @@ const C = {
   t: hex('6b604f'), s: hex('9a8d7a'), S: hex('c9bda5'), w: hex('e8dfcc'),
   // shell
   h: hex('8a5a3a'), H: hex('c48a52'), n: hex('e6b77d'),
+  // bottle glass, sea green, and its cork
+  g: hex('2f7a5c'), G: hex('5fb38a'), L: hex('b8ead0'), k: hex('8a5a3a'), K: hex('c48a52'),
+  // the chest: oak, iron bands and a brass lock
+  d: hex('5a3820'), D: hex('8c5a2e'), B: hex('b98048'), i: hex('4a4a58'), I: hex('8a8aa0'), y: hex('d9a520'), Y: hex('f6d860'),
 };
 
 const charts = {
@@ -89,6 +96,47 @@ const charts = {
   ],
 };
 
+const treasure = {
+  // A bottle the sea left on THE BEACH, lying on its side, a rolled chart in it.
+  'bottled-chart': [
+    '................',
+    '................',
+    '................',
+    '..ooooooooo.....',
+    '.oLLLLLLLGgo....',
+    'oGPPPPPPPPGgooo.',
+    'oGPpPrPPPpPGgLko',
+    'oGPPPPPrPPPGggKo',
+    'ogPpPPPPPpPgggko',
+    '.oggggggggggooo.',
+    '..ooooooooooo...',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  // The smugglers' chest: iron-bound oak, a domed lid and a brass lock.
+  'sea-chest': [
+    '................',
+    '................',
+    '...oooooooooo...',
+    '..oBBBBBBBBBBo..',
+    '.oBDDiDDDDiDDBo.',
+    '.oDDDiDDDDiDDDo.',
+    '.oDDDiDDDDiDDDo.',
+    'oiiiiiiyyiiiiiio',
+    'oIIIIIyYYyIIIIIo',
+    'oBDDDiyooyiDDDBo',
+    'oDDDDiDyyDiDDDDo',
+    'oDDDDiDDDDiDDDDo',
+    'oDDDDiDDDDiDDDdo',
+    'oddddiddddiddddo',
+    'oooooooooooooooo',
+    '................',
+  ],
+};
+
 const fossils = {
   // A spiral shell set in a rounded stone.
   'helix-fossil': [
@@ -131,7 +179,7 @@ const fossils = {
 };
 
 const icons = Object.fromEntries(
-  Object.entries({ ...charts, ...fossils }).map(([name, rows]) => {
+  Object.entries({ ...charts, ...treasure, ...fossils }).map(([name, rows]) => {
     if (rows.length !== SIZE) throw new Error(`${name}: expected ${SIZE} rows`);
     return [
       name,

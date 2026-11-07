@@ -44,6 +44,10 @@ export const LIBRARY_PIECES = {
   desk: { column: 6, row: 4, width: 3, height: 2 },
   goldenPlinth: { column: 9, row: 4, width: 1, height: 2 },
   goldenPlinthLocked: { column: 10, row: 4, width: 1, height: 2 },
+  // THE TREASURE MAP's (`../treasure/treasureMap.ts`): the end bookcase swung
+  // open onto THE CHART ROOM, and the smugglers' chest opened in it.
+  secretCaseOpen: { column: 13, row: 1, width: 2, height: 2 },
+  seaChestOpen: { column: 11, row: 4, width: 2, height: 2 },
 } as const satisfies Readonly<Record<string, PiecePlace>>;
 
 export type LibraryPieceName = keyof typeof LIBRARY_PIECES;

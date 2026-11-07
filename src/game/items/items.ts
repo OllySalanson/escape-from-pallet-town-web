@@ -210,10 +210,12 @@ export type ItemEffect =
    * A find from one of the vale's secrets (`../world/secrets.ts`): a piece of
    * the torn chart, or a fossil. Nothing to use in a raid; found, never
    * packed, and lost with the pack on a wipe unless the secure container kept
-   * room for it, as a material is. What it is for is at home: the chart is
-   * joined in Oak's lab, a fossil is woken by his machine (`../hub/fossils.ts`).
+   * room for it, as a material is. What it is for is at home: a piece of the
+   * chart is pinned on the CHART ROOM's wall behind THE GREAT LIBRARY
+   * (`../treasure/treasureMap.ts`), a fossil is woken by Oak's machine
+   * (`../hub/fossils.ts`). `to` says whose it is: absent is Oak's.
    */
-  | { readonly type: 'relic' }
+  | { readonly type: 'relic'; readonly to?: 'library' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -755,7 +757,7 @@ export const ITEMS = {
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
     description: 'A corner of an old sea chart, found where the Grey Stones\' shadow ends at dusk. There are more pieces.',
-    effect: { type: 'relic' },
+    effect: { type: 'relic', to: 'library' },
   },
   'chart-piece-2': {
     id: 'chart-piece-2',
@@ -763,7 +765,7 @@ export const ITEMS = {
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
     description: 'A strip of an old sea chart, left by the tappers\' pot on a Sunday. Somebody meant it to be found.',
-    effect: { type: 'relic' },
+    effect: { type: 'relic', to: 'library' },
   },
   'chart-piece-3': {
     id: 'chart-piece-3',
@@ -771,7 +773,25 @@ export const ITEMS = {
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
     description: 'A piece of an old sea chart, tucked in the Lost Fold\'s wall. The bells only ring for it after dark.',
-    effect: { type: 'relic' },
+    effect: { type: 'relic', to: 'library' },
+  },
+  // THE TREASURE MAP (`../treasure/treasureMap.ts`): the chart's first piece,
+  // washed up on THE BEACH in a bottle, and what the whole chart leads to.
+  'bottled-chart': {
+    id: 'bottled-chart',
+    displayName: 'Bottled chart',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A corner of an old sea chart, rolled up in a bottle that washed up on THE BEACH. Somebody at THE GREAT LIBRARY would want to see it.',
+    effect: { type: 'relic', to: 'library' },
+  },
+  'sea-chest': {
+    id: 'sea-chest',
+    displayName: 'Sea chest',
+    category: ItemCategory.Misc,
+    footprint: { width: 2, height: 2 },
+    description: 'A smugglers\' chest, iron-bound and heavy, dug up where the chart\'s X was. Carry it to MARLOW at THE GREAT LIBRARY to open it.',
+    effect: { type: 'relic', to: 'library' },
   },
   'helix-fossil': {
     id: 'helix-fossil',
@@ -1303,8 +1323,21 @@ export type ErrandItemId = {
  * house is worth looking at because a raid carried it home.
  */
 /** The finds of the vale's secrets (`../world/secrets.ts`): the torn chart's pieces and the fossils. */
-export const RELIC_ITEM_IDS = ['chart-piece-1', 'chart-piece-2', 'chart-piece-3', 'helix-fossil', 'dome-fossil'] as const;
+export const RELIC_ITEM_IDS = [
+  'chart-piece-1',
+  'chart-piece-2',
+  'chart-piece-3',
+  'bottled-chart',
+  'sea-chest',
+  'helix-fossil',
+  'dome-fossil',
+] as const;
 export type RelicItemId = (typeof RELIC_ITEM_IDS)[number];
+
+/** Who a relic is carried home to: MARLOW at THE GREAT LIBRARY for the chart and its chest, else Professor Oak. */
+export function relicKeeper(item: ItemDefinition): string {
+  return item.effect.type === 'relic' && item.effect.to === 'library' ? 'MARLOW at THE GREAT LIBRARY' : 'Professor Oak';
+}
 
 export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId | FurnitureItemId | WearableItemId | RelicItemId>;
 
@@ -1632,7 +1665,7 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
     case 'currency':
       return { used: false, message: `${item.displayName} is only good at Bill's counter.` };
     case 'relic':
-      return { used: false, message: `${item.displayName} is for Professor Oak. Carry it home.` };
+      return { used: false, message: `${item.displayName} is for ${relicKeeper(item)}. Carry it home.` };
     case 'pickaxe':
       return { used: false, message: `${item.displayName} digs out buried exits. Face the rubble and press the interact key.` };
     case 'rod':

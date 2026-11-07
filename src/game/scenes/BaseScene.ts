@@ -105,6 +105,23 @@ import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } fro
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
 import { FOSSIL_ITEM_IDS, fossilAwake, fossilMachineLines } from '../hub/fossils';
+import {
+  BEACH_BOTTLE,
+  BOTTLE_FOUND_LINES,
+  bottleOnTheBeach,
+  CHART_PIECES,
+  CHART_ROOM_ARRIVAL_LINES,
+  chartWhole,
+  chestOpenedLines,
+  huntStage,
+  MARLOW,
+  marlowLibraryLines,
+  marlowRoomLines,
+  NO_TREASURE_HUNT,
+  piecesToPin,
+  pinnedLines,
+  type TreasureHunt,
+} from '../treasure/treasureMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
@@ -827,6 +844,8 @@ export class BaseScene extends Phaser.Scene {
   private readonly stationLabels = new Map<RoomThing, WorldLabel>();
   /** The bird that glides over the harbour now and then (`base/harbourBird.ts`), outdoors by day only. */
   private bird: HarbourBird | null = null;
+  /** The bottle on THE BEACH and its glint, while it lies there (`placeBeachBottle`). */
+  private beachBottle: Phaser.GameObjects.Image[] = [];
   /** FireRed's map-name board (`base/placeNameSign.ts`), outdoors only. */
   private placeSign: PlaceNameSign | null = null;
   /** The part of the harbour the player was last in (`base/harbourPlaces.ts`). */
@@ -3217,6 +3236,9 @@ export class BaseScene extends Phaser.Scene {
       ((keeper !== undefined && sameTile(keeper, above)) ||
         (this.rivalHere !== null && sameTile(RIVAL_TILE, above)) ||
         this.leaderOn(above) !== undefined ||
+        // Whoever else stands in a room: MARLOW in THE CHART ROOM, the
+        // librarian, the Game Corner's regulars.
+        (this.place.room?.people ?? []).some((person) => sameTile(person.tile, above)) ||
         (this.garden?.holds(above) ?? false) ||
         this.partnerAt(above) ||
         // A picture on the wall the player is reading - the dojo's class board,
@@ -3549,7 +3571,9 @@ export class BaseScene extends Phaser.Scene {
    * raising inside it.
    */
   private createFigures(): void {
+    this.beachBottle = [];
     if (!this.place.room) {
+      this.placeBeachBottle();
       this.createDayCare();
       const life = harbourLifeAt(windowLight(new Date()));
       this.harbourLife = new HarbourLifeFigures(this, life);
@@ -4546,7 +4570,9 @@ export class BaseScene extends Phaser.Scene {
     const door = doorAt(this.currentTile);
     if (door) {
       this.enterRoom(door);
+      return;
     }
+    this.pickUpBottle(this.currentTile);
   }
 
   // -- the partner -----------------------------------------------------------
@@ -5106,6 +5132,14 @@ export class BaseScene extends Phaser.Scene {
         this.workFossilMachine([target]);
         return;
       }
+      if (thing?.does === 'chart-keeper') {
+        this.speakToMarlow(room, [target]);
+        return;
+      }
+      if (thing?.does === 'chart-wall') {
+        this.workChartWall([target]);
+        return;
+      }
       if (thing?.opens === 'games') {
         this.openGames();
         return;
@@ -5132,6 +5166,9 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (this.waveAt(target)) {
+      return;
+    }
+    if (this.pickUpBottle(target)) {
       return;
     }
     const door = doorAt(target);
@@ -6244,6 +6281,178 @@ export class BaseScene extends Phaser.Scene {
         this.say([`${stored.pokemon.name} will go on the next raid. Press P to see the team.`], [at]);
       }),
     );
+  }
+
+  // -- THE TREASURE MAP (`treasure/treasureMap.ts`) -------------------------------
+
+  /** The hunt as the save stands, and how many of a thing the vault holds. */
+  private treasureNow(): { readonly hunt: TreasureHunt; readonly held: (itemId: string) => number } {
+    const game = this.freshGame();
+    return { hunt: game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT, held: (itemId) => game.stash.itemCount(itemId) };
+  }
+
+  /** The partner's name, said in MARLOW's story, if the save still has one. */
+  private partnerName(): string | undefined {
+    return this.savedGame.stash.partner()?.pokemon.name.toUpperCase();
+  }
+
+  /**
+   * The bottle on THE BEACH, while it lies there (`BEACH_BOTTLE`): the chart's
+   * first piece, drawn as itself on the sand with a glint now and then. It is
+   * not solid, so the yard's walks are what they were.
+   */
+  private placeBeachBottle(): void {
+    const { hunt, held } = this.treasureNow();
+    if (this.visit || !bottleOnTheBeach(hunt, held) || !this.textures.exists(iconTextureKey('bottled-chart'))) {
+      return;
+    }
+    const x = BEACH_BOTTLE.x * TILE_SIZE;
+    const y = BEACH_BOTTLE.y * TILE_SIZE;
+    const bottle = this.add
+      .image(x, y + 2, iconTextureKey('bottled-chart'))
+      .setOrigin(0, 0)
+      .setDepth(atRow(MARKER_BAND, BEACH_BOTTLE.y));
+    this.beachBottle = [bottle];
+    if (!this.still) {
+      // A glint off the glass now and then: the bottle's own highlight, lit white.
+      const glint = this.add
+        .image(x, y + 2, iconTextureKey('bottled-chart'))
+        .setCrop(3, 4, 6, 1)
+        .setOrigin(0, 0)
+        .setTintFill(0xffffff)
+        .setAlpha(0)
+        .setDepth(atRow(MARKER_BAND, BEACH_BOTTLE.y) + 0.0001);
+      this.tweens.add({ targets: glint, alpha: { from: 0, to: 1 }, duration: 260, yoyo: true, repeat: -1, repeatDelay: 2200 });
+      this.beachBottle.push(glint);
+    }
+  }
+
+  /**
+   * Picks the bottle up, faced or stepped on: its chart into the vault, and
+   * the words that say what it is and who would want to see it.
+   */
+  private pickUpBottle(tile: GridPosition): boolean {
+    if (!sameTile(tile, BEACH_BOTTLE) || this.beachBottle.length === 0) {
+      return false;
+    }
+    if (!this.saveManager.takeBottledChart()) {
+      return false;
+    }
+    this.freshGame();
+    for (const sprite of this.beachBottle) sprite.destroy();
+    this.beachBottle = [];
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    audioManager.play('itemObtained');
+    this.say(BOTTLE_FOUND_LINES, [BEACH_BOTTLE]);
+    return true;
+  }
+
+  /**
+   * MARLOW, by the library's end bookcase or in THE CHART ROOM: what he says
+   * is where the hunt has got to (`huntStage`). Shown the bottled chart in the
+   * library, he opens the bookcase and takes the player through; shown the
+   * chest in his room, he opens it.
+   */
+  private speakToMarlow(room: BaseRoom, about: readonly GridPosition[]): void {
+    const { hunt, held } = this.treasureNow();
+    const stage = huntStage(hunt, held);
+    this.figures
+      .get(MARLOW.id)
+      ?.setFrame(worldCharacterIdleFrame(getWorldCharacterAppearance('npc', MARLOW.design), directionBetween(about[0], this.currentTile) ?? 'left'));
+    if (room.id === 'great-library') {
+      if (stage !== 'first-chart') {
+        this.say(marlowLibraryLines(stage), about);
+        return;
+      }
+      this.say(marlowLibraryLines(stage), about, () => {
+        if (!this.saveManager.openChartRoom()) {
+          this.say(['The bookcase will not budge: the game could not be saved.'], about);
+          return;
+        }
+        this.goTo(
+          {
+            savedGame: this.saveManager.load() ?? this.savedGame,
+            room: 'chart-room',
+            stairsFrom: 'great-library',
+            said: CHART_ROOM_ARRIVAL_LINES,
+          },
+          'interiorEnter',
+        );
+      });
+      return;
+    }
+    if (stage === 'chest') {
+      if (!this.saveManager.openSeaChest()) {
+        this.say(['The lock will not give: the game could not be saved.'], about);
+        return;
+      }
+      audioManager.play('itemObtained');
+      this.goTo(
+        {
+          savedGame: this.saveManager.load() ?? this.savedGame,
+          room: 'chart-room',
+          at: { ...this.currentTile },
+          facing: this.facing,
+          said: chestOpenedLines((itemId) => getItemById(itemId)?.displayName ?? itemId, this.partnerName()),
+        },
+        'confirm',
+      );
+      return;
+    }
+    const inHand = piecesToPin(hunt, held);
+    this.say(
+      inHand.length > 0
+        ? [...marlowRoomLines(stage, hunt), 'MARLOW: Is that another piece in your things? Pin it on the board, go on!']
+        : marlowRoomLines(stage, hunt),
+      about,
+    );
+  }
+
+  /**
+   * THE CHART ROOM's board: a piece the vault holds is pinned up on YES, one at
+   * a time, and MARLOW says what he sees on it. With nothing to pin it says
+   * how the chart stands.
+   */
+  private workChartWall(about: readonly GridPosition[]): void {
+    const { hunt, held } = this.treasureNow();
+    const piece = piecesToPin(hunt, held)[0];
+    if (!piece) {
+      const left = CHART_PIECES.length - hunt.pinned.length;
+      this.say(
+        chartWhole(hunt)
+          ? ["The chart is whole. The red dotted line runs from the ship to an X in SMUGGLERS' COVE."]
+          : [
+              `THE CHART: ${hunt.pinned.length} of ${CHART_PIECES.length} pieces pinned.`,
+              `The board has ${left} empty slot${left === 1 ? '' : 's'} left, each drawn round in chalk with a question mark.`,
+            ],
+        about,
+      );
+      return;
+    }
+    const name = getItemById(piece.itemId)?.displayName ?? piece.itemId;
+    this.askInBox(`Pin the ${name.toUpperCase()} on the board?`, (yes) => {
+      if (!yes) {
+        audioManager.play('cancel');
+        return;
+      }
+      const after = this.saveManager.pinChartPiece(piece.id);
+      if (!after) {
+        this.say(['It could not be pinned: the game could not be saved.'], about);
+        return;
+      }
+      audioManager.play(chartWhole(after) ? 'itemObtained' : 'confirm');
+      this.goTo(
+        {
+          savedGame: this.saveManager.load() ?? this.savedGame,
+          room: 'chart-room',
+          at: { ...this.currentTile },
+          facing: this.facing,
+          said: pinnedLines(piece, after, name, this.partnerName()),
+        },
+        'confirm',
+      );
+    });
   }
 
   /**

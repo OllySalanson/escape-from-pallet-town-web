@@ -115,6 +115,15 @@ drop-in screen naming what is in hand. `raid.mjs --errands=brocks-crate
 (`--errands=id,..` writes those errands into the save as asked, so the raid lays
 their things) - `docs/screens/errands/`.
 
+`treasureHunt.mjs <cdp port> <url> <dir> [--save-out=path.json]` plays THE
+TREASURE MAP's harbour half (`src/game/treasure/`): the bottle on THE BEACH,
+MARLOW opening the library's end bookcase, THE CHART ROOM and every piece pinned
+until the chart is whole. `raid.mjs --insertion=greystone-vale-cove-steps
+--beaten=vale-gym-misty --hunt=shore,moor,hollow,fold --grab=sea-chest
+--save-out=path.json` digs the chest up (`--hunt=` pins those pieces in the
+save), and `treasureHunt.mjs ... --chest=path.json` carries it to MARLOW to be
+opened - `docs/screens/treasure-hunt/`.
+
 `locks.mjs <url> <dir>` meets Pallet Town's locked WEIR GATE and KILN STRONGBOX
 with nothing to open them, then with the Weir Key, a Lockpick and a Pickaxe:
 the crate picked, the ROCKFALL dug, the gate unlocked and walked out through,

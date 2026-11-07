@@ -253,6 +253,14 @@ the screen, open on its wooden plinth, and you turn its pages with the arrow key
 one curls over at the spine like a real page. The first teaches the Bolthole. And in the middle of
 the room, on a golden plinth of its own, there's a book on every secret in the vale... chained shut.
 
+Keep an eye on the sand past the pleasure pier, too. Something washes up there in a bottle, and the
+old chart keeper at the Library's end bookcase gets *very* excited about it - excited enough to swing
+that bookcase open on a room nobody's supposed to know about. There's a board in there with a space
+for every piece of a torn sea chart. One piece came out of the sea; the other three are out in the
+vale under the right sky. Pin them all up and the dotted line finally goes somewhere, and so do you:
+X marks the spot, and whatever's buried there is heavy, worth having, and just as easy to lose on
+the way home as everything else you carry.
+
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
 following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. Everybody

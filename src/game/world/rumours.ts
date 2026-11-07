@@ -83,6 +83,14 @@ export const RUMOURS: readonly Rumour[] = [
     line: 'RUMOUR: A boulder on THE GOAT TRACK in GREYSTONE PEAKS glows red along its crack at dusk.',
   },
   {
+    id: 'sailor-x-marks-the-spot',
+    secret: 'x-marks-the-spot',
+    source: 'sailor',
+    gives: ['where', 'bring'],
+    names: "SMUGGLERS' COVE",
+    line: "Old Rook in SMUGGLERS' COVE swears there's a chest under the sand there. Only ever found with the whole CHART, he says - torn in four, it was.",
+  },
+  {
     id: 'board-navvies-wager',
     secret: 'the-navvies-wager',
     source: 'board',

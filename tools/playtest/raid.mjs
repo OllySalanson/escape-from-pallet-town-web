@@ -10,6 +10,7 @@
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--through=x:y:dir,..] [--grab=itemId,..] [--fight]
 //        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--said] [--errands=id,..]
+//        [--hunt=pieceId,..] [--skip-contract]
 //
 // --said prints every line a battle puts up, once it has finished typing.
 //
@@ -695,7 +696,9 @@ try {
     note(`seats the pack is still holding: ${ended ? 'n/a' : await page.evaluate(`${GAME}.scene.getScene('world').bag.arrangement.items.length`)}`);
   note(`pack now ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').bag.toJSON()`))}`);
   }
-  for (const [index, marker] of plan.markers.entries()) {
+  // --skip-contract leaves the board's stops where they are: a raid sent for
+  // one thing (`--grab=sea-chest`) goes straight out with it.
+  for (const [index, marker] of args.includes('--skip-contract') ? [] : plan.markers.entries()) {
     await walkTo(marker, `contract stop ${index + 1}`);
   }
   // --work=LABEL works a landmark before leaving, which is the only way an exit

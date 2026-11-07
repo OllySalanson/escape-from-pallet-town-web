@@ -52,6 +52,8 @@ function hintsOf(condition: SecretCondition): readonly string[] {
       return [condition.move.replace('-', ' ').toUpperCase()];
     case 'carried':
       return condition.items.flatMap((item) => (item.endsWith('rod') ? ['ROD', 'LINE'] : [item.toUpperCase()]));
+    case 'whole-chart':
+      return ['CHART'];
     case 'either':
       return condition.of.flatMap(hintsOf);
   }
@@ -154,13 +156,14 @@ describe("the vale's secrets", () => {
   );
 
   it('can each be opened by some raid, and only by one meeting all its conditions', () => {
-    const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [] };
+    const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false };
     expect(openSecrets(base)).toEqual([]);
     const everything: RaidConditions = {
       ...base,
       leadTypes: ['Fighting', 'Ground'],
       fieldMoves: ['rock-smash'],
       carried: ['old-rod', 'pickaxe'],
+      chartWhole: true,
     };
     for (const secret of SECRETS) {
       const hour = secret.when.find((condition) => condition.kind === 'hour');
@@ -179,12 +182,17 @@ describe("the vale's secrets", () => {
 
   it('reads the conditions off the party, the pack and the clock as the raid deploys', () => {
     const machop = new Pokemon(getSpeciesById('machop')!, 12);
-    const raid = raidConditions(new Date(2026, 10, 8, 19, 30), [machop], [
-      { itemId: 'old-rod', quantity: 1 },
-      { itemId: 'potion', quantity: 0 },
-    ]);
-    expect(raid).toMatchObject({ hour: 'dusk', weekday: 0, month: 10, leadTypes: ['Fighting'], carried: ['old-rod'] });
-    expect(raidConditions(new Date(2026, 10, 8, 23), [], []).leadTypes).toEqual([]);
+    const raid = raidConditions(
+      new Date(2026, 10, 8, 19, 30),
+      [machop],
+      [
+        { itemId: 'old-rod', quantity: 1 },
+        { itemId: 'potion', quantity: 0 },
+      ],
+      true,
+    );
+    expect(raid).toMatchObject({ hour: 'dusk', weekday: 0, month: 10, leadTypes: ['Fighting'], carried: ['old-rod'], chartWhole: true });
+    expect(raidConditions(new Date(2026, 10, 8, 23), [], [], false).leadTypes).toEqual([]);
   });
 
   it('gives the next reward until all are found, and counts what the vault holds as found', () => {
@@ -287,7 +295,7 @@ describe("the vale's secrets", () => {
 
   describe('in a raid', () => {
     const insertion = 'greystone-vale-moor-top';
-    const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [] };
+    const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false };
     const afternoon: RaidConditions = { ...dusk, hour: 'day' };
     const known = { secretsFound: [], giftsReceived: [] };
     const plan = (seed: number, conditions?: RaidConditions, found: readonly string[] = []) =>

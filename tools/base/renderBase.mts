@@ -33,6 +33,9 @@
  * `--layout=path.json` is a save's `raidProgress.homeLayout` (the furniture
  * and where it stands), `--dex=` the Pokédex numbers whose dolls the save owns
  * and `--found=id,..` the furniture in its vault (`src/game/home/`).
+ * `--pinned=shore,moor` (or `all`) opens THE CHART ROOM with those pieces of
+ * the treasure map on its board, and `--chest` opens the chest too
+ * (`src/game/treasure/`): `--room=chart-room --pinned=all --chest`.
  */
 import { readFileSync } from 'node:fs';
 import { readPng, writePng, TILE_SIZE } from '../tileset/tileSheet.mjs';
@@ -59,6 +62,7 @@ import { readHomeLayout } from '../../src/game/home/arrangement';
 import { FURNITURE_PIECES } from '../../src/game/home/generated/furniturePieces';
 import { POKEMON_ICON_SHEET } from '../../src/game/pokemon/generated/pokemonIcons';
 import { pokemonIconFrames, pokemonSoleDrop } from '../../src/game/world/pokemonFigures';
+import { CHART_PIECES } from '../../src/game/treasure/treasureMap';
 
 const args = process.argv.slice(2).filter((value) => value !== '--');
 const flags = new Set(args.filter((value) => value.startsWith('--')));
@@ -99,6 +103,17 @@ const baseSave = baseGame({
     errands: (option('errands') === 'all' ? ERRANDS.map((errand) => errand.id) : (option('errands') ?? '').split(','))
       .filter(Boolean)
       .map((id) => ({ id, status: 'completed' as const, found: 1, lossesHeard: 1 })),
+    // `--pinned=shore,moor` (or `all`): THE CHART ROOM open with those pieces
+    // of the treasure map on its board; `--chest` with the chest opened too.
+    ...(option('pinned') === undefined
+      ? {}
+      : {
+          treasureHunt: {
+            roomOpen: true,
+            pinned: option('pinned') === 'all' ? CHART_PIECES.map((piece) => piece.id) : option('pinned')!.split(',').filter(Boolean),
+            chestOpened: args.includes('--chest'),
+          },
+        }),
     ...(option('layout') === undefined
       ? {}
       : { homeLayout: readHomeLayout(JSON.parse(readFileSync(option('layout')!, 'utf8'))) ?? [] }),
