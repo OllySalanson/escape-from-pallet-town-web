@@ -115,9 +115,14 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
       return ready === 0 ? standing : `${standing} · ${ready} ready`;
     }
     case 'game-corner': {
-      // What the arcade has on today: the one cabinet, and how it has gone.
-      const best = (game.raidProgress.gameCorner ?? NO_GAME_CORNER).best['pokemon-jump'] ?? 0;
-      return best === 0 ? 'POKéMON JUMP · win TICKETS' : `POKéMON JUMP · best ${best.toLocaleString('en-GB')}`;
+      // What the arcade has on: its two cabinets, and how they have gone.
+      const best = (game.raidProgress.gameCorner ?? NO_GAME_CORNER).best;
+      const jump = best['pokemon-jump'] ?? 0;
+      const berries = best['berry-picking'] ?? 0;
+      if (jump === 0 && berries === 0) return 'JUMP · BERRY PICKING · TICKETS';
+      return [jump > 0 ? `JUMP ${jump.toLocaleString('en-GB')}` : null, berries > 0 ? `BERRIES ${berries.toLocaleString('en-GB')}` : null]
+        .filter(Boolean)
+        .join(' · ');
     }
     case 'prizes': {
       const tickets = (game.raidProgress.gameCorner ?? NO_GAME_CORNER).tickets;

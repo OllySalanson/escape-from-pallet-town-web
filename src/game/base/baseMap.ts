@@ -84,7 +84,7 @@ export const NOTICE_BOARD: BaseSign = {
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
     'THE SEAGALLOP at the jetty takes every raid out and brings it home. Every raid starts at the RAID ARENA, west of the yard. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
     'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
-    'Past THE GREEN, THE PROMENADE: the GAME CORNER pays TICKETS for POKéMON JUMP, and its PRIZE WINDOW takes them.',
+    'Past THE GREEN, THE PROMENADE: the GAME CORNER pays TICKETS for POKéMON JUMP and BERRY PICKING, the FIELD-MOVE COURSE past it pays them for a quick time, and the PRIZE WINDOW takes them.',
   ],
 };
 
@@ -140,7 +140,7 @@ export const SQUARE_MAP: BaseSign = {
     'HARBOUR SQUARE - a map of THE HARBOUR.',
     'The RAID ARENA is west, on ARENA SQUARE. The keepers are along KEEPERS\u2019 ROW. THE QUAY and the SEAGALLOP are south.',
     'East along the water: THE DOCKS, THE LONG PIER out to the S.S. ANNE, and THE COVE. THE GREEN is past THE BOLTHOLE.',
-    'Past THE GREEN, THE PROMENADE runs along the beach to the GAME CORNER and the PLEASURE PIER.',
+    'Past THE GREEN, THE PROMENADE runs along the beach to the GAME CORNER, the FIELD-MOVE COURSE and the PLEASURE PIER.',
   ],
 };
 
@@ -160,7 +160,7 @@ export const PROMENADE_SIGN: BaseSign = {
   y: 11,
   lines: [
     'THE PROMENADE',
-    'The front: the GAME CORNER, the beach, the huts and the PLEASURE PIER. Walk it at dusk when the lamps come on.',
+    'The front: the GAME CORNER, the FIELD-MOVE COURSE, the beach, the huts and the PLEASURE PIER. Walk it at dusk when the lamps come on.',
   ],
 };
 
@@ -170,7 +170,7 @@ export const GAME_CORNER_SIGN: BaseSign = {
   y: 11,
   lines: [
     'THE GAME CORNER',
-    'POKéMON JUMP inside - bring your best jumpers. TICKETS are kept at home and spent at the PRIZE WINDOW next door.',
+    'POKéMON JUMP and BERRY PICKING inside - bring your best jumpers, and a DODRIO. TICKETS are kept at home and spent at the PRIZE WINDOW next door.',
   ],
 };
 
@@ -417,10 +417,10 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(PROMENADE_SIGN.x, PROMENADE_SIGN.y, 'homeSign');
   map.plant(GAME_CORNER_SIGN.x, GAME_CORNER_SIGN.y, 'homeSign');
   map.plant(PLEASURE_PIER_SIGN.x, PLEASURE_PIER_SIGN.y, 'homeSign');
-  // Flower troughs either side of the arcade's plaza, and a stall past it.
+  // Flower troughs either side of the arcade's plaza; past it THE FIELD-MOVE
+  // COURSE's gate and its TIME BOARD stand with the landmarks (`landmarks.ts`).
   map.plant(70, 11, 'troughPink');
   map.plant(83, 11, 'troughYellow');
-  map.plant(84, 7, 'marketStall');
   map.plant(85, 11, 'pennantYellow');
   // The boardwalk's seaward edge: railings, a lamp every six tiles, and gaps
   // where steps go down to the sand.

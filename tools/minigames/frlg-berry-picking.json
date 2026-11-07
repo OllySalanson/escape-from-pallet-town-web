@@ -1,0 +1,45 @@
+{
+  "source": "pret/pokefirered 037335f4c725d7c9aecdac87066f2002b4bd7e14 src/dodrio_berry_picking.c",
+  "maxScore": 999990,
+  "prizeScore": 3000,
+  "difficulties": 7,
+  "maxFallDist": 10,
+  "eatFallDist": 7,
+  "statusSquares": 10,
+  "fallDelays": [
+    [
+      40,
+      24,
+      13
+    ],
+    [
+      32,
+      19,
+      10
+    ],
+    [
+      22,
+      13,
+      7
+    ]
+  ],
+  "difficultyThresholds": [
+    5,
+    10,
+    20,
+    30,
+    50,
+    70,
+    100
+  ],
+  "scores": {
+    "blue": 10,
+    "green": 30,
+    "gold": 50,
+    "missed": 50
+  },
+  "pickDelay": 6,
+  "badMissDelay": 40,
+  "eatDelay": 6,
+  "newBerryDelay": 20
+}

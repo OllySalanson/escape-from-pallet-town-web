@@ -2,11 +2,12 @@ import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
 import {
   buyPrize,
   NO_GAME_CORNER,
-  payJump,
+  payGame,
   readGameCorner,
   TICKET_PRIZES,
   type GameCornerRecord,
   type GamePayout,
+  type TicketSource,
 } from '../minigames/tickets';
 import { JUMP_PRIZE_BERRIES } from '../minigames/gameCornerTalk';
 import type { HunterRivalId } from '../world/hunters';
@@ -1121,11 +1122,27 @@ export class SaveManager {
     now: Date = new Date(),
     random: () => number = Math.random,
   ): { readonly game: RestoredGame; readonly payout: GamePayout; readonly berries: readonly string[] } | null {
+    return this.playGame('pokemon-jump', score, now, random);
+  }
+
+  /**
+   * A game played at one of THE GAME CORNER's cabinets or round THE FIELD-MOVE
+   * COURSE, in one write: the result - a score, or a time round in
+   * milliseconds - on its record, and whatever the day's best is newly worth
+   * in tickets and berries (`../minigames/tickets`). The berries go to the
+   * vault, one of the seven at random each. Null if there is no game to write to.
+   */
+  public playGame(
+    source: TicketSource,
+    result: number,
+    now: Date = new Date(),
+    random: () => number = Math.random,
+  ): { readonly game: RestoredGame; readonly payout: GamePayout; readonly berries: readonly string[] } | null {
     const game = this.load();
     if (!game) {
       return null;
     }
-    const payout = payJump(game.raidProgress.gameCorner ?? NO_GAME_CORNER, score, now);
+    const payout = payGame(game.raidProgress.gameCorner ?? NO_GAME_CORNER, source, result, now);
     const berries = Array.from(
       { length: payout.berries },
       () => JUMP_PRIZE_BERRIES[Math.min(JUMP_PRIZE_BERRIES.length - 1, Math.floor(random() * JUMP_PRIZE_BERRIES.length))],

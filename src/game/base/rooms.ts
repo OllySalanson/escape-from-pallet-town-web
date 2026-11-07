@@ -13,7 +13,7 @@ import { INSIDE_PROPS } from '../world/tileset/insideTileset';
 import { BOUTIQUE_NAME } from '../look/wearables';
 import { GAME_CORNER_SHEET_PIECES } from './gameCornerSheet';
 import { PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
-import { jumpCabinetLines, jumpCabinetNote } from '../minigames/gameCornerTalk';
+import { berryCabinetLines, berryCabinetNote, jumpCabinetLines, jumpCabinetNote } from '../minigames/gameCornerTalk';
 import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
 import {
   BALL_LEFT_LINE,
@@ -315,7 +315,8 @@ type GameCornerPropName =
   | 'prizeCounter'
   | 'prizeCase'
   | 'prizeMat'
-  | 'jumpCabinet';
+  | 'jumpCabinet'
+  | 'berryCabinet';
 
 const GAME_CORNER_PROPS: Readonly<Record<GameCornerPropName, PropDefinition>> = {
   cornerCounter: GAME_CORNER_SHEET_PIECES.prop('corner.counter', 'counter', ['#########', '#########', '####.####', '#########']),
@@ -327,6 +328,7 @@ const GAME_CORNER_PROPS: Readonly<Record<GameCornerPropName, PropDefinition>> = 
   prizeCase: GAME_CORNER_SHEET_PIECES.solid('prize.case', 'prize case'),
   prizeMat: GAME_CORNER_SHEET_PIECES.floor('prize.mat', 'door mat'),
   jumpCabinet: promenadeProp('jumpCabinet', 'POKéMON JUMP cabinet'),
+  berryCabinet: promenadeProp('berryCabinet', 'BERRY PICKING cabinet'),
 };
 
 const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
@@ -489,7 +491,17 @@ export interface RoomThing {
    * Center's PC opens the boxes, and Brock's tally and Bill's PC open the whole
    * ladder and the whole list, for reading them side by side and counting.
    */
-  readonly opens?: 'wall-map' | 'games' | 'wardrobe' | 'boxes' | 'ladder' | 'list' | 'telescope' | 'pokemon-jump' | ArenaStationId;
+  readonly opens?:
+    | 'wall-map'
+    | 'games'
+    | 'wardrobe'
+    | 'boxes'
+    | 'ladder'
+    | 'list'
+    | 'telescope'
+    | 'pokemon-jump'
+    | 'berry-picking'
+    | ArenaStationId;
   /**
    * It is read in the dialogue box, a notice a line, with what its notices are
    * worked out when it is read: Oak's cork board (`base/labBoard.ts`).
@@ -1426,15 +1438,15 @@ function drawBoutique(room: BaseRoom): Drawn {
 /**
  * Celadon's Game Corner, cut down to a seaside arcade: the coin counter in its
  * green L along the back wall with the attendant inside it, the POKéMON JUMP
- * cabinet beside it, and FireRed's slot machines in a column down each side,
- * a stool at each.
+ * and BERRY PICKING cabinets side by side beside it, and FireRed's slot
+ * machines in a column down each side, a stool at each.
  */
 function drawGameCorner(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   const sketch = shell(room);
   sketch.plant(1, 0, 'cornerCounter');
   sketch.plant(0, 2, 'cornerPlant');
-  sketch.plant(14, 2, 'cornerPlant');
   sketch.plant(11, 1, 'jumpCabinet');
+  sketch.plant(13, 1, 'berryCabinet');
   sketch.plant(1, 5, 'cornerSlots');
   sketch.plant(12, 5, 'cornerSlots');
   for (let y = 6; y <= 9; y += 1) {
@@ -1449,6 +1461,13 @@ function drawGameCorner(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       tiles: [1, 2, 3].flatMap((y) => [11, 12].map((x) => ({ x, y }))),
       opens: 'pokemon-jump',
       lines: jumpCabinetLines(),
+    },
+    {
+      name: 'BERRY PICKING',
+      note: berryCabinetNote(game.raidProgress, now),
+      tiles: [1, 2, 3].flatMap((y) => [13, 14].map((x) => ({ x, y }))),
+      opens: 'berry-picking',
+      lines: berryCabinetLines(),
     },
     {
       name: 'THE SLOTS',

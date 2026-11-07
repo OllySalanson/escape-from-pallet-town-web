@@ -177,11 +177,14 @@ const BIG = {
   N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'],
   O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
   R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+  S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
+  U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
   ' ': ['...', '...', '...', '...', '...', '...', '...'],
 };
 
 /** Three-by-five capitals, for a plate. */
 const SMALL = {
+  B: ['##.', '#.#', '##.', '#.#', '##.'],
   E: ['###', '#..', '##.', '#..', '###'],
   I: ['###', '.#.', '.#.', '.#.', '###'],
   J: ['..#', '..#', '..#', '#.#', '.#.'],
@@ -189,7 +192,9 @@ const SMALL = {
   P: ['##.', '#.#', '##.', '#..', '#..'],
   R: ['##.', '#.#', '##.', '#.#', '#.#'],
   S: ['.##', '#..', '.#.', '..#', '##.'],
+  T: ['###', '.#.', '.#.', '.#.', '.#.'],
   U: ['#.#', '#.#', '#.#', '#.#', '.#.'],
+  Y: ['#.#', '#.#', '.#.', '.#.', '.#.'],
   Z: ['###', '..#', '.#.', '#..', '###'],
 };
 
@@ -699,6 +704,142 @@ function jumpCabinet() {
   return image;
 }
 
+
+/**
+ * THE GAME CORNER's BERRY PICKING cabinet, 2x3, beside the POKéMON JUMP one:
+ * a marquee that says BERRY over a screen with FireRed's three berries -
+ * blue, green and gold - falling to a three-headed bird, a panel with the
+ * three ways it reaches, and a cabinet painted Dodrio's tan and brown.
+ */
+function berryCabinet() {
+  const image = canvas(2 * TILE, 3 * TILE);
+  const body = { b: '#c89060', B: '#906038', l: '#e8c090' };
+  // The cabinet.
+  fill(image, 3, 1, 26, 45, INK.outline);
+  fill(image, 4, 2, 24, 43, body.b);
+  fill(image, 4, 2, 3, 43, body.l);
+  fill(image, 25, 2, 3, 43, body.B);
+  // Its marquee: BERRY in lit letters.
+  fill(image, 5, 3, 22, 9, INK.night);
+  const word = lettering('BERRY', SMALL);
+  word.forEach((row, dy) => {
+    [...row].forEach((pixel, dx) => {
+      if (pixel === '#') set(image, 6 + dx, 5 + dy, hex(dy === 0 ? INK.neonHot : INK.neon));
+    });
+  });
+  // The screen: three berries falling in three columns over the bird's heads.
+  fill(image, 6, 14, 20, 15, INK.outline);
+  fill(image, 7, 15, 18, 13, '#184868');
+  fill(image, 7, 15, 18, 3, '#287838');
+  const berry = (x, y, c, l) => draw(image, x, y, ['.cc.', 'cllc', 'cccc', '.cc.'], { c, l });
+  berry(8, 18, '#3870e0', '#90c0f8');
+  berry(14, 20, '#38a848', '#a0e890');
+  berry(20, 17, '#e0a818', '#f8e880');
+  // Three heads at the foot, the middle one reaching up.
+  draw(image, 9, 24, ['h.', 'hh', '.k'], { h: '#d8a868', k: '#202020' });
+  draw(image, 15, 22, ['hh', 'hh', 'hk'], { h: '#d8a868', k: '#202020' });
+  draw(image, 21, 24, ['.h', 'hh', 'k.'], { h: '#d8a868', k: '#202020' });
+  fill(image, 7, 27, 18, 1, '#58a8d8');
+  // The panel: left, up and right, which is all Berry Picking asks for.
+  fill(image, 4, 30, 24, 5, INK.shade);
+  fill(image, 4, 30, 24, 1, INK.white);
+  draw(image, 8, 31, ['.r', 'rR', '.r'], { r: INK.redDark, R: '#f05050' });
+  draw(image, 15, 31, ['.r.', 'rRr', '...'], { r: INK.redDark, R: '#f05050' });
+  draw(image, 22, 31, ['r.', 'Rr', 'r.'], { r: INK.redDark, R: '#f05050' });
+  // The coin slot and the kick plate.
+  draw(image, 15, 38, ['kk'], { k: INK.dark });
+  fill(image, 4, 42, 24, 3, body.B);
+  return image;
+}
+
+/**
+ * THE FIELD-MOVE COURSE's gate, 3x3: two timber posts under a board that says
+ * COURSE in big green letters, the four field moves it asks for painted under
+ * the word - a small tree, a cracked rock, a boulder and a wave - and bunting
+ * strung between the posts over the way in.
+ */
+function courseGate() {
+  const image = canvas(3 * TILE, 3 * TILE);
+  const wood = { k: INK.woodDark, w: INK.wood, l: INK.woodLight };
+  // The posts.
+  for (const px of [3, 40]) {
+    fill(image, px, 14, 5, 34, INK.outline);
+    fill(image, px + 1, 15, 3, 32, INK.wood);
+    fill(image, px + 1, 15, 1, 32, INK.woodLight);
+    fill(image, px + 3, 15, 1, 32, INK.woodDark);
+    fill(image, px, 45, 5, 2, INK.woodDark);
+  }
+  // The board.
+  fill(image, 0, 1, 48, 22, INK.outline);
+  fill(image, 1, 2, 46, 20, INK.woodDark);
+  fill(image, 2, 3, 44, 18, INK.cream);
+  fill(image, 2, 3, 44, 1, INK.white);
+  fill(image, 2, 20, 44, 1, INK.shade);
+  // COURSE in big letters, green as a course's grass.
+  const letters = lettering('COURSE', BIG);
+  const ox = Math.floor((48 - letters[0].length) / 2);
+  letters.forEach((row, dy) => {
+    [...row].forEach((pixel, dx) => {
+      if (pixel !== '#') return;
+      set(image, ox + dx, 5 + dy + 1, hex(INK.leafDark));
+    });
+  });
+  letters.forEach((row, dy) => {
+    [...row].forEach((pixel, dx) => {
+      if (pixel === '#') set(image, ox + dx, 5 + dy, hex(dy === 0 ? INK.leafLight : INK.leaf));
+    });
+  });
+  // The four moves, under the word: a tree to CUT, a rock to SMASH, a boulder
+  // for STRENGTH and a wave to SURF.
+  draw(image, 5, 13, ['.gg.', 'gGGg', '.gg.', '.tt.', '.tt.'], { g: INK.leafDark, G: INK.leaf, t: INK.woodDark });
+  draw(image, 16, 14, ['.ss.', 'sSxs', 'sxSs', 'ssss'], { s: INK.stoneDark, S: INK.stoneLight, x: INK.dark });
+  draw(image, 27, 13, ['.bb.', 'bBBb', 'bBbb', 'bbbb', '.bb.'], { b: '#805830', B: '#c09060' });
+  draw(image, 37, 14, ['.ww...', 'wWWw.w', '....ww', 'wwwwww'], { w: '#3878d8', W: '#88c0f8' });
+  // Bunting over the way in, between the posts.
+  const flags = ['#e04040', '#f8c030', '#4078e0', '#40b060', '#f070b0'];
+  for (let x = 8; x < 40; x += 1) set(image, x, 25 + Math.round(Math.sin(((x - 8) / 31) * Math.PI) * 2), hex(INK.dark));
+  for (let index = 0; index < 5; index += 1) {
+    const fx = 10 + index * 6;
+    const fy = 26 + Math.round(Math.sin(((fx - 8) / 31) * Math.PI) * 2);
+    draw(image, fx, fy, ['fff', '.f.'], { f: flags[index] });
+  }
+  void wood;
+  return image;
+}
+
+/**
+ * THE FIELD-MOVE COURSE's TIMES board, 1x2: a chalk board on two legs, a
+ * stopwatch chalked at its top and three lines of times under it - the board a player reads
+ * the day's times off, as FireRed's Trainer Tower posts its Time Attack.
+ */
+function timeBoard() {
+  const image = canvas(TILE, 2 * TILE);
+  // The legs.
+  fill(image, 3, 18, 2, 13, INK.woodDark);
+  fill(image, 11, 18, 2, 13, INK.woodDark);
+  fill(image, 3, 18, 1, 13, INK.wood);
+  fill(image, 11, 18, 1, 13, INK.wood);
+  // The board, framed.
+  fill(image, 0, 2, 16, 18, INK.outline);
+  fill(image, 1, 3, 14, 16, INK.wood);
+  fill(image, 2, 4, 12, 15, '#285040');
+  fill(image, 2, 4, 12, 1, '#386858');
+  // A stopwatch in chalk: the board is too narrow for a word, and a clock face says it.
+  draw(
+    image,
+    4,
+    4,
+    ['..ww....', '.wwww...', 'w....w..', 'w..w.w..', 'w.ww.w..', 'w....w..', '.wwww...'],
+    { w: INK.white },
+  );
+  draw(image, 10, 6, ['ww', 'w.', 'ww'], { w: INK.shade });
+  // Chalk times.
+  for (const [y, length] of [[13, 9], [15, 7], [17, 8]]) {
+    for (let x = 4; x < 4 + length; x += 1) if (x % 3 !== 0) set(image, x, y, hex(INK.shade));
+  }
+  return image;
+}
+
 // --- The sheet -----------------------------------------------------------
 
 /**
@@ -732,6 +873,9 @@ const LAYOUT = [
   ['troughYellow', 14, 7, () => trough('yellow')],
   ['troughRed', 12, 8, () => trough('red')],
   ['troughBlue', 14, 8, () => trough('blue')],
+  ['berryCabinet', 0, 9, berryCabinet],
+  ['courseGate', 2, 9, courseGate],
+  ['timeBoard', 5, 9, timeBoard],
 ];
 
 const towns = readPng(new URL('public/assets/frlg-towns.png', ROOT).pathname);
