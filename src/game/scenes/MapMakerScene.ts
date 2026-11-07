@@ -11,6 +11,8 @@ import {
   placeBuilding,
   placeDoor,
   placeSpot,
+  isRememberedChoice,
+  type SpotChoices,
   setItemHidden,
   setItemHoldsKey,
   setPokemonLevel,
@@ -342,6 +344,14 @@ export class MapMakerScene extends Phaser.Scene {
   private pendingAreaRemoval: string | undefined;
   /** The thing whose panel was last brought into view, so it is brought there once per choice. */
   private shownChosen: string | undefined;
+  /**
+   * What was last chosen from a list for each kind of thing - which Pokemon,
+   * which look - so the next one put down is put down that way (`placeSpot`).
+   * The maker's to choose and no part of any map, so kept for the page's life.
+   */
+  private chosenFor: Partial<Record<ThingRef['kind'], SpotChoices>> = {};
+  /** The place and panel the tools and the side column were last drawn for, so each keeps its scroll while it shows the same list. */
+  private shownLists: { readonly area: AreaId; readonly panel: MakerPanel } | undefined;
   private zoom: MakerZoom = 16;
   private panel: MakerPanel = 'map';
   private sending: SendState = { step: 'checking' };
@@ -738,6 +748,15 @@ export class MapMakerScene extends Phaser.Scene {
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const scroll = viewport ? { left: viewport.scrollLeft, top: viewport.scrollTop } : undefined;
     const sideTop = this.overlay.root.querySelector<HTMLElement>('.maker-side')?.scrollTop;
+    // The lists in the two columns are drawn again with the rest of the
+    // screen, and each came back at its top: choosing a brush halfway down the
+    // tools, or opening a fold of things to plant, threw the list back to
+    // Ground (the captain, 2026-11-07). Each keeps its scroll while it is the
+    // same list - the same place's tools, the same panel's list.
+    const listTops = [...this.overlay.root.querySelectorAll<HTMLElement>('.maker-pane')].map(
+      (pane) => ({ inTools: pane.closest('.maker-tools') !== null, top: pane.scrollTop }),
+    );
+    const shownLists = this.shownLists;
     // The map's picture outlives the markup round it: a 256x256 canvas is
     // sixty-four megabytes, and drawn again from nothing after every click it
     // was most of a second.
@@ -780,6 +799,18 @@ export class MapMakerScene extends Phaser.Scene {
     if (side && sideTop !== undefined) {
       side.scrollTop = sideTop;
     }
+    const sameTools = shownLists?.area === this.area;
+    const samePanel = sameTools && shownLists?.panel === this.panel;
+    const tops = { tools: listTops.filter((list) => list.inTools), side: listTops.filter((list) => !list.inTools) };
+    const seen = { tools: 0, side: 0 };
+    this.overlay.root.querySelectorAll<HTMLElement>('.maker-pane').forEach((pane) => {
+      const column = pane.closest('.maker-tools') !== null ? 'tools' : 'side';
+      const kept = tops[column][seen[column]++];
+      if (kept && (column === 'tools' ? sameTools : samePanel)) {
+        pane.scrollTop = kept.top;
+      }
+    });
+    this.shownLists = { area: this.area, panel: this.panel };
     // A panel opened in the right-hand column is brought into view: under a
     // long list of checks it would otherwise open below the fold, unseen. So is
     // the panel of a thing just placed or chosen, which is where it is named.
@@ -2329,7 +2360,7 @@ export class MapMakerScene extends Phaser.Scene {
             ? placeBuilding(ground, this.place.building, at, place)
             : this.place.kind === 'cut-tree' || this.place.kind === 'smash-rock'
               ? placeDoor(ground, this.place.kind, at, at, place)
-              : placeSpot(ground, this.place.kind, at, place);
+              : placeSpot(ground, this.place.kind, at, place, this.chosenFor[this.place.kind]);
         if (outcome.placed) {
           this.panel = 'map';
           this.commitGrown(before, outcome.file, outcome.thing, growth.shift, outcome.note);
@@ -2649,6 +2680,17 @@ export class MapMakerScene extends Phaser.Scene {
    * only place one is turned from what a form holds into what a file holds.
    */
   private changeThing(selected: ThingRef, field: string, typed: string): MapFile {
+    const next = this.changedThing(selected, field, typed);
+    if (next !== this.view && isRememberedChoice(field)) {
+      this.chosenFor = {
+        ...this.chosenFor,
+        [selected.kind]: { ...this.chosenFor[selected.kind], [field]: plainText(typed) },
+      };
+    }
+    return next;
+  }
+
+  private changedThing(selected: ThingRef, field: string, typed: string): MapFile {
     const value = plainText(typed);
     switch (field) {
       case 'name':

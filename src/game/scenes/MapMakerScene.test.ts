@@ -74,13 +74,68 @@ Object.defineProperty(page.viewport, 'scrollLeft', {
   },
 });
 
+/**
+ * A list in one of the two columns, as the browser keeps it: drawn again at
+ * its top every time the screen's markup is written.
+ */
+interface FakePane {
+  scrollTop: number;
+  readonly column: 'tools' | 'side';
+  closest(selector: string): unknown;
+}
+
+/** A field of the chosen thing's panel - a `[data-field]` select - with its change handler. */
+interface FakeField {
+  value: string;
+  readonly dataset: Record<string, string>;
+  readonly changes: (() => void)[];
+  addEventListener(type: string, handler: () => void): void;
+}
+
+const pane = (column: 'tools' | 'side'): FakePane => ({
+  scrollTop: 0,
+  column,
+  closest: (selector: string) => (selector === '.maker-tools' && column === 'tools' ? {} : null),
+});
+
+/** What the screen holds since its markup was last written. */
+const drawn = {
+  panes: [] as FakePane[],
+  fields: [] as FakeField[],
+};
+
+function drawScreen(markup: string): void {
+  const lists = markup.split('px-scroll maker-pane').length - 1;
+  drawn.panes = Array.from({ length: lists }, (_, index) => pane(index === 0 ? 'tools' : 'side'));
+  drawn.fields = [...markup.matchAll(/<select[^>]*data-field="([a-z]+)"/g)].map(([, field]) => {
+    const changes: (() => void)[] = [];
+    return {
+      value: '',
+      dataset: { field },
+      changes,
+      addEventListener: (type: string, handler: () => void) => {
+        if (type === 'change') {
+          changes.push(handler);
+        }
+      },
+    };
+  });
+}
+
 // The screen is DOM; the overlay keeps its markup and every button's click.
 vi.mock('../ui/MenuOverlay', () => ({
   MenuOverlay: class {
     public readonly clicks = new Map<string, () => void>();
     public pointerRule = 'moves';
     public readonly root = {
-      innerHTML: '',
+      get innerHTML(): string {
+        return this.held;
+      },
+      set innerHTML(markup: string) {
+        this.held = markup;
+        drawScreen(markup);
+      },
+      held: '',
       addEventListener: () => undefined,
       contains: () => false,
       querySelector: (selector: string) =>
@@ -92,18 +147,22 @@ vi.mock('../ui/MenuOverlay', () => ({
               ? page.flash
               : null,
       querySelectorAll: (selector: string) =>
-        selector.startsWith('[data-') && selector !== '[data-field]'
-          ? [
-              {
-                get dataset() {
-                  return page.clicked;
-                },
-                getAttribute: () => null,
-                addEventListener: (_type: string, handler: () => void) =>
-                  this.clicks.set(selector, handler),
-              },
-            ]
-          : [],
+        selector === '.maker-pane'
+          ? drawn.panes
+          : selector === '[data-field]'
+            ? drawn.fields
+            : selector.startsWith('[data-')
+              ? [
+                  {
+                    get dataset() {
+                      return page.clicked;
+                    },
+                    getAttribute: () => null,
+                    addEventListener: (_type: string, handler: () => void) =>
+                      this.clicks.set(selector, handler),
+                  },
+                ]
+              : [],
     };
     public refocus(): void {}
     public moveCursor(): boolean {
@@ -241,6 +300,7 @@ function openMaker(): { scene: MakerInternals; start: ReturnType<typeof vi.fn> }
     review: { step: 'checking' },
     rendering: false,
     pendingBlock: false,
+    chosenFor: {},
   });
   scene.create();
   return { scene, start };
@@ -1382,5 +1442,101 @@ describe('what the maker will not do', () => {
     expect(scene.file.buildings).toEqual([{ x: 18, y: 9, kind: 'gym' }]);
     expect(scene.file.ground[11].slice(10, 18)).toBe(wood.ground[11].slice(10, 18));
     expect(scene.overlay.root.innerHTML).toMatch(/grew back where it stood\./);
+  });
+});
+
+describe('a choice from a list, made for one thing', () => {
+  /** Puts a new one of a kind down on a tile with the Place tool, as a click does. */
+  const putDown = (scene: MakerInternals, kind: string, x: number, y: number): void => {
+    scene.tool = 'place';
+    (scene as unknown as { place: { kind: string } }).place = { kind };
+    scene.pointerDown(at(x, y), page.canvas);
+    scene.pointerUp(at(x, y), page.canvas);
+  };
+  /** Chooses from one of the chosen thing's lists, as the select's change does. */
+  const chooseFrom = (field: string, value: string): void => {
+    const select = drawn.fields.find((candidate) => candidate.dataset.field === field);
+    if (!select) {
+      throw new Error(`No ${field} list on the screen.`);
+    }
+    select.value = value;
+    select.changes.forEach((change) => change());
+    vi.runOnlyPendingTimers();
+  };
+
+  it.each([
+    ['pokemon', 'pokemon', 'species', 'charmander'],
+    ['berry-tree', 'berryTrees', 'berry', 'sitrus'],
+    ['person', 'people', 'look', 'woman'],
+    ['person', 'people', 'facing', 'left'],
+    ['trainer', 'trainers', 'facing', 'up'],
+  ] as const)(
+    'is how the next %s put down comes, not back to the first on the list (the captain, 2026-11-07: always Pikachu)',
+    (kind, list, field, value) => {
+      vi.useFakeTimers();
+      const { scene } = openMaker();
+      putDown(scene, kind, 5, 5);
+      chooseFrom(field, value);
+      putDown(scene, kind, 9, 5);
+
+      const lists = scene.file as unknown as Record<string, readonly Record<string, unknown>[]>;
+      const things = lists[list] ?? [];
+      expect(things.map((thing) => thing[field])).toEqual([value, value]);
+      // And it is the new one the panel now speaks for, showing the same choice.
+      expect(scene.selected).toEqual({ kind, index: 1 });
+    },
+  );
+
+  it('is not carried to another kind of thing', () => {
+    vi.useFakeTimers();
+    const { scene } = openMaker();
+    putDown(scene, 'person', 5, 5);
+    chooseFrom('facing', 'left');
+    putDown(scene, 'trainer', 9, 5);
+
+    expect(scene.file.trainers?.[0]?.facing).toBe('down');
+  });
+});
+
+describe('the lists in the two columns', () => {
+  const tools = (): FakePane => drawn.panes.find((list) => list.column === 'tools')!;
+  const press = (scene: MakerInternals, selector: string, data: Record<string, string>): void => {
+    page.clicked = data;
+    try {
+      scene.overlay.clicks.get(selector)!();
+    } finally {
+      page.clicked = {};
+    }
+  };
+
+  it.each([
+    ['choosing a brush', '[data-brush]', { brush: 'water' }],
+    ['choosing a thing to place', '[data-place]', { place: 'pokemon' }],
+    ['opening a fold of things to plant', '[data-fold]', { fold: 'Nature' }],
+    ['choosing a tool', '[data-tool]', { tool: 'select' }],
+  ] as const)(
+    'keep the paint list where it was scrolled to on %s (the captain, 2026-11-07: snaps back to the top)',
+    (_what, selector, data) => {
+      const { scene } = openMaker();
+      tools().scrollTop = 300;
+
+      press(scene, selector, data);
+
+      expect(tools().scrollTop).toBe(300);
+    },
+  );
+
+  it('keep the side panel list while it is the same panel, and start a new panel at its top', () => {
+    const { scene } = openMaker();
+    press(scene, '[data-panel]', { panel: 'drafts' });
+    const side = (): FakePane => drawn.panes.find((list) => list.column === 'side')!;
+    side().scrollTop = 120;
+
+    press(scene, '[data-brush]', { brush: 'water' });
+    expect(side().scrollTop).toBe(120);
+
+    press(scene, '[data-panel]', { panel: 'map' });
+    press(scene, '[data-panel]', { panel: 'drafts' });
+    expect(side().scrollTop).toBe(0);
   });
 });
