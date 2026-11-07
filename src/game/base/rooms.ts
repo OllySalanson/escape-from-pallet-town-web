@@ -24,6 +24,7 @@ import {
 } from '../arena/dojoCounter';
 import { beltFoe, classBoardLines, dojoClass, fighterLine, regularFoe } from '../arena/classes';
 import { classOf } from '../arena/dojoRecord';
+import { cupBoardLines, cupOfTheWeek } from '../arena/cups';
 import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { DressedLook } from '../look/look';
 import type { PackItemId } from '../items/items';
@@ -587,7 +588,7 @@ export interface RoomThing {
  * room of the player's house, and the pennants upstairs.
  */
 export type RoomPoster =
-  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf' | 'class-board' | 'high-scores'; readonly area: Rect }
+  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf' | 'class-board' | 'cup-board' | 'high-scores'; readonly area: Rect }
   | {
       /** The lamps on a GAME CORNER cabinet, lit for the tiers its game has paid today (`minigames/arcade.ts`). */
       readonly kind: 'cabinet-lamps';
@@ -1646,6 +1647,12 @@ function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       lines: classBoardLines(record),
     },
     {
+      name: 'THE CUP BOARD',
+      note: cupOfTheWeek(now).name,
+      tiles: DOJO_CUP_BOARD_FACED,
+      lines: cupBoardLines(record?.cup, now),
+    },
+    {
       name: 'THE STATUES',
       note: 'The dojo’s own',
       tiles: [
@@ -1664,7 +1671,10 @@ function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     sprites: [],
     people,
     solid: people.map((person) => person.tile),
-    posters: [{ kind: 'class-board', area: DOJO_CLASS_BOARD }],
+    posters: [
+      { kind: 'class-board', area: DOJO_CLASS_BOARD },
+      { kind: 'cup-board', area: DOJO_CUP_BOARD },
+    ],
   };
 }
 
@@ -1675,6 +1685,10 @@ function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
  */
 export const DOJO_CLASS_BOARD: Rect = { x: 0, y: 0, width: 3, height: 2 };
 export const DOJO_CLASS_BOARD_FACED: readonly GridPosition[] = [0, 1, 2].map((x) => ({ x, y: 1 }));
+
+/** THE BATTLE ARENA's cup board (`arena/cups.ts`, `arena/cupBoard.ts`): the same stretch of back wall east of the master's floor, read from below it. */
+export const DOJO_CUP_BOARD: Rect = { x: 8, y: 0, width: 3, height: 2 };
+export const DOJO_CUP_BOARD_FACED: readonly GridPosition[] = [8, 9, 10].map((x) => ({ x, y: 1 }));
 
 /** Where the Black Belt at the head of the player's class stands: under the class board, at the head of the west line. */
 export const DOJO_BELT_SPOT: { readonly tile: GridPosition; readonly facing: Direction } = { tile: { x: 2, y: 2 }, facing: 'down' };

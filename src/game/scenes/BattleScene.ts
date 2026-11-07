@@ -50,6 +50,7 @@ import {
   withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import type { WeatherId } from '../pokemon/battle/weather';
+import type { DojoRun } from '../arena/arenaRuns';
 import { whatBeatYou } from '../pokemon/battle/whatBeatYou';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
@@ -357,6 +358,8 @@ export interface DojoBout {
   /** The regular fought, by their harbour id (`arena/dojoCounter.ts`). */
   readonly dojo: string;
   readonly at: GridPosition;
+  /** The cup or rental run this bout is part of (`arena/arenaRuns.ts`), if it is. */
+  readonly run?: DojoRun;
 }
 
 /** What a bout for show says in place of the raid's words for the same things. */
@@ -4073,7 +4076,12 @@ export class BattleScene extends Phaser.Scene {
       const won = this.state.outcome === 'victory';
       const bout = this.exhibition;
       if ('dojo' in bout) {
-        this.scene.start('base', { room: 'battle-arena', at: bout.at, facing: 'up', dojoBout: { opponent: bout.dojo, won } });
+        this.scene.start('base', {
+          room: 'battle-arena',
+          at: bout.at,
+          facing: 'up',
+          dojoBout: { opponent: bout.dojo, won, ...(bout.run ? { run: bout.run } : {}) },
+        });
         return;
       }
       this.scene.start('base', {

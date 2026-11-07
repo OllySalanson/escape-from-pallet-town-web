@@ -56,6 +56,7 @@ export function movesOnTheWayTo(
   pokemon: Pokemon,
   toLevel: number,
   known: readonly MoveBase[] = pokemon.moves.map((move) => move.base),
+  keeps: (move: MoveBase) => boolean = () => true,
 ): MoveBase[] {
   if (pokemon.level >= toLevel || known.length >= MOVE_SLOTS) {
     return [];
@@ -63,7 +64,7 @@ export function movesOnTheWayTo(
   const types = [pokemon.base.primaryType, pokemon.base.secondaryType];
   const hits = (move: MoveBase): number => move.power * (types.includes(move.type) ? 1.5 : 1);
   const kit = new Pokemon(pokemon.base, toLevel).moves.map((move) => move.base);
-  const newest = [...kit].reverse().filter((move) => !known.includes(move));
+  const newest = [...kit].reverse().filter((move) => !known.includes(move) && keeps(move));
   const ranked = [
     ...newest.filter((move) => move.power > 0).sort((left, right) => hits(right) - hits(left)),
     ...newest.filter((move) => move.power <= 0),
@@ -77,11 +78,17 @@ export function movesOnTheWayTo(
  * up to that level, into free slots), at full health and full PP, holding what
  * it holds and named and coloured as it is. The original is only read.
  */
-export function flatLevelCopy(pokemon: Pokemon, level: number = DOJO_LEVEL): Pokemon {
+export function flatLevelCopy(
+  pokemon: Pokemon,
+  level: number = DOJO_LEVEL,
+  keeps: (move: MoveBase) => boolean = () => true,
+): Pokemon {
   const copy = new Pokemon(pokemon.base, level);
   if (pokemon.moves.length > 0) {
-    const own = pokemon.moves.map((move) => move.base);
-    copy.moves = [...own, ...movesOnTheWayTo(pokemon, level, own)].map((move) => new Move(move));
+    const own = pokemon.moves.map((move) => move.base).filter(keeps);
+    copy.moves = [...own, ...movesOnTheWayTo(pokemon, level, own, keeps)].map((move) => new Move(move));
+  } else {
+    copy.moves = copy.moves.filter((move) => keeps(move.base));
   }
   copy.heldItemId = pokemon.heldItemId;
   copy.nickname = pokemon.nickname;
