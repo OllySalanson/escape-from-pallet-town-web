@@ -59,6 +59,7 @@ export const SHARED_HARBOUR_ROOMS = [
   'game-corner',
   'prize-window',
   'battle-arena',
+  'great-library',
 ] as const;
 
 /**

@@ -189,6 +189,12 @@ export const SOUND_EFFECTS = {
     moment: 'Bag, party or field guide closes',
     tones: [tri(659, 0.05, 0.06), tri(440, 0.07, 0.06, 0.04)],
   },
+  pageTurn: {
+    channel: 'ui',
+    moment: 'A page of a book in THE GREAT LIBRARY turns over',
+    // The paper lifting, then laid down: a brightening hiss and a soft settle.
+    tones: [sweep(noise(900, 0.14, 0.05), 2400), noise(700, 0.07, 0.035, 0.16)],
+  },
 
   // --- world: what the raid map says back --------------------------------
   bump: {

@@ -13,6 +13,10 @@ import { INSIDE_PROPS } from '../world/tileset/insideTileset';
 import { BOUTIQUE_NAME } from '../look/wearables';
 import { GAME_CORNER_SHEET_PIECES } from './gameCornerSheet';
 import { DOJO_SHEET_PIECES } from './dojoSheet';
+import { LECTERN_COLOURS, LIBRARY_SHEET_PIECES, lecternPiece, type LecternColour } from './librarySheet';
+import { GREAT_LIBRARY_NAME, LIBRARY_BOOKS } from '../library/books';
+import { resolveBookText } from '../library/bookText';
+import { SECRETS_BOOK_LOCKED_LINES, secretsBookOpens } from '../library/secretsBookLock';
 import {
   DOJO_COUNTER_AT,
   DOJO_COUNTER_TILES,
@@ -146,10 +150,12 @@ export type RoomId =
   | 'game-corner'
   | 'prize-window'
   | 'battle-arena'
+  | 'great-library'
   | 'raid-arena';
 
 export type RoomPropName =
   | BoutiquePropName
+  | LibraryPropName
   | GameCornerPropName
   | DojoPropName
   | 'labComputers'
@@ -382,7 +388,46 @@ const DOJO_PROPS: Readonly<Record<DojoPropName, PropDefinition>> = {
   dojoCounter: { ...INSIDE_PROPS.martCounter, cells: INSIDE_PROPS.martCounter.cells.map((cell) => ({ ...cell, solid: true })) },
 };
 
+/**
+ * THE GREAT LIBRARY's furniture, all drawn for it (`librarySheet.ts`): the
+ * bookcases along the back wall, the stacks and the librarian's desk, a globe
+ * and a fern, the red runner up the middle and a lectern in each book's colour.
+ */
+type LibraryPropName =
+  | 'libCase'
+  | 'libStack'
+  | 'libWindow'
+  | 'libGlobe'
+  | 'libFern'
+  | 'libDesk'
+  | 'libRunner'
+  | 'libMat'
+  | 'libGolden'
+  | 'libGoldenLocked'
+  | `libLectern${Capitalize<LecternColour>}`;
+
+function lecternPropName(colour: LecternColour): LibraryPropName {
+  return `libLectern${colour[0].toUpperCase()}${colour.slice(1)}` as LibraryPropName;
+}
+
+const LIBRARY_PROPS = {
+  libCase: LIBRARY_SHEET_PIECES.solid('wallCase', 'bookcase'),
+  libStack: LIBRARY_SHEET_PIECES.solid('stack', 'bookstack'),
+  libWindow: LIBRARY_SHEET_PIECES.solid('backWindow', 'window'),
+  libGlobe: LIBRARY_SHEET_PIECES.solid('globe', 'globe'),
+  libFern: LIBRARY_SHEET_PIECES.solid('fern', 'fern'),
+  libDesk: LIBRARY_SHEET_PIECES.solid('desk', 'desk'),
+  libRunner: LIBRARY_SHEET_PIECES.floor('runner', 'runner'),
+  libMat: LIBRARY_SHEET_PIECES.floor('mat', 'door mat'),
+  libGolden: LIBRARY_SHEET_PIECES.solid('goldenPlinth', 'golden plinth'),
+  libGoldenLocked: LIBRARY_SHEET_PIECES.solid('goldenPlinthLocked', 'golden plinth'),
+  ...Object.fromEntries(
+    LECTERN_COLOURS.map((colour) => [lecternPropName(colour), LIBRARY_SHEET_PIECES.solid(lecternPiece(colour), 'lectern')]),
+  ),
+} as Readonly<Record<LibraryPropName, PropDefinition>>;
+
 const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
+  ...LIBRARY_PROPS,
   ...BOUTIQUE_PROPS,
   ...GAME_CORNER_PROPS,
   ...DOJO_PROPS,
@@ -493,6 +538,11 @@ const DOJO_CATALOGUE = roomCatalogue(
   DOJO_SHEET_PIECES,
 );
 const DOJO = { ...DOJO_CATALOGUE, sources: [...DOJO_CATALOGUE.sources, AREA_SHEET_SOURCE.source] };
+const LIBRARY = roomCatalogue(
+  { floor: 'floor', floorShade: 'floorShade', wallUpper: 'wallUpper', wallLower: 'wallLower' },
+  ROOM_PROPS,
+  LIBRARY_SHEET_PIECES,
+);
 const HOUSE = roomCatalogue(
   {
     floor: 'home.floor',
@@ -559,7 +609,10 @@ export interface RoomThing {
     | 'telescope'
     | 'pokemon-jump'
     | 'berry-picking'
+    | 'book'
     | ArenaStationId;
+  /** The book lying open on it, in THE GREAT LIBRARY: faced and asked, it is read full screen (`library/books.ts`). */
+  readonly book?: string;
   /**
    * It is read in the dialogue box, a notice a line, with what its notices are
    * worked out when it is read: Oak's cork board (`base/labBoard.ts`).
@@ -771,6 +824,105 @@ export interface BuiltHome {
   readonly plan: FloorPlan;
   readonly placed: readonly PlacedPiece[];
   readonly house: readonly PlacedPiece[];
+}
+
+// --- THE GREAT LIBRARY ----------------------------------------------------------
+
+/** THE GREAT LIBRARY's room, walls included, and its door mat at the foot of the runner. */
+export const LIBRARY_ROOM = { width: 15, height: 12, mat: { x: 7, y: 11 } } as const;
+
+/**
+ * Where the wooden lecterns stand, a book on each in `LIBRARY_BOOKS` order:
+ * two rows either side of the runner, nearest it first. Each is two tiles tall
+ * with floor above and below it, so a book is read from in front or behind.
+ * `books.test.ts` fails a book with nowhere to lie.
+ */
+export const LIBRARY_LECTERNS: readonly GridPosition[] = [
+  ...[5, 9, 3, 11, 1, 13].map((x) => ({ x, y: 6 })),
+  ...[5, 9, 3, 11].map((x) => ({ x, y: 9 })),
+];
+
+/**
+ * The golden plinth: on the runner itself, before the librarian's desk, where
+ * everybody walking in sees it - the one book in the room that is a prize.
+ */
+export const GOLDEN_PLINTH: GridPosition = { x: 7, y: 6 };
+
+/** Where the librarian stands, behind her desk under the back window. */
+export const LIBRARIAN_TILE: GridPosition = { x: 7, y: 2 };
+const LIBRARY_DESK: GridPosition = { x: 6, y: 3 };
+
+/** What the librarian says when spoken to across her desk. */
+export const LIBRARIAN_LINES: readonly string[] = [
+  `Welcome to the ${GREAT_LIBRARY_NAME}. Every book here teaches one part of the harbour, and more are being written.`,
+  resolveBookText('Face a lectern and press {key:interact} to read its book. Turn the pages with {key:walk}, or click either page.'),
+  'Nothing here is lent out, so read as often as you like.',
+];
+
+/**
+ * THE GREAT LIBRARY: bookcases the length of the back wall with windows
+ * between, a stack either side, the librarian's desk in the middle with a
+ * globe and a fern beside it, the runner from the door to the desk, and the
+ * books lying open on their lecterns: the first on the runner before the
+ * desk, the rest in rows either side of it.
+ */
+function drawLibrary(room: BaseRoom, game: RestoredGame): Drawn {
+  const sketch = shell(room);
+  for (const x of [0, 2, 5, 8, 11, 13]) sketch.plant(x, 0, 'libCase');
+  for (const x of [4, 7, 10]) sketch.plant(x, 0, 'libWindow');
+  for (const y of [3, 9]) {
+    sketch.plant(0, y, 'libStack');
+    sketch.plant(12, y, 'libStack');
+  }
+  sketch.plant(4, 3, 'libGlobe');
+  sketch.plant(10, 3, 'libFern');
+  sketch.plant(LIBRARY_DESK.x, LIBRARY_DESK.y, 'libDesk');
+  // The runner leads from the door to the golden plinth.
+  for (let y = GOLDEN_PLINTH.y + 2; y < LIBRARY_ROOM.mat.y; y += 1) {
+    sketch.plant(LIBRARY_ROOM.mat.x, y, 'libRunner');
+  }
+  sketch.plant(LIBRARY_ROOM.mat.x, LIBRARY_ROOM.mat.y, 'libMat');
+  const onLecterns = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden');
+  const things: RoomThing[] = onLecterns.map((book, index) => {
+    const at = LIBRARY_LECTERNS[index];
+    sketch.plant(at.x, at.y, lecternPropName(book.colour));
+    return {
+      name: book.title,
+      note: book.blurb,
+      tiles: [at, { x: at.x, y: at.y + 1 }],
+      opens: 'book' as const,
+      book: book.id,
+    };
+  });
+  const golden = LIBRARY_BOOKS.find((book) => book.plinth === 'golden');
+  if (golden) {
+    const open = secretsBookOpens(game.raidProgress);
+    sketch.plant(GOLDEN_PLINTH.x, GOLDEN_PLINTH.y, open ? 'libGolden' : 'libGoldenLocked');
+    const tiles = [GOLDEN_PLINTH, { x: GOLDEN_PLINTH.x, y: GOLDEN_PLINTH.y + 1 }];
+    things.push(
+      open
+        ? { name: golden.title, note: golden.blurb, tiles, opens: 'book', book: golden.id }
+        : { name: golden.title, note: 'Locked', tiles, lines: SECRETS_BOOK_LOCKED_LINES },
+    );
+  }
+  const deskFront = [0, 1, 2].map((dx) => ({ x: LIBRARY_DESK.x + dx, y: LIBRARY_DESK.y + 1 }));
+  things.push(
+    {
+      name: 'THE LIBRARIAN',
+      note: 'Knows where every book is',
+      tiles: [LIBRARIAN_TILE],
+      alsoFaced: deskFront,
+      lines: LIBRARIAN_LINES,
+    },
+    {
+      name: 'THE STACKS',
+      note: 'Old books on old things',
+      tiles: [4, 10].flatMap((y) => [0, 1, 2, 12, 13, 14].map((x) => ({ x, y }))),
+      lines: ['Shelf after shelf of old books. The ones worth reading are open on the lecterns.'],
+    },
+  );
+  const people: RoomPerson[] = [{ id: 'librarian', design: 'old-woman', tile: LIBRARIAN_TILE, facing: 'down' }];
+  return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE] };
 }
 
 // --- the wall map -----------------------------------------------------------
@@ -1085,6 +1237,20 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
       facing: DOJO_RECEPTIONIST.facing,
     },
     counter: DOJO_COUNTER_TILES.filter((tile) => tile.y === DOJO_COUNTER_AT.y + 1),
+    stairs: [],
+  },
+  // THE GREAT LIBRARY (`../library/`): nobody's counter. Its books lie open on
+  // lecterns along the runner, and the librarian at her desk under the back
+  // window says how to read them.
+  {
+    id: 'great-library',
+    screen: null,
+    name: GREAT_LIBRARY_NAME,
+    width: LIBRARY_ROOM.width,
+    height: LIBRARY_ROOM.height,
+    mat: LIBRARY_ROOM.mat,
+    keeper: null,
+    counter: [],
     stairs: [],
   },
   // THE RAID ARENA's great hall (`arenaHall.ts`): the marshal stands by the way
@@ -1995,6 +2161,7 @@ const DRAWERS: Readonly<Record<Exclude<RoomId, 'raid-arena'>, (room: BaseRoom, g
   'game-corner': drawGameCorner,
   'prize-window': drawPrizeWindow,
   'battle-arena': drawBattleArena,
+  'great-library': drawLibrary,
   bolthole: drawHome,
   'bolthole-upstairs': drawUpstairs,
 };

@@ -4,6 +4,7 @@ import { activeSaveSlot } from '../dev/playtestMode';
 import { SaveManager } from '../save/SaveManager';
 import type { FeedbackSceneData } from '../scenes/FeedbackScene';
 import { isTypingTarget } from '../ui/overlayKeyboard';
+import { FEEDBACK_KEY } from '../input/keyBindings';
 import { CONSOLE_GAME_CLASS } from '../console/consoleGames';
 import { actionLog, buttonWords, errorLine, recordAction } from './actionLog';
 import { createCourier, type FeedbackCourier } from './courier';
@@ -276,7 +277,7 @@ export function isFeedbackKey(
   event: Pick<KeyboardEvent, 'key' | 'repeat' | 'ctrlKey' | 'metaKey' | 'altKey' | 'target'>,
   scenes: { isActive(key: string): boolean },
 ): boolean {
-  if (event.key.toLowerCase() !== 'f' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) {
+  if (event.key.toLowerCase() !== FEEDBACK_KEY.toLowerCase() || event.repeat || event.ctrlKey || event.metaKey || event.altKey) {
     return false;
   }
   return !(

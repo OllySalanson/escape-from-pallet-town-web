@@ -22,7 +22,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
-import { RAID_KEY_LETTERS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
+import { MUTE_KEY, RAID_KEY_LETTERS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -4963,7 +4963,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag],
       Phaser.Input.Keyboard.KeyCodes.K,
     ]);
-    this.input.keyboard.on?.('keydown-M', () => audioManager.toggleMute());
+    this.input.keyboard.on?.(`keydown-${MUTE_KEY}`, () => audioManager.toggleMute());
 
     this.controls = {
       up: cursors.up,

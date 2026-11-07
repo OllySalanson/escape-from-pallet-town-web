@@ -111,7 +111,7 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(26, 14, 'right'),
   stand(30, 15, 'left'),
   stand(30, 16, 'left'),
-  stand(59, 11, 'left'),
+  stand(59, 8, 'left'),
   stand(55, 14, 'right'),
   stand(59, 14, 'left'),
   stand(53, 10, 'left'),

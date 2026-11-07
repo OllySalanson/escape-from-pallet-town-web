@@ -2,6 +2,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import type { HunterRivalId } from '../world/hunters';
 import { fellLine } from '../world/raidMemory';
 import Phaser from 'phaser';
+import { MUTE_KEY } from '../input/keyBindings';
 import { setFightForShow } from '../dev/playtestMode';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -863,7 +864,7 @@ export class BattleScene extends Phaser.Scene {
       this.downKey,
       this.backKey,
     ]);
-    this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
+    this.input.keyboard!.on?.(`keydown-${MUTE_KEY}`, () => audioManager.toggleMute());
     this.mode = 'events';
     const fielded = (side: 'player' | 'enemy'): PokemonInstance[] =>
       slotsOf(this.state, side).flatMap((ref) => {

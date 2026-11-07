@@ -33,6 +33,7 @@ const MEASURED_WIDTH: Record<string, number> = {
   'game-corner': 152,
   'prize-window': 170,
   'battle-arena': 124,
+  'great-library': 92,
 };
 const MEASURED_HEIGHT = 33;
 /**

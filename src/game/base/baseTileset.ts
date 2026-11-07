@@ -18,6 +18,7 @@ import {
 } from './raidArenaSheet';
 import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
 import { BOARDS, BOARDS_SHEET_SOURCE } from '../world/tileset/boardsSheet';
+import { GREAT_LIBRARY_BUILDING, LIBRARY_SHEET_SOURCE } from './librarySheet';
 
 /**
  * The base is drawn on the same sheet the four raid maps are, with its
@@ -49,6 +50,7 @@ export type BasePropName =
   | 'billsCottage'
   | 'bolthole'
   | 'boutique'
+  | 'greatLibrary'
   | 'homeSign'
   | 'playtestBoard'
   | 'gardenFlowers'
@@ -246,6 +248,8 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     // THE PROMENADE's own art and THE GAME CORNER's front (`promenadeSheet.ts`).
     PROMENADE_SHEET_SOURCE.source,
     BOARDS_SHEET_SOURCE.source,
+    // THE GREAT LIBRARY's front, drawn for it (`librarySheet.ts`).
+    LIBRARY_SHEET_SOURCE.source,
     // The frames the harbour's sea, surf and flowers move through (`world/tileAnimation.ts`).
     TILE_ANIMATION_SOURCE.source,
   ],
@@ -287,6 +291,9 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     // 5x4. THE HARBOUR BOUTIQUE: Vermilion's Pokémon Fan Club under its
     // green awning, the one building in Kanto that reads as a shopfront.
     boutique: withDoorway(TOWN_PROPS.fanClub, [[1, 3]]),
+    // 5x4. THE GREAT LIBRARY: a portico under a pediment, drawn for this game
+    // (`scripts/draw-great-library.mjs`), its doors open between the columns.
+    greatLibrary: GREAT_LIBRARY_BUILDING,
     // FireRed's own wooden sign, which says whose house a house is.
     homeSign: KANTO_TILESET.props.signTown,
     // FireRed's TRAINER TIPS board, which no other sign in the yard is: the
