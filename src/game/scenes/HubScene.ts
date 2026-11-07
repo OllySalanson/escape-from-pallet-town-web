@@ -3575,7 +3575,11 @@ export class HubScene extends Phaser.Scene {
    * take it and, when not, why.
    */
   private dayCareView(): string {
-    const shown = this.findablePokemon;
+    // Every box, those he would take first, each row naming its box (`ui/boxPicker.ts`'s promises).
+    const takes = (stored: StashedPokemon): boolean => dayCareRefusal(this.stash, stored.id) === undefined;
+    const found = this.findablePokemon;
+    const shown = [...found.filter(takes), ...found.filter((stored) => !takes(stored))];
+    const boxNames = this.stash.listBoxes().map((box) => box.name);
     const rows = shown
       .map((stored, index) => {
         const refusal = dayCareRefusal(this.stash, stored.id);
@@ -3584,7 +3588,7 @@ export class HubScene extends Phaser.Scene {
           refusal === undefined
             ? `data-day-care-leave="${stored.id}" data-help="Leave ${name} with him. It grows half a level with every raid you go on."`
             : `data-refused="${escapeAttribute(refusal)}" aria-disabled="true" data-help="${escapeAttribute(refusal)}"`;
-        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, refusal === undefined ? pixelTag('Leave') : '')}</button>`;
+        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, refusal === undefined ? pixelTag('Leave') : '', boxNames[this.stash.boxIndexOf(stored.id)])}</button>`;
       })
       .join('');
     const details = shown

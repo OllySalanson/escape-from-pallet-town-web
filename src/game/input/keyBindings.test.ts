@@ -152,11 +152,13 @@ describe('the keys a HUD names', () => {
       ['L', 'LOOK'],
       ['O', 'FAVOURS'],
       ['B', 'THINGS'],
+      ['P', 'TEAM'],
       ['T', 'SAY'],
     ]);
     expect((controls.look as BoundKey).keyCode).toBe(KEY_CODES.L);
     expect((controls.favours as BoundKey).keyCode).toBe(KEY_CODES.O);
     expect((controls.things as BoundKey).keyCode).toBe(KEY_CODES.B);
+    expect((controls.team as BoundKey).keyCode).toBe(KEY_CODES.P);
     expect((controls.talk as BoundKey).keyCode).toBe(KEY_CODES.T);
     for (const direction of ['up', 'down', 'left', 'right'] as const) {
       expect((controls[direction] as BoundKey).keyCode).toBe(KEY_CODES[direction.toUpperCase()]);
@@ -223,11 +225,12 @@ describe('a key is named until it has been used once', () => {
   });
 
   it('empties the yard line as the yard is learned', () => {
-    expect(yardKeyHintLine(new Set(['walk']))).toBe('[L] LOOK   [O] FAVOURS   [B] THINGS   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look']))).toBe('[O] FAVOURS   [B] THINGS   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours']))).toBe('[B] THINGS   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things']))).toBe('[T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'talk']))).toBe('');
+    expect(yardKeyHintLine(new Set(['walk']))).toBe('[L] LOOK   [O] FAVOURS   [B] THINGS   [P] TEAM   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look']))).toBe('[O] FAVOURS   [B] THINGS   [P] TEAM   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours']))).toBe('[B] THINGS   [P] TEAM   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things']))).toBe('[P] TEAM   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team']))).toBe('[T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team', 'talk']))).toBe('');
   });
 
   it('is remembered by the save, once each', () => {
