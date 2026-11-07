@@ -189,7 +189,15 @@ export class HarbourFigures {
    * said it. Nor is anybody else's plate under it - a name and a bubble never
    * share a pixel, so the bubble's tail stays on its speaker's head.
    */
-  public update(figures: readonly PlateFigure[], self: { readonly x: number; readonly y: number } | null = null): void {
+  public update(
+    figures: readonly PlateFigure[],
+    self: { readonly x: number; readonly y: number } | null = null,
+    standing: readonly GridPosition[] = [],
+  ): void {
+    // The harbour's own townspeople, whom a plate (drawn beneath every figure)
+    // is lifted clear of rather than printed under: a regular at the dock had
+    // the chef a tile above standing on the first half of their name.
+    const townspeople = standing.map(standingArt);
     const here = new Set(figures.map((figure) => figure.id));
     // The mark over this player's own head is drawn over everything, so a
     // bubble beside it is seated clear of it.
@@ -243,9 +251,17 @@ export class HarbourFigures {
         plateWidth,
         this.placeWidth?.() ?? null,
       );
-      const plateY = clearOfHeel(
-        { x: plateX, y: Math.round(y + headOf(drawn) - plateHeight - 1), width: plateWidth, height: plateHeight },
-        heelArt(drawn.heel),
+      const plateY = clearOfStanding(
+        {
+          x: plateX,
+          y: clearOfHeel(
+            { x: plateX, y: Math.round(y + headOf(drawn) - plateHeight - 1), width: plateWidth, height: plateHeight },
+            heelArt(drawn.heel),
+          ),
+          width: plateWidth,
+          height: plateHeight,
+        },
+        townspeople,
       );
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
@@ -561,6 +577,32 @@ export function clearOfHeel(plate: Box, heel: Box | null): number {
     return plate.y;
   }
   return Math.min(plate.y, heel.y - plate.height);
+}
+
+/**
+ * Where a plate goes up and down once every townsperson it would lie under is
+ * stepped over: lifted over each it overlaps, as over a partner at heel, until
+ * it lies under none. Only ever lifted.
+ */
+export function clearOfStanding(plate: Box, standing: readonly Box[]): number {
+  let y = plate.y;
+  for (let again = true, guard = 0; again && guard < standing.length + 1; guard += 1) {
+    again = false;
+    for (const figure of standing) {
+      const lifted = clearOfHeel({ ...plate, y }, figure);
+      if (lifted !== y) {
+        y = lifted;
+        again = true;
+      }
+    }
+  }
+  return y;
+}
+
+/** A standing person's art, from a hat's height over the head to the feet. */
+function standingArt(tile: GridPosition): Box {
+  const top = tile.y * TILE_SIZE + SPRITE_Y_OFFSET + CHARACTER_HEAD_PIXEL_Y - 3;
+  return { x: tile.x * TILE_SIZE, y: top, width: TILE_SIZE, height: tile.y * TILE_SIZE + TILE_SIZE - top };
 }
 
 /** The drawn art of a partner at heel, from the top of its head to its feet, while it is shown. */
