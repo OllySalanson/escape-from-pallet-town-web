@@ -142,4 +142,4 @@ export function prizeClerkLines(progress: Pick<RaidProgress, 'gameCorner'>): rea
 }
 
 /** The window's own small print, under its list. */
-export const PRIZE_WINDOW_NOTE = `BERRIES: ${BERRIES_A_DAY} a day. Furniture goes home to THE BOLTHOLE: press F there to put it out. The cabinets pay at most ${DAILY_TICKET_CEILING} tickets a day.`;
+export const PRIZE_WINDOW_NOTE = `BERRIES: ${BERRIES_A_DAY} a day. Furniture goes home to THE BOLTHOLE: press H there to put it out. The cabinets pay at most ${DAILY_TICKET_CEILING} tickets a day.`;

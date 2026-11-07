@@ -5,7 +5,6 @@ import { SaveManager } from '../save/SaveManager';
 import type { FeedbackSceneData } from '../scenes/FeedbackScene';
 import { isTypingTarget } from '../ui/overlayKeyboard';
 import { CONSOLE_GAME_CLASS } from '../console/consoleGames';
-import { houseHoldsFeedbackKey } from './feedbackKeyHold';
 import { actionLog, buttonWords, errorLine, recordAction } from './actionLog';
 import { createCourier, type FeedbackCourier } from './courier';
 import {
@@ -270,9 +269,8 @@ function logWhatHappens(game: Phaser.Game): () => void {
  * Whether a key pressed on the page is the FEEDBACK key. F in a text field is a
  * letter, with the panel up it is the panel's to read, in a console game it is
  * the game's, and in the map maker it is FILL - a tool key its own screen names
- * ("Keys pick a tool: B R F I V X"), which the panel used to take, and in a
- * house it is FURNITURE (`feedbackKeyHold.ts`). The tab still opens the panel
- * from all of them.
+ * ("Keys pick a tool: B R F I V X"), which the panel used to take. The tab
+ * still opens the panel from both.
  */
 export function isFeedbackKey(
   event: Pick<KeyboardEvent, 'key' | 'repeat' | 'ctrlKey' | 'metaKey' | 'altKey' | 'target'>,
@@ -285,8 +283,7 @@ export function isFeedbackKey(
     isTypingTarget(event.target) ||
     inConsoleGame(event.target) ||
     scenes.isActive('feedback') ||
-    scenes.isActive('mapmaker') ||
-    houseHoldsFeedbackKey(scenes)
+    scenes.isActive('mapmaker')
   );
 }
 

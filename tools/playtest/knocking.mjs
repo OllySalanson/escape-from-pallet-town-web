@@ -10,7 +10,7 @@
 // home. OLLY goes home; AMY knocks again from the sign; OLLY is asked, with
 // the cursor on NOT NOW, and lets her in. AMY is shown OLLY's house - his name
 // on his things, and him standing in it - and he sees her there. She cannot
-// pick his furniture up (F says why), and down off the mat takes her home to her own step.
+// pick his furniture up (H says why), and down off the mat takes her home to her own step.
 // It fails loudly - a thrown error - when any of that does not happen, and
 // photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
@@ -169,7 +169,7 @@ try {
   // way out (playtest 48: it said only [DOWN] OUT).
   const homeHint = await olly.evaluate(`(() => { const b = ${BASE}; return { hint: b.hintShown, learned: b.savedGame.raidProgress.keysLearned ?? [] }; })()`);
   console.log(`on his mat: ${homeHint.hint}`);
-  if (!homeHint.hint.includes('[F] FURNITURE')) throw new Error(`OLLY's mat did not name [F] FURNITURE: "${homeHint.hint}"`);
+  if (!homeHint.hint.includes('[H] DECORATE')) throw new Error(`OLLY's mat did not name [H] DECORATE: "${homeHint.hint}"`);
   if (homeHint.hint.includes('KNOCK')) throw new Error(`OLLY's mat still names a knock key: "${homeHint.hint}"`);
   await toFront(olly);
   await olly.screenshot(`${out}/home-mat-hint.png`);
@@ -216,7 +216,7 @@ try {
   await toFront(amy);
   await amy.screenshot(`${out}/visiting.png`);
   // Nobody moves the host's furniture.
-  await press(amy, 'KeyF');
+  await press(amy, 'KeyH');
   const refused = await until(amy, 'AMY told the furniture is not hers', (s) => s.dialog?.endsWith('move.') ?? false);
   if (refused.decorating) throw new Error('a visitor picked the house up');
   if (!refused.dialog.includes("OLLY's house")) throw new Error(`F in a visit said ${JSON.stringify(refused.dialog)}`);

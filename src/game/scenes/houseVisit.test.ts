@@ -34,7 +34,7 @@ import { KNOCK_SIGN_LINE, knockScreenMarkup } from '../home/knocking';
 import { HOME_SIGN } from '../base/baseMap';
 
 /**
- * F (H until 7 Nov 2026) in somebody else's house (playtest 48): it did nothing and said nothing,
+ * H in somebody else's house (playtest 48): it did nothing and said nothing,
  * so a visitor could not tell a refusal from a broken key. It says why now,
  * and in the player's own house it still picks the house up to decorate.
  */
@@ -49,21 +49,21 @@ function houseScene(visit: { ownerId: string; ownerName: string } | null) {
       decorating += 1;
     },
   });
-  const pressF = () => (scene.decorateHere as () => void).call(scene);
-  return { pressF, said, decorating: () => decorating };
+  const pressH = () => (scene.decorateHere as () => void).call(scene);
+  return { pressH, said, decorating: () => decorating };
 }
 
-describe('F in a house', () => {
+describe('H in a house', () => {
   it("tells a visitor the owner's things are not theirs to move", () => {
     const house = houseScene({ ownerId: 'pip-id', ownerName: 'PIP' });
-    house.pressF();
+    house.pressH();
     expect(house.said).toEqual([["This is PIP's house - nothing here is yours to move."]]);
     expect(house.decorating()).toBe(0);
   });
 
   it('picks up the player\'s own house to decorate, saying nothing', () => {
     const house = houseScene(null);
-    house.pressF();
+    house.pressH();
     expect(house.decorating()).toBe(1);
     expect(house.said).toEqual([]);
   });
@@ -187,13 +187,13 @@ describe('the hint on the house mat', () => {
     return (scene.hintHere as () => string).call(scene);
   }
 
-  it('names the furniture key beside the way out', () => {
-    expect(hintOnMat(false)).toBe('[F] FURNITURE   [DOWN] OUT');
+  it('names the decorate key beside the way out', () => {
+    expect(hintOnMat(false)).toBe('[H] DECORATE   [DOWN] OUT');
   });
 
   it('keeps naming it once it has been used, and ahead of the partner on the way in', () => {
-    expect(hintOnMat(false, ['decorate'])).toBe('[F] FURNITURE   [DOWN] OUT');
-    expect(hintOnMat(false, ['decorate'], 'up', true)).toBe('[F] FURNITURE   [DOWN] OUT');
+    expect(hintOnMat(false, ['decorate'])).toBe('[H] DECORATE   [DOWN] OUT');
+    expect(hintOnMat(false, ['decorate'], 'up', true)).toBe('[H] DECORATE   [DOWN] OUT');
     // In somebody else's house the partner still has the line.
     expect(hintOnMat(true, [], 'up', true)).toBe('[SPACE] CHARIZARD   [DOWN] OUT');
   });
