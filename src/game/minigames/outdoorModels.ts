@@ -1,4 +1,4 @@
-import { advanceDerby, bestLines, derbyScore, playerPlace, startDerby, toNextCorner, type DerbyEntrant, type DerbyRace } from './derby';
+import { advanceDerby, bestLines, DERBY_LEVELS, derbyScore, playerPlace, ridesWaves, sailsOverCrates, startDerby, toNextCorner, toNextHurdle, waveThreat, type DerbyEntrant, type DerbyLevel, type DerbyRace } from './derby';
 import { DIG_HEIGHT, DIG_WIDTH, digAt, digShape, isDug, isLoose, startDig, type DigGame } from './dig';
 import { hasAbility, roller, type PokemonTraits } from './traits';
 
@@ -11,7 +11,9 @@ import { hasAbility, roller, type PokemonTraits } from './traits';
 /**
  * A race run by a model rider: the quicker line at each fork, and a sprint
  * tapped on the straights whenever there is breath for it - eased off into the
- * corners `skill` of the time - and, at `skill` 1, never wasted.
+ * corners `skill` of the time - and, at `skill` 1, never wasted. Into a crate
+ * or past a wave about to break it sprints, `skill` of the time, as a rider who
+ * has seen it coming.
  */
 export function modelDerby(
   racer: PokemonTraits,
@@ -19,27 +21,37 @@ export function modelDerby(
   wet: boolean,
   seed: number,
   skill: number,
+  level: DerbyLevel = DERBY_LEVELS[0],
 ): DerbyRace {
-  let race = startDerby({ name: 'YOU', racer }, field, wet, seed);
-  const lines = bestLines(racer, wet);
+  let race = startDerby(level, { name: 'YOU', racer }, field, wet, seed);
+  const lines = bestLines(level, racer, wet);
   const roll = roller(seed ^ 0x5bd1e995);
   let careless = false;
   let lastCorner = Number.POSITIVE_INFINITY;
+  let lastHazard = false;
+  let sees = true;
   while (!race.over) {
     const me = race.runners[0];
-    const corner = toNextCorner(me);
+    const corner = toNextCorner(level, me);
     // A new corner coming up: does the rider remember to ease off for it?
     if (corner > lastCorner + 0.5) careless = roll() > skill;
     lastCorner = corner;
-    const tap = me.finishedMs === null && me.stamina > 150 && (corner > 1.6 || careless) && roll() < 0.5;
-    race = advanceDerby(race, 1000 / 60, { tap, first: lines.first, second: lines.second });
+    // A crate or a wave coming: does the rider see it in time?
+    const hazard =
+      (!sailsOverCrates(racer) && toNextHurdle(level, me) < 1.2) || (!ridesWaves(racer) && waveThreat(level, me, race.clock));
+    if (hazard && !lastHazard) sees = roll() < skill;
+    lastHazard = hazard;
+    const tap =
+      me.finishedMs === null &&
+      (hazard ? sees && me.stamina > 0 : me.stamina > 150 && (corner > 1.6 || careless) && roll() < 0.5);
+    race = advanceDerby(race, 1000 / 60, { tap, lines });
   }
   return race;
 }
 
 /** A race's place for the model rider. */
-export function modelPlace(racer: PokemonTraits, field: readonly DerbyEntrant[], wet: boolean, seed: number, skill: number): number {
-  const race = modelDerby(racer, field, wet, seed, skill);
+export function modelPlace(racer: PokemonTraits, field: readonly DerbyEntrant[], wet: boolean, seed: number, skill: number, level: DerbyLevel = DERBY_LEVELS[0]): number {
+  const race = modelDerby(racer, field, wet, seed, skill, level);
   return playerPlace(race) ?? race.runners.length;
 }
 

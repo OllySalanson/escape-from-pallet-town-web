@@ -4334,12 +4334,25 @@ button {
   align-content: stretch;
   height: 100%;
 }
+:where(.pixel-ui) .game-corner-layout.has-course {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+/* THE PROMENADE DERBY's courses: a row of levels over the list of who races. */
+:where(.pixel-ui) .outdoor-course-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 2) 0;
+}
 :where(.pixel-ui) .game-corner-layout > .px-window {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
   min-height: 0;
+}
+:where(.pixel-ui) .game-corner-layout > .outdoor-course {
+  grid-template-rows: auto auto auto;
 }
 /* --- The PLAYTEST BOARD (`dev/playtestBoardView.ts`) ------------------------
    One long list in a side panel: it scrolls inside the window, never past it. */

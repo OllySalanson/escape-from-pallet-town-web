@@ -4,14 +4,15 @@
  * PROMENADE DERBY, what each digs up at THE DIG, and what each lead lands in
  * the FISHING DERBY - and the tickets each is worth.
  *
- *   npx vite-node tools/minigames/outdoor.mts [-- --games=300 --skill=0.8]
+ *   npx vite-node tools/minigames/outdoor.mts [-- --games=300 --skill=0.8 --level=2]
  *
  * It is how the ticket tiers in `minigames/tickets.ts` were set, and how a
  * change to a game's rules is weighed: run it on both sides of the change.
  * `--skill` is how often the model rider eases off into a corner (1 never
- * stumbles).
+ * stumbles), and `--level` which of the derby's levels is raced
+ * (`minigames/derbyLevels.ts`; THE FRONT unless it is given).
  */
-import { DERBY_ENTRANTS, FIELD_SIZE, playerPlace, raceTime, type DerbyEntrant } from '../../src/game/minigames/derby';
+import { DERBY_ENTRANTS, DERBY_LEVELS, derbyScore, fieldEntrant, playerPlace, raceTime, type DerbyEntrant, type DerbyLevel } from '../../src/game/minigames/derby';
 import { modelDerby, modelDig } from '../../src/game/minigames/outdoorModels';
 import { modelFishingDerby } from '../../src/game/minigames/fishingDerby';
 import { harbourBite } from '../../src/game/base/harbourFishing';
@@ -25,10 +26,11 @@ const option = (name: string, fallback: number): number => {
 };
 const games = option('games', 300);
 const skill = option('skill', 0.8);
+const level: DerbyLevel = DERBY_LEVELS[option('level', 1) - 1] ?? DERBY_LEVELS[0];
 
 const mean = (values: readonly number[]): number => values.reduce((sum, value) => sum + value, 0) / values.length;
 
-/** A field for each game: five of the twelve, by seed, as a day's field is. */
+/** A field for each game: as many of the twelve as the level races, by seed, as a day's field is. */
 function fieldFor(seed: number): readonly DerbyEntrant[] {
   const roll = roller(seed * 7919);
   const pool = [...DERBY_ENTRANTS];
@@ -36,10 +38,10 @@ function fieldFor(seed: number): readonly DerbyEntrant[] {
     const swap = Math.floor(roll() * (index + 1));
     [pool[index], pool[swap]] = [pool[swap], pool[index]];
   }
-  return pool.slice(0, FIELD_SIZE);
+  return pool.slice(0, level.field.rivals).map((entrant) => fieldEntrant(level, entrant));
 }
 
-console.log(`THE PROMENADE DERBY: ${games} races each, model skill ${skill}\n`);
+console.log(`THE PROMENADE DERBY, ${level.name}: ${games} races each, model skill ${skill}\n`);
 console.log('racer'.padEnd(14), 'going'.padEnd(6), 'win%'.padStart(6), 'top3%'.padStart(6), 'place'.padStart(6), 'time'.padStart(8), 'tickets'.padStart(8));
 const RACERS = [
   'ponyta', 'rapidash', 'tauros', 'doduo', 'spearow', 'pidgeotto', 'rattata', 'horsea', 'pikachu',
@@ -52,9 +54,9 @@ for (const species of RACERS) {
     const places: number[] = [];
     const times: number[] = [];
     for (let seed = 1; seed <= games; seed += 1) {
-      const race = modelDerby(racer, fieldFor(seed), wet, seed, skill);
-      places.push(playerPlace(race) ?? 6);
-      times.push(race.runners[0].finishedMs ?? 60_000);
+      const race = modelDerby(racer, fieldFor(seed), wet, seed, skill, level);
+      places.push(playerPlace(race) ?? level.field.rivals + 1);
+      times.push(race.runners[0].finishedMs ?? level.longestMs);
     }
     console.log(
       species.padEnd(14),
@@ -63,7 +65,7 @@ for (const species of RACERS) {
       ((places.filter((place) => place <= 3).length / games) * 100).toFixed(0).padStart(6),
       mean(places).toFixed(2).padStart(6),
       raceTime(mean(times)).padStart(8),
-      mean(places.map((place) => derbyTickets(7 - place))).toFixed(1).padStart(8),
+      mean(places.map((place) => derbyTickets(derbyScore(place)))).toFixed(1).padStart(8),
     );
   }
 }

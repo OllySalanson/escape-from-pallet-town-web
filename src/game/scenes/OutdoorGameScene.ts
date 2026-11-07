@@ -9,8 +9,8 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind, type PickerEntry } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
-import { outdoorPickMarkup, type OutdoorCandidate, type OutdoorPickState } from '../minigames/outdoorView';
-import { NO_GAME_CORNER, type GameCornerRecord, type TicketSource } from '../minigames/tickets';
+import { outdoorPickMarkup, type OutdoorCandidate, type OutdoorCourse, type OutdoorPickState } from '../minigames/outdoorView';
+import { NO_GAME_CORNER, type GameCornerRecord, type GamePayout, type TicketSource } from '../minigames/tickets';
 import { traitsOf, type PokemonTraits } from '../minigames/traits';
 
 export interface OutdoorGameSceneData {
@@ -75,6 +75,24 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
   /** A line about the day, if the game has one. */
   protected todayLine(): string | undefined {
     return undefined;
+  }
+
+  /** The game's levels, if it has them (THE PROMENADE DERBY's courses). */
+  protected course(): OutdoorCourse | undefined {
+    return undefined;
+  }
+
+  /** A level chosen on the screen. Whether it could be: a level not yet open cannot. */
+  protected chooseLevel(level: number): boolean {
+    return level === 1;
+  }
+
+  /** What a game played is written as: its score, paid, and what it turned up sent home. */
+  protected writeResult(
+    score: number,
+    finds: readonly string[],
+  ): { readonly game: RestoredGame; readonly payout: GamePayout; readonly kept: readonly string[] } | null {
+    return this.saveManager.playOutdoorGame(this.source, score, finds);
   }
 
   public init(data: OutdoorGameSceneData): void {
@@ -161,6 +179,7 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
     const record = this.record();
     const best = record.day?.best[this.source];
     const today = this.todayLine();
+    const course = this.course();
     this.overlay.redraw(
       outdoorPickMarkup({
         ...this.words,
@@ -171,6 +190,7 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
         ...(today ? { today } : {}),
         ...(this.status ? { status: this.status } : {}),
         ...(this.last ? { last: this.last } : {}),
+        ...(course ? { course } : {}),
       }),
     );
     const root = this.overlay.root;
@@ -184,6 +204,18 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
         this.status = undefined;
         audioManager.play('confirm');
         this.showMenu('[data-play]');
+      };
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-course-level]').forEach((button) => {
+      button.onclick = () => {
+        const level = Number(button.dataset.courseLevel);
+        if (!this.chooseLevel(level)) {
+          audioManager.play('denied');
+          return;
+        }
+        audioManager.play('confirm');
+        this.status = undefined;
+        this.showMenu(`[data-course-level="${level}"]`);
       };
     });
     const play = root.querySelector<HTMLButtonElement>('[data-play]');
@@ -232,7 +264,7 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
    * choosing screen back up with what it came to.
    */
   protected endGame(score: number, headline: string, finds: readonly string[] = []): void {
-    const written = this.saveManager.playOutdoorGame(this.source, score, finds);
+    const written = this.writeResult(score, finds);
     if (written) {
       this.savedGame = written.game;
       this.last = { headline, payout: written.payout, kept: written.kept };

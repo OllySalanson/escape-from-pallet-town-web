@@ -16,6 +16,7 @@ import {
   type TicketSource,
 } from '../minigames/tickets';
 import { JUMP_PRIZE_BERRIES } from '../minigames/gameCornerTalk';
+import { derbyClearedAfter, derbyScore, readDerbyCleared, type DerbyLevel } from '../minigames/derby';
 import type { HunterRivalId } from '../world/hunters';
 import { COIN_PRICE, giftWaiting, type PitGift, type PitRecord } from '../base/pitCoins';
 import { readRaidMemory, remembering, type RaidMarkKind, type RaidMemory, type RaidWalk } from '../world/raidMemory';
@@ -332,6 +333,13 @@ export interface RaidProgress {
    * scores - so no version bump.
    */
   readonly gameCorner?: GameCornerRecord;
+  /**
+   * How many of THE PROMENADE DERBY's levels this save has finished on the
+   * podium, in order (`../minigames/derbyLevels`): the next one is open. Absent
+   * on every save that has never placed, which reads as none - only THE FRONT
+   * open - so no version bump.
+   */
+  readonly derbyCleared?: number;
   /**
    * What the player wears (`../look/look`): a head, a top and trousers, or a
    * head over a whole outfit, by the boutique's own ids. Absent on every save
@@ -1315,6 +1323,30 @@ export class SaveManager {
     const record = allowed > 0 ? withBerriesSent(payout.record, source, allowed, now) : payout.record;
     const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, gameCorner: record } };
     return this.save(next) ? { game: next, payout: { ...payout, record }, kept } : null;
+  }
+
+  /**
+   * A race of THE PROMENADE DERBY run on a level (`minigames/derby.ts`), in
+   * one write: the place scored and paid as every outdoor game is
+   * (`playOutdoorGame`), and a podium on the newest open level opening the
+   * next (`derbyClearedAfter`). Null if there is no game to write to.
+   */
+  public playDerby(
+    level: DerbyLevel,
+    place: number | null,
+    now: Date = new Date(),
+  ): { readonly game: RestoredGame; readonly payout: GamePayout; readonly cleared: number } | null {
+    const game = this.load();
+    if (!game) {
+      return null;
+    }
+    const payout = payGame(game.raidProgress.gameCorner ?? NO_GAME_CORNER, 'derby', derbyScore(place), now);
+    const cleared = derbyClearedAfter(level, place, game.raidProgress.derbyCleared ?? 0);
+    const next: RestoredGame = {
+      ...game,
+      raidProgress: { ...game.raidProgress, gameCorner: payout.record, ...(cleared > 0 ? { derbyCleared: cleared } : {}) },
+    };
+    return this.save(next) ? { game: next, payout, cleared } : null;
   }
 
   /**
@@ -2410,6 +2442,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       : {}),
     ...(readFossil(value.fossil) ? { fossil: readFossil(value.fossil) } : {}),
     ...(readGameCorner(value.gameCorner) ? { gameCorner: readGameCorner(value.gameCorner) } : {}),
+    ...(readDerbyCleared(value.derbyCleared) ? { derbyCleared: readDerbyCleared(value.derbyCleared) } : {}),
     ...(readLook(value.look) ? { look: readLook(value.look) as DressedLook } : {}),
     ...(Array.isArray(value.wardrobe) ? { wardrobe: uniqueStrings(value.wardrobe).filter(isWearableId) } : {}),
     ...(Array.isArray(value.errands) ? { errands: clampErrandRecords(value.errands) } : {}),
