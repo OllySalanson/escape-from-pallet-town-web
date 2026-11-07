@@ -68,14 +68,13 @@ export const YARD_KEY_WORDS: readonly (readonly [YardKeyId, string, string])[] =
 ];
 
 /**
- * THE BOLTHOLE's keys (`base/decorateMode.ts`): F (for furniture, the
- * captain's letter of 7 Nov 2026) picks the house up to decorate it, and while it is being decorated R turns a piece, Q and E walk
- * the box and X puts a piece away. `BaseScene.bindControls` binds these. F is
- * the FEEDBACK key everywhere else, so the house holds it while the player is
- * in one (`feedback/feedbackKeyHold.ts`).
+ * THE BOLTHOLE's keys (`base/decorateMode.ts`): H (for house - F is
+ * FEEDBACK everywhere) picks the house up to decorate it, and while it is
+ * being decorated R turns a piece, Q and E walk the box and X puts a piece
+ * away. `BaseScene.bindControls` binds these.
  */
 export const HOME_KEY_LETTERS = {
-  decorate: 'F',
+  decorate: 'H',
   turn: 'R',
   boxBack: 'Q',
   boxNext: 'E',
@@ -164,7 +163,7 @@ export function yardKeyHintLine(learned: ReadonlySet<string>, walkingOnly = fals
 
 /**
  * What the player's own house says while nothing else is to be said: the
- * furniture key, always. It was named only until decorating had been done
+ * decorate key, always. It was named only until decorating had been done
  * once, so a piece bought or found afterwards came home to a house that never
  * said how to get it out of the box - and the explorer run, which has learned
  * every key, never named it at all (the captain bought furniture with tickets
@@ -172,7 +171,7 @@ export function yardKeyHintLine(learned: ReadonlySet<string>, walkingOnly = fals
  * in the front garden (`base/baseMap.ts`, `KNOCK_SIGN`), read like any sign.
  */
 export function houseKeyHintLine(): string {
-  return keyHint(HOME_KEY_LETTERS.decorate, 'FURNITURE');
+  return keyHint(HOME_KEY_LETTERS.decorate, 'DECORATE');
 }
 
 /**

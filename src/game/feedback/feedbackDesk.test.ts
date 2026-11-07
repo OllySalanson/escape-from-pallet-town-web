@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CONSOLE_GAME_CLASS } from '../console/consoleGames';
 import { isFeedbackKey } from './feedbackDesk';
-import { holdFeedbackKeyInTheHouse } from './feedbackKeyHold';
 
 vi.mock('phaser', () => ({ default: {} }));
 
@@ -22,15 +21,7 @@ describe('the F key', () => {
     expect(isFeedbackKey(press('F'), running('mapmaker'))).toBe(false);
   });
 
-  it("is FURNITURE in a house, and FEEDBACK again once anything is opened over it or the player leaves", () => {
-    holdFeedbackKeyInTheHouse(true);
-    try {
-      expect(isFeedbackKey(press('f'), running('base'))).toBe(false);
-      // A panel over the paused house (YOUR THINGS, the console) gives it back.
-      expect(isFeedbackKey(press('f'), running('things'))).toBe(true);
-    } finally {
-      holdFeedbackKeyInTheHouse(false);
-    }
+  it('is FEEDBACK in the harbour and its houses too (decorating is H)', () => {
     expect(isFeedbackKey(press('f'), running('base'))).toBe(true);
   });
 
