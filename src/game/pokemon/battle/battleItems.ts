@@ -196,6 +196,8 @@ function refusalMessage(item: ItemDefinition): string {
       return `${item.displayName} is for your house, not a fight.`;
     case 'wearable':
       return `${item.displayName} is for wearing, not a fight.`;
+    case 'relic':
+      return `${item.displayName} is for Professor Oak, not a fight.`;
     case 'held':
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and

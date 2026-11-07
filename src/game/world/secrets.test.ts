@@ -1,0 +1,341 @@
+import { describe, expect, it } from 'vitest';
+import { getItemById } from '../items/items';
+import { Pokemon } from '../pokemon';
+import { getSpeciesById } from '../pokemon/species';
+import { generateRunPlan } from '../run/runGeneration';
+import { getWorldMap } from '../worldMap';
+import { districtsForMap } from './districts';
+import { winRateAgainst } from './encounterMeasure';
+import { stepDistances } from './mapStructure';
+import { readMapFile, MAP_FILE_LIMITS, type MapFile } from './mapFile';
+import { entitiesForMap } from './npcs';
+import { builtInFileMap } from './playerMaps';
+import { dayNumber, RUMOURS, rumourFrom, type RumourFact } from './rumours';
+import {
+  conditionHolds,
+  nextReward,
+  openSecrets,
+  raidConditions,
+  SECRETS,
+  secretsHeldBy,
+  type RaidConditions,
+  type Secret,
+  type SecretCondition,
+} from './secrets';
+import { partyOf, trainerWinRate } from './trainerMeasure';
+import { createRunTrainerEncounters } from './trainers';
+import { MISTY_BOSS_ID } from './valeQuarters';
+import type { GridPosition } from '../movement/gridMovement';
+
+/**
+ * The vale's secrets (`secrets.ts`) and the rumours about them (`rumours.ts`),
+ * held to the plan's rules: every nook is drawn where its secret says and can
+ * be walked to, every clue stands within ten steps of its nook and hints at
+ * what the nook waits for, every rumour is true and gives two facts of three,
+ * every condition can be met, and a secret is laid only while it holds -
+ * on a stream of its own, so nothing else in a raid moves.
+ */
+
+const VALE = 'greystone-vale';
+const CLUE_STEPS = 10;
+
+/** Words that say each condition, for a clue's hint and a rumour's fact. */
+function hintsOf(condition: SecretCondition): readonly string[] {
+  switch (condition.kind) {
+    case 'hour':
+      return condition.hour === 'dusk' ? ['DUSK', 'SUN IS LOW'] : condition.hour === 'night' ? ['DARK', 'NIGHT'] : ['DAY'];
+    case 'weekday':
+      return [['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][condition.day]];
+    case 'lead-type':
+      return condition.type === 'Fighting' ? ['FIGHT', 'FISTS'] : [condition.type.toUpperCase()];
+    case 'field-move':
+      return [condition.move.replace('-', ' ').toUpperCase()];
+    case 'carried':
+      return condition.items.flatMap((item) => (item.endsWith('rod') ? ['ROD', 'LINE'] : [item.toUpperCase()]));
+    case 'either':
+      return condition.of.flatMap(hintsOf);
+  }
+}
+
+const isWhen = (condition: SecretCondition): boolean => condition.kind === 'hour' || condition.kind === 'weekday';
+const plain = (text: string): string => text.toUpperCase().replace(/[’']/g, "'");
+const says = (text: string, words: readonly string[]): boolean => words.some((word) => plain(text).includes(word));
+
+describe("the vale's secrets", () => {
+  const file = builtInFileMap(VALE)!;
+  const map = getWorldMap(VALE);
+  const districts = districtsForMap(VALE);
+  const entities = entitiesForMap(VALE);
+
+  /** Every tile of the named place: a district, or a whole area (a cave floor). */
+  const placeTiles = (place: string): ((tile: GridPosition) => boolean) => {
+    const district = districts.find((one) => one.name === place);
+    if (district) {
+      return (tile) =>
+        district.areas.some(
+          (area) => tile.x >= area.x && tile.x < area.x + area.width && tile.y >= area.y && tile.y < area.y + area.height,
+        );
+    }
+    const area = map.areas?.find((one) => one.name === place);
+    expect(area, `${place} is no place on the vale`).toBeDefined();
+    return (tile) => tile.x >= area!.rect.x && tile.x < area!.rect.x + area!.rect.width && tile.y >= area!.rect.y && tile.y < area!.rect.y + area!.rect.height;
+  };
+
+  /** Where a secret's nook is worked from: the spot itself, or the ground beside its figure or its water. */
+  const nookTiles = (secret: Secret): readonly GridPosition[] => {
+    const beside = (tile: GridPosition): GridPosition[] =>
+      [
+        { x: tile.x + 1, y: tile.y },
+        { x: tile.x - 1, y: tile.y },
+        { x: tile.x, y: tile.y + 1 },
+        { x: tile.x, y: tile.y - 1 },
+      ].filter((one) => map.collision[one.y]?.[one.x] === false);
+    switch (secret.nook) {
+      case 'spot':
+        return file.loot.filter((piece) => piece.secret === secret.id).map((piece) => piece.position);
+      case 'figure':
+      case 'giver':
+        return entities
+          .filter((entity) => entity.secret === secret.id && (secret.nook === 'figure') === (entity.pokemon !== undefined))
+          .flatMap((entity) => beside(entity.position));
+      case 'line': {
+        const inPlace = placeTiles(secret.place);
+        const water: GridPosition[] = [];
+        map.terrain.forEach((row, y) =>
+          row.forEach((material, x) => {
+            if (material === 'water' && map.collision[y][x] && inPlace({ x, y })) water.push({ x, y });
+          }),
+        );
+        return water.flatMap(beside);
+      }
+    }
+  };
+
+  const clues = (secret: Secret) =>
+    entities.filter((entity) => entity.secret === secret.id && entity.pokemon === undefined);
+
+  it.each(SECRETS.map((secret) => [secret.name, secret] as const))('%s has a nook in its place, walked to', (_name, secret) => {
+    const tiles = nookTiles(secret);
+    expect(tiles.length, `${secret.name} has no nook drawn`).toBeGreaterThan(0);
+    const inPlace = placeTiles(secret.place);
+    expect(tiles.some(inPlace), `${secret.name}'s nook is not in ${secret.place}`).toBe(true);
+    for (const tile of tiles.filter(() => secret.nook === 'spot')) {
+      expect(map.collision[tile.y][tile.x], `${secret.name}'s spot is solid`).toBe(false);
+    }
+  });
+
+  it.each(SECRETS.map((secret) => [secret.name, secret] as const))(
+    '%s has a clue within ten steps that hints at what it waits for',
+    (_name, secret) => {
+      const nooks = nookTiles(secret);
+      const near = clues(secret).filter((clue) =>
+        [
+          { x: clue.position.x + 1, y: clue.position.y },
+          { x: clue.position.x - 1, y: clue.position.y },
+          { x: clue.position.x, y: clue.position.y + 1 },
+          { x: clue.position.x, y: clue.position.y - 1 },
+        ]
+          .filter((tile) => map.collision[tile.y]?.[tile.x] === false)
+          .some((tile) => {
+            const field = stepDistances(map.collision, tile, new Set(), map.links);
+            return nooks.some((nook) => field[nook.y][nook.x] >= 0 && field[nook.y][nook.x] <= CLUE_STEPS);
+          }),
+      );
+      expect(near.length, `${secret.name} has no clue within ${CLUE_STEPS} steps`).toBeGreaterThan(0);
+      const words = near.flatMap((clue) => clue.dialogLines).join(' ');
+      expect(
+        secret.when.some((condition) => says(words, hintsOf(condition))),
+        `${secret.name}'s clue says nothing of when or what to bring: ${words}`,
+      ).toBe(true);
+      for (const line of near.flatMap((clue) => clue.dialogLines)) {
+        expect(line.length, `a clue line is two lines of the box at most: ${line}`).toBeLessThanOrEqual(140);
+      }
+    },
+  );
+
+  it('can each be opened by some raid, and only by one meeting all its conditions', () => {
+    const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [] };
+    expect(openSecrets(base)).toEqual([]);
+    const everything: RaidConditions = {
+      ...base,
+      leadTypes: ['Fighting', 'Ground'],
+      fieldMoves: ['rock-smash'],
+      carried: ['old-rod', 'pickaxe'],
+    };
+    for (const secret of SECRETS) {
+      const hour = secret.when.find((condition) => condition.kind === 'hour');
+      const day = secret.when.find((condition) => condition.kind === 'weekday');
+      const raid: RaidConditions = {
+        ...everything,
+        ...(hour?.kind === 'hour' ? { hour: hour.hour } : {}),
+        ...(day?.kind === 'weekday' ? { weekday: day.day } : {}),
+      };
+      expect(openSecrets(raid), secret.name).toContain(secret.id);
+      for (const condition of secret.when) {
+        expect(conditionHolds(condition, base), `${secret.name} is open on an ordinary raid`).toBe(false);
+      }
+    }
+  });
+
+  it('reads the conditions off the party, the pack and the clock as the raid deploys', () => {
+    const machop = new Pokemon(getSpeciesById('machop')!, 12);
+    const raid = raidConditions(new Date(2026, 10, 8, 19, 30), [machop], [
+      { itemId: 'old-rod', quantity: 1 },
+      { itemId: 'potion', quantity: 0 },
+    ]);
+    expect(raid).toMatchObject({ hour: 'dusk', weekday: 0, month: 10, leadTypes: ['Fighting'], carried: ['old-rod'] });
+    expect(raidConditions(new Date(2026, 10, 8, 23), [], []).leadTypes).toEqual([]);
+  });
+
+  it('gives the next reward until all are found, and counts what the vault holds as found', () => {
+    const shells = SECRETS.find((secret) => secret.id === 'the-old-shells')!;
+    expect(nextReward(shells, { secretsFound: [], giftsReceived: [] })).toEqual({ kind: 'item', itemId: 'helix-fossil' });
+    expect(nextReward(shells, { secretsFound: ['helix-fossil'], giftsReceived: [] })).toEqual({ kind: 'item', itemId: 'dome-fossil' });
+    expect(nextReward(shells, { secretsFound: ['helix-fossil', 'dome-fossil'], giftsReceived: [] })).toBeUndefined();
+    const held = secretsHeldBy({
+      itemCount: (itemId) => (itemId === 'chart-piece-1' ? 1 : 0),
+      pokemon: [
+        { speciesId: 'gyarados', shiny: false },
+        { speciesId: 'golem', shiny: false },
+      ],
+    });
+    // An ordinary Gyarados is not the red one.
+    expect(held).toEqual(['chart-piece-1', 'the-cracked-crag/golem']);
+  });
+
+  it('rewards are things worth finding: found-only finds and Pokemon the vale has nowhere else', () => {
+    for (const secret of SECRETS) {
+      for (const reward of secret.rewards) {
+        if (reward.kind === 'item') {
+          expect(getItemById(reward.itemId)?.effect.type, reward.itemId).toBe('relic');
+        }
+      }
+    }
+    const species = SECRETS.flatMap((secret) =>
+      secret.rewards.flatMap((reward) =>
+        reward.kind === 'meet' ? [reward.speciesId] : reward.kind === 'gift' ? [reward.gift.speciesId] : [],
+      ),
+    );
+    expect(species.sort()).toEqual(['golem', 'gyarados', 'machamp']);
+  });
+
+  describe('against the first gym', () => {
+    const misty = createRunTrainerEncounters().find((encounter) => encounter.bossId === MISTY_BOSS_ID)!.trainer;
+    const level = misty.party[0].level;
+
+    /**
+     * A gift costs no fight, so it is held under the gym's own bar: led into
+     * Misty alone it wins less often than her best team must (three in four,
+     * `quarterPuzzle.test.ts`). It is a strong partner, never the answer on its
+     * own. Measured: the Machamp wins 72% alone at Lv 16, 94% at 18.
+     */
+    it('a Pokemon handed over with no fight is a partner against Misty, never the answer alone', () => {
+      for (const reward of SECRETS.flatMap((secret) => secret.rewards)) {
+        if (reward.kind !== 'gift') continue;
+        const party = partyOf(`${reward.gift.speciesId} alone`, [reward.gift.speciesId, reward.gift.level]);
+        expect(trainerWinRate(party, misty, 200, 0x51ede, null, 3), reward.gift.speciesId).toBeLessThan(0.75);
+      }
+    });
+
+    it('a Pokemon met is a fight that has to be earned at the level she is met at', () => {
+      for (const reward of SECRETS.flatMap((secret) => secret.rewards)) {
+        if (reward.kind !== 'meet') continue;
+        const rates = ['charmeleon', 'wartortle', 'ivysaur'].map((starter) =>
+          winRateAgainst(starter, level, reward.speciesId, reward.level, 100),
+        );
+        const mean = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+        expect(mean, reward.speciesId).toBeLessThan(0.5);
+      }
+    });
+  });
+
+  describe('rumours', () => {
+    it.each(RUMOURS.map((rumour) => [rumour.id, rumour] as const))('%s is true and gives two facts of three', (_id, rumour) => {
+      const secret = SECRETS.find((one) => one.id === rumour.secret)!;
+      expect(secret).toBeDefined();
+      expect(rumour.names).toBe(secret.place);
+      expect(new Set(rumour.gives).size).toBe(2);
+      const facts: Record<RumourFact, boolean> = {
+        where: plain(secret.place)
+          .split(/\s+/)
+          .every((word) => plain(rumour.line).includes(word)),
+        when: secret.when.filter(isWhen).some((condition) => says(rumour.line, hintsOf(condition))),
+        bring: secret.when.filter((condition) => !isWhen(condition)).some((condition) => says(rumour.line, hintsOf(condition))),
+      };
+      for (const fact of rumour.gives) {
+        expect(facts[fact], `${rumour.id} does not give ${fact}`).toBe(true);
+      }
+      for (const fact of (['where', 'when', 'bring'] as const).filter((each) => !rumour.gives.includes(each))) {
+        expect(facts[fact], `${rumour.id} gives ${fact} as well, which leaves nothing to find`).toBe(false);
+      }
+    });
+
+    it('every secret is heard of somewhere', () => {
+      for (const secret of SECRETS) {
+        expect(RUMOURS.some((rumour) => rumour.secret === secret.id), secret.name).toBe(true);
+      }
+    });
+
+    it('a source tells a rumour only while its secret still holds something', () => {
+      const day = dayNumber(new Date(2026, 10, 7));
+      expect(rumourFrom('angler', { secretsFound: [], giftsReceived: [] }, day)?.id).toBe('angler-red-one');
+      expect(rumourFrom('angler', { secretsFound: ['the-red-one/gyarados'], giftsReceived: [] }, day)).toBeUndefined();
+      const boards = new Set([0, 1, 2, 3].map((offset) => rumourFrom('board', { secretsFound: [], giftsReceived: [] }, day + offset)?.id));
+      expect(boards.size).toBeGreaterThan(1);
+    });
+  });
+
+  describe('in a raid', () => {
+    const insertion = 'greystone-vale-moor-top';
+    const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [] };
+    const afternoon: RaidConditions = { ...dusk, hour: 'day' };
+    const known = { secretsFound: [], giftsReceived: [] };
+    const plan = (seed: number, conditions?: RaidConditions, found: readonly string[] = []) =>
+      generateRunPlan(
+        seed,
+        undefined,
+        insertion,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        conditions ? { conditions, known: { ...known, secretsFound: found } } : undefined,
+      );
+    const secretLoot = (run: ReturnType<typeof plan>) => (run.loot[VALE] ?? []).filter((piece) => piece.secret !== undefined);
+    const otherLoot = (run: ReturnType<typeof plan>) => (run.loot[VALE] ?? []).filter((piece) => piece.secret === undefined);
+
+    it('lays a secret only while its condition holds', () => {
+      expect(secretLoot(plan(7, dusk)).map((piece) => piece.itemId)).toEqual(['chart-piece-1']);
+      expect(secretLoot(plan(7, afternoon))).toEqual([]);
+      expect(secretLoot(plan(7))).toEqual([]);
+      expect(plan(7, dusk).secrets.map((secret) => secret.id)).toEqual(['the-long-shadow']);
+    });
+
+    it('lays a berry in a nook once everything in it has been found', () => {
+      const spent = secretLoot(plan(7, dusk, ['chart-piece-1']));
+      expect(spent).toHaveLength(1);
+      expect(getItemById(spent[0].itemId)?.category).toBe(getItemById('oran-berry')?.category);
+    });
+
+    it('moves no other roll of the raid', () => {
+      for (const seed of [1, 2, 3, 99]) {
+        const without = plan(seed);
+        const withSecrets = plan(seed, dusk);
+        expect(otherLoot(withSecrets)).toEqual(otherLoot(without));
+        expect(withSecrets.trainers.map((trainer) => trainer.trainer.id)).toEqual(without.trainers.map((trainer) => trainer.trainer.id));
+        expect(withSecrets.hunter).toEqual(without.hunter);
+      }
+    });
+  });
+
+  it('cannot be drawn on a player map', () => {
+    const tiny: MapFile = { ...builtInFileMap(VALE)!.file };
+    const reading = readMapFile(tiny, { limits: MAP_FILE_LIMITS, draft: true });
+    expect(reading.ok ? [] : reading.problems).toContain("Nothing on a map can belong to a secret: secrets are the game's own.");
+  });
+});

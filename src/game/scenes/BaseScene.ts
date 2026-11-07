@@ -101,6 +101,8 @@ import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
 import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
+import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
+import { FOSSIL_ITEM_IDS, fossilAwake, fossilMachineLines } from '../hub/fossils';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
@@ -5098,6 +5100,10 @@ export class BaseScene extends Phaser.Scene {
         this.sleep(thing.lines ?? [], [target]);
         return;
       }
+      if (thing?.does === 'fossil') {
+        this.workFossilMachine([target]);
+        return;
+      }
       if (thing?.opens === 'games') {
         this.openGames();
         return;
@@ -5136,12 +5142,18 @@ export class BaseScene extends Phaser.Scene {
     if (local?.id === SAILOR_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       const log = seagallopLines(this.savedGame.raidProgress.raidRecord);
-      this.say(this.haulOnTheQuay.length > 0 ? [HAUL_SAILOR_LINE, ...log] : log, [target]);
+      const rumour = this.hearRumour('sailor');
+      const told = rumour ? [...log, rumour] : log;
+      this.say(this.haulOnTheQuay.length > 0 ? [HAUL_SAILOR_LINE, ...told] : told, [target]);
       return;
     }
     if (local?.id === CAPTAIN_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
-      this.say(spyglassLines(windowLight(new Date()), spyglassLooks), [target]);
+      // After dark the glass also catches something nobody can explain (`world/rumours.ts`).
+      const light = windowLight(new Date());
+      const sighting = light === 'night' ? this.hearRumour('spyglass') : undefined;
+      const sights = spyglassLines(light, spyglassLooks);
+      this.say(sighting ? [...sights, sighting] : sights, [target]);
       spyglassLooks += 1;
       return;
     }
@@ -5165,7 +5177,8 @@ export class BaseScene extends Phaser.Scene {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       const lines = anglerLines(harbourRodLent || this.hasHarbourRod(), this.harbourCatchNames());
       harbourRodLent = true;
-      this.say(lines, [target]);
+      const rumour = this.hearRumour('angler');
+      this.say(rumour ? [...lines, rumour] : lines, [target]);
       return;
     }
     if (local) {
@@ -5225,7 +5238,12 @@ export class BaseScene extends Phaser.Scene {
     if (sign) {
       // The harbour's board has today's notice pinned on top of its own words,
       // so a player back from a raid reads what is new before what they know.
-      const lines = sign === NOTICE_BOARD ? [`TODAY'S NOTICE: ${noticeFor(new Date())}`, ...sign.lines] : sign.lines;
+      // Under it, a rumour about one of the vale's secrets (`world/rumours.ts`).
+      const rumour = sign === NOTICE_BOARD ? this.hearRumour('board') : undefined;
+      const lines =
+        sign === NOTICE_BOARD
+          ? [`TODAY'S NOTICE: ${noticeFor(new Date())}`, ...(rumour ? [rumour] : []), ...sign.lines]
+          : sign.lines;
       this.say(lines, [target]);
     }
   }
@@ -6046,7 +6064,11 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (screen === 'trader') {
-      this.sayFirstWords('cottage', about, () => favourThen(() => this.billReadsYou(room, about)));
+      // Bill cannot keep quiet about anything old, once (`world/rumours.ts`).
+      const rumour = this.hearRumour('bill', { once: true });
+      this.sayFirstWords('cottage', about, () =>
+        favourThen(() => (rumour ? this.say([rumour], about, () => this.billReadsYou(room, about)) : this.billReadsYou(room, about))),
+      );
       return;
     }
     // The hall's marshal is `speakToMarshal`: everything in it is on the floor.
@@ -6216,6 +6238,77 @@ export class BaseScene extends Phaser.Scene {
         this.say([`${stored.pokemon.name} will go on the next raid. Press P to see the team.`], [at]);
       }),
     );
+  }
+
+  /**
+   * Today's rumour from a source about the vale's secrets (`world/rumours.ts`),
+   * recorded as heard; undefined when the source has none still true. A keeper
+   * says theirs `once`, so it is not the first thing every visit.
+   */
+  private hearRumour(source: RumourSource, { once = false } = {}): string | undefined {
+    const { raidProgress } = this.freshGame();
+    const rumour = rumourFrom(
+      source,
+      { secretsFound: raidProgress.secretsFound ?? [], giftsReceived: raidProgress.giftsReceived },
+      dayNumber(new Date()),
+    );
+    if (!rumour || (once && (raidProgress.rumoursHeard ?? []).includes(rumour.id))) {
+      return undefined;
+    }
+    if (!this.visit && !isPlaytestRun()) {
+      this.saveManager.recordRumoursHeard([rumour.id]);
+      this.freshGame();
+    }
+    return rumour.line;
+  }
+
+  /**
+   * Oak's fossil machine (`hub/fossils.ts`): what is on it, a fossil from the
+   * vault put on it on YES, or what woke taken off it into the vault.
+   */
+  private workFossilMachine(about: readonly GridPosition[]): void {
+    const game = this.freshGame();
+    const fossil = game.raidProgress.fossil;
+    const awake = fossil ? fossilAwake(fossil, game.raidProgress, game.raidInFlight) : false;
+    const held = FOSSIL_ITEM_IDS.filter((itemId) => game.stash.itemCount(itemId) > 0);
+    const lines = fossilMachineLines(fossil, awake, held);
+    if (fossil && awake) {
+      const woken = this.saveManager.takeRevivedFossil();
+      if (!woken) {
+        this.say(['The machine will not open: the game could not be saved.'], about);
+        return;
+      }
+      audioManager.play('itemObtained');
+      audioManager.play('cry', { species: woken.base.dexId });
+      this.goTo(
+        { savedGame: this.saveManager.load() ?? this.savedGame, room: 'oaks-lab', at: { ...this.currentTile }, facing: this.facing, said: [...lines, `${woken.base.name.toUpperCase()} went into your boxes on BILL'S PC.`] },
+        'confirm',
+      );
+      return;
+    }
+    if (!fossil && held.length > 0) {
+      const itemId = held[0];
+      const name = (getItemById(itemId)?.displayName ?? itemId).toUpperCase();
+      this.say(lines, about, () =>
+        this.askInBox(`Put the ${name} on the machine?`, (yes) => {
+          if (!yes) {
+            audioManager.play('cancel');
+            return;
+          }
+          if (!this.saveManager.leaveFossil(itemId)) {
+            this.say(['It could not be put on: the game could not be saved.'], about);
+            return;
+          }
+          audioManager.play('confirm');
+          this.goTo(
+            { savedGame: this.saveManager.load() ?? this.savedGame, room: 'oaks-lab', at: { ...this.currentTile }, facing: this.facing, said: [`The ${name} is on the machine. It hums.`, 'OAK: Go on a raid. It will be awake when you get back.'] },
+            'confirm',
+          );
+        }),
+      );
+      return;
+    }
+    this.say(lines, about);
   }
 
   private freshGame(): RestoredGame {

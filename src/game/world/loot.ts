@@ -48,6 +48,12 @@ export interface WorldLoot {
    * is what it did before.
    */
   readonly district?: string;
+  /**
+   * The secret (`secrets.ts`) whose nook this spot is. It is no part of the
+   * map's pool: the raid lays it, with what the secret holds, only while the
+   * secret's condition holds, and nowhere but on its own tile.
+   */
+  readonly secret?: string;
 }
 
 /**

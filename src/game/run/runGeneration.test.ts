@@ -209,8 +209,12 @@ describe('run generation', () => {
             (_, cell) => (walk[area.y + Math.floor(cell / area.width)]?.[area.x + (cell % area.width)] ?? -1) >= 0,
           ),
         );
+      // A secret's nook is laid by its secret, never from the pool (`world/secrets.ts`).
       const pool = shut.loot.filter(
-        (item) => item.chance === undefined && (isPlayerMapId(mapId) || item.district === undefined || reached(item.district)),
+        (item) =>
+          item.secret === undefined &&
+          item.chance === undefined &&
+          (isPlayerMapId(mapId) || item.district === undefined || reached(item.district)),
       );
       const rare = getWorldMap(mapId).loot.filter((item) => item.chance !== undefined);
       const rareSeen = new Map<string, number>();

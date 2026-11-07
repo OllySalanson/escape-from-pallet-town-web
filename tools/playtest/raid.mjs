@@ -102,12 +102,12 @@ const windowSize = sized
 const attach = option('attach');
 const browser = attach ? attachBrowser(Number(attach), { window: windowSize }) : await launchBrowser({ window: windowSize });
 
-// `--clock=night|day` puts the page in a time zone where it is eleven at night
-// or noon now, so the raid deploys as a night raid or a day raid by the
+// `--clock=night|dusk|day` puts the page in a time zone where it is eleven at
+// night, seven in the evening or noon now, so the raid deploys as a night raid or a day raid by the
 // player's own clock (`world/nightRaids.ts`) whenever the driver is run. The
 // Etc zones are named the other way round from the offset they keep.
 const hour = option('clock');
-const ZONE_HOUR = { night: 23, day: 12 };
+const ZONE_HOUR = { night: 23, dusk: 19, day: 12 };
 const zoneFor = (hour) => {
   let offset = (hour - new Date().getUTCHours() + 24) % 24;
   if (offset > 14) offset -= 24;
@@ -123,7 +123,7 @@ try {
   const started = Date.now();
   const page = await browser.openPage('about:blank');
   if (hour !== undefined) {
-    if (!(hour in ZONE_HOUR)) throw new Error('--clock is night or day');
+    if (!(hour in ZONE_HOUR)) throw new Error('--clock is night, dusk or day');
     const timezoneId = zoneFor(ZONE_HOUR[hour]);
     await page.send('Emulation.setTimezoneOverride', { timezoneId });
     note(`clock: ${hour}, in ${timezoneId}`);
@@ -184,8 +184,11 @@ try {
   const plan = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const p = w.runSession.plan;
     return { seed: p.seed, map: w.currentMap.id, start: w.currentTile, contract: p.contract?.name ?? null, markers: (p.contract?.markers ?? []).map((m) => m.position),
       exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, opens: e.requirement?.poiId ?? null, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })),
-      loot: (p.loot[w.currentMap.id] ?? []).map((l) => ({ id: l.id, itemId: l.itemId, quantity: l.quantity, position: l.position })) }; })()`);
+      loot: (p.loot[w.currentMap.id] ?? []).map((l) => ({ id: l.id, itemId: l.itemId, quantity: l.quantity, position: l.position })),
+      secrets: p.secrets ?? [], conditions: p.conditions ?? null }; })()`);
   note(`seed ${plan.seed}, ${plan.map} from ${plan.start.x},${plan.start.y}, contract ${plan.contract}, stops ${JSON.stringify(plan.markers)}`);
+  // The vale's secrets this raid opened, and what it deployed under (`world/secrets.ts`).
+  note(`conditions ${JSON.stringify(plan.conditions)}; secrets open ${JSON.stringify(plan.secrets)}`);
 
   // --avoid-watch plays the player the map is drawn for: one who reads the shaded
   // ground in front of a trainer and does not walk into it. Without it the driver
@@ -510,7 +513,8 @@ try {
   // the way Dir points and takes the challenge - the prompt opens on BACK
   // AWAY, so the cursor is moved to the fight first: how a keeper with no
   // watch is fought, Greystone Vale's Boatswain Cragg among them),
-  // `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
+  // `read:x:y:Dir` (walks to that tile, faces Dir and presses the interact
+  // key: a sign, a clue, a person), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
   // laid) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
@@ -544,7 +548,10 @@ try {
     } else if (kind === 'push') {
       const [area, x, y, dir] = parts;
       const key = keyFor(dir);
-      const origin = await page.evaluate(`${GAME}.scene.getScene('world').currentMap.areas.find((a) => a.id === ${JSON.stringify(area)}).rect`);
+      // `outdoors` is the map's own ground, which no area id names.
+      const origin = area === 'outdoors'
+        ? { x: 0, y: 0 }
+        : await page.evaluate(`${GAME}.scene.getScene('world').currentMap.areas.find((a) => a.id === ${JSON.stringify(area)}).rect`);
       const at = { x: origin.x + Number(x), y: origin.y + Number(y) };
       const [bx, by] = behindOf[key];
       await walkTo({ x: at.x + bx, y: at.y + by }, `behind the boulder at ${x},${y} of ${area}`);
@@ -564,6 +571,18 @@ try {
         await walkTo(piece.position, `${piece.quantity}x ${piece.itemId}`);
       }
       note(`pack holds ${parts[0]}: ${await page.evaluate(`${GAME}.scene.getScene('world').bag.count(${JSON.stringify(parts[0])})`)}`);
+    } else if (kind === 'read') {
+      // `read:x:y:Dir`: walks to that tile, faces Dir and presses the interact
+      // key - a sign, a clue, a person - and, with --shot, photographs the
+      // first line (`read-x-y.png`) before the box is cleared.
+      await walkTo({ x: Number(parts[0]), y: Number(parts[1]) }, `${parts[0]},${parts[1]}`);
+      await press(keyFor(parts[2]));
+      await wait(200);
+      await press('Space');
+      await wait(1500);
+      if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, `-read-${parts[0]}-${parts[1]}.png`));
+      note(`read at ${parts[0]},${parts[1]}: ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox?.textObject?.text ?? null`).catch(() => null))}`);
+      await clearInterruptions();
     } else if (kind === 'shot') {
       if (option('shot')) {
         await wait(300);

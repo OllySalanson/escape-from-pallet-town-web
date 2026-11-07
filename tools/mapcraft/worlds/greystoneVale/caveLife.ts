@@ -158,6 +158,13 @@ export function caveLife(): CaveLife {
     ],
     signs: [
       {
+        area: B1,
+        x: 12,
+        y: 8,
+        secret: 'the-old-shells',
+        lines: ['The sand here is cracked, and something glints far down in it.', 'It would take a digger to get at it: a GROUND type in front, or a PICKAXE.'],
+      },
+      {
         area: F1,
         x: 41,
         y: 24,
@@ -224,7 +231,13 @@ export function caveLife(): CaveLife {
     // A place of its own, small enough never to be a hunter's patch, so the
     // disc a digger lost down here has somewhere to be laid (`filePrizes.ts`).
     districts: [{ area: F1, name: 'THE DIGGINGS', x: 8, y: 14, width: 7, height: 7, wildlife: 'cave' }],
-    itemSpots: [{ area: F1, x: 12, y: 15 }],
+    itemSpots: [
+      { area: F1, x: 12, y: 15 },
+      // THE OLD SHELLS (`src/game/world/secrets.ts`): the tip of B1F's sand
+      // room, where something very old lies under cracked sand for a party
+      // that can dig - a Ground type leading, or a Pickaxe packed.
+      { area: B1, x: 8, y: 9, secret: 'the-old-shells' },
+    ],
   };
 }
 

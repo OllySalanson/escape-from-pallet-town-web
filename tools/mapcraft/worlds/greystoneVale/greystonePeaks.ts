@@ -233,6 +233,10 @@ export function greystonePeaks(): MapcraftResult {
         { x: 43, y: 25, lines: ['GREYSTONE CAVES', 'Bring a lamp. If you have not brought a lamp, there is a woman who is very pleased to see you.'] },
         { x: 43, y: 41, lines: ['GANTRY’S STORES', 'Rope. Tea. More rope. Do not ask for anything else, she will only sell you rope.'] },
         { x: 15, y: 54, lines: ['THE GOAT TRACK', 'Over the hill and away, west of the pasture. Goats have right of way. They are not goats.'] },
+        // The secrets' clues (`src/game/world/secrets.ts`), each beside its nook.
+        { x: 20, y: 12, secret: 'the-red-one', lines: ['An angler\'s hat, left on a rock, and a line snapped clean.', 'Whatever took it only comes up out of the tarn after dark.'] },
+        { x: 12, y: 59, secret: 'the-cracked-crag', lines: ['FALLING ROCK', 'The boulder at the end of the track glows red along its crack at dusk. Do NOT hit it with ROCK SMASH.'] },
+        { x: 7, y: 39, secret: 'the-navvies-wager', lines: ['ARM-WRESTLE THE FOREMAN', 'Put his arm down and keep his MACHAMP. Fighters only: lead with one, or do not bother him.'] },
         { x: 10, y: 15, lines: ['THE SUMMIT', 'Stormcrown, above you. Nobody has found a way up it from here. It only goes up from under.'] },
       ],
       people: [
@@ -245,6 +249,9 @@ export function greystonePeaks(): MapcraftResult {
         { x: 15, y: 26, name: 'Rock Picker', look: 'hiker', facing: 'right', lines: ['It is all the same rock. People pay for it anyway. I do not tell them.', 'Further up it is the same rock again, and colder.'], beat: { everyMs: 3400, glances: ['up', 'down'] }, calls: ['Same rock. Same rock.'] },
         { x: 21, y: 16, name: 'Climber', look: 'hiker', facing: 'right', lines: ['The river is born in this tarn. Follow it down and you come to The Crossing.'] },
         { x: 14, y: 39, name: 'Ganger', look: 'heavy-man', facing: 'down', lines: ['Thirty years we have been widening this cutting. It is getting narrower.', 'Nobody can tell me why. I have stopped asking the rock.'], beat: { everyMs: 3300, roam: [[0, 1]], glances: ['right', 'down'] }, calls: ['Put your backs into it!'] },
+        // The secret's giver (`src/game/world/secrets.ts`): he wrestles only a
+        // party led by a Fighting type, and puts up his Machamp.
+        { x: 8, y: 41, name: 'Navvy Foreman', look: 'black-belt', facing: 'up', secret: 'the-navvies-wager', lines: ['Arm-wrestle? You? With that leading?', 'Bring me something that leads with its fists, and we will talk wagers.'], calls: ['Who wants a go?'] },
         { x: 13, y: 44, name: 'Navvy', look: 'worker', facing: 'up', lines: ['Dig, carry, tip. Dig, carry, tip. The Machop does the carrying.', 'I have asked what I am for. They said digging. The Machop digs too.'], beat: { everyMs: 2600, glances: ['left', 'up'] }, calls: ['Tipping!'] },
         { x: 20, y: 47, name: 'Pony Girl', look: 'lass', facing: 'down', lines: ['They come up here for the summer. I come up here because they will not come down.', 'Shut the gate when you go. That one knows how to open it, but it likes to be asked.'], beat: { everyMs: 3100, glances: ['left'] }, calls: ['Easy, easy now.'] },
         // -- The cave front ----------------------------------------------------------------------
@@ -285,6 +292,9 @@ export function greystonePeaks(): MapcraftResult {
         { x: 46, y: 5, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0]] } },
         { x: 14, y: 25, species: 'machop', level: 9 },
         { x: 13, y: 56, species: 'rhyhorn', level: 11 },
+        // The cracked crag's boulder, which stands up at dusk for a party that
+        // could split it (`src/game/world/secrets.ts`).
+        { x: 15, y: 59, species: 'golem', level: 22, secret: 'the-cracked-crag' },
         { x: 14, y: 57, species: 'rhyhorn', beat: { everyMs: 3000, roam: [[0, 1]] } },
         { x: 56, y: 17, species: 'machop', beat: { everyMs: 1600, roam: [[1, 0]] } },
         { x: 50, y: 11, species: 'machoke', level: 14 },

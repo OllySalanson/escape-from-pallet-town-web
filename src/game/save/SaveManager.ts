@@ -126,6 +126,9 @@ import {
 } from '../hub/pokedex';
 import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
 import { readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
+import { secretsHeldBy } from '../world/secrets';
+import { isRumourId } from '../world/rumours';
+import { fossilAwake, isFossil, revivedPokemon, type FossilItemId, type FossilOnMachine } from '../hub/fossils';
 import { readHomeLayout, type Placement } from '../home/arrangement';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
@@ -311,6 +314,17 @@ export interface RaidProgress {
    * reads as nothing caught yet.
    */
   readonly harbourCatches?: readonly number[];
+  /**
+   * What the vale's secrets have given up (`../world/secrets.ts`), by reward:
+   * every item or Pokemon of theirs the vault has held. Written by every save
+   * from the vault itself (`withVaultRegistered`), as the Pokedex is, so a
+   * find lost with the pack was never found. Absent is nothing found.
+   */
+  readonly secretsFound?: readonly string[];
+  /** The rumours heard about them in the harbour (`../world/rumours.ts`). Absent is none. */
+  readonly rumoursHeard?: readonly string[];
+  /** The fossil on Professor Oak's machine (`../hub/fossils.ts`), if one is. */
+  readonly fossil?: FossilOnMachine;
   /**
    * THE GAME CORNER (`../minigames/tickets`): the tickets in hand, today's
    * ledger for the daily caps, and the best score at each cabinet. Absent on
@@ -1150,6 +1164,60 @@ export class SaveManager {
     })
       ? outcome
       : undefined;
+  }
+
+  /**
+   * Remembers rumours as heard (`../world/rumours.ts`), so the cork board and
+   * the telescope can show them. Nothing is written when nothing is new.
+   */
+  public recordRumoursHeard(ids: readonly string[]): void {
+    const game = this.load();
+    if (!game) {
+      return;
+    }
+    const heard = game.raidProgress.rumoursHeard ?? [];
+    const fresh = ids.filter((id) => isRumourId(id) && !heard.includes(id));
+    if (fresh.length > 0) {
+      this.save({ ...game, raidProgress: { ...game.raidProgress, rumoursHeard: [...heard, ...fresh] } });
+    }
+  }
+
+  /**
+   * Puts a fossil from the vault on Professor Oak's machine (`../hub/fossils`),
+   * in one write: out of the vault, on the machine at today's raid count. False
+   * when the machine is busy, the vault holds none, or it could not be saved,
+   * and then nothing has happened.
+   */
+  public leaveFossil(itemId: FossilItemId): boolean {
+    const game = this.load();
+    if (!game || game.raidProgress.fossil || game.stash.itemCount(itemId) < 1) {
+      return false;
+    }
+    game.stash.removeItem(itemId, 1);
+    return this.save({
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        fossil: { itemId, raidsAt: raidsCompleted(game.raidProgress, game.raidInFlight) },
+      },
+    });
+  }
+
+  /**
+   * Takes the woken Pokemon off Oak's machine into the vault, in one write.
+   * Undefined when nothing on it has woken yet or it could not be saved.
+   */
+  public takeRevivedFossil(): Pokemon | undefined {
+    const game = this.load();
+    const fossil = game?.raidProgress.fossil;
+    if (!game || !fossil || !fossilAwake(fossil, game.raidProgress, game.raidInFlight)) {
+      return undefined;
+    }
+    const pokemon = revivedPokemon(fossil.itemId);
+    game.stash.addPokemon(pokemon);
+    const raidProgress: RaidProgress = { ...game.raidProgress };
+    delete (raidProgress as { fossil?: FossilOnMachine }).fossil;
+    return this.save({ ...game, raidProgress }) ? pokemon : undefined;
   }
 
   /**
@@ -2126,7 +2194,30 @@ export function serializeGame(state: SaveGameState): SaveData {
  */
 function withVaultRegistered(progress: RaidProgress, stash: Stash | undefined): RaidProgress {
   const owned = pokedexOwned(progress.pokedexOwned, stash);
-  return owned.length === 0 ? progress : { ...progress, pokedexOwned: owned };
+  const registered = owned.length === 0 ? progress : { ...progress, pokedexOwned: owned };
+  // And what the vault holds of the vale's secrets, by the same rule: a find is
+  // found once it has been banked, whichever way it was banked.
+  const held = stash
+    ? secretsHeldBy({
+        itemCount: (itemId) => stash.itemCount(itemId),
+        pokemon: stash.listPokemon().map(({ pokemon }) => ({ speciesId: pokemon.base.id, shiny: pokemon.shiny })),
+      })
+    : [];
+  const already = registered.secretsFound ?? [];
+  const fresh = held.filter((key) => !already.includes(key));
+  return fresh.length === 0 ? registered : { ...registered, secretsFound: [...already, ...fresh] };
+}
+
+/** A fossil on Oak's machine, read back: a known fossil and a whole raid count, or none. */
+function readFossil(value: unknown): FossilOnMachine | undefined {
+  return isRecord(value) &&
+    typeof value.itemId === 'string' &&
+    isFossil(value.itemId) &&
+    typeof value.raidsAt === 'number' &&
+    Number.isSafeInteger(value.raidsAt) &&
+    value.raidsAt >= 0
+    ? { itemId: value.itemId, raidsAt: value.raidsAt }
+    : undefined;
 }
 
 export function deserializeGame(value: unknown): RestoredGame | null {
@@ -2313,6 +2404,11 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       : {}),
     ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
     ...(Array.isArray(value.harbourCatches) ? { harbourCatches: tidyDexIds(value.harbourCatches) } : {}),
+    ...(Array.isArray(value.secretsFound) ? { secretsFound: uniqueStrings(value.secretsFound) } : {}),
+    ...(Array.isArray(value.rumoursHeard)
+      ? { rumoursHeard: uniqueStrings(value.rumoursHeard).filter(isRumourId) }
+      : {}),
+    ...(readFossil(value.fossil) ? { fossil: readFossil(value.fossil) } : {}),
     ...(readGameCorner(value.gameCorner) ? { gameCorner: readGameCorner(value.gameCorner) } : {}),
     ...(readLook(value.look) ? { look: readLook(value.look) as DressedLook } : {}),
     ...(Array.isArray(value.wardrobe) ? { wardrobe: uniqueStrings(value.wardrobe).filter(isWearableId) } : {}),

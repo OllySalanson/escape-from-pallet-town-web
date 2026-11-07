@@ -38,6 +38,15 @@ import {
 import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/hunterThreat';
 import { FIRST_HUNTER_RIVAL, type HunterRivalId } from '../world/hunters';
 import { forTheHour } from '../world/nightRaids';
+import {
+  nextReward,
+  openSecrets,
+  secretById,
+  SPENT_NOOK_BERRIES,
+  type RaidConditions,
+  type SecretReward,
+  type SecretsKnown,
+} from '../world/secrets';
 import { createSeededRng } from './rng';
 import { authoredTimeIn, clockShortfallMs } from './raidClock';
 
@@ -592,6 +601,34 @@ export interface RunPlan {
    * is read with it by `WorldScene`. Absent is a full clock.
    */
   readonly clockShortfallMs?: number;
+  /**
+   * The facts this raid deployed under (`world/secrets.ts`): the hour, the
+   * day, the lead, the pack. Absent where nobody gathered them - a tool, a
+   * test, a maker's try - and then no secret is open.
+   */
+  readonly conditions?: RaidConditions;
+  /**
+   * The secrets whose condition holds this raid, each with what its nook
+   * holds next; `reward` is absent once everything in it has been found.
+   * A spot's find is already laid in `loot`; a standing Pokemon, a giver and
+   * a line are the scene's to meet (`WorldScene`).
+   */
+  readonly secrets: readonly OpenSecret[];
+}
+
+/** A secret open this raid, and what its nook holds next. */
+export interface OpenSecret {
+  readonly id: string;
+  readonly reward?: SecretReward;
+}
+
+/**
+ * What a raid needs to know to open the vale's secrets: what it deployed
+ * under, and what this save has found.
+ */
+export interface RunSecrets {
+  readonly conditions: RaidConditions;
+  readonly known: SecretsKnown;
 }
 
 /**
@@ -698,6 +735,9 @@ export function generateRunPlan(
   // loot rows `errandLoot` makes of them: each laid in its own place on its own
   // map, on a stream of its own, so an errand in hand moves no other roll.
   errands: readonly WorldLoot[] = [],
+  // What this raid deployed under and what the save has found, for the vale's
+  // secrets (`world/secrets.ts`). Absent opens none, and spends nothing.
+  secrets?: RunSecrets,
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = requireInsertion(insertionId);
@@ -754,6 +794,13 @@ export function generateRunPlan(
   ];
   const reservedTiles = new Map<WorldMapId, Set<string>>();
   reserve(reservedTiles, insertion.mapId, insertion.position);
+  // A secret's nook is its own tile, whether or not it is open this raid:
+  // nothing else is ever seated on the spot a clue points at.
+  for (const map of Object.values(content.maps)) {
+    for (const nook of map.loot.filter((piece) => piece.secret !== undefined)) {
+      reserve(reservedTiles, map.id, nook.position);
+    }
+  }
   // Every stop of the carried contract is reserved, so seeded loot and roaming
   // trainers can never be rolled onto a tile the objective already owns.
   for (const marker of carriedContract?.markers ?? []) {
@@ -818,9 +865,14 @@ export function generateRunPlan(
     ];
   }
 
+  const open = secrets ? openOnMap(insertion.mapId, secrets) : [];
+  layOpenSecrets(loot, insertionMap, open, createSeededRng((seed ^ SECRET_STREAM) >>> 0), isReachable);
+
   return {
     seed: seed >>> 0,
     insertion,
+    ...(secrets ? { conditions: secrets.conditions } : {}),
+    secrets: open,
     ...(carriedContract ? { contract: carriedContract } : {}),
     defeatedBosses: [...defeatedBosses],
     completedContracts: [...completedContracts],
@@ -933,6 +985,55 @@ const ROOM_LOOT_STREAM = 0xc2b2ae35;
 const DISTRICT_ENCOUNTER_STREAM = 0x9e3779b9;
 const ERRAND_STREAM = 0x85ebca6b;
 const STAKE_STREAM = 0x27d4eb2f;
+/** The secrets' own stream (`world/secrets.ts`): only what a spent nook holds is rolled on it. */
+const SECRET_STREAM = 0x165667b1;
+
+/** The secrets open on a raid's map: condition held, nook drawn on this map. */
+function openOnMap(mapId: WorldMapId, { conditions, known }: RunSecrets): readonly OpenSecret[] {
+  const drawn = new Set([
+    ...(fileMap(mapId)?.file.itemSpots ?? []).map((spot) => spot.secret),
+    ...(fileMap(mapId)?.file.pokemon ?? []).map((standing) => standing.secret),
+    ...(fileMap(mapId)?.file.people ?? []).map((person) => person.secret),
+    ...(fileMap(mapId)?.file.signs ?? []).map((sign) => sign.secret),
+  ]);
+  return openSecrets(conditions)
+    .filter((id) => drawn.has(id))
+    .map((id) => {
+      const reward = nextReward(secretById(id)!, known);
+      return reward ? { id, reward } : { id };
+    });
+}
+
+/**
+ * Lays what an open secret's spot holds, on the spot itself: its next item,
+ * or - once everything in it has been found - a berry off the secrets' own
+ * stream, so a nook goes on answering its clue. A spot this raid cannot walk
+ * to holds nothing today, as a prize behind a shut door does not.
+ */
+function layOpenSecrets(
+  loot: Record<WorldMapId, readonly WorldLoot[]>,
+  map: WorldMapDefinition,
+  open: readonly OpenSecret[],
+  rng: ReturnType<typeof createSeededRng>,
+  isReachable: Reachability,
+): void {
+  const laid: WorldLoot[] = [];
+  for (const secret of open) {
+    for (const nook of map.loot.filter((piece) => piece.secret === secret.id)) {
+      if (!isReachable.reaches(map.id, nook.position)) {
+        continue;
+      }
+      if (secret.reward?.kind === 'item') {
+        laid.push({ ...nook, itemId: secret.reward.itemId, quantity: 1 });
+      } else if (secret.reward === undefined) {
+        laid.push({ ...nook, itemId: SPENT_NOOK_BERRIES[rng.int(0, SPENT_NOOK_BERRIES.length - 1)], quantity: 1 });
+      }
+    }
+  }
+  if (laid.length > 0) {
+    loot[map.id] = [...(loot[map.id] ?? []), ...laid];
+  }
+}
 
 const firstRaidDelay = (rolledMs: number, firstRaid: boolean): number => (firstRaid ? FIRST_RAID_CHASE_MS : rolledMs);
 
@@ -1163,13 +1264,15 @@ function generateLoot(
     // a door this save has not opened - Ember Isle's hoard, reached only from
     // inside the Coast Misty holds - cannot be laid, so it is no part of the
     // floor below either, or half the pool would quietly be less than half.
+    // A secret's nook is no part of the pool: it is laid by `layOpenSecrets`.
     const pool = map.loot.filter(
       (item) =>
+        item.secret === undefined &&
         item.chance === undefined &&
         (isPlayerMapId(map.id) || item.district === undefined || districtReached(map.id, item.district, isReachable)),
     );
     const rare = map.loot.filter(
-      (item) => item.chance !== undefined && rng.int(1, 1_000) <= Math.round(item.chance * 1_000),
+      (item) => item.secret === undefined && item.chance !== undefined && rng.int(1, 1_000) <= Math.round(item.chance * 1_000),
     );
     // At least half a map's loot is present, so exploring is reliably worth the risk.
     const count = rng.int(Math.ceil(pool.length / 2), pool.length);

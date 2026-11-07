@@ -128,6 +128,8 @@ export function pineHollow(): MapcraftResult {
 
   // -- The col: a walker's rest, where the trail comes in over the top ---------------------
   stand('log', 13, 20);
+  // The tappers' bucket, at the back of their camp's nook: the Sunday's nook
+  // is behind it (`src/game/world/secrets.ts`).
   stand('stump', 17, 21);
 
   // -- The charcoal track: a burnt-out stack at the back of the nook ----------------------------
@@ -187,6 +189,9 @@ export function pineHollow(): MapcraftResult {
       { x: 53, y: 47 },
       { x: 23, y: 42, hidden: true },
       { x: 12, y: 31 },
+      // The tappers' Sunday (`src/game/world/secrets.ts`): by the upturned pot
+      // at the back of their camp's nook, only on the day they do not work.
+      { x: 33, y: 24, secret: 'the-tappers-sunday' },
     ],
     // A way out nobody signs, at the back of the nook south of the col: the
     // wood is wide, and its one planned way out is at its far east end.
@@ -246,7 +251,8 @@ export function pineHollow(): MapcraftResult {
         { x: 12, y: 21, name: 'Col Walker', look: 'hiker', facing: 'right', lines: ['Over the col from the peaks and this is what you get. Trees.', 'There is a charcoal track goes out of the nook south of here, if you know it. I never told you.'], beat: { everyMs: 3700, glances: ['right', 'down'] }, calls: ['Trees. More trees.'] },
         { x: 10, y: 32, name: 'Old Collier', look: 'old-man', facing: 'down', lines: ['My stack went cold here in the year of the fire. It has never been the same since.', 'You go out that way, behind me, if anything comes through the pines after you.'], beat: { everyMs: 4000, glances: ['down', 'left'] }, calls: ['Nothing here. Keep walking.'] },
         { x: 29, y: 30, name: 'Resin Tapper', look: 'worker', facing: 'up', lines: ['Cut the bark, hang the pot, come back in a year. This whole wood weeps if you ask it.', 'Leave it a very long time, and it goes to amber. There is a collector down at the harbour who pays silly money.'], beat: { everyMs: 2900, roam: [[1, 0]], glances: ['up'] }, calls: ['Mind the pots!'] },
-        { x: 34, y: 30, name: 'Tapper’s Girl', look: 'little-girl', facing: 'left', lines: ['There is a Caterpie stuck in one of the old lumps, right the way through. Dad says a thousand years.', 'I said sorry to it.'], beat: { everyMs: 1800, glances: ['left', 'down'] }, calls: ['Do not touch, it is sticky!'] },
+        // Pine Hollow signs nothing, so the tappers' Sunday is told, not written.
+        { x: 34, y: 30, name: 'Tapper’s Girl', look: 'little-girl', facing: 'left', secret: 'the-tappers-sunday', lines: ['There is a Caterpie stuck in one of the old lumps, right the way through. Dad says a thousand years.', 'Dad never taps on a Sunday. He leaves a present by the upturned pot at the back, for whoever comes by.'], beat: { everyMs: 1800, glances: ['left', 'down'] }, calls: ['Do not touch, it is sticky!'] },
         { x: 42, y: 32, name: 'Amber Hunter', look: 'poke-maniac', facing: 'left', lines: ['That pine has been weeping since before there was a vale. Look under it. Look under all of them.', 'Amber lies anywhere in this wood. Good luck finding it twice.'], beat: { everyMs: 3500, glances: ['left', 'down'] }, calls: ['Hush. I can smell resin.'] },
         { x: 39, y: 50, name: 'Bee Warden', look: 'bug-catcher', facing: 'left', lines: ['Those are not bees. I keep saying that. They have got my hat.', 'It is a very big nest. Do not stand there. No. Do not stand there either.'], beat: { everyMs: 2400, glances: ['left', 'up'] }, calls: ['Slowly. Very slowly.'] },
         { x: 55, y: 45, name: 'Linesman', look: 'worker', facing: 'left', lines: ['I walk the cable from the station to the pass, and the Pikachu sit on it and drink.', 'I had a card for the Service Gate. I had it when I passed the oak. If you find it, you never saw me.'], beat: { everyMs: 3200, roam: [[0, 1]], glances: ['up', 'left'] }, calls: ['Off the line, you lot!'] },

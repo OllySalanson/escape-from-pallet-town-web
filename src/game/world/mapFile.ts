@@ -66,6 +66,7 @@ import {
 import { foldedSlug, isMapText, typedMapText } from './mapText';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { filePrizes, hoardOf } from './filePrizes';
+import { isSecretId } from './secrets';
 
 /**
  * A raid map as one file.
@@ -121,6 +122,12 @@ export const MAP_FILE_LIMITS = {
    * out by anything a maker places.
    */
   maxPrizes: 0,
+  /**
+   * Things tagged with a secret (`secrets.ts`): a nook and the clue beside it.
+   * None on a player's map yet - a secret is the game's own, its reward
+   * measured - and a few dozen on the game's own maps drawn as files.
+   */
+  maxSecrets: 0,
   /** The latest an exit may open: the raid clock is five minutes. */
   maxExitDelaySeconds: 240,
   maxBuildings: 200,
@@ -227,6 +234,7 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxBuildings: 1024,
   maxItemSpots: 200,
   maxPrizes: 8,
+  maxSecrets: 32,
   // Room for the vale to be filled a ring at a time out from Mill Square: it
   // was the thinnest map in the game, and bigger has to mean more places.
   maxPeople: 384,
@@ -1154,6 +1162,11 @@ export interface MapFileItemSpot extends MapFileSpot {
    * prize (`loot.ts`), seated in the place it stands in, as the Card Key is.
    */
   readonly prize?: MapFilePrize;
+  /**
+   * The secret (`secrets.ts`) this belongs to, by id: its nook, or the clue
+   * beside it. Only on the game's own maps (`maxSecrets`).
+   */
+  readonly secret?: string;
 }
 
 /**
@@ -1418,6 +1431,11 @@ export interface MapFilePerson extends MapFileSpot {
    * words each. Only on the game's own maps, as a beat is.
    */
   readonly calls?: readonly string[];
+  /**
+   * The secret (`secrets.ts`) this belongs to, by id: its nook, or the clue
+   * beside it. Only on the game's own maps (`maxSecrets`).
+   */
+  readonly secret?: string;
 }
 
 /** A Pokemon standing in the world: any species the game has (`pokemonFigures.ts`). */
@@ -1435,6 +1453,11 @@ export interface MapFilePokemon extends MapFileSpot {
    */
   readonly legendary?: boolean;
   readonly beat?: MapFileBeat;
+  /**
+   * The secret (`secrets.ts`) this belongs to, by id: its nook, or the clue
+   * beside it. Only on the game's own maps (`maxSecrets`).
+   */
+  readonly secret?: string;
 }
 
 /** A berry tree (`berries.ts`): picked once a raid for one berry. */
@@ -1447,6 +1470,11 @@ export type MapFileBoulder = MapFileSpot;
 
 export interface MapFileSign extends MapFileSpot {
   readonly lines: readonly string[];
+  /**
+   * The secret (`secrets.ts`) this belongs to, by id: its nook, or the clue
+   * beside it. Only on the game's own maps (`maxSecrets`).
+   */
+  readonly secret?: string;
 }
 
 export interface MapFileLandmark extends MapFileSpot {
@@ -2023,6 +2051,25 @@ export function readMapFile(
       limits.maxPrizes === 0
         ? 'Item spots cannot hold a prize: the game decides what is in them.'
         : `A map holds at most ${limits.maxPrizes} prizes.`,
+    );
+  }
+
+  // A secret's nook and its clue are tagged with its id, which must name one.
+  const tagged = (['itemSpots', 'people', 'signs', 'pokemon'] as const).flatMap((key) =>
+    (Array.isArray(value[key]) ? (value[key] as unknown[]) : []).filter(
+      (thing): thing is Record<string, unknown> => isRecord(thing) && thing.secret !== undefined,
+    ),
+  );
+  for (const thing of tagged) {
+    if (typeof thing.secret !== 'string' || !isSecretId(thing.secret)) {
+      problems.push(`'${String(thing.secret)}' is not a secret the game has.`);
+    }
+  }
+  if (tagged.length > limits.maxSecrets) {
+    problems.push(
+      limits.maxSecrets === 0
+        ? 'Nothing on a map can belong to a secret: secrets are the game\'s own.'
+        : `A map holds at most ${limits.maxSecrets} things that belong to a secret.`,
     );
   }
 
@@ -2789,9 +2836,25 @@ function lootFor(
 ): WorldLoot[] {
   let turn = 0;
   const hoard = hoardOf(id, { districts, itemSpots: spots });
+  // A secret's nook is the secret's (`secrets.ts`): it takes no turn of the
+  // rotation and no number of the ordinary spots', so a map's other spots hold
+  // and are called what they always were, and the raid lays it only while its
+  // condition holds (`runGeneration.ts`).
+  let ordinary = 0;
   return spots.map((spot, index) => {
+    if (spot.secret !== undefined) {
+      return {
+        id: `${id}/secret-${spot.secret}-${index + 1}`,
+        position: at(spot),
+        hidden: true,
+        itemId: 'oran-berry',
+        quantity: 1,
+        secret: spot.secret,
+      };
+    }
+    ordinary += 1;
     const common = {
-      id: `${id}/spot-${index + 1}`,
+      id: `${id}/spot-${ordinary}`,
       position: at(spot),
       ...(spot.hidden ? { hidden: true } : {}),
     };
@@ -3142,6 +3205,7 @@ export function buildFileMap(
         design: person.look,
         ...(person.beat ? { idle: fileBeat(person, at) } : {}),
         ...(person.calls ? { calls: [...person.calls] } : {}),
+        ...(person.secret ? { secret: person.secret } : {}),
       })),
       ...(file.pokemon ?? []).map((standing, index): WorldEntity => ({
         id: `${id}/pokemon-${index + 1}`,
@@ -3154,6 +3218,7 @@ export function buildFileMap(
         ...(standing.level !== undefined ? { wildLevel: standing.level } : {}),
         ...(standing.legendary ? { legendary: true } : {}),
         ...(standing.beat ? { idle: fileBeat(standing, at) } : {}),
+        ...(standing.secret ? { secret: standing.secret } : {}),
       })),
       ...(file.berryTrees ?? []).map((tree, index): WorldEntity => ({
         id: `${id}/berry-tree-${index + 1}`,
@@ -3204,6 +3269,7 @@ export function buildFileMap(
         position: at(sign),
         facing: 'down',
         dialogLines: sign.lines.length > 0 ? [...sign.lines] : ['The sign has been left blank.'],
+        ...(sign.secret ? { secret: sign.secret } : {}),
       })),
     ],
     pois: (file.landmarks ?? []).map((landmark, index) => {

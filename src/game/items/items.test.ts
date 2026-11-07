@@ -11,6 +11,7 @@ import {
   MACHINE_ITEM_IDS,
   EVOLUTION_STONE_IDS,
   KEY_ITEM_IDS,
+  RELIC_ITEM_IDS,
   MATERIAL_IDS,
   isErrandItem,
   getItemById,
@@ -79,7 +80,8 @@ describe('materials', () => {
     // the Pickaxe, the two rods, the keys and the Bicycle, which are carried
     // and never spent at all, the Lockpick, which a locked crate spends, and
     // the errands' things, which are carried home and handed over
-    // (`hub/errands.ts`).
+    // (`hub/errands.ts`), and the secrets' finds, which are carried home to
+    // Professor Oak (`world/secrets.ts`).
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
       [
         ...MATERIAL_IDS,
@@ -87,6 +89,7 @@ describe('materials', () => {
         ...MACHINE_ITEM_IDS,
         ...EVOLUTION_STONE_IDS,
         ...KEY_ITEM_IDS,
+        ...RELIC_ITEM_IDS,
         'money',
         'pickaxe',
         'old-rod',
