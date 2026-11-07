@@ -2,8 +2,8 @@ import { HARBOUR_BOTS, rngFor, visitBot, visitsAt, type HarbourBot } from '../ba
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { RaidProgress } from '../save/SaveManager';
 import type { PaintedPicture } from '../world/minimap';
-import { fitLettering, letteringWidth, paintLettering } from './boardLetters';
-import { BOARD_GAME_NAMES, boardResult, highScoresFor, regularResult, YOU } from './highScores';
+import { letteringWidth, paintLettering } from './boardLetters';
+import { BOARD_GAME_NAMES, BOARD_GAMES, boardResult, highScoresFor, regularResult } from './highScores';
 import { BERRY_TICKET_TIERS, JUMP_TICKET_TIERS, NO_GAME_CORNER, today, type TicketSource } from './tickets';
 
 /**
@@ -203,9 +203,8 @@ export function cabinetLampsPicture(lit: number): PaintedPicture {
 }
 
 /**
- * The HIGH SCORES board: TODAY'S BEST in lights, then each cabinet's game, the
- * score at the top of the board today and whose it is - gold when it is the
- * player's. A ring of bulbs round it, as round the Game Corner's own marquee.
+ * The HIGH SCORES board: every game on the promenade and the result at the
+ * top of the board today - gold when it is the player's. A ring of bulbs round it, as round the Game Corner's own marquee.
  */
 export function highScoresPicture(progress: Pick<RaidProgress, 'gameCorner'>, now: Date): PaintedPicture {
   const width = HIGH_SCORES_BOARD.width * 16;
@@ -222,20 +221,18 @@ export function highScoresPicture(progress: Pick<RaidProgress, 'gameCorner'>, no
   // Two legs to the floor.
   fill(6, height - 2, 2, 2, INK.outline);
   fill(width - 8, height - 2, 2, 2, INK.outline);
-  const centred = (text: string, y: number, ink: Rgb): void => {
-    paintLettering(text, Math.floor((width - letteringWidth(text)) / 2), y, (x, py) => plot(x, py, ink));
-  };
-  centred('TODAY’S BEST', 5, INK.bulb);
-  fill(4, 12, width - 8, 1, INK.nightLight);
-  const inner = width - 12;
-  (['pokemon-jump', 'berry-picking'] as const).forEach((game, index) => {
-    const top = 16 + index * 13;
+  // Every game on the promenade, a line each: the game in neon and the top
+  // result today at the right, gold when it is the player's. It shows all six
+  // and no title of its own - its caption names it HIGH SCORES - because two
+  // games under TODAY'S BEST left a score just made at the dig off the picture
+  // and gave the board two names (playtest wave 3, finding 9). Who holds each
+  // is said when it is read.
+  BOARD_GAMES.forEach((game, index) => {
+    const top = 5 + index * 6;
     const [best] = highScoresFor(game, progress, now);
-    paintLettering(BOARD_GAME_NAMES[game], 6, top, (x, y) => plot(x, y, INK.neon));
+    paintLettering(BOARD_GAME_NAMES[game], 5, top, (x, y) => plot(x, y, INK.neon));
     const result = boardResult(game, best.result);
-    paintLettering(result, width - 6 - letteringWidth(result), top, (x, y) => plot(x, y, best.yours ? INK.gold : INK.white));
-    const name = fitLettering(best.name, inner);
-    paintLettering(name, 6, top + 6, (x, y) => plot(x, y, best.name === YOU ? INK.gold : INK.cyan));
+    paintLettering(result, width - 5 - letteringWidth(result), top, (x, y) => plot(x, y, best.yours ? INK.gold : INK.white));
   });
   return picture;
 }

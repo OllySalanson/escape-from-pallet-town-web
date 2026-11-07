@@ -433,9 +433,11 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     this.squares = this.add.graphics().setDepth(11);
     const panel = this.add.graphics().setDepth(10);
     drawPixelWindow(panel, { x: 4, y: 4, width: 84, height: 32 }, { fill: WINDOW_CREAM });
-    // What the ten squares at the top right are: a berry on the ground greys one.
+    // What the ten squares at the top right are: the misses left, a berry on
+    // the ground greying one from the end. Labelled BERRIES DROPPED, a full row
+    // read as ten dropped and the game lost (playtest wave 3, finding 5).
     const dropped = this.add
-      .text(width - 8, 20, 'BERRIES DROPPED', {
+      .text(width - 8, 20, 'MISSES LEFT', {
         fontFamily: GAME_FONT,
         fontSize: CHIP_FONT_SIZE,
         color: '#f8f8f8',
@@ -532,12 +534,13 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
         berries.fillStyle(0xf8f8f8, 0.85).fillTriangle(this.columnX(column) - 4, this.beakY() + 22, this.columnX(column) + 4, this.beakY() + 22, this.columnX(column), this.beakY() + 17);
       }
     }
-    // Ten squares across the top, greyed one a berry on the ground, as FireRed's status bar.
+    // Ten squares across the top, greyed one a berry on the ground from the
+    // right-hand end, as FireRed's status bar runs down.
     const squares = this.squares.clear();
     const size = 8;
     const left = Math.round(width - 8 - BERRY_PICKING_STATUS_SQUARES * (size + 2));
     for (let index = 0; index < BERRY_PICKING_STATUS_SQUARES; index += 1) {
-      const grey = index < picking.greySquares;
+      const grey = index >= BERRY_PICKING_STATUS_SQUARES - picking.greySquares;
       const warn = !grey && picking.greySquares >= BERRY_PICKING_STATUS_SQUARES - 3;
       squares.fillStyle(0x202030, 1).fillRect(left + index * (size + 2) - 1, 7, size + 2, size + 2);
       squares.fillStyle(grey ? 0x808088 : warn ? 0xf05050 : 0xf8d040, 1).fillRect(left + index * (size + 2), 8, size, size);

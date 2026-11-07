@@ -2232,9 +2232,10 @@ export class HubScene extends Phaser.Scene {
       )
       .join('');
     const supplyRow = (item: ItemDefinition): string =>
-      // One line a supply, as a bag lists them: what it does is said by the
+      // One line a supply, as a bag lists them and in the same capitals as YOUR
+      // THINGS and the raid's pack (playtest wave 3, finding 12): what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
     // In pockets, as YOUR THINGS reads them (`ui/thingsView.ts`): ninety rows
     // on one list was a thing nobody could find anything on, and the two
     // screens that show storage must sort it the same way.

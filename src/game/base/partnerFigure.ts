@@ -457,18 +457,23 @@ export class PartnerFigure {
     const lift = this.hopMs === null ? 0 : hopLift(this.hopMs);
     const x = at.x * TILE_SIZE + PARTNER_SPRITE_X_OFFSET;
     const y = at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET - lift - this.droppingFrom;
-    const depth = atRow(FIGURE_BAND, at.y) - 0.00005;
+    const player = this.host.player;
+    const playerY = (player.y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE;
+    // A hair behind the player on the same row, so a swap passes behind them -
+    // and behind them too from the row below while it is close enough to
+    // reach them: a big partner's picture stands a tile and more above its
+    // feet, and a Charizard following the player up to a counter stood over
+    // their legs (playtest wave 3, finding 4).
+    const reaches = at.y > playerY && at.y - playerY < 2 && Math.abs(at.x - player.x / TILE_SIZE) < 2;
+    const depth = Math.min(atRow(FIGURE_BAND, at.y), reaches ? player.depth : Infinity) - 0.00005;
     this.sprite
       .setFrame(partnerFrame(this.placeValue.facing, pose))
       .setPosition(x, y)
-      // A hair behind the player on the same row, so a swap passes behind them.
       .setDepth(depth);
     // The player's head mark rides above every figure so the player can always
     // be found - but the partner walking right behind them would wear it on its
     // own face, which reads as the Pokemon being the one marked. While it is
     // there, and only then, the mark goes behind it.
-    const player = this.host.player;
-    const playerY = (player.y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE;
     const behind = this.sprite.visible && at.y < playerY && Math.abs(at.x - player.x / TILE_SIZE) < 1;
     this.host.playerHeadMark.setDepth(behind ? depth - 0.00001 : PLAYER_MARKER_DEPTH);
     let alpha = 1;

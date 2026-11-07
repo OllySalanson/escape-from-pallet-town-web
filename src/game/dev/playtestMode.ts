@@ -69,6 +69,27 @@ export function isPlaytestRun(): boolean {
 }
 
 /**
+ * Whether the fight on now is a bout for show - a practice with a leader, a
+ * bout in THE BATTLE ARENA - which writes nothing and so has nothing to keep
+ * the explorer run from losing. Set by `BattleScene` for each fight.
+ */
+let fightForShow = false;
+
+export function setFightForShow(on: boolean): void {
+  fightForShow = on;
+}
+
+/**
+ * Whether the player's side cannot be knocked out: the explorer run's rule,
+ * except in a bout for show, where losing is the thing a playtest has to be
+ * able to see (playtest wave 3, finding 6: the explorer run could never lose a
+ * practice, so "what beat you" could not be read from it).
+ */
+export function playerCannotFaint(): boolean {
+  return isPlaytestRun() && !fightForShow;
+}
+
+/**
  * Whether a hunter comes for this raid. Every raid but one: a map maker's WALK
  * IT is the calm walk its help line promises - the maker is there to look at
  * their own map, and a fight that cannot be lost is only an interruption of

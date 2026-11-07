@@ -1,4 +1,4 @@
-import { isPlaytestRun } from '../../dev/playtestMode';
+import { playerCannotFaint } from '../../dev/playtestMode';
 import type { AbilityEffectKind, AbsorbedOutcome } from '../AbilityBase';
 import type { MoveBase, NormalizedMoveEffects, NormalizedSecondaryEffect } from '../MoveBase';
 import { MoveCategory, MoveCharge, MoveTarget, targetsTheOtherSide } from '../MoveBase';
@@ -1448,7 +1448,8 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
  * Nothing but the explorer run makes this anything other than the subtraction
  * it has always been: in a playtest run (`dev/playtestMode.ts`) the player's
  * side is floored at one hit point, so no move, status, weather, recoil or
- * confusion can knock it out and the run cannot be lost. It is asked here, in
+ * confusion can knock it out and the run cannot be lost - except in a bout for
+ * show (`playerCannotFaint`), which risks nothing. It is asked here, in
  * the one function every path that takes HP goes through, rather than by a
  * scene - HP reaches nothing inside the engine, and a faint is emitted the
  * instant it does. The flag is false everywhere else, which is why the measured
@@ -1456,7 +1457,7 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
  * always read.
  */
 function hpAfterDamage(side: 'player' | 'enemy', currentHp: number, damage: number): number {
-  const floor = side === 'player' && isPlaytestRun() ? Math.min(1, currentHp) : 0;
+  const floor = side === 'player' && playerCannotFaint() ? Math.min(1, currentHp) : 0;
   return Math.max(floor, currentHp - damage);
 }
 

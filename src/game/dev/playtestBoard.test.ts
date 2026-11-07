@@ -82,7 +82,7 @@ describe("the board's rows", () => {
     }
   });
 
-  it('stands the player on open floor facing the dojo counter, and facing the first leader in the hall', () => {
+  it('stands the player on open floor facing the dojo counter, and beside the first leader in the hall facing them', () => {
     const game = baseGame({ built: [] });
     for (const row of STAND_ROWS) {
       if (row.action.kind !== 'stand') continue;
@@ -93,7 +93,8 @@ describe("the board's rows", () => {
         const progress = withEveryLeaderMet({ ...game.raidProgress, raidRecord: { 'greystone-vale': { deployed: raids, extracted: 0, wiped: 0 } } });
         const at = row.action.at ?? practiceSpot(progress);
         expect(built.collision[at.y]?.[at.x], row.id).toBe(false);
-        const faced = { x: at.x, y: at.y - 1 };
+        const step = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } }[row.action.facing];
+        const faced = { x: at.x + step.x, y: at.y + step.y };
         const facesWhat =
           room === 'battle-arena' ? DOJO_COUNTER_TILES : practiceLeaders(progress, rivalUp(progress.bouts, raidsDeployed(progress)).id).map((leader) => leader.tile);
         expect(facesWhat.some((tile) => same(tile, faced)) || same(faced, RIVAL_TILE), `${row.id} after ${raids} raids`).toBe(true);

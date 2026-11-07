@@ -3,6 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
+import { BATTLE_PIC_COORDS } from '../pokemon/generated/battlePicCoords';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -38,6 +39,17 @@ const CALLOUT_MS = 700;
 const JUMP_DRAW_SCALE = 1.5;
 /** The jumpers' Pokédex numbers stand on this line, in from the foot of the screen. */
 const GROUND_INSET = 26;
+/**
+ * How far below the ground line a jumper's feet are stood: a back picture is
+ * cut flat across its bottom, as FireRed's stands on its text box, so the cut
+ * sits behind the worn patch's front lip (playtest wave 3, finding 10).
+ */
+const JUMPER_SINK = 4;
+
+/** The rows a back picture leaves empty under its art, which a jumper is stood down by. */
+function backPictureEmptyRows(dexId: number): number {
+  return BATTLE_PIC_COORDS[dexId]?.[1] ?? 0;
+}
 
 type Phase =
   | { readonly kind: 'menu' }
@@ -77,6 +89,9 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private vine: Phaser.GameObjects.Graphics | undefined;
   private vineFront: Phaser.GameObjects.Graphics | undefined;
   private jumperSprites: Phaser.GameObjects.Image[] = [];
+  /** Where each jumper's picture stands on the ground, by its own empty rows. */
+  private jumperFeet: number[] = [];
+  private jumperLip: Phaser.GameObjects.Graphics | undefined;
   private scoreText: Phaser.GameObjects.Text | undefined;
   private callout: { text: Phaser.GameObjects.Text; until: number } | undefined;
   private bigText: Phaser.GameObjects.Text | undefined;
@@ -423,10 +438,25 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     const spacing = Math.min(80, Math.floor((width - 40) / Math.max(1, jumpers.length)));
     const left = Math.round(width / 2 - (spacing * (jumpers.length - 1)) / 2);
     const stash = this.game_?.stash;
+    this.jumperFeet = [];
     this.jumperSprites = jumpers.map((jumper, index) => {
       const dexId = stash?.listPokemon().find((stored) => stored.pokemon.base.id === jumper.species)?.pokemon.base.dexId ?? 1;
-      return this.add.image(left + index * spacing, ground, pokemonTextureKey('back', dexId)).setOrigin(0.5, 1).setDepth(3);
+      const feet = ground + backPictureEmptyRows(dexId) + JUMPER_SINK;
+      this.jumperFeet.push(feet);
+      return this.add.image(left + index * spacing, feet, pokemonTextureKey('back', dexId)).setOrigin(0.5, 1).setDepth(3);
     });
+    // The worn patch's front half, over the jumpers' feet, so the flat cut of a
+    // back picture is hidden behind the ground rather than hanging in the air.
+    const lip = this.add.graphics().setDepth(3.5);
+    const centre = Math.round(width / 2);
+    const rim = (radiusX: number, radiusY: number, y: number): Phaser.Math.Vector2[] =>
+      Array.from({ length: 33 }, (_point, step) => {
+        const angle = (Math.PI * step) / 32;
+        return new Phaser.Math.Vector2(centre + Math.cos(angle) * radiusX, y + Math.sin(angle) * radiusY);
+      });
+    lip.fillStyle(0xb09060, 1).fillPoints(rim((width - 40) / 2, 9, ground + 2), true);
+    lip.fillStyle(0xd0b080, 1).fillPoints(rim((width - 64) / 2, 5, ground), true);
+    this.jumperLip = lip;
     this.vineFront = this.add.graphics().setDepth(4);
     const panel = this.add.graphics().setDepth(10);
     drawPixelWindow(panel, { x: 4, y: 4, width: 84, height: 32 }, { fill: WINDOW_CREAM });
@@ -462,6 +492,9 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.stage = undefined;
     for (const sprite of this.jumperSprites) sprite.destroy();
     this.jumperSprites = [];
+    this.jumperFeet = [];
+    this.jumperLip?.destroy();
+    this.jumperLip = undefined;
     this.vine?.destroy();
     this.vine = undefined;
     this.vineFront?.destroy();
@@ -511,7 +544,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     jump.jumpers.forEach((jumper, index) => {
       const sprite = this.jumperSprites[index];
       if (!sprite) return;
-      sprite.y = ground + Math.round(jumper.offset * JUMP_DRAW_SCALE);
+      sprite.y = (this.jumperFeet[index] ?? ground) + Math.round(jumper.offset * JUMP_DRAW_SCALE);
       if (jumper.hit) sprite.setTint(0xf06060);
     });
     this.scoreText?.setText([`SCORE ${jump.score.toLocaleString('en-GB')}`, `JUMPS ${jump.jumpsInRow}`]);

@@ -45,8 +45,12 @@ export const PLAYTEST_BOARD_NOTE = 'Go anywhere, set the hour, play';
 
 export type PlaytestBoardAction =
   | { readonly kind: 'room'; readonly room: RoomId }
-  /** Standing in a room facing up at something; `at` absent is before whoever spars first in the hall today (`practiceSpot`). */
-  | { readonly kind: 'stand'; readonly room: RoomId; readonly at?: GridPosition; readonly facing: Direction }
+  /**
+   * Standing in a room facing something; `at` absent is beside whoever spars
+   * first in the hall today (`practiceSpot`), and `bench: 'weak'` first puts a
+   * Lv 10 first stage alone on the bench (`practiceToLoseBench`).
+   */
+  | { readonly kind: 'stand'; readonly room: RoomId; readonly at?: GridPosition; readonly facing: Direction; readonly bench?: 'weak' }
   | { readonly kind: 'place'; readonly place: string }
   | { readonly kind: 'hour'; readonly hour: PlaytestHour | null }
   | { readonly kind: 'new-day' }
@@ -95,19 +99,27 @@ export const STAND_ROWS: readonly PlaytestBoardRow[] = [
     id: 'stand-practice',
     label: 'PRACTISE WITH A LEADER',
     note: 'In the hall: SPACE to spar',
-    action: { kind: 'stand', room: 'raid-arena', facing: 'up' },
+    action: { kind: 'stand', room: 'raid-arena', facing: 'left' },
+  },
+  {
+    id: 'stand-practice-weak',
+    label: 'PRACTISE TO LOSE',
+    note: 'A Lv 10 CATERPIE alone on the bench',
+    action: { kind: 'stand', room: 'raid-arena', facing: 'left', bench: 'weak' },
   },
 ];
 
 /**
- * Where to stand to spar today: below the first leader waiting on the far
- * floor, or below the rival there when every leader met is the rival today -
- * who offers their gym team after the bout for show.
+ * Where to stand to spar today: beside the first leader waiting on the far
+ * floor, on their right facing them, or beside the rival there when every
+ * leader met is the rival today - who offers their gym team after the bout for
+ * show. Beside, never below: a player a row below is drawn over the leader and
+ * hid who was about to be sparred (playtest wave 3, finding 6).
  */
 export function practiceSpot(progress: RaidProgress): GridPosition {
   const rival = rivalUp(progress.bouts, raidsDeployed(progress));
   const tile = practiceLeaders(progress, rival.id)[0]?.tile ?? RIVAL_TILE;
-  return { x: tile.x, y: tile.y + 1 };
+  return { x: tile.x + 1, y: tile.y };
 }
 
 /**

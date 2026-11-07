@@ -96,7 +96,7 @@ try {
         const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
         while (queue.length) { const [x, y] = queue.shift(); if (x === g.x && y === g.y) { found = [x, y]; break; }
           for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || b.isBlocked({ x: nx, y: ny })) continue;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || (b.isBlocked({ x: nx, y: ny }) && !(nx === g.x && ny === g.y && !c[ny][nx]))) continue;
             prev.set(id(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
         if (!found) return { unreachable: true };
         let cur = found, key = null; for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; }
@@ -130,7 +130,13 @@ try {
   await until(baseReady, 'the arcade');
   await wait(300);
   await shoot(`${teamKind}-01-arcade`);
-  await walkTo({ x: 13, y: 4 }, 'the BERRY PICKING cabinet');
+  // The cabinets stand in rows now (THE GAME CORNER comes alive): walk up to
+  // the front of the first BERRY PICKING cabinet no regular is standing at.
+  const berryFront = await page.evaluate(`(() => { const b = ${base};
+    for (const x of [9, 10, 11, 12, 13, 14]) { const t = { x, y: 9 }; if (!b.isBlocked(t)) return t; }
+    return null; })()`);
+  if (!berryFront) fail('every BERRY PICKING cabinet has somebody at it');
+  await walkTo(berryFront, 'the BERRY PICKING cabinet');
   await press('ArrowUp');
   await press('Space');
   await until(sceneIs('berry-picking'), 'the BERRY PICKING screen');

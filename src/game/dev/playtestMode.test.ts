@@ -12,10 +12,12 @@ import { raidClockView } from '../scenes/raidHud';
 import {
   hunterComes,
   isPlaytestRun,
+  playerCannotFaint,
   PLAYTEST_CLOCK_LABEL,
   PLAYTEST_RAID_DURATION_MS,
   PLAYTEST_SAVE_KEY,
   setActiveSaveSlot,
+  setFightForShow,
   setTryItRules,
 } from './playtestMode';
 import { createPlaytestGame, playtestRaidProgress } from './playtestSave';
@@ -50,6 +52,20 @@ const ordinaryGame = () => ({
 afterEach(() => {
   setActiveSaveSlot('normal');
   setTryItRules(false);
+  setFightForShow(false);
+});
+
+describe('a bout for show in the explorer run', () => {
+  it('can be lost, because it risks nothing (playtest wave 3, finding 6)', () => {
+    setActiveSaveSlot('playtest');
+    expect(playerCannotFaint()).toBe(true);
+    setFightForShow(true);
+    expect(playerCannotFaint()).toBe(false);
+    setFightForShow(false);
+    expect(playerCannotFaint()).toBe(true);
+    setActiveSaveSlot('normal');
+    expect(playerCannotFaint()).toBe(false);
+  });
 });
 
 describe("the map maker's TRY IT", () => {

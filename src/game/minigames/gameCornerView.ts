@@ -13,7 +13,7 @@ import {
 import { getItemById } from '../items/items';
 import { MAX_JUMPERS, type JumpType } from './pokemonJump';
 import { PRIZE_WINDOW_NOTE } from './gameCornerTalk';
-import { prizeLeftToday, prizeName, prizeRefusal, TICKET_PRIZES, today, type GameCornerRecord, type GamePayout } from './tickets';
+import { payoutWords, prizeLeftToday, prizeName, prizeRefusal, TICKET_PRIZES, today, type GameCornerRecord, type GamePayout } from './tickets';
 
 /**
  * THE GAME CORNER's two DOM screens, as pure markup: choosing who jumps at the
@@ -110,8 +110,7 @@ function resultLines(last: NonNullable<JumpTeamState['last']>): string[] {
     const count = berries.filter((other) => other === berry).length;
     won.push(`${count > 1 ? `${count} ` : ''}${getItemById(berry)?.displayName ?? berry}`);
   }
-  const paid = won.length > 0 ? `Won ${won.join(', ')}.` : payout.bestToday ? 'Nothing more today: the day has paid this tier.' : 'Beat today’s best to win more.';
-  return [`<small class="px-wrap${won.length > 0 ? ' px-good' : ''}">${payout.newBest ? 'A new best! ' : ''}${paid}</small>`];
+  return [`<small class="px-wrap${won.length > 0 ? ' px-good' : ''}">${escapeAttribute(payoutWords(payout, won))}</small>`];
 }
 
 // --- THE PRIZE WINDOW ---------------------------------------------------------
