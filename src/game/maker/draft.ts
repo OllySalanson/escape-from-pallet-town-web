@@ -358,8 +358,50 @@ const SPOT_RULES: Readonly<Record<SpotKind, { readonly max: number; readonly plu
 
 const spotOf = <T extends MapFileSpot>(spot: T): MapFileSpot => spot;
 
+/**
+ * The fields of a one-tile thing that are a choice from a list - which
+ * Pokemon, which berry, which look, which way it faces, which team, which kind
+ * of landmark. A new one of a kind is put down as the last one of that kind
+ * was chosen (`placeSpot`'s `chosen`), because putting down a row of Charmander
+ * one at a time and choosing Charmander again for each came out as a row of
+ * Pikachu (the captain, 2026-11-07). Names, words and numbers are not
+ * choices: each thing is named and spoken for on its own.
+ */
+export const REMEMBERED_CHOICES = ['species', 'berry', 'look', 'facing', 'team', 'kind'] as const;
+export type RememberedChoice = (typeof REMEMBERED_CHOICES)[number];
+/** The choices last made for one kind of thing, by field. */
+export type SpotChoices = Readonly<Partial<Record<RememberedChoice, string>>>;
+
+export function isRememberedChoice(field: string): field is RememberedChoice {
+  return (REMEMBERED_CHOICES as readonly string[]).includes(field);
+}
+
+function rememberedChoices(chosen: SpotChoices | undefined): Readonly<Record<string, string>> {
+  const kept: Record<string, string> = {};
+  for (const field of REMEMBERED_CHOICES) {
+    const value = chosen?.[field];
+    if (value !== undefined) {
+      kept[field] = value;
+    }
+  }
+  return kept;
+}
+
 /** A new one of a kind, standing on a tile, with everything about it at its plainest. */
-function newSpot(file: MapFile, kind: SpotKind, spot: MapFileSpot): MapFileSpot {
+function newSpot(
+  file: MapFile,
+  kind: SpotKind,
+  spot: MapFileSpot,
+  chosen?: SpotChoices,
+): MapFileSpot {
+  // Only the fields a kind already has are carried over, so a choice can never
+  // add a field a kind does not have.
+  const made = plainSpot(file, kind, spot);
+  const carried = Object.entries(rememberedChoices(chosen)).filter(([field]) => field in made);
+  return carried.length === 0 ? made : { ...made, ...Object.fromEntries(carried) };
+}
+
+function plainSpot(file: MapFile, kind: SpotKind, spot: MapFileSpot): MapFileSpot {
   switch (kind) {
     case 'drop-in':
       return spotOf<MapFileDropIn>({ ...spot, name: nextName(file.dropIns, 'Drop-in') });
@@ -417,6 +459,7 @@ export function placeSpot(
   kind: SpotKind,
   point: GridPoint,
   place: PlacementPlace = {},
+  chosen?: SpotChoices,
 ): PlaceOutcome {
   if (!inside(file, point)) {
     return { placed: false, reason: 'That is off the map.' };
@@ -432,7 +475,7 @@ export function placeSpot(
   }
   return {
     placed: true,
-    file: withSpots(file, kind, [...list, newSpot(file, kind, { x: point.x, y: point.y })]),
+    file: withSpots(file, kind, [...list, newSpot(file, kind, { x: point.x, y: point.y }, chosen)]),
     thing: { kind, index: list.length },
   };
 }
