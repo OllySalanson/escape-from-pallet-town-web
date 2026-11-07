@@ -1,8 +1,8 @@
 // Decorates THE BOLTHOLE end to end, the way a player does (`src/game/home/`,
-// `src/game/base/decorateMode.ts`): into the house, H to pick it up, a pot plant
+// `src/game/base/decorateMode.ts`): into the house, F to pick it up, a pot plant
 // carried across the room with the keys, a doll out of the box and onto the
 // table, a mat that will not go on the door mat, a Surf Mat and a Snorlax doll
-// put down and turned with the pointer, and H again to finish - then the doll
+// put down and turned with the pointer, and F again to finish - then the doll
 // faced and read, and the page reloaded to prove the house is as it was left.
 //
 //   node tools/playtest/decorate.mjs <url> <out dir> [--port=N] [--window=1200x768]
@@ -161,8 +161,8 @@ try {
   // Off the mat, the house offers to be decorated.
   await press('ArrowUp');
   const off = await settle('off the mat', 's.hint !== null');
-  if (off.hint !== '[H] DECORATE') fail(`off the mat the house says "${off.hint}"`);
-  await press('KeyH');
+  if (off.hint !== '[F] FURNITURE') fail(`off the mat the house says "${off.hint}"`);
+  await press('KeyF');
   const decorating = await settle('decorating', 's.decorating');
   console.log(`decorating: cursor on ${JSON.stringify(decorating.cursor)}, panel ${JSON.stringify(decorating.panel)}, hint "${decorating.hint}"`);
   await page.screenshot(`${out}/2-decorating.png`);
@@ -207,7 +207,7 @@ try {
   await click({ x: 11, y: 6 });
   await expectStanding(['doll-143', 'bolthole', 11, 5, 1], 'the Snorlax doll, turned');
 
-  await press('KeyH');
+  await press('KeyF');
   const done = await settle('done decorating', '!s.decorating');
   await page.screenshot(`${out}/7-decorated.png`);
   const blocked = await page.evaluate(`[${BASE}.isBlocked({ x: 11, y: 6 }), ${BASE}.isBlocked({ x: 0, y: 6 }), ${BASE}.isBlocked({ x: 2, y: 6 })]`);

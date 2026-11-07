@@ -168,7 +168,7 @@ describe('the keys a HUD names', () => {
 
 /** What each word the house's hints use promises the key does. */
 const HOUSE_WORD_CONTROLS: Readonly<Record<string, string>> = {
-  DECORATE: 'decorate',
+  FURNITURE: 'decorate',
   DONE: 'decorate',
   TURN: 'turn',
   PUT: 'putAway',
@@ -178,7 +178,7 @@ describe('the keys the house names', () => {
   it('are the keys the house binds, decorating and everything done while decorating', () => {
     const controls = controlsOf(new BaseScene());
     const lines = [
-      houseKeyHintLine(new Set()),
+      houseKeyHintLine(),
       decorateKeyHintLine('holding', true),
       decorateKeyHintLine('on-a-piece', true),
       decorateKeyHintLine('on-the-floor', true),
@@ -202,9 +202,12 @@ describe('the keys the house names', () => {
     expect((controls.closer as BoundKey).keyCode).toBe(KEY_CODES[TELESCOPE_KEY_LETTERS.closer]);
   });
 
-  it('stops offering to decorate once it has been done, and never names a knock key', () => {
-    expect(houseKeyHintLine(new Set())).toBe('[H] DECORATE');
-    expect(houseKeyHintLine(new Set(['decorate']))).toBe('');
+  it('always names the furniture key on F, and never names a knock key', () => {
+    // Named for good: a piece bought or found after the first decorating
+    // still has to be found in the box, and the explorer run has learned
+    // every key (the captain, 7 Nov 2026).
+    expect(HOME_KEY_LETTERS.decorate).toBe('F');
+    expect(houseKeyHintLine()).toBe('[F] FURNITURE');
     // Knocking is THE BOLTHOLE's garden sign, read like any other sign.
     expect(Object.keys(HOME_KEY_LETTERS)).not.toContain('knock');
   });
