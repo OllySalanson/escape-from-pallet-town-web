@@ -93,6 +93,8 @@ export interface TeachView {
   readonly carried: number;
   /** The party index of the Pokemon chosen to learn it, if one has been. */
   readonly chosen: number | null;
+  /** Read at home, out of storage to every Pokémon the player has (`scenes/ThingsScene.ts`), rather than from the raid's pack to its party. */
+  readonly home?: boolean;
 }
 
 const VERDICT_TAG: Readonly<Record<PupilVerdict, string>> = {
@@ -109,7 +111,7 @@ function discWindow(view: TeachView): string {
   return pixelWindow(body, {
     className: 'teach-disc-window px-tone-primary',
     heading: `${view.machine.number} ${move.name}`,
-    note: `${view.carried} carried`,
+    note: `${view.carried} ${view.home ? 'in storage' : 'carried'}`,
   });
 }
 
@@ -160,7 +162,9 @@ function teachBar(view: TeachView): string {
   if (!pupil) {
     const line =
       able === 0
-        ? `Nobody in the party can learn ${move}. The disc stays in the pack.`
+        ? view.home
+          ? `None of your Pokémon can learn ${move}. The disc stays in storage.`
+          : `Nobody in the party can learn ${move}. The disc stays in the pack.`
         : `${able} of ${view.party.length} can learn it. Choose one above - nothing is used up until you press TEACH.`;
     return pixelCommitBar({
       title: `Who should learn ${move}?`,
@@ -193,7 +197,7 @@ export function teachBody(view: TeachView): string {
   const able = view.party.filter((pokemon) => canChoosePupil(pupilVerdict(view.machine, pokemon))).length;
   const pupils = pixelWindow(
     `<div class="px-list px-scroll teach-pupils" ${pixelColumns(COLUMN_MEASURES.pupil)}>${
-      cards || '<p class="px-empty">Nobody is deployed.</p>'
+      cards || `<p class="px-empty">${view.home ? 'You have no Pokémon.' : 'Nobody is deployed.'}</p>`
     }</div>`,
     {
       className: 'teach-pupils-window',

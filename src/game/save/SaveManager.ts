@@ -1233,6 +1233,33 @@ export class SaveManager {
   }
 
   /**
+   * Uses one thing out of storage on one of the player's own Pokémon at base: a
+   * disc read or a stone, from YOUR THINGS (`scenes/ThingsScene.ts`). Loads
+   * first, so `use` acts on the stored game's own Pokémon rather than a copy a
+   * second tab has moved on from, and writes nothing for a use that changed
+   * nothing. `spent` takes the one thing out of the vault in the same write.
+   */
+  public useAtHome(
+    itemId: string,
+    pokemonId: string,
+    use: (pokemon: Pokemon) => { readonly changed: boolean; readonly spent: boolean },
+  ): RestoredGame | undefined {
+    const game = this.load();
+    const stashed = game?.stash.listPokemon().find((entry) => entry.id === pokemonId);
+    if (!game || !stashed || game.stash.itemCount(itemId) < 1) {
+      return undefined;
+    }
+    const { changed, spent } = use(stashed.pokemon);
+    if (!changed) {
+      return undefined;
+    }
+    if (spent) {
+      game.stash.removeItem(itemId);
+    }
+    return this.save(game) ? game : undefined;
+  }
+
+  /**
    * Buys every piece of a try-on this save does not own yet, out of the vault:
    * Pokédollars for the priced pieces, found goods for the barter ones, in one
    * write, and then wears it. A raid-only piece is refused, and so is a bill

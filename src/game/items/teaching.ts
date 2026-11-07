@@ -40,12 +40,16 @@ export type TeachOutcome =
   | { readonly kind: 'choose'; readonly move: MoveBase; readonly machine: MachineDefinition };
 
 /**
- * What the base says beside a disc, because the base is not where one is read:
- * a disc is read from the pack in a raid (`BagScene.readMachine`), and the
- * Pokémon Center listed TM40 with what it teaches and nothing about how
- * (playtest 47). The letter is the pack's own raid key.
+ * What the base says beside a disc about where one is read: from YOUR THINGS
+ * anywhere at base (`scenes/ThingsScene.ts`, the bag plan's pick C1 - a disc
+ * already home has paid the risk of carrying it), or from the pack in a raid
+ * (`BagScene.readMachine`). The Pokémon Center listed TM40 with what it teaches
+ * and nothing about how (playtest 47). Both are on B, the pack's own raid key.
  */
-export const READ_IN_A_RAID = `Pack it, then read it from your pack (${RAID_KEY_LETTERS.bag}) in a raid.`;
+export const READ_IN_A_RAID = `Read it from YOUR THINGS (${RAID_KEY_LETTERS.bag}) anywhere at base, or pack it and read it from your pack (${RAID_KEY_LETTERS.bag}) in a raid.`;
+
+/** The same for an evolution stone, which is used on the same two screens. */
+export const USE_A_STONE = `Use it from YOUR THINGS (${RAID_KEY_LETTERS.bag}) anywhere at base, or pack it and use it from your pack (${RAID_KEY_LETTERS.bag}) in a raid.`;
 
 /** The machine an item is, or undefined for anything that is not a disc. */
 export function machineForItem(item: ItemDefinition): MachineDefinition | undefined {

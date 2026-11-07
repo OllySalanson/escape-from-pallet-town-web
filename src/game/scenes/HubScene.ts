@@ -78,6 +78,7 @@ import {
   isWearableItem,
   itemAmountsFor,
   READ_IN_A_RAID,
+  USE_A_STONE,
   type ItemDefinition,
   type ItemId,
   type PackItemId,
@@ -196,7 +197,7 @@ import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
-import { keyHint, RAID_KEY_LETTERS } from '../input/keyBindings';
+import { keyHint } from '../input/keyBindings';
 import { wayInToward } from '../base/valeOverview';
 import { withArticle } from '../ui/article';
 
@@ -3709,7 +3710,7 @@ export class HubScene extends Phaser.Scene {
 
 /**
  * What a supply row owes a player about where it is used, when that is not
- * here. A disc and a stone are read from the raid pack and nowhere else (the
+ * here. A disc and a stone are read from YOUR THINGS or the raid pack (the
  * treatment bench takes medicine only), and the Center listed TM40 with what
  * it teaches and nothing about how (playtest 47).
  */
@@ -3718,7 +3719,7 @@ function usedInARaid(item: ItemDefinition): string {
     case 'machine':
       return ` ${READ_IN_A_RAID}`;
     case 'evolution-stone':
-      return ` Pack it, then use it from your pack (${RAID_KEY_LETTERS.bag}) in a raid.`;
+      return ` ${USE_A_STONE}`;
     default:
       return '';
   }
