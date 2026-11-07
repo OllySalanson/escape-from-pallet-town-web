@@ -147,5 +147,6 @@ export function highScoresLines(progress: Pick<RaidProgress, 'gameCorner'>, now:
     : played
       ? 'Not top of anything yet today. The board is wiped every morning.'
       : 'Nothing of yours on it today. Play anything on the promenade.';
-  return ['HIGH SCORES - today’s best on the promenade.', ...lines, last];
+  // The caption over the board already says what it is, so the first line is a score.
+  return [...lines, last];
 }

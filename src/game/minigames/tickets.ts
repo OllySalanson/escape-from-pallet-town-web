@@ -95,6 +95,16 @@ export function courseTickets(ms: number): number {
   return COURSE_TICKET_TIERS.reduce((won, tier) => (ms <= tier.ms ? tier.tickets : won), 0);
 }
 
+/** A whole number as the game prints one, with thousands marked. */
+const number = (value: number): string => value.toLocaleString('en-GB');
+
+/** The first rung of a ladder of tiers. */
+const firstOf = <T>(tiers: readonly T[]): T => {
+  const first = tiers[0];
+  if (first === undefined) throw new Error('A ladder of tiers needs a first rung.');
+  return first;
+};
+
 type Tiers = readonly { readonly score: number; readonly tickets: number }[];
 
 function tierTickets(tiers: Tiers, score: number): number {
@@ -162,17 +172,41 @@ export function dojoWinTickets(winsToday: number): number {
  * time down; nothing played is 0 for both), and what a day's best is worth.
  */
 const SOURCE_RULES: Readonly<
-  Record<TicketSource, { readonly better: (a: number, b: number) => boolean; readonly tickets: (best: number) => number; readonly berries: (best: number) => number }>
+  Record<
+    TicketSource,
+    {
+      readonly better: (a: number, b: number) => boolean;
+      readonly tickets: (best: number) => number;
+      readonly berries: (best: number) => number;
+      /** What the first tier asks, said when a result reaches none. */
+      readonly firstTier: string;
+    }
+  >
 > = {
-  'pokemon-jump': { better: (a, b) => a > b, tickets: jumpTickets, berries: berriesForScore },
-  'berry-picking': { better: (a, b) => a > b, tickets: berryTickets, berries: (best) => (winsPrizeBerry(best) ? 1 : 0) },
-  'field-course': { better: (a, b) => a > 0 && (b <= 0 || a < b), tickets: courseTickets, berries: () => 0 },
-  'battle-arena': { better: (a, b) => a > b, tickets: dojoWinTickets, berries: () => 0 },
+  'pokemon-jump': { better: (a, b) => a > b, tickets: jumpTickets, berries: berriesForScore, firstTier: `A score of ${number(firstOf(JUMP_TICKET_TIERS).score)} pays.` },
+  'berry-picking': {
+    better: (a, b) => a > b,
+    tickets: berryTickets,
+    berries: (best) => (winsPrizeBerry(best) ? 1 : 0),
+    firstTier: `A score of ${number(firstOf(BERRY_TICKET_TIERS).score)} pays.`,
+  },
+  'field-course': {
+    better: (a, b) => a > 0 && (b <= 0 || a < b),
+    tickets: courseTickets,
+    berries: () => 0,
+    firstTier: `Round in ${firstOf(COURSE_TICKET_TIERS).ms / 1000} seconds pays.`,
+  },
+  'battle-arena': { better: (a, b) => a > b, tickets: dojoWinTickets, berries: () => 0, firstTier: 'A win pays.' },
   // The dig's berries are what it turns up, sent home through `digBerriesAllowed`, not paid by score.
-  derby: { better: (a, b) => a > b, tickets: derbyTickets, berries: () => 0 },
-  dig: { better: (a, b) => a > b, tickets: digTickets, berries: () => 0 },
-  'fishing-derby': { better: (a, b) => a > b, tickets: fishingDerbyTickets, berries: () => 0 },
-  'rental-run': { better: (a, b) => a > b, tickets: rentalRunTickets, berries: () => 0 },
+  derby: { better: (a, b) => a > b, tickets: derbyTickets, berries: () => 0, firstTier: 'The podium pays, from 3rd.' },
+  dig: { better: (a, b) => a > b, tickets: digTickets, berries: () => 0, firstTier: `${firstOf(DIG_TICKET_TIERS).score} points dug pays.` },
+  'fishing-derby': {
+    better: (a, b) => a > b,
+    tickets: fishingDerbyTickets,
+    berries: () => 0,
+    firstTier: `A tally of ${firstOf(FISHING_DERBY_TICKET_TIERS).score} pays.`,
+  },
+  'rental-run': { better: (a, b) => a > b, tickets: rentalRunTickets, berries: () => 0, firstTier: 'A win pays.' },
 };
 
 /** The better of two results at a source: the higher score, or the quicker time. */
@@ -228,6 +262,23 @@ export interface GamePayout {
   readonly newBest: boolean;
   /** Whether it is the best today. */
   readonly bestToday: boolean;
+  /**
+   * What the first tier asks, when this result reaches no tier at all - so
+   * last place is told what pays rather than that the day has paid it - and
+   * null when it reaches one.
+   */
+  readonly firstTier: string | null;
+}
+
+/**
+ * What a game paid, as one line: what was won, or why nothing was. A result
+ * that reaches no tier is never "a new best" and never "paid": it is told
+ * what the first tier asks.
+ */
+export function payoutWords(payout: GamePayout, won: readonly string[]): string {
+  if (won.length > 0) return `${payout.newBest ? 'A new best! ' : ''}Won ${won.join(', ')}.`;
+  if (payout.firstTier !== null) return `No tickets. ${payout.firstTier}`;
+  return `${payout.newBest ? 'A new best! ' : ''}${payout.bestToday ? 'Nothing more today: the day has paid this tier.' : 'Beat today’s best to win more.'}`;
 }
 
 /**
@@ -250,6 +301,7 @@ export function payGame(record: GameCornerRecord, source: TicketSource, result: 
     berries,
     newBest: rules.better(result, everBest),
     bestToday: result > 0 && best === result,
+    firstTier: rules.tickets(result) > 0 || rules.berries(result) > 0 ? null : rules.firstTier,
     record: {
       tickets: record.tickets + tickets,
       best: { ...record.best, [source]: betterResult(source, result, everBest) },

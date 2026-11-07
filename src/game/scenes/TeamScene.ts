@@ -10,7 +10,7 @@ import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen, pixelTag } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { pickerEntries, wirePickerFind } from '../ui/boxPicker';
-import { teamBody, teamRowHelp } from '../ui/teamView';
+import { LAST_ONE_STAYS, teamBody, teamRowHelp } from '../ui/teamView';
 
 export interface TeamSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -163,7 +163,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
       return;
     }
     const wasIn = flow.includesPokemon(pokemonId);
-    const refusal = flow.togglePokemon(pokemonId);
+    const refusal = wasIn && flow.party.length === 1 ? LAST_ONE_STAYS : flow.togglePokemon(pokemonId);
     if (refusal) {
       audioManager.play('denied');
       this.status = refusal;

@@ -72,7 +72,7 @@ describe('the HIGH SCORES board', () => {
   it('reads every game aloud in a line the dialogue box holds', () => {
     for (const day of Array.from({ length: 30 }, (_day, index) => new Date(2026, 10, 1 + index, 12, 0))) {
       const lines = highScoresLines(none, day);
-      expect(lines).toHaveLength(BOARD_GAMES.length + 2);
+      expect(lines).toHaveLength(BOARD_GAMES.length + 1);
       for (const line of lines) {
         expect([line, line.length <= 68]).toEqual([line, true]);
       }

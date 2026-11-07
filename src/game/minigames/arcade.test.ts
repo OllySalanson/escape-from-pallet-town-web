@@ -153,7 +153,8 @@ describe('THE GAME CORNER as an arcade', () => {
   it('hangs the HIGH SCORES board on the back wall beside the counter, faced from the floor in front of it', () => {
     const built = buildRoom(ROOM, baseGame(), NOW);
     const board = built.things.find((thing) => thing.name === 'HIGH SCORES');
-    expect(board?.lines?.[0]).toMatch(/^HIGH SCORES/);
+    // Its caption already says HIGH SCORES, so what is read starts on a score (playtest wave 3).
+    expect(board?.lines?.[0]).toMatch(/^JUMP: /);
     expect(built.posters.find((poster) => poster.kind === 'high-scores')?.area).toEqual(HIGH_SCORES_BOARD);
     for (let x = HIGH_SCORES_BOARD.x; x < HIGH_SCORES_BOARD.x + HIGH_SCORES_BOARD.width; x += 1) {
       expect(built.collision[HIGH_SCORES_BOARD.y + HIGH_SCORES_BOARD.height][x]).toBe(false);

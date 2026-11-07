@@ -181,6 +181,23 @@ export const PLAYTEST_GAMES: readonly PlaytestGame[] = [
 ];
 
 /**
+ * The one Pokémon the PLAYTEST BOARD's PRACTISE TO LOSE puts on the bench: a
+ * Lv 10 first stage out of the kit, so a practice bout can be lost and its
+ * "what beat you" read. The explorer run's own bench is a Lv 99 Charizard,
+ * which no leader can beat (playtest wave 3, finding 6).
+ */
+export const PRACTICE_TO_LOSE_SPECIES = 'caterpie';
+
+/** The bench PRACTISE TO LOSE sets: the vault's lowest-level Pokémon of `PRACTICE_TO_LOSE_SPECIES`, or none. */
+export function practiceToLoseBench(stash: Stash): readonly string[] {
+  const weakest = stash
+    .listPokemon()
+    .filter((stored) => stored.pokemon.base.id === PRACTICE_TO_LOSE_SPECIES && stored.pokemon.currentHp > 0)
+    .sort((a, b) => a.pokemon.level - b.pokemon.level)[0];
+  return weakest ? [weakest.id] : [];
+}
+
+/**
  * Every gym leader marked met, so each one waits on THE RAID ARENA's far floor
  * for a practice bout (`base/gymPractice.ts`) without a raid to their gym
  * first. Met, never beaten: a beaten leader's doors open and the leader is

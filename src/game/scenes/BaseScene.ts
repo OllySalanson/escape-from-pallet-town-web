@@ -342,7 +342,7 @@ import {
 } from '../dev/playtestBoard';
 import { openPlaytestBoard } from '../dev/PlaytestBoardOverlay';
 import { playtestHour, setPlaytestHour } from '../dev/playtestClock';
-import { PLAYTEST_GAMES, withNewDay } from '../dev/playtestKit';
+import { PLAYTEST_GAMES, practiceToLoseBench, withNewDay } from '../dev/playtestKit';
 import type { ThingsSceneData } from './ThingsScene';
 import type { TeamSceneData } from './TeamScene';
 import { PanelLean } from '../ui/sidePanel';
@@ -3215,6 +3215,11 @@ export class BaseScene extends Phaser.Scene {
         this.leaderOn(above) !== undefined ||
         (this.garden?.holds(above) ?? false) ||
         this.partnerAt(above) ||
+        // A picture on the wall the player is reading - the dojo's class board,
+        // the Game Corner's HIGH SCORES - wore the mark over its writing (playtest wave 3).
+        (this.place.room?.posters ?? []).some(
+          ({ area }) => above.x >= area.x && above.x < area.x + area.width && above.y >= area.y && above.y < area.y + area.height,
+        ) ||
         [...(this.harbourLife?.standing('person') ?? []), ...(this.harbourLife?.standing('pokemon') ?? [])].some(
           (tile) => sameTile(tile, above),
         ));
@@ -5406,6 +5411,7 @@ export class BaseScene extends Phaser.Scene {
         this.goTo({ savedGame: this.freshGame(), room: action.room }, 'interiorEnter');
         return;
       case 'stand': {
+        if (action.bench === 'weak') this.saveManager.chooseBench(practiceToLoseBench(this.freshGame().stash));
         const game = this.freshGame();
         this.goTo({ savedGame: game, room: action.room, at: action.at ?? practiceSpot(game.raidProgress), facing: action.facing }, 'interiorEnter');
         return;

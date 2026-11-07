@@ -9,7 +9,9 @@ import {
   JUMP_TICKET_TIERS,
   neverForTickets,
   NO_GAME_CORNER,
+  payGame,
   payJump,
+  payoutWords,
   prizeRefusal,
   readGameCorner,
   TICKET_PRIZES,
@@ -53,6 +55,19 @@ describe('tickets earned at the cabinets', () => {
     expect(scores).toEqual([...scores].sort((a, b) => a - b));
     expect(jumpTickets(0)).toBe(0);
     expect(jumpTickets(99999)).toBe(30);
+  });
+
+  it('tells a result that reaches no tier what pays, never that it is a new best or that the day has paid', () => {
+    // Last of six in the derby on a fresh day: playtest wave 3, finding 2.
+    const last = payGame(NO_GAME_CORNER, 'derby', 1, NOON);
+    expect(last.tickets).toBe(0);
+    expect(last.firstTier).toBe('The podium pays, from 3rd.');
+    expect(payoutWords(last, [])).toBe('No tickets. The podium pays, from 3rd.');
+    const third = payGame(last.record, 'derby', 4, NOON);
+    expect(third.firstTier).toBeNull();
+    expect(payoutWords(third, ['10 tickets'])).toBe('A new best! Won 10 tickets.');
+    expect(payoutWords(payGame(third.record, 'derby', 4, EVENING), [])).toBe('Nothing more today: the day has paid this tier.');
+    expect(payoutWords(payJump(NO_GAME_CORNER, 100, NOON), [])).toBe('No tickets. A score of 250 pays.');
   });
 });
 

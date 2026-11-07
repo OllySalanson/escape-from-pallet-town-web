@@ -10,7 +10,7 @@ import {
   pixelTag,
   pixelWindow,
 } from '../ui/pixelUi';
-import type { GamePayout } from './tickets';
+import { payoutWords, type GamePayout } from './tickets';
 
 /**
  * The promenade's three outdoor games' one DOM screen, as pure markup: choose
@@ -64,13 +64,7 @@ export function outdoorResultLine(last: NonNullable<OutdoorPickState['last']>): 
     const count = last.kept.filter((other) => other === itemId).length;
     won.push(`${count > 1 ? `${count} ` : ''}${getItemById(itemId)?.displayName ?? itemId}`);
   }
-  const paid =
-    won.length > 0
-      ? `Won ${won.join(', ')}.`
-      : last.payout.bestToday
-        ? 'Nothing more today: the day has paid this tier.'
-        : 'Beat today’s best to win more.';
-  return `<small class="px-wrap${won.length > 0 ? ' px-good' : ''}">${last.payout.newBest ? 'A new best! ' : ''}${paid}</small>`;
+  return `<small class="px-wrap${won.length > 0 ? ' px-good' : ''}">${escapeAttribute(payoutWords(last.payout, won))}</small>`;
 }
 
 /** The game's own screen: pick who plays, then play. */

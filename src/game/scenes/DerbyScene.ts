@@ -1,8 +1,11 @@
 import type Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { getBaseMap } from '../base/baseMap';
+import { BASE_TILESET } from '../base/baseTileset';
+import type { TileLayer } from '../world/tiles';
 import type { StashedPokemon } from '../stash';
 import { drawPixelWindow, WINDOW_CREAM } from '../ui/pixelWindow';
+import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { isFigureSpecies, pokemonIconFrames, POKEMON_ICON_FRAME_MS, POKEMON_ICON_TEXTURE } from '../world/pokemonFigures';
 import {
   advanceDerby,
@@ -35,16 +38,13 @@ const VIEW = { x: 59, y: 11, width: 28, height: 21 } as const;
 /** How long the finish is shown before the screen comes back. */
 const END_PAUSE_MS = 1800;
 
-/** What each ground is drawn as, from above: the harbour's own materials. */
-const GROUND: Readonly<Record<string, readonly [number, number]>> = {
-  stone: [0xb8b8c8, 0x989aa8],
-  boards: [0xc89058, 0x986838],
-  sand: [0xe8d088, 0xd8c078],
-  beach: [0xf0dc98, 0xe0c880],
-  water: [0x3870c8, 0x2858a8],
-  grass: [0x70c870, 0x58b058],
-  tree: [0x286828, 0x1c501c],
-};
+/** A tile of the harbour, drawn at its own size: the race is the harbour's own art. */
+const TILE = 16;
+/** The column down the right the standings and the sprint stand in, off the track. */
+const SIDE = 82;
+/** The strip along the foot the forks and the keys are said in, off the track. */
+const FOOT = 28;
+const INK = '#202030';
 
 const PLACE_WORDS = ['1ST', '2ND', '3RD', '4TH', '5TH', '6TH'];
 
@@ -77,8 +77,13 @@ export class DerbyScene extends OutdoorGameScene {
   private choice: { first?: FirstLine; second?: SecondLine } = {};
   private tap = false;
   private endingFor: number | null = null;
-  private tile = 8;
-  private origin = { x: 0, y: 0 };
+  private tilemap: Phaser.Tilemaps.Tilemap | undefined;
+  private hudCamera: Phaser.Cameras.Scene2D.Camera | undefined;
+  /** What is drawn on the course, which the side and foot leave alone. */
+  private trackParts: Phaser.GameObjects.GameObject[] = [];
+  /** What is drawn in the side and the foot, which the course's camera leaves alone. */
+  private hudParts: Phaser.GameObjects.GameObject[] = [];
+  private sprint: Phaser.GameObjects.Graphics | undefined;
   private runners: Phaser.GameObjects.Sprite[] = [];
   private marks: Phaser.GameObjects.Graphics | undefined;
   private hud: Phaser.GameObjects.Text | undefined;
@@ -130,65 +135,119 @@ export class DerbyScene extends OutdoorGameScene {
     this.tap = false;
     this.endingFor = null;
     const { width, height } = this.scale;
-    this.tile = Math.max(6, Math.min(Math.floor((width - 8) / VIEW.width), Math.floor((height - 16) / VIEW.height)));
-    this.origin = {
-      x: Math.round((width - VIEW.width * this.tile) / 2),
-      y: Math.round((height - VIEW.height * this.tile) / 2),
-    };
-    this.drawGround();
-    this.marks = this.keep(this.add.graphics().setDepth(4));
+    // The FEEDBACK tab stands over the right of the screen on a window the game
+    // fills, so the side column steps in by it and nothing in it goes under.
+    const tab = feedbackTabOverGame(this.game.canvas, { width, height });
+    const tabWidth = tab ? width - tab.x : 0;
+    const track = { width: width - SIDE - tabWidth, height: height - FOOT };
+    this.trackParts = [];
+    this.hudParts = [];
+    this.layGround();
+    this.marks = this.onTrack(this.add.graphics().setDepth(4));
     this.runners = this.race.runners.map((runner) => {
       const species = runner.racer.species;
       const frame = isFigureSpecies(species) ? pokemonIconFrames(species)[0] : 0;
-      return this.keep(this.add.sprite(0, 0, POKEMON_ICON_TEXTURE, frame).setOrigin(0.5, 0.75).setDepth(runner.index === 0 ? 7 : 6));
+      return this.onTrack(this.add.sprite(0, 0, POKEMON_ICON_TEXTURE, frame).setOrigin(0.5, 0.75).setDepth(runner.index === 0 ? 7 : 6));
     });
-    const panel = this.keep(this.add.graphics().setDepth(10));
-    drawPixelWindow(panel, { x: 4, y: 4, width: 92, height: 32 }, { fill: WINDOW_CREAM });
-    this.hud = this.words_(9, 6, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
-    this.board = this.words_(width - 6, 6, '', { origin: [1, 0] });
-    this.callout = this.words_(width / 2, Math.round(height * 0.32), '', { big: true, origin: [0.5, 0.5] });
-    this.fork = this.words_(width / 2, height - 16, '', { origin: [0.5, 1], colour: '#f8e070' });
-    this.words_(width / 2, height - 3, 'SPACE: sprint · ARROWS: line · ESC: stop', { origin: [0.5, 1] });
+    // The course is seen through a window that follows the player's racer;
+    // the side and the foot are a second camera's, so nothing is written on the track.
+    const camera = this.cameras.main;
+    camera.setViewport(0, 0, track.width, track.height);
+    camera.setBounds(VIEW.x * TILE, VIEW.y * TILE, VIEW.width * TILE, VIEW.height * TILE);
+    camera.setBackgroundColor(INK);
+    camera.setRoundPixels(true);
+    const mine = this.runners[0];
+    if (mine) camera.startFollow(mine, true, 0.2, 0.2);
+    this.hudCamera = this.cameras.add(0, 0, width, height);
+    const frame = this.onHud(this.add.graphics().setDepth(0));
+    frame.fillStyle(0x202030, 1).fillRect(track.width, 0, SIDE + tabWidth, height).fillRect(0, track.height, track.width, FOOT);
+    const side = this.onHud(this.add.graphics().setDepth(1));
+    drawPixelWindow(side, { x: track.width + 4, y: 4, width: SIDE - 8, height: 40 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(side, { x: track.width + 4, y: 48, width: SIDE - 8, height: Math.min(track.height - 52, 92) }, { fill: WINDOW_CREAM });
+    this.hud = this.onHud(this.words_(track.width + 9, 6, '', { colour: INK }).setStroke(INK, 0).setDepth(2));
+    this.sprint = this.onHud(this.add.graphics().setDepth(2));
+    this.board = this.onHud(this.words_(track.width + 9, 50, '', { colour: INK }).setStroke(INK, 0).setDepth(2));
+    this.callout = this.onHud(this.words_(track.width / 2, Math.round(track.height * 0.32), '', { big: true, origin: [0.5, 0.5] }));
+    this.fork = this.onHud(this.words_(track.width / 2, height - 15, '', { origin: [0.5, 1], colour: '#f8e070' }));
+    this.onHud(this.words_(track.width / 2, height - 2, 'SPACE: sprint · ARROWS: line · ESC: stop', { origin: [0.5, 1] }));
+    camera.ignore(this.hudParts);
+    this.hudCamera.ignore(this.trackParts);
     this.drawRace();
   }
 
-  /** The harbour's own ground under the course, a coloured square a tile. */
-  private drawGround(): void {
-    const map = getBaseMap([]);
-    const ground = this.keep(this.add.graphics().setDepth(0));
-    ground.fillStyle(0x202030, 1).fillRect(0, 0, this.scale.width, this.scale.height);
-    for (let y = 0; y < VIEW.height; y += 1) {
-      for (let x = 0; x < VIEW.width; x += 1) {
-        const tx = VIEW.x + x;
-        const ty = VIEW.y + y;
-        const material = String(map.terrain[ty]?.[tx] ?? 'water');
-        const [light, dark] = GROUND[material] ?? GROUND.grass;
-        const solid = map.collision[ty]?.[tx] && material !== 'water' && material !== 'tree';
-        const px = this.origin.x + x * this.tile;
-        const py = this.origin.y + y * this.tile;
-        ground.fillStyle((tx + ty) % 2 === 0 ? light : dark, 1).fillRect(px, py, this.tile, this.tile);
-        if (solid) {
-          // What stands on the ground - a hut, a rail, a building - is a block of shade.
-          ground.fillStyle(0x404868, 0.55).fillRect(px + 1, py + 1, this.tile - 2, this.tile - 2);
-        }
+  private onTrack<T extends Phaser.GameObjects.GameObject>(part: T): T {
+    this.trackParts.push(part);
+    return this.keep(part);
+  }
+
+  private onHud<T extends Phaser.GameObjects.GameObject>(part: T): T {
+    this.hudParts.push(part);
+    return this.keep(part);
+  }
+
+  /** THE HARBOUR's own tile layers under the course, at their own size, and the start and finish across the stone. */
+  private layGround(): void {
+    const harbour = getBaseMap([]);
+    const map = this.make.tilemap({ width: harbour.width, height: harbour.height, tileWidth: TILE, tileHeight: TILE });
+    const sheets = BASE_TILESET.sources.map((source) => {
+      const sheet = map.addTilesetImage(source.textureKey, source.textureKey, TILE, TILE, 0, 0, source.firstIndex);
+      if (!sheet) throw new Error(`Tileset '${source.textureKey}' failed to load.`);
+      return sheet;
+    });
+    const lay = (layer: TileLayer, name: string, depth: number): void => {
+      const created = map.createBlankLayer(`derby-${name}`, sheets, 0, 0);
+      if (!created) throw new Error(`Tilemap layer 'derby-${name}' failed to initialize.`);
+      created.putTilesAt(layer.tiles.map((row) => [...row]), 0, 0);
+      created.setDepth(depth);
+      created.forEachTile((tile) => {
+        const tint = layer.tints[tile.y]?.[tile.x] ?? -1;
+        if (tint >= 0) tile.tint = tint;
+        if (layer.flips[tile.y]?.[tile.x]) tile.flipX = true;
+      });
+      this.trackParts.push(created);
+    };
+    const { ground, overlay, detail, canopy, brim } = harbour.layers;
+    lay(ground, 'ground', 0);
+    lay(overlay, 'overlay', 0.1);
+    lay(detail, 'detail', 0.2);
+    // Roofs and crowns under the racers: a race is watched from above, and nobody runs hidden.
+    lay(canopy, 'canopy', 3);
+    lay(brim, 'brim', 3.1);
+    this.tilemap = map;
+    const line = this.onTrack(this.add.graphics().setDepth(3.5));
+    const lineX = 64 * TILE;
+    for (let row = 13; row <= 14; row += 1) {
+      for (let step = 0; step < TILE; step += 2) {
+        const py = row * TILE + step;
+        line.fillStyle(step % 4 === 0 ? 0x202030 : 0xf8f8f8, 1).fillRect(lineX - 2, py, 2, 2);
+        line.fillStyle(step % 4 === 0 ? 0xf8f8f8 : 0x202030, 1).fillRect(lineX, py, 2, 2);
       }
     }
-    // The start and finish: a chequered line across the stone.
-    const lineX = this.origin.x + (64 - VIEW.x) * this.tile;
-    for (let row = 13; row <= 14; row += 1) {
-      for (let step = 0; step < this.tile; step += 2) {
-        const py = this.origin.y + (row - VIEW.y) * this.tile + step;
-        ground.fillStyle(step % 4 === 0 ? 0x202030 : 0xf8f8f8, 1).fillRect(lineX - 2, py, 2, 2);
-        ground.fillStyle(step % 4 === 0 ? 0xf8f8f8 : 0x202030, 1).fillRect(lineX, py, 2, 2);
-      }
+  }
+
+  protected tearDownStage(): void {
+    super.tearDownStage();
+    this.tilemap?.destroy();
+    this.tilemap = undefined;
+    this.trackParts = [];
+    this.hudParts = [];
+    this.sprint = undefined;
+    if (this.hudCamera) {
+      this.cameras?.remove(this.hudCamera);
+      this.hudCamera = undefined;
+    }
+    const camera = this.cameras?.main;
+    if (camera) {
+      camera.stopFollow();
+      camera.setViewport(0, 0, this.scale.width, this.scale.height);
+      camera.removeBounds();
+      camera.setScroll(0, 0);
+      camera.setBackgroundColor('rgba(0,0,0,0)');
     }
   }
 
   private toScreen(point: { readonly x: number; readonly y: number }): { x: number; y: number } {
-    return {
-      x: this.origin.x + (point.x - VIEW.x + 0.5) * this.tile,
-      y: this.origin.y + (point.y - VIEW.y + 0.5) * this.tile,
-    };
+    return { x: (point.x + 0.5) * TILE, y: (point.y + 0.5) * TILE };
   }
 
   protected onGameKey(event: KeyboardEvent): void {
@@ -297,24 +356,32 @@ export class DerbyScene extends OutdoorGameScene {
       const where = whereIs(runner);
       const at = this.toScreen(where);
       // Side by side in the lane at the start, so six are not one picture.
-      const lane = runner.leg === 0 && runner.along < 1 ? (index - 2.5) * 0.18 * this.tile : 0;
+      const lane = runner.leg === 0 && runner.along < 1 ? (index - 2.5) * 0.18 * TILE : 0;
       sprite.setPosition(Math.round(at.x), Math.round(at.y + lane));
-      sprite.setScale(this.tile >= 12 ? 0.75 : 0.5);
       const species = runner.racer.species;
       if (isFigureSpecies(species)) sprite.setFrame(pokemonIconFrames(species)[runner.finishedMs === null && race.clock > COUNTDOWN_MS ? bob : 0]);
       sprite.setFlipX(Math.cos(where.heading) > 0.2);
       sprite.setAlpha(where.surface === 'water' ? 0.8 : 1);
-      if (where.surface === 'air') marks.fillStyle(0x202030, 0.35).fillEllipse(at.x, at.y + this.tile * 0.6, this.tile * 0.8, this.tile * 0.3);
+      if (where.surface === 'air') marks.fillStyle(0x202030, 0.35).fillEllipse(at.x, at.y + TILE * 0.6, TILE * 0.8, TILE * 0.3);
       if (index === 0) {
         // The player's racer: a white chevron over it.
-        marks.fillStyle(0xf8f8f8, 1).fillTriangle(at.x - 4, at.y - this.tile - 6, at.x + 4, at.y - this.tile - 6, at.x, at.y - this.tile - 1);
+        marks.fillStyle(0xf8f8f8, 1).fillTriangle(at.x - 4, at.y - TILE - 10, at.x + 4, at.y - TILE - 10, at.x, at.y - TILE - 5);
       }
     });
     const me = race.runners[0];
     const order = [...race.runners].sort((a, b) => progressOf(b) - progressOf(a) || (a.finishedMs ?? Infinity) - (b.finishedMs ?? Infinity));
     const place = playerPlace(race) ?? order.findIndex((runner) => runner.index === 0) + 1;
     const bar = Math.round((me.stamina / staminaMs(me.racer)) * 10);
-    this.hud?.setText([`${PLACE_WORDS[place - 1]}  ${race.wet ? 'WET' : 'DRY'}`, `SPRINT ${'#'.repeat(bar)}${'.'.repeat(10 - bar)}`]);
+    this.hud?.setText([`${PLACE_WORDS[place - 1]} · ${race.wet ? 'WET' : 'DRY'}`, 'SPRINT']);
+    const sprint = this.sprint?.clear();
+    if (sprint && this.hud) {
+      // The sprint left, as a bar of ten pips under its word.
+      const left = this.hud.x;
+      const top = this.hud.y + 26;
+      for (let pip = 0; pip < 10; pip += 1) {
+        sprint.fillStyle(pip < bar ? 0x48a058 : 0xc8c0a0, 1).fillRect(left + pip * 6, top, 5, 6);
+      }
+    }
     this.board?.setText(order.map((runner, index) => `${index + 1} ${runner.index === 0 ? 'YOU' : runner.name}`));
     const fork = nextFork(me);
     const open = linesOpenTo(me.racer);

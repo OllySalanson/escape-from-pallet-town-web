@@ -2,6 +2,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import type { HunterRivalId } from '../world/hunters';
 import { fellLine } from '../world/raidMemory';
 import Phaser from 'phaser';
+import { setFightForShow } from '../dev/playtestMode';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import { homeAfterRaid } from '../maker/tryIt';
@@ -272,6 +273,8 @@ const RUN_RESULT_DELAY_MS = 700;
  */
 const LUNGE_LEG_MS = 140;
 const LUNGE_LANDS_MS = LUNGE_LEG_MS * 4;
+/** How long a Pokemon takes to slide in to its spot at the start of a fight. */
+const ENTRANCE_SLIDE_MS = 650;
 /** How far a fainting Pokemon sinks below its spot as it fades out. */
 const FAINT_DROP = 34;
 const BATTLEFIELD_WIDTH = BASE_STAGE_WIDTH;
@@ -460,6 +463,8 @@ export class BattleScene extends Phaser.Scene {
   private dialog!: DialogBox;
   private plates = new Map<string, CombatantPlate>();
   private sprites = new Map<string, Phaser.GameObjects.Image>();
+  /** Entrances still sliding in to their spots, on the scene's own clock (`slideOntoSpot`). */
+  private slides = new Map<Phaser.GameObjects.Image, { readonly fromX: number; readonly toX: number; readonly startsAt: number; readonly landed: () => void }>();
   private fieldMask?: Phaser.Display.Masks.GeometryMask;
   /**
    * The moves chosen so far this turn, one per slot. A double battle asks each
@@ -714,6 +719,7 @@ export class BattleScene extends Phaser.Scene {
     this.returnLocation = data.returnLocation;
     this.returnScene = data.returnScene;
     this.exhibition = data.exhibition;
+    setFightForShow(data.exhibition !== undefined);
     if (data.exhibition && data.runSession) {
       throw new Error('A bout for show cannot be fought on a raid.');
     }
@@ -795,6 +801,7 @@ export class BattleScene extends Phaser.Scene {
     );
     this.plates.clear();
     this.sprites.clear();
+    this.slides?.clear();
     this.displayed.clear();
     this.displayedHp.clear();
     this.shownStatus.clear();
@@ -924,6 +931,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   public update(_time: number, delta: number): void {
+    this.advanceSlides();
     this.dialog.update(delta);
     // The naming screen owns the keyboard; the fight waits on its answer.
     if (this.mode === 'naming') {
@@ -1104,17 +1112,36 @@ export class BattleScene extends Phaser.Scene {
         }
         const sprite = this.createCombatantSprite(ref, combatant);
         const spot = combatantSpot(side, ref.slot, this.state.unitCount);
-        this.tweens.add({
-          targets: sprite,
-          x: spot.x,
-          duration: 650,
-          ease: 'Quad.out',
-          delay,
-          // A shiny sparkles once it has landed, as FireRed's does once its
-          // plate is up (`TryShinyAnimation`).
-          onComplete: () => this.sparkleIfShiny(ref, combatant.pokemon),
-        });
+        // A shiny sparkles once it has landed, as FireRed's does once its
+        // plate is up (`TryShinyAnimation`).
+        this.slideOntoSpot(sprite, spot.x, delay, () => this.sparkleIfShiny(ref, combatant.pokemon));
         delay += 180;
+      }
+    }
+  }
+
+  /**
+   * Slides a sprite in to its spot on the scene's own clock, never on a tween:
+   * Phaser's tween manager keeps the wall clock, so under a slow or stepped
+   * frame the entrance stopped part-way and the foe was fought from the
+   * field's right edge, half off it and above its platform (playtest wave 3,
+   * finding 3). Anything that stands the sprite on its spot since
+   * (`standOnSpot`) takes the slide away.
+   */
+  private slideOntoSpot(sprite: Phaser.GameObjects.Image, toX: number, delay: number, landed: () => void): void {
+    this.slides ??= new Map();
+    this.slides.set(sprite, { fromX: sprite.x, toX, startsAt: this.time.now + delay, landed });
+  }
+
+  /** Moves every entrance on by the scene's clock; called from `update` on every frame. */
+  private advanceSlides(): void {
+    for (const [sprite, slide] of this.slides ?? []) {
+      const t = Math.min(1, Math.max(0, (this.time.now - slide.startsAt) / ENTRANCE_SLIDE_MS));
+      const eased = 1 - (1 - t) * (1 - t);
+      sprite.x = Math.round(slide.fromX + (slide.toX - slide.fromX) * eased);
+      if (t >= 1) {
+        this.slides.delete(sprite);
+        slide.landed();
       }
     }
   }
@@ -1345,6 +1372,8 @@ export class BattleScene extends Phaser.Scene {
     }
     const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
     this.tweens.killTweensOf(sprite);
+    // Optional: the scene's tests stand it up without its constructor.
+    this.slides?.delete(sprite);
     return sprite.clearTint().setPosition(spot.x, this.seatedY(ref)).setAlpha(1);
   }
 

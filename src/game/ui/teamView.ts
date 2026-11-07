@@ -37,8 +37,14 @@ export function teamRows(state: TeamViewState): { readonly team: readonly Picker
 }
 
 /** What the help bar says of a row, and the status line after it is pressed. */
+/** Said when ENTER would leave the team empty: nobody is ever left with no team (playtest wave 3, finding 11). */
+export const LAST_ONE_STAYS = 'Somebody has to go. Take another first.';
+
 export function teamRowHelp(entry: PickerEntry, going: boolean, lead: boolean, size: number): string {
   const name = entry.pokemon.name;
+  if (going && size === 1) {
+    return `Somebody has to go: ${name} is the whole team. Take another first, then leave ${name} at home.`;
+  }
   if (going) {
     return lead
       ? `${name} leads the next raid. ENTER leaves it at home in ${entry.box}.`
