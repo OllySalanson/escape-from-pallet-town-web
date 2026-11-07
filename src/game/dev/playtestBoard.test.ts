@@ -9,8 +9,11 @@ import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import type { GridPosition } from '../movement/gridMovement';
 import { DOJO_COUNTER_TILES } from '../arena/dojoCounter';
 import { baseGame } from '../base/baseGames.testkit';
-import { LEADER_TILES } from '../base/gymPractice';
-import { PLAYTEST_BOARD_TILE, STAND_ROWS, placeLanding, playtestBoardRows } from './playtestBoard';
+import { RIVAL_TILE, rivalUp } from '../base/arenaBouts';
+import { practiceLeaders } from '../base/gymPractice';
+import { raidsDeployed } from '../save/SaveManager';
+import { withEveryLeaderMet } from './playtestKit';
+import { PLAYTEST_BOARD_TILE, STAND_ROWS, placeLanding, playtestBoardRows, practiceSpot } from './playtestBoard';
 import { playtestBoardMarkup } from './playtestBoardView';
 import { PLAYTEST_GAMES } from './playtestKit';
 
@@ -83,12 +86,18 @@ describe("the board's rows", () => {
     const game = baseGame({ built: [] });
     for (const row of STAND_ROWS) {
       if (row.action.kind !== 'stand') continue;
-      const { room, at } = row.action;
+      const { room } = row.action;
       const built = buildRoom(BASE_ROOMS.find((each) => each.id === room)!, game);
-      expect(built.collision[at.y]?.[at.x], row.id).toBe(false);
-      const faced = { x: at.x, y: at.y - 1 };
-      const facesWhat = room === 'battle-arena' ? DOJO_COUNTER_TILES : LEADER_TILES.slice(0, 1);
-      expect(facesWhat.some((tile) => same(tile, faced)), row.id).toBe(true);
+      // The explorer run has met every leader; whichever is the rival today, somebody spars.
+      for (const raids of [0, 1, 2, 3, 4]) {
+        const progress = withEveryLeaderMet({ ...game.raidProgress, raidRecord: { 'greystone-vale': { deployed: raids, extracted: 0, wiped: 0 } } });
+        const at = row.action.at ?? practiceSpot(progress);
+        expect(built.collision[at.y]?.[at.x], row.id).toBe(false);
+        const faced = { x: at.x, y: at.y - 1 };
+        const facesWhat =
+          room === 'battle-arena' ? DOJO_COUNTER_TILES : practiceLeaders(progress, rivalUp(progress.bouts, raidsDeployed(progress)).id).map((leader) => leader.tile);
+        expect(facesWhat.some((tile) => same(tile, faced)) || same(faced, RIVAL_TILE), `${row.id} after ${raids} raids`).toBe(true);
+      }
       expect(rows.some((each) => each.id === row.id), row.id).toBe(true);
     }
   });

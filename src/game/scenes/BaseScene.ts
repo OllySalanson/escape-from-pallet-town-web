@@ -330,7 +330,7 @@ import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { openFavourList } from '../ui/FavourListOverlay';
-import { PLAYTEST_BOARD_TILE, placeLanding, type PlaytestBoardAction } from '../dev/playtestBoard';
+import { PLAYTEST_BOARD_TILE, placeLanding, practiceSpot, type PlaytestBoardAction } from '../dev/playtestBoard';
 import { openPlaytestBoard } from '../dev/PlaytestBoardOverlay';
 import { playtestHour, setPlaytestHour } from '../dev/playtestClock';
 import { PLAYTEST_GAMES, withNewDay } from '../dev/playtestKit';
@@ -1236,6 +1236,14 @@ export class BaseScene extends Phaser.Scene {
     this.layThePitGift();
     this.chalkTheRun(data.raidMood === 'groan');
     this.standTheRival(data.bout ? hunterRival(data.bout.rival) : undefined);
+    // The rival and the leaders stand after the partner arrived: one that came
+    // in on a tile of theirs steps off it (the playtest board stands the player
+    // facing a leader, which is where a partner arrives in front of them).
+    const arrived = this.partner as PartnerFigure | null;
+    const arrivedOn = arrived?.standingTile();
+    if (arrived && arrivedOn && this.isBlocked(arrivedOn)) {
+      arrived.standAt(arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile)));
+    }
     this.hangTheBanner();
     if (data.bout) {
       this.tellTheBout(data.bout, boutWent);
@@ -5327,9 +5335,11 @@ export class BaseScene extends Phaser.Scene {
       case 'room':
         this.goTo({ savedGame: this.freshGame(), room: action.room }, 'interiorEnter');
         return;
-      case 'stand':
-        this.goTo({ savedGame: this.freshGame(), room: action.room, at: action.at, facing: action.facing }, 'interiorEnter');
+      case 'stand': {
+        const game = this.freshGame();
+        this.goTo({ savedGame: game, room: action.room, at: action.at ?? practiceSpot(game.raidProgress), facing: action.facing }, 'interiorEnter');
         return;
+      }
       case 'place': {
         const place = HARBOUR_PLACES.find((each) => each.id === action.place);
         if (place) {

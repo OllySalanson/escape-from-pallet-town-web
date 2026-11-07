@@ -57,6 +57,12 @@ describe('a bout in THE BATTLE ARENA', () => {
     expect(flatLevelCopy(full).moves.map((move) => move.base.name)).toEqual(full.moves.map((move) => move.base.name));
   });
 
+  it.each(['bulbasaur', 'charmander', 'squirtle'])('gives a new player\u2019s Lv 5 %s an attack of its own type at the bout level', (id) => {
+    const copy = flatLevelCopy(make(id, 5));
+    const own = SPECIES_BY_ID[id].primaryType;
+    expect(copy.moves.some((move) => move.base.power > 0 && move.base.type === own), copy.moves.map((move) => move.base.name).join(', ')).toBe(true);
+  });
+
   it('puts a Lv 70 and a Lv 12 of the same kind on equal terms', () => {
     expect(flatLevelCopy(make('charmander', 70)).stats).toEqual(flatLevelCopy(make('charmander', 12)).stats);
   });

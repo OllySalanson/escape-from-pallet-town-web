@@ -10,11 +10,11 @@ import { Move, Pokemon, type MoveBase } from '../pokemon';
  * onto the mat - the player's and the opponent's - is a fresh copy at
  * `DOJO_LEVEL`: its own species, its own moves at full PP, its own held item,
  * nickname and colours, and the stats that level gives. A Pokémon below that
- * level also learns, into any free slot, what its own learnset would have
- * taught it on the way up (`movesOnTheWayTo`), exactly as levelling does when
- * nothing has to be forgotten - so a new player's Lv 5 Charmander comes in
- * with Ember and Metal Claw beside Scratch and Growl, and never a move or a
- * stat its kind could not have. A Lv 70 Charizard
+ * level also fills any free slot with what its own learnset has it know at
+ * that level (`movesOnTheWayTo`), its best attacks first - so a new player's
+ * Lv 5 Charmander comes in with Ember and Metal Claw beside Scratch and Growl,
+ * and never a move or a stat its kind could not have (the wave 2 playtest: at
+ * Lv 30 with its Lv 5 moves, a new player lost every bout). A Lv 70 Charizard
  * and a Lv 12 Charmander are each just one of their kind. Raids keep the real
  * levels and the real risk.
  *
@@ -44,29 +44,31 @@ const MOVE_SLOTS = 4;
 export const DOJO_BANNED_SPECIES: readonly string[] = ['mewtwo', 'mew'];
 
 /**
- * The moves a Pokémon knowing `known` at `fromLevel` would learn levelling to
- * `toLevel` without forgetting any: its own species' learnset above its level,
- * in learning order, each into a free slot until there is none. A level-up
- * that finds no room asks which to forget, and a bout cannot ask, so it keeps
- * what the Pokémon chose to know.
+ * What a Pokémon knowing `known` would bring to free slots at `toLevel`: the
+ * moves its own species knows at that level by its learnset (`new Pokemon`'s
+ * kit at that level - FireRed's four latest), those it does not already know,
+ * the hardest-hitting first (power, with the same-type bonus) and then the
+ * rest, newest first, until the four slots are full. Never a move its kind
+ * could not know there, and never in place of one it chose to keep. A
+ * Pokémon already at or past `toLevel` learns nothing here.
  */
 export function movesOnTheWayTo(
   pokemon: Pokemon,
   toLevel: number,
   known: readonly MoveBase[] = pokemon.moves.map((move) => move.base),
 ): MoveBase[] {
-  const kit = [...known];
-  for (const entry of [...pokemon.base.learnset]
-    .filter((learnable) => learnable.level > pokemon.level && learnable.level <= toLevel)
-    .sort((left, right) => left.level - right.level)) {
-    if (kit.length >= MOVE_SLOTS) {
-      break;
-    }
-    if (!kit.includes(entry.move)) {
-      kit.push(entry.move);
-    }
+  if (pokemon.level >= toLevel || known.length >= MOVE_SLOTS) {
+    return [];
   }
-  return kit.slice(known.length);
+  const types = [pokemon.base.primaryType, pokemon.base.secondaryType];
+  const hits = (move: MoveBase): number => move.power * (types.includes(move.type) ? 1.5 : 1);
+  const kit = new Pokemon(pokemon.base, toLevel).moves.map((move) => move.base);
+  const newest = [...kit].reverse().filter((move) => !known.includes(move));
+  const ranked = [
+    ...newest.filter((move) => move.power > 0).sort((left, right) => hits(right) - hits(left)),
+    ...newest.filter((move) => move.power <= 0),
+  ];
+  return ranked.slice(0, MOVE_SLOTS - known.length);
 }
 
 /**

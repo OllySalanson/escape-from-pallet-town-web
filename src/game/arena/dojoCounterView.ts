@@ -84,7 +84,7 @@ export function memberHelp(entry: PickerEntry, inTeam: boolean, refusal: string 
   if (inTeam) {
     const learned = movesOnTheWayTo(entry.pokemon, DOJO_LEVEL).map((move) => move.name.toUpperCase());
     return learned.length > 0
-      ? `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} and learns ${learned.join(', ')} on the way up. ENTER leaves it out.`
+      ? `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} and knows ${learned.join(', ')} there too. ENTER leaves it out.`
       : `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} with its own moves. ENTER leaves it out.`;
   }
   return refusal ?? `${entry.pokemon.name} (from ${entry.box}) would fight at Lv ${DOJO_LEVEL}. ENTER brings it.`;

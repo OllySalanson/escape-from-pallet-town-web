@@ -150,7 +150,10 @@ try {
   }
   await until(sceneIs('dojo-counter'), 'the counter');
   await wait(400);
-  const opponent = await page.evaluate(`(() => { const row = document.querySelector('.dojo-counter [data-opponent]:not([aria-disabled])'); row?.click(); return row?.dataset.opponent ?? null; })()`);
+  // A regular with water on their side if today has one, so a Charmander's loss - and what beat it - is likely to be seen.
+  const opponent = await page.evaluate(`(() => { const rows = [...document.querySelectorAll('.dojo-counter [data-opponent]:not([aria-disabled])')];
+    const row = rows.find((each) => /SQUIRTLE|WARTORTLE|BLASTOISE|STARYU|STARMIE|POLIWAG|PSYDUCK|GOLDUCK|LAPRAS|GYARADOS/.test(each.textContent)) ?? rows[0];
+    row?.click(); return row?.dataset.opponent ?? null; })()`);
   await wait(400);
   const status = await page.evaluate(`document.querySelector('.dojo-counter .px-help')?.textContent ?? ''`);
   console.log(`  counter says: ${status.replace(/\s+/g, ' ').trim()}`);
@@ -160,12 +163,12 @@ try {
     await page.evaluate(`document.querySelector('.dojo-counter [data-member]:not([aria-disabled])')?.click()`);
     await wait(300);
   }
-  const bar = await page.evaluate(`document.querySelector('.dojo-counter .px-commit-bar, .dojo-counter [class*="commit"]')?.textContent ?? ''`);
+  const bar = await page.evaluate(`document.querySelector('.dojo-counter .confirm-bar')?.textContent ?? ''`);
   console.log(`  bar: ${bar.replace(/\s+/g, ' ').trim()}`);
   expect(`the bar says one a side (${bar.replace(/\s+/g, ' ').trim()})`, /1 vs 1/i.test(bar));
   const memberHelp = await page.evaluate(`document.querySelector('.dojo-counter [data-member].is-selected')?.dataset.help ?? ''`);
   console.log(`  Charmander's row: ${memberHelp}`);
-  expect('its row says what it learns on the way up to Lv 30', /learns .*EMBER/i.test(memberHelp));
+  expect('its row says what else it knows at Lv 30', /knows .*EMBER/i.test(memberHelp));
   await shoot('fresh-counter-team');
   await page.evaluate(`document.querySelector('.dojo-counter [data-fight]').click()`);
   await until(sceneIs('battle'), 'the bout');
@@ -184,8 +187,8 @@ try {
     await page.tap('Space', 0);
     await wait(300);
   }
-  const won = said.some((line) => /won|defeated/i.test(line)) && !said.some((line) => /lost the bout/.test(line));
-  console.log(`  the bout went ${won ? 'the player’s way' : 'the regular’s way'}`);
+  const won = !said.some((line) => /lost the bout/.test(line));
+  console.log(`  the bout went ${won ? 'the player’s way' : 'the regular’s way'}; last lines: ${said.slice(-3).map((line) => line.replace(/\s+/g, ' ')).join(' | ')}`);
   if (!won) {
     expect('a lost bout says what beat you', said.some((line) => /What beat you\?/.test(line)));
   }
@@ -286,20 +289,35 @@ try {
   await press('Escape');
   await until(baseReady, 'the yard after the course');
 
-  // The garden: the head mark gives way to the Pokémon faced from below.
-  const gardenTile = await base(`b.garden?.standing()[0] ?? null`);
-  expect(`the garden has a Pokémon out (${JSON.stringify(gardenTile)})`, gardenTile !== null);
-  if (gardenTile) {
-    await walkTo({ x: gardenTile.x, y: gardenTile.y + 1 }, 'below a garden Pokémon');
-    await press('ArrowUp');
-    await wait(400);
-    const still = await base(`(() => { const t = b.garden.standing()[0]; return t.x === b.currentTile.x && t.y === b.currentTile.y - 1; })()`);
-    if (still) {
-      await shoot('playtest-garden-faced');
-      expect('facing a garden Pokémon, the head mark is out of its face', !(await base('b.playerHeadMark.visible')));
-    } else {
-      console.log('  the garden Pokémon walked off before it was faced; skipped');
+  // The garden: the head mark gives way to the Pokémon faced from below. They
+  // potter about, so whoever has open ground below them is walked up to, and
+  // tried again if they move off first.
+  const gardenOut = await base(`(b.garden?.standing() ?? []).length`);
+  console.log(`  garden: ${JSON.stringify(await base(`(b.garden?.standing() ?? []).map((t) => ({ ...t, below: b.isBlocked({ x: t.x, y: t.y + 1 }) }))`))} player ${JSON.stringify(await base('b.currentTile'))}`);
+  expect(`the garden has Pokémon out (${gardenOut})`, gardenOut > 0);
+  let faced = false;
+  for (let attempt = 0; attempt < 6 && !faced; attempt += 1) {
+    const target = await base(`(b.garden?.standing() ?? []).find((t) => !b.isBlocked({ x: t.x, y: t.y + 1 })) ?? null`);
+    if (!target) {
+      await wait(2000);
+      continue;
     }
+    try {
+      await walkTo({ x: target.x, y: target.y + 1 }, 'below a garden Pokémon');
+    } catch (error) {
+      console.log(`  ${error.message}`);
+      await wait(1500);
+      continue;
+    }
+    await press('ArrowUp');
+    await wait(300);
+    faced = await base(`b.garden.holds({ x: b.currentTile.x, y: b.currentTile.y - 1 }) && b.facing === 'up'`);
+  }
+  if (faced) {
+    await shoot('playtest-garden-faced');
+    expect('facing a garden Pokémon from below, the head mark is out of its face', !(await base('b.playerHeadMark.visible')));
+  } else {
+    expect('a garden Pokémon could be walked up to from below', false);
   }
 } finally {
   await browser.close();
