@@ -56,7 +56,7 @@ describe('dropping Pokédollars from the raid pack', () => {
     // says it puts the whole bundle down, which is what frees the square.
     expect(shown(pane)).toContain('₽45 carried');
     expect(shown(pane)).not.toContain('45 carried · 1 square each');
-    expect(helpOf(pane, 'data-drop="money"')).toBe('Put ₽45 on the ground for good. It frees 1 square.');
+    expect(helpOf(pane, 'data-drop="money"')).toBe('Put ₽45 on the ground where you stand. It lies there for the rest of the raid, and frees 1 square.');
 
     scene.dropOne('money');
     expect(bag.count('money')).toBe(0);
@@ -67,7 +67,7 @@ describe('dropping Pokédollars from the raid pack', () => {
   it('drops only the part-filled bundle when there is more than one', () => {
     const { scene, bag } = packHolding({ money: 300 });
     const pane = scene.itemDetail(scene.itemById('money')!, true);
-    expect(helpOf(pane, 'data-drop="money"')).toBe('Put ₽50 on the ground for good. It frees 1 square.');
+    expect(helpOf(pane, 'data-drop="money"')).toBe('Put ₽50 on the ground where you stand. It lies there for the rest of the raid, and frees 1 square.');
 
     const squaresBefore = bag.layout().cellsUsed;
     scene.dropOne('money');
@@ -79,7 +79,7 @@ describe('dropping Pokédollars from the raid pack', () => {
     const { scene, bag } = packHolding({ potion: 3 });
     const pane = scene.itemDetail(scene.itemById('potion')!, true);
     expect(shown(pane)).toContain('3 carried · 1 square each');
-    expect(helpOf(pane, 'data-drop="potion"')).toBe('Put one Potion on the ground for good. It frees 1 square.');
+    expect(helpOf(pane, 'data-drop="potion"')).toBe('Put one Potion on the ground where you stand. It lies there for the rest of the raid, and frees 1 square.');
     scene.dropOne('potion');
     expect(bag.count('potion')).toBe(2);
     expect(scene.status).toContain('Dropped Potion.');
