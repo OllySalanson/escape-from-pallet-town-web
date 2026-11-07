@@ -22,11 +22,17 @@ import { betterResult, NO_GAME_CORNER, ticketDayKey, today, type TicketSource } 
  * Phaser-free and pure, so the board's words are held by `highScores.test.ts`.
  */
 
+/**
+ * A game the board keeps: every ticket source but THE BATTLE ARENA, whose
+ * wins are on its own class board (`arena/classBoard.ts`).
+ */
+export type BoardGame = Exclude<TicketSource, 'battle-arena'>;
+
 /** The games on the board, in the order it lists them: the two cabinets first, then the promenade's. */
-export const BOARD_GAMES: readonly TicketSource[] = ['pokemon-jump', 'berry-picking', 'field-course', 'derby', 'dig', 'fishing-derby'];
+export const BOARD_GAMES: readonly BoardGame[] = ['pokemon-jump', 'berry-picking', 'field-course', 'derby', 'dig', 'fishing-derby'];
 
 /** What each game is called on the board: short, because the board is five tiles wide. */
-export const BOARD_GAME_NAMES: Readonly<Record<TicketSource, string>> = {
+export const BOARD_GAME_NAMES: Readonly<Record<BoardGame, string>> = {
   'pokemon-jump': 'JUMP',
   'berry-picking': 'BERRY',
   'field-course': 'COURSE',
@@ -51,7 +57,7 @@ export const YOU = 'YOU';
  * (lower is better), the derby's place points (six for a win), the dig's
  * points and the fishing tally.
  */
-const REGULAR_RANGE: Readonly<Record<TicketSource, { readonly low: number; readonly high: number; readonly step: number }>> = {
+const REGULAR_RANGE: Readonly<Record<BoardGame, { readonly low: number; readonly high: number; readonly step: number }>> = {
   'pokemon-jump': { low: 400, high: 6800, step: 10 },
   'berry-picking': { low: 1100, high: 6400, step: 10 },
   'field-course': { low: 14_800, high: 29_000, step: 10 },
@@ -75,13 +81,13 @@ function dayNumber(now: Date): number {
 }
 
 /** Which regulars played a game today. */
-export function regularsWhoPlayed(game: TicketSource, now: Date): readonly HarbourBot[] {
+export function regularsWhoPlayed(game: BoardGame, now: Date): readonly HarbourBot[] {
   const rng = rngFor(41, dayNumber(now), BOARD_GAMES.indexOf(game));
   return rng.shuffle(HARBOUR_BOTS).slice(0, REGULARS_A_GAME);
 }
 
 /** What a regular scored at a game today: their own result, the same on every screen. */
-export function regularResult(bot: HarbourBot, game: TicketSource, now: Date): number {
+export function regularResult(bot: HarbourBot, game: BoardGame, now: Date): number {
   const range = REGULAR_RANGE[game];
   const rng = rngFor(42, dayNumber(now), BOARD_GAMES.indexOf(game), HARBOUR_BOTS.indexOf(bot));
   // Two rolls averaged: most days are middling, a few are very good or poor.
@@ -91,7 +97,7 @@ export function regularResult(bot: HarbourBot, game: TicketSource, now: Date): n
 }
 
 /** The board's lines for one game today, best first: the regulars who played it, and the player if they did. */
-export function highScoresFor(game: TicketSource, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): readonly HighScore[] {
+export function highScoresFor(game: BoardGame, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): readonly HighScore[] {
   const lines: HighScore[] = regularsWhoPlayed(game, now).map((bot) => ({ name: bot.name, result: regularResult(bot, game, now), yours: false }));
   const yours = today(progress.gameCorner ?? NO_GAME_CORNER, now).best[game] ?? 0;
   if (yours > 0) {
@@ -105,20 +111,20 @@ export function highScoresFor(game: TicketSource, progress: Pick<RaidProgress, '
 }
 
 /** A result as the board writes it: points with commas, a time on a stopwatch, a derby place. */
-export function boardResult(game: TicketSource, result: number): string {
+export function boardResult(game: BoardGame, result: number): string {
   if (game === 'field-course') return courseTime(result);
   if (game === 'derby') return ['1ST', '2ND', '3RD', '4TH', '5TH', '6TH'][Math.max(0, Math.min(5, 6 - result))];
   return result.toLocaleString('en-GB');
 }
 
 /** The top of the board for one game, as one short line: `JUMP 4,210 YOU`. */
-export function boardLine(game: TicketSource, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): { readonly game: string; readonly result: string; readonly name: string; readonly yours: boolean } {
+export function boardLine(game: BoardGame, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): { readonly game: string; readonly result: string; readonly name: string; readonly yours: boolean } {
   const [top] = highScoresFor(game, progress, now);
   return { game: BOARD_GAME_NAMES[game], result: boardResult(game, top.result), name: top.name, yours: top.yours };
 }
 
 /** Where the player stands at a game today: 1 for the top of the board, or null if they have not played it. */
-export function yourPlace(game: TicketSource, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): number | null {
+export function yourPlace(game: BoardGame, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): number | null {
   const at = highScoresFor(game, progress, now).findIndex((line) => line.yours);
   return at < 0 ? null : at + 1;
 }
