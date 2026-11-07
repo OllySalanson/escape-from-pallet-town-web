@@ -70,6 +70,7 @@ import { dojoBag, dojoParty } from '../arena/boutRules';
 import { DOJO_RECEPTIONIST } from '../arena/dojoCounter';
 import { dojoFoe, foeTrainer, receptionLines, settlementLine } from '../arena/classes';
 import { classOf, shownClass } from '../arena/dojoRecord';
+import { readDojoRun, runBout, type DojoRun, type DojoRunMode } from '../arena/arenaRuns';
 import { attendantLines, courseKeeperLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
@@ -548,7 +549,7 @@ export interface BaseSceneData {
    */
   readonly practice?: { readonly leader: string; readonly won: boolean };
   /** How a bout in THE BATTLE ARENA has just gone (`arena/dojoCounter.ts`): the dojo's counter writes it down. */
-  readonly dojoBout?: { readonly opponent: string; readonly won: boolean };
+  readonly dojoBout?: { readonly opponent: string; readonly won: boolean; readonly run?: DojoRun };
   /**
    * Where in the room to stand, facing up, instead of on the mat: backing out
    * of a screen opened from something in the room - the wall map - puts the
@@ -944,7 +945,10 @@ export class BaseScene extends Phaser.Scene {
     // How a bout went is the hall's to write down, and the one thing about it that is.
     const boutWent = data.bout ? this.saveManager.recordBout(data.bout.rival, data.bout.won) : null;
     // And a bout in THE BATTLE ARENA is its counter's to write down.
-    const dojoWent = data.dojoBout ? this.saveManager.recordDojoBout(data.dojoBout.opponent, data.dojoBout.won) : null;
+    const dojoWent = data.dojoBout && !data.dojoBout.run ? this.saveManager.recordDojoBout(data.dojoBout.opponent, data.dojoBout.won) : null;
+    // A bout of a cup or rental run is settled with its run (`arena/arenaRuns.ts`).
+    const dojoRun = data.dojoBout?.run ? readDojoRun(data.dojoBout.run) : undefined;
+    const runWent = data.dojoBout && dojoRun ? this.saveManager.recordArenaRun(dojoRun, data.dojoBout.opponent, data.dojoBout.won) : null;
     const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {
       // A browser with no storage that has also lost the payload: the title
@@ -1284,6 +1288,12 @@ export class BaseScene extends Phaser.Scene {
       this.handOverPartner(data.chose, room?.keeper ? [room.keeper.position] : []);
     } else if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
+    } else if (data.dojoBout && dojoRun) {
+      this.say(
+        [runWent?.line ?? (data.dojoBout.won ? 'You won the bout!' : 'You lost the bout.')],
+        [DOJO_RECEPTIONIST.position],
+        runWent?.carriesOn ? () => this.openDojoCounter(dojoRun.mode) : undefined,
+      );
     } else if (data.dojoBout) {
       this.say(
         [settlementLine(dojoFoe(data.dojoBout.opponent, classOf(dojoWent?.record)), data.dojoBout.won, dojoWent)],
@@ -6645,7 +6655,7 @@ export class BaseScene extends Phaser.Scene {
    * who to bring, over the paused room. Choosing FIGHT comes back here, and the
    * bout starts on copies (`arena/boutRules.ts`), writing nothing.
    */
-  private openDojoCounter(): void {
+  private openDojoCounter(mode?: DojoRunMode): void {
     if (this.leaving) {
       return;
     }
@@ -6665,6 +6675,7 @@ export class BaseScene extends Phaser.Scene {
     this.scene.pause();
     this.scene.launch('dojo-counter', {
       pausedBase: true,
+      ...(mode ? { mode } : {}),
       fight: (choice: DojoChoice) => {
         chosen = choice;
       },
@@ -6677,6 +6688,27 @@ export class BaseScene extends Phaser.Scene {
 
   /** On to the mat: flat-level copies of the team chosen, no bag, against the regular chosen. */
   private startDojoBout(choice: DojoChoice): void {
+    if (choice.run) {
+      // A cup or rental bout: the mat is the run's (`arena/arenaRuns.ts`).
+      const record = this.freshGame().raidProgress.dojo;
+      const bout = runBout(choice.run, choice.team, record, new Date());
+      if (!bout) {
+        return;
+      }
+      this.leaving = true;
+      audioManager.play('battleStart');
+      const data: BattleSceneData = {
+        party: new PokemonParty(bout.party),
+        bag: dojoBag(),
+        trainer: bout.trainer,
+        hunterBattle: true,
+        weather: bout.weather,
+        exhibition: { dojo: choice.opponent, at: { ...this.currentTile }, run: choice.run },
+      };
+      this.cameras.main.fadeOut(220, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('battle', data));
+      return;
+    }
     const foe = dojoFoe(choice.opponent, classOf(this.freshGame().raidProgress.dojo));
     if (!foe || choice.team.length === 0) {
       return;

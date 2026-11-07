@@ -23,10 +23,10 @@ import { betterResult, NO_GAME_CORNER, ticketDayKey, today, type TicketSource } 
  */
 
 /**
- * A game the board keeps: every ticket source but THE BATTLE ARENA, whose
- * wins are on its own class board (`arena/classBoard.ts`).
+ * A game the board keeps: every ticket source but THE BATTLE ARENA's, whose
+ * wins are on its own class and cup boards (`arena/classBoard.ts`, `arena/cups.ts`).
  */
-export type BoardGame = Exclude<TicketSource, 'battle-arena'>;
+export type BoardGame = Exclude<TicketSource, 'battle-arena' | 'rental-run'>;
 
 /** The games on the board, in the order it lists them: the two cabinets first, then the promenade's. */
 export const BOARD_GAMES: readonly BoardGame[] = ['pokemon-jump', 'berry-picking', 'field-course', 'derby', 'dig', 'fishing-derby'];

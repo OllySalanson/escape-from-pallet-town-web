@@ -1,6 +1,7 @@
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
 import { readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
 import { settleDojoBout, type DojoSettlement } from '../arena/classes';
+import { settleRunBout, type DojoRun, type RunSettlement } from '../arena/arenaRuns';
 import { gymOf } from '../world/valeQuarters';
 import {
   buyPrize,
@@ -1000,6 +1001,21 @@ export class SaveManager {
     // The tally, the class ladder and the tickets, in one write (`arena/classes.ts`).
     const settled = settleDojoBout(game.raidProgress.dojo, game.raidProgress.gameCorner ?? NO_GAME_CORNER, opponent, won, now);
     const next = { ...game, raidProgress: { ...game.raidProgress, dojo: settled.record, gameCorner: settled.gameCorner } };
+    return this.save(next) ? settled : null;
+  }
+
+  /**
+   * A bout of THE BATTLE ARENA's cup or rental run (`arena/arenaRuns.ts`), written
+   * as the player comes back to the counter: the tally, the run and its tickets,
+   * in one write. Nothing else in the save moves.
+   */
+  public recordArenaRun(run: DojoRun, opponent: string, won: boolean, now: Date = new Date()): RunSettlement | null {
+    const game = this.load();
+    if (!game) {
+      return null;
+    }
+    const settled = settleRunBout(game.raidProgress.dojo, game.raidProgress.gameCorner ?? NO_GAME_CORNER, run, opponent, won, now);
+    const next = { ...game, raidProgress: { ...game.raidProgress, dojo: settled.dojo, gameCorner: settled.gameCorner } };
     return this.save(next) ? settled : null;
   }
 

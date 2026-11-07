@@ -36,7 +36,8 @@ export type TicketSource =
   | 'battle-arena'
   | 'derby'
   | 'dig'
-  | 'fishing-derby';
+  | 'fishing-derby'
+  | 'rental-run';
 
 /** The most every source together pays in a day (the plan's daily ceiling). */
 export const DAILY_TICKET_CEILING = 285;
@@ -139,6 +140,18 @@ export const fishingDerbyTickets = (score: number): number => tierTickets(FISHIN
 export const DOJO_WIN_TICKETS = 10;
 export const DOJO_PAID_WINS_A_DAY = 5;
 
+/**
+ * THE BATTLE ARENA's daily rental run (`arena/rentals.ts`, the harbour arenas
+ * plan, section 2.10): five tickets a win of the day's one scored run, so its
+ * "score" is how far that run got, seven at most.
+ */
+export const RENTAL_WIN_TICKETS = 5;
+export const RENTAL_RUN_BOUTS = 7;
+
+export function rentalRunTickets(won: number): number {
+  return Math.max(0, Math.min(RENTAL_RUN_BOUTS, won)) * RENTAL_WIN_TICKETS;
+}
+
 /** The tickets a day's bout wins are worth. */
 export function dojoWinTickets(winsToday: number): number {
   return Math.max(0, Math.min(DOJO_PAID_WINS_A_DAY, winsToday)) * DOJO_WIN_TICKETS;
@@ -159,6 +172,7 @@ const SOURCE_RULES: Readonly<
   derby: { better: (a, b) => a > b, tickets: derbyTickets, berries: () => 0 },
   dig: { better: (a, b) => a > b, tickets: digTickets, berries: () => 0 },
   'fishing-derby': { better: (a, b) => a > b, tickets: fishingDerbyTickets, berries: () => 0 },
+  'rental-run': { better: (a, b) => a > b, tickets: rentalRunTickets, berries: () => 0 },
 };
 
 /** The better of two results at a source: the higher score, or the quicker time. */
@@ -393,6 +407,7 @@ const SOURCES: readonly TicketSource[] = [
   'derby',
   'dig',
   'fishing-derby',
+  'rental-run',
 ];
 
 function wholeCount(value: unknown, most = Number.MAX_SAFE_INTEGER): number {

@@ -9,6 +9,8 @@
  * bump: absent is a player who has never fought there, in POKé BALL class.
  */
 
+import { readCupRecord, readRentalRecord, type CupRecord, type RentalRecord } from './runRecords';
+
 /** The four classes, lowest first (`classes.ts` says who is in each). */
 export const DOJO_CLASS_IDS = ['poke-ball', 'great-ball', 'ultra-ball', 'master-ball'] as const;
 export type DojoClassId = (typeof DOJO_CLASS_IDS)[number];
@@ -24,6 +26,10 @@ export interface DojoRecord {
   readonly streak?: readonly string[];
   /** AARON, the head of MASTER BALL class, beaten: the top of the ladder. */
   readonly topped?: boolean;
+  /** This week's cup run and what it has paid (`cups.ts`). */
+  readonly cup?: CupRecord;
+  /** The day's rental run (`rentals.ts`). */
+  readonly rental?: RentalRecord;
 }
 
 export const NO_DOJO_BOUTS: DojoRecord = { wins: 0, losses: 0, beaten: [] };
@@ -70,7 +76,9 @@ export function readDojoRecord(value: unknown): DojoRecord | undefined {
   if (typeof value !== 'object' || value === null) {
     return undefined;
   }
-  const { wins, losses, beaten, classId, streak, topped } = value as Record<string, unknown>;
+  const { wins, losses, beaten, classId, streak, topped, cup, rental } = value as Record<string, unknown>;
+  const cupRecord = readCupRecord(cup);
+  const rentalRecord = readRentalRecord(rental);
   const regularsOnly = ids(streak, MOST_STREAK).filter((id) => id.startsWith('bot:'));
   return {
     wins: count(wins),
@@ -79,6 +87,8 @@ export function readDojoRecord(value: unknown): DojoRecord | undefined {
     ...(isDojoClassId(classId) && classId !== 'poke-ball' ? { classId } : {}),
     ...(regularsOnly.length > 0 ? { streak: regularsOnly } : {}),
     ...(topped === true ? { topped: true } : {}),
+    ...(cupRecord ? { cup: cupRecord } : {}),
+    ...(rentalRecord ? { rental: rentalRecord } : {}),
   };
 }
 
