@@ -8,6 +8,7 @@ import { chalkBayPoster, ladderTallyPoster } from './chalk';
 import { boardPoster } from './labBoard';
 import { pennantsPoster } from './pennants';
 import type { RoomPoster } from './rooms';
+import { classBoardPoster } from '../arena/classBoard';
 
 /**
  * The picture for one thing a room paints from the save: the same answer for the
@@ -29,6 +30,8 @@ export function roomPosterPicture(game: RestoredGame, poster: RoomPoster): Paint
         poster.area,
         WORKSHOP_UPGRADES.map((upgrade) => game.raidProgress.workshopUpgrades.includes(upgrade.id)),
       );
+    case 'class-board':
+      return classBoardPoster(game.raidProgress.dojo, poster.area);
     case 'goods-shelf':
       return shelfPoster(poster.area, sheetedColumns(poster.area, traderCounterFor(game)));
   }

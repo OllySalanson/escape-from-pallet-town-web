@@ -5,6 +5,8 @@ import type { Direction, GridPosition } from '../movement/gridMovement';
 import { CHARACTER_FEET_PIXEL_Y, CHARACTER_HEAD_PIXEL_Y, getIdleFrame } from '../playerFrames';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { GAME_FONT } from '../ui/gameFont';
+import { CLASS_BALL_SIZE, classBallPixels } from '../arena/classBall';
+import type { DojoClassId } from '../arena/dojoRecord';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { CAPTION_BAND, FIGURE_BAND, atRow } from '../world/depths';
@@ -106,6 +108,9 @@ const NAME_STYLE = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WIN
 /** Pixels of cream either side of the name, inside the frame. */
 const PLATE_PAD_X = 3;
 
+/** Pixels between a class ball and the name after it. */
+const BALL_GAP = 2;
+
 /** How far above this player's head their own mark reaches, which somebody else's bubble keeps clear of. */
 const HEAD_MARK_CLEARANCE = 8;
 
@@ -131,6 +136,8 @@ interface Drawn {
   texture: string;
   readonly plate: Phaser.GameObjects.Graphics;
   readonly name: Phaser.GameObjects.Text;
+  /** The class ball in front of the name (`../arena/classBall`), if they have fought in THE BATTLE ARENA. */
+  ball: DojoClassId | null;
   walking: string | null;
   heel: Heel | null;
   /** The hand up over their head while they wave. */
@@ -239,6 +246,13 @@ export class HarbourFigures {
       }
       if (drawn.name.text !== figure.name) {
         drawn.name.setText(figure.name);
+        drawPlate(drawn);
+      }
+      const ball = figure.dojoClass ?? null;
+      if (drawn.ball !== ball) {
+        // The ball sits in the plate before the name, so the name is padded along to make room.
+        drawn.ball = ball;
+        drawn.name.setPadding(ball ? CLASS_BALL_SIZE + BALL_GAP : 0, 0, 0, 0);
         drawPlate(drawn);
       }
       // The partner first: a tall one walking behind its player stands
@@ -470,7 +484,7 @@ export class HarbourFigures {
     const sprite = this.scene.add.sprite(0, 0, texture, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);
-    const drawn: Drawn = { sprite, texture, plate, name, walking: null, heel: null, wave: null, bubble: null, bubbleBox: null };
+    const drawn: Drawn = { sprite, texture, plate, name, ball: null, walking: null, heel: null, wave: null, bubble: null, bubbleBox: null };
     drawPlate(drawn);
     this.drawn.set(figure.id, drawn);
     return drawn;
@@ -633,6 +647,12 @@ function drawPlate(drawn: Drawn): void {
     { x: 0, y: 0, width: plateWidthOf(drawn.name), height: plateHeightOf(drawn.name) },
     { fill: WINDOW_CREAM },
   );
+  if (drawn.ball) {
+    const top = Math.max(1, Math.round((plateHeightOf(drawn.name) - CLASS_BALL_SIZE) / 2));
+    for (const pixel of classBallPixels(drawn.ball)) {
+      drawn.plate.fillStyle(Number.parseInt(pixel.ink.slice(1), 16), 1).fillRect(PLATE_PAD_X + pixel.x, top + pixel.y, 1, 1);
+    }
+  }
 }
 
 function takeDown(drawn: Drawn): void {
