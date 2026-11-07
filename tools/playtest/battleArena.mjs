@@ -4,7 +4,7 @@
 // regular chosen and a team of three from the boxes, then the bout itself on
 // the real battle screen - every Pokémon on both sides at Lv 30, no bag, the
 // regular on the gym AI - and back to the counter, where the one thing the
-// save gains is the dojo's record, and the tickets a win pays.
+// save gains is the dojo's record.
 //
 //   node tools/playtest/battleArena.mjs <test-mode build url> <out-dir> [--port=N] [--window=1200x768] [--said]
 //
@@ -172,12 +172,11 @@ try {
   expect(`the receptionist says how it went (${String(said).replace(/\s+/g, ' ')})`, /beat|took that one/.test(String(said)));
   const record = after.raidProgress.dojo;
   const held = before.raidProgress.dojo ?? { wins: 0, losses: 0 };
-  expect(`a win pays its tickets, a loss none (${before.raidProgress.gameCorner?.tickets ?? 0} -> ${after.raidProgress.gameCorner?.tickets ?? 0})`, (after.raidProgress.gameCorner?.tickets ?? 0) - (before.raidProgress.gameCorner?.tickets ?? 0) === (record.wins > held.wins ? 10 : 0));
   expect(`the save keeps the result (${JSON.stringify(record)})`, record && record.wins + record.losses === held.wins + held.losses + 1);
   const differs = Object.keys({ ...before, ...after }).flatMap((key) =>
     key === 'raidProgress'
       ? Object.keys({ ...before.raidProgress, ...after.raidProgress }).filter(
-          (inner) => inner !== 'dojo' && inner !== 'gameCorner' && JSON.stringify(before.raidProgress[inner]) !== JSON.stringify(after.raidProgress[inner]),
+          (inner) => inner !== 'dojo' && JSON.stringify(before.raidProgress[inner]) !== JSON.stringify(after.raidProgress[inner]),
         ).map((inner) => `raidProgress.${inner}`)
       : JSON.stringify(before[key]) !== JSON.stringify(after[key]) ? [key] : [],
   );

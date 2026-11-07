@@ -20,7 +20,7 @@ import { encodeSurvey, type SurveyRecord } from '../world/survey';
 import { getWorldMap, worldMapIds } from '../worldMap';
 import { FIRST_WORDS_IDS } from '../hub/firstWords';
 import { LEARNABLE_KEYS } from '../input/keyBindings';
-import { addPlaytestKit, withEveryLeaderMet, withPlaytestTickets } from './playtestKit';
+import { addPlaytestKit, withPlaytestTickets } from './playtestKit';
 
 /**
  * What an explorer run starts as. See `playtestMode.ts` for what the mode is
@@ -110,7 +110,6 @@ export function playtestRaidProgress(): RaidProgress {
     traderMoneySpent: POKEDOLLARS_PER_STANDING * (TRADER_STANDINGS.at(-1)?.points ?? 0),
     surveyed: everythingSurveyed(),
     gameCorner: withPlaytestTickets(DEFAULT_RAID_PROGRESS).gameCorner,
-    gymsMet: withEveryLeaderMet(DEFAULT_RAID_PROGRESS).gymsMet,
   };
 }
 
@@ -193,7 +192,7 @@ export function createPlaytestGame(): SaveGameState {
  * writes the save back only when it changed.
  */
 export function withPlaytestCurrent(game: RestoredGame): RestoredGame {
-  const progress = withEveryLeaderMet(withPlaytestTickets(withEverythingCurrent(game.raidProgress)));
+  const progress = withPlaytestTickets(withEverythingCurrent(game.raidProgress));
   const kitAdded = addPlaytestKit(game.stash);
   if (!kitAdded && progress === game.raidProgress) {
     return game;

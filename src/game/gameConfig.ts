@@ -12,6 +12,9 @@ import { DojoCounterScene } from './scenes/DojoCounterScene';
 import { GameCornerScene } from './scenes/GameCornerScene';
 import { BerryPickingScene } from './scenes/BerryPickingScene';
 import { FieldCourseScene } from './scenes/FieldCourseScene';
+import { DerbyScene } from './scenes/DerbyScene';
+import { DigScene } from './scenes/DigScene';
+import { FishingDerbyScene } from './scenes/FishingDerbyScene';
 import { ExtractionScene } from './scenes/ExtractionScene';
 import { FeedbackScene } from './scenes/FeedbackScene';
 import { HubScene } from './scenes/HubScene';
@@ -45,6 +48,9 @@ const BASE_SCENES = [
   GameCornerScene,
   BerryPickingScene,
   FieldCourseScene,
+  DerbyScene,
+  DigScene,
+  FishingDerbyScene,
   ExtractionScene,
   MapMakerScene,
   StatsScene,

@@ -86,7 +86,6 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   private picking: BerryPickingGame | undefined;
   private pressed: Column | null = null;
   private stage: Phaser.GameObjects.Container | undefined;
-  private stageOver: Phaser.GameObjects.Container | undefined;
   private berries: Phaser.GameObjects.Graphics | undefined;
   private bird: Phaser.GameObjects.Image | undefined;
   private squares: Phaser.GameObjects.Graphics | undefined;
@@ -411,19 +410,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
       // over the bird's heads, as FireRed's beaks reach exactly there.
       const top = this.berryY(BERRY_PICKING_EAT_FALL - 1) - 6;
       const bottom = this.berryY(BERRY_PICKING_EAT_FALL) + 6;
-      // Drawn as a frame's four corners over a faint wash, so it reads as a
-      // mark on the air rather than an unfinished block (wave 1's playtest).
-      back.fillStyle(0xf8f8c0, 0.16).fillRect(x - 14, top, 28, bottom - top);
-      back.fillStyle(0xf8f8e0, 0.9);
-      for (const [cx, cy, dx, dy] of [
-        [x - 14, top, 1, 1],
-        [x + 13, top, -1, 1],
-        [x - 14, bottom - 1, 1, -1],
-        [x + 13, bottom - 1, -1, -1],
-      ] as const) {
-        back.fillRect(Math.min(cx, cx + dx * 5), cy, 6, 1);
-        back.fillRect(cx, Math.min(cy, cy + dy * 5), 1, 6);
-      }
+      back.fillStyle(0xf8f8c0, 0.28).fillRect(x - 14, top, 28, bottom - top);
     }
     this.berries = this.add.graphics().setDepth(4);
     this.bird = this.add
@@ -433,17 +420,6 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     this.squares = this.add.graphics().setDepth(11);
     const panel = this.add.graphics().setDepth(10);
     drawPixelWindow(panel, { x: 4, y: 4, width: 84, height: 32 }, { fill: WINDOW_CREAM });
-    // What the ten squares at the top right are: a berry on the ground greys one.
-    const dropped = this.add
-      .text(width - 8, 20, 'BERRIES DROPPED', {
-        fontFamily: GAME_FONT,
-        fontSize: CHIP_FONT_SIZE,
-        color: '#f8f8f8',
-        stroke: '#202030',
-        strokeThickness: 3,
-      })
-      .setOrigin(1, 0)
-      .setDepth(11);
     this.scoreText = this.add
       .text(9, 6, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK, lineSpacing: 0 })
       .setDepth(11);
@@ -467,17 +443,13 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
       })
       .setOrigin(0.5, 1)
       .setDepth(11);
-    this.stage = this.add.container(0, 0, [back, panel]).setDepth(0);
-    // Over the bird: drawn in the stage, a Dodrio's heads stood on the hint.
-    this.stageOver = this.add.container(0, 0, [dropped, hint]).setDepth(11);
+    this.stage = this.add.container(0, 0, [back, panel, hint]).setDepth(0);
     this.drawStage();
   }
 
   private tearDownStage(): void {
     this.stage?.destroy(true);
     this.stage = undefined;
-    this.stageOver?.destroy(true);
-    this.stageOver = undefined;
     for (const part of [this.berries, this.bird, this.squares, this.scoreText, this.bigText]) part?.destroy();
     this.berries = undefined;
     this.bird = undefined;

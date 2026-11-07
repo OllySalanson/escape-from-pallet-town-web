@@ -8,7 +8,8 @@ import { tileReader, withDoorway, type PropDefinition } from '../world/tileset/c
  * lamps, parasols, deckchairs, beach huts, railings, a lifebuoy, pennants,
  * flower troughs and an ice-cream cart - THE FIELD-MOVE COURSE's gate (COURSE
  * over its posts, the four field moves painted under the word) and its TIMES
- * board, the POKéMON JUMP and BERRY PICKING cabinets inside, and THE BATTLE
+ * board, THE PROMENADE DERBY's start board, THE DIG's sign on the sand and
+ * THE FISHING DERBY's board at the pier head, the POKéMON JUMP and BERRY PICKING cabinets inside, and THE BATTLE
  * ARENA (Saffron's Fighting Dojo with BATTLE ARENA on a board across its front).
  * Numbered from 20000, clear of every other sheet the loader fetches
  * (`catalogue.test.ts` holds the whole list apart).
@@ -52,6 +53,9 @@ export const PROMENADE_PIECES = {
   berryCabinet: { column: 0, row: 9, width: 2, height: 3 },
   courseGate: { column: 2, row: 9, width: 3, height: 3 },
   timeBoard: { column: 5, row: 9, width: 1, height: 2 },
+  derbyBoard: { column: 6, row: 9, width: 3, height: 3 },
+  digSign: { column: 9, row: 9, width: 2, height: 2 },
+  fishingBoard: { column: 11, row: 9, width: 2, height: 2 },
   dojo: { column: 0, row: 12, width: 6, height: 5 },
 } as const;
 

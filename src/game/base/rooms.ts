@@ -21,10 +21,8 @@ import {
   DOJO_RECEPTIONIST_NAME,
   DOJO_ROOM,
   dojoRegularsToday,
+  fighterLine,
 } from '../arena/dojoCounter';
-import { beltFoe, classBoardLines, dojoClass, fighterLine, regularFoe } from '../arena/classes';
-import { classOf } from '../arena/dojoRecord';
-import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { DressedLook } from '../look/look';
 import type { PackItemId } from '../items/items';
 import type { Direction } from '../movement/gridMovement';
@@ -589,7 +587,7 @@ export interface RoomThing {
  * room of the player's house, and the pennants upstairs.
  */
 export type RoomPoster =
-  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf' | 'class-board'; readonly area: Rect }
+  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf'; readonly area: Rect }
   | {
       /** A bay Brock has chalked out (`chalk.ts`), and the rung it is for. */
       readonly kind: 'chalk-bay';
@@ -745,16 +743,14 @@ export interface BuiltRoom {
   readonly people?: readonly RoomPerson[];
 }
 
-/**
- * Somebody standing in a room who is not its keeper: a player-like figure in
- * their own look (`look/lookTexture.ts`), or one of the game's own people in
- * the design their kind is drawn in (`world/characterDesigns.ts`).
- */
-export type RoomPerson = {
+/** Somebody standing in a room who is not its keeper, drawn in their own look (`look/lookTexture.ts`). */
+export interface RoomPerson {
   readonly id: string;
+  readonly look: DressedLook;
+  readonly pack?: PackItemId;
   readonly tile: GridPosition;
   readonly facing: Direction;
-} & ({ readonly look: DressedLook; readonly pack?: PackItemId } | { readonly design: CastCharacterDesignId });
+}
 
 /**
  * THE BOLTHOLE's furniture as it stands this visit (`home/arrangement.ts`):
@@ -1584,39 +1580,20 @@ function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   sketch.plant(DOJO_COUNTER_AT.x, DOJO_COUNTER_AT.y, 'dojoCounter');
   sketch.plant(DOJO_ROOM.mat.x - 1, DOJO_ROOM.mat.y, 'dojoMat');
   const today = dojoRegularsToday(now);
-  const record = game.raidProgress.dojo;
-  const cls = dojoClass(classOf(record));
-  const head = beltFoe(cls.head);
-  const people: RoomPerson[] = [
-    ...today.map((regular, index) => ({
-      id: regular.bot.id,
-      look: regular.bot.look,
-      ...(regular.bot.pack ? { pack: regular.bot.pack } : {}),
-      tile: DOJO_FIGHTER_SPOTS[index].tile,
-      facing: DOJO_FIGHTER_SPOTS[index].facing,
-    })),
-    // The Black Belt at the head of the player's class, under the class board.
-    { id: head.id, design: 'black-belt', tile: DOJO_BELT_SPOT.tile, facing: DOJO_BELT_SPOT.facing },
-  ];
+  const people: RoomPerson[] = today.map((regular, index) => ({
+    id: regular.bot.id,
+    look: regular.bot.look,
+    ...(regular.bot.pack ? { pack: regular.bot.pack } : {}),
+    tile: DOJO_FIGHTER_SPOTS[index].tile,
+    facing: DOJO_FIGHTER_SPOTS[index].facing,
+  }));
   const things: RoomThing[] = [
     ...today.map((regular, index) => ({
       name: regular.bot.name,
       note: 'In the dojo today',
       tiles: [DOJO_FIGHTER_SPOTS[index].tile],
-      lines: [fighterLine(regularFoe(regular, cls.id), record)],
+      lines: [fighterLine(regular, game.raidProgress.dojo)],
     })),
-    {
-      name: head.name,
-      note: `Head of ${cls.name} class`,
-      tiles: [DOJO_BELT_SPOT.tile],
-      lines: [fighterLine(head, record)],
-    },
-    {
-      name: 'THE CLASS BOARD',
-      note: `${cls.name} class`,
-      tiles: DOJO_CLASS_BOARD_FACED,
-      lines: classBoardLines(record),
-    },
     {
       name: 'THE STATUES',
       note: 'The dojo’s own',
@@ -1636,20 +1613,8 @@ function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     sprites: [],
     people,
     solid: people.map((person) => person.tile),
-    posters: [{ kind: 'class-board', area: DOJO_CLASS_BOARD }],
   };
 }
-
-/**
- * THE BATTLE ARENA's class board (`arena/classBoard.ts`): the stretch of the
- * dojo's back wall west of the master's floor, round window and all, which the
- * board hangs over, and the wall it is read from.
- */
-export const DOJO_CLASS_BOARD: Rect = { x: 0, y: 0, width: 3, height: 2 };
-export const DOJO_CLASS_BOARD_FACED: readonly GridPosition[] = [0, 1, 2].map((x) => ({ x, y: 1 }));
-
-/** Where the Black Belt at the head of the player's class stands: under the class board, at the head of the west line. */
-export const DOJO_BELT_SPOT: { readonly tile: GridPosition; readonly facing: Direction } = { tile: { x: 2, y: 2 }, facing: 'down' };
 
 /** Celadon's prize room as it stands: the counter across the back, a glass case either side. */
 function drawPrizeWindow(room: BaseRoom): Drawn {

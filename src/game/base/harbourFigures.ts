@@ -5,8 +5,6 @@ import type { Direction, GridPosition } from '../movement/gridMovement';
 import { CHARACTER_FEET_PIXEL_Y, CHARACTER_HEAD_PIXEL_Y, getIdleFrame } from '../playerFrames';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { GAME_FONT } from '../ui/gameFont';
-import { CLASS_BALL_SIZE, classBallPixels } from '../arena/classBall';
-import type { DojoClassId } from '../arena/dojoRecord';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { CAPTION_BAND, FIGURE_BAND, atRow } from '../world/depths';
@@ -108,9 +106,6 @@ const NAME_STYLE = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WIN
 /** Pixels of cream either side of the name, inside the frame. */
 const PLATE_PAD_X = 3;
 
-/** Pixels between a class ball and the name after it. */
-const BALL_GAP = 2;
-
 /** How far above this player's head their own mark reaches, which somebody else's bubble keeps clear of. */
 const HEAD_MARK_CLEARANCE = 8;
 
@@ -136,8 +131,6 @@ interface Drawn {
   texture: string;
   readonly plate: Phaser.GameObjects.Graphics;
   readonly name: Phaser.GameObjects.Text;
-  /** The class ball in front of the name (`../arena/classBall`), if they have fought in THE BATTLE ARENA. */
-  ball: DojoClassId | null;
   walking: string | null;
   heel: Heel | null;
   /** The hand up over their head while they wave. */
@@ -196,15 +189,7 @@ export class HarbourFigures {
    * said it. Nor is anybody else's plate under it - a name and a bubble never
    * share a pixel, so the bubble's tail stays on its speaker's head.
    */
-  public update(
-    figures: readonly PlateFigure[],
-    self: { readonly x: number; readonly y: number } | null = null,
-    standing: readonly GridPosition[] = [],
-  ): void {
-    // The harbour's own townspeople, whom a plate (drawn beneath every figure)
-    // is lifted clear of rather than printed under: a regular at the dock had
-    // the chef a tile above standing on the first half of their name.
-    const townspeople = standing.map(standingArt);
+  public update(figures: readonly PlateFigure[], self: { readonly x: number; readonly y: number } | null = null): void {
     const here = new Set(figures.map((figure) => figure.id));
     // The mark over this player's own head is drawn over everything, so a
     // bubble beside it is seated clear of it.
@@ -248,13 +233,6 @@ export class HarbourFigures {
         drawn.name.setText(figure.name);
         drawPlate(drawn);
       }
-      const ball = figure.dojoClass ?? null;
-      if (drawn.ball !== ball) {
-        // The ball sits in the plate before the name, so the name is padded along to make room.
-        drawn.ball = ball;
-        drawn.name.setPadding(ball ? CLASS_BALL_SIZE + BALL_GAP : 0, 0, 0, 0);
-        drawPlate(drawn);
-      }
       // The partner first: a tall one walking behind its player stands
       // where the plate would go, and the plate is lifted over it.
       this.drawHeel(drawn, figure);
@@ -265,17 +243,9 @@ export class HarbourFigures {
         plateWidth,
         this.placeWidth?.() ?? null,
       );
-      const plateY = clearOfStanding(
-        {
-          x: plateX,
-          y: clearOfHeel(
-            { x: plateX, y: Math.round(y + headOf(drawn) - plateHeight - 1), width: plateWidth, height: plateHeight },
-            heelArt(drawn.heel),
-          ),
-          width: plateWidth,
-          height: plateHeight,
-        },
-        townspeople,
+      const plateY = clearOfHeel(
+        { x: plateX, y: Math.round(y + headOf(drawn) - plateHeight - 1), width: plateWidth, height: plateHeight },
+        heelArt(drawn.heel),
       );
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
@@ -484,7 +454,7 @@ export class HarbourFigures {
     const sprite = this.scene.add.sprite(0, 0, texture, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);
-    const drawn: Drawn = { sprite, texture, plate, name, ball: null, walking: null, heel: null, wave: null, bubble: null, bubbleBox: null };
+    const drawn: Drawn = { sprite, texture, plate, name, walking: null, heel: null, wave: null, bubble: null, bubbleBox: null };
     drawPlate(drawn);
     this.drawn.set(figure.id, drawn);
     return drawn;
@@ -593,32 +563,6 @@ export function clearOfHeel(plate: Box, heel: Box | null): number {
   return Math.min(plate.y, heel.y - plate.height);
 }
 
-/**
- * Where a plate goes up and down once every townsperson it would lie under is
- * stepped over: lifted over each it overlaps, as over a partner at heel, until
- * it lies under none. Only ever lifted.
- */
-export function clearOfStanding(plate: Box, standing: readonly Box[]): number {
-  let y = plate.y;
-  for (let again = true, guard = 0; again && guard < standing.length + 1; guard += 1) {
-    again = false;
-    for (const figure of standing) {
-      const lifted = clearOfHeel({ ...plate, y }, figure);
-      if (lifted !== y) {
-        y = lifted;
-        again = true;
-      }
-    }
-  }
-  return y;
-}
-
-/** A standing person's art, from a hat's height over the head to the feet. */
-function standingArt(tile: GridPosition): Box {
-  const top = tile.y * TILE_SIZE + SPRITE_Y_OFFSET + CHARACTER_HEAD_PIXEL_Y - 3;
-  return { x: tile.x * TILE_SIZE, y: top, width: TILE_SIZE, height: tile.y * TILE_SIZE + TILE_SIZE - top };
-}
-
 /** The drawn art of a partner at heel, from the top of its head to its feet, while it is shown. */
 function heelArt(heel: Heel | null): Box | null {
   if (!heel?.sprite.visible) {
@@ -647,12 +591,6 @@ function drawPlate(drawn: Drawn): void {
     { x: 0, y: 0, width: plateWidthOf(drawn.name), height: plateHeightOf(drawn.name) },
     { fill: WINDOW_CREAM },
   );
-  if (drawn.ball) {
-    const top = Math.max(1, Math.round((plateHeightOf(drawn.name) - CLASS_BALL_SIZE) / 2));
-    for (const pixel of classBallPixels(drawn.ball)) {
-      drawn.plate.fillStyle(Number.parseInt(pixel.ink.slice(1), 16), 1).fillRect(PLATE_PAD_X + pixel.x, top + pixel.y, 1, 1);
-    }
-  }
 }
 
 function takeDown(drawn: Drawn): void {

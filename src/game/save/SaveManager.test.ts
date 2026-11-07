@@ -68,26 +68,16 @@ const withPack = (items: Readonly<Record<string, number>>): Record<string, numbe
 });
 
 describe('SaveManager', () => {
-  it('writes a bout in THE BATTLE ARENA as its record and its tickets and nothing else, and reads it back', () => {
+  it('writes a bout in THE BATTLE ARENA as its record and nothing else, and reads it back', () => {
     const storage = new MemoryStorage();
     const saves = freshSave(storage);
     const before = saves.load()!;
-    const now = new Date(2026, 10, 7, 12);
     expect(before.raidProgress.dojo).toBeUndefined();
-    const won = saves.recordDojoBout('bot:karpking', true, now)!;
-    expect(won.record).toEqual({ wins: 1, losses: 0, beaten: ['bot:karpking'], streak: ['bot:karpking'] });
-    expect(won.tickets).toBe(10);
-    const lost = saves.recordDojoBout('bot:xkitx', false, now)!;
-    expect(lost.record).toEqual({ wins: 1, losses: 1, beaten: ['bot:karpking'] });
-    expect(lost.runLost).toBe(1);
+    expect(saves.recordDojoBout('bot:karpking', true)).toEqual({ wins: 1, losses: 0, beaten: ['bot:karpking'] });
+    expect(saves.recordDojoBout('bot:xkitx', false)).toEqual({ wins: 1, losses: 1, beaten: ['bot:karpking'] });
     const after = saves.load()!;
     expect(after.raidProgress.dojo).toEqual({ wins: 1, losses: 1, beaten: ['bot:karpking'] });
-    expect(after.raidProgress.gameCorner?.tickets).toBe(10);
-    expect({ ...after.raidProgress, dojo: undefined, gameCorner: undefined }).toEqual({
-      ...before.raidProgress,
-      dojo: undefined,
-      gameCorner: undefined,
-    });
+    expect({ ...after.raidProgress, dojo: undefined }).toEqual({ ...before.raidProgress, dojo: undefined });
     expect(new SaveManager(new MemoryStorage()).recordDojoBout('bot:xkitx', true)).toBeNull();
   });
 

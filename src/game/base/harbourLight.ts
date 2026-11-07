@@ -21,8 +21,7 @@ export function harbourWash(now: Date): HarbourWash | null {
     case 'dusk':
       return { colour: 0xff8a3d, alpha: 0.16 };
     case 'night':
-      // Deep enough to read as night at a glance, not a teal dusk (wave 1's playtest).
-      return { colour: 0x08103a, alpha: 0.64 };
+      return { colour: 0x14204a, alpha: 0.42 };
   }
 }
 

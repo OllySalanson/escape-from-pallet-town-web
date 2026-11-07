@@ -94,7 +94,10 @@ export type PromenadePropName =
   | 'troughRed'
   | 'troughBlue'
   | 'courseGate'
-  | 'timeBoard';
+  | 'timeBoard'
+  | 'derbyBoard'
+  | 'digSign'
+  | 'fishingBoard';
 
 const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // 7x6. THE GAME CORNER: Celadon's own, with GAME CORNER lit across its
@@ -134,6 +137,12 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // started by facing the gate or its keeper.
   courseGate: promenadeProp('courseGate', 'course gate'),
   timeBoard: promenadeProp('timeBoard', 'time board'),
+  // The promenade's three outdoor games, each under a board that says what
+  // it is at a glance: DERBY over the race's start, DIG on the sand, FISH at
+  // the pier head. Each is played on its own screen, started by facing it.
+  derbyBoard: promenadeProp('derbyBoard', 'derby board'),
+  digSign: promenadeProp('digSign', 'dig sign'),
+  fishingBoard: promenadeProp('fishingBoard', 'fishing board'),
 };
 
 /**

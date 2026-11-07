@@ -827,7 +827,10 @@ does, and for the promenade to be varied rather than samey.
   Drawn from nothing: a seaside lamp post, a lifebuoy, pennants, parasols,
   deckchairs, beach huts, a promenade railing, flower troughs, an ice-cream cart
   and the POKéMON JUMP cabinet. Every colour is a 15-bit value or one FireRed's
-  own palette already uses.
+  own palette already uses. Drawn here on 2026-11-07, the same way: the
+  outdoor games' three boards - DERBY on a chequered start board, DIG on a
+  driftwood sign with a spade in a heap of sand, FISH on a blue tally board
+  with a leaping fish.
 - **Terms.** As its source: the building sits on the owner's ruling for
   `frlg-towns.png`, and the rest is the owner's own.
 - **THE BATTLE ARENA, added 2026-11-07.** `frlg-towns.png`'s Saffron Fighting

@@ -188,41 +188,13 @@ export interface ThingsView {
   };
 }
 
-/**
- * Where a pocket jump lands: the first row of the pocket after (`1`) or before
- * (`-1`) the one the cursor is in, or the first row of the first or last
- * pocket. `pockets` is the pocket of every row, in list order. Storage holds
- * ninety-odd kinds in a playtest's vault, and a row at a time that was ninety
- * presses from MEDICINE to CLOTHES (wave 1's playtest, item 6). Returns the
- * index of the row to move to, or `current` when there is nowhere further.
- */
-export function pocketJump(pockets: readonly string[], current: number, step: 1 | -1 | 'first' | 'last'): number {
-  const starts = pockets.flatMap((pocket, index) => (index === 0 || pockets[index - 1] !== pocket ? [index] : []));
-  if (starts.length === 0) {
-    return current;
-  }
-  if (step === 'first') return starts[0];
-  if (step === 'last') return starts[starts.length - 1];
-  const here = Math.max(0, starts.filter((start) => start <= current).length - 1);
-  if (step === -1 && current > starts[here]) {
-    // Partway down a pocket, back goes to its own first row first.
-    return starts[here];
-  }
-  return starts[Math.min(starts.length - 1, Math.max(0, here + step))];
-}
-
 function thingRow(view: ThingsView, thing: StoredThing): string {
   const { item, count } = thing;
   const use = homeUseOf(item);
-  // The pane under the list already says what it is and where it is used, so
-  // the help bar says only what the keys do here (wave 1's playtest: the same
-  // sentence twice on one screen).
-  const help = `${item.displayName}: ${
-    use === 'teach' ? 'ENTER chooses who learns it.' : use === 'evolve' ? 'ENTER chooses who it evolves.' : 'nothing to use it on here.'
-  } PAGE UP and DOWN go a pocket at a time.`;
+  const help = `${item.displayName}: ${item.description} ${whereItIsUsed(item)}`;
   const packed = view.packed(item.id);
   const tag = packed > 0 ? pixelTag('Packed', 'plain') : '';
-  return `<button class="px-row has-icon" data-thing="${item.id}" data-pocket="${pocketOf(item)}" data-shows="${item.id}"${
+  return `<button class="px-row has-icon" data-thing="${item.id}" data-shows="${item.id}"${
     use ? ` data-use="${use}"` : ''
   } data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span></span><span class="px-tag">${itemCountTag(item.id, count)}</span></button>`;
 }

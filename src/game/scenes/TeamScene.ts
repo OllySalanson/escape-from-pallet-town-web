@@ -114,7 +114,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
     overlay.redraw(
       pixelScreen({
         title: 'Your team',
-        back: { label: 'Close', attribute: 'data-close' },
+        back: { label: 'Harbour', attribute: 'data-close' },
         aside: pixelTag(`${going} of ${MAX_RUN_PARTY}`, going > 0 ? 'good' : 'risk'),
         body,
         hints: 'ARROWS move · ENTER take or leave · type in FIND · P close',

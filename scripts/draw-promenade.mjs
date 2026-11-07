@@ -171,6 +171,11 @@ function townPiece(piece) {
 const BIG = {
   A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
   B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+  F: ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
+  H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  I: ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###'],
+  Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
   L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
   T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
   C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
@@ -895,6 +900,130 @@ function timeBoard() {
   return image;
 }
 
+/** A word in BIG letters at (x, y), a shadow a pixel down and a light top row. */
+function bigWord(image, x, y, word, ink, light, shadow) {
+  const letters = lettering(word, BIG);
+  letters.forEach((row, dy) => {
+    [...row].forEach((pixel, dx) => {
+      if (pixel === '#') set(image, x + dx, y + dy + 1, hex(shadow));
+    });
+  });
+  letters.forEach((row, dy) => {
+    [...row].forEach((pixel, dx) => {
+      if (pixel === '#') set(image, x + dx, y + dy, hex(dy === 0 ? light : ink));
+    });
+  });
+  return letters[0].length;
+}
+
+/**
+ * THE PROMENADE DERBY's start, 3x3: a racing board on two posts, chequered
+ * top and bottom like a finishing flag, DERBY in red across it and a little
+ * runner and a winning post under the word - what a seaside race meeting
+ * hangs over its start.
+ */
+function derbyBoard() {
+  const image = canvas(3 * TILE, 3 * TILE);
+  for (const px of [4, 39]) {
+    fill(image, px, 22, 5, 26, INK.outline);
+    fill(image, px + 1, 23, 3, 24, INK.white);
+    fill(image, px + 1, 23, 1, 24, INK.shade);
+    // Red bands round the posts, as a winning post has.
+    for (let y = 26; y < 46; y += 6) fill(image, px + 1, y, 3, 3, STRIPES.red.c);
+    fill(image, px, 45, 5, 2, INK.stoneDark);
+  }
+  fill(image, 0, 0, 48, 25, INK.outline);
+  fill(image, 1, 1, 46, 23, INK.white);
+  // A chequered band top and bottom.
+  for (const by of [1, 20]) {
+    for (let dy = 0; dy < 4; dy += 1) {
+      for (let dx = 0; dx < 46; dx += 1) {
+        const dark = (Math.floor(dx / 2) + Math.floor(dy / 2)) % 2 === 0;
+        set(image, 1 + dx, by + dy, hex(dark ? INK.dark : INK.white));
+      }
+    }
+  }
+  const width = lettering('DERBY', BIG)[0].length;
+  bigWord(image, Math.floor((48 - width) / 2), 8, 'DERBY', STRIPES.red.c, STRIPES.red.l, STRIPES.red.d);
+  // Pennants hung off the top corners.
+  draw(image, 0, 25, ['ff', 'f.'], { f: STRIPES.yellow.c });
+  draw(image, 46, 25, ['ff', '.f'], { f: STRIPES.blue.c });
+  // A little galloping figure and the post it runs for, on the white under the posts' tops.
+  draw(image, 14, 30, ['..oo...', '.oooo..', 'oooooo.', '.o..o..', 'o....o.'], { o: STRIPES.red.d });
+  draw(image, 28, 28, ['#', '#', '#', '#', '#', '#', '#'], { '#': INK.dark });
+  draw(image, 29, 28, ['ffff', 'f.f.', 'ffff'], { f: INK.dark });
+  draw(image, 29, 29, ['.f.f'], { f: INK.white });
+  return image;
+}
+
+/**
+ * THE DIG's sign on the sand, 2x2: DIG painted on a driftwood board on a
+ * stake, and in front of it a spade stuck in a fresh heap with a red flag in
+ * it - what buried treasure looks like on every beach.
+ */
+function digSign() {
+  const image = canvas(2 * TILE, 2 * TILE);
+  // The stake.
+  fill(image, 5, 12, 3, 18, INK.outline);
+  fill(image, 6, 12, 1, 17, INK.wood);
+  // The board.
+  fill(image, 0, 1, 22, 13, INK.outline);
+  fill(image, 1, 2, 20, 11, INK.wood);
+  fill(image, 1, 2, 20, 1, INK.woodLight);
+  fill(image, 1, 12, 20, 1, INK.woodDark);
+  const width = lettering('DIG', BIG)[0].length;
+  bigWord(image, 1 + Math.floor((20 - width) / 2), 3, 'DIG', INK.goldLight, INK.white, INK.woodDark);
+  // The heap of sand, the spade in it and its flag.
+  draw(
+    image,
+    11,
+    23,
+    ['....dddd....', '..dSSSSSSd..', '.dSSLLSSSSd.', 'dSSSSSSSSSSd', 'dddddddddddd'],
+    { d: '#c09848', S: '#e8d088', L: '#f8f0c0' },
+  );
+  // The spade: a wooden haft and an iron blade, driven in.
+  fill(image, 24, 8, 2, 16, INK.woodDark);
+  fill(image, 24, 8, 1, 16, INK.wood);
+  fill(image, 22, 7, 6, 2, INK.woodDark);
+  draw(image, 22, 22, ['######', '#ssSs#', '.####.'], { '#': INK.iron, s: INK.ironLight, S: INK.ironShine });
+  // The flag.
+  fill(image, 16, 12, 1, 12, INK.dark);
+  draw(image, 17, 12, ['rrrr', 'rRrr.', 'rrr'], { r: STRIPES.red.c, R: STRIPES.red.l });
+  return image;
+}
+
+/**
+ * THE FISHING DERBY's board at the pier head, 2x2: FISH in big white letters
+ * on harbour blue, a fish leaping under the word, and a tally chalked beside
+ * it - the board the day's catches are counted on.
+ */
+function fishingBoard() {
+  const image = canvas(2 * TILE, 2 * TILE);
+  for (const px of [3, 26]) {
+    fill(image, px, 18, 3, 14, INK.outline);
+    fill(image, px + 1, 18, 1, 13, INK.wood);
+  }
+  fill(image, 0, 0, 32, 21, INK.outline);
+  fill(image, 1, 1, 30, 19, '#2858a8');
+  fill(image, 1, 1, 30, 1, '#5888d8');
+  fill(image, 1, 19, 30, 1, '#183878');
+  const width = lettering('FISH', BIG)[0].length;
+  bigWord(image, 1 + Math.floor((30 - width) / 2), 2, 'FISH', INK.white, INK.white, '#183878');
+  // A Magikarp-orange fish leaping over a wave.
+  draw(
+    image,
+    5,
+    11,
+    ['...oo.....', '.oooooo.t.', 'oOowoooott', '.oooooo.t.', '...oo.....'],
+    { o: '#f07830', O: '#f8b060', w: INK.white, t: '#c05018' },
+  );
+  draw(image, 3, 16, ['.ww..ww..ww.', 'w..ww..ww..w'], { w: '#88c0f8' });
+  // The tally.
+  for (const x of [19, 21, 23, 25]) fill(image, x, 11, 1, 5, INK.goldLight);
+  for (let d = 0; d < 9; d += 1) set(image, 18 + d, 15 - Math.floor(d / 2), hex(INK.gold));
+  return image;
+}
+
 // --- The sheet -----------------------------------------------------------
 
 /**
@@ -931,6 +1060,9 @@ const LAYOUT = [
   ['berryCabinet', 0, 9, berryCabinet],
   ['courseGate', 2, 9, courseGate],
   ['timeBoard', 5, 9, timeBoard],
+  ['derbyBoard', 6, 9, derbyBoard],
+  ['digSign', 9, 9, digSign],
+  ['fishingBoard', 11, 9, fishingBoard],
   ['dojo', 0, 12, (towns) => SIGNS.dojo(towns)],
 ];
 

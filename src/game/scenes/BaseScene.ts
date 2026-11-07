@@ -67,9 +67,7 @@ import type { BoutiqueSceneData } from './BoutiqueScene';
 import type { GameCornerSceneData } from './GameCornerScene';
 import type { DojoChoice, DojoCounterSceneData } from './DojoCounterScene';
 import { dojoBag, dojoParty } from '../arena/boutRules';
-import { DOJO_RECEPTIONIST } from '../arena/dojoCounter';
-import { dojoFoe, foeTrainer, receptionLines, settlementLine } from '../arena/classes';
-import { classOf, shownClass } from '../arena/dojoRecord';
+import { boutResultLine, DOJO_RECEPTIONIST, dojoRegular, dojoTrainer, receptionLines } from '../arena/dojoCounter';
 import { attendantLines, courseKeeperLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
@@ -121,7 +119,7 @@ import {
   type RoomThing,
 } from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
-import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS } from '../base/landmarks';
+import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { HomeGardenFigures } from '../base/homeGardenFigures';
 import { gardenLines, gardenPokemon, gardenQuestion } from '../base/homeGarden';
@@ -1152,7 +1150,6 @@ export class BaseScene extends Phaser.Scene {
       partnerOf(this.savedGame.stash)?.species ?? null,
       readLook(this.savedGame.raidProgress.look),
       this.wornPack(),
-      shownClass(this.savedGame.raidProgress.dojo),
     );
     this.createCaptions();
     this.createDialogBox();
@@ -1263,10 +1260,7 @@ export class BaseScene extends Phaser.Scene {
     } else if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
     } else if (data.dojoBout) {
-      this.say(
-        [settlementLine(dojoFoe(data.dojoBout.opponent, classOf(dojoWent?.record)), data.dojoBout.won, dojoWent)],
-        [DOJO_RECEPTIONIST.position],
-      );
+      this.say([boutResultLine(dojoRegular(data.dojoBout.opponent), data.dojoBout.won, dojoWent)], [DOJO_RECEPTIONIST.position]);
     } else if (data.said?.length) {
       const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
       this.say(data.said, speaker ? [speaker] : []);
@@ -1330,7 +1324,6 @@ export class BaseScene extends Phaser.Scene {
           }),
         ],
         this.player,
-        this.harbourLife?.standing('person') ?? [],
       );
     }
     this.animateTiles(deltaMs);
@@ -3527,15 +3520,13 @@ export class BaseScene extends Phaser.Scene {
     }
     // Whoever else stands in the room: THE BATTLE ARENA's fighters in their lines.
     for (const person of this.place.room.people ?? []) {
-      // In their own clothes, or - a Black Belt - in the design their kind is drawn in.
-      const [texture, frame] =
-        'design' in person
-          ? ((appearance) => [appearance.textureKey, worldCharacterIdleFrame(appearance, person.facing)] as const)(
-              getWorldCharacterAppearance('npc', person.design),
-            )
-          : ([lookTexture(this, person.look, person.pack ?? null), getIdleFrame(person.facing)] as const);
       const sprite = this.add
-        .sprite(person.tile.x * TILE_SIZE, person.tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, texture, frame)
+        .sprite(
+          person.tile.x * TILE_SIZE,
+          person.tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+          lookTexture(this, person.look, person.pack ?? null),
+          getIdleFrame(person.facing),
+        )
         .setOrigin(0, 0)
         .setDepth(atRow(FIGURE_BAND, person.tile.y));
       this.figures.set(person.id, sprite);
@@ -5098,6 +5089,11 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const landmark = HARBOUR_LANDMARKS.find((each) => sameTile(each.at, target));
+    // THE PROMENADE's outdoor games: facing a game's board plays it.
+    if (landmark && OUTDOOR_GAME_LANDMARKS.includes(landmark)) {
+      this.openMinigame(landmark.id as OutdoorGameId);
+      return;
+    }
     if (landmark?.id === 'time-board') {
       this.say(timeBoardLines(this.freshGame().raidProgress, new Date()), [target]);
       return;
@@ -5238,19 +5234,16 @@ export class BaseScene extends Phaser.Scene {
     this.collision[y][x] = true;
     const sign = BASE_TILESET.props.homeSign.cells[0];
     this.tilemap?.getLayer('base-detail')?.tilemapLayer?.putTileAt(sign.tile, x, y);
-    // A plate nailed across the board's own face, so it is not read as one of
-    // the harbour's own signs - nor, under it beside the policeman, as
-    // somebody's name (wave 1's playtest). On the board's tile and no other,
-    // so it never covers whoever stands to read it.
+    // Named under its post, so it is not read as one of the harbour's own signs.
     this.add
-      .text(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + 5, 'PLAYTEST', {
+      .text(x * TILE_SIZE + TILE_SIZE / 2, (y + 1) * TILE_SIZE, 'PLAYTEST', {
         fontFamily: GAME_FONT,
         fontSize: CHIP_FONT_SIZE,
         color: '#ffd6fb',
-        backgroundColor: '#3a1640',
-        padding: { x: 2, y: 0 },
+        stroke: '#3a1640',
+        strokeThickness: 2,
       })
-      .setOrigin(0.5, 1)
+      .setOrigin(0.5, 0)
       .setDepth(atRow(CAPTION_BAND, y));
   }
 
@@ -5287,7 +5280,7 @@ export class BaseScene extends Phaser.Scene {
     switch (action.kind) {
       case 'game': {
         const game = PLAYTEST_GAMES.find((each) => each.id === action.game);
-        if (game?.opens === 'berry-picking' || game?.opens === 'field-course') {
+        if (game?.opens === 'derby' || game?.opens === 'dig' || game?.opens === 'fishing-derby') {
           this.openMinigame(game.opens);
         } else if (game) {
           this.openGameCorner(game.opens);
@@ -5350,9 +5343,6 @@ export class BaseScene extends Phaser.Scene {
         frame: (deltaMs) => {
           if (!pit) {
             this.panelLean.settle(deltaMs);
-            // Paused under the panel, the harbour seats no captions of its own:
-            // seated here, a name is never left half under the column.
-            this.containWorldLabels();
           }
         },
       },
@@ -5392,9 +5382,6 @@ export class BaseScene extends Phaser.Scene {
         frame: (deltaMs) => {
           if (!pit) {
             this.panelLean.settle(deltaMs);
-            // Paused under the panel, the harbour seats no captions of its own:
-            // seated here, a name is never left half under the column.
-            this.containWorldLabels();
           }
         },
       },
@@ -5502,7 +5489,6 @@ export class BaseScene extends Phaser.Scene {
       this.partner?.species ?? null,
       readLook(this.savedGame.raidProgress.look),
       this.wornPack(),
-      shownClass(this.savedGame.raidProgress.dojo),
     );
   }
 
@@ -5580,8 +5566,6 @@ export class BaseScene extends Phaser.Scene {
     readonly look: string;
     /** The words in their speech bubble, if any (`harbour/harbourPhrases.ts`). */
     readonly saying: string | null;
-    /** The class ball on their name plate, if they have fought in THE BATTLE ARENA. */
-    readonly dojoClass: string | null;
   }[] {
     if (!this.harbourFigures) {
       return [];
@@ -5593,7 +5577,6 @@ export class BaseScene extends Phaser.Scene {
       waving: figure.waving === true,
       look: lookKey(figure.look ?? null),
       saying: figure.saying ?? null,
-      dojoClass: figure.dojoClass ?? null,
     }));
   }
 
@@ -6585,16 +6568,16 @@ export class BaseScene extends Phaser.Scene {
 
   /** On to the mat: flat-level copies of the team chosen, no bag, against the regular chosen. */
   private startDojoBout(choice: DojoChoice): void {
-    const foe = dojoFoe(choice.opponent, classOf(this.freshGame().raidProgress.dojo));
-    if (!foe || choice.team.length === 0) {
+    const regular = dojoRegular(choice.opponent);
+    if (!regular || choice.team.length === 0) {
       return;
     }
     const data: BattleSceneData = {
       party: new PokemonParty(dojoParty(choice.team)),
       bag: dojoBag(),
-      trainer: foeTrainer(foe, choice.team.length),
+      trainer: dojoTrainer(regular, choice.team.length),
       hunterBattle: true,
-      exhibition: { dojo: foe.id, at: { ...this.currentTile } },
+      exhibition: { dojo: regular.bot.id, at: { ...this.currentTile } },
     };
     this.leaving = true;
     audioManager.play('battleStart');
@@ -6631,7 +6614,7 @@ export class BaseScene extends Phaser.Scene {
    * POKéMON JUMP is. Coming back, the place is drawn again, so a cabinet's or
    * the course's caption says the new best.
    */
-  private openMinigame(scene: 'berry-picking' | 'field-course'): void {
+  private openMinigame(scene: 'berry-picking' | 'field-course' | OutdoorGameId): void {
     if (this.leaving) {
       return;
     }

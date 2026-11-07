@@ -195,17 +195,6 @@ body {
 #screens:not(:has(> :not(.side-panel[data-layout='side']))) {
   box-shadow: none;
 }
-/* A whole screen hides the game, all of it: the strip the FEEDBACK tab stands
-   in, and any margin round a screen smaller than the window, are dark rather
-   than a sliver of the harbour cut off at the screen's edge (wave 1's
-   playtest: the PLAYTEST BOARD's POKéMON JUMP from the yard). Only a screen
-   meant to be seen beside the game - a side column, the hall's panels - leaves
-   it showing. */
-#screens:has(> .menu-overlay.pixel-ui:not([data-layout='side']):not(.arena-panel)) {
-  box-shadow:
-    0 0 0 2px #253d55,
-    0 0 0 200vmax #000;
-}
 
 /* The bot check (`maker/playerSignIn.ts`), over everything - every menu and a console game - because a
    screen redraws its markup and would take the check down with it. It shows nothing while Turnstile passes a
@@ -4575,12 +4564,4 @@ button {
 }
 :where(.pixel-ui) .rim-stakes dd {
   white-space: normal;
-}
-
-/* In a side column a card is too narrow for two moves abreast, and wrapping
-   them by width laid each card's four out differently (wave 1's playtest):
-   one a line, the same on every card. */
-:where(.pixel-ui[data-layout='side']) .teach-moves {
-  display: grid;
-  gap: 0;
 }

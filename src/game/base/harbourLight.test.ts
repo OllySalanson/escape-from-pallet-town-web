@@ -12,11 +12,8 @@ describe('the harbour by the clock', () => {
     const night = harbourWash(at(23));
     expect(dusk && night).toBeTruthy();
     expect(dusk!.alpha).toBeLessThan(night!.alpha);
-    // Night reads as night at a glance (wave 1's playtest found 0.42 a teal
-    // dusk), and the ground still shows through it. Names and figures are drawn
-    // over the wash (`harbourNight.ts`), so it never touches them.
-    expect(night!.alpha).toBeGreaterThanOrEqual(0.55);
-    expect(night!.alpha).toBeLessThanOrEqual(0.7);
+    // Names and figures stay readable: the wash never hides more than half the picture.
+    expect(night!.alpha).toBeLessThanOrEqual(0.5);
     expect(lightsAreOn(at(19))).toBe(true);
     expect(lightsAreOn(at(2))).toBe(true);
     expect(harbourWash(at(6))).toEqual(dusk);

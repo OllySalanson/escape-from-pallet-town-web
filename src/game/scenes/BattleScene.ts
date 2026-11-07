@@ -2277,11 +2277,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private enemyRole(): BannerRole {
-    // A dojo regular is a trainer met for sport, and a gym leader sparring in
-    // the hall a trainer too: never the rival hunting a raid, whose word RIVAL is.
+    // A dojo regular is a trainer met for sport, never the rival hunting a raid.
     const dojo = this.exhibition !== undefined && 'dojo' in this.exhibition;
-    const practice = this.exhibition !== undefined && 'practice' in this.exhibition && this.exhibition.practice !== undefined;
-    return enemyBannerRole({ trainer: this.trainer !== undefined, hunter: this.hunterBattle && !dojo && !practice });
+    return enemyBannerRole({ trainer: this.trainer !== undefined, hunter: this.hunterBattle && !dojo });
   }
 
   private hunterFleeLabel(): string {

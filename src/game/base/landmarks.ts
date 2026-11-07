@@ -36,7 +36,7 @@ export interface HarbourLandmark {
   readonly floats?: { readonly swellMs: number; readonly bringsRaidsHome?: true };
 }
 
-export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
+const LANDMARKS: readonly HarbourLandmark[] = [
   {
     id: 'seagallop',
     name: 'THE SEAGALLOP',
@@ -95,5 +95,47 @@ export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
   },
 ];
 
+
+/**
+ * THE PROMENADE's three outdoor games, each a landmark whose board says what
+ * it is (`scripts/draw-promenade.mjs`): facing it plays it rather than saying
+ * the note (`BaseScene`, `OUTDOOR_GAME_SPOTS`).
+ */
+export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
+  {
+    // Over the race's start and finish line, where THE GREEN meets the stone.
+    id: 'derby',
+    name: 'PROMENADE DERBY',
+    note: 'Six run the front: pier, bay or sky',
+    props: [{ name: 'derbyBoard', x: 61, y: 9 }],
+    at: { x: 62, y: 11 },
+    near: [61, 62, 63].map((x) => ({ x, y: 12 })),
+  },
+  {
+    // On the sand between the huts, under the steps down from the boardwalk.
+    id: 'dig',
+    name: 'THE DIG',
+    note: 'Ten digs: what is buried is yours',
+    props: [{ name: 'digSign', x: 66, y: 20 }],
+    at: { x: 66, y: 20 },
+    near: [66, 67].flatMap((x) => [{ x, y: 19 }, { x, y: 22 }]),
+  },
+  {
+    // At the pier head, where the deep water is.
+    id: 'fishing-derby',
+    name: 'FISHING DERBY',
+    note: 'Two minutes off the deep end',
+    props: [{ name: 'fishingBoard', x: 76, y: 28 }],
+    at: { x: 77, y: 29 },
+    near: [78, 79].flatMap((x) => [{ x, y: 28 }, { x, y: 29 }]),
+  },
+];
+
+/** Which outdoor game a faced tile plays: its landmark's tiles, from in front. */
+export type OutdoorGameId = 'derby' | 'dig' | 'fishing-derby';
+
 /** The gate's front tiles: facing any of them from below runs the course. */
 export const COURSE_GATE_FRONT: readonly GridPosition[] = [84, 85, 86].map((x) => ({ x, y: 9 }));
+
+/** Every landmark the harbour stands, the outdoor games' among them. */
+export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [...LANDMARKS, ...OUTDOOR_GAME_LANDMARKS];
