@@ -219,7 +219,7 @@ function thingRow(view: ThingsView, thing: StoredThing): string {
   // sentence twice on one screen).
   const help = `${item.displayName}: ${
     use === 'teach' ? 'ENTER chooses who learns it.' : use === 'evolve' ? 'ENTER chooses who it evolves.' : 'nothing to use it on here.'
-  } PAGE UP and DOWN go a pocket at a time.`;
+  } LEFT and RIGHT go a pocket at a time.`;
   const packed = view.packed(item.id);
   const tag = packed > 0 ? pixelTag('Packed', 'plain') : '';
   return `<button class="px-row has-icon" data-thing="${item.id}" data-pocket="${pocketOf(item)}" data-shows="${item.id}"${

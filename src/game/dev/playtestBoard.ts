@@ -2,7 +2,9 @@ import { BASE_DOORS } from '../base/doors';
 import { BASE_SPAWN, getBaseMap } from '../base/baseMap';
 import { HARBOUR_PLACES, type HarbourPlace } from '../base/harbourPlaces';
 import { BASE_ROOMS, type RoomId } from '../base/rooms';
-import type { GridPosition } from '../movement/gridMovement';
+import { DOJO_COUNTER_TILES } from '../arena/dojoCounter';
+import { LEADER_TILES } from '../base/gymPractice';
+import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PlaytestHour } from './playtestClock';
 import { PLAYTEST_GAMES } from './playtestKit';
 
@@ -38,6 +40,7 @@ export const PLAYTEST_BOARD_NAME = 'PLAYTEST BOARD';
 
 export type PlaytestBoardAction =
   | { readonly kind: 'room'; readonly room: RoomId }
+  | { readonly kind: 'stand'; readonly room: RoomId; readonly at: GridPosition; readonly facing: Direction }
   | { readonly kind: 'place'; readonly place: string }
   | { readonly kind: 'hour'; readonly hour: PlaytestHour | null }
   | { readonly kind: 'new-day' }
@@ -63,17 +66,46 @@ const HOUR_ROWS: readonly { readonly hour: PlaytestHour | null; readonly label: 
   { hour: null, label: 'MY CLOCK', note: 'Back to the hour it really is' },
 ];
 
+/**
+ * The fights a playtest wants straight away, as rows of PLAY: standing at the
+ * dojo's counter facing the receptionist, and before the first leader on the
+ * hall's far floor (every leader is met in the explorer run). One SPACE then
+ * opens the counter or asks the leader.
+ */
+const DOJO_COUNTER_FRONT: GridPosition = {
+  x: DOJO_COUNTER_TILES[0].x + 1,
+  y: Math.max(...DOJO_COUNTER_TILES.map((tile) => tile.y)) + 1,
+};
+const FIRST_LEADER_FRONT: GridPosition = { x: LEADER_TILES[0].x, y: LEADER_TILES[0].y + 1 };
+export const STAND_ROWS: readonly PlaytestBoardRow[] = [
+  {
+    id: 'stand-dojo-counter',
+    label: 'THE BATTLE ARENA COUNTER',
+    note: 'At the counter: SPACE for a bout',
+    action: { kind: 'stand', room: 'battle-arena', at: DOJO_COUNTER_FRONT, facing: 'up' },
+  },
+  {
+    id: 'stand-practice',
+    label: 'PRACTISE WITH A LEADER',
+    note: 'In the hall: SPACE to spar',
+    action: { kind: 'stand', room: 'raid-arena', at: FIRST_LEADER_FRONT, facing: 'up' },
+  },
+];
+
 /** Every row of the board, in its sections; `hour` is the one set now, if any. */
 export function playtestBoardSections(hour: PlaytestHour | null): readonly PlaytestBoardSection[] {
   return [
     {
       heading: 'Play',
-      rows: PLAYTEST_GAMES.map((game) => ({
-        id: `game-${game.id}`,
-        label: game.name,
-        note: 'Open it now',
-        action: { kind: 'game', game: game.id },
-      })),
+      rows: [
+        ...PLAYTEST_GAMES.map((game): PlaytestBoardRow => ({
+          id: `game-${game.id}`,
+          label: game.name,
+          note: 'Open it now',
+          action: { kind: 'game', game: game.id },
+        })),
+        ...STAND_ROWS,
+      ],
     },
     {
       heading: 'The hour',
@@ -90,7 +122,7 @@ export function playtestBoardSections(hour: PlaytestHour | null): readonly Playt
         {
           id: 'new-day',
           label: 'NEW DAY',
-          note: 'Every cabinet pays again; the prize limits reset',
+          note: "Every cabinet pays again; the dojo's regulars keep the real date",
           action: { kind: 'new-day' },
         },
       ],

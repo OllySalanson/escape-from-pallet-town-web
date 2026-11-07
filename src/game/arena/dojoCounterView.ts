@@ -17,7 +17,7 @@ import {
   pixelTag,
   pixelWindow,
 } from '../ui/pixelUi';
-import { DOJO_LEVEL, DOJO_TEAM_SIZE, dojoRefusal } from './boutRules';
+import { DOJO_LEVEL, DOJO_TEAM_SIZE, dojoRefusal, movesOnTheWayTo } from './boutRules';
 import { dojoClass, foeTeamLine, headRefusal, nextClass, STREAK_TO_CHALLENGE, streakOf, type DojoFoe } from './classes';
 import { classOf, type DojoRecord } from './dojoRecord';
 
@@ -82,7 +82,10 @@ export function joinRefusal(entry: PickerEntry, team: readonly Pokemon[]): strin
 /** What a row of the team list says when pointed at. */
 export function memberHelp(entry: PickerEntry, inTeam: boolean, refusal: string | null): string {
   if (inTeam) {
-    return `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} with its own moves. ENTER leaves it out.`;
+    const learned = movesOnTheWayTo(entry.pokemon, DOJO_LEVEL).map((move) => move.name.toUpperCase());
+    return learned.length > 0
+      ? `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} and learns ${learned.join(', ')} on the way up. ENTER leaves it out.`
+      : `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} with its own moves. ENTER leaves it out.`;
   }
   return refusal ?? `${entry.pokemon.name} (from ${entry.box}) would fight at Lv ${DOJO_LEVEL}. ENTER brings it.`;
 }
@@ -112,7 +115,9 @@ export function teamBody(
     const tag = inTeam
       ? pixelTag(chosen[0]?.id === entry.id ? 'Lead' : 'In', 'good', true)
       : refusal
-        ? pixelTag(side.length >= DOJO_TEAM_SIZE ? 'Full' : 'No', 'risk')
+        ? side.length >= DOJO_TEAM_SIZE
+          ? pixelTag('Full', 'plain')
+          : pixelTag('No', 'risk')
         : pixelTag('Bring', 'plain');
     return `<button class="px-row${inTeam ? ' is-selected' : ''}" data-member="${escapeAttribute(entry.id)}" ${pickerRowAttributes(entry)}${
       first ? ' data-cursor-start' : ''
@@ -136,7 +141,7 @@ export function teamBody(
     heading: `Against ${opponent.name}`,
     note: `${chosen.length} of ${DOJO_TEAM_SIZE}`,
   })}${pixelCommitBar({
-    title: `${chosen.length || 'None'} vs ${Math.max(1, chosen.length)} · Lv ${DOJO_LEVEL}`,
+    title: `${chosen.length} vs ${chosen.length} · Lv ${DOJO_LEVEL}`,
     actions: fight,
   })}</main>`;
 }

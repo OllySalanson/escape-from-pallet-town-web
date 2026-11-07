@@ -1,5 +1,5 @@
 import { Bag } from '../items';
-import { Move, Pokemon } from '../pokemon';
+import { Move, Pokemon, type MoveBase } from '../pokemon';
 
 /**
  * THE BATTLE ARENA's rules: a bout for sport, fair by construction (the
@@ -8,8 +8,13 @@ import { Move, Pokemon } from '../pokemon';
  * **Everybody fights at the same level.** A bout is a puzzle of species, moves,
  * abilities and held items, never of hours played, so every Pokémon that walks
  * onto the mat - the player's and the opponent's - is a fresh copy at
- * `DOJO_LEVEL`: its own species, its own four moves at full PP, its own held
- * item, nickname and colours, and the stats that level gives. A Lv 70 Charizard
+ * `DOJO_LEVEL`: its own species, its own moves at full PP, its own held item,
+ * nickname and colours, and the stats that level gives. A Pokémon below that
+ * level also learns, into any free slot, what its own learnset would have
+ * taught it on the way up (`movesOnTheWayTo`), exactly as levelling does when
+ * nothing has to be forgotten - so a new player's Lv 5 Charmander comes in
+ * with Ember and Metal Claw beside Scratch and Growl, and never a move or a
+ * stat its kind could not have. A Lv 70 Charizard
  * and a Lv 12 Charmander are each just one of their kind. Raids keep the real
  * levels and the real risk.
  *
@@ -32,18 +37,49 @@ export const DOJO_LEVEL = 30;
 /** The most a side may bring: FireRed's Trainer Tower and Battle Tower are three-Pokémon formats. */
 export const DOJO_TEAM_SIZE = 3;
 
+/** A Pokémon knows four moves at most, as everywhere in the game. */
+const MOVE_SLOTS = 4;
+
 /** Generation III's Battle Tower ban list, within the 151. */
 export const DOJO_BANNED_SPECIES: readonly string[] = ['mewtwo', 'mew'];
 
 /**
+ * The moves a Pokémon knowing `known` at `fromLevel` would learn levelling to
+ * `toLevel` without forgetting any: its own species' learnset above its level,
+ * in learning order, each into a free slot until there is none. A level-up
+ * that finds no room asks which to forget, and a bout cannot ask, so it keeps
+ * what the Pokémon chose to know.
+ */
+export function movesOnTheWayTo(
+  pokemon: Pokemon,
+  toLevel: number,
+  known: readonly MoveBase[] = pokemon.moves.map((move) => move.base),
+): MoveBase[] {
+  const kit = [...known];
+  for (const entry of [...pokemon.base.learnset]
+    .filter((learnable) => learnable.level > pokemon.level && learnable.level <= toLevel)
+    .sort((left, right) => left.level - right.level)) {
+    if (kit.length >= MOVE_SLOTS) {
+      break;
+    }
+    if (!kit.includes(entry.move)) {
+      kit.push(entry.move);
+    }
+  }
+  return kit.slice(known.length);
+}
+
+/**
  * A Pokémon as it fights in the dojo: a new one of its kind at the bout's
- * level, knowing what the original knows, at full health and full PP, holding
- * what it holds and named and coloured as it is. The original is only read.
+ * level, knowing what the original knows (and what it would learn on the way
+ * up to that level, into free slots), at full health and full PP, holding what
+ * it holds and named and coloured as it is. The original is only read.
  */
 export function flatLevelCopy(pokemon: Pokemon, level: number = DOJO_LEVEL): Pokemon {
   const copy = new Pokemon(pokemon.base, level);
   if (pokemon.moves.length > 0) {
-    copy.moves = pokemon.moves.map((move) => new Move(move.base));
+    const own = pokemon.moves.map((move) => move.base);
+    copy.moves = [...own, ...movesOnTheWayTo(pokemon, level, own)].map((move) => new Move(move));
   }
   copy.heldItemId = pokemon.heldItemId;
   copy.nickname = pokemon.nickname;

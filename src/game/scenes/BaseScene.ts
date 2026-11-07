@@ -830,6 +830,8 @@ export class BaseScene extends Phaser.Scene {
   private harbourLife: HarbourLifeFigures | null = null;
   /** The Pokémon walking about THE BOLTHOLE's garden (`base/homeGarden.ts`), outdoors only. */
   private garden: HomeGardenFigures | null = null;
+  /** The plate across the PLAYTEST BOARD, in the explorer run's yard only. */
+  private playtestPlate: Phaser.GameObjects.Text | null = null;
   /** Somebody else's house this player is looking round, let in at the door. */
   private visit: HouseVisit | null = null;
   /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
@@ -3179,6 +3181,8 @@ export class BaseScene extends Phaser.Scene {
       ((keeper !== undefined && sameTile(keeper, above)) ||
         (this.rivalHere !== null && sameTile(RIVAL_TILE, above)) ||
         this.leaderOn(above) !== undefined ||
+        (this.garden?.holds(above) ?? false) ||
+        this.partnerAt(above) ||
         [...(this.harbourLife?.standing('person') ?? []), ...(this.harbourLife?.standing('pokemon') ?? [])].some(
           (tile) => sameTile(tile, above),
         ));
@@ -4138,6 +4142,9 @@ export class BaseScene extends Phaser.Scene {
           // is: a caption seated across a person reads as their head stuck on
           // a sign.
           ...(this.harbourLife?.standing('person') ?? []).map((tile) => figureRect(tile)),
+          // The PLAYTEST BOARD's plate is wider than its tile, and a door's name
+          // seated across it read as one box run into another (wave 2's playtest).
+          ...(this.playtestPlate && !room ? [this.playtestPlate.getBounds()] : []),
           // What the other players are saying: a caption seated over it would be read as said.
           ...(this.harbourFigures?.bubbleRects() ?? []),
           // This player's own hand while it is up.
@@ -5236,6 +5243,7 @@ export class BaseScene extends Phaser.Scene {
    * sign stamped on the lawn by the landing and made solid while it stands.
    */
   private raisePlaytestBoard(): void {
+    this.playtestPlate = null;
     if (this.place.room || !isPlaytestRun()) {
       return;
     }
@@ -5247,7 +5255,7 @@ export class BaseScene extends Phaser.Scene {
     // the harbour's own signs - nor, under it beside the policeman, as
     // somebody's name (wave 1's playtest). On the board's tile and no other,
     // so it never covers whoever stands to read it.
-    this.add
+    this.playtestPlate = this.add
       .text(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + 5, 'PLAYTEST', {
         fontFamily: GAME_FONT,
         fontSize: CHIP_FONT_SIZE,
@@ -5318,6 +5326,9 @@ export class BaseScene extends Phaser.Scene {
       }
       case 'room':
         this.goTo({ savedGame: this.freshGame(), room: action.room }, 'interiorEnter');
+        return;
+      case 'stand':
+        this.goTo({ savedGame: this.freshGame(), room: action.room, at: action.at, facing: action.facing }, 'interiorEnter');
         return;
       case 'place': {
         const place = HARBOUR_PLACES.find((each) => each.id === action.place);

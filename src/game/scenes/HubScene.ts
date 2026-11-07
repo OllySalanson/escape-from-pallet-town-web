@@ -2389,6 +2389,8 @@ export class HubScene extends Phaser.Scene {
       : party.map((stored) => stored.pokemon.name).join(', ');
     // The rack and the rim say what is not packed; on the bench it is about nothing in view.
     const warning = this.packWarning({ balls: false });
+    // Each row names its box, as every other picker of your Pokémon does (`ui/boxPicker.ts`).
+    const boxNames = this.stash.listBoxes().map((box) => box.name);
     const pokemonRows = this.findablePokemon
       .map((stored, index) => {
         const added = this.flow.includesPokemon(stored.id);
@@ -2403,6 +2405,7 @@ export class HubScene extends Phaser.Scene {
           // A tick, as every chosen row on these screens is marked: a ten-letter
           // name and its health bar leave no room for a word beside them.
           added ? pixelTag('', 'good', true) : fainted ? pixelTag('Fainted', 'risk') : pixelTag('Add'),
+          boxNames[this.stash.boxIndexOf(stored.id)],
         )}</button>`;
       })
       .join('');

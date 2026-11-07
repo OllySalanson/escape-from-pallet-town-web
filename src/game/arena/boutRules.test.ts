@@ -39,6 +39,24 @@ describe('a bout in THE BATTLE ARENA', () => {
     expect(veteran.moves[0].pp).toBeGreaterThan(0);
   });
 
+  it('teaches a low-level Pokémon what its own learnset would on the way to the bout level, into free slots only', () => {
+    const starter = make('charmander', 5);
+    const own = starter.moves.map((move) => move.base.name);
+    expect(own.length).toBeLessThan(4);
+    const copy = flatLevelCopy(starter);
+    const names = copy.moves.map((move) => move.base.name);
+    expect(names.slice(0, own.length)).toEqual(own);
+    expect(names).toHaveLength(4);
+    const learnable = new Set(
+      SPECIES_BY_ID.charmander.learnset.filter((entry) => entry.level <= DOJO_LEVEL).map((entry) => entry.move.name),
+    );
+    expect(names.every((name) => learnable.has(name))).toBe(true);
+    expect(copy.moves.some((move) => move.base.power > 0 && move.base.type !== starter.moves[0].base.type)).toBe(true);
+    expect(starter.moves.map((move) => move.base.name)).toEqual(own);
+    const full = make('charmander', 25);
+    expect(flatLevelCopy(full).moves.map((move) => move.base.name)).toEqual(full.moves.map((move) => move.base.name));
+  });
+
   it('puts a Lv 70 and a Lv 12 of the same kind on equal terms', () => {
     expect(flatLevelCopy(make('charmander', 70)).stats).toEqual(flatLevelCopy(make('charmander', 12)).stats);
   });
