@@ -5984,6 +5984,12 @@
    "y": 290
   },
   {
+   "x": 90,
+   "y": 304,
+   "hidden": true,
+   "secret": "x-marks-the-spot"
+  },
+  {
    "x": 1,
    "y": 6,
    "hidden": true,
@@ -14251,6 +14257,15 @@
    "lines": [
     "THE LANDING STAGE",
     "For small boats, by night, in fog, for no reason."
+   ]
+  },
+  {
+   "x": 91,
+   "y": 303,
+   "secret": "x-marks-the-spot",
+   "lines": [
+    "An old marker post, driven deep into the sand, with an X cut into it.",
+    "Whatever it marks, it keeps for somebody holding the whole CHART. Torn in four, they say."
    ]
   },
   {

@@ -23,6 +23,7 @@ export const SECRETS_BOOK_ID = 'vale-secrets';
 /** What a secret's data cannot say: how its nook is got at, where that is more than walking up. */
 export const NOTES: Readonly<Record<string, string>> = {
   'the-lost-fold': 'A STRENGTH boulder on HIGH MOOR shuts the fold.',
+  'x-marks-the-spot': 'Past MISTY.',
 };
 
 const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
@@ -52,6 +53,8 @@ export function conditionWords(condition: SecretCondition): string {
       return `a Pokémon that knows ${FIELD_MOVES[condition.move].label}`;
     case 'carried':
       return `${condition.items.map((item) => `${article(getItemById(item)?.displayName ?? item)} {item:${item}}`).join(' or ')} packed`;
+    case 'whole-chart':
+      return 'the whole treasure map pinned up';
     case 'either':
       return condition.of.map(conditionWords).join(', or ');
   }

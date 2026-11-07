@@ -93,6 +93,7 @@ export {
   hpRestoredLine,
   WONT_HAVE_EFFECT_LINE,
   useFieldItem,
+  relicKeeper,
   type FieldItemUseResult,
   type HeldItemEffect,
   type ErrandItemId,

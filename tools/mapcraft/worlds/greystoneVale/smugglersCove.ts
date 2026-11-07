@@ -214,6 +214,11 @@ export function smugglersCove(): MapcraftResult {
       { x: 56, y: 44, hidden: true },
       { x: 48, y: 38, hidden: true },
       { x: 27, y: 34 },
+      // X marks the spot (`src/game/world/secrets.ts`, `src/game/treasure/`):
+      // where the sand runs out under the cliff past the boat shed, the end of
+      // the treasure map. It holds the smugglers' chest to a raid that set out
+      // with the whole chart on THE CHART ROOM's wall.
+      { x: 26, y: 48, hidden: true, secret: 'x-marks-the-spot' },
     ],
     extra: {
       districts: [
@@ -239,6 +244,8 @@ export function smugglersCove(): MapcraftResult {
         { x: 36, y: 40, lines: ['FISHER’S ROW', 'A fishing village. Look at all the nets. There is a net somewhere.'] },
         { x: 42, y: 41, lines: ['THE CUT', 'East to the shingle and the Sunken Quarter. Carts by night. Do not count them.'] },
         { x: 29, y: 35, lines: ['THE LANDING STAGE', 'For small boats, by night, in fog, for no reason.'] },
+        // The treasure's clue, beside its nook: a marker post with an X cut in it.
+        { x: 27, y: 47, secret: 'x-marks-the-spot', lines: ['An old marker post, driven deep into the sand, with an X cut into it.', 'Whatever it marks, it keeps for somebody holding the whole CHART. Torn in four, they say.'] },
       ],
       // The smugglers' ship's cat on the bluff, a Poliwhirl in the lake reeds
       // and a Staryu on the beach, and what else the tide leaves.

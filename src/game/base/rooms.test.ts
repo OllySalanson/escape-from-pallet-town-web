@@ -435,8 +435,12 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
    * them to.
    */
   it('joins its two floors with a stair each way, on ground the player can stand on', () => {
+    // The library's way through to THE CHART ROOM stands shut behind its end
+    // bookcase until MARLOW opens it (`treasure/treasureMap.test.ts` holds the
+    // shut half), so every stair is asked of a save he has opened it for.
+    const opened = baseGame({ progress: { treasureHunt: { roomOpen: true, pinned: [], chestOpened: false } } });
     for (const each of BASE_ROOMS) {
-      const built = buildRoom(each, baseGame());
+      const built = buildRoom(each, opened);
       for (const stair of each.stairs) {
         const to = room(stair.to);
         const arrival = stairArrival(each.id, to);
@@ -525,8 +529,9 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
     // But Oak's cork board, which hangs in his lab (`labBoard.test.ts`), and
     // what Brock chalks and Bill puts out, which are held above, THE BATTLE
     // ARENA's class board (`arena/classes.test.ts`), and THE GAME CORNER's
-    // HIGH SCORES board and cabinet lamps (`minigames/arcade.test.ts`).
-    const hung = ['oaks-lab', 'brocks-workshop', 'bills-cottage', 'battle-arena', 'game-corner'];
+    // HIGH SCORES board and cabinet lamps (`minigames/arcade.test.ts`), and THE
+    // CHART ROOM's treasure map (`treasure/treasureMap.test.ts`).
+    const hung = ['oaks-lab', 'brocks-workshop', 'bills-cottage', 'battle-arena', 'game-corner', 'chart-room'];
     for (const each of BASE_ROOMS.filter((candidate) => !candidate.id.startsWith('bolthole') && !hung.includes(candidate.id))) {
       expect([each.id, buildRoom(each, baseGame()).posters]).toEqual([each.id, []]);
     }

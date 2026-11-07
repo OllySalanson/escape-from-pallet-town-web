@@ -130,6 +130,17 @@ import { readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/
 import { secretsHeldBy } from '../world/secrets';
 import { isRumourId } from '../world/rumours';
 import { fossilAwake, isFossil, revivedPokemon, type FossilItemId, type FossilOnMachine } from '../hub/fossils';
+import {
+  bottleOnTheBeach,
+  CHART_PIECES,
+  chartWhole,
+  CHEST_CONTENTS,
+  CHEST_ITEM_ID,
+  NO_TREASURE_HUNT,
+  pieceById,
+  readTreasureHunt,
+  type TreasureHunt,
+} from '../treasure/treasureMap';
 import { readHomeLayout, type Placement } from '../home/arrangement';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
@@ -326,6 +337,12 @@ export interface RaidProgress {
   readonly rumoursHeard?: readonly string[];
   /** The fossil on Professor Oak's machine (`../hub/fossils.ts`), if one is. */
   readonly fossil?: FossilOnMachine;
+  /**
+   * THE TREASURE MAP (`../treasure/treasureMap.ts`): whether MARLOW has opened
+   * THE CHART ROOM, the pieces on its wall and whether the chest is open.
+   * Absent is a hunt not begun.
+   */
+  readonly treasureHunt?: TreasureHunt;
   /**
    * THE GAME CORNER (`../minigames/tickets`): the tickets in hand, today's
    * ledger for the daily caps, and the best score at each cabinet. Absent on
@@ -1226,6 +1243,102 @@ export class SaveManager {
     const raidProgress: RaidProgress = { ...game.raidProgress };
     delete (raidProgress as { fossil?: FossilOnMachine }).fossil;
     return this.save({ ...game, raidProgress }) ? pokemon : undefined;
+  }
+
+  /**
+   * Picks the bottle up off THE BEACH (`../treasure/treasureMap.ts`): its
+   * chart into the vault, in one write. False when it is not lying there - it
+   * has been picked up already, or its piece is on the wall - or the game
+   * could not be saved, and then nothing has happened.
+   */
+  public takeBottledChart(): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
+    const shore = CHART_PIECES.find((piece) => piece.from.kind === 'beach');
+    if (!shore || !bottleOnTheBeach(hunt, (itemId) => game.stash.itemCount(itemId))) {
+      return false;
+    }
+    game.stash.addItem(shore.itemId, 1);
+    return this.save(game);
+  }
+
+  /** MARLOW opens the bookcase into THE CHART ROOM, for good. Nothing is written when it is open already. */
+  public openChartRoom(): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
+    if (hunt.roomOpen) {
+      return true;
+    }
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, treasureHunt: { ...hunt, roomOpen: true } } });
+  }
+
+  /**
+   * Pins a piece of the chart from the vault on THE CHART ROOM's wall, in one
+   * write: out of the vault, onto the wall, and kept as found
+   * (`secretsFound`) so its nook never gives it again. Undefined when the
+   * room is shut, the piece is up already or the vault holds none, or it could
+   * not be saved; otherwise the hunt as it now stands.
+   */
+  public pinChartPiece(pieceId: string): TreasureHunt | undefined {
+    const game = this.load();
+    const piece = pieceById(pieceId);
+    if (!game || !piece) {
+      return undefined;
+    }
+    const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
+    if (!hunt.roomOpen || hunt.pinned.includes(piece.id) || game.stash.itemCount(piece.itemId) < 1) {
+      return undefined;
+    }
+    game.stash.removeItem(piece.itemId, 1);
+    const after: TreasureHunt = { ...hunt, pinned: [...hunt.pinned, piece.id] };
+    const found = game.raidProgress.secretsFound ?? [];
+    const secretsFound = piece.from.kind === 'secret' && !found.includes(piece.itemId) ? [...found, piece.itemId] : found;
+    return this.save({
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        treasureHunt: after,
+        ...(secretsFound.length > 0 ? { secretsFound } : {}),
+      },
+    })
+      ? after
+      : undefined;
+  }
+
+  /**
+   * Opens the SEA CHEST in THE CHART ROOM, in one write: the chest out of the
+   * vault and onto MARLOW's floor for good, and what was in it
+   * (`CHEST_CONTENTS`) into the vault. False when the chart is not whole, the
+   * vault holds no chest, it is open already, or it could not be saved.
+   */
+  public openSeaChest(): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
+    if (hunt.chestOpened || !chartWhole(hunt) || game.stash.itemCount(CHEST_ITEM_ID) < 1) {
+      return false;
+    }
+    game.stash.removeItem(CHEST_ITEM_ID, 1);
+    for (const { itemId, quantity } of CHEST_CONTENTS) {
+      game.stash.addItem(itemId, quantity);
+    }
+    const found = game.raidProgress.secretsFound ?? [];
+    return this.save({
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        treasureHunt: { ...hunt, chestOpened: true },
+        secretsFound: found.includes(CHEST_ITEM_ID) ? found : [...found, CHEST_ITEM_ID],
+      },
+    });
   }
 
   /**
@@ -2441,6 +2554,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ? { rumoursHeard: uniqueStrings(value.rumoursHeard).filter(isRumourId) }
       : {}),
     ...(readFossil(value.fossil) ? { fossil: readFossil(value.fossil) } : {}),
+    ...(readTreasureHunt(value.treasureHunt) ? { treasureHunt: readTreasureHunt(value.treasureHunt) } : {}),
     ...(readGameCorner(value.gameCorner) ? { gameCorner: readGameCorner(value.gameCorner) } : {}),
     ...(readDerbyCleared(value.derbyCleared) ? { derbyCleared: readDerbyCleared(value.derbyCleared) } : {}),
     ...(readLook(value.look) ? { look: readLook(value.look) as DressedLook } : {}),

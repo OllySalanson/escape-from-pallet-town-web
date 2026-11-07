@@ -91,6 +91,10 @@ export const ITEM_ICONS = {
   'chart-piece-1': 'chart-piece-1',
   'chart-piece-2': 'chart-piece-2',
   'chart-piece-3': 'chart-piece-3',
+  // The treasure map's (`../treasure/treasureMap.ts`): the bottle off THE
+  // BEACH and the chest the whole chart leads to.
+  'bottled-chart': 'bottled-chart',
+  'sea-chest': 'sea-chest',
   'helix-fossil': 'helix-fossil',
   'dome-fossil': 'dome-fossil',
   leftovers: 'leftovers',

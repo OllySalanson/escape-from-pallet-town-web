@@ -11,6 +11,7 @@ import type { RoomPoster } from './rooms';
 import { classBoardPoster } from '../arena/classBoard';
 import { cupBoardPoster } from '../arena/cupBoard';
 import { cabinetLampsPicture, highScoresPicture, tiersPaidToday } from '../minigames/arcade';
+import { chartWallPicture } from '../treasure/chartWall';
 
 /**
  * The picture for one thing a room paints from the save: the same answer for the
@@ -42,5 +43,7 @@ export function roomPosterPicture(game: RestoredGame, poster: RoomPoster, now: D
       return cabinetLampsPicture(tiersPaidToday(poster.game, game.raidProgress, now));
     case 'goods-shelf':
       return shelfPoster(poster.area, sheetedColumns(poster.area, traderCounterFor(game)));
+    case 'chart-wall':
+      return chartWallPicture(game.raidProgress.treasureHunt, poster.area);
   }
 }

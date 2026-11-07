@@ -276,6 +276,11 @@ game.
   `#9cc3ea`) and a red dotted course (`#d9442b`), and two shells set in stone
   (`#6b604f`, `#9a8d7a`, `#c9bda5`, `#e8dfcc`; shell `#8a5a3a`, `#c48a52`,
   `#e6b77d`). Original to this game; nothing is cut from FireRed.
+  The treasure map's two - `bottled-chart` (a sea-green bottle, `#2f7a5c`,
+  `#5fb38a`, `#b8ead0`, with a rolled chart inside and a cork) and `sea-chest`
+  (iron-bound oak, `#5a3820`, `#8c5a2e`, `#b98048`, bands `#4a4a58`,
+  `#8a8aa0`, and a brass lock `#d9a520`, `#f6d860`) - are drawn in the same
+  script on the same outline. Original to this game.
   The four errand things - `oaks-parcel`, `medicine-bag`, `brocks-crate` and
   `old-amber` - are `scripts/draw-errand-icons.mjs`, character art on the set's
   own outline in palettes of their own: brown paper and white string with a
@@ -347,7 +352,11 @@ four columns under a pediment, GREAT LIBRARY cut into its frieze in the
 script's own 3x5 lettering), the room's boards, panelled walls, bookcases,
 stacks, back windows, globe, fern, runner and mat, the librarian's desk, a
 wooden lectern in each of six book colours, and the golden plinth open and
-chained shut. The open book read full screen, its plinth and the reading room
+chained shut, and for the treasure map the end bookcase swung open on its hinge
+onto a lamp-lit arch and the smugglers' chest standing open. The board the
+treasure map is pinned on in THE CHART ROOM is no file either:
+`src/game/treasure/chartWall.ts` paints the chart, its frame and its slots from
+the save. The open book read full screen, its plinth and the reading room
 behind it are no file at all: `src/game/library/bookArt.ts` paints them at run
 time to the size of the window. Original to this repository.
 

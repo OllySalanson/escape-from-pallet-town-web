@@ -245,7 +245,7 @@ export async function openFriendRoom(page, { press, settle = sleep, settleMs = 1
   await page.waitFor(sceneIs('hub'), { what: "the friend's room" });
 }
 
-/** `--insertion=id [--offered] --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,..`, out of a driver's arguments. */
+/** `--insertion=id [--offered] --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],.. --errands=id,.. --hunt=pieceId,..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const list = (name) => (option(name) ?? '').split(',').filter(Boolean);
@@ -272,6 +272,7 @@ export function deployOptions(args) {
     pack: list('pack'),
     secure: list('secure'),
     errands: list('errands'),
+    hunt: list('hunt'),
   };
 }
 
@@ -300,7 +301,7 @@ export async function startExplorerRun(page, { press, until }) {
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
  * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, debt, hp, level, moves = [], starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, debt, hp, level, moves = [], starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [], hunt = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
@@ -322,7 +323,7 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
     `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.(${JSON.stringify(starter.toLowerCase())}) === true`,
     `the picker to offer ${starter}`,
   );
-  if (insertion || beaten.length > 0 || opened.length > 0 || completed.length > 0 || banked !== undefined || debt !== undefined || hp !== undefined || level !== undefined || team.length > 0 || stash.length > 0 || errands.length > 0) {
+  if (insertion || beaten.length > 0 || opened.length > 0 || completed.length > 0 || banked !== undefined || debt !== undefined || hp !== undefined || level !== undefined || team.length > 0 || stash.length > 0 || errands.length > 0 || hunt.length > 0) {
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
     // Every other map's front door is what banking the first contract pays, and a
     // drop-in point is offered to whoever has stood on it. The tool cannot tell
@@ -342,6 +343,10 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       // --errands=id,.. - those errands asked (\`hub/errands.ts\`), so the raid
       // lays their things: \`--errands=brocks-crate --grab=brocks-crate\`.
       for (const id of ${JSON.stringify(errands)}) { p.errands = [...(p.errands ?? []).filter((e) => e.id !== id), { id, status: 'started', found: 0, lossesHeard: 0 }]; }
+      // --hunt=shore,moor,.. - those pieces of the treasure map pinned in THE
+      // CHART ROOM (\`treasure/treasureMap.ts\`); all four is the whole chart,
+      // which lays the chest: \`--hunt=shore,moor,hollow,fold --grab=sea-chest\`.
+      if (${hunt.length > 0}) p.treasureHunt = { roomOpen: true, pinned: ${JSON.stringify(hunt)}, chestOpened: false };
       if (${JSON.stringify(offered ? null : (insertion ?? null))}) { p.firstContractExtracted = true; p.reachedInsertions = [...new Set([...p.reachedInsertions, ${JSON.stringify(insertion ?? '')}])]; }
       if (${hp !== undefined}) for (const stored of save.stash.pokemon) stored.pokemon.currentHp = Math.min(stored.pokemon.currentHp, ${Number(hp)});
       // --stash=itemId[:n],.. is a player who has banked supplies. The loadout

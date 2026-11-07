@@ -1,4 +1,4 @@
-import { ITEM_DEFINITIONS, ItemCategory, useFieldItem, type ItemDefinition } from '../items';
+import { ITEM_DEFINITIONS, ItemCategory, relicKeeper, useFieldItem, type ItemDefinition } from '../items';
 import type { Pokemon } from '../pokemon';
 import type { Stash, StashedPokemon } from '../stash';
 
@@ -122,7 +122,7 @@ function describeEffect(
     case 'wearable':
       return { effect: 'Worn from the wardrobe', usable: false };
     case 'relic':
-      return { effect: 'For Professor Oak', usable: false };
+      return { effect: `For ${relicKeeper(item)}`, usable: false };
     case 'held':
       // Unreachable while `isMedicine` is the filter above, and answered anyway:
       // gear is given, never used, so there is no treatment to describe.

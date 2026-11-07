@@ -10,6 +10,7 @@ import {
   ITEM_CATEGORY_LABELS,
   ItemCategory,
   machineForItem,
+  relicKeeper,
   stackSizeOf,
   teachFromMachine,
   useFieldItem,
@@ -135,7 +136,7 @@ const useLabel = (item: ItemDefinition): string => {
     case 'wearable':
       return 'Carry it home and it is in YOUR WARDROBE, upstairs in THE BOLTHOLE.';
     case 'relic':
-      return 'Carry it home to PROFESSOR OAK. It is lost with the pack if you do not.';
+      return `Carry it home to ${relicKeeper(item).toUpperCase()}. It is lost with the pack if you do not.`;
     case 'held':
       return 'Gear is given on the PARTY screen, where the Pokémon that would carry it is.';
     case 'machine':

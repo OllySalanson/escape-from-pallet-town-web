@@ -18,6 +18,14 @@ import { GREAT_LIBRARY_NAME, LIBRARY_BOOKS } from '../library/books';
 import { resolveBookText } from '../library/bookText';
 import { SECRETS_BOOK_LOCKED_LINES, secretsBookOpens } from '../library/secretsBookLock';
 import {
+  CHART_PIECES,
+  CHART_ROOM_NAME,
+  chartWhole,
+  MARLOW,
+  NO_TREASURE_HUNT,
+  OPEN_BOOKCASE_NOTE,
+} from '../treasure/treasureMap';
+import {
   DOJO_COUNTER_AT,
   DOJO_COUNTER_TILES,
   DOJO_FIGHTER_SPOTS,
@@ -151,6 +159,7 @@ export type RoomId =
   | 'prize-window'
   | 'battle-arena'
   | 'great-library'
+  | 'chart-room'
   | 'raid-arena';
 
 export type RoomPropName =
@@ -404,6 +413,8 @@ type LibraryPropName =
   | 'libMat'
   | 'libGolden'
   | 'libGoldenLocked'
+  | 'libSecretOpen'
+  | 'libChest'
   | `libLectern${Capitalize<LecternColour>}`;
 
 function lecternPropName(colour: LecternColour): LibraryPropName {
@@ -421,6 +432,10 @@ const LIBRARY_PROPS = {
   libMat: LIBRARY_SHEET_PIECES.floor('mat', 'door mat'),
   libGolden: LIBRARY_SHEET_PIECES.solid('goldenPlinth', 'golden plinth'),
   libGoldenLocked: LIBRARY_SHEET_PIECES.solid('goldenPlinthLocked', 'golden plinth'),
+  // The end bookcase swung open: the arch at its foot is walked into, and is
+  // the stair to THE CHART ROOM (`LIBRARY_CHART_STAIR`).
+  libSecretOpen: LIBRARY_SHEET_PIECES.prop('secretCaseOpen', 'open bookcase', ['##', '.#']),
+  libChest: LIBRARY_SHEET_PIECES.solid('seaChestOpen', 'sea chest'),
   ...Object.fromEntries(
     LECTERN_COLOURS.map((colour) => [lecternPropName(colour), LIBRARY_SHEET_PIECES.solid(lecternPiece(colour), 'lectern')]),
   ),
@@ -627,7 +642,7 @@ export interface RoomThing {
    * Something it does when faced and spoken to, beyond saying its lines: the
    * bed is slept in (the screen goes dark first).
    */
-  readonly does?: 'sleep' | 'fossil';
+  readonly does?: 'sleep' | 'fossil' | 'chart-keeper' | 'chart-wall';
   /**
    * Answers when spoken to but carries no caption: a piece of the player's own
    * furniture (`home/furniture.ts`). A room full of dolls each naming itself
@@ -642,7 +657,19 @@ export interface RoomThing {
  * room of the player's house, and the pennants upstairs.
  */
 export type RoomPoster =
-  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf' | 'class-board' | 'cup-board' | 'high-scores'; readonly area: Rect }
+  | {
+      readonly kind:
+        | 'badge-case'
+        | 'pennants'
+        | 'cork-board'
+        | 'ladder-tally'
+        | 'goods-shelf'
+        | 'class-board'
+        | 'cup-board'
+        | 'high-scores'
+        | 'chart-wall';
+      readonly area: Rect;
+    }
   | {
       /** The lamps on a GAME CORNER cabinet, lit for the tiers its game has paid today (`minigames/arcade.ts`). */
       readonly kind: 'cabinet-lamps';
@@ -868,7 +895,11 @@ export const LIBRARIAN_LINES: readonly string[] = [
  */
 function drawLibrary(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
-  for (const x of [0, 2, 5, 8, 11, 13]) sketch.plant(x, 0, 'libCase');
+  const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
+  for (const x of [0, 2, 5, 8, 11]) sketch.plant(x, 0, 'libCase');
+  // The end bookcase, which MARLOW swings open onto THE CHART ROOM for good
+  // once he has seen the bottled chart (`../treasure/treasureMap.ts`).
+  sketch.plant(END_BOOKCASE.x, END_BOOKCASE.y, hunt.roomOpen ? 'libSecretOpen' : 'libCase');
   for (const x of [4, 7, 10]) sketch.plant(x, 0, 'libWindow');
   for (const y of [3, 9]) {
     sketch.plant(0, y, 'libStack');
@@ -922,7 +953,97 @@ function drawLibrary(room: BaseRoom, game: RestoredGame): Drawn {
     },
   );
   const people: RoomPerson[] = [{ id: 'librarian', design: 'old-woman', tile: LIBRARIAN_TILE, facing: 'down' }];
-  return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE] };
+  if (hunt.roomOpen) {
+    things.push({
+      name: 'THE END BOOKCASE',
+      note: OPEN_BOOKCASE_NOTE,
+      tiles: [{ x: END_BOOKCASE.x + 1, y: END_BOOKCASE.y + 1 }],
+      lines: [`The end bookcase stands open on its hinge. ${CHART_ROOM_NAME} is through it.`],
+    });
+    return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE] };
+  }
+  // Until then MARLOW stands by it, keeping it shut.
+  people.push({ id: MARLOW.id, design: MARLOW.design, tile: MARLOW_LIBRARY_TILE, facing: 'left' });
+  things.push({ name: MARLOW.name, note: MARLOW.note, tiles: [MARLOW_LIBRARY_TILE], does: 'chart-keeper' });
+  return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, MARLOW_LIBRARY_TILE] };
+}
+
+/** The end bookcase of the library's back wall, which swings open onto THE CHART ROOM. */
+export const END_BOOKCASE: GridPosition = { x: 13, y: 0 };
+/** The arch at the open bookcase's foot: stepped into, it is the way through to THE CHART ROOM. */
+export const LIBRARY_CHART_STAIR: GridPosition = { x: END_BOOKCASE.x, y: END_BOOKCASE.y + 1 };
+/** Where MARLOW stands in the library, beside the end bookcase, until he has opened it. */
+export const MARLOW_LIBRARY_TILE: GridPosition = { x: 14, y: 2 };
+
+// --- THE CHART ROOM -------------------------------------------------------------
+
+/** THE CHART ROOM, behind the library's end bookcase. */
+export const CHART_ROOM = { width: 11, height: 8 } as const;
+/** The arch back into the library: the same open bookcase, from its other side. */
+export const CHART_ROOM_STAIR: GridPosition = { x: 0, y: 1 };
+/** The board the chart is pinned on, painted from the save (`../treasure/chartWall.ts`): its foot stands on the floor. */
+export const CHART_WALL: Rect = { x: 2, y: 0, width: 7, height: 4 };
+/** Where MARLOW stands in his room once he has opened it, at the board's right hand. */
+export const MARLOW_ROOM_TILE: GridPosition = { x: 9, y: 3 };
+/** Where the opened chest stands, on the floor before the board. */
+export const SEA_CHEST_AT: GridPosition = { x: 4, y: 5 };
+
+/**
+ * THE CHART ROOM: the library's panelling and boards, the open bookcase it was
+ * come into by, the board the treasure map is pinned on taking most of the
+ * back wall, MARLOW at its right hand, a globe and a fern - and, once the
+ * hunt is done, the smugglers' chest standing open before the board.
+ */
+function drawChartRoom(room: BaseRoom, game: RestoredGame): Drawn {
+  const sketch = shell(room);
+  const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
+  sketch.plant(0, 0, 'libSecretOpen');
+  sketch.plant(9, 0, 'libCase');
+  sketch.plant(10, 4, 'libGlobe');
+  sketch.plant(0, 5, 'libFern');
+  const wallFoot = Array.from({ length: CHART_WALL.width }, (_, dx) => ({ x: CHART_WALL.x + dx, y: CHART_WALL.y + CHART_WALL.height - 1 }));
+  const boardFloor = Array.from({ length: CHART_WALL.width * (CHART_WALL.height - 2) }, (_, index) => ({
+    x: CHART_WALL.x + (index % CHART_WALL.width),
+    y: CHART_WALL.y + 2 + Math.floor(index / CHART_WALL.width),
+  }));
+  const pinned = hunt.pinned.length;
+  const things: RoomThing[] = [
+    {
+      name: 'THE CHART',
+      note: chartWhole(hunt) ? 'Whole. X marks the spot' : `${pinned} of ${CHART_PIECES.length} pieces pinned`,
+      tiles: wallFoot,
+      does: 'chart-wall',
+      // The board is the picture: a caption seated over it hid the very
+      // chart it named, so it says how it stands only when faced.
+      quiet: true,
+    },
+    // Quiet in here: seated over his head, his caption lay across the board's
+    // right-hand pieces and the X itself. He has introduced himself by now.
+    { name: MARLOW.name, note: MARLOW.note, tiles: [MARLOW_ROOM_TILE], does: 'chart-keeper', quiet: true },
+  ];
+  const solid = [...boardFloor, MARLOW_ROOM_TILE];
+  if (hunt.chestOpened) {
+    sketch.plant(SEA_CHEST_AT.x, SEA_CHEST_AT.y, 'libChest');
+    things.push({
+      name: 'THE SEA CHEST',
+      note: 'Empty, and on show',
+      tiles: [
+        { x: SEA_CHEST_AT.x, y: SEA_CHEST_AT.y + 1 },
+        { x: SEA_CHEST_AT.x + 1, y: SEA_CHEST_AT.y + 1 },
+      ],
+      lines: ['The smugglers\' chest, open and empty but for straw and two coins nobody could be bothered with.'],
+    });
+  }
+  const people: RoomPerson[] = [{ id: MARLOW.id, design: MARLOW.design, tile: MARLOW_ROOM_TILE, facing: 'left' }];
+  return {
+    sketch,
+    catalogue: LIBRARY,
+    things,
+    sprites: [],
+    people,
+    solid,
+    posters: [{ kind: 'chart-wall', area: CHART_WALL }],
+  };
 }
 
 // --- the wall map -----------------------------------------------------------
@@ -1251,7 +1372,22 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     mat: LIBRARY_ROOM.mat,
     keeper: null,
     counter: [],
-    stairs: [],
+    // The arch behind the end bookcase. Until MARLOW opens it a bookcase stands
+    // on the tile, so nobody can step onto it.
+    stairs: [{ tile: LIBRARY_CHART_STAIR, to: 'chart-room' }],
+  },
+  // THE CHART ROOM (`../treasure/treasureMap.ts`): behind the library's end
+  // bookcase, MARLOW's, with the treasure map's board along its back wall.
+  {
+    id: 'chart-room',
+    screen: null,
+    name: CHART_ROOM_NAME,
+    width: CHART_ROOM.width,
+    height: CHART_ROOM.height,
+    mat: null,
+    keeper: null,
+    counter: [],
+    stairs: [{ tile: CHART_ROOM_STAIR, to: 'great-library' }],
   },
   // THE RAID ARENA's great hall (`arenaHall.ts`): the marshal stands by the way
   // in, and everything a raid wants is on the floor around her.
@@ -2162,6 +2298,7 @@ const DRAWERS: Readonly<Record<Exclude<RoomId, 'raid-arena'>, (room: BaseRoom, g
   'prize-window': drawPrizeWindow,
   'battle-arena': drawBattleArena,
   'great-library': drawLibrary,
+  'chart-room': drawChartRoom,
   bolthole: drawHome,
   'bolthole-upstairs': drawUpstairs,
 };

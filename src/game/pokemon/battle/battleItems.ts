@@ -1,4 +1,4 @@
-import { curedLine, hpRestoredLine, ItemCategory, WONT_HAVE_EFFECT_LINE, useFieldItem, type Bag, type ItemDefinition } from '../../items';
+import { curedLine, hpRestoredLine, ItemCategory, relicKeeper, WONT_HAVE_EFFECT_LINE, useFieldItem, type Bag, type ItemDefinition } from '../../items';
 import type { Pokemon } from '../Pokemon';
 import { playerSlotOf, unitAt, type BattleState, type SlotRef } from './battleEngine';
 
@@ -197,7 +197,7 @@ function refusalMessage(item: ItemDefinition): string {
     case 'wearable':
       return `${item.displayName} is for wearing, not a fight.`;
     case 'relic':
-      return `${item.displayName} is for Professor Oak, not a fight.`;
+      return `${item.displayName} is for ${relicKeeper(item)}, not a fight.`;
     case 'held':
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and
