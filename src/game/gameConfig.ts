@@ -8,6 +8,7 @@ import { ConsoleScene } from './scenes/ConsoleScene';
 import { BoutiqueScene } from './scenes/BoutiqueScene';
 import { ThingsScene } from './scenes/ThingsScene';
 import { TeamScene } from './scenes/TeamScene';
+import { DojoCounterScene } from './scenes/DojoCounterScene';
 import { GameCornerScene } from './scenes/GameCornerScene';
 import { BerryPickingScene } from './scenes/BerryPickingScene';
 import { FieldCourseScene } from './scenes/FieldCourseScene';
@@ -40,6 +41,7 @@ const BASE_SCENES = [
   BoutiqueScene,
   ThingsScene,
   TeamScene,
+  DojoCounterScene,
   GameCornerScene,
   BerryPickingScene,
   FieldCourseScene,

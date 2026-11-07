@@ -12,6 +12,20 @@ import { AREA_SHEET_SOURCE } from '../world/tileset/areaSheet';
 import { INSIDE_PROPS } from '../world/tileset/insideTileset';
 import { BOUTIQUE_NAME } from '../look/wearables';
 import { GAME_CORNER_SHEET_PIECES } from './gameCornerSheet';
+import { DOJO_SHEET_PIECES } from './dojoSheet';
+import {
+  DOJO_COUNTER_AT,
+  DOJO_COUNTER_TILES,
+  DOJO_FIGHTER_SPOTS,
+  DOJO_RECEPTIONIST,
+  DOJO_RECEPTIONIST_NAME,
+  DOJO_ROOM,
+  dojoRegularsToday,
+  fighterLine,
+} from '../arena/dojoCounter';
+import type { DressedLook } from '../look/look';
+import type { PackItemId } from '../items/items';
+import type { Direction } from '../movement/gridMovement';
 import { PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
 import { berryCabinetLines, berryCabinetNote, jumpCabinetLines, jumpCabinetNote } from '../minigames/gameCornerTalk';
 import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
@@ -125,11 +139,13 @@ export type RoomId =
   | 'boutique'
   | 'game-corner'
   | 'prize-window'
+  | 'battle-arena'
   | 'raid-arena';
 
 export type RoomPropName =
   | BoutiquePropName
   | GameCornerPropName
+  | DojoPropName
   | 'labComputers'
   | 'labMachine'
   | 'labTable'
@@ -330,9 +346,44 @@ const GAME_CORNER_PROPS: Readonly<Record<GameCornerPropName, PropDefinition>> = 
   berryCabinet: promenadeProp('berryCabinet', 'BERRY PICKING cabinet'),
 };
 
+/**
+ * THE BATTLE ARENA is Saffron's Fighting Dojo as FireRed draws it
+ * (`dojoSheet.ts`): the hall is one piece, because nothing in it moves, with
+ * FireRed's own collision - the back wall, the two pillars either side of the
+ * master's floor, closed behind the counter but for the receptionist's own
+ * tile - and the statues by the door made solid to their heads, since
+ * FireRed draws their tops over a player standing behind them and a room here
+ * has no layer over the player. The reception counter across the master's floor
+ * is the Poké Mart's, which stands on any floor.
+ */
+type DojoPropName = 'dojoRoom' | 'dojoMat' | 'dojoCounter';
+
+const DOJO_PROPS: Readonly<Record<DojoPropName, PropDefinition>> = {
+  dojoRoom: DOJO_SHEET_PIECES.prop('dojo.room', 'dojo', [
+    '###########',
+    '###########',
+    '...#####...',
+    '...##.##...',
+    '...#...#...',
+    '...#...#...',
+    '...........',
+    '...........',
+    '...........',
+    '...........',
+    '...........',
+    '..#.....#..',
+    '..#.....#..',
+    '...........',
+  ]),
+  dojoMat: DOJO_SHEET_PIECES.floor('dojo.mat', 'door mat'),
+  // Solid both rows: behind it is the master's floor, which only the receptionist stands on.
+  dojoCounter: { ...INSIDE_PROPS.martCounter, cells: INSIDE_PROPS.martCounter.cells.map((cell) => ({ ...cell, solid: true })) },
+};
+
 const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
   ...BOUTIQUE_PROPS,
   ...GAME_CORNER_PROPS,
+  ...DOJO_PROPS,
   labComputers: solidPiece('lab.computers', 'computers'),
   labMachine: pieceProp('lab.machine', 'machine', ['###', '###', '.##']),
   labTable: solidPiece('lab.table', 'table'),
@@ -434,6 +485,12 @@ const GAME_CORNER_CATALOGUE = roomCatalogue(
   GAME_CORNER_SHEET_PIECES,
 );
 const GAME_CORNER = { ...GAME_CORNER_CATALOGUE, sources: [...GAME_CORNER_CATALOGUE.sources, PROMENADE_SHEET_SOURCE.source] };
+const DOJO_CATALOGUE = roomCatalogue(
+  { floor: 'dojo.floor', floorShade: 'dojo.floor', wallUpper: 'dojo.floor', wallLower: 'dojo.floor' },
+  ROOM_PROPS,
+  DOJO_SHEET_PIECES,
+);
+const DOJO = { ...DOJO_CATALOGUE, sources: [...DOJO_CATALOGUE.sources, AREA_SHEET_SOURCE.source] };
 const HOUSE = roomCatalogue(
   {
     floor: 'home.floor',
@@ -682,6 +739,17 @@ export interface BuiltRoom {
   readonly home?: BuiltHome;
   /** In THE RAID ARENA's hall: there is a pit under this room's floor (`arenaView.ts`). */
   readonly pit?: boolean;
+  /** Whoever else stands in the room in their own clothes: THE BATTLE ARENA's fighters. */
+  readonly people?: readonly RoomPerson[];
+}
+
+/** Somebody standing in a room who is not its keeper, drawn in their own look (`look/lookTexture.ts`). */
+export interface RoomPerson {
+  readonly id: string;
+  readonly look: DressedLook;
+  readonly pack?: PackItemId;
+  readonly tile: GridPosition;
+  readonly facing: Direction;
 }
 
 /**
@@ -988,6 +1056,27 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     counter: [2, 3, 4, 5, 6].map((x) => ({ x, y: 3 })),
     stairs: [],
   },
+  // THE BATTLE ARENA (`../arena/`): Saffron's Fighting Dojo on the promenade.
+  // Its receptionist stands on the master's floor behind the counter, straight
+  // up the tatami from the door, and the day's regulars stand in the two lines
+  // down its sides, where FireRed's Black Belts stand.
+  {
+    id: 'battle-arena',
+    screen: 'battle-arena',
+    name: 'BATTLE ARENA',
+    width: DOJO_ROOM.width,
+    height: DOJO_ROOM.height,
+    mat: DOJO_ROOM.mat,
+    keeper: {
+      id: 'dojo-reception',
+      name: DOJO_RECEPTIONIST_NAME,
+      design: 'black-belt',
+      position: DOJO_RECEPTIONIST.position,
+      facing: DOJO_RECEPTIONIST.facing,
+    },
+    counter: DOJO_COUNTER_TILES.filter((tile) => tile.y === DOJO_COUNTER_AT.y + 1),
+    stairs: [],
+  },
   // THE RAID ARENA's great hall (`arenaHall.ts`): the marshal stands by the way
   // in, and everything a raid wants is on the floor around her.
   {
@@ -1123,6 +1212,8 @@ interface Drawn {
   readonly posters?: readonly RoomPoster[];
   /** What the room stands on its furniture. */
   readonly icons?: readonly RoomIcon[];
+  /** Who else stands in it (`RoomPerson`). */
+  readonly people?: readonly RoomPerson[];
   /** Tiles nobody can walk on that are painted rather than planted: chalk, and Bill's shelves. */
   readonly solid?: readonly GridPosition[];
   /**
@@ -1478,6 +1569,53 @@ function drawGameCorner(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   return { sketch, catalogue: GAME_CORNER, things, sprites: [] };
 }
 
+/**
+ * THE BATTLE ARENA as it stands today: FireRed's dojo, the counter across the
+ * master's floor, and the day's regulars in the two lines (`dojoRegularsToday`),
+ * each one's plate saying the team they bring.
+ */
+function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
+  const sketch = new MapSketch<RoomPropName>({ width: room.width, height: room.height, fill: 'P' });
+  sketch.plant(0, 0, 'dojoRoom');
+  sketch.plant(DOJO_COUNTER_AT.x, DOJO_COUNTER_AT.y, 'dojoCounter');
+  sketch.plant(DOJO_ROOM.mat.x - 1, DOJO_ROOM.mat.y, 'dojoMat');
+  const today = dojoRegularsToday(now);
+  const people: RoomPerson[] = today.map((regular, index) => ({
+    id: regular.bot.id,
+    look: regular.bot.look,
+    ...(regular.bot.pack ? { pack: regular.bot.pack } : {}),
+    tile: DOJO_FIGHTER_SPOTS[index].tile,
+    facing: DOJO_FIGHTER_SPOTS[index].facing,
+  }));
+  const things: RoomThing[] = [
+    ...today.map((regular, index) => ({
+      name: regular.bot.name,
+      note: 'In the dojo today',
+      tiles: [DOJO_FIGHTER_SPOTS[index].tile],
+      lines: [fighterLine(regular, game.raidProgress.dojo)],
+    })),
+    {
+      name: 'THE STATUES',
+      note: 'The dojo’s own',
+      tiles: [
+        { x: 2, y: 11 },
+        { x: 2, y: 12 },
+        { x: 8, y: 11 },
+        { x: 8, y: 12 },
+      ],
+      lines: ['Two stone fighters. A bout here costs nothing and risks nothing: everybody fights at the same level, and nobody is hurt.'],
+    },
+  ];
+  return {
+    sketch,
+    catalogue: DOJO,
+    things,
+    sprites: [],
+    people,
+    solid: people.map((person) => person.tile),
+  };
+}
+
 /** Celadon's prize room as it stands: the counter across the back, a glass case either side. */
 function drawPrizeWindow(room: BaseRoom): Drawn {
   const sketch = shell(room);
@@ -1748,6 +1886,7 @@ const DRAWERS: Readonly<Record<Exclude<RoomId, 'raid-arena'>, (room: BaseRoom, g
   boutique: drawBoutique,
   'game-corner': drawGameCorner,
   'prize-window': drawPrizeWindow,
+  'battle-arena': drawBattleArena,
   bolthole: drawHome,
   'bolthole-upstairs': drawUpstairs,
 };
@@ -1787,6 +1926,7 @@ export function buildRoom(
     ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
     wallMap: drawn.wallMap ?? null,
     posters: drawn.posters ?? [],
+    ...(drawn.people ? { people: drawn.people } : {}),
   };
 }
 

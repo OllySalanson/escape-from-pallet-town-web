@@ -68,6 +68,19 @@ const withPack = (items: Readonly<Record<string, number>>): Record<string, numbe
 });
 
 describe('SaveManager', () => {
+  it('writes a bout in THE BATTLE ARENA as its record and nothing else, and reads it back', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const before = saves.load()!;
+    expect(before.raidProgress.dojo).toBeUndefined();
+    expect(saves.recordDojoBout('bot:karpking', true)).toEqual({ wins: 1, losses: 0, beaten: ['bot:karpking'] });
+    expect(saves.recordDojoBout('bot:xkitx', false)).toEqual({ wins: 1, losses: 1, beaten: ['bot:karpking'] });
+    const after = saves.load()!;
+    expect(after.raidProgress.dojo).toEqual({ wins: 1, losses: 1, beaten: ['bot:karpking'] });
+    expect({ ...after.raidProgress, dojo: undefined }).toEqual({ ...before.raidProgress, dojo: undefined });
+    expect(new SaveManager(new MemoryStorage()).recordDojoBout('bot:xkitx', true)).toBeNull();
+  });
+
   describe('describing the save for the title screen', () => {
     it('says there is nothing to continue on a fresh browser, and with no storage at all', () => {
       expect(new SaveManager(new MemoryStorage()).describe()).toEqual({ kind: 'none' });

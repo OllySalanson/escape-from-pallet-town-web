@@ -95,9 +95,10 @@ describe('the base map', () => {
    * held so that it stays a walk along the front rather than a trek. Both its
    * doors - the arcade and the prize window beside it.
    */
-  it('keeps THE GAME CORNER a walk along THE PROMENADE from both landings', () => {
-    for (const door of ['game-corner', 'prize-window']) {
-      expect([door, stepsTo(stepsFrom(BASE_SPAWN), approachesTo(door)) <= 72]).toEqual([door, true]);
+  it('keeps THE GAME CORNER and THE BATTLE ARENA a walk along THE PROMENADE from both landings', () => {
+    for (const door of ['game-corner', 'prize-window', 'battle-arena']) {
+      // 74: THE BATTLE ARENA stands on the garden the prize window's walk used to cut across.
+      expect([door, stepsTo(stepsFrom(BASE_SPAWN), approachesTo(door)) <= 74]).toEqual([door, true]);
       expect([door, stepsTo(stepsFrom(BASE_LANDING), approachesTo(door)) <= 80]).toEqual([door, true]);
     }
   });

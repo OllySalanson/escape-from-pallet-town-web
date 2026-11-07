@@ -32,7 +32,16 @@ import type { BasePropName } from './baseTileset';
  * only way into a raid. `lab` is Oak's room, where the contract board and the
  * wall map are read.
  */
-export type BaseScreen = 'lab' | 'arena' | 'stash' | 'workshop' | 'trader' | 'boutique' | 'game-corner' | 'prizes';
+export type BaseScreen =
+  | 'lab'
+  | 'arena'
+  | 'stash'
+  | 'workshop'
+  | 'trader'
+  | 'boutique'
+  | 'game-corner'
+  | 'prizes'
+  | 'battle-arena';
 
 export interface BaseKeeper {
   readonly id: string;
@@ -71,6 +80,14 @@ export interface BaseDoor {
   /** Where the player is put down when they come back out. */
   readonly returnTo: GridPosition;
 }
+
+/**
+ * Where THE BATTLE ARENA stands: FireRed's Fighting Dojo, 6x5, at the head of
+ * THE PROMENADE where its garden was, its door at the foot of its middle and
+ * its name painted onto its front by `scripts/draw-promenade.mjs`, as THE GAME
+ * CORNER's is.
+ */
+export const BATTLE_ARENA_LOT = { x: 64, y: 8, width: 6, height: 5, door: { x: 67, y: 12 } } as const;
 
 export const BASE_DOORS: readonly BaseDoor[] = [
   {
@@ -169,6 +186,17 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     tiles: [{ x: 81, y: 9 }],
     returnTo: { x: 81, y: 10 },
   },
+  {
+    // THE BATTLE ARENA (`../arena/`): Saffron's Fighting Dojo on its lot at the
+    // head of THE PROMENADE, its name painted over its door
+    // (`scripts/draw-promenade.mjs`). Bouts for sport, chosen at its counter.
+    id: 'battle-arena',
+    screen: 'battle-arena',
+    name: 'BATTLE ARENA',
+    building: { prop: 'battleArena', x: BATTLE_ARENA_LOT.x, y: BATTLE_ARENA_LOT.y },
+    tiles: [{ x: BATTLE_ARENA_LOT.door.x, y: BATTLE_ARENA_LOT.door.y }],
+    returnTo: { x: BATTLE_ARENA_LOT.door.x, y: BATTLE_ARENA_LOT.door.y + 1 },
+  },
 ];
 
 /**
@@ -176,7 +204,7 @@ export const BASE_DOORS: readonly BaseDoor[] = [
  * the boutique and THE GAME CORNER's two. They are held to walks of their own
  * (`baseMap.test.ts`), not the keepers' short stroll.
  */
-export const PLACES_TO_GO: readonly string[] = ['boutique', 'game-corner', 'prize-window'];
+export const PLACES_TO_GO: readonly string[] = ['boutique', 'game-corner', 'prize-window', 'battle-arena'];
 
 export function doorAt(tile: GridPosition): BaseDoor | undefined {
   return BASE_DOORS.find((door) =>

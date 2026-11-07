@@ -101,7 +101,7 @@ export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(55, 31, 'down'),
 ];
 
-/** Something to look at for a while: a fountain, the bench, the arena's statues, the promenade's garden, the S.S. Anne. */
+/** Something to look at for a while: a fountain, the bench, the arena's statues, the S.S. Anne. */
 export const HANG_OUTS: readonly RoomSpot[] = [
   stand(26, 15, 'right'),
   stand(26, 14, 'right'),
@@ -112,8 +112,6 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(59, 14, 'left'),
   stand(53, 10, 'left'),
   stand(53, 11, 'left'),
-  stand(66, 11, 'up'),
-  stand(67, 11, 'up'),
   stand(6, 17, 'up'),
   stand(10, 17, 'up'),
   stand(30, 24, 'right'),

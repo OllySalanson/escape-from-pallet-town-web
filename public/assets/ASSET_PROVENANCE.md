@@ -830,6 +830,28 @@ does, and for the promenade to be varied rather than samey.
   own palette already uses.
 - **Terms.** As its source: the building sits on the owner's ruling for
   `frlg-towns.png`, and the rest is the owner's own.
+- **THE BATTLE ARENA, added 2026-11-07.** `frlg-towns.png`'s Saffron Fighting
+  Dojo (`TOWN_PIECES.dojo`), on the same ruling, with a pale wooden name board
+  reading BATTLE ARENA in red, pegged at its corners, drawn here over its brick
+  front, and the tops of Saffron's flower beds that the cut carried above the
+  roof taken off. Same script, same rules.
+
+### `frlg-dojo.png` - THE BATTLE ARENA's room: Saffron's Fighting Dojo
+
+Pokemon FireRed/LeafGreen art, rights holders Nintendo / Creatures / Game Freak,
+no licence from them, as `frlg-areas.png` below.
+
+- **Source.** pret's FireRed disassembly, **pret/pokefirered**
+  (<https://github.com/pret/pokefirered>), at commit
+  `c75f352304d529f6ba92d4f74b9cf8b5c3810788`, read 2026-11-07 from a sparse
+  checkout: the layout `SaffronCity_Dojo`, drawn with `gTileset_Building` and
+  `gTileset_PewterGym`.
+- **Terms.** As for `frlg-areas.png`: nothing of the checkout is committed;
+  what ships is a cut - 3 named pieces (the hall inside its border, a plank and
+  the door mat) on a new 20x14 grid.
+- **How it was cut.** `scripts/cut-frlg-areas.mjs` is the whole method (its
+  `sheet: 'dojo'` pieces, packed apart so neither the area sheet nor the Game
+  Corner's moves), and writes `src/game/base/generated/dojoPieces.ts`.
 
 ### `frlg-game-corner.png` - THE GAME CORNER's two rooms: Celadon's Game Corner and its prize room
 

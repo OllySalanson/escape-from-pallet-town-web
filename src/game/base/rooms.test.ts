@@ -168,7 +168,8 @@ describe('the rooms behind the base doors', () => {
         // THE GAME CORNER's attendant is across the arcade, behind the coin
         // counter on its back wall, and the prize clerk across the prize room:
         // the key on the mat speaks to them too.
-        const across = { 'bills-cottage': 7, 'raid-arena': 8, 'game-corner': 9, 'prize-window': 6 }[walk.door.id] ?? 4;
+        // THE BATTLE ARENA's receptionist is up the tatami from the door, at the head of the hall.
+        const across = { 'bills-cottage': 7, 'raid-arena': 8, 'game-corner': 9, 'prize-window': 6, 'battle-arena': 8 }[walk.door.id] ?? 4;
         expect([walk.door.id, walk.acrossTheRoom <= across]).toEqual([walk.door.id, true]);
       }
     }

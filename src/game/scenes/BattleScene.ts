@@ -327,22 +327,36 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
    * earning nothing, with no run session, so nothing in it can reach a save. All
    * that goes home is which way it went, and to where the player stood.
    */
-  exhibition?: {
-    readonly rival: HunterRivalId;
-    readonly at: GridPosition;
-    /**
-     * Set when the bout is a practice against a gym leader's real team
-     * (`base/gymPractice.ts`): the leader's boss id. It goes home as a practice,
-     * which the hall writes nothing about, rather than as a bout on the ladder.
-     */
-    readonly practice?: string;
-  };
+  exhibition?: HallBout | DojoBout;
   /**
    * The weather of the place the fight started in - the district the player was
    * standing in when it began. It is not part of `RaidCarriage` because it is
    * not the raid's state to carry: the world reads it off the tile every time.
    */
   weather?: WeatherId | null;
+}
+
+/** A bout in THE RAID ARENA's hall: against the rival on the far floor, or a practice against a gym leader. */
+export interface HallBout {
+  readonly rival: HunterRivalId;
+  readonly at: GridPosition;
+  /**
+   * Set when the bout is a practice against a gym leader's real team
+   * (`base/gymPractice.ts`): the leader's boss id. It goes home as a practice,
+   * which the hall writes nothing about, rather than as a bout on the ladder.
+   */
+  readonly practice?: string;
+}
+
+/**
+ * A bout in THE BATTLE ARENA (`arena/boutRules.ts`): against one of the dojo's
+ * regulars, both sides flat-level copies, no bag. It goes home to the dojo's
+ * counter, which writes the result; the fight writes nothing.
+ */
+export interface DojoBout {
+  /** The regular fought, by their harbour id (`arena/dojoCounter.ts`). */
+  readonly dojo: string;
+  readonly at: GridPosition;
 }
 
 /** What a bout for show says in place of the raid's words for the same things. */
@@ -2263,7 +2277,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private enemyRole(): BannerRole {
-    return enemyBannerRole({ trainer: this.trainer !== undefined, hunter: this.hunterBattle });
+    // A dojo regular is a trainer met for sport, never the rival hunting a raid.
+    const dojo = this.exhibition !== undefined && 'dojo' in this.exhibition;
+    return enemyBannerRole({ trainer: this.trainer !== undefined, hunter: this.hunterBattle && !dojo });
   }
 
   private hunterFleeLabel(): string {
@@ -3481,7 +3497,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.exhibition) {
       // A practice lost says what beat you, as a raid lost does on its result screen.
-      const beatenBy = this.exhibition.practice ? this.whatBeatThePlayer() : null;
+      const beatenBy = 'practice' in this.exhibition && this.exhibition.practice ? this.whatBeatThePlayer() : null;
       this.dialog.showMessages(beatenBy ? [BOUT_LOST_LINE, `What beat you? ${beatenBy}`] : [BOUT_LOST_LINE]);
       return;
     }
@@ -4044,12 +4060,15 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.exhibition) {
       const won = this.state.outcome === 'victory';
+      const bout = this.exhibition;
+      if ('dojo' in bout) {
+        this.scene.start('base', { room: 'battle-arena', at: bout.at, facing: 'up', dojoBout: { opponent: bout.dojo, won } });
+        return;
+      }
       this.scene.start('base', {
         room: 'raid-arena',
-        at: this.exhibition.at,
-        ...(this.exhibition.practice
-          ? { practice: { leader: this.exhibition.practice, won } }
-          : { bout: { rival: this.exhibition.rival, won } }),
+        at: bout.at,
+        ...(bout.practice ? { practice: { leader: bout.practice, won } } : { bout: { rival: bout.rival, won } }),
       });
       return;
     }
