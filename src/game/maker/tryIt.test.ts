@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import sampleLane from '../../maps/sample/sample-lane.json';
 import type { MapFile } from '../world/mapFile';
 import { blankMap } from './draft';
-import { createTryGame, suitedTryLevel, tryLevelChoices, tryTeam } from './tryIt';
+import { LEAVE_TRY_HINT, LEAVE_TRY_PROMPT, createTryGame, suitedTryLevel, tryClockLabel, tryLevelChoices, tryTeam } from './tryIt';
 
 const SAMPLE = sampleLane as MapFile;
 
@@ -59,5 +59,16 @@ describe('the team a try fields', () => {
     const kept = stash.listPokemon();
     expect(kept.map((stored) => stored.pokemon.level)).toEqual([7, 7, 7]);
     expect(stash.partner()?.id).toBe(kept[0].id);
+  });
+});
+
+describe('leaving a try', () => {
+  it('says on the clock how to get back to the maker, whichever way it is tried', () => {
+    expect(tryClockLabel('PLAYTEST', 'walk')).toContain(LEAVE_TRY_HINT);
+    expect(tryClockLabel('RAID 4:59', 'raid')).toBe(`RAID 4:59  ${LEAVE_TRY_HINT}`);
+  });
+
+  it('asks first, with the cursor on staying', () => {
+    expect(LEAVE_TRY_PROMPT.options[LEAVE_TRY_PROMPT.selected]).toBe('KEEP TRYING');
   });
 });

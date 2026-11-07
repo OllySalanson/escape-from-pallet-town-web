@@ -1,4 +1,4 @@
-import { readMapFile, type MapFile } from '../world/mapFile';
+import { MAP_FILE_LIMITS, readMapFile, type MapFile } from '../world/mapFile';
 import { blankMap, keepOnMap, setMaker } from './draft';
 import { isGeneratedMapName } from './mapNames';
 
@@ -154,6 +154,29 @@ export function withDraft(store: MakerStore, draft: StoredDraft): MakerStore {
   };
 }
 
+/**
+ * Where a file opened from disk goes in the drafts. The very map already
+ * there is opened again, walk tick and all, rather than standing beside itself;
+ * a different map of the same name is a new draft with a number after its
+ * name, so the drafts list tells the two apart (playtest 50 found two TIDAL
+ * CULVERTs with nothing to say which was which). Its id is kept: the file is
+ * the map it says it is.
+ */
+export function placeOpenedFile(
+  store: MakerStore,
+  file: MapFile,
+): { readonly existing: string } | { readonly file: MapFile } {
+  const same = store.drafts.find((draft) => sameMapFile(draft.file, file));
+  if (same) return { existing: same.key };
+  const names = new Set(store.drafts.map((draft) => draft.file.name.trim().toLowerCase()));
+  if (!names.has(file.name.trim().toLowerCase())) return { file };
+  for (let number = 2; ; number += 1) {
+    const suffix = ` ${number}`;
+    const name = `${file.name.slice(0, MAP_FILE_LIMITS.maxNameLength - suffix.length).trimEnd()}${suffix}`;
+    if (!names.has(name.toLowerCase())) return { file: { ...file, name } };
+  }
+}
+
 export function withoutDraft(store: MakerStore, key: string): MakerStore {
   const { current, ...rest } = store;
   const drafts = store.drafts.filter((draft) => draft.key !== key);
@@ -192,22 +215,29 @@ export function newDraftKey(store: MakerStore, now = Date.now()): string {
 }
 
 /**
+ * What a map's words are: none of them changes how a raid on it is walked, so
+ * none is in its walked fingerprint. Everything else is, at every depth, so a
+ * part added to the format is counted without anyone remembering to list it
+ * here (playtest 50: trainers, boulders and insides were left out, and a walk
+ * taken before they were placed still said READY).
+ */
+const WORDING = new Set(['name', 'description', 'lines', 'calls', 'look', 'maker']);
+
+/**
  * A fingerprint of everything about a map that changes how a raid on it is
- * walked - the ground, the buildings, where every place is and when each exit
- * opens - and nothing that does not: renaming a map or an exit, or rewording a
- * drop-in, keeps the walk the maker already did.
+ * walked - the ground, everything placed on it, its insides and when each exit
+ * opens - and nothing that does not: renaming a map or an exit, rewording a
+ * drop-in or a sign, or dressing a person keeps the walk the maker already did.
  */
 export function walkedVersion(file: MapFile): string {
-  const walked = JSON.stringify([
-    file.width,
-    file.height,
-    file.ground,
-    file.buildings,
-    file.dropIns.map(({ x, y }) => [x, y]),
-    file.exits.map(({ x, y, opens }) => [x, y, opens]),
-    file.itemSpots,
-    file.wildlife,
-  ]);
+  // The file's own format and id say nothing of the ground; an inside's id does.
+  const map: Partial<Record<keyof MapFile, unknown>> = { ...file, format: undefined, id: undefined };
+  const walked = JSON.stringify(map, (key, field: unknown) => {
+    if (WORDING.has(key)) return undefined;
+    return isRecord(field)
+      ? Object.fromEntries(Object.entries(field).sort(([a], [b]) => a.localeCompare(b)))
+      : field;
+  });
   // FNV-1a, 32 bits: a fingerprint, not a secret.
   let hash = 0x811c9dc5;
   for (let index = 0; index < walked.length; index += 1) {

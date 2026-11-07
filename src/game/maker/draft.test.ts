@@ -32,6 +32,7 @@ import {
   loadMakerStore,
   mapFileText,
   newDraftKey,
+  placeOpenedFile,
   saveMakerStore,
   walkedVersion,
   withDraft,
@@ -400,6 +401,36 @@ describe('drafts in this browser', () => {
     expect(walkedVersion(setExitOpens(file, 0, { when: 'after', seconds: 30 }))).not.toBe(
       walkedVersion(file),
     );
+  });
+
+  it('forgets a walk when anything a raid meets on it changes, and keeps it through words', () => {
+    const file = working();
+    const walked = walkedVersion(file);
+    const changed: MapFile[] = [
+      { ...file, trainers: [{ x: 5, y: 5, name: 'Ace', team: 'scout', look: 'youngster', facing: 'down', sight: 3, lines: [] }] },
+      { ...file, boulders: [{ x: 6, y: 6 }] },
+      { ...file, people: [{ x: 7, y: 7, name: 'Bo', look: 'boy', facing: 'down', lines: [] }] },
+      { ...file, pokemon: [{ x: 8, y: 8, species: 'pikachu' }] },
+      { ...file, doors: [{ kind: 'cut', x: 9, y: 9, width: 1, height: 1 }] },
+      { ...file, berryTrees: [{ x: 4, y: 4, berry: 'oran' }] },
+    ] as MapFile[];
+    for (const map of changed) expect(walkedVersion(map)).not.toBe(walked);
+    const person = changed[2];
+    expect(
+      walkedVersion({ ...person, people: [{ ...person.people![0], name: 'Cy', lines: ['Hello'], look: 'lass' }] }),
+    ).toBe(walkedVersion(person));
+    expect(walkedVersion(JSON.parse(JSON.stringify(file)) as MapFile)).toBe(walked);
+  });
+
+  it('opens a file already in the drafts as that draft, and numbers another of the same name', () => {
+    const file = blankMap(20, 16, 'Tidal Culvert');
+    const store = withDraft({ drafts: [] }, { key: 'a', file, updatedAt: 0 });
+    expect(placeOpenedFile(store, JSON.parse(mapFileText(file)) as MapFile)).toEqual({ existing: 'a' });
+    const other = renameMap(blankMap(24, 16), 'Tidal Culvert');
+    const placed = placeOpenedFile(store, other);
+    expect('file' in placed && placed.file.name).toBe('Tidal Culvert 2');
+    expect('file' in placed && placed.file.id).toBe(other.id);
+    expect(placeOpenedFile(store, renameMap(other, 'Mossy Lane'))).toEqual({ file: renameMap(other, 'Mossy Lane') });
   });
 
   it('downloads as the file the game reads', () => {

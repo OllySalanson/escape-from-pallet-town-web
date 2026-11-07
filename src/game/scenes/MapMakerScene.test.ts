@@ -1126,8 +1126,8 @@ describe('typing what a map cannot hold', () => {
       caret: [0, 0] as [number, number],
     });
     scene.refuseUnwrittenText(field);
-    expect(field.value).toBe('Bug  Café|Lane');
-    expect(field.caret).toEqual(['Bug  Café'.length, 'Bug  Café'.length]);
+    expect(field.value).toBe('Bug Café|Lane');
+    expect(field.caret).toEqual(['Bug Café'.length, 'Bug Café'.length]);
     const clean = Object.assign(new Element(), { value: 'Café Élan', selectionStart: 3, setSelectionRange: vi.fn() });
     scene.refuseUnwrittenText(clean);
     expect(clean.value).toBe('Café Élan');

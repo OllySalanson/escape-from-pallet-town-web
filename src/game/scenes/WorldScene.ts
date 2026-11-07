@@ -3,7 +3,7 @@ import { isPackId } from '../items/packs';
 import { lookKey, readLook } from '../look/look';
 import { bikeTexture, lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
-import { homeAfterRaid } from '../maker/tryIt';
+import { LEAVE_TRY_PROMPT, currentTry, homeAfterRaid, tryClockLabel } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
 import { clockLine, closeCallLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
@@ -278,6 +278,7 @@ import {
   type PrizeChipInput,
   raidClockAlertTier,
   raidClockView,
+  type RaidClockView,
 } from './raidHud';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
 import type { RaidCarriage } from '../run/raidCarriage';
@@ -2121,6 +2122,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     if (this.keyPresses.justPressed(this.controls.save)) {
       this.saveGame();
+      return;
+    }
+
+    if (currentTry() && this.keyPresses.justPressed(this.controls.back)) {
+      this.askToLeaveTry();
       return;
     }
 
@@ -4757,12 +4763,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       : null;
     hud.render(
       {
-        clock: raidClockView(
-          snapshot.remainingMs,
-          manager.isEnraged,
-          snapshot.enrageGraceRemainingMs,
-          isPlaytestRun(),
-          this.runSession?.plan?.night,
+        clock: this.withTryHint(
+          raidClockView(
+            snapshot.remainingMs,
+            manager.isEnraged,
+            snapshot.enrageGraceRemainingMs,
+            isPlaytestRun(),
+            this.runSession?.plan?.night,
+          ),
         ),
         // Beside a side panel the cue alone: the keys it teaches are the raid's, and the panel has its own.
         objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned).slice(
@@ -6015,6 +6023,42 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       options: prompt.options,
       selected: prompt.selected,
       onChoose: (index) => this.resolveTrainerChallenge(encounter, index === 0),
+    });
+  }
+
+  /** In a try, the clock chip also says how to leave it for the map maker. */
+  private withTryHint(view: RaidClockView): RaidClockView {
+    const attempt = currentTry();
+    return attempt ? { ...view, label: tryClockLabel(view.label, attempt.rules) } : view;
+  }
+
+  /** Escape in a try: back to the map maker, asked first (`maker/tryIt.ts`). */
+  private askToLeaveTry(): void {
+    this.showIdlePose();
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
+      padding: 10,
+      lines: LEAVE_TRY_PROMPT.lines,
+      options: LEAVE_TRY_PROMPT.options,
+      selected: LEAVE_TRY_PROMPT.selected,
+      onChoose: (index) => {
+        this.trainerPrompt?.destroy();
+        this.trainerPrompt = undefined;
+        if (index !== 1) {
+          audioManager.play('cancel');
+          return;
+        }
+        // Nothing of a try is kept but the walk, and this one did not walk
+        // out: the maker takes the try down as it opens (`MapMakerScene.create`).
+        this.isWarping = true;
+        this.cameras.main.fadeOut(180, 0, 0, 0);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+          this.scene.start('mapmaker', { tried: true });
+        });
+      },
     });
   }
 

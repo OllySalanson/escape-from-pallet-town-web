@@ -628,7 +628,7 @@ describe('publishing', () => {
     expect(
       problemsOf(edited({ people: [{ x: 12, y: 7, name: 'Tam', look: 'old-man', facing: 'down', lines: ['Fish & chips'] }] })),
     ).toEqual(['Names and words in a map may not use < > & or ".']);
-    expect(plainText('Fish & "chips" <here>')).toBe('Fish  chips here');
+    expect(plainText('Fish & "chips" <here>')).toBe('Fish chips here');
   });
 
   it('takes accented letters and common punctuation, and refuses emoji, other scripts and what draws nothing', () => {
@@ -646,7 +646,7 @@ describe('publishing', () => {
     expect(
       problemsOf(edited({ signs: [{ x: 12, y: 7, lines: ['One\rTwo'] }] })),
     ).toEqual(refused);
-    expect(plainText('Bug 🐛 Café\nLane')).toBe('Bug  Café\nLane');
+    expect(plainText('Bug 🐛 Café\nLane')).toBe('Bug Café\nLane');
   });
 });
 

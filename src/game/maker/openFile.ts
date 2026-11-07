@@ -36,10 +36,22 @@ export function openMapFileText(text: string, name: string): OpenedFile {
   const reading = readMapFile(parsed, { draft: true });
   if (reading.ok) return { ok: true, file: reading.file };
   const count = reading.problems.length;
+  const named = reading.problems.find(saysItPlainly);
   return {
     ok: false,
-    says: `${name} is a damaged map file, so it cannot be opened (${count === 1 ? 'one problem' : `${count} problems`} found).`,
+    says: `${name} is a damaged map file, so it cannot be opened (${count === 1 ? 'one problem' : `${count} problems`} found)${
+      named ? `: ${named}${count > 1 ? ' And more.' : ''}` : '.'
+    }`,
   };
 }
+
+/**
+ * Whether a problem is said in a maker's words and can be shown as it is: one
+ * that names a field of the format (`'ground' has 30 rows`) or its number is
+ * for a reviewer, but `Names and words in a map may not use < > & or "` is the
+ * answer a maker who opened a file needs (playtest 50 found it held back).
+ */
+const saysItPlainly = (problem: string): boolean =>
+  !/'[a-zA-Z]+'/.test(problem) && !/format/i.test(problem) && !/\b[a-z]+[A-Z]/.test(problem);
 
 const notAMap = (name: string): OpenedFile => ({ ok: false, says: `${name} is not a map file.` });

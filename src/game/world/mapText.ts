@@ -61,11 +61,20 @@ export interface TypedMapText {
 export function typedMapText(value: string, options: { readonly lines?: boolean } = {}): TypedMapText {
   const kept: string[] = [];
   const refused: string[] = [];
+  // A word taken out from between two spaces leaves one space, not two:
+  // `Old <Ma> 😀 é` reads `Old Ma é` (playtest 50), never with a gap in it.
+  let tookOut = false;
   for (const character of value) {
     if (isMapTextCharacter(character, options.lines === true)) {
-      kept.push(character);
-    } else if (!refused.includes(character)) {
-      refused.push(character);
+      if (!(tookOut && character === ' ' && kept[kept.length - 1] === ' ')) {
+        kept.push(character);
+      }
+      tookOut = false;
+    } else {
+      tookOut = true;
+      if (!refused.includes(character)) {
+        refused.push(character);
+      }
     }
   }
   return { text: kept.join(''), refused };

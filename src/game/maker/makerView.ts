@@ -275,7 +275,7 @@ const PLACE_ROWS = [
   ],
   [
     'boulder',
-    'Boulder',
+    'Strength boulder',
     'A boulder in the way. A Pokémon that knows Strength pushes it a tile at a time, for that raid.',
   ],
   [
@@ -290,6 +290,18 @@ const PLACE_ROWS = [
   ],
 ] as const;
 
+/**
+ * A thing's name in the middle of a sentence: lower case, as a common noun is,
+ * except a name - Pokémon, a move, anything with a second capital in it
+ * (`Pokémon Center`, `Rock Smash rock`, `Pewter Museum`) - which keeps its
+ * capitals (playtest 50: "Plants a pokémon center").
+ */
+export function inSentence(label: string): string {
+  const [first = '', ...rest] = label.split(' ');
+  const named = /^(Pok[eé]|Cut$|Surf$|Strength$)/.test(first) || rest.some((word) => /^[A-Z]/.test(word));
+  return named ? label : label.charAt(0).toLowerCase() + label.slice(1);
+}
+
 /** A field move's doors - a Cut tree, a Rock Smash rock, Surf water - and a night track stand outdoors, so an inside has none of them. */
 const placesFor = (inside: MapFileArea | undefined): readonly (typeof PLACE_ROWS)[number][] =>
   inside
@@ -298,7 +310,7 @@ const placesFor = (inside: MapFileArea | undefined): readonly (typeof PLACE_ROWS
 
 /** Everything SELECT and REMOVE work on in this place, named as the Paint pane names it. */
 const placedThings = (inside: MapFileArea | undefined): string =>
-  [...placesFor(inside).map(([, label]) => label.toLowerCase()), inside ? 'piece of furniture' : 'building']
+  [...placesFor(inside).map(([, label]) => inSentence(label)), inside ? 'piece of furniture' : 'building']
     .map(withArticle)
     .join(', ')
     .replace(/, ([^,]+)$/, ' or $1');
@@ -408,7 +420,7 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
     toolRow(
       `data-place="building" data-building="${choice.kind}"`,
       choice.label,
-      `Plants ${withArticle(choice.label.toLowerCase())} with ${isPluralName(choice.label) ? 'their' : 'its'} top-left corner on the tile you click.` +
+      `Plants ${withArticle(inSentence(choice.label))} with ${isPluralName(choice.label) ? 'their' : 'its'} top-left corner on the tile you click.` +
         (plantsAlong(choice.kind) ? ' Drag to plant a row, each clear of the last.' : '') +
         (choice.group === 'Signs' ? ' It is only a picture: for words to read, place a Sign under Places.' : ''),
       chosenPlace === `building:${choice.kind}`,
@@ -532,6 +544,17 @@ function groupHeading(faults: readonly MakerCheck['faults'][number][]): string {
 }
 
 /**
+ * A fault about the whole map that a field answers, and the field: the line is
+ * a button that brings the field into view and puts the cursor in it, because
+ * DRAWN BY sat below the fold of its column when the first check named it
+ * (playtest 50).
+ */
+const FAULT_FIELDS: Readonly<Record<string, { readonly attribute: string; readonly name: string }>> = {
+  'Type a name in Name, under The map.': { attribute: 'data-map-name', name: 'Name' },
+  'Type your name in Drawn by, under The map.': { attribute: 'data-map-maker', name: 'Drawn by' },
+};
+
+/**
  * The checks, as the maker's to-do list. Every fault that names a tile is a
  * button that takes the maker there (`MapMakerScene.goToFault`), and a run of
  * faults of one kind - seven berry trees stood in a wood - is one line with a
@@ -562,7 +585,10 @@ function checksPane(checks: readonly MakerCheck[], file: MapFile): string {
           const goto = `${checkIndex}:${faultIndex}`;
           const where = fault.places[0];
           if (!where) {
-            return `<small class="maker-fault-text px-wrap">${escapeHtml(fault.text)}</small>`;
+            const field = FAULT_FIELDS[fault.text];
+            return field
+              ? `<button class="px-row maker-fault" data-goto-field="${field.attribute}" data-help="${escapeAttribute(`Takes you to ${field.name}.`)}"><span class="px-wrap">${escapeHtml(fault.text)}</span></button>`
+              : `<small class="maker-fault-text px-wrap">${escapeHtml(fault.text)}</small>`;
           }
           const more =
             fault.places.length > 1 ? ` It names ${fault.places.length} places: each press goes to the next.` : '';
@@ -732,7 +758,7 @@ function selectedPane(
       break;
     }
     case 'boulder': {
-      heading = 'Boulder';
+      heading = 'Strength boulder';
       body = `<p class="px-note px-wrap">A wall until a Pokémon that knows Strength (HM04) pushes it, a tile at a time. It stands back where you put it at the start of every raid, and it will never be pushed onto an exit, an item or a drop-in, or across the only way out.</p>`;
       break;
     }
@@ -1394,8 +1420,12 @@ export function makerScreen(state: MakerViewState): string {
     button('data-new', 'New', 'Starts a new map. This one stays in your drafts.'),
     button(
       `data-panel="${state.panel === 'drafts' ? 'map' : 'drafts'}"`,
-      state.panel === 'drafts' ? 'Back to map' : 'Drafts',
-      'Every map you have drawn in this browser, and what became of the ones you sent in.',
+      // MAP rather than BACK TO MAP: the longer word wrapped the bar onto a
+      // second row and squeezed the map (playtest 50).
+      state.panel === 'drafts' ? 'Map' : 'Drafts',
+      state.panel === 'drafts'
+        ? 'Back to the map you are drawing.'
+        : 'Every map you have drawn in this browser, and what became of the ones you sent in.',
     ),
     button('data-open-file', 'Open file', 'Opens a map file you downloaded or were sent.'),
     button('data-download', 'Download', 'Saves this map as a file you can keep or share: the only copy of it outside this browser.'),

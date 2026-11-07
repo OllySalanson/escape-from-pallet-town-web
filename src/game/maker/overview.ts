@@ -29,6 +29,23 @@ export const OVERVIEW_ROOM: PictureSize = { width: 96, height: 72 };
  * bigger than the window and spilled out over the paint tools beside it, and a
  * map you cannot see for its overview is no help finding your way round it.
  */
+/**
+ * Whether a map is far enough out of its window to need the overview: some of
+ * it is hidden, and more than `OVERVIEW_HIDDEN_LEAST` of it one way or the
+ * other. A map a few pixels too big for its window - a fresh 40x30 with the
+ * drafts panel open, or one with an inside's tabs over it - had the overview
+ * drawn over ten tiles of its corner to find the few rows it was missing,
+ * often right on the exit (playtest 50).
+ */
+export const OVERVIEW_HIDDEN_LEAST = 0.15;
+
+export function mapNeedsOverview(map: PictureSize, window: PictureSize): boolean {
+  if (map.width <= 0 || map.height <= 0) return false;
+  const hiddenAcross = 1 - window.width / map.width;
+  const hiddenDown = 1 - window.height / map.height;
+  return Math.max(hiddenAcross, hiddenDown) > OVERVIEW_HIDDEN_LEAST;
+}
+
 export function overviewLeavesRoom(frame: PictureSize, window: PictureSize): boolean {
   return frame.width * 2 <= window.width && frame.height * 2 <= window.height;
 }

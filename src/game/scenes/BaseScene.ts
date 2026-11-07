@@ -331,7 +331,14 @@ import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { openFavourList } from '../ui/FavourListOverlay';
-import { PLAYTEST_BOARD_TILE, placeLanding, practiceSpot, type PlaytestBoardAction } from '../dev/playtestBoard';
+import {
+  PLAYTEST_BOARD_NAME,
+  PLAYTEST_BOARD_NOTE,
+  PLAYTEST_BOARD_TILE,
+  placeLanding,
+  practiceSpot,
+  type PlaytestBoardAction,
+} from '../dev/playtestBoard';
 import { openPlaytestBoard } from '../dev/PlaytestBoardOverlay';
 import { playtestHour, setPlaytestHour } from '../dev/playtestClock';
 import { PLAYTEST_GAMES, withNewDay } from '../dev/playtestKit';
@@ -836,7 +843,6 @@ export class BaseScene extends Phaser.Scene {
   /** The Pokémon walking about THE BOLTHOLE's garden (`base/homeGarden.ts`), outdoors only. */
   private garden: HomeGardenFigures | null = null;
   /** The plate across the PLAYTEST BOARD, in the explorer run's yard only. */
-  private playtestPlate: Phaser.GameObjects.Text | null = null;
   /** Somebody else's house this player is looking round, let in at the door. */
   private visit: HouseVisit | null = null;
   /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
@@ -1258,7 +1264,7 @@ export class BaseScene extends Phaser.Scene {
       this.tellThePractice(data.practice);
     }
     if (this.arena && data.arrival === 'raid') {
-      this.nameDue = nameService() !== null && houseNameNeeded(houseName()) && raidsDeployed(this.savedGame.raidProgress) === 1;
+      this.nameDue = nameService() !== null && !isPlaytestRun() && houseNameNeeded(houseName()) && raidsDeployed(this.savedGame.raidProgress) === 1;
       this.crowdHeardFrom(data.raidMood);
       if (data.closeCall) {
         this.hallSign ??= new PlaceNameSign(this);
@@ -1297,7 +1303,9 @@ export class BaseScene extends Phaser.Scene {
       if (data.stairsFrom === undefined) {
         this.say(visitWelcomeLines(this.visit.ownerName), []);
       }
-    } else if (this.place.room?.home && houseNameNeeded(houseName())) {
+    } else if (this.place.room?.home && !isPlaytestRun() && houseNameNeeded(houseName())) {
+      // Never in the explorer run: a name typed there would claim a real
+      // player's name for a test browser (playtest 50).
       this.askHouseName();
     }
     // Somebody waving at this player: a hand over them, and a "hi!" to say so.
@@ -3788,6 +3796,17 @@ export class BaseScene extends Phaser.Scene {
         }),
       );
     }
+    if (isPlaytestRun()) {
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: tilesRect([PLAYTEST_BOARD_TILE]),
+          text: `${PLAYTEST_BOARD_NAME}\n${PLAYTEST_BOARD_NOTE}`,
+          tone: LANDMARK_TONE,
+          depth: atRow(CAPTION_BAND, PLAYTEST_BOARD_TILE.y),
+          speech: { voice: 'name', tiles: [PLAYTEST_BOARD_TILE] },
+        }),
+      );
+    }
     for (const landmark of HARBOUR_LANDMARKS) {
       this.worldLabels.push(
         new WorldLabel(this, {
@@ -4053,8 +4072,8 @@ export class BaseScene extends Phaser.Scene {
     }
     const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
-    const x = seat ? seat.right - width : Math.round((this.scale.width - width) / 2);
-    const y = seat ? seat.y : this.hintY(height);
+    const placed = seat ? { x: seat.right - width, y: seat.y } : this.hintPlace(width, height);
+    const { x, y } = placed;
     drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
     this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
   }
@@ -4064,10 +4083,24 @@ export class BaseScene extends Phaser.Scene {
    * down there. A room as tall as the screen has its door mat under the foot, and
    * the hint put up on arriving was drawn over whoever had just arrived.
    */
-  private hintY(height: number): number {
+  private hintPlace(width: number, height: number): { readonly x: number; readonly y: number } {
     const foot = this.scale.height - height - HINT_MARGIN;
+    const centred = Math.round((this.scale.width - width) / 2);
     const under = (this.currentTile.y + 1) * TILE_SIZE - this.cameras.main.scrollY > foot;
-    return under ? HINT_MARGIN : foot;
+    if (!under) {
+      return { x: centred, y: foot };
+    }
+    // Along the foot beside them, where it fits: sent to the top it lay over
+    // the top of the room, the Battle Arena's class board under it (playtest 50).
+    // The side away from the partner first, so it stands clear of both of them.
+    const partner = this.partner?.standingTile();
+    const left = this.currentTile.x * TILE_SIZE - this.cameras.main.scrollX;
+    const right = left + TILE_SIZE;
+    const westOf = { x: left - HINT_MARGIN - width, y: foot };
+    const eastOf = { x: right + HINT_MARGIN, y: foot };
+    const sides = partner && partner.x < this.currentTile.x ? [eastOf, westOf] : [westOf, eastOf];
+    const fits = sides.find(({ x }) => x >= HINT_MARGIN && x + width <= this.scale.width - HINT_MARGIN);
+    return fits ?? { x: centred, y: HINT_MARGIN };
   }
 
   private layoutForStage(): void {
@@ -4182,9 +4215,6 @@ export class BaseScene extends Phaser.Scene {
           // is: a caption seated across a person reads as their head stuck on
           // a sign.
           ...(this.harbourLife?.standing('person') ?? []).map((tile) => figureRect(tile)),
-          // The PLAYTEST BOARD's plate is wider than its tile, and a door's name
-          // seated across it read as one box run into another (wave 2's playtest).
-          ...(this.playtestPlate && !room ? [this.playtestPlate.getBounds()] : []),
           // What the other players are saying: a caption seated over it would be read as said.
           ...(this.harbourFigures?.bubbleRects() ?? []),
           // This player's own hand while it is up.
@@ -4267,9 +4297,11 @@ export class BaseScene extends Phaser.Scene {
       const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
       return { x: view.left + this.hintSeat.right - width, y: view.top + this.hintSeat.y, width, height };
     }
+    const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
+    const at = this.hintPlace(width, height);
     return {
       x: view.left,
-      y: view.top + this.hintY(height),
+      y: view.top + at.y,
       width: view.width,
       height: height + HINT_MARGIN,
     };
@@ -5290,28 +5322,17 @@ export class BaseScene extends Phaser.Scene {
    * sign stamped on the lawn by the landing and made solid while it stands.
    */
   private raisePlaytestBoard(): void {
-    this.playtestPlate = null;
     if (this.place.room || !isPlaytestRun()) {
       return;
     }
     const { x, y } = PLAYTEST_BOARD_TILE;
     this.collision[y][x] = true;
-    const sign = BASE_TILESET.props.homeSign.cells[0];
+    // FireRed's TRAINER TIPS board, which no other sign in the yard is, named
+    // by a caption seated as every other is: a plate nailed over it hid the
+    // board, read as a player's name and covered the Pokémon Center's caption
+    // (playtest 50).
+    const sign = BASE_TILESET.props.playtestBoard.cells[0];
     this.tilemap?.getLayer('base-detail')?.tilemapLayer?.putTileAt(sign.tile, x, y);
-    // A plate nailed across the board's own face, so it is not read as one of
-    // the harbour's own signs - nor, under it beside the policeman, as
-    // somebody's name (wave 1's playtest). On the board's tile and no other,
-    // so it never covers whoever stands to read it.
-    this.playtestPlate = this.add
-      .text(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + 5, 'PLAYTEST', {
-        fontFamily: GAME_FONT,
-        fontSize: CHIP_FONT_SIZE,
-        color: '#ffd6fb',
-        backgroundColor: '#3a1640',
-        padding: { x: 2, y: 0 },
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(atRow(CAPTION_BAND, y));
   }
 
   /** Whether the tile faced is the PLAYTEST BOARD, and if it is, its screen goes up. */

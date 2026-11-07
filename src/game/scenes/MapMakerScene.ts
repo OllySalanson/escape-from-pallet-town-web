@@ -41,6 +41,7 @@ import { generateMapName } from '../maker/mapNames';
 import {
   loadMakerStore,
   mapFileText,
+  placeOpenedFile,
   sameMapFile,
   walkedVersion,
   isUntouchedBlank,
@@ -89,7 +90,7 @@ import {
   type DoorwayMark,
 } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
-import { overviewLeavesRoom, overviewOf, type Overview } from '../maker/overview';
+import { mapNeedsOverview, overviewLeavesRoom, overviewOf, type Overview } from '../maker/overview';
 import { openMapFileText } from '../maker/openFile';
 import { paintGhost, type GhostTiles } from '../maker/ghost';
 import {
@@ -1077,6 +1078,12 @@ export class MapMakerScene extends Phaser.Scene {
       const [check, fault] = (element.dataset.goto ?? '').split(':').map(Number);
       this.goToFault(check, fault);
     });
+    // A fault a field answers: the field, in view, with the cursor in it.
+    on('[data-goto-field]', (element) => {
+      const field = root.querySelector<HTMLElement>(`[${element.dataset.gotoField ?? ''}]`);
+      field?.scrollIntoView({ block: 'center' });
+      field?.focus();
+    });
     on('[data-undo]', () => this.undo());
     on('[data-redo]', () => this.redo());
     on('[data-new]', () => {
@@ -1604,7 +1611,14 @@ export class MapMakerScene extends Phaser.Scene {
       box.top >= seen.top - 0.5 &&
       box.right <= seen.left + viewport.clientWidth + 0.5 &&
       box.bottom <= seen.top + viewport.clientHeight + 0.5;
-    if (fits || box.width === 0) {
+    if (
+      fits ||
+      box.width === 0 ||
+      !mapNeedsOverview(
+        { width: box.width, height: box.height },
+        { width: viewport.clientWidth, height: viewport.clientHeight },
+      )
+    ) {
       frame.hidden = true;
       return;
     }
@@ -2897,32 +2911,53 @@ export class MapMakerScene extends Phaser.Scene {
     if (!viewport || !map) {
       return;
     }
-    const unit = map.getBoundingClientRect().width / (this.file.width * this.zoom);
+    const unit = map.getBoundingClientRect().width / (this.view.width * this.zoom);
     const zoom =
       [...MAKER_ZOOMS]
         .reverse()
         .find(
           (level) =>
-            this.file.width * level * unit <= viewport.clientWidth &&
-            this.file.height * level * unit <= viewport.clientHeight,
+            this.view.width * level * unit <= viewport.clientWidth &&
+            this.view.height * level * unit <= viewport.clientHeight,
         ) ?? MAKER_ZOOMS[0];
     if (zoom !== this.zoom) {
       this.zoom = zoom;
       this.render();
     }
-    this.lookAtMap();
-    this.showOverview();
+    // Measured again once the new screen is laid out: drawn at a new zoom it
+    // can gain a scrollbar or a row of chips over the map, and FIT on a map
+    // with an inside chose 1/2 and cut the bottom row of trees off (playtest 50).
+    this.afterLayout(() => {
+      const index = MAKER_ZOOMS.indexOf(this.zoom);
+      if (!this.wholeMapInView() && index > 0) {
+        this.zoom = MAKER_ZOOMS[index - 1];
+        this.render();
+      }
+      this.lookAtMap();
+      this.showOverview();
+    });
+  }
+
+  /** Whether the map window can show the whole of the map at once. */
+  private wholeMapInView(): boolean {
+    const viewport = this.viewport();
+    const map = this.mapCanvas();
+    if (!viewport || !map) {
+      return true;
+    }
+    const box = map.getBoundingClientRect();
+    return box.width <= viewport.clientWidth + 0.5 && box.height <= viewport.clientHeight + 0.5;
   }
 
   /**
    * The biggest zoom at which the whole width of the map is in view, so a map
    * opens as a picture of itself rather than as its top-left corner.
    */
-  private fitZoom(): void {
-    this.afterLayout(() => this.fitZoomNow());
+  private fitZoom(status?: string): void {
+    this.afterLayout(() => this.fitZoomNow(status));
   }
 
-  private fitZoomNow(): void {
+  private fitZoomNow(status?: string): void {
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const map = this.mapCanvas();
     if (!viewport || !map || viewport.clientWidth === 0) {
@@ -2938,7 +2973,7 @@ export class MapMakerScene extends Phaser.Scene {
     const zoom = Math.max(fits ?? 8, 8) as MakerZoom;
     if (zoom !== this.zoom) {
       this.zoom = zoom;
-      this.render();
+      this.render(status);
       this.afterLayout(() => this.lookAtMap());
       return;
     }
@@ -3084,13 +3119,19 @@ export class MapMakerScene extends Phaser.Scene {
       this.render(reading.says);
       return;
     }
+    const placed = placeOpenedFile(this.store, reading.file);
+    if ('existing' in placed) {
+      this.openDraft(placed.existing);
+      this.render(`${name} is already in your drafts, so that draft is open.`);
+      return;
+    }
     this.flushAutosave();
     this.rememberView();
     this.draftKey = newDraftKey(this.store);
-    this.openHistory(reading.file);
+    this.openHistory(placed.file);
     this.store = withDraft(this.store, {
       key: this.draftKey,
-      file: reading.file,
+      file: placed.file,
       updatedAt: Date.now(),
     });
     saveMakerStore(this.store);
@@ -3098,8 +3139,14 @@ export class MapMakerScene extends Phaser.Scene {
     this.area = undefined;
     this.doorway = undefined;
     this.panel = 'map';
-    this.render(`Opened ${name}.`);
-    this.fitZoom();
+    // Said again if the fit draws the screen anew, or the line is gone before
+    // it is read (playtest 50 saw no word at all).
+    const opened =
+      placed.file.name === reading.file.name
+        ? `Opened ${name} as a new draft.`
+        : `Opened ${name} as a new draft, ${placed.file.name}: a draft of that name is already here.`;
+    this.render(opened);
+    this.fitZoom(opened);
   }
 
   private openPanel(panel: MakerPanel): void {
