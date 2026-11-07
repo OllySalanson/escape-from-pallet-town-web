@@ -5,7 +5,7 @@
 // 16x16 RGBA on the set's own rules (see ASSET_PROVENANCE.md): the shared
 // outline #241f2e and a shade/base/light triple for the hue.
 //
-// One shape for all six, because that is what a machine is - a disc, lit from
+// One shape for every disc, because that is what a machine is - a disc, lit from
 // the top left, with the read head's hole through the middle - and the hue is
 // the **type of the move it teaches**, which is how the games these are dressed
 // as tell one disc from another. So a player learns the shape once and reads the
@@ -59,11 +59,16 @@ const PINHOLE = ['llllhhbbss', 'lllbhhbsss'];
 const SLOT = ['lllhhhhbss', 'lllhhhhbss'];
 
 const MACHINES = {
-  // Grass, Ice, Steel, Ground, Rock, Flying, Normal, Water and Fighting, in the type
+  // Grass, Fire, Ice, Water, Steel, Ground, Rock, Flying, Normal and Fighting, in the type
   // colours the series uses, pulled towards this set's own contrast so each
   // reads at 16px against both the cream menus and the map.
   'tm09-bullet-seed': { hue: ['2f7a32', '57b348', '9ee07a'], hole: PINHOLE },
+  // Fire, the series' orange, held yellower than Rock Smash's red-orange slot.
+  'tm11-sunny-day': { hue: ['b4561c', 'ef8f2c', 'fbd27a'], hole: PINHOLE },
   'tm13-ice-beam': { hue: ['3f8aa8', '74c8dc', 'bdefff'], hole: PINHOLE },
+  // Water, a deeper blue than Surf's, so the two Water discs are two pictures
+  // even before the pinhole and the slot are read.
+  'tm18-rain-dance': { hue: ['243f86', '3f6fcc', '93b8ee'], hole: PINHOLE },
   'tm23-iron-tail': { hue: ['5e6a7a', '97a3b2', 'd3dbe4'], hole: PINHOLE },
   'tm28-dig': { hue: ['8a6430', 'c9974a', 'e9c98a'], hole: PINHOLE },
   // Rock is the series' khaki, kept clear of Dig's brown beside it.

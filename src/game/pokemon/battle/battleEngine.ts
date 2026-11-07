@@ -35,6 +35,8 @@ import {
   type RandomSource,
 } from './damage';
 import {
+  berryBite,
+  type BerryMoment,
   endOfTurnHeal,
   gearLabel,
   rollsFirstStrike,
@@ -481,6 +483,13 @@ export type BattleEvent =
   | { readonly type: 'gear-recoil'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly item: string; readonly damage: number }
   | { readonly type: 'gear-heal'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly item: string; readonly amount: number }
+  // A held berry, eaten by itself (`heldItems.ts`, `berryBite`): FireRed's
+  // `BattleScript_BerryCure*` and `BattleScript_ItemHealHP_RemoveItem`, each
+  // said in FireRed's own words and each the end of the berry.
+  | { readonly type: 'berry-cure'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly item: string; readonly status: PrimaryStatusType }
+  | { readonly type: 'berry-heal'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly item: string; readonly amount: number }
   // Weather. It is the one thing in a fight that belongs to neither side, so
   // each of these names the field rather than a combatant - except the chip,
@@ -1229,8 +1238,9 @@ export const resolveTurn = (
       continue;
     }
     const result = applyMove(nextState, action.ref, action.moveIndex, random, action.target);
-    nextState = result.state;
-    events.push(...result.events);
+    const eaten = eatBerries(result.state, 'after-move');
+    nextState = eaten.state;
+    events.push(...result.events, ...eaten.events);
   }
 
   // The weather is charged once for the whole turn, after everybody has acted -
@@ -1430,8 +1440,9 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
     }
     const target = action.target ?? chooseTarget(nextState, 'player', random);
     const acted = applyMove(nextState, ref, action.moveIndex, random, target);
-    nextState = acted.state;
-    events.push(...acted.events);
+    const eaten = eatBerries(acted.state, 'after-move');
+    nextState = eaten.state;
+    events.push(...acted.events, ...eaten.events);
   }
   const weathered = applyWeather(nextState);
   const ended = applyEndOfTurn(weathered.state, endOfTurnOrder(weathered.state, []), random);
@@ -2693,6 +2704,12 @@ const applyEndOfTurn = (
       });
     }
 
+    // A held berry, at the same point: FireRed's `ENDTURN_ITEMS1` is where
+    // Leftovers is asked and where a berry is, the HP berries' only chance.
+    const ate = eatBerry(nextState, ref, 'end-of-turn');
+    nextState = ate.state;
+    events.push(...ate.events);
+
     // Leech Seed, after the gear and before the status: FireRed's
     // `ENDTURN_LEECH_SEED` sits between `ENDTURN_ITEMS1` and `ENDTURN_POISON`.
     const sapped = applySeedDrain(nextState, ref);
@@ -2724,6 +2741,57 @@ const applyEndOfTurn = (
   }
   return { state: nextState, events };
 };
+
+/**
+ * A held berry, eaten by itself if it is wanted now (`berryBite`): the status
+ * it cures is gone, the HP it restores is back, and so is the berry - off the
+ * Pokemon itself, not only out of this fight, because FireRed does not hand a
+ * berry back when the battle ends. That is the one write to a Pokemon here
+ * outside `persistCombatantToPokemon`, as Natural Cure's is, and it is what
+ * carries an empty hand home from a raid (`RaidCondition.heldItemId`).
+ */
+const eatBerry = (state: BattleState, ref: SlotRef, moment: BerryMoment): TurnResult => {
+  const combatant = unitAt(state, ref);
+  if (!combatant) {
+    return { state, events: [] };
+  }
+  const bite = berryBite(combatant.pokemon, combatant.currentHp, combatant.primaryStatus, moment);
+  if (!bite) {
+    return { state, events: [] };
+  }
+  const item = gearLabel(combatant.pokemon.heldItemId);
+  combatant.pokemon.takeHeldItem();
+  const said = { user: ref.side, ...inSlot(ref), name: combatant.pokemon.name, item };
+  if (bite.kind === 'cure') {
+    return {
+      state: withUnit(state, ref, {
+        ...combatant,
+        primaryStatus: null,
+        sleepTurns: bite.status === PrimaryStatus.Sleep ? 0 : combatant.sleepTurns,
+      }),
+      events: [{ type: 'berry-cure', ...said, status: bite.status }],
+    };
+  }
+  return {
+    state: withUnit(state, ref, { ...combatant, currentHp: combatant.currentHp + bite.amount }),
+    events: [{ type: 'berry-heal', ...said, amount: bite.amount }],
+  };
+};
+
+/**
+ * Every battler's berry, asked at the end of a move (FireRed's
+ * `MOVEEND_ITEM_EFFECTS_ALL`, battler by battler): a Pokemon put to sleep, a
+ * Pokemon paralysed by the Static it touched and the Pokemon whose Synchronize
+ * handed it back are all asked, whoever moved.
+ */
+const eatBerries = (state: BattleState, moment: BerryMoment): TurnResult =>
+  occupiedSlots(state).reduce<TurnResult>(
+    (carried, ref) => {
+      const ate = eatBerry(carried.state, ref, moment);
+      return { state: ate.state, events: [...carried.events, ...ate.events] };
+    },
+    { state, events: [] },
+  );
 
 /**
  * The order the end of a turn is taken in: whoever acted, in the order they

@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { HELD_ITEM_DEFINITIONS, ITEMS, ItemCategory, heldItemEffect, isHeldItemId } from '../../items';
+import {
+  HELD_ITEM_DEFINITIONS,
+  HOLDABLE_ITEM_DEFINITIONS,
+  ITEMS,
+  ItemCategory,
+  heldItemEffect,
+  isHeldBerry,
+  isHeldItemId,
+} from '../../items';
+import { Move } from '../Move';
+import type { MoveBase } from '../MoveBase';
+import type { PokemonBase } from '../PokemonBase';
+import { SLEEP_POWDER, TACKLE, THUNDER_WAVE } from '../moves';
+import { PrimaryStatus } from './status';
 import { PokemonType } from '../PokemonType';
-import { BULBASAUR, CHARMANDER, PIDGEY, SQUIRTLE } from '../species';
+import { BULBASAUR, CHARMANDER, PIDGEY, SQUIRTLE, getSpeciesById } from '../species';
 import { Pokemon } from '../Pokemon';
 import {
   createBattleState,
@@ -12,6 +25,7 @@ import {
 import {
   attackMultiplier,
   attackRecoil,
+  berryBite,
   endOfTurnHeal,
   gearLabel,
   rollsFirstStrike,
@@ -290,5 +304,138 @@ describe('the Miracle Seed', () => {
       return hit?.damage ?? 0;
     };
     expect(vineWhip('miracle-seed')).toBeGreaterThan(vineWhip(null));
+  });
+});
+
+describe('a held berry', () => {
+  /** A Pokemon holding exactly these moves; with none it cannot act at all. */
+  const armed = (species: PokemonBase, level: number, ...moves: readonly MoveBase[]): Pokemon => {
+    const pokemon = new Pokemon(species, level);
+    pokemon.moves.splice(0, pokemon.moves.length, ...moves.map((move) => new Move(move)));
+    return pokemon;
+  };
+  const find = <T extends BattleEvent['type']>(
+    events: readonly BattleEvent[],
+    type: T,
+  ): Extract<BattleEvent, { type: T }> | undefined =>
+    events.find((event): event is Extract<BattleEvent, { type: T }> => event.type === type);
+
+  it('is medicine in the bag and something to hold, every one of the seven', () => {
+    const berries = HOLDABLE_ITEM_DEFINITIONS.filter((item) => item.holdable);
+    expect(berries.map((item) => item.id)).toEqual([
+      'oran-berry',
+      'sitrus-berry',
+      'pecha-berry',
+      'cheri-berry',
+      'rawst-berry',
+      'chesto-berry',
+      'aspear-berry',
+    ]);
+    for (const berry of berries) {
+      expect(berry.category).toBe(ItemCategory.Medicine);
+      expect(isHeldItemId(berry.id)).toBe(true);
+      expect(isHeldBerry(berry.id)).toBe(true);
+      // What it does in a hand is read off what it does out of the bag.
+      const held = heldItemEffect(berry.id);
+      if (berry.effect.type === 'cure-status') {
+        expect(held).toEqual({ type: 'berry-cure', status: berry.effect.status });
+      } else {
+        expect(berry.effect.type).toBe('heal');
+        expect(held).toEqual({ type: 'berry-heal', amount: (berry.effect as { amount: number }).amount });
+      }
+      expect(berry.description).toMatch(/Held, it is eaten/);
+    }
+    // Gear is still gear, and nothing else is something to hold.
+    expect(isHeldBerry('leftovers')).toBe(false);
+    expect(HOLDABLE_ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Held)).toEqual(
+      HELD_ITEM_DEFINITIONS,
+    );
+  });
+
+  it('cures its one status after a move or at the end of the turn, and only that one', () => {
+    const chesto = holding('chesto-berry');
+    expect(berryBite(chesto, 20, PrimaryStatus.Sleep, 'after-move')).toEqual({ kind: 'cure', status: 'sleep' });
+    expect(berryBite(chesto, 20, PrimaryStatus.Sleep, 'end-of-turn')).toEqual({ kind: 'cure', status: 'sleep' });
+    expect(berryBite(chesto, 20, PrimaryStatus.Paralysis, 'after-move')).toBeUndefined();
+    expect(berryBite(chesto, 20, null, 'after-move')).toBeUndefined();
+    // A fainted holder eats nothing.
+    expect(berryBite(chesto, 0, PrimaryStatus.Sleep, 'after-move')).toBeUndefined();
+  });
+
+  it("restores its HP at the end of a turn that leaves the holder at half or less, FireRed's rule", () => {
+    const oran = holding('oran-berry', 33);
+    // `hp <= maxHP / 2`, in whole numbers: 16 of 33 is half, 17 is not.
+    expect(berryBite(oran, 16, null, 'end-of-turn')).toEqual({ kind: 'heal', amount: 10 });
+    expect(berryBite(oran, 17, null, 'end-of-turn')).toBeUndefined();
+    // Never after a move: `ITEMEFFECT_MOVE_END` asks only the status berries.
+    expect(berryBite(oran, 5, null, 'after-move')).toBeUndefined();
+    // Never past the maximum.
+    expect(berryBite(holding('sitrus-berry', 20), 10, null, 'end-of-turn')).toEqual({ kind: 'heal', amount: 10 });
+  });
+
+  it('wakes its holder the moment it falls asleep, so the turn it was put to sleep for is its own', () => {
+    // The Oddish is made the faster, so its Sleep Powder lands first and the
+    // berry is what lets the Bulbasaur's Tackle out that same turn.
+    const sleeper = armed(BULBASAUR, 10, TACKLE);
+    sleeper.giveHeldItem('chesto-berry');
+    const oddish = armed(getSpeciesById('oddish')!, 10, SLEEP_POWDER);
+    oddish.stats = { ...oddish.stats, speed: 999 };
+    const result = resolveTurn(createBattleState(sleeper, oddish), 0, () => 0.1);
+
+    const types = result.events.map((event) => event.type);
+    expect(types.indexOf('status-applied')).toBeLessThan(types.indexOf('berry-cure'));
+    const cured = find(result.events, 'berry-cure');
+    expect(cured).toMatchObject({ user: 'player', item: 'CHESTO BERRY', status: 'sleep' });
+    // And then it moves, that same turn, which is the whole of what it bought.
+    const tackled = result.events.findIndex(
+      (event, index) => index > types.indexOf('berry-cure') && event.type === 'used-move' && event.user === 'player',
+    );
+    expect(tackled).toBeGreaterThan(-1);
+    expect(result.state.player.primaryStatus).toBeNull();
+    expect(result.state.player.sleepTurns).toBe(0);
+    // Eaten: the Pokemon's own hand is empty, and so carries nothing home.
+    expect(sleeper.heldItemId).toBeNull();
+  });
+
+  it('is eaten once: the second Sleep Powder finds an empty hand', () => {
+    const sleeper = armed(BULBASAUR, 10, TACKLE);
+    sleeper.giveHeldItem('chesto-berry');
+    const oddish = armed(getSpeciesById('oddish')!, 10, SLEEP_POWDER);
+    const first = resolveTurn(createBattleState(sleeper, oddish), 0, () => 0.1);
+    expect(find(first.events, 'berry-cure')).toBeDefined();
+    const second = resolveTurn(first.state, 0, () => 0.1);
+    expect(find(second.events, 'berry-cure')).toBeUndefined();
+    expect(second.state.player.primaryStatus).toBe(PrimaryStatus.Sleep);
+  });
+
+  it('stays in the hand of a holder it has nothing to do for', () => {
+    const holder = armed(BULBASAUR, 10, TACKLE);
+    holder.giveHeldItem('cheri-berry');
+    const oddish = armed(getSpeciesById('oddish')!, 10, SLEEP_POWDER);
+    const result = resolveTurn(createBattleState(holder, oddish), 0, () => 0.1);
+    expect(find(result.events, 'berry-cure')).toBeUndefined();
+    expect(holder.heldItemId).toBe('cheri-berry');
+  });
+
+  it('restores HP at the end of the turn, after Leftovers would and before poison bites', () => {
+    const holder = armed(BULBASAUR, 10, TACKLE);
+    holder.giveHeldItem('oran-berry');
+    holder.primaryStatus = PrimaryStatus.Poison;
+    holder.currentHp = Math.floor(holder.maxHp / 2);
+    const foe = armed(PIDGEY, 10);
+    const result = resolveTurn(createBattleState(holder, foe), 0, () => 0.5);
+    const types = result.events.map((event) => event.type);
+    expect(types.indexOf('berry-heal')).toBeGreaterThan(-1);
+    expect(types.indexOf('berry-heal')).toBeLessThan(types.indexOf('status-damage'));
+    expect(find(result.events, 'berry-heal')).toMatchObject({ amount: 10, item: 'ORAN BERRY' });
+  });
+
+  it('works for the other side too, and a foe eats its own', () => {
+    const attacker = armed(getSpeciesById('pikachu')!, 12, THUNDER_WAVE);
+    const foe = armed(PIDGEY, 10);
+    foe.giveHeldItem('cheri-berry');
+    const result = resolveTurn(createBattleState(attacker, foe), 0, () => 0.1);
+    expect(find(result.events, 'berry-cure')).toMatchObject({ user: 'enemy', status: 'paralysis' });
+    expect(result.state.enemy.primaryStatus).toBeNull();
   });
 });

@@ -477,13 +477,15 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   'leaf-stone': 1,
   'moon-stone': 1,
   'linen-roll': 1,
-  // Zero on purpose, all eight, and they must stay zero. A machine is found in
+  // Zero on purpose, every one, and they must stay zero. A machine is found in
   // the field or bartered off Bill, and a board that paid one out every
   // few raids would turn the one permanent thing a raid can bring home into a
   // subscription. The board cannot reach them anyway - it draws only from
   // `workshopMaterialKinds()` - so these exist to make the compiler ask.
   'tm09-bullet-seed': 0,
+  'tm11-sunny-day': 0,
   'tm13-ice-beam': 0,
+  'tm18-rain-dance': 0,
   'tm23-iron-tail': 0,
   'tm28-dig': 0,
   'tm39-rock-tomb': 0,

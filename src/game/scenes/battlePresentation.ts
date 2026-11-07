@@ -941,7 +941,7 @@ export const combatPresentationSteps = (
     }
     // Gear that gives HP back moves the bar the other way, so the delta is
     // negative damage: the bar animation is the same code either direction.
-    if (event.type === 'gear-heal') {
+    if (event.type === 'gear-heal' || event.type === 'berry-heal') {
       return {
         event,
         actor: event.user,
@@ -1142,6 +1142,22 @@ export const statusTagSeat = (measured: {
     : { row: 'bar', x: measured.hpLabelX };
 };
 
+/** What a held berry did to the status it cured, in FireRed's words for each. */
+const berryCureWords = (status: PrimaryStatus): string => {
+  switch (status) {
+    case 'paralysis':
+      return 'cured paralysis!';
+    case 'poison':
+      return 'cured poison!';
+    case 'burn':
+      return 'healed its burn!';
+    case 'freeze':
+      return 'defrosted it!';
+    case 'sleep':
+      return 'woke it from its sleep!';
+  }
+};
+
 /**
  * The tag once this line has been read. A turn is resolved whole before its
  * first line is put up, so a plate set from the state at the end of it showed
@@ -1159,7 +1175,7 @@ export const statusAfterLine = (shown: ShownStatus, event: BattleEvent): ShownSt
       ? { ...shown, confused: false }
       : { ...shown, primary: null };
   }
-  if (event.type === 'ability' && event.effect === 'shed') {
+  if ((event.type === 'ability' && event.effect === 'shed') || event.type === 'berry-cure') {
     return { ...shown, primary: null };
   }
   return shown;
@@ -1190,6 +1206,9 @@ export const statusBeforeLines = (end: ShownStatus, events: readonly BattleEvent
     ) {
       return { ...shown, primary: event.status };
     }
+    if (event.type === 'berry-cure') {
+      return { ...shown, primary: event.status };
+    }
     return shown;
   }, end);
 
@@ -1198,10 +1217,11 @@ export const changesShownStatus = (
   event: BattleEvent,
 ): event is Extract<
   BattleEvent,
-  { readonly type: 'status-applied' | 'status-cured' | 'ability' }
+  { readonly type: 'status-applied' | 'status-cured' | 'ability' | 'berry-cure' }
 > =>
   event.type === 'status-applied' ||
   event.type === 'status-cured' ||
+  event.type === 'berry-cure' ||
   (event.type === 'ability' && event.effect === 'shed');
 
 /**
@@ -1335,6 +1355,12 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
     // they keep this game's words above.
     case 'gear-heal':
       return `${combatantName(event, foe)}'s ${battleCaps(event.item)} restored its HP a little!`;
+    // A held berry, eaten by itself: FireRed's sText_PkmnsItemCuredParalysis
+    // and its neighbours, and sText_PkmnsItemRestoredHealth.
+    case 'berry-cure':
+      return `${combatantName(event, foe)}'s ${battleCaps(event.item)} ${berryCureWords(event.status)}`;
+    case 'berry-heal':
+      return `${combatantName(event, foe)}'s ${battleCaps(event.item)} restored health!`;
     // What a move does beyond its damage, in the same voice as everything else:
     // the line says who it happened to and what it cost, so a turn can be read
     // back from the log without watching the HP bar.

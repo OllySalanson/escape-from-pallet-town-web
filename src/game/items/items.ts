@@ -82,7 +82,21 @@ export type HeldItemEffect =
    * holder's moves of one type hit harder by `powerPercent`, FireRed's
    * `holdEffectParam` - ten for every one of them.
    */
-  | { readonly type: 'type-power'; readonly moveType: PokemonType; readonly powerPercent: number };
+  | { readonly type: 'type-power'; readonly moveType: PokemonType; readonly powerPercent: number }
+  /**
+   * A berry, held: FireRed's `HOLD_EFFECT_CURE_*`. It cures its one status the
+   * moment it lands - after any move, and again at the end of the turn - and is
+   * eaten doing it. Never authored on a row: it is read off the berry's own
+   * `cure-status` effect (`heldItemEffect`), so the bag and the gear slot
+   * cannot disagree about what a Cheri Berry cures.
+   */
+  | { readonly type: 'berry-cure'; readonly status: PrimaryStatus }
+  /**
+   * A berry, held: FireRed's `HOLD_EFFECT_RESTORE_HP`. At the end of a turn
+   * that leaves the holder at half its maximum HP or less it is eaten for its
+   * HP, read off the berry's own `heal` effect as `berry-cure` is.
+   */
+  | { readonly type: 'berry-heal'; readonly amount: number };
 
 export type ItemEffect =
   | { readonly type: 'heal'; readonly amount: number }
@@ -234,6 +248,14 @@ export interface ItemDefinition {
   readonly stackSize?: number;
   readonly description: string;
   readonly effect: ItemEffect;
+  /**
+   * A berry: medicine in the bag, and also something a Pokemon can hold, which
+   * it eats by itself the moment it is needed (FireRed's own rule, and the
+   * whole reason a berry is worth giving away). A flag rather than a second
+   * effect, because what a held berry does is what the berry does - its
+   * `effect` - and a second field naming it would be a second answer.
+   */
+  readonly holdable?: true;
 }
 
 export interface FieldItemUseResult {
@@ -276,56 +298,63 @@ export const ITEMS = {
     displayName: 'Oran Berry',
     category: ItemCategory.Medicine,
     footprint: { width: 1, height: 1 },
-    description: 'Restores 10 HP. Picked off a berry tree.',
+    description: 'Restores 10 HP. Held, it is eaten by itself once its holder is down to half its HP.',
     effect: { type: 'heal', amount: 10 },
+    holdable: true,
   },
   'sitrus-berry': {
     id: 'sitrus-berry',
     displayName: 'Sitrus Berry',
     category: ItemCategory.Medicine,
     footprint: { width: 1, height: 1 },
-    description: 'Restores 30 HP. Picked off a berry tree.',
+    description: 'Restores 30 HP. Held, it is eaten by itself once its holder is down to half its HP.',
     effect: { type: 'heal', amount: 30 },
+    holdable: true,
   },
   'pecha-berry': {
     id: 'pecha-berry',
     displayName: 'Pecha Berry',
     category: ItemCategory.Medicine,
     footprint: { width: 1, height: 1 },
-    description: 'Cures poison. Picked off a berry tree.',
+    description: 'Cures poison. Held, it is eaten the moment its holder is poisoned.',
     effect: { type: 'cure-status', status: PrimaryStatus.Poison },
+    holdable: true,
   },
   'cheri-berry': {
     id: 'cheri-berry',
     displayName: 'Cheri Berry',
     category: ItemCategory.Medicine,
     footprint: { width: 1, height: 1 },
-    description: 'Cures paralysis. Picked off a berry tree.',
+    description: 'Cures paralysis. Held, it is eaten the moment its holder is paralysed.',
     effect: { type: 'cure-status', status: PrimaryStatus.Paralysis },
+    holdable: true,
   },
   'rawst-berry': {
     id: 'rawst-berry',
     displayName: 'Rawst Berry',
     category: ItemCategory.Medicine,
     footprint: { width: 1, height: 1 },
-    description: 'Heals a burn. Picked off a berry tree.',
+    description: 'Heals a burn. Held, it is eaten the moment its holder is burned.',
     effect: { type: 'cure-status', status: PrimaryStatus.Burn },
+    holdable: true,
   },
   'chesto-berry': {
     id: 'chesto-berry',
     displayName: 'Chesto Berry',
     category: ItemCategory.Medicine,
     footprint: { width: 1, height: 1 },
-    description: 'Wakes a sleeping Pokémon. Picked off a berry tree.',
+    description: 'Wakes a sleeping Pokémon. Held, it is eaten the moment its holder falls asleep.',
     effect: { type: 'cure-status', status: PrimaryStatus.Sleep },
+    holdable: true,
   },
   'aspear-berry': {
     id: 'aspear-berry',
     displayName: 'Aspear Berry',
     category: ItemCategory.Medicine,
     footprint: { width: 1, height: 1 },
-    description: 'Thaws a frozen Pokémon. Picked off a berry tree.',
+    description: 'Thaws a frozen Pokémon. Held, it is eaten the moment its holder is frozen.',
     effect: { type: 'cure-status', status: PrimaryStatus.Freeze },
+    holdable: true,
   },
   'poke-ball': {
     id: 'poke-ball',
@@ -481,9 +510,8 @@ export const ITEMS = {
     effect: { type: 'evolution-stone' },
   },
   /**
-   * The machines. Six discs, five of them used up by the reading and one - the
-   * HM - that never is, which is the tutorial's own shape: one `reusable` flag,
-   * not two kinds of item.
+   * The machines: TMs, used up by the reading, and HMs, which never are -
+   * the tutorial's own shape: one `reusable` flag, not two kinds of item.
    *
    * Every id here is also a key of `MACHINES` in `../pokemon/machines.ts`, and
    * `machines.test.ts` fails a disc on either side without the other. A machine
@@ -498,12 +526,28 @@ export const ITEMS = {
     description: 'Teaches Bullet Seed: two to five seeds in one turn. Mostly Grass Pokémon can read it.',
     effect: { type: 'machine' },
   },
+  'tm11-sunny-day': {
+    id: 'tm11-sunny-day',
+    displayName: 'TM11 Sunny Day',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Sunny Day: five turns of harsh sunlight. Fire hits harder, Water softer, and nothing freezes.',
+    effect: { type: 'machine' },
+  },
   'tm13-ice-beam': {
     id: 'tm13-ice-beam',
     displayName: 'TM13 Ice Beam',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
     description: 'Teaches Ice Beam: a beam of cold that may freeze. Grass, Ground, Flying and Dragon foes all fear it.',
+    effect: { type: 'machine' },
+  },
+  'tm18-rain-dance': {
+    id: 'tm18-rain-dance',
+    displayName: 'TM18 Rain Dance',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Rain Dance: five turns of rain. Water hits harder, Fire softer.',
     effect: { type: 'machine' },
   },
   'tm23-iron-tail': {
@@ -1162,6 +1206,18 @@ export type HeldItemId = {
   [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Held ? K : never;
 }[ItemId];
 
+/**
+ * What a Pokemon may hold: a piece of gear, or a berry. A berry is still a
+ * supply - it is medicine first, and picked off a tree every raid - so it is in
+ * `SupplyItemId` and not in `HeldItemId`, which is the gear nothing that
+ * repeats may hand out.
+ */
+export type HoldableItemId =
+  | HeldItemId
+  | {
+      [K in ItemId]: (typeof ITEMS)[K] extends { readonly holdable: true } ? K : never;
+    }[ItemId];
+
 export type PackItemId = {
   [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Pack ? K : never;
 }[ItemId];
@@ -1390,31 +1446,65 @@ export function isFurniture(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'furniture';
 }
 
-/** Every piece of gear, in catalogue order: what a give menu offers. */
+/** Every piece of gear, in catalogue order. */
 export const HELD_ITEM_DEFINITIONS: readonly ItemDefinition[] = ITEM_DEFINITIONS.filter(
   (item) => item.category === ItemCategory.Held,
 );
+
+/**
+ * Everything a Pokemon can be given to hold, in catalogue order: what a give
+ * menu offers. The gear, then the berries - which are medicine in the bag and
+ * something to hold on a Pokemon, as they are in FireRed.
+ */
+export const HOLDABLE_ITEM_DEFINITIONS: readonly ItemDefinition[] = [
+  ...HELD_ITEM_DEFINITIONS,
+  ...ITEM_DEFINITIONS.filter((item) => item.holdable === true),
+];
 
 export function getItemById(id: string): ItemDefinition | undefined {
   return ITEMS[id as ItemId];
 }
 
-export function isHeldItemId(id: string | null | undefined): id is HeldItemId {
-  return typeof id === 'string' && getItemById(id)?.category === ItemCategory.Held;
+/** Whether a Pokemon may hold this: a piece of gear, or a berry. */
+export function isHeldItemId(id: string | null | undefined): id is HoldableItemId {
+  if (typeof id !== 'string') {
+    return false;
+  }
+  const item = getItemById(id);
+  return item?.category === ItemCategory.Held || item?.holdable === true;
 }
 
-/** The gear a Pokemon is holding, or undefined for nothing and for a stale id. */
+/** Whether this is a berry a Pokemon can hold: eaten by itself, and gone once it is. */
+export function isHeldBerry(id: string | null | undefined): boolean {
+  return typeof id === 'string' && getItemById(id)?.holdable === true;
+}
+
+/** What a Pokemon is holding, or undefined for nothing and for a stale id. */
 export function getHeldItem(id: string | null | undefined): ItemDefinition | undefined {
   return isHeldItemId(id) ? getItemById(id) : undefined;
 }
 
 /**
- * What the gear does, for the one module that applies it. Undefined for a
- * Pokemon holding nothing, so a caller never has to know what an empty slot is.
+ * What the held thing does, for the one module that applies it. Undefined for
+ * a Pokemon holding nothing, so a caller never has to know what an empty slot
+ * is. A berry's is read off its own effect, so it cures in a Pokemon's hand
+ * exactly what it cures out of the bag.
  */
 export function heldItemEffect(id: string | null | undefined): HeldItemEffect | undefined {
-  const effect = getHeldItem(id)?.effect;
-  return effect?.type === 'held' ? effect.held : undefined;
+  const item = getHeldItem(id);
+  const effect = item?.effect;
+  if (effect?.type === 'held') {
+    return effect.held;
+  }
+  if (item?.holdable) {
+    if (effect?.type === 'cure-status') {
+      return { type: 'berry-cure', status: effect.status };
+    }
+    if (effect?.type === 'heal') {
+      return { type: 'berry-heal', amount: effect.amount };
+    }
+  }
+  return undefined;
 }
 
 /** The name the battle screen and the party screen both print for a piece of gear. */

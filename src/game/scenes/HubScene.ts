@@ -63,7 +63,7 @@ import {
   CURRENCY_ITEM_ID,
   formatMoney,
   itemCountTag,
-  HELD_ITEM_DEFINITIONS,
+  HOLDABLE_ITEM_DEFINITIONS,
   ITEM_DEFINITIONS,
   FOUND_ONLY_IDS,
   isErrandItem,
@@ -845,7 +845,7 @@ export class HubScene extends Phaser.Scene {
    */
   private gearChips(stored: StashedPokemon, shows: string): string {
     const held = getHeldItem(stored.pokemon.heldItemId);
-    const offers = HELD_ITEM_DEFINITIONS.filter(
+    const offers = HOLDABLE_ITEM_DEFINITIONS.filter(
       (item) => this.stash.itemCount(item.id) > 0 && item.id !== stored.pokemon.heldItemId,
     );
     const take = held

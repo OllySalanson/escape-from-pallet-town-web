@@ -168,7 +168,7 @@ describe('where machines come from', () => {
     }
   });
 
-  it('is rolled field loot for every TM, one per map and two on the vast one', () => {
+  it('is rolled field loot for every TM, one per retired map and two on the vast one, and three in the vale', () => {
     const found = Object.values(WORLD_MAPS).flatMap((map) =>
       map.loot.filter((piece) => isMachine(piece.itemId)).map((piece) => ({ map: map.id, piece })),
     );
@@ -180,9 +180,23 @@ describe('where machines come from', () => {
     const given = ERRANDS.flatMap((errand) => errand.reward.items.map(({ itemId }) => itemId as string));
     expect(given.filter((id) => isMachine(id)).sort()).toEqual(['hm01-cut', 'hm04-strength', 'tm39-rock-tomb']);
     expect(given.filter((id) => isMachine(id) && !machineForItemId(id)!.reusable)).toEqual(['tm39-rock-tomb']);
-    expect(found.map(({ piece }) => piece.itemId).sort()).toEqual(
+    // Every laid TM is laid somewhere, and the five the retired maps lay are
+    // laid there once each. The vale lays its own: TM28 Dig in the caves, the
+    // one field TM the gyms' answers need, and the two weather discs, which
+    // nothing before the vale laid.
+    const laidOn = (wanted: (map: string) => boolean): string[] =>
+      found.filter(({ map }) => wanted(map)).map(({ piece }) => piece.itemId).sort();
+    expect([...new Set(laidOn(() => true))].sort()).toEqual(
       MACHINE_ITEM_IDS.filter((id) => !machineForItemId(id)!.reusable && !given.includes(id)).sort(),
     );
+    expect(laidOn((map) => map !== 'greystone-vale')).toEqual([
+      'tm09-bullet-seed',
+      'tm13-ice-beam',
+      'tm23-iron-tail',
+      'tm28-dig',
+      'tm40-aerial-ace',
+    ]);
+    expect(laidOn((map) => map === 'greystone-vale')).toEqual(['tm11-sunny-day', 'tm18-rain-dance', 'tm28-dig']);
     for (const { map, piece } of found) {
       // On its own roll rather than in the pool, like the evolution stone: at
       // pool odds a permanent change to a Pokemon would be a formality.

@@ -719,8 +719,8 @@ export const STRENGTH = new MoveBase({
  * unauthored for the same reason every other move is - nothing in the roster
  * reaches them - and the engine expresses all four, which is what
  * `tools/moves/coverage.mjs` now counts. All four are also discs in FireRed
- * (TM18, TM11, TM37, TM07); `./machines.ts` carries none of them yet, and a
- * disc is the obvious way to put weather in a player's hands on purpose.
+ * (TM18, TM11, TM37, TM07), and `./machines.ts` carries the first two: a disc
+ * is the way weather is put in a player's hands on purpose.
  */
 export const RAIN_DANCE = new MoveBase({
   name: 'Rain Dance',
@@ -734,3 +734,10 @@ export const RAIN_DANCE = new MoveBase({
   alwaysHits: true,
   effects: { weather: WeatherId.Rain },
 });
+
+/**
+ * Sunny Day, TM11, named here only so `./machines.ts` can carry it: the row is
+ * the import's own (`generated/moveCatalogue.ts`), FireRed's numbers, because
+ * nothing about it was ever authored.
+ */
+export const SUNNY_DAY = GENERATED_MOVES['sunny-day'];

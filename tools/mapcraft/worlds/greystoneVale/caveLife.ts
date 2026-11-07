@@ -12,7 +12,9 @@
  * chosen so the floor reads as a place:
  *
  * - 1F, under the quarry: the miners' way in - a quarryman, their lamp store,
- *   a Geodude in the spoil and the chalk marks that say which way is down.
+ *   a Geodude in the spoil and the chalk marks that say which way is down; and
+ *   THE DIGGINGS, the west sand room the Diglett and Sandshrew have turned
+ *   over, where a digger's lost disc - TM28 Dig - turns up (`filePrizes.ts`).
  * - B1F, under the wood: THE FALLEN STAR, the crater in the north-east room
  *   with the Clefairy round it, a hiker in the sand and a camper who followed
  *   the bats.
@@ -32,6 +34,8 @@
  * Stormcrown's, so nothing is carried twice.
  */
 import type {
+  MapFileDistrict,
+  MapFileItemSpot,
   MapFileLandmark,
   MapFilePerson,
   MapFilePokemon,
@@ -46,6 +50,9 @@ export interface CaveLife {
   readonly signs: MapFileSign[];
   readonly landmarks: MapFileLandmark[];
   readonly trainers: MapFileTrainer[];
+  /** Named places underground: a room a prize is laid in is one (`filePrizes.ts`). */
+  readonly districts: MapFileDistrict[];
+  readonly itemSpots: MapFileItemSpot[];
 }
 
 const F1 = 'greystone-caves-1f';
@@ -126,6 +133,10 @@ export function caveLife(): CaveLife {
     pokemon: [
       // The miners' spoil heap on 1F.
       { area: F1, x: 28, y: 28, species: 'geodude', level: 8 },
+      // THE DIGGINGS: the west sand room on 1F, turned over by the diggers
+      // that live in it - the Pokemon TM28 Dig is for.
+      { area: F1, x: 10, y: 17, species: 'diglett', level: 8 },
+      { area: F1, x: 13, y: 19, species: 'sandshrew' },
       // THE FALLEN STAR: Clefairy round the crater, one that will fight.
       { area: B1, x: 42, y: 13, species: 'clefairy', level: 9 },
       { area: B1, x: 45, y: 10, species: 'clefairy' },
@@ -210,6 +221,10 @@ export function caveLife(): CaveLife {
         lines: ['That rope is spoken for.'],
       },
     ],
+    // A place of its own, small enough never to be a hunter's patch, so the
+    // disc a digger lost down here has somewhere to be laid (`filePrizes.ts`).
+    districts: [{ area: F1, name: 'THE DIGGINGS', x: 8, y: 14, width: 7, height: 7, wildlife: 'cave' }],
+    itemSpots: [{ area: F1, x: 12, y: 15 }],
   };
 }
 
@@ -255,5 +270,7 @@ export function deepLife(): CaveLife {
         lines: ['Nobody comes this deep for the view.'],
       },
     ],
+    districts: [],
+    itemSpots: [],
   };
 }

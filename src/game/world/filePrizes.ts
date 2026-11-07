@@ -54,6 +54,17 @@ export const BUILT_IN_FILE_PRIZES: Readonly<Partial<Record<WorldMapId, readonly 
     { itemId: 'shiny-mew-hair', quantity: 1, chance: 0.08, place: 'THE OLD BLOOM' },
     { itemId: 'shiny-onix-trousers', quantity: 1, chance: 0.08, place: 'GREYSTONE PEAKS' },
     { itemId: 'shiny-rocket-tunic', quantity: 1, chance: 0.08, place: 'THE DROWNED TOWN' },
+    // The machines the open vale lays, each where the place explains the move
+    // and each on the odds a TM was laid at on the maps before it (a quarter):
+    // read in a raid and lost with the pack, so each is a find, not a stock.
+    // TM28 Dig in THE DIGGINGS, the caves' sand room where the diggers live,
+    // for the Sandshrew or Diglett that wants a Ground hit.
+    { itemId: 'tm28-dig', quantity: 1, chance: 0.25, place: 'THE DIGGINGS' },
+    // The two weather discs, both in ground open from the first raid, because
+    // each is an answer to a gym rather than a reward for one: Sunny Day in the
+    // orchard that lives on sun, and Rain Dance in Reedmere's long drain.
+    { itemId: 'tm11-sunny-day', quantity: 1, chance: 0.25, place: 'THE NORTH ORCHARD' },
+    { itemId: 'tm18-rain-dance', quantity: 1, chance: 0.25, place: 'THE LONG DRAIN' },
   ],
 };
 

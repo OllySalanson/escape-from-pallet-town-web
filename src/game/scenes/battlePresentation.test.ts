@@ -653,6 +653,25 @@ describe('the small wording faults the battles playtest found', () => {
     ).toBe('Foe PIDGEY hung on using its FOCUS BAND!');
   });
 
+  it("says a held berry was eaten, in FireRed's own words for each", () => {
+    const cure = (status: string, item: string) =>
+      eventToMessage({ type: 'berry-cure', user: 'enemy', name: 'Pidgey', item, status } as never, 'Foe');
+    expect(cure('paralysis', 'CHERI BERRY')).toBe("Foe PIDGEY's CHERI BERRY cured paralysis!");
+    expect(cure('poison', 'PECHA BERRY')).toBe("Foe PIDGEY's PECHA BERRY cured poison!");
+    expect(cure('burn', 'RAWST BERRY')).toBe("Foe PIDGEY's RAWST BERRY healed its burn!");
+    expect(cure('freeze', 'ASPEAR BERRY')).toBe("Foe PIDGEY's ASPEAR BERRY defrosted it!");
+    expect(cure('sleep', 'CHESTO BERRY')).toBe("Foe PIDGEY's CHESTO BERRY woke it from its sleep!");
+    expect(
+      eventToMessage({ type: 'berry-heal', user: 'player', name: 'Bellsprout', item: 'ORAN BERRY', amount: 10 }),
+    ).toBe("Your BELLSPROUT's ORAN BERRY restored health!");
+  });
+
+  it('moves the status tag off a plate on the line a berry cures it', () => {
+    const cured = { type: 'berry-cure', user: 'player', name: 'Bellsprout', item: 'CHESTO BERRY', status: 'sleep' } as const;
+    expect(statusAfterLine({ primary: 'sleep', confused: false }, cured)).toEqual({ primary: null, confused: false });
+    expect(statusBeforeLines({ primary: null, confused: false }, [cured])).toEqual({ primary: 'sleep', confused: false });
+  });
+
   it("says a Shed Skin cured its problem, in FireRed's own words", () => {
     const line = (status: string) =>
       eventToMessage(
