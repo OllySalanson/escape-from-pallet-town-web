@@ -100,3 +100,23 @@ export const PLAYTEST_RUN_DIVISOR = 3;
 
 /** Said wherever a screen has to make clear which of the two games this is. */
 export const PLAYTEST_PLACE_LABEL = 'Playtest';
+
+/**
+ * Whether the address asks to go straight into the explorer run (`?playtest`),
+ * so a playtester - or a playtest driver - is in the harbour with the kit in
+ * one load rather than through the title's menu. The run it opens is the one
+ * the title's PLAYTEST row would resume, or a fresh one if there is none.
+ */
+export function isPlaytestRequest(search: string = typeof window === 'undefined' ? '' : window.location.search): boolean {
+  return new URLSearchParams(search).has('playtest');
+}
+
+/** Takes `?playtest` off the address, so leaving to the title does not come straight back in. */
+export function forgetPlaytestRequest(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.delete('playtest');
+  window.history.replaceState(null, '', url.toString());
+}

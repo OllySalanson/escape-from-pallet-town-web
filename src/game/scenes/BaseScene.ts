@@ -125,7 +125,7 @@ import {
   type HarbourFigure,
   type HarbourPerson,
 } from '../base/harbourLife';
-import { harbourPlaceAt } from '../base/harbourPlaces';
+import { HARBOUR_PLACES, harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
 import { anglerLines, harbourBite, reeledInLines } from '../base/harbourFishing';
@@ -313,6 +313,10 @@ import { openKnockScreen, type LetIn } from '../ui/KnockOverlay';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { openFavourList } from '../ui/FavourListOverlay';
+import { PLAYTEST_BOARD_TILE, placeLanding, type PlaytestBoardAction } from '../dev/playtestBoard';
+import { openPlaytestBoard } from '../dev/PlaytestBoardOverlay';
+import { playtestHour, setPlaytestHour } from '../dev/playtestClock';
+import { PLAYTEST_GAMES, withNewDay } from '../dev/playtestKit';
 import { PanelLean } from '../ui/sidePanel';
 import { favourEntries } from '../hub/favourList';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
@@ -1030,6 +1034,7 @@ export class BaseScene extends Phaser.Scene {
     this.still =
       typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
     const detail = this.drawMap();
+    this.raisePlaytestBoard();
     // Out in the harbour for the first time since a raid, the boat that brought
     // it all home ties up and says so.
     const boatHome = !this.place.room && boatDueHome;
@@ -4675,6 +4680,9 @@ export class BaseScene extends Phaser.Scene {
 
   private tryInteract(): void {
     const target = nextTileFromDirection(this.currentTile, this.facing);
+    if (this.readPlaytestBoard(target)) {
+      return;
+    }
     // The partner first, even on a room's mat: facing it takes a turn on
     // purpose, so a key pressed at it is meant for it.
     if (this.partnerAt(target)) {
@@ -4988,6 +4996,94 @@ export class BaseScene extends Phaser.Scene {
       // This scene goes on running under it, so its own frame moves the view.
       { covers: (gamePixels) => this.panelLean.setCover(gamePixels), frame: () => undefined },
     );
+  }
+
+  /**
+   * The PLAYTEST BOARD (`dev/playtestBoard.ts`), in the explorer run only: a
+   * sign stamped on the lawn by the landing and made solid while it stands.
+   */
+  private raisePlaytestBoard(): void {
+    if (this.place.room || !isPlaytestRun()) {
+      return;
+    }
+    const { x, y } = PLAYTEST_BOARD_TILE;
+    this.collision[y][x] = true;
+    const sign = BASE_TILESET.props.homeSign.cells[0];
+    this.tilemap?.getLayer('base-detail')?.tilemapLayer?.putTileAt(sign.tile, x, y);
+    // Named under its post, so it is not read as one of the harbour's own signs.
+    this.add
+      .text(x * TILE_SIZE + TILE_SIZE / 2, (y + 1) * TILE_SIZE, 'PLAYTEST', {
+        fontFamily: GAME_FONT,
+        fontSize: CHIP_FONT_SIZE,
+        color: '#ffd6fb',
+        stroke: '#3a1640',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(atRow(CAPTION_BAND, y));
+  }
+
+  /** Whether the tile faced is the PLAYTEST BOARD, and if it is, its screen goes up. */
+  private readPlaytestBoard(target: GridPosition): boolean {
+    if (this.place.room || !isPlaytestRun() || !sameTile(target, PLAYTEST_BOARD_TILE) || this.favoursScreen) {
+      return false;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    // It stands in the favours list's slot: one side panel over the yard at a
+    // time, held still under it the same way (and the class the lean measures).
+    this.favoursScreen = openPlaytestBoard(
+      this,
+      playtestHour(),
+      (action) => this.actOnPlaytestBoard(action),
+      () => {
+        this.favoursScreen = null;
+        this.input.keyboard?.resetKeys();
+        this.spentPresses.spendHeld(this.directionKeys());
+        audioManager.play('menuClose');
+        this.showHint(this.hintHere());
+      },
+      { covers: (gamePixels) => this.panelLean.setCover(gamePixels), frame: () => undefined },
+    );
+    return true;
+  }
+
+  /** What a row of the PLAYTEST BOARD does: every one but PLAY starts the harbour again where it sends the player. */
+  private actOnPlaytestBoard(action: PlaytestBoardAction): void {
+    const here = (savedGame: RestoredGame): BaseSceneData => ({ savedGame, at: { ...this.currentTile } });
+    switch (action.kind) {
+      case 'game': {
+        const game = PLAYTEST_GAMES.find((each) => each.id === action.game);
+        if (game) {
+          this.openGameCorner(game.opens);
+        }
+        return;
+      }
+      case 'hour':
+        setPlaytestHour(action.hour);
+        this.goTo(here(this.freshGame()), 'confirm');
+        return;
+      case 'new-day': {
+        const game = this.freshGame();
+        const next: RestoredGame = { ...game, raidProgress: withNewDay(game.raidProgress) };
+        this.saveManager.save(next);
+        this.goTo(here(next), 'confirm');
+        return;
+      }
+      case 'room':
+        this.goTo({ savedGame: this.freshGame(), room: action.room }, 'interiorEnter');
+        return;
+      case 'place': {
+        const place = HARBOUR_PLACES.find((each) => each.id === action.place);
+        if (place) {
+          const game = this.freshGame();
+          this.goTo({ savedGame: game, at: placeLanding(place, game.raidProgress.workshopUpgrades) }, 'confirm');
+        }
+        return;
+      }
+    }
   }
 
   /** Through a door: the same scene, started again inside the room behind it. */

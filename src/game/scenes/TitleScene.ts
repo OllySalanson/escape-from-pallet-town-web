@@ -35,14 +35,14 @@ import {
   townDrift,
   vignetteBands,
 } from '../ui/titleScenery';
-import { setActiveSaveSlot } from '../dev/playtestMode';
+import { forgetPlaytestRequest, isPlaytestRequest, setActiveSaveSlot } from '../dev/playtestMode';
 import { loadPlayerName } from '../console/playerName';
 import { nameService, type NameService } from '../names/nameService';
 import type { MenuOverlay } from '../ui/MenuOverlay';
 import { openNameScreen } from '../ui/PlayerNameOverlay';
 import { dismissKeyboardNotice, needsKeyboardNotice } from '../input/keyboardSeen';
 import { forgetStatsRequest, isReviewReturn, isStatsRequest, takeSignInDestination } from '../maker/review';
-import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
+import { createPlaytestGame, withPlaytestCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
 import { characterDesignTextureKey, getCharacterDesign } from '../world/characterDesigns';
@@ -192,6 +192,14 @@ export class TitleScene extends Phaser.Scene {
     // Asked once per visit, not per frame: the summary reads the whole save.
     this.summary = this.saveManager.describe();
     this.playtestSummary = this.playtestSaveManager.describe();
+    // `?playtest` goes straight into the explorer run, resumed if there is one
+    // (`dev/playtestMode.ts`), once: the address forgets it on the way in.
+    if (isPlaytestRequest()) {
+      forgetPlaytestRequest();
+      this.hasStarted = true;
+      this.startPlaytestRun(this.playtestSummary.kind !== 'game');
+      return;
+    }
     // A device that looks touch-only is told first that the game needs a
     // keyboard (`input/keyboardSeen.ts`), on the title's own windows.
     this.menu = needsKeyboardNotice() ? keyboardMenu() : titleMenu(this.summary);
@@ -936,9 +944,9 @@ export class TitleScene extends Phaser.Scene {
     }
     let savedGame = this.playtestSaveManager.load();
     if (savedGame) {
-      const current = withEverythingCurrent(savedGame.raidProgress);
-      if (current !== savedGame.raidProgress) {
-        savedGame = { ...savedGame, raidProgress: current };
+      const current = withPlaytestCurrent(savedGame);
+      if (current !== savedGame) {
+        savedGame = current;
         this.playtestSaveManager.save(savedGame);
       }
     }
