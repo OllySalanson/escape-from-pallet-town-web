@@ -1,4 +1,5 @@
 import { BOUTIQUE_NAME } from '../look/wearables';
+import { GREAT_LIBRARY_NAME } from '../library/books';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { BasePropName } from './baseTileset';
@@ -187,6 +188,19 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     returnTo: { x: 81, y: 10 },
   },
   {
+    // THE GREAT LIBRARY (`../library/`): a portico of its own at the top of
+    // THE GREEN, set back into the trees beside the boutique so the lawn in
+    // front of it is still the way along to THE BATTLE ARENA's garden, with books
+    // that teach the harbour lying open on lecterns inside. Somewhere to go, not a
+    // re-kit stop, so it is held to a walk of its own.
+    id: 'great-library',
+    screen: null,
+    name: GREAT_LIBRARY_NAME,
+    building: { prop: 'greatLibrary', x: 59, y: 3 },
+    tiles: [{ x: 61, y: 6 }],
+    returnTo: { x: 61, y: 7 },
+  },
+  {
     // THE BATTLE ARENA (`../arena/`): Saffron's Fighting Dojo on its lot at the
     // head of THE PROMENADE, its name painted over its door
     // (`scripts/draw-promenade.mjs`). Bouts for sport, chosen at its counter.
@@ -204,7 +218,7 @@ export const BASE_DOORS: readonly BaseDoor[] = [
  * the boutique and THE GAME CORNER's two. They are held to walks of their own
  * (`baseMap.test.ts`), not the keepers' short stroll.
  */
-export const PLACES_TO_GO: readonly string[] = ['boutique', 'game-corner', 'prize-window', 'battle-arena'];
+export const PLACES_TO_GO: readonly string[] = ['boutique', 'game-corner', 'prize-window', 'battle-arena', 'great-library'];
 
 export function doorAt(tile: GridPosition): BaseDoor | undefined {
   return BASE_DOORS.find((door) =>

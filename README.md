@@ -247,6 +247,12 @@ them about, turn them round and put them down, a tile at a time. Shove the table
 move the pot plants, then fill the place with a doll of every kind of Pokémon you've ever brought
 back alive. Dolls go on the table. Nothing goes on the door mat.
 
+Not sure how something works? Up at the top of the Green, set back in the trees, is the **Great
+Library**: a librarian, a lot of shelves, and books lying open on lecterns. Face one and it fills
+the screen, open on its wooden plinth, and you turn its pages with the arrow keys or a click - each
+one curls over at the spine like a real page. The first teaches the Bolthole. And in the middle of
+the room, on a golden plinth of its own, there's a book on every secret in the vale... chained shut.
+
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
 following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. Everybody

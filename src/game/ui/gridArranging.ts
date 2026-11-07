@@ -1,3 +1,4 @@
+import { PACK_TURN_KEY } from '../input/keyBindings';
 import {
   canSeat,
   parsePieceRef,
@@ -72,7 +73,7 @@ export function arrangeIntentFor(
   if (event.ctrlKey || event.metaKey || event.altKey) {
     return null;
   }
-  if (event.key.toLowerCase() === 'r') {
+  if (event.key.toLowerCase() === PACK_TURN_KEY.toLowerCase()) {
     return { kind: 'turn' };
   }
   if (!holding) {

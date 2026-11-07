@@ -64,6 +64,7 @@ import {
 import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import type { BoutiqueSceneData } from './BoutiqueScene';
+import type { LibraryBookSceneData } from './LibraryBookScene';
 import type { GameCornerSceneData } from './GameCornerScene';
 import type { DojoChoice, DojoCounterSceneData } from './DojoCounterScene';
 import { dojoBag, dojoParty } from '../arena/boutRules';
@@ -78,6 +79,7 @@ import {
   ARENA_KEY_LETTERS,
   TELESCOPE_KEY_LETTERS,
   ROOM_KEY_LETTERS,
+  MUTE_KEY,
   coinKeyHint,
   houseKeyHintLine,
   yardKeyHintLine,
@@ -4369,7 +4371,7 @@ export class BaseScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.SPACE,
       Phaser.Input.Keyboard.KeyCodes.ENTER,
     ]);
-    this.input.keyboard.on?.('keydown-M', () => audioManager.toggleMute());
+    this.input.keyboard.on?.(`keydown-${MUTE_KEY}`, () => audioManager.toggleMute());
     this.controls = {
       up: cursors.up,
       down: cursors.down,
@@ -5118,6 +5120,10 @@ export class BaseScene extends Phaser.Scene {
       }
       if (thing?.opens === 'berry-picking') {
         this.openMinigame('berry-picking');
+        return;
+      }
+      if (thing?.opens === 'book' && thing.book) {
+        this.openBook(thing.book);
         return;
       }
       if (thing) {
@@ -6879,6 +6885,26 @@ export class BaseScene extends Phaser.Scene {
     });
     this.scene.pause();
     this.scene.launch(scene, { pausedBase: true });
+  }
+
+  /**
+   * A book in THE GREAT LIBRARY, read full screen on its plinth
+   * (`scenes/LibraryBookScene.ts`), over the paused harbour; closing it puts
+   * the player back in front of its lectern.
+   */
+  private openBook(bookId: string): void {
+    if (this.leaving) {
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.input.keyboard?.resetKeys();
+      this.showHint(this.hintHere());
+    });
+    this.scene.pause();
+    this.scene.launch('library-book', { bookId, pausedBase: true } satisfies LibraryBookSceneData);
   }
 
   /**

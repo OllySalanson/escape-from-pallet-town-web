@@ -181,9 +181,11 @@ export function highMoor(): MapcraftResult {
       { x: 23, y: 30 },
       // The secrets' nooks (`src/game/world/secrets.ts`): where the tor's
       // shadow ends at dusk, east across the grass, and the corner of the Lost
-      // Fold the old ram lay in, which gives something up only after dark.
+      // Fold the old ram lay in, which gives something up only after dark -
+      // a row clear of the tips of the pines along the fold's foot, which hang
+      // over the row under it (`crowns.test.ts`).
       { x: 39, y: 17, secret: 'the-long-shadow' },
-      { x: 42, y: 15, secret: 'the-lost-fold' },
+      { x: 42, y: 14, secret: 'the-lost-fold' },
     ],
     extra: {
       boulders: [{ x: 40, y: 12 }],

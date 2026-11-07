@@ -338,6 +338,19 @@ game.
   already drawn in) with the signal coming off both sides of it, instead of one
   dark red lamp and a broken pair of arcs.
 
+### `great-library.png` - THE GREAT LIBRARY, its front and its room
+
+Drawn for this repository by `scripts/draw-great-library.mjs`, pixel by pixel
+in FireRed's manner (15-bit colours, a dark outline, light from the top left),
+and nothing in it is taken from anywhere: the building's front (a portico of
+four columns under a pediment, GREAT LIBRARY cut into its frieze in the
+script's own 3x5 lettering), the room's boards, panelled walls, bookcases,
+stacks, back windows, globe, fern, runner and mat, the librarian's desk, a
+wooden lectern in each of six book colours, and the golden plinth open and
+chained shut. The open book read full screen, its plinth and the reading room
+behind it are no file at all: `src/game/library/bookArt.ts` paints them at run
+time to the size of the window. Original to this repository.
+
 ### Third-party packs considered and not used
 
 Kenney's [Roguelike/RPG pack](https://kenney.nl/assets/roguelike-rpg-pack) was

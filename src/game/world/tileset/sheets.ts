@@ -15,6 +15,7 @@ import { ARENA_HALL_SOURCE } from '../../base/arenaHallSheet';
 import { PROMENADE_SHEET_SOURCE } from '../../base/promenadeSheet';
 import { GAME_CORNER_SHEET_SOURCE } from '../../base/gameCornerSheet';
 import { DOJO_SHEET_SOURCE } from '../../base/dojoSheet';
+import { LIBRARY_SHEET_SOURCE } from '../../base/librarySheet';
 
 /**
  * The images the game draws maps from, and where each one's tiles sit in the
@@ -86,4 +87,6 @@ export const TILE_SOURCES: readonly TileSource[] = [
   // THE BATTLE ARENA's room, Saffron's Fighting Dojo (`base/dojoSheet.ts`).
   DOJO_SHEET_SOURCE.source,
   ARENA_HALL_SOURCE.source,
+  // THE GREAT LIBRARY: its front and its room, drawn for it (`base/librarySheet.ts`).
+  LIBRARY_SHEET_SOURCE.source,
 ];

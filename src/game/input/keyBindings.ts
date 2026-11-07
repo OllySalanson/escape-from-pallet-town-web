@@ -97,6 +97,17 @@ export const TELESCOPE_KEY_LETTERS = {
   closer: 'Z',
 } as const;
 
+/**
+ * Three keys that work on every screen they are named on: M turns the sound
+ * off and on (`BaseScene`, `WorldScene` and `BattleScene` bind it), F opens
+ * the FEEDBACK panel (`feedback/feedbackDesk.ts`), and R turns a piece being
+ * laid out in a pack (`ui/gridArranging.ts`). Named here so the books in THE
+ * GREAT LIBRARY (`library/controls.ts`) teach the key that is bound.
+ */
+export const MUTE_KEY = 'M';
+export const FEEDBACK_KEY = 'F';
+export const PACK_TURN_KEY = 'R';
+
 /** What the rail says about it until it has been done once, and only to somebody with a coin to toss. */
 export function coinKeyHint(learned: ReadonlySet<string>): string {
   return learned.has('coin') ? '' : keyHint(ARENA_KEY_LETTERS.coin, 'TOSS A COIN');

@@ -16,6 +16,7 @@ import { DerbyScene } from './scenes/DerbyScene';
 import { DigScene } from './scenes/DigScene';
 import { FishingDerbyScene } from './scenes/FishingDerbyScene';
 import { ExtractionScene } from './scenes/ExtractionScene';
+import { LibraryBookScene } from './scenes/LibraryBookScene';
 import { FeedbackScene } from './scenes/FeedbackScene';
 import { HubScene } from './scenes/HubScene';
 import { MapMakerScene } from './scenes/MapMakerScene';
@@ -51,6 +52,7 @@ const BASE_SCENES = [
   DerbyScene,
   DigScene,
   FishingDerbyScene,
+  LibraryBookScene,
   ExtractionScene,
   MapMakerScene,
   StatsScene,
