@@ -50,6 +50,7 @@ export type BasePropName =
   | 'bolthole'
   | 'boutique'
   | 'homeSign'
+  | 'playtestBoard'
   | 'gardenFlowers'
   | 'raidFerry'
   | 'ssAnne'
@@ -288,6 +289,9 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     boutique: withDoorway(TOWN_PROPS.fanClub, [[1, 3]]),
     // FireRed's own wooden sign, which says whose house a house is.
     homeSign: KANTO_TILESET.props.signTown,
+    // FireRed's TRAINER TIPS board, which no other sign in the yard is: the
+    // PLAYTEST BOARD stands in the explorer run only (`dev/playtestBoard.ts`).
+    playtestBoard: KANTO_TILESET.props.signTips,
     // FireRed's red flowers, walked through as FireRed's are.
     gardenFlowers: KANTO_TILESET.props.flowers,
     // 4x4. FireRed's Seagallop, the ferry to the islands, tied up at the

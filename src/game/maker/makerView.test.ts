@@ -13,7 +13,7 @@ import type { MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
-import { CHECK_FIRST_NOTE, draftEdited, makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { CHECK_FIRST_NOTE, draftEdited, inSentence, makerScreen, walkedCheck, type MakerViewState } from './makerView';
 import { CURSOR_CONTROLS } from '../ui/menuFocus';
 import { BERRY_IDS } from '../world/berries';
 import { PLANT_GROUPS } from './palette';
@@ -48,10 +48,10 @@ const tryButtons = (markup: string): string[] =>
   [...markup.matchAll(/<button[^>]*data-try="(walk|raid)"[^>]*>/g)].map((match) => match[0]);
 
 describe('the map maker screen', () => {
-  it('plants "an underground path", "some crates" and "two crates", never "a underground path"', () => {
+  it('plants "an Underground Path", "some crates" and "two crates", never "a underground path"', () => {
     const markup = makerScreen({ ...state(SAMPLE, false), openGroups: PLANT_GROUPS });
     const helps = [...markup.matchAll(/data-help="(Plants [^"]*)"/g)].map((match) => match[1]);
-    expect(helps.some((help) => help.startsWith('Plants an underground path with its top-left corner'))).toBe(true);
+    expect(helps.some((help) => help.startsWith('Plants an Underground Path with its top-left corner'))).toBe(true);
     expect(helps.some((help) => help.startsWith('Plants some crates with their top-left corner'))).toBe(true);
     expect(helps.some((help) => help.startsWith('Plants two crates with their top-left corner'))).toBe(true);
     expect(helps.some((help) => help.startsWith('Plants a block of flats with its top-left corner'))).toBe(true);
@@ -147,7 +147,7 @@ describe('the map maker screen', () => {
       const help =
         new RegExp(`data-tool="${tool}"[^>]*data-help="([^"]+)"`).exec(markup)?.[1] ?? '';
       for (const kind of [...places, 'building']) {
-        expect(help, `${tool} help names ${kind}`).toContain(kind);
+        expect(help.toLowerCase(), `${tool} help names ${kind}`).toContain(kind);
       }
     }
   });
@@ -553,5 +553,16 @@ describe('the checks, as a list a maker works through', () => {
     expect(view).toContain('>1,2 in Hall</button>');
     // They do not say the same of themselves, so their heading is a count.
     expect(view).toContain('>2 item spots</span></button>');
+  });
+});
+
+describe('a thing named in a help line (playtest 50)', () => {
+  it('lowers a common noun and keeps a name its capitals', () => {
+    expect(inSentence('House')).toBe('house');
+    expect(inSentence('Pokémon Center')).toBe('Pokémon Center');
+    expect(inSentence('Pokémon')).toBe('Pokémon');
+    expect(inSentence('Rock Smash rock')).toBe('Rock Smash rock');
+    expect(inSentence('Cut tree')).toBe('Cut tree');
+    expect(inSentence('Wooden sign')).toBe('wooden sign');
   });
 });

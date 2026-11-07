@@ -108,3 +108,11 @@ describe("the board's rows", () => {
     expect(playtestBoardMarkup(null)).toContain('Hour: MY CLOCK');
   });
 });
+
+describe('the board spells its rows one way (playtest 50)', () => {
+  it('writes POKéMON as FireRed does in capitals, on every row', () => {
+    const labels = playtestBoardRows(null).map((row) => row.label);
+    expect(labels.filter((label) => label.includes('POKÉ'))).toEqual([]);
+    expect(labels).toContain('POKéMON CENTER');
+  });
+});

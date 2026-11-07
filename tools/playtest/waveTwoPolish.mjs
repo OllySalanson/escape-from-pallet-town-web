@@ -209,9 +209,10 @@ try {
   await walkTo({ x: BOARD.x, y: BOARD.y - 1 }, 'the board');
   await wait(600);
   await shoot('playtest-board-plate');
-  const plate = await base(`(() => { const r = b.playtestPlate.getBounds(); const v = b.cameras.main.worldView; return { x: r.x - v.x, y: r.y - v.y, right: r.right - v.x, bottom: r.bottom - v.y }; })()`);
+  // The board is a sign of its own now, named by its own caption (playtest 50): nothing over its tile.
+  const plate = await base(`(() => { const v = b.cameras.main.worldView; const x = ${BOARD.x} * 16 - v.x, y = ${BOARD.y} * 16 - v.y; return { x, y, right: x + 16, bottom: y + 16 }; })()`);
   const overPlate = (await shownCaptions()).filter((c) => c.x < plate.right && plate.x < c.right && c.y < plate.bottom && plate.y < c.bottom);
-  expect(`no caption over the PLAYTEST plate (${overPlate.map((c) => c.text).join(', ') || 'none'})`, overPlate.length === 0);
+  expect(`no caption over the PLAYTEST BOARD (${overPlate.map((c) => c.text).join(', ') || 'none'})`, overPlate.length === 0);
 
   // P over the yard: every caption whole, none under the panel.
   await walkTo({ x: 23, y: 12 }, 'the path below the Pokémon Center');

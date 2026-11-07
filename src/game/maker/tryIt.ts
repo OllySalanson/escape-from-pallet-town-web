@@ -71,6 +71,27 @@ export function endTry(): void {
 }
 
 /**
+ * The key that leaves a try for the map maker, and what the clock chip says of
+ * it. A try used to end only through an exit, so a maker in a map they had
+ * walled shut had to reload the page (playtest 50). Escape asks first, with
+ * the cursor on staying, and a try left this way is a try that ended without
+ * an exit: the walk does not count.
+ */
+export const LEAVE_TRY_HINT = '[ESC] MAKER';
+
+/** The clock chip's words in a try: its own, then how to leave. */
+export function tryClockLabel(label: string, rules: TryRules): string {
+  return rules === 'walk' ? `TRY IT  ${LEAVE_TRY_HINT}` : `${label}  ${LEAVE_TRY_HINT}`;
+}
+
+/** The question Escape asks in a try. Staying is first, so the key that asked cannot answer. */
+export const LEAVE_TRY_PROMPT = {
+  lines: ['Leave this try and go back to the map maker?', 'The walk only counts through an exit.'],
+  options: ['KEEP TRYING', 'BACK TO MAKER'],
+  selected: 0,
+} as const;
+
+/**
  * Records that the maker walked out of this version of the draft. Kept on the
  * draft in this browser's drafts, so the check stays ticked across a reload.
  */

@@ -40,6 +40,9 @@ export const PLAYTEST_BOARD_TILE: GridPosition = { x: 18, y: 14 };
 /** Its name, over it and on its screen. */
 export const PLAYTEST_BOARD_NAME = 'PLAYTEST BOARD';
 
+/** The second line of its caption in the yard: what facing it is for. */
+export const PLAYTEST_BOARD_NOTE = 'Go anywhere, set the hour, play';
+
 export type PlaytestBoardAction =
   | { readonly kind: 'room'; readonly room: RoomId }
   /** Standing in a room facing up at something; `at` absent is before whoever spars first in the hall today (`practiceSpot`). */
@@ -107,6 +110,15 @@ export function practiceSpot(progress: RaidProgress): GridPosition {
   return { x: tile.x, y: tile.y + 1 };
 }
 
+/**
+ * A name in the board's capitals, spelt as FireRed spells it in capitals and
+ * as the board's games already are: POKéMON, never POKÉMON beside POKéMON JUMP
+ * (playtest 50).
+ */
+export function boardCaps(name: string): string {
+  return name.toUpperCase().replace(/POKÉ/g, 'POKé');
+}
+
 /** Every row of the board, in its sections; `hour` is the one set now, if any. */
 export function playtestBoardSections(hour: PlaytestHour | null): readonly PlaytestBoardSection[] {
   return [
@@ -146,7 +158,7 @@ export function playtestBoardSections(hour: PlaytestHour | null): readonly Playt
       heading: 'Go to a room',
       rows: BASE_ROOMS.map((room) => ({
         id: `room-${room.id}`,
-        label: room.name.toUpperCase(),
+        label: boardCaps(room.name),
         note: 'Straight in',
         action: { kind: 'room', room: room.id },
       })),
@@ -155,7 +167,7 @@ export function playtestBoardSections(hour: PlaytestHour | null): readonly Playt
       heading: 'Go to the harbour',
       rows: HARBOUR_PLACES.map((place) => ({
         id: `place-${place.id}`,
-        label: place.name,
+        label: boardCaps(place.name),
         note: 'Straight there',
         action: { kind: 'place', place: place.id },
       })),

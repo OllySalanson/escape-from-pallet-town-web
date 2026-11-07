@@ -45,7 +45,7 @@ describe('the writing a map may use', () => {
 
   it('takes out what a field cannot hold as it is typed, whole characters at a time, and says why', () => {
     const typed = typedMapText('Bug 🐛🐛 Lane ⚡');
-    expect(typed.text).toBe('Bug  Lane ');
+    expect(typed.text).toBe('Bug Lane ');
     expect(typed.refused).toEqual(['🐛', '⚡']);
     // What went is never echoed back: an emoji is a box in the face, and a
     // right-to-left letter turns the words around it backwards.
@@ -66,5 +66,12 @@ describe('the writing a map may use', () => {
     expect(foldedSlug('Łódź')).toBe('lodz');
     expect(foldedSlug('Ærø')).toBe('aero');
     expect(foldedSlug('Old Road')).toBe('old-road');
+  });
+});
+
+describe('taking out what a map cannot hold', () => {
+  it('leaves no double space where a word was taken out', () => {
+    expect(typedMapText('Old Ma <Pikachu> 😀 é').text).toBe('Old Ma Pikachu é');
+    expect(typedMapText('two  spaces typed').text).toBe('two  spaces typed');
   });
 });

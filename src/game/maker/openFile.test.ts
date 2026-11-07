@@ -39,3 +39,14 @@ describe('opening a map file in the maker (playtest 39 B8)', () => {
     expect(opened.says).not.toMatch(/'ground'|'id'|format/);
   });
 });
+
+describe('naming what is wrong with a damaged file (playtest 50)', () => {
+  it('says the problem when it is in a maker\'s words', () => {
+    const file = { ...savedText(), name: 'Evil <b>' };
+    const opened = openMapFileText(JSON.stringify(file), 'evil.json');
+    expect(opened).toEqual({
+      ok: false,
+      says: 'evil.json is a damaged map file, so it cannot be opened (one problem found): Names and words in a map may not use < > & or ".',
+    });
+  });
+});
