@@ -362,6 +362,17 @@ export interface DojoBout {
 /** What a bout for show says in place of the raid's words for the same things. */
 const BOUT_LOST_LINE = 'You lost the bout.';
 const BOUT_YIELD_COMMAND = 'YIELD';
+
+/**
+ * What a bout lost says: a practice against a leader or a dojo bout also says
+ * what beat you, as a raid lost does on its result screen; a bout with the
+ * rival is for show and says only that it was lost.
+ */
+export function boutLostLines(bout: HallBout | DojoBout, whatBeat: () => string | null): string[] {
+  const learns = 'dojo' in bout || bout.practice !== undefined;
+  const beatenBy = learns ? whatBeat() : null;
+  return beatenBy ? [BOUT_LOST_LINE, `What beat you? ${beatenBy}`] : [BOUT_LOST_LINE];
+}
 const BOUT_YIELD_LINE = 'You yielded the bout.';
 
 /**
@@ -3498,9 +3509,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (this.exhibition) {
-      // A practice lost says what beat you, as a raid lost does on its result screen.
-      const beatenBy = 'practice' in this.exhibition && this.exhibition.practice ? this.whatBeatThePlayer() : null;
-      this.dialog.showMessages(beatenBy ? [BOUT_LOST_LINE, `What beat you? ${beatenBy}`] : [BOUT_LOST_LINE]);
+      this.dialog.showMessages(boutLostLines(this.exhibition, () => this.whatBeatThePlayer()));
       return;
     }
     this.dialog.showMessage('You blacked out!');

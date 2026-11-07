@@ -279,7 +279,10 @@ export class HarbourFigures {
       );
       drawn.plate.setPosition(plateX, plateY).setDepth(this.plateDepth(row));
       drawn.name.setPosition(plateX + PLATE_PAD_X, plateY).setDepth(this.plateDepth(row) + 0.0001);
-      const underSelf = self !== null && Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2;
+      const underSelf =
+        self !== null &&
+        ((Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2) ||
+          plateCrossesSelf({ x: plateX, y: plateY, width: plateWidth, height: plateHeight }, self));
       const named = figure.speaking === true || (!underSelf && figure.saying === undefined);
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
@@ -511,6 +514,26 @@ export function clearOfSelf(
   }
   return x > self.x ? Math.max(plateX, self.x + TILE_SIZE) : Math.min(plateX, self.x - plateWidth);
 }
+
+/**
+ * Whether a name plate would lie across this player's own figure: somebody a
+ * row below them has their name seated over their head, which is this
+ * player's body, and this player is drawn over it - "TESS-SWIMS" read with its
+ * middle letters hidden behind them (the wave 2 playtest). Such a name is not
+ * drawn, as one under this player is not: they are standing right there.
+ */
+export function plateCrossesSelf(plate: Box, self: { readonly x: number; readonly y: number }): boolean {
+  const body = { x: self.x + 2, y: self.y - SELF_HEAD_ROOM, width: TILE_SIZE - 4, height: TILE_SIZE + SELF_HEAD_ROOM };
+  return (
+    plate.x < body.x + body.width &&
+    body.x < plate.x + plate.width &&
+    plate.y < body.y + body.height &&
+    body.y < plate.y + plate.height
+  );
+}
+
+/** How far this player's figure stands above their tile: a FireRed figure is taller than the tile it stands on. */
+const SELF_HEAD_ROOM = 8;
 
 /**
  * Where each name plate goes across, slid apart from any it would overlap on its

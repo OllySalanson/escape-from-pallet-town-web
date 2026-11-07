@@ -262,12 +262,10 @@ describe('where the partner arrives', () => {
    * stood over them (the overnight playtest, 7 Nov 2026).
    */
   it('never stands on the tile below the player while anywhere else is free', () => {
-    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([]))).toEqual({ tile: { x: 4, y: 5 }, facing: 'up', out: true });
-    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([{ x: 4, y: 5 }, { x: 6, y: 5 }]))).toEqual({
-      tile: { x: 5, y: 4 },
-      facing: 'down',
-      out: true,
-    });
+    // Walked in facing up, it comes round in front, turned to face them: beside
+    // them a big partner's picture reaches across half of the player.
+    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([]))).toEqual({ tile: { x: 5, y: 4 }, facing: 'down', out: true });
+    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([{ x: 5, y: 4 }]))).toEqual({ tile: { x: 4, y: 5 }, facing: 'up', out: true });
     expect(arrivalPlace({ x: 5, y: 5 }, 'left', open([{ x: 6, y: 5 }, { x: 5, y: 4 }, { x: 4, y: 5 }])).tile).toEqual({
       x: 5,
       y: 6,

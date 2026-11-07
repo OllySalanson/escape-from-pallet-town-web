@@ -205,7 +205,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.opponent = id;
     this.find = '';
     recordAction(`Chose to fight ${regular.name}`);
-    this.status = `${regular.name} brings ${regular.team.length}. Choose up to three of yours.`;
+    this.status = `${regular.name} brings as many as you do, up to ${regular.team.length}. Choose up to three of yours.`;
     this.render(['[data-fight]:not([aria-disabled])']);
   }
 

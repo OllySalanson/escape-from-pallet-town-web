@@ -161,7 +161,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     let title = 'Your things';
     let back = { label: 'Close', attribute: 'data-close' };
     let body: string;
-    let hints = 'ARROWS move · PAGE UP/DOWN a pocket · ENTER use a disc or stone · B close';
+    let hints = 'ARROWS move · LEFT/RIGHT a pocket · ENTER use a disc or stone · B close';
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';
@@ -247,8 +247,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   /**
-   * Page Up and Page Down (and Left and Right, in the side column, where the
-   * list is one column wide and they would go nowhere) move a whole pocket;
+   * Page Up and Page Down (and Left and Right, wherever the list is one column
+   * wide and they would go nowhere) move a whole pocket;
    * Home and End go to the first and last pocket (`pocketJump`).
    */
   private jumpPocket(key: string): boolean {
@@ -256,7 +256,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     if (!overlay || this.using) {
       return false;
     }
-    const side = overlay.root.dataset.layout === 'side';
+    // Left and Right go a pocket whenever the list is one column wide, where
+    // they would go nowhere else: the side column always, and a whole-screen
+    // sheet too narrow for a second column (many laptops have no Page keys).
+    const list = overlay.root.querySelector<HTMLElement>('[data-thing]')?.closest<HTMLElement>('[data-columns]');
+    const side = overlay.root.dataset.layout === 'side' || !list?.style.gridTemplateColumns;
     const step =
       key === 'PageDown' || (side && key === 'ArrowRight')
         ? 1

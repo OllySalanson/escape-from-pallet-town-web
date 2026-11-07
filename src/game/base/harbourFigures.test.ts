@@ -5,7 +5,7 @@ import type { Pokemon } from '../pokemon/Pokemon';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
-import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, clearOfStanding, heelOf, spreadPlates, stackPlates, withinPlace } from './harbourFigures';
+import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, clearOfStanding, heelOf, plateCrossesSelf, spreadPlates, stackPlates, withinPlace } from './harbourFigures';
 import { PARTNER_FEET_PIXEL_Y, partnerFrame, partnerTextureKey } from './partner';
 import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
 
@@ -474,6 +474,21 @@ describe('another player waving', () => {
     const [waving] = others.rects();
     expect(waving.y).toBe(still.y - BUBBLE_HEIGHT);
     expect(waving.y + waving.height).toBe(still.y + still.height);
+  });
+});
+
+describe("a name plate across this player's own figure", () => {
+  const me = { x: 10 * TILE_SIZE, y: 10 * TILE_SIZE };
+  const plate = (x: number, y: number) => ({ x, y, width: 40, height: 12 });
+
+  it('crosses them when its owner stands a row below, its name over their body', () => {
+    expect(plateCrossesSelf(plate(me.x - 12, me.y + 2), me)).toBe(true);
+  });
+
+  it('is clear of them when it is above their head, beside them or further down', () => {
+    expect(plateCrossesSelf(plate(me.x - 12, me.y - 30), me)).toBe(false);
+    expect(plateCrossesSelf(plate(me.x + TILE_SIZE, me.y), me)).toBe(false);
+    expect(plateCrossesSelf(plate(me.x - 12, me.y + 2 * TILE_SIZE), me)).toBe(false);
   });
 });
 

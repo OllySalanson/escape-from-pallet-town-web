@@ -51,6 +51,10 @@ const BUMP_QUIET_MS = 700;
 const SAY_MS = 1600;
 /** How long the finish is shown before the result. */
 const FINISH_PAUSE_MS = 1200;
+/** The opening look along the course: held on the finish this long... */
+const COURSE_INTRO_HOLD_MS = 900;
+/** ...and back at the runner by this long after the course opens. */
+const COURSE_INTRO_MS = 2000;
 /** The frame the boulder is cut as on the town sheet's texture, as `WorldScene` names it. */
 const BOULDER_FRAME = 'strength-boulder';
 
@@ -96,6 +100,8 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   private clock: Phaser.GameObjects.Text | undefined;
   private saying: { text: Phaser.GameObjects.Text; panel: Phaser.GameObjects.Graphics; until: number } | undefined;
   private lastBump: { key: string; at: number } | undefined;
+  /** The opening look along the course, finish to runner, in ms of the scene's own frames; undefined once over. */
+  private intro: number | undefined;
   private readonly saveManager = new SaveManager();
 
   public constructor() {
@@ -337,6 +343,10 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
       if (phase.elapsed + delta >= FINISH_PAUSE_MS) this.finish(true);
       return;
     }
+    if (this.intro !== undefined) {
+      this.intro = this.held.length > 0 || this.pressed ? COURSE_INTRO_MS : this.intro + delta;
+      this.lookAlongTheCourse();
+    }
     const press = this.pressed;
     this.pressed = false;
     this.run = advanceCourse(this.run, delta, this.held[this.held.length - 1] ?? null, press);
@@ -368,6 +378,28 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
       }
     }
     this.drawStage();
+  }
+
+  /**
+   * Where the opening look has got to: held on the finish, then eased back to
+   * the runner, and following them from then on.
+   */
+  private lookAlongTheCourse(): void {
+    const run = this.run;
+    const camera = this.cameras.main;
+    if (this.intro === undefined || !run || !this.runner) return;
+    const line = run.course.finish;
+    const finish = line[Math.floor(line.length / 2)];
+    const from = { x: finish.x * TILE + TILE / 2, y: finish.y * TILE + TILE / 2 };
+    const start = runnerAt(run);
+    const to = { x: start.x * TILE + TILE / 2, y: start.y * TILE + TILE / 2 };
+    const t = Math.min(1, Math.max(0, (this.intro - COURSE_INTRO_HOLD_MS) / (COURSE_INTRO_MS - COURSE_INTRO_HOLD_MS)));
+    const eased = t * t * (3 - 2 * t);
+    camera.centerOn(Math.round(from.x + (to.x - from.x) * eased), Math.round(from.y + (to.y - from.y) * eased));
+    if (this.intro >= COURSE_INTRO_MS) {
+      this.intro = undefined;
+      camera.startFollow(this.runner, true, 1, 1, -TILE / 2, -TILE);
+    }
   }
 
   /** The run is over: its time written and paid if it was finished, and the keeper's screen back up. */
@@ -464,7 +496,12 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     );
     this.runnerTexture = lookTexture(this, readLook(this.game_?.raidProgress.look));
     this.runner = this.add.sprite(0, 0, this.runnerTexture, getIdleFrame(run.facing)).setOrigin(0, 0).setDepth(4);
-    this.cameras.main.startFollow(this.runner, true, 1, 1, -TILE / 2, -TILE);
+    // The course is wider than the screen and starts in its corner, so the
+    // view opens on the finish line and runs back along the course to the
+    // runner before it follows them (wave 1's and wave 2's playtests: the
+    // first view showed neither the runner nor the flag). Any key cuts it short.
+    this.intro = 0;
+    this.lookAlongTheCourse();
     // The stopwatch and what the team can do, pinned to the screen.
     const panel = this.add.graphics().setScrollFactor(0).setDepth(30);
     drawPixelWindow(panel, { x: 4, y: 4, width: 92, height: 32 }, { fill: WINDOW_CREAM });
@@ -535,6 +572,7 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.saying?.text.destroy();
     this.saying?.panel.destroy();
     this.saying = undefined;
+    this.intro = undefined;
     this.cameras?.main?.stopFollow();
     this.cameras?.main?.setScroll(0, 0);
   }

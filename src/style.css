@@ -3560,15 +3560,25 @@ button {
    The Pokémon, a practice post and the move tried once between them, in the
    move's own type colour, for two seconds (`teachMomentBody`). Stepped, so it
    moves as the screen's pixels do; still under reduced motion. */
+/* The window fills the panel it stands in, the stage taking the room the
+   words do not, so the moment is the panel rather than a card floating in the
+   middle of an empty one (the wave 2 playtest). */
 :where(.pixel-ui) .teach-moment-layout {
   grid-template-columns: minmax(0, 1fr);
-  align-content: center;
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+}
+:where(.pixel-ui) .teach-moment-window.px-window {
+  display: flex;
+  flex-direction: column;
 }
 :where(.pixel-ui) .teach-moment {
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: calc(var(--u) * 4);
-  padding: calc(var(--u) * 4) calc(var(--u) * 6);
+  padding: calc(var(--u) * 4) calc(var(--u) * 6) calc(var(--u) * 14);
 }
 :where(.pixel-ui) .teach-moment > .px-portrait {
   flex: none;
@@ -3589,7 +3599,9 @@ button {
   opacity: 0;
   animation: teach-moment-fly 0.5s steps(6, end) 0.4s forwards;
 }
-/* The post: a ring on a stake, drawn with frames rather than an image. */
+/* The post: a bullseye on a wooden stake, drawn with frames rather than an
+   image - red and cream rings round a red middle, so it reads as a target and
+   not as a square button. */
 :where(.pixel-ui) .teach-moment-target {
   position: relative;
   flex: none;
@@ -3597,10 +3609,24 @@ button {
   height: calc(var(--u) * 24);
   box-shadow:
     inset 0 0 0 var(--u) var(--ink),
-    inset 0 0 0 calc(var(--u) * 4) var(--cream),
-    inset 0 0 0 calc(var(--u) * 5) var(--ink);
-  background: var(--cream-dim);
+    inset 0 0 0 calc(var(--u) * 4) var(--cream-lit),
+    inset 0 0 0 calc(var(--u) * 7) var(--red),
+    inset 0 0 0 calc(var(--u) * 9) var(--cream-lit);
+  background: var(--red);
   animation: teach-moment-shake 0.3s steps(3, end) 0.9s 1;
+}
+:where(.pixel-ui) .teach-moment-target::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - var(--u) * 2);
+  top: 100%;
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 10);
+  background: #8a5a2b;
+  box-shadow:
+    var(--u) 0 0 0 var(--ink),
+    calc(var(--u) * -1) 0 0 0 var(--ink),
+    0 var(--u) 0 0 var(--ink);
 }
 :where(.pixel-ui) .teach-moment-spark {
   position: absolute;

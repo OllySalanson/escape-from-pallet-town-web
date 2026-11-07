@@ -17,7 +17,7 @@ import { boutParty } from '../base/arenaBouts';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
-import { BattleScene } from './BattleScene';
+import { BattleScene, boutLostLines } from './BattleScene';
 
 /**
  * The promise a bout for show in THE RAID ARENA rests on: it can never write to
@@ -143,6 +143,15 @@ describe('a bout for show', () => {
       at: { x: 30, y: 7 },
       practice: { leader: 'vale-gym-misty', won: false },
     });
+  });
+
+  it('says what beat you after a practice or a dojo bout lost, and only that it was lost to the rival', () => {
+    const beat = () => 'Speed: STARYU moved first 4 times.';
+    const told = ['You lost the bout.', 'What beat you? Speed: STARYU moved first 4 times.'];
+    expect(boutLostLines({ dojo: 'bot:tess', at: { x: 1, y: 1 } }, beat)).toEqual(told);
+    expect(boutLostLines({ rival: 'misty', at: { x: 1, y: 1 }, practice: 'vale-gym-misty' }, beat)).toEqual(told);
+    expect(boutLostLines({ rival: 'blue', at: { x: 1, y: 1 } }, beat)).toEqual(['You lost the bout.']);
+    expect(boutLostLines({ dojo: 'bot:tess', at: { x: 1, y: 1 } }, () => null)).toEqual(['You lost the bout.']);
   });
 
   it('reads a lost practice to its last line - what beat you - before it leaves', () => {

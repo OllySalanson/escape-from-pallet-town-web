@@ -157,9 +157,11 @@ export function followStep(
  * its feet, so a Charizard arriving behind a player who walked up onto a mat
  * stood over them, hiding all but their head (the overnight playtest of 7 Nov
  * 2026, on THE RAID ARENA's mat and the yard's spawn). The tile below is
- * therefore the last choice wherever it falls in that order: beside them, on
- * their own row, it is drawn a hair behind them, and above them it is behind
- * them outright.
+ * therefore the last choice wherever it falls in that order, and a player who
+ * walked in facing up gets the partner in front of them first: beside them,
+ * on their own row, a big partner's picture reaches across half of them (the
+ * wave 2 playtest, on THE GAME CORNER's and THE BATTLE ARENA's mats), while
+ * above them it is drawn behind them whole.
  *
  * `canStand` is the scene's word on the ground, on who is standing there and on
  * whether a figure there can be seen, so a partner never arrives in a wall, on
@@ -176,7 +178,12 @@ export function arrivalPlace(
     left: ['up', 'down'],
     right: ['up', 'down'],
   };
-  const order = [OPPOSITE[facing], ...sides[facing], facing];
+  // Walked in facing up - onto a room's mat, the hall's or the yard's - behind
+  // is below, so the partner comes round in front instead: a big partner beside
+  // the player crowds half of them (its picture is two tiles wide), while one a
+  // row above is drawn behind them whole. Turned to face them, it is the first
+  // thing walked into, which is a swap.
+  const order = facing === 'up' ? (['up', ...sides.up, 'down'] as const) : [OPPOSITE[facing], ...sides[facing], facing];
   // The tile below, last of all: the one place a partner is drawn over the player.
   const inOrder = [...order.filter((from) => from !== 'down'), 'down' as const];
   for (const from of inOrder) {

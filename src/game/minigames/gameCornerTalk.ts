@@ -85,13 +85,20 @@ export function timeBoardLines(progress: Pick<RaidProgress, 'gameCorner'>, now: 
   const record = progress.gameCorner ?? NO_GAME_CORNER;
   const best = record.best['field-course'] ?? 0;
   const todays = today(record, now).best['field-course'] ?? 0;
-  const lines = [
+  // Each time on a box of its own and to the hundredth: run on after the
+  // heading, the box broke the line inside "0:14.27" and today's time read
+  // "0:14" beside the best's "0:14.27" (the wave 2 playtest).
+  const chalked =
     best === 0
-      ? 'TIME BOARD - FIELD-MOVE COURSE. No time of yours chalked up yet.'
-      : `TIME BOARD - FIELD-MOVE COURSE. Your best: ${courseTime(best)}.${todays > 0 ? ` Today: ${courseTime(todays)}.` : ''}`,
+      ? ['No time of yours chalked up yet.']
+      : todays === best
+        ? [`Your best: ${courseTime(best)}, run today.`]
+        : [`Your best: ${courseTime(best)}.`, ...(todays > 0 ? [`Today's best: ${courseTime(todays)}.`] : [])];
+  return [
+    `TIME BOARD - FIELD-MOVE COURSE. ${chalked[0]}`,
+    ...chalked.slice(1),
     `TICKETS: ${COURSE_TICKET_TIERS.map((tier) => `${courseTime(tier.ms)} ${tier.tickets}`).join(' · ')}. KRABBY is chalked in the corner.`,
   ];
-  return lines;
 }
 
 /** What the attendant says from behind the counter: how the place works, a box at a time. */

@@ -4,10 +4,16 @@ import { stepsFrom } from '../base/baseWalks';
 import { BASE_DOORS } from '../base/doors';
 import { HARBOUR_LIFE, harbourBeatTiles } from '../base/harbourLife';
 import { HARBOUR_PLACES, harbourPlaceAt } from '../base/harbourPlaces';
-import { BASE_ROOMS } from '../base/rooms';
+import { BASE_ROOMS, buildRoom } from '../base/rooms';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import type { GridPosition } from '../movement/gridMovement';
-import { PLAYTEST_BOARD_TILE, placeLanding, playtestBoardRows } from './playtestBoard';
+import { DOJO_COUNTER_TILES } from '../arena/dojoCounter';
+import { baseGame } from '../base/baseGames.testkit';
+import { RIVAL_TILE, rivalUp } from '../base/arenaBouts';
+import { practiceLeaders } from '../base/gymPractice';
+import { raidsDeployed } from '../save/SaveManager';
+import { withEveryLeaderMet } from './playtestKit';
+import { PLAYTEST_BOARD_TILE, STAND_ROWS, placeLanding, playtestBoardRows, practiceSpot } from './playtestBoard';
 import { playtestBoardMarkup } from './playtestBoardView';
 import { PLAYTEST_GAMES } from './playtestKit';
 
@@ -73,6 +79,26 @@ describe("the board's rows", () => {
       expect(Number.isFinite(reached[landing.y][landing.x]), place.id).toBe(true);
       expect(BASE_DOORS.some((door) => door.tiles.some((tile) => same(tile, landing))), place.id).toBe(false);
       expect(harbourPlaceAt(landing)?.id, place.id).toBe(place.id);
+    }
+  });
+
+  it('stands the player on open floor facing the dojo counter, and facing the first leader in the hall', () => {
+    const game = baseGame({ built: [] });
+    for (const row of STAND_ROWS) {
+      if (row.action.kind !== 'stand') continue;
+      const { room } = row.action;
+      const built = buildRoom(BASE_ROOMS.find((each) => each.id === room)!, game);
+      // The explorer run has met every leader; whichever is the rival today, somebody spars.
+      for (const raids of [0, 1, 2, 3, 4]) {
+        const progress = withEveryLeaderMet({ ...game.raidProgress, raidRecord: { 'greystone-vale': { deployed: raids, extracted: 0, wiped: 0 } } });
+        const at = row.action.at ?? practiceSpot(progress);
+        expect(built.collision[at.y]?.[at.x], row.id).toBe(false);
+        const faced = { x: at.x, y: at.y - 1 };
+        const facesWhat =
+          room === 'battle-arena' ? DOJO_COUNTER_TILES : practiceLeaders(progress, rivalUp(progress.bouts, raidsDeployed(progress)).id).map((leader) => leader.tile);
+        expect(facesWhat.some((tile) => same(tile, faced)) || same(faced, RIVAL_TILE), `${row.id} after ${raids} raids`).toBe(true);
+      }
+      expect(rows.some((each) => each.id === row.id), row.id).toBe(true);
     }
   });
 

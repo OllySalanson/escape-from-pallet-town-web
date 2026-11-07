@@ -1,5 +1,5 @@
 import { Bag } from '../items';
-import { Move, Pokemon } from '../pokemon';
+import { Move, Pokemon, type MoveBase } from '../pokemon';
 
 /**
  * THE BATTLE ARENA's rules: a bout for sport, fair by construction (the
@@ -8,8 +8,13 @@ import { Move, Pokemon } from '../pokemon';
  * **Everybody fights at the same level.** A bout is a puzzle of species, moves,
  * abilities and held items, never of hours played, so every Pokémon that walks
  * onto the mat - the player's and the opponent's - is a fresh copy at
- * `DOJO_LEVEL`: its own species, its own four moves at full PP, its own held
- * item, nickname and colours, and the stats that level gives. A Lv 70 Charizard
+ * `DOJO_LEVEL`: its own species, its own moves at full PP, its own held item,
+ * nickname and colours, and the stats that level gives. A Pokémon below that
+ * level also fills any free slot with what its own learnset has it know at
+ * that level (`movesOnTheWayTo`), its best attacks first - so a new player's
+ * Lv 5 Charmander comes in with Ember and Metal Claw beside Scratch and Growl,
+ * and never a move or a stat its kind could not have (the wave 2 playtest: at
+ * Lv 30 with its Lv 5 moves, a new player lost every bout). A Lv 70 Charizard
  * and a Lv 12 Charmander are each just one of their kind. Raids keep the real
  * levels and the real risk.
  *
@@ -32,18 +37,51 @@ export const DOJO_LEVEL = 30;
 /** The most a side may bring: FireRed's Trainer Tower and Battle Tower are three-Pokémon formats. */
 export const DOJO_TEAM_SIZE = 3;
 
+/** A Pokémon knows four moves at most, as everywhere in the game. */
+const MOVE_SLOTS = 4;
+
 /** Generation III's Battle Tower ban list, within the 151. */
 export const DOJO_BANNED_SPECIES: readonly string[] = ['mewtwo', 'mew'];
 
 /**
+ * What a Pokémon knowing `known` would bring to free slots at `toLevel`: the
+ * moves its own species knows at that level by its learnset (`new Pokemon`'s
+ * kit at that level - FireRed's four latest), those it does not already know,
+ * the hardest-hitting first (power, with the same-type bonus) and then the
+ * rest, newest first, until the four slots are full. Never a move its kind
+ * could not know there, and never in place of one it chose to keep. A
+ * Pokémon already at or past `toLevel` learns nothing here.
+ */
+export function movesOnTheWayTo(
+  pokemon: Pokemon,
+  toLevel: number,
+  known: readonly MoveBase[] = pokemon.moves.map((move) => move.base),
+): MoveBase[] {
+  if (pokemon.level >= toLevel || known.length >= MOVE_SLOTS) {
+    return [];
+  }
+  const types = [pokemon.base.primaryType, pokemon.base.secondaryType];
+  const hits = (move: MoveBase): number => move.power * (types.includes(move.type) ? 1.5 : 1);
+  const kit = new Pokemon(pokemon.base, toLevel).moves.map((move) => move.base);
+  const newest = [...kit].reverse().filter((move) => !known.includes(move));
+  const ranked = [
+    ...newest.filter((move) => move.power > 0).sort((left, right) => hits(right) - hits(left)),
+    ...newest.filter((move) => move.power <= 0),
+  ];
+  return ranked.slice(0, MOVE_SLOTS - known.length);
+}
+
+/**
  * A Pokémon as it fights in the dojo: a new one of its kind at the bout's
- * level, knowing what the original knows, at full health and full PP, holding
- * what it holds and named and coloured as it is. The original is only read.
+ * level, knowing what the original knows (and what it would learn on the way
+ * up to that level, into free slots), at full health and full PP, holding what
+ * it holds and named and coloured as it is. The original is only read.
  */
 export function flatLevelCopy(pokemon: Pokemon, level: number = DOJO_LEVEL): Pokemon {
   const copy = new Pokemon(pokemon.base, level);
   if (pokemon.moves.length > 0) {
-    copy.moves = pokemon.moves.map((move) => new Move(move.base));
+    const own = pokemon.moves.map((move) => move.base);
+    copy.moves = [...own, ...movesOnTheWayTo(pokemon, level, own)].map((move) => new Move(move));
   }
   copy.heldItemId = pokemon.heldItemId;
   copy.nickname = pokemon.nickname;
