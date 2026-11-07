@@ -13,13 +13,14 @@ import {
 } from '../pokemon/species';
 import type { PokemonBase } from '../pokemon/PokemonBase';
 import { runInsertions } from '../run/runGeneration';
-import { DEFAULT_RAID_PROGRESS, type RaidProgress, type SaveGameState } from '../save/SaveManager';
+import { DEFAULT_RAID_PROGRESS, type RaidProgress, type RestoredGame, type SaveGameState } from '../save/SaveManager';
 import { Stash } from '../stash/Stash';
 import { gateKey, gatesForMap } from '../world/gates';
 import { encodeSurvey, type SurveyRecord } from '../world/survey';
 import { getWorldMap, worldMapIds } from '../worldMap';
 import { FIRST_WORDS_IDS } from '../hub/firstWords';
 import { LEARNABLE_KEYS } from '../input/keyBindings';
+import { addPlaytestKit, withPlaytestTickets } from './playtestKit';
 
 /**
  * What an explorer run starts as. See `playtestMode.ts` for what the mode is
@@ -108,6 +109,7 @@ export function playtestRaidProgress(): RaidProgress {
     // shelf - derived from his own top tier, so a retuned ladder moves with it.
     traderMoneySpent: POKEDOLLARS_PER_STANDING * (TRADER_STANDINGS.at(-1)?.points ?? 0),
     surveyed: everythingSurveyed(),
+    gameCorner: withPlaytestTickets(DEFAULT_RAID_PROGRESS).gameCorner,
   };
 }
 
@@ -158,6 +160,8 @@ export function createPlaytestStash(): Stash {
   for (const item of ITEM_DEFINITIONS) {
     stash.addItem(item.id, item.id === CURRENCY_ITEM_ID ? MONEY_STOCK : SUPPLY_STOCK);
   }
+  // What every harbour game is played with (`playtestKit.ts`).
+  addPlaytestKit(stash);
   return stash;
 }
 
@@ -179,4 +183,19 @@ export function createPlaytestGame(): SaveGameState {
     starterSpeciesId: 'charmander',
     raidProgress: playtestRaidProgress(),
   };
+}
+
+/**
+ * A resumed explorer run brought up to date: every map current
+ * (`withEverythingCurrent`) and every row of the playtest kit it does not hold
+ * yet. Returns the same object when there was nothing to add, so the caller
+ * writes the save back only when it changed.
+ */
+export function withPlaytestCurrent(game: RestoredGame): RestoredGame {
+  const progress = withPlaytestTickets(withEverythingCurrent(game.raidProgress));
+  const kitAdded = addPlaytestKit(game.stash);
+  if (!kitAdded && progress === game.raidProgress) {
+    return game;
+  }
+  return { ...game, raidProgress: progress };
 }

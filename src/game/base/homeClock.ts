@@ -13,10 +13,20 @@
  * player's evening, not the server's.
  */
 
+import { playtestHour } from '../dev/playtestClock';
+
 export type WindowLight = 'day' | 'dusk' | 'night';
 
-/** Daylight from seven until six, dusk either side of it, and night from nine until five. */
+/**
+ * Daylight from seven until six, dusk either side of it, and night from nine
+ * until five - unless the explorer run's PLAYTEST BOARD has set the hour by
+ * hand (`dev/playtestClock.ts`), which only ever answers in that run.
+ */
 export function windowLight(now: Date): WindowLight {
+  const set = playtestHour();
+  if (set) {
+    return set;
+  }
   const hour = now.getHours();
   if (hour >= 7 && hour < 18) {
     return 'day';

@@ -231,6 +231,16 @@ reloads to check every piece stayed where it was put - `docs/screens/home-decora
 A raid ends back on the base's quay, not on a screen, so a driver that plays
 two raids walks into Oak's Lab between them - `raid.mjs` does.
 
+## The explorer run's kit, and a short cut to anything in the harbour
+
+`?playtest` on the address goes straight into the explorer run (resumed if
+there is one), with the kit `src/game/dev/playtestKit.ts` gives it: boxes of
+Pokémon every harbour game is played with, and 5,000 tickets. The PLAYTEST
+BOARD on the lawn by the landing (`src/game/dev/playtestBoard.ts`) goes to any
+room or part of the harbour, sets the hour, starts a new day and opens any
+game, so a driver can click a `[data-board-row]` rather than walk.
+`playtestKit.mjs <url> <dir>` plays all of it and fails on a broken promise.
+
 ## Any map, any ending
 
 A fresh save is offered one insertion, the Floodplain's front door. `deploy.mjs`
