@@ -88,7 +88,7 @@ try {
       await step(170);
       for (let settling = 0; settling < 6 && (await base('Boolean(b.targetTile)')); settling += 1) await step(100);
     }
-    expect(`got to ${JSON.stringify(goals)}`, false);
+    expect(`got to ${JSON.stringify(goals)} (at ${JSON.stringify(await base('[b.currentTile, b.ready, b.leaving, Boolean(b.dialogBox?.visible)]'))})`, false);
     return false;
   };
   const typed = async () => {
@@ -117,10 +117,16 @@ try {
     await step(1200);
     const bout = await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('battle'); return { run: s.exhibition?.run, weather: s.state?.weather?.id ?? null, ours: s.state ? [s.state.player.pokemon.base.id, s.state.player.pokemon.level] : null, theirs: s.trainer.party.map((p) => p.base.id) }; })()`);
     await shot(`${bout.run?.mode ?? 'class'}-bout`);
+    // Space throws the first move; every few turns the next one, so a Flash Fire or an immunity never stalls the bout.
     for (let guard = 0; guard < 900 && !(await page.evaluate(sceneIs('base'))); guard += 1) {
+      const choosing = await page.evaluate(`${GAME}.scene.getScene('battle').mode === 'moves'`);
+      if (choosing && guard % 3 === 0) await page.tap(guard % 2 === 0 ? 'ArrowRight' : 'ArrowDown', 0);
       await page.tap('Space', 0);
       await step(300);
     }
+    const where = await page.evaluate(`(() => { const g = ${GAME}; const b = g.scene.getScene('base'); const s = g.scene.getScene('battle');
+      return { active: g.scene.getScenes(true).map((x) => x.sys.settings.key), room: b.room?.id ?? null, ready: b.ready, leaving: b.leaving, outcome: s.state?.outcome ?? null }; })()`);
+    if (!(await page.evaluate(inRoom('battle-arena')))) console.log(`     after the bout: ${JSON.stringify(where)}`);
     await until(inRoom('battle-arena'), 'the dojo after the bout');
     await step(900);
     await typed();
@@ -128,13 +134,16 @@ try {
   };
 
   await step(1500);
+  // A dojo nobody has fought in: no cup or rental run from an earlier session.
+  await page.evaluate(`(() => { const k = ${JSON.stringify(PLAYTEST_SAVE_KEY)}; const s = JSON.parse(localStorage.getItem(k));
+    delete s.raidProgress.dojo; localStorage.setItem(k, JSON.stringify(s)); return true; })()`);
   const door = await base(`b.doors.find((each) => each.id === 'battle-arena')`);
   await walkTo(door.tiles, inRoom('battle-arena'));
   await until(inRoom('battle-arena'), 'the dojo');
   await step(800);
 
   // THE CUP BOARD, read from below it on the east of the back wall.
-  await walkTo([{ x: 9, y: 1 }]);
+  await walkTo([{ x: 8, y: 2 }, { x: 9, y: 2 }, { x: 10, y: 2 }]);
   await press('ArrowUp', 300);
   await press('Space', 600);
   await typed();

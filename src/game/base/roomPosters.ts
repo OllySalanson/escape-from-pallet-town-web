@@ -9,6 +9,7 @@ import { boardPoster } from './labBoard';
 import { pennantsPoster } from './pennants';
 import type { RoomPoster } from './rooms';
 import { classBoardPoster } from '../arena/classBoard';
+import { cupBoardPoster } from '../arena/cupBoard';
 import { cabinetLampsPicture, highScoresPicture, tiersPaidToday } from '../minigames/arcade';
 
 /**
@@ -33,6 +34,8 @@ export function roomPosterPicture(game: RestoredGame, poster: RoomPoster, now: D
       );
     case 'class-board':
       return classBoardPoster(game.raidProgress.dojo, poster.area);
+    case 'cup-board':
+      return cupBoardPoster(game.raidProgress.dojo?.cup, poster.area, now);
     case 'high-scores':
       return highScoresPicture(game.raidProgress, now);
     case 'cabinet-lamps':
