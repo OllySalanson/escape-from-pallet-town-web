@@ -30,6 +30,8 @@ import type { PackItemId } from '../items/items';
 import type { Direction } from '../movement/gridMovement';
 import { PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
 import { berryCabinetLines, berryCabinetNote, jumpCabinetLines, jumpCabinetNote } from '../minigames/gameCornerTalk';
+import { ARCADE_CABINETS, arcadeRegularLine, arcadeRegularsAt, CABINET_HEIGHT, cabinetTiles, HIGH_SCORES_BOARD, type ArcadeCabinet } from '../minigames/arcade';
+import { highScoresLines } from '../minigames/highScores';
 import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
 import {
   BALL_LEFT_LINE,
@@ -318,16 +320,14 @@ const BOUTIQUE_PROPS: Readonly<Record<BoutiquePropName, PropDefinition>> = {
 
 /**
  * THE GAME CORNER's two rooms, in Celadon's own (`gameCornerSheet.ts`): the
- * coin counter in its green L, a column of slot machines and their stools,
- * the prize room's counter and glass cases, and the POKéMON JUMP cabinet
- * drawn for it (`promenadeSheet.ts`). Behind a counter is solid but the one
+ * coin counter in its green L, the prize room's counter and glass cases, and
+ * the POKéMON JUMP and BERRY PICKING cabinets drawn for it
+ * (`promenadeSheet.ts`) that stand in rows where its slot machines were. Behind a counter is solid but the one
  * tile its clerk stands on, as Joy's is.
  */
 type GameCornerPropName =
   | 'cornerCounter'
   | 'cornerPlant'
-  | 'cornerSlots'
-  | 'cornerStool'
   | 'cornerMat'
   | 'prizeCounter'
   | 'prizeCase'
@@ -338,8 +338,6 @@ type GameCornerPropName =
 const GAME_CORNER_PROPS: Readonly<Record<GameCornerPropName, PropDefinition>> = {
   cornerCounter: GAME_CORNER_SHEET_PIECES.prop('corner.counter', 'counter', ['#########', '#########', '####.####', '#########']),
   cornerPlant: GAME_CORNER_SHEET_PIECES.solid('corner.plant', 'plant'),
-  cornerSlots: GAME_CORNER_SHEET_PIECES.solid('corner.slots', 'slot machines'),
-  cornerStool: GAME_CORNER_SHEET_PIECES.solid('corner.stool', 'stool'),
   cornerMat: GAME_CORNER_SHEET_PIECES.floor('corner.mat', 'door mat'),
   prizeCounter: GAME_CORNER_SHEET_PIECES.prop('prize.counter', 'counter', ['#########', '#########', '####.####', '#########']),
   prizeCase: GAME_CORNER_SHEET_PIECES.solid('prize.case', 'prize case'),
@@ -589,7 +587,13 @@ export interface RoomThing {
  * room of the player's house, and the pennants upstairs.
  */
 export type RoomPoster =
-  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf' | 'class-board'; readonly area: Rect }
+  | { readonly kind: 'badge-case' | 'pennants' | 'cork-board' | 'ladder-tally' | 'goods-shelf' | 'class-board' | 'high-scores'; readonly area: Rect }
+  | {
+      /** The lamps on a GAME CORNER cabinet, lit for the tiers its game has paid today (`minigames/arcade.ts`). */
+      readonly kind: 'cabinet-lamps';
+      readonly area: Rect;
+      readonly game: ArcadeCabinet['game'];
+    }
   | {
       /** A bay Brock has chalked out (`chalk.ts`), and the rung it is for. */
       readonly kind: 'chalk-bay';
@@ -1023,8 +1027,8 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     stairs: [],
   },
   // THE GAME CORNER (`../minigames/`): the hall is the arcade, with its
-  // attendant inside the coin counter's L, the POKéMON JUMP cabinet against
-  // the back wall and the old slot machines down each side; the prize window
+  // attendant inside the coin counter's L, the HIGH SCORES board beside it and
+  // two rows of cabinets either side of the aisle (`arcade.ts`); the prize window
   // is its own little room next door, with a clerk behind the counter.
   {
     id: 'game-corner',
@@ -1530,47 +1534,70 @@ function drawBoutique(room: BaseRoom): Drawn {
 // --- THE GAME CORNER ----------------------------------------------------------
 
 /**
- * Celadon's Game Corner, cut down to a seaside arcade: the coin counter in its
- * green L along the back wall with the attendant inside it, the POKéMON JUMP
- * and BERRY PICKING cabinets side by side beside it, and FireRed's slot
- * machines in a column down each side, a stool at each.
+ * Celadon's Game Corner, made a seaside arcade (`../minigames/arcade.ts`): the
+ * coin counter in its green L along the back wall with the attendant inside
+ * it, the HIGH SCORES board beside it, and where FireRed's slot machines stood
+ * two rows of cabinets either side of the aisle from the door - three POKéMON
+ * JUMP in green to the west, three BERRY PICKING in tan to the east - each with
+ * the lamps for what its game has paid today, and the regulars at them.
  */
 function drawGameCorner(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   const sketch = shell(room);
   sketch.plant(1, 0, 'cornerCounter');
   sketch.plant(0, 2, 'cornerPlant');
-  sketch.plant(11, 1, 'jumpCabinet');
-  sketch.plant(13, 1, 'berryCabinet');
-  sketch.plant(1, 5, 'cornerSlots');
-  sketch.plant(12, 5, 'cornerSlots');
-  for (let y = 6; y <= 9; y += 1) {
-    sketch.plant(3, y, 'cornerStool');
-    sketch.plant(11, y, 'cornerStool');
+  for (const cabinet of ARCADE_CABINETS) {
+    sketch.plant(cabinet.at.x, cabinet.at.y, cabinet.game === 'pokemon-jump' ? 'jumpCabinet' : 'berryCabinet');
   }
   sketch.plant(6, 11, 'cornerMat');
+  const regulars = arcadeRegularsAt(now.getTime());
+  const cabinetThing = (cabinet: ArcadeCabinet): RoomThing =>
+    cabinet.game === 'pokemon-jump'
+      ? { name: 'POKéMON JUMP', note: jumpCabinetNote(game.raidProgress, now), tiles: cabinetTiles(cabinet), opens: 'pokemon-jump', lines: jumpCabinetLines() }
+      : { name: 'BERRY PICKING', note: berryCabinetNote(game.raidProgress, now), tiles: cabinetTiles(cabinet), opens: 'berry-picking', lines: berryCabinetLines() };
+  const board = HIGH_SCORES_BOARD;
   const things: RoomThing[] = [
+    ...ARCADE_CABINETS.map(cabinetThing),
     {
-      name: 'POKéMON JUMP',
-      note: jumpCabinetNote(game.raidProgress, now),
-      tiles: [1, 2, 3].flatMap((y) => [11, 12].map((x) => ({ x, y }))),
-      opens: 'pokemon-jump',
-      lines: jumpCabinetLines(),
+      name: 'HIGH SCORES',
+      note: 'Today’s best on the promenade',
+      tiles: Array.from({ length: board.width }, (_tile, x) => ({ x: board.x + x, y: board.y + board.height - 1 })),
+      lines: highScoresLines(game.raidProgress, now),
     },
-    {
-      name: 'BERRY PICKING',
-      note: berryCabinetNote(game.raidProgress, now),
-      tiles: [1, 2, 3].flatMap((y) => [13, 14].map((x) => ({ x, y }))),
-      opens: 'berry-picking',
-      lines: berryCabinetLines(),
-    },
-    {
-      name: 'THE SLOTS',
-      note: 'Old one-armed bandits',
-      tiles: [1, 2, 12, 13].flatMap((x) => [5, 6, 7, 8, 9, 10].map((y) => ({ x, y }))),
-      lines: ['FireRed’s slot machines, kept for the look of the place. They take coins, and this harbour has none: the cabinets pay in TICKETS.'],
-    },
+    ...regulars.map((regular) => ({
+      name: regular.bot.name,
+      note: regular.playing ? `Playing ${regular.game === 'pokemon-jump' ? 'POKéMON JUMP' : 'BERRY PICKING'}` : 'Waiting for a go',
+      tiles: [regular.tile],
+      lines: [arcadeRegularLine(regular, game.raidProgress, now)],
+    })),
   ];
-  return { sketch, catalogue: GAME_CORNER, things, sprites: [] };
+  const people: RoomPerson[] = regulars.map((regular) => ({
+    id: regular.bot.id,
+    look: regular.bot.look,
+    ...(regular.bot.pack ? { pack: regular.bot.pack } : {}),
+    tile: regular.tile,
+    facing: regular.facing,
+  }));
+  const posters: RoomPoster[] = [
+    { kind: 'high-scores', area: board },
+    ...ARCADE_CABINETS.map((cabinet) => ({
+      kind: 'cabinet-lamps' as const,
+      area: { x: cabinet.at.x, y: cabinet.at.y, width: 2, height: CABINET_HEIGHT },
+      game: cabinet.game,
+    })),
+  ];
+  return {
+    sketch,
+    catalogue: GAME_CORNER,
+    things,
+    sprites: [],
+    posters,
+    people,
+    // The board stands on the floor along its foot row, and nobody walks through the people at the cabinets.
+    solid: [
+      ...Array.from({ length: board.width }, (_tile, x) => ({ x: board.x + x, y: board.y + board.height - 1 })),
+      ...people.map((person) => person.tile),
+    ],
+  };
 }
 
 /**

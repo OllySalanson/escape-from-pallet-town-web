@@ -117,6 +117,7 @@ import {
   stairAt,
   type BaseRoom,
   type BuiltRoom,
+  type RoomPerson,
   type RoomSprite,
   type RoomThing,
 } from '../base/rooms';
@@ -642,6 +643,10 @@ export class BaseScene extends Phaser.Scene {
   private readonly directionPresses = new PressLatch<Direction>();
   private readonly spentPresses = new SpentPresses<Phaser.Input.Keyboard.Key>();
   private readonly figures = new Map<string, Phaser.GameObjects.Sprite>();
+  /** The pictures of the save hung in this room (`hangPicture`), so a room drawn again hangs them afresh. */
+  private hungPictures: Phaser.GameObjects.Image[] = [];
+  /** When this visit's room was drawn: drawn again, it is drawn as of then (`redrawRoom`). */
+  private roomBuiltAt = new Date();
   private worldLabels: WorldLabel[] = [];
   private fixtures: readonly BaseFixture[] = [];
   private currentTile: GridPosition = BASE_SPAWN;
@@ -1008,7 +1013,8 @@ export class BaseScene extends Phaser.Scene {
     this.visit = room && data.visit && isHomeRoom(room.id) ? data.visit : null;
     if (room) {
       const visit = this.visit;
-      const drawn = buildRoom(room, visit ? visit.game : loaded, undefined, { choosing: this.choosing });
+      this.roomBuiltAt = new Date();
+      const drawn = buildRoom(room, visit ? visit.game : loaded, this.roomBuiltAt, { choosing: this.choosing });
       const built = visit
         ? {
             ...drawn,
@@ -3476,16 +3482,18 @@ export class BaseScene extends Phaser.Scene {
    * visit, because what it is a picture of - where the player has walked, who
    * they have beaten - changes between visits and a room is rebuilt on each.
    */
-  private drawWallMap(): void {
+  private drawWallMap(game: RestoredGame = this.savedGame): void {
+    // A room restarted has none of last visit's pictures left (`redrawPicturesAndPeople` clears its own first).
+    this.hungPictures = [];
     const area = this.place.room?.wallMap;
     if (area) {
-      this.hangPicture(WALL_MAP_TEXTURE, wallMapPoster(this.savedGame, area), area);
+      this.hangPicture(WALL_MAP_TEXTURE, wallMapPoster(game, area), area);
     }
     // The other pictures of the save a room keeps wall for: Oak's cork board,
     // and THE BOLTHOLE's badge case and its pennants, painted fresh on every
     // visit for the same reason the wall map is.
     (this.place.room?.posters ?? []).forEach((poster, index) => {
-      this.hangPicture(`base-poster-${index}-${poster.kind}`, roomPosterPicture(this.savedGame, poster), poster.area);
+      this.hangPicture(`base-poster-${index}-${poster.kind}`, roomPosterPicture(game, poster), poster.area);
     });
   }
 
@@ -3500,10 +3508,12 @@ export class BaseScene extends Phaser.Scene {
     }
     texture.context.putImageData(new ImageData(picture.data, picture.width, picture.height), 0, 0);
     texture.refresh();
-    this.add
-      .image(area.x * TILE_SIZE, area.y * TILE_SIZE, key)
-      .setOrigin(0, 0)
-      .setDepth(atRow(MARKER_BAND, area.y + area.height - 1));
+    this.hungPictures.push(
+      this.add
+        .image(area.x * TILE_SIZE, area.y * TILE_SIZE, key)
+        .setOrigin(0, 0)
+        .setDepth(atRow(MARKER_BAND, area.y + area.height - 1)),
+    );
   }
 
   /**
@@ -3538,20 +3548,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     // Whoever else stands in the room: THE BATTLE ARENA's fighters in their lines.
-    for (const person of this.place.room.people ?? []) {
-      // In their own clothes, or - a Black Belt - in the design their kind is drawn in.
-      const [texture, frame] =
-        'design' in person
-          ? ((appearance) => [appearance.textureKey, worldCharacterIdleFrame(appearance, person.facing)] as const)(
-              getWorldCharacterAppearance('npc', person.design),
-            )
-          : ([lookTexture(this, person.look, person.pack ?? null), getIdleFrame(person.facing)] as const);
-      const sprite = this.add
-        .sprite(person.tile.x * TILE_SIZE, person.tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, texture, frame)
-        .setOrigin(0, 0)
-        .setDepth(atRow(FIGURE_BAND, person.tile.y));
-      this.figures.set(person.id, sprite);
-    }
+    this.createRoomPeople(this.place.room.people ?? []);
     const keeper = this.place.room.room.keeper;
     if (!keeper) {
       return;
@@ -3569,6 +3566,41 @@ export class BaseScene extends Phaser.Scene {
       .setDepth(atRow(FIGURE_BAND, keeper.position.y));
     this.figures.set(keeper.id, sprite);
     this.markKeeper(this.place.room.room);
+  }
+
+  /** Whoever stands in a room besides its keeper, each in their own look: THE BATTLE ARENA's fighters, the regulars at THE GAME CORNER's cabinets. */
+  private createRoomPeople(people: readonly RoomPerson[]): void {
+    for (const person of people) {
+      // In their own clothes, or - a Black Belt - in the design their kind is drawn in.
+      const [texture, frame] =
+        'design' in person
+          ? ((appearance) => [appearance.textureKey, worldCharacterIdleFrame(appearance, person.facing)] as const)(
+              getWorldCharacterAppearance('npc', person.design),
+            )
+          : ([lookTexture(this, person.look, person.pack ?? null), getIdleFrame(person.facing)] as const);
+      const sprite = this.add
+        .sprite(person.tile.x * TILE_SIZE, person.tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, texture, frame)
+        .setOrigin(0, 0)
+        .setDepth(atRow(FIGURE_BAND, person.tile.y));
+      this.figures.set(person.id, sprite);
+    }
+  }
+
+  /**
+   * A room drawn again, back from a game over it: what is painted from the save
+   * (THE GAME CORNER's HIGH SCORES board and cabinet lamps) is painted afresh,
+   * and whoever stands in it is stood where the new drawing has them, so the
+   * figures and the floor they block cannot disagree.
+   */
+  private redrawPicturesAndPeople(game: RestoredGame, before: BuiltRoom, after: BuiltRoom): void {
+    (this.hungPictures ?? []).forEach((picture) => picture.destroy());
+    this.hungPictures = [];
+    this.drawWallMap(game);
+    for (const person of before.people ?? []) {
+      this.figures.get(person.id)?.destroy();
+      this.figures.delete(person.id);
+    }
+    this.createRoomPeople(after.people ?? []);
   }
 
   private createDayCare(): void {
@@ -4688,11 +4720,18 @@ export class BaseScene extends Phaser.Scene {
     if (!current) {
       return;
     }
-    const built = buildRoom(current.room, game);
+    // At the moment the visit began: whoever was at THE GAME CORNER's cabinets
+    // stays for the visit, never stepping onto the tile the player stands on.
+    const built = buildRoom(current.room, game, this.roomBuiltAt);
     this.place = { ...this.place, layers: built.layers, collision: built.collision, sources: built.sources, room: built };
     this.collision = built.collision.map((row) => [...row]);
     this.drawMap();
     this.drawFurniture();
+    // Not in the player's own house, which is drawn again for every piece of
+    // furniture moved, and whose pictures nothing done while decorating changes.
+    if (!isHomeRoom(current.room.id)) {
+      this.redrawPicturesAndPeople(game, current, built);
+    }
     this.worldLabels.forEach((label) => label.destroy());
     this.worldLabels = [];
     this.createRoomCaptions(built);

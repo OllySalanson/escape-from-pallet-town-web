@@ -105,10 +105,13 @@ export async function walkIntoBase(page, door, options = {}) {
             if (on) return { key: 'ArrowDown' };
           } else if (room.id === 'pokemon-centre' || room.id === 'brocks-workshop' || room.id === 'bills-cottage' || room.id === 'game-corner') {
             const opens = { 'pokemon-centre': 'boxes', 'brocks-workshop': 'ladder', 'bills-cottage': 'list', 'game-corner': 'pokemon-jump' }[room.id];
-            const tiles = b.place.room.things.find((thing) => thing.opens === opens).tiles;
-            const pc = tiles.reduce((low, tile) => (tile.y > low.y ? tile : low));
-            var goals = [{ x: pc.x, y: pc.y + 1 }];
-            if (b.currentTile.x === pc.x && b.currentTile.y === pc.y + 1) return { key: b.facing === 'up' ? 'Space' : 'ArrowUp' };
+            // THE GAME CORNER has three of each cabinet, and a regular may be playing one: any free front will do.
+            var goals = b.place.room.things
+              .filter((thing) => thing.opens === opens)
+              .flatMap((thing) => thing.tiles.filter((tile) => !thing.tiles.some((other) => other.x === tile.x && other.y === tile.y + 1)))
+              .map((tile) => ({ x: tile.x, y: tile.y + 1 }))
+              .filter((tile) => !b.collision[tile.y]?.[tile.x]);
+            if (goals.some((goal) => b.currentTile.x === goal.x && b.currentTile.y === goal.y)) return { key: b.facing === 'up' ? 'Space' : 'ArrowUp' };
           } else {
             const on = b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
             if (on && room.id === 'oaks-lab') return { arrived: true };

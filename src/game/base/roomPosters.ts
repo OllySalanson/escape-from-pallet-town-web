@@ -9,13 +9,14 @@ import { boardPoster } from './labBoard';
 import { pennantsPoster } from './pennants';
 import type { RoomPoster } from './rooms';
 import { classBoardPoster } from '../arena/classBoard';
+import { cabinetLampsPicture, highScoresPicture, tiersPaidToday } from '../minigames/arcade';
 
 /**
  * The picture for one thing a room paints from the save: the same answer for the
  * scene that hangs it and the tool that draws a room without a browser
  * (`tools/base/renderBase.mts`).
  */
-export function roomPosterPicture(game: RestoredGame, poster: RoomPoster): PaintedPicture {
+export function roomPosterPicture(game: RestoredGame, poster: RoomPoster, now: Date = new Date()): PaintedPicture {
   switch (poster.kind) {
     case 'badge-case':
       return badgeCasePoster(game, poster.area);
@@ -32,6 +33,10 @@ export function roomPosterPicture(game: RestoredGame, poster: RoomPoster): Paint
       );
     case 'class-board':
       return classBoardPoster(game.raidProgress.dojo, poster.area);
+    case 'high-scores':
+      return highScoresPicture(game.raidProgress, now);
+    case 'cabinet-lamps':
+      return cabinetLampsPicture(tiersPaidToday(poster.game, game.raidProgress, now));
     case 'goods-shelf':
       return shelfPoster(poster.area, sheetedColumns(poster.area, traderCounterFor(game)));
   }

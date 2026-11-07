@@ -31,13 +31,28 @@ export const JUMP_PRIZE_BERRIES = [
 
 const number = (value: number): string => value.toLocaleString('en-GB');
 
-/** The second line on the cabinet's caption: the best it has seen from this save, today first. */
-export function jumpCabinetNote(progress: Pick<RaidProgress, 'gameCorner'>, now: Date): string {
+/**
+ * The second line on a cabinet's caption: what its game has paid today, and
+ * the best it has seen from this save, today first. Paid is what the three
+ * lamps on its front say in pictures (`arcade.ts`).
+ */
+function cabinetNote(progress: Pick<RaidProgress, 'gameCorner'>, now: Date, source: 'pokemon-jump' | 'berry-picking', unplayed: string): string {
   const record = progress.gameCorner ?? NO_GAME_CORNER;
-  const best = record.best['pokemon-jump'] ?? 0;
-  const todays = today(record, now).best['pokemon-jump'] ?? 0;
-  if (best === 0) return 'Jump the vine for TICKETS';
-  return todays > 0 ? `Today ${number(todays)} · best ${number(best)}` : `Your best ${number(best)}`;
+  const best = record.best[source] ?? 0;
+  const day = today(record, now);
+  const todays = day.best[source] ?? 0;
+  const paid = day.paid[source] ?? 0;
+  if (best === 0) return unplayed;
+  if (todays === 0) return `Your best ${number(best)}`;
+  const tiers = source === 'pokemon-jump' ? JUMP_TICKET_TIERS : BERRY_TICKET_TIERS;
+  const top = tiers[tiers.length - 1].tickets;
+  const paidWords = paid >= top ? `paid all ${paid} today` : paid > 0 ? `paid ${paid} today` : 'nothing paid yet';
+  return `Today ${number(todays)} · ${paidWords}`;
+}
+
+/** The second line on the POKéMON JUMP cabinet's caption. */
+export function jumpCabinetNote(progress: Pick<RaidProgress, 'gameCorner'>, now: Date): string {
+  return cabinetNote(progress, now, 'pokemon-jump', 'Jump the vine for TICKETS');
 }
 
 /** What the cabinet says when it is read rather than played (the scene plays it). */
@@ -45,13 +60,9 @@ export function jumpCabinetLines(): readonly string[] {
   return ['POKéMON JUMP! Up to three of your POKéMON jump the VENUSAUR’s vine.'];
 }
 
-/** The second line on BERRY PICKING's caption: the best it has seen from this save, today first. */
+/** The second line on the BERRY PICKING cabinet's caption. */
 export function berryCabinetNote(progress: Pick<RaidProgress, 'gameCorner'>, now: Date): string {
-  const record = progress.gameCorner ?? NO_GAME_CORNER;
-  const best = record.best['berry-picking'] ?? 0;
-  const todays = today(record, now).best['berry-picking'] ?? 0;
-  if (best === 0) return 'Bring a DODRIO';
-  return todays > 0 ? `Today ${number(todays)} · best ${number(best)}` : `Your best ${number(best)}`;
+  return cabinetNote(progress, now, 'berry-picking', 'Bring a DODRIO');
 }
 
 /** What BERRY PICKING says when it is read rather than played. */
@@ -114,6 +125,8 @@ export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): read
     'BERRY PICKING wants a DODRIO, one head a column. A DODUO tries with two.',
     `${number(berryFirst.score)} pays ${berryFirst.tickets}, ${number(berrySecond.score)} ${berrySecond.tickets}, ${number(berryThird.score)} ${berryThird.tickets}. From ${number(BERRY_PICKING_PRIZE_SCORE)}, a BERRY.`,
   ];
+  lines.push('Lamps on each cabinet light for every ticket tier paid today.');
+  lines.push('The HIGH SCORES board has today’s best: yours and the regulars’.');
   if (record.tickets > 0) {
     lines.push(`You have ${number(record.tickets)} tickets. They are kept at home - a raid cannot lose them.`);
   }

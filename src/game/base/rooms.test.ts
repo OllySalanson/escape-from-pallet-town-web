@@ -523,9 +523,10 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
 
   it('hangs nothing on the walls of any other room', () => {
     // But Oak's cork board, which hangs in his lab (`labBoard.test.ts`), and
-    // what Brock chalks and Bill puts out, which are held above, and THE
-    // BATTLE ARENA's class board (`arena/classes.test.ts`).
-    const hung = ['oaks-lab', 'brocks-workshop', 'bills-cottage', 'battle-arena'];
+    // what Brock chalks and Bill puts out, which are held above, THE BATTLE
+    // ARENA's class board (`arena/classes.test.ts`), and THE GAME CORNER's
+    // HIGH SCORES board and cabinet lamps (`minigames/arcade.test.ts`).
+    const hung = ['oaks-lab', 'brocks-workshop', 'bills-cottage', 'battle-arena', 'game-corner'];
     for (const each of BASE_ROOMS.filter((candidate) => !candidate.id.startsWith('bolthole') && !hung.includes(candidate.id))) {
       expect([each.id, buildRoom(each, baseGame()).posters]).toEqual([each.id, []]);
     }
