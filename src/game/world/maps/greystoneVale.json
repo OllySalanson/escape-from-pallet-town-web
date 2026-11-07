@@ -5380,6 +5380,16 @@
    "y": 94
   },
   {
+   "x": 103,
+   "y": 81,
+   "secret": "the-long-shadow"
+  },
+  {
+   "x": 106,
+   "y": 79,
+   "secret": "the-lost-fold"
+  },
+  {
    "x": 9,
    "y": 7,
    "hidden": true,
@@ -5461,6 +5471,11 @@
   {
    "x": 204,
    "y": 95
+  },
+  {
+   "x": 225,
+   "y": 88,
+   "secret": "the-tappers-sunday"
   },
   {
    "x": 5,
@@ -5561,6 +5576,12 @@
    "area": "greystone-caves-1f",
    "x": 12,
    "y": 15
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 8,
+   "y": 9,
+   "secret": "the-old-shells"
   },
   {
    "x": 11,
@@ -7223,6 +7244,21 @@
    ]
   },
   {
+   "x": 136,
+   "y": 105,
+   "name": "Navvy Foreman",
+   "look": "black-belt",
+   "facing": "up",
+   "secret": "the-navvies-wager",
+   "lines": [
+    "Arm-wrestle? You? With that leading?",
+    "Bring me something that leads with its fists, and we will talk wagers."
+   ],
+   "calls": [
+    "Who wants a go?"
+   ]
+  },
+  {
    "x": 141,
    "y": 108,
    "name": "Navvy",
@@ -7561,9 +7597,10 @@
    "name": "Tapper’s Girl",
    "look": "little-girl",
    "facing": "left",
+   "secret": "the-tappers-sunday",
    "lines": [
     "There is a Caterpie stuck in one of the old lumps, right the way through. Dad says a thousand years.",
-    "I said sorry to it."
+    "Dad never taps on a Sunday. He leaves a present by the upturned pot at the back, for whoever comes by."
    ],
    "beat": {
     "everyMs": 1800,
@@ -13115,6 +13152,24 @@
    ]
   },
   {
+   "x": 94,
+   "y": 82,
+   "secret": "the-long-shadow",
+   "lines": [
+    "A fallen stone at the foot of the tor, carved:",
+    "WHEN THE SUN IS LOW THE TOR LAYS ITS SHADOW EAST. LOOK WHERE THE SHADOW ENDS."
+   ]
+  },
+  {
+   "x": 102,
+   "y": 77,
+   "secret": "the-lost-fold",
+   "lines": [
+    "Sheep bells hang along the fold wall past the boulder. There are no sheep.",
+    "Old Hob says they ring on their own after dark, over the corner where the old ram lay."
+   ]
+  },
+  {
    "x": 141,
    "y": 102,
    "lines": [
@@ -13192,6 +13247,33 @@
    "lines": [
     "THE GOAT TRACK",
     "Over the hill and away, west of the pasture. Goats have right of way. They are not goats."
+   ]
+  },
+  {
+   "x": 148,
+   "y": 76,
+   "secret": "the-red-one",
+   "lines": [
+    "An angler's hat, left on a rock, and a line snapped clean.",
+    "Whatever took it only comes up out of the tarn after dark."
+   ]
+  },
+  {
+   "x": 140,
+   "y": 123,
+   "secret": "the-cracked-crag",
+   "lines": [
+    "FALLING ROCK",
+    "The boulder at the end of the track glows red along its crack at dusk. Do NOT hit it with ROCK SMASH."
+   ]
+  },
+  {
+   "x": 135,
+   "y": 103,
+   "secret": "the-navvies-wager",
+   "lines": [
+    "ARM-WRESTLE THE FOREMAN",
+    "Put his arm down and keep his MACHAMP. Fighters only: lead with one, or do not bother him."
    ]
   },
   {
@@ -13408,6 +13490,16 @@
    "lines": [
     "THE WINDFALLS",
     "South: Orchard Terraces. The apples here belong to the farm. The apples disagree."
+   ]
+  },
+  {
+   "area": "greystone-caves-b1f",
+   "x": 12,
+   "y": 8,
+   "secret": "the-old-shells",
+   "lines": [
+    "The sand here is cracked, and something glints far down in it.",
+    "It would take a digger to get at it: a GROUND type in front, or a PICKAXE."
    ]
   },
   {
@@ -16712,6 +16804,13 @@
    "y": 120,
    "species": "rhyhorn",
    "level": 11
+  },
+  {
+   "x": 143,
+   "y": 123,
+   "species": "golem",
+   "level": 22,
+   "secret": "the-cracked-crag"
   },
   {
    "x": 142,

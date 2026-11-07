@@ -1,3 +1,4 @@
+import { raidConditions } from '../world/secrets';
 import Phaser from 'phaser';
 import { readLook } from '../look/look';
 import { countPlay, mapDetail } from '../analytics/playCounter';
@@ -1233,6 +1234,19 @@ export class HubScene extends Phaser.Scene {
       caughtLegends(pokedexOwned(this.savedGame.raidProgress.pokedexOwned, this.stash)),
       // What the people at base are waiting on, each laid in its own place.
       errandsToLay(this.savedGame.raidProgress, (itemId) => this.stash.itemCount(itemId)).map(errandLoot),
+      // What the vale's secrets wait for, fixed now for the whole raid: the
+      // hour, the day, who leads and what is packed (`world/secrets.ts`).
+      {
+        conditions: raidConditions(
+          new Date(),
+          deployment.party.map((stored) => stored.pokemon),
+          items,
+        ),
+        known: {
+          secretsFound: this.savedGame.raidProgress.secretsFound ?? [],
+          giftsReceived: this.savedGame.raidProgress.giftsReceived,
+        },
+      },
     );
     // A raid with friends shares its map's ground: the room's loot, laid from
     // the room's seed, in place of this raid's own (`raidRoom/roomLoot.ts`).

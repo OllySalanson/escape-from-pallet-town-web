@@ -269,6 +269,13 @@ game.
   used up do not read as the same object as the eight that are; the eight that
   shipped before HM04, the nine before TM39 and the ten before the weather
   discs are byte-identical.
+  The vale's secret finds - `chart-piece-1`, `chart-piece-2`, `chart-piece-3`,
+  `helix-fossil` and `dome-fossil` - are `scripts/draw-relic-icons.mjs`, drawn
+  here as character art on the set's own outline: three torn corners of one
+  parchment chart (`#f2e3b6`, `#d9c28a`, `#b39a5e`) with blue sea (`#5b8fd6`,
+  `#9cc3ea`) and a red dotted course (`#d9442b`), and two shells set in stone
+  (`#6b604f`, `#9a8d7a`, `#c9bda5`, `#e8dfcc`; shell `#8a5a3a`, `#c48a52`,
+  `#e6b77d`). Original to this game; nothing is cut from FireRed.
   The four errand things - `oaks-parcel`, `medicine-bag`, `brocks-crate` and
   `old-amber` - are `scripts/draw-errand-icons.mjs`, character art on the set's
   own outline in palettes of their own: brown paper and white string with a

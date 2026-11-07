@@ -64,6 +64,7 @@ import type { BaseKeeper, BaseScreen } from './doors';
 import { bayArea } from './chalk';
 import { GOOD_LIFT, GOODS_ON_SHELVES, goodIcon, goodName, SHELF_RUNS, SHELF_TILES, shelfState } from './billGoods';
 import type { BillGood } from '../hub/billTalk';
+import { FOSSIL_MACHINE, fossilAwake } from '../hub/fossils';
 import { traderCounterFor } from '../save/SaveManager';
 import { cabinetOddities, type Oddity } from '../hub/traderCabinet';
 import { ERRANDS, errandRecord, errandThing } from '../hub/errands';
@@ -573,7 +574,7 @@ export interface RoomThing {
    * Something it does when faced and spoken to, beyond saying its lines: the
    * bed is slept in (the screen goes dark first).
    */
-  readonly does?: 'sleep';
+  readonly does?: 'sleep' | 'fossil';
   /**
    * Answers when spoken to but carries no caption: a piece of the player's own
    * furniture (`home/furniture.ts`). A room full of dolls each naming itself
@@ -1253,6 +1254,15 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
     tiles: BOARD_TILES,
     reads: 'board',
   };
+  // The machine he keeps his Poké Balls in is the fossil machine too, borrowed
+  // from Cinnabar: a fossil found in the vale is woken on it over a raid
+  // (`hub/fossils.ts`).
+  const fossilMachine: RoomThing = {
+    name: FOSSIL_MACHINE,
+    note: fossilMachineNote(game),
+    tiles: FOSSIL_MACHINE_TILES,
+    does: 'fossil',
+  };
   // The balls nobody took are still on the table. They are derived from who the
   // partner is, so a swap puts the old one back.
   const left = ballsLeftFor(game.starterSpeciesId);
@@ -1265,7 +1275,7 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
   return {
     sketch,
     catalogue: LAB,
-    things: [wallMap, board, ...balls],
+    things: [wallMap, board, fossilMachine, ...balls],
     sprites: left.map(ballSprite),
     wallMap: OAK_WALL_MAP,
     posters: [{ kind: 'cork-board', area: OAK_BOARD }],
@@ -1297,6 +1307,27 @@ function drawLabChoosing(room: BaseRoom, game: RestoredGame): Drawn {
     wallMap: OAK_WALL_MAP,
     posters: [{ kind: 'cork-board', area: OAK_BOARD }],
   };
+}
+
+/** The tiles of the machine at the lab's west wall (`labMachine`, planted at 0,3). */
+export const FOSSIL_MACHINE_TILES: readonly GridPosition[] = [
+  { x: 0, y: 3 },
+  { x: 1, y: 3 },
+  { x: 2, y: 3 },
+  { x: 0, y: 4 },
+  { x: 1, y: 4 },
+  { x: 2, y: 4 },
+  { x: 1, y: 5 },
+  { x: 2, y: 5 },
+];
+
+/** The machine's caption: what is on it, or what it is for. */
+function fossilMachineNote(game: RestoredGame): string {
+  const fossil = game.raidProgress.fossil;
+  if (!fossil) {
+    return 'Wakes a fossil over one raid';
+  }
+  return fossilAwake(fossil, game.raidProgress, game.raidInFlight) ? 'Something is moving inside!' : 'Humming: back after a raid';
 }
 
 function labRoom(room: BaseRoom): MapSketch<RoomPropName> {

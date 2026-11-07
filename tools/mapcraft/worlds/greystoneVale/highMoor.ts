@@ -179,6 +179,11 @@ export function highMoor(): MapcraftResult {
       { x: 53, y: 10, hidden: true },
       { x: 34, y: 12, hidden: true },
       { x: 23, y: 30 },
+      // The secrets' nooks (`src/game/world/secrets.ts`): where the tor's
+      // shadow ends at dusk, east across the grass, and the corner of the Lost
+      // Fold the old ram lay in, which gives something up only after dark.
+      { x: 39, y: 17, secret: 'the-long-shadow' },
+      { x: 42, y: 15, secret: 'the-lost-fold' },
     ],
     extra: {
       boulders: [{ x: 40, y: 12 }],
@@ -204,6 +209,10 @@ export function highMoor(): MapcraftResult {
         { x: 44, y: 11, lines: ['THE LOST FOLD', 'Nobody has brought a beast up here since the boulder came down. Everyone has meant to.'] },
         { x: 30, y: 13, lines: ['THE GREY STONES', 'The tor the vale is named for. The drovers touch it for luck.'] },
         { x: 29, y: 58, lines: ['THE WAYSTONES', 'They walked down from the tor one night. So the drovers say. Do not count them.'] },
+        // The secrets' clues, each beside its nook.
+        { x: 30, y: 18, secret: 'the-long-shadow', lines: ['A fallen stone at the foot of the tor, carved:', 'WHEN THE SUN IS LOW THE TOR LAYS ITS SHADOW EAST. LOOK WHERE THE SHADOW ENDS.'] },
+        // Outside the boulder, so it is read by anybody who has not brought Strength yet.
+        { x: 38, y: 13, secret: 'the-lost-fold', lines: ['Sheep bells hang along the fold wall past the boulder. There are no sheep.', 'Old Hob says they ring on their own after dark, over the corner where the old ram lay.'] },
       ],
       // What grazes and hops about the foot of the moor. One of the Tauros has
       // had enough of walking and will say so.

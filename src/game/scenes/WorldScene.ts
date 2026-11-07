@@ -1,3 +1,5 @@
+import { secretById, type SecretReward } from '../world/secrets';
+import type { OpenSecret } from '../run/runGeneration';
 import Phaser from 'phaser';
 import { isPackId } from '../items/packs';
 import { lookKey, readLook } from '../look/look';
@@ -250,7 +252,7 @@ import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
 import { RaidWayMark } from '../base/wayMark';
 import { aheadOnWalk } from '../world/raidStake';
 import { stepDistances } from '../world/mapStructure';
-import { districtAt, weatherAt } from '../world/districts';
+import { districtAt, districtsForMap, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
 import {
@@ -697,6 +699,12 @@ const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
   right: 'left',
 };
 
+/** A secret's Pokemon, met. */
+type SecretMeet = Extract<SecretReward, { kind: 'meet' }>;
+
+/** What `pokemonMet` records for a secret met on a line, which has no figure of its own. */
+const secretMetKey = (id: string): string => `secret:${id}`;
+
 export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private bounds: GridBounds = { width: 0, height: 0 };
   /** The dark round the place the player is in, on a map made of several (`frameArea`). */
@@ -963,6 +971,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         readonly floatY: number;
         elapsedMs: number;
         dots: number;
+        /** A secret on the end of this line (`world/secrets.ts`): what bites is its. */
+        readonly secret?: { readonly id: string; readonly reward: SecretMeet };
       }
     | undefined;
   /** A standing Pokemon met by speaking to it: the fight that follows its cry. */
@@ -4199,11 +4209,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const rng = this.runSession.rng;
-    const plan = planCast(rng === undefined ? undefined : () => rng.next());
+    const cast = planCast(rng === undefined ? undefined : () => rng.next());
+    // A secret's water bites on the first cast of a raid it is open: the clue
+    // promised something there, and "not this time" would be a lie.
+    const secret = this.secretOnTheLine(tile);
+    const plan = secret ? { ...cast, bites: true } : cast;
     const float = this.drawFloat(tile);
     this.fishing = {
       rod,
       water: fishingWaterAt(this.currentMap.id, tile),
+      ...(secret ? { secret } : {}),
       plan,
       float,
       floatY: float.y,
@@ -4254,10 +4269,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const rng = this.runSession?.rng;
-    const wild = rollEncounter(
+    const rolled = rollEncounter(
       fishingTable(cast.water, cast.rod),
       rng === undefined ? undefined : () => rng.next(),
     );
+    const wild = cast.secret
+      ? {
+          speciesId: cast.secret.reward.speciesId,
+          level: cast.secret.reward.level,
+          ...(cast.secret.reward.shiny ? { shiny: true } : {}),
+        }
+      : rolled;
+    if (cast.secret && this.runSession) {
+      (this.runSession.pokemonMet ??= []).push(secretMetKey(cast.secret.id));
+    }
     paintFloat(cast.float.clear(), true).setY(cast.floatY);
     audioManager.play('fishBite');
     this.cameras.main.shake(90, 0.003);
@@ -4266,7 +4291,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // first, and the fight follows it as a standing Pokemon's does.
     this.mapObjects.push(cast.float);
     this.pendingWildBattle = wild ?? undefined;
-    this.dialogBox.showMessages([ON_THE_HOOK]);
+    this.dialogBox.showMessages(cast.secret ? [secretById(cast.secret.id)!.foundLine] : [ON_THE_HOOK]);
   }
 
   /** Puts a cast away unanswered: the float out of the water and the box down. */
@@ -5302,6 +5327,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    // A secret's person gives only while it is open (`world/secrets.ts`); on
+    // any other raid they say their own lines, which are its clue.
+    const secretGift = entity?.secret ? this.secretGift(entity.secret) : undefined;
+    if (secretGift) {
+      this.dialogBox.showMessages([...this.speakForGift(secretGift, secretGift.after)]);
+      return;
+    }
+
     const gift = entity ? giftGivenBy(entity.id) : undefined;
     if (gift) {
       this.dialogBox.showMessages([...this.speakForGift(gift, entity!.dialogLines)]);
@@ -5323,13 +5356,65 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.runSession) {
       (this.runSession.pokemonMet ??= []).push(entity.id);
     }
+    const secret = this.openSecret(entity.secret);
     this.pendingWildBattle = {
       speciesId: species,
       level,
       // A legend is a boss you can keep: no ball until it is beaten, then one.
       ...(entity.legendary ? { legendary: true } : {}),
+      ...(secret?.reward?.kind === 'meet' && secret.reward.shiny ? { shiny: true } : {}),
     };
-    this.dialogBox.showMessages([...entity.dialogLines]);
+    // A secret's Pokemon is met with the words of finding it.
+    const found = secret ? secretById(secret.id)?.foundLine : undefined;
+    this.dialogBox.showMessages(found ? [found, ...entity.dialogLines] : [...entity.dialogLines]);
+  }
+
+  /** A secret open this raid (`world/secrets.ts`), with what its nook holds next. */
+  private openSecret(id: string | undefined): OpenSecret | undefined {
+    return id === undefined ? undefined : this.runSession?.plan?.secrets.find((secret) => secret.id === id);
+  }
+
+  /**
+   * The gift a secret's person holds this raid: open, and the gift is its
+   * reward. Once a raid has banked it they still have their after-lines, which
+   * `speakForGift` says for a gift already given.
+   */
+  private secretGift(id: string): PokemonGift | undefined {
+    const secret = secretById(id);
+    const open = this.openSecret(id);
+    const reward = secret?.rewards.find((each) => each.kind === 'gift');
+    if (!secret || !open || reward?.kind !== 'gift') {
+      return undefined;
+    }
+    return { ...reward.gift, offer: [secret.foundLine, ...reward.gift.offer] };
+  }
+
+  /**
+   * The secret on the end of a line cast at `tile`: one open this raid whose
+   * nook is the water of a place that holds the tile, met on the first bite.
+   */
+  private secretOnTheLine(tile: GridPosition): { readonly id: string; readonly reward: SecretMeet } | undefined {
+    for (const open of this.runSession?.plan?.secrets ?? []) {
+      const secret = secretById(open.id);
+      if (
+        secret?.nook !== 'line' ||
+        open.reward?.kind !== 'meet' ||
+        (this.runSession?.pokemonMet ?? []).includes(secretMetKey(open.id))
+      ) {
+        continue;
+      }
+      const inPlace = districtsForMap(this.currentMap.id).some(
+        (district) =>
+          district.name === secret.place &&
+          district.areas.some(
+            (area) => tile.x >= area.x && tile.x < area.x + area.width && tile.y >= area.y && tile.y < area.y + area.height,
+          ),
+      );
+      if (inPlace) {
+        return { id: open.id, reward: open.reward };
+      }
+    }
+    return undefined;
   }
 
   /**
@@ -5339,7 +5424,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private wasMet(entity: WorldEntity): boolean {
     return (
       entity.pokemon !== undefined &&
-      ((this.runSession?.pokemonMet ?? []).includes(entity.id) || legendCaught(entity, this.caughtLegends))
+      ((this.runSession?.pokemonMet ?? []).includes(entity.id) ||
+        legendCaught(entity, this.caughtLegends) ||
+        // A secret's Pokemon stands only on a raid it is open, until it is had.
+        (entity.secret !== undefined && this.openSecret(entity.secret)?.reward?.kind !== 'meet'))
     );
   }
 
@@ -7196,6 +7284,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (errand) {
       new SaveManager().recordErrandFound(item.id);
       return `Found ${item.displayName}! Walk out with it and ${errand.name} gets it back.${this.reseatNote()}`;
+    }
+    // A secret's find is said as the clue promised it, and is only the
+    // player's once it is carried home (`world/secrets.ts`).
+    const secret = loot!.secret !== undefined ? secretById(loot!.secret) : undefined;
+    if (secret?.rewards.some((reward) => reward.kind === 'item' && reward.itemId === item.id)) {
+      return `${secret.foundLine} Found ${item.displayName}! It is only yours once you carry it home.${this.reseatNote()}`;
     }
     // Money is found as a sum, the way these games pay it out: "Found ₽40!".
     const found = isCurrency(item.id)

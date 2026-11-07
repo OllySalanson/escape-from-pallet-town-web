@@ -121,6 +121,8 @@ function describeEffect(
       return { effect: 'Put down at home', usable: false };
     case 'wearable':
       return { effect: 'Worn from the wardrobe', usable: false };
+    case 'relic':
+      return { effect: 'For Professor Oak', usable: false };
     case 'held':
       // Unreachable while `isMedicine` is the filter above, and answered anyway:
       // gear is given, never used, so there is no treatment to describe.

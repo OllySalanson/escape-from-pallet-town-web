@@ -206,6 +206,14 @@ export type ItemEffect =
    * it in the vault, and it is worn from the wardrobe, never used.
    */
   | { readonly type: 'wearable' }
+  /**
+   * A find from one of the vale's secrets (`../world/secrets.ts`): a piece of
+   * the torn chart, or a fossil. Nothing to use in a raid; found, never
+   * packed, and lost with the pack on a wipe unless the secure container kept
+   * room for it, as a material is. What it is for is at home: the chart is
+   * joined in Oak's lab, a fossil is woken by his machine (`../hub/fossils.ts`).
+   */
+  | { readonly type: 'relic' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -738,6 +746,49 @@ export const ITEMS = {
     description: "Brock's own tools, in a crate stencilled PEWTER. He left it at the quarry in Greystone Peaks.",
     effect: { type: 'errand' },
   },
+  // The vale's secrets (`../world/secrets.ts`). Three pieces of an old sea
+  // chart, each found under a different sky, and FireRed's two fossils, which
+  // Oak's machine wakes (`../hub/fossils.ts`).
+  'chart-piece-1': {
+    id: 'chart-piece-1',
+    displayName: 'Torn chart (moor)',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A corner of an old sea chart, found where the Grey Stones\' shadow ends at dusk. There are more pieces.',
+    effect: { type: 'relic' },
+  },
+  'chart-piece-2': {
+    id: 'chart-piece-2',
+    displayName: 'Torn chart (hollow)',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A strip of an old sea chart, left by the tappers\' pot on a Sunday. Somebody meant it to be found.',
+    effect: { type: 'relic' },
+  },
+  'chart-piece-3': {
+    id: 'chart-piece-3',
+    displayName: 'Torn chart (fold)',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A piece of an old sea chart, tucked in the Lost Fold\'s wall. The bells only ring for it after dark.',
+    effect: { type: 'relic' },
+  },
+  'helix-fossil': {
+    id: 'helix-fossil',
+    displayName: 'Helix Fossil',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A fossil of an ancient sea Pokémon, shaped like a seashell. Professor Oak\'s machine can wake it.',
+    effect: { type: 'relic' },
+  },
+  'dome-fossil': {
+    id: 'dome-fossil',
+    displayName: 'Dome Fossil',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A fossil of an ancient sea Pokémon, shaped like a shell. Professor Oak\'s machine can wake it.',
+    effect: { type: 'relic' },
+  },
   'old-amber': {
     id: 'old-amber',
     displayName: 'Old Amber',
@@ -1251,7 +1302,11 @@ export type ErrandItemId = {
  * stop being the thing the loop is about. Furniture is the same: a piece in the
  * house is worth looking at because a raid carried it home.
  */
-export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId | FurnitureItemId | WearableItemId>;
+/** The finds of the vale's secrets (`../world/secrets.ts`): the torn chart's pieces and the fossils. */
+export const RELIC_ITEM_IDS = ['chart-piece-1', 'chart-piece-2', 'chart-piece-3', 'helix-fossil', 'dome-fossil'] as const;
+export type RelicItemId = (typeof RELIC_ITEM_IDS)[number];
+
+export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId | FurnitureItemId | WearableItemId | RelicItemId>;
 
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = Object.values(ITEMS);
 
@@ -1318,7 +1373,7 @@ export function isPack(itemId: string): boolean {
  * beyond the wipe in advance would be a prize with no risk in carrying it home.
  */
 /** The kinds of thing found in a raid and never packed for one (`isFoundOnly`): defined before the list below, which asks it as the module loads. */
-const FOUND_ONLY_EFFECTS: ReadonlySet<ItemEffect['type']> = new Set(['material', 'currency', 'pack', 'errand', 'furniture', 'wearable']);
+const FOUND_ONLY_EFFECTS: ReadonlySet<ItemEffect['type']> = new Set(['material', 'currency', 'pack', 'errand', 'furniture', 'wearable', 'relic']);
 
 export const FOUND_ONLY_IDS: readonly ItemId[] = ITEM_DEFINITIONS.filter((item) =>
   isFoundOnly(item.id),
@@ -1576,6 +1631,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} is for Brock’s Workshop, not the field.` };
     case 'currency':
       return { used: false, message: `${item.displayName} is only good at Bill's counter.` };
+    case 'relic':
+      return { used: false, message: `${item.displayName} is for Professor Oak. Carry it home.` };
     case 'pickaxe':
       return { used: false, message: `${item.displayName} digs out buried exits. Face the rubble and press the interact key.` };
     case 'rod':

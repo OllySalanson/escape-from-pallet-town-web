@@ -101,6 +101,8 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
     billReadsYou: scene.billReadsYou,
     billNames: scene.billNames,
     billStrikes: scene.billStrikes,
+    // The vale's rumours are their own test's (`world/secrets.test.ts`).
+    hearRumour: () => undefined,
   };
   const speak = (id: string, screen: string): void => {
     (scene.speakToKeeper as (this: typeof stand, entered: unknown, screen: string) => void).call(stand, roomNamed(id as never)!, screen);

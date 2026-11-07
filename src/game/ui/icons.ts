@@ -86,6 +86,13 @@ export const ITEM_ICONS = {
   'old-amber': 'old-amber',
   'ships-log': 'ships-log',
   'gold-teeth': 'gold-teeth',
+  // The vale's secret finds (`scripts/draw-relic-icons.mjs`): three torn
+  // corners of one chart, and FireRed's two fossils.
+  'chart-piece-1': 'chart-piece-1',
+  'chart-piece-2': 'chart-piece-2',
+  'chart-piece-3': 'chart-piece-3',
+  'helix-fossil': 'helix-fossil',
+  'dome-fossil': 'dome-fossil',
   leftovers: 'leftovers',
   'focus-band': 'focus-band',
   'life-orb': 'life-orb',

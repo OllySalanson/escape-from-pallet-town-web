@@ -69,6 +69,12 @@ export interface WorldEntity {
   idle?: NpcIdle;
   /** What they call out as a raid goes past, unasked (`villageCalls.ts`). */
   calls?: readonly string[];
+  /**
+   * The secret (`secrets.ts`) this belongs to: its clue (a sign), the Pokemon
+   * that stands in its nook only while it is open, or the person who gives
+   * while it is open.
+   */
+  secret?: string;
 }
 
 /**
