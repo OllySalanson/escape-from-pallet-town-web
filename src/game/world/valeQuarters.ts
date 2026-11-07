@@ -31,6 +31,30 @@ export interface ValeGym {
   readonly badge: string;
   /** The gym building, as the stitched file names it. */
   readonly building: string;
+  /** Where the gym stands, as the map names the place. */
+  readonly standsIn: string;
+  /**
+   * Who they are when they are hunting (`world/hunters.ts`): the leaders are
+   * the same people as the rivals, so their face in the hall is the hunter's.
+   */
+  readonly rival: string;
+  /**
+   * What the Gym Guide at the Raid Arena's door says about them before the
+   * badge is won, in FireRed's Gym Guide's manner: the gym, and the types that
+   * do well there. Facts, never the answer: the pairs are the player's to find.
+   */
+  readonly advice: readonly string[];
+  /**
+   * Their words in THE RAID ARENA, where once met they spar with their real gym
+   * team for nothing (`base/gymPractice.ts`): the offer, then how it went.
+   */
+  readonly practice: {
+    readonly offer: string;
+    /** Their last Pokémon fainting in a practice: their gym's own words would hand over a badge. */
+    readonly beaten: string;
+    readonly won: string;
+    readonly lost: string;
+  };
 }
 
 export interface ValeQuarter {
@@ -89,6 +113,18 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
       leader: 'Misty',
       badge: 'CASCADE BADGE',
       building: 'Cerulean Gym',
+      standsIn: 'GULL STRAND',
+      rival: 'misty',
+      advice: [
+        'Next gym: CERULEAN GYM on GULL STRAND. MISTY holds THE COAST.',
+        'Her Water types swim fast in her rain. Electric and Grass hit hard!',
+      ],
+      practice: {
+        offer: 'MISTY: "Try my gym team? Same Pokémon, same rain, no stakes."',
+        beaten: "Hmph! That's practice. No badge for practice!",
+        won: 'MISTY: "Fine, that worked. Now do it where it counts!"',
+        lost: 'MISTY: "That\'s what waits at the Cerulean Gym. Think on it!"',
+      },
     },
     districts: ['THE SUNKEN QUARTER', "SMUGGLERS' COVE"],
     landings: ['greystone-vale-old-quay', 'greystone-vale-cove-steps'],
@@ -100,6 +136,32 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
     ],
   },
 ];
+
+/** The gyms in the order a save must beat them (the captain: Misty, then Koga, then Lt. Surge). */
+export function valeGyms(): readonly ValeGym[] {
+  return VALE_QUARTERS.flatMap((quarter) => (quarter.gym ? [quarter.gym] : []));
+}
+
+/** The first gym in the order whose leader this save has not beaten, if any. */
+export function nextGym(defeatedBosses: readonly string[]): ValeGym | undefined {
+  return valeGyms().find((gym) => !defeatedBosses.includes(gym.bossId));
+}
+
+/** A gym by its leader's boss id. */
+export function gymOf(bossId: string): ValeGym | undefined {
+  return valeGyms().find((gym) => gym.bossId === bossId);
+}
+
+/**
+ * The leaders this save has met in a raid - fought, won or lost
+ * (`raidProgress.gymsMet`) - or beaten, in the order the gyms are met: who will
+ * spar in THE RAID ARENA with their real team (the captain's pick: free practice,
+ * once you have met that leader in a raid, so the first meeting stays a fright).
+ */
+export function leadersMet(progress: { readonly defeatedBosses: readonly string[]; readonly gymsMet?: readonly string[] }): readonly ValeGym[] {
+  const met = new Set([...progress.defeatedBosses, ...(progress.gymsMet ?? [])]);
+  return valeGyms().filter((gym) => met.has(gym.bossId));
+}
 
 /** The quarter a landing lies in, if it lies in one. */
 export function quarterOfLanding(insertionId: string): ValeQuarter | undefined {

@@ -212,6 +212,11 @@ export interface ExtractionReport {
   /** What won the fight the raid was lost in, when it was lost in one. */
   readonly lostTo?: LostTo;
   /**
+   * What beat you in that fight, when one thing stands out: a fact and a count
+   * read off the fight's own lines (`pokemon/battle/whatBeatYou.ts`).
+   */
+  readonly beatenBy?: string;
+  /**
    * The secure container went in as the autofill left it, so what it held was
    * not a call the player made. Absent reads as chosen.
    */
@@ -263,6 +268,8 @@ export interface ExtractionReportInput {
    * reads as a trainer.
    */
   readonly lostTo?: LostTo;
+  /** What beat you in the fight the raid was lost in, if one thing stands out (`whatBeatYou`). */
+  readonly beatenBy?: string;
   /**
    * Rare finds this raid saw and left on the ground, by display name.
    *
@@ -432,6 +439,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ],
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     ...(input.cause === 'defeated' && input.lostTo ? { lostTo: input.lostTo } : {}),
+    ...(input.cause === 'defeated' && input.beatenBy ? { beatenBy: input.beatenBy } : {}),
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,

@@ -1,6 +1,7 @@
 import { buildContractBoard } from '../hub/contractBoard';
 import { errandPlace, errandThing, errandsInHand, type ErrandProgress } from '../hub/errands';
 import type { StandingBoardProgress } from '../objectives/standingBoard';
+import { nextGym } from '../world/valeQuarters';
 
 /**
  * What the Gym Guide at the Raid Arena's door says: the day's work, in his own
@@ -22,7 +23,9 @@ import type { StandingBoardProgress } from '../objectives/standingBoard';
 /** Asked after his day's work, of anybody who has seen the trailer he closes. */
 export const GYM_GUIDE_REEL_QUESTION = 'WATCH THE REEL AGAIN?';
 
-export function gymGuideLines(progress: StandingBoardProgress & ErrandProgress): readonly string[] {
+export function gymGuideLines(
+  progress: StandingBoardProgress & ErrandProgress & { readonly gymsMet?: readonly string[] },
+): readonly string[] {
   const board = buildContractBoard(progress);
   const [job] = board.rows;
   const work = job
@@ -37,7 +40,32 @@ export function gymGuideLines(progress: StandingBoardProgress & ErrandProgress):
   const favours = errandsInHand(progress).map(
     (errand) => `${errand.name} is waiting on ${errandThing(errand).toUpperCase()}, from ${errandPlace(errand)}.`,
   );
-  return [...work, ...favours, 'Kit up through that door!'];
+  return [...work, ...favours, ...gymAdvice(progress), 'Kit up through that door!'];
+}
+
+/**
+ * The next gym and the types that do well there, in FireRed's Gym Guide's own
+ * manner - the facts, never the answer - once a raid has been gone on (a first
+ * raid has nothing on its way that the fall does not need, `hub/firstRaid.ts`).
+ * Once the leader has been met, he says they will spar in the hall for nothing.
+ */
+export function gymAdvice(progress: {
+  readonly defeatedBosses: readonly string[];
+  readonly gymsMet?: readonly string[];
+  readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>>;
+}): readonly string[] {
+  const raids = Object.values(progress.raidRecord ?? {}).reduce((sum, record) => sum + record.deployed, 0);
+  const gym = nextGym(progress.defeatedBosses);
+  if (!gym || raids === 0) {
+    return [];
+  }
+  const met = progress.gymsMet?.includes(gym.bossId) ?? false;
+  return [
+    ...gym.advice,
+    met
+      ? `You've met ${gym.leader.toUpperCase()}. Now you can spar in the hall for free!`
+      : `Meet ${gym.leader.toUpperCase()} once, and you can spar in the hall for free.`,
+  ];
 }
 
 /** A line as a sentence: a full stop on the end, unless it has one. */

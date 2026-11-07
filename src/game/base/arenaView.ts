@@ -95,6 +95,8 @@ import {
 import { wallMapPicture } from './wallMap';
 import type { OverviewSource } from './valeOverviewView';
 import { townsOf } from './valeOverview';
+import { sealedQuarters } from './sealedQuarters';
+import { openedDoors } from '../world/gates';
 import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
 import { PLAYER_BANNER_AT, PLAYER_BANNER_SIZE, paintPlayerBanner } from './arenaBouts';
 import { COINS_TO_WAKE_THE_EYES, COIN_PLINK_MS, coinAt } from './pitCoins';
@@ -782,6 +784,8 @@ export class ArenaView {
       isWalked: (tile) => this.isWalked(tile),
       cloudInk: calmCloudInk(this.light),
       light: this.light,
+      // A quarter a gym holds shut lies under a heavier cloud with its badge pressed in.
+      sealed: sealedQuarters(this.mapIdValue, openedDoors(this.game.raidProgress)),
       textures: { light: LIGHT_TEXTURE, shadow: SHADOW_TEXTURE },
       trailInk: TRAIL_INK,
       trailShade: TRAIL_SHADE,

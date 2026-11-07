@@ -355,7 +355,7 @@ export class ExtractionScene extends Phaser.Scene {
       // what becomes of the result.
       hints: escapeHtml(this.footerNote()),
       body: `<main class="px-body extraction-layout ${escaped ? 'extraction-won' : 'extraction-lost'}">${pixelWindow(
-        `<strong class="px-name">${escapeHtml(report.headline)}</strong>${report.closeCall ? `<strong class="px-name">${escapeHtml(report.closeCall)}</strong>` : ''}<span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>`,
+        `<strong class="px-name">${escapeHtml(report.headline)}</strong>${report.closeCall ? `<strong class="px-name">${escapeHtml(report.closeCall)}</strong>` : ''}<span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>${report.beatenBy ? `<span class="px-wrap what-beat-you">What beat you? ${escapeHtml(report.beatenBy)}</span>` : ''}`,
         { className: `extraction-verdict ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
       )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
         title: escapeHtml(this.footerTitle()),

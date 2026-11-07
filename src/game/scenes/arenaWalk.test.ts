@@ -39,6 +39,8 @@ const scene = (arena: unknown) =>
     pressedAtStairMs: 0,
     place: { room: { room: { keeper: { position: ARENA_KEEPER_TILE } } } },
     rivalHere: null,
+    leadersHere: [],
+    leaderOn: (BaseScene.prototype as unknown as { leaderOn: unknown }).leaderOn,
     isBlocked: (tile: GridPosition) => SOLID[tile.y]?.[tile.x] ?? true,
     personOn: (BaseScene.prototype as unknown as { personOn: unknown }).personOn,
   }) as unknown as { pressedAtStairMs: number };

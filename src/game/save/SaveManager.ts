@@ -1,4 +1,5 @@
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
+import { gymOf } from '../world/valeQuarters';
 import {
   buyPrize,
   NO_GAME_CORNER,
@@ -270,6 +271,12 @@ export interface RaidProgress {
   readonly landings?: LandingRecord;
   /** Bouts for show in THE RAID ARENA: who has been beaten in a row (`base/arenaBouts.ts`). */
   readonly bouts?: BoutRecord;
+  /**
+   * The gym leaders this save has fought in a raid, won or lost (`world/valeQuarters.ts`,
+   * `leadersMet`): once met, a leader spars in THE RAID ARENA with their real gym
+   * team for nothing. Written as the fight starts (`recordGymMet`). Absent is none.
+   */
+  readonly gymsMet?: readonly string[];
   /** Coins over the rail and what has been picked up for them (`base/pitCoins.ts`). Absent on a save that has tossed none. */
   readonly pit?: PitRecord;
   /** What the pit remembers of the raids that went down into it (`world/raidMemory.ts`). */
@@ -965,6 +972,21 @@ export class SaveManager {
     const { record, ladderDone } = afterBout(game.raidProgress.bouts, rival, won);
     const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, bouts: record } };
     return this.save(next) ? { game: next, record, ladderDone } : null;
+  }
+
+  /**
+   * A gym leader met in a raid, written as the fight starts - as a beaten boss is
+   * written at the win - so a raid lost to them, or abandoned in the middle of
+   * the fight, has still met them. Nothing but `raidProgress.gymsMet` is
+   * touched. Answers whether this was the first meeting.
+   */
+  public recordGymMet(bossId: string): boolean {
+    const game = this.load();
+    const met = game?.raidProgress.gymsMet ?? [];
+    if (!game || gymOf(bossId) === undefined || met.includes(bossId)) {
+      return false;
+    }
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, gymsMet: [...met, bossId] } });
   }
 
   /**
@@ -2142,6 +2164,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(readOutRun(value.outRun) ?? {}),
     ...(readPit(value.pit) ?? {}),
     ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
+    ...(Array.isArray(value.gymsMet) ? { gymsMet: uniqueStrings(value.gymsMet).filter((id) => gymOf(id) !== undefined) } : {}),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }

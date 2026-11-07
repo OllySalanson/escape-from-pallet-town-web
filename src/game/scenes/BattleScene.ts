@@ -50,6 +50,7 @@ import {
   withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import type { WeatherId } from '../pokemon/battle/weather';
+import { whatBeatYou } from '../pokemon/battle/whatBeatYou';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import { flashScreen } from '../ui/screenFlash';
@@ -326,7 +327,16 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
    * earning nothing, with no run session, so nothing in it can reach a save. All
    * that goes home is which way it went, and to where the player stood.
    */
-  exhibition?: { readonly rival: HunterRivalId; readonly at: GridPosition };
+  exhibition?: {
+    readonly rival: HunterRivalId;
+    readonly at: GridPosition;
+    /**
+     * Set when the bout is a practice against a gym leader's real team
+     * (`base/gymPractice.ts`): the leader's boss id. It goes home as a practice,
+     * which the hall writes nothing about, rather than as a bout on the ladder.
+     */
+    readonly practice?: string;
+  };
   /**
    * The weather of the place the fight started in - the district the player was
    * standing in when it began. It is not part of `RaidCarriage` because it is
@@ -530,6 +540,13 @@ export class BattleScene extends Phaser.Scene {
   private returnLocation: BattleSceneData['returnLocation'];
   private returnScene: BattleSceneData['returnScene'];
   private exhibition: BattleSceneData['exhibition'];
+  /**
+   * Every batch of events this fight has resolved, in order, and the weather it
+   * began in: what the line that says what beat you is read from
+   * (`pokemon/battle/whatBeatYou.ts`) when the fight is lost.
+   */
+  private fightTurns: (readonly BattleEvent[])[] = [];
+  private fightWeather: WeatherId | null = null;
   /** Which Pokemon each slot's plate is currently drawn for. */
   private displayed = new Map<string, PokemonInstance>();
   /**
@@ -845,7 +862,7 @@ export class BattleScene extends Phaser.Scene {
       // same words a move that brought it on would use. Nothing else announces
       // it: after this it speaks only when it takes HP off somebody.
       ...(this.state.weather ? [weatherSetMessage(this.state.weather.id, false)] : []),
-      ...openingAbilityEvents(this.state).map((event) => eventToMessage(event, this.foeWord())),
+      ...this.noteOpening(openingAbilityEvents(this.state)).map((event) => eventToMessage(event, this.foeWord())),
     ], (index) => {
       const line = openingSounds[index];
       if (line?.sound) {
@@ -2008,8 +2025,13 @@ export class BattleScene extends Phaser.Scene {
       if (!this.dialog.isCurrentMessageComplete) {
         this.dialog.skip();
       } else {
-        this.dialog.advance();
-        if (this.mode === 'finished') {
+        // Leaving is for a press on the fight's own last line. The press that
+        // reads the last line of a turn can put the fight's closing lines up
+        // (`mode` turns 'finished' inside `advance`), and those are read too -
+        // a practice lost says what beat you after "You lost the bout."
+        const wasFinished = this.mode === 'finished';
+        const more = this.dialog.advance();
+        if (wasFinished && !more) {
           this.returnToWorld();
         }
       }
@@ -3446,7 +3468,13 @@ export class BattleScene extends Phaser.Scene {
       this.returnToWorld();
       return;
     }
-    this.dialog.showMessage(this.exhibition ? BOUT_LOST_LINE : 'You blacked out!');
+    if (this.exhibition) {
+      // A practice lost says what beat you, as a raid lost does on its result screen.
+      const beatenBy = this.exhibition.practice ? this.whatBeatThePlayer() : null;
+      this.dialog.showMessages(beatenBy ? [BOUT_LOST_LINE, `What beat you? ${beatenBy}`] : [BOUT_LOST_LINE]);
+      return;
+    }
+    this.dialog.showMessage('You blacked out!');
   }
 
   /**
@@ -3759,6 +3787,18 @@ export class BattleScene extends Phaser.Scene {
     return rewards;
   }
 
+  /** The fight's first events, kept as its first turn for the line that says what beat you. */
+  private noteOpening(events: readonly BattleEvent[]): readonly BattleEvent[] {
+    this.fightTurns = events.length > 0 ? [events] : [];
+    this.fightWeather = this.state.weather?.id ?? null;
+    return events;
+  }
+
+  /** What beat the player in this fight, if one thing stands out (`whatBeatYou`). */
+  private whatBeatThePlayer(): string | null {
+    return whatBeatYou(this.fightTurns ?? [], this.fightWeather ?? null);
+  }
+
   private showCombatEvents(
     events: readonly BattleEvent[],
     leadingMessages: readonly StagedNote[] = [],
@@ -3766,6 +3806,10 @@ export class BattleScene extends Phaser.Scene {
     /** Lines read straight after one of `events`, by that event's index. */
     afterEvents: ReadonlyMap<number, readonly StagedNote[]> = new Map(),
   ): void {
+    if (events.length > 0) {
+      // A scene a test builds without `create` has no log yet: it starts here.
+      (this.fightTurns ??= []).push(events);
+    }
     this.pendingCombatMessages = [
       ...leadingMessages.map(stagedNote),
       ...events.flatMap((event, index) => [
@@ -3988,10 +4032,13 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.exhibition) {
+      const won = this.state.outcome === 'victory';
       this.scene.start('base', {
         room: 'raid-arena',
         at: this.exhibition.at,
-        bout: { rival: this.exhibition.rival, won: this.state.outcome === 'victory' },
+        ...(this.exhibition.practice
+          ? { practice: { leader: this.exhibition.practice, won } }
+          : { bout: { rival: this.exhibition.rival, won } }),
       });
       return;
     }
@@ -4125,6 +4172,8 @@ export class BattleScene extends Phaser.Scene {
       lastStand: this.state.player.pokemon,
       // Whether anybody was there to go through the bag: a wild Pokemon is not.
       lostTo: this.trainer || this.hunterBattle ? 'trainer' : 'wild',
+      // The one thing the other side did that beat you, read off this fight's own lines.
+      beatenBy: this.whatBeatThePlayer() ?? undefined,
       // A wipe restocks the kit but revives nobody, so whether the lab will
       // let this player out again is read off the stash just written.
       fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
