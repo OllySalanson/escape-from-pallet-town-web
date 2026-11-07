@@ -107,6 +107,7 @@ export {
   machineForItem,
   machineForItemId,
   READ_IN_A_RAID,
+  USE_A_STONE,
   teachFromMachine,
   type TeachOutcome,
 } from './teaching';

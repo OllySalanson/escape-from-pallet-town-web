@@ -328,7 +328,7 @@ sightseeing.
 |---|---|---|
 | <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Walk | Walk |
 | <kbd>Space</kbd> / <kbd>Enter</kbd> | Talk, read, work a landmark, choose | On a door mat: speak to that keeper |
-| <kbd>B</kbd> | Open the pack | |
+| <kbd>B</kbd> | Open the pack | Your things: everything in storage, the next raid's pack, and a disc or stone to use |
 | <kbd>P</kbd> | Open the party | |
 | <kbd>O</kbd> | Professor Oak on the radio; again for the whole field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
