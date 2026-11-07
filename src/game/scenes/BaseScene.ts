@@ -65,7 +65,7 @@ import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import type { BoutiqueSceneData } from './BoutiqueScene';
 import type { GameCornerSceneData } from './GameCornerScene';
-import { attendantLines, prizeClerkLines } from '../minigames/gameCornerTalk';
+import { attendantLines, courseKeeperLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
@@ -116,9 +116,10 @@ import {
   type RoomThing,
 } from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
-import { HARBOUR_LANDMARKS } from '../base/landmarks';
+import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import {
+  COURSE_KEEPER_ID,
   HARBOUR_PEOPLE,
   harbourLifeAt,
   wardenLines,
@@ -4953,6 +4954,10 @@ export class BaseScene extends Phaser.Scene {
         this.openGameCorner('jump');
         return;
       }
+      if (thing?.opens === 'berry-picking') {
+        this.openMinigame('berry-picking');
+        return;
+      }
       if (thing) {
         this.say(thing.lines ?? [`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
       }
@@ -4995,6 +5000,11 @@ export class BaseScene extends Phaser.Scene {
       this.say(wardenLines(teeth), [target]);
       return;
     }
+    if (local?.id === COURSE_KEEPER_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      this.say(courseKeeperLines(this.freshGame().raidProgress), [target], () => this.openMinigame('field-course'));
+      return;
+    }
     if (local?.id === ANGLER_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       const lines = anglerLines(harbourRodLent || this.hasHarbourRod(), this.harbourCatchNames());
@@ -5023,7 +5033,16 @@ export class BaseScene extends Phaser.Scene {
       this.say([`${fixture.name} - ${fixture.note.toLowerCase()}.`], [target]);
       return;
     }
+    // THE FIELD-MOVE COURSE's gate runs the course, and its TIME BOARD is read.
+    if (COURSE_GATE_FRONT.some((tile) => sameTile(tile, target))) {
+      this.say(courseKeeperLines(this.freshGame().raidProgress), [target], () => this.openMinigame('field-course'));
+      return;
+    }
     const landmark = HARBOUR_LANDMARKS.find((each) => sameTile(each.at, target));
+    if (landmark?.id === 'time-board') {
+      this.say(timeBoardLines(this.freshGame().raidProgress, new Date()), [target]);
+      return;
+    }
     if (landmark) {
       this.say([`${landmark.name} - ${landmark.note.toLowerCase()}.`], [target]);
       return;
@@ -6379,6 +6398,38 @@ export class BaseScene extends Phaser.Scene {
     });
     this.scene.pause();
     this.scene.launch('game-corner', { mode, pausedBase: true } satisfies GameCornerSceneData);
+  }
+
+  /**
+   * BERRY PICKING or THE FIELD-MOVE COURSE: a game of its own over the paused
+   * harbour (`scenes/BerryPickingScene.ts`, `scenes/FieldCourseScene.ts`), as
+   * POKéMON JUMP is. Coming back, the place is drawn again, so a cabinet's or
+   * the course's caption says the new best.
+   */
+  private openMinigame(scene: 'berry-picking' | 'field-course'): void {
+    if (this.leaving) {
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.input.keyboard?.resetKeys();
+      this.savedGame = this.saveManager.load() ?? this.savedGame;
+      if (this.place.room) {
+        this.redrawRoom(this.savedGame);
+      } else {
+        // Out on the promenade the doors' second lines (the PRIZE WINDOW's
+        // tickets) are captions of the yard's own, so they are made again.
+        this.worldLabels.forEach((label) => label.destroy());
+        this.worldLabels = [];
+        this.createCaptions();
+      }
+      this.showHint(this.hintHere());
+    });
+    this.scene.pause();
+    this.scene.launch(scene, { pausedBase: true });
   }
 
   /**

@@ -1,17 +1,23 @@
-// Reads FireRed's own Pokémon Jump out of pret's disassembly: who may jump,
-// how each kind jumps, how the vine speeds up, what a jump scores and what a
-// score wins. THE GAME CORNER's cabinet plays by these (`src/game/minigames/
-// pokemonJump.ts`); nothing of it is typed out.
+// Reads FireRed's own Pokémon Jump and Dodrio Berry Picking out of pret's
+// disassembly. For the Jump: who may jump, how each kind jumps, how the vine
+// speeds up, what a jump scores and what a score wins. For Berry Picking: how
+// fast each berry falls at each stage, how far it falls, where a beak can
+// reach it, how many berries move the game up a stage, what each berry scores
+// and costs when it is missed, how long a beak takes back after a pick and
+// after a peck at nothing, and the score that wins a prize. THE GAME CORNER's
+// cabinets play by these (`src/game/minigames/pokemonJump.ts`,
+// `berryPicking.ts`); nothing of it is typed out.
 //
 //   git clone --filter=blob:none --no-checkout https://github.com/pret/pokefirered.git /tmp/pokefirered
-//   git -C /tmp/pokefirered sparse-checkout set --no-cone 'src/pokemon_jump.c'
+//   git -C /tmp/pokefirered sparse-checkout set --no-cone 'src/pokemon_jump.c' 'src/dodrio_berry_picking.c'
 //   git -C /tmp/pokefirered checkout 037335f4c725d7c9aecdac87066f2002b4bd7e14
 //   node scripts/fetch-frlg-minigames.mjs /tmp/pokefirered
 //
-// It writes the committed snapshot `tools/minigames/frlg-pokemon-jump.json`
-// and the generated module `src/game/minigames/generated/pokemonJump.ts`;
-// `pokemonJump.test.ts` holds the one to the other, so a hand edit to either
-// fails. Only Kanto's 151 are kept: FireRed's list runs on into Johto and
+// It writes the committed snapshots `tools/minigames/frlg-pokemon-jump.json`
+// and `frlg-berry-picking.json`, and the generated modules
+// `src/game/minigames/generated/pokemonJump.ts` and `berryPicking.ts`;
+// `pokemonJump.test.ts` and `berryPicking.test.ts` hold the one to the other,
+// so a hand edit to either fails. Only Kanto's 151 are kept: FireRed's list runs on into Johto and
 // Hoenn, whose kinds this game does not have.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -127,3 +133,113 @@ ${prizes.map(({ score, quantity }) => `  { score: ${score}, quantity: ${quantity
 `,
 );
 console.log(`${mons.length} jumpers, arcs ${Object.entries(arcs).map(([t, a]) => `${t} ${a.length}`).join(', ')}`);
+
+// --- Dodrio Berry Picking ---------------------------------------------------
+
+const dodrio = readFileSync(`${pret}/src/dodrio_berry_picking.c`, 'utf8');
+
+/** The body of a C initialiser `name[...] = { ... };` in the berry game. */
+function dodrioTable(name) {
+  const at = dodrio.indexOf(`${name}[`);
+  if (at < 0) throw new Error(`no ${name} in dodrio_berry_picking.c`);
+  const open = dodrio.indexOf('{', at);
+  let depth = 0;
+  for (let i = open; i < dodrio.length; i += 1) {
+    if (dodrio[i] === '{') depth += 1;
+    if (dodrio[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return dodrio.slice(open + 1, i);
+    }
+  }
+  throw new Error(`${name} never closes`);
+}
+
+const define = (name) => {
+  const match = new RegExp(`#define ${name} (\\d+)`).exec(dodrio);
+  if (!match) throw new Error(`no #define ${name}`);
+  return Number(match[1]);
+};
+
+/** A number FireRed writes inline, read by the comparison it stands in. */
+const inline = (pattern) => {
+  const match = pattern.exec(dodrio);
+  if (!match) throw new Error(`no ${pattern} in dodrio_berry_picking.c`);
+  return Number(match[1]);
+};
+
+const BERRIES = ['BLUE', 'GREEN', 'GOLD'];
+const fallDelays = [...dodrioTable('sBerryFallDelays').matchAll(/\{([^}]*)\}/g)].map(([, row]) =>
+  BERRIES.map((berry) => Number(new RegExp(`\\[BERRY_${berry}\\]\\s*=\\s*(\\d+)`).exec(row)[1])),
+);
+const multipliersBody = dodrioTable('sBerryScoreMultipliers');
+const multiplier = (berry) => Number(new RegExp(`\\[BERRY_${berry}\\]\\s*=\\s*(\\d+)`).exec(multipliersBody)[1]);
+
+const berrySnapshot = {
+  source: `pret/pokefirered ${PRET_COMMIT} src/dodrio_berry_picking.c`,
+  maxScore: define('MAX_SCORE'),
+  prizeScore: define('PRIZE_SCORE'),
+  difficulties: define('NUM_DIFFICULTIES'),
+  maxFallDist: define('MAX_FALL_DIST'),
+  eatFallDist: define('EAT_FALL_DIST'),
+  statusSquares: define('NUM_STATUS_SQUARES'),
+  fallDelays,
+  difficultyThresholds: numbers(dodrioTable('sDifficultyThresholds')),
+  scores: { blue: multiplier('BLUE'), green: multiplier('GREEN'), gold: multiplier('GOLD'), missed: multiplier('MISSED') },
+  pickDelay: inline(/\+\+sGame->inputDelay\[i\] >= (\d+)\)\s*\{[^}]*\}\s*break;\s*case INPUTSTATE_BAD_MISS/),
+  badMissDelay: inline(/case INPUTSTATE_BAD_MISS:[\s\S]*?\+\+sGame->inputDelay\[i\] >= (\d+)/),
+  eatDelay: inline(/\+\+sGame->eatTimer\[column\] >= (\d+)/),
+  newBerryDelay: inline(/\+\+sGame->newBerryTimer\[i\] >= (\d+)/),
+};
+if (berrySnapshot.fallDelays.length !== 3 || berrySnapshot.difficultyThresholds.length !== berrySnapshot.difficulties) {
+  throw new Error('Berry Picking no longer reads as three speeds of three berries and a threshold a stage');
+}
+
+writeFileSync(new URL('../tools/minigames/frlg-berry-picking.json', import.meta.url), `${JSON.stringify(berrySnapshot, null, 2)}\n`);
+writeFileSync(
+  new URL('../src/game/minigames/generated/berryPicking.ts', import.meta.url),
+  `// Generated by scripts/fetch-frlg-minigames.mjs from ${berrySnapshot.source}.
+// Do not edit: re-run the script.
+
+/** The most a game can score (\`MAX_SCORE\`). */
+export const BERRY_PICKING_MAX_SCORE = ${berrySnapshot.maxScore};
+
+/** The score that wins a prize berry (\`PRIZE_SCORE\`). */
+export const BERRY_PICKING_PRIZE_SCORE = ${berrySnapshot.prizeScore};
+
+/** How many stages the game climbs through before it starts again faster (\`NUM_DIFFICULTIES\`). */
+export const BERRY_PICKING_DIFFICULTIES = ${berrySnapshot.difficulties};
+
+/** How many drops a berry falls before it hits the ground (\`MAX_FALL_DIST\`). */
+export const BERRY_PICKING_MAX_FALL = ${berrySnapshot.maxFallDist};
+
+/** The drop at which a berry is low enough to eat; the one above it is too (\`EAT_FALL_DIST\`). */
+export const BERRY_PICKING_EAT_FALL = ${berrySnapshot.eatFallDist};
+
+/** How many berries may hit the ground before the game is over (\`NUM_STATUS_SQUARES\`). */
+export const BERRY_PICKING_STATUS_SQUARES = ${berrySnapshot.statusSquares};
+
+/** Frames a berry waits between drops, blue, green and gold, at each of three speeds (\`sBerryFallDelays\`). */
+export const BERRY_PICKING_FALL_DELAYS: readonly (readonly [number, number, number])[] = [
+${berrySnapshot.fallDelays.map((row) => `  [${row.join(', ')}],`).join('\n')}
+];
+
+/** Berries eaten to reach each next stage (\`sDifficultyThresholds\`). */
+export const BERRY_PICKING_THRESHOLDS = [${berrySnapshot.difficultyThresholds.join(', ')}] as const;
+
+/** Points for a berry eaten, and taken off for one missed (\`sBerryScoreMultipliers\`). */
+export const BERRY_PICKING_SCORES = { blue: ${berrySnapshot.scores.blue}, green: ${berrySnapshot.scores.green}, gold: ${berrySnapshot.scores.gold}, missed: ${berrySnapshot.scores.missed} } as const;
+
+/** Frames before a beak can reach again after a pick (\`inputDelay\`, \`INPUTSTATE_PICKED\`). */
+export const BERRY_PICKING_PICK_DELAY = ${berrySnapshot.pickDelay};
+
+/** Frames before a beak can reach again after a peck at nothing (\`INPUTSTATE_BAD_MISS\`). */
+export const BERRY_PICKING_BAD_MISS_DELAY = ${berrySnapshot.badMissDelay};
+
+/** Frames between a beak closing on a berry and the berry being eaten (\`eatTimer\`). */
+export const BERRY_PICKING_EAT_DELAY = ${berrySnapshot.eatDelay};
+
+/** Frames before a new berry appears where one was eaten or fell (\`newBerryTimer\`). */
+export const BERRY_PICKING_NEW_BERRY_DELAY = ${berrySnapshot.newBerryDelay};
+`,
+);
+console.log(`berry picking: ${JSON.stringify(berrySnapshot.fallDelays)}, prize at ${berrySnapshot.prizeScore}`);

@@ -163,3 +163,141 @@ export function prizeWindowMarkup(state: PrizeWindowState): string {
     ...(state.status ? { status: state.status } : {}),
   });
 }
+
+// --- BERRY PICKING ------------------------------------------------------------
+
+/** One of the player's Pokémon, as the BERRY PICKING cabinet lists it. */
+export interface BerryCandidate {
+  readonly id: string;
+  readonly name: string;
+  readonly dexId: number;
+  readonly shiny: boolean;
+  readonly level: number;
+  /** How many heads it picks with, or undefined for a kind that cannot play. */
+  readonly heads: 2 | 3 | undefined;
+}
+
+export interface BerryTeamState {
+  readonly candidates: readonly BerryCandidate[];
+  readonly chosen: string | null;
+  readonly tickets: number;
+  readonly best: number;
+  readonly status?: string;
+  readonly last?: { readonly score: number; readonly payout: GamePayout; readonly berries: readonly string[] };
+}
+
+/** The cabinet's own screen: pick the bird, then play. */
+export function berryTeamMarkup(state: BerryTeamState): string {
+  const birds = state.candidates.filter((candidate) => candidate.heads !== undefined);
+  const grounded = state.candidates.filter((candidate) => candidate.heads === undefined);
+  const row = (candidate: BerryCandidate, index: number): string => {
+    const chosen = state.chosen === candidate.id;
+    const heads = candidate.heads;
+    const help = heads
+      ? chosen
+        ? `${candidate.name} is picking.`
+        : heads === 3
+          ? `${candidate.name}: three heads, one for each column.`
+          : `${candidate.name}: two heads. It reaches the middle and one side, and turns to reach the other.`
+      : `${candidate.name} cannot play: BERRY PICKING wants a DODRIO, or a DODUO at a push.`;
+    const tag = heads ? pixelTag(chosen ? 'Picking' : `${heads} heads`, chosen ? 'good' : 'plain', chosen) : pixelTag('Cannot pick', 'risk');
+    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${heads ? `data-picker="${candidate.id}"` : 'aria-disabled="true"'}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${heads ? ` · ${heads === 3 ? 'one head a column' : 'two heads, turns to reach'}` : ' · no beak for it'}</small></span>${tag}</button>`;
+  };
+  const rows = [
+    ...birds.map(row),
+    ...(grounded.length > 0 ? ['<h3 class="px-subheading">Not a picker</h3>', ...grounded.map((candidate, index) => row(candidate, birds.length + index))] : []),
+  ].join('');
+  const empty =
+    birds.length === 0
+      ? '<p class="px-empty px-wrap">Nobody here can pick. A DODUO stands about the vale - catch one, and it is a DODRIO at 31.</p>'
+      : '';
+  const ready = state.chosen !== null;
+  const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? 'LEFT, UP and RIGHT reach for the berry over that head. Ten on the ground ends it.' : 'Choose who picks first.')}">${state.last ? 'Again' : 'Play'}</button>`;
+  const body = `<main class="px-body game-corner-layout">${pixelWindow(
+    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${empty}${rows}</div>`,
+    { heading: 'Who picks?', note: ready ? '1 of 1' : '0 of 1' },
+  )}${pixelCommitBar({
+    title: state.last ? `Scored ${number(state.last.score)}` : 'BERRY PICKING',
+    lines: [
+      ...(state.last ? resultLines(state.last) : []),
+      `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. Blue 10, green 30, gold 50; every one that lands costs 50.</small>`,
+    ],
+    actions: `<button class="px-window px-button" data-close data-help="Back to the arcade.">Done</button>${play}`,
+  })}</main>`;
+  return pixelScreen({
+    title: 'BERRY PICKING',
+    place: 'Game Corner · ',
+    back: { label: 'Done', attribute: 'data-close' },
+    aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
+    body,
+    hints: 'Arrows choose · ENTER picks this one · ESC leaves',
+    ...(state.status ? { status: state.status } : {}),
+  });
+}
+
+// --- THE FIELD-MOVE COURSE ------------------------------------------------------
+
+/** One of the player's Pokémon, as the course keeper looks them over. */
+export interface CourseCandidate {
+  readonly id: string;
+  readonly name: string;
+  readonly dexId: number;
+  readonly shiny: boolean;
+  readonly level: number;
+  /** The field moves it could do on the course, in the keeper's words. */
+  readonly moves: readonly string[];
+}
+
+export interface CourseTeamState {
+  readonly candidates: readonly CourseCandidate[];
+  readonly chosen: readonly string[];
+  readonly most: number;
+  /** What the chosen team can do between them. */
+  readonly teamMoves: readonly string[];
+  /** The fastest the chosen team could possibly go, as the board writes it. */
+  readonly fastest: string | null;
+  readonly tickets: number;
+  readonly best: string | null;
+  readonly status?: string;
+  readonly last?: { readonly time: string; readonly payout: GamePayout };
+}
+
+/** The course keeper's screen: choose up to three to go round with, then run. */
+export function courseTeamMarkup(state: CourseTeamState): string {
+  const row = (candidate: CourseCandidate, index: number): string => {
+    const chosen = state.chosen.includes(candidate.id);
+    const full = !chosen && state.chosen.length >= state.most;
+    const can = candidate.moves.length > 0 ? candidate.moves.join(', ') : 'no field moves';
+    const help = chosen
+      ? `${candidate.name} is going round. Choose again to leave it out.`
+      : full
+        ? `${state.most} are going round already. Take one out first.`
+        : `${candidate.name} could do: ${can}.`;
+    return `<button class="px-row${chosen ? ' is-selected' : ''}" data-runner="${candidate.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${can}</small></span>${pixelTag(chosen ? 'Going' : `${candidate.moves.length} of 4`, chosen ? 'good' : candidate.moves.length > 0 ? 'plain' : 'risk', chosen)}</button>`;
+  };
+  const sorted = [...state.candidates].sort((a, b) => b.moves.length - a.moves.length);
+  const list = sorted.length > 0 ? sorted.map(row).join('') : '<p class="px-empty px-wrap">Nobody to go round with.</p>';
+  const ready = state.chosen.length > 0;
+  const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? 'ARROWS walk, SPACE uses a field move on what you face. The clock starts on your first step.' : 'Choose who goes round first.')}">${state.last ? 'Again' : 'Run'}</button>`;
+  const moves = state.teamMoves.length > 0 ? state.teamMoves.join(' · ') : 'no field moves - it is the long way round everywhere';
+  const body = `<main class="px-body game-corner-layout">${pixelWindow(
+    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${list}</div>`,
+    { heading: 'Who goes round?', note: `${state.chosen.length} of ${state.most}` },
+  )}${pixelCommitBar({
+    title: state.last ? `Round in ${state.last.time}` : 'FIELD-MOVE COURSE',
+    lines: [
+      ...(state.last ? resultLines({ score: 1, payout: state.last.payout, berries: [] }) : []),
+      `<small class="px-wrap">${ready ? `This team: ${moves}.${state.fastest ? ` Its fastest round is ${state.fastest}.` : ''}` : `Choose up to ${state.most} to go round with.`}${state.best ? ` Your best round is ${state.best}.` : ''}</small>`,
+    ],
+    actions: `<button class="px-window px-button" data-close data-help="Back to the promenade.">Done</button>${play}`,
+  })}</main>`;
+  return pixelScreen({
+    title: 'FIELD-MOVE COURSE',
+    place: 'Promenade · ',
+    back: { label: 'Done', attribute: 'data-close' },
+    aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
+    body,
+    hints: 'Arrows choose · ENTER takes one in or out · ESC leaves',
+    ...(state.status ? { status: state.status } : {}),
+  });
+}

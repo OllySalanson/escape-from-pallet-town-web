@@ -39,6 +39,9 @@ import { seagallopLines } from './seagallopLog';
 
 export type HarbourSpecies = keyof typeof HARBOUR_POKEMON_ART;
 
+/** THE FIELD-MOVE COURSE's keeper, who runs the course when spoken to (`BaseScene`). */
+export const COURSE_KEEPER_ID = 'course-keeper';
+
 interface HarbourFigureBase {
   readonly id: string;
   readonly position: GridPosition;
@@ -259,6 +262,18 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
       'My RATTATA jumps that vine like it\'s nothing! Small and quick, that\'s the trick.',
       'I\'m saving my TICKETS for the CUTE TV. Ninety-eight more games to go.',
     ],
+  },
+  // THE FIELD-MOVE COURSE's keeper, at its gate with his box of HMs: he lends
+  // them for the run, so it is who could learn a move that counts there.
+  {
+    id: COURSE_KEEPER_ID,
+    kind: 'person',
+    name: 'COURSE KEEPER',
+    design: 'hiker',
+    position: at(86, 10),
+    facing: 'left',
+    idle: { glances: ['down', 'left', 'up'], beatMs: 5300 },
+    lines: ['Fancy a go round the FIELD-MOVE COURSE? I lend the HMs - bring POKéMON that could learn them.'],
   },
 ];
 

@@ -1,5 +1,6 @@
 import { getItemById, type ItemDefinition } from '../items/items';
 import { berriesForScore } from './pokemonJump';
+import { winsPrizeBerry } from './berryPicking';
 
 /**
  * TICKETS, THE GAME CORNER's prize token (the harbour arenas plan, section 5):
@@ -23,8 +24,8 @@ import { berriesForScore } from './pokemonJump';
  * here; `SaveManager` writes them, one write each.
  */
 
-/** A source of tickets, each capped by the day: the cabinets. */
-export type TicketSource = 'pokemon-jump';
+/** A source of tickets, each capped by the day: the cabinets, and the course. */
+export type TicketSource = 'pokemon-jump' | 'berry-picking' | 'field-course';
 
 /** The most every source together pays in a day (the plan's daily ceiling). */
 export const DAILY_TICKET_CEILING = 285;
@@ -43,6 +44,60 @@ export const JUMP_TICKET_TIERS: readonly { readonly score: number; readonly tick
 /** The tickets a POKéMON JUMP score is worth, once a day. */
 export function jumpTickets(score: number): number {
   return JUMP_TICKET_TIERS.reduce((won, tier) => (score >= tier.score ? tier.tickets : won), 0);
+}
+
+/**
+ * BERRY PICKING's tiers, this game's, set with `tools/minigames/measure.mts`:
+ * a Doduo that keeps up a while earns the first, FireRed's own prize line
+ * (3,000) the second - a Dodrio's ordinary game, a Doduo's very good one - and
+ * a Dodrio played well the third.
+ */
+export const BERRY_TICKET_TIERS: readonly { readonly score: number; readonly tickets: number }[] = [
+  { score: 1000, tickets: 10 },
+  { score: 3000, tickets: 20 },
+  { score: 6000, tickets: 30 },
+];
+
+/** The tickets a BERRY PICKING score is worth, once a day. */
+export function berryTickets(score: number): number {
+  return BERRY_TICKET_TIERS.reduce((won, tier) => (score >= tier.score ? tier.tickets : won), 0);
+}
+
+/**
+ * THE FIELD-MOVE COURSE's tiers, this game's, in milliseconds round, set
+ * against the fastest each sort of team can go (`fastestRun`,
+ * `tools/minigames/drawCourse.mts`): anybody who gets round in half a minute
+ * earns the first; the second wants a team with some field moves, run well;
+ * the third wants CUT and SURF both - a Krabby, or a Bulbasaur with a
+ * Squirtle - and a clean run, because a perfect starter alone is just short.
+ */
+export const COURSE_TICKET_TIERS: readonly { readonly ms: number; readonly tickets: number }[] = [
+  { ms: 30_000, tickets: 10 },
+  { ms: 18_000, tickets: 20 },
+  { ms: 14_500, tickets: 30 },
+];
+
+/** The tickets a time round THE FIELD-MOVE COURSE is worth, once a day. */
+export function courseTickets(ms: number): number {
+  if (ms <= 0) return 0;
+  return COURSE_TICKET_TIERS.reduce((won, tier) => (ms <= tier.ms ? tier.tickets : won), 0);
+}
+
+/**
+ * How each source is scored: which of two results is better (a score up, a
+ * time down; nothing played is 0 for both), and what a day's best is worth.
+ */
+const SOURCE_RULES: Readonly<
+  Record<TicketSource, { readonly better: (a: number, b: number) => boolean; readonly tickets: (best: number) => number; readonly berries: (best: number) => number }>
+> = {
+  'pokemon-jump': { better: (a, b) => a > b, tickets: jumpTickets, berries: berriesForScore },
+  'berry-picking': { better: (a, b) => a > b, tickets: berryTickets, berries: (best) => (winsPrizeBerry(best) ? 1 : 0) },
+  'field-course': { better: (a, b) => a > 0 && (b <= 0 || a < b), tickets: courseTickets, berries: () => 0 },
+};
+
+/** The better of two results at a source: the higher score, or the quicker time. */
+export function betterResult(source: TicketSource, a: number, b: number): number {
+  return SOURCE_RULES[source].better(a, b) ? a : b;
 }
 
 /** What the day has paid and been sold so far, for the caps. */
@@ -96,27 +151,28 @@ export interface GamePayout {
 }
 
 /**
- * A POKéMON JUMP score played: the day's best raised if it is better, and the
- * tickets and berries the day's best is worth, less what today has already
- * paid - so a better score later in the day pays the difference, and the same
- * score again pays nothing.
+ * A result played at a source - a score, or a time round in milliseconds -
+ * and what it pays: the day's best raised if it is better, and the tickets and
+ * berries the day's best is worth, less what today has already paid. So a
+ * better result later in the day pays the difference, and the same result
+ * again pays nothing.
  */
-export function payJump(record: GameCornerRecord, score: number, now: Date): GamePayout {
-  const source: TicketSource = 'pokemon-jump';
+export function payGame(record: GameCornerRecord, source: TicketSource, result: number, now: Date): GamePayout {
+  const rules = SOURCE_RULES[source];
   const day = today(record, now);
-  const best = Math.max(day.best[source] ?? 0, score);
-  const owedTickets = Math.max(0, jumpTickets(best) - (day.paid[source] ?? 0));
+  const best = betterResult(source, result, day.best[source] ?? 0);
+  const owedTickets = Math.max(0, rules.tickets(best) - (day.paid[source] ?? 0));
   const tickets = Math.min(owedTickets, Math.max(0, DAILY_TICKET_CEILING - paidToday(day)));
-  const berries = Math.max(0, berriesForScore(best) - (day.berries[source] ?? 0));
+  const berries = Math.max(0, rules.berries(best) - (day.berries[source] ?? 0));
   const everBest = record.best[source] ?? 0;
   return {
     tickets,
     berries,
-    newBest: score > everBest,
-    bestToday: score >= best && score > 0,
+    newBest: rules.better(result, everBest),
+    bestToday: result > 0 && best === result,
     record: {
       tickets: record.tickets + tickets,
-      best: { ...record.best, [source]: Math.max(everBest, score) },
+      best: { ...record.best, [source]: betterResult(source, result, everBest) },
       day: {
         ...day,
         best: { ...day.best, [source]: best },
@@ -125,6 +181,11 @@ export function payJump(record: GameCornerRecord, score: number, now: Date): Gam
       },
     },
   };
+}
+
+/** A POKéMON JUMP score played (`payGame`). */
+export function payJump(record: GameCornerRecord, score: number, now: Date): GamePayout {
+  return payGame(record, 'pokemon-jump', score, now);
 }
 
 // --- THE PRIZE WINDOW ---------------------------------------------------------
@@ -240,7 +301,7 @@ export function prizeName(prize: TicketPrize): string {
 
 // --- reading a save -------------------------------------------------------------
 
-const SOURCES: readonly TicketSource[] = ['pokemon-jump'];
+const SOURCES: readonly TicketSource[] = ['pokemon-jump', 'berry-picking', 'field-course'];
 
 function wholeCount(value: unknown, most = Number.MAX_SAFE_INTEGER): number {
   return Number.isInteger(value) && (value as number) >= 0 ? Math.min(value as number, most) : 0;

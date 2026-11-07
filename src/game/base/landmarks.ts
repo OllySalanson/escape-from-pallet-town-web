@@ -69,4 +69,31 @@ export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [
     // Named all along their front, which is where the quay is walked.
     near: Array.from({ length: 10 }, (_, index) => ({ x: 36 + index, y: 21 })),
   },
+  // THE PROMENADE's east end: THE FIELD-MOVE COURSE's gate, COURSE painted
+  // over it with the four field moves it asks for, and the chalk board its
+  // times are kept on (`minigames/fieldCourse.ts`). Facing either runs or
+  // reads the course rather than saying the note (`BaseScene`).
+  {
+    id: 'field-course',
+    name: 'FIELD-MOVE COURSE',
+    note: 'CUT, SMASH, PUSH and SURF it',
+    props: [{ name: 'courseGate', x: 84, y: 7 }],
+    at: { x: 85, y: 9 },
+    near: [83, 84, 85, 86].map((x) => ({ x, y: 10 })),
+  },
+  {
+    id: 'time-board',
+    name: 'TIME BOARD',
+    note: "The course's best times",
+    // Flush with the gate's top, so no lawn is left shut in behind it.
+    props: [{ name: 'timeBoard', x: 83, y: 7 }],
+    at: { x: 83, y: 8 },
+    near: [
+      { x: 82, y: 9 },
+      { x: 83, y: 9 },
+    ],
+  },
 ];
+
+/** The gate's front tiles: facing any of them from below runs the course. */
+export const COURSE_GATE_FRONT: readonly GridPosition[] = [84, 85, 86].map((x) => ({ x, y: 9 }));

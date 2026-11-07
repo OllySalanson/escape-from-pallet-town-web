@@ -6,7 +6,9 @@ import { tileReader, withDoorway, type PropDefinition } from '../world/tileset/c
  * GAME CORNER marquee across its front and a gold PRIZES ticket over its prize
  * window) and the things a seaside front has that no FireRed town does -
  * lamps, parasols, deckchairs, beach huts, railings, a lifebuoy, pennants,
- * flower troughs and an ice-cream cart - and the POKéMON JUMP cabinet inside.
+ * flower troughs and an ice-cream cart - THE FIELD-MOVE COURSE's gate (COURSE
+ * over its posts, the four field moves painted under the word) and its TIMES
+ * board, and the POKéMON JUMP and BERRY PICKING cabinets inside.
  * Numbered from 20000, clear of every other sheet the loader fetches
  * (`catalogue.test.ts` holds the whole list apart).
  */
@@ -46,6 +48,9 @@ export const PROMENADE_PIECES = {
   troughYellow: { column: 14, row: 7, width: 2, height: 1 },
   troughRed: { column: 12, row: 8, width: 2, height: 1 },
   troughBlue: { column: 14, row: 8, width: 2, height: 1 },
+  berryCabinet: { column: 0, row: 9, width: 2, height: 3 },
+  courseGate: { column: 2, row: 9, width: 3, height: 3 },
+  timeBoard: { column: 5, row: 9, width: 1, height: 2 },
 } as const;
 
 export type PromenadePieceName = keyof typeof PROMENADE_PIECES;

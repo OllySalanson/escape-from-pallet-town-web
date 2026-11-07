@@ -91,7 +91,9 @@ export type PromenadePropName =
   | 'troughPink'
   | 'troughYellow'
   | 'troughRed'
-  | 'troughBlue';
+  | 'troughBlue'
+  | 'courseGate'
+  | 'timeBoard';
 
 const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // 7x6. THE GAME CORNER: Celadon's own, with GAME CORNER lit across its
@@ -123,6 +125,11 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   troughYellow: promenadeProp('troughYellow', 'flower trough'),
   troughRed: promenadeProp('troughRed', 'flower trough'),
   troughBlue: promenadeProp('troughBlue', 'flower trough'),
+  // 3x3, THE FIELD-MOVE COURSE's gate: COURSE on the board over its posts.
+  // Solid: the course is run on its own screen (`scenes/FieldCourseScene.ts`),
+  // started by facing the gate or its keeper.
+  courseGate: promenadeProp('courseGate', 'course gate'),
+  timeBoard: promenadeProp('timeBoard', 'time board'),
 };
 
 /**
