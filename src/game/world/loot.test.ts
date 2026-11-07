@@ -4,7 +4,16 @@ import { TRADER_STOCK } from '../hub/trader';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { WORLD_MAPS } from '../worldMap';
 import { districtAt, districtsForMap } from './districts';
-import { getVisibleLoot, isPrize, lootRefusalLine, prizesLeftBehind, tryCollectLoot, type WorldLoot } from './loot';
+import {
+  getVisibleLoot,
+  isDroppedPiece,
+  isPrize,
+  layDroppedPiece,
+  lootRefusalLine,
+  prizesLeftBehind,
+  tryCollectLoot,
+  type WorldLoot,
+} from './loot';
 
 const POKE_BALL_LOOT: WorldLoot = {
   id: 'test-poke-ball',
@@ -195,5 +204,31 @@ describe('a find the pack has no room for', () => {
     expect(lootRefusalLine('money', 300, 0)).toMatch(/^No room for \u20bd300 - it needs 2 squares\./);
     // 240 already carried is one bundle with ten to spare, so 40 more is one new square.
     expect(lootRefusalLine('money', 40, 240)).toMatch(/- it needs 1 square\./);
+  });
+});
+
+describe('a thing put down out of the pack', () => {
+  it('lies on the tile it was put down on, as ordinary ground loot that no two pieces share an id of', () => {
+    const byMap: Record<string, WorldLoot[]> = {};
+    const first = layDroppedPiece(byMap, 'greystone-vale', 'potion', 1, { x: 4, y: 9 });
+    const second = layDroppedPiece(byMap, 'pallet-town', 'money', 40, { x: 2, y: 3 });
+    const third = layDroppedPiece(byMap, 'greystone-vale', 'potion', 1, { x: 4, y: 9 });
+    expect(first).toEqual({ id: 'dropped/0', position: { x: 4, y: 9 }, itemId: 'potion', quantity: 1 });
+    expect(new Set([first.id, second.id, third.id]).size).toBe(3);
+    expect(byMap['greystone-vale']).toEqual([first, third]);
+    expect(byMap['pallet-town']).toEqual([second]);
+    // Never a prize: it is the raid's own, not a thing a raid is for.
+    expect([first, second, third].some(isPrize)).toBe(false);
+    expect([first, second, third].every(isDroppedPiece)).toBe(true);
+  });
+
+  it('is picked up again by the same rule as anything else on the ground', () => {
+    const byMap: Record<string, WorldLoot[]> = {};
+    const piece = layDroppedPiece(byMap, 'greystone-vale', 'potion', 1, { x: 1, y: 1 });
+    const collected = new Set<string>();
+    expect(tryCollectLoot(piece, true, collected, () => false)).toBe('bag-full');
+    expect(getVisibleLoot(byMap['greystone-vale'], true, collected)).toEqual([piece]);
+    expect(tryCollectLoot(piece, true, collected, () => true)).toBe('collected');
+    expect(getVisibleLoot(byMap['greystone-vale'], true, collected)).toEqual([]);
   });
 });

@@ -9,6 +9,10 @@ import { districtsForMap, type MapDistrict } from '../world/districts';
 import type { WorldLoot } from '../world/loot';
 import { worldMapName, type BuiltInMapId } from '../worldMap';
 
+/** The kinds Brock names as able to read TM39: the rock and fighting kinds a raid meets. */
+export const TM39_NAMED_READERS = ['GEODUDE', 'ONIX', 'MACHOP', 'SANDSHREW'] as const;
+
+
 /**
  * Errands: a favour somebody at base asks of you, by name - one of the four
  * keepers in their own building, or somebody out about THE HARBOUR.
@@ -204,10 +208,13 @@ export const ERRANDS: readonly Errand[] = [
     question: 'Will you bring it back for me?',
     accepted: 'Thanks. I will make it worth your while.',
     declined: 'Fair enough. I will ask again after your next raid.',
-    // The second line is what FireRed's Brock says as he hands TM39 over.
+    // What FireRed's Brock says as he hands TM39 over, and then which kinds can
+    // read it: FireRed's table, on which none of the three starters is, so
+    // Brock says so rather than letting the disc be found useless in the pack
+    // (`TM39_NAMED_READERS`, held to the table by the test).
     thanks: [
-      'My crate! And not a bolt missing. I owe you one.',
-      'Take this. TM39 is Rock Tomb: it hurls boulders and slows the foe.',
+      'My crate! Not a bolt missing. Take TM39: Rock Tomb hurls boulders.',
+      `${TM39_NAMED_READERS.join(', ').replace(/, ([^,]*)$/, ' and $1')} can learn it. No starter can.`,
     ],
     lost: [
       'My crate never made it home? You came back. That is what counts.',

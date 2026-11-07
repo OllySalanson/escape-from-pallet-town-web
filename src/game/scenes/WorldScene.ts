@@ -332,9 +332,11 @@ import { errandForItem } from '../hub/errands';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
+  isDroppedPiece,
   isPrize,
   isStake,
   isStakeTrail,
+  layDroppedPiece,
   lootRefusalLine,
   prizeWords,
   prizesLeftBehind,
@@ -2284,6 +2286,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.packReseated = this.packReseated || taken === 'reseated';
     this.runSession?.manager.registerFoundItem(itemId, quantity);
+    return true;
+  }
+
+  /** A piece this raid put down, back into the pack: the drop is taken back rather than a find recorded. */
+  private pickBackUp(itemId: ItemId, quantity: number): boolean {
+    const taken = this.bag.takeFind(itemId, quantity);
+    if (taken === 'refused') {
+      return false;
+    }
+    this.packReseated = this.packReseated || taken === 'reseated';
+    this.runSession?.manager.registerPickedBackUp(itemId, quantity);
     return true;
   }
 
@@ -5428,11 +5441,37 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.settleRiding();
         this.saveGame();
       },
-      onItemDropped: (itemId: string, quantity: number) =>
-        this.runSession?.manager.registerDroppedItem(itemId as ItemId, quantity),
+      onItemDropped: (itemId: string, quantity: number) => this.putDownHere(itemId as ItemId, quantity),
       bike: { riding: this.riding, toggle: () => this.toggleBike() },
       view: this.besidePanel,
     });
+  }
+
+  /**
+   * Something put down out of the pack lies on the tile the player is standing
+   * on for the rest of the raid, as ordinary ground loot (`droppedPiece`): drawn
+   * at once, because the world is paused under the pack rather than rebuilt,
+   * and picked up again by stepping back onto it.
+   */
+  private putDownHere(itemId: ItemId, quantity: number): void {
+    const session = this.runSession;
+    if (!session) {
+      return;
+    }
+    session.manager.registerDroppedItem(itemId, quantity);
+    const piece = layDroppedPiece((session.droppedOnTheGround ??= {}), this.currentMap.id, itemId, quantity, this.currentTile);
+    if (!this.isLootAvailable()) {
+      return;
+    }
+    const marker = this.add
+      .image(
+        piece.position.x * TILE_SIZE + TILE_SIZE / 2,
+        piece.position.y * TILE_SIZE + TILE_SIZE / 2,
+        iconTextureKey(itemIconName(itemId)),
+      )
+      .setDepth(atRow(MARKER_BAND, piece.position.y));
+    this.lootSprites.set(piece.id, marker);
+    this.mapObjects.push(marker);
   }
 
   /**
@@ -6875,8 +6914,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * one dialogue rather than one of them overwriting the other.
    */
   private tryCollectLootAt(position: GridPosition): string | null {
+    // A tile can hold a piece already taken and one put down on it since, so
+    // only what is still there is asked about.
     const loot = this.lootForCurrentMap().find(
-      (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
+      (candidate) =>
+        candidate.position.x === position.x &&
+        candidate.position.y === position.y &&
+        !this.collectedLootIds.has(candidate.id),
     );
     // The room's ground is picked up by whoever the database says was first
     // (`raidRoom/roomLoot.ts`): a step onto a piece nobody holds yet is the
@@ -7072,7 +7116,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       loot,
       this.isLootAvailable(),
       this.collectedLootIds,
-      (itemId, quantity) => this.collectRunItem(itemId, quantity),
+      (itemId, quantity) =>
+        loot && isDroppedPiece(loot) ? this.pickBackUp(itemId, quantity) : this.collectRunItem(itemId, quantity),
     );
     if (result === 'unavailable') {
       return null;
@@ -7094,6 +7139,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.sendHunterForPlayer();
     }
     const item = ITEMS[loot!.itemId];
+    // Picking up what was put down is no find: nothing is recorded but the drop
+    // taken back, and an errand's thing is not found a second time.
+    if (isDroppedPiece(loot!)) {
+      const amount = isCurrency(item.id) ? formatMoney(loot!.quantity) : item.displayName;
+      return `Picked up ${amount} again.${this.reseatNote()}`;
+    }
     // Somebody at base is waiting on this one (`hub/errands.ts`). That it was
     // picked up is written now, as a beaten boss is, so the giver knows to ask
     // after it whichever way the raid ends.
@@ -7419,8 +7470,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
   }
 
-  private lootForCurrentMap() {
-    return this.runSession?.plan?.loot[this.currentMap.id] ?? this.currentMap.loot;
+  private lootForCurrentMap(): readonly WorldLoot[] {
+    const laid = this.runSession?.plan?.loot[this.currentMap.id] ?? this.currentMap.loot;
+    const dropped = this.runSession?.droppedOnTheGround?.[this.currentMap.id];
+    return dropped?.length ? [...laid, ...dropped] : laid;
   }
 
   /** The wildlife of the place being stood in, then of the map it is on. */

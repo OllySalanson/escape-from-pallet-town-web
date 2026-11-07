@@ -53,6 +53,24 @@ describe('RunManager lifecycle', () => {
     });
   });
 
+  it('takes a drop back when the thing is picked up off the ground again, recording no find', () => {
+    const manager = new RunManager();
+    startRun(manager);
+    manager.registerDroppedItem('potion', 2);
+    manager.registerDroppedItem('great-ball');
+    manager.registerPickedBackUp('potion');
+    expect(manager.snapshot()).toMatchObject({
+      foundItems: [],
+      droppedItems: [
+        { itemId: 'potion', quantity: 1 },
+        { itemId: 'great-ball', quantity: 1 },
+      ],
+    });
+    manager.registerPickedBackUp('potion');
+    manager.registerPickedBackUp('great-ball');
+    expect(manager.snapshot().droppedItems).toEqual([]);
+  });
+
   it('enrages once at zero without immediately wiping the run', () => {
     const onEnrage = vi.fn();
     const onExpire = vi.fn();

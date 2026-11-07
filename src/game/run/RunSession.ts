@@ -10,6 +10,7 @@ import { createSeededRng, type SeededRng } from './rng';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import type { CacheSearchState } from '../world/cacheSearch';
+import type { WorldLoot } from '../world/loot';
 import type { HunterPack } from '../world/hunterPack';
 
 export interface RaidLocation {
@@ -124,6 +125,13 @@ export interface ActiveRunSession {
    * every fight.
    */
   berriesPicked?: string[];
+  /**
+   * What the player put down out of the pack this raid, by map id, each piece
+   * on the tile it was dropped on (`world/loot.ts`, `droppedPiece`). It lies
+   * there for the rest of the raid as ordinary ground loot, and lives here
+   * because the world is rebuilt after every fight.
+   */
+  droppedOnTheGround?: Record<string, WorldLoot[]>;
   /**
    * How far this raid has searched each cache it opened, and what it took out,
    * by landmark id (`world/cacheSearch.ts`). A search walked away from or cut

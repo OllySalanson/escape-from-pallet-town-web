@@ -284,7 +284,25 @@ export class RunManager {
     return this.snapshot();
   }
 
-  /** Records something put down out of the pack, which is gone for good. */
+  /**
+   * Something put down this raid and picked up again off the tile it lay on.
+   * It was never found and is no longer put down, so the drop is taken back
+   * rather than a find recorded: the result screen names neither.
+   */
+  public registerPickedBackUp(itemId: ItemId, quantity = 1): RunSnapshot {
+    this.requirePhase('register a dropped item picked back up', RunPhase.InRun);
+    validateItemStack({ itemId, quantity });
+    this.droppedItemsValue = this.droppedItemsValue.flatMap((stack) => {
+      if (stack.itemId !== itemId) {
+        return [stack];
+      }
+      const left = stack.quantity - quantity;
+      return left > 0 ? [{ itemId, quantity: left }] : [];
+    });
+    return this.snapshot();
+  }
+
+  /** Records something put down out of the pack, which lies on the ground for the rest of the raid. */
   public registerDroppedItem(itemId: ItemId, quantity = 1): RunSnapshot {
     this.requirePhase('register a dropped item', RunPhase.InRun);
     validateItemStack({ itemId, quantity });

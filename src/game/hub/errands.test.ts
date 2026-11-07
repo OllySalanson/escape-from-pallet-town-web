@@ -32,7 +32,9 @@ import {
   withErrandFound,
   withErrandLossesHeard,
   type ErrandProgress,
+  TM39_NAMED_READERS,
 } from './errands';
+import { MACHINES } from '../pokemon/machines';
 
 const FRESH: ErrandProgress = DEFAULT_RAID_PROGRESS;
 /** A new save with one raid behind it, which is when anybody first asks a favour. */
@@ -302,5 +304,19 @@ describe('errands', () => {
       { id: 'brocks-crate', status: 'started', found: 2, lossesHeard: 2 },
       { id: 'oaks-parcel', status: 'completed', found: 0, lossesHeard: 0 },
     ]);
+  });
+
+  it('has Brock say which kinds can learn TM39, by FireRed\'s own table, and that no starter can', () => {
+    const brock = ERRANDS.find((errand) => errand.id === 'brocks-crate')!;
+    const line = brock.thanks.find((said) => said.includes('can learn it'))!;
+    const learners = MACHINES['tm39-rock-tomb'].learners;
+    for (const name of TM39_NAMED_READERS) {
+      expect(line).toContain(name);
+      expect(learners).toContain(name.toLowerCase());
+    }
+    for (const starter of ['bulbasaur', 'charmander', 'squirtle']) {
+      expect(learners).not.toContain(starter);
+    }
+    expect(line).toContain('No starter can.');
   });
 });

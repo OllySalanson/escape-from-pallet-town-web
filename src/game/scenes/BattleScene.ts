@@ -60,7 +60,7 @@ import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
-import { prizesLeftBehind } from '../world/loot';
+import { layDroppedPiece, prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
 import { legendFledLine, legendOneThrowLine, legendTooStrongLine } from '../world/legends';
 import { owesItemLesson } from '../world/teachingEncounter';
@@ -1778,6 +1778,17 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.runSession?.manager.registerDroppedItem(choice.itemId as ItemId, choice.drops);
+    // It lies where the player was standing when the fight began, as anything
+    // put down out of the pack does (`world/loot.ts`, `layDroppedPiece`).
+    if (this.runSession && this.returnLocation) {
+      layDroppedPiece(
+        (this.runSession.droppedOnTheGround ??= {}),
+        this.returnLocation.mapId,
+        choice.itemId as ItemId,
+        choice.drops,
+        this.returnLocation.position,
+      );
+    }
     audioManager.play('menuClose');
     if (packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
       const ballIndex = Math.max(
