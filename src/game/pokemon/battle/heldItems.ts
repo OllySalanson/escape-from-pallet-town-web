@@ -1,5 +1,6 @@
 import { heldItemEffect, heldItemName, type HeldItemEffect } from '../../items';
 import type { PokemonType } from '../PokemonType';
+import type { PrimaryStatus } from './status';
 import type { RandomSource } from './damage';
 
 /**
@@ -120,4 +121,55 @@ export function attackRecoil(holder: GearHolder, damageDealt: number): number {
 export function rollsFirstStrike(holder: GearHolder, random: RandomSource): boolean {
   const effect = gearEffect(holder);
   return effect?.type === 'first-strike' && Math.min(0.999999, Math.max(0, random())) < effect.chance;
+}
+
+/**
+ * When a held berry is asked whether it is wanted - FireRed's two calls of
+ * `ItemBattleEffects` that a berry answers (pret/pokefirered `battle_util.c`):
+ *
+ * - `after-move` is `ITEMEFFECT_MOVE_END`, asked of every battler on the
+ *   field at the end of every move (`Cmd_moveend`'s `MOVEEND_ITEM_EFFECTS_ALL`).
+ *   Only the status berries answer it, which is what lets a Chesto Berry wake
+ *   its holder before the turn it was put to sleep for ever comes round.
+ * - `end-of-turn` is `ITEMEFFECT_NORMAL` at `ENDTURN_ITEMS1`, after the
+ *   ability and before Leech Seed and poison. The status berries answer it
+ *   again, and it is the only time an HP berry is eaten: at half the holder's
+ *   maximum HP or less (`hp <= maxHP / 2`, whole numbers), for its own HP and
+ *   never past the maximum.
+ */
+export type BerryMoment = 'after-move' | 'end-of-turn';
+
+/** What eating a held berry did. */
+export type BerryBite =
+  | { readonly kind: 'cure'; readonly status: PrimaryStatus }
+  | { readonly kind: 'heal'; readonly amount: number };
+
+/**
+ * Whether the holder eats its berry now, and what it does if it does.
+ *
+ * Nothing for a holder that has fainted (FireRed asks `gBattleMons[].hp`
+ * first), for one holding no berry, and for a berry with nothing to do: a
+ * Cheri Berry on a Pokemon that is not paralysed stays in its hand.
+ */
+export function berryBite(
+  holder: GearHolder,
+  currentHp: number,
+  status: PrimaryStatus | null,
+  moment: BerryMoment,
+): BerryBite | undefined {
+  if (currentHp <= 0) {
+    return undefined;
+  }
+  const effect = gearEffect(holder);
+  if (effect?.type === 'berry-cure') {
+    return status === effect.status ? { kind: 'cure', status } : undefined;
+  }
+  if (effect?.type === 'berry-heal' && moment === 'end-of-turn') {
+    if (currentHp > Math.floor(holder.maxHp / 2)) {
+      return undefined;
+    }
+    const amount = Math.min(effect.amount, holder.maxHp - currentHp);
+    return amount > 0 ? { kind: 'heal', amount } : undefined;
+  }
+  return undefined;
 }

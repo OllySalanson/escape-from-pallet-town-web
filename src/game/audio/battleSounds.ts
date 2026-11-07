@@ -109,6 +109,10 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return withLine('gearHeld');
     case 'gear-heal':
       return withLine('gearTick');
+    // A berry eaten is a cure or a heal, and sounds like the one it is.
+    case 'berry-cure':
+    case 'berry-heal':
+      return withLine('heal');
     case 'gear-first-strike':
       // A claw that fires is the same news as a stat rising: something just went
       // your way before the move that proves it.

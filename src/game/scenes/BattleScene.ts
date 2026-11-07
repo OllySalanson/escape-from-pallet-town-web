@@ -440,6 +440,8 @@ interface CombatantPlate {
   readonly barY: number;
   readonly barWidth: number;
   readonly hpText?: Phaser.GameObjects.Text;
+  /** What the Pokemon holds, on the plate's bottom row; emptied when a held berry is eaten. */
+  readonly gearText?: Phaser.GameObjects.Text;
   readonly nameText: Phaser.GameObjects.Text;
   readonly hpLabel: Phaser.GameObjects.Text;
   /** The status tag's two seats: on the name's row, or over the "HP:" label. */
@@ -1249,12 +1251,17 @@ export class BattleScene extends Phaser.Scene {
     this.drawHpBar(hpBar, barX, barY, combatant.currentHp / combatant.pokemon.maxHp, layout.barWidth);
 
     let hpText: Phaser.GameObjects.Text | undefined;
+    let gearText: Phaser.GameObjects.Text | undefined;
     if (showNumbers) {
       // On the compact plate the numbers share the bar's row, off the plate's
       // right edge, because the row below is carrying the typing and the gear.
       hpText = this.add
         .text(
-          x + (layout.showsTyping ? layout.width - 9 : 74),
+          // On the full plate the numbers end under the bar's own right end, as
+          // FireRed's healthbox sets them, so the gear's name has the row's
+          // left half to itself: begun at a fixed column, a CHESTO BERRY was
+          // drawn through "39/39".
+          x + (layout.showsTyping ? layout.width - 9 : layout.barX + layout.barWidth),
           y + (layout.showsTyping ? layout.barY - 1 : layout.detailY - 1),
           `${combatant.currentHp}/${combatant.pokemon.maxHp}`,
           {
@@ -1263,26 +1270,25 @@ export class BattleScene extends Phaser.Scene {
             color: '#202020',
           },
         )
-        .setOrigin(layout.showsTyping ? 1 : 0, 0);
+        .setOrigin(1, 0);
       container.add(hpText);
       // The gear shares the bottom row - with the HP numbers on the full plate
       // and with the typing on the compact one - in the guidance ink the panel
       // below uses for anything that is not itself a number.
-      container.add(
-        this.add
-          .text(
-            x + (layout.showsTyping ? layout.width - 9 : 9),
-            y + layout.detailY,
-            heldGearLabel(heldItemName(combatant.pokemon.heldItemId)),
-            {
-              fontFamily: BATTLE_FONT,
-              fontSize: CAPTION_FONT_SIZE,
-              color: PANEL_GUIDANCE_INK,
-            },
-          )
-          .setOrigin(layout.showsTyping ? 1 : 0, 0)
-          .setDepth(6),
-      );
+      gearText = this.add
+        .text(
+          x + (layout.showsTyping ? layout.width - 9 : 9),
+          y + layout.detailY,
+          heldGearLabel(heldItemName(combatant.pokemon.heldItemId)),
+          {
+            fontFamily: BATTLE_FONT,
+            fontSize: CAPTION_FONT_SIZE,
+            color: PANEL_GUIDANCE_INK,
+          },
+        )
+        .setOrigin(layout.showsTyping ? 1 : 0, 0)
+        .setDepth(6);
+      container.add(gearText);
     }
 
     // A double battle has no room for a floating banner over four plates, so
@@ -1323,6 +1329,7 @@ export class BattleScene extends Phaser.Scene {
       barY,
       barWidth: layout.barWidth,
       hpText,
+      gearText,
       nameText,
       hpLabel,
       statusSeats: {
@@ -3934,6 +3941,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private advanceStatusLabel(event: BattleEvent): void {
+    // A held berry is gone the moment its line is read, so the plate stops
+    // naming it there - not at the end of the turn, when the engine took it.
+    if (event.type === 'berry-cure' || event.type === 'berry-heal') {
+      const ref = slotRef(event.user, event.slot ?? 0);
+      this.plates.get(plateKey(ref.side, ref.slot))?.gearText?.setText('');
+    }
     if (!changesShownStatus(event)) {
       return;
     }

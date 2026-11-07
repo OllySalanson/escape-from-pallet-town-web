@@ -12,7 +12,7 @@ import { MACHINE_DEFINITIONS } from './game/pokemon/machines';
  */
 const README = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 
 /** The cell of the controls table for one key, in the given column (1: raid, 2: home). */
 function controlCell(key: string, column: 1 | 2): string | undefined {

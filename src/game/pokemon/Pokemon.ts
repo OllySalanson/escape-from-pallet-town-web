@@ -1,4 +1,4 @@
-import { isHeldItemId, type HeldItemId } from '../items/items';
+import { isHeldItemId, type HoldableItemId } from '../items/items';
 import { Move } from './Move';
 import type { MoveBase } from './MoveBase';
 import type { PokemonBase, PokemonStats } from './PokemonBase';
@@ -147,7 +147,7 @@ export class Pokemon {
   public currentHp: number;
   public primaryStatus: PrimaryStatus | null = null;
   /**
-   * The one piece of gear this Pokemon is carrying, or null for an empty slot.
+   * The one piece of gear or berry this Pokemon is carrying, or null for an empty slot.
    *
    * One item, never two: `giveHeldItem` returns whatever was already there, so
    * the caller has to put it somewhere rather than the slot silently swallowing
@@ -156,7 +156,7 @@ export class Pokemon {
    * battle, a faint and a swap - and loses it only with the Pokemon itself, on a
    * wipe outside the secure slot.
    */
-  public heldItemId: HeldItemId | null = null;
+  public heldItemId: HoldableItemId | null = null;
   /**
    * Drawn in its species' other colours, for good. Rolled once when a wild
    * encounter is met (`shiny.ts`) and never again: it survives a catch, a
@@ -206,14 +206,14 @@ export class Pokemon {
    * rather than stored: a save holding an item this build no longer ships must
    * leave the slot empty, not holding a name nothing can price.
    */
-  public giveHeldItem(heldItemId: string | null): HeldItemId | null {
+  public giveHeldItem(heldItemId: string | null): HoldableItemId | null {
     const displaced = this.heldItemId;
     this.heldItemId = isHeldItemId(heldItemId) ? heldItemId : null;
     return displaced;
   }
 
   /** Empties the slot and hands back what was in it. */
-  public takeHeldItem(): HeldItemId | null {
+  public takeHeldItem(): HoldableItemId | null {
     return this.giveHeldItem(null);
   }
 

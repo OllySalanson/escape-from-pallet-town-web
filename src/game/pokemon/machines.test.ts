@@ -66,7 +66,8 @@ describe('machines', () => {
 
       expect({ id, number: machine.number }).toEqual({ id, number: canon.machine });
       expect(machine.move.type.toLowerCase()).toBe(canon.type);
-      expect(machine.move.power).toBe(canon.power);
+      // A status move has no power, which the snapshot says as null.
+      expect(machine.move.power).toBe(canon.power ?? 0);
       // A null accuracy in the snapshot is a move with no accuracy roll at all,
       // which this engine says as `alwaysHits` rather than as a number.
       expect(machine.move.accuracy).toBe(canon.accuracy ?? 100);
@@ -76,7 +77,11 @@ describe('machines', () => {
         canon.min_hits === null ? null : { min: canon.min_hits, max: canon.max_hits },
       );
       expect(machine.move.category).toBe(
-        SPECIAL_TYPES.has(machine.move.type) ? MoveCategory.Special : MoveCategory.Physical,
+        machine.move.power === 0
+          ? MoveCategory.Status
+          : SPECIAL_TYPES.has(machine.move.type)
+            ? MoveCategory.Special
+            : MoveCategory.Physical,
       );
     }
   });
@@ -138,7 +143,9 @@ describe('machines', () => {
    * what stops a machine being a slower way to get a move you were owed.
    */
   it('is the only way to these moves for all but the nine species canon teaches them to', () => {
-    const taught = new Set(MACHINE_DEFINITIONS.map((machine) => machine.move));
+    const taught = new Set(
+      MACHINE_DEFINITIONS.filter((machine) => machine.move.power > 0).map((machine) => machine.move),
+    );
     const levelled: string[] = [];
     for (const species of Object.values(SPECIES_BY_ID)) {
       for (const entry of species.learnset) {
@@ -160,6 +167,34 @@ describe('machines', () => {
     ]);
   });
 
+  /**
+   * The weather discs are setters, not damage, and FireRed teaches both by
+   * levelling to a few - all of them at 25 or later, and Sunny Day only to a
+   * Magmar - so for every Pokemon a raid is fought with in its first hours the
+   * disc is the one way to bring its own weather, or to take Misty's away.
+   */
+  it('is the only early way to weather: FireRed levels into it at 25 at the soonest', () => {
+    const setters = new Set(
+      MACHINE_DEFINITIONS.filter((machine) => machine.move.effects.weather).map((machine) => machine.move),
+    );
+    expect([...setters].map((move) => move.name).sort()).toEqual(['Rain Dance', 'Sunny Day']);
+    const levelled = Object.values(SPECIES_BY_ID).flatMap((species) =>
+      species.learnset
+        .filter((entry) => setters.has(entry.move))
+        .map((entry) => `${species.id} ${entry.move.name} ${entry.level}`),
+    );
+    expect(levelled.sort()).toEqual([
+      'blastoise Rain Dance 42',
+      'gyarados Rain Dance 45',
+      'lapras Rain Dance 37',
+      'magmar Sunny Day 33',
+      'poliwag Rain Dance 25',
+      'poliwhirl Rain Dance 27',
+      'squirtle Rain Dance 33',
+      'wartortle Rain Dance 37',
+    ]);
+  });
+
   it('names one disc per machine, and one machine per disc', () => {
     expect([...MACHINE_ITEM_IDS].sort()).toEqual(Object.keys(MACHINES).sort());
     for (const id of MACHINE_ITEM_IDS) {
@@ -172,7 +207,7 @@ describe('machines', () => {
     }
   });
 
-  it('is six TMs used up by the reading and four HMs that never are', () => {
+  it('is eight TMs used up by the reading and four HMs that never are', () => {
     const reusable = MACHINE_DEFINITIONS.filter((machine) => machine.reusable);
 
     // Four, and three of them are doors: `world/fieldMoves.ts` opens a gate
@@ -192,9 +227,23 @@ describe('machines', () => {
       'Cut',
       'Rock Smash',
       'Strength',
+      'Sunny Day',
     ]);
-    expect(machineMovesFor('butterfree').map((move) => move.name)).toEqual(['Aerial Ace']);
-    expect(machineMovesFor('pidgey').map((move) => move.name)).toEqual(['Aerial Ace']);
+    expect(machineMovesFor('butterfree').map((move) => move.name).sort()).toEqual([
+      'Aerial Ace',
+      'Rain Dance',
+      'Sunny Day',
+    ]);
+    expect(machineMovesFor('pidgey').map((move) => move.name).sort()).toEqual([
+      'Aerial Ace',
+      'Rain Dance',
+      'Sunny Day',
+    ]);
+    // The answers the plan names for Misty's rain: a Vulpix or a Growlithe
+    // brings its own sun, and so does the Bellsprout it doubles the speed of.
+    for (const species of ['vulpix', 'growlithe', 'bellsprout', 'oddish']) {
+      expect(machineMovesFor(species).map((move) => move.name)).toContain('Sunny Day');
+    }
     // The two field moves, read off the same table: every catchable species
     // that FireRed lets read HM01 or HM03, so neither door is a starter
     // lottery. A Squirtle player cuts with a Rattata off any verge; a
@@ -203,6 +252,7 @@ describe('machines', () => {
       'Dig',
       'Ice Beam',
       'Iron Tail',
+      'Rain Dance',
       'Rock Smash',
       'Strength',
       'Surf',
@@ -213,6 +263,7 @@ describe('machines', () => {
       'Cut',
       'Dig',
       'Ice Beam',
+      'Rain Dance',
       'Rock Smash',
       'Rock Tomb',
       'Strength',

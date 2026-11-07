@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
-import { Bag, HELD_ITEM_DEFINITIONS, getHeldItem, type ItemDefinition } from '../items';
+import { Bag, HOLDABLE_ITEM_DEFINITIONS, getHeldItem, type ItemDefinition } from '../items';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
@@ -192,7 +192,7 @@ export class PartyScene extends Phaser.Scene {
    */
   private gearChips(pokemon: Pokemon, index: number, shows: string): string {
     const held = getHeldItem(pokemon.heldItemId);
-    const offers = HELD_ITEM_DEFINITIONS.filter(
+    const offers = HOLDABLE_ITEM_DEFINITIONS.filter(
       (item) => this.bag.count(item.id) > 0 && item.id !== pokemon.heldItemId,
     );
     const take = held

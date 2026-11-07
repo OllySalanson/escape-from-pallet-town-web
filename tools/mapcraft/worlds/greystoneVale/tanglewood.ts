@@ -235,6 +235,7 @@ export function tanglewood(): MapcraftResult {
       { x: 59, y: 45, hidden: true },
       { x: 7, y: 8, hidden: true },
       ...cave.secrets,
+      ...life.itemSpots,
     ],
     extra: {
       districts: [
@@ -251,6 +252,7 @@ export function tanglewood(): MapcraftResult {
         { name: 'THE OLD OAK', x: 42, y: 50, width: 16, height: 8, wildlife: 'woodland' },
         { name: 'THE FORESTER’S LODGE', x: 2, y: 54, width: 14, height: 6, wildlife: 'woodland' },
         { name: 'THE WINDFALLS', x: 28, y: 56, width: 16, height: 6, wildlife: 'woodland' },
+        ...life.districts,
       ],
       landmarks: [
         { x: 42, y: 27, name: 'Ruined Shrine', kind: 'shrine' },

@@ -1,6 +1,19 @@
 import type { MoveBase } from './MoveBase';
 import { GENERATED_MACHINE_LEARNERS } from './generated/machineLearners';
-import { AERIAL_ACE, BULLET_SEED, CUT, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH, ROCK_TOMB, STRENGTH, SURF } from './moves';
+import {
+  AERIAL_ACE,
+  BULLET_SEED,
+  CUT,
+  DIG,
+  ICE_BEAM,
+  IRON_TAIL,
+  RAIN_DANCE,
+  ROCK_SMASH,
+  ROCK_TOMB,
+  STRENGTH,
+  SUNNY_DAY,
+  SURF,
+} from './moves';
 
 /**
  * What a machine is, and which species answer to it.
@@ -58,7 +71,12 @@ export const MACHINES: Readonly<Record<string, MachineDefinition>> = {
   // The narrowest disc in the game: fifteen of the 151, and among the starters
   // only the Grass line.
   'tm09-bullet-seed': machine('TM09', BULLET_SEED),
+  // The two weather discs: setters, not damage. Each puts five turns of its
+  // weather over a fight (`battle/weather.ts`), which is how a player takes
+  // Misty's rain off the field or brings their own.
+  'tm11-sunny-day': machine('TM11', SUNNY_DAY),
   'tm13-ice-beam': machine('TM13', ICE_BEAM),
+  'tm18-rain-dance': machine('TM18', RAIN_DANCE),
   'tm23-iron-tail': machine('TM23', IRON_TAIL),
   'tm28-dig': machine('TM28', DIG),
   // Brock's, as it is in FireRed - and like FireRed's, it is given rather than

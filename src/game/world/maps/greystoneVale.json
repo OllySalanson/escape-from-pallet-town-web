@@ -5558,6 +5558,11 @@
    "hidden": true
   },
   {
+   "area": "greystone-caves-1f",
+   "x": 12,
+   "y": 15
+  },
+  {
    "x": 11,
    "y": 8,
    "hidden": true,
@@ -14892,6 +14897,15 @@
    "wildlife": "woodland"
   },
   {
+   "area": "greystone-caves-1f",
+   "name": "THE DIGGINGS",
+   "x": 8,
+   "y": 14,
+   "width": 7,
+   "height": 7,
+   "wildlife": "cave"
+  },
+  {
    "name": "TANGLEWOOD",
    "x": 192,
    "y": 128,
@@ -17470,6 +17484,19 @@
    "y": 28,
    "species": "geodude",
    "level": 8
+  },
+  {
+   "area": "greystone-caves-1f",
+   "x": 10,
+   "y": 17,
+   "species": "diglett",
+   "level": 8
+  },
+  {
+   "area": "greystone-caves-1f",
+   "x": 13,
+   "y": 19,
+   "species": "sandshrew"
   },
   {
    "area": "greystone-caves-b1f",

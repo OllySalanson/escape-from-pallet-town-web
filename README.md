@@ -317,7 +317,7 @@ sightseeing.
 
 - Pokémon that learn moves as they level, and ask before forgetting one.
 - Evolution by level and by five evolution stones.
-- Ten TMs and HMs to teach, the HMs bartered from Bill, and boulders only Strength will shift.
+- Twelve TMs and HMs to teach, the HMs bartered from Bill, and boulders only Strength will shift.
 - Rain on the high tops, and it changes how the fight goes.
 - Trainers who watch a stretch of road. Step into it and you're paying a toll.
 - Every sound effect synthesised in the browser, except the Pokémon themselves: each one cries its own FireRed cry as it comes out, faints and gets caught.

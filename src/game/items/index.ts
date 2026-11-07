@@ -53,6 +53,7 @@ export {
 } from './gridArrange';
 export {
   HELD_ITEM_DEFINITIONS,
+  HOLDABLE_ITEM_DEFINITIONS,
   ITEM_CATEGORY_LABELS,
   ITEM_DEFINITIONS,
   ITEMS,
@@ -87,6 +88,7 @@ export {
   heldItemEffect,
   heldItemName,
   isHeldItemId,
+  isHeldBerry,
   curedLine,
   hpRestoredLine,
   WONT_HAVE_EFFECT_LINE,
@@ -95,6 +97,7 @@ export {
   type HeldItemEffect,
   type ErrandItemId,
   type HeldItemId,
+  type HoldableItemId,
   type ItemDefinition,
   type ItemEffect,
   type ItemFootprint,

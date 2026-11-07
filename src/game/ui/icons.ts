@@ -42,7 +42,9 @@ export const ITEM_ICONS = {
   // teaches, which is how these games have always told one TM from another, and
   // an HM carries a slot where a TM has a pinhole.
   'tm09-bullet-seed': 'tm09-bullet-seed',
+  'tm11-sunny-day': 'tm11-sunny-day',
   'tm13-ice-beam': 'tm13-ice-beam',
+  'tm18-rain-dance': 'tm18-rain-dance',
   'tm23-iron-tail': 'tm23-iron-tail',
   'tm28-dig': 'tm28-dig',
   'tm39-rock-tomb': 'tm39-rock-tomb',
