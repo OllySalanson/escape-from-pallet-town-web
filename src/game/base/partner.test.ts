@@ -246,13 +246,36 @@ describe('where the partner arrives', () => {
     !blocked.some((solid) => sameTile(solid, tile));
 
   it('stands behind the player, facing the way they face', () => {
-    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([]))).toEqual({ tile: { x: 5, y: 6 }, facing: 'up', out: true });
+    expect(arrivalPlace({ x: 5, y: 5 }, 'down', open([]))).toEqual({ tile: { x: 5, y: 4 }, facing: 'down', out: true });
+    expect(arrivalPlace({ x: 5, y: 5 }, 'left', open([]))).toEqual({ tile: { x: 6, y: 5 }, facing: 'left', out: true });
   });
 
   it('stands beside them when behind is solid, and in front - turned to face them - when both sides are', () => {
-    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([{ x: 5, y: 6 }])).tile).toEqual({ x: 4, y: 5 });
-    const front = arrivalPlace({ x: 5, y: 5 }, 'up', open([{ x: 5, y: 6 }, { x: 4, y: 5 }, { x: 6, y: 5 }]));
-    expect(front).toEqual({ tile: { x: 5, y: 4 }, facing: 'down', out: true });
+    expect(arrivalPlace({ x: 5, y: 5 }, 'down', open([{ x: 5, y: 4 }])).tile).toEqual({ x: 6, y: 5 });
+    const front = arrivalPlace({ x: 5, y: 5 }, 'left', open([{ x: 6, y: 5 }, { x: 5, y: 4 }]));
+    expect(front).toEqual({ tile: { x: 4, y: 5 }, facing: 'right', out: true });
+  });
+
+  /**
+   * A figure a row lower is drawn in front, and a Charizard's picture reaches
+   * more than a tile above its feet: behind a player who walked up onto a mat it
+   * stood over them (the overnight playtest, 7 Nov 2026).
+   */
+  it('never stands on the tile below the player while anywhere else is free', () => {
+    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([]))).toEqual({ tile: { x: 4, y: 5 }, facing: 'up', out: true });
+    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([{ x: 4, y: 5 }, { x: 6, y: 5 }]))).toEqual({
+      tile: { x: 5, y: 4 },
+      facing: 'down',
+      out: true,
+    });
+    expect(arrivalPlace({ x: 5, y: 5 }, 'left', open([{ x: 6, y: 5 }, { x: 5, y: 4 }, { x: 4, y: 5 }])).tile).toEqual({
+      x: 5,
+      y: 6,
+    });
+    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([{ x: 4, y: 5 }, { x: 6, y: 5 }, { x: 5, y: 4 }])).tile).toEqual({
+      x: 5,
+      y: 6,
+    });
   });
 
   it('is tucked away on the player’s own tile when there is nowhere at all to stand', () => {
@@ -290,6 +313,8 @@ describe('where the partner arrives', () => {
     const place = arrivalPlace(spawn, 'up', yardStand);
     expect(place.out).toBe(true);
     expect(isNeighbour(place.tile, spawn)).toBe(true);
+    // Never a row below, where it is drawn over the player.
+    expect(place.tile.y).toBeLessThanOrEqual(spawn.y);
     expect(BASE_DOORS.some((door) => door.tiles.some((tile) => sameTile(tile, place.tile)))).toBe(false);
   });
 
@@ -310,6 +335,8 @@ describe('where the partner arrives', () => {
       // The way out is down off the mat, and the partner is never standing in it.
       if (room.mat) {
         expect(sameTile(place.tile, { x: room.mat.x, y: room.mat.y + 1 })).toBe(false);
+        // Walked in facing up, it is beside or ahead of the player, never over them.
+        expect(place.tile.y).toBeLessThanOrEqual(room.mat.y);
       }
     },
   );

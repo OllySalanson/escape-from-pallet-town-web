@@ -35,6 +35,7 @@ import {
   ENTRY_WALL_ROWS,
   KERB_WIDTH,
   PIT_RIM,
+  STATION_PLATE_RISE,
   STONE_RAMP,
   TELESCOPE_TUBE,
   WALL_FACE_HEIGHT,
@@ -823,6 +824,100 @@ function paintLocker(): void {
   }
 }
 
+// --- the names over them --------------------------------------------------------
+
+/**
+ * Each station's name, on a plate hung from the gold rail above it, so the room
+ * says what is where from the door (a caption only speaks once a player walks up).
+ * The Arena's own lettering - the five-pixel capitals `scripts/draw-raid-arena.mjs`
+ * puts on its front - on the badge it puts ARENA on: a gold rim round a red field,
+ * pointed at both ends. M and N take more than three pixels across, because at
+ * three the two are one letter.
+ */
+const PLATE_FONT: Readonly<Record<string, readonly string[]>> = {
+  B: ['##.', '#.#', '##.', '#.#', '##.'],
+  C: ['.##', '#..', '#..', '#..', '.##'],
+  E: ['###', '#..', '##.', '#..', '###'],
+  H: ['#.#', '#.#', '###', '#.#', '#.#'],
+  K: ['#.#', '#.#', '##.', '#.#', '#.#'],
+  L: ['#..', '#..', '#..', '#..', '###'],
+  N: ['#..#', '##.#', '#.##', '#..#', '#..#'],
+  O: ['.#.', '#.#', '#.#', '#.#', '.#.'],
+  R: ['##.', '#.#', '##.', '#.#', '#.#'],
+  A: ['.#.', '#.#', '###', '#.#', '#.#'],
+};
+
+/** What each plate says, in the station's own word (the caption says the rest). */
+const STATION_PLATE_WORDS: Readonly<Record<string, string>> = {
+  bench: 'BENCH',
+  rack: 'RACK',
+  locker: 'LOCKER',
+};
+
+/** A word as five rows of `#` and `.`, a column apart. */
+function plateLettering(word: string): string[] {
+  return [0, 1, 2, 3, 4].map((row) =>
+    [...word]
+      .map((letter) => {
+        const glyph = PLATE_FONT[letter];
+        if (!glyph) throw new Error(`no plate glyph for '${letter}'`);
+        return glyph[row];
+      })
+      .join('.'),
+  );
+}
+
+const PLATE_OUTLINE: Rgb = [40, 16, 16];
+const PLATE_FIELD: Rgb = [168, 24, 40];
+const PLATE_LETTER: Rgb = [248, 248, 240];
+const PLATE_LETTER_FOOT: Rgb = [216, 200, 184];
+
+function paintStationPlates(): void {
+  for (const station of ARENA_STATIONS) {
+    const word = plateLettering(STATION_PLATE_WORDS[station.id]);
+    const span = word[0].length + 4;
+    const rows = [
+      '...' + 'o'.repeat(span + 2) + '...',
+      '..o' + 'G'.repeat(span + 2) + 'o..',
+      '.oG' + 'g' + 'c'.repeat(span) + 'd' + 'do.',
+      ...word.map((row, index) => 'oGg' + 'cc' + [...row].map((pixel) => (pixel === '#' ? (index === word.length - 1 ? 'f' : 'w') : 'c')).join('') + 'cc' + 'gdo'),
+      '.oG' + 'g' + 'c'.repeat(span) + 'd' + 'do.',
+      '..o' + 'd'.repeat(span + 2) + 'o..',
+      '...' + 'o'.repeat(span + 2) + '...',
+    ];
+    const inks: Readonly<Record<string, Rgb>> = {
+      o: PLATE_OUTLINE,
+      G: BRASS_LIGHT,
+      g: GOLD,
+      d: GOLD_DARK,
+      c: PLATE_FIELD,
+      w: PLATE_LETTER,
+      f: PLATE_LETTER_FOOT,
+    };
+    const { left, right, top } = stationBox(station.id);
+    const width = rows[0].length;
+    const x0 = Math.round((left + right - width) / 2);
+    // Its top over the gold rail along the wall's top, so it hangs from it and
+    // clears the rack's and the locker's heads below.
+    const y0 = top - STATION_PLATE_RISE;
+    rows.forEach((row, dy) => {
+      [...row].forEach((pixel, dx) => {
+        const ink = inks[pixel];
+        if (ink) {
+          ground.set(x0 + dx, y0 + dy, ink);
+        }
+      });
+    });
+    // Its shadow on the panels, down and to the right.
+    for (let dy = 2; dy <= rows.length; dy += 1) {
+      const x = x0 + width - 2 + (dy < rows.length - 1 ? 1 : 0);
+      if (y0 + dy >= top - 2 * ARENA_TILE + 2) {
+        ground.set(x, y0 + dy, ENTRY_WALL_DEEP);
+      }
+    }
+  }
+}
+
 const BRASS_LIGHT: Rgb = [248, 232, 136];
 const BRASS_DARK: Rgb = [136, 88, 32];
 const BRASS_SHADE: Rgb = [88, 56, 24];
@@ -940,6 +1035,7 @@ for (const torch of ARENA_TORCHES) {
 paintBench();
 paintRack();
 paintLocker();
+paintStationPlates();
 for (const telescope of ARENA_TELESCOPES) {
   paintTelescope(telescope);
 }

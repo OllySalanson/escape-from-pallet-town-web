@@ -236,6 +236,14 @@ export const ARENA_STATIONS: readonly ArenaStation[] = [
   station('locker', ARENA_MAT.x + 7, 3, [{ x: ARENA_ENTRY.right + 1, y: ARENA_ENTRY.bottom }], false),
 ];
 
+/**
+ * How far above the top of its own row a station's name plate reaches, in pixels:
+ * each hangs from the gold rail along the back wall (`scripts/draw-arena-hall.mts`
+ * paints it there), so the room says what is where from the door. A caption seated
+ * over a station clears this, or it would lie over the name it is the long form of.
+ */
+export const STATION_PLATE_RISE = 2 * ARENA_TILE + 2;
+
 /** The station on this tile, if there is one. */
 export function arenaStationAt(tile: GridPosition): ArenaStation | undefined {
   return ARENA_STATIONS.find((station) => station.tiles.some((each) => sameTile(each, tile)));

@@ -22,10 +22,13 @@ import {
  * 1. **It fills itself.** The raid pack has packed itself since the grid
  *    arrived; a container the player has to remember to fill is a way to lose a
  *    Pokemon to forgetfulness rather than to a decision.
- * 2. **Pokemon go in first, highest level first.** This is the half that earns
- *    its keep: nobody should ever deploy with their best Pokemon unprotected
- *    because they did not open a screen. It outranks the remembered choice - a
- *    remembered Potion never keeps a higher-level Pokemon out.
+ * 2. **Pokemon go in first: the partner, then highest level first.** This is
+ *    the half that earns its keep: nobody should ever deploy with their best
+ *    Pokemon unprotected because they did not open a screen. It outranks the
+ *    remembered choice - a remembered Potion never keeps a Pokemon out. The
+ *    partner leads whatever its level (the overnight plan's call on
+ *    `eptw-locker-partner`, 7 Nov 2026): a wipe should never take the starter
+ *    nobody chose to risk, and a level-30 catch is cheaper to lose than it.
  * 3. **Last raid is the starting point for the next**, so a player running raid
  *    after raid is not re-picking from scratch.
  *
@@ -63,8 +66,8 @@ export interface SecureCandidate {
   readonly level: number;
   readonly cargo: GridCargo;
   /**
-   * Whether this is the save's partner - of the starter's line, evolved or
-   * not. It only ever breaks a level tie: the rule is still highest level first.
+   * Whether this is the save's partner. It goes in before anybody else whatever
+   * its level, so long as it fits; the rest follow highest level first.
    */
   readonly partner?: boolean;
 }
@@ -105,7 +108,7 @@ export function autofillSecureSlot(
   const pokemonIds: string[] = [];
   const cargo: GridCargo[] = [];
   if (preference.pokemon) {
-    for (const candidate of [...candidates].sort(byLevelThenPartner)) {
+    for (const candidate of [...candidates].sort(partnerThenLevel)) {
       if (pokemonIds.length >= pokemonSlots) {
         break;
       }
@@ -162,18 +165,20 @@ export function autofillSecureSlot(
 }
 
 /**
- * Highest level first; on a tie the partner, then by name and id so the same
- * party fills the same way.
+ * The partner first, then highest level, then by name and id so the same party
+ * fills the same way.
  *
- * The partner outranks a tie because the alphabet used to decide it: a level-5
- * Caterpie caught on the way out was protected ahead of a level-5 Charmander,
- * and a wipe then deleted the starter (playtest 13). A fresh catch is the
- * cheapest thing in the party to replace and the partner the dearest.
+ * The partner used to win only a level tie, after the alphabet decided one: a
+ * level-5 Caterpie caught on the way out was protected ahead of a level-5
+ * Charmander and a wipe deleted the starter (playtest 13). Winning only ties
+ * still let any higher catch push the partner out, so it leads outright now. A
+ * partner that does not fit the container is passed over, never a reason to
+ * leave it empty (`autofillSecureSlot` goes on down the list).
  */
-function byLevelThenPartner(a: SecureCandidate, b: SecureCandidate): number {
+function partnerThenLevel(a: SecureCandidate, b: SecureCandidate): number {
   return (
-    b.level - a.level ||
     Number(b.partner === true) - Number(a.partner === true) ||
+    b.level - a.level ||
     a.cargo.name.localeCompare(b.cargo.name) ||
     a.id.localeCompare(b.id)
   );

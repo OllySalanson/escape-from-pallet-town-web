@@ -165,9 +165,9 @@ export class DeploymentFlow {
   /** What the container filled itself with last raid, and whether to lead with Pokemon. */
   private readonly preference: SecurePreference;
   /**
-   * Every species of the partner's line, so the container can break a level tie
-   * in the partner's favour whether or not it has evolved. Empty when the save
-   * names no starter, which leaves the tie to the alphabet as before.
+   * Every species of the starter's line, so the container can lead with the
+   * starter once the partner itself is lost. Empty when the save names no
+   * starter.
    */
   private readonly partnerSpecies: ReadonlySet<string>;
   /**
@@ -739,6 +739,17 @@ export class DeploymentFlow {
    * on the screen before it - a container filled once, when the loadout was
    * empty, would protect nothing.
    */
+  /**
+   * Whether the container should lead with this one: the partner itself, by its
+   * stash id, since a second of the starter's kind is just a catch. Once the
+   * partner is lost the vault marks nobody, and then any of the starter's line
+   * stands in for it - the starter a wipe hands back is that.
+   */
+  private isPartner(stored: StashedPokemon): boolean {
+    const partnerId = this.stash.partnerId();
+    return partnerId !== null ? stored.id === partnerId : this.partnerSpecies.has(stored.pokemon.base.id);
+  }
+
   private refillSecureSlot(): void {
     if (this.secureTouched) {
       // Still drop anyone no longer in the party: a protected place nobody can
@@ -751,7 +762,7 @@ export class DeploymentFlow {
         id: stored.id,
         level: stored.pokemon.level,
         cargo: pokemonCargo(stored.id, stored.pokemon),
-        partner: this.partnerSpecies.has(stored.pokemon.base.id),
+        partner: this.isPartner(stored),
       })),
       this.preference,
       this.secureGrid,
