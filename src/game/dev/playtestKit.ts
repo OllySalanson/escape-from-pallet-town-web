@@ -7,7 +7,7 @@ import { canPickBerries } from '../minigames/berryPicking';
 import { courseMovesOf } from '../minigames/fieldCourse';
 import { valeGyms } from '../world/valeQuarters';
 import { NO_GAME_CORNER } from '../minigames/tickets';
-import { bestLines, lineMs, routeOf } from '../minigames/derby';
+import { DERBY_LEVELS, plainLapMs, THE_FRONT } from '../minigames/derby';
 import { digsAPlus } from '../minigames/dig';
 import { biteChance } from '../minigames/fishingDerby';
 import { traitsOf } from '../minigames/traits';
@@ -16,8 +16,7 @@ import { traitsOf } from '../minigames/traits';
 function racerTime(speciesId: string): number | undefined {
   const racer = traitsOf(speciesId);
   if (!racer) return undefined;
-  const lines = bestLines(racer, false);
-  return lineMs(racer, routeOf(lines.first, lines.second), false);
+  return plainLapMs(THE_FRONT, racer, false);
 }
 
 /**
@@ -209,6 +208,14 @@ export function withEveryLeaderMet(progress: RaidProgress): RaidProgress {
     .map((gym) => gym.bossId)
     .filter((id) => !met.includes(id));
   return missing.length === 0 ? progress : { ...progress, gymsMet: [...met, ...missing] };
+}
+
+/**
+ * Every PROMENADE DERBY level open, so each course can be raced the night it
+ * lands without placing on the one before it first.
+ */
+export function withEveryDerbyLevel(progress: RaidProgress): RaidProgress {
+  return (progress.derbyCleared ?? 0) >= DERBY_LEVELS.length ? progress : { ...progress, derbyCleared: DERBY_LEVELS.length };
 }
 
 /**

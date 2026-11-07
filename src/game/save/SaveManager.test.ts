@@ -1,3 +1,4 @@
+import { DERBY_LEVELS } from '../minigames/derby';
 import { createRaidInFlight } from '../run/raidInFlight';
 import { describe, expect, it } from 'vitest';
 import {
@@ -2712,6 +2713,40 @@ describe('the angler\'s tally of what has been reeled in off the harbour', () =>
     written.raidProgress.harbourCatches = [129, 'krabby', 129, -4];
     storage.setItem(SAVE_KEY, JSON.stringify(written));
     expect(new SaveManager(storage).load()?.raidProgress.harbourCatches).toEqual([129]);
+  });
+});
+
+describe("THE PROMENADE DERBY's levels, kept at home", () => {
+  const NOON = new Date(2026, 10, 7, 12);
+
+  it('opens each level by a podium on the one before it, pays the place, and keeps it through a reload', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const [front, sands, breakwater] = DERBY_LEVELS;
+    expect(saves.load()?.raidProgress.derbyCleared).toBeUndefined();
+    // Fourth on THE FRONT opens nothing and pays nothing.
+    expect(saves.playDerby(front, 4, NOON)?.cleared).toBe(0);
+    expect(saves.load()?.raidProgress.derbyCleared).toBeUndefined();
+    // Third opens THE SANDS, and pays the podium.
+    const third = saves.playDerby(front, 3, NOON);
+    expect(third?.cleared).toBe(1);
+    expect(third?.payout.tickets).toBe(10);
+    // A level not yet open is never cleared past, whatever the place.
+    expect(saves.playDerby(breakwater, 1, NOON)?.cleared).toBe(1);
+    expect(saves.playDerby(sands, 1, NOON)?.cleared).toBe(2);
+    expect(new SaveManager(storage).load()?.raidProgress.derbyCleared).toBe(2);
+  });
+
+  it('reads a level count written wrong back as none, or as no more levels than there are', () => {
+    const storage = new MemoryStorage();
+    freshSave(storage);
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.derbyCleared = 'all';
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    expect(new SaveManager(storage).load()?.raidProgress.derbyCleared).toBeUndefined();
+    written.raidProgress.derbyCleared = 99;
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    expect(new SaveManager(storage).load()?.raidProgress.derbyCleared).toBe(DERBY_LEVELS.length);
   });
 });
 

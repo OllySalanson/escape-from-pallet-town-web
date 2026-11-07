@@ -173,7 +173,7 @@ try {
     const state = await page.evaluate(`(() => { const r = ${derby}.derbyRace; if (!r) return null; const me = r.runners[0];
       return { clock: r.clock, leg: me.leg, stamina: me.stamina, done: me.finishedMs !== null, swims: me.racer.types.includes('water'), flies: me.racer.types.includes('flying'), big: me.racer.squares === 9 }; })()`);
     if (!state || state.done) break;
-    if (state.leg === 0) await page.evaluate(`${derby}.ride({ first: ${state.big ? "'wide'" : "'inside'"}, second: ${state.flies ? "'air'" : state.swims ? "'bay'" : "'pier'"} })`);
+    if (state.leg === 0) await page.evaluate(`${derby}.ride({ lines: { first: ${state.big ? "'wide'" : "'inside'"}, second: ${state.flies ? "'air'" : state.swims ? "'bay'" : "'pier'"} } })`);
     // A tap on each straight stretch now and then, with breath in the bar.
     if (state.clock > 2400 && state.stamina > 200 && frame % 9 === 0 && (state.leg === 0 || state.leg === 2)) {
       await page.keyDown('Space');

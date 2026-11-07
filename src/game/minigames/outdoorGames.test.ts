@@ -4,7 +4,6 @@ import { harbourBite } from '../base/harbourFishing';
 import {
   advanceDerby,
   bestLines,
-  COURSE,
   COUNTDOWN_MS,
   derbyField,
   derbyGoing,
@@ -14,7 +13,9 @@ import {
   playerPlace,
   startDerby,
   stepDerby,
+  THE_FRONT,
   type DerbyEntrant,
+  type DerbyStretch,
 } from './derby';
 import { DIG_HEIGHT, DIG_WIDTH, digAt, digShape, digsFor, isDug, startDig } from './dig';
 import { biteChance, catchScore, FISHING_DERBY_MS, landCatch, modelFishingDerby, startFishingDerby } from './fishingDerby';
@@ -43,10 +44,14 @@ function meanPlace(species: string, wet = false): number {
   return total / RACES;
 }
 
+/** THE FRONT's fork by its id. */
+const forkOf = (id: string): DerbyStretch => THE_FRONT.stretches.find((stretch) => stretch.id === id)!;
+const linesOf = (species: string, wet = false) => bestLines(THE_FRONT, traits(species), wet);
+
 describe('THE PROMENADE DERBY', () => {
   it('runs on ground of the harbour: every land leg on tiles somebody can stand on, the swim in the sea', () => {
     const map = getBaseMap([]);
-    for (const leg of Object.values(COURSE)) {
+    for (const leg of new Set(THE_FRONT.stretches.flatMap((stretch) => stretch.lines.flatMap((line) => line.legs)))) {
       for (const point of leg.points) {
         const terrain = map.terrain[point.y]?.[point.x];
         if (leg.surface === 'land') {
@@ -60,21 +65,21 @@ describe('THE PROMENADE DERBY', () => {
   });
 
   it('lets a Water type swim the bay and a Flying type fly home, and nobody else', () => {
-    expect(linesOpenTo(traits('squirtle'))).toEqual(['pier', 'bay']);
-    expect(linesOpenTo(traits('pidgey'))).toEqual(['pier', 'air']);
-    expect(linesOpenTo(traits('charmander'))).toEqual(['pier']);
-    expect(bestLines(traits('doduo'), false).second).toBe('air');
-    expect(bestLines(traits('horsea'), false).second).toBe('bay');
+    expect(linesOpenTo(traits('squirtle'), forkOf('second'))).toEqual(['pier', 'bay']);
+    expect(linesOpenTo(traits('pidgey'), forkOf('second'))).toEqual(['pier', 'air']);
+    expect(linesOpenTo(traits('charmander'), forkOf('second'))).toEqual(['pier']);
+    expect(linesOf('doduo').second).toBe('air');
+    expect(linesOf('horsea').second).toBe('bay');
     // A big one takes the wide line rather than the tight turn.
-    expect(bestLines(traits('venusaur'), false).first).toBe('wide');
-    expect(bestLines(traits('rattata'), false).first).toBe('inside');
+    expect(linesOf('venusaur').first).toBe('wide');
+    expect(linesOf('rattata').first).toBe('inside');
   });
 
   it('is the same field and the same going for everybody on a day, and changes from day to day', () => {
-    expect(derbyField('2026-11-05')).toEqual(derbyField('2026-11-05'));
-    expect(derbyField('2026-11-05')).toHaveLength(FIELD_SIZE);
+    expect(derbyField(THE_FRONT, '2026-11-05')).toEqual(derbyField(THE_FRONT, '2026-11-05'));
+    expect(derbyField(THE_FRONT, '2026-11-05')).toHaveLength(FIELD_SIZE);
     const days = Array.from({ length: 30 }, (_, index) => `2026-11-${String(index + 1).padStart(2, '0')}`);
-    expect(new Set(days.map((day) => derbyField(day).map((entrant) => entrant.handle).join())).size).toBeGreaterThan(20);
+    expect(new Set(days.map((day) => derbyField(THE_FRONT, day).map((entrant) => entrant.handle).join())).size).toBeGreaterThan(20);
     const wet = days.filter((day) => derbyGoing(day) === 'wet').length;
     expect(wet).toBeGreaterThan(4);
     expect(wet).toBeLessThan(18);
@@ -82,7 +87,7 @@ describe('THE PROMENADE DERBY', () => {
 
   it('plays the same race at any frame rate', () => {
     const play = (frameMs: number): number | null => {
-      let race = startDerby({ name: 'YOU', racer: traits('ponyta') }, fieldFor(3), false, 3);
+      let race = startDerby(THE_FRONT, { name: 'YOU', racer: traits('ponyta') }, fieldFor(3), false, 3);
       let clock = 0;
       while (!race.over) {
         // A tap every 100 ms, from the gun.
@@ -99,7 +104,7 @@ describe('THE PROMENADE DERBY', () => {
   });
 
   it('stumbles a racer that sprints through a tight corner, and knocks a bumper off its line', () => {
-    let race = startDerby({ name: 'YOU', racer: traits('rattata') }, [], false, 1);
+    let race = startDerby(THE_FRONT, { name: 'YOU', racer: traits('rattata') }, [], false, 1);
     let stumbled = false;
     while (!race.over) {
       race = stepDerby(race, { tap: true });
@@ -123,7 +128,7 @@ describe('THE PROMENADE DERBY', () => {
     // A flyer on the air line, a swimmer in the bay.
     expect(meanPlace('doduo')).toBeLessThan(1.5);
     // Squirtle is slower on land than Bulbasaur, and the bay carries it past.
-    expect(bestLines(traits('squirtle'), false).second).toBe('bay');
+    expect(linesOf('squirtle').second).toBe('bay');
     expect(meanPlace('squirtle')).toBeLessThan(bulbasaur - 1);
     // Swift Swim on a wet day.
     // Swift Swim on a wet day: a Horsea wins most days anyway, so it is the clock that says so.

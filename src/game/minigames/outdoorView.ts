@@ -54,6 +54,39 @@ export interface OutdoorPickState {
   readonly status?: string;
   /** What the last game came to and what it paid, shown until the next one starts. */
   readonly last?: { readonly headline: string; readonly payout: GamePayout; readonly kept: readonly string[] };
+  /** The levels a game has, if it has more than one (THE PROMENADE DERBY's courses), and which is chosen. */
+  readonly course?: OutdoorCourse;
+}
+
+/** A game's levels, one after another: each opened by finishing the one before it. */
+export interface OutdoorCourse {
+  /** The window's note: `LEVEL 2 OF 4`. */
+  readonly note: string;
+  readonly levels: readonly {
+    readonly number: number;
+    readonly name: string;
+    readonly open: boolean;
+    readonly chosen: boolean;
+    /** What the help bar says of it: what it is, or what opens it. */
+    readonly help: string;
+  }[];
+  /** The chosen level in a line, and what is next. */
+  readonly line: string;
+}
+
+/** The levels, as a row of buttons and the chosen one's line. */
+function courseMarkup(course: OutdoorCourse): string {
+  const buttons = course.levels
+    .map(
+      (level) =>
+        `<button class="px-window px-button${level.chosen ? ' is-primary' : ''}" data-course-level="${level.number}"${level.open ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(level.help)}">${level.number} ${escapeAttribute(level.open ? level.name : 'LOCKED')}</button>`,
+    )
+    .join('');
+  return pixelWindow(`<div class="outdoor-course-levels">${buttons}</div><small class="px-wrap">${escapeAttribute(course.line)}</small>`, {
+    heading: 'Course',
+    note: course.note,
+    className: 'outdoor-course',
+  });
 }
 
 /** What a game paid, as a line under the bar's title. */
@@ -82,7 +115,7 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
       : '<p class="px-empty px-wrap">Nobody to play with: everybody you keep is somewhere else.</p>';
   const ready = state.chosen !== null;
   const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? state.playHelp : 'Choose who plays first.')}">${state.last ? 'Again' : 'Play'}</button>`;
-  const body = `<main class="px-body game-corner-layout">${pixelWindow(
+  const body = `<main class="px-body game-corner-layout${state.course ? ' has-course' : ''}">${state.course ? courseMarkup(state.course) : ''}${pixelWindow(
     `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${list}</div>`,
     { heading: state.heading, note: ready ? '1 of 1' : '0 of 1' },
   )}${pixelCommitBar({
