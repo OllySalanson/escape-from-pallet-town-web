@@ -35,6 +35,10 @@ class MemoryStorage {
   public removeItem(key: string): void {
     this.values.delete(key);
   }
+
+  public keys(): string[] {
+    return [...this.values.keys()];
+  }
 }
 
 /** A save on disk for a new player, which is what a record is written onto. */
@@ -2818,5 +2822,36 @@ describe('what the player wears, and the wardrobe they have bought', () => {
     const game = new SaveManager(storage).load()!;
     expect(game.raidProgress.wardrobe).toEqual(['red-cap']);
     expect(game.raidProgress.look).toBeUndefined();
+  });
+});
+
+describe('gym leaders met', () => {
+  const fresh = (): { saves: SaveManager; storage: MemoryStorage } => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+    saves.save({ party: new PokemonParty([]), mapId: 'greystone-vale', position: { x: 1, y: 1 }, bag: new Bag(), stash });
+    return { saves, storage };
+  };
+
+  it('records a leader met once, keeps it across a reload, and touches nothing else', () => {
+    const { saves, storage } = fresh();
+    const before = saves.load()!;
+    expect(before.raidProgress.gymsMet).toBeUndefined();
+    expect(saves.recordGymMet('vale-gym-misty')).toBe(true);
+    expect(saves.recordGymMet('vale-gym-misty')).toBe(false);
+    const after = new SaveManager(storage).load()!;
+    expect(after.raidProgress.gymsMet).toEqual(['vale-gym-misty']);
+    expect({ ...after.raidProgress, gymsMet: undefined }).toEqual({ ...before.raidProgress, gymsMet: undefined });
+  });
+
+  it('is only ever a gym leader: anybody else, stored or asked, is dropped', () => {
+    const { saves, storage } = fresh();
+    expect(saves.recordGymMet('vale-quay-keeper')).toBe(false);
+    const raw = JSON.parse(storage.getItem(storage.keys()[0])!) as { raidProgress: Record<string, unknown> };
+    raw.raidProgress.gymsMet = ['vale-gym-misty', 'vale-quay-keeper', 7, 'vale-gym-misty'];
+    storage.setItem(storage.keys()[0], JSON.stringify(raw));
+    expect(new SaveManager(storage).load()!.raidProgress.gymsMet).toEqual(['vale-gym-misty']);
   });
 });

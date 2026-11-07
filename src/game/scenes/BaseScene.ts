@@ -217,11 +217,20 @@ import {
   BOUT_QUESTION,
   nearTheRival,
 } from '../base/arenaBouts';
+import {
+  leaderBehindRival,
+  practiceLeaders,
+  practiceTrainer,
+  PRACTICE_AFTER_BOUT_QUESTION,
+  PRACTICE_QUESTION,
+  type PracticeLeader,
+} from '../base/gymPractice';
+import { gymOf, type ValeGym } from '../world/valeQuarters';
 import type { BoutRecord } from '../base/boutLadder';
 import type { BattleSceneData } from './BattleScene';
 import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
-import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
+import { HUNTER_RIVALS, hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
 import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, isFoundOnly, itemCountTag, type ItemId, type PackItemId } from '../items/items';
 import { FALLBACK_PACK_ID, STARTING_PACK_ID, bestPackIn, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
@@ -515,6 +524,12 @@ export interface BaseSceneData {
   /** How a bout for show has just gone (`base/arenaBouts.ts`), handed back by the fight, which wrote nothing. */
   readonly bout?: { readonly rival: HunterRivalId; readonly won: boolean };
   /**
+   * How a practice against a gym leader's real team has just gone
+   * (`base/gymPractice.ts`): their boss id. Nothing is written for it, not even
+   * the ladder: it is the leader's to say something about, and nobody's to keep.
+   */
+  readonly practice?: { readonly leader: string; readonly won: boolean };
+  /**
    * Where in the room to stand, facing up, instead of on the mat: backing out
    * of a screen opened from something in the room - the wall map - puts the
    * player back in front of it rather than at the door.
@@ -763,6 +778,9 @@ export class BaseScene extends Phaser.Scene {
   /** The rival on the far floor, and who it is. */
   private rivalFigure: Phaser.GameObjects.Sprite | null = null;
   private rivalHere: HunterRival | null = null;
+  /** Gym leaders the player has met, waiting on the far floor to spar with their real team. */
+  private leaderFigures: Phaser.GameObjects.Sprite[] = [];
+  private leadersHere: readonly PracticeLeader[] = [];
   /** How long until another coin can go over, and until something comes back for the last. */
   private pitCoinMs = 0;
   private pitGiftDueMs = 0;
@@ -1089,6 +1107,8 @@ export class BaseScene extends Phaser.Scene {
     }
     this.rivalFigure = null;
     this.rivalHere = null;
+    this.leaderFigures = [];
+    this.leadersHere = [];
     this.pitCoinMs = 0;
     this.railStandMs = 0;
     this.pitGiftDueMs = 0;
@@ -1196,6 +1216,9 @@ export class BaseScene extends Phaser.Scene {
     this.hangTheBanner();
     if (data.bout) {
       this.tellTheBout(data.bout, boutWent);
+    }
+    if (data.practice) {
+      this.tellThePractice(data.practice);
     }
     if (this.arena && data.arrival === 'raid') {
       this.nameDue = nameService() !== null && houseNameNeeded(houseName()) && raidsDeployed(this.savedGame.raidProgress) === 1;
@@ -1540,7 +1563,11 @@ export class BaseScene extends Phaser.Scene {
   /** Whether somebody the player would press into to speak to stands on a tile of the hall. */
   private personOn(tile: GridPosition): boolean {
     const keeper = this.place.room?.room.keeper?.position;
-    return (keeper !== undefined && sameTile(keeper, tile)) || (this.rivalHere !== null && sameTile(tile, RIVAL_TILE));
+    return (
+      (keeper !== undefined && sameTile(keeper, tile)) ||
+      (this.rivalHere !== null && sameTile(tile, RIVAL_TILE)) ||
+      this.leaderOn(tile) !== undefined
+    );
   }
 
   // -- the map ---------------------------------------------------------------
@@ -2281,6 +2308,92 @@ export class BaseScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setTint(appearance.tint ?? NO_TINT)
       .setDepth(atRow(FIGURE_BAND, RIVAL_TILE.y));
+    this.standTheLeaders();
+  }
+
+  /**
+   * The gym leaders this save has met, each on their own tile of the far floor,
+   * there to spar with their real gym team (`base/gymPractice.ts`) - except one
+   * who is the rival there today, who offers it there instead.
+   */
+  private standTheLeaders(): void {
+    this.leaderFigures.forEach((figure) => figure.destroy());
+    this.leaderFigures = [];
+    this.leadersHere = [];
+    if (!this.arena || this.visit) {
+      return;
+    }
+    this.leadersHere = practiceLeaders(this.savedGame.raidProgress, this.rivalHere?.id ?? null);
+    this.leaderFigures = this.leadersHere.map(({ gym, tile }) => {
+      const design = HUNTER_RIVALS.find((rival) => rival.id === gym.rival)?.design;
+      const appearance = getWorldCharacterAppearance('npc', design);
+      return this.add
+        .sprite(tile.x * TILE_SIZE, tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, appearance.textureKey, worldCharacterIdleFrame(appearance, 'down'))
+        .setOrigin(0, 0)
+        .setTint(appearance.tint ?? NO_TINT)
+        .setDepth(atRow(FIGURE_BAND, tile.y));
+    });
+  }
+
+  /** The leader waiting on a tile, if one is. */
+  private leaderOn(tile: GridPosition): PracticeLeader | undefined {
+    // A scene a test builds without `create` has stood nobody up.
+    return this.leadersHere?.find((leader) => sameTile(leader.tile, tile));
+  }
+
+  /** A leader on the far floor: their offer, the question, and the sand. */
+  private speakToLeader(gym: ValeGym): void {
+    const kit = this.kit;
+    const at = this.leadersHere.find((leader) => leader.gym.bossId === gym.bossId)?.tile ?? RIVAL_TILE;
+    if (!kit) {
+      return;
+    }
+    this.standStill();
+    if (kit.flow.party.length === 0) {
+      this.say([`${gym.leader.toUpperCase()}: "Nobody on your bench? Come back with a team."`], [at]);
+      return;
+    }
+    this.say([gym.practice.offer], [at], () =>
+      this.askInBox(PRACTICE_QUESTION, (yes) => {
+        if (yes) {
+          this.startPractice(gym);
+        }
+      }),
+    );
+  }
+
+  /** On to the sand against a leader's real gym team, on copies of the bench, writing nothing. */
+  private startPractice(gym: ValeGym): void {
+    const kit = this.kit;
+    const trainer = practiceTrainer(gym.bossId);
+    const rival = HUNTER_RIVALS.find((each) => each.id === gym.rival);
+    if (!kit || !trainer || !rival) {
+      return;
+    }
+    const party = boutParty(kit.flow.party.map((stored) => stored.pokemon));
+    const data: BattleSceneData = {
+      party: new PokemonParty(party),
+      bag: boutBag(kit.flow.packedContents),
+      trainer,
+      hunterBattle: true,
+      exhibition: { rival: rival.id, at: { ...this.currentTile }, practice: gym.bossId },
+    };
+    flowAcrossABout = kit.flow;
+    this.leaving = true;
+    audioManager.play('battleStart');
+    this.cameras.main.fadeOut(220, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('battle', data));
+  }
+
+  /** Back from a practice: the crowd, and what the leader makes of it. Nothing is written. */
+  private tellThePractice(practice: NonNullable<BaseSceneData['practice']>): void {
+    const gym = gymOf(practice.leader);
+    if (!this.arena || !gym) {
+      return;
+    }
+    this.arena.crowdReacts(practice.won ? 'cheer' : 'clap', this.figureMiddle());
+    const at = this.leadersHere.find((leader) => leader.gym.bossId === gym.bossId)?.tile ?? RIVAL_TILE;
+    this.say([practice.won ? gym.practice.won : gym.practice.lost], [at]);
   }
 
   /** The slate by the runner: the run so far, or the one a lost raid has just ended, struck through. */
@@ -2336,9 +2449,23 @@ export class BaseScene extends Phaser.Scene {
       this.askInBox(BOUT_QUESTION, (yes) => {
         if (yes) {
           this.startBout(rival);
-        } else {
-          this.say([rival.hall.later], [RIVAL_TILE]);
+          return;
         }
+        // A rival who is also a leader the player has met offers their gym team instead.
+        const gym = leaderBehindRival(this.savedGame.raidProgress, rival.id);
+        if (gym) {
+          this.say([gym.practice.offer], [RIVAL_TILE], () =>
+            this.askInBox(PRACTICE_AFTER_BOUT_QUESTION, (practise) => {
+              if (practise) {
+                this.startPractice(gym);
+              } else {
+                this.say([rival.hall.later], [RIVAL_TILE]);
+              }
+            }),
+          );
+          return;
+        }
+        this.say([rival.hall.later], [RIVAL_TILE]);
       }),
     );
   }
@@ -3009,6 +3136,7 @@ export class BaseScene extends Phaser.Scene {
       this.targetTile === null &&
       ((keeper !== undefined && sameTile(keeper, above)) ||
         (this.rivalHere !== null && sameTile(RIVAL_TILE, above)) ||
+        this.leaderOn(above) !== undefined ||
         [...(this.harbourLife?.standing('person') ?? []), ...(this.harbourLife?.standing('pokemon') ?? [])].some(
           (tile) => sameTile(tile, above),
         ));
@@ -3731,6 +3859,10 @@ export class BaseScene extends Phaser.Scene {
     if (this.rivalHere && sameTile(facing, RIVAL_TILE)) {
       return `[SPACE] ${this.rivalHere.name}`;
     }
+    const leaderFaced = this.leaderOn(facing);
+    if (leaderFaced) {
+      return `[SPACE] PRACTISE WITH ${leaderFaced.gym.leader.toUpperCase()}`;
+    }
     if (this.facesTheStands(facing)) {
       return '[SPACE] WAVE TO THE CROWD';
     }
@@ -4179,6 +4311,7 @@ export class BaseScene extends Phaser.Scene {
     return (
       (this.collision[tile.y]?.[tile.x] ?? true) ||
       (this.rivalHere !== null && sameTile(tile, RIVAL_TILE)) ||
+      this.leaderOn(tile) !== undefined ||
       (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y) ||
       (this.harbourLife?.holds(tile) ?? false)
     );
@@ -4707,6 +4840,11 @@ export class BaseScene extends Phaser.Scene {
       }
       if (this.rivalHere && sameTile(target, RIVAL_TILE)) {
         this.speakToRival();
+        return;
+      }
+      const leader = this.leaderOn(target);
+      if (leader) {
+        this.speakToLeader(leader.gym);
         return;
       }
       if (this.waveAt(target)) {

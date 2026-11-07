@@ -121,6 +121,75 @@ describe('a bout for show', () => {
     });
   });
 
+  it('goes home from a practice against a gym leader as a practice, writing nothing at all', () => {
+    const storage = new CountingStorage();
+    vi.stubGlobal('localStorage', storage);
+    const stash = createStartingStash(CHARMANDER);
+    const saves = new SaveManager(storage);
+    saves.save({ party: new PokemonParty([]), mapId: 'greystone-vale', position: { x: 1, y: 1 }, stash, starterSpeciesId: 'charmander', raidProgress: DEFAULT_RAID_PROGRESS });
+    const written = storage.writes.length;
+    const scene = fightingScene(boutParty(stash.listPokemon().map((each) => each.pokemon))) as unknown as {
+      completeReturnToWorld(): void;
+      exhibition: unknown;
+      state: { outcome: string };
+      scene: { start: ReturnType<typeof vi.fn> };
+    };
+    scene.exhibition = { rival: 'misty', at: { x: 30, y: 7 }, practice: 'vale-gym-misty' };
+    scene.state = { outcome: 'defeat' };
+    scene.completeReturnToWorld();
+    expect(storage.writes.length).toBe(written);
+    expect(scene.scene.start).toHaveBeenCalledWith('base', {
+      room: 'raid-arena',
+      at: { x: 30, y: 7 },
+      practice: { leader: 'vale-gym-misty', won: false },
+    });
+  });
+
+  it('reads a lost practice to its last line - what beat you - before it leaves', () => {
+    const lines = ['You lost the bout.', 'What beat you? Speed: STARYU moved first 4 times.'];
+    let shown = 0;
+    const scene = fightingScene([]) as unknown as {
+      confirm(): void;
+      mode: string;
+      dialog: unknown;
+      returnToWorld: ReturnType<typeof vi.fn>;
+    };
+    Object.assign(scene, {
+      mode: 'finished',
+      returnToWorld: vi.fn(),
+      dialog: {
+        isCurrentMessageComplete: true,
+        advance: () => {
+          shown += 1;
+          return shown < lines.length;
+        },
+      },
+    });
+    scene.confirm();
+    expect(scene.returnToWorld).not.toHaveBeenCalled();
+    scene.confirm();
+    expect(scene.returnToWorld).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts the closing lines up on the press that read the last faint, and does not leave on that press', () => {
+    const scene = fightingScene([]) as unknown as { confirm(): void; mode: string; returnToWorld: ReturnType<typeof vi.fn> };
+    Object.assign(scene, {
+      mode: 'events',
+      returnToWorld: vi.fn(),
+      dialog: {
+        isCurrentMessageComplete: true,
+        // Reading "Your CHARMANDER fainted!" ends the turn, and the fight's own last lines go up.
+        advance: () => {
+          scene.mode = 'finished';
+          return false;
+        },
+      },
+    });
+    scene.confirm();
+    expect(scene.mode).toBe('finished');
+    expect(scene.returnToWorld).not.toHaveBeenCalled();
+  });
+
   it('leaves one field of the save for the hall to write, and only that', () => {
     const storage = new CountingStorage();
     const saves = new SaveManager(storage);

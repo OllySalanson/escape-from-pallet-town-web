@@ -519,6 +519,24 @@ describe('extraction report after a lost raid', () => {
     expect(report.spent).toBeUndefined();
   });
 
+  it('says what beat you in the fight a raid was lost in, and only then', () => {
+    const report = (cause: 'defeated' | 'timer') => {
+      const manager = startedRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] });
+      const result = manager.resolveWipe();
+      return buildExtractionReport({
+        outcome: 'WIPED',
+        cause,
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        lost: { pokemon: result.lostPokemon, items: result.lostItems },
+        beatenBy: 'Rain and Swift Swim: HORSEA moved first 6 times.',
+        saved: true,
+      });
+    };
+    expect(report('defeated').beatenBy).toBe('Rain and Swift Swim: HORSEA moved first 6 times.');
+    expect(report('timer').beatenBy).toBeUndefined();
+  });
+
   /**
    * A lone Bulbasaur, secured by default and beaten in the Floodplain, came
    * home on 0/17 HP - and the result screen's last word was "a loadout you can

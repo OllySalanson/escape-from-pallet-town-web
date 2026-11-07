@@ -174,6 +174,7 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
+import { gymOf } from '../world/valeQuarters';
 import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemId } from '../items';
 import {
   areContractStopsComplete,
@@ -6530,6 +6531,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const withHunter = 'hunterBattle' in encounter && encounter.hunterBattle;
       rooms.fighting = withHunter ? 'hunter' : 'wild';
       rooms.sayHunter({ kind: 'busy', from: rooms.room.me, busy: true, withHunter });
+    }
+    // A gym leader met is written as the fight starts, won or lost: from then on
+    // they spar in THE RAID ARENA with this same team, for nothing.
+    if ('trainer' in encounter && this.runSession && gymOf(encounter.trainer.id)) {
+      new SaveManager().recordGymMet(encounter.trainer.id);
     }
     // Weather is not carried through the fight the way the hunter and the pack
     // are: it is a fact about the tile the player is standing on, so it is read

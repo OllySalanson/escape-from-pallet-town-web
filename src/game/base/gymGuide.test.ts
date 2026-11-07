@@ -3,7 +3,8 @@ import { buildContractBoard } from '../hub/contractBoard';
 import { errandOf, harbourGiver, withErrandAsked } from '../hub/errands';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
-import { gymGuideLines } from './gymGuide';
+import { gymAdvice, gymGuideLines } from './gymGuide';
+import { MISTY_BOSS_ID, VALE_QUARTERS } from '../world/valeQuarters';
 
 /** A save with a raid behind it: the board has nothing for anybody yet to go on one. */
 const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
@@ -30,7 +31,7 @@ describe("the Gym Guide's word on the day's work", () => {
     expect(lines.at(-1)).toBe('Kit up through that door!');
     // A box a line, and few of them: it is said, not read off a list. (The
     // suite always has a published player map, whose job is "more on the board".)
-    expect(lines.length).toBeLessThanOrEqual(6);
+    expect(lines.length - gymAdvice(BEEN_OUT).length).toBeLessThanOrEqual(6);
   });
 
   it('names every favour in hand, whose it is and where its thing lies', () => {
@@ -41,5 +42,28 @@ describe("the Gym Guide's word on the day's work", () => {
     expect(errandOf(harbourGiver('safari-warden'))?.id).toBe('gold-teeth');
     // Nobody waiting, nothing said about favours.
     expect(gymGuideLines(DEFAULT_RAID_PROGRESS).join(' ')).not.toContain('waiting on');
+  });
+});
+
+describe("the Gym Guide's word on the next gym", () => {
+  it('says nothing about gyms before the first raid, which has nothing on its way but the fall', () => {
+    expect(gymAdvice(DEFAULT_RAID_PROGRESS)).toEqual([]);
+  });
+
+  it('names the next gym and what does well there, then says the leader spars once met', () => {
+    const coast = VALE_QUARTERS.find((quarter) => quarter.gym?.bossId === MISTY_BOSS_ID)!.gym!;
+    const unmet = gymAdvice(BEEN_OUT);
+    expect(unmet.slice(0, coast.advice.length)).toEqual(coast.advice);
+    expect(unmet.at(-1)).toContain('Meet MISTY once');
+    expect(gymAdvice({ ...BEEN_OUT, gymsMet: [MISTY_BOSS_ID] }).at(-1)).toContain("You've met MISTY");
+    expect(gymGuideLines({ ...BEEN_OUT, gymsMet: [MISTY_BOSS_ID] })).toContain(coast.advice[0]);
+    // A box a line: every line fits the box's two rows.
+    for (const line of [...unmet, ...gymAdvice({ ...BEEN_OUT, gymsMet: [MISTY_BOSS_ID] })]) {
+      expect(line.length, line).toBeLessThanOrEqual(68);
+    }
+  });
+
+  it('has nothing more to say once every gym is beaten', () => {
+    expect(gymAdvice({ ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID] })).toEqual([]);
   });
 });

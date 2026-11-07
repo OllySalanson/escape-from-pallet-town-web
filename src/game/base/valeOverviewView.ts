@@ -9,6 +9,7 @@ import { drawPixelWindow } from '../ui/pixelWindow';
 import type { PaintedPicture } from '../world/minimap';
 import type { RaidMark } from '../world/raidMemory';
 import type { RimLanding } from './arenaRim';
+import { heavyCloud, pressedBadge, sealedAt, sealedCard, type SealedQuarter } from './sealedQuarters';
 import { podiumHole } from './arenaHall';
 import { calmedFloor, condensedFloor, steppedCloud, type Rgb } from './arenaPit';
 import { nextShadowInMs, SHADOW_WIDTH, shadowAt, shadowPassFor, type ShadowPass } from './pitLife';
@@ -68,6 +69,8 @@ export interface OverviewSource {
   readonly isWalked: (tile: GridPosition) => boolean;
   /** What the cloud is calmed towards at this hour, so the ground is what reads (`calmedFloor`). */
   readonly cloudInk: Rgb;
+  /** Quarters a gym still holds shut: under a heavier cloud, their badge pressed in (`sealedQuarters.ts`). */
+  readonly sealed: readonly SealedQuarter[];
   readonly light: WindowLight;
   readonly textures: {
     readonly light: string;
@@ -97,6 +100,8 @@ export interface OverviewKeys {
 
 /** Over everything the hall draws: only the page's own FEEDBACK tab stands over this. */
 const OVERVIEW_DEPTH = CANOPY_BAND + 5;
+/** Screen pixels to a pixel of a sealed quarter's pressed badge. */
+const SEAL_PIXEL = 2;
 const SURROUND_INK = 0x0c0e18;
 const BRASS = 0xf8c840;
 const BRASS_DARK = 0x885820;
@@ -209,6 +214,8 @@ export class ValeOverviewView {
   private wingsInMs = FIRST_WINGS_MS;
   private glassCamera: Phaser.Cameras.Scene2D.Camera | null = null;
   private childrenIgnored = -1;
+  /** The two inks a sealed quarter's badge is pressed in, from the cloud's own ink. */
+  private readonly sealInks: { readonly press: number; readonly edge: number };
 
   public constructor(
     scene: Phaser.Scene,
@@ -238,6 +245,11 @@ export class ValeOverviewView {
       (source.landings.find((landing) => landing.id === options.chosenId) ?? source.landings[0])?.id ?? null,
     );
     this.youOn = source.landings.find((landing) => landing.id === options.chosenId) ?? null;
+    const shade = (share: number): number => {
+      const [r, g, b] = source.cloudInk.map((value) => Math.min(248, Math.round((value * share) / 8) * 8));
+      return (r << 16) | (g << 8) | b;
+    };
+    this.sealInks = { press: shade(0.3), edge: shade(0.78) };
     this.phase = this.still ? 'open' : 'to-the-glass';
 
     const add = scene.add;
@@ -248,7 +260,16 @@ export class ValeOverviewView {
     this.floorTexture = this.paintTexture(`${source.floorTexture}-glass`, () => {
       const canvas = scene.textures.get(source.floorTexture).getSourceImage() as HTMLCanvasElement;
       const { data, width, height } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
-      return calmedFloor({ data, width, height }, source.mapFloor, source.scale, source.isWalked, source.cloudInk, source.light);
+      const calmed = calmedFloor({ data, width, height }, source.mapFloor, source.scale, source.isWalked, source.cloudInk, source.light);
+      return heavyCloud(
+        calmed,
+        (x, y) =>
+          sealedAt(source.sealed, {
+            x: Math.floor((x - source.mapFloor.left) / source.scale),
+            y: Math.floor((y - source.mapFloor.top) / source.scale),
+          }) !== undefined,
+        source.cloudInk,
+      );
     });
     this.close = add.image(0, 0, this.floorTexture).setOrigin(0, 0).setVisible(false);
     this.fitted = add.image(0, 0, this.wholeTexture()).setOrigin(0, 0);
@@ -335,14 +356,18 @@ export class ValeOverviewView {
     const { mapFloor, scale } = this.source;
     const spanX = square.width / size.width;
     const spanY = square.height / size.height;
+    const tileOf = (x: number, y: number): GridPosition => ({
+      x: Math.floor((square.left + (x + 0.5) * spanX - mapFloor.left) / scale),
+      y: Math.floor((square.top + (y + 0.5) * spanY - mapFloor.top) / scale),
+    });
     return this.paintTexture(`${this.source.floorTexture}-whole-${size.width}x${size.height}`, () =>
-      steppedCloud(
-        condensedFloor(this.floorPixels(), square, size),
-        (x, y) =>
-          this.source.isWalked({
-            x: Math.floor((square.left + (x + 0.5) * spanX - mapFloor.left) / scale),
-            y: Math.floor((square.top + (y + 0.5) * spanY - mapFloor.top) / scale),
-          }),
+      heavyCloud(
+        steppedCloud(
+          condensedFloor(this.floorPixels(), square, size),
+          (x, y) => this.source.isWalked(tileOf(x, y)),
+          this.source.cloudInk,
+        ),
+        (x, y) => sealedAt(this.source.sealed, tileOf(x, y)) !== undefined,
         this.source.cloudInk,
       ),
     );
@@ -754,6 +779,15 @@ export class ValeOverviewView {
     this.memoryKey = key;
     const { mapFloor, scale, trail, marks, towns, townLights, trailInk, trailShade } = this.source;
     const town = this.townLayer.clear();
+    // A sealed quarter's badge, pressed into its cloud like the empty slot in the badge case.
+    for (const quarter of this.source.sealed) {
+      const at = this.view.screenOf(mapPointOfTile(quarter.centre, scale));
+      for (const square of pressedBadge(quarter.badge, SEAL_PIXEL)) {
+        town
+          .fillStyle(square.ink === 'press' ? this.sealInks.press : this.sealInks.edge, 1)
+          .fillRect(Math.round(at.x + square.x), Math.round(at.y + square.y), SEAL_PIXEL, SEAL_PIXEL);
+      }
+    }
     for (const light of townLights) {
       const at = this.view.screenOf({ x: light.x - mapFloor.left, y: light.y - mapFloor.top });
       town.fillStyle(light.warm ? 0xf8d070 : 0xf8e8b8, 1).fillRect(at.x, at.y, 1, 1);
@@ -871,7 +905,12 @@ export class ValeOverviewView {
     if (mark) {
       return { title: mark.line.toUpperCase(), lines: [] };
     }
-    const place = this.source.placeAt({ x: Math.floor(cursor.x / scale), y: Math.floor(cursor.y / scale) });
+    const tile = { x: Math.floor(cursor.x / scale), y: Math.floor(cursor.y / scale) };
+    const sealed = sealedAt(this.source.sealed, tile);
+    if (sealed) {
+      return sealedCard(sealed);
+    }
+    const place = this.source.placeAt(tile);
     return place ? { title: place.toUpperCase(), lines: [] } : null;
   }
 
