@@ -339,12 +339,13 @@ describe('deployment flow', () => {
       { itemId: 'potion', quantity: 2 },
       { itemId: 'poke-ball', quantity: 1 },
     ]);
+    // The starting Bulbasaur is the partner, so the container leads with it.
     expect(deployment.secureSlot).toEqual({
-      pokemon: [stash.listPokemon().find(({ id }) => id === 'charmander-1')?.pokemon],
+      pokemon: [stash.listPokemon().find(({ id }) => id === 'bulbasaur-1')?.pokemon],
       items: [{ itemId: 'potion', quantity: 2 }],
     });
     expect(deployment.stashSecureSlot).toEqual({
-      pokemonIds: ['charmander-1'],
+      pokemonIds: ['bulbasaur-1'],
       items: [{ itemId: 'potion', quantity: 2 }],
     });
   });
@@ -359,20 +360,38 @@ describe('deployment flow', () => {
    * tied, the alphabet gave the container to the Caterpie, and the wipe that
    * followed deleted the starter. A tie goes to the partner.
    */
-  it('gives a level tie to the partner rather than to a fresh catch', () => {
-    const secured = (caterpieLevel: number): readonly string[] => {
+  /**
+   * And since 7 Nov 2026 (the overnight plan's call on the locker) the partner
+   * goes in first whatever its level: a higher catch is the cheaper loss.
+   */
+  it('secures the partner ahead of a fresh catch, tied or higher', () => {
+    const secured = (caterpieLevel: number, marked: boolean): readonly string[] => {
       const stash = createStartingStash();
       stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
       stash.addPokemon(new Pokemon(SPECIES_BY_ID.caterpie, caterpieLevel), 'caterpie-1');
+      stash.adoptPartner(marked ? 'charmander-1' : null);
       const flow = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, 'charmander');
       flow.togglePokemon('charmander-1');
       flow.togglePokemon('caterpie-1');
       return flow.securedPokemon.map(({ id }) => id);
     };
 
-    expect(secured(5)).toEqual(['charmander-1']);
-    // The rule is still highest level first: the partner only breaks a tie.
-    expect(secured(6)).toEqual(['caterpie-1']);
+    expect(secured(5, true)).toEqual(['charmander-1']);
+    expect(secured(30, true)).toEqual(['charmander-1']);
+    // With the partner lost, the starter a wipe hands back stands in for it.
+    expect(secured(30, false)).toEqual(['charmander-1']);
+  });
+
+  it('leads with the partner by its stash id, so a second of the starter\'s kind is just a catch', () => {
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+    stash.addPokemon(new Pokemon(CHARMANDER, 20), 'charmander-2');
+    stash.adoptPartner('charmander-1');
+    const flow = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, 'charmander');
+    flow.togglePokemon('charmander-2');
+    flow.togglePokemon('charmander-1');
+
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
   });
 
   it('knows the partner after it has evolved', () => {
@@ -393,7 +412,7 @@ describe('deployment flow', () => {
     expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
   });
 
-  it('fills itself with the highest-level Pokemon when the player never opens the secure slot', () => {
+  it('fills itself with the partner, then the highest level, when the player never opens the secure slot', () => {
     const { flow } = seedFlow();
 
     flow.togglePokemon('bulbasaur-1');
@@ -401,10 +420,11 @@ describe('deployment flow', () => {
     flow.advance();
     flow.advance();
 
-    // Charmander is level 7 against Bulbasaur's 5, and four squares fill the
-    // base container, so it is the one and only thing protected.
+    // Charmander is level 7 against Bulbasaur's 5, but the Bulbasaur is the
+    // partner, and four squares fill the base container, so it is the one and
+    // only thing protected.
     expect(flow.deploy().stashSecureSlot).toEqual({
-      pokemonIds: ['charmander-1'],
+      pokemonIds: ['bulbasaur-1'],
       items: [],
     });
     expect(flow.secureCells).toEqual({ used: 4, total: 4 });

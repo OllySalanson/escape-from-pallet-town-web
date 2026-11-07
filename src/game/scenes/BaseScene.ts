@@ -205,7 +205,7 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubScene, HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, railBeside, type ArenaStationId } from '../base/arenaHall';
+import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, STATION_PLATE_RISE, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, railBeside, type ArenaStationId } from '../base/arenaHall';
 import { crowdTakesTheView, lapLine, moodAsTheyGo, moodOnTheRail, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import {
   RIVAL_TILE,
@@ -3743,7 +3743,7 @@ export class BaseScene extends Phaser.Scene {
       const station = thing.opens && thing.opens in ARENA_STATION_NAMES ? (thing.opens as ArenaStationId) : null;
       const standsUp = station !== null || thing.opens === 'telescope';
       const label = new WorldLabel(this, {
-        subject: standsUp ? { ...tilesRect(thing.tiles), y: tilesRect(thing.tiles).y - STATION_RISE, height: TILE_SIZE + STATION_RISE } : tilesRect(thing.tiles),
+        subject: standsUp ? risenRect(thing.tiles, station ? STATION_PLATE_RISE : STATION_RISE) : tilesRect(thing.tiles),
         text: `${thing.name}\n${station ? this.stationNote(station) : thing.note}`,
         tone: standsUp ? DOOR_TONE : FIXTURE_TONE,
         depth: atRow(CAPTION_BAND, Math.max(...thing.tiles.map((tile) => tile.y))),
@@ -6574,6 +6574,8 @@ export class BaseScene extends Phaser.Scene {
 
 /** How far a station's art rises above its own row: where its caption has to clear. */
 const STATION_RISE = 16;
+/** A thing's tiles and the art rising `rise` pixels above them, as the rectangle a caption must keep off. */
+const risenRect = (tiles: readonly GridPosition[], rise: number): Rect => ({ ...tilesRect(tiles), y: tilesRect(tiles).y - rise, height: TILE_SIZE + rise });
 /** How many steps off a station still names itself. */
 const STATION_NAMED_WITHIN = 3;
 

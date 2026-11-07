@@ -152,9 +152,18 @@ export function followStep(
  * nowhere - tucked away until they take a step.
  *
  * Behind is first because that is where it would be had it walked in with
- * them. `canStand` is the scene's word on the ground, on who is standing there
- * and on whether a figure there can be seen, so a partner never arrives in a
- * wall, on the water, on a keeper or in a doorway the building is drawn over.
+ * them - **unless behind is the tile below them**. A figure a row further down
+ * is drawn in front, and a big partner's picture reaches a tile and more above
+ * its feet, so a Charizard arriving behind a player who walked up onto a mat
+ * stood over them, hiding all but their head (the overnight playtest of 7 Nov
+ * 2026, on THE RAID ARENA's mat and the yard's spawn). The tile below is
+ * therefore the last choice wherever it falls in that order: beside them, on
+ * their own row, it is drawn a hair behind them, and above them it is behind
+ * them outright.
+ *
+ * `canStand` is the scene's word on the ground, on who is standing there and on
+ * whether a figure there can be seen, so a partner never arrives in a wall, on
+ * the water, on a keeper or in a doorway the building is drawn over.
  */
 export function arrivalPlace(
   player: GridPosition,
@@ -164,10 +173,13 @@ export function arrivalPlace(
   const sides: Record<Direction, readonly Direction[]> = {
     up: ['left', 'right'],
     down: ['right', 'left'],
-    left: ['down', 'up'],
-    right: ['down', 'up'],
+    left: ['up', 'down'],
+    right: ['up', 'down'],
   };
-  for (const from of [OPPOSITE[facing], ...sides[facing], facing]) {
+  const order = [OPPOSITE[facing], ...sides[facing], facing];
+  // The tile below, last of all: the one place a partner is drawn over the player.
+  const inOrder = [...order.filter((from) => from !== 'down'), 'down' as const];
+  for (const from of inOrder) {
     const tile = { x: player.x + DIRECTION_DELTAS[from].x, y: player.y + DIRECTION_DELTAS[from].y };
     if (canStand(tile)) {
       // It faces the way the player does, as a Pokemon that had been walking

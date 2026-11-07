@@ -40,7 +40,33 @@ describe('what the secure container fills itself with', () => {
 
     expect(fill([caterpie, charmander])).toEqual(['charmander-1']);
     expect(fill([charmander, caterpie])).toEqual(['charmander-1']);
-    expect(fill([{ ...caterpie, level: 6 }, charmander])).toEqual(['caterpie-1']);
+  });
+
+  /**
+   * The overnight plan's call on `eptw-locker-partner` (7 Nov 2026): the partner
+   * first, then by level, because a wipe should never take the starter nobody
+   * chose to risk - and a higher catch is the cheaper thing to lose.
+   */
+  it('secures the partner ahead of any higher-level Pokemon, and passes over one that will not fit', () => {
+    const caterpie = { id: 'caterpie-1', level: 30, cargo: { cargoId: 'caterpie-1', name: 'Caterpie', width: 2, height: 2 } };
+    const charmander = {
+      id: 'charmander-1',
+      level: 5,
+      cargo: { cargoId: 'charmander-1', name: 'Charmander', width: 2, height: 2 },
+      partner: true,
+    };
+    const fill = (candidates: readonly SecureCandidate[], slots = 1) =>
+      autofillSecureSlot(candidates, DEFAULT_SECURE_PREFERENCE, BASE_SECURE_GRID, slots, held).pokemonIds;
+
+    expect(fill([caterpie, charmander])).toEqual(['charmander-1']);
+    expect(fill([charmander, caterpie])).toEqual(['charmander-1']);
+    expect(
+      autofillSecureSlot([caterpie, charmander], DEFAULT_SECURE_PREFERENCE, { width: 4, height: 2 }, 2, held).pokemonIds,
+    ).toEqual(['charmander-1', 'caterpie-1']);
+    // A Charizard is three squares tall: the 2x2 container cannot take it, so it
+    // does not keep the catch out either.
+    const charizard = { ...charmander, cargo: { ...charmander.cargo, name: 'Charizard', width: 3, height: 3 } };
+    expect(fill([caterpie, charizard])).toEqual(['caterpie-1']);
   });
 
   it('protects the packed medicine when not one Pokemon fits', () => {
