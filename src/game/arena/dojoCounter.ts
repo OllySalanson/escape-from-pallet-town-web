@@ -4,7 +4,6 @@ import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import { SPECIES_BY_ID } from '../pokemon/species';
 import { HARBOUR_BOTS, type HarbourBot } from '../base/harbourBots';
 import { DOJO_LEVEL, DOJO_TEAM_SIZE } from './boutRules';
-import type { DojoRecord } from './dojoRecord';
 
 /**
  * THE BATTLE ARENA's floor and its reception counter (the harbour arenas plan,
@@ -133,29 +132,3 @@ export function dojoTeamLine(regular: DojoRegular): string {
 // --- the receptionist ---------------------------------------------------------
 
 export const DOJO_RECEPTIONIST_NAME = 'RECEPTION';
-
-/** What the receptionist says before the list opens: how a bout works, once, short. */
-export function receptionLines(record: DojoRecord | undefined): readonly string[] {
-  const held = record ?? { wins: 0, losses: 0, beaten: [] };
-  if (held.wins + held.losses === 0) {
-    return [
-      'Welcome to THE BATTLE ARENA! Bouts here are for sport.',
-      `Everybody fights at Lv ${DOJO_LEVEL}, yours and theirs. Up to three a side, no bag.`,
-      'Nothing you bring can be hurt or lost. Pick who to fight, then your team.',
-    ];
-  }
-  return [`${held.wins} won, ${held.losses} lost. Who will it be?`];
-}
-
-/** What the receptionist says as the player comes back to the counter from a bout. */
-export function boutResultLine(regular: DojoRegular | undefined, won: boolean, record: DojoRecord | null): string {
-  const who = regular?.bot.name ?? 'them';
-  const tally = record ? ` That is ${record.wins} won, ${record.losses} lost.` : '';
-  return won ? `You beat ${who}!${tally}` : `${who} took that one.${tally}`;
-}
-
-/** The line a fighter's plate says when faced: who they are and what they bring. */
-export function fighterLine(regular: DojoRegular, record: DojoRecord | undefined): string {
-  const beaten = record?.beaten.includes(regular.bot.id) ? ' You have beaten them before.' : '';
-  return `${regular.bot.name} trains here: ${dojoTeamLine(regular)}.${beaten} Ask at the counter for a bout.`;
-}

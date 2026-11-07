@@ -11,9 +11,11 @@ import {
   PLAYTEST_GAMES,
   PLAYTEST_KIT_BOXES,
   PLAYTEST_TICKETS,
+  withEveryLeaderMet,
   withNewDay,
   withPlaytestTickets,
 } from './playtestKit';
+import { leadersMet, valeGyms } from '../world/valeQuarters';
 import { createPlaytestGame, withPlaytestCurrent } from './playtestSave';
 import { getSpeciesById } from '../pokemon/species';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
@@ -45,6 +47,26 @@ describe('the playtest kit', () => {
       expect(kinds.some((kind) => game.suits!(kind)), `${game.name}: nobody suits it`).toBe(true);
       expect(kinds.some((kind) => !game.suits!(kind)), `${game.name}: nobody is unsuited`).toBe(true);
     }
+  });
+
+  it('opens every game the promenade has', () => {
+    // Berry Picking and the field-move course landed after the board did and
+    // were missing from it: a game a playtester cannot open from the board is
+    // one the kit test never asked for a suited and an unsuited Pokémon.
+    const opens = PLAYTEST_GAMES.map((game) => game.opens);
+    expect(opens).toEqual(expect.arrayContaining(['jump', 'berry-picking', 'field-course', 'prizes']));
+  });
+
+  it('has met every gym leader, so each waits in the hall to spar', () => {
+    const progress = createPlaytestGame().raidProgress!;
+    expect(leadersMet(progress).map((gym) => gym.bossId)).toEqual(valeGyms().map((gym) => gym.bossId));
+    // Met, never beaten: the keepers still stand on an explorer run.
+    expect(progress.defeatedBosses).toEqual([]);
+    expect(withEveryLeaderMet(progress)).toBe(progress);
+  });
+
+  it('marks the leaders met on a run kept from before they were', () => {
+    expect(withEveryLeaderMet({ ...DEFAULT_RAID_PROGRESS, gymsMet: [] }).gymsMet).toHaveLength(valeGyms().length);
   });
 
   it('puts each row in a box of its own name', () => {

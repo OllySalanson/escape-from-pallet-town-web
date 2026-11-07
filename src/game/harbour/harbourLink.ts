@@ -1,3 +1,4 @@
+import type { DojoClassId } from '../arena/dojoRecord';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
 import type { PackItemId } from '../items/items';
@@ -113,6 +114,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private partner: PartnerSpeciesId | null = null;
   private look: DressedLook | null = null;
   private pack: PackItemId | null = null;
+  private dojoClass: DojoClassId | null = null;
   private pending: GridPosition[] = [];
   private lastSentAt = Number.NEGATIVE_INFINITY;
   private lastGreetAt = Number.NEGATIVE_INFINITY;
@@ -195,6 +197,20 @@ export class HarbourLink<P extends string = HarbourPlace> {
     }
     this.look = look;
     this.pack = pack;
+    if (this.seen() && this.anybodyElse()) {
+      this.sendNow();
+    }
+  }
+
+  /**
+   * This player's class in THE BATTLE ARENA (`../arena/classes`), or none if
+   * they have never fought there: a ball on their name plate for everybody else.
+   */
+  public rank(dojoClass: DojoClassId | null): void {
+    if (dojoClass === this.dojoClass) {
+      return;
+    }
+    this.dojoClass = dojoClass;
     if (this.seen() && this.anybodyElse()) {
       this.sendNow();
     }
@@ -412,6 +428,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
       ...(this.partner ? { partner: this.partner } : {}),
       ...(this.look ? { look: this.look } : {}),
       ...(this.pack ? { pack: this.pack } : {}),
+      ...(this.dojoClass ? { dojoClass: this.dojoClass } : {}),
     });
     this.pending = [];
     this.lastSentAt = this.now;

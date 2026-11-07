@@ -78,6 +78,17 @@ describe('what beat you', () => {
     expect(whatBeatYou(pair)).toBe('Speed: they moved first 4 times, STARYU most.');
   });
 
+  it('names the player\'s hits that were resisted, ahead of who moved first', () => {
+    // A lone Charmander into a Water gym: every Ember resisted, and the foe
+    // faster too. The matchup is the lesson, not the speed.
+    const turns: BattleEvent[][] = Array.from({ length: 4 }, () => [
+      foeMoves('Staryu', 'Tackle'),
+      mine('Charmander', 'Ember'),
+      { type: 'effectiveness', multiplier: 0.5 },
+    ]);
+    expect(whatBeatYou(turns)).toBe('Not very effective: your EMBER was resisted 4 times.');
+  });
+
   it("is what Misty's real team does to a Fire team that walks into her gym", () => {
     const charmander = new Pokemon(getSpeciesById('charmander')!, 13);
     const sandshrew = new Pokemon(getSpeciesById('sandshrew')!, 13);

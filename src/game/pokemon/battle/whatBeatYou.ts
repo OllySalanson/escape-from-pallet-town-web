@@ -44,6 +44,9 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   const foeFirstNames = new Map<string, number>();
   let superHits = 0;
   const superMoves = new Map<string, number>();
+  /** The player's hits the other side resisted, and by which move. */
+  let resistedHits = 0;
+  const resistedMoves = new Map<string, number>();
   const statusLost = new Map<string, number>();
   let accuracyDropped: string | null = null;
   let missesAfterDrop = 0;
@@ -67,6 +70,10 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
           if (lastMover?.user === 'enemy' && event.multiplier > 1 && event.name === undefined) {
             superHits += 1;
             superMoves.set(lastMover.move ?? '', (superMoves.get(lastMover.move ?? '') ?? 0) + 1);
+          }
+          if (lastMover?.user === 'player' && event.multiplier > 0 && event.multiplier < 1) {
+            resistedHits += 1;
+            resistedMoves.set(lastMover.move ?? '', (resistedMoves.get(lastMover.move ?? '') ?? 0) + 1);
           }
           break;
         case 'spread-damage':
@@ -144,6 +151,18 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
           ? `Super effective: ${move[0].toUpperCase()} hit you ${times(superHits)}.`
           : `Super effective: ${superHits} of their hits.`,
       weight: superHits,
+    });
+  }
+  if (resistedHits >= WHAT_BEAT_YOU_LEAST) {
+    // The type matchup, which is the lesson a lone Fire starter walking into a
+    // Water gym most needs - and was told only who moved first (wave 1's playtest).
+    const [move] = [...resistedMoves.entries()].sort((a, b) => b[1] - a[1]);
+    facts.push({
+      line:
+        move && move[1] === resistedHits
+          ? `Not very effective: your ${move[0].toUpperCase()} was resisted ${times(resistedHits)}.`
+          : `Not very effective: ${resistedHits} of your hits were resisted.`,
+      weight: resistedHits,
     });
   }
   if (confusionHits >= WHAT_BEAT_YOU_LEAST) {

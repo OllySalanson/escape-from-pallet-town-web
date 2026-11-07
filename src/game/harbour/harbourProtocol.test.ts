@@ -166,3 +166,20 @@ describe('what a player wears, as the harbour hears it', () => {
     expect(readHarbourMove({ ...sent, w: ['red-cap', 'red-vest', 'denim-jeans', 'red-cap'] })).toEqual(dressed);
   });
 });
+
+describe("a player's class in THE BATTLE ARENA, as the harbour hears it", () => {
+  const ranked: HarbourMove = { ...move, dojoClass: 'great-ball' };
+
+  it('reads back the ball on their name plate, and sends none for a player who has not fought', () => {
+    expect(encodeHarbourMove(ranked)).toMatchObject({ c: 'great-ball' });
+    expect(readHarbourMove(encodeHarbourMove(ranked))).toEqual(ranked);
+    expect('c' in encodeHarbourMove(move)).toBe(false);
+  });
+
+  it('believes only one of the four classes, and still believes the steps', () => {
+    const sent = encodeHarbourMove(move);
+    for (const c of ['gold-ball', 'constructor', '__proto__', 'GREAT-BALL', 3, null, ['great-ball'], {}]) {
+      expect(readHarbourMove({ ...sent, c })).toEqual(move);
+    }
+  });
+});
