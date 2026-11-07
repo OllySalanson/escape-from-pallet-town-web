@@ -375,6 +375,9 @@ export const WORN_PACK_ART: Readonly<Record<PackItemId, Readonly<Record<PackFaci
           '...oooooooooo...',
         ],
       },
+      // The crossbar stands over the head; the rails run down behind it, so
+      // from behind the head is still a head rather than a cage (wave 1's
+      // playtest: the PLAYTEST player read as a grey box on every mat).
       {
         layer: 'over',
         y: 5,
@@ -383,6 +386,12 @@ export const WORN_PACK_ART: Readonly<Record<PackItemId, Readonly<Record<PackFaci
           '..oSSSSSSSSSSo..',
           '..oSttttttttSo..',
           '..oSo......oSo..',
+        ],
+      },
+      {
+        layer: 'front',
+        y: 9,
+        rows: [
           '...s........s...',
           '...s........s...',
           '...s........s...',

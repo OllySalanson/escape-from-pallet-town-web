@@ -1324,6 +1324,7 @@ export class BaseScene extends Phaser.Scene {
           }),
         ],
         this.player,
+        this.harbourLife?.standing('person') ?? [],
       );
     }
     this.animateTiles(deltaMs);
@@ -5229,16 +5230,19 @@ export class BaseScene extends Phaser.Scene {
     this.collision[y][x] = true;
     const sign = BASE_TILESET.props.homeSign.cells[0];
     this.tilemap?.getLayer('base-detail')?.tilemapLayer?.putTileAt(sign.tile, x, y);
-    // Named under its post, so it is not read as one of the harbour's own signs.
+    // A plate nailed across the board's own face, so it is not read as one of
+    // the harbour's own signs - nor, under it beside the policeman, as
+    // somebody's name (wave 1's playtest). On the board's tile and no other,
+    // so it never covers whoever stands to read it.
     this.add
-      .text(x * TILE_SIZE + TILE_SIZE / 2, (y + 1) * TILE_SIZE, 'PLAYTEST', {
+      .text(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + 5, 'PLAYTEST', {
         fontFamily: GAME_FONT,
         fontSize: CHIP_FONT_SIZE,
         color: '#ffd6fb',
-        stroke: '#3a1640',
-        strokeThickness: 2,
+        backgroundColor: '#3a1640',
+        padding: { x: 2, y: 0 },
       })
-      .setOrigin(0.5, 0)
+      .setOrigin(0.5, 1)
       .setDepth(atRow(CAPTION_BAND, y));
   }
 
@@ -5275,7 +5279,9 @@ export class BaseScene extends Phaser.Scene {
     switch (action.kind) {
       case 'game': {
         const game = PLAYTEST_GAMES.find((each) => each.id === action.game);
-        if (game) {
+        if (game?.opens === 'berry-picking' || game?.opens === 'field-course') {
+          this.openMinigame(game.opens);
+        } else if (game) {
           this.openGameCorner(game.opens);
         }
         return;
@@ -5336,6 +5342,9 @@ export class BaseScene extends Phaser.Scene {
         frame: (deltaMs) => {
           if (!pit) {
             this.panelLean.settle(deltaMs);
+            // Paused under the panel, the harbour seats no captions of its own:
+            // seated here, a name is never left half under the column.
+            this.containWorldLabels();
           }
         },
       },
@@ -5375,6 +5384,9 @@ export class BaseScene extends Phaser.Scene {
         frame: (deltaMs) => {
           if (!pit) {
             this.panelLean.settle(deltaMs);
+            // Paused under the panel, the harbour seats no captions of its own:
+            // seated here, a name is never left half under the column.
+            this.containWorldLabels();
           }
         },
       },
