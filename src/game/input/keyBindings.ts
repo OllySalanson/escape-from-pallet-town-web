@@ -51,17 +51,19 @@ export const ROOM_KEY_LETTERS = {
  * same question asked at home: what am I out for (`hub/favourList.ts`) - and
  * the quick phrases, on T as in a raid room.
  */
-export type YardKeyId = 'walk' | 'look' | 'favours' | 'things' | 'talk';
+export type YardKeyId = 'walk' | 'look' | 'favours' | 'things' | 'team' | 'talk';
 
 /**
  * YOUR THINGS is on B, the raid's pack key, because it is the same question
- * asked at home: what have I got (`scenes/ThingsScene.ts`).
+ * asked at home: what have I got (`scenes/ThingsScene.ts`). YOUR TEAM is on P,
+ * the raid's party key, for the same reason: who am I taking (`scenes/TeamScene.ts`).
  */
 export const YARD_KEY_WORDS: readonly (readonly [YardKeyId, string, string])[] = [
   ['walk', 'ARROWS', 'WALK'],
   ['look', RAID_KEY_LETTERS.look, 'LOOK'],
   ['favours', RAID_KEY_LETTERS.objectives, 'FAVOURS'],
   ['things', RAID_KEY_LETTERS.bag, 'THINGS'],
+  ['team', RAID_KEY_LETTERS.party, 'TEAM'],
   ['talk', ROOM_KEY_LETTERS.talk, 'SAY'],
 ];
 
@@ -120,7 +122,7 @@ export function roomKeyHintLine(learned: ReadonlySet<string>): string {
 }
 
 /** Every key the save can have learned, in one list (`raidProgress.keysLearned`). */
-export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping', 'favours', 'things', 'coin'] as const;
+export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping', 'favours', 'things', 'team', 'coin'] as const;
 export type LearnableKeyId = (typeof LEARNABLE_KEYS)[number];
 
 export function isLearnableKey(value: unknown): value is LearnableKeyId {

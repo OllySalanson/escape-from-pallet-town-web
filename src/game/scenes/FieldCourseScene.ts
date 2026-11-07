@@ -8,6 +8,7 @@ import { readLook } from '../look/look';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
@@ -78,6 +79,8 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   private game_: RestoredGame | undefined;
   private chosen: string[] = [];
   private status: string | undefined;
+  /** What the list's find field held (`ui/boxPicker.ts`). */
+  private find = '';
   private last: CourseTeamState['last'];
   private phase: Phase = { kind: 'menu' };
   private run: CourseRun | undefined;
@@ -153,13 +156,10 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   private candidates(): CourseCandidate[] {
     const stash = this.game_?.stash;
     if (!stash) return [];
-    return stash.listPokemon().map((stored) => ({
-      id: stored.id,
-      name: stored.pokemon.name,
-      dexId: stored.pokemon.base.dexId,
-      shiny: stored.pokemon.shiny,
-      level: stored.pokemon.level,
-      moves: MOVE_ORDER.filter((move) => courseMovesOf(stored.pokemon.base.id).includes(move)).map((move) => MOVE_WORDS[move]),
+    // Every box, the most field moves first (`ui/boxPicker.ts`).
+    return pickerOrder(pickerEntries(stash), (entry) => courseMovesOf(entry.pokemon.base.id).length).map((entry) => ({
+      ...pickerBasics(entry),
+      moves: MOVE_ORDER.filter((move) => courseMovesOf(entry.pokemon.base.id).includes(move)).map((move) => MOVE_WORDS[move]),
     }));
   }
 
@@ -239,6 +239,11 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
         this.startRun();
       };
     }
+    // The find over the list narrows it in place, and is kept over a redraw.
+    wirePickerFind(root, (key) => this.overlay?.moveCursor(key), this.find);
+    root.querySelector<HTMLInputElement>('[data-picker-find]')?.addEventListener('input', (event) => {
+      this.find = (event.target as HTMLInputElement).value;
+    });
     this.overlay.refocus(focusOn ?? (this.chosen.length > 0 ? '[data-play]' : '[data-cursor-start]'), '[data-close]');
   }
 

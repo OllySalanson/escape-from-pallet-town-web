@@ -6,6 +6,7 @@ import { pokemonTextureKey } from '../pokemon/pokemonSprites';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
@@ -65,6 +66,8 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private game_: RestoredGame | undefined;
   private chosen: string[] = [];
   private status: string | undefined;
+  /** What the list's find field held (`ui/boxPicker.ts`). */
+  private find = '';
   private last: JumpTeamState['last'];
   private phase: Phase = { kind: 'menu' };
   private jump: PokemonJumpGame | undefined;
@@ -136,17 +139,11 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private candidates(): JumpCandidate[] {
     const stash = this.game_?.stash;
     if (!stash) return [];
-    return stash
-      .listPokemon()
-      .map((stored) => ({
-        id: stored.id,
-        name: stored.pokemon.name,
-        dexId: stored.pokemon.base.dexId,
-        shiny: stored.pokemon.shiny,
-        level: stored.pokemon.level,
-        jumpType: jumpTypeOf(stored.pokemon.base.id),
-      }))
-      .sort((a, b) => Number(b.jumpType !== undefined) - Number(a.jumpType !== undefined));
+    // Every box, the jumpers first (`ui/boxPicker.ts`).
+    return pickerOrder(pickerEntries(stash), (entry) => (jumpTypeOf(entry.pokemon.base.id) ? 1 : 0)).map((entry) => ({
+      ...pickerBasics(entry),
+      jumpType: jumpTypeOf(entry.pokemon.base.id),
+    }));
   }
 
   /** Who jumps if nobody is chosen: the first three who can, fastest kinds first. */
@@ -203,6 +200,11 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     }
     root.querySelectorAll<HTMLButtonElement>('[data-prize]').forEach((button) => {
       button.onclick = () => this.buy(button.dataset.prize ?? '');
+    });
+    // The find over the list narrows it in place, and is kept over a redraw.
+    wirePickerFind(root, (key) => this.overlay?.moveCursor(key), this.find);
+    root.querySelector<HTMLInputElement>('[data-picker-find]')?.addEventListener('input', (event) => {
+      this.find = (event.target as HTMLInputElement).value;
     });
     if (focusOn) {
       this.overlay.refocus(focusOn, '[data-cursor-start]');

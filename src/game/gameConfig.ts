@@ -7,6 +7,7 @@ import { BootScene } from './scenes/BootScene';
 import { ConsoleScene } from './scenes/ConsoleScene';
 import { BoutiqueScene } from './scenes/BoutiqueScene';
 import { ThingsScene } from './scenes/ThingsScene';
+import { TeamScene } from './scenes/TeamScene';
 import { GameCornerScene } from './scenes/GameCornerScene';
 import { BerryPickingScene } from './scenes/BerryPickingScene';
 import { FieldCourseScene } from './scenes/FieldCourseScene';
@@ -38,6 +39,7 @@ const BASE_SCENES = [
   ConsoleScene,
   BoutiqueScene,
   ThingsScene,
+  TeamScene,
   GameCornerScene,
   BerryPickingScene,
   FieldCourseScene,

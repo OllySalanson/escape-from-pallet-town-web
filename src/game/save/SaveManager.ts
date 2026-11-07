@@ -1681,6 +1681,27 @@ export class SaveManager {
   }
 
   /**
+   * The next raid's team, chosen outside the hall: YOUR TEAM on P
+   * (`scenes/TeamScene.ts`). It writes the same `lastBench` the hall's bench
+   * opens on, so the bench holds who was chosen in the yard. No raid has gone
+   * with a team chosen here, so a new team starts its count of raids together
+   * again (`recordBench` makes it one at the door) and the same team keeps it.
+   */
+  public chooseBench(pokemonIds: readonly string[]): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const before = game.raidProgress.lastBench ?? [];
+    const sameTeam = before.length === pokemonIds.length && pokemonIds.every((id) => before.includes(id));
+    const raidProgress: RaidProgress = { ...game.raidProgress, lastBench: [...pokemonIds] };
+    if (!sameTeam) {
+      delete (raidProgress as { benchRaids?: number }).benchRaids;
+    }
+    return this.save({ ...game, raidProgress });
+  }
+
+  /**
    * Remembers how the two containers were laid out.
    *
    * Written on the way out of the lobby, as the secure preference is, and again

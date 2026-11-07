@@ -62,3 +62,22 @@ describe('using a thing out of storage at home', () => {
     expect(saves.load()!.stash.listPokemon()[0]?.pokemon.base.id).toBe('pikachu');
   });
 });
+
+describe('choosing the next raid team at home', () => {
+  it('writes the bench the hall opens on, and starts a new team counting again', () => {
+    const saves = savedWith('pikachu', 12, {});
+    const game = saves.load()!;
+    expect(saves.save({ ...game, raidProgress: { ...game.raidProgress, lastBench: ['home-1'], benchRaids: 3 } })).toBe(true);
+
+    // The same team keeps its count.
+    expect(saves.chooseBench(['home-1'])).toBe(true);
+    expect(saves.load()!.raidProgress.benchRaids).toBe(3);
+
+    // A new team has gone on no raid together yet: the door makes it one.
+    expect(saves.chooseBench([])).toBe(true);
+    expect(saves.load()!.raidProgress.lastBench).toEqual([]);
+    expect(saves.load()!.raidProgress.benchRaids).toBeUndefined();
+    expect(saves.recordBench(['home-1'])).toBe(true);
+    expect(saves.load()!.raidProgress.benchRaids).toBe(1);
+  });
+});

@@ -6,6 +6,7 @@ import { pokemonTextureKey } from '../pokemon/pokemonSprites';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
@@ -78,6 +79,8 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   private game_: RestoredGame | undefined;
   private chosen: string | null = null;
   private status: string | undefined;
+  /** What the list's find field held (`ui/boxPicker.ts`). */
+  private find = '';
   private last: BerryTeamState['last'];
   private phase: Phase = { kind: 'menu' };
   private picking: BerryPickingGame | undefined;
@@ -149,17 +152,11 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   private candidates(): BerryCandidate[] {
     const stash = this.game_?.stash;
     if (!stash) return [];
-    return stash
-      .listPokemon()
-      .map((stored) => ({
-        id: stored.id,
-        name: stored.pokemon.name,
-        dexId: stored.pokemon.base.dexId,
-        shiny: stored.pokemon.shiny,
-        level: stored.pokemon.level,
-        heads: headsOf(stored.pokemon.base.id),
-      }))
-      .sort((a, b) => (b.heads ?? 0) - (a.heads ?? 0));
+    // Every box, the most heads first (`ui/boxPicker.ts`).
+    return pickerOrder(pickerEntries(stash), (entry) => headsOf(entry.pokemon.base.id) ?? 0).map((entry) => ({
+      ...pickerBasics(entry),
+      heads: headsOf(entry.pokemon.base.id),
+    }));
   }
 
   /** Who picks if nobody is chosen: the bird with the most heads. */
@@ -207,6 +204,11 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
         this.startGame();
       };
     }
+    // The find over the list narrows it in place, and is kept over a redraw.
+    wirePickerFind(root, (key) => this.overlay?.moveCursor(key), this.find);
+    root.querySelector<HTMLInputElement>('[data-picker-find]')?.addEventListener('input', (event) => {
+      this.find = (event.target as HTMLInputElement).value;
+    });
     this.overlay.refocus(focusOn ?? (this.chosen ? '[data-play]' : '[data-cursor-start]'), '[data-close]');
   }
 

@@ -328,6 +328,7 @@ import { openPlaytestBoard } from '../dev/PlaytestBoardOverlay';
 import { playtestHour, setPlaytestHour } from '../dev/playtestClock';
 import { PLAYTEST_GAMES, withNewDay } from '../dev/playtestKit';
 import type { ThingsSceneData } from './ThingsScene';
+import type { TeamSceneData } from './TeamScene';
 import { PanelLean } from '../ui/sidePanel';
 import { favourEntries } from '../hub/favourList';
 import { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
@@ -575,6 +576,8 @@ interface BaseControls {
   readonly favours: Phaser.Input.Keyboard.Key;
   /** B: YOUR THINGS (`scenes/ThingsScene.ts`), on the key the raid's pack is on. */
   readonly things: Phaser.Input.Keyboard.Key;
+  /** P: YOUR TEAM (`scenes/TeamScene.ts`), on the key the raid's party is on. */
+  readonly team: Phaser.Input.Keyboard.Key;
   /** THE BOLTHOLE's keys (`HOME_KEY_LETTERS`): decorating, and what it is done with. */
   readonly decorate: Phaser.Input.Keyboard.Key;
   readonly turn: Phaser.Input.Keyboard.Key;
@@ -690,7 +693,7 @@ export class BaseScene extends Phaser.Scene {
    * is 150ms and these keys were only read between steps, so a tap walking
    * along was lost nearly every time and nothing said why.
    */
-  private listAskedMidStep: 'favours' | 'things' | 'talk' | null = null;
+  private listAskedMidStep: 'favours' | 'things' | 'team' | 'talk' | null = null;
   /** What this player is saying, over their head while they say it. */
   private ownBubble: SpeechBubble | null = null;
   /** The game time of this frame, which the harbour's talk is paced by. */
@@ -1436,6 +1439,8 @@ export class BaseScene extends Phaser.Scene {
         this.listAskedMidStep = 'favours';
       } else if (this.keyPresses.justPressed(this.controls.things)) {
         this.listAskedMidStep = 'things';
+      } else if (this.keyPresses.justPressed(this.controls.team)) {
+        this.listAskedMidStep = 'team';
       } else if (this.keyPresses.justPressed(this.controls.talk)) {
         this.listAskedMidStep = 'talk';
       }
@@ -1469,6 +1474,11 @@ export class BaseScene extends Phaser.Scene {
 
     if (this.keyPresses.justPressed(this.controls.things) || asked === 'things') {
       this.openThings();
+      return;
+    }
+
+    if (this.keyPresses.justPressed(this.controls.team) || asked === 'team') {
+      this.openTeam();
       return;
     }
 
@@ -4240,6 +4250,7 @@ export class BaseScene extends Phaser.Scene {
       back: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false),
       favours: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives], false),
       things: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag], false),
+      team: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.party], false),
       decorate: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.decorate], false),
       turn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.turn], false),
       boxBack: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxBack], false),
@@ -4257,6 +4268,7 @@ export class BaseScene extends Phaser.Scene {
       this.controls.back,
       this.controls.favours,
       this.controls.things,
+      this.controls.team,
       this.controls.decorate,
       this.controls.coin,
       this.controls.closer,
@@ -5290,6 +5302,45 @@ export class BaseScene extends Phaser.Scene {
         },
       },
     } satisfies ThingsSceneData);
+  }
+
+  /**
+   * YOUR TEAM (`scenes/TeamScene.ts`): the next raid's team, picked from every
+   * box, a side panel over the paused harbour, anywhere in it. In the hall it is
+   * the bench itself, so the bench is stood with whoever was chosen on the way back.
+   */
+  private openTeam(): void {
+    if (this.leaving || this.choosing) {
+      return;
+    }
+    this.learnKey('team');
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.input.keyboard?.resetKeys();
+      this.spentPresses.spendHeld(this.directionKeys());
+      this.savedGame = this.saveManager.load() ?? this.savedGame;
+      if (this.kit) {
+        this.furniture?.show(this.kit.flow, partnerOf(this.savedGame.stash)?.id ?? null);
+      }
+      this.showHint(this.hintHere());
+    });
+    const pit = Boolean(this.place.room?.pit);
+    this.scene.pause();
+    this.scene.launch('team', {
+      pausedBase: true,
+      ...(this.kit ? { flow: this.kit.flow } : {}),
+      view: {
+        covers: (gamePixels) => this.panelLean.setCover(pit ? 0 : gamePixels),
+        frame: (deltaMs) => {
+          if (!pit) {
+            this.panelLean.settle(deltaMs);
+          }
+        },
+      },
+    } satisfies TeamSceneData);
   }
 
   /** Through a door: the same scene, started again inside the room behind it. */
