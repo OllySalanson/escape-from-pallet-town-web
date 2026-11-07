@@ -155,7 +155,7 @@ describe('putting a piece down', () => {
     // Upstairs, the PC, which is spoken to from the one tile at the foot of its desk.
     expect(refusal(upstairsPlan, [], piece({ id: 'small-desk', room: 'bolthole-upstairs', x: 0, y: 2 }))).toEqual({
       kind: 'blocks',
-      what: 'YOUR PC',
+      what: 'MY PC',
     });
   });
 

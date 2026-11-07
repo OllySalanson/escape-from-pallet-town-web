@@ -8,7 +8,7 @@ import {
   calendarLines,
   nextRival,
   partnerRug,
-  pcLines,
+  pokedexNote,
   tellyLines,
 } from './homeLines';
 
@@ -37,49 +37,32 @@ describe("what the things in THE BOLTHOLE say", () => {
     expect(new Set(reports).size).toBe(HUNTER_RIVALS.length);
   });
 
-  it('keeps the raid log on the PC, from the save\'s own record', () => {
-    expect(pcLines(baseGame())[0]).toContain('No raids yet');
+  it('keeps the raid log on the calendar, from the save\'s own record', () => {
     const game = raids({
       'floodplain-relay': { deployed: 7, extracted: 5, wiped: 2 },
       'route-1': { deployed: 2, extracted: 1, wiped: 1 },
     });
-    const lines = pcLines(game);
-    expect(lines[0]).toBe('RAID LOG. 9 raids: 6 came home, 3 lost.');
-    expect(lines[1]).toBe('Raided most: FLOODPLAIN RELAY, 7 times.');
-    expect(lines.at(-1)).toContain('Pokémon for you');
+    expect(calendarLines(game)).toEqual([
+      'DAY 10. Every raid is a day on this calendar, and 9 are crossed off.',
+      '6 of them have a tick for coming home.',
+      'In the margin: FLOODPLAIN RELAY, 7 times.',
+    ]);
   });
 
   /**
    * Oak pays the Pokédex in his lab (`hub/pokedex.ts`), and nothing else in the
    * game said the count: a player never heard there was a Pokédex at all until
-   * the tenth kind. The PC counts what Oak counts and names what he has for it.
+   * the tenth kind. MY PC counts what Oak counts and names what he has for it.
    */
   it('counts the Pokédex as Oak does, and says what he has for it', () => {
-    const pokedex = (progress: Partial<RaidProgress>) =>
-      pcLines(baseGame({ progress })).find((line) => line.startsWith('Pokédex'));
+    const pokedex = (progress: Partial<RaidProgress>) => pokedexNote(baseGame({ progress }));
     // The vault holds a Charmander and a Pidgey.
-    expect(pokedex({})).toBe('Pokédex: 2 kinds owned. Oak has a reward for you at 10.');
+    expect(pokedex({})).toBe('Pokédex 2 · reward at 10');
     const twelve = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16]; // Charmander (4) and Pidgey (16) among them
-    expect(pokedex({ pokedexOwned: twelve })).toBe(
-      'Pokédex: 12 kinds owned. Oak has a reward waiting in his lab.',
-    );
-    expect(pokedex({ pokedexOwned: twelve, pokedexRewards: [10] })).toBe(
-      'Pokédex: 12 kinds owned. Oak has a reward for you at 25.',
-    );
+    expect(pokedex({ pokedexOwned: twelve })).toBe('Pokédex 12 · Oak has a reward');
+    expect(pokedex({ pokedexOwned: twelve, pokedexRewards: [10] })).toBe('Pokédex 12 · reward at 25');
     const all = Array.from({ length: 151 }, (_, index) => index + 1);
-    expect(pokedex({ pokedexOwned: all })).toBe('Pokédex: all 151 kinds owned. It is complete!');
-    expect(pcLines(raids({ 'route-1': { deployed: 1, extracted: 1, wiped: 0 } }))).toContain(
-      'Pokédex: 2 kinds owned. Oak has a reward for you at 10.',
-    );
-  });
-
-  it('names only what Bill is keeping, never a purse of nothing', () => {
-    const broke = baseGame();
-    expect(broke.stash.itemCount('money')).toBe(0);
-    const count = broke.stash.listPokemon().length;
-    expect(pcLines(broke).at(-1)).toBe(`Bill is keeping ${count} Pokémon for you.`);
-    broke.stash.addItem('money', 40);
-    expect(pcLines(broke).at(-1)).toBe(`Bill is keeping ₽40 and ${count} Pokémon for you.`);
+    expect(pokedex({ pokedexOwned: all })).toBe('Pokédex complete · 151');
   });
 
   it('turns the calendar a day for every raid', () => {
@@ -90,6 +73,7 @@ describe("what the things in THE BOLTHOLE say", () => {
     expect(calendarLines(game)).toEqual([
       'DAY 4. Every raid is a day on this calendar, and 3 are crossed off.',
       '2 of them have a tick for coming home.',
+      'In the margin: ROUTE 1, 3 times.',
     ]);
   });
 

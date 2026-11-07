@@ -23,7 +23,7 @@ import { createStartingStash } from '../stash';
 import type { DeploymentFlow } from '../hub';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { HubScene } from './HubScene';
-import { calendarLines, pcLines } from '../base/homeLines';
+import { calendarLines } from '../base/homeLines';
 
 /**
  * What abandoning a raid costs (the captain's ruling on playtest 11's B1): a
@@ -208,7 +208,7 @@ describe('a raid abandoned by closing the game', () => {
     new SaveManager(storage).settleAbandonedRaid();
 
     const game = new SaveManager(storage).load()!;
-    expect(pcLines(game)[0]).toBe('RAID LOG. 1 raid: 0 came home, 1 lost.');
+    expect(calendarLines(game)[0]).toBe('DAY 2. Every raid is a day on this calendar, and 1 is crossed off.');
     expect(calendarLines(game)[1]).toBe('It has no tick for coming home.');
   });
 

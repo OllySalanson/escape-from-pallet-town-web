@@ -57,5 +57,6 @@ describe('knocking on a door', () => {
     expect(notYoursLine('OLLY')).toBe("That's OLLY's. Better not touch.");
     expect(visitorThingName('YOUR BED', 'OLLY')).toBe("OLLY'S BED");
     expect(visitorThingName('THE TELLY', 'OLLY')).toBe('THE TELLY');
+    expect(visitorThingName('MY PC', 'OLLY')).toBe("OLLY'S PC");
   });
 });

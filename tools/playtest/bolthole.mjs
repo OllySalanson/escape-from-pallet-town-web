@@ -260,7 +260,7 @@ try {
   console.log(`upstairs: arrived on the stair mat ${upstairs.tile.x},${upstairs.tile.y} facing down`);
 
   const heard = {};
-  for (const name of ['PENNANTS', 'YOUR BED', 'YOUR PC', 'THE CONSOLE', 'THE CALENDAR']) {
+  for (const name of ['PENNANTS', 'YOUR BED', 'MY PC', 'THE CONSOLE', 'THE CALENDAR']) {
     const tiles = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === ${JSON.stringify(name)}).tiles`);
     const stands = [];
     for (const tile of tiles) {

@@ -35,6 +35,9 @@ import { NO_GAME_CORNER } from '../minigames/tickets';
  * `raidHud.ts` and `contractBoard.ts`. Every number is derived from the save
  * the same way the card that used to carry it derived it.
  */
+/** The most a door's second line may hold: it is a row of a caption seated over a building on a 320-pixel stage. */
+const DOOR_LINE_ROOM = 40;
+
 export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: string | null = null): string {
   // On the way to a first raid a door has its name and nothing else to read:
   // the one door anybody needs says why (`hub/firstRaid.ts`).
@@ -44,12 +47,16 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
   const errand = door.screen === null ? undefined : errandLine(door.screen, game);
   switch (door.screen) {
     case null: {
-      // The player's own house, which says from the yard how full its badge
-      // case is - the one number in it worth walking over for - under the name
-      // that was given at its door (`home/houseName.ts`).
-      const whose = ownerName ? `${ownerName}'s house` : 'Your house';
+      // The player's own house, which says from the yard what is kept in it -
+      // their things and their Pokémon, on MY PC - under the name that was
+      // given at its door (`home/houseName.ts`), and how full its badge case
+      // is, the one number in it worth walking over for, while the line has
+      // room for it.
+      const whose = ownerName ? `${ownerName}'s things & Pokémon` : 'Your things · your Pokémon';
       const won = wonBadges(game).length;
-      return won === 0 ? whose : `${whose} · ${won} of ${caseBadges().length} badges`;
+      if (won === 0) return whose;
+      const said = [`${whose} · ${won} of ${caseBadges().length} badges`, `${whose} · ${won} badges`];
+      return said.find((line) => line.length <= DOOR_LINE_ROOM) ?? whose;
     }
     case 'boutique': {
       // What the shop has left to sell this save, said as what it has: the
