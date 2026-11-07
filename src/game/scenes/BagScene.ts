@@ -29,7 +29,18 @@ import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { conditionLine } from '../ui/condition';
 import { describeKey, splitDescribeKey } from '../ui/hoverDescribe';
-import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
+import {
+  canChoosePupil,
+  learnersLine,
+  pupilOutcome,
+  pupilVerdict,
+  teachBody,
+  teachMomentBody,
+  TEACH_MOMENT_HIT_MS,
+  TEACH_MOMENT_MS,
+  type TeachMomentView,
+} from '../ui/teachScreen';
+import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import {
   CLOCK_STOPPED,
   COLUMN_MEASURES,
@@ -144,6 +155,12 @@ const pocketTag = (item: ItemDefinition): string =>
  * line rather than a strip of instructions under the grid, because the pack
  * stands in a column beside the pockets and a sentence there wraps.
  */
+/**
+ * How long the moment after a disc is read ignores keys: the ENTER that read
+ * it is still coming up, and the moment must be seen before it can be skipped.
+ */
+const MOMENT_ARMING_MS = Math.min(RELEASE_ARMING_MS, 300);
+
 const ARRANGE_HELP =
   'ENTER picks this up and puts it down · arrows carry it · R turns it · ESC puts it back.';
 
@@ -200,6 +217,13 @@ export class BagScene extends Phaser.Scene {
   private pupilIndex?: number;
   /** Said once, over the help bar, about what just happened. */
   private status?: string;
+  /**
+   * The moment a disc has just been read (`teachMomentBody`): the move tried
+   * once at a practice post, for `TEACH_MOMENT_MS` or until any key. What the
+   * pack says afterwards waits in `said`.
+   */
+  private moment?: TeachMomentView & { readonly said: string; readonly openedAt: number };
+  private momentTimers: Phaser.Time.TimerEvent[] = [];
   private menuOverlay?: MenuOverlay;
   /**
    * The pack is the player's to lay out here too: a coil of rope found in a
@@ -242,6 +266,8 @@ export class BagScene extends Phaser.Scene {
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
     this.status = undefined;
+    this.moment = undefined;
+    this.momentTimers = [];
     this.arranging.release();
   }
 
@@ -278,6 +304,15 @@ export class BagScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    // Any key ends the moment after a disc is read - but not the key that read
+    // it, still held or repeating, or the moment would never be seen.
+    if (this.moment) {
+      event.preventDefault();
+      if (!event.repeat && this.time.now - this.moment.openedAt >= MOMENT_ARMING_MS) {
+        this.endMoment();
+      }
+      return;
+    }
     // A piece in the player's hand owns the arrow keys, R, ENTER and ESC: ESC
     // puts it back where it came from rather than shutting the bag on it.
     if (this.arranging.handleKey(event, document.activeElement)) {
@@ -298,6 +333,16 @@ export class BagScene extends Phaser.Scene {
       }
       return;
     }
+    // X puts one of the thing under the cursor down, as the row says: it lies
+    // on the tile the player is standing on for the rest of the raid.
+    if (!this.usingItemId && !event.repeat && event.key.toLowerCase() === 'x') {
+      const itemId = this.cursorItem();
+      if (itemId) {
+        event.preventDefault();
+        this.dropOne(itemId);
+        return;
+      }
+    }
     if (this.menuOverlay?.moveCursor(event.key)) {
       event.preventDefault();
     }
@@ -316,6 +361,17 @@ export class BagScene extends Phaser.Scene {
     const status = this.status;
     this.status = undefined;
     const machine = using ? machineForItem(using) : undefined;
+    if (this.moment) {
+      root.innerHTML = pixelScreen({
+        title: 'Teach a move',
+        aside: CLOCK_STOPPED,
+        body: teachMomentBody(this.moment),
+        hints: 'Any key · back to the pack',
+      });
+      root.querySelector<HTMLButtonElement>('[data-moment-done]')!.onclick = () => this.endMoment();
+      this.menuOverlay!.refocus('[data-moment-done]');
+      return;
+    }
     root.innerHTML = pixelScreen(
       using && machine
         ? {
@@ -342,7 +398,7 @@ export class BagScene extends Phaser.Scene {
             body: using ? this.recipientBody(using) : this.pocketBody(),
             hints: using
               ? 'ARROWS move · ENTER give it · ESC back to the pack'
-              : 'ARROWS move · ENTER use · ESC back to the raid',
+              : 'ARROWS move · ENTER use · X drop · ESC back to the raid',
             status,
           },
     );
@@ -400,9 +456,21 @@ export class BagScene extends Phaser.Scene {
   }
 
   private itemRow(item: ItemDefinition): string {
-    const help = `${item.displayName}: ${item.description} ${this.useLabel(item)}`;
+    const machine = machineForItem(item);
+    const learners = machine ? learnersLine(machine, this.party.pokemon) : undefined;
+    const help = `${item.displayName}: ${item.description}${learners ? ` ${learners}.` : ''} ${this.useLabel(item)} X drops ${this.dropWords(item)}.`;
     const tag = item.effect.type === 'bike' && this.bike?.riding ? pixelTag('Riding', 'plain') : pocketTag(item);
-    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span></span><span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
+    // A disc says on its own row how many of the party it would teach, so
+    // nobody opens the teaching screen to find it is nobody.
+    const under = learners ? `<small>${learners}</small>` : '';
+    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span>${under}</span><span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
+  }
+
+  /** What one X puts down: one of a thing, or a money bundle's worth. */
+  private dropWords(item: ItemDefinition): string {
+    return isCurrency(item.id)
+      ? itemAmountFor(item.id, lastBlockOf(item.id, this.bag.count(item.id)))
+      : `one ${item.displayName}`;
   }
 
   /**
@@ -430,10 +498,10 @@ export class BagScene extends Phaser.Scene {
     const carried = this.bag.count(item.id);
     // Money is carried in bundles, a square each: what frees a square is the
     // part-filled bundle, and that is what is put down (`lastBlockOf`).
-    const dropped = isCurrency(item.id) ? itemAmountFor(item.id, lastBlockOf(item.id, carried)) : `one ${item.displayName}`;
+    const dropped = this.dropWords(item);
     const drop = `<button class="px-window px-chip" data-drop="${item.id}" ${shows} data-help="${escapeAttribute(
-      `Put ${dropped} on the ground for good. It frees ${freed}.`,
-    )}">${isCurrency(item.id) ? `Drop ${dropped}` : 'Drop one'}</button>`;
+      `Put ${dropped} on the ground where you stand. It lies there for the rest of the raid, and frees ${freed}.`,
+    )}">${isCurrency(item.id) ? `Drop ${dropped}` : 'Drop one'} [X]</button>`;
     const holding = isCurrency(item.id)
       ? `${itemCountTag(item.id, carried)} carried · ${itemCountTag(item.id, stackSizeOf(item.id))} to ${freed}`
       : `${carried} carried · ${freed} each`;
@@ -691,7 +759,7 @@ export class BagScene extends Phaser.Scene {
   private readMachine(item: ItemDefinition, target: Pokemon): void {
     const outcome = teachFromMachine(item, target);
     if (outcome.kind !== 'choose') {
-      this.settleTeaching(item, outcome.kind === 'learned', outcome.machineIsSpent, outcome.message);
+      this.settleTeaching(item, target, outcome.kind === 'learned', outcome.machineIsSpent, outcome.message);
       return;
     }
     const source = `${outcome.machine.number} ${outcome.move.name}`;
@@ -703,6 +771,7 @@ export class BagScene extends Phaser.Scene {
       const forgotten = result?.forgotten ?? null;
       this.settleTeaching(
         item,
+        target,
         forgotten !== null,
         forgotten !== null && !outcome.machine.reusable,
         moveChoiceMessage(target.name, outcome.move, forgotten),
@@ -715,7 +784,7 @@ export class BagScene extends Phaser.Scene {
    * when a move was learned *and* the machine is used up by it, so an HM and a
    * refusal both leave the pack as it was.
    */
-  private settleTeaching(item: ItemDefinition, learned: boolean, spend: boolean, message: string): void {
+  private settleTeaching(item: ItemDefinition, target: Pokemon, learned: boolean, spend: boolean, message: string): void {
     audioManager.play(learned ? 'heal' : 'denied');
     if (spend) {
       this.spend(item);
@@ -724,8 +793,44 @@ export class BagScene extends Phaser.Scene {
     }
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
+    const machine = machineForItem(item);
+    if (learned && machine) {
+      this.startMoment({ item, machine, pokemon: target }, message);
+      return;
+    }
     this.status = message;
     this.render([`[data-item="${item.id}"]`]);
+  }
+
+  /**
+   * The disc is read: the move is tried once at a practice post for two
+   * seconds, then the pack again with the line that says so. Nothing in it
+   * spends anything or costs the raid clock - the world is paused under the
+   * pack - and any key cuts it short.
+   */
+  private startMoment(view: TeachMomentView, said: string): void {
+    this.moment = { ...view, said, openedAt: this.time.now };
+    const category = view.machine.move.category.toLowerCase();
+    this.momentTimers = [
+      this.time.delayedCall(TEACH_MOMENT_HIT_MS, () =>
+        audioManager.play(category === 'status' ? 'statusMove' : category === 'special' ? 'hitSpecial' : 'hitPhysical'),
+      ),
+      this.time.delayedCall(TEACH_MOMENT_MS, () => this.endMoment()),
+    ];
+    this.render();
+  }
+
+  private endMoment(): void {
+    const moment = this.moment;
+    if (!moment) {
+      return;
+    }
+    this.momentTimers.forEach((timer) => timer.remove(false));
+    this.momentTimers = [];
+    this.moment = undefined;
+    this.status = moment.said;
+    const itemId = moment.item.id;
+    this.render(this.bag.count(itemId) > 0 ? [`[data-item="${itemId}"]`] : []);
   }
 
   /**

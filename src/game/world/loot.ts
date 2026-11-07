@@ -159,3 +159,45 @@ export function prizesLeftBehind(
     )
     .map(prizeWords);
 }
+
+/**
+ * Something the player put down out of the pack, lying on the tile they were
+ * standing on for the rest of this raid.
+ *
+ * It is ordinary ground loot in every way the world asks about - drawn as its
+ * icon, picked up by stepping on it, refused when the pack has no room - but it
+ * is the raid's own, never the map's: it lives on the run session
+ * (`ActiveRunSession.droppedOnTheGround`), so a fight hands it back with
+ * everything else and the next raid starts without it. It has no `chance`, so
+ * it is never a prize, and no `district`, so nothing re-seats it.
+ */
+export const DROPPED_LOOT_PREFIX = 'dropped/';
+
+export function droppedPiece(
+  index: number,
+  itemId: ItemId,
+  quantity: number,
+  position: GridPosition,
+): WorldLoot {
+  return { id: `${DROPPED_LOOT_PREFIX}${index}`, position: { x: position.x, y: position.y }, itemId, quantity };
+}
+
+/**
+ * Lays a piece put down on one map's tile among everything this raid has put
+ * down, and hands it back. Ids count every map's pieces, so none repeats.
+ */
+export function layDroppedPiece(
+  byMap: Record<string, WorldLoot[]>,
+  mapId: string,
+  itemId: ItemId,
+  quantity: number,
+  position: GridPosition,
+): WorldLoot {
+  const index = Object.values(byMap).reduce((count, pieces) => count + pieces.length, 0);
+  const piece = droppedPiece(index, itemId, quantity, position);
+  (byMap[mapId] ??= []).push(piece);
+  return piece;
+}
+
+/** Whether a piece is something this raid put down rather than something the map laid. */
+export const isDroppedPiece = (loot: Pick<WorldLoot, 'id'>): boolean => loot.id.startsWith(DROPPED_LOOT_PREFIX);

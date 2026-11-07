@@ -208,3 +208,49 @@ export function teachBody(view: TeachView): string {
   return `<main class="px-body teach-layout">${discWindow(view)}${pupils}${teachBar(view)}</main>`;
 }
 
+
+/**
+ * How many of these Pokémon a disc would teach something to, said on the disc's
+ * own row in the pack so nobody opens the teaching screen to find it is nobody.
+ */
+export function learnersLine(machine: MachineDefinition, pokemon: readonly Pokemon[]): string {
+  const able = pokemon.filter((one) => canChoosePupil(pupilVerdict(machine, one))).length;
+  return able === 0 ? 'None of yours can learn it' : `${able} of yours can learn it`;
+}
+
+/**
+ * How long the moment after a disc is read lasts unless a key cuts it short:
+ * two seconds, enough to see the move tried once and read the line under it.
+ */
+export const TEACH_MOMENT_MS = 2000;
+
+/** When, inside the moment, the practice hit lands - for its sound. */
+export const TEACH_MOMENT_HIT_MS = 900;
+
+export interface TeachMomentView {
+  readonly item: ItemDefinition;
+  readonly machine: MachineDefinition;
+  readonly pokemon: Pokemon;
+}
+
+/**
+ * The moment a disc has been read: the Pokémon, the move tried once at a
+ * practice target, and the line that says it is learned. It plays for
+ * `TEACH_MOMENT_MS` and any key or click cuts it short, so it costs nobody a
+ * press; under reduced motion it is the same picture standing still.
+ */
+export function teachMomentBody(view: TeachMomentView): string {
+  const move = view.machine.move;
+  const name = view.pokemon.name.toUpperCase();
+  const type = move.type.toLowerCase();
+  const stage = `<div class="teach-moment" aria-hidden="true">${pixelPortrait(view.pokemon.base.dexId, view.pokemon.name, view.pokemon.shiny)}<span class="teach-moment-track"><span class="teach-moment-hit px-type-${type}"></span></span><span class="teach-moment-target"><span class="teach-moment-spark px-type-${type}"></span></span></div>`;
+  const words = `<p class="px-wrap teach-moment-words"><strong class="px-name">${name} learned ${move.name.toUpperCase()}!</strong> ${pixelTypeBadge(move.type)} A practice swing at the post, and it is one of its moves for good. ${
+    view.machine.reusable ? 'The HM is not used up.' : 'The TM is used up.'
+  }</p>`;
+  const done = `<div class="px-grid-bar"><button class="px-window px-chip" data-moment-done data-help="Back to the pack.">Carry on</button></div>`;
+  return `<main class="px-body teach-moment-layout">${pixelWindow(`${stage}${words}${done}`, {
+    className: 'teach-moment-window px-tone-primary',
+    heading: `${view.machine.number} read`,
+    note: 'Any key skips',
+  })}</main>`;
+}

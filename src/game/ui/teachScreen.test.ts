@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { getItemById, type ItemDefinition } from '../items';
 import { machineForItem } from '../items/teaching';
 import { BULBASAUR, CHARMANDER, PIKACHU, Pokemon, SQUIRTLE } from '../pokemon';
-import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from './teachScreen';
+import {
+  canChoosePupil,
+  learnersLine,
+  pupilOutcome,
+  pupilVerdict,
+  teachBody,
+  teachMomentBody,
+} from './teachScreen';
 
 const disc = (id: string): ItemDefinition => getItemById(id)!;
 const AERIAL_ACE = disc('tm40-aerial-ace');
@@ -148,5 +155,22 @@ describe('what the teach screen says a disc is (playtest 6, B2)', () => {
     const bulletSeed = teachBody(view(null, disc('tm09-bullet-seed')));
     expect(bulletSeed).toContain('Teaches Bullet Seed');
     expect(bulletSeed).not.toMatch(/only the Bulbasaur line/i);
+  });
+});
+
+describe('the disc row and the moment a disc is read', () => {
+  it('says on the row how many of yours could learn it, counting nobody who knows it or cannot', () => {
+    expect(learnersLine(machineOf(AERIAL_ACE), party())).toBe('2 of yours can learn it');
+    expect(learnersLine(machineOf(AERIAL_ACE), [new Pokemon(SQUIRTLE, 5)])).toBe('None of yours can learn it');
+  });
+
+  it('names who learned what, and whether the disc is gone', () => {
+    const pokemon = new Pokemon(CHARMANDER, 5);
+    const body = teachMomentBody({ item: AERIAL_ACE, machine: machineOf(AERIAL_ACE), pokemon });
+    expect(body).toContain('CHARMANDER learned AERIAL ACE!');
+    expect(body).toContain('The TM is used up.');
+    expect(body).toContain('data-moment-done');
+    const hm = teachMomentBody({ item: ROCK_SMASH, machine: machineOf(ROCK_SMASH), pokemon });
+    expect(hm).toContain('The HM is not used up.');
   });
 });

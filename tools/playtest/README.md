@@ -450,6 +450,11 @@ THE HARBOUR's T phrases where a player trips over them: tapped mid-step, a row c
 in the great hall, the partner's note beside the bubble, and every door's name from
 its own step with regulars about.
 
+`raidPackFixes.mjs <test-mode build url> [out dir] [--attach=PORT]` plays the raid pack's
+small fixes on Greystone Vale: X drops a Potion, it lies on the tile and comes
+back by stepping on it, a disc row says how many of yours can learn it, and
+reading TM39 plays the two-second moment. `docs/screens/raid-pack-fixes/`.
+
 `sidePanels.mjs <test-mode build url> <out dir> [--port=N] [--window=WxH]` plays the
 raid's side panels (`src/game/ui/sidePanel.ts`): the pack, a disc, the move chooser and
 the party by key and mouse, what each leaves in sight, the map's east edge, FEEDBACK over
