@@ -33,7 +33,12 @@ const JUNE = new Date(2026, 5, 15, 12);
 const DOWNSTAIRS = roomNamed('bolthole')!;
 const PLAYER: GridPosition = { x: 6, y: 6 };
 const BEHIND: GridPosition = { x: 7, y: 6 };
-const BESIDE: GridPosition = { x: 6, y: 7 };
+/**
+ * Where it steps out to: in front of the player, the table above them taking
+ * the tile there - never the tile below them, which `arrivalPlace` leaves for
+ * last because a partner there is drawn over the player.
+ */
+const BESIDE: GridPosition = { x: 5, y: 6 };
 
 const withDesk = (game: RestoredGame, at: GridPosition | null): RestoredGame => {
   const layout: Placement[] = [...(game.raidProgress.homeLayout ?? defaultLayout(game))];

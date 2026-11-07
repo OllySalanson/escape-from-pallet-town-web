@@ -408,6 +408,12 @@ export interface RaidProgress {
    */
   readonly lastBench?: readonly string[];
   /**
+   * Who walks about THE BOLTHOLE's garden, by stash id, once a PC has been used
+   * to choose (`base/homeGarden.ts`). Absent reads as the default - the six
+   * highest level not going on the next raid - so no version bump.
+   */
+  readonly garden?: readonly string[];
+  /**
    * How many raids in a row have got out, and the run the last lost raid ended
    * (`base/runSlate.ts`). Kept with the record of raids and asked of nothing else.
    * Absent reads as no run yet, so no version bump.
@@ -2265,6 +2271,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),
     ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
+    ...(value.garden === undefined ? {} : { garden: uniqueStrings(value.garden) }),
     ...(Number.isInteger(value.benchRaids) && (value.benchRaids as number) > 0 ? { benchRaids: value.benchRaids as number } : {}),
     ...(Number.isInteger(value.shortRaids) && (value.shortRaids as number) > 0 ? { shortRaids: value.shortRaids as number } : {}),
     packArrangement: readArrangement(value.packArrangement),

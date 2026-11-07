@@ -131,7 +131,7 @@ export function whereItIsUsed(item: ItemDefinition): string {
       return 'Worn from YOUR WARDROBE, upstairs in THE BOLTHOLE.';
     default:
       if (item.category === ItemCategory.Held) {
-        return "Give it to a Pokémon on BILL'S PC, in the Pokémon Center.";
+        return "Give it to a Pokémon on MY PC at home, or BILL'S PC at the Pokémon Center.";
       }
       return 'Pack it at the rack in THE RAID ARENA to use it in a raid.';
   }

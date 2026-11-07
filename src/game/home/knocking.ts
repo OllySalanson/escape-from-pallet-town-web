@@ -123,7 +123,10 @@ export function notYoursToMoveLine(ownerName: string): string {
   return `This is ${ownerName}'s house - nothing here is yours to move.`;
 }
 
-/** A thing's name as a visitor reads it: the owner's, not "YOUR". */
+/** A thing's name as a visitor reads it: the owner's, not "YOUR" or "MY". */
 export function visitorThingName(name: string, ownerName: string): string {
-  return name.startsWith('YOUR ') ? `${ownerName}'S ${name.slice('YOUR '.length)}` : name;
+  for (const mine of ['YOUR ', 'MY ']) {
+    if (name.startsWith(mine)) return `${ownerName}'S ${name.slice(mine.length)}`;
+  }
+  return name;
 }

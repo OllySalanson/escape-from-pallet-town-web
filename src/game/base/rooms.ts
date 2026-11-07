@@ -67,7 +67,6 @@ import {
   calendarLines,
   nextRival,
   partnerRug,
-  pcLines,
   tellyLines,
 } from './homeLines';
 import { hunterRival } from '../world/hunters';
@@ -1675,11 +1674,15 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
       lines: bedLines(game),
       does: 'sleep',
     },
+    // MY PC is where the player's own things are kept, as FireRed's PC in the
+    // player's house is: the same storage BILL'S PC opens at the Center, read
+    // at home - the Pokémon in their boxes, every thing in its pocket, and who
+    // walks about the garden (`homeGarden.ts`).
     {
-      name: 'YOUR PC',
-      note: 'The raid log',
+      name: 'MY PC',
+      note: 'Your things · your Pokémon',
       tiles: [{ x: 0, y: 1 }],
-      lines: pcLines(game),
+      opens: 'boxes',
     },
     {
       name: 'YOUR WARDROBE',

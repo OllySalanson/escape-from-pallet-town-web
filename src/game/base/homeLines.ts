@@ -1,8 +1,6 @@
 import { raidsDeployed, type RestoredGame } from '../save/SaveManager';
 import { STARTER_SPECIES } from '../stash/Stash';
 import { PokemonType } from '../pokemon/PokemonType';
-import { formatMoney } from '../items';
-import { moneyHeld } from '../hub/trader';
 import { KANTO_POKEDEX_SIZE, dueMilestone, nextMilestone, pokedexOwned } from '../hub/pokedex';
 import { hunterRival, rivalForRaid, type HunterRivalId } from '../world/hunters';
 import { worldMapName, type WorldMapId } from '../worldMap';
@@ -14,7 +12,7 @@ import { worldMapName, type WorldMapId } from '../worldMap';
  * so everything in it that can be faced reads something real off the save
  * rather than a line of furniture: the telly is the forecast of who hunts you
  * next (the same rotation the hunter is drawn from, `rivalForRaid`), the PC is
- * the raid log, the calendar counts the days, and the bed dreams of where you
+ * storage and counts the Pokédex, the calendar counts the days and the raids, and the bed dreams of where you
  * keep going back to. Nothing here is stored and nothing here is a reward -
  * the bed in particular does not heal, because healing is Joy's and is priced
  * in raid time (`hub/recovery.ts`), and a free bed at home would price the
@@ -69,49 +67,22 @@ const times = (count: number): string =>
   count === 1 ? 'once' : count === 2 ? 'twice' : `${count} times`;
 
 /**
- * What Bill's storage system is holding, naming only what there is: a save with
- * no money is not told Bill is keeping ₽0 for it.
+ * The Pokédex as MY PC counts it, short enough for the title bar of the
+ * storage screen: the kinds Oak counts (`hub/pokedex.ts`), and what he has for
+ * it. Nothing else in the game says the count, so without this a player never
+ * heard there was a Pokédex until the tenth kind.
  */
-function keepingLine(game: RestoredGame): string {
-  const money = moneyHeld(game.stash);
-  const pokemon = game.stash.listPokemon().length;
-  const held = [...(money > 0 ? [formatMoney(money)] : []), ...(pokemon > 0 ? [`${pokemon} Pokémon`] : [])];
-  return held.length === 0 ? 'Bill is keeping nothing for you yet.' : `Bill is keeping ${held.join(' and ')} for you.`;
-}
-
-/**
- * The Pokédex as the PC counts it: the kinds Oak counts (`hub/pokedex.ts`), and
- * what he has for it. Nothing else in the game says the count, so without this
- * a player never heard there was a Pokédex until the tenth kind.
- */
-function pokedexLine(game: RestoredGame): string {
+export function pokedexNote(game: RestoredGame): string {
   const owned = pokedexOwned(game.raidProgress.pokedexOwned, game.stash).length;
   if (owned >= KANTO_POKEDEX_SIZE) {
-    return `Pokédex: all ${KANTO_POKEDEX_SIZE} kinds owned. It is complete!`;
+    return `Pokédex complete · ${KANTO_POKEDEX_SIZE}`;
   }
-  const counted = `Pokédex: ${owned} kind${owned === 1 ? '' : 's'} owned.`;
+  const counted = `Pokédex ${owned}`;
   if (dueMilestone(owned, game.raidProgress.pokedexRewards)) {
-    return `${counted} Oak has a reward waiting in his lab.`;
+    return `${counted} · Oak has a reward`;
   }
   const next = nextMilestone(owned);
-  return next ? `${counted} Oak has a reward for you at ${next.kinds}.` : counted;
-}
-
-export function pcLines(game: RestoredGame): readonly string[] {
-  const log = record(game);
-  const keeping = keepingLine(game);
-  const pokedex = pokedexLine(game);
-  if (log.raids === 0) {
-    return ['RAID LOG. No raids yet. Oak is up the row, with the contract board.', pokedex, keeping];
-  }
-  return [
-    `RAID LOG. ${log.raids} raid${log.raids === 1 ? '' : 's'}: ${log.home} came home, ${log.lost} lost.`,
-    ...(log.favourite
-      ? [`Raided most: ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}, ${times(log.favourite.raids)}.`]
-      : []),
-    pokedex,
-    keeping,
-  ];
+  return next ? `${counted} · reward at ${next.kinds}` : counted;
 }
 
 /** The day the calendar is open on: one a raid, and today is the next. */
@@ -127,6 +98,11 @@ export function calendarLines(game: RestoredGame): readonly string[] {
   return [
     `DAY ${calendarDay(game)}. Every raid is a day on this calendar, and ${log.raids} ${log.raids === 1 ? 'is' : 'are'} crossed off.`,
     ticks(log.home, log.raids),
+    // The raid log the PC used to read, before the PC became storage: where
+    // the player keeps going back to is written in the margin.
+    ...(log.favourite
+      ? [`In the margin: ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}, ${times(log.favourite.raids)}.`]
+      : []),
   ];
 }
 

@@ -37,7 +37,7 @@ import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
 import { SaveManager, raidsDeployed, raidsLost, traderCounterFor, type RestoredGame } from '../save/SaveManager';
 import { startNewGame } from '../save/newGame';
-import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId } from '../stash';
+import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId, type StashedPokemon } from '../stash';
 import {
   ballAt,
   CHOOSING_HINT,
@@ -118,6 +118,8 @@ import {
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
+import { HomeGardenFigures } from '../base/homeGardenFigures';
+import { gardenLines, gardenPokemon, gardenQuestion } from '../base/homeGarden';
 import {
   COURSE_KEEPER_ID,
   HARBOUR_PEOPLE,
@@ -819,6 +821,8 @@ export class BaseScene extends Phaser.Scene {
   } | null = null;
   /** The harbour's own townspeople and Pokemon (`base/harbourLife.ts`), outdoors only. */
   private harbourLife: HarbourLifeFigures | null = null;
+  /** The Pokémon walking about THE BOLTHOLE's garden (`base/homeGarden.ts`), outdoors only. */
+  private garden: HomeGardenFigures | null = null;
   /** Somebody else's house this player is looking round, let in at the door. */
   private visit: HouseVisit | null = null;
   /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
@@ -1330,6 +1334,7 @@ export class BaseScene extends Phaser.Scene {
     this.bird?.update(deltaMs);
     this.partner?.update(deltaMs);
     this.wanderPen(deltaMs);
+    this.garden?.update(deltaMs, this.dialogBox.visible || this.boxQuestion !== null, (tile) => this.someoneElseOn(tile));
     // The harbour's people keep their beats, and stand still while anything
     // is being read: somebody who walked off mid-sentence leaves their words
     // hanging in the air.
@@ -3484,6 +3489,7 @@ export class BaseScene extends Phaser.Scene {
       const life = harbourLifeAt(windowLight(new Date()));
       this.harbourLife = new HarbourLifeFigures(this, life);
       this.markHarbourGivers(life);
+      this.plantGarden();
       this.placeSign = new PlaceNameSign(this);
       // Nothing flies over the harbour at night.
       this.bird =
@@ -3494,6 +3500,8 @@ export class BaseScene extends Phaser.Scene {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         this.harbourLife?.destroy();
         this.harbourLife = null;
+        this.garden?.destroy();
+        this.garden = null;
         this.placeSign?.destroy();
         this.placeSign = null;
         this.bird?.destroy();
@@ -4093,6 +4101,8 @@ export class BaseScene extends Phaser.Scene {
           ...(room?.keeper ? [figureRect(room.keeper.position)] : []),
           ...(room ? [] : [figureRect(DAY_CARE_KEEPER.position)]),
           ...(this.penPokemon ? [figureRect(this.penPokemon.tile)] : []),
+          // And the garden's, as the pen's: a name seated across six of them hid the garden.
+          ...(this.garden?.standing() ?? []).map((tile) => figureRect(tile)),
           // The harbour's people (`base/harbourLife.ts`), as the Day-Care man
           // is: a caption seated across a person reads as their head stuck on
           // a sign.
@@ -4338,7 +4348,8 @@ export class BaseScene extends Phaser.Scene {
       (this.rivalHere !== null && sameTile(tile, RIVAL_TILE)) ||
       this.leaderOn(tile) !== undefined ||
       (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y) ||
-      (this.harbourLife?.holds(tile) ?? false)
+      (this.harbourLife?.holds(tile) ?? false) ||
+      (this.garden?.holds(tile) ?? false)
     );
   }
 
@@ -5032,6 +5043,11 @@ export class BaseScene extends Phaser.Scene {
         this.harbourLife?.cry(local);
       }
       this.say(local.lines, [target]);
+      return;
+    }
+    const kept = this.garden?.at(target);
+    if (kept) {
+      this.meetGardenPokemon(kept, target);
       return;
     }
     if (sameTile(target, DAY_CARE_KEEPER.position)) {
@@ -5989,6 +6005,60 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** The save as it stands now, for anybody about to name a price: another tab may have moved it on. */
+  /**
+   * THE BOLTHOLE's garden (`base/homeGarden.ts`): who the PC put out, on the
+   * lawn beside the house, on ground nobody else stands on.
+   */
+  private plantGarden(): void {
+    this.garden?.destroy();
+    this.garden = new HomeGardenFigures(
+      this,
+      gardenPokemon(this.savedGame),
+      (tile) =>
+        this.collision[tile.y]?.[tile.x] === false &&
+        !sameTile(tile, this.currentTile) &&
+        !sameTile(tile, DAY_CARE_KEEPER.position) &&
+        !(this.harbourLife?.holds(tile) ?? false),
+    );
+  }
+
+  /**
+   * One of the garden's Pokémon, faced: its cry, who it is and which box it is
+   * kept in, and whether to take it on the next raid - YES writes it onto the
+   * team the hall's bench opens on, as YOUR TEAM on P does.
+   */
+  private meetGardenPokemon(stored: StashedPokemon, at: GridPosition): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.garden?.cry(stored);
+    const game = this.freshGame();
+    const box = game.stash.listBoxes()[game.stash.boxIndexOf(stored.id)]?.name ?? 'a box';
+    this.say(gardenLines(stored, box), [at], () =>
+      this.askInBox(gardenQuestion(stored.pokemon.name), (yes) => {
+        if (!yes) return;
+        const flow = flowForGame(this.freshGame());
+        const refusal = flow.togglePokemon(stored.id);
+        if (refusal) {
+          audioManager.play('denied');
+          this.say([refusal], [at]);
+          return;
+        }
+        if (!this.saveManager.chooseBench(flow.party.map((one) => one.id))) {
+          audioManager.play('denied');
+          this.say(['The team could not be saved.'], [at]);
+          return;
+        }
+        audioManager.play('select');
+        // Whoever comes out instead comes out away from the player, not onto the tile just left in front of them.
+        this.garden?.settle(
+          gardenPokemon(this.freshGame()),
+          (tile) => this.someoneElseOn(tile) || Math.abs(tile.x - this.currentTile.x) + Math.abs(tile.y - this.currentTile.y) <= 2,
+        );
+        this.say([`${stored.pokemon.name} will go on the next raid. Press P to see the team.`], [at]);
+      }),
+    );
+  }
+
   private freshGame(): RestoredGame {
     this.savedGame = this.saveManager.load() ?? this.savedGame;
     return this.savedGame;

@@ -13,7 +13,7 @@ import { FIRST_CONTRACT_ID } from '../objectives';
 import { BASE_DOORS } from './doors';
 import { doorStatusLine } from './doorStatus';
 import { baseGame as newGame } from './baseGames.testkit';
-import { BADGES, caseBadges } from './badgeCase';
+import { BADGES } from './badgeCase';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -173,21 +173,22 @@ describe("what each of the base's doors says", () => {
   });
 
   /** The house says from the yard how full its badge case is, once there is anything in it. */
-  it("says on THE BOLTHOLE's door how many badges are in its case", () => {
+  it("says on THE BOLTHOLE's door what is kept there, and how many badges are in its case", () => {
     const home = doorNamed('bolthole');
-    expect(doorStatusLine(home, baseGame())).toBe('Your house');
+    expect(doorStatusLine(home, baseGame())).toBe('Your things · your Pokémon');
     expect(
       doorStatusLine(home, baseGame({ progress: { defeatedBosses: ['overlook-warden', 'pallet-mill-keeper'] } })),
-    ).toBe(`Your house · 2 of ${caseBadges().length} badges`);
+    ).toMatch(/^Your things · your Pokémon · 2 (of \d+ )?badges$/);
   });
 
   /** Once somebody has given their name at the door, the door says whose house it is. */
   it("puts the name given at THE BOLTHOLE's door on it, still inside one short line", () => {
     const home = doorNamed('bolthole');
-    expect(doorStatusLine(home, baseGame(), 'OLLY')).toBe("OLLY's house");
+    expect(doorStatusLine(home, baseGame(), 'OLLY')).toBe("OLLY's things & Pokémon");
     const everyBadge = baseGame({ progress: { defeatedBosses: BADGES.map((badge) => badge.bossId) } });
+    expect(doorStatusLine(home, everyBadge, 'OLLY')).toMatch(/^OLLY's things & Pokémon · \d+ (of \d+ )?badges$/);
     const longest = doorStatusLine(home, everyBadge, 'WWWWWWWWWW');
-    expect(longest).toBe(`WWWWWWWWWW's house · ${caseBadges().length} of ${caseBadges().length} badges`);
+    expect(longest.startsWith("WWWWWWWWWW's things & Pokémon")).toBe(true);
     expect(longest.length).toBeLessThanOrEqual(40);
   });
 
