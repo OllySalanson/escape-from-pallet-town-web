@@ -24,8 +24,11 @@ import { winsPrizeBerry } from './berryPicking';
  * here; `SaveManager` writes them, one write each.
  */
 
-/** A source of tickets, each capped by the day: the cabinets, the course, and bouts won in THE BATTLE ARENA. */
-export type TicketSource = 'pokemon-jump' | 'berry-picking' | 'field-course' | 'battle-arena';
+/**
+ * A source of tickets, each capped by the day: the cabinets, the course, and
+ * the promenade's three outdoor games - the race, the dig and the fishing derby.
+ */
+export type TicketSource = 'pokemon-jump' | 'berry-picking' | 'field-course' | 'derby' | 'dig' | 'fishing-derby';
 
 /** The most every source together pays in a day (the plan's daily ceiling). */
 export const DAILY_TICKET_CEILING = 285;
@@ -83,19 +86,41 @@ export function courseTickets(ms: number): number {
   return COURSE_TICKET_TIERS.reduce((won, tier) => (ms <= tier.ms ? tier.tickets : won), 0);
 }
 
-/**
- * THE BATTLE ARENA pays for the day's first wins (the harbour arenas plan,
- * section 2.10): ten tickets a win for the first five, so its "score" is the
- * number of bouts won today and a sixth win pays nothing. Moving up a class
- * pays apart from the day (`arena/classes.ts`).
- */
-export const DOJO_WIN_TICKETS = 10;
-export const DOJO_PAID_WINS_A_DAY = 5;
+type Tiers = readonly { readonly score: number; readonly tickets: number }[];
 
-/** The tickets a day's bout wins are worth. */
-export function dojoWinTickets(winsToday: number): number {
-  return Math.max(0, Math.min(DOJO_PAID_WINS_A_DAY, winsToday)) * DOJO_WIN_TICKETS;
+function tierTickets(tiers: Tiers, score: number): number {
+  return tiers.reduce((won, tier) => (score >= tier.score ? tier.tickets : won), 0);
 }
+
+/**
+ * THE PROMENADE DERBY's tiers, by place (`derbyScore`: six for a win, five for
+ * second, four for third): a podium pays, a win pays most. Set with
+ * `tools/minigames/outdoor.mts` so that the right racer ridden well wins
+ * often, and the wrong one still makes the podium now and then.
+ */
+export const DERBY_TICKET_TIERS: Tiers = [
+  { score: 4, tickets: 10 },
+  { score: 5, tickets: 20 },
+  { score: 6, tickets: 30 },
+];
+
+/** THE DIG's tiers, by points dug: a couple of finds, most of the patch, and all of it. */
+export const DIG_TICKET_TIERS: Tiers = [
+  { score: 20, tickets: 10 },
+  { score: 35, tickets: 20 },
+  { score: 45, tickets: 30 },
+];
+
+/** THE FISHING DERBY's tiers, by the tally: what a plain lead lands off the deep end, and what Illuminate does. */
+export const FISHING_DERBY_TICKET_TIERS: Tiers = [
+  { score: 60, tickets: 10 },
+  { score: 140, tickets: 20 },
+  { score: 220, tickets: 30 },
+];
+
+export const derbyTickets = (score: number): number => tierTickets(DERBY_TICKET_TIERS, score);
+export const digTickets = (score: number): number => tierTickets(DIG_TICKET_TIERS, score);
+export const fishingDerbyTickets = (score: number): number => tierTickets(FISHING_DERBY_TICKET_TIERS, score);
 
 /**
  * How each source is scored: which of two results is better (a score up, a
@@ -107,7 +132,10 @@ const SOURCE_RULES: Readonly<
   'pokemon-jump': { better: (a, b) => a > b, tickets: jumpTickets, berries: berriesForScore },
   'berry-picking': { better: (a, b) => a > b, tickets: berryTickets, berries: (best) => (winsPrizeBerry(best) ? 1 : 0) },
   'field-course': { better: (a, b) => a > 0 && (b <= 0 || a < b), tickets: courseTickets, berries: () => 0 },
-  'battle-arena': { better: (a, b) => a > b, tickets: dojoWinTickets, berries: () => 0 },
+  // The dig's berries are what it turns up, sent home through `digBerriesAllowed`, not paid by score.
+  derby: { better: (a, b) => a > b, tickets: derbyTickets, berries: () => 0 },
+  dig: { better: (a, b) => a > b, tickets: digTickets, berries: () => 0 },
+  'fishing-derby': { better: (a, b) => a > b, tickets: fishingDerbyTickets, berries: () => 0 },
 };
 
 /** The better of two results at a source: the higher score, or the quicker time. */
@@ -201,6 +229,24 @@ export function payGame(record: GameCornerRecord, source: TicketSource, result: 
 /** A POKéMON JUMP score played (`payGame`). */
 export function payJump(record: GameCornerRecord, score: number, now: Date): GamePayout {
   return payGame(record, 'pokemon-jump', score, now);
+}
+
+/** The most berries THE DIG sends home in a day: the prize window's own five. */
+export const DIG_BERRIES_A_DAY = 5;
+
+/**
+ * How many of the berries a dig turned up may go home, given what the day has
+ * already sent: a dig pays in what it finds, up to `DIG_BERRIES_A_DAY`.
+ */
+export function digBerriesAllowed(record: GameCornerRecord, found: number, now: Date): number {
+  const sent = today(record, now).berries.dig ?? 0;
+  return Math.max(0, Math.min(found, DIG_BERRIES_A_DAY - sent));
+}
+
+/** The record with `count` more berries sent home from a source today. */
+export function withBerriesSent(record: GameCornerRecord, source: TicketSource, count: number, now: Date): GameCornerRecord {
+  const day = today(record, now);
+  return { ...record, day: { ...day, berries: { ...day.berries, [source]: (day.berries[source] ?? 0) + count } } };
 }
 
 // --- THE PRIZE WINDOW ---------------------------------------------------------
@@ -316,7 +362,7 @@ export function prizeName(prize: TicketPrize): string {
 
 // --- reading a save -------------------------------------------------------------
 
-const SOURCES: readonly TicketSource[] = ['pokemon-jump', 'berry-picking', 'field-course', 'battle-arena'];
+const SOURCES: readonly TicketSource[] = ['pokemon-jump', 'berry-picking', 'field-course', 'derby', 'dig', 'fishing-derby'];
 
 function wholeCount(value: unknown, most = Number.MAX_SAFE_INTEGER): number {
   return Number.isInteger(value) && (value as number) >= 0 ? Math.min(value as number, most) : 0;

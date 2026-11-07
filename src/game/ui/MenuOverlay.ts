@@ -790,24 +790,9 @@ interface RowBox {
 /** An element measured whole as one row, its text's reach included. */
 function elementBox(element: HTMLElement): RowBox {
   const { top, bottom, left, right } = element.getBoundingClientRect();
-  // Only text that is drawn: an icon's name for a screen reader is clipped to
-  // nothing, but its line box still hangs below the icon, and counted as ink
-  // it made every row with an icon reach half a row lower than it does - so a
-  // pocket heading scrolled to the top of YOUR THINGS was masked as cut.
-  const text: number[] = [];
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.parentElement?.closest('.visually-hidden')) {
-      continue;
-    }
-    const range = document.createRange();
-    range.selectNodeContents(node);
-    for (const rect of range.getClientRects()) {
-      if (rect.height > 0) {
-        text.push(rect.bottom);
-      }
-    }
-  }
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const text = [...range.getClientRects()].filter((rect) => rect.height > 0).map((rect) => rect.bottom);
   return { top, bottom, ink: Math.max(bottom, ...text), left, right };
 }
 

@@ -1,12 +1,13 @@
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
-import { readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
-import { settleDojoBout, type DojoSettlement } from '../arena/classes';
+import { afterDojoBout, readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
 import { gymOf } from '../world/valeQuarters';
 import {
   buyPrize,
+  digBerriesAllowed,
   NO_GAME_CORNER,
   payGame,
   readGameCorner,
+  withBerriesSent,
   TICKET_PRIZES,
   type GameCornerRecord,
   type GamePayout,
@@ -990,15 +991,13 @@ export class SaveManager {
    * back to its counter: the fight itself writes nothing (`arena/boutRules.ts`),
    * and this is the one field a bout there can move.
    */
-  public recordDojoBout(opponent: string, won: boolean, now: Date = new Date()): DojoSettlement | null {
+  public recordDojoBout(opponent: string, won: boolean): DojoRecord | null {
     const game = this.load();
     if (!game) {
       return null;
     }
-    // The tally, the class ladder and the tickets, in one write (`arena/classes.ts`).
-    const settled = settleDojoBout(game.raidProgress.dojo, game.raidProgress.gameCorner ?? NO_GAME_CORNER, opponent, won, now);
-    const next = { ...game, raidProgress: { ...game.raidProgress, dojo: settled.record, gameCorner: settled.gameCorner } };
-    return this.save(next) ? settled : null;
+    const record = afterDojoBout(game.raidProgress.dojo, opponent, won);
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, dojo: record } }) ? record : null;
   }
 
   /**
@@ -1200,6 +1199,35 @@ export class SaveManager {
     }
     const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, gameCorner: payout.record } };
     return this.save(next) ? { game: next, payout, berries } : null;
+  }
+
+  /**
+   * One of THE PROMENADE's outdoor games played (`minigames/derby.ts`,
+   * `dig.ts`, `fishingDerby.ts`), in one write: the day's best raised and the
+   * tickets it is owed (`payGame`), and what was dug up sent home - every
+   * ornament, and berries up to the day's five (`digBerriesAllowed`). Null if
+   * there is no game to write to.
+   */
+  public playOutdoorGame(
+    source: 'derby' | 'dig' | 'fishing-derby',
+    score: number,
+    finds: readonly string[] = [],
+    now: Date = new Date(),
+  ): { readonly game: RestoredGame; readonly payout: GamePayout; readonly kept: readonly string[] } | null {
+    const game = this.load();
+    if (!game) {
+      return null;
+    }
+    const payout = payGame(game.raidProgress.gameCorner ?? NO_GAME_CORNER, source, score, now);
+    const berries = finds.filter((itemId) => itemId.endsWith('-berry'));
+    const allowed = digBerriesAllowed(payout.record, berries.length, now);
+    const kept = [...berries.slice(0, allowed), ...finds.filter((itemId) => !itemId.endsWith('-berry'))];
+    for (const itemId of kept) {
+      game.stash.addItem(itemId, 1);
+    }
+    const record = allowed > 0 ? withBerriesSent(payout.record, source, allowed, now) : payout.record;
+    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, gameCorner: record } };
+    return this.save(next) ? { game: next, payout: { ...payout, record }, kept } : null;
   }
 
   /**

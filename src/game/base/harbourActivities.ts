@@ -40,7 +40,8 @@ import {
  * **The list.** `stroll` is a walk from one place to another with somewhere to
  * be; `wander` is the old pottering, kept for the people who do just that;
  * `hang-out` stands about facing a fountain, a bench, a statue or the Pokémon in
- * the pen; `watch-sea` stands at the water's edge looking at it; `window-shop`
+ * the pen; `watch-sea` stands at the water's edge looking at it; `watch-game`
+ * stands beside one of the promenade's outdoor games looking at its board; `window-shop`
  * stands at THE HARBOUR BOUTIQUE's windows; `read-board` reads a sign;
  * `knock` raises a hand at a keeper's door and waits, and sometimes goes in;
  * `call-in` goes through a door and stands in the room (`ROOM_CALLS`), which the
@@ -69,6 +70,7 @@ export type BotActivity =
   | 'wander'
   | 'hang-out'
   | 'watch-sea'
+  | 'watch-game'
   | 'window-shop'
   | 'read-board'
   | 'knock'
@@ -79,11 +81,13 @@ export type BotActivity =
 /** A place to stand and which way to look. */
 const stand = (x: number, y: number, facing: Direction): RoomSpot => ({ tile: { x, y }, facing });
 
-/** The water's edge, each facing the water. */
+/**
+ * The water's edge, each facing the water - never the jetty's plank in front
+ * of the Seagallop's gate, the one way off the boat for anybody coming in on her.
+ */
 export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(4, 19, 'down'),
   stand(13, 21, 'right'),
-  stand(11, 20, 'left'),
   stand(25, 22, 'down'),
   stand(34, 22, 'down'),
   stand(45, 22, 'down'),
@@ -115,6 +119,19 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(6, 17, 'up'),
   stand(10, 17, 'up'),
   stand(30, 24, 'right'),
+];
+
+/**
+ * Beside THE PROMENADE's three outdoor games, looking at the game's board:
+ * the DERBY's start, THE DIG on the sand and the FISHING DERBY at the pier
+ * head - somebody watching a game is what makes a game look worth playing.
+ */
+export const GAME_WATCHES: readonly RoomSpot[] = [
+  // Off every lane: by THE GREEN's flowers, in the nook between a hut and a
+  // parasol, and the dead end of the pier head.
+  stand(59, 9, 'right'),
+  stand(68, 20, 'left'),
+  stand(78, 29, 'left'),
 ];
 
 /** THE HARBOUR BOUTIQUE's front, and THE GAME CORNER's prize window either side of its step. */
@@ -410,9 +427,10 @@ export function directionOf(from: GridPosition, to: GridPosition): Direction {
 const walkMs = (steps: number): number => steps * STEP_DURATION_MS;
 
 /** How long each thing takes, in ms, when there is room for all of it. */
-const HOW_LONG: Readonly<Record<'hang-out' | 'watch-sea' | 'window-shop' | 'read-board' | 'knock' | 'stroll' | 'wander', readonly [number, number]>> = {
+const HOW_LONG: Readonly<Record<'hang-out' | 'watch-sea' | 'watch-game' | 'window-shop' | 'read-board' | 'knock' | 'stroll' | 'wander', readonly [number, number]>> = {
   'hang-out': [18_000, 60_000],
   'watch-sea': [20_000, 70_000],
+  'watch-game': [15_000, 45_000],
   'window-shop': [9_000, 24_000],
   'read-board': [6_000, 12_000],
   knock: [7_000, 13_000],
@@ -426,6 +444,7 @@ const USUALLY: readonly (readonly [Exclude<BotActivity, 'chat' | 'leave' | 'call
   ['wander', 2],
   ['hang-out', 3],
   ['watch-sea', 3],
+  ['watch-game', 2],
   ['window-shop', 2],
   ['read-board', 1],
   ['knock', 2],
@@ -444,7 +463,7 @@ const WANDER_REACH = 14;
 const STROLL_AT_LEAST = 18;
 
 /** Everywhere a stroll may be off to. */
-const STROLL_ENDS: readonly RoomSpot[] = [...SEA_VIEWS, ...HANG_OUTS, ...SHOP_WINDOWS, ...NOTICE_BOARDS];
+const STROLL_ENDS: readonly RoomSpot[] = [...SEA_VIEWS, ...GAME_WATCHES, ...HANG_OUTS, ...SHOP_WINDOWS, ...NOTICE_BOARDS];
 
 let solid: readonly (readonly boolean[])[] | null = null;
 
@@ -641,6 +660,8 @@ class VisitPlanner {
         return this.stopAt(this.roll.shuffle(HANG_OUTS), 'hang-out');
       case 'watch-sea':
         return this.stopAt(this.roll.shuffle(SEA_VIEWS), 'watch-sea');
+      case 'watch-game':
+        return this.stopAt(this.roll.shuffle(GAME_WATCHES), 'watch-game');
       case 'window-shop':
         return this.stopAt(this.roll.shuffle(SHOP_WINDOWS), 'window-shop');
       case 'read-board':
@@ -657,7 +678,7 @@ class VisitPlanner {
   }
 
   /** Off to the first of these with room for it, to stand there looking the right way. */
-  private stopAt(spots: readonly RoomSpot[], kind: 'stroll' | 'hang-out' | 'watch-sea' | 'window-shop' | 'read-board'): boolean {
+  private stopAt(spots: readonly RoomSpot[], kind: 'stroll' | 'hang-out' | 'watch-sea' | 'watch-game' | 'window-shop' | 'read-board'): boolean {
     const [shortest, longest] = HOW_LONG[kind];
     if (kind !== 'stroll' && this.book.atIt(kind, this.now, this.now + longest, this.visit) >= MOST_AT_ONE_THING) {
       return false;

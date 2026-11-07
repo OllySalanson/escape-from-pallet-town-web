@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
-import { compassBearing } from '../world/bearing';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
 import { CHARACTER_FEET_PIXEL_Y, getIdleFrame } from '../playerFrames';
 import { lookTexture, lookWalkKey } from '../look/lookTexture';
@@ -394,18 +393,6 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.showMenu('[data-play]');
   }
 
-  /**
-   * Which way the finish is, from where the runner stands: the course is wider
-   * than the screen, so at the start the chequered line is out of sight (wave
-   * 1's playtest read 'TO THE FLAG' with the only flag in view the start's).
-   */
-  private toTheFinish(run: CourseRun): string {
-    const line = run.course.finish;
-    const middle = line[Math.floor(line.length / 2)];
-    const bearing = compassBearing(run.at, middle);
-    return bearing ? `FINISH: ${bearing}` : 'FINISH';
-  }
-
   private say(words: string, ms = SAY_MS): void {
     this.saying?.text.destroy();
     this.saying?.panel.destroy();
@@ -485,7 +472,7 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
       .setScrollFactor(0)
       .setDepth(31);
     this.world.push(panel, team);
-    this.say('ARROWS walk · SPACE field move · clock starts on your first step', 2600);
+    this.say('ARROWS walk · SPACE uses a field move · the clock starts on your first step', 2600);
     this.drawStage();
   }
 
@@ -555,7 +542,7 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     });
     const faced = facedObstacle(run);
     const time = run.elapsedMs === null ? 'READY' : courseTime(run.elapsedMs);
-    this.clock?.setText([`TIME ${time}`, faced ? (faced.can ? `SPACE: ${MOVE_WORDS[faced.move]}` : `NEEDS ${MOVE_WORDS[faced.move]}`) : run.finished ? 'FINISHED' : this.toTheFinish(run)]);
+    this.clock?.setText([`TIME ${time}`, faced ? (faced.can ? `SPACE: ${MOVE_WORDS[faced.move]}` : `NEEDS ${MOVE_WORDS[faced.move]}`) : run.finished ? 'FINISHED' : 'TO THE FLAG']);
     if (this.saying && this.time.now > this.saying.until) {
       this.saying.text.destroy();
       this.saying.panel.destroy();

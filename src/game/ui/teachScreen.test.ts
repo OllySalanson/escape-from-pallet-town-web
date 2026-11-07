@@ -121,10 +121,10 @@ describe('the teaching screen', () => {
   it("names the bar's own button on the chosen card's help line", () => {
     const helpOf = (markup: string, index: number): string =>
       markup.match(new RegExp(`data-pupil="${index}"[^>]*data-help="([^"]*)"`))?.[1] ?? '';
-    expect(helpOf(teachBody(view(0)), 0)).toContain('Press TEACH AERIAL ACE below');
+    expect(helpOf(teachBody(view(0)), 0)).toContain('Press TEACH AERIAL ACE at the bottom to read the disc');
     // A full moveset's button picks a move first; there is no TEACH to press.
     const full = helpOf(teachBody(view(1)), 1);
-    expect(full).toContain('Press PICK A MOVE TO FORGET below');
+    expect(full).toContain('Press PICK A MOVE TO FORGET at the bottom to choose the move AERIAL ACE replaces');
     expect(full).not.toContain('Press TEACH');
   });
 

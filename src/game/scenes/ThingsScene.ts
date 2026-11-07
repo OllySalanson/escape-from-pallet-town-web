@@ -23,7 +23,7 @@ import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
-import { homeUseOf, pocketJump, stoneTargetsBody, thingsBody, whereItIsUsed } from '../ui/thingsView';
+import { homeUseOf, stoneTargetsBody, thingsBody, whereItIsUsed } from '../ui/thingsView';
 
 export interface ThingsSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -159,9 +159,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const item = this.using ? getItemById(this.using.itemId) : undefined;
     const money = itemCountTag('money', game?.stash.itemCount('money') ?? 0);
     let title = 'Your things';
-    let back = { label: 'Close', attribute: 'data-close' };
+    let back = { label: 'Harbour', attribute: 'data-close' };
     let body: string;
-    let hints = 'ARROWS move · PAGE UP/DOWN a pocket · ENTER use a disc or stone · B close';
+    let hints = 'ARROWS move · ENTER read a disc or use a stone · B close';
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';
@@ -237,60 +237,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       }
       return;
     }
-    if (this.jumpPocket(event.key)) {
-      event.preventDefault();
-      return;
-    }
     if (this.overlay?.moveCursor(event.key)) {
       event.preventDefault();
     }
-  }
-
-  /**
-   * Page Up and Page Down (and Left and Right, in the side column, where the
-   * list is one column wide and they would go nowhere) move a whole pocket;
-   * Home and End go to the first and last pocket (`pocketJump`).
-   */
-  private jumpPocket(key: string): boolean {
-    const overlay = this.overlay;
-    if (!overlay || this.using) {
-      return false;
-    }
-    const side = overlay.root.dataset.layout === 'side';
-    const step =
-      key === 'PageDown' || (side && key === 'ArrowRight')
-        ? 1
-        : key === 'PageUp' || (side && key === 'ArrowLeft')
-          ? -1
-          : key === 'Home'
-            ? 'first'
-            : key === 'End'
-              ? 'last'
-              : null;
-    if (step === null) {
-      return false;
-    }
-    const rows = [...overlay.root.querySelectorAll<HTMLButtonElement>('[data-thing][data-pocket]')];
-    if (rows.length === 0) {
-      return false;
-    }
-    const current = Math.max(0, rows.indexOf(document.activeElement as HTMLButtonElement));
-    const to = rows[pocketJump(rows.map((row) => row.dataset.pocket ?? ''), current, step)];
-    if (to && to !== document.activeElement) {
-      // The pocket's own heading at the top of the pane, not cut off above
-      // the row: a jump lands on a pocket, so the pocket says which it is.
-      to.focus({ preventScroll: true });
-      const pane = to.closest<HTMLElement>('.px-scroll');
-      const heading = to.previousElementSibling;
-      if (pane && heading?.matches('.px-subheading')) {
-        // Exactly at the top: any higher and the pane counts the heading as a
-        // row cut through its waist and masks it (`MenuOverlay.markTopCut`).
-        pane.scrollTop += heading.getBoundingClientRect().top - pane.getBoundingClientRect().top;
-      }
-      // The MORE strips and the top cut are measured again for where it is now.
-      overlay.remeasure();
-    }
-    return true;
   }
 
   private pressThing(itemId: string): void {

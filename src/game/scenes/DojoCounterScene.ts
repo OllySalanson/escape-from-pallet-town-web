@@ -1,9 +1,7 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { dojoRefusal } from '../arena/boutRules';
-import { dojoRegularsToday } from '../arena/dojoCounter';
-import { beltFoe, dojoClass, dojoFoe, headRefusal, regularFoe, type DojoFoe } from '../arena/classes';
-import { classOf } from '../arena/dojoRecord';
+import { dojoRegular, dojoRegularsToday } from '../arena/dojoCounter';
 import { openingTeam, opponentsBody, teamBody } from '../arena/dojoCounterView';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
@@ -125,19 +123,12 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     const status = this.status;
     this.status = undefined;
     const game = this.game_;
-    const regular = this.opponent ? this.foe(this.opponent) : undefined;
-    const record = game?.raidProgress.dojo;
-    const classId = classOf(record);
+    const regular = this.opponent ? dojoRegular(this.opponent) : undefined;
     const body = !game
       ? '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>'
       : regular
         ? teamBody(this.entries(), this.team, regular)
-        : opponentsBody(
-            dojoRegularsToday(this.now).map((one) => regularFoe(one, classId)),
-            beltFoe(dojoClass(classId).head),
-            record,
-            null,
-          );
+        : opponentsBody(dojoRegularsToday(this.now), game.raidProgress.dojo, null);
     overlay.redraw(
       pixelScreen({
         title: 'Battle Arena',
@@ -183,29 +174,16 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     }
   }
 
-  /** Somebody the counter can offer, as they fight a player in this save's class. */
-  private foe(id: string): DojoFoe | undefined {
-    return dojoFoe(id, classOf(this.game_?.raidProgress.dojo));
-  }
-
   private chooseOpponent(id: string): void {
-    const regular = this.foe(id);
+    const regular = dojoRegular(id);
     if (!regular) {
-      return;
-    }
-    // The head of the class fights only a run of three (`arena/classes.ts`).
-    const refusal = regular.belt ? headRefusal(this.game_?.raidProgress.dojo) : null;
-    if (refusal) {
-      audioManager.play('denied');
-      this.status = refusal;
-      this.render([`[data-opponent="${id}"]`]);
       return;
     }
     audioManager.play('select');
     this.opponent = id;
     this.find = '';
-    recordAction(`Chose to fight ${regular.name}`);
-    this.status = `${regular.name} brings ${regular.team.length}. Choose up to three of yours.`;
+    recordAction(`Chose to fight ${regular.bot.name}`);
+    this.status = `${regular.bot.name} brings ${regular.team.length}. Choose up to three of yours.`;
     this.render(['[data-fight]:not([aria-disabled])']);
   }
 

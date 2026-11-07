@@ -156,11 +156,11 @@ export const BREAKWATER_SIGN: BaseSign = {
 
 /** At the west end of THE PROMENADE, where it leaves THE GREEN. */
 export const PROMENADE_SIGN: BaseSign = {
-  x: 61,
+  x: 60,
   y: 11,
   lines: [
     'THE PROMENADE',
-    'The front: the GAME CORNER, the FIELD-MOVE COURSE, the beach, the huts and the PLEASURE PIER. Walk it at dusk when the lamps come on.',
+    'The front: the GAME CORNER, the DERBY, the FIELD-MOVE COURSE, the DIG on the beach and the FISHING DERBY off the PLEASURE PIER. Walk it at dusk when the lamps come on.',
   ],
 };
 
@@ -441,9 +441,8 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(85, 21, 'wetRock');
   map.plant(70, 25, 'wetRock');
   // THE PLEASURE PIER's head: pennants at its corners, a lifebuoy and a lamp.
-  map.plant(76, 28, 'pennantGreen');
   map.plant(84, 28, 'pennantRed');
-  map.plant(77, 28, 'lifebuoy');
+  map.plant(84, 29, 'lifebuoy');
   map.plant(83, 28, 'promenadeLamp');
   for (const x of [76, 77, 78, 82, 83, 84]) {
     map.plant(x, 30, 'railing');

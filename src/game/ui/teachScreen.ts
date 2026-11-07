@@ -133,13 +133,12 @@ function pupilCard(view: TeachView, pokemon: Pokemon, index: number): string {
     ),
   ].join('');
   // Named as the bar's own button reads, which for a full moveset is not TEACH.
-  // Two lines is all the help bar holds, and the card already says what the
-  // disc would do, so this says only what to press (wave 1's playtest: three
-  // lines, the last cut off).
   const help = choosable
     ? chosen
-      ? `${name} is chosen. Press ${confirmLabel(view.machine, pokemon).toUpperCase()} below, or choose someone else.`
-      : `Choose ${name} to learn ${move}. ${
+      ? `${name} is chosen. Press ${confirmLabel(view.machine, pokemon).toUpperCase()} at the bottom ${
+          verdict === 'replaces' ? `to choose the move ${move} replaces` : 'to read the disc'
+        }, or choose someone else.`
+      : `Choose ${name} to learn ${move}. ${pupilOutcome(view.machine, pokemon)} ${
           verdict === 'replaces'
             ? 'Nothing is forgotten until you pick the move it replaces.'
             : `Nothing happens until you press ${confirmLabel(view.machine, pokemon).toUpperCase()}.`

@@ -1,4 +1,3 @@
-import type { DojoClassId } from '../arena/dojoRecord';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import type { PartnerSpeciesId } from '../base/partner';
@@ -49,8 +48,6 @@ export interface HarbourFigure<P extends string = HarbourPlace> {
   readonly look?: DressedLook;
   /** The pack on its back, if it has one. */
   readonly pack?: PackItemId;
-  /** Its class in THE BATTLE ARENA, if it has fought there. */
-  readonly dojoClass?: DojoClassId;
   /** The tile it last walked off - where its partner stands - or null since it was last put somewhere. */
   readonly behind: GridPosition | null;
 }
@@ -67,7 +64,6 @@ interface Walker<P extends string> {
   partner?: PartnerSpeciesId;
   look?: DressedLook;
   pack?: PackItemId;
-  dojoClass?: DojoClassId;
   behind: GridPosition | null;
   /** Refused its next step this frame (`advance`): standing still, not walking on the spot. */
   waiting?: boolean;
@@ -104,7 +100,6 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         partner: move.partner,
         look: move.look,
         pack: move.pack,
-        dojoClass: move.dojoClass,
         behind: null,
       });
       return;
@@ -112,7 +107,6 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
     walker.partner = move.partner;
     walker.look = move.look;
     walker.pack = move.pack;
-    walker.dojoClass = move.dojoClass;
     // The newest tile already queued (or stood on), which the path continues from.
     let end = walker.queue[walker.queue.length - 1] ?? walker.tile;
     for (const tile of move.path) {
@@ -207,6 +201,11 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
     return { ...(walker.queue[walker.queue.length - 1] ?? walker.tile) };
   }
 
+  /** How many steps somebody has queued and not yet walked: none for somebody not heard of. */
+  public queued(id: string): number {
+    return this.walkers.get(id)?.queue.length ?? 0;
+  }
+
   /** Everybody this browser knows of, by id. */
   public ids(): readonly string[] {
     return [...this.walkers.keys()];
@@ -260,7 +259,6 @@ export class HarbourCrowd<P extends string = HarbourPlace> {
         ...(walker.partner ? { partner: walker.partner } : {}),
         ...(walker.look ? { look: walker.look } : {}),
         ...(walker.pack ? { pack: walker.pack } : {}),
-        ...(walker.dojoClass ? { dojoClass: walker.dojoClass } : {}),
         behind: walker.behind ? { ...walker.behind } : null,
       }));
   }

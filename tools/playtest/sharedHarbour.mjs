@@ -15,8 +15,7 @@
 // him there. Each walks with their partner at their heel on the other's
 // screen too: AMY must see OLLY's partner, by kind, standing on the tile he
 // last walked off, and in his look from THE HARBOUR BOUTIQUE (a red cap, an
-// Ace Trainer's jacket and jeans), with a GREAT BALL on his name plate for his
-// class in THE BATTLE ARENA. AMY then walks up beside OLLY and waves: her hand must go up
+// Ace Trainer's jacket and jeans). AMY then walks up beside OLLY and waves: her hand must go up
 // on her screen and on his. She says a quick phrase (T, then the list's arrows
 // and SPACE): its bubble must be over her on her screen and on his, and gone a
 // few seconds later; a second phrase said straight after must be refused. It fails loudly - a thrown error - when any of that does not
@@ -94,7 +93,17 @@ try {
   await olly.waitFor(sceneIs('title'));
   await olly.evaluate(`localStorage.setItem('escape-from-pallet-town.player.name', 'OLLY')`);
   await press(olly, 'Space');
-  // NEW GAME asks no name (`src/game/names/`): OLLY's is already kept on this browser.
+  // NEW GAME asks the name first (`src/game/names/`): OLLY is free.
+  await olly.waitFor(`!!document.querySelector('[data-name-field]')`, { what: 'YOUR NAME? at NEW GAME' });
+  await sleep(450);
+  await olly.evaluate(`document.querySelector('[data-name-field]').focus()`);
+  for (const character of 'OLLY') {
+    const description = { code: `Key${character}`, key: character, text: character, windowsVirtualKeyCode: character.charCodeAt(0) };
+    await olly.send('Input.dispatchKeyEvent', { type: 'keyDown', ...description });
+    await olly.send('Input.dispatchKeyEvent', { type: 'keyUp', ...description });
+    await sleep(40);
+  }
+  await press(olly, 'Enter');
   await olly.waitFor(sceneIs('base'));
   await olly.waitFor(
     `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
@@ -104,7 +113,7 @@ try {
   await until(olly, 'OLLY in the yard', (s) => s.room === null);
   // Dressed from THE HARBOUR BOUTIQUE, so his look has to cross the wire.
   const WORN = { head: 'youngster-cap-red', top: 'ace-jacket', legs: 'denim-jeans', body: null };
-  await olly.evaluate(`(() => { const s = JSON.parse(localStorage.getItem('${SAVE_KEY}')); s.raidProgress.look = ${JSON.stringify(WORN)}; s.raidProgress.dojo = { wins: 4, losses: 1, beaten: ['belt:hideki'], classId: 'great-ball' }; s.raidProgress.wardrobe = ['youngster-cap-red', 'ace-jacket', 'denim-jeans']; localStorage.setItem('${SAVE_KEY}', JSON.stringify(s)); })()`);
+  await olly.evaluate(`(() => { const s = JSON.parse(localStorage.getItem('${SAVE_KEY}')); s.raidProgress.look = ${JSON.stringify(WORN)}; s.raidProgress.wardrobe = ['youngster-cap-red', 'ace-jacket', 'denim-jeans']; localStorage.setItem('${SAVE_KEY}', JSON.stringify(s)); })()`);
   await olly.evaluate(`void ${BASE}.scene.start('base', {})`);
   await until(olly, 'OLLY in the yard, dressed', (s) => s.room === null);
 
@@ -131,9 +140,6 @@ try {
   const wornKey = `${WORN.head}+${WORN.top}+${WORN.legs}+-`;
   await until(amy, 'AMY seeing OLLY in his look', (s) => s.seen.some((f) => f.name === 'OLLY' && f.look === wornKey));
   console.log(`AMY sees OLLY wearing ${wornKey}`);
-  // And his class in THE BATTLE ARENA, a ball on his name plate.
-  await until(amy, "AMY seeing OLLY's GREAT BALL class", (s) => s.seen.some((f) => f.name === 'OLLY' && f.dojoClass === 'great-ball'));
-  console.log('AMY sees a GREAT BALL on OLLY\'s name plate');
   // His partner at his heel, on AMY's screen, on the tile he last walked off.
   const heeled = await until(amy, "AMY seeing OLLY's partner at his heel", (s) => {
     const him = s.seen.find((f) => f.name === 'OLLY');

@@ -5,7 +5,7 @@ import type { Pokemon } from '../pokemon/Pokemon';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
-import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, clearOfStanding, heelOf, spreadPlates, stackPlates, withinPlace } from './harbourFigures';
+import { HEEL_BEHIND, HarbourFigures, OTHER_PLAYERS_BEHIND, clearOfHeel, clearOfSelf, heelOf, spreadPlates, stackPlates, withinPlace } from './harbourFigures';
 import { PARTNER_FEET_PIXEL_Y, partnerFrame, partnerTextureKey } from './partner';
 import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
 
@@ -556,21 +556,5 @@ describe('names that still lie on each other', () => {
     expect(stackPlates([box(100, 50), box(120, 50)])).toEqual([50, 37]);
     expect(stackPlates([box(100, 50), box(120, 50), box(110, 37)])).toEqual([50, 37, 24]);
     expect(stackPlates([box(100, 50), box(150, 50)])).toEqual([50, 50]);
-  });
-});
-
-describe('a name plate and the townspeople', () => {
-  it('is lifted over a townsperson it would lie under, and over the next one above that', () => {
-    const plate = { x: 0, y: 40, width: 40, height: 12 };
-    const chef = { x: 8, y: 30, width: 16, height: 26 };
-    const above = { x: 10, y: 10, width: 16, height: 22 };
-    expect(clearOfStanding(plate, [chef])).toBe(chef.y - plate.height);
-    expect(clearOfStanding(plate, [chef, above])).toBe(above.y - plate.height);
-  });
-
-  it('stays where it is with nobody under it', () => {
-    const plate = { x: 0, y: 40, width: 40, height: 12 };
-    expect(clearOfStanding(plate, [])).toBe(40);
-    expect(clearOfStanding(plate, [{ x: 100, y: 30, width: 16, height: 26 }])).toBe(40);
   });
 });

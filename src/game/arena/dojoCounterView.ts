@@ -18,59 +18,27 @@ import {
   pixelWindow,
 } from '../ui/pixelUi';
 import { DOJO_LEVEL, DOJO_TEAM_SIZE, dojoRefusal } from './boutRules';
-import { dojoClass, foeTeamLine, headRefusal, nextClass, STREAK_TO_CHALLENGE, streakOf, type DojoFoe } from './classes';
-import { classOf, type DojoRecord } from './dojoRecord';
+import { dojoTeamLine, type DojoRegular } from './dojoCounter';
+import type { DojoRecord } from './dojoRecord';
 
-/** The note on the list's heading: how far along the run to the Black Belt, short enough for the side panel. */
-export function classNote(record: DojoRecord | undefined): string {
-  if (classOf(record) === 'master-ball' && record?.topped) {
-    return 'Top class';
-  }
-  return `Run ${Math.min(streakOf(record).length, STREAK_TO_CHALLENGE)} of ${STREAK_TO_CHALLENGE}`;
-}
-
-/**
- * Who you can fight: the head of your class first - lit once a run of three
- * has earned him, and saying why not until then - then today's regulars at
- * your class's stage, each row saying the three they bring, so nobody chooses
- * a bout blind.
- */
-export function opponentsBody(regulars: readonly DojoFoe[], head: DojoFoe, record: DojoRecord | undefined, chosen: string | null): string {
-  const run = streakOf(record);
-  const refusal = headRefusal(record);
-  const cls = dojoClass(classOf(record));
-  const headHelp =
-    refusal ??
-    (classOf(record) === 'master-ball' && record?.topped
-      ? `${head.name} brings ${foeTeamLine(head)}. You have beaten him: this one is for sport.`
-      : `${head.name} brings ${foeTeamLine(head)}. Beat him and ${nextClass(cls.id) ? `you are ${nextClass(cls.id)!.name} class` : 'nobody here is above you'}.`);
-  const headRow = `<button class="px-row dojo-head" data-opponent="${escapeAttribute(head.id)}"${
-    refusal ? ' aria-disabled="true"' : ''
-  }${refusal === null && chosen === null ? ' data-cursor-start' : ''} data-help="${escapeAttribute(headHelp)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${
-    head.name
-  }</strong></span><small>${escapeAttribute(foeTeamLine(head))}</small></span>${
-    refusal ? pixelTag(`${run.length} of ${STREAK_TO_CHALLENGE}`, 'risk') : pixelTag('Ready', 'good', true)
-  }</button>`;
+/** Today's regulars, one row each: their name, their three, and whether they have been beaten. */
+export function opponentsBody(regulars: readonly DojoRegular[], record: DojoRecord | undefined, chosen: string | null): string {
   const rows = regulars
-    .map((foe, index) => {
-      const inRun = run.includes(foe.id);
-      const beaten = record?.beaten.includes(foe.id) === true;
-      const help = inRun
-        ? `${foe.name} is already in your run: beat somebody else to make it longer. ENTER to fight them anyway.`
-        : `${foe.name} brings ${foeTeamLine(foe)}, all at Lv ${DOJO_LEVEL}. ENTER to fight them.`;
-      return `<button class="px-row" data-opponent="${escapeAttribute(foe.id)}"${
-        chosen === foe.id || (chosen === null && refusal !== null && index === 0) ? ' data-cursor-start' : ''
+    .map((regular, index) => {
+      const beaten = record?.beaten.includes(regular.bot.id) === true;
+      const help = `${regular.bot.name} brings ${dojoTeamLine(regular)}, all at Lv ${DOJO_LEVEL}. ENTER to fight them.`;
+      return `<button class="px-row" data-opponent="${escapeAttribute(regular.bot.id)}"${
+        chosen === regular.bot.id || (chosen === null && index === 0) ? ' data-cursor-start' : ''
       } data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${
-        foe.name
-      }</strong></span><small>${escapeAttribute(foeTeamLine(foe))}</small></span>${
-        inRun ? pixelTag('In run', 'good', true) : beaten ? pixelTag('Beaten', 'plain') : pixelTag('Fight', 'plain')
+        regular.bot.name
+      }</strong></span><small>${escapeAttribute(dojoTeamLine(regular))}</small></span>${
+        beaten ? pixelTag('Beaten', 'good', true) : pixelTag('Fight', 'plain')
       }</button>`;
     })
     .join('');
-  const list = `<h3 class="px-subheading">${escapeAttribute(cls.name)} class</h3>${headRow}<h3 class="px-subheading">In today · Lv ${DOJO_LEVEL}</h3>${rows}`;
-  return `<main class="px-body">${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${list}</div>`, {
+  return `<main class="px-body">${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${rows}</div>`, {
     heading: 'Who will you fight?',
-    note: classNote(record),
+    note: `In today · Lv ${DOJO_LEVEL}`,
   })}</main>`;
 }
 
@@ -94,7 +62,7 @@ export function memberHelp(entry: PickerEntry, inTeam: boolean, refusal: string 
 export function teamBody(
   entries: readonly PickerEntry[],
   team: readonly string[],
-  opponent: DojoFoe,
+  opponent: DojoRegular,
 ): string {
   const byId = new Map(entries.map((entry) => [entry.id, entry]));
   const chosen = team.flatMap((id) => {
@@ -129,11 +97,11 @@ export function teamBody(
   const ready = chosen.length > 0;
   const fight = `<button class="px-window px-button is-primary" data-fight${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(
     ready
-      ? `Fight ${opponent.name}: ${chosen.length} a side at Lv ${DOJO_LEVEL}, no bag. Nothing you bring can be hurt.`
+      ? `Fight ${opponent.bot.name}: ${chosen.length} a side at Lv ${DOJO_LEVEL}, no bag. Nothing you bring can be hurt.`
       : 'Bring at least one first.',
   )}">Fight</button>`;
   return `<main class="px-body dojo-team-layout">${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${list}</div>`, {
-    heading: `Against ${opponent.name}`,
+    heading: `Against ${opponent.bot.name}`,
     note: `${chosen.length} of ${DOJO_TEAM_SIZE}`,
   })}${pixelCommitBar({
     title: `${chosen.length || 'None'} vs ${Math.max(1, chosen.length)} · Lv ${DOJO_LEVEL}`,

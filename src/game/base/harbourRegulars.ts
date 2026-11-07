@@ -140,7 +140,12 @@ export class HarbourRegulars {
       const heading = this.crowd.headingTo(id)!;
       const target = at.next ?? at.tile;
       const inTheWay = this.occupied(id, at.place, player);
-      const path = sameTile(heading, target) ? [heading] : this.stepsTowards(heading, target, inTheWay, at.place, watcher);
+      const walk = sameTile(heading, target) ? [heading] : this.stepsTowards(heading, target, inTheWay, at.place, watcher);
+      // A long way behind round a building is walked, a stretch at a time, at
+      // catch-up pace: heard all at once, more than `JUMP_AFTER_STEPS` queued
+      // is a jump. Only a plan out of reach in a straight line is a jump.
+      const room = Math.max(1, JUMP_AFTER_STEPS - this.crowd.queued(id));
+      const path = walk.length - 1 > room && walk[1] !== undefined && steps(walk[0], walk[1]) === 1 ? walk.slice(0, room + 1) : walk;
       this.crowd.hear({
         from: id,
         place: at.place,
@@ -192,7 +197,7 @@ export class HarbourRegulars {
     }
     const room = place === 'yard' ? null : watcher?.room;
     const round = room ? roomWalk(room.collision, figure.tile, target, inTheWay) : yardWalk(figure.tile, target, inTheWay);
-    if (round && round.length > 1 && round.length - 1 <= steps(figure.tile, target) + LONGEST_WAY_ROUND) {
+    if (round && round.length > 1 && round.length - 1 <= this.plainWalk(figure.tile, target, place, watcher) + LONGEST_WAY_ROUND) {
       this.crowd.reroute(id, round.slice(1));
       this.waiting.delete(id);
     }
@@ -259,12 +264,26 @@ export class HarbourRegulars {
     const room = place === 'yard' ? null : watcher?.room;
     const others = inTheWay.filter((tile) => !sameTile(tile, to));
     const round = room ? roomWalk(room.collision, from, to, others) : yardWalk(from, to, others);
-    if (!round || round.length - 1 > steps(from, to) + LONGEST_WAY_ROUND) {
+    if (!round || round.length - 1 > this.plainWalk(from, to, place, watcher) + LONGEST_WAY_ROUND) {
       // No way round worth the name: they wait, rather than setting off across the harbour.
       return [from];
     }
     // Somebody is on the very tile the plan has them on: as far as the tile behind.
     return taken ? round.slice(0, -1) : round;
+  }
+
+  /**
+   * The steps from one tile to another with nobody in the way: what a way
+   * round somebody is measured against. Not the straight line - a regular
+   * held up behind a building, out of a door or off a jetty, has a walk round
+   * it however clear the way is, and measured against the straight line no
+   * walk was ever short enough, so they stood where they were until the plan
+   * was far enough off to put them there.
+   */
+  private plainWalk(from: GridPosition, to: GridPosition, place: RegularsPlace, watcher: RegularsWatcher | null): number {
+    const room = place === 'yard' ? null : watcher?.room;
+    const plain = room ? roomWalk(room.collision, from, to, []) : yardWalk(from, to, []);
+    return plain ? plain.length - 1 : steps(from, to);
   }
 
   /** Where a regular calling on a keeper is in the room, if the player is in it to see them. */

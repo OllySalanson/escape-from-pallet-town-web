@@ -14,6 +14,7 @@ import {
   KNOCKED_DOORS,
   NOTICE_BOARDS,
   SEA_VIEWS,
+  GAME_WATCHES,
   SHOP_WINDOWS,
   botAt,
   botSayingAt,
@@ -40,7 +41,7 @@ describe('where the regulars go to do things', () => {
   const map = getBaseMap([]);
 
   it('stand on ground they may walk, looking at what they came to look at', () => {
-    for (const { tile, facing } of [...SEA_VIEWS, ...HANG_OUTS, ...SHOP_WINDOWS, ...NOTICE_BOARDS, ...CHAT_CIRCLES.flat()]) {
+    for (const { tile, facing } of [...SEA_VIEWS, ...GAME_WATCHES, ...HANG_OUTS, ...SHOP_WINDOWS, ...NOTICE_BOARDS, ...CHAT_CIRCLES.flat()]) {
       expect([tile, walks[tile.y][tile.x]]).toEqual([tile, true]);
       expect(ahead(tile, facing).y).toBeGreaterThanOrEqual(0);
     }
@@ -52,6 +53,12 @@ describe('where the regulars go to do things', () => {
       const looking = ahead(tile, facing);
       // Something to look at: never open air.
       expect([tile, map.collision[looking.y][looking.x]]).toEqual([tile, true]);
+    }
+    // A game is watched from beside its board or across a flower bed from it.
+    for (const { tile, facing } of GAME_WATCHES) {
+      const near = ahead(tile, facing);
+      const far = ahead(near, facing);
+      expect([tile, map.collision[near.y][near.x] || map.collision[far.y][far.x]]).toEqual([tile, true]);
     }
     const signs = new Set(BASE_SIGNS.map(key));
     for (const { tile, facing } of NOTICE_BOARDS) {
@@ -75,7 +82,7 @@ describe('where the regulars go to do things', () => {
   });
 
   it('lengthen nobody\'s walk, whichever place somebody is stood on', () => {
-    const stood = [...SEA_VIEWS, ...HANG_OUTS, ...SHOP_WINDOWS, ...NOTICE_BOARDS, ...CHAT_CIRCLES.flat()].map(({ tile }) => key(tile));
+    const stood = [...SEA_VIEWS, ...GAME_WATCHES, ...HANG_OUTS, ...SHOP_WINDOWS, ...NOTICE_BOARDS, ...CHAT_CIRCLES.flat()].map(({ tile }) => key(tile));
     const places = [BASE_SPAWN, BASE_LANDING, ...BASE_DOORS.map((door) => door.returnTo)];
     for (const built of [[], WORKSHOP_UPGRADES.map((upgrade) => upgrade.id)]) {
       const { collision } = getBaseMap(built);
@@ -135,7 +142,7 @@ describe('a regular\'s plan', () => {
     }
     const total = [...time.values()].reduce((sum, ms) => sum + ms, 0);
     const shares = Object.fromEntries([...time].map(([kind, ms]) => [kind, ms / total]));
-    for (const kind of ['stroll', 'wander', 'hang-out', 'watch-sea', 'window-shop', 'read-board', 'knock', 'call-in', 'chat'] as const) {
+    for (const kind of ['stroll', 'wander', 'hang-out', 'watch-sea', 'watch-game', 'window-shop', 'read-board', 'knock', 'call-in', 'chat'] as const) {
       expect([kind, (shares[kind] ?? 0) > 0.005]).toEqual([kind, true]);
     }
     expect(shares.wander).toBeGreaterThan(0.08);
