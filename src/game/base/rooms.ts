@@ -1560,7 +1560,8 @@ function drawGameCorner(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     {
       name: 'HIGH SCORES',
       note: 'Today’s best on the promenade',
-      tiles: Array.from({ length: board.width }, (_tile, x) => ({ x: board.x + x, y: board.y + board.height - 1 })),
+      // The whole board, so its name is seated clear of what is written on it.
+      tiles: Array.from({ length: board.width * board.height }, (_tile, index) => ({ x: board.x + (index % board.width), y: board.y + Math.floor(index / board.width) })),
       lines: highScoresLines(game.raidProgress, now),
     },
     ...regulars.map((regular) => ({
