@@ -10,7 +10,7 @@
 // home. OLLY goes home; AMY knocks again from the sign; OLLY is asked, with
 // the cursor on NOT NOW, and lets her in. AMY is shown OLLY's house - his name
 // on his things, and him standing in it - and he sees her there. She cannot
-// pick his furniture up (H says why), and down off the mat takes her home to her own step.
+// pick his furniture up (F says why), and down off the mat takes her home to her own step.
 // It fails loudly - a thrown error - when any of that does not happen, and
 // photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
@@ -165,11 +165,11 @@ try {
   await sleep(2500);
   const told = await olly.evaluate(`${BASE}.doorTold`);
   if (!told) throw new Error(`OLLY's door never said he was home: ${JSON.stringify(await olly.evaluate(state))}`);
-  // He arrives on the mat, and the mat names the house's own keys he has not
-  // used yet beside the way out (playtest 48: it said only [DOWN] OUT).
+  // He arrives on the mat, and the mat names the house's own key beside the
+  // way out (playtest 48: it said only [DOWN] OUT).
   const homeHint = await olly.evaluate(`(() => { const b = ${BASE}; return { hint: b.hintShown, learned: b.savedGame.raidProgress.keysLearned ?? [] }; })()`);
   console.log(`on his mat: ${homeHint.hint}`);
-  if (!homeHint.learned.includes('decorate') && !homeHint.hint.includes('[H] DECORATE')) throw new Error(`OLLY's mat did not name [H] DECORATE: "${homeHint.hint}"`);
+  if (!homeHint.hint.includes('[F] FURNITURE')) throw new Error(`OLLY's mat did not name [F] FURNITURE: "${homeHint.hint}"`);
   if (homeHint.hint.includes('KNOCK')) throw new Error(`OLLY's mat still names a knock key: "${homeHint.hint}"`);
   await toFront(olly);
   await olly.screenshot(`${out}/home-mat-hint.png`);
@@ -216,12 +216,12 @@ try {
   await toFront(amy);
   await amy.screenshot(`${out}/visiting.png`);
   // Nobody moves the host's furniture.
-  await press(amy, 'KeyH');
+  await press(amy, 'KeyF');
   const refused = await until(amy, 'AMY told the furniture is not hers', (s) => s.dialog?.endsWith('move.') ?? false);
   if (refused.decorating) throw new Error('a visitor picked the house up');
-  if (!refused.dialog.includes("OLLY's house")) throw new Error(`H in a visit said ${JSON.stringify(refused.dialog)}`);
-  console.log(`H in a visit: ${refused.dialog}`);
-  await amy.screenshot(`${out}/visitor-presses-h.png`);
+  if (!refused.dialog.includes("OLLY's house")) throw new Error(`F in a visit said ${JSON.stringify(refused.dialog)}`);
+  console.log(`F in a visit: ${refused.dialog}`);
+  await amy.screenshot(`${out}/visitor-presses-f.png`);
   await readThrough(amy);
 
   // Down off the mat: home, on her own step.

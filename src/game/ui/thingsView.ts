@@ -126,7 +126,7 @@ export function whereItIsUsed(item: ItemDefinition): string {
     case 'errand':
       return 'Take it to whoever asked for it.';
     case 'furniture':
-      return 'Put it down in THE BOLTHOLE: press H at home to decorate.';
+      return 'Put it out in THE BOLTHOLE: press F at home for the furniture box.';
     case 'wearable':
       return 'Worn from YOUR WARDROBE, upstairs in THE BOLTHOLE.';
     default:

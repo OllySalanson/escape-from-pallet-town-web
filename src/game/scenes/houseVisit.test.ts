@@ -34,7 +34,7 @@ import { KNOCK_SIGN_LINE, knockScreenMarkup } from '../home/knocking';
 import { HOME_SIGN } from '../base/baseMap';
 
 /**
- * H in somebody else's house (playtest 48): it did nothing and said nothing,
+ * F (H until 7 Nov 2026) in somebody else's house (playtest 48): it did nothing and said nothing,
  * so a visitor could not tell a refusal from a broken key. It says why now,
  * and in the player's own house it still picks the house up to decorate.
  */
@@ -49,21 +49,21 @@ function houseScene(visit: { ownerId: string; ownerName: string } | null) {
       decorating += 1;
     },
   });
-  const pressH = () => (scene.decorateHere as () => void).call(scene);
-  return { pressH, said, decorating: () => decorating };
+  const pressF = () => (scene.decorateHere as () => void).call(scene);
+  return { pressF, said, decorating: () => decorating };
 }
 
-describe('H in a house', () => {
+describe('F in a house', () => {
   it("tells a visitor the owner's things are not theirs to move", () => {
     const house = houseScene({ ownerId: 'pip-id', ownerName: 'PIP' });
-    house.pressH();
+    house.pressF();
     expect(house.said).toEqual([["This is PIP's house - nothing here is yours to move."]]);
     expect(house.decorating()).toBe(0);
   });
 
   it('picks up the player\'s own house to decorate, saying nothing', () => {
     const house = houseScene(null);
-    house.pressH();
+    house.pressF();
     expect(house.decorating()).toBe(1);
     expect(house.said).toEqual([]);
   });
@@ -164,31 +164,38 @@ describe('the knock sign in the garden', () => {
 
 /**
  * The hint on THE BOLTHOLE's mat (playtest 48): everybody arrives on the mat,
- * and the house's own keys went unsaid there - only `[DOWN] OUT` - so H, which
- * decorates, was never named to a player who had not stepped off it. There is
- * no knock key to name: knocking is the garden sign.
+ * and the house's own keys went unsaid there - only `[DOWN] OUT` - so the key
+ * that decorates was never named to a player who had not stepped off it. There
+ * is no knock key to name: knocking is the garden sign. And it is named for
+ * good, ahead of the partner beside the mat: the explorer run has learned every
+ * key and the partner took the line, so furniture bought with tickets came home
+ * to a house that never said how to put it out (the captain, 7 Nov 2026).
  */
 describe('the hint on the house mat', () => {
-  function hintOnMat(visit: boolean, keysLearned: string[] = [], facing = 'down'): string {
+  function hintOnMat(visit: boolean, keysLearned: string[] = [], facing = 'down', partnerInFront = false): string {
     const mat = { x: 4, y: 8 };
     const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
     Object.assign(scene, {
       place: { room: { room: { mat, keeper: null, things: [] }, home: {} } },
       currentTile: { ...mat },
       facing,
-      partner: null,
+      partner: partnerInFront ? { name: 'CHARIZARD' } : null,
+      partnerAt: () => partnerInFront,
       visit: visit ? { ownerId: 'pip-id', ownerName: 'PIP', game: {} } : null,
       savedGame: { raidProgress: { keysLearned } },
     });
     return (scene.hintHere as () => string).call(scene);
   }
 
-  it('names decorating beside the way out', () => {
-    expect(hintOnMat(false)).toBe('[H] DECORATE   [DOWN] OUT');
+  it('names the furniture key beside the way out', () => {
+    expect(hintOnMat(false)).toBe('[F] FURNITURE   [DOWN] OUT');
   });
 
-  it('stops naming a key once it has been used', () => {
-    expect(hintOnMat(false, ['decorate'])).toBe('[DOWN] OUT');
+  it('keeps naming it once it has been used, and ahead of the partner on the way in', () => {
+    expect(hintOnMat(false, ['decorate'])).toBe('[F] FURNITURE   [DOWN] OUT');
+    expect(hintOnMat(false, ['decorate'], 'up', true)).toBe('[F] FURNITURE   [DOWN] OUT');
+    // In somebody else's house the partner still has the line.
+    expect(hintOnMat(true, [], 'up', true)).toBe('[SPACE] CHARIZARD   [DOWN] OUT');
   });
 
   it("names none of them in somebody else's house", () => {

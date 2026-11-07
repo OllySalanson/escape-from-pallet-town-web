@@ -310,6 +310,7 @@ import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
+import { holdFeedbackKeyInTheHouse } from '../feedback/feedbackKeyHold';
 import { loadPlayerName } from '../console/playerName';
 import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
 import { openNameScreen } from '../ui/PlayerNameOverlay';
@@ -1086,6 +1087,9 @@ export class BaseScene extends Phaser.Scene {
     }
     this.bounds = { width: this.place.width, height: this.place.height };
     this.collision = this.place.collision.map((row) => [...row]);
+    // F is the house's FURNITURE key, so the FEEDBACK key gives way while
+    // the player stands in one (their own, or one they are visiting).
+    holdFeedbackKeyInTheHouse(Boolean(this.place.room?.home));
 
     this.still =
       typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
@@ -1200,6 +1204,7 @@ export class BaseScene extends Phaser.Scene {
       // Decorating listens on the canvas itself, which outlives the scene.
       this.decor?.release();
       this.decor = null;
+      holdFeedbackKeyInTheHouse(false);
       // The name screen is a page element, which outlives the scene too.
       this.namePrompt?.destroy();
       this.namePrompt = null;
@@ -3963,11 +3968,14 @@ export class BaseScene extends Phaser.Scene {
     }
     if (this.onMat(room)) {
       // The player's own house has nobody to speak to from the mat, so it
-      // names its own keys there instead: the mat is where everybody arrives,
-      // and the house's H and K went unsaid until they stepped off it
-      // (playtest 48).
+      // names its own key there instead: the mat is where everybody arrives,
+      // and the house's keys went unsaid until they stepped off it
+      // (playtest 48). The furniture key comes before the partner, who is
+      // always beside the mat on the way in and took the line from it, so
+      // furniture bought or found came home to a house that never said how
+      // to put it out (the captain, 7 Nov 2026).
       // A keeper is spoken to from the mat whoever is in front of them.
-      const speak = partner ?? (room.screen ? keeper : undefined) ?? wave ?? (keeper || this.houseKeys());
+      const speak = (wave ? undefined : this.houseKeys()) || (partner ?? (room.screen ? keeper : undefined) ?? wave ?? keeper);
       return speak ? `${speak}   [DOWN] OUT` : '[DOWN] OUT';
     }
     if (partner) {
@@ -4011,15 +4019,13 @@ export class BaseScene extends Phaser.Scene {
       const line = this.aimed && !this.kit?.flow.notReady ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
       return coin ? `${line}   ${coin}` : line;
     }
-    // The player's own house says it can be decorated, until it has been.
+    // The player's own house always says where its furniture is.
     return this.houseKeys();
   }
 
-  /** The keys the player's own house answers that this save has not used yet. */
+  /** The key the player's own house answers (`houseKeyHintLine`), or nothing anywhere else. */
   private houseKeys(): string {
-    return this.place.room?.home && !this.visit
-      ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []))
-      : '';
+    return this.place.room?.home && !this.visit ? houseKeyHintLine() : '';
   }
 
   /** Whether another player in the shared harbour stands (or is stepping) onto this tile: Space waves at them. */
@@ -4669,7 +4675,7 @@ export class BaseScene extends Phaser.Scene {
   // -- decorating -------------------------------------------------------------
 
   /**
-   * H in a house: the player's own is picked up to decorate, and somebody
+   * F in a house: the player's own is picked up to decorate, and somebody
    * else's says why it cannot be - a key that did nothing at all left a
    * visitor wondering whether it was broken (playtest 48).
    */

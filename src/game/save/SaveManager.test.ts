@@ -13,6 +13,9 @@ import {
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag, STARTING_PACK_ID } from '../items';
 import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from './SaveManager';
+import { TICKET_PRIZES } from '../minigames/tickets';
+import { ownedFurniture } from '../home/arrangement';
+import { FURNITURE } from '../home/furniture';
 import { applyRecovery, MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
 import { FIRST_CONTRACT_ID } from '../objectives/contracts';
@@ -2748,6 +2751,30 @@ describe("THE GAME CORNER's tickets, kept at home", () => {
     expect(bought?.stash.itemCount('sitrus-berry')).toBeGreaterThanOrEqual(1);
     // Never anything that is not on the window.
     expect(saves.buyTicketPrize('potion', NOON)).toBeNull();
+  });
+
+  it('puts every piece of furniture bought at the prize window in THE BOLTHOLE\'s box', () => {
+    // The captain bought furniture with tickets and found none of it at home
+    // (7 Nov 2026). The pieces were in the box all along - the house had
+    // stopped naming the key that opens it - and this holds the half that
+    // must never break: what the window sells is what the box offers.
+    const storage = new MemoryStorage();
+    freshSave(storage);
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.gameCorner = { tickets: 99_999, best: {}, day: { day: 'today', paid: {}, bought: {} } };
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    const saves = new SaveManager(storage);
+    const furniture = TICKET_PRIZES.filter((prize) => !prize.itemId.endsWith('-berry'));
+    expect(furniture.length).toBeGreaterThan(0);
+    for (const { itemId } of furniture) {
+      expect(saves.buyTicketPrize(itemId, NOON), itemId).not.toBeNull();
+    }
+    const box = ownedFurniture(saves.load()!);
+    for (const { itemId } of furniture) {
+      const piece = FURNITURE.find((definition) => definition.source.kind === 'found' && definition.source.itemId === itemId);
+      expect(piece, itemId).toBeDefined();
+      expect(box.get(piece!.id), itemId).toBe(1);
+    }
   });
 
   it('reads a record written wrong back as only what it can believe', () => {

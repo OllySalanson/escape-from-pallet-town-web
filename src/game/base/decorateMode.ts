@@ -63,7 +63,7 @@ export interface DecorateInput {
   readonly putAway?: boolean;
   /** Escape: drop what is in hand, or stop decorating. */
   readonly back?: boolean;
-  /** H: stop decorating. */
+  /** F: stop decorating. */
   readonly done?: boolean;
 }
 

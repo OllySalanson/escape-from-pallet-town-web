@@ -68,12 +68,14 @@ export const YARD_KEY_WORDS: readonly (readonly [YardKeyId, string, string])[] =
 ];
 
 /**
- * THE BOLTHOLE's keys (`base/decorateMode.ts`): H picks the house up to
- * decorate it, and while it is being decorated R turns a piece, Q and E walk
- * the box and X puts a piece away. `BaseScene.bindControls` binds these.
+ * THE BOLTHOLE's keys (`base/decorateMode.ts`): F (for furniture, the
+ * captain's letter of 7 Nov 2026) picks the house up to decorate it, and while it is being decorated R turns a piece, Q and E walk
+ * the box and X puts a piece away. `BaseScene.bindControls` binds these. F is
+ * the FEEDBACK key everywhere else, so the house holds it while the player is
+ * in one (`feedback/feedbackKeyHold.ts`).
  */
 export const HOME_KEY_LETTERS = {
-  decorate: 'H',
+  decorate: 'F',
   turn: 'R',
   boxBack: 'Q',
   boxNext: 'E',
@@ -161,12 +163,16 @@ export function yardKeyHintLine(learned: ReadonlySet<string>, walkingOnly = fals
 }
 
 /**
- * What the player's own house says while nothing else is to be said: decorating,
- * until it has been done once. Knocking on somebody else's door is the sign in
- * the front garden (`base/baseMap.ts`, `KNOCK_SIGN`), read like any sign.
+ * What the player's own house says while nothing else is to be said: the
+ * furniture key, always. It was named only until decorating had been done
+ * once, so a piece bought or found afterwards came home to a house that never
+ * said how to get it out of the box - and the explorer run, which has learned
+ * every key, never named it at all (the captain bought furniture with tickets
+ * and found none of it at home). Knocking on somebody else's door is the sign
+ * in the front garden (`base/baseMap.ts`, `KNOCK_SIGN`), read like any sign.
  */
-export function houseKeyHintLine(learned: ReadonlySet<string>): string {
-  return learned.has('decorate') ? '' : keyHint(HOME_KEY_LETTERS.decorate, 'DECORATE');
+export function houseKeyHintLine(): string {
+  return keyHint(HOME_KEY_LETTERS.decorate, 'FURNITURE');
 }
 
 /**
