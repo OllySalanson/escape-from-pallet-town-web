@@ -1,4 +1,5 @@
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
+import { afterDojoBout, readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
 import { gymOf } from '../world/valeQuarters';
 import {
   buyPrize,
@@ -272,6 +273,8 @@ export interface RaidProgress {
   readonly landings?: LandingRecord;
   /** Bouts for show in THE RAID ARENA: who has been beaten in a row (`base/arenaBouts.ts`). */
   readonly bouts?: BoutRecord;
+  /** Bouts in THE BATTLE ARENA: won, lost, and which of its regulars have been beaten (`arena/dojoRecord.ts`). */
+  readonly dojo?: DojoRecord;
   /**
    * The gym leaders this save has fought in a raid, won or lost (`world/valeQuarters.ts`,
    * `leadersMet`): once met, a leader spars in THE RAID ARENA with their real gym
@@ -979,6 +982,20 @@ export class SaveManager {
     const { record, ladderDone } = afterBout(game.raidProgress.bouts, rival, won);
     const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, bouts: record } };
     return this.save(next) ? { game: next, record, ladderDone } : null;
+  }
+
+  /**
+   * How a bout in THE BATTLE ARENA went, written by the dojo as the player comes
+   * back to its counter: the fight itself writes nothing (`arena/boutRules.ts`),
+   * and this is the one field a bout there can move.
+   */
+  public recordDojoBout(opponent: string, won: boolean): DojoRecord | null {
+    const game = this.load();
+    if (!game) {
+      return null;
+    }
+    const record = afterDojoBout(game.raidProgress.dojo, opponent, won);
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, dojo: record } }) ? record : null;
   }
 
   /**
@@ -2235,6 +2252,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(readOutRun(value.outRun) ?? {}),
     ...(readPit(value.pit) ?? {}),
     ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
+    ...(value.dojo === undefined ? {} : { dojo: readDojoRecord(value.dojo) }),
     ...(Array.isArray(value.gymsMet) ? { gymsMet: uniqueStrings(value.gymsMet).filter((id) => gymOf(id) !== undefined) } : {}),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
     ...(Array.isArray(value.firstWordsHeard)

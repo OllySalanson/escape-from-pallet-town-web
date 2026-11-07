@@ -65,6 +65,9 @@ import { lookKey, readLook } from '../look/look';
 import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import type { BoutiqueSceneData } from './BoutiqueScene';
 import type { GameCornerSceneData } from './GameCornerScene';
+import type { DojoChoice, DojoCounterSceneData } from './DojoCounterScene';
+import { dojoBag, dojoParty } from '../arena/boutRules';
+import { boutResultLine, DOJO_RECEPTIONIST, dojoRegular, dojoTrainer, receptionLines } from '../arena/dojoCounter';
 import { attendantLines, courseKeeperLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
@@ -534,6 +537,8 @@ export interface BaseSceneData {
    * the ladder: it is the leader's to say something about, and nobody's to keep.
    */
   readonly practice?: { readonly leader: string; readonly won: boolean };
+  /** How a bout in THE BATTLE ARENA has just gone (`arena/dojoCounter.ts`): the dojo's counter writes it down. */
+  readonly dojoBout?: { readonly opponent: string; readonly won: boolean };
   /**
    * Where in the room to stand, facing up, instead of on the mat: backing out
    * of a screen opened from something in the room - the wall map - puts the
@@ -923,6 +928,8 @@ export class BaseScene extends Phaser.Scene {
     }
     // How a bout went is the hall's to write down, and the one thing about it that is.
     const boutWent = data.bout ? this.saveManager.recordBout(data.bout.rival, data.bout.won) : null;
+    // And a bout in THE BATTLE ARENA is its counter's to write down.
+    const dojoWent = data.dojoBout ? this.saveManager.recordDojoBout(data.dojoBout.opponent, data.dojoBout.won) : null;
     const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {
       // A browser with no storage that has also lost the payload: the title
@@ -1252,6 +1259,8 @@ export class BaseScene extends Phaser.Scene {
       this.handOverPartner(data.chose, room?.keeper ? [room.keeper.position] : []);
     } else if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
+    } else if (data.dojoBout) {
+      this.say([boutResultLine(dojoRegular(data.dojoBout.opponent), data.dojoBout.won, dojoWent)], [DOJO_RECEPTIONIST.position]);
     } else if (data.said?.length) {
       const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
       this.say(data.said, speaker ? [speaker] : []);
@@ -3508,6 +3517,19 @@ export class BaseScene extends Phaser.Scene {
         this.bird = null;
       });
       return;
+    }
+    // Whoever else stands in the room: THE BATTLE ARENA's fighters in their lines.
+    for (const person of this.place.room.people ?? []) {
+      const sprite = this.add
+        .sprite(
+          person.tile.x * TILE_SIZE,
+          person.tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+          lookTexture(this, person.look, person.pack ?? null),
+          getIdleFrame(person.facing),
+        )
+        .setOrigin(0, 0)
+        .setDepth(atRow(FIGURE_BAND, person.tile.y));
+      this.figures.set(person.id, sprite);
     }
     const keeper = this.place.room.room.keeper;
     if (!keeper) {
@@ -5908,6 +5930,10 @@ export class BaseScene extends Phaser.Scene {
     if (screen === 'prizes') {
       this.say(prizeClerkLines(this.freshGame().raidProgress), about, () => this.openGameCorner('prizes'));
     }
+    // THE BATTLE ARENA's receptionist says how a bout works, then the counter opens (`arena/dojoCounter.ts`).
+    if (screen === 'battle-arena') {
+      this.say(receptionLines(this.freshGame().raidProgress.dojo), about, () => this.openDojoCounter());
+    }
   }
 
   /** A key pressed in Oak's lab while there is a partner to choose (`base/starterTable.ts`). */
@@ -6496,6 +6522,60 @@ export class BaseScene extends Phaser.Scene {
   private clearKeeperMark(): void {
     this.keeperMark?.destroy();
     this.keeperMark = null;
+  }
+
+  /**
+   * THE BATTLE ARENA's counter (`scenes/DojoCounterScene.ts`): who to fight and
+   * who to bring, over the paused room. Choosing FIGHT comes back here, and the
+   * bout starts on copies (`arena/boutRules.ts`), writing nothing.
+   */
+  private openDojoCounter(): void {
+    if (this.leaving) {
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    let chosen: DojoChoice | null = null;
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.input.keyboard?.resetKeys();
+      if (chosen) {
+        this.startDojoBout(chosen);
+        return;
+      }
+      this.showHint(this.hintHere());
+    });
+    this.scene.pause();
+    this.scene.launch('dojo-counter', {
+      pausedBase: true,
+      fight: (choice: DojoChoice) => {
+        chosen = choice;
+      },
+      view: {
+        covers: (gamePixels) => this.panelLean.setCover(gamePixels),
+        frame: (deltaMs) => this.panelLean.settle(deltaMs),
+      },
+    } satisfies DojoCounterSceneData);
+  }
+
+  /** On to the mat: flat-level copies of the team chosen, no bag, against the regular chosen. */
+  private startDojoBout(choice: DojoChoice): void {
+    const regular = dojoRegular(choice.opponent);
+    if (!regular || choice.team.length === 0) {
+      return;
+    }
+    const data: BattleSceneData = {
+      party: new PokemonParty(dojoParty(choice.team)),
+      bag: dojoBag(),
+      trainer: dojoTrainer(regular, choice.team.length),
+      hunterBattle: true,
+      exhibition: { dojo: regular.bot.id, at: { ...this.currentTile } },
+    };
+    this.leaving = true;
+    audioManager.play('battleStart');
+    this.cameras.main.fadeOut(220, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('battle', data));
   }
 
   /**

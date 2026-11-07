@@ -8,14 +8,15 @@ import { tileReader, withDoorway, type PropDefinition } from '../world/tileset/c
  * lamps, parasols, deckchairs, beach huts, railings, a lifebuoy, pennants,
  * flower troughs and an ice-cream cart - THE FIELD-MOVE COURSE's gate (COURSE
  * over its posts, the four field moves painted under the word) and its TIMES
- * board, and the POKéMON JUMP and BERRY PICKING cabinets inside.
+ * board, the POKéMON JUMP and BERRY PICKING cabinets inside, and THE BATTLE
+ * ARENA (Saffron's Fighting Dojo with BATTLE ARENA on a board across its front).
  * Numbered from 20000, clear of every other sheet the loader fetches
  * (`catalogue.test.ts` holds the whole list apart).
  */
 export const PROMENADE_SHEET = {
   imagePath: 'assets/promenade.png',
   columns: 16,
-  rows: 12,
+  rows: 17,
 } as const;
 
 export const PROMENADE_SHEET_SOURCE = tileReader({ textureKey: 'promenade', ...PROMENADE_SHEET }, 20000);
@@ -51,6 +52,7 @@ export const PROMENADE_PIECES = {
   berryCabinet: { column: 0, row: 9, width: 2, height: 3 },
   courseGate: { column: 2, row: 9, width: 3, height: 3 },
   timeBoard: { column: 5, row: 9, width: 1, height: 2 },
+  dojo: { column: 0, row: 12, width: 6, height: 5 },
 } as const;
 
 export type PromenadePieceName = keyof typeof PROMENADE_PIECES;
@@ -130,3 +132,9 @@ export const PRIZE_WINDOW_BUILDING: PropDefinition = withDoorway(
   promenadePart('gameCorner', 'prize window', [7, 0, 3, 4], ['###', '###', '###', '###']),
   [[1, 3]],
 );
+
+/**
+ * THE BATTLE ARENA, 6x5: Saffron's Fighting Dojo with its name board, its door
+ * open at the foot of its middle where FireRed's is.
+ */
+export const BATTLE_ARENA_BUILDING: PropDefinition = withDoorway(promenadeProp('dojo', 'battle arena'), [[3, 4]]);

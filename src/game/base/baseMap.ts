@@ -181,13 +181,8 @@ export const PLEASURE_PIER_SIGN: BaseSign = {
   lines: ['THE PLEASURE PIER', 'Out over the sea. Mind the gulls.'],
 };
 
-/**
- * Where THE BATTLE ARENA stands once it is built (the arenas plan's next step):
- * FireRed's Fighting Dojo, 6x5, its door at the foot of its middle and its
- * name sign drawn onto its front by `scripts/draw-promenade.mjs`, as THE GAME
- * CORNER's is. Until then the plot is the promenade's garden.
- */
-export const BATTLE_ARENA_LOT = { x: 64, y: 8, width: 6, height: 5, door: { x: 67, y: 12 } } as const;
+/** Where THE BATTLE ARENA stands (`doors.ts` says it, beside its door). */
+export { BATTLE_ARENA_LOT } from './doors';
 
 export const BASE_SIGNS: readonly BaseSign[] = [
   PROMENADE_SIGN,
@@ -397,7 +392,7 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
 
 /**
  * THE PROMENADE, past THE GREEN: a seaside front read from the top down - the
- * garden where THE BATTLE ARENA will stand and THE GAME CORNER under its lit
+ * BATTLE ARENA under its name board and THE GAME CORNER under its lit
  * marquee; the stone walk; the boardwalk with
  * its lamps and railings, broken where steps go down to the sand; the beach
  * with its row of painted huts, parasols and deckchairs; and the pleasure pier
@@ -406,13 +401,7 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
  * somewhere to sit, something to buy and somewhere to go.
  */
 function plantPromenade(map: MapSketch<BasePropName>): void {
-  // The garden on THE BATTLE ARENA's plot: a fountain in a bed of flowers.
-  map.plant(66, 9, 'fountain');
-  for (const [x, y] of [[64, 9], [65, 9], [68, 9], [69, 9], [64, 10], [69, 10], [65, 12], [68, 12]] as const) {
-    map.plant(x, y, 'gardenFlowers');
-  }
-  map.plant(64, 7, 'pennantRed');
-  map.plant(69, 7, 'pennantBlue');
+  // THE BATTLE ARENA stands on its lot (`doors.ts`), planted with the doors.
   // A bench where the walk leaves THE GREEN, under the first lamp.
   map.plant(PROMENADE_SIGN.x, PROMENADE_SIGN.y, 'homeSign');
   map.plant(GAME_CORNER_SIGN.x, GAME_CORNER_SIGN.y, 'homeSign');

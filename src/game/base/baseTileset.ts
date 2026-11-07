@@ -16,7 +16,7 @@ import {
   RAID_ARENA_SHEET_SOURCE,
   RAID_ARENA_STATUE,
 } from './raidArenaSheet';
-import { GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
+import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
 import { BOARDS, BOARDS_SHEET_SOURCE } from '../world/tileset/boardsSheet';
 
 /**
@@ -66,6 +66,7 @@ export type BasePropName =
  * neighbours: a railing is solid too, as an edge to the sand is.
  */
 export type PromenadePropName =
+  | 'battleArena'
   | 'gameCorner'
   | 'prizeWindow'
   | 'promenadeLamp'
@@ -101,6 +102,9 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // it under its gold PRIZES ticket, its own door open.
   gameCorner: GAME_CORNER_HALL,
   prizeWindow: PRIZE_WINDOW_BUILDING,
+  // 6x5. THE BATTLE ARENA: Saffron's Fighting Dojo with its name on a board
+  // across its front, its door open where FireRed's is.
+  battleArena: BATTLE_ARENA_BUILDING,
   promenadeLamp: promenadeProp('lamp', 'lamp'),
   lifebuoy: promenadeProp('lifebuoy', 'lifebuoy'),
   pennantRed: promenadeProp('pennantRed', 'pennant'),

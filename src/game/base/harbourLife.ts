@@ -175,8 +175,8 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'OLD MAN',
     design: 'old-man',
-    position: at(57, 15),
-    facing: 'up',
+    position: at(53, 12),
+    facing: 'down',
     byDayOnly: true,
     idle: { glances: ['left', 'down'], beatMs: 8200 },
     lines: [
@@ -293,10 +293,10 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'pidgey',
     name: 'PIDGEY',
-    position: at(52, 15),
+    position: at(60, 12),
     facing: 'left',
     byDayOnly: true,
-    idle: { roam: [at(53, 15), at(53, 16)], glances: ['right', 'down'], beatMs: 1900 },
+    idle: { roam: [at(61, 12), at(61, 13)], glances: ['right', 'down'], beatMs: 1900 },
     lines: ['PIDGEY is pecking at crumbs somebody dropped on the green.'],
   },
   {

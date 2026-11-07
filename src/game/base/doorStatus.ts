@@ -18,6 +18,7 @@ import { caseBadges, wonBadges } from './badgeCase';
 import { ownedWearables } from '../look/wardrobe';
 import { STARTER_WEARABLES, WEARABLES } from '../look/wearables';
 import { NO_GAME_CORNER } from '../minigames/tickets';
+import { DOJO_LEVEL } from '../arena/boutRules';
 
 /**
  * What each door says about what is waiting inside it.
@@ -130,6 +131,11 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
       return [jump > 0 ? `JUMP ${jump.toLocaleString('en-GB')}` : null, berries > 0 ? `BERRIES ${berries.toLocaleString('en-GB')}` : null]
         .filter(Boolean)
         .join(' · ');
+    }
+    case 'battle-arena': {
+      // Bouts for sport, and how they have gone.
+      const dojo = game.raidProgress.dojo;
+      return dojo && dojo.wins + dojo.losses > 0 ? `${dojo.wins} won · ${dojo.losses} lost` : `Bouts at Lv ${DOJO_LEVEL} · no risk`;
     }
     case 'prizes': {
       const tickets = (game.raidProgress.gameCorner ?? NO_GAME_CORNER).tickets;

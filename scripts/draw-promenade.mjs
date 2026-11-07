@@ -31,7 +31,7 @@ import { readPng, writePng } from '../tools/tileset/tileSheet.mjs';
 const ROOT = new URL('../', import.meta.url);
 const TILE = 16;
 const SHEET_COLUMNS = 16;
-const SHEET_ROWS = 12;
+const SHEET_ROWS = 17;
 
 const hex = (value) => [
   parseInt(value.slice(1, 3), 16),
@@ -170,6 +170,9 @@ function townPiece(piece) {
 /** Five-by-seven capitals for a marquee, which is read from across the front. */
 const BIG = {
   A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+  T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
   C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
   E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
   G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.'],
@@ -295,6 +298,43 @@ function ticket(image, x, y, word) {
   return { width, height };
 }
 
+/**
+ * A dojo's name board: a plank of pale wood in a dark frame, pegged at its
+ * corners, with the word cut into it in red - painted, not lit, because a
+ * Fighting Dojo is the one building on the front with no neon on it.
+ */
+function nameBoard(image, x, y, word) {
+  const letters = lettering(word, BIG);
+  const width = letters[0].length + 10;
+  const height = letters.length + 8;
+  for (let dy = 0; dy < height; dy += 1) {
+    for (let dx = 0; dx < width; dx += 1) {
+      const frame = dx === 0 || dy === 0 || dx === width - 1 || dy === height - 1;
+      const bevel = dx === 1 || dy === 1 || dx === width - 2 || dy === height - 2;
+      const colour = frame ? INK.dark : bevel ? (dy === height - 2 || dx === width - 2 ? INK.woodDark : INK.wood) : dy === 2 ? INK.cream : INK.woodLight;
+      set(image, x + dx, y + dy, hex(colour));
+    }
+  }
+  // Pegs at the corners.
+  for (const [px, py] of [[2, 2], [width - 3, 2], [2, height - 3], [width - 3, height - 3]]) {
+    set(image, x + px, y + py, hex(INK.woodDark));
+  }
+  const ox = x + 5;
+  const oy = y + 4;
+  letters.forEach((row, dy) => {
+    [...row].forEach((pixel, dx) => {
+      if (pixel !== '#') return;
+      set(image, ox + dx, oy + dy + 1, hex(INK.redDark));
+    });
+  });
+  letters.forEach((row, dy) => {
+    [...row].forEach((pixel, dx) => {
+      if (pixel === '#') set(image, ox + dx, oy + dy, hex(INK.red));
+    });
+  });
+  return { width, height };
+}
+
 // --- The buildings -------------------------------------------------------
 
 /** FireRed's grass, which the cut lifted under every building it stands on. */
@@ -339,6 +379,21 @@ const SIGNS = {
     // Both doors lit from inside.
     lightDoor(image, 44, 60, 24, 20);
     lightDoor(image, 124, 44, 24, 20);
+    return image;
+  },
+  // THE BATTLE ARENA is Saffron's Fighting Dojo, with BATTLE ARENA on a
+  // board across its front, over the brick and under the eaves.
+  dojo(towns) {
+    const piece = townPiece('dojo');
+    if (piece.width !== 6 || piece.height !== 5) throw new Error('the Dojo is no longer 6x5: redraw its sign');
+    const image = canvas(piece.width * TILE, piece.height * TILE);
+    copy(towns, piece.column * TILE, piece.row * TILE, image.width, image.height, image, 0, 0);
+    // Its front comes down to its step on the bottom row, which is left as cut.
+    putBack(image, () => 4 * TILE);
+    // The tops of Saffron's flowers behind the roof came with the cut: only the chimney stands above the ridge.
+    for (let y = 0; y < 9; y += 1) for (let x = 8; x < image.width; x += 1) set(image, x, y, [0, 0, 0, 0]);
+    const width = lettering('BATTLE ARENA', BIG)[0].length + 10;
+    nameBoard(image, Math.floor((image.width - width) / 2), 24, 'BATTLE ARENA');
     return image;
   },
 };
@@ -876,6 +931,7 @@ const LAYOUT = [
   ['berryCabinet', 0, 9, berryCabinet],
   ['courseGate', 2, 9, courseGate],
   ['timeBoard', 5, 9, timeBoard],
+  ['dojo', 0, 12, (towns) => SIGNS.dojo(towns)],
 ];
 
 const towns = readPng(new URL('public/assets/frlg-towns.png', ROOT).pathname);
