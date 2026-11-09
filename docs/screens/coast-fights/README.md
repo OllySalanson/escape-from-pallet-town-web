@@ -44,7 +44,44 @@ Fire starter's hard ground, as the rain says it should be.
 
 ## Played
 
-Played in a test-mode build through `tools/playtest/raid.mjs` (stepped, attached
-to the firstmate browser helper): landed at the Cove Steps with Misty beaten, a
+Played in a test-mode build through `tools/playtest/raid.mjs` (stepped, `--attach`
+to an already running browser): landed at the Cove Steps with Misty beaten, a
 Bulbasaur, a Pikachu and a Psyduck at 15, walked the cliff-top heather into a
 wild fight, then spoke to Swimmer Nell on the landing stage and fought her.
+
+```
+node tools/playtest/raid.mjs <build url> --pixels --stepped --window=pixel --seed=7 \
+  --insertion=greystone-vale-cove-steps --beaten=vale-gym-misty --starter=Bulbasaur --level=15 \
+  "--moves=Vine Whip|Leech Seed|Tackle|Growl" \
+  "--team=psyduck:15:Scratch|Tail Whip,pikachu:15:Thunder Shock|Thunder Wave|Quick Attack|Growl" \
+  --shot=out/coast.png --shot-battles --said \
+  "--steps=shot:landing,walk:104:274,walk:109:275,walk:104:276,walk:82:277,walk:87:276,challenge:87:289:left"
+```
+
+`--shot-battles` is new with this change: every fight photographed at its first
+command menus. Four wild fights in the heather, every one of them "It is
+raining.": Tentacool, Goldeen, Tentacool, Goldeen.
+
+The cove in the rain, the chip saying so under the objective:
+
+![rain on the cove](00-rain-on-the-cove.png)
+
+A Coast Goldeen in the heather above the cove:
+
+![a Coast Goldeen](01-a-coast-goldeen.png)
+
+Swimmer Nell on the landing stage, two on two. As the game said it: *SWIMMER
+NELL sent out HORSEA and KRABBY! / It is raining. / Foe HORSEA used SMOKESCREEN!
+/ Your PSYDUCK's accuracy fell! / ... Your PSYDUCK's CLOUD NINE is holding the
+weather off!*
+
+![Swimmer Nell](02-swimmer-nell.png)
+
+The jetty to the Coast with Misty unbeaten: the notice and the guard on the
+open side, Old Ness further up, the sandbags at its end.
+
+![the guard and the notice](03-the-guard-and-the-notice.png)
+
+![the notice](04-the-notice.png)
+
+![the guard](05-the-guard.png)
