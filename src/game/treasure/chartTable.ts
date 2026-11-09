@@ -140,7 +140,7 @@ export function chartTableLines(facts: ChartTableFacts, itemName: (itemId: strin
     lines.push(
       piece.from.kind === 'beach'
         ? `The ${itemName(piece.itemId).toUpperCase()} is spread out on the table, still smelling of the sea.`
-        : `The ${itemName(piece.itemId).toUpperCase()} ${foundAt(piece)} is lying on the table, where it goes on the chart.`,
+        : `The ${itemName(piece.itemId).toUpperCase()} ${foundAt(piece)} lies on the table.`,
     );
   }
   if (here.length > 0) {

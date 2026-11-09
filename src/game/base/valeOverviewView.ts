@@ -119,7 +119,7 @@ const TOWN_WALL = 0xf8f0d8;
 const CHALK = 0xe8e8d8;
 const CHALK_SHADE = 0x283040;
 const CHALK_MARK = 0xf8f8f8;
-const CHALK_TICK = 0x98e070;
+const CHALK_TICK = 0xf8f8f8;
 /** How near the cursor has to come to a ring's mark to read it, in screen pixels. */
 const RING_MARK_REACH = 6;
 const DIM_WORDS = '#70788c';
