@@ -40,10 +40,10 @@ npm run lint && npm run typecheck && npm run test && npm run build
 
 A few things that will save us both a round trip:
 
-- **Read [AGENTS.md](AGENTS.md) first.** It is long, and it is the reason the game hangs together:
-  how each part works, why it was built that way, and the traps somebody already fell into so you
-  don't have to. If your change adds a part or makes a note there untrue, update it in the same pull
-  request.
+- **Read [AGENTS.md](AGENTS.md) first**, and the note under [docs/agents/](docs/agents/) for the
+  part you are changing. Together they are the reason the game hangs together: how each part works,
+  why it was built that way, and the traps somebody already fell into so you don't have to. If your
+  change adds a part or makes a note there untrue, update it in the same pull request.
 - **Show, don't tell.** If anything on screen changes, put a before and after screenshot in the pull
   request. [docs/screens/](docs/screens/) is full of examples.
 - **The rules are FireRed's.** Stats, learnsets, types and battle rules come from generation III,
