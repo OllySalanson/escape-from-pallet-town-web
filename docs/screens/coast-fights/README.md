@@ -55,7 +55,7 @@ node tools/playtest/raid.mjs <build url> --pixels --stepped --window=pixel --see
   "--moves=Vine Whip|Leech Seed|Tackle|Growl" \
   "--team=psyduck:15:Scratch|Tail Whip,pikachu:15:Thunder Shock|Thunder Wave|Quick Attack|Growl" \
   --shot=out/coast.png --shot-battles --said \
-  "--steps=shot:landing,walk:104:274,walk:109:275,walk:104:276,walk:82:277,walk:87:276,challenge:87:289:left"
+  "--steps=shot:landing,walk:104:274,walk:109:275,walk:104:276,walk:82:277,walk:87:276,challenge:86:289:down"
 ```
 
 `--shot-battles` is new with this change: every fight photographed at its first

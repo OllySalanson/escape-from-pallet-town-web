@@ -1188,10 +1188,12 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     // A swimmer at the end of the smugglers' landing stage in the cove, off the
     // road from the Cove Steps to the cleft: the smoke-and-claw pair, a Horsea
     // that lays Smokescreen first in the rain and a Krabby behind its smoke.
-    // Spoken to, like the fisherman, and measured the same way.
+    // Spoken to, like the fisherman, and measured the same way. She stands in
+    // the stage's lower corner, the Slowpoke asleep beside her: on its upper
+    // corner she and the Slowpoke shut this one off between them.
     mapId: 'greystone-vale',
-    position: { x: 86, y: 289 },
-    facing: 'right',
+    position: { x: 86, y: 290 },
+    facing: 'up',
     fixedPosition: true,
     design: 'swimmer-woman',
     introLines: ['Can you even see me through the smoke?', 'My Krabby can see you!'],

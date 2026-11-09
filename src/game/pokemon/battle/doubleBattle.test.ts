@@ -689,13 +689,19 @@ describe('where the one authored double battle is', () => {
     );
 
     // Deliberately few. A double battle is two decisions a turn, and the only
-    // fights in a five-minute raid that can charge that are a boss holding the
-    // last door - see the note beside Holt in `trainers.ts` - and a gym, whose
+    // fights in a five-minute raid that can charge that are a boss holding a
+    // door - see the note beside Holt in `trainers.ts` - and a gym, whose
     // leader fights two on two because setter and payoff are what the gym is
     // (the captain, 5 Nov 2026), and whose own trainers show that combo off
-    // the walk to her, so nobody has to fight them.
+    // the walk to her, so nobody has to fight them. The gyms plan's step 3
+    // carries the gym into its quarter: the keeper behind Misty's doors plays
+    // his pair as she does, and two trainers past her doors play her combo,
+    // each standing off the quarter's roads (`coastQuarter.test.ts`).
     expect(doubles.map((encounter) => encounter.trainer.id)).toEqual([
       'floodplain-orchard-warden-holt',
+      'vale-quay-keeper-cragg',
+      'vale-coast-fisherman-hal',
+      'vale-coast-swimmer-nell',
       'vale-gym-misty',
       'vale-gym-misty-diana',
       'vale-gym-misty-luis',
@@ -704,6 +710,11 @@ describe('where the one authored double battle is', () => {
       expect(`${double.trainer.id} ${double.bossId !== undefined || double.trainer.ai === 'gym'}`).toBe(
         `${double.trainer.id} true`,
       );
+      // Nobody on a road asks for two: a double who is not a door is only
+      // ever fought by being spoken to, never by a watch over the way past.
+      if (double.bossId === undefined) {
+        expect(`${double.trainer.id} watches ${double.sightRange ?? 0}`).toBe(`${double.trainer.id} watches 0`);
+      }
     }
   });
 
