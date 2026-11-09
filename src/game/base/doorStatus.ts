@@ -139,7 +139,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
     }
     case 'prizes': {
       const tickets = (game.raidProgress.gameCorner ?? NO_GAME_CORNER).tickets;
-      return tickets === 0 ? 'Berries and furniture for TICKETS' : `${tickets.toLocaleString('en-GB')} tickets to spend`;
+      return tickets === 0 ? 'Berries, TMs, DRATINI for TICKETS' : `${tickets.toLocaleString('en-GB')} tickets to spend`;
     }
     case 'trader': {
       if (errand) {

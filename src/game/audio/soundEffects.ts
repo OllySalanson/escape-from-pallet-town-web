@@ -713,6 +713,20 @@ export const SOUND_EFFECTS = {
     moment: 'The result screen confirms a banked contract',
     tones: [sq(659, 0.08, 0.06), sq(784, 0.08, 0.06, 0.09), sq(1047, 0.08, 0.06, 0.18), sq(1319, 0.24, 0.065, 0.27), tri(330, 0.3, 0.05, 0.27)],
   },
+  pokeFlute: {
+    channel: 'fanfare',
+    moment: 'The Poké Flute played from the raid pack',
+    // A flute is a triangle: a catchy little run up and back, with a long top
+    // note, kept inside a fanfare's second as FireRed's tune is not.
+    tones: [
+      tri(784, 0.11, 0.07),
+      tri(659, 0.11, 0.07, 0.12),
+      tri(523, 0.11, 0.07, 0.24),
+      tri(659, 0.11, 0.07, 0.36),
+      tri(784, 0.11, 0.07, 0.48),
+      tri(1047, 0.36, 0.075, 0.6),
+    ],
+  },
   itemObtained: {
     channel: 'fanfare',
     moment: "Something is yours for good: Oak's Pokédex reward, a beaten boss's gear",

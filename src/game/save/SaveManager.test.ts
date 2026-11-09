@@ -2781,11 +2781,41 @@ describe("THE GAME CORNER's tickets, kept at home", () => {
     const saves = freshSave(storage);
     expect(saves.buyTicketPrize('sitrus-berry', NOON)).toBeNull();
     saves.playJump(6200, NOON);
-    const bought = saves.buyTicketPrize('sitrus-berry', NOON);
+    const bought = saves.buyTicketPrize('sitrus-berry', NOON)?.game;
     expect(bought?.raidProgress.gameCorner?.tickets).toBe(10);
     expect(bought?.stash.itemCount('sitrus-berry')).toBeGreaterThanOrEqual(1);
     // Never anything that is not on the window.
     expect(saves.buyTicketPrize('potion', NOON)).toBeNull();
+  });
+
+  it('puts a prize Pokémon in a box, hears a rumour in the same write, and sells the Smoke Ball again only once it is lost', () => {
+    const storage = new MemoryStorage();
+    freshSave(storage);
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.gameCorner = { tickets: 99_999, best: {}, day: null };
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    const saves = new SaveManager(storage);
+
+    const dratini = saves.buyTicketPrize('dratini', NOON);
+    expect(dratini?.pokemon?.base.id).toBe('dratini');
+    const reloaded = new SaveManager(storage).load()!;
+    expect(reloaded.stash.listPokemon().some((stored) => stored.pokemon.base.id === 'dratini')).toBe(true);
+    expect(reloaded.raidProgress.gameCorner?.taken).toEqual(['dratini']);
+    expect(reloaded.raidProgress.pokedexOwned).toContain(147);
+    expect(saves.buyTicketPrize('dratini', NEXT_DAY)).toBeNull();
+
+    const rumour = saves.buyTicketPrize('rumour', NOON);
+    expect(rumour?.rumour?.source).toBe('mill');
+    expect(new SaveManager(storage).load()?.raidProgress.rumoursHeard).toEqual([rumour!.rumour!.id]);
+
+    expect(saves.buyTicketPrize('smoke-ball', NOON)).not.toBeNull();
+    expect(saves.buyTicketPrize('smoke-ball', NOON)).toBeNull();
+    // Given to a Pokémon to hold, it is still the player's: not sold twice.
+    const game = saves.load()!;
+    const holder = game.stash.listPokemon()[0];
+    expect(game.stash.giveHeldItem(holder.id, 'smoke-ball')).toBe(true);
+    expect(game.stash.holdingCount('smoke-ball')).toBe(1);
+    expect(SaveManager.prizeSituation(game).holding('smoke-ball')).toBe(1);
   });
 
   it('puts every piece of furniture bought at the prize window in THE BOLTHOLE\'s box', () => {
@@ -2799,13 +2829,13 @@ describe("THE GAME CORNER's tickets, kept at home", () => {
     written.raidProgress.gameCorner = { tickets: 99_999, best: {}, day: { day: 'today', paid: {}, bought: {} } };
     storage.setItem(SAVE_KEY, JSON.stringify(written));
     const saves = new SaveManager(storage);
-    const furniture = TICKET_PRIZES.filter((prize) => !prize.itemId.endsWith('-berry'));
+    const furniture = TICKET_PRIZES.filter((prize) => prize.shelf === 'house');
     expect(furniture.length).toBeGreaterThan(0);
-    for (const { itemId } of furniture) {
+    for (const { id: itemId } of furniture) {
       expect(saves.buyTicketPrize(itemId, NOON), itemId).not.toBeNull();
     }
     const box = ownedFurniture(saves.load()!);
-    for (const { itemId } of furniture) {
+    for (const { id: itemId } of furniture) {
       const piece = FURNITURE.find((definition) => definition.source.kind === 'found' && definition.source.itemId === itemId);
       expect(piece, itemId).toBeDefined();
       expect(box.get(piece!.id), itemId).toBe(1);

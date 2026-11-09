@@ -1,4 +1,4 @@
-import { itemIcon } from '../ui/icons';
+import { iconMarkup, itemIcon, WORLD_ICONS } from '../ui/icons';
 import { basicsRowAttributes, pickerFindField, type PickerBasics } from '../ui/boxPicker';
 import {
   COLUMN_MEASURES,
@@ -13,7 +13,23 @@ import {
 import { getItemById } from '../items/items';
 import { MAX_JUMPERS, type JumpType } from './pokemonJump';
 import { PRIZE_WINDOW_NOTE } from './gameCornerTalk';
-import { payoutWords, prizeLeftToday, prizeName, prizeRefusal, TICKET_PRIZES, today, type GameCornerRecord, type GamePayout } from './tickets';
+import {
+  payoutWords,
+  prizeItemId,
+  prizeLeftThisWeek,
+  prizeLeftToday,
+  prizeName,
+  prizeRefusal,
+  prizeTaken,
+  thisWeek,
+  TICKET_PRIZES,
+  today,
+  type GameCornerRecord,
+  type GamePayout,
+  type PrizeShelf,
+  type PrizeSituation,
+  type TicketPrize,
+} from './tickets';
 
 /**
  * THE GAME CORNER's two DOM screens, as pure markup: choosing who jumps at the
@@ -118,37 +134,89 @@ function resultLines(last: NonNullable<JumpTeamState['last']>): string[] {
 export interface PrizeWindowState {
   readonly record: GameCornerRecord;
   readonly now: Date;
-  readonly held: (itemId: string) => number;
+  readonly situation: PrizeSituation;
+  /** THE RUMOUR MILL's slip just bought, said in the bar until the next purchase. */
+  readonly rumour?: string;
   readonly status?: string;
 }
 
-/** The prize window: every prize, its price and what is left of it today. */
+/** The window's shelves, in the order they are listed, with what each is for. */
+const SHELVES: readonly { readonly shelf: PrizeShelf; readonly heading: string }[] = [
+  { shelf: 'berries', heading: 'Held berries' },
+  { shelf: 'raids', heading: 'For raids' },
+  { shelf: 'pokemon', heading: 'POKéMON' },
+  { shelf: 'rumours', heading: 'The rumour mill' },
+  { shelf: 'house', heading: 'For the house' },
+];
+
+/** What a prize is, said on its help line after its price. */
+function prizeAbout(prize: TicketPrize): string {
+  switch (prize.gives.kind) {
+    case 'item':
+      // A berry's own description already says what it does held.
+      return getItemById(prize.gives.itemId)?.description ?? '';
+    case 'pokemon':
+      return `FireRed's own prize, at Lv ${prize.gives.level}. One to a trainer: it goes to your boxes.`;
+    case 'rumour':
+      return 'A slip from THE RUMOUR MILL: two of where, when and what to bring for a secret in the vale. One a day.';
+  }
+}
+
+/** The icon a prize row stands by. */
+function prizeIcon(prize: TicketPrize, name: string): string {
+  switch (prize.gives.kind) {
+    case 'item':
+      return itemIcon(prize.gives.itemId, name);
+    case 'pokemon':
+      return itemIcon('poke-ball', name);
+    case 'rumour':
+      return iconMarkup(WORLD_ICONS.signPost, name);
+  }
+}
+
+/** What is left of a prize, under its name: today's, this week's, or that it is yours. */
+function prizeNote(prize: TicketPrize, state: PrizeWindowState): string {
+  if (prizeTaken(prize, state.record)) return 'Yours';
+  const itemId = prizeItemId(prize);
+  const held = itemId !== undefined ? state.situation.holding(itemId) : 0;
+  const left = prizeLeftToday(prize, today(state.record, state.now));
+  const week = prizeLeftThisWeek(prize, thisWeek(state.record, state.now));
+  return [
+    Number.isFinite(left) ? `${left} left today` : null,
+    Number.isFinite(week) ? (week > 0 ? `${week} this week` : 'Next week') : null,
+    prize.once ? 'Once' : null,
+    prize.oneHeld && held === 0 ? 'One at a time' : null,
+    held > 0 ? `${held} at home` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** The prize window: every prize, its price and what is left of it. */
 export function prizeWindowMarkup(state: PrizeWindowState): string {
-  const day = today(state.record, state.now);
-  const row = (index: number) => (prize: (typeof TICKET_PRIZES)[number]): string => {
+  let first = true;
+  const row = (prize: TicketPrize): string => {
     const name = prizeName(prize);
-    const refusal = prizeRefusal(prize, state.record, state.now);
-    const left = prizeLeftToday(prize, day);
-    const held = state.held(prize.itemId);
-    const description = getItemById(prize.itemId)?.description ?? '';
-    const help = refusal ? `${name}: ${refusal}` : `${name} for ${prize.tickets} tickets. ${description}`;
-    const note = [Number.isFinite(left) ? `${left} left today` : null, held > 0 ? `${held} at home` : null].filter(Boolean).join(' · ');
-    return `<button class="px-row has-icon" data-prize="${prize.itemId}"${refusal ? ' aria-disabled="true"' : ''}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}">${itemIcon(prize.itemId, name)}<span class="px-row-main"><strong>${name}</strong>${note ? `<small>${note}</small>` : ''}</span>${pixelTag(`${prize.tickets} tickets`, refusal ? 'risk' : 'plain')}</button>`;
+    const refusal = prizeRefusal(prize, state.record, state.now, state.situation);
+    const help = refusal ? `${name}: ${refusal}` : `${name} for ${number(prize.tickets)} tickets. ${prizeAbout(prize)}`;
+    const note = prizeNote(prize, state);
+    const start = first ? ' data-cursor-start' : '';
+    first = false;
+    return `<button class="px-row has-icon" data-prize="${prize.id}"${refusal ? ' aria-disabled="true"' : ''}${start} data-help="${escapeAttribute(help)}">${prizeIcon(prize, name)}<span class="px-row-main"><strong>${name}</strong>${note ? `<small>${note}</small>` : ''}</span>${pixelTag(`${number(prize.tickets)} tickets`, refusal ? 'risk' : 'plain')}</button>`;
   };
-  const berries = TICKET_PRIZES.filter((prize) => prize.limitGroup === 'berries');
-  const house = TICKET_PRIZES.filter((prize) => prize.limitGroup === undefined);
-  const list = [
-    '<h3 class="px-subheading">Berries</h3>',
-    ...berries.map((prize, index) => row(index)(prize)),
-    '<h3 class="px-subheading">For the house</h3>',
-    ...house.map((prize) => row(-1)(prize)),
-  ].join('');
+  const list = SHELVES.flatMap(({ shelf, heading }) => {
+    const prizes = TICKET_PRIZES.filter((prize) => prize.shelf === shelf);
+    return prizes.length === 0 ? [] : [`<h3 class="px-subheading">${heading}</h3>`, ...prizes.map(row)];
+  }).join('');
+  const lines = state.rumour
+    ? [`<small class="px-wrap px-good">${escapeAttribute(state.rumour)}</small>`]
+    : [`<small class="px-wrap">${PRIZE_WINDOW_NOTE}</small>`];
   const body = `<main class="px-body game-corner-layout">${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${list}</div>`, {
     heading: 'Prizes',
     note: 'Price in tickets',
   })}${pixelCommitBar({
-    title: `${number(state.record.tickets)} tickets`,
-    lines: [`<small class="px-wrap">${PRIZE_WINDOW_NOTE}</small>`],
+    title: state.rumour ? 'THE RUMOUR MILL says' : `${number(state.record.tickets)} tickets`,
+    lines,
     actions: '<button class="px-window px-button" data-close data-help="Back to the promenade.">Done</button>',
   })}</main>`;
   return pixelScreen({

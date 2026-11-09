@@ -105,6 +105,9 @@ export const ITEM_ICONS = {
   'never-melt-ice': 'never-melt-ice',
   charcoal: 'charcoal',
   'spell-tag': 'spell-tag',
+  // The prize window's two (`scripts/draw-gear-icons.mjs`), in FireRed's own palettes.
+  'smoke-ball': 'smoke-ball',
+  'poke-flute': 'poke-flute',
   // The boutique's raid finds, each a little person in it, drawn from the cut
   // pieces by `scripts/draw-wearable-icons.mts`.
   'articuno-wave': 'articuno-wave',

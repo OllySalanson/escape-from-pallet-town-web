@@ -38,6 +38,16 @@ export function gearLabel(heldItemId: string | null): string {
 }
 
 /**
+ * The Smoke Ball: whether the holder gets away from a wild Pokemon whatever
+ * the speeds, the attempts or the foe's ability say (FireRed's
+ * `HOLD_EFFECT_CAN_ALWAYS_RUN`, asked first in `TryRunFromBattle` and in
+ * `IsRunningFromBattleImpossible`).
+ */
+export function alwaysEscapes(holder: Pick<GearHolder, 'heldItemId'>): boolean {
+  return heldItemEffect(holder.heldItemId)?.type === 'always-escape';
+}
+
+/**
  * Leftovers: the HP the holder gets back at the end of its own turn.
  *
  * Charged at the same point burn and poison are charged, which is what makes it

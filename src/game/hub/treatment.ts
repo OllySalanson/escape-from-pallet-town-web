@@ -111,6 +111,8 @@ function describeEffect(
       return { effect: 'Fished with in a raid', usable: false };
     case 'bike':
       return { effect: 'Ridden in a raid', usable: false };
+    case 'flute':
+      return { effect: 'Played in a raid', usable: false };
     case 'lockpick':
       return { effect: 'Picks a lock in a raid', usable: false };
     case 'key':

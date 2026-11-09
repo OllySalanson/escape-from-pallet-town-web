@@ -21,7 +21,7 @@ import {
   vineTurn,
   type PokemonJumpGame,
 } from '../minigames/pokemonJump';
-import { NO_GAME_CORNER, prizeName, prizeRefusal, TICKET_PRIZES, type GameCornerRecord } from '../minigames/tickets';
+import { NO_GAME_CORNER, prizeById, prizeName, prizeRefusal, type GameCornerRecord, type PrizeSituation } from '../minigames/tickets';
 
 export interface GameCornerSceneData {
   readonly mode: 'jump' | 'prizes';
@@ -78,6 +78,8 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private game_: RestoredGame | undefined;
   private chosen: string[] = [];
   private status: string | undefined;
+  /** THE RUMOUR MILL's slip just bought, said in the bar. */
+  private rumour: string | undefined;
   /** What the list's find field held (`ui/boxPicker.ts`). */
   private find = '';
   private last: JumpTeamState['last'];
@@ -106,6 +108,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.pausedBase = data.pausedBase;
     this.mode = data.mode;
     this.status = undefined;
+    this.rumour = undefined;
     this.last = undefined;
     this.phase = { kind: 'menu' };
     this.jump = undefined;
@@ -191,7 +194,8 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
         : prizeWindowMarkup({
             record,
             now: new Date(),
-            held: (itemId) => this.game_?.stash.itemCount(itemId) ?? 0,
+            situation: this.situation(),
+            ...(this.rumour ? { rumour: this.rumour } : {}),
             ...(this.status ? { status: this.status } : {}),
           });
     this.overlay.redraw(markup);
@@ -243,30 +247,40 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.showMenu(`[data-jumper="${id}"]`);
   }
 
-  private buy(itemId: string): void {
+  /** What the window asks of the save: what it holds, and whether the mill has news. */
+  private situation(): PrizeSituation {
+    return this.game_ ? SaveManager.prizeSituation(this.game_) : { holding: () => 0, rumourToTell: false };
+  }
+
+  private buy(id: string): void {
     // The click that opened the window must not be the one that buys.
     if (this.time.now - this.openedAt < RELEASE_ARMING_MS) return;
-    const prize = TICKET_PRIZES.find((row) => row.itemId === itemId);
+    const prize = prizeById(id);
     if (!prize) return;
-    const refusal = prizeRefusal(prize, this.record(), new Date());
+    const refusal = prizeRefusal(prize, this.record(), new Date(), this.situation());
     if (refusal) {
       audioManager.play('denied');
       this.status = refusal;
-      this.showMenu(`[data-prize="${itemId}"]`);
+      this.showMenu(`[data-prize="${id}"]`);
       return;
     }
-    const game = this.saveManager.buyTicketPrize(itemId);
-    if (!game) {
+    const bought = this.saveManager.buyTicketPrize(id);
+    if (!bought) {
       audioManager.play('denied');
       this.status = 'The window could not take that. Nothing was spent.';
-      this.showMenu(`[data-prize="${itemId}"]`);
+      this.showMenu(`[data-prize="${id}"]`);
       return;
     }
     audioManager.play('itemObtained');
     recordAction(`Bought ${prizeName(prize)} for tickets`);
-    this.game_ = game;
-    this.status = `${prizeName(prize)} - it is waiting at home.`;
-    this.showMenu(`[data-prize="${itemId}"]`);
+    this.game_ = bought.game;
+    this.rumour = bought.rumour?.line;
+    this.status = bought.pokemon
+      ? `${bought.pokemon.name.toUpperCase()} went to your boxes. Put it on the team with P.`
+      : bought.rumour
+        ? 'Heard. The slip is kept with every rumour you have heard.'
+        : `${prizeName(prize)} - it is waiting at home.`;
+    this.showMenu(`[data-prize="${id}"]`);
   }
 
   private onMenuKey(event: KeyboardEvent): void {

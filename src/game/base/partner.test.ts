@@ -724,6 +724,16 @@ describe('what the partner says', () => {
     expect(partnerReaction(worn, 'yard', 0.5)).toMatchObject({ emote: 'ellipsis', hops: false });
   });
 
+  it('has something to say in every room of the harbour, not only the ones with lines of their own', () => {
+    // Facing the partner in THE GAME CORNER threw: the room had no lines and
+    // was looked up blind (found by tools/playtest/prizeWindow.mjs).
+    for (const room of BASE_ROOMS) {
+      for (const roll of [0, 0.5, 0.99]) {
+        expect(partnerReaction(healthy, room.id, roll).line, room.id).toContain('CHARMANDER');
+      }
+    }
+  });
+
   it('knows where it is', () => {
     const lines = new Set(
       Array.from({ length: 40 }, (_, index) => partnerReaction(healthy, 'pokemon-centre', index / 40).line),

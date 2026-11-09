@@ -160,6 +160,7 @@ import {
   describeItemGuidance,
   describeMoveGuidance,
   escapeAbilityMessage,
+  escapeItemMessage,
   eventToMessage,
   foeWordFor,
   type FoeWord,
@@ -2433,6 +2434,10 @@ export class BattleScene extends Phaser.Scene {
     if (attempt.escaped) {
       this.pendingBattleExit = true;
       audioManager.play('flee');
+      if (attempt.item) {
+        this.dialog.showMessage(escapeItemMessage(this.state.player.pokemon.name, attempt.item));
+        return;
+      }
       if (abilityLine) {
         this.dialog.showMessages([abilityLine, WILD_ESCAPE_SUCCESS_MESSAGE]);
       } else {

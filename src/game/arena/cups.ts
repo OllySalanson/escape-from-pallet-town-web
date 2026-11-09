@@ -8,6 +8,7 @@ import { DOJO_LEVEL, DOJO_TEAM_SIZE, dojoRefusal, flatLevelCopy } from './boutRu
 import { stagedTeam } from './classes';
 import { DOJO_REGULARS } from './dojoCounter';
 import { RUN_BOUTS, type CupRecord } from './runRecords';
+import { isoWeekKey } from '../minigames/tickets';
 
 export type { CupRecord } from './runRecords';
 
@@ -211,15 +212,8 @@ export function cupById(id: string): Cup | undefined {
   return CUPS.find((cup) => cup.id === id);
 }
 
-/** The ISO week a date is in, as `YYYY-Www`, by the player's own calendar date. */
-export function isoWeekKey(now: Date): string {
-  const date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  const day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - day);
-  const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
-  const week = Math.ceil(((date.getTime() - yearStart) / 86_400_000 + 1) / 7);
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
-}
+/** The ISO week a date is in, as `YYYY-Www`: one key for the cup and the prize window's weekly discs. */
+export { isoWeekKey };
 
 /** A week as a whole number, so the cups turn over in order. */
 function weekNumber(now: Date): number {
