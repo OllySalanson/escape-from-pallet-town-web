@@ -413,6 +413,9 @@ export function reedmere(): MapcraftResult {
         { x: 52, y: 37, name: 'Drainage Pump', kind: 'shed' },
       ],
       signs: [
+        // THE COAST's notice, at the bar Misty holds (`world/valeQuarters.ts`):
+        // what the quarter does to a team, said before it costs one.
+        { x: 21, y: 60, lines: ['THE COAST. Past the sandbags at the end of this trail.', 'Rain all day, every day, and in the rain the swimmers move first.', 'Water hits harder and Fire hardly at all. Held by MISTY: CASCADE BADGE.'] },
         { x: 42, y: 8, lines: ['REEDMERE', 'The boardwalk goes round. The reeds go through.'] },
         { x: 21, y: 15, lines: ['THE HUMMOCK', 'The only dry ground for a mile. Please leave some of it for the next person.'] },
         { x: 48, y: 11, lines: ['PRIVATE POND', 'Not on any map. Keep out. This means you. Signed, the Owner (age nine).'] },
@@ -429,6 +432,9 @@ export function reedmere(): MapcraftResult {
         { x: 40, y: 50, lines: ['THE TURBARY', 'Peat for the whole marsh. Cut it, stack it, turn it, swear at it.'] },
       ],
       people: [
+        // The guard at Misty's bar, as FireRed's Route 23 keeps its badge gates:
+        // he says which badge opens it, and stands to one side of the way.
+        { x: 21, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'] },
         // -- The reed yard and the road down ------------------------------------------
         { x: 37, y: 8, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, roam: [[-1, 0], [-2, 0]], glances: ['left'] }, calls: ['Mind the bundles!'] },
         { x: 44, y: 14, name: 'Reed Boy', look: 'boy', facing: 'right', lines: ['I carry the bundles up to the yard. Then they give me more bundles.', 'That is the whole job. I thought there would be more to it.'], beat: { everyMs: 2800, roam: [[0, 1]], glances: ['up', 'down'] }, calls: ['Coming through!'] },

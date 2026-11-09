@@ -16,6 +16,7 @@ import {
   VOLCANO_NIGHT_WILDLIFE,
   HAUNTED_WILDLIFE,
   HIDEOUT_WILDLIFE,
+  COAST_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -1067,6 +1068,9 @@ export const MAP_FILE_HABITATS = {
   // Mansion and Power Plant, at a route's levels. A room dressed as the
   // hideout rolls it on every step of its floor.
   hideout: HIDEOUT_WILDLIFE,
+  // A stormy coast past a gym: Misty's quarter, its swimmers and its sleepers at
+  // the level band a team that beat her is at. Meant to be laid in the rain.
+  coast: COAST_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;

@@ -877,3 +877,34 @@ export const HIDEOUT_WILDLIFE = wildlife(0.1, [
   { speciesId: 'voltorb', minLevel: 7, maxLevel: 8, weight: 4 },
   { speciesId: 'magnemite', minLevel: 7, maxLevel: 8, weight: 4 },
 ]);
+
+// -- THE COAST, behind Misty ---------------------------------------------------
+
+/**
+ * THE COAST, the quarter Misty's gym holds shut (`world/valeQuarters.ts`): the
+ * drowned port and the smugglers' cove, every place of it in the rain. Its
+ * threat is said on the notice at the jetty - rain all day, swimmers move
+ * first - and its wildlife is that threat, a fight at a time: Horsea and
+ * Goldeen swim at twice their Speed in the rain (Swift Swim), Tentacool
+ * confuses with Supersonic, Poliwag puts you to sleep with Hypnosis, and
+ * Staryu throws a Water Gun the rain lifts. FireRed's own sea routes and
+ * Cerulean's water, brought to the level band the quarter is met at - a little
+ * under Misty's 13-15, because her doors are what a team that reaches them has
+ * already beaten. Poliwhirl is the rare roll, at 25 where a Poliwag becomes
+ * one, because nothing is fielded below the level it evolves at: the thing the
+ * reeds are feared for, as the Haunter is on the fell.
+ *
+ * It is a Fire starter's hard ground and is meant to be (the plan's "no
+ * starter is good everywhere"): measured over the real engine in the rain, a
+ * level-15 starter alone wins Bulbasaur 93%, Charmander 52% and Squirtle 74%
+ * of what it meets (`coastHabitat.test.ts`, `districtEncounters.test.ts` holds a
+ * gym's quarter at its leader's level). The team that beat Misty walks it.
+ */
+export const COAST_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'tentacool', minLevel: 11, maxLevel: 13, weight: 8 },
+  { speciesId: 'horsea', minLevel: 11, maxLevel: 13, weight: 6 },
+  { speciesId: 'goldeen', minLevel: 11, maxLevel: 13, weight: 6 },
+  { speciesId: 'staryu', minLevel: 11, maxLevel: 12, weight: 4 },
+  { speciesId: 'poliwag', minLevel: 11, maxLevel: 12, weight: 3 },
+  { speciesId: 'poliwhirl', minLevel: 25, maxLevel: 25, weight: 1 },
+]);

@@ -12,6 +12,8 @@ import { WORLD_INTERIORS } from './interiors';
 import { encounterTableAt } from './localEncounters';
 import { measureTable } from './encounterMeasure';
 import { districtTableFor } from './nightRaids';
+import { createRunTrainerEncounters } from './trainers';
+import { quarterOfPlace } from './valeQuarters';
 
 const MAPS = Object.values(WORLD_MAPS);
 
@@ -192,6 +194,22 @@ describe('wildlife authored per place', () => {
     // table, which is the floor's own edge, so it is written down rather than
     // left to a rounding.
     const FLOOR: Record<string, number> = { 'viridian-forest': 0.12, 'greystone-vale': 0.45 };
+    /**
+     * A place behind a gym is met by a team that beat its leader, so it is
+     * measured as that team meets it (the gyms plan: each gated quarter has its
+     * own band): a partner at the leader's highest level rather than the vale's
+     * eight, and in the weather the quarter is fought in - the Coast's rain is
+     * the quarter's threat, not a footnote to it. Everywhere else is measured in
+     * the clear as it always was (Stormcrown's storm is the summit table's
+     * documented price, 43% for a Charmander by night).
+     */
+    const behindGym = (mapId: WorldMapId, district: (typeof MAP_DISTRICTS)[number]) => {
+      const gym = quarterOfPlace(district, districtsForMap(mapId))?.gym;
+      const leader = gym && createRunTrainerEncounters().find((encounter) => encounter.bossId === gym.bossId);
+      return leader
+        ? { level: Math.max(...leader.trainer.party.map((pokemon) => pokemon.level)), weather: district.weather ?? null }
+        : { level: partnerLevel(mapId), weather: null };
+    };
 
     // A night table that holds what the day one does is the day's fight, so
     // it is measured once, by day.
@@ -203,7 +221,8 @@ describe('wildlife authored per place', () => {
             continue;
           }
           for (const starter of ['bulbasaur', 'charmander', 'squirtle']) {
-            const measure = measureTable(table, starter, partnerLevel(map.id), 60);
+            const { level, weather } = behindGym(map.id, district);
+            const measure = measureTable(table, starter, level, 60, weather);
             expect(
               measure.winRate,
               `${starter} at ${district.name} ${night ? 'by night' : 'by day'}: ${(measure.winRate * 100).toFixed(0)}%`,

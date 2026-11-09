@@ -216,9 +216,9 @@ export function sunkenQuarter(): MapcraftResult {
       // what is only found there (`BUILT_IN_FILE_PRIZES`) behind the
       // barricades rather than anywhere on the quay.
       districts: [
-        { name: 'THE DROWNED TOWN', x: 10, y: 31, width: 54, height: 33, wildlife: 'shore' },
-        { name: 'THE OLD QUAY', x: 14, y: 12, width: 40, height: 4, wildlife: 'shore' },
-        { name: 'THE BOATYARD', x: 48, y: 24, width: 6, height: 7, wildlife: 'shore' },
+        { name: 'THE DROWNED TOWN', x: 10, y: 31, width: 54, height: 33, wildlife: 'coast', rain: true },
+        { name: 'THE OLD QUAY', x: 14, y: 12, width: 40, height: 4, wildlife: 'coast', rain: true },
+        { name: 'THE BOATYARD', x: 48, y: 24, width: 6, height: 7, wildlife: 'coast', rain: true },
       ],
       signs: [
         { x: 32, y: 26, lines: ['THE SUNKEN QUARTER', 'The old high street. Mind the tide.'] },

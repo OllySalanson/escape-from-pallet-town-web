@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
+import { WeatherId } from '../pokemon/battle/weather';
 import { generateRunPlan } from '../run/runGeneration';
 import { partyOf, trainerWinRate, type MeasuredMember, type MeasuredParty } from './trainerMeasure';
 import { createRunTrainerEncounters } from './trainers';
@@ -80,8 +81,13 @@ const STARTERS: readonly MeasuredParty[] = [
   partyOf(`Squirtle, Pikachu, Bellsprout ${LEVEL}`, ['squirtle', LEVEL], ['pikachu', LEVEL, PIKACHU], ['bellsprout', LEVEL]),
 ];
 
-const rate = (party: MeasuredParty, trainer: TrainerBattle = misty()): number =>
-  trainerWinRate(party, trainer, TRIALS, 0x51ede, null, POTIONS);
+const rate = (party: MeasuredParty, trainer: TrainerBattle = misty(), weather: WeatherId | null = null): number =>
+  trainerWinRate(party, trainer, TRIALS, 0x51ede, weather, POTIONS);
+
+/** Every reference party the Coast is measured against, the best team first. */
+const COAST_PARTIES: readonly MeasuredParty[] = [BEST, ...STARTERS, wrong(3), wrong(8)];
+const meanRate = (trainer: TrainerBattle, weather: WeatherId | null): number =>
+  COAST_PARTIES.reduce((total, party) => total + rate(party, trainer, weather), 0) / COAST_PARTIES.length;
 
 describe('THE COAST: Misty, two on two in the rain', () => {
   it('fields two at once and plays her combo', () => {
@@ -133,5 +139,44 @@ describe('THE COAST: Misty, two on two in the rain', () => {
       expect(rate(BEST, trainer)).toBeGreaterThanOrEqual(0.9);
       expect(rate(wrong(3), trainer)).toBeGreaterThan(rate(wrong(3)));
     }
+  });
+
+  /**
+   * Past her doors the quarter fights the way her gym does (the plan's step
+   * 3). Two trainers stand off its roads (`coastQuarter.test.ts`), each a pair
+   * that plays a combo in the rain THE COAST is always in: a Tentacool's
+   * Supersonic and a Goldeen swimming first, a Horsea's Smokescreen and a
+   * Krabby behind it. They are its tolls, held to the quarter's band rather
+   * than the toll band (`TOLL_BAND.heldElsewhere`): every starter with the two
+   * catches that suit the Coast pays them, no starter is more than the toll
+   * band's spread behind another, the best team walks through, and the wrong
+   * team finds them easier than Misty - the lesson again, never a second wall.
+   */
+  it('has two trainers past her doors who fight her way and are a toll at its band', () => {
+    for (const id of ['vale-coast-fisherman-hal', 'vale-coast-swimmer-nell']) {
+      const trainer = trainerOf(id);
+      expect(`${trainer.name} ${trainer.ai} ${trainer.unitCount}`).toBe(`${trainer.name} gym 2`);
+      expect(rate(BEST, trainer, WeatherId.Rain)).toBeGreaterThanOrEqual(0.9);
+      const starters = STARTERS.map((party) => rate(party, trainer, WeatherId.Rain));
+      expect(Math.min(...starters), trainer.name).toBeGreaterThanOrEqual(0.6);
+      expect(Math.max(...starters) - Math.min(...starters), trainer.name).toBeLessThanOrEqual(0.35);
+      expect(rate(wrong(3), trainer, WeatherId.Rain)).toBeGreaterThan(rate(wrong(3)));
+    }
+  });
+
+  /**
+   * Boatswain Cragg holds the drowned town, inside her quarter, so whoever
+   * meets him has beaten her: he sits above her over the same reference
+   * parties, fought where he stands - in the Coast's rain - while staying a
+   * fight every one of them can win, and one more levels still get through.
+   */
+  it('puts Boatswain Cragg above her, fought in the Coast’s rain', () => {
+    const cragg = trainerOf('vale-quay-keeper-cragg');
+    expect(meanRate(cragg, WeatherId.Rain)).toBeLessThan(meanRate(misty(), null));
+    expect(rate(BEST, cragg, WeatherId.Rain)).toBeGreaterThanOrEqual(0.6);
+    for (const party of STARTERS) {
+      expect(`${party.name} ${rate(party, cragg, WeatherId.Rain) >= 0.45}`).toBe(`${party.name} true`);
+    }
+    expect(rate(wrong(8), cragg, WeatherId.Rain)).toBeGreaterThanOrEqual(0.65);
   });
 });

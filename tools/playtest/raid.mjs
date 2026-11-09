@@ -10,7 +10,7 @@
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--through=x:y:dir,..] [--grab=itemId,..] [--fight]
 //        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--said] [--errands=id,..]
-//        [--hunt=pieceId,..] [--skip-contract]
+//        [--hunt=pieceId,..] [--skip-contract] [--shot-battles]
 //
 // --said prints every line a battle puts up, once it has finished typing.
 //
@@ -226,12 +226,28 @@ try {
   /** Whatever is in the way of walking: dialogue, a prompt, a battle, the result. */
   const seenCommands = new Set();
   let lastSaid = '';
+  // --shot-battles (with --shot) photographs every fight at its first two
+  // command menus - the field as the fight opened, and again a turn in - which
+  // is the only way a fight's weather, plates and send-outs are seen.
+  let battlesShot = 0;
+  let menusThisBattle = 0;
+  let lastMenuSaid = null;
   const clearInterruptions = async () => {
     for (let guard = 0; guard < 600; guard += 1) {
       const s = await state();
       if (s.active.includes('extraction')) {
         ended = true;
         return;
+      }
+      if (!s.battle && menusThisBattle > 0) {
+        menusThisBattle = 0;
+        lastMenuSaid = null;
+      }
+      if (s.battle && flag('shot-battles') && option('shot') && s.battle.mode === 'main' && menusThisBattle < 2 && s.battle.said !== lastMenuSaid) {
+        if (menusThisBattle === 0) battlesShot += 1;
+        menusThisBattle += 1;
+        lastMenuSaid = s.battle.said;
+        await page.screenshot(option('shot').replace(/\.png$/, `-battle-${battlesShot}-${menusThisBattle}.png`));
       }
       if (s.battle) {
         if (flag('said') && s.battle.said && s.battle.said !== lastSaid) {

@@ -14,9 +14,11 @@
  * only ever asked about once the gym's are open (`gateStatesToVerify`), and the
  * words the game says about it.
  *
- * The plan for all four quarters is firstmate's `eptw-gyms-loadouts-plan`; this
- * is its first step, Misty holding the Coast. Koga's Marsh and Lt. Surge's
- * Station are rows still to come, in that order.
+ * The plan for all four quarters is firstmate's `eptw-gyms-loadouts-plan`:
+ * Misty holds the Coast, and the Coast fights the way her gym does - rain over
+ * every place of it, her swimmers in its grass, two trainers who play her
+ * combo and a keeper pitched above her (`coastQuarter.test.ts`). Koga's Marsh
+ * and Lt. Surge's Station are rows still to come, in that order.
  *
  * Deliberately free of imports: the landing filter, the gates and the badge
  * case all read it, and it must sit at the bottom of the graph they share.
@@ -161,6 +163,34 @@ export function gymOf(bossId: string): ValeGym | undefined {
 export function leadersMet(progress: { readonly defeatedBosses: readonly string[]; readonly gymsMet?: readonly string[] }): readonly ValeGym[] {
   const met = new Set([...progress.defeatedBosses, ...(progress.gymsMet ?? [])]);
   return valeGyms().filter((gym) => met.has(gym.bossId));
+}
+
+/** A named place as the map holds it: its name and the rectangles it covers. */
+export interface QuarterPlace {
+  readonly name: string;
+  readonly areas: readonly { readonly x: number; readonly y: number; readonly width: number; readonly height: number }[];
+}
+
+/**
+ * The quarter a named place lies in, out of every place on the map: the one
+ * whose districts (the plan's, as the stitched file names them) hold it. A
+ * district's own smaller places - THE OLD QUAY inside THE SUNKEN QUARTER - lie
+ * in its quarter; a room, laid beside the outdoors, lies in none.
+ */
+export function quarterOfPlace(place: QuarterPlace, places: readonly QuarterPlace[]): ValeQuarter | undefined {
+  const inside = (inner: QuarterPlace['areas'][number], outer: QuarterPlace['areas'][number]): boolean =>
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height;
+  return VALE_QUARTERS.find((quarter) =>
+    places.some(
+      (district) =>
+        quarter.districts.includes(district.name) &&
+        place.areas.length > 0 &&
+        place.areas.every((area) => district.areas.some((outer) => inside(area, outer))),
+    ),
+  );
 }
 
 /** The quarter a landing lies in, if it lies in one. */
