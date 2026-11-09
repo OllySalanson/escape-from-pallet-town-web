@@ -95,6 +95,7 @@ import {
 import { wallMapPicture } from './wallMap';
 import type { OverviewSource } from './valeOverviewView';
 import { townsOf } from './valeOverview';
+import { rumourRings } from './rumourRings';
 import { sealedQuarters } from './sealedQuarters';
 import { openedDoors } from '../world/gates';
 import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
@@ -786,6 +787,11 @@ export class ArenaView {
       light: this.light,
       // A quarter a gym holds shut lies under a heavier cloud with its badge pressed in.
       sealed: sealedQuarters(this.mapIdValue, openedDoors(this.game.raidProgress)),
+      // Every rumour heard, chalked over its district on the glass: it lifts no cloud.
+      rings: rumourRings(this.mapIdValue, this.game.raidProgress.rumoursHeard ?? [], {
+        secretsFound: this.game.raidProgress.secretsFound ?? [],
+        giftsReceived: this.game.raidProgress.giftsReceived,
+      }),
       textures: { light: LIGHT_TEXTURE, shadow: SHADOW_TEXTURE },
       trailInk: TRAIL_INK,
       trailShade: TRAIL_SHADE,

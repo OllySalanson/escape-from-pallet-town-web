@@ -91,6 +91,8 @@ import {
 } from './cabinet';
 import { wallMapNote } from './wallMap';
 import { boardNote } from './labBoard';
+import { chartTableFacts, chartTableLines, chartTableNote } from '../treasure/chartTable';
+import { getItemById } from '../items';
 import { badgeCaseLines, badgeCaseNote } from './badgeCase';
 import { pennantLines, pennantsNote } from './pennants';
 import {
@@ -667,7 +669,8 @@ export type RoomPoster =
         | 'class-board'
         | 'cup-board'
         | 'high-scores'
-        | 'chart-wall';
+        | 'chart-wall'
+        | 'chart-table';
       readonly area: Rect;
     }
   | {
@@ -1087,6 +1090,22 @@ export const BOARD_TILES: readonly GridPosition[] = Array.from(
   (_tile, index) => ({
     x: OAK_BOARD.x + (index % OAK_BOARD.width),
     y: OAK_BOARD.y + Math.floor(index / OAK_BOARD.width),
+  }),
+);
+
+/**
+ * Oak's CHART TABLE (`treasure/chartTable.ts`): FireRed's lab table again,
+ * across the aisle from the one the starters were chosen at, with the treasure
+ * map's pieces laid on its top - a picture of the save painted over the felt.
+ */
+export const OAK_CHART_TABLE: Rect = { x: 3, y: 4, width: 3, height: 2 };
+
+/** Every tile of the chart table: what is faced to look at it, and what its caption is seated against. */
+export const CHART_TABLE_TILES: readonly GridPosition[] = Array.from(
+  { length: OAK_CHART_TABLE.width * OAK_CHART_TABLE.height },
+  (_tile, index) => ({
+    x: OAK_CHART_TABLE.x + (index % OAK_CHART_TABLE.width),
+    y: OAK_CHART_TABLE.y + Math.floor(index / OAK_CHART_TABLE.width),
   }),
 );
 
@@ -1565,6 +1584,15 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
     tiles: FOSSIL_MACHINE_TILES,
     does: 'fossil',
   };
+  // The treasure map's half in the lab: what MARLOW has pinned, traced; what is
+  // home and not yet pinned, lying on it; and what a rumour has placed, pencilled.
+  const facts = chartTableFacts(game);
+  const chartTable: RoomThing = {
+    name: 'THE CHART TABLE',
+    note: chartTableNote(facts),
+    tiles: CHART_TABLE_TILES,
+    lines: chartTableLines(facts, (itemId) => getItemById(itemId)?.displayName ?? itemId),
+  };
   // The balls nobody took are still on the table. They are derived from who the
   // partner is, so a swap puts the old one back.
   const left = ballsLeftFor(game.starterSpeciesId);
@@ -1577,10 +1605,13 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
   return {
     sketch,
     catalogue: LAB,
-    things: [wallMap, board, fossilMachine, ...balls],
+    things: [wallMap, board, fossilMachine, chartTable, ...balls],
     sprites: left.map(ballSprite),
     wallMap: OAK_WALL_MAP,
-    posters: [{ kind: 'cork-board', area: OAK_BOARD }],
+    posters: [
+      { kind: 'cork-board', area: OAK_BOARD },
+      { kind: 'chart-table', area: OAK_CHART_TABLE },
+    ],
   };
 }
 
@@ -1604,10 +1635,18 @@ function drawLabChoosing(room: BaseRoom, game: RestoredGame): Drawn {
   return {
     sketch: labRoom(room),
     catalogue: LAB,
-    things: [waiting('THE WALL MAP', wallMapNote(game), WALL_MAP_TILES), waiting('THE BOARD', boardNote(game), BOARD_TILES), ...balls],
+    things: [
+      waiting('THE WALL MAP', wallMapNote(game), WALL_MAP_TILES),
+      waiting('THE BOARD', boardNote(game), BOARD_TILES),
+      waiting('THE CHART TABLE', chartTableNote(chartTableFacts(game)), CHART_TABLE_TILES),
+      ...balls,
+    ],
     sprites: STARTER_SPECIES.map(({ id }) => ballSprite(id)),
     wallMap: OAK_WALL_MAP,
-    posters: [{ kind: 'cork-board', area: OAK_BOARD }],
+    posters: [
+      { kind: 'cork-board', area: OAK_BOARD },
+      { kind: 'chart-table', area: OAK_CHART_TABLE },
+    ],
   };
 }
 
@@ -1637,6 +1676,7 @@ function labRoom(room: BaseRoom): MapSketch<RoomPropName> {
   sketch.plant(0, 1, 'labComputers');
   sketch.plant(0, 3, 'labMachine');
   sketch.plant(8, 4, 'labTable');
+  sketch.plant(OAK_CHART_TABLE.x, OAK_CHART_TABLE.y, 'labTable');
   sketch.plant(0, 8, 'labShelvesWest');
   sketch.plant(8, 8, 'labShelvesEast');
   sketch.plant(0, 10, 'labPlant');

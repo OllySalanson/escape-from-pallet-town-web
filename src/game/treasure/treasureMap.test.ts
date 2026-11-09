@@ -23,6 +23,7 @@ import {
   bottleOnTheBeach,
   CHART_GRID,
   CHART_PIECES,
+  PIN_QUESTION,
   chartWhole,
   CHEST_CONTENTS,
   CHEST_ITEM_ID,
@@ -325,5 +326,15 @@ describe('the treasure map', () => {
         expect(faced.some((tile) => (steps[tile.y]?.[tile.x] ?? -1) > 0), name).toBe(true);
       }
     });
+  });
+});
+
+describe("THE CHART ROOM board's question", () => {
+  it('fits one line of the box, so it never lies over its own answers', () => {
+    // The box's line holds a little over thirty capitals; the piece is named on the line before.
+    expect(PIN_QUESTION.length).toBeLessThanOrEqual(24);
+    for (const piece of CHART_PIECES) {
+      expect(PIN_QUESTION).not.toContain(piece.itemId.toUpperCase());
+    }
   });
 });

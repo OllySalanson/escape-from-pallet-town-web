@@ -30,6 +30,13 @@ export interface Rumour {
   readonly gives: readonly [RumourFact, RumourFact];
   /** The district or area the rumour names, as it names it (upper case on screen). */
   readonly names: string;
+  /**
+   * The vale's district a heard rumour is chalked over on THE RAID ARENA's
+   * telescope (`../base/rumourRings.ts`): the plan's whole district its place
+   * lies in, or for a cave floor the district whose mouth opens onto it - never
+   * the place itself, so the ring says no more than the rumour did.
+   */
+  readonly ringsOver: string;
   readonly line: string;
 }
 
@@ -40,6 +47,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'board',
     gives: ['where', 'when'],
     names: 'THE GREY STONES',
+    ringsOver: 'HIGH MOOR',
     line: 'RUMOUR: At dusk the tall stone at THE GREY STONES on HIGH MOOR throws its shadow on something. Nobody agrees what.',
   },
   {
@@ -48,6 +56,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'angler',
     gives: ['where', 'bring'],
     names: 'THE TARN',
+    ringsOver: 'GREYSTONE PEAKS',
     line: 'There\'s a red one in THE TARN up in GREYSTONE PEAKS. Took my rod, my hat and my nerve. You\'d want a rod of your own.',
   },
   {
@@ -56,6 +65,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'sailor',
     gives: ['where', 'when'],
     names: 'THE TAPPERS’ CAMP',
+    ringsOver: 'PINE HOLLOW',
     line: 'Ran a tapper out to PINE HOLLOW once. Said they never work a Sunday - leave something for whoever comes by THE TAPPERS\' CAMP.',
   },
   {
@@ -64,6 +74,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'spyglass',
     gives: ['where', 'when'],
     names: 'THE LOST FOLD',
+    ringsOver: 'HIGH MOOR',
     line: 'A light on HIGH MOOR where no house stands: over THE LOST FOLD. It is only there after dark.',
   },
   {
@@ -72,6 +83,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'bill',
     gives: ['where', 'bring'],
     names: 'Greystone Caves B1F',
+    ringsOver: 'TANGLEWOOD',
     line: 'BILL: Old shells are my weakness! Somebody saw some in the sand on B1F of the GREYSTONE CAVES. You would need to dig: lead with a GROUND type, or pack a PICKAXE.',
   },
   {
@@ -80,6 +92,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'board',
     gives: ['where', 'when'],
     names: 'THE GOAT TRACK',
+    ringsOver: 'GREYSTONE PEAKS',
     line: 'RUMOUR: A boulder on THE GOAT TRACK in GREYSTONE PEAKS glows red along its crack at dusk.',
   },
   {
@@ -88,6 +101,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'sailor',
     gives: ['where', 'bring'],
     names: "SMUGGLERS' COVE",
+    ringsOver: "SMUGGLERS' COVE",
     line: "Old Rook in SMUGGLERS' COVE swears there's a chest under the sand there. Only ever found with the whole CHART, he says - torn in four, it was.",
   },
   {
@@ -96,6 +110,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'board',
     gives: ['where', 'bring'],
     names: 'THE NAVVIES’ CAMP',
+    ringsOver: 'GREYSTONE PEAKS',
     line: 'RUMOUR: The foreman at THE NAVVIES\' CAMP will wager anything against a Pokémon that leads with its fists.',
   },
 ];

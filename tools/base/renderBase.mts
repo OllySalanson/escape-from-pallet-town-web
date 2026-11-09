@@ -36,7 +36,11 @@
  * `--pinned=shore,moor` (or `all`) opens THE CHART ROOM with those pieces of
  * the treasure map on its board, and `--chest` opens the chest too
  * (`src/game/treasure/`): `--room=chart-room --pinned=all --chest`.
+ * `--heard=board-long-shadow,..` (or `all`) is the rumours heard, which Oak's
+ * cork board and chart table show: `--room=oaks-lab --pinned=shore --heard=all
+ * --found=chart-piece-1` is the lab with one piece home and the rest rumoured.
  */
+import { RUMOURS } from '../../src/game/world/rumours';
 import { readFileSync } from 'node:fs';
 import { readPng, writePng, TILE_SIZE } from '../tileset/tileSheet.mjs';
 import { blit, box, canvas, drawTile, label, plot, upscale } from '../tileset/draw.mjs';
@@ -114,6 +118,11 @@ const baseSave = baseGame({
             chestOpened: args.includes('--chest'),
           },
         }),
+    // `--heard=board-long-shadow,..` (or `all`): rumours heard, for Oak's cork
+    // board and chart table. `--found=chart-piece-1` puts a piece in the vault.
+    ...(option('heard') === undefined
+      ? {}
+      : { rumoursHeard: option('heard') === 'all' ? RUMOURS.map((rumour) => rumour.id) : option('heard')!.split(',').filter(Boolean) }),
     ...(option('layout') === undefined
       ? {}
       : { homeLayout: readHomeLayout(JSON.parse(readFileSync(option('layout')!, 'utf8'))) ?? [] }),

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from './baseGames.testkit';
-import { BARE_BOARD_LINE, boardLines, boardNote, boardNotices, boardPoster, slipSeats } from './labBoard';
-import { BOARD_TILES, OAK_BOARD, OAK_WALL_MAP, buildRoom, roomNamed } from './rooms';
+import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, boardLines, boardNote, boardNotices, boardPoster, scrapSeats, slipSeats } from './labBoard';
+import { BOARD_TILES, OAK_BOARD, OAK_CHART_TABLE, OAK_WALL_MAP, buildRoom, roomNamed } from './rooms';
+import { RUMOURS } from '../world/rumours';
+import { SECRETS, rewardKey } from '../world/secrets';
 import { buildContractBoard } from '../hub/contractBoard';
 import { getErrand, withErrandAsked } from '../hub/errands';
 
@@ -58,7 +60,10 @@ describe("Oak's cork board", () => {
     const thing = built.things.find((each) => each.reads === 'board');
 
     expect(thing?.tiles).toEqual(BOARD_TILES);
-    expect(built.posters).toEqual([{ kind: 'cork-board', area: OAK_BOARD }]);
+    expect(built.posters).toEqual([
+      { kind: 'cork-board', area: OAK_BOARD },
+      { kind: 'chart-table', area: OAK_CHART_TABLE },
+    ]);
     expect(OAK_BOARD.x).toBeGreaterThanOrEqual(OAK_WALL_MAP.x + OAK_WALL_MAP.width);
     // Its foot is wall, and there is floor under every tile of it to stand on.
     const foot = OAK_BOARD.y + OAK_BOARD.height - 1;
@@ -85,5 +90,69 @@ describe("Oak's cork board", () => {
       expect(seat.x + 10).toBeLessThanOrEqual(poster.width - 2);
       expect(seat.y + 11).toBeLessThanOrEqual(poster.height - 2);
     }
+  });
+
+  describe('rumour slips', () => {
+    const shadow = SECRETS.find((secret) => secret.id === 'the-long-shadow')!;
+    const heard = ['board-long-shadow', 'angler-red-one', 'spyglass-lost-fold'];
+
+    it('pins every rumour heard as a scrap of its own, read after the work under a line saying what they are', () => {
+      const game = baseGame({ progress: { ...BEEN_OUT, rumoursHeard: heard } });
+      const rumours = boardNotices(game).filter((notice) => notice.kind === 'rumour');
+      expect(rumours).toHaveLength(3);
+      // The board's own heading is dropped: the board says they are rumours once, before them.
+      expect(rumours[0].line).not.toMatch(/^RUMOUR:/);
+      expect(rumours[0].line).toContain('THE GREY STONES');
+      const lines = boardLines(game);
+      const at = lines.indexOf(RUMOURS_PINNED_LINE);
+      expect(at).toBe(lines.length - 4);
+      expect(lines.slice(at + 1)).toEqual(rumours.map((notice) => notice.line));
+      expect(boardNote(game)).toContain('3 rumours');
+    });
+
+    it('takes a scrap down once its secret has nothing left to find', () => {
+      const game = baseGame({
+        progress: { ...BEEN_OUT, rumoursHeard: heard, secretsFound: [rewardKey(shadow, shadow.rewards[0])] },
+      });
+      const rumours = boardNotices(game).filter((notice) => notice.kind === 'rumour');
+      expect(rumours.map((notice) => notice.line).join(' ')).not.toContain('THE GREY STONES');
+      expect(rumours).toHaveLength(2);
+    });
+
+    it('reads as rumours alone when nothing else is pinned up, never as the bare board', () => {
+      const game = baseGame({ progress: { rumoursHeard: ['angler-red-one'] } });
+      expect(boardLines(game)[0]).toBe(RUMOURS_PINNED_LINE);
+      expect(boardNote(game)).toBe('1 rumour');
+    });
+
+    it('has a corner for every rumour there is, clear of the slips beside it and inside the frame', () => {
+      const width = OAK_BOARD.width * 16;
+      const height = OAK_BOARD.height * 16;
+      const scraps = scrapSeats(width, height);
+      const slips = slipSeats(width, height, true);
+      expect(scraps.length).toBeGreaterThanOrEqual(RUMOURS.length);
+      expect(slips.length).toBeGreaterThanOrEqual(4);
+      const slipsEnd = Math.max(...slips.map((seat) => seat.x + 10));
+      for (const scrap of scraps) {
+        expect(scrap.x).toBeGreaterThan(slipsEnd);
+        expect(scrap.x + 6).toBeLessThanOrEqual(width - 2);
+        expect(scrap.y + 6).toBeLessThanOrEqual(height - 2);
+      }
+      // Without rumours the slips keep the whole board, as they always had it.
+      expect(slipSeats(width, height).length).toBeGreaterThan(slips.length);
+    });
+
+    it('paints a green-pinned scrap for each, on the same opaque board', () => {
+      const game = baseGame({ progress: { rumoursHeard: heard } });
+      const poster = boardPoster(game, OAK_BOARD);
+      const pins = scrapSeats(poster.width, poster.height).map(({ x, y }) => {
+        const at = (y * poster.width + x + 2) * 4;
+        return [poster.data[at], poster.data[at + 1], poster.data[at + 2]].join(',');
+      });
+      expect(pins.filter((pin) => pin === '56,160,72')).toHaveLength(3);
+      for (let at = 3; at < poster.data.length; at += 4) {
+        expect(poster.data[at]).toBe(255);
+      }
+    });
   });
 });

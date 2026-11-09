@@ -51,6 +51,9 @@ const INK = {
   pinLight: '#f8a088',
 } as const;
 
+/** The chart's colours, for anything else that draws it (`chartTable.ts`'s tracing). */
+export const CHART_INK = INK;
+
 /** The chart's own drawing area inside the frame, in board pixels. */
 const FRAME = 4;
 

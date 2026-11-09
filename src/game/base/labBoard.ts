@@ -6,6 +6,8 @@ import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
 import { worldMapName } from '../worldMap';
+import { RUMOURS } from '../world/rumours';
+import { secretById, secretSpent } from '../world/secrets';
 
 /**
  * Oak's cork board: the work on offer, pinned to the wall of his lab.
@@ -23,11 +25,17 @@ import { worldMapName } from '../worldMap';
  * notice, so a player can count what is on it from across the room.
  */
 
-/** One thing pinned up. A contract and a favour look different on the wall. */
+/**
+ * One thing pinned up. A contract, a favour and a rumour look different on the
+ * wall: a rumour is a torn scrap with a green pin, pinned in its own corner.
+ */
 export interface BoardNotice {
-  readonly kind: 'contract' | 'errand';
+  readonly kind: 'contract' | 'errand' | 'rumour';
   readonly line: string;
 }
+
+/** What Oak says before the rumours, so a line about a tarn is not read as a job. */
+export const RUMOURS_PINNED_LINE = 'Rumours you have heard, pinned up in the corner:';
 
 /** What the board says when nothing is pinned to it. */
 export const BARE_BOARD_LINE = 'Nothing pinned up. Raids from here are for supplies, Pokémon and whatever the maps still hold.';
@@ -56,24 +64,50 @@ function errandNotice(errand: Errand, home: boolean): BoardNotice {
   };
 }
 
-/** Everything pinned to the board: the contracts, then the favours in hand. */
+/**
+ * Every rumour heard about a secret that still holds something, as it was
+ * heard (`world/rumours.ts`): a collection that grows as the harbour talks and
+ * comes down a scrap at a time as each is run to ground in the vale.
+ */
+export function rumourNotices(raidProgress: RestoredGame['raidProgress']): readonly BoardNotice[] {
+  const known = { secretsFound: raidProgress.secretsFound ?? [], giftsReceived: raidProgress.giftsReceived };
+  return (raidProgress.rumoursHeard ?? []).flatMap((id) => {
+    const rumour = RUMOURS.find((each) => each.id === id);
+    const secret = rumour && secretById(rumour.secret);
+    return rumour && secret && !secretSpent(secret, known)
+      ? [{ kind: 'rumour' as const, line: rumour.line.replace(/^RUMOUR:\s*/, '') }]
+      : [];
+  });
+}
+
+/** Everything pinned to the board: the contracts, then the favours in hand, then the rumours heard. */
 export function boardNotices(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): readonly BoardNotice[] {
   return [
     ...buildContractBoard(game.raidProgress).rows.map(contractNotice),
     ...errandsInHand(game.raidProgress).map((errand) => errandNotice(errand, game.stash.itemCount(errand.itemId) > 0)),
+    ...rumourNotices(game.raidProgress),
   ];
 }
 
-/** What is read off the board, a line a notice. */
+/** What is read off the board, a line a notice, the rumours after a line saying they are rumours. */
 export function boardLines(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): readonly string[] {
   const notices = boardNotices(game);
-  return notices.length === 0 ? [BARE_BOARD_LINE] : notices.map((notice) => notice.line);
+  if (notices.length === 0) {
+    return [BARE_BOARD_LINE];
+  }
+  const work = notices.filter((notice) => notice.kind !== 'rumour').map((notice) => notice.line);
+  const rumours = notices.filter((notice) => notice.kind === 'rumour').map((notice) => notice.line);
+  return [...work, ...(rumours.length === 0 ? [] : [RUMOURS_PINNED_LINE, ...rumours])];
 }
 
 /** The line under the board's caption: how much is on it. */
 export function boardNote(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): string {
-  const count = boardNotices(game).length;
-  return count === 0 ? 'Nothing pinned up' : `${count} ${count === 1 ? 'notice' : 'notices'} pinned up`;
+  const notices = boardNotices(game);
+  const count = notices.filter((notice) => notice.kind !== 'rumour').length;
+  const rumours = notices.length - count;
+  const work = count === 0 ? (rumours === 0 ? 'Nothing pinned up' : '') : `${count} ${count === 1 ? 'notice' : 'notices'} pinned up`;
+  const heard = rumours === 0 ? '' : `${rumours} ${rumours === 1 ? 'rumour' : 'rumours'}`;
+  return [work, heard].filter((part) => part !== '').join(', ');
 }
 
 /**
@@ -108,6 +142,10 @@ const CORK = {
   writing: '#6f6a58',
   pin: '#d8342c',
   favourPin: '#2f5fb8',
+  scrap: '#e8d8a0',
+  scrapEdge: '#b8a068',
+  scrapWriting: '#887050',
+  rumourPin: '#38a048',
 } as const;
 
 /** The frame, as the wall map's board has it: an outline and a wooden edge. */
@@ -116,9 +154,21 @@ const SLIP_WIDTH = 10;
 const SLIP_HEIGHT = 11;
 const SLIP_GAP = 2;
 
-/** Where each slip is pinned on a board this size, left to right along two rows; the board holds what fits. */
-export function slipSeats(width: number, height: number): readonly { readonly x: number; readonly y: number }[] {
-  const across = Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP));
+/** A rumour's scrap: smaller than a notice, torn off something else. */
+const SCRAP_WIDTH = 6;
+const SCRAP_HEIGHT = 6;
+const SCRAP_GAP = 1;
+/** How many columns of the board's slips give way to the rumours' corner when there are rumours. */
+const RUMOUR_CORNER_SLIPS = 1;
+
+/**
+ * Where each slip is pinned on a board this size, left to right along two
+ * rows; the board holds what fits. With rumours pinned up the last columns are
+ * their corner (`scrapSeats`), so the slips keep the rest.
+ */
+export function slipSeats(width: number, height: number, rumours = false): readonly { readonly x: number; readonly y: number }[] {
+  const across =
+    Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - (rumours ? RUMOUR_CORNER_SLIPS : 0);
   const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_HEIGHT + SLIP_GAP));
   const seats: { x: number; y: number }[] = [];
   for (let row = 0; row < down; row += 1) {
@@ -128,6 +178,25 @@ export function slipSeats(width: number, height: number): readonly { readonly x:
       seats.push({
         x: BOARD_BORDER + SLIP_GAP + column * (SLIP_WIDTH + SLIP_GAP),
         y: BOARD_BORDER + SLIP_GAP - 1 + row * (SLIP_HEIGHT + SLIP_GAP) + ((row + column) % 2),
+      });
+    }
+  }
+  return seats;
+}
+
+/** Where the rumours' scraps are pinned: the board's right-hand corner, in rows, past the slips. */
+export function scrapSeats(width: number, height: number): readonly { readonly x: number; readonly y: number }[] {
+  const slipsAcross = Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - RUMOUR_CORNER_SLIPS;
+  const left = BOARD_BORDER + SLIP_GAP + slipsAcross * (SLIP_WIDTH + SLIP_GAP);
+  const room = width - BOARD_BORDER - left;
+  const across = Math.floor((room + SCRAP_GAP) / (SCRAP_WIDTH + SCRAP_GAP));
+  const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / (SCRAP_HEIGHT + SCRAP_GAP));
+  const seats: { x: number; y: number }[] = [];
+  for (let row = 0; row < down; row += 1) {
+    for (let column = 0; column < across; column += 1) {
+      seats.push({
+        x: left + column * (SCRAP_WIDTH + SCRAP_GAP),
+        y: BOARD_BORDER + SLIP_GAP + row * (SCRAP_HEIGHT + SCRAP_GAP) + ((row * 2 + column) % 3 === 0 ? 1 : 0),
       });
     }
   }
@@ -164,8 +233,23 @@ export function boardPoster(game: Pick<RestoredGame, 'raidProgress' | 'stash'>, 
   }
   fill(BOARD_BORDER, BOARD_BORDER, inner, 1, CORK.corkShade);
   fill(BOARD_BORDER, BOARD_BORDER, 1, innerHeight, CORK.corkShade);
-  const seats = slipSeats(width, height);
-  boardNotices(game)
+  const notices = boardNotices(game);
+  const rumours = notices.filter((notice) => notice.kind === 'rumour');
+  const seats = slipSeats(width, height, rumours.length > 0);
+  const scraps = scrapSeats(width, height);
+  rumours.slice(0, scraps.length).forEach((_rumour, index) => {
+    const { x, y } = scraps[index];
+    fill(x, y, SCRAP_WIDTH, SCRAP_HEIGHT, CORK.scrap);
+    // Torn: a bite out of its foot, and the edge it was torn along shaded.
+    fill(x + (index % 2 === 0 ? 3 : 1), y + SCRAP_HEIGHT - 1, 2, 1, CORK.cork);
+    fill(x, y + SCRAP_HEIGHT - 1, 1, 1, CORK.scrapEdge);
+    fill(x + SCRAP_WIDTH - 1, y + 1, 1, SCRAP_HEIGHT - 1, CORK.scrapEdge);
+    fill(x + 1, y + 3, SCRAP_WIDTH - 2, 1, CORK.scrapWriting);
+    fill(x + 1, y + 4, SCRAP_WIDTH - 3, 1, CORK.scrapWriting);
+    fill(x + 2, y, 2, 2, CORK.rumourPin);
+  });
+  notices
+    .filter((notice) => notice.kind !== 'rumour')
     .slice(0, seats.length)
     .forEach((notice, index) => {
       const { x, y } = seats[index];
