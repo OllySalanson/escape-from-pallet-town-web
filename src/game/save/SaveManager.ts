@@ -10,8 +10,9 @@ import {
   payGame,
   readGameCorner,
   withBerriesSent,
-  TICKET_PRIZES,
+  prizeById,
   type GameCornerRecord,
+  type PrizeSituation,
   type GamePayout,
   type TicketSource,
 } from '../minigames/tickets';
@@ -128,7 +129,7 @@ import {
 import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
 import { readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
 import { secretsHeldBy } from '../world/secrets';
-import { isRumourId } from '../world/rumours';
+import { isRumourId, millRumour, type Rumour } from '../world/rumours';
 import { fossilAwake, isFossil, revivedPokemon, type FossilItemId, type FossilOnMachine } from '../hub/fossils';
 import {
   bottleOnTheBeach,
@@ -759,6 +760,23 @@ export type SaveSummary =
       /** What the player wears, for the title screen's trainer; absent is the classic look. */
       readonly look?: DressedLook;
     };
+
+/** What a prize bought at THE GAME CORNER came to: the game after it, and what it said or gave. */
+export interface TicketPrizeBought {
+  readonly game: RestoredGame;
+  /** THE RUMOUR MILL's slip, when the prize was a rumour. */
+  readonly rumour?: Rumour;
+  /** The Pokémon put in a box, when the prize was one. */
+  readonly pokemon?: Pokemon;
+}
+
+/** The rumour THE RUMOUR MILL would sell this save next (`millRumour`). */
+function mill(game: RestoredGame): Rumour | undefined {
+  return millRumour(
+    { secretsFound: game.raidProgress.secretsFound ?? [], giftsReceived: game.raidProgress.giftsReceived },
+    game.raidProgress.rumoursHeard ?? [],
+  );
+}
 
 export class SaveManager {
   private readonly storage: StorageLike | null;
@@ -1463,22 +1481,51 @@ export class SaveManager {
   }
 
   /**
-   * A prize bought at THE GAME CORNER's prize window with tickets, in one
-   * write: the tickets spent and the thing in the vault. Null if it could not
-   * be had (`prizeRefusal` says why).
+   * What the prize window is asked about a save beyond its ledger: what it
+   * holds of an item anywhere, and whether THE RUMOUR MILL has anything new.
    */
-  public buyTicketPrize(itemId: string, now: Date = new Date()): RestoredGame | null {
+  public static prizeSituation(game: RestoredGame): PrizeSituation {
+    return { holding: (itemId) => game.stash.holdingCount(itemId), rumourToTell: mill(game) !== undefined };
+  }
+
+  /**
+   * A prize bought at THE GAME CORNER's prize window with tickets, in one
+   * write: the tickets spent and the prize had - a thing in the vault, a
+   * Pokémon in a box, or a rumour heard and kept. Null if it could not be had
+   * (`prizeRefusal` says why).
+   */
+  public buyTicketPrize(id: string, now: Date = new Date()): TicketPrizeBought | null {
     const game = this.load();
-    if (!game || !TICKET_PRIZES.some((prize) => prize.itemId === itemId)) {
+    const prize = prizeById(id);
+    if (!game || !prize) {
       return null;
     }
-    const record = buyPrize(game.raidProgress.gameCorner ?? NO_GAME_CORNER, itemId, now);
+    const rumour = prize.gives.kind === 'rumour' ? mill(game) : undefined;
+    const record = buyPrize(game.raidProgress.gameCorner ?? NO_GAME_CORNER, id, now, SaveManager.prizeSituation(game));
     if (!record) {
       return null;
     }
-    game.stash.addItem(itemId, 1);
-    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, gameCorner: record } };
-    return this.save(next) ? next : null;
+    let pokemon: Pokemon | undefined;
+    if (prize.gives.kind === 'item') {
+      game.stash.addItem(prize.gives.itemId, 1);
+    } else if (prize.gives.kind === 'pokemon') {
+      const species = getSpeciesById(prize.gives.speciesId);
+      if (!species) {
+        return null;
+      }
+      pokemon = new Pokemon(species, prize.gives.level);
+      game.stash.addPokemon(pokemon);
+    }
+    const heard = game.raidProgress.rumoursHeard ?? [];
+    const next: RestoredGame = {
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        gameCorner: record,
+        ...(rumour ? { rumoursHeard: [...heard, rumour.id] } : {}),
+      },
+    };
+    return this.save(next) ? { game: next, ...(rumour ? { rumour } : {}), ...(pokemon ? { pokemon } : {}) } : null;
   }
 
   /**

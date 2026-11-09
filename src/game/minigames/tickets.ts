@@ -1,4 +1,5 @@
 import { getItemById, type ItemDefinition } from '../items/items';
+import { machineForItem } from '../items/teaching';
 import { berriesForScore } from './pokemonJump';
 import { winsPrizeBerry } from './berryPicking';
 
@@ -228,11 +229,23 @@ export interface TicketDay {
   readonly best: Readonly<Partial<Record<TicketSource, number>>>;
 }
 
+/** What the week has sold, for the prizes sold a few a week (the weather discs). */
+export interface TicketWeek {
+  /** The player's own ISO week, `YYYY-Www` (`isoWeekKey`). */
+  readonly week: string;
+  /** Each prize bought this week, by id. */
+  readonly bought: Readonly<Record<string, number>>;
+}
+
 /** What a save remembers of the Game Corner: the tickets in hand, the day's ledger and the best scores ever. */
 export interface GameCornerRecord {
   readonly tickets: number;
   readonly day: TicketDay | null;
   readonly best: Readonly<Partial<Record<TicketSource, number>>>;
+  /** This week's ledger, once something sold by the week has been bought. */
+  readonly week?: TicketWeek;
+  /** The once-only prizes had, by id: FireRed's prize Pokémon. */
+  readonly taken?: readonly string[];
 }
 
 export const NO_GAME_CORNER: GameCornerRecord = { tickets: 0, day: null, best: {} };
@@ -241,6 +254,19 @@ export const NO_GAME_CORNER: GameCornerRecord = { tickets: 0, day: null, best: {
 export function ticketDayKey(now: Date): string {
   const two = (value: number): string => String(value).padStart(2, '0');
   return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+}
+
+/**
+ * The ISO week a date is in, as `YYYY-Www`, by the player's own calendar date:
+ * a week starts on a Monday, as THE BATTLE ARENA's cup does (`../arena/cups.ts`).
+ */
+export function isoWeekKey(now: Date): string {
+  const date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
+  const week = Math.ceil(((date.getTime() - yearStart) / 86_400_000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
 /** Today's ledger: the stored one if it is today's, else a fresh one. */
@@ -340,54 +366,136 @@ export function withBerriesSent(record: GameCornerRecord, source: TicketSource, 
 
 // --- THE PRIZE WINDOW ---------------------------------------------------------
 
-/** A row of the prize window: an item, its price in tickets, and how many a day (none for no limit). */
+/** What a prize is: a thing for the vault, a Pokémon for the boxes, or a rumour said there and then. */
+export type PrizeGives =
+  | { readonly kind: 'item'; readonly itemId: string }
+  | { readonly kind: 'pokemon'; readonly speciesId: string; readonly level: number }
+  | { readonly kind: 'rumour' };
+
+/** Which part of the window a prize is listed under. */
+export type PrizeShelf = 'berries' | 'raids' | 'pokemon' | 'rumours' | 'house';
+
+/**
+ * A row of the prize window: what it gives, its price in tickets and how often
+ * it may be had. A prize's id is the item's own for an item, so a day's ledger
+ * written before the window grew still reads.
+ */
 export interface TicketPrize {
-  readonly itemId: string;
+  readonly id: string;
+  readonly gives: PrizeGives;
+  readonly shelf: PrizeShelf;
   readonly tickets: number;
   readonly perDay?: number;
   /** Which daily limit it shares, if several prizes share one: the berries do. */
   readonly limitGroup?: string;
+  /** How many a week, by the player's own calendar (`isoWeekKey`). */
+  readonly perWeek?: number;
+  /** Sold once a save, for good: FireRed's prize Pokémon. */
+  readonly once?: true;
+  /**
+   * Sold only while the save holds none, in the vault or in a Pokémon's hand.
+   * A thing that rides in the pack can be lost with it, and a prize that was
+   * once only for good would then be gone for good; this is Bill's rule for an
+   * HM (`reofferedWhenNoneHeld` in `../hub/trader.ts`).
+   */
+  readonly oneHeld?: true;
 }
 
 /** The berries share one limit, as the plan has it: five a day, any mix. */
 export const BERRIES_A_DAY = 5;
 
+/** THE RUMOUR MILL sells one rumour a day. */
+export const RUMOURS_A_DAY = 1;
+
+const itemPrize = (itemId: string, shelf: PrizeShelf, tickets: number, limits: Partial<TicketPrize> = {}): TicketPrize => ({
+  id: itemId,
+  gives: { kind: 'item', itemId },
+  shelf,
+  tickets,
+  ...limits,
+});
+
 /**
- * What tickets buy, for now: the berries a cabinet already pays (a raid tool
- * at the berry trees' rate), and furniture for THE BOLTHOLE, which is the
- * bottomless sink. Raid prizes - the shields, the Glitter Mat, the Gorgeous
- * Plant - stay raid prizes, so a find is still a find.
+ * What tickets buy (the harbour arenas plan, section 5.3), each with the
+ * reason it is safe:
+ *
+ * - **Held berries**, the berries a cabinet already pays: a raid tool at the
+ *   berry trees' rate. Since gyms step 4 every one of them goes in the gear
+ *   slot and is eaten by itself (`../pokemon/battle/heldItems.ts`).
+ * - **TM11 Sunny Day and TM18 Rain Dance**, one a week each: setters, not
+ *   damage, and still a disc read in a raid and lost with the pack.
+ * - **The SMOKE BALL**: saves clock, not a fight that matters - the hunter and
+ *   trainers pay it no mind - and lost with its holder on a wipe.
+ * - **The POKé FLUTE**: never used up, carried in the pack.
+ * - **DRATINI and PORYGON**, once each: FireRed's own prize Pokémon. The
+ *   reward is the species, not the level (`PRIZE_POKEMON_LEVEL`).
+ * - **A rumour** from THE RUMOUR MILL, one a day: information that sends a
+ *   player out on a raid.
+ * - **Furniture** for THE BOLTHOLE, the bottomless sink. Raid prizes - the
+ *   shields, the Glitter Mat, the Gorgeous Plant - stay raid prizes, so a find
+ *   is still a find.
  */
 export const TICKET_PRIZES: readonly TicketPrize[] = [
   ...['oran-berry', 'sitrus-berry', 'pecha-berry', 'cheri-berry', 'rawst-berry', 'chesto-berry', 'aspear-berry'].map(
-    (itemId): TicketPrize => ({ itemId, tickets: 20, perDay: BERRIES_A_DAY, limitGroup: 'berries' }),
+    (itemId): TicketPrize => itemPrize(itemId, 'berries', 20, { perDay: BERRIES_A_DAY, limitGroup: 'berries' }),
   ),
-  { itemId: 'pretty-flowers', tickets: 100 },
-  { itemId: 'tropical-plant', tickets: 120 },
-  { itemId: 'pika-cushion', tickets: 150 },
-  { itemId: 'ball-cushion', tickets: 150 },
-  { itemId: 'fire-cushion', tickets: 150 },
-  { itemId: 'water-cushion', tickets: 150 },
-  { itemId: 'surf-mat', tickets: 200 },
-  { itemId: 'thunder-mat', tickets: 200 },
-  { itemId: 'fire-blast-mat', tickets: 200 },
-  { itemId: 'powder-snow-mat', tickets: 200 },
-  { itemId: 'pokemon-chair', tickets: 250 },
-  { itemId: 'comfort-chair', tickets: 250 },
-  { itemId: 'big-plant', tickets: 300 },
-  { itemId: 'pokemon-desk', tickets: 400 },
-  { itemId: 'heavy-desk', tickets: 400 },
-  { itemId: 'cute-tv', tickets: 600 },
+  itemPrize('tm11-sunny-day', 'raids', 600, { perWeek: 1 }),
+  itemPrize('tm18-rain-dance', 'raids', 600, { perWeek: 1 }),
+  itemPrize('smoke-ball', 'raids', 600, { oneHeld: true }),
+  itemPrize('poke-flute', 'raids', 800, { oneHeld: true }),
+  { id: 'dratini', gives: { kind: 'pokemon', speciesId: 'dratini', level: 15 }, shelf: 'pokemon', tickets: 2500, once: true },
+  { id: 'porygon', gives: { kind: 'pokemon', speciesId: 'porygon', level: 5 }, shelf: 'pokemon', tickets: 4000, once: true },
+  { id: 'rumour', gives: { kind: 'rumour' }, shelf: 'rumours', tickets: 50, perDay: RUMOURS_A_DAY },
+  itemPrize('pretty-flowers', 'house', 100),
+  itemPrize('tropical-plant', 'house', 120),
+  itemPrize('pika-cushion', 'house', 150),
+  itemPrize('ball-cushion', 'house', 150),
+  itemPrize('fire-cushion', 'house', 150),
+  itemPrize('water-cushion', 'house', 150),
+  itemPrize('surf-mat', 'house', 200),
+  itemPrize('thunder-mat', 'house', 200),
+  itemPrize('fire-blast-mat', 'house', 200),
+  itemPrize('powder-snow-mat', 'house', 200),
+  itemPrize('pokemon-chair', 'house', 250),
+  itemPrize('comfort-chair', 'house', 250),
+  itemPrize('big-plant', 'house', 300),
+  itemPrize('pokemon-desk', 'house', 400),
+  itemPrize('heavy-desk', 'house', 400),
+  itemPrize('cute-tv', 'house', 600),
 ];
+
+export function prizeById(id: string): TicketPrize | undefined {
+  return TICKET_PRIZES.find((prize) => prize.id === id);
+}
+
+/** The item a prize puts in the vault, if it is one. */
+export function prizeItemId(prize: TicketPrize): string | undefined {
+  return prize.gives.kind === 'item' ? prize.gives.itemId : undefined;
+}
 
 /**
  * What tickets must never buy, by what an item does: everything that keeps a
- * raid alive or is a raid's own reward. A berry is medicine, and is the one
- * medicine sold, because a berry tree gives as many in a raid.
+ * raid alive or is a raid's own reward. Three things are let through, each by
+ * what it does rather than by name, so a new item that does the same is held
+ * to the same reason:
+ *
+ * - a **berry** is medicine, and the one medicine sold, because a berry tree
+ *   gives as many in a raid;
+ * - a **machine** only if its move does no damage and changes the weather: a
+ *   setter, which wins nothing on its own;
+ * - **held gear** only if it gets its holder away from a wild Pokémon, which
+ *   saves clock and nothing else.
  */
 export function neverForTickets(item: ItemDefinition): string | null {
-  const effect = item.effect.type;
+  const effect = item.effect;
   if (item.id.endsWith('-berry')) return null;
+  if (effect.type === 'machine') {
+    const move = machineForItem(item)?.move;
+    return move && move.power === 0 && move.effects?.weather !== undefined ? null : 'a machine that teaches damage';
+  }
+  if (effect.type === 'held') {
+    return effect.held.type === 'always-escape' ? null : 'held gear';
+  }
   const refused: Readonly<Record<string, string>> = {
     heal: 'medicine',
     'cure-status': 'medicine',
@@ -396,8 +504,6 @@ export function neverForTickets(item: ItemDefinition): string | null {
     currency: 'money',
     material: "Brock's materials",
     'evolution-stone': 'an evolution stone',
-    machine: 'a machine',
-    held: 'held gear',
     errand: 'an errand',
     rod: 'a rod',
     pickaxe: 'a Pickaxe',
@@ -405,24 +511,67 @@ export function neverForTickets(item: ItemDefinition): string | null {
     key: 'a key',
     bike: 'the Bicycle',
     wearable: 'a raid find',
+    relic: 'a raid find',
   };
-  return refused[effect] ?? null;
+  return refused[effect.type] ?? null;
 }
 
-/** How many of a prize may still be bought today, or Infinity for one with no limit. */
+/** What a prize's refusal is asked about the save beyond the ledger. */
+export interface PrizeSituation {
+  /** How many of an item the save holds: in the vault, or in a Pokémon's hand. */
+  readonly holding: (itemId: string) => number;
+  /** Whether THE RUMOUR MILL has a rumour this save has not heard. */
+  readonly rumourToTell: boolean;
+}
+
+function boughtIn(prize: TicketPrize, bought: Readonly<Record<string, number>>): number {
+  const group = prize.limitGroup;
+  return group
+    ? TICKET_PRIZES.filter((other) => other.limitGroup === group).reduce((sum, other) => sum + (bought[other.id] ?? 0), 0)
+    : (bought[prize.id] ?? 0);
+}
+
+/** How many of a prize may still be bought today, or Infinity for one with no daily limit. */
 export function prizeLeftToday(prize: TicketPrize, day: TicketDay): number {
   if (prize.perDay === undefined) return Number.POSITIVE_INFINITY;
-  const group = prize.limitGroup;
-  const bought = group
-    ? TICKET_PRIZES.filter((other) => other.limitGroup === group).reduce((sum, other) => sum + (day.bought[other.itemId] ?? 0), 0)
-    : (day.bought[prize.itemId] ?? 0);
-  return Math.max(0, prize.perDay - bought);
+  return Math.max(0, prize.perDay - boughtIn(prize, day.bought));
+}
+
+/** This week's ledger: the stored one if it is this week's, else a fresh one. */
+export function thisWeek(record: GameCornerRecord, now: Date): TicketWeek {
+  const week = isoWeekKey(now);
+  return record.week?.week === week ? record.week : { week, bought: {} };
+}
+
+/** How many of a prize may still be bought this week, or Infinity for one with no weekly limit. */
+export function prizeLeftThisWeek(prize: TicketPrize, week: TicketWeek): number {
+  if (prize.perWeek === undefined) return Number.POSITIVE_INFINITY;
+  return Math.max(0, prize.perWeek - (week.bought[prize.id] ?? 0));
+}
+
+/** Whether a once-only prize has been had. */
+export function prizeTaken(prize: TicketPrize, record: GameCornerRecord): boolean {
+  return prize.once === true && (record.taken ?? []).includes(prize.id);
 }
 
 /** Why a prize cannot be had right now, or null if it can. */
-export function prizeRefusal(prize: TicketPrize, record: GameCornerRecord, now: Date): string | null {
+export function prizeRefusal(prize: TicketPrize, record: GameCornerRecord, now: Date, situation: PrizeSituation): string | null {
+  if (prizeTaken(prize, record)) {
+    return 'Already yours: one to a trainer.';
+  }
+  const itemId = prizeItemId(prize);
+  if (prize.oneHeld && itemId !== undefined && situation.holding(itemId) > 0) {
+    return 'You have one already. Another is sold only once it is lost.';
+  }
+  if (prize.gives.kind === 'rumour' && !situation.rumourToTell) {
+    return 'The mill has no rumour you have not heard.';
+  }
   if (prizeLeftToday(prize, today(record, now)) <= 0) {
-    return prize.limitGroup === 'berries' ? `${BERRIES_A_DAY} berries a day. Come back tomorrow.` : 'None left today.';
+    if (prize.limitGroup === 'berries') return `${BERRIES_A_DAY} berries a day. Come back tomorrow.`;
+    return prize.gives.kind === 'rumour' ? 'One rumour a day. Come back tomorrow.' : 'None left today.';
+  }
+  if (prizeLeftThisWeek(prize, thisWeek(record, now)) <= 0) {
+    return 'One a week. Back on Monday.';
   }
   if (record.tickets < prize.tickets) {
     return `${prize.tickets - record.tickets} more tickets.`;
@@ -430,23 +579,33 @@ export function prizeRefusal(prize: TicketPrize, record: GameCornerRecord, now: 
   return null;
 }
 
-/** A prize bought: the tickets spent and the day's count raised. Null if it could not be. */
-export function buyPrize(record: GameCornerRecord, itemId: string, now: Date): GameCornerRecord | null {
-  const prize = TICKET_PRIZES.find((row) => row.itemId === itemId);
-  if (!prize || prizeRefusal(prize, record, now) !== null) {
+/** A prize bought: the tickets spent and the day's, week's and save's counts raised. Null if it could not be. */
+export function buyPrize(record: GameCornerRecord, id: string, now: Date, situation: PrizeSituation): GameCornerRecord | null {
+  const prize = prizeById(id);
+  if (!prize || prizeRefusal(prize, record, now, situation) !== null) {
     return null;
   }
   const day = today(record, now);
+  const week = thisWeek(record, now);
   return {
     ...record,
     tickets: record.tickets - prize.tickets,
-    day: { ...day, bought: { ...day.bought, [itemId]: (day.bought[itemId] ?? 0) + 1 } },
+    day: { ...day, bought: { ...day.bought, [id]: (day.bought[id] ?? 0) + 1 } },
+    ...(prize.perWeek !== undefined ? { week: { ...week, bought: { ...week.bought, [id]: (week.bought[id] ?? 0) + 1 } } } : {}),
+    ...(prize.once ? { taken: [...(record.taken ?? []), id] } : {}),
   };
 }
 
 /** A prize's name as the window says it. */
 export function prizeName(prize: TicketPrize): string {
-  return getItemById(prize.itemId)?.displayName ?? prize.itemId;
+  switch (prize.gives.kind) {
+    case 'item':
+      return getItemById(prize.gives.itemId)?.displayName ?? prize.gives.itemId;
+    case 'pokemon':
+      return prize.gives.speciesId.toUpperCase();
+    case 'rumour':
+      return 'A rumour';
+  }
 }
 
 // --- reading a save -------------------------------------------------------------
@@ -483,7 +642,7 @@ function bySource(value: unknown, most?: number): Partial<Record<TicketSource, n
  */
 export function readGameCorner(value: unknown): GameCornerRecord | undefined {
   if (typeof value !== 'object' || value === null) return undefined;
-  const raw = value as { tickets?: unknown; day?: unknown; best?: unknown };
+  const raw = value as { tickets?: unknown; day?: unknown; best?: unknown; week?: unknown; taken?: unknown };
   let day: TicketDay | null = null;
   if (typeof raw.day === 'object' && raw.day !== null) {
     const stored = raw.day as { day?: unknown; paid?: unknown; berries?: unknown; bought?: unknown; best?: unknown };
@@ -491,8 +650,8 @@ export function readGameCorner(value: unknown): GameCornerRecord | undefined {
       const bought: Record<string, number> = {};
       if (typeof stored.bought === 'object' && stored.bought !== null) {
         for (const prize of TICKET_PRIZES) {
-          const count = wholeCount((stored.bought as Record<string, unknown>)[prize.itemId], 999);
-          if (count > 0) bought[prize.itemId] = count;
+          const count = wholeCount((stored.bought as Record<string, unknown>)[prize.id], 999);
+          if (count > 0) bought[prize.id] = count;
         }
       }
       day = {
@@ -504,5 +663,31 @@ export function readGameCorner(value: unknown): GameCornerRecord | undefined {
       };
     }
   }
-  return { tickets: wholeCount(raw.tickets), day, best: bySource(raw.best) };
+  const week = readWeek(raw.week);
+  const taken = Array.isArray(raw.taken)
+    ? [...new Set(raw.taken.filter((id): id is string => typeof id === 'string' && prizeById(id)?.once === true))]
+    : [];
+  return {
+    tickets: wholeCount(raw.tickets),
+    day,
+    best: bySource(raw.best),
+    ...(week ? { week } : {}),
+    ...(taken.length > 0 ? { taken } : {}),
+  };
+}
+
+/** A week's ledger out of a save: a week key and counts of prizes sold by the week, or none. */
+function readWeek(value: unknown): TicketWeek | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const stored = value as { week?: unknown; bought?: unknown };
+  if (typeof stored.week !== 'string' || !/^\d{4}-W\d{2}$/.test(stored.week)) return undefined;
+  const bought: Record<string, number> = {};
+  if (typeof stored.bought === 'object' && stored.bought !== null) {
+    for (const prize of TICKET_PRIZES) {
+      if (prize.perWeek === undefined) continue;
+      const count = wholeCount((stored.bought as Record<string, unknown>)[prize.id], 99);
+      if (count > 0) bought[prize.id] = count;
+    }
+  }
+  return { week: stored.week, bought };
 }

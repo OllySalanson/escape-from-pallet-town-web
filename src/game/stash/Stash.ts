@@ -429,6 +429,18 @@ export class Stash {
     return this.bag.count(itemId);
   }
 
+  /**
+   * How many of an item the save holds anywhere: in the vault, or in the hand
+   * of a Pokemon in a box or at the Day-Care. Gear given to a Pokemon has left
+   * the vault's supplies but is still the player's.
+   */
+  public holdingCount(itemId: string): number {
+    const inHand = [...this.storedPokemon.map((stored) => stored.pokemon), ...(this.dayCareStay ? [this.dayCareStay.pokemon] : [])].filter(
+      (pokemon) => pokemon.heldItemId === itemId,
+    ).length;
+    return this.itemCount(itemId) + inHand;
+  }
+
   public addPokemon(pokemon: Pokemon, id = this.nextPokemonId(pokemon)): string {
     if (this.storedPokemon.some((stored) => stored.id === id) || this.dayCareStay?.id === id) {
       throw new Error(`A Pokemon with stash ID "${id}" already exists.`);

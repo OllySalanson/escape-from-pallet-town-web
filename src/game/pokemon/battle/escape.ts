@@ -1,6 +1,7 @@
 import { abilityCarrier, type BattleCombatant } from './battleEngine';
 import { abilityLabel, escapeAlwaysSucceeds, escapePrevented } from './abilityHooks';
 import type { RandomSource } from './damage';
+import { alwaysEscapes, gearLabel } from './heldItems';
 
 /**
  * Escaping a wild encounter is FireRed's rule, `TryRunFromBattle` in
@@ -62,6 +63,11 @@ export interface WildEscapeAttempt {
    * the reason rather than reporting a roll that was never made.
    */
   readonly ability: { readonly holder: 'player' | 'enemy'; readonly label: string } | null;
+  /**
+   * The gear that decided it, if any - the Smoke Ball, by its name in
+   * capitals - so the line can be FireRed's "fled using its SMOKE BALL!".
+   */
+  readonly item: string | null;
 }
 
 /**
@@ -76,6 +82,11 @@ export const wildEscapeChanceFor = (
   enemy: BattleCombatant,
   previousAttempts: number,
 ): number => {
+  // FireRed asks the hold item before anything: a Smoke Ball gets away from an
+  // Arena Trap as surely as from a slower foe.
+  if (alwaysEscapes(player.pokemon)) {
+    return 1;
+  }
   if (escapeAlwaysSucceeds(abilityCarrier(player))) {
     return 1;
   }
@@ -91,11 +102,14 @@ export const attemptWildEscape = (
   previousAttempts: number,
   random: RandomSource,
 ): WildEscapeAttempt => {
+  if (alwaysEscapes(player.pokemon)) {
+    return { chance: 1, escaped: true, ability: null, item: gearLabel(player.pokemon.heldItemId) };
+  }
   if (escapeAlwaysSucceeds(abilityCarrier(player))) {
-    return { chance: 1, escaped: true, ability: { holder: 'player', label: abilityLabel(abilityCarrier(player)) } };
+    return { chance: 1, escaped: true, ability: { holder: 'player', label: abilityLabel(abilityCarrier(player)) }, item: null };
   }
   if (escapePrevented(abilityCarrier(enemy), abilityCarrier(player))) {
-    return { chance: 0, escaped: false, ability: { holder: 'enemy', label: abilityLabel(abilityCarrier(enemy)) } };
+    return { chance: 0, escaped: false, ability: { holder: 'enemy', label: abilityLabel(abilityCarrier(enemy)) }, item: null };
   }
   const chance = wildEscapeChanceFor(player, enemy, previousAttempts);
   const roll = random();
@@ -103,5 +117,6 @@ export const attemptWildEscape = (
     chance,
     escaped: (Number.isFinite(roll) ? Math.min(1, Math.max(0, roll)) : 0) < chance,
     ability: null,
+    item: null,
   };
 };

@@ -184,6 +184,15 @@ describe("a keeper's favour, asked in the room", () => {
     expect(brock.stored().raidProgress.errands).toEqual([]);
   });
 
+  it('is the keeper\'s key on the mat even with the partner standing in front, where it arrives', () => {
+    const brock = workshop();
+    const partnerTalks: number[] = [];
+    Object.assign(brock.scene, { partnerAt: () => true, talkToPartner: () => partnerTalks.push(1) });
+    brock.talk();
+    expect(partnerTalks).toEqual([]);
+    expect(brock.said).toEqual([BROCK.asks]);
+  });
+
   it('takes the favour on a YES, says so, and then says what he would build next', () => {
     const brock = workshop();
     brock.talk();

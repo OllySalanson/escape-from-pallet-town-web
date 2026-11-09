@@ -218,7 +218,8 @@ game.
   Brock materials
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
   `linen-roll`, the held items `leftovers`, `focus-band`, `life-orb`,
-  `quick-claw`, `never-melt-ice`, `charcoal` and `spell-tag`, the five evolution stones `thunder-stone`, `fire-stone`,
+  `quick-claw`, `never-melt-ice`, `charcoal`, `spell-tag` and `smoke-ball`, the
+  `poke-flute`, the five evolution stones `thunder-stone`, `fire-stone`,
   `water-stone`, `leaf-stone` and `moon-stone`, `money`, the Pokedollars,
   the seven berries `oran-berry`, `sitrus-berry`, `pecha-berry`, `cheri-berry`,
   `rawst-berry`, `chesto-berry` and `aspear-berry`, the `pickaxe` and the
@@ -236,7 +237,9 @@ game.
   (`graphics/items/icon_palettes/never_melt_ice.pal` in pret/pokefirered at
   `037335f`), original drawing in FireRed's colours, and the `charcoal` and the
   `spell-tag` the same way after FireRed's own icons and `charcoal.pal` and
-  `spell_tag.pal`. The five stones are drawn the
+  `spell_tag.pal`, and the `smoke-ball` and `poke-flute` (drawn by the same
+  script, the flute being the one key item in it) coloured from `smoke_ball.pal`
+  and `poke_flute.pal` at the same commit. The five stones are drawn the
   same way by `scripts/draw-evolution-stone-icons.mjs`: one cut stone lit from
   the top left, five times, each in its own shade/base/light triple with its own
   mark cut out of it in the shared outline colour rather than added in a second

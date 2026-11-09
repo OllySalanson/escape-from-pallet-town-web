@@ -102,6 +102,9 @@ const USELESS_IN_THE_FIELD = new Set([
   'held',
 ]);
 
+/** FireRed's own words for the flute played in the field (`gText_PlayedPokeFluteCatchy`, pret/pokefirered `src/strings.c`). */
+export const POKE_FLUTE_LINE = 'Played the POKé FLUTE. Now, that\'s a catchy tune!';
+
 /**
  * What pressing a row does, in the words of the help bar.
  *
@@ -141,6 +144,8 @@ const useLabel = (item: ItemDefinition): string => {
       return 'Gear is given on the PARTY screen, where the Pokémon that would carry it is.';
     case 'machine':
       return `Read ${item.displayName} to a Pokémon. A move learned is learned for good.`;
+    case 'flute':
+      return `Play the ${item.displayName}. It is never used up.`;
     default:
       return `Use ${item.displayName} on a Pokémon.`;
   }
@@ -648,6 +653,12 @@ export class BagScene extends Phaser.Scene {
   private pressItem(itemId: string): void {
     const item = this.itemById(itemId);
     if (!item) {
+      return;
+    }
+    if (item.effect.type === 'flute') {
+      audioManager.play('pokeFlute');
+      this.status = POKE_FLUTE_LINE;
+      this.render();
       return;
     }
     if (USELESS_IN_THE_FIELD.has(item.effect.type)) {

@@ -718,6 +718,11 @@ describe('the abilities that work off the clock, the bench and the exit', () => 
       armed(species({ abilityId: 'arena-trap' }), 5),
     );
     expect(attemptWildEscape(trapped.player, trapped.enemy, 9, always).escaped).toBe(false);
+    // A Smoke Ball is asked before the trap, as FireRed asks it.
+    const smoked = armed(species({ abilityId: null }), 60);
+    smoked.giveHeldItem('smoke-ball');
+    const smokedOut = createBattleState(smoked, armed(species({ abilityId: 'arena-trap' }), 5));
+    expect(attemptWildEscape(smokedOut.player, smokedOut.enemy, 9, always)).toMatchObject({ escaped: true, item: 'SMOKE BALL' });
 
     // A Flying type is not on the ground, and neither is anything that floats -
     // which is Levitate's business rather than Arena Trap's.

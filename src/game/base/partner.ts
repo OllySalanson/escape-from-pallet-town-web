@@ -347,7 +347,8 @@ export type PartnerPlaceName = 'yard' | 'oaks-lab' | 'pokemon-centre' | 'brocks-
  */
 export function partnerReaction(
   pokemon: Pick<Pokemon, 'name' | 'isFainted' | 'currentHp' | 'maxHp' | 'primaryStatus'>,
-  place: PartnerPlaceName,
+  /** The room the player is in, by id, or `yard`: a room with no lines of its own has only the happy ones. */
+  place: string,
   roll: number,
 ): PartnerReaction {
   const name = pokemon.name.toUpperCase();
@@ -369,7 +370,10 @@ export function partnerReaction(
       hops: false,
     };
   }
-  const lines = [...PLACE_LINES[place], ...HAPPY_LINES];
+  // Every room in the harbour can have the partner in it, and most have no
+  // lines of their own: looked up blind, facing it in THE GAME CORNER threw.
+  const own = Object.hasOwn(PLACE_LINES, place) ? PLACE_LINES[place as PartnerPlaceName] : [];
+  const lines = [...own, ...HAPPY_LINES];
   const pick = lines[Math.min(lines.length - 1, Math.floor(roll * lines.length))];
   return { line: pick.line(name), emote: pick.emote, hops: pick.emote !== 'ellipsis' };
 }

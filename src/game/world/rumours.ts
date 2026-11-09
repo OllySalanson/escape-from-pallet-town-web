@@ -10,7 +10,10 @@ import { secretById, secretSpent, type SecretsKnown } from './secrets';
  * the ground or in another rumour. Each is heard from somebody who would know
  * it: the board pins one up, the angler talks about the water, the S.S. Anne's
  * captain sees it through his glass, the Seagallop's sailor has run people out
- * there, and Bill cannot keep quiet about anything old. A rumour is said only
+ * there, and Bill cannot keep quiet about anything old. THE RUMOUR MILL at THE
+ * GAME CORNER's prize window sells them for tickets (`millRumour`): its own
+ * slips give the two facts the harbour's rumour about the same secret leaves
+ * out, so the two together say all three. A rumour is said only
  * while its secret still holds something, and once heard it is kept
  * (`raidProgress.rumoursHeard`) for the cork board and the telescope to show.
  *
@@ -18,7 +21,7 @@ import { secretById, secretSpent, type SecretsKnown } from './secrets';
  * its secret is in, and each fact it names to the secret's condition.
  */
 
-export type RumourSource = 'board' | 'angler' | 'spyglass' | 'sailor' | 'bill';
+export type RumourSource = 'board' | 'angler' | 'spyglass' | 'sailor' | 'bill' | 'mill';
 
 /** The facts a rumour gives: two of these three. */
 export type RumourFact = 'where' | 'when' | 'bring';
@@ -98,6 +101,25 @@ export const RUMOURS: readonly Rumour[] = [
     names: 'THE NAVVIES’ CAMP',
     line: 'RUMOUR: The foreman at THE NAVVIES\' CAMP will wager anything against a Pokémon that leads with its fists.',
   },
+  // THE RUMOUR MILL's own slips: when and what to bring, where the harbour's
+  // rumour about the same secret gives where and one of them. Two rumours from
+  // two sources complete each other (the harbour arenas plan, section 4.3).
+  {
+    id: 'mill-red-one',
+    secret: 'the-red-one',
+    source: 'mill',
+    gives: ['when', 'bring'],
+    names: 'THE TARN',
+    line: 'SLIP: Bring a ROD after DARK, and cast where the water is cold and black. Something red takes the line.',
+  },
+  {
+    id: 'mill-cracked-crag',
+    secret: 'the-cracked-crag',
+    source: 'mill',
+    gives: ['when', 'bring'],
+    names: 'THE GOAT TRACK',
+    line: 'SLIP: At DUSK a red crack glows in a boulder up in the peaks. Bring a POKéMON that knows ROCK SMASH.',
+  },
 ];
 
 export function isRumourId(id: string): boolean {
@@ -119,6 +141,16 @@ function stillTrue(rumour: Rumour, known: SecretsKnown): boolean {
 export function rumourFrom(source: RumourSource, known: SecretsKnown, day: number): Rumour | undefined {
   const live = RUMOURS.filter((rumour) => rumour.source === source && stillTrue(rumour, known));
   return live.length === 0 ? undefined : live[((day % live.length) + live.length) % live.length];
+}
+
+/**
+ * What THE RUMOUR MILL has to sell a save: a rumour it has not heard whose
+ * secret still holds something - the mill's own slips first, then whatever the
+ * harbour would have told it in time. Undefined once there is nothing new.
+ */
+export function millRumour(known: SecretsKnown, heard: readonly string[]): Rumour | undefined {
+  const fresh = RUMOURS.filter((rumour) => stillTrue(rumour, known) && !heard.includes(rumour.id));
+  return fresh.find((rumour) => rumour.source === 'mill') ?? fresh[0];
 }
 
 /** A day count by the player's own clock: the same number all day, a new one at midnight. */

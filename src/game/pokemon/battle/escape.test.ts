@@ -82,3 +82,18 @@ describe('attemptWildEscape', () => {
     expect(attemptWildEscape(state.player, state.enemy, 6, () => 0.999999).escaped).toBe(true);
   });
 });
+
+// FireRed's `HOLD_EFFECT_CAN_ALWAYS_RUN`: asked before the speeds and before a
+// trapping ability, in `TryRunFromBattle` and `IsRunningFromBattleImpossible`.
+describe('the Smoke Ball', () => {
+  it('gets its holder away from a faster wild Pokemon on the first try, and says it did', () => {
+    const slow = new Pokemon(BULBASAUR, 3);
+    slow.giveHeldItem('smoke-ball');
+    const state = createBattleState(slow, new Pokemon(PIDGEY, 20));
+    expect(getWildEscapeChance(state.player.pokemon.stats.speed, state.enemy.pokemon.stats.speed, 0)).toBeLessThan(1);
+    expect(wildEscapeChanceFor(state.player, state.enemy, 0)).toBe(1);
+    const attempt = attemptWildEscape(state.player, state.enemy, 0, () => 0.999999);
+    expect(attempt).toMatchObject({ escaped: true, chance: 1, item: 'SMOKE BALL', ability: null });
+  });
+
+});

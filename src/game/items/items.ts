@@ -78,6 +78,13 @@ export type HeldItemEffect =
   /** Quick Claw: sometimes first, whatever the Speed says. */
   | { readonly type: 'first-strike'; readonly chance: number }
   /**
+   * The Smoke Ball: FireRed's `HOLD_EFFECT_CAN_ALWAYS_RUN`. Its holder always
+   * gets away from a wild Pokemon, before Run Away or a trapping ability is
+   * asked (`../pokemon/battle/escape.ts`). The hunter's escape never fails
+   * anyway and a trainer cannot be run from, so it buys clock and no fight.
+   */
+  | { readonly type: 'always-escape' }
+  /**
    * FireRed's type-boosting hold items (the Miracle Seed and its kind): the
    * holder's moves of one type hit harder by `powerPercent`, FireRed's
    * `holdEffectParam` - ten for every one of them.
@@ -170,6 +177,13 @@ export type ItemEffect =
    * can carry, and lost with the pack like anything else.
    */
   | { readonly type: 'bike' }
+  /**
+   * The Poké Flute: played, never used up. From the raid's pack it plays
+   * FireRed's catchy tune and nothing more; carried, it is something a raid
+   * deployed with (`../world/secrets.ts`, `RaidConditions.carried`). Packed,
+   * costs its squares and is lost with the pack.
+   */
+  | { readonly type: 'flute' }
   /**
    * A Lockpick: opens one locked crate (`../world/pois.ts`, `WorldPoi.locked`)
    * and snaps in the lock doing it, so it is spent where a Pickaxe is not. Most
@@ -848,6 +862,16 @@ export const ITEMS = {
     description: 'A folding bicycle: ride it from the pack and you go twice as fast as on foot, anywhere but indoors. Never used up - but lost with the pack.',
     effect: { type: 'bike' },
   },
+  // FireRed's own key item, sold at THE GAME CORNER's prize window
+  // (`../minigames/tickets.ts`). Two squares long, as a flute is.
+  'poke-flute': {
+    id: 'poke-flute',
+    displayName: 'Poké Flute',
+    category: ItemCategory.Misc,
+    footprint: { width: 2, height: 1 },
+    description: 'A sweet-sounding flute, FireRed\'s own. Play it from the pack for a catchy tune. Never used up - but lost with the pack.',
+    effect: { type: 'flute' },
+  },
   // The gear. Four pieces, four different kinds of answer, and every
   // description is the whole rule: a player who carries one into one fight can
   // say what it did without opening a menu again.
@@ -885,6 +909,16 @@ export const ITEMS = {
     footprint: { width: 1, height: 1 },
     description: 'Sometimes the holder strikes first, whatever the Speed says.',
     effect: { type: 'held', held: { type: 'first-strike', chance: 0.25 } },
+  },
+  // FireRed's own, and its words: sold at THE GAME CORNER's prize window and
+  // nowhere else (`../minigames/tickets.ts`).
+  'smoke-ball': {
+    id: 'smoke-ball',
+    displayName: 'Smoke Ball',
+    category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
+    description: 'A hold item that assures fleeing from wild POKéMON. The hunter and trainers pay it no mind.',
+    effect: { type: 'held', held: { type: 'always-escape' } },
   },
   // The Lost Garden's, and found nowhere else: FireRed's own words for it.
   'miracle-seed': {
@@ -1672,6 +1706,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} is cast into water. Face it and press the interact key.` };
     case 'bike':
       return { used: false, message: `${item.displayName} is ridden, not used on a Pokémon. Choose it in the raid's pack.` };
+    case 'flute':
+      return { used: false, message: `${item.displayName} is played, not used on a Pokémon. Choose it in the raid's pack.` };
     case 'lockpick':
       return { used: false, message: `${item.displayName} opens a locked crate. Face the crate and press the interact key.` };
     case 'key':

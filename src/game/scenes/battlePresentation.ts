@@ -1412,6 +1412,13 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
  * is not resolved by `resolveTurn` at all - it is its own roll, and these two
  * replace the roll rather than adjust it.
  */
+/**
+ * A wild escape a hold item settled: FireRed's `sText_PkmnFledUsingIts`, said
+ * instead of "Got away safely!" as FireRed says it.
+ */
+export const escapeItemMessage = (name: string, item: string): string =>
+  `${combatantName({ user: 'player', name }, 'Wild')} fled using its ${item}!`;
+
 export const escapeAbilityMessage = (
   who: { readonly user: 'player' | 'enemy'; readonly name: string },
   ability: string,

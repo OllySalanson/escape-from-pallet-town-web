@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { getItemById } from '../items/items';
 import { TRADER_BARTERS, TRADER_STOCK } from '../hub/trader';
+import { machineForItemId } from '../items/teaching';
+import { Pokemon } from '../pokemon';
+import { getSpeciesById } from '../pokemon/species';
+import { partyOf, trainerWinRate } from '../world/trainerMeasure';
+import { createRunTrainerEncounters } from '../world/trainers';
+import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import {
   BERRIES_A_DAY,
   buyPrize,
+  isoWeekKey,
+  prizeById,
+  prizeItemId,
   DAILY_TICKET_CEILING,
   jumpTickets,
   JUMP_TICKET_TIERS,
@@ -17,6 +26,7 @@ import {
   TICKET_PRIZES,
   today,
   type GameCornerRecord,
+  type PrizeSituation,
 } from './tickets';
 
 const NOON = new Date(2026, 10, 5, 12);
@@ -71,46 +81,142 @@ describe('tickets earned at the cabinets', () => {
   });
 });
 
+const NOTHING_HELD: PrizeSituation = { holding: () => 0, rumourToTell: true };
+
 describe('the prize window', () => {
-  it('sells only berries and furniture: nothing a raid is kept alive by or rewards', () => {
+  const misty = createRunTrainerEncounters().find((encounter) => encounter.bossId === MISTY_BOSS_ID)!.trainer;
+
+  it('sells nothing a raid is kept alive by or rewards, and nothing Bill deals', () => {
     const barterGoods = new Set<string>(TRADER_BARTERS.map((barter) => barter.gives.itemId));
     const shelf = new Set(TRADER_STOCK.map((stock) => stock.itemId as string));
     for (const prize of TICKET_PRIZES) {
-      const item = getItemById(prize.itemId);
-      expect([prize.itemId, item !== undefined]).toEqual([prize.itemId, true]);
-      expect([prize.itemId, neverForTickets(item!)]).toEqual([prize.itemId, null]);
-      expect([prize.itemId, item!.effect.type === 'furniture' || prize.itemId.endsWith('-berry')]).toEqual([prize.itemId, true]);
-      expect([prize.itemId, barterGoods.has(prize.itemId) || shelf.has(prize.itemId)]).toEqual([prize.itemId, false]);
+      const itemId = prizeItemId(prize);
+      if (itemId === undefined) continue;
+      const item = getItemById(itemId);
+      expect([itemId, item !== undefined]).toEqual([itemId, true]);
+      expect([itemId, neverForTickets(item!)]).toEqual([itemId, null]);
+      expect([itemId, barterGoods.has(itemId) || shelf.has(itemId)]).toEqual([itemId, false]);
     }
   });
 
-  it('refuses a Potion, a Poké Ball, a pack, money, a material and a stone by what they do', () => {
-    for (const id of ['potion', 'poke-ball', 'raid-pack', 'money', 'parts-crate', 'fire-stone']) {
+  it('refuses a Potion, a Poké Ball, a pack, money, a material, a stone, a damaging disc and gear that fights', () => {
+    for (const id of ['potion', 'poke-ball', 'raid-pack', 'money', 'parts-crate', 'fire-stone', 'tm13-ice-beam', 'tm28-dig', 'leftovers', 'life-orb']) {
       const item = getItemById(id);
       expect([id, item !== undefined && neverForTickets(item) !== null]).toEqual([id, true]);
     }
+  });
+
+  it('sells a disc only if it is a setter, and only one of each a week', () => {
+    const discs = TICKET_PRIZES.filter((prize) => getItemById(prizeItemId(prize) ?? '')?.effect.type === 'machine');
+    expect(discs.map((prize) => prize.id).sort()).toEqual(['tm11-sunny-day', 'tm18-rain-dance']);
+    for (const prize of discs) {
+      const move = machineForItemId(prize.id)!.move;
+      expect([prize.id, move.power, move.effects.weather !== undefined, prize.perWeek]).toEqual([prize.id, 0, true, 1]);
+    }
+  });
+
+  it('sells held gear only if it buys clock - getting away from a wild one - and one at a time', () => {
+    const gear = TICKET_PRIZES.filter((prize) => getItemById(prizeItemId(prize) ?? '')?.effect.type === 'held');
+    expect(gear.map((prize) => prize.id)).toEqual(['smoke-ball']);
+    for (const prize of gear) {
+      const item = getItemById(prize.id)!;
+      expect(item.effect.type === 'held' && item.effect.held.type).toBe('always-escape');
+      expect(prize.oneHeld).toBe(true);
+    }
+  });
+
+  it('sells the flute and the Smoke Ball again only once the one before is lost', () => {
+    const rich: GameCornerRecord = { ...NO_GAME_CORNER, tickets: 5000 };
+    for (const id of ['poke-flute', 'smoke-ball']) {
+      const holding: PrizeSituation = { holding: (itemId) => (itemId === id ? 1 : 0), rumourToTell: true };
+      expect(prizeRefusal(prizeById(id)!, rich, NOON, holding), id).toMatch(/once it is lost/);
+      expect(buyPrize(rich, id, NOON, holding), id).toBeNull();
+      expect(buyPrize(rich, id, NOON, NOTHING_HELD), id).not.toBeNull();
+    }
+  });
+
+  it('sells each weather disc once a week, by the player’s own calendar, a week starting on a Monday', () => {
+    const rich: GameCornerRecord = { ...NO_GAME_CORNER, tickets: 5000 };
+    const sunday = new Date(2026, 10, 8, 12);
+    const monday = new Date(2026, 10, 9, 12);
+    expect(isoWeekKey(sunday)).not.toBe(isoWeekKey(monday));
+    const once = buyPrize(rich, 'tm11-sunny-day', new Date(2026, 10, 2, 12), NOTHING_HELD)!;
+    expect(buyPrize(once, 'tm11-sunny-day', sunday, NOTHING_HELD)).toBeNull();
+    expect(prizeRefusal(prizeById('tm11-sunny-day')!, once, sunday, NOTHING_HELD)).toMatch(/a week/);
+    // The other disc has its own week.
+    expect(buyPrize(once, 'tm18-rain-dance', sunday, NOTHING_HELD)).not.toBeNull();
+    expect(buyPrize(once, 'tm11-sunny-day', monday, NOTHING_HELD)?.tickets).toBe(5000 - 1200);
+  });
+
+  it('gives each prize Pokémon once a save, for good', () => {
+    const rich: GameCornerRecord = { ...NO_GAME_CORNER, tickets: 99_999 };
+    const had = buyPrize(rich, 'dratini', NOON, NOTHING_HELD)!;
+    expect(had.taken).toEqual(['dratini']);
+    expect(buyPrize(had, 'dratini', TOMORROW, NOTHING_HELD)).toBeNull();
+    expect(prizeRefusal(prizeById('dratini')!, had, TOMORROW, NOTHING_HELD)).toMatch(/Already yours/);
+    expect(buyPrize(had, 'porygon', NOON, NOTHING_HELD)).not.toBeNull();
+  });
+
+  it.each(TICKET_PRIZES.flatMap((prize) => (prize.gives.kind === 'pokemon' ? [[prize.id, prize.gives] as const] : [])))(
+    '%s is FireRed’s, can fight from the day it is had, and is a partner against Misty, never the answer alone',
+    (_id, gives) => {
+      // FireRed's Celadon prize room sells these two (pret/pokefirered,
+      // `CeladonCity_GameCorner_PrizeRoom/scripts.inc`).
+      expect(['dratini', 'porygon']).toContain(gives.speciesId);
+      const pokemon = new Pokemon(getSpeciesById(gives.speciesId)!, gives.level);
+      expect(pokemon.moves.some((move) => move.base.power > 0), `${gives.speciesId} has nothing to hit with`).toBe(true);
+      // The reward is the species: at most the level its first attacking move
+      // comes at, never a starter's evolved level.
+      expect(gives.level).toBeLessThanOrEqual(15);
+      const party = partyOf(`${gives.speciesId} alone`, [gives.speciesId, gives.level]);
+      expect(trainerWinRate(party, misty, 200, 0x7e57, null, 3)).toBeLessThan(0.75);
+    },
+  );
+
+  it('sells one rumour a day, and none when the mill has nothing new', () => {
+    const rich: GameCornerRecord = { ...NO_GAME_CORNER, tickets: 500 };
+    const heard = buyPrize(rich, 'rumour', NOON, NOTHING_HELD)!;
+    expect(heard.tickets).toBe(450);
+    expect(prizeRefusal(prizeById('rumour')!, heard, EVENING, NOTHING_HELD)).toMatch(/One rumour a day/);
+    expect(buyPrize(heard, 'rumour', TOMORROW, NOTHING_HELD)).not.toBeNull();
+    expect(prizeRefusal(prizeById('rumour')!, rich, NOON, { holding: () => 0, rumourToTell: false })).toMatch(/no rumour/);
   });
 
   it(`sells ${BERRIES_A_DAY} berries a day, any mix, and nothing it cannot be paid for`, () => {
     let record: GameCornerRecord = { ...NO_GAME_CORNER, tickets: 1000 };
     const berries = TICKET_PRIZES.filter((prize) => prize.limitGroup === 'berries');
     for (let bought = 0; bought < BERRIES_A_DAY; bought += 1) {
-      record = buyPrize(record, berries[bought % berries.length].itemId, NOON)!;
+      record = buyPrize(record, berries[bought % berries.length].id, NOON, NOTHING_HELD)!;
       expect(record).not.toBeNull();
     }
-    expect(buyPrize(record, berries[0].itemId, NOON)).toBeNull();
-    expect(prizeRefusal(berries[0], record, NOON)).toMatch(/a day/);
-    expect(buyPrize(record, berries[0].itemId, TOMORROW)).not.toBeNull();
+    expect(buyPrize(record, berries[0].id, NOON, NOTHING_HELD)).toBeNull();
+    expect(prizeRefusal(berries[0], record, NOON, NOTHING_HELD)).toMatch(/a day/);
+    expect(buyPrize(record, berries[0].id, TOMORROW, NOTHING_HELD)).not.toBeNull();
     expect(record.tickets).toBe(1000 - 20 * BERRIES_A_DAY);
-    expect(buyPrize({ ...NO_GAME_CORNER, tickets: 10 }, 'cute-tv', NOON)).toBeNull();
+    expect(buyPrize({ ...NO_GAME_CORNER, tickets: 10 }, 'cute-tv', NOON, NOTHING_HELD)).toBeNull();
+  });
+
+  it('sells every berry as a held berry: something a Pokémon can be given and eats by itself', () => {
+    for (const prize of TICKET_PRIZES.filter((one) => one.shelf === 'berries')) {
+      expect([prize.id, getItemById(prize.id)?.holdable]).toEqual([prize.id, true]);
+    }
   });
 });
 
 describe('a Game Corner record out of a save', () => {
   it('reads what it wrote, and nothing it does not know', () => {
     const played = payJump(NO_GAME_CORNER, 7000, NOON).record;
-    const bought = buyPrize(played, 'oran-berry', NOON)!;
+    const bought = buyPrize(played, 'oran-berry', NOON, NOTHING_HELD)!;
     expect(readGameCorner(JSON.parse(JSON.stringify(bought)))).toEqual(bought);
+    const rich: GameCornerRecord = { ...NO_GAME_CORNER, tickets: 99_999 };
+    const weekly = buyPrize(buyPrize(rich, 'tm18-rain-dance', NOON, NOTHING_HELD)!, 'porygon', NOON, NOTHING_HELD)!;
+    expect(readGameCorner(JSON.parse(JSON.stringify(weekly)))).toEqual(weekly);
+    expect(readGameCorner({ tickets: 1, best: {}, taken: ['cute-tv', 'porygon', 7], week: { week: 'soon', bought: {} } })).toEqual({
+      tickets: 1,
+      best: {},
+      day: null,
+      taken: ['porygon'],
+    });
     expect(readGameCorner('tickets')).toBeUndefined();
     expect(readGameCorner({ tickets: 2.5, best: { 'pokemon-jump': -1 } })).toEqual({ tickets: 0, best: {}, day: null });
   });

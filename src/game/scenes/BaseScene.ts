@@ -202,7 +202,6 @@ import {
   partnerReaction,
   turnToPartner,
   type PartnerEmote,
-  type PartnerPlaceName,
 } from '../base/partner';
 import {
   BUBBLE_HEIGHT,
@@ -3998,7 +3997,7 @@ export class BaseScene extends Phaser.Scene {
       // furniture bought or found came home to a house that never said how
       // to put it out (the captain, 7 Nov 2026).
       // A keeper is spoken to from the mat whoever is in front of them.
-      const speak = (wave ? undefined : this.houseKeys()) || (partner ?? (room.screen ? keeper : undefined) ?? wave ?? keeper);
+      const speak = (wave ? undefined : this.houseKeys()) || ((this.keeperFromMat(room) ? keeper : partner) ?? wave ?? keeper);
       return speak ? `${speak}   [DOWN] OUT` : '[DOWN] OUT';
     }
     if (partner) {
@@ -4643,6 +4642,11 @@ export class BaseScene extends Phaser.Scene {
     return this.partner?.standsOn(tile) ?? false;
   }
 
+  /** Whether the interact key on this room's mat is its keeper's, whoever stands in front. */
+  private keeperFromMat(room: BaseRoom): boolean {
+    return !this.choosing && room.screen !== null && room.screen !== 'arena' && room.keeper !== null && this.onMat(room);
+  }
+
   /** Whether this frame's step only turns the player to face the partner (`turnToPartner`). */
   private turnsToFacePartner(
     target: GridPosition | null,
@@ -4673,7 +4677,7 @@ export class BaseScene extends Phaser.Scene {
     if (!partner) {
       return;
     }
-    const place: PartnerPlaceName = (this.place.room?.room.id as PartnerPlaceName | undefined) ?? 'yard';
+    const place = this.place.room?.room.id ?? 'yard';
     const reaction = partnerReaction(partner.pokemon, place, Math.random());
     partner.lookAtPlayer();
     if (reaction.hops) {
@@ -5015,13 +5019,16 @@ export class BaseScene extends Phaser.Scene {
     if (this.readPlaytestBoard(target)) {
       return;
     }
-    // The partner first, even on a room's mat: facing it takes a turn on
-    // purpose, so a key pressed at it is meant for it.
-    if (this.partnerAt(target)) {
+    const room = this.place.room?.room;
+    // The partner first - facing it takes a turn on purpose, so a key pressed
+    // at it is meant for it - except on a keeper's mat. The partner arrives in
+    // front of the player there, so nobody turned to it, and the keeper is one
+    // key from the door: on the prize window's mat the first SPACE went to the
+    // partner, and threw (found by tools/playtest/prizeWindow.mjs).
+    if (this.partnerAt(target) && !(room && this.keeperFromMat(room))) {
       this.talkToPartner();
       return;
     }
-    const room = this.place.room?.room;
     if (room && this.choosing) {
       this.chooseAt(room, target);
       return;

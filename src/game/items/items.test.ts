@@ -77,8 +77,8 @@ describe('materials', () => {
     // Nothing else lives in that pocket but the five evolution stones and the
     // nine machines, both of which are spent on a Pokemon rather than at
     // Brock's, the money, which is spent at Bill's counter and nowhere else,
-    // the Pickaxe, the two rods, the keys and the Bicycle, which are carried
-    // and never spent at all, the Lockpick, which a locked crate spends, and
+    // the Pickaxe, the two rods, the keys, the Bicycle and the Poké Flute,
+    // which are carried and never spent at all, the Lockpick, which a locked crate spends, and
     // the errands' things, which are carried home and handed over
     // (`hub/errands.ts`), and the secrets' finds, which are carried home to
     // Professor Oak (`world/secrets.ts`).
@@ -96,6 +96,7 @@ describe('materials', () => {
         'good-rod',
         'lockpick',
         'bicycle',
+        'poke-flute',
       ].sort(),
     );
   });

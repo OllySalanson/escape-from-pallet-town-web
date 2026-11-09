@@ -1,4 +1,4 @@
-// Draws the held-item (gear) icons into public/assets/icons.
+// Draws the held-item (gear) icons into public/assets/icons, and the Poké Flute.
 //
 //   node scripts/draw-gear-icons.mjs
 //
@@ -40,6 +40,13 @@ const C = {
   // the Spell Tag's paper, ink and red ring, in FireRed's own icon palette
   // (graphics/items/icon_palettes/spell_tag.pal in pret/pokefirered at 037335f)
   x: hex('cdcdcd'), X: hex('9c9c9c'), y: hex('525252'), r: hex('c56262'), R: hex('f69494'),
+  // the Smoke Ball's lilac shell and its grey smoke, in FireRed's own icon
+  // palette (graphics/items/icon_palettes/smoke_ball.pal, pret/pokefirered at 037335f)
+  Y: hex('9462a4'), U: hex('947bcd'), V: hex('d5a4e6'), W: hex('f6def6'), G: hex('737373'), Q: hex('cdcdd5'),
+  // the Poké Flute's white body, red foot and brass mouthpiece, in FireRed's own
+  // icon palette (graphics/items/icon_palettes/poke_flute.pal, same commit)
+  L: hex('eeeef6'), O: hex('7b7b83'), B: hex('a42008'), I: hex('d55239'), J: hex('f6735a'),
+  T: hex('c5ac31'), u: hex('eed562'), v: hex('946229'),
 };
 
 const blank = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -260,6 +267,51 @@ icons['spell-tag'] = outline(
     '..llylllx.......',
     '...llllx........',
     '....llx.........',
+    '................',
+    '................',
+  ]),
+);
+
+// Smoke Ball: FireRed's lilac ball with its smoke puffing off the top.
+icons['smoke-ball'] = outline(
+  fromRows([
+    '................',
+    '....GG...GGG....',
+    '...GQQG.GQQQG...',
+    '....GGG..GGG....',
+    '......YYYYY.....',
+    '....YYUVVVUYY...',
+    '...YUVVWWVVVUY..',
+    '...YUVWWVVVVUY..',
+    '..YUVVVVVVVVVUY.',
+    '..YUVVVVVVVVVUY.',
+    '..YUUVVVVVVVUUY.',
+    '...YUUVVVVVUUY..',
+    '...YYUUUUUUUYY..',
+    '.....YYYYYYY....',
+    '................',
+    '................',
+  ]),
+);
+
+// Poké Flute: not gear, but drawn here on the same palette - a white flute
+// held on the slant, a red foot, a brass mouthpiece and its holes.
+icons['poke-flute'] = outline(
+  fromRows([
+    '................',
+    '............uT..',
+    '...........uTTv.',
+    '..........LLTv..',
+    '.........LLQO...',
+    '........LyQO....',
+    '.......LLQO.....',
+    '......LyQO......',
+    '.....LLQO.......',
+    '....LyQO........',
+    '...JIIO.........',
+    '..JIIB..........',
+    '..IIB...........',
+    '...B............',
     '................',
     '................',
   ]),
