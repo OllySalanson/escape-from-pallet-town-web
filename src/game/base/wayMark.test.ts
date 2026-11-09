@@ -39,6 +39,21 @@ describe('the way shown to a first raid', () => {
     expect(east.x).toBeGreaterThan(VIEW.width - 40);
   });
 
+  it('slides along the edge off a sign it would stand over, and stays put with none there (playtest 51, finding 12)', () => {
+    const plain = chevronTowards({ x: 0, y: 320 }, VIEW, { x: 300, y: 320 }, 0);
+    // THE DIG's sign, at the left edge of the screen at the player's height.
+    const sign = { left: VIEW.left + 4, top: 300, width: 32, height: 32 };
+    const clear = chevronTowards({ x: 0, y: 320 }, VIEW, { x: 300, y: 320 }, 0, [sign]);
+    expect(clear.angle).toBe(plain.angle);
+    expect(clear.x).toBe(plain.x);
+    const top = clear.y + VIEW.top;
+    expect(top + 11 <= sign.top || top - 11 >= sign.top + sign.height).toBe(true);
+    expect(clear.y).toBeGreaterThanOrEqual(0);
+    expect(clear.y).toBeLessThanOrEqual(VIEW.height);
+    // A sign somewhere else on the screen moves nothing.
+    expect(chevronTowards({ x: 0, y: 320 }, VIEW, { x: 300, y: 320 }, 0, [{ ...sign, left: VIEW.left + 200 }])).toEqual(plain);
+  });
+
   it('is always whole pixels and on the screen', () => {
     for (let ms = 0; ms < 2000; ms += 37) {
       const at = chevronTowards({ x: 0, y: 9000 }, VIEW, { x: 300, y: 320 }, ms);

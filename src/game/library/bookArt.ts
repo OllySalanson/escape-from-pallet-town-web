@@ -149,21 +149,17 @@ export function paintPlinth(paint: Painter, layout: BookLayout, kind: 'wood' | '
   paint.rect(plinth.x, lip + 1, plinth.width, 2, wood.lip);
   paint.rect(plinth.x, lip + 1, plinth.width, 1, wood.lipLight);
   paint.rect(plinth.x, lip + 3, plinth.width, 1, INK.outline);
-  // The front, panelled.
+  // The front, panelled: one panel a label (`BookLayout.panels`).
   const front = lip + 4;
   paint.rect(plinth.x, front, plinth.width, plinth.y + plinth.height - front, wood.front);
   paint.rect(plinth.x, front, plinth.width, 1, wood.frontEdge);
-  const panels = Math.max(2, Math.round(plinth.width / 90));
-  const panelWidth = Math.floor((plinth.width - 8) / panels);
-  for (let index = 0; index < panels; index += 1) {
-    const x = plinth.x + 4 + index * panelWidth + 3;
-    const w = panelWidth - 6;
-    const h = plinth.y + plinth.height - front - 6;
-    if (h < 4) break;
-    paint.rect(x, front + 3, w, h, wood.panelEdge);
-    paint.rect(x + 1, front + 4, w - 2, h - 2, wood.panel);
-    paint.rect(x + 1, front + 4, w - 2, 1, wood.panelLight);
-    paint.rect(x + 1, front + 4, 1, h - 2, wood.panelLight);
+  for (const panel of [layout.panels.turn, layout.panels.close]) {
+    const { x, y, width: w, height: h } = panel;
+    if (h < 4 || w < 4) continue;
+    paint.rect(x, y, w, h, wood.panelEdge);
+    paint.rect(x + 1, y + 1, w - 2, h - 2, wood.panel);
+    paint.rect(x + 1, y + 1, w - 2, 1, wood.panelLight);
+    paint.rect(x + 1, y + 1, 1, h - 2, wood.panelLight);
   }
   if (kind === 'golden') {
     // Glints in the lamplight along the gilt, and in the air over it.

@@ -1,7 +1,7 @@
 import { HARBOUR_BOTS, rngFor, type HarbourBot } from '../base/harbourBots';
 import type { RaidProgress } from '../save/SaveManager';
 import { courseTime } from './gameCornerTalk';
-import { betterResult, NO_GAME_CORNER, ticketDayKey, today, type TicketSource } from './tickets';
+import { betterResult, DERBY_SOURCES, NO_GAME_CORNER, ticketDayKey, today, type TicketDay, type TicketSource } from './tickets';
 
 /**
  * THE GAME CORNER's HIGH SCORES board: today's best at every game on the
@@ -25,8 +25,15 @@ import { betterResult, NO_GAME_CORNER, ticketDayKey, today, type TicketSource } 
 /**
  * A game the board keeps: every ticket source but THE BATTLE ARENA's, whose
  * wins are on its own class and cup boards (`arena/classBoard.ts`, `arena/cups.ts`).
+ * THE PROMENADE DERBY is one row, whatever level it was run on.
  */
-export type BoardGame = Exclude<TicketSource, 'battle-arena' | 'rental-run'>;
+export type BoardGame = Exclude<TicketSource, 'battle-arena' | 'rental-run' | 'derby-2' | 'derby-3' | 'derby-4'>;
+
+/** The player's best today at a game on the board: the derby's best place on any of its levels. */
+function yoursToday(game: BoardGame, day: TicketDay): number {
+  if (game === 'derby') return Math.max(0, ...DERBY_SOURCES.map((source) => day.best[source] ?? 0));
+  return day.best[game] ?? 0;
+}
 
 /** The games on the board, in the order it lists them: the two cabinets first, then the promenade's. */
 export const BOARD_GAMES: readonly BoardGame[] = ['pokemon-jump', 'berry-picking', 'field-course', 'derby', 'dig', 'fishing-derby'];
@@ -99,7 +106,7 @@ export function regularResult(bot: HarbourBot, game: BoardGame, now: Date): numb
 /** The board's lines for one game today, best first: the regulars who played it, and the player if they did. */
 export function highScoresFor(game: BoardGame, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): readonly HighScore[] {
   const lines: HighScore[] = regularsWhoPlayed(game, now).map((bot) => ({ name: bot.name, result: regularResult(bot, game, now), yours: false }));
-  const yours = today(progress.gameCorner ?? NO_GAME_CORNER, now).best[game] ?? 0;
+  const yours = yoursToday(game, today(progress.gameCorner ?? NO_GAME_CORNER, now));
   if (yours > 0) {
     lines.push({ name: YOU, result: yours, yours: true });
   }

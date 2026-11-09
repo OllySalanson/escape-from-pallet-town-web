@@ -199,6 +199,22 @@ export function seatedOver(
 /** Whether two screen rectangles share any pixel. */
 export const overlaps = (a: Rect, b: Rect): boolean => overlap(a, b) > 0;
 
+/** How far a caption in a room may hang out past its walls, over the dark: a tile. */
+export const ROOM_OVERHANG = 16;
+
+/**
+ * Where a room's captions may sit: the view, narrowed across to the room's
+ * own width and a tile either side of it. A room is drawn in the middle of
+ * the screen with the dark round it, and a caption slid out to the screen's
+ * edge reads as belonging to nothing (playtest 51, finding 10). A room wider
+ * than the view keeps the view.
+ */
+export function captionBoundsOverRoom(view: { readonly left: number; readonly top: number; readonly width: number; readonly height: number }, roomWidth: number): Rect {
+  const left = Math.max(view.left, -ROOM_OVERHANG);
+  const right = Math.min(view.left + view.width, roomWidth + ROOM_OVERHANG);
+  return { x: left, y: view.top, width: Math.max(0, right - left), height: view.height };
+}
+
 const inflate = (rect: Rect, by: number): Rect => ({
   x: rect.x - by,
   y: rect.y - by,

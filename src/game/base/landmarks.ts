@@ -30,6 +30,12 @@ export interface HarbourLandmark {
   /** The tiles its caption speaks from (`captionReveal.ts`); `at` when absent. */
   readonly near?: readonly GridPosition[];
   /**
+   * Every tile of it that answers when faced, `at` among them; `at` alone when
+   * absent. A board three tiles wide answers from under either post as well as
+   * the middle (playtest 51, finding 8).
+   */
+  readonly faced?: readonly GridPosition[];
+  /**
    * A boat rides the swell (`floatingBoats.ts`): how long one rise and fall
    * takes under it, and whether it is the one a raid comes home on.
    */
@@ -110,6 +116,7 @@ export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
     props: [{ name: 'derbyBoard', x: 61, y: 9 }],
     at: { x: 62, y: 11 },
     near: [61, 62, 63].map((x) => ({ x, y: 12 })),
+    faced: [61, 62, 63].map((x) => ({ x, y: 11 })),
   },
   {
     // On the sand between the huts, under the steps down from the boardwalk.
@@ -119,6 +126,7 @@ export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
     props: [{ name: 'digSign', x: 66, y: 20 }],
     at: { x: 66, y: 20 },
     near: [66, 67].flatMap((x) => [{ x, y: 19 }, { x, y: 22 }]),
+    faced: [66, 67].flatMap((x) => [{ x, y: 20 }, { x, y: 21 }]),
   },
   {
     // At the pier head, where the deep water is.
@@ -128,6 +136,7 @@ export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
     props: [{ name: 'fishingBoard', x: 76, y: 28 }],
     at: { x: 77, y: 29 },
     near: [78, 79].flatMap((x) => [{ x, y: 28 }, { x, y: 29 }]),
+    faced: [76, 77].flatMap((x) => [{ x, y: 28 }, { x, y: 29 }]),
   },
 ];
 
@@ -136,6 +145,11 @@ export type OutdoorGameId = 'derby' | 'dig' | 'fishing-derby';
 
 /** The gate's front tiles: facing any of them from below runs the course. */
 export const COURSE_GATE_FRONT: readonly GridPosition[] = [84, 85, 86].map((x) => ({ x, y: 9 }));
+
+/** Whether facing `tile` is facing the landmark: any tile of it that answers. */
+export function landmarkFaced(landmark: HarbourLandmark, tile: GridPosition): boolean {
+  return (landmark.faced ?? [landmark.at]).some((each) => each.x === tile.x && each.y === tile.y);
+}
 
 /** Every landmark the harbour stands, the outdoor games' among them. */
 export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [...LANDMARKS, ...OUTDOOR_GAME_LANDMARKS];

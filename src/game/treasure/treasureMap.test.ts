@@ -304,7 +304,9 @@ describe('the treasure map', () => {
       expect(shut.things.some((thing) => thing.does === 'chart-keeper' && thing.tiles.some((tile) => tile.x === MARLOW_LIBRARY_TILE.x))).toBe(true);
       const open = buildRoom(library, baseGame({ progress: { treasureHunt: { roomOpen: true, pinned: [], chestOpened: false } } }), new Date(2026, 10, 7));
       expect(open.collision[LIBRARY_CHART_STAIR.y][LIBRARY_CHART_STAIR.x]).toBe(false);
-      expect(library.stairs).toEqual([{ tile: LIBRARY_CHART_STAIR, to: 'chart-room' }]);
+      // An arch, gone through by a push up into the wall it is cut in, and the chart room's back the same way (playtest 51, finding 10).
+      expect(library.stairs).toEqual([{ tile: LIBRARY_CHART_STAIR, to: 'chart-room', push: { key: 'up', says: 'THE CHART ROOM' } }]);
+      expect(roomNamed('chart-room')!.stairs.map((stair) => stair.push)).toEqual([{ key: 'up', says: 'OUT' }]);
       // From the runner, the arch is walked to.
       const steps = stepDistances(open.collision, library.mat!, new Set());
       expect(steps[LIBRARY_CHART_STAIR.y][LIBRARY_CHART_STAIR.x]).toBeGreaterThan(0);

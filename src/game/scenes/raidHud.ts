@@ -1,3 +1,4 @@
+import type { WindowLight } from '../base/homeClock';
 import { formatRaidClock } from '../run/raidClock';
 import { PLAYTEST_CLOCK_LABEL } from '../dev/playtestMode';
 import { weatherLabel, type WeatherId } from '../pokemon/battle/weather';
@@ -42,6 +43,12 @@ export interface RaidClockView {
   readonly pulses: boolean;
 }
 
+/** The hour a raid was deployed at, as its clock chip says it: the plan's night, else the secrets' hour (`world/secrets.ts`). */
+export function raidLight(plan: { readonly night: boolean; readonly conditions?: { readonly hour: WindowLight } } | undefined): WindowLight {
+  if (plan?.night) return 'night';
+  return plan?.conditions?.hour === 'dusk' ? 'dusk' : 'day';
+}
+
 export function raidClockView(
   remainingMs: number,
   isEnraged: boolean,
@@ -49,16 +56,19 @@ export function raidClockView(
   playtest = false,
   // A night raid (`world/nightRaids.ts`) says so on the clock and nowhere
   // else: the world is drawn at one brightness, and the one word is the whole
-  // of the marker, on the chip a player already reads every few seconds.
-  night = false,
+  // of the marker, on the chip a player already reads every few seconds. A
+  // dusk raid says so too, because secrets wait for one (`world/secrets.ts`)
+  // and nothing else in the raid confirms it is one (playtest 51, finding 11).
+  light: WindowLight = 'day',
 ): RaidClockView {
+  const hour = light === 'night' ? 'NIGHT' : light === 'dusk' ? 'DUSK' : null;
   // An explorer run's clock is eight hours long, which is a number nobody
   // wants counted down in the corner of a map they are looking at. The chip
   // says which game this is instead - the one thing about the corner of the
   // screen that is still worth saying in that mode - and whether it is night,
   // which the explorer's final check promised and nothing else in the world says.
   if (playtest) {
-    return { label: night ? `NIGHT ${PLAYTEST_CLOCK_LABEL}` : PLAYTEST_CLOCK_LABEL, tone: 'calm', pulses: false };
+    return { label: hour ? `${hour} ${PLAYTEST_CLOCK_LABEL}` : PLAYTEST_CLOCK_LABEL, tone: 'calm', pulses: false };
   }
   if (isEnraged) {
     // The raid clock is spent, but the grace period is the number that now
@@ -70,7 +80,7 @@ export function raidClockView(
     };
   }
 
-  const label = `${night ? 'NIGHT RAID' : 'RAID'} ${formatRaidClock(remainingMs)}`;
+  const label = `${hour ? `${hour} RAID` : 'RAID'} ${formatRaidClock(remainingMs)}`;
   if (remainingMs <= RAID_CLOCK_URGENT_MS) {
     return { label, tone: 'urgent', pulses: true };
   }

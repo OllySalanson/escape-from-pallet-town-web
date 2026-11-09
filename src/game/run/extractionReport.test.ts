@@ -6,6 +6,7 @@ import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS, formatRaidClock } from './raidClock';
 import { Stash } from '../stash/Stash';
 import { anyoneFitToRaid } from '../hub/recovery';
+import type { ItemId } from '../items/items';
 import { ERRANDS } from '../hub/errands';
 
 /**
@@ -392,6 +393,33 @@ describe('extraction report after a survived raid', () => {
     expect(haulOf(40).headline).toBe('You scraped out.');
     expect(haulOf(120).haulTier).toBe('solid');
     expect(haulOf(400).haulTier).toBe('loaded');
+  });
+
+  it('headlines a relic carried home, and grades it as boss gear is graded (playtest 51, finding 2)', () => {
+    const haulOf = (items: readonly { itemId: ItemId; quantity: number }[]) => {
+      const manager = new RunManager();
+      manager.startRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: RAID_DURATION_MS });
+      for (const item of items) manager.registerFoundItem(item.itemId, item.quantity);
+      manager.resolveEscape();
+      return buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        exitLabel: 'EEL GAP',
+        banked: { pokemon: [], items },
+        carriedOut: Object.fromEntries(items.map((item) => [item.itemId, item.quantity])),
+        saved: true,
+      });
+    };
+    // The end of the treasure hunt: the chest and a little money, which on its own is a scrape.
+    const chest = haulOf([{ itemId: 'sea-chest', quantity: 1 }, { itemId: 'money', quantity: 10 }]);
+    expect(chest.headline).toBe("You dug up the smugglers' chest!");
+    expect(chest.haulTier).toBe('solid');
+    expect(haulOf([{ itemId: 'money', quantity: 10 }]).headline).toBe('You scraped out.');
+    expect(haulOf([{ itemId: 'chart-piece-1', quantity: 1 }]).headline).toBe('You found a piece of the old sea chart!');
+    expect(haulOf([{ itemId: 'helix-fossil', quantity: 1 }]).headline).toBe('You brought a fossil home!');
+    // The chest is the headline over a chart piece found on the same raid.
+    expect(haulOf([{ itemId: 'chart-piece-3', quantity: 1 }, { itemId: 'sea-chest', quantity: 1 }]).headline).toBe("You dug up the smugglers' chest!");
   });
 
   it('reads differently after a marginal raid than after a good one', () => {

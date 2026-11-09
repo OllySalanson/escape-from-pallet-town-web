@@ -125,6 +125,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'mill',
     gives: ['when', 'bring'],
     names: 'THE TARN',
+    ringsOver: 'GREYSTONE PEAKS',
     line: 'SLIP: Bring a ROD after DARK, and cast where the water is cold and black. Something red takes the line.',
   },
   {
@@ -133,6 +134,7 @@ export const RUMOURS: readonly Rumour[] = [
     source: 'mill',
     gives: ['when', 'bring'],
     names: 'THE GOAT TRACK',
+    ringsOver: 'GREYSTONE PEAKS',
     line: 'SLIP: At DUSK a red crack glows in a boulder up in the peaks. Bring a POKéMON that knows ROCK SMASH.',
   },
 ];

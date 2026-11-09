@@ -61,6 +61,7 @@ vi.mock('phaser', () => ({
 }));
 
 import { DialogBox } from './DialogBox';
+import { shareLine } from './dialogBoxes';
 
 function sceneStandIn() {
   const graphics = {
@@ -97,30 +98,25 @@ function baseBox(onComplete = vi.fn()) {
 }
 
 describe('DialogBox', () => {
-  it('shares a line too long for the box over as many boxes as it takes, a whole row at a time', () => {
+  it('shares a line too long for the box over as many boxes as the rows take, cut where a reader would pause', () => {
     const { box, shown, read, onComplete } = baseBox();
     const heard = vi.fn();
     // More rows than a box that holds two.
     const long =
       'KANTO TONIGHT: BLUE, grandson of PROFESSOR OAK, tells our reporter he is never far behind.';
     expect(wrap(long).length).toBeGreaterThan(2);
+    const boxes = shareLine(long, 2, wrap);
+    expect(boxes).toHaveLength(Math.ceil(wrap(long).length / 2));
+    expect(boxes.join(' ')).toBe(long);
 
     box.showMessages([long, 'Next raid, BLUE.'], heard);
-    box.skip();
-    expect(shown()).toBe(wrap(long).slice(0, 2).join('\n'));
-    expect(heard.mock.calls).toEqual([[0]]);
-
-    expect(read()).toBe(true);
-    box.skip();
-    expect(shown()).toBe(wrap(long).slice(2, 4).join('\n'));
-    // Still the first line: its sound is not heard again for its second box.
-    expect(heard.mock.calls).toEqual([[0]]);
-
-    const rest = wrap(long).slice(4);
-    if (rest.length) {
-      expect(read()).toBe(true);
+    for (const [index, text] of boxes.entries()) {
+      if (index > 0) expect(read()).toBe(true);
       box.skip();
-      expect(shown()).toBe(rest.join('\n'));
+      expect(shown()).toBe(text);
+      expect(wrap(shown()).length).toBeLessThanOrEqual(2);
+      // Still the first line: its sound is not heard again for its later boxes.
+      expect(heard.mock.calls).toEqual([[0]]);
     }
 
     expect(read()).toBe(true);

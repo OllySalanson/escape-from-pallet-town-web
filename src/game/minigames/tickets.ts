@@ -1,5 +1,6 @@
 import { getItemById, type ItemDefinition } from '../items/items';
 import { machineForItem } from '../items/teaching';
+import { DERBY_LEVELS } from './derby';
 import { berriesForScore } from './pokemonJump';
 import { winsPrizeBerry } from './berryPicking';
 
@@ -26,16 +27,33 @@ import { winsPrizeBerry } from './berryPicking';
  */
 
 /**
+ * THE PROMENADE DERBY's sources, one a level (`minigames/derbyLevels.ts`), in
+ * the order they open: each level pays its own tiers, once a day, so a podium
+ * on a harder course is worth more and is never "already paid" by a win on an
+ * easier one (playtest 51, finding 1). THE FRONT keeps the plain `derby`, the
+ * source every save before the levels paid into.
+ */
+export const DERBY_SOURCES = ['derby', 'derby-2', 'derby-3', 'derby-4'] as const;
+export type DerbySource = (typeof DERBY_SOURCES)[number];
+
+/** The source a DERBY level pays from, by its number (1 for THE FRONT). */
+export function derbySource(level: number): DerbySource {
+  const source = DERBY_SOURCES[level - 1];
+  if (source === undefined) throw new Error(`No DERBY level ${level} pays tickets.`);
+  return source;
+}
+
+/**
  * A source of tickets, each capped by the day: the cabinets, the course, bouts
- * won in THE BATTLE ARENA, and the promenade's three outdoor games - the race,
- * the dig and the fishing derby.
+ * won in THE BATTLE ARENA, and the promenade's three outdoor games - the race
+ * (a source a level), the dig and the fishing derby.
  */
 export type TicketSource =
   | 'pokemon-jump'
   | 'berry-picking'
   | 'field-course'
   | 'battle-arena'
-  | 'derby'
+  | DerbySource
   | 'dig'
   | 'fishing-derby'
   | 'rental-run';
@@ -113,9 +131,9 @@ function tierTickets(tiers: Tiers, score: number): number {
 }
 
 /**
- * THE PROMENADE DERBY's tiers, by place (`derbyScore`: six for a win, five for
- * second, four for third): a podium pays, a win pays most. Set with
- * `tools/minigames/outdoor.mts` so that the right racer ridden well wins
+ * THE PROMENADE DERBY's tiers on THE FRONT, by place (`derbyScore`: six for a
+ * win, five for second, four for third): a podium pays, a win pays most. Set
+ * with `tools/minigames/outdoor.mts` so that the right racer ridden well wins
  * often, and the wrong one still makes the podium now and then.
  */
 export const DERBY_TICKET_TIERS: Tiers = [
@@ -123,6 +141,35 @@ export const DERBY_TICKET_TIERS: Tiers = [
   { score: 5, tickets: 20 },
   { score: 6, tickets: 30 },
 ];
+
+/** How much more every rung of a DERBY level pays than the level before it. */
+export const DERBY_LEVEL_STEP = 10;
+
+/**
+ * Each DERBY level's own tiers, by place, in the order the levels open: THE
+ * FRONT's, and every rung worth `DERBY_LEVEL_STEP` more a level on - so 3rd on
+ * THE GRAND DERBY pays more than a win on THE FRONT.
+ */
+export const DERBY_LEVEL_TICKET_TIERS: readonly Tiers[] = DERBY_SOURCES.map((_source, index) =>
+  DERBY_TICKET_TIERS.map((tier) => ({ score: tier.score, tickets: tier.tickets + index * DERBY_LEVEL_STEP })),
+);
+
+/** A DERBY level's tiers, by its number. */
+export function derbyTiers(level: number): Tiers {
+  const tiers = DERBY_LEVEL_TICKET_TIERS[level - 1];
+  if (tiers === undefined) throw new Error(`No DERBY level ${level} pays tickets.`);
+  return tiers;
+}
+
+/** What a podium place is called where a tier is said: `3rd`. */
+const PODIUM_WORDS: Readonly<Record<number, string>> = { 6: '1st', 5: '2nd', 4: '3rd' };
+
+/** What a DERBY level's first tier asks and pays, named by its course: `On THE SANDS, 3rd or better pays 20 tickets.` */
+function derbyFirstTier(level: number): string {
+  const first = firstOf(derbyTiers(level));
+  const name = DERBY_LEVELS[level - 1]?.name ?? `level ${level}`;
+  return `On ${name}, ${PODIUM_WORDS[first.score] ?? 'the podium'} or better pays ${first.tickets} tickets.`;
+}
 
 /** THE DIG's tiers, by points dug: a couple of finds, most of the patch, and all of it. */
 export const DIG_TICKET_TIERS: Tiers = [
@@ -138,7 +185,7 @@ export const FISHING_DERBY_TICKET_TIERS: Tiers = [
   { score: 220, tickets: 30 },
 ];
 
-export const derbyTickets = (score: number): number => tierTickets(DERBY_TICKET_TIERS, score);
+export const derbyTickets = (score: number, level = 1): number => tierTickets(derbyTiers(level), score);
 export const digTickets = (score: number): number => tierTickets(DIG_TICKET_TIERS, score);
 export const fishingDerbyTickets = (score: number): number => tierTickets(FISHING_DERBY_TICKET_TIERS, score);
 
@@ -169,46 +216,75 @@ export function dojoWinTickets(winsToday: number): number {
 }
 
 /**
- * How each source is scored: which of two results is better (a score up, a
- * time down; nothing played is 0 for both), and what a day's best is worth.
+ * How a source is scored: which of two results is better (a score up, a time
+ * down; nothing played is 0 for both), and what a day's best is worth.
  */
-const SOURCE_RULES: Readonly<
-  Record<
-    TicketSource,
-    {
-      readonly better: (a: number, b: number) => boolean;
-      readonly tickets: (best: number) => number;
-      readonly berries: (best: number) => number;
-      /** What the first tier asks, said when a result reaches none. */
-      readonly firstTier: string;
-    }
-  >
-> = {
-  'pokemon-jump': { better: (a, b) => a > b, tickets: jumpTickets, berries: berriesForScore, firstTier: `A score of ${number(firstOf(JUMP_TICKET_TIERS).score)} pays.` },
+interface SourceRule {
+  readonly better: (a: number, b: number) => boolean;
+  readonly tickets: (best: number) => number;
+  readonly berries: (best: number) => number;
+  /**
+   * What the first tier asks and what it pays, said when a result reaches
+   * none: what a player holds is said beside it, so this says only what a
+   * game would pay (playtest 51, finding 6).
+   */
+  readonly firstTier: string;
+  /** The course a source is, for a game with several (THE PROMENADE DERBY's levels), named in its result line. */
+  readonly course?: string;
+}
+
+const SOURCE_RULES: Readonly<Record<TicketSource, SourceRule>> = {
+  'pokemon-jump': {
+    better: (a, b) => a > b,
+    tickets: jumpTickets,
+    berries: berriesForScore,
+    firstTier: `A score of ${number(firstOf(JUMP_TICKET_TIERS).score)} pays ${firstOf(JUMP_TICKET_TIERS).tickets} tickets.`,
+  },
   'berry-picking': {
     better: (a, b) => a > b,
     tickets: berryTickets,
     berries: (best) => (winsPrizeBerry(best) ? 1 : 0),
-    firstTier: `A score of ${number(firstOf(BERRY_TICKET_TIERS).score)} pays.`,
+    firstTier: `A score of ${number(firstOf(BERRY_TICKET_TIERS).score)} pays ${firstOf(BERRY_TICKET_TIERS).tickets} tickets.`,
   },
   'field-course': {
     better: (a, b) => a > 0 && (b <= 0 || a < b),
     tickets: courseTickets,
     berries: () => 0,
-    firstTier: `Round in ${firstOf(COURSE_TICKET_TIERS).ms / 1000} seconds pays.`,
+    firstTier: `Round in ${firstOf(COURSE_TICKET_TIERS).ms / 1000} seconds pays ${firstOf(COURSE_TICKET_TIERS).tickets} tickets.`,
   },
-  'battle-arena': { better: (a, b) => a > b, tickets: dojoWinTickets, berries: () => 0, firstTier: 'A win pays.' },
+  'battle-arena': { better: (a, b) => a > b, tickets: dojoWinTickets, berries: () => 0, firstTier: `A win pays ${DOJO_WIN_TICKETS} tickets.` },
+  ...derbyRules(),
   // The dig's berries are what it turns up, sent home through `digBerriesAllowed`, not paid by score.
-  derby: { better: (a, b) => a > b, tickets: derbyTickets, berries: () => 0, firstTier: 'The podium pays, from 3rd.' },
-  dig: { better: (a, b) => a > b, tickets: digTickets, berries: () => 0, firstTier: `${firstOf(DIG_TICKET_TIERS).score} points dug pays.` },
+  dig: {
+    better: (a, b) => a > b,
+    tickets: digTickets,
+    berries: () => 0,
+    firstTier: `${firstOf(DIG_TICKET_TIERS).score} points dug pays ${firstOf(DIG_TICKET_TIERS).tickets} tickets.`,
+  },
   'fishing-derby': {
     better: (a, b) => a > b,
     tickets: fishingDerbyTickets,
     berries: () => 0,
-    firstTier: `A tally of ${firstOf(FISHING_DERBY_TICKET_TIERS).score} pays.`,
+    firstTier: `A tally of ${firstOf(FISHING_DERBY_TICKET_TIERS).score} pays ${firstOf(FISHING_DERBY_TICKET_TIERS).tickets} tickets.`,
   },
-  'rental-run': { better: (a, b) => a > b, tickets: rentalRunTickets, berries: () => 0, firstTier: 'A win pays.' },
+  'rental-run': { better: (a, b) => a > b, tickets: rentalRunTickets, berries: () => 0, firstTier: `A win pays ${RENTAL_WIN_TICKETS} tickets.` },
 };
+
+/** Each DERBY level's rules: a place, scored the same on every course, paid on the level's own tiers. */
+function derbyRules(): Record<DerbySource, SourceRule> {
+  const rules = {} as Record<DerbySource, SourceRule>;
+  DERBY_SOURCES.forEach((source, index) => {
+    const level = index + 1;
+    rules[source] = {
+      better: (a, b) => a > b,
+      tickets: (best) => derbyTickets(best, level),
+      berries: () => 0,
+      firstTier: derbyFirstTier(level),
+      ...(DERBY_LEVELS[index] ? { course: DERBY_LEVELS[index].name } : {}),
+    };
+  });
+  return rules;
+}
 
 /** The better of two results at a source: the higher score, or the quicker time. */
 export function betterResult(source: TicketSource, a: number, b: number): number {
@@ -294,6 +370,8 @@ export interface GamePayout {
    * null when it reaches one.
    */
   readonly firstTier: string | null;
+  /** The course it was played on, for a game with several (`THE GRAND DERBY`), or null. */
+  readonly course: string | null;
 }
 
 /**
@@ -304,7 +382,12 @@ export interface GamePayout {
 export function payoutWords(payout: GamePayout, won: readonly string[]): string {
   if (won.length > 0) return `${payout.newBest ? 'A new best! ' : ''}Won ${won.join(', ')}.`;
   if (payout.firstTier !== null) return `No tickets. ${payout.firstTier}`;
-  return `${payout.newBest ? 'A new best! ' : ''}${payout.bestToday ? 'Nothing more today: the day has paid this tier.' : 'Beat today’s best to win more.'}`;
+  // A game of several courses says which one's best it means: a best on another course is no yardstick.
+  const course = payout.course;
+  const unpaid = payout.bestToday
+    ? `Nothing more today: ${course ?? 'the day'} has paid this tier.`
+    : `Beat today’s best${course ? ` on ${course}` : ''} to win more.`;
+  return `${payout.newBest ? 'A new best! ' : ''}${unpaid}`;
 }
 
 /**
@@ -328,6 +411,7 @@ export function payGame(record: GameCornerRecord, source: TicketSource, result: 
     newBest: rules.better(result, everBest),
     bestToday: result > 0 && best === result,
     firstTier: rules.tickets(result) > 0 || rules.berries(result) > 0 ? null : rules.firstTier,
+    course: rules.course ?? null,
     record: {
       tickets: record.tickets + tickets,
       best: { ...record.best, [source]: betterResult(source, result, everBest) },
@@ -615,7 +699,7 @@ const SOURCES: readonly TicketSource[] = [
   'berry-picking',
   'field-course',
   'battle-arena',
-  'derby',
+  ...DERBY_SOURCES,
   'dig',
   'fishing-derby',
   'rental-run',

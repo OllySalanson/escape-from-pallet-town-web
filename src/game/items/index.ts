@@ -94,6 +94,7 @@ export {
   WONT_HAVE_EFFECT_LINE,
   useFieldItem,
   relicKeeper,
+  RELIC_ITEM_IDS,
   type FieldItemUseResult,
   type HeldItemEffect,
   type ErrandItemId,

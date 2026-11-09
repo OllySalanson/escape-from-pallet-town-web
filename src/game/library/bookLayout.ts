@@ -20,6 +20,13 @@ export interface BookLayout {
   readonly height: number;
   /** The plinth the book lies on, along the foot of the screen. */
   readonly plinth: Box;
+  /**
+   * The carved panels down the plinth's front, each holding one label: how to
+   * turn the pages, and CLOSE, clear of the FEEDBACK tab. Four panels of a
+   * fixed width had the labels straddling them, and the first stood empty
+   * (playtest 51, finding 9).
+   */
+  readonly panels: { readonly turn: Box; readonly close: Box };
   /** The covers, as they show round the pages. */
   readonly cover: Box;
   /** The two pages as they lie open. */
@@ -38,6 +45,13 @@ export interface BookLayout {
    */
   readonly body: { readonly size: 12 | 14; readonly lineHeight: number };
 }
+
+/** How far down the plinth its front begins: the slanted top and the brass lip above it. */
+export const PLINTH_FRONT = 14;
+/** How wide CLOSE's panel is: room for `[ESC] CLOSE` on its plate. */
+const CLOSE_PANEL_WIDTH = 76;
+/** Between two panels. */
+const PANEL_GAP = 6;
 
 /** The narrowest page the words are set at the dialogue size on. */
 export const WIDE_PAGE = 170;
@@ -74,10 +88,19 @@ export function bookLayout(width: number, height: number, edgeClear: number = 0)
   const cover: Box = { x: coverX, y: top, width: coverWidth, height: coverHeight };
   const spineX = coverX + COVER_MARGIN + PAGE_STACK + pageWidth;
   const pageTop = top + COVER_MARGIN;
+  // The panels stand on the plinth's front, under its lip (`bookArt.ts`'s `paintPlinth`).
+  const front = plinth.y + PLINTH_FRONT;
+  const panelTop = front + 3;
+  const panelHeight = plinth.y + plinth.height - panelTop - 3;
+  const closeRight = width - side - 3;
+  const close: Box = { x: closeRight - CLOSE_PANEL_WIDTH, y: panelTop, width: CLOSE_PANEL_WIDTH, height: panelHeight };
+  const turnLeft = plinth.x + side + 3;
+  const turn: Box = { x: turnLeft, y: panelTop, width: close.x - PANEL_GAP - turnLeft, height: panelHeight };
   return {
     width,
     height,
     plinth,
+    panels: { turn, close },
     cover,
     left: { x: spineX - pageWidth, y: pageTop, width: pageWidth, height: pageHeight },
     right: { x: spineX, y: pageTop, width: pageWidth, height: pageHeight },

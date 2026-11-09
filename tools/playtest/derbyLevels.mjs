@@ -134,6 +134,7 @@ try {
     await page.evaluate(`document.querySelector('[data-play]').click()`);
     await until(`${derby}.isPlaying`, `level ${number} under way`);
     let shot = 0;
+    let gridShot = false;
     let lastHazard = false;
     const surfShots = new Set();
     for (let frame = 0; frame < 60 * 150; frame += 1) {
@@ -156,6 +157,11 @@ try {
         surfShots.add(state.surf);
         await shoot(`level-${number}-wave-${state.surf}`);
       }
+      // The field on the grid, before the gun: spread across the lane, the player's racer ringed.
+      if (!gridShot && state.clock > 1500) {
+        gridShot = true;
+        await shoot(`level-${number}-grid`);
+      }
       if (due) {
         shot += 1;
         await shoot(`level-${number}-racing-${shot}`);
@@ -167,7 +173,7 @@ try {
     const after = await save();
     const headline = await page.evaluate(`document.querySelector('.confirm-bar strong')?.textContent ?? ''`);
     await shoot(`level-${number}-result`);
-    report.push({ level: number, racer, headline, cleared: after.raidProgress.derbyCleared ?? 0, best: after.raidProgress.gameCorner?.day?.best?.derby ?? 0 });
+    report.push({ level: number, racer, headline, cleared: after.raidProgress.derbyCleared ?? 0, best: after.raidProgress.gameCorner?.day?.best?.[number === 1 ? 'derby' : `derby-${number}`] ?? 0 });
     console.log(`level ${number} (${racer}): ${headline}; cleared ${after.raidProgress.derbyCleared ?? 0}`);
     if ((after.raidProgress.derbyCleared ?? 0) < number) fail(`level ${number} not cleared: ${headline}`);
   }

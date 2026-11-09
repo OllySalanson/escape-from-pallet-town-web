@@ -732,6 +732,14 @@ export interface BaseRoom {
 export interface RoomStair {
   readonly tile: GridPosition;
   readonly to: RoomId;
+  /**
+   * An arch rather than a staircase: stood on it, a push this way - into the
+   * wall it is cut in - goes through, as a push south off a door mat leaves a
+   * room, and the hint line says so with `says` (`[UP] OUT`). Without it a
+   * player who came in through THE CHART ROOM's arch was told nothing about
+   * the way back (playtest 51, finding 10).
+   */
+  readonly push?: { readonly key: 'up' | 'down' | 'left' | 'right'; readonly says: string };
 }
 
 /**
@@ -1393,7 +1401,7 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     counter: [],
     // The arch behind the end bookcase. Until MARLOW opens it a bookcase stands
     // on the tile, so nobody can step onto it.
-    stairs: [{ tile: LIBRARY_CHART_STAIR, to: 'chart-room' }],
+    stairs: [{ tile: LIBRARY_CHART_STAIR, to: 'chart-room', push: { key: 'up', says: CHART_ROOM_NAME } }],
   },
   // THE CHART ROOM (`../treasure/treasureMap.ts`): behind the library's end
   // bookcase, MARLOW's, with the treasure map's board along its back wall.
@@ -1406,7 +1414,7 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     mat: null,
     keeper: null,
     counter: [],
-    stairs: [{ tile: CHART_ROOM_STAIR, to: 'great-library' }],
+    stairs: [{ tile: CHART_ROOM_STAIR, to: 'great-library', push: { key: 'up', says: 'OUT' } }],
   },
   // THE RAID ARENA's great hall (`arenaHall.ts`): the marshal stands by the way
   // in, and everything a raid wants is on the floor around her.

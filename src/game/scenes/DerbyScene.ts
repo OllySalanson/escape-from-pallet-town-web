@@ -48,10 +48,10 @@ import {
   type DerbyRace,
 } from '../minigames/derby';
 import type { OutdoorCourse } from '../minigames/outdoorView';
-import { DERBY_TICKET_TIERS, type GamePayout } from '../minigames/tickets';
+import { derbySource, derbyTiers, type GamePayout } from '../minigames/tickets';
 import { traits, type PokemonTraits } from '../minigames/traits';
 import type { RestoredGame } from '../save/SaveManager';
-import { OutdoorGameScene, type OutdoorFit, type OutdoorGameSceneData } from './OutdoorGameScene';
+import { OutdoorGameScene, type OutdoorFit, type OutdoorGameSceneData, type OutdoorSource } from './OutdoorGameScene';
 
 /** How long the finish is shown before the screen comes back. */
 const END_PAUSE_MS = 1800;
@@ -65,6 +65,29 @@ const FOOT = 28;
 const INK = '#202030';
 /** The kind a level's lap is judged against when saying who suits it: an ordinary racer on every course. */
 const YARDSTICK = traits('charmander');
+
+/** How far apart the runners stand across the lane on the start grid, in pixels, and how far apart once they are away. */
+const GRID_SPACING = 0.45 * TILE;
+const RUNNING_SPACING = 2;
+/** How far behind the line every other runner on the grid stands, in pixels. */
+const GRID_STAGGER = 8;
+
+/**
+ * Where a runner is drawn from the middle of its lane, in pixels: on the grid
+ * the field stands spread across the lane and every other one a step back, so
+ * eight are eight and not one pile (playtest 51, finding 5); it closes up over
+ * the first two tiles of the race to a small lane of its own each, so a pack
+ * on a narrow stretch is still told apart. Square to the way the runner faces.
+ */
+export function laneOffset(index: number, runners: number, along: number, heading: number): { x: number; y: number } {
+  const grid = Math.max(0, 1 - along / 3);
+  const across = (index - (runners - 1) / 2) * (grid * GRID_SPACING + (1 - grid) * RUNNING_SPACING);
+  const back = index % 2 === 1 ? grid * GRID_STAGGER : 0;
+  return {
+    x: Math.round(-Math.sin(heading) * across - Math.cos(heading) * back),
+    y: Math.round(Math.cos(heading) * across - Math.sin(heading) * back),
+  };
+}
 
 /** The player's own date, `YYYY-MM-DD`: the day's field and going. */
 function localDay(now: Date): string {
@@ -90,7 +113,10 @@ function arrowOf(key: string): 'up' | 'down' | 'left' | 'right' | null {
  * crate), and the arrows choose the line at each fork.
  */
 export class DerbyScene extends OutdoorGameScene {
-  protected readonly source = 'derby' as const;
+  /** Each level pays from its own source, on its own tiers, once a day (`derbySource`). */
+  protected get source(): OutdoorSource {
+    return derbySource(this.level.number);
+  }
   protected readonly words = {
     title: 'PROMENADE DERBY',
     place: 'Promenade · ',
@@ -109,6 +135,8 @@ export class DerbyScene extends OutdoorGameScene {
   private endingFor: number | null = null;
   /** Where the last race finished, for the write. */
   private lastPlace: number | null = null;
+  /** The level the last race was run on: a podium moves the chosen level on past it. */
+  private racedOn: DerbyLevel | null = null;
   private tilemap: Phaser.Tilemaps.Tilemap | undefined;
   private hudCamera: Phaser.Cameras.Scene2D.Camera | undefined;
   /** What is drawn on the course, which the side and foot leave alone. */
@@ -118,6 +146,8 @@ export class DerbyScene extends OutdoorGameScene {
   private sprint: Phaser.GameObjects.Graphics | undefined;
   private runners: Phaser.GameObjects.Sprite[] = [];
   private marks: Phaser.GameObjects.Graphics | undefined;
+  /** The player's racer's ring and chevron, over every other racer and under its own. */
+  private yours: Phaser.GameObjects.Graphics | undefined;
   private surf: Phaser.GameObjects.Graphics | undefined;
   private hud: Phaser.GameObjects.Text | undefined;
   private board: Phaser.GameObjects.Text | undefined;
@@ -137,6 +167,7 @@ export class DerbyScene extends OutdoorGameScene {
     this.level = [...DERBY_LEVELS].reverse().find((level) => derbyLevelOpen(level, cleared)) ?? THE_FRONT;
     this.choice = {};
     this.lastPlace = null;
+    this.racedOn = null;
   }
 
   /** For a playtest driver: the race in progress. */
@@ -204,8 +235,14 @@ export class DerbyScene extends OutdoorGameScene {
     return { fit: Math.max(0.1, (17_000 - ms) / 1000), notes: racerNotes(traits, this.wet, this.level) };
   }
 
+  /** Today's best on the chosen course, named by it: a best on another course is no yardstick. */
   protected bestWords(best: number): string {
-    return PLACE_WORDS[Math.max(0, 6 - best)] ?? `${best}`;
+    return `on ${this.level.name} ${PLACE_WORDS[Math.max(0, 6 - best)] ?? `${best}`}`;
+  }
+
+  /** AGAIN only when it is: a podium that opened the next course races that one, and says so. */
+  protected playLabel(): string | undefined {
+    return this.racedOn && this.racedOn !== this.level ? `Race ${this.level.name}` : undefined;
   }
 
   protected todayLine(): string {
@@ -214,8 +251,8 @@ export class DerbyScene extends OutdoorGameScene {
     const field = derbyField(this.level, day)
       .map((entrant) => entrant.handle)
       .join(', ');
-    const [third] = DERBY_TICKET_TIERS;
-    return `Today the going is ${this.wet ? 'WET (SWIFT SWIM swims twice as fast)' : 'DRY'}; running ${this.level.name}: ${field}. The podium pays from ${third.tickets} tickets.`;
+    const [third, second, first] = derbyTiers(this.level.number);
+    return `Today the going is ${this.wet ? 'WET (SWIFT SWIM swims twice as fast)' : 'DRY'}; running ${this.level.name}: ${field}. Here 3rd pays ${third.tickets} tickets, 2nd ${second.tickets}, 1st ${first.tickets}.`;
   }
 
   protected course(): OutdoorCourse {
@@ -272,6 +309,7 @@ export class DerbyScene extends OutdoorGameScene {
     this.tap = false;
     this.endingFor = null;
     this.lastPlace = null;
+    this.racedOn = level;
     this.warnedFor = -1;
     const { width, height } = this.scale;
     // The FEEDBACK tab stands over the right of the screen on a window the game
@@ -284,6 +322,7 @@ export class DerbyScene extends OutdoorGameScene {
     this.layGround();
     this.surf = this.onTrack(this.add.graphics().setDepth(3.6));
     this.marks = this.onTrack(this.add.graphics().setDepth(4));
+    this.yours = this.onTrack(this.add.graphics().setDepth(6.5));
     this.runners = this.race.runners.map((runner) => {
       const species = runner.racer.species;
       const frame = isFigureSpecies(species) ? pokemonIconFrames(species)[0] : 0;
@@ -409,6 +448,7 @@ export class DerbyScene extends OutdoorGameScene {
     this.hudParts = [];
     this.sprint = undefined;
     this.surf = undefined;
+    this.yours = undefined;
     if (this.hudCamera) {
       this.cameras?.remove(this.hudCamera);
       this.hudCamera = undefined;
@@ -570,7 +610,8 @@ export class DerbyScene extends OutdoorGameScene {
   private drawRace(): void {
     const race = this.race;
     const marks = this.marks?.clear();
-    if (!race || !marks) return;
+    const yours = this.yours?.clear();
+    if (!race || !marks || !yours) return;
     const level = race.level;
     this.drawWaves(race);
     const bob = Math.floor(this.time.now / POKEMON_ICON_FRAME_MS) % 2;
@@ -578,18 +619,25 @@ export class DerbyScene extends OutdoorGameScene {
       const sprite = this.runners[index];
       if (!sprite) return;
       const where = whereIs(level, runner);
+      const lane = laneOffset(index, race.runners.length, runner.leg === 0 ? runner.along : Number.POSITIVE_INFINITY, where.heading);
       const at = this.toScreen(where);
-      // Side by side in the lane at the start, so six are not one picture.
-      const lane = runner.leg === 0 && runner.along < 1 ? (index - 2.5) * 0.18 * TILE : 0;
-      sprite.setPosition(Math.round(at.x), Math.round(at.y + lane));
+      at.x += lane.x;
+      at.y += lane.y;
+      sprite.setPosition(Math.round(at.x), Math.round(at.y));
       const species = runner.racer.species;
       if (isFigureSpecies(species)) sprite.setFrame(pokemonIconFrames(species)[runner.finishedMs === null && race.clock > COUNTDOWN_MS ? bob : 0]);
       sprite.setFlipX(Math.cos(where.heading) > 0.2);
       sprite.setAlpha(where.surface === 'water' ? 0.8 : 1);
       if (where.surface === 'air') marks.fillStyle(0x202030, 0.35).fillEllipse(at.x, at.y + TILE * 0.6, TILE * 0.8, TILE * 0.3);
       if (index === 0) {
-        // The player's racer: a white chevron over it.
-        marks.fillStyle(0xf8f8f8, 1).fillTriangle(at.x - 4, at.y - TILE - 10, at.x + 4, at.y - TILE - 10, at.x, at.y - TILE - 5);
+        // The player's racer: a gold ring at its feet and a chevron over it, so it is found in a pile (playtest 51, finding 5).
+        // Drawn over every other racer, so a pile never hides it.
+        const x = Math.round(at.x);
+        const y = Math.round(at.y);
+        yours.lineStyle(4, 0x202030, 1).strokeEllipse(x, y + 4, TILE + 14, 11);
+        yours.lineStyle(2, 0xf8e070, 1).strokeEllipse(x, y + 4, TILE + 14, 11);
+        yours.fillStyle(0x202030, 1).fillTriangle(x - 6, y - TILE - 11, x + 6, y - TILE - 11, x, y - TILE - 4);
+        yours.fillStyle(0xf8e070, 1).fillTriangle(x - 4, y - TILE - 10, x + 4, y - TILE - 10, x, y - TILE - 6);
       }
     });
     const me = race.runners[0];

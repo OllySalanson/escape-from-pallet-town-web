@@ -12,7 +12,7 @@ import {
 } from './baseMap';
 import { BASE_DOORS, PLACES_TO_GO } from './doors';
 import { BASE_FIXTURES, standingFixtures } from './fixtures';
-import { HARBOUR_LANDMARKS } from './landmarks';
+import { HARBOUR_LANDMARKS, landmarkFaced, OUTDOOR_GAME_LANDMARKS } from './landmarks';
 import { BASE_TILESET } from './baseTileset';
 import { DAY_CARE_KEEPER, PEN_HOME, nextPenTile, penTiles } from './dayCarePen';
 import { stepsFrom as walkFrom, stepsTo } from './baseWalks';
@@ -388,6 +388,27 @@ describe('what the base is built out of', () => {
           [1, 0],
         ].filter(([dx, dy]) => map.collision[landmark.at.y + dy]?.[landmark.at.x + dx] === false);
         expect([landmark.id, beside.length > 0]).toEqual([landmark.id, true]);
+      }
+    });
+
+    it('plays an outdoor game from every tile in front of its board, not only the middle one (playtest 51, finding 8)', () => {
+      const map = fullyBuilt();
+      for (const landmark of OUTDOOR_GAME_LANDMARKS) {
+        const board = new Set(
+          landmark.props.flatMap((prop) => {
+            const art = BASE_TILESET.props[prop.name];
+            return Array.from({ length: art.width * art.height }, (_cell, index) => `${prop.x + (index % art.width)},${prop.y + Math.floor(index / art.width)}`);
+          }),
+        );
+        // Wherever its caption speaks from is in front of it: every tile of the board faced from there plays it.
+        for (const stand of landmark.near ?? []) {
+          expect([landmark.id, stand, map.collision[stand.y][stand.x]]).toEqual([landmark.id, stand, false]);
+          for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+            const tile = { x: stand.x + dx, y: stand.y + dy };
+            if (board.has(`${tile.x},${tile.y}`)) expect([landmark.id, tile, landmarkFaced(landmark, tile)]).toEqual([landmark.id, tile, true]);
+          }
+        }
+        expect([landmark.id, landmarkFaced(landmark, landmark.at)]).toEqual([landmark.id, true]);
       }
     });
 

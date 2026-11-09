@@ -109,6 +109,11 @@ try {
     for (let guard = 0; guard < 20 && !(await page.evaluate(sceneIs('dojo-counter'))); guard += 1) await press('Space', 500);
     await until(sceneIs('dojo-counter'), 'the counter');
     await step(600);
+    // Since #477 the counter opens on HOW WILL YOU FIGHT?: the class's bouts are the first of its three.
+    if (await page.evaluate(`Boolean(document.querySelector('.dojo-counter [data-mode="class"]'))`)) {
+      await page.evaluate(`document.querySelector('.dojo-counter [data-mode="class"]').click()`);
+      await step(400);
+    }
   };
   const counter = () => page.evaluate(`${GAME}.scene.getScene('dojo-counter').counterState`);
   const fightWith = async (opponent, strongest) => {

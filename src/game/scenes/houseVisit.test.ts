@@ -176,7 +176,7 @@ describe('the hint on the house mat', () => {
     const mat = { x: 4, y: 8 };
     const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
     Object.assign(scene, {
-      place: { room: { room: { mat, keeper: null, things: [] }, home: {} } },
+      place: { room: { room: { mat, keeper: null, things: [], stairs: [] }, home: {} } },
       currentTile: { ...mat },
       facing,
       partner: partnerInFront ? { name: 'CHARIZARD' } : null,

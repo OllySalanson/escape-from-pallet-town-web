@@ -88,6 +88,7 @@ export function chevronTowards(
   view: ScreenRect,
   player: { readonly x: number; readonly y: number },
   elapsedMs: number,
+  keepOff: readonly ScreenRect[] = [],
 ): { readonly x: number; readonly y: number; readonly angle: number } {
   const bob = Math.round(Math.sin(elapsedMs / BOB_MS) * BOB_PX);
   if (isOnScreen(target, view)) {
@@ -96,18 +97,54 @@ export function chevronTowards(
   const dx = target.x - player.x;
   const dy = target.y - player.y;
   const across = Math.abs(dx) / Math.max(1, view.width) >= Math.abs(dy) / Math.max(1, view.height);
+  // What it must not stand over, on the screen: a sign it hid was a sign nobody read (playtest 51, finding 12).
+  const signs = keepOff.map((rect) => ({ ...rect, left: rect.left - view.left, top: rect.top - view.top }));
   if (across) {
-    return {
-      x: dx < 0 ? EDGE_CLEAR + bob : view.width - EDGE_CLEAR - bob,
-      y: Math.round(Math.max(EDGE_CLEAR, Math.min(view.height - EDGE_CLEAR, player.y - view.top))),
-      angle: dx < 0 ? 270 : 90,
-    };
+    const x = dx < 0 ? EDGE_CLEAR + bob : view.width - EDGE_CLEAR - bob;
+    const y = Math.round(Math.max(EDGE_CLEAR, Math.min(view.height - EDGE_CLEAR, player.y - view.top)));
+    return { x, y: slideClear(y, x, CHEVRON_HALF.long, CHEVRON_HALF.short, signs, 'top', view.height), angle: dx < 0 ? 270 : 90 };
   }
-  return {
-    x: Math.round(Math.max(EDGE_CLEAR, Math.min(view.width - EDGE_CLEAR, player.x - view.left))),
-    y: dy < 0 ? EDGE_CLEAR + bob : view.height - EDGE_CLEAR - bob,
-    angle: dy < 0 ? 0 : 180,
-  };
+  const y = dy < 0 ? EDGE_CLEAR + bob : view.height - EDGE_CLEAR - bob;
+  const x = Math.round(Math.max(EDGE_CLEAR, Math.min(view.width - EDGE_CLEAR, player.x - view.left)));
+  return { x: slideClear(x, y, CHEVRON_HALF.long, CHEVRON_HALF.short, signs, 'left', view.width), y, angle: dy < 0 ? 0 : 180 };
+}
+
+/** Half the chevron's size as it stands, drawn at twice its pixels: along the edge it runs, and out from it. */
+const CHEVRON_HALF = { long: CHEVRON[0].length, short: CHEVRON.length } as const;
+
+/**
+ * Where along the screen's edge the chevron stands clear of every sign: where
+ * it would be, or slid along the edge to the nearer side of whatever it would
+ * cover, as long as that is still on the screen. `along` is the coordinate it
+ * slides on, `out` the other; `axis` says which of a rect's sides is `along`.
+ */
+function slideClear(
+  along: number,
+  out: number,
+  halfAlong: number,
+  halfOut: number,
+  signs: readonly ScreenRect[],
+  axis: 'top' | 'left',
+  room: number,
+): number {
+  const span = (rect: ScreenRect) =>
+    axis === 'top'
+      ? { from: rect.top, to: rect.top + rect.height, outFrom: rect.left, outTo: rect.left + rect.width }
+      : { from: rect.left, to: rect.left + rect.width, outFrom: rect.top, outTo: rect.top + rect.height };
+  const covers = (at: number) =>
+    signs.some((rect) => {
+      const sign = span(rect);
+      return at + halfAlong > sign.from && at - halfAlong < sign.to && out + halfOut > sign.outFrom && out - halfOut < sign.outTo;
+    });
+  if (!covers(along)) return along;
+  const candidates = signs.flatMap((rect) => {
+    const sign = span(rect);
+    return [Math.floor(sign.from - halfAlong - 1), Math.ceil(sign.to + halfAlong + 1)];
+  });
+  const fits = candidates
+    .filter((at) => at >= EDGE_CLEAR && at <= room - EDGE_CLEAR && !covers(at))
+    .sort((a, b) => Math.abs(a - along) - Math.abs(b - along));
+  return fits[0] ?? along;
 }
 
 /** How far from the middle of the figure the raid's chevron stands: clear of its head mark and of every chip. */
@@ -168,11 +205,14 @@ export class YardWayMark {
   private readonly target: { readonly x: number; readonly y: number };
   private readonly still: boolean;
   private readonly image: Phaser.GameObjects.Image;
+  /** The signs it never stands over, in the world's pixels. */
+  private readonly keepOff: readonly ScreenRect[];
 
-  public constructor(scene: Phaser.Scene, target: { readonly x: number; readonly y: number }, still: boolean) {
+  public constructor(scene: Phaser.Scene, target: { readonly x: number; readonly y: number }, still: boolean, keepOff: readonly ScreenRect[] = []) {
     this.scene = scene;
     this.target = target;
     this.still = still;
+    this.keepOff = keepOff;
     ensureChevron(scene);
     // Over the map and under anything that is being read.
     this.image = scene.add.image(0, 0, TEXTURE).setScrollFactor(0).setScale(2).setDepth(FLOOR_FURNITURE_DEPTH + 3);
@@ -180,7 +220,13 @@ export class YardWayMark {
 
   public frame(elapsedMs: number, player: { readonly x: number; readonly y: number }, hidden: boolean): void {
     const view = this.scene.cameras.main.worldView;
-    const at = chevronTowards(this.target, { left: view.left, top: view.top, width: view.width, height: view.height }, player, this.still ? 0 : elapsedMs);
+    const at = chevronTowards(
+      this.target,
+      { left: view.left, top: view.top, width: view.width, height: view.height },
+      player,
+      this.still ? 0 : elapsedMs,
+      this.keepOff,
+    );
     this.image.setVisible(!hidden).setPosition(at.x, at.y).setAngle(at.angle);
   }
 

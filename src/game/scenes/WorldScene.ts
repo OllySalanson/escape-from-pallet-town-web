@@ -280,6 +280,7 @@ import {
   type PrizeChipInput,
   raidClockAlertTier,
   raidClockView,
+  raidLight,
   type RaidClockView,
 } from './raidHud';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
@@ -4610,7 +4611,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
                 manager.isEnraged,
                 snapshot.enrageGraceRemainingMs,
                 isPlaytestRun(),
-                this.runSession?.plan?.night,
+                raidLight(this.runSession?.plan),
               ).label,
             },
           ]
@@ -4794,7 +4795,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
             manager.isEnraged,
             snapshot.enrageGraceRemainingMs,
             isPlaytestRun(),
-            this.runSession?.plan?.night,
+            raidLight(this.runSession?.plan),
           ),
         ),
         // Beside a side panel the cue alone: the keys it teaches are the raid's, and the panel has its own.

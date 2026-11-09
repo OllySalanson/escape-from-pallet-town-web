@@ -96,6 +96,24 @@ describe('THE GREAT LIBRARY’s books', () => {
     expect(long).toEqual([]);
   });
 
+  it('puts each label on the plinth in a panel of its own, clear of the FEEDBACK tab (playtest 51, finding 9)', () => {
+    for (const [width, height, tab] of [[SMALLEST_SCREEN.width, SMALLEST_SCREEN.height, 0], [400, 256, 0], [400, 256, 24], [640, 360, 24]]) {
+      const { plinth, panels } = bookLayout(width, height, tab);
+      const { turn, close } = panels;
+      for (const panel of [turn, close]) {
+        expect(panel.y).toBeGreaterThan(plinth.y);
+        expect(panel.y + panel.height).toBeLessThanOrEqual(plinth.y + plinth.height);
+        expect(panel.height).toBeGreaterThanOrEqual(12);
+      }
+      // Side by side, never overlapping, and CLOSE off the tab.
+      expect(turn.x + turn.width).toBeLessThan(close.x);
+      expect(close.x + close.width).toBeLessThanOrEqual(width - tab);
+      // Each holds its words, plate and all.
+      expect(wordsWidth(resolveBookText('{key:walk} or click a page to turn'), 12) + 6).toBeLessThanOrEqual(turn.width);
+      expect(wordsWidth(resolveBookText('{key:back} CLOSE'), 12) + 6).toBeLessThanOrEqual(close.width);
+    }
+  });
+
   it('opens every book on its title page and closes it on a whole spread', () => {
     for (const book of LIBRARY_BOOKS) {
       const leaves = bookLeaves(book);

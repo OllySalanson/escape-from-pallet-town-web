@@ -8,6 +8,7 @@ import {
   itemNameFor,
   packName,
   packSquares,
+  RELIC_ITEM_IDS,
   type BagContents,
 } from '../items';
 import { experienceForLevel, type Pokemon } from '../pokemon';
@@ -372,7 +373,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     eyebrow: escaped
       ? `Extracted${input.exitLabel ? ` · ${input.exitLabel}` : ''}`
       : 'Raid lost',
-    headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
+    headline: escaped ? (relicHeadline(ledgerFound) ?? escapeHeadline(haulTier)) : wipeHeadline(input.cause, secured),
     summary: escaped
       ? escapeSummary(
         ledgerFound,
@@ -478,6 +479,30 @@ function fallenParty(snapshot: RunSnapshot, lastStand: Pokemon | undefined): Fal
 /** Every Pokemon the raid's secure slot protected. */
 function securedPokemon(snapshot: RunSnapshot): readonly Pokemon[] {
   return snapshot.secureSlot.pokemon ?? [];
+}
+
+/**
+ * A raid that walked a relic home - a piece of the old sea chart, the
+ * smugglers' chest, a fossil (`RELIC_ITEM_IDS`) - is headlined by it: it is
+ * the end of a hunt, or a secret found under its own sky, and graded by the
+ * haul alone it read "You scraped out." under the chest a four-piece hunt
+ * leads to (playtest 51, finding 2). The rarest first, when several came home.
+ */
+const RELIC_HEADLINES: readonly { readonly itemIds: readonly string[]; readonly headline: string }[] = [
+  { itemIds: ['sea-chest'], headline: "You dug up the smugglers' chest!" },
+  { itemIds: ['helix-fossil', 'dome-fossil'], headline: 'You brought a fossil home!' },
+  { itemIds: ['chart-piece-1', 'chart-piece-2', 'chart-piece-3', 'bottled-chart'], headline: 'You found a piece of the old sea chart!' },
+];
+
+/** The headline a relic carried home earns, or null when none was. */
+function relicHeadline(found: ReportGroup): string | null {
+  const home = new Set(found.items.map((item) => item.itemId));
+  return RELIC_HEADLINES.find((relic) => relic.itemIds.some((id) => home.has(id)))?.headline ?? null;
+}
+
+/** Whether an item is a relic: what a secret or the treasure hunt turns up, once (`items.ts`). */
+function isRelic(itemId: string): boolean {
+  return (RELIC_ITEM_IDS as readonly string[]).includes(itemId);
 }
 
 function escapeHeadline(tier: HaulTier): string {
@@ -860,9 +885,12 @@ function gradeHaul(
   // Gear carried out of the field counts, and counts high: it comes off a boss
   // once per save, so walking one home is the rarest thing a raid can do.
   const carriedGear = gear.filter((piece) => piece.fate === 'found').length;
+  // A relic counts as gear does, and for the same reason: each one is found once a save.
+  const relics = ledger.items.filter((item) => isRelic(item.itemId)).reduce((total, item) => total + item.quantity, 0);
   const score =
     ledger.pokemon.length * 3 +
-    ledger.items.reduce((total, item) => total + haulPoints(item), 0) +
+    ledger.items.filter((item) => !isRelic(item.itemId)).reduce((total, item) => total + haulPoints(item), 0) +
+    relics * 4 +
     (contractComplete ? 4 : 0) +
     levelsGained * 2 +
     carriedGear * 4 +
