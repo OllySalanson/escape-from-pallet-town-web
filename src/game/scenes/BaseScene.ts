@@ -119,6 +119,7 @@ import {
   marlowRoomLines,
   NO_TREASURE_HUNT,
   piecesToPin,
+  PIN_QUESTION,
   pinnedLines,
   type TreasureHunt,
 } from '../treasure/treasureMap';
@@ -6438,7 +6439,9 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const name = getItemById(piece.itemId)?.displayName ?? piece.itemId;
-    this.askInBox(`Pin the ${name.toUpperCase()} on the board?`, (yes) => {
+    // The piece is named on a line of its own, because a question must fit one
+    // line or it lies over its own answers, and a piece's name is long.
+    const ask = (): void => this.askInBox(PIN_QUESTION, (yes) => {
       if (!yes) {
         audioManager.play('cancel');
         return;
@@ -6460,6 +6463,7 @@ export class BaseScene extends Phaser.Scene {
         'confirm',
       );
     });
+    this.say([`The ${name.toUpperCase()} is in your things.`], about, ask);
   }
 
   /**

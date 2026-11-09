@@ -240,6 +240,13 @@ export const CHART_ROOM_ARRIVAL_LINES: readonly string[] = [
   `That board has waited sixty years for one chart, torn in ${NUMBER_WORDS[CHART_PIECES.length]}. Pin yours up and let us have a proper look.`,
 ];
 
+/**
+ * What THE CHART ROOM's board asks, once the piece has been named on a line of
+ * its own: a question in the box must fit one line or it lies over its answers
+ * (`treasureMap.test.ts`), and a piece's name does not leave room for one.
+ */
+export const PIN_QUESTION = 'PIN IT ON THE BOARD?';
+
 /** What the bookcase says once it stands open. */
 export const OPEN_BOOKCASE_NOTE = 'Open: THE CHART ROOM is through it';
 

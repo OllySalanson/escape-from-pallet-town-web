@@ -124,6 +124,15 @@ until the chart is whole. `raid.mjs --insertion=greystone-vale-cove-steps
 save), and `treasureHunt.mjs ... --chest=path.json` carries it to MARLOW to be
 opened - `docs/screens/treasure-hunt/`.
 
+`chartTable.mjs <cdp port> <url> <dir> [--save=path.json]` plays the lab's half
+of that chart and the telescope's rumour rings: Oak's CHART TABLE, his cork
+board's rumour scraps and the chalk rings, before a raid and (`--save=`) home
+from one. Between them, `raid.mjs --attach=<port> --clock=dusk --hunt=shore
+--heard=board-long-shadow,angler-red-one --grab=chart-piece-1 --save-out=path.json`
+finds THE LONG SHADOW (`--heard=` writes rumours heard into the save) -
+`docs/screens/chart-table/`. Attached, the browser keeps its storage between
+drivers, so clear the page's `localStorage` before the raid's new game.
+
 `locks.mjs <url> <dir>` meets Pallet Town's locked WEIR GATE and KILN STRONGBOX
 with nothing to open them, then with the Weir Key, a Lockpick and a Pickaxe:
 the crate picked, the ROCKFALL dug, the gate unlocked and walked out through,

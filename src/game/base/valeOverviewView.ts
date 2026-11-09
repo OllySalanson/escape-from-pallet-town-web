@@ -10,6 +10,7 @@ import type { PaintedPicture } from '../world/minimap';
 import type { RaidMark } from '../world/raidMemory';
 import type { RimLanding } from './arenaRim';
 import { heavyCloud, pressedBadge, sealedAt, sealedCard, type SealedQuarter } from './sealedQuarters';
+import { ringCard, ringChalk, ringMarkTile, type RumourRing } from './rumourRings';
 import { podiumHole } from './arenaHall';
 import { calmedFloor, condensedFloor, steppedCloud, type Rgb } from './arenaPit';
 import { nextShadowInMs, SHADOW_WIDTH, shadowAt, shadowPassFor, type ShadowPass } from './pitLife';
@@ -71,6 +72,8 @@ export interface OverviewSource {
   readonly cloudInk: Rgb;
   /** Quarters a gym still holds shut: under a heavier cloud, their badge pressed in (`sealedQuarters.ts`). */
   readonly sealed: readonly SealedQuarter[];
+  /** A chalk ring over the district of every rumour heard (`rumourRings.ts`): on the glass, never the map. */
+  readonly rings: readonly RumourRing[];
   readonly light: WindowLight;
   readonly textures: {
     readonly light: string;
@@ -112,6 +115,13 @@ const WHITE = 0xf8f8f8;
 const CURSOR_RED = 0xe04038;
 const TOWN_ROOF = 0xd84830;
 const TOWN_WALL = 0xf8f0d8;
+/** Chalk on the glass, the shade under it, and the "?" and the tick of a rumour's ring. */
+const CHALK = 0xe8e8d8;
+const CHALK_SHADE = 0x283040;
+const CHALK_MARK = 0xf8f8f8;
+const CHALK_TICK = 0xf8f8f8;
+/** How near the cursor has to come to a ring's mark to read it, in screen pixels. */
+const RING_MARK_REACH = 6;
 const DIM_WORDS = '#70788c';
 const BRIGHT_WORDS = '#f8f7dd';
 
@@ -171,6 +181,8 @@ export class ValeOverviewView {
   private readonly close: Phaser.GameObjects.Image;
   private readonly townLayer: Phaser.GameObjects.Graphics;
   private readonly memoryLayer: Phaser.GameObjects.Graphics;
+  /** The rumours' chalk, on the glass: over everything the pit remembers. */
+  private readonly ringLayer: Phaser.GameObjects.Graphics;
   private readonly lights: { readonly landing: RimLanding; readonly image: Phaser.GameObjects.Image }[];
   private readonly floorTexture: string;
   private readonly painted: string[] = [];
@@ -275,6 +287,7 @@ export class ValeOverviewView {
     this.fitted = add.image(0, 0, this.wholeTexture()).setOrigin(0, 0);
     this.townLayer = add.graphics();
     this.memoryLayer = add.graphics();
+    this.ringLayer = add.graphics();
     this.lights = source.landings.map((landing) => ({ landing, image: add.image(0, 0, source.textures.light) }));
     const { figure } = options;
     this.you = this.youOn
@@ -303,6 +316,7 @@ export class ValeOverviewView {
       this.fitted,
       this.townLayer,
       this.memoryLayer,
+      this.ringLayer,
       ...this.lights.map(({ image }) => image),
       ...(this.you ? [this.you] : []),
       this.cursorMark,
@@ -788,6 +802,22 @@ export class ValeOverviewView {
           .fillRect(Math.round(at.x + square.x), Math.round(at.y + square.y), SEAL_PIXEL, SEAL_PIXEL);
       }
     }
+    // The rumours heard, chalked on the glass over their districts, above the
+    // marks a raid left: shade first, so no dash's shade lies over chalk.
+    const chalk = this.ringLayer.clear();
+    for (const ring of this.source.rings) {
+      const at = this.view.screenOf(mapPointOfTile(ring.centre, scale));
+      const squares = ringChalk(ring, scale * zoom);
+      for (const pass of ['shade', 'chalk'] as const) {
+        for (const square of squares) {
+          if ((square.ink === 'shade') !== (pass === 'shade')) {
+            continue;
+          }
+          const ink = square.ink === 'shade' ? CHALK_SHADE : square.ink === 'chalk' ? CHALK : square.ink === 'tick' ? CHALK_TICK : CHALK_MARK;
+          chalk.fillStyle(ink, square.ink === 'chalk' ? 0.8 : 1).fillRect(Math.round(at.x + square.x), Math.round(at.y + square.y), 1, 1);
+        }
+      }
+    }
     for (const light of townLights) {
       const at = this.view.screenOf({ x: light.x - mapFloor.left, y: light.y - mapFloor.top });
       town.fillStyle(light.warm ? 0xf8d070 : 0xf8e8b8, 1).fillRect(at.x, at.y, 1, 1);
@@ -904,6 +934,13 @@ export class ValeOverviewView {
     const mark = marks.find((each) => Math.hypot((each.x + 0.5) * scale - cursor.x, (each.y + 0.5) * scale - cursor.y) * zoom <= MARK_REACH);
     if (mark) {
       return { title: mark.line.toUpperCase(), lines: [] };
+    }
+    const ring = this.source.rings.find((each) => {
+      const mark = mapPointOfTile(ringMarkTile(each), scale);
+      return Math.hypot(mark.x - cursor.x, mark.y - cursor.y) * zoom <= RING_MARK_REACH;
+    });
+    if (ring) {
+      return ringCard(ring);
     }
     const tile = { x: Math.floor(cursor.x / scale), y: Math.floor(cursor.y / scale) };
     const sealed = sealedAt(this.source.sealed, tile);
