@@ -77,8 +77,11 @@ const rungOf = (trainer: TrainerBattle): number =>
  * and changing who she fields is a design call, not a measurement.
  *
  * Boatswain Cragg holds Greystone Vale's Sunken Quarter, the map a save is
- * offered once the chain is finished, so he is the last rung: 33%, beside Nye,
- * and inside the band where she is not (a lone Charmander 14 on 13%).
+ * offered once the chain is finished, so he is the last rung. He stands inside
+ * THE COAST, behind Misty's gym, so since the gyms plan's step 3 he is met by a
+ * team that beat her and is pitched above her, two on two in the Coast's rain
+ * (`quarterPuzzle.test.ts`): far past these lone starters at 14, which is why he
+ * has left the band below and is measured against the Coast's own parties.
  *
  * Every rung was re-measured on 2026-10-06, once the battle rules were
  * FireRed's. They were first taken while a trainer's replacement attacked in
@@ -136,7 +139,6 @@ describe('the boss ladder, played out', () => {
       'forest-quarry-keeper-mott',
       'viridian-gatekeeper-ross',
       'floodplain-quarry-foreman-rudd',
-      'vale-quay-keeper-cragg',
     ]) {
       const trainer = trainerOf(id);
       const solo = trainerWinRate(SOLO, trainer, TRIALS);

@@ -197,11 +197,19 @@ export const TOLL_BAND = {
   levelOn: (mapId: WorldMapId): number => (mapId === 'viridian-forest' ? 10 : 8),
   /**
    * The tolls held to numbers of their own rather than to the band: Maya on the
-   * first road, and a gym's own trainers, who show its leader's combo at a lower
-   * level and are held to the gym's reference teams (`quarterPuzzle.test.ts`) -
-   * they stand off the walk to the leader, so nobody has to pay them.
+   * first road, a gym's own trainers, who show its leader's combo at a lower
+   * level, and the trainers of the quarter behind it, who fight the way its
+   * leader does at the level a team that beat her is at - all held to the
+   * gym's reference teams (`quarterPuzzle.test.ts`). They stand off the walk to
+   * the leader and off the quarter's roads, so nobody has to pay them.
    */
-  heldElsewhere: ['floodplain-checkpoint-maya', 'vale-gym-misty-diana', 'vale-gym-misty-luis'] as readonly string[],
+  heldElsewhere: [
+    'floodplain-checkpoint-maya',
+    'vale-gym-misty-diana',
+    'vale-gym-misty-luis',
+    'vale-coast-fisherman-hal',
+    'vale-coast-swimmer-nell',
+  ] as readonly string[],
 } as const;
 
 /** A move of the catalogue by the name a party says it in. */
@@ -1122,23 +1130,81 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'BOATSWAIN CRAGG HOLDS THE QUAY.',
       'The tide took the lower town and I took what the tide left. Get past me first.',
     ],
-    trainer: createTrainer(
-      'vale-quay-keeper-cragg',
-      'BOATSWAIN CRAGG',
-      // The harbour's own: a Shellder off the drowned streets, a Machop who
-      // works the quay, and a Magnemite out of the old cranes. Measured over the
-      // real engine (`tools/trainers/report.mts`): 33% over the four reference
-      // parties - 13/28/65% for Charmander, Squirtle and Bulbasaur at 14 alone,
-      // 26% for the team - which is the last rung of the ladder, beside
-      // Banksman Nye, and no starter's lottery: an all-Water party here was 3%
-      // for a Charmander, the Magnemite and the Machop are what flatten it.
-      [
-        new Pokemon(getSpeciesById('magnemite')!, 14),
-        new Pokemon(getSpeciesById('shellder')!, 14),
-        new Pokemon(getSpeciesById('machop')!, 14),
-      ],
-      'The barricades are down, the high street and the shingle both. The old town is yours.',
-    ),
+    trainer: {
+      ...createTrainer(
+        'vale-quay-keeper-cragg',
+        'BOATSWAIN CRAGG',
+        // The harbour's own: a Shellder off the drowned streets, a Machop who
+        // works the quay, and a Magnemite out of the old cranes. He stands
+        // behind Misty's doors, so he sits above her (the gyms plan's step
+        // 3): a team that beat her meets him next, in the rain THE COAST is
+        // always in, and he plays his pair as a gym does (`ai: 'gym'`, two on
+        // two). Measured over the real engine (`quarterPuzzle.test.ts`, three
+        // Potions, the Coast's reference parties at Misty's lead's level, in
+        // the rain): the Psyduck-Pikachu team that beats Misty every time wins
+        // 72% here, each starter with its two catches 52-71%, the
+        // Fire-and-Rock team three levels up 58% and eight up 96% - harder
+        // than Misty over the same parties, and a different lock: the
+        // Magnemite stands up to the Electric her quarter is answered with,
+        // and the Machop to the Water.
+        [
+          new Pokemon(getSpeciesById('magnemite')!, 16),
+          new Pokemon(getSpeciesById('shellder')!, 16),
+          new Pokemon(getSpeciesById('machop')!, 16),
+        ],
+        'The barricades are down, the high street and the shingle both. The old town is yours.',
+        2,
+      ),
+      ai: 'gym',
+    },
+  },
+
+  // -- THE COAST, past Misty's doors: two who fight the way her gym does ----------
+  {
+    // A fisherman at the west end of the Old Quay, off the walk from the jetty
+    // to the high street, where the quay steps back to the cliff: the
+    // confuse-and-swim pair, Supersonic from the Tentacool and a Goldeen that
+    // swims first in the rain. Spoken to rather than watching, so nobody has to
+    // pay him: the Coast's trainers are measured against the Coast's reference
+    // teams, not the toll band (`quarterPuzzle.test.ts`).
+    mapId: 'greystone-vale',
+    position: { x: 139, y: 270 },
+    facing: 'right',
+    fixedPosition: true,
+    design: 'fisherman',
+    introLines: ['Nothing bites on this quay but the rain. And me!', 'Get your head spinning, then the fast one goes in!'],
+    trainer: {
+      ...createTrainer(
+        'vale-coast-fisherman-hal',
+        'FISHERMAN HAL',
+        [new Pokemon(getSpeciesById('tentacool')!, 14), new Pokemon(getSpeciesById('goldeen')!, 14)],
+        'Dizzy and drenched and you still won. The swimmers are worse past the cove.',
+        2,
+      ),
+      ai: 'gym',
+    },
+  },
+  {
+    // A swimmer at the end of the smugglers' landing stage in the cove, off the
+    // road from the Cove Steps to the cleft: the smoke-and-claw pair, a Horsea
+    // that lays Smokescreen first in the rain and a Krabby behind its smoke.
+    // Spoken to, like the fisherman, and measured the same way.
+    mapId: 'greystone-vale',
+    position: { x: 86, y: 289 },
+    facing: 'right',
+    fixedPosition: true,
+    design: 'swimmer-woman',
+    introLines: ['Can you even see me through the smoke?', 'My Krabby can see you!'],
+    trainer: {
+      ...createTrainer(
+        'vale-coast-swimmer-nell',
+        'SWIMMER NELL',
+        [new Pokemon(getSpeciesById('horsea')!, 14), new Pokemon(getSpeciesById('krabby')!, 14)],
+        'The smoke cleared and so did my team. Bring that lot to the drowned town.',
+        2,
+      ),
+      ai: 'gym',
+    },
   },
 
   // -- Cerulean Gym, Gull Strand: Misty holds THE COAST --------------------------------

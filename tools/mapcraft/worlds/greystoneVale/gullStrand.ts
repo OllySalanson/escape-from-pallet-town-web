@@ -293,6 +293,9 @@ export function gullStrand(): MapcraftResult {
       areas: cave.areas,
       links: [caveMouthLink(cave, 'sea', mouth), ...caveLadders(cave)],
       signs: [
+        // THE COAST's notice, at the bar Misty holds (`world/valeQuarters.ts`):
+        // what the quarter does to a team, said before it costs one.
+        { x: 45, y: 60, lines: ['THE COAST. Past the sandbags at the end of this jetty.', 'Rain all day, every day, and in the rain the swimmers move first.', 'Water hits harder and Fire hardly at all. Held by MISTY: CASCADE BADGE.'] },
         { x: 48, y: 12, lines: ['GULL STRAND', 'East: the orchards. South: the strand and the jetty.'] },
         { x: 16, y: 15 + 1 - 1 + 5, lines: ['GULL STRAND', 'West: Reedmere. East: the stone bridge. The cliff path goes down to the cove.'] },
         { x: 18, y: 16, lines: ['THE OLD LIGHT', 'Not lit since the boats got radios. Trimmed daily. Nobody has told Bertie.'] },
@@ -328,6 +331,9 @@ export function gullStrand(): MapcraftResult {
       ],
       berryTrees: [{ x: 23, y: 28, berry: 'rawst' }],
       people: [
+        // The guard at Misty's bar, as FireRed's Route 23 keeps its badge gates:
+        // he says which badge opens it, and stands to one side of the way.
+        { x: 45, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'] },
         {
           x: 45,
           y: 58,

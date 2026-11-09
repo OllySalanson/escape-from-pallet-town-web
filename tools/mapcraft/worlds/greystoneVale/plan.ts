@@ -172,7 +172,11 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: 'THE SUNKEN QUARTER',
       cell: [1, 3],
       terrain: 'coast',
-      wildlife: 'shore',
+      // THE COAST, Misty's quarter (`world/valeQuarters.ts`): rain over every
+      // place of it, and the swimmers and sleepers her gym teaches, at the band
+      // a team that beat her is at.
+      wildlife: 'coast',
+      rain: true,
       idea: 'The drowned lower town of the old port, reached along the jetty from the strand: streets under the tide, roofs and a mansion standing in the shallows.',
     },
     {
@@ -180,7 +184,9 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: "SMUGGLERS' COVE",
       cell: [0, 3],
       terrain: 'coast',
-      wildlife: 'shore',
+      // The other half of THE COAST, in the same rain and on the same table.
+      wildlife: 'coast',
+      rain: true,
       idea: "A hidden cove under the cliffs where the marsh drains to the sea: the smugglers' jetty, their boat, and contraband stacked in the rocks.",
     },
     // The far places: a ring round the vale, none of them with a landing.

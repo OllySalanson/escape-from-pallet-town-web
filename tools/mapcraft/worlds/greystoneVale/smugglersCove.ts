@@ -222,13 +222,13 @@ export function smugglersCove(): MapcraftResult {
     ],
     extra: {
       districts: [
-        { name: 'THE EEL POOL', x: 4, y: 4, width: 22, height: 12, wildlife: 'shore' },
-        { name: 'THE REVENUE POST', x: 36, y: 14, width: 20, height: 9, wildlife: 'shore' },
-        { name: 'THE LANDING STAGE', x: 20, y: 30, width: 8, height: 6, wildlife: 'shore' },
-        { name: 'THE CONTRABAND', x: 14, y: 42, width: 8, height: 6, wildlife: 'shore' },
-        { name: 'FISHER’S ROW', x: 28, y: 26, width: 12, height: 15, wildlife: 'shore' },
-        { name: 'THE BOAT SHED', x: 26, y: 41, width: 14, height: 9, wildlife: 'shore' },
-        { name: 'THE CUT', x: 40, y: 36, width: 24, height: 10, wildlife: 'shore' },
+        { name: 'THE EEL POOL', x: 4, y: 4, width: 22, height: 12, wildlife: 'coast', rain: true },
+        { name: 'THE REVENUE POST', x: 36, y: 14, width: 20, height: 9, wildlife: 'coast', rain: true },
+        { name: 'THE LANDING STAGE', x: 20, y: 30, width: 8, height: 6, wildlife: 'coast', rain: true },
+        { name: 'THE CONTRABAND', x: 14, y: 42, width: 8, height: 6, wildlife: 'coast', rain: true },
+        { name: 'FISHER’S ROW', x: 28, y: 26, width: 12, height: 15, wildlife: 'coast', rain: true },
+        { name: 'THE BOAT SHED', x: 26, y: 41, width: 14, height: 9, wildlife: 'coast', rain: true },
+        { name: 'THE CUT', x: 40, y: 36, width: 24, height: 10, wildlife: 'coast', rain: true },
       ],
       landmarks: [
         { x: 28, y: 40, name: "Smugglers' Jetty", kind: 'jetty' },
