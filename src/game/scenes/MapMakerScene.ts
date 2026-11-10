@@ -429,6 +429,10 @@ export class MapMakerScene extends Phaser.Scene {
     // Back from a TRY IT: the draft stops being a map the game can deploy onto,
     // and the game goes back to its ordinary save.
     const tried = data?.tried === true;
+    // A try left with Escape never reached an exit, so its raid is still under
+    // way in the manager every raid shares; put down here, it cannot block the
+    // next jump from the rim or the next TRY IT.
+    activeRunManager.abandonRun();
     endTry();
     unregisterPlayerMap(playerMapId({ id: TRY_IT_MAP_ID }));
     setActiveSaveSlot('normal');

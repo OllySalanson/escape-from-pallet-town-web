@@ -34,6 +34,19 @@ describe('RunManager lifecycle', () => {
     ).not.toThrow();
   });
 
+  it('puts down a raid left unsettled, and leaves a settled one as it is', () => {
+    const manager = new RunManager();
+    startRun(manager);
+    expect(() => startRun(manager)).toThrow(RunTransitionError);
+    manager.abandonRun();
+    expect(manager.phase).toBe(RunPhase.InHub);
+    expect(() => startRun(manager)).not.toThrow();
+
+    manager.resolveEscape();
+    manager.abandonRun();
+    expect(manager.phase).toBe(RunPhase.Escaped);
+  });
+
   it('accumulates catches and quantities of found loot', () => {
     const manager = new RunManager();
     const caught = makePokemon(CHARMANDER);

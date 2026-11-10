@@ -1166,6 +1166,37 @@ describe('hub deployment route', () => {
     expect(start).toHaveBeenCalledTimes(1);
   });
 
+  // A raid the manager refuses to start - one left running by a maker's try
+  // was how - used to be written as under way first, so the jump hung over
+  // the pit and the reload settled it as abandoned and took the pack (raids
+  // bug hunt, fault 1). It must write nothing, and leave the jump to be tried.
+  it('writes nothing about a raid the manager refuses to start', () => {
+    const { hub, start, storage } = createWornHub(() => 0);
+    hub.flow.togglePokemon('charmander-1');
+    readyToDeploy(hub);
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+    activeRunManager.startRun({ party: [], items: [] }, { mapId: 'greystone-vale', durationMs: 1 });
+    const before = new SaveManager(storage).load();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    deploy(hub, start);
+
+    error.mockRestore();
+    expect(start).not.toHaveBeenCalled();
+    expect(statusOf(hub)).toBe('That raid could not be started. Nothing was taken - try the jump again.');
+    const after = new SaveManager(storage).load();
+    expect(after?.raidInFlight).toBeNull();
+    expect(before).not.toBeNull();
+    expect(after?.raidProgress.raidRecord).toEqual(before?.raidProgress.raidRecord);
+    expect((hub as unknown as { deploying: boolean }).deploying).toBe(false);
+
+    activeRunManager.abandonRun();
+    deploy(hub, start);
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
   it('enters the raid with exactly the party, supplies and secure slot that were confirmed', () => {
     const { hub, start } = createHub();
 

@@ -1155,6 +1155,37 @@ export class HubScene extends Phaser.Scene {
       return;
     }
 
+    const items = deployment.items;
+    // The raid is started in memory before anything about it is written, so a
+    // raid the manager refuses costs nothing. Written first, a refusal left a
+    // raid recorded as under way that never began, the player hanging over the
+    // pit, and a reload that settled it as abandoned and took the pack (the
+    // raids bug hunt of 9 Nov 2026, fault 1).
+    try {
+      activeRunManager.startRun(
+        {
+          party: deployment.party.map((stored) => stored.pokemon),
+          items,
+          // The pack is part of the loadout because it is the one thing out of
+          // the vault that is risked without ever being in the bag.
+          ...(deployment.packItemId === undefined ? {} : { packItemId: deployment.packItemId }),
+        },
+        // The base clock, less whatever recovery has already been booked against it.
+        {
+          mapId: requireInsertion(deployment.insertionId).mapId,
+          durationMs: this.raidClockMs,
+          secureGrid: this.flow.secureGrid,
+          securePokemonLimit: this.flow.securePokemonSlots,
+          secureFilledForYou: deployment.secureFilledForYou,
+        },
+        deployment.secureSlot,
+      );
+    } catch (error) {
+      console.error(error);
+      this.refuse('That raid could not be started. Nothing was taken - try the jump again.');
+      return;
+    }
+
     this.deploying = true;
     audioManager.play('deploy');
     // Counted where it is committed to rather than where it ends: a raid
@@ -1164,7 +1195,6 @@ export class HubScene extends Phaser.Scene {
     if (activeSaveSlot() !== 'try-it') {
       countPlay({ kind: 'raid-start', detail: mapDetail(requireInsertion(deployment.insertionId).mapId) });
     }
-    const items = deployment.items;
     // And recorded as under way until it ends, so a raid left by closing the
     // tab costs its pack rather than nothing (`run/raidInFlight.ts`).
     const inFlight = createRaidInFlight(
@@ -1176,24 +1206,6 @@ export class HubScene extends Phaser.Scene {
     if (this.saveManager.recordRaidInFlight(inFlight)) {
       raidHeartbeat.start(inFlight.id);
     }
-    activeRunManager.startRun(
-      {
-        party: deployment.party.map((stored) => stored.pokemon),
-        items,
-        // The pack is part of the loadout because it is the one thing out of
-        // the vault that is risked without ever being in the bag.
-        ...(deployment.packItemId === undefined ? {} : { packItemId: deployment.packItemId }),
-      },
-      // The base clock, less whatever recovery has already been booked against it.
-      {
-        mapId: requireInsertion(deployment.insertionId).mapId,
-        durationMs: this.raidClockMs,
-        secureGrid: this.flow.secureGrid,
-        securePokemonLimit: this.flow.securePokemonSlots,
-        secureFilledForYou: deployment.secureFilledForYou,
-      },
-      deployment.secureSlot,
-    );
     // Remembered on the way out rather than on the way home, because it is what
     // the player chose and a raid that goes badly chose it too.
     new SaveManager().recordSecurePreference(deployment.securePreference);
