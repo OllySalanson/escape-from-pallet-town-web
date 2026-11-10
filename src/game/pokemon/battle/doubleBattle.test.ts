@@ -696,7 +696,9 @@ describe('where the one authored double battle is', () => {
     // the walk to her, so nobody has to fight them. The gyms plan's step 3
     // carries the gym into its quarter: the keeper behind Misty's doors plays
     // his pair as she does, and two trainers past her doors play her combo,
-    // each standing off the quarter's roads (`coastQuarter.test.ts`).
+    // each standing off the quarter's roads (`coastQuarter.test.ts`). Koga's
+    // gym is the next, built as hers is: the leader two on two and his two
+    // trainers in his hall, spoken to.
     expect(doubles.map((encounter) => encounter.trainer.id)).toEqual([
       'floodplain-orchard-warden-holt',
       'vale-quay-keeper-cragg',
@@ -705,6 +707,9 @@ describe('where the one authored double battle is', () => {
       'vale-gym-misty',
       'vale-gym-misty-diana',
       'vale-gym-misty-luis',
+      'vale-gym-koga',
+      'vale-gym-koga-nate',
+      'vale-gym-koga-phil',
     ]);
     for (const double of doubles) {
       expect(`${double.trainer.id} ${double.bossId !== undefined || double.trainer.ai === 'gym'}`).toBe(

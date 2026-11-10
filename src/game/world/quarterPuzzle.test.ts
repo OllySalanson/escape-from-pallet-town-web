@@ -4,7 +4,7 @@ import { WeatherId } from '../pokemon/battle/weather';
 import { generateRunPlan } from '../run/runGeneration';
 import { partyOf, trainerWinRate, type MeasuredMember, type MeasuredParty } from './trainerMeasure';
 import { createRunTrainerEncounters } from './trainers';
-import { MISTY_BOSS_ID } from './valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from './valeQuarters';
 
 /**
  * A gym is a puzzle with a best team, and that is measured, never argued
@@ -178,5 +178,115 @@ describe('THE COAST: Misty, two on two in the rain', () => {
       expect(`${party.name} ${rate(party, cragg, WeatherId.Rain) >= 0.45}`).toBe(`${party.name} true`);
     }
     expect(rate(wrong(8), cragg, WeatherId.Rain)).toBeGreaterThanOrEqual(0.65);
+  });
+});
+
+// -- THE MARSH: Koga ------------------------------------------------------------
+
+const koga = (): TrainerBattle => createRunTrainerEncounters().find((one) => one.bossId === KOGA_BOSS_ID)!.trainer;
+
+/** The level the Marsh's reference teams are measured at: his lead's, the highest he fields. */
+const KOGA_LEVEL = Math.max(...koga().party.map((pokemon) => pokemon.level));
+
+/** A Gastly as a player keeps one, opening with Hypnosis on whatever is not already asleep. */
+const GASTLY: MeasuredMember = { opens: 'Hypnosis' };
+/** A Sandshrew taught TM28 Dig in the Greystone Caves, which is where it lives. */
+const DIGGER: MeasuredMember = { moves: ['Dig', 'Scratch', 'Defense Curl', 'Sand Attack'] };
+
+/**
+ * The Marsh's answer, every member caught in ground open before his gym: a
+ * Gastly from the Moor Chapel's churchyard on a night raid - a Ghost, so his
+ * Tackle, Pound and Self-Destruct pass through it, and Ghost and Poison, so
+ * his Poison does a quarter - opening with Hypnosis; a Ponyta (the Peaks)
+ * whose Ember never touches; a Pidgeotto whose Gust does not either; and a
+ * Sandshrew with Dig for the Grimer, which the Koffing floats over.
+ */
+const MARSH_BEST = partyOf(
+  `Gastly, Ponyta, Pidgeotto, Sandshrew ${KOGA_LEVEL}`,
+  ['gastly', KOGA_LEVEL, GASTLY],
+  ['ponyta', KOGA_LEVEL],
+  ['pidgeotto', KOGA_LEVEL],
+  ['sandshrew', KOGA_LEVEL, DIGGER],
+);
+
+/**
+ * Strong on paper and wrong: the Grass the Coast was won with, Bellsprout
+ * leading. Poison halves Grass and hits it twice as hard, and a Vine Whip
+ * touches. (The plan's other guess, a team all of Ground, is no trap here:
+ * Poison does half to Ground and Rock, and only the Koffing floats.)
+ */
+const marshWrong = (up: number): MeasuredParty =>
+  partyOf(
+    `Bellsprout ${KOGA_LEVEL + up + 1}, Oddish ${KOGA_LEVEL + up}, Poliwag ${KOGA_LEVEL + up}`,
+    ['bellsprout', KOGA_LEVEL + up + 1],
+    ['oddish', KOGA_LEVEL + up],
+    ['poliwag', KOGA_LEVEL + up],
+  );
+
+/** Each starter with a Gastly and the non-touching hitter that suits it. */
+const MARSH_STARTERS: readonly MeasuredParty[] = [
+  partyOf(`Bulbasaur, Gastly, Ponyta ${KOGA_LEVEL}`, ['bulbasaur', KOGA_LEVEL], ['gastly', KOGA_LEVEL, GASTLY], ['ponyta', KOGA_LEVEL]),
+  partyOf(`Charmander, Gastly, Pidgeotto ${KOGA_LEVEL}`, ['charmander', KOGA_LEVEL], ['gastly', KOGA_LEVEL, GASTLY], ['pidgeotto', KOGA_LEVEL]),
+  partyOf(`Squirtle, Gastly, Ponyta ${KOGA_LEVEL}`, ['squirtle', KOGA_LEVEL], ['gastly', KOGA_LEVEL, GASTLY], ['ponyta', KOGA_LEVEL]),
+];
+
+const kogaRate = (party: MeasuredParty, trainer: TrainerBattle = koga()): number =>
+  trainerWinRate(party, trainer, TRIALS, 0x51ede, null, POTIONS);
+
+describe('THE MARSH: Koga, two on two in the poison', () => {
+  it('fields two at once and plays his combo: smoke, poison, and a Koffing that floats and blows up', () => {
+    const trainer = koga();
+    expect(trainer.unitCount).toBe(2);
+    expect(trainer.ai).toBe('gym');
+    const lead = trainer.party[0];
+    expect(lead.base.abilityId).toBe('levitate');
+    expect(lead.moves.map((move) => move.base.name)).toEqual(expect.arrayContaining(['Smokescreen', 'Self-Destruct']));
+    expect(trainer.party[1].moves.map((move) => move.base.name)).toContain('Minimize');
+  });
+
+  it('stands in a raid only for a holder of the CASCADE BADGE, knowing his taught moves', () => {
+    const before = generateRunPlan(1, undefined, 'greystone-vale-the-strand');
+    expect(before.trainers.some((trainer) => trainer.bossId === KOGA_BOSS_ID)).toBe(false);
+    const after = generateRunPlan(1, undefined, 'greystone-vale-the-strand', undefined, undefined, [MISTY_BOSS_ID]);
+    const raidKoga = after.trainers.find((trainer) => trainer.bossId === KOGA_BOSS_ID)!;
+    expect(raidKoga.trainer.party.map((pokemon) => pokemon.moves.map((move) => move.base.name))).toEqual(
+      koga().party.map((pokemon) => pokemon.moves.map((move) => move.base.name)),
+    );
+  });
+
+  it('sits above Misty, the next gym in the order', () => {
+    expect(KOGA_LEVEL).toBeGreaterThan(LEVEL);
+  });
+
+  it('is beaten by the best team at least three fights in four', () => {
+    expect(kogaRate(MARSH_BEST)).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it('makes a wrong team three levels up struggle, and lets one eight levels up through', () => {
+    const three = kogaRate(marshWrong(3));
+    expect(three).toBeGreaterThanOrEqual(0.2);
+    expect(three).toBeLessThanOrEqual(0.45);
+    expect(kogaRate(marshWrong(8))).toBeGreaterThanOrEqual(0.65);
+  });
+
+  it('locks no starter out once it has caught for him', () => {
+    const failing = MARSH_STARTERS.map((party) => ({ party: party.name, rate: kogaRate(party) })).filter(
+      (result) => result.rate < 0.55,
+    );
+    expect(failing).toEqual([]);
+  });
+
+  /**
+   * His two trainers show the combo first, three levels under him and before
+   * he will fight: smoke and poison powder, then a Grimer that will not be hit
+   * beside a Koffing that goes out with a bang. A free look, not a second wall.
+   */
+  it('has two trainers who show the combo and are easier than he is', () => {
+    for (const id of ['vale-gym-koga-nate', 'vale-gym-koga-phil']) {
+      const trainer = trainerOf(id);
+      expect(`${trainer.name} ${trainer.ai} ${trainer.unitCount}`).toBe(`${trainer.name} gym 2`);
+      expect(kogaRate(MARSH_BEST, trainer)).toBeGreaterThanOrEqual(0.9);
+      expect(kogaRate(marshWrong(3), trainer)).toBeGreaterThan(kogaRate(marshWrong(3)));
+    }
   });
 });

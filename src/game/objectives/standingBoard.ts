@@ -316,13 +316,16 @@ function measureGround(
   // Floodplain's sluice keeper stands behind the toll bridge, but the causeway
   // he also holds runs back to the Landing. Beaten alone he would add the keep
   // to the walk, and the board would point a fresh save at a door whose keeper
-  // it cannot reach. So the keeper has to be someone you can walk up to today.
+  // it cannot reach. So the keeper has to be someone you can walk up to today -
+  // and who is there today: Koga's hall is open from the first raid, but he
+  // stands in it only for a holder of Misty's badge (`challengedAfter`).
   const gates = gatesForMap(mapId);
   const trainers = createRunTrainerEncounters();
   const canBeChallengedToday = (bossId: string): boolean => {
     const boss = trainers.find((trainer) => trainer.bossId === bossId);
     return (
       boss !== undefined &&
+      (boss.challengedAfter === undefined || defeatedBosses.includes(boss.challengedAfter)) &&
       [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) =>
         reached(steps, { x: boss.position.x + dx, y: boss.position.y + dy }),
       )

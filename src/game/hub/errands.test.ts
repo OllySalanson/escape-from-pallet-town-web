@@ -9,6 +9,7 @@ import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { HARBOUR_PEOPLE, harbourLifeAt } from '../base/harbourLife';
 import { stepDistances } from '../world/mapStructure';
 import { getWorldMap } from '../worldMap';
+import { gymsBefore, KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import {
   clampErrandRecords,
   declineErrand,
@@ -25,6 +26,7 @@ import {
   errandOf,
   errandOpen,
   errandPlace,
+  errandQuarter,
   errandSquares,
   errandsToLay,
   withErrandAsked,
@@ -44,6 +46,13 @@ const OPENED: ErrandProgress = {
   ...DEFAULT_RAID_PROGRESS,
   completedContracts: [FIRST_CONTRACT_ID],
   unlockedInsertions: ['floodplain-relay', ...CONTRACT_REWARD_INSERTIONS, 'greystone-vale'],
+  // Every gym beaten, so a favour behind one is as open as any other.
+  defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID],
+};
+/** The doors a save has to have opened before an errand's place can be walked to: its gym's, and the gyms' before it. */
+const gymDoorsFor = (errand: (typeof ERRANDS)[number]): readonly string[] => {
+  const gym = errandQuarter(errand)?.gym;
+  return gym ? [...gymsBefore(gym.bossId), gym.bossId] : [];
 };
 const nothing = (): number => 0;
 
@@ -104,9 +113,9 @@ describe('errands', () => {
     }
   });
 
-  it('lies in a place that can be walked to from its map’s front door with every door still shut', () => {
+  it('lies in a place that can be walked to from its map’s front door with every door still shut but its gym’s', () => {
     for (const errand of ERRANDS) {
-      const map = getWorldMap(errand.mapId, []);
+      const map = getWorldMap(errand.mapId, gymDoorsFor(errand));
       const door = frontDoorFor(errand.mapId)!;
       const steps = stepDistances(map.collision, door.position, new Set(), map.links);
       const areas = errandDistrict(errand)!.areas;
@@ -210,13 +219,38 @@ describe('errands', () => {
     try {
       for (const errand of ERRANDS) {
         expect(errand.mapId).toBe('greystone-vale');
-        expect(errandOpen(errand, BEEN_OUT), errand.id).toBe(true);
-        expect(errandBeat(errand.giver, BEEN_OUT, nothing)).toEqual({ kind: 'ask', errand });
+        // A favour behind a gym is asked once its doors are open, and every
+        // other one straight away.
+        const out = { ...BEEN_OUT, defeatedBosses: gymDoorsFor(errand) };
+        expect(errandOpen(errand, out), errand.id).toBe(true);
+        expect(errandBeat(errand.giver, out, nothing)).toEqual({ kind: 'ask', errand });
         // Nobody asks a favour of somebody on their way to their first raid.
         expect(errandOpen(errand, FRESH), errand.id).toBe(false);
       }
     } finally {
       retireMapsForTests([]);
+    }
+  });
+
+  /**
+   * The captain's log lies at THE WRECK and the Warden's teeth in SAFARI
+   * MARSH, both past Koga's doors: asked of a save that cannot walk there, a
+   * favour would be a promise the game cannot keep (the gyms plan, 1.4).
+   */
+  it('asks a favour in the Marsh only once Koga is beaten', () => {
+    const marsh = ERRANDS.filter((errand) => errandQuarter(errand)?.gym?.bossId === KOGA_BOSS_ID);
+    expect(marsh.map((errand) => errand.id).sort()).toEqual(['gold-teeth', 'ships-log']);
+    for (const errand of marsh) {
+      const misty = { ...OPENED, defeatedBosses: [MISTY_BOSS_ID] };
+      expect(errandOpen(errand, misty), errand.id).toBe(false);
+      expect(errandBeat(errand.giver, misty, nothing)).toBeUndefined();
+      expect(errandOpen(errand, { ...OPENED, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] }), errand.id).toBe(true);
+      // The explorer run opens every door, and so every favour.
+      expect(errandOpen(errand, { ...OPENED, defeatedBosses: [], openedGates: [KOGA_BOSS_ID] }), errand.id).toBe(true);
+    }
+    // Nothing else in the vale waits on a gym.
+    for (const errand of ERRANDS.filter((one) => !marsh.includes(one))) {
+      expect(errandQuarter(errand)?.gym, errand.id).toBeUndefined();
     }
   });
 

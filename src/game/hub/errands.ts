@@ -6,7 +6,9 @@ import { availableInsertionIds, frontDoorFor } from '../run/runGeneration';
 import type { RaidProgress } from '../save/SaveManager';
 import type { CharacterDesignId } from '../world/characterDesigns';
 import { districtsForMap, type MapDistrict } from '../world/districts';
+import { openedDoors } from '../world/gates';
 import type { WorldLoot } from '../world/loot';
+import { quarterOfPlace, type ValeQuarter } from '../world/valeQuarters';
 import { worldMapName, type BuiltInMapId } from '../worldMap';
 
 /** The kinds Brock names as able to read TM39: the rock and fighting kinds a raid meets. */
@@ -387,6 +389,12 @@ export interface ErrandProgress {
   readonly errands?: readonly ErrandRecord[];
   /** Nobody asks a favour of somebody who has yet to go on a raid (`hub/firstRaid.ts`). */
   readonly raidRecord?: RaidProgress['raidRecord'];
+  /**
+   * The keepers beaten and the doors opened another way: a favour whose thing
+   * lies in a gym's quarter is asked only once that gym's doors are open.
+   */
+  readonly defeatedBosses?: readonly string[];
+  readonly openedGates?: readonly string[];
   readonly standingContractsBanked?: number;
 }
 
@@ -395,14 +403,30 @@ export interface ErrandProgress {
  * be one they can deploy to, by its front door. Asking for a crate on a map
  * nobody can drop into would be the one kind of request this game refuses to
  * make (`errands.test.ts` holds the other half - that the place is reachable
- * from that door with every gate still shut).
+ * from that door with every gate still shut, or with its gym's doors open). And
+ * a thing past a gym's doors is not asked for until they are open.
  */
 export function errandOpen(errand: Errand, progress: ErrandProgress): boolean {
   if (isFirstRaid(progress)) {
     return false;
   }
+  const gym = errandQuarter(errand)?.gym;
+  if (gym && !openedDoors({ defeatedBosses: progress.defeatedBosses ?? [], openedGates: progress.openedGates }).includes(gym.bossId)) {
+    return false;
+  }
   const door = frontDoorFor(errand.mapId);
   return door !== undefined && availableInsertionIds(progress).includes(door.id);
+}
+
+/**
+ * The quarter of the vale an errand's thing lies in (`world/valeQuarters.ts`),
+ * if its place lies in one: the captain's log at THE WRECK and the Warden's
+ * teeth in SAFARI MARSH are both behind Koga's doors, so neither is asked of a
+ * save that cannot walk there (`errandOpen`).
+ */
+export function errandQuarter(errand: Errand): ValeQuarter | undefined {
+  const district = errandDistrict(errand);
+  return district ? quarterOfPlace(district, districtsForMap(errand.mapId)) : undefined;
 }
 
 /** What a giver has to say when spoken to, if anything. */

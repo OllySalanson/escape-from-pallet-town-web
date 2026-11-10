@@ -17,8 +17,10 @@
  * The plan for all four quarters is firstmate's `eptw-gyms-loadouts-plan`:
  * Misty holds the Coast, and the Coast fights the way her gym does - rain over
  * every place of it, her swimmers in its grass, two trainers who play her
- * combo and a keeper pitched above her (`coastQuarter.test.ts`). Koga's Marsh
- * and Lt. Surge's Station are rows still to come, in that order.
+ * combo and a keeper pitched above her (`coastQuarter.test.ts`). Koga holds the
+ * Marsh next, standing in his gym only for a holder of Misty's badge
+ * (`RunTrainerEncounter.challengedAfter`), and Lt. Surge's Station is the row
+ * still to come.
  *
  * Deliberately free of imports: the landing filter, the gates and the badge
  * case all read it, and it must sit at the bottom of the graph they share.
@@ -82,6 +84,9 @@ export interface ValeQuarter {
 /** Misty's boss id: her gym, her two doors and her badge are all this one word. */
 export const MISTY_BOSS_ID = 'vale-gym-misty';
 
+/** Koga's: his gym, his doors and the SOUL BADGE, and he stands only for a holder of Misty's. */
+export const KOGA_BOSS_ID = 'vale-gym-koga';
+
 export const VALE_QUARTERS: readonly ValeQuarter[] = [
   {
     id: 'the-vale',
@@ -137,11 +142,52 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
       'Electric and Grass hit Water twice as hard. A Psyduck stills the weather.',
     ],
   },
+  {
+    id: 'the-marsh',
+    name: 'THE MARSH',
+    gym: {
+      bossId: KOGA_BOSS_ID,
+      leader: 'Koga',
+      badge: 'SOUL BADGE',
+      building: 'Fuchsia Gym',
+      standsIn: 'TANGLEWOOD',
+      rival: 'koga',
+      advice: [
+        'Next gym: FUCHSIA GYM in TANGLEWOOD. KOGA holds THE MARSH.',
+        'His Poison types float and wear you down. A Ghost shrugs them off!',
+      ],
+      practice: {
+        offer: 'KOGA: "Spar with my gym team? Same poison. Nothing at stake."',
+        beaten: 'Humph! A drill is a drill. No badge for a drill!',
+        won: 'KOGA: "Fwahahaha! Good. Now do it in my gym."',
+        lost: 'KOGA: "That is what waits in Fuchsia Gym. Poison is patient."',
+      },
+    },
+    districts: ['SAFARI MARSH', 'THE WRECK'],
+    landings: ['greystone-vale-rest-house', 'greystone-vale-salvage-camp'],
+    threat: [
+      'Touch anything here and it poisons you back.',
+      "Koga's Koffing floats over Ground moves, and blows itself up.",
+      'Normal and Poison do little to a Ghost. Fire and Flying never touch.',
+    ],
+  },
 ];
 
 /** The gyms in the order a save must beat them (the captain: Misty, then Koga, then Lt. Surge). */
 export function valeGyms(): readonly ValeGym[] {
   return VALE_QUARTERS.flatMap((quarter) => (quarter.gym ? [quarter.gym] : []));
+}
+
+/**
+ * The gyms a save must have beaten before this one will fight: every gym ahead
+ * of it in the order. A save that holds a gym's badge holds all of these too,
+ * which is what lets the maps be asked about each gym's doors together with the
+ * gyms before it, never alone (`gateStatesToVerify`).
+ */
+export function gymsBefore(bossId: string): readonly string[] {
+  const order = valeGyms().map((gym) => gym.bossId);
+  const at = order.indexOf(bossId);
+  return at < 0 ? [] : order.slice(0, at);
 }
 
 /** The first gym in the order whose leader this save has not beaten, if any. */

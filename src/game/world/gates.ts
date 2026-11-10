@@ -4,7 +4,7 @@ import { FIELD_MOVES, SMALL_TREE_OBSTACLE, type FieldMoveId } from './fieldMoves
 import type { MapSketch, PlantedProp } from './mapGrid';
 import { MATERIAL_CHARS, type Material } from './tileset/materials';
 import { fileMap } from './playerMaps';
-import { gymInFrontOf, quarterHeldBy } from './valeQuarters';
+import { gymInFrontOf, gymsBefore, quarterHeldBy } from './valeQuarters';
 
 /**
  * How a gate looks in one of its two states, in the same two words a map is
@@ -685,6 +685,11 @@ export function gateKeys(gates: readonly MapGate[]): readonly string[] {
  * one. That is what keeps a map's count of states level as gyms are added in
  * front of keepers who were already there (the vale's sweeps ask every state
  * across eight files, `mapStructure.testkit.ts`).
+ *
+ * And a gym later in the order is asked with the gyms before it open too:
+ * Koga will not fight a save without Misty's badge (`challengedAfter`), so his
+ * doors open without hers is a state no save is ever in, and asking it would be
+ * a whole sweep spent on nothing.
  */
 export function gateStatesToVerify(gates: readonly MapGate[]): readonly (readonly string[])[] {
   const keys = gateKeys(gates);
@@ -695,7 +700,11 @@ export function gateStatesToVerify(gates: readonly MapGate[]): readonly (readonl
     const gym = gymInFrontOf(key);
     return gym !== undefined && keys.includes(gym);
   };
-  const states: (readonly string[])[] = [[], ...keys.filter((key) => !behindAGym(key)).map((key) => [key])];
+  const withGymsBefore = (key: string): readonly string[] => [
+    ...gymsBefore(key).filter((gym) => keys.includes(gym)),
+    key,
+  ];
+  const states: (readonly string[])[] = [[], ...keys.filter((key) => !behindAGym(key)).map(withGymsBefore)];
   if (keys.length > 1) {
     states.push(keys);
   }

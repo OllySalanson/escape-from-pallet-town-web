@@ -304,6 +304,9 @@ export function powerStation(): MapcraftResult {
   stand('sack', 26, 54);
   stand('barrel', 25, 58);
   stand('big-stump', 27, 58);
+  // The foot of the road down to the Marsh, where Koga's guard keeps his post
+  // beside his bar and the Marsh's notice stands (`world/valeQuarters.ts`).
+  p.block(28, 60, 2, 2, '.');
 
   // -- Behind the falls: where the tailrace spills through the dam, a strip of
   // reeds runs up its east bank under the cliff to a cave mouth nobody signs,
@@ -347,6 +350,9 @@ export function powerStation(): MapcraftResult {
         ...bunkerLandmarks(),
       ],
       signs: [
+        // THE MARSH's notice, at the bar Koga holds (`world/valeQuarters.ts`):
+        // what the quarter does to a team, said before it costs one.
+        { x: 28, y: 60, lines: ['THE MARSH. Past the bar at the end of this road.', 'Touch anything in there and it poisons you back.', 'Fire and Flying never touch. Held by KOGA: SOUL BADGE.'] },
         { area: 'falls-cave', x: 4, y: 15, lines: ['Scratched on the wall:', 'THE BOULDERS UPSTAIRS MOVE. IT TAKES SOMETHING STRONG.'] },
         { x: 27, y: 28, lines: ['GREYSTONE POWER STATION', 'Service gate locked. Card Key holders only.'] },
         { x: 8, y: 25, lines: ['PYLON ROAD', 'North: along the reservoir and out of the vale.'] },
@@ -367,6 +373,9 @@ export function powerStation(): MapcraftResult {
         ...bunkerSigns(),
       ],
       people: [
+        // The guard at Koga's bar, as FireRed's Route 23 keeps its badge gates:
+        // he says which badge opens it, and stands to one side of the way.
+        { x: 29, y: 59, name: 'Marsh Guard', look: 'policeman', facing: 'right', lines: ['Down this road is THE MARSH, and KOGA has barred it. Only a trainer with his SOUL BADGE goes through.', 'His gym is in Tanglewood, by the Safari road. Everything down there bites back.'] },
         { x: 29, y: 25, name: 'Shop Steward', look: 'heavy-man', facing: 'down', lines: ['Nine years out, and not one of us has crossed this line. Solidarity, that is.', 'Management? Went home in the flood. We have sent them a very strongly worded letter.'], beat: { everyMs: 3000, glances: ['down', 'left', 'right'] }, calls: ['What do we want?'] },
         { x: 33, y: 25, name: 'Picket', look: 'worker', facing: 'down', lines: ['We want the turbines back on. Then we want to not turn them on until they say sorry.', 'I do not know if anybody has thought that through.'], beat: { everyMs: 2700, glances: ['down', 'left'] }, calls: ['Turbines!'] },
         { x: 30, y: 25, name: 'Picket', look: 'worker-woman', facing: 'down', lines: ['My mum was on this line. My nan brought the sandwiches. I got my union card for my fifth birthday.'], beat: { everyMs: 2500, glances: ['down', 'right'] }, calls: ['When do we want them?'] },

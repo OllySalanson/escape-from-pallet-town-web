@@ -19,6 +19,12 @@
  * the broken cart on the Eastern Track and the windfalls where the farm's apple
  * trees went wild.
  *
+ * And since 9 November 2026 Fuchsia Gym stands at the wood's east end, beside
+ * the Eastern Track where it goes on into the Safari Marsh: Koga's, who holds
+ * every way into THE MARSH (`world/valeQuarters.ts`). Its hall is open from the
+ * first raid, with his two trainers in it; he stands at its head only for a
+ * holder of Misty's CASCADE BADGE.
+ *
  * FireRed draws no broadleaf mass - its broadleaf stands alone, and planted
  * shoulder to shoulder it reads as an orchard - so the wood is FireRed's own
  * forest conifer, as Viridian Forest is, with the broadleaves standing in the
@@ -54,9 +60,9 @@ const WOOD = [
   'TTTT.TTT.TTT....T........TTTgTTT',
   'TTT..TTT.TTT.TTTTT.....TTTTTgTTT',
   'ddddddTT.TTT.TTTTTTTdTTTTTTTgTTT',
-  'T....dTT.TTTddddddddddTTTTTTgTTT',
-  'T....dTT.TTTdTTT.....dTTTTTT.TTT',
-  'T....ddddddddTTT.....dTTTTTT.TTT',
+  'T....dTT.TTTddddddddddTT....gTTT',
+  'T....dTT.TTTdTTT.....dTT.....TTT',
+  'T....ddddddddTTT.....dTT.....T.T',
   'T.....TTT.TTT....TTTTddddddddddd',
   'T.....TTT.TTT....TTTTTTTT.....TT',
   'TTTTTTTTT.TTT......TTTTTT.....TT',
@@ -170,6 +176,13 @@ export function tanglewood(): MapcraftResult {
   const cave = greystoneCaves();
   // Who and what is down there, floor by floor (`caveLife.ts`).
   const life = caveLife();
+
+  // -- Fuchsia Gym, in a clearing on the Eastern Track: Koga's, who holds THE
+  // MARSH (`world/valeQuarters.ts`). The guard and the notice stand in the
+  // pocket at the wood's edge, where the track goes on to his barred road.
+  p.building('fuchsia-gym', 49, 34);
+  p.block(52, 39, 1, 1, ','); // the gym's doorstep, off the track
+  p.flowers([48, 38], [56, 39]);
 
   // -- The halfway stone, a wide place in the road -----------------------------------------
   stand('round-boulder', 37, 36);
@@ -290,6 +303,9 @@ export function tanglewood(): MapcraftResult {
         { x: 39, y: 37, name: 'Pedlar', look: 'heavy-man', facing: 'left', lines: ['Halfway, it says. Everybody stops here and feels better about it.', 'Nobody has ever asked halfway to what. Pins?'], beat: { everyMs: 2700, glances: ['up', 'down'] }, calls: ['Pins! Thread! Directions!'] },
         // -- The hermit ------------------------------------------------------------------------------------
         { x: 29, y: 43, name: 'Hermit Bracken', look: 'bald-man', facing: 'down', lines: ['I came out here to get away from people, and I have never met so many.', 'Directions are one Potion. They are all wrong. It keeps people from coming back.'], beat: { everyMs: 4500, glances: ['left', 'right'] }, calls: ['Directions! Very reasonable!'] },
+        // -- Fuchsia Gym, and the guard at Koga's bar, as FireRed's Route 23 keeps its badge gates --------
+        { x: 61, y: 39, name: 'Marsh Guard', look: 'policeman', facing: 'down', lines: ['Past the bar on this track is THE MARSH, and KOGA keeps it. Only a trainer with his SOUL BADGE goes through.', 'He is in Fuchsia Gym, just there. He will not even see you without Misty’s CASCADE BADGE.'] },
+        { x: 54, y: 39, name: 'Gym Fan', look: 'youngster', facing: 'up', lines: ['Koga barred every road into the Marsh himself. Nobody saw him do it. Nobody ever sees him do anything.', 'Everything in there is poison. I went in once with a Bellsprout. I came out with a very sorry Bellsprout.'], beat: { everyMs: 2600, glances: ['up', 'right'] }, calls: ['Fwahahaha! Like that.'] },
         // -- The broken cart ----------------------------------------------------------------------------------
         { x: 56, y: 44, name: 'Carter Yeo', look: 'heavy-man', facing: 'down', lines: ['Stopped to ask the way. Eleven days ago. A wheel came off while I was asking.', 'East is the Safari Marsh, if you are going. They have got a proper gate. They would.'], beat: { everyMs: 3000, glances: ['down', 'left'] }, calls: ['You got a wheel on you?'] },
         { x: 52, y: 44, name: 'Carter’s Boy', look: 'youngster', facing: 'right', lines: ['We were carrying turnips. We are carrying less turnips now.', 'Do not tell him about the Rattata. He thinks it is the damp.'], beat: { everyMs: 2100, glances: ['right', 'down'] }, calls: ['Not the turnips!'] },
@@ -361,6 +377,10 @@ export function tanglewood(): MapcraftResult {
         { x: 36, y: 36, lines: ['HALFWAY', 'Cut into the stone, very deep, by somebody who was sure.'] },
         { x: 30, y: 41, lines: ['DIRECTIONS', 'One Potion. All sales final. Refunds in the other direction.'] },
         { x: 50, y: 42, lines: ['THE EASTERN TRACK', 'East: Safari Marsh. West: back into all that. You have been warned.'] },
+        { x: 50, y: 39, lines: ['FUCHSIA GYM', 'Leader: KOGA. The poisonous ninja master!', 'He fights holders of the CASCADE BADGE. Beat him for the SOUL BADGE and the Marsh.'] },
+        // THE MARSH's notice, at the bar Koga holds (`world/valeQuarters.ts`):
+        // what the quarter does to a team, said before it costs one.
+        { x: 60, y: 38, lines: ['THE MARSH. Past the bar at the end of this track.', 'Touch anything in there and it poisons you back.', 'Fire and Flying never touch. Held by KOGA: SOUL BADGE.'] },
         { x: 26, y: 49, lines: ['THE BUG CLUB', 'Catch and release. Release optional. Mown on Tuesdays, by the Weedle, badly.'] },
         { x: 49, y: 50, lines: ['THE OLD OAK', 'No relation to the Professor. He has asked us to say so.'] },
         { x: 8, y: 55, lines: ['FORESTER’S LODGE', 'Official maps of Tanglewood. Correct as of the day before you bought it.'] },
@@ -380,8 +400,27 @@ export function tanglewood(): MapcraftResult {
 
 /** The doors of Mislaid, and of the wood's few other roofs. */
 function withInsides(file: MapFile): MapFile {
-  let next = withInside(
-    file,
+  // Fuchsia Gym's hall. Koga and his two trainers are authored in
+  // `src/game/world/trainers.ts`, where a gym's parties are measured
+  // (`quarterPuzzle.test.ts`), and stand in this room's tiles as
+  // `KOGA_GYM_SPOTS` says; the Gym Guide by the mat is the file's own.
+  let next = withInside(file, 'tanglewood', 'fuchsia-gym', 49, 34, 'Fuchsia Gym', [
+    {
+      x: 8,
+      y: 10,
+      name: 'Gym Guide',
+      look: 'gym-guide',
+      facing: 'left',
+      lines: [
+        'Yo! Champ in the making! KOGA holds every road into the Marsh. He fights only holders of the CASCADE BADGE.',
+        'His Pokémon poison you and float over Ground moves, and his Koffing blows itself up.',
+        'A Ghost shrugs off Normal moves and most Poison. Fire and Flying never touch.',
+        'Beat him and the Marsh is open for good, and the SOUL BADGE is yours.',
+      ],
+    },
+  ]);
+  next = withInside(
+    next,
     'tanglewood',
     'warden-house',
     32,

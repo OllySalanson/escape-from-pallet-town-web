@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ItemId } from '../items';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import {
   declineErrand,
   ERRANDS,
@@ -19,6 +20,8 @@ const nothing = (): number => 0;
 
 /** A raid behind it, which is when anybody first asks a favour. */
 const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
+/** The same, with both gyms beaten: the Marsh's two favours are asked once Koga's doors are open. */
+const GYMS_BEATEN = { ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] };
 
 /**
  * The quiet place a favour's detail is read: every favour, where it stands,
@@ -36,8 +39,13 @@ describe('the favours list', () => {
     forgetDeclinedErrands();
   });
 
-  it('lists every favour a new save can be asked, by who asks it and where they are found', () => {
-    const entries = favourEntries(BEEN_OUT, nothing, 0);
+  it('lists every favour a save can be asked, by who asks it and where they are found', () => {
+    // A new save is asked everything but the Marsh's two, which lie past Koga.
+    const marsh = ['gold-teeth', 'ships-log'];
+    expect(favourEntries(BEEN_OUT, nothing, 0).map((entry) => entry.errand.id).sort()).toEqual(
+      ERRANDS.map((errand) => errand.id).filter((id) => !marsh.includes(id)).sort(),
+    );
+    const entries = favourEntries(GYMS_BEATEN, nothing, 0);
     expect(entries.map((entry) => entry.errand.id).sort()).toEqual(ERRANDS.map((errand) => errand.id).sort());
     expect(entries.every((entry) => entry.standing === 'ask')).toBe(true);
     expect(favourGiverWhere(errandOf('lab')!)).toBe('OAK’S LAB');
@@ -47,7 +55,7 @@ describe('the favours list', () => {
   });
 
   it('never names a favour nobody has asked yet: the giver says what it is', () => {
-    const markup = favourListMarkup(favourEntries(BEEN_OUT, nothing, 0));
+    const markup = favourListMarkup(favourEntries(GYMS_BEATEN, nothing, 0));
     for (const errand of ERRANDS) {
       expect(markup, errand.id).toContain(errand.name);
       expect(markup, errand.id).not.toContain(errandThing(errand));

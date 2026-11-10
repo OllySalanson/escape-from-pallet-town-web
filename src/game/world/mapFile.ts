@@ -17,6 +17,7 @@ import {
   HAUNTED_WILDLIFE,
   HIDEOUT_WILDLIFE,
   COAST_WILDLIFE,
+  MARSH_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
@@ -1071,6 +1072,9 @@ export const MAP_FILE_HABITATS = {
   // A stormy coast past a gym: Misty's quarter, its swimmers and its sleepers at
   // the level band a team that beat her is at. Meant to be laid in the rain.
   coast: COAST_WILDLIFE,
+  // A poison marsh past a gym: Koga's quarter, everything in it that punishes
+  // a touch, at the level band a team that beat him is at.
+  'poison-marsh': MARSH_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;

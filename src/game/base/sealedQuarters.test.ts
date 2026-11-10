@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { heavyCloud, pressedBadge, sealedAt, sealedCard, sealedQuarters } from './sealedQuarters';
 
 describe("the telescope's sealed quarters", () => {
-  it('lays the Coast under a sealed cloud until Misty is beaten, and nothing on any other map', () => {
-    const [coast, ...others] = sealedQuarters('greystone-vale', []);
+  it('lays each gym’s quarter under a sealed cloud until its leader is beaten, and nothing on any other map', () => {
+    const [coast, marsh, ...others] = sealedQuarters('greystone-vale', []);
     expect(others).toEqual([]);
     expect(coast.name).toBe('THE COAST');
     expect(coast.badge.name).toBe('CASCADE BADGE');
-    expect(sealedQuarters('greystone-vale', [MISTY_BOSS_ID])).toEqual([]);
+    expect(marsh.name).toBe('THE MARSH');
+    expect(marsh.badge.name).toBe('SOUL BADGE');
+    expect(sealedQuarters('greystone-vale', [MISTY_BOSS_ID]).map((quarter) => quarter.name)).toEqual(['THE MARSH']);
+    expect(sealedQuarters('greystone-vale', [MISTY_BOSS_ID, KOGA_BOSS_ID])).toEqual([]);
     expect(sealedQuarters('floodplain-relay', [])).toEqual([]);
   });
 

@@ -1,6 +1,6 @@
 import type { CharacterDesignId } from '../world/characterDesigns';
 import { isMapRetired } from '../world/mapRoster';
-import { landingsHeldBack } from '../world/valeQuarters';
+import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
 
 /**
  * What Professor Oak, Nurse Joy and the Raid Arena's marshal say the first time
@@ -24,7 +24,7 @@ import { landingsHeldBack } from '../world/valeQuarters';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -121,7 +121,20 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       'Oak on the radio: Misty holds the Coast from her gym on Gull Strand now. Beat her, and the Old Quay and the Cove Steps are yours again.',
     ],
   },
+  // The same news for the Marsh, once Koga's gym in Tanglewood held it: the
+  // Rest House and the Salvage Camp went off the rim for anybody who had
+  // walked to them before.
+  marsh: {
+    speaker: 'prof-oak',
+    name: 'Professor Oak',
+    lines: [
+      'Oak on the radio: Koga holds the Marsh from his gym in Tanglewood now. Beat him, and the Rest House and the Salvage Camp are yours again.',
+    ],
+  },
 };
+
+/** The news a quarter's held-back landings are told with, by the quarter's id (`world/valeQuarters.ts`). */
+const HELD_LANDING_NEWS: Readonly<Record<string, FirstWordsId>> = { 'the-coast': 'coast', 'the-marsh': 'marsh' };
 
 /** Whether this save raided the maps since put away (`world/mapRoster.ts`) and has not yet been told. */
 export function mapsMovedNews(progress: {
@@ -135,8 +148,10 @@ export function mapsMovedNews(progress: {
 }
 
 /**
- * Whether this save reached a landing its badges do not open - walked to before
- * the gym held the quarter - and has not yet been told why it went.
+ * The news this save is owed about a landing its badges do not open - walked to
+ * before the gym held the quarter - one quarter at a time:
+ * the words for the first quarter it has a landing held back in and has not yet
+ * been told about, or nothing.
  */
 export function heldLandingNews(progress: {
   readonly firstWordsHeard?: readonly string[];
@@ -144,8 +159,10 @@ export function heldLandingNews(progress: {
   readonly unlockedInsertions?: readonly string[];
   readonly defeatedBosses: readonly string[];
   readonly openedGates?: readonly string[];
-}): boolean {
-  return !hasHeard(progress.firstWordsHeard, 'coast') && landingsHeldBack(progress).length > 0;
+}): FirstWordsId | undefined {
+  return landingsHeldBack(progress)
+    .map((landing) => HELD_LANDING_NEWS[quarterOfLanding(landing)?.id ?? ''])
+    .find((id) => id !== undefined && !hasHeard(progress.firstWordsHeard, id));
 }
 
 /** The lines as said to this player: the greeting by name, else without one. */

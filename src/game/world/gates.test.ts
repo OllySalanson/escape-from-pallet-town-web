@@ -26,6 +26,7 @@ import {
 import { MapSketch } from './mapGrid';
 import { stepDistances } from './mapStructure';
 import { buildMapLayers } from './tiles';
+import { quarterHeldBy } from './valeQuarters';
 import type { TilesetCatalogue } from './tileset/catalogue';
 import { CLASSIC_TILESET } from './tileset/classicTileset';
 import { hasEncounters } from './tileset/materials';
@@ -401,12 +402,24 @@ describe('gate state', () => {
     // front of it and opens nothing else, so there is no second door to name in
     // the same breath; and so is a night track, which the hour opens and no
     // keeper holds.
+    //
+    // A gym leader holds every way into the quarter his gym keeps, which is at
+    // least two (`valeQuarters.test.ts` asks that none is left open): Koga holds
+    // three while the Station beside his Marsh is still open ground, and gives
+    // the road down from it to Lt. Surge when his gym holds the Station.
     for (const mapId of GATED_MAP_IDS) {
       const groups = gatesByKeeper(gatesForMap(mapId));
       expect(groups.flat()).toHaveLength(gatesForMap(mapId).length);
       for (const doors of groups) {
         expect(new Set(doors.map(gateKey)).size).toBe(1);
-        expect(doors).toHaveLength(doors[0].fieldMove === undefined && doors[0].night !== true ? 2 : 1);
+        const key = gateKey(doors[0]);
+        if (doors[0].fieldMove !== undefined || doors[0].night === true) {
+          expect(doors).toHaveLength(1);
+        } else if (quarterHeldBy(key)) {
+          expect(doors.length, key).toBeGreaterThanOrEqual(2);
+        } else {
+          expect(doors, key).toHaveLength(2);
+        }
       }
     }
   });
