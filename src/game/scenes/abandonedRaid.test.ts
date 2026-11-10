@@ -17,7 +17,10 @@ import {
   abandonedRaidLines,
   RAID_PULSE_STALE_MS,
   RaidHeartbeat,
+  raidHeartbeat,
+  raidLockName,
   type AbandonedRaid,
+  type RaidLocks,
 } from '../run/raidInFlight';
 import { createStartingStash } from '../stash';
 import type { DeploymentFlow } from '../hub';
@@ -124,6 +127,28 @@ function tabs(local: MemoryStorage, clock: { now: number }): {
     playing: new RaidHeartbeat(() => local, now),
     reloaded: new RaidHeartbeat(() => local, now),
     another: new RaidHeartbeat(() => local, now),
+  };
+}
+
+/**
+ * The browser's lock manager, as every page of one browser shares it: a page
+ * holds a lock until it lets go, and the browser drops every lock a page held
+ * the moment that page dies, crash or not.
+ */
+function browserLocks(): RaidLocks & { held: Set<string>; crash(name: string): void } {
+  const held = new Set<string>();
+  return {
+    held,
+    request: (name, callback) => {
+      held.add(name);
+      return callback({}).then(() => {
+        held.delete(name);
+      });
+    },
+    query: async () => ({ held: [...held].map((name) => ({ name })) }),
+    crash: (name) => {
+      held.delete(name);
+    },
   };
 }
 
@@ -255,6 +280,57 @@ describe('a raid abandoned by closing the game', () => {
     expect(settles()).toBeNull();
   });
 
+  // The rim refused to jump for a minute and a half after a crash, saying a
+  // raid was under way in another window when there was none (raids bug hunt,
+  // fault 5). The page held the raid's lock, the browser let go of it as the
+  // page died, and that is asked before the pulse is believed.
+  it('a crash is known at once where the browser keeps locks: the pulse is dropped and the raid settles', async () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    deployFrom(storage);
+    const locks = browserLocks();
+    const now = () => clock.now;
+    const playing = new RaidHeartbeat(() => pulses, now, () => locks);
+    const another = new RaidHeartbeat(() => pulses, now, () => locks);
+    const id = raidId(storage);
+    vi.useFakeTimers();
+    playing.start(id);
+    vi.useRealTimers();
+    clock.now += 2_000;
+    expect(await another.stillLiveElsewhere(id)).toBe(true);
+
+    locks.crash(raidLockName(id));
+    expect(another.liveElsewhere(id)).toBe(true);
+    expect(await another.stillLiveElsewhere(id)).toBe(false);
+    expect(another.liveElsewhere(id)).toBe(false);
+    expect(new SaveManager(storage).settleAbandonedRaid((raid) => another.liveElsewhere(raid))?.packItemId).toBe(
+      'raid-pack',
+    );
+  });
+
+  it('still believes a fresh pulse whose page never held a lock', async () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    deployFrom(storage);
+    const now = () => clock.now;
+    const playing = new RaidHeartbeat(() => pulses, now, () => null);
+    const another = new RaidHeartbeat(() => pulses, now, () => browserLocks());
+    const id = raidId(storage);
+    playing.start(id);
+    clock.now += 2_000;
+    expect(await another.stillLiveElsewhere(id)).toBe(true);
+    playing.stop();
+  });
+
+  it('lets go of the lock when the raid comes home', () => {
+    const locks = browserLocks();
+    const playing = new RaidHeartbeat(() => pulses, () => clock.now, () => locks);
+    playing.start('raid-1');
+    expect(locks.held.has(raidLockName('raid-1'))).toBe(true);
+    playing.stop();
+    return Promise.resolve().then(() => expect(locks.held.size).toBe(0));
+  });
+
   it('leaves alone a raid still being played in another tab, and will not deploy a second', () => {
     const storage = new MemoryStorage();
     seedSave(storage);
@@ -379,6 +455,48 @@ describe('a raid abandoned by closing the game', () => {
     hub.startRun();
     expect(start).toHaveBeenCalledWith('base', { room: 'raid-arena' });
     expect(close).not.toHaveBeenCalled();
+  });
+
+  /** The rim's jump over a raid whose pulse looks live, with the browser's answer about its page. */
+  async function jumpOverAPulse(pageStillThere: boolean) {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    deployFrom(storage);
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+    const id = raidId(storage);
+    let pulse = true;
+    const live = vi.spyOn(raidHeartbeat, 'liveElsewhere').mockImplementation(() => pulse);
+    const asked = vi.spyOn(raidHeartbeat, 'stillLiveElsewhere').mockImplementation(async () => {
+      // A page that is gone has its pulse taken away (`stillLiveElsewhere`).
+      pulse = pageStillThere;
+      return pageStillThere;
+    });
+    const { hub, start } = openLab(storage);
+    Object.assign(hub as unknown as Record<string, unknown>, { sys: { isActive: () => true } });
+    hub.startRun();
+    // Nothing is said until the browser has answered.
+    expect(asked).toHaveBeenCalledWith(id);
+    expect(start).not.toHaveBeenCalled();
+    expect(hub.status).not.toContain('another window');
+    await asked.mock.results[0].value;
+    await Promise.resolve();
+    live.mockRestore();
+    asked.mockRestore();
+    return { hub, start };
+  }
+
+  it('the rim asks the browser before it refuses, and jumps on to settle a raid a crash left', async () => {
+    const { hub, start } = await jumpOverAPulse(false);
+    expect(hub.status).not.toContain('another window');
+    expect(start).toHaveBeenCalledWith('base', expect.anything());
+  });
+
+  it('and refuses while the other window is really there', async () => {
+    const { hub, start } = await jumpOverAPulse(true);
+    expect(hub.status).toBe('A raid is already under way in another window. Finish it there first.');
+    expect(start).not.toHaveBeenCalled();
   });
 
   it('is told plainly, in the order it happened', () => {

@@ -15,6 +15,7 @@ vi.mock('phaser', () => ({
 }));
 
 import { BaseScene } from './BaseScene';
+import { raidHeartbeat } from '../run/raidInFlight';
 import { roomNamed } from '../base/rooms';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { boardLines } from '../base/labBoard';
@@ -486,6 +487,42 @@ describe('the rim card opened just home from a raid', () => {
     const { open, launched } = hall(false);
     open('rim');
     expect(launched[0].justHome).toBeUndefined();
+  });
+});
+
+describe('a base opened over a raid a crash left', () => {
+  const opened = (pageStillThere: boolean) => {
+    const restart = vi.fn();
+    const asked = vi.spyOn(raidHeartbeat, 'stillLiveElsewhere').mockResolvedValue(pageStillThere);
+    const scene = BaseScene.prototype as unknown as Record<string, unknown>;
+    const stand = {
+      saveManager: { load: () => ({ raidInFlight: { id: 'raid-1' } }) },
+      visits: 0,
+      leaving: false,
+      sys: { isActive: () => true },
+      place: { room: { room: { id: 'raid-arena' } } },
+      currentTile: { x: 4, y: 5 },
+      facing: 'up',
+      scene: { restart },
+    };
+    (scene.settleOnceTheBrowserSays as (this: typeof stand) => void).call(stand);
+    return { restart, asked };
+  };
+
+  // Its pulse looks live for a minute and a half, and the base left the raid
+  // unsettled all that time (raids bug hunt, fault 5).
+  it('opens again where the player stands once the browser says the page is gone, which settles it', async () => {
+    const { restart, asked } = opened(false);
+    await asked.mock.results[0].value;
+    expect(restart).toHaveBeenCalledWith({ room: 'raid-arena', at: { x: 4, y: 5 }, facing: 'up' });
+    asked.mockRestore();
+  });
+
+  it('leaves it to the window still playing it', async () => {
+    const { restart, asked } = opened(true);
+    await asked.mock.results[0].value;
+    expect(restart).not.toHaveBeenCalled();
+    asked.mockRestore();
   });
 });
 

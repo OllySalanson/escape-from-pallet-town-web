@@ -372,6 +372,8 @@ export class HubScene extends Phaser.Scene {
    */
   private straightOver = false;
   private justHome = false;
+  /** Whether the browser is being asked if another window's raid is still there. */
+  private askingElsewhere = false;
   private deploying = false;
   /** Whether the raid room's database is being asked something (`raidRoom/`). */
   private roomBusy = false;
@@ -1133,7 +1135,7 @@ export class HubScene extends Phaser.Scene {
     const underWay = this.saveManager.load()?.raidInFlight;
     if (underWay) {
       if (raidHeartbeat.liveElsewhere(underWay.id)) {
-        this.refuse('A raid is already under way in another window. Finish it there first.');
+        this.askWhetherLiveElsewhere(underWay.id);
       } else if (this.kit) {
         // Closing a panel stays in the same hall, which settles nothing, and
         // JUMP IN would only ever close the panel again.
@@ -1313,6 +1315,32 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('world', world);
+    });
+  }
+
+  /**
+   * A fresh pulse says the raid in the save is being played in another window,
+   * but a crashed window leaves one too. The browser is asked whether that
+   * window is still there before the jump is refused; when it is not, its
+   * pulse is taken away and the jump goes on to settle the raid it left
+   * (`RaidHeartbeat.stillLiveElsewhere`).
+   */
+  private askWhetherLiveElsewhere(raidId: string): void {
+    if (this.askingElsewhere) {
+      return;
+    }
+    this.askingElsewhere = true;
+    const view = this.view;
+    void raidHeartbeat.stillLiveElsewhere(raidId).then((live) => {
+      this.askingElsewhere = false;
+      if (!this.sys.isActive() || this.view !== view) {
+        return;
+      }
+      if (live) {
+        this.refuse('A raid is already under way in another window. Finish it there first.');
+      } else {
+        this.startRun();
+      }
     });
   }
 

@@ -780,6 +780,8 @@ export class BaseScene extends Phaser.Scene {
    * fault 4), so the first card opened from here starts on NOT YET.
    */
   private homeOnTheRail = false;
+  /** Counts the times the base has opened, so an answer that comes back after it opened again is dropped. */
+  private visits = 0;
   /** Somebody's eye to one of the hall's telescopes (`base/valeOverviewView.ts`). */
   private telescope: ValeOverviewView | null = null;
   /** The way in the player is stood over, or has under the cursor. */
@@ -970,6 +972,7 @@ export class BaseScene extends Phaser.Scene {
     if (abandoned && activeSaveSlot() !== 'try-it') {
       countPlay({ kind: 'raid-end', detail: 'abandoned' });
     }
+    this.settleOnceTheBrowserSays();
     // Once a sitting: how many of the times the game is opened reach the harbour.
     if (!harbourCounted) {
       harbourCounted = true;
@@ -3051,6 +3054,28 @@ export class BaseScene extends Phaser.Scene {
       return null;
     }
     return { up: step === 'up', down: step === 'down', left: step === 'left', right: step === 'right' };
+  }
+
+  /**
+   * A raid left unsettled because its pulse looked live may have been left by
+   * a page that crashed. The browser is asked (`RaidHeartbeat.stillLiveElsewhere`),
+   * and when that page is gone the base opens again where the player stands,
+   * which settles the raid and says so - rather than leaving the pack's
+   * contents in the vault to be spent until the pulse goes stale.
+   */
+  private settleOnceTheBrowserSays(): void {
+    const raid = this.saveManager.load()?.raidInFlight;
+    if (!raid) {
+      return;
+    }
+    const visit = ++this.visits;
+    void raidHeartbeat.stillLiveElsewhere(raid.id).then((live) => {
+      if (live || visit !== this.visits || this.leaving || !this.sys.isActive()) {
+        return;
+      }
+      const room = this.place?.room?.room.id;
+      this.scene.restart(room ? { room, at: { ...this.currentTile }, facing: this.facing } : {});
+    });
   }
 
   /** Looking down from the rim, facing the fence: the panel that starts the raid. */

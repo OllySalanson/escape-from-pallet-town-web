@@ -169,12 +169,36 @@ export interface RaidPulse {
   readonly raidId: string;
   readonly tab: string;
   readonly at: number;
+  /**
+   * The page that wrote it holds the raid's Web Lock (`raidLockName`), so
+   * whether that page is still there can be asked of the browser rather than
+   * read off the pulse's age. A pulse without it - the lock not granted yet,
+   * a browser without Web Locks, a page from before there was one - is only
+   * ever believed until it goes stale.
+   */
+  readonly locked?: true;
 }
 
 interface PulseStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+}
+
+/**
+ * The part of the browser's Web Locks API (`navigator.locks`) the heartbeat
+ * uses. A lock is held for as long as the page that asked for it is alive,
+ * and the browser lets go of it the moment the page goes - closed, reloaded or
+ * crashed - which is the one question a pulse can only answer by waiting.
+ */
+export interface RaidLocks {
+  request(name: string, callback: (lock: unknown) => Promise<void>): Promise<unknown>;
+  query(): Promise<{ readonly held?: readonly { readonly name?: string }[] }>;
+}
+
+/** The lock a page playing a raid holds for the length of it. */
+export function raidLockName(raidId: string): string {
+  return `escape-from-pallet-town.raid.${raidId}`;
 }
 
 /**
@@ -206,18 +230,36 @@ export function raidLiveElsewhere(
 /**
  * This page's side of the pulse: started when it deploys a raid, stopped when
  * the base next opens (every raid ending comes home to the base).
+ *
+ * The page also holds the raid's Web Lock while it lasts. A crash leaves a
+ * pulse that looks live for a minute and a half, and the rim used to refuse to
+ * jump all that time with "Finish it there first" when there was no other
+ * window (the raids bug hunt of 9 Nov 2026, fault 5); the lock lets
+ * `stillLiveElsewhere` ask the browser whether the page is still there.
  */
 export class RaidHeartbeat {
   private timer: ReturnType<typeof setInterval> | null = null;
   private raidId: string | null = null;
   private tabId: string | null = null;
   private listening = false;
+  /** Whether this page holds the lock for the raid it is playing. */
+  private locked = false;
+  /** Lets go of that lock. */
+  private releaseLock: (() => void) | null = null;
+  /** Which `start` a granted lock belongs to, so one granted after a `stop` is let go at once. */
+  private starts = 0;
   private readonly local: () => PulseStorage | null;
   private readonly now: () => number;
+  private readonly locks: () => RaidLocks | null;
 
-  public constructor(local: () => PulseStorage | null, now: () => number = () => Date.now()) {
+  public constructor(
+    local: () => PulseStorage | null,
+    now: () => number = () => Date.now(),
+    locks: () => RaidLocks | null = browserLocks,
+  ) {
     this.local = local;
     this.now = now;
+    this.locks = locks;
   }
 
   /** This page's name, made once and kept for the life of the page. */
@@ -231,6 +273,7 @@ export class RaidHeartbeat {
     this.raidId = raidId;
     this.beat();
     this.timer = setInterval(() => this.beat(), RAID_PULSE_EVERY_MS);
+    this.holdLock(raidId);
     if (!this.listening && typeof window !== 'undefined') {
       this.listening = true;
       // Leaving the page is not playing the raid: the pulse goes with it, so
@@ -251,18 +294,84 @@ export class RaidHeartbeat {
     }
     this.forget();
     this.raidId = null;
+    this.starts += 1;
+    this.locked = false;
+    this.releaseLock?.();
+    this.releaseLock = null;
   }
 
-  /** Whether `raidId` is being played in some other tab right now. */
+  /** Whether `raidId` is being played in some other tab right now, by its pulse. */
   public liveElsewhere(raidId: string): boolean {
     return raidLiveElsewhere(this.read(), raidId, this.tab(), this.now());
+  }
+
+  /**
+   * `liveElsewhere`, asked of the browser as well as of the pulse: a pulse
+   * whose page held the raid's lock, and nobody holds it now, was left by a
+   * page that is gone. That pulse is taken away, so the raid is settled as
+   * abandoned at once rather than once it goes stale. Without Web Locks, or
+   * for a pulse whose page never held one, the pulse is all there is to go on.
+   */
+  public async stillLiveElsewhere(raidId: string): Promise<boolean> {
+    const pulse = this.read();
+    if (pulse === null || !raidLiveElsewhere(pulse, raidId, this.tab(), this.now())) {
+      return false;
+    }
+    const locks = this.locks();
+    if (pulse.locked !== true || locks === null) {
+      return true;
+    }
+    try {
+      const { held = [] } = await locks.query();
+      if (held.some((lock) => lock.name === raidLockName(raidId))) {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+    const still = this.read();
+    if (still !== null && still.raidId === pulse.raidId && still.tab === pulse.tab) {
+      try {
+        this.local()?.removeItem(RAID_PULSE_KEY);
+      } catch {
+        // Nothing to take away.
+      }
+    }
+    return false;
+  }
+
+  /** Asks for the raid's lock, and keeps it until `stop`. */
+  private holdLock(raidId: string): void {
+    const locks = this.locks();
+    if (locks === null) {
+      return;
+    }
+    const start = this.starts;
+    const released = new Promise<void>((resolve) => {
+      this.releaseLock = resolve;
+    });
+    locks
+      .request(raidLockName(raidId), () => {
+        if (start !== this.starts) {
+          return Promise.resolve();
+        }
+        this.locked = true;
+        this.beat();
+        return released;
+      })
+      .catch(() => undefined);
   }
 
   private beat(): void {
     if (this.raidId === null) {
       return;
     }
-    const pulse: RaidPulse = { raidId: this.raidId, tab: this.tab(), at: this.now() };
+    const pulse: RaidPulse = {
+      raidId: this.raidId,
+      tab: this.tab(),
+      at: this.now(),
+      ...(this.locked ? { locked: true as const } : {}),
+    };
     try {
       this.local()?.setItem(RAID_PULSE_KEY, JSON.stringify(pulse));
     } catch {
@@ -291,7 +400,7 @@ export class RaidHeartbeat {
       }
       const value = JSON.parse(raw) as Partial<RaidPulse>;
       return typeof value.raidId === 'string' && typeof value.tab === 'string' && typeof value.at === 'number'
-        ? { raidId: value.raidId, tab: value.tab, at: value.at }
+        ? { raidId: value.raidId, tab: value.tab, at: value.at, ...(value.locked === true ? { locked: true as const } : {}) }
         : null;
     } catch {
       return null;
@@ -302,6 +411,14 @@ export class RaidHeartbeat {
 function browserStorage(): PulseStorage | null {
   try {
     return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function browserLocks(): RaidLocks | null {
+  try {
+    return typeof window === 'undefined' ? null : ((navigator as { locks?: RaidLocks }).locks ?? null);
   } catch {
     return null;
   }
