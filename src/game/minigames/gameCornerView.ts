@@ -138,6 +138,13 @@ export interface PrizeWindowState {
   /** THE RUMOUR MILL's slip just bought, said in the bar until the next purchase. */
   readonly rumour?: string;
   readonly status?: string;
+  /**
+   * The prize whose row has become its question: tickets are spent for good,
+   * so a press asks and a second, on another button, buys. The cursor opens on
+   * the one that keeps them, so a double ENTER buys nothing (the harbour bug
+   * hunt of 9 Nov 2026: it bought two Surf Mats).
+   */
+  readonly asking?: string;
 }
 
 /** The window's shelves, in the order they are listed, with what each is for. */
@@ -200,8 +207,13 @@ export function prizeWindowMarkup(state: PrizeWindowState): string {
     const refusal = prizeRefusal(prize, state.record, state.now, state.situation);
     const help = refusal ? `${name}: ${refusal}` : `${name} for ${number(prize.tickets)} tickets. ${prizeAbout(prize)}`;
     const note = prizeNote(prize, state);
-    const start = first ? ' data-cursor-start' : '';
+    const asking = state.asking === prize.id && !refusal;
+    const start = first && !state.asking ? ' data-cursor-start' : '';
     first = false;
+    if (asking) {
+      const question = `Spend ${number(prize.tickets)} of your ${number(state.record.tickets)} tickets on ${name}?`;
+      return `<div class="px-pair px-arming" data-shows="${prize.id}"><div class="px-row has-icon px-tall">${prizeIcon(prize, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small class="px-wrap px-warning">${escapeAttribute(question)}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-prize-cancel data-cursor-start data-shows="${prize.id}" data-help="Nothing is spent.">Keep them</button><button class="px-window px-button is-primary" data-prize-confirm="${prize.id}" data-shows="${prize.id}" data-help="${escapeAttribute(`${name} for ${number(prize.tickets)} tickets.`)}">Buy</button></div></div>`;
+    }
     return `<button class="px-row has-icon" data-prize="${prize.id}"${refusal ? ' aria-disabled="true"' : ''}${start} data-help="${escapeAttribute(help)}">${prizeIcon(prize, name)}<span class="px-row-main"><strong>${name}</strong>${note ? `<small>${note}</small>` : ''}</span>${pixelTag(`${number(prize.tickets)} tickets`, refusal ? 'risk' : 'plain')}</button>`;
   };
   const list = SHELVES.flatMap(({ shelf, heading }) => {
@@ -225,7 +237,7 @@ export function prizeWindowMarkup(state: PrizeWindowState): string {
     back: { label: 'Done', attribute: 'data-close' },
     aside: pixelTag(`${number(state.record.tickets)} tickets`, 'secure'),
     body,
-    hints: 'Arrows choose · ENTER buys one · ESC leaves',
+    hints: 'Arrows choose · ENTER asks to buy one · ESC leaves',
     ...(state.status ? { status: state.status } : {}),
   });
 }

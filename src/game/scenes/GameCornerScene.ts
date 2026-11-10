@@ -87,6 +87,10 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private jump: PokemonJumpGame | undefined;
   private pressed = false;
   private openedAt = 0;
+  /** The prize asked about and not yet bought or kept (`PrizeWindowState.asking`). */
+  private asking: string | undefined;
+  /** When it was asked, so the second half of a double-click on the row cannot buy it. */
+  private askedAt = Number.NEGATIVE_INFINITY;
   private stage: Phaser.GameObjects.Container | undefined;
   private vine: Phaser.GameObjects.Graphics | undefined;
   private vineFront: Phaser.GameObjects.Graphics | undefined;
@@ -109,6 +113,8 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.mode = data.mode;
     this.status = undefined;
     this.rumour = undefined;
+    this.asking = undefined;
+    this.askedAt = Number.NEGATIVE_INFINITY;
     this.last = undefined;
     this.phase = { kind: 'menu' };
     this.jump = undefined;
@@ -197,6 +203,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
             situation: this.situation(),
             ...(this.rumour ? { rumour: this.rumour } : {}),
             ...(this.status ? { status: this.status } : {}),
+            ...(this.asking ? { asking: this.asking } : {}),
           });
     this.overlay.redraw(markup);
     const root = this.overlay.root;
@@ -218,7 +225,13 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
       };
     }
     root.querySelectorAll<HTMLButtonElement>('[data-prize]').forEach((button) => {
-      button.onclick = () => this.buy(button.dataset.prize ?? '');
+      button.onclick = () => this.ask(button.dataset.prize ?? '');
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-prize-cancel]').forEach((button) => {
+      button.onclick = () => this.keepTickets();
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-prize-confirm]').forEach((button) => {
+      button.onclick = () => this.buy(button.dataset.prizeConfirm ?? '');
     });
     // The find over the list narrows it in place, and is kept over a redraw.
     wirePickerFind(root, (key) => this.overlay?.moveCursor(key), this.find);
@@ -252,9 +265,42 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     return this.game_ ? SaveManager.prizeSituation(this.game_) : { holding: () => 0, rumourToTell: false };
   }
 
-  private buy(id: string): void {
-    // The click that opened the window must not be the one that buys.
+  /**
+   * A press on a prize asks before it spends: the row becomes the question,
+   * with the cursor on KEEP THEM, as Bill's barters do. A prize that cannot be
+   * had says why at once, with nothing to answer.
+   */
+  private ask(id: string): void {
+    // The click that opened the window must not be the one that asks.
     if (this.time.now - this.openedAt < RELEASE_ARMING_MS) return;
+    const prize = prizeById(id);
+    if (!prize) return;
+    const refusal = prizeRefusal(prize, this.record(), new Date(), this.situation());
+    if (refusal) {
+      audioManager.play('denied');
+      this.asking = undefined;
+      this.status = refusal;
+      this.showMenu(`[data-prize="${id}"]`);
+      return;
+    }
+    audioManager.play('select');
+    this.asking = id;
+    this.askedAt = this.time.now;
+    this.status = undefined;
+    this.showMenu('[data-prize-cancel]');
+  }
+
+  private keepTickets(): void {
+    const id = this.asking;
+    this.asking = undefined;
+    audioManager.play('cancel');
+    this.showMenu(id ? `[data-prize="${id}"]` : undefined);
+  }
+
+  private buy(id: string): void {
+    // The second half of the double-click that asked lands on BUY.
+    if (id !== this.asking || this.time.now - this.askedAt < RELEASE_ARMING_MS) return;
+    this.asking = undefined;
     const prize = prizeById(id);
     if (!prize) return;
     const refusal = prizeRefusal(prize, this.record(), new Date(), this.situation());
@@ -286,6 +332,11 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private onMenuKey(event: KeyboardEvent): void {
     if (isOverlayDismissKey(event)) {
       event.preventDefault();
+      // Out of a question first, and only then out of the window.
+      if (this.asking) {
+        this.keepTickets();
+        return;
+      }
       this.close();
       return;
     }
