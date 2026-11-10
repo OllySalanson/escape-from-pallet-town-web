@@ -116,6 +116,13 @@ class FakeWire implements HarbourWire<RaidPlace> {
   public send(move: RaidMove): void {
     this.sent.push(move);
   }
+  public signals: Record<string, unknown>[] = [];
+  public signal(payload: Record<string, unknown>): void {
+    this.signals.push(payload);
+  }
+  public signalFromFriend(payload: unknown): void {
+    this.heard?.signal?.(payload);
+  }
   public nudge(): void {}
   public names(ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
     return Promise.resolve(new Map(ids.filter((id) => id === ASH).map((id) => [id, 'ASH'] as const)));
@@ -263,6 +270,28 @@ describe('raiding with a friend', () => {
     // And a room left at the lab is a fresh start for the next.
     room.leave();
     expect(room.closed).toBe(false);
+  });
+
+  it('claims, says and hears a vale piece by a key the database takes, and keeps the game’s id', async () => {
+    // The bug hunt of 9 Nov: `greystone-vale/spot-31` was refused by the
+    // database and thrown away off the channel, so nothing in a friend raid
+    // on the vale could be picked up, or seen to go.
+    const { room, wire, service } = await inRoom();
+    room.inRaid('route-1', { x: 1, y: 1 }, 'down');
+    wire.present([[ME, mapPlace('route-1')], [ASH, mapPlace('route-1')]]);
+    await settle();
+    room.claimLoot('greystone-vale/spot-31');
+    await settle();
+    expect(service.asked).toEqual(['greystone-vale:sspot-31']);
+    expect(room.loot.holder('greystone-vale/spot-31')).toBe(ME);
+    expect(wire.signals).toContainEqual({ k: 't', u: ME, l: 'greystone-vale:sspot-31' });
+    wire.signalFromFriend({ k: 't', u: ASH, l: 'greystone-vale:sprize-2' });
+    expect(room.loot.holder('greystone-vale/prize-2')).toBe(ASH);
+    // And what was taken before this player dropped in, by the same key.
+    service.taken.set('greystone-vale:sspot-9', ASH);
+    room.askWhatWasTaken();
+    await settle();
+    expect(room.loot.holder('greystone-vale/spot-9')).toBe(ASH);
   });
 
   it('leaves the channel and the room at once when its raid ends', async () => {

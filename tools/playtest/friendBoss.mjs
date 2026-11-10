@@ -45,11 +45,14 @@ try {
         if (y < 0 || x < 0 || y >= c.length || x >= c[0].length || c[y][x] || seen.has(x + ',' + y)) continue; seen.add(x + ',' + y); next.push({ x, y }); }
       ring = next; } return ring[0] ?? null; })()`);
   if (!goal) throw new Error('OLLY has nowhere six steps off to walk to');
-  const walk = { n: 0 };
+  const walk = { n: 0, there: false };
   for (let guard = 0; guard < 40; guard += 1) {
     await leaveFight(olly, press);
     const key = await read(olly, stepToward(goal));
-    if (key === 'here') break;
+    if (key === 'here') {
+      walk.there = true;
+      break;
+    }
     if (!key || key === 'away') throw new Error(`OLLY cannot walk to ${JSON.stringify(goal)}: ${key}`);
     await press(olly, key);
     walk.n += 1;
@@ -63,7 +66,7 @@ try {
   }
   const lit = [...amyAfter].filter((tile) => !amyBefore.has(tile)).length;
   if (lit === 0) throw new Error('none of the ground OLLY walked joined AMY’s survey');
-  console.log(`OLLY walked ${walk.n} tiles and ${lit} more tiles of ground joined AMY's survey of this raid`);
+  console.log(`OLLY walked ${walk.there ? 'six steps off' : 'towards a tile six steps off'} (${walk.n} presses) and ${lit} more tiles of ground joined AMY's survey of this raid`);
 
   // A boss.
   const boss = await read(olly, `(() => { const w = ${WORLD}; const map = w.currentMap.id;

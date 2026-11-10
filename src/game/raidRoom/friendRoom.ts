@@ -7,7 +7,7 @@ import { LOCAL_NAME_KEY, localIdentity, pageHarbourMode } from '../harbour/harbo
 import { loadPlayerName } from '../console/playerName';
 import { HunterBoard, encodeHunterSignal, readHunterSignal, type HunterSignal } from './groupHunter';
 import { mapPlace, type RaidPlace } from './raidProtocol';
-import { LootLedger, encodeTook, readTook } from './roomLoot';
+import { LootLedger, encodeTook, gameLootId, readTook, roomLootKey } from './roomLoot';
 import { ROOM_PHRASES, TalkBoard, encodeTalk, readTalk } from './roomTalk';
 import { encodeWon, readWon } from './roomBosses';
 import { liveRaidWire, localRaidWire } from './raidWire';
@@ -224,13 +224,13 @@ export class FriendRoom {
       this.loot.answered(lootId, held.me, held.me);
       return;
     }
-    void this.service.takeLoot(held.code, lootId).then((claim) => {
+    void this.service.takeLoot(held.code, roomLootKey(lootId)).then((claim) => {
       if (this.held?.code !== held.code) {
         return;
       }
       if (claim.outcome === 'yours') {
         this.loot.answered(lootId, held.me, held.me);
-        this.link?.signal(encodeTook({ from: held.me, lootId }));
+        this.link?.signal(encodeTook({ from: held.me, lootId: roomLootKey(lootId) }));
       } else if (claim.outcome === 'taken') {
         this.loot.answered(lootId, claim.by ?? 'somebody', held.me);
       } else if (claim.outcome === 'closed') {
@@ -259,8 +259,8 @@ export class FriendRoom {
     this.askedTaken = true;
     void this.service.lootTaken(held.code).then((taken) => {
       if (this.held?.code === held.code) {
-        for (const [lootId, holder] of taken) {
-          this.loot.heard(lootId, holder);
+        for (const [key, holder] of taken) {
+          this.loot.heard(gameLootId(key), holder);
         }
       }
     });
@@ -349,7 +349,7 @@ export class FriendRoom {
         }
         const took = readTook(payload);
         if (took && took.from !== this.held?.me) {
-          this.loot.heard(took.lootId, took.from);
+          this.loot.heard(gameLootId(took.lootId), took.from);
         }
         const won = readWon(payload);
         if (won && won.from !== this.held?.me && !this.wins.has(won.bossId)) {

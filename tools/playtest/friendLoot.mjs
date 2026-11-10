@@ -1,7 +1,10 @@
 // Loot to whoever steps on it first, in a raid room (`src/game/raidRoom/roomLoot.ts`):
 // two tabs of one browser in one room's raid (`friendTabs.mjs`), on the local stand-in.
 //
-//   node tools/playtest/friendLoot.mjs <url> <out dir> [--window=800x512]
+//   node tools/playtest/friendLoot.mjs <url> <out dir> [--window=800x512] [--keep-going]
+//
+// --keep-going says each fault and plays on, failing at the end, so one run
+// photographs every check (a build from before a fix, say).
 //
 // Both raids must lay the room's ground on the same tiles, and each must still
 // lay what is its own player's - the stake and whatever an open secret holds -
@@ -21,11 +24,17 @@ const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !ar
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const [width, height] = (option('window') ?? '800x512').split('x').map(Number);
 mkdirSync(out, { recursive: true });
+const faults = [];
+const fault = (message) => {
+  if (!args.includes('--keep-going')) throw new Error(message);
+  console.log(`FAULT: ${message}`);
+  faults.push(message);
+};
 
 const ground = `(() => { const w = ${WORLD}; if (!w || !w.sys.isActive()) return null; const ids = w.runSession.plan.roomLootIds ?? [];
   const piece = (l) => ({ id: l.id, itemId: l.itemId, x: l.position.x, y: l.position.y });
   return { me: w.currentTile, shared: w.lootForCurrentMap().filter((l) => ids.includes(l.id)).map(piece),
-    own: w.lootForCurrentMap().filter((l) => !ids.includes(l.id)).map((l) => ({ ...piece(l), stake: /\/stake(-money-|$)/.test(l.id), secret: l.secret ?? null })),
+    own: w.lootForCurrentMap().filter((l) => !ids.includes(l.id)).map((l) => ({ ...piece(l), stake: l.id.endsWith('/stake') || l.id.includes('/stake-money-'), secret: l.secret ?? null })),
     openSecrets: (w.runSession.plan.secrets ?? []).map((secret) => secret.id),
     gone: [...w.collectedLootIds], drawn: [...w.lootSprites.keys()], dialog: w.dialogBox.visible, bag: { ...w.bag.contents },
     chip: (w.friendChip() ?? []).join(' / ') }; })()`;
@@ -42,22 +51,28 @@ try {
   };
   const ollyGround = await look(olly);
   const amyGround = await look(amy);
-  const key = (pieces) => JSON.stringify([...pieces].sort((a, b) => a.id.localeCompare(b.id)));
-  if (ollyGround.shared.length === 0 || key(ollyGround.shared) !== key(amyGround.shared)) {
-    throw new Error(`the room's ground differs: ${key(ollyGround.shared)} against ${key(amyGround.shared)}`);
+  // The same piece on the same tile in both. Each raid leaves a room piece off
+  // a tile it has given to its own (a trainer, its stake, a secret's nook), and
+  // those differ raid to raid, so a few may be on one map and not the other.
+  const amyById = new Map(amyGround.shared.map((piece) => [piece.id, piece]));
+  const both = ollyGround.shared.filter((piece) => amyById.has(piece.id));
+  const moved = both.filter((piece) => amyById.get(piece.id).x !== piece.x || amyById.get(piece.id).y !== piece.y);
+  const apart = ollyGround.shared.length + amyGround.shared.length - 2 * both.length;
+  if (both.length === 0 || moved.length > 0 || apart > 6) {
+    throw new Error(`the room's ground differs: ${both.length} in both, ${moved.length} on other tiles, ${apart} on one map only`);
   }
-  console.log(`both raids lay the same ${ollyGround.shared.length} shared pieces on the same tiles`);
+  console.log(`both raids lay the same ${both.length} shared pieces on the same tiles (${apart} on one map only, under that raid's own)`);
 
   // Each raid keeps its own player's stake and secrets beside the room's ground.
   await olly.screenshot(`${out}/l0-olly-lands-with-his-stake.png`);
   for (const [who, mine] of [['OLLY', ollyGround], ['AMY', amyGround]]) {
     const stake = mine.own.filter((piece) => piece.stake);
     if (!stake.some((piece) => /\/stake$/.test(piece.id))) {
-      throw new Error(`${who}'s raid in a room has no stake: ${JSON.stringify(mine.own)}`);
+      fault(`${who}'s raid in a room has no stake: ${JSON.stringify(mine.own)}`);
     }
     const unlaid = mine.openSecrets.filter((id) => !mine.own.some((piece) => piece.secret === id));
-    if (unlaid.length > 0) throw new Error(`${who}'s raid in a room lays nothing for its open secrets ${unlaid.join(', ')}`);
-    console.log(`${who}'s raid keeps its own stake (${stake.map((piece) => piece.itemId).join(', ')}) and ${mine.openSecrets.length} open secret(s) ${mine.own.filter((piece) => piece.secret).map((piece) => `${piece.secret}:${piece.itemId}`).join(', ')}`);
+    if (unlaid.length > 0) fault(`${who}'s raid in a room lays nothing for its open secrets ${unlaid.join(', ')}`);
+    else console.log(`${who}'s raid keeps its own stake (${stake.map((piece) => piece.itemId).join(', ')}) and ${mine.openSecrets.length} open secret(s) ${mine.own.filter((piece) => piece.secret).map((piece) => `${piece.secret}:${piece.itemId}`).join(', ')}`);
   }
 
   /** The nearest shared piece a tab can walk to that nobody has taken yet. */
@@ -123,11 +138,12 @@ try {
     if (amyNow && amyNow.gone.includes(piece.id) && !amyNow.drawn.includes(piece.id)) break;
     await sleep(200);
   }
-  if (!amyNow?.gone.includes(piece.id) || amyNow.drawn.includes(piece.id)) {
-    throw new Error(`AMY still sees ${piece.id}: ${JSON.stringify(amyNow)}`);
-  }
-  console.log(`on AMY's screen ${piece.id} is gone`);
   await amy.screenshot(`${out}/l2-amy-sees-it-gone.png`);
+  if (!amyNow?.gone.includes(piece.id) || amyNow.drawn.includes(piece.id)) {
+    fault(`AMY still sees ${piece.id}: ${JSON.stringify({ gone: amyNow?.gone, drawn: amyNow?.drawn.includes(piece.id) })}`);
+  } else {
+    console.log(`on AMY's screen ${piece.id} is gone`);
+  }
 
   // The room closes under AMY: the stand-in takes her out of it, as the
   // database does when its hour runs out or she joins another room elsewhere.
@@ -146,10 +162,11 @@ try {
   const closed = await look(amy);
   await amy.screenshot(`${out}/l3-amy-room-closed-picks-it-up.png`);
   if (!pickedUp || (closed.bag[next.itemId] ?? 0) <= hers) {
-    throw new Error(`AMY, her room closed, could not pick up ${next.id}: ${JSON.stringify({ gone: closed.gone.includes(next.id), bag: closed.bag, chip: closed.chip })}`);
+    fault(`AMY, her room closed, could not pick up ${next.id}: ${JSON.stringify({ gone: closed.gone.includes(next.id), bag: closed.bag, chip: closed.chip })}`);
   }
-  if (!closed.chip.includes('ROOM CLOSED')) throw new Error(`AMY's chip never said the room closed: "${closed.chip}"`);
-  console.log(`AMY picked it up all the same: ${next.itemId} ${hers} -> ${closed.bag[next.itemId]}, chip "${closed.chip}"`);
+  if (!closed.chip.includes('ROOM CLOSED')) fault(`AMY's chip never said the room closed: "${closed.chip}"`);
+  console.log(`AMY, her room closed: ${next.itemId} ${hers} -> ${closed.bag[next.itemId] ?? 0}, chip "${closed.chip}"`);
+  if (faults.length > 0) throw new Error(`${faults.length} fault(s):\n${faults.join('\n')}`);
 } finally {
   await browser.close();
 }

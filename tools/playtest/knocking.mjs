@@ -71,6 +71,8 @@ try {
       if (await done()) return;
       const key = await tab.evaluate(firstStep(goal));
       if (key === 'here') return;
+      // Through a door the walk was for: the room loaded between asking and searching.
+      if (key === 'unreachable' && (await done())) return;
       if (key === 'unreachable') throw new Error(`nothing reaches ${JSON.stringify(goal)} from ${JSON.stringify(await tab.evaluate(state))}`);
       if (key) await press(tab, key);
       else await sleep(120);

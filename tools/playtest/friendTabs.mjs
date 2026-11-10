@@ -163,11 +163,13 @@ export const nameTab = (name) => `sessionStorage.setItem('eptw-harbour-local-nam
  * YOUR NAME? on the way (`TitleScene.askName`), and LATER goes on without one.
  */
 export async function continueGame(tab, press) {
-  await press(tab, 'Space');
+  // A press the title was not yet listening for is lost, so it is pressed again
+  // for as long as the title is all there is - never under the name screen.
   for (let guard = 0; guard < 40 && !(await tab.evaluate(sceneIs('base'))); guard += 1) {
-    if (!(await tab.evaluate(`(() => { const later = document.querySelector('[data-name-away]'); later?.click(); return !!later; })()`))) {
-      await sleep(250);
-    }
+    const now = await tab.evaluate(`(() => { const later = document.querySelector('[data-name-away]'); later?.click();
+      const title = ${GAME}.scene.getScene('title'); return { later: !!later, title: !!title?.sys.isActive() && !title.naming && !title.hasStarted }; })()`);
+    if (!now.later && now.title) await press(tab, 'Space');
+    await sleep(500);
   }
   await tab.waitFor(sceneIs('base'), { what: 'CONTINUE, into the harbour' });
 }

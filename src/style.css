@@ -184,6 +184,11 @@ body {
   display: block;
   height: auto;
 }
+/* While it is up, the status bar stands square under the card, as wide as it
+   (`.px-body`'s padding), rather than the width of the window. */
+#screens .arena-panel.is-rim .px-help {
+  margin: 0 calc(var(--u) * 4) calc(var(--u) * 4);
+}
 /* With no help bar under it, in the smallest window the FEEDBACK tab would stand on it. */
 #screens .arena-panel.is-rim[data-room='tight'] {
   bottom: calc(var(--u) * 12);

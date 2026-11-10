@@ -370,6 +370,13 @@ tab B settle it as abandoned and then walks tab A out; nothing may be banked.
 plain build asks a name on the title, which it answers LATER.
 `docs/screens/two-tab-raid/` is what it photographs.
 
+`rimRefusal.mjs <url> <out dir>` is two tabs on one save too: one raiding, the
+other pressing JUMP IN at the rim. It fails unless the refusal is on screen,
+with a size, and the card drops its help bar again once the line is taken down.
+The friend drivers (`friendRaid`, `friendHunter`, `friendTalk`, `friendBoss`,
+`friendLoot`, `knocking`) start from `friendTabs.mjs`; `friendLoot.mjs
+--keep-going` says each fault and plays on, to photograph an old build.
+
 `firstHour.mjs <url> [out dir]` prints the first lines a new player meets: where
 the starter screen's cursor starts (a card, never CONFIRM), and two trainer
 fights in the rain against a Splashing Swift Swim Magikarp - each weather

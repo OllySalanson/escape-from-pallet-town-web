@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { LootLedger as Ledger } from '../raidRoom/roomLoot';
 
 vi.mock('phaser', () => ({
   default: {
@@ -17,7 +18,7 @@ vi.mock('../raidRoom/friendRoom', () => ({
     room: { code: 'BCDF', mapId: 'floodplain-relay', me: 'me' },
     loot: room.ledger,
     claimLoot: (lootId: string) => {
-      const ledger = room.ledger as import('../raidRoom/roomLoot').LootLedger;
+      const ledger = room.ledger as Ledger;
       if (!ledger.claim(lootId)) {
         return;
       }

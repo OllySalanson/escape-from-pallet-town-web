@@ -1,5 +1,6 @@
 import { isPlayerId } from '../harbour/harbourProtocol';
 import { isRoomCode, typedRoomCode, ROOM_CODE_LENGTH, ROOM_CODE_LETTERS, ROOM_SIZE } from './roomCode';
+import { isLootId } from './roomLoot';
 
 /**
  * Making, joining and leaving a raid room: the three things only the database
@@ -271,6 +272,11 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
       }
     },
     async takeLoot(code, lootId) {
+      // As the database refuses it ('That is not a piece of loot.'): the stand-in
+      // taking any id is how a map whose ids it would refuse went unnoticed.
+      if (!isLootId(lootId)) {
+        return { outcome: 'unreachable' };
+      }
       const id = await me();
       const rooms = read();
       const room = rooms[code];

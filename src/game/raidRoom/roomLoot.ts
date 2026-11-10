@@ -18,11 +18,31 @@ import { isPlayerId } from '../harbour/harbourProtocol';
  * screen - stepping on it still asks the database.
  */
 
-/** A piece id as the game writes one, and as the database holds a claim's. */
-const LOOT_ID = /^[A-Za-z0-9:_-]{1,80}$/;
+/** A piece's key as the database holds a claim's (`raid_room_loot.loot_id`), and as the room's channel carries it. */
+const LOOT_KEY = /^[A-Za-z0-9:_-]{1,80}$/;
 
 export function isLootId(value: unknown): value is string {
-  return typeof value === 'string' && LOOT_ID.test(value);
+  return typeof value === 'string' && LOOT_KEY.test(value);
+}
+
+/**
+ * A piece's id as the room knows it. The database takes a claim's id only in
+ * `LOOT_KEY`'s letters, and a map drawn as a file - Greystone Vale, the one
+ * map in play - names its pieces `greystone-vale/spot-31`: every claim on the
+ * vale was refused ("That is not a piece of loot."), heard as no answer, and
+ * nothing in a friend raid could ever be picked up, while on the tab-to-tab
+ * stand-in, which asks nothing of an id, every winner's `took` was thrown away
+ * as malformed (the bug hunt of 9 Nov). So the slash is written `:s` and a
+ * colon `:c`, which undoes exactly (`gameLootId`), and the game's own ids,
+ * which the ledger and the map are keyed by, never change.
+ */
+export function roomLootKey(lootId: string): string {
+  return lootId.replaceAll(':', ':c').replaceAll('/', ':s');
+}
+
+/** The game's id of a piece, from the key the room knows it by (`roomLootKey`). */
+export function gameLootId(key: string): string {
+  return key.replace(/:([cs])/g, (_, code: string) => (code === 's' ? '/' : ':'));
 }
 
 /** The signal a winner sends: who took which piece. */
