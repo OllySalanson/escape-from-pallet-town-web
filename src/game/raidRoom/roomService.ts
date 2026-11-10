@@ -72,7 +72,7 @@ export const ROOM_FULL = 'That room is full: four players is a room.';
 export function liveRoomService(): RaidRoomService {
   const seenAs = async (name: string): Promise<string | null> => {
     const { liveIdentity } = await import('../harbour/harbour');
-    return liveIdentity().seenAs(name);
+    return liveIdentity('sign-in').seenAs(name);
   };
   return {
     async open(mapId, name) {

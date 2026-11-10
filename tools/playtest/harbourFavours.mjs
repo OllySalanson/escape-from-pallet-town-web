@@ -98,7 +98,7 @@ try {
     throw new Error(`never got face to face with ${id}`);
   };
 
-  // A new game: nothing to unlock, the harbour's favours lie on Greystone Vale.
+  // A new game one raid in, Koga beaten: nothing else to unlock, the harbour's favours lie on Greystone Vale.
   await page.waitFor(sceneIs('title'), { timeoutMs: SLOW_MS });
   await page.evaluate(`localStorage.removeItem('${SAVE_KEY}')`);
   await page.send('Page.navigate', { url: page_url });
@@ -108,6 +108,18 @@ try {
   await page.waitFor(
     `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );
+  await page.waitFor(sceneIs('base'));
+  // Nobody asks a favour of a save that has yet to go on a raid
+  // (`hub/firstRaid.ts`), and both things lie behind Koga's doors (#492:
+  // `errandOpen`), so this save has been on one and beaten him, and comes back
+  // to the harbour from the title as a player does.
+  await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
+    save.raidProgress.raidRecord = { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } };
+    save.raidProgress.defeatedBosses = [...(save.raidProgress.defeatedBosses ?? []), 'vale-gym-koga'];
+    localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
+  await page.send('Page.navigate', { url: page_url });
+  await page.waitFor(sceneIs('title'), { timeoutMs: SLOW_MS });
+  await press('Space');
   await page.waitFor(sceneIs('base'));
   await sleep(1500);
   const marks = (await scene()).marks.sort();

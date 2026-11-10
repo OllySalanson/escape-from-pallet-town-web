@@ -1,5 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AWAY_TICK_MS, HarbourSession, placeFor, type HarbourIdentity } from './harbour';
+
+const signIn = vi.hoisted(() => ({
+  currentPlayer: vi.fn<() => Promise<string | null>>(),
+  signInAsPlayer: vi.fn(),
+  rpc: vi.fn(),
+}));
+vi.mock('../maker/playerSignIn', () => ({
+  currentPlayer: signIn.currentPlayer,
+  signInAsPlayer: signIn.signInAsPlayer,
+}));
+vi.mock('../maker/supabaseClient', () => ({
+  supabase: () => Promise.resolve({ rpc: signIn.rpc }),
+}));
+
+import { AWAY_TICK_MS, HarbourSession, liveIdentity, placeFor, type HarbourIdentity } from './harbour';
 import { AWAY_GRACE_MS, LEAVE_AFTER_MS, type HarbourWire } from './harbourLink';
 import type { HarbourPlace } from './harbourProtocol';
 import { harbourMode, membersOf } from './harbourWire';
@@ -159,5 +173,50 @@ describe('which wire a page uses', () => {
       '22222222-2222-4222-8222-222222222222': [{ p: 'the moon' }],
     });
     expect([...members]).toEqual([[ME, 'yard']]);
+  });
+});
+
+describe('who the live harbour sees this browser as', () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  // A named player with no session was stopped mid-walk by the bot check, which
+  // held every key for up to two minutes (the harbour bug hunt of 10 Nov 2026,
+  // finding 1): walking about signed them in. Signing in is for sending.
+  it('only watches a browser that is not signed in, and never draws the bot check to sign it in', async () => {
+    signIn.currentPlayer.mockResolvedValue(null);
+    await expect(liveIdentity('watch').seenAs('ASH')).resolves.toBeNull();
+    expect(signIn.signInAsPlayer).not.toHaveBeenCalled();
+    expect(signIn.rpc).not.toHaveBeenCalled();
+  });
+
+  it('watches when the session cannot be read at all', async () => {
+    signIn.currentPlayer.mockRejectedValue(new Error('offline'));
+    await expect(liveIdentity('watch').seenAs('ASH')).resolves.toBeNull();
+  });
+
+  it('sees a browser that is signed in already, and writes its house', async () => {
+    signIn.currentPlayer.mockResolvedValue(ME);
+    signIn.rpc.mockResolvedValue({ data: 'claimed', error: null });
+    await expect(liveIdentity('watch').seenAs('ASH')).resolves.toBe(ME);
+    expect(signIn.signInAsPlayer).not.toHaveBeenCalled();
+    expect(signIn.rpc).toHaveBeenCalledWith('name_my_house', { player_name: 'ASH' });
+  });
+
+  it('signs in, bot check and all, when the player is sending something: a raid room', async () => {
+    signIn.signInAsPlayer.mockResolvedValue({ ok: true, uid: ME });
+    signIn.rpc.mockResolvedValue({ data: 'claimed', error: null });
+    await expect(liveIdentity('sign-in').seenAs('ASH')).resolves.toBe(ME);
+    expect(signIn.signInAsPlayer).toHaveBeenCalledOnce();
+  });
+
+  it('the harbour a page joins is the watching one', async () => {
+    signIn.currentPlayer.mockResolvedValue(null);
+    const session = new HarbourSession(new QuietWire(), liveIdentity('watch'));
+    session.stand('yard', { x: 1, y: 1 }, 'down', 'ASH');
+    await settle();
+    expect(session.seenAs).toBeNull();
+    expect(signIn.signInAsPlayer).not.toHaveBeenCalled();
   });
 });
