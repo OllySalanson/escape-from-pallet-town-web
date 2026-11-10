@@ -412,10 +412,10 @@ function withInsides(file: MapFile): MapFile {
       look: 'gym-guide',
       facing: 'left',
       lines: [
-        'Yo! Champ in the making! KOGA holds every road into the Marsh. He fights only holders of the CASCADE BADGE.',
-        'His Pokémon poison you and float over Ground moves, and his Koffing blows itself up.',
-        'A Ghost shrugs off Normal moves and most Poison. Fire and Flying never touch.',
-        'Beat him and the Marsh is open for good, and the SOUL BADGE is yours.',
+        'Yo! Champ in the making! KOGA holds every road into the Marsh.',
+        'He only fights a trainer with Misty’s CASCADE BADGE. Until then, look around!',
+        'His Pokémon poison you, float over Ground moves, and his Koffing blows itself up.',
+        'A Ghost shrugs off Normal moves and most Poison. Fire and Flying never touch. Beat him for the SOUL BADGE!',
       ],
     },
   ]);

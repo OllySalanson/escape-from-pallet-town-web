@@ -162,7 +162,7 @@ export const BADGES: readonly Badge[] = [
     name: 'SOUL BADGE',
     keeper: 'Koga',
     held: 'every road into the Marsh',
-    art: ['.oo..oo.', 'obbooaao', 'obaaaaco', 'oaaaaaco', '.oaaaco.', '..oaco..', '...oo...', '........'],
+    art: ['.oo..oo.', 'obbooaao', 'obaaaaco', 'oaaaaaco', 'oaaaaaco', '.oaaaco.', '..oaco..', '...oo...'],
     ink: { o: RIM, a: '#e868b8', b: '#ffd8f0', c: '#a83088', g: '#e868b8' },
   },
 ];
