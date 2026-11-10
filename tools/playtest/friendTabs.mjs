@@ -200,13 +200,16 @@ export async function leaveFight(tab, press) {
 }
 
 /**
- * The first key of the shortest walk to a tile over the world's own collision,
- * `here` once on it, null if nothing reaches it.
+ * The first key of the shortest walk to a tile, `here` once on it, null if
+ * nothing reaches it. It asks the world what blocks a step (`isBlocked`: the
+ * collision, and whoever stands about - townsfolk, a trainer, the hunter), so a
+ * walk goes round somebody standing in a lane rather than pressing into them
+ * for good, as a walk over the collision alone did in Mill Square.
  */
 export const stepToward = (goal) => `(() => { const w = ${WORLD}; if (!w.sys.isActive()) return 'away'; const c = w.collisionData, s = w.currentTile, g = ${JSON.stringify(goal)};
   if (s.x === g.x && s.y === g.y) return 'here'; const W = c[0].length, H = c.length, id = (x, y) => y * W + x;
   const prev = new Map([[id(s.x, s.y), null]]); const q = [[s.x, s.y]]; let found = null;
   while (q.length) { const [x, y] = q.shift(); if (x === g.x && y === g.y) { found = [x, y]; break; }
     for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || c[ny][nx]) continue; prev.set(id(nx, ny), [x, y, k]); q.push([nx, ny]); } }
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || c[ny][nx] || w.isBlocked({ x: nx, y: ny })) continue; prev.set(id(nx, ny), [x, y, k]); q.push([nx, ny]); } }
   if (!found) return null; let cur = found, key = null; for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return key; })()`;

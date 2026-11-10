@@ -91,10 +91,12 @@ try {
    */
   const walkOnto = async (tab, piece) => {
     let stood = 0;
+    let last = null;
     for (let guard = 0; guard < 400; guard += 1) {
       await bring(tab);
       const now = await tab.evaluate(ground);
       if (now?.gone.includes(piece.id)) return true;
+      last = now ? { at: now.me, dialog: now.dialog } : { at: 'in a fight' };
       if (!now) {
         await leaveFight(tab, press);
         continue;
@@ -106,13 +108,17 @@ try {
       const step = await tab.evaluate(stepToward({ x: piece.x, y: piece.y }));
       if (step === 'here') {
         stood += 1;
-        if (stood > 12) return false;
+        if (stood > 12) {
+          console.log(`stood on ${piece.id} at ${piece.x},${piece.y} and it was not picked up`);
+          return false;
+        }
         await sleep(300);
         continue;
       }
       if (step && step !== 'away') await press(tab, step);
       else await sleep(200);
     }
+    console.log(`never got onto ${piece.id} at ${piece.x},${piece.y}: last ${JSON.stringify(last)}`);
     return false;
   };
 
