@@ -138,6 +138,10 @@ describe("Oak's cork board", () => {
         expect(scrap.x + 6).toBeLessThanOrEqual(width - 2);
         expect(scrap.y + 6).toBeLessThanOrEqual(height - 2);
       }
+      // And no scrap is pinned over another.
+      scraps.forEach((a, i) =>
+        scraps.slice(i + 1).forEach((b) => expect(a.x + 6 <= b.x || b.x + 6 <= a.x || a.y + 6 <= b.y || b.y + 6 <= a.y).toBe(true)),
+      );
       // Without rumours the slips keep the whole board, as they always had it.
       expect(slipSeats(width, height).length).toBeGreaterThan(slips.length);
     });

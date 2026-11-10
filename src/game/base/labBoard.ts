@@ -189,14 +189,17 @@ export function scrapSeats(width: number, height: number): readonly { readonly x
   const slipsAcross = Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - RUMOUR_CORNER_SLIPS;
   const left = BOARD_BORDER + SLIP_GAP + slipsAcross * (SLIP_WIDTH + SLIP_GAP);
   const room = width - BOARD_BORDER - left;
-  const across = Math.floor((room + SCRAP_GAP) / (SCRAP_WIDTH + SCRAP_GAP));
-  const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / (SCRAP_HEIGHT + SCRAP_GAP));
+  // A pixel spare across for every scrap to sit a pixel off its neighbours' line; the rows are
+  // stacked edge to edge, so the corner holds a row more - ten rumours want ten scraps, and
+  // with a gap between the rows Oak's board had nine (#488 and #489 together).
+  const across = Math.floor((room - 1 + SCRAP_GAP) / (SCRAP_WIDTH + SCRAP_GAP));
+  const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / SCRAP_HEIGHT);
   const seats: { x: number; y: number }[] = [];
   for (let row = 0; row < down; row += 1) {
     for (let column = 0; column < across; column += 1) {
       seats.push({
-        x: left + column * (SCRAP_WIDTH + SCRAP_GAP),
-        y: BOARD_BORDER + SLIP_GAP + row * (SCRAP_HEIGHT + SCRAP_GAP) + ((row * 2 + column) % 3 === 0 ? 1 : 0),
+        x: left + column * (SCRAP_WIDTH + SCRAP_GAP) + ((row * 2 + column) % 3 === 0 ? 1 : 0),
+        y: BOARD_BORDER + SLIP_GAP + row * SCRAP_HEIGHT,
       });
     }
   }
