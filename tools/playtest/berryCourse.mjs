@@ -109,9 +109,13 @@ try {
         const from = await page.evaluate(`JSON.stringify(${base}.currentTile)`);
         await press(move.key);
         await wait(120);
+        // Only once the step a tap began is over: read mid-step, the tile had not changed yet, and the
+        // key then held walked a tile too far and back round the partner for ever (playtest 51, finding 13).
+        for (let settle = 0; settle < 30 && (await page.evaluate(`${base}.isWalking?.() || ${base}.targetTile !== null`)); settle += 1) await step(2);
         if ((await page.evaluate(`JSON.stringify(${base}.currentTile)`)) === from) {
+          // Held until the step into the partner's tile begins, and no longer.
           await page.keyDown(move.key);
-          await step(14);
+          for (let held = 0; held < 30 && !(await page.evaluate(`${base}.targetTile !== null`)); held += 1) await step(1);
           await page.keyUp(move.key);
         }
       }

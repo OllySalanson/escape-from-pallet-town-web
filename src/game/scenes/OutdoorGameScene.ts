@@ -10,8 +10,9 @@ import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind, type PickerEn
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { outdoorPickMarkup, type OutdoorCandidate, type OutdoorCourse, type OutdoorPickState } from '../minigames/outdoorView';
-import { NO_GAME_CORNER, type GameCornerRecord, type GamePayout, type TicketSource } from '../minigames/tickets';
+import { NO_GAME_CORNER, type DerbySource, type GameCornerRecord, type GamePayout, type TicketSource } from '../minigames/tickets';
 import { traitsOf, type PokemonTraits } from '../minigames/traits';
+import { hideHarbourUnder } from './coverHarbour';
 
 export interface OutdoorGameSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -24,8 +25,8 @@ export interface OutdoorFit {
   readonly notes: readonly string[];
 }
 
-/** The three sources the promenade's outdoor games pay from. */
-export type OutdoorSource = Extract<TicketSource, 'derby' | 'dig' | 'fishing-derby'>;
+/** The sources the promenade's three outdoor games pay from: the race's, a level each, the dig's and the fishing derby's. */
+export type OutdoorSource = Extract<TicketSource, DerbySource | 'dig' | 'fishing-derby'>;
 
 /**
  * What the promenade's three outdoor games share, over the paused harbour as
@@ -77,6 +78,15 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
     return undefined;
   }
 
+  /**
+   * What PLAY says after a game, when it is not simply the same game again -
+   * THE PROMENADE DERBY's podium moves the chosen course on, and AGAIN raced
+   * the next one (playtest 51, finding 7).
+   */
+  protected playLabel(): string | undefined {
+    return undefined;
+  }
+
   /** The game's levels, if it has them (THE PROMENADE DERBY's courses). */
   protected course(): OutdoorCourse | undefined {
     return undefined;
@@ -113,6 +123,10 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
   }
 
   public create(): void {
+    // The game, and the screen that chooses who plays it, cover the whole of
+    // the harbour paused under them; drawn on regardless, it halved the race's
+    // frame rate (playtest 51, finding 3).
+    if (this.pausedBase) hideHarbourUnder(this);
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       if (this.playing) this.onGameKey(event);
     });
@@ -180,6 +194,7 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
     const best = record.day?.best[this.source];
     const today = this.todayLine();
     const course = this.course();
+    const again = this.last ? this.playLabel() : undefined;
     this.overlay.redraw(
       outdoorPickMarkup({
         ...this.words,
@@ -191,6 +206,7 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
         ...(this.status ? { status: this.status } : {}),
         ...(this.last ? { last: this.last } : {}),
         ...(course ? { course } : {}),
+        ...(again ? { again } : {}),
       }),
     );
     const root = this.overlay.root;

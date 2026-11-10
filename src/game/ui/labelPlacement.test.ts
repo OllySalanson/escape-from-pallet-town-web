@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  captionBoundsOverRoom,
   NEIGHBOUR_GAP,
+  ROOM_OVERHANG,
   SUBJECT_GAP,
   VIEW_INSET,
   explainSeats,
@@ -785,5 +787,22 @@ describe('a subject the dialogue box covers', () => {
   it('still speaks for a subject the box only partly covers', () => {
     const atTheEdge: Rect = { x: 144, y: 160, width: TILE, height: 24 };
     expect(seat({ ...warning, subject: atTheEdge }, { furniture: [box], player: [player] }).visible).toBe(true);
+  });
+});
+
+describe('captions in a room', () => {
+  it('stay over the room and a tile either side, never out to the screen edge (playtest 51, finding 10)', () => {
+    // THE GREAT LIBRARY: 15 tiles wide, centred in a 400-pixel view.
+    const view = { left: -80, top: -20, width: 400, height: 256 };
+    const bounds = captionBoundsOverRoom(view, 240);
+    expect(bounds).toEqual({ x: -ROOM_OVERHANG, y: -20, width: 240 + ROOM_OVERHANG * 2, height: 256 });
+    // THE END BOOKCASE's caption, seated as wide as it is at the room's right wall, stays a tile past it at most.
+    const [seat] = placeCaptions(
+      [{ subject: { x: 208, y: 0, width: 16, height: 16 }, width: 150, height: 24, preferred: 'above' }],
+      { bounds, furniture: [], keepClear: [], canopy: [], player: [] },
+    );
+    expect(seat.x + 150).toBeLessThanOrEqual(240 + ROOM_OVERHANG);
+    // A room wider than the view keeps the view.
+    expect(captionBoundsOverRoom(view, 2000)).toEqual({ x: -16, y: -20, width: 336, height: 256 });
   });
 });

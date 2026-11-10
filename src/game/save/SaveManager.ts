@@ -5,6 +5,7 @@ import { settleRunBout, type DojoRun, type RunSettlement } from '../arena/arenaR
 import { gymOf } from '../world/valeQuarters';
 import {
   buyPrize,
+  derbySource,
   digBerriesAllowed,
   NO_GAME_CORNER,
   payGame,
@@ -13,6 +14,7 @@ import {
   prizeById,
   type GameCornerRecord,
   type PrizeSituation,
+  type DerbySource,
   type GamePayout,
   type TicketSource,
 } from '../minigames/tickets';
@@ -1435,7 +1437,7 @@ export class SaveManager {
    * there is no game to write to.
    */
   public playOutdoorGame(
-    source: 'derby' | 'dig' | 'fishing-derby',
+    source: DerbySource | 'dig' | 'fishing-derby',
     score: number,
     finds: readonly string[] = [],
     now: Date = new Date(),
@@ -1471,7 +1473,8 @@ export class SaveManager {
     if (!game) {
       return null;
     }
-    const payout = payGame(game.raidProgress.gameCorner ?? NO_GAME_CORNER, 'derby', derbyScore(place), now);
+    // Each level pays its own tiers, once a day (`derbySource`).
+    const payout = payGame(game.raidProgress.gameCorner ?? NO_GAME_CORNER, derbySource(level.number), derbyScore(place), now);
     const cleared = derbyClearedAfter(level, place, game.raidProgress.derbyCleared ?? 0);
     const next: RestoredGame = {
       ...game,

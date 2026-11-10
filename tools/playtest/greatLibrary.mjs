@@ -35,7 +35,9 @@ try {
 
   async function walkTo(goals, label) {
     for (let guard = 0; guard < 300; guard += 1) {
-      const move = await page.evaluate(`(() => { const b = ${base}; if (!b.sys.isActive() || !b.ready || b.leaving) return { wait: true };
+      // Never mid-step: read then, the tile is the one being left, and a tap made for it walked a
+      // fresh save one tile past the library's step (playtest 51, finding 13).
+      const move = await page.evaluate(`(() => { const b = ${base}; if (!b.sys.isActive() || !b.ready || b.leaving || b.targetTile) return { wait: true };
         const goals = ${JSON.stringify(goals)};
         const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
         const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
@@ -61,6 +63,7 @@ try {
 
   const door = await page.evaluate(`${base}.doors.find((d) => d.id === 'great-library').tiles`);
   await walkTo([{ x: door[0].x, y: door[0].y + 1 }], 'the library step');
+  await until(`!${base}.targetTile`, 'standing on the step');
   await page.screenshot(`${out}/01-outside.png`);
   // One step up from the step is through the doors.
   await page.tap('ArrowUp', 60);

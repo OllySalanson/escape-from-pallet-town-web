@@ -36,6 +36,7 @@ import {
   type CourseRunner,
 } from '../minigames/fieldCourse';
 import { NO_GAME_CORNER, type GameCornerRecord } from '../minigames/tickets';
+import { hideHarbourUnder } from './coverHarbour';
 
 export interface FieldCourseSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -128,6 +129,8 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   public create(): void {
+    // The course and its screen cover the whole of the harbour paused under them (`coverHarbour.ts`).
+    if (this.pausedBase) hideHarbourUnder(this);
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onGameKey(event, true));
     this.input.keyboard?.on('keyup', (event: KeyboardEvent) => this.onGameKey(event, false));
     this.showMenu();

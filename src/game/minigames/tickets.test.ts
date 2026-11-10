@@ -7,6 +7,7 @@ import { getSpeciesById } from '../pokemon/species';
 import { partyOf, trainerWinRate } from '../world/trainerMeasure';
 import { createRunTrainerEncounters } from '../world/trainers';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { DERBY_LEVELS, derbyScore } from './derby';
 import {
   BERRIES_A_DAY,
   buyPrize,
@@ -14,6 +15,10 @@ import {
   prizeById,
   prizeItemId,
   DAILY_TICKET_CEILING,
+  DERBY_SOURCES,
+  DERBY_TICKET_TIERS,
+  derbySource,
+  derbyTiers,
   jumpTickets,
   JUMP_TICKET_TIERS,
   neverForTickets,
@@ -71,13 +76,63 @@ describe('tickets earned at the cabinets', () => {
     // Last of six in the derby on a fresh day: playtest wave 3, finding 2.
     const last = payGame(NO_GAME_CORNER, 'derby', 1, NOON);
     expect(last.tickets).toBe(0);
-    expect(last.firstTier).toBe('The podium pays, from 3rd.');
-    expect(payoutWords(last, [])).toBe('No tickets. The podium pays, from 3rd.');
+    expect(last.firstTier).toBe('On THE FRONT, 3rd or better pays 10 tickets.');
+    expect(payoutWords(last, [])).toBe('No tickets. On THE FRONT, 3rd or better pays 10 tickets.');
     const third = payGame(last.record, 'derby', 4, NOON);
     expect(third.firstTier).toBeNull();
     expect(payoutWords(third, ['10 tickets'])).toBe('A new best! Won 10 tickets.');
-    expect(payoutWords(payGame(third.record, 'derby', 4, EVENING), [])).toBe('Nothing more today: the day has paid this tier.');
-    expect(payoutWords(payJump(NO_GAME_CORNER, 100, NOON), [])).toBe('No tickets. A score of 250 pays.');
+    expect(payoutWords(payGame(third.record, 'derby', 4, EVENING), [])).toBe('Nothing more today: THE FRONT has paid this tier.');
+    // What a tier pays is said with what it asks, so it is never read off the tickets a player holds (playtest 51, finding 6).
+    expect(payoutWords(payJump(NO_GAME_CORNER, 100, NOON), [])).toBe('No tickets. A score of 250 pays 10 tickets.');
+    expect(payoutWords(payGame(NO_GAME_CORNER, 'fishing-derby', 58, NOON), [])).toBe('No tickets. A tally of 60 pays 10 tickets.');
+  });
+});
+
+describe('THE PROMENADE DERBY, a level at a time', () => {
+  it('has a source for every level, and nothing for a level it does not have', () => {
+    expect(DERBY_SOURCES).toHaveLength(DERBY_LEVELS.length);
+    expect(DERBY_LEVELS.map((level) => derbySource(level.number))).toEqual([...DERBY_SOURCES]);
+    expect(() => derbySource(DERBY_LEVELS.length + 1)).toThrow();
+  });
+
+  it('pays every place on a harder level more than the same place on an easier one', () => {
+    for (let level = 2; level <= DERBY_LEVELS.length; level += 1) {
+      derbyTiers(level).forEach((rung, index) => expect(rung.tickets).toBeGreaterThan(derbyTiers(level - 1)[index].tickets));
+    }
+    // 3rd on the last course is worth more than a win on the first.
+    const first = derbyTiers(1);
+    expect(derbyTiers(DERBY_LEVELS.length)[0].tickets).toBeGreaterThan(first[first.length - 1].tickets);
+    expect(first).toEqual(DERBY_TICKET_TIERS);
+  });
+
+  it('pays THE GRAND DERBY after a win on THE FRONT, and names the course in its line (playtest 51, finding 1)', () => {
+    const front = payGame(NO_GAME_CORNER, derbySource(1), derbyScore(1), NOON);
+    expect(front.tickets).toBe(30);
+    const grand = payGame(front.record, derbySource(4), derbyScore(2), NOON);
+    expect(grand.tickets).toBe(derbyTiers(4)[1].tickets);
+    expect(grand.course).toBe('THE GRAND DERBY');
+    // The same place again: that course has paid its tier, and the line says which course.
+    const again = payGame(grand.record, derbySource(4), derbyScore(2), EVENING);
+    expect(again.tickets).toBe(0);
+    expect(payoutWords(again, [])).toBe('Nothing more today: THE GRAND DERBY has paid this tier.');
+    // Worse than today's best there: beat that course's best, not THE FRONT's win.
+    const worse = payGame(again.record, derbySource(4), derbyScore(3), EVENING);
+    expect(payoutWords(worse, [])).toBe('Beat today’s best on THE GRAND DERBY to win more.');
+    // Each level keeps its own best, today and ever.
+    expect(today(worse.record, EVENING).best).toMatchObject({ derby: 6, 'derby-4': 5 });
+    expect(worse.record.best).toMatchObject({ derby: 6, 'derby-4': 5 });
+    // And off the podium a level says what its own first tier pays.
+    expect(payGame(NO_GAME_CORNER, derbySource(3), derbyScore(5), NOON).firstTier).toBe(
+      `On THE BREAKWATER, 3rd or better pays ${derbyTiers(3)[0].tickets} tickets.`,
+    );
+  });
+
+  it('reads every level’s ledger back out of a save', () => {
+    const played = payGame(NO_GAME_CORNER, derbySource(4), derbyScore(1), NOON).record;
+    const read = readGameCorner(JSON.parse(JSON.stringify(played)));
+    expect(read?.best).toEqual({ 'derby-4': 6 });
+    expect(read?.day?.best).toEqual({ 'derby-4': 6 });
+    expect(read?.day?.paid).toEqual({ 'derby-4': derbyTiers(4)[2].tickets });
   });
 });
 

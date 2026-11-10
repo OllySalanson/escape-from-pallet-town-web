@@ -56,6 +56,8 @@ export interface OutdoorPickState {
   readonly last?: { readonly headline: string; readonly payout: GamePayout; readonly kept: readonly string[] };
   /** The levels a game has, if it has more than one (THE PROMENADE DERBY's courses), and which is chosen. */
   readonly course?: OutdoorCourse;
+  /** What PLAY says after a game when it is not the same game again: `Race THE SANDS`. */
+  readonly again?: string;
 }
 
 /** A game's levels, one after another: each opened by finishing the one before it. */
@@ -114,7 +116,7 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
       ? state.candidates.map(row).join('')
       : '<p class="px-empty px-wrap">Nobody to play with: everybody you keep is somewhere else.</p>';
   const ready = state.chosen !== null;
-  const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? state.playHelp : 'Choose who plays first.')}">${state.last ? 'Again' : 'Play'}</button>`;
+  const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? state.playHelp : 'Choose who plays first.')}">${escapeAttribute(state.last ? (state.again ?? 'Again') : 'Play')}</button>`;
   const body = `<main class="px-body game-corner-layout${state.course ? ' has-course' : ''}">${state.course ? courseMarkup(state.course) : ''}${pixelWindow(
     `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${list}</div>`,
     { heading: state.heading, note: ready ? '1 of 1' : '0 of 1' },
@@ -122,7 +124,8 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
     title: state.last ? state.last.headline : state.title,
     lines: [
       ...(state.last ? [outdoorResultLine(state.last)] : []),
-      `<small class="px-wrap">${number(state.tickets)} tickets${state.best ? ` · today’s best ${escapeAttribute(state.best)}` : ''}. ${escapeAttribute(state.rules)}${state.today ? ` ${escapeAttribute(state.today)}` : ''}</small>`,
+      // What the player holds, said as held: under a result line, a bare "10 tickets" read as what the game had just paid (playtest 51, finding 6).
+      `<small class="px-wrap">You hold ${number(state.tickets)} tickets${state.best ? ` · today’s best ${escapeAttribute(state.best)}` : ''}. ${escapeAttribute(state.rules)}${state.today ? ` ${escapeAttribute(state.today)}` : ''}</small>`,
     ],
     actions: `<button class="px-window px-button" data-close data-help="Back to the promenade.">Done</button>${play}`,
   })}</main>`;

@@ -86,7 +86,7 @@ import {
   type LearnableKeyId,
 } from '../input/keyBindings';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
-import { placeCaptions, placeDialog, seatedOver, type Rect } from '../ui/labelPlacement';
+import { captionBoundsOverRoom, placeCaptions, placeDialog, seatedOver, type Rect } from '../ui/labelPlacement';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
@@ -145,7 +145,7 @@ import {
   type RoomThing,
 } from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
-import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
+import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, landmarkFaced, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { HomeGardenFigures } from '../base/homeGardenFigures';
 import { gardenLines, gardenPokemon, gardenQuestion } from '../base/homeGarden';
@@ -174,7 +174,8 @@ import {
   planCast,
   type CastPlan,
 } from '../world/fishing';
-import { HarbourNight } from '../base/harbourNight';
+import { HarbourNight, WASH_DEPTH } from '../base/harbourNight';
+import { lightsAreOn } from '../base/harbourLight';
 import { HarbourBird } from '../base/harbourBird';
 import { windowLight } from '../base/homeClock';
 import { TILE_ANIMATIONS_BY_TILE, animatedTileAt } from '../world/tileAnimation';
@@ -891,6 +892,8 @@ export class BaseScene extends Phaser.Scene {
   private pointedBall: StarterSpeciesId | null = null;
   /** Until the first raid has begun, what shows the way to it: over the Arena's door, and up the hall's runner. */
   private yardWayMark: YardWayMark | null = null;
+  /** Whether a push into an arch stood on goes through it: not until the key that came through is let go. */
+  private archReady = false;
   private runnerWayMarks: RunnerWayMarks | null = null;
   private wayMarkMs = 0;
   /** The name a new game was not stopped for, to be asked once the first raid has come home. */
@@ -1079,6 +1082,7 @@ export class BaseScene extends Phaser.Scene {
       this.currentTile = { ...standing };
       const fence = fromTheRaid ? fenceBeside(fromTheRaid) : null;
       this.facing = fence ? facingTowards(standing, fence) : climbedTo ? 'down' : (data.facing ?? 'up');
+      this.archReady = false;
     } else {
       const map = getBaseMap(loaded.raidProgress.workshopUpgrades);
       this.place = {
@@ -1574,7 +1578,12 @@ export class BaseScene extends Phaser.Scene {
       this.tossACoin();
     }
 
-    const input = this.followWalkPlan(this.readInput());
+    const held = this.readInput();
+    // An arch is only gone back through once the key that came through it is let go.
+    if (!held.up && !held.down && !held.left && !held.right) {
+      this.archReady = true;
+    }
+    const input = this.followWalkPlan(held);
     if (input === null) {
       return;
     }
@@ -1583,6 +1592,12 @@ export class BaseScene extends Phaser.Scene {
     // the mat, into the dark the door is in.
     if (room && input.down && this.onMat(room)) {
       this.leaveRoom(room);
+      return;
+    }
+    // An arch is gone through the same way, by a push into the wall it is cut in.
+    const arch = room ? stairAt(room, this.currentTile) : undefined;
+    if (room && arch?.push && this.archReady && input[arch.push.key]) {
+      this.climb(room, arch.to);
       return;
     }
     const planned = planNextGridStep({
@@ -3982,6 +3997,12 @@ export class BaseScene extends Phaser.Scene {
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), isFirstRaid(this.savedGame.raidProgress));
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
+    // Stood in an arch, the way through it is said as a mat's way out is.
+    const arch = stairAt(room, this.currentTile)?.push;
+    if (arch) {
+      const through = `[${arch.key.toUpperCase()}] ${arch.says}`;
+      return partner ? `${partner}   ${through}` : through;
+    }
     if (this.onMat(room) && room.screen === 'arena') {
       // The first time in, the way out is not the thing to say: the way on is up the runner.
       if (isFirstRaid(this.savedGame.raidProgress)) {
@@ -4220,8 +4241,11 @@ export class BaseScene extends Phaser.Scene {
     }
     labels.forEach((label) => label.describe(audience));
     const view = this.cameras.main.worldView;
-    const bounds: Rect = { x: view.left, y: view.top, width: view.width, height: view.height };
     const room = this.place.room?.room;
+    // A room stands in the dark in the middle of the screen, and its captions
+    // stay over it, a tile's overhang at most: seated against the screen's
+    // edge, THE END BOOKCASE's ran off the library across the black (playtest 51, finding 10).
+    const bounds: Rect = room ? captionBoundsOverRoom(view, this.place.width * TILE_SIZE) : { x: view.left, y: view.top, width: view.width, height: view.height };
     const partner = this.partner?.place.out ? this.partner : null;
     const bubble = partner ? partner.bubbleRect() : null;
     const placements = placeCaptions(
@@ -5263,7 +5287,7 @@ export class BaseScene extends Phaser.Scene {
       this.say(courseKeeperLines(this.freshGame().raidProgress), [target], () => this.openMinigame('field-course'));
       return;
     }
-    const landmark = HARBOUR_LANDMARKS.find((each) => sameTile(each.at, target));
+    const landmark = HARBOUR_LANDMARKS.find((each) => landmarkFaced(each, target));
     // THE PROMENADE's outdoor games: facing a game's board plays it.
     if (landmark && OUTDOOR_GAME_LANDMARKS.includes(landmark)) {
       this.openMinigame(landmark.id as OutdoorGameId);
@@ -5643,7 +5667,12 @@ export class BaseScene extends Phaser.Scene {
     } else if (!room) {
       const door = BASE_DOORS.find((each) => each.screen === 'arena')?.tiles[0];
       if (door) {
-        this.yardWayMark = new YardWayMark(this, { x: door.x * TILE_SIZE + TILE_SIZE / 2, y: door.y * TILE_SIZE }, this.still);
+        // Clear of every sign and board the harbour stands: pointing west along the beach it hid THE DIG's (playtest 51, finding 12).
+        const signs = HARBOUR_LANDMARKS.filter((landmark) => !landmark.floats).map((landmark) => {
+          const rect = propsRect(landmark.props);
+          return { left: rect.x, top: rect.y, width: rect.width, height: rect.height };
+        });
+        this.yardWayMark = new YardWayMark(this, { x: door.x * TILE_SIZE + TILE_SIZE / 2, y: door.y * TILE_SIZE }, this.still, signs);
       }
     }
   }
@@ -6321,17 +6350,23 @@ export class BaseScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(atRow(MARKER_BAND, BEACH_BOTTLE.y));
     this.beachBottle = [bottle];
+    // After dark the glint is a light, over the night's wash as a lit window
+    // is, and catches the eye twice as often: under the wash the bottle was a
+    // small grey shape at the tide line, found only because MARLOW said where
+    // it was (playtest 51, finding 10).
+    const night = lightsAreOn(new Date());
+    const glintDepth = night ? WASH_DEPTH + 0.02 : atRow(MARKER_BAND, BEACH_BOTTLE.y) + 0.0001;
+    const glint = this.add
+      .image(x, y + 2, iconTextureKey('bottled-chart'))
+      .setCrop(3, 4, 6, 1)
+      .setOrigin(0, 0)
+      .setTintFill(0xffffff)
+      .setAlpha(this.still ? (night ? 0.8 : 0) : 0)
+      .setDepth(glintDepth);
+    this.beachBottle.push(glint);
     if (!this.still) {
       // A glint off the glass now and then: the bottle's own highlight, lit white.
-      const glint = this.add
-        .image(x, y + 2, iconTextureKey('bottled-chart'))
-        .setCrop(3, 4, 6, 1)
-        .setOrigin(0, 0)
-        .setTintFill(0xffffff)
-        .setAlpha(0)
-        .setDepth(atRow(MARKER_BAND, BEACH_BOTTLE.y) + 0.0001);
-      this.tweens.add({ targets: glint, alpha: { from: 0, to: 1 }, duration: 260, yoyo: true, repeat: -1, repeatDelay: 2200 });
-      this.beachBottle.push(glint);
+      this.tweens.add({ targets: glint, alpha: { from: 0, to: 1 }, duration: 260, yoyo: true, repeat: -1, repeatDelay: night ? 1000 : 2200 });
     }
   }
 

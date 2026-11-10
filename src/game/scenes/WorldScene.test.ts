@@ -8,6 +8,7 @@ import {
   objectiveChipLines,
   raidClockAlertTier,
   raidClockView,
+  raidLight,
 } from './raidHud';
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
@@ -437,14 +438,23 @@ describe('the raid clock chip', () => {
   });
 
   it('says a night raid is one on the clock, and nowhere else', () => {
-    expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS, false, true)).toEqual({
+    expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS, false, 'night')).toEqual({
       label: 'NIGHT RAID 5:00',
       tone: 'calm',
       pulses: false,
     });
-    expect(raidClockView(RAID_CLOCK_URGENT_MS, false, ENRAGE_GRACE_MS, false, true).tone).toBe('urgent');
+    expect(raidClockView(RAID_CLOCK_URGENT_MS, false, ENRAGE_GRACE_MS, false, 'night').tone).toBe('urgent');
     // The grace period is the number that decides the raid, whatever the hour.
-    expect(raidClockView(0, true, 12_000, false, true).label).toBe('ENRAGED 0:12');
+    expect(raidClockView(0, true, 12_000, false, 'night').label).toBe('ENRAGED 0:12');
+  });
+
+  it('says a dusk raid is one, for the secrets that wait on dusk (playtest 51, finding 11)', () => {
+    expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS, false, 'dusk').label).toBe('DUSK RAID 5:00');
+    expect(raidLight({ night: false, conditions: { hour: 'dusk' } })).toBe('dusk');
+    expect(raidLight({ night: true, conditions: { hour: 'night' } })).toBe('night');
+    expect(raidLight({ night: false, conditions: { hour: 'day' } })).toBe('day');
+    expect(raidLight({ night: false })).toBe('day');
+    expect(raidLight(undefined)).toBe('day');
   });
 
   it('counts the grace period down once the raid clock is spent', () => {

@@ -132,13 +132,15 @@ export class LibraryBookScene extends Phaser.Scene implements ProvidesFeedbackCo
     }
     this.leafShade = this.add.graphics();
 
-    // How to work it, on a plate on the plinth's front, and a CLOSE a pointer can press beside it.
+    // How to work it, on a plate in a panel of the plinth's front, and a CLOSE a pointer can press in the panel beside it.
     const plate = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8e8c8', backgroundColor: '#402818', padding: { x: 3, y: 1 } };
-    const hintY = Math.min(height - 16, this.layout.plinth.y + 17);
-    this.add.text(Math.round(width / 2), hintY, HINT, plate).setOrigin(0.5, 0);
+    const middleOf = (box: { x: number; y: number; width: number; height: number }) => ({ x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) });
+    const turnAt = middleOf(this.layout.panels.turn);
+    this.add.text(turnAt.x, turnAt.y, HINT, plate).setOrigin(0.5, 0.5);
+    const closeAt = middleOf(this.layout.panels.close);
     this.closeHint = this.add
-      .text(width - 6, hintY, resolveBookText('{key:back} CLOSE'), plate)
-      .setOrigin(1, 0)
+      .text(closeAt.x, closeAt.y, resolveBookText('{key:back} CLOSE'), plate)
+      .setOrigin(0.5, 0.5)
       .setInteractive({ useHandCursor: true });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onKey(event));
@@ -228,7 +230,7 @@ export class LibraryBookScene extends Phaser.Scene implements ProvidesFeedbackCo
       ornament((paint) => paintTitlePlate(paint, x0, plateY, width, 26, book.colour));
       write(book.title, middle, plateY + 6, DIALOG_FONT_SIZE, '#f8f0d8', 0.5);
       write(book.blurb, middle, plateY + 36, body, PAGE_INK.body, 0.5);
-      write(resolveBookText('Click a page or press {key:walk} to turn.'), middle, left.height - words.bottom - 14, CHIP_FONT_SIZE, PAGE_INK.faint, 0.5);
+      // How to turn is said once, on the plinth's plate under every spread, not again here (playtest 51, finding 9).
     } else if (leaf.kind === 'end') {
       const rule = Math.round(left.height * 0.45);
       write('THE END', middle, rule - 22, DIALOG_FONT_SIZE, PAGE_INK.heading, 0.5);

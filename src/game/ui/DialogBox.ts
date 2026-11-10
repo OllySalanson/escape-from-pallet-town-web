@@ -3,6 +3,7 @@ import { TypewriterQueue } from './TypewriterQueue';
 import { drawPixelWindow } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { DIALOG_FONT_SIZE } from './screenType';
+import { shareLine } from './dialogBoxes';
 
 export interface DialogBoxOptions {
   x?: number;
@@ -282,26 +283,12 @@ export class DialogBox extends Phaser.GameObjects.Container {
     return this.typewriter?.isDone ?? true;
   }
 
-  /** Every line as the boxes it is read in, each box a run of whole wrapped rows. */
+  /** Every line as the boxes it is read in, cut where a reader would pause (`dialogBoxes.ts`). */
   private shareIntoBoxes(texts: readonly string[]): { text: string; line: number }[] {
     const rows = this.rowsPerBox();
-    return texts.flatMap((text, line) => {
-      const wrapped = this.textObject.getWrappedText(text);
-      if (wrapped.length <= rows) {
-        return [{ text, line }];
-      }
-      const boxes: { text: string; line: number }[] = [];
-      for (let first = 0; first < wrapped.length; first += rows) {
-        boxes.push({
-          text: wrapped
-            .slice(first, first + rows)
-            .map((row) => row.trimEnd())
-            .join('\n'),
-          line,
-        });
-      }
-      return boxes;
-    });
+    return texts.flatMap((text, line) =>
+      shareLine(text, rows, (words) => this.textObject.getWrappedText(words)).map((box) => ({ text: box, line })),
+    );
   }
 
   /**
