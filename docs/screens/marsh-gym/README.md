@@ -93,15 +93,3 @@ heart.
 
 ![the Soul Badge](10-the-soul-badge.png)
 ![the case, closer](11-the-badge-case-close.png)
-
-## Found on the way: Oak's cork board
-
-THE RUMOUR MILL brought the rumours to ten, and the board's corner held nine, so
-the tenth crowded the frame's foot. The corner now takes as many slip columns as
-hold every rumour
-(`npx vite-node tools/base/renderBase.mts -- out.png 3 --room=oaks-lab --heard=all`,
-cropped to the board):
-
-| before | after |
-|---|---|
-| ![before](08-oaks-board-before.png) | ![after](09-oaks-board-after.png) |
