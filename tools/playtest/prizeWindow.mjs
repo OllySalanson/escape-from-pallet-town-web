@@ -129,7 +129,10 @@ try {
   const buy = async (id, shot) => {
     await scrollTo(id);
     const before = (await save()).raidProgress.gameCorner.tickets;
+    // The row asks first, and BUY is a second button (`PrizeWindowState.asking`).
     await page.evaluate(`document.querySelector('[data-prize="${id}"]').click()`);
+    await wait(600);
+    await page.evaluate(`document.querySelector('[data-prize-confirm="${id}"]')?.click()`);
     await wait(200);
     await scrollTo(id);
     if (shot) await shoot(shot);

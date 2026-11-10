@@ -1113,6 +1113,29 @@ describe('the level a try is played at', () => {
   });
 });
 
+describe('a try left with Escape', () => {
+  beforeEach(() => {
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+  });
+
+  // ESC > BACK TO MAKER starts the maker with `tried: true` and nothing else,
+  // the try's raid never having reached an exit. It used to stay IN_RUN in the
+  // one manager every raid shares: the next real jump threw and froze the
+  // player over the pit, and TRY IT again threw too (raids bug hunt, fault 1).
+  it('puts its raid down, so the next try and the next real raid can start', () => {
+    storeDraft(sampleLane);
+    const { scene } = openMaker();
+    scene.overlay.clicks.get('[data-try]')!();
+    expect(activeRunManager.phase).toBe(RunPhase.InRun);
+    reopen(scene, { tried: true });
+    expect(activeRunManager.phase).toBe(RunPhase.InHub);
+    expect(() => scene.overlay.clicks.get('[data-try]')!()).not.toThrow();
+    expect(activeRunManager.phase).toBe(RunPhase.InRun);
+  });
+});
+
 describe('typing what a map cannot hold', () => {
   it('takes it out as it is typed and leaves the caret where it was', () => {
     storeDraft(sampleLane);

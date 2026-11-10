@@ -181,6 +181,8 @@ try {
   const before = corner.tickets;
   await wait(600);
   await page.evaluate(`document.querySelector('[data-prize="sitrus-berry"]').click()`);
+  await wait(600);
+  await page.evaluate(`document.querySelector('[data-prize-confirm="sitrus-berry"]').click()`);
   await wait(200);
   await shoot('13-bought');
   const after = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}'))`);

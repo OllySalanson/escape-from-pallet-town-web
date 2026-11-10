@@ -4354,6 +4354,12 @@ button {
 :where(.pixel-ui) .game-corner-layout > .outdoor-course {
   grid-template-rows: auto auto auto;
 }
+/* The prize window's list is two columns wide, and a prize asked about
+   (`PrizeWindowState.asking`) runs across both, so its question and its two
+   buttons are read whole rather than wrapped a word a line in half of it. */
+:where(.pixel-ui) .game-corner-layout .px-list[data-columns] > .px-arming {
+  grid-column: 1 / -1;
+}
 /* --- The PLAYTEST BOARD (`dev/playtestBoardView.ts`) ------------------------
    One long list in a side panel: it scrolls inside the window, never past it. */
 :where(.pixel-ui) .playtest-board-body {

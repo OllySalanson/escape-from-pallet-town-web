@@ -244,6 +244,21 @@ export class RunManager {
     return this.snapshot();
   }
 
+  /**
+   * Puts down a raid that is being left without being settled, so the next one
+   * can start. A maker's try left with Escape is the case: nothing of a try is
+   * banked or lost, but the one manager every raid shares was still IN_RUN, and
+   * the next jump from the rim threw and hung the player over the pit (the
+   * raids bug hunt of 9 Nov 2026, fault 1). A raid already resolved, or none,
+   * is left as it is.
+   */
+  public abandonRun(): void {
+    if (this.phaseValue !== RunPhase.InRun && this.phaseValue !== RunPhase.Extracting) {
+      return;
+    }
+    this.phaseValue = RunPhase.InHub;
+  }
+
   public setMap(mapId: string): RunSnapshot {
     this.requirePhase('change maps', RunPhase.InRun);
     if (mapId.length === 0) {

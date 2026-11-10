@@ -15,6 +15,7 @@ vi.mock('phaser', () => ({
 }));
 
 import { BaseScene } from './BaseScene';
+import { raidHeartbeat } from '../run/raidInFlight';
 import { roomNamed } from '../base/rooms';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { boardLines } from '../base/labBoard';
@@ -448,6 +449,92 @@ describe('at the rail', () => {
     const { said, opened } = lookDown(saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } }));
     expect(said).toEqual([]);
     expect(opened).toEqual([['rim']]);
+  });
+});
+
+describe('the rim card opened just home from a raid', () => {
+  // SPACE mashed through the result screen landed on the rail, opened the rim
+  // card and jumped (raids bug hunt, fault 4). Every card opened before a step
+  // is taken is asked to start on NOT YET, so mashing only opens and closes it.
+  const hall = (homeOnTheRail: boolean) => {
+    const launched: Record<string, unknown>[] = [];
+    const scene = BaseScene.prototype as unknown as Record<string, unknown>;
+    const stand = {
+      kit: { flow: {} },
+      arenaPanel: null as string | null,
+      leaving: false,
+      walkPlan: null,
+      homeOnTheRail,
+      place: { room: { room: { id: 'raid-arena' } } },
+      standStill: () => undefined,
+      scene: { launch: (_key: string, data: Record<string, unknown>) => launched.push(data) },
+      currentTile: { x: 32, y: 53 },
+      facing: 'right',
+      controls: { run: { isDown: false } },
+      stepStart: { set: () => undefined },
+      stepEnd: { set: () => undefined },
+      player: { play: () => undefined },
+      playerTexture: 'player',
+      partner: null,
+    };
+    const open = (view: string) => {
+      stand.arenaPanel = null;
+      (scene.openHallPanel as (this: typeof stand, view: string) => void).call(stand, view);
+    };
+    // A step off the rail, as the walk takes one.
+    const step = () => (scene.beginStep as (this: typeof stand, tile: { x: number; y: number }) => void).call(stand, { x: 33, y: 53 });
+    return { open, launched, step };
+  };
+
+  it('asks for the cursor on NOT YET every time until a step is taken', () => {
+    const { open, launched, step } = hall(true);
+    open('rim');
+    open('rim');
+    step();
+    open('rim');
+    expect(launched.map((data) => data.justHome)).toEqual([true, true, undefined]);
+  });
+
+  it('asks nothing of a card opened after walking up to the rail', () => {
+    const { open, launched } = hall(false);
+    open('rim');
+    expect(launched[0].justHome).toBeUndefined();
+  });
+});
+
+describe('a base opened over a raid a crash left', () => {
+  const opened = (pageStillThere: boolean) => {
+    const restart = vi.fn();
+    const asked = vi.spyOn(raidHeartbeat, 'stillLiveElsewhere').mockResolvedValue(pageStillThere);
+    const scene = BaseScene.prototype as unknown as Record<string, unknown>;
+    const stand = {
+      saveManager: { load: () => ({ raidInFlight: { id: 'raid-1' } }) },
+      visits: 0,
+      leaving: false,
+      sys: { isActive: () => true },
+      place: { room: { room: { id: 'raid-arena' } } },
+      currentTile: { x: 4, y: 5 },
+      facing: 'up',
+      scene: { restart },
+    };
+    (scene.settleOnceTheBrowserSays as (this: typeof stand) => void).call(stand);
+    return { restart, asked };
+  };
+
+  // Its pulse looks live for a minute and a half, and the base left the raid
+  // unsettled all that time (raids bug hunt, fault 5).
+  it('opens again where the player stands once the browser says the page is gone, which settles it', async () => {
+    const { restart, asked } = opened(false);
+    await asked.mock.results[0].value;
+    expect(restart).toHaveBeenCalledWith({ room: 'raid-arena', at: { x: 4, y: 5 }, facing: 'up' });
+    asked.mockRestore();
+  });
+
+  it('leaves it to the window still playing it', async () => {
+    const { restart, asked } = opened(true);
+    await asked.mock.results[0].value;
+    expect(restart).not.toHaveBeenCalled();
+    asked.mockRestore();
   });
 });
 

@@ -245,6 +245,12 @@ export interface HubSceneData {
   readonly kit?: ArenaKit;
   /** Over the fence at once, with the card never drawn: there is nothing on it to decide (`hub/firstRaid.ts`). */
   readonly straightOver?: boolean;
+  /**
+   * The rim's card opened by a player just home from a raid, who has not taken
+   * a step: the cursor starts on NOT YET, so SPACE pressed through the result
+   * screen does not carry on over the fence (`BaseScene.homeOnTheRail`).
+   */
+  readonly justHome?: boolean;
 }
 
 /**
@@ -365,6 +371,9 @@ export class HubScene extends Phaser.Scene {
    * the key that started the raid used to start it again and throw.
    */
   private straightOver = false;
+  private justHome = false;
+  /** Whether the browser is being asked if another window's raid is still there. */
+  private askingElsewhere = false;
   private deploying = false;
   /** Whether the raid room's database is being asked something (`raidRoom/`). */
   private roomBusy = false;
@@ -419,6 +428,7 @@ export class HubScene extends Phaser.Scene {
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
     this.straightOver = data.straightOver === true;
+    this.justHome = data.justHome === true;
     // Looking down from the rim is looking the plan over, as far as it can be.
     if (this.view === 'rim') {
       this.pointAtHeldRoom();
@@ -1125,7 +1135,7 @@ export class HubScene extends Phaser.Scene {
     const underWay = this.saveManager.load()?.raidInFlight;
     if (underWay) {
       if (raidHeartbeat.liveElsewhere(underWay.id)) {
-        this.refuse('A raid is already under way in another window. Finish it there first.');
+        this.askWhetherLiveElsewhere(underWay.id);
       } else if (this.kit) {
         // Closing a panel stays in the same hall, which settles nothing, and
         // JUMP IN would only ever close the panel again.
@@ -1155,6 +1165,37 @@ export class HubScene extends Phaser.Scene {
       return;
     }
 
+    const items = deployment.items;
+    // The raid is started in memory before anything about it is written, so a
+    // raid the manager refuses costs nothing. Written first, a refusal left a
+    // raid recorded as under way that never began, the player hanging over the
+    // pit, and a reload that settled it as abandoned and took the pack (the
+    // raids bug hunt of 9 Nov 2026, fault 1).
+    try {
+      activeRunManager.startRun(
+        {
+          party: deployment.party.map((stored) => stored.pokemon),
+          items,
+          // The pack is part of the loadout because it is the one thing out of
+          // the vault that is risked without ever being in the bag.
+          ...(deployment.packItemId === undefined ? {} : { packItemId: deployment.packItemId }),
+        },
+        // The base clock, less whatever recovery has already been booked against it.
+        {
+          mapId: requireInsertion(deployment.insertionId).mapId,
+          durationMs: this.raidClockMs,
+          secureGrid: this.flow.secureGrid,
+          securePokemonLimit: this.flow.securePokemonSlots,
+          secureFilledForYou: deployment.secureFilledForYou,
+        },
+        deployment.secureSlot,
+      );
+    } catch (error) {
+      console.error(error);
+      this.refuse('That raid could not be started. Nothing was taken - try the jump again.');
+      return;
+    }
+
     this.deploying = true;
     audioManager.play('deploy');
     // Counted where it is committed to rather than where it ends: a raid
@@ -1164,7 +1205,6 @@ export class HubScene extends Phaser.Scene {
     if (activeSaveSlot() !== 'try-it') {
       countPlay({ kind: 'raid-start', detail: mapDetail(requireInsertion(deployment.insertionId).mapId) });
     }
-    const items = deployment.items;
     // And recorded as under way until it ends, so a raid left by closing the
     // tab costs its pack rather than nothing (`run/raidInFlight.ts`).
     const inFlight = createRaidInFlight(
@@ -1176,24 +1216,6 @@ export class HubScene extends Phaser.Scene {
     if (this.saveManager.recordRaidInFlight(inFlight)) {
       raidHeartbeat.start(inFlight.id);
     }
-    activeRunManager.startRun(
-      {
-        party: deployment.party.map((stored) => stored.pokemon),
-        items,
-        // The pack is part of the loadout because it is the one thing out of
-        // the vault that is risked without ever being in the bag.
-        ...(deployment.packItemId === undefined ? {} : { packItemId: deployment.packItemId }),
-      },
-      // The base clock, less whatever recovery has already been booked against it.
-      {
-        mapId: requireInsertion(deployment.insertionId).mapId,
-        durationMs: this.raidClockMs,
-        secureGrid: this.flow.secureGrid,
-        securePokemonLimit: this.flow.securePokemonSlots,
-        secureFilledForYou: deployment.secureFilledForYou,
-      },
-      deployment.secureSlot,
-    );
     // Remembered on the way out rather than on the way home, because it is what
     // the player chose and a raid that goes badly chose it too.
     new SaveManager().recordSecurePreference(deployment.securePreference);
@@ -1293,6 +1315,32 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('world', world);
+    });
+  }
+
+  /**
+   * A fresh pulse says the raid in the save is being played in another window,
+   * but a crashed window leaves one too. The browser is asked whether that
+   * window is still there before the jump is refused; when it is not, its
+   * pulse is taken away and the jump goes on to settle the raid it left
+   * (`RaidHeartbeat.stillLiveElsewhere`).
+   */
+  private askWhetherLiveElsewhere(raidId: string): void {
+    if (this.askingElsewhere) {
+      return;
+    }
+    this.askingElsewhere = true;
+    const view = this.view;
+    void raidHeartbeat.stillLiveElsewhere(raidId).then((live) => {
+      this.askingElsewhere = false;
+      if (!this.sys.isActive() || this.view !== view) {
+        return;
+      }
+      if (live) {
+        this.refuse('A raid is already under way in another window. Finish it there first.');
+      } else {
+        this.startRun();
+      }
     });
   }
 
@@ -2576,6 +2624,7 @@ export class HubScene extends Phaser.Scene {
     const hurt = this.railHurt();
     const ways = this.waysFromHere().length;
     const nextMap = this.nextMapWayIn();
+    const stay = Boolean(refusal) || hurt?.stops === true || this.justHome;
     return `<main class="px-body rim-layout">${pixelCommitBar({
       title: `<span data-rim-title>${this.rimTitle(chosen)}</span>`,
       lines: [
@@ -2593,9 +2642,10 @@ export class HubScene extends Phaser.Scene {
             ]
           : []),
       ].filter((line) => line !== ''),
-      // With nobody able to go, or a team about to be finished by the first thing
-      // it meets, the cursor is on the way back and SPACE does not spend the raid.
-      actions: `<button class="px-window px-button" data-back${refusal || hurt?.stops ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${refusal || hurt?.stops ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
+      // With nobody able to go, a team about to be finished by the first thing
+      // it meets, or a player only just home and still pressing through the
+      // result, the cursor is on the way back and SPACE does not spend the raid.
+      actions: `<button class="px-window px-button" data-back${stay ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${stay ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
     })}</main>`;
   }
 
