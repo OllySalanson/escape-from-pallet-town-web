@@ -175,7 +175,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const status = this.status;
     this.status = undefined;
     const item = this.using ? getItemById(this.using.itemId) : undefined;
-    const money = itemCountTag('money', game?.stash.itemCount('money') ?? 0);
+    const money = itemCountTag('money', game ? spareAtBase(game, 'money') : 0);
     let title = 'Your things';
     let back = { label: 'Close', attribute: 'data-close' };
     let body: string;
@@ -229,7 +229,12 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private listBody(game: RestoredGame, flow: DeploymentFlow): string {
     const layout = flow.bagLayout();
     return thingsBody({
-      contents: game.stash.listItems(),
+      // What is at base: a raid out in another window has what it packed (`spareAtBase`).
+      contents: Object.fromEntries(
+        Object.keys(game.stash.listItems())
+          .map((itemId) => [itemId, spareAtBase(game, itemId)] as const)
+          .filter(([, quantity]) => quantity > 0),
+      ),
       pokemon: this.homePokemon.map((one) => one.pokemon),
       packed: (itemId) => flow.itemQuantity(itemId as ItemId),
       pack: { name: flow.packName, layout, used: layout.cellsUsed, total: gridCells(flow.bagGrid) },

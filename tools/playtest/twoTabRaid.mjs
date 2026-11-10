@@ -16,6 +16,12 @@
 // Leftovers, or if the wipe did not take the Pidgey; `--before` reports what a
 // build without the fix does instead of failing on it. --port=N drives a
 // browser already running on that CDP port (one from `fm-browser.sh`).
+//
+// `--frozen` plays the vale hunt's case instead: tab A is frozen mid-raid and
+// its pulse goes stale (taken away here rather than waited ninety seconds
+// for), tab B opens the base and settles the raid as abandoned, and tab A
+// then wakes and walks out. Its ending must write nothing - no Raid Pack back,
+// no mark of another raid cleared - and its result screen must say so.
 import { mkdirSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, jumpIn, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
@@ -24,6 +30,7 @@ const args = process.argv.slice(2);
 const [url = 'http://localhost:4173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const before = args.includes('--before');
+const frozen = args.includes('--frozen');
 const port = option('port');
 const [width, height] = (option('window') ?? '1200x768').split('x').map(Number);
 mkdirSync(out, { recursive: true });
@@ -52,20 +59,43 @@ const expect = (ok, what) => {
   console.log(`${ok ? 'ok ' : 'NOT'} ${what}`);
 };
 
+/** Every wait given a minute and a half: a loaded machine pauses a browser for seconds at a time. */
+const patient = (tab) => {
+  const waitFor = tab.waitFor.bind(tab);
+  tab.waitFor = (expression, options = {}) => waitFor(expression, { timeoutMs: 90_000, ...options });
+  return tab;
+};
+
+/**
+ * Past the title onto the base. At real speed the title can still be fading in
+ * when the first key lands, so the key is pressed again until it takes.
+ */
+const throughTitle = async (tab) => {
+  await tab.waitFor(sceneIs('title'));
+  for (let guard = 0; guard < 60 && !(await tab.evaluate(sceneIs('base'))); guard += 1) {
+    // A plain build asks a name the first time (`houseNameNeeded`): LATER.
+    const later = await tab.evaluate(
+      `(() => { const b = [...document.querySelectorAll('button')].find((each) => each.innerText.trim().toUpperCase() === 'LATER'); if (!b) return false; b.click(); return true; })()`,
+    );
+    if (!later) {
+      await tab.tap('Space');
+    }
+    await sleep(1500);
+  }
+  if (!(await tab.evaluate(sceneIs('base')))) {
+    await tab.screenshot(`${out}/stuck-on-the-title.png`);
+    throw new Error(`the title never opened the base: ${await tab.evaluate(`${GAME}.scene.getScenes(true).map((s) => s.scene.key).join(', ')`)}`);
+  }
+};
+
 const browser = port ? attachBrowser(Number(port), { window: { width, height } }) : await launchBrowser({ window: { width, height } });
-try {
+const play = async () => {
   // Tab A: a new game, the Pidgey and the Leftovers written in, as a player who has raided before.
-  const tabA = await browser.openPage(page);
-  const pressA = async (code) => {
-    await tabA.tap(code);
-    await sleep(220);
-  };
+  const tabA = patient(await browser.openPage(page));
   await tabA.waitFor(sceneIs('title'));
   await tabA.evaluate(`localStorage.removeItem('${SAVE_KEY}')`);
   await tabA.send('Page.navigate', { url: page });
-  await tabA.waitFor(sceneIs('title'));
-  await pressA('Space');
-  await tabA.waitFor(sceneIs('base'));
+  await throughTitle(tabA);
   await tabA.waitFor(`${BASE}?.takeStarterForDriver?.("charmander") === true`);
   await tabA.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   await tabA.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
@@ -76,20 +106,53 @@ try {
     save.raidProgress.keysLearned = ['walk', 'look'];
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await tabA.send('Page.navigate', { url: page });
-  await tabA.waitFor(sceneIs('title'));
-  await pressA('Space');
-  await tabA.waitFor(sceneIs('base'));
+  await throughTitle(tabA);
   await walkIntoBase(tabA, 'raid-arena', { acceptFavours: false });
   await tabA.waitFor(takePokemon('Charmander'), { what: 'Charmander on the bench' });
   await tabA.waitFor(takePokemon('Pidgey'), { what: 'Pidgey on the bench' });
-  await jumpIn(tabA, { until: (expression, what) => tabA.waitFor(expression, { what, timeoutMs: 60_000 }) });
-  await tabA.waitFor(sceneIs('world'), { timeoutMs: 60_000 });
+  await jumpIn(tabA, { until: (expression, what) => tabA.waitFor(expression, { what }) });
+  await tabA.waitFor(sceneIs('world'));
   await sleep(1500);
   const deployed = await saved(tabA);
   console.log(`tab A is out on a raid with ${deployed.raidInFlight?.pokemonIds?.join(', ') ?? '(the save does not say who)'}`);
 
+  if (frozen) {
+    // Tab A goes quiet: a frozen background tab, a phone switching apps, a laptop lid.
+    await tabA.freeze();
+    const tabB = patient(await browser.openPage(page));
+    await tabB.send('Page.bringToFront');
+    await tabB.waitFor(sceneIs('title'));
+    // Its pulse goes stale after ninety seconds; taken away here instead of waited for.
+    await tabB.evaluate(`localStorage.removeItem('escape-from-pallet-town.raid-pulse')`);
+    await throughTitle(tabB);
+    await tabB.waitFor(`${BASE}.ready && ${BASE}.dialogBox.visible`, { what: 'the abandoned raid said' });
+    await sleep(1500);
+    await tabB.screenshot(`${out}/1-tab-b-settles.png`);
+    const settled = await saved(tabB);
+    const packs = (save) => save.stash.items['raid-pack'] ?? 0;
+    console.log(`tab B settled it: raid in flight ${settled.raidInFlight ? 'still set' : 'cleared'}, Raid Packs ${packs(settled)}`);
+    await tabB.close();
+    // Tab A wakes and walks out by the first exit on its map.
+    await tabA.thaw();
+    await tabA.send('Page.bringToFront');
+    await sleep(1500);
+    await tabA.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.extractThrough(w.extractionPointsForCurrentMap()[0]); })()`);
+    await tabA.waitFor(sceneIs('extraction'), { what: 'the result screen' });
+    await tabA.waitFor(`Boolean(document.querySelector('[data-continue]'))`, { what: 'the accounting' });
+    await sleep(1500);
+    await tabA.screenshot(`${out}/2-tab-a-comes-home.png`);
+    const after = await saved(tabA);
+    const footer = await tabA.evaluate(`document.querySelector('.px-commit, [data-continue]')?.closest('section, div')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''`);
+    console.log(`tab A's result: ${footer.slice(0, 200)}`);
+    console.log(`after tab A came home: Raid Packs ${packs(after)}, raid in flight ${after.raidInFlight ? 'set' : 'cleared'}`);
+    expect(before || packs(after) === packs(settled), 'the Raid Pack the abandoned raid lost stays lost');
+    expect(before || JSON.stringify(after.stash) === JSON.stringify(settled.stash), 'the vault is as tab B left it');
+    await tabA.close();
+    return;
+  }
+
   // Tab B: the same save, the base open while the raid is live in tab A.
-  const tabB = await browser.openPage(page);
+  const tabB = patient(await browser.openPage(page));
   await tabB.send('Page.bringToFront');
   const press = async (code) => {
     await tabB.tap(code);
@@ -110,9 +173,7 @@ try {
     return tabB.evaluate(`${BASE}.dialogBox.textObject.text.replace(/\\s+/g, ' ').trim()`);
   };
   const status = () => tabB.evaluate(`${GAME}.scene.getScene('hub')?.status ?? ''`);
-  await tabB.waitFor(sceneIs('title'));
-  await press('Space');
-  await tabB.waitFor(sceneIs('base'));
+  await throughTitle(tabB);
   await tabB.waitFor(`${BASE}.ready && !${BASE}.leaving`, { what: 'the yard' });
   await sleep(600);
 
@@ -144,7 +205,7 @@ try {
     await tabB.screenshot(`${out}/2-day-care-takes.png`);
     await press('Escape');
   }
-  await tabB.waitFor(sceneIs('base'), { timeoutMs: 30_000 });
+  await tabB.waitFor(sceneIs('base'));
   await tabB.waitFor(`${BASE}.ready && !${BASE}.leaving`, { what: 'the yard again' });
   await sleep(1000);
   const afterDayCare = await saved(tabB);
@@ -169,11 +230,16 @@ try {
   await tabA.send('Page.bringToFront');
   await sleep(1000);
   await tabA.evaluate(`${GAME}.scene.getScene('world').resolveExpiredRun()`);
-  await tabA.waitFor(sceneIs('extraction'), { timeoutMs: 60_000, what: 'the result screen' });
+  await tabA.waitFor(sceneIs('extraction'), { what: 'the result screen' });
   await sleep(2500);
-  for (let press = 0; press < 12 && !(await tabA.evaluate(`Boolean(document.querySelector('.px-commit, .extraction-footer, [data-commit]'))`)); press += 1) {
-    await tabA.tap('Space');
-    await sleep(600);
+  // The accounting, under its BACK TO THE ARENA button; a key is pressed only
+  // while a defeat line-up is playing, because one too many on the accounting
+  // is BACK TO THE ARENA and the next raid.
+  for (let guard = 0; guard < 120 && !(await tabA.evaluate(`Boolean(document.querySelector('[data-continue]'))`)); guard += 1) {
+    if (await tabA.evaluate(`${GAME}.scene.getScene('extraction').sequencePlaying === true`)) {
+      await tabA.tap('Space');
+    }
+    await sleep(700);
   }
   await sleep(1000);
   await tabA.screenshot(`${out}/5-wipe-result.png`);
@@ -189,6 +255,9 @@ try {
   expect(afterWipe.raidInFlight === null || afterWipe.raidInFlight === undefined, 'the raid is settled');
   await tabB.close();
   await tabA.close();
+};
+try {
+  await play();
 } finally {
   await browser.close();
 }

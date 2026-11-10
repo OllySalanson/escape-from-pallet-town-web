@@ -303,6 +303,9 @@ const ROOM_TICK_MS = 250;
  */
 export { RELEASE_ARMING_MS };
 
+/** What the pane about a Pokémon out on a raid in another window says in place of what it would offer. */
+const OUT_ON_A_RAID_NOTE = 'Out on a raid in your other window.';
+
 /** What a screen left open says when the game moved on in another tab. */
 export const STALE_SAVE_REFUSAL =
   'The game moved on in another tab, so this screen has caught up. Nothing was changed: try again.';
@@ -592,8 +595,16 @@ export class HubScene extends Phaser.Scene {
     return this.boxScope === 'all' ? 'all' : Math.min(this.boxScope, this.stash.listBoxes().length - 1);
   }
 
+  /**
+   * The supplies at base: what a raid out in another window packed is that
+   * raid's until it ends (`spareAtBase`), so it is not counted here.
+   */
   private get stashItems(): readonly ItemDefinition[] {
-    return ITEM_DEFINITIONS.filter((item) => this.stash.itemCount(item.id) > 0);
+    return ITEM_DEFINITIONS.filter((item) => this.spare(item.id) > 0);
+  }
+
+  private spare(itemId: string): number {
+    return spareAtBase(this.savedGameNow, itemId);
   }
 
   /**
@@ -862,6 +873,9 @@ export class HubScene extends Phaser.Scene {
    * `disabled` - the cursor is how this screen explains itself.
    */
   private gearChips(stored: StashedPokemon, shows: string): string {
+    if (awayOnRaid(this.savedGame).has(stored.id)) {
+      return `<span class="px-note">${OUT_ON_A_RAID_NOTE}</span>`;
+    }
     const held = getHeldItem(stored.pokemon.heldItemId);
     const offers = HOLDABLE_ITEM_DEFINITIONS.filter(
       (item) => this.stash.itemCount(item.id) > 0 && item.id !== stored.pokemon.heldItemId,
@@ -1607,7 +1621,7 @@ export class HubScene extends Phaser.Scene {
                 : this.view === 'wallmap'
                   ? wallMapNote(this.savedGame)
                   : this.view === 'daycare'
-                    ? `${this.stashPokemon.length} Pokémon at base`
+                    ? `${this.stashPokemon.filter((stored) => !awayOnRaid(this.savedGame).has(stored.id)).length} Pokémon at base`
                     // Kinds, as the Pokémon Center's own pane counts them:
                     // "7 items" over three Potions and three Poké Balls read
                     // as a miscount (playtest 6).
@@ -1998,6 +2012,9 @@ export class HubScene extends Phaser.Scene {
    */
   private careChips(stored: StashedPokemon, shows: string): string {
     const { pokemon } = stored;
+    if (awayOnRaid(this.savedGame).has(stored.id)) {
+      return `<span class="px-note">${OUT_ON_A_RAID_NOTE}</span>`;
+    }
     if (!needsRecovery(pokemon)) {
       return '<span class="px-note">Fit to raid.</span>';
     }
@@ -2323,12 +2340,12 @@ export class HubScene extends Phaser.Scene {
       // One line a supply, as a bag lists them and in the same capitals as YOUR
       // THINGS and the raid's pack (playtest wave 3, finding 12): what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.spare(item.id))}</span></button>`;
     // In pockets, as YOUR THINGS reads them (`ui/thingsView.ts`): ninety rows
     // on one list was a thing nobody could find anything on, and the two
     // screens that show storage must sort it the same way.
     const supplies = storedPockets(
-      Object.fromEntries(this.stashItems.map((item) => [item.id, this.stash.itemCount(item.id)])),
+      Object.fromEntries(this.stashItems.map((item) => [item.id, this.spare(item.id)])),
     )
       .map(({ pocket, things }) => `<h3 class="px-subheading">${THINGS_POCKET_LABELS[pocket]}</h3>${things.map(({ item }) => supplyRow(item)).join('')}`)
       .join('');

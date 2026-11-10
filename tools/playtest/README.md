@@ -359,6 +359,17 @@ vault that could fill it (`--stash`) and then a wild fight to be standing in.
 Center left open in one while the other deploys a raid, then NEW BOX pressed in
 the stale one. It fails if the stale tab wrote over the raid the other recorded.
 
+`twoTabRaid.mjs <test-mode build url> <out dir> [--port=N] [--before] [--frozen]`
+is the other two-tab case: a fresh second tab, whose copy of the save is
+current, at the base while a raid is out in the first. It leaves the deployed
+Pidgey at the Day-Care and takes the deployed Charmander's Leftovers at BILL'S
+PC, then runs tab A's clock out, and fails if the base touched either or the
+wipe did not take the Pidgey. `--frozen` freezes tab A mid-raid instead, lets
+tab B settle it as abandoned and then walks tab A out; nothing may be banked.
+`--before` reports what a build without the fix does rather than failing. A
+plain build asks a name on the title, which it answers LATER.
+`docs/screens/two-tab-raid/` is what it photographs.
+
 `firstHour.mjs <url> [out dir]` prints the first lines a new player meets: where
 the starter screen's cursor starts (a card, never CONFIRM), and two trainer
 fights in the rain against a Splashing Swift Swim Magikarp - each weather
