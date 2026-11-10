@@ -18,7 +18,8 @@
 // - a check that never loads says that instead;
 // - a check Turnstile has to ask about comes up over the screen, and goes;
 // - a console score that could not go is kept and sent the next time;
-// - the map maker says why a map did not go, and sends it once the check passes.
+// - the map maker says why a map did not go, and sends it once the check passes;
+// - walking about THE HARBOUR signs nobody in and never stops the player.
 //
 // Photographs go to <out-dir>. Exit code 1 is a broken promise.
 import { mkdirSync, readFileSync } from 'node:fs';
@@ -212,6 +213,50 @@ try {
     const sent = await page.evaluate(`import('/src/game/maker/submissions.ts').then((m) => m.sendMap(${sample}))`);
     check(sent.ok && sent.value === 'ABCDEFGHJK', `a map goes once the check passes (${JSON.stringify(sent)})`);
     check(signUps().join() === 'sign up with token stub-token', `behind one sign-up with the token (${signUps().join()})`);
+  }
+
+  // 6. Walking about THE HARBOUR signs nobody in. A named player with no
+  // session - site data cleared but the name kept - was stopped mid-walk by
+  // the check, which held every key for up to two minutes (the harbour bug
+  // hunt of 10 Nov 2026): the harbour only watches until the player sends
+  // something. A plain URL, because test mode turns the live harbour off; its
+  // channel is blocked, so nothing is ever said on the live one.
+  if (!real) {
+    await signOut();
+    asked.length = 0;
+    await page.send('Network.enable');
+    await page.send('Network.setBlockedURLs', { urls: ['*supabase.co/realtime*'] });
+    await page.evaluate(`localStorage.removeItem('escape-from-pallet-town.save.v1'); localStorage.setItem('escape-from-pallet-town.player.name', 'ASH'); true`);
+    await page.send('Page.navigate', { url });
+    await page.waitFor(sceneIs('title'), { timeoutMs: 30_000 });
+    // Set after the page loads: the stand-in starts every page on 'pass'.
+    await page.evaluate(`window.__check = 'ask'; true`);
+    await sleep(500);
+    await page.tap('Space', 60);
+    await page.waitFor(`${GAME}.scene.getScene('base')?.takeStarterForDriver?.('charmander') === true`, { what: 'a starter', timeoutMs: 30_000 });
+    const yard = `(() => { const b = ${GAME}.scene.getScene('base'); return Boolean(b?.sys.isActive() && b.ready && !b.leaving); })()`;
+    await page.waitFor(yard, { what: 'the yard', timeoutMs: 30_000 });
+    // Long enough for the harbour to have asked who this is, as it does on the way in.
+    await sleep(3000);
+    const tile = () => page.evaluate(`JSON.stringify(${GAME}.scene.getScene('base').currentTile)`);
+    const from = await tile();
+    let walked = false;
+    for (const key of ['ArrowDown', 'ArrowRight', 'ArrowLeft', 'ArrowUp']) {
+      for (let box = 0; box < 6 && (await page.evaluate(`${GAME}.scene.getScene('base').dialogBox?.visible === true`)); box += 1) {
+        await page.tap('Space', 60);
+        await sleep(400);
+      }
+      await page.tap(key, 60);
+      await sleep(600);
+      if ((await tile()) !== from) {
+        walked = true;
+        break;
+      }
+    }
+    await shot('7-harbour-walked');
+    check(await page.evaluate(`!document.querySelector('.bot-check')`), 'walking the harbour draws no bot check');
+    check(signUps().length === 0, `and signs nobody up (${asked.join(', ') || 'nothing asked'})`);
+    check(walked, `the player walks on (${from} -> ${await tile()})`);
   }
 } finally {
   await browser.close();

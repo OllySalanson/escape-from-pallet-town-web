@@ -54,6 +54,15 @@ try {
   };
   const walkTo = async (goals) => {
     for (let guard = 0; guard < 160; guard += 1) {
+      // Whatever the yard says on the way in - after a raid the harbour has
+      // things to tell - is read through, as a player would, or every arrow
+      // after it goes into the box.
+      const box = await page.evaluate(`(() => { const b = ${BASE}; return b?.sys.isActive() && b.dialogBox?.visible ? (b.boxQuestion ? 'question' : b.dialogBox.textObject.text.replace(/\\s+/g, ' ').trim()) : null; })()`);
+      if (box) {
+        console.log(`on the way, the yard says: ${box}`);
+        await press('Space');
+        continue;
+      }
       const key = await page.evaluate(firstStep(goals));
       if (key === 'here') return;
       if (key === 'unreachable') throw new Error(`nothing reaches ${JSON.stringify(goals)}`);
@@ -152,7 +161,7 @@ try {
   console.log(`pen: ${back.pen.species} at ${back.pen.tile.x},${back.pen.tile.y}`);
 
   // Raids go out and come home without it.
-  await editSave(`(save) => { save.raidProgress.raidRecord = { 'floodplain-relay': { deployed: ${raids}, extracted: ${raids}, wiped: 0 } }; }`);
+  await editSave(`(save) => { save.raidProgress.raidRecord = { 'greystone-vale': { deployed: ${raids}, extracted: ${raids}, wiped: 0 } }; }`);
   console.log(`grown: ${await speakToHim()}`);
   await page.screenshot(`${out}/grown.png`);
   await press('Escape');

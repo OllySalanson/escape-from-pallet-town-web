@@ -6,6 +6,7 @@ import type { DressedLook } from '../look/look';
 import { AWAY_GRACE_MS, HarbourLink, LEAVE_AFTER_MS, type HarbourWire, type NamedFigure } from './harbourLink';
 import { housePlace, type HarbourPlace, type SHARED_HARBOUR_ROOMS } from './harbourProtocol';
 import { loadPlayerName } from '../console/playerName';
+import type { PlayerSignIn } from '../maker/playerSignIn';
 import { requestedTestMode } from '../dev/testMode';
 import { HouseDoor } from './houseDoor';
 import type { HarbourPhraseId } from './harbourPhrases';
@@ -195,38 +196,59 @@ export function rememberHouseWritten(playerId: string, name: string): void {
 }
 
 /**
- * The live identity: the game's one anonymous sign-in (`maker/playerSignIn.ts`,
- * which draws the bot check if the project asks for one), and `name_my_house`
- * written only when the name or the player is new to this device. Only a
- * player with a name is ever signed in here: watching the harbour signs nobody
- * up.
+ * How a live identity gets a player id: `watch` uses only a session the
+ * browser already has, so walking about never signs anybody in or draws the
+ * bot check; `sign-in` is for the player sending something - a raid room
+ * opened or joined - and signs in, bot check and all, if it has to.
  */
-export function liveIdentity(): HarbourIdentity {
+export type LiveSignIn = 'watch' | 'sign-in';
+
+/**
+ * The live identity: a player id (see `LiveSignIn`) from the game's one
+ * anonymous sign-in (`maker/playerSignIn.ts`), and `name_my_house` written only
+ * when the name or the player is new to this device.
+ *
+ * The harbour only ever watches until the browser is signed in: "signing in is
+ * done only to *send*, never to look". It did sign in once, the first time a
+ * named player stood anywhere, and a named player with no session - their site
+ * data cleared but the name kept - was stopped mid-walk by a check that held
+ * every key for up to two minutes (the harbour bug hunt of 10 Nov 2026). A new
+ * player signs in when their name is claimed (`names/nameService.ts`), which is
+ * a send, so they are seen from the next time they stand anywhere.
+ */
+export function liveIdentity(how: LiveSignIn): HarbourIdentity {
   return {
     async seenAs(name) {
-      const [{ signInAsPlayer }, { supabase }] = await Promise.all([
-        import('../maker/playerSignIn'),
-        import('../maker/supabaseClient'),
-      ]);
-      // The game's one sign-in, bot check and all: a browser is one player for
-      // the boards, the map maker, the FEEDBACK tab and the harbour alike.
-      const signedIn = await signInAsPlayer();
-      if (!signedIn.ok) {
-        return null;
-      }
-      const me = signedIn.uid;
-      const written = `${me}:${name}`;
-      if (readWritten() === written) {
+      try {
+        const [{ currentPlayer, signInAsPlayer }, { supabase }] = await Promise.all([
+          import('../maker/playerSignIn'),
+          import('../maker/supabaseClient'),
+        ]);
+        const me = how === 'watch' ? await currentPlayer() : await signedInPlayer(signInAsPlayer);
+        if (!me) {
+          return null;
+        }
+        const written = `${me}:${name}`;
+        if (readWritten() === written) {
+          return me;
+        }
+        const { error } = await (await supabase()).rpc('name_my_house', { player_name: name });
+        if (error) {
+          return null;
+        }
+        keepWritten(written);
         return me;
-      }
-      const { error } = await (await supabase()).rpc('name_my_house', { player_name: name });
-      if (error) {
+      } catch {
+        // No answer: the harbour watches, as it does for anybody not signed in.
         return null;
       }
-      keepWritten(written);
-      return me;
     },
   };
+}
+
+async function signedInPlayer(signIn: () => Promise<PlayerSignIn>): Promise<string | null> {
+  const signedIn = await signIn();
+  return signedIn.ok ? signedIn.uid : null;
 }
 
 function readWritten(): string | null {
@@ -276,7 +298,7 @@ export function harbour(): HarbourSession | null {
   const mode = pageHarbourMode();
   session =
     mode === 'live'
-      ? new HarbourSession(liveHarbourWire(), liveIdentity())
+      ? new HarbourSession(liveHarbourWire(), liveIdentity('watch'))
       : mode === 'local'
         ? new HarbourSession(localHarbourWire(localName), localIdentity())
         : null;

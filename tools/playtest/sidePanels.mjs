@@ -223,6 +223,14 @@ try {
   await shot('10-party-gear');
   const gear = await page.evaluate(`[...document.querySelectorAll('[data-gear-give]')].filter((b) => b.offsetParent !== null).length`);
   expect(gear > 0, 'gear can be given from the panel');
+  // The hunters brought out above are quick enough now to catch the player
+  // the moment the raid runs again, and a catch is a fight: while the panel
+  // holds everything still they are stopped where they stand for a minute
+  // (`HunterPack.fledFrom`'s 'stunned'), so the next checks ask about a panel
+  // and not about BLUE. The last check sets one on the player again itself.
+  await page.evaluate(`(() => { for (const h of ${world}.hunterPackHere()?.hunters ?? []) {
+    if (h.mode !== 'waiting' && h.mode !== 'beaten') Object.assign(h, { mode: 'stunned', next: null, stepMs: 0, timerMs: 60000, lastSeen: null, enraged: false });
+  } })()`);
   expect(await page.evaluate(`(() => { const b = document.querySelector('[data-close]'); b.click(); return true; })()`), 'the back button is there for a mouse');
   await sleep(500);
   expect(!(await panelUp('.party-menu')), 'and it shuts the party');

@@ -27,6 +27,12 @@ const said = async () => {
   for (let guard = 0; guard < 40 && (await base('b.dialogBox.visible && !b.dialogBox.isCurrentMessageComplete')); guard += 1) await sleep(100);
   return base(`b.dialogBox.visible ? b.dialogBox.textObject.text : ''`);
 };
+/**
+ * A contract read off the board, its name in capitals first (`base/labBoard.ts`):
+ * whichever the board holds, which since the vale's standing board is no longer
+ * always RESUPPLY.
+ */
+const NOTICE = /^[A-Z][A-Z0-9'. -]+: /;
 const expect = (what, ok, detail = '') => {
   if (!ok) throw new Error(`${what} ${detail}`);
   console.log(`ok - ${what}`);
@@ -90,6 +96,11 @@ try {
   await until(sceneIs('base'), 'the yard');
   await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'a save');
   await sleep(800);
+  // A save with no raid behind it has no job on the board (`hub/firstRaid.ts`),
+  // so this one has been on one: Oak still greets it, and reads it the board.
+  await editSave((save) => {
+    save.raidProgress.raidRecord = { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } };
+  });
 
   // Oak, on the mat: he talks, nothing opens.
   await walkIntoBase(page, 'oaks-lab', { press: (code) => press(code, 200) });
@@ -104,14 +115,14 @@ try {
   console.log(`after ESC: ${onward}`);
   await shot('03-oak-after-skip');
   // Past his favour, if he asked, to the board.
-  for (let guard = 0; guard < 12 && !/RESUPPLY/.test(await said()); guard += 1) {
+  for (let guard = 0; guard < 12 && !NOTICE.test(await said()); guard += 1) {
     await press((await base('Boolean(b.boxQuestion)')) ? 'ArrowRight' : 'Escape', 300);
     if (await base('Boolean(b.boxQuestion)')) await press('Space', 300);
     if (!(await base('b.dialogBox.visible || Boolean(b.boxQuestion)'))) { await press('Space', 500); }
   }
   console.log(`oak reads: ${await said()}`);
   await shot('04-oak-reads-the-board');
-  expect('Oak reads a notice off the board', /RESUPPLY/.test(await said()));
+  expect('Oak reads a notice off the board', NOTICE.test(await said()), await said());
   await press('Escape', 400);
   for (let guard = 0; guard < 4 && (await base('Boolean(b.boxQuestion) || b.dialogBox.visible')); guard += 1) await press('Escape', 300);
   expect('still in the lab, on the mat', (await base('b.room?.id')) === 'oaks-lab' && !(await page.evaluate(sceneIs('hub'))));
@@ -125,7 +136,7 @@ try {
   await shot('05-cork-board');
   await press('Space', 700);
   await shot('06-cork-board-read');
-  expect('the board reads a notice in the box', /RESUPPLY|Nothing pinned/.test(await said()), await said());
+  expect('the board reads a notice in the box', NOTICE.test(await said()), await said());
   await press('Escape', 400);
 
   // Joy: a hurt team, her price, NOT NOW and then YES.

@@ -53,6 +53,9 @@ try {
   };
   const baseReady = `${sceneIs('base')} && ${GAME}.scene.getScene('base').ready`;
   const playerTexture = `${GAME}.scene.getScene('base').player.texture.key`;
+  // The classic clothes: the shared sheet, or composed with the pack worn on
+  // the back (`look/lookTexture.ts`: `look:classic#raid-pack`).
+  const isClassic = (texture) => texture === 'character' || /^look:classic(#|$)/.test(texture);
   const shoot = async (name) => page.screenshot(`${out}/${name}.png`);
 
   await press('Space');
@@ -68,7 +71,8 @@ try {
   })()`);
   await page.evaluate(`void ${GAME}.scene.getScene('base').scene.start('base', {})`);
   await until(baseReady, 'the harbour again');
-  if ((await page.evaluate(playerTexture)) !== 'character') fail('a new game is not in the classic look');
+  const fresh = await page.evaluate(playerTexture);
+  if (!isClassic(fresh)) fail(`a new game is not in the classic look (${fresh})`);
 
   // Up THE GREEN and in through the door; the interact key on the mat opens the shop.
   await walkIntoBase(page, 'boutique', { press, until, wait });
@@ -154,7 +158,7 @@ try {
   await press('Escape');
   await until(`${baseReady} && !(${sceneIs('boutique')})`, 'the shop floor');
   const dressed = await page.evaluate(playerTexture);
-  if (!dressed.startsWith('look:')) fail(`walked out in ${dressed}`);
+  if (!dressed.startsWith('look:') || isClassic(dressed)) fail(`walked out in ${dressed}`);
   console.log(`walked out as ${dressed}`);
 
   // Out of the door and round the green, a frame at a time, in every facing.
@@ -200,7 +204,8 @@ try {
   await wait(200);
   await press('Escape');
   await until(`${baseReady} && !(${sceneIs('boutique')})`, 'the bedroom');
-  if ((await page.evaluate(playerTexture)) !== 'character') fail('the wardrobe did not change back');
+  const changed = await page.evaluate(playerTexture);
+  if (!isClassic(changed)) fail(`the wardrobe did not change back (${changed})`);
   console.log('changed back into the classic look at home');
 } finally {
   await browser.close();

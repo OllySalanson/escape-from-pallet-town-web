@@ -1,7 +1,7 @@
 // Plays THE BATTLE ARENA (the harbour arenas plan's H2a) as a player meets it:
 // from the explorer run's spawn along THE PROMENADE to the dojo with BATTLE
-// ARENA on its board, in through its door, up the tatami to the counter, a
-// regular chosen and a team of three from the boxes, then the bout itself on
+// ARENA on its board, in through its door, up the tatami to the counter, CLASS
+// BOUTS taken from its three ways to fight, a regular chosen and a team of three from the boxes, then the bout itself on
 // the real battle screen - every Pokémon on both sides at Lv 30, no bag, the
 // regular on the gym AI - and back to the counter, where the one thing the
 // save gains is the dojo's record, and the tickets a win pays.
@@ -124,6 +124,10 @@ try {
   await step(600);
   await shot('03-who-will-you-fight');
   const counter = () => page.evaluate(`${GAME}.scene.getScene('dojo-counter').counterState`);
+  // The counter opens on its three ways to fight (#477), the cursor on CLASS
+  // BOUTS: ENTER takes that, and the next ENTER the regular it lands on.
+  await press('Enter', 600);
+  expect(`ENTER at the counter takes CLASS BOUTS (${(await counter()).mode})`, (await counter()).mode === 'class');
   await press('Enter', 600);
   let state = await counter();
   expect(`a regular is chosen (${state.opponent})`, Boolean(state.opponent));

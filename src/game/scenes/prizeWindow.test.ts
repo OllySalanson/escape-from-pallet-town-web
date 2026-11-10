@@ -82,7 +82,7 @@ function prizeWindow() {
   const markup = () => (scene as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   const tickets = () => saves.load()?.raidProgress.gameCorner?.tickets;
   const surfMats = () => saves.load()?.stash.itemCount('surf-mat');
-  return { scene, clock, markup, tickets, surfMats, close, focused: () => focused[0] };
+  return { scene, storage, clock, markup, tickets, surfMats, close, focused: () => focused[0] };
 }
 
 describe('THE PRIZE WINDOW asks before it spends tickets', () => {
@@ -139,5 +139,36 @@ describe('THE PRIZE WINDOW asks before it spends tickets', () => {
     scene.ask('porygon');
     expect(markup()).not.toContain('data-prize-cancel');
     expect(markup()).toContain('px-status');
+  });
+});
+
+describe('THE PRIZE WINDOW in a tab the save has moved on from', () => {
+  // A stale tab kept showing 700 tickets after another tab spent them, and
+  // every try said only "The window could not take that" (the harbour bug
+  // hunt of 10 Nov 2026, finding 2).
+  it('a press on a prize catches the window up first, and says why it cannot be had', () => {
+    const { scene, storage, markup, tickets } = prizeWindow();
+    // The other tab, on the same save, spends 800 of the 1,000.
+    expect(new SaveManager(storage).buyTicketPrize('poke-flute')).not.toBeNull();
+    expect(tickets()).toBe(200);
+    scene.ask('tm11-sunny-day');
+    expect(markup()).not.toContain('data-prize-cancel');
+    expect(markup()).toMatch(/role="status">400 more tickets\.</);
+    expect(markup()).toContain('<strong>200 tickets</strong>');
+    expect(markup()).not.toContain('1,000 tickets');
+    expect(tickets()).toBe(200);
+  });
+
+  it('BUY refused because the other tab spent the tickets meanwhile catches up and says so', () => {
+    const { scene, storage, clock, markup, tickets } = prizeWindow();
+    scene.ask('tm11-sunny-day');
+    expect(markup()).toContain('Spend 600 of your 1,000 tickets');
+    expect(new SaveManager(storage).buyTicketPrize('poke-flute')).not.toBeNull();
+    clock.now += RELEASE_ARMING_MS;
+    scene.buy('tm11-sunny-day');
+    expect(tickets()).toBe(200);
+    expect(markup()).toMatch(/role="status">400 more tickets\.</);
+    expect(markup()).not.toContain('could not take that');
+    expect(markup()).not.toContain('1,000 tickets');
   });
 });

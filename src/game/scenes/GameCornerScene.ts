@@ -275,6 +275,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     if (this.time.now - this.openedAt < RELEASE_ARMING_MS) return;
     const prize = prizeById(id);
     if (!prize) return;
+    this.catchUp();
     const refusal = prizeRefusal(prize, this.record(), new Date(), this.situation());
     if (refusal) {
       audioManager.play('denied');
@@ -288,6 +289,16 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.askedAt = this.time.now;
     this.status = undefined;
     this.showMenu('[data-prize-cancel]');
+  }
+
+  /**
+   * Reads the save again. Two tabs share one save, and the window drew the
+   * tickets it read when it opened: without this a tab the other had spent
+   * from kept showing tickets it no longer had, and refused every prize with
+   * no reason (the harbour bug hunt of 10 Nov 2026).
+   */
+  private catchUp(): void {
+    this.game_ = this.saveManager.load() ?? this.game_;
   }
 
   private keepTickets(): void {
@@ -313,7 +324,12 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     const bought = this.saveManager.buyTicketPrize(id);
     if (!bought) {
       audioManager.play('denied');
-      this.status = 'The window could not take that. Nothing was spent.';
+      // Refused by the save itself: most often another tab spent the tickets
+      // since this window last read it, so it reads it again and says why.
+      this.catchUp();
+      this.status =
+        prizeRefusal(prize, this.record(), new Date(), this.situation()) ??
+        'The window could not take that. Nothing was spent.';
       this.showMenu(`[data-prize="${id}"]`);
       return;
     }
