@@ -21,11 +21,20 @@ export interface HeldRoom {
   readonly seed: number;
 }
 
-/** What the database said to a claim on a piece of the room's loot. */
+/**
+ * What the database said to a claim on a piece of the room's loot. `closed`:
+ * this player is no longer in the room - it ran out its hour, or this browser
+ * made or joined another room in another tab - so nothing here is the room's
+ * to give any more (`FriendRoom.claimLoot`).
+ */
 export type LootClaim =
   | { readonly outcome: 'yours' }
   | { readonly outcome: 'taken'; readonly by: string | null }
+  | { readonly outcome: 'closed' }
   | { readonly outcome: 'unreachable' };
+
+/** The database's refusal of a claim from somebody not in an open room (`take_raid_loot`). */
+export const NOT_IN_THE_ROOM = 'You are not in that room.';
 
 export type RoomAnswer =
   | { readonly ok: true; readonly room: HeldRoom }
@@ -119,6 +128,9 @@ export function liveRoomService(): RaidRoomService {
         const { supabase } = await import('../maker/supabaseClient');
         const { data, error } = await (await supabase()).rpc('take_raid_loot', { room_code: code, loot_id: lootId });
         const row = data?.[0];
+        if (error?.message === NOT_IN_THE_ROOM) {
+          return { outcome: 'closed' };
+        }
         if (error || !row) {
           return { outcome: 'unreachable' };
         }
@@ -262,8 +274,9 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
       const id = await me();
       const rooms = read();
       const room = rooms[code];
+      // As the database answers: a room gone, or one this player was taken out of.
       if (!room?.members.includes(id)) {
-        return { outcome: 'unreachable' };
+        return { outcome: 'closed' };
       }
       room.taken ??= {};
       const holder = room.taken[lootId];

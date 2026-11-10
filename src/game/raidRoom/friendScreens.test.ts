@@ -12,6 +12,10 @@ describe('the friend chip', () => {
     expect(chip([])).toEqual(['ROOM BHRK']);
   });
 
+  it('says the room has closed, once it has under this raid, rather than a code nobody can join', () => {
+    expect(friendChipLines({ code: 'BHRK', closed: true, news: null, friends: [] })).toEqual(['ROOM CLOSED']);
+  });
+
   it('says who came and who went, before anything else', () => {
     expect(chip([ash], { name: 'ASH', came: true })).toEqual(['ASH IS IN THE ROOM']);
     expect(chip([], { name: 'ASH', came: false })).toEqual(['ASH LEFT THE RAID']);

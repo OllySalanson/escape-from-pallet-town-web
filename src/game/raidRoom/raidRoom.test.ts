@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HarbourHeard, HarbourWire } from '../harbour/harbourLink';
 import { HARBOUR_SEND_EVERY_MS } from '../harbour/harbourProtocol';
-import { FRIEND_NEWS_MS, FriendRoom } from './friendRoom';
+import { FRIEND_NEWS_MS, FriendRoom, ROOM_CLOSED_LINE } from './friendRoom';
 import { encodeRaidMove, isRaidPlace, mapPlace, raidMembersOf, readRaidMove, readRaidPresence, type RaidMove, type RaidPlace } from './raidProtocol';
 import { isRoomCode, raidTopic, typedRoomCode } from './roomCode';
 import { joinAnswer, ROOM_FULL, ROOM_NOT_FOUND, ROOM_UNREACHABLE, worded, type HeldRoom, type LootClaim, type RaidRoomService, type RoomAnswer } from './roomService';
@@ -145,7 +145,14 @@ class FakeService implements RaidRoomService {
     return Promise.resolve();
   }
   public taken = new Map<string, string>();
+  /** The room has closed under this player: run out its hour, or left from another tab. */
+  public closed = false;
+  public asked: string[] = [];
   public takeLoot(_code: string, lootId: string): Promise<LootClaim> {
+    this.asked.push(lootId);
+    if (this.closed) {
+      return Promise.resolve({ outcome: 'closed' });
+    }
     const holder = this.taken.get(lootId);
     if (holder !== undefined) {
       return Promise.resolve(holder === ME ? { outcome: 'yours' } : { outcome: 'taken', by: holder });
@@ -224,6 +231,38 @@ describe('raiding with a friend', () => {
     room.tick(2_000 + HARBOUR_SEND_EVERY_MS, 16);
     expect(wire.sent.at(-1)?.path).toEqual([{ x: 1, y: 3 }]);
     expect(wire.sent.at(-1)?.place).toBe('map:route-1');
+  });
+
+  it('keeps what the player steps on once the room has closed under them, and says so once', async () => {
+    // The bug hunt of 9 Nov: a room's hour ran out mid-raid, every claim was
+    // refused, and not one piece on the map could be picked up, silently.
+    const { room, service } = await inRoom();
+    room.tick(1_000, 16);
+    service.taken.set('potion', ASH);
+    room.loot.heard('potion', ASH);
+    service.closed = true;
+    room.claimLoot('poke-ball');
+    await settle();
+    expect(room.closed).toBe(true);
+    expect(room.loot.holder('poke-ball')).toBe(ME);
+    expect(room.news()?.line).toBe(ROOM_CLOSED_LINE);
+    // After that it asks nobody: there is nobody left in the room to be first.
+    room.claimLoot('great-ball');
+    expect(room.loot.holder('great-ball')).toBe(ME);
+    expect(service.asked).toEqual(['poke-ball']);
+    // A piece already heard taken stays taken.
+    room.claimLoot('potion');
+    expect(room.loot.holder('potion')).toBe(ASH);
+    // A dropped connection is not a closed room: the piece may be claimed again.
+    const other = await inRoom();
+    other.service.takeLoot = () => Promise.resolve({ outcome: 'unreachable' });
+    other.room.claimLoot('poke-ball');
+    await settle();
+    expect(other.room.closed).toBe(false);
+    expect(other.room.loot.holder('poke-ball')).toBeUndefined();
+    // And a room left at the lab is a fresh start for the next.
+    room.leave();
+    expect(room.closed).toBe(false);
   });
 
   it('leaves the channel and the room at once when its raid ends', async () => {

@@ -1305,7 +1305,8 @@ export class HubScene extends Phaser.Scene {
     );
     // A raid with friends shares its map's ground: the room's loot, laid from
     // the room's seed, in place of this raid's own (`raidRoom/roomLoot.ts`).
-    // An errand's thing stays this player's - somebody at their base is waiting.
+    // What is this player's own stays theirs (`isRaidsOwnLoot`): the stake, a
+    // secret's reward, and an errand's thing - somebody at their base is waiting.
     const plan =
       room && room.mapId === ownPlan.insertion.mapId
         ? withRoomLoot(ownPlan, generateRoomLoot(room.mapId, room.seed), (loot) => errandForItem(loot.itemId) !== undefined)

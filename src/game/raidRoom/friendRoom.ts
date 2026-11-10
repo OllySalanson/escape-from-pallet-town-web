@@ -35,6 +35,9 @@ import { liveRoomService, localRoomService, type HeldRoom, type RaidRoomService,
 /** How long a "came" or "went" line is news. */
 export const FRIEND_NEWS_MS = 4_000;
 
+/** Said on the friend chip once the room has closed under this raid (`FriendRoom.claimLoot`). */
+export const ROOM_CLOSED_LINE = 'ROOM CLOSED: WHAT YOU FIND IS YOURS';
+
 export interface FriendNews {
   readonly name: string;
   readonly came: boolean;
@@ -73,6 +76,8 @@ export class FriendRoom {
   public readonly loot = new LootLedger();
   /** Whether this raid has asked the database what was taken before it dropped in. */
   private askedTaken = false;
+  /** Whether the database has said this player is no longer in the room (`LootClaim` `closed`). */
+  private closedUnderMe = false;
   /** What everybody in the room has said and pinged, this player included (`roomTalk.ts`). */
   public readonly talk = new TalkBoard();
   /** The bosses beaten in this room's raid, by whoever beat them (`roomBosses.ts`). */
@@ -126,6 +131,7 @@ export class FriendRoom {
     this.fighting = null;
     this.loot.clear();
     this.askedTaken = false;
+    this.closedUnderMe = false;
     this.talk.clear();
     this.wins.clear();
     this.myWins.clear();
@@ -200,10 +206,22 @@ export class FriendRoom {
   /**
    * Claims a piece of the room's loot for this player. The answer lands in the
    * ledger; a win is said to everybody else, so they see it go at once.
+   *
+   * A room can close under a raid: it is open an hour from when it was made,
+   * and a browser is in one room at a time, so making or joining another in
+   * another tab takes this one out of it. The database then refuses every claim,
+   * and the whole map's loot - all of it the room's - could not be picked up,
+   * silently (the bug hunt of 9 Nov). So once it says the room has closed, what
+   * this player steps on is theirs, as in a raid alone: nobody is left in the
+   * room to be first for them, and a piece already heard taken stays taken.
    */
   public claimLoot(lootId: string): void {
     const held = this.held;
     if (!held || !this.loot.claim(lootId)) {
+      return;
+    }
+    if (this.closedUnderMe) {
+      this.loot.answered(lootId, held.me, held.me);
       return;
     }
     void this.service.takeLoot(held.code, lootId).then((claim) => {
@@ -215,10 +233,21 @@ export class FriendRoom {
         this.link?.signal(encodeTook({ from: held.me, lootId }));
       } else if (claim.outcome === 'taken') {
         this.loot.answered(lootId, claim.by ?? 'somebody', held.me);
+      } else if (claim.outcome === 'closed') {
+        if (!this.closedUnderMe) {
+          this.closedUnderMe = true;
+          this.tell(ROOM_CLOSED_LINE);
+        }
+        this.loot.answered(lootId, held.me, held.me);
       } else {
         this.loot.answered(lootId, null, held.me);
       }
     });
+  }
+
+  /** Whether the room has closed under this player's raid (`claimLoot`): what they find is their own. */
+  public get closed(): boolean {
+    return this.closedUnderMe;
   }
 
   /** Once a raid: what was taken before this player dropped in. */

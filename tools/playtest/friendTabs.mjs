@@ -4,9 +4,11 @@
 // reaches the live project.
 //
 // OLLY starts a game, makes a room in Oak's Lab and drops into the raid. AMY is
-// the second tab (named by the driver) and types OLLY's code: she is told the
-// room is on OLLY's map and that he is already there, walks to the Raid Arena
-// and drops in.
+// the second tab and types OLLY's code: she is told the room is on OLLY's map
+// and that he is already there, walks to the Raid Arena and drops in. Each tab
+// is named by the driver, as the local stand-in names a tab (`raidName()`):
+// NEW GAME asks no name (`TitleScene.startGame`), and CONTINUE's YOUR NAME? is
+// put off with LATER, since the room goes by the tab's name either way.
 // Both tabs share one browser's storage and so one save. Two players are two
 // devices; here the second tab steps round the first's raid-in-flight mark
 // (`run/raidInFlight.ts`) so it may deploy at all, which is the one thing these
@@ -98,15 +100,10 @@ export async function twoInARoom(browser, url, out) {
   };
 
   // OLLY: a new game, under his name.
-  const olly = await browser.openPage(page(url));
+  const olly = await browser.openPage(page(url), { init: nameTab('OLLY') });
   await olly.waitFor(sceneIs('title'));
   await press(olly, 'Space');
-  await olly.waitFor(`!!document.querySelector('[data-name-field]')`, { what: 'YOUR NAME? at NEW GAME' });
-  await sleep(450);
-  await olly.evaluate(`document.querySelector('[data-name-field]').focus()`);
-  await keyboardType(olly, 'OLLY');
-  await press(olly, 'Enter');
-  await olly.waitFor(sceneIs('base'));
+  await olly.waitFor(sceneIs('base'), { what: 'NEW GAME, straight into the harbour' });
   await olly.waitFor(
     `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );
@@ -131,10 +128,9 @@ export async function twoInARoom(browser, url, out) {
   console.log(`OLLY is raiding ${ollyStart.map} at ${JSON.stringify(ollyStart.tile)}, chip "${ollyStart.chip}"`);
 
   // AMY: the second tab, on the same save, under the name the test gives her.
-  const amy = await browser.openPage(page(url), { init: `sessionStorage.setItem('eptw-harbour-local-name', 'AMY');` });
+  const amy = await browser.openPage(page(url), { init: nameTab('AMY') });
   await amy.waitFor(sceneIs('title'));
-  await press(amy, 'Space');
-  await amy.waitFor(sceneIs('base'));
+  await continueGame(amy, press);
   // Two devices would have two saves; this is one browser's (see the header).
   await amy.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); delete save.raidInFlight; localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await bring(amy);
@@ -157,6 +153,23 @@ export async function twoInARoom(browser, url, out) {
   console.log(`OLLY sees ${JSON.stringify(ollySees.seen)}, chip "${ollySees.chip}"`);
 
   return { olly, amy, code, bring, press, click, until, readOn, forget: () => { front = null; } };
+}
+
+/** A tab's name on the local stand-in (`harbour.ts` `LOCAL_NAME_KEY`), set before the page runs. */
+export const nameTab = (name) => `sessionStorage.setItem('eptw-harbour-local-name', ${JSON.stringify(name)});`;
+
+/**
+ * CONTINUE on the title, into the harbour. A save with no name yet is asked
+ * YOUR NAME? on the way (`TitleScene.askName`), and LATER goes on without one.
+ */
+export async function continueGame(tab, press) {
+  await press(tab, 'Space');
+  for (let guard = 0; guard < 40 && !(await tab.evaluate(sceneIs('base'))); guard += 1) {
+    if (!(await tab.evaluate(`(() => { const later = document.querySelector('[data-name-away]'); later?.click(); return !!later; })()`))) {
+      await sleep(250);
+    }
+  }
+  await tab.waitFor(sceneIs('base'), { what: 'CONTINUE, into the harbour' });
 }
 
 /**

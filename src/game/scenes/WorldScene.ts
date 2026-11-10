@@ -2035,6 +2035,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const pings = rooms.talk.pings(this.time.now);
     const lines = friendChipLines({
       code: room.code,
+      closed: rooms.closed,
       news: news ? { name: news.name, came: news.came, ...(news.line ? { line: news.line } : {}) } : null,
       friends: rooms.friends().map((friend) => {
         const figure = drawn.find((each) => each.id === friend.id);
@@ -7239,14 +7240,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // player's (`settleRoomLoot`). Held by somebody else, it is already gone.
     if (loot && this.isSharedLoot(loot) && this.isLootAvailable() && !this.collectedLootIds.has(loot.id)) {
       const rooms = friendRoom()!;
-      const holder = rooms.loot.holder(loot.id);
-      if (holder === undefined) {
+      if (rooms.loot.holder(loot.id) === undefined) {
         rooms.claimLoot(loot.id);
+      }
+      // A room that has closed under this raid answers at once: the piece is
+      // this player's, picked up on this step (`FriendRoom.claimLoot`).
+      if (rooms.loot.holder(loot.id) !== rooms.room!.me) {
         return null;
       }
-      if (holder !== rooms.room!.me) {
-        return null;
-      }
+      // Tried here, so the next frame's `settleRoomLoot` does not say it again.
+      rooms.loot.firstTry(loot.id);
     }
     return this.collectLootHere(loot);
   }

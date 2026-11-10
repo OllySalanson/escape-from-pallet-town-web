@@ -17,7 +17,7 @@
 // AMY's screen on the way.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { WORLD, twoInARoom } from './friendTabs.mjs';
+import { WORLD, leaveFight, stepToward, twoInARoom } from './friendTabs.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -36,12 +36,24 @@ try {
   // Discoveries.
   const surveyed = `(() => { const w = ${WORLD}; return [...(w.runSession.surveyed ?? [])]; })()`;
   const amyBefore = new Set(await read(amy, surveyed));
-  const walk = await read(olly, `(() => { const w = ${WORLD}; const c = w.collisionData, s = w.currentTile;
-    const free = (x, y) => y >= 0 && x >= 0 && y < c.length && x < c[0].length && !c[y][x];
-    for (const [dx, dy, k] of [[1,0,'ArrowRight'],[-1,0,'ArrowLeft'],[0,1,'ArrowDown'],[0,-1,'ArrowUp']]) {
-      let n = 0; while (n < 6 && free(s.x + dx * (n + 1), s.y + dy * (n + 1))) n += 1; if (n >= 4) return { k, n }; } return null; })()`);
-  if (!walk) throw new Error('OLLY has nowhere to walk four tiles');
-  for (let step = 0; step < walk.n; step += 1) await press(olly, walk.k);
+  // Somewhere six steps off by the map's own collision: a landing need not have
+  // a straight run of free tiles beside it (Mill Square has none).
+  const goal = await read(olly, `(() => { const w = ${WORLD}; const c = w.collisionData, s = w.currentTile;
+    const seen = new Set([s.x + ',' + s.y]); let ring = [s];
+    for (let n = 0; n < 6 && ring.length; n += 1) { const next = [];
+      for (const t of ring) for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const x = t.x + dx, y = t.y + dy;
+        if (y < 0 || x < 0 || y >= c.length || x >= c[0].length || c[y][x] || seen.has(x + ',' + y)) continue; seen.add(x + ',' + y); next.push({ x, y }); }
+      ring = next; } return ring[0] ?? null; })()`);
+  if (!goal) throw new Error('OLLY has nowhere six steps off to walk to');
+  const walk = { n: 0 };
+  for (let guard = 0; guard < 40; guard += 1) {
+    await leaveFight(olly, press);
+    const key = await read(olly, stepToward(goal));
+    if (key === 'here') break;
+    if (!key || key === 'away') throw new Error(`OLLY cannot walk to ${JSON.stringify(goal)}: ${key}`);
+    await press(olly, key);
+    walk.n += 1;
+  }
   await sleep(800);
   let amyAfter = new Set();
   for (let guard = 0; guard < 30; guard += 1) {

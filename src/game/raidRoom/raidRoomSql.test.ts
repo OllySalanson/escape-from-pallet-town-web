@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ROOM_CODE_LENGTH, ROOM_CODE_LETTERS, ROOM_SIZE } from './roomCode';
+import { NOT_IN_THE_ROOM } from './roomService';
 
 /**
  * The database is what a raid room believes, so its copy of the rules is held
@@ -77,6 +78,13 @@ describe("the database's side of a room's shared loot", () => {
     expect(take).toContain('>= 120');
     expect(take).toContain('>= 500');
     expect(everything).toContain('primary key (room_id, loot_id)');
+  });
+
+  it('refuses a player no longer in the room in the words the game reads as a closed room', () => {
+    // `liveRoomService().takeLoot` tells this refusal from a dropped connection
+    // by its words, and a raid whose room has closed keeps what it finds.
+    const take = definition('private.take_raid_loot');
+    expect(take).toMatch(new RegExp(`if room is null then\\s+raise exception '${NOT_IN_THE_ROOM.replace('.', '\\.')}'`));
   });
 
   it('hands the room’s seed and what was taken only to the players in it', () => {

@@ -112,19 +112,10 @@ try {
   const olly = await browser.openPage(page(url));
   await olly.waitFor(sceneIs('title'));
   await olly.evaluate(`localStorage.setItem('escape-from-pallet-town.player.name', 'OLLY')`);
+  // NEW GAME asks no name on the way in (`TitleScene.startGame`): the one set
+  // above is OLLY's, and AMY's CONTINUE is not asked one either.
   await press(olly, 'Space');
-  // NEW GAME asks the name first (`src/game/names/`): OLLY is free.
-  await olly.waitFor(`!!document.querySelector('[data-name-field]')`, { what: 'YOUR NAME? at NEW GAME' });
-  await sleep(450);
-  await olly.evaluate(`document.querySelector('[data-name-field]').focus()`);
-  for (const character of 'OLLY') {
-    const description = { code: `Key${character}`, key: character, text: character, windowsVirtualKeyCode: character.charCodeAt(0) };
-    await olly.send('Input.dispatchKeyEvent', { type: 'keyDown', ...description });
-    await olly.send('Input.dispatchKeyEvent', { type: 'keyUp', ...description });
-    await sleep(40);
-  }
-  await press(olly, 'Enter');
-  await olly.waitFor(sceneIs('base'));
+  await olly.waitFor(sceneIs('base'), { what: 'NEW GAME, straight into the harbour' });
   await olly.waitFor(
     `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );

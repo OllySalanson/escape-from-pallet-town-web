@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateRoomLoot, generateRunPlan, withRoomLoot } from '../run/runGeneration';
+import { isStake, isStakeTrail } from '../world/loot';
+import type { RaidConditions } from '../world/secrets';
 import { LootLedger, encodeTook, readTook } from './roomLoot';
 
 const A = '11111111-1111-4111-8111-111111111111';
@@ -33,6 +35,45 @@ describe('the ground a raid room shares', () => {
     // Nothing else about the raid moves.
     expect(shared.trainers).toEqual(plan.trainers);
     expect(shared.extractionPoints).toEqual(plan.extractionPoints);
+  });
+});
+
+describe('what a room raid keeps as the player’s own', () => {
+  // The hunt for bugs in raiding with a friend (9 Nov): the room's ground took
+  // the whole map's loot, so a friend raid had no stake and no secret - no
+  // prize, no chart piece, and no sea chest at the end of the treasure hunt.
+  const VALE = 'greystone-vale';
+  const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false };
+  const solo = generateRunPlan(7, undefined, 'greystone-vale-moor-top', undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, undefined, { conditions: dusk, known: { secretsFound: [], giftsReceived: [] } });
+  const inARoom = withRoomLoot(solo, generateRoomLoot(VALE, 1234), () => false);
+  const laid = inARoom.loot[VALE];
+
+  it('keeps the stake and the money on the way to it, where this raid laid them', () => {
+    const trail = solo.loot[VALE].filter(isStakeTrail);
+    expect(trail.some(isStake)).toBe(true);
+    for (const piece of trail) {
+      expect(laid).toContainEqual(piece);
+      expect(inARoom.roomLootIds).not.toContain(piece.id);
+    }
+  });
+
+  it('keeps what an open secret’s nook holds, and the room lays nothing on a nook', () => {
+    const secret = solo.loot[VALE].filter((piece) => piece.secret !== undefined);
+    expect(secret.map((piece) => piece.itemId)).toEqual(['chart-piece-1']);
+    expect(laid).toContainEqual(secret[0]);
+    const nooks = new Set(solo.loot[VALE].filter((piece) => piece.secret !== undefined).map((piece) => `${piece.position.x},${piece.position.y}`));
+    for (const piece of generateRoomLoot(VALE, 1234)) {
+      expect(piece.secret).toBeUndefined();
+      expect(nooks.has(`${piece.position.x},${piece.position.y}`)).toBe(false);
+    }
+  });
+
+  it('shares everything else on the map, one piece to a tile', () => {
+    const own = laid.filter((piece) => !inARoom.roomLootIds!.includes(piece.id));
+    expect(own.every((piece) => isStakeTrail(piece) || piece.secret !== undefined)).toBe(true);
+    const tiles = laid.map((piece) => `${piece.position.x},${piece.position.y}`);
+    expect(new Set(tiles).size).toBe(tiles.length);
   });
 });
 
