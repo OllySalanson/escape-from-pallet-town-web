@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { generateRoomLoot, generateRunPlan, withRoomLoot } from '../run/runGeneration';
-import { LootLedger, encodeTook, readTook } from './roomLoot';
+import { isStake, isStakeTrail } from '../world/loot';
+import type { RaidConditions } from '../world/secrets';
+import { LootLedger, encodeTook, gameLootId, isLootId, readTook, roomLootKey } from './roomLoot';
 
 const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
@@ -33,6 +35,76 @@ describe('the ground a raid room shares', () => {
     // Nothing else about the raid moves.
     expect(shared.trainers).toEqual(plan.trainers);
     expect(shared.extractionPoints).toEqual(plan.extractionPoints);
+  });
+});
+
+describe('what a room raid keeps as the player’s own', () => {
+  // The hunt for bugs in raiding with a friend (9 Nov): the room's ground took
+  // the whole map's loot, so a friend raid had no stake and no secret - no
+  // prize, no chart piece, and no sea chest at the end of the treasure hunt.
+  const VALE = 'greystone-vale';
+  const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false, badges: [] };
+  const solo = generateRunPlan(7, undefined, 'greystone-vale-moor-top', undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, undefined, { conditions: dusk, known: { secretsFound: [], giftsReceived: [] } });
+  const inARoom = withRoomLoot(solo, generateRoomLoot(VALE, 1234), () => false);
+  const laid = inARoom.loot[VALE];
+
+  it('keeps the stake and the money on the way to it, where this raid laid them', () => {
+    const trail = solo.loot[VALE].filter(isStakeTrail);
+    expect(trail.some(isStake)).toBe(true);
+    for (const piece of trail) {
+      expect(laid).toContainEqual(piece);
+      expect(inARoom.roomLootIds).not.toContain(piece.id);
+    }
+  });
+
+  it('keeps what an open secret’s nook holds, and the room lays nothing on a nook', () => {
+    const secret = solo.loot[VALE].filter((piece) => piece.secret !== undefined);
+    expect(secret.map((piece) => piece.itemId)).toEqual(['chart-piece-1']);
+    expect(laid).toContainEqual(secret[0]);
+    const nooks = new Set(solo.loot[VALE].filter((piece) => piece.secret !== undefined).map((piece) => `${piece.position.x},${piece.position.y}`));
+    for (const piece of generateRoomLoot(VALE, 1234)) {
+      expect(piece.secret).toBeUndefined();
+      expect(nooks.has(`${piece.position.x},${piece.position.y}`)).toBe(false);
+    }
+  });
+
+  it('shares everything else on the map, one piece to a tile', () => {
+    const own = laid.filter((piece) => !inARoom.roomLootIds!.includes(piece.id));
+    expect(own.every((piece) => isStakeTrail(piece) || piece.secret !== undefined)).toBe(true);
+    const tiles = laid.map((piece) => `${piece.position.x},${piece.position.y}`);
+    expect(new Set(tiles).size).toBe(tiles.length);
+  });
+});
+
+describe('a piece as the room knows it', () => {
+  // The bug hunt of 9 Nov: the vale's pieces are `greystone-vale/spot-31`, the
+  // database takes only `[A-Za-z0-9:_-]`, and so every claim on the one map in
+  // play was refused and every winner's word thrown away.
+  const sql = new RegExp('^[A-Za-z0-9:_-]{1,80}$');
+
+  it('is a key the database and the channel take, for every piece a room lays on every map', () => {
+    for (const mapId of ['greystone-vale', 'floodplain-relay'] as const) {
+      for (const piece of generateRoomLoot(mapId, 1234)) {
+        const key = roomLootKey(piece.id);
+        expect(sql.test(key), `${piece.id} as ${key}`).toBe(true);
+        expect(isLootId(key)).toBe(true);
+        expect(gameLootId(key)).toBe(piece.id);
+      }
+    }
+    expect(generateRoomLoot('greystone-vale', 1234).some((piece) => piece.id.includes('/'))).toBe(true);
+  });
+
+  it('undoes exactly, whatever the id holds', () => {
+    for (const id of ['greystone-vale/spot-31', 'a:s', 'a/:c', '::', '//', 'x:c/s', 'plain-id']) {
+      expect(gameLootId(roomLootKey(id))).toBe(id);
+    }
+    expect(roomLootKey('a:s')).not.toBe(roomLootKey('a/'));
+  });
+
+  it('is what a winner says, and is read back', () => {
+    const lootId = roomLootKey('greystone-vale/spot-31');
+    expect(readTook(encodeTook({ from: A, lootId }))).toEqual({ from: A, lootId });
   });
 });
 

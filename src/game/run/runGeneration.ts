@@ -21,7 +21,7 @@ import { districtsForMap, type DistrictArea } from '../world/districts';
 import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
 import { withWorkedExitsOpen } from '../world/workedLandmarks';
 import { isLandingOpen } from '../world/valeQuarters';
-import type { WorldLoot } from '../world/loot';
+import { isStakeTrail, type WorldLoot } from '../world/loot';
 import { hasRaidStake, layStakeTrail, stakeGround, type StakeGround } from '../world/raidStake';
 import {
   createRunTrainerEncounters,
@@ -946,6 +946,11 @@ export function generateRoomLoot(mapId: WorldMapId, roomSeed: number): readonly 
   for (const dropIn of insertionsOn(mapId)) {
     reserve(reservedTiles, mapId, dropIn.position);
   }
+  // A secret's nook is its own tile in a room's raid too (`generateRunPlan`):
+  // what is laid there is the player's own (`withRoomLoot`).
+  for (const nook of map.loot.filter((piece) => piece.secret !== undefined)) {
+    reserve(reservedTiles, mapId, nook.position);
+  }
   for (const point of extractionPointsOn(mapId)) {
     reserve(reservedTiles, mapId, point.position);
   }
@@ -957,16 +962,30 @@ export function generateRoomLoot(mapId: WorldMapId, roomSeed: number): readonly 
 }
 
 /**
+ * Whether a piece this raid laid is its own whoever it raids with, rather than
+ * ground a room shares. The stake (`raidStake.ts`) is worked out from this
+ * raid's own landing and exits, and what a secret's nook holds from this save's
+ * conditions and chart (`secrets.ts`), so a room never takes either - a friend
+ * raid that dropped them had no reason to stay and no sea chest at the end of
+ * the treasure hunt. `isErrand` is the caller's, which knows what the people at
+ * this player's base are waiting on.
+ */
+export function isRaidsOwnLoot(loot: WorldLoot, isErrand: (loot: WorldLoot) => boolean): boolean {
+  return isStakeTrail(loot) || loot.secret !== undefined || isErrand(loot);
+}
+
+/**
  * A raid's plan with its own map's loot replaced by the room's (`generateRoomLoot`).
- * What is this raid's own stays its own - an errand's thing is somebody at
- * this player's base waiting on it - and a room piece is left off any tile
- * this raid has already given to something else (a trainer, a way out, a
- * contract stop), so it never lands under somebody standing on it.
+ * What is this raid's own stays its own (`isRaidsOwnLoot`: the stake, a
+ * secret's reward, and an errand's thing, which somebody at this player's base
+ * is waiting on), and a room piece is left off any tile this raid has already
+ * given to something else (a trainer, a way out, a contract stop, its own
+ * pieces), so it never lands under somebody standing on it.
  */
 export function withRoomLoot(
   plan: RunPlan,
   roomLoot: readonly WorldLoot[],
-  isOwn: (loot: WorldLoot) => boolean,
+  isErrand: (loot: WorldLoot) => boolean,
 ): RunPlan {
   const mapId = plan.insertion.mapId;
   const taken = new Set<string>([
@@ -974,7 +993,7 @@ export function withRoomLoot(
     ...plan.extractionPoints.filter((point) => point.mapId === mapId).map((point) => tileKey(point.position)),
     ...(plan.contract?.mapId === mapId ? plan.contract.markers.map((marker) => tileKey(marker.position)) : []),
   ]);
-  const own = (plan.loot[mapId] ?? []).filter(isOwn);
+  const own = (plan.loot[mapId] ?? []).filter((loot) => isRaidsOwnLoot(loot, isErrand));
   for (const loot of own) {
     taken.add(tileKey(loot.position));
   }

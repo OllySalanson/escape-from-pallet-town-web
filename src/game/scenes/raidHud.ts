@@ -473,6 +473,8 @@ export function friendChipPing(
 export interface FriendChipInput {
   /** The room's code, said while nobody else is in it so it can be read out. */
   readonly code: string;
+  /** Whether the room has closed under this raid (`FriendRoom.closed`): no code is any use then. */
+  readonly closed?: boolean;
   /** Somebody came or went just now, or did something worth saying (`line`). */
   readonly news: { readonly name: string; readonly came: boolean; readonly line?: string } | null;
   /** Everybody else in the room. */
@@ -498,7 +500,7 @@ export function friendChipLines(input: FriendChipInput): readonly string[] {
     .filter((friend) => !(input.news?.came && !input.news.line && input.news.name === friend.name))
     .map(friendLine);
   const lines = [...news, ...friends];
-  return lines.length > 0 ? lines : [`ROOM ${input.code}`];
+  return lines.length > 0 ? lines : [input.closed ? 'ROOM CLOSED' : `ROOM ${input.code}`];
 }
 
 function friendLine(friend: FriendChipFriend): string {

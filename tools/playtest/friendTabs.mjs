@@ -4,9 +4,11 @@
 // reaches the live project.
 //
 // OLLY starts a game, makes a room in Oak's Lab and drops into the raid. AMY is
-// the second tab (named by the driver) and types OLLY's code: she is told the
-// room is on OLLY's map and that he is already there, walks to the Raid Arena
-// and drops in.
+// the second tab and types OLLY's code: she is told the room is on OLLY's map
+// and that he is already there, walks to the Raid Arena and drops in. Each tab
+// is named by the driver, as the local stand-in names a tab (`raidName()`):
+// NEW GAME asks no name (`TitleScene.startGame`), and CONTINUE's YOUR NAME? is
+// put off with LATER, since the room goes by the tab's name either way.
 // Both tabs share one browser's storage and so one save. Two players are two
 // devices; here the second tab steps round the first's raid-in-flight mark
 // (`run/raidInFlight.ts`) so it may deploy at all, which is the one thing these
@@ -98,15 +100,10 @@ export async function twoInARoom(browser, url, out) {
   };
 
   // OLLY: a new game, under his name.
-  const olly = await browser.openPage(page(url));
+  const olly = await browser.openPage(page(url), { init: nameTab('OLLY') });
   await olly.waitFor(sceneIs('title'));
   await press(olly, 'Space');
-  await olly.waitFor(`!!document.querySelector('[data-name-field]')`, { what: 'YOUR NAME? at NEW GAME' });
-  await sleep(450);
-  await olly.evaluate(`document.querySelector('[data-name-field]').focus()`);
-  await keyboardType(olly, 'OLLY');
-  await press(olly, 'Enter');
-  await olly.waitFor(sceneIs('base'));
+  await olly.waitFor(sceneIs('base'), { what: 'NEW GAME, straight into the harbour' });
   await olly.waitFor(
     `window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`,
   );
@@ -131,10 +128,9 @@ export async function twoInARoom(browser, url, out) {
   console.log(`OLLY is raiding ${ollyStart.map} at ${JSON.stringify(ollyStart.tile)}, chip "${ollyStart.chip}"`);
 
   // AMY: the second tab, on the same save, under the name the test gives her.
-  const amy = await browser.openPage(page(url), { init: `sessionStorage.setItem('eptw-harbour-local-name', 'AMY');` });
+  const amy = await browser.openPage(page(url), { init: nameTab('AMY') });
   await amy.waitFor(sceneIs('title'));
-  await press(amy, 'Space');
-  await amy.waitFor(sceneIs('base'));
+  await continueGame(amy, press);
   // Two devices would have two saves; this is one browser's (see the header).
   await amy.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); delete save.raidInFlight; localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await bring(amy);
@@ -157,6 +153,25 @@ export async function twoInARoom(browser, url, out) {
   console.log(`OLLY sees ${JSON.stringify(ollySees.seen)}, chip "${ollySees.chip}"`);
 
   return { olly, amy, code, bring, press, click, until, readOn, forget: () => { front = null; } };
+}
+
+/** A tab's name on the local stand-in (`harbour.ts` `LOCAL_NAME_KEY`), set before the page runs. */
+export const nameTab = (name) => `sessionStorage.setItem('eptw-harbour-local-name', ${JSON.stringify(name)});`;
+
+/**
+ * CONTINUE on the title, into the harbour. A save with no name yet is asked
+ * YOUR NAME? on the way (`TitleScene.askName`), and LATER goes on without one.
+ */
+export async function continueGame(tab, press) {
+  // A press the title was not yet listening for is lost, so it is pressed again
+  // for as long as the title is all there is - never under the name screen.
+  for (let guard = 0; guard < 40 && !(await tab.evaluate(sceneIs('base'))); guard += 1) {
+    const now = await tab.evaluate(`(() => { const later = document.querySelector('[data-name-away]'); later?.click();
+      const title = ${GAME}.scene.getScene('title'); return { later: !!later, title: !!title?.sys.isActive() && !title.naming && !title.hasStarted }; })()`);
+    if (!now.later && now.title) await press(tab, 'Space');
+    await sleep(500);
+  }
+  await tab.waitFor(sceneIs('base'), { what: 'CONTINUE, into the harbour' });
 }
 
 /**
@@ -185,13 +200,16 @@ export async function leaveFight(tab, press) {
 }
 
 /**
- * The first key of the shortest walk to a tile over the world's own collision,
- * `here` once on it, null if nothing reaches it.
+ * The first key of the shortest walk to a tile, `here` once on it, null if
+ * nothing reaches it. It asks the world what blocks a step (`isBlocked`: the
+ * collision, and whoever stands about - townsfolk, a trainer, the hunter), so a
+ * walk goes round somebody standing in a lane rather than pressing into them
+ * for good, as a walk over the collision alone did in Mill Square.
  */
 export const stepToward = (goal) => `(() => { const w = ${WORLD}; if (!w.sys.isActive()) return 'away'; const c = w.collisionData, s = w.currentTile, g = ${JSON.stringify(goal)};
   if (s.x === g.x && s.y === g.y) return 'here'; const W = c[0].length, H = c.length, id = (x, y) => y * W + x;
   const prev = new Map([[id(s.x, s.y), null]]); const q = [[s.x, s.y]]; let found = null;
   while (q.length) { const [x, y] = q.shift(); if (x === g.x && y === g.y) { found = [x, y]; break; }
     for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || c[ny][nx]) continue; prev.set(id(nx, ny), [x, y, k]); q.push([nx, ny]); } }
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || c[ny][nx] || w.isBlocked({ x: nx, y: ny })) continue; prev.set(id(nx, ny), [x, y, k]); q.push([nx, ny]); } }
   if (!found) return null; let cur = found, key = null; for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return key; })()`;

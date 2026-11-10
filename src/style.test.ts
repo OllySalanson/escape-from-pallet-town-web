@@ -84,6 +84,20 @@ describe('the pixel-ui stylesheet', () => {
     expect(pixelUi.length).toBeGreaterThan(1000);
   });
 
+  it('never hides a help bar while the game is saying no on it', () => {
+    // The status line stands in the help bar (`pixelScreen`), so a screen with
+    // no help bar of its own still shows one while a refusal lasts. The rim's
+    // was hidden whole, and JUMP IN refused with the denied sound and no word.
+    const rules = [...stylesheet.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    const hiding = rules
+      .filter(([, , body]) => /display:\s*none/.test(body))
+      .flatMap(([, selectors]) => selectors.split(',').map((selector) => selector.trim()))
+      // A rule about the help bar itself, not about something inside it.
+      .filter((selector) => /\.px-help(?:[:.]\S*)?$/.test(selector));
+    expect(hiding.length).toBeGreaterThan(0);
+    expect(hiding.filter((selector) => !selector.includes('.px-help:not(.has-status)'))).toEqual([]);
+  });
+
   it('measures everything in game pixels, so nothing lands between two of them', () => {
     // `--u` itself falls back to two CSS pixels before the stage scaler has run.
     const lengths = pixelUiRules

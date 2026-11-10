@@ -233,13 +233,15 @@ export async function jumpIn(page, { insertion, press, until, wait } = {}) {
 /**
  * From the lab's mat, on to the friend's room: Oak reads the board, and the last
  * thing he asks is whether there is a friend coming (`BaseScene.readTheBoard`).
- * ESC is past what he has to say, and YES is where the cursor starts.
+ * ESC is past what he has to say. The cursor starts on NOT NOW unless a room is
+ * already held (`startOnNotNow`), because the key that read his lines is often
+ * still down; so it is moved to YES, by where the box says it is, before SPACE.
  */
 export async function openFriendRoom(page, { press, settle = sleep, settleMs = 180 }) {
   await press('Space');
   for (let guard = 0; guard < 40 && !(await page.evaluate(sceneIs('hub'))); guard += 1) {
-    const asking = await page.evaluate(`Boolean(${GAME}.scene.getScene('base')?.boxQuestion)`);
-    await press(asking ? 'Space' : 'Escape');
+    const selected = await page.evaluate(`${GAME}.scene.getScene('base')?.boxQuestion?.prompt.selected ?? null`);
+    await press(selected === null ? 'Escape' : selected === 0 ? 'Space' : 'ArrowUp');
     await settle(settleMs);
   }
   await page.waitFor(sceneIs('hub'), { what: "the friend's room" });
