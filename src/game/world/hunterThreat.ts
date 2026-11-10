@@ -132,8 +132,10 @@ export function hunterThreatLine(threat: HunterThreat): { readonly heading: stri
       ? `lead Lv ${lead.level} to your Lv ${matchedTo.level} ${matchedTo.name}`
       : `lead Lv ${lead.level}, level with your ${matchedTo.name}`
     : '';
+  // What the job does to the hunter, in words a player can act on: "+1 contract,
+  // 10s sooner" was read on the rail as nothing at all (the six-character playtest).
   const contract = contractTiers > 0
-    ? `, +${contractTiers} contract, ${Math.round(threat.arrivesSoonerMs / 1_000)}s sooner`
+    ? ` · this job: ${Math.round(threat.arrivesSoonerMs / 1_000)}s sooner, ${contractTiers > 1 ? 'much ' : ''}stronger`
     : '';
   return {
     heading: `Hunter: ${hunterRival(threat.rival).name}`,

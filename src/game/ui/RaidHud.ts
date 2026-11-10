@@ -244,7 +244,7 @@ export class RaidHud {
     if (state.prize) {
       this.placeChip(
         this.prizeText,
-        [state.prize.label, state.prize.detail],
+        state.prize.room ? [state.prize.label, state.prize.detail, state.prize.room] : [state.prize.label, state.prize.detail],
         PRIZE_STYLE,
         1,
         (width) => ({

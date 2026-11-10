@@ -342,6 +342,7 @@ import {
   isStakeTrail,
   layDroppedPiece,
   lootRefusalLine,
+  squaresFindNeeds,
   prizeWords,
   prizesLeftBehind,
   tryCollectLoot,
@@ -493,6 +494,23 @@ const CHEVRON_HEIGHT = 6;
 const WAY_MARK_DEPTH = 90;
 /** How many walks to a tile the way mark keeps at once: the stake, the money, a way out or two. */
 const WAY_FIELDS_KEPT = 6;
+
+/** Where the raid is going (`WorldScene.raidWay`): what the chip says of it, and the arrow. */
+interface RaidWay {
+  /** The objective chip's line, when the way is a job or the stake; absent, the chip says the way out. */
+  readonly cue?: string;
+  /** Gold to the target, green (`out`) to a way out; null for no arrow. */
+  readonly mark: { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null;
+}
+
+const NO_WAY: RaidWay = { mark: null };
+
+/** Where a carried job sends the player: the chip's line, and the tile the arrow is after, if it is on this map. */
+interface JobWay {
+  readonly cue: string;
+  readonly tile?: GridPosition;
+  readonly out: boolean;
+}
 
 const prizeRect = (tile: GridPosition): Rect => {
   const rect = tileRect(tile);
@@ -866,8 +884,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** What shows the way (`settleWayMark`), and what it has worked out so far. */
   private raidWayMark: RaidWayMark | undefined;
   private wayMarkMs = 0;
-  private wayCache: { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null = null;
+  private wayCache: RaidWay = NO_WAY;
   private wayCacheKey = '';
+  /** The pack the way was last worked out against: a battle can hand back another. */
+  private wayBag: Bag | undefined;
+  /** Whether each prize the chip asked about would go in, for the pack as it stands (`noRoomFor`). */
+  private roomAnswers:
+    | { readonly bag: Bag; readonly revision: number; readonly squares: Map<string, number | undefined> }
+    | undefined;
   private wayFieldsGrid: readonly (readonly boolean[])[] | undefined;
   private readonly wayFields = new Map<string, readonly Int32Array[]>();
   /** The collision the cue was walked over: a door opened mid-raid rebuilds it. */
@@ -1177,8 +1201,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.fishing = undefined;
     this.endCutscene();
     this.unsolicitedDialog = false;
-    this.wayCache = null;
+    this.wayCache = NO_WAY;
     this.wayCacheKey = '';
+    this.wayBag = undefined;
+    this.roomAnswers = undefined;
     this.wayFields.clear();
     this.wayFieldsGrid = undefined;
     this.packReseated = false;
@@ -3246,7 +3272,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return null;
     }
     let nearest: { readonly loot: WorldLoot; readonly steps: number } | null = null;
-    for (const loot of getVisibleLoot(this.lootForCurrentMap(), true, this.collectedLootIds)) {
+    const visible = getVisibleLoot(this.lootForCurrentMap(), true, this.collectedLootIds);
+    // A stake the pack would refuse is named ahead of anything nearer: the arrow
+    // has let it go (`raidWay`), and how much room it needs is the one decision
+    // left about it, made best before the walk rather than on arrival.
+    const refused = visible.find((loot) => isStake(loot) && this.seenPrizeIds.has(loot.id) && this.noRoomFor(loot) !== undefined);
+    for (const loot of refused ? [refused] : visible) {
       if (!this.seenPrizeIds.has(loot.id)) {
         continue;
       }
@@ -3255,13 +3286,37 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         nearest = { loot, steps };
       }
     }
-    return nearest === null
-      ? null
-      : {
-        name: prizeWords(nearest.loot),
-        direction: this.headingTo(nearest.loot.position),
-        distance: nearest.steps,
-      };
+    if (nearest === null) {
+      return null;
+    }
+    const noRoom = this.noRoomFor(nearest.loot);
+    return {
+      name: prizeWords(nearest.loot),
+      direction: this.headingTo(nearest.loot.position),
+      distance: nearest.steps,
+      ...(noRoom === undefined ? {} : { noRoomSquares: noRoom }),
+    };
+  }
+
+  /**
+   * The squares a piece needs when the pack as it stands would not take it,
+   * else undefined. A whole packing to answer, so it is asked again only when
+   * the pack or the piece has changed.
+   */
+  private noRoomFor(loot: WorldLoot): number | undefined {
+    if (this.roomAnswers?.bag !== this.bag || this.roomAnswers.revision !== this.bag.revision) {
+      this.roomAnswers = { bag: this.bag, revision: this.bag.revision, squares: new Map() };
+    }
+    const known = this.roomAnswers.squares;
+    if (!known.has(loot.id)) {
+      known.set(
+        loot.id,
+        this.bag.wouldTakeFind(loot.itemId, loot.quantity)
+          ? undefined
+          : squaresFindNeeds(loot.itemId, loot.quantity, this.bag.count(loot.itemId)),
+      );
+    }
+    return known.get(loot.id);
   }
 
   private createPois(): void {
@@ -4745,7 +4800,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     const snapshot = manager.snapshot();
-    const navigationCue = this.contractNavigationCue(snapshot.contractSteps)
+    // The chip says what the gold arrow is after, so the two never disagree (`raidWay`).
+    const navigationCue = this.raidWay().cue
       ?? session.objectives.find((objective) => !objective.progress(snapshot).complete)?.description
       ?? openRaidCue(
         { items: snapshot.foundItems.length, pokemon: snapshot.caughtPokemon.length },
@@ -5675,10 +5731,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * The way, with no words (`base/wayMark.ts`): gold along the walk to the stake
-   * and the money on the way to it, and green to the nearest way out once the
-   * stake is taken or somebody is after the player. Hidden while anything is being
-   * read. Worked out once a step, because a tile is all that changes it.
+   * The way, with no words (`base/wayMark.ts`): gold to where the raid is going
+   * and green to the way out (`raidWay`). Hidden while anything is being read.
    */
   private settleWayMark(deltaMs: number): void {
     const mark = this.raidWayMark;
@@ -5688,14 +5742,43 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.wayMarkMs += deltaMs;
     const hidden =
       this.dialogBox.visible || this.cutscene !== undefined || this.isWarping || this.panelLean.covering > 0 || this.runSession?.manager.phase !== RunPhase.InRun;
-    const way = hidden ? null : this.wayToShow();
+    const way = hidden ? null : this.raidWay().mark;
     mark.frame(way, { x: this.player.x + TILE_SIZE / 2, y: this.player.y + TILE_SIZE / 2 }, this.wayMarkMs);
   }
 
-  private wayToShow(): { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null {
+  /**
+   * Where the raid is going, worked out once for the gold arrow and the
+   * objective chip alike, so the two can never send a player two ways. The
+   * six-character playtest of 1 Nov found both faults this closes: the chip named
+   * a job's stop or an exit while the arrow went off after money, and a stake the
+   * pack had refused kept the arrow on it until the clock ran out.
+   *
+   * A job carried on this raid is the way: stop by stop, then out by the exit
+   * that banks it, because a job is what Oak's board and Bill's standing are paid
+   * in, and an arrow that walked past it hid the wider game from everybody who
+   * follows the arrow. With no job it is the stake, by the money on the way to it,
+   * for as long as the pack would take it and nobody is after the player; once
+   * it is taken, cannot go in, or is run from, it is the nearest way out. Worked
+   * out again only when the tile, the pack or the job has changed.
+   */
+  private raidWay(): RaidWay {
+    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
+      return NO_WAY;
+    }
     const hunted = this.hunterPackHere()?.lead(this.currentTile) !== undefined;
-    const key = `${this.currentMap.id}:${this.currentTile.x},${this.currentTile.y}:${hunted}:${this.collectedLootIds.size}:${this.exitCue?.label}`;
-    if (key === this.wayCacheKey && this.wayFieldsGrid === this.collisionData) {
+    const exit = this.nearestExitCue();
+    const contractSteps = this.runSession.manager.snapshot().contractSteps;
+    const key = [
+      this.currentMap.id,
+      `${this.currentTile.x},${this.currentTile.y}`,
+      hunted,
+      this.collectedLootIds.size,
+      exit?.label,
+      contractSteps.length,
+      this.activatedPoiIds.size,
+      this.bag.revision,
+    ].join(':');
+    if (key === this.wayCacheKey && this.wayFieldsGrid === this.collisionData && this.wayBag === this.bag) {
       return this.wayCache;
     }
     if (this.wayFieldsGrid !== this.collisionData) {
@@ -5703,39 +5786,64 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.wayFields.clear();
     }
     this.wayCacheKey = key;
-    const worldTile = (tile: GridPosition): GridPosition => ({
-      x: tile.x * TILE_SIZE + TILE_SIZE / 2,
-      y: tile.y * TILE_SIZE + TILE_SIZE / 2,
-    });
-    const trail = this.lootForCurrentMap().filter((loot) => isStakeTrail(loot));
-    const left = trail.filter((loot) => !this.collectedLootIds.has(loot.id));
-    const stake = left.find((loot) => isStake(loot));
+    this.wayBag = this.bag;
+    const job = this.contractTarget(contractSteps);
+    let cue: string | undefined;
     let tile: GridPosition | undefined;
     let out = false;
-    if (stake && !hunted) {
-      const field = this.wayField(stake.position);
-      const here = field[this.currentTile.y]?.[this.currentTile.x] ?? -1;
-      // The next piece still ahead: never back for money walked past.
-      const ahead = left
-        .filter((loot) => !isStake(loot) && (field[loot.position.y]?.[loot.position.x] ?? -1) >= 0 && (here < 0 || field[loot.position.y][loot.position.x] < here))
-        .sort((one, other) => field[other.position.y][other.position.x] - field[one.position.y][one.position.x]);
-      tile = ahead[0]?.position ?? stake.position;
-    } else if (hunted || (trail.length > 0 && !stake)) {
-      tile = this.nearestExitCue()?.position;
-      out = true;
+    if (job) {
+      ({ cue, tile, out } = job);
+    } else {
+      const trail = this.lootForCurrentMap().filter((loot) => isStakeTrail(loot));
+      const stake = hunted ? undefined : this.stakeAhead(trail);
+      if (stake) {
+        cue = `TAKE ${prizeWords(stake.stake).toUpperCase()}: ${this.headingTo(stake.stake.position)}`;
+        tile = stake.next;
+      } else if (hunted || trail.length > 0) {
+        tile = exit?.position;
+        out = true;
+      }
     }
-    if (!tile || (tile.x === this.currentTile.x && tile.y === this.currentTile.y)) {
-      this.wayCache = null;
+    this.wayCache = { ...(cue === undefined ? {} : { cue }), mark: tile ? this.wayMarkTo(tile, out) : null };
+    return this.wayCache;
+  }
+
+  /**
+   * The stake still to take and the next piece of the trail on the way to it, or
+   * undefined once it is taken or the pack would not take it as it stands. What
+   * would not go in is never what the arrow is after: it lets go and points out,
+   * and the prize chip says how many squares to free (`prizeInMind`).
+   */
+  private stakeAhead(trail: readonly WorldLoot[]): { readonly stake: WorldLoot; readonly next: GridPosition } | undefined {
+    const left = trail.filter((loot) => !this.collectedLootIds.has(loot.id) && this.bag.wouldTakeFind(loot.itemId, loot.quantity));
+    const stake = left.find((loot) => isStake(loot));
+    if (!stake) {
+      return undefined;
+    }
+    const field = this.wayField(stake.position);
+    const here = field[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+    // The next piece still ahead: never back for money walked past.
+    const ahead = left
+      .filter((loot) => !isStake(loot) && (field[loot.position.y]?.[loot.position.x] ?? -1) >= 0 && (here < 0 || field[loot.position.y][loot.position.x] < here))
+      .sort((one, other) => field[other.position.y][other.position.x] - field[one.position.y][one.position.x]);
+    return { stake, next: ahead[0]?.position ?? stake.position };
+  }
+
+  /** The way mark to a tile, from a room or a cave by the door that leads to it; none when the player is on it. */
+  private wayMarkTo(tile: GridPosition, out: boolean): RaidWay['mark'] {
+    if (tile.x === this.currentTile.x && tile.y === this.currentTile.y) {
       return null;
     }
-    // From a room or a cave, the door that leads to it.
+    const worldTile = (at: GridPosition): GridPosition => ({
+      x: at.x * TILE_SIZE + TILE_SIZE / 2,
+      y: at.y * TILE_SIZE + TILE_SIZE / 2,
+    });
     const towards = wayTowards(this.currentMap, this.currentTile, tile);
-    this.wayCache = {
+    return {
       target: worldTile(tile),
       aim: worldTile(aheadOnWalk(this.wayField(towards), this.currentTile, towards)),
       out,
     };
-    return this.wayCache;
   }
 
   /** Walking steps to a tile from anywhere in its place, kept for the raid's handful of targets. */
@@ -5826,29 +5934,33 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * The corner chip's one line: the next contract stop and which way it is, or
-   * - once every stop is made - the exit that actually banks the contract. A
-   * contract that only banks one way must say so on the map, not only in the
-   * guide, because the temptation is a gate the player is walking past.
+   * Where a carried job sends the player, and how the corner chip says it: the
+   * next contract stop and which way it is, or - once every stop is made - the
+   * exit that actually banks the contract. A contract that only banks one way
+   * must say so on the map, not only in the guide, because the temptation is a
+   * gate the player is walking past. The gold arrow follows it (`raidWay`), and
+   * turns green for the walk out.
    */
-  private contractNavigationCue(contractSteps: readonly string[]): string | undefined {
+  private contractTarget(contractSteps: readonly string[]): JobWay | undefined {
     const contract = this.runSession?.plan?.contract;
     if (!contract) {
       return undefined;
     }
     if (this.currentMap.id !== contract.mapId) {
-      return `TRAVEL TO ${worldMapName(contract.mapId).toUpperCase()}`;
+      return { cue: `TRAVEL TO ${worldMapName(contract.mapId).toUpperCase()}`, out: false };
     }
     const outstanding = remainingMarkers(contract, contractSteps);
     if (outstanding.length === 0) {
       if (contract.requiredExitLabel) {
-        return this.requiredExitCue(contract.requiredExitLabel);
+        return this.requiredExitTarget(contract.requiredExitLabel);
       }
       // The job is done and only walking out banks it, so the chip names the
       // way out - with an empty pack it fell through to FIND LOOT, THEN
       // EXTRACT, which sends a player holding a finished survey off looking.
       const exit = this.nearestExitCue();
-      return exit ? `BANK VIA ${exit.label.toUpperCase()}: ${exit.heading}` : 'EXTRACT TO BANK THE CONTRACT';
+      return exit
+        ? { cue: `BANK VIA ${exit.label.toUpperCase()}: ${exit.heading}`, tile: exit.position, out: true }
+        : { cue: 'EXTRACT TO BANK THE CONTRACT', out: true };
     }
     // The stop the player is closest to, so the chip changes as they move:
     // straight within one place, the walk through the doors from a room, cave
@@ -5856,19 +5968,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // in a room was sent to whichever stop lay nearest the column it is laid at.
     const next = nearestByWalk(this.currentMap, this.currentTile, outstanding)!;
     const remaining = outstanding.length > 1 ? ` (${outstanding.length} LEFT)` : '';
-    return `${next.cue}: ${this.headingTo(next.position)}${remaining}`;
+    return { cue: `${next.cue}: ${this.headingTo(next.position)}${remaining}`, tile: next.position, out: false };
   }
 
   /**
-   * The chip once a contract's stops are made and only one exit banks it: which
+   * The way once a contract's stops are made and only one exit banks it: which
    * way that exit is, or - while a landmark still seals it - which way the
    * landmark is, because walking to a shut gate with the job in hand is the
    * one wrong turn this contract is built round.
    */
-  private requiredExitCue(label: string): string {
+  private requiredExitTarget(label: string): JobWay {
     const exit = this.extractionPointsForCurrentMap().find((point) => point.label === label);
     if (!exit) {
-      return `BANK VIA ${label}`;
+      return { cue: `BANK VIA ${label}`, out: true };
     }
     const seal = exit.requirement;
     const sealedBy =
@@ -5876,9 +5988,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ? this.currentMap.pois.find((poi) => poi.id === seal.poiId)
         : undefined;
     if (sealedBy) {
-      return `${sealedBy.label}: ${this.headingTo(sealedBy.position)}, THEN ${label}`;
+      return { cue: `${sealedBy.label}: ${this.headingTo(sealedBy.position)}, THEN ${label}`, tile: sealedBy.position, out: false };
     }
-    return `BANK VIA ${label}: ${this.headingTo(exit.position)}`;
+    return { cue: `BANK VIA ${label}: ${this.headingTo(exit.position)}`, tile: exit.position, out: true };
   }
 
   private showFirstDeploymentBriefing(): void {
@@ -9072,7 +9184,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (pack.lead(this.currentTile)) {
       return true;
     }
-    const events = pack.comeFor(this.packWorld(), this.nearestExitCue()?.position);
+    // Every way out open on this map: the one nearest now is not always the one they run for.
+    const ways = this.extractionPointsForCurrentMap()
+      .filter((point) => this.isExtractionOpen(point))
+      .map((point) => point.position);
+    const events = pack.comeFor(this.packWorld(), ways);
     events.forEach((event) => this.onPackEvent(event));
     return events.length > 0;
   }

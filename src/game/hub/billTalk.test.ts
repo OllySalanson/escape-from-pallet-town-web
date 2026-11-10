@@ -129,6 +129,8 @@ describe('Bill from the mat', () => {
     const stranger = billFromTheMat(counter({ money: 40 }));
     expect(stranger.lines[0]).toContain('I do not know you');
     expect(stranger.lines[1]).toBe('You have ₽40, and I am selling you nothing yet.');
+    // Money cannot start it, so he says what does, counted.
+    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat a boss, and I open the deck to you.");
     expect(stranger.question).toBe('See my whole list?');
 
     const partner = billFromTheMat(counter({ money: 40 }, PARTNER, { rationUsed: 1 }));

@@ -33,6 +33,16 @@ describe('what an item does, once the pointer rests on it (the captain, 2026-10-
     expect(place.top + TIP.height).toBeLessThanOrEqual(anchor.top);
   });
 
+  it('stands a list row’s box beside the row, so the next row’s name stays readable', () => {
+    const row = { left: 20, top: 100, right: 300, bottom: 120 };
+    expect(hoverHelpPlacement(row, TIP, SCREEN, 4, true)).toEqual({ left: 304, top: 100 });
+    const rightHand = { left: 400, top: 100, right: 620, bottom: 120 };
+    expect(hoverHelpPlacement(rightHand, TIP, SCREEN, 4, true)).toEqual({ left: 196, top: 100 });
+    // A row the width of the screen has no side: below it, as anything else.
+    const wide = { left: 0, top: 100, right: 640, bottom: 120 };
+    expect(hoverHelpPlacement(wide, TIP, SCREEN, 4, true)).toEqual({ left: 0, top: 124 });
+  });
+
   it('is slid back inside the screen at its edges', () => {
     const anchor = { left: 600, top: 100, right: 630, bottom: 120 };
     expect(hoverHelpPlacement(anchor, TIP, SCREEN, 4).left).toBe(440);

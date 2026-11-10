@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from '../base/baseGames.testkit';
 import { centerOffer, healedLine, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
-import { formatRecoveryClock, quoteRecovery } from './recovery';
+import { formatRecoveryClock, MAX_PENDING_RECOVERY_MS, quoteRecovery } from './recovery';
 
 function hurtGame() {
   const game = baseGame();
@@ -44,6 +44,16 @@ describe('Nurse Joy at her counter', () => {
     // Saying it spends nothing.
     expect(stored.pokemon.currentHp).toBe(1);
     expect(game.pendingRecoveryMs).toBe(0);
+  });
+
+  it('holds a treatment back while the debt is already at the cap, and asks for a raid first', () => {
+    const { game, stored } = hurtGame();
+    const offer = centerOffer({ ...game, pendingRecoveryMs: MAX_PENDING_RECOVERY_MS });
+
+    expect(offer.question).toBeUndefined();
+    expect(offer.lines[0]).toContain('as short as I will make it');
+    expect(offer.lines[1]).toBe('Raid first, then come and see me.');
+    expect(stored.pokemon.currentHp).toBe(1);
   });
 
   it('charges the workshop-built Center as the workshop-built Center', () => {

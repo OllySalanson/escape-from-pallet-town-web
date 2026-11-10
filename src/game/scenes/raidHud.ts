@@ -367,12 +367,20 @@ export interface PrizeChipInput {
   readonly direction: string;
   /** Steps between the player and it. */
   readonly distance: number;
+  /**
+   * The squares it needs, when the pack as it stands would not take it. Said
+   * before the walk rather than on arrival: a prize that cannot go in is a
+   * choice of what to put down, and that is made best from where you stand.
+   */
+  readonly noRoomSquares?: number;
 }
 
 export interface PrizeChipView {
   readonly label: string;
   /** The line under it: how far, and which way. */
   readonly detail: string;
+  /** A third line, when it would not go in: how much room to make. */
+  readonly room?: string;
 }
 
 /**
@@ -390,6 +398,9 @@ export function prizeChipView(input: PrizeChipInput | null): PrizeChipView | nul
   return {
     label: input.name.toUpperCase(),
     detail: `${input.direction} ${input.distance}`,
+    ...(input.noRoomSquares === undefined
+      ? {}
+      : { room: `NO ROOM: NEEDS ${input.noRoomSquares} ${input.noRoomSquares === 1 ? 'SQUARE' : 'SQUARES'}` }),
   };
 }
 

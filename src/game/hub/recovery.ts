@@ -105,6 +105,15 @@ export function recoveryPrices(priceShare: number): RecoveryPrices {
  * still raid under. Treating extra Pokemon once the cap is reached is free,
  * which is deliberate - it makes batching a reward rather than making the sixth
  * Pokemon the one nobody dares fix.
+ *
+ * Free within the one visit that reached the cap, never across visits: a raid
+ * out again too soon to settle the debt (`DAY_CARE_LEAST_RAID_MS`) leaves it at
+ * the cap, and a looper at the cap was healed free for as long as they kept
+ * their raids under a minute (the six-character playtest of 1 Nov). So a debt
+ * that is already at the cap when somebody walks up holds every treatment that
+ * would cost clock back until a raid has paid it (`isRecoveryHeldBack`) - unless
+ * nobody at base can raid at all, because a player must always be able to
+ * attempt a run.
  */
 export const MAX_PENDING_RECOVERY_MS = Math.floor(RAID_DURATION_MS / 2);
 
@@ -117,6 +126,16 @@ export interface RecoveryOutcome {
   readonly chargedMs: number;
   /** The debt after the charge. */
   readonly pendingRecoveryMs: number;
+  /** Stash IDs she would not treat, because the debt was at the cap before she began. */
+  readonly heldBackIds: readonly string[];
+}
+
+/**
+ * Whether a debt at the cap holds back every treatment that costs clock: it was
+ * at the cap before this visit, and somebody at base can still raid on it.
+ */
+export function isRecoveryHeldBack(stash: Stash, pendingRecoveryMs: number): boolean {
+  return clampPendingRecoveryMs(pendingRecoveryMs) >= MAX_PENDING_RECOVERY_MS && anyoneFitToRaid(stash) === true;
 }
 
 /**
@@ -202,6 +221,40 @@ export function teamCondition(stash: Stash): string | null {
   );
 }
 
+/** One treatment as it would go: who, whether in a ward bed, and what it adds to the debt. */
+interface PlannedTreatment {
+  readonly stored: StashedPokemon;
+  readonly inWardBed: boolean;
+  readonly chargedMs: number;
+}
+
+/** The treatments a visit would give these Pokemon, in order, and whom it holds back. */
+function planRecovery(
+  stash: Stash,
+  pendingRecoveryMs: number,
+  ids: readonly string[],
+  terms: RecoveryTerms,
+): { readonly treatments: readonly PlannedTreatment[]; readonly heldBackIds: readonly string[]; readonly pendingRecoveryMs: number } {
+  const patients = resolve(stash, ids);
+  const beds = wardBedIds(pokemonNeedingRecovery(stash), terms);
+  const heldBack = isRecoveryHeldBack(stash, pendingRecoveryMs);
+  const treatments: PlannedTreatment[] = [];
+  const heldBackIds: string[] = [];
+  let pending = pendingRecoveryMs;
+  for (const stored of patients) {
+    const inWardBed = beds.has(stored.id);
+    const costMs = recoveryCostMs(stored.pokemon, terms, inWardBed);
+    if (heldBack && costMs > 0) {
+      heldBackIds.push(stored.id);
+      continue;
+    }
+    const charge = chargeRecovery(pending, costMs);
+    pending = charge.pendingRecoveryMs;
+    treatments.push({ stored, inWardBed, chargedMs: charge.chargedMs });
+  }
+  return { treatments, heldBackIds, pendingRecoveryMs: pending };
+}
+
 /** The whole bill for treating these Pokemon, after the ward's beds and the cap. */
 export function quoteRecovery(
   stash: Stash,
@@ -209,19 +262,17 @@ export function quoteRecovery(
   ids: readonly string[],
   terms: RecoveryTerms = STANDARD_RECOVERY_TERMS,
 ): number {
-  const patients = resolve(stash, ids);
-  const beds = wardBedIds(pokemonNeedingRecovery(stash), terms);
-  let pending = pendingRecoveryMs;
-  let chargedMs = 0;
-  for (const stored of patients) {
-    const charge = chargeRecovery(
-      pending,
-      recoveryCostMs(stored.pokemon, terms, beds.has(stored.id)),
-    );
-    pending = charge.pendingRecoveryMs;
-    chargedMs += charge.chargedMs;
-  }
-  return chargedMs;
+  return planRecovery(stash, pendingRecoveryMs, ids, terms).treatments.reduce((total, treatment) => total + treatment.chargedMs, 0);
+}
+
+/** Which of these Pokemon a visit now would hold back (`isRecoveryHeldBack`). */
+export function recoveryHeldBackIds(
+  stash: Stash,
+  pendingRecoveryMs: number,
+  ids: readonly string[],
+  terms: RecoveryTerms = STANDARD_RECOVERY_TERMS,
+): readonly string[] {
+  return planRecovery(stash, pendingRecoveryMs, ids, terms).heldBackIds;
 }
 
 /**
@@ -236,24 +287,21 @@ export function applyRecovery(
   ids: readonly string[],
   terms: RecoveryTerms = STANDARD_RECOVERY_TERMS,
 ): RecoveryOutcome {
-  const patients = resolve(stash, ids);
-  const beds = wardBedIds(pokemonNeedingRecovery(stash), terms);
+  const plan = planRecovery(stash, pendingRecoveryMs, ids, terms);
   const recoveredIds: string[] = [];
-  let pending = pendingRecoveryMs;
+  let pending = clampPendingRecoveryMs(pendingRecoveryMs);
   let chargedMs = 0;
   let wardTreatmentsUsed = 0;
-  for (const stored of patients) {
-    const inWardBed = beds.has(stored.id);
-    const charge = chargeRecovery(pending, recoveryCostMs(stored.pokemon, terms, inWardBed));
+  for (const { stored, inWardBed, chargedMs: charged } of plan.treatments) {
     if (!stash.recoverPokemon(stored.id)) {
       continue;
     }
-    pending = charge.pendingRecoveryMs;
-    chargedMs += charge.chargedMs;
+    pending += charged;
+    chargedMs += charged;
     wardTreatmentsUsed += inWardBed ? 1 : 0;
     recoveredIds.push(stored.id);
   }
-  return { recoveredIds, chargedMs, pendingRecoveryMs: pending, wardTreatmentsUsed };
+  return { recoveredIds, chargedMs, pendingRecoveryMs: pending, wardTreatmentsUsed, heldBackIds: plan.heldBackIds };
 }
 
 /** Adds one treatment to the debt, never taking it past the cap. */

@@ -11,6 +11,7 @@ import {
   pokemonNeedingRecovery,
   quoteRecovery,
   raidClockAfterRecovery,
+  recoveryHeldBackIds,
   RECOVERY_FULL_BAR_MS,
   RECOVERY_REVIVE_MS,
   RECOVERY_STATUS_MS,
@@ -100,6 +101,35 @@ describe('recovery charges', () => {
     expect(outcome.pendingRecoveryMs).toBe(MAX_PENDING_RECOVERY_MS);
     expect(outcome.chargedMs).toBe(MAX_PENDING_RECOVERY_MS);
     expect(stash.listPokemon().every((stored) => !needsRecovery(stored.pokemon))).toBe(true);
+  });
+
+  it('heals free past the cap within one visit, but not on the next while the debt is still at the cap', () => {
+    // The looper of the six-character playtest: raids too short to settle the
+    // debt leave it at the cap, and every heal after that used to be free.
+    const { stash } = hurtStash();
+    const fit = new Pokemon(PIDGEY, 6);
+    stash.addPokemon(fit, 'pidgey-1');
+
+    expect(recoveryHeldBackIds(stash, MAX_PENDING_RECOVERY_MS, ['charmander-1'])).toEqual(['charmander-1']);
+    expect(quoteRecovery(stash, MAX_PENDING_RECOVERY_MS, ['charmander-1'])).toBe(0);
+    const outcome = applyRecovery(stash, MAX_PENDING_RECOVERY_MS, ['charmander-1']);
+
+    expect(outcome).toMatchObject({ recoveredIds: [], heldBackIds: ['charmander-1'], chargedMs: 0 });
+    expect(needsRecovery(stash.listPokemon()[0].pokemon)).toBe(true);
+    // A debt one step short of the cap still treats, and anything past it is the batch's reward.
+    expect(applyRecovery(stash, MAX_PENDING_RECOVERY_MS - RECOVERY_STEP_MS, ['charmander-1']).recoveredIds).toEqual(['charmander-1']);
+  });
+
+  it('still heals at the cap when nobody at base could raid without it', () => {
+    const stash = new Stash();
+    const fainted = new Pokemon(CHARMANDER, 5);
+    fainted.takeDamage(fainted.maxHp);
+    stash.addPokemon(fainted, 'charmander-1');
+
+    expect(applyRecovery(stash, MAX_PENDING_RECOVERY_MS, ['charmander-1'])).toMatchObject({
+      recoveredIds: ['charmander-1'],
+      heldBackIds: [],
+    });
   });
 
   it('quotes exactly what it goes on to charge', () => {

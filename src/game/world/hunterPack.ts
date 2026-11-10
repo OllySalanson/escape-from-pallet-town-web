@@ -781,11 +781,11 @@ export class HunterPack {
    * taking a raid's stake (`raidStake.ts`). It is the keeper of the patch they
    * stand in if it is about, else the nearest on the map, and it comes on foot
    * from `COME_FOR_LEAST_STEPS` off or more, out of sight, on the far side of the
-   * player from `away` (the way out they would run for), so the run is away from
-   * it and never through it. Nothing happens if one is already after them or none
-   * is left to come. Answers what the screen should say.
+   * player from `ways` (the open ways out they would run for), so the run is
+   * away from it and never through it. Nothing happens if one is already after
+   * them or none is left to come. Answers what the screen should say.
    */
-  comeFor(world: PackWorld, away: GridPosition | undefined): PackEvent[] {
+  comeFor(world: PackWorld, ways: readonly GridPosition[]): PackEvent[] {
     if (this.hunters.some((hunter) => isAbroad(hunter) && isAfterYou(hunter))) {
       return [];
     }
@@ -799,7 +799,7 @@ export class HunterPack {
     if (!hunter) {
       return [];
     }
-    const tile = this.comingFrom(world, away);
+    const tile = this.comingFrom(world, ways);
     if (!tile) {
       return [];
     }
@@ -825,10 +825,16 @@ export class HunterPack {
 
   /**
    * The tile it comes from: the walk out from the player to the ring, keeping to
-   * their own place and off every figure, and of what is out of sight the furthest
-   * from `away`. Null where the player is too hemmed in to have one yet.
+   * their own place and off every figure, and of what is out of sight the one
+   * with the longest *walk* to the nearest way out. Measured as the crow flies,
+   * "far from the exit" once put a hunter north-east of a player whose road out
+   * ran north before it turned west, and the run out walked straight into him
+   * (the six-character playtest of 1 Nov); a tile further from every way out by
+   * the walk than the player is can never be on their shortest way out. Null
+   * where the player is too hemmed in to have one yet.
    */
-  private comingFrom(world: PackWorld, away: GridPosition | undefined): GridPosition | null {
+  private comingFrom(world: PackWorld, ways: readonly GridPosition[]): GridPosition | null {
+    const out = ways.length > 0 ? this.walksToNearest(world, ways) : null;
     const start = world.player.y * world.width + world.player.x;
     const seen = new Set<number>([start]);
     let frontier = [start];
@@ -853,7 +859,8 @@ export class HunterPack {
           if (steps < COME_FOR_LEAST_STEPS || Math.hypot(tile.x - world.player.x, tile.y - world.player.y) < HUNTER_ARRIVAL_CLEARANCE) {
             continue;
           }
-          const far = away ? Math.hypot(tile.x - away.x, tile.y - away.y) : steps;
+          // Off every way out (a pocket the exits do not reach) is the furthest of all.
+          const far = out ? (out[neighbour] < 0 ? Number.MAX_SAFE_INTEGER : out[neighbour]) : steps;
           if (far > foundFar) {
             found = tile;
             foundFar = far;
@@ -863,6 +870,41 @@ export class HunterPack {
       frontier = next;
     }
     return found;
+  }
+
+  /** Walking steps from every tile to the nearest of `from`, over the pack's own ground; -1 where none reaches. */
+  private walksToNearest(world: PackWorld, from: readonly GridPosition[]): Int32Array {
+    const field = new Int32Array(world.width * world.height).fill(UNREACHED);
+    const queue = new Int32Array(world.width * world.height);
+    let tail = 0;
+    for (const tile of from) {
+      const index = tile.y * world.width + tile.x;
+      if (tile.x >= 0 && tile.y >= 0 && tile.x < world.width && tile.y < world.height && field[index] === UNREACHED) {
+        field[index] = 0;
+        queue[tail] = index;
+        tail += 1;
+      }
+    }
+    for (let head = 0; head < tail; head += 1) {
+      const index = queue[head];
+      const x = index % world.width;
+      const y = (index / world.width) | 0;
+      for (const { x: dx, y: dy } of Object.values(DIRECTION_DELTAS)) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= world.width || ny >= world.height) {
+          continue;
+        }
+        const neighbour = ny * world.width + nx;
+        if (field[neighbour] !== UNREACHED || world.blocked(neighbour)) {
+          continue;
+        }
+        field[neighbour] = field[index] + 1;
+        queue[tail] = neighbour;
+        tail += 1;
+      }
+    }
+    return field;
   }
 
   private clearSpot(hunter: PackHunter, world: PackWorld): { readonly tile: GridPosition; readonly index: number } | null {

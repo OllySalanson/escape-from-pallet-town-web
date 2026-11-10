@@ -120,6 +120,11 @@ export function tryCollectLoot(
   return 'collected';
 }
 
+/** The squares a find takes beyond what the pack already gives the same thing. */
+export function squaresFindNeeds(itemId: ItemId, quantity: number, carried: number): number {
+  return Math.max(1, cellsFor(itemId, carried + quantity) - cellsFor(itemId, carried));
+}
+
 /**
  * What ground loot says when it will not go into the pack: the find, and the
  * squares it needs.
@@ -131,7 +136,7 @@ export function tryCollectLoot(
  * the wrong amount.
  */
 export function lootRefusalLine(itemId: ItemId, quantity: number, carried: number): string {
-  const squares = Math.max(1, cellsFor(itemId, carried + quantity) - cellsFor(itemId, carried));
+  const squares = squaresFindNeeds(itemId, quantity, carried);
   const name =
     quantity === 1 && !isCurrency(itemId)
       ? ITEMS[itemId].displayName.toUpperCase()
