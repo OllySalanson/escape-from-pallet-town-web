@@ -57,6 +57,7 @@ import {
 import { roomNamed } from '../base/rooms';
 import { errandOf, forgetDeclinedErrands, harbourGiver, type ErrandRecord } from '../hub/errands';
 import { HARBOUR_PEOPLE } from '../base/harbourLife';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -280,8 +281,16 @@ describe('a favour asked by somebody about the harbour', () => {
   beforeEach(() => forgetDeclinedErrands());
   const LOG = errandOf(harbourGiver('ss-anne-captain'))!;
 
+  it('waits to ask while the Marsh his ship lies in is shut behind Koga', () => {
+    const pier = workshop([], {}, { defeatedBosses: [MISTY_BOSS_ID] }, 'pier');
+    pier.talk();
+    expect(pier.said).not.toContainEqual(LOG.asks);
+    expect(pier.stored().raidProgress.errands ?? []).toEqual([]);
+  });
+
   it('turns to the player, asks, and takes a YES with nothing opened after', () => {
-    const pier = workshop([], {}, {}, 'pier');
+    // THE WRECK is in the Marsh, so the log is asked for once Koga is beaten.
+    const pier = workshop([], {}, { defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] }, 'pier');
     pier.talk();
     expect(pier.faced).toEqual(['ss-anne-captain']);
     expect(pier.said).toEqual([LOG.asks]);

@@ -3283,6 +3283,11 @@
    "kind": "produce"
   },
   {
+   "x": 253,
+   "y": 220,
+   "kind": "sack"
+  },
+  {
    "x": 252,
    "y": 225,
    "kind": "rock"
@@ -5137,6 +5142,14 @@
    "name": "Service Gate",
    "opens": {
     "when": "key"
+   }
+  },
+  {
+   "x": 284,
+   "y": 111,
+   "name": "The 8:15",
+   "opens": {
+    "when": "always"
    }
   },
   {
@@ -8720,7 +8733,7 @@
   },
   {
    "x": 253,
-   "y": 167,
+   "y": 166,
    "name": "Marsh Guard",
    "look": "policeman",
    "facing": "down",
@@ -13839,7 +13852,7 @@
   },
   {
    "x": 253,
-   "y": 220,
+   "y": 224,
    "lines": [
     "THE MARSH. Past the bar at the end of this road.",
     "Touch anything in there and it poisons you back.",

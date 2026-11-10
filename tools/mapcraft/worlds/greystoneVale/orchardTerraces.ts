@@ -204,6 +204,7 @@ export function orchardTerraces(): MapcraftResult {
 
   // -- The honesty box, on the lane east ----------------------------------------------------------
   stand('produce', 57, 28);
+  stand('sack', 61, 28);
   p.flowers([55, 29], [55, 33], [62, 33]);
   stand('rock', 60, 33);
 
@@ -282,7 +283,7 @@ export function orchardTerraces(): MapcraftResult {
       signs: [
         // THE MARSH's notice, at the bar Koga holds (`world/valeQuarters.ts`):
         // what the quarter does to a team, said before it costs one.
-        { x: 61, y: 28, lines: ['THE MARSH. Past the bar at the end of this road.', 'Touch anything in there and it poisons you back.', 'Fire and Flying never touch. Held by KOGA: SOUL BADGE.'] },
+        { x: 61, y: 32, lines: ['THE MARSH. Past the bar at the end of this road.', 'Touch anything in there and it poisons you back.', 'Fire and Flying never touch. Held by KOGA: SOUL BADGE.'] },
         { x: 4, y: 13, lines: ['THE WEST ROAD', 'West: Gull Strand and the sea wall. East: the farm, and more work than you came for.'] },
         { x: 35, y: 18, lines: ['THE CIDER PRESS', 'Down the lane. Tasting by the jug. Mind the second jug.'] },
         { x: 42, y: 15, lines: ['NORTH ORCHARD', 'Do not climb the trees unless you are paid to. Do not get paid to.'] },

@@ -158,8 +158,21 @@ const SLIP_GAP = 2;
 const SCRAP_WIDTH = 6;
 const SCRAP_HEIGHT = 6;
 const SCRAP_GAP = 1;
-/** How many columns of the board's slips give way to the rumours' corner when there are rumours. */
-const RUMOUR_CORNER_SLIPS = 1;
+/**
+ * How many columns of the board's slips give way to the rumours' corner when
+ * there are rumours: as few as hold a scrap for every rumour there is, so the
+ * corner grows with the harbour's talk (one column held nine, and THE RUMOUR
+ * MILL's two slips made it ten) and the slips keep the rest.
+ */
+function rumourCornerSlips(width: number, height: number): number {
+  const slipColumns = Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP));
+  for (let given = 1; given < slipColumns; given += 1) {
+    if (cornerSeats(width, height, given).length >= RUMOURS.length) {
+      return given;
+    }
+  }
+  return slipColumns - 1;
+}
 
 /**
  * Where each slip is pinned on a board this size, left to right along two
@@ -168,7 +181,7 @@ const RUMOUR_CORNER_SLIPS = 1;
  */
 export function slipSeats(width: number, height: number, rumours = false): readonly { readonly x: number; readonly y: number }[] {
   const across =
-    Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - (rumours ? RUMOUR_CORNER_SLIPS : 0);
+    Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - (rumours ? rumourCornerSlips(width, height) : 0);
   const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_HEIGHT + SLIP_GAP));
   const seats: { x: number; y: number }[] = [];
   for (let row = 0; row < down; row += 1) {
@@ -186,7 +199,12 @@ export function slipSeats(width: number, height: number, rumours = false): reado
 
 /** Where the rumours' scraps are pinned: the board's right-hand corner, in rows, past the slips. */
 export function scrapSeats(width: number, height: number): readonly { readonly x: number; readonly y: number }[] {
-  const slipsAcross = Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - RUMOUR_CORNER_SLIPS;
+  return cornerSeats(width, height, rumourCornerSlips(width, height));
+}
+
+/** The scraps' seats in a corner `given` slip columns wide. */
+function cornerSeats(width: number, height: number, given: number): readonly { readonly x: number; readonly y: number }[] {
+  const slipsAcross = Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - given;
   const left = BOARD_BORDER + SLIP_GAP + slipsAcross * (SLIP_WIDTH + SLIP_GAP);
   const room = width - BOARD_BORDER - left;
   // A pixel spare across for every scrap to sit a pixel off its neighbours' line; the rows are

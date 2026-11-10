@@ -208,9 +208,9 @@ export function safariMarsh(): MapcraftResult {
   p.flowers([25, 58], [17, 53]);
 
   const file = districtFile(GREYSTONE_VALE, 'safari-marsh', p, {
-    // The power station's far side is past the hunter's blind window from
-    // every other way out now its stand-in into the marsh is gone
-    // (`hunterFlee.test.ts`): the wardens' stile by the north road covers it.
+    // The wardens' stile by the north road: the reserve's own way out. It once
+    // covered the power station's far side as well, which has the bus now that
+    // Koga's bar stands between them (`hunterFlee.test.ts`).
     exits: [{ x: 29, y: 4, name: "Wardens' Stile", opens: { when: 'always' } }],
     dropIns: [{ x: 30, y: 32, name: 'Rest House', description: "The rest house in the middle of the reserve, the dry ground a raid stops at." }],
     itemSpots: [
