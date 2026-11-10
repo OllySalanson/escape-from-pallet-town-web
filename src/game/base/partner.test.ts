@@ -423,6 +423,7 @@ describe('who the partner is', () => {
       packItemId: 'raid-pack',
       items: { potion: 3 },
       secured: {},
+      pokemonIds: [],
     });
     expect(abandonedSaves.settleAbandonedRaid()).not.toBeNull();
     expect(partnerOf(abandonedSaves.load()!.stash)?.id).toBe(abandoned.id);
@@ -438,6 +439,7 @@ describe('who the partner is', () => {
       packItemId: 'raid-pack',
       items: { potion: 3 },
       secured: {},
+      pokemonIds: [],
     });
     expect(unsecuredSaves.settleAbandonedRaid()).not.toBeNull();
     const settled = unsecuredSaves.load()!.stash;

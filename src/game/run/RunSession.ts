@@ -51,6 +51,14 @@ export interface ActiveRunSession {
    */
   readonly packItemId?: string;
   /**
+   * The save's mark for this raid (`run/raidInFlight.ts`), which every ending
+   * hands the save so that it settles this raid and no other: a raid settled
+   * as abandoned by another tab while this one was frozen comes home to
+   * nothing. Absent where no mark was written - the explorer run, the map
+   * maker's try - and then the endings are not held to one.
+   */
+  readonly raidId?: string;
+  /**
    * The save's partner - the starter it picked, by the stash's own mark
    * (`Stash.partner()`) - when it came on this raid. The raid follower walks
    * the lead, and the partner when the lead has no walking art
@@ -200,8 +208,10 @@ export function createActiveRunSession(
   packItemId?: string,
   partner?: Pokemon,
   look?: DressedLook,
+  raidId?: string,
 ): ActiveRunSession {
   return {
+    ...(raidId === undefined ? {} : { raidId }),
     workshopUpgrades: [...workshopUpgrades],
     manager,
     secureSlot,

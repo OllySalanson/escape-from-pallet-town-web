@@ -211,9 +211,9 @@ export function anyoneFitToRaid(stash: Stash | undefined): boolean | undefined {
 }
 
 /** What the base says of the whole team (`teamConditionLine`), or null when everyone is fit. */
-export function teamCondition(stash: Stash): string | null {
+export function teamCondition(stash: Stash, except: ReadonlySet<string> = new Set()): string | null {
   return teamConditionLine(
-    stash.listPokemon().map((stored) => ({
+    stash.listPokemon().filter((stored) => !except.has(stored.id)).map((stored) => ({
       name: stored.pokemon.name,
       isFainted: stored.pokemon.isFainted,
       needsTreatment: needsRecovery(stored.pokemon),

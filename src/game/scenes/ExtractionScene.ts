@@ -68,6 +68,21 @@ const SETTLED_LOCK_MS = 350;
 /** Keys that are only ever half of a keypress, so they never advance a beat. */
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab']);
 
+/**
+ * What the result screen says for a raid another window settled while this one
+ * was away (`ExtractionReport.settledElsewhere`): the base took it for
+ * abandoned - the pack lost, the team home as it set out - so nothing this
+ * raid found or did was written, and the screen says that rather than an
+ * account of a haul that never reached BILL'S PC (the vale hunt, finding 1).
+ */
+export const SETTLED_ELSEWHERE = {
+  headline: 'ANOTHER WINDOW SETTLED THIS RAID.',
+  summary: 'This window was away so long that the game, opened in another, took the raid for abandoned.',
+  ledger: 'Nothing this raid found or did reached BILL’S PC. Your pack was lost with what was in it, as an abandoned raid’s is.',
+  team: 'Your team went home from the other window, as it set out. What it did out here does not count.',
+  note: 'Nothing here was banked: your base is as the other window left it.',
+} as const;
+
 export class ExtractionScene extends Phaser.Scene {
   private overlay!: MenuOverlay;
   private report!: ExtractionReport;
@@ -347,6 +362,9 @@ export class ExtractionScene extends Phaser.Scene {
   private markup(): string {
     const report = this.report;
     const escaped = report.outcome === 'ESCAPED';
+    if (report.settledElsewhere) {
+      return this.settledElsewhereMarkup();
+    }
     return pixelScreen({
       place: escapeHtml(report.eyebrow),
       title: '',
@@ -361,6 +379,31 @@ export class ExtractionScene extends Phaser.Scene {
         title: escapeHtml(this.footerTitle()),
         lines: [`<small class="px-wrap">${this.costFacts().map(escapeHtml).join(' · ')}</small>`],
         actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the Arena'}</button>`,
+      })}</main>`,
+    });
+  }
+
+  /** The same screen for a raid another window settled: what happened, and that nothing here counts. */
+  private settledElsewhereMarkup(): string {
+    return pixelScreen({
+      // Not EXTRACTED or RAID LOST: neither was written.
+      place: 'Raid settled elsewhere',
+      title: '',
+      aside: escapeHtml(this.clockAside()),
+      hints: escapeHtml(this.footerNote()),
+      body: `<main class="px-body extraction-layout extraction-lost">${pixelWindow(
+        `<strong class="px-name">${escapeHtml(SETTLED_ELSEWHERE.headline)}</strong><span class="px-wrap">${escapeHtml(SETTLED_ELSEWHERE.summary)}</span>`,
+        { className: 'extraction-verdict px-tone-risk', tag: 'div' },
+      )}${pixelWindow(`<div class="px-list px-scroll" data-reads><p class="px-empty px-wrap">${escapeHtml(SETTLED_ELSEWHERE.ledger)}</p></div>`, {
+        className: 'extraction-ledger',
+        heading: 'Not banked',
+      })}${pixelWindow(`<div class="px-list px-scroll" data-reads><p class="px-empty px-wrap">${escapeHtml(SETTLED_ELSEWHERE.team)}</p></div>`, {
+        className: 'extraction-gamble',
+        heading: 'Your team',
+      })}${pixelCommitBar({
+        title: escapeHtml(this.footerTitle()),
+        lines: [],
+        actions: `<button class="px-window px-button is-primary" data-continue>Back to the Arena</button>`,
       })}</main>`,
     });
   }
@@ -565,6 +608,9 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   private footerTitle(): string {
+    if (this.report.settledElsewhere) {
+      return 'Settled in another window';
+    }
     if (!this.report.saved) {
       return 'Could not save';
     }
@@ -584,6 +630,9 @@ export class ExtractionScene extends Phaser.Scene {
       return this.report.outcome === 'ESCAPED'
         ? 'A try of your map: you left by an exit, so the walk counts. Your saved game was not touched.'
         : 'A try of your map: leave by an exit for the walk to count. Your saved game was not touched.';
+    }
+    if (this.report.settledElsewhere) {
+      return SETTLED_ELSEWHERE.note;
     }
     if (!this.report.saved) {
       return 'This result could not be written to storage.';

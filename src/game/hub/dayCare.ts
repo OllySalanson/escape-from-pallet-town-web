@@ -147,14 +147,27 @@ function fainted(name: string): string {
   return `Your ${name} has fainted! I can raise it, but I can’t revive it. Take it to the Pokémon Center first.`;
 }
 
-/** Why a Pokémon cannot be left, in his words, or undefined when it can. */
-export function dayCareRefusal(stash: Stash, pokemonId: string): string | undefined {
+/**
+ * Why a Pokémon cannot be left, in his words, or undefined when it can.
+ * `away` is who is out on the raid in flight (`awayOnRaid`): two tabs share
+ * one save, and a Pokémon out on a raid in the other is that raid's until it
+ * ends - left with him, a wipe could not take it and an extraction could not
+ * bank what it did out there.
+ */
+export function dayCareRefusal(
+  stash: Stash,
+  pokemonId: string,
+  away: ReadonlySet<string> = new Set(),
+): string | undefined {
   const stored = stash.listPokemon();
   if (stash.dayCare() !== null) {
     return `I’m already raising your ${stash.dayCare()!.pokemon.name}.`;
   }
   if (!stored.some((entry) => entry.id === pokemonId)) {
     return 'That Pokémon isn’t at base.';
+  }
+  if (away.has(pokemonId)) {
+    return `Your ${stored.find((entry) => entry.id === pokemonId)!.pokemon.name} is out on a raid in your other window. Bring it to me once it’s home.`;
   }
   if (stored.length === 1) {
     return 'Oh? You only have one Pokémon.';
@@ -221,6 +234,14 @@ export interface TakenBackFromDayCare {
   readonly learned: readonly string[];
   /** Moves it reached with no room for: the next screen asks (`hub/pendingMoves.ts`). */
   readonly noRoomFor: readonly string[];
+}
+
+/**
+ * What he says when the Pokémon was already fetched in another window, which
+ * this one had not caught up with: nothing failed, so he does not say it did.
+ */
+export function takenElsewhereLine(name: string): string {
+  return `Your ${name}? You already took it back, in your other window.`;
 }
 
 /** All he says as he hands one back: FireRed's lines, then what it came back as. */

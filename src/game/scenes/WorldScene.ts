@@ -4775,6 +4775,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ending: outcome === 'extracted' ? { kind: 'out', line: closeCall ?? outLine(exitLabel ?? 'the way out') } : { kind: 'fell', line: clockLine() },
       },
       this.runSession?.manager.snapshot().elapsedMs,
+      this.runSession?.raidId,
     );
     // The pack is laid out in the field as much as at base - a find is seated
     // in the room that is left and moved where the player wants it - so the
@@ -7894,10 +7895,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // The clock it read, which past the raid's end is the enrage's own.
     const clockLeftMs = snapshot.remainingMs > 0 ? snapshot.remainingMs : snapshot.enrageGraceRemainingMs;
     const closeCall = closeCallLine({ ms: clockLeftMs, reads: formatRaidClock(clockLeftMs) }, this.hunterOnTail());
+    // Asked before anything is written: a raid another tab has already settled
+    // has nothing to bank, and every write below refuses it anyway.
+    const raidId = this.runSession.raidId;
+    const settledElsewhere = !new SaveManager().ownsRaid(raidId);
     this.recordRaid('extracted', point.label, closeCall);
     const contractResult = banksContract
-      ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs)
-      : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs), granted: false };
+      ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs, raidId)
+      : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs, raidId), granted: false };
     this.pendingHubTransition = true;
     const contractPaid = contractResult.granted
       ? { pokemon: rewardPokemon(contract!.reward), items: contract!.reward.items }
@@ -7947,6 +7952,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           : {}),
         carriedOut: this.bag.toJSON(),
         saved: contractResult.saved,
+        ...(settledElsewhere ? { settledElsewhere } : {}),
       }),
     );
   }
@@ -8525,6 +8531,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // supply still in it comes home, and only what is still in it was lost with
     // the raid. Anything missing from it was spent, and is reported as spent.
     const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);
+    const settledElsewhere = !new SaveManager().ownsRaid(this.runSession.raidId);
     this.recordRaid('wiped');
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
@@ -8536,12 +8543,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // it is the bag - so nothing in the accounting above can name it, and the
       // secure container cannot protect it either.
       this.runSession.packItemId,
+      this.runSession.raidId,
     );
     this.pendingHubTransition = true;
     this.showRunResult(
       buildExtractionReport({
         outcome: 'WIPED',
         cause: 'timer',
+        ...(settledElsewhere ? { settledElsewhere } : {}),
         snapshot,
         durationMs: snapshot.durationMs,
         leftBehind: this.prizesLeftBehindNow(),

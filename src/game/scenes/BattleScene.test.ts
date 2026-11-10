@@ -3309,3 +3309,67 @@ describe('the end of a won fight', () => {
     expect(dialog.shownMessages).not.toContain('You won the battle!');
   });
 });
+
+/**
+ * The battles hunt, finding 2: your Pokemon and the wild one fainting on the
+ * same turn, with somebody on the bench, made the player send that somebody in
+ * and then ended the fight without paying any experience - the forced switch
+ * wrote `active` over the `victory` the engine had already decided.
+ */
+describe('both sides fainting on the same turn', () => {
+  const RATTATA = getSpeciesById('rattata')!;
+  const internals = (scene: BattleScene) =>
+    scene as unknown as {
+      mode: string;
+      forcedReplacement: boolean;
+      state: BattleState;
+      foesFacedBy: Map<Pokemon, Set<Pokemon>>;
+      onMessagesComplete(): void;
+      returnToWorld(): void;
+    };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('ends the fight with the win, asks for nobody, and pays whoever faced it and is standing', () => {
+    // A Double-Edge that knocks the Rattata out, and whose recoil does the same to the Squirtle.
+    const squirtle = new Pokemon(SQUIRTLE, 30);
+    squirtle.moves.splice(0, squirtle.moves.length, new Move(GENERATED_MOVES['double-edge']));
+    squirtle.currentHp = 1;
+    const charmander = new Pokemon(CHARMANDER, 8);
+    const wild = new Pokemon(RATTATA, 6);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      wild,
+      party: new PokemonParty([squirtle, charmander]),
+    });
+    const fight = internals(scene);
+    // The whole party rides on the state, as `BattleScene.create` puts it there.
+    fight.state = { ...fight.state, playerParty: [squirtle, charmander] };
+    // Charmander was out earlier in this fight, so it has faced the Rattata.
+    fight.foesFacedBy.get(wild)!.add(charmander);
+    const returned = vi.fn();
+    fight.returnToWorld = returned;
+    const before = charmander.experience;
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    fight.onMessagesComplete();
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('DOUBLE-EDGE')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    const modes = new Set<string>();
+    for (let step = 0; step < 40 && returned.mock.calls.length === 0; step += 1) {
+      fight.onMessagesComplete();
+      modes.add(fight.mode);
+    }
+
+    expect(dialog.shownMessages).toContain('Your SQUIRTLE fainted!');
+    expect(dialog.shownMessages).toContain('Wild RATTATA fainted!');
+    expect(modes.has('party')).toBe(false);
+    expect(fight.forcedReplacement).toBe(false);
+    expect(fight.state.outcome).toBe('victory');
+    expect(charmander.experience).toBeGreaterThan(before);
+    expect(dialog.shownMessages.some((line) => line.startsWith('CHARMANDER gained'))).toBe(true);
+    expect(returned).toHaveBeenCalledTimes(1);
+  });
+});
