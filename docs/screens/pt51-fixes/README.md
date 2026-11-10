@@ -32,7 +32,7 @@ rendering, 1-2% the game's own script, so the cause was what was drawn, not
 what was worked out. With `--experiment="...setVisible(false) on the base scene"`
 the race went from 21.6 to 54.6 fps: the paused harbour was being drawn under
 it every frame. Before and after, back to back, on a machine other workers
-were loading (compare within a pair):
+were loading (compare within a pair). In every pair the race ran below the yard before and runs well above it now:
 
 | Run | Yard, still | DERBY race |
 |---|---|---|
@@ -40,6 +40,8 @@ were loading (compare within a pair):
 | after, 1 | 25.2 fps | 37.4 fps (median 16.7 ms) |
 | before, 2 | 40.7 fps | 24.8 fps (median 33.3 ms) |
 | after, 2 | 33.4 fps | 40.6 fps (median 16.7 ms) |
+| before, 3 | 11.1 fps | 8.6 fps (median 100 ms) |
+| after, 3 | 11.6 fps | 22.6 fps (median 33.4 ms) |
 
 ## #13, the drivers
 
