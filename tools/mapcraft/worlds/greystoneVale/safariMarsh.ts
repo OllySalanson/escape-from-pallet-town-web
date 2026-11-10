@@ -209,7 +209,7 @@ export function safariMarsh(): MapcraftResult {
 
   const file = districtFile(GREYSTONE_VALE, 'safari-marsh', p, {
     // The wardens' stile by the north road: the reserve's own way out. It once
-    // covered the power station's far side as well, which has the bus now that
+    // covered the power station's far side as well, which has the Tailrace Path now that
     // Koga's bar stands between them (`hunterFlee.test.ts`).
     exits: [{ x: 29, y: 4, name: "Wardens' Stile", opens: { when: 'always' } }],
     dropIns: [{ x: 30, y: 32, name: 'Rest House', description: "The rest house in the middle of the reserve, the dry ground a raid stops at." }],

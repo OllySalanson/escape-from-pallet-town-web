@@ -339,11 +339,12 @@ export function powerStation(): MapcraftResult {
     ],
     exits: [
       { x: 30, y: 42, name: 'Service Gate', opens: { when: 'key' } },
-      // The bus, from the stop on the road down to the Marsh: the 8:15 to
-      // Millbrook. The station's south half used to walk out over the Wardens'
-      // Stile in the Safari Marsh, which is past Koga's bar now, and without a
-      // way out of its own it is past the hunter's blind window (`hunterFlee.test.ts`).
-      { x: 28, y: 47, name: 'The 8:15', opens: { when: 'always' } },
+      // The gaugers' path out along the tailrace, from the dead end behind the
+      // gauge house. The station's south half used to walk out over the
+      // Wardens' Stile in the Safari Marsh, which is past Koga's bar now, and
+      // without a way out of its own it is past the hunter's blind window
+      // (`hunterFlee.test.ts`). In a dead end, so no walk goes over it.
+      { x: 34, y: 57, name: 'Tailrace Path', opens: { when: 'always' } },
       // Sealed until the relay mast on the shore below raises the linesmen.
       { x: 59, y: 7, name: "Linesmen's Track", opens: { when: 'landmark', landmark: 'Relay Mast' } },
       ...bunkerExits(),
