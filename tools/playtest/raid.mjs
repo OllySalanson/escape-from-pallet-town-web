@@ -539,6 +539,7 @@ try {
   // walked: in behind the falls, the Falls Cave's boulders onto their switches,
   // out under the garden's cliff, the Miracle Seed, and the Gardener's Gate.
   const keyFor = (dir) => `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
+  const readsAt = new Map();
   const behindOf = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [1, 0], ArrowRight: [-1, 0] };
   for (const step of (option('steps') ?? '').split(',').filter(Boolean)) {
     if (ended) break;
@@ -598,7 +599,10 @@ try {
       await wait(200);
       await press('Space');
       await wait(1500);
-      if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, `-read-${parts[0]}-${parts[1]}.png`));
+      // A tile read twice - a clue before its hour and after - keeps both pictures.
+      const reads = (readsAt.get(`${parts[0]},${parts[1]}`) ?? 0) + 1;
+      readsAt.set(`${parts[0]},${parts[1]}`, reads);
+      if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, `-read-${parts[0]}-${parts[1]}${reads > 1 ? `-${reads}` : ''}.png`));
       note(`read at ${parts[0]},${parts[1]}: ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox?.textObject?.text ?? null`).catch(() => null))}`);
       await clearInterruptions();
     } else if (kind === 'tide') {
