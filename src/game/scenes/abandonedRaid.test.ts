@@ -145,7 +145,7 @@ function browserLocks(): RaidLocks & { held: Set<string>; crash(name: string): v
         held.delete(name);
       });
     },
-    query: async () => ({ held: [...held].map((name) => ({ name })) }),
+    query: () => Promise.resolve({ held: [...held].map((name) => ({ name })) }),
     crash: (name) => {
       held.delete(name);
     },
@@ -468,10 +468,10 @@ describe('a raid abandoned by closing the game', () => {
     const id = raidId(storage);
     let pulse = true;
     const live = vi.spyOn(raidHeartbeat, 'liveElsewhere').mockImplementation(() => pulse);
-    const asked = vi.spyOn(raidHeartbeat, 'stillLiveElsewhere').mockImplementation(async () => {
+    const asked = vi.spyOn(raidHeartbeat, 'stillLiveElsewhere').mockImplementation(() => {
       // A page that is gone has its pulse taken away (`stillLiveElsewhere`).
       pulse = pageStillThere;
-      return pageStillThere;
+      return Promise.resolve(pageStillThere);
     });
     const { hub, start } = openLab(storage);
     Object.assign(hub as unknown as Record<string, unknown>, { sys: { isActive: () => true } });
