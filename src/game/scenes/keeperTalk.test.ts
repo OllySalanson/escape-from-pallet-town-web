@@ -451,6 +451,44 @@ describe('at the rail', () => {
   });
 });
 
+describe('the rim card opened just home from a raid', () => {
+  // SPACE mashed through the result screen landed on the rail, opened the rim
+  // card and jumped (raids bug hunt, fault 4). The first card opened before a
+  // step is taken is asked to start on NOT YET; the next is not.
+  const hall = (homeOnTheRail: boolean) => {
+    const launched: Record<string, unknown>[] = [];
+    const scene = BaseScene.prototype as unknown as Record<string, unknown>;
+    const stand = {
+      kit: { flow: {} },
+      arenaPanel: null as string | null,
+      leaving: false,
+      walkPlan: null,
+      homeOnTheRail,
+      place: { room: { room: { id: 'raid-arena' } } },
+      standStill: () => undefined,
+      scene: { launch: (_key: string, data: Record<string, unknown>) => launched.push(data) },
+    };
+    const open = (view: string) => {
+      stand.arenaPanel = null;
+      (scene.openHallPanel as (this: typeof stand, view: string) => void).call(stand, view);
+    };
+    return { open, launched };
+  };
+
+  it('asks for the cursor on NOT YET the first time, and only the first', () => {
+    const { open, launched } = hall(true);
+    open('rim');
+    open('rim');
+    expect(launched.map((data) => data.justHome)).toEqual([true, undefined]);
+  });
+
+  it('asks nothing of a card opened after walking up to the rail', () => {
+    const { open, launched } = hall(false);
+    open('rim');
+    expect(launched[0].justHome).toBeUndefined();
+  });
+});
+
 describe('a key past the talk', () => {
   it('goes straight to whatever the talk was on its way to', () => {
     const then = vi.fn();

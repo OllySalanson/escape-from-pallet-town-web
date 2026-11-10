@@ -1644,6 +1644,19 @@ describe('what the base screen leads with', () => {
     expect(rim).not.toMatch(/data-start data-cursor-start/);
   });
 
+  it('starts on NOT YET for a fit team just home from a raid, so SPACE through the result does not jump', () => {
+    const { hub } = createHub();
+    const savedGame = (hub as unknown as { savedGame: RestoredGame }).savedGame;
+    hub.init({ view: 'rim', justHome: true, savedGame });
+    hub.flow.togglePokemon('charmander-1');
+    readyToDeploy(hub);
+    expect(hub.flow.notReady).toBeUndefined();
+    const rim = markupOf(hub);
+    expect(rim).not.toContain('<dt>Hurt</dt>');
+    expect(rim).toMatch(/data-back data-cursor-start/);
+    expect(rim).not.toMatch(/data-start data-cursor-start/);
+  });
+
   it('keeps the cursor on JUMP IN for a team that is fit', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');

@@ -773,6 +773,13 @@ export class BaseScene extends Phaser.Scene {
   private furniture: ArenaFurniture | null = null;
   /** The panel open over the hall, if any: the hall burns on behind it and the player stands still. */
   private arenaPanel: ArenaPanel | null = null;
+  /**
+   * Home from a raid and not a step taken since. A player mashing SPACE through
+   * the result screen lands here with the rim in front of them, and the next
+   * two presses opened the card and jumped (the raids bug hunt of 9 Nov 2026,
+   * fault 4), so the first card opened from here starts on NOT YET.
+   */
+  private homeOnTheRail = false;
   /** Somebody's eye to one of the hall's telescopes (`base/valeOverviewView.ts`). */
   private telescope: ValeOverviewView | null = null;
   /** The way in the player is stood over, or has under the cursor. */
@@ -1121,6 +1128,7 @@ export class BaseScene extends Phaser.Scene {
     // Out in the harbour for the first time since a raid, the boat that brought
     // it all home ties up and says so.
     const boatHome = !this.place.room && boatDueHome;
+    this.homeOnTheRail = data.arrival === 'raid';
     if (data.arrival === 'raid') {
       boatDueHome = true;
       haulDueHome = [...new Set([...haulDueHome, ...(data.haul ?? [])])];
@@ -2020,7 +2028,15 @@ export class BaseScene extends Phaser.Scene {
     if (!straightOver) {
       audioManager.play('menuOpen');
     }
-    this.scene.launch('hub', { view, kit, from: this.place.room?.room.id, straightOver } satisfies HubSceneData);
+    const justHome = view === 'rim' && this.homeOnTheRail;
+    this.homeOnTheRail = false;
+    this.scene.launch('hub', {
+      view,
+      kit,
+      from: this.place.room?.room.id,
+      straightOver,
+      ...(justHome ? { justHome } : {}),
+    } satisfies HubSceneData);
   }
 
   /** Back from a panel: what was chosen in it now stands in the room. */
@@ -4553,6 +4569,7 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private beginStep(targetTile: GridPosition): void {
+    this.homeOnTheRail = false;
     this.targetTile = targetTile;
     this.stepProgress = 0;
     this.stepDurationMs =

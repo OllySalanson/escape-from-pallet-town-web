@@ -245,6 +245,12 @@ export interface HubSceneData {
   readonly kit?: ArenaKit;
   /** Over the fence at once, with the card never drawn: there is nothing on it to decide (`hub/firstRaid.ts`). */
   readonly straightOver?: boolean;
+  /**
+   * The rim's card opened by a player just home from a raid, who has not taken
+   * a step: the cursor starts on NOT YET, so SPACE pressed through the result
+   * screen does not carry on over the fence (`BaseScene.homeOnTheRail`).
+   */
+  readonly justHome?: boolean;
 }
 
 /**
@@ -365,6 +371,7 @@ export class HubScene extends Phaser.Scene {
    * the key that started the raid used to start it again and throw.
    */
   private straightOver = false;
+  private justHome = false;
   private deploying = false;
   /** Whether the raid room's database is being asked something (`raidRoom/`). */
   private roomBusy = false;
@@ -419,6 +426,7 @@ export class HubScene extends Phaser.Scene {
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
     this.straightOver = data.straightOver === true;
+    this.justHome = data.justHome === true;
     // Looking down from the rim is looking the plan over, as far as it can be.
     if (this.view === 'rim') {
       this.pointAtHeldRoom();
@@ -2588,6 +2596,7 @@ export class HubScene extends Phaser.Scene {
     const hurt = this.railHurt();
     const ways = this.waysFromHere().length;
     const nextMap = this.nextMapWayIn();
+    const stay = Boolean(refusal) || hurt?.stops === true || this.justHome;
     return `<main class="px-body rim-layout">${pixelCommitBar({
       title: `<span data-rim-title>${this.rimTitle(chosen)}</span>`,
       lines: [
@@ -2605,9 +2614,10 @@ export class HubScene extends Phaser.Scene {
             ]
           : []),
       ].filter((line) => line !== ''),
-      // With nobody able to go, or a team about to be finished by the first thing
-      // it meets, the cursor is on the way back and SPACE does not spend the raid.
-      actions: `<button class="px-window px-button" data-back${refusal || hurt?.stops ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${refusal || hurt?.stops ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
+      // With nobody able to go, a team about to be finished by the first thing
+      // it meets, or a player only just home and still pressing through the
+      // result, the cursor is on the way back and SPACE does not spend the raid.
+      actions: `<button class="px-window px-button" data-back${stay ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${stay ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
     })}</main>`;
   }
 
