@@ -43,7 +43,7 @@ describe('what a room raid keeps as the player’s own', () => {
   // the whole map's loot, so a friend raid had no stake and no secret - no
   // prize, no chart piece, and no sea chest at the end of the treasure hunt.
   const VALE = 'greystone-vale';
-  const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false };
+  const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false, badges: [] };
   const solo = generateRunPlan(7, undefined, 'greystone-vale-moor-top', undefined, undefined, undefined, undefined, undefined,
     undefined, undefined, undefined, undefined, { conditions: dusk, known: { secretsFound: [], giftsReceived: [] } });
   const inARoom = withRoomLoot(solo, generateRoomLoot(VALE, 1234), () => false);
