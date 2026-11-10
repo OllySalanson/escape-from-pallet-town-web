@@ -210,6 +210,14 @@ describe('the prize chip', () => {
     });
   });
 
+  it('says how much room to make, before the walk, when the pack would not take it', () => {
+    expect(prizeChipView({ name: '2 Parts crates', direction: 'NE', distance: 140, noRoomSquares: 8 })).toEqual({
+      label: '2 PARTS CRATES',
+      detail: 'NE 140',
+      room: 'NO ROOM: NEEDS 8 SQUARES',
+    });
+  });
+
   it('shows nothing until something rare has actually been seen', () => {
     // Which is most raids: a prize is rolled on its own odds, and a HUD that
     // named every rarity at 0:00 would hand over what a vast map is built to

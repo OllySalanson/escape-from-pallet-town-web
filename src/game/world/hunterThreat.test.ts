@@ -199,7 +199,7 @@ describe('hunterThreatLine', () => {
   it('says what the contract added', () => {
     expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 1))).toEqual({
       heading: 'Hunter: BLUE',
-      detail: '1 Pokémon to your 1 · lead Lv 9 to your Lv 12 Charmander, +1 contract, 10s sooner',
+      detail: '1 Pokémon to your 1 · lead Lv 9 to your Lv 12 Charmander · this job: 10s sooner, stronger',
     });
   });
 });

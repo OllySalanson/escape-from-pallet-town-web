@@ -17,7 +17,7 @@ import { WorldScene } from './WorldScene';
 
 /** What the objective chip reads, asked of the real scene. */
 interface Driven {
-  contractNavigationCue(contractSteps: readonly string[]): string | undefined;
+  contractTarget(contractSteps: readonly string[]): { readonly cue: string } | undefined;
   nearestExitCue(): { readonly label: string; readonly heading: string } | undefined;
 }
 
@@ -44,13 +44,13 @@ describe('the objective chip on a contract only one exit banks', () => {
   it('points at the landmark that still seals the exit, then names the exit', () => {
     // It read "BANK VIA WEST CULVERT" with no way to it, while the culvert
     // was shut and the wheel that opens it was across the south bank.
-    expect(ledgerInHand().contractNavigationCue([LEDGER.markers[0].id])).toBe(
+    expect(ledgerInHand().contractTarget([LEDGER.markers[0].id])?.cue).toBe(
       'SLUICE WHEEL: SE, THEN WEST CULVERT',
     );
   });
 
   it('says which way the exit is once nothing seals it', () => {
-    expect(ledgerInHand(['pallet-sluice-wheel']).contractNavigationCue([LEDGER.markers[0].id])).toBe(
+    expect(ledgerInHand(['pallet-sluice-wheel']).contractTarget([LEDGER.markers[0].id])?.cue).toBe(
       'BANK VIA WEST CULVERT: SW',
     );
   });
@@ -114,7 +114,7 @@ describe('the objective chip once the job is done', () => {
     const exit = driven.nearestExitCue();
 
     expect(exit).toBeDefined();
-    expect(driven.contractNavigationCue(survey.markers.map((marker) => marker.id))).toBe(
+    expect(driven.contractTarget(survey.markers.map((marker) => marker.id))?.cue).toBe(
       `BANK VIA ${exit!.label.toUpperCase()}: ${exit!.heading}`,
     );
   });

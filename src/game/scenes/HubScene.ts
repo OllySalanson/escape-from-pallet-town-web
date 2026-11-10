@@ -740,7 +740,11 @@ export class HubScene extends Phaser.Scene {
     }
     const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids, this.recoveryTerms);
     if (outcome.recoveredIds.length === 0) {
-      this.refuse('Everyone there is already fit.');
+      this.refuse(
+        outcome.heldBackIds.length > 0
+          ? `The next raid is already down to ${formatRecoveryClock(this.raidClockMs)}, as short as recovery goes. Raid first.`
+          : 'Everyone there is already fit.',
+      );
       return;
     }
 

@@ -378,25 +378,37 @@ describe('a hunter that comes for you', () => {
   it('comes from out of sight, on the far side of you from the way out, and says so', () => {
     const { pack, hunter } = hunterIn(groundOf(wholeMap, { x: 2, y: 2 }), { mode: 'patrol' });
     const away = { x: 60, y: 20 };
-    const events = pack.comeFor(worldOf(open, middle), away);
+    const events = pack.comeFor(worldOf(open, middle), [away]);
     expect(events.map((event) => event.kind)).toEqual(['noticed']);
     expect(hunter.mode).toBe('alerted');
     expect(Math.hypot(hunter.position.x - middle.x, hunter.position.y - middle.y)).toBeGreaterThanOrEqual(HUNTER_ARRIVAL_CLEARANCE);
     expect(hunter.position.x).toBeLessThan(middle.x);
   });
 
+  it('comes from behind you by the walk out, not by the crow flies', () => {
+    // A wall from the west edge most of the way across: the way out to the south-west
+    // runs east first, round its end, so as the crow flies the far side of the
+    // exit is the very road out.
+    const walled = grid(Array.from({ length: 41 }, (_row, y) => (y === 22 ? `${'#'.repeat(56)}.....` : '.'.repeat(61))));
+    const player = { x: 30, y: 18 };
+    const { pack, hunter } = hunterIn(groundOf(wholeMap, { x: 2, y: 2 }), { mode: 'patrol' });
+    pack.comeFor(worldOf(walled, player), [{ x: 0, y: 30 }]);
+    expect(hunter.mode).toBe('alerted');
+    expect(hunter.position.x).toBeLessThan(player.x);
+  });
+
   it('sends nobody when one is already after you, or none is left', () => {
     const chasing = hunterIn(groundOf(wholeMap, { x: 2, y: 2 }), { mode: 'chase' });
-    expect(chasing.pack.comeFor(worldOf(open, middle), undefined)).toEqual([]);
+    expect(chasing.pack.comeFor(worldOf(open, middle), [])).toEqual([]);
     const beaten = hunterIn(groundOf(wholeMap, { x: 2, y: 2 }), { mode: 'beaten' });
-    expect(beaten.pack.comeFor(worldOf(open, middle), undefined)).toEqual([]);
+    expect(beaten.pack.comeFor(worldOf(open, middle), [])).toEqual([]);
     expect(beaten.hunter.mode).toBe('beaten');
   });
 
   it('waits where the player is too hemmed in for it to come from out of sight', () => {
     const cell = grid(['#####', '#...#', '#####']);
     const { pack, hunter } = hunterIn(groundOf({ x: 0, y: 0, width: 5, height: 3 }, { x: 1, y: 1 }), { mode: 'patrol' });
-    expect(pack.comeFor(worldOf(cell, { x: 2, y: 1 }), undefined)).toEqual([]);
+    expect(pack.comeFor(worldOf(cell, { x: 2, y: 1 }), [])).toEqual([]);
     expect(hunter.mode).toBe('patrol');
   });
 
@@ -404,7 +416,7 @@ describe('a hunter that comes for you', () => {
     const wall = grid(Array.from({ length: 41 }, (_row, y) => (y === 10 ? `${'#'.repeat(50)}...........` : '.'.repeat(61))));
     const patch = groundOf({ x: 0, y: 0, width: 30, height: 41 }, { x: 2, y: 2 });
     const { pack, hunter } = hunterIn(patch, { mode: 'patrol' });
-    pack.comeFor(worldOf(wall, { x: 25, y: 5 }), undefined);
+    pack.comeFor(worldOf(wall, { x: 25, y: 5 }), []);
     // Off its patch and further than its tail: any other hunter would let them go.
     const elsewhere = { x: 34, y: 5 };
     pack.advance(worldOf(wall, elsewhere), HUNTER_ALERT_MS + 1);
@@ -415,7 +427,7 @@ describe('a hunter that comes for you', () => {
 
   it('leaves off once you are under a roof that hides you', () => {
     const { pack, hunter } = hunterIn(groundOf(wholeMap, { x: 2, y: 2 }), { mode: 'patrol' });
-    pack.comeFor(worldOf(open, middle), undefined);
+    pack.comeFor(worldOf(open, middle), []);
     const seenAt = hunter.lastSeen;
     pack.advance(worldOf(open, { x: 31, y: 20 }, { playerHidden: true }), HUNTER_ALERT_MS / 2);
     expect(hunter.lastSeen).toEqual(seenAt);

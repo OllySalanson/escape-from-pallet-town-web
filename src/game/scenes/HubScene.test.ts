@@ -1286,7 +1286,7 @@ describe('the standing board in the lobby', () => {
 
       const finalCheck = markupOf(hub);
       expect(finalCheck).toContain(`data-hunter-tier="${tier}"`);
-      expect(finalCheck.includes(', +1 contract')).toBe(pressure !== undefined);
+      expect(finalCheck.includes('this job: ')).toBe(pressure !== undefined);
 
       deploy(hub, start);
       const { runSession } = start.mock.calls[0][1] as WorldSceneData;

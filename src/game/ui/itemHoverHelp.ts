@@ -33,13 +33,34 @@ export interface Box {
 /**
  * Where the box stands: below what it is about if it fits, else above, and
  * slid sideways to stay inside `bounds`. Whole pixels, so its frame is crisp.
+ *
+ * A row of a list is the exception (`beside`): below it is the next row, and on
+ * the armoury rack the box about the Potion hid the name of the Poké Ball, one
+ * of only two rows (the six-character playtest of 1 Nov). So a row's box stands
+ * beside the row, level with it, on whichever side the screen has more room,
+ * and only falls back to below or above where neither side has room for it.
  */
 export function hoverHelpPlacement(
   anchor: Box,
   size: { readonly width: number; readonly height: number },
   bounds: Box,
   gap: number,
+  beside = false,
 ): { readonly left: number; readonly top: number } {
+  if (beside) {
+    // The side with more room: a row in a panel at the screen's edge puts its box
+    // over the map beside the panel, never over the panel's own other window.
+    const right = anchor.right + gap;
+    const left = anchor.left - gap - size.width;
+    const fitsRight = right + size.width <= bounds.right;
+    const fitsLeft = left >= bounds.left;
+    const roomierLeft = anchor.left - bounds.left > bounds.right - anchor.right;
+    const side = fitsLeft && (roomierLeft || !fitsRight) ? left : fitsRight ? right : undefined;
+    if (side !== undefined) {
+      const top = Math.max(bounds.top, Math.min(anchor.top, bounds.bottom - size.height));
+      return { left: Math.round(side), top: Math.round(top) };
+    }
+  }
   const below = anchor.bottom + gap;
   const above = anchor.top - gap - size.height;
   const top =
@@ -172,6 +193,7 @@ export class ItemHoverHelp {
       { width: tip.offsetWidth, height: tip.offsetHeight },
       screen,
       unit * 2,
+      anchor.matches('.px-row'),
     );
     // Placed against the window, stood in the screen, which is what it is
     // positioned in.

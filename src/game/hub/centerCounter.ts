@@ -5,6 +5,7 @@ import {
   pokemonNeedingRecovery,
   quoteRecovery,
   raidClockAfterRecovery,
+  recoveryHeldBackIds,
   teamCondition,
   type RecoveryTerms,
 } from './recovery';
@@ -67,21 +68,33 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
       ],
     };
   }
-  const quoteMs = free
-    ? 0
-    : quoteRecovery(
-        game.stash,
-        pending,
-        hurt.map((stored) => stored.id),
-        recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed),
-      );
-  const them = hurt.length === 1 ? hurt[0].pokemon.name : hurt.length === 2 ? 'both of them' : `all ${hurt.length} of them`;
+  const terms = recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed);
+  const ids = hurt.map((stored) => stored.id);
+  // A debt already at the cap holds back whatever would cost clock
+  // (`recovery.ts`): the next raid is as short as she will make it.
+  const heldBack = free ? [] : recoveryHeldBackIds(game.stash, pending, ids, terms);
+  const capped = `Your next raid is already down to ${clockAfter(pending)}, as short as I will make it.`;
+  const raidFirst = 'Raid first, then come and see me.';
+  if (heldBack.length === hurt.length) {
+    return { lines: [`${teamCondition(game.stash) ?? 'Somebody needs me'}. ${capped}`, raidFirst] };
+  }
+  const quoteMs = free ? 0 : quoteRecovery(game.stash, pending, ids, terms);
+  const treated = hurt.filter((stored) => !heldBack.includes(stored.id));
+  const them =
+    treated.length === 1
+      ? treated[0].pokemon.name
+      : treated.length === hurt.length
+        ? treated.length === 2 ? 'both of them' : `all ${treated.length} of them`
+        : `${treated.length} of them`;
   const price =
     quoteMs === 0
       ? 'It will not cost your next raid a second.'
       : `It takes ${formatRecoveryClock(quoteMs)} off your next raid.`;
   return {
-    lines: [`${teamCondition(game.stash) ?? 'Somebody needs me'}. ${price}`],
+    lines: [
+      `${teamCondition(game.stash) ?? 'Somebody needs me'}. ${price}`,
+      ...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []),
+    ],
     question: `Shall I heal ${them}?`,
     // With nobody able to raid, the only useful answer is yes: a question opening
     // on NOT NOW sent a newcomer pressing SPACE round her counter for ever.

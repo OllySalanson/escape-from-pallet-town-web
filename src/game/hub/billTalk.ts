@@ -1,6 +1,7 @@
 import { formatMoney, getItemById, itemAmountsFor } from '../items';
 import {
   TRADER_BERTH_PRICE,
+  STANDING_PER_CONTRACT,
   TRADER_BERTH_STANDING,
   barterShortfall,
   checkBerth,
@@ -56,11 +57,23 @@ function keptBack(name: string, required: TraderStandingId): string {
  * rather than about them.
  */
 const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
-  stranger: 'I do not know you. Bring things home from a raid and I might.',
+  // Not "bring things home": a raid's haul earns no standing (`traderStandingPoints`),
+  // and a player who banked twenty hauls on that word was still a stranger to him.
+  stranger: 'I do not know you. Bank a job off Oak\'s board and I might.',
   regular: 'You keep coming home. One thing off the deck a trip, and the first of the barters.',
   trusted: 'I trust you. Two a trip, the good medicine, and most of the hold.',
   partner: 'Partner! Three a trip, and nothing on the boat is held back.',
 };
+
+/**
+ * How a stranger gets on his books, counted. Money cannot start it - he sells a
+ * stranger nothing to spend it on - so it is said as jobs, the one way in a
+ * newcomer has (`STANDING_PER_CONTRACT`), with a beaten boss as the other.
+ */
+export function strangerWayIn(pointsShort: number): string {
+  const jobs = Math.ceil(pointsShort / STANDING_PER_CONTRACT);
+  return `Bank ${jobs} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I open the deck to you.`;
+}
 
 /** What he says to NOT NOW. */
 export const NOT_DEALT_LINE = 'It will be here. Most things are.';
@@ -169,9 +182,11 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
     lines: [
       READS_YOU[tier.id],
       trip,
-      ...(next && !meetsStanding(counter.progress, 'trusted')
-        ? ['Bank a contract, beat a boss or spend with me, and I show you more.']
-        : []),
+      ...(next && tier.ration === 0
+        ? [strangerWayIn(next.pointsShort)]
+        : next && !meetsStanding(counter.progress, 'trusted')
+          ? ['Bank a contract, beat a boss or spend with me, and I show you more.']
+          : []),
     ],
     question: SEE_THE_LIST_QUESTION,
   };

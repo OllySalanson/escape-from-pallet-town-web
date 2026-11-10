@@ -67,6 +67,8 @@ export class Bag {
    * nothing the player placed moves out from under it.
    */
   private arrangedByHand = false;
+  /** Bumped by everything that changes what is packed or where, so a question about room can be asked once a change. */
+  private changes = 0;
 
   public constructor(
     initialContents: BagContents = {},
@@ -92,6 +94,15 @@ export class Bag {
   }
 
   /**
+   * A count that moves whenever the contents, the cargo or the layout do. The
+   * raid asks every frame whether its stake would still go in, and the answer
+   * is a whole packing: asked again only when this has moved.
+   */
+  public get revision(): number {
+    return this.changes;
+  }
+
+  /**
    * Tells the pack what it is carrying home.
    *
    * The raid's own catch list is the truth, so this is re-derived from it on
@@ -101,6 +112,7 @@ export class Bag {
    */
   public setCargo(cargo: readonly GridCargo[]): void {
     this.cargoValue = [...cargo];
+    this.changes += 1;
     this.holdLayout();
   }
 
@@ -119,6 +131,7 @@ export class Bag {
   public arrange(arrangement: GridArrangement): void {
     this.arrangementValue = arrangement;
     this.arrangedByHand = true;
+    this.changes += 1;
     this.arrangementValue = arrangementOf(this.layout());
   }
 
@@ -133,6 +146,7 @@ export class Bag {
   public unarrange(): void {
     this.arrangementValue = EMPTY_ARRANGEMENT;
     this.arrangedByHand = false;
+    this.changes += 1;
   }
 
   /**
@@ -147,6 +161,7 @@ export class Bag {
     }
     this.arrangementValue = tidyArrangement(this.contents, this.capacity, this.cargoValue);
     this.arrangedByHand = true;
+    this.changes += 1;
   }
 
   /**
@@ -233,7 +248,13 @@ export class Bag {
     this.contents[itemId] = this.count(itemId) + quantity;
     this.arrangementValue = tidyArrangement(this.contents, this.capacity, this.cargoValue);
     this.arrangedByHand = true;
+    this.changes += 1;
     return 'reseated';
+  }
+
+  /** Whether `takeFind` would take this, asked without taking it. */
+  public wouldTakeFind(itemId: string, quantity = 1): boolean {
+    return isPositiveInteger(quantity) && (this.fits(itemId, quantity) || this.tidyWouldFit(itemId, quantity));
   }
 
   /** @returns False when the pack has no room, having changed nothing. */
@@ -246,6 +267,7 @@ export class Bag {
     }
 
     this.contents[itemId] = this.count(itemId) + quantity;
+    this.changes += 1;
     this.holdLayout();
     return true;
   }
@@ -261,6 +283,7 @@ export class Bag {
     } else {
       this.contents[itemId] = remaining;
     }
+    this.changes += 1;
     this.holdLayout();
     return true;
   }
