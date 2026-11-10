@@ -186,6 +186,7 @@ import {
   buildingSize,
   groundAt,
   paintWith,
+  renameMap,
   placeSpot,
   rectangle,
   thingExists,
@@ -1186,6 +1187,7 @@ describe('deleting a draft', () => {
   });
 
   it('asks in a word that fits the button and names the draft the next press takes (playtest 39 A7)', () => {
+    vi.useFakeTimers();
     localStorage.setItem(
       MAKER_STORAGE_KEY,
       JSON.stringify({
@@ -1218,6 +1220,7 @@ describe('deleting a draft', () => {
     // Drawn again while it waits, it still asks and still names the draft.
     scene.handleKey(key('r'));
     expect(scene.overlay.root.innerHTML).toContain(`data-delete-draft="draft-2" data-help="${armed}">Sure?<`);
+    vi.advanceTimersByTime(1_000);
     internals.deleteDraft(button, 'draft-2');
     expect(scene.overlay.root.innerHTML).not.toContain('data-delete-draft="draft-2"');
     expect(scene.overlay.root.innerHTML).toContain('Brook Lane deleted.');
@@ -1561,5 +1564,204 @@ describe('the lists in the two columns', () => {
     press(scene, '[data-panel]', { panel: 'map' });
     press(scene, '[data-panel]', { panel: 'drafts' });
     expect(side().scrollTop).toBe(0);
+  });
+});
+
+/** What a second tab of the game holds: a page of its own, so a session of its own. */
+function openSecondTab(): MakerInternals {
+  forgetMakerSession();
+  return openMaker().scene;
+}
+
+/** Renames the map on screen and saves it, as typing a name and moving on does. */
+function renameAndSave(scene: MakerInternals, name: string): void {
+  const internals = scene as unknown as {
+    commit(next: MapFile, selected: undefined): void;
+    flushAutosave(): void;
+  };
+  internals.commit(renameMap(scene.file, name), undefined);
+  internals.flushAutosave();
+}
+
+const storedNames = (): string[] =>
+  (
+    JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!) as { drafts: { file: MapFile }[] }
+  ).drafts.map((draft) => draft.file.name);
+
+describe('the map maker open in two tabs (bug hunt, 10 Nov 2026)', () => {
+  it('keeps both tabs\' maps, each with its latest edits, whichever saves last', () => {
+    storeDraft(blankMap());
+    const a = openMaker().scene;
+    renameAndSave(a, 'Quarry Of A');
+    expect(storedNames()).toEqual(['Quarry Of A']);
+
+    const b = openSecondTab();
+    b.overlay.clicks.get('[data-new]')!();
+    renameAndSave(b, 'Harbour Of B');
+    expect(storedNames().sort()).toEqual(['Harbour Of B', 'Quarry Of A']);
+
+    // Each tab saves its own copy of the drafts: written back whole, A's put
+    // away B's map, and then B's put A's old map back over its newer one.
+    renameAndSave(a, 'Quarry Of A v2');
+    expect(storedNames().sort()).toEqual(['Harbour Of B', 'Quarry Of A v2']);
+    renameAndSave(b, 'Harbour Of B v2');
+    expect(storedNames().sort()).toEqual(['Harbour Of B v2', 'Quarry Of A v2']);
+  });
+
+  it('keeps a map the other tab made when this one deletes, opens or starts another', () => {
+    localStorage.setItem(
+      MAKER_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        current: 'draft-1',
+        drafts: [
+          { key: 'draft-1', file: { ...blankMap(), name: 'Open Here' }, updatedAt: 1 },
+          { key: 'draft-2', file: { ...blankMap(), name: 'Old Draft' }, updatedAt: 2 },
+        ],
+      }),
+    );
+    vi.useFakeTimers();
+    const a = openMaker().scene;
+    const b = openSecondTab();
+    b.overlay.clicks.get('[data-new]')!();
+    renameAndSave(b, 'Made In B');
+
+    const internals = a as unknown as {
+      openPanel(panel: string): void;
+      deleteDraft(button: HTMLElement, key: string): void;
+      openDraft(key: string): void;
+    };
+    internals.openPanel('drafts');
+    const button = { textContent: 'Delete', dataset: {} as DOMStringMap } as unknown as HTMLElement;
+    internals.deleteDraft(button, 'draft-2');
+    vi.advanceTimersByTime(1_000);
+    internals.deleteDraft(button, 'draft-2');
+    expect(storedNames().sort()).toEqual(['Made In B', 'Open Here']);
+
+    internals.openDraft('draft-1');
+    a.overlay.clicks.get('[data-new]')!();
+    expect(storedNames()).toContain('Made In B');
+  });
+
+  it('keeps a walk out of a try ticked in the other tab', () => {
+    storeDraft({ ...blankMap(), name: 'Walked' });
+    const a = openMaker().scene;
+    const b = openSecondTab();
+    b.overlay.clicks.get('[data-new]')!();
+    // Tab A's maker walks out of a try: the tick lands on the draft in storage.
+    const stored = JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!) as {
+      drafts: { key: string; walkedOut?: string }[];
+    };
+    localStorage.setItem(
+      MAKER_STORAGE_KEY,
+      JSON.stringify({
+        ...stored,
+        drafts: stored.drafts.map((draft) =>
+          draft.key === 'draft-1' ? { ...draft, walkedOut: 'abcd1234' } : draft,
+        ),
+      }),
+    );
+    renameAndSave(b, 'Made In B');
+    renameAndSave(a, 'Walked Twice');
+
+    const after = JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!) as {
+      drafts: { key: string; walkedOut?: string }[];
+    };
+    expect(after.drafts.find((draft) => draft.key === 'draft-1')?.walkedOut).toBe('abcd1234');
+  });
+
+  it('keeps an edit storage refused, and stores it with the next save that is kept', () => {
+    storeDraft(blankMap());
+    const a = openMaker().scene;
+    const b = openSecondTab();
+    b.overlay.clicks.get('[data-new]')!();
+    const storage = localStorage as unknown as { setItem(key: string, value: string): void };
+    const setItem = storage.setItem.bind(storage);
+    storage.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    renameAndSave(a, 'Refused');
+    expect(storedNames()).not.toContain('Refused');
+    storage.setItem = setItem;
+    renameAndSave(b, 'Made In B');
+
+    // Room again: A's next save is of another draft, and still carries the edit.
+    (a as unknown as { openDraft(key: string): void }).openDraft(
+      (JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!) as { current: string }).current,
+    );
+    expect(storedNames().sort()).toEqual(['Made In B', 'Refused']);
+  });
+
+  it('shows the other tab\'s new map in the drafts list as soon as it is saved', () => {
+    const listeners = new Map<string, (event: unknown) => void>();
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, handler: (event: unknown) => void) =>
+        listeners.set(type, handler),
+      removeEventListener: () => undefined,
+    });
+    storeDraft({ ...blankMap(), name: 'Open Here' });
+    const a = openMaker().scene;
+    (a as unknown as { openPanel(panel: string): void }).openPanel('drafts');
+    const followOtherTab = listeners.get('storage')!;
+
+    const b = openSecondTab();
+    b.overlay.clicks.get('[data-new]')!();
+    renameAndSave(b, 'Made In B');
+    followOtherTab({ key: MAKER_STORAGE_KEY });
+
+    expect(a.overlay.root.innerHTML).toContain('Made In B');
+    // A tab's own draft is never taken from under it by the other's list.
+    expect(a.file.name).toBe('Open Here');
+
+    // Nothing changed on A's map, so following B wrote nothing of A's.
+    const setItem = vi.spyOn(localStorage, 'setItem');
+    (a as unknown as { flushAutosave(): void }).flushAutosave();
+    expect(setItem).not.toHaveBeenCalled();
+
+    // Its map deleted in B, A's open map is put back: it is on A's screen.
+    localStorage.setItem(
+      MAKER_STORAGE_KEY,
+      JSON.stringify({ ...JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!), drafts: [] }),
+    );
+    followOtherTab({ key: MAKER_STORAGE_KEY });
+    expect(storedNames()).toEqual(['Open Here']);
+  });
+});
+
+describe('a double-click on a draft\'s Delete (bug hunt, 10 Nov 2026)', () => {
+  it('arms it and deletes nothing: the second press must be a press of its own', () => {
+    vi.useFakeTimers();
+    localStorage.setItem(
+      MAKER_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        current: 'draft-1',
+        drafts: [
+          { key: 'draft-1', file: blankMap(), updatedAt: 1 },
+          { key: 'draft-2', file: { ...blankMap(), name: 'Week Of Work' }, updatedAt: 2 },
+        ],
+      }),
+    );
+    const { scene } = openMaker();
+    (scene as unknown as { openPanel(panel: string): void }).openPanel('drafts');
+    page.clicked = { deleteDraft: 'draft-2' };
+    const press = scene.overlay.clicks.get('[data-delete-draft]')!;
+
+    // A double-click is two clicks a few milliseconds apart.
+    press();
+    vi.advanceTimersByTime(80);
+    press();
+
+    expect(storedNames()).toContain('Week Of Work');
+    expect(scene.overlay.root.innerHTML).not.toContain('Week Of Work deleted.');
+    expect(page.clicked.help).toBe(
+      'Press again to delete Week Of Work for good. Anything else keeps it.',
+    );
+
+    // A press of its own, after reading what it does, deletes it.
+    vi.advanceTimersByTime(1_000);
+    press();
+    expect(storedNames()).not.toContain('Week Of Work');
+    expect(scene.overlay.root.innerHTML).toContain('Week Of Work deleted.');
   });
 });

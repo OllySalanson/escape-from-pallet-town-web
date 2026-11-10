@@ -29,11 +29,16 @@ import {
   thingAt,
 } from './draft';
 import {
+  dropDraft,
   loadMakerStore,
   mapFileText,
+  markSent,
   newDraftKey,
+  openOn,
   placeOpenedFile,
+  putDraft,
   saveMakerStore,
+  storeDraftChanges,
   walkedVersion,
   withDraft,
   withoutDraft,
@@ -379,6 +384,52 @@ describe('drafts in this browser', () => {
     expect(loaded.unreadable).toBeUndefined();
     expect(loaded.drafts[0].file.buildings).toEqual([]);
     expect(loaded.drafts[0].file.people).toEqual([]);
+  });
+
+  // Two tabs of the maker share one storage (bug hunt, 10 Nov 2026): a change
+  // is made to the drafts as they are stored now, and touches no other draft.
+  it('makes a change to the drafts as stored now, leaving every other draft as it is', () => {
+    const storage = memory();
+    const mine = { key: 'mine', file: blankMap(), updatedAt: 1 };
+    saveMakerStore({ drafts: [mine], current: 'mine' }, storage);
+    const held = loadMakerStore(storage);
+    // Another tab adds a map and ticks this one's walk.
+    saveMakerStore(
+      withDraft(
+        { drafts: [{ ...mine, walkedOut: 'feedf00d' }] },
+        { key: 'theirs', file: renameMap(blankMap(), 'Theirs'), updatedAt: 2 },
+      ),
+      storage,
+    );
+
+    const edit = putDraft({ key: 'mine', file: renameMap(blankMap(), 'Mine'), updatedAt: 3 });
+    const { store, saved } = storeDraftChanges([edit], held, storage);
+    expect(saved).toBe(true);
+    expect(store).toEqual(loadMakerStore(storage));
+    expect(store.drafts.map((draft) => [draft.key, draft.file.name, draft.walkedOut])).toEqual([
+      ['mine', 'Mine', 'feedf00d'],
+      ['theirs', 'Theirs', undefined],
+    ]);
+    expect(store.current).toBe('mine');
+
+    const sent = storeDraftChanges([markSent('theirs', 'RCPT'), openOn('theirs')], store, storage);
+    expect(sent.store.drafts.find((draft) => draft.key === 'theirs')?.sentAs).toBe('RCPT');
+    expect(sent.store.current).toBe('theirs');
+    expect(storeDraftChanges([openOn('gone')], sent.store, storage).store.current).toBe('theirs');
+    expect(
+      storeDraftChanges([dropDraft('theirs')], sent.store, storage).store.drafts.map((draft) => draft.key),
+    ).toEqual(['mine']);
+  });
+
+  it('makes a change to the drafts the tab holds when there is no storage to read', () => {
+    const held = withDraft({ drafts: [] }, { key: 'a', file: blankMap(), updatedAt: 1 });
+    const { store, saved } = storeDraftChanges(
+      [putDraft({ key: 'b', file: blankMap(), updatedAt: 2 })],
+      held,
+      undefined,
+    );
+    expect(saved).toBe(false);
+    expect(store.drafts.map((draft) => draft.key)).toEqual(['b', 'a']);
   });
 
   it('never gives two drafts one key', () => {
