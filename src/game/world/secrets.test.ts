@@ -17,14 +17,17 @@ import {
   openSecrets,
   raidConditions,
   SECRETS,
+  secretOpenAt,
   secretsHeldBy,
+  sleepingSecrets,
   type RaidConditions,
   type Secret,
   type SecretCondition,
 } from './secrets';
 import { partyOf, trainerWinRate } from './trainerMeasure';
 import { createRunTrainerEncounters } from './trainers';
-import { MISTY_BOSS_ID } from './valeQuarters';
+import { gymOf, MISTY_BOSS_ID, valeGyms, type ValeGym } from './valeQuarters';
+import { weatherAt } from './districts';
 import type { GridPosition } from '../movement/gridMovement';
 
 /**
@@ -51,15 +54,22 @@ function hintsOf(condition: SecretCondition): readonly string[] {
     case 'field-move':
       return [condition.move.replace('-', ' ').toUpperCase()];
     case 'carried':
-      return condition.items.flatMap((item) => (item.endsWith('rod') ? ['ROD', 'LINE'] : [item.toUpperCase()]));
+      return condition.items.flatMap((item) =>
+        item.endsWith('rod') ? ['ROD', 'LINE'] : item === 'poke-flute' ? ['FLUTE', 'TUNE'] : [item.toUpperCase()],
+      );
     case 'whole-chart':
       return ['CHART'];
+    case 'badge':
+      return [gymOf(condition.bossId)!.badge, gymOf(condition.bossId)!.leader.toUpperCase()];
+    case 'raid-clock':
+      return ['LOW WATER'];
     case 'either':
       return condition.of.flatMap(hintsOf);
   }
 }
 
-const isWhen = (condition: SecretCondition): boolean => condition.kind === 'hour' || condition.kind === 'weekday';
+const isWhen = (condition: SecretCondition): boolean =>
+  condition.kind === 'hour' || condition.kind === 'weekday' || condition.kind === 'raid-clock';
 const plain = (text: string): string => text.toUpperCase().replace(/[’']/g, "'");
 const says = (text: string, words: readonly string[]): boolean => words.some((word) => plain(text).includes(word));
 
@@ -99,6 +109,10 @@ describe("the vale's secrets", () => {
       case 'giver':
         return entities
           .filter((entity) => entity.secret === secret.id && (secret.nook === 'figure') === (entity.pokemon !== undefined))
+          .flatMap((entity) => beside(entity.position));
+      case 'summons':
+        return entities
+          .filter((entity) => entity.secret === secret.id && entity.kind === 'sign')
           .flatMap((entity) => beside(entity.position));
       case 'line': {
         const inPlace = placeTiles(secret.place);
@@ -156,13 +170,14 @@ describe("the vale's secrets", () => {
   );
 
   it('can each be opened by some raid, and only by one meeting all its conditions', () => {
-    const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false };
+    const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], badges: [], chartWhole: false };
     expect(openSecrets(base)).toEqual([]);
     const everything: RaidConditions = {
       ...base,
       leadTypes: ['Fighting', 'Ground'],
       fieldMoves: ['rock-smash'],
-      carried: ['old-rod', 'pickaxe'],
+      carried: ['old-rod', 'pickaxe', 'poke-flute'],
+      badges: [MISTY_BOSS_ID],
       chartWhole: true,
     };
     for (const secret of SECRETS) {
@@ -174,8 +189,11 @@ describe("the vale's secrets", () => {
         ...(day?.kind === 'weekday' ? { weekday: day.day } : {}),
       };
       expect(openSecrets(raid), secret.name).toContain(secret.id);
+      const clock = secret.when.find((condition) => condition.kind === 'raid-clock');
+      expect(secretOpenAt(secret, raid, clock?.kind === 'raid-clock' ? clock.fromMs : 0), secret.name).toBe(true);
       for (const condition of secret.when) {
-        expect(conditionHolds(condition, base), `${secret.name} is open on an ordinary raid`).toBe(false);
+        // Read at the start of the raid, which no stretch of the clock opens on.
+        expect(conditionHolds(condition, base, 0), `${secret.name} is open on an ordinary raid`).toBe(false);
       }
     }
   });
@@ -190,9 +208,18 @@ describe("the vale's secrets", () => {
         { itemId: 'potion', quantity: 0 },
       ],
       true,
+      [MISTY_BOSS_ID],
     );
-    expect(raid).toMatchObject({ hour: 'dusk', weekday: 0, month: 10, leadTypes: ['Fighting'], carried: ['old-rod'], chartWhole: true });
-    expect(raidConditions(new Date(2026, 10, 8, 23), [], [], false).leadTypes).toEqual([]);
+    expect(raid).toMatchObject({
+      hour: 'dusk',
+      weekday: 0,
+      month: 10,
+      leadTypes: ['Fighting'],
+      carried: ['old-rod'],
+      badges: [MISTY_BOSS_ID],
+      chartWhole: true,
+    });
+    expect(raidConditions(new Date(2026, 10, 8, 23), [], [], false, []).leadTypes).toEqual([]);
   });
 
   it('gives the next reward until all are found, and counts what the vault holds as found', () => {
@@ -224,12 +251,33 @@ describe("the vale's secrets", () => {
         reward.kind === 'meet' ? [reward.speciesId] : reward.kind === 'gift' ? [reward.gift.speciesId] : [],
       ),
     );
-    expect(species.sort()).toEqual(['golem', 'gyarados', 'machamp']);
+    expect(species.sort()).toEqual(['golem', 'gyarados', 'kabutops', 'machamp', 'snorlax']);
   });
 
-  describe('against the first gym', () => {
-    const misty = createRunTrainerEncounters().find((encounter) => encounter.bossId === MISTY_BOSS_ID)!.trainer;
-    const level = misty.party[0].level;
+  describe('against the gyms', () => {
+    const encounters = createRunTrainerEncounters();
+    const leaderOf = (gym: ValeGym) => encounters.find((encounter) => encounter.bossId === gym.bossId)!.trainer;
+    const misty = leaderOf(gymOf(MISTY_BOSS_ID)!);
+
+    /**
+     * The gym a secret comes before: the first in the order whose badge it
+     * does not ask for. One behind the last gym there is is measured at that
+     * gym, which is the last a player will have beaten to reach it.
+     */
+    const gymBefore = (secret: Secret): ValeGym => {
+      const asks = (gym: ValeGym) => secret.when.some((condition) => condition.kind === 'badge' && condition.bossId === gym.bossId);
+      return valeGyms().find((gym) => !asks(gym)) ?? valeGyms().filter(asks).at(-1)!;
+    };
+    /** The level a gym is fought at: its leader's highest. */
+    const levelOf = (gym: ValeGym) => Math.max(...leaderOf(gym).party.map((pokemon) => pokemon.level));
+
+    it('measures each secret against the gym it comes before', () => {
+      expect(gymBefore(SECRETS.find((secret) => secret.id === 'the-sleeper-in-the-pines')!).bossId).toBe(MISTY_BOSS_ID);
+      // Past Misty, before whoever is next; Misty's own while she is the last.
+      expect(gymBefore(SECRETS.find((secret) => secret.id === 'the-drowned-bell')!).bossId).toBe(
+        (valeGyms()[1] ?? valeGyms()[0]).bossId,
+      );
+    });
 
     /**
      * A gift costs no fight, so it is held under the gym's own bar: led into
@@ -245,16 +293,31 @@ describe("the vale's secrets", () => {
       }
     });
 
-    it('a Pokemon met is a fight that has to be earned at the level she is met at', () => {
-      for (const reward of SECRETS.flatMap((secret) => secret.rewards)) {
-        if (reward.kind !== 'meet') continue;
-        const rates = ['charmeleon', 'wartortle', 'ivysaur'].map((starter) =>
-          winRateAgainst(starter, level, reward.speciesId, reward.level, 100),
-        );
-        const mean = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
-        expect(mean, reward.speciesId).toBeLessThan(0.5);
-      }
-    });
+    /**
+     * A Pokemon met has to be beaten or worn down to be had, so it is held to
+     * the gym it comes before the other way round: a starter at that gym's
+     * level, in the weather of the place it is met, loses to it more often than
+     * not. A player who can take it has outgrown the gym already, so it makes
+     * no gym trivial. Measured: Snorlax Lv 25 against starters at Misty's 15
+     * wins 94% of fights; Kabutops Lv 28 in the Coast's rain at Koga's 20, 51%
+     * - the Charmeleon almost never, the Ivysaur's Grass, four times over, nine
+     * fights in ten.
+     */
+    it.each(SECRETS.filter((secret) => secret.rewards.some((reward) => reward.kind === 'meet')).map((secret) => [secret.name, secret] as const))(
+      '%s is a fight that has to be earned at the level of the gym it comes before',
+      (_name, secret) => {
+        const level = levelOf(gymBefore(secret));
+        const weather = secret.nook === 'line' ? null : weatherAt(VALE, nookTiles(secret)[0]);
+        for (const reward of secret.rewards) {
+          if (reward.kind !== 'meet') continue;
+          const rates = ['charmeleon', 'wartortle', 'ivysaur'].map((starter) =>
+            winRateAgainst(starter, level, reward.speciesId, reward.level, 100, 0x5eed, weather),
+          );
+          const mean = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+          expect(mean, reward.speciesId).toBeLessThan(0.5);
+        }
+      },
+    );
   });
 
   describe('rumours', () => {
@@ -295,7 +358,7 @@ describe("the vale's secrets", () => {
 
   describe('in a raid', () => {
     const insertion = 'greystone-vale-moor-top';
-    const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], chartWhole: false };
+    const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], badges: [], chartWhole: false };
     const afternoon: RaidConditions = { ...dusk, hour: 'day' };
     const known = { secretsFound: [], giftsReceived: [] };
     const plan = (seed: number, conditions?: RaidConditions, found: readonly string[] = []) =>
@@ -322,6 +385,27 @@ describe("the vale's secrets", () => {
       expect(secretLoot(plan(7, afternoon))).toEqual([]);
       expect(secretLoot(plan(7))).toEqual([]);
       expect(plan(7, dusk).secrets.map((secret) => secret.id)).toEqual(['the-long-shadow']);
+    });
+
+    it('lays the sleeper across his glade every raid until he is had, and wakes him only for the flute', () => {
+      const sleeper = 'the-sleeper-in-the-pines';
+      expect(plan(7, dusk).sleeping).toEqual([sleeper]);
+      expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(sleeper);
+      const flute = plan(7, { ...dusk, carried: ['poke-flute'] });
+      expect(flute.sleeping).toBeUndefined();
+      expect(flute.secrets.find((secret) => secret.id === sleeper)?.reward).toEqual({ kind: 'meet', speciesId: 'snorlax', level: 25 });
+      // Had, he is gone: nothing sleeps there and the flute wakes nobody.
+      expect(plan(7, dusk, [`${sleeper}/snorlax`]).sleeping).toBeUndefined();
+      expect(sleepingSecrets({ ...dusk, carried: [] }, { secretsFound: [], giftsReceived: [] })).toEqual([sleeper]);
+    });
+
+    it('rings the drowned bell only for the badge, and only at low water', () => {
+      const bell = SECRETS.find((secret) => secret.id === 'the-drowned-bell')!;
+      const badge = { ...dusk, badges: [MISTY_BOSS_ID] };
+      expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(bell.id);
+      expect(plan(7, badge).secrets.find((secret) => secret.id === bell.id)?.reward).toEqual({ kind: 'meet', speciesId: 'kabutops', level: 28 });
+      expect([0, 59_999, 60_000, 119_999, 120_000].map((tideMs) => secretOpenAt(bell, badge, tideMs))).toEqual([false, false, true, true, false]);
+      expect(secretOpenAt(bell, dusk, 90_000)).toBe(false);
     });
 
     it('lays a berry in a nook once everything in it has been found', () => {

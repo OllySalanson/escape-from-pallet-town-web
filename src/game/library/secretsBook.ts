@@ -1,5 +1,7 @@
 import { getItemById } from '../items/items';
+import { formatElapsedClock } from '../run/raidClock';
 import { FIELD_MOVES } from '../world/fieldMoves';
+import { gymOf } from '../world/valeQuarters';
 import { SECRETS, type Secret, type SecretCondition, type SecretNook, type SecretReward } from '../world/secrets';
 import type { BookPage, LibraryBook } from './books';
 
@@ -24,6 +26,7 @@ export const SECRETS_BOOK_ID = 'vale-secrets';
 export const NOTES: Readonly<Record<string, string>> = {
   'the-lost-fold': 'A STRENGTH boulder on HIGH MOOR shuts the fold.',
   'x-marks-the-spot': 'Past MISTY.',
+  'the-drowned-bell': 'Past MISTY.',
 };
 
 const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
@@ -37,7 +40,7 @@ const HOURS = { day: 'by day', dusk: 'at dusk', night: 'at night' } as const;
 
 /** Whether a condition is about the clock rather than the party. */
 function isTime(condition: SecretCondition): boolean {
-  return condition.kind === 'hour' || condition.kind === 'weekday';
+  return condition.kind === 'hour' || condition.kind === 'weekday' || condition.kind === 'raid-clock';
 }
 
 /** One condition in words, with its keys and things as tokens. */
@@ -55,6 +58,10 @@ export function conditionWords(condition: SecretCondition): string {
       return `${condition.items.map((item) => `${article(getItemById(item)?.displayName ?? item)} {item:${item}}`).join(' or ')} packed`;
     case 'whole-chart':
       return 'the whole treasure map pinned up';
+    case 'badge':
+      return `the ${gymOf(condition.bossId)?.badge ?? condition.bossId} won`;
+    case 'raid-clock':
+      return `${formatElapsedClock(condition.fromMs)} to ${formatElapsedClock(condition.untilMs)} into the raid`;
     case 'either':
       return condition.of.map(conditionWords).join(', or ');
   }
@@ -81,6 +88,7 @@ const NOOK_WORDS: Readonly<Record<SecretNook, string>> = {
   figure: 'It stands there, waiting.',
   giver: 'Somebody there hands it over.',
   line: 'Cast a line into the water.',
+  summons: 'Pull it, and something answers.',
 };
 
 /** A secret's page. */
@@ -92,7 +100,7 @@ export function secretPage(secret: Secret): BookPage {
     `WHEN: ${when.length > 0 ? when.join(', ') : 'any raid'}`,
     ...(bring.length > 0 ? [`BRING: ${bring.join('; ')}`] : []),
     `HOLDS: ${secret.rewards.map(rewardWords).join(', then ')}`,
-    `${NOOK_WORDS[secret.nook]}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
+    `${secret.shutLines ? 'It lies there asleep, every raid.' : NOOK_WORDS[secret.nook]}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
   ];
   return { heading: secret.name, text: lines.join('\n') };
 }
@@ -110,7 +118,7 @@ export const SECRETS_BOOK: LibraryBook = {
     },
     {
       heading: 'Clues and rumours',
-      text: 'A sign stands near every nook, naming the place and hinting at the rest. In the harbour, the board, the ANGLER, the S.S. ANNE\'s captain, the SEAGALLOP\'s sailor and BILL tell rumours.',
+      text: 'A sign stands near every nook, naming the place and hinting at the rest. In the harbour, the board, the ANGLER, the S.S. ANNE\'s captain, the SEAGALLOP\'s sailor, BILL and the PRIZE CLERK tell rumours.',
     },
     {
       heading: 'Keeping what you find',

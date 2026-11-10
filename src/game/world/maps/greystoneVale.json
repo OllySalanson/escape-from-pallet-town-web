@@ -7654,6 +7654,28 @@
    ]
   },
   {
+   "x": 226,
+   "y": 120,
+   "name": "Woodsman",
+   "look": "hiker",
+   "facing": "left",
+   "secret": "the-sleeper-in-the-pines",
+   "lines": [
+    "Shh! He came down the lane for the honey in the spring, lay down right there, and has not got up since.",
+    "DO NOT WAKE HIM. Not that you could. My grandad said nothing but a FLUTE ever woke one of those."
+   ],
+   "beat": {
+    "everyMs": 4100,
+    "glances": [
+     "left",
+     "up"
+    ]
+   },
+   "calls": [
+    "Shh!"
+   ]
+  },
+  {
    "x": 231,
    "y": 114,
    "name": "Bee Warden",
@@ -14353,6 +14375,15 @@
    ]
   },
   {
+   "x": 164,
+   "y": 303,
+   "secret": "the-drowned-bell",
+   "lines": [
+    "A BELL ROPE comes up out of the sea, tied off to this bollard. Down there, where the church went under, hangs its bell.",
+    "Old Salt up the quay swears it only rings at LOW WATER: a minute in, until two."
+   ]
+  },
+  {
    "x": 86,
    "y": 261,
    "lines": [
@@ -17265,6 +17296,13 @@
    "y": 112,
    "species": "oddish",
    "level": 8
+  },
+  {
+   "x": 224,
+   "y": 119,
+   "species": "snorlax",
+   "level": 25,
+   "secret": "the-sleeper-in-the-pines"
   },
   {
    "x": 140,

@@ -157,6 +157,8 @@ export const WORLD_ICONS = {
   /** A landmark a banked contract finished with: the mast, standing, switched on. */
   landmarkWorked: 'landmark-worked',
   signPost: 'sign-post',
+  /** The drowned church's spire and its bell rope: THE DROWNED BELL's nook (`world/secrets.ts`). */
+  bellRope: 'bell-rope',
   extractionOpen: 'extraction-open',
   /** A map maker's exit buried until a Pickaxe digs it out (`MapFileOpens`). */
   rubble: 'rubble',

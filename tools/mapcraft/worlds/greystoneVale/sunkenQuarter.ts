@@ -228,6 +228,11 @@ export function sunkenQuarter(): MapcraftResult {
         { x: 47, y: 25, lines: ['THE BOATYARD', 'Repairs to anything that floats. Everything else we can only sympathise with.'] },
         { x: 32, y: 47, lines: ['MARKET STREET', 'Market on Thursdays. Bring a boat.'] },
         { x: 28, y: 56, lines: ['LOW WATER', 'Stair to the sea, a minute and a half after the tide turns. Do not wait for the second turn.'] },
+        // The drowned bell (`src/game/world/secrets.ts`): the old church went
+        // down with the lower town, and its bell rope comes up out of the sea
+        // and is tied off to a bollard at Market Street's edge. Pulled at low
+        // water with MISTY's badge won, it calls.
+        { x: 36, y: 47, secret: 'the-drowned-bell', lines: ['A BELL ROPE comes up out of the sea, tied off to this bollard. Down there, where the church went under, hangs its bell.', 'Old Salt up the quay swears it only rings at LOW WATER: a minute in, until two.'] },
       ],
       // A Slowpoke asleep on the old west quay, a Krabby at the east end of the
       // high street where the sea comes in, and what has moved in since.

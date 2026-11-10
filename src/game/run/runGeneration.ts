@@ -42,6 +42,7 @@ import {
   nextReward,
   openSecrets,
   secretById,
+  sleepingSecrets,
   SPENT_NOOK_BERRIES,
   type RaidConditions,
   type SecretReward,
@@ -614,6 +615,12 @@ export interface RunPlan {
    * a line are the scene's to meet (`WorldScene`).
    */
   readonly secrets: readonly OpenSecret[];
+  /**
+   * The secrets shut this raid whose figure stands anyway (`Secret.shutLines`):
+   * the sleeper in the pines, across his glade every raid until he is had.
+   * Absent, nothing sleeps.
+   */
+  readonly sleeping?: readonly string[];
 }
 
 /** A secret open this raid, and what its nook holds next. */
@@ -866,6 +873,7 @@ export function generateRunPlan(
   }
 
   const open = secrets ? openOnMap(insertion.mapId, secrets) : [];
+  const sleeping = secrets ? sleepingSecrets(secrets.conditions, secrets.known).filter((id) => secretsDrawnOn(insertion.mapId).has(id)) : [];
   layOpenSecrets(loot, insertionMap, open, createSeededRng((seed ^ SECRET_STREAM) >>> 0), isReachable);
 
   return {
@@ -873,6 +881,7 @@ export function generateRunPlan(
     insertion,
     ...(secrets ? { conditions: secrets.conditions } : {}),
     secrets: open,
+    ...(sleeping.length > 0 ? { sleeping } : {}),
     ...(carriedContract ? { contract: carriedContract } : {}),
     defeatedBosses: [...defeatedBosses],
     completedContracts: [...completedContracts],
@@ -988,14 +997,19 @@ const STAKE_STREAM = 0x27d4eb2f;
 /** The secrets' own stream (`world/secrets.ts`): only what a spent nook holds is rolled on it. */
 const SECRET_STREAM = 0x165667b1;
 
-/** The secrets open on a raid's map: condition held, nook drawn on this map. */
-function openOnMap(mapId: WorldMapId, { conditions, known }: RunSecrets): readonly OpenSecret[] {
-  const drawn = new Set([
+/** The secrets with a nook or a clue drawn on a map. */
+function secretsDrawnOn(mapId: WorldMapId): ReadonlySet<string | undefined> {
+  return new Set([
     ...(fileMap(mapId)?.file.itemSpots ?? []).map((spot) => spot.secret),
     ...(fileMap(mapId)?.file.pokemon ?? []).map((standing) => standing.secret),
     ...(fileMap(mapId)?.file.people ?? []).map((person) => person.secret),
     ...(fileMap(mapId)?.file.signs ?? []).map((sign) => sign.secret),
   ]);
+}
+
+/** The secrets open on a raid's map: condition held, nook drawn on this map. */
+function openOnMap(mapId: WorldMapId, { conditions, known }: RunSecrets): readonly OpenSecret[] {
+  const drawn = secretsDrawnOn(mapId);
   return openSecrets(conditions)
     .filter((id) => drawn.has(id))
     .map((id) => {

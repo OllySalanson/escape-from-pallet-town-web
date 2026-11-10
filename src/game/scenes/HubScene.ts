@@ -1287,13 +1287,15 @@ export class HubScene extends Phaser.Scene {
       // What the people at base are waiting on, each laid in its own place.
       errandsToLay(this.savedGame.raidProgress, (itemId) => this.stash.itemCount(itemId)).map(errandLoot),
       // What the vale's secrets wait for, fixed now for the whole raid: the
-      // hour, the day, who leads and what is packed (`world/secrets.ts`).
+      // hour, the day, who leads, what is packed and the badges in the case
+      // (`world/secrets.ts`).
       {
         conditions: raidConditions(
           new Date(),
           deployment.party.map((stored) => stored.pokemon),
           items,
           chartWhole(this.savedGame.raidProgress.treasureHunt ?? NO_TREASURE_HUNT),
+          this.savedGame.raidProgress.defeatedBosses,
         ),
         known: {
           secretsFound: this.savedGame.raidProgress.secretsFound ?? [],

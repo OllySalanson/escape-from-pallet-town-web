@@ -223,7 +223,8 @@ export function pineHollow(): MapcraftResult {
         { x: 58, y: 47, berry: 'cheri' },
       ],
       // Who lives in the pines: a Beedrill nest in the south glade, a Pikachu
-      // in the east one, and Nidoran on the deer path, and the wood's small change.
+      // in the east one, and Nidoran on the deer path, and the wood's small change -
+      // and something very much bigger, asleep where the bees are.
       pokemon: [
         { x: 35, y: 53, species: 'beedrill', level: 10 },
         { x: 37, y: 54, species: 'weedle' },
@@ -244,6 +245,10 @@ export function pineHollow(): MapcraftResult {
         { x: 18, y: 50, species: 'nidoran-f', beat: { everyMs: 1800, roam: [[1, 0]] } },
         { x: 13, y: 54, species: 'metapod' },
         { x: 56, y: 48, species: 'oddish', level: 8 },
+        // The sleeper in the pines (`src/game/world/secrets.ts`): across the
+        // back of the bee wood's glade, at the foot of the lane down into it,
+        // every raid until he is had. Only a POKé FLUTE in the pack wakes him.
+        { x: 32, y: 55, species: 'snorlax', level: 25, secret: 'the-sleeper-in-the-pines' },
       ],
       people: [
         { x: 9, y: 12, name: 'Old Wren', look: 'old-woman', facing: 'right', lines: ['Nobody signs the trails in Pine Hollow. You find them or you do not.', 'The deer go south out of the hollow, down to the broadleaf wood.'], beat: { everyMs: 4200, glances: ['right', 'up'] }, calls: ['Who sent you?'] },
@@ -254,6 +259,8 @@ export function pineHollow(): MapcraftResult {
         // Pine Hollow signs nothing, so the tappers' Sunday is told, not written.
         { x: 34, y: 30, name: 'Tapper’s Girl', look: 'little-girl', facing: 'left', secret: 'the-tappers-sunday', lines: ['There is a Caterpie stuck in one of the old lumps, right the way through. Dad says a thousand years.', 'Dad never taps on a Sunday. He leaves a present by the upturned pot at the back, for whoever comes by.'], beat: { everyMs: 1800, glances: ['left', 'down'] }, calls: ['Do not touch, it is sticky!'] },
         { x: 42, y: 32, name: 'Amber Hunter', look: 'poke-maniac', facing: 'left', lines: ['That pine has been weeping since before there was a vale. Look under it. Look under all of them.', 'Amber lies anywhere in this wood. Good luck finding it twice.'], beat: { everyMs: 3500, glances: ['left', 'down'] }, calls: ['Hush. I can smell resin.'] },
+        // Pine Hollow signs nothing, so the sleeper is told about too.
+        { x: 34, y: 56, name: 'Woodsman', look: 'hiker', facing: 'left', secret: 'the-sleeper-in-the-pines', lines: ['Shh! He came down the lane for the honey in the spring, lay down right there, and has not got up since.', 'DO NOT WAKE HIM. Not that you could. My grandad said nothing but a FLUTE ever woke one of those.'], beat: { everyMs: 4100, glances: ['left', 'up'] }, calls: ['Shh!'] },
         { x: 39, y: 50, name: 'Bee Warden', look: 'bug-catcher', facing: 'left', lines: ['Those are not bees. I keep saying that. They have got my hat.', 'It is a very big nest. Do not stand there. No. Do not stand there either.'], beat: { everyMs: 2400, glances: ['left', 'up'] }, calls: ['Slowly. Very slowly.'] },
         { x: 55, y: 45, name: 'Linesman', look: 'worker', facing: 'left', lines: ['I walk the cable from the station to the pass, and the Pikachu sit on it and drink.', 'I had a card for the Service Gate. I had it when I passed the oak. If you find it, you never saw me.'], beat: { everyMs: 3200, roam: [[0, 1]], glances: ['up', 'left'] }, calls: ['Off the line, you lot!'] },
         { x: 50, y: 16, name: 'Collier’s Mate', look: 'man', facing: 'right', lines: ['Bram does not talk. He has not said anything since the spring.', 'He said something to you? Sit down. Tell me everything.'], beat: { everyMs: 2700, glances: ['right', 'up'] }, calls: ['Who goes there?'] },

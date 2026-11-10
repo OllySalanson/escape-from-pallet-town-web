@@ -184,7 +184,7 @@ describe('the treasure map', () => {
       const secret = secretById(TREASURE_SECRET_ID)!;
       expect(secret.place).toBe(TREASURE_PLACE);
       expect(secret.rewards).toEqual([{ kind: 'item', itemId: CHEST_ITEM_ID }]);
-      const ordinary: RaidConditions = raidConditions(new Date(2026, 10, 7, 12), [], [], false);
+      const ordinary: RaidConditions = raidConditions(new Date(2026, 10, 7, 12), [], [], false, []);
       expect(openSecrets(ordinary)).not.toContain(TREASURE_SECRET_ID);
       expect(openSecrets({ ...ordinary, chartWhole: true })).toContain(TREASURE_SECRET_ID);
       expect(chartWhole({ ...NO_TREASURE_HUNT, pinned: CHART_PIECES.slice(1).map((piece) => piece.id) })).toBe(false);
@@ -202,7 +202,7 @@ describe('the treasure map', () => {
     });
 
     it('is laid by a raid that sets out with the whole chart past MISTY, as the chest, and as a berry once the chest is home', () => {
-      const whole: RaidConditions = { ...raidConditions(new Date(2026, 10, 7, 12), [], [], true) };
+      const whole: RaidConditions = { ...raidConditions(new Date(2026, 10, 7, 12), [], [], true, []) };
       const plan = (found: readonly string[]) =>
         generateRunPlan(7, undefined, 'greystone-vale-moor-top', undefined, undefined, [MISTY_BOSS_ID], undefined, undefined, undefined, undefined, undefined, undefined, {
           conditions: whole,

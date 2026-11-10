@@ -6236,8 +6236,11 @@ export class BaseScene extends Phaser.Scene {
       this.say(attendantLines(this.freshGame().raidProgress), about);
       return;
     }
+    // The clerk sells the POKé FLUTE, and knows what one is for: their rumour
+    // is said once, before the welcome (`world/rumours.ts`).
     if (screen === 'prizes') {
-      this.say(prizeClerkLines(this.freshGame().raidProgress), about, () => this.openGameCorner('prizes'));
+      const rumour = this.hearRumour('clerk', { once: true });
+      this.say([...(rumour ? [rumour] : []), ...prizeClerkLines(this.freshGame().raidProgress)], about, () => this.openGameCorner('prizes'));
     }
     // THE BATTLE ARENA's receptionist says how a bout works, then the counter opens (`arena/dojoCounter.ts`).
     if (screen === 'battle-arena') {

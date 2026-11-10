@@ -1,4 +1,4 @@
-import { secretById, type SecretReward } from '../world/secrets';
+import { secretById, secretOpenAt, type SecretReward } from '../world/secrets';
 import type { OpenSecret } from '../run/runGeneration';
 import Phaser from 'phaser';
 import { isPackId } from '../items/packs';
@@ -2945,7 +2945,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
 
       if (entity.pokemon) {
-        this.createPokemonFigure(entity.id, entity.position, entity.pokemon);
+        this.createPokemonFigure(entity.id, entity.position, entity.pokemon, this.isAsleep(entity));
         continue;
       }
       if (entity.berry) {
@@ -3763,9 +3763,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * its two frames as FireRed's party menu draws it, standing on its tile with
    * its feet where a person's are. It is solid like a person - the map's
    * entities already block their tiles - and never turns, because an icon has
-   * one facing.
+   * one facing. A sleeper (`isAsleep`) lies still on its first frame: it is the
+   * bob that says a Pokemon is awake.
    */
-  private createPokemonFigure(id: string, position: GridPosition, species: FigureSpeciesId): void {
+  private createPokemonFigure(id: string, position: GridPosition, species: FigureSpeciesId, asleep = false): void {
     const [first, second] = pokemonIconFrames(species);
     const key = `pokemon-icon-${species}`;
     if (!this.anims.exists(key)) {
@@ -3787,8 +3788,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         first,
       )
       .setOrigin(0.5, 1)
-      .setDepth(atRow(FIGURE_BAND, position.y))
-      .play(key);
+      .setDepth(atRow(FIGURE_BAND, position.y));
+    if (!asleep) {
+      sprite.play(key);
+    }
     this.npcSprites.set(id, sprite);
     this.pokemonSoles.set(id, pokemonSoleDrop(species));
     this.mapObjects.push(sprite);
@@ -4369,12 +4372,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private createSign(entity: WorldEntity): void {
     // Map art rather than a figure: a signpost that outranked a caption put its
-    // post through the middle of the cache list beside it.
+    // post through the middle of the cache list beside it. A secret's bell
+    // rope is the drowned spire it hangs from, standing up out of the sea.
+    const summons = entity.secret !== undefined && secretById(entity.secret)?.nook === 'summons';
     const sign = this.add
       .image(
         entity.position.x * TILE_SIZE + TILE_SIZE / 2,
         entity.position.y * TILE_SIZE + TILE_SIZE / 2,
-        iconTextureKey(WORLD_ICONS.signPost),
+        iconTextureKey(summons ? WORLD_ICONS.bellRope : WORLD_ICONS.signPost),
       )
       .setDepth(atRow(MARKER_BAND, entity.position.y));
     this.mapObjects.push(sign);
@@ -5351,7 +5356,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     // A Pokemon spoken to cries as its line goes up, as one stood in FireRed's
     // world does - fought or not, it is the same Pokemon saying the same thing.
+    // A sleeper says nothing and is not woken by being spoken to: only what
+    // its secret waits for wakes it (`Secret.shutLines`).
+    if (entity?.pokemon && this.isAsleep(entity)) {
+      this.dialogBox.showMessages([...(secretById(entity.secret!)?.shutLines ?? [])]);
+      return;
+    }
     const cryOf = entity?.pokemon ? getSpeciesById(entity.pokemon)?.dexId : undefined;
+    // What wakes a secret's Pokemon is heard before it cries: the flute.
+    const wakes = entity?.pokemon ? this.openSecret(entity.secret) : undefined;
+    const sound = wakes ? secretById(wakes.id)?.foundSound : undefined;
+    if (sound) {
+      audioManager.play(sound);
+    }
     if (cryOf !== undefined) {
       audioManager.play('cry', { species: cryOf });
     }
@@ -5382,6 +5399,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     if (entity?.pokemon && entity.wildLevel !== undefined) {
       this.meetPokemon(entity, entity.pokemon, entity.wildLevel);
+      return;
+    }
+
+    // A secret's bell rope calls its Pokemon up while it is open, at this
+    // moment of the raid; any other time it reads as what it is, its clue.
+    if (entity?.kind === 'sign' && entity.secret !== undefined && this.summonFrom(entity.secret)) {
       return;
     }
 
@@ -5448,6 +5471,47 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
+   * Works a secret's `summons` nook: when the secret is open at this moment of
+   * the raid (its stretch of the clock read as a tide is) and its Pokemon is
+   * not met yet this raid, says the finding, sounds it and promises the fight.
+   * False when nothing answers, and the nook reads as its clue.
+   */
+  private summonFrom(id: string): boolean {
+    const secret = secretById(id);
+    const open = this.openSecret(id);
+    const conditions = this.runSession?.plan?.conditions;
+    if (
+      secret?.nook !== 'summons' ||
+      open?.reward?.kind !== 'meet' ||
+      conditions === undefined ||
+      !secretOpenAt(secret, conditions, this.tideMs()) ||
+      (this.runSession?.pokemonMet ?? []).includes(secretMetKey(id))
+    ) {
+      return false;
+    }
+    const reward = open.reward;
+    (this.runSession!.pokemonMet ??= []).push(secretMetKey(id));
+    this.pendingWildBattle = {
+      speciesId: reward.speciesId,
+      level: reward.level,
+      ...(reward.shiny ? { shiny: true } : {}),
+    };
+    if (secret.foundSound) {
+      audioManager.play(secret.foundSound);
+    }
+    this.dialogBox.showMessages([secret.foundLine]);
+    return true;
+  }
+
+  /**
+   * Whether a standing Pokemon is a secret's sleeper this raid: standing, shut,
+   * and waiting for what wakes it (`RunPlan.sleeping`).
+   */
+  private isAsleep(entity: WorldEntity): boolean {
+    return entity.secret !== undefined && (this.runSession?.plan?.sleeping ?? []).includes(entity.secret);
+  }
+
+  /**
    * The secret on the end of a line cast at `tile`: one open this raid whose
    * nook is the water of a place that holds the tile, met on the first bite.
    */
@@ -5484,8 +5548,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       entity.pokemon !== undefined &&
       ((this.runSession?.pokemonMet ?? []).includes(entity.id) ||
         legendCaught(entity, this.caughtLegends) ||
-        // A secret's Pokemon stands only on a raid it is open, until it is had.
-        (entity.secret !== undefined && this.openSecret(entity.secret)?.reward?.kind !== 'meet'))
+        // A secret's Pokemon stands only on a raid it is open, until it is had -
+        // or, a sleeper, on every raid until it is had.
+        (entity.secret !== undefined && this.openSecret(entity.secret)?.reward?.kind !== 'meet' && !this.isAsleep(entity)))
     );
   }
 

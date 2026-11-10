@@ -531,13 +531,15 @@ try {
   // AWAY, so the cursor is moved to the fight first: how a keeper with no
   // watch is fought, Greystone Vale's Boatswain Cragg among them),
   // `read:x:y:Dir` (walks to that tile, faces Dir and presses the interact
-  // key: a sign, a clue, a person), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
+  // key: a sign, a clue, a person), `tide:S` (stands still until the raid's
+  // clock reads S seconds in, as a tide is read), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
   // laid) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
   // walked: in behind the falls, the Falls Cave's boulders onto their switches,
   // out under the garden's cliff, the Miracle Seed, and the Gardener's Gate.
   const keyFor = (dir) => `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
+  const readsAt = new Map();
   const behindOf = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [1, 0], ArrowRight: [-1, 0] };
   for (const step of (option('steps') ?? '').split(',').filter(Boolean)) {
     if (ended) break;
@@ -597,9 +599,23 @@ try {
       await wait(200);
       await press('Space');
       await wait(1500);
-      if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, `-read-${parts[0]}-${parts[1]}.png`));
+      // A tile read twice - a clue before its hour and after - keeps both pictures.
+      const reads = (readsAt.get(`${parts[0]},${parts[1]}`) ?? 0) + 1;
+      readsAt.set(`${parts[0]},${parts[1]}`, reads);
+      if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, `-read-${parts[0]}-${parts[1]}${reads > 1 ? `-${reads}` : ''}.png`));
       note(`read at ${parts[0]},${parts[1]}: ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox?.textObject?.text ?? null`).catch(() => null))}`);
       await clearInterruptions();
+    } else if (kind === 'tide') {
+      // `tide:S` stands still until the raid's clock reads S seconds in, as a
+      // tide is read (`WorldScene.tideMs`): how a secret that waits for a
+      // stretch of the clock is reached - THE DROWNED BELL rings only from a
+      // minute in until two.
+      const ms = Number(parts[0]) * 1000;
+      while ((await page.evaluate(`${GAME}.scene.getScene('world').tideMs()`)) < ms) {
+        await wait(stepped ? 250 : 500);
+        await clearInterruptions();
+      }
+      note(`tide at ${Math.round((await page.evaluate(`${GAME}.scene.getScene('world').tideMs()`)) / 1000)}s`);
     } else if (kind === 'shot') {
       if (option('shot')) {
         await wait(300);
