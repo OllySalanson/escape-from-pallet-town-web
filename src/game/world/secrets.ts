@@ -1,3 +1,4 @@
+import type { SoundEffectName } from '../audio/soundEffects';
 import type { WindowLight } from '../base/homeClock';
 import { windowLight } from '../base/homeClock';
 import type { ItemId } from '../items';
@@ -6,6 +7,7 @@ import type { PokemonType } from '../pokemon/PokemonType';
 import { fieldMoveUser, type FieldMoveId } from './fieldMoves';
 import type { PokemonGift } from './gifts';
 import { CHEST_ITEM_ID, TREASURE_PLACE, TREASURE_SECRET_ID } from '../treasure/treasureMap';
+import { MISTY_BOSS_ID } from './valeQuarters';
 
 /**
  * Secrets: small hidden nooks in Greystone Vale, each with a clue beside it,
@@ -22,7 +24,10 @@ import { CHEST_ITEM_ID, TREASURE_PLACE, TREASURE_SECRET_ID } from '../treasure/t
  *   never gives the tile (`secrets.test.ts` holds all three).
  * - **The condition** is a fact the game already knows, read once as the raid
  *   deploys into `RaidConditions` and carried on the plan, so nothing changes
- *   under the player's feet and a seed plays the same raid.
+ *   under the player's feet and a seed plays the same raid. The one exception
+ *   is a stretch of the raid clock (`raid-clock`), which moves by the rule a
+ *   tide already does: the deploy reading says it may come, and the nook asks
+ *   the clock again as it is worked (`secretOpenAt`).
  * - **The reward** is an item, a Pokemon met or a Pokemon given. A secret may
  *   have several, given in order (the old shells' two fossils); the next is
  *   the first not yet found.
@@ -53,6 +58,8 @@ export interface RaidConditions {
   readonly fieldMoves: readonly FieldMoveId[];
   /** What was packed: every item id with at least one in the pack. */
   readonly carried: readonly string[];
+  /** The bosses this save had beaten as the raid left: its badges among them (`base/badgeCase.ts`). */
+  readonly badges: readonly string[];
   /**
    * Whether the treasure map is whole on THE CHART ROOM's wall
    * (`../treasure/treasureMap.ts`): the one condition the harbour sets rather
@@ -67,6 +74,7 @@ export function raidConditions(
   party: readonly Pokemon[],
   packed: readonly { readonly itemId: string; readonly quantity: number }[],
   chartWhole: boolean,
+  defeatedBosses: readonly string[],
 ): RaidConditions {
   return {
     hour: windowLight(now),
@@ -77,6 +85,7 @@ export function raidConditions(
       (move) => fieldMoveUser(party, move) !== undefined,
     ),
     carried: packed.filter((stack) => stack.quantity > 0).map((stack) => stack.itemId),
+    badges: [...defeatedBosses],
     chartWhole,
   };
 }
@@ -91,10 +100,24 @@ export type SecretCondition =
   | { readonly kind: 'carried'; readonly items: readonly ItemId[] }
   /** The treasure map whole on THE CHART ROOM's wall (`../treasure/treasureMap.ts`). */
   | { readonly kind: 'whole-chart' }
+  /** A gym leader beaten before the raid left: their badge in the case. */
+  | { readonly kind: 'badge'; readonly bossId: string }
+  /**
+   * A stretch of the raid clock, in authored time as a tide is drawn
+   * (`run/raidClock.ts`, `authoredTimeIn`): from `fromMs` until `untilMs` of
+   * the full clock, so it comes as much sooner as the raid is short.
+   */
+  | { readonly kind: 'raid-clock'; readonly fromMs: number; readonly untilMs: number }
   /** Any one of these. */
   | { readonly kind: 'either'; readonly of: readonly SecretCondition[] };
 
-export function conditionHolds(condition: SecretCondition, raid: RaidConditions): boolean {
+/**
+ * Whether a condition holds for a raid. `tideMs` is the raid's time as tides
+ * are read (the elapsed clock plus the Pokemon Center's shortfall); without it
+ * - as the raid deploys - a stretch of the clock is one that may yet come, and
+ * holds, so the nook is laid and asks again when it is worked.
+ */
+export function conditionHolds(condition: SecretCondition, raid: RaidConditions, tideMs?: number): boolean {
   switch (condition.kind) {
     case 'hour':
       return raid.hour === condition.hour;
@@ -108,8 +131,12 @@ export function conditionHolds(condition: SecretCondition, raid: RaidConditions)
       return condition.items.some((item) => raid.carried.includes(item));
     case 'whole-chart':
       return raid.chartWhole;
+    case 'badge':
+      return raid.badges.includes(condition.bossId);
+    case 'raid-clock':
+      return tideMs === undefined || (tideMs >= condition.fromMs && tideMs < condition.untilMs);
     case 'either':
-      return condition.of.some((each) => conditionHolds(each, raid));
+      return condition.of.some((each) => conditionHolds(each, raid, tideMs));
   }
 }
 
@@ -135,7 +162,13 @@ export type SecretNook =
   /** A person tagged with the secret, who gives only while it is open. */
   | 'giver'
   /** The water of the secret's place: the first bite of a raid it is open. */
-  | 'line';
+  | 'line'
+  /**
+   * A sign tagged with the secret - the drowned church's bell rope - that,
+   * worked while the secret is open, calls its Pokemon up to fight. Any other
+   * time it reads as what it is, which is its clue.
+   */
+  | 'summons';
 
 export interface Secret {
   readonly id: string;
@@ -150,9 +183,19 @@ export interface Secret {
   readonly rewards: readonly SecretReward[];
   /** What is said as it is found, before the item or the fight. */
   readonly foundLine: string;
+  /** What is heard as it is found, before the fight: the flute that wakes the sleeper. */
+  readonly foundSound?: SoundEffectName;
   /**
-   * Which wave of the plan it shipped in: the first needs no badge, the second
-   * is the treasure map's end, behind MISTY's sandbags in THE COAST.
+   * For a `figure`: it stands every raid until it is had, not only while the
+   * secret is open, and says these when spoken to while it is shut. The sleeper
+   * in the pines lies across his clearing whatever the raid; only the flute in
+   * the pack wakes him.
+   */
+  readonly shutLines?: readonly string[];
+  /**
+   * Which wave of the plan it shipped in: the first needs no badge; the second
+   * needs something bought or won first - the POKé FLUTE from THE GAME
+   * CORNER's prize window, or MISTY beaten and THE COAST behind her open.
    */
   readonly wave: 1 | 2;
 }
@@ -291,6 +334,45 @@ export const SECRETS: readonly Secret[] = [
     foundLine: 'Where the sand runs out under the cliff, the spade hits wood. An iron-bound chest, right under the X!',
     wave: 2,
   },
+  {
+    // FireRed's own way to wake a Snorlax: the POKé FLUTE, which THE GAME
+    // CORNER's prize window sells (`../minigames/tickets.ts`). He lies at the
+    // back of the bee wood's glade every raid until he is had - the honey is
+    // what brought him - and only a flute in the pack wakes him. Lv 25 is an
+    // earned fight before MISTY (`secrets.test.ts`).
+    id: 'the-sleeper-in-the-pines',
+    name: 'THE SLEEPER IN THE PINES',
+    place: 'THE BEE WOOD',
+    nook: 'figure',
+    when: [{ kind: 'carried', items: ['poke-flute'] }],
+    rewards: [{ kind: 'meet', speciesId: 'snorlax', level: 25 }],
+    foundLine: "You played the POKé FLUTE. Now, that's a catchy tune! SNORLAX woke up! It attacked in a grumpy rage!",
+    foundSound: 'pokeFlute',
+    shutLines: ['A huge POKéMON is fast asleep across the back of the glade, snoring like a saw.', 'It will not budge for anything. Not for shouting, not for shoving.'],
+    wave: 2,
+  },
+  {
+    // THE COAST's own secret, past MISTY's sandbags: the old church went down
+    // with the lower town, and its bell rope comes up out of the sea and is
+    // tied off to a bollard on Market Street. Pulled at low water, a minute
+    // into the raid and gone by two - the stair's own tide - with her badge
+    // already won, the bell tolls and what has made the belfry its home comes
+    // up to see who rang.
+    // Lv 28 is an earned fight in the Coast's rain at KOGA's level, the gym it
+    // comes before (`secrets.test.ts`).
+    id: 'the-drowned-bell',
+    name: 'THE DROWNED BELL',
+    place: 'THE DROWNED TOWN',
+    nook: 'summons',
+    when: [
+      { kind: 'badge', bossId: MISTY_BOSS_ID },
+      { kind: 'raid-clock', fromMs: 60_000, untilMs: 120_000 },
+    ],
+    rewards: [{ kind: 'meet', speciesId: 'kabutops', level: 28 }],
+    foundLine: 'You haul on the rope. Far below, the drowned bell tolls once... and something with scythes climbs up out of the belfry!',
+    foundSound: 'bellToll',
+    wave: 2,
+  },
 ];
 
 export type SecretId = (typeof SECRETS)[number]['id'];
@@ -338,9 +420,31 @@ export function secretSpent(secret: Secret, known: SecretsKnown): boolean {
   return nextReward(secret, known) === undefined;
 }
 
-/** Whether a secret's condition holds for a raid. */
+/** Whether a secret's condition holds for a raid as it deploys: a stretch of the clock is one that may yet come. */
 export function secretConditionHolds(secret: Secret, raid: RaidConditions): boolean {
   return secret.when.every((condition) => conditionHolds(condition, raid));
+}
+
+/**
+ * Whether a secret is open at this moment of a raid: every condition, the
+ * clock's stretch read at `tideMs` (the elapsed clock plus the Pokemon
+ * Center's shortfall, as a tide is read).
+ */
+export function secretOpenAt(secret: Secret, raid: RaidConditions, tideMs: number): boolean {
+  return secret.when.every((condition) => conditionHolds(condition, raid, tideMs));
+}
+
+/**
+ * The secrets shut this raid whose figure stands anyway (`shutLines`): the
+ * sleeper, across his glade every raid until he is had.
+ */
+export function sleepingSecrets(raid: RaidConditions, known: SecretsKnown): readonly string[] {
+  return SECRETS.filter(
+    (secret) =>
+      secret.shutLines !== undefined &&
+      !secretConditionHolds(secret, raid) &&
+      nextReward(secret, known)?.kind === 'meet',
+  ).map((secret) => secret.id);
 }
 
 /**

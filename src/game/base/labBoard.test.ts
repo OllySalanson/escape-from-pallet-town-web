@@ -128,8 +128,8 @@ describe("Oak's cork board", () => {
     it('has a corner for every rumour there is, clear of the slips beside it and inside the frame', () => {
       const width = OAK_BOARD.width * 16;
       const height = OAK_BOARD.height * 16;
-      const scraps = scrapSeats(width, height);
-      const slips = slipSeats(width, height, true);
+      const scraps = scrapSeats(width, height, RUMOURS.length);
+      const slips = slipSeats(width, height, RUMOURS.length);
       expect(scraps.length).toBeGreaterThanOrEqual(RUMOURS.length);
       expect(slips.length).toBeGreaterThanOrEqual(4);
       const slipsEnd = Math.max(...slips.map((seat) => seat.x + 10));
@@ -142,14 +142,17 @@ describe("Oak's cork board", () => {
       scraps.forEach((a, i) =>
         scraps.slice(i + 1).forEach((b) => expect(a.x + 6 <= b.x || b.x + 6 <= a.x || a.y + 6 <= b.y || b.y + 6 <= a.y).toBe(true)),
       );
-      // Without rumours the slips keep the whole board, as they always had it.
-      expect(slipSeats(width, height).length).toBeGreaterThan(slips.length);
+      // Without rumours the slips keep the whole board, as they always had it,
+      // and a dozen rumours take one column of it, as they always did.
+      expect(slipSeats(width, height).length).toBeGreaterThan(slipSeats(width, height, 12).length);
+      expect(scrapSeats(width, height, 12)).toEqual(scrapSeats(width, height, 1));
+      expect(slipSeats(width, height, 12).length).toBeGreaterThan(slips.length);
     });
 
     it('paints a green-pinned scrap for each, on the same opaque board', () => {
       const game = baseGame({ progress: { rumoursHeard: heard } });
       const poster = boardPoster(game, OAK_BOARD);
-      const pins = scrapSeats(poster.width, poster.height).map(({ x, y }) => {
+      const pins = scrapSeats(poster.width, poster.height, heard.length).map(({ x, y }) => {
         const at = (y * poster.width + x + 2) * 4;
         return [poster.data[at], poster.data[at + 1], poster.data[at + 2]].join(',');
       });

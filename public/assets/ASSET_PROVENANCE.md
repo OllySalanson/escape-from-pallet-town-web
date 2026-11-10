@@ -256,6 +256,11 @@ game.
   of it read as a tin or a jar, which is what every other icon in the Other
   pocket already is. It was `scrip.png`, with a plain seal where the sign is,
   until the money became the Pokedollar on 2026-09-23.
+  `bell-rope` is `scripts/draw-bell-rope-icon.mjs`: an iron bollard (`#4a4f5c`,
+  `#8a93a6`) with a coil of pale hemp round its neck (`#d9a75e`, `#a0743c`) and
+  the rope running off the foot of the tile into the sea below. It is what THE
+  DROWNED BELL's nook is drawn as on the map, in place of a signpost. Original
+  to this repository.
   The twelve machines - `tm09-bullet-seed`, `tm11-sunny-day`, `tm13-ice-beam`,
   `tm18-rain-dance`, `tm23-iron-tail`, `tm28-dig`, `tm39-rock-tomb`,
   `tm40-aerial-ace`, `hm01-cut`, `hm03-surf`, `hm04-strength` and

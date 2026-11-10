@@ -158,36 +158,15 @@ const SLIP_GAP = 2;
 const SCRAP_WIDTH = 6;
 const SCRAP_HEIGHT = 6;
 const SCRAP_GAP = 1;
-/** How many columns of the board's slips give way to the rumours' corner when there are rumours. */
-const RUMOUR_CORNER_SLIPS = 1;
 
-/**
- * Where each slip is pinned on a board this size, left to right along two
- * rows; the board holds what fits. With rumours pinned up the last columns are
- * their corner (`scrapSeats`), so the slips keep the rest.
- */
-export function slipSeats(width: number, height: number, rumours = false): readonly { readonly x: number; readonly y: number }[] {
-  const across =
-    Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - (rumours ? RUMOUR_CORNER_SLIPS : 0);
-  const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_HEIGHT + SLIP_GAP));
-  const seats: { x: number; y: number }[] = [];
-  for (let row = 0; row < down; row += 1) {
-    for (let column = 0; column < across; column += 1) {
-      // A slip a pixel off its neighbour's line, every other one, because
-      // nobody pins notices up with a ruler.
-      seats.push({
-        x: BOARD_BORDER + SLIP_GAP + column * (SLIP_WIDTH + SLIP_GAP),
-        y: BOARD_BORDER + SLIP_GAP - 1 + row * (SLIP_HEIGHT + SLIP_GAP) + ((row + column) % 2),
-      });
-    }
-  }
-  return seats;
+/** How many slips fit across a board this wide, with no rumours pinned. */
+function slipsAcrossBoard(width: number): number {
+  return Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP));
 }
 
-/** Where the rumours' scraps are pinned: the board's right-hand corner, in rows, past the slips. */
-export function scrapSeats(width: number, height: number): readonly { readonly x: number; readonly y: number }[] {
-  const slipsAcross = Math.floor((width - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_WIDTH + SLIP_GAP)) - RUMOUR_CORNER_SLIPS;
-  const left = BOARD_BORDER + SLIP_GAP + slipsAcross * (SLIP_WIDTH + SLIP_GAP);
+/** The rumours' scraps that fit in a corner of this many slip columns, in rows. */
+function cornerSeats(width: number, height: number, columns: number): readonly { readonly x: number; readonly y: number }[] {
+  const left = BOARD_BORDER + SLIP_GAP + (slipsAcrossBoard(width) - columns) * (SLIP_WIDTH + SLIP_GAP);
   const room = width - BOARD_BORDER - left;
   // A pixel spare across for every scrap to sit a pixel off its neighbours' line; the rows are
   // stacked edge to edge, so the corner holds a row more - ten rumours want ten scraps, and
@@ -204,6 +183,51 @@ export function scrapSeats(width: number, height: number): readonly { readonly x
     }
   }
   return seats;
+}
+
+/**
+ * How many columns of the board's slips give way to the rumours' corner: one
+ * whenever any rumour is pinned, and another each time the scraps would not
+ * fit - so a board with a dozen rumours on it looks as it always did, and the
+ * thirteenth takes a column of slips rather than going unpinned. The slips
+ * always keep one column.
+ */
+function cornerColumns(width: number, height: number, rumours: number): number {
+  if (rumours <= 0) {
+    return 0;
+  }
+  let columns = 1;
+  while (columns < slipsAcrossBoard(width) - 1 && cornerSeats(width, height, columns).length < rumours) {
+    columns += 1;
+  }
+  return columns;
+}
+
+/**
+ * Where each slip is pinned on a board this size, left to right along two
+ * rows; the board holds what fits. With rumours pinned up the last columns are
+ * their corner (`scrapSeats`), so the slips keep the rest.
+ */
+export function slipSeats(width: number, height: number, rumours = 0): readonly { readonly x: number; readonly y: number }[] {
+  const across = slipsAcrossBoard(width) - cornerColumns(width, height, rumours);
+  const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / (SLIP_HEIGHT + SLIP_GAP));
+  const seats: { x: number; y: number }[] = [];
+  for (let row = 0; row < down; row += 1) {
+    for (let column = 0; column < across; column += 1) {
+      // A slip a pixel off its neighbour's line, every other one, because
+      // nobody pins notices up with a ruler.
+      seats.push({
+        x: BOARD_BORDER + SLIP_GAP + column * (SLIP_WIDTH + SLIP_GAP),
+        y: BOARD_BORDER + SLIP_GAP - 1 + row * (SLIP_HEIGHT + SLIP_GAP) + ((row + column) % 2),
+      });
+    }
+  }
+  return seats;
+}
+
+/** Where this many rumours' scraps are pinned: the board's right-hand corner, in rows, past the slips. */
+export function scrapSeats(width: number, height: number, rumours: number): readonly { readonly x: number; readonly y: number }[] {
+  return cornerSeats(width, height, Math.max(1, cornerColumns(width, height, rumours)));
 }
 
 /** The board, painted from the save onto its stretch of wall. */
@@ -238,8 +262,8 @@ export function boardPoster(game: Pick<RestoredGame, 'raidProgress' | 'stash'>, 
   fill(BOARD_BORDER, BOARD_BORDER, 1, innerHeight, CORK.corkShade);
   const notices = boardNotices(game);
   const rumours = notices.filter((notice) => notice.kind === 'rumour');
-  const seats = slipSeats(width, height, rumours.length > 0);
-  const scraps = scrapSeats(width, height);
+  const seats = slipSeats(width, height, rumours.length);
+  const scraps = scrapSeats(width, height, rumours.length);
   rumours.slice(0, scraps.length).forEach((_rumour, index) => {
     const { x, y } = scraps[index];
     fill(x, y, SCRAP_WIDTH, SCRAP_HEIGHT, CORK.scrap);

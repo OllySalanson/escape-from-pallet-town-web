@@ -165,6 +165,10 @@ describe('VALE SECRETS, the golden book', () => {
     expect(resolveBookText(page('the-red-one'))).toContain('BRING: an Old Rod or a Good Rod packed');
     expect(page('the-navvies-wager')).toContain('BRING: lead with a FIGHTING type');
     expect(conditionWords({ kind: 'field-move', move: 'rock-smash' })).toBe('a Pokémon that knows ROCK SMASH');
+    expect(page('the-drowned-bell')).toContain('WHEN: 1:00 to 2:00 into the raid');
+    expect(page('the-drowned-bell')).toContain('BRING: the CASCADE BADGE won');
+    expect(resolveBookText(page('the-sleeper-in-the-pines'))).toContain('BRING: a Poké Flute');
+    expect(page('the-sleeper-in-the-pines')).toContain('It lies there asleep, every raid.');
   });
 
   it('writes notes only for secrets that exist', () => {

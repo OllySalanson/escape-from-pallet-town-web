@@ -727,6 +727,14 @@ export const SOUND_EFFECTS = {
       tri(1047, 0.36, 0.075, 0.6),
     ],
   },
+  bellToll: {
+    channel: 'fanfare',
+    moment: 'The drowned bell tolls under the water, and something comes up',
+    // One stroke of a big bell heard through water: the clapper's knock, a low
+    // fundamental held to the end of the second, and the minor-third hum a
+    // church bell has above it, dying first.
+    tones: [noise(1800, 0.05, 0.03), tri(147, 0.95, 0.085), tri(294, 0.7, 0.045), tri(349, 0.45, 0.03)],
+  },
   itemObtained: {
     channel: 'fanfare',
     moment: "Something is yours for good: Oak's Pokédex reward, a beaten boss's gear",

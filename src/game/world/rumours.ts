@@ -10,7 +10,8 @@ import { secretById, secretSpent, type SecretsKnown } from './secrets';
  * the ground or in another rumour. Each is heard from somebody who would know
  * it: the board pins one up, the angler talks about the water, the S.S. Anne's
  * captain sees it through his glass, the Seagallop's sailor has run people out
- * there, and Bill cannot keep quiet about anything old. THE RUMOUR MILL at THE
+ * there, Bill cannot keep quiet about anything old, and THE GAME CORNER's prize
+ * clerk knows what the flute they sell is for. THE RUMOUR MILL at THE
  * GAME CORNER's prize window sells them for tickets (`millRumour`): its own
  * slips give the two facts the harbour's rumour about the same secret leaves
  * out, so the two together say all three. A rumour is said only
@@ -21,7 +22,7 @@ import { secretById, secretSpent, type SecretsKnown } from './secrets';
  * its secret is in, and each fact it names to the secret's condition.
  */
 
-export type RumourSource = 'board' | 'angler' | 'spyglass' | 'sailor' | 'bill' | 'mill';
+export type RumourSource = 'board' | 'angler' | 'spyglass' | 'sailor' | 'bill' | 'mill' | 'clerk';
 
 /** The facts a rumour gives: two of these three. */
 export type RumourFact = 'where' | 'when' | 'bring';
@@ -116,6 +117,24 @@ export const RUMOURS: readonly Rumour[] = [
     ringsOver: 'GREYSTONE PEAKS',
     line: 'RUMOUR: The foreman at THE NAVVIES\' CAMP will wager anything against a Pokémon that leads with its fists.',
   },
+  {
+    id: 'clerk-sleeper',
+    secret: 'the-sleeper-in-the-pines',
+    source: 'clerk',
+    gives: ['where', 'bring'],
+    names: 'THE BEE WOOD',
+    ringsOver: 'PINE HOLLOW',
+    line: "PRIZE CLERK: That POKé FLUTE? A woodsman swapped for one last year. Something huge sleeps in THE BEE WOOD in PINE HOLLOW, he said.",
+  },
+  {
+    id: 'sailor-drowned-bell',
+    secret: 'the-drowned-bell',
+    source: 'sailor',
+    gives: ['where', 'when'],
+    names: 'THE DROWNED TOWN',
+    ringsOver: 'THE SUNKEN QUARTER',
+    line: "Ran a diver out to THE DROWNED TOWN once. Swore the old church bell answers a pull at LOW WATER - a minute in, and gone by two.",
+  },
   // THE RUMOUR MILL's own slips: when and what to bring, where the harbour's
   // rumour about the same secret gives where and one of them. Two rumours from
   // two sources complete each other (the harbour arenas plan, section 4.3).
@@ -136,6 +155,15 @@ export const RUMOURS: readonly Rumour[] = [
     names: 'THE GOAT TRACK',
     ringsOver: 'GREYSTONE PEAKS',
     line: 'SLIP: At DUSK a red crack glows in a boulder up in the peaks. Bring a POKéMON that knows ROCK SMASH.',
+  },
+  {
+    id: 'mill-drowned-bell',
+    secret: 'the-drowned-bell',
+    source: 'mill',
+    gives: ['when', 'bring'],
+    names: 'THE DROWNED TOWN',
+    ringsOver: 'THE SUNKEN QUARTER',
+    line: "SLIP: A bell rope stands up out of the sea. Pull it at LOW WATER, a minute into a raid - and only once MISTY's CASCADE BADGE is yours.",
   },
 ];
 
