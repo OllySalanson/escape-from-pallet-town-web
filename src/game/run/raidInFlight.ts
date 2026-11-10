@@ -20,13 +20,21 @@ import { isWorldMapId, worldMapName } from '../worldMap';
  * writes), and anything still standing when the base next opens is settled by
  * `SaveManager.settleAbandonedRaid`.
  *
- * It is the loadout and nothing else, because that is all the pre-raid vault
- * has to be corrected for: what went into the pack, which part of that the
- * secure container held, and the pack it was carried in. Nothing found in the
- * raid was ever banked, so nothing found has to be taken away.
+ * It is the loadout, because that is what the pre-raid vault has to be
+ * corrected for: what went into the pack, which part of that the secure
+ * container held, and the pack it was carried in. Nothing found in the raid
+ * was ever banked, so nothing found has to be taken away.
+ *
+ * It is also the save's word on who owns what while the raid is out, because
+ * two tabs share one save. The Pokemon that went are the raid's until it ends,
+ * and so is what was packed (`raidHoldRefusal` in `SaveManager.ts`): another
+ * tab's base cannot heal, teach, re-gear, box or Day-Care them, nor spend a
+ * packed Potion, because the raid's ending writes its own copy of them back.
+ * And a raid's ending settles only the raid whose id is still here - one
+ * settled as abandoned while its tab was frozen comes home to nothing.
  */
 export interface RaidInFlight {
-  /** One raid, never two: what the live-elsewhere check matches on. */
+  /** One raid, never two: what the live-elsewhere check and every ending match on. */
   readonly id: string;
   readonly mapId: string;
   /** The pack worn into the raid, which is lost with it. */
@@ -35,6 +43,25 @@ export interface RaidInFlight {
   readonly items: BagContents;
   /** The part of `items` the secure container held, which comes home. */
   readonly secured: BagContents;
+  /** The stash ids of the Pokemon that went. Empty on a marker written before it was kept. */
+  readonly pokemonIds: readonly string[];
+  /**
+   * What the base owed the raid when it deployed: the recovery booked against
+   * its clock, the ward beds and Bill's ration already used, and whether a
+   * berth was paid for this trip. An ending pays off this much and no more, so
+   * a heal booked in another tab while the raid was out is still owed by the
+   * next raid rather than cleared by this one. Absent on a marker written
+   * before it was kept, which is paid off in full as it always was.
+   */
+  readonly owed?: RaidOwed;
+}
+
+/** See `RaidInFlight.owed`. */
+export interface RaidOwed {
+  readonly recoveryMs: number;
+  readonly wardTreatmentsUsed: number;
+  readonly traderRationUsed: number;
+  readonly traderBerthPaid: boolean;
 }
 
 /** What an abandoned raid cost, for the base to say. */
@@ -58,6 +85,7 @@ export function createRaidInFlight(
   items: readonly AmountOf[],
   secured: readonly AmountOf[],
   packItemId: string | undefined,
+  pokemonIds: readonly string[] = [],
   id: string = newRaidId(),
 ): RaidInFlight {
   return {
@@ -66,6 +94,7 @@ export function createRaidInFlight(
     ...(packItemId === undefined ? {} : { packItemId }),
     items: contentsOf(items),
     secured: contentsOf(secured),
+    pokemonIds: [...new Set(pokemonIds)],
   };
 }
 
@@ -85,14 +114,48 @@ export function readRaidInFlight(
   if (typeof record.id !== 'string' || record.id.length === 0 || typeof record.mapId !== 'string') {
     return null;
   }
+  const owed = readOwed(record.owed);
   return {
     id: record.id,
     mapId: record.mapId,
     ...(typeof record.packItemId === 'string' ? { packItemId: record.packItemId } : {}),
     items: readContents(record.items),
     secured: readContents(record.secured),
+    pokemonIds: Array.isArray(record.pokemonIds)
+      ? [...new Set(record.pokemonIds.filter((id): id is string => typeof id === 'string'))]
+      : [],
+    ...(owed === undefined ? {} : { owed }),
   };
 }
+
+function readOwed(value: unknown): RaidOwed | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const count = (field: unknown): number =>
+    typeof field === 'number' && Number.isFinite(field) ? Math.max(0, Math.floor(field)) : 0;
+  return {
+    recoveryMs: count(record.recoveryMs),
+    wardTreatmentsUsed: count(record.wardTreatmentsUsed),
+    traderRationUsed: count(record.traderRationUsed),
+    traderBerthPaid: record.traderBerthPaid === true,
+  };
+}
+
+/** The Pokemon the raid in flight took, by stash id: none between raids. */
+export function awayOnRaid(game: { readonly raidInFlight?: RaidInFlight | null }): ReadonlySet<string> {
+  return new Set(game.raidInFlight?.pokemonIds ?? []);
+}
+
+/** The line every screen at base says when it is asked to touch a Pokemon the raid has. */
+export function outOnRaidLine(name: string): string {
+  return `${name} is out on a raid in your other window. Finish it there first.`;
+}
+
+/** The line for supplies the raid packed. */
+export const PACKED_FOR_RAID_LINE =
+  'That is packed for the raid in your other window. Finish it there first.';
 
 /**
  * What the base says when it opens on a raid that was never finished. Plain,
@@ -248,18 +311,22 @@ export class RaidHeartbeat {
   private releaseLock: (() => void) | null = null;
   /** Which `start` a granted lock belongs to, so one granted after a `stop` is let go at once. */
   private starts = 0;
+  private stillOurs: () => boolean = () => true;
   private readonly local: () => PulseStorage | null;
   private readonly now: () => number;
   private readonly locks: () => RaidLocks | null;
+  private readonly key: string;
 
   public constructor(
     local: () => PulseStorage | null,
     now: () => number = () => Date.now(),
     locks: () => RaidLocks | null = browserLocks,
+    key: string = RAID_PULSE_KEY,
   ) {
     this.local = local;
     this.now = now;
     this.locks = locks;
+    this.key = key;
   }
 
   /** This page's name, made once and kept for the life of the page. */
@@ -268,9 +335,17 @@ export class RaidHeartbeat {
     return this.tabId;
   }
 
-  public start(raidId: string): void {
+  /**
+   * Starts beating for `raidId`. `stillOurs` is asked before every beat: once
+   * the save's raid in flight is another one - this one was settled as
+   * abandoned while its tab was frozen, and another tab has deployed since -
+   * the beat stops, because a pulse for a raid the save no longer holds would
+   * vouch for nothing and would overwrite the pulse of the raid it does hold.
+   */
+  public start(raidId: string, stillOurs: () => boolean = () => true): void {
     this.stop();
     this.raidId = raidId;
+    this.stillOurs = stillOurs;
     this.beat();
     this.timer = setInterval(() => this.beat(), RAID_PULSE_EVERY_MS);
     this.holdLock(raidId);
@@ -332,7 +407,7 @@ export class RaidHeartbeat {
     const still = this.read();
     if (still !== null && still.raidId === pulse.raidId && still.tab === pulse.tab) {
       try {
-        this.local()?.removeItem(RAID_PULSE_KEY);
+        this.local()?.removeItem(this.key);
       } catch {
         // Nothing to take away.
       }
@@ -366,6 +441,10 @@ export class RaidHeartbeat {
     if (this.raidId === null) {
       return;
     }
+    if (!this.stillOurs()) {
+      this.stop();
+      return;
+    }
     const pulse: RaidPulse = {
       raidId: this.raidId,
       tab: this.tab(),
@@ -373,7 +452,7 @@ export class RaidHeartbeat {
       ...(this.locked ? { locked: true as const } : {}),
     };
     try {
-      this.local()?.setItem(RAID_PULSE_KEY, JSON.stringify(pulse));
+      this.local()?.setItem(this.key, JSON.stringify(pulse));
     } catch {
       // No storage, no second tab to protect against.
     }
@@ -386,7 +465,7 @@ export class RaidHeartbeat {
       return;
     }
     try {
-      this.local()?.removeItem(RAID_PULSE_KEY);
+      this.local()?.removeItem(this.key);
     } catch {
       // Nothing to take away.
     }
@@ -394,7 +473,7 @@ export class RaidHeartbeat {
 
   private read(): RaidPulse | null {
     try {
-      const raw = this.local()?.getItem(RAID_PULSE_KEY);
+      const raw = this.local()?.getItem(this.key);
       if (!raw) {
         return null;
       }
@@ -424,5 +503,11 @@ function browserLocks(): RaidLocks | null {
   }
 }
 
-/** The one heartbeat a page has. */
+/** The one heartbeat a page has for a raid. */
 export const raidHeartbeat = new RaidHeartbeat(browserStorage);
+
+/** Where a bout's pulse is kept, apart from a raid's: a raid in one tab and a bout in another are both live. */
+export const BOUT_PULSE_KEY = 'escape-from-pallet-town.bout-pulse';
+
+/** The heartbeat for a bout on the sand (`arena/boutUnderWay.ts`), which is settled as a raid is. */
+export const boutHeartbeat = new RaidHeartbeat(browserStorage, () => Date.now(), browserLocks, BOUT_PULSE_KEY);

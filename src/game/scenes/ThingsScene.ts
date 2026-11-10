@@ -15,7 +15,8 @@ import {
   type ItemId,
 } from '../items';
 import { evolutionByStone, type MoveBase, type Pokemon } from '../pokemon';
-import { SaveManager, type RestoredGame } from '../save/SaveManager';
+import { SaveManager, spareAtBase, type RestoredGame } from '../save/SaveManager';
+import { awayOnRaid, outOnRaidLine, PACKED_FOR_RAID_LINE } from '../run/raidInFlight';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -108,6 +109,23 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   /** The vault as it is stored now, and the next raid's pack worked out from it. */
+  /**
+   * Why a disc or a stone cannot be used here on this Pokémon while a raid is
+   * out in another window, or undefined when it can: the Pokémon went on it,
+   * or the last of the thing was packed for it. That raid's ending writes its
+   * own copy of both back (`SaveManager.raidHoldRefusal`).
+   */
+  private heldByRaid(itemId: string, pokemonId: string, name: string): string | undefined {
+    const game = this.saveManager.load() ?? this.game_;
+    if (!game) {
+      return undefined;
+    }
+    if (awayOnRaid(game).has(pokemonId)) {
+      return outOnRaidLine(name);
+    }
+    return game.stash.itemCount(itemId) > 0 && spareAtBase(game, itemId) < 1 ? PACKED_FOR_RAID_LINE : undefined;
+  }
+
   private reload(): void {
     this.game_ = this.saveManager.load() ?? this.game_;
     if (this.hallFlow && this.game_) {
@@ -328,6 +346,13 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     if (!item || !machine || !pupil) {
       return;
     }
+    const held = this.heldByRaid(item.id, pupil.id, pupil.pokemon.name);
+    if (held !== undefined) {
+      audioManager.play('denied');
+      this.status = held;
+      this.render([`[data-pupil="${index}"]`]);
+      return;
+    }
     if (!canChoosePupil(pupilVerdict(machine, pupil.pokemon))) {
       audioManager.play('denied');
       this.status = `${pupil.pokemon.name.toUpperCase()}: ${pupilOutcome(machine, pupil.pokemon)}`;
@@ -409,6 +434,13 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const item = using?.kind === 'evolve' ? getItemById(using.itemId) : undefined;
     const target = item ? this.stoneTargets(item)[index] : undefined;
     if (!item || !target) {
+      return;
+    }
+    const held = this.heldByRaid(item.id, target.id, target.pokemon.name);
+    if (held !== undefined) {
+      audioManager.play('denied');
+      this.status = held;
+      this.render([`[data-target="${index}"]`]);
       return;
     }
     let message = '';

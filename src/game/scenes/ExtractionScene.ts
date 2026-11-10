@@ -68,6 +68,14 @@ const SETTLED_LOCK_MS = 350;
 /** Keys that are only ever half of a keypress, so they never advance a beat. */
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab']);
 
+/**
+ * What the result screen says for a raid another window settled while this one
+ * was away (`ExtractionReport.settledElsewhere`): nothing above was written, and
+ * the base is as that window left it.
+ */
+export const SETTLED_ELSEWHERE_NOTE =
+  'This window was away so long that another one settled the raid as abandoned. Nothing above was banked: your base is as that window left it.';
+
 export class ExtractionScene extends Phaser.Scene {
   private overlay!: MenuOverlay;
   private report!: ExtractionReport;
@@ -565,6 +573,9 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   private footerTitle(): string {
+    if (this.report.settledElsewhere) {
+      return 'Settled in another window';
+    }
     if (!this.report.saved) {
       return 'Could not save';
     }
@@ -584,6 +595,9 @@ export class ExtractionScene extends Phaser.Scene {
       return this.report.outcome === 'ESCAPED'
         ? 'A try of your map: you left by an exit, so the walk counts. Your saved game was not touched.'
         : 'A try of your map: leave by an exit for the walk to count. Your saved game was not touched.';
+    }
+    if (this.report.settledElsewhere) {
+      return SETTLED_ELSEWHERE_NOTE;
     }
     if (!this.report.saved) {
       return 'This result could not be written to storage.';

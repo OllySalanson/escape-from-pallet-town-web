@@ -122,7 +122,7 @@ import {
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
 import { railWarning, type RailWarning } from '../hub/railWarning';
-import { raidsDeployed, raidsLost, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
+import { raidsDeployed, raidsLost, SaveManager, spareAtBase, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
   sortPokemon,
@@ -190,7 +190,7 @@ import {
 } from '../hub/errands';
 import { pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
-import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
+import { awayOnRaid, createRaidInFlight, outOnRaidLine, PACKED_FOR_RAID_LINE, raidHeartbeat } from '../run/raidInFlight';
 import { isFirstRaid } from '../hub/firstRaid';
 import { hasRaidStake } from '../world/raidStake';
 import { rewardLine } from '../objectives/standingBoard';
@@ -536,7 +536,9 @@ export class HubScene extends Phaser.Scene {
    */
   private offerPendingMoves(): void {
     const raids = raidsDeployed(this.savedGame.raidProgress);
-    const waiting = nextPendingMoveOffer(this.stashPokemon, raids);
+    // Not one out on a raid in another window: its ending writes its moves back.
+    const away = awayOnRaid(this.savedGame);
+    const waiting = nextPendingMoveOffer(this.stashPokemon.filter((stored) => !away.has(stored.id)), raids);
     if (!waiting) {
       return;
     }
@@ -547,7 +549,7 @@ export class HubScene extends Phaser.Scene {
         this.offerPendingMoves();
         return;
       }
-      if (this.movedOnElsewhere()) {
+      if (this.movedOnElsewhere() || this.outOnRaid(waiting.id)) {
         return;
       }
       const result = waiting.pokemon.resolvePendingMove(
@@ -745,7 +747,7 @@ export class HubScene extends Phaser.Scene {
    * at the same Pokemon it did before, now healed.
    */
   private recover(ids: readonly string[]): void {
-    if (this.movedOnElsewhere()) {
+    if (this.movedOnElsewhere() || ids.some((id) => this.outOnRaid(id))) {
       return;
     }
     const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids, this.recoveryTerms);
@@ -790,7 +792,7 @@ export class HubScene extends Phaser.Scene {
    * outgrow what is actually held - see `DeploymentFlow.items`.
    */
   private treat(pokemonId: string, itemId: string): void {
-    if (this.movedOnElsewhere()) {
+    if (this.movedOnElsewhere() || this.outOnRaid(pokemonId) || this.packedForRaid(itemId)) {
       return;
     }
     const result = treatWithItem(this.stash, pokemonId, itemId);
@@ -816,7 +818,7 @@ export class HubScene extends Phaser.Scene {
    * loadout's own supply counts shrink with it exactly as a treatment's do.
    */
   private giveGear(pokemonId: string, itemId: string): void {
-    if (this.movedOnElsewhere()) {
+    if (this.movedOnElsewhere() || this.outOnRaid(pokemonId) || this.packedForRaid(itemId)) {
       return;
     }
     if (!this.stash.giveHeldItem(pokemonId, itemId)) {
@@ -835,7 +837,7 @@ export class HubScene extends Phaser.Scene {
 
   /** Takes a stashed Pokemon's gear back into the stash's supplies. */
   private takeGear(pokemonId: string): void {
-    if (this.movedOnElsewhere()) {
+    if (this.movedOnElsewhere() || this.outOnRaid(pokemonId)) {
       return;
     }
     const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name;
@@ -994,6 +996,11 @@ export class HubScene extends Phaser.Scene {
     if (!this.sparePartner) {
       this.setView('stash');
       this.refuse('Swapping is only offered while one Pokémon remains at base.');
+      return;
+    }
+    if (awayOnRaid(this.savedGame).has(this.sparePartner.id)) {
+      this.setView('stash');
+      this.outOnRaid(this.sparePartner.id);
       return;
     }
     if (!this.saveManager.reselectStarter(this.reselectStarterId)) {
@@ -1207,14 +1214,18 @@ export class HubScene extends Phaser.Scene {
     }
     // And recorded as under way until it ends, so a raid left by closing the
     // tab costs its pack rather than nothing (`run/raidInFlight.ts`).
+    // It names the Pokemon that went, which are the raid's until it ends: two
+    // tabs share one save, and the base in the other may not touch them.
     const inFlight = createRaidInFlight(
       requireInsertion(deployment.insertionId).mapId,
       items,
       deployment.stashSecureSlot.items ?? [],
       deployment.packItemId,
+      deployment.party.map((stored) => stored.id),
     );
-    if (this.saveManager.recordRaidInFlight(inFlight)) {
-      raidHeartbeat.start(inFlight.id);
+    const recorded = this.saveManager.recordRaidInFlight(inFlight);
+    if (recorded) {
+      raidHeartbeat.start(inFlight.id, () => new SaveManager().raidInFlightId() === inFlight.id);
     }
     // Remembered on the way out rather than on the way home, because it is what
     // the player chose and a raid that goes badly chose it too.
@@ -1295,6 +1306,8 @@ export class HubScene extends Phaser.Scene {
       deployment.packItemId,
       deployment.party.find((stored) => stored.id === this.savedGame.stash.partnerId())?.pokemon,
       readLook(this.savedGame.raidProgress.look) ?? undefined,
+      // Every ending settles this raid and no other (`SaveManager.ownsRaid`).
+      recorded ? inFlight.id : undefined,
     );
     const world = {
       party: new PokemonParty(deployment.party.map((stored) => stored.pokemon)),
@@ -2273,15 +2286,22 @@ export class HubScene extends Phaser.Scene {
     const inBoxes = this.scopeBox === 'all' || this.stashSearch.trim() !== '';
     const boxNames = this.stash.listBoxes().map((box) => box.name);
     const garden = new Set(gardenPokemon(this.savedGameNow).map((stored) => stored.id));
+    const away = awayOnRaid(this.savedGame);
     const rows = shown
       .map((stored, index) => {
         const hurt = needsRecovery(stored.pokemon);
-        const wiring = hurt
+        // Out on a raid in another window, it is that raid's until it ends.
+        const out = away.has(stored.id);
+        const wiring = out
+          ? `data-refused="${escapeAttribute(outOnRaidLine(stored.pokemon.name))}" data-help="${escapeAttribute(outOnRaidLine(stored.pokemon.name))}"`
+          : hurt
           ? this.atHome
             ? `data-refused="${escapeAttribute(`NURSE JOY patches ${stored.pokemon.name} up, at the Pokémon Center.`)}" data-help="${escapeAttribute(`${stored.pokemon.name} needs NURSE JOY, at the Pokémon Center.`)}"`
             : `data-recover="${stored.id}" data-help="${this.recoveryHelp(stored)}"`
           : `data-fit="${stored.id}" data-help="${escapeAttribute(stored.pokemon.name)} is fit to raid."`;
-        const tag = hurt
+        const tag = out
+          ? pixelTag('On a raid')
+          : hurt
           ? pixelTag(this.atHome ? 'Needs Joy' : this.recoveryPriceTag(stored), 'risk')
           : this.atHome
             ? this.homeTag(stored, garden)
@@ -3722,19 +3742,20 @@ export class HubScene extends Phaser.Scene {
    */
   private dayCareView(): string {
     // Every box, those he would take first, each row naming its box (`ui/boxPicker.ts`'s promises).
-    const takes = (stored: StashedPokemon): boolean => dayCareRefusal(this.stash, stored.id) === undefined;
+    const away = awayOnRaid(this.savedGame);
+    const takes = (stored: StashedPokemon): boolean => dayCareRefusal(this.stash, stored.id, away) === undefined;
     const found = this.findablePokemon;
     const shown = [...found.filter(takes), ...found.filter((stored) => !takes(stored))];
     const boxNames = this.stash.listBoxes().map((box) => box.name);
     const rows = shown
       .map((stored, index) => {
-        const refusal = dayCareRefusal(this.stash, stored.id);
+        const refusal = dayCareRefusal(this.stash, stored.id, away);
         const name = escapeAttribute(stored.pokemon.name);
         const wiring =
           refusal === undefined
             ? `data-day-care-leave="${stored.id}" data-help="Leave ${name} with him. It grows half a level with every raid you go on."`
             : `data-refused="${escapeAttribute(refusal)}" aria-disabled="true" data-help="${escapeAttribute(refusal)}"`;
-        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, refusal === undefined ? pixelTag('Leave') : '', boxNames[this.stash.boxIndexOf(stored.id)])}</button>`;
+        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, refusal === undefined ? pixelTag('Leave') : away.has(stored.id) ? pixelTag('On a raid') : '', boxNames[this.stash.boxIndexOf(stored.id)])}</button>`;
       })
       .join('');
     const details = shown
@@ -3742,7 +3763,7 @@ export class HubScene extends Phaser.Scene {
         this.pokemonDetail(stored, index === 0, {
           label: 'Day-Care',
           chips: (shows) => {
-            const refusal = dayCareRefusal(this.stash, stored.id);
+            const refusal = dayCareRefusal(this.stash, stored.id, away);
             return this.chip(
               refusal === undefined ? `data-day-care-leave="${stored.id}" ${shows}` : `data-refused="${escapeAttribute(refusal)}" ${shows}`,
               refusal ?? `Leave ${stored.pokemon.name} with him.`,
@@ -3755,7 +3776,7 @@ export class HubScene extends Phaser.Scene {
       .join('');
     return `<main class="px-body daycare-layout">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
-      { className: 'stash-roster', heading: 'Which Pokémon should I raise?', note: `${this.stashPokemon.length} at base` },
+      { className: 'stash-roster', heading: 'Which Pokémon should I raise?', note: this.atBaseNote(away) },
     )}</main>`;
   }
 
@@ -3764,7 +3785,7 @@ export class HubScene extends Phaser.Scene {
     if (this.movedOnElsewhere()) {
       return;
     }
-    const refusal = dayCareRefusal(this.stash, pokemonId);
+    const refusal = dayCareRefusal(this.stash, pokemonId, awayOnRaid(this.savedGame));
     const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name;
     if (refusal !== undefined || name === undefined) {
       this.refuse(refusal ?? 'That Pokémon isn’t at base.');
@@ -3806,6 +3827,39 @@ export class HubScene extends Phaser.Scene {
 
   private itemName(itemId: string): string {
     return ITEM_DEFINITIONS.find((item) => item.id === itemId)?.displayName ?? itemId;
+  }
+
+  /**
+   * Whether `pokemonId` is out on the raid in flight in another window, saying
+   * so when it is. Two tabs share one save, and that raid's ending writes its
+   * own copy of every Pokemon it took back over the vault, so whatever this
+   * screen did to one - a heal, gear, a move - would be undone or doubled.
+   * `SaveManager.save` refuses the write regardless (`raidHoldRefusal`); this is
+   * that refusal said before anything changes.
+   */
+  private outOnRaid(pokemonId: string): boolean {
+    if (!awayOnRaid(this.savedGame).has(pokemonId)) {
+      return false;
+    }
+    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name ?? 'That Pokémon';
+    this.refuse(outOnRaidLine(name));
+    return true;
+  }
+
+  /** Whether the last of an item at base is packed for the raid in flight in another window, saying so. */
+  private packedForRaid(itemId: string): boolean {
+    if (spareAtBase(this.savedGameNow, itemId) > 0 || this.stash.itemCount(itemId) <= 0) {
+      return false;
+    }
+    this.refuse(PACKED_FOR_RAID_LINE);
+    return true;
+  }
+
+  /** How many Pokemon are at base, not counting those out on a raid in another window. */
+  private atBaseNote(away: ReadonlySet<string>): string {
+    const out = this.stashPokemon.filter((stored) => away.has(stored.id)).length;
+    const here = this.stashPokemon.length - out;
+    return out === 0 ? `${here} at base` : `${here} at base · ${out} on a raid`;
   }
 
   /** A status line that is the game saying no. */

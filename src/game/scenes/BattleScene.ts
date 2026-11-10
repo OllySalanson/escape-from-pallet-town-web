@@ -352,6 +352,8 @@ export interface HallBout {
    * which the hall writes nothing about, rather than as a bout on the ladder.
    */
   readonly practice?: string;
+  /** The bout's mark in the save (`arena/boutUnderWay.ts`), handed back with its result. */
+  readonly boutId?: string;
 }
 
 /**
@@ -365,6 +367,8 @@ export interface DojoBout {
   readonly at: GridPosition;
   /** The cup or rental run this bout is part of (`arena/arenaRuns.ts`), if it is. */
   readonly run?: DojoRun;
+  /** The bout's mark in the save (`arena/boutUnderWay.ts`), handed back with its result. */
+  readonly boutId?: string;
 }
 
 /** What a bout for show says in place of the raid's words for the same things. */
@@ -3237,7 +3241,11 @@ export class BattleScene extends Phaser.Scene {
    * the battle is only lost when nothing is left to send into either.
    */
   private prepareForcedReplacement(): void {
-    if (this.party.isAllFainted()) {
+    // A fight already won is over, whoever else fell in the same turn: FireRed
+    // pays the experience and ends it, asking for nobody. Writing `active` over
+    // the engine's `victory` made the player send somebody in for nothing and
+    // skipped the experience (the battles hunt, finding 2).
+    if (this.party.isAllFainted() || this.state.outcome === 'victory') {
       return;
     }
     const empty = slotsOf(this.state, 'player').find((ref) => {
@@ -4128,14 +4136,16 @@ export class BattleScene extends Phaser.Scene {
           room: 'battle-arena',
           at: bout.at,
           facing: 'up',
-          dojoBout: { opponent: bout.dojo, won, ...(bout.run ? { run: bout.run } : {}) },
+          dojoBout: { opponent: bout.dojo, won, ...(bout.run ? { run: bout.run } : {}), ...(bout.boutId ? { boutId: bout.boutId } : {}) },
         });
         return;
       }
       this.scene.start('base', {
         room: 'raid-arena',
         at: bout.at,
-        ...(bout.practice ? { practice: { leader: bout.practice, won } } : { bout: { rival: bout.rival, won } }),
+        ...(bout.practice
+          ? { practice: { leader: bout.practice, won } }
+          : { bout: { rival: bout.rival, won, ...(bout.boutId ? { boutId: bout.boutId } : {}) } }),
       });
       return;
     }
@@ -4210,6 +4220,9 @@ export class BattleScene extends Phaser.Scene {
     // home, so its survey is written here too - and the map the record is
     // against is the raid's own, which the plan names.
     const raidMapId = this.runSession.plan?.insertion.mapId;
+    // Asked before anything is written: a raid another tab has already settled
+    // has nothing to lose, and every write below refuses it anyway.
+    const settledElsewhere = !new SaveManager().ownsRaid(this.runSession.raidId);
     if (raidMapId) {
       new SaveManager().recordRaidEnded(
         raidMapId,
@@ -4220,6 +4233,7 @@ export class BattleScene extends Phaser.Scene {
         },
         { walk: this.runSession.walk, ending: { kind: 'fell', line: fellLine(this.state.player.pokemon.name) } },
         this.runSession.manager.snapshot().elapsedMs,
+        this.runSession.raidId,
       );
     }
     // And how the pack was laid out, for the same reason and in the same
@@ -4238,6 +4252,7 @@ export class BattleScene extends Phaser.Scene {
       // it is the bag - so nothing in the accounting above can name it, and the
       // secure container cannot protect it either.
       this.runSession.packItemId,
+      this.runSession.raidId,
     );
     flashScreen(this.cameras.main, 220, [239, 68, 68]);
     this.cameras.main.shake(180, 0.009);
@@ -4275,6 +4290,7 @@ export class BattleScene extends Phaser.Scene {
       // let this player out again is read off the stash just written.
       fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
       saved,
+      ...(settledElsewhere ? { settledElsewhere } : {}),
     });
     this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {
       if (this.scene.manager.keys.extraction) {

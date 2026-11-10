@@ -230,6 +230,12 @@ export interface ExtractionReport {
    */
   readonly baseNote: string | null;
   readonly saved: boolean;
+  /**
+   * Another tab settled this raid before it ended - it was taken for
+   * abandoned while this tab was frozen or asleep - so nothing on this screen
+   * was written. Absent reads as no.
+   */
+  readonly settledElsewhere?: boolean;
 }
 
 export interface ExtractionReportInput {
@@ -286,6 +292,8 @@ export interface ExtractionReportInput {
    */
   readonly fitToRaid?: boolean;
   readonly saved: boolean;
+  /** See `ExtractionReport.settledElsewhere`. */
+  readonly settledElsewhere?: boolean;
 }
 
 export function buildExtractionReport(input: ExtractionReportInput): ExtractionReport {
@@ -444,6 +452,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
+    ...(input.settledElsewhere ? { settledElsewhere: true } : {}),
   };
 }
 

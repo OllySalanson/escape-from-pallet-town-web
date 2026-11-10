@@ -376,6 +376,7 @@ describe('a raid abandoned by closing the game', () => {
         // A Potion in the container, and room it kept for a material nobody
         // can say was ever found.
         secured: { potion: 1, 'radio-valve': 1 },
+        pokemonIds: [],
       },
     });
 
@@ -408,6 +409,27 @@ describe('a raid abandoned by closing the game', () => {
       expect(saves.settleAbandonedRaid()).toBeNull();
       expect(storage.getItem('escape-from-pallet-town.save.v1')).toBe(before);
     }
+  });
+
+  /**
+   * The saves hunt, finding 2: a short extraction keeps what is owed
+   * (`resolvedBy`), and a reload used to clear it - heal at the Center, jump,
+   * reload, and the next raid ran the whole clock with the team still healed.
+   */
+  it('keeps the heal it owed, the ward bed and Bill’s ration for the next raid that runs', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    const saves = new SaveManager(storage);
+    saves.save({ ...saves.load()!, pendingRecoveryMs: 60_000, wardTreatmentsUsed: 1, traderRationUsed: 2, traderBerthPaid: true });
+    deployFrom(storage);
+
+    expect(new SaveManager(storage).settleAbandonedRaid()).not.toBeNull();
+    const game = new SaveManager(storage).load()!;
+    expect(game.pendingRecoveryMs).toBe(60_000);
+    expect(game.wardTreatmentsUsed).toBe(1);
+    expect(game.traderRationUsed).toBe(2);
+    // The berth was for the trip, and the trip is over.
+    expect(game.traderBerthPaid).toBe(false);
   });
 
   it('a reload outside a raid costs nothing at all', () => {

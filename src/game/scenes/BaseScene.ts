@@ -224,6 +224,7 @@ import {
   raidsCompleted,
   takeBackQuestion,
   takenBackReport,
+  takenElsewhereLine,
 } from '../hub/dayCare';
 import {
   POKEMON_ICON_FRAME_MS,
@@ -329,7 +330,8 @@ import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { boardLines, oakNews } from '../base/labBoard';
 import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
-import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
+import { abandonedRaidLines, boutHeartbeat, raidHeartbeat } from '../run/raidInFlight';
+import { ABANDONED_BOUT_LINE, newBoutId, type BoutUnderWay } from '../arena/boutUnderWay';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
 import { loadPlayerName } from '../console/playerName';
@@ -563,7 +565,7 @@ export interface BaseSceneData {
   /** How close a raid out was, when it was, said on the board in front of the crowd. */
   readonly closeCall?: string;
   /** How a bout for show has just gone (`base/arenaBouts.ts`), handed back by the fight, which wrote nothing. */
-  readonly bout?: { readonly rival: HunterRivalId; readonly won: boolean };
+  readonly bout?: { readonly rival: HunterRivalId; readonly won: boolean; readonly boutId?: string };
   /**
    * How a practice against a gym leader's real team has just gone
    * (`base/gymPractice.ts`): their boss id. Nothing is written for it, not even
@@ -571,7 +573,7 @@ export interface BaseSceneData {
    */
   readonly practice?: { readonly leader: string; readonly won: boolean };
   /** How a bout in THE BATTLE ARENA has just gone (`arena/dojoCounter.ts`): the dojo's counter writes it down. */
-  readonly dojoBout?: { readonly opponent: string; readonly won: boolean; readonly run?: DojoRun };
+  readonly dojoBout?: { readonly opponent: string; readonly won: boolean; readonly run?: DojoRun; readonly boutId?: string };
   /**
    * Where in the room to stand, facing up, instead of on the mat: backing out
    * of a screen opened from something in the room - the wall map - puts the
@@ -980,13 +982,23 @@ export class BaseScene extends Phaser.Scene {
       harbourCounted = true;
       countPlay({ kind: 'harbour' });
     }
+    // Every bout comes back to the base too, so one this page was fighting is over.
+    boutHeartbeat.stop();
     // How a bout went is the hall's to write down, and the one thing about it that is.
-    const boutWent = data.bout ? this.saveManager.recordBout(data.bout.rival, data.bout.won) : null;
+    const boutWent = data.bout ? this.saveManager.recordBout(data.bout.rival, data.bout.won, data.bout.boutId) : null;
     // And a bout in THE BATTLE ARENA is its counter's to write down.
-    const dojoWent = data.dojoBout && !data.dojoBout.run ? this.saveManager.recordDojoBout(data.dojoBout.opponent, data.dojoBout.won) : null;
+    const dojoWent = data.dojoBout && !data.dojoBout.run
+      ? this.saveManager.recordDojoBout(data.dojoBout.opponent, data.dojoBout.won, new Date(), data.dojoBout.boutId)
+      : null;
     // A bout of a cup or rental run is settled with its run (`arena/arenaRuns.ts`).
     const dojoRun = data.dojoBout?.run ? readDojoRun(data.dojoBout.run) : undefined;
-    const runWent = data.dojoBout && dojoRun ? this.saveManager.recordArenaRun(dojoRun, data.dojoBout.opponent, data.dojoBout.won) : null;
+    const runWent = data.dojoBout && dojoRun
+      ? this.saveManager.recordArenaRun(dojoRun, data.dojoBout.opponent, data.dojoBout.won, new Date(), data.dojoBout.boutId)
+      : null;
+    // A bout that started and never came back - a reload mid-fight - is the loss
+    // it was walked away from (`arena/boutUnderWay.ts`), unless another tab is
+    // still fighting it.
+    const boutAbandoned = this.saveManager.settleBoutUnderWay((boutId) => boutHeartbeat.liveElsewhere(boutId));
     const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {
       // A browser with no storage that has also lost the payload: the title
@@ -1328,6 +1340,8 @@ export class BaseScene extends Phaser.Scene {
       this.handOverPartner(data.chose, room?.keeper ? [room.keeper.position] : []);
     } else if (abandoned) {
       this.say(abandonedRaidLines(abandoned), []);
+    } else if (boutAbandoned) {
+      this.say([ABANDONED_BOUT_LINE], []);
     } else if (data.dojoBout && dojoRun) {
       this.say(
         [runWent?.line ?? (data.dojoBout.won ? 'You won the bout!' : 'You lost the bout.')],
@@ -2604,6 +2618,21 @@ export class BaseScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * Writes a bout about to start as under way (`arena/boutUnderWay.ts`) and
+   * keeps its pulse, so a reload mid-bout is a loss rather than nothing and a
+   * bout in another tab is left alone. The id, or undefined if it could not
+   * be written - then the bout is fought unmarked, as before.
+   */
+  private markBout(bout: (id: string) => BoutUnderWay): string | undefined {
+    const id = newBoutId();
+    if (!this.saveManager.startBout(bout(id))) {
+      return undefined;
+    }
+    boutHeartbeat.start(id, () => new SaveManager().boutUnderWayId() === id);
+    return id;
+  }
+
   /** On to the sand, on copies of the bench, with nothing riding on it. */
   private startBout(rival: HunterRival): void {
     const kit = this.kit;
@@ -2611,12 +2640,13 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const party = boutParty(kit.flow.party.map((stored) => stored.pokemon));
+    const boutId = this.markBout((id) => ({ id, kind: 'hall', rival: rival.id }));
     const data: BattleSceneData = {
       party: new PokemonParty(party),
       bag: boutBag(kit.flow.packedContents),
       trainer: boutTrainer(rival, party),
       hunterBattle: true,
-      exhibition: { rival: rival.id, at: { ...this.currentTile } },
+      exhibition: { rival: rival.id, at: { ...this.currentTile }, ...(boutId ? { boutId } : {}) },
     };
     // What has been got ready is the same when the player comes back: nothing was spent.
     flowAcrossABout = kit.flow;
@@ -6878,6 +6908,13 @@ export class BaseScene extends Phaser.Scene {
         }
         const taken = this.saveManager.takeBackFromDayCare();
         if (!taken) {
+          // Two tabs share one save: the other may have fetched it while this
+          // one stood at his fence, and then nothing failed - he has nobody.
+          const now = this.saveManager.load();
+          if (now && now.stash.dayCare()?.id !== stay.id) {
+            this.goTo({ savedGame: now, at: { ...this.currentTile }, said: [takenElsewhereLine(stay.pokemon.name)] }, 'interiorLeave');
+            return;
+          }
           this.say(['It could not be taken back: the game could not be saved.'], [at]);
           return;
         }
@@ -7101,13 +7138,15 @@ export class BaseScene extends Phaser.Scene {
       }
       this.leaving = true;
       audioManager.play('battleStart');
+      const run = choice.run;
+      const boutId = this.markBout((id) => ({ id, kind: 'dojo', opponent: choice.opponent, run }));
       const data: BattleSceneData = {
         party: new PokemonParty(bout.party),
         bag: dojoBag(),
         trainer: bout.trainer,
         hunterBattle: true,
         weather: bout.weather,
-        exhibition: { dojo: choice.opponent, at: { ...this.currentTile }, run: choice.run },
+        exhibition: { dojo: choice.opponent, at: { ...this.currentTile }, run, ...(boutId ? { boutId } : {}) },
       };
       this.cameras.main.fadeOut(220, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('battle', data));
@@ -7117,12 +7156,13 @@ export class BaseScene extends Phaser.Scene {
     if (!foe || choice.team.length === 0) {
       return;
     }
+    const boutId = this.markBout((id) => ({ id, kind: 'dojo', opponent: foe.id }));
     const data: BattleSceneData = {
       party: new PokemonParty(dojoParty(choice.team)),
       bag: dojoBag(),
       trainer: foeTrainer(foe, choice.team.length),
       hunterBattle: true,
-      exhibition: { dojo: foe.id, at: { ...this.currentTile } },
+      exhibition: { dojo: foe.id, at: { ...this.currentTile }, ...(boutId ? { boutId } : {}) },
     };
     this.leaving = true;
     audioManager.play('battleStart');

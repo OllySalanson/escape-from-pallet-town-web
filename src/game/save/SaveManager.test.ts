@@ -1,3 +1,4 @@
+import { afterBout } from '../base/boutLadder';
 import { DERBY_LEVELS } from '../minigames/derby';
 import { createRaidInFlight } from '../run/raidInFlight';
 import { describe, expect, it } from 'vitest';
@@ -93,6 +94,57 @@ describe('SaveManager', () => {
       gameCorner: undefined,
     });
     expect(new SaveManager(new MemoryStorage()).recordDojoBout('bot:xkitx', true)).toBeNull();
+  });
+
+  /**
+   * The saves hunt, finding 3: a bout writes its result only when it comes
+   * back to the room, so a reload in the middle of a losing one used to write
+   * nothing, and the cup's run carried on as though it had never been fought.
+   */
+  describe('a bout that never comes back', () => {
+    const now = new Date(2026, 10, 7, 12);
+
+    it('is a loss when the base next opens, and the cup run starts again', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      saves.recordArenaRun({ mode: 'cup' }, 'bot:karpking', true, now);
+      expect(saves.load()!.raidProgress.dojo?.cup?.run).toBe(1);
+
+      expect(saves.startBout({ id: 'bout-2', kind: 'dojo', opponent: 'bot:xkitx', run: { mode: 'cup' } })).toBe(true);
+      // The page reloads mid-bout: the result never comes back.
+      expect(saves.settleBoutUnderWay(() => false, now)?.id).toBe('bout-2');
+      const after = saves.load()!.raidProgress;
+      expect(after.dojo?.cup?.run).toBe(0);
+      expect(after.dojo?.losses).toBe(1);
+      expect(after.boutUnderWay).toBeUndefined();
+      // Settled once, and the result that limps in afterwards is not written again.
+      expect(saves.settleBoutUnderWay(() => false, now)).toBeNull();
+      expect(saves.recordArenaRun({ mode: 'cup' }, 'bot:xkitx', true, now, 'bout-2')).toBeNull();
+      expect(saves.load()!.raidProgress.dojo?.cup?.run).toBe(0);
+    });
+
+    it('is written by the result coming back, which clears it', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      saves.startBout({ id: 'bout-1', kind: 'dojo', opponent: 'bot:karpking' });
+      expect(saves.recordDojoBout('bot:karpking', true, now, 'bout-1')?.record.wins).toBe(1);
+      expect(saves.load()!.raidProgress.boutUnderWay).toBeUndefined();
+      expect(saves.settleBoutUnderWay(() => false, now)).toBeNull();
+      expect(saves.load()!.raidProgress.dojo?.losses ?? 0).toBe(0);
+    });
+
+    it('is left alone while another tab is still fighting it, and a hall bout counts on the ladder', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      saves.recordBout('blue', true);
+      saves.startBout({ id: 'bout-3', kind: 'hall', rival: 'misty' });
+      expect(saves.settleBoutUnderWay((id) => id === 'bout-3', now)).toBeNull();
+      expect(saves.load()!.raidProgress.boutUnderWay?.id).toBe('bout-3');
+      const ladder = saves.load()!.raidProgress.bouts;
+
+      expect(saves.settleBoutUnderWay(() => false, now)?.kind).toBe('hall');
+      expect(saves.load()!.raidProgress.bouts).toEqual(afterBout(ladder, 'misty', false).record);
+    });
   });
 
   describe('describing the save for the title screen', () => {

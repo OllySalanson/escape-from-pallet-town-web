@@ -3,6 +3,7 @@ import { readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
 import { settleDojoBout, type DojoSettlement } from '../arena/classes';
 import { settleRunBout, type DojoRun, type RunSettlement } from '../arena/arenaRuns';
 import { gymOf } from '../world/valeQuarters';
+import { readBoutUnderWay, type BoutUnderWay } from '../arena/boutUnderWay';
 import {
   buyPrize,
   derbySource,
@@ -129,7 +130,7 @@ import {
   type PokedexMilestone,
 } from '../hub/pokedex';
 import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
-import { readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
+import { awayOnRaid, readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
 import { secretsHeldBy } from '../world/secrets';
 import { isRumourId, millRumour, type Rumour } from '../world/rumours';
 import { fossilAwake, isFossil, revivedPokemon, type FossilItemId, type FossilOnMachine } from '../hub/fossils';
@@ -297,6 +298,11 @@ export interface RaidProgress {
   readonly bouts?: BoutRecord;
   /** Bouts in THE BATTLE ARENA: won, lost, and which of its regulars have been beaten (`arena/dojoRecord.ts`). */
   readonly dojo?: DojoRecord;
+  /**
+   * A bout started and not yet come back (`arena/boutUnderWay.ts`): settled as a
+   * loss when the base next opens, so a reload cannot erase one. Absent is none.
+   */
+  readonly boutUnderWay?: BoutUnderWay;
   /**
    * The gym leaders this save has fought in a raid, won or lost (`world/valeQuarters.ts`,
    * `leadersMet`): once met, a leader spars in THE RAID ARENA with their real gym
@@ -719,6 +725,15 @@ const RAID_RESOLVED = {
   raidInFlight: null,
 } as const;
 
+/** What an ending writes: the raid's mark gone, its berth used, and what it paid off. */
+interface RaidResolution {
+  readonly pendingRecoveryMs?: number;
+  readonly wardTreatmentsUsed?: number;
+  readonly traderRationUsed?: number;
+  readonly traderBerthPaid: boolean;
+  readonly raidInFlight: null;
+}
+
 /**
  * What a raid got home from clears. Out again before the first hunter could
  * have come, it has paid for nothing (`DAY_CARE_LEAST_RAID_MS`), so the healing
@@ -726,11 +741,119 @@ const RAID_RESOLVED = {
  * 30 steps from the landing to an open exit, a dash would otherwise make every
  * heal free. Only the trip's own berth and the in-flight mark are done with.
  */
-function resolvedBy(elapsedMs: number | undefined): Partial<typeof RAID_RESOLVED> {
-  if (elapsedMs === undefined || elapsedMs >= DAY_CARE_LEAST_RAID_MS) {
-    return RAID_RESOLVED;
+function resolvedBy(game: RestoredGame, elapsedMs: number | undefined): RaidResolution {
+  return paidOff(game, elapsedMs === undefined || elapsedMs >= DAY_CARE_LEAST_RAID_MS);
+}
+
+/**
+ * The raid in flight is over: what it owed is paid off when `paid`, and its
+ * berth is used either way. Only what was owed *when it deployed*
+ * (`RaidInFlight.owed`) is paid off - two tabs share one save, and a heal booked
+ * or a ration bought in the other tab while this raid was out is owed by the
+ * next raid, not cleared by this one. With no record of what was owed (no raid
+ * in flight, or a marker written before it was kept) everything is paid off,
+ * as it always was.
+ */
+function paidOff(game: RestoredGame, paid: boolean): RaidResolution {
+  const owed = game.raidInFlight?.owed;
+  if (owed === undefined) {
+    return paid ? RAID_RESOLVED : { traderBerthPaid: false, raidInFlight: null };
   }
-  return { traderBerthPaid: false, raidInFlight: null };
+  return {
+    ...(paid
+      ? {
+        pendingRecoveryMs: Math.max(0, game.pendingRecoveryMs - owed.recoveryMs),
+        wardTreatmentsUsed: Math.max(0, game.wardTreatmentsUsed - owed.wardTreatmentsUsed),
+        traderRationUsed: Math.max(0, game.traderRationUsed - owed.traderRationUsed),
+      }
+      : {}),
+    traderBerthPaid: owed.traderBerthPaid ? false : game.traderBerthPaid,
+    raidInFlight: null,
+  };
+}
+
+/**
+ * Whether an ending for `raidId` is the ending of the raid this save has in
+ * flight. A raid's ending writes its own copy of the team and the pack over
+ * the vault, so it must only ever settle its own raid: one that was settled
+ * as abandoned while its tab was frozen, and perhaps followed by a raid from
+ * another tab, has nothing left to bank and must not clear the other raid's
+ * mark. An ending that names no raid (the explorer run, the map maker's try,
+ * a raid whose mark could not be written) is not held to it.
+ */
+function endsRaidInFlight(game: RestoredGame, raidId: string | undefined): boolean {
+  return raidId === undefined || game.raidInFlight?.id === raidId;
+}
+
+/**
+ * How many of an item the base can use while the raid in flight is out: the
+ * vault in storage still holds what was packed until the raid settles, and
+ * what was packed is the raid's.
+ */
+export function spareAtBase(game: Pick<RestoredGame, 'raidInFlight' | 'stash'>, itemId: string): number {
+  return Math.max(0, game.stash.itemCount(itemId) - packedFor(game.raidInFlight, itemId));
+}
+
+function packedFor(raid: RaidInFlight | null | undefined, itemId: string): number {
+  if (!raid) {
+    return 0;
+  }
+  return (raid.items[itemId] ?? 0) + (raid.packItemId === itemId ? 1 : 0);
+}
+
+/** Why a write would take something from the raid in flight. */
+export type RaidHold =
+  | { readonly kind: 'pokemon'; readonly pokemonId: string }
+  | { readonly kind: 'item'; readonly itemId: string };
+
+/**
+ * Whether writing `next` over `stored` (the save as storage holds it, raw)
+ * would change what the raid in flight owns, and if so what. Two tabs share
+ * one save, and the vault in storage is the pre-raid vault until the raid
+ * ends, when its ending writes its own copy of every Pokemon it took back
+ * over the vault and charges what it spent against the vault's supplies. So a
+ * write in another tab that changed one of those Pokemon - healed it, taught
+ * it, took its gear, boxed it at the Day-Care - would be undone or doubled by
+ * that ending, and one that spent a packed supply would be spent twice.
+ *
+ * Only a write that keeps the raid in flight is held to this: an ending
+ * clears the mark and a deployment writes a new one. `SaveManager.save` asks
+ * it of every write, so no screen can get round it; screens ask `awayOnRaid`
+ * and `spareAtBase` first, to say so in their own words.
+ */
+export function raidHoldRefusal(stored: unknown, next: SaveData): RaidHold | undefined {
+  if (!isRecord(stored)) {
+    return undefined;
+  }
+  const raid = readRaidInFlight(stored.raidInFlight, bagContents);
+  if (!raid || next.raidInFlight?.id !== raid.id) {
+    return undefined;
+  }
+  const storedStash = isRecord(stored.stash) ? stored.stash : {};
+  const version = typeof stored.version === 'number' ? stored.version : SAVE_VERSION;
+  const storedPokemon: readonly unknown[] = Array.isArray(storedStash.pokemon) ? storedStash.pokemon : [];
+  for (const pokemonId of raid.pokemonIds) {
+    const was = storedPokemon.find((entry) => isRecord(entry) && entry.id === pokemonId);
+    const before = was === undefined ? null : deserializeStashedPokemon(was, version);
+    const after = next.stash.pokemon.find((entry) => entry.id === pokemonId);
+    const same =
+      before === null
+        ? after === undefined
+        : after !== undefined && JSON.stringify(serializePokemon(before.pokemon)) === JSON.stringify(after.pokemon);
+    if (!same || (next.stash.dayCare?.id === pokemonId && before !== null)) {
+      return { kind: 'pokemon', pokemonId };
+    }
+  }
+  const storedItems = bagContents(storedStash.items);
+  const itemIds = new Set([...Object.keys(raid.items), ...(raid.packItemId === undefined ? [] : [raid.packItemId])]);
+  for (const itemId of itemIds) {
+    const had = storedItems[itemId] ?? 0;
+    const has = next.stash.items[itemId] ?? 0;
+    if (has < had && has < packedFor(raid, itemId)) {
+      return { kind: 'item', itemId };
+    }
+  }
+  return undefined;
 }
 
 export interface StorageLike {
@@ -855,16 +978,76 @@ export class SaveManager {
     }
   }
 
+  /**
+   * Writes the whole game. Refused, with nothing written, when it would take
+   * something from the raid in flight (`raidHoldRefusal`): that is a rule about
+   * the save rather than about any one screen, so it is kept here, where every
+   * write passes.
+   */
   public save(state: SaveGameState): boolean {
     if (!this.storage) {
       return false;
     }
 
     try {
-      this.storage.setItem(this.key, JSON.stringify(serializeGame(state)));
+      const data = serializeGame(state);
+      if (raidHoldRefusal(this.storedData(), data) !== undefined) {
+        return false;
+      }
+      this.storage.setItem(this.key, JSON.stringify(data));
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /** What `save` would refuse to write over the stored game, and why (`raidHoldRefusal`). */
+  public raidHold(state: SaveGameState): RaidHold | undefined {
+    try {
+      return raidHoldRefusal(this.storedData(), serializeGame(state));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Whether the raid `raidId` is still the save's raid in flight - false once
+   * another tab has settled it as abandoned, or banked it. Asked by a raid's
+   * own ending before it writes anything, so a raid that comes home to a save
+   * that has moved on says so rather than banking into it.
+   */
+  public ownsRaid(raidId: string | undefined): boolean {
+    if (raidId === undefined) {
+      return true;
+    }
+    const game = this.load();
+    return game !== null && game.raidInFlight?.id === raidId;
+  }
+
+  /** The id of the raid the stored save has in flight, read without restoring the game. */
+  public raidInFlightId(): string | null {
+    const stored = this.storedData();
+    if (!isRecord(stored) || !isRecord(stored.raidInFlight)) {
+      return null;
+    }
+    return typeof stored.raidInFlight.id === 'string' ? stored.raidInFlight.id : null;
+  }
+
+  /** The id of the bout the stored save has under way, read without restoring the game. */
+  public boutUnderWayId(): string | null {
+    const stored = this.storedData();
+    if (!isRecord(stored) || !isRecord(stored.raidProgress) || !isRecord(stored.raidProgress.boutUnderWay)) {
+      return null;
+    }
+    return typeof stored.raidProgress.boutUnderWay.id === 'string' ? stored.raidProgress.boutUnderWay.id : null;
+  }
+
+  private storedData(): unknown {
+    try {
+      const raw = this.storage?.getItem(this.key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
     }
   }
 
@@ -919,9 +1102,9 @@ export class SaveManager {
    * callers with nothing to settle (tests, and any future reward-only banking)
    * stay honest rather than passing an invented one.
    */
-  public bankRun(result: RunResult, settlement?: RaidSettlement, elapsedMs?: number): boolean {
+  public bankRun(result: RunResult, settlement?: RaidSettlement, elapsedMs?: number, raidId?: string): boolean {
     const loaded = this.load();
-    if (!loaded) {
+    if (!loaded || !endsRaidInFlight(loaded, raidId)) {
       return false;
     }
     const game = withGiftsReceived(loaded, result);
@@ -931,7 +1114,7 @@ export class SaveManager {
     // The raid this debt paid for has now resolved, so it is settled. Charging
     // on resolution rather than on deployment is what stops a player healing,
     // deploying into the shortened raid and reloading the page to shed the bill.
-    return this.save({ ...game, ...resolvedBy(elapsedMs) });
+    return this.save({ ...game, ...resolvedBy(game, elapsedMs) });
   }
 
   /**
@@ -951,9 +1134,10 @@ export class SaveManager {
     result: RunResult,
     settlement?: RaidSettlement,
     elapsedMs?: number,
+    raidId?: string,
   ): { readonly saved: boolean; readonly granted: boolean } {
     const loaded = this.load();
-    if (!loaded) {
+    if (!loaded || !endsRaidInFlight(loaded, raidId)) {
       return { saved: false, granted: false };
     }
     const game = withGiftsReceived(loaded, result);
@@ -966,7 +1150,7 @@ export class SaveManager {
         !isStandingBoardOpen(game.raidProgress.completedContracts) ||
         standingRoundOf(contractId) !== game.raidProgress.standingContractsBanked
       ) {
-        return { saved: this.save({ ...game, ...resolvedBy(elapsedMs) }), granted: false };
+        return { saved: this.save({ ...game, ...resolvedBy(game, elapsedMs) }), granted: false };
       }
       for (const { itemId, quantity } of carried.reward.items) {
         game.stash.addItem(itemId, quantity);
@@ -978,12 +1162,12 @@ export class SaveManager {
         ...game.raidProgress,
         standingContractsBanked: game.raidProgress.standingContractsBanked + 1,
       };
-      return { saved: this.save({ ...game, raidProgress, ...resolvedBy(elapsedMs) }), granted: true };
+      return { saved: this.save({ ...game, raidProgress, ...resolvedBy(game, elapsedMs) }), granted: true };
     }
 
     const contract = getContract(contractId);
     if (!contract || game.raidProgress.completedContracts.includes(contractId)) {
-      return { saved: this.save({ ...game, ...resolvedBy(elapsedMs) }), granted: false };
+      return { saved: this.save({ ...game, ...resolvedBy(game, elapsedMs) }), granted: false };
     }
 
     const completedContracts = [...game.raidProgress.completedContracts, contractId];
@@ -1003,7 +1187,7 @@ export class SaveManager {
       game.stash.addItem(itemId, quantity);
     }
     return {
-      saved: this.save({ ...game, raidProgress, ...resolvedBy(elapsedMs) }),
+      saved: this.save({ ...game, raidProgress, ...resolvedBy(game, elapsedMs) }),
       granted: true,
     };
   }
@@ -1037,14 +1221,60 @@ export class SaveManager {
    * and nothing else: the fight itself writes nothing (`base/arenaBouts.ts`), and
    * this is the one field a bout can move.
    */
-  public recordBout(rival: HunterRivalId, won: boolean): { readonly game: RestoredGame; readonly record: BoutRecord; readonly ladderDone: boolean } | null {
+  public recordBout(
+    rival: HunterRivalId,
+    won: boolean,
+    boutId?: string,
+  ): { readonly game: RestoredGame; readonly record: BoutRecord; readonly ladderDone: boolean } | null {
     const game = this.load();
-    if (!game) {
+    if (!game || !comesBackTo(game, boutId)) {
       return null;
     }
     const { record, ladderDone } = afterBout(game.raidProgress.bouts, rival, won);
-    const next: RestoredGame = { ...game, raidProgress: { ...game.raidProgress, bouts: record } };
+    const next: RestoredGame = { ...game, raidProgress: withoutBout({ ...game.raidProgress, bouts: record }) };
     return this.save(next) ? { game: next, record, ladderDone } : null;
+  }
+
+  /**
+   * Writes a bout as under way (`arena/boutUnderWay.ts`), as it starts: one
+   * that never comes back - a reload, a closed tab - is a loss when the base
+   * next opens. Answers whether it was written.
+   */
+  public startBout(bout: BoutUnderWay): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, boutUnderWay: bout } });
+  }
+
+  /**
+   * Settles a bout that started and never came back as the loss it would have
+   * been walked away from, and reports it, or null when there was none to
+   * settle. A bout still being fought in another tab is left to that tab.
+   */
+  public settleBoutUnderWay(
+    liveElsewhere: (boutId: string) => boolean = () => false,
+    now: Date = new Date(),
+  ): BoutUnderWay | null {
+    const game = this.load();
+    const bout = game?.raidProgress.boutUnderWay;
+    if (!game || !bout || liveElsewhere(bout.id)) {
+      return null;
+    }
+    const progress = withoutBout(game.raidProgress);
+    const corner = progress.gameCorner ?? NO_GAME_CORNER;
+    let raidProgress: RaidProgress;
+    if (bout.kind === 'hall') {
+      raidProgress = { ...progress, bouts: afterBout(progress.bouts, bout.rival, false).record };
+    } else if (bout.run) {
+      const settled = settleRunBout(progress.dojo, corner, bout.run, bout.opponent, false, now);
+      raidProgress = { ...progress, dojo: settled.dojo, gameCorner: settled.gameCorner };
+    } else {
+      const settled = settleDojoBout(progress.dojo, corner, bout.opponent, false, now);
+      raidProgress = { ...progress, dojo: settled.record, gameCorner: settled.gameCorner };
+    }
+    return this.save({ ...game, raidProgress }) ? bout : null;
   }
 
   /**
@@ -1052,14 +1282,14 @@ export class SaveManager {
    * back to its counter: the fight itself writes nothing (`arena/boutRules.ts`),
    * and this is the one field a bout there can move.
    */
-  public recordDojoBout(opponent: string, won: boolean, now: Date = new Date()): DojoSettlement | null {
+  public recordDojoBout(opponent: string, won: boolean, now: Date = new Date(), boutId?: string): DojoSettlement | null {
     const game = this.load();
-    if (!game) {
+    if (!game || !comesBackTo(game, boutId)) {
       return null;
     }
     // The tally, the class ladder and the tickets, in one write (`arena/classes.ts`).
     const settled = settleDojoBout(game.raidProgress.dojo, game.raidProgress.gameCorner ?? NO_GAME_CORNER, opponent, won, now);
-    const next = { ...game, raidProgress: { ...game.raidProgress, dojo: settled.record, gameCorner: settled.gameCorner } };
+    const next = { ...game, raidProgress: withoutBout({ ...game.raidProgress, dojo: settled.record, gameCorner: settled.gameCorner }) };
     return this.save(next) ? settled : null;
   }
 
@@ -1068,13 +1298,13 @@ export class SaveManager {
    * as the player comes back to the counter: the tally, the run and its tickets,
    * in one write. Nothing else in the save moves.
    */
-  public recordArenaRun(run: DojoRun, opponent: string, won: boolean, now: Date = new Date()): RunSettlement | null {
+  public recordArenaRun(run: DojoRun, opponent: string, won: boolean, now: Date = new Date(), boutId?: string): RunSettlement | null {
     const game = this.load();
-    if (!game) {
+    if (!game || !comesBackTo(game, boutId)) {
       return null;
     }
     const settled = settleRunBout(game.raidProgress.dojo, game.raidProgress.gameCorner ?? NO_GAME_CORNER, run, opponent, won, now);
-    const next = { ...game, raidProgress: { ...game.raidProgress, dojo: settled.dojo, gameCorner: settled.gameCorner } };
+    const next = { ...game, raidProgress: withoutBout({ ...game.raidProgress, dojo: settled.dojo, gameCorner: settled.gameCorner }) };
     return this.save(next) ? settled : null;
   }
 
@@ -1193,10 +1423,15 @@ export class SaveManager {
     if (!game) {
       return undefined;
     }
+    // Only the Pokemon at base: the raid in flight in another tab has the rest,
+    // and its ending writes their own condition back.
+    const away = awayOnRaid(game);
     const outcome = applyRecovery(
       game.stash,
       game.pendingRecoveryMs,
-      pokemonNeedingRecovery(game.stash).map((stored) => stored.id),
+      pokemonNeedingRecovery(game.stash)
+        .map((stored) => stored.id)
+        .filter((id) => !away.has(id)),
       recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed),
     );
     if (outcome.recoveredIds.length === 0) {
@@ -1599,7 +1834,9 @@ export class SaveManager {
   ): RestoredGame | undefined {
     const game = this.load();
     const stashed = game?.stash.listPokemon().find((entry) => entry.id === pokemonId);
-    if (!game || !stashed || game.stash.itemCount(itemId) < 1) {
+    // Not one out on a raid in another window, nor the last of a thing packed
+    // for it: that raid's ending writes its own copy of both back.
+    if (!game || !stashed || spareAtBase(game, itemId) < 1 || awayOnRaid(game).has(pokemonId)) {
       return undefined;
     }
     const { changed, spent } = use(stashed.pokemon);
@@ -1870,7 +2107,13 @@ export class SaveManager {
     if (!game) {
       return false;
     }
-    return this.save({ ...game, raidInFlight: raid });
+    const owed = {
+      recoveryMs: game.pendingRecoveryMs,
+      wardTreatmentsUsed: game.wardTreatmentsUsed,
+      traderRationUsed: game.traderRationUsed,
+      traderBerthPaid: game.traderBerthPaid,
+    };
+    return this.save({ ...game, raidInFlight: { ...raid, owed } });
   }
 
   /**
@@ -1908,7 +2151,7 @@ export class SaveManager {
       grid: secureGrid(
         game.raidProgress.completedContracts,
         game.raidProgress.workshopUpgrades,
-        game.traderBerthPaid,
+        raid.owed?.traderBerthPaid ?? game.traderBerthPaid,
       ),
     });
     const lost = brought
@@ -1932,7 +2175,12 @@ export class SaveManager {
     game.stash.restockMinimumSupplies();
     // Walking away from a raid is losing it, or a run could be saved by closing the tab.
     const raidProgress = countShortRaid(extendRun(game.raidProgress, 'wiped'));
-    if (!this.save({ ...game, raidProgress, ...RAID_RESOLVED })) {
+    // And it has paid for nothing, as a raid out before the first hunter has:
+    // what is owed - the heal booked against its clock, the ward's bed, Bill's
+    // ration - is owed by the next raid that runs. Its length is not known
+    // here, so it is read as the shortest; cleared, a reload made every heal
+    // free (the saves hunt, finding 2).
+    if (!this.save({ ...game, raidProgress, ...paidOff(game, false) })) {
       return null;
     }
     return {
@@ -1958,9 +2206,10 @@ export class SaveManager {
     survey: { readonly width: number; readonly walked: Iterable<number> } | undefined = undefined,
     memory: { readonly walk: RaidWalk | undefined; readonly ending: { readonly kind: RaidMarkKind; readonly line: string } } | undefined = undefined,
     clockMs: number | undefined = undefined,
+    raidId: string | undefined = undefined,
   ): boolean {
     const game = this.load();
-    if (!game) {
+    if (!game || !endsRaidInFlight(game, raidId)) {
       return false;
     }
     let raidProgress = extendRun(bumpRaid(game.raidProgress, mapId, outcome), outcome);
@@ -2276,9 +2525,10 @@ export class SaveManager {
     secureSlot: SecureSlot = {},
     condition: readonly RaidCondition[] = [],
     packItemId?: string,
+    raidId?: string,
   ): boolean {
     const game = this.load();
-    if (!game) {
+    if (!game || !endsRaidInFlight(game, raidId)) {
       return false;
     }
 
@@ -2290,8 +2540,9 @@ export class SaveManager {
         game.raidProgress.workshopUpgrades,
         // A berth is paid for before the raid and read here, at the end of it,
         // because a rented stack has to protect a haul from the wipe it was
-        // rented against. `RAID_RESOLVED` below is what takes it away again.
-        game.traderBerthPaid,
+        // rented against. `paidOff` below is what takes it away again - and one
+        // bought in another tab while this raid was out was not rented for it.
+        game.raidInFlight?.owed?.traderBerthPaid ?? game.traderBerthPaid,
       ),
     });
     // The pack the raid was lost in goes with it, and it is taken *after* the
@@ -2314,8 +2565,27 @@ export class SaveManager {
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
     );
     game.stash.restockMinimumSupplies();
-    return this.save({ ...game, ...RAID_RESOLVED });
+    return this.save({ ...game, ...paidOff(game, true) });
   }
+}
+
+/**
+ * Whether a bout's result is the result of the bout this save has under way:
+ * one already settled as a loss (the page went away mid-bout and the base has
+ * opened since) must not be written a second time. A result that names no
+ * bout is not held to it.
+ */
+function comesBackTo(game: RestoredGame, boutId: string | undefined): boolean {
+  return boutId === undefined || game.raidProgress.boutUnderWay?.id === boutId;
+}
+
+function withoutBout(progress: RaidProgress): RaidProgress {
+  if (progress.boutUnderWay === undefined) {
+    return progress;
+  }
+  const rest: { -readonly [Field in keyof RaidProgress]: RaidProgress[Field] } = { ...progress };
+  delete rest.boutUnderWay;
+  return rest;
 }
 
 /** Every raid this save has gone on, on every map - what the hunters take turns by. */
@@ -2589,6 +2859,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(readPit(value.pit) ?? {}),
     ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
     ...(value.dojo === undefined ? {} : { dojo: readDojoRecord(value.dojo) }),
+    ...(readBoutUnderWay(value.boutUnderWay) === undefined ? {} : { boutUnderWay: readBoutUnderWay(value.boutUnderWay) }),
     ...(Array.isArray(value.gymsMet) ? { gymsMet: uniqueStrings(value.gymsMet).filter((id) => gymOf(id) !== undefined) } : {}),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
     ...(Array.isArray(value.firstWordsHeard)

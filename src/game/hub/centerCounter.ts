@@ -1,5 +1,6 @@
 import type { RaidProgress, RestoredGame } from '../save/SaveManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
+import { awayOnRaid, type RaidInFlight } from '../run/raidInFlight';
 import {
   formatRecoveryClock,
   pokemonNeedingRecovery,
@@ -31,6 +32,8 @@ export function recoveryTermsFor(workshopUpgrades: readonly string[], wardTreatm
 
 type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed'> & {
   readonly raidProgress: Pick<RaidProgress, 'workshopUpgrades'>;
+  /** A raid out in another window, whose Pokemon are not hers to heal (`SaveManager.healAtCenter`). */
+  readonly raidInFlight?: RaidInFlight | null;
 };
 
 export interface CenterOffer {
@@ -56,12 +59,21 @@ function clockAfter(pendingMs: number): string {
  * nothing can shorten (`dev/playtestMode.ts`).
  */
 export function centerOffer(game: CounterGame, free = false): CenterOffer {
-  const hurt = pokemonNeedingRecovery(game.stash);
+  const away = awayOnRaid(game);
+  const everyoneHurt = pokemonNeedingRecovery(game.stash);
+  const hurt = everyoneHurt.filter((stored) => !away.has(stored.id));
+  const out = everyoneHurt.filter((stored) => away.has(stored.id)).map((stored) => stored.pokemon.name);
+  // Out on a raid in another window, a Pokemon is that raid's: its ending
+  // writes its own condition back, so a heal here would be undone or doubled.
+  const outLine =
+    out.length === 0
+      ? []
+      : [`${inWords(out)} ${out.length === 1 ? 'is' : 'are'} out on a raid in your other window, so I can’t treat ${out.length === 1 ? 'it' : 'them'} until ${out.length === 1 ? 'it’s' : 'they’re'} home.`];
   const pending = game.pendingRecoveryMs;
   if (hurt.length === 0) {
     return {
       lines: [
-        'Your Pokémon are all fit to raid.',
+        ...(out.length === 0 ? ['Your Pokémon are all fit to raid.'] : outLine),
         ...(pending > 0 && !free
           ? [`Your next raid runs ${clockAfter(pending)}: ${formatRecoveryClock(pending)} went on recovery.`]
           : []),
@@ -76,7 +88,7 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
   const capped = `Your next raid is already down to ${clockAfter(pending)}, as short as I will make it.`;
   const raidFirst = 'Raid first, then come and see me.';
   if (heldBack.length === hurt.length) {
-    return { lines: [`${teamCondition(game.stash) ?? 'Somebody needs me'}. ${capped}`, raidFirst] };
+    return { lines: [...outLine, `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${capped}`, raidFirst] };
   }
   const quoteMs = free ? 0 : quoteRecovery(game.stash, pending, ids, terms);
   const treated = hurt.filter((stored) => !heldBack.includes(stored.id));
@@ -92,7 +104,8 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
       : `It takes ${formatRecoveryClock(quoteMs)} off your next raid.`;
   return {
     lines: [
-      `${teamCondition(game.stash) ?? 'Somebody needs me'}. ${price}`,
+      ...outLine,
+      `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${price}`,
       ...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []),
     ],
     question: `Shall I heal ${them}?`,
@@ -120,3 +133,7 @@ export const NOT_HEALED_LINE = 'Of course. I’ll be right here.';
 
 /** What she adds for a player a lost raid has left with one Pokémon: the swap is on the PC (`Stash.canSwapStarter`). */
 export const SWAP_AT_THE_PC_LINE = 'If you would rather start again with another partner, BILL’S PC can swap your last one.';
+
+function inWords(names: readonly string[]): string {
+  return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
