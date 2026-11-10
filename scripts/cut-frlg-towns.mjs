@@ -126,7 +126,7 @@ const PIECES = [
   { name: 'purpleHouse', town: 'lavender', at: [8, 8], size: [5, 4] },
   { name: 'safariGate', town: 'fuchsia', at: [22, 0], size: [6, 6], flatRoof: true },
   { name: 'wardenHouse', town: 'fuchsia', at: [26, 12], size: [6, 5], flatRoof: true },
-  { name: 'fuchsiaGym', town: 'fuchsia', at: [6, 28], size: [7, 4] },
+  { name: 'fuchsiaGym', town: 'fuchsia', at: [6, 28], size: [7, 5] },
   { name: 'brickRow', town: 'fuchsia', at: [13, 28], size: [10, 4] },
   { name: 'silphCo', town: 'saffron', at: [29, 16], size: [9, 15] },
   { name: 'dojo', town: 'saffron', at: [37, 8], size: [6, 5] },

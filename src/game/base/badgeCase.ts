@@ -2,7 +2,7 @@ import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { isMapOffered, TILE_SIZE } from '../worldMap';
 
 /**
@@ -155,6 +155,16 @@ export const BADGES: readonly Badge[] = [
     art: ['...oo...', '..obao..', '.ooaaoo.', '..oaco..', 'o.oaco.o', 'oaoaocao', '.oaaaco.', '..oooo..'],
     ink: { o: RIM, a: '#5890c8', b: '#d0e8ff', c: '#2c5888', g: '#5890c8' },
   },
+  {
+    // FireRed's own Soul Badge, Koga's: a pink heart. After Cragg's, because
+    // Koga stands only for a holder of Misty's, so a save wins it later.
+    bossId: KOGA_BOSS_ID,
+    name: 'SOUL BADGE',
+    keeper: 'Koga',
+    held: 'every road into the Marsh',
+    art: ['.oo..oo.', 'obbooaao', 'obaaaaco', 'oaaaaaco', 'oaaaaaco', '.oaaaco.', '..oaco..', '...oo...'],
+    ink: { o: RIM, a: '#e868b8', b: '#ffd8f0', c: '#a83088', g: '#e868b8' },
+  },
 ];
 
 /**
@@ -228,8 +238,8 @@ const CASE = {
  * of slots - six over six, a pixel between them - centred in the frame. A case
  * with more than twelve slots takes seven a row with the badges' rims
  * touching, which is all the velvet a wall two tiles high has: a save is only
- * ever shown the badges of maps it can go to (`caseBadges`), which is two
- * today, and the thirteen are every map at once, as the suite asks it.
+ * ever shown the badges of maps it can go to (`caseBadges`), which is three
+ * today, and the fourteen are every map at once, as the suite asks it.
  */
 export function badgeSeats(area: Rect): { readonly frame: Rect; readonly seats: readonly BadgeSeat[] } {
   const width = area.width * TILE_SIZE;

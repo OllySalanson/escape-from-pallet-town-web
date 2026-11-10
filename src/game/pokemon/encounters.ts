@@ -908,3 +908,44 @@ export const COAST_WILDLIFE = wildlife(0.1, [
   { speciesId: 'poliwag', minLevel: 11, maxLevel: 12, weight: 3 },
   { speciesId: 'poliwhirl', minLevel: 25, maxLevel: 25, weight: 1 },
 ]);
+
+// -- THE MARSH, behind Koga ----------------------------------------------------
+
+/**
+ * THE MARSH, the quarter Koga's gym holds shut (`world/valeQuarters.ts`): the
+ * Safari reserve and the wreck's cape. Its threat is said on the notice at
+ * each of his doors - touch anything here and it poisons you back - and its
+ * wildlife is that threat, a fight at a time: the Nidoran's Poison Point
+ * poisons one touch in three, the Paras's Effect Spore can poison, paralyse or
+ * put to sleep whatever touches it, the Venonat's Compound Eyes land its
+ * Supersonic, Koga's own Koffing and Grimer drift in off the wreck's oil, and
+ * the Tauros's Intimidate takes the edge off the first hit. FireRed's Safari
+ * Zone, its Exeggcute and Rhyhorn too, and its Fuchsia neighbours, brought to
+ * the band the quarter is met at - a little under Koga's 18-20, because his
+ * doors are what a team that reaches them has already beaten - with the
+ * Safari's famous Chansey, Kangaskhan, Scyther and Pinsir kept as its rare
+ * rolls, as the reserve's own table keeps them, and a Nidorina at 16, where a
+ * Nidoran becomes one.
+ *
+ * Measured over the real engine at Koga's lead's level, a starter alone
+ * (`marshHabitat.test.ts`; `districtEncounters.test.ts` holds a gym's quarter
+ * at its leader's level): Bulbasaur 84%, Charmander 94%, Squirtle 93% a fight.
+ * One fight is never the danger here; the poison carried out of each one into
+ * the next is.
+ */
+export const MARSH_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'nidoran-f', minLevel: 15, maxLevel: 17, weight: 7 },
+  { speciesId: 'nidoran-m', minLevel: 15, maxLevel: 17, weight: 6 },
+  { speciesId: 'paras', minLevel: 15, maxLevel: 17, weight: 6 },
+  { speciesId: 'venonat', minLevel: 15, maxLevel: 17, weight: 6 },
+  { speciesId: 'koffing', minLevel: 15, maxLevel: 17, weight: 4 },
+  { speciesId: 'grimer', minLevel: 15, maxLevel: 17, weight: 4 },
+  { speciesId: 'exeggcute', minLevel: 15, maxLevel: 16, weight: 3 },
+  { speciesId: 'tauros', minLevel: 16, maxLevel: 17, weight: 2 },
+  { speciesId: 'rhyhorn', minLevel: 16, maxLevel: 17, weight: 2 },
+  { speciesId: 'nidorina', minLevel: 16, maxLevel: 16, weight: 1 },
+  { speciesId: 'chansey', minLevel: 17, maxLevel: 17, weight: 1 },
+  { speciesId: 'scyther', minLevel: 17, maxLevel: 17, weight: 1 },
+  { speciesId: 'pinsir', minLevel: 17, maxLevel: 17, weight: 1 },
+  { speciesId: 'kangaskhan', minLevel: 17, maxLevel: 17, weight: 1 },
+]);

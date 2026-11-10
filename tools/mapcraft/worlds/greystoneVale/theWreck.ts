@@ -29,6 +29,7 @@ import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { planLimits, SEAM_DEPTH, startDistrict } from '../../worldPlan';
 import { INN_ROOM, withInside } from './insides';
+import { KOGA_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { GREYSTONE_VALE } from './plan';
 
 /**
@@ -261,15 +262,18 @@ export function theWreck(): MapcraftResult {
       { x: 28, y: 22, hidden: true },
     ],
     extra: {
+      // Koga's second door: the cliff road in from Orchard Terraces, barred
+      // just inside the cape (`world/valeQuarters.ts`).
+      doors: [{ kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Cliff Road', x: 1, y: 30, width: 1, height: 2 }],
       districts: [
-        { name: 'THE CAPE ROAD', x: 12, y: 21, width: 11, height: 7, wildlife: 'shore' },
-        { name: 'THE VIEWPOINT', x: 32, y: 26, width: 13, height: 6, wildlife: 'shore' },
-        { name: 'THE SPEARS', x: 6, y: 16, width: 10, height: 7, wildlife: 'shore' },
-        { name: 'THE SIGNAL STATION', x: 50, y: 18, width: 8, height: 6, wildlife: 'shore' },
-        { name: 'THE LIDO', x: 8, y: 36, width: 22, height: 8, wildlife: 'shore' },
-        { name: 'THE SALVAGE CAMP', x: 30, y: 36, width: 28, height: 8, wildlife: 'shore' },
-        { name: 'THE SALVAGE STAGE', x: 20, y: 47, width: 18, height: 8, wildlife: 'shore' },
-        { name: 'THE PIANO', x: 14, y: 4, width: 16, height: 9, wildlife: 'shore' },
+        { name: 'THE CAPE ROAD', x: 12, y: 21, width: 11, height: 7, wildlife: 'poison-marsh' },
+        { name: 'THE VIEWPOINT', x: 32, y: 26, width: 13, height: 6, wildlife: 'poison-marsh' },
+        { name: 'THE SPEARS', x: 6, y: 16, width: 10, height: 7, wildlife: 'poison-marsh' },
+        { name: 'THE SIGNAL STATION', x: 50, y: 18, width: 8, height: 6, wildlife: 'poison-marsh' },
+        { name: 'THE LIDO', x: 8, y: 36, width: 22, height: 8, wildlife: 'poison-marsh' },
+        { name: 'THE SALVAGE CAMP', x: 30, y: 36, width: 28, height: 8, wildlife: 'poison-marsh' },
+        { name: 'THE SALVAGE STAGE', x: 20, y: 47, width: 18, height: 8, wildlife: 'poison-marsh' },
+        { name: 'THE PIANO', x: 14, y: 4, width: 16, height: 9, wildlife: 'poison-marsh' },
       ],
       signs: [
         { x: 26, y: 30, lines: ['THE WRECK', 'The liner went onto the reef in the last storm. The camp is below the cliff.'] },

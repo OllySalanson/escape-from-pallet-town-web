@@ -23,12 +23,19 @@
  * north-east pond; the Rhyhorn have a wallow; there is a stage out on the great
  * pool, an office full of what the marsh gave back, and a poacher who has never
  * seen that Scyther before in his life. The pools are drawn now, not rolled.
+ *
+ * Since 9 November 2026 it is half of THE MARSH, the quarter Koga's gym at the
+ * east end of Tanglewood holds: the road in from Tanglewood is his front door,
+ * barred across just inside the reserve's edge, and the road down from the
+ * Power Station is barred the same way while the Station is open ground. The
+ * reserve's reeds roll the Marsh's own table now, poison and all.
  */
 import type { MapFileOutdoorBuildingKind } from '../../../../src/game/world/mapFile';
 import type { MapcraftResult } from '../../report';
 import { districtFile } from '../../stitch';
 import { planLimits, startDistrict } from '../../worldPlan';
 import { withInside } from './insides';
+import { KOGA_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { GREYSTONE_VALE } from './plan';
 
 /**
@@ -201,9 +208,9 @@ export function safariMarsh(): MapcraftResult {
   p.flowers([25, 58], [17, 53]);
 
   const file = districtFile(GREYSTONE_VALE, 'safari-marsh', p, {
-    // The power station's far side is past the hunter's blind window from
-    // every other way out now its stand-in into the marsh is gone
-    // (`hunterFlee.test.ts`): the wardens' stile by the north road covers it.
+    // The wardens' stile by the north road: the reserve's own way out. It once
+    // covered the power station's far side as well, which has the Tailrace Path now that
+    // Koga's bar stands between them (`hunterFlee.test.ts`).
     exits: [{ x: 29, y: 4, name: "Wardens' Stile", opens: { when: 'always' } }],
     dropIns: [{ x: 30, y: 32, name: 'Rest House', description: "The rest house in the middle of the reserve, the dry ground a raid stops at." }],
     itemSpots: [
@@ -217,16 +224,16 @@ export function safariMarsh(): MapcraftResult {
     ],
     extra: {
       districts: [
-        { name: 'THE SAFARI GATE', x: 2, y: 34, width: 12, height: 14, wildlife: 'safari' },
-        { name: 'THE HIDE', x: 18, y: 15, width: 11, height: 7, wildlife: 'safari' },
-        { name: 'THE EGG BANK', x: 28, y: 19, width: 3, height: 7, wildlife: 'safari' },
-        { name: 'THE NURSERY', x: 42, y: 17, width: 12, height: 9, wildlife: 'safari' },
-        { name: 'LOST PROPERTY', x: 33, y: 25, width: 5, height: 6, wildlife: 'safari' },
-        { name: 'THE TOUR', x: 16, y: 34, width: 11, height: 4, wildlife: 'safari' },
-        { name: 'THE GREAT POOL', x: 39, y: 36, width: 14, height: 17, wildlife: 'safari' },
-        { name: 'THE WALLOW', x: 24, y: 48, width: 8, height: 7, wildlife: 'safari' },
-        { name: 'THE RANGERS’ CAMP', x: 52, y: 26, width: 10, height: 6, wildlife: 'safari' },
-        { name: 'THE SOUTH PLANKS', x: 14, y: 53, width: 15, height: 7, wildlife: 'safari' },
+        { name: 'THE SAFARI GATE', x: 2, y: 34, width: 12, height: 14, wildlife: 'poison-marsh' },
+        { name: 'THE HIDE', x: 18, y: 15, width: 11, height: 7, wildlife: 'poison-marsh' },
+        { name: 'THE EGG BANK', x: 28, y: 19, width: 3, height: 7, wildlife: 'poison-marsh' },
+        { name: 'THE NURSERY', x: 42, y: 17, width: 12, height: 9, wildlife: 'poison-marsh' },
+        { name: 'LOST PROPERTY', x: 33, y: 25, width: 5, height: 6, wildlife: 'poison-marsh' },
+        { name: 'THE TOUR', x: 16, y: 34, width: 11, height: 4, wildlife: 'poison-marsh' },
+        { name: 'THE GREAT POOL', x: 39, y: 36, width: 14, height: 17, wildlife: 'poison-marsh' },
+        { name: 'THE WALLOW', x: 24, y: 48, width: 8, height: 7, wildlife: 'poison-marsh' },
+        { name: 'THE RANGERS’ CAMP', x: 52, y: 26, width: 10, height: 6, wildlife: 'poison-marsh' },
+        { name: 'THE SOUTH PLANKS', x: 14, y: 53, width: 15, height: 7, wildlife: 'poison-marsh' },
       ],
       signs: [
         { x: 13, y: 38, lines: ['SAFARI MARSH', "A warden's reserve. Keep to the paths; the reeds are full."] },
@@ -314,6 +321,13 @@ export function safariMarsh(): MapcraftResult {
         { x: 30, y: 52, name: 'Wallow Hand', look: 'black-belt', facing: 'up', lines: ['My job is to turn them over. They like it. They do not say so, but you are still here, so.', 'Do not run. They cannot see you till you run. Then they cannot see anything else.'], beat: { everyMs: 3000, glances: ['up', 'left'] } },
         { x: 56, y: 29, name: 'Head Ranger', look: 'cooltrainer', facing: 'left', lines: ['Two rangers for the whole marsh, and one of them is Moss, who thinks he is a Pokémon.', 'The east track is the quick way out. It is quick because nobody has ever told it about the reeds.'], beat: { everyMs: 3400, glances: ['left', 'down'] }, calls: ['Sign the book!'] },
         { x: 58, y: 27, name: 'Trainee Ranger', look: 'picnicker', facing: 'left', lines: ['I am learning to read the tracks. These ones say Head Ranger went that way, in a hurry.', 'These ones say I should have gone with him.'], beat: { everyMs: 2300, glances: ['left', 'up'] } },
+      ],
+      // Koga's doors: the road in from Tanglewood, barred just inside the
+      // reserve's edge, and the road down from the Power Station, barred the
+      // same way (`world/valeQuarters.ts`).
+      doors: [
+        { kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Safari Road', x: 1, y: 40, width: 1, height: 2 },
+        { kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Pylon Path', x: 30, y: 2, width: 2, height: 1 },
       ],
       trainers: [
         { x: 32, y: 40, name: 'Poacher Vince', team: 'collier', look: 'rocker', facing: 'left', sight: 0, lines: ['Never seen that Scyther before in my life. Whose sack is this? Yours, is it? It had better be.'] },

@@ -4,7 +4,7 @@ import { errandOf, harbourGiver, withErrandAsked } from '../hub/errands';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { gymAdvice, gymGuideLines } from './gymGuide';
-import { MISTY_BOSS_ID, VALE_QUARTERS } from '../world/valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID, VALE_QUARTERS } from '../world/valeQuarters';
 
 /** A save with a raid behind it: the board has nothing for anybody yet to go on one. */
 const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
@@ -63,7 +63,17 @@ describe("the Gym Guide's word on the next gym", () => {
     }
   });
 
+  it('names Koga next once Misty is beaten, in lines that fit the box', () => {
+    const marsh = VALE_QUARTERS.find((quarter) => quarter.gym?.bossId === KOGA_BOSS_ID)!.gym!;
+    const next = gymAdvice({ ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID] });
+    expect(next.slice(0, marsh.advice.length)).toEqual(marsh.advice);
+    expect(next.at(-1)).toContain('Meet KOGA once');
+    for (const line of [...next, ...gymAdvice({ ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID], gymsMet: [KOGA_BOSS_ID] })]) {
+      expect(line.length, line).toBeLessThanOrEqual(68);
+    }
+  });
+
   it('has nothing more to say once every gym is beaten', () => {
-    expect(gymAdvice({ ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID] })).toEqual([]);
+    expect(gymAdvice({ ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] })).toEqual([]);
   });
 });

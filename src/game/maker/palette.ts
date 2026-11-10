@@ -638,6 +638,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   haunted: 'Haunted',
   hideout: 'Rocket hideout',
   coast: 'Stormy coast',
+  'poison-marsh': 'Poison marsh',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */

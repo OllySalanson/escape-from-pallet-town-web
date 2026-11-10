@@ -1332,3 +1332,32 @@ describe('a contact ability against an attacker that cannot take its status', ()
     expect(result.events.some((event) => event.type === 'status-already')).toBe(false);
   });
 });
+
+describe('a rolled side effect on a target that already carries a status', () => {
+  /**
+   * Seen in the Marsh's playtest: Gastly's Lick on a Grimer already paralysed
+   * read "Foe GRIMER is already paralysed!". Only a status move says that
+   * (FireRed's `sText_PkmnAlreadyParalyzed` comes from the move's own effect);
+   * a damaging move's rolled chance simply does not take, silently, as
+   * `SetMoveEffect` breaks out on a target whose status1 is set.
+   */
+  it('says nothing, where a status move used on it says it already has one', () => {
+    const charmander = new Pokemon(CHARMANDER, 15);
+    charmander.moves.splice(0, charmander.moves.length, new Move(EMBER));
+    const state = createBattleState(charmander, new Pokemon(PIDGEY, 15));
+    const burned = {
+      ...state,
+      enemy: { ...state.enemy, primaryStatus: PrimaryStatus.Burn, moves: [] },
+    };
+    // 0.08 a roll: no critical hit (one in sixteen), and under Ember's 10% burn.
+    const result = resolveTurn(burned, 0, () => 0.08);
+    expect(result.events.some((event) => event.type === 'used-move' && event.user === 'player')).toBe(true);
+    expect(result.events.some((event) => event.type === 'status-already')).toBe(false);
+
+    const pikachu = new Pokemon(PIKACHU, 15);
+    pikachu.moves.splice(0, pikachu.moves.length, new Move(THUNDER_WAVE));
+    const asked = createBattleState(pikachu, new Pokemon(PIDGEY, 15));
+    const paralysed = { ...asked, enemy: { ...asked.enemy, primaryStatus: PrimaryStatus.Paralysis, moves: [] } };
+    expect(resolveTurn(paralysed, 0, () => 0.08).events.some((event) => event.type === 'status-already')).toBe(true);
+  });
+});

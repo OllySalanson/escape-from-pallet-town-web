@@ -281,6 +281,9 @@ export function orchardTerraces(): MapcraftResult {
         { x: 44, y: 51, species: 'psyduck', beat: { everyMs: 2500, roam: [[1, 0]] } },
       ],
       signs: [
+        // THE MARSH's notice, at the bar Koga holds (`world/valeQuarters.ts`):
+        // what the quarter does to a team, said before it costs one.
+        { x: 61, y: 33, lines: ['THE MARSH. Past the bar at the end of this road.', 'Touch anything in there and it poisons you back.', 'Fire and Flying never touch. Held by KOGA: SOUL BADGE.'] },
         { x: 4, y: 13, lines: ['THE WEST ROAD', 'West: Gull Strand and the sea wall. East: the farm, and more work than you came for.'] },
         { x: 35, y: 18, lines: ['THE CIDER PRESS', 'Down the lane. Tasting by the jug. Mind the second jug.'] },
         { x: 42, y: 15, lines: ['NORTH ORCHARD', 'Do not climb the trees unless you are paid to. Do not get paid to.'] },
@@ -293,6 +296,9 @@ export function orchardTerraces(): MapcraftResult {
         { x: 58, y: 32, lines: ['THE LANE', 'East: The Wreck, on the cape. West and up: the farm.'] },
       ],
       people: [
+        // The guard at Koga's bar, as FireRed's Route 23 keeps its badge gates:
+        // he says which badge opens it, and stands to one side of the way.
+        { x: 61, y: 29, name: 'Marsh Guard', look: 'policeman', facing: 'down', lines: ['Past the bar on this road is THE MARSH, and KOGA keeps it. Only a trainer with his SOUL BADGE goes through.', 'His gym is at the east end of Tanglewood, up the Pickers’ way. Mind the poison past here.'] },
         { x: 27, y: 13, name: 'Farmer Hale', look: 'straw-hat', facing: 'down', lines: ['Hop the terraces if you are in a hurry. Mind, you will not climb back.', 'Those trees up in the wood are mine, and I will have them back one day. Tell them.'], beat: { everyMs: 3400, glances: ['left', 'down'] }, calls: ['Harvest! All hands!'] },
         { x: 23, y: 16, name: 'Hen Girl', look: 'little-girl', facing: 'right', lines: ['These are the hens. There are nine and they have two heads each, so that is eighteen.', 'They lay one egg between them, and they argue over whose it is.'], beat: { everyMs: 1900, glances: ['right', 'up'] }, calls: ['Chook chook chook!'] },
         { x: 37, y: 13, name: 'Barn Hand', look: 'worker', facing: 'left', lines: ['Apples in the store, hay in the barn, and Himself in a mood.', 'That medicine bag on the shelf belongs to some nurse down the harbour. It came up with the vet.'], beat: { everyMs: 2800, roam: [[0, 1]], glances: ['left'] }, calls: ['Mind out, coming through!'] },

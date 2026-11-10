@@ -2426,7 +2426,12 @@ const applyMoveEffects = (
     if (!untouchable && !refused) {
       const applied = applyStatus(nextState, side, effects.status, random, ref);
       nextState = applied.state;
-      events.push(...applied.events);
+      // Only a status move says the target already has one. A rolled secondary
+      // - Lick's paralysis on a foe already paralysed - simply does not take,
+      // and says nothing, as FireRed's `SetMoveEffect` breaks out silently on
+      // a target whose status1 is already set.
+      const rolled = effects !== move.effects;
+      events.push(...applied.events.filter((event) => !(rolled && event.type === 'status-already')));
     } else if ((untouchable || effects === move.effects) && receiver) {
       events.push(...effectivenessEvents(0, side, receiver.pokemon.name));
     }

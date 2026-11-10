@@ -37,7 +37,7 @@
  * also carries its `reach`: how a raid gets in, why that is hard, what is found
  * only there, and what the game still has to learn to build it.
  */
-import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import type { WorldPlan } from '../../worldPlan';
 
 export const GREYSTONE_VALE: WorldPlan = {
@@ -156,7 +156,9 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: 'SAFARI MARSH',
       cell: [3, 1],
       terrain: 'marsh',
-      wildlife: 'safari',
+      // THE MARSH, Koga's quarter (`world/valeQuarters.ts`): everything in its
+      // reeds punishes a touch, at the band a team that beat him is at.
+      wildlife: 'poison-marsh',
       idea: "Behind the Safari Zone's own gate, a warden's reserve of reed beds and pools where the vale's rarest Pokemon live; the rest huts are the only dry ground.",
     },
     {
@@ -164,7 +166,8 @@ export const GREYSTONE_VALE: WorldPlan = {
       name: 'THE WRECK',
       cell: [3, 2],
       terrain: 'coast',
-      wildlife: 'shore',
+      // The other half of THE MARSH, on the same table.
+      wildlife: 'poison-marsh',
       idea: 'A liner run aground on the reef off the east cape: the salvage camp picks it over, and the reef is the only way out to the wreck and its scattered cargo.',
     },
     {
@@ -317,8 +320,10 @@ export const GREYSTONE_VALE: WorldPlan = {
     { between: ['gull-strand', 'orchard-terraces'], at: 14, kind: 'road' },
     // Where the vale grew: each of the old ways out east is the way on now.
     { between: ['pine-hollow', 'power-station'], at: 26, kind: 'road' },
-    { between: ['tanglewood', 'safari-marsh'], at: 40, kind: 'road' },
-    { between: ['orchard-terraces', 'the-wreck'], at: 30, kind: 'road' },
+    // The two roads into THE MARSH from the open vale, which Koga's gym at the
+    // east end of Tanglewood holds (`src/game/world/valeQuarters.ts`).
+    { between: ['tanglewood', 'safari-marsh'], at: 40, kind: 'road', held: KOGA_BOSS_ID },
+    { between: ['orchard-terraces', 'the-wreck'], at: 30, kind: 'road', held: KOGA_BOSS_ID },
     { between: ['smugglers-cove', 'sunken-quarter'], at: 40, kind: 'trail' },
     // North and south, measured along the shared edge from its west end.
     { between: ['high-moor', 'millbrook'], at: 30, kind: 'road' },
@@ -329,7 +334,10 @@ export const GREYSTONE_VALE: WorldPlan = {
     { between: ['the-crossing', 'gull-strand'], at: 28, kind: 'river' },
     { between: ['the-crossing', 'gull-strand'], at: 46, kind: 'road' },
     { between: ['tanglewood', 'orchard-terraces'], at: 36, kind: 'trail' },
-    { between: ['power-station', 'safari-marsh'], at: 30, kind: 'road' },
+    // The road down from the Power Station is Koga's third door while the
+    // Station is open ground; Lt. Surge takes it over when his gym holds the
+    // Station, and Koga is left his two.
+    { between: ['power-station', 'safari-marsh'], at: 30, kind: 'road', held: KOGA_BOSS_ID },
     { between: ['safari-marsh', 'the-wreck'], at: 20, kind: 'trail' },
     // The jetty runs on from the strand to the drowned quarter, and a way nobody
     // signs goes down through the reeds to the cove: the two ways into THE COAST,

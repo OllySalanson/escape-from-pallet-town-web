@@ -808,6 +808,9 @@ map maker as possible" (the palette board, 2026-10-10).
   where it draws the same cell. The script writes `src/game/world/generated/townPieces.ts`, the only
   thing in the game that knows where a piece sits on the sheet and which of its
   cells are drawn.
+- **Re-cut on 2026-11-09**, from the same commit: the Fuchsia Gym's rectangle
+  was a row short and left its door off, so it was cut 7x5 as the other gyms
+  are, and the sheet repacked. Every other piece's pixels are unchanged.
 
 ### `arena-hall.png` - THE RAID ARENA's great hall
 

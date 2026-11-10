@@ -10,7 +10,7 @@ import type { CastCharacterDesignId } from './characterDesigns';
 import type { TrainerWatch } from './trainerSight';
 import type { WorldMapId } from '../worldMap';
 import { builtInSpot } from './builtInSpots';
-import { MISTY_BOSS_ID } from './valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from './valeQuarters';
 
 /**
  * The few of the 151 a trainer names that are not one of the seventeen
@@ -51,6 +51,15 @@ export interface RunTrainerEncounter extends TrainerWatch {
    * is what the save keeps, so it must never be reused for a different door.
    */
   readonly bossId?: string;
+  /**
+   * The boss this one stands only once beaten: a gym leader later in the order
+   * (`world/valeQuarters.ts`) is not in his gym at all until the save holds the
+   * badge before his, the mirror of `withoutDefeatedBosses` taking a beaten
+   * one away. His hall stays open and his gym trainers stand in it, a free
+   * look at what he fights with. Koga stands only for a holder of Misty's
+   * CASCADE BADGE.
+   */
+  readonly challengedAfter?: string;
   /**
    * The gear this boss is carrying, handed to the player's pack the first time
    * they beat them.
@@ -93,16 +102,21 @@ export const bossEncounters = (
   );
 
 /**
- * A raid's trainers without the bosses already beaten. A boss is beaten once,
+ * A raid's trainers as this save meets them: without the bosses already
+ * beaten, and without a boss who will not fight it yet. A boss is beaten once,
  * for good: what is left where they stood is the open gate, which the map
- * captions as open.
+ * captions as open. And a leader later in the gyms' order is not there until
+ * the leader before him is beaten (`challengedAfter`), so his doors stay shut
+ * however a save gets to his hall.
  */
 export const withoutDefeatedBosses = (
   trainers: readonly RunTrainerEncounter[],
   defeatedBosses: readonly string[],
 ): readonly RunTrainerEncounter[] =>
   trainers.filter(
-    (trainer) => trainer.bossId === undefined || !defeatedBosses.includes(trainer.bossId),
+    (trainer) =>
+      (trainer.bossId === undefined || !defeatedBosses.includes(trainer.bossId)) &&
+      (trainer.challengedAfter === undefined || defeatedBosses.includes(trainer.challengedAfter)),
   );
 
 /**
@@ -209,6 +223,8 @@ export const TOLL_BAND = {
     'vale-gym-misty-luis',
     'vale-coast-fisherman-hal',
     'vale-coast-swimmer-nell',
+    'vale-gym-koga-nate',
+    'vale-gym-koga-phil',
   ] as readonly string[],
 } as const;
 
@@ -246,6 +262,18 @@ export const MISTY_GYM_SPOTS = {
 /** A spot in Misty's hall, as a tile of the vale's played grid. */
 const inMistysHall = (spot: { readonly x: number; readonly y: number }) =>
   builtInSpot('greystone-vale', { area: MISTY_GYM_HALL, ...spot });
+
+/** Koga's gym hall in the vale's file (`tanglewood.ts`), and where he and his trainers stand in it. */
+export const KOGA_GYM_HALL = 'tanglewood-fuchsia-gym';
+export const KOGA_GYM_SPOTS = {
+  koga: { x: 6, y: 2 },
+  nate: { x: 9, y: 5 },
+  phil: { x: 3, y: 7 },
+} as const;
+
+/** A spot in Koga's hall, as a tile of the vale's played grid. */
+const inKogasHall = (spot: { readonly x: number; readonly y: number }) =>
+  builtInSpot('greystone-vale', { area: KOGA_GYM_HALL, ...spot });
 
 /**
  * These encounters are created for each WorldScene so defeated trainers and
@@ -1303,6 +1331,105 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
           gymPokemon('horsea', 12, ['Bubble', 'Smokescreen']),
         ],
         'Asleep or not, you got me. Misty is tougher, mind.',
+        2,
+      ),
+      ai: 'gym',
+    },
+  },
+
+  // -- Fuchsia Gym, Tanglewood: Koga holds THE MARSH ------------------------------------
+  {
+    // The leader of Fuchsia Gym, at the east end of Tanglewood by the road into
+    // the Safari Marsh, who holds every way into THE MARSH: that road, the
+    // road from Orchard Terraces into The Wreck, and for now the road down
+    // from the Power Station (`maps/greystoneVale.json`, his `boss` doors;
+    // `world/valeQuarters.ts`) - the third goes to Lt. Surge when his gym
+    // holds the Station. He stands at the head of his hall only for a trainer
+    // holding Misty's CASCADE BADGE (`challengedAfter`); before that his hall is
+    // open, and his two trainers in it are a free look at his poison.
+    mapId: 'greystone-vale',
+    position: inKogasHall(KOGA_GYM_SPOTS.koga),
+    facing: 'down',
+    fixedPosition: true,
+    bossId: KOGA_BOSS_ID,
+    challengedAfter: MISTY_BOSS_ID,
+    design: 'koga',
+    introLines: [
+      'KOGA, FUCHSIA GYM LEADER. Fwahahaha!',
+      'A mere child dares to challenge me? Despair to the creeping horror of poison!',
+    ],
+    trainer: {
+      ...createTrainer(
+        'vale-gym-koga',
+        'KOGA',
+        // Two on two, his combo played on purpose (`ai: 'gym'`): the Koffing
+        // lays Smokescreen and Poison Gas while the Grimer Minimizes beside it,
+        // so nothing lands and everything is poisoned, and the Koffing keeps
+        // Self-Destruct as a parting shot (FireRed's `AI_CV_SelfKO`: held back
+        // while it is healthy). The Venonat is his last, confusing with
+        // Supersonic. Levitate lifts the Koffing over every Ground move.
+        // Measured over the real engine (`quarterPuzzle.test.ts`, three
+        // Potions packed) against parties at his lead's level: a Gastly from
+        // the Moor Chapel opening with Hypnosis - Normal moves pass through it
+        // and Poison does a quarter - with a Ponyta, a Pidgeotto and a
+        // Sandshrew taught Dig, wins 99%; the Grass the Coast was won with,
+        // three levels up, 23%, eight up 87%; each starter with a Gastly and a
+        // Ponyta or Pidgeotto 75% or better (Bulbasaur the 75). A Ground team
+        // is no trap here, though the plan guessed it: Poison does half to
+        // Ground and Rock, and only the Koffing floats.
+        [
+          gymPokemon('koffing', 20, ['Smog', 'Smokescreen', 'Self-Destruct', 'Poison Gas']),
+          gymPokemon('grimer', 19, ['Sludge', 'Minimize', 'Poison Gas', 'Pound']),
+          gymPokemon('venonat', 18, ['Super Sonic', 'Tackle', 'Poison Powder', 'Leech Life']),
+        ],
+        'Humph! You have proven your worth! Here is the SOUL BADGE. The ways into the Marsh are open to you.',
+        2,
+      ),
+      ai: 'gym',
+    },
+  },
+  {
+    // A gym trainer: the smoke-and-poison half of Koga's combo, three levels
+    // under him, off the walk up the middle of the hall and watching nothing,
+    // so a fight with him is asked for. He stands whether Koga does or not.
+    mapId: 'greystone-vale',
+    position: inKogasHall(KOGA_GYM_SPOTS.nate),
+    facing: 'left',
+    fixedPosition: true,
+    design: 'rocker',
+    introLines: ['Now you see me, now you are poisoned! Koga taught me that one.'],
+    trainer: {
+      ...createTrainer(
+        'vale-gym-koga-nate',
+        'JUGGLER NATE',
+        [
+          gymPokemon('koffing', 17, ['Smokescreen', 'Smog', 'Tackle']),
+          gymPokemon('venonat', 17, ['Poison Powder', 'Super Sonic', 'Tackle']),
+        ],
+        'Smoke and poison, and you walked through both. Koga does it better.',
+        2,
+      ),
+      ai: 'gym',
+    },
+  },
+  {
+    // The other half: the Grimer that will not be hit, and the Koffing that
+    // goes out with a bang - Minimize beside Self-Destruct.
+    mapId: 'greystone-vale',
+    position: inKogasHall(KOGA_GYM_SPOTS.phil),
+    facing: 'right',
+    fixedPosition: true,
+    design: 'black-belt',
+    introLines: ['Hit what you cannot see! And mind the bang when it comes.'],
+    trainer: {
+      ...createTrainer(
+        'vale-gym-koga-phil',
+        'TAMER PHIL',
+        [
+          gymPokemon('grimer', 17, ['Minimize', 'Sludge', 'Pound']),
+          gymPokemon('koffing', 17, ['Self-Destruct', 'Smog', 'Tackle']),
+        ],
+        'Boom, and still you stand. Something that cannot be touched would serve you well in here.',
         2,
       ),
       ai: 'gym',

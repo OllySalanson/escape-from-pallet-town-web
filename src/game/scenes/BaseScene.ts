@@ -1346,8 +1346,9 @@ export class BaseScene extends Phaser.Scene {
       this.hearFirstWords('moved');
       this.say(FIRST_WORDS.moved.lines, []);
     } else if (!room && !this.visit && heldLandingNews(this.savedGame.raidProgress)) {
-      this.hearFirstWords('coast');
-      this.say(FIRST_WORDS.coast.lines, []);
+      const news = heldLandingNews(this.savedGame.raidProgress)!;
+      this.hearFirstWords(news);
+      this.say(FIRST_WORDS[news].lines, []);
     }
     if (this.visit) {
       if (data.stairsFrom === undefined) {

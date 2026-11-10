@@ -5,6 +5,7 @@ import { playerLinks } from '../../../../src/game/world/sailing';
 import { getWorldMap } from '../../../../src/game/worldMap';
 import { powerStation } from './powerStation';
 import { safariMarsh } from './safariMarsh';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { theWreck } from './theWreck';
 
 /**
@@ -98,11 +99,14 @@ describe('the fourth ring, walked in the stitched vale', () => {
   const station = inCell(3, 0);
   const marsh = inCell(3, 1);
   const cape = inCell(3, 2);
-  const map = getWorldMap('greystone-vale');
+  // Every gate shut but the gyms': the Marsh is Koga's to open, and he stands
+  // only for a holder of Misty's badge (`valeQuarters.ts`); everything else in
+  // the ring is reached without a fight.
+  const map = getWorldMap('greystone-vale', [MISTY_BOSS_ID, KOGA_BOSS_ID]);
   const fromSquare = stepDistances(map.collision, { x: 64 + 30, y: 128 + 32 }, undefined, map.links);
   const steps = ({ x, y }: { x: number; y: number }) => fromSquare[y][x];
 
-  it('reaches every new place on foot from Mill Square with every gate shut', () => {
+  it('reaches every new place on foot from Mill Square with every gate shut but the gyms’', () => {
     const places = {
       'the picket': station(31, 27),
       'the company shops': station(16, 27),

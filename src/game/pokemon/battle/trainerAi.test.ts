@@ -96,6 +96,44 @@ describe("a gym trainer's AI (FireRed's own, ported)", () => {
     expect(after.turnsPlayed).toBe(1);
   });
 
+  /**
+   * FireRed's `AI_CV_SelfKO` and `AI_CBM_Explosion`: a Koffing that knows
+   * Self-Destruct keeps it while it is healthy - it is not the strongest hit to
+   * be chosen for being strong - reaches for it once its HP is low, never
+   * throws it at a Ghost, and as the last one standing never throws itself
+   * away while the other side has somebody to send in.
+   */
+  it('holds Self-Destruct back while healthy, and reaches for it when low', () => {
+    const fresh = createTrainerBattleState(
+      mon('sandshrew', 20, ['Scratch']),
+      trainer([mon('koffing', 20, ['Self-Destruct', 'Smog']), mon('grimer', 19, ['Pound'])]),
+    );
+    const healthy = picks(fresh, 120);
+    expect(healthy.filter((name) => name === 'Self-Destruct').length).toBeLessThan(healthy.length / 4);
+    const low: BattleState = { ...fresh, enemy: { ...fresh.enemy, currentHp: 5 } };
+    const late = picks(low, 120);
+    expect(late.filter((name) => name === 'Self-Destruct').length).toBeGreaterThan(late.length / 2);
+  });
+
+  it('never blows up on a Ghost, nor as its last against a side with somebody behind', () => {
+    const ghost = createTrainerBattleState(
+      mon('gastly', 20, ['Lick']),
+      trainer([mon('koffing', 20, ['Self-Destruct', 'Smog']), mon('grimer', 19, ['Pound'])]),
+    );
+    const lowOnAGhost: BattleState = { ...ghost, enemy: { ...ghost.enemy, currentHp: 5 } };
+    expect(picks(lowOnAGhost)).not.toContain('Self-Destruct');
+    const last = createTrainerBattleState(
+      mon('sandshrew', 20, ['Scratch']),
+      trainer([mon('koffing', 20, ['Self-Destruct', 'Smog'])]),
+    );
+    const lastLow: BattleState = {
+      ...last,
+      enemy: { ...last.enemy, currentHp: 5 },
+      playerParty: [last.player.pokemon, mon('pidgey', 20, ['Tackle'])],
+    };
+    expect(picks(lastLow)).not.toContain('Self-Destruct');
+  });
+
   it('leaves every trainer not marked for it choosing at random, as before', () => {
     const state = createTrainerBattleState(
       mon('poliwag', 15, ['Bubble']),

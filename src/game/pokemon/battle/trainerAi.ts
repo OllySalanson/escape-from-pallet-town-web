@@ -40,8 +40,14 @@ import { WeatherId } from './weather';
  *     status on a target already carrying one or refusing it (-10, confusion on
  *     the confused -5); a stat already at its cap, or held by Keen Eye, Hyper
  *     Cutter or Clear Body (-10); Rain Dance in the rain and Sunny Day in the
- *     sun (-8); Leech Seed on a Grass type or the already seeded (-10). And
- *     from `AI_CheckViability`, Recover at full health (-3).
+ *     sun (-8); Leech Seed on a Grass type or the already seeded (-10); and a
+ *     move that faints the user (`AI_CBM_Explosion`) when it is the user's
+ *     last and the target has somebody behind it (-10), or both are down to
+ *     their last (-1). And from `AI_CheckViability`, Recover at full health
+ *     (-3), and `AI_CV_SelfKO`: a move that faints the user is held back while
+ *     it is healthy and slower, more so against a target that has raised its
+ *     evasion, and reached for once its HP is low - so Koga's Koffing blows
+ *     itself up as a parting shot, not on the turn it arrives.
  *  2. **`AI_TryToFaint`: the knockout when it is there.** A move expected to
  *     knock the target out is +4 (+6 for a move with priority, as FireRed's
  *     Quick Attack; nothing for one that faints the user); any other damaging
@@ -133,6 +139,11 @@ function badMoveScore(
   if ((damaging || move.effects.status !== undefined) && !move.typeless && getTypeEffectiveness(move.type, types) === 0) {
     return -10;
   }
+  // `AI_CBM_Explosion`: the last one standing does not throw itself away while
+  // the other side still has somebody to send in.
+  if (move.userFaints && aliveBehind(state, user.side) === 0) {
+    return aliveBehind(state, target!.side) > 0 ? -10 : -1;
+  }
   const absorbed = absorbs(carrier, move);
   if (absorbed) {
     return absorbed.blocks ? -10 : -12;
@@ -168,6 +179,67 @@ function badMoveScore(
     }
   }
   return 0;
+}
+
+/**
+ * `count_alive_pokemon`: how many of a side's party could still be sent in,
+ * not counting whoever is on the field.
+ */
+function aliveBehind(state: BattleState, side: SlotRef['side']): number {
+  const onField = engagedSlots(state, side).map((ref) => unitAt(state, ref)?.pokemon);
+  if (side === 'enemy') {
+    return (state.trainer?.party ?? []).slice(state.enemySentOut).filter((pokemon) => !pokemon.isFainted).length;
+  }
+  return (state.playerParty ?? []).filter((pokemon) => !pokemon.isFainted && !onField.includes(pokemon)).length;
+}
+
+/** A combatant's HP as FireRed's `if_hp_less_than` reads it: a whole percentage. */
+const hpPercent = (combatant: BattleCombatant): number =>
+  Math.floor((combatant.currentHp * 100) / Math.max(1, combatant.pokemon.maxHp));
+
+/**
+ * `AI_CV_SelfKO`, line for line: a move that faints the user is marked down
+ * against a target that has raised its evasion, marked down while the user is
+ * healthy (by three when it is also the faster, by one past half its HP), and
+ * marked up once its HP is low. Each `if_random_less_than N` is a roll under
+ * N of 256.
+ */
+function selfKoViability(
+  state: BattleState,
+  user: SlotRef,
+  move: MoveBase,
+  target: SlotRef | undefined,
+  random: RandomSource,
+): number {
+  if (!move.userFaints) {
+    return 0;
+  }
+  const self = unitAt(state, user)!;
+  const foe = target ? unitAt(state, target) : null;
+  const roll = (below: number): boolean => random() * 256 < below;
+  let score = 0;
+  const evasion = foe?.statStages.evasion ?? 0;
+  if (evasion >= 1) {
+    score -= 1;
+    if (evasion >= 4 && !roll(128)) {
+      score -= 1;
+    }
+  }
+  const hp = hpPercent(self);
+  const targetFaster = foe !== null && foe.pokemon.stats.speed > self.pokemon.stats.speed;
+  if (hp >= 80 && !targetFaster) {
+    return roll(50) ? score : score - 3;
+  }
+  if (hp > 50) {
+    return roll(50) ? score : score - 1;
+  }
+  if (!roll(128)) {
+    score += 1;
+  }
+  if (hp <= 30 && !roll(50)) {
+    score += 1;
+  }
+  return score;
 }
 
 /** What one swing is expected to take off this target: a middling roll, no critical hit. */
@@ -264,10 +336,13 @@ export function chooseTrainerMove(
         const damage = expectedDamage(state, self, foe, base);
         if (damage >= foe.currentHp && damage > 0) {
           score += base.userFaints ? 0 : base.priority > 0 ? 6 : 4;
-        } else {
+        } else if (!base.userFaints) {
+          // `get_how_powerful_move_is` leaves a move that faints the user out of
+          // the comparison both ways (`sDiscouragedPowerfulMoveEffects`): it is
+          // never the strongest hit, and never marked down for not being it.
           const strongest = Math.max(
             ...self.moves
-              .filter((other) => other.pp > 0)
+              .filter((other) => other.pp > 0 && !other.base.userFaints)
               .map((other) => expectedDamage(state, self, foe, other.base)),
           );
           if (damage < strongest) {
@@ -279,6 +354,7 @@ export function chooseTrainerMove(
         score += 2;
       }
       score += weatherViability(state, user, base, target);
+      score += selfKoViability(state, user, base, target, random);
       scored.push({
         moveIndex,
         ...(base.target === MoveTarget.Self || base.effects.weather !== undefined || target === undefined

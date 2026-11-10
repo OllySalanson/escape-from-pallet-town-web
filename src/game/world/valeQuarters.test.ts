@@ -12,9 +12,12 @@ import { districtsForMap } from './districts';
 import { gateKeys, gatesForMap, gateStatesToVerify } from './gates';
 import { ledgeLanding, ledgesForMap } from './ledges';
 import { playerLinks } from './sailing';
-import { bossEncounters, createRunTrainerEncounters } from './trainers';
+import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
+import { heldLandingNews } from '../hub/firstWords';
 import {
+  gymsBefore,
   isLandingOpen,
+  KOGA_BOSS_ID,
   landingsHeldBack,
   MISTY_BOSS_ID,
   quarterHeldBy,
@@ -89,7 +92,7 @@ function quarterTiles(names: readonly string[], width: number): number[] {
   return tiles;
 }
 
-const coast = VALE_QUARTERS.find((quarter) => quarter.gym?.bossId === MISTY_BOSS_ID)!;
+const GYM_QUARTERS = VALE_QUARTERS.filter((quarter) => quarter.gym !== undefined);
 
 describe("Greystone Vale's quarters", () => {
   it('put every landing on the vale in exactly one quarter', () => {
@@ -99,22 +102,21 @@ describe("Greystone Vale's quarters", () => {
     for (const id of listed) {
       expect(Object.hasOwn(RUN_INSERTIONS, id)).toBe(true);
     }
-    // The open vale's and the Coast's, and nothing past a gym still to be built.
+    // The open vale's, the Coast's and the Marsh's, and nothing past a gym
+    // still to be built: the Station's is Lt. Surge's.
     const unbuilt = landings.filter((id) => !listed.includes(id));
-    expect(unbuilt).toEqual([
-      'greystone-vale-the-dam',
-      'greystone-vale-rest-house',
-      'greystone-vale-salvage-camp',
-    ]);
+    expect(unbuilt).toEqual(['greystone-vale-the-dam']);
   });
 
-  it("name a gym only for a boss that stands, with two doors, on the vale", () => {
+  it("name a gym only for a boss that stands, with two doors or more, on the vale", () => {
     const bosses = bossEncounters(createRunTrainerEncounters());
     const gates = gatesForMap(VALE);
     for (const quarter of VALE_QUARTERS.filter((one) => one.gym)) {
       const gym = quarter.gym!;
       expect(bosses.find((boss) => boss.bossId === gym.bossId)?.mapId).toBe(VALE);
-      expect(gates.filter((gate) => gate.bossId === gym.bossId)).toHaveLength(2);
+      // Two at least: Koga holds a third, the road down from the Station,
+      // until Lt. Surge's gym holds the Station and takes it over.
+      expect(gates.filter((gate) => gate.bossId === gym.bossId).length).toBeGreaterThanOrEqual(2);
       expect(quarterHeldBy(gym.bossId)).toBe(quarter);
       for (const keeper of quarter.keepersInside ?? []) {
         expect(bosses.some((boss) => boss.bossId === keeper && boss.mapId === VALE)).toBe(true);
@@ -123,40 +125,46 @@ describe("Greystone Vale's quarters", () => {
   });
 
   /**
-   * The promise the gym makes: with every other door this save could have open
-   * - the Cut tree, the night track, and Boatswain Cragg's barricades, which an
-   * old save beat before Misty held the Coast - nothing of the Coast can be
-   * reached from any landing a save is offered, on foot, by boat, through a
-   * cave or over a ledge. And with her beaten it all can.
+   * The promise a gym makes: with every other door this save could have open
+   * - the Cut tree, the night track, every keeper's barricades and every other
+   * gym's doors, whichever an old save beat first - nothing of its quarter can
+   * be reached from any landing a save is offered, on foot, by boat, through a
+   * cave or over a ledge. And with the gyms up to it beaten it all can.
    */
-  it('keeps the Coast out of reach of every open landing until Misty is beaten, and opens it after', () => {
-    const allButMisty = gateKeys(gatesForMap(VALE)).filter((key) => key !== MISTY_BOSS_ID);
-    const shut = getWorldMap(VALE, allButMisty);
-    const tiles = quarterTiles(coast.districts, shut.width);
-    expect(tiles.length).toBeGreaterThan(1000);
-    const offered = insertionsOn(VALE).filter((insertion) => isLandingOpen(insertion.id, allButMisty));
-    expect(offered.map((insertion) => insertion.id)).not.toContain('greystone-vale-old-quay');
-    // The way up to each of her doors is the Coast's own edge, and the door is
-    // where the walk ends: two tiles of jetty and two of deer path.
-    const doors = gatesForMap(VALE).filter((gate) => gate.bossId === MISTY_BOSS_ID).flatMap((gate) => gate.tiles);
-    const approach = (tile: number): boolean =>
-      doors.some(
-        (door) => Math.abs(door.x - (tile % shut.width)) + Math.abs(door.y - Math.floor(tile / shut.width)) <= 2,
-      );
-    for (const insertion of offered) {
-      const got = reachable(shut, insertion.position);
-      expect(`${insertion.label}: ${tiles.filter((tile) => got.has(tile) && !approach(tile)).length} Coast tiles`).toBe(
-        `${insertion.label}: 0 Coast tiles`,
-      );
-    }
+  it.each(GYM_QUARTERS.map((quarter) => [quarter.name, quarter] as const))(
+    'keeps %s out of reach of every open landing until its gym is beaten, and opens it after',
+    (_name, quarter) => {
+      const gym = quarter.gym!;
+      const allButGym = gateKeys(gatesForMap(VALE)).filter((key) => key !== gym.bossId);
+      const shut = getWorldMap(VALE, allButGym);
+      const tiles = quarterTiles(quarter.districts, shut.width);
+      expect(tiles.length).toBeGreaterThan(1000);
+      const offered = insertionsOn(VALE).filter((insertion) => isLandingOpen(insertion.id, allButGym));
+      for (const landing of quarter.landings) {
+        expect(offered.map((insertion) => insertion.id)).not.toContain(landing);
+      }
+      // The way up to each of the gym's doors is the quarter's own edge, and
+      // the door is where the walk ends: two tiles of road or path.
+      const doors = gatesForMap(VALE).filter((gate) => gate.bossId === gym.bossId).flatMap((gate) => gate.tiles);
+      const approach = (tile: number): boolean =>
+        doors.some(
+          (door) => Math.abs(door.x - (tile % shut.width)) + Math.abs(door.y - Math.floor(tile / shut.width)) <= 2,
+        );
+      for (const insertion of offered) {
+        const got = reachable(shut, insertion.position);
+        expect(`${insertion.label}: ${tiles.filter((tile) => got.has(tile) && !approach(tile)).length} tiles of ${quarter.name}`).toBe(
+          `${insertion.label}: 0 tiles of ${quarter.name}`,
+        );
+      }
 
-    const open = getWorldMap(VALE, [MISTY_BOSS_ID]);
-    const fromTheFrontDoor = reachable(open, requireInsertion('greystone-vale').position);
-    for (const id of coast.landings) {
-      const { position, label } = requireInsertion(id as RunInsertionId);
-      expect(`${label} ${fromTheFrontDoor.has(position.y * open.width + position.x)}`).toBe(`${label} true`);
-    }
-  });
+      const open = getWorldMap(VALE, [...gymsBefore(gym.bossId), gym.bossId]);
+      const fromTheFrontDoor = reachable(open, requireInsertion('greystone-vale').position);
+      for (const id of quarter.landings) {
+        const { position, label } = requireInsertion(id as RunInsertionId);
+        expect(`${label} ${fromTheFrontDoor.has(position.y * open.width + position.x)}`).toBe(`${label} true`);
+      }
+    },
+  );
 
   it('offers the Coast’s landings only with the CASCADE BADGE, and keeps them reached', () => {
     const progress = {
@@ -179,11 +187,48 @@ describe("Greystone Vale's quarters", () => {
    * with the gym shut nobody can walk to his doors, and asking that state too
    * would add a whole sweep of the vale per gym (`gateStatesToVerify`).
    */
-  it('asks the gate states a save can walk, and no more of them than before the gym', () => {
+  it('asks the gate states a save can walk, and only those', () => {
     const states = gateStatesToVerify(gatesForMap(VALE));
-    expect(states).toHaveLength(5);
+    // Every door shut; the Cut tree; the night track; Misty's; Misty's and
+    // Koga's, because he fights only a holder of her badge; and every door.
+    expect(states).toHaveLength(6);
     expect(states).toContainEqual([MISTY_BOSS_ID]);
+    expect(states).toContainEqual([MISTY_BOSS_ID, KOGA_BOSS_ID]);
+    expect(states).not.toContainEqual([KOGA_BOSS_ID]);
     expect(states).not.toContainEqual(['vale-quay-keeper']);
-    expect(states.at(-1)).toEqual(expect.arrayContaining([MISTY_BOSS_ID, 'vale-quay-keeper']));
+    expect(states.at(-1)).toEqual(expect.arrayContaining([MISTY_BOSS_ID, KOGA_BOSS_ID, 'vale-quay-keeper']));
+  });
+
+  it('offers the Marsh’s landings only with the SOUL BADGE, and tells an old save once', () => {
+    const progress = {
+      unlockedInsertions: [],
+      reachedInsertions: ['greystone-vale-rest-house', 'greystone-vale-old-quay', 'greystone-vale-the-strand'],
+      completedContracts: [],
+      defeatedBosses: [MISTY_BOSS_ID] as string[],
+    };
+    expect(availableInsertionIds(progress)).not.toContain('greystone-vale-rest-house');
+    expect(landingsHeldBack(progress)).toEqual(['greystone-vale-rest-house']);
+    expect(heldLandingNews(progress)).toBe('marsh');
+    expect(heldLandingNews({ ...progress, firstWordsHeard: ['marsh'] })).toBeUndefined();
+    const won = { ...progress, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] };
+    expect(availableInsertionIds(won)).toContain('greystone-vale-rest-house');
+    expect(heldLandingNews(won)).toBeUndefined();
+    // Both quarters held back: the news is told a quarter at a time.
+    const both = { ...progress, defeatedBosses: [] as string[] };
+    expect(heldLandingNews(both)).toBe('marsh');
+    expect(heldLandingNews({ ...both, firstWordsHeard: ['marsh'] })).toBe('coast');
+  });
+
+  it('puts Koga in his gym only for a holder of the CASCADE BADGE', () => {
+    const koga = (defeated: readonly string[]) =>
+      withoutDefeatedBosses(createRunTrainerEncounters(), defeated).some((one) => one.bossId === KOGA_BOSS_ID);
+    expect(koga([])).toBe(false);
+    expect(koga([MISTY_BOSS_ID])).toBe(true);
+    expect(koga([MISTY_BOSS_ID, KOGA_BOSS_ID])).toBe(false);
+    // His hall is open all the same, and his trainers stand in it.
+    const hall = withoutDefeatedBosses(createRunTrainerEncounters(), []).filter((one) =>
+      one.trainer.id.startsWith('vale-gym-koga-'),
+    );
+    expect(hall).toHaveLength(2);
   });
 });
