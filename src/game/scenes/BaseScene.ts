@@ -777,7 +777,9 @@ export class BaseScene extends Phaser.Scene {
    * Home from a raid and not a step taken since. A player mashing SPACE through
    * the result screen lands here with the rim in front of them, and the next
    * two presses opened the card and jumped (the raids bug hunt of 9 Nov 2026,
-   * fault 4), so the first card opened from here starts on NOT YET.
+   * fault 4), so every card opened from here starts on NOT YET until the
+   * player takes a step: a press on NOT YET only closes it, and the next opens
+   * it again, so mashing never reaches JUMP IN.
    */
   private homeOnTheRail = false;
   /** Counts the times the base has opened, so an answer that comes back after it opened again is dropped. */
@@ -2032,7 +2034,6 @@ export class BaseScene extends Phaser.Scene {
       audioManager.play('menuOpen');
     }
     const justHome = view === 'rim' && this.homeOnTheRail;
-    this.homeOnTheRail = false;
     this.scene.launch('hub', {
       view,
       kit,
