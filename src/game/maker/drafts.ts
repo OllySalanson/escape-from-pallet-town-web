@@ -80,11 +80,19 @@ function openable(value: unknown): MapFile | undefined {
  * stored, in `unreadable` - never thrown, and never dropped.
  */
 export function loadMakerStore(storage: Storage | undefined = defaultStorage()): MakerStore {
+  return readMakerStore(storage) ?? { drafts: [] };
+}
+
+/** The drafts as stored, or undefined when there is no storage to read them from. */
+function readMakerStore(storage: Storage | undefined): MakerStore | undefined {
   let raw: string | null;
   try {
-    raw = storage?.getItem(MAKER_STORAGE_KEY) ?? null;
+    if (!storage) {
+      return undefined;
+    }
+    raw = storage.getItem(MAKER_STORAGE_KEY);
   } catch {
-    raw = null;
+    return undefined;
   }
   if (!raw) {
     return { drafts: [] };
@@ -143,6 +151,84 @@ export function saveMakerStore(
   } catch {
     return false;
   }
+}
+
+/**
+ * One change a tab makes to the drafts, said as what it does rather than as
+ * the whole store after it, so that it can be made to the drafts as they are
+ * stored now. Two tabs of the maker share one storage: a tab that wrote back
+ * the copy it read when it opened put away every map the other tab had made
+ * since, and rolled back the other tab's edits (bug hunt, 10 Nov 2026).
+ */
+export interface DraftChange {
+  /** The draft the change is about. */
+  readonly key: string;
+  /**
+   * Whether it says all there is about that draft - it is stored as this, or
+   * it is gone - so that an earlier change to the same draft is moot.
+   */
+  readonly whole: boolean;
+  readonly apply: (store: MakerStore) => MakerStore;
+}
+
+/**
+ * Stores this draft, newest first, and opens it. What the stored one was
+ * told since - its walk tick, its receipt, which another tab may have
+ * written - is kept unless the draft says otherwise.
+ */
+export function putDraft(draft: StoredDraft): DraftChange {
+  return {
+    key: draft.key,
+    whole: true,
+    apply: (store) =>
+      withDraft(store, { ...store.drafts.find((stored) => stored.key === draft.key), ...draft }),
+  };
+}
+
+/** Takes the draft out of the store. */
+export function dropDraft(key: string): DraftChange {
+  return { key, whole: true, apply: (store) => withoutDraft(store, key) };
+}
+
+/** Makes the draft the one the editor opens on, if it is still stored. */
+export function openOn(key: string): DraftChange {
+  return {
+    key,
+    whole: false,
+    apply: (store) =>
+      store.drafts.some((draft) => draft.key === key) ? { ...store, current: key } : store,
+  };
+}
+
+/** Notes the receipt the draft was sent in under. */
+export function markSent(key: string, receipt: string): DraftChange {
+  return {
+    key,
+    whole: false,
+    apply: (store) => ({
+      ...store,
+      drafts: store.drafts.map((draft) => (draft.key === key ? { ...draft, sentAs: receipt } : draft)),
+    }),
+  };
+}
+
+/**
+ * Makes `changes`, in order, to the drafts as they are stored now, and stores
+ * the result: every draft the changes do not name stays exactly as stored,
+ * whoever stored it. With no storage to read, they are made to `held` - the
+ * drafts as the tab holds them - instead. Hands back the drafts after the
+ * changes and whether they were kept.
+ */
+export function storeDraftChanges(
+  changes: readonly DraftChange[],
+  held: MakerStore,
+  storage: Storage | undefined = defaultStorage(),
+): { readonly store: MakerStore; readonly saved: boolean } {
+  const store = changes.reduce(
+    (changed, change) => change.apply(changed),
+    readMakerStore(storage) ?? held,
+  );
+  return { store, saved: saveMakerStore(store, storage) };
 }
 
 /** The store with this draft in it, newest first, and opened. */

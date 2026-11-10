@@ -39,17 +39,21 @@ import {
 } from '../maker/draft';
 import { generateMapName } from '../maker/mapNames';
 import {
+  dropDraft,
   loadMakerStore,
+  MAKER_STORAGE_KEY,
   mapFileText,
+  markSent,
+  openOn,
   placeOpenedFile,
+  putDraft,
   sameMapFile,
+  storeDraftChanges,
   walkedVersion,
   isUntouchedBlank,
   lastMakerName,
   newDraftKey,
-  saveMakerStore,
-  withDraft,
-  withoutDraft,
+  type DraftChange,
   type MakerStore,
 } from '../maker/drafts';
 import { EditHistory } from '../maker/history';
@@ -210,6 +214,11 @@ import { checkMapFile, kindAndName, type MapCheck, type MapFaultPlace } from '..
  * stops clicking is still saved every this often.
  */
 const AUTOSAVE_MS = 400;
+/**
+ * How long after a draft's Delete is pressed its second press can delete.
+ * Sooner is the second click of a double-click, or of a double tap.
+ */
+const DELETE_CONFIRM_GAP_MS = 500;
 /**
  * How long a note about text taken out of a field stays up. Only that note is
  * timed: it is put up while the maker types, with no render to take it down.
@@ -412,7 +421,15 @@ export class MapMakerScene extends Phaser.Scene {
   private fullNoteTimer: ReturnType<typeof setTimeout> | undefined;
   /** Whether the last save of the drafts failed, so the maker is told once rather than at every stroke. */
   private storeFull = false;
+  /**
+   * This tab's changes to the drafts that storage would not keep (full or
+   * blocked), made again with the next change so that a later save that is
+   * kept carries them. Empty while every save is kept.
+   */
+  private unsavedDrafts: DraftChange[] = [];
   private pendingDelete: string | undefined;
+  /** When the waiting Delete was pressed, so a double-click's second click is not taken as the confirming press. */
+  private deleteArmedAt = 0;
   /** The fault last gone to from the checks, and which of the tiles it names: pressed again, the next. */
   private faultVisit: { readonly key: string; readonly place: number } | undefined;
   /** For each run of faults of one kind, which of them the heading last went to. */
@@ -436,6 +453,7 @@ export class MapMakerScene extends Phaser.Scene {
     endTry();
     unregisterPlayerMap(playerMapId({ id: TRY_IT_MAP_ID }));
     setActiveSaveSlot('normal');
+    this.unsavedDrafts = [];
     this.store = loadMakerStore();
     const current =
       this.store.drafts.find((draft) => draft.key === this.store.current) ?? this.store.drafts[0];
@@ -476,6 +494,9 @@ export class MapMakerScene extends Phaser.Scene {
     // timer, so whatever is waiting to be saved is saved on the way out.
     window.addEventListener('pagehide', this.flushOnLeave);
     document.addEventListener('visibilitychange', this.flushOnLeave);
+    // Another tab of the maker saves into the same drafts.
+    const followOtherTab = (event: StorageEvent): void => this.followOtherTab(event);
+    window.addEventListener('storage', followOtherTab);
     // Space is let go wherever the focus has gone by then, so its release is
     // heard on the window, and a window left with it held lets it go too.
     window.addEventListener('keyup', this.releaseSpace);
@@ -483,6 +504,7 @@ export class MapMakerScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.removeEventListener('pagehide', this.flushOnLeave);
       document.removeEventListener('visibilitychange', this.flushOnLeave);
+      window.removeEventListener('storage', followOtherTab);
       window.removeEventListener('keyup', this.releaseSpace);
       window.removeEventListener('blur', this.releaseSpace);
       // Every timer the screen owns goes with it: one that fired after the
@@ -575,8 +597,51 @@ export class MapMakerScene extends Phaser.Scene {
     this.draftKey = newDraftKey(this.store);
     const file = setMaker(blankMap(), maker);
     this.openHistory(file);
-    this.store = withDraft(this.store, { key: this.draftKey, file, updatedAt: Date.now() });
-    saveMakerStore(this.store);
+    this.changeDrafts(putDraft({ key: this.draftKey, file, updatedAt: Date.now() }));
+  }
+
+  /** Another tab saved the drafts: this one's list follows, and its own draft stays as it is. */
+  private followOtherTab(event: StorageEvent): void {
+    if (event.key !== null && event.key !== MAKER_STORAGE_KEY) {
+      return;
+    }
+    const held = this.store.drafts.find((draft) => draft.key === this.draftKey);
+    const stored = this.unsavedDrafts.reduce((store, change) => change.apply(store), loadMakerStore());
+    // The draft on screen read back is a copy of the map this tab holds: it
+    // is kept as the one held, so the next autosave knows nothing changed.
+    this.store = {
+      ...stored,
+      drafts: stored.drafts.map((draft) =>
+        held && draft.key === held.key && sameMapFile(draft.file, held.file)
+          ? { ...draft, file: held.file }
+          : draft,
+      ),
+    };
+    // The map on screen is this tab's work: taken out of the drafts elsewhere,
+    // it is put back rather than lost when this tab is closed.
+    if (!this.store.drafts.some((draft) => draft.key === this.draftKey)) {
+      this.flushAutosave();
+    }
+    if (this.panel === 'drafts' && !this.typing && this.scene.isActive()) {
+      this.render();
+    }
+  }
+
+  /**
+   * Makes a change to the drafts, in storage and on screen. It is made to the
+   * drafts as they are stored now, not as this screen last read them, so a
+   * map saved by another tab of the maker is never put away by this one's
+   * save (`DraftChange`). Returns whether storage kept it.
+   */
+  private changeDrafts(change: DraftChange): boolean {
+    const changes = [
+      ...this.unsavedDrafts.filter((earlier) => !(change.whole && earlier.key === change.key)),
+      change,
+    ];
+    const { store, saved } = storeDraftChanges(changes, this.store);
+    this.store = store;
+    this.unsavedDrafts = saved ? [] : changes;
+    return saved;
   }
 
   // --- Keeping the file, the checks and the picture in step --------------------
@@ -661,13 +726,7 @@ export class MapMakerScene extends Phaser.Scene {
     if (kept?.file === file) {
       return;
     }
-    this.store = withDraft(this.store, {
-      ...(kept ?? {}),
-      key: this.draftKey,
-      file,
-      updatedAt: Date.now(),
-    });
-    this.noteSaved(saveMakerStore(this.store));
+    this.noteSaved(this.changeDrafts(putDraft({ key: this.draftKey, file, updatedAt: Date.now() })));
   }
 
   /**
@@ -1098,7 +1157,7 @@ export class MapMakerScene extends Phaser.Scene {
       const maker = lastMakerName(this.store);
       const untouched = isUntouchedBlank(this.file);
       if (untouched) {
-        this.store = withoutDraft(this.store, this.draftKey);
+        this.changeDrafts(dropDraft(this.draftKey));
         sessionHistories.delete(this.draftKey);
         sessionViews.delete(this.draftKey);
         sessionTryLevels.delete(this.draftKey);
@@ -3067,8 +3126,7 @@ export class MapMakerScene extends Phaser.Scene {
     this.rememberView();
     this.draftKey = draft.key;
     this.openHistory(draft.file);
-    this.store = { ...this.store, current: draft.key };
-    saveMakerStore(this.store);
+    this.changeDrafts(openOn(draft.key));
     this.selected = undefined;
     this.area = undefined;
     this.doorway = undefined;
@@ -3085,6 +3143,7 @@ export class MapMakerScene extends Phaser.Scene {
     }
     if (this.pendingDelete !== key) {
       this.pendingDelete = key;
+      this.deleteArmedAt = Date.now();
       // Said in place rather than drawn again, so the cursor stays on the
       // button whose next press is the one being described.
       button.textContent = DELETE_ARMED_LABEL;
@@ -3095,9 +3154,14 @@ export class MapMakerScene extends Phaser.Scene {
       }
       return;
     }
+    // A double-click is two clicks a few milliseconds apart, and a draft
+    // deleted is gone for good: the press that deletes is one of its own
+    // (bug hunt, 10 Nov 2026), and the second click leaves it asking.
+    if (Date.now() - this.deleteArmedAt < DELETE_CONFIRM_GAP_MS) {
+      return;
+    }
     this.pendingDelete = undefined;
-    this.store = withoutDraft(this.store, key);
-    saveMakerStore(this.store);
+    this.changeDrafts(dropDraft(key));
     sessionHistories.delete(key);
     sessionViews.delete(key);
     this.render(`${draftName(draft)} deleted.`);
@@ -3133,12 +3197,7 @@ export class MapMakerScene extends Phaser.Scene {
     this.rememberView();
     this.draftKey = newDraftKey(this.store);
     this.openHistory(placed.file);
-    this.store = withDraft(this.store, {
-      key: this.draftKey,
-      file: placed.file,
-      updatedAt: Date.now(),
-    });
-    saveMakerStore(this.store);
+    this.changeDrafts(putDraft({ key: this.draftKey, file: placed.file, updatedAt: Date.now() }));
     this.selected = undefined;
     this.area = undefined;
     this.doorway = undefined;
@@ -3243,14 +3302,7 @@ export class MapMakerScene extends Phaser.Scene {
     });
     if (result.ok) {
       countPlay({ kind: 'map-sent' });
-      const store = loadMakerStore();
-      this.store = {
-        ...store,
-        drafts: store.drafts.map((draft) =>
-          draft.key === key ? { ...draft, sentAs: result.value } : draft,
-        ),
-      };
-      saveMakerStore(this.store);
+      this.changeDrafts(markSent(key, result.value));
       this.sending = { step: 'sent', receipt: result.value };
     } else {
       this.sending = { step: 'failed', reason: result.reason };
@@ -3298,8 +3350,7 @@ export class MapMakerScene extends Phaser.Scene {
     this.rememberView();
     this.draftKey = key;
     this.openHistory(kept?.file ?? map.file);
-    this.store = withDraft(this.store, kept ?? { key, file: map.file, updatedAt: Date.now() });
-    saveMakerStore(this.store);
+    this.changeDrafts(putDraft(kept ?? { key, file: map.file, updatedAt: Date.now() }));
     this.reviewing = map;
     this.selected = undefined;
     this.pendingBlock = false;
