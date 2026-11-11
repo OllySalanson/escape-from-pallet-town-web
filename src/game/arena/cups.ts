@@ -280,7 +280,7 @@ export function cupFoe(cup: Cup, bout: number, now: Date): CupFoe {
   const index = Math.max(0, Math.min(CUP_RUN_BOUTS, bout) - 1);
   const regular = DOJO_REGULARS[(weekNumber(now) * 7 + index) % DOJO_REGULARS.length];
   const base = cup.teams[index % cup.teams.length];
-  const team = stagedTeam(base, cupStage(cup, index + 1)).filter((id) => !cup.refuses?.(SPECIES_BY_ID[id]));
+  const team = stagedTeam(base, cupStage(cup, index + 1), cup.level).filter((id) => !cup.refuses?.(SPECIES_BY_ID[id]));
   return { id: regular.bot.id, name: regular.bot.name, team, greeting: regular.greeting, beaten: regular.beaten };
 }
 

@@ -14,7 +14,7 @@
 import { formatMoney } from '../items/items';
 import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
 import { lookKey, LOOK_SLOTS, sameLook, wearing, type LookSlot, type PlayerLook } from './look';
-import { billFor, billLine, checkBill, priceLine, SHELF_ORDER, shelfPieces, unownedIn, WHOLE_LOOKS, type WholeLook } from './wardrobe';
+import { billFor, billLine, checkBill, lookPriceLine, priceLine, SHELF_ORDER, shelfPieces, unownedIn, WHOLE_LOOKS, type WholeLook } from './wardrobe';
 import { BOUTIQUE_NAME, wearableById, WEARABLES, type Wearable } from './wearables';
 
 export type BoutiqueMode = 'shop' | 'wardrobe';
@@ -198,7 +198,7 @@ function classicCard(state: BoutiqueState): string {
 function wholeCard(state: BoutiqueState, entry: WholeLook): string {
   const on = sameLook(state.trying, entry.look);
   const missing = unownedIn(entry.look, state.owned);
-  const price = missing.length === 0 ? 'All yours' : billLine(billFor(missing));
+  const price = missing.length === 0 ? 'All yours' : lookPriceLine(billFor(missing));
   return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-whole="${entry.id}" data-help="${escapeAttribute(`${entry.name}: ${entry.note}`)}">${lookFigure(state.sheet(entry.look), { label: entry.name })}<strong>${entry.name}</strong><small class="px-wrap">${price}</small></button>`;
 }
 

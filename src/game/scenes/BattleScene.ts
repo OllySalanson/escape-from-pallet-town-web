@@ -151,6 +151,9 @@ import {
   ABOUT_TO_USE_QUESTION,
   NICKNAME_DECLINE,
   NICKNAME_OPTIONS,
+  YIELD_DECLINE,
+  YIELD_OPTIONS,
+  yieldQuestionLines,
   nicknameQuestionLines,
   aboutToUseLine,
   aboutToUseOptionLayout,
@@ -228,6 +231,8 @@ type CommandMode =
   | 'nickname'
   /** The naming screen is open over the battle and owns the keyboard. */
   | 'naming'
+  /** "Yield the bout?", asked before a bout with something riding on it is given up. */
+  | 'yield'
   | 'evolving'
   | 'events'
   | 'finished';
@@ -239,6 +244,7 @@ type BattleAction =
   | { readonly type: 'choose-pokemon' }
   | { readonly type: 'choose-item' }
   | { readonly type: 'choose-run' }
+  | { readonly type: 'answer-yield'; readonly yielding: boolean }
   | { readonly type: 'use-move'; readonly moveIndex: number }
   | { readonly type: 'aim-at'; readonly targetIndex: number }
   | { readonly type: 'select-item'; readonly itemIndex: number }
@@ -354,6 +360,8 @@ export interface HallBout {
   readonly practice?: string;
   /** The bout's mark in the save (`arena/boutUnderWay.ts`), handed back with its result. */
   readonly boutId?: string;
+  /** What a loss here throws away, if anything (`arena/yieldStake.ts`): YIELD asks first. */
+  readonly stake?: string;
 }
 
 /**
@@ -369,6 +377,8 @@ export interface DojoBout {
   readonly run?: DojoRun;
   /** The bout's mark in the save (`arena/boutUnderWay.ts`), handed back with its result. */
   readonly boutId?: string;
+  /** What a loss here throws away, if anything (`arena/yieldStake.ts`): YIELD asks first. */
+  readonly stake?: string;
 }
 
 /** What a bout for show says in place of the raid's words for the same things. */
@@ -1440,6 +1450,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'yield') {
+      this.commandContainer.add(this.createQuestionBox(yieldQuestionLines(this.exhibition?.stake ?? ''), YIELD_OPTIONS));
+      return;
+    }
+
     if (this.mode === 'target') {
       this.commandContainer.add(this.createTargetBox());
       return;
@@ -2170,6 +2185,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'yield') {
+      this.dispatchAction({ type: 'answer-yield', yielding: this.selectedCommand !== YIELD_DECLINE });
+      return;
+    }
+
     if (this.mode === 'party') {
       // The party screen is the target picker as well as the switch menu, so
       // which one it is answering is the item waiting to be handed over.
@@ -2234,6 +2254,9 @@ export class BattleScene extends Phaser.Scene {
       case 'answer-nickname':
         this.answerNickname(action.naming);
         return;
+      case 'answer-yield':
+        this.answerYield(action.yielding);
+        return;
       case 'drop-for-room':
         this.dropForRoom(action.choiceIndex);
     }
@@ -2263,8 +2286,13 @@ export class BattleScene extends Phaser.Scene {
       this.stopEvolving();
       return;
     }
-    // B on a YES/NO box is NO, as it is in FireRed - the nickname question and
-    // the switch offered before a trainer's next Pokemon lands alike.
+    // B on a YES/NO box is NO, as it is in FireRed - the nickname question, the
+    // switch offered before a trainer's next Pokemon lands and YIELD alike.
+    if (this.mode === 'yield') {
+      audioManager.play('cancel');
+      this.answerYield(false);
+      return;
+    }
     if (this.mode === 'nickname' || this.mode === 'about-to-use') {
       audioManager.play('cancel');
       if (this.mode === 'nickname') {
@@ -2381,12 +2409,14 @@ export class BattleScene extends Phaser.Scene {
    * is raid time instead, charged up front and stated on the command.
    */
   private fleeFromHunter(): void {
+    if (this.exhibition?.stake) {
+      this.mode = 'yield';
+      this.selectedCommand = YIELD_DECLINE;
+      this.showCommands();
+      return;
+    }
     if (this.exhibition) {
-      this.pendingBattleExit = true;
-      this.mode = 'events';
-      this.commandContainer.setVisible(false);
-      audioManager.play('flee');
-      this.dialog.showMessages([BOUT_YIELD_LINE]);
+      this.yieldTheBout();
       return;
     }
     const penaltyMs = this.runSession?.manager.registerHunterFlee().penaltyMs;
@@ -2409,6 +2439,26 @@ export class BattleScene extends Phaser.Scene {
           ),
         ],
     );
+  }
+
+  /** A bout given up: it goes home lost, after one line. */
+  private yieldTheBout(): void {
+    this.pendingBattleExit = true;
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    audioManager.play('flee');
+    this.dialog.showMessages([BOUT_YIELD_LINE]);
+  }
+
+  /** YES gives the bout up; NO goes back to the commands, the cursor still on YIELD. */
+  private answerYield(yielding: boolean): void {
+    if (yielding) {
+      this.yieldTheBout();
+      return;
+    }
+    this.mode = 'main';
+    this.selectedCommand = Math.max(0, this.mainActions().findIndex((action) => action.type === 'choose-run'));
+    this.showCommands();
   }
 
   /**

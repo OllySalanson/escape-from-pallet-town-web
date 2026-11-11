@@ -261,6 +261,17 @@ export const nicknameQuestionLines = (speciesName: string): readonly [string, st
 export const NICKNAME_OPTIONS = ['YES', 'NO'] as const;
 export const NICKNAME_DECLINE = NICKNAME_OPTIONS.indexOf('NO');
 
+/**
+ * YIELD in a bout with something riding on it - a cup or rental run, a class
+ * run of wins, the hall's ladder - asks first, in the panel the questions above
+ * are asked in, opening on NO: it sits one press right of FIGHT, and one slip
+ * used to throw away a week's cup run of six (the arenas hunt, finding 1).
+ * `stake` is the room's own words for what a loss throws away.
+ */
+export const yieldQuestionLines = (stake: string): readonly [string, string] => ['Yield the bout?', stake];
+export const YIELD_OPTIONS = ['YES', 'NO'] as const;
+export const YIELD_DECLINE = YIELD_OPTIONS.indexOf('NO');
+
 export const aboutToUsePromptLayout = (line: number): { x: number; y: number } => ({
   x: BATTLE_PANEL.x + PANEL_INSET_X,
   y: 4 + line * 14,

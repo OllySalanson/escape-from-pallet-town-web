@@ -87,6 +87,22 @@ try {
     expect(`got to ${JSON.stringify(goal)}`, false);
     return false;
   };
+  /**
+   * To the rail, by way of a real step: the rim's card opens on NOT YET for somebody just home from a
+   * raid who has not moved (`BaseScene.homeOnTheRail`), so ENTER on it would close it, as it would for a player.
+   */
+  const toTheRail = async () => {
+    const rail = { x: 35, y: 53 };
+    await walkTo(rail);
+    // Along the rail, never off it: the floor below leads out of the hall.
+    const off = await base(`[[1, 0], [-1, 0]].map(([dx, dy]) => ({ x: ${rail.x} + dx, y: ${rail.y} + dy })).find((tile) => !b.isBlocked(tile)) ?? null`);
+    expect('there is rail beside the rail to step on to', off !== null);
+    if (off) {
+      await walkTo(off);
+      await walkTo(rail);
+    }
+    expect(`and the step stays in the hall (${await base('b.room?.id')} at ${JSON.stringify(await base('b.currentTile'))})`, (await page.evaluate(inHall)) && (await base('b.currentTile.x === 35 && b.currentTile.y === 53')));
+  };
 
   // A new game, across the harbour, past the trailer and into the hall.
   await press('Space');
@@ -118,6 +134,14 @@ try {
     await until(inHall, 'the hall again');
   };
   const posedUp = () => base(`b.arena.posed.filter((each) => each.visible).length`);
+  /**
+   * A save with a raid behind it, as the crowd's section leaves one: a new save's first raid goes
+   * straight over with no card (`hub/firstRaid.ts`), so a section played on its own starts from here.
+   */
+  const pastTheFirstRaid = async () => {
+    const raids = await page.evaluate(`Object.values(JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)})).raidProgress.raidRecord ?? {}).reduce((sum, each) => sum + each.deployed, 0)`);
+    if (raids === 0) await comeHome('clap', { deployed: 1, extracted: 1, wiped: 0 });
+  };
 
   // --- the crowd ---------------------------------------------------------------
   if (!only || only === 'crowd') {
@@ -214,7 +238,7 @@ try {
   // --- the landing -------------------------------------------------------------
   /** Over the fence, stepping the fall; `pressAt` is when in the landing to press the key, or null. */
   const jumpIn = async (pressAt, name) => {
-    await walkTo({ x: 35, y: 53 });
+    await toTheRail();
     await press('ArrowUp', 200);
     await press('Space', 700);
     for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
@@ -259,6 +283,7 @@ try {
     return record;
   };
   if (!only || only === 'landing') {
+    await pastTheFirstRaid();
     const landed = (record) => record?.streak ?? 0;
     expect('a press as the ring shuts sticks it', landed(await jumpIn(530, 'landing-clean')) === 1);
     expect('and again makes two', landed(await jumpIn(530, 'landing-second')) === 2);
@@ -270,11 +295,12 @@ try {
 
   // --- what the pit remembers ----------------------------------------------------
   if (!only || only === 'memory') {
+    await pastTheFirstRaid();
     const held = () => page.evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)})).raidProgress.raidMemory ?? null`);
     const world = (expression) => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return ${expression}; })()`);
     /** A raid walked along a line of the map, ending as told: a real walk's record, with the steps stepped by hand. */
     const raid = async (fromX, fromY, dx, dy, ending) => {
-      await walkTo({ x: 35, y: 53 });
+      await toTheRail();
       await press('ArrowUp', 200);
       await press('Space', 700);
       for (let guard = 0; guard < 16 && (await base('b.dialogBox.visible')); guard += 1) {
@@ -477,10 +503,20 @@ try {
     const second = await base('b.rivalHere.name');
     expect(`whoever is next steps up (${second})`, second !== first);
 
-    // A yield is a loss, and starts the run again.
-    await challenge(null);
+    // A yield is a loss, and starts the run again. With a rival beaten it has a run to lose, so it asks
+    // first, on NO: one slip used to give it up (the arenas hunt, finding 1).
     const before = await allButBouts();
+    await challenge(null);
     await battle(`(() => { s.flee(); return 1; })()`);
+    await step(200);
+    expect(`YIELD with a run to lose asks first (${await battle('s.mode')})`, (await battle('s.mode')) === 'yield');
+    await shot('bout-yield-asks');
+    await press('Space', 300);
+    expect('and NO goes back to the fight', (await battle('s.mode')) === 'main' && (await page.evaluate(sceneIs('battle'))));
+    await battle(`(() => { s.flee(); return 1; })()`);
+    await step(200);
+    await press('ArrowLeft', 200);
+    await press('Space', 300);
     await fightOn(null);
     expect('yielding writes nothing but the run being over', (await allButBouts()) === before);
     expect('and it is over', JSON.parse(await raw()).raidProgress.bouts?.beaten.length === 0);

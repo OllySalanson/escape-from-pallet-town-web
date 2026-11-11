@@ -5,7 +5,7 @@ import { SPECIES_BY_ID } from '../pokemon/species';
 import { NO_GAME_CORNER, ticketDayKey } from '../minigames/tickets';
 import { DOJO_BANNED_SPECIES, DOJO_LEVEL } from './boutRules';
 import { readDojoRecord } from './dojoRecord';
-import { runBout, runFoe, settleRunBout } from './arenaRuns';
+import { readDojoRun, runBout, runFoe, settleRunBout, stampRun } from './arenaRuns';
 import {
   pairToday,
   RENTAL_PAIRS,
@@ -137,5 +137,82 @@ describe('a rental run', () => {
     // The next bout is bout two, against somebody new.
     expect(runFoe(run, read, now)).toEqual(rentalFoe(2, now));
     expect(runBout({ mode: 'rental', team: ['mewtwo', 'mew', 'pikachu'] }, [], read, now)).toBeNull();
+  });
+});
+
+describe('a rental bout is the bout the counter said it was', () => {
+  const now = at('2026-11-07');
+  const team = rentalsToday(now)
+    .slice(0, 3)
+    .map((one) => one.species);
+
+  /** A run four wins in on `team`, as the save stores it. */
+  const fourIn = (on: Date) => {
+    let dojo = undefined as ReturnType<typeof settleRunBout>['dojo'] | undefined;
+    let corner = NO_GAME_CORNER;
+    for (let bout = 1; bout <= 4; bout += 1) {
+      const run = stampRun({ mode: 'rental', team }, dojo, on);
+      const settled = settleRunBout(dojo, corner, run, runFoe(run, dojo, on).id, true, on);
+      dojo = settled.dojo;
+      corner = settled.gameCorner;
+    }
+    expect(dojo?.rental?.run?.won).toBe(4);
+    return { dojo, corner };
+  };
+
+  it('START AGAIN with the same three is bout one of a new run, not bout five of the old one (arenas hunt, finding 2)', () => {
+    const { dojo, corner } = fourIn(now);
+    // START AGAIN: the counter shows bout one, and hands that on.
+    const run = stampRun({ mode: 'rental', team, bout: 1 }, dojo, now);
+    expect(run.bout).toBe(1);
+    expect(runFoe(run, dojo, now)).toEqual(rentalFoe(1, now));
+    expect(runBout(run, [], dojo, now)!.trainer.name).toBe(rentalFoe(1, now).name);
+    const settled = settleRunBout(dojo, corner, run, rentalFoe(1, now).id, true, now);
+    expect(settled.dojo.rental?.run?.won).toBe(1);
+    // The day's paying run was the one set aside, so this one is practice.
+    expect(settled.dojo.rental?.run?.scored).toBe(false);
+    expect(settled.tickets).toBe(0);
+    expect(settled.line).toBe(`You beat ${rentalFoe(1, now).name}! 1 of ${RUN_BOUTS} (practice). You may swap one for one of theirs.`);
+    // Carrying on, unstamped, is still bout five.
+    expect(runFoe({ mode: 'rental', team }, dojo, now)).toEqual(rentalFoe(5, now));
+  });
+
+  it('a bout begun before midnight is settled as that day’s, and the run ends with the day (arenas hunt, finding 4)', () => {
+    const lateNight = new Date(2026, 10, 7, 23, 58);
+    const pastMidnight = new Date(2026, 10, 8, 0, 1);
+    const { dojo, corner } = fourIn(lateNight);
+    const run = stampRun({ mode: 'rental', team }, dojo, lateNight);
+    const foe = rentalFoe(5, lateNight);
+    expect(runFoe(run, dojo, pastMidnight)).toEqual(foe);
+
+    const won = settleRunBout(dojo, corner, run, foe.id, true, pastMidnight);
+    expect(won.line).toBe(`You beat ${foe.name}! 5 of ${RUN_BOUTS}, but the day ended during the bout, so the run ends there. 5 tickets.`);
+    expect(won.carriesOn).toBe(false);
+    expect(won.dojo.rental?.run?.day).toBe(ticketDayKey(lateNight));
+    // The new day's paying run is still there.
+    expect(won.dojo.rental?.scoredDay).toBe(ticketDayKey(lateNight));
+    expect(runFoe({ mode: 'rental', team }, won.dojo, pastMidnight)).toEqual(rentalFoe(1, pastMidnight));
+
+    const lost = settleRunBout(dojo, corner, run, foe.id, false, pastMidnight);
+    expect(lost.line).toBe(`${foe.name} took that one. Your rental run ended at 4 of ${RUN_BOUTS}.`);
+  });
+
+  it('pays nothing into a day the ticket record has already left behind', () => {
+    const lateNight = new Date(2026, 10, 7, 23, 58);
+    const pastMidnight = new Date(2026, 10, 8, 0, 1);
+    const { dojo, corner } = fourIn(lateNight);
+    const run = stampRun({ mode: 'rental', team }, dojo, lateNight);
+    const moved = { ...corner, day: { day: ticketDayKey(pastMidnight), paid: { 'pokemon-jump': 20 }, berries: {}, bought: {}, best: {} } };
+    const settled = settleRunBout(dojo, moved, run, rentalFoe(5, lateNight).id, true, pastMidnight);
+    expect(settled.tickets).toBe(0);
+    expect(settled.gameCorner).toEqual(moved);
+  });
+
+  it('reads its stamp back from a save, and settles a bout under way written before there were stamps', () => {
+    const run = stampRun({ mode: 'rental', team, bout: 1 }, undefined, now);
+    expect(readDojoRun(JSON.parse(JSON.stringify(run)))).toEqual(run);
+    expect(readDojoRun({ mode: 'rental', team, bout: 9, at: 'soon' })).toEqual({ mode: 'rental', team });
+    const settled = settleRunBout(undefined, NO_GAME_CORNER, { mode: 'rental', team }, rentalFoe(1, now).id, true, now);
+    expect(settled.dojo.rental?.run?.won).toBe(1);
   });
 });

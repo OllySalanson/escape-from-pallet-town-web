@@ -5,7 +5,7 @@ import { dojoRegularsToday } from '../arena/dojoCounter';
 import { beltFoe, dojoClass, dojoFoe, headRefusal, regularFoe, type DojoFoe } from '../arena/classes';
 import { classOf } from '../arena/dojoRecord';
 import { openingTeam, opponentsBody, teamBody } from '../arena/dojoCounterView';
-import type { DojoRun, DojoRunMode } from '../arena/arenaRuns';
+import { runPeriod, type DojoRun, type DojoRunMode } from '../arena/arenaRuns';
 import { cupFoe, cupOfTheWeek, cupRefusal, cupSideProblem, cupWeek } from '../arena/cups';
 import { liveRentalRun, rentalFoe, rentalTeamProblem, startsNewRun } from '../arena/rentals';
 import { cupBody, modesBody, openingCupTeam, rentalBody } from '../arena/runsView';
@@ -155,11 +155,15 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     return this.freshRun ? undefined : liveRentalRun(this.game_?.raidProgress.dojo?.rental, this.now);
   }
 
+  /** Which bout of the rental run the team as it stands would fight: what the page says, and what FIGHT hands on. */
+  private rentalBout(): number {
+    const live = this.liveRun();
+    return live && !startsNewRun(this.rentalTeam, live) ? live.won + 1 : live && this.rentalTeam.length < 3 ? live.won + 1 : 1;
+  }
+
   /** Who the next rental bout is against, for the team as it stands. */
   private rentalOpponent() {
-    const live = this.liveRun();
-    const bout = live && !startsNewRun(this.rentalTeam, live) ? live.won + 1 : live && this.rentalTeam.length < 3 ? live.won + 1 : 1;
-    return rentalFoe(bout, this.now);
+    return rentalFoe(this.rentalBout(), this.now);
   }
 
   /** Who the next cup bout is against. */
@@ -448,10 +452,25 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.render();
   }
 
-  /** FIGHT on a run's page: the bout, with the run it is part of. */
+  /**
+   * FIGHT on a run's page: the bout, with the run it is part of and which bout
+   * of it the page said it was (`arena/arenaRuns.ts`'s `RunStamp`).
+   */
   private startRunBout(mode: DojoRunMode): void {
+    // A page opened before midnight (or before Monday, for the cup) offers a day
+    // that is over: FIGHT used to close it and start nothing, without a word.
+    const now = new Date();
+    if (runPeriod(mode, now) !== runPeriod(mode, this.now)) {
+      audioManager.play('denied');
+      this.now = now;
+      this.game_ = this.saveManager.load() ?? this.game_;
+      this.enterMode(mode);
+      this.status = mode === 'cup' ? 'A new week has begun, and with it a new cup. Choose again.' : 'Midnight has passed: these are today’s six. Choose again.';
+      this.render();
+      return;
+    }
     if (mode === 'cup') {
-      const { cup, foe } = this.cupOpponent();
+      const { cup, foe, bout } = this.cupOpponent();
       const team = this.chosenTeam();
       const problem = cupSideProblem(team, cup);
       if (problem) {
@@ -462,7 +481,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
       }
       lastDojoTeam = [...this.team];
       recordAction(`Started a ${cup.name} bout with ${team.map((pokemon) => pokemon.name).join(', ')}`);
-      this.fight?.({ opponent: foe.id, team, run: { mode: 'cup' } });
+      this.fight?.({ opponent: foe.id, team, run: { mode: 'cup', bout } });
     } else {
       const problem = rentalTeamProblem(this.rentalTeam, this.liveRun(), this.now);
       if (problem) {
@@ -471,9 +490,10 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
         this.render();
         return;
       }
-      const foe = this.rentalOpponent();
-      recordAction(`Started a rental bout with ${this.rentalTeam.join(', ')}`);
-      this.fight?.({ opponent: foe.id, team: [], run: { mode: 'rental', team: [...this.rentalTeam] } });
+      const bout = this.rentalBout();
+      const foe = rentalFoe(bout, this.now);
+      recordAction(`Started rental bout ${bout} with ${this.rentalTeam.join(', ')}`);
+      this.fight?.({ opponent: foe.id, team: [], run: { mode: 'rental', team: [...this.rentalTeam], bout } });
     }
     this.fight = undefined;
     this.close(false);

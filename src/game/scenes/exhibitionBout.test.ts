@@ -18,6 +18,7 @@ import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
 import { BattleScene, boutLostLines } from './BattleScene';
+import { YIELD_DECLINE, YIELD_OPTIONS, yieldQuestionLines } from './battlePresentation';
 
 /**
  * The promise a bout for show in THE RAID ARENA rests on: it can never write to
@@ -215,5 +216,72 @@ describe('a bout for show', () => {
     delete after.raidProgress.bouts;
     delete before.raidProgress.bouts;
     expect(after).toEqual(before);
+  });
+});
+
+describe('YIELD in a bout with something riding on it (the arenas hunt, finding 1)', () => {
+  type Yielding = {
+    confirm(): void;
+    goBack(): void;
+    dispatchAction(action: { type: 'choose-run' }): void;
+    mode: string;
+    selectedCommand: number;
+    pendingBattleExit: boolean;
+    exhibition: unknown;
+    showCommands: ReturnType<typeof vi.fn>;
+    dialog: { showMessages: ReturnType<typeof vi.fn> };
+  };
+  const bout = (stake?: string): Yielding => {
+    const scene = Object.create(BattleScene.prototype) as unknown as Yielding;
+    Object.assign(scene, {
+      exhibition: { dojo: 'bot:finny2011', at: { x: 8, y: 5 }, run: { mode: 'cup', bout: 7 }, ...(stake ? { stake } : {}) },
+      trainer: { name: 'FINNY2011' },
+      hunterBattle: true,
+      mode: 'main',
+      selectedCommand: 1,
+      pendingBattleExit: false,
+      showCommands: vi.fn(),
+      commandContainer: { setVisible: vi.fn() },
+      dialog: { showMessages: vi.fn() },
+    });
+    return scene;
+  };
+
+  it('asks first, opening on NO, and NO goes back to the commands with the bout still on', () => {
+    const scene = bout('Your WATER CUP run of 6 ends.');
+    scene.dispatchAction({ type: 'choose-run' });
+    expect(scene.mode).toBe('yield');
+    expect(scene.selectedCommand).toBe(YIELD_DECLINE);
+    expect(scene.pendingBattleExit).toBe(false);
+    expect(scene.dialog.showMessages).not.toHaveBeenCalled();
+    // The press that opened it, pressed again, is NO.
+    scene.confirm();
+    expect(scene.mode).toBe('main');
+    expect(scene.pendingBattleExit).toBe(false);
+    // ESC is NO as well.
+    scene.dispatchAction({ type: 'choose-run' });
+    scene.goBack();
+    expect(scene.mode).toBe('main');
+    expect(scene.pendingBattleExit).toBe(false);
+  });
+
+  it('gives the bout up on YES', () => {
+    const scene = bout('Your WATER CUP run of 6 ends.');
+    scene.dispatchAction({ type: 'choose-run' });
+    scene.selectedCommand = YIELD_OPTIONS.indexOf('YES');
+    scene.confirm();
+    expect(scene.pendingBattleExit).toBe(true);
+    expect(scene.dialog.showMessages).toHaveBeenCalledWith(['You yielded the bout.']);
+  });
+
+  it('gives a bout with nothing riding on it up on one press, as before', () => {
+    const scene = bout();
+    scene.dispatchAction({ type: 'choose-run' });
+    expect(scene.pendingBattleExit).toBe(true);
+    expect(scene.dialog.showMessages).toHaveBeenCalledWith(['You yielded the bout.']);
+  });
+
+  it('asks the question in two lines, the stake under it', () => {
+    expect(yieldQuestionLines('Your WATER CUP run of 6 ends.')).toEqual(['Yield the bout?', 'Your WATER CUP run of 6 ends.']);
   });
 });

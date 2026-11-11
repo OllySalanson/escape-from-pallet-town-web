@@ -157,14 +157,27 @@ export function atStage(id: string, stage: number): string {
   return line[Math.min(stage, line.length) - 1];
 }
 
+/** Whether a kind at `level`, on the moves it knows by then, has a move that does damage. */
+function attacksAt(id: string, level: number): boolean {
+  const base = SPECIES_BY_ID[id];
+  return base !== undefined && new Pokemon(base, level).moves.some((move) => move.base.power > 0);
+}
+
 /**
  * A team at a class's stage, one of each kind: a member whose line would
  * repeat one already in (KARPKING's Magikarp and Gyarados) keeps its own kind.
+ * A stage that knows no attack at `level` - Kakuna and Metapod, which know only
+ * Harden - is passed over for the next one up its line: BEEBEE22 brought two
+ * free knockouts to the GREAT BALL class, and a rental run's sixth bout handed
+ * them on as swap-ins that could not fight (the arenas hunt, finding 5).
  */
-export function stagedTeam(team: readonly string[], stage: number): readonly string[] {
+export function stagedTeam(team: readonly string[], stage: number, level: number = DOJO_LEVEL): readonly string[] {
   const out: string[] = [];
   for (const id of team) {
-    const pick = [atStage(id, stage), id, ...lineOf(id)].find((candidate) => !out.includes(candidate));
+    const line = lineOf(id);
+    const staged = atStage(id, stage);
+    const candidates = [staged, ...line.slice(line.indexOf(staged) + 1), id, ...line].filter((candidate) => !out.includes(candidate));
+    const pick = candidates.find((candidate) => attacksAt(candidate, level)) ?? candidates[0];
     if (pick) {
       out.push(pick);
     }

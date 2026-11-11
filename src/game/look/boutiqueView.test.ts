@@ -48,6 +48,20 @@ describe("the boutique's screen", () => {
     expect(bar).toContain('turn up on raids');
   });
 
+  it('prices a whole look with a raid find in it as needing the find, not as a plain price (the arenas hunt, finding 3)', () => {
+    const markup = boutiqueMarkup(state());
+    const card = (id: string): string => {
+      const start = markup.indexOf(`data-whole="${id}"`);
+      return markup.slice(start, markup.indexOf('</button>', start));
+    };
+    expect(card('mon-mewtwo')).toMatch(/<small class="px-wrap">₽\d+ \+ a raid find<\/small>/);
+    // Bought everything but the robe: the card needs only the find.
+    const all = ownedWearables(WEARABLES.filter((piece) => piece.rarity !== 'raid').map((piece) => piece.id));
+    const owned = boutiqueMarkup(state({ owned: all }));
+    const start = owned.indexOf('data-whole="mon-mewtwo"');
+    expect(owned.slice(start, owned.indexOf('</button>', start))).toContain('<small class="px-wrap">Needs a raid find</small>');
+  });
+
   it('wears what is owned without a till, and puts back a try-on', () => {
     const bar = commitBar(state({ trying: STARTER_LOOK }));
     expect(bar).toContain('data-wear-it');
