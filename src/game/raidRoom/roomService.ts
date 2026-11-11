@@ -196,6 +196,16 @@ export function worded(message: string | undefined): string {
 /** Where the local stand-in keeps its rooms: shared by every tab of the browser. */
 export const LOCAL_ROOMS_KEY = 'eptw-raid-rooms-local';
 
+/**
+ * Set in a tab's `sessionStorage`, the local stand-in answers that tab as the
+ * live service does with the connection gone: `down` fails every claim at once
+ * (`unreachable`), as a fetch with no network does, and `hang` never answers,
+ * as a request to a server that stopped responding does. The stand-in cannot
+ * otherwise lose its connection, so this is how a driver plays one that does
+ * (`tools/playtest/friendLoot.mjs`).
+ */
+export const LOCAL_ROOMS_OFFLINE_KEY = 'eptw-raid-rooms-local-offline';
+
 interface LocalRoom {
   readonly mapId: string;
   readonly host: string;
@@ -272,6 +282,13 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
       }
     },
     async takeLoot(code, lootId) {
+      const offline = window.sessionStorage.getItem(LOCAL_ROOMS_OFFLINE_KEY);
+      if (offline === 'hang') {
+        return new Promise<LootClaim>(() => undefined);
+      }
+      if (offline === 'down') {
+        return { outcome: 'unreachable' };
+      }
       // As the database refuses it ('That is not a piece of loot.'): the stand-in
       // taking any id is how a map whose ids it would refuse went unnoticed.
       if (!isLootId(lootId)) {

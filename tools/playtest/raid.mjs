@@ -532,7 +532,8 @@ try {
   // watch is fought, Greystone Vale's Boatswain Cragg among them),
   // `read:x:y:Dir` (walks to that tile, faces Dir and presses the interact
   // key: a sign, a clue, a person), `tide:S` (stands still until the raid's
-  // clock reads S seconds in, as a tide is read), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
+  // tide reads S seconds, as a boat reads it), `clock:S` (until S seconds have
+  // gone by on the raid's own clock, as a secret reads it), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
   // laid) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
@@ -605,17 +606,23 @@ try {
       if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, `-read-${parts[0]}-${parts[1]}${reads > 1 ? `-${reads}` : ''}.png`));
       note(`read at ${parts[0]},${parts[1]}: ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox?.textObject?.text ?? null`).catch(() => null))}`);
       await clearInterruptions();
-    } else if (kind === 'tide') {
-      // `tide:S` stands still until the raid's clock reads S seconds in, as a
-      // tide is read (`WorldScene.tideMs`): how a secret that waits for a
-      // stretch of the clock is reached - THE DROWNED BELL rings only from a
-      // minute in until two.
+    } else if (kind === 'tide' || kind === 'clock') {
+      // `tide:S` stands still until the raid's tide reads S seconds
+      // (`WorldScene.tideMs`: the elapsed clock plus the Pokemon Center's
+      // shortfall), which is what a boat and a timed exit are read against;
+      // `clock:S` until S seconds have gone by on the raid's own clock, which
+      // is what a secret's stretch of the clock is read against - THE DROWNED
+      // BELL rings only from a minute in until two. With no heal owed the two
+      // are the same.
       const ms = Number(parts[0]) * 1000;
-      while ((await page.evaluate(`${GAME}.scene.getScene('world').tideMs()`)) < ms) {
+      const read = kind === 'tide'
+        ? `${GAME}.scene.getScene('world').tideMs()`
+        : `${GAME}.scene.getScene('world').runSession.manager.snapshot().elapsedMs`;
+      while ((await page.evaluate(read)) < ms) {
         await wait(stepped ? 250 : 500);
         await clearInterruptions();
       }
-      note(`tide at ${Math.round((await page.evaluate(`${GAME}.scene.getScene('world').tideMs()`)) / 1000)}s`);
+      note(`${kind} at ${Math.round((await page.evaluate(read)) / 1000)}s`);
     } else if (kind === 'shot') {
       if (option('shot')) {
         await wait(300);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { friendChipLines, friendChipPing, type FriendChipFriend } from '../scenes/raidHud';
+import { ROOM_NOT_ANSWERING_LINE, friendChipLines, friendChipPing, type FriendChipFriend } from '../scenes/raidHud';
 import { getWorldMap } from '../worldMap';
 import { friendRoomView, friendStatusLine } from '../hub/friendRoomView';
 
@@ -13,7 +13,17 @@ describe('the friend chip', () => {
   });
 
   it('says the room has closed, once it has under this raid, rather than a code nobody can join', () => {
-    expect(friendChipLines({ code: 'BHRK', closed: true, news: null, friends: [] })).toEqual(['ROOM CLOSED']);
+    expect(friendChipLines({ code: 'BHRK', standing: 'closed', news: null, friends: [] })).toEqual(['ROOM CLOSED']);
+    expect(friendChipLines({ code: 'BHRK', standing: 'offline', news: null, friends: [] })).toEqual(['NO CONNECTION']);
+  });
+
+  it('says the room is not answering above everything else, for as long as a piece waits on it', () => {
+    const ash: FriendChipFriend = { name: 'ASH', atLab: false, heading: 'NE', distance: 14, elsewhere: null };
+    expect(friendChipLines({ code: 'BHRK', standing: 'not-answering', news: null, friends: [ash] })).toEqual([
+      ROOM_NOT_ANSWERING_LINE,
+      'ASH NE 14',
+    ]);
+    expect(friendChipLines({ code: 'BHRK', standing: 'not-answering', news: null, friends: [] })).toEqual([ROOM_NOT_ANSWERING_LINE]);
   });
 
   it('says who came and who went, before anything else', () => {

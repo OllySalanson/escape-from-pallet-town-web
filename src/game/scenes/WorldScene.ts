@@ -2035,7 +2035,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const pings = rooms.talk.pings(this.time.now);
     const lines = friendChipLines({
       code: room.code,
-      closed: rooms.closed,
+      standing: rooms.standing,
       news: news ? { name: news.name, came: news.came, ...(news.line ? { line: news.line } : {}) } : null,
       friends: rooms.friends().map((friend) => {
         const figure = drawn.find((each) => each.id === friend.id);
@@ -5473,7 +5473,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /**
    * Works a secret's `summons` nook: when the secret is open at this moment of
-   * the raid (its stretch of the clock read as a tide is) and its Pokemon is
+   * the raid (its stretch of the clock read against the time gone by, as its
+   * clue says, never the tide) and its Pokemon is
    * not met yet this raid, says the finding, sounds it and promises the fight.
    * False when nothing answers, and the nook reads as its clue.
    */
@@ -5485,7 +5486,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       secret?.nook !== 'summons' ||
       open?.reward?.kind !== 'meet' ||
       conditions === undefined ||
-      !secretOpenAt(secret, conditions, this.tideMs()) ||
+      !secretOpenAt(secret, conditions, this.runSession!.manager.snapshot().elapsedMs) ||
       (this.runSession?.pokemonMet ?? []).includes(secretMetKey(id))
     ) {
       return false;

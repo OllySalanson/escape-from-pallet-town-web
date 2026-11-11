@@ -25,9 +25,9 @@ import { MISTY_BOSS_ID } from './valeQuarters';
  * - **The condition** is a fact the game already knows, read once as the raid
  *   deploys into `RaidConditions` and carried on the plan, so nothing changes
  *   under the player's feet and a seed plays the same raid. The one exception
- *   is a stretch of the raid clock (`raid-clock`), which moves by the rule a
- *   tide already does: the deploy reading says it may come, and the nook asks
- *   the clock again as it is worked (`secretOpenAt`).
+ *   is a stretch of the raid clock (`raid-clock`): the deploy reading says it
+ *   may come, and the nook asks the clock again as it is worked
+ *   (`secretOpenAt`).
  * - **The reward** is an item, a Pokemon met or a Pokemon given. A secret may
  *   have several, given in order (the old shells' two fossils); the next is
  *   the first not yet found.
@@ -103,21 +103,26 @@ export type SecretCondition =
   /** A gym leader beaten before the raid left: their badge in the case. */
   | { readonly kind: 'badge'; readonly bossId: string }
   /**
-   * A stretch of the raid clock, in authored time as a tide is drawn
-   * (`run/raidClock.ts`, `authoredTimeIn`): from `fromMs` until `untilMs` of
-   * the full clock, so it comes as much sooner as the raid is short.
+   * A stretch of the raid clock: from `fromMs` until `untilMs` gone by since
+   * the raid dropped in, which is what every clue and the library's book say
+   * ("a minute in, until two"). Never the tide (`WorldScene.tideMs`), which a
+   * boat and a timed exit are read against: that runs ahead by whatever the
+   * Pokemon Center took off the raid, so after a heal the bell rang only in a
+   * raid's first seconds, or with two minutes owed not at all (the bug hunt of
+   * 10 Nov). A stretch must end before the shortest raid does - half the clock,
+   * `MAX_PENDING_RECOVERY_MS` - which `secrets.test.ts` holds.
    */
   | { readonly kind: 'raid-clock'; readonly fromMs: number; readonly untilMs: number }
   /** Any one of these. */
   | { readonly kind: 'either'; readonly of: readonly SecretCondition[] };
 
 /**
- * Whether a condition holds for a raid. `tideMs` is the raid's time as tides
- * are read (the elapsed clock plus the Pokemon Center's shortfall); without it
- * - as the raid deploys - a stretch of the clock is one that may yet come, and
- * holds, so the nook is laid and asks again when it is worked.
+ * Whether a condition holds for a raid. `elapsedMs` is how long the raid has
+ * been going; without it - as the raid deploys - a stretch of the clock is one
+ * that may yet come, and holds, so the nook is laid and asks again when it is
+ * worked.
  */
-export function conditionHolds(condition: SecretCondition, raid: RaidConditions, tideMs?: number): boolean {
+export function conditionHolds(condition: SecretCondition, raid: RaidConditions, elapsedMs?: number): boolean {
   switch (condition.kind) {
     case 'hour':
       return raid.hour === condition.hour;
@@ -134,9 +139,9 @@ export function conditionHolds(condition: SecretCondition, raid: RaidConditions,
     case 'badge':
       return raid.badges.includes(condition.bossId);
     case 'raid-clock':
-      return tideMs === undefined || (tideMs >= condition.fromMs && tideMs < condition.untilMs);
+      return elapsedMs === undefined || (elapsedMs >= condition.fromMs && elapsedMs < condition.untilMs);
     case 'either':
-      return condition.of.some((each) => conditionHolds(each, raid, tideMs));
+      return condition.of.some((each) => conditionHolds(each, raid, elapsedMs));
   }
 }
 
@@ -355,7 +360,7 @@ export const SECRETS: readonly Secret[] = [
     // THE COAST's own secret, past MISTY's sandbags: the old church went down
     // with the lower town, and its bell rope comes up out of the sea and is
     // tied off to a bollard on Market Street. Pulled at low water, a minute
-    // into the raid and gone by two - the stair's own tide - with her badge
+    // into the raid and gone by two by the raid's own clock, with her badge
     // already won, the bell tolls and what has made the belfry its home comes
     // up to see who rang.
     // Lv 28 is an earned fight in the Coast's rain at KOGA's level, the gym it
@@ -427,11 +432,10 @@ export function secretConditionHolds(secret: Secret, raid: RaidConditions): bool
 
 /**
  * Whether a secret is open at this moment of a raid: every condition, the
- * clock's stretch read at `tideMs` (the elapsed clock plus the Pokemon
- * Center's shortfall, as a tide is read).
+ * clock's stretch read at `elapsedMs`, how long the raid has been going.
  */
-export function secretOpenAt(secret: Secret, raid: RaidConditions, tideMs: number): boolean {
-  return secret.when.every((condition) => conditionHolds(condition, raid, tideMs));
+export function secretOpenAt(secret: Secret, raid: RaidConditions, elapsedMs: number): boolean {
+  return secret.when.every((condition) => conditionHolds(condition, raid, elapsedMs));
 }
 
 /**
