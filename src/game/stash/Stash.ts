@@ -766,9 +766,16 @@ export class Stash {
 
   /**
    * Permanently removes every Pokemon deployed for a wiped run, except the
-   * secured ones. Removes deployed item quantities except the secured stacks.
-   * Both are cut to `limits`, and invalid or unavailable secure-slot entries do
-   * not protect anything.
+   * partner and the secured ones. Removes deployed item quantities except the
+   * secured stacks. The container is cut to `limits`, and invalid or
+   * unavailable secure-slot entries do not protect anything.
+   *
+   * The partner is not the container's to protect: it has a place of its own
+   * beside it (the captain's call of 11 Nov 2026, option B), so it is kept
+   * here by the vault's own mark whatever the slot says, and it never counts
+   * against the container's Pokemon or its squares. The container only ever
+   * grows columns, so an evolved starter used to be too tall for it, and a
+   * wipe deleted the one Pokemon nobody chose to risk.
    *
    * The limits used to be a literal two stacks here, which silently destroyed
    * the third stack the cordon ledger pays for while the result screen beside
@@ -782,11 +789,15 @@ export class Stash {
     secureSlot: SecureSlot = {},
     limits: SecureSlotLimits = BASE_SECURE_SLOT_LIMITS,
   ): void {
+    const partnerId = this.partnerStashId;
     const protectedPokemonIds = new Set(
       [...new Set(secureSlot.pokemonIds ?? [])]
-        .filter((pokemonId) => broughtPokemonIds.includes(pokemonId))
+        .filter((pokemonId) => pokemonId !== partnerId && broughtPokemonIds.includes(pokemonId))
         .slice(0, Math.max(0, limits.pokemon)),
     );
+    if (partnerId !== null) {
+      protectedPokemonIds.add(partnerId);
+    }
     for (const pokemonId of new Set(broughtPokemonIds)) {
       if (!protectedPokemonIds.has(pokemonId)) {
         this.removePokemon(pokemonId);

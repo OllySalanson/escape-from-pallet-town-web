@@ -148,8 +148,9 @@ on the high ground, a minecart under the rock, and a Bicycle anywhere else. A ri
 stands faded until its exit opens, then turns up. Hop on and it's off.
 
 Make it to an exit and everything you carried is banked for good. Go down instead and the pack is
-gone, along with every Pokémon you brought that wasn't tucked into the secure container. The
-result screen is very polite about it either way.
+gone, along with every Pokémon you brought that wasn't tucked into the secure container. Your
+partner is the one exception: it has its own spot beside the container, fully evolved or not, and
+no wipe can touch it. The result screen is very polite about it either way.
 
 <p align="center">
   <img src="docs/readme/extracted.png" width="400" alt="Extracted along the Mere Path: &quot;You walked out loaded.&quot; Two Mooring ropes and two Super Potions banked.">

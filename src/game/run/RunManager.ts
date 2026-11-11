@@ -61,6 +61,14 @@ export interface SecureSlot {
   /** The protected Pokemon, as many as the save's secure slot holds. */
   readonly pokemon?: readonly Pokemon[];
   readonly items?: readonly ItemStack[];
+  /**
+   * The partner, when it came on this raid: protected in a place of its own
+   * beside the container rather than in it (the captain's call of 11 Nov
+   * 2026). It takes none of the container's squares and none of its Pokemon,
+   * so evolving - which makes a Pokemon too tall for a container that only
+   * grows columns - can never cost it its protection.
+   */
+  readonly partner?: Pokemon;
 }
 
 export interface RunSnapshot {
@@ -450,7 +458,10 @@ export class RunManager {
     );
     this.beginResolution();
 
-    const bankedPokemon = [...(resolvedSecureSlot.pokemon ?? [])];
+    const bankedPokemon = [
+      ...(resolvedSecureSlot.partner === undefined ? [] : [resolvedSecureSlot.partner]),
+      ...(resolvedSecureSlot.pokemon ?? []),
+    ];
     const bankedItems = combineItems(resolvedSecureSlot.items ?? []);
     const lostPokemon = removePokemon(allPokemon, bankedPokemon);
     const lostItems = subtractItems(allItems, bankedItems);
@@ -569,6 +580,7 @@ function copySecureSlot(secureSlot: SecureSlot): SecureSlot {
   return {
     ...(secureSlot.pokemon === undefined ? {} : { pokemon: [...secureSlot.pokemon] }),
     ...(secureSlot.items === undefined ? {} : { items: combineItems(secureSlot.items) }),
+    ...(secureSlot.partner === undefined ? {} : { partner: secureSlot.partner }),
   };
 }
 
@@ -612,6 +624,13 @@ function validateSecureSlot(
   }
   if (securePokemon.some((secured) => !availablePokemon.includes(secured))) {
     throw new Error('The secure-slot Pokemon must come from the current run.');
+  }
+  const partner = secureSlot.partner;
+  if (partner !== undefined && !availablePokemon.includes(partner)) {
+    throw new Error('The partner must come from the current run.');
+  }
+  if (partner !== undefined && securePokemon.includes(partner)) {
+    throw new Error('The partner has a place of its own and never takes the container\'s.');
   }
 
   const secureItems = combineItems(secureSlot.items ?? []);

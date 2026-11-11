@@ -705,11 +705,10 @@ async function fetchCry(dexId: number): Promise<ArrayBuffer> {
 }
 
 function createBrowserAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  return new window.AudioContext();
+  // A browser with no Web Audio - or a page with no window of its own - is
+  // silent rather than broken.
+  const Context = typeof window === 'undefined' ? undefined : window.AudioContext;
+  return typeof Context === 'function' ? new Context() : null;
 }
 
 export const audioManager = new AudioManager();

@@ -150,22 +150,43 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
       prompt: ADVANCE_PROMPT,
     },
     report.lostTo === 'wild' ? lostToTheWild(takenNames) : strippedByTrainer(takenNames),
-    {
-      id: 'held',
-      headline: heldNames === null ? 'THE SECURE SLOT WAS EMPTY.' : 'THE SECURE SLOT HELD.',
-      detail:
-        heldNames === null
-          ? 'You deployed with nothing protected, so nothing came back with you.'
-          : report.secureFilledForYou
-            // The container filled itself and was never opened, so it was not
-            // the player's call (playtest 43 B6); say what decided it instead.
-            ? `${capitalise(heldNames)} came home with you. The container filled itself before you deployed.`
-            : `${capitalise(heldNames)} came home with you. That was the call you made before you deployed.`,
-      prompt: FINAL_PROMPT,
-    },
+    heldBeat(heldNames, report.partner?.name, report.secureFilledForYou === true),
   ];
 
   return { figures, beats, leadInMs: LEAD_IN_MS, holdMs: BEAT_HOLD_MS, promptIndicator: PROMPT_INDICATOR };
+}
+
+/**
+ * What came home anyway: the secure slot, and the partner beside it. The
+ * partner has a place of its own that no wipe can touch, so it is said whether
+ * or not the container held anything - an empty container never means the
+ * partner was lost.
+ */
+function heldBeat(heldNames: string | null, partnerName: string | undefined, filledForYou: boolean): DefeatBeat {
+  const partnerLine =
+    partnerName === undefined ? '' : `${partnerName} is your partner, and a wipe never takes your partner.`;
+  if (heldNames === null) {
+    return {
+      id: 'held',
+      headline: partnerName === undefined ? 'THE SECURE SLOT WAS EMPTY.' : 'YOUR PARTNER CAME HOME.',
+      detail:
+        partnerName === undefined
+          ? 'You deployed with nothing protected, so nothing came back with you.'
+          : `${partnerLine} The secure slot was empty.`,
+      prompt: FINAL_PROMPT,
+    };
+  }
+  // The container filled itself and was never opened, so it was not the
+  // player's call (playtest 43 B6); say what decided it instead.
+  const call = filledForYou
+    ? 'The container filled itself before you deployed.'
+    : 'That was the call you made before you deployed.';
+  return {
+    id: 'held',
+    headline: 'THE SECURE SLOT HELD.',
+    detail: `${capitalise(heldNames)} came home with you. ${call}${partnerLine === '' ? '' : ` ${partnerLine}`}`,
+    prompt: FINAL_PROMPT,
+  };
 }
 
 /** A trainer won, so somebody was there to go through the bag. */

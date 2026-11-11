@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
-import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
+import { BULBASAUR, CHARIZARD, CHARMANDER, CHARMELEON, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { BOX_CAPACITY, MAX_BOX_NAME_LENGTH, MINIMUM_SUPPLIES, Stash, starterInConditionOf } from './Stash';
@@ -308,6 +308,52 @@ describe('Stash', () => {
     // survivor back up to the minimum needed to attempt another run - which
     // includes a pack, because a vault with none cannot deploy at all.
     expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3, 'raid-pack': 1 });
+  });
+
+  /**
+   * The hunt of 11 Nov 2026, finding 1, end to end through the save: a
+   * Charmeleon partner, a level-6 catch in the 2x2 container, the raid lost.
+   * The partner used to be deleted for good. It has a place of its own now
+   * (the captain's call, option B), kept by the vault's own mark, which counts
+   * against neither the container's Pokemon nor its squares.
+   */
+  it('never lets a wipe take the partner, evolved or not, and keeps the container\'s Pokemon as well', () => {
+    for (const species of [CHARMANDER, CHARMELEON, CHARIZARD]) {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      const partnerId = stash.addPokemon(new Pokemon(species, 36), 'charmander-1');
+      stash.addPokemon(new Pokemon(PIDGEY, 6), 'pidgey-1');
+      stash.addPokemon(new Pokemon(PIDGEY, 4), 'lost');
+      stash.adoptPartner(partnerId);
+      saves.save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+      });
+
+      // The slot names only the container: nothing about the partner is passed.
+      expect(saves.applyWipeLoss(['charmander-1', 'pidgey-1', 'lost'], [], { pokemonIds: ['pidgey-1'] })).toBe(true);
+
+      const restored = saves.load();
+      expect(restored?.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'pidgey-1']);
+      expect(restored?.stash.partnerId()).toBe('charmander-1');
+      expect(restored?.stash.partner()?.pokemon.base.id).toBe(species.id);
+    }
+  });
+
+  it('keeps the partner out of the container\'s count, so a slot naming it protects nobody else less', () => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMELEON, 16), 'partner');
+    stash.addPokemon(new Pokemon(PIDGEY, 5), 'catch');
+    stash.adoptPartner('partner');
+
+    // An old slot that listed the partner first still protects the one Pokemon
+    // the container holds, and the partner is safe in its own place.
+    stash.applyWipeLoss(['partner', 'catch'], [], { pokemonIds: ['partner', 'catch'] }, { pokemon: 1, grid: { width: 2, height: 2 } });
+    expect(stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'catch']);
   });
 
   it('protects exactly as much on a wipe as the limits it is told, never a hard-coded two', () => {

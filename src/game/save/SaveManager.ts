@@ -2749,7 +2749,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     // which never had a size; a raid's own pack is built from the loadout.
     bag: new Bag(carriedIntoVault ? {} : bagContents(value.bag), null),
     stash,
-    raidProgress: deserializeRaidProgress(value.raidProgress),
+    raidProgress: partnerOutOfTheContainer(deserializeRaidProgress(value.raidProgress), stash.partnerId()),
     starterSpeciesId,
     pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
     wardTreatmentsUsed: clampWardTreatmentsUsed(value.wardTreatmentsUsed),
@@ -2798,6 +2798,26 @@ function moveFreeRoamHoldingsIntoVault(
     stash.addItem(itemId, quantity);
   }
   return true;
+}
+
+/**
+ * A save written before the partner had a place of its own may have laid the
+ * secure container out with the partner in it. The partner is never in the
+ * container now (`Stash.applyWipeLoss` keeps it by its own mark), so its seat
+ * is taken out on load: it held nothing, and left there it would be a seat for
+ * a piece that never comes. The partner loses nothing by it - it moved from
+ * the container's squares to its own place - and the rest of the layout stays
+ * exactly as the player left it.
+ */
+function partnerOutOfTheContainer(progress: RaidProgress, partnerId: string | null): RaidProgress {
+  const arrangement = progress.secureArrangement;
+  if (partnerId === null || !arrangement?.cargo.some((seat) => seat.cargoId === partnerId)) {
+    return progress;
+  }
+  return {
+    ...progress,
+    secureArrangement: { ...arrangement, cargo: arrangement.cargo.filter((seat) => seat.cargoId !== partnerId) },
+  };
 }
 
 function deserializeRaidProgress(value: unknown): RaidProgress {

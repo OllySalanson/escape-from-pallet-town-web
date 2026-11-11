@@ -590,15 +590,32 @@ export class DeploymentFlow {
       .filter((item) => item.quantity > 0);
   }
 
-  /** The protected Pokemon, in party order, resolved against the live party. */
-  public get securedPokemon(): readonly StashedPokemon[] {
-    return this.party.filter((stored) => this.securedPokemonIds.includes(stored.id));
+  /**
+   * The partner, when it is on the bench. It is protected in a place of its own
+   * beside the container rather than in it (the captain's call of 11 Nov 2026,
+   * option B): the container only ever grows columns, so a starter that had
+   * evolved was too tall for it and a wipe deleted it. A wipe never takes the
+   * partner, and the partner never takes a square (`Stash.applyWipeLoss`).
+   */
+  public get partnerOnRaid(): StashedPokemon | undefined {
+    const partnerId = this.stash.partnerId();
+    return partnerId === null ? undefined : this.party.find((stored) => stored.id === partnerId);
   }
 
-  /** Who a wipe would take: the party, less whoever is in the container. */
+  /** Whether this one is the partner, which the container never holds. */
+  public isPartnerPlace(id: string): boolean {
+    return this.partnerOnRaid?.id === id;
+  }
+
+  /** The protected Pokemon in the container, in party order, resolved against the live party. */
+  public get securedPokemon(): readonly StashedPokemon[] {
+    return this.party.filter((stored) => this.securedPokemonIds.includes(stored.id) && !this.isPartnerPlace(stored.id));
+  }
+
+  /** Who a wipe would take: the party, less the partner and whoever is in the container. */
   public get riskedPokemon(): readonly StashedPokemon[] {
     const secured = this.securedPokemon;
-    return this.party.filter((stored) => !secured.includes(stored));
+    return this.party.filter((stored) => !secured.includes(stored) && !this.isPartnerPlace(stored.id));
   }
 
   /** What a wipe would take of the pack's contents: what was packed, less what is in the container. */
@@ -775,14 +792,13 @@ export class DeploymentFlow {
    * empty, would protect nothing.
    */
   /**
-   * Whether the container should lead with this one: the partner itself, by its
-   * stash id, since a second of the starter's kind is just a catch. Once the
-   * partner is lost the vault marks nobody, and then any of the starter's line
-   * stands in for it - the starter a wipe hands back is that.
+   * Whether the container should lead with this one. The partner itself never
+   * goes in - it has its own place - so this is only ever a save whose partner
+   * was lost before that place existed: the vault marks nobody, and then any of
+   * the starter's line stands in for it - the starter a wipe hands back is that.
    */
-  private isPartner(stored: StashedPokemon): boolean {
-    const partnerId = this.stash.partnerId();
-    return partnerId !== null ? stored.id === partnerId : this.partnerSpecies.has(stored.pokemon.base.id);
+  private leadsAsStarter(stored: StashedPokemon): boolean {
+    return this.stash.partnerId() === null && this.partnerSpecies.has(stored.pokemon.base.id);
   }
 
   private refillSecureSlot(): void {
@@ -793,18 +809,20 @@ export class DeploymentFlow {
       return;
     }
     const fill = autofillSecureSlot(
-      this.party.map((stored) => ({
+      this.party.filter((stored) => !this.isPartnerPlace(stored.id)).map((stored) => ({
         id: stored.id,
         level: stored.pokemon.level,
         cargo: pokemonCargo(stored.id, stored.pokemon),
-        partner: this.isPartner(stored),
+        partner: this.leadsAsStarter(stored),
       })),
       this.preference,
       this.secureGrid,
       this.securePokemonSlots,
       (itemId) => this.itemQuantity(itemId),
-      // When no Pokemon fits, the medicine the loadout carries rather than nothing.
-      this.packedMedicine,
+      // When no Pokemon fits - or the partner, in its own place, is the only one
+      // going - the medicine the loadout carries rather than nothing. An empty
+      // bench is no raid yet, so its container is left as it is.
+      this.party.length > 0 ? this.packedMedicine : [],
     );
     this.securedPokemonIds = [...fill.pokemonIds];
     this.securedItemCounts.clear();
@@ -913,6 +931,11 @@ export class DeploymentFlow {
    * @returns A message when the container had no room, otherwise undefined.
    */
   public toggleSecurePokemon(id: string): string | undefined {
+    const partner = this.partnerOnRaid;
+    if (partner?.id === id) {
+      // Not a touch of the container: nothing in it changed.
+      return partnerPlaceLine(partner.pokemon.name);
+    }
     this.secureTouched = true;
     if (this.securedPokemonIds.includes(id)) {
       this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
@@ -1168,6 +1191,9 @@ export class DeploymentFlow {
           ? {}
           : { pokemon: securedPokemon.map((stored) => stored.pokemon) }),
         items: securedItems,
+        // The partner's own place. The stash keeps it by its own mark whatever
+        // this says; the raid is told so its result can say so too.
+        ...(this.partnerOnRaid === undefined ? {} : { partner: this.partnerOnRaid.pokemon }),
       },
       stashSecureSlot: {
         ...(securedPokemon.length === 0
@@ -1183,6 +1209,14 @@ export class DeploymentFlow {
       secureArrangement: this.secureSeats,
     };
   }
+}
+
+/**
+ * What the locker says about the partner, on its row and when it is pressed:
+ * it is safe, and why, and that it costs the container nothing.
+ */
+export function partnerPlaceLine(name: string): string {
+  return `${name.toUpperCase()} is your partner, so it has a place of its own: a wipe never takes your partner, and it needs no room in the container.`;
 }
 
 /** A ball of any kind, as the battle's BALL command counts one (`carriedBalls`). */

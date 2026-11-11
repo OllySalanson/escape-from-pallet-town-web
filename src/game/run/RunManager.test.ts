@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Pokemon, experienceForLevel } from '../pokemon';
 import { pokemonCargoCells } from '../pokemon/pokemonCargo';
-import { BULBASAUR, CHARMANDER, PIDGEY } from '../pokemon/species';
+import { BULBASAUR, CHARIZARD, CHARMANDER, CHARMELEON, PIDGEY } from '../pokemon/species';
 import { ENRAGE_GRACE_MS, RunManager, RunPhase, RunTransitionError } from './RunManager';
 
 const makePokemon = (species = BULBASAUR): Pokemon => new Pokemon(species, 5);
@@ -388,5 +388,78 @@ describe('RunManager lifecycle', () => {
     expect(() => manager.resolveWipe({ pokemon: [partner] })).toThrow(
       'A secure container of 2x2 cannot hold that.',
     );
+  });
+});
+
+/**
+ * The captain's call of 11 Nov 2026 (option B): the partner has a protected
+ * place of its own beside the container. It takes none of the container's
+ * squares or Pokemon, so an evolved partner - six squares, or nine, against a
+ * container that is always two tall - is protected all the same.
+ */
+describe('the partner\'s own place', () => {
+  const partnerRaid = (partner: Pokemon, others: readonly Pokemon[], secured: readonly Pokemon[]): RunManager => {
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [partner, ...others], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+      { pokemon: secured, items: [], partner },
+    );
+    return manager;
+  };
+
+  it('brings a fully evolved partner home from a wipe beside a full base container', () => {
+    const charizard = new Pokemon(CHARIZARD, 36);
+    const pidgey = new Pokemon(PIDGEY, 6);
+    const caught = makePokemon(CHARMANDER);
+    const manager = partnerRaid(charizard, [pidgey], [pidgey]);
+    manager.registerCaughtPokemon(caught);
+
+    const result = manager.resolveWipe();
+
+    expect(result.bankedPokemon).toEqual([charizard, pidgey]);
+    expect(result.lostPokemon).toEqual([caught]);
+    expect(result.permadeathPokemon).toEqual([caught]);
+    expect(manager.snapshot().secureSlot.partner).toBe(charizard);
+  });
+
+  it('keeps the partner protected when it evolves in the middle of the raid', () => {
+    const partner = new Pokemon(CHARMANDER, 15);
+    const other = new Pokemon(PIDGEY, 5);
+    const manager = partnerRaid(partner, [other], [other]);
+
+    partner.gainExperience(experienceForLevel(16, partner.base.growthRate) - partner.experience);
+    expect(partner.base.id).toBe('charmeleon');
+
+    const result = manager.resolveWipe(manager.snapshot().secureSlot);
+    expect(result.bankedPokemon).toEqual([partner, other]);
+    expect(result.lostPokemon).toEqual([]);
+  });
+
+  it('brings the partner out of an extraction like the rest of the party', () => {
+    const partner = new Pokemon(CHARMELEON, 20);
+    const other = new Pokemon(PIDGEY, 5);
+    const manager = partnerRaid(partner, [other], []);
+
+    expect(manager.resolveEscape().bankedPokemon).toEqual([partner, other]);
+  });
+
+  it('refuses a partner that is not on the raid, or one put in the container as well', () => {
+    const partner = new Pokemon(CHARMANDER, 5);
+    const stranger = new Pokemon(CHARMANDER, 5);
+    expect(() =>
+      new RunManager().startRun(
+        { party: [partner], items: [] },
+        { mapId: 'pallet-town', durationMs: 60_000 },
+        { partner: stranger },
+      ),
+    ).toThrow(/partner must come from the current run/);
+    expect(() =>
+      new RunManager().startRun(
+        { party: [partner], items: [] },
+        { mapId: 'pallet-town', durationMs: 60_000 },
+        { pokemon: [partner], partner },
+      ),
+    ).toThrow(/place of its own/);
   });
 });

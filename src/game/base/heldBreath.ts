@@ -42,8 +42,11 @@ const CLIMB_RISE = 7;
 
 /** What goes if the raid does: the same things the rim's panel lists as lost. */
 export interface AtRisk {
-  /** Most at stake first. `partner` is the one this save started with, who is named for it. */
-  readonly pokemon: readonly { readonly name: string; readonly level: number; readonly partner?: boolean }[];
+  /**
+   * Most at stake first. Never the partner: it has a place of its own that no
+   * wipe can touch (`DeploymentFlow.partnerOnRaid`), so it is only ever `safe`.
+   */
+  readonly pokemon: readonly { readonly name: string; readonly level: number }[];
   /** The pack worn, unless it is the Satchel nobody is ever left without. */
   readonly pack: string | null;
   /** Whether that pack is more than the one a new save is issued, and would be missed. */
@@ -73,10 +76,7 @@ const AT_RISK = 'AT RISK';
  * than the one everybody is issued, else nothing, and nothing is no hold.
  */
 export function stakeWords(risk: AtRisk, raidsWithThisTeam: number): readonly string[] {
-  // Somebody's partner first and by name, whatever their level: it is who a lost raid would hurt most.
-  const pokemon = [...risk.pokemon]
-    .sort((one, other) => Number(other.partner ?? false) - Number(one.partner ?? false) || other.level - one.level)
-    .map(({ name, partner }) => (partner ? `your partner ${name}` : name));
+  const pokemon = [...risk.pokemon].sort((one, other) => other.level - one.level).map(({ name }) => name);
   if (raidsWithThisTeam <= RAIDS_NAMED_IN_FULL) {
     const all = [...pokemon, ...(risk.pack ? [risk.pack] : []), ...risk.items].map((word) => word.toUpperCase());
     return all.length === 0 ? [NOTHING_TO_LOSE] : [AT_RISK, ...all.slice(0, MOST_WORDS - 1)];
@@ -105,12 +105,12 @@ export function railStamps(risk: AtRisk, raidsWithThisTeam: number): readonly Ra
 export type RailBet = 'nothing' | 'some' | 'big';
 
 /**
- * What the crowd makes of it. A partner, a pack better than the one everybody is
- * issued or a whole team going over is big; a bag of Potions is some; a raid with
+ * What the crowd makes of it. A pack better than the one everybody is issued or
+ * a whole team going over is big; a bag of Potions is some; a raid with
  * everything in the locker is nothing, and gets polite hands.
  */
 export function betOf(risk: AtRisk): RailBet {
-  if (risk.pokemon.some(({ partner }) => partner) || (risk.pack !== null && risk.packIsBetter) || risk.pokemon.length >= 2) {
+  if ((risk.pack !== null && risk.packIsBetter) || risk.pokemon.length >= 2) {
     return 'big';
   }
   return risk.pokemon.length === 0 && risk.pack === null && risk.items.length === 0 ? 'nothing' : 'some';

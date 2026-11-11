@@ -11,6 +11,7 @@ import type {
 import {
   secureNeverReason,
   applyRecovery,
+  partnerPlaceLine,
   beaconUnlockAtMs,
   checkBerth,
   faintedRefusal,
@@ -1784,6 +1785,15 @@ export class HubScene extends Phaser.Scene {
     on('[data-treat-item]', (button) => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!));
     on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
     on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));
+    // Pressing the partner's row says what its help line says: there is nothing
+    // to toggle, and a refusal's sound would be wrong about a Pokémon that is safe.
+    on('[data-partner-place]', () => {
+      const partner = this.flow.partnerOnRaid;
+      if (partner) {
+        audioManager.play('select');
+        this.setStatus(partnerPlaceLine(partner.pokemon.name));
+      }
+    });
     on('[data-secure-pokemon]', (button) => {
       // It refuses by the squares now, so the message is the whole point of the
       // press: an Ivysaur that will not go into a 2x2 container says why, on
@@ -2806,12 +2816,16 @@ export class HubScene extends Phaser.Scene {
     ];
     // Said apart and said plainly, because "at risk" never told a FireRed player
     // that a Pokémon lost here is not coming back.
-    const partnerId = this.stash.partnerId();
-    const goneForGood = this.flow.riskedPokemon.map((stored) =>
-      stored.id === partnerId ? `${stored.pokemon.name} (your partner)` : stored.pokemon.name,
-    );
+    // The partner is never among them: it has a place of its own that no wipe
+    // can touch, so it leads what is safe instead.
+    const goneForGood = this.flow.riskedPokemon.map((stored) => stored.pokemon.name);
     const hurt = this.railHurt();
-    const kept = [...securedPokemon.map((stored) => stored.pokemon.name), ...securedItems.map(stack)];
+    const partner = this.flow.partnerOnRaid;
+    const kept = [
+      ...(partner === undefined ? [] : [`${partner.pokemon.name} (your partner)`]),
+      ...securedPokemon.map((stored) => stored.pokemon.name),
+      ...securedItems.map(stack),
+    ];
     const threat = this.hunterThreatAt(insertionId, this.flow.party);
     const hunter = hunterThreatLine(threat);
     const contract = this.contractFor(insertionId);
@@ -3126,6 +3140,11 @@ export class HubScene extends Phaser.Scene {
     // the press and the help bar says what it would buy or cost.
     const pokemonRows = party
       .map((stored) => {
+        if (this.flow.isPartnerPlace(stored.id)) {
+          // The partner's own place: no squares, no slot, no press that could
+          // take it out, and the row says so in the secure tone the container uses.
+          return `<button class="px-row is-secured is-partner-place" data-partner-place data-shows="${stored.id}" data-help="${escapeAttribute(partnerPlaceLine(stored.pokemon.name))}">${this.pokemonRowBody(stored, pixelTag('PARTNER', 'secure', true))}</button>`;
+        }
         const secured = this.flow.securesPokemon(stored.id);
         const piece = pokemonCargo(stored.id, stored.pokemon);
         const squares = cargoSquaresLabel(cargoCells(piece));
@@ -3249,7 +3268,9 @@ export class HubScene extends Phaser.Scene {
       // Nothing is protected. That is only worth a line when it is because
       // nothing *can* be - an all-evolved party against a container that has
       // not grown - because otherwise the player put the Pokemon out on purpose.
-      const fits = this.flow.party.map((stored) => this.flow.secureFit(stored.id));
+      // The partner is never a question for the container: it has its own place.
+      const contenders = this.flow.party.filter((stored) => !this.flow.isPartnerPlace(stored.id));
+      const fits = contenders.map((stored) => this.flow.secureFit(stored.id));
       if (fits.length === 0 || fits.includes('fits')) {
         return '';
       }
@@ -3258,7 +3279,7 @@ export class HubScene extends Phaser.Scene {
       if (!fits.includes('grow')) {
         return `<p class="px-note px-wrap">Nothing in this party fits any secure container: it only ever grows sideways from ${this.flow.secureGrid.height} squares tall. A wipe will take ${fits.length === 1 ? 'it' : 'them'}.</p>`;
       }
-      const smallest = this.flow.party
+      const smallest = contenders
         .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
         .sort((a, b) => a - b)[0];
       return `<p class="px-note px-wrap">Nothing in this party fits: the container is ${shape} and the smallest here needs ${cargoSquaresLabel(smallest)}. To make room, ${grow}.</p>`;

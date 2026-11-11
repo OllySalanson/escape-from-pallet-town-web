@@ -30,7 +30,12 @@ export function marshalLines(
       : ['You have no Poké Balls at all. Bill sells them, on the quay.'];
   }
   if (flow.securedPokemon.length === 0 && flow.securedItems.length === 0) {
-    return ['Your locker is empty. Lose this raid and you lose the lot.'];
+    const partner = flow.partnerOnRaid;
+    return [
+      partner === undefined
+        ? 'Your locker is empty. Lose this raid and you lose the lot.'
+        : `Your locker is empty. Lose this raid and only ${partner.pokemon.name} comes home.`,
+    ];
   }
   if (cleanLandings >= STREAK_WORTH_SAYING) {
     return [`You look ready. ${cleanLandings} clean landings running, and the stands are counting.`];

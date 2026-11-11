@@ -243,7 +243,10 @@ export class ExtractionScene extends Phaser.Scene {
     if (beat.id === 'taken') {
       audioManager.play('lossTaken');
     }
-    if (beat.id === 'held' && this.report.secured.pokemon.length + this.report.secured.items.length > 0) {
+    if (
+      beat.id === 'held' &&
+      (this.report.partner !== undefined || this.report.secured.pokemon.length + this.report.secured.items.length > 0)
+    ) {
       audioManager.play('secureHeld');
     }
   }
@@ -504,6 +507,10 @@ export class ExtractionScene extends Phaser.Scene {
       );
     }
     const securedRows = groupRows(report.secured, 'secured');
+    // The partner's own place, above the container, because it is not in it.
+    const partnerRows = report.partner
+      ? `<h3 class="px-subheading">Partner</h3>${pokemonRow(report.partner, 'partner')}`
+      : '';
     const riskedRows = groupRows(report.risked, 'survived');
     // A lost raid's at-risk list is exactly the ledger beside it, so only a
     // survived one lists what rode out unprotected and came back anyway.
@@ -512,7 +519,7 @@ export class ExtractionScene extends Phaser.Scene {
         ? `<h3 class="px-subheading">Carried at risk</h3>${riskedRows || '<p class="px-empty">Nothing was carried unprotected.</p>'}`
         : '';
     return pixelWindow(
-      `<div class="px-list px-scroll" data-reads><h3 class="px-subheading">Secure slot</h3>${securedRows || `<p class="px-empty">${escapeHtml(report.securedEmptyText)}</p>`}${risked}<p class="px-wrap gamble-verdict">${escapeHtml(report.gambleVerdict)}</p></div>`,
+      `<div class="px-list px-scroll" data-reads>${partnerRows}<h3 class="px-subheading">Secure slot</h3>${securedRows || `<p class="px-empty">${escapeHtml(report.securedEmptyText)}</p>`}${risked}<p class="px-wrap gamble-verdict">${escapeHtml(report.gambleVerdict)}</p></div>`,
       { className: 'extraction-gamble', heading: 'The gamble' },
     );
   }
@@ -726,12 +733,13 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
   </figure>`;
 }
 
-type RowTag = 'banked' | 'lost' | 'secured' | 'survived' | 'reward';
+type RowTag = 'banked' | 'lost' | 'secured' | 'partner' | 'survived' | 'reward';
 
 const ROW_TAGS: Record<RowTag, string> = {
   banked: pixelTag('Banked', 'good', true),
   lost: pixelTag('Gone', 'risk'),
   secured: pixelTag('Protected', 'secure'),
+  partner: pixelTag('Safe', 'secure'),
   survived: pixelTag('Made it', 'plain', true),
   reward: pixelTag('Reward', 'good', true),
 };

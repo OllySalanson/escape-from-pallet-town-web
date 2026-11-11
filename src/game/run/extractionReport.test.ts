@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BULBASAUR, CHARMANDER, PIDGEY } from '../pokemon/species';
+import { BULBASAUR, CHARMANDER, CHARMELEON, PIDGEY } from '../pokemon/species';
 import { Pokemon, experienceForLevel } from '../pokemon';
 import { RunManager, type ItemStack, type RunSnapshot, type SecureSlot } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
@@ -520,6 +520,89 @@ describe('extraction report after a lost raid', () => {
     // A loss is never graded as a haul, whatever the secure slot rescued.
     expect(report.haulTier).toBe('empty');
     expect(report.clockLabel).toBe('5:00 of 5:00');
+  });
+
+  /**
+   * The hunt of 11 Nov 2026, finding 1: "You lost Charmeleon ... The secure
+   * slot held Rattata." The partner has a place of its own now, so a lost raid
+   * says it came home, apart from the container and never in the losses.
+   */
+  it('brings the partner home from a lost raid in its own place, and says so apart from the container', () => {
+    const partner = new Pokemon(CHARMELEON, 16);
+    const catchOne = new Pokemon(PIDGEY, 6);
+    const exposed = new Pokemon(PIDGEY, 4);
+    partner.giveHeldItem('quick-claw');
+    const manager = startedRun({
+      party: [partner, catchOne, exposed],
+      items: [{ itemId: 'poke-ball', quantity: 2 }],
+      secure: { pokemon: [catchOne], items: [], partner },
+    });
+    const result = manager.resolveWipe();
+
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: result.lostPokemon, items: result.lostItems },
+      lastStand: exposed,
+      saved: true,
+    });
+
+    expect(report.partner?.name).toBe('Charmeleon');
+    expect(report.ledger.pokemon.map(({ name }) => name)).toEqual(['Pidgey']);
+    expect(report.ledger.pokemon[0].level).toBe(4);
+    expect(report.secured.pokemon.map(({ level }) => level)).toEqual([6]);
+    expect(report.summary).toBe(
+      'The raid ended where you fell. You lost Pidgey and 2 Poké Balls. Charmeleon, your partner, came home with you. The secure slot held Pidgey.',
+    );
+    // The gear on the partner came home on it, so it is no loss.
+    expect(report.gear.find((piece) => piece.holder === 'Charmeleon')?.fate).toBe('kept');
+    // And the line-up stands the partner back up with the container's own.
+    expect(report.fallen?.map(({ name, level, secured }) => [name, level, secured])).toEqual([
+      ['Charmeleon', 16, true],
+      ['Pidgey', 6, true],
+      ['Pidgey', 4, false],
+    ]);
+  });
+
+  it('says the partner came home even when the container went out empty', () => {
+    const partner = new Pokemon(CHARMANDER, 5);
+    const manager = startedRun({ party: [partner], items: [{ itemId: 'poke-ball', quantity: 2 }], secure: { partner } });
+    const result = manager.resolveWipe();
+
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: result.lostPokemon, items: result.lostItems },
+      saved: true,
+    });
+
+    expect(result.lostPokemon).toEqual([]);
+    expect(report.headline).toBe('You went down.');
+    expect(report.summary).toBe('The raid ended where you fell. You lost 2 Poké Balls. Charmander, your partner, came home with you.');
+    expect(report.securedEmptyText).toBe('You put nothing in the container.');
+  });
+
+  it('never counts the partner as carried at risk on a raid that got out', () => {
+    const partner = new Pokemon(CHARMELEON, 16);
+    const other = new Pokemon(PIDGEY, 5);
+    const manager = startedRun({ party: [partner, other], items: [], secure: { partner } });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.partner?.name).toBe('Charmeleon');
+    expect(report.risked.pokemon.map(({ name }) => name)).toEqual(['Pidgey']);
+    expect(report.gambleVerdict).toBe('A wipe would have cost you Pidgey. It did not happen this time.');
   });
 
   it('distinguishes being beaten from running out of time, and says when nothing was protected', () => {

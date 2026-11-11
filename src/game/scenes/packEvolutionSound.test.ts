@@ -31,8 +31,10 @@ function givingFromThePack(speciesId: string, itemId: string) {
     usingItemId: itemId,
     onItemUsed: () => undefined,
     render: () => undefined,
+    // A stone opens the evolution moment, which is timed on the scene's own clock.
+    time: { now: 0 },
   });
-  return { scene: scene as unknown as { giveTo(index: number): void }, pokemon };
+  return { scene: scene as unknown as { giveTo(index: number): void; evolving?: { toName: string } }, pokemon };
 }
 
 describe('an evolution stone used from the raid pack', () => {
@@ -44,6 +46,7 @@ describe('an evolution stone used from the raid pack', () => {
     await Promise.resolve();
     expect(pokemon.base.id).toBe('raichu');
     expect(played).toEqual([{ name: 'evolved', species: undefined }, { name: 'cry', species: 26 }]);
+    expect(scene.evolving?.toName).toBe('Raichu');
   });
 
   it('is refused with the refusal sound on a Pokemon the stone does nothing for', async () => {

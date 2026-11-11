@@ -66,18 +66,18 @@ describe('the held breath', () => {
     expect(railStamps({ pokemon: [], pack: 'Raid pack', packIsBetter: false, items: ['Potion ×3'], safe: ['Pidgey'] }, 200)).toEqual([]);
   });
 
-  it('names a partner at risk, first, whoever else is going over', () => {
+  it('names whoever is most at stake first, by level', () => {
     const risked: AtRisk = {
       pokemon: [
+        { name: 'Charmander', level: 9 },
         { name: 'Pidgeotto', level: 30 },
-        { name: 'Charmander', level: 9, partner: true },
       ],
       pack: null,
       packIsBetter: false,
       items: [],
     };
-    expect(stakeWords(risked, 1)[1]).toBe('YOUR PARTNER CHARMANDER');
-    expect(stakeWords(risked, 200)).toEqual(['AT RISK', 'YOUR PARTNER CHARMANDER']);
+    expect(stakeWords(risked, 1)[1]).toBe('PIDGEOTTO');
+    expect(stakeWords(risked, 200)).toEqual(['AT RISK', 'PIDGEOTTO']);
   });
 
   it('tells the house how big a bet it is', () => {
@@ -85,7 +85,6 @@ describe('the held breath', () => {
     expect(betOf(none)).toBe('nothing');
     expect(betOf({ ...none, pack: 'Raid pack', items: ['Potion ×3'] })).toBe('some');
     expect(betOf({ ...none, pokemon: [{ name: 'Pidgey', level: 3 }] })).toBe('some');
-    expect(betOf({ ...none, pokemon: [{ name: 'Bulbasaur', level: 5, partner: true }] })).toBe('big');
     expect(betOf({ ...none, pack: 'Ranger pack', packIsBetter: true })).toBe('big');
     expect(betOf({ ...none, pokemon: [{ name: 'Pidgey', level: 3 }, { name: 'Rattata', level: 3 }] })).toBe('big');
   });

@@ -20,6 +20,7 @@ export {
   DeploymentFlow,
   faintedRefusal,
   MAX_RUN_PARTY,
+  partnerPlaceLine,
   secureNeverReason,
   type Deployment,
   type DeploymentStep,

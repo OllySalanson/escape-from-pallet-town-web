@@ -497,6 +497,12 @@ THE HARBOUR's T phrases where a player trips over them: tapped mid-step, a row c
 in the great hall, the partner's note beside the bubble, and every door's name from
 its own step with regulars about.
 
+`partnerPlace.mjs <test-mode build url> <out dir> [--port=N]` plays the partner's own
+place beside the secure container (`DeploymentFlow.partnerOnRaid`) where the hunt of
+11 Nov 2026 found an evolved partner deleted: a Charmeleon partner and a level-6 Rattata
+with no locker built, through the locker, the rim, the raid's pack and a raid lost to the
+clock, and reads the save after. `docs/screens/partner-place/`.
+
 `raidPackFixes.mjs <test-mode build url> [out dir] [--attach=PORT]` plays the raid pack's
 small fixes on Greystone Vale: X drops a Potion, it lies on the tile and comes
 back by stepping on it, a disc row says how many of yours can learn it, and

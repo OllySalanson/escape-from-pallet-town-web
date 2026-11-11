@@ -382,7 +382,7 @@ describe('who the partner is', () => {
     },
   );
 
-  it('after every way a raid ends, is the starter while it came home and nobody once it was lost', () => {
+  it('after every way a raid ends, is the starter that came home: no wipe takes it', () => {
     const storeFor = (stash: Stash, raidInFlight?: RaidInFlight): SaveManager => {
       const stored = new Map<string, string>();
       const manager = new SaveManager({
@@ -398,18 +398,20 @@ describe('who the partner is', () => {
       return { stash, id: stash.partner()!.id };
     };
 
-    // Lost with nothing secured: the whole vault goes, the base re-issues a
-    // Charmander under the very same id, and it is not the partner.
+    // Lost with nothing in the container: the partner has a place of its own
+    // beside it (11 Nov 2026, option B), so it comes home all the same, and
+    // as itself rather than as a re-issued starter.
     const wiped = charmanderSave();
+    wiped.stash.partner()!.pokemon.giveNickname('Pal');
     const wipedSaves = storeFor(wiped.stash);
     expect(wipedSaves.applyWipeLoss([wiped.id], [{ itemId: 'potion', quantity: 1 }], { items: [{ itemId: 'potion', quantity: 1 }] })).toBe(true);
     const afterWipe = wipedSaves.load()!.stash;
     expect(afterWipe.listPokemon().map((entry) => entry.id)).toEqual([wiped.id]);
-    expect(afterWipe.partnerId()).toBeNull();
-    expect(partnerOf(afterWipe)).toBeNull();
+    expect(afterWipe.partnerId()).toBe(wiped.id);
+    expect(partnerOf(afterWipe)?.pokemon.name).toBe('Pal');
 
-    // Lost with the starter in the secure container, as the container fills
-    // itself by default (the clock running out settles the same way).
+    // A slot from before that place existed, naming the partner as in the
+    // container (the clock running out settles the same way).
     const secured = charmanderSave();
     const securedSaves = storeFor(secured.stash);
     securedSaves.applyWipeLoss([secured.id], [], { pokemonIds: [secured.id] });
@@ -482,22 +484,24 @@ describe('who the partner is', () => {
     expect(partnerOf(stash)?.id).toBe(original);
   });
 
-  it('is gone once the partner is lost, and the starter a wipe re-issues is not it', () => {
+  it('is gone once the partner leaves the vault, and the starter a re-issue hands over is not it', () => {
     const stash = createStartingStash(CHARMANDER);
     const id = stash.partner()?.id ?? '';
-    stash.applyWipeLoss([id], []);
+    stash.removePokemon(id);
     stash.ensurePlayable(CHARMANDER);
     // Same species, and the very same stash id, and still not the partner.
     expect(stash.listPokemon().map((entry) => entry.id)).toEqual([id]);
     expect(partnerOf(stash)).toBeNull();
   });
 
-  it('survives a wipe it was secured through', () => {
+  it('survives a wipe whatever the container held, and whatever it has evolved into', () => {
     const stash = createStartingStash(BULBASAUR);
     const id = stash.partner()?.id ?? '';
+    stash.partner()!.pokemon.evolveInto(VENUSAUR);
     stash.addPokemon(new Pokemon(PIDGEY, 5), 'pidgey-1');
-    stash.applyWipeLoss([id, 'pidgey-1'], [], { pokemonIds: [id] });
-    expect(partnerOf(stash)?.id).toBe(id);
+    stash.applyWipeLoss([id, 'pidgey-1'], [], { pokemonIds: ['pidgey-1'] });
+    expect(partnerOf(stash)).toMatchObject({ id, species: 'venusaur' });
+    expect(stash.listPokemon().map((entry) => entry.id)).toEqual([id, 'pidgey-1']);
   });
 
   it('is the newcomer a swap hands over - the swap changes the species and nothing else', () => {
@@ -562,7 +566,7 @@ describe('who the partner is', () => {
     expect(partnerOf(kept.stash)?.species).toBe('charmander');
 
     const stash = createStartingStash(CHARMANDER);
-    stash.applyWipeLoss([stash.partner()?.id ?? ''], []);
+    stash.removePokemon(stash.partner()?.id ?? '');
     stash.ensurePlayable(CHARMANDER);
     expect(partnerOf(restoreBase(stash).stash)).toBeNull();
   });
@@ -688,10 +692,10 @@ describe('who the partner is', () => {
       // PLAYTEST on the title: its own save, with its Charizard at heel.
       setActiveSaveSlot('playtest');
       manager.save(createPlaytestGame());
-      // A try deals a team of its own and may lose all of it.
+      // A try deals a team of its own and may part with all of it.
       setActiveSaveSlot('try-it');
       const tried = createStartingStash(SQUIRTLE);
-      tried.applyWipeLoss([tried.partner()?.id ?? ''], []);
+      tried.removePokemon(tried.partner()?.id ?? '');
       manager.save(restoreBase(tried));
 
       expect(partnerIn('playtest')).toMatchObject({ id: 'charizard-1', species: 'charizard' });
