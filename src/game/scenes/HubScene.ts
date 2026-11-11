@@ -195,7 +195,7 @@ import { caughtLegends } from '../world/legends';
 import { awayOnRaid, createRaidInFlight, outOnRaidLine, PACKED_FOR_RAID_LINE, raidHeartbeat } from '../run/raidInFlight';
 import { isFirstRaid } from '../hub/firstRaid';
 import { hasRaidStake } from '../world/raidStake';
-import { rewardLine, standingJobWalk } from '../objectives/standingBoard';
+import { quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/standingBoard';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { recoveryTermsFor } from '../hub/centerCounter';
 import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
@@ -2838,10 +2838,24 @@ export class HubScene extends Phaser.Scene {
     // nothing beside 5:00 and a job across the vale leaves little room for
     // anything else (the characters bug hunt, 11 Nov 2026). Fights are free.
     const walk = contract ? standingJobWalk(contract, requireInsertion(insertionId).position, this.savedGame.raidProgress) : undefined;
+    // A job's stops are placed off the front door, so from a way in across the
+    // map it can be most of the raid: say which way in on offer walks it much
+    // quicker (the north bug hunt, 11 Nov 2026).
+    const quicker =
+      contract && walk !== undefined
+        ? quickerLandingFor(
+            contract,
+            requireInsertion(insertionId).position,
+            this.offeredWays.filter(([, way]) => way.mapId === contract.mapId).map(([, way]) => way),
+            this.savedGame.raidProgress,
+          )
+        : undefined;
     const walking =
       walk === undefined
         ? ''
-        : ` Walked straight, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}.`;
+        : ` Walked straight, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}.${
+            quicker ? ` From ${quicker.landing.label} it takes ${formatRecoveryClock(quicker.walk * STEP_DURATION_MS)}.` : ''
+          }`;
     const job = contract
       ? short.length > 0
         ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
