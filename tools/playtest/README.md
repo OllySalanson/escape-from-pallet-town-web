@@ -119,7 +119,12 @@ the same way instead: a new game, then 23 routes and back from where a visit
 starts and from the jetty a raid comes home to - every keeper's door, east from
 KEEPERS' ROW to the end of THE PROMENADE, the boardwalk, down the steps and along
 the beach, the waterfront and the breakwater - each ending on a door's step, never
-in its doorway (`docs/screens/walkable-harbour/`).
+in its doorway (`docs/screens/walkable-harbour/`). `--area=tanglewood` walks
+TANGLEWOOD: the explorer run deployed on the vale, the walker stood a step into
+the wood on the road from The Crossing (it has no landing of its own), and 19
+routes and back from there - the road through to the Safari Marsh, every way
+out, the doors of Mislaid, the cavers' camp, Fuchsia Gym, the hermit, the Bug
+Club and the lodge, and the glades between (`docs/screens/walkable-tanglewood/`).
 
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a

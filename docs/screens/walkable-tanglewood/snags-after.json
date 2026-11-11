@@ -1,0 +1,233 @@
+{
+  "routes": [
+    {
+      "name": "east along the road to the Safari Marsh",
+      "reached": true,
+      "steps": 76,
+      "snags": []
+    },
+    {
+      "name": "back from: east along the road to the Safari Marsh",
+      "reached": true,
+      "steps": 76,
+      "snags": []
+    },
+    {
+      "name": "out by the Deer Gap",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    },
+    {
+      "name": "back from: out by the Deer Gap",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    },
+    {
+      "name": "down the woodmen’s stand to the shed door",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "back from: down the woodmen’s stand to the shed door",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "north up the lane to the picnic ground",
+      "reached": true,
+      "steps": 35,
+      "snags": []
+    },
+    {
+      "name": "back from: north up the lane to the picnic ground",
+      "reached": true,
+      "steps": 35,
+      "snags": []
+    },
+    {
+      "name": "through the picnic ground to the mushroom ring hut",
+      "reached": true,
+      "steps": 62,
+      "snags": []
+    },
+    {
+      "name": "back from: through the picnic ground to the mushroom ring hut",
+      "reached": true,
+      "steps": 74,
+      "snags": []
+    },
+    {
+      "name": "up the deer path to Pine Hollow",
+      "reached": true,
+      "steps": 73,
+      "snags": []
+    },
+    {
+      "name": "back from: up the deer path to Pine Hollow",
+      "reached": true,
+      "steps": 91,
+      "snags": []
+    },
+    {
+      "name": "into Mislaid to The Way Out",
+      "reached": true,
+      "steps": 83,
+      "snags": []
+    },
+    {
+      "name": "back from: into Mislaid to The Way Out",
+      "reached": true,
+      "steps": 71,
+      "snags": []
+    },
+    {
+      "name": "through Mislaid to the yard behind the cottage",
+      "reached": true,
+      "steps": 106,
+      "snags": []
+    },
+    {
+      "name": "back from: through Mislaid to the yard behind the cottage",
+      "reached": true,
+      "steps": 100,
+      "snags": []
+    },
+    {
+      "name": "up the spur to the Ruined Shrine",
+      "reached": true,
+      "steps": 57,
+      "snags": []
+    },
+    {
+      "name": "back from: up the spur to the Ruined Shrine",
+      "reached": true,
+      "steps": 57,
+      "snags": []
+    },
+    {
+      "name": "past the shrine to the Wood Mouth",
+      "reached": true,
+      "steps": 93,
+      "snags": []
+    },
+    {
+      "name": "back from: past the shrine to the Wood Mouth",
+      "reached": true,
+      "steps": 75,
+      "snags": []
+    },
+    {
+      "name": "through the cavers’ camp to its hut door",
+      "reached": true,
+      "steps": 87,
+      "snags": []
+    },
+    {
+      "name": "back from: through the cavers’ camp to its hut door",
+      "reached": true,
+      "steps": 105,
+      "snags": []
+    },
+    {
+      "name": "to the Fuchsia Gym door",
+      "reached": true,
+      "steps": 67,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Fuchsia Gym door",
+      "reached": true,
+      "steps": 85,
+      "snags": []
+    },
+    {
+      "name": "past the broken cart to the Old Oak",
+      "reached": true,
+      "steps": 78,
+      "snags": []
+    },
+    {
+      "name": "back from: past the broken cart to the Old Oak",
+      "reached": true,
+      "steps": 78,
+      "snags": []
+    },
+    {
+      "name": "from the Old Oak along to the windfalls",
+      "reached": true,
+      "steps": 95,
+      "snags": []
+    },
+    {
+      "name": "back from: from the Old Oak along to the windfalls",
+      "reached": true,
+      "steps": 95,
+      "snags": []
+    },
+    {
+      "name": "by the halfway stone to the hermit’s door",
+      "reached": true,
+      "steps": 55,
+      "snags": []
+    },
+    {
+      "name": "back from: by the halfway stone to the hermit’s door",
+      "reached": true,
+      "steps": 55,
+      "snags": []
+    },
+    {
+      "name": "down the lane to the Bug Club door",
+      "reached": true,
+      "steps": 39,
+      "snags": []
+    },
+    {
+      "name": "back from: down the lane to the Bug Club door",
+      "reached": true,
+      "steps": 39,
+      "snags": []
+    },
+    {
+      "name": "along the butterfly ride and south to the Orchard Terraces",
+      "reached": true,
+      "steps": 108,
+      "snags": []
+    },
+    {
+      "name": "back from: along the butterfly ride and south to the Orchard Terraces",
+      "reached": true,
+      "steps": 94,
+      "snags": []
+    },
+    {
+      "name": "west from the ride to the Crossing trail",
+      "reached": true,
+      "steps": 59,
+      "snags": []
+    },
+    {
+      "name": "back from: west from the ride to the Crossing trail",
+      "reached": true,
+      "steps": 53,
+      "snags": []
+    },
+    {
+      "name": "down past the lodge to its door",
+      "reached": true,
+      "steps": 64,
+      "snags": []
+    },
+    {
+      "name": "back from: down past the lodge to its door",
+      "reached": true,
+      "steps": 70,
+      "snags": []
+    }
+  ],
+  "total": 0
+}
