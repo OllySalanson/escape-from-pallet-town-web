@@ -84,6 +84,27 @@ export function promenadeProp(name: PromenadePieceName, label: string, solid?: r
 }
 
 /**
+ * A post two tiles tall that stands on one: a lamp. Its footing is the tile its
+ * post stands on, and its head is drawn in the row above as a brim
+ * (`PropDefinition.brim`), over whoever walks behind it - so a lamp in the
+ * railing leaves the boardwalk above it walkable, where a lamp solid on both
+ * tiles stood across the whole boardwalk every six tiles.
+ */
+export function promenadePost(name: PromenadePieceName, label: string): PropDefinition {
+  const place = PROMENADE_PIECES[name];
+  if (place.width !== 1 || place.height !== 2) {
+    throw new Error(`'${name}' is not a post one tile wide and two tall`);
+  }
+  return {
+    label,
+    width: 1,
+    height: 1,
+    cells: [{ tile: PROMENADE_SHEET_SOURCE.at(place.column, place.row + 1), solid: true }],
+    brim: { tiles: [PROMENADE_SHEET_SOURCE.at(place.column, place.row)], depth: 16 },
+  };
+}
+
+/**
  * A rectangle of a piece as a landmark of its own, its collision drawn beside
  * it: THE GAME CORNER's cut is one picture of two buildings, the hall and the
  * prize window beside it, and each is a door with its own name.

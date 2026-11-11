@@ -23,7 +23,9 @@ import type { BasePropName } from './baseTileset';
  * Where each one stands is chosen for the same reason a shop window is: it has
  * to be seen from where the player spends their time. Everything here is
  * visible from the middle of the yard - the mast and the light on the skyline
- * either side, the bay and the ward in the clearings behind the keepers, the lockers along the
+ * either side, the bay and the ward in the clearing behind the keepers (a row
+ * deep enough that a lane two wide runs in front of them), and the lockers in
+ * HARBOUR SQUARE's paving either side of the fountain, off the way down to the
  * quay the salvage lands on.
  */
 
@@ -77,15 +79,15 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     upgradeId: 'secure-locker-1',
     name: 'THE STRONGROOM',
     note: 'What a lost raid cannot take',
-    props: [{ name: 'cellarDoors', x: 24, y: 17 }],
-    at: { x: 24, y: 17 },
+    props: [{ name: 'cellarDoors', x: 23, y: 15 }],
+    at: { x: 23, y: 15 },
   },
   {
     upgradeId: 'secure-locker-2',
     name: 'THE SECOND LOCKER',
     note: 'A second door, and room behind it',
-    props: [{ name: 'cellarDoors', x: 27, y: 17 }],
-    at: { x: 27, y: 17 },
+    props: [{ name: 'cellarDoors', x: 32, y: 15 }],
+    at: { x: 32, y: 15 },
   },
   {
     upgradeId: 'recovery-bay-1',
@@ -93,15 +95,15 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     note: 'Beds under a canopy, beside the Center',
     // A white canopy on legs. The sheet's awning is a flat yellow board and
     // read as a sign rather than as somewhere to be treated.
-    props: [{ name: 'marketStall', x: 22, y: 4 }],
-    at: { x: 23, y: 6 },
+    props: [{ name: 'marketStall', x: 22, y: 3 }],
+    at: { x: 23, y: 5 },
   },
   {
     upgradeId: 'recovery-bay-2',
     name: 'THE SECOND MACHINE',
     note: 'Twice the beds, half the wait',
-    props: [{ name: 'hut', x: 26, y: 4 }],
-    at: { x: 26, y: 6 },
+    props: [{ name: 'hut', x: 26, y: 3 }],
+    at: { x: 26, y: 5 },
   },
   {
     upgradeId: 'quarantine-ward',
@@ -111,10 +113,10 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     // flying: that is what a quarantine ward is, and it is why it does not
     // stand beside the bay.
     props: [
-      { name: 'hut', x: 29, y: 4 },
-      { name: 'bannerPair', x: 31, y: 4 },
+      { name: 'hut', x: 29, y: 3 },
+      { name: 'bannerPair', x: 31, y: 3 },
     ],
-    at: { x: 29, y: 6 },
+    at: { x: 29, y: 5 },
   },
 ];
 

@@ -86,16 +86,16 @@ const stand = (x: number, y: number, facing: Direction): RoomSpot => ({ tile: { 
  * of the Seagallop's gate, the one way off the boat for anybody coming in on her.
  */
 export const SEA_VIEWS: readonly RoomSpot[] = [
-  stand(4, 19, 'down'),
+  stand(6, 19, 'down'),
   stand(13, 21, 'right'),
-  stand(25, 22, 'down'),
+  stand(35, 22, 'down'),
   stand(34, 22, 'down'),
   stand(45, 22, 'down'),
   stand(29, 27, 'down'),
   stand(28, 27, 'left'),
+  stand(48, 20, 'down'),
+  stand(55, 21, 'right'),
   stand(49, 20, 'down'),
-  stand(51, 20, 'down'),
-  stand(53, 20, 'down'),
   stand(54, 22, 'left'),
   stand(59, 24, 'left'),
   stand(60, 27, 'right'),
@@ -105,17 +105,16 @@ export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(55, 31, 'down'),
 ];
 
-/** Something to look at for a while: a fountain, the bench, the arena's statues, the S.S. Anne. */
+/** Something to look at for a while: a fountain, the bench above THE COVE, the Day-Care's pen, the arena's statues, the S.S. Anne. */
 export const HANG_OUTS: readonly RoomSpot[] = [
   stand(26, 15, 'right'),
   stand(26, 14, 'right'),
   stand(30, 15, 'left'),
   stand(30, 16, 'left'),
   stand(59, 8, 'left'),
-  stand(55, 14, 'right'),
-  stand(59, 14, 'left'),
-  stand(53, 10, 'left'),
-  stand(53, 11, 'left'),
+  stand(45, 15, 'right'),
+  stand(49, 15, 'left'),
+  stand(53, 9, 'left'),
   stand(6, 17, 'up'),
   stand(10, 17, 'up'),
   stand(30, 24, 'right'),
@@ -127,10 +126,10 @@ export const HANG_OUTS: readonly RoomSpot[] = [
  * head - somebody watching a game is what makes a game look worth playing.
  */
 export const GAME_WATCHES: readonly RoomSpot[] = [
-  // Off every lane: by THE GREEN's flowers, in the nook between a hut and a
-  // parasol, and the dead end of the pier head.
+  // Off every lane: by THE GREEN's flowers, on the sand beside THE DIG's
+  // sign, and the dead end of the pier head.
   stand(59, 9, 'right'),
-  stand(68, 20, 'left'),
+  stand(67, 20, 'right'),
   stand(78, 29, 'left'),
 ];
 
@@ -139,10 +138,12 @@ export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(54, 8, 'up'), stand(80, 
 
 /** In front of a sign. Never THE BOLTHOLE's, which is somebody's front garden. */
 export const NOTICE_BOARDS: readonly RoomSpot[] = [
-  stand(18, 18, 'up'),
+  // The harbour's board from the lawn behind it: on the quay in front of it
+  // they stood on the way down from KEEPERS' ROW to Bill's.
+  stand(18, 16, 'down'),
   stand(25, 21, 'up'),
-  stand(54, 13, 'up'),
-  stand(12, 15, 'up'),
+  stand(53, 10, 'down'),
+  stand(3, 15, 'up'),
   stand(49, 18, 'up'),
 ];
 
@@ -155,10 +156,10 @@ export const KNOCKED_DOORS: readonly SharedRoomId[] = ['pokemon-centre', 'oaks-l
  * beneath the figures and one row off their name is behind their friends' heads.
  */
 export const CHAT_CIRCLES: readonly (readonly RoomSpot[])[] = [
-  [stand(23, 16, 'right'), stand(25, 16, 'left'), stand(24, 14, 'down')],
+  [stand(25, 17, 'right'), stand(27, 17, 'left'), stand(26, 15, 'down')],
   [stand(13, 8, 'right'), stand(15, 8, 'left'), stand(14, 10, 'up')],
-  [stand(44, 15, 'right'), stand(46, 15, 'left'), stand(45, 13, 'down')],
-  [stand(47, 19, 'right'), stand(49, 19, 'left'), stand(48, 17, 'down')],
+  [stand(42, 15, 'right'), stand(44, 15, 'left')],
+  [stand(50, 18, 'right'), stand(52, 18, 'left'), stand(51, 16, 'down')],
   [stand(6, 18, 'right'), stand(8, 18, 'left'), stand(7, 16, 'down')],
   [stand(30, 7, 'right'), stand(32, 7, 'left')],
 ];
@@ -1221,8 +1222,24 @@ function planVisit(visit: number, book: Bookings): VisitPlan {
   const { from, to } = visitSpan(visit);
   const roll = rngFor(4, visit);
   const ways = roll.shuffle(BOT_GATES);
-  // Into the harbour by a way nobody is in the middle of using.
-  const enter = ways.find((gate) => book.free(tileIndex(gate.tile), from, from + HELD_FOR_MS, visit)) ?? ways[0];
+  // Into the harbour by a way nobody is in the middle of using - nor standing
+  // on the step out of: a regular knocking at a door stands on its one step,
+  // and somebody let in through that door had nowhere to step out to.
+  const { walks } = botGround();
+  const stepsOut = (gate: BotGate) =>
+    [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]
+      .map(([dx, dy]) => ({ x: gate.tile.x + dx, y: gate.tile.y + dy }))
+      .filter((tile) => walks[tile.y]?.[tile.x] === true);
+  const clear = (gate: BotGate) =>
+    book.free(tileIndex(gate.tile), from, from + HELD_FOR_MS, visit) &&
+    (stepsOut(gate).length === 0 ||
+      stepsOut(gate).some((tile) => book.free(tileIndex(tile), from, from + DOOR_BUSY_MS + HELD_FOR_MS, visit)));
+  const enter = ways.find(clear) ?? ways.find((gate) => book.free(tileIndex(gate.tile), from, from + HELD_FOR_MS, visit)) ?? ways[0];
   const leave = roll.pick(BOT_GATES);
   const planner = new VisitPlanner(visit, bot, from, to, enter, leave, roll, book);
   planner.plan();

@@ -16,7 +16,7 @@ import {
   RAID_ARENA_SHEET_SOURCE,
   RAID_ARENA_STATUE,
 } from './raidArenaSheet';
-import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeProp } from './promenadeSheet';
+import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadePost, promenadeProp } from './promenadeSheet';
 import { BOARDS, BOARDS_SHEET_SOURCE } from '../world/tileset/boardsSheet';
 import { GREAT_LIBRARY_BUILDING, LIBRARY_SHEET_SOURCE } from './librarySheet';
 
@@ -111,7 +111,8 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // 6x5. THE BATTLE ARENA: Saffron's Fighting Dojo with its name on a board
   // across its front, its door open where FireRed's is.
   battleArena: BATTLE_ARENA_BUILDING,
-  promenadeLamp: promenadeProp('lamp', 'lamp'),
+  // Stands on its post alone; its head is drawn above it (`promenadePost`).
+  promenadeLamp: promenadePost('lamp', 'lamp'),
   lifebuoy: promenadeProp('lifebuoy', 'lifebuoy'),
   pennantRed: promenadeProp('pennantRed', 'pennant'),
   pennantBlue: promenadeProp('pennantBlue', 'pennant'),

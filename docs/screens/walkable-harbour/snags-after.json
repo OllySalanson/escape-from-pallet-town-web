@@ -1,0 +1,281 @@
+{
+  "routes": [
+    {
+      "name": "to the Raid Arena door",
+      "reached": true,
+      "steps": 8,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Raid Arena door",
+      "reached": true,
+      "steps": 11,
+      "snags": []
+    },
+    {
+      "name": "to the Pokemon Center door",
+      "reached": true,
+      "steps": 4,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Pokemon Center door",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    },
+    {
+      "name": "to Oak’s Lab door",
+      "reached": true,
+      "steps": 10,
+      "snags": []
+    },
+    {
+      "name": "back from: to Oak’s Lab door",
+      "reached": true,
+      "steps": 13,
+      "snags": []
+    },
+    {
+      "name": "to Brock’s Workshop door",
+      "reached": true,
+      "steps": 16,
+      "snags": []
+    },
+    {
+      "name": "back from: to Brock’s Workshop door",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "to the Bolthole step",
+      "reached": true,
+      "steps": 23,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Bolthole step",
+      "reached": true,
+      "steps": 26,
+      "snags": []
+    },
+    {
+      "name": "down the lawn to Bill’s door",
+      "reached": true,
+      "steps": 15,
+      "snags": []
+    },
+    {
+      "name": "back from: down the lawn to Bill’s door",
+      "reached": true,
+      "steps": 18,
+      "snags": []
+    },
+    {
+      "name": "east from the gravel to the end of the stone",
+      "reached": true,
+      "steps": 70,
+      "snags": []
+    },
+    {
+      "name": "back from: east from the gravel to the end of the stone",
+      "reached": true,
+      "steps": 73,
+      "snags": []
+    },
+    {
+      "name": "up THE GREEN to the Boutique door",
+      "reached": true,
+      "steps": 44,
+      "snags": []
+    },
+    {
+      "name": "back from: up THE GREEN to the Boutique door",
+      "reached": true,
+      "steps": 47,
+      "snags": []
+    },
+    {
+      "name": "up THE GREEN to the Great Library door",
+      "reached": true,
+      "steps": 51,
+      "snags": []
+    },
+    {
+      "name": "back from: up THE GREEN to the Great Library door",
+      "reached": true,
+      "steps": 54,
+      "snags": []
+    },
+    {
+      "name": "along THE PROMENADE to the Battle Arena door",
+      "reached": true,
+      "steps": 51,
+      "snags": []
+    },
+    {
+      "name": "back from: along THE PROMENADE to the Battle Arena door",
+      "reached": true,
+      "steps": 54,
+      "snags": []
+    },
+    {
+      "name": "along THE PROMENADE to the Game Corner door",
+      "reached": true,
+      "steps": 62,
+      "snags": []
+    },
+    {
+      "name": "back from: along THE PROMENADE to the Game Corner door",
+      "reached": true,
+      "steps": 65,
+      "snags": []
+    },
+    {
+      "name": "along THE PROMENADE to the Field-Move Course gate",
+      "reached": true,
+      "steps": 72,
+      "snags": []
+    },
+    {
+      "name": "back from: along THE PROMENADE to the Field-Move Course gate",
+      "reached": true,
+      "steps": 75,
+      "snags": []
+    },
+    {
+      "name": "along the boardwalk",
+      "reached": true,
+      "steps": 72,
+      "snags": []
+    },
+    {
+      "name": "back from: along the boardwalk",
+      "reached": true,
+      "steps": 75,
+      "snags": []
+    },
+    {
+      "name": "down the steps and along the beach to THE COVE",
+      "reached": true,
+      "steps": 80,
+      "snags": []
+    },
+    {
+      "name": "back from: down the steps and along the beach to THE COVE",
+      "reached": true,
+      "steps": 83,
+      "snags": []
+    },
+    {
+      "name": "down the steps and along the beach to the pleasure pier head",
+      "reached": true,
+      "steps": 79,
+      "snags": []
+    },
+    {
+      "name": "back from: down the steps and along the beach to the pleasure pier head",
+      "reached": true,
+      "steps": 82,
+      "snags": []
+    },
+    {
+      "name": "off the pleasure pier and along the sand to THE COVE",
+      "reached": true,
+      "steps": 104,
+      "snags": []
+    },
+    {
+      "name": "back from: off the pleasure pier and along the sand to THE COVE",
+      "reached": true,
+      "steps": 107,
+      "snags": []
+    },
+    {
+      "name": "down to the jetty in THE COVE",
+      "reached": true,
+      "steps": 46,
+      "snags": []
+    },
+    {
+      "name": "back from: down to the jetty in THE COVE",
+      "reached": true,
+      "steps": 49,
+      "snags": []
+    },
+    {
+      "name": "from the boat to Bill’s door",
+      "reached": true,
+      "steps": 3,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat to Bill’s door",
+      "reached": true,
+      "steps": 6,
+      "snags": []
+    },
+    {
+      "name": "from the boat to the Raid Arena door",
+      "reached": true,
+      "steps": 10,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat to the Raid Arena door",
+      "reached": true,
+      "steps": 13,
+      "snags": []
+    },
+    {
+      "name": "from the boat up to the Pokemon Center door",
+      "reached": true,
+      "steps": 14,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat up to the Pokemon Center door",
+      "reached": true,
+      "steps": 17,
+      "snags": []
+    },
+    {
+      "name": "from the boat along the quay to the S.S. Anne",
+      "reached": true,
+      "steps": 23,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat along the quay to the S.S. Anne",
+      "reached": true,
+      "steps": 26,
+      "snags": []
+    },
+    {
+      "name": "from the boat along the waterfront to THE COVE",
+      "reached": true,
+      "steps": 42,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat along the waterfront to THE COVE",
+      "reached": true,
+      "steps": 45,
+      "snags": []
+    },
+    {
+      "name": "from the boat out along the breakwater to the harbour light",
+      "reached": true,
+      "steps": 81,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat out along the breakwater to the harbour light",
+      "reached": true,
+      "steps": 84,
+      "snags": []
+    }
+  ],
+  "total": 0
+}

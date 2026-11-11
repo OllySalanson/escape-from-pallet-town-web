@@ -98,7 +98,12 @@ straight down the street toward the next corner, the long way first, a tile a
 press. Each time the next tile is taken - a prop, a figure on its beat, a tree -
 is a snag, written to `<dir>/snags.json` with what was in the way, and the walk
 steps round it and carries on. Run it against a build from before a change and
-after (`docs/screens/walkable-millbrook/`).
+after (`docs/screens/walkable-millbrook/`). `--area=harbour` walks THE HARBOUR
+the same way instead: a new game, then 23 routes and back from where a visit
+starts and from the jetty a raid comes home to - every keeper's door, east from
+KEEPERS' ROW to the end of THE PROMENADE, the boardwalk, down the steps and along
+the beach, the waterfront and the breakwater - each ending on a door's step, never
+in its doorway (`docs/screens/walkable-harbour/`).
 
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a

@@ -86,7 +86,7 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
   {
     id: 'yard',
     name: 'KEEPERS’ ROW',
-    areas: [{ x: 14, y: 4, width: 30, height: 13 }],
+    areas: [{ x: 14, y: 3, width: 30, height: 14 }],
   },
 ];
 
