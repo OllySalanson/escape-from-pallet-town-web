@@ -426,14 +426,23 @@ export function powerStation(): MapcraftResult {
           facing: 'down',
           lines: ['The turbines have not turned since the flood.', 'The falls still try. Listen to them.'],
         },
+        // By the door, beside the walk in, because the hall is open from a new
+        // save's first raid and its Zapdos fights at level 50: the north bug
+        // hunt of 11 Nov 2026 walked a level-10 team up to it with nothing said
+        // first. He shouts it to whoever comes in, and says it first when asked.
         {
           area: 'turbine-hall',
-          x: 1,
-          y: 6,
+          x: 11,
+          y: 14,
           name: 'Night Watchman',
           look: 'old-man',
           facing: 'right',
-          lines: ['There is a steel shutter on the floor below.', 'Only the Card Key opens it, and the card was lost in the pines.'],
+          lines: [
+            'That is ZAPDOS up by the dead turbines, and it is level 50. Unless your team is very strong, leave it be.',
+            'There is a steel shutter on the floor below.',
+            'Only the Card Key opens it, and the card was lost in the pines.',
+          ],
+          calls: ['Mind the bird! Level 50!', 'Leave ZAPDOS be!'],
         },
         {
           area: 'bunker-b1f',

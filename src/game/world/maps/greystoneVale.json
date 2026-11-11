@@ -11198,14 +11198,19 @@
   },
   {
    "area": "turbine-hall",
-   "x": 1,
-   "y": 6,
+   "x": 11,
+   "y": 14,
    "name": "Night Watchman",
    "look": "old-man",
    "facing": "right",
    "lines": [
+    "That is ZAPDOS up by the dead turbines, and it is level 50. Unless your team is very strong, leave it be.",
     "There is a steel shutter on the floor below.",
     "Only the Card Key opens it, and the card was lost in the pines."
+   ],
+   "calls": [
+    "Mind the bird! Level 50!",
+    "Leave ZAPDOS be!"
    ]
   },
   {
