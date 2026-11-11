@@ -17,6 +17,7 @@ import { FIRST_HUNTER_RIVAL } from '../world/hunters';
 import type { WorldEntity } from '../world/npcs';
 import { secretById, type RaidConditions } from '../world/secrets';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { WorldScene } from './WorldScene';
 
 /**
@@ -50,6 +51,8 @@ interface Plan {
   readonly conditions: RaidConditions;
   readonly secrets: readonly OpenSecret[];
   readonly sleeping?: readonly string[];
+  /** What the Pokemon Center took off this raid's clock (`RunPlan.clockShortfallMs`). */
+  readonly clockShortfallMs?: number;
 }
 
 /** The player beside the entity tagged with a secret, facing it, every door of the vale open. */
@@ -176,6 +179,29 @@ describe('THE DROWNED BELL', () => {
       internals.tryInteract();
       expect(dialogBox.shownMessages).toEqual(entity.dialogLines);
       expect(internals.pendingWildBattle).toBeUndefined();
+    }
+  });
+
+  it('keeps the time its clue gives after a heal at the Pokemon Center: a minute in, until two', () => {
+    // The bug hunt of 10 Nov: the bell was read against the tide, which runs
+    // ahead by what the Center took off the raid, so with 100 seconds owed it
+    // rang only in the raid's first twenty, and with two minutes or more not
+    // at all. The rope's own words are the raid's time gone by.
+    for (const clockShortfallMs of [100_000, MAX_PENDING_RECOVERY_MS]) {
+      const healed: Plan = { ...open, clockShortfallMs };
+      for (const [elapsedMs, tolls] of [
+        [10_000, false],
+        [71_000, true],
+        [119_000, true],
+        [121_000, false],
+      ] as const) {
+        const { internals, dialogBox, entity } = beside(bell.id, 'sign', healed, elapsedMs);
+        internals.tryInteract();
+        expect(dialogBox.shownMessages, `${clockShortfallMs / 1_000}s owed, ${elapsedMs / 1_000}s in`).toEqual(
+          tolls ? [bell.foundLine] : entity.dialogLines,
+        );
+        expect(internals.pendingWildBattle !== undefined).toBe(tolls);
+      }
     }
   });
 });

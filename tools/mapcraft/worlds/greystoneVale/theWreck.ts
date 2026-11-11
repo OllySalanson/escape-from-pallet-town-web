@@ -278,7 +278,7 @@ export function theWreck(): MapcraftResult {
       signs: [
         { x: 26, y: 30, lines: ['THE WRECK', 'The liner went onto the reef in the last storm. The camp is below the cliff.'] },
         { x: 46, y: 29, lines: ['THE CAPE', 'The wreck is out on the reef, past the camp. The pier is east.'] },
-        { x: 54, y: 39, lines: ['THE ICE RUN', 'The launch runs out to Frostreef on the flood tide.', 'It sails from 2:00 until 4:00.'] },
+        { x: 54, y: 39, lines: ['THE ICE RUN', 'The launch runs out to Frostreef on the flood tide.', 'It sails while your clock reads from 3:00 down to 1:00.'] },
         { x: 42, y: 40, lines: ['LOTS 1-40', 'Sold as seen. Some of it has been seen by the sea for some time.'] },
         { x: 38, y: 41, lines: ['LOT 41', 'Deck chairs, nine. Sea damage. Some of the sea is still in them.'] },
         { x: 30, y: 44, lines: ['THE BAR', 'Dry at low water. It has been low water for some weeks. Nobody trusts it.'] },

@@ -3,6 +3,8 @@ import { getItemById } from '../items/items';
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
 import { generateRunPlan } from '../run/runGeneration';
+import { RAID_DURATION_MS } from '../run/raidClock';
+import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { getWorldMap } from '../worldMap';
 import { districtsForMap } from './districts';
 import { winRateAgainst } from './encounterMeasure';
@@ -404,8 +406,21 @@ describe("the vale's secrets", () => {
       const badge = { ...dusk, badges: [MISTY_BOSS_ID] };
       expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(bell.id);
       expect(plan(7, badge).secrets.find((secret) => secret.id === bell.id)?.reward).toEqual({ kind: 'meet', speciesId: 'kabutops', level: 28 });
-      expect([0, 59_999, 60_000, 119_999, 120_000].map((tideMs) => secretOpenAt(bell, badge, tideMs))).toEqual([false, false, true, true, false]);
+      expect([0, 59_999, 60_000, 119_999, 120_000].map((elapsedMs) => secretOpenAt(bell, badge, elapsedMs))).toEqual([false, false, true, true, false]);
       expect(secretOpenAt(bell, dusk, 90_000)).toBe(false);
+    });
+
+    it('ends every stretch of the clock before the shortest raid a heal leaves does', () => {
+      // A stretch is read against the time gone by, as its clue says, so it
+      // must end inside a raid the Pokemon Center cut by as much as it may.
+      const shortest = RAID_DURATION_MS - MAX_PENDING_RECOVERY_MS;
+      const stretches = (condition: SecretCondition): SecretCondition[] =>
+        condition.kind === 'either' ? condition.of.flatMap(stretches) : condition.kind === 'raid-clock' ? [condition] : [];
+      const timed = SECRETS.flatMap((secret) => secret.when.flatMap(stretches).map((stretch) => [secret.name, stretch] as const));
+      expect(timed.length).toBeGreaterThan(0);
+      for (const [name, stretch] of timed) {
+        expect(stretch.kind === 'raid-clock' && stretch.untilMs <= shortest, name).toBe(true);
+      }
     });
 
     it('lays a berry in a nook once everything in it has been found', () => {

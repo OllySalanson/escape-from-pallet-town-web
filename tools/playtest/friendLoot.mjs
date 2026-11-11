@@ -12,7 +12,10 @@
 // it up - it goes into his pack - and on AMY's screen it must go too. Then the
 // room closes under AMY, as one does when its hour runs out or she joins another
 // room from another tab: the next piece she steps on must still be hers, and her
-// chip must say why (`FriendRoom.claimLoot`). It fails loudly - a thrown error -
+// chip must say why (`FriendRoom.claimLoot`). Then OLLY's connection drops,
+// comes back, and drops for good (`LOCAL_ROOMS_OFFLINE_KEY`): the chip must say
+// so, the piece he stood on must be his once the room answers, and once it is
+// given up on what he finds must be his own. It fails loudly - a thrown error -
 // when any of that does not happen, and photographs both screens on the way,
 // each before the check it shows.
 import { mkdirSync } from 'node:fs';
@@ -172,6 +175,64 @@ try {
   }
   if (!closed.chip.includes('ROOM CLOSED')) fault(`AMY's chip never said the room closed: "${closed.chip}"`);
   console.log(`AMY, her room closed: ${next.itemId} ${hers} -> ${closed.bag[next.itemId] ?? 0}, chip "${closed.chip}"`);
+
+  // OLLY loses his connection (the bug hunt of 10 Nov): the stand-in answers
+  // his claims as the live service does with the network gone
+  // (`LOCAL_ROOMS_OFFLINE_KEY`). The piece he steps on must not vanish into
+  // silence: the chip says the room is not answering, and once it answers
+  // again the piece is his without stepping back onto it.
+  const OFFLINE_KEY = 'eptw-raid-rooms-local-offline';
+  /** Polls OLLY's raid until `test` holds, keeping every chip line seen on the way. */
+  const watchOlly = async (test, timeoutMs) => {
+    const seen = new Set();
+    const started = Date.now();
+    let now = null;
+    while (Date.now() - started < timeoutMs) {
+      await bring(olly);
+      now = await olly.evaluate(ground);
+      if (now) {
+        seen.add(now.chip);
+        if (test(now)) break;
+        if (now.dialog) await press(olly, 'Space');
+      }
+      await sleep(250);
+    }
+    return { now, seen: [...seen].join(' | ') };
+  };
+  await bring(olly);
+  await olly.evaluate(`sessionStorage.setItem('${OFFLINE_KEY}', 'down')`);
+  const down = await look(olly);
+  const third = await nearestPiece(olly, down);
+  if (!third) throw new Error('OLLY can reach no shared piece for the dropped connection');
+  console.log(`OLLY's connection drops; he goes for ${third.itemId} (${third.id}) at ${third.x},${third.y}`);
+  await walkOnto(olly, third);
+  const stuck = await watchOlly((now) => now.chip.includes('NOT ANSWERING'), 3_000);
+  await olly.screenshot(`${out}/l4-olly-offline-room-not-answering.png`);
+  if (!stuck.seen.includes('NOT ANSWERING')) fault(`OLLY's connection dropped and his chip said nothing: "${stuck.seen}"`);
+  else console.log(`OLLY stood on it with no connection: chip "${stuck.now.chip}"`);
+  // The connection comes back while he walks on: the piece is his, wherever he is.
+  await olly.evaluate(`sessionStorage.removeItem('${OFFLINE_KEY}')`);
+  const back = await watchOlly((now) => now.gone.includes(third.id), 15_000);
+  await olly.screenshot(`${out}/l5-olly-connection-back-picks-it-up.png`);
+  if (!back.now?.gone.includes(third.id)) fault(`the connection came back and ${third.id} was never picked up: "${back.seen}"`);
+  else console.log(`the connection came back: ${third.itemId} ${down.bag[third.itemId] ?? 0} -> ${back.now.bag[third.itemId] ?? 0}`);
+  await readOn(olly);
+
+  // And a connection that never comes back - a request that hangs, as a server
+  // that stopped answering leaves one - gives up on the room: what he finds is his.
+  await bring(olly);
+  await olly.evaluate(`sessionStorage.setItem('${OFFLINE_KEY}', 'hang')`);
+  const hung = await look(olly);
+  const fourth = await nearestPiece(olly, hung);
+  if (!fourth) throw new Error('OLLY can reach no shared piece for the hung connection');
+  console.log(`OLLY's requests hang; he goes for ${fourth.itemId} (${fourth.id}) at ${fourth.x},${fourth.y}`);
+  await walkOnto(olly, fourth);
+  const lost = await watchOlly((now) => now.gone.includes(fourth.id), 45_000);
+  await olly.screenshot(`${out}/l6-olly-no-connection-keeps-it.png`);
+  if (!lost.now?.gone.includes(fourth.id)) fault(`with the room never answering, ${fourth.id} was never picked up: "${lost.seen}"`);
+  else console.log(`the room never answered: ${fourth.itemId} ${hung.bag[fourth.itemId] ?? 0} -> ${lost.now.bag[fourth.itemId] ?? 0}, chip "${lost.seen}"`);
+  if (!lost.seen.includes('NO CONNECTION')) fault(`OLLY's chip never said the connection was lost: "${lost.seen}"`);
+  await olly.evaluate(`sessionStorage.removeItem('${OFFLINE_KEY}')`);
   if (faults.length > 0) throw new Error(`${faults.length} fault(s):\n${faults.join('\n')}`);
 } finally {
   await browser.close();

@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { HarbourHeard, HarbourWire } from '../harbour/harbourLink';
 import { HARBOUR_SEND_EVERY_MS } from '../harbour/harbourProtocol';
-import { FRIEND_NEWS_MS, FriendRoom, ROOM_CLOSED_LINE } from './friendRoom';
+import {
+  FRIEND_NEWS_MS,
+  FriendRoom,
+  ROOM_ANSWER_MS,
+  ROOM_CLOSED_LINE,
+  ROOM_GIVE_UP_MS,
+  ROOM_OFFLINE_LINE,
+  ROOM_RETRY_MS,
+} from './friendRoom';
 import { encodeRaidMove, isRaidPlace, mapPlace, raidMembersOf, readRaidMove, readRaidPresence, type RaidMove, type RaidPlace } from './raidProtocol';
 import { isRoomCode, raidTopic, typedRoomCode } from './roomCode';
 import { joinAnswer, ROOM_FULL, ROOM_NOT_FOUND, ROOM_UNREACHABLE, worded, type HeldRoom, type LootClaim, type RaidRoomService, type RoomAnswer } from './roomService';
@@ -154,9 +162,17 @@ class FakeService implements RaidRoomService {
   public taken = new Map<string, string>();
   /** The room has closed under this player: run out its hour, or left from another tab. */
   public closed = false;
+  /** The connection is gone: every claim fails at once (`down`), or is never answered (`hang`). */
+  public offline: 'down' | 'hang' | null = null;
   public asked: string[] = [];
   public takeLoot(_code: string, lootId: string): Promise<LootClaim> {
     this.asked.push(lootId);
+    if (this.offline === 'hang') {
+      return new Promise(() => undefined);
+    }
+    if (this.offline === 'down') {
+      return Promise.resolve({ outcome: 'unreachable' });
+    }
     if (this.closed) {
       return Promise.resolve({ outcome: 'closed' });
     }
@@ -250,7 +266,7 @@ describe('raiding with a friend', () => {
     service.closed = true;
     room.claimLoot('poke-ball');
     await settle();
-    expect(room.closed).toBe(true);
+    expect(room.standing).toBe('closed');
     expect(room.loot.holder('poke-ball')).toBe(ME);
     expect(room.news()?.line).toBe(ROOM_CLOSED_LINE);
     // After that it asks nobody: there is nobody left in the room to be first.
@@ -260,16 +276,105 @@ describe('raiding with a friend', () => {
     // A piece already heard taken stays taken.
     room.claimLoot('potion');
     expect(room.loot.holder('potion')).toBe(ASH);
-    // A dropped connection is not a closed room: the piece may be claimed again.
-    const other = await inRoom();
-    other.service.takeLoot = () => Promise.resolve({ outcome: 'unreachable' });
-    other.room.claimLoot('poke-ball');
-    await settle();
-    expect(other.room.closed).toBe(false);
-    expect(other.room.loot.holder('poke-ball')).toBeUndefined();
     // And a room left at the lab is a fresh start for the next.
     room.leave();
-    expect(room.closed).toBe(false);
+    expect(room.standing).toBe('answering');
+  });
+
+  describe('a room that stops answering', () => {
+    // The bug hunt of 10 Nov: with the connection gone a step onto the room's
+    // ground claimed it, the claim failed, and nothing was said; stepping on it
+    // again only asked again, and a request that hung kept the piece for good.
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('says so, asks again, and gives the piece the moment the room answers, wherever the player is', async () => {
+      const { room, service } = await inRoom();
+      room.tick(1_000, 16);
+      service.offline = 'down';
+      room.claimLoot('poke-ball');
+      await settle();
+      expect(room.standing).toBe('not-answering');
+      expect(room.loot.holder('poke-ball')).toBeUndefined();
+      // Asked again on the room's own pace, not on every frame.
+      room.tick(1_000 + ROOM_RETRY_MS - 1, 16);
+      await settle();
+      expect(service.asked).toEqual(['poke-ball']);
+      room.tick(1_000 + ROOM_RETRY_MS, 16);
+      await settle();
+      expect(service.asked).toEqual(['poke-ball', 'poke-ball']);
+      expect(room.standing).toBe('not-answering');
+      // The connection comes back: the next asking wins it, with no step.
+      service.offline = null;
+      room.tick(1_000 + 2 * ROOM_RETRY_MS, 16);
+      await settle();
+      expect(room.loot.holder('poke-ball')).toBe(ME);
+      expect(room.standing).toBe('answering');
+      // Nothing waits, so nothing is asked again.
+      room.tick(1_000 + 4 * ROOM_RETRY_MS, 16);
+      await settle();
+      expect(service.asked).toHaveLength(3);
+    });
+
+    it('gives up on a room silent for long enough: what the player finds is theirs, said once', async () => {
+      const { room, service } = await inRoom();
+      room.tick(1_000, 16);
+      service.taken.set('potion', ASH);
+      room.loot.heard('potion', ASH);
+      service.offline = 'down';
+      room.claimLoot('poke-ball');
+      await settle();
+      room.tick(1_000 + ROOM_GIVE_UP_MS - 1, 16);
+      await settle();
+      expect(room.standing).toBe('not-answering');
+      room.tick(1_000 + ROOM_GIVE_UP_MS, 16);
+      await settle();
+      expect(room.standing).toBe('offline');
+      expect(room.loot.holder('poke-ball')).toBe(ME);
+      expect(room.news()?.line).toBe(ROOM_OFFLINE_LINE);
+      // From then on nobody is asked, and a piece heard taken stays taken.
+      const asked = service.asked.length;
+      room.claimLoot('great-ball');
+      expect(room.loot.holder('great-ball')).toBe(ME);
+      room.claimLoot('potion');
+      expect(room.loot.holder('potion')).toBe(ASH);
+      expect(service.asked).toHaveLength(asked);
+      room.leave();
+      expect(room.standing).toBe('answering');
+    });
+
+    it('counts a request that never comes back as no answer', async () => {
+      const { room, service } = await inRoom();
+      // After joining: the room is joined on real time.
+      vi.useFakeTimers();
+      room.tick(1_000, 16);
+      service.offline = 'hang';
+      room.claimLoot('poke-ball');
+      expect(room.loot.isClaiming('poke-ball')).toBe(true);
+      await vi.advanceTimersByTimeAsync(ROOM_ANSWER_MS);
+      expect(room.loot.isClaiming('poke-ball')).toBe(false);
+      expect(room.standing).toBe('not-answering');
+    });
+
+    it('starts the clock on giving up again whenever the room answers anything', async () => {
+      const { room, service } = await inRoom();
+      const answered = service.takeLoot.bind(service);
+      // One piece the room never answers for; everything else it does.
+      service.takeLoot = (code, lootId) => (lootId === 'poke-ball' ? Promise.resolve({ outcome: 'unreachable' }) : answered(code, lootId));
+      room.tick(1_000, 16);
+      room.claimLoot('poke-ball');
+      await settle();
+      room.tick(1_000 + ROOM_GIVE_UP_MS - 1_000, 16);
+      room.claimLoot('great-ball');
+      await settle();
+      expect(room.loot.holder('great-ball')).toBe(ME);
+      // Still waiting on the one piece, and not given up on: it answered a second ago.
+      room.tick(1_000 + ROOM_GIVE_UP_MS, 16);
+      await settle();
+      expect(room.standing).toBe('not-answering');
+      expect(room.loot.holder('poke-ball')).toBeUndefined();
+    });
   });
 
   it('claims, says and hears a vale piece by a key the database takes, and keeps the game’s id', async () => {

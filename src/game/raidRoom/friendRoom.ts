@@ -11,7 +11,14 @@ import { LootLedger, encodeTook, gameLootId, readTook, roomLootKey } from './roo
 import { ROOM_PHRASES, TalkBoard, encodeTalk, readTalk } from './roomTalk';
 import { encodeWon, readWon } from './roomBosses';
 import { liveRaidWire, localRaidWire } from './raidWire';
-import { liveRoomService, localRoomService, type HeldRoom, type RaidRoomService, type RoomAnswer } from './roomService';
+import {
+  liveRoomService,
+  localRoomService,
+  type HeldRoom,
+  type LootClaim,
+  type RaidRoomService,
+  type RoomAnswer,
+} from './roomService';
 
 /**
  * Raiding with a friend: the one object the game asks about the room this
@@ -37,6 +44,27 @@ export const FRIEND_NEWS_MS = 4_000;
 
 /** Said on the friend chip once the room has closed under this raid (`FriendRoom.claimLoot`). */
 export const ROOM_CLOSED_LINE = 'ROOM CLOSED: WHAT YOU FIND IS YOURS';
+
+/** Said on the friend chip once the room has not answered for `ROOM_GIVE_UP_MS`: it is given up on for this raid. */
+export const ROOM_OFFLINE_LINE = 'NO CONNECTION: WHAT YOU FIND IS YOURS';
+
+/** How long a claim waits for the room before it counts as not answered: a request that hangs is no answer. */
+export const ROOM_ANSWER_MS = 8_000;
+
+/** How often a piece the room did not answer for is asked about again. */
+export const ROOM_RETRY_MS = 3_000;
+
+/** How long the room may go without answering before what this player finds is their own. */
+export const ROOM_GIVE_UP_MS = 15_000;
+
+/**
+ * How the room is answering this raid's claims on its ground:
+ * `answering` as it should; `not-answering`, a piece stepped on is waiting and
+ * asked about again; `closed`, the database said this player is out of the room;
+ * `offline`, it did not answer for `ROOM_GIVE_UP_MS`. In the last two what this
+ * player steps on is theirs.
+ */
+export type RoomStanding = 'answering' | 'not-answering' | 'closed' | 'offline';
 
 export interface FriendNews {
   readonly name: string;
@@ -76,8 +104,14 @@ export class FriendRoom {
   public readonly loot = new LootLedger();
   /** Whether this raid has asked the database what was taken before it dropped in. */
   private askedTaken = false;
-  /** Whether the database has said this player is no longer in the room (`LootClaim` `closed`). */
-  private closedUnderMe = false;
+  /** How the room is answering claims on its loot (`RoomStanding`). */
+  private standingNow: RoomStanding = 'answering';
+  /** Pieces stepped on that the room did not answer for, asked about again every `ROOM_RETRY_MS`. */
+  private readonly waiting = new Set<string>();
+  /** The page time the room stopped answering, while it has not answered since. */
+  private silentSince: number | null = null;
+  /** The page time the waiting pieces are next asked about. */
+  private retryAt = 0;
   /** What everybody in the room has said and pinged, this player included (`roomTalk.ts`). */
   public readonly talk = new TalkBoard();
   /** The bosses beaten in this room's raid, by whoever beat them (`roomBosses.ts`). */
@@ -131,7 +165,10 @@ export class FriendRoom {
     this.fighting = null;
     this.loot.clear();
     this.askedTaken = false;
-    this.closedUnderMe = false;
+    this.standingNow = 'answering';
+    this.waiting.clear();
+    this.silentSince = null;
+    this.retryAt = 0;
     this.talk.clear();
     this.wins.clear();
     this.myWins.clear();
@@ -171,11 +208,12 @@ export class FriendRoom {
     this.link?.stepped(tile, facing);
   }
 
-  /** One frame: the friend walked on, anything owed sent, and who came or went noticed. */
+  /** One frame: the friend walked on, anything owed sent, who came or went noticed, and the room asked again. */
   public tick(nowMs: number, deltaMs: number): void {
     this.now = nowMs;
     this.link?.tick(nowMs, deltaMs);
     this.notice(nowMs);
+    this.askAgain(nowMs);
   }
 
   /** Everybody else on the room's channel, by name. */
@@ -214,40 +252,116 @@ export class FriendRoom {
    * silently (the bug hunt of 9 Nov). So once it says the room has closed, what
    * this player steps on is theirs, as in a raid alone: nobody is left in the
    * room to be first for them, and a piece already heard taken stays taken.
+   *
+   * A room can also stop answering: the connection drops, or a request hangs.
+   * That was silent too - the piece stayed where it lay and stepping on it again
+   * only asked again (the bug hunt of 10 Nov). Now the chip says the room is not
+   * answering, the piece is asked about again every `ROOM_RETRY_MS` and is this
+   * player's the moment the room says so, wherever they have walked to; and a
+   * room that goes `ROOM_GIVE_UP_MS` without answering is given up on as a
+   * closed one is, so what they find from then on is their own. A claim answered
+   * twice is harmless: the database gives a piece to its first claimant and
+   * answers them `yours` again.
    */
   public claimLoot(lootId: string): void {
     const held = this.held;
     if (!held || !this.loot.claim(lootId)) {
       return;
     }
-    if (this.closedUnderMe) {
+    this.waiting.delete(lootId);
+    if (this.findsAreMine) {
       this.loot.answered(lootId, held.me, held.me);
       return;
     }
-    void this.service.takeLoot(held.code, roomLootKey(lootId)).then((claim) => {
+    void answerWithin(this.service.takeLoot(held.code, roomLootKey(lootId)), ROOM_ANSWER_MS).then((claim) => {
       if (this.held?.code !== held.code) {
         return;
       }
+      if (claim.outcome === 'unreachable') {
+        this.notAnswered(lootId, held.me);
+        return;
+      }
+      this.answeredAgain();
       if (claim.outcome === 'yours') {
         this.loot.answered(lootId, held.me, held.me);
         this.link?.signal(encodeTook({ from: held.me, lootId: roomLootKey(lootId) }));
       } else if (claim.outcome === 'taken') {
         this.loot.answered(lootId, claim.by ?? 'somebody', held.me);
-      } else if (claim.outcome === 'closed') {
-        if (!this.closedUnderMe) {
-          this.closedUnderMe = true;
-          this.tell(ROOM_CLOSED_LINE);
-        }
-        this.loot.answered(lootId, held.me, held.me);
       } else {
-        this.loot.answered(lootId, null, held.me);
+        this.findOnMyOwn('closed', ROOM_CLOSED_LINE);
+        this.loot.answered(lootId, held.me, held.me);
       }
     });
   }
 
-  /** Whether the room has closed under this player's raid (`claimLoot`): what they find is their own. */
-  public get closed(): boolean {
-    return this.closedUnderMe;
+  /** How the room is answering this raid's claims on its loot. */
+  public get standing(): RoomStanding {
+    return this.standingNow;
+  }
+
+  /** Whether what this player steps on is theirs without asking: the room closed under them, or was given up on. */
+  private get findsAreMine(): boolean {
+    return this.standingNow === 'closed' || this.standingNow === 'offline';
+  }
+
+  /** The room did not answer a claim: the piece waits, to be asked about again, unless the room is given up on. */
+  private notAnswered(lootId: string, me: string): void {
+    if (this.findsAreMine) {
+      this.loot.answered(lootId, me, me);
+      return;
+    }
+    this.loot.answered(lootId, null, me);
+    this.waiting.add(lootId);
+    if (this.standingNow !== 'not-answering') {
+      this.standingNow = 'not-answering';
+      this.retryAt = this.now + ROOM_RETRY_MS;
+    }
+    this.silentSince ??= this.now;
+  }
+
+  /** The room answered: the clock on giving up starts again, and with nothing waiting it is answering. */
+  private answeredAgain(): void {
+    this.silentSince = null;
+    if (this.standingNow === 'not-answering' && this.waiting.size === 0) {
+      this.standingNow = 'answering';
+    }
+  }
+
+  /** From now on what this player steps on is theirs, said once; every piece waiting is theirs too. */
+  private findOnMyOwn(standing: 'closed' | 'offline', line: string): void {
+    if (this.findsAreMine) {
+      return;
+    }
+    this.standingNow = standing;
+    this.silentSince = null;
+    this.tell(line);
+    const me = this.held?.me;
+    if (me) {
+      for (const lootId of this.waiting) {
+        if (this.loot.holder(lootId) === undefined && !this.loot.isClaiming(lootId)) {
+          this.loot.answered(lootId, me, me);
+        }
+      }
+    }
+    this.waiting.clear();
+  }
+
+  /** While the room is not answering: gives up on it once it has been silent long enough, or asks about what waits again. */
+  private askAgain(nowMs: number): void {
+    if (this.standingNow !== 'not-answering') {
+      return;
+    }
+    if (this.silentSince !== null && nowMs - this.silentSince >= ROOM_GIVE_UP_MS) {
+      this.findOnMyOwn('offline', ROOM_OFFLINE_LINE);
+      return;
+    }
+    if (nowMs < this.retryAt) {
+      return;
+    }
+    this.retryAt = nowMs + ROOM_RETRY_MS;
+    for (const lootId of [...this.waiting]) {
+      this.claimLoot(lootId);
+    }
   }
 
   /** Once a raid: what was taken before this player dropped in. */
@@ -451,4 +565,21 @@ function localName(): string | null {
   } catch {
     return loadPlayerName();
   }
+}
+
+/** A claim's answer, or `unreachable` if none comes within `withinMs`: a request that hangs is no answer. */
+function answerWithin(claim: Promise<LootClaim>, withinMs: number): Promise<LootClaim> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve({ outcome: 'unreachable' }), withinMs);
+    claim.then(
+      (answer) => {
+        clearTimeout(timer);
+        resolve(answer);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve({ outcome: 'unreachable' });
+      },
+    );
+  });
 }

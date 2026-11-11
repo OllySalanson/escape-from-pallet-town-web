@@ -12640,7 +12640,7 @@
    "look": "fisherman",
    "facing": "down",
    "lines": [
-    "The stair only shows at low water. A minute and a half in, it starts to show.",
+    "The stair only shows at low water. When your clock is down to three and a half minutes, it starts to show.",
     "People wait for it. Then they stand on the last step and look back, and it is very quiet."
    ],
    "beat": {
@@ -12876,7 +12876,7 @@
    "look": "sailor",
    "facing": "down",
    "lines": [
-    "The skiff runs out round the headland to Ember Isle once the tide is up. A minute in, say.",
+    "The skiff runs out round the headland to Ember Isle once the tide is up. When your clock is down to four minutes, say.",
     "Stops when the big boat sails. After that you swim. It is not a swimming sort of water."
    ],
    "beat": {
@@ -14243,7 +14243,7 @@
    "lines": [
     "THE ICE RUN",
     "The launch runs out to Frostreef on the flood tide.",
-    "It sails from 2:00 until 4:00."
+    "It sails while your clock reads from 3:00 down to 1:00."
    ]
   },
   {

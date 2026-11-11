@@ -12,6 +12,7 @@ import {
 } from '../input/keyBindings';
 import type { GridPosition } from '../movement/gridMovement';
 import { placedAreaAt, type PlacedArea } from '../world/mapAreas';
+import type { RoomStanding } from '../raidRoom/friendRoom';
 
 /**
  * What the in-raid overlays say, as data.
@@ -473,8 +474,12 @@ export function friendChipPing(
 export interface FriendChipInput {
   /** The room's code, said while nobody else is in it so it can be read out. */
   readonly code: string;
-  /** Whether the room has closed under this raid (`FriendRoom.closed`): no code is any use then. */
-  readonly closed?: boolean;
+  /**
+   * How the room is answering this raid (`FriendRoom.standing`): while it is
+   * not, the chip says so above everything else; closed or given up on, no code
+   * is any use.
+   */
+  readonly standing?: RoomStanding;
   /** Somebody came or went just now, or did something worth saying (`line`). */
   readonly news: { readonly name: string; readonly came: boolean; readonly line?: string } | null;
   /** Everybody else in the room. */
@@ -490,8 +495,12 @@ export interface FriendChipInput {
  * far), and says the moment one of them leaves, whichever way they went: an
  * exit, a loss and a closed tab all look the same from here, and all mean the
  * raid carries on. While nobody else is in, it is the room's code, which is
- * the thing to read out to a friend.
+ * the thing to read out to a friend. While the room is not answering, that
+ * comes first: a piece stepped on is waiting, and the player is told why.
  */
+/** Stands at the top of the friend chip while a piece stepped on is waiting for the room to answer. */
+export const ROOM_NOT_ANSWERING_LINE = 'ROOM NOT ANSWERING: TRYING AGAIN';
+
 export function friendChipLines(input: FriendChipInput): readonly string[] {
   const news = input.news
     ? [input.news.line ?? (input.news.came ? `${input.news.name} IS IN THE ROOM` : `${input.news.name} LEFT THE RAID`)]
@@ -499,8 +508,11 @@ export function friendChipLines(input: FriendChipInput): readonly string[] {
   const friends = input.friends
     .filter((friend) => !(input.news?.came && !input.news.line && input.news.name === friend.name))
     .map(friendLine);
-  const lines = [...news, ...friends];
-  return lines.length > 0 ? lines : [input.closed ? 'ROOM CLOSED' : `ROOM ${input.code}`];
+  const lines = [...(input.standing === 'not-answering' ? [ROOM_NOT_ANSWERING_LINE] : []), ...news, ...friends];
+  if (lines.length > 0) {
+    return lines;
+  }
+  return [input.standing === 'closed' ? 'ROOM CLOSED' : input.standing === 'offline' ? 'NO CONNECTION' : `ROOM ${input.code}`];
 }
 
 function friendLine(friend: FriendChipFriend): string {
