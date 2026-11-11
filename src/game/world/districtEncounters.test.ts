@@ -234,7 +234,9 @@ describe('wildlife authored per place', () => {
           }
         }
       }
-    });
+      // A minute alone, and twice that beside three other test workers: it timed out
+      // at the suite's two minutes on a loaded machine, so it is given five.
+    }, 300_000);
 
     it('climbs through the forest from its edge to its deep stand', () => {
       const mean = (id: string) =>

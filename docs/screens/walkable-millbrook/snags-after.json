@@ -1,0 +1,161 @@
+{
+  "routes": [
+    {
+      "name": "north, up the drove road to High Moor",
+      "reached": true,
+      "steps": 31,
+      "snags": []
+    },
+    {
+      "name": "back from: north, up the drove road to High Moor",
+      "reached": true,
+      "steps": 31,
+      "snags": []
+    },
+    {
+      "name": "west, out along the Westward Road",
+      "reached": true,
+      "steps": 31,
+      "snags": []
+    },
+    {
+      "name": "back from: west, out along the Westward Road",
+      "reached": true,
+      "steps": 31,
+      "snags": []
+    },
+    {
+      "name": "east, over the brook to The Crossing",
+      "reached": true,
+      "steps": 33,
+      "snags": []
+    },
+    {
+      "name": "back from: east, over the brook to The Crossing",
+      "reached": true,
+      "steps": 33,
+      "snags": []
+    },
+    {
+      "name": "south, down the lane to Reedmere",
+      "reached": true,
+      "steps": 40,
+      "snags": []
+    },
+    {
+      "name": "back from: south, down the lane to Reedmere",
+      "reached": true,
+      "steps": 40,
+      "snags": []
+    },
+    {
+      "name": "to the Pokemon Center door",
+      "reached": true,
+      "steps": 12,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Pokemon Center door",
+      "reached": true,
+      "steps": 12,
+      "snags": []
+    },
+    {
+      "name": "to the Mart door",
+      "reached": true,
+      "steps": 28,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Mart door",
+      "reached": true,
+      "steps": 28,
+      "snags": []
+    },
+    {
+      "name": "to the mill door",
+      "reached": true,
+      "steps": 25,
+      "snags": []
+    },
+    {
+      "name": "back from: to the mill door",
+      "reached": true,
+      "steps": 25,
+      "snags": []
+    },
+    {
+      "name": "to Ott’s cottage door on Old Row",
+      "reached": true,
+      "steps": 38,
+      "snags": []
+    },
+    {
+      "name": "back from: to Ott’s cottage door on Old Row",
+      "reached": true,
+      "steps": 38,
+      "snags": []
+    },
+    {
+      "name": "into the allotments, to the tool shed",
+      "reached": true,
+      "steps": 32,
+      "snags": []
+    },
+    {
+      "name": "back from: into the allotments, to the tool shed",
+      "reached": true,
+      "steps": 32,
+      "snags": []
+    },
+    {
+      "name": "to the gatekeeper’s door",
+      "reached": true,
+      "steps": 29,
+      "snags": []
+    },
+    {
+      "name": "back from: to the gatekeeper’s door",
+      "reached": true,
+      "steps": 29,
+      "snags": []
+    },
+    {
+      "name": "to Mrs Lark’s door",
+      "reached": true,
+      "steps": 48,
+      "snags": []
+    },
+    {
+      "name": "back from: to Mrs Lark’s door",
+      "reached": true,
+      "steps": 30,
+      "snags": []
+    },
+    {
+      "name": "into the orchard",
+      "reached": true,
+      "steps": 38,
+      "snags": []
+    },
+    {
+      "name": "back from: into the orchard",
+      "reached": true,
+      "steps": 38,
+      "snags": []
+    },
+    {
+      "name": "to the woodshed in the glade",
+      "reached": true,
+      "steps": 55,
+      "snags": []
+    },
+    {
+      "name": "back from: to the woodshed in the glade",
+      "reached": true,
+      "steps": 55,
+      "snags": []
+    }
+  ],
+  "total": 0
+}
