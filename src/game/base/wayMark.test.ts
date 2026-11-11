@@ -10,6 +10,28 @@ describe('the way shown in a raid', () => {
     expect(chevronRoundFigure({ x: 300, y: 320 }, { x: 300, y: 320 }, VIEW, figure, 0).angle).toBe(180);
   });
 
+  /**
+   * The north bug hunt of 11 Nov 2026 saw the gold chevron sat on THE WEEPING
+   * PINE's caption ("THE WE▼PING PINE") and touching CONTROL ROOM's: a caption
+   * is seated round what it names, and that is where the chevron stands. So it
+   * rises clear of any caption it would cover, still pointing down at the thing.
+   */
+  it('rises clear of a caption it would stand on, still over the thing and pointing down at it', () => {
+    const target = { x: 300, y: 320 };
+    const plain = chevronRoundFigure(target, target, VIEW, figure, 0);
+    // A caption seated where the chevron stands: 'THE WEEPING PINE', two lines.
+    const caption = { left: 250, top: plain.y + VIEW.top - 6, width: 100, height: 22 };
+    const clear = chevronRoundFigure(target, target, VIEW, figure, 0, [caption]);
+    expect(clear.angle).toBe(180);
+    expect(clear.x).toBe(plain.x);
+    expect(clear.y + VIEW.top + 8).toBeLessThanOrEqual(caption.top);
+    // A caption elsewhere on the screen moves nothing.
+    expect(chevronRoundFigure(target, target, VIEW, figure, 0, [{ ...caption, left: 420 }])).toEqual(plain);
+    // With no room above, it stays where it was rather than leave the screen.
+    const tall = { ...caption, top: VIEW.top, height: plain.y + 6 };
+    expect(chevronRoundFigure(target, target, VIEW, figure, 0, [tall])).toEqual(plain);
+  });
+
   it('points where the walk sets off, beside the figure, wherever the thing itself lies', () => {
     const away = { x: 5000, y: 330 };
     const north = chevronRoundFigure(away, { x: 300, y: 200 }, VIEW, figure, 0);

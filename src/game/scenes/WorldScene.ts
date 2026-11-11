@@ -5818,7 +5818,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const hidden =
       this.dialogBox.visible || this.cutscene !== undefined || this.isWarping || this.panelLean.covering > 0 || this.runSession?.manager.phase !== RunPhase.InRun;
     const way = hidden ? null : this.raidWay().mark;
-    mark.frame(way, { x: this.player.x + TILE_SIZE / 2, y: this.player.y + TILE_SIZE / 2 }, this.wayMarkMs);
+    // Clear of every caption on show: one is seated round the very thing it marks.
+    const captions = way ? this.worldLabels.flatMap((label) => label.shown() ?? []) : [];
+    mark.frame(way, { x: this.player.x + TILE_SIZE / 2, y: this.player.y + TILE_SIZE / 2 }, this.wayMarkMs, captions);
   }
 
   /**
