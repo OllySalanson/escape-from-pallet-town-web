@@ -35,7 +35,7 @@ import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
-import { SaveManager, raidsDeployed, raidsLost, traderCounterFor, type RestoredGame } from '../save/SaveManager';
+import { SaveManager, raidsDeployed, raidsLost, traderCounterFor, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import { startNewGame } from '../save/newGame';
 import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId, type StashedPokemon } from '../stash';
 import {
@@ -2131,8 +2131,11 @@ export class BaseScene extends Phaser.Scene {
     const lines = marshalLines(
       this.savedGame.raidProgress.firstWordsHeard,
       kit.flow,
-      this.savedGame.raidProgress.landings?.streak ?? 0,
-      this.savedGame.raidProgress.bouts ? undefined : this.rivalHere?.name,
+      {
+        bill: traderProgressOf(this.savedGame.raidProgress),
+        cleanLandings: this.savedGame.raidProgress.landings?.streak ?? 0,
+        boutRival: this.savedGame.raidProgress.bouts ? undefined : this.rivalHere?.name,
+      },
     );
     if (!hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
       this.hearFirstWords('loadout');

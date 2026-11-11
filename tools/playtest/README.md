@@ -240,6 +240,8 @@ first. `baseRooms.mjs <url> <dir> [--built=all|none|id,..] [--hurt=N]` walks
 into all four rooms, photographs each, and fails if the mat's key does not open
 the keeper's screen, backing out does not land in the room, or down off the mat
 does not leave it - `docs/screens/base-rooms/` is what it photographs.
+`firstHour2Fixes.mjs <url> <dir> [--only=marshal,noballs,fainted]` plays the second first-hour hunt's fixes - the marshal with no balls and Bill a stranger, the rim with no balls at base, the rim with everyone fainted - `docs/screens/first-hour-2-fixes/`.
+
 `arenaHall.mjs <url> <dir> [--tour] [--window=] [--still] [--port=]` gets ready for a raid in THE RAID ARENA's great hall as a player and goes over the fence: the marshal, the bench, the rack, the locker, the rim, the jump, the landing, and the cloud lifting on the way home - `docs/screens/arena-raid-start/`. `deploy.mjs` is how every other driver does the same: `walkIntoBase(page, 'raid-arena')` walks through the door and up to the bench, `openHallPanel(page, 'rack')` walks on to the next and opens it, and `jumpIn(page, { insertion, press, until, wait })` goes to the rim and over.
 
 `raidArena.mjs <url> <dir>` plays the one way into a raid: a fresh save walks to

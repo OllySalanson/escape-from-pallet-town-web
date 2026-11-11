@@ -2525,8 +2525,8 @@ export class HubScene extends Phaser.Scene {
     // still the player's to choose; the panel says what it cannot do.
     if (balls && party.length > 0 && !this.flow.packsABall) {
       return this.flow.ballAtBase
-        ? 'No Poké Balls on the rack, so nothing can be caught this raid.'
-        : 'No Poké Balls at base, so nothing can be caught this raid.';
+        ? 'No Poké Balls on the rack, so you can only catch with a ball you find out there.'
+        : 'No Poké Balls at base, so you can only catch with a ball you find out there.';
     }
     return '';
   }
@@ -2861,7 +2861,14 @@ export class HubScene extends Phaser.Scene {
         ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
         : `${contract.name}: ${required.length > 0 ? `hand over ${itemAmountsFor(required)}, ` : ''}pays ${rewardLine(contract.reward)}.${walking}`
       : undefined;
-    return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${line('Safe', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
+    // With nobody able to go the foot already says why, and a red "a wipe costs
+    // you everything" over a raid that cannot start only frightened; and since
+    // the partner never goes down with a wipe, "everything" was never true
+    // either - it is what you take (the first-hour bug hunt, 11 Nov 2026).
+    const safe = !this.flow.isDeployable
+      ? ''
+      : line('Safe', kept.length === 0 ? 'nothing: a wipe costs everything you take' : kept.join(', '), kept.length === 0);
+    return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
       job === undefined ? '' : line('Job', job, short.length > 0)
     }${line('Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunter: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
   }

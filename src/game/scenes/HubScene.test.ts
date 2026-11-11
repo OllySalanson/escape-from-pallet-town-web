@@ -801,18 +801,18 @@ describe('hub deployment route', () => {
 
     // A fresh save's default packs its Potions and a few balls, so a first raid can catch something.
     expect(hub.flow.itemQuantity('poke-ball')).toBeGreaterThan(0);
-    expect(loadout()).not.toContain('nothing can be caught');
+    expect(loadout()).not.toContain('you can only catch with a ball you find');
     hub.flow.setItemQuantity('poke-ball', 0);
-    expect(loadout()).toContain('No Poké Balls on the rack, so nothing can be caught this raid.');
+    expect(loadout()).toContain('No Poké Balls on the rack, so you can only catch with a ball you find out there.');
 
     // Packing one is the answer, and the warning goes.
     hub.flow.adjustItem('poke-ball', 1);
-    expect(loadout()).not.toContain('nothing can be caught');
+    expect(loadout()).not.toContain('you can only catch with a ball you find');
 
     // With none at base the line says that instead, since there is nothing to add.
     hub.flow.adjustItem('poke-ball', -1);
     hub.stash.removeItem('poke-ball', hub.stash.itemCount('poke-ball'));
-    expect(loadout()).toContain('No Poké Balls at base, so nothing can be caught this raid.');
+    expect(loadout()).toContain('No Poké Balls at base, so you can only catch with a ball you find out there.');
   });
 
   it('will not enter a raid until the player confirms the plan', () => {
@@ -1727,6 +1727,28 @@ describe('what the base screen leads with', () => {
     readyToDeploy(hub);
     expect(markupOf(hub)).not.toContain('lost for good');
     expect(markupOf(hub)).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander \(your partner\)/);
+  });
+
+  it('says nothing in red at the rim about a wipe when nobody can go (first-hour hunt 2, finding 3)', () => {
+    const { hub } = createHub();
+    for (const stored of hub.stash.listPokemon()) {
+      stored.pokemon.takeDamage(stored.pokemon.maxHp);
+    }
+    hub.setView('rim');
+    hub.render();
+    const rim = markupOf(hub);
+    expect(rim).toContain('Nurse Joy can revive them');
+    expect(rim).not.toContain('a wipe costs you everything');
+    expect(rim).not.toMatch(/<dt>Safe<\/dt>/);
+  });
+
+  it('says at the rim, with no one safe, that a wipe costs what you take rather than everything', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.toggleSecurePokemon('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    expect(markupOf(hub)).toMatch(/<dt>Safe<\/dt><dd[^>]*>nothing: a wipe costs everything you take/);
   });
 
   it('warns on the card of a badly hurt team, with the cursor on NOT YET', () => {
