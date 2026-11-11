@@ -474,3 +474,37 @@ describe('a hunter that comes for you', () => {
     expect(hunter.lastSeen).toEqual(seenAt);
   });
 });
+
+/**
+ * The second characters hunt of 11 Nov 2026: a newcomer's result read "OUT
+ * WITH SABRINA ON YOUR TAIL" about a Sabrina who never came on screen. The
+ * hunter a raid got out with on its tail is one the player could see.
+ */
+describe('the hunter on your tail', () => {
+  const WALLED = grid([
+    '..........',
+    '..........',
+    '....#.....',
+    '..........',
+  ]);
+  const ground = groundOf({ x: 0, y: 0, width: 10, height: 4 }, { x: 0, y: 0 });
+
+  it('is a hunter after you, close behind and in sight', () => {
+    const { pack, hunter } = hunterIn(ground, { mode: 'chase', position: { x: 2, y: 2 } });
+    expect(pack.onTail(worldOf(WALLED, { x: 5, y: 3 }))).toBe(hunter);
+  });
+
+  it('is nobody when the one close behind is out of sight of you', () => {
+    const { pack } = hunterIn(ground, { mode: 'chase', position: { x: 2, y: 2 } });
+    // Behind the wall, three steps off.
+    expect(pack.onTail(worldOf(WALLED, { x: 5, y: 2 }))).toBeUndefined();
+    // In another place: a room beside you through a wall, or under a roof.
+    expect(pack.onTail(worldOf(WALLED, { x: 5, y: 3 }, { samePlace: () => false }))).toBeUndefined();
+    expect(pack.onTail(worldOf(WALLED, { x: 5, y: 3 }, { playerHidden: true }))).toBeUndefined();
+  });
+
+  it(`is nobody further back than ${HUNTER_TAIL_STEPS} steps, or not after you`, () => {
+    expect(hunterIn(ground, { mode: 'chase', position: { x: 0, y: 0 } }).pack.onTail(worldOf(WALLED, { x: 5, y: 3 }))).toBeUndefined();
+    expect(hunterIn(ground, { mode: 'patrol', position: { x: 4, y: 3 } }).pack.onTail(worldOf(WALLED, { x: 5, y: 3 }))).toBeUndefined();
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { railWarning, type RailMember } from './railWarning';
+import { railWarning, rimOpensOnNotYet, type RailMember } from './railWarning';
 
 const member = (name: string, currentHp: number, maxHp: number, primaryStatus: string | null = null): RailMember => ({
   name,
@@ -43,5 +43,26 @@ describe('what the rail says of a hurt team', () => {
     const warning = railWarning([member('A', 1, 20), member('B', 1, 20), member('C', 1, 20), member('D', 1, 20)], true);
     expect(warning?.line).toBe('A is at 1/20, and B is at 1/20; 2 more are hurt. Nurse Joy can help.');
     expect(warning?.stops).toBe(true);
+  });
+});
+
+describe('rimOpensOnNotYet', () => {
+  const bench = (hp: number, notReady?: string) => ({
+    party: [{ pokemon: member('Charmeleon', hp, 47) }],
+    packsMedicine: true,
+    ...(notReady === undefined ? {} : { notReady }),
+  });
+
+  it('opens on JUMP IN for a fit team that has walked since it came home', () => {
+    expect(rimOpensOnNotYet(bench(47), false)).toBe(false);
+  });
+
+  it('opens on NOT YET for a team close to done, medicine packed or not', () => {
+    expect(rimOpensOnNotYet(bench(5), false)).toBe(true);
+  });
+
+  it('opens on NOT YET for a player just home, and for a bench nobody can take', () => {
+    expect(rimOpensOnNotYet(bench(47), true)).toBe(true);
+    expect(rimOpensOnNotYet(bench(47, 'Nobody is on the bench.'), false)).toBe(true);
   });
 });

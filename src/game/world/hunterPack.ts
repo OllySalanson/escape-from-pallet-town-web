@@ -225,6 +225,14 @@ export interface PackWorld {
   /** Whether two tiles are in the same place (the outdoors, one room, one cave floor). */
   readonly samePlace: (a: GridPosition, b: GridPosition) => boolean;
   readonly enraged: boolean;
+  /**
+   * Where a rival never sets foot as a hunter: a gym leader's own gym room,
+   * where they stand at its head as the leader (`gymRoomsKeptFrom`). The hunter
+   * KOGA followed a player into Fuchsia Gym and fought them there, under the
+   * gym leader KOGA's nose (the second characters hunt of 11 Nov 2026). Absent,
+   * nobody is kept out of anywhere.
+   */
+  readonly keptOut?: (rival: HunterRivalId, index: number) => boolean;
 }
 
 const UNREACHED = -1;
@@ -809,6 +817,23 @@ export class HunterPack {
     return found;
   }
 
+  /**
+   * The hunter a raid got out with on its tail: after the player (or enraged),
+   * within `HUNTER_TAIL_STEPS`, and in sight of them, because a result that
+   * names a hunter the player never saw reads as a mistake (the second
+   * characters hunt of 11 Nov 2026).
+   */
+  onTail(world: PackWorld): PackHunter | undefined {
+    const here = world.player;
+    return this.hunters.find(
+      (hunter) =>
+        isAbroad(hunter) &&
+        (hunter.mode === 'chase' || hunter.enraged) &&
+        Math.abs(hunter.position.x - here.x) + Math.abs(hunter.position.y - here.y) <= HUNTER_TAIL_STEPS &&
+        canSee(hunter.position, hunter.facing, here, world, true),
+    );
+  }
+
   /** The hunter that is after the player and standing beside them, at rest. */
   catcher(player: GridPosition): PackHunter | undefined {
     return this.hunters.find(
@@ -869,7 +894,10 @@ export class HunterPack {
     const distanceTo = (hunter: PackHunter): number =>
       Math.abs(hunter.position.x - world.player.x) + Math.abs(hunter.position.y - world.player.y);
     // One still to come counts: the arrival leaves a keeper home when its whole loop is close by.
-    const free = this.hunters.filter((hunter) => hunter.mode !== 'beaten' && hunter.mode !== 'stunned');
+    // Nobody comes for you where they may not go.
+    const free = this.hunters.filter(
+      (hunter) => hunter.mode !== 'beaten' && hunter.mode !== 'stunned' && !this.keptOutOf(hunter, world, world.player),
+    );
     const hunter =
       free.find((candidate) => inGround(candidate.ground, world.player)) ??
       [...free].sort((one, other) => distanceTo(one) - distanceTo(other))[0];
@@ -988,7 +1016,12 @@ export class HunterPack {
     let found: { tile: GridPosition; index: number; far: number } | null = null;
     hunter.ground.route.forEach((tile, index) => {
       const far = Math.hypot(tile.x - world.player.x, tile.y - world.player.y);
-      if (far < HUNTER_ARRIVAL_CLEARANCE || this.hunterAt(tile) || world.blocked(tile.y * world.width + tile.x)) {
+      if (
+        far < HUNTER_ARRIVAL_CLEARANCE ||
+        this.hunterAt(tile) ||
+        world.blocked(tile.y * world.width + tile.x) ||
+        this.keptOutOf(hunter, world, tile)
+      ) {
         return;
       }
       if (!found || far > found.far) {
@@ -1054,7 +1087,16 @@ export class HunterPack {
         }
       }
     }
-    return (index) => others.has(index) || world.blocked(index);
+    const keptOut = world.keptOut;
+    const rival = hunter.rivalId;
+    return keptOut
+      ? (index) => others.has(index) || world.blocked(index) || keptOut(rival, index)
+      : (index) => others.has(index) || world.blocked(index);
+  }
+
+  /** Whether `hunter` is kept out of `tile` (`PackWorld.keptOut`). */
+  private keptOutOf(hunter: PackHunter, world: PackWorld, tile: GridPosition): boolean {
+    return world.keptOut?.(hunter.rivalId, tile.y * world.width + tile.x) === true;
   }
 
   private advanceHunter(hunter: PackHunter, world: PackWorld, deltaMs: number, events: PackEvent[]): void {
@@ -1105,7 +1147,12 @@ export class HunterPack {
 
   /** A hunter after you, standing beside you while you stand still, has you. */
   private caughtYou(hunter: PackHunter, world: PackWorld): boolean {
-    return (hunter.mode === 'chase' || hunter.enraged) && !world.playerMoving && isTouching(hunter.position, world.player);
+    return (
+      (hunter.mode === 'chase' || hunter.enraged) &&
+      !world.playerMoving &&
+      isTouching(hunter.position, world.player) &&
+      !this.keptOutOf(hunter, world, world.player)
+    );
   }
 
   /** What it sees from where it stands, and what it does about it. */

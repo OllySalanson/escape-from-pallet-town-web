@@ -10,14 +10,15 @@ vi.mock('phaser', () => ({
 
 import { KeyPresses } from '../input/KeyPresses';
 import { Bag } from '../items';
-import type { GridPosition } from '../movement/gridMovement';
+import { DIRECTION_DELTAS, STEP_DIRECTIONS, type Direction, type GridPosition } from '../movement/gridMovement';
+import { isInsideRect } from '../world/interiors';
 import { Pokemon, PokemonParty } from '../pokemon';
 import { CHARMANDER } from '../pokemon/species';
 import { RunPhase } from '../run/RunManager';
 import { requireInsertion } from '../run/runGeneration';
 import { getWorldMap } from '../worldMap';
 import { DEFAULT_HUNTER_TUNING } from '../world/hunter';
-import type { HunterPack, PackHunter } from '../world/hunterPack';
+import { inGround, type HunterPack, type PackHunter } from '../world/hunterPack';
 import { hunterRival, type HunterRivalId } from '../world/hunters';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID, valeGyms } from '../world/valeQuarters';
 import { WorldScene } from './WorldScene';
@@ -69,6 +70,7 @@ function raidOnTheVale(raidRival: HunterRivalId): { scene: Scene; pack: () => Hu
     facing: 'right',
     player: { stop: vi.fn(), setFrame: vi.fn(), setPosition: vi.fn(), setDepth: vi.fn() },
     hunterState: { spawned: false, defeated: false },
+    currentInterior: null,
     npcSprites: new Map(),
     npcAppearances: new Map(),
     idleFigures: [],
@@ -96,6 +98,7 @@ function raidOnTheVale(raidRival: HunterRivalId): { scene: Scene; pack: () => Hu
       plan: {
         insertion: LANDING,
         hunter: { ...DEFAULT_HUNTER_TUNING, rivalId: raidRival },
+        secrets: [],
       },
     },
   });
@@ -189,5 +192,61 @@ describe('a gym leader beaten in the raid', () => {
     expect(scene.tryStartHunterBattle()).toBe(true);
     expect(scene.pendingTrainerBattle?.trainer.name).toBe(hunterRival('koga').name);
     expect(scene.pendingTrainerBattle?.introLines).toEqual(hunterRival('koga').caught);
+  });
+});
+
+/**
+ * The second characters hunt of 11 Nov 2026, finding 2: the hunter KOGA chased
+ * the player through Fuchsia Gym's door and fought them in his own gym, with
+ * the gym leader KOGA standing at the head of the room waiting for his own
+ * challenge. A leader's hunter half stops at their own gym's door; anybody
+ * else still follows you in.
+ */
+describe('a gym leader hunting', () => {
+  const room = VALE.areas!.find((area) => area.name === 'Fuchsia Gym')!;
+  const inRoom = (tile: GridPosition): boolean => isInsideRect(room.rect, tile);
+  const at = (index: number): GridPosition => ({ x: index % VALE.width, y: Math.floor(index / VALE.width) });
+
+  /** Fuchsia Gym's front door: the tile outside it, the tile it lands you on inside, and the way it is walked in. */
+  function gymDoor(): { outside: GridPosition; inside: GridPosition; facing: Direction } {
+    for (const [key, to] of VALE.links!) {
+      const from = at(Math.floor(key / 4));
+      if (!inRoom(from) && inRoom(at(to))) {
+        return { outside: from, inside: at(to), facing: STEP_DIRECTIONS[key % 4] };
+      }
+    }
+    throw new Error('Fuchsia Gym has no door in');
+  }
+
+  /** `rival` on the player's heels at the gym's door, the player a few steps inside: where it gets to in thirty seconds. */
+  function chasedIntoTheGym(rival: HunterRivalId): { caught: boolean; enteredTheRoom: boolean } {
+    const { scene, pack } = raidOnTheVale('koga');
+    const door = gymDoor();
+    // The keeper of the patch the gym's door is in, as the report met him.
+    const hunter = pack().hunters.find((each) => inGround(each.ground, door.outside))!;
+    hunter.rivalId = rival;
+    // Three steps on into the room, straight ahead of whoever walks in after you.
+    const way = DIRECTION_DELTAS[door.facing];
+    const player = { x: door.inside.x + way.x * 3, y: door.inside.y + way.y * 3 };
+    expect(inRoom(player) && VALE.collision[player.y][player.x] === false, 'floor straight ahead of the door').toBe(true);
+    Object.assign(hunter, { mode: 'chase', next: null, position: { ...door.outside }, lastSeen: { ...player }, facing: door.facing, sees: true, seenAtMs: 0 });
+    scene.currentTile = player;
+    const world = (): Parameters<HunterPack['advance']>[0] => (scene as unknown as { packWorld(): Parameters<HunterPack['advance']>[0] }).packWorld();
+    let caught = false;
+    let enteredTheRoom = false;
+    for (let ms = 0; ms < 30_000 && !caught; ms += 100) {
+      caught = pack().advance(world(), 100).some((event) => event.kind === 'caught' && event.hunter === hunter);
+      enteredTheRoom ||= inRoom(hunter.position);
+    }
+    return { caught, enteredTheRoom };
+  }
+
+  it('follows you into somebody else\'s gym and catches you there', () => {
+    expect(chasedIntoTheGym('blue')).toEqual({ caught: true, enteredTheRoom: true });
+  });
+
+  it('stops at the door of their own gym, where they are waiting as the leader', () => {
+    expect(valeGyms().find((gym) => gym.building === room.name)?.rival).toBe('koga');
+    expect(chasedIntoTheGym('koga')).toEqual({ caught: false, enteredTheRoom: false });
   });
 });

@@ -12,6 +12,8 @@
  * Phaser-free, so all of it can be asked of a number.
  */
 
+import { isPlaytestRun } from '../dev/playtestMode';
+
 /** Below this share of their HP somebody is named on the card. */
 const NAMED_BELOW_SHARE = 1 / 2;
 /** Below this share of the whole team's HP, the card opens on NOT YET. */
@@ -70,4 +72,37 @@ export function railWarning(team: readonly RailMember[], medicinePacked: boolean
     line: `${who}${medicinePacked ? '' : ', with no medicine packed'}. Nurse Joy can help.`,
     stops: health < whole * STOPS_BELOW_SHARE,
   };
+}
+
+/** The bench a raid would take, as the rim sees it (`DeploymentFlow`). */
+export interface RailBench {
+  readonly party: readonly { readonly pokemon: RailMember }[];
+  readonly packsMedicine: boolean;
+  /** Why nobody can go, when nobody can. */
+  readonly notReady?: string;
+}
+
+/** What the rail says of the bench. The explorer run cannot lose, so it has nothing to be told. */
+export function benchRailWarning(bench: RailBench): RailWarning | null {
+  return isPlaytestRun()
+    ? null
+    : railWarning(
+        bench.party.map(({ pokemon }) => ({
+          name: pokemon.name,
+          currentHp: pokemon.currentHp,
+          maxHp: pokemon.maxHp,
+          primaryStatus: pokemon.primaryStatus,
+        })),
+        bench.packsMedicine,
+      );
+}
+
+/**
+ * Whether the rim's card opens with the cursor on NOT YET rather than JUMP IN:
+ * nobody can go, the team together is close to done, or the player is only
+ * just home and may still be pressing through the result. The floor asks it
+ * too, so it never promises SPACE jumps when SPACE only opens the card.
+ */
+export function rimOpensOnNotYet(bench: RailBench, justHome: boolean): boolean {
+  return bench.notReady !== undefined || justHome || benchRailWarning(bench)?.stops === true;
 }
