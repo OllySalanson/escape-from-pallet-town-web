@@ -3,6 +3,7 @@ import { beatSpots } from '../../../../src/game/world/mapFile';
 import { stepDistances } from '../../../../src/game/world/mapStructure';
 import { playerLinks } from '../../../../src/game/world/sailing';
 import { getWorldMap } from '../../../../src/game/worldMap';
+import { BUNKER_FLOORS, marksOf } from './bunker';
 import { powerStation } from './powerStation';
 import { safariMarsh } from './safariMarsh';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
@@ -79,6 +80,26 @@ describe('the fourth ring out from Mill Square', () => {
         expect(Math.min(place.width, place.height)).toBeLessThan(32);
       }
     }
+  });
+
+  /**
+   * The turbine hall is open from a new save's first raid, and the Zapdos in
+   * it fights at level 50: the north bug hunt of 11 Nov 2026 walked a level-10
+   * team into it with nothing said first, and a cry of "Gyaoo!" says nothing to
+   * a newcomer. So the watchman by the door says what it is and how strong.
+   */
+  it('warns whoever walks into the turbine hall what the bird in it is, and how strong', () => {
+    const station = districts['the power station'];
+    const zapdos = station.pokemon!.find((one) => one.species === 'zapdos')!;
+    const warned = (station.people ?? []).filter(
+      (person) =>
+        person.area === zapdos.area && /ZAPDOS/.test(person.lines[0]) && person.lines[0].includes(`level ${zapdos.level}`),
+    );
+    expect(warned.map((person) => person.name)).toEqual(['Night Watchman']);
+    // ...where the walk in passes him, and he calls it out unasked.
+    const [mat] = marksOf(BUNKER_FLOORS.find((floor) => floor.id === zapdos.area)!.rows, 'M');
+    expect(Math.abs(warned[0].x - mat[0]) + Math.abs(warned[0].y - mat[1])).toBeLessThanOrEqual(2);
+    expect(warned[0].calls?.some((call) => call.includes('50'))).toBe(true);
   });
 
   it('keeps each place’s one idea', () => {

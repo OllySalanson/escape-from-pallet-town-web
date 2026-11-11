@@ -174,6 +174,13 @@ export class WorldLabel {
     }
   }
 
+  /** Where it is drawn in the world, while it is on show: what the way mark stands clear of. */
+  public shown(): { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | undefined {
+    return this.frame.visible
+      ? { left: this.windowX, top: this.windowY, width: this.windowWidth(), height: this.windowHeight() }
+      : undefined;
+  }
+
   /**
    * Off the screen and out of the seating altogether, for a frame in which the
    * scene is saying one thing only. The next `seat` puts it back where it was.

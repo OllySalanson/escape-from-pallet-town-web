@@ -1,6 +1,7 @@
 import { workshopMaterialKinds } from '../hub/workshop';
 import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
+import { STEP_DURATION_MS } from '../movement/stepClock';
 import { evolutionFamily, Pokemon } from '../pokemon';
 import type { WildEncounterEntry } from '../pokemon/encounters';
 import { getSpeciesById } from '../pokemon/species';
@@ -272,6 +273,38 @@ export function standingJobWalk(
     jobWalks.set(key, measureJobWalk(contract, from, progress.defeatedBosses, opened));
   }
   return jobWalks.get(key);
+}
+
+/** How much of the clock another way in must save on a job before the rim names it. */
+export const QUICKER_LANDING_MS = 30_000;
+
+/**
+ * The way in that walks this standing job quickest, when it walks it at least
+ * `QUICKER_LANDING_MS` sooner than `from`. A job's stops are placed off the
+ * map's front door, because the board is dealt before a landing is chosen, so
+ * from a landing across the map it can be most of the raid: the north bug hunt
+ * (11 Nov 2026) took a Line survey in the west and centre of the vale from the
+ * Rest House, at its far east. The rim says the walk from the chosen way in
+ * and, when another on offer is much shorter, which.
+ */
+export function quickerLandingFor<Landing extends { readonly position: GridPosition }>(
+  contract: RaidContract,
+  from: GridPosition,
+  landings: readonly Landing[],
+  progress: StandingBoardProgress,
+): { readonly landing: Landing; readonly walk: number } | undefined {
+  const here = standingJobWalk(contract, from, progress);
+  if (here === undefined) {
+    return undefined;
+  }
+  let best: { readonly landing: Landing; readonly walk: number } | undefined;
+  for (const landing of landings) {
+    const walk = standingJobWalk(contract, landing.position, progress);
+    if (walk !== undefined && (best === undefined || walk < best.walk)) {
+      best = { landing, walk };
+    }
+  }
+  return best && (here - best.walk) * STEP_DURATION_MS >= QUICKER_LANDING_MS ? best : undefined;
 }
 
 function measureJobWalk(

@@ -91,14 +91,16 @@ export function chevronTowards(
   keepOff: readonly ScreenRect[] = [],
 ): { readonly x: number; readonly y: number; readonly angle: number } {
   const bob = Math.round(Math.sin(elapsedMs / BOB_MS) * BOB_PX);
+  // What it must not stand over, on the screen: a sign it hid was a sign nobody read (playtest 51, finding 12).
+  const signs = keepOff.map((rect) => ({ ...rect, left: rect.left - view.left, top: rect.top - view.top }));
   if (isOnScreen(target, view)) {
-    return { x: Math.round(target.x - view.left), y: Math.round(target.y - view.top - OVER_THE_DOOR + bob), angle: 180 };
+    const x = Math.round(target.x - view.left);
+    const y = Math.round(target.y - view.top - OVER_THE_DOOR + bob);
+    return { x, y: riseClear(x, y, signs), angle: 180 };
   }
   const dx = target.x - player.x;
   const dy = target.y - player.y;
   const across = Math.abs(dx) / Math.max(1, view.width) >= Math.abs(dy) / Math.max(1, view.height);
-  // What it must not stand over, on the screen: a sign it hid was a sign nobody read (playtest 51, finding 12).
-  const signs = keepOff.map((rect) => ({ ...rect, left: rect.left - view.left, top: rect.top - view.top }));
   if (across) {
     const x = dx < 0 ? EDGE_CLEAR + bob : view.width - EDGE_CLEAR - bob;
     const y = Math.round(Math.max(EDGE_CLEAR, Math.min(view.height - EDGE_CLEAR, player.y - view.top)));
@@ -147,6 +149,32 @@ function slideClear(
   return fits[0] ?? along;
 }
 
+/**
+ * Where the chevron over a thing stands clear of every caption: where it would
+ * be, or just above whatever it would cover - still over the thing and pointing
+ * down at it, because rising never puts it below what it points at - as long
+ * as that is still on the screen (the north bug hunt of 11 Nov 2026 saw it sat
+ * on THE WEEPING PINE's caption, which is seated round the very thing it marks).
+ */
+function riseClear(x: number, y: number, captions: readonly ScreenRect[]): number {
+  const { long: halfAcross, short: halfUp } = CHEVRON_HALF;
+  let at = y;
+  // Each caption risen over can put it on the one above, so rise until clear.
+  for (let step = 0; step <= captions.length; step += 1) {
+    const covered = captions.filter(
+      (rect) => x + halfAcross > rect.left && x - halfAcross < rect.left + rect.width && at + halfUp > rect.top && at - halfUp < rect.top + rect.height,
+    );
+    if (covered.length === 0) {
+      return at;
+    }
+    at = Math.floor(Math.min(...covered.map((rect) => rect.top)) - halfUp - 1);
+    if (at - halfUp < 0) {
+      return y;
+    }
+  }
+  return y;
+}
+
 /** How far from the middle of the figure the raid's chevron stands: clear of its head mark and of every chip. */
 const ROUND_THE_FIGURE = 30;
 
@@ -161,9 +189,11 @@ export function chevronRoundFigure(
   view: ScreenRect,
   figure: { readonly x: number; readonly y: number },
   elapsedMs: number,
+  /** The captions on show, in the world: it stands on none of them. */
+  captions: readonly ScreenRect[] = [],
 ): { readonly x: number; readonly y: number; readonly angle: number } {
   if (isOnScreen(target, view)) {
-    return chevronTowards(target, view, figure, elapsedMs);
+    return chevronTowards(target, view, figure, elapsedMs, captions);
   }
   const bob = Math.round(Math.sin(elapsedMs / BOB_MS) * BOB_PX);
   const dx = aim.x - figure.x;
@@ -257,6 +287,7 @@ export class RaidWayMark {
     way: { readonly target: { readonly x: number; readonly y: number }; readonly aim: { readonly x: number; readonly y: number }; readonly out: boolean } | null,
     player: { readonly x: number; readonly y: number },
     elapsedMs: number,
+    captions: readonly ScreenRect[] = [],
   ): void {
     if (!way) {
       this.image.setVisible(false);
@@ -269,6 +300,7 @@ export class RaidWayMark {
       { left: view.left, top: view.top, width: view.width, height: view.height },
       player,
       this.still ? 0 : elapsedMs,
+      captions,
     );
     this.image.setTexture(way.out ? GREEN_TEXTURE : TEXTURE).setVisible(true).setPosition(at.x, at.y).setAngle(at.angle);
   }

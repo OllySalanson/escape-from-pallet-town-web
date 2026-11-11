@@ -25,8 +25,8 @@ import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { flowForGame, type ArenaKit } from '../base/arenaKit';
 import type { RestoredGame } from '../save/SaveManager';
-import { frontDoorFor, RUN_INSERTIONS } from '../run/runGeneration';
-import { standingJobWalk } from '../objectives/standingBoard';
+import { availableInsertionIds, frontDoorFor, requireInsertion, RUN_INSERTIONS } from '../run/runGeneration';
+import { QUICKER_LANDING_MS, standingJobWalk } from '../objectives/standingBoard';
 import { formatRecoveryClock } from '../hub/recovery';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import type { ActiveRunSession } from '../run/RunSession';
@@ -1347,6 +1347,36 @@ describe('the standing board in the lobby', () => {
     expect(markupOf(hub)).toContain(
       `Walked straight, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)} of your 5:00.`,
     );
+  });
+
+  /**
+   * A job's stops are placed off the front door, so from a landing across the
+   * map it can be most of the raid: the north bug hunt (11 Nov 2026) took a
+   * survey in the west and centre of the vale from the Rest House, at its far
+   * east, with nothing on the rim but the walk. Now it names the way in that
+   * walks it quickest, when one on offer saves half a minute or more.
+   */
+  it('names a way in that walks the job much quicker than the one chosen (north bug hunt, 11 Nov 2026)', () => {
+    const progress = { ...chainBanked(6), reachedInsertions: ['greystone-vale-the-dam', 'greystone-vale-farmhouse', 'greystone-vale-moor-top'] };
+    const contract = standingBoard(progress).find((one) => one.mapId === 'greystone-vale')!;
+    const ways = availableInsertionIds(progress)
+      .map((id) => requireInsertion(id))
+      .filter((way) => way.mapId === contract.mapId);
+    const walks = ways.map((way) => ({ way, walk: standingJobWalk(contract, way.position, progress)! }));
+    const slowest = walks.reduce((one, other) => (other.walk > one.walk ? other : one));
+    const quickest = walks.reduce((one, other) => (other.walk < one.walk ? other : one));
+    // The case the hunt met: one way in is a long way round, another much nearer.
+    expect((slowest.walk - quickest.walk) * STEP_DURATION_MS).toBeGreaterThanOrEqual(QUICKER_LANDING_MS);
+    const { hub } = createHub(progress);
+    hub.flow.togglePokemon('bulbasaur-1');
+    hub.flow.chooseInsertion(slowest.way.id);
+    hub.setView('rim');
+    expect(markupOf(hub)).toContain(
+      `From ${quickest.way.label} it takes ${formatRecoveryClock(quickest.walk * STEP_DURATION_MS)}.`,
+    );
+    // From the quickest, nothing more is said.
+    hub.flow.chooseInsertion(quickest.way.id);
+    expect(markupOf(hub)).not.toMatch(/From [A-Z' ]+ it takes/);
   });
 });
 
