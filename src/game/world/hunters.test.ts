@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getCharacterDesign } from './characterDesigns';
-import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, rivalForRaid } from './hunters';
+import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, rivalForRaid, rivalsStoodDown } from './hunters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID, valeGyms } from './valeQuarters';
 
 describe('the five hunters', () => {
   it('opens with Blue, as the captain asked', () => {
@@ -64,5 +65,21 @@ describe('the five hunters', () => {
       expect(rival.caught[0]).toMatch(/found|pack|loot|gathered/i);
       expect(rival.caught[0]).toMatch(/mine|take/i);
     }
+  });
+});
+
+describe('a gym leader beaten in the raid', () => {
+  it('is a rival, for every gym, so beating any of them can stand one down', () => {
+    for (const gym of valeGyms()) {
+      expect(HUNTER_RIVALS.map((rival) => rival.id)).toContain(gym.rival);
+      expect(rivalsStoodDown([gym.bossId])).toEqual([gym.rival]);
+    }
+  });
+
+  it('stands down only for the gyms won in this raid, and for nothing else beaten', () => {
+    expect(rivalsStoodDown([])).toEqual([]);
+    expect(rivalsStoodDown(['vale-coast-fisherman-hal'])).toEqual([]);
+    expect(rivalsStoodDown([KOGA_BOSS_ID])).toEqual(['koga']);
+    expect(rivalsStoodDown(new Set([MISTY_BOSS_ID, KOGA_BOSS_ID]))).toEqual(['misty', 'koga']);
   });
 });

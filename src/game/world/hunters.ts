@@ -1,4 +1,5 @@
 import type { CastCharacterDesignId } from './characterDesigns';
+import { valeGyms } from './valeQuarters';
 
 /**
  * Who is hunting you this raid.
@@ -258,3 +259,20 @@ export const rivalForRaid = (raidsDeployed: number): HunterRivalId =>
   HUNTER_RIVALS[
     ((Math.floor(raidsDeployed) % HUNTER_RIVALS.length) + HUNTER_RIVALS.length) % HUNTER_RIVALS.length
   ].id;
+
+/**
+ * The rivals who stop hunting a raid because the player beat them at their gym
+ * in it (the owner, 11 Nov 2026, answering the hunt report: Koga handed over
+ * the SOUL BADGE and was waiting outside on the Safari Road with Grimer and
+ * Rattata). A leader is the same person as their rival (`ValeGym.rival`), so
+ * once beaten at the gym they are done for the raid, and whatever they were
+ * hunting goes to another rival (`HunterPack.standDown`). A leader beaten in an
+ * earlier raid hunts as before: only `beatenThisRaid` - the trainers the raid
+ * has beaten, which a gym leader's boss id is one of - stands one down.
+ */
+export function rivalsStoodDown(beatenThisRaid: Iterable<string>): HunterRivalId[] {
+  const beaten = new Set(beatenThisRaid);
+  return valeGyms()
+    .filter((gym) => beaten.has(gym.bossId))
+    .flatMap((gym) => HUNTER_RIVALS.filter((rival) => rival.id === gym.rival).map((rival) => rival.id));
+}
